@@ -15,7 +15,7 @@ export const audioDocumentSchema = "threenative.audio";
 export const meshDocumentSchema = "threenative.meshes";
 export const generatorDocumentSchema = "threenative.generator-provenance";
 
-export const sceneDocumentKeys = new Set(["schema", "version", "id", "kind", "activation", "initial", "entities", "prefabs", "resources", "systems", "scriptLifecycles", "ui", "provenance"]);
+export const sceneDocumentKeys = new Set(["schema", "version", "id", "kind", "activation", "initial", "entities", "instances", "prefabs", "resources", "systems", "scriptLifecycles", "ui", "provenance"]);
 export const uiDocumentKeys = new Set(["schema", "version", "id", "nodes", "bindings", "provenance"]);
 export const materialDocumentKeys = new Set(["schema", "version", "id", "materials", "provenance"]);
 export const assetDocumentKeys = new Set(["schema", "version", "id", "assets", "provenance"]);
@@ -32,6 +32,7 @@ export const audioDocumentKeys = new Set(["schema", "version", "id", "sounds", "
 export const meshDocumentKeys = new Set(["schema", "version", "id", "meshes", "provenance"]);
 export const generatorDocumentKeys = new Set(["schema", "version", "id", "module", "export", "outputs", "overwritePolicy", "inputHash", "outputHash", "lastRun", "provenance"]);
 export const entityKeys = new Set(["id", "prefab", "transform", "components"]);
+export const instanceKeys = new Set(["id", "prefab", "transform", "components"]);
 export const transformKeys = new Set(["position", "rotation", "scale"]);
 export const systemKeys = new Set([
   "after",
@@ -113,8 +114,8 @@ export const inputPersistedBindingOverrideKeys = new Set(["actionOrAxisId", "axi
 export const audioSoundKeys = new Set(["id", "asset"]);
 export const meshKeys = new Set(["attributes", "id", "indices", "kind", "primitive", "size", "storage"]);
 export const supportedGeneratorOverwritePolicies = new Set(["manual", "replace", "skip"]);
-export const supportedPrefabPrimitives = new Set(["box", "capsule", "cone", "cylinder", "plane", "sphere"]);
-export const supportedMeshPrimitives = new Set(["box", "cone", "cylinder", "plane", "sphere"]);
+export const supportedPrefabPrimitives = new Set(["box", "capsule", "cone", "cylinder", "plane", "sphere", "torus"]);
+export const supportedMeshPrimitives = new Set(["box", "cone", "cylinder", "plane", "sphere", "torus"]);
 
 export const supportedComponentKinds = new Set(["camera", "CharacterController", "Collider", "Light", "MeshRenderer", "RenderLayers", "RigidBody", "Visibility"]);
 export const cameraComponentKeys = new Set(["far", "fovY", "mode", "near", "size", "target"]);
@@ -154,6 +155,7 @@ export interface ISceneDocument {
   id: string;
   activation?: "additive" | "exclusive" | "loading" | "overlay" | "persistent";
   entities?: ISceneEntity[];
+  instances?: IScenePrefabInstance[];
   initial?: boolean;
   kind?: "credits" | "cutscene" | "level" | "loading" | "menu" | "overlay" | "system";
   prefabs?: IScenePrefab[];
@@ -170,6 +172,13 @@ export interface ISceneEntity {
   components?: Record<string, unknown>;
 }
 
+export interface IScenePrefabInstance {
+  id: string;
+  prefab: string;
+  transform?: ISceneTransform;
+  components?: Record<string, unknown>;
+}
+
 export interface ISceneTransform {
   position?: number[];
   rotation?: number[];
@@ -180,7 +189,7 @@ export interface IScenePrefab {
   asset?: string;
   color?: string;
   id: string;
-  primitive?: "box" | "capsule" | "cone" | "cylinder" | "plane" | "sphere";
+  primitive?: "box" | "capsule" | "cone" | "cylinder" | "plane" | "sphere" | "torus";
 }
 
 export interface ISceneResource {
@@ -460,7 +469,7 @@ export interface IMeshDeclaration {
   id: string;
   indices?: number[];
   kind: "custom" | "primitive";
-  primitive?: "box" | "cone" | "custom" | "cylinder" | "plane" | "sphere";
+  primitive?: "box" | "cone" | "custom" | "cylinder" | "plane" | "sphere" | "torus";
   size?: number[];
   storage?: "binary";
 }

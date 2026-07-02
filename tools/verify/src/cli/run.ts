@@ -258,6 +258,33 @@ export const FOCUSED_GATES: Record<string, FocusedGate> = {
       protects: "tn game score/qa/release report contract and release-ready claim boundaries.",
     },
   },
+  "verify:generated-games": {
+    commands: [
+      ["pnpm", "--filter", "@threenative/authoring", "build"],
+      ["pnpm", "--filter", "@threenative/verify-tools", "build"],
+      ["node", "tools/verify/dist/cli/game-production.js", "--generated-games"],
+    ],
+    description: "Generated game aggregate production proof gate.",
+    metadata: {
+      owner: "tools/verify generated-games gate",
+      profile: "focused",
+      reason: "Aggregates release and visual-quality proof across the current generated-game examples.",
+      protects: "Generated-game QA/release evidence, clean release risks, and objective screenshot quality sidecars.",
+    },
+  },
+  "verify:template-production": {
+    commands: [
+      ["pnpm", "--filter", "@threenative/verify-tools", "build"],
+      ["node", "tools/verify/dist/templateProductionGate.js"],
+    ],
+    description: "Maintained starter production workflow scaffold gate.",
+    metadata: {
+      owner: "tools/verify template-production gate",
+      profile: "focused",
+      reason: "Checks maintained starters directly so plan/improve/QA/release production workflow scaffolding cannot drift out of templates.",
+      protects: "Fresh-project game-production scripts, proof-running QA defaults, and production metadata for playable loops.",
+    },
+  },
   "verify:v10:ecs-tags-groups": {
     commands: [
       ["pnpm", "--filter", "@threenative/ir", "test", "--", "--run", "conformance"],
@@ -320,6 +347,7 @@ export const FOCUSED_GATES: Record<string, FocusedGate> = {
 const RELEASE_PROFILE_GATES = [
   "verify:animation-physics-residuals",
   "verify:bundle-safety-hardening",
+  "verify:generated-games",
   "verify:input-ui-polish",
   "verify:persistence-reload",
   "verify:production-hardening",
@@ -328,6 +356,7 @@ const RELEASE_PROFILE_GATES = [
   "verify:runtime-prefabs-hierarchy",
   "verify:runtime-query-diffing",
   "verify:scripting-helpers-lifecycle",
+  "verify:template-production",
   "verify:ui-persistence-settings-facades",
   "verify:v9:assets-gltf-scene-workflow",
   "verify:v9:rendering-lights",

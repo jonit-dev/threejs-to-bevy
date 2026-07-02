@@ -18,7 +18,15 @@ Rules for runnable examples.
   feed them, but fixtures are stable contract inputs.
 - Examples prove product workflows and emit portable IR/bundles. They must not
   introduce runtime-specific source of truth.
+- For repeated entities, prefer prefab defaults plus compact scene instances.
+  Use `tn scene inspect --json` before large scene edits, then validate and
+  build the durable source instead of expanding repeated component blocks by
+  hand.
 - Playable examples must look and feel credible by default: no primitive-only
   placeholder acceptance, no clunky one-frame player snaps unless deliberately
   tweened as a grid mechanic, and no completion claim without build, nonblank
   screenshot, visible motion, and input-playtest evidence.
+- Audio-feedback assets must be real local audio files when referenced. Do not
+  create text placeholders with `.wav` or `.mp3` extensions; generate, source,
+  or reuse a valid RIFF/WAVE file with provenance, then let QA/release validate
+  it.

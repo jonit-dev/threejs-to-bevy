@@ -14,6 +14,7 @@ export async function startWebPreview(options: {
   bundlePath: string;
   host?: string;
   port?: number;
+  silent?: boolean;
 }): Promise<IWebPreviewServer> {
   const report = await validateBundle(options.bundlePath);
   if (!report.ok) {
@@ -24,6 +25,7 @@ export async function startWebPreview(options: {
   const server = await createServer({
     plugins: [bundlePlugin(options.bundlePath)],
     root,
+    logLevel: options.silent === true ? "silent" : "info",
     optimizeDeps: {
       noDiscovery: true,
     },

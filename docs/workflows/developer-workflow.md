@@ -160,7 +160,7 @@ tn verify
 tn model-test assets/hero.glb --out artifacts/model-test --verify --screenshot --url http://127.0.0.1:5173
 tn scene proof <scene-id> --project . --web-url http://127.0.0.1:5173 --out artifacts/proof --native --json
 tn screenshot --url http://127.0.0.1:5173 --out artifacts/proof/frame.png
-tn record --url http://127.0.0.1:5173 --out artifacts/proof/clip.webm --duration 5
+tn record --url http://127.0.0.1:5173 --out artifacts/proof/motion.webm --duration 5
 ```
 
 Command expectations:

@@ -1,0 +1,11 @@
+{
+  "schema": "threenative.meshes",
+  "version": "0.1.0",
+  "id": "arena-meshes",
+  "meshes": [
+    { "id": "mesh.box", "kind": "primitive", "primitive": "box" },
+    { "id": "mesh.sphere", "kind": "primitive", "primitive": "sphere" },
+    { "id": "mesh.cylinder", "kind": "primitive", "primitive": "cylinder" },
+    { "id": "mesh.plane", "kind": "primitive", "primitive": "plane" }
+  ]
+}

@@ -27,6 +27,7 @@ import {
   inputDocumentKeys,
   inputDocumentSchema,
   inputPersistedBindingOverrideKeys,
+  instanceKeys,
   lightComponentKeys,
   logicalIdPattern,
   materialDocumentKeys,
@@ -163,6 +164,28 @@ export interface IAddEntityOptions extends IAuthoringOperationContext {
   sceneId: string;
   entityId: string;
   prefabId?: string;
+}
+
+export interface IAddPrefabInstanceOptions extends IAuthoringOperationContext {
+  sceneId: string;
+  instanceId: string;
+  prefabId: string;
+  transform?: {
+    position?: [number, number, number];
+    rotation?: [number, number, number];
+    scale?: [number, number, number];
+  };
+  components?: Record<string, unknown>;
+  replace?: boolean;
+}
+
+export interface IAddTenPinLayoutOptions extends IAuthoringOperationContext {
+  sceneId: string;
+  prefabId: string;
+  prefix?: string;
+  origin?: [number, number, number];
+  spacing?: number;
+  replace?: boolean;
 }
 
 export interface IAddTagOptions extends IAuthoringOperationContext {
@@ -715,8 +738,13 @@ export interface ISceneInspection {
   id: string;
   file: string;
   entities: string[];
+  expandedEntityCount: number;
+  instances: string[];
   prefabs: string[];
+  repeatedBlocks: Array<{ componentKinds: string[]; count: number; entityIds: string[] }>;
   resources: string[];
+  sourceLineCount: number;
+  suggestedRefactors: Array<{ kind: string; message: string }>;
   systems: string[];
   uiNodes: string[];
 }
@@ -948,6 +976,7 @@ export async function validateScene(options: IValidateSceneOptions): Promise<IAu
   const sceneDocuments = project.documents.filter((document) => document.kind === "scene");
   const selectedScenes = options.sceneId === undefined ? sceneDocuments : sceneDocuments.filter((document) => readSceneId(document.data) === options.sceneId);
   const materialIds = collectMaterialIdsForProject(project);
+  const prefabDocumentIds = collectPrefabDocumentIdsForProject(project);
 
   if (options.sceneId !== undefined && selectedScenes.length === 0) {
     diagnostics.push(
@@ -961,7 +990,7 @@ export async function validateScene(options: IValidateSceneOptions): Promise<IAu
   }
 
   for (const document of selectedScenes) {
-    diagnostics.push(...(await validateSceneDocument(project.projectPath, document.projectRelativePath, document.data, { materialIds })));
+    diagnostics.push(...(await validateSceneDocument(project.projectPath, document.projectRelativePath, document.data, { materialIds, prefabDocumentIds })));
   }
 
   return authoringOperationResult({
@@ -973,11 +1002,11 @@ export async function validateScene(options: IValidateSceneOptions): Promise<IAu
 export async function validateAuthoringProject(options: IValidateAuthoringProjectOptions): Promise<IAuthoringOperationResult> {
   const project = await loadAuthoringProject({ projectPath: options.projectPath });
   const diagnostics = [...project.diagnostics];
-  const materialIds = collectMaterialIdsForProject(project);
+  const context = validationContextForProject(project);
 
   for (const document of project.documents) {
     diagnostics.push(
-      ...(await validateAuthoringDocument(project.projectPath, document.projectRelativePath, document.kind, document.data, { materialIds })),
+      ...(await validateAuthoringDocument(project.projectPath, document.projectRelativePath, document.kind, document.data, context)),
     );
   }
 
@@ -1045,6 +1074,7 @@ export async function inspectScene(options: IValidateSceneOptions & { sceneId: s
   const sceneDocuments = project.documents.filter((document) => document.kind === "scene");
   const sceneDocument = sceneDocuments.find((document) => readSceneId(document.data) === options.sceneId);
   const materialIds = collectMaterialIdsForProject(project);
+  const prefabDocumentIds = collectPrefabDocumentIdsForProject(project);
 
   if (sceneDocument === undefined) {
     diagnostics.push(
@@ -1060,11 +1090,11 @@ export async function inspectScene(options: IValidateSceneOptions & { sceneId: s
     };
   }
 
-  diagnostics.push(...(await validateSceneDocument(project.projectPath, sceneDocument.projectRelativePath, sceneDocument.data, { materialIds })));
+  diagnostics.push(...(await validateSceneDocument(project.projectPath, sceneDocument.projectRelativePath, sceneDocument.data, { materialIds, prefabDocumentIds })));
 
   return {
     ...authoringOperationResult({ diagnostics, projectPath: project.projectPath }),
-    scene: inspectSceneDocument(sceneDocument.projectRelativePath, sceneDocument.data),
+    scene: inspectSceneDocument(sceneDocument.projectRelativePath, sceneDocument.data, await countSourceLines(sceneDocument.file)),
   };
 }
 
@@ -1075,6 +1105,71 @@ export async function addEntity(options: IAddEntityOptions): Promise<IAuthoringO
       id: options.entityId,
       ...(options.prefabId === undefined ? {} : { prefab: options.prefabId }),
     });
+  });
+}
+
+export async function addPrefabInstance(options: IAddPrefabInstanceOptions): Promise<IAuthoringOperationResult> {
+  return mutateScene(options, (scene, file) => {
+    const instances = ensureArrayProperty(scene, "instances");
+    const existing = findSceneItem(instances, options.instanceId);
+    if (existing !== undefined && options.replace !== true) {
+      return [
+        authoringDiagnostic({
+          code: "TN_AUTHORING_INSTANCE_EXISTS",
+          file,
+          message: `Compact instance '${options.instanceId}' already exists.`,
+          path: `/instances/${instances.indexOf(existing)}/id`,
+          value: options.instanceId,
+          suggestion: "Pass --replace to update this compact instance intentionally.",
+        }),
+      ];
+    }
+    const instance = compactInstanceRecord(options.instanceId, options.prefabId, options.transform, options.components);
+    if (existing === undefined) {
+      instances.push(instance);
+    } else {
+      instances[instances.indexOf(existing)] = instance;
+    }
+    return [];
+  });
+}
+
+export async function addTenPinLayout(options: IAddTenPinLayoutOptions): Promise<IAuthoringOperationResult> {
+  const prefix = options.prefix ?? "pin";
+  const origin = options.origin ?? [0, 0.6, 0];
+  const spacing = options.spacing ?? 0.52;
+  const layout = tenPinLayout(prefix, origin, spacing);
+  return mutateScene(options, (scene, file) => {
+    const instances = ensureArrayProperty(scene, "instances");
+    const ids = new Set(layout.map((pin) => pin.id));
+    const existing = instances.filter((instance) => typeof instance.id === "string" && ids.has(instance.id));
+    if (existing.length > 0 && options.replace !== true) {
+      const first = existing[0]!;
+      return [
+        authoringDiagnostic({
+          code: "TN_AUTHORING_LAYOUT_EXISTS",
+          file,
+          message: `Compact ten-pin layout '${prefix}' would replace ${existing.length} existing instance id${existing.length === 1 ? "" : "s"}.`,
+          path: `/instances/${instances.indexOf(first)}/id`,
+          value: first.id,
+          suggestion: "Pass --replace to regenerate this layout intentionally, or choose a different --prefix.",
+        }),
+      ];
+    }
+    if (options.replace === true) {
+      for (let index = instances.length - 1; index >= 0; index -= 1) {
+        const id = instances[index]?.id;
+        if (typeof id === "string" && ids.has(id)) {
+          instances.splice(index, 1);
+        }
+      }
+    }
+    for (const pin of layout) {
+      instances.push(compactInstanceRecord(pin.id, options.prefabId, {
+        position: pin.position,
+      }, undefined));
+    }
+    return [];
   });
 }
 
@@ -1189,6 +1284,7 @@ export async function setSceneLifecycle(options: ISetSceneLifecycleOptions): Pro
   const sceneDocuments = project.documents.filter((document) => document.kind === "scene");
   const sceneDocument = sceneDocuments.find((document) => readSceneId(document.data) === options.sceneId);
   const materialIds = collectMaterialIdsForProject(project);
+  const prefabDocumentIds = collectPrefabDocumentIdsForProject(project);
   const diagnostics = [...project.diagnostics];
 
   if (sceneDocument === undefined) {
@@ -1204,7 +1300,7 @@ export async function setSceneLifecycle(options: ISetSceneLifecycleOptions): Pro
   }
 
   for (const document of sceneDocuments) {
-    const documentDiagnostics = await validateSceneDocument(project.projectPath, document.projectRelativePath, document.data, { materialIds });
+    const documentDiagnostics = await validateSceneDocument(project.projectPath, document.projectRelativePath, document.data, { materialIds, prefabDocumentIds });
     if (hasAuthoringErrors(documentDiagnostics)) {
       return authoringOperationResult({ diagnostics: documentDiagnostics, projectPath: project.projectPath });
     }
@@ -1241,7 +1337,7 @@ export async function setSceneLifecycle(options: ISetSceneLifecycleOptions): Pro
       nextData.initial = false;
     }
 
-    const afterDiagnostics = await validateSceneDocument(project.projectPath, document.projectRelativePath, nextData, { materialIds });
+    const afterDiagnostics = await validateSceneDocument(project.projectPath, document.projectRelativePath, nextData, { materialIds, prefabDocumentIds });
     if (hasAuthoringErrors(afterDiagnostics)) {
       return authoringOperationResult({ diagnostics: afterDiagnostics, projectPath: project.projectPath });
     }
@@ -2394,7 +2490,7 @@ async function createSourceDocument(options: {
     // Missing is the successful create path.
   }
 
-  diagnostics.push(...(await validateAuthoringDocument(project.projectPath, projectRelativePath, options.kind, options.data, { materialIds: collectMaterialIdsForProject(project) })));
+  diagnostics.push(...(await validateAuthoringDocument(project.projectPath, projectRelativePath, options.kind, options.data, validationContextForProject(project))));
   if (hasAuthoringErrors(diagnostics)) {
     return authoringOperationResult({ diagnostics, projectPath: project.projectPath });
   }
@@ -2452,7 +2548,7 @@ async function upsertSourceDocument(options: {
     );
   } else {
     diagnostics.push(...(options.apply(nextData, projectRelativePath) ?? []));
-    diagnostics.push(...(await validateAuthoringDocument(project.projectPath, projectRelativePath, options.kind, nextData, { materialIds: collectMaterialIdsForProject(project) })));
+    diagnostics.push(...(await validateAuthoringDocument(project.projectPath, projectRelativePath, options.kind, nextData, validationContextForProject(project))));
   }
 
   if (hasAuthoringErrors(diagnostics)) {
@@ -2497,8 +2593,8 @@ async function mutateLoadedSourceDocument(
   apply: (data: Record<string, unknown>, file: string) => void | IAuthoringDiagnostic[],
 ): Promise<IAuthoringOperationResult> {
   const diagnostics = [...project.diagnostics];
-  const materialIds = collectMaterialIdsForProject(project);
-  const beforeDiagnostics = await validateAuthoringDocument(project.projectPath, document.projectRelativePath, document.kind, document.data, { materialIds });
+  const context = validationContextForProject(project);
+  const beforeDiagnostics = await validateAuthoringDocument(project.projectPath, document.projectRelativePath, document.kind, document.data, context);
   if (hasAuthoringErrors(beforeDiagnostics)) {
     return authoringOperationResult({ diagnostics: beforeDiagnostics, projectPath: project.projectPath });
   }
@@ -2522,7 +2618,7 @@ async function mutateLoadedSourceDocument(
     return authoringOperationResult({ diagnostics: applyDiagnostics, projectPath: project.projectPath });
   }
 
-  const afterDiagnostics = await validateAuthoringDocument(project.projectPath, document.projectRelativePath, document.kind, nextData, { materialIds });
+  const afterDiagnostics = await validateAuthoringDocument(project.projectPath, document.projectRelativePath, document.kind, nextData, context);
   if (hasAuthoringErrors(afterDiagnostics)) {
     return authoringOperationResult({ diagnostics: afterDiagnostics, projectPath: project.projectPath });
   }
@@ -2602,6 +2698,7 @@ async function mutateScene(
   const sceneDocuments = project.documents.filter((document) => document.kind === "scene");
   const sceneDocument = sceneDocuments.find((document) => readSceneId(document.data) === options.sceneId);
   const materialIds = collectMaterialIdsForProject(project);
+  const prefabDocumentIds = collectPrefabDocumentIdsForProject(project);
   const diagnostics = [...project.diagnostics];
 
   if (sceneDocument === undefined) {
@@ -2616,7 +2713,7 @@ async function mutateScene(
     return authoringOperationResult({ diagnostics, projectPath: project.projectPath });
   }
 
-  const beforeDiagnostics = await validateSceneDocument(project.projectPath, sceneDocument.projectRelativePath, sceneDocument.data, { materialIds });
+  const beforeDiagnostics = await validateSceneDocument(project.projectPath, sceneDocument.projectRelativePath, sceneDocument.data, { materialIds, prefabDocumentIds });
   if (hasAuthoringErrors(beforeDiagnostics)) {
     return authoringOperationResult({
       diagnostics: beforeDiagnostics,
@@ -2646,7 +2743,7 @@ async function mutateScene(
     });
   }
 
-  const afterDiagnostics = await validateSceneDocument(project.projectPath, sceneDocument.projectRelativePath, nextData, { materialIds });
+  const afterDiagnostics = await validateSceneDocument(project.projectPath, sceneDocument.projectRelativePath, nextData, { materialIds, prefabDocumentIds });
   if (hasAuthoringErrors(afterDiagnostics)) {
     return authoringOperationResult({
       diagnostics: afterDiagnostics,
@@ -2666,6 +2763,14 @@ async function mutateScene(
 
 interface IAuthoringValidationContext {
   materialIds: readonly string[];
+  prefabDocumentIds?: readonly string[];
+}
+
+function validationContextForProject(project: IAuthoringProject): IAuthoringValidationContext {
+  return {
+    materialIds: collectMaterialIdsForProject(project),
+    prefabDocumentIds: collectPrefabDocumentIdsForProject(project),
+  };
 }
 
 async function validateAuthoringDocument(
@@ -3081,8 +3186,10 @@ async function validateSceneDocument(
   const scriptLifecycles = collectIds(diagnostics, file, "/scriptLifecycles", readArray(data.scriptLifecycles), "script lifecycle", scriptLifecycleKeys);
   const uiNodes = collectUiNodeIds(diagnostics, file, data.ui);
   const entities = collectEntityIds(diagnostics, file, data.entities);
+  const instances = collectInstanceIds(diagnostics, file, data.instances);
 
   validateEntities(diagnostics, file, data.entities, entities, prefabs, context.materialIds);
+  validateInstances(diagnostics, file, data.instances, entities, instances, [...prefabs, ...(context.prefabDocumentIds ?? [])], context.materialIds);
   validatePrefabs(diagnostics, file, data.prefabs);
   validateResources(diagnostics, file, data.resources);
   await validateSystems(diagnostics, projectPath, file, data.systems, systems);
@@ -3352,6 +3459,15 @@ function collectEntityIds(diagnostics: IAuthoringDiagnostic[], file: string, val
   return collectIds(diagnostics, file, "/entities", entities, "entity", entityKeys);
 }
 
+function collectInstanceIds(diagnostics: IAuthoringDiagnostic[], file: string, value: unknown): string[] {
+  const instances = readArray(value);
+  if (value !== undefined && instances === undefined) {
+    diagnostics.push(typeDiagnostic(file, "/instances", "instances must be an array.", value));
+    return [];
+  }
+  return collectIds(diagnostics, file, "/instances", instances, "entity", instanceKeys);
+}
+
 function collectUiNodeIds(diagnostics: IAuthoringDiagnostic[], file: string, value: unknown): string[] {
   if (value === undefined) {
     return [];
@@ -3450,6 +3566,50 @@ function validateEntities(
 
     validateTransform(diagnostics, file, `${path}/transform`, entity.transform);
     validateComponents(diagnostics, file, `${path}/components`, entity.components, entityIds, materialIds);
+  });
+}
+
+function validateInstances(
+  diagnostics: IAuthoringDiagnostic[],
+  file: string,
+  value: unknown,
+  entityIds: readonly string[],
+  instanceIds: readonly string[],
+  prefabIds: readonly string[],
+  materialIds: readonly string[],
+): void {
+  const instances = readArray(value);
+  if (instances === undefined) {
+    return;
+  }
+
+  instances.forEach((instance, index) => {
+    if (!isRecord(instance)) {
+      return;
+    }
+    const path = `/instances/${index}`;
+    const id = readString(instance.id);
+    if (id !== undefined && entityIds.includes(id)) {
+      diagnostics.push(
+        authoringDiagnostic({
+          code: "TN_AUTHORING_DUPLICATE_ENTITY_ID",
+          file,
+          message: `Duplicate entity id '${id}' after compact instance expansion.`,
+          path: `${path}/id`,
+          value: id,
+          suggestion: "Use a stable instance id that does not collide with scene.entities.",
+        }),
+      );
+    }
+    const prefab = readString(instance.prefab);
+    if (prefab === undefined) {
+      diagnostics.push(typeDiagnostic(file, `${path}/prefab`, "Compact instance prefab must be a non-empty string.", instance.prefab));
+    } else if (!prefabIds.includes(prefab)) {
+      diagnostics.push(missingReferenceDiagnostic(file, `${path}/prefab`, "prefab", prefab, prefabIds));
+    }
+
+    validateTransform(diagnostics, file, `${path}/transform`, instance.transform);
+    validateComponents(diagnostics, file, `${path}/components`, instance.components, [...entityIds, ...instanceIds], materialIds);
   });
 }
 
@@ -4175,19 +4335,103 @@ function validateUi(diagnostics: IAuthoringDiagnostic[], file: string, value: un
   });
 }
 
-function inspectSceneDocument(file: string, data: unknown): ISceneInspection | undefined {
+function inspectSceneDocument(file: string, data: unknown, sourceLineCount = 0): ISceneInspection | undefined {
   if (!isRecord(data)) {
     return undefined;
   }
+  const entities = idsFromArray(data.entities);
+  const instances = idsFromArray(data.instances);
+  const repeatedBlocks = repeatedComponentBlocks(data.entities);
   return {
     id: readString(data.id) ?? "",
     file,
-    entities: idsFromArray(data.entities),
+    entities,
+    expandedEntityCount: entities.length + instances.length,
+    instances,
     prefabs: idsFromArray(data.prefabs),
+    repeatedBlocks,
     resources: idsFromArray(data.resources),
+    sourceLineCount,
+    suggestedRefactors: repeatedBlocks.map((block) => ({
+      kind: "compact-prefab-instances",
+      message: `${block.count} entities share components ${block.componentKinds.join(", ")}; move shared defaults to a prefab document and keep per-instance transform overrides in scene.instances.`,
+    })),
     systems: idsFromArray(data.systems),
     uiNodes: isRecord(data.ui) ? idsFromArray(data.ui.nodes) : [],
   };
+}
+
+function compactInstanceRecord(
+  id: string,
+  prefab: string,
+  transform: IAddPrefabInstanceOptions["transform"],
+  components: Record<string, unknown> | undefined,
+): Record<string, unknown> {
+  return {
+    id,
+    prefab,
+    ...(transform === undefined ? {} : { transform: cloneJson(transform) }),
+    ...(components === undefined ? {} : { components: cloneJson(components) }),
+  };
+}
+
+function tenPinLayout(prefix: string, origin: [number, number, number], spacing: number): Array<{ id: string; position: [number, number, number] }> {
+  const rows = [
+    [0],
+    [-0.5, 0.5],
+    [-1, 0, 1],
+    [-1.5, -0.5, 0.5, 1.5],
+  ];
+  const pins: Array<{ id: string; position: [number, number, number] }> = [];
+  let index = 1;
+  for (const [rowIndex, offsets] of rows.entries()) {
+    for (const offset of offsets) {
+      pins.push({
+        id: `${prefix}.${String(index).padStart(2, "0")}`,
+        position: [
+          roundNumber(origin[0] + offset * spacing),
+          roundNumber(origin[1]),
+          roundNumber(origin[2] - rowIndex * spacing),
+        ],
+      });
+      index += 1;
+    }
+  }
+  return pins;
+}
+
+function roundNumber(value: number): number {
+  return Number(value.toFixed(6));
+}
+
+async function countSourceLines(file: string): Promise<number> {
+  try {
+    const text = await readFile(file, "utf8");
+    return text.length === 0 ? 0 : text.split(/\r?\n/).length;
+  } catch {
+    return 0;
+  }
+}
+
+function repeatedComponentBlocks(value: unknown): Array<{ componentKinds: string[]; count: number; entityIds: string[] }> {
+  const groups = new Map<string, { componentKinds: string[]; entityIds: string[] }>();
+  for (const entity of readArray(value) ?? []) {
+    const record = isRecord(entity) ? entity : undefined;
+    const id = readString(record?.id);
+    const components = isRecord(record?.components) ? record.components : undefined;
+    const componentKinds = Object.keys(components ?? {}).filter((kind) => kind !== "camera").sort();
+    if (id === undefined || componentKinds.length < 2) {
+      continue;
+    }
+    const key = componentKinds.join("\u0000");
+    const group = groups.get(key) ?? { componentKinds, entityIds: [] };
+    group.entityIds.push(id);
+    groups.set(key, group);
+  }
+  return [...groups.values()]
+    .filter((group) => group.entityIds.length >= 3)
+    .map((group) => ({ componentKinds: group.componentKinds, count: group.entityIds.length, entityIds: group.entityIds.sort() }))
+    .sort((left, right) => right.count - left.count || left.componentKinds.join(",").localeCompare(right.componentKinds.join(",")));
 }
 
 function idsFromArray(value: unknown): string[] {
@@ -4206,6 +4450,19 @@ function collectMaterialIdsForProject(project: IAuthoringProject): string[] {
   for (const document of project.documents) {
     if (document.kind === "material" && isRecord(document.data)) {
       ids.push(...idsFromArray(document.data.materials));
+    }
+  }
+  return [...new Set(ids)].sort();
+}
+
+function collectPrefabDocumentIdsForProject(project: IAuthoringProject): string[] {
+  const ids: string[] = [];
+  for (const document of project.documents) {
+    if (document.kind === "prefab" && isRecord(document.data)) {
+      const id = readString(document.data.id);
+      if (id !== undefined) {
+        ids.push(id);
+      }
     }
   }
   return [...new Set(ids)].sort();

@@ -1,0 +1,29 @@
+{
+  "schema": "threenative.materials",
+  "version": "0.1.0",
+  "id": "arena-materials",
+  "materials": [
+    { "id": "mat.deep.water", "color": "#031929", "roughness": 1 },
+    { "id": "mat.silt", "color": "#4a8490", "roughness": 0.92 },
+    { "id": "mat.silt.current", "color": "#2e6f7b", "roughness": 0.88, "emissive": "#145867", "emissiveIntensity": 0.24 },
+    { "id": "mat.silt.bright", "color": "#70c7d0", "roughness": 0.82, "emissive": "#2b8b98", "emissiveIntensity": 0.24 },
+    { "id": "mat.archive.stone", "color": "#aeb9a4", "roughness": 0.84 },
+    { "id": "mat.archive.glint", "color": "#e7f6d4", "roughness": 0.52 },
+    { "id": "mat.archive.marker", "color": "#f4e8a7", "roughness": 0.5, "emissive": "#d4c96d", "emissiveIntensity": 0.18 },
+    { "id": "mat.path.edge", "color": "#d9e7c2", "roughness": 0.62 },
+    { "id": "mat.path.seam", "color": "#6f837b", "roughness": 0.9 },
+    { "id": "mat.shelf.cap", "color": "#c1d2c0", "roughness": 0.72 },
+    { "id": "mat.shelf.strata", "color": "#d4e2cf", "roughness": 0.76 },
+    { "id": "mat.kelp", "color": "#25c978", "roughness": 0.86 },
+    { "id": "mat.diver.suit", "color": "#ffb72e", "roughness": 0.48 },
+    { "id": "mat.diver.glass", "color": "#d8ffff", "roughness": 0.12 },
+    { "id": "mat.relic", "color": "#1fffd8", "roughness": 0.16 },
+    { "id": "mat.relic.glow", "color": "#39ffdf", "roughness": 0.18, "emissive": "#17dabc" },
+    { "id": "mat.shell.glint", "color": "#f7ffff", "roughness": 0.12, "emissive": "#bdfaff", "emissiveIntensity": 0.32 },
+    { "id": "mat.eel", "color": "#0b0736", "roughness": 0.48 },
+    { "id": "mat.eel.light", "color": "#ff3330", "roughness": 0.18 },
+    { "id": "mat.eel.warning", "color": "#ff4a42", "roughness": 0.28, "emissive": "#d83630" },
+    { "id": "mat.air", "color": "#f8ffff", "roughness": 0.18 },
+    { "id": "mat.bubble", "color": "#d0fbff", "roughness": 0.06 }
+  ]
+}

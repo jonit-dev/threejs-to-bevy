@@ -1,0 +1,29 @@
+{
+  "schema": "threenative.prefab",
+  "version": "0.1.0",
+  "id": "prefab.backstop",
+  "entities": [
+    {
+      "id": "prefab.backstop",
+      "components": {
+        "MeshRenderer": {
+          "mesh": "mesh.lane",
+          "material": "mat.backstop"
+        },
+        "RigidBody": {
+          "kind": "static"
+        },
+        "Collider": {
+          "kind": "box",
+          "size": [
+            4,
+            1.45,
+            0.22
+          ],
+          "friction": 0.6,
+          "restitution": 0.18
+        }
+      }
+    }
+  ]
+}

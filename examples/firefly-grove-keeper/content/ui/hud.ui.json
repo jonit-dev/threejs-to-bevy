@@ -1,0 +1,47 @@
+{
+  "schema": "threenative.ui",
+  "version": "0.1.0",
+  "id": "hud",
+  "nodes": [
+    {
+      "id": "pollen",
+      "type": "text",
+      "text": "Pollen 0/5",
+      "style": { "color": "#fff7b8", "fontSize": 24, "fontWeight": "bold", "textAlign": "center" },
+      "layout": { "justify": "center", "align": "top", "top": 24, "width": 1280 }
+    },
+    {
+      "id": "flowers",
+      "type": "text",
+      "text": "Flowers 0/3",
+      "style": { "color": "#ffbe7d", "fontSize": 22, "fontWeight": "bold", "textAlign": "center" },
+      "layout": { "justify": "center", "align": "top", "top": 58, "width": 1280 }
+    },
+    {
+      "id": "dawn",
+      "type": "text",
+      "text": "Dawn 78",
+      "style": { "color": "#bdeeff", "fontSize": 22, "fontWeight": "bold", "textAlign": "center" },
+      "layout": { "justify": "center", "align": "top", "top": 90, "width": 1280 }
+    },
+    {
+      "id": "status",
+      "type": "text",
+      "text": "Spark, bloom, stump",
+      "style": { "color": "#ffffff", "fontSize": 16, "fontWeight": "bold", "textAlign": "center" },
+      "layout": { "justify": "center", "align": "top", "top": 122, "width": 1280 }
+    },
+    { "id": "state.loading", "type": "text", "text": "Loading grove", "layout": { "justify": "center", "align": "center", "top": 1200, "width": 1280 } },
+    { "id": "state.pause", "type": "text", "text": "Paused", "layout": { "justify": "center", "align": "center", "top": 1230, "width": 1280 } },
+    { "id": "state.settings", "type": "text", "text": "Settings", "layout": { "justify": "center", "align": "center", "top": 1260, "width": 1280 } },
+    { "id": "state.fail-retry", "type": "text", "text": "Night lost - press Space", "layout": { "justify": "center", "align": "center", "top": 1290, "width": 1280 } },
+    { "id": "state.win-milestone", "type": "text", "text": "Grove lit", "layout": { "justify": "center", "align": "center", "top": 1320, "width": 1280 } },
+    { "id": "state.touch-controls", "type": "text", "text": "Touch firefly controls mobile-control", "layout": { "justify": "center", "align": "center", "top": 1350, "width": 1280 } }
+  ],
+  "bindings": [
+    { "node": "pollen", "resource": "GameState.pollenText" },
+    { "node": "flowers", "resource": "GameState.flowersText" },
+    { "node": "dawn", "resource": "GameState.dawnText" },
+    { "node": "status", "resource": "GameState.status" }
+  ]
+}

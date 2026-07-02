@@ -1,0 +1,47 @@
+{
+  "schema": "threenative.meshes",
+  "version": "0.1.0",
+  "id": "arena-meshes",
+  "meshes": [
+    {
+      "id": "mesh.skiff",
+      "kind": "primitive",
+      "primitive": "box"
+    },
+    {
+      "id": "mesh.cabin",
+      "kind": "primitive",
+      "primitive": "box"
+    },
+    {
+      "id": "mesh.flare",
+      "kind": "primitive",
+      "primitive": "sphere"
+    },
+    {
+      "id": "mesh.log",
+      "kind": "primitive",
+      "primitive": "cylinder"
+    },
+    {
+      "id": "mesh.water",
+      "kind": "primitive",
+      "primitive": "plane"
+    },
+    {
+      "id": "mesh.bank",
+      "kind": "primitive",
+      "primitive": "plane"
+    },
+    {
+      "id": "mesh.reeds",
+      "kind": "primitive",
+      "primitive": "cone"
+    },
+    {
+      "id": "mesh.marker",
+      "kind": "primitive",
+      "primitive": "cylinder"
+    }
+  ]
+}

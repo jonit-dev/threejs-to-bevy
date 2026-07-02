@@ -93,9 +93,13 @@ Rules for this generated ThreeNative project.
 ```bash
 pnpm run validate:authoring
 pnpm run build
+pnpm run game:plan
+pnpm run game:improve
 pnpm run verify
 pnpm run playtest
 pnpm run game:score
+pnpm run game:qa
+pnpm run game:release
 tn scene validate arena --json
 tn scene inspect arena --json
 tn scene proof arena --project . --json

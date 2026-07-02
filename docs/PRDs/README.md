@@ -31,7 +31,7 @@ This index separates current cleanup work from historical milestone batches.
   init/create front door, task-oriented help, doctor diagnostics, asset/model
   inspection, transform/camera guardrails, screenshot/video proof, runtime
   debug overlay, and racing template evidence.
-- [Bowling Lane Agent-Friendly Scene Source Refactor](other/bowling-lane-agent-friendly-scene-source.md):
+- [Bowling Lane Agent-Friendly Scene Source Refactor](done/other/bowling-lane-agent-friendly-scene-source.md):
   compact prefab defaults, repeated layout source, source inspection, CLI
   operations, and bowling-lane migration to prevent thousand-line scene JSON
   while preserving portable physics/runtime semantics.

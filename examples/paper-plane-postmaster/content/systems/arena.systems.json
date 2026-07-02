@@ -1,0 +1,19 @@
+{
+  "schema": "threenative.systems",
+  "version": "0.1.0",
+  "id": "arena-systems",
+  "systems": [
+    {
+      "id": "paper-plane-postmaster",
+      "schedule": "fixedUpdate",
+      "reads": ["Transform", "PaperPlane", "StampToken", "Mailbox", "GustHazard", "PlaneFollower"],
+      "writes": ["Transform", "PaperPlane", "StampToken", "Mailbox"],
+      "resourceReads": ["GameState"],
+      "resourceWrites": ["GameState"],
+      "script": {
+        "module": "src/scripts/player.ts",
+        "export": "paperPlanePostmasterSystem"
+      }
+    }
+  ]
+}

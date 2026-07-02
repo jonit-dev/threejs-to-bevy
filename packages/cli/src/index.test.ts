@@ -59,10 +59,13 @@ test("should keep rendered help stable for the package bin", () => {
   assert.match(renderHelp(), /tn scene validate \[scene-id\]/);
   assert.match(renderHelp(), /tn scene inspect <scene-id>/);
   assert.match(renderHelp(), /tn scene add-entity <scene-id> <entity-id>/);
+  assert.match(renderHelp(), /tn scene add-prefab-instance <scene-id> <instance-id>/);
+  assert.match(renderHelp(), /tn scene layout ten-pin <scene-id>/);
   assert.match(renderHelp(), /tn ui create <ui-doc-id>/);
   assert.match(renderHelp(), /tn material set <material-id>/);
   assert.match(renderHelp(), /tn mesh primitive <mesh-id>/);
   assert.match(renderHelp(), /tn prefab add-component <prefab-id> <component>/);
+  assert.match(renderHelp(), /tn prefab set-defaults <prefab-id> <component>/);
   assert.match(renderHelp(), /tn input add-action <input-doc-id> <action-id>/);
   assert.match(renderHelp(), /tn system attach-script <system-id>/);
   assert.match(renderHelp(), /tn editor snapshot --bundle <path>/);

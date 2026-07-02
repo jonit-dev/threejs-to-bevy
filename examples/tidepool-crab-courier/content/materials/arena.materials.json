@@ -1,0 +1,20 @@
+{
+  "schema": "threenative.materials",
+  "version": "0.1.0",
+  "id": "arena-materials",
+  "materials": [
+    { "id": "mat.sand", "color": "#caa96d", "roughness": 0.86 },
+    { "id": "mat.wet-sand", "color": "#8d755b", "roughness": 0.62 },
+    { "id": "mat.water", "color": "#2a8ba0", "roughness": 0.24, "metalness": 0.02 },
+    { "id": "mat.crab.body", "color": "#d55c3e", "roughness": 0.58 },
+    { "id": "mat.crab.shell", "color": "#f0c971", "roughness": 0.5 },
+    { "id": "mat.shell-token", "color": "#fff0a8", "roughness": 0.26, "emissive": "#e6b84a" },
+    { "id": "mat.beacon", "color": "#65d6c8", "roughness": 0.18, "emissive": "#2bbeb2" },
+    { "id": "mat.foam", "color": "#dff8ff", "roughness": 0.32 },
+    { "id": "mat.gull-shadow", "color": "#2b2941", "roughness": 0.84 },
+    { "id": "mat.driftwood", "color": "#6f4a35", "roughness": 0.86 },
+    { "id": "mat.kelp", "color": "#4d8756", "roughness": 0.8 },
+    { "id": "mat.rock", "color": "#777d82", "roughness": 0.82 },
+    { "id": "mat.sun", "color": "#ffe0a3", "roughness": 0.18, "emissive": "#ffc56e" }
+  ]
+}

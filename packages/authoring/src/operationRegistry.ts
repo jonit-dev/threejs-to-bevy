@@ -8,9 +8,11 @@ import {
   addInputAxis,
   addPrefab,
   addPrefabComponent,
+  addPrefabInstance,
   addResourceDocumentEntry,
   addResource,
   addTag,
+  addTenPinLayout,
   addUiNode,
   addUiNodeDocument,
   addUiText,
@@ -307,6 +309,12 @@ const operationEntries = [
     objectArg("value"),
   ]), async ({ args, projectPath }) =>
     addPrefabComponent({ componentKind: requiredString(args, "componentKind"), prefabId: requiredString(args, "prefabId"), projectPath, value: requiredObject(args, "value") })),
+  operation(descriptor("prefab.set_defaults", "Set a component default on a structured prefab document.", "prefab", "source-document", [
+    stringArg("prefabId"),
+    stringArg("componentKind"),
+    objectArg("value"),
+  ]), async ({ args, projectPath }) =>
+    addPrefabComponent({ componentKind: requiredString(args, "componentKind"), prefabId: requiredString(args, "prefabId"), projectPath, value: requiredObject(args, "value") })),
   operation(descriptor("project.create", "Create or update structured project metadata.", "project", "source-document", [
     stringArg("projectId"),
     stringArg("authoringVersion", false),
@@ -378,6 +386,42 @@ const operationEntries = [
     stringArg("prefabId", false),
   ]), async ({ args, projectPath }) =>
     addEntity({ entityId: requiredString(args, "entityId"), prefabId: optionalString(args, "prefabId"), projectPath, sceneId: requiredString(args, "sceneId") })),
+  operation(descriptor("scene.add_prefab_instance", "Add or replace a compact prefab-backed scene instance.", "scene", "source-document", [
+    stringArg("sceneId"),
+    stringArg("instanceId"),
+    stringArg("prefabId"),
+    vectorArg("position", false),
+    vectorArg("rotation", false),
+    vectorArg("scale", false),
+    objectArg("components", false),
+    booleanArg("replace", false),
+  ]), async ({ args, projectPath }) =>
+    addPrefabInstance({
+      components: optionalObject(args, "components"),
+      instanceId: requiredString(args, "instanceId"),
+      prefabId: requiredString(args, "prefabId"),
+      projectPath,
+      replace: optionalBoolean(args, "replace"),
+      sceneId: requiredString(args, "sceneId"),
+      transform: compactTransformArgs(args),
+    })),
+  operation(descriptor("scene.layout_ten_pin", "Create or replace a compact ten-pin bowling layout.", "scene", "source-document", [
+    stringArg("sceneId"),
+    stringArg("prefabId"),
+    stringArg("prefix", false),
+    vectorArg("origin", false),
+    numberArg("spacing", false),
+    booleanArg("replace", false),
+  ]), async ({ args, projectPath }) =>
+    addTenPinLayout({
+      origin: optionalVector3(args, "origin"),
+      prefabId: requiredString(args, "prefabId"),
+      prefix: optionalString(args, "prefix"),
+      projectPath,
+      replace: optionalBoolean(args, "replace"),
+      sceneId: requiredString(args, "sceneId"),
+      spacing: optionalNumber(args, "spacing"),
+    })),
   operation(descriptor("scene.add_group", "Add a scene container group entity to structured source.", "scene", "source-document", [
     stringArg("sceneId"),
     stringArg("groupId"),
@@ -999,6 +1043,15 @@ function optionalBoolean(args: Record<string, unknown>, key: string): boolean | 
 
 function optionalJson(args: Record<string, unknown>, key: string): unknown {
   return args[key];
+}
+
+function compactTransformArgs(args: Record<string, unknown>): { position?: [number, number, number]; rotation?: [number, number, number]; scale?: [number, number, number] } | undefined {
+  const transform = {
+    position: optionalVector3(args, "position"),
+    rotation: optionalVector3(args, "rotation"),
+    scale: optionalVector3(args, "scale"),
+  };
+  return transform.position === undefined && transform.rotation === undefined && transform.scale === undefined ? undefined : transform;
 }
 
 function optionalVector3(args: Record<string, unknown>, key: string): [number, number, number] | undefined {

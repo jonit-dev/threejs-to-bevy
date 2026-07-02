@@ -24,9 +24,13 @@ Useful commands:
 ```bash
 pnpm run validate:authoring
 pnpm run build
+pnpm run game:plan
+pnpm run game:improve
 pnpm run recipe:controller
 pnpm run playtest
 pnpm run game:score
+pnpm run game:qa
+pnpm run game:release
 tn ui set-layout hud countdown --justify center --align center --top 48 --width 1280 --project . --json
 ```
 
@@ -38,7 +42,8 @@ script modules/exports, owned state, polish pass, fallback choices, and proof
 commands. For GLB/glTF models, start from the SQLite-backed CLI asset library:
 `tn asset source search --game-category <category> --format glb --direct-only --json`,
 then `tn asset source get <asset-source-id> --json` for selected records. Then use
-`tn game score --project . --json`,
-`tn game qa --project . --json`, and `tn game release --project . --json` to
-collect structured phase ledgers, scorecards, UI-state coverage, asset/audio
-provenance, and release blockers.
+`tn game improve --apply-plan artifacts/game-production/plan.json --json`,
+`tn game score --project . --json`, `tn game qa --project . --run-proof --json`,
+and `tn game release --project . --json` to collect structured phase ledgers,
+scorecards, UI-state coverage, asset/audio provenance, proof artifacts, and
+release blockers.

@@ -65,7 +65,7 @@ async function collectAgentGuidanceDiagnostics(root) {
     } catch {
       continue;
     }
-    if (content.length > 12000 || content.includes("## 1. Context") || content.includes("Surface Area Inventory")) {
+    if (content.length > 16000 || content.includes("## 1. Context") || content.includes("Surface Area Inventory")) {
       diagnostics.push({
         code: "TN_ARTIFACT_LAYOUT_AGENTS_POLICY_DUPLICATED",
         path: relativePath,

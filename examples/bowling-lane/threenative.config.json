@@ -1,0 +1,28 @@
+{
+  "schema": "threenative.project",
+  "version": "0.1.0",
+  "entry": "content/scenes/lane.scene.json",
+  "outDir": "dist/bowling-lane.bundle",
+  "production": {
+    "playableLoop": "Aim, roll the ball down the lane, knock down a compact ten-pin rack, then reset for the next roll.",
+    "controls": [
+      "keyboard.KeyA",
+      "keyboard.ArrowLeft",
+      "keyboard.KeyD",
+      "keyboard.ArrowRight",
+      "keyboard.Space",
+      "keyboard.Enter",
+      "keyboard.KeyR"
+    ],
+    "objective": "Knock over all ten pins in one roll.",
+    "failRetry": "A roll that misses the rack slows near the pit; press R to reset the lane and pins.",
+    "proofCommands": [
+      "tn scene validate lane --project . --json",
+      "tn scene inspect lane --project . --json",
+      "tn playtest --project . --entity bowling.ball --press keyboard.Space --frames 90 --expect-moved --json",
+      "tn verify --project . --frames 4 --expect-motion --json",
+      "tn game score --project . --json"
+    ]
+  },
+  "template": "structured-source-starter"
+}

@@ -1,3 +1,8 @@
+import { randomUUID } from "node:crypto";
+import { mkdir, readFile, rm, stat, writeFile } from "node:fs/promises";
+import { dirname, resolve } from "node:path";
+import { setTimeout as sleep } from "node:timers/promises";
+
 export { captureEntry, isSceneRoot, type ICapturedScene } from "./capture.js";
 export { loadProjectConfig, type IProjectConfig } from "./config.js";
 export { CompilerError } from "./errors.js";
@@ -36,23 +41,97 @@ export async function buildProject(projectPath: string): Promise<{ bundlePath: s
   const { captureEntry } = await import("./capture.js");
   const { emitBundle } = await import("./emit/bundle.js");
   const config = await loadProjectConfig(projectPath);
-  const captured = await captureEntry(config);
-  const authoringError = captured.diagnostics.find((diagnostic) => diagnostic.severity === "error");
-  if (authoringError !== undefined) {
-    const { CompilerError } = await import("./errors.js");
-    throw new CompilerError(authoringError.code, authoringError.message, authoringError);
+  const releaseBuildLock = await acquireBuildLock(resolve(config.projectPath, config.outDir));
+  try {
+    const captured = await captureEntry(config);
+    const authoringError = captured.diagnostics.find((diagnostic) => diagnostic.severity === "error");
+    if (authoringError !== undefined) {
+      const { CompilerError } = await import("./errors.js");
+      throw new CompilerError(authoringError.code, authoringError.message, authoringError);
+    }
+    const { loadAuthoringProject } = await import("@threenative/authoring");
+    const authoringProject = await loadAuthoringProject({ projectPath });
+    const bundlePath = await emitBundle(config, captured.root, {
+      authoringDocuments: authoringProject.documents,
+      authoringGraph: captured.graph,
+    });
+    const { validateBundle } = await import("./validate/index.js");
+    const report = await validateBundle(bundlePath);
+    if (!report.ok) {
+      const { CompilerError } = await import("./errors.js");
+      throw new CompilerError("TN_COMPILER_EMITTED_INVALID_BUNDLE", report.diagnostics[0]?.message ?? "Emitted bundle is invalid.");
+    }
+    return { bundlePath };
+  } finally {
+    await releaseBuildLock();
   }
-  const { loadAuthoringProject } = await import("@threenative/authoring");
-  const authoringProject = await loadAuthoringProject({ projectPath });
-  const bundlePath = await emitBundle(config, captured.root, {
-    authoringDocuments: authoringProject.documents,
-    authoringGraph: captured.graph,
-  });
-  const { validateBundle } = await import("./validate/index.js");
-  const report = await validateBundle(bundlePath);
-  if (!report.ok) {
-    const { CompilerError } = await import("./errors.js");
-    throw new CompilerError("TN_COMPILER_EMITTED_INVALID_BUNDLE", report.diagnostics[0]?.message ?? "Emitted bundle is invalid.");
+}
+
+async function acquireBuildLock(bundlePath: string): Promise<() => Promise<void>> {
+  const lockDir = `${bundlePath}.build-lock`;
+  const startedAt = Date.now();
+  const token = randomUUID();
+  const timeoutMs = 120_000;
+  const staleMs = 300_000;
+
+  await mkdir(dirname(lockDir), { recursive: true });
+
+  while (true) {
+    try {
+      await mkdir(lockDir);
+      await writeFile(resolve(lockDir, "owner.json"), `${JSON.stringify({ pid: process.pid, startedAt: new Date().toISOString(), token }, null, 2)}\n`);
+      return () => releaseBuildLock(lockDir, token);
+    } catch (error) {
+      if (!isFileSystemError(error, "EEXIST")) {
+        throw error;
+      }
+
+      if (Date.now() - startedAt > timeoutMs) {
+        const { CompilerError } = await import("./errors.js");
+        throw new CompilerError("TN_COMPILER_BUILD_LOCK_TIMEOUT", `Timed out waiting for bundle build lock '${lockDir}'.`);
+      }
+
+      if (await removeStaleBuildLock(lockDir, staleMs)) {
+        continue;
+      }
+
+      await sleep(100);
+    }
   }
-  return { bundlePath };
+}
+
+async function releaseBuildLock(lockDir: string, token: string): Promise<void> {
+  try {
+    const owner = JSON.parse(await readFile(resolve(lockDir, "owner.json"), "utf8")) as { token?: string };
+    if (owner.token !== token) {
+      return;
+    }
+  } catch (error) {
+    if (isFileSystemError(error, "ENOENT")) {
+      return;
+    }
+    throw error;
+  }
+
+  await rm(lockDir, { force: true, recursive: true });
+}
+
+async function removeStaleBuildLock(lockDir: string, staleMs: number): Promise<boolean> {
+  try {
+    const info = await stat(lockDir);
+    if (Date.now() - info.mtimeMs < staleMs) {
+      return false;
+    }
+    await rm(lockDir, { force: true, recursive: true });
+    return true;
+  } catch (error) {
+    if (isFileSystemError(error, "ENOENT")) {
+      return true;
+    }
+    throw error;
+  }
+}
+
+function isFileSystemError(error: unknown, code: string): boolean {
+  return typeof error === "object" && error !== null && "code" in error && (error as { code?: unknown }).code === code;
 }

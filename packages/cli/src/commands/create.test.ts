@@ -25,10 +25,14 @@ test("should create starter template files", async () => {
     assert.equal(files.includes("AGENTS.md"), true);
     assert.equal(files.includes("CLAUDE.md"), true);
     assert.equal(files.includes("README.md"), true);
+    assert.equal(files.includes("dist"), false);
     assert.equal(files.includes("package.json"), true);
     assert.equal(files.includes("content"), true);
     assert.equal(files.includes("src"), true);
     assert.equal(files.includes("threenative.config.json"), true);
+    await access(join(payload.path, "assets", "goal-ping.wav"));
+    await access(join(payload.path, ".threenative", "cli", "index.js"));
+    await assert.rejects(access(join(payload.path, "dist")));
 
     const config = JSON.parse(await readFile(join(payload.path, "threenative.config.json"), "utf8")) as {
       entry: string;
@@ -53,6 +57,10 @@ test("should create starter template files", async () => {
     assert.equal(packageJson.scripts.build, "tn build");
     assert.equal(packageJson.scripts["dev:web"], "tn dev --target web");
     assert.equal(packageJson.scripts.playtest, "tn playtest --json");
+    assert.match(packageJson.scripts["game:plan"] ?? "", /tn game plan --goal/);
+    assert.equal(packageJson.scripts["game:improve"], "tn game improve --apply-plan artifacts/game-production/plan.json --project . --json");
+    assert.equal(packageJson.scripts["game:qa"], "tn game qa --project . --run-proof --json");
+    assert.equal(packageJson.scripts["game:release"], "tn game release --project . --json");
     assert.match(packageJson.scripts["recipe:controller"] ?? "", /tn recipe third-person-controller/);
     assert.equal(packageJson.scripts.verify, "tn verify --frames 2 --json");
     assert.match(packageJson.dependencies["@threenative/sdk"] ?? "", /^file:/);
@@ -123,11 +131,13 @@ test("should create structured-source starter template with editable content doc
     const config = JSON.parse(await readFile(join(payload.path, "threenative.config.json"), "utf8")) as {
       entry: string;
       outDir: string;
+      production?: { proofCommands?: string[] };
       template: string;
     };
     assert.equal(config.entry, "content/scenes/arena.scene.json");
     assert.equal(config.outDir, "dist/structured-source-starter.bundle");
     assert.equal(config.template, "structured-source-starter");
+    assert.equal(config.production?.proofCommands?.some((command) => command.includes("tn game qa") && command.includes("--run-proof")), true);
 
     const sceneDoc = await readFile(join(payload.path, "content/scenes/arena.scene.json"), "utf8");
     const uiDocPath = join(payload.path, "content/ui/hud.ui.json");
@@ -147,7 +157,9 @@ test("should create structured-source starter template with editable content doc
     assert.match(readme, /src\/scripts\/\*\*\/\*\.ts/);
     assert.match(readme, /@threenative\/authoring-client/);
     assert.match(readme, /pnpm run recipe:controller/);
+    await access(join(payload.path, "assets", "goal-ping.wav"));
     await assert.rejects(access(join(payload.path, "src/game.ts")));
+    await assert.rejects(access(join(payload.path, "dist", "structured-source-starter.bundle")));
 
     const validate = await authoringCommand(["validate", "--project", payload.path, "--json"], { cwd: root });
     const validationPayload = JSON.parse(validate.stdout) as { code: string; ok: boolean };
@@ -180,15 +192,29 @@ test("should create racing kit rally starter with reusable race scene structure"
     const config = JSON.parse(await readFile(join(payload.path, "threenative.config.json"), "utf8")) as {
       entry: string;
       outDir: string;
+      production?: {
+        controls?: string[];
+        objective?: string;
+        playableLoop?: string;
+        proofCommands?: string[];
+      };
       template: string;
     };
     assert.equal(config.entry, "content/scenes/rally.scene.json");
     assert.equal(config.outDir, "dist/racing-kit-rally.bundle");
     assert.equal(config.template, "racing-kit-rally-starter");
+    assert.equal(config.production?.controls?.includes("keyboard.KeyW"), true);
+    assert.match(config.production?.playableLoop ?? "", /accelerate/i);
+    assert.match(config.production?.objective ?? "", /checkpoint/i);
+    assert.equal(config.production?.proofCommands?.some((command) => command.includes("tn playtest") && command.includes("--expect-moved")), true);
+    assert.equal(config.production?.proofCommands?.some((command) => command.includes("tn game qa") && command.includes("--run-proof")), true);
 
     const sceneDoc = await readFile(join(payload.path, "content/scenes/rally.scene.json"), "utf8");
     const systemDoc = await readFile(join(payload.path, "content/systems/rally.systems.json"), "utf8");
     const scriptSource = await readFile(join(payload.path, "src/scripts/racing.ts"), "utf8");
+    const packageJson = JSON.parse(await readFile(join(payload.path, "package.json"), "utf8")) as {
+      scripts: Record<string, string>;
+    };
 
     assert.match(sceneDoc, /"id": "player\.car"/);
     assert.match(sceneDoc, /"id": "start\.lights"/);
@@ -196,6 +222,10 @@ test("should create racing kit rally starter with reusable race scene structure"
     assert.match(systemDoc, /"module": "src\/scripts\/racing\.ts"/);
     assert.match(scriptSource, /function updateCamera/);
     assert.match(scriptSource, /CHECKPOINTS/);
+    assert.match(packageJson.scripts["game:plan"] ?? "", /tn game plan --goal/);
+    assert.equal(packageJson.scripts["game:improve"], "tn game improve --apply-plan artifacts/game-production/plan.json --project . --json");
+    assert.equal(packageJson.scripts["game:qa"], "tn game qa --project . --run-proof --json");
+    assert.equal(packageJson.scripts["game:release"], "tn game release --project . --json");
     await access(join(payload.path, "assets", "roadCornerLarge.glb"));
     await access(join(payload.path, "assets", "raceCarRed.glb"));
 

@@ -1,0 +1,19 @@
+{
+  "schema": "threenative.systems",
+  "version": "0.1.0",
+  "id": "arena-systems",
+  "systems": [
+    {
+      "id": "firefly-grove-keeper",
+      "schedule": "fixedUpdate",
+      "reads": ["Transform", "Firefly", "PollenSpark", "LanternFlower", "MothShadow", "FireflyFollower", "GlowPulse", "MushroomBob"],
+      "writes": ["Transform", "Firefly", "PollenSpark", "LanternFlower"],
+      "resourceReads": ["GameState"],
+      "resourceWrites": ["GameState"],
+      "script": {
+        "module": "src/scripts/player.ts",
+        "export": "fireflyGroveKeeperSystem"
+      }
+    }
+  ]
+}

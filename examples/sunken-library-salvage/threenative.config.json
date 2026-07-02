@@ -1,0 +1,42 @@
+{
+  "schema": "threenative.project",
+  "version": "0.1.0",
+  "entry": "content/scenes/arena.scene.json",
+  "outDir": "dist/sunken-library-salvage.bundle",
+  "production": {
+    "playableLoop": "Steer the diver through the sunken archive, collect three relic tablets, avoid patrolling eel hazards, and return to the air bell before oxygen runs out.",
+    "controls": [
+      "keyboard.KeyA",
+      "keyboard.ArrowLeft",
+      "keyboard.KeyD",
+      "keyboard.ArrowRight",
+      "keyboard.KeyW",
+      "keyboard.ArrowUp",
+      "keyboard.KeyS",
+      "keyboard.ArrowDown",
+      "keyboard.Space"
+    ],
+    "objective": "Collect Relics 3/3, then reach the air bell with oxygen remaining.",
+    "failRetry": "Eel contact or oxygen timeout fails the dive; Space resets diver, relics, and oxygen.",
+    "proofCommands": [
+      "tn playtest --project . --entity player --press KeyD --expect-axis x --json",
+      "tn screenshot --project . --url <preview-url> --out artifacts/game-production/screenshot.png --wait-ready --json",
+      "tn game qa --project . --run-proof --json",
+      "tn game score --project . --json",
+      "tn game release --project . --json"
+    ],
+    "assetProvenance": {
+      "catalogSearches": [
+        "tn asset source search --game-category character --format glb --direct-only --json -> TN_ASSET_SOURCE_NO_MATCH",
+        "tn asset source search --game-category environment --format glb --direct-only --json -> TN_ASSET_SOURCE_NO_MATCH",
+        "tn asset source search --game-category collectible --format glb --direct-only --json -> TN_ASSET_SOURCE_NO_MATCH",
+        "tn asset source search --game-category water --format glb --direct-only --json -> TN_ASSET_SOURCE_NO_MATCH",
+        "tn asset source search --game-category ocean --format glb --direct-only --json -> TN_ASSET_SOURCE_NO_MATCH",
+        "tn asset source search --game-category arcade --format glb --direct-only --json -> TN_ASSET_SOURCE_NO_MATCH",
+        "tn asset source search --game-category space --format glb --direct-only --json -> direct Objaverse robot/ship/probe records, not cohesive underwater archive kit"
+      ],
+      "fallback": "Direct catalog did not provide a cohesive runtime-ready underwater archive kit. Diver, eel hazards, relic tablets, ruins, air bell, kelp, bubbles, and HUD are authored as a cohesive procedural mesh kit."
+    }
+  },
+  "template": "structured-source-starter"
+}

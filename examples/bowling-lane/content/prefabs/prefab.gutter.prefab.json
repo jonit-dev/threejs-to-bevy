@@ -1,0 +1,30 @@
+{
+  "schema": "threenative.prefab",
+  "version": "0.1.0",
+  "id": "prefab.gutter",
+  "entities": [
+    {
+      "id": "prefab.gutter",
+      "components": {
+        "MeshRenderer": {
+          "mesh": "mesh.lane",
+          "material": "mat.gutter",
+          "receiveShadow": true
+        },
+        "RigidBody": {
+          "kind": "static"
+        },
+        "Collider": {
+          "kind": "box",
+          "size": [
+            0.35,
+            0.12,
+            11.5
+          ],
+          "friction": 0.65,
+          "restitution": 0.04
+        }
+      }
+    }
+  ]
+}

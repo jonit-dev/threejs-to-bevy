@@ -472,11 +472,13 @@ test("prefab input and mesh operations write deterministic structured docs", asy
   try {
     const prefabCreate = await prefabCommand(["create", "kart", "--project", root, "--json"]);
     const prefabComponent = await prefabCommand(["add-component", "kart", "VehiclePhysics", "--value", "{\"maxSpeed\":42}", "--project", root, "--json"]);
+    const prefabDefaults = await prefabCommand(["set-defaults", "kart", "RigidBody", "--value", "{\"kind\":\"dynamic\",\"mass\":2}", "--project", root, "--json"]);
     const input = await inputCommand(["add-action", "kart", "accelerate", "--keys", "W,ArrowUp", "--project", root, "--json"]);
     const inputAxis = await inputCommand(["add-axis", "kart", "MoveX", "--negative-keys", "A,ArrowLeft", "--positive-keys", "D,ArrowRight", "--value", "gamepad.leftStickX", "--project", root, "--json"]);
     const inputControls = await inputCommand(["set-controls", "kart", "--profile", "default", "--rows", "[{\"kind\":\"action\",\"actionOrAxisId\":\"accelerate\",\"defaultBindings\":[\"keyboard.KeyW\"],\"uiNodeId\":\"settings.accelerate\"},{\"kind\":\"axis\",\"actionOrAxisId\":\"MoveX\",\"axisSlot\":\"positive\",\"defaultBindings\":[\"keyboard.KeyD\"]}]", "--project", root, "--json"]);
     const inputOverride = await inputCommand(["set-override", "kart", "accelerate", "--profile", "default", "--device", "keyboard", "--control", "ArrowUp", "--updated-at", "2026-06-23T00:00:00.000Z", "--project", root, "--json"]);
     const mesh = await meshCommand(["primitive", "mesh.kart.body", "--kind", "box", "--size", "1.2,0.6,2.4", "--project", root, "--json"]);
+    const torusMesh = await meshCommand(["primitive", "mesh.kart.tire", "--kind", "torus", "--size", "0.18,0.42", "--project", root, "--json"]);
     const customMesh = await meshCommand([
       "custom",
       "mesh.kart.triangle",
@@ -494,17 +496,20 @@ test("prefab input and mesh operations write deterministic structured docs", asy
     const prefabDoc = JSON.parse(await readFile(join(root, "content", "prefabs", "kart.prefab.json"), "utf8"));
     const inputDoc = JSON.parse(await readFile(join(root, "content", "input", "kart.input.json"), "utf8"));
     const meshDoc = JSON.parse(await readFile(join(root, "content", "meshes", "mesh.kart.body.meshes.json"), "utf8"));
+    const torusMeshDoc = JSON.parse(await readFile(join(root, "content", "meshes", "mesh.kart.tire.meshes.json"), "utf8"));
     const customMeshDoc = JSON.parse(await readFile(join(root, "content", "meshes", "mesh.kart.triangle.meshes.json"), "utf8"));
 
     assert.equal(prefabCreate.exitCode, 0);
     assert.equal(prefabComponent.exitCode, 0);
+    assert.equal(prefabDefaults.exitCode, 0);
     assert.equal(input.exitCode, 0);
     assert.equal(inputAxis.exitCode, 0);
     assert.equal(inputControls.exitCode, 0);
     assert.equal(inputOverride.exitCode, 0);
     assert.equal(mesh.exitCode, 0);
+    assert.equal(torusMesh.exitCode, 0);
     assert.equal(customMesh.exitCode, 0);
-    assert.deepEqual(prefabDoc.entities, [{ components: { VehiclePhysics: { maxSpeed: 42 } }, id: "kart" }]);
+    assert.deepEqual(prefabDoc.entities, [{ components: { RigidBody: { kind: "dynamic", mass: 2 }, VehiclePhysics: { maxSpeed: 42 } }, id: "kart" }]);
     assert.deepEqual(inputDoc.actions, [{ bindings: ["keyboard.KeyW", "keyboard.ArrowUp"], id: "accelerate" }]);
     assert.deepEqual(inputDoc.axes, [{ id: "MoveX", negative: ["keyboard.KeyA", "keyboard.ArrowLeft"], positive: ["keyboard.KeyD", "keyboard.ArrowRight"], value: "gamepad.leftStickX" }]);
     assert.deepEqual(inputDoc.controlsSettings, {
@@ -516,6 +521,7 @@ test("prefab input and mesh operations write deterministic structured docs", asy
     });
     assert.deepEqual(inputDoc.persistedBindingOverrides, [{ actionOrAxisId: "accelerate", control: "ArrowUp", device: "keyboard", profileId: "default", updatedAt: "2026-06-23T00:00:00.000Z" }]);
     assert.deepEqual(meshDoc.meshes, [{ id: "mesh.kart.body", kind: "primitive", primitive: "box", size: [1.2, 0.6, 2.4] }]);
+    assert.deepEqual(torusMeshDoc.meshes, [{ id: "mesh.kart.tire", kind: "primitive", primitive: "torus", size: [0.18, 0.42] }]);
     assert.deepEqual(customMeshDoc.meshes, [{
       attributes: [{ itemSize: 3, name: "position", values: [0, 0, 0, 1, 0, 0, 0, 1, 0] }],
       id: "mesh.kart.triangle",

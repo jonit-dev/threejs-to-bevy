@@ -1,0 +1,32 @@
+{
+  "schema": "threenative.meshes",
+  "version": "0.1.0",
+  "id": "arena-meshes",
+  "meshes": [
+    {
+      "id": "mesh.hero",
+      "kind": "primitive",
+      "primitive": "box"
+    },
+    {
+      "id": "mesh.lantern-fruit",
+      "kind": "primitive",
+      "primitive": "sphere"
+    },
+    {
+      "id": "mesh.shadow",
+      "kind": "primitive",
+      "primitive": "sphere"
+    },
+    {
+      "id": "mesh.tree",
+      "kind": "primitive",
+      "primitive": "cone"
+    },
+    {
+      "id": "mesh.ground",
+      "kind": "primitive",
+      "primitive": "plane"
+    }
+  ]
+}

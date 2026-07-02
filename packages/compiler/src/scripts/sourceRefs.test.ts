@@ -266,3 +266,89 @@ test("should reject source script mutable module state", async () => {
     await rm(root, { force: true, recursive: true });
   }
 });
+
+test("should reject module-local helpers referenced by exported system", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-script-source-ref-local-helper-"));
+  try {
+    await mkdir(join(root, "src/scripts"), { recursive: true });
+    await writeFile(
+      join(root, "src/scripts/player.ts"),
+      `const CART_SPEED = 3.5;
+function animateSteam(context: unknown) {
+  return context;
+}
+export function copperRailSwitcherSystem(context: unknown) {
+  animateSteam(context);
+  return CART_SPEED;
+}
+`,
+    );
+    const systems: ISystemScriptSource[] = [
+      {
+        name: "copper-rail-switcher",
+        script: {
+          exportName: "system_copper_rail_switcher",
+          sourceRef: {
+            export: "copperRailSwitcherSystem",
+            module: "src/scripts/player.ts",
+            systemId: "copper-rail-switcher",
+          },
+        },
+      },
+    ];
+
+    const result = resolveSystemScriptSources(systems, root);
+
+    assert.deepEqual(
+      result.diagnostics.map((diagnostic) => diagnostic.path),
+      [
+        "systems/copper-rail-switcher/script/sourceRef/moduleLocals/CART_SPEED",
+        "systems/copper-rail-switcher/script/sourceRef/moduleLocals/animateSteam",
+      ],
+    );
+    assert.equal(result.diagnostics[0]?.code, "TN_SCRIPT_MODULE_LOCAL_REFERENCE_UNSUPPORTED");
+    assert.match(result.diagnostics[0]?.message ?? "", /scripts\.bundle\.js/);
+    assert.match(result.diagnostics[0]?.suggestion ?? "", /Inline deterministic helpers/);
+    assert.equal(result.systems[0]?.script?.source, undefined);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should allow helpers and constants scoped inside exported system", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-script-source-ref-inline-helper-"));
+  try {
+    await mkdir(join(root, "src/scripts"), { recursive: true });
+    await writeFile(
+      join(root, "src/scripts/player.ts"),
+      `export function copperRailSwitcherSystem(context: unknown) {
+  const cartSpeed = 3.5;
+  function animateSteam(value: number) {
+    return value + cartSpeed;
+  }
+  return animateSteam(1);
+}
+`,
+    );
+    const systems: ISystemScriptSource[] = [
+      {
+        name: "copper-rail-switcher",
+        script: {
+          exportName: "system_copper_rail_switcher",
+          sourceRef: {
+            export: "copperRailSwitcherSystem",
+            module: "src/scripts/player.ts",
+            systemId: "copper-rail-switcher",
+          },
+        },
+      },
+    ];
+
+    const result = resolveSystemScriptSources(systems, root);
+
+    assert.deepEqual(result.diagnostics, []);
+    assert.match(result.systems[0]?.script?.source ?? "", /function animateSteam/);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});

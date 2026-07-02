@@ -78,9 +78,12 @@ test("should dispatch existing structured source operations through the registry
       await dispatchAuthoringOperation({ args: { file: "content/meshes/mesh.player.meshes.json", kind: "sphere", meshId: "mesh.player" }, name: "mesh.create_primitive", projectPath: root }),
       await dispatchAuthoringOperation({ args: { prefabId: "player" }, name: "prefab.create", projectPath: root }),
       await dispatchAuthoringOperation({ args: { componentKind: "RigidBody", prefabId: "player", value: { kind: "dynamic" } }, name: "prefab.add_component", projectPath: root }),
+      await dispatchAuthoringOperation({ args: { componentKind: "Collider", prefabId: "player", value: { kind: "box", size: [1, 1, 1] } }, name: "prefab.set_defaults", projectPath: root }),
       await dispatchAuthoringOperation({ args: { buildTargets: ["web"], projectId: "kart", sourceRoots: ["content", "src"] }, name: "project.create", projectPath: root }),
       await dispatchAuthoringOperation({ args: { budgets: { maxBundleBytes: 1048576, supportedTextureFormats: ["png"] }, targetProfileId: "desktop", targets: ["desktop"] }, name: "target.set_profile", projectPath: root }),
       await dispatchAuthoringOperation({ args: { color: "#2f80ed", prefabId: "prefab.player", primitive: "box", sceneId: "scene.arena" }, name: "scene.add_prefab", projectPath: root }),
+      await dispatchAuthoringOperation({ args: { components: { Marker: { value: 1 } }, instanceId: "prefab-player.01", position: [1, 0, 2], prefabId: "prefab.player", sceneId: "scene.arena" }, name: "scene.add_prefab_instance", projectPath: root }),
+      await dispatchAuthoringOperation({ args: { origin: [0, 0.6, 0], prefabId: "prefab.player", prefix: "rack", sceneId: "scene.arena", spacing: 0.52 }, name: "scene.layout_ten_pin", projectPath: root }),
       await dispatchAuthoringOperation({ args: { asset: "assets/player.glb", color: "#00ffaa", prefabId: "prefab.player", primitive: "sphere", sceneId: "scene.arena" }, name: "scene.set_prefab", projectPath: root }),
       await dispatchAuthoringOperation({ args: { groupId: "group.lane.red", name: "Red Lane", position: [-2, 0, 0], sceneId: "scene.arena" }, name: "scene.add_group", projectPath: root }),
       await dispatchAuthoringOperation({ args: { entityId: "player", sceneId: "scene.arena", tag: "LaneRed" }, name: "scene.add_tag", projectPath: root }),
@@ -133,6 +136,7 @@ test("should dispatch existing structured source operations through the registry
       activation?: string;
       entities: Array<{ components?: Record<string, unknown>; id: string; transform?: { position?: number[] } }>;
       initial?: boolean;
+      instances?: Array<{ components?: Record<string, unknown>; id: string; prefab: string; transform?: { position?: number[] } }>;
       kind?: string;
       prefabs: Array<{ asset?: string; color?: string; id: string; primitive?: string }>;
     };
@@ -156,10 +160,14 @@ test("should dispatch existing structured source operations through the registry
     assert.deepEqual(input.actions, [{ bindings: ["keyboard.Space"], id: "jump" }]);
     assert.deepEqual(input.axes, [{ id: "MoveX", negative: ["keyboard.KeyA"], positive: ["keyboard.KeyD"], value: "gamepad.leftStickX" }]);
     assert.deepEqual(mesh.meshes, [{ id: "mesh.player", kind: "primitive", primitive: "sphere" }]);
-    assert.deepEqual(prefab.entities[0]?.components, { RigidBody: { kind: "dynamic" } });
+    assert.deepEqual(prefab.entities[0]?.components, { Collider: { kind: "box", size: [1, 1, 1] }, RigidBody: { kind: "dynamic" } });
     assert.deepEqual(target.targets, ["desktop"]);
     assert.deepEqual(target.budgets, { maxBundleBytes: 1048576, supportedTextureFormats: ["png"] });
     assert.deepEqual(scene.prefabs, [{ asset: "assets/player.glb", color: "#00ffaa", id: "prefab.player", primitive: "sphere" }]);
+    assert.deepEqual(scene.instances?.map((instance) => instance.id), ["prefab-player.01", "rack.01", "rack.02", "rack.03", "rack.04", "rack.05", "rack.06", "rack.07", "rack.08", "rack.09", "rack.10"]);
+    assert.deepEqual(scene.instances?.find((instance) => instance.id === "prefab-player.01")?.transform?.position, [1, 0, 2]);
+    assert.equal(scene.instances?.some((instance) => instance.id.startsWith("rack.") && instance.components !== undefined), false);
+    assert.deepEqual(scene.instances?.find((instance) => instance.id === "rack.10")?.transform?.position, [0.78, 0.6, -1.56]);
     assert.deepEqual(scene.entities.find((entity) => entity.id === "group.lane.red"), {
       components: { SceneContainer: { kind: "group", name: "Red Lane" } },
       id: "group.lane.red",
@@ -277,6 +285,7 @@ test("should expose operation metadata and registry diagnostics", async () => {
     "mesh.create_custom",
     "prefab.create",
     "prefab.add_component",
+    "prefab.set_defaults",
     "project.create",
     "resources.create",
     "resources.add",
@@ -288,6 +297,8 @@ test("should expose operation metadata and registry diagnostics", async () => {
     "runtime.set_rendering",
     "target.set_profile",
     "scene.add_entity",
+    "scene.add_prefab_instance",
+    "scene.layout_ten_pin",
     "scene.add_group",
     "scene.add_prefab",
     "scene.add_tag",

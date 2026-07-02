@@ -19,7 +19,9 @@ First-class structured source document families:
 - `content/input/*.input.json`: input maps, actions, axes, and portable default
   bindings.
 - `content/ui/*.ui.json`: retained UI tree, layout, style, bindings, minimap,
-  bar, image, text, and button nodes.
+  bar, image, text, and button nodes. Normal builds lower these documents into
+  runtime `ui.ir.json`, including mobile-safe full-width HUD layout
+  normalization for starter-style 1280px rows.
 - `content/assets/*.assets.json`: asset catalog entries, import settings, and
   dependency copy policy.
 - `content/materials/*.materials.json`: material declarations, texture slots,
@@ -36,6 +38,58 @@ First-class structured source document families:
 TypeScript files under `src/scripts/**/*.ts` are durable source for gameplay
 behavior modules. TypeScript files under `src/generators/**/*.ts` may be
 durable source for optional one-way generators that emit structured documents.
+
+## Compact Scene Instances
+
+Scene documents may use `instances` to keep repeated prefab-backed entities out
+of large `entities` arrays. An instance has a stable emitted entity `id`, a
+`prefab` reference, and optional `transform` and `components` overrides:
+
+```json
+{
+  "schema": "threenative.scene",
+  "version": "0.1.0",
+  "id": "lane",
+  "instances": [
+    {
+      "id": "pin.01",
+      "prefab": "prefab.pin",
+      "transform": { "position": [0, 0.6, 0] },
+      "components": { "Pin": { "home": [0, 0.6, 0] } }
+    }
+  ]
+}
+```
+
+`prefab` may reference either a scene-local visual prefab in `prefabs` or a
+standalone `content/prefabs/*.prefab.json` document. During compiler lowering,
+the first entity in the prefab document provides default `transform` and
+`components`; the scene instance deep-merges overrides over those defaults and
+emits a normal deterministic world entity with the instance ID. Raw
+`entities` remain supported and unchanged.
+
+Validation rejects non-array `instances`, duplicate expanded IDs across
+`entities` and `instances`, missing prefab references, invalid transform
+vectors, malformed component overrides, and ambiguous material/entity
+references before build. `tn scene inspect <scene-id> --json` reports
+`sourceLineCount`, `expandedEntityCount`, `instances`, `repeatedBlocks`, and
+`suggestedRefactors` so agents can identify ten-pin-style repeated component
+blocks before hand-editing large JSON files.
+
+Agents should prefer bounded commands over direct JSON edits for common compact
+layouts:
+
+- `tn prefab set-defaults <prefab-id> <component> --value <json-object> --json`
+  writes reusable component defaults to `content/prefabs/*.prefab.json`.
+- `tn scene add-prefab-instance <scene-id> <instance-id> --prefab <prefab-id>
+  --position x,y,z --components <json-object> --json` writes one compact
+  instance override.
+- `tn scene layout ten-pin <scene-id> --prefab <prefab-id> --json` writes ten
+  stable compact instances with `pin.01` through `pin.10` IDs and `Pin.home`
+  overrides matching the authored transform positions.
+
+Layout commands reject replacing existing compact instance IDs unless
+`--replace` is supplied.
 
 ## Boundaries
 
@@ -260,6 +314,8 @@ schema-versioned contracts in this phase:
 - `threenative.assets`: `id`, `assets`, promoted model animation/particle
   metadata, and optional `provenance`;
 - `threenative.input`: `id`, `actions`, and optional `provenance`;
+- `threenative.ui`: `id`, retained `nodes`, bindings, promoted layout/style
+  fields, and optional `provenance`;
 - `threenative.systems`: `id`, `systems`, and optional `provenance`;
 - `threenative.prefab`: `id`, `entities`, and optional `provenance`;
 - `threenative.resources`: `id`, reusable `resources`, and optional
@@ -270,9 +326,10 @@ Validation rejects malformed schemas, unknown fields, duplicate IDs within each
 document, generated bundle paths used as source paths, inline script strings,
 and missing system script modules/exports where script references are declared.
 The first cross-document reference check is scene `MeshRenderer.material`
-against material source document IDs. Standalone UI resource binding and broader
-runtime graph reference validation remain later structured-authoring work rather
-than implicit inference in this minimal source package slice.
+against material source document IDs. Standalone UI resource binding is emitted
+to runtime UI IR when authored, while broader runtime graph reference validation
+remains later structured-authoring work rather than implicit inference in this
+minimal source package slice.
 
 ## Initial CLI Operation Conventions
 

@@ -1,0 +1,49 @@
+{
+  "schema": "threenative.project",
+  "version": "0.1.0",
+  "entry": "content/scenes/arena.scene.json",
+  "outDir": "dist/copper-rail-switcher.bundle",
+  "production": {
+    "playableLoop": "Drive a copper mine cart around the rail yard, collect five ore chunks, dodge moving steam vents, and dump the load into the furnace before the shift timer expires.",
+    "controls": [
+      "keyboard.KeyA",
+      "keyboard.ArrowLeft",
+      "keyboard.KeyD",
+      "keyboard.ArrowRight",
+      "keyboard.KeyW",
+      "keyboard.ArrowUp",
+      "keyboard.KeyS",
+      "keyboard.ArrowDown",
+      "keyboard.Space"
+    ],
+    "objective": "Deposit Ore 5/5 into the orange furnace before Shift reaches zero.",
+    "failRetry": "Touching a steam vent or timing out enters failed state; Space resets the shift.",
+    "proofCommands": [
+      "tn playtest --project . --entity player --press KeyD --expect-axis x --json",
+      "tn screenshot --project . --url <preview-url> --out artifacts/game-production/screenshot.png --wait-ready --json",
+      "tn game qa --project . --run-proof --json",
+      "tn game score --project . --json",
+      "tn game release --project . --json"
+    ],
+    "assetProvenance": {
+      "catalogSearches": [
+        "tn asset source search --game-category industrial --format glb --direct-only --json -> TN_ASSET_SOURCE_NO_MATCH",
+        "tn asset source search --game-category mining --format glb --direct-only --json -> TN_ASSET_SOURCE_NO_MATCH",
+        "tn asset source search --game-category factory --format glb --direct-only --json -> TN_ASSET_SOURCE_NO_MATCH",
+        "tn asset source search --game-category trains --format glb --direct-only --json -> TN_ASSET_SOURCE_NO_MATCH",
+        "tn asset source search --query cart --format glb --direct-only --json -> selected CC0 OS3A Polygonal Mind cart record os3a-pm-medieval-fair-medieval-fair-011-cart"
+      ],
+      "selected": {
+        "catalogId": "os3a-pm-medieval-fair-medieval-fair-011-cart",
+        "directUrl": "https://raw.githubusercontent.com/ToxSam/cc0-models-Polygonal-Mind/main/projects/medieval-fair/Cart.glb",
+        "license": "CC0-1.0",
+        "origin": "OS3A medieval-fair / Polygonal Mind",
+        "provenanceUrl": "https://github.com/ToxSam/cc0-models-Polygonal-Mind/tree/main/projects/medieval-fair",
+        "reviewStatus": "reviewed",
+        "inspection": "tn asset inspect assets/models/cart.glb --json passed; embedded textures, 935564 bytes, gameplay verdict ok"
+      },
+      "fallback": "Factory, mining, industrial, and train catalog searches did not provide a cohesive direct kit. Rails, furnace, ore, steam vents, yard dressing, UI, and feedback surfaces are authored as a compact low-poly primitive kit around the selected CC0 cart model."
+    }
+  },
+  "template": "structured-source-starter"
+}

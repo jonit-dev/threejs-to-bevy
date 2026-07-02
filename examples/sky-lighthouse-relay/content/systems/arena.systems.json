@@ -1,0 +1,17 @@
+{
+  "schema": "threenative.systems",
+  "version": "0.1.0",
+  "id": "arena-systems",
+  "systems": [
+    {
+      "id": "sky-lighthouse-relay",
+      "schedule": "fixedUpdate",
+      "writes": ["Transform", "Airship", "BeaconSpark"],
+      "resourceWrites": ["GameState"],
+      "script": {
+        "module": "src/scripts/player.ts",
+        "export": "skyLighthouseRelaySystem"
+      }
+    }
+  ]
+}

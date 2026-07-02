@@ -1,0 +1,907 @@
+{
+  "schema": "threenative.scene",
+  "version": "0.1.0",
+  "id": "arena",
+  "kind": "level",
+  "entities": [
+    {
+      "id": "visual.provenance",
+      "prefab": "prefab.sign",
+      "transform": {
+        "position": [-5.25, 0.72, 4.75],
+        "scale": [1.35, 0.56, 0.08]
+      },
+      "components": {
+        "VisualProvenance": {
+          "status": "procedural custom authored mesh kit",
+          "style": "cohesive low-poly glowing crystal mine",
+          "notes": "SQLite catalog searches found CC0 racing road/truck GLB records, but no mine cart, cavern, or collectible direct GLB fit; vehicle and environment direct searches returned TN_ASSET_SOURCE_NO_MATCH and collectible direct search returned TN_ASSET_SOURCE_NO_MATCH. Player hero cart, reward collectible crystals, obstacle-enemy rolling boulders, world environment rail bed, forge gate, stalagmites, posts, lanterns, and wall dressing are authored as the fallback."
+        }
+      }
+    },
+    {
+      "id": "camera.main",
+      "transform": {
+        "position": [0, 7.8, 9.2],
+        "rotation": [-0.74, 0, 0]
+      },
+      "components": {
+        "camera": {
+          "mode": "perspective",
+          "fovY": 48,
+          "near": 0.05,
+          "far": 90
+        }
+      }
+    },
+    {
+      "id": "light.cavern.ambient",
+      "components": {
+        "Light": {
+          "kind": "ambient",
+          "color": "#d2edf7",
+          "intensity": 1.18
+        }
+      }
+    },
+    {
+      "id": "light.forge",
+      "transform": {
+        "position": [0, 4.8, -4.8]
+      },
+      "components": {
+        "Light": {
+          "kind": "point",
+          "color": "#ffb36a",
+          "intensity": 5.9,
+          "range": 14.5
+        }
+      }
+    },
+    {
+      "id": "light.crystal",
+      "transform": {
+        "position": [-2.6, 2.8, -1.2]
+      },
+      "components": {
+        "Light": {
+          "kind": "point",
+          "color": "#77f4ff",
+          "intensity": 4.25,
+          "range": 11
+        }
+      }
+    },
+    {
+      "id": "cavern.floor",
+      "prefab": "prefab.floor",
+      "transform": {
+        "position": [0, -0.08, 0],
+        "rotation": [-1.570796, 0, 0],
+        "scale": [7.4, 10.8, 1]
+      }
+    },
+    {
+      "id": "rail.left",
+      "prefab": "prefab.rail",
+      "transform": {
+        "position": [-0.52, 0.04, 0.15],
+        "scale": [0.12, 0.12, 9.4]
+      }
+    },
+    {
+      "id": "rail.glow.left",
+      "prefab": "prefab.rail-glow",
+      "transform": {
+        "position": [-0.78, 0.015, 0.15],
+        "scale": [0.055, 0.045, 9.25]
+      }
+    },
+    {
+      "id": "rail.right",
+      "prefab": "prefab.rail",
+      "transform": {
+        "position": [0.52, 0.04, 0.15],
+        "scale": [0.12, 0.12, 9.4]
+      }
+    },
+    {
+      "id": "rail.glow.right",
+      "prefab": "prefab.rail-glow",
+      "transform": {
+        "position": [0.78, 0.015, 0.15],
+        "scale": [0.055, 0.045, 9.25]
+      }
+    },
+    {
+      "id": "floor.fissure.left.01",
+      "prefab": "prefab.floor-fissure",
+      "transform": {
+        "position": [-2.35, -0.015, 2.65],
+        "rotation": [-1.570796, 0, 0.36],
+        "scale": [1.25, 0.055, 1]
+      }
+    },
+    {
+      "id": "floor.fissure.left.02",
+      "prefab": "prefab.floor-fissure",
+      "transform": {
+        "position": [-2.45, -0.015, -1.15],
+        "rotation": [-1.570796, 0, -0.26],
+        "scale": [1.35, 0.055, 1]
+      }
+    },
+    {
+      "id": "floor.fissure.right.01",
+      "prefab": "prefab.floor-fissure",
+      "transform": {
+        "position": [2.42, -0.015, 1.05],
+        "rotation": [-1.570796, 0, -0.32],
+        "scale": [1.32, 0.055, 1]
+      }
+    },
+    {
+      "id": "floor.fissure.right.02",
+      "prefab": "prefab.floor-fissure",
+      "transform": {
+        "position": [2.2, -0.015, -2.65],
+        "rotation": [-1.570796, 0, 0.28],
+        "scale": [1.18, 0.055, 1]
+      }
+    },
+    {
+      "id": "floor.marker.amber.01",
+      "prefab": "prefab.floor-marker-amber",
+      "transform": {
+        "position": [-1.55, 0.002, 3.15],
+        "rotation": [-1.570796, 0, -0.12],
+        "scale": [0.68, 0.12, 1]
+      }
+    },
+    {
+      "id": "floor.marker.amber.02",
+      "prefab": "prefab.floor-marker-amber",
+      "transform": {
+        "position": [1.58, 0.002, 2.05],
+        "rotation": [-1.570796, 0, 0.16],
+        "scale": [0.72, 0.12, 1]
+      }
+    },
+    {
+      "id": "floor.marker.amber.03",
+      "prefab": "prefab.floor-marker-amber",
+      "transform": {
+        "position": [-1.72, 0.002, -0.15],
+        "rotation": [-1.570796, 0, 0.18],
+        "scale": [0.64, 0.12, 1]
+      }
+    },
+    {
+      "id": "floor.marker.amber.04",
+      "prefab": "prefab.floor-marker-amber",
+      "transform": {
+        "position": [1.62, 0.002, -1.98],
+        "rotation": [-1.570796, 0, -0.14],
+        "scale": [0.7, 0.12, 1]
+      }
+    },
+    {
+      "id": "floor.marker.violet.01",
+      "prefab": "prefab.floor-marker-violet",
+      "transform": {
+        "position": [-2.72, 0.004, 0.72],
+        "rotation": [-1.570796, 0, 0.68],
+        "scale": [0.52, 0.075, 1]
+      }
+    },
+    {
+      "id": "floor.marker.violet.02",
+      "prefab": "prefab.floor-marker-violet",
+      "transform": {
+        "position": [2.72, 0.004, -0.98],
+        "rotation": [-1.570796, 0, -0.66],
+        "scale": [0.52, 0.075, 1]
+      }
+    },
+    {
+      "id": "floor.marker.violet.03",
+      "prefab": "prefab.floor-marker-violet",
+      "transform": {
+        "position": [-2.38, 0.004, -3.55],
+        "rotation": [-1.570796, 0, -0.42],
+        "scale": [0.46, 0.075, 1]
+      }
+    },
+    {
+      "id": "floor.marker.violet.04",
+      "prefab": "prefab.floor-marker-violet",
+      "transform": {
+        "position": [2.42, 0.004, 3.48],
+        "rotation": [-1.570796, 0, 0.44],
+        "scale": [0.46, 0.075, 1]
+      }
+    },
+    {
+      "id": "rail.tie.01",
+      "prefab": "prefab.rail-tie",
+      "transform": {
+        "position": [0, 0.08, 3.12],
+        "scale": [1.28, 0.08, 0.16]
+      }
+    },
+    {
+      "id": "rail.tie.02",
+      "prefab": "prefab.rail-tie",
+      "transform": {
+        "position": [0, 0.08, 1.22],
+        "scale": [1.28, 0.08, 0.16]
+      }
+    },
+    {
+      "id": "rail.tie.03",
+      "prefab": "prefab.rail-tie",
+      "transform": {
+        "position": [0, 0.08, -0.68],
+        "scale": [1.28, 0.08, 0.16]
+      }
+    },
+    {
+      "id": "rail.tie.04",
+      "prefab": "prefab.rail-tie",
+      "transform": {
+        "position": [0, 0.08, -2.58],
+        "scale": [1.28, 0.08, 0.16]
+      }
+    },
+    {
+      "id": "forge.gate",
+      "prefab": "prefab.forge",
+      "transform": {
+        "position": [0, 0.62, -4.65],
+        "scale": [1.65, 1.35, 0.34]
+      },
+      "components": {
+        "ForgeGate": {
+          "radius": 0.92
+        }
+      }
+    },
+    {
+      "id": "forge.glow",
+      "prefab": "prefab.forge-glow",
+      "transform": {
+        "position": [0, 0.52, -4.28],
+        "scale": [0.92, 0.56, 0.16]
+      }
+    },
+    {
+      "id": "player",
+      "prefab": "prefab.cart",
+      "transform": {
+        "position": [0, 0.22, 4.0],
+        "scale": [0.78, 0.28, 0.88]
+      },
+      "components": {
+        "MineCart": {
+          "speed": 3.35,
+          "shards": 0
+        }
+      }
+    },
+    {
+      "id": "player.bin",
+      "prefab": "prefab.cart-bin",
+      "transform": {
+        "position": [0, 0.48, 3.94],
+        "scale": [0.58, 0.36, 0.56]
+      },
+      "components": {
+        "CartPart": {
+          "target": "player",
+          "offset": [0, 0.26, -0.06]
+        }
+      }
+    },
+    {
+      "id": "player.lamp",
+      "prefab": "prefab.cart-lamp",
+      "transform": {
+        "position": [0, 0.64, 3.52],
+        "scale": [0.16, 0.16, 0.16]
+      },
+      "components": {
+        "CartPart": {
+          "target": "player",
+          "offset": [0, 0.42, -0.48]
+        }
+      }
+    },
+    {
+      "id": "shard.01",
+      "prefab": "prefab.shard",
+      "transform": {
+        "position": [-2.2, 0.52, 2.15],
+        "scale": [0.28, 0.62, 0.28]
+      },
+      "components": {
+        "CrystalShard": {
+          "collected": false,
+          "phase": 0.1
+        }
+      }
+    },
+    {
+      "id": "shard.01.glow",
+      "prefab": "prefab.shard-glow",
+      "transform": {
+        "position": [-2.2, 0.07, 2.15],
+        "scale": [0.78, 0.04, 0.78]
+      }
+    },
+    {
+      "id": "shard.02",
+      "prefab": "prefab.shard",
+      "transform": {
+        "position": [2.1, 0.52, 0.9],
+        "scale": [0.28, 0.62, 0.28]
+      },
+      "components": {
+        "CrystalShard": {
+          "collected": false,
+          "phase": 1.7
+        }
+      }
+    },
+    {
+      "id": "shard.02.glow",
+      "prefab": "prefab.shard-glow",
+      "transform": {
+        "position": [2.1, 0.07, 0.9],
+        "scale": [0.78, 0.04, 0.78]
+      }
+    },
+    {
+      "id": "shard.03",
+      "prefab": "prefab.shard",
+      "transform": {
+        "position": [-1.75, 0.52, -1.25],
+        "scale": [0.28, 0.62, 0.28]
+      },
+      "components": {
+        "CrystalShard": {
+          "collected": false,
+          "phase": 2.8
+        }
+      }
+    },
+    {
+      "id": "shard.03.glow",
+      "prefab": "prefab.shard-glow",
+      "transform": {
+        "position": [-1.75, 0.07, -1.25],
+        "scale": [0.78, 0.04, 0.78]
+      }
+    },
+    {
+      "id": "shard.04",
+      "prefab": "prefab.shard",
+      "transform": {
+        "position": [1.85, 0.52, -2.85],
+        "scale": [0.28, 0.62, 0.28]
+      },
+      "components": {
+        "CrystalShard": {
+          "collected": false,
+          "phase": 4.2
+        }
+      }
+    },
+    {
+      "id": "shard.04.glow",
+      "prefab": "prefab.shard-glow",
+      "transform": {
+        "position": [1.85, 0.07, -2.85],
+        "scale": [0.78, 0.04, 0.78]
+      }
+    },
+    {
+      "id": "boulder.01",
+      "prefab": "prefab.boulder",
+      "transform": {
+        "position": [-2.7, 0.35, 1.45],
+        "scale": [0.58, 0.58, 0.58]
+      },
+      "components": {
+        "RollingBoulder": {
+          "origin": [-2.7, 0.35, 1.45],
+          "radius": 2.1,
+          "phase": 0.4,
+          "axis": "x"
+        }
+      }
+    },
+    {
+      "id": "boulder.01.warning",
+      "prefab": "prefab.boulder-warning",
+      "transform": {
+        "position": [-2.7, 0.06, 1.45],
+        "scale": [1.85, 0.04, 0.5]
+      }
+    },
+    {
+      "id": "boulder.02",
+      "prefab": "prefab.boulder",
+      "transform": {
+        "position": [2.5, 0.35, -0.55],
+        "scale": [0.62, 0.62, 0.62]
+      },
+      "components": {
+        "RollingBoulder": {
+          "origin": [2.5, 0.35, -0.55],
+          "radius": 2.0,
+          "phase": 2.1,
+          "axis": "x"
+        }
+      }
+    },
+    {
+      "id": "boulder.02.warning",
+      "prefab": "prefab.boulder-warning",
+      "transform": {
+        "position": [2.5, 0.06, -0.55],
+        "scale": [1.75, 0.04, 0.5]
+      }
+    },
+    {
+      "id": "boulder.03",
+      "prefab": "prefab.boulder",
+      "transform": {
+        "position": [-2.35, 0.35, -2.45],
+        "scale": [0.54, 0.54, 0.54]
+      },
+      "components": {
+        "RollingBoulder": {
+          "origin": [-2.35, 0.35, -2.45],
+          "radius": 1.7,
+          "phase": 4.3,
+          "axis": "x"
+        }
+      }
+    },
+    {
+      "id": "boulder.03.warning",
+      "prefab": "prefab.boulder-warning",
+      "transform": {
+        "position": [-2.35, 0.06, -2.45],
+        "scale": [1.55, 0.04, 0.46]
+      }
+    },
+    {
+      "id": "wall.west",
+      "prefab": "prefab.wall",
+      "transform": {
+        "position": [-3.98, 0.82, 0],
+        "scale": [0.48, 1.7, 10.8]
+      }
+    },
+    {
+      "id": "wall.west.vein.01",
+      "prefab": "prefab.wall-vein",
+      "transform": {
+        "position": [-3.71, 1.18, 2.35],
+        "rotation": [0, 0, 0.44],
+        "scale": [0.08, 0.72, 0.08]
+      }
+    },
+    {
+      "id": "wall.west.vein.02",
+      "prefab": "prefab.wall-vein",
+      "transform": {
+        "position": [-3.71, 1.04, -2.25],
+        "rotation": [0, 0, -0.32],
+        "scale": [0.08, 0.82, 0.08]
+      }
+    },
+    {
+      "id": "wall.west.sconce.01",
+      "prefab": "prefab.wall-sconce",
+      "transform": {
+        "position": [-3.7, 0.88, 3.42],
+        "rotation": [0, 0, -0.18],
+        "scale": [0.1, 0.46, 0.08]
+      }
+    },
+    {
+      "id": "wall.west.sconce.02",
+      "prefab": "prefab.wall-sconce",
+      "transform": {
+        "position": [-3.7, 0.78, -0.65],
+        "rotation": [0, 0, 0.2],
+        "scale": [0.1, 0.42, 0.08]
+      }
+    },
+    {
+      "id": "wall.east",
+      "prefab": "prefab.wall",
+      "transform": {
+        "position": [3.98, 0.82, 0],
+        "scale": [0.48, 1.7, 10.8]
+      }
+    },
+    {
+      "id": "wall.east.vein.01",
+      "prefab": "prefab.wall-vein",
+      "transform": {
+        "position": [3.71, 1.1, 1.65],
+        "rotation": [0, 0, -0.4],
+        "scale": [0.08, 0.76, 0.08]
+      }
+    },
+    {
+      "id": "wall.east.vein.02",
+      "prefab": "prefab.wall-vein",
+      "transform": {
+        "position": [3.71, 0.96, -3.15],
+        "rotation": [0, 0, 0.34],
+        "scale": [0.08, 0.68, 0.08]
+      }
+    },
+    {
+      "id": "wall.east.sconce.01",
+      "prefab": "prefab.wall-sconce",
+      "transform": {
+        "position": [3.7, 0.84, 0.55],
+        "rotation": [0, 0, 0.18],
+        "scale": [0.1, 0.44, 0.08]
+      }
+    },
+    {
+      "id": "wall.east.sconce.02",
+      "prefab": "prefab.wall-sconce",
+      "transform": {
+        "position": [3.7, 0.78, -3.82],
+        "rotation": [0, 0, -0.22],
+        "scale": [0.1, 0.4, 0.08]
+      }
+    },
+    {
+      "id": "lantern.left",
+      "prefab": "prefab.lantern",
+      "transform": {
+        "position": [-3.0, 0.9, 3.35],
+        "scale": [0.18, 0.68, 0.18]
+      }
+    },
+    {
+      "id": "lantern.right",
+      "prefab": "prefab.lantern",
+      "transform": {
+        "position": [3.0, 0.9, -3.45],
+        "scale": [0.18, 0.68, 0.18]
+      }
+    },
+    {
+      "id": "stalagmite.01",
+      "prefab": "prefab.stalagmite",
+      "transform": {
+        "position": [-3.08, 0.42, 1.9],
+        "scale": [0.44, 0.84, 0.44]
+      }
+    },
+    {
+      "id": "stalagmite.02",
+      "prefab": "prefab.stalagmite",
+      "transform": {
+        "position": [3.18, 0.36, 1.6],
+        "scale": [0.34, 0.72, 0.34]
+      }
+    },
+    {
+      "id": "stalagmite.03",
+      "prefab": "prefab.stalagmite",
+      "transform": {
+        "position": [-3.22, 0.5, -3.0],
+        "scale": [0.5, 1.0, 0.5]
+      }
+    },
+    {
+      "id": "stalagmite.04",
+      "prefab": "prefab.stalagmite",
+      "transform": {
+        "position": [2.92, 0.44, -1.85],
+        "scale": [0.42, 0.88, 0.42]
+      }
+    },
+    {
+      "id": "crystal.cluster.left",
+      "prefab": "prefab.crystal-cluster",
+      "transform": {
+        "position": [-3.0, 0.45, -0.35],
+        "scale": [0.44, 0.9, 0.44]
+      }
+    },
+    {
+      "id": "crystal.cluster.right",
+      "prefab": "prefab.crystal-cluster",
+      "transform": {
+        "position": [3.12, 0.5, 2.85],
+        "scale": [0.5, 1.0, 0.5]
+      }
+    }
+  ],
+  "prefabs": [
+    {
+      "id": "prefab.floor",
+      "primitive": "plane",
+      "color": "#55727c"
+    },
+    {
+      "id": "prefab.rail",
+      "primitive": "box",
+      "color": "#a67d48"
+    },
+    {
+      "id": "prefab.rail-glow",
+      "primitive": "box",
+      "color": "#39f2ff"
+    },
+    {
+      "id": "prefab.floor-fissure",
+      "primitive": "plane",
+      "color": "#24454f"
+    },
+    {
+      "id": "prefab.floor-marker-amber",
+      "primitive": "plane",
+      "color": "#ffb14a"
+    },
+    {
+      "id": "prefab.floor-marker-violet",
+      "primitive": "plane",
+      "color": "#b76dff"
+    },
+    {
+      "id": "prefab.rail-tie",
+      "primitive": "box",
+      "color": "#493323"
+    },
+    {
+      "id": "prefab.forge",
+      "primitive": "box",
+      "color": "#8f7459"
+    },
+    {
+      "id": "prefab.forge-glow",
+      "primitive": "box",
+      "color": "#ffc064"
+    },
+    {
+      "id": "prefab.cart",
+      "primitive": "box",
+      "color": "#8fa2ae"
+    },
+    {
+      "id": "prefab.cart-bin",
+      "primitive": "box",
+      "color": "#b0c6d1"
+    },
+    {
+      "id": "prefab.cart-lamp",
+      "primitive": "sphere",
+      "color": "#ffe18b"
+    },
+    {
+      "id": "prefab.shard",
+      "primitive": "cone",
+      "color": "#19f8ff"
+    },
+    {
+      "id": "prefab.shard-glow",
+      "primitive": "cylinder",
+      "color": "#25eaff"
+    },
+    {
+      "id": "prefab.boulder",
+      "primitive": "sphere",
+      "color": "#2f343a"
+    },
+    {
+      "id": "prefab.boulder-warning",
+      "primitive": "cylinder",
+      "color": "#ff7a3d"
+    },
+    {
+      "id": "prefab.wall",
+      "primitive": "box",
+      "color": "#17242c"
+    },
+    {
+      "id": "prefab.wall-vein",
+      "primitive": "box",
+      "color": "#5df8ff"
+    },
+    {
+      "id": "prefab.wall-sconce",
+      "primitive": "box",
+      "color": "#ffcf6a"
+    },
+    {
+      "id": "prefab.lantern",
+      "primitive": "cylinder",
+      "color": "#f2b461"
+    },
+    {
+      "id": "prefab.stalagmite",
+      "primitive": "cone",
+      "color": "#7f8d9b"
+    },
+    {
+      "id": "prefab.crystal-cluster",
+      "primitive": "cone",
+      "color": "#8fffff"
+    },
+    {
+      "id": "prefab.sign",
+      "primitive": "box",
+      "color": "#6d533c"
+    }
+  ],
+  "resources": [
+    {
+      "id": "GameState",
+      "value": {
+        "phase": "playing",
+        "shards": 0,
+        "timer": 55,
+        "countdown": "Shards 0/4",
+        "timerText": "Time 55",
+        "status": "Collect 4 crystals, then reach the forge"
+      }
+    }
+  ],
+  "systems": [
+    {
+      "id": "crystal-cavern-system",
+      "schedule": "fixedUpdate",
+      "script": {
+        "module": "src/scripts/player.ts",
+        "export": "crystalCavernSystem"
+      }
+    }
+  ],
+  "ui": {
+    "nodes": [
+      {
+        "id": "shards",
+        "type": "text",
+        "text": "Shards 0/4",
+        "style": {
+          "color": "#fff2cf",
+          "fontSize": 24,
+          "fontWeight": "bold",
+        "textAlign": "center"
+        },
+        "layout": {
+          "justify": "center",
+          "align": "top",
+          "top": 32,
+          "width": 1280
+        }
+      },
+      {
+        "id": "timer",
+        "type": "text",
+        "text": "Time 55",
+        "style": {
+          "color": "#fff2cf",
+          "fontSize": 22,
+          "fontWeight": "bold",
+          "textAlign": "center"
+        },
+        "layout": {
+          "justify": "center",
+          "align": "top",
+          "top": 68,
+          "width": 1280
+        }
+      },
+      {
+        "id": "status",
+        "type": "text",
+        "text": "Collect 4 crystals, then reach the forge",
+        "style": {
+          "color": "#ffffff",
+          "fontSize": 20,
+          "fontWeight": "bold",
+          "textAlign": "center"
+        },
+        "layout": {
+          "justify": "center",
+          "align": "bottom",
+          "top": 650,
+          "width": 1280
+        }
+      },
+      {
+        "id": "state.loading",
+        "type": "text",
+        "text": "Loading cavern",
+        "layout": {
+          "justify": "center",
+          "align": "center",
+          "top": 1200,
+          "width": 1280
+        }
+      },
+      {
+        "id": "state.pause",
+        "type": "text",
+        "text": "Paused",
+        "layout": {
+          "justify": "center",
+          "align": "center",
+          "top": 1230,
+          "width": 1280
+        }
+      },
+      {
+        "id": "state.settings",
+        "type": "text",
+        "text": "Settings",
+        "layout": {
+          "justify": "center",
+          "align": "center",
+          "top": 1260,
+          "width": 1280
+        }
+      },
+      {
+        "id": "state.fail-retry",
+        "type": "text",
+        "text": "Retry",
+        "layout": {
+          "justify": "center",
+          "align": "center",
+          "top": 1290,
+          "width": 1280
+        }
+      },
+      {
+        "id": "state.win-milestone",
+        "type": "text",
+        "text": "Forge charged",
+        "layout": {
+          "justify": "center",
+          "align": "center",
+          "top": 1320,
+          "width": 1280
+        }
+      },
+      {
+        "id": "state.touch-controls",
+        "type": "text",
+        "text": "Touch cart mobile-control",
+        "layout": {
+          "justify": "center",
+          "align": "center",
+          "top": 1350,
+          "width": 1280
+        }
+      }
+    ],
+    "bindings": [
+      {
+        "node": "shards",
+        "resource": "GameState.countdown"
+      },
+      {
+        "node": "timer",
+        "resource": "GameState.timerText"
+      },
+      {
+        "node": "status",
+        "resource": "GameState.status"
+      }
+    ]
+  }
+}

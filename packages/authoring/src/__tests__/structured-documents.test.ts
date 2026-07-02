@@ -50,6 +50,7 @@ test("loads mixed authoring source document family", async () => {
       id: "kart-meshes",
       meshes: [
         { id: "mesh.kart", kind: "primitive", primitive: "box" },
+        { id: "mesh.tire", kind: "primitive", primitive: "torus", size: [0.18, 0.42] },
         {
           attributes: [{ itemSize: 3, name: "position", values: [0, 0, 0, 1, 0, 0, 0, 1, 0] }],
           id: "mesh.kart.triangle",

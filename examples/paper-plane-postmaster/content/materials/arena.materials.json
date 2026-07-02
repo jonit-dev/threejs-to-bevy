@@ -1,0 +1,25 @@
+{
+  "schema": "threenative.materials",
+  "version": "0.1.0",
+  "id": "arena-materials",
+  "materials": [
+    { "id": "mat.paper", "color": "#fff8df", "roughness": 0.82 },
+    { "id": "mat.paper.wing", "color": "#f4dfaa", "roughness": 0.82 },
+    { "id": "mat.paper.fold", "color": "#ad8f5f", "roughness": 0.72 },
+    { "id": "mat.paper.crease", "color": "#c9b17b", "roughness": 0.76 },
+    { "id": "mat.ink", "color": "#17365a", "roughness": 0.7 },
+    { "id": "mat.rooftop", "color": "#69584c", "roughness": 0.9 },
+    { "id": "mat.roof.seam", "color": "#826c56", "roughness": 0.88 },
+    { "id": "mat.roof.tile.dark", "color": "#40352f", "roughness": 0.92 },
+    { "id": "mat.roof.label", "color": "#e6c38e", "roughness": 0.7 },
+    { "id": "mat.roof.label.blue", "color": "#83c7d8", "roughness": 0.64 },
+    { "id": "mat.sort.strip", "color": "#f0d083", "roughness": 0.66 },
+    { "id": "mat.stamp", "color": "#ffd24a", "emissive": "#ffb743", "emissiveIntensity": 0.38, "roughness": 0.55 },
+    { "id": "mat.stamp.glint", "color": "#fff6a8", "emissive": "#ffe15a", "emissiveIntensity": 0.42, "roughness": 0.25 },
+    { "id": "mat.stamp.pad", "color": "#ffd24a", "emissive": "#ffb743", "emissiveIntensity": 0.32, "roughness": 0.62 },
+    { "id": "mat.mailbox", "color": "#1f7f9f", "roughness": 0.64 },
+    { "id": "mat.gust", "color": "#7fe7ff", "emissive": "#4bdfff", "emissiveIntensity": 0.46, "roughness": 0.35 },
+    { "id": "mat.gust.warning", "color": "#ff8d5a", "emissive": "#d96b36", "emissiveIntensity": 0.28, "roughness": 0.55 },
+    { "id": "mat.landing", "color": "#55d680", "emissive": "#2fcf6b", "emissiveIntensity": 0.35, "roughness": 0.6 }
+  ]
+}

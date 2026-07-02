@@ -1,0 +1,10 @@
+{
+  "schema": "threenative.project",
+  "version": "0.1.0",
+  "name": "glassworks-prism-sorter",
+  "entry": "content/scenes/arena.scene.json",
+  "template": {
+    "id": "structured-source-starter",
+    "generatedBy": "agent"
+  }
+}

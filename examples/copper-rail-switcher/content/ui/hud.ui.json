@@ -1,0 +1,39 @@
+{
+  "schema": "threenative.ui",
+  "version": "0.1.0",
+  "id": "hud",
+  "nodes": [
+    {
+      "id": "ore",
+      "type": "text",
+      "text": "Ore 0/5",
+      "style": { "color": "#f7fbff", "fontSize": 24, "fontWeight": "bold", "textAlign": "center" },
+      "layout": { "justify": "center", "align": "top", "top": 24, "width": 1280 }
+    },
+    {
+      "id": "timer",
+      "type": "text",
+      "text": "Shift 75",
+      "style": { "color": "#ffd79d", "fontSize": 22, "fontWeight": "bold", "textAlign": "center" },
+      "layout": { "justify": "center", "align": "top", "top": 60, "width": 1280 }
+    },
+    {
+      "id": "status",
+      "type": "text",
+      "text": "Collect ore, then dump at the orange furnace",
+      "style": { "color": "#ffffff", "fontSize": 19, "fontWeight": "bold", "textAlign": "center" },
+      "layout": { "justify": "center", "align": "bottom", "top": 676, "width": 1280 }
+    },
+    { "id": "state.loading", "type": "text", "text": "Loading copper rail yard", "layout": { "justify": "center", "align": "center", "top": 1200, "width": 1280 } },
+    { "id": "state.pause", "type": "text", "text": "Paused", "layout": { "justify": "center", "align": "center", "top": 1230, "width": 1280 } },
+    { "id": "state.settings", "type": "text", "text": "Settings", "layout": { "justify": "center", "align": "center", "top": 1260, "width": 1280 } },
+    { "id": "state.fail-retry", "type": "text", "text": "Shift failed - press Space", "layout": { "justify": "center", "align": "center", "top": 1290, "width": 1280 } },
+    { "id": "state.win-milestone", "type": "text", "text": "Furnace quota met", "layout": { "justify": "center", "align": "center", "top": 1320, "width": 1280 } },
+    { "id": "state.touch-controls", "type": "text", "text": "Touch rail controls mobile-control", "layout": { "justify": "center", "align": "center", "top": 1350, "width": 1280 } }
+  ],
+  "bindings": [
+    { "node": "ore", "resource": "GameState.oreText" },
+    { "node": "timer", "resource": "GameState.timerText" },
+    { "node": "status", "resource": "GameState.status" }
+  ]
+}

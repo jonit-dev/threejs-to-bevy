@@ -1,0 +1,12 @@
+{
+  "schema": "threenative.meshes",
+  "version": "0.1.0",
+  "id": "arena-meshes",
+  "meshes": [
+    { "id": "mesh.firefly.body", "kind": "primitive", "primitive": "sphere", "size": [0.32] },
+    { "id": "mesh.firefly.wing", "kind": "primitive", "primitive": "sphere", "size": [0.32] },
+    { "id": "mesh.pollen", "kind": "primitive", "primitive": "sphere", "size": [0.16] },
+    { "id": "mesh.lantern.flower", "kind": "primitive", "primitive": "sphere", "size": [0.34] },
+    { "id": "mesh.stump.ring", "kind": "primitive", "primitive": "torus", "size": [0.18, 0.72] }
+  ]
+}

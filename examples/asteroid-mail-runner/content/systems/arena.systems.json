@@ -1,0 +1,20 @@
+{
+  "schema": "threenative.systems",
+  "version": "0.1.0",
+  "id": "arena-systems",
+  "systems": [
+    {
+      "id": "asteroid-mail-runner",
+      "schedule": "fixedUpdate",
+      "reads": ["Transform", "MailShip", "DataCapsule", "CheckpointRing", "Asteroid", "ShipFollower", "BeaconPulse", "ThrusterFlame"],
+      "writes": ["Transform", "MailShip", "DataCapsule", "CheckpointRing"],
+      "resourceReads": ["GameState"],
+      "resourceWrites": ["GameState"],
+      "script": {
+        "module": "src/scripts/player.ts",
+        "export": "asteroidMailRunnerSystem"
+      }
+    }
+  ]
+}
+

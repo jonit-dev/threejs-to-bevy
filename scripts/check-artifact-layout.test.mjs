@@ -71,6 +71,19 @@ test("should reject generated template artifacts", async () => {
   }
 });
 
+test("should allow concise repo agent guidance near the size budget", async () => {
+  const root = await makeRepoRoot({
+    "AGENTS.md": `# AGENTS.md\n\n${"Use concise local guidance.\n".repeat(520)}`,
+  });
+
+  try {
+    const result = await checkArtifactLayout({ root });
+    assert.equal(result.ok, true, result.diagnostics.map((diagnostic) => diagnostic.message).join("\n"));
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
 test("should require verifier artifact directories to use resolver ownership", async () => {
   const files = (await readdir("scripts"))
     .filter((file) => /^verify.*\.mjs$/.test(file) && !file.endsWith(".test.mjs"))

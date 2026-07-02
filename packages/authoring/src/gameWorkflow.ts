@@ -170,7 +170,10 @@ interface IProjectEvidenceSnapshot {
   hasScreenshotProof: boolean;
   hasScriptSource: boolean;
   hasSmoothScriptSource: boolean;
+  invalidAudioFiles: string[];
+  projectOutDir?: string;
   sourceEvidence: IGameWorkflowEvidence[];
+  sourceSearchText: string;
 }
 
 export async function createGameQualityReport(options: ICreateGameQualityReportOptions): Promise<IGameWorkflowReport> {
@@ -250,6 +253,15 @@ export async function createGameQualityReport(options: ICreateGameQualityReportO
       path: `/assetAudioLedger/${entry.surface}`,
       phase: "assets",
       suggestedFix: "Record source assets, procedural status, generated provenance, or an explicit blocker in source/proof artifacts.",
+    }));
+  }
+  for (const path of snapshot.invalidAudioFiles) {
+    diagnostics.push(gameDiagnostic({
+      code: "TN_GAME_AUDIO_ASSET_INVALID",
+      message: `Audio-feedback asset '${path}' is not a valid local WAV file.`,
+      path: `/assetAudioLedger/audio-feedback/${path}`,
+      phase: "assets",
+      suggestedFix: "Replace placeholder text or corrupt audio with a valid RIFF/WAVE file, or update the asset source to supported generated/local audio provenance.",
     }));
   }
 
@@ -356,13 +368,17 @@ export function validateGameQualityReport(report: unknown): IGameWorkflowDiagnos
 }
 
 function buildProductionCommands(snapshot: IProjectEvidenceSnapshot): IGameProductionCommand[] {
+  const configuredManifestPath = snapshot.projectOutDir === undefined ? undefined : `${normalizeRelativePathText(snapshot.projectOutDir)}/manifest.json`;
+  const buildArtifact = snapshot.artifactEvidence.find((evidence) => configuredManifestPath !== undefined && evidence.path === configuredManifestPath)
+    ?? snapshot.artifactEvidence.find((evidence) => evidence.path?.endsWith("/manifest.json") === true)
+    ?? snapshot.artifactEvidence.find((evidence) => includesAny(evidence, ["manifest.json", "world.ir.json"]));
   return [
     commandRow("debug", "tn doctor --project . --json", "Inspect source, bundle, and optional preview diagnostics.", snapshot.artifactEvidence.find((evidence) => includesAny(evidence, ["doctor"]))?.path),
-    commandRow("release", "tn build --project . --json", "Compile and validate generated bundle artifacts.", snapshot.hasBuildProof ? "dist/game.bundle/manifest.json" : undefined),
+    commandRow("release", "tn build --project . --json", "Compile and validate generated bundle artifacts.", snapshot.hasBuildProof ? buildArtifact?.path : undefined),
     commandRow("gameplay", "tn playtest --project . --entity <player-id> --press <KeyboardEvent.code> --frames 30 --expect-moved --json", "Prove input-driven state change.", snapshot.artifactEvidence.find((evidence) => includesAny(evidence, ["playtest"]))?.path),
     commandRow("gameplay", "tn record --project . --url <preview-url> --out artifacts/game-production/motion.webm --duration 5 --json", "Prove visible smooth motion instead of one-frame snaps.", snapshot.artifactEvidence.find((evidence) => includesAny(evidence, ["motion", "frame-diff", "webm", "mp4", "record"]))?.path),
     commandRow("visuals", "tn screenshot --project . --url <preview-url> --out artifacts/game-production/screenshot.png --wait-ready --json", "Capture nonblank visual proof.", snapshot.artifactEvidence.find((evidence) => includesAny(evidence, ["screenshot", ".png"]))?.path),
-    commandRow("qa", "tn record --project . --url <preview-url> --out artifacts/game-production/clip.webm --duration 5 --json", "Capture short motion proof when video is available.", snapshot.artifactEvidence.find((evidence) => includesAny(evidence, ["record", ".webm", ".mp4"]))?.path),
+    commandRow("qa", "tn record --project . --url <preview-url> --out artifacts/game-production/motion.webm --duration 5 --json", "Capture short motion proof when video is available.", snapshot.artifactEvidence.find((evidence) => includesAny(evidence, ["record", ".webm", ".mp4"]))?.path),
     commandRow("qa", "Capture a mobile viewport screenshot under artifacts/game-production/.", "Prove mobile layout and safe-area behavior.", snapshot.artifactEvidence.find((evidence) => includesAny(evidence, ["mobile", "viewport"]))?.path),
     commandRow("release", "tn game release --project . --json", "Summarize release risks, build evidence, budget status, and native parity scope.", snapshot.artifactEvidence.find((evidence) => includesAny(evidence, ["release"]))?.path),
   ];
@@ -475,8 +491,9 @@ function evidenceForPhase(id: GameWorkflowPhaseId, snapshot: IProjectEvidenceSna
 
 async function inspectGameProject(projectPath: string): Promise<IProjectEvidenceSnapshot> {
   const authoring = await loadAuthoringProject({ projectPath });
+  const projectOutDir = await readProjectOutDir(projectPath);
   const structuredSourceEvidence = authoring.documents.map((document) => ({
-    description: `${document.kind} structured source ${JSON.stringify(document.data)}`,
+    description: describeStructuredSource(document),
     kind: "source" as const,
     path: document.projectRelativePath,
   }));
@@ -484,11 +501,17 @@ async function inspectGameProject(projectPath: string): Promise<IProjectEvidence
   const sourceEvidence = [...structuredSourceEvidence, ...scriptSourceEvidence].sort(compareEvidence);
   const artifactEvidence = await collectArtifactEvidence(projectPath);
   const scriptFiles = await readScriptFiles(projectPath);
-  const sourceHaystack = sourceEvidence.map((evidence) => `${evidence.description} ${evidence.path ?? ""}`).join(" ").toLowerCase();
+  const invalidAudioFiles = await collectInvalidAudioFiles(projectPath, authoring);
+  const fullStructuredSourceText = authoring.documents.map((document) => JSON.stringify(document.data)).join(" ");
+  const sourceSearchText = [
+    sourceEvidence.map((evidence) => `${evidence.description} ${evidence.path ?? ""}`).join(" "),
+    fullStructuredSourceText,
+    scriptFiles.join("\n"),
+  ].join(" ").toLowerCase();
   const hasScriptSource = scriptFiles.length > 0 || sourceEvidence.some((evidence) => evidence.path?.includes("systems") === true || evidence.path?.includes("scene") === true);
   const hasInputSource =
     sourceEvidence.some((evidence) => evidence.path?.includes("/input/") === true || evidence.path?.endsWith(".input.json") === true) ||
-    includesAnyText(sourceHaystack, ["defineinputmap", "keyboard(", "gamepad(", "touchcontrol(", "pointerbutton(", " action("]);
+    includesAnyText(sourceSearchText, ["defineinputmap", "keyboard(", "gamepad(", "touchcontrol(", "pointerbutton(", " action("]);
   const hasScreenshotProof = artifactEvidence.some((evidence) => includesAny(evidence, ["screenshot", ".png", "nonblank"]));
   const hasMobileProof = artifactEvidence.some((evidence) => includesAny(evidence, ["mobile", "viewport"]));
   const hasPlaytestProof = artifactEvidence.some((evidence) => includesAny(evidence, ["playtest", "input-driven"]));
@@ -503,14 +526,63 @@ async function inspectGameProject(projectPath: string): Promise<IProjectEvidence
     hasMobileProof,
     hasMotionFeelProof,
     hasNonPrimitiveVisualSource:
-      includesAnyText(sourceHaystack, ["custom", ".glb", ".gltf", "type\":\"model", "type\":\"texture", "meshbuilder", "procedural", "asset kit", "texture"]) ||
-      hasComposedPrimitiveVisualSource(sourceHaystack),
+      includesAnyText(sourceSearchText, ["custom", ".glb", ".gltf", "type\":\"model", "type\":\"texture", "meshbuilder", "procedural", "asset kit", "texture"]) ||
+      hasComposedPrimitiveVisualSource(sourceSearchText),
     hasPlaytestProof,
     hasScreenshotProof,
     hasScriptSource,
     hasSmoothScriptSource: includesAnyText(scriptHaystack, ["fixeddelta", "movetoward", "lerp", "velocity", "moveprogress", "smooth", "ease", "interpol"]),
+    invalidAudioFiles,
+    ...(projectOutDir === undefined ? {} : { projectOutDir }),
     sourceEvidence,
+    sourceSearchText,
   };
+}
+
+async function readProjectOutDir(projectPath: string): Promise<string | undefined> {
+  try {
+    const parsed = JSON.parse(await readFile(resolve(projectPath, "threenative.config.json"), "utf8")) as unknown;
+    if (isRecord(parsed) && typeof parsed.outDir === "string" && parsed.outDir.trim() !== "") {
+      return parsed.outDir;
+    }
+  } catch {
+    // Missing or invalid config is already handled by build/doctor diagnostics.
+  }
+  return undefined;
+}
+
+function normalizeRelativePathText(path: string): string {
+  return path.replaceAll("\\", "/").replace(/^\.\/+/, "").replace(/\/+$/, "");
+}
+
+async function collectInvalidAudioFiles(projectPath: string, authoring: IAuthoringProject): Promise<string[]> {
+  const paths = new Set<string>();
+  for (const document of authoring.documents.filter((candidate) => candidate.kind === "asset")) {
+    for (const asset of readAssetRows(document.data)) {
+      const type = typeof asset.type === "string" ? asset.type.toLowerCase() : "";
+      const path = typeof asset.path === "string" ? asset.path : "";
+      if (path === "" || (type !== "audio" && !path.toLowerCase().endsWith(".wav"))) continue;
+      if (isAbsolute(path) || path.startsWith("http://") || path.startsWith("https://")) continue;
+      if (path.toLowerCase().endsWith(".wav") && !(await isValidWavFile(resolve(projectPath, path)))) {
+        paths.add(path);
+      }
+    }
+  }
+  return [...paths].sort();
+}
+
+function readAssetRows(data: unknown): Array<Record<string, unknown>> {
+  if (!isRecord(data) || !Array.isArray(data.assets)) return [];
+  return data.assets.filter(isRecord);
+}
+
+async function isValidWavFile(path: string): Promise<boolean> {
+  try {
+    const bytes = await readFile(path);
+    return bytes.length >= 44 && bytes.toString("ascii", 0, 4) === "RIFF" && bytes.toString("ascii", 8, 12) === "WAVE";
+  } catch {
+    return false;
+  }
 }
 
 async function collectArtifactEvidence(projectPath: string): Promise<IGameWorkflowEvidence[]> {
@@ -519,10 +591,13 @@ async function collectArtifactEvidence(projectPath: string): Promise<IGameWorkfl
   for (const root of roots) {
     const files = await listFiles(resolve(projectPath, root));
     for (const file of files) {
+      const relativePath = normalizeRelative(projectPath, file);
+      if (isTransientArtifactPath(relativePath)) {
+        continue;
+      }
       if (!isEvidenceFile(file)) {
         continue;
       }
-      const relativePath = normalizeRelative(projectPath, file);
       const content = await readEvidenceContent(file);
       evidence.push({
         description: evidenceDescription(relativePath, content),
@@ -534,15 +609,19 @@ async function collectArtifactEvidence(projectPath: string): Promise<IGameWorkfl
   return evidence.sort(compareEvidence);
 }
 
+function isTransientArtifactPath(relativePath: string): boolean {
+  return relativePath.split("/").some((segment) => segment.endsWith(".build-lock"));
+}
+
 async function collectTypeScriptSourceEvidence(projectPath: string): Promise<IGameWorkflowEvidence[]> {
   const files = (await listFiles(resolve(projectPath, "src"))).filter((file) => file.endsWith(".ts"));
   const evidence: IGameWorkflowEvidence[] = [];
   for (const file of files) {
     try {
       const relativePath = normalizeRelative(projectPath, file);
-      const source = (await readFile(file, "utf8")).slice(0, 20_000);
+      const source = await readFile(file, "utf8");
       evidence.push({
-        description: `typescript source ${source}`,
+        description: `typescript source ${relativePath} ${compactEvidenceText(source)}`,
         kind: "source",
         path: relativePath,
       });
@@ -551,6 +630,32 @@ async function collectTypeScriptSourceEvidence(projectPath: string): Promise<IGa
     }
   }
   return evidence;
+}
+
+function describeStructuredSource(document: IAuthoringProject["documents"][number]): string {
+  const serialized = JSON.stringify(document.data);
+  const keywords = collectWorkflowKeywords(serialized).join(" ");
+  const summary = compactEvidenceText(`${keywords} ${serialized}`);
+  return `${document.kind} structured source ${document.projectRelativePath} ${summary}`;
+}
+
+function compactEvidenceText(value: string, maxLength = 600): string {
+  const normalized = value.replace(/\s+/g, " ").trim();
+  const redacted = normalized.replace(/secret-[A-Za-z0-9_-]+/g, "secret-REDACTED");
+  if (redacted.length <= maxLength) {
+    return redacted;
+  }
+  return `${redacted.slice(0, maxLength - 3)}...`;
+}
+
+function collectWorkflowKeywords(value: string): string[] {
+  const terms = [
+    ...GAME_UI_STATE_IDS.flatMap((id) => uiStateTerms(id)),
+    ...GAME_ASSET_AUDIO_SURFACE_IDS.flatMap((id) => assetSurfaceTerms(id)),
+    ...GAME_VISUAL_SCORECARD_CATEGORY_IDS.flatMap((id) => visualCategoryTerms(id)),
+  ];
+  const lower = value.toLowerCase();
+  return [...new Set(terms.filter((term) => lower.includes(term.toLowerCase())))].sort();
 }
 
 function buildUiStateCoverage(snapshot: IProjectEvidenceSnapshot): IGameUiStateCoverage[] {
@@ -726,7 +831,7 @@ function uiStateTerms(id: GameUiStateId): readonly string[] {
 function assetSurfaceTerms(id: GameAssetAudioSurfaceId): readonly string[] {
   const terms: Record<GameAssetAudioSurfaceId, readonly string[]> = {
     "audio-feedback": ["audio", "sound", "music", ".wav", ".mp3", ".ogg"],
-    "obstacle-enemy": ["obstacle", "enemy", "hazard", "traffic", "car."],
+    "obstacle-enemy": ["obstacle", "enemy", "hazard", "threat", "shadow", "moth", "traffic", "car."],
     "player-hero": ["player", "hero", "avatar", "kart", "chicken"],
     "reward-interactable": ["reward", "collectible", "goal", "interactable"],
     "ui-hud": ["ui", "hud", "font", "icon"],
@@ -806,7 +911,7 @@ function countTermHits(haystack: string, terms: readonly string[]): number {
 }
 
 async function readScriptFiles(projectPath: string): Promise<string[]> {
-  const files = await listFiles(resolve(projectPath, "src/scripts"));
+  const files = await listFiles(resolve(projectPath, "src"));
   const sources: string[] = [];
   for (const file of files.filter((file) => file.endsWith(".ts"))) {
     try {

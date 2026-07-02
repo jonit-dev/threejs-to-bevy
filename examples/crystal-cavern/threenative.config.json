@@ -1,0 +1,62 @@
+{
+  "schema": "threenative.project",
+  "version": "0.1.0",
+  "entry": "content/scenes/arena.scene.json",
+  "outDir": "dist/crystal-cavern.bundle",
+  "production": {
+    "playableLoop": "Steer a miner cart through a glowing cave, collect four crystal shards, avoid rolling boulders, and deliver the full charge to the forge gate before the timer expires.",
+    "controls": [
+      "keyboard.KeyW",
+      "keyboard.ArrowUp",
+      "keyboard.KeyA",
+      "keyboard.ArrowLeft",
+      "keyboard.KeyS",
+      "keyboard.ArrowDown",
+      "keyboard.KeyD",
+      "keyboard.ArrowRight",
+      "keyboard.Space"
+    ],
+    "objective": "Collect all four shards and reach the forge gate while avoiding moving boulders.",
+    "progression": "Boulders move continuously, crystals bob until collected, and boulder speed increases once three shards are held.",
+    "failRetry": "A boulder hit or expired timer switches the game to failed state; Space resets cart, shards, timer, and HUD.",
+    "feedbackMoments": [
+      "HUD count increments when a shard is collected.",
+      "Cart lamp pulses while moving through the cave.",
+      "Forge status text changes when the cart is ready to deliver.",
+      "Win/fail status prompts Space retry."
+    ],
+    "assetPlan": {
+      "playerHero": "Custom low-poly mine cart assembled from primitive cart body, bin, and lamp pieces.",
+      "obstacleEnemy": "Custom procedural obstacle-enemy rolling boulder spheres with scripted wave paths.",
+      "rewardInteractable": "Custom emissive cone crystal shards.",
+      "worldEnvironment": "Custom cave floor, rail bed, walls, forge gate, stalagmites, lanterns, and crystal clusters.",
+      "uiHud": "Three text bindings for shard count, timer, and status.",
+      "audioFeedback": "Starter goal-ping asset retained for future win/collect hooks; current feedback is visual/HUD."
+    },
+    "assetSourcing": [
+      "tn asset source search --game-category racing --format glb --direct-only --json returned CC0 road/truck records, which did not match mine-cart cave style.",
+      "tn asset source search --game-category vehicle --format glb --direct-only --json returned TN_ASSET_SOURCE_NO_MATCH.",
+      "tn asset source search --game-category environment --format glb --direct-only --json returned TN_ASSET_SOURCE_NO_MATCH.",
+      "tn asset source search --game-category collectible --format glb --direct-only --json returned TN_ASSET_SOURCE_NO_MATCH.",
+      "Fallback: cohesive procedural/custom primitive mesh kit authored in content source."
+    ],
+    "scriptModules": [
+      {
+        "module": "src/scripts/player.ts",
+        "export": "crystalCavernSystem",
+        "ownsState": ["GameState", "MineCart.shards", "CrystalShard.collected", "Transform positions for cart parts, shards, and boulders"],
+        "referencedBy": ["content/scenes/arena.scene.json", "content/systems/arena.systems.json"]
+      }
+    ],
+    "proofCommands": [
+      "pnpm run validate:authoring",
+      "pnpm run build",
+      "pnpm run verify",
+      "pnpm run playtest",
+      "tn game qa --project . --run-proof --url <preview-url> --entity player --press KeyD --expect-axis x --json",
+      "tn game score --project . --json",
+      "tn game release --project . --json"
+    ]
+  },
+  "template": "structured-source-starter"
+}

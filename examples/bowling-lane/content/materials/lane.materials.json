@@ -1,0 +1,61 @@
+{
+  "schema": "threenative.materials",
+  "version": "0.1.0",
+  "id": "lane-materials",
+  "materials": [
+    {
+      "id": "mat.lane.wood",
+      "color": "#d9a45f",
+      "roughness": 0.38,
+      "metalness": 0
+    },
+    {
+      "id": "mat.lane.arrow",
+      "color": "#2c445c",
+      "roughness": 0.42
+    },
+    {
+      "id": "mat.gutter",
+      "color": "#26313a",
+      "roughness": 0.78
+    },
+    {
+      "id": "mat.rail",
+      "color": "#48555e",
+      "roughness": 0.58,
+      "metalness": 0.2
+    },
+    {
+      "id": "mat.pin.white",
+      "color": "#f7f3e8",
+      "roughness": 0.48
+    },
+    {
+      "id": "mat.pin.stripe",
+      "color": "#b21f2d",
+      "roughness": 0.52
+    },
+    {
+      "id": "mat.ball",
+      "color": "#295d8f",
+      "roughness": 0.28
+    },
+    {
+      "id": "mat.foul",
+      "color": "#d7e9f7",
+      "roughness": 0.35
+    },
+    {
+      "id": "mat.backstop",
+      "color": "#33414a",
+      "roughness": 0.7
+    },
+    {
+      "id": "mat.lamp",
+      "color": "#ffd37a",
+      "roughness": 0.24,
+      "emissive": "#ffc766",
+      "emissiveIntensity": 0.7
+    }
+  ]
+}

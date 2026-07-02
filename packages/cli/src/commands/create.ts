@@ -1,5 +1,5 @@
 import { access, chmod, cp, mkdir, readFile, readdir, writeFile } from "node:fs/promises";
-import { isAbsolute, resolve } from "node:path";
+import { isAbsolute, relative, resolve, sep } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
 import { diagnosticResult, type ICommandResult } from "../diagnostics.js";
@@ -20,6 +20,7 @@ const { packaged: packagedTemplatesRoot, source: sourceTemplatesRoot } = templat
 const repoRoot = resolve(sourceTemplatesRoot, "..");
 const cliBin = resolve(repoRoot, "packages/cli/dist/index.js");
 const publishedPackageVersion = "0.1.0";
+const generatedTemplateEntryNames = new Set(["dist", "node_modules", "artifacts"]);
 
 export async function createProject(argv: readonly string[], options: ICreateOptions = {}): Promise<ICommandResult> {
   const commandName = options.commandName ?? "create";
@@ -82,7 +83,7 @@ export async function createProject(argv: readonly string[], options: ICreateOpt
   const templateSourcePath = resolveTemplateSourcePath(templatesRoot, definition);
 
   await mkdir(projectPath, { recursive: true });
-  await cp(templateSourcePath, projectPath, { recursive: true, force: false });
+  await copyTemplateFiles(templateSourcePath, projectPath);
   await rewriteProjectTemplateMetadata(projectPath, definition.canonical);
 
   if (sourceCheckout) {
@@ -118,6 +119,23 @@ export async function createProject(argv: readonly string[], options: ICreateOpt
     exitCode: 0,
     stdout: `${payload.message}\nNext commands:\n  cd ${projectPath}\n  pnpm install\n  pnpm run validate\n  pnpm run build\n  pnpm run dev:web\n  pnpm run verify\nDocs: tn help scaffold, tn help visual-qa\n`,
   };
+}
+
+async function copyTemplateFiles(templateSourcePath: string, projectPath: string): Promise<void> {
+  await cp(templateSourcePath, projectPath, {
+    recursive: true,
+    force: false,
+    filter: (sourcePath) => shouldCopyTemplatePath(templateSourcePath, sourcePath),
+  });
+}
+
+function shouldCopyTemplatePath(templateSourcePath: string, sourcePath: string): boolean {
+  const relativePath = relative(templateSourcePath, sourcePath);
+  if (relativePath === "") {
+    return true;
+  }
+
+  return !relativePath.split(sep).some((part) => generatedTemplateEntryNames.has(part));
 }
 
 export async function initProject(argv: readonly string[], options: Omit<ICreateOptions, "commandName"> = {}): Promise<ICommandResult> {

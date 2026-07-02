@@ -1,0 +1,958 @@
+{
+  "schema": "threenative.scene",
+  "version": "0.1.0",
+  "id": "arena",
+  "kind": "level",
+  "entities": [
+    {
+      "id": "visual.provenance",
+      "prefab": "prefab.sign",
+      "transform": {
+        "position": [
+          -4.8,
+          0.65,
+          4.25
+        ],
+        "scale": [
+          1.25,
+          0.55,
+          0.08
+        ]
+      },
+      "components": {
+        "VisualProvenance": {
+          "status": "procedural custom authored mesh kit",
+          "style": "cohesive low-poly moonlit river rescue",
+          "notes": "SQLite catalog searches for vehicle, environment, collectible, and arcade direct GLB records returned TN_ASSET_SOURCE_NO_MATCH; custom skiff, flares, obstacle hazard logs, dock, riverbanks, reeds, rocks, buoys, and lights are authored as a coherent fallback."
+        }
+      }
+    },
+    {
+      "id": "camera.main",
+      "transform": {
+        "position": [
+          0,
+          7.6,
+          8.4
+        ],
+        "rotation": [
+          -0.78,
+          0,
+          0
+        ]
+      },
+      "components": {
+        "camera": {
+          "mode": "perspective",
+          "fovY": 50,
+          "near": 0.05,
+          "far": 90
+        }
+      }
+    },
+    {
+      "id": "light.moon",
+      "transform": {
+        "position": [
+          -3.8,
+          9,
+          4.6
+        ]
+      },
+      "components": {
+        "Light": {
+          "kind": "directional",
+          "color": "#d8e8ff",
+          "intensity": 2.35
+        }
+      }
+    },
+    {
+      "id": "light.harbor",
+      "components": {
+        "Light": {
+          "kind": "ambient",
+          "color": "#8fb5c8",
+          "intensity": 0.46
+        }
+      }
+    },
+    {
+      "id": "river.water",
+      "prefab": "prefab.water",
+      "transform": {
+        "position": [
+          0,
+          -0.07,
+          0
+        ],
+        "rotation": [
+          -1.570796,
+          0,
+          0
+        ],
+        "scale": [
+          6.5,
+          10,
+          1
+        ]
+      }
+    },
+    {
+      "id": "bank.west",
+      "prefab": "prefab.bank",
+      "transform": {
+        "position": [
+          -4.7,
+          -0.04,
+          0
+        ],
+        "rotation": [
+          -1.570796,
+          0,
+          0
+        ],
+        "scale": [
+          2.3,
+          10,
+          1
+        ]
+      }
+    },
+    {
+      "id": "bank.east",
+      "prefab": "prefab.bank",
+      "transform": {
+        "position": [
+          4.7,
+          -0.04,
+          0
+        ],
+        "rotation": [
+          -1.570796,
+          0,
+          0
+        ],
+        "scale": [
+          2.3,
+          10,
+          1
+        ]
+      }
+    },
+    {
+      "id": "river.edge.foam.west",
+      "prefab": "prefab.foam-line",
+      "transform": {
+        "position": [
+          -3.34,
+          0.005,
+          0
+        ],
+        "scale": [
+          0.08,
+          0.04,
+          9.65
+        ]
+      }
+    },
+    {
+      "id": "river.edge.foam.east",
+      "prefab": "prefab.foam-line",
+      "transform": {
+        "position": [
+          3.34,
+          0.005,
+          0
+        ],
+        "scale": [
+          0.08,
+          0.04,
+          9.65
+        ]
+      }
+    },
+    {
+      "id": "river.current.01",
+      "prefab": "prefab.current-line",
+      "transform": {
+        "position": [
+          -1.35,
+          -0.015,
+          2.65
+        ],
+        "rotation": [
+          -1.570796,
+          0,
+          -0.18
+        ],
+        "scale": [
+          1.35,
+          0.05,
+          1
+        ]
+      }
+    },
+    {
+      "id": "river.current.02",
+      "prefab": "prefab.current-line",
+      "transform": {
+        "position": [
+          1.3,
+          -0.015,
+          1.1
+        ],
+        "rotation": [
+          -1.570796,
+          0,
+          0.2
+        ],
+        "scale": [
+          1.45,
+          0.05,
+          1
+        ]
+      }
+    },
+    {
+      "id": "river.current.03",
+      "prefab": "prefab.current-line",
+      "transform": {
+        "position": [
+          -1.25,
+          -0.015,
+          -1.25
+        ],
+        "rotation": [
+          -1.570796,
+          0,
+          0.18
+        ],
+        "scale": [
+          1.45,
+          0.05,
+          1
+        ]
+      }
+    },
+    {
+      "id": "river.current.04",
+      "prefab": "prefab.current-line",
+      "transform": {
+        "position": [
+          1.2,
+          -0.015,
+          -3.15
+        ],
+        "rotation": [
+          -1.570796,
+          0,
+          -0.22
+        ],
+        "scale": [
+          1.28,
+          0.05,
+          1
+        ]
+      }
+    },
+    {
+      "id": "dock.home",
+      "prefab": "prefab.dock",
+      "transform": {
+        "position": [
+          0,
+          0.1,
+          4.25
+        ],
+        "scale": [
+          1.8,
+          0.18,
+          0.72
+        ]
+      },
+      "components": {
+        "DockZone": {
+          "radius": 0.95
+        }
+      }
+    },
+    {
+      "id": "dock.lamp.left",
+      "prefab": "prefab.beacon",
+      "transform": {
+        "position": [
+          -1.15,
+          0.52,
+          4.2
+        ],
+        "scale": [
+          0.16,
+          0.78,
+          0.16
+        ]
+      }
+    },
+    {
+      "id": "dock.lamp.right",
+      "prefab": "prefab.beacon",
+      "transform": {
+        "position": [
+          1.15,
+          0.52,
+          4.2
+        ],
+        "scale": [
+          0.16,
+          0.78,
+          0.16
+        ]
+      }
+    },
+    {
+      "id": "player",
+      "prefab": "prefab.skiff",
+      "transform": {
+        "position": [
+          0,
+          0.18,
+          3.55
+        ],
+        "scale": [
+          0.72,
+          0.22,
+          1.0
+        ]
+      },
+      "components": {
+        "RescueSkiff": {
+          "speed": 3.25,
+          "flares": 0
+        }
+      }
+    },
+    {
+      "id": "player.cabin",
+      "prefab": "prefab.cabin",
+      "transform": {
+        "position": [
+          0,
+          0.42,
+          3.45
+        ],
+        "scale": [
+          0.34,
+          0.38,
+          0.42
+        ]
+      },
+      "components": {
+        "SkiffPart": {
+          "target": "player",
+          "offset": [
+            0,
+            0.24,
+            -0.1
+          ]
+        }
+      }
+    },
+    {
+      "id": "player.light",
+      "prefab": "prefab.skiff-light",
+      "transform": {
+        "position": [
+          0,
+          0.5,
+          2.95
+        ],
+        "scale": [
+          0.22,
+          0.12,
+          0.22
+        ]
+      },
+      "components": {
+        "SkiffPart": {
+          "target": "player",
+          "offset": [
+            0,
+            0.32,
+            -0.6
+          ]
+        }
+      }
+    },
+    {
+      "id": "flare.01",
+      "prefab": "prefab.flare",
+      "transform": {
+        "position": [
+          -2.25,
+          0.32,
+          1.8
+        ],
+        "scale": [
+          0.32,
+          0.32,
+          0.32
+        ]
+      },
+      "components": {
+        "SignalFlare": {
+          "collected": false,
+          "phase": 0
+        }
+      }
+    },
+    {
+      "id": "flare.01.halo",
+      "prefab": "prefab.flare-halo",
+      "transform": {
+        "position": [
+          -2.25,
+          0.035,
+          1.8
+        ],
+        "scale": [
+          0.72,
+          0.035,
+          0.72
+        ]
+      }
+    },
+    {
+      "id": "flare.02",
+      "prefab": "prefab.flare",
+      "transform": {
+        "position": [
+          2.15,
+          0.32,
+          -0.45
+        ],
+        "scale": [
+          0.32,
+          0.32,
+          0.32
+        ]
+      },
+      "components": {
+        "SignalFlare": {
+          "collected": false,
+          "phase": 1.4
+        }
+      }
+    },
+    {
+      "id": "flare.02.halo",
+      "prefab": "prefab.flare-halo",
+      "transform": {
+        "position": [
+          2.15,
+          0.035,
+          -0.45
+        ],
+        "scale": [
+          0.72,
+          0.035,
+          0.72
+        ]
+      }
+    },
+    {
+      "id": "flare.03",
+      "prefab": "prefab.flare",
+      "transform": {
+        "position": [
+          -1.2,
+          0.32,
+          -3.1
+        ],
+        "scale": [
+          0.32,
+          0.32,
+          0.32
+        ]
+      },
+      "components": {
+        "SignalFlare": {
+          "collected": false,
+          "phase": 2.8
+        }
+      }
+    },
+    {
+      "id": "flare.03.halo",
+      "prefab": "prefab.flare-halo",
+      "transform": {
+        "position": [
+          -1.2,
+          0.035,
+          -3.1
+        ],
+        "scale": [
+          0.72,
+          0.035,
+          0.72
+        ]
+      }
+    },
+    {
+      "id": "log.01.wake",
+      "prefab": "prefab.log-wake",
+      "transform": {
+        "position": [
+          -1.7,
+          0.025,
+          0.75
+        ],
+        "rotation": [
+          0,
+          0.45,
+          0
+        ],
+        "scale": [
+          1.58,
+          0.035,
+          0.48
+        ]
+      }
+    },
+    {
+      "id": "log.01",
+      "prefab": "prefab.log",
+      "transform": {
+        "position": [
+          -1.7,
+          0.13,
+          0.75
+        ],
+        "rotation": [
+          0,
+          0.45,
+          0
+        ],
+        "scale": [
+          1.2,
+          0.2,
+          0.32
+        ]
+      },
+      "components": {
+        "DriftLog": {
+          "origin": [
+            -1.7,
+            0.13,
+            0.75
+          ],
+          "axis": "x",
+          "radius": 1.2,
+          "phase": 0
+        }
+      }
+    },
+    {
+      "id": "log.02.wake",
+      "prefab": "prefab.log-wake",
+      "transform": {
+        "position": [
+          1.5,
+          0.025,
+          -1.55
+        ],
+        "rotation": [
+          0,
+          -0.35,
+          0
+        ],
+        "scale": [
+          1.65,
+          0.035,
+          0.48
+        ]
+      }
+    },
+    {
+      "id": "log.02",
+      "prefab": "prefab.log",
+      "transform": {
+        "position": [
+          1.5,
+          0.13,
+          -1.55
+        ],
+        "rotation": [
+          0,
+          -0.35,
+          0
+        ],
+        "scale": [
+          1.3,
+          0.2,
+          0.32
+        ]
+      },
+      "components": {
+        "DriftLog": {
+          "origin": [
+            1.5,
+            0.13,
+            -1.55
+          ],
+          "axis": "x",
+          "radius": 1.45,
+          "phase": 1.9
+        }
+      }
+    },
+    {
+      "id": "log.03.wake",
+      "prefab": "prefab.log-wake",
+      "transform": {
+        "position": [
+          0.2,
+          0.025,
+          -3.35
+        ],
+        "rotation": [
+          0,
+          0.15,
+          0
+        ],
+        "scale": [
+          1.82,
+          0.035,
+          0.48
+        ]
+      }
+    },
+    {
+      "id": "log.03",
+      "prefab": "prefab.log",
+      "transform": {
+        "position": [
+          0.2,
+          0.13,
+          -3.35
+        ],
+        "rotation": [
+          0,
+          0.15,
+          0
+        ],
+        "scale": [
+          1.45,
+          0.2,
+          0.32
+        ]
+      },
+      "components": {
+        "DriftLog": {
+          "origin": [
+            0.2,
+            0.13,
+            -3.35
+          ],
+          "axis": "z",
+          "radius": 0.7,
+          "phase": 3.1
+        }
+      }
+    },
+    {
+      "id": "reeds.west.01",
+      "prefab": "prefab.reeds",
+      "transform": {
+        "position": [
+          -3.25,
+          0.35,
+          2.2
+        ],
+        "scale": [
+          0.36,
+          0.95,
+          0.36
+        ]
+      }
+    },
+    {
+      "id": "reeds.west.02",
+      "prefab": "prefab.reeds",
+      "transform": {
+        "position": [
+          -3.2,
+          0.35,
+          -2.35
+        ],
+        "scale": [
+          0.42,
+          1.05,
+          0.42
+        ]
+      }
+    },
+    {
+      "id": "reeds.east.01",
+      "prefab": "prefab.reeds",
+      "transform": {
+        "position": [
+          3.25,
+          0.35,
+          1.1
+        ],
+        "scale": [
+          0.4,
+          1.0,
+          0.4
+        ]
+      }
+    },
+    {
+      "id": "reeds.east.02",
+      "prefab": "prefab.reeds",
+      "transform": {
+        "position": [
+          3.3,
+          0.35,
+          -3.2
+        ],
+        "scale": [
+          0.38,
+          1.0,
+          0.38
+        ]
+      }
+    },
+    {
+      "id": "buoy.north",
+      "prefab": "prefab.buoy",
+      "transform": {
+        "position": [
+          2.85,
+          0.26,
+          3.35
+        ],
+        "scale": [
+          0.24,
+          0.42,
+          0.24
+        ]
+      }
+    },
+    {
+      "id": "buoy.south",
+      "prefab": "prefab.buoy",
+      "transform": {
+        "position": [
+          -2.85,
+          0.26,
+          -4.05
+        ],
+        "scale": [
+          0.24,
+          0.42,
+          0.24
+        ]
+      }
+    },
+    {
+      "id": "rock.west",
+      "prefab": "prefab.rock",
+      "transform": {
+        "position": [
+          -3.65,
+          0.1,
+          -0.8
+        ],
+        "scale": [
+          0.62,
+          0.28,
+          0.42
+        ]
+      }
+    },
+    {
+      "id": "rock.east",
+      "prefab": "prefab.rock",
+      "transform": {
+        "position": [
+          3.65,
+          0.1,
+          2.75
+        ],
+        "scale": [
+          0.56,
+          0.26,
+          0.4
+        ]
+      }
+    }
+  ],
+  "prefabs": [
+    {
+      "id": "prefab.sign",
+      "primitive": "box",
+      "color": "#d1a25f"
+    },
+    {
+      "id": "prefab.water",
+      "primitive": "plane",
+      "color": "#1b5d74"
+    },
+    {
+      "id": "prefab.foam-line",
+      "primitive": "box",
+      "color": "#b5eef0"
+    },
+    {
+      "id": "prefab.current-line",
+      "primitive": "plane",
+      "color": "#2d7f96"
+    },
+    {
+      "id": "prefab.bank",
+      "primitive": "plane",
+      "color": "#2f5b3b"
+    },
+    {
+      "id": "prefab.dock",
+      "primitive": "box",
+      "color": "#8b6543"
+    },
+    {
+      "id": "prefab.beacon",
+      "primitive": "cylinder",
+      "color": "#ffcf72"
+    },
+    {
+      "id": "prefab.skiff",
+      "primitive": "box",
+      "color": "#f0b461"
+    },
+    {
+      "id": "prefab.cabin",
+      "primitive": "box",
+      "color": "#8bd3ff"
+    },
+    {
+      "id": "prefab.skiff-light",
+      "primitive": "sphere",
+      "color": "#fff1a8"
+    },
+    {
+      "id": "prefab.flare",
+      "primitive": "sphere",
+      "color": "#ff5f4a"
+    },
+    {
+      "id": "prefab.flare-halo",
+      "primitive": "cylinder",
+      "color": "#ffb15a"
+    },
+    {
+      "id": "prefab.log-wake",
+      "primitive": "cylinder",
+      "color": "#7fc0c8"
+    },
+    {
+      "id": "prefab.log",
+      "primitive": "cylinder",
+      "color": "#6e482d"
+    },
+    {
+      "id": "prefab.reeds",
+      "primitive": "cone",
+      "color": "#78a85d"
+    },
+    {
+      "id": "prefab.buoy",
+      "primitive": "cylinder",
+      "color": "#f15d4d"
+    },
+    {
+      "id": "prefab.rock",
+      "primitive": "sphere",
+      "color": "#7d8793"
+    }
+  ],
+  "resources": [
+    {
+      "id": "GameState",
+      "value": {
+        "phase": "playing",
+        "flares": 0,
+        "timer": 50,
+        "countdown": "Flares 0/3",
+        "timerText": "Time 50",
+        "status": "Collect 3 flares, then return to the dock"
+      }
+    }
+  ],
+  "systems": [
+    {
+      "id": "river-rescue-system",
+      "schedule": "fixedUpdate",
+      "resourceReads": [
+        "GameState"
+      ],
+      "resourceWrites": [
+        "GameState"
+      ],
+      "script": {
+        "module": "src/scripts/player.ts",
+        "export": "riverRescueSystem"
+      }
+    }
+  ],
+  "ui": {
+    "nodes": [
+      {
+        "id": "countdown",
+        "type": "text",
+        "text": "Flares 0/3",
+        "layout": {
+          "justify": "center",
+          "align": "center",
+          "top": 32,
+          "width": 1280
+        }
+      },
+      {
+        "id": "timer",
+        "type": "text",
+        "text": "Time 50",
+        "layout": {
+          "justify": "flex-start",
+          "align": "center",
+          "top": 32,
+          "width": 420
+        }
+      },
+      {
+        "id": "status",
+        "type": "text",
+        "text": "Collect 3 flares, then return to the dock",
+        "layout": {
+          "justify": "center",
+          "align": "center",
+          "top": 92,
+          "width": 1280
+        }
+      }
+    ],
+    "bindings": [
+      {
+        "node": "countdown",
+        "resource": "GameState.countdown"
+      },
+      {
+        "node": "timer",
+        "resource": "GameState.timerText"
+      },
+      {
+        "node": "status",
+        "resource": "GameState.status"
+      }
+    ]
+  }
+}

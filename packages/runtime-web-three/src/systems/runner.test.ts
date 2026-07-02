@@ -135,6 +135,27 @@ test("should reject transform facade writes without declared Transform access", 
   assert.deepEqual(world.entities[0]?.components.Transform, { position: [0, 0, 0] });
 });
 
+test("should emit complete Transform from transform facade position writes", async () => {
+  const world = makeWorld();
+  const systems = makeSystems("update", "movePlayer");
+
+  const result = await runSchedule({
+    module: {
+      systems: {
+        movePlayer(context: any) {
+          context.entity("player")?.transform().setPosition([1, 0, 0]);
+        },
+      },
+    },
+    schedule: "update",
+    systems,
+    world,
+  });
+
+  assert.deepEqual(result.diagnostics, []);
+  assert.deepEqual(world.entities[0]?.components.Transform, { position: [1, 0, 0], rotation: [0, 0, 0, 1], scale: [1, 1, 1] });
+});
+
 test("should run systems apply despawn command after schedule", async () => {
   const world = makeWorld();
   const systems = makeSystems("update", "removePlayer");

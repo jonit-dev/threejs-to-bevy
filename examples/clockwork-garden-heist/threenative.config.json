@@ -1,0 +1,42 @@
+{
+  "schema": "threenative.project",
+  "version": "0.1.0",
+  "entry": "content/scenes/arena.scene.json",
+  "outDir": "dist/clockwork-garden-heist.bundle",
+  "production": {
+    "playableLoop": "Move the brass automaton through the hedge garden, collect three gems and the key, avoid patrolling sentry lamps, unlock the gate, and reach the exit.",
+    "controls": [
+      "keyboard.KeyA",
+      "keyboard.ArrowLeft",
+      "keyboard.KeyD",
+      "keyboard.ArrowRight",
+      "keyboard.KeyW",
+      "keyboard.ArrowUp",
+      "keyboard.KeyS",
+      "keyboard.ArrowDown",
+      "keyboard.Space"
+    ],
+    "objective": "Collect Gems 3/3 plus Key 1/1, then cross the moon gate before the timer reaches zero.",
+    "failRetry": "Touching a sentry lamp or timing out enters a failed state; Space resets the game state and all collectibles.",
+    "proofCommands": [
+      "tn playtest --project . --entity player --press KeyD --expect-axis x --json",
+      "tn screenshot --project . --url <preview-url> --out artifacts/game-production/screenshot.png --wait-ready --json",
+      "tn game qa --project . --run-proof --json",
+      "tn game score --project . --json",
+      "tn game release --project . --json"
+    ],
+    "assetProvenance": {
+      "catalogSearches": [
+        "tn asset source search --game-category character --format glb --direct-only --json -> TN_ASSET_SOURCE_NO_MATCH",
+        "tn asset source search --game-category environment --format glb --direct-only --json -> TN_ASSET_SOURCE_NO_MATCH",
+        "tn asset source search --game-category collectible --format glb --direct-only --json -> TN_ASSET_SOURCE_NO_MATCH",
+        "tn asset source search --game-category arcade --format glb --direct-only --json -> TN_ASSET_SOURCE_NO_MATCH",
+        "tn asset source search --game-category puzzle --format glb --direct-only --json -> no direct records; fallback pack page workflow-genre-specific-pack-shortlist-chilly-durango-3d-retro-plumbing-wiring-machinery",
+        "tn asset source search --game-category fantasy --format glb --direct-only --json -> TN_ASSET_SOURCE_NO_MATCH",
+        "tn asset source search --game-category nature --format glb --direct-only --json -> TN_ASSET_SOURCE_NO_MATCH"
+      ],
+      "fallback": "Direct catalog did not provide a cohesive runtime-ready clockwork garden kit. The player, sentries, gems, key, gate, hedges, paths, moon dial, and UI are authored as a cohesive procedural mesh kit."
+    }
+  },
+  "template": "structured-source-starter"
+}

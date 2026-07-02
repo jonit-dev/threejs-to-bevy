@@ -17,6 +17,12 @@ Rules for Racing Kit Rally starter projects.
   imports from portable gameplay scripts.
 - Do not edit generated `dist/` output.
 - Prefer `tn ... --json` commands for scene, asset, and proof mutations.
+- Before changing the racing slice substantially, run `pnpm run game:plan` and
+  keep `artifacts/game-production/plan.json` with the work. Use
+  `pnpm run game:improve` only for bounded recipe steps from that complete
+  plan.
+- Keep `threenative.config.json` production metadata current: playable loop,
+  canonical controls, checkpoint objective, retry path, and proof commands.
 - Keep generated games visually polished and responsive by default. A finished
   racing slice should read as a dressed track, not a blockout: use coherent
   car/track assets or authored meshes, finished materials, road surface detail,
@@ -25,3 +31,15 @@ Rules for Racing Kit Rally starter projects.
   boxes, empty horizons, and one-frame player movement snaps. Verify build,
   nonblank screenshot, visible motion, and input playtest before calling the
   game done.
+
+## Verify
+
+```bash
+pnpm run validate:authoring
+pnpm run build
+pnpm run playtest
+pnpm run game:score
+pnpm run game:qa
+pnpm run game:release
+pnpm run verify
+```

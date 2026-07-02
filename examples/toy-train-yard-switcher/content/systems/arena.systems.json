@@ -1,0 +1,19 @@
+{
+  "schema": "threenative.systems",
+  "version": "0.1.0",
+  "id": "arena-systems",
+  "systems": [
+    {
+      "id": "toy-train-yard-switcher",
+      "schedule": "fixedUpdate",
+      "reads": ["Transform", "ToyTrain", "CargoCrate", "SwitchDepot", "GateHazard", "TrainFollower"],
+      "writes": ["Transform", "ToyTrain", "CargoCrate", "SwitchDepot"],
+      "resourceReads": ["GameState"],
+      "resourceWrites": ["GameState"],
+      "script": {
+        "module": "src/scripts/player.ts",
+        "export": "toyTrainYardSwitcherSystem"
+      }
+    }
+  ]
+}

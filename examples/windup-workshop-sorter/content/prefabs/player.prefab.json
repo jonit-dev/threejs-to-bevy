@@ -1,0 +1,14 @@
+{
+  "schema": "threenative.prefab",
+  "version": "0.1.0",
+  "id": "prefab.player",
+  "entities": [
+    {
+      "id": "player",
+      "transform": { "position": [0, 0.36, 3.42], "scale": [0.42, 0.24, 0.34] },
+      "components": {
+        "MouseCourier": { "speed": 3.05, "gears": 0, "bays": 0 }
+      }
+    }
+  ]
+}

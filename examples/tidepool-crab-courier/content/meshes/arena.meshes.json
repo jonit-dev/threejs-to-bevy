@@ -1,0 +1,11 @@
+{
+  "schema": "threenative.meshes",
+  "version": "0.1.0",
+  "id": "arena-meshes",
+  "meshes": [
+    { "id": "mesh.crab.body", "kind": "primitive", "primitive": "sphere", "size": [0.36] },
+    { "id": "mesh.crab.claw", "kind": "primitive", "primitive": "sphere", "size": [0.18] },
+    { "id": "mesh.shell.token", "kind": "primitive", "primitive": "sphere", "size": [0.16] },
+    { "id": "mesh.beacon.shell", "kind": "primitive", "primitive": "torus", "size": [0.14, 0.36] }
+  ]
+}

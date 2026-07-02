@@ -3,5 +3,20 @@
   "version": "0.1.0",
   "entry": "content/scenes/rally.scene.json",
   "outDir": "dist/racing-kit-rally.bundle",
+  "production": {
+    "playableLoop": "Accelerate through the dressed rally track, steer around barriers, reach checkpoints, and recover from off-track drift.",
+    "controls": ["keyboard.KeyW", "keyboard.KeyA", "keyboard.KeyS", "keyboard.KeyD", "keyboard.ArrowUp", "keyboard.ArrowLeft", "keyboard.ArrowDown", "keyboard.ArrowRight"],
+    "objective": "Drive the player car through checkpoint gates while the rival car and track dressing communicate race progress.",
+    "failRetry": "Use the authored reset behavior when the player leaves the road or reload the preview for a clean retry.",
+    "proofCommands": [
+      "tn authoring validate --project . --json",
+      "tn build --project . --json",
+      "tn playtest --project . --entity player.car --press KeyW --frames 60 --expect-moved --json",
+      "tn screenshot --project . --url <preview-url> --out artifacts/game-production/screenshot.png --wait-ready --json",
+      "tn game score --project . --json",
+      "tn game qa --project . --run-proof --json",
+      "tn game release --project . --json"
+    ]
+  },
   "template": "racing-kit-rally-starter"
 }

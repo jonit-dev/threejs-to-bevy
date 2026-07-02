@@ -178,6 +178,136 @@ test("scene-command inspect returns source metadata for agents", async () => {
   }
 });
 
+test("scene-command inspect reports compact instance and repeated-block evidence", async () => {
+  const root = await createSceneProject();
+
+  try {
+    const scenePath = join(root, "content", "scenes", "arena.scene.json");
+    await writeFile(
+      scenePath,
+      `${JSON.stringify({
+        schema: "threenative.scene",
+        version: "0.1.0",
+        id: "scene.arena",
+        prefabs: [{ id: "pin.visual", primitive: "capsule" }],
+        entities: [
+          { id: "pin.verbose.01", components: { Collider: { kind: "capsule" }, Pin: { home: [0, 0, 0] }, RigidBody: { kind: "dynamic" } } },
+          { id: "pin.verbose.02", components: { Collider: { kind: "capsule" }, Pin: { home: [1, 0, 0] }, RigidBody: { kind: "dynamic" } } },
+          { id: "pin.verbose.03", components: { Collider: { kind: "capsule" }, Pin: { home: [2, 0, 0] }, RigidBody: { kind: "dynamic" } } },
+        ],
+        instances: [
+          { id: "pin.01", prefab: "pin.visual", transform: { position: [0, 0, 0] } },
+          { id: "pin.02", prefab: "pin.visual", transform: { position: [1, 0, 0] } },
+        ],
+      }, null, 2)}\n`,
+    );
+
+    const result = await sceneCommand(["inspect", "scene.arena", "--project", root, "--json"]);
+    const payload = JSON.parse(result.stdout) as {
+      scene: {
+        expandedEntityCount: number;
+        instances: string[];
+        repeatedBlocks: Array<{ componentKinds: string[]; count: number; entityIds: string[] }>;
+        sourceLineCount: number;
+        suggestedRefactors: Array<{ kind: string }>;
+      };
+    };
+
+    assert.equal(result.exitCode, 0);
+    assert.equal(payload.scene.expandedEntityCount, 5);
+    assert.deepEqual(payload.scene.instances, ["pin.01", "pin.02"]);
+    assert.equal(payload.scene.repeatedBlocks[0]?.count, 3);
+    assert.deepEqual(payload.scene.repeatedBlocks[0]?.componentKinds, ["Collider", "Pin", "RigidBody"]);
+    assert.equal(payload.scene.suggestedRefactors[0]?.kind, "compact-prefab-instances");
+    assert.ok(payload.scene.sourceLineCount > 0);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("scene-command validate rejects compact instances with duplicate expanded ids", async () => {
+  const root = await createSceneProject();
+
+  try {
+    await writeFile(
+      join(root, "content", "scenes", "arena.scene.json"),
+      `${JSON.stringify({
+        schema: "threenative.scene",
+        version: "0.1.0",
+        id: "scene.arena",
+        prefabs: [{ id: "pin.visual", primitive: "capsule" }],
+        entities: [{ id: "pin.01" }],
+        instances: [{ id: "pin.01", prefab: "pin.visual", transform: { position: [0, 0, 0] } }],
+      }, null, 2)}\n`,
+    );
+
+    const result = await sceneCommand(["validate", "scene.arena", "--project", root, "--json"]);
+    const payload = JSON.parse(result.stdout) as { diagnostics: Array<{ code: string; path: string }> };
+
+    assert.equal(result.exitCode, 1);
+    assert.equal(payload.diagnostics[0]?.code, "TN_AUTHORING_DUPLICATE_ENTITY_ID");
+    assert.equal(payload.diagnostics[0]?.path, "/instances/0/id");
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("scene-command creates compact prefab instances without raw JSON editing", async () => {
+  const root = await createSceneProject();
+
+  try {
+    const result = await sceneCommand([
+      "add-prefab-instance",
+      "scene.arena",
+      "pin.01",
+      "--prefab",
+      "kart",
+      "--position",
+      "0,0.6,0",
+      "--components",
+      JSON.stringify({ Pin: { home: [0, 0.6, 0] } }),
+      "--project",
+      root,
+      "--json",
+    ]);
+    const scene = JSON.parse(await readFile(join(root, "content", "scenes", "arena.scene.json"), "utf8")) as {
+      instances: Array<{ components?: Record<string, unknown>; id: string; prefab: string; transform?: { position?: number[] } }>;
+    };
+
+    assert.equal(result.exitCode, 0);
+    assert.deepEqual(scene.instances, [
+      { components: { Pin: { home: [0, 0.6, 0] } }, id: "pin.01", prefab: "kart", transform: { position: [0, 0.6, 0] } },
+    ]);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("scene-command creates ten stable prefab instances for a bowling rack", async () => {
+  const root = await createSceneProject();
+
+  try {
+    const create = await sceneCommand(["layout", "ten-pin", "scene.arena", "--prefab", "kart", "--project", root, "--json"]);
+    const duplicate = await sceneCommand(["layout", "ten-pin", "scene.arena", "--prefab", "kart", "--project", root, "--json"]);
+    const replace = await sceneCommand(["layout", "ten-pin", "scene.arena", "--prefab", "kart", "--origin", "1,0.6,2", "--replace", "--project", root, "--json"]);
+    const scene = JSON.parse(await readFile(join(root, "content", "scenes", "arena.scene.json"), "utf8")) as {
+      instances: Array<{ components?: Record<string, unknown>; id: string; prefab: string; transform?: { position?: number[] } }>;
+    };
+
+    assert.equal(create.exitCode, 0);
+    assert.equal(duplicate.exitCode, 1);
+    assert.equal((JSON.parse(duplicate.stdout) as { diagnostics: Array<{ code: string }> }).diagnostics[0]?.code, "TN_AUTHORING_LAYOUT_EXISTS");
+    assert.equal(replace.exitCode, 0);
+    assert.deepEqual(scene.instances.map((instance) => instance.id), ["pin.01", "pin.02", "pin.03", "pin.04", "pin.05", "pin.06", "pin.07", "pin.08", "pin.09", "pin.10"]);
+    assert.equal(scene.instances.every((instance) => instance.prefab === "kart"), true);
+    assert.deepEqual(scene.instances[0]?.transform?.position, [1, 0.6, 2]);
+    assert.equal(scene.instances.some((instance) => instance.components !== undefined), false);
+    assert.deepEqual(scene.instances[9]?.transform?.position, [1.78, 0.6, 0.44]);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
 test("scene-command inspect requires a scene id", async () => {
   const result = await sceneCommand(["inspect", "--json"], { cwd: "/" });
   const payload = JSON.parse(result.stdout) as { code: string; severity: string };
@@ -613,7 +743,7 @@ test("scene-command can create prefabs resources and ui nodes without hand-editi
     const resourceValue = await sceneCommand(["set-resource", "scene.gap", "hud.score", "--value", "{\"value\":10,\"label\":\"READY\"}", "--project", root, "--json"]);
     const uiNode = await sceneCommand(["add-ui-node", "scene.gap", "score-label", "--project", root, "--json"]);
     const recolor = await sceneCommand(["set-prefab-color", "scene.gap", "kart", "--color", "#00aaff", "--project", root, "--json"]);
-    const setPrefab = await sceneCommand(["set-prefab", "scene.gap", "kart", "--primitive", "sphere", "--color", "#00ffaa", "--asset", "assets/models/kart.glb", "--project", root, "--json"]);
+    const setPrefab = await sceneCommand(["set-prefab", "scene.gap", "kart", "--primitive", "torus", "--color", "#00ffaa", "--asset", "assets/models/kart.glb", "--project", root, "--json"]);
     const entity = await sceneCommand(["add-entity", "scene.gap", "player-kart", "--prefab", "kart", "--project", root, "--json"]);
     const component = await sceneCommand(["set-component", "scene.gap", "player-kart", "VehiclePhysics", "--value", "{\"speed\":42,\"boost\":0.5}", "--project", root, "--json"]);
     const binding = await sceneCommand(["bind-ui", "scene.gap", "score-label", "--resource", "hud.score", "--project", root, "--json"]);
@@ -636,7 +766,7 @@ test("scene-command can create prefabs resources and ui nodes without hand-editi
     assert.equal(component.exitCode, 0);
     assert.equal(binding.exitCode, 0);
     assert.equal(validate.exitCode, 0);
-    assert.deepEqual(scene.prefabs, [{ asset: "assets/models/kart.glb", color: "#00ffaa", id: "kart", primitive: "sphere" }]);
+    assert.deepEqual(scene.prefabs, [{ asset: "assets/models/kart.glb", color: "#00ffaa", id: "kart", primitive: "torus" }]);
     assert.deepEqual(scene.resources, [{ id: "hud.score", path: "hud.score.value", value: { label: "READY", value: 10 } }]);
     assert.deepEqual(scene.ui.nodes, [{ id: "score-label" }]);
     assert.deepEqual(scene.ui.bindings, [{ node: "score-label", resource: "hud.score" }]);

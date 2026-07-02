@@ -1,0 +1,15 @@
+{
+  "schema": "threenative.prefab",
+  "version": "0.1.0",
+  "id": "prefab.player",
+  "entities": [
+    {
+      "id": "player",
+      "transform": { "position": [0, 0.34, 4.15], "scale": [0.78, 0.28, 1.04] },
+      "components": {
+        "MailShip": { "speed": 3.25, "rings": 0, "cargo": 0 }
+      }
+    }
+  ]
+}
+

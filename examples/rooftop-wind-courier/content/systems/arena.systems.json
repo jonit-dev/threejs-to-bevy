@@ -1,0 +1,17 @@
+{
+  "schema": "threenative.systems",
+  "version": "0.1.0",
+  "id": "arena-systems",
+  "systems": [
+    {
+      "id": "rooftop-wind-courier",
+      "schedule": "fixedUpdate",
+      "writes": ["Transform", "GliderPlayer", "MailParcel"],
+      "resourceWrites": ["GameState"],
+      "script": {
+        "module": "src/scripts/player.ts",
+        "export": "rooftopWindCourierSystem"
+      }
+    }
+  ]
+}

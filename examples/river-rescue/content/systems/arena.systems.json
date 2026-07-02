@@ -1,0 +1,33 @@
+{
+  "schema": "threenative.systems",
+  "version": "0.1.0",
+  "id": "arena-systems",
+  "systems": [
+    {
+      "id": "river-rescue-system",
+      "schedule": "fixedUpdate",
+      "reads": [
+        "RescueSkiff",
+        "SkiffPart",
+        "SignalFlare",
+        "DriftLog",
+        "DockZone"
+      ],
+      "writes": [
+        "Transform",
+        "RescueSkiff",
+        "SignalFlare"
+      ],
+      "resourceReads": [
+        "GameState"
+      ],
+      "resourceWrites": [
+        "GameState"
+      ],
+      "script": {
+        "module": "src/scripts/player.ts",
+        "export": "riverRescueSystem"
+      }
+    }
+  ]
+}

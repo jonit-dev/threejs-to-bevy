@@ -1,0 +1,98 @@
+{
+  "schema": "threenative.materials",
+  "version": "0.1.0",
+  "id": "arena-materials",
+  "materials": [
+    {
+      "id": "mat.water",
+      "color": "#1b5d74",
+      "roughness": 0.36,
+      "metalness": 0.04
+    },
+    {
+      "id": "mat.foam.line",
+      "color": "#b5eef0",
+      "roughness": 0.4,
+      "emissive": "#78d9df",
+      "emissiveIntensity": 0.32
+    },
+    {
+      "id": "mat.current.line",
+      "color": "#2d7f96",
+      "roughness": 0.5,
+      "emissive": "#1f6b80",
+      "emissiveIntensity": 0.24
+    },
+    {
+      "id": "mat.bank",
+      "color": "#2f5b3b",
+      "roughness": 0.9
+    },
+    {
+      "id": "mat.dock",
+      "color": "#8b6543",
+      "roughness": 0.82
+    },
+    {
+      "id": "mat.skiff",
+      "color": "#f0b461",
+      "roughness": 0.58
+    },
+    {
+      "id": "mat.cabin",
+      "color": "#8bd3ff",
+      "roughness": 0.38
+    },
+    {
+      "id": "mat.skiff-light",
+      "color": "#fff1a8",
+      "emissive": "#ffe06c",
+      "roughness": 0.28
+    },
+    {
+      "id": "mat.flare",
+      "color": "#ff5f4a",
+      "emissive": "#ff3725",
+      "roughness": 0.34
+    },
+    {
+      "id": "mat.flare.halo",
+      "color": "#ffb15a",
+      "emissive": "#ff6a2e",
+      "emissiveIntensity": 0.48,
+      "roughness": 0.42
+    },
+    {
+      "id": "mat.log.wake",
+      "color": "#7fc0c8",
+      "roughness": 0.46,
+      "emissive": "#4fa7b4",
+      "emissiveIntensity": 0.26
+    },
+    {
+      "id": "mat.log",
+      "color": "#6e482d",
+      "roughness": 0.88
+    },
+    {
+      "id": "mat.reeds",
+      "color": "#78a85d",
+      "roughness": 0.78
+    },
+    {
+      "id": "mat.buoy",
+      "color": "#f15d4d",
+      "roughness": 0.52
+    },
+    {
+      "id": "mat.rock",
+      "color": "#7d8793",
+      "roughness": 0.86
+    },
+    {
+      "id": "mat.sign",
+      "color": "#d1a25f",
+      "roughness": 0.7
+    }
+  ]
+}

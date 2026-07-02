@@ -1,0 +1,26 @@
+{
+  "name": "@threenative/example-harbor-lantern-ferry",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node ../../packages/cli/dist/index.js build",
+    "dev:web": "node ../../packages/cli/dist/index.js dev --target web",
+    "playtest": "node ../../packages/cli/dist/index.js playtest --project . --entity player --press KeyD --frames 45 --expect-moved --expect-axis x --json",
+    "game:score": "node ../../packages/cli/dist/index.js game score --project . --json",
+    "game:qa": "node ../../packages/cli/dist/index.js game qa --project . --json",
+    "game:release": "node ../../packages/cli/dist/index.js game release --project . --json",
+    "recipe:controller": "node ../../packages/cli/dist/index.js recipe third-person-controller --scene arena --entity player --camera camera.main --dry-run --json",
+    "validate": "node ../../packages/cli/dist/index.js validate",
+    "validate:authoring": "node ../../packages/cli/dist/index.js authoring validate --json",
+    "verify": "node ../../packages/cli/dist/index.js verify --frames 4 --expect-motion --json"
+  },
+  "dependencies": {
+    "@threenative/script-stdlib": "file:/home/joao/projects/threejs-to-bevy/packages/script-stdlib",
+    "@threenative/sdk": "file:/home/joao/projects/threejs-to-bevy/packages/sdk"
+  },
+  "devDependencies": {
+    "@threenative/cli": "file:.threenative/cli",
+    "@types/node": "^20.19.25",
+    "typescript": "^5.9.3"
+  }
+}

@@ -1,0 +1,20 @@
+{
+  "schema": "threenative.materials",
+  "version": "0.1.0",
+  "id": "arena-materials",
+  "materials": [
+    { "id": "mat.yard", "color": "#4a3f38", "roughness": 0.9 },
+    { "id": "mat.track-bed", "color": "#2d3236", "roughness": 0.84 },
+    { "id": "mat.rail", "color": "#aeb8b8", "metalness": 0.55, "roughness": 0.34 },
+    { "id": "mat.sleeper", "color": "#5a3828", "roughness": 0.78 },
+    { "id": "mat.ore", "color": "#42c8ff", "emissive": "#127eaa", "roughness": 0.38 },
+    { "id": "mat.ore-warm", "color": "#ffb24d", "emissive": "#a94b12", "roughness": 0.42 },
+    { "id": "mat.furnace", "color": "#2b2523", "metalness": 0.15, "roughness": 0.62 },
+    { "id": "mat.furnace-glow", "color": "#ff6d20", "emissive": "#ff5a16", "roughness": 0.26 },
+    { "id": "mat.steam", "color": "#dcebf0", "roughness": 0.18 },
+    { "id": "mat.pipe", "color": "#5c6870", "metalness": 0.45, "roughness": 0.44 },
+    { "id": "mat.warning", "color": "#ffd447", "emissive": "#d9840d", "roughness": 0.35 },
+    { "id": "mat.fence", "color": "#24292e", "roughness": 0.7 },
+    { "id": "mat.sign", "color": "#1d2328", "roughness": 0.58 }
+  ]
+}

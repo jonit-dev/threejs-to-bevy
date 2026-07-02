@@ -31,7 +31,8 @@ material/texture load state, asset counts, resource failures, and recent runtime
 errors. Add `?debugOverlay=1` to a web preview URL for a read-only browser debug
 overlay. Use `tn screenshot --wait-ready --json` for a PNG proof report with the
 invoked command, canvas dimensions, nonblank analysis, runtime diagnostics,
-browser logs, page errors, and failed requests; use `tn record` for video proof
+browser logs, page errors, and failed requests; add `--viewport mobile` or
+`--viewport <width>x<height>` for mobile/layout proof; use `tn record` for video proof
 or `tn verify` for automated visual checks. Single-frame `tn verify --frames 1`
 reports reuse the screenshot capture diagnostics, while multi-frame verification
 keeps one continuous browser session for motion checks. `tn record --duration

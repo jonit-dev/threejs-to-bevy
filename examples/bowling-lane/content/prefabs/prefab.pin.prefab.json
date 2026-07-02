@@ -1,0 +1,51 @@
+{
+  "schema": "threenative.prefab",
+  "version": "0.1.0",
+  "id": "prefab.pin",
+  "entities": [
+    {
+      "id": "prefab.pin",
+      "transform": {
+        "position": [
+          0,
+          0.58,
+          0
+        ],
+        "scale": [
+          0.28,
+          1.16,
+          0.28
+        ]
+      },
+      "components": {
+        "MeshRenderer": {
+          "mesh": "mesh.pin",
+          "material": "mat.pin.white",
+          "castShadow": true,
+          "receiveShadow": true
+        },
+        "RigidBody": {
+          "kind": "dynamic",
+          "mass": 1.55,
+          "gravityScale": 1,
+          "damping": 0.06,
+          "velocity": [
+            0,
+            0,
+            0
+          ]
+        },
+        "Collider": {
+          "kind": "capsule",
+          "radius": 0.24,
+          "height": 0.92,
+          "friction": 0.52,
+          "restitution": 0.28
+        },
+        "Pin": {
+          "standing": true
+        }
+      }
+    }
+  ]
+}

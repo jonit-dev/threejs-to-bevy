@@ -17,6 +17,7 @@ declare global {
 }
 
 type Vec3 = [number, number, number];
+type MovementAxis = "x" | "y" | "z";
 
 interface IPlaytestDiagnostic {
   code: string;
@@ -40,9 +41,11 @@ export interface IPlaytestReport {
   diagnostics: IPlaytestDiagnostic[];
   distance: number;
   entity: string;
+  expectAxis?: MovementAxis;
   expectMoved: boolean;
   frames: number;
   input: string;
+  movementDelta?: Vec3;
   movementThreshold: number;
   pass: boolean;
   runtime: "web";
@@ -50,7 +53,7 @@ export interface IPlaytestReport {
 }
 
 export interface IPlaytestCommandOptions {
-  runner?: (options: { debugColliders: boolean; entityId: string; expectMoved: boolean; frames: number; movementThreshold: number; press: string; projectPath: string }) => Promise<IPlaytestReport>;
+  runner?: (options: { debugColliders: boolean; entityId: string; expectAxis?: MovementAxis; expectMoved: boolean; frames: number; movementThreshold: number; press: string; projectPath: string }) => Promise<IPlaytestReport>;
 }
 
 export async function playtestCommand(
@@ -65,6 +68,7 @@ export async function playtestCommand(
   const press = readFlag(normalizedArgv, "--press") ?? readFlag(normalizedArgv, "--input");
   const frames = readPositiveInteger(readFlag(normalizedArgv, "--frames"), 60);
   const movementThreshold = readPositiveNumber(readFlag(normalizedArgv, "--movement-threshold"), 0.01);
+  const expectAxis = readMovementAxis(readFlag(normalizedArgv, "--expect-axis"));
   const debugColliders = normalizedArgv.includes("--debug") || normalizedArgv.includes("--debug-colliders");
   const expectMoved = normalizedArgv.includes("--expect-moved");
 
@@ -72,7 +76,16 @@ export async function playtestCommand(
     return diagnosticResult(
       {
         code: "TN_PLAYTEST_USAGE",
-        message: "Usage: tn playtest --project <path> --entity <id> --press <KeyboardEvent.code> --frames <n> [--expect-moved] [--debug] [--json]",
+        message: "Usage: tn playtest --project <path> --entity <id> --press <KeyboardEvent.code> --frames <n> [--expect-moved] [--expect-axis x|y|z] [--debug] [--json]",
+      },
+      { exitCode: 2, json, stderr: !json },
+    );
+  }
+  if (readFlag(normalizedArgv, "--expect-axis") !== undefined && expectAxis === undefined) {
+    return diagnosticResult(
+      {
+        code: "TN_PLAYTEST_EXPECT_AXIS_INVALID",
+        message: "--expect-axis must be one of: x, y, z.",
       },
       { exitCode: 2, json, stderr: !json },
     );
@@ -80,7 +93,7 @@ export async function playtestCommand(
 
   try {
     const runner = options.runner ?? runWebPlaytest;
-    const report = await runner({ debugColliders, entityId, expectMoved, frames, movementThreshold, press, projectPath });
+    const report = await runner({ debugColliders, entityId, ...(expectAxis === undefined ? {} : { expectAxis }), expectMoved, frames, movementThreshold, press, projectPath });
     const code = report.pass ? "TN_PLAYTEST_OK" : "TN_PLAYTEST_FAILED";
     return {
       exitCode: report.pass ? 0 : 1,
@@ -99,18 +112,18 @@ export async function playtestCommand(
   }
 }
 
-async function runWebPlaytest(options: { debugColliders: boolean; entityId: string; expectMoved: boolean; frames: number; movementThreshold: number; press: string; projectPath: string }): Promise<IPlaytestReport> {
+async function runWebPlaytest(options: { debugColliders: boolean; entityId: string; expectAxis?: MovementAxis; expectMoved: boolean; frames: number; movementThreshold: number; press: string; projectPath: string }): Promise<IPlaytestReport> {
   const bundlePath = await ensureProjectBundle(options.projectPath);
   let server: IWebPreviewServer | undefined;
   try {
-    server = await startWebPreview({ bundlePath });
+    server = await startWebPreview({ bundlePath, silent: true });
     return await probePreview({ ...options, url: previewUrl(server.url, options.debugColliders) });
   } finally {
     await server?.close();
   }
 }
 
-async function probePreview(options: { debugColliders: boolean; entityId: string; expectMoved: boolean; frames: number; movementThreshold: number; press: string; projectPath: string; url: string }): Promise<IPlaytestReport> {
+async function probePreview(options: { debugColliders: boolean; entityId: string; expectAxis?: MovementAxis; expectMoved: boolean; frames: number; movementThreshold: number; press: string; projectPath: string; url: string }): Promise<IPlaytestReport> {
   const diagnostics: IPlaytestDiagnostic[] = [];
   const artifact = resolve(options.projectPath, "artifacts", "playtest", `${safeFilePart(options.entityId)}-${safeFilePart(options.press)}.png`);
   await mkdir(dirname(artifact), { recursive: true });
@@ -154,7 +167,8 @@ async function probePreview(options: { debugColliders: boolean; entityId: string
         suggestion: "Check the entity id and ensure an update/fixedUpdate system writes its Transform during the playtest.",
       });
     }
-    const distance = before === undefined || after === undefined ? 0 : distance3(before.position, after.position);
+    const movementDelta = before === undefined || after === undefined ? undefined : delta3(before.position, after.position);
+    const distance = movementDelta === undefined ? 0 : length3(movementDelta);
     if (options.expectMoved && distance <= options.movementThreshold) {
       diagnostics.push({
         code: "TN_PLAYTEST_INPUT_NO_EFFECT",
@@ -162,6 +176,17 @@ async function probePreview(options: { debugColliders: boolean; entityId: string
         severity: "error",
         suggestion: "Check input bindings, script action names, and fixed/update schedule wiring.",
       });
+    }
+    if (options.expectAxis !== undefined && movementDelta !== undefined) {
+      const axisDelta = Math.abs(movementDelta[axisIndex(options.expectAxis)]);
+      if (axisDelta <= options.movementThreshold) {
+        diagnostics.push({
+          code: "TN_PLAYTEST_AXIS_NO_EFFECT",
+          message: `Entity '${options.entityId}' moved ${axisDelta.toFixed(6)} on ${options.expectAxis.toUpperCase()} after '${options.press}', below threshold ${options.movementThreshold}.`,
+          severity: "error",
+          suggestion: `Check that '${options.press}' is bound to movement on the ${options.expectAxis.toUpperCase()} axis, not only idle or autonomous motion.`,
+        });
+      }
     }
     const hasErrors = diagnostics.some((diagnostic) => diagnostic.severity === "error");
     return {
@@ -173,9 +198,11 @@ async function probePreview(options: { debugColliders: boolean; entityId: string
       diagnostics,
       distance,
       entity: options.entityId,
+      ...(options.expectAxis === undefined ? {} : { expectAxis: options.expectAxis }),
       expectMoved: options.expectMoved,
       frames: options.frames,
       input: options.press,
+      ...(movementDelta === undefined ? {} : { movementDelta }),
       movementThreshold: options.movementThreshold,
       pass: !hasErrors,
       runtime: "web",
@@ -278,11 +305,17 @@ function readPosition(value: unknown): Vec3 | undefined {
   return position.every(Number.isFinite) ? position as Vec3 : undefined;
 }
 
-function distance3(left: Vec3, right: Vec3): number {
-  const dx = right[0] - left[0];
-  const dy = right[1] - left[1];
-  const dz = right[2] - left[2];
+function delta3(left: Vec3, right: Vec3): Vec3 {
+  return [right[0] - left[0], right[1] - left[1], right[2] - left[2]];
+}
+
+function length3(delta: Vec3): number {
+  const [dx, dy, dz] = delta;
   return Math.sqrt(dx * dx + dy * dy + dz * dz);
+}
+
+function axisIndex(axis: MovementAxis): 0 | 1 | 2 {
+  return axis === "x" ? 0 : axis === "y" ? 1 : 2;
 }
 
 function readFlag(argv: readonly string[], name: string): string | undefined {
@@ -298,6 +331,10 @@ function readPositiveInteger(value: string | undefined, fallback: number): numbe
 function readPositiveNumber(value: string | undefined, fallback: number): number {
   const parsed = Number(value);
   return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+}
+
+function readMovementAxis(value: string | undefined): MovementAxis | undefined {
+  return value === "x" || value === "y" || value === "z" ? value : undefined;
 }
 
 function resolvePath(cwd: string, path: string): string {

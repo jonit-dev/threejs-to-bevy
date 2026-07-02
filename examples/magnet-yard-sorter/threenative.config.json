@@ -1,0 +1,41 @@
+{
+  "schema": "threenative.project",
+  "version": "0.1.0",
+  "entry": "content/scenes/arena.scene.json",
+  "outDir": "dist/magnet-yard-sorter.bundle",
+  "production": {
+    "playableLoop": "Steer a scrapyard magnet, collect six metal scraps, avoid electric spark hazards, and drop the load into the blue recycler before shift time expires.",
+    "controls": [
+      "keyboard.KeyA",
+      "keyboard.ArrowLeft",
+      "keyboard.KeyD",
+      "keyboard.ArrowRight",
+      "keyboard.KeyW",
+      "keyboard.ArrowUp",
+      "keyboard.KeyS",
+      "keyboard.ArrowDown",
+      "keyboard.Space"
+    ],
+    "objective": "Deposit Scrap 6/6 into the blue recycler before the shift timer reaches zero.",
+    "failRetry": "Touching a spark hazard or timing out enters failed state; Space resets the yard.",
+    "proofCommands": [
+      "tn playtest --project . --entity player --press KeyD --expect-axis x --json",
+      "tn screenshot --project . --url <preview-url> --out artifacts/game-production/screenshot.png --wait-ready --json",
+      "tn game qa --project . --run-proof --json",
+      "tn game score --project . --json",
+      "tn game release --project . --json"
+    ],
+    "assetProvenance": {
+      "catalogSearches": [
+        "tn asset source search --game-category vehicle --format glb --direct-only --json -> TN_ASSET_SOURCE_NO_MATCH",
+        "tn asset source search --game-category environment --format glb --direct-only --json -> TN_ASSET_SOURCE_NO_MATCH",
+        "tn asset source search --game-category collectible --format glb --direct-only --json -> TN_ASSET_SOURCE_NO_MATCH",
+        "tn asset source search --game-category arcade --format glb --direct-only --json -> TN_ASSET_SOURCE_NO_MATCH",
+        "tn asset source search --game-category platformer --format glb --direct-only --json -> Kenney CC0 platformer kit, rejected as mismatched to industrial magnet-yard style",
+        "tn asset source search --file-role model --json -> broad loader/city/CC-BY objects, rejected as incohesive and attribution-heavy for this compact procedural slice"
+      ],
+      "fallback": "Direct catalog search did not provide a cohesive low-poly industrial magnet yard kit. Magnet hero, scrap rewards, spark hazards, recycler, rails, bins, warning lights, piles, and HUD are authored as a cohesive procedural mesh kit."
+    }
+  },
+  "template": "structured-source-starter"
+}

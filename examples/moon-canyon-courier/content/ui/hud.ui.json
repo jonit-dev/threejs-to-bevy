@@ -1,0 +1,39 @@
+{
+  "schema": "threenative.ui",
+  "version": "0.1.0",
+  "id": "hud",
+  "nodes": [
+    {
+      "id": "cells",
+      "type": "text",
+      "text": "Cells 0/4",
+      "style": { "color": "#d8fbff", "fontSize": 24, "fontWeight": "bold", "textAlign": "center" },
+      "layout": { "justify": "center", "align": "top", "top": 30, "width": 1280 }
+    },
+    {
+      "id": "timer",
+      "type": "text",
+      "text": "Time 65",
+      "style": { "color": "#d8fbff", "fontSize": 22, "fontWeight": "bold", "textAlign": "center" },
+      "layout": { "justify": "center", "align": "top", "top": 66, "width": 1280 }
+    },
+    {
+      "id": "status",
+      "type": "text",
+      "text": "Collect 4 cells, then dock at the relay",
+      "style": { "color": "#ffffff", "fontSize": 20, "fontWeight": "bold", "textAlign": "center" },
+      "layout": { "justify": "center", "align": "bottom", "top": 648, "width": 1280 }
+    },
+    { "id": "state.loading", "type": "text", "text": "Loading moon canyon", "layout": { "justify": "center", "align": "center", "top": 1200, "width": 1280 } },
+    { "id": "state.pause", "type": "text", "text": "Paused", "layout": { "justify": "center", "align": "center", "top": 1230, "width": 1280 } },
+    { "id": "state.settings", "type": "text", "text": "Settings", "layout": { "justify": "center", "align": "center", "top": 1260, "width": 1280 } },
+    { "id": "state.fail-retry", "type": "text", "text": "Retry", "layout": { "justify": "center", "align": "center", "top": 1290, "width": 1280 } },
+    { "id": "state.win-milestone", "type": "text", "text": "Relay online", "layout": { "justify": "center", "align": "center", "top": 1320, "width": 1280 } },
+    { "id": "state.touch-controls", "type": "text", "text": "Touch sled mobile-control", "layout": { "justify": "center", "align": "center", "top": 1350, "width": 1280 } }
+  ],
+  "bindings": [
+    { "node": "cells", "resource": "GameState.countdown" },
+    { "node": "timer", "resource": "GameState.timerText" },
+    { "node": "status", "resource": "GameState.status" }
+  ]
+}

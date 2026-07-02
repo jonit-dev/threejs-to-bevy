@@ -19,6 +19,7 @@ export type {
   IScriptReference,
   ISceneDocument,
   ISceneEntity,
+  IScenePrefabInstance,
   IScenePrefab,
   ISceneResource,
   ISceneSystem,
@@ -60,6 +61,7 @@ export {
   runtimeDocumentSchema,
   schemaDocumentSchema,
   sceneDocumentSchema,
+  supportedPrefabPrimitives,
   systemsDocumentSchema,
   targetProfileDocumentSchema,
   uiDocumentSchema,
@@ -127,6 +129,8 @@ export type {
   IAuthoringOperationContext,
   IAuthoringOperationResult,
   IAddEntityOptions,
+  IAddPrefabInstanceOptions,
+  IAddTenPinLayoutOptions,
   IAddAssetOptions,
   IAddAnimationClipOptions,
   IAddAnimationGraphStateOptions,
@@ -204,6 +208,8 @@ export type {
 } from "./operations.js";
 export {
   addEntity,
+  addPrefabInstance,
+  addTenPinLayout,
   addAsset,
   addAnimationClip,
   addAnimationGraphState,

@@ -36,7 +36,9 @@ test("release gate should report failed typed step diagnostics", async () => {
 
 test("release gate should keep focused gate artifact contracts", () => {
   assert.ok(RELEASE_FOCUSED_GATES.some((gate) => gate.script === "verify:bundle-safety-hardening"));
+  assert.ok(RELEASE_FOCUSED_GATES.some((gate) => gate.script === "verify:generated-games"));
   assert.ok(RELEASE_FOCUSED_GATES.some((gate) => gate.script === "verify:scripting-helpers-lifecycle"));
+  assert.ok(RELEASE_FOCUSED_GATES.some((gate) => gate.script === "verify:template-production"));
   assert.ok(RELEASE_FOCUSED_GATES.every((gate) => gate.reportPath.endsWith(".json")));
 });
 
@@ -99,7 +101,7 @@ test("should categorize release timing steps", async () => {
   assert.equal(result.ok, true);
   const report = JSON.parse(await readFile(reportPath, "utf8"));
   assert.equal(report.steps.every((step: { category?: string }) => typeof step.category === "string"), true);
-  assert.equal(report.timing.categories.setup.stepCount, 8);
+  assert.equal(report.timing.categories.setup.stepCount, 9);
   assert.equal(report.timing.categories["focused-gate"].stepCount, 1);
   assert.equal(report.timing.categories.artifact.stepCount, 2);
   assert.equal(report.timing.budgetWarnings.length, 1);

@@ -1,0 +1,24 @@
+{
+  "schema": "threenative.materials",
+  "version": "0.1.0",
+  "id": "arena-materials",
+  "materials": [
+    { "id": "mat.workbench", "color": "#7b5538", "roughness": 0.84 },
+    { "id": "mat.inlay", "color": "#b7834f", "roughness": 0.72 },
+    { "id": "mat.inlay.edge", "color": "#e0b26f", "roughness": 0.62 },
+    { "id": "mat.inlay.seam", "color": "#6b442b", "roughness": 0.9 },
+    { "id": "mat.brass", "color": "#d4a246", "roughness": 0.36, "metalness": 0.18 },
+    { "id": "mat.mouse.body", "color": "#8fa0aa", "roughness": 0.58 },
+    { "id": "mat.mouse.key", "color": "#f3d279", "roughness": 0.28, "metalness": 0.16, "emissive": "#b06b21" },
+    { "id": "mat.gear", "color": "#ffe186", "roughness": 0.24, "metalness": 0.12, "emissive": "#d59a28" },
+    { "id": "mat.gear.glow", "color": "#ffcf62", "roughness": 0.36, "emissive": "#d59a28", "emissiveIntensity": 0.45 },
+    { "id": "mat.bay", "color": "#66d2b0", "roughness": 0.32, "emissive": "#269d7a" },
+    { "id": "mat.marble", "color": "#c33d55", "roughness": 0.18 },
+    { "id": "mat.marble.warning", "color": "#ff5d74", "roughness": 0.34, "emissive": "#c33d55", "emissiveIntensity": 0.38 },
+    { "id": "mat.clock", "color": "#f7efe2", "roughness": 0.42 },
+    { "id": "mat.crate", "color": "#9c6b45", "roughness": 0.86 },
+    { "id": "mat.toy", "color": "#4c7bd9", "roughness": 0.5 },
+    { "id": "mat.thread", "color": "#4c9f70", "roughness": 0.76 },
+    { "id": "mat.shadow", "color": "#2f2734", "roughness": 0.9 }
+  ]
+}

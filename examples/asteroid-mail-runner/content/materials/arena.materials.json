@@ -1,0 +1,31 @@
+{
+  "schema": "threenative.materials",
+  "version": "0.1.0",
+  "id": "arena-materials",
+  "materials": [
+    { "id": "mat.space.void", "color": "#07111e", "roughness": 0.9 },
+    { "id": "mat.route.lane", "color": "#0f2f46", "roughness": 0.55, "metalness": 0.05 },
+    { "id": "mat.route.scanline", "color": "#2d7fa0", "roughness": 0.48, "emissive": "#0f6f9b", "emissiveIntensity": 0.35 },
+    { "id": "mat.route.hash", "color": "#9cf7ff", "roughness": 0.28, "emissive": "#4fd6e8", "emissiveIntensity": 0.34 },
+    { "id": "mat.route.node", "color": "#fff2a7", "roughness": 0.22, "emissive": "#ffd96d", "emissiveIntensity": 0.34 },
+    { "id": "mat.route.chevron", "color": "#7cfbe8", "roughness": 0.24, "emissive": "#24c8b0", "emissiveIntensity": 0.65 },
+    { "id": "mat.ship.hull", "color": "#f4f0dc", "roughness": 0.48, "metalness": 0.12 },
+    { "id": "mat.ship.wing", "color": "#f06b52", "roughness": 0.52 },
+    { "id": "mat.ship.window", "color": "#8eeaff", "roughness": 0.22, "emissive": "#1eb6d8" },
+    { "id": "mat.thruster", "color": "#65f1ff", "roughness": 0.16, "emissive": "#3ddcff" },
+    { "id": "mat.asteroid", "color": "#66707b", "roughness": 0.92 },
+    { "id": "mat.asteroid.facet", "color": "#a1acb5", "roughness": 0.72 },
+    { "id": "mat.capsule", "color": "#ffcc4d", "roughness": 0.32, "emissive": "#f2a900" },
+    { "id": "mat.capsule.pad", "color": "#ffdf70", "roughness": 0.38, "emissive": "#f2a900", "emissiveIntensity": 0.45 },
+    { "id": "mat.capsule.glint", "color": "#fff4ad", "roughness": 0.22, "emissive": "#ffd96d", "emissiveIntensity": 0.38 },
+    { "id": "mat.warning", "color": "#ff6b91", "roughness": 0.3, "emissive": "#ff477e", "emissiveIntensity": 0.55 },
+    { "id": "mat.checkpoint", "color": "#5ef0d2", "roughness": 0.22, "emissive": "#24c8b0" },
+    { "id": "mat.station", "color": "#d5e3ef", "roughness": 0.46, "metalness": 0.18 },
+    { "id": "mat.station.panel", "color": "#ffd3e0", "roughness": 0.28, "emissive": "#ff9fc0", "emissiveIntensity": 0.28 },
+    { "id": "mat.station.glow", "color": "#ff6b91", "roughness": 0.3, "emissive": "#ff477e", "emissiveIntensity": 0.5 },
+    { "id": "mat.station.guide", "color": "#ffd3e0", "roughness": 0.18, "emissive": "#ff9fc0", "emissiveIntensity": 0.42 },
+    { "id": "mat.beacon", "color": "#ff6b91", "roughness": 0.18, "emissive": "#ff477e" },
+    { "id": "mat.nebula.streak", "color": "#253b63", "roughness": 0.86, "emissive": "#17284c", "emissiveIntensity": 0.18 },
+    { "id": "mat.star", "color": "#ffffff", "roughness": 0.2, "emissive": "#d9f4ff" }
+  ]
+}

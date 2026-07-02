@@ -1,0 +1,30 @@
+{
+  "schema": "threenative.prefab",
+  "version": "0.1.0",
+  "id": "prefab.lane-floor",
+  "entities": [
+    {
+      "id": "prefab.lane-floor",
+      "components": {
+        "MeshRenderer": {
+          "mesh": "mesh.lane",
+          "material": "mat.lane.wood",
+          "receiveShadow": true
+        },
+        "RigidBody": {
+          "kind": "static"
+        },
+        "Collider": {
+          "kind": "box",
+          "size": [
+            2.25,
+            0.1,
+            11.5
+          ],
+          "friction": 0.24,
+          "restitution": 0.08
+        }
+      }
+    }
+  ]
+}

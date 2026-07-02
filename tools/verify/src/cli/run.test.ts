@@ -10,6 +10,7 @@ test("focused gate dispatcher should list current capability gates", () => {
   for (const name of [
     "verify:animation-physics-residuals",
     "verify:bundle-safety-hardening",
+    "verify:generated-games",
     "verify:input-ui-polish",
     "verify:persistence-reload",
     "verify:physics-self-verification",
@@ -19,6 +20,7 @@ test("focused gate dispatcher should list current capability gates", () => {
     "verify:runtime-prefabs-hierarchy",
     "verify:runtime-query-diffing",
     "verify:scripting-helpers-lifecycle",
+    "verify:template-production",
     "verify:editor-package",
     "verify:ui-persistence-settings-facades",
     "verify:scene-lifecycle",
@@ -87,6 +89,7 @@ test("should list gates by profile", () => {
   assert.deepEqual(listFocusedGateNamesByProfile("release"), [
     "verify:animation-physics-residuals",
     "verify:bundle-safety-hardening",
+    "verify:generated-games",
     "verify:input-ui-polish",
     "verify:persistence-reload",
     "verify:production-hardening",
@@ -95,6 +98,7 @@ test("should list gates by profile", () => {
     "verify:runtime-prefabs-hierarchy",
     "verify:runtime-query-diffing",
     "verify:scripting-helpers-lifecycle",
+    "verify:template-production",
     "verify:ui-persistence-settings-facades",
     "verify:v9:assets-gltf-scene-workflow",
     "verify:v9:rendering-lights",

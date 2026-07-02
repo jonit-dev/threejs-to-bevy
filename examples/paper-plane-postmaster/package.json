@@ -1,0 +1,20 @@
+{
+  "name": "paper-plane-postmaster",
+  "version": "0.1.0",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "build": "tn build --project .",
+    "dev:web": "tn dev --target web --project .",
+    "validate": "tn validate --project .",
+    "verify": "tn verify --project . --frames 3 --expect-motion",
+    "playtest": "tn playtest --project . --entity player --press KeyD --frames 30 --expect-moved --expect-axis x"
+  },
+  "dependencies": {
+    "@threenative/script-stdlib": "workspace:*",
+    "@threenative/sdk": "workspace:*"
+  },
+  "devDependencies": {
+    "@threenative/cli": "workspace:*"
+  }
+}

@@ -1,5 +1,5 @@
 import { readFile } from "node:fs/promises";
-import { loadAuthoringProject, validateAuthoringProject, validateScene, type ISceneDocument, type IScenePrefab, type ISceneTransform } from "@threenative/authoring";
+import { loadAuthoringProject, validateAuthoringProject, validateScene, type IPrefabDocument, type ISceneDocument, type ISceneEntity, type IScenePrefab, type ISceneTransform } from "@threenative/authoring";
 import {
   AmbientLight,
   BoxGeometry,
@@ -15,6 +15,7 @@ import {
   PrefabTransform,
   Scene,
   SphereGeometry,
+  TorusGeometry,
   defineGame,
   defineComponent,
   defineQuery,
@@ -69,8 +70,9 @@ export async function captureSceneDocumentEntry(projectPath: string, entryPath: 
 
   const scene = JSON.parse(await readFile(entryPath, "utf8")) as ISceneDocument;
   const environment = await readStructuredEnvironmentDeclaration(projectPath);
+  const prefabDefaults = await readStructuredPrefabDefaults(projectPath);
   const systems = await readStructuredSystems(projectPath);
-  const root = lowerSceneDocument(entryRelativePath, scene, environment, systems);
+  const root = lowerSceneDocument(entryRelativePath, scene, environment, systems, prefabDefaults);
   return {
     diagnostics: [],
     graph: sceneAuthoringGraph(projectPath, entryPath, scene),
@@ -84,10 +86,11 @@ function lowerSceneDocument(
   scene: ISceneDocument,
   environment: IEnvironmentDeclaration | undefined,
   systemsMetadata: readonly SourceSystem[],
+  prefabDefaults: ReadonlyMap<string, ISceneEntity>,
 ): unknown {
   const visualScene = new Scene({ id: scene.id });
   const prefabs = new Map((scene.prefabs ?? []).map((prefab) => [prefab.id, prefab]));
-  const entities = [...(scene.entities ?? [])].sort((left, right) => left.id.localeCompare(right.id));
+  const entities = expandSceneEntities(scene, prefabDefaults).sort((left, right) => left.id.localeCompare(right.id));
   const genericComponentSchemas = genericComponentSchemaFactories(entities);
   const worldEntities = [];
   const worldResources = [...(scene.resources ?? [])]
@@ -109,8 +112,9 @@ function lowerSceneDocument(
       visualScene.setActiveCamera(cameraObject);
     } else {
       const authoredRuntimeVisual = hasAuthoredRuntimeVisual(componentRecord);
-      if (entity.prefab !== undefined || !authoredRuntimeVisual) {
-        const mesh = meshFromEntity(entity.id, prefabs.get(entity.prefab ?? ""), transform);
+      const scenePrefab = prefabs.get(entity.prefab ?? "");
+      if (scenePrefab !== undefined || !authoredRuntimeVisual) {
+        const mesh = meshFromEntity(entity.id, scenePrefab, transform);
         visualScene.add(mesh);
       }
 
@@ -243,6 +247,57 @@ function systemCommands(commands: SourceSystem["commands"]): CommandDeclaration[
     }
     return [];
   });
+}
+
+function expandSceneEntities(scene: ISceneDocument, prefabDefaults: ReadonlyMap<string, ISceneEntity>): ISceneEntity[] {
+  return [
+    ...(scene.entities ?? []).map((entity) => cloneSceneEntity(entity)),
+    ...(scene.instances ?? []).map((instance) => {
+      const defaults = prefabDefaults.get(instance.prefab);
+      return {
+        ...cloneSceneEntity(defaults ?? { id: instance.id }),
+        id: instance.id,
+        prefab: instance.prefab,
+        transform: mergeRecords(readRecord(defaults?.transform), readRecord(instance.transform)) as ISceneTransform | undefined,
+        components: mergeRecords(readRecord(defaults?.components), readRecord(instance.components)),
+      };
+    }),
+  ];
+}
+
+function cloneSceneEntity(entity: ISceneEntity): ISceneEntity {
+  return cloneJson(entity) as ISceneEntity;
+}
+
+function mergeRecords(base: SceneRecord | undefined, override: SceneRecord | undefined): SceneRecord | undefined {
+  if (base === undefined && override === undefined) {
+    return undefined;
+  }
+  const result: SceneRecord = cloneJson(base ?? {});
+  for (const [key, value] of Object.entries(override ?? {})) {
+    const baseValue = result[key];
+    result[key] = readRecord(baseValue) !== undefined && readRecord(value) !== undefined
+      ? mergeRecords(readRecord(baseValue), readRecord(value))
+      : cloneJson(value);
+  }
+  return result;
+}
+
+async function readStructuredPrefabDefaults(projectPath: string): Promise<Map<string, ISceneEntity>> {
+  const project = await loadAuthoringProject({ projectPath });
+  const prefabs = new Map<string, ISceneEntity>();
+  for (const document of project.documents) {
+    const data = readRecord(document.data) as IPrefabDocument | undefined;
+    if (document.kind !== "prefab" || data === undefined) {
+      continue;
+    }
+    const prefabId = typeof data.id === "string" ? data.id : undefined;
+    const root = data.entities?.[0];
+    if (prefabId !== undefined && root !== undefined) {
+      prefabs.set(prefabId, root);
+    }
+  }
+  return prefabs;
 }
 
 async function readStructuredEnvironmentDeclaration(projectPath: string): Promise<IEnvironmentDeclaration | undefined> {
@@ -453,7 +508,7 @@ function meshFromEntity(entityId: string, prefab: IScenePrefab | undefined, tran
   return mesh;
 }
 
-function geometryForPrimitive(primitive: string): BoxGeometry | CapsuleGeometry | ConeGeometry | CylinderGeometry | PlaneGeometry | SphereGeometry {
+function geometryForPrimitive(primitive: string): BoxGeometry | CapsuleGeometry | ConeGeometry | CylinderGeometry | PlaneGeometry | SphereGeometry | TorusGeometry {
   if (primitive === "capsule") {
     return new CapsuleGeometry({ height: 1, radius: 0.35 });
   }
@@ -468,6 +523,9 @@ function geometryForPrimitive(primitive: string): BoxGeometry | CapsuleGeometry 
   }
   if (primitive === "sphere") {
     return new SphereGeometry({ radius: 0.5 });
+  }
+  if (primitive === "torus") {
+    return new TorusGeometry({ innerRadius: 0.25, outerRadius: 0.5 });
   }
   return new BoxGeometry({ size: [1, 1, 1] });
 }
@@ -536,6 +594,7 @@ function sceneAuthoringGraph(projectRoot: string, entryPath: string, scene: ISce
     declaration(projectRoot, entryPath, "scene", scene.id),
     ...(scene.prefabs ?? []).map((prefab) => declaration(projectRoot, entryPath, "prefab", prefab.id, scene.id)),
     ...(scene.entities ?? []).map((entity) => declaration(projectRoot, entryPath, "entity", entity.id, scene.id)),
+    ...(scene.instances ?? []).map((instance) => declaration(projectRoot, entryPath, "entity", instance.id, scene.id)),
     ...(scene.resources ?? []).map((resource) => declaration(projectRoot, entryPath, "resource", resource.id, scene.id)),
     ...(scene.systems ?? []).map((system) => declaration(projectRoot, entryPath, "system", system.id, scene.id)),
   ];
@@ -577,6 +636,10 @@ function vector3(value: unknown): [number, number, number] | undefined {
 
 function readRecord(value: unknown): SceneRecord | undefined {
   return typeof value === "object" && value !== null && !Array.isArray(value) ? value as SceneRecord : undefined;
+}
+
+function cloneJson<T>(value: T): T {
+  return JSON.parse(JSON.stringify(value)) as T;
 }
 
 function readAssetBackedRecord(value: unknown): SceneRecord | undefined {

@@ -1,0 +1,47 @@
+{
+  "schema": "threenative.meshes",
+  "version": "0.1.0",
+  "id": "arena-meshes",
+  "meshes": [
+    {
+      "id": "mesh.ferry",
+      "kind": "primitive",
+      "primitive": "box"
+    },
+    {
+      "id": "mesh.cabin",
+      "kind": "primitive",
+      "primitive": "box"
+    },
+    {
+      "id": "mesh.oil-can",
+      "kind": "primitive",
+      "primitive": "sphere"
+    },
+    {
+      "id": "mesh.crate",
+      "kind": "primitive",
+      "primitive": "box"
+    },
+    {
+      "id": "mesh.water",
+      "kind": "primitive",
+      "primitive": "plane"
+    },
+    {
+      "id": "mesh.pier",
+      "kind": "primitive",
+      "primitive": "plane"
+    },
+    {
+      "id": "mesh.reeds",
+      "kind": "primitive",
+      "primitive": "cone"
+    },
+    {
+      "id": "mesh.marker",
+      "kind": "primitive",
+      "primitive": "cylinder"
+    }
+  ]
+}

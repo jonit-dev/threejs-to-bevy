@@ -186,6 +186,26 @@ function sceneOwnershipEntries(
     }
   }
 
+  for (const [index, instance] of readArray(data.instances).entries()) {
+    const instanceRecord = readRecord(instance);
+    const entityId = readString(instanceRecord?.id);
+    if (entityId === undefined) {
+      continue;
+    }
+    const instancePointer = `/instances/${index}`;
+    entries.push(sourceEntry(document, instancePointer, "entity", { artifactKind: "entity", id: entityId, path: "world.ir.json", pointer: `/entities/${escapePointer(entityId)}` }));
+
+    const components = readRecord(instanceRecord?.components);
+    for (const componentKind of Object.keys(components ?? {}).sort()) {
+      entries.push(sourceEntry(document, `${instancePointer}/components/${escapePointer(componentKind)}`, "component", {
+        artifactKind: "component",
+        id: `${entityId}.${componentKind}`,
+        path: "world.ir.json",
+        pointer: `/entities/${escapePointer(entityId)}/components/${escapePointer(componentKind)}`,
+      }));
+    }
+  }
+
   entries.push(...systemOwnershipEntries(document, data.systems));
   const sceneUi = readRecord(data.ui);
   if (sceneUi !== undefined) {

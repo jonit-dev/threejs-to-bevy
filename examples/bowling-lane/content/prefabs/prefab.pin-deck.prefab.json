@@ -1,0 +1,30 @@
+{
+  "schema": "threenative.prefab",
+  "version": "0.1.0",
+  "id": "prefab.pin-deck",
+  "entities": [
+    {
+      "id": "prefab.pin-deck",
+      "components": {
+        "MeshRenderer": {
+          "mesh": "mesh.lane",
+          "material": "mat.rail",
+          "receiveShadow": true
+        },
+        "RigidBody": {
+          "kind": "static"
+        },
+        "Collider": {
+          "kind": "box",
+          "size": [
+            2.5,
+            0.08,
+            2.2
+          ],
+          "friction": 0.4,
+          "restitution": 0.08
+        }
+      }
+    }
+  ]
+}

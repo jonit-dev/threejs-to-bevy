@@ -1,0 +1,26 @@
+{
+  "schema": "threenative.materials",
+  "version": "0.1.0",
+  "id": "arena-materials",
+  "materials": [
+    { "id": "mat.ground", "color": "#1b3f28", "roughness": 0.84 },
+    { "id": "mat.path", "color": "#48254f", "roughness": 0.76 },
+    { "id": "mat.path.edge", "color": "#b7d46a", "roughness": 0.58 },
+    { "id": "mat.path.facet", "color": "#6d4770", "roughness": 0.7 },
+    { "id": "mat.pond", "color": "#126a86", "roughness": 0.2, "metalness": 0.02 },
+    { "id": "mat.firefly.body", "color": "#101821", "roughness": 0.48 },
+    { "id": "mat.firefly.glow", "color": "#fff35a", "roughness": 0.1, "emissive": "#ffdf36" },
+    { "id": "mat.firefly.wing", "color": "#d9f7ff", "roughness": 0.14, "emissive": "#89e6ff" },
+    { "id": "mat.pollen", "color": "#ffe04f", "roughness": 0.15, "emissive": "#ffca28", "emissiveIntensity": 0.55 },
+    { "id": "mat.pollen.pad", "color": "#ffe04f", "roughness": 0.48, "emissive": "#ffca28", "emissiveIntensity": 0.38 },
+    { "id": "mat.lantern.unlit", "color": "#5d8970", "roughness": 0.58 },
+    { "id": "mat.lantern.lit", "color": "#ffc46a", "roughness": 0.14, "emissive": "#ff9835" },
+    { "id": "mat.moth", "color": "#120b1d", "roughness": 0.8 },
+    { "id": "mat.warning", "color": "#c66dff", "roughness": 0.36, "emissive": "#9d4dd8", "emissiveIntensity": 0.42 },
+    { "id": "mat.stump", "color": "#8a5637", "roughness": 0.8 },
+    { "id": "mat.mushroom", "color": "#ff6c86", "roughness": 0.5 },
+    { "id": "mat.reed", "color": "#94bf6b", "roughness": 0.78 },
+    { "id": "mat.moon", "color": "#fff8d6", "roughness": 0.16, "emissive": "#fff0bd" },
+    { "id": "mat.star", "color": "#ffffff", "roughness": 0.18, "emissive": "#dff8ff" }
+  ]
+}

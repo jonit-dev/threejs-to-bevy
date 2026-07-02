@@ -1,0 +1,32 @@
+{
+  "schema": "threenative.systems",
+  "version": "0.1.0",
+  "id": "arena-systems",
+  "systems": [
+    {
+      "id": "lantern-orchard-system",
+      "schedule": "fixedUpdate",
+      "reads": [
+        "PlayerHero",
+        "PlayerPart",
+        "LanternFruit",
+        "ShadowHazard"
+      ],
+      "writes": [
+        "Transform",
+        "PlayerHero",
+        "LanternFruit"
+      ],
+      "resourceReads": [
+        "GameState"
+      ],
+      "resourceWrites": [
+        "GameState"
+      ],
+      "script": {
+        "module": "src/scripts/lanternOrchard.ts",
+        "export": "lanternOrchardSystem"
+      }
+    }
+  ]
+}

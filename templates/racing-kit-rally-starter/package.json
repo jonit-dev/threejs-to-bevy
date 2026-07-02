@@ -6,6 +6,11 @@
     "build": "tn build",
     "dev:web": "tn dev --target web",
     "playtest": "tn playtest --entity player.car --press KeyW --frames 60 --expect-moved --json",
+    "game:plan": "tn game plan --goal \"racing kit rally checkpoint game\" --project . --json > artifacts/game-production/plan.json",
+    "game:improve": "tn game improve --apply-plan artifacts/game-production/plan.json --project . --json",
+    "game:score": "tn game score --project . --json",
+    "game:qa": "tn game qa --project . --run-proof --json",
+    "game:release": "tn game release --project . --json",
     "validate": "tn validate",
     "validate:authoring": "tn authoring validate --json",
     "verify": "tn verify --frames 4 --json"

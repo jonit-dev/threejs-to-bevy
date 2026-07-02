@@ -29,3 +29,19 @@ test("should reject bundle with native host globals", async () => {
   assert.equal(result.ok, false);
   assert.equal(result.diagnostics[0]?.code, "TN_SCRIPT_QUICKJS_HOST_GLOBAL_UNSUPPORTED");
 });
+
+test("should ignore native host global names inside bundle strings and comments", async () => {
+  const result = await probeQuickJsLoadability(
+    "export const systems = { good: () => { // window prose\nreturn 'The relay window closed.'; } };\n",
+  );
+
+  assert.equal(result.ok, true);
+  assert.deepEqual(result.diagnostics, []);
+});
+
+test("should reject node protocol imports in bundle probes", async () => {
+  const result = await probeQuickJsLoadability('import { readFileSync } from "node:fs"; export const systems = {};\n');
+
+  assert.equal(result.ok, false);
+  assert.equal(result.diagnostics[0]?.code, "TN_SCRIPT_QUICKJS_HOST_GLOBAL_UNSUPPORTED");
+});

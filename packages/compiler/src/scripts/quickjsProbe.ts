@@ -1,4 +1,5 @@
 import type { ICompilerDiagnostic } from "../diagnostics.js";
+import { maskStringAndCommentText } from "./lexical.js";
 
 export interface IQuickJsProbeResult {
   diagnostics: ICompilerDiagnostic[];
@@ -6,10 +7,16 @@ export interface IQuickJsProbeResult {
   ok: boolean;
 }
 
-const forbiddenNativeHostPatterns: Array<{ code: string; pattern: RegExp; suggestion: string }> = [
+const forbiddenNativeHostPatterns: Array<{ code: string; pattern: RegExp; scan?: "code" | "source"; suggestion: string }> = [
   {
     code: "TN_SCRIPT_QUICKJS_HOST_GLOBAL_UNSUPPORTED",
-    pattern: /\b(?:document|window|Worker|require|process)\b|node:/,
+    pattern: /\b(?:document|window|Worker|require|process)\b/,
+    suggestion: "Portable script bundles must not depend on browser, worker, or Node globals.",
+  },
+  {
+    code: "TN_SCRIPT_QUICKJS_HOST_GLOBAL_UNSUPPORTED",
+    pattern: /(?:\bfrom\s+|\bimport\s*(?:\([^)]*\)\s*)?)["']node:[^"']+["']/,
+    scan: "source",
     suggestion: "Portable script bundles must not depend on browser, worker, or Node globals.",
   },
   {
@@ -20,8 +27,9 @@ const forbiddenNativeHostPatterns: Array<{ code: string; pattern: RegExp; sugges
 ];
 
 export async function probeQuickJsLoadability(code: string): Promise<IQuickJsProbeResult> {
+  const codeOnlySource = maskStringAndCommentText(code);
   const diagnostics: ICompilerDiagnostic[] = forbiddenNativeHostPatterns.flatMap((rule) =>
-    rule.pattern.test(code)
+    rule.pattern.test(rule.scan === "source" ? code : codeOnlySource)
       ? [
           {
             code: rule.code,

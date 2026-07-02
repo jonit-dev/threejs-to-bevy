@@ -16,10 +16,19 @@ Useful commands:
 ```bash
 pnpm run validate:authoring
 pnpm run build
+pnpm run game:plan
+pnpm run game:improve
 tn asset inspect assets --recursive --json
 tn scene generate-modular-track racing-kit-rally --asset-dir assets --shape oval --size medium --prefix road.modular --json
 tn scene proof-modular-track racing-kit-rally --asset-dir assets --prefix road.modular --actors player.car,rival.car --json
 tn scene set-camera-look-at racing-kit-rally camera.main --position -5.45,1.65,10.5 --target 1.55,0.38,10.5 --json
 tn playtest --project . --entity player.car --press KeyW --frames 60 --expect-moved --json
+pnpm run game:qa
+pnpm run game:release
 pnpm run verify
 ```
+
+`threenative.config.json` records the playable loop, canonical controls,
+checkpoint objective, retry path, and production proof commands. Keep that
+metadata current when changing the starter so `tn game qa --run-proof` and
+`tn game release` remain meaningful evidence instead of after-the-fact notes.

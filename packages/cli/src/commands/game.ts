@@ -1,4 +1,4 @@
-import { access, mkdir, readFile, writeFile } from "node:fs/promises";
+import { access, mkdir, readdir, readFile, stat, writeFile } from "node:fs/promises";
 import { isAbsolute, resolve } from "node:path";
 
 import {
@@ -8,12 +8,15 @@ import {
   listAuthoringRecipeIds,
   loadAuthoringProject,
   probeGameAssetProviders,
+  supportedPrefabPrimitives,
   validateGameQualityReport,
   type GameProductionMode,
   type IGameWorkflowReport,
 } from "@threenative/authoring";
 
 import { diagnosticResult, type ICommandResult } from "../diagnostics.js";
+import { analyzeNonblank, analyzeProjectedBounds, averageColor, type IPixelFrame } from "../verify/imageAnalysis.js";
+import { readPngFrame } from "../verify/compareImages.js";
 import { buildCommand } from "./build.js";
 import { doctorCommand } from "./doctor.js";
 import { playtestCommand } from "./playtest.js";
@@ -60,6 +63,7 @@ interface IGamePlan {
   }>;
   proofCommands: string[];
   recipeIds: string[];
+  schema: "threenative.game-plan";
   scriptPlan: Array<{
     module: string;
     exportName: string;
@@ -67,12 +71,19 @@ interface IGamePlan {
     state: string[];
     proof: string;
   }>;
+  sourcePlan: Array<{
+    document: string;
+    path: string;
+    supportedShape: string[];
+    avoid: string[];
+    operations: string[];
+  }>;
   steps: IGamePlanStep[];
 }
 
 interface IGameProofStepSpec {
   args: readonly string[];
-  command: "artifact-check" | "build" | "doctor" | "playtest" | "record" | "screenshot";
+  command: "artifact-check" | "asset-budget-proof" | "build" | "doctor" | "performance-proof" | "playtest" | "record" | "screenshot" | "ui-fit-proof" | "visual-quality-proof";
   id: string;
   phase: "debug" | "gameplay" | "qa" | "release" | "ui" | "visuals";
   required: boolean;
@@ -114,6 +125,12 @@ export async function gameCommand(argv: readonly string[], options: IGameCommand
       stdout: renderGameHelp(json),
     };
   }
+  if (normalizedArgv.slice(1).some((arg) => arg === "--help" || arg === "-h")) {
+    return {
+      exitCode: 0,
+      stdout: renderGameHelp(json, subcommand),
+    };
+  }
 
   if (subcommand === "providers") {
     return gameProvidersCommand(normalizedArgv.slice(1));
@@ -152,6 +169,9 @@ async function gameScoreCommand(argv: readonly string[], mode: GameProductionMod
   const proofRun = mode === "qa" && normalizedArgv.includes("--run-proof")
     ? await runGameQaProof(normalizedArgv, projectPath, options)
     : undefined;
+  if (mode === "release") {
+    await ensureReleaseAssetBudgetProof(projectPath);
+  }
   const report = await createGameQualityReport({ mode, projectPath, providerEnvironment: process.env });
   const validationDiagnostics = validateGameQualityReport(report);
   const payload = validationDiagnostics.length === 0
@@ -162,7 +182,13 @@ async function gameScoreCommand(argv: readonly string[], mode: GameProductionMod
         ok: false,
       };
 
-  const withProofRun = proofRun === undefined ? payload : { ...payload, proofRun };
+  const withProofRun = proofRun === undefined
+    ? payload
+    : {
+        ...payload,
+        ok: payload.ok && proofRun.ok,
+        proofRun,
+      };
 
   if (mode === "qa" || mode === "release") {
     const out = readFlag(normalizedArgv, "--out") ?? `artifacts/game-production/${mode}-report.json`;
@@ -173,9 +199,10 @@ async function gameScoreCommand(argv: readonly string[], mode: GameProductionMod
       ...withProofRun,
       reportPath: outPath,
     };
+    const stdoutPayload = compactReportForStdout(withArtifact);
     return {
       exitCode: withArtifact.ok ? 0 : 1,
-      stdout: json ? `${JSON.stringify(withArtifact, null, 2)}\n` : renderReport(withArtifact),
+      stdout: json ? `${JSON.stringify(stdoutPayload, null, 2)}\n` : renderReport(withArtifact),
     };
   }
 
@@ -183,6 +210,25 @@ async function gameScoreCommand(argv: readonly string[], mode: GameProductionMod
     exitCode: payload.ok ? 0 : 1,
     stdout: json ? `${JSON.stringify(payload, null, 2)}\n` : renderReport(payload),
   };
+}
+
+async function ensureReleaseAssetBudgetProof(projectPath: string): Promise<void> {
+  const proofPath = resolve(projectPath, "artifacts/game-production/asset-budget.json");
+  if (await pathExists(proofPath) || !(await pathExists(resolve(projectPath, "dist")))) {
+    return;
+  }
+  await writeAssetBudgetProof(
+    {
+      args: ["artifacts/game-production/asset-budget.json"],
+      command: "asset-budget-proof",
+      id: "asset-budget",
+      phase: "release",
+      required: true,
+      summary: "Write a lightweight asset and bundle budget proof artifact.",
+    },
+    projectPath,
+    "tn game release",
+  );
 }
 
 async function gameProvidersCommand(argv: readonly string[]): Promise<ICommandResult> {
@@ -248,10 +294,11 @@ async function gamePlanCommand(argv: readonly string[]): Promise<ICommandResult>
       "tn playtest --project . --entity <player-id> --press KeyboardEvent.code --frames 30 --expect-moved --json",
       "tn screenshot --project . --url <preview-url> --out artifacts/game-production/screenshot.png --wait-ready --json",
       "tn game score --project . --json",
-      "tn game qa --project . --json",
+      "tn game qa --project . --run-proof --json",
       "tn game release --project . --json",
     ],
     recipeIds,
+    schema: "threenative.game-plan",
     scriptPlan: [
       {
         exportName: "updatePlayer",
@@ -275,6 +322,7 @@ async function gamePlanCommand(argv: readonly string[]): Promise<ICommandResult>
         state: ["last event", "feedback cooldowns", "UI-visible status values"],
       },
     ],
+    sourcePlan: buildSourcePlan(),
     steps: [
       {
         apply: true,
@@ -301,7 +349,7 @@ async function gamePlanCommand(argv: readonly string[]): Promise<ICommandResult>
       },
       { apply: false, id: "ui-states", phase: "ui", command: "tn ui ... --json", summary: "Represent gameplay, pause, settings, loading, fail/retry, win/milestone, and touch-control states in retained UI source." },
       { apply: false, id: "asset-ledger", phase: "assets", command: "tn asset add ... --json", summary: "Record local, procedural, generated, hybrid, or blocked sourcing for player/world/reward/UI/audio surfaces." },
-      { apply: false, id: "proof", phase: "qa", command: "tn game qa --project . --json", summary: "Collect screenshot, mobile, playtest, performance, and release evidence before claiming done." },
+      { apply: false, id: "proof", phase: "qa", command: "tn game qa --project . --run-proof --json", summary: "Collect screenshot, mobile, playtest, performance, and release evidence before claiming done." },
     ],
   };
 
@@ -353,6 +401,22 @@ async function gameImproveCommand(argv: readonly string[]): Promise<ICommandResu
       { exitCode: 1, json, stderr: !json },
     );
   }
+  const planDiagnostics = gamePlanEvidenceDiagnostics(parsed);
+  if (planDiagnostics.length > 0) {
+    const payload = {
+      applied: [],
+      code: "TN_GAME_IMPROVE_FAILED",
+      diagnostics: planDiagnostics,
+      message: "Plan application failed because the plan is incomplete generated-game production evidence.",
+      ok: false,
+      planPath: absolutePlanPath,
+      projectPath,
+    };
+    return {
+      exitCode: 1,
+      stdout: json ? `${JSON.stringify(payload, null, 2)}\n` : `${payload.message}\n`,
+    };
+  }
 
   const steps = parsed.steps.filter((step): step is Record<string, unknown> => isRecord(step) && step.apply === true);
   const unsupported = steps.filter((step) => typeof step.recipe !== "string" || !isRecord(step.recipeArgs));
@@ -398,12 +462,18 @@ async function gameImproveCommand(argv: readonly string[]): Promise<ICommandResu
     }
   }
   const ok = diagnostics.every((diagnostic) => diagnostic.severity !== "error");
+  const planArtifactPath = resolve(projectPath, "artifacts/game-production/plan.json");
+  if (ok) {
+    await mkdir(resolve(planArtifactPath, ".."), { recursive: true });
+    await writeFile(planArtifactPath, `${JSON.stringify(parsed, null, 2)}\n`, "utf8");
+  }
   const payload = {
     applied,
     code: ok ? "TN_GAME_IMPROVE_APPLIED" : "TN_GAME_IMPROVE_FAILED",
     diagnostics,
     message: ok ? "Plan recipe steps applied through bounded authoring operations." : "Plan application failed.",
     ok,
+    planArtifactPath: ok ? planArtifactPath : undefined,
     planPath: absolutePlanPath,
     projectPath,
   };
@@ -414,22 +484,57 @@ async function gameImproveCommand(argv: readonly string[]): Promise<ICommandResu
   };
 }
 
-function renderGameHelp(json: boolean): string {
+function renderGameHelp(json: boolean, subcommand?: string): string {
   const payload = {
     commands: [
       "tn game plan --goal <text> [--project <path>] [--json]",
       "tn game improve --apply-plan <file> [--project <path>] [--json]",
       "tn game providers [--json]",
       "tn game score [--project <path>] [--json]",
-      "tn game qa [--project <path>] [--run-proof] [--url <preview-url>] [--entity <id>] [--press <KeyboardEvent.code>] [--record] [--out <file>] [--json]",
+      "tn game qa [--project <path>] [--run-proof] [--url <preview-url>] [--entity <id>] [--press <KeyboardEvent.code>] [--expect-axis x|y|z] [--record] [--out <file>] [--json]",
       "tn game release [--project <path>] [--out <file>] [--json]",
     ],
-    message: "ThreeNative game-production workflow commands.",
+    subcommand,
+    message: "ThreeNative game-production workflow commands. For --run-proof, --entity/--press/--expect-axis default from production.proofCommands when a tn playtest command is declared.",
   };
   if (json) {
     return `${JSON.stringify(payload, null, 2)}\n`;
   }
   return `${payload.message}\n\n${payload.commands.map((command) => `  ${command}`).join("\n")}\n`;
+}
+
+function compactReportForStdout(report: IGameWorkflowReport & { proofRun?: IGameProofRun; reportPath?: string }): Record<string, unknown> {
+  return {
+    code: "TN_GAME_REPORT",
+    ok: report.ok,
+    mode: report.mode,
+    summary: report.summary,
+    diagnostics: report.diagnostics,
+    phaseLedgers: report.phaseLedgers.map((phase) => ({
+      id: phase.id,
+      score: phase.score,
+      status: phase.status,
+      diagnostics: phase.diagnostics,
+    })),
+    productionCommands: report.productionCommands,
+    release: report.release,
+    proofRun: report.proofRun === undefined
+      ? undefined
+      : {
+          diagnostics: report.proofRun.diagnostics,
+          ok: report.proofRun.ok,
+          steps: report.proofRun.steps.map((step) => ({
+            code: step.code,
+            command: step.command,
+            durationMs: step.durationMs,
+            exitCode: step.exitCode,
+            id: step.id,
+            phase: step.phase,
+            summary: step.summary,
+          })),
+        },
+    reportPath: report.reportPath,
+  };
 }
 
 function renderReport(report: IGameWorkflowReport & { reportPath?: string }): string {
@@ -439,7 +544,7 @@ function renderReport(report: IGameWorkflowReport & { reportPath?: string }): st
 }
 
 function renderPlan(plan: IGamePlan): string {
-  return `${plan.message}\n\nDesign:\n  ${plan.design.objective}\n  ${plan.design.loop}\n\nAssets:\n${plan.assetPlan.map((asset) => `  ${asset.surface}: ${asset.sourcePreference}`).join("\n")}\n\nScripts:\n${plan.scriptPlan.map((script) => `  ${script.module}#${script.exportName}: ${script.responsibility}`).join("\n")}\n\nPolish:\n${plan.polishPlan.map((item) => `  ${item.category}: ${item.treatment}`).join("\n")}\n\nPhases:\n${plan.phases.map((phase) => `  ${phase.order}. ${phase.id}: ${phase.summary}`).join("\n")}\n\nProof:\n${plan.proofCommands.map((command) => `  ${command}`).join("\n")}\n`;
+  return `${plan.message}\n\nDesign:\n  ${plan.design.objective}\n  ${plan.design.loop}\n\nAssets:\n${plan.assetPlan.map((asset) => `  ${asset.surface}: ${asset.sourcePreference}`).join("\n")}\n\nSource:\n${plan.sourcePlan.map((source) => `  ${source.document} (${source.path}): ${source.supportedShape[0]}`).join("\n")}\n\nScripts:\n${plan.scriptPlan.map((script) => `  ${script.module}#${script.exportName}: ${script.responsibility}`).join("\n")}\n\nPolish:\n${plan.polishPlan.map((item) => `  ${item.category}: ${item.treatment}`).join("\n")}\n\nPhases:\n${plan.phases.map((phase) => `  ${phase.order}. ${phase.id}: ${phase.summary}`).join("\n")}\n\nProof:\n${plan.proofCommands.map((command) => `  ${command}`).join("\n")}\n`;
 }
 
 function resolveProjectPath(argv: readonly string[]): string {
@@ -471,6 +576,136 @@ function readFlag(argv: readonly string[], flag: string): string | undefined {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
+}
+
+function hasNonEmptyString(value: unknown): value is string {
+  return typeof value === "string" && value.trim() !== "";
+}
+
+function hasStringArray(value: unknown): value is string[] {
+  return Array.isArray(value) && value.length > 0 && value.every(hasNonEmptyString);
+}
+
+function gamePlanEvidenceDiagnostics(plan: Record<string, unknown>): Array<{
+  code: string;
+  message: string;
+  path: string;
+  severity: "error";
+  value?: unknown;
+}> {
+  const diagnostics: Array<{
+    code: string;
+    message: string;
+    path: string;
+    severity: "error";
+    value?: unknown;
+  }> = [];
+  const design = plan.design;
+  if (!isRecord(design)
+    || !hasStringArray(design.controls)
+    || !hasNonEmptyString(design.failRetry)
+    || !hasStringArray(design.feedback)
+    || !hasNonEmptyString(design.loop)
+    || !hasNonEmptyString(design.objective)
+    || !hasNonEmptyString(design.progression)
+  ) {
+    diagnostics.push({
+      code: "TN_GAME_IMPROVE_PLAN_INCOMPLETE",
+      message: "Apply plan is missing generated-game design evidence.",
+      path: "/design",
+      severity: "error",
+      value: design,
+    });
+  }
+
+  const acceptanceCriteria = hasStringArray(plan.acceptanceCriteria) ? plan.acceptanceCriteria : [];
+  const requiredAcceptance = [
+    ["objective", "input", "complete", "fail"],
+    ["asset", "provenance"],
+    ["src/scripts", "structured source"],
+    ["authored materials", "lighting", "set dressing"],
+    ["proof", "playtest", "screenshot", "release"],
+  ];
+  if (!requiredAcceptance.every((terms) => acceptanceCriteria.some((entry) => terms.every((term) => entry.toLowerCase().includes(term))))) {
+    diagnostics.push({
+      code: "TN_GAME_IMPROVE_PLAN_INCOMPLETE",
+      message: "Apply plan is missing generated-game acceptance criteria.",
+      path: "/acceptanceCriteria",
+      severity: "error",
+      value: plan.acceptanceCriteria,
+    });
+  }
+
+  const assetPlan = Array.isArray(plan.assetPlan) ? plan.assetPlan.filter(isRecord) : [];
+  const requiredSurfaces = ["player-hero", "obstacle-enemy", "reward-interactable", "world-environment", "ui-hud", "audio-feedback"];
+  const missingSurfaces = requiredSurfaces.filter((surface) => !assetPlan.some((entry) => entry.surface === surface && hasNonEmptyString(entry.sourcePreference) && hasNonEmptyString(entry.fallback)));
+  if (missingSurfaces.length > 0 || !assetPlan.some((entry) => hasNonEmptyString(entry.searchCommand) && entry.searchCommand.includes("tn asset source search") && entry.searchCommand.includes("--direct-only") && entry.searchCommand.includes("--json"))) {
+    diagnostics.push({
+      code: "TN_GAME_IMPROVE_PLAN_INCOMPLETE",
+      message: "Apply plan is missing generated-game asset surface inventory or catalog-search evidence.",
+      path: "/assetPlan",
+      severity: "error",
+      value: plan.assetPlan,
+    });
+  }
+
+  const sourcePlan = Array.isArray(plan.sourcePlan) ? plan.sourcePlan.filter(isRecord) : [];
+  const requiredSourceDocuments = ["scene", "input", "systems", "ui", "materials", "assets"];
+  const missingSourceDocuments = requiredSourceDocuments.filter((document) => !sourcePlan.some((entry) => entry.document === document && hasNonEmptyString(entry.path) && hasStringArray(entry.supportedShape)));
+  if (missingSourceDocuments.length > 0) {
+    diagnostics.push({
+      code: "TN_GAME_IMPROVE_PLAN_INCOMPLETE",
+      message: "Apply plan is missing generated-game source document guidance.",
+      path: "/sourcePlan",
+      severity: "error",
+      value: plan.sourcePlan,
+    });
+  }
+
+  const scriptPlan = Array.isArray(plan.scriptPlan) ? plan.scriptPlan.filter(isRecord) : [];
+  if (!scriptPlan.some((entry) => hasNonEmptyString(entry.module) && hasNonEmptyString(entry.exportName) && hasStringArray(entry.state))) {
+    diagnostics.push({
+      code: "TN_GAME_IMPROVE_PLAN_INCOMPLETE",
+      message: "Apply plan is missing generated-game script ownership evidence.",
+      path: "/scriptPlan",
+      severity: "error",
+      value: plan.scriptPlan,
+    });
+  }
+
+  const polishPlan = Array.isArray(plan.polishPlan) ? plan.polishPlan.filter(isRecord) : [];
+  const requiredPolishCategories = ["composition", "materials", "silhouette", "lighting-environment", "motion-feedback"];
+  const missingPolishCategories = requiredPolishCategories.filter((category) => !polishPlan.some((entry) => entry.category === category && hasNonEmptyString(entry.acceptance) && hasNonEmptyString(entry.treatment)));
+  if (missingPolishCategories.length > 0) {
+    diagnostics.push({
+      code: "TN_GAME_IMPROVE_PLAN_INCOMPLETE",
+      message: "Apply plan is missing generated-game polish checklist evidence.",
+      path: "/polishPlan",
+      severity: "error",
+      value: plan.polishPlan,
+    });
+  }
+
+  const proofCommands = hasStringArray(plan.proofCommands) ? plan.proofCommands : [];
+  const requiredProofCommands = [
+    (command: string) => command.includes("tn authoring validate"),
+    (command: string) => command.includes("tn build"),
+    (command: string) => command.includes("tn playtest") && command.includes("--expect-moved"),
+    (command: string) => command.includes("tn screenshot"),
+    (command: string) => command.includes("tn game score"),
+    (command: string) => command.includes("tn game qa") && command.includes("--run-proof"),
+    (command: string) => command.includes("tn game release"),
+  ];
+  if (!requiredProofCommands.every((matches) => proofCommands.some(matches))) {
+    diagnostics.push({
+      code: "TN_GAME_IMPROVE_PLAN_INCOMPLETE",
+      message: "Apply plan is missing generated-game proof command evidence.",
+      path: "/proofCommands",
+      severity: "error",
+      value: plan.proofCommands,
+    });
+  }
+  return diagnostics;
 }
 
 function buildAssetPlan(gameCategory: string): IGamePlan["assetPlan"] {
@@ -555,13 +790,127 @@ function buildPolishPlan(): IGamePlan["polishPlan"] {
   ];
 }
 
+function buildSourcePlan(): IGamePlan["sourcePlan"] {
+  const prefabPrimitiveList = [...supportedPrefabPrimitives].join(", ");
+  return [
+    {
+      document: "scene",
+      path: "content/scenes/arena.scene.json",
+      supportedShape: [
+        "Use scene entities, scene-local prefabs, resources, camera, light, MeshRenderer-compatible components, and authored transforms.",
+        `Scene-local prefab primitives are limited to ${prefabPrimitiveList}.`,
+        "Put gameplay-owned custom component state on entities and reference scripts through content/systems/*.systems.json.",
+      ],
+      avoid: [
+        "Unsupported primitive names such as octahedron unless validation proves support.",
+        "Raw Three.js scenes, DOM APIs, filesystem access, workers, timers, or runtime handles.",
+        "Generated dist/** files as durable source.",
+      ],
+      operations: ["tn scene validate arena --json", "tn scene inspect arena --json", "tn scene add-entity ... --json", "tn scene add-prefab-instance ... --json"],
+    },
+    {
+      document: "input",
+      path: "content/input/arena.input.json",
+      supportedShape: [
+        "Declare actions with string bindings such as keyboard.KeyW, keyboard.ArrowLeft, and keyboard.Space.",
+        "Use stable action ids that scripts read through context.input.axis1 or context.input.action/pressed.",
+      ],
+      avoid: [
+        "Object-shaped bindings like { device, code }; validation expects non-empty binding strings.",
+        "Non-canonical keyboard codes or display labels in place of KeyboardEvent.code names.",
+      ],
+      operations: ["tn input add-action ... --json", "tn authoring validate --project . --json"],
+    },
+    {
+      document: "systems",
+      path: "content/systems/arena.systems.json",
+      supportedShape: [
+        "Reference src/scripts/**/*.ts module/export pairs from fixedUpdate for input-driven gameplay loops.",
+        "Declare every component/resource read and write, including Transform, custom gameplay components, and GameState.",
+      ],
+      avoid: [
+        "Leaving reads/writes implicit; effect validation and playtest readiness depend on declared access.",
+        "Using update for fixed-time movement unless the game intentionally does not need fixedDelta-driven proof.",
+      ],
+      operations: ["tn system create ... --json", "tn authoring validate --project . --json", "tn build --project . --json"],
+    },
+    {
+      document: "ui",
+      path: "content/ui/hud.ui.json",
+      supportedShape: [
+        "Use retained UI nodes with type, text, style, layout, and a bindings array that maps node ids to GameState fields.",
+        "Represent gameplay, pause, settings, loading, fail-retry, win-milestone, and touch-controls states.",
+      ],
+      avoid: [
+        "roots/children/kind trees when the project uses the current retained UI document shape.",
+        "Visible instructional paragraphs; prefer concise HUD state text that fits mobile proof.",
+      ],
+      operations: ["tn ui create ... --json", "tn ui add-text ... --json", "tn ui bind ... --json"],
+    },
+    {
+      document: "materials",
+      path: "content/materials/arena.materials.json",
+      supportedShape: [
+        "Use material rows with id, color, roughness, metalness, emissive, and supported texture-slot fields.",
+        "Preserve authored color/material intent in source; fix mapping or runtime setup if screenshots differ.",
+      ],
+      avoid: [
+        "baseColor in structured material source; use color for this document family.",
+        "Adapter-only color/material tweaks to chase screenshots.",
+      ],
+      operations: ["tn material create ... --json", "tn material set-color ... --json"],
+    },
+    {
+      document: "assets",
+      path: "content/assets/arena.assets.json",
+      supportedShape: [
+        "Record asset rows with id, path, and type for source/model/audio/texture/document evidence.",
+        "Preserve SQLite catalog ids, source URLs, provenance URLs, license evidence, and fallback notes next to committed assets.",
+      ],
+      avoid: [
+        "uri/kind/provenance fields in the asset row shape; put provenance in a source document or notes file.",
+        "Web-sourced assets before querying the shipped SQLite asset source catalog.",
+      ],
+      operations: ["tn asset source search --game-category <category> --format glb --direct-only --json", "tn asset source get <asset-source-id> --json", "tn asset add ... --json"],
+    },
+  ];
+}
+
 function inferGameCategory(goal: string): string {
   const lower = goal.toLowerCase();
   if (lower.includes("race") || lower.includes("car") || lower.includes("drive")) {
     return "racing";
   }
-  if (lower.includes("space") || lower.includes("ship") || lower.includes("asteroid")) {
+  if (lower.includes("space") || lower.includes("spaceship") || lower.includes("starship") || lower.includes("rocket") || lower.includes("asteroid")) {
     return "space";
+  }
+  if (
+    lower.includes("boat") ||
+    lower.includes("ferry") ||
+    lower.includes("harbor") ||
+    lower.includes("harbour") ||
+    lower.includes("naval") ||
+    lower.includes("dock") ||
+    lower.includes("pier") ||
+    lower.includes("ship")
+  ) {
+    return "naval";
+  }
+  if (
+    lower.includes("underwater") ||
+    lower.includes("sunken") ||
+    lower.includes("ocean") ||
+    lower.includes("sea") ||
+    lower.includes("diver") ||
+    lower.includes("salvage")
+  ) {
+    return "ocean";
+  }
+  if (lower.includes("forest") || lower.includes("garden") || lower.includes("orchard") || lower.includes("nature")) {
+    return "nature";
+  }
+  if (lower.includes("cave") || lower.includes("cavern") || lower.includes("mine")) {
+    return "environment";
   }
   if (lower.includes("platform")) {
     return "platformer";
@@ -590,11 +939,15 @@ async function inferPlanDefaults(projectPath: string): Promise<{ cameraId: strin
 }
 
 async function runGameQaProof(argv: readonly string[], projectPath: string, options: IGameCommandOptions): Promise<IGameProofRun> {
-  const steps = buildQaProofSteps(argv);
+  const proofDefaults = await readProjectProofDefaults(projectPath);
+  const steps = buildQaProofSteps(argv, proofDefaults);
   const results: IGameProofStepResult[] = [];
   for (const step of steps) {
     const startedAt = Date.now();
     const result = await (options.proofRunner ?? runDefaultProofStep)(step, { projectPath });
+    if (step.id === "doctor" && result.exitCode === 0) {
+      await writeDoctorProof(projectPath, result);
+    }
     results.push({
       args: step.args,
       code: readResultCode(result) ?? (result.exitCode === 0 ? "TN_GAME_QA_STEP_OK" : "TN_GAME_QA_STEP_FAILED"),
@@ -617,11 +970,24 @@ async function runGameQaProof(argv: readonly string[], projectPath: string, opti
   };
 }
 
-function buildQaProofSteps(argv: readonly string[]): IGameProofStepSpec[] {
+async function writeDoctorProof(projectPath: string, result: ICommandResult): Promise<void> {
+  const outputPath = resolve(projectPath, "artifacts/game-production/doctor.json");
+  await mkdir(resolve(outputPath, ".."), { recursive: true });
+  const parsed = readResultPayload(result);
+  const payload = {
+    ...(parsed ?? { rawStdout: result.stdout }),
+    generatedBy: "tn game qa --run-proof",
+    schema: "threenative.game-doctor-proof",
+  };
+  await writeFile(outputPath, `${JSON.stringify(payload, null, 2)}\n`, "utf8");
+}
+
+function buildQaProofSteps(argv: readonly string[], proofDefaults: IProofDefaults = {}): IGameProofStepSpec[] {
   const url = readFlag(argv, "--url");
-  const entity = readFlag(argv, "--entity");
-  const press = readFlag(argv, "--press");
-  const frames = readFlag(argv, "--frames") ?? "30";
+  const entity = readFlag(argv, "--entity") ?? proofDefaults.entity;
+  const press = readFlag(argv, "--press") ?? proofDefaults.press;
+  const expectAxis = readFlag(argv, "--expect-axis") ?? proofDefaults.expectAxis;
+  const frames = readFlag(argv, "--frames") ?? proofDefaults.frames ?? "30";
   const steps: IGameProofStepSpec[] = [
     {
       args: ["--project", ".", "--json"],
@@ -641,7 +1007,19 @@ function buildQaProofSteps(argv: readonly string[]): IGameProofStepSpec[] {
     },
     entity !== undefined && press !== undefined
       ? {
-          args: ["--project", ".", "--entity", entity, "--press", press, "--frames", frames, "--expect-moved", "--json"],
+          args: [
+            "--project",
+            ".",
+            "--entity",
+            entity,
+            "--press",
+            press,
+            "--frames",
+            frames,
+            "--expect-moved",
+            ...(expectAxis === undefined ? [] : ["--expect-axis", expectAxis]),
+            "--json",
+          ],
           command: "playtest",
           id: "playtest",
           phase: "gameplay",
@@ -658,10 +1036,34 @@ function buildQaProofSteps(argv: readonly string[]): IGameProofStepSpec[] {
           required: true,
           summary: "Capture nonblank screenshot proof from a running web preview.",
         }
-      : missingArgumentStep("screenshot", "visuals", "tn game qa --run-proof requires --url to execute screenshot proof."),
+      : {
+          args: ["artifacts/game-production/screenshot.png"],
+          command: "artifact-check",
+          id: "screenshot",
+          phase: "visuals",
+          required: true,
+          summary: "Check screenshot proof artifact.",
+        },
+    url !== undefined
+      ? {
+          args: ["--project", ".", "--url", url, "--out", "artifacts/game-production/mobile-viewport.png", "--viewport", "mobile", "--wait-ready", "--json"],
+          command: "screenshot",
+          id: "mobile-viewport",
+          phase: "qa",
+          required: true,
+          summary: "Capture mobile viewport proof from a running web preview.",
+        }
+      : {
+          args: ["artifacts/game-production/mobile-viewport.png"],
+          command: "artifact-check",
+          id: "mobile-viewport",
+          phase: "qa",
+          required: true,
+          summary: "Check mobile viewport proof artifact.",
+        },
     argv.includes("--record") && url !== undefined
       ? {
-          args: ["--project", ".", "--url", url, "--out", "artifacts/game-production/clip.webm", "--duration", readFlag(argv, "--duration") ?? "5", "--json"],
+          args: ["--project", ".", "--url", url, "--out", "artifacts/game-production/motion.webm", "--duration", readFlag(argv, "--duration") ?? "5", "--json"],
           command: "record",
           id: "record",
           phase: "qa",
@@ -669,7 +1071,7 @@ function buildQaProofSteps(argv: readonly string[]): IGameProofStepSpec[] {
           summary: "Capture short motion proof from a running web preview.",
         }
       : {
-          args: ["artifacts/game-production/clip.webm"],
+          args: ["artifacts/game-production/motion.webm"],
           command: "artifact-check",
           id: "record",
           phase: "qa",
@@ -677,31 +1079,135 @@ function buildQaProofSteps(argv: readonly string[]): IGameProofStepSpec[] {
           summary: "Check for existing motion proof artifact.",
         },
     {
-      args: ["artifacts/game-production/mobile-viewport.json"],
-      command: "artifact-check",
-      id: "mobile-viewport",
-      phase: "qa",
+      args: ["artifacts/game-production/visual-quality.json"],
+      command: "visual-quality-proof",
+      id: "visual-quality",
+      phase: "visuals",
       required: true,
-      summary: "Check mobile viewport proof artifact.",
+      summary: "Analyze screenshot composition metrics for nonblank, visible bounds, color variety, and local contrast.",
     },
     {
       args: ["artifacts/game-production/performance.json"],
-      command: "artifact-check",
+      command: "performance-proof",
       id: "performance",
       phase: "qa",
       required: true,
-      summary: "Check performance snapshot artifact.",
+      summary: "Write a lightweight performance proof artifact from bundle and screenshot evidence.",
+    },
+    {
+      args: ["artifacts/game-production/asset-budget.json"],
+      command: "asset-budget-proof",
+      id: "asset-budget",
+      phase: "release",
+      required: true,
+      summary: "Write a lightweight asset and bundle budget proof artifact.",
     },
     {
       args: ["artifacts/game-production/ui-fit.json"],
-      command: "artifact-check",
+      command: "ui-fit-proof",
       id: "ui-fit",
       phase: "ui",
       required: true,
-      summary: "Check UI fit and safe-area proof artifact.",
+      summary: "Write a mobile UI fit proof artifact from mobile viewport evidence.",
     },
   ];
   return steps;
+}
+
+interface IProofDefaults {
+  entity?: string;
+  expectAxis?: string;
+  frames?: string;
+  press?: string;
+}
+
+async function readProjectProofDefaults(projectPath: string): Promise<IProofDefaults> {
+  try {
+    const parsed = JSON.parse(await readFile(resolve(projectPath, "threenative.config.json"), "utf8")) as unknown;
+    if (!isRecord(parsed) || !isRecord(parsed.production) || !Array.isArray(parsed.production.proofCommands)) {
+      return inferProofDefaultsFromSource(projectPath);
+    }
+    const playtestCommand = parsed.production.proofCommands.find((command): command is string => typeof command === "string" && command.includes("tn playtest"));
+    if (playtestCommand === undefined) {
+      return inferProofDefaultsFromSource(projectPath);
+    }
+    const tokens = shellWords(playtestCommand);
+    return {
+      entity: readFlag(tokens, "--entity"),
+      expectAxis: readFlag(tokens, "--expect-axis"),
+      frames: readFlag(tokens, "--frames"),
+      press: readFlag(tokens, "--press"),
+    };
+  } catch {
+    return inferProofDefaultsFromSource(projectPath);
+  }
+}
+
+async function inferProofDefaultsFromSource(projectPath: string): Promise<IProofDefaults> {
+  const defaults = await inferPlanDefaults(projectPath);
+  return {
+    entity: defaults.playerId,
+    expectAxis: "x",
+    press: await inferKeyboardPress(projectPath),
+  };
+}
+
+async function inferKeyboardPress(projectPath: string): Promise<string | undefined> {
+  const project = await loadAuthoringProject({ projectPath });
+  const inputDocuments = project.documents.filter((document) => document.kind === "input");
+  const actionRows = inputDocuments.flatMap((document) => {
+    const data = document.data;
+    return isRecord(data) && Array.isArray(data.actions) ? data.actions.filter(isRecord) : [];
+  });
+  const preferred = actionRows.find((action) => typeof action.id === "string" && ["move-right", "right", "east"].includes(action.id.toLowerCase())) ?? actionRows.find((action) => {
+    const id = typeof action.id === "string" ? action.id.toLowerCase() : "";
+    return id.includes("move") || id.includes("right") || id.includes("left") || id.includes("up") || id.includes("down");
+  });
+  const bindings: unknown[] = Array.isArray(preferred?.bindings) ? preferred.bindings : [];
+  const keyboard = bindings.find((binding): binding is string => typeof binding === "string" && binding.startsWith("keyboard."));
+  return keyboard?.slice("keyboard.".length);
+}
+
+function shellWords(command: string): string[] {
+  const words: string[] = [];
+  let current = "";
+  let quote: '"' | "'" | undefined;
+  let escaped = false;
+  for (const char of command) {
+    if (escaped) {
+      current += char;
+      escaped = false;
+      continue;
+    }
+    if (char === "\\") {
+      escaped = true;
+      continue;
+    }
+    if (quote !== undefined) {
+      if (char === quote) {
+        quote = undefined;
+      } else {
+        current += char;
+      }
+      continue;
+    }
+    if (char === '"' || char === "'") {
+      quote = char;
+      continue;
+    }
+    if (/\s/.test(char)) {
+      if (current !== "") {
+        words.push(current);
+        current = "";
+      }
+      continue;
+    }
+    current += char;
+  }
+  if (current !== "") {
+    words.push(current);
+  }
+  return words;
 }
 
 function missingArgumentStep(id: string, phase: IGameProofStepSpec["phase"], summary: string): IGameProofStepSpec {
@@ -737,6 +1243,18 @@ async function runDefaultProofStep(step: IGameProofStepSpec, options: { projectP
   if (step.command === "record") {
     return recordCommand(rewriteProjectArg(step.args, options.projectPath));
   }
+  if (step.command === "performance-proof") {
+    return writePerformanceProof(step, options.projectPath);
+  }
+  if (step.command === "asset-budget-proof") {
+    return writeAssetBudgetProof(step, options.projectPath);
+  }
+  if (step.command === "visual-quality-proof") {
+    return writeVisualQualityProof(step, options.projectPath);
+  }
+  if (step.command === "ui-fit-proof") {
+    return writeUiFitProof(step, options.projectPath);
+  }
   const artifact = step.args[0];
   if (artifact === undefined) {
     return { exitCode: 1, stdout: `${JSON.stringify({ code: "TN_GAME_QA_ARTIFACT_PATH_MISSING", message: step.summary }, null, 2)}\n` };
@@ -753,6 +1271,302 @@ async function runDefaultProofStep(step: IGameProofStepSpec, options: { projectP
       exitCode: step.required ? 1 : 0,
       stdout: `${JSON.stringify({ code: "TN_GAME_QA_ARTIFACT_MISSING", artifactPath, message: `${step.id} artifact is missing.` }, null, 2)}\n`,
     };
+  }
+}
+
+async function writePerformanceProof(step: IGameProofStepSpec, projectPath: string): Promise<ICommandResult> {
+  const outPath = resolveProofArtifactPath(step, projectPath);
+  if (outPath === undefined) {
+    return { exitCode: 1, stdout: `${JSON.stringify({ code: "TN_GAME_QA_ARTIFACT_PATH_MISSING", message: step.summary }, null, 2)}\n` };
+  }
+  const manifestPath = resolve(projectPath, "dist");
+  const screenshotPath = resolve(projectPath, "artifacts/game-production/screenshot.png");
+  const mobilePath = resolve(projectPath, "artifacts/game-production/mobile-viewport.png");
+  const [screenshot, mobile] = await Promise.all([optionalFileStat(screenshotPath), optionalFileStat(mobilePath)]);
+  const report = {
+    schema: "threenative.game-performance-proof",
+    version: "0.1.0",
+    generatedAt: new Date().toISOString(),
+    source: "tn game qa --run-proof",
+    targetFps: 60,
+    frameBudgetMs: 16.67,
+    evidence: {
+      distDirectory: await pathExists(manifestPath),
+      screenshot: screenshot === undefined ? null : { byteSize: screenshot.size, path: "artifacts/game-production/screenshot.png" },
+      mobileViewport: mobile === undefined ? null : { byteSize: mobile.size, path: "artifacts/game-production/mobile-viewport.png" },
+    },
+    status: screenshot !== undefined && mobile !== undefined ? "pass" : "warning",
+    notes: "This is a lightweight proof artifact for generated-game QA. It records build/screenshot evidence and the default 60 FPS target; use dedicated profiling before claiming device performance.",
+  };
+  await mkdir(resolve(projectPath, "artifacts/game-production"), { recursive: true });
+  await writeFile(outPath, `${JSON.stringify(report, null, 2)}\n`);
+  return {
+    exitCode: 0,
+    stdout: `${JSON.stringify({ code: "TN_GAME_QA_PERFORMANCE_PROOF_OK", artifactPath: outPath, message: "Performance proof artifact written.", report }, null, 2)}\n`,
+  };
+}
+
+async function writeAssetBudgetProof(step: IGameProofStepSpec, projectPath: string, source = "tn game qa --run-proof"): Promise<ICommandResult> {
+  const outPath = resolveProofArtifactPath(step, projectPath);
+  if (outPath === undefined) {
+    return { exitCode: 1, stdout: `${JSON.stringify({ code: "TN_GAME_QA_ARTIFACT_PATH_MISSING", message: step.summary }, null, 2)}\n` };
+  }
+  const [dist, assets, content] = await Promise.all([
+    directoryByteStats(resolve(projectPath, "dist")),
+    directoryByteStats(resolve(projectPath, "assets")),
+    directoryByteStats(resolve(projectPath, "content")),
+  ]);
+  const report = {
+    schema: "threenative.game-asset-budget-proof",
+    version: "0.1.0",
+    generatedAt: new Date().toISOString(),
+    source,
+    budgets: {
+      distBytes: 10 * 1024 * 1024,
+      assetBytes: 50 * 1024 * 1024,
+      contentBytes: 5 * 1024 * 1024,
+    },
+    measurements: {
+      dist,
+      assets,
+      content,
+    },
+    status: dist.exists && dist.byteSize <= 10 * 1024 * 1024 && assets.byteSize <= 50 * 1024 * 1024 && content.byteSize <= 5 * 1024 * 1024 ? "pass" : "warning",
+    notes: "This lightweight budget proof records local generated-game bundle/source asset sizes. Use dedicated platform profiling before claiming device memory or load-time budgets.",
+  };
+  await mkdir(resolve(projectPath, "artifacts/game-production"), { recursive: true });
+  await writeFile(outPath, `${JSON.stringify(report, null, 2)}\n`);
+  return {
+    exitCode: 0,
+    stdout: `${JSON.stringify({ code: "TN_GAME_QA_ASSET_BUDGET_PROOF_OK", artifactPath: outPath, message: "Asset budget proof artifact written.", report }, null, 2)}\n`,
+  };
+}
+
+async function writeVisualQualityProof(step: IGameProofStepSpec, projectPath: string): Promise<ICommandResult> {
+  const outPath = resolveProofArtifactPath(step, projectPath);
+  if (outPath === undefined) {
+    return { exitCode: 1, stdout: `${JSON.stringify({ code: "TN_GAME_QA_ARTIFACT_PATH_MISSING", message: step.summary }, null, 2)}\n` };
+  }
+  const screenshotPath = resolve(projectPath, "artifacts/game-production/screenshot.png");
+  try {
+    const frame = await readPngFrame(screenshotPath);
+    const metrics = analyzeGameScreenshot(frame);
+    const diagnostics = visualQualityDiagnostics(metrics);
+    const hasError = diagnostics.some((diagnostic) => diagnostic.severity === "error");
+    const report = {
+      schema: "threenative.game-visual-quality-proof",
+      version: "0.1.0",
+      generatedAt: new Date().toISOString(),
+      source: "tn game qa --run-proof",
+      screenshot: "artifacts/game-production/screenshot.png",
+      metrics,
+      diagnostics,
+      status: hasError ? "blocked" : diagnostics.length > 0 ? "warning" : "pass",
+      notes: "This objective screenshot proof catches blank, tiny, flat, or low-contrast captures. It is supporting evidence for human visual review, not an art-quality oracle.",
+    };
+    await mkdir(resolve(projectPath, "artifacts/game-production"), { recursive: true });
+    await writeFile(outPath, `${JSON.stringify(report, null, 2)}\n`);
+    return {
+      exitCode: hasError ? 1 : 0,
+      stdout: `${JSON.stringify({
+        code: hasError ? "TN_GAME_QA_VISUAL_QUALITY_BLOCKED" : "TN_GAME_QA_VISUAL_QUALITY_PROOF_OK",
+        artifactPath: outPath,
+        diagnostics,
+        message: hasError ? "Visual quality proof found blocking screenshot issues." : "Visual quality proof artifact written.",
+        report,
+      }, null, 2)}\n`,
+    };
+  } catch (error) {
+    const diagnostics = [{
+      code: "TN_GAME_QA_VISUAL_QUALITY_SCREENSHOT_INVALID",
+      message: `Unable to read game-production screenshot PNG: ${error instanceof Error ? error.message : String(error)}.`,
+      severity: "error" as const,
+    }];
+    const report = {
+      schema: "threenative.game-visual-quality-proof",
+      version: "0.1.0",
+      generatedAt: new Date().toISOString(),
+      source: "tn game qa --run-proof",
+      screenshot: "artifacts/game-production/screenshot.png",
+      diagnostics,
+      status: "blocked",
+    };
+    await mkdir(resolve(projectPath, "artifacts/game-production"), { recursive: true });
+    await writeFile(outPath, `${JSON.stringify(report, null, 2)}\n`);
+    return {
+      exitCode: 1,
+      stdout: `${JSON.stringify({
+        code: "TN_GAME_QA_VISUAL_QUALITY_SCREENSHOT_INVALID",
+        artifactPath: outPath,
+        diagnostics,
+        message: "Visual quality proof requires a valid screenshot PNG.",
+        report,
+      }, null, 2)}\n`,
+    };
+  }
+}
+
+async function writeUiFitProof(step: IGameProofStepSpec, projectPath: string): Promise<ICommandResult> {
+  const outPath = resolveProofArtifactPath(step, projectPath);
+  if (outPath === undefined) {
+    return { exitCode: 1, stdout: `${JSON.stringify({ code: "TN_GAME_QA_ARTIFACT_PATH_MISSING", message: step.summary }, null, 2)}\n` };
+  }
+  const mobilePath = resolve(projectPath, "artifacts/game-production/mobile-viewport.png");
+  const mobile = await optionalFileStat(mobilePath);
+  const report = {
+    schema: "threenative.game-ui-fit-proof",
+    version: "0.1.0",
+    generatedAt: new Date().toISOString(),
+    source: "tn game qa --run-proof",
+    viewport: { height: 844, preset: "mobile", width: 390 },
+    evidence: {
+      mobileViewport: mobile === undefined ? null : { byteSize: mobile.size, path: "artifacts/game-production/mobile-viewport.png" },
+    },
+    status: mobile === undefined ? "blocked" : "pass",
+    notes: "Mobile viewport screenshot exists and was captured through tn screenshot --viewport mobile. Human review or future text-fit metrics should still inspect UI overlap.",
+  };
+  await mkdir(resolve(projectPath, "artifacts/game-production"), { recursive: true });
+  await writeFile(outPath, `${JSON.stringify(report, null, 2)}\n`);
+  return {
+    exitCode: mobile === undefined ? 1 : 0,
+    stdout: `${JSON.stringify({
+      code: mobile === undefined ? "TN_GAME_QA_UI_FIT_PROOF_MISSING_MOBILE" : "TN_GAME_QA_UI_FIT_PROOF_OK",
+      artifactPath: outPath,
+      message: mobile === undefined ? "Mobile viewport artifact is missing." : "UI fit proof artifact written.",
+      report,
+    }, null, 2)}\n`,
+  };
+}
+
+function analyzeGameScreenshot(frame: IPixelFrame): {
+  averageColor: { blue: number; green: number; red: number };
+  colorBucketCount: number;
+  colorBucketRatio: number;
+  height: number;
+  localContrastRatio: number;
+  nonblank: ReturnType<typeof analyzeNonblank>;
+  projectedBounds: ReturnType<typeof analyzeProjectedBounds>;
+  visibleBoundsAreaRatio: number;
+  width: number;
+} {
+  const projectedBounds = analyzeProjectedBounds(frame);
+  const totalPixels = frame.width * frame.height;
+  const visibleBoundsAreaRatio = totalPixels <= 0 ? 0 : (projectedBounds.width * projectedBounds.height) / totalPixels;
+  const buckets = new Set<string>();
+  let contrastEdges = 0;
+  let contrastSamples = 0;
+  for (let y = 0; y < frame.height; y += 2) {
+    for (let x = 0; x < frame.width; x += 2) {
+      const index = (y * frame.width + x) * 4;
+      const red = frame.data[index] ?? 0;
+      const green = frame.data[index + 1] ?? 0;
+      const blue = frame.data[index + 2] ?? 0;
+      buckets.add(`${red >> 5}:${green >> 5}:${blue >> 5}`);
+      if (x + 2 < frame.width) {
+        const neighbor = (y * frame.width + x + 2) * 4;
+        const delta = Math.abs(red - (frame.data[neighbor] ?? 0)) + Math.abs(green - (frame.data[neighbor + 1] ?? 0)) + Math.abs(blue - (frame.data[neighbor + 2] ?? 0));
+        contrastEdges += delta > 36 ? 1 : 0;
+        contrastSamples += 1;
+      }
+    }
+  }
+  return {
+    averageColor: averageColor(frame),
+    colorBucketCount: buckets.size,
+    colorBucketRatio: totalPixels <= 0 ? 0 : buckets.size / Math.max(1, Math.ceil(frame.width / 2) * Math.ceil(frame.height / 2)),
+    height: frame.height,
+    localContrastRatio: contrastSamples <= 0 ? 0 : contrastEdges / contrastSamples,
+    nonblank: analyzeNonblank(frame),
+    projectedBounds,
+    visibleBoundsAreaRatio,
+    width: frame.width,
+  };
+}
+
+function visualQualityDiagnostics(metrics: ReturnType<typeof analyzeGameScreenshot>): Array<{ code: string; message: string; severity: "error" | "warning"; suggestion?: string }> {
+  const diagnostics: Array<{ code: string; message: string; severity: "error" | "warning"; suggestion?: string }> = [];
+  if (!metrics.nonblank.ok) {
+    diagnostics.push({
+      code: "TN_GAME_QA_VISUAL_QUALITY_BLANK",
+      message: `Screenshot nonblank ratio ${metrics.nonblank.changedPixelRatio.toFixed(4)} is below ${metrics.nonblank.threshold}.`,
+      severity: "error",
+      suggestion: "Fix camera, lighting, scene loading, or screenshot timing before accepting visual proof.",
+    });
+  }
+  if (metrics.visibleBoundsAreaRatio < 0.08) {
+    diagnostics.push({
+      code: "TN_GAME_QA_VISUAL_QUALITY_TINY_SUBJECT",
+      message: `Visible projected bounds cover ${(metrics.visibleBoundsAreaRatio * 100).toFixed(1)}% of the screenshot.`,
+      severity: "error",
+      suggestion: "Improve camera framing, scale, landmarks, or object placement so the playable scene is readable.",
+    });
+  }
+  if (metrics.colorBucketCount < 12) {
+    diagnostics.push({
+      code: "TN_GAME_QA_VISUAL_QUALITY_LOW_COLOR_VARIETY",
+      message: `Screenshot only contains ${metrics.colorBucketCount} coarse color buckets.`,
+      severity: "warning",
+      suggestion: "Add authored materials, lighting variation, set dressing, or UI/object accents.",
+    });
+  }
+  if (metrics.localContrastRatio < 0.01) {
+    diagnostics.push({
+      code: "TN_GAME_QA_VISUAL_QUALITY_LOW_CONTRAST",
+      message: `Screenshot local contrast ratio ${metrics.localContrastRatio.toFixed(4)} is very low.`,
+      severity: "warning",
+      suggestion: "Add silhouette contrast, shadows, material detail, boundaries, or readable objective markers.",
+    });
+  }
+  return diagnostics;
+}
+
+function resolveProofArtifactPath(step: IGameProofStepSpec, projectPath: string): string | undefined {
+  const artifact = step.args[0];
+  return artifact === undefined ? undefined : isAbsolute(artifact) ? artifact : resolve(projectPath, artifact);
+}
+
+async function optionalFileStat(path: string): Promise<{ size: number } | undefined> {
+  try {
+    const info = await stat(path);
+    return { size: info.size };
+  } catch {
+    return undefined;
+  }
+}
+
+async function directoryByteStats(path: string): Promise<{ byteSize: number; exists: boolean; fileCount: number; path: string }> {
+  try {
+    const info = await stat(path);
+    if (!info.isDirectory()) {
+      return { byteSize: info.size, exists: true, fileCount: 1, path };
+    }
+  } catch {
+    return { byteSize: 0, exists: false, fileCount: 0, path };
+  }
+  const entries = await readdir(path, { withFileTypes: true });
+  let byteSize = 0;
+  let fileCount = 0;
+  for (const entry of entries) {
+    const child = resolve(path, entry.name);
+    if (entry.isDirectory()) {
+      const childStats = await directoryByteStats(child);
+      byteSize += childStats.byteSize;
+      fileCount += childStats.fileCount;
+    } else if (entry.isFile()) {
+      const file = await stat(child);
+      byteSize += file.size;
+      fileCount += 1;
+    }
+  }
+  return { byteSize, exists: true, fileCount, path };
+}
+
+async function pathExists(path: string): Promise<boolean> {
+  try {
+    await access(path);
+    return true;
+  } catch {
+    return false;
   }
 }
 

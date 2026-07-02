@@ -1,0 +1,52 @@
+{
+  "schema": "threenative.prefab",
+  "version": "0.1.0",
+  "id": "prefab.ball",
+  "entities": [
+    {
+      "id": "prefab.ball",
+      "transform": {
+        "position": [
+          0,
+          0.28,
+          4.8
+        ],
+        "scale": [
+          0.56,
+          0.56,
+          0.56
+        ]
+      },
+      "components": {
+        "MeshRenderer": {
+          "mesh": "mesh.ball",
+          "material": "mat.ball",
+          "castShadow": true,
+          "receiveShadow": true
+        },
+        "RigidBody": {
+          "kind": "dynamic",
+          "mass": 6.8,
+          "gravityScale": 1,
+          "damping": 0.025,
+          "velocity": [
+            0,
+            0,
+            -5.6
+          ]
+        },
+        "Collider": {
+          "kind": "sphere",
+          "radius": 0.28,
+          "friction": 0.38,
+          "restitution": 0.18
+        },
+        "BowlingBall": {
+          "speed": 0,
+          "aim": 0,
+          "rolling": false
+        }
+      }
+    }
+  ]
+}

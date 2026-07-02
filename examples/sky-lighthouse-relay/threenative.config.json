@@ -1,0 +1,61 @@
+{
+  "schema": "threenative.project",
+  "version": "0.1.0",
+  "entry": "content/scenes/arena.scene.json",
+  "outDir": "dist/sky-lighthouse-relay.bundle",
+  "production": {
+    "playableLoop": "Steer a small airship between floating islands, collect four beacon sparks, avoid drifting storm clouds, and deliver the charge to the lighthouse before the timer expires.",
+    "controls": [
+      "keyboard.KeyW",
+      "keyboard.ArrowUp",
+      "keyboard.KeyA",
+      "keyboard.ArrowLeft",
+      "keyboard.KeyS",
+      "keyboard.ArrowDown",
+      "keyboard.KeyD",
+      "keyboard.ArrowRight",
+      "keyboard.Space"
+    ],
+    "objective": "Collect all four beacon sparks and reach the lighthouse island without touching storm clouds.",
+    "progression": "Storm clouds drift on crossing sine paths and speed up once at least two sparks are carried.",
+    "failRetry": "Storm collision or expired timer switches to failed state; Space resets airship, sparks, timer, and HUD.",
+    "feedbackMoments": [
+      "HUD count increments when a beacon spark is collected.",
+      "Airship lantern and sparks bob continuously.",
+      "Storm clouds drift as readable moving hazards.",
+      "Win and fail messages prompt Space retry."
+    ],
+    "assetPlan": {
+      "playerHero": "Custom procedural player hero airship assembled from hull, balloon, gondola, fins, mast, and lamp pieces.",
+      "obstacleEnemy": "Custom procedural obstacle-enemy storm clouds built from clustered puffs with drifting hazard paths.",
+      "rewardInteractable": "Custom procedural reward-interactable beacon sparks with emissive-like gold material and bobbing motion.",
+      "worldEnvironment": "Custom world environment floating islands, lighthouse, bridges, cloud bank, beacon posts, and sky lighting.",
+      "uiHud": "Structured HUD text plus retained loading, pause, settings, fail-retry, win-milestone, and touch-controls states.",
+      "audioFeedback": "Starter goal-ping asset retained for future collect/win hooks; current proof uses visual and HUD feedback."
+    },
+    "assetSourcing": [
+      "tn asset source search --game-category space --format glb --direct-only --json returned 20 direct CC-BY Objaverse robots/ships, including objaverse-000457eecbd4428c92fdedd1465674cf-glb, objaverse-0061ab9bcd3942ad81be2c6e06f94415-glb, and objaverse-00aad89c14fb4906bad24f58587b81aa-glb, but they do not form a cohesive sky-island lighthouse kit.",
+      "tn asset source search --game-category environment --format glb --direct-only --json returned TN_ASSET_SOURCE_NO_MATCH.",
+      "tn asset source search --game-category collectible --format glb --direct-only --json returned TN_ASSET_SOURCE_NO_MATCH.",
+      "Fallback: cohesive procedural/custom primitive mesh kit authored in content source."
+    ],
+    "scriptModules": [
+      {
+        "module": "src/scripts/player.ts",
+        "export": "skyLighthouseRelaySystem",
+        "ownsState": ["GameState", "Airship.sparks", "BeaconSpark.collected", "Transform positions for airship parts, sparks, and storm clouds"],
+        "referencedBy": ["content/scenes/arena.scene.json", "content/systems/arena.systems.json"]
+      }
+    ],
+    "proofCommands": [
+      "tn authoring validate --project . --json",
+      "tn build --project . --json",
+      "tn verify --project . --frames 3 --expect-motion --json",
+      "tn playtest --project . --entity player --press KeyD --expect-axis x --json",
+      "tn game qa --project . --run-proof --url <preview-url> --entity player --press KeyD --expect-axis x --json",
+      "tn game score --project . --json",
+      "tn game release --project . --json"
+    ]
+  },
+  "template": "structured-source-starter"
+}

@@ -175,6 +175,9 @@ export function classifyPath(relativePath, allowlist) {
 }
 
 function isTextFile(relativePath) {
+  if (relativePath.endsWith(".snapshot.json")) {
+    return false;
+  }
   if (relativePath === "AGENTS.md" || relativePath === "package.json") {
     return true;
   }

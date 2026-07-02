@@ -1,0 +1,19 @@
+{
+  "schema": "threenative.systems",
+  "version": "0.1.0",
+  "id": "arena-systems",
+  "systems": [
+    {
+      "id": "storm-buoy-rescue",
+      "schedule": "fixedUpdate",
+      "reads": ["Transform", "Tugboat", "DistressBuoy", "Whirlpool", "WhirlpoolWake", "BeaconPulse"],
+      "writes": ["Transform", "Tugboat", "DistressBuoy"],
+      "resourceReads": ["GameState"],
+      "resourceWrites": ["GameState"],
+      "script": {
+        "module": "src/scripts/player.ts",
+        "export": "stormBuoyRescueSystem"
+      }
+    }
+  ]
+}

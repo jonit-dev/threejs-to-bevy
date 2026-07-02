@@ -1,0 +1,29 @@
+{
+  "schema": "threenative.materials",
+  "version": "0.1.0",
+  "id": "arena-materials",
+  "materials": [
+    { "id": "mat.regolith", "color": "#747889", "roughness": 0.96 },
+    { "id": "mat.lane", "color": "#464757", "roughness": 0.94 },
+    { "id": "mat.lane.edge", "color": "#d9c27a", "roughness": 0.6, "metalness": 0.12 },
+    { "id": "mat.lane.tick", "color": "#9ba4c2", "roughness": 0.76 },
+    { "id": "mat.regolith.scuff", "color": "#b9bfd3", "roughness": 0.86 },
+    { "id": "mat.regolith.patch", "color": "#5d6173", "roughness": 0.96 },
+    { "id": "mat.canyon.wall", "color": "#303045", "roughness": 0.9 },
+    { "id": "mat.canyon.strata", "color": "#686a86", "roughness": 0.82 },
+    { "id": "mat.sled.hull", "color": "#e56a3e", "roughness": 0.55 },
+    { "id": "mat.sled.trim", "color": "#ffd36c", "roughness": 0.42 },
+    { "id": "mat.sled.reactor", "color": "#83f8ff", "emissive": "#32d7e8", "emissiveIntensity": 0.45, "roughness": 0.18 },
+    { "id": "mat.energy", "color": "#44f4ff", "emissive": "#1bcfdf", "emissiveIntensity": 0.62, "roughness": 0.2 },
+    { "id": "mat.energy.glint", "color": "#d8feff", "emissive": "#a2fbff", "emissiveIntensity": 0.6, "roughness": 0.16 },
+    { "id": "mat.energy.pad", "color": "#44f4ff", "emissive": "#1bcfdf", "emissiveIntensity": 0.38, "roughness": 0.48 },
+    { "id": "mat.meteor", "color": "#15171d", "roughness": 0.98 },
+    { "id": "mat.meteor.warning", "color": "#ff7d43", "emissive": "#d95c21", "emissiveIntensity": 0.34, "roughness": 0.55 },
+    { "id": "mat.relay", "color": "#eef1fb", "roughness": 0.62 },
+    { "id": "mat.relay.dark", "color": "#21344f", "roughness": 0.52 },
+    { "id": "mat.relay.glow", "color": "#b7f8ff", "emissive": "#70e7ff", "emissiveIntensity": 0.5, "roughness": 0.18 },
+    { "id": "mat.warning", "color": "#ffd45f", "roughness": 0.45 },
+    { "id": "mat.hazard.chevron", "color": "#ffb15c", "emissive": "#ff7d43", "emissiveIntensity": 0.24, "roughness": 0.5 },
+    { "id": "mat.space", "color": "#111620", "roughness": 1 }
+  ]
+}

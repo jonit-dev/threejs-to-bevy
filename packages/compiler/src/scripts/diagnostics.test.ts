@@ -40,6 +40,17 @@ test("should reject direct DOM access in v4 system", () => {
   assert.equal(diagnostics[0]?.severity, "error");
 });
 
+test("should ignore unsupported global names inside strings and comments", () => {
+  const diagnostics = diagnosePortableSystem({
+    resourceWrites: ["GameState"],
+    source:
+      "(ctx) => { // window and document are prose here\nconst state = ctx.state('GameState', { status: '' }); state.status = \"The relay window closed. Press Space to retry.\"; }",
+    systemName: "goodNarrativeText",
+  });
+
+  assert.deepEqual(diagnostics, []);
+});
+
 test("should reject undeclared transform write", () => {
   const diagnostics = diagnosePortableSystem({
     source: "(ctx) => ctx.query()[0].patch(Transform, { position: [1, 0, 0] })",
@@ -213,6 +224,16 @@ test("should reject node fs import", () => {
   assert.equal(diagnostics[0]?.code, "TN_SCRIPT_NODE_API_UNSUPPORTED");
   assert.equal(diagnostics[0]?.severity, "error");
   assert.match(diagnostics[0]?.suggestion ?? "", /filesystem/);
+});
+
+test("should reject node protocol imports", () => {
+  const diagnostics = diagnosePortableSystem({
+    source: 'import { readFileSync } from "node:fs"; export const system = () => readFileSync("save.json");',
+    systemName: "badNodeImport",
+  });
+
+  assert.equal(diagnostics[0]?.code, "TN_SCRIPT_NODE_API_UNSUPPORTED");
+  assert.equal(diagnostics[0]?.severity, "error");
 });
 
 test("should reject timer and worker APIs", () => {

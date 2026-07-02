@@ -73,6 +73,28 @@ test("should ignore version-looking lockfile integrity hashes", async () => {
   }
 });
 
+test("should skip generated asset source snapshots during name inventory", async () => {
+  const root = await makeRepoRoot({
+    "docs/data/objaverse-glb-asset-sources.snapshot.json": `${JSON.stringify({ note: "Generated snapshot mentions V10 but is not source prose." })}\n`,
+    "docs/data/catalog-source.json": `${JSON.stringify({ note: "Current source mentions V10 and should still be scanned." })}\n`,
+  });
+
+  try {
+    const allowlist = { ...(await loadVersionNameAllowlist(root)), requiredFrontDoorPhrases: [] };
+    const result = await checkCurrentNames({ root, allowlist });
+    assert.equal(
+      result.inventory.some((item) => item.path === "docs/data/objaverse-glb-asset-sources.snapshot.json"),
+      false,
+    );
+    assert.equal(
+      result.inventory.some((item) => item.path === "docs/data/catalog-source.json"),
+      true,
+    );
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
 test("should require owner and policy for each retained version reference", async () => {
   const allowlist = await loadVersionNameAllowlist();
   const diagnostics = validateAllowlistShape(allowlist);

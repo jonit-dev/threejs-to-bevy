@@ -1,5 +1,7 @@
 import {
   addEntity,
+  addPrefabInstance,
+  addTenPinLayout,
   addGroup,
   addPrefab,
   addResource,
@@ -188,6 +190,59 @@ export async function sceneCommand(argv: readonly string[], options: ISceneComma
     }
     const result = await addEntity({ projectPath, sceneId, entityId, prefabId: readFlag(normalizedArgv, "--prefab") });
     return renderSceneResult(result, json, result.ok ? `Entity '${entityId}' added.` : `Entity '${entityId}' was not added.`);
+  }
+
+  if (subcommand === "add-prefab-instance") {
+    const sceneId = readPositional(normalizedArgv, 1);
+    const instanceId = readPositional(normalizedArgv, 2);
+    const prefabId = readFlag(normalizedArgv, "--prefab");
+    const position = parseOptionalVectorFlag(normalizedArgv, "--position");
+    const rotation = parseOptionalVectorFlag(normalizedArgv, "--rotation");
+    const scale = parseOptionalVectorFlag(normalizedArgv, "--scale");
+    const components = parseJsonObjectFlag(normalizedArgv, "--components", "TN_SCENE_ADD_PREFAB_INSTANCE_COMPONENTS_INVALID");
+    if (position.diagnostic !== undefined || rotation.diagnostic !== undefined || scale.diagnostic !== undefined || components.diagnostic !== undefined) {
+      return renderUsage(json, position.diagnostic ?? rotation.diagnostic ?? scale.diagnostic ?? components.diagnostic ?? "TN_SCENE_ADD_PREFAB_INSTANCE_INVALID", "Prefab instance vectors must use x,y,z and --components must be a JSON object.");
+    }
+    if (sceneId === undefined || instanceId === undefined || prefabId === undefined) {
+      return renderUsage(json, "TN_SCENE_ADD_PREFAB_INSTANCE_ARGS_MISSING", "Usage: tn scene add-prefab-instance <scene-id> <instance-id> --prefab <prefab-id> [--position x,y,z] [--rotation x,y,z] [--scale x,y,z] [--components <json-object>] [--replace] [--project <path>] [--json]");
+    }
+    const transform = position.value === undefined && rotation.value === undefined && scale.value === undefined
+      ? undefined
+      : { position: position.value, rotation: rotation.value, scale: scale.value };
+    const result = await addPrefabInstance({
+      components: components.value,
+      instanceId,
+      prefabId,
+      projectPath,
+      replace: normalizedArgv.includes("--replace"),
+      sceneId,
+      transform,
+    });
+    return renderSceneResult(result, json, result.ok ? `Compact prefab instance '${instanceId}' added.` : `Compact prefab instance '${instanceId}' was not added.`);
+  }
+
+  if (subcommand === "layout") {
+    const layoutKind = readPositional(normalizedArgv, 1);
+    const sceneId = readPositional(normalizedArgv, 2);
+    const prefabId = readFlag(normalizedArgv, "--prefab");
+    const origin = parseOptionalVectorFlag(normalizedArgv, "--origin");
+    const spacing = parseOptionalNumber(normalizedArgv, "--spacing");
+    if (origin.diagnostic !== undefined || spacing.diagnostic !== undefined) {
+      return renderUsage(json, origin.diagnostic ?? spacing.diagnostic ?? "TN_SCENE_LAYOUT_INVALID", "Layout --origin must use x,y,z and --spacing must be a finite number.");
+    }
+    if (layoutKind !== "ten-pin" || sceneId === undefined || prefabId === undefined) {
+      return renderUsage(json, "TN_SCENE_LAYOUT_ARGS_MISSING", "Usage: tn scene layout ten-pin <scene-id> --prefab <prefab-id> [--prefix pin] [--origin x,y,z] [--spacing n] [--replace] [--project <path>] [--json]");
+    }
+    const result = await addTenPinLayout({
+      origin: origin.value,
+      prefabId,
+      prefix: readFlag(normalizedArgv, "--prefix"),
+      projectPath,
+      replace: normalizedArgv.includes("--replace"),
+      sceneId,
+      spacing: spacing.value,
+    });
+    return renderSceneResult(result, json, result.ok ? `Compact ten-pin layout added to '${sceneId}'.` : `Compact ten-pin layout was not added to '${sceneId}'.`);
   }
 
   if (subcommand === "add-tag") {
@@ -547,6 +602,17 @@ function parseJsonFlag(argv: readonly string[], flag: string): { diagnostic?: st
   }
 }
 
+function parseJsonObjectFlag(argv: readonly string[], flag: string, diagnostic: string): { diagnostic?: string; value?: Record<string, unknown> } {
+  const parsed = parseJsonFlag(argv, flag);
+  if (parsed.diagnostic !== undefined) {
+    return { diagnostic: parsed.diagnostic };
+  }
+  if (parsed.value === undefined) {
+    return {};
+  }
+  return isRecord(parsed.value) ? { value: parsed.value } : { diagnostic };
+}
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
@@ -562,10 +628,10 @@ function readPositional(argv: readonly string[], index: number): string | undefi
   return positionals[index];
 }
 
-const flagsWithValues = new Set(["--project", "--file", "--world", "--prefab", "--primitive", "--color", "--asset", "--asset-dir", "--layout", "--prefix", "--path", "--value", "--position", "--rotation", "--scale", "--mode", "--target", "--module", "--export", "--resource", "--out", "--web-url", "--camera", "--native-frame", "--kind", "--activation", "--name", "--intensity", "--range", "--angle", "--mesh", "--material", "--mass", "--damping", "--gravity-scale", "--size", "--radius", "--height", "--speed", "--move-x", "--move-z", "--grounding", "--slope-limit", "--step-offset", "--visible", "--cast-shadow", "--receive-shadow", "--trigger", "--blocking", "--shape", "--straight-count"]);
+const flagsWithValues = new Set(["--project", "--file", "--world", "--prefab", "--primitive", "--color", "--asset", "--asset-dir", "--layout", "--prefix", "--path", "--value", "--position", "--rotation", "--scale", "--components", "--origin", "--spacing", "--mode", "--target", "--module", "--export", "--resource", "--out", "--web-url", "--camera", "--native-frame", "--kind", "--activation", "--name", "--intensity", "--range", "--angle", "--mesh", "--material", "--mass", "--damping", "--gravity-scale", "--size", "--radius", "--height", "--speed", "--move-x", "--move-z", "--grounding", "--slope-limit", "--step-offset", "--visible", "--cast-shadow", "--receive-shadow", "--trigger", "--blocking", "--shape", "--straight-count"]);
 
 function sceneUsage(): string {
-  return "Usage: tn scene create <scene-id> [--file <path>] [--project <path>] [--json]\n       tn scene add-tag <scene-id> <entity-id> <tag> [--project <path>] [--json]\n       tn scene add-group <scene-id> <group-id> [--name <label>] [--position x,y,z] [--project <path>] [--json]\n       tn scene set-camera-look-at <scene-id> <camera-id> --position x,y,z --target x,y,z [--project <path>] [--json]\n       tn scene generate-modular-track <scene-id> --asset-dir <path> [--shape oval] [--size small|medium|large] [--straight-count <odd-number>] [--prefix <id-prefix>] [--project <path>] [--json]\n       tn scene add-modular-track <scene-id> --asset-dir <path> --layout <json-array> [--prefix <id-prefix>] [--project <path>] [--json]\n       tn scene proof-modular-track <scene-id> --asset-dir <path> [--prefix <id-prefix>] [--actors <entity-id,...>] [--project <path>] [--json]\n       tn scene lifecycle add <scene-id> [--kind <kind>] [--activation <policy>] [--initial] [--project <path>] [--json]\n       tn scene validate [scene-id] [--project <path>] [--json]\n       tn scene inspect <scene-id> [--project <path>] [--json]\n       tn scene proof <scene-id> --project <path> --out <dir> [--web-url <url>] [--native] [--json]";
+  return "Usage: tn scene create <scene-id> [--file <path>] [--project <path>] [--json]\n       tn scene add-prefab-instance <scene-id> <instance-id> --prefab <prefab-id> [--position x,y,z] [--components <json-object>] [--replace] [--project <path>] [--json]\n       tn scene layout ten-pin <scene-id> --prefab <prefab-id> [--prefix pin] [--origin x,y,z] [--spacing n] [--replace] [--project <path>] [--json]\n       tn scene add-tag <scene-id> <entity-id> <tag> [--project <path>] [--json]\n       tn scene add-group <scene-id> <group-id> [--name <label>] [--position x,y,z] [--project <path>] [--json]\n       tn scene set-camera-look-at <scene-id> <camera-id> --position x,y,z --target x,y,z [--project <path>] [--json]\n       tn scene generate-modular-track <scene-id> --asset-dir <path> [--shape oval] [--size small|medium|large] [--straight-count <odd-number>] [--prefix <id-prefix>] [--project <path>] [--json]\n       tn scene add-modular-track <scene-id> --asset-dir <path> --layout <json-array> [--prefix <id-prefix>] [--project <path>] [--json]\n       tn scene proof-modular-track <scene-id> --asset-dir <path> [--prefix <id-prefix>] [--actors <entity-id,...>] [--project <path>] [--json]\n       tn scene lifecycle add <scene-id> [--kind <kind>] [--activation <policy>] [--initial] [--project <path>] [--json]\n       tn scene validate [scene-id] [--project <path>] [--json]\n       tn scene inspect <scene-id> [--project <path>] [--json]\n       tn scene proof <scene-id> --project <path> --out <dir> [--web-url <url>] [--native] [--json]";
 }
 
 function sceneLifecycleUsage(): string {
@@ -1201,6 +1267,15 @@ function parseNumberFlags(argv: readonly string[], flags: readonly string[]): { 
     values[flag] = value;
   }
   return { values };
+}
+
+function parseOptionalNumber(argv: readonly string[], flag: string): { diagnostic?: string; value?: number } {
+  const raw = readFlag(argv, flag);
+  if (raw === undefined) {
+    return {};
+  }
+  const value = Number(raw);
+  return Number.isFinite(value) ? { value } : { diagnostic: "TN_SCENE_NUMBER_INVALID" };
 }
 
 function parseBooleanFlags(argv: readonly string[], flags: readonly string[]): { diagnostic?: string; values: Record<string, boolean | undefined> } {

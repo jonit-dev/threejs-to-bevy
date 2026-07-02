@@ -1,0 +1,1228 @@
+{
+  "schema": "threenative.scene",
+  "version": "0.1.0",
+  "id": "arena",
+  "kind": "level",
+  "entities": [
+    {
+      "id": "visual.provenance",
+      "prefab": "prefab.sign",
+      "transform": {
+        "position": [
+          -4.15,
+          0.72,
+          4.25
+        ],
+        "scale": [
+          1.1,
+          0.55,
+          0.08
+        ]
+      },
+      "components": {
+        "VisualProvenance": {
+          "status": "procedural custom authored mesh kit",
+          "style": "cohesive low-poly orchard",
+          "notes": "Custom procedural fallback after SQLite direct GLB searches returned no matches; composed hero, lantern, hazard, tree, fence, path, rock, lighting, and texture-material source replaces placeholder blockout."
+        }
+      }
+    },
+    {
+      "id": "camera.main",
+      "transform": {
+        "position": [
+          0,
+          7.2,
+          8.6
+        ],
+        "rotation": [
+          -0.76,
+          0,
+          0
+        ]
+      },
+      "components": {
+        "camera": {
+          "mode": "perspective",
+          "fovY": 50,
+          "near": 0.05,
+          "far": 80
+        }
+      }
+    },
+    {
+      "id": "light.moon",
+      "transform": {
+        "position": [
+          -4,
+          9,
+          5
+        ]
+      },
+      "components": {
+        "Light": {
+          "kind": "directional",
+          "color": "#d7e4ff",
+          "intensity": 2.2
+        }
+      }
+    },
+    {
+      "id": "light.lantern-fill",
+      "components": {
+        "Light": {
+          "kind": "ambient",
+          "color": "#ffd9a3",
+          "intensity": 0.42
+        }
+      }
+    },
+    {
+      "id": "orchard.ground",
+      "prefab": "prefab.ground",
+      "transform": {
+        "position": [
+          0,
+          -0.06,
+          0
+        ],
+        "rotation": [
+          -1.570796,
+          0,
+          0
+        ],
+        "scale": [
+          10,
+          10,
+          1
+        ]
+      }
+    },
+    {
+      "id": "path.main",
+      "prefab": "prefab.path",
+      "transform": {
+        "position": [
+          0,
+          -0.04,
+          0
+        ],
+        "rotation": [
+          -1.570796,
+          0,
+          0
+        ],
+        "scale": [
+          2.1,
+          8.6,
+          1
+        ]
+      }
+    },
+    {
+      "id": "path.edge.west",
+      "prefab": "prefab.path-edge",
+      "transform": {
+        "position": [
+          -1.18,
+          -0.035,
+          0
+        ],
+        "rotation": [
+          -1.570796,
+          0,
+          0
+        ],
+        "scale": [
+          0.08,
+          8.65,
+          1
+        ]
+      }
+    },
+    {
+      "id": "path.edge.east",
+      "prefab": "prefab.path-edge",
+      "transform": {
+        "position": [
+          1.18,
+          -0.034,
+          0
+        ],
+        "rotation": [
+          -1.570796,
+          0,
+          0
+        ],
+        "scale": [
+          0.08,
+          8.65,
+          1
+        ]
+      }
+    },
+    {
+      "id": "path.moon-stripe.01",
+      "prefab": "prefab.path-stripe",
+      "transform": {
+        "position": [
+          0,
+          -0.032,
+          2.85
+        ],
+        "rotation": [
+          -1.570796,
+          0,
+          0
+        ],
+        "scale": [
+          1.86,
+          0.08,
+          1
+        ]
+      }
+    },
+    {
+      "id": "path.moon-stripe.02",
+      "prefab": "prefab.path-stripe",
+      "transform": {
+        "position": [
+          0,
+          -0.031,
+          1.35
+        ],
+        "rotation": [
+          -1.570796,
+          0,
+          0
+        ],
+        "scale": [
+          1.86,
+          0.08,
+          1
+        ]
+      }
+    },
+    {
+      "id": "path.moon-stripe.03",
+      "prefab": "prefab.path-stripe",
+      "transform": {
+        "position": [
+          0,
+          -0.03,
+          -0.15
+        ],
+        "rotation": [
+          -1.570796,
+          0,
+          0
+        ],
+        "scale": [
+          1.86,
+          0.08,
+          1
+        ]
+      }
+    },
+    {
+      "id": "path.moon-stripe.04",
+      "prefab": "prefab.path-stripe",
+      "transform": {
+        "position": [
+          0,
+          -0.029,
+          -1.65
+        ],
+        "rotation": [
+          -1.570796,
+          0,
+          0
+        ],
+        "scale": [
+          1.86,
+          0.08,
+          1
+        ]
+      }
+    },
+    {
+      "id": "path.moon-stripe.05",
+      "prefab": "prefab.path-stripe",
+      "transform": {
+        "position": [
+          0,
+          -0.028,
+          -3.15
+        ],
+        "rotation": [
+          -1.570796,
+          0,
+          0
+        ],
+        "scale": [
+          1.86,
+          0.08,
+          1
+        ]
+      }
+    },
+    {
+      "id": "fence.north",
+      "prefab": "prefab.fence",
+      "transform": {
+        "position": [
+          0,
+          0.28,
+          -4.85
+        ],
+        "scale": [
+          9.7,
+          0.55,
+          0.12
+        ]
+      }
+    },
+    {
+      "id": "fence.south",
+      "prefab": "prefab.fence",
+      "transform": {
+        "position": [
+          0,
+          0.28,
+          4.85
+        ],
+        "scale": [
+          9.7,
+          0.55,
+          0.12
+        ]
+      }
+    },
+    {
+      "id": "fence.west",
+      "prefab": "prefab.fence",
+      "transform": {
+        "position": [
+          -4.85,
+          0.28,
+          0
+        ],
+        "scale": [
+          0.12,
+          0.55,
+          9.7
+        ]
+      }
+    },
+    {
+      "id": "fence.east",
+      "prefab": "prefab.fence",
+      "transform": {
+        "position": [
+          4.85,
+          0.28,
+          0
+        ],
+        "scale": [
+          0.12,
+          0.55,
+          9.7
+        ]
+      }
+    },
+    {
+      "id": "player",
+      "prefab": "prefab.hero",
+      "transform": {
+        "position": [
+          0,
+          0.36,
+          3.45
+        ],
+        "scale": [
+          0.48,
+          0.72,
+          0.48
+        ]
+      },
+      "components": {
+        "PlayerHero": {
+          "speed": 3.4,
+          "dashCooldown": 0
+        }
+      }
+    },
+    {
+      "id": "player.halo",
+      "prefab": "prefab.hero-halo",
+      "transform": {
+        "position": [
+          0,
+          0.95,
+          3.45
+        ],
+        "scale": [
+          0.62,
+          0.1,
+          0.62
+        ]
+      },
+      "components": {
+        "PlayerPart": {
+          "target": "player",
+          "offset": [
+            0,
+            0.59,
+            0
+          ]
+        }
+      }
+    },
+    {
+      "id": "player.lantern",
+      "prefab": "prefab.hand-lantern",
+      "transform": {
+        "position": [
+          0.42,
+          0.55,
+          3.32
+        ],
+        "scale": [
+          0.18,
+          0.28,
+          0.18
+        ]
+      },
+      "components": {
+        "PlayerPart": {
+          "target": "player",
+          "offset": [
+            0.42,
+            0.19,
+            -0.13
+          ]
+        }
+      }
+    },
+    {
+      "id": "lantern.01",
+      "prefab": "prefab.lantern-fruit",
+      "transform": {
+        "position": [
+          -3.2,
+          0.38,
+          2.4
+        ],
+        "scale": [
+          0.34,
+          0.34,
+          0.34
+        ]
+      },
+      "components": {
+        "LanternFruit": {
+          "collected": false,
+          "phase": 0
+        }
+      }
+    },
+    {
+      "id": "lantern.02",
+      "prefab": "prefab.lantern-fruit",
+      "transform": {
+        "position": [
+          2.9,
+          0.38,
+          2.2
+        ],
+        "scale": [
+          0.34,
+          0.34,
+          0.34
+        ]
+      },
+      "components": {
+        "LanternFruit": {
+          "collected": false,
+          "phase": 0.7
+        }
+      }
+    },
+    {
+      "id": "lantern.03",
+      "prefab": "prefab.lantern-fruit",
+      "transform": {
+        "position": [
+          -1.8,
+          0.38,
+          0.8
+        ],
+        "scale": [
+          0.34,
+          0.34,
+          0.34
+        ]
+      },
+      "components": {
+        "LanternFruit": {
+          "collected": false,
+          "phase": 1.4
+        }
+      }
+    },
+    {
+      "id": "lantern.04",
+      "prefab": "prefab.lantern-fruit",
+      "transform": {
+        "position": [
+          1.95,
+          0.38,
+          0.55
+        ],
+        "scale": [
+          0.34,
+          0.34,
+          0.34
+        ]
+      },
+      "components": {
+        "LanternFruit": {
+          "collected": false,
+          "phase": 2.1
+        }
+      }
+    },
+    {
+      "id": "lantern.05",
+      "prefab": "prefab.lantern-fruit",
+      "transform": {
+        "position": [
+          -3.25,
+          0.38,
+          -1.2
+        ],
+        "scale": [
+          0.34,
+          0.34,
+          0.34
+        ]
+      },
+      "components": {
+        "LanternFruit": {
+          "collected": false,
+          "phase": 2.8
+        }
+      }
+    },
+    {
+      "id": "lantern.06",
+      "prefab": "prefab.lantern-fruit",
+      "transform": {
+        "position": [
+          3.1,
+          0.38,
+          -1.35
+        ],
+        "scale": [
+          0.34,
+          0.34,
+          0.34
+        ]
+      },
+      "components": {
+        "LanternFruit": {
+          "collected": false,
+          "phase": 3.5
+        }
+      }
+    },
+    {
+      "id": "lantern.07",
+      "prefab": "prefab.lantern-fruit",
+      "transform": {
+        "position": [
+          -1.1,
+          0.38,
+          -3.05
+        ],
+        "scale": [
+          0.34,
+          0.34,
+          0.34
+        ]
+      },
+      "components": {
+        "LanternFruit": {
+          "collected": false,
+          "phase": 4.2
+        }
+      }
+    },
+    {
+      "id": "lantern.08",
+      "prefab": "prefab.lantern-fruit",
+      "transform": {
+        "position": [
+          1.35,
+          0.38,
+          -3.15
+        ],
+        "scale": [
+          0.34,
+          0.34,
+          0.34
+        ]
+      },
+      "components": {
+        "LanternFruit": {
+          "collected": false,
+          "phase": 4.9
+        }
+      }
+    },
+    {
+      "id": "glint.01",
+      "prefab": "prefab.lantern-glint",
+      "transform": {
+        "position": [
+          -3.02,
+          0.62,
+          2.25
+        ],
+        "scale": [
+          0.08,
+          0.08,
+          0.08
+        ]
+      }
+    },
+    {
+      "id": "glint.02",
+      "prefab": "prefab.lantern-glint",
+      "transform": {
+        "position": [
+          3.08,
+          0.62,
+          2.08
+        ],
+        "scale": [
+          0.08,
+          0.08,
+          0.08
+        ]
+      }
+    },
+    {
+      "id": "glint.03",
+      "prefab": "prefab.lantern-glint",
+      "transform": {
+        "position": [
+          -1.62,
+          0.62,
+          0.66
+        ],
+        "scale": [
+          0.08,
+          0.08,
+          0.08
+        ]
+      }
+    },
+    {
+      "id": "glint.04",
+      "prefab": "prefab.lantern-glint",
+      "transform": {
+        "position": [
+          2.14,
+          0.62,
+          0.42
+        ],
+        "scale": [
+          0.08,
+          0.08,
+          0.08
+        ]
+      }
+    },
+    {
+      "id": "row.marker.left.front",
+      "prefab": "prefab.row-marker",
+      "transform": {
+        "position": [
+          -2.65,
+          -0.026,
+          2.9
+        ],
+        "rotation": [
+          -1.570796,
+          0,
+          0.28
+        ],
+        "scale": [
+          1.7,
+          0.08,
+          1
+        ]
+      }
+    },
+    {
+      "id": "row.marker.right.front",
+      "prefab": "prefab.row-marker",
+      "transform": {
+        "position": [
+          2.7,
+          -0.025,
+          2.75
+        ],
+        "rotation": [
+          -1.570796,
+          0,
+          -0.24
+        ],
+        "scale": [
+          1.7,
+          0.08,
+          1
+        ]
+      }
+    },
+    {
+      "id": "row.marker.left.back",
+      "prefab": "prefab.row-marker",
+      "transform": {
+        "position": [
+          -2.75,
+          -0.024,
+          -2.45
+        ],
+        "rotation": [
+          -1.570796,
+          0,
+          -0.22
+        ],
+        "scale": [
+          1.9,
+          0.08,
+          1
+        ]
+      }
+    },
+    {
+      "id": "row.marker.right.back",
+      "prefab": "prefab.row-marker",
+      "transform": {
+        "position": [
+          2.7,
+          -0.023,
+          -2.55
+        ],
+        "rotation": [
+          -1.570796,
+          0,
+          0.2
+        ],
+        "scale": [
+          1.9,
+          0.08,
+          1
+        ]
+      }
+    },
+    {
+      "id": "ground.patch.01",
+      "prefab": "prefab.ground-patch",
+      "transform": {
+        "position": [
+          -3.45,
+          -0.022,
+          1.2
+        ],
+        "rotation": [
+          -1.570796,
+          0,
+          0.32
+        ],
+        "scale": [
+          0.78,
+          0.34,
+          1
+        ]
+      }
+    },
+    {
+      "id": "ground.patch.02",
+      "prefab": "prefab.ground-patch",
+      "transform": {
+        "position": [
+          3.35,
+          -0.021,
+          1.05
+        ],
+        "rotation": [
+          -1.570796,
+          0,
+          -0.27
+        ],
+        "scale": [
+          0.72,
+          0.3,
+          1
+        ]
+      }
+    },
+    {
+      "id": "ground.patch.03",
+      "prefab": "prefab.ground-patch",
+      "transform": {
+        "position": [
+          -3.05,
+          -0.02,
+          -3.75
+        ],
+        "rotation": [
+          -1.570796,
+          0,
+          -0.18
+        ],
+        "scale": [
+          0.92,
+          0.34,
+          1
+        ]
+      }
+    },
+    {
+      "id": "ground.patch.04",
+      "prefab": "prefab.ground-patch",
+      "transform": {
+        "position": [
+          3.25,
+          -0.019,
+          -3.9
+        ],
+        "rotation": [
+          -1.570796,
+          0,
+          0.2
+        ],
+        "scale": [
+          0.85,
+          0.32,
+          1
+        ]
+      }
+    },
+    {
+      "id": "shadow.01",
+      "prefab": "prefab.shadow",
+      "transform": {
+        "position": [
+          -2.4,
+          0.12,
+          0.05
+        ],
+        "scale": [
+          0.72,
+          0.12,
+          0.72
+        ]
+      },
+      "components": {
+        "ShadowHazard": {
+          "origin": [
+            -2.4,
+            0.12,
+            0.05
+          ],
+          "axis": "z",
+          "radius": 1.4,
+          "phase": 0
+        }
+      }
+    },
+    {
+      "id": "shadow.02",
+      "prefab": "prefab.shadow",
+      "transform": {
+        "position": [
+          2.25,
+          0.12,
+          -0.25
+        ],
+        "scale": [
+          0.72,
+          0.12,
+          0.72
+        ]
+      },
+      "components": {
+        "ShadowHazard": {
+          "origin": [
+            2.25,
+            0.12,
+            -0.25
+          ],
+          "axis": "z",
+          "radius": 1.55,
+          "phase": 1.9
+        }
+      }
+    },
+    {
+      "id": "shadow.03",
+      "prefab": "prefab.shadow",
+      "transform": {
+        "position": [
+          0,
+          0.12,
+          -2.2
+        ],
+        "scale": [
+          0.86,
+          0.12,
+          0.86
+        ]
+      },
+      "components": {
+        "ShadowHazard": {
+          "origin": [
+            0,
+            0.12,
+            -2.2
+          ],
+          "axis": "x",
+          "radius": 1.85,
+          "phase": 3.1
+        }
+      }
+    },
+    {
+      "id": "tree.01",
+      "prefab": "prefab.tree",
+      "transform": {
+        "position": [
+          -3.65,
+          0.55,
+          3.25
+        ],
+        "scale": [
+          0.9,
+          1.2,
+          0.9
+        ]
+      }
+    },
+    {
+      "id": "tree.01.trunk",
+      "prefab": "prefab.trunk",
+      "transform": {
+        "position": [
+          -3.65,
+          0.35,
+          3.25
+        ],
+        "scale": [
+          0.22,
+          0.7,
+          0.22
+        ]
+      }
+    },
+    {
+      "id": "tree.02",
+      "prefab": "prefab.tree",
+      "transform": {
+        "position": [
+          3.65,
+          0.55,
+          3
+        ],
+        "scale": [
+          0.95,
+          1.25,
+          0.95
+        ]
+      }
+    },
+    {
+      "id": "tree.02.trunk",
+      "prefab": "prefab.trunk",
+      "transform": {
+        "position": [
+          3.65,
+          0.35,
+          3
+        ],
+        "scale": [
+          0.24,
+          0.72,
+          0.24
+        ]
+      }
+    },
+    {
+      "id": "tree.03",
+      "prefab": "prefab.tree",
+      "transform": {
+        "position": [
+          -3.65,
+          0.55,
+          -3.2
+        ],
+        "scale": [
+          1.05,
+          1.3,
+          1.05
+        ]
+      }
+    },
+    {
+      "id": "tree.03.trunk",
+      "prefab": "prefab.trunk",
+      "transform": {
+        "position": [
+          -3.65,
+          0.35,
+          -3.2
+        ],
+        "scale": [
+          0.25,
+          0.75,
+          0.25
+        ]
+      }
+    },
+    {
+      "id": "tree.04",
+      "prefab": "prefab.tree",
+      "transform": {
+        "position": [
+          3.6,
+          0.55,
+          -3.45
+        ],
+        "scale": [
+          1,
+          1.25,
+          1
+        ]
+      }
+    },
+    {
+      "id": "tree.04.trunk",
+      "prefab": "prefab.trunk",
+      "transform": {
+        "position": [
+          3.6,
+          0.35,
+          -3.45
+        ],
+        "scale": [
+          0.24,
+          0.72,
+          0.24
+        ]
+      }
+    },
+    {
+      "id": "rock.01",
+      "prefab": "prefab.rock",
+      "transform": {
+        "position": [
+          -2.1,
+          0.12,
+          3.55
+        ],
+        "scale": [
+          0.55,
+          0.28,
+          0.36
+        ]
+      }
+    },
+    {
+      "id": "rock.02",
+      "prefab": "prefab.rock",
+      "transform": {
+        "position": [
+          2.15,
+          0.12,
+          -3.65
+        ],
+        "scale": [
+          0.48,
+          0.24,
+          0.34
+        ]
+      }
+    }
+  ],
+  "prefabs": [
+    {
+      "id": "prefab.sign",
+      "primitive": "box",
+      "color": "#d6a45f"
+    },
+    {
+      "id": "prefab.ground",
+      "primitive": "plane",
+      "color": "#243b2d"
+    },
+    {
+      "id": "prefab.path",
+      "primitive": "plane",
+      "color": "#6f5238"
+    },
+    {
+      "id": "prefab.path-edge",
+      "primitive": "plane",
+      "color": "#d6a45f"
+    },
+    {
+      "id": "prefab.path-stripe",
+      "primitive": "plane",
+      "color": "#8d6a45"
+    },
+    {
+      "id": "prefab.row-marker",
+      "primitive": "plane",
+      "color": "#5ea35f"
+    },
+    {
+      "id": "prefab.ground-patch",
+      "primitive": "plane",
+      "color": "#31573d"
+    },
+    {
+      "id": "prefab.fence",
+      "primitive": "box",
+      "color": "#775a3a"
+    },
+    {
+      "id": "prefab.hero",
+      "primitive": "box",
+      "color": "#6cc6ff"
+    },
+    {
+      "id": "prefab.hero-halo",
+      "primitive": "cylinder",
+      "color": "#ffe9a8"
+    },
+    {
+      "id": "prefab.hand-lantern",
+      "primitive": "sphere",
+      "color": "#ffba4a"
+    },
+    {
+      "id": "prefab.lantern-fruit",
+      "primitive": "sphere",
+      "color": "#ffd166"
+    },
+    {
+      "id": "prefab.lantern-glint",
+      "primitive": "sphere",
+      "color": "#fff4b8"
+    },
+    {
+      "id": "prefab.shadow",
+      "primitive": "sphere",
+      "color": "#33224d"
+    },
+    {
+      "id": "prefab.tree",
+      "primitive": "cone",
+      "color": "#3f7f43"
+    },
+    {
+      "id": "prefab.trunk",
+      "primitive": "cylinder",
+      "color": "#654726"
+    },
+    {
+      "id": "prefab.rock",
+      "primitive": "sphere",
+      "color": "#7a8291"
+    }
+  ],
+  "resources": [
+    {
+      "id": "GameState",
+      "value": {
+        "countdown": "Lanterns 0/8",
+        "scoreText": "0/8 lanterns",
+        "timerText": "Time 45",
+        "status": "Gather every lantern before the shadows catch you",
+        "phase": "playing",
+        "score": 0,
+        "timer": 45
+      }
+    }
+  ],
+  "systems": [
+    {
+      "id": "lantern-orchard-system",
+      "schedule": "fixedUpdate",
+      "resourceReads": [
+        "GameState"
+      ],
+      "resourceWrites": [
+        "GameState"
+      ],
+      "script": {
+        "module": "src/scripts/lanternOrchard.ts",
+        "export": "lanternOrchardSystem"
+      }
+    }
+  ],
+  "ui": {
+    "nodes": [
+      {
+        "id": "countdown",
+        "type": "text",
+        "text": "Lanterns 0/8",
+        "layout": {
+          "justify": "center",
+          "align": "center",
+          "top": 32,
+          "width": 1280
+        }
+      },
+      {
+        "id": "timer",
+        "type": "text",
+        "text": "Time 45",
+        "layout": {
+          "justify": "flex-start",
+          "align": "center",
+          "top": 32,
+          "width": 420
+        }
+      },
+      {
+        "id": "status",
+        "type": "text",
+        "text": "Gather every lantern before the shadows catch you",
+        "layout": {
+          "justify": "center",
+          "align": "center",
+          "top": 92,
+          "width": 1280
+        }
+      }
+    ],
+    "bindings": [
+      {
+        "node": "countdown",
+        "resource": "GameState.scoreText"
+      },
+      {
+        "node": "timer",
+        "resource": "GameState.timerText"
+      },
+      {
+        "node": "status",
+        "resource": "GameState.status"
+      }
+    ]
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "schema": "threenative.materials",
+  "version": "0.1.0",
+  "id": "arena-materials",
+  "materials": [
+    { "id": "mat.yard", "color": "#4e595c", "roughness": 0.9 },
+    { "id": "mat.lane", "color": "#344246", "roughness": 0.86 },
+    { "id": "mat.lane.mark", "color": "#687a7d", "roughness": 0.82 },
+    { "id": "mat.safety.paint", "color": "#f2b13f", "roughness": 0.58, "emissive": "#c57a15", "emissiveIntensity": 0.16 },
+    { "id": "mat.yard.scuff", "color": "#7d8b8e", "roughness": 0.88 },
+    { "id": "mat.rail", "color": "#b7c3c6", "roughness": 0.34, "metalness": 0.55 },
+    { "id": "mat.magnet", "color": "#d63f45", "roughness": 0.42 },
+    { "id": "mat.magnet.dark", "color": "#27323a", "roughness": 0.48, "metalness": 0.25 },
+    { "id": "mat.cable", "color": "#171c22", "roughness": 0.5 },
+    { "id": "mat.scrap", "color": "#c7d0d4", "roughness": 0.32, "metalness": 0.65 },
+    { "id": "mat.scrap.rust", "color": "#c87531", "roughness": 0.72, "metalness": 0.2 },
+    { "id": "mat.scrap.glint", "color": "#f7fbff", "roughness": 0.16, "emissive": "#cfefff", "emissiveIntensity": 0.22 },
+    { "id": "mat.spark", "color": "#ffe66d", "roughness": 0.18 },
+    { "id": "mat.recycler", "color": "#2f80ed", "roughness": 0.45 },
+    { "id": "mat.recycler.lip", "color": "#173b65", "roughness": 0.5 },
+    { "id": "mat.recycler.light", "color": "#9bd4ff", "roughness": 0.18, "emissive": "#66b7ff", "emissiveIntensity": 0.4 },
+    { "id": "mat.recycler.guide", "color": "#8fc9ff", "roughness": 0.32, "emissive": "#2f80ed", "emissiveIntensity": 0.2 },
+    { "id": "mat.warning", "color": "#ff9f1c", "roughness": 0.5 },
+    { "id": "mat.fence", "color": "#252d33", "roughness": 0.82 },
+    { "id": "mat.light", "color": "#ff355d", "roughness": 0.3 }
+  ]
+}

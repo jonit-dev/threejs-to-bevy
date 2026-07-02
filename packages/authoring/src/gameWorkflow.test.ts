@@ -47,6 +47,111 @@ test("validates game quality reports", async () => {
   }
 });
 
+test("recognizes themed obstacle enemy provenance", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-game-report-themed-obstacle-"));
+  try {
+    await writeMinimalProject(root);
+    await writeFile(join(root, "content/assets/arena.assets.json"), `${JSON.stringify({
+      schema: "threenative.assets",
+      id: "arena-assets",
+      assets: [
+        { id: "asset.custom-kit", path: "content/scenes/arena.scene.json", type: "source" },
+        { id: "asset.provenance", path: "assets/ASSET_PROVENANCE.md", type: "document" },
+        { id: "player-hero", path: "assets/player.glb", type: "model" },
+        { id: "reward-interactable", path: "assets/goal.glb", type: "model" },
+        { id: "world-environment", path: "assets/arena.glb", type: "model" },
+        { id: "ui-hud", path: "assets/hud.png", type: "texture" },
+        { id: "audio-feedback", path: "assets/hit.wav", type: "audio" },
+      ],
+    }, null, 2)}\n`);
+    await writeFile(join(root, "content/scenes/arena.scene.json"), `${JSON.stringify({
+      schema: "threenative.scene",
+      id: "arena",
+      entities: [
+        {
+          id: "visual.provenance",
+          components: {
+            VisualProvenance: {
+              surfaces: "Drifting moth shadows with warning halos act as the main avoidable threat.",
+            },
+          },
+        },
+      ],
+      systems: [{ id: "gameplay", script: { module: "src/scripts/game.ts", export: "update" } }],
+    }, null, 2)}\n`);
+    await mkdir(join(root, "assets"), { recursive: true });
+    await writeFile(join(root, "assets/ASSET_PROVENANCE.md"), "Drifting moth shadows with warning halos act as the main avoidable threat.\n");
+
+    const report = await createGameQualityReport({ projectPath: root });
+    const obstacleEntry = report.assetAudioLedger.find((entry) => entry.surface === "obstacle-enemy");
+
+    assert.notEqual(obstacleEntry?.status, "blocked");
+    assert.equal(report.blockers.some((diagnostic) => diagnostic.path === "/assetAudioLedger/obstacle-enemy"), false);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("production command build proof uses discovered bundle manifest path", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-game-report-build-command-"));
+  try {
+    await writeMinimalProject(root);
+    await writeFile(join(root, "threenative.config.json"), `${JSON.stringify({
+      entry: "content/scenes/arena.scene.json",
+      outDir: "dist/custom-generated.bundle",
+      schema: "threenative.project",
+      version: "0.1.0",
+    }, null, 2)}\n`);
+    await mkdir(join(root, "dist/custom-generated.bundle"), { recursive: true });
+    await writeFile(join(root, "dist/custom-generated.bundle/manifest.json"), "{}\n");
+    await writeFile(join(root, "dist/custom-generated.bundle/world.ir.json"), "{}\n");
+    await mkdir(join(root, "dist/structured-source-starter.bundle"), { recursive: true });
+    await writeFile(join(root, "dist/structured-source-starter.bundle/manifest.json"), "{}\n");
+    await writeFile(join(root, "dist/structured-source-starter.bundle/world.ir.json"), "{}\n");
+
+    const report = await createGameQualityReport({ projectPath: root });
+    const buildCommand = report.productionCommands.find((command) => command.command === "tn build --project . --json");
+
+    assert.equal(buildCommand?.status, "available");
+    assert.equal(buildCommand?.artifactPath, "dist/custom-generated.bundle/manifest.json");
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("ignores transient compiler build lock artifact evidence", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-game-report-build-lock-evidence-"));
+  try {
+    await writeMinimalProject(root);
+    await mkdir(join(root, "dist/game.bundle"), { recursive: true });
+    await writeFile(join(root, "dist/game.bundle/manifest.json"), "{}\n");
+    await writeFile(join(root, "dist/game.bundle/world.ir.json"), "{}\n");
+    await mkdir(join(root, "dist/game.bundle.build-lock"), { recursive: true });
+    await writeFile(join(root, "dist/game.bundle.build-lock/owner.json"), "{}\n");
+
+    const report = await createGameQualityReport({ projectPath: root });
+
+    assert.equal(JSON.stringify(report).includes(".build-lock"), false);
+    assert.equal(report.productionCommands.find((command) => command.command === "tn build --project . --json")?.artifactPath, "dist/game.bundle/manifest.json");
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("blocks text files masquerading as audio feedback wav assets", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-game-report-bad-audio-"));
+  try {
+    await writeMinimalProject(root);
+    await writeFile(join(root, "assets/hit.wav"), "placeholder wav fixture\n");
+
+    const report = await createGameQualityReport({ projectPath: root });
+
+    assert.equal(report.blockers.some((diagnostic) => diagnostic.code === "TN_GAME_AUDIO_ASSET_INVALID" && diagnostic.path?.includes("assets/hit.wav") === true), true);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
 test("blocks placeholder visuals and unproven snap movement", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-game-report-placeholder-"));
   try {
@@ -163,6 +268,33 @@ test("redacts provider credentials from provenance", async () => {
   }
 });
 
+test("keeps source evidence descriptions compact", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-game-report-compact-evidence-"));
+  try {
+    await writeMinimalProject(root);
+    const longScript = [
+      "export function update(ctx: any) {",
+      "  const token = 'secret-local-fixture';",
+      ...Array.from({ length: 200 }, (_, index) => `  const value${index} = ${index};`),
+      "  void ctx;",
+      "  void token;",
+      "}",
+    ].join("\n");
+    await writeFile(join(root, "src/scripts/game.ts"), longScript);
+
+    const report = await createGameQualityReport({ projectPath: root });
+    const sourceEvidence = report.evidence.filter((evidence) => evidence.kind === "source");
+    const serialized = JSON.stringify(report);
+
+    assert.equal(sourceEvidence.length > 0, true);
+    assert.equal(sourceEvidence.every((evidence) => evidence.description.length < 900), true);
+    assert.equal(serialized.includes("secret-local-fixture"), false);
+    assert.equal(serialized.includes("value199"), false);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
 test("rejects malformed scorecard categories", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-game-report-invalid-"));
   try {
@@ -182,6 +314,7 @@ test("rejects malformed scorecard categories", async () => {
 });
 
 async function writeMinimalProject(root: string): Promise<void> {
+  await mkdir(join(root, "assets"), { recursive: true });
   await mkdir(join(root, "content/scenes"), { recursive: true });
   await mkdir(join(root, "content/input"), { recursive: true });
   await mkdir(join(root, "content/ui"), { recursive: true });
@@ -229,5 +362,26 @@ async function writeMinimalProject(root: string): Promise<void> {
     id: "arena-materials",
     materials: [{ id: "player-style", color: "#ffffff" }],
   }, null, 2)}\n`);
+  await writeTinyWav(join(root, "assets/hit.wav"));
   await writeFile(join(root, "src/scripts/game.ts"), "export function update(ctx: any) { const dt = ctx.time.fixedDelta({ fallback: 1 / 60 }); const moveProgress = Math.min(1, dt); void moveProgress; }\n");
+}
+
+async function writeTinyWav(path: string): Promise<void> {
+  const dataSize = 2;
+  const buffer = Buffer.alloc(44 + dataSize);
+  buffer.write("RIFF", 0);
+  buffer.writeUInt32LE(36 + dataSize, 4);
+  buffer.write("WAVE", 8);
+  buffer.write("fmt ", 12);
+  buffer.writeUInt32LE(16, 16);
+  buffer.writeUInt16LE(1, 20);
+  buffer.writeUInt16LE(1, 22);
+  buffer.writeUInt32LE(44100, 24);
+  buffer.writeUInt32LE(88200, 28);
+  buffer.writeUInt16LE(2, 32);
+  buffer.writeUInt16LE(16, 34);
+  buffer.write("data", 36);
+  buffer.writeUInt32LE(dataSize, 40);
+  buffer.writeInt16LE(0, 44);
+  await writeFile(path, buffer);
 }

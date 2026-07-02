@@ -1,0 +1,195 @@
+{
+  "schema": "threenative.scene",
+  "version": "0.1.0",
+  "id": "arena",
+  "kind": "level",
+  "entities": [
+    {
+      "id": "visual.provenance",
+      "prefab": "prefab.sign",
+      "transform": { "position": [-5.1, 0.55, 4.55], "scale": [1.1, 0.28, 0.08] },
+      "components": {
+        "VisualProvenance": {
+          "status": "procedural custom authored mesh kit",
+          "style": "cohesive low-poly industrial magnet yard",
+          "notes": "Vehicle, environment, collectible, and arcade direct GLB searches returned TN_ASSET_SOURCE_NO_MATCH. Platformer search found Kenney CC0 assets, rejected as mismatched to an industrial magnet-yard game. Broad model search returned loader fixtures and attribution-heavy CC-BY city/object records, rejected for this compact cohesive slice."
+        }
+      }
+    },
+    {
+      "id": "asset.surface.provenance",
+      "prefab": "prefab.sign",
+      "transform": { "position": [5.1, 0.55, 4.55], "scale": [1.1, 0.28, 0.08] },
+      "components": {
+        "AssetSurfaceProvenance": {
+          "surface": "player-hero obstacle-enemy reward-interactable world-environment ui-hud audio-feedback",
+          "status": "procedural authored fallback",
+          "notes": "Magnet hero, spark hazards, scrap rewards, recycler goal, rails, bins, warning lights, yard context, UI, and audio fallback are authored from primitive structured source after catalog sourcing did not find a cohesive direct kit."
+        }
+      }
+    },
+    { "id": "camera.main", "transform": { "position": [0, 9.0, 9.6], "rotation": [-0.79, 0, 0] }, "components": { "camera": { "mode": "perspective", "fovY": 49, "near": 0.05, "far": 80 } } },
+    { "id": "light.yard.ambient", "components": { "Light": { "kind": "ambient", "color": "#e7f3ff", "intensity": 0.94 } } },
+    { "id": "light.yard.key", "transform": { "position": [-3.1, 6.8, 4.7], "rotation": [-0.9, -0.35, 0] }, "components": { "Light": { "kind": "directional", "color": "#fff0c8", "intensity": 1.35 } } },
+    { "id": "light.recycler", "transform": { "position": [0, 2.3, -4.15] }, "components": { "Light": { "kind": "point", "color": "#66b7ff", "intensity": 4.2, "range": 7.5 } } },
+    { "id": "light.magnet", "transform": { "position": [0, 1.5, 3.35] }, "components": { "Light": { "kind": "point", "color": "#ffb04d", "intensity": 1.55, "range": 6 } } },
+
+    { "id": "yard.floor", "prefab": "prefab.yard", "transform": { "position": [0, -0.08, 0], "rotation": [-1.570796, 0, 0], "scale": [8.9, 9.4, 1] } },
+    { "id": "yard.lane", "prefab": "prefab.lane", "transform": { "position": [0, -0.035, 0.1], "rotation": [-1.570796, 0, 0], "scale": [3.1, 8.4, 1] } },
+    { "id": "lane.mark.01", "prefab": "prefab.lane-mark", "transform": { "position": [0, -0.028, 2.85], "rotation": [-1.570796, 0, 0], "scale": [2.25, 0.08, 1] } },
+    { "id": "lane.mark.02", "prefab": "prefab.lane-mark", "transform": { "position": [0, -0.027, 1.28], "rotation": [-1.570796, 0, 0], "scale": [2.25, 0.08, 1] } },
+    { "id": "lane.mark.03", "prefab": "prefab.lane-mark", "transform": { "position": [0, -0.026, -0.28], "rotation": [-1.570796, 0, 0], "scale": [2.25, 0.08, 1] } },
+    { "id": "lane.mark.04", "prefab": "prefab.lane-mark", "transform": { "position": [0, -0.025, -1.85], "rotation": [-1.570796, 0, 0], "scale": [2.25, 0.08, 1] } },
+    { "id": "lane.edge.paint.left", "prefab": "prefab.safety-paint", "transform": { "position": [-1.62, -0.024, 0.1], "rotation": [-1.570796, 0, 0], "scale": [0.08, 8.15, 1] } },
+    { "id": "lane.edge.paint.right", "prefab": "prefab.safety-paint", "transform": { "position": [1.62, -0.023, 0.1], "rotation": [-1.570796, 0, 0], "scale": [0.08, 8.15, 1] } },
+    { "id": "lane.chevron.01.left", "prefab": "prefab.lane-chevron", "transform": { "position": [-0.42, -0.018, 3.18], "rotation": [0, 0.58, 0], "scale": [0.08, 0.06, 0.56] } },
+    { "id": "lane.chevron.01.right", "prefab": "prefab.lane-chevron", "transform": { "position": [0.42, -0.018, 3.18], "rotation": [0, -0.58, 0], "scale": [0.08, 0.06, 0.56] } },
+    { "id": "lane.chevron.02.left", "prefab": "prefab.lane-chevron", "transform": { "position": [-0.42, -0.017, 0.92], "rotation": [0, 0.58, 0], "scale": [0.08, 0.06, 0.56] } },
+    { "id": "lane.chevron.02.right", "prefab": "prefab.lane-chevron", "transform": { "position": [0.42, -0.017, 0.92], "rotation": [0, -0.58, 0], "scale": [0.08, 0.06, 0.56] } },
+    { "id": "lane.chevron.03.left", "prefab": "prefab.lane-chevron", "transform": { "position": [-0.42, -0.016, -1.35], "rotation": [0, 0.58, 0], "scale": [0.08, 0.06, 0.56] } },
+    { "id": "lane.chevron.03.right", "prefab": "prefab.lane-chevron", "transform": { "position": [0.42, -0.016, -1.35], "rotation": [0, -0.58, 0], "scale": [0.08, 0.06, 0.56] } },
+    { "id": "lane.edge.glow.left.01", "prefab": "prefab.edge-glow", "transform": { "position": [-1.32, -0.014, 2.45], "rotation": [-1.570796, 0, -0.18], "scale": [0.62, 0.055, 1] } },
+    { "id": "lane.edge.glow.left.02", "prefab": "prefab.edge-glow-blue", "transform": { "position": [-1.32, -0.013, -0.45], "rotation": [-1.570796, 0, 0.18], "scale": [0.62, 0.055, 1] } },
+    { "id": "lane.edge.glow.left.03", "prefab": "prefab.edge-glow", "transform": { "position": [-1.32, -0.012, -2.85], "rotation": [-1.570796, 0, -0.14], "scale": [0.62, 0.055, 1] } },
+    { "id": "lane.edge.glow.right.01", "prefab": "prefab.edge-glow-blue", "transform": { "position": [1.32, -0.014, 1.95], "rotation": [-1.570796, 0, 0.18], "scale": [0.62, 0.055, 1] } },
+    { "id": "lane.edge.glow.right.02", "prefab": "prefab.edge-glow", "transform": { "position": [1.32, -0.013, -0.85], "rotation": [-1.570796, 0, -0.18], "scale": [0.62, 0.055, 1] } },
+    { "id": "lane.edge.glow.right.03", "prefab": "prefab.edge-glow-blue", "transform": { "position": [1.32, -0.012, -3.2], "rotation": [-1.570796, 0, 0.14], "scale": [0.62, 0.055, 1] } },
+    { "id": "yard.scuff.left.01", "prefab": "prefab.yard-scuff", "transform": { "position": [-3.1, -0.02, 2.9], "rotation": [-1.570796, 0, 0.22], "scale": [1.1, 0.07, 1] } },
+    { "id": "yard.scuff.left.02", "prefab": "prefab.yard-scuff", "transform": { "position": [-3.15, -0.019, -1.25], "rotation": [-1.570796, 0, -0.18], "scale": [1.25, 0.07, 1] } },
+    { "id": "yard.scuff.right.01", "prefab": "prefab.yard-scuff", "transform": { "position": [3.05, -0.018, 1.25], "rotation": [-1.570796, 0, -0.22], "scale": [1.1, 0.07, 1] } },
+    { "id": "yard.scuff.right.02", "prefab": "prefab.yard-scuff", "transform": { "position": [3.1, -0.017, -2.95], "rotation": [-1.570796, 0, 0.18], "scale": [1.25, 0.07, 1] } },
+    { "id": "rail.left", "prefab": "prefab.rail", "transform": { "position": [-1.75, 0.72, 0.0], "scale": [0.12, 0.14, 8.5] } },
+    { "id": "rail.right", "prefab": "prefab.rail", "transform": { "position": [1.75, 0.72, 0.0], "scale": [0.12, 0.14, 8.5] } },
+    { "id": "rail.cross.01", "prefab": "prefab.rail", "transform": { "position": [0, 0.76, 2.9], "scale": [3.7, 0.12, 0.1] } },
+    { "id": "rail.cross.02", "prefab": "prefab.rail", "transform": { "position": [0, 0.76, -2.1], "scale": [3.7, 0.12, 0.1] } },
+
+    { "id": "recycler.pad", "prefab": "prefab.recycler", "transform": { "position": [0, 0.06, -4.02], "rotation": [-1.570796, 0, 0], "scale": [1.9, 1.05, 1] }, "components": { "RecyclerBin": { "radius": 0.92 } } },
+    { "id": "recycler.back", "prefab": "prefab.recycler-lip", "transform": { "position": [0, 0.42, -4.55], "scale": [2.05, 0.72, 0.16] } },
+    { "id": "recycler.left", "prefab": "prefab.recycler-lip", "transform": { "position": [-1.04, 0.38, -4.05], "scale": [0.16, 0.64, 0.95] } },
+    { "id": "recycler.right", "prefab": "prefab.recycler-lip", "transform": { "position": [1.04, 0.38, -4.05], "scale": [0.16, 0.64, 0.95] } },
+    { "id": "recycler.light.left", "prefab": "prefab.recycler-light", "transform": { "position": [-0.76, 0.78, -4.22], "scale": [0.09, 0.09, 0.09] } },
+    { "id": "recycler.light.right", "prefab": "prefab.recycler-light", "transform": { "position": [0.76, 0.78, -4.22], "scale": [0.09, 0.09, 0.09] } },
+    { "id": "recycler.guide", "prefab": "prefab.recycler-guide", "transform": { "position": [0, -0.015, -3.3], "rotation": [-1.570796, 0, 0], "scale": [1.25, 0.1, 1] } },
+    { "id": "recycler.arrow.left", "prefab": "prefab.recycler-arrow", "transform": { "position": [-0.58, 0.11, -3.22], "rotation": [0, 0.52, 0], "scale": [0.1, 0.07, 0.72] } },
+    { "id": "recycler.arrow.right", "prefab": "prefab.recycler-arrow", "transform": { "position": [0.58, 0.11, -3.22], "rotation": [0, -0.52, 0], "scale": [0.1, 0.07, 0.72] } },
+    { "id": "recycler.halo", "prefab": "prefab.recycler-halo", "transform": { "position": [0, 0.02, -4.02], "rotation": [-1.570796, 0, 0], "scale": [2.25, 1.28, 1] } },
+
+    { "id": "player", "prefab": "prefab.magnet", "transform": { "position": [0, 0.64, 3.45], "scale": [0.62, 0.26, 0.36] }, "components": { "MagnetPlayer": { "speed": 3.15, "carried": 0, "deposited": 0 } } },
+    { "id": "player.cable", "prefab": "prefab.cable", "transform": { "position": [0, 1.08, 3.45], "scale": [0.08, 0.82, 0.08] }, "components": { "MagnetPart": { "target": "player", "offset": [0, 0.44, 0] } } },
+    { "id": "player.housing", "prefab": "prefab.magnet-dark", "transform": { "position": [0, 0.9, 3.45], "scale": [0.72, 0.2, 0.22] }, "components": { "MagnetPart": { "target": "player", "offset": [0, 0.26, 0] } } },
+    { "id": "player.claw.left", "prefab": "prefab.magnet", "transform": { "position": [-0.32, 0.49, 3.45], "scale": [0.14, 0.26, 0.3] }, "components": { "MagnetPart": { "target": "player", "offset": [-0.32, -0.15, 0] } } },
+    { "id": "player.claw.right", "prefab": "prefab.magnet", "transform": { "position": [0.32, 0.49, 3.45], "scale": [0.14, 0.26, 0.3] }, "components": { "MagnetPart": { "target": "player", "offset": [0.32, -0.15, 0] } } },
+
+    { "id": "scrap.01", "prefab": "prefab.scrap", "transform": { "position": [-1.35, 0.34, 2.35], "scale": [0.34, 0.16, 0.25] }, "components": { "ScrapItem": { "collected": false, "phase": 0.1 } } },
+    { "id": "scrap.02", "prefab": "prefab.scrap-rust", "transform": { "position": [1.28, 0.34, 1.55], "scale": [0.28, 0.2, 0.32] }, "components": { "ScrapItem": { "collected": false, "phase": 0.8 } } },
+    { "id": "scrap.03", "prefab": "prefab.scrap", "transform": { "position": [-1.75, 0.34, 0.15], "scale": [0.3, 0.18, 0.28] }, "components": { "ScrapItem": { "collected": false, "phase": 1.4 } } },
+    { "id": "scrap.04", "prefab": "prefab.scrap-rust", "transform": { "position": [1.65, 0.34, -0.85], "scale": [0.32, 0.18, 0.24] }, "components": { "ScrapItem": { "collected": false, "phase": 2.1 } } },
+    { "id": "scrap.05", "prefab": "prefab.scrap", "transform": { "position": [-0.95, 0.34, -2.05], "scale": [0.34, 0.16, 0.3] }, "components": { "ScrapItem": { "collected": false, "phase": 2.7 } } },
+    { "id": "scrap.06", "prefab": "prefab.scrap-rust", "transform": { "position": [0.95, 0.34, -2.9], "scale": [0.28, 0.18, 0.34] }, "components": { "ScrapItem": { "collected": false, "phase": 3.2 } } },
+    { "id": "scrap.01.glint", "prefab": "prefab.scrap-glint", "transform": { "position": [-1.12, 0.49, 2.2], "scale": [0.065, 0.065, 0.065] } },
+    { "id": "scrap.02.glint", "prefab": "prefab.scrap-glint", "transform": { "position": [1.5, 0.51, 1.38], "scale": [0.065, 0.065, 0.065] } },
+    { "id": "scrap.03.glint", "prefab": "prefab.scrap-glint", "transform": { "position": [-1.52, 0.5, -0.02], "scale": [0.065, 0.065, 0.065] } },
+    { "id": "scrap.04.glint", "prefab": "prefab.scrap-glint", "transform": { "position": [1.88, 0.5, -1.02], "scale": [0.065, 0.065, 0.065] } },
+    { "id": "scrap.01.halo", "prefab": "prefab.scrap-halo", "transform": { "position": [-1.35, 0.045, 2.35], "rotation": [-1.570796, 0, 0], "scale": [0.58, 0.58, 1] } },
+    { "id": "scrap.02.halo", "prefab": "prefab.scrap-halo-rust", "transform": { "position": [1.28, 0.046, 1.55], "rotation": [-1.570796, 0, 0], "scale": [0.58, 0.58, 1] } },
+    { "id": "scrap.03.halo", "prefab": "prefab.scrap-halo", "transform": { "position": [-1.75, 0.047, 0.15], "rotation": [-1.570796, 0, 0], "scale": [0.58, 0.58, 1] } },
+    { "id": "scrap.04.halo", "prefab": "prefab.scrap-halo-rust", "transform": { "position": [1.65, 0.048, -0.85], "rotation": [-1.570796, 0, 0], "scale": [0.58, 0.58, 1] } },
+    { "id": "scrap.05.halo", "prefab": "prefab.scrap-halo", "transform": { "position": [-0.95, 0.049, -2.05], "rotation": [-1.570796, 0, 0], "scale": [0.58, 0.58, 1] } },
+    { "id": "scrap.06.halo", "prefab": "prefab.scrap-halo-rust", "transform": { "position": [0.95, 0.05, -2.9], "rotation": [-1.570796, 0, 0], "scale": [0.58, 0.58, 1] } },
+
+    { "id": "spark.01", "prefab": "prefab.spark", "transform": { "position": [-0.8, 0.46, 0.9], "scale": [0.44, 0.08, 0.44] }, "components": { "SparkHazard": { "origin": [-0.8, 0.46, 0.9], "axis": "x", "radius": 1.25, "phase": 0.3 } } },
+    { "id": "spark.01.bar.x", "prefab": "prefab.spark-bar", "transform": { "position": [-0.8, 0.55, 0.9], "scale": [0.68, 0.06, 0.08] }, "components": { "SparkPart": { "target": "spark.01", "offset": [0, 0.09, 0] } } },
+    { "id": "spark.01.bar.z", "prefab": "prefab.spark-bar", "transform": { "position": [-0.8, 0.58, 0.9], "scale": [0.08, 0.06, 0.68] }, "components": { "SparkPart": { "target": "spark.01", "offset": [0, 0.12, 0] } } },
+    { "id": "spark.01.sweep", "prefab": "prefab.spark-sweep", "transform": { "position": [-0.8, 0.055, 0.9], "rotation": [-1.570796, 0, 1.570796], "scale": [2.35, 0.07, 1] } },
+    { "id": "spark.02", "prefab": "prefab.spark", "transform": { "position": [0.9, 0.46, -1.65], "scale": [0.44, 0.08, 0.44] }, "components": { "SparkHazard": { "origin": [0.9, 0.46, -1.65], "axis": "z", "radius": 1.15, "phase": 1.8 } } },
+    { "id": "spark.02.bar.x", "prefab": "prefab.spark-bar", "transform": { "position": [0.9, 0.55, -1.65], "scale": [0.68, 0.06, 0.08] }, "components": { "SparkPart": { "target": "spark.02", "offset": [0, 0.09, 0] } } },
+    { "id": "spark.02.bar.z", "prefab": "prefab.spark-bar", "transform": { "position": [0.9, 0.58, -1.65], "scale": [0.08, 0.06, 0.68] }, "components": { "SparkPart": { "target": "spark.02", "offset": [0, 0.12, 0] } } },
+    { "id": "spark.02.sweep", "prefab": "prefab.spark-sweep", "transform": { "position": [0.9, 0.055, -1.65], "rotation": [-1.570796, 0, 0], "scale": [2.15, 0.07, 1] } },
+
+    { "id": "bin.left", "prefab": "prefab.bin", "transform": { "position": [-3.25, 0.42, 1.9], "scale": [0.9, 0.78, 1.2] } },
+    { "id": "bin.right", "prefab": "prefab.bin", "transform": { "position": [3.15, 0.42, -0.6], "scale": [0.92, 0.78, 1.35] } },
+    { "id": "pile.left", "prefab": "prefab.pile", "transform": { "position": [-3.35, 0.28, -2.4], "scale": [1.25, 0.42, 0.86] } },
+    { "id": "pile.right", "prefab": "prefab.pile-rust", "transform": { "position": [3.35, 0.28, 2.55], "scale": [1.3, 0.42, 0.82] } },
+    { "id": "warn.01", "prefab": "prefab.warning", "transform": { "position": [-2.4, 0.42, 4.0], "scale": [0.18, 0.75, 0.18] } },
+    { "id": "warn.02", "prefab": "prefab.warning", "transform": { "position": [2.4, 0.42, 3.25], "scale": [0.18, 0.75, 0.18] } },
+    { "id": "warn.03", "prefab": "prefab.warning", "transform": { "position": [-2.65, 0.42, -3.55], "scale": [0.18, 0.75, 0.18] } },
+    { "id": "light.warning.01", "prefab": "prefab.light", "transform": { "position": [-2.4, 0.9, 4.0], "scale": [0.24, 0.24, 0.24] } },
+    { "id": "light.warning.02", "prefab": "prefab.light", "transform": { "position": [2.4, 0.9, 3.25], "scale": [0.24, 0.24, 0.24] } },
+    { "id": "fence.back", "prefab": "prefab.fence", "transform": { "position": [0, 0.42, 4.75], "scale": [8.9, 0.34, 0.14] } },
+    { "id": "fence.left", "prefab": "prefab.fence", "transform": { "position": [-4.55, 0.42, 0], "scale": [0.14, 0.34, 9.2] } },
+    { "id": "fence.right", "prefab": "prefab.fence", "transform": { "position": [4.55, 0.42, 0], "scale": [0.14, 0.34, 9.2] } }
+  ],
+  "prefabs": [
+    { "id": "prefab.yard", "primitive": "plane", "color": "#4e595c" },
+    { "id": "prefab.lane", "primitive": "plane", "color": "#344246" },
+    { "id": "prefab.lane-mark", "primitive": "plane", "color": "#687a7d" },
+    { "id": "prefab.safety-paint", "primitive": "plane", "color": "#f2b13f" },
+    { "id": "prefab.lane-chevron", "primitive": "box", "color": "#ffd35d" },
+    { "id": "prefab.edge-glow", "primitive": "plane", "color": "#ffcf4d" },
+    { "id": "prefab.edge-glow-blue", "primitive": "plane", "color": "#9bd4ff" },
+    { "id": "prefab.yard-scuff", "primitive": "plane", "color": "#7d8b8e" },
+    { "id": "prefab.rail", "primitive": "box", "color": "#b7c3c6" },
+    { "id": "prefab.magnet", "primitive": "box", "color": "#d63f45" },
+    { "id": "prefab.magnet-dark", "primitive": "box", "color": "#27323a" },
+    { "id": "prefab.cable", "primitive": "cylinder", "color": "#171c22" },
+    { "id": "prefab.scrap", "primitive": "box", "color": "#c7d0d4" },
+    { "id": "prefab.scrap-rust", "primitive": "box", "color": "#c87531" },
+    { "id": "prefab.scrap-glint", "primitive": "sphere", "color": "#f7fbff" },
+    { "id": "prefab.scrap-halo", "primitive": "cylinder", "color": "#d9f4ff" },
+    { "id": "prefab.scrap-halo-rust", "primitive": "cylinder", "color": "#ffcf4d" },
+    { "id": "prefab.spark", "primitive": "sphere", "color": "#ffe66d" },
+    { "id": "prefab.spark-bar", "primitive": "box", "color": "#ff355d" },
+    { "id": "prefab.spark-sweep", "primitive": "plane", "color": "#ff355d" },
+    { "id": "prefab.recycler", "primitive": "plane", "color": "#2f80ed" },
+    { "id": "prefab.recycler-lip", "primitive": "box", "color": "#173b65" },
+    { "id": "prefab.recycler-light", "primitive": "sphere", "color": "#9bd4ff" },
+    { "id": "prefab.recycler-guide", "primitive": "plane", "color": "#8fc9ff" },
+    { "id": "prefab.recycler-arrow", "primitive": "box", "color": "#9bd4ff" },
+    { "id": "prefab.recycler-halo", "primitive": "plane", "color": "#66b7ff" },
+    { "id": "prefab.bin", "primitive": "box", "color": "#435057" },
+    { "id": "prefab.pile", "primitive": "sphere", "color": "#8e979b" },
+    { "id": "prefab.pile-rust", "primitive": "sphere", "color": "#9b5b2f" },
+    { "id": "prefab.warning", "primitive": "box", "color": "#ff9f1c" },
+    { "id": "prefab.light", "primitive": "sphere", "color": "#ff355d" },
+    { "id": "prefab.fence", "primitive": "box", "color": "#252d33" },
+    { "id": "prefab.sign", "primitive": "box", "color": "#252d33" }
+  ],
+  "resources": [
+    {
+      "id": "GameState",
+      "value": {
+        "phase": "playing",
+        "carried": 0,
+        "deposited": 0,
+        "timer": 70,
+        "scrapText": "Scrap 0/6",
+        "timerText": "Shift 70",
+        "status": "Collect scrap, then hover over the blue recycler"
+      }
+    }
+  ],
+  "systems": [
+    {
+      "id": "magnet-yard-sorter",
+      "schedule": "fixedUpdate",
+      "resourceWrites": ["GameState"],
+      "script": {
+        "module": "src/scripts/player.ts",
+        "export": "magnetYardSorterSystem"
+      }
+    }
+  ],
+  "ui": {
+    "nodes": [
+      {
+        "id": "scrap",
+        "type": "text",
+        "text": "Scrap 0/6",
+        "layout": { "justify": "center", "align": "top", "top": 24, "width": 1280 }
+      }
+    ],
+    "bindings": [
+      { "node": "scrap", "resource": "GameState.scrapText" }
+    ]
+  }
+}

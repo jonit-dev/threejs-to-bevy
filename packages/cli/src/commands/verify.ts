@@ -46,7 +46,7 @@ export async function verifyCommand(
         throw new Error(report.diagnostics[0]?.message ?? "Bundle validation failed.");
       }
 
-      server = await startWebPreview({ bundlePath });
+      server = await startWebPreview({ bundlePath, silent: true });
       previewUrl = server.url;
     }
 

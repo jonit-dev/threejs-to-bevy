@@ -19,6 +19,7 @@ import {
   type ISceneTransitionIr,
   type ITargetProfile,
   type IUiIr,
+  type IUiNodeIr,
   type IWorldIr,
 } from "@threenative/ir";
 import { normalizeKeyboardCodeAlias } from "@threenative/ir/input";
@@ -81,12 +82,16 @@ export async function emitBundle(config: IProjectConfig, root: unknown, options:
   ]));
   const assets = generatedMeshPayloads.assets;
   const rootUi = (bundleRoot.ui === undefined ? undefined : emitUi(bundleRoot.ui)) as IUiIr | undefined;
-  const ui = mergeUis(rootUi, lifecycleScenes.ui);
+  const structuredUi = readStructuredUi(options.authoringDocuments);
+  const ui = mergeUis(mergeUis(rootUi, structuredUi), lifecycleScenes.ui);
   const world = mergeWorlds(emitted?.world, ecs?.world);
   const materials: IMaterialsIr = {
     schema: IR_SCHEMA_IDS.materials,
     version: IR_VERSION,
-    materials: (emitted?.materials ?? []) as unknown as IMaterialIr[],
+    materials: mergeById([
+      ...((emitted?.materials ?? []) as unknown as IMaterialIr[]),
+      ...readStructuredMaterials(options.authoringDocuments),
+    ]),
   };
   const assetsManifest: IAssetsManifest = {
     schema: IR_SCHEMA_IDS.assets,
@@ -443,6 +448,270 @@ function readStructuredInputOverrides(data: Record<string, unknown>): NonNullabl
       updatedAt: readString(override.updatedAt) ?? "",
     }))
     .filter((override) => override.actionOrAxisId !== "" && override.control !== "" && override.profileId !== "" && override.updatedAt !== "" && ["gamepad", "keyboard", "pointer", "touch"].includes(override.device));
+}
+
+function readStructuredUi(documents: readonly IAuthoringDocument[] | undefined): IUiIr | undefined {
+  const uiDocuments = (documents ?? []).filter((document) => document.kind === "ui" && isRecord(document.data));
+  if (uiDocuments.length === 0) {
+    return undefined;
+  }
+  return uiDocuments
+    .map((document) => structuredUiDocument(document.data as Record<string, unknown>))
+    .reduce((merged, current) => mergeUis(merged, current), undefined as IUiIr | undefined);
+}
+
+function structuredUiDocument(data: Record<string, unknown>): IUiIr {
+  const id = readString(data.id) ?? "ui";
+  const nodes = readRecordList(data.nodes).flatMap((node) => structuredUiNode(node));
+  const root: IUiNodeIr = nodes.length === 1
+    ? nodes[0] ?? { id: `${id}.root`, kind: "stack" }
+    : { children: nodes, id: `${id}.root`, kind: "stack" };
+  return {
+    schema: IR_SCHEMA_IDS.ui,
+    version: IR_VERSION,
+    root,
+  };
+}
+
+function structuredUiNode(data: Record<string, unknown>): IUiNodeIr[] {
+  const id = readString(data.id);
+  if (id === undefined) {
+    return [];
+  }
+  const kind = structuredUiKind(readString(data.type) ?? readString(data.kind));
+  return [{
+    id,
+    kind,
+    ...copyOptionalUiString(data, "action"),
+    ...copyOptionalUiString(data, "accessibilityLabel"),
+    ...copyOptionalUiString(data, "anchorId"),
+    ...copyOptionalUiBoolean(data, "disabled"),
+    ...copyOptionalUiBoolean(data, "focusable"),
+    ...copyOptionalUiString(data, "label"),
+    ...copyOptionalUiNumber(data, "max"),
+    ...copyOptionalUiNumber(data, "min"),
+    ...structuredUiOrientation(data.orientation),
+    ...structuredUiRole(data.role),
+    ...copyOptionalUiNumber(data, "step"),
+    ...copyOptionalUiString(data, "src"),
+    ...copyOptionalUiString(data, "text"),
+    ...copyOptionalUiNumber(data, "value"),
+    ...copyOptionalUiString(data, "valueText"),
+    ...(isRecord(data.binding) ? { binding: cloneRecord(data.binding) as IUiNodeIr["binding"] } : {}),
+    ...(isRecord(data.image) ? { image: cloneRecord(data.image) as IUiNodeIr["image"] } : {}),
+    ...(isRecord(data.minimap) ? { minimap: cloneRecord(data.minimap) as unknown as IUiNodeIr["minimap"] } : {}),
+    ...(isRecord(data.navigation) ? { navigation: cloneRecord(data.navigation) as IUiNodeIr["navigation"] } : {}),
+    ...(Array.isArray(data.spans) ? { spans: JSON.parse(JSON.stringify(data.spans)) as IUiNodeIr["spans"] } : {}),
+    ...(readRecordList(data.children).length === 0 ? {} : { children: readRecordList(data.children).flatMap((child) => structuredUiNode(child)) }),
+    ...structuredUiLayout(data.layout),
+    ...structuredUiStyle(data.style),
+  }];
+}
+
+function structuredUiKind(value: string | undefined): IUiNodeIr["kind"] {
+  if (
+    value === "bar"
+    || value === "button"
+    || value === "column"
+    || value === "contextMenu"
+    || value === "image"
+    || value === "minimap"
+    || value === "row"
+    || value === "scrollbar"
+    || value === "slider"
+    || value === "stack"
+    || value === "textInput"
+    || value === "touchControl"
+  ) {
+    return value;
+  }
+  return "text";
+}
+
+function structuredUiLayout(value: unknown): Pick<IUiNodeIr, "layout"> {
+  if (!isRecord(value)) {
+    return {};
+  }
+  const layout: NonNullable<IUiNodeIr["layout"]> = {};
+  const align = readString(value.align);
+  const justify = readString(value.justify);
+  const position = readString(value.position);
+  const overflow = readString(value.overflow);
+  const direction = readString(value.direction);
+  const normalizedAlign = align === "left" || align === "top" ? "start" : align === "right" || align === "bottom" ? "end" : uiAlign(align);
+  const normalizedJustify = justify === "left" || justify === "top" ? "start" : justify === "right" || justify === "bottom" ? "end" : uiJustify(justify);
+  if (normalizedAlign !== undefined) layout.align = normalizedAlign;
+  if (normalizedJustify !== undefined) layout.justify = normalizedJustify;
+  if (position === "absolute" || position === "relative") layout.position = position;
+  if (overflow === "hidden" || overflow === "scroll" || overflow === "visible") layout.overflow = overflow;
+  if (direction === "column" || direction === "row") layout.direction = direction;
+  for (const key of ["columnGap", "grow", "height", "maxHeight", "maxWidth", "minHeight", "minWidth", "padding", "rowGap", "zIndex"] as const) {
+    const number = readNumber(value[key]);
+    if (number !== undefined) {
+      layout[key] = number;
+    }
+  }
+  const inset: NonNullable<NonNullable<IUiNodeIr["layout"]>["inset"]> = {};
+  for (const key of ["bottom", "left", "right", "top"] as const) {
+    const number = readNumber(value[key]);
+    if (number !== undefined) {
+      inset[key] = number;
+    }
+  }
+  if (isRecord(value.inset)) {
+    for (const key of ["bottom", "left", "right", "top"] as const) {
+      const number = readNumber(value.inset[key]);
+      if (number !== undefined) {
+        inset[key] = number;
+      }
+    }
+  }
+  const width = readNumber(value.width);
+  if (width !== undefined) {
+    if (width >= 1000 && inset.left === undefined && inset.right === undefined) {
+      inset.left = 0;
+      inset.right = 0;
+    } else {
+      layout.width = width;
+    }
+  }
+  if (Object.keys(inset).length > 0) {
+    layout.inset = inset;
+    layout.position ??= "absolute";
+  }
+  if (isRecord(value.grid)) {
+    layout.grid = cloneRecord(value.grid) as NonNullable<IUiNodeIr["layout"]>["grid"];
+  }
+  return Object.keys(layout).length === 0 ? {} : { layout };
+}
+
+function structuredUiStyle(value: unknown): Pick<IUiNodeIr, "style"> {
+  if (!isRecord(value)) {
+    return {};
+  }
+  const style: NonNullable<IUiNodeIr["style"]> = {};
+  for (const key of ["backgroundColor", "borderColor", "color", "fontFamily"] as const) {
+    const string = readString(value[key]);
+    if (string !== undefined) {
+      style[key] = string;
+    }
+  }
+  for (const key of ["borderRadius", "borderWidth", "fontSize", "opacity"] as const) {
+    const number = readNumber(value[key]);
+    if (number !== undefined) {
+      style[key] = number;
+    }
+  }
+  const fontWeight = readString(value.fontWeight);
+  if (fontWeight === "bold" || fontWeight === "normal") style.fontWeight = fontWeight;
+  const textAlign = readString(value.textAlign);
+  if (textAlign === "center" || textAlign === "left" || textAlign === "right") style.textAlign = textAlign;
+  const textDecoration = readString(value.textDecoration);
+  if (textDecoration === "lineThrough" || textDecoration === "none" || textDecoration === "underline") style.textDecoration = textDecoration;
+  const wrap = readString(value.wrap);
+  if (wrap === "character" || wrap === "none" || wrap === "word") style.wrap = wrap;
+  if (isRecord(value.gradient)) style.gradient = cloneRecord(value.gradient) as NonNullable<IUiNodeIr["style"]>["gradient"];
+  if (isRecord(value.shadow)) style.shadow = cloneRecord(value.shadow) as NonNullable<IUiNodeIr["style"]>["shadow"];
+  return Object.keys(style).length === 0 ? {} : { style };
+}
+
+function uiAlign(value: string | undefined): NonNullable<IUiNodeIr["layout"]>["align"] | undefined {
+  return value === "center" || value === "end" || value === "start" || value === "stretch" ? value : undefined;
+}
+
+function uiJustify(value: string | undefined): NonNullable<IUiNodeIr["layout"]>["justify"] | undefined {
+  return value === "center" || value === "end" || value === "spaceBetween" || value === "start" ? value : undefined;
+}
+
+function structuredUiOrientation(value: unknown): Pick<IUiNodeIr, "orientation"> {
+  return value === "horizontal" || value === "vertical" ? { orientation: value } : {};
+}
+
+function structuredUiRole(value: unknown): Pick<IUiNodeIr, "role"> {
+  return typeof value === "string" ? { role: value as IUiNodeIr["role"] } : {};
+}
+
+function copyOptionalUiString<T extends string>(data: Record<string, unknown>, key: T): Partial<Record<T, string>> {
+  const value = readString(data[key]);
+  return value === undefined ? {} : { [key]: value } as Partial<Record<T, string>>;
+}
+
+function copyOptionalUiNumber<T extends string>(data: Record<string, unknown>, key: T): Partial<Record<T, number>> {
+  const value = readNumber(data[key]);
+  return value === undefined ? {} : { [key]: value } as Partial<Record<T, number>>;
+}
+
+function copyOptionalUiBoolean<T extends string>(data: Record<string, unknown>, key: T): Partial<Record<T, boolean>> {
+  const value = typeof data[key] === "boolean" ? data[key] : undefined;
+  return value === undefined ? {} : { [key]: value } as Partial<Record<T, boolean>>;
+}
+
+function readStructuredMaterials(documents: readonly IAuthoringDocument[] | undefined): IMaterialIr[] {
+  return (documents ?? [])
+    .filter((document) => document.kind === "material" && isRecord(document.data))
+    .flatMap((document) => readRecordList((document.data as Record<string, unknown>).materials).flatMap((item) => structuredMaterial(item)))
+    .sort((left, right) => left.id.localeCompare(right.id));
+}
+
+function structuredMaterial(item: Record<string, unknown>): IMaterialIr[] {
+  const id = readString(item.id);
+  const color = readColor(item.color) ?? "#ffffff";
+  if (id === undefined) {
+    return [];
+  }
+  return [{
+    id,
+    kind: readString(item.kind) === "extended" ? "extended" : "standard",
+    color,
+    ...copyOptionalMaterialString(item, "alphaMode"),
+    ...copyOptionalMaterialString(item, "baseColorTexture"),
+    ...copyOptionalMaterialString(item, "blendMode"),
+    ...copyOptionalMaterialString(item, "clearcoatRoughnessTexture"),
+    ...copyOptionalMaterialString(item, "clearcoatTexture"),
+    ...copyOptionalMaterialString(item, "emissiveTexture"),
+    ...copyOptionalMaterialString(item, "metallicRoughnessTexture"),
+    ...copyOptionalMaterialString(item, "normalTexture"),
+    ...copyOptionalMaterialString(item, "occlusionTexture"),
+    ...copyOptionalMaterialNumber(item, "alphaCutoff"),
+    ...copyOptionalMaterialNumber(item, "clearcoat"),
+    ...copyOptionalMaterialNumber(item, "clearcoatRoughness"),
+    ...copyOptionalMaterialNumber(item, "emissiveIntensity"),
+    ...copyOptionalMaterialNumber(item, "metalness"),
+    ...copyOptionalMaterialNumber(item, "opacity"),
+    ...copyOptionalMaterialNumber(item, "renderOrder"),
+    ...copyOptionalMaterialNumber(item, "roughness"),
+    ...copyOptionalMaterialNumber(item, "specularIntensity"),
+    ...copyOptionalMaterialBoolean(item, "depthTest"),
+    ...copyOptionalMaterialBoolean(item, "depthWrite"),
+    ...(readColor(item.emissive) === undefined ? {} : { emissive: readColor(item.emissive) }),
+    ...(isRecord(item.emissiveBloom) ? { emissiveBloom: cloneRecord(item.emissiveBloom) as unknown as IMaterialIr["emissiveBloom"] } : {}),
+    ...(isRecord(item.extension) ? { extension: cloneRecord(item.extension) as unknown as IMaterialIr["extension"] } : {}),
+  }];
+}
+
+function readColor(value: unknown): IMaterialIr["color"] | undefined {
+  if (typeof value === "string" && value.trim() !== "") {
+    return value;
+  }
+  if (Array.isArray(value) && (value.length === 3 || value.length === 4) && value.every((item) => typeof item === "number" && Number.isFinite(item))) {
+    return value as unknown as IMaterialIr["color"];
+  }
+  return undefined;
+}
+
+function copyOptionalMaterialString(item: Record<string, unknown>, key: keyof IMaterialIr): Partial<IMaterialIr> {
+  const value = readString(item[key]);
+  return value === undefined ? {} : { [key]: value };
+}
+
+function copyOptionalMaterialNumber(item: Record<string, unknown>, key: keyof IMaterialIr): Partial<IMaterialIr> {
+  const value = readNumber(item[key]);
+  return value === undefined ? {} : { [key]: value };
+}
+
+function copyOptionalMaterialBoolean(item: Record<string, unknown>, key: keyof IMaterialIr): Partial<IMaterialIr> {
+  const value = item[key];
+  return typeof value === "boolean" ? { [key]: value } : {};
 }
 
 function readStructuredSchemaFiles(documents: readonly IAuthoringDocument[] | undefined): {

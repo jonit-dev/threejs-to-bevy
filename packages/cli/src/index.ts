@@ -81,7 +81,7 @@ const commands: Record<string, ICommandDefinition> = {
   game: {
     description: "Plan, score, QA, and release-check source-backed game production evidence.",
     implemented: true,
-    usage: "tn game plan --goal <text> [--project <path>] [--json]\n              tn game improve --apply-plan <file> [--project <path>] [--json]\n              tn game providers [--json]\n              tn game score [--project <path>] [--json]\n              tn game qa [--project <path>] [--run-proof] [--url <preview-url>] [--entity <id>] [--press <KeyboardEvent.code>] [--record] [--out <file>] [--json]\n              tn game release [--project <path>] [--out <file>] [--json]",
+    usage: "tn game plan --goal <text> [--project <path>] [--json]\n              tn game improve --apply-plan <file> [--project <path>] [--json]\n              tn game providers [--json]\n              tn game score [--project <path>] [--json]\n              tn game qa [--project <path>] [--run-proof] [--url <preview-url>] [--entity <id>] [--press <KeyboardEvent.code>] [--expect-axis x|y|z] [--record] [--out <file>] [--json]\n              tn game release [--project <path>] [--out <file>] [--json]",
   },
   "model-test": {
     description: "Generate a one-model proof project with scale, bounds, ruler, and camera hints.",
@@ -121,7 +121,7 @@ const commands: Record<string, ICommandDefinition> = {
   mesh: {
     description: "Create structured primitive and custom mesh source documents.",
     implemented: true,
-    usage: "tn mesh primitive <mesh-id> --kind <box|sphere|cylinder|cone|plane> [--size n,n,...] [--file <path>] [--project <path>] [--json]\n              tn mesh custom <mesh-id> --attributes '<json-array>' [--indices '<json-array>'] [--storage binary] [--project <path>] [--json]",
+    usage: "tn mesh primitive <mesh-id> --kind <box|sphere|cylinder|cone|plane|torus> [--size n,n,...] [--file <path>] [--project <path>] [--json]\n              tn mesh custom <mesh-id> --attributes '<json-array>' [--indices '<json-array>'] [--storage binary] [--project <path>] [--json]",
   },
   "compare-images": {
     description: "Compare two PNG screenshots and report visual deltas.",
@@ -146,7 +146,7 @@ const commands: Record<string, ICommandDefinition> = {
   playtest: {
     description: "Run a web input proof and assert that a game entity responds.",
     implemented: true,
-    usage: "tn playtest --project <path> --entity <id> --press <KeyboardEvent.code> --frames <n> [--expect-moved] [--debug] [--json]",
+    usage: "tn playtest --project <path> --entity <id> --press <KeyboardEvent.code> --frames <n> [--expect-moved] [--expect-axis x|y|z] [--debug] [--json]",
   },
   recipe: {
     description: "Apply composed registry-backed recipes for common game objects.",
@@ -191,12 +191,12 @@ const commands: Record<string, ICommandDefinition> = {
   scene: {
     description: "Create, inspect, validate, mutate, and prove structured source scene documents.",
     implemented: true,
-    usage: "tn scene create <scene-id> [--file <path>] [--json]\n              tn scene import-world <scene-id> --world <path/to/world.ir.json> [--file <path>] [--replace] [--json]\n              tn scene validate [scene-id] [--project <path>] [--json]\n              tn scene inspect <scene-id> [--project <path>] [--json]\n              tn scene add-prefab <scene-id> <prefab-id> [--primitive <primitive>] [--color <css-color>] [--json]\n              tn scene set-prefab <scene-id> <prefab-id> [--primitive <primitive>] [--color <css-color>] [--asset <path.glb>] [--json]\n              tn scene set-prefab-color <scene-id> <prefab-id> --color <css-color> [--json]\n              tn scene add-resource <scene-id> <resource-id> [--path <resource.path>] [--value <json>] [--json]\n              tn scene set-resource <scene-id> <resource-id> [--path <resource.path>] [--value <json>] [--json]\n              tn scene add-ui-node <scene-id> <ui-node-id> [--json]\n              tn scene add-entity <scene-id> <entity-id> [--prefab <prefab-id>] [--json]\n              tn scene add-tag <scene-id> <entity-id> <tag> [--json]\n              tn scene add-group <scene-id> <group-id> [--name <label>] [--position x,y,z] [--json]\n              tn scene add-component <scene-id> <entity-id> light|mesh-renderer|render-layers|visibility|rigid-body|collider|character-controller [typed flags] [--json]\n              tn scene set-component <scene-id> <entity-id> <component-kind> --value <json-object> [--json]\n              tn scene remove-component <scene-id> <entity-id> <component-kind> [--json]\n              tn scene set-transform <scene-id> <entity-id> [--position x,y,z] [--rotation x,y,z] [--scale x,y,z] [--json]\n              tn scene set-camera <scene-id> <camera-id> --mode <mode> --target <entity-id> [--json]\n              tn scene attach-script <scene-id> <system-id> --module <path> --export <name> [--json]\n              tn scene bind-ui <scene-id> <ui-node-id> --resource <resource.path> [--json]\n              tn scene proof <scene-id> --project <path> --web-url <url> --out <dir> [--native] [--json]",
+    usage: "tn scene create <scene-id> [--file <path>] [--json]\n              tn scene import-world <scene-id> --world <path/to/world.ir.json> [--file <path>] [--replace] [--json]\n              tn scene validate [scene-id] [--project <path>] [--json]\n              tn scene inspect <scene-id> [--project <path>] [--json]\n              tn scene add-prefab <scene-id> <prefab-id> [--primitive <primitive>] [--color <css-color>] [--json]\n              tn scene set-prefab <scene-id> <prefab-id> [--primitive <primitive>] [--color <css-color>] [--asset <path.glb>] [--json]\n              tn scene set-prefab-color <scene-id> <prefab-id> --color <css-color> [--json]\n              tn scene add-resource <scene-id> <resource-id> [--path <resource.path>] [--value <json>] [--json]\n              tn scene set-resource <scene-id> <resource-id> [--path <resource.path>] [--value <json>] [--json]\n              tn scene add-ui-node <scene-id> <ui-node-id> [--json]\n              tn scene add-entity <scene-id> <entity-id> [--prefab <prefab-id>] [--json]\n              tn scene add-prefab-instance <scene-id> <instance-id> --prefab <prefab-id> [--position x,y,z] [--components <json-object>] [--replace] [--json]\n              tn scene layout ten-pin <scene-id> --prefab <prefab-id> [--prefix pin] [--origin x,y,z] [--spacing n] [--replace] [--json]\n              tn scene add-tag <scene-id> <entity-id> <tag> [--json]\n              tn scene add-group <scene-id> <group-id> [--name <label>] [--position x,y,z] [--json]\n              tn scene add-component <scene-id> <entity-id> light|mesh-renderer|render-layers|visibility|rigid-body|collider|character-controller [typed flags] [--json]\n              tn scene set-component <scene-id> <entity-id> <component-kind> --value <json-object> [--json]\n              tn scene remove-component <scene-id> <entity-id> <component-kind> [--json]\n              tn scene set-transform <scene-id> <entity-id> [--position x,y,z] [--rotation x,y,z] [--scale x,y,z] [--json]\n              tn scene set-camera <scene-id> <camera-id> --mode <mode> --target <entity-id> [--json]\n              tn scene attach-script <scene-id> <system-id> --module <path> --export <name> [--json]\n              tn scene bind-ui <scene-id> <ui-node-id> --resource <resource.path> [--json]\n              tn scene proof <scene-id> --project <path> --web-url <url> --out <dir> [--native] [--json]",
   },
   prefab: {
     description: "Create and mutate structured prefab source documents.",
     implemented: true,
-    usage: "tn prefab create <prefab-id> [--project <path>] [--json]\n              tn prefab add-component <prefab-id> <component> --value <json-object> [--project <path>] [--json]",
+    usage: "tn prefab create <prefab-id> [--project <path>] [--json]\n              tn prefab add-component <prefab-id> <component> --value <json-object> [--project <path>] [--json]\n              tn prefab set-defaults <prefab-id> <component> --value <json-object> [--project <path>] [--json]",
   },
   project: {
     description: "Create and mutate structured project metadata source documents.",
@@ -216,7 +216,7 @@ const commands: Record<string, ICommandDefinition> = {
   screenshot: {
     description: "Capture a PNG proof frame from a web preview URL.",
     implemented: true,
-    usage: "tn screenshot [--project <path>] --url <preview-url> --out <file.png> [--wait-ready] [--json]",
+    usage: "tn screenshot [--project <path>] --url <preview-url> --out <file.png> [--wait-ready] [--viewport desktop|mobile|<width>x<height>] [--json]",
   },
   record: {
     description: "Record a short WebM/MP4 proof clip from a web preview URL.",

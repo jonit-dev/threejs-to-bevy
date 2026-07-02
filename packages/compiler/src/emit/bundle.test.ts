@@ -884,6 +884,56 @@ test("should emit root input map for scene bundle", async () => {
   }
 });
 
+test("should emit structured material documents", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-emit-source-materials-"));
+  try {
+    const config = {
+      entry: "src/game.ts",
+      outDir: "dist/game.bundle",
+      projectPath: root,
+      schema: "threenative.project" as const,
+      version: "0.1.0" as const,
+    };
+
+    const bundlePath = await emitBundle(config, makeScene(), {
+      authoringDocuments: [{
+        data: {
+          schema: "threenative.materials",
+          version: "0.1.0",
+          id: "lane-materials",
+          materials: [
+            { id: "mat.ball", color: "#295d8f", roughness: 0.28 },
+            { id: "mat.lamp", color: "#ffd37a", emissive: "#ffc766", emissiveIntensity: 0.7 },
+          ],
+        },
+        file: join(root, "content", "materials", "lane.materials.json"),
+        kind: "material",
+        projectRelativePath: "content/materials/lane.materials.json",
+      }],
+    });
+
+    const materials = JSON.parse(await readFile(join(bundlePath, "materials.ir.json"), "utf8"));
+    const validation = await validateBundle(bundlePath);
+
+    assert.equal(validation.ok, true);
+    assert.deepEqual(materials.materials.find((item: { id: string }) => item.id === "mat.ball"), {
+      color: "#295d8f",
+      id: "mat.ball",
+      kind: "standard",
+      roughness: 0.28,
+    });
+    assert.deepEqual(materials.materials.find((item: { id: string }) => item.id === "mat.lamp"), {
+      color: "#ffd37a",
+      emissive: "#ffc766",
+      emissiveIntensity: 0.7,
+      id: "mat.lamp",
+      kind: "standard",
+    });
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
 test("should normalize structured keyboard aliases before emitting input ir", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-emit-source-input-"));
   try {
@@ -1108,6 +1158,7 @@ test("should emit structured mesh source documents into asset manifest", async (
           id: "meshes",
           meshes: [
             { id: "mesh.source.box", kind: "primitive", primitive: "box" },
+            { id: "mesh.source.torus", kind: "primitive", primitive: "torus", size: [0.25, 0.75] },
             {
               attributes: [{ itemSize: 3, name: "position", values: [0, 0, 0, 1, 0, 0, 0, 1, 0] }],
               id: "mesh.source.triangle",
@@ -1134,6 +1185,13 @@ test("should emit structured mesh source documents into asset manifest", async (
       id: "mesh.source.box",
       kind: "mesh",
       primitive: "box",
+    });
+    assert.deepEqual(assets.assets.find((asset) => asset.id === "mesh.source.torus"), {
+      format: "generated",
+      id: "mesh.source.torus",
+      kind: "mesh",
+      primitive: "torus",
+      size: [0.25, 0.75],
     });
     const custom = assets.assets.find((asset) => asset.id === "mesh.source.triangle");
     assert.equal(custom?.primitive, "custom");

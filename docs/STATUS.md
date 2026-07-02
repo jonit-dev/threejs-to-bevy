@@ -67,6 +67,17 @@ references, resources, and UI bindings. `dryRun()` reports the registry-backed
 operation trace and argument-shape diagnostics without writing files. This
 facade is an authoring client for `content/**/*.json`, not a new durable
 TypeScript scene source model.
+Scene documents now also support compact prefab-backed `instances` for repeated
+entities. Validation checks duplicate expanded IDs, missing prefab references,
+transform vectors, and component override shape before build; compiler lowering
+deep-merges standalone prefab-document defaults with instance overrides into
+ordinary deterministic world entities; and `tn scene inspect --json` reports
+line-count, expanded entity, compact instance, repeated-block, and suggested
+refactor evidence for agent-friendly scene-source cleanup. Bounded mutation
+commands now cover the compact bowling workflow:
+`tn prefab set-defaults`, `tn scene add-prefab-instance`, and
+`tn scene layout ten-pin`, with replace protection for existing compact layout
+IDs.
 Authoring recipes now provide task-level composed operation plans for
 `third-person-controller`, `collectible`, `trigger-zone`,
 `kinematic-character`, and `health-bar`. `tn recipe ... --dry-run --json`
@@ -77,12 +88,34 @@ traceable source-mutation contract.
 
 The first agentic game-production workflow slice is implemented as a
 source-backed report contract rather than a raw Three.js scaffold. `tn game
-plan --goal <text> --json` emits a deterministic, non-mutating phase plan with
-recipe and proof-command recommendations. `tn game score --project . --json`
+plan --goal <text> --json` emits a deterministic, non-mutating
+`threenative.game-plan` phase plan with recipe, structured source-shape, script,
+polish, asset-sourcing, and proof-command recommendations. The plan
+now includes `sourcePlan` guidance for supported scene, input, systems, UI,
+materials, and assets document shapes so generated-game agents avoid invalid
+binding rows, unsupported primitives, implicit system access, and malformed
+asset/material fields before mutation. Goal-category inference now routes
+harbor, ferry, boat, dock, pier, and ship concepts to the naval asset-source
+category while preserving explicit space/spaceship prompts for space searches.
+`tn game improve --apply-plan <file> --json` now rejects incomplete
+generated-game plan evidence before mutating source or writing canonical
+evidence, then persists the successfully applied non-mutating plan to
+`artifacts/game-production/plan.json`, keeping the required planning artifact
+tied to the bounded recipe application step.
+Fresh `structured-source-starter` and `racing-kit-rally-starter` projects now
+scaffold the same production loop through `game:plan`, `game:improve`,
+`game:score`, proof-running `game:qa`, and `game:release` scripts plus
+`threenative.config.json` production metadata for loop, controls, objective,
+retry path, and proof commands. `pnpm verify:template-production` is registered
+as the maintained-starter gate for those scripts, production metadata, and
+starter instructions, and it is included in the release focused-gate profile.
+`tn game score --project . --json`
 inspects structured source and proof artifacts for gameplay, assets, visuals,
 UI, debug, QA, and release ledgers. `tn game qa --run-proof --json`
-orchestrates doctor/build/playtest/screenshot/recording/artifact-check steps
-when project arguments are supplied and embeds their diagnostics in one report.
+orchestrates doctor/build/playtest/screenshot/recording/artifact-check steps,
+infers basic playtest defaults from authored player/input source when
+`production.proofCommands` are absent, forwards optional playtest axis
+assertions, and embeds their diagnostics in one report.
 `tn game qa --json` and `tn game release --json` write mode-specific reports
 under `artifacts/game-production/`.
 `@threenative/authoring` validates the `threenative.game-quality-report`
@@ -101,13 +134,71 @@ instructions now require build, nonblank screenshot, visible motion, and
 input-playtest evidence before a game is called done. Visual scorecard phases
 now require retained source coverage plus screenshot/motion proof to reach a
 full pass, so visual checks no longer normalize source-only or proof-only game
-outputs as complete.
+outputs as complete. Source-referenced portable scripts now also reject module-local
+helper and constant references with
+`TN_SCRIPT_MODULE_LOCAL_REFERENCE_UNSUPPORTED`; only the selected export is
+emitted into `scripts.bundle.js`, so deterministic helpers must be scoped
+inside that export or promoted through supported helper imports.
 `tn game providers --json` exposes the same credential-safe provider statuses.
 `@threenative/editor` exposes a read-only production panel model over the same
 report rows. `pnpm verify:game-production` is now registered as a focused gate;
 it validates a small production-report fixture and the negative tests prove
 projects fail with stable blockers when evidence is missing. This is not a
 release-ready or native parity claim.
+`pnpm verify:generated-games` is the aggregate generated-game proof gate. It
+audits `asteroid-mail-runner`, `clockwork-garden-heist`,
+`copper-rail-switcher`, `crystal-cavern`, `firefly-grove-keeper`,
+`glassworks-prism-sorter`, `harbor-lantern-ferry`, `lantern-orchard`,
+`magnet-yard-sorter`, `moon-canyon-courier`, `neon-sushi-rush`,
+`paper-plane-postmaster`, `river-rescue`, `rooftop-wind-courier`,
+`sky-lighthouse-relay`, `storm-buoy-rescue`, `tidepool-crab-courier`,
+`sunken-library-salvage`, `toy-train-yard-switcher`, and
+`windup-workshop-sorter`, requiring a persisted
+`artifacts/game-production/plan.json` with schema `threenative.game-plan`,
+`mutate:false`, explicit design loop/controls/objective/progression/fail-retry/
+feedback, high-value surface inventory, first-step direct GLB catalog search
+command, script/source-shape guidance for scene/input/systems/UI/materials/
+assets source documents, acceptance criteria for the objective/input loop,
+asset/provenance, script/source wiring, authored visual baseline, and proof
+loop, polish categories, and proof commands covering authoring validate, build,
+input-driven playtest, screenshot, game score, QA `--run-proof`, and release, a durable gameplay system source declaration under `content/systems`
+or `content/scenes` that points at an existing `src/scripts/**/*.ts` named
+export, declares `GameState` writes, and records component/resource access,
+retained `content/ui/*.ui.json` HUD source with multiple text/status nodes and
+`GameState` bindings targeting those nodes plus gameplay, pause, settings,
+loading, fail/retry, win/milestone, and touch-control state affordances,
+authored `content/materials/*.json` source with multiple material rows,
+distinct colors, and roughness values,
+clean release risks, `qa-report.json` with a passing `proofRun` containing the
+required doctor/build/playtest/desktop screenshot/mobile screenshot/recorded
+motion/quality/budget/fit proof steps, input-driven playtest movement above the
+recorded threshold with a non-empty playtest screenshot artifact, zero QA
+blockers/diagnostics/release risks in the persisted QA report, the motion step
+backed by an existing non-empty `artifacts/game-production/motion.webm`, an
+existing clean persisted `release-report.json`, resolvable persisted QA/release
+report evidence paths across top-level, phase, scorecard, UI-state, and
+asset/audio evidence rows, max persisted visual scorecard, all phase ledgers
+passing with full score, complete retained UI-state coverage, artifact-backed
+persisted production command rows including `artifacts/game-production/doctor.json`
+debug proof and the actual discovered bundle manifest path, durable
+source/provenance evidence for every asset/audio ledger surface, usable source
+`VisualProvenance` describing catalog searches, selected assets, or authored
+fallback surfaces, and passing `visual-quality.json` sidecars with recorded
+nonblank, visible-bounds, color-bucket, and local-contrast metrics for each
+example, then writes the aggregate report to
+`tools/verify/artifacts/game-production/verification-report.json`. The
+visual-quality aggregate check also requires the sidecar's screenshot path to
+resolve to an existing non-empty PNG artifact whose dimensions match the
+recorded metrics. The gate is included in the release focused-gate profile so
+the aggregate generated-game proof cannot drift outside release evidence. Its
+report summary records the gate mode, project counts, audited project paths,
+and required-proof counts for quick release auditability. The gate also rejects
+inventory drift when a new `examples/*` project has
+`artifacts/game-production/plan.json` but is not enrolled in the aggregate
+generated-game list. The summary also records aggregate visual metric ranges
+from `visual-quality.json` sidecars, including min/max color-bucket and local
+contrast values, so release evidence shows when generated-game screenshots are
+passing but still visually flat.
 
 The agent debugging workflow now has a stronger `tn doctor` gate. It checks
 package manager state, CLI dependency/local shim setup, required scripts,
@@ -118,14 +209,35 @@ runtime error diagnostics, resource failures, visible mesh count, browser
 console logs, page errors, and failed requests, returning stable severities and
 JSON diagnostics for setup, bundle, and preview-readiness failures.
 `tn screenshot [--project <path>] --url <preview-url> --out <file.png>
-[--wait-ready] --json` now writes a PNG plus machine-readable proof metadata:
+[--wait-ready] [--viewport desktop|mobile|<width>x<height>] --json` now writes
+a PNG plus machine-readable proof metadata:
 the invoked command, URL, timestamp, viewport, canvas dimensions, runtime
 readiness payload, nonblank analysis, visible mesh count, resource failures,
 browser logs, page errors, failed requests, and stable errors for missing
 canvas, missing readiness, runtime errors, zero visible meshes, and blank
-captures. `tn verify --frames 1` reuses the same screenshot capture path and
-maps those diagnostics into the verification report; multi-frame motion checks
-keep their continuous browser session. `tn record [--project <path>] --url
+captures. `tn game qa --run-proof --url <preview-url>` now captures both the
+desktop screenshot and `artifacts/game-production/mobile-viewport.png` through
+that screenshot path and writes lightweight `performance.json`,
+`visual-quality.json`, `asset-budget.json`, and `ui-fit.json` proof sidecars
+from the captured or existing evidence. The visual-quality sidecar records
+nonblank, projected-bounds, coarse color-variety, and local-contrast metrics so
+blank, tiny-subject, and very flat screenshots become explicit QA evidence
+instead of only subjective review notes. When a preview URL is omitted, QA proof
+checks existing desktop/mobile screenshot artifacts before generating the
+quality/budget/fit sidecars.
+`pnpm verify:generated-games` now also parses the performance, asset-budget,
+and UI-fit sidecars directly, requiring existing screenshot evidence, a present
+dist directory marker, numeric budget measurements within their recorded
+budgets, mobile viewport dimensions, and an existing mobile screenshot path
+with matching recorded byte size instead of trusting `status: "pass"` alone.
+Visual-quality sidecars likewise must point at a readable PNG whose dimensions
+match the recorded screenshot metrics.
+`tn game release --json` treats the asset-budget sidecar as release budget
+evidence and writes that lightweight proof for built projects when the sidecar
+is missing, avoiding order-dependent QA/release runs. `tn verify --frames 1`
+reuses the same screenshot capture path and maps those diagnostics into the
+verification report; multi-frame motion checks keep their continuous browser
+session. `tn record [--project <path>] --url
 <preview-url> --out <file.webm|file.mp4> [--duration <seconds>|--seconds
 <seconds>] [--input-script <path|default|none>] --json` now resolves proof
 artifacts relative to the project, clamps video proof to 1-59 seconds, reports
@@ -158,8 +270,12 @@ the first stable structured source document families beyond scene ECS:
 contracts, rejects generated bundle paths as source paths, validates duplicate
 stable IDs within each document, keeps TypeScript scene-map misuse out of the
 durable source model, and validates scene `MeshRenderer.material` references
-against material source documents. Broader UI/resource and runtime parity
-references remain future structured-authoring work.
+against material source documents. Structured UI documents now also lower into
+runtime `ui.ir.json` during normal project builds instead of only appearing in
+authoring provenance; the compiler normalizes starter-style full-width HUD
+rows into left/right anchored UI so desktop and mobile screenshot proof capture
+the retained HUD overlay. Broader UI/resource and runtime parity references
+remain future structured-authoring work.
 The Phase 3 bundle import slice adds `@threenative/authoring` `importBundle()`
 and `tn bundle import <bundle-dir> --project <path> --mode source --json`
 for recoverable generated catalog import. It normalizes `world.ir.json`,
@@ -1929,6 +2045,11 @@ plane, capsule, and cylinder. The SDK/compiler emit deterministic primitive
 size tuples, IR validation rejects malformed tuple arity/radii/sides, the web
 runtime maps them to Three.js geometry, and the Bevy runtime maps them to native
 Bevy mesh primitives including `Extrusion<Rectangle>`.
+Structured source authoring now accepts `torus` in both scene prefab primitives
+and `content/meshes/*.meshes.json` primitive rows. The CLI mesh command help and
+tests cover `tn mesh primitive --kind torus`, and compiler coverage proves scene
+prefabs lower to generated torus mesh assets, closing the source-validation gap
+against the existing SDK/IR/web/Bevy primitive mapping.
 
 Custom generated mesh parity now covers SDK-authored indexed meshes with
 portable float vertex attributes. `CustomMeshGeometry` emits sorted attributes
@@ -2199,8 +2320,9 @@ starter now ships canonical keyboard controls by default.
 The same hardening slice adds a web-runtime `tn playtest` proof command for
 small playable games. It builds the project, starts a web preview, injects a
 canonical keyboard code, samples target-entity `Transform` patches from the web
-effect log, reports before/after positions and movement distance, and writes a
-project-local screenshot artifact under `examples/<name>/artifacts/playtest/`.
+effect log, reports before/after positions, movement delta, movement distance,
+and optional `--expect-axis x|y|z` diagnostics, and writes a project-local
+screenshot artifact under `examples/<name>/artifacts/playtest/`.
 `examples/racing-kit-rally` was reset to source plus preserved assets and now
 passes `tn playtest --project examples/racing-kit-rally --entity player.car
 --press KeyW --frames 60 --expect-moved --json` with nonzero player movement.

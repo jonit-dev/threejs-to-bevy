@@ -1,0 +1,74 @@
+{
+  "schema": "threenative.meshes",
+  "version": "0.1.0",
+  "id": "lane-meshes",
+  "meshes": [
+    {
+      "id": "mesh.lane",
+      "kind": "primitive",
+      "primitive": "box"
+    },
+    {
+      "id": "mesh.pin",
+      "kind": "primitive",
+      "primitive": "cylinder"
+    },
+    {
+      "id": "mesh.ball",
+      "kind": "primitive",
+      "primitive": "sphere"
+    },
+    {
+      "id": "mesh.marker",
+      "kind": "primitive",
+      "primitive": "box"
+    },
+    {
+      "id": "mesh.pin-stripe-custom",
+      "kind": "custom",
+      "primitive": "custom",
+      "attributes": [
+        {
+          "name": "position",
+          "itemSize": 3,
+          "values": [
+            -0.5,
+            -0.5,
+            0,
+            0.5,
+            -0.5,
+            0,
+            0.5,
+            0.5,
+            0,
+            -0.5,
+            0.5,
+            0
+          ]
+        },
+        {
+          "name": "uv1",
+          "itemSize": 2,
+          "values": [
+            0,
+            0,
+            1,
+            0,
+            1,
+            1,
+            0,
+            1
+          ]
+        }
+      ],
+      "indices": [
+        0,
+        1,
+        2,
+        0,
+        2,
+        3
+      ]
+    }
+  ]
+}

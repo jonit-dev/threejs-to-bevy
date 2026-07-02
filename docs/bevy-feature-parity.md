@@ -57,9 +57,10 @@ implementation:
   visual panel evidence explicitly promoted below. Tooling now includes
   `tn model-test` for one-model proof projects, `tn screenshot`/`tn record` for
   direct Playwright proof artifacts with web runtime ready metadata, screenshot
-  canvas/nonblank/visible-mesh/resource-failure diagnostics, project-relative
-  short video proof with input-script metadata and unavailable-state diagnostics,
-  and shared single-frame `tn verify --frames 1` screenshot diagnostics plus
+  canvas/nonblank/visible-mesh/resource-failure diagnostics, `--viewport
+  desktop|mobile|<width>x<height>` layout proof, project-relative short video
+  proof with input-script metadata and unavailable-state diagnostics, and shared
+  single-frame `tn verify --frames 1` screenshot diagnostics plus
   `tn verify --json` projected nonblank bounds diagnostics. Web preview
   readiness also exposes current scene ID, culled mesh count, recent runtime
   errors, per-rendered-entity bounds/scale/projected-bounds/camera-distance/
@@ -87,11 +88,115 @@ implementation:
   proof. Visual scorecard phase scoring now reaches a full pass only from
   retained source coverage plus screenshot/motion proof, not from source-only
   or proof-only outputs.
+- Game-production QA proof now writes lightweight `performance.json`,
+  `visual-quality.json`, `asset-budget.json`, and `ui-fit.json` sidecars under
+  `artifacts/game-production/`, can reuse existing desktop/mobile screenshots
+  when no preview URL is supplied, records objective screenshot nonblank,
+  projected-bounds, color-variety, and local-contrast metrics, and infers basic
+  web playtest defaults from authored player/input source when project proof
+  commands are absent. `tn game release --json` now writes the same lightweight
+  asset-budget proof for already-built projects when that sidecar is missing.
+  This improves generated-game release evidence and does not claim native/Bevy
+  input injection parity.
+- `tn game plan --json` now emits a schema-tagged
+  `threenative.game-plan` artifact with non-mutating source-shape guidance for
+  scene, input, systems, UI, materials, and assets documents, including
+  canonical keyboard binding strings, supported primitive names, explicit system
+  read/write metadata, retained UI nodes/bindings, material `color`, asset
+  `id/path/type` rows, script ownership, polish categories, proof commands, and
+  first-step direct GLB catalog search guidance. Harbor, ferry, boat, dock,
+  pier, and ship prompts now route to the naval asset-source category, while
+  explicit space/spaceship prompts still route to space. This is authoring-loop
+  guidance for generated games; it does not add a new runtime capability.
+- `tn game improve --apply-plan <file> --json` now rejects incomplete
+  generated-game plan evidence before mutating source or writing canonical
+  evidence, then writes the successfully applied non-mutating plan to
+  `artifacts/game-production/plan.json`, so bounded recipe application also
+  preserves generated-game planning evidence. This is authoring workflow
+  hardening, not a Bevy runtime capability.
+- Fresh `structured-source-starter` and `racing-kit-rally-starter` scaffolds
+  now include `game:plan`, `game:improve`, `game:score`, proof-running
+  `game:qa`, and `game:release` scripts plus production metadata for loop,
+  controls, objective, retry path, and proof commands.
+  `pnpm verify:template-production` gates those maintained starters directly
+  and is included in the release focused-gate profile. This improves the
+  starting authoring loop; it does not add a Bevy runtime capability.
+- `pnpm verify:generated-games` aggregates generated-game release proof for
+  `asteroid-mail-runner`, `clockwork-garden-heist`, `copper-rail-switcher`,
+  `crystal-cavern`, `firefly-grove-keeper`, `glassworks-prism-sorter`,
+  `harbor-lantern-ferry`, `lantern-orchard`, `magnet-yard-sorter`,
+  `moon-canyon-courier`, `neon-sushi-rush`, `paper-plane-postmaster`,
+  `river-rescue`, `rooftop-wind-courier`, `sky-lighthouse-relay`,
+  `storm-buoy-rescue`, `sunken-library-salvage`, `tidepool-crab-courier`,
+  `toy-train-yard-switcher`, and `windup-workshop-sorter`, requiring zero
+  release blockers/risks,
+  `artifacts/game-production/plan.json` with schema
+  `threenative.game-plan`, `mutate:false`, complete design/source/script/
+  asset/polish/proof sections, source-shape guidance for scene/input/systems/
+  UI/materials/assets documents, proof commands for authoring validate, build,
+  input-driven playtest, screenshot, game score, QA `--run-proof`, and release,
+  acceptance criteria for the objective/input loop, asset/provenance,
+  script/source wiring, authored visual baseline, and proof loop, and
+  first-step direct GLB catalog search
+  guidance, a durable gameplay system source declaration under
+  `content/systems` or `content/scenes` that points at an existing
+  `src/scripts/**/*.ts` named export, declares `GameState` writes, and records
+  component/resource access, retained `content/ui/*.ui.json` HUD source with
+  multiple text/status nodes and `GameState` bindings targeting those nodes
+  plus gameplay, pause, settings, loading, fail/retry, win/milestone, and
+  touch-control state affordances,
+  authored `content/materials/*.json` source with multiple material rows,
+  distinct colors, and roughness values,
+  `qa-report.json` with a passing `proofRun` containing the required
+  doctor/build/playtest/desktop screenshot/mobile screenshot/recorded
+  motion/quality/budget/fit proof steps, input-driven playtest movement above
+  the recorded threshold with a non-empty playtest screenshot artifact, zero QA
+  blockers/diagnostics/release risks in the persisted QA report, the motion
+  step backed by an existing non-empty `artifacts/game-production/motion.webm`,
+  an existing clean persisted `release-report.json`, resolvable persisted
+  QA/release report evidence paths across top-level, phase, scorecard,
+  UI-state, and asset/audio evidence rows, max persisted visual scorecard, all
+  phase ledgers passing with full score, complete retained UI-state coverage,
+  artifact-backed persisted production command rows including
+  `artifacts/game-production/doctor.json` debug proof and the actual discovered
+  bundle manifest path, durable source/provenance evidence for every
+  asset/audio ledger surface,
+  usable source `VisualProvenance` describing
+  catalog
+  searches, selected assets, or authored fallback surfaces, and passing
+  visual-quality sidecars that include objective nonblank, visible-bounds,
+  color-bucket, and local-contrast metrics plus an existing non-empty PNG
+  screenshot artifact whose dimensions match those metrics before treating the
+  set as current evidence. It also parses performance,
+  asset-budget, and UI-fit sidecars to require concrete screenshot paths with
+  matching byte sizes, mobile viewport dimensions, a
+  present dist marker, and numeric size measurements within their recorded
+  budgets. The gate is included in the release focused-gate profile. It
+  writes a self-describing summary with project counts, audited paths, and
+  required-proof counts, and fails inventory drift when a generated example has
+  production planning artifacts but is not enrolled in the aggregate list. The
+  summary also records aggregate visual metric ranges from visual-quality
+  sidecars so future visual threshold ratchets have release evidence. It
+  strengthens authoring/QA proof; it is not a new Bevy runtime capability.
 - `tn playtest` now provides web-runtime gameplay proof by injecting a
   canonical keyboard code, sampling emitted-bundle effect-log Transform patches,
-  and reporting movement distance plus screenshot evidence. Native/Bevy
-  playtest injection is still pending, so this is marked as web proof rather
-  than Bevy parity.
+  and reporting movement delta/distance plus screenshot evidence. Optional
+  `--expect-axis x|y|z` catches false positives where autonomous idle motion
+  moves the entity but the requested input does not affect the intended axis.
+  Native/Bevy playtest injection is still pending, so this is marked as web
+  proof rather than Bevy parity.
+- Structured scene source now has compact prefab-backed `instances` for repeated
+  ECS entities. This is an authoring/compiler ergonomics improvement: emitted
+  bundles still contain ordinary world entities and do not introduce any
+  Bevy-private source concept. Validation rejects ambiguous compact source
+  before build, and `tn scene inspect --json` exposes repeated-block/refactor
+  evidence for agents.
+- Structured `content/ui/*.ui.json` source now emits runtime `ui.ir.json`
+  instead of provenance-only UI evidence for generated structured-source
+  projects. The compiler normalizes 1280px starter-style HUD rows without
+  horizontal anchors into left/right anchored UI so `tn screenshot --viewport
+  mobile` captures visible HUD text. This is an authoring/compiler/runtime-web
+  proof improvement, not a new Bevy-only UI capability.
 
 Unchecked rows below should remain unchecked until their V10 owner adds SDK/IR,
 validation, compiler, web, Bevy, conformance, docs, and artifact evidence, or
@@ -178,6 +283,12 @@ remaining gaps by usefulness for building and shipping ordinary 3D games:
   @threenative/script-stdlib test` proves export/bundle parity for every
   promoted helper, and `pnpm verify:scripting-helpers-lifecycle` records the
   focused helper import, web playtest, and Bevy context-helper bridge evidence.
+- `P1` Source-referenced portable systems now reject module-local helper or
+  constant references with `TN_SCRIPT_MODULE_LOCAL_REFERENCE_UNSUPPORTED`,
+  because only the selected export is emitted into `scripts.bundle.js`.
+  Deterministic helpers must be scoped inside the exported system or promoted
+  through supported helper imports. Focused compiler coverage lives in
+  `packages/compiler/src/scripts/sourceRefs.test.ts`.
 - `P1` Core script context ergonomics now exist in SDK typings, web runtime
   context, and the Bevy QuickJS bridge for entity lookup, shallow resource
   state, clamped fixed delta, normalized one-axis input, and Transform facade
@@ -327,6 +438,7 @@ ergonomics. These rows are not implementation claims.
 - [x] Translation, rotation, scale, and nested transforms
 - [x] Basic 3D mesh primitives: box, sphere, plane, capsule, cylinder
 - [x] Source/editor primitive mesh declaration edits
+- [x] Structured source and CLI torus primitive declarations for mesh rows and scene prefabs
 - [x] Bounding/raycast-style queries for promoted physics traces
 - [x] Full Bevy primitive catalog and extrusions
 - [x] Custom mesh generation and custom vertex attributes

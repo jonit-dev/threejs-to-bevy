@@ -1,0 +1,39 @@
+{
+  "schema": "threenative.project",
+  "version": "0.1.0",
+  "entry": "content/scenes/arena.scene.json",
+  "outDir": "dist/harbor-lantern-ferry.bundle",
+  "production": {
+    "playableLoop": "Steer the lantern ferry through a foggy harbor, collect three oil canisters, relight pier beacons, avoid drifting crates, and return to the dock before the lamp timer expires.",
+    "controls": [
+      "keyboard.KeyW",
+      "keyboard.KeyA",
+      "keyboard.KeyS",
+      "keyboard.KeyD",
+      "keyboard.ArrowUp",
+      "keyboard.ArrowLeft",
+      "keyboard.ArrowDown",
+      "keyboard.ArrowRight",
+      "keyboard.Space"
+    ],
+    "objective": "Collect 3 of 3 oil canisters and reach the home dock within 55 seconds.",
+    "failRetry": "Crate contact or timeout enters a failed state; Space resets ferry, oil, timer, score, and HUD. Winning also allows Space replay.",
+    "assetSourcing": {
+      "playerHero": "SQLite catalog searches for ocean/boats/arcade direct GLB records returned TN_ASSET_SOURCE_NO_MATCH; naval fallback catalog record workflow-kenney-shortlist-pirate-kit points to Kenney Pirate Kit, but no direct runtime GLB was selected. Authored as a custom low-poly lantern ferry with cabin and bow lamp.",
+      "obstacleEnemy": "SQLite catalog searches for ocean/boats/arcade direct GLB records returned TN_ASSET_SOURCE_NO_MATCH; authored as drifting harbor crates with readable hazard silhouettes.",
+      "rewardInteractable": "SQLite catalog fallback record workflow-kenney-shortlist-pirate-kit was reviewed for naval style; authored oil canisters and pier beacon goals as coherent custom meshes because no direct GLB was available.",
+      "worldEnvironment": "SQLite catalog fallback record workflow-kenney-shortlist-pirate-kit: sourceUrl https://kenney.nl/assets/pirate-kit, provenance docs/workflows/open-source-3d-asset-kits.md#kenney-shortlist, origin workflow-doc-table-parser, reviewed 2026-07-02, license CC0-1.0 posture cc0. Scene authored as water, stone piers, dock, fog buoys, rocks, crates, and beacon lamps.",
+      "audioFeedback": "Starter local goal-ping audio asset remains available as local fallback provenance; runtime trigger wiring is deferred until audio facade proof is part of this game loop."
+    },
+    "proofCommands": [
+      "tn authoring validate --project . --json",
+      "tn build --project . --json",
+      "tn playtest --project . --entity player --press KeyD --frames 45 --expect-moved --expect-axis x --json",
+      "tn verify --project . --frames 4 --expect-motion --json",
+      "tn game score --project . --json",
+      "tn game qa --project . --json",
+      "tn game release --project . --json"
+    ]
+  },
+  "template": "structured-source-starter"
+}

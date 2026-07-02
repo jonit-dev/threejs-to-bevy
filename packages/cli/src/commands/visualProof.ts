@@ -10,8 +10,10 @@ import { analyzeNonblank, defaultNonblankThreshold } from "../verify/imageAnalys
 
 const execFileAsync = promisify(execFile);
 const defaultViewport = { height: 720, width: 1280 };
+const mobileViewport = { height: 844, width: 390 };
 const defaultRecordSeconds = 10;
 const maxRecordSeconds = 59;
+type VisualViewport = typeof defaultViewport;
 
 export interface IVisualProofDiagnostic {
   code: string;
@@ -32,7 +34,7 @@ export interface IVisualProofReport {
   outPath: string;
   runtimeReady: unknown;
   url: string;
-  viewport: typeof defaultViewport;
+  viewport: VisualViewport;
 }
 
 export interface IScreenshotProofReport extends IVisualProofReport {
@@ -58,13 +60,19 @@ export async function screenshotCommand(argv: readonly string[], cwd = process.e
   const outArg = flagValue(normalizedArgv, "--out");
   const waitReady = normalizedArgv.includes("--wait-ready");
   const project = flagValue(normalizedArgv, "--project");
+  const viewportArg = flagValue(normalizedArgv, "--viewport");
   const baseCwd = project === undefined ? cwd : resolvePath(cwd, project);
 
   if (url === undefined || outArg === undefined) {
     return diagnosticResult(
-      { code: "TN_SCREENSHOT_USAGE", message: "Usage: tn screenshot [--project <path>] --url <preview-url> --out <file.png> [--wait-ready] [--json]" },
+      { code: "TN_SCREENSHOT_USAGE", message: "Usage: tn screenshot [--project <path>] --url <preview-url> --out <file.png> [--wait-ready] [--viewport desktop|mobile|<width>x<height>] [--json]" },
       { exitCode: 1, json, stderr: !json },
     );
+  }
+
+  const viewport = parseViewportFlag(viewportArg);
+  if ("diagnostic" in viewport) {
+    return diagnosticResult(viewport.diagnostic, { exitCode: 1, json, stderr: !json });
   }
 
   const outPath = resolvePath(baseCwd, outArg);
@@ -76,7 +84,7 @@ export async function screenshotCommand(argv: readonly string[], cwd = process.e
   }
 
   try {
-    const report = await captureScreenshot({ command: normalizedArgv, outPath, url, waitReady });
+    const report = await captureScreenshot({ command: normalizedArgv, outPath, url, viewport: viewport.value, waitReady });
     const hasErrors = report.diagnostics?.some((diagnostic) => diagnostic.severity === "error") ?? false;
     return {
       exitCode: hasErrors ? 1 : 0,
@@ -130,9 +138,10 @@ export async function recordCommand(argv: readonly string[], cwd = process.env.I
   }
 }
 
-export async function captureScreenshot(options: { command?: readonly string[]; outPath: string; url: string; waitReady?: boolean }): Promise<IScreenshotProofReport> {
+export async function captureScreenshot(options: { command?: readonly string[]; outPath: string; url: string; viewport?: VisualViewport; waitReady?: boolean }): Promise<IScreenshotProofReport> {
   await mkdir(dirname(options.outPath), { recursive: true });
   const browser = await chromium.launch({ headless: true });
+  const viewport = options.viewport ?? defaultViewport;
   let runtimeReady: unknown = null;
   const diagnostics: IVisualProofDiagnostic[] = [];
   const browserLogs: string[] = [];
@@ -140,7 +149,7 @@ export async function captureScreenshot(options: { command?: readonly string[]; 
   const requestFailures: string[] = [];
   let canvasInfo: { height: number; width: number } | null = null;
   try {
-    const page = await browser.newPage({ viewport: defaultViewport });
+    const page = await browser.newPage({ viewport });
     page.on("console", (message) => browserLogs.push(`${message.type()}: ${message.text()}`));
     page.on("pageerror", (error) => pageErrors.push(error.message));
     page.on("requestfailed", (request) => requestFailures.push(`${request.method()} ${request.url()} ${request.failure()?.errorText ?? "failed"}`));
@@ -199,12 +208,12 @@ export async function captureScreenshot(options: { command?: readonly string[]; 
     command: options.command,
     checks,
     diagnostics,
-    dimensions: canvasInfo ?? defaultViewport,
+    dimensions: canvasInfo ?? viewport,
     outPath: options.outPath,
     page: { browserLogs, errors: pageErrors, requestFailures },
     runtimeReady,
     url: options.url,
-    viewport: defaultViewport,
+    viewport,
   };
 }
 
@@ -280,6 +289,37 @@ function visualProofReport(options: {
     url: options.url,
     viewport: defaultViewport,
   };
+}
+
+function parseViewportFlag(value: string | undefined): { value: VisualViewport } | { diagnostic: { code: string; message: string; viewport?: string } } {
+  if (value === undefined || value === "desktop") {
+    return { value: defaultViewport };
+  }
+  if (value === "mobile") {
+    return { value: mobileViewport };
+  }
+  const match = /^(\d{2,5})x(\d{2,5})$/i.exec(value);
+  if (match === null) {
+    return {
+      diagnostic: {
+        code: "TN_SCREENSHOT_VIEWPORT_INVALID",
+        message: "--viewport must be 'desktop', 'mobile', or '<width>x<height>' such as 390x844.",
+        viewport: value,
+      },
+    };
+  }
+  const width = Number(match[1]);
+  const height = Number(match[2]);
+  if (!Number.isInteger(width) || !Number.isInteger(height) || width < 100 || height < 100 || width > 8192 || height > 8192) {
+    return {
+      diagnostic: {
+        code: "TN_SCREENSHOT_VIEWPORT_INVALID",
+        message: "--viewport width and height must be integers between 100 and 8192.",
+        viewport: value,
+      },
+    };
+  }
+  return { value: { height, width } };
 }
 
 async function readRuntimeReady(page: { evaluate: (expression: string) => Promise<unknown> }): Promise<unknown> {

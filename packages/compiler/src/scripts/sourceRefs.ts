@@ -141,6 +141,7 @@ function resolveScriptModule(
   const helperImports = resolveHelperImports(system.name, sourceRef.module, sourceRef.export, sourceFile);
   diagnostics.push(...helperImports.diagnostics);
   diagnostics.push(...diagnoseMutableModuleState(system.name, sourceRef.module, sourceRef.export, sourceFile));
+  diagnostics.push(...diagnoseModuleLocalReferences(system.name, sourceRef.module, sourceRef.export, sourceFile));
   const exported = extractNamedExport(sourceFile, sourceRef.export);
   if (exported === undefined) {
     diagnostics.push({
@@ -294,6 +295,73 @@ function diagnoseMutableModuleState(systemName: string, module: string, exportNa
   });
 }
 
+function diagnoseModuleLocalReferences(systemName: string, module: string, exportName: string, sourceFile: ts.SourceFile): ICompilerDiagnostic[] {
+  const exportedNode = findNamedExportNode(sourceFile, exportName);
+  if (exportedNode === undefined) {
+    return [];
+  }
+  const moduleLocalNames = moduleLocalValueNames(sourceFile, exportName);
+  if (moduleLocalNames.size === 0) {
+    return [];
+  }
+  const references = referencedNames(exportedNode, moduleLocalNames);
+  return [...references].sort().map((name) => ({
+    code: "TN_SCRIPT_MODULE_LOCAL_REFERENCE_UNSUPPORTED",
+    file: module,
+    message: `System '${systemName}' script export '${exportName}' references module-local value '${name}', which is not emitted into scripts.bundle.js.`,
+    path: `systems/${systemName}/script/sourceRef/moduleLocals/${name}`,
+    severity: "error" as const,
+    suggestion: "Inline deterministic helpers and constants inside the exported system function, or use supported portable helper imports.",
+    target: exportName,
+  }));
+}
+
+function moduleLocalValueNames(sourceFile: ts.SourceFile, exportName: string): Set<string> {
+  const names = new Set<string>();
+  for (const statement of sourceFile.statements) {
+    if (ts.isFunctionDeclaration(statement) && statement.name !== undefined && statement.name.text !== exportName) {
+      names.add(statement.name.text);
+      continue;
+    }
+    if (ts.isClassDeclaration(statement) && statement.name !== undefined && statement.name.text !== exportName) {
+      names.add(statement.name.text);
+      continue;
+    }
+    if (ts.isEnumDeclaration(statement) && statement.name.text !== exportName) {
+      names.add(statement.name.text);
+      continue;
+    }
+    if (ts.isVariableStatement(statement)) {
+      for (const declaration of statement.declarationList.declarations) {
+        if (ts.isIdentifier(declaration.name) && declaration.name.text !== exportName) {
+          names.add(declaration.name.text);
+        }
+      }
+    }
+  }
+  return names;
+}
+
+function referencedNames(root: ts.Node, candidates: ReadonlySet<string>): Set<string> {
+  const references = new Set<string>();
+  const visit = (node: ts.Node): void => {
+    if (ts.isIdentifier(node) && candidates.has(node.text) && !isDeclarationName(node)) {
+      references.add(node.text);
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(root);
+  return references;
+}
+
+function isDeclarationName(node: ts.Identifier): boolean {
+  const parent = node.parent;
+  return (
+    (ts.isFunctionDeclaration(parent) || ts.isFunctionExpression(parent) || ts.isClassDeclaration(parent) || ts.isClassExpression(parent) || ts.isEnumDeclaration(parent)) &&
+    parent.name === node
+  ) || (ts.isVariableDeclaration(parent) && parent.name === node) || (ts.isParameter(parent) && parent.name === node);
+}
+
 function extractNamedExport(sourceFile: ts.SourceFile, exportName: string): string | undefined {
   const exportedNames = new Set<string>();
   for (const statement of sourceFile.statements) {
@@ -318,6 +386,22 @@ function extractNamedExport(sourceFile: ts.SourceFile, exportName: string): stri
       for (const declaration of statement.declarationList.declarations) {
         if (ts.isIdentifier(declaration.name) && declaration.name.text === exportName && declaration.initializer !== undefined) {
           return transpilePortableSource(declaration.initializer.getText(sourceFile));
+        }
+      }
+    }
+  }
+  return undefined;
+}
+
+function findNamedExportNode(sourceFile: ts.SourceFile, exportName: string): ts.Node | undefined {
+  for (const statement of sourceFile.statements) {
+    if (ts.isFunctionDeclaration(statement) && statement.name?.text === exportName) {
+      return statement;
+    }
+    if (ts.isVariableStatement(statement)) {
+      for (const declaration of statement.declarationList.declarations) {
+        if (ts.isIdentifier(declaration.name) && declaration.name.text === exportName && declaration.initializer !== undefined) {
+          return declaration.initializer;
         }
       }
     }

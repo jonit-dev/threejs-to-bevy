@@ -1,0 +1,19 @@
+{
+  "schema": "threenative.systems",
+  "version": "0.1.0",
+  "id": "arena-systems",
+  "systems": [
+    {
+      "id": "windup-workshop-sorter",
+      "schedule": "fixedUpdate",
+      "reads": ["Transform", "MouseCourier", "GearToken", "RepairBay", "MarbleHazard", "MouseFollower"],
+      "writes": ["Transform", "MouseCourier", "GearToken", "RepairBay"],
+      "resourceReads": ["GameState"],
+      "resourceWrites": ["GameState"],
+      "script": {
+        "module": "src/scripts/player.ts",
+        "export": "windupWorkshopSorterSystem"
+      }
+    }
+  ]
+}

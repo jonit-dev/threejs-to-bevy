@@ -1,0 +1,47 @@
+{
+  "schema": "threenative.ui",
+  "version": "0.1.0",
+  "id": "hud",
+  "nodes": [
+    {
+      "id": "cargo",
+      "type": "text",
+      "text": "Cargo 0/5",
+      "style": { "color": "#f3c04f", "fontSize": 24, "fontWeight": "bold", "textAlign": "center" },
+      "layout": { "justify": "center", "align": "top", "top": 24, "width": 1280 }
+    },
+    {
+      "id": "switches",
+      "type": "text",
+      "text": "Switches 0/3",
+      "style": { "color": "#82ddc7", "fontSize": 22, "fontWeight": "bold", "textAlign": "center" },
+      "layout": { "justify": "center", "align": "top", "top": 58, "width": 1280 }
+    },
+    {
+      "id": "clock",
+      "type": "text",
+      "text": "Clock 84",
+      "style": { "color": "#fff5d0", "fontSize": 22, "fontWeight": "bold", "textAlign": "center" },
+      "layout": { "justify": "center", "align": "top", "top": 90, "width": 1280 }
+    },
+    {
+      "id": "status",
+      "type": "text",
+      "text": "Load cargo",
+      "style": { "color": "#ffffff", "fontSize": 16, "fontWeight": "bold", "textAlign": "center" },
+      "layout": { "justify": "center", "align": "top", "top": 122, "width": 1280 }
+    },
+    { "id": "state.loading", "type": "text", "text": "Loading switch yard", "layout": { "justify": "center", "align": "center", "top": 1200, "width": 1280 } },
+    { "id": "state.pause", "type": "text", "text": "Pause", "layout": { "justify": "center", "align": "center", "top": 1230, "width": 1280 } },
+    { "id": "state.settings", "type": "text", "text": "Settings", "layout": { "justify": "center", "align": "center", "top": 1260, "width": 1280 } },
+    { "id": "state.fail-retry", "type": "text", "text": "Gate crash - Space to retry", "layout": { "justify": "center", "align": "center", "top": 1290, "width": 1280 } },
+    { "id": "state.win-milestone", "type": "text", "text": "Yard sorted", "layout": { "justify": "center", "align": "center", "top": 1320, "width": 1280 } },
+    { "id": "state.touch-controls", "type": "text", "text": "Touch mobile-control joystick", "layout": { "justify": "center", "align": "center", "top": 1350, "width": 1280 } }
+  ],
+  "bindings": [
+    { "node": "cargo", "resource": "GameState.cargoText" },
+    { "node": "switches", "resource": "GameState.switchText" },
+    { "node": "clock", "resource": "GameState.clockText" },
+    { "node": "status", "resource": "GameState.status" }
+  ]
+}

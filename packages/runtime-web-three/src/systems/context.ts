@@ -981,15 +981,16 @@ function assetById(assets: IAssetsManifest | undefined, id: string): IAssetsMani
 function createEntityView(entity: IWorldEntity, commands: IQueuedCommand[]): ISystemEntityView {
   const components = deepFreeze(cloneValue(entity.components)) as IWorldEntity["components"];
   const queueTransformPatch = (value: Record<string, unknown>) => {
+    const transform = fullTransform({
+      ...(isRecord(components.Transform) ? components.Transform : {}),
+      ...cloneValue(value),
+    });
     commands.push({
       component: "Transform",
       entity: entity.id,
       kind: "setComponent",
       source: "entity",
-      value: {
-        ...(isRecord(components.Transform) ? components.Transform : {}),
-        ...cloneValue(value),
-      },
+      value: transform,
     });
   };
   return {
@@ -1057,6 +1058,14 @@ function quat(value: unknown, fallback: readonly [number, number, number, number
     finiteNumber(Number(source[2]), fallback[2]),
     finiteNumber(Number(source[3]), fallback[3]),
   ];
+}
+
+function fullTransform(value: Record<string, unknown>): { position: [number, number, number]; rotation: [number, number, number, number]; scale: [number, number, number] } {
+  return {
+    position: vec3(value.position, [0, 0, 0]),
+    rotation: quat(value.rotation, [0, 0, 0, 1]),
+    scale: vec3(value.scale, [1, 1, 1]),
+  };
 }
 
 function yawFromQuat(value: unknown, fallback: number): number {

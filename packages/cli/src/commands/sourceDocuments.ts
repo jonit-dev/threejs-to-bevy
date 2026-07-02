@@ -379,7 +379,7 @@ export async function meshCommand(argv: readonly string[], options: ISourceComma
     return renderUsage(json, size.diagnostic, "Mesh --size must be a JSON array or comma-separated list of numbers.");
   }
   if (normalizedArgv[0] !== "primitive" || meshId === undefined || kind === undefined) {
-    return renderUsage(json, "TN_MESH_PRIMITIVE_ARGS_MISSING", "Usage: tn mesh primitive <mesh-id> --kind <box|sphere|cylinder|cone|plane> [--size n,n,...] [--file <path>] [--project <path>] [--json]\n       tn mesh custom <mesh-id> --attributes '<json-array>' [--indices '<json-array>'] [--storage binary] [--project <path>] [--json]");
+    return renderUsage(json, "TN_MESH_PRIMITIVE_ARGS_MISSING", "Usage: tn mesh primitive <mesh-id> --kind <box|sphere|cylinder|cone|plane|torus> [--size n,n,...] [--file <path>] [--project <path>] [--json]\n       tn mesh custom <mesh-id> --attributes '<json-array>' [--indices '<json-array>'] [--storage binary] [--project <path>] [--json]");
   }
   return renderAuthoringResult("mesh", await createMeshPrimitive({ file: readFlag(normalizedArgv, "--file"), projectPath, meshId, kind, size: size.value }), json, `Mesh '${meshId}' created.`);
 }
@@ -398,22 +398,22 @@ export async function prefabCommand(argv: readonly string[], options: ISourceCom
     return renderAuthoringResult("prefab", await createPrefabDocument({ projectPath, prefabId }), json, `Prefab '${prefabId}' created.`);
   }
 
-  if (subcommand === "add-component") {
+  if (subcommand === "add-component" || subcommand === "set-defaults") {
     const componentKind = readPositional(normalizedArgv, 2);
     const parsedValue = parseJsonFlag(normalizedArgv, "--value");
     if (parsedValue.diagnostic !== undefined) {
       return renderUsage(json, parsedValue.diagnostic, "Component value must be a valid JSON object.");
     }
     if (prefabId === undefined || componentKind === undefined || parsedValue.value === undefined) {
-      return renderUsage(json, "TN_PREFAB_ADD_COMPONENT_ARGS_MISSING", "Usage: tn prefab add-component <prefab-id> <component> --value <json-object> [--project <path>] [--json]");
+      return renderUsage(json, "TN_PREFAB_ADD_COMPONENT_ARGS_MISSING", "Usage: tn prefab add-component <prefab-id> <component> --value <json-object> [--project <path>] [--json]\n       tn prefab set-defaults <prefab-id> <component> --value <json-object> [--project <path>] [--json]");
     }
     if (!isRecord(parsedValue.value)) {
       return renderUsage(json, "TN_PREFAB_COMPONENT_VALUE_INVALID", "Component value must be a valid JSON object.");
     }
-    return renderAuthoringResult("prefab", await addPrefabComponent({ projectPath, prefabId, componentKind, value: parsedValue.value }), json, `Component '${componentKind}' added to prefab '${prefabId}'.`);
+    return renderAuthoringResult("prefab", await addPrefabComponent({ projectPath, prefabId, componentKind, value: parsedValue.value }), json, `Component '${componentKind}' default set on prefab '${prefabId}'.`);
   }
 
-  return renderUsage(json, "TN_PREFAB_COMMAND_UNKNOWN", "Usage: tn prefab create|add-component ... [--json]");
+  return renderUsage(json, "TN_PREFAB_COMMAND_UNKNOWN", "Usage: tn prefab create|add-component|set-defaults ... [--json]");
 }
 
 export async function inputCommand(argv: readonly string[], options: ISourceCommandOptions = {}): Promise<ICommandResult> {

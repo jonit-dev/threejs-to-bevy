@@ -14,6 +14,10 @@ test("screenshot command should validate required arguments and png extension", 
   const badExtension = await screenshotCommand(["--url", "http://localhost:3000", "--out", "proof.jpg", "--json"]);
   assert.equal(badExtension.exitCode, 1);
   assert.equal(JSON.parse(badExtension.stdout).code, "TN_SCREENSHOT_OUT_EXTENSION");
+
+  const badViewport = await screenshotCommand(["--url", "http://localhost:3000", "--out", "proof.png", "--viewport", "phoneish", "--json"]);
+  assert.equal(badViewport.exitCode, 1);
+  assert.equal(JSON.parse(badViewport.stdout).code, "TN_SCREENSHOT_VIEWPORT_INVALID");
 });
 
 test("screenshot command should capture canvas proof with metadata", async () => {
@@ -54,6 +58,40 @@ test("screenshot command should capture canvas proof with metadata", async () =>
     assert.deepEqual(payload.diagnostics, []);
     assert.equal(payload.dimensions.width, 320);
     assert.deepEqual(payload.page.errors, []);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("screenshot command should capture mobile viewport proof", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-screenshot-mobile-"));
+  try {
+    const outPath = join(root, "mobile.png");
+    const html = encodeURIComponent(`<!doctype html>
+      <canvas width="390" height="844" style="width:390px;height:844px"></canvas>
+      <script>
+        const canvas = document.querySelector("canvas");
+        const ctx = canvas.getContext("2d");
+        ctx.fillStyle = "#155e75";
+        ctx.fillRect(0, 0, 390, 844);
+        globalThis.__THREENATIVE_READY__ = {
+          ok: true,
+          diagnostics: [],
+          runtimeDiagnostics: { assets: { resourceFailures: [] }, scene: { visibleMeshCount: 1 } }
+        };
+      </script>`);
+
+    const result = await screenshotCommand(["--url", `data:text/html,${html}`, "--out", outPath, "--viewport", "mobile", "--wait-ready", "--json"]);
+    const payload = JSON.parse(result.stdout) as {
+      checks: { nonblank: { ok: boolean } };
+      code: string;
+      viewport: { height: number; width: number };
+    };
+
+    assert.equal(result.exitCode, 0);
+    assert.equal(payload.code, "TN_SCREENSHOT_OK");
+    assert.deepEqual(payload.viewport, { height: 844, width: 390 });
+    assert.equal(payload.checks.nonblank.ok, true);
   } finally {
     await rm(root, { force: true, recursive: true });
   }

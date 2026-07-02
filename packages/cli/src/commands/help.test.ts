@@ -70,6 +70,17 @@ test("should resolve aliases for topic help", async () => {
   assert.equal(payload.failureSymptoms.some((symptom) => symptom.includes("black")), true);
 });
 
+test("should use canonical motion artifact names in visual proof help", async () => {
+  const visual = await helpCommand(["visual-qa", "--json"]);
+  const record = await helpCommand(["record", "--json"]);
+  const visualPayload = JSON.parse(visual.stdout) as { examples: string[] };
+  const recordPayload = JSON.parse(record.stdout) as { examples: string[] };
+  const examples = [...visualPayload.examples, ...recordPayload.examples].join("\n");
+
+  assert.equal(examples.includes("artifacts/proof/motion.webm"), true);
+  assert.equal(examples.includes("clip.webm"), false);
+});
+
 test("should describe structured-source starter from examples help", async () => {
   const result = await helpCommand(["examples", "--json"]);
   const payload = JSON.parse(result.stdout) as { commands: string[]; docs: string[]; examples: string[]; name: string };

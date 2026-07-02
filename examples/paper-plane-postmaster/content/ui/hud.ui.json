@@ -1,0 +1,47 @@
+{
+  "schema": "threenative.ui",
+  "version": "0.1.0",
+  "id": "hud",
+  "nodes": [
+    {
+      "id": "stamps",
+      "type": "text",
+      "text": "Stamps 0/5",
+      "style": { "color": "#ffcf5a", "fontSize": 24, "fontWeight": "bold", "textAlign": "center" },
+      "layout": { "justify": "center", "align": "top", "top": 24, "width": 1280 }
+    },
+    {
+      "id": "mail",
+      "type": "text",
+      "text": "Mail 0/3",
+      "style": { "color": "#9ee8ff", "fontSize": 22, "fontWeight": "bold", "textAlign": "center" },
+      "layout": { "justify": "center", "align": "top", "top": 58, "width": 1280 }
+    },
+    {
+      "id": "clock",
+      "type": "text",
+      "text": "Clock 82",
+      "style": { "color": "#f7f2df", "fontSize": 22, "fontWeight": "bold", "textAlign": "center" },
+      "layout": { "justify": "center", "align": "top", "top": 90, "width": 1280 }
+    },
+    {
+      "id": "status",
+      "type": "text",
+      "text": "Collect stamps",
+      "style": { "color": "#ffffff", "fontSize": 16, "fontWeight": "bold", "textAlign": "center" },
+      "layout": { "justify": "center", "align": "top", "top": 122, "width": 1280 }
+    },
+    { "id": "state.loading", "type": "text", "text": "Loading mail route", "layout": { "justify": "center", "align": "center", "top": 1200, "width": 1280 } },
+    { "id": "state.pause", "type": "text", "text": "Pause", "layout": { "justify": "center", "align": "center", "top": 1230, "width": 1280 } },
+    { "id": "state.settings", "type": "text", "text": "Settings", "layout": { "justify": "center", "align": "center", "top": 1260, "width": 1280 } },
+    { "id": "state.fail-retry", "type": "text", "text": "Gust crash - Space to retry", "layout": { "justify": "center", "align": "center", "top": 1290, "width": 1280 } },
+    { "id": "state.win-milestone", "type": "text", "text": "Route complete", "layout": { "justify": "center", "align": "center", "top": 1320, "width": 1280 } },
+    { "id": "state.touch-controls", "type": "text", "text": "Touch mobile-control joystick", "layout": { "justify": "center", "align": "center", "top": 1350, "width": 1280 } }
+  ],
+  "bindings": [
+    { "node": "stamps", "resource": "GameState.stampText" },
+    { "node": "mail", "resource": "GameState.mailText" },
+    { "node": "clock", "resource": "GameState.clockText" },
+    { "node": "status", "resource": "GameState.status" }
+  ]
+}

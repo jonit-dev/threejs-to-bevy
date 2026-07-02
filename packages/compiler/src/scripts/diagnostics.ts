@@ -1,4 +1,5 @@
 import type { ICompilerDiagnostic } from "../diagnostics.js";
+import { maskStringAndCommentText } from "./lexical.js";
 
 export interface IPortableSystemSource {
   commands?: ReadonlyArray<string>;
@@ -13,7 +14,13 @@ export interface IPortableSystemSource {
   writes?: ReadonlyArray<string>;
 }
 
-const unsupportedPatterns: Array<{ code: string; label: string; pattern: RegExp; suggestion: string }> = [
+const unsupportedPatterns: Array<{
+  code: string;
+  label: string;
+  pattern: RegExp;
+  scan?: "code" | "source";
+  suggestion: string;
+}> = [
   {
     code: "TN_SCRIPT_DOM_API_UNSUPPORTED",
     label: "DOM, worker, or browser globals",
@@ -29,7 +36,14 @@ const unsupportedPatterns: Array<{ code: string; label: string; pattern: RegExp;
   {
     code: "TN_SCRIPT_NODE_API_UNSUPPORTED",
     label: "Node.js APIs",
-    pattern: /\b(?:Buffer|__dirname|__filename|process|require)\b|node:/,
+    pattern: /\b(?:Buffer|__dirname|__filename|process|require)\b/,
+    suggestion: "Portable systems cannot use filesystem, process, or Node runtime APIs.",
+  },
+  {
+    code: "TN_SCRIPT_NODE_API_UNSUPPORTED",
+    label: "Node.js APIs",
+    pattern: /(?:\bfrom\s+|\bimport\s*(?:\([^)]*\)\s*)?)["']node:[^"']+["']/,
+    scan: "source",
     suggestion: "Portable systems cannot use filesystem, process, or Node runtime APIs.",
   },
   {
@@ -53,20 +67,24 @@ const unsupportedPatterns: Array<{ code: string; label: string; pattern: RegExp;
   {
     code: "TN_SCRIPT_RUNTIME_IMPORT_UNSUPPORTED",
     label: "runtime adapter imports",
-    pattern: /@threenative\/runtime-|three\b|bevy\b/,
+    pattern: /(?:\bfrom\s+|\bimport\s*(?:\([^)]*\)\s*)?)["'](?:@threenative\/runtime-[^"']*|three(?:\/[^"']*)?|bevy(?:\/[^"']*)?)["']/,
+    scan: "source",
     suggestion: "Keep systems independent of web and native runtime adapter internals.",
   },
   {
     code: "TN_SCRIPT_NPM_DEPENDENCY_UNSUPPORTED",
     label: "arbitrary npm dependencies",
     pattern: /\bfrom\s+["'](?!@threenative\/sdk["']|[./])/,
+    scan: "source",
     suggestion: "Portable systems may import the SDK only; pass other data through declared resources, events, or services.",
   },
 ];
 
 export function diagnosePortableSystem(source: IPortableSystemSource): ICompilerDiagnostic[] {
+  const codeOnlySource = maskStringAndCommentText(source.source);
   const diagnostics: ICompilerDiagnostic[] = unsupportedPatterns.flatMap((rule) => {
-    if (!rule.pattern.test(source.source)) {
+    const scannedSource = rule.scan === "source" ? source.source : codeOnlySource;
+    if (!rule.pattern.test(scannedSource)) {
       return [];
     }
     return [

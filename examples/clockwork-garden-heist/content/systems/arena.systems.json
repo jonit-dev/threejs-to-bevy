@@ -1,0 +1,17 @@
+{
+  "schema": "threenative.systems",
+  "version": "0.1.0",
+  "id": "arena-systems",
+  "systems": [
+    {
+      "id": "clockwork-garden-heist",
+      "schedule": "fixedUpdate",
+      "writes": ["Transform", "ClockworkPlayer", "Gem", "KeyItem", "GateLock"],
+      "resourceWrites": ["GameState"],
+      "script": {
+        "module": "src/scripts/player.ts",
+        "export": "clockworkGardenHeistSystem"
+      }
+    }
+  ]
+}

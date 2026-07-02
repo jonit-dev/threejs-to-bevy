@@ -1,0 +1,42 @@
+{
+  "schema": "threenative.project",
+  "version": "0.1.0",
+  "entry": "content/scenes/arena.scene.json",
+  "outDir": "dist/rooftop-wind-courier.bundle",
+  "production": {
+    "playableLoop": "Steer a cloth glider across rooftops, collect three mail parcels, avoid gust hazards, and land on the marked delivery pad before wind time expires.",
+    "controls": [
+      "keyboard.KeyA",
+      "keyboard.ArrowLeft",
+      "keyboard.KeyD",
+      "keyboard.ArrowRight",
+      "keyboard.KeyW",
+      "keyboard.ArrowUp",
+      "keyboard.KeyS",
+      "keyboard.ArrowDown",
+      "keyboard.Space"
+    ],
+    "objective": "Collect Parcels 3/3, then land on the delivery pad before the timer reaches zero.",
+    "failRetry": "Touching a gust hazard or timing out enters failed state; Space resets the route.",
+    "proofCommands": [
+      "tn playtest --project . --entity player --press KeyD --expect-axis x --json",
+      "tn screenshot --project . --url <preview-url> --out artifacts/game-production/screenshot.png --wait-ready --json",
+      "tn game qa --project . --run-proof --json",
+      "tn game score --project . --json",
+      "tn game release --project . --json"
+    ],
+    "assetProvenance": {
+      "catalogSearches": [
+        "tn asset source search --game-category vehicle --format glb --direct-only --json -> TN_ASSET_SOURCE_NO_MATCH",
+        "tn asset source search --game-category environment --format glb --direct-only --json -> TN_ASSET_SOURCE_NO_MATCH",
+        "tn asset source search --game-category collectible --format glb --direct-only --json -> TN_ASSET_SOURCE_NO_MATCH",
+        "tn asset source search --game-category arcade --format glb --direct-only --json -> TN_ASSET_SOURCE_NO_MATCH",
+        "tn asset source search --game-category sky --format glb --direct-only --json -> TN_ASSET_SOURCE_NO_MATCH",
+        "tn asset source search --game-category city --format glb --direct-only --json -> TN_ASSET_SOURCE_NO_MATCH",
+        "tn asset source search --game-category platformer --format glb --direct-only --json -> Kenney CC0 platformer kit, rejected as mismatched to top-down rooftop glider style"
+      ],
+      "fallback": "Direct catalog did not provide a cohesive runtime-ready rooftop glider kit. Glider, parcel rewards, gust hazards, delivery pad, roofscape, vents, flags, skyline, and HUD are authored as a cohesive procedural mesh kit."
+    }
+  },
+  "template": "structured-source-starter"
+}

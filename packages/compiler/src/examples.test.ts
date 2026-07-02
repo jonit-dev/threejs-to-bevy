@@ -1,10 +1,14 @@
 import assert from "node:assert/strict";
-import { cp, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { access, cp, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join, resolve } from "node:path";
+import { dirname, join, resolve } from "node:path";
 import test from "node:test";
+import { fileURLToPath } from "node:url";
 
 import { buildProject, validateBundle } from "./index.js";
+
+const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "../../..");
+const structuredSourceStarterPath = resolve(repoRoot, "templates/structured-source-starter");
 
 test("should build legacy game ts compatibility fixture", async () => {
   const projectPath = await mkdtemp(join(tmpdir(), "tn-modular-starter-"));
@@ -50,15 +54,21 @@ export { scene };
 });
 
 test("should build structured source starter template with source document provenance", async () => {
-  const projectPath = resolve(process.cwd(), "../../templates/structured-source-starter");
+  const projectPath = structuredSourceStarterPath;
   const { bundlePath } = await buildProject(projectPath);
   const report = await validateBundle(bundlePath);
+  const manifest = JSON.parse(await readFile(resolve(bundlePath, "manifest.json"), "utf8")) as { entry: { ui?: string } };
+  const ui = JSON.parse(await readFile(resolve(bundlePath, "ui.ir.json"), "utf8")) as {
+    root: { children?: Array<{ id: string }>; id: string };
+  };
   const provenance = JSON.parse(await readFile(resolve(bundlePath, "authoring.provenance.json"), "utf8")) as {
     ownership: Array<{ emitted: { id?: string; path: string }; source?: { path: string; pointer: string } }>;
   };
 
   assert.equal(bundlePath, resolve(projectPath, "dist/structured-source-starter.bundle"));
   assert.equal(report.ok, true);
+  assert.equal(manifest.entry.ui, "ui.ir.json");
+  assert.equal(ui.root.id, "countdown");
   assert.ok(
     provenance.ownership.some(
       (entry) =>
@@ -86,10 +96,82 @@ test("should build structured source starter template with source document prove
   );
 });
 
+test("should wait for active bundle build lock before building structured source", async () => {
+  const projectPath = await mkdtemp(join(tmpdir(), "tn-structured-build-lock-"));
+  const lockDir = join(projectPath, "dist/structured-source-starter.bundle.build-lock");
+  try {
+    await cp(structuredSourceStarterPath, projectPath, { recursive: true });
+    await mkdir(lockDir, { recursive: true });
+
+    const release = setTimeout(() => {
+      void rm(lockDir, { force: true, recursive: true });
+    }, 1_000);
+    const startedAt = Date.now();
+
+    try {
+      const { bundlePath } = await buildProject(projectPath);
+      const elapsedMs = Date.now() - startedAt;
+      const report = await validateBundle(bundlePath);
+
+      assert.equal(bundlePath, join(projectPath, "dist/structured-source-starter.bundle"));
+      assert.equal(elapsedMs >= 900, true);
+      assert.equal(report.ok, true);
+      await assert.rejects(access(lockDir));
+    } finally {
+      clearTimeout(release);
+    }
+  } finally {
+    await rm(projectPath, { force: true, recursive: true });
+  }
+});
+
+test("should lower structured source torus prefabs into generated mesh assets", async () => {
+  const projectPath = await mkdtemp(join(tmpdir(), "tn-structured-torus-prefab-"));
+  try {
+    await mkdir(join(projectPath, "content", "scenes"), { recursive: true });
+    await writeFile(
+      join(projectPath, "threenative.config.json"),
+      `${JSON.stringify({
+        schema: "threenative.project",
+        version: "0.1.0",
+        entry: "content/scenes/arena.scene.json",
+        outDir: "dist/game.bundle",
+      }, null, 2)}\n`,
+    );
+    await writeFile(
+      join(projectPath, "content", "scenes", "arena.scene.json"),
+      `${JSON.stringify({
+        schema: "threenative.scene",
+        version: "0.1.0",
+        id: "arena",
+        entities: [{ id: "ring", prefab: "prefab.ring" }],
+        prefabs: [{ id: "prefab.ring", primitive: "torus", color: "#9fe8ff" }],
+      }, null, 2)}\n`,
+    );
+
+    const { bundlePath } = await buildProject(projectPath);
+    const report = await validateBundle(bundlePath);
+    const assets = JSON.parse(await readFile(resolve(bundlePath, "assets.manifest.json"), "utf8")) as {
+      assets: Array<{ id: string; primitive?: string; size?: number[] }>;
+    };
+
+    assert.equal(report.ok, true);
+    assert.deepEqual(assets.assets.find((asset) => asset.id === "mesh.ring"), {
+      format: "generated",
+      id: "mesh.ring",
+      kind: "mesh",
+      primitive: "torus",
+      size: [0.25, 0.5],
+    });
+  } finally {
+    await rm(projectPath, { force: true, recursive: true });
+  }
+});
+
 test("should emit structured source environment documents", async () => {
   const projectPath = await mkdtemp(join(tmpdir(), "tn-structured-environment-"));
   try {
-    await cp(resolve(process.cwd(), "../../templates/structured-source-starter"), projectPath, { recursive: true });
+    await cp(structuredSourceStarterPath, projectPath, { recursive: true });
     await mkdir(join(projectPath, "assets"), { recursive: true });
     await mkdir(join(projectPath, "content/assets"), { recursive: true });
     await mkdir(join(projectPath, "content/environment"), { recursive: true });
@@ -180,10 +262,90 @@ test("should emit structured source environment documents", async () => {
   }
 });
 
+test("should expand compact prefab instances into deterministic world entities", async () => {
+  const projectPath = await mkdtemp(join(tmpdir(), "tn-compact-prefab-instances-"));
+  try {
+    await mkdir(join(projectPath, "content", "prefabs"), { recursive: true });
+    await mkdir(join(projectPath, "content", "scenes"), { recursive: true });
+    await writeFile(
+      join(projectPath, "threenative.config.json"),
+      `${JSON.stringify({
+        schema: "threenative.project",
+        version: "0.1.0",
+        entry: "content/scenes/lane.scene.json",
+        outDir: "dist/game.bundle",
+      }, null, 2)}\n`,
+    );
+    await writeFile(
+      join(projectPath, "content", "prefabs", "pin.prefab.json"),
+      `${JSON.stringify({
+        schema: "threenative.prefab",
+        version: "0.1.0",
+        id: "prefab.pin",
+        entities: [
+          {
+            id: "pin.default",
+            transform: { scale: [0.42, 1.2, 0.42] },
+            components: {
+              Collider: { kind: "capsule", radius: 0.18, height: 1.1, friction: 0.55, restitution: 0.32 },
+              Pin: { home: [0, 0, 0], standing: true },
+              RigidBody: { kind: "dynamic", mass: 1.45 },
+            },
+          },
+        ],
+      }, null, 2)}\n`,
+    );
+    await writeFile(
+      join(projectPath, "content", "scenes", "lane.scene.json"),
+      `${JSON.stringify({
+        schema: "threenative.scene",
+        version: "0.1.0",
+        id: "lane",
+        instances: [
+          { id: "pin.01", prefab: "prefab.pin", transform: { position: [0, 0.6, 0] }, components: { Pin: { home: [0, 0.6, 0] } } },
+          { id: "pin.02", prefab: "prefab.pin", transform: { position: [-0.3, 0.6, -0.52] }, components: { Pin: { home: [-0.3, 0.6, -0.52] } } },
+          { id: "pin.03", prefab: "prefab.pin", transform: { position: [0.3, 0.6, -0.52] }, components: { Pin: { home: [0.3, 0.6, -0.52] } } },
+        ],
+      }, null, 2)}\n`,
+    );
+
+    const { bundlePath } = await buildProject(projectPath);
+    const report = await validateBundle(bundlePath);
+    const world = JSON.parse(await readFile(resolve(bundlePath, "world.ir.json"), "utf8")) as {
+      entities: Array<{ id: string; components: Record<string, Record<string, unknown>> }>;
+    };
+    const provenance = JSON.parse(await readFile(resolve(bundlePath, "authoring.provenance.json"), "utf8")) as {
+      ownership: Array<{ emitted: { id?: string; path: string }; source?: { pointer: string } }>;
+    };
+
+    assert.equal(report.ok, true);
+    assert.deepEqual(world.entities.map((entity) => entity.id).filter((id) => id.startsWith("pin.")), ["pin.01", "pin.02", "pin.03"]);
+    const pin01 = world.entities.find((entity) => entity.id === "pin.01");
+    const pin02 = world.entities.find((entity) => entity.id === "pin.02");
+    const pin03 = world.entities.find((entity) => entity.id === "pin.03");
+    assert.ok(pin01);
+    assert.ok(pin02);
+    assert.ok(pin03);
+    const pin01Transform = pin01.components.Transform;
+    assert.ok(pin01Transform);
+    assert.deepEqual(pin01Transform.position, [0, 0.6, 0]);
+    assert.deepEqual(pin01Transform.scale, [0.42, 1.2, 0.42]);
+    assert.deepEqual(pin02.components.Pin, { home: [-0.3, 0.6, -0.52], standing: true });
+    assert.deepEqual(pin03.components.RigidBody, { kind: "dynamic", mass: 1.45 });
+    assert.deepEqual(pin03.components.Collider, { friction: 0.55, height: 1.1, kind: "capsule", radius: 0.18, restitution: 0.32 });
+    assert.equal(
+      provenance.ownership.some((entry) => entry.emitted.path === "world.ir.json" && entry.emitted.id === "pin.01" && entry.source?.pointer === "/instances/0"),
+      true,
+    );
+  } finally {
+    await rm(projectPath, { force: true, recursive: true });
+  }
+});
+
 test("should emit structured source system metadata", async () => {
   const projectPath = await mkdtemp(join(tmpdir(), "tn-structured-systems-"));
   try {
-    await cp(resolve(process.cwd(), "../../templates/structured-source-starter"), projectPath, { recursive: true });
+    await cp(structuredSourceStarterPath, projectPath, { recursive: true });
     await writeFile(
       join(projectPath, "content/systems/arena.systems.json"),
       `${JSON.stringify({
@@ -227,7 +389,7 @@ test("should emit structured source system metadata", async () => {
 test("should lower structured lifecycle script refs", async () => {
   const projectPath = await mkdtemp(join(tmpdir(), "tn-structured-lifecycle-"));
   try {
-    await cp(resolve(process.cwd(), "../../templates/structured-source-starter"), projectPath, { recursive: true });
+    await cp(structuredSourceStarterPath, projectPath, { recursive: true });
     const playerScriptPath = join(projectPath, "src/scripts/player.ts");
     const originalPlayerScript = await readFile(playerScriptPath, "utf8");
     await writeFile(
@@ -320,7 +482,7 @@ export function lateUpdateRally(_ctx: any): void {}
 test("should emit structured source tags and groups", async () => {
   const projectPath = await mkdtemp(join(tmpdir(), "tn-structured-tags-groups-"));
   try {
-    await cp(resolve(process.cwd(), "../../templates/structured-source-starter"), projectPath, { recursive: true });
+    await cp(structuredSourceStarterPath, projectPath, { recursive: true });
     const scenePath = join(projectPath, "content/scenes/arena.scene.json");
     const scene = JSON.parse(await readFile(scenePath, "utf8")) as {
       entities: Array<{ components?: Record<string, unknown>; id: string; transform?: { position?: number[] } }>;
@@ -359,7 +521,7 @@ test("should emit structured source tags and groups", async () => {
 test("should emit repeated structured source physics components with one schema per kind", async () => {
   const projectPath = await mkdtemp(join(tmpdir(), "tn-structured-physics-components-"));
   try {
-    await cp(resolve(process.cwd(), "../../templates/structured-source-starter"), projectPath, { recursive: true });
+    await cp(structuredSourceStarterPath, projectPath, { recursive: true });
     const scenePath = join(projectPath, "content/scenes/arena.scene.json");
     const scene = JSON.parse(await readFile(scenePath, "utf8")) as {
       entities: Array<{ components?: Record<string, unknown>; id: string }>;
