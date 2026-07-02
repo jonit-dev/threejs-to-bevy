@@ -18,12 +18,16 @@ test("should build deterministic sqlite catalog from seed jsonl", async () => {
     run(["--out", first]);
     run(["--out", second]);
     assert.deepEqual(await readFile(first), await readFile(second));
-    const summary = query(first, "SELECT 'schema_version' AS key, value FROM catalog_meta WHERE key = 'schema_version' UNION ALL SELECT 'asset_count' AS key, COUNT(*) AS value FROM asset_files UNION ALL SELECT 'direct_count' AS key, COUNT(*) AS value FROM asset_files WHERE is_direct_download = 1 UNION ALL SELECT 'workflow_doc_hash' AS key, value FROM catalog_meta WHERE key = 'workflow_doc_sha256';");
+    const summary = query(first, "SELECT 'schema_version' AS key, value FROM catalog_meta WHERE key = 'schema_version' UNION ALL SELECT 'asset_count' AS key, COUNT(*) AS value FROM asset_files UNION ALL SELECT 'direct_count' AS key, COUNT(*) AS value FROM asset_files WHERE is_direct_download = 1 UNION ALL SELECT 'hdri_count' AS key, COUNT(*) AS value FROM asset_files WHERE file_role = 'hdri-index' UNION ALL SELECT 'material_count' AS key, COUNT(*) AS value FROM asset_files WHERE file_role = 'material-index' UNION ALL SELECT 'workflow_doc_hash' AS key, value FROM catalog_meta WHERE key = 'workflow_doc_sha256' UNION ALL SELECT 'os3a_snapshot_hash' AS key, value FROM catalog_meta WHERE key = 'os3a_snapshot_sha256' UNION ALL SELECT 'polyhaven_snapshot_hash' AS key, value FROM catalog_meta WHERE key = 'polyhaven_snapshot_sha256';");
     const byKey = Object.fromEntries(summary.map((row) => [row.key, row.value]));
     assert.equal(byKey.schema_version, "1");
-    assert.equal(Number(byKey.asset_count) >= 200, true);
-    assert.equal(Number(byKey.direct_count) >= 80, true);
+    assert.equal(Number(byKey.asset_count) > 3000, true);
+    assert.equal(Number(byKey.direct_count) >= 1000, true);
+    assert.equal(Number(byKey.hdri_count) > 900, true);
+    assert.equal(Number(byKey.material_count) > 700, true);
     assert.equal(typeof byKey.workflow_doc_hash, "string");
+    assert.equal(typeof byKey.os3a_snapshot_hash, "string");
+    assert.equal(typeof byKey.polyhaven_snapshot_hash, "string");
   } finally {
     await rm(dir, { force: true, recursive: true });
   }

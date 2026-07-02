@@ -340,19 +340,28 @@ test("should search direct GLB sources by game category", async () => {
 });
 
 test("should search typed material and texture source records by file role", async () => {
-  const result = await assetCommand(["source", "search", "--file-role", "material-index", "--json"]);
+  const result = await assetCommand(["source", "search", "--file-role", "material-index", "--query", "poly haven", "--json"]);
   const payload = JSON.parse(result.stdout) as {
     records: Array<{ fileRole: string; id: string; isDirectDownload: boolean; sourceMetadata: Record<string, string> }>;
   };
 
   assert.equal(result.exitCode, 0);
-  assert.equal(payload.records.some((record) => record.id === "ambientcg-material-index"), true);
+  assert.equal(payload.records.some((record) => record.id.startsWith("polyhaven-texture-")), true);
   assert.equal(payload.records.every((record) => record.fileRole === "material-index" && !record.isDirectDownload), true);
-  assert.equal(payload.records.some((record) => record.sourceMetadata.assetType === "material-texture"), true);
+  assert.equal(payload.records.some((record) => record.sourceMetadata.polyhavenType === "texture"), true);
+
+  const curated = await assetCommand(["source", "search", "--file-role", "material-index", "--query", "ambientcg", "--json"]);
+  const curatedPayload = JSON.parse(curated.stdout) as {
+    records: Array<{ id: string; sourceMetadata: Record<string, string> }>;
+  };
+
+  assert.equal(curated.exitCode, 0);
+  assert.equal(curatedPayload.records.some((record) => record.id === "ambientcg-material-index"), true);
+  assert.equal(curatedPayload.records.some((record) => record.sourceMetadata.assetType === "material-texture"), true);
 });
 
 test("should include fallback records when direct-only search has no match", async () => {
-  const result = await assetCommand(["source", "search", "--game-category", "cozy-interiors", "--format", "glb", "--direct-only", "--json"]);
+  const result = await assetCommand(["source", "search", "--game-category", "restaurant-cooking", "--format", "glb", "--direct-only", "--json"]);
   const payload = JSON.parse(result.stdout) as {
     code: string;
     fallbackRecords: Array<{ id: string; isDirectDownload: boolean; recommendedNextCommand: string }>;
@@ -362,7 +371,7 @@ test("should include fallback records when direct-only search has no match", asy
   assert.equal(result.exitCode, 0);
   assert.equal(payload.code, "TN_ASSET_SOURCE_NO_MATCH");
   assert.deepEqual(payload.records, []);
-  assert.equal(payload.fallbackRecords.some((record) => record.id === "tiny-treats-index" && !record.isDirectDownload), true);
+  assert.equal(payload.fallbackRecords.some((record) => record.id === "workflow-genre-specific-pack-shortlist-kaykit-restaurant-bits" && !record.isDirectDownload), true);
   assert.equal(payload.fallbackRecords.every((record) => /Review .*tn asset inspect/.test(record.recommendedNextCommand)), true);
 });
 
@@ -377,7 +386,7 @@ test("should find curated bowling pack records by keyword and broad category", a
   assert.equal(keywordPayload.records.some((record) => record.id === "babylon-bowling-pin-glb" && record.isDirectDownload && record.licenseId === "CC-BY-4.0"), true);
   assert.equal(keywordPayload.records.some((record) => record.id === "deplorablemountaineer-bowling-ball-pins-pack" && !record.isDirectDownload && record.licenseId === "CC0-1.0"), true);
 
-  const category = await assetCommand(["source", "search", "--game-category", "sports", "--json"]);
+  const category = await assetCommand(["source", "search", "--game-category", "sports", "--query", "bowling", "--json"]);
   const categoryPayload = JSON.parse(category.stdout) as {
     records: Array<{ id: string }>;
   };

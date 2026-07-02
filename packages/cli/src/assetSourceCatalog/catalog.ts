@@ -149,7 +149,7 @@ export async function getAssetSource(id: string): Promise<IAssetSourceRecord | u
 
 export async function suggestAssetSources(goal: string, options: Pick<IAssetSourceSearchOptions, "limit"> = {}): Promise<IAssetSourceRecord[]> {
   const words = goal.toLowerCase().split(/[^a-z0-9-]+/u).filter((word) => word.length >= 3);
-  const rows = await searchAssetSources({ includeBlocked: false, limit: 100 });
+  const rows = await listAssetSources({ includeBlocked: false });
   const scored = rows
     .map((row) => {
       const lexicalScore = words.reduce((score, word) => score + scoreWord(row, word), 0);

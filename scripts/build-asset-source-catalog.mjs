@@ -11,6 +11,8 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const defaultSchema = resolve(root, "docs/data/asset-sources.schema.sql");
 const defaultSeed = resolve(root, "docs/data/asset-sources.seed.jsonl");
 const defaultWorkflowDoc = resolve(root, "docs/workflows/open-source-3d-asset-kits.md");
+const defaultOs3aSnapshot = resolve(root, "docs/data/os3a-asset-sources.snapshot.json");
+const defaultPolyhavenSnapshot = resolve(root, "docs/data/polyhaven-asset-sources.snapshot.json");
 const defaultOut = resolve(root, "packages/cli/data/asset-sources.sqlite");
 const schemaVersion = "1";
 
@@ -19,10 +21,14 @@ async function main() {
   const schemaPath = resolve(root, args.schema ?? defaultSchema);
   const seedPath = resolve(root, args.seed ?? defaultSeed);
   const workflowDocPath = resolve(root, args.workflowDoc ?? defaultWorkflowDoc);
+  const os3aSnapshotPath = resolve(root, args.os3aSnapshot ?? defaultOs3aSnapshot);
+  const polyhavenSnapshotPath = resolve(root, args.polyhavenSnapshot ?? defaultPolyhavenSnapshot);
   const outPath = resolve(root, args.out ?? defaultOut);
   const records = dedupeRecords([
     ...await readSeed(seedPath),
     ...await readWorkflowDocRecords(workflowDocPath),
+    ...await readOs3aSnapshotRecords(os3aSnapshotPath),
+    ...await readPolyhavenSnapshotRecords(polyhavenSnapshotPath),
     ...readCuratedDirectRecords(),
   ]);
   validateRecords(records);
@@ -31,7 +37,7 @@ async function main() {
     const temp = await mkdtemp(resolve(tmpdir(), "tn-asset-sources-"));
     try {
       const checkDb = resolve(temp, "asset-sources.sqlite");
-      const report = await buildCatalog({ outPath: checkDb, records, schemaPath, seedPath, workflowDocPath });
+      const report = await buildCatalog({ outPath: checkDb, records, os3aSnapshotPath, polyhavenSnapshotPath, schemaPath, seedPath, workflowDocPath });
       const current = await readFile(outPath);
       const generated = await readFile(checkDb);
       if (!current.equals(generated)) {
@@ -44,7 +50,7 @@ async function main() {
     return;
   }
 
-  const report = await buildCatalog({ outPath, records, schemaPath, seedPath, workflowDocPath });
+  const report = await buildCatalog({ outPath, records, os3aSnapshotPath, polyhavenSnapshotPath, schemaPath, seedPath, workflowDocPath });
   printReport(report, false);
 }
 
@@ -319,9 +325,11 @@ async function readSeed(seedPath) {
     });
 }
 
-async function buildCatalog({ outPath, records, schemaPath, seedPath, workflowDocPath }) {
+async function buildCatalog({ outPath, records, os3aSnapshotPath, polyhavenSnapshotPath, schemaPath, seedPath, workflowDocPath }) {
   const schema = await readFile(schemaPath, "utf8");
   const workflowDoc = await readFile(workflowDocPath, "utf8");
+  const os3aSnapshot = await readFile(os3aSnapshotPath, "utf8");
+  const polyhavenSnapshot = await readFile(polyhavenSnapshotPath, "utf8");
   await mkdir(dirname(outPath), { recursive: true });
   const sql = [
     schema,
@@ -329,6 +337,8 @@ async function buildCatalog({ outPath, records, schemaPath, seedPath, workflowDo
     insert("catalog_meta", { key: "schema_version", value: schemaVersion }),
     insert("catalog_meta", { key: "seed_sha256", value: hashText(await readFile(seedPath, "utf8")) }),
     insert("catalog_meta", { key: "workflow_doc_sha256", value: hashText(workflowDoc) }),
+    insert("catalog_meta", { key: "os3a_snapshot_sha256", value: hashText(os3aSnapshot) }),
+    insert("catalog_meta", { key: "polyhaven_snapshot_sha256", value: hashText(polyhavenSnapshot) }),
     insert("catalog_meta", { key: "builder", value: "scripts/build-asset-source-catalog.mjs" }),
     insert("catalog_meta", { key: "built_on", value: "deterministic" }),
     ...records.flatMap((record) => sqlForRecord(record)),
@@ -345,6 +355,294 @@ async function buildCatalog({ outPath, records, schemaPath, seedPath, workflowDo
     throw new Error(`sqlite3 failed while building asset source catalog:\n${result.stderr || result.stdout}`);
   }
   return summarize(outPath);
+}
+
+async function readOs3aSnapshotRecords(snapshotPath) {
+  const snapshot = JSON.parse(await readFile(snapshotPath, "utf8"));
+  if (!Array.isArray(snapshot.projects)) {
+    throw new Error(`Invalid OS3A snapshot at ${snapshotPath}: projects array is required.`);
+  }
+  return snapshot.projects.flatMap((project) => {
+    const assets = Array.isArray(project.assets) ? project.assets : [];
+    return assets
+      .filter((asset) => typeof asset.modelFileUrl === "string" && asset.modelFileUrl.endsWith(".glb"))
+      .map((asset) => os3aRecord({ asset, project, snapshotPath }));
+  });
+}
+
+async function readPolyhavenSnapshotRecords(snapshotPath) {
+  const snapshot = JSON.parse(await readFile(snapshotPath, "utf8"));
+  if (!Array.isArray(snapshot.assets)) {
+    throw new Error(`Invalid Poly Haven snapshot at ${snapshotPath}: assets array is required.`);
+  }
+  return snapshot.assets.map((asset) => polyhavenRecord({ asset, snapshotPath }));
+}
+
+function polyhavenRecord({ asset, snapshotPath }) {
+  const id = `polyhaven-${asset.type}-${slugify(asset.id)}`;
+  const text = [
+    asset.type,
+    asset.name,
+    asset.category,
+    ...(Array.isArray(asset.categories) ? asset.categories : []),
+    ...(Array.isArray(asset.tags) ? asset.tags : []),
+    asset.description,
+  ].filter(Boolean).join(" ");
+  const category = categoryForPolyhavenAsset(asset, text);
+  const role = fileRoleForPolyhavenAsset(asset);
+  const format = formatForPolyhavenAsset(asset);
+  const sourceUrl = `https://polyhaven.com/a/${encodeURIComponent(asset.id)}`;
+  const provenanceUrl = `https://api.polyhaven.com/assets?t=${encodeURIComponent(asset.type)}`;
+  return {
+    origin: {
+      id: `origin-${id}`,
+      originType: "api",
+      originName: `Poly Haven ${asset.type}`,
+      originUrl: "https://polyhaven.com",
+      originPath: snapshotPath,
+      originSection: asset.type,
+      originRef: asset.filesHash ?? asset.id,
+      originLineStart: null,
+      originLineEnd: null,
+      importerName: "polyhaven-api-snapshot",
+      importerVersion: "1",
+      importedOn: "2026-07-02",
+      reviewStatus: "reviewed",
+      reviewEvidence: "Poly Haven publishes CC0 HDRIs, textures, and models; snapshot records authoritative Poly Haven API metadata for game lighting, skyboxes, and PBR surface treatment.",
+      notes: asset.description ?? "",
+    },
+    source: {
+      id: `source-${id}`,
+      name: `Poly Haven ${asset.name}`,
+      sourceKind: "index",
+      sourceUrl,
+      provenanceUrl,
+      creator: polyhavenCreators(asset),
+      licenseId: "CC0-1.0",
+      licenseUrl: "https://polyhaven.com/license",
+      licensePosture: "cc0",
+      redistributionAllowed: 1,
+      attributionRequired: 0,
+      notes: asset.description ?? "",
+      cautions: "Index record only; choose exact resolution/maps from Poly Haven, preserve files hash/API provenance, and verify color space, texture scale, and runtime format before committing assets.",
+      reviewedOn: "2026-07-02",
+      reviewedBy: "repo-curation",
+    },
+    file: {
+      id,
+      directName: asset.name,
+      gameCategory: category,
+      downloadUrl: null,
+      format,
+      fileRole: role,
+      previewUrl: asset.thumbnailUrl ?? sourceUrl,
+      sha256: null,
+      byteSize: null,
+      engineFit: "web-and-native",
+      importNotes: polyhavenImportNotes(asset),
+      isDirectDownload: 0,
+    },
+    tags: tagsForWorkflowRow(`${text} ${category} ${role} ${format} poly haven cc0`).slice(0, 16),
+    sourceMetadata: {
+      polyhavenAssetId: asset.id,
+      polyhavenType: asset.type,
+      polyhavenCategory: asset.category ?? "",
+      polyhavenCategories: Array.isArray(asset.categories) ? asset.categories.join("|") : "",
+      polyhavenTags: Array.isArray(asset.tags) ? asset.tags.join("|") : "",
+      polyhavenFilesHash: asset.filesHash ?? "",
+      polyhavenMaxResolution: Array.isArray(asset.maxResolution) ? asset.maxResolution.join("x") : "",
+      polyhavenDimensions: asset.dimensions ?? "",
+      polyhavenPolycount: asset.polycount ?? "",
+      polyhavenDownloadCount: asset.downloadCount ?? "",
+      polyhavenSnapshotPath: snapshotPath,
+    },
+  };
+}
+
+function polyhavenCreators(asset) {
+  if (asset.authors !== null && typeof asset.authors === "object" && !Array.isArray(asset.authors)) {
+    return Object.keys(asset.authors).filter(Boolean).join(", ") || "Poly Haven contributors";
+  }
+  return "Poly Haven contributors";
+}
+
+function fileRoleForPolyhavenAsset(asset) {
+  if (asset.type === "hdri") {
+    return "hdri-index";
+  }
+  if (asset.type === "texture") {
+    return "material-index";
+  }
+  if (asset.type === "model") {
+    return "model-index";
+  }
+  return "index";
+}
+
+function formatForPolyhavenAsset(asset) {
+  if (asset.type === "hdri") {
+    return "hdr";
+  }
+  if (asset.type === "texture") {
+    return "texture-set";
+  }
+  if (asset.type === "model") {
+    return "model-pack";
+  }
+  return "unknown";
+}
+
+function polyhavenImportNotes(asset) {
+  if (asset.type === "hdri") {
+    return "CC0 HDRI/skybox/IBL index record from Poly Haven; pick an HDR or EXR resolution, verify exposure, rotation, background visibility, and environment lighting before scene use.";
+  }
+  if (asset.type === "texture") {
+    return "CC0 PBR material index record from Poly Haven; pick required maps/resolution, verify albedo color space, normal orientation, roughness/metalness packing, and UV scale.";
+  }
+  if (asset.type === "model") {
+    return "CC0 model index record from Poly Haven; choose exact format, inspect mesh bounds/material dependencies, and run tn asset inspect plus tn model-test after download.";
+  }
+  return "CC0 Poly Haven index record; resolve exact downloadable files and verify runtime compatibility before use.";
+}
+
+function categoryForPolyhavenAsset(asset, text) {
+  const lower = text.toLowerCase();
+  if (asset.type === "hdri") {
+    if (lower.includes("indoor") || lower.includes("interior") || lower.includes("room") || lower.includes("studio")) {
+      return "cozy-interiors";
+    }
+    if (lower.includes("road") || lower.includes("street") || lower.includes("garage") || lower.includes("parking") || lower.includes("track")) {
+      return "racing";
+    }
+    if (lower.includes("city") || lower.includes("urban") || lower.includes("building")) {
+      return "city-builder";
+    }
+    if (lower.includes("night") || lower.includes("space") || lower.includes("star")) {
+      return "space";
+    }
+    if (lower.includes("forest") || lower.includes("field") || lower.includes("mountain") || lower.includes("nature") || lower.includes("outdoor") || lower.includes("beach") || lower.includes("desert")) {
+      return "skybox-hdri";
+    }
+    return "pbr-test";
+  }
+  if (asset.type === "texture") {
+    if (lower.includes("asphalt") || lower.includes("road") || lower.includes("tarmac") || lower.includes("track")) {
+      return "racing";
+    }
+    if (lower.includes("grass") || lower.includes("soil") || lower.includes("mud") || lower.includes("rock") || lower.includes("ground") || lower.includes("terrain") || lower.includes("sand")) {
+      return "nature-terrain";
+    }
+    if (lower.includes("brick") || lower.includes("tile") || lower.includes("wall") || lower.includes("plaster") || lower.includes("floor") || lower.includes("wood") || lower.includes("fabric") || lower.includes("leather")) {
+      return "cozy-interiors";
+    }
+    if (lower.includes("concrete") || lower.includes("metal") || lower.includes("industrial")) {
+      return "city-builder";
+    }
+    return "pbr-test";
+  }
+  if (asset.type === "model") {
+    return categoryForWorkflowRow(lower);
+  }
+  return categoryForWorkflowRow(lower);
+}
+
+function os3aRecord({ asset, project, snapshotPath }) {
+  const attributes = Array.isArray(asset.metadata?.attributes) ? asset.metadata.attributes : [];
+  const attributeText = attributes.map((attribute) => `${attribute.traitType ?? ""} ${attribute.value ?? ""}`).join(" ");
+  const projectText = `${project.name ?? ""} ${project.description ?? ""}`;
+  const nameText = `${asset.name ?? ""} ${asset.description ?? ""}`;
+  const category = categoryForOs3aRecord(`${projectText} ${nameText} ${attributeText}`);
+  const id = `os3a-${slugify(`${project.id}-${asset.id}-${asset.name}`)}`;
+  const sourceUrl = typeof project.githubUrl === "string" && project.githubUrl.length > 0
+    ? project.githubUrl
+    : "https://github.com/ToxSam/open-source-3D-assets";
+  return {
+    origin: {
+      id: `origin-${id}`,
+      originType: "generated-index",
+      originName: `OS3A ${project.name}`,
+      originUrl: "https://github.com/ToxSam/open-source-3D-assets",
+      originPath: project.assetDataFile ?? null,
+      originSection: "GitHub-Hosted Sources",
+      originRef: "snapshot",
+      originLineStart: null,
+      originLineEnd: null,
+      importerName: "os3a-snapshot",
+      importerVersion: "1",
+      importedOn: "2026-07-02",
+      reviewStatus: "reviewed",
+      reviewEvidence: "Workflow doc identifies ToxSam/open-source-3D-assets as a GLB asset discovery registry with CC0/CC BY metadata; this snapshot includes CC0 Polygonal Mind records.",
+      notes: project.description ?? "",
+    },
+    source: {
+      id: `source-${id}`,
+      name: `${project.name} ${asset.name}`,
+      sourceKind: "direct-file",
+      sourceUrl,
+      provenanceUrl: sourceUrl,
+      creator: project.creatorId ?? "Polygonal Mind",
+      licenseId: project.license === "CC0" ? "CC0-1.0" : String(project.license ?? "ReviewRequired"),
+      licenseUrl: sourceUrl,
+      licensePosture: project.license === "CC0" ? "cc0" : "review-needed",
+      redistributionAllowed: project.license === "CC0" ? 1 : 0,
+      attributionRequired: 0,
+      notes: asset.description ?? project.description ?? "",
+      cautions: "Snapshot record from OS3A registry; inspect scale, pivot, material dependencies, and gameplay readability before use.",
+      reviewedOn: "2026-07-02",
+      reviewedBy: "repo-curation",
+    },
+    file: {
+      id,
+      directName: asset.name,
+      gameCategory: category,
+      downloadUrl: asset.modelFileUrl,
+      format: "glb",
+      fileRole: "model",
+      previewUrl: asset.thumbnailUrl ?? null,
+      sha256: null,
+      byteSize: asset.metadata?.fileSize ?? null,
+      engineFit: "web-and-native",
+      importNotes: "Direct CC0 GLB record from local OS3A snapshot; run tn asset inspect and tn model-test after download.",
+      isDirectDownload: 1,
+    },
+    tags: tagsForWorkflowRow(`${projectText} ${nameText} ${attributeText} ${category}`),
+    sourceMetadata: {
+      os3aAssetId: asset.id,
+      os3aProjectId: project.id,
+      os3aSnapshotPath: snapshotPath,
+      sourcePath: asset.metadata?.githubPath ?? "",
+      attributes: attributes.map((attribute) => `${attribute.traitType}:${attribute.value}`).join("|"),
+    },
+  };
+}
+
+function categoryForOs3aRecord(text) {
+  const lower = text.toLowerCase();
+  if (lower.includes("car") || lower.includes("road") || lower.includes("transit") || lower.includes("vehicle")) {
+    return "racing";
+  }
+  if (lower.includes("avatar") || lower.includes("character") || lower.includes("show")) {
+    return "rpg-adventure";
+  }
+  if (lower.includes("tomb") || lower.includes("altar") || lower.includes("medieval") || lower.includes("fair")) {
+    return "dungeon-crawler";
+  }
+  if (lower.includes("garden") || lower.includes("park") || lower.includes("tree") || lower.includes("plant") || lower.includes("nature")) {
+    return "nature-terrain";
+  }
+  if (lower.includes("tower") || lower.includes("building") || lower.includes("house")) {
+    return "city-builder";
+  }
+  if (lower.includes("space") || lower.includes("aero") || lower.includes("lunar") || lower.includes("crystal")) {
+    return "space";
+  }
+  if (lower.includes("booth") || lower.includes("world") || lower.includes("room") || lower.includes("chair") || lower.includes("table")) {
+    return "cozy-interiors";
+  }
+  if (lower.includes("christmas") || lower.includes("trash") || lower.includes("polka")) {
+    return "party-coop";
+  }
+  return "general";
 }
 
 async function readWorkflowDocRecords(workflowDocPath) {
@@ -740,6 +1038,12 @@ function parseArgs(argv) {
       index += 1;
     } else if (arg === "--workflow-doc") {
       args.workflowDoc = argv[index + 1];
+      index += 1;
+    } else if (arg === "--os3a-snapshot") {
+      args.os3aSnapshot = argv[index + 1];
+      index += 1;
+    } else if (arg === "--polyhaven-snapshot") {
+      args.polyhavenSnapshot = argv[index + 1];
       index += 1;
     } else {
       throw new Error(`Unknown argument: ${arg}`);
