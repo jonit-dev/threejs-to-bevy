@@ -353,6 +353,7 @@ async function buildCatalog({ outPath, records, ambientcgSnapshotPath, objaverse
       insert("catalog_meta", { key: "objaverse_snapshot_sha256", value: hashText(objaverseSnapshot) }),
       insert("catalog_meta", { key: "os3a_snapshot_sha256", value: hashText(os3aSnapshot) }),
       insert("catalog_meta", { key: "polyhaven_snapshot_sha256", value: hashText(polyhavenSnapshot) }),
+      insert("catalog_meta", { key: "asset_search_index", value: "fts5-v1" }),
       insert("catalog_meta", { key: "builder", value: "scripts/build-asset-source-catalog.mjs" }),
       insert("catalog_meta", { key: "built_on", value: "deterministic" }),
     ].join("\n")}\n`);
@@ -1293,9 +1294,32 @@ function sqlForRecord(record) {
     insert("source_origins", origin, { orIgnore: true }),
     insert("asset_sources", source, { orIgnore: true }),
     insert("asset_files", file),
+    insert("asset_search", { asset_file_id: file.id, search_text: searchTextForRecord(record, origin, source, file) }),
     ...[...new Set(record.tags ?? [])].sort().map((tag) => insert("asset_tags", { asset_file_id: file.id, tag })),
     ...Object.entries(record.sourceMetadata ?? {}).sort(([a], [b]) => a.localeCompare(b)).map(([key, value]) => insert("asset_source_metadata", { asset_file_id: file.id, key, value: String(value) })),
   ];
+}
+
+function searchTextForRecord(record, origin, source, file) {
+  return [
+    file.id,
+    file.direct_name,
+    file.game_category,
+    file.format,
+    file.file_role,
+    file.import_notes,
+    source.name,
+    source.source_kind,
+    source.source_url,
+    source.license_id,
+    source.license_posture,
+    source.notes,
+    source.cautions,
+    origin.origin_name,
+    origin.origin_type,
+    ...(record.tags ?? []),
+    ...Object.values(record.sourceMetadata ?? {}).map((value) => String(value)),
+  ].filter(Boolean).join(" ");
 }
 
 function normalizeOrigin(origin) {

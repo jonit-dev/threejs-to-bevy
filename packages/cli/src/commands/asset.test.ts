@@ -1,7 +1,9 @@
 import assert from "node:assert/strict";
+import { createReadStream } from "node:fs";
 import { copyFile, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { createInterface } from "node:readline";
 import test from "node:test";
 import { pathToFileURL } from "node:url";
 
@@ -454,18 +456,33 @@ test("should export jsonl from sqlite catalog", async () => {
     const out = join(root, "asset-sources.jsonl");
     const result = await assetCommand(["source", "export", "--format", "jsonl", "--out", out, "--json"]);
     const payload = JSON.parse(result.stdout) as { count: number; outPath: string };
-    const lines = (await readFile(out, "utf8")).trim().split("\n");
-    const first = JSON.parse(lines[0] ?? "{}") as { id?: string };
+    const summary = await readJsonlSummary(out);
 
     assert.equal(result.exitCode, 0);
     assert.equal(payload.outPath, out);
-    assert.equal(payload.count, lines.length);
-    assert.equal(lines.length >= 4, true);
-    assert.equal(typeof first.id, "string");
+    assert.equal(payload.count, summary.count);
+    assert.equal(summary.count >= 4, true);
+    assert.equal(typeof summary.first.id, "string");
   } finally {
     await rm(root, { force: true, recursive: true });
   }
 });
+
+async function readJsonlSummary(path: string): Promise<{ count: number; first: { id?: string } }> {
+  const lines = createInterface({ crlfDelay: Infinity, input: createReadStream(path, { encoding: "utf8" }) });
+  let count = 0;
+  let first: { id?: string } = {};
+  for await (const line of lines) {
+    if (line.length === 0) {
+      continue;
+    }
+    count += 1;
+    if (count === 1) {
+      first = JSON.parse(line) as { id?: string };
+    }
+  }
+  return { count, first };
+}
 
 test("should suggest asset sources from a goal", async () => {
   const result = await assetCommand(["source", "suggest", "--goal", "underwater fish model", "--json"]);

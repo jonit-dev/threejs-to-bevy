@@ -79,6 +79,12 @@ CREATE TABLE asset_source_metadata (
   PRIMARY KEY (asset_file_id, key)
 );
 
+CREATE VIRTUAL TABLE asset_search USING fts5(
+  asset_file_id UNINDEXED,
+  search_text,
+  tokenize = 'unicode61'
+);
+
 CREATE INDEX idx_source_origins_type ON source_origins(origin_type);
 CREATE INDEX idx_source_origins_review ON source_origins(review_status);
 CREATE INDEX idx_asset_files_category ON asset_files(game_category);

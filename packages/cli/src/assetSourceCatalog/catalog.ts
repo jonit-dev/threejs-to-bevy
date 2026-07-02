@@ -1,5 +1,6 @@
-import { spawnSync } from "node:child_process";
-import { access, mkdir, readFile, writeFile } from "node:fs/promises";
+import { spawn, spawnSync } from "node:child_process";
+import { createWriteStream } from "node:fs";
+import { access, mkdir, open, readFile } from "node:fs/promises";
 import { createRequire } from "node:module";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -101,9 +102,13 @@ export async function findAssetSourceCatalogPath(startUrl = import.meta.url): Pr
 }
 
 export async function searchAssetSources(options: IAssetSourceSearchOptions = {}): Promise<IAssetSourceRecord[]> {
-  const where = assetSourceWhere(options);
+  const terms = options.query === undefined ? [] : searchTerms(options.query);
+  const where = assetSourceWhere({ ...options, query: undefined }, { broadCategory: terms.length > 0 });
   const limit = Math.max(1, Math.min(options.limit ?? 20, 100));
-  return queryRecords(`${baseSelectSql()} WHERE ${where.join(" AND ")} ORDER BY f.is_direct_download DESC, f.game_category, f.id LIMIT ${limit};`);
+  if (terms.length > 0) {
+    return queryRecords(`${matchedAssetSearchSql(terms)} ${baseSelectSql("JOIN matched_asset_search m ON m.asset_file_id = f.id")} WHERE ${where.join(" AND ")} ORDER BY ${searchOrderSql(options, true)} LIMIT ${limit};`);
+  }
+  return queryRecords(`${baseSelectSql()} WHERE ${where.join(" AND ")} ORDER BY ${searchOrderSql(options, false)} LIMIT ${limit};`);
 }
 
 export async function listAssetSources(options: Omit<IAssetSourceSearchOptions, "limit"> = {}): Promise<IAssetSourceRecord[]> {
@@ -111,7 +116,7 @@ export async function listAssetSources(options: Omit<IAssetSourceSearchOptions, 
   return queryRecords(`${baseSelectSql()} WHERE ${where.join(" AND ")} ORDER BY f.is_direct_download DESC, f.game_category, f.id;`);
 }
 
-function assetSourceWhere(options: IAssetSourceSearchOptions): string[] {
+function assetSourceWhere(options: IAssetSourceSearchOptions, searchOptions: { broadCategory?: boolean } = {}): string[] {
   const where = ["1 = 1"];
   if (options.includeBlocked !== true) {
     where.push("s.license_posture != 'blocked'", "o.review_status != 'blocked'");
@@ -120,7 +125,7 @@ function assetSourceWhere(options: IAssetSourceSearchOptions): string[] {
     where.push("f.is_direct_download = 1");
   }
   if (options.gameCategory !== undefined) {
-    where.push(categorySql(options.gameCategory));
+    where.push(searchOptions.broadCategory === true ? broadCategorySql(options.gameCategory) : `lower(f.game_category) = ${sqlString(options.gameCategory.toLowerCase())}`);
   }
   if (options.format !== undefined) {
     where.push(`f.format = ${sqlString(options.format)}`);
@@ -151,7 +156,9 @@ export async function getAssetSource(id: string): Promise<IAssetSourceRecord | u
 export async function suggestAssetSources(goal: string, options: Pick<IAssetSourceSearchOptions, "limit"> = {}): Promise<IAssetSourceRecord[]> {
   const words = goal.toLowerCase().split(/[^a-z0-9-]+/u).filter((word) => word.length >= 3);
   const candidateLimit = Math.max(50, Math.min((options.limit ?? 10) * 20, 250));
-  const rows = await queryRecords(`${baseSelectSql()} WHERE ${suggestWhereSql(words)} ORDER BY ${suggestScoreSql(words)} DESC, f.is_direct_download DESC, f.id LIMIT ${candidateLimit};`);
+  const rows = words.length > 0
+    ? await queryRecords(`${matchedAssetSearchSql(words)} ${baseSelectSql("JOIN matched_asset_search m ON m.asset_file_id = f.id")} WHERE ${suggestWhereSql()} ORDER BY m.rank, f.is_direct_download DESC, f.id LIMIT ${candidateLimit};`)
+    : await searchAssetSources({ includeBlocked: false, limit: candidateLimit });
   const scored = rows
     .map((row) => {
       const lexicalScore = words.reduce((score, word) => score + scoreWord(row, word), 0);
@@ -167,10 +174,77 @@ export async function suggestAssetSources(goal: string, options: Pick<IAssetSour
 }
 
 export async function exportAssetSourcesJsonl(outPath: string): Promise<{ count: number; outPath: string }> {
-  const rows = await listAssetSources({ includeBlocked: true });
   await mkdir(dirname(outPath), { recursive: true });
-  await writeFile(outPath, rows.map((row) => JSON.stringify(row)).join("\n") + "\n");
-  return { count: rows.length, outPath };
+  const dbPath = await findAssetSourceCatalogPath();
+  const nativeCount = await exportAssetSourcesJsonlWithNativeSqlite(dbPath, outPath);
+  if (nativeCount !== undefined) {
+    return { count: nativeCount, outPath };
+  }
+  const file = await open(outPath, "w");
+  const batchSize = 5000;
+  let count = 0;
+  try {
+    for (let offset = 0;; offset += batchSize) {
+      const rows = await queryRecords(`${baseSelectSql()} WHERE 1 = 1 ORDER BY f.is_direct_download DESC, f.game_category, f.id LIMIT ${batchSize} OFFSET ${offset};`);
+      if (rows.length === 0) {
+        break;
+      }
+      await file.write(rows.map((row) => JSON.stringify(row)).join("\n") + "\n");
+      count += rows.length;
+    }
+  } finally {
+    await file.close();
+  }
+  return { count, outPath };
+}
+
+async function exportAssetSourcesJsonlWithNativeSqlite(dbPath: string, outPath: string): Promise<number | undefined> {
+  const count = countAssetSourceRowsWithNativeSqlite(dbPath);
+  if (count === undefined) {
+    return undefined;
+  }
+  const result = await pipeSqliteJsonl(dbPath, exportJsonlSql(), outPath);
+  if (result === false) {
+    return undefined;
+  }
+  return count;
+}
+
+function countAssetSourceRowsWithNativeSqlite(dbPath: string): number | undefined {
+  const rows = querySqlWithNativeSqlite(dbPath, "SELECT COUNT(*) AS count FROM asset_files LIMIT 1;");
+  const count = rows?.[0] as { count?: unknown } | undefined;
+  const value = Number(count?.count);
+  return Number.isFinite(value) ? value : undefined;
+}
+
+async function pipeSqliteJsonl(dbPath: string, sql: string, outPath: string): Promise<boolean> {
+  return new Promise((resolvePromise, reject) => {
+    const sqlite = spawn("sqlite3", ["-readonly", dbPath, sql], { stdio: ["ignore", "pipe", "pipe"] });
+    const out = createWriteStream(outPath, { encoding: "utf8" });
+    let stderr = "";
+    sqlite.stderr.on("data", (chunk: Buffer) => {
+      stderr += chunk.toString("utf8");
+    });
+    sqlite.on("error", (error: NodeJS.ErrnoException) => {
+      out.destroy();
+      if (error.code === "ENOENT") {
+        resolvePromise(false);
+        return;
+      }
+      reject(error);
+    });
+    out.on("error", reject);
+    sqlite.stdout.pipe(out);
+    sqlite.on("close", (code) => {
+      out.end(() => {
+        if (code === 0) {
+          resolvePromise(true);
+          return;
+        }
+        reject(new Error(`sqlite3 failed while exporting asset source catalog:\n${stderr.trim()}`));
+      });
+    });
+  });
 }
 
 async function queryRecords(sql: string): Promise<IAssetSourceRecord[]> {
@@ -236,7 +310,7 @@ function sqliteValue(value: SqlValue | undefined): unknown {
   return value;
 }
 
-function baseSelectSql(): string {
+function baseSelectSql(extraJoin = ""): string {
   return `
 SELECT
   f.id,
@@ -285,7 +359,70 @@ SELECT
   COALESCE((SELECT json_group_object(key, value) FROM (SELECT key, value FROM asset_source_metadata WHERE asset_file_id = f.id ORDER BY key)), '{}') AS metadataJson
 FROM asset_files f
 JOIN asset_sources s ON s.id = f.source_id
-JOIN source_origins o ON o.id = s.origin_id`;
+JOIN source_origins o ON o.id = s.origin_id
+${extraJoin}`;
+}
+
+function exportJsonlSql(): string {
+  return `
+SELECT json_object(
+  'attributionRequired', json(CASE WHEN s.attribution_required = 1 THEN 'true' ELSE 'false' END),
+  'byteSize', f.byte_size,
+  'cautions', s.cautions,
+  'creator', s.creator,
+  'directName', f.direct_name,
+  'downloadUrl', f.download_url,
+  'engineFit', f.engine_fit,
+  'fileRole', f.file_role,
+  'format', f.format,
+  'gameCategory', f.game_category,
+  'id', f.id,
+  'importNotes', f.import_notes,
+  'isDirectDownload', json(CASE WHEN f.is_direct_download = 1 THEN 'true' ELSE 'false' END),
+  'licenseId', s.license_id,
+  'licensePosture', s.license_posture,
+  'licenseUrl', s.license_url,
+  'name', s.name,
+  'notes', s.notes,
+  'origin', json_object(
+    'id', o.id,
+    'importerName', o.importer_name,
+    'importerVersion', o.importer_version,
+    'importedOn', o.imported_on,
+    'notes', o.notes,
+    'originLineEnd', o.origin_line_end,
+    'originLineStart', o.origin_line_start,
+    'originName', o.origin_name,
+    'originPath', o.origin_path,
+    'originRef', o.origin_ref,
+    'originSection', o.origin_section,
+    'originType', o.origin_type,
+    'originUrl', o.origin_url,
+    'reviewEvidence', o.review_evidence,
+    'reviewStatus', o.review_status
+  ),
+  'previewUrl', f.preview_url,
+  'provenanceUrl', s.provenance_url,
+  'recommendedNextCommand', CASE
+    WHEN f.download_url IS NOT NULL THEN 'curl -L ' || f.download_url || ' -o assets/' || f.id || '.' || f.format || ' && tn asset inspect assets/' || f.id || '.' || f.format || ' --json'
+    WHEN f.file_role IN ('material-index', 'texture-index', 'hdri-index') THEN 'Review ' || s.source_url || ', select exact files, record source metadata, then reference the texture/HDRI from structured asset source.'
+    WHEN f.file_role IN ('pack-page', 'index') THEN 'Review ' || s.source_url || ', download a selected model or pack, record exact subasset metadata, then run tn asset inspect <path> --json.'
+    ELSE 'Review ' || s.source_url || ', record exact source metadata, then run the relevant asset validation command.'
+  END,
+  'redistributionAllowed', json(CASE WHEN s.redistribution_allowed = 1 THEN 'true' ELSE 'false' END),
+  'reviewedBy', s.reviewed_by,
+  'reviewedOn', s.reviewed_on,
+  'sha256', f.sha256,
+  'sourceId', f.source_id,
+  'sourceKind', s.source_kind,
+  'sourceMetadata', json(COALESCE((SELECT json_group_object(key, value) FROM (SELECT key, value FROM asset_source_metadata WHERE asset_file_id = f.id ORDER BY key)), '{}')),
+  'sourceUrl', s.source_url,
+  'tags', json(COALESCE((SELECT json_group_array(tag) FROM (SELECT tag FROM asset_tags WHERE asset_file_id = f.id ORDER BY tag)), '[]'))
+)
+FROM asset_files f
+JOIN asset_sources s ON s.id = f.source_id
+JOIN source_origins o ON o.id = s.origin_id
+ORDER BY f.is_direct_download DESC, f.game_category, f.id;`;
 }
 
 function recordFromRow(row: Record<string, unknown>): IAssetSourceRecord {
@@ -388,7 +525,7 @@ function scoreWord(row: IAssetSourceRecord, word: string): number {
   return score;
 }
 
-function categorySql(category: string): string {
+function broadCategorySql(category: string): string {
   const value = category.toLowerCase();
   const likePrefix = `${value}-%`;
   const likeSuffix = `%-${value}`;
@@ -404,6 +541,19 @@ function categorySql(category: string): string {
         AND lower(category_tag.tag) = ${sqlString(value)}
     )
   )`;
+}
+
+function searchOrderSql(options: IAssetSourceSearchOptions, hasMatchedSearch: boolean): string {
+  const order = [];
+  if (options.gameCategory !== undefined) {
+    order.push(`CASE WHEN lower(f.game_category) = ${sqlString(options.gameCategory.toLowerCase())} THEN 0 ELSE 1 END`);
+  }
+  order.push("CASE WHEN f.format LIKE '%-map' THEN 1 ELSE 0 END");
+  if (hasMatchedSearch) {
+    order.push("m.rank");
+  }
+  order.push("f.is_direct_download DESC", "f.game_category", "f.id");
+  return order.join(", ");
 }
 
 function keywordSql(term: string): string {
@@ -429,14 +579,28 @@ function keywordSql(term: string): string {
 }
 
 function searchTerms(query: string): string[] {
-  return [...new Set(query.toLowerCase().split(/[^a-z0-9-]+/u).filter((word) => word.length >= 2))].slice(0, 8);
+  return [...new Set(query.toLowerCase().split(/[^a-z0-9]+/u).filter((word) => word.length >= 2))].slice(0, 8);
 }
 
-function suggestWhereSql(words: string[]): string {
+function matchedAssetSearchSql(terms: string[]): string {
+  return `WITH matched_asset_search AS (
+    SELECT asset_file_id, bm25(asset_search) AS rank
+    FROM asset_search
+    WHERE asset_search MATCH ${ftsQuerySql(terms)}
+  )`;
+}
+
+function ftsQuerySql(terms: string[]): string {
+  const query = terms
+    .map((term) => term.replace(/[^a-z0-9]/gu, ""))
+    .filter(Boolean)
+    .map((term) => `${term}*`)
+    .join(" OR ");
+  return sqlString(query || "__nomatch__");
+}
+
+function suggestWhereSql(): string {
   const where = ["s.license_posture != 'blocked'", "o.review_status != 'blocked'"];
-  if (words.length > 0) {
-    where.push(`(${words.slice(0, 8).map((word) => keywordSql(word)).join(" OR ")})`);
-  }
   return where.join(" AND ");
 }
 
