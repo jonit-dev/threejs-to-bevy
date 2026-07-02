@@ -10,6 +10,7 @@ import { mkdir } from "node:fs/promises";
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const defaultSchema = resolve(root, "docs/data/asset-sources.schema.sql");
 const defaultSeed = resolve(root, "docs/data/asset-sources.seed.jsonl");
+const defaultWorkflowDoc = resolve(root, "docs/workflows/open-source-3d-asset-kits.md");
 const defaultOut = resolve(root, "packages/cli/data/asset-sources.sqlite");
 const schemaVersion = "1";
 
@@ -17,15 +18,20 @@ async function main() {
   const args = parseArgs(process.argv.slice(2));
   const schemaPath = resolve(root, args.schema ?? defaultSchema);
   const seedPath = resolve(root, args.seed ?? defaultSeed);
+  const workflowDocPath = resolve(root, args.workflowDoc ?? defaultWorkflowDoc);
   const outPath = resolve(root, args.out ?? defaultOut);
-  const records = await readSeed(seedPath);
+  const records = dedupeRecords([
+    ...await readSeed(seedPath),
+    ...await readWorkflowDocRecords(workflowDocPath),
+    ...readCuratedDirectRecords(),
+  ]);
   validateRecords(records);
 
   if (args.check) {
     const temp = await mkdtemp(resolve(tmpdir(), "tn-asset-sources-"));
     try {
       const checkDb = resolve(temp, "asset-sources.sqlite");
-      const report = await buildCatalog({ outPath: checkDb, records, schemaPath, seedPath });
+      const report = await buildCatalog({ outPath: checkDb, records, schemaPath, seedPath, workflowDocPath });
       const current = await readFile(outPath);
       const generated = await readFile(checkDb);
       if (!current.equals(generated)) {
@@ -38,8 +44,264 @@ async function main() {
     return;
   }
 
-  const report = await buildCatalog({ outPath, records, schemaPath, seedPath });
+  const report = await buildCatalog({ outPath, records, schemaPath, seedPath, workflowDocPath });
   printReport(report, false);
+}
+
+function dedupeRecords(records) {
+  const seen = new Set();
+  return records.filter((record) => {
+    const key = record.file.id;
+    if (seen.has(key)) {
+      return false;
+    }
+    seen.add(key);
+    return true;
+  });
+}
+
+function readCuratedDirectRecords() {
+  return [
+    ...directRepoRecords({
+      category: "racing",
+      creator: "Kenney",
+      defaultTags: ["racing", "kenney", "glb"],
+      licenseEvidence: "Workflow doc identifies Kenney Starter Kit Racing as MIT code with included CC0 assets; repository exposes direct GLB models.",
+      originLine: 143,
+      originName: "Kenney Starter Kit Racing",
+      originRef: "f5241ebdf00c25bc951bf4fdb7950bb1b78b4bcc",
+      repo: "KenneyNL/Starter-Kit-Racing",
+      section: "Kenney Shortlist",
+      sourceRoot: "models",
+      files: [
+        ["decoration-empty", "models/decoration-empty.glb", 55764],
+        ["decoration-forest", "models/decoration-forest.glb", 189784],
+        ["decoration-tents", "models/decoration-tents.glb", 168004],
+        ["track-bump", "models/track-bump.glb", 17888],
+        ["track-corner", "models/track-corner.glb", 103480],
+        ["track-finish", "models/track-finish.glb", 24544],
+        ["track-straight", "models/track-straight.glb", 11080],
+        ["track-tents", "models/track-tents.glb", 167988],
+        ["vehicle-motorcycle", "models/vehicle-motorcycle.glb", 97172],
+        ["vehicle-truck-green", "models/vehicle-truck-green.glb", 104228],
+        ["vehicle-truck-purple", "models/vehicle-truck-purple.glb", 78552],
+        ["vehicle-truck-red", "models/vehicle-truck-red.glb", 92436],
+        ["vehicle-truck-yellow", "models/vehicle-truck-yellow.glb", 93480],
+      ],
+    }),
+    ...directRepoRecords({
+      category: "platformer",
+      creator: "Kenney",
+      defaultTags: ["platformer", "kenney", "glb"],
+      licenseEvidence: "Workflow doc identifies Kenney Starter Kit 3D Platformer as MIT code with included CC0 assets; repository exposes direct GLB models.",
+      originLine: 145,
+      originName: "Kenney Starter Kit 3D Platformer",
+      originRef: "3fa8a04b1c01ab23db43123d4ce814a34c3fc7f0",
+      repo: "KenneyNL/Starter-Kit-3D-Platformer",
+      section: "Kenney Shortlist",
+      sourceRoot: "models",
+      files: [
+        ["block-coin", "models/block-coin.glb"],
+        ["brick-particle", "models/brick-particle.glb"],
+        ["brick", "models/brick.glb"],
+        ["character", "models/character.glb"],
+        ["cloud", "models/cloud.glb"],
+        ["coin", "models/coin.glb"],
+        ["dust", "models/dust.glb"],
+        ["flag", "models/flag.glb"],
+        ["grass-small", "models/grass-small.glb"],
+        ["grass", "models/grass.glb"],
+        ["platform-falling", "models/platform-falling.glb"],
+        ["platform-grass-large-round", "models/platform-grass-large-round.glb"],
+        ["platform-large", "models/platform-large.glb"],
+        ["platform-medium", "models/platform-medium.glb"],
+        ["platform", "models/platform.glb"],
+      ],
+    }),
+    ...directRepoRecords({
+      category: "rpg-adventure",
+      creator: "Kenney",
+      defaultTags: ["arena", "rpg-adventure", "kenney", "glb"],
+      licenseEvidence: "Workflow doc identifies Kenney Starter Kit Basic Scene as MIT code with included CC0 assets; repository exposes direct Mini Arena GLB models.",
+      originLine: 146,
+      originName: "Kenney Starter Kit Basic Scene",
+      originRef: "a6927e66ff8dd8e173660ce4825abe773c65f683",
+      repo: "KenneyNL/Starter-Kit-Basic-Scene",
+      section: "Kenney Shortlist",
+      sourceRoot: "sample/Mini Arena/Models/GLB format",
+      files: [
+        ["banner", "sample/Mini Arena/Models/GLB format/banner.glb", 22108],
+        ["block", "sample/Mini Arena/Models/GLB format/block.glb", 2804],
+        ["border-corner", "sample/Mini Arena/Models/GLB format/border-corner.glb", 11124],
+        ["border-straight", "sample/Mini Arena/Models/GLB format/border-straight.glb", 6520],
+        ["bricks", "sample/Mini Arena/Models/GLB format/bricks.glb", 13192],
+        ["character-soldier", "sample/Mini Arena/Models/GLB format/character-soldier.glb", 215704],
+        ["column-damaged", "sample/Mini Arena/Models/GLB format/column-damaged.glb", 14308],
+        ["column", "sample/Mini Arena/Models/GLB format/column.glb", 17140],
+        ["floor-detail", "sample/Mini Arena/Models/GLB format/floor-detail.glb", 6484],
+        ["floor", "sample/Mini Arena/Models/GLB format/floor.glb", 1796],
+        ["stairs-corner-inner", "sample/Mini Arena/Models/GLB format/stairs-corner-inner.glb", 7584],
+        ["stairs-corner", "sample/Mini Arena/Models/GLB format/stairs-corner.glb", 8752],
+        ["stairs", "sample/Mini Arena/Models/GLB format/stairs.glb", 5244],
+        ["statue", "sample/Mini Arena/Models/GLB format/statue.glb", 51012],
+        ["tree", "sample/Mini Arena/Models/GLB format/tree.glb", 34164],
+        ["trophy", "sample/Mini Arena/Models/GLB format/trophy.glb", 23752],
+        ["wall-corner", "sample/Mini Arena/Models/GLB format/wall-corner.glb", 22476],
+        ["wall-gate", "sample/Mini Arena/Models/GLB format/wall-gate.glb", 31064],
+        ["wall", "sample/Mini Arena/Models/GLB format/wall.glb", 16000],
+        ["weapon-rack", "sample/Mini Arena/Models/GLB format/weapon-rack.glb", 20056],
+        ["weapon-spear", "sample/Mini Arena/Models/GLB format/weapon-spear.glb", 7152],
+        ["weapon-sword", "sample/Mini Arena/Models/GLB format/weapon-sword.glb", 9340],
+      ],
+    }),
+    ...directRepoRecords({
+      category: "underwater",
+      creator: "Babylon.js Assets contributors",
+      defaultTags: ["underwater", "babylon", "glb"],
+      licenseEvidence: "Workflow doc identifies Babylon.js Assets as an underwater and cross-engine GLB source; repository README says CC BY 4.0 unless folder-specific terms differ.",
+      licenseId: "CC-BY-4.0",
+      licensePosture: "permissive-attribution",
+      attributionRequired: 1,
+      originLine: 266,
+      originName: "Babylon.js Assets",
+      originRef: "070cf3313f6730f836ffaef879276d506f74df38",
+      repo: "BabylonJS/Assets",
+      section: "glTF And Loader Test Sources",
+      sourceRoot: "meshes/Demos/UnderWaterScene",
+      files: [
+        ["greySnapper_vertColor", "meshes/Demos/UnderWaterScene/fish/greySnapper_vertColor.glb"],
+        ["underwaterGround", "meshes/Demos/UnderWaterScene/ground/underwaterGround.glb"],
+        ["underwaterSceneNavMesh", "meshes/Demos/UnderWaterScene/navMesh/underwaterSceneNavMesh.glb"],
+        ["underwaterSceneShadowCatcher", "meshes/Demos/UnderWaterScene/shadows/underwaterSceneShadowCatcher.glb"],
+        ["underwaterScene", "meshes/Demos/UnderWaterScene/underwaterScene.glb"],
+        ["underwaterSceneRocksBarnaclesMussels", "meshes/Demos/UnderWaterScene/underwaterSceneRocksBarnaclesMussels.glb"],
+      ],
+    }),
+    ...directRepoRecords({
+      category: "loader-conformance",
+      creator: "Khronos Group sample contributors",
+      defaultTags: ["gltf", "loader", "fixture", "khronos"],
+      licenseEvidence: "Workflow doc identifies Khronos glTF Sample Assets as primary loader coverage; repository provides direct binary glTF assets with per-model metadata.",
+      originLine: 249,
+      originName: "Khronos glTF Sample Assets",
+      originRef: "2bac6f8c57bf471df0d2a1e8a8ec023c7801dddf",
+      repo: "KhronosGroup/glTF-Sample-Assets",
+      section: "glTF And Loader Test Sources",
+      sourceRoot: "Models",
+      files: [
+        ["Avocado", "Models/Avocado/glTF-Binary/Avocado.glb"],
+        ["BarramundiFish", "Models/BarramundiFish/glTF-Binary/BarramundiFish.glb"],
+        ["BoomBox", "Models/BoomBox/glTF-Binary/BoomBox.glb"],
+        ["Box", "Models/Box/glTF-Binary/Box.glb"],
+        ["BoxTextured", "Models/BoxTextured/glTF-Binary/BoxTextured.glb"],
+        ["CarConcept", "Models/CarConcept/glTF-Binary/CarConcept.glb"],
+        ["CesiumMan", "Models/CesiumMan/glTF-Binary/CesiumMan.glb"],
+        ["CesiumMilkTruck", "Models/CesiumMilkTruck/glTF-Binary/CesiumMilkTruck.glb"],
+        ["DamagedHelmet", "Models/DamagedHelmet/glTF-Binary/DamagedHelmet.glb"],
+        ["Duck", "Models/Duck/glTF-Binary/Duck.glb"],
+        ["Fox", "Models/Fox/glTF-Binary/Fox.glb"],
+        ["Lantern", "Models/Lantern/glTF-Binary/Lantern.glb"],
+        ["MetalRoughSpheres", "Models/MetalRoughSpheres/glTF-Binary/MetalRoughSpheres.glb"],
+        ["RiggedFigure", "Models/RiggedFigure/glTF-Binary/RiggedFigure.glb"],
+        ["ToyCar", "Models/ToyCar/glTF-Binary/ToyCar.glb"],
+        ["VirtualCity", "Models/VirtualCity/glTF-Binary/VirtualCity.glb"],
+      ],
+    }),
+  ];
+}
+
+function directRepoRecords(config) {
+  const branch = config.branch ?? "main";
+  const encodedSourceRoot = encodePath(config.sourceRoot);
+  return config.files.map(([directName, path, byteSize]) => {
+    const slug = slugify(`${config.repo}-${directName}`);
+    const encodedPath = encodePath(path);
+    const tags = [...new Set([...config.defaultTags, ...directName.toLowerCase().split(/[-_\s]+/u).filter(Boolean)])];
+    return {
+      origin: {
+        id: `origin-direct-${slug}`,
+        originType: "repository",
+        originName: config.originName,
+        originUrl: `https://github.com/${config.repo}`,
+        originPath: path,
+        originSection: config.section,
+        originRef: config.originRef,
+        originLineStart: config.originLine,
+        originLineEnd: config.originLine,
+        importerName: "curated-direct-records",
+        importerVersion: "1",
+        importedOn: "2026-07-02",
+        reviewStatus: "reviewed",
+        reviewEvidence: config.licenseEvidence,
+        notes: `Direct ${config.category} GLB from curated workflow source.`,
+      },
+      source: {
+        id: `source-direct-${slug}`,
+        name: `${config.originName} ${directName}`,
+        sourceKind: "direct-file",
+        sourceUrl: `https://github.com/${config.repo}/tree/${branch}/${encodedSourceRoot}`,
+        provenanceUrl: `https://github.com/${config.repo}/blob/${branch}/${encodedPath}`,
+        creator: config.creator,
+        licenseId: config.licenseId ?? "CC0-1.0",
+        licenseUrl: `https://github.com/${config.repo}`,
+        licensePosture: config.licensePosture ?? "cc0",
+        redistributionAllowed: 1,
+        attributionRequired: config.attributionRequired ?? 0,
+        notes: `Direct GLB ${directName} from ${config.originName}.`,
+        cautions: "Preserve upstream provenance and inspect bounds, scale, materials, and dependencies before scene use.",
+        reviewedOn: "2026-07-02",
+        reviewedBy: "repo-curation",
+      },
+      file: {
+        id: `${slug}-glb`,
+        directName,
+        gameCategory: categoryForDirectAsset(config.category, directName),
+        downloadUrl: `https://raw.githubusercontent.com/${config.repo}/${branch}/${encodedPath}`,
+        format: "glb",
+        fileRole: "model",
+        previewUrl: `https://github.com/${config.repo}/blob/${branch}/${encodedPath}`,
+        sha256: null,
+        byteSize: byteSize ?? null,
+        engineFit: "web-and-native",
+        importNotes: "Direct catalog record generated from curated workflow source; run tn asset inspect and tn model-test after download.",
+        isDirectDownload: 1,
+      },
+      tags,
+      sourceMetadata: {
+        upstreamRepository: config.repo,
+        sourcePath: path,
+        workflowDocPath: "docs/workflows/open-source-3d-asset-kits.md",
+        workflowDocSection: config.section,
+      },
+    };
+  });
+}
+
+function categoryForDirectAsset(defaultCategory, name) {
+  const lower = name.toLowerCase();
+  if (lower.includes("tree") || lower.includes("forest") || lower.includes("grass")) {
+    return "nature-terrain";
+  }
+  if (lower.includes("wall") || lower.includes("floor") || lower.includes("stairs") || lower.includes("border")) {
+    return "dungeon-crawler";
+  }
+  if (lower.includes("car") || lower.includes("truck") || lower.includes("vehicle") || lower.includes("track")) {
+    return "racing";
+  }
+  if (lower.includes("fish") || lower.includes("underwater")) {
+    return "underwater";
+  }
+  if (lower.includes("rigged") || lower.includes("fox") || lower.includes("cesiumman")) {
+    return "animation-skinning";
+  }
+  if (lower.includes("city")) {
+    return "city-builder";
+  }
+  return defaultCategory;
+}
+
+function encodePath(path) {
+  return path.split("/").map((part) => encodeURIComponent(part)).join("/");
 }
 
 async function readSeed(seedPath) {
@@ -57,14 +319,16 @@ async function readSeed(seedPath) {
     });
 }
 
-async function buildCatalog({ outPath, records, schemaPath, seedPath }) {
+async function buildCatalog({ outPath, records, schemaPath, seedPath, workflowDocPath }) {
   const schema = await readFile(schemaPath, "utf8");
+  const workflowDoc = await readFile(workflowDocPath, "utf8");
   await mkdir(dirname(outPath), { recursive: true });
   const sql = [
     schema,
     "BEGIN;",
     insert("catalog_meta", { key: "schema_version", value: schemaVersion }),
     insert("catalog_meta", { key: "seed_sha256", value: hashText(await readFile(seedPath, "utf8")) }),
+    insert("catalog_meta", { key: "workflow_doc_sha256", value: hashText(workflowDoc) }),
     insert("catalog_meta", { key: "builder", value: "scripts/build-asset-source-catalog.mjs" }),
     insert("catalog_meta", { key: "built_on", value: "deterministic" }),
     ...records.flatMap((record) => sqlForRecord(record)),
@@ -81,6 +345,233 @@ async function buildCatalog({ outPath, records, schemaPath, seedPath }) {
     throw new Error(`sqlite3 failed while building asset source catalog:\n${result.stderr || result.stdout}`);
   }
   return summarize(outPath);
+}
+
+async function readWorkflowDocRecords(workflowDocPath) {
+  const text = await readFile(workflowDocPath, "utf8");
+  const lines = text.split(/\r?\n/u);
+  const records = [];
+  let section = "";
+  let tableHeader = [];
+  let inTable = false;
+
+  for (const [index, line] of lines.entries()) {
+    const heading = /^##\s+(.+)$/u.exec(line);
+    if (heading !== null) {
+      section = heading[1];
+      tableHeader = [];
+      inTable = false;
+      continue;
+    }
+    if (!line.startsWith("|")) {
+      inTable = false;
+      continue;
+    }
+    const cells = splitMarkdownTableRow(line);
+    if (cells.length < 4) {
+      continue;
+    }
+    if (!inTable) {
+      tableHeader = cells.map((cell) => cell.toLowerCase());
+      inTable = true;
+      continue;
+    }
+    if (cells.every((cell) => /^:?-{3,}:?$/u.test(cell))) {
+      continue;
+    }
+    if (tableHeader.length < 4 || !tableHeader[0].includes("source")) {
+      continue;
+    }
+    const source = parseMarkdownLink(cells[0]);
+    if (source === undefined) {
+      continue;
+    }
+    records.push(workflowRecord({ source, cells, section, lineNumber: index + 1, workflowDocPath }));
+  }
+  return records;
+}
+
+function splitMarkdownTableRow(line) {
+  return line
+    .replace(/^\|/u, "")
+    .replace(/\|$/u, "")
+    .split("|")
+    .map((cell) => cell.trim());
+}
+
+function parseMarkdownLink(markdown) {
+  const match = /\[([^\]]+)\]\(([^)]+)\)/u.exec(markdown);
+  if (match === null) {
+    return undefined;
+  }
+  return { name: match[1], url: match[2] };
+}
+
+function workflowRecord({ source, cells, section, lineNumber, workflowDocPath }) {
+  const licenseText = cells[1] ?? "";
+  const bestFit = cells[2] ?? "";
+  const notes = cells[3] ?? "";
+  const slug = slugify(`${section}-${source.name}`);
+  const sourceKind = sourceKindForUrl(source.url);
+  const license = classifyLicense(licenseText);
+  const category = categoryForWorkflowRow(`${section} ${source.name} ${bestFit} ${notes}`);
+  const role = fileRoleForWorkflowRow(section, bestFit, source.url);
+  const sourcePath = "docs/workflows/open-source-3d-asset-kits.md";
+  return {
+    origin: {
+      id: `origin-workflow-${slug}`,
+      originType: sourceKind === "repository" ? "repository" : "asset-page",
+      originName: source.name,
+      originUrl: source.url,
+      originPath: sourcePath,
+      originSection: section,
+      originRef: "workflow-doc-table",
+      originLineStart: lineNumber,
+      originLineEnd: lineNumber,
+      importerName: "workflow-doc-table-parser",
+      importerVersion: "1",
+      importedOn: "2026-07-02",
+      reviewStatus: license.reviewStatus,
+      reviewEvidence: `Curated workflow row: ${licenseText}`,
+      notes,
+    },
+    source: {
+      id: `source-workflow-${slug}`,
+      name: source.name,
+      sourceKind,
+      sourceUrl: source.url,
+      provenanceUrl: `${sourcePath}#${slugify(section)}`,
+      creator: creatorFromName(source.name),
+      licenseId: license.licenseId,
+      licenseUrl: source.url,
+      licensePosture: license.licensePosture,
+      redistributionAllowed: license.redistributionAllowed,
+      attributionRequired: license.attributionRequired,
+      notes: bestFit,
+      cautions: notes,
+      reviewedOn: "2026-07-02",
+      reviewedBy: "workflow-doc-table-parser",
+    },
+    file: {
+      id: `workflow-${slug}`,
+      directName: `${source.name} ${role}`,
+      gameCategory: category,
+      downloadUrl: null,
+      format: "unknown",
+      fileRole: role,
+      previewUrl: source.url,
+      sha256: null,
+      byteSize: null,
+      engineFit: "web-and-native",
+      importNotes: `Workflow fallback source from ${section}. Select exact files, verify license/format, and record subasset provenance before use.`,
+      isDirectDownload: 0,
+    },
+    tags: tagsForWorkflowRow(`${section} ${source.name} ${bestFit} ${notes} ${category}`),
+    sourceMetadata: {
+      workflowDocPath,
+      workflowDocSection: section,
+      workflowDocLine: lineNumber,
+      workflowLicenseText: licenseText,
+      workflowBestFit: bestFit,
+    },
+  };
+}
+
+function sourceKindForUrl(url) {
+  if (url.includes("github.com")) {
+    return "repository";
+  }
+  if (url.includes("api.") || url.includes("ambientcg.com")) {
+    return "index";
+  }
+  return "pack-page";
+}
+
+function classifyLicense(text) {
+  const lower = text.toLowerCase();
+  if (lower.includes("cc0") || lower.includes("public domain") || lower.includes("unlicense")) {
+    return { attributionRequired: 0, licenseId: lower.includes("unlicense") ? "Unlicense" : "CC0-1.0", licensePosture: "cc0", redistributionAllowed: 1, reviewStatus: "reviewed" };
+  }
+  if (lower.includes("cc by") || lower.includes("attribution")) {
+    return { attributionRequired: 1, licenseId: "CC-BY-or-attribution-review", licensePosture: "permissive-attribution", redistributionAllowed: 1, reviewStatus: "reviewed" };
+  }
+  if (lower.includes("mit") || lower.includes("apache") || lower.includes("bsd") || lower.includes("zlib")) {
+    return { attributionRequired: 1, licenseId: "Permissive-Review", licensePosture: "permissive-attribution", redistributionAllowed: 1, reviewStatus: "needs-license-review" };
+  }
+  return { attributionRequired: 0, licenseId: "ReviewRequired", licensePosture: "review-needed", redistributionAllowed: 0, reviewStatus: "needs-license-review" };
+}
+
+function categoryForWorkflowRow(text) {
+  const lower = text.toLowerCase();
+  const rules = [
+    ["space", ["space", "spaceship", "spacecraft", "starfield", "planet", "spaceport", "space station"]],
+    ["base-building", ["base building", "colony", "space base"]],
+    ["racing", ["racing", "driving", "vehicle", "car", "road"]],
+    ["platformer", ["platformer", "jump", "platform"]],
+    ["city-builder", ["city", "town", "builder", "buildings"]],
+    ["nature-terrain", ["nature", "terrain", "vegetation", "rocks", "trees", "outdoor"]],
+    ["cozy-interiors", ["cozy", "interior", "kitchen", "room"]],
+    ["rpg-adventure", ["rpg", "adventure", "fantasy", "character", "weapon"]],
+    ["dungeon-crawler", ["dungeon", "roguelite", "rogue"]],
+    ["shooter", ["shooter", "fps", "tps", "gun", "blaster"]],
+    ["survival-horror", ["survival", "horror", "zombie", "graveyard"]],
+    ["stealth", ["stealth", "corridor", "sci-fi interior"]],
+    ["rts", ["rts", "empire", "strategy"]],
+    ["tower-defense", ["tower defense"]],
+    ["factory-automation", ["factory", "automation", "conveyor"]],
+    ["farming-life-sim", ["farm", "farming", "life sim", "animal"]],
+    ["restaurant-cooking", ["restaurant", "cooking", "sushi"]],
+    ["puzzle", ["puzzle", "sokoban", "logic"]],
+    ["tabletop", ["tabletop", "board", "card", "dice"]],
+    ["sports-minigames", ["sports", "minigame", "mini-game", "party"]],
+    ["golf", ["golf", "minigolf"]],
+    ["bowling", ["bowling"]],
+    ["train", ["train", "rail"]],
+    ["naval", ["naval", "boat", "watercraft", "pirate", "ship"]],
+    ["flight", ["flight", "aircraft", "plane", "aerospace"]],
+    ["underwater", ["underwater", "fish", "reef"]],
+    ["webxr", ["webxr", "vr", "controller"]],
+    ["pbr-test", ["pbr", "material", "texture", "hdri", "ibl", "shader"]],
+    ["animation-skinning", ["animation", "skinning", "rigged", "humanoid"]],
+    ["loader-conformance", ["gltf", "loader", "conformance", "parser"]],
+    ["prototype", ["prototype", "placeholder", "greybox", "base mesh"]],
+  ];
+  return rules.find(([, terms]) => terms.some((term) => lower.includes(term)))?.[0] ?? "general";
+}
+
+function fileRoleForWorkflowRow(section, bestFit, url) {
+  const lower = `${section} ${bestFit} ${url}`.toLowerCase();
+  if (lower.includes("hdri") || lower.includes("ibl") || lower.includes("skybox")) {
+    return "hdri-index";
+  }
+  if (lower.includes("material") || lower.includes("texture") || lower.includes("pbr")) {
+    return lower.includes("model") ? "texture-index" : "material-index";
+  }
+  if (lower.includes("github-hosted") || lower.includes("library") || lower.includes("index")) {
+    return "index";
+  }
+  return "pack-page";
+}
+
+function tagsForWorkflowRow(text) {
+  const words = text
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/gu, " ")
+    .split(/\s+/u)
+    .filter((word) => word.length >= 3 && !["and", "the", "for", "with", "from", "when", "use", "this", "that", "assets", "source"].includes(word));
+  return [...new Set(words)].slice(0, 12);
+}
+
+function creatorFromName(name) {
+  return name.split(/[/:|-]/u)[0].trim();
+}
+
+function slugify(value) {
+  return value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/gu, "-")
+    .replace(/^-|-$/gu, "")
+    .slice(0, 90);
 }
 
 function sqlForRecord(record) {
@@ -246,6 +737,9 @@ function parseArgs(argv) {
       args.check = true;
     } else if (arg === "--schema" || arg === "--seed" || arg === "--out") {
       args[arg.slice(2)] = argv[index + 1];
+      index += 1;
+    } else if (arg === "--workflow-doc") {
+      args.workflowDoc = argv[index + 1];
       index += 1;
     } else {
       throw new Error(`Unknown argument: ${arg}`);

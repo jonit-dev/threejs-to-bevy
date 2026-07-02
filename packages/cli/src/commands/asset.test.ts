@@ -352,7 +352,7 @@ test("should search typed material and texture source records by file role", asy
 });
 
 test("should include fallback records when direct-only search has no match", async () => {
-  const result = await assetCommand(["source", "search", "--game-category", "racing", "--format", "glb", "--direct-only", "--json"]);
+  const result = await assetCommand(["source", "search", "--game-category", "cozy-interiors", "--format", "glb", "--direct-only", "--json"]);
   const payload = JSON.parse(result.stdout) as {
     code: string;
     fallbackRecords: Array<{ id: string; isDirectDownload: boolean; recommendedNextCommand: string }>;
@@ -362,8 +362,38 @@ test("should include fallback records when direct-only search has no match", asy
   assert.equal(result.exitCode, 0);
   assert.equal(payload.code, "TN_ASSET_SOURCE_NO_MATCH");
   assert.deepEqual(payload.records, []);
-  assert.equal(payload.fallbackRecords.some((record) => record.id === "kenney-racing-kit-pack" && !record.isDirectDownload), true);
+  assert.equal(payload.fallbackRecords.some((record) => record.id === "tiny-treats-index" && !record.isDirectDownload), true);
   assert.equal(payload.fallbackRecords.every((record) => /Review .*tn asset inspect/.test(record.recommendedNextCommand)), true);
+});
+
+test("should find curated bowling pack records by keyword and broad category", async () => {
+  const keyword = await assetCommand(["source", "search", "--query", "bowling pins", "--json"]);
+  const keywordPayload = JSON.parse(keyword.stdout) as {
+    records: Array<{ id: string; isDirectDownload: boolean; licenseId: string }>;
+  };
+
+  assert.equal(keyword.exitCode, 0);
+  assert.equal(keywordPayload.records.some((record) => record.id === "babylon-bowling-ball-glb" && record.isDirectDownload && record.licenseId === "CC-BY-4.0"), true);
+  assert.equal(keywordPayload.records.some((record) => record.id === "babylon-bowling-pin-glb" && record.isDirectDownload && record.licenseId === "CC-BY-4.0"), true);
+  assert.equal(keywordPayload.records.some((record) => record.id === "deplorablemountaineer-bowling-ball-pins-pack" && !record.isDirectDownload && record.licenseId === "CC0-1.0"), true);
+
+  const category = await assetCommand(["source", "search", "--game-category", "sports", "--json"]);
+  const categoryPayload = JSON.parse(category.stdout) as {
+    records: Array<{ id: string }>;
+  };
+
+  assert.equal(category.exitCode, 0);
+  assert.equal(categoryPayload.records.some((record) => record.id === "deplorablemountaineer-bowling-ball-pins-pack"), true);
+});
+
+test("should only suggest records with lexical goal matches", async () => {
+  const result = await assetCommand(["source", "suggest", "--goal", "bowling ball pins alley", "--json"]);
+  const payload = JSON.parse(result.stdout) as { records: Array<{ id: string }> };
+
+  assert.equal(result.exitCode, 0);
+  assert.equal(payload.records.some((record) => record.id === "babylon-bowling-ball-glb"), true);
+  assert.equal(payload.records.some((record) => record.id === "babylon-bowling-pin-glb"), true);
+  assert.equal(payload.records.some((record) => record.id === "babylon-grey-snapper-vert-color"), false);
 });
 
 test("should get one asset source record by id", async () => {

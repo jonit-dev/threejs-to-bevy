@@ -67,6 +67,7 @@ export interface IAssetSourceSearchOptions {
   includeBlocked?: boolean;
   license?: string;
   limit?: number;
+  query?: string;
   tag?: string;
 }
 
@@ -118,7 +119,7 @@ function assetSourceWhere(options: IAssetSourceSearchOptions): string[] {
     where.push("f.is_direct_download = 1");
   }
   if (options.gameCategory !== undefined) {
-    where.push(`f.game_category = ${sqlString(options.gameCategory)}`);
+    where.push(categorySql(options.gameCategory));
   }
   if (options.format !== undefined) {
     where.push(`f.format = ${sqlString(options.format)}`);
@@ -132,6 +133,12 @@ function assetSourceWhere(options: IAssetSourceSearchOptions): string[] {
   if (options.tag !== undefined) {
     where.push(`EXISTS (SELECT 1 FROM asset_tags tag_filter WHERE tag_filter.asset_file_id = f.id AND tag_filter.tag = ${sqlString(options.tag)})`);
   }
+  if (options.query !== undefined) {
+    const terms = searchTerms(options.query);
+    if (terms.length > 0) {
+      where.push(`(${terms.map((term) => keywordSql(term)).join(" OR ")})`);
+    }
+  }
   return where;
 }
 
@@ -144,11 +151,15 @@ export async function suggestAssetSources(goal: string, options: Pick<IAssetSour
   const words = goal.toLowerCase().split(/[^a-z0-9-]+/u).filter((word) => word.length >= 3);
   const rows = await searchAssetSources({ includeBlocked: false, limit: 100 });
   const scored = rows
-    .map((row) => ({
-      row,
-      score: words.reduce((score, word) => score + scoreWord(row, word), 0) + (row.isDirectDownload ? 2 : 0),
-    }))
-    .filter((entry) => entry.score > 0)
+    .map((row) => {
+      const lexicalScore = words.reduce((score, word) => score + scoreWord(row, word), 0);
+      return {
+        row,
+        score: lexicalScore + (row.isDirectDownload ? 2 : 0),
+        lexicalScore,
+      };
+    })
+    .filter((entry) => entry.lexicalScore > 0)
     .sort((a, b) => b.score - a.score || a.row.id.localeCompare(b.row.id));
   return scored.slice(0, Math.max(1, Math.min(options.limit ?? 10, 50))).map((entry) => entry.row);
 }
@@ -316,7 +327,21 @@ function nextCommandForRecord(record: { downloadUrl: string | null; fileRole: st
 
 function scoreWord(row: IAssetSourceRecord, word: string): number {
   let score = 0;
-  const fields = [row.id, row.directName, row.gameCategory, row.name, row.licenseId, row.licensePosture, ...row.tags].map((field) => field.toLowerCase());
+  const fields = [
+    row.id,
+    row.directName,
+    row.fileRole,
+    row.format,
+    row.gameCategory,
+    row.importNotes,
+    row.licenseId,
+    row.licensePosture,
+    row.name,
+    row.notes,
+    row.sourceUrl,
+    ...row.tags,
+    ...Object.values(row.sourceMetadata),
+  ].map((field) => field.toLowerCase());
   for (const field of fields) {
     if (field === word) {
       score += 4;
@@ -325,6 +350,55 @@ function scoreWord(row: IAssetSourceRecord, word: string): number {
     }
   }
   return score;
+}
+
+function categorySql(category: string): string {
+  const value = category.toLowerCase();
+  const likePrefix = `${value}-%`;
+  const likeSuffix = `%-${value}`;
+  const likeWrapped = `%-${value}-%`;
+  return `(
+    lower(f.game_category) = ${sqlString(value)}
+    OR lower(f.game_category) LIKE ${sqlString(likePrefix)}
+    OR lower(f.game_category) LIKE ${sqlString(likeSuffix)}
+    OR lower(f.game_category) LIKE ${sqlString(likeWrapped)}
+    OR EXISTS (
+      SELECT 1 FROM asset_tags category_tag
+      WHERE category_tag.asset_file_id = f.id
+        AND lower(category_tag.tag) = ${sqlString(value)}
+    )
+  )`;
+}
+
+function keywordSql(term: string): string {
+  const pattern = `%${term.toLowerCase()}%`;
+  return `(
+    lower(f.id) LIKE ${sqlString(pattern)}
+    OR lower(f.direct_name) LIKE ${sqlString(pattern)}
+    OR lower(f.game_category) LIKE ${sqlString(pattern)}
+    OR lower(f.file_role) LIKE ${sqlString(pattern)}
+    OR lower(f.format) LIKE ${sqlString(pattern)}
+    OR lower(f.import_notes) LIKE ${sqlString(pattern)}
+    OR lower(s.name) LIKE ${sqlString(pattern)}
+    OR lower(s.source_url) LIKE ${sqlString(pattern)}
+    OR lower(s.notes) LIKE ${sqlString(pattern)}
+    OR lower(s.license_id) LIKE ${sqlString(pattern)}
+    OR lower(s.license_posture) LIKE ${sqlString(pattern)}
+    OR EXISTS (
+      SELECT 1 FROM asset_tags keyword_tag
+      WHERE keyword_tag.asset_file_id = f.id
+        AND lower(keyword_tag.tag) LIKE ${sqlString(pattern)}
+    )
+    OR EXISTS (
+      SELECT 1 FROM asset_source_metadata keyword_meta
+      WHERE keyword_meta.asset_file_id = f.id
+        AND lower(keyword_meta.value) LIKE ${sqlString(pattern)}
+    )
+  )`;
+}
+
+function searchTerms(query: string): string[] {
+  return [...new Set(query.toLowerCase().split(/[^a-z0-9-]+/u).filter((word) => word.length >= 2))].slice(0, 8);
 }
 
 function sqlString(value: string): string {

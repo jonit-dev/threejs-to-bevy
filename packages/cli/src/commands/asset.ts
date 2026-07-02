@@ -304,6 +304,7 @@ async function assetSourceCommand(argv: readonly string[], json: boolean): Promi
         includeBlocked: argv.includes("--include-blocked"),
         license: readFlag(argv, "--license"),
         limit: readLimitFlag(argv),
+        query: readFlag(argv, "--query"),
         tag: readFlag(argv, "--tag"),
       };
       const records = await searchAssetSources(searchOptions);
