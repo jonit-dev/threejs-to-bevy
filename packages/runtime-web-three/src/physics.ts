@@ -1,3 +1,5 @@
+import RAPIER from "@dimforge/rapier3d-compat";
+
 import type { IColliderComponent, IWorldEntity, IWorldIr, Vec3 } from "@threenative/ir";
 
 export interface IPhysicsEventPayload {
@@ -55,9 +57,25 @@ export interface IPhysicsJointObservation {
 }
 
 const previousPairsByWorld = new WeakMap<IWorldIr, Map<string, IDetectedPair>>();
+let rapierInitialized = false;
+let rapierInitialization: Promise<void> | undefined;
+
+export async function initializePhysicsRuntime(): Promise<void> {
+  if (rapierInitialized) {
+    return;
+  }
+  rapierInitialization ??= RAPIER.init().then(() => {
+    rapierInitialized = true;
+  });
+  await rapierInitialization;
+}
 
 export function stepPhysics(world: IWorldIr, fixedDelta = 1 / 60): IPhysicsEventPayload[] {
-  stepPrimitiveBodies(world, fixedDelta, [0, -9.81, 0]);
+  if (rapierInitialized) {
+    stepRapierBodies(world, fixedDelta, [0, -9.81, 0]);
+  } else {
+    stepPrimitiveBodies(world, fixedDelta, [0, -9.81, 0]);
+  }
 
   const currentPairs = detectPairs(world.entities.flatMap((entity) => colliderBounds(entity)));
   const previousPairs = previousPairsByWorld.get(world) ?? new Map();
@@ -67,6 +85,151 @@ export function stepPhysics(world: IWorldIr, fixedDelta = 1 / 60): IPhysicsEvent
   writeEventQueue(world, "CollisionEvent", collisions);
   writeEventQueue(world, "TriggerEvent", triggers);
   return [...collisions, ...triggers];
+}
+
+function stepRapierBodies(world: IWorldIr, fixedDelta: number, gravity: Vec3): void {
+  const rapierWorld = new RAPIER.World({ x: gravity[0], y: gravity[1], z: gravity[2] });
+  const substeps = physicsSubsteps(fixedDelta);
+  rapierWorld.integrationParameters.dt = fixedDelta / substeps;
+  rapierWorld.integrationParameters.numSolverIterations = 12;
+  rapierWorld.integrationParameters.numAdditionalFrictionIterations = 8;
+  const bodies = new Map<string, ReturnType<typeof rapierWorld.createRigidBody>>();
+  const layerBits = layerBitsForWorld(world);
+
+  for (const entity of world.entities) {
+    const transform = entity.components.Transform;
+    const body = entity.components.RigidBody;
+    const collider = entity.components.Collider;
+    if (transform?.position === undefined || body === undefined || collider === undefined) {
+      continue;
+    }
+    const position = transform.position;
+    const rotation = transform.rotation ?? [0, 0, 0, 1];
+    const desc = rigidBodyDesc(body.kind)
+      .setTranslation(position[0], position[1], position[2])
+      .setRotation({ x: rotation[0], y: rotation[1], z: rotation[2], w: rotation[3] })
+      .setGravityScale(body.kind === "dynamic" ? (body.gravityScale ?? 1) : 0)
+      .setLinearDamping(body.damping ?? 0)
+      .setCanSleep(body.sleepThreshold !== 0)
+      .setCcdEnabled(body.ccd?.enabled === true);
+    if (body.mass !== undefined && body.kind === "dynamic") {
+      desc.setAdditionalMass(body.mass);
+    }
+    if (body.solverIterations !== undefined) {
+      desc.setAdditionalSolverIterations(Math.max(0, body.solverIterations - 1));
+    }
+    if (Array.isArray(body.enabledTranslations)) {
+      desc.enabledTranslations(body.enabledTranslations[0], body.enabledTranslations[1], body.enabledTranslations[2]);
+    }
+    if (Array.isArray(body.enabledRotations)) {
+      desc.enabledRotations(body.enabledRotations[0], body.enabledRotations[1], body.enabledRotations[2]);
+    }
+    const velocity = body.velocity ?? [0, 0, 0];
+    desc.setLinvel(velocity[0], velocity[1], velocity[2]);
+    if (body.angularVelocity !== undefined) {
+      desc.setAngvel({ x: body.angularVelocity[0], y: body.angularVelocity[1], z: body.angularVelocity[2] });
+    }
+
+    const rapierBody = rapierWorld.createRigidBody(desc);
+    const colliderDesc = colliderDescFor(collider);
+    if (colliderDesc !== undefined) {
+      const groups = rapierCollisionGroups(collider, layerBits);
+      const center = colliderLocalCenter(collider);
+      colliderDesc
+        .setTranslation(center[0], center[1], center[2])
+        .setFriction(collider.friction ?? 0)
+        .setRestitution(collider.restitution ?? 0)
+        .setSensor(collider.trigger === true || collider.sensor !== undefined)
+        .setCollisionGroups(groups)
+        .setSolverGroups(groups);
+      rapierWorld.createCollider(colliderDesc, rapierBody);
+      bodies.set(entity.id, rapierBody);
+    }
+  }
+
+  for (let step = 0; step < substeps; step += 1) {
+    rapierWorld.step();
+  }
+
+  for (const entity of world.entities) {
+    const body = bodies.get(entity.id);
+    if (body === undefined || entity.components.Transform?.position === undefined || entity.components.RigidBody === undefined) {
+      continue;
+    }
+    const translation = body.translation();
+    const rotation = body.rotation();
+    const linvel = body.linvel();
+    const angvel = body.angvel();
+    entity.components.Transform = {
+      ...entity.components.Transform,
+      position: [translation.x, translation.y, translation.z],
+      rotation: [rotation.x, rotation.y, rotation.z, rotation.w],
+    };
+    entity.components.RigidBody = {
+      ...entity.components.RigidBody,
+      angularVelocity: [angvel.x, angvel.y, angvel.z],
+      velocity: [linvel.x, linvel.y, linvel.z],
+    };
+  }
+
+  rapierWorld.free();
+}
+
+function physicsSubsteps(fixedDelta: number): number {
+  return Math.max(1, Math.ceil(fixedDelta / (1 / 120)));
+}
+
+function layerBitsForWorld(world: IWorldIr): Map<string, number> {
+  const layers = new Map<string, number>();
+  for (const entity of world.entities) {
+    const layer = entity.components.Collider?.layer;
+    if (layer === undefined || layers.has(layer)) {
+      continue;
+    }
+    if (layers.size < 16) {
+      layers.set(layer, 1 << layers.size);
+    }
+  }
+  return layers;
+}
+
+function rapierCollisionGroups(collider: IColliderComponent, layerBits: ReadonlyMap<string, number>): number {
+  const membership = collider.layer === undefined ? 0xffff : layerBits.get(collider.layer) ?? 0xffff;
+  const filter = collider.mask === undefined || collider.mask.length === 0
+    ? 0xffff
+    : collider.mask.reduce((bits, layer) => bits | (layerBits.get(layer) ?? 0), 0);
+  return membership * 0x10000 + filter;
+}
+
+function rigidBodyDesc(kind: string): RAPIER.RigidBodyDesc {
+  if (kind === "dynamic") {
+    return RAPIER.RigidBodyDesc.dynamic();
+  }
+  if (kind === "kinematic") {
+    return RAPIER.RigidBodyDesc.kinematicVelocityBased();
+  }
+  return RAPIER.RigidBodyDesc.fixed();
+}
+
+function colliderDescFor(collider: IColliderComponent): RAPIER.ColliderDesc | undefined {
+  if (collider.kind === "box") {
+    const [x = 1, y = 1, z = 1] = collider.size ?? [];
+    return RAPIER.ColliderDesc.cuboid(x / 2, y / 2, z / 2);
+  }
+  if (collider.kind === "sphere") {
+    return RAPIER.ColliderDesc.ball(collider.radius ?? 0.5);
+  }
+  if (collider.kind === "capsule") {
+    return RAPIER.ColliderDesc.capsule((collider.height ?? 1) / 2, collider.radius ?? 0.5);
+  }
+  if (collider.kind === "cylinder") {
+    return RAPIER.ColliderDesc.cylinder((collider.height ?? 1) / 2, collider.radius ?? 0.5);
+  }
+  if (collider.kind === "mesh" && collider.mesh !== undefined) {
+    const [x, y, z] = collider.mesh.bounds.size;
+    return RAPIER.ColliderDesc.cuboid(x / 2, y / 2, z / 2);
+  }
+  return undefined;
 }
 
 export function traceRigidBodyPrimitive(world: IWorldIr, input: IRigidBodyTraceInput = {}): IRigidBodyTraceObservation[] {
@@ -294,11 +457,12 @@ function halfExtents(collider: IColliderComponent): Vec3 {
 }
 
 function colliderCenter(collider: IColliderComponent, transformPosition: Vec3): Vec3 {
-  const local = collider.kind === "mesh" ? collider.mesh?.bounds.center : undefined;
-  if (local === undefined) {
-    return transformPosition;
-  }
+  const local = colliderLocalCenter(collider);
   return [transformPosition[0] + local[0], transformPosition[1] + local[1], transformPosition[2] + local[2]];
+}
+
+function colliderLocalCenter(collider: IColliderComponent): Vec3 {
+  return collider.center ?? (collider.kind === "mesh" ? collider.mesh?.bounds.center : undefined) ?? [0, 0, 0];
 }
 
 function sweptVerticalOverlap(entity: IWorldEntity, bounds: { center: Vec3; halfExtents: Vec3 }, floorBounds: { center: Vec3; halfExtents: Vec3 }, previousCenter?: Vec3): boolean {

@@ -12,6 +12,10 @@ declare global {
     };
     __THREENATIVE_DEBUG_OVERLAY__?: unknown;
     __THREENATIVE_EFFECT_LOG__?: ISystemEffectLog;
+    __THREENATIVE_RUNTIME__?: {
+      debugColliderCount?: number;
+      entityWorldPosition(id: string): [number, number, number] | undefined;
+    };
   }
 }
 
@@ -22,7 +26,15 @@ if (container === null) {
 
 const params = new URLSearchParams(window.location.search);
 const bundleUrl = params.get("bundle") ?? "/bundle";
-const result = await renderBundle(bundleUrl, container, { bookmarkId: params.get("bookmark") ?? undefined });
+const debugColliders = ["1", "true", "on"].includes(params.get("debugColliders") ?? "");
+const result = await renderBundle(bundleUrl, container, {
+  bookmarkId: params.get("bookmark") ?? undefined,
+  debugColliders,
+});
+window.__THREENATIVE_RUNTIME__ = {
+  debugColliderCount: result.debugColliderCount,
+  entityWorldPosition: result.entityWorldPosition,
+};
 
 updateReadyState();
 window.__THREENATIVE_EFFECT_LOG__ = stableSystemEffectLog(result.effectLog);

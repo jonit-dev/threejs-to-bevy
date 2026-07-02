@@ -3,6 +3,7 @@ import type { Vector3Tuple } from "./math/Vector3.js";
 
 export type PhysicsBodyKind = "dynamic" | "kinematic" | "static";
 export type PhysicsColliderKind = "box" | "capsule" | "cylinder" | "mesh" | "sphere";
+export type Boolean3Tuple = readonly [boolean, boolean, boolean];
 
 export interface IPhysicsFilterOptions {
   layer?: string;
@@ -30,6 +31,8 @@ export interface IRigidBodyDeclaration {
   angularVelocity?: Vector3Tuple;
   ccd?: ICcdDeclaration;
   damping?: number;
+  enabledRotations?: Boolean3Tuple;
+  enabledTranslations?: Boolean3Tuple;
   gravityScale?: number;
   inverseMass?: number;
   kind: PhysicsBodyKind;
@@ -55,6 +58,7 @@ export interface IMeshColliderDeclaration {
 }
 
 export interface IColliderDeclaration {
+  center?: Vector3Tuple;
   friction?: number;
   height?: number;
   kind: PhysicsColliderKind;
@@ -89,12 +93,18 @@ export interface IPhysicsDeclaration {
   joint?: IPhysicsJointDeclaration;
 }
 
+type ColliderCenterOptions = {
+  center?: Vector3Tuple;
+};
+
 export function rigidBody(
   kind: PhysicsBodyKind,
   options: {
     angularVelocity?: Vector3Tuple;
     ccd?: ICcdDeclaration;
     damping?: number;
+    enabledRotations?: Boolean3Tuple;
+    enabledTranslations?: Boolean3Tuple;
     gravityScale?: number;
     inverseMass?: number;
     mass?: number;
@@ -113,6 +123,16 @@ export function rigidBody(
   if (options.damping !== undefined) {
     assertNonNegativeNumber(options.damping, "TN_SDK_PHYSICS_BODY_INVALID_DAMPING", "RigidBody.damping");
   }
+  options.enabledRotations?.forEach((value, index) => {
+    if (typeof value !== "boolean") {
+      throw new SdkError("TN_SDK_PHYSICS_BODY_INVALID_ENABLED_ROTATIONS", `RigidBody.enabledRotations[${index}] must be boolean.`);
+    }
+  });
+  options.enabledTranslations?.forEach((value, index) => {
+    if (typeof value !== "boolean") {
+      throw new SdkError("TN_SDK_PHYSICS_BODY_INVALID_ENABLED_TRANSLATIONS", `RigidBody.enabledTranslations[${index}] must be boolean.`);
+    }
+  });
   if (options.gravityScale !== undefined) {
     assertFiniteNumber(options.gravityScale, "TN_SDK_PHYSICS_BODY_INVALID_GRAVITY_SCALE", "RigidBody.gravityScale");
   }
@@ -141,6 +161,8 @@ export function rigidBody(
     angularVelocity: options.angularVelocity,
     ...(ccd === undefined ? {} : { ccd }),
     damping: options.damping,
+    enabledRotations: options.enabledRotations,
+    enabledTranslations: options.enabledTranslations,
     gravityScale: options.gravityScale,
     inverseMass: options.inverseMass,
     kind,
@@ -151,36 +173,36 @@ export function rigidBody(
   };
 }
 
-export function boxCollider(size: Vector3Tuple, options: { sensor?: ISensorDeclaration; slope?: IColliderSlopeDeclaration; trigger?: boolean } & IPhysicsFilterOptions & IPhysicsMaterialOptions = {}): IColliderDeclaration {
+export function boxCollider(size: Vector3Tuple, options: { sensor?: ISensorDeclaration; slope?: IColliderSlopeDeclaration; trigger?: boolean } & ColliderCenterOptions & IPhysicsFilterOptions & IPhysicsMaterialOptions = {}): IColliderDeclaration {
   size.forEach((value, index) => {
     assertPositiveNumber(value, "TN_SDK_PHYSICS_COLLIDER_INVALID_SIZE", `Collider.size[${index}]`);
   });
   const sensor = normalizeSensor(options.sensor);
-  return { kind: "box", ...(sensor === undefined ? {} : { sensor }), size: [...size] as Vector3Tuple, slope: normalizeSlope(options.slope), trigger: options.trigger, ...normalizeFilter(options), ...normalizeMaterial(options) };
+  return { ...normalizeColliderCenter(options), kind: "box", ...(sensor === undefined ? {} : { sensor }), size: [...size] as Vector3Tuple, slope: normalizeSlope(options.slope), trigger: options.trigger, ...normalizeFilter(options), ...normalizeMaterial(options) };
 }
 
-export function sphereCollider(radius: number, options: { sensor?: ISensorDeclaration; trigger?: boolean } & IPhysicsFilterOptions & IPhysicsMaterialOptions = {}): IColliderDeclaration {
+export function sphereCollider(radius: number, options: { sensor?: ISensorDeclaration; trigger?: boolean } & ColliderCenterOptions & IPhysicsFilterOptions & IPhysicsMaterialOptions = {}): IColliderDeclaration {
   assertPositiveNumber(radius, "TN_SDK_PHYSICS_COLLIDER_INVALID_RADIUS", "Collider.radius");
   const sensor = normalizeSensor(options.sensor);
-  return { kind: "sphere", radius, ...(sensor === undefined ? {} : { sensor }), trigger: options.trigger, ...normalizeFilter(options), ...normalizeMaterial(options) };
+  return { ...normalizeColliderCenter(options), kind: "sphere", radius, ...(sensor === undefined ? {} : { sensor }), trigger: options.trigger, ...normalizeFilter(options), ...normalizeMaterial(options) };
 }
 
-export function capsuleCollider(radius: number, height: number, options: { sensor?: ISensorDeclaration; trigger?: boolean } & IPhysicsFilterOptions & IPhysicsMaterialOptions = {}): IColliderDeclaration {
+export function capsuleCollider(radius: number, height: number, options: { sensor?: ISensorDeclaration; trigger?: boolean } & ColliderCenterOptions & IPhysicsFilterOptions & IPhysicsMaterialOptions = {}): IColliderDeclaration {
   assertPositiveNumber(radius, "TN_SDK_PHYSICS_COLLIDER_INVALID_RADIUS", "Collider.radius");
   assertPositiveNumber(height, "TN_SDK_PHYSICS_COLLIDER_INVALID_HEIGHT", "Collider.height");
   const sensor = normalizeSensor(options.sensor);
-  return { height, kind: "capsule", radius, ...(sensor === undefined ? {} : { sensor }), trigger: options.trigger, ...normalizeFilter(options), ...normalizeMaterial(options) };
+  return { ...normalizeColliderCenter(options), height, kind: "capsule", radius, ...(sensor === undefined ? {} : { sensor }), trigger: options.trigger, ...normalizeFilter(options), ...normalizeMaterial(options) };
 }
 
-export function cylinderCollider(radius: number, height: number, options: { trigger?: boolean } & IPhysicsFilterOptions & IPhysicsMaterialOptions = {}): IColliderDeclaration {
+export function cylinderCollider(radius: number, height: number, options: { trigger?: boolean } & ColliderCenterOptions & IPhysicsFilterOptions & IPhysicsMaterialOptions = {}): IColliderDeclaration {
   assertPositiveNumber(radius, "TN_SDK_PHYSICS_COLLIDER_INVALID_RADIUS", "Collider.radius");
   assertPositiveNumber(height, "TN_SDK_PHYSICS_COLLIDER_INVALID_HEIGHT", "Collider.height");
-  return { height, kind: "cylinder", radius, trigger: options.trigger, ...normalizeFilter(options), ...normalizeMaterial(options) };
+  return { ...normalizeColliderCenter(options), height, kind: "cylinder", radius, trigger: options.trigger, ...normalizeFilter(options), ...normalizeMaterial(options) };
 }
 
-export function meshCollider(options: { mesh?: IMeshColliderDeclaration; trigger?: boolean } & IPhysicsFilterOptions & IPhysicsMaterialOptions = {}): IColliderDeclaration {
+export function meshCollider(options: { mesh?: IMeshColliderDeclaration; trigger?: boolean } & ColliderCenterOptions & IPhysicsFilterOptions & IPhysicsMaterialOptions = {}): IColliderDeclaration {
   const mesh = options.mesh === undefined ? undefined : normalizeMeshCollider(options.mesh);
-  return { kind: "mesh", ...(mesh === undefined ? {} : { mesh }), trigger: options.trigger, ...normalizeFilter(options), ...normalizeMaterial(options) };
+  return { ...normalizeColliderCenter(options), kind: "mesh", ...(mesh === undefined ? {} : { mesh }), trigger: options.trigger, ...normalizeFilter(options), ...normalizeMaterial(options) };
 }
 
 export function physics(options: IPhysicsDeclaration): IPhysicsDeclaration {
@@ -245,6 +267,11 @@ function normalizeMeshCollider(value: IMeshColliderDeclaration): IMeshColliderDe
     ...(value.source === undefined ? {} : { source: value.source }),
     triangleCount: value.triangleCount,
   };
+}
+
+function normalizeColliderCenter(options: ColliderCenterOptions): Pick<IColliderDeclaration, "center"> {
+  options.center?.forEach((value, index) => assertFiniteNumber(value, "TN_SDK_PHYSICS_COLLIDER_CENTER_INVALID", `Collider.center[${index}]`));
+  return options.center === undefined ? {} : { center: [...options.center] as Vector3Tuple };
 }
 
 function normalizeFilter(options: IPhysicsFilterOptions): Pick<IColliderDeclaration, "layer" | "mask"> {

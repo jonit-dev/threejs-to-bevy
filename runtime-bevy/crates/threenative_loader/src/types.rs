@@ -457,6 +457,8 @@ pub struct RigidBodyComponent {
     pub angular_velocity: Option<[f32; 3]>,
     pub ccd: Option<CcdComponent>,
     pub damping: Option<f32>,
+    pub enabled_rotations: Option<[bool; 3]>,
+    pub enabled_translations: Option<[bool; 3]>,
     pub gravity_scale: Option<f32>,
     pub inverse_mass: Option<f32>,
     pub kind: String,
@@ -476,6 +478,7 @@ pub struct CcdComponent {
 
 #[derive(Clone, Debug, Deserialize)]
 pub struct ColliderComponent {
+    pub center: Option<[f32; 3]>,
     pub friction: Option<f32>,
     pub kind: String,
     pub height: Option<f32>,

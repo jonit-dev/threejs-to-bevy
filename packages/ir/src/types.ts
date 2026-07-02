@@ -352,6 +352,8 @@ export interface IRigidBodyComponent {
     mode: "linear" | "swept-aabb";
   };
   damping?: number;
+  enabledRotations?: readonly [boolean, boolean, boolean];
+  enabledTranslations?: readonly [boolean, boolean, boolean];
   gravityScale?: number;
   inverseMass?: number;
   kind: "dynamic" | "kinematic" | "static";
@@ -362,6 +364,7 @@ export interface IRigidBodyComponent {
 }
 
 export interface IColliderComponent {
+  center?: Vec3;
   friction?: number;
   height?: number;
   kind: "box" | "capsule" | "cylinder" | "mesh" | "sphere";

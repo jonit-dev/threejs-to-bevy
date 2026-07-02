@@ -20,6 +20,7 @@ import { advanceAnimationPlayback, hasAnimationPlayback, loadPendingMaterialText
 import { applyEnvironmentBookmark, createEnvironmentRuntime, loadEnvironmentAssetInstances } from "./environment.js";
 import { applyAtmosphereProfile, applyEnvironmentLighting, applyThreeCompatFogDistance } from "./rendering.js";
 import { createGameLoopState, runGameFrame } from "./gameLoop.js";
+import { initializePhysicsRuntime } from "./physics.js";
 import { attachInputListeners, createInputState } from "./input.js";
 import { loadSystemModule } from "./systems/runner.js";
 import { createSystemEffectLog, type ISystemEffectLog } from "./systems/log.js";
@@ -30,9 +31,11 @@ import { createWebOverlayHost, type IWebOverlayHost } from "./overlay/host.js";
 
 export interface IRenderResult {
   canvas: HTMLCanvasElement;
+  debugColliderCount: number;
   diagnostics: IRuntimeDiagnostic[];
   dispose(): void;
   effectLog: ISystemEffectLog;
+  entityWorldPosition(id: string): [number, number, number] | undefined;
   renderer: THREE.WebGLRenderer;
   runtimeDiagnostics: IWebRuntimeDiagnostics;
   overlayHost?: IWebOverlayHost;
@@ -41,6 +44,7 @@ export interface IRenderResult {
 
 export interface IRenderOptions {
   bookmarkId?: string;
+  debugColliders?: boolean;
 }
 
 export interface IWebRuntimeDiagnostics {
@@ -132,6 +136,7 @@ export interface IWebRenderLifecycleOptions {
 
 export async function renderBundle(source: string, container: HTMLElement, options: IRenderOptions = {}): Promise<IRenderResult> {
   const bundle = await loadBundle(source);
+  await initializePhysicsRuntime();
   const mapped = mapWorld(bundle);
   assertSceneReady(mapped.diagnostics);
   await loadWorldModelAssets(mapped, bundle, source);
@@ -174,6 +179,7 @@ export async function renderBundle(source: string, container: HTMLElement, optio
   const renderer = new THREE.WebGLRenderer(webRendererParameters(bundle.runtimeConfig));
   applyRendererColorManagement(renderer, bundle.environmentScene?.atmosphere?.colorManagement, bundle.runtimeConfig?.renderer?.colorGrading);
   const pipeline = createRenderPipeline(renderer, mapped, bundle.world, bundle.runtimeConfig, bundle.assets, bundle.materials);
+  const colliderDebugOverlay = options.debugColliders === true ? createColliderDebugOverlay(mapped, bundle.world) : undefined;
   const canvas = renderer.domElement;
   const ui = bundle.ui === undefined ? undefined : renderUi(bundle.ui, bundle.world);
   const uiOverlay = ui === undefined ? undefined : createUiDomOverlay(ui);
@@ -208,6 +214,7 @@ export async function renderBundle(source: string, container: HTMLElement, optio
     uiOverlay?.update();
   }
   advanceAnimationPlayback(mapped, 1 / 60);
+  colliderDebugOverlay?.update();
   pipeline.render();
   logStartupDiagnostics(mapped.diagnostics);
   let lifecycle: IWebRenderLifecycle | undefined;
@@ -220,8 +227,8 @@ export async function renderBundle(source: string, container: HTMLElement, optio
         renderer.dispose();
       },
       async frame(time: number) {
-      const delta = Math.max(0, (time - lastTime) / 1000);
-      lastTime = time;
+        const delta = Math.max(0, (time - lastTime) / 1000);
+        lastTime = time;
         if (bundle.systems !== undefined) {
           await runGameFrame({
             assets: bundle.assets,
@@ -239,6 +246,7 @@ export async function renderBundle(source: string, container: HTMLElement, optio
         }
         advanceAnimationPlayback(mapped, delta);
         uiOverlay?.update();
+        colliderDebugOverlay?.update();
         pipeline.render(delta);
       },
     });
@@ -250,12 +258,23 @@ export async function renderBundle(source: string, container: HTMLElement, optio
     diagnostics: mapped.diagnostics,
     dispose() {
       lifecycle?.dispose();
+      colliderDebugOverlay?.dispose();
       if (lifecycle === undefined) {
         detachInputListeners();
         renderer.dispose();
       }
     },
+    debugColliderCount: colliderDebugOverlay?.count ?? 0,
     effectLog,
+    entityWorldPosition(id: string) {
+      const object = mapped.objectsById.get(id);
+      if (object === undefined) {
+        return undefined;
+      }
+      const position = new THREE.Vector3();
+      object.getWorldPosition(position);
+      return vectorToTuple(position);
+    },
     ...(overlayHost === undefined ? {} : { overlayHost }),
     renderer,
     runtimeDiagnostics: collectWebRuntimeDiagnostics(mapped, bundle),
@@ -300,6 +319,104 @@ export function collectWebRuntimeDiagnostics(mapped: IThreeWorld, bundle: IWebBu
     },
     recentRuntimeErrors: mapped.diagnostics.filter((diagnostic) => diagnostic.severity === "error").slice(-10),
   };
+}
+
+interface IColliderDebugOverlay {
+  count: number;
+  dispose(): void;
+  update(): void;
+}
+
+function createColliderDebugOverlay(mapped: IThreeWorld, world: IWorldIr): IColliderDebugOverlay {
+  const root = new THREE.Group();
+  root.name = "threenative.debug.colliders";
+  root.renderOrder = 10_000;
+  const material = new THREE.MeshBasicMaterial({
+    color: 0x00d4ff,
+    depthTest: false,
+    opacity: 0.22,
+    transparent: true,
+    wireframe: true,
+  });
+  const items = world.entities.flatMap((entity) => {
+    const collider = entity.components.Collider;
+    const object = mapped.objectsById.get(entity.id);
+    if (collider === undefined || object === undefined) {
+      return [];
+    }
+    const mesh = colliderDebugMesh(collider, material);
+    if (mesh === undefined) {
+      return [];
+    }
+    mesh.name = `debug.collider.${entity.id}`;
+    mesh.userData = { threenativeDebugOnly: true, entityId: entity.id };
+    root.add(mesh);
+    return [{ collider, mesh, object }];
+  });
+  mapped.scene.add(root);
+
+  return {
+    count: items.length,
+    dispose() {
+      mapped.scene.remove(root);
+      root.traverse((object) => {
+        if (object instanceof THREE.Mesh) {
+          object.geometry.dispose();
+        }
+      });
+      material.dispose();
+    },
+    update() {
+      const worldPosition = new THREE.Vector3();
+      const worldQuaternion = new THREE.Quaternion();
+      for (const item of items) {
+        item.object.getWorldPosition(worldPosition);
+        item.object.getWorldQuaternion(worldQuaternion);
+        const localCenter = colliderLocalCenter(item.collider);
+        if (localCenter !== undefined) {
+          worldPosition.add(new THREE.Vector3(...localCenter).applyQuaternion(worldQuaternion));
+        }
+        item.mesh.position.copy(worldPosition);
+        item.mesh.quaternion.copy(worldQuaternion);
+      }
+    },
+  };
+}
+
+function colliderDebugMesh(
+  collider: NonNullable<IWorldIr["entities"][number]["components"]["Collider"]>,
+  material: THREE.Material,
+): THREE.Mesh | undefined {
+  if (collider.kind === "box") {
+    const [x = 1, y = 1, z = 1] = collider.size ?? [];
+    return new THREE.Mesh(new THREE.BoxGeometry(x, y, z), material);
+  }
+  if (collider.kind === "sphere") {
+    return new THREE.Mesh(new THREE.SphereGeometry(collider.radius ?? 0.5, 24, 12), material);
+  }
+  if (collider.kind === "capsule") {
+    return new THREE.Mesh(new THREE.CapsuleGeometry(collider.radius ?? 0.5, collider.height ?? 1, 8, 16), material);
+  }
+  if (collider.kind === "cylinder") {
+    return new THREE.Mesh(new THREE.CylinderGeometry(collider.radius ?? 0.5, collider.radius ?? 0.5, collider.height ?? 1, 24), material);
+  }
+  if (collider.kind === "mesh" && collider.mesh !== undefined) {
+    const [x, y, z] = collider.mesh.bounds.size;
+    return new THREE.Mesh(new THREE.BoxGeometry(x, y, z), material);
+  }
+  return undefined;
+}
+
+function colliderLocalCenter(collider: NonNullable<IWorldIr["entities"][number]["components"]["Collider"]>): [number, number, number] | undefined {
+  if (collider.center !== undefined) {
+    const [x, y, z] = collider.center;
+    return [x, y, z];
+  }
+  if (collider.kind === "mesh" && collider.mesh?.bounds.center !== undefined) {
+    const [x, y, z] = collider.mesh.bounds.center;
+    return [x, y, z];
+  }
+  return undefined;
 }
 
 export function createWebRenderLifecycle(options: IWebRenderLifecycleOptions): IWebRenderLifecycle {

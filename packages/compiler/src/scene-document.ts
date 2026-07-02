@@ -88,6 +88,7 @@ function lowerSceneDocument(
   const visualScene = new Scene({ id: scene.id });
   const prefabs = new Map((scene.prefabs ?? []).map((prefab) => [prefab.id, prefab]));
   const entities = [...(scene.entities ?? [])].sort((left, right) => left.id.localeCompare(right.id));
+  const genericComponentSchemas = genericComponentSchemaFactories(entities);
   const worldEntities = [];
   const worldResources = [...(scene.resources ?? [])]
     .filter((resource) => resource.value !== undefined)
@@ -116,7 +117,7 @@ function lowerSceneDocument(
       worldEntities.push({
         components: [
           ...(entity.transform === undefined ? [] : [PrefabTransform(prefabTransform)]),
-          ...genericComponents(entity.components),
+          ...genericComponents(entity.components, genericComponentSchemas),
         ],
         id: entity.id,
         source: { sourcePath },
@@ -345,14 +346,44 @@ function hasAuthoredRuntimeVisual(components: Record<string, unknown> | undefine
   return components !== undefined && (components.MeshRenderer !== undefined || components.Camera !== undefined || components.Light !== undefined);
 }
 
-function genericComponents(components: unknown): IEcsDeclaration[] {
+function genericComponents(
+  components: unknown,
+  schemaFactories: Map<string, (data: Record<string, unknown>) => IEcsDeclaration>,
+): IEcsDeclaration[] {
   const record = readRecord(components);
   if (record === undefined) {
     return [];
   }
   return Object.entries(record)
     .filter(([kind]) => kind !== "camera")
-    .map(([kind, value]) => genericEcsDeclaration("component", kind, readRecord(value) ?? {}));
+    .map(([kind, value]) => {
+      const factory = schemaFactories.get(kind);
+      if (factory === undefined) {
+        return genericEcsDeclaration("component", kind, readRecord(value) ?? {});
+      }
+      return factory(readRecord(value) ?? {});
+    });
+}
+
+function genericComponentSchemaFactories(entities: readonly NonNullable<ISceneDocument["entities"]>[number][]): Map<string, (data: Record<string, unknown>) => IEcsDeclaration> {
+  const fieldsByKind = new Map<string, Record<string, ReturnType<typeof inferSchemaFieldKind>>>();
+  for (const entity of entities) {
+    const components = readRecord(entity.components);
+    if (components === undefined) {
+      continue;
+    }
+    for (const [kind, value] of Object.entries(components)) {
+      if (kind === "camera") {
+        continue;
+      }
+      const fields = fieldsByKind.get(kind) ?? {};
+      for (const [field, fieldValue] of Object.entries(readRecord(value) ?? {})) {
+        fields[field] = fields[field] ?? inferSchemaFieldKind(fieldValue);
+      }
+      fieldsByKind.set(kind, fields);
+    }
+  }
+  return new Map([...fieldsByKind.entries()].map(([kind, fields]) => [kind, defineComponent(kind, fields)]));
 }
 
 function genericEcsDeclaration(kind: "component" | "resource", name: string, data: Record<string, unknown>): IEcsDeclaration {

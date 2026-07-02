@@ -3553,16 +3553,47 @@ function validateRenderLayersComponent(diagnostics: IAuthoringDiagnostic[], file
 function validateRigidBodyComponent(diagnostics: IAuthoringDiagnostic[], file: string, path: string, value: Record<string, unknown>): void {
   diagnostics.push(...unknownKeyDiagnostics(file, path, value, rigidBodyComponentKeys));
   validateEnumString(diagnostics, file, `${path}/kind`, value.kind, supportedRigidBodyKinds, "rigid body kind", "Use 'dynamic', 'kinematic', or 'static'.");
+  if (value.angularVelocity !== undefined && !isVector3(value.angularVelocity)) {
+    diagnostics.push(typeDiagnostic(file, `${path}/angularVelocity`, "rigid body angularVelocity must be a three-number vector.", value.angularVelocity));
+  }
+  if (value.enabledRotations !== undefined && !isBooleanVector3(value.enabledRotations)) {
+    diagnostics.push(typeDiagnostic(file, `${path}/enabledRotations`, "rigid body enabledRotations must be a three-boolean vector.", value.enabledRotations));
+  }
+  if (value.enabledTranslations !== undefined && !isBooleanVector3(value.enabledTranslations)) {
+    diagnostics.push(typeDiagnostic(file, `${path}/enabledTranslations`, "rigid body enabledTranslations must be a three-boolean vector.", value.enabledTranslations));
+  }
+  validateCcdComponent(diagnostics, file, `${path}/ccd`, value.ccd);
   validateOptionalNumber(diagnostics, file, `${path}/mass`, value.mass, "rigid body mass must be a finite number.");
+  validateOptionalNumber(diagnostics, file, `${path}/inverseMass`, value.inverseMass, "rigid body inverseMass must be a finite number.");
   validateOptionalNumber(diagnostics, file, `${path}/damping`, value.damping, "rigid body damping must be a finite number.");
   validateOptionalNumber(diagnostics, file, `${path}/gravityScale`, value.gravityScale, "rigid body gravityScale must be a finite number.");
   validateOptionalNumber(diagnostics, file, `${path}/sleepThreshold`, value.sleepThreshold, "rigid body sleepThreshold must be a finite number.");
   validateOptionalNumber(diagnostics, file, `${path}/solverIterations`, value.solverIterations, "rigid body solverIterations must be a finite number.");
+  if (value.velocity !== undefined && !isVector3(value.velocity)) {
+    diagnostics.push(typeDiagnostic(file, `${path}/velocity`, "rigid body velocity must be a three-number vector.", value.velocity));
+  }
+}
+
+function validateCcdComponent(diagnostics: IAuthoringDiagnostic[], file: string, path: string, value: unknown): void {
+  if (value === undefined) {
+    return;
+  }
+  if (!isRecord(value)) {
+    diagnostics.push(typeDiagnostic(file, path, "rigid body ccd must be an object.", value));
+    return;
+  }
+  diagnostics.push(...unknownKeyDiagnostics(file, path, value, new Set(["enabled", "maxSubsteps", "mode"])));
+  validateOptionalBoolean(diagnostics, file, `${path}/enabled`, value.enabled, "rigid body ccd enabled must be a boolean.");
+  validateEnumString(diagnostics, file, `${path}/mode`, value.mode, new Set(["linear", "swept-aabb"]), "ccd mode", "Use 'linear' or 'swept-aabb'.");
+  validateOptionalNumber(diagnostics, file, `${path}/maxSubsteps`, value.maxSubsteps, "rigid body ccd maxSubsteps must be a finite number.");
 }
 
 function validateColliderComponent(diagnostics: IAuthoringDiagnostic[], file: string, path: string, value: Record<string, unknown>): void {
   diagnostics.push(...unknownKeyDiagnostics(file, path, value, colliderComponentKeys));
   validateEnumString(diagnostics, file, `${path}/kind`, value.kind, supportedColliderKinds, "collider kind", "Use 'box', 'capsule', 'cylinder', 'mesh', or 'sphere'.");
+  if (value.center !== undefined && !isVector3(value.center)) {
+    diagnostics.push(typeDiagnostic(file, `${path}/center`, "collider center must be a three-number vector.", value.center));
+  }
   if (value.size !== undefined && !isVector3(value.size)) {
     diagnostics.push(typeDiagnostic(file, `${path}/size`, "collider size must be a three-number vector.", value.size));
   }
@@ -3725,6 +3756,12 @@ function validateOptionalBoolean(diagnostics: IAuthoringDiagnostic[], file: stri
 
 function isVector3(value: unknown): value is [number, number, number] {
   return isNumberTuple(value, 3, 3);
+}
+
+function isBooleanVector3(value: unknown): value is [boolean, boolean, boolean] {
+  return Array.isArray(value)
+    && value.length === 3
+    && value.every((entry) => typeof entry === "boolean");
 }
 
 function isNumberTuple(value: unknown, minLength: number, maxLength: number): boolean {

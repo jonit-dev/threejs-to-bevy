@@ -131,7 +131,7 @@ const commands: Record<string, ICommandDefinition> = {
   dev: {
     description: "Run a runtime preview with optional rebuild watch mode.",
     implemented: true,
-    usage: "tn dev --target <web|desktop> [--project <path>] [--watch]",
+    usage: "tn dev --target <web|desktop> [--project <path>] [--watch] [--debug]",
   },
   editor: {
     description: "Launch the editor shell and inspect, edit, apply, and diff local editor snapshots from bundle JSON.",
@@ -146,7 +146,7 @@ const commands: Record<string, ICommandDefinition> = {
   playtest: {
     description: "Run a web input proof and assert that a game entity responds.",
     implemented: true,
-    usage: "tn playtest --project <path> --entity <id> --press <KeyboardEvent.code> --frames <n> [--expect-moved] [--json]",
+    usage: "tn playtest --project <path> --entity <id> --press <KeyboardEvent.code> --frames <n> [--expect-moved] [--debug] [--json]",
   },
   recipe: {
     description: "Apply composed registry-backed recipes for common game objects.",

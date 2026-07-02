@@ -107,6 +107,7 @@ threenative_loader = { path = "../threenative_loader" }
 gtk = { version = "0.18.2", optional = true }
 wry = { version = "0.53.5", features = ["transparent"], optional = true }
 winit = { version = "0.30.13", default-features = false, optional = true }
+rapier3d = "0.33.0"
 
 [features]
 default = []

@@ -135,8 +135,11 @@ failures. Web preview `runtimeDiagnostics` now also reports current scene ID,
 culled mesh count, recent runtime errors, and per-rendered-entity visibility
 evidence: final scale, world bounds, projected screen-space bounds, camera
 distance, clipping state, and material/texture load state. Appending
-`?debugOverlay=1` enables a read-only browser debug overlay for humans without
-changing the CLI JSON proof contract.
+`?debugOverlay=1` enables a read-only browser debug overlay for humans, and
+`?debugColliders=1` renders runtime-owned collider wire volumes for physics
+inspection without adding source entities. `tn playtest --debug` and
+`tn dev --target web --debug` route to the same collider overlay and report the
+debug collider count while keeping normal CLI JSON proof deterministic.
 
 The structured authoring parity PRD has started with a source-document contract
 and testable inventory in `@threenative/authoring`. The inventory makes the
@@ -1060,13 +1063,16 @@ packages retain the manual host checklist. The same gate is part of
 `pnpm verify:release`.
 
 The V10 advanced-physics pass now promotes a bounded racing-useful physics
-slice: SDK/IR/compiler contracts accept explicit `Collider.mesh.bounds` and
-`triangleCount` metadata for static and dynamic mesh colliders, `RigidBody.ccd`
-with `swept-aabb` mode, and portable `PhysicsJoint` metadata for hinge, slider,
-and suspension joints. Web and Bevy deterministic traces use mesh AABB bounds
-for high-speed track contact, preserve CCD observations, and report suspension
-joint metadata. `pnpm verify:v10:advanced-physics` writes sequential web/native
-frame PNGs, a contact sheet, JSON traces, and per-frame comparison metrics under
+slice: SDK/IR/compiler contracts accept explicit `Collider.center` local shape
+offsets, `Collider.mesh.bounds` and `triangleCount` metadata for static and
+dynamic mesh colliders, `RigidBody.ccd` with `swept-aabb` mode, portable
+`RigidBody.enabledTranslations` /
+`RigidBody.enabledRotations` axis locks, and portable `PhysicsJoint` metadata
+for hinge, slider, and suspension joints. Web and Bevy deterministic traces use
+mesh AABB bounds for high-speed track contact, preserve CCD observations,
+apply axis-lock metadata through the Rapier-backed runtime path, and report
+suspension joint metadata. `pnpm verify:v10:advanced-physics` writes sequential
+web/native frame PNGs, a contact sheet, JSON traces, and per-frame comparison metrics under
 `tools/verify/artifacts/advanced-physics/`. Full constraint solving, arbitrary
 triangle narrow phase, tire/friction models, vehicle drivetrains, soft bodies,
 ragdolls, and public backend handles remain deferred or diagnostic-only

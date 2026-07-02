@@ -34,6 +34,7 @@ export async function devCommand(
   const targetFlagIndex = normalizedArgv.indexOf("--target");
   const target = targetFlagIndex === -1 ? undefined : normalizedArgv[targetFlagIndex + 1];
   const watchMode = normalizedArgv.includes("--watch");
+  const debugColliders = normalizedArgv.includes("--debug") || normalizedArgv.includes("--debug-colliders");
 
   if (target !== "web" && target !== "desktop") {
     return diagnosticResult(
@@ -54,14 +55,16 @@ export async function devCommand(
       const watcher = await startDevWatch(projectPath);
       const bundlePath = watcher.initialReport.bundlePath;
       const server = target === "web" && bundlePath !== undefined ? await startWebPreview({ bundlePath }) : undefined;
+      const url = server === undefined ? undefined : previewUrl(server.url, debugColliders);
       const payload = {
         code: "TN_DEV_WATCH_READY",
+        debugColliders,
         initialReport: watcher.initialReport,
         message:
           watcher.initialReport.status === "pass"
             ? "Watch mode ready. Rebuild diagnostics will be reported after source changes."
             : "Watch mode ready with build diagnostics. Fix the reported issue and save again.",
-        url: server?.url,
+        url,
         watchedPaths: watcher.watchedPaths,
       };
 
@@ -91,10 +94,12 @@ export async function devCommand(
     }
 
     const server = await startWebPreview({ bundlePath });
+    const url = previewUrl(server.url, debugColliders);
     const payload = {
       code: "TN_DEV_WEB_READY",
-      message: `Web preview ready at ${server.url}`,
-      url: server.url,
+      debugColliders,
+      message: `Web preview ready at ${url}`,
+      url,
     };
 
     return {
@@ -106,6 +111,15 @@ export async function devCommand(
     const message = error instanceof Error ? error.message : String(error);
     return diagnosticResult({ code: "TN_DEV_FAILED", message }, { exitCode: 1, json, stderr: true });
   }
+}
+
+function previewUrl(url: string, debugColliders: boolean): string {
+  if (!debugColliders) {
+    return url;
+  }
+  const parsed = new URL(url);
+  parsed.searchParams.set("debugColliders", "1");
+  return parsed.toString();
 }
 
 export function classifyDevAssetReload(change: IDevAssetReloadChange): IAssetReloadReportIr {

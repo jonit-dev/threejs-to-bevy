@@ -23,13 +23,14 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
+    "@dimforge/rapier3d-compat": "0.19.3",
     "@threenative/compiler": "workspace:*",
     "@threenative/ir": "workspace:*",
     "three": "^0.181.2",
     "vite": "^7.2.7"
   },
   "devDependencies": {
-    "@types/three": "^0.181.0",
-    "@types/node": "^20.19.25"
+    "@types/node": "^20.19.25",
+    "@types/three": "^0.181.0"
   }
 }

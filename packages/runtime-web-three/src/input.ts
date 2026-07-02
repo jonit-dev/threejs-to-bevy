@@ -152,7 +152,10 @@ export function createInputState(input?: IInputIr, options: IWebInputStateOption
     ...loadPersistedBindingOverrides(options.storage, options.storageKey),
   ], options.profileId ?? input.controlsSettings?.profileId ?? "default");
   const currentActions = new Set<string>();
-  const previousActions = new Set<string>();
+  const framePressedActions = new Set<string>();
+  const frameReleasedActions = new Set<string>();
+  const pendingPressedActions = new Set<string>();
+  const pendingReleasedActions = new Set<string>();
   const keys = new Set<string>();
   const pointerButtons = new Set<number>();
   const pointerAxes = new Map<string, number>();
@@ -216,10 +219,23 @@ export function createInputState(input?: IInputIr, options: IWebInputStateOption
   }
 
   function refreshActions(): void {
+    const previous = new Set(currentActions);
     currentActions.clear();
     for (const action of input?.actions ?? []) {
       if (readAction(action.id)) {
         currentActions.add(action.id);
+      }
+    }
+    for (const action of currentActions) {
+      if (!previous.has(action)) {
+        pendingPressedActions.add(action);
+        pendingReleasedActions.delete(action);
+      }
+    }
+    for (const action of previous) {
+      if (!currentActions.has(action)) {
+        pendingReleasedActions.add(action);
+        pendingPressedActions.delete(action);
       }
     }
   }
@@ -231,11 +247,17 @@ export function createInputState(input?: IInputIr, options: IWebInputStateOption
     },
     axis: readAxis,
     beginFrame() {
-      previousActions.clear();
-      for (const action of currentActions) {
-        previousActions.add(action);
-      }
       refreshActions();
+      framePressedActions.clear();
+      for (const action of pendingPressedActions) {
+        framePressedActions.add(action);
+      }
+      pendingPressedActions.clear();
+      frameReleasedActions.clear();
+      for (const action of pendingReleasedActions) {
+        frameReleasedActions.add(action);
+      }
+      pendingReleasedActions.clear();
       pointerAxes.set("deltaX", 0);
       pointerAxes.set("deltaY", 0);
     },
@@ -293,11 +315,11 @@ export function createInputState(input?: IInputIr, options: IWebInputStateOption
     },
     pressed(name) {
       refreshActions();
-      return currentActions.has(name) && !previousActions.has(name);
+      return framePressedActions.has(name) || pendingPressedActions.has(name);
     },
     released(name) {
       refreshActions();
-      return !currentActions.has(name) && previousActions.has(name);
+      return frameReleasedActions.has(name) || pendingReleasedActions.has(name);
     },
   };
 }

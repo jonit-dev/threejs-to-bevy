@@ -432,14 +432,17 @@ fn run_scripted_runtime_systems(
         return;
     };
     let delta = time.delta_seconds();
+    let fixed_delta = 1.0 / 60.0;
     let snapshot = systems_context::NativeSystemTimeSnapshot {
         delta,
         dt: delta,
         elapsed: time.elapsed_seconds(),
-        fixed_delta: 1.0 / 60.0,
-        fixed_dt: 1.0 / 60.0,
+        fixed_delta,
+        fixed_dt: fixed_delta,
         paused: false,
     };
+
+    physics::step_bundle_physics(&mut runtime.bundle, fixed_delta);
 
     if let Err(error) = systems_host::run_native_systems_once_with_input(
         &mut runtime.bundle,

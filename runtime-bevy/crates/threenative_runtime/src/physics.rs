@@ -1,5 +1,6 @@
 use std::collections::BTreeMap;
 
+use rapier3d::prelude::*;
 use serde::Serialize;
 use threenative_loader::{ColliderComponent, LoadedBundle, WorldEntity};
 
@@ -103,7 +104,7 @@ pub fn trace_rigid_body_primitives(
         .collect::<Vec<_>>();
     let mut observations = Vec::new();
     for step in 1..=steps {
-        let contacts = step_primitive_bodies(&mut entities, fixed_delta, [0.0, -9.81, 0.0]);
+        let contacts = step_rapier_bodies(&mut entities, fixed_delta, [0.0, -9.81, 0.0]);
         for entity in entities
             .iter()
             .filter(|entity| entity.body_kind.as_deref() == Some("dynamic"))
@@ -158,6 +159,32 @@ pub fn trace_physics_joints(bundle: &LoadedBundle) -> Vec<PhysicsJointObservatio
     observations
 }
 
+pub fn step_bundle_physics(bundle: &mut LoadedBundle, fixed_delta: f32) {
+    let mut entities = bundle
+        .world
+        .entities
+        .iter()
+        .filter_map(simulated_entity)
+        .collect::<Vec<_>>();
+    step_rapier_bodies(&mut entities, fixed_delta, [0.0, -9.81, 0.0]);
+    for simulated in entities {
+        let Some(entity) = bundle
+            .world
+            .entities
+            .iter_mut()
+            .find(|entity| entity.id == simulated.id)
+        else {
+            continue;
+        };
+        if let Some(transform) = entity.components.transform.as_mut() {
+            transform.position = Some(simulated.center);
+        }
+        if let Some(body) = entity.components.rigid_body.as_mut() {
+            body.velocity = simulated.velocity;
+        }
+    }
+}
+
 fn physics_events_for_pairs(current_pairs: BTreeMap<String, DetectedPair>) -> Vec<PhysicsEvent> {
     physics_events_for_pair_delta(&current_pairs, &BTreeMap::new())
 }
@@ -204,220 +231,240 @@ fn integrate_entities(entities: &mut [SimulatedEntity], fixed_delta: f32) {
     }
 }
 
-fn step_primitive_bodies(
-    entities: &mut [SimulatedEntity],
-    fixed_delta: f32,
-    gravity: [f32; 3],
-) -> BTreeMap<String, Vec<String>> {
-    let previous_centers = entities
-        .iter()
-        .map(|entity| (entity.id.clone(), entity.center))
-        .collect::<BTreeMap<_, _>>();
-    for entity in entities.iter_mut() {
-        let Some(body_kind) = entity.body_kind.as_deref() else {
-            continue;
-        };
-        if body_kind != "dynamic" && body_kind != "kinematic" {
-            continue;
-        }
-        let source_velocity = entity.velocity.unwrap_or([0.0, 0.0, 0.0]);
-        let damping_factor = (1.0 - entity.damping * fixed_delta).max(0.0);
-        let gravity_scale = if body_kind == "dynamic" {
-            entity.gravity_scale
-        } else {
-            0.0
-        };
-        let velocity = [
-            (source_velocity[0] + gravity[0] * gravity_scale * fixed_delta) * damping_factor,
-            (source_velocity[1] + gravity[1] * gravity_scale * fixed_delta) * damping_factor,
-            (source_velocity[2] + gravity[2] * gravity_scale * fixed_delta) * damping_factor,
-        ];
-        entity.velocity = Some(velocity);
-        entity.center[0] += velocity[0] * fixed_delta;
-        entity.center[1] += velocity[1] * fixed_delta;
-        entity.center[2] += velocity[2] * fixed_delta;
-    }
-
-    let mut blockers = entities
-        .iter()
-        .filter(|entity| {
-            matches!(
-                entity.body_kind.as_deref(),
-                Some("static") | Some("kinematic")
-            )
-        })
-        .cloned()
-        .collect::<Vec<_>>();
-    blockers.sort_by(|left, right| {
-        entity_bottom(left)
-            .partial_cmp(&entity_bottom(right))
-            .unwrap_or(std::cmp::Ordering::Equal)
-            .then(left.id.cmp(&right.id))
-    });
-    let mut contacts = BTreeMap::new();
-    let mut dynamic_indices = entities
-        .iter()
-        .enumerate()
-        .filter(|(_, entity)| entity.body_kind.as_deref() == Some("dynamic"))
-        .map(|(index, entity)| (index, entity_bottom(entity), entity.id.clone()))
-        .collect::<Vec<_>>();
-    dynamic_indices.sort_by(|left, right| {
-        left.1
-            .partial_cmp(&right.1)
-            .unwrap_or(std::cmp::Ordering::Equal)
-            .then(left.2.cmp(&right.2))
-    });
-    let mut settled = Vec::new();
-    for (index, _, _) in dynamic_indices {
-        let mut local_blockers = blockers.clone();
-        local_blockers.extend(settled.clone());
-        local_blockers.sort_by(|left, right| left.id.cmp(&right.id));
-        for floor in &local_blockers {
-            if floor.id == entities[index].id {
-                continue;
-            }
-            let previous_center = previous_centers.get(&entities[index].id).copied();
-            if resolve_vertical_contact(&mut entities[index], floor, previous_center) {
-                let entry = contacts
-                    .entry(entities[index].id.clone())
-                    .or_insert_with(Vec::new);
-                entry.push(floor.id.clone());
-                entry.sort();
-            }
-        }
-        settled.push(entities[index].clone());
-    }
-    contacts
-}
-
-fn entity_bottom(entity: &SimulatedEntity) -> f32 {
-    entity.center[1] - entity.half_extents[1]
-}
-
-fn resolve_vertical_contact(
-    entity: &mut SimulatedEntity,
-    floor: &SimulatedEntity,
-    previous_center: Option<[f32; 3]>,
-) -> bool {
-    let entity_bounds = simulated_entity_bounds(entity);
-    let floor_bounds = simulated_entity_bounds(floor);
-    if !overlaps(&entity_bounds, &floor_bounds)
-        && !swept_vertical_overlap(entity, &entity_bounds, &floor_bounds, previous_center)
-    {
-        return false;
-    }
-    let floor_top = floor.center[1] + floor.half_extents[1];
-    entity.center[1] = round(floor_top + entity.half_extents[1]);
-    let restitution = entity.restitution.max(floor.restitution);
-    let friction = (entity.friction + floor.friction) / 2.0;
-    let velocity = entity.velocity.unwrap_or([0.0, 0.0, 0.0]);
-    let next_y = if velocity[1] < 0.0 {
-        -velocity[1] * restitution
-    } else {
-        velocity[1]
-    };
-    let friction_factor = (1.0 - friction).max(0.0);
-    entity.velocity = Some([
-        velocity[0] * friction_factor,
-        if next_y.abs() < 0.000001 { 0.0 } else { next_y },
-        velocity[2] * friction_factor,
-    ]);
-    true
-}
-
-fn swept_vertical_overlap(
-    entity: &SimulatedEntity,
-    bounds: &Bounds<'_>,
-    floor_bounds: &Bounds<'_>,
-    previous_center: Option<[f32; 3]>,
-) -> bool {
-    if !entity.ccd {
-        return false;
-    }
-    let Some(previous_center) = previous_center else {
-        return false;
-    };
-    let previous_bottom = previous_center[1] - bounds.half_extents[1];
-    let current_bottom = bounds.center[1] - bounds.half_extents[1];
-    let floor_top = floor_bounds.center[1] + floor_bounds.half_extents[1];
-    let x_overlaps = (bounds.center[0] - floor_bounds.center[0]).abs()
-        <= bounds.half_extents[0] + floor_bounds.half_extents[0];
-    let z_overlaps = (bounds.center[2] - floor_bounds.center[2]).abs()
-        <= bounds.half_extents[2] + floor_bounds.half_extents[2];
-    x_overlaps && z_overlaps && previous_bottom >= floor_top && current_bottom <= floor_top
-}
-
 #[derive(Clone)]
 struct SimulatedEntity {
     body_kind: Option<String>,
     ccd: bool,
     center: [f32; 3],
+    collider_center: [f32; 3],
+    collider_kind: String,
     damping: f32,
+    enabled_rotations: Option<[bool; 3]>,
+    enabled_translations: Option<[bool; 3]>,
     friction: f32,
     gravity_scale: f32,
+    height: Option<f32>,
     half_extents: [f32; 3],
     id: String,
     layer: Option<String>,
     mask: Vec<String>,
+    mass: Option<f32>,
+    radius: Option<f32>,
     restitution: f32,
+    solver_iterations: Option<u32>,
     trigger: bool,
     velocity: Option<[f32; 3]>,
 }
 
+fn step_rapier_bodies(
+    entities: &mut [SimulatedEntity],
+    fixed_delta: f32,
+    gravity: [f32; 3],
+) -> BTreeMap<String, Vec<String>> {
+    let mut world = PhysicsWorld::new();
+    world.gravity = vector![gravity[0], gravity[1], gravity[2]].into();
+    let substeps = physics_substeps(fixed_delta);
+    world.integration_parameters.dt = fixed_delta / substeps as f32;
+    world.integration_parameters.num_solver_iterations = 12;
+    let mut handles = BTreeMap::new();
+    let layer_bits = layer_bits_for_entities(entities);
+    for entity in entities.iter() {
+        let Some(body_kind) = entity.body_kind.as_deref() else {
+            continue;
+        };
+        let velocity = entity.velocity.unwrap_or([0.0, 0.0, 0.0]);
+        let mut body = match body_kind {
+            "dynamic" => RigidBodyBuilder::dynamic(),
+            "kinematic" => RigidBodyBuilder::kinematic_velocity_based(),
+            _ => RigidBodyBuilder::fixed(),
+        }
+        .translation(vector![entity.center[0], entity.center[1], entity.center[2]].into())
+        .linvel(vector![velocity[0], velocity[1], velocity[2]].into())
+        .gravity_scale(if body_kind == "dynamic" { entity.gravity_scale } else { 0.0 })
+        .linear_damping(entity.damping)
+        .angular_damping(entity.damping)
+        .ccd_enabled(entity.ccd);
+        if let Some(enabled) = entity.enabled_translations {
+            body = body.enabled_translations(enabled[0], enabled[1], enabled[2]);
+        }
+        if let Some(enabled) = entity.enabled_rotations {
+            body = body.enabled_rotations(enabled[0], enabled[1], enabled[2]);
+        }
+        if let Some(mass) = entity.mass {
+            if body_kind == "dynamic" {
+                body = body.additional_mass(mass);
+            }
+        }
+        if let Some(iterations) = entity.solver_iterations {
+            body = body.additional_solver_iterations(iterations.saturating_sub(1) as usize);
+        }
+        let groups = rapier_collision_groups(entity, &layer_bits);
+        let collider = rapier_collider(entity)
+            .translation(vector![
+                entity.collider_center[0],
+                entity.collider_center[1],
+                entity.collider_center[2]
+            ].into())
+            .friction(entity.friction)
+            .restitution(entity.restitution)
+            .sensor(entity.trigger)
+            .collision_groups(groups)
+            .solver_groups(groups);
+        let (body_handle, _) = world.insert(body, collider);
+        handles.insert(entity.id.clone(), body_handle);
+    }
+
+    for _ in 0..substeps {
+        world.step();
+    }
+
+    for entity in entities.iter_mut() {
+        let Some(handle) = handles.get(&entity.id) else {
+            continue;
+        };
+        let body = &world.bodies[*handle];
+        let translation = body.translation();
+        let velocity = body.linvel();
+        entity.center = [translation.x, translation.y, translation.z];
+        entity.velocity = Some([velocity.x, velocity.y, velocity.z]);
+    }
+
+    contacts_from_overlaps(entities)
+}
+
+fn physics_substeps(fixed_delta: f32) -> usize {
+    (fixed_delta / (1.0 / 120.0)).ceil().max(1.0) as usize
+}
+
+fn layer_bits_for_entities(entities: &[SimulatedEntity]) -> BTreeMap<String, u32> {
+    let mut layers = BTreeMap::new();
+    for entity in entities {
+        let Some(layer) = entity.layer.as_ref() else {
+            continue;
+        };
+        if layers.contains_key(layer) {
+            continue;
+        }
+        let index = layers.len();
+        if index < 16 {
+            layers.insert(layer.clone(), 1_u32 << index);
+        }
+    }
+    layers
+}
+
+fn rapier_collision_groups(
+    entity: &SimulatedEntity,
+    layer_bits: &BTreeMap<String, u32>,
+) -> InteractionGroups {
+    let membership = entity
+        .layer
+        .as_ref()
+        .and_then(|layer| layer_bits.get(layer).copied())
+        .unwrap_or(Group::ALL.bits());
+    let filter = if entity.mask.is_empty() {
+        Group::ALL.bits()
+    } else {
+        entity
+            .mask
+            .iter()
+            .filter_map(|layer| layer_bits.get(layer).copied())
+            .fold(0_u32, |bits, bit| bits | bit)
+    };
+    InteractionGroups::new(
+        Group::from_bits_truncate(membership),
+        Group::from_bits_truncate(filter),
+        InteractionTestMode::And,
+    )
+}
+
+fn rapier_collider(entity: &SimulatedEntity) -> ColliderBuilder {
+    match entity.collider_kind.as_str() {
+        "sphere" => ColliderBuilder::ball(entity.radius.unwrap_or(entity.half_extents[0])),
+        "capsule" => ColliderBuilder::capsule_y(
+            entity.height.unwrap_or(entity.half_extents[1] * 2.0) / 2.0,
+            entity.radius.unwrap_or(entity.half_extents[0]),
+        ),
+        "cylinder" => ColliderBuilder::cylinder(
+            entity.height.unwrap_or(entity.half_extents[1] * 2.0) / 2.0,
+            entity.radius.unwrap_or(entity.half_extents[0]),
+        ),
+        _ => ColliderBuilder::cuboid(
+            entity.half_extents[0],
+            entity.half_extents[1],
+            entity.half_extents[2],
+        ),
+    }
+}
+
+fn contacts_from_overlaps(entities: &[SimulatedEntity]) -> BTreeMap<String, Vec<String>> {
+    let mut contacts: BTreeMap<String, Vec<String>> = BTreeMap::new();
+    for pair in detect_pairs(
+        entities
+            .iter()
+            .map(simulated_entity_bounds)
+            .collect::<Vec<_>>(),
+    )
+    .values()
+    {
+        contacts
+            .entry(pair.a.clone())
+            .or_default()
+            .push(pair.b.clone());
+        contacts
+            .entry(pair.b.clone())
+            .or_default()
+            .push(pair.a.clone());
+    }
+    for values in contacts.values_mut() {
+        values.sort();
+    }
+    contacts
+}
+
 fn simulated_entity(entity: &WorldEntity) -> Option<SimulatedEntity> {
     let collider = entity.components.collider.as_ref()?;
+    let body = entity.components.rigid_body.as_ref();
     Some(SimulatedEntity {
-        body_kind: entity
-            .components
-            .rigid_body
-            .as_ref()
-            .map(|body| body.kind.clone()),
-        ccd: entity
-            .components
-            .rigid_body
-            .as_ref()
+        body_kind: body.map(|body| body.kind.clone()),
+        ccd: body
             .and_then(|body| body.ccd.as_ref())
             .map(|ccd| ccd.enabled)
             .unwrap_or(false),
-        center: collider_center(
-            collider,
-            entity
-                .components
-                .transform
-                .as_ref()
-                .and_then(|transform| transform.position)
-                .unwrap_or([0.0, 0.0, 0.0]),
-        ),
-        damping: entity
+        center: entity
             .components
-            .rigid_body
+            .transform
             .as_ref()
-            .and_then(|body| body.damping)
-            .unwrap_or(0.0),
+            .and_then(|transform| transform.position)
+            .unwrap_or([0.0, 0.0, 0.0]),
+        collider_center: collider_local_center(collider),
+        collider_kind: collider.kind.clone(),
+        damping: body.and_then(|body| body.damping).unwrap_or(0.0),
+        enabled_rotations: body.and_then(|body| body.enabled_rotations),
+        enabled_translations: body.and_then(|body| body.enabled_translations),
         friction: collider.friction.unwrap_or(0.0),
-        gravity_scale: entity
-            .components
-            .rigid_body
-            .as_ref()
-            .and_then(|body| body.gravity_scale)
-            .unwrap_or(1.0),
+        gravity_scale: body.and_then(|body| body.gravity_scale).unwrap_or(1.0),
+        height: collider.height,
         half_extents: half_extents(collider),
         id: entity.id.clone(),
         layer: collider.layer.clone(),
         mask: collider.mask.clone().unwrap_or_default(),
+        mass: body.and_then(|body| body.mass),
+        radius: collider.radius,
         restitution: collider.restitution.unwrap_or(0.0),
+        solver_iterations: body.and_then(|body| body.solver_iterations),
         trigger: collider.trigger.unwrap_or(false),
-        velocity: entity
-            .components
-            .rigid_body
-            .as_ref()
-            .and_then(|body| body.velocity),
+        velocity: body.and_then(|body| body.velocity),
     })
 }
 
 fn simulated_entity_bounds(entity: &SimulatedEntity) -> Bounds<'_> {
     Bounds {
-        center: entity.center,
+        center: [
+            entity.center[0] + entity.collider_center[0],
+            entity.center[1] + entity.collider_center[1],
+            entity.center[2] + entity.collider_center[2],
+        ],
         half_extents: entity.half_extents,
         id: &entity.id,
         layer: entity.layer.as_deref(),
@@ -483,7 +530,14 @@ fn entity_bounds(entity: &WorldEntity) -> Option<Bounds<'_>> {
         .and_then(|transform| transform.position)
         .unwrap_or([0.0, 0.0, 0.0]);
     Some(Bounds {
-        center: collider_center(collider, transform_position),
+        center: {
+            let center = collider_local_center(collider);
+            [
+                transform_position[0] + center[0],
+                transform_position[1] + center[1],
+                transform_position[2] + center[2],
+            ]
+        },
         half_extents: half_extents(collider),
         id: &entity.id,
         layer: collider.layer.as_deref(),
@@ -518,18 +572,15 @@ fn half_extents(collider: &ColliderComponent) -> [f32; 3] {
     }
 }
 
-fn collider_center(collider: &ColliderComponent, transform_position: [f32; 3]) -> [f32; 3] {
-    let Some(mesh) = collider.mesh.as_ref() else {
-        return transform_position;
-    };
-    let Some(center) = mesh.bounds.center else {
-        return transform_position;
-    };
-    [
-        transform_position[0] + center[0],
-        transform_position[1] + center[1],
-        transform_position[2] + center[2],
-    ]
+fn collider_local_center(collider: &ColliderComponent) -> [f32; 3] {
+    if let Some(center) = collider.center {
+        return center;
+    }
+    collider
+        .mesh
+        .as_ref()
+        .and_then(|mesh| mesh.bounds.center)
+        .unwrap_or([0.0, 0.0, 0.0])
 }
 
 fn overlaps(left: &Bounds<'_>, right: &Bounds<'_>) -> bool {

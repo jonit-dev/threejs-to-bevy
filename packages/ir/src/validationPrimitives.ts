@@ -56,6 +56,18 @@ export function validateFiniteVec3Range(value: unknown, minimum: number, maximum
   }
 }
 
+export function validateBooleanVec3(value: unknown, path: string, code: string, diagnostics: IIrDiagnostic[]): void {
+  if (!Array.isArray(value) || value.length !== 3 || value.some((item) => typeof item !== "boolean")) {
+    diagnostics.push({
+      code,
+      message: "Expected a three-component boolean vector.",
+      path,
+      severity: "error",
+      suggestion: "Use [enableX, enableY, enableZ] boolean values.",
+    });
+  }
+}
+
 export function validatePositiveFinite(value: unknown, path: string, code: string, diagnostics: IIrDiagnostic[]): void {
   if (typeof value !== "number" || !Number.isFinite(value) || value <= 0) {
     diagnostics.push({

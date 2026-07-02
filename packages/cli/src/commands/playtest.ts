@@ -10,6 +10,10 @@ declare global {
   // Browser preview global exposed by @threenative/runtime-web-three.
   // The CLI reads it through Playwright to verify gameplay effects.
   var __THREENATIVE_EFFECT_LOG__: unknown;
+  var __THREENATIVE_RUNTIME__: {
+    debugColliderCount?: number;
+    entityWorldPosition?(id: string): Vec3 | undefined;
+  } | undefined;
 }
 
 type Vec3 = [number, number, number];
@@ -31,6 +35,8 @@ export interface IPlaytestReport {
   after?: ITransformSample;
   artifact?: string;
   before?: ITransformSample;
+  debugColliderCount?: number;
+  debugColliders: boolean;
   diagnostics: IPlaytestDiagnostic[];
   distance: number;
   entity: string;
@@ -44,7 +50,7 @@ export interface IPlaytestReport {
 }
 
 export interface IPlaytestCommandOptions {
-  runner?: (options: { entityId: string; expectMoved: boolean; frames: number; movementThreshold: number; press: string; projectPath: string }) => Promise<IPlaytestReport>;
+  runner?: (options: { debugColliders: boolean; entityId: string; expectMoved: boolean; frames: number; movementThreshold: number; press: string; projectPath: string }) => Promise<IPlaytestReport>;
 }
 
 export async function playtestCommand(
@@ -59,13 +65,14 @@ export async function playtestCommand(
   const press = readFlag(normalizedArgv, "--press") ?? readFlag(normalizedArgv, "--input");
   const frames = readPositiveInteger(readFlag(normalizedArgv, "--frames"), 60);
   const movementThreshold = readPositiveNumber(readFlag(normalizedArgv, "--movement-threshold"), 0.01);
+  const debugColliders = normalizedArgv.includes("--debug") || normalizedArgv.includes("--debug-colliders");
   const expectMoved = normalizedArgv.includes("--expect-moved");
 
   if (entityId === undefined || press === undefined) {
     return diagnosticResult(
       {
         code: "TN_PLAYTEST_USAGE",
-        message: "Usage: tn playtest --project <path> --entity <id> --press <KeyboardEvent.code> --frames <n> [--expect-moved] [--json]",
+        message: "Usage: tn playtest --project <path> --entity <id> --press <KeyboardEvent.code> --frames <n> [--expect-moved] [--debug] [--json]",
       },
       { exitCode: 2, json, stderr: !json },
     );
@@ -73,7 +80,7 @@ export async function playtestCommand(
 
   try {
     const runner = options.runner ?? runWebPlaytest;
-    const report = await runner({ entityId, expectMoved, frames, movementThreshold, press, projectPath });
+    const report = await runner({ debugColliders, entityId, expectMoved, frames, movementThreshold, press, projectPath });
     const code = report.pass ? "TN_PLAYTEST_OK" : "TN_PLAYTEST_FAILED";
     return {
       exitCode: report.pass ? 0 : 1,
@@ -92,18 +99,18 @@ export async function playtestCommand(
   }
 }
 
-async function runWebPlaytest(options: { entityId: string; expectMoved: boolean; frames: number; movementThreshold: number; press: string; projectPath: string }): Promise<IPlaytestReport> {
+async function runWebPlaytest(options: { debugColliders: boolean; entityId: string; expectMoved: boolean; frames: number; movementThreshold: number; press: string; projectPath: string }): Promise<IPlaytestReport> {
   const bundlePath = await ensureProjectBundle(options.projectPath);
   let server: IWebPreviewServer | undefined;
   try {
     server = await startWebPreview({ bundlePath });
-    return await probePreview({ ...options, url: server.url });
+    return await probePreview({ ...options, url: previewUrl(server.url, options.debugColliders) });
   } finally {
     await server?.close();
   }
 }
 
-async function probePreview(options: { entityId: string; expectMoved: boolean; frames: number; movementThreshold: number; press: string; projectPath: string; url: string }): Promise<IPlaytestReport> {
+async function probePreview(options: { debugColliders: boolean; entityId: string; expectMoved: boolean; frames: number; movementThreshold: number; press: string; projectPath: string; url: string }): Promise<IPlaytestReport> {
   const diagnostics: IPlaytestDiagnostic[] = [];
   const artifact = resolve(options.projectPath, "artifacts", "playtest", `${safeFilePart(options.entityId)}-${safeFilePart(options.press)}.png`);
   await mkdir(dirname(artifact), { recursive: true });
@@ -127,12 +134,13 @@ async function probePreview(options: { entityId: string; expectMoved: boolean; f
       });
     }
     await page.waitForTimeout(120);
-    const before = latestTransformSample(await readEffectLog(page), options.entityId);
-    await page.keyboard.down(options.press);
+    const before = await readTransformSample(page, options.entityId);
+    await dispatchKeyboardCode(page, "keydown", options.press);
     await page.waitForTimeout(Math.max(1, options.frames) * (1000 / 60));
-    await page.keyboard.up(options.press);
-    await page.waitForTimeout(1100);
-    const after = latestTransformSample(await readEffectLog(page), options.entityId);
+    await dispatchKeyboardCode(page, "keyup", options.press);
+    await page.waitForTimeout(3000);
+    const after = await readTransformSample(page, options.entityId);
+    const debugColliderCount = await page.evaluate(() => globalThis.__THREENATIVE_RUNTIME__?.debugColliderCount);
     await page.screenshot({ path: artifact });
     const artifactSize = await stat(artifact);
     if (artifactSize.size === 0) {
@@ -141,7 +149,7 @@ async function probePreview(options: { entityId: string; expectMoved: boolean; f
     if (before === undefined || after === undefined) {
       diagnostics.push({
         code: "TN_PLAYTEST_ENTITY_NOT_FOUND",
-        message: `No Transform patch evidence was found for entity '${options.entityId}'.`,
+        message: `No live Transform evidence was found for entity '${options.entityId}'.`,
         severity: "error",
         suggestion: "Check the entity id and ensure an update/fixedUpdate system writes its Transform during the playtest.",
       });
@@ -160,6 +168,8 @@ async function probePreview(options: { entityId: string; expectMoved: boolean; f
       ...(after === undefined ? {} : { after }),
       artifact,
       ...(before === undefined ? {} : { before }),
+      ...(typeof debugColliderCount === "number" ? { debugColliderCount } : {}),
+      debugColliders: options.debugColliders,
       diagnostics,
       distance,
       entity: options.entityId,
@@ -176,6 +186,41 @@ async function probePreview(options: { entityId: string; expectMoved: boolean; f
   }
 }
 
+async function dispatchKeyboardCode(page: import("playwright").Page, type: "keydown" | "keyup", code: string): Promise<void> {
+  await page.evaluate(
+    ({ code: keyboardCode, key, type: eventType }) => {
+      const browserGlobal = globalThis as unknown as {
+        dispatchEvent(event: unknown): boolean;
+        KeyboardEvent: new (type: string, init: Record<string, unknown>) => unknown;
+      };
+      browserGlobal.dispatchEvent(new browserGlobal.KeyboardEvent(eventType, { bubbles: true, code: keyboardCode, key }));
+    },
+    { code, key: keyboardKeyFromCode(code), type },
+  );
+}
+
+function keyboardKeyFromCode(code: string): string {
+  if (code === "Space") {
+    return " ";
+  }
+  if (/^Key[A-Z]$/.test(code)) {
+    return code.slice(3).toLowerCase();
+  }
+  if (/^Digit[0-9]$/.test(code)) {
+    return code.slice(5);
+  }
+  return code;
+}
+
+function previewUrl(url: string, debugColliders: boolean): string {
+  if (!debugColliders) {
+    return url;
+  }
+  const parsed = new URL(url);
+  parsed.searchParams.set("debugColliders", "1");
+  return parsed.toString();
+}
+
 async function ensureProjectBundle(projectPath: string): Promise<string> {
   const config = await loadProjectConfig(projectPath);
   const bundlePath = resolve(projectPath, config.outDir);
@@ -189,6 +234,19 @@ async function ensureProjectBundle(projectPath: string): Promise<string> {
 
 async function readEffectLog(page: { evaluate<T>(fn: () => T): Promise<T> }): Promise<unknown> {
   return page.evaluate(() => globalThis.__THREENATIVE_EFFECT_LOG__);
+}
+
+async function readTransformSample(page: import("playwright").Page, entityId: string): Promise<ITransformSample | undefined> {
+  const effectSample = latestTransformSample(await readEffectLog(page), entityId);
+  const runtimePosition = await page.evaluate((id) => globalThis.__THREENATIVE_RUNTIME__?.entityWorldPosition?.(id) ?? null, entityId) as Vec3 | null;
+  if (runtimePosition !== null && Array.isArray(runtimePosition) && runtimePosition.length >= 3 && runtimePosition.every(Number.isFinite)) {
+    return {
+      frame: effectSample?.frame ?? 0,
+      position: runtimePosition,
+      tick: effectSample?.tick ?? 0,
+    };
+  }
+  return effectSample;
 }
 
 function latestTransformSample(effectLog: unknown, entityId: string): ITransformSample | undefined {

@@ -63,8 +63,9 @@ implementation:
   `tn verify --json` projected nonblank bounds diagnostics. Web preview
   readiness also exposes current scene ID, culled mesh count, recent runtime
   errors, per-rendered-entity bounds/scale/projected-bounds/camera-distance/
-  clipping/material evidence, and an optional `?debugOverlay=1` human overlay;
-  these are
+  clipping/material evidence, an optional `?debugOverlay=1` human overlay, and
+  `?debugColliders=1` runtime-owned collider wire volumes surfaced by
+  `tn playtest --debug` and `tn dev --target web --debug`; these are
   CLI/runtime QA aids, not new portable Bevy runtime capabilities. SDK transform
   helper methods and runtime Transform patch merge semantics are documented and
   tested so partial position patches preserve authored scale. Current scaffold
@@ -522,6 +523,7 @@ diagnostics until portable promotion criteria and web/Bevy evidence exist.
   - [x] Bounded static/dynamic mesh collider AABB metadata for racing-style
         track and chassis traces
   - [x] Swept-AABB CCD metadata and deterministic high-speed track contact trace
+  - [x] Portable rigid-body translation and rotation axis locks
   - [x] Portable hinge, slider, and suspension joint metadata observations
 - [x] `P1` Broad sensors beyond current trigger/overlap scope
 - [x] Step offsets, ledge ungrounding, moving-platform carry, and richer ground contact trace
@@ -534,6 +536,8 @@ diagnostics until portable promotion criteria and web/Bevy evidence exist.
       trace diffs, selected P1 trace-diagram contact sheets, promoted physics
       gates, and conformance covered by `pnpm verify:physics-self-verification`;
       runtime camera screenshots and videos are not emitted by this gate
+- [x] Portable collider local centers for aligning physics shapes to imported
+      model origins across web and Bevy Rapier paths
 - [x] `P1` Navmesh/pathfinding behavior
 - [x] `P1` External physics backend integration strategy
 - [x] `P1` Arbitrary sloped mesh terrain for character grounding

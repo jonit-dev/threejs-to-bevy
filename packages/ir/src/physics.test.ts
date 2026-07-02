@@ -77,10 +77,12 @@ test("should accept primitive dynamic and kinematic bodies when fields are bound
       physicsWorld([
         { Collider: { friction: 0.8, kind: "box", restitution: 0.1, size: [4, 0.5, 4] }, RigidBody: { inverseMass: 0, kind: "static" } },
         {
-          Collider: { friction: 0.6, kind: "box", restitution: 0.25, size: [1, 1, 1] },
+          Collider: { center: [0, 0.5, 0], friction: 0.6, kind: "box", restitution: 0.25, size: [1, 1, 1] },
           RigidBody: {
             angularVelocity: [0, 0.5, 0],
             damping: 0.05,
+            enabledRotations: [false, true, false],
+            enabledTranslations: [true, false, true],
             gravityScale: 1,
             inverseMass: 0.5,
             kind: "dynamic",

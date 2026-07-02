@@ -42,6 +42,7 @@ import {
 } from "./schemaValidation.js";
 import {
   isRecord,
+  validateBooleanVec3,
   validateFiniteMinimum,
   validateFiniteNumber,
   validateFiniteRange,
@@ -2043,6 +2044,9 @@ function validatePhysicsComponents(entity: IWorldIr["entities"][number], path: s
       });
     }
     validatePhysicsFilter(colliderRecord, `${path}/components/Collider`, diagnostics);
+    if (colliderRecord.center !== undefined) {
+      validateFiniteVec3(colliderRecord.center, `${path}/components/Collider/center`, "TN_IR_PHYSICS_COLLIDER_CENTER_INVALID", diagnostics);
+    }
     if (colliderRecord.trigger !== undefined && typeof colliderRecord.trigger !== "boolean") {
       diagnostics.push({
         code: "TN_IR_PHYSICS_TRIGGER_INVALID",
@@ -2127,6 +2131,12 @@ function validatePhysicsComponents(entity: IWorldIr["entities"][number], path: s
   }
   if (bodyRecord?.angularVelocity !== undefined) {
     validateFiniteVec3Range(bodyRecord.angularVelocity, -V9_MAX_PHYSICS_SPEED, V9_MAX_PHYSICS_SPEED, `${path}/components/RigidBody/angularVelocity`, "TN_IR_PHYSICS_BODY_ANGULAR_VELOCITY_INVALID", diagnostics);
+  }
+  if (bodyRecord?.enabledTranslations !== undefined) {
+    validateBooleanVec3(bodyRecord.enabledTranslations, `${path}/components/RigidBody/enabledTranslations`, "TN_IR_PHYSICS_BODY_ENABLED_TRANSLATIONS_INVALID", diagnostics);
+  }
+  if (bodyRecord?.enabledRotations !== undefined) {
+    validateBooleanVec3(bodyRecord.enabledRotations, `${path}/components/RigidBody/enabledRotations`, "TN_IR_PHYSICS_BODY_ENABLED_ROTATIONS_INVALID", diagnostics);
   }
   if (bodyRecord?.sleepThreshold !== undefined) {
     validateFiniteRange(bodyRecord.sleepThreshold, 0, V9_MAX_PHYSICS_SLEEP_THRESHOLD, `${path}/components/RigidBody/sleepThreshold`, "TN_IR_PHYSICS_BODY_SLEEP_THRESHOLD_INVALID", diagnostics);

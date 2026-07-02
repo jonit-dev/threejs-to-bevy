@@ -45,6 +45,7 @@ export async function runGameFrame(options: {
   world: IWorldIr;
 }): Promise<void> {
   const fixedDelta = options.fixedDelta ?? options.runtimeConfig?.time.fixedDelta ?? 1 / 60;
+  options.input?.beginFrame();
   const state = options.state;
   if (state !== undefined) {
     state.elapsed += options.delta;
@@ -76,7 +77,6 @@ export async function runGameFrame(options: {
   }
   syncTransforms(options.world, options.mapped.objectsById);
   syncMeshRendererMaterials(options.world, options.mapped.objectsById);
-  options.input?.beginFrame();
 }
 
 function collectDiagnostics(mapped: IThreeWorld, result: { diagnostics: IThreeWorld["diagnostics"] }): void {

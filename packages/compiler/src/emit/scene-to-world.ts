@@ -340,6 +340,8 @@ function emitPhysics(physics: IPhysicsDeclaration | undefined, components: Recor
       ...(physics.body.angularVelocity === undefined ? {} : { angularVelocity: physics.body.angularVelocity }),
       ...(physics.body.ccd === undefined ? {} : { ccd: physics.body.ccd }),
       ...(physics.body.damping === undefined ? {} : { damping: physics.body.damping }),
+      ...(physics.body.enabledRotations === undefined ? {} : { enabledRotations: physics.body.enabledRotations }),
+      ...(physics.body.enabledTranslations === undefined ? {} : { enabledTranslations: physics.body.enabledTranslations }),
       ...(physics.body.gravityScale === undefined ? {} : { gravityScale: physics.body.gravityScale }),
       ...(physics.body.inverseMass === undefined ? {} : { inverseMass: physics.body.inverseMass }),
       ...(physics.body.mass === undefined ? {} : { mass: physics.body.mass }),
@@ -351,6 +353,7 @@ function emitPhysics(physics: IPhysicsDeclaration | undefined, components: Recor
   if (physics?.collider !== undefined) {
     components.Collider = {
       kind: physics.collider.kind,
+      ...(physics.collider.center === undefined ? {} : { center: physics.collider.center }),
       ...(physics.collider.size === undefined ? {} : { size: physics.collider.size }),
       ...(physics.collider.radius === undefined ? {} : { radius: physics.collider.radius }),
       ...(physics.collider.height === undefined ? {} : { height: physics.collider.height }),

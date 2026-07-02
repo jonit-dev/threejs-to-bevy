@@ -355,3 +355,55 @@ test("should emit structured source tags and groups", async () => {
     await rm(projectPath, { force: true, recursive: true });
   }
 });
+
+test("should emit repeated structured source physics components with one schema per kind", async () => {
+  const projectPath = await mkdtemp(join(tmpdir(), "tn-structured-physics-components-"));
+  try {
+    await cp(resolve(process.cwd(), "../../templates/structured-source-starter"), projectPath, { recursive: true });
+    const scenePath = join(projectPath, "content/scenes/arena.scene.json");
+    const scene = JSON.parse(await readFile(scenePath, "utf8")) as {
+      entities: Array<{ components?: Record<string, unknown>; id: string }>;
+    };
+    const floor = scene.entities.find((entity) => entity.id === "arena.floor");
+    const player = scene.entities.find((entity) => entity.id === "player");
+    const goal = scene.entities.find((entity) => entity.id === "goal");
+    if (floor === undefined || player === undefined || goal === undefined) {
+      throw new Error("structured-source-starter fixture must include floor, player, and goal entities");
+    }
+    floor.components = {
+      ...(floor.components ?? {}),
+      Collider: { friction: 0.8, kind: "box", layer: "world", size: [8, 0.1, 8] },
+      RigidBody: { kind: "static" },
+    };
+    player.components = {
+      ...(player.components ?? {}),
+      Collider: { friction: 0.4, kind: "sphere", mask: ["world"], radius: 0.3 },
+      RigidBody: { damping: 0.1, kind: "dynamic", mass: 1 },
+    };
+    goal.components = {
+      ...(goal.components ?? {}),
+      Collider: { friction: 0.5, kind: "sphere", mask: ["world"], radius: 0.25 },
+      RigidBody: { damping: 0.2, kind: "dynamic", mass: 2 },
+    };
+    await writeFile(scenePath, `${JSON.stringify(scene, null, 2)}\n`);
+
+    const { bundlePath } = await buildProject(projectPath);
+    const report = await validateBundle(bundlePath);
+    const manifest = JSON.parse(await readFile(resolve(bundlePath, "manifest.json"), "utf8")) as {
+      requiredCapabilities?: { physics?: string[] };
+    };
+    const schemas = JSON.parse(await readFile(resolve(bundlePath, "schemas/components.schema.json"), "utf8")) as {
+      schemas: Record<string, { fields: Record<string, unknown> }>;
+    };
+
+    assert.equal(report.ok, true);
+    assert.deepEqual(Object.keys(schemas.schemas).filter((key) => key === "RigidBody"), ["RigidBody"]);
+    assert.deepEqual(Object.keys(schemas.schemas).filter((key) => key === "Collider"), ["Collider"]);
+    assert.equal(manifest.requiredCapabilities?.physics?.includes("rigid-body.dynamic"), true);
+    assert.equal(manifest.requiredCapabilities?.physics?.includes("rigid-body.static"), true);
+    assert.equal(manifest.requiredCapabilities?.physics?.includes("collider.sphere"), true);
+    assert.equal(manifest.requiredCapabilities?.physics?.includes("collider.box"), true);
+  } finally {
+    await rm(projectPath, { force: true, recursive: true });
+  }
+});

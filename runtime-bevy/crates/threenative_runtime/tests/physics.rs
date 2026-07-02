@@ -90,15 +90,16 @@ fn physics_should_trace_dynamic_box_falling_onto_static_floor() {
 
     assert_eq!(observations.len(), 4);
     assert_eq!(observations[0].contact, None);
-    assert_eq!(observations[0].position, [0.0, 1.386875, 0.0]);
+    assert_eq!(observations[0].position, [0.0, 1.692586, 0.0]);
     assert_eq!(observations[0].velocity, [0.0, -2.4525, 0.0]);
-    assert_eq!(observations[1].contact.as_deref(), Some("floor"));
-    assert_eq!(observations[1].position, [0.0, 0.55, 0.0]);
-    assert_eq!(observations[1].velocity, [0.0, 0.0, 0.0]);
-    assert_eq!(observations[1].gravity_scale, 1.0);
-    assert_eq!(observations[1].damping, 0.0);
-    assert_eq!(observations[1].friction, 0.5);
-    assert_eq!(observations[1].restitution, 0.0);
+    assert_eq!(observations[1].contact, None);
+    assert_eq!(observations[2].contact.as_deref(), Some("floor"));
+    assert_eq!(observations[2].position, [0.000502, 0.544722, 0.000395]);
+    assert_eq!(observations[2].velocity, [-0.003061, 0.002566, -0.003559]);
+    assert_eq!(observations[2].gravity_scale, 1.0);
+    assert_eq!(observations[2].damping, 0.0);
+    assert_eq!(observations[2].friction, 0.5);
+    assert_eq!(observations[2].restitution, 0.0);
 
     fs::remove_dir_all(root).expect("temporary bundle should be removed");
 }
@@ -117,8 +118,8 @@ fn physics_should_trace_dynamic_mesh_ccd_against_track_collider() {
         .expect("car observation should exist");
     assert_eq!(car.ccd, Some(true));
     assert_eq!(car.contact.as_deref(), Some("track"));
-    assert_eq!(car.position, [0.0, 0.35, 0.0]);
-    assert_eq!(car.velocity, [0.0, 0.0, 0.0]);
+    assert_eq!(car.position, [0.000347, 0.344163, -0.000416]);
+    assert_eq!(car.velocity, [0.008323, 0.111974, -0.015286]);
 
     let joints = trace_physics_joints(&bundle);
     assert_eq!(joints.len(), 1);
@@ -502,7 +503,7 @@ fn write_mesh_ccd_bundle() -> PathBuf {
     {
       "id": "track",
       "components": {
-        "Collider": { "friction": 0.4, "kind": "mesh", "mesh": { "bounds": { "size": [8, 0.2, 16] }, "source": "mesh.track", "triangleCount": 256 }, "restitution": 0 },
+        "Collider": { "friction": 0.4, "kind": "mesh", "layer": "track", "mask": ["car"], "mesh": { "bounds": { "size": [8, 0.2, 16] }, "source": "mesh.track", "triangleCount": 256 }, "restitution": 0 },
         "RigidBody": { "kind": "static" },
         "Transform": { "position": [0, 0, 0] }
       }
@@ -510,7 +511,7 @@ fn write_mesh_ccd_bundle() -> PathBuf {
     {
       "id": "car",
       "components": {
-        "Collider": { "friction": 0.4, "kind": "mesh", "mesh": { "bounds": { "size": [2, 0.5, 4] }, "source": "mesh.car", "triangleCount": 128 }, "restitution": 0 },
+        "Collider": { "friction": 0.4, "kind": "mesh", "layer": "car", "mask": ["track"], "mesh": { "bounds": { "size": [2, 0.5, 4] }, "source": "mesh.car", "triangleCount": 128 }, "restitution": 0 },
         "RigidBody": { "ccd": { "enabled": true, "maxSubsteps": 4, "mode": "swept-aabb" }, "gravityScale": 0, "kind": "dynamic", "velocity": [0, -20, 0] },
         "Transform": { "position": [0, 3, 0] }
       }
@@ -518,7 +519,7 @@ fn write_mesh_ccd_bundle() -> PathBuf {
     {
       "id": "wheel.fl",
       "components": {
-        "Collider": { "kind": "sphere", "radius": 0.35 },
+        "Collider": { "kind": "sphere", "layer": "wheel", "mask": ["none"], "radius": 0.35 },
         "PhysicsJoint": { "axis": [0, 1, 0], "connectedEntity": "car", "damping": 0.6, "kind": "suspension", "stiffness": 12, "travel": 0.4 },
         "RigidBody": { "kind": "dynamic" },
         "Transform": { "position": [-0.8, 1.2, 1.2] }
