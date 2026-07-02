@@ -5,7 +5,7 @@ materials, examples, fixtures, demos, and starter-project content.
 
 ## Automation Catalog
 
-For automated asset selection, query the shipped SQLite catalog before browsing
+For automated asset selection, query the local or hosted asset catalog before browsing
 this human guide or researching externally:
 
 ```bash
@@ -14,12 +14,14 @@ tn asset source search --file-role material-index --json
 tn asset source get <asset-source-id> --json
 ```
 
-The catalog artifact lives at `packages/cli/data/asset-sources.sqlite` and is
-built from reviewed metadata in `docs/data/asset-sources.seed.jsonl` with
-`scripts/build-asset-source-catalog.mjs`. It is the direct-link automation index
-for agents and tooling. This Markdown document remains the policy/reference
-guide for source selection, license cautions, category routing, and fallback
-research.
+The local catalog artifact path is `packages/cli/data/asset-sources.sqlite`.
+It is generated from reviewed metadata in `docs/data/asset-sources.seed.jsonl`
+and snapshot inputs with `scripts/build-asset-source-catalog.mjs`. Large
+generated artifacts are not tracked in Git; see
+`docs/data/asset-catalog-artifacts.md`. The catalog is the direct-link
+automation index for agents and tooling. This Markdown document remains the
+policy/reference guide for source selection, license cautions, category routing,
+and fallback research.
 
 Use the catalog before creating generated games, adding example assets, making
 visual fixtures, using primitives as fallback, or starting broad web search. Do

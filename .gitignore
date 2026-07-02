@@ -12,3 +12,7 @@ runtime-bevy/target/
 .worktrees/
 
 assets-source
+
+# Generated asset catalog artifacts are too large for GitHub history.
+/packages/cli/data/asset-sources.sqlite
+/docs/data/objaverse-glb-asset-sources.snapshot.json

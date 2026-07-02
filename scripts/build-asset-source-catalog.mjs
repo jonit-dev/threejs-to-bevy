@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { createHash } from "node:crypto";
-import { mkdtemp, open, readFile, rm } from "node:fs/promises";
+import { access, mkdtemp, open, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, resolve } from "node:path";
 import { spawnSync } from "node:child_process";
@@ -335,7 +335,7 @@ async function buildCatalog({ outPath, records, ambientcgSnapshotPath, objaverse
   const schema = await readFile(schemaPath, "utf8");
   const workflowDoc = await readFile(workflowDocPath, "utf8");
   const ambientcgSnapshot = await readFile(ambientcgSnapshotPath, "utf8");
-  const objaverseSnapshot = await readFile(objaverseSnapshotPath, "utf8");
+  const objaverseSnapshot = await readOptionalFile(objaverseSnapshotPath);
   const os3aSnapshot = await readFile(os3aSnapshotPath, "utf8");
   const polyhavenSnapshot = await readFile(polyhavenSnapshotPath, "utf8");
   await mkdir(dirname(outPath), { recursive: true });
@@ -350,7 +350,7 @@ async function buildCatalog({ outPath, records, ambientcgSnapshotPath, objaverse
       insert("catalog_meta", { key: "seed_sha256", value: hashText(await readFile(seedPath, "utf8")) }),
       insert("catalog_meta", { key: "workflow_doc_sha256", value: hashText(workflowDoc) }),
       insert("catalog_meta", { key: "ambientcg_snapshot_sha256", value: hashText(ambientcgSnapshot) }),
-      insert("catalog_meta", { key: "objaverse_snapshot_sha256", value: hashText(objaverseSnapshot) }),
+      insert("catalog_meta", { key: "objaverse_snapshot_sha256", value: objaverseSnapshot === null ? "missing" : hashText(objaverseSnapshot) }),
       insert("catalog_meta", { key: "os3a_snapshot_sha256", value: hashText(os3aSnapshot) }),
       insert("catalog_meta", { key: "polyhaven_snapshot_sha256", value: hashText(polyhavenSnapshot) }),
       insert("catalog_meta", { key: "asset_search_index", value: "fts5-v1" }),
@@ -841,6 +841,9 @@ function categoryForAmbientcgAsset(asset, text) {
 }
 
 async function readObjaverseSnapshotRecords(snapshotPath) {
+  if (!await fileExists(snapshotPath)) {
+    return [];
+  }
   const snapshot = JSON.parse(await readFile(snapshotPath, "utf8"));
   if (!Array.isArray(snapshot.assets)) {
     throw new Error(`Invalid Objaverse snapshot at ${snapshotPath}: assets array is required.`);
@@ -848,6 +851,26 @@ async function readObjaverseSnapshotRecords(snapshotPath) {
   return snapshot.assets
     .filter((asset) => asset.license === "by" && typeof asset.downloadUrl === "string" && asset.downloadUrl.endsWith(".glb"))
     .map((asset) => objaverseRecord({ asset, snapshotPath }));
+}
+
+async function fileExists(path) {
+  try {
+    await access(path);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function readOptionalFile(path) {
+  try {
+    return await readFile(path, "utf8");
+  } catch (error) {
+    if (error?.code === "ENOENT") {
+      return null;
+    }
+    throw error;
+  }
 }
 
 function objaverseRecord({ asset, snapshotPath }) {

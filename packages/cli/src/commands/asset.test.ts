@@ -1,14 +1,17 @@
 import assert from "node:assert/strict";
-import { createReadStream } from "node:fs";
+import { createReadStream, existsSync } from "node:fs";
 import { copyFile, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 import { createInterface } from "node:readline";
 import test from "node:test";
 import { pathToFileURL } from "node:url";
 
 import { findAssetSourceCatalogPath, resolveAssetSourceCatalogPath } from "../assetSourceCatalog/catalog.js";
 import { assetCommand } from "./asset.js";
+
+const assetCatalogPath = resolveAssetSourceCatalogPath();
+const catalogTest = existsSync(assetCatalogPath) ? test : test.skip;
 
 const fixtureGltf = {
   asset: { version: "2.0", generator: "asset-command-test" },
@@ -328,7 +331,7 @@ test("should add structured render target asset source document", async () => {
   }
 });
 
-test("should search direct GLB sources by game category", async () => {
+catalogTest("should search direct GLB sources by game category", async () => {
   const result = await assetCommand(["source", "search", "--game-category", "underwater", "--format", "glb", "--direct-only", "--json"]);
   const payload = JSON.parse(result.stdout) as {
     code: string;
@@ -341,7 +344,7 @@ test("should search direct GLB sources by game category", async () => {
   assert.equal(payload.records.every((record) => record.gameCategory === "underwater" && record.format === "glb" && record.isDirectDownload && record.downloadUrl !== null), true);
 });
 
-test("should search typed material and texture source records by file role", async () => {
+catalogTest("should search typed material and texture source records by file role", async () => {
   const result = await assetCommand(["source", "search", "--file-role", "material-index", "--query", "poly haven", "--json"]);
   const payload = JSON.parse(result.stdout) as {
     records: Array<{ fileRole: string; id: string; isDirectDownload: boolean; sourceMetadata: Record<string, string> }>;
@@ -371,7 +374,7 @@ test("should search typed material and texture source records by file role", asy
   assert.equal(curatedPayload.record.sourceMetadata.assetType, "material-texture");
 });
 
-test("should include fallback records when direct-only search has no match", async () => {
+catalogTest("should include fallback records when direct-only search has no match", async () => {
   const result = await assetCommand(["source", "search", "--game-category", "restaurant-cooking", "--format", "glb", "--direct-only", "--json"]);
   const payload = JSON.parse(result.stdout) as {
     code: string;
@@ -386,7 +389,7 @@ test("should include fallback records when direct-only search has no match", asy
   assert.equal(payload.fallbackRecords.every((record) => /Review .*tn asset inspect/.test(record.recommendedNextCommand)), true);
 });
 
-test("should find curated bowling pack records by keyword and broad category", async () => {
+catalogTest("should find curated bowling pack records by keyword and broad category", async () => {
   const keyword = await assetCommand(["source", "search", "--query", "bowling pins", "--json"]);
   const keywordPayload = JSON.parse(keyword.stdout) as {
     records: Array<{ id: string; isDirectDownload: boolean; licenseId: string }>;
@@ -406,7 +409,7 @@ test("should find curated bowling pack records by keyword and broad category", a
   assert.equal(categoryPayload.records.some((record) => record.id === "deplorablemountaineer-bowling-ball-pins-pack"), true);
 });
 
-test("should only suggest records with lexical goal matches", async () => {
+catalogTest("should only suggest records with lexical goal matches", async () => {
   const result = await assetCommand(["source", "suggest", "--goal", "bowling ball pins alley", "--json"]);
   const payload = JSON.parse(result.stdout) as { records: Array<{ id: string }> };
 
@@ -416,7 +419,7 @@ test("should only suggest records with lexical goal matches", async () => {
   assert.equal(payload.records.some((record) => record.id === "babylon-grey-snapper-vert-color"), false);
 });
 
-test("should get one asset source record by id", async () => {
+catalogTest("should get one asset source record by id", async () => {
   const result = await assetCommand(["source", "get", "babylon-grey-snapper-vert-color", "--json"]);
   const payload = JSON.parse(result.stdout) as {
     record: {
@@ -440,7 +443,7 @@ test("should get one asset source record by id", async () => {
   assert.equal(payload.record.sourceMetadata.upstreamRepository, "BabylonJS/Assets");
 });
 
-test("should not return blocked records unless requested", async () => {
+catalogTest("should not return blocked records unless requested", async () => {
   const result = await assetCommand(["source", "search", "--json"]);
   const payload = JSON.parse(result.stdout) as {
     records: Array<{ licensePosture: string; origin: { reviewStatus: string } }>;
@@ -450,7 +453,7 @@ test("should not return blocked records unless requested", async () => {
   assert.equal(payload.records.some((record) => record.licensePosture === "blocked" || record.origin.reviewStatus === "blocked"), false);
 });
 
-test("should export jsonl from sqlite catalog", async () => {
+catalogTest("should export jsonl from sqlite catalog", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-asset-source-export-"));
   try {
     const out = join(root, "asset-sources.jsonl");
@@ -484,7 +487,7 @@ async function readJsonlSummary(path: string): Promise<{ count: number; first: {
   return { count, first };
 }
 
-test("should suggest asset sources from a goal", async () => {
+catalogTest("should suggest asset sources from a goal", async () => {
   const result = await assetCommand(["source", "suggest", "--goal", "underwater fish model", "--json"]);
   const payload = JSON.parse(result.stdout) as { records: Array<{ id: string }> };
 
@@ -492,7 +495,7 @@ test("should suggest asset sources from a goal", async () => {
   assert.equal(payload.records.some((record) => record.id === "babylon-grey-snapper-vert-color"), true);
 });
 
-test("should resolve catalog from source checkout and packaged layout", async () => {
+catalogTest("should resolve catalog from source checkout and packaged layout", async () => {
   const resolved = resolveAssetSourceCatalogPath();
   const found = await findAssetSourceCatalogPath();
 
