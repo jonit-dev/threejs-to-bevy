@@ -584,8 +584,9 @@ function searchTerms(query: string): string[] {
 
 function matchedAssetSearchSql(terms: string[]): string {
   return `WITH matched_asset_search AS (
-    SELECT asset_file_id, bm25(asset_search) AS rank
+    SELECT d.asset_file_id, bm25(asset_search) AS rank
     FROM asset_search
+    JOIN asset_search_docs d ON d.rowid = asset_search.rowid
     WHERE asset_search MATCH ${ftsQuerySql(terms)}
   )`;
 }

@@ -61,15 +61,31 @@ async function main() {
 }
 
 function dedupeRecords(records) {
-  const seen = new Set();
+  const seenIds = new Set();
+  const seenDownloadUrls = new Set();
   return records.filter((record) => {
-    const key = record.file.id;
-    if (seen.has(key)) {
+    const id = record.file.id;
+    if (seenIds.has(id)) {
       return false;
     }
-    seen.add(key);
+    seenIds.add(id);
+    const downloadUrl = normalizedDownloadUrl(record.file.downloadUrl);
+    if (downloadUrl !== null) {
+      if (seenDownloadUrls.has(downloadUrl)) {
+        return false;
+      }
+      seenDownloadUrls.add(downloadUrl);
+    }
     return true;
   });
+}
+
+function normalizedDownloadUrl(value) {
+  if (typeof value !== "string") {
+    return null;
+  }
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : null;
 }
 
 function readCuratedDirectRecords() {
@@ -353,12 +369,12 @@ async function buildCatalog({ outPath, records, ambientcgSnapshotPath, objaverse
       insert("catalog_meta", { key: "objaverse_snapshot_sha256", value: objaverseSnapshot === null ? "missing" : hashText(objaverseSnapshot) }),
       insert("catalog_meta", { key: "os3a_snapshot_sha256", value: hashText(os3aSnapshot) }),
       insert("catalog_meta", { key: "polyhaven_snapshot_sha256", value: hashText(polyhavenSnapshot) }),
-      insert("catalog_meta", { key: "asset_search_index", value: "fts5-v1" }),
+      insert("catalog_meta", { key: "asset_search_index", value: "fts5-contentless-v2" }),
       insert("catalog_meta", { key: "builder", value: "scripts/build-asset-source-catalog.mjs" }),
       insert("catalog_meta", { key: "built_on", value: "deterministic" }),
     ].join("\n")}\n`);
-    for (const record of records) {
-      await sqlFile.writeFile(`${sqlForRecord(record).join("\n")}\n`);
+    for (const [index, record] of records.entries()) {
+      await sqlFile.writeFile(`${sqlForRecord(record, index + 1).join("\n")}\n`);
     }
     await sqlFile.writeFile("COMMIT;\nPRAGMA foreign_key_check;\nVACUUM;\n");
   } finally {
@@ -571,11 +587,7 @@ async function readAmbientcgSnapshotRecords(snapshotPath) {
 
 function ambientcgRecords({ asset, snapshotPath }) {
   const variants = ambientcgVariantsForAsset(asset);
-  const records = variants.map((variant) => ambientcgRecord({ asset, snapshotPath, variant }));
-  if (ambientcgSupportsMaterialMaps(asset)) {
-    records.push(...ambientcgMaterialMapRecords({ asset, snapshotPath }));
-  }
-  return records;
+  return variants.map((variant) => ambientcgRecord({ asset, snapshotPath, variant }));
 }
 
 function ambientcgVariantsForAsset(asset) {
@@ -666,6 +678,9 @@ function ambientcgRecord({ asset, snapshotPath, variant }) {
       ambientcgDimensions: [asset.dimensionX, asset.dimensionY, asset.dimensionZ].filter((value) => value !== null && value !== undefined).join("x"),
       ambientcgDownloadCount: asset.downloadCount ?? "",
       ambientcgPopularityScore: asset.popularityScore ?? "",
+      ambientcgMapKinds: ambientcgSupportsMaterialMaps(asset) ? ambientcgMaterialMapKinds().join("|") : "",
+      ambientcgMapResolutions: ambientcgSupportsMaterialMaps(asset) ? ambientcgMaterialMapResolutions().join("|") : "",
+      ambientcgMapEncodings: ambientcgSupportsMaterialMaps(asset) ? ambientcgMaterialMapEncodings().join("|") : "",
       ambientcgSnapshotPath: snapshotPath,
     },
   };
@@ -675,103 +690,16 @@ function ambientcgSupportsMaterialMaps(asset) {
   return ["Atlas", "Brush", "Decal", "Material", "PlainTexture", "Substance", "Terrain"].includes(String(asset.dataType ?? ""));
 }
 
-function ambientcgMaterialMapRecords({ asset, snapshotPath }) {
-  return ambientcgMaterialMapVariants().map((variant) => ambientcgMaterialMapRecord({ asset, snapshotPath, variant }));
+function ambientcgMaterialMapKinds() {
+  return ["Color", "NormalDX", "Roughness", "Displacement", "AmbientOcclusion"];
 }
 
-function ambientcgMaterialMapVariants() {
-  const resolutions = ["1K", "2K", "4K", "8K"];
-  const encodings = ["JPG", "PNG"];
-  const maps = ["Color", "NormalDX", "Roughness", "Displacement", "AmbientOcclusion"];
-  return resolutions.flatMap((resolution) =>
-    encodings.flatMap((encoding) =>
-      maps.map((map) => ({ encoding, map, resolution, zipVariant: `${resolution}-${encoding}` })),
-    ),
-  );
+function ambientcgMaterialMapResolutions() {
+  return ["1K", "2K", "4K", "8K"];
 }
 
-function ambientcgMaterialMapRecord({ asset, snapshotPath, variant }) {
-  const assetId = String(asset.assetId);
-  const assetSlug = slugify(assetId);
-  const mapSlug = slugify(`${variant.resolution}-${variant.encoding}-${variant.map}`);
-  const recordId = `ambientcg-map-${assetSlug}-${mapSlug}`;
-  const text = [
-    asset.dataType,
-    asset.dataTypeName,
-    asset.dataTypeDescription,
-    asset.creationMethod,
-    asset.creationMethodName,
-    asset.displayName,
-    asset.displayCategory,
-    asset.category,
-    ...(Array.isArray(asset.tags) ? asset.tags : []),
-    asset.description,
-    variant.map,
-  ].filter(Boolean).join(" ");
-  const sourceUrl = asset.shortLink ?? `https://ambientcg.com/a/${encodeURIComponent(assetId)}`;
-  const zipFileName = `${assetId}_${variant.zipVariant}.zip`;
-  const category = categoryForAmbientcgAsset(asset, text);
-  return {
-    origin: {
-      id: `origin-ambientcg-asset-${assetSlug}`,
-      originType: "api",
-      originName: `ambientCG ${asset.dataType}`,
-      originUrl: "https://ambientcg.com",
-      originPath: snapshotPath,
-      originSection: asset.dataType ?? null,
-      originRef: assetId,
-      originLineStart: null,
-      originLineEnd: null,
-      importerName: "ambientcg-api-snapshot",
-      importerVersion: "1",
-      importedOn: "2026-07-02",
-      reviewStatus: "reviewed",
-      reviewEvidence: "ambientCG publishes CC0 PBR materials and texture sets; this record identifies a standard material map candidate inside a deterministic ambientCG ZIP bundle.",
-      notes: asset.description ?? "",
-    },
-    source: {
-      id: `source-ambientcg-asset-${assetSlug}`,
-      name: `ambientCG ${asset.displayName ?? assetId}`,
-      sourceKind: "index",
-      sourceUrl,
-      provenanceUrl: snapshotPath,
-      creator: "ambientCG contributors",
-      licenseId: "CC0-1.0",
-      licenseUrl: "https://ambientcg.com/license",
-      licensePosture: "cc0",
-      redistributionAllowed: 1,
-      attributionRequired: 0,
-      notes: asset.dataTypeDescription ?? asset.description ?? "",
-      cautions: "Material map candidate generated from ambientCG API metadata; verify the selected ZIP/map exists, color space, normal convention, and UV scale before committing runtime assets.",
-      reviewedOn: "2026-07-02",
-      reviewedBy: "repo-curation",
-    },
-    file: {
-      id: recordId,
-      directName: `${asset.displayName ?? assetId} ${variant.resolution} ${variant.encoding} ${variant.map}`,
-      gameCategory: category,
-      downloadUrl: `https://ambientcg.com/get?file=${encodeURIComponent(zipFileName)}`,
-      format: "zip-map",
-      fileRole: "material-index",
-      previewUrl: asset.previewUrl ?? sourceUrl,
-      sha256: null,
-      byteSize: null,
-      engineFit: "web-and-native",
-      importNotes: `CC0 ambientCG ${variant.map} map candidate in ${variant.zipVariant} ZIP; verify map availability, color space, and channel usage before material authoring.`,
-      isDirectDownload: 0,
-    },
-    tags: tagsForWorkflowRow(`${text} ${variant.resolution} ${variant.encoding} ${variant.map} ${category} material-index ambientcg cc0`).slice(0, 16),
-    sourceMetadata: {
-      ambientcgAssetId: assetId,
-      ambientcgDataType: asset.dataType ?? "",
-      ambientcgMapKind: variant.map,
-      ambientcgMapResolution: variant.resolution,
-      ambientcgMapEncoding: variant.encoding,
-      ambientcgZipVariant: variant.zipVariant,
-      ambientcgDisplayCategory: asset.displayCategory ?? "",
-      ambientcgSnapshotPath: snapshotPath,
-    },
-  };
+function ambientcgMaterialMapEncodings() {
+  return ["JPG", "PNG"];
 }
 
 function fileRoleForAmbientcgAsset(asset) {
@@ -1309,7 +1237,7 @@ function slugify(value) {
     .slice(0, 90);
 }
 
-function sqlForRecord(record) {
+function sqlForRecord(record, searchRowId) {
   const origin = normalizeOrigin(record.origin);
   const source = normalizeSource(record.source, origin.id);
   const file = normalizeFile(record.file, source.id);
@@ -1317,7 +1245,8 @@ function sqlForRecord(record) {
     insert("source_origins", origin, { orIgnore: true }),
     insert("asset_sources", source, { orIgnore: true }),
     insert("asset_files", file),
-    insert("asset_search", { asset_file_id: file.id, search_text: searchTextForRecord(record, origin, source, file) }),
+    insert("asset_search_docs", { rowid: searchRowId, asset_file_id: file.id }),
+    insert("asset_search", { rowid: searchRowId, search_text: searchTextForRecord(record, origin, source, file) }),
     ...[...new Set(record.tags ?? [])].sort().map((tag) => insert("asset_tags", { asset_file_id: file.id, tag })),
     ...Object.entries(record.sourceMetadata ?? {}).sort(([a], [b]) => a.localeCompare(b)).map(([key, value]) => insert("asset_source_metadata", { asset_file_id: file.id, key, value: String(value) })),
   ];
