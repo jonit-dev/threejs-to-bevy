@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { createHash } from "node:crypto";
-import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, open, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, resolve } from "node:path";
 import { spawnSync } from "node:child_process";
@@ -335,25 +335,29 @@ async function buildCatalog({ outPath, records, ambientcgSnapshotPath, os3aSnaps
   const os3aSnapshot = await readFile(os3aSnapshotPath, "utf8");
   const polyhavenSnapshot = await readFile(polyhavenSnapshotPath, "utf8");
   await mkdir(dirname(outPath), { recursive: true });
-  const sql = [
-    schema,
-    "BEGIN;",
-    insert("catalog_meta", { key: "schema_version", value: schemaVersion }),
-    insert("catalog_meta", { key: "seed_sha256", value: hashText(await readFile(seedPath, "utf8")) }),
-    insert("catalog_meta", { key: "workflow_doc_sha256", value: hashText(workflowDoc) }),
-    insert("catalog_meta", { key: "ambientcg_snapshot_sha256", value: hashText(ambientcgSnapshot) }),
-    insert("catalog_meta", { key: "os3a_snapshot_sha256", value: hashText(os3aSnapshot) }),
-    insert("catalog_meta", { key: "polyhaven_snapshot_sha256", value: hashText(polyhavenSnapshot) }),
-    insert("catalog_meta", { key: "builder", value: "scripts/build-asset-source-catalog.mjs" }),
-    insert("catalog_meta", { key: "built_on", value: "deterministic" }),
-    ...records.flatMap((record) => sqlForRecord(record)),
-    "COMMIT;",
-    "PRAGMA foreign_key_check;",
-    "VACUUM;",
-  ].join("\n");
   const tempSql = `${outPath}.sql`;
   await rm(outPath, { force: true });
-  await writeFile(tempSql, sql);
+  await rm(tempSql, { force: true });
+  const sqlFile = await open(tempSql, "w");
+  try {
+    await sqlFile.writeFile(`${schema}\nBEGIN;\n`);
+    await sqlFile.writeFile(`${[
+      insert("catalog_meta", { key: "schema_version", value: schemaVersion }),
+      insert("catalog_meta", { key: "seed_sha256", value: hashText(await readFile(seedPath, "utf8")) }),
+      insert("catalog_meta", { key: "workflow_doc_sha256", value: hashText(workflowDoc) }),
+      insert("catalog_meta", { key: "ambientcg_snapshot_sha256", value: hashText(ambientcgSnapshot) }),
+      insert("catalog_meta", { key: "os3a_snapshot_sha256", value: hashText(os3aSnapshot) }),
+      insert("catalog_meta", { key: "polyhaven_snapshot_sha256", value: hashText(polyhavenSnapshot) }),
+      insert("catalog_meta", { key: "builder", value: "scripts/build-asset-source-catalog.mjs" }),
+      insert("catalog_meta", { key: "built_on", value: "deterministic" }),
+    ].join("\n")}\n`);
+    for (const record of records) {
+      await sqlFile.writeFile(`${sqlForRecord(record).join("\n")}\n`);
+    }
+    await sqlFile.writeFile("COMMIT;\nPRAGMA foreign_key_check;\nVACUUM;\n");
+  } finally {
+    await sqlFile.close();
+  }
   const result = spawnSync("sqlite3", [outPath, `.read ${tempSql}`], { encoding: "utf8" });
   await rm(tempSql, { force: true });
   if (result.status !== 0) {
@@ -561,7 +565,11 @@ async function readAmbientcgSnapshotRecords(snapshotPath) {
 
 function ambientcgRecords({ asset, snapshotPath }) {
   const variants = ambientcgVariantsForAsset(asset);
-  return variants.map((variant) => ambientcgRecord({ asset, snapshotPath, variant }));
+  const records = variants.map((variant) => ambientcgRecord({ asset, snapshotPath, variant }));
+  if (ambientcgSupportsMaterialMaps(asset)) {
+    records.push(...ambientcgMaterialMapRecords({ asset, snapshotPath }));
+  }
+  return records;
 }
 
 function ambientcgVariantsForAsset(asset) {
@@ -652,6 +660,109 @@ function ambientcgRecord({ asset, snapshotPath, variant }) {
       ambientcgDimensions: [asset.dimensionX, asset.dimensionY, asset.dimensionZ].filter((value) => value !== null && value !== undefined).join("x"),
       ambientcgDownloadCount: asset.downloadCount ?? "",
       ambientcgPopularityScore: asset.popularityScore ?? "",
+      ambientcgSnapshotPath: snapshotPath,
+    },
+  };
+}
+
+function ambientcgSupportsMaterialMaps(asset) {
+  return ["Atlas", "Brush", "Decal", "Material", "PlainTexture", "Substance", "Terrain"].includes(String(asset.dataType ?? ""));
+}
+
+function ambientcgMaterialMapRecords({ asset, snapshotPath }) {
+  return ambientcgMaterialMapVariants().map((variant) => ambientcgMaterialMapRecord({ asset, snapshotPath, variant }));
+}
+
+function ambientcgMaterialMapVariants() {
+  const resolutions = ["1K", "2K", "4K", "8K"];
+  const encodings = ["JPG", "PNG"];
+  const maps = ["Color", "NormalDX", "Roughness", "Displacement", "AmbientOcclusion"];
+  return resolutions.flatMap((resolution) =>
+    encodings.flatMap((encoding) =>
+      maps.map((map) => ({ encoding, map, resolution, zipVariant: `${resolution}-${encoding}` })),
+    ),
+  );
+}
+
+function ambientcgMaterialMapRecord({ asset, snapshotPath, variant }) {
+  const assetId = String(asset.assetId);
+  const assetSlug = slugify(assetId);
+  const mapSlug = slugify(`${variant.resolution}-${variant.encoding}-${variant.map}`);
+  const recordId = `ambientcg-map-${assetSlug}-${mapSlug}`;
+  const text = [
+    asset.dataType,
+    asset.dataTypeName,
+    asset.dataTypeDescription,
+    asset.creationMethod,
+    asset.creationMethodName,
+    asset.displayName,
+    asset.displayCategory,
+    asset.category,
+    ...(Array.isArray(asset.tags) ? asset.tags : []),
+    asset.description,
+    variant.map,
+  ].filter(Boolean).join(" ");
+  const sourceUrl = asset.shortLink ?? `https://ambientcg.com/a/${encodeURIComponent(assetId)}`;
+  const zipFileName = `${assetId}_${variant.zipVariant}.zip`;
+  const category = categoryForAmbientcgAsset(asset, text);
+  return {
+    origin: {
+      id: `origin-ambientcg-asset-${assetSlug}`,
+      originType: "api",
+      originName: `ambientCG ${asset.dataType}`,
+      originUrl: "https://ambientcg.com",
+      originPath: snapshotPath,
+      originSection: asset.dataType ?? null,
+      originRef: assetId,
+      originLineStart: null,
+      originLineEnd: null,
+      importerName: "ambientcg-api-snapshot",
+      importerVersion: "1",
+      importedOn: "2026-07-02",
+      reviewStatus: "reviewed",
+      reviewEvidence: "ambientCG publishes CC0 PBR materials and texture sets; this record identifies a standard material map candidate inside a deterministic ambientCG ZIP bundle.",
+      notes: asset.description ?? "",
+    },
+    source: {
+      id: `source-ambientcg-asset-${assetSlug}`,
+      name: `ambientCG ${asset.displayName ?? assetId}`,
+      sourceKind: "index",
+      sourceUrl,
+      provenanceUrl: snapshotPath,
+      creator: "ambientCG contributors",
+      licenseId: "CC0-1.0",
+      licenseUrl: "https://ambientcg.com/license",
+      licensePosture: "cc0",
+      redistributionAllowed: 1,
+      attributionRequired: 0,
+      notes: asset.dataTypeDescription ?? asset.description ?? "",
+      cautions: "Material map candidate generated from ambientCG API metadata; verify the selected ZIP/map exists, color space, normal convention, and UV scale before committing runtime assets.",
+      reviewedOn: "2026-07-02",
+      reviewedBy: "repo-curation",
+    },
+    file: {
+      id: recordId,
+      directName: `${asset.displayName ?? assetId} ${variant.resolution} ${variant.encoding} ${variant.map}`,
+      gameCategory: category,
+      downloadUrl: `https://ambientcg.com/get?file=${encodeURIComponent(zipFileName)}`,
+      format: "zip-map",
+      fileRole: "material-index",
+      previewUrl: asset.previewUrl ?? sourceUrl,
+      sha256: null,
+      byteSize: null,
+      engineFit: "web-and-native",
+      importNotes: `CC0 ambientCG ${variant.map} map candidate in ${variant.zipVariant} ZIP; verify map availability, color space, and channel usage before material authoring.`,
+      isDirectDownload: 0,
+    },
+    tags: tagsForWorkflowRow(`${text} ${variant.resolution} ${variant.encoding} ${variant.map} ${category} material-index ambientcg cc0`).slice(0, 16),
+    sourceMetadata: {
+      ambientcgAssetId: assetId,
+      ambientcgDataType: asset.dataType ?? "",
+      ambientcgMapKind: variant.map,
+      ambientcgMapResolution: variant.resolution,
+      ambientcgMapEncoding: variant.encoding,
+      ambientcgZipVariant: variant.zipVariant,
+      ambientcgDisplayCategory: asset.displayCategory ?? "",
       ambientcgSnapshotPath: snapshotPath,
     },
   };
@@ -1054,8 +1165,8 @@ function sqlForRecord(record) {
   const source = normalizeSource(record.source, origin.id);
   const file = normalizeFile(record.file, source.id);
   return [
-    insert("source_origins", origin),
-    insert("asset_sources", source),
+    insert("source_origins", origin, { orIgnore: true }),
+    insert("asset_sources", source, { orIgnore: true }),
     insert("asset_files", file),
     ...[...new Set(record.tags ?? [])].sort().map((tag) => insert("asset_tags", { asset_file_id: file.id, tag })),
     ...Object.entries(record.sourceMetadata ?? {}).sort(([a], [b]) => a.localeCompare(b)).map(([key, value]) => insert("asset_source_metadata", { asset_file_id: file.id, key, value: String(value) })),
@@ -1166,9 +1277,9 @@ function requireFields(object, fields, label) {
   }
 }
 
-function insert(table, row) {
+function insert(table, row, options = {}) {
   const columns = Object.keys(row);
-  return `INSERT INTO ${table} (${columns.join(", ")}) VALUES (${columns.map((column) => sqlValue(row[column])).join(", ")});`;
+  return `INSERT${options.orIgnore === true ? " OR IGNORE" : ""} INTO ${table} (${columns.join(", ")}) VALUES (${columns.map((column) => sqlValue(row[column])).join(", ")});`;
 }
 
 function sqlValue(value) {
