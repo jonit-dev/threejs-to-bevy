@@ -286,9 +286,10 @@ const operationEntries = [
   operation(descriptor("mesh.create_primitive", "Create or update a primitive mesh source declaration.", "mesh", "source-document", [
     stringArg("meshId"),
     stringArg("kind"),
+    numberArrayArg("size", false),
     stringArg("file", false),
   ]), async ({ args, projectPath }) =>
-    createMeshPrimitive({ file: optionalString(args, "file"), kind: requiredString(args, "kind"), meshId: requiredString(args, "meshId"), projectPath })),
+    createMeshPrimitive({ file: optionalString(args, "file"), kind: requiredString(args, "kind"), meshId: requiredString(args, "meshId"), projectPath, size: optionalNumberArray(args, "size") })),
   operation(descriptor("mesh.create_custom", "Create a custom mesh source document with attributes and indices.", "mesh", "source-document", [
     stringArg("meshId"),
     objectArrayArg("attributes"),

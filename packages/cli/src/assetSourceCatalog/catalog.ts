@@ -1,3 +1,4 @@
+import { spawnSync } from "node:child_process";
 import { access, mkdir, readFile, writeFile } from "node:fs/promises";
 import { createRequire } from "node:module";
 import { dirname, resolve } from "node:path";
@@ -149,7 +150,8 @@ export async function getAssetSource(id: string): Promise<IAssetSourceRecord | u
 
 export async function suggestAssetSources(goal: string, options: Pick<IAssetSourceSearchOptions, "limit"> = {}): Promise<IAssetSourceRecord[]> {
   const words = goal.toLowerCase().split(/[^a-z0-9-]+/u).filter((word) => word.length >= 3);
-  const rows = await listAssetSources({ includeBlocked: false });
+  const candidateLimit = Math.max(50, Math.min((options.limit ?? 10) * 20, 250));
+  const rows = await queryRecords(`${baseSelectSql()} WHERE ${suggestWhereSql(words)} ORDER BY ${suggestScoreSql(words)} DESC, f.is_direct_download DESC, f.id LIMIT ${candidateLimit};`);
   const scored = rows
     .map((row) => {
       const lexicalScore = words.reduce((score, word) => score + scoreWord(row, word), 0);
@@ -178,6 +180,40 @@ async function queryRecords(sql: string): Promise<IAssetSourceRecord[]> {
 
 async function querySql(sql: string): Promise<unknown[]> {
   const dbPath = await findAssetSourceCatalogPath();
+  const nativeRows = shouldUseNativeSqlite(sql) ? querySqlWithNativeSqlite(dbPath, sql) : undefined;
+  if (nativeRows !== undefined) {
+    return nativeRows;
+  }
+  return querySqlWithSqlJs(dbPath, sql);
+}
+
+function shouldUseNativeSqlite(sql: string): boolean {
+  return /\bLIMIT\s+\d+\b/iu.test(sql);
+}
+
+function querySqlWithNativeSqlite(dbPath: string, sql: string): unknown[] | undefined {
+  const result = spawnSync("sqlite3", ["-json", dbPath, sql], {
+    encoding: "utf8",
+    maxBuffer: 128 * 1024 * 1024,
+  });
+  if (result.error !== undefined) {
+    return undefined;
+  }
+  if (result.status !== 0) {
+    throw new Error(`sqlite3 failed while querying asset source catalog:\n${result.stderr.trim()}`);
+  }
+  const output = result.stdout.trim();
+  if (output.length === 0) {
+    return [];
+  }
+  try {
+    return JSON.parse(output) as unknown[];
+  } catch {
+    return undefined;
+  }
+}
+
+async function querySqlWithSqlJs(dbPath: string, sql: string): Promise<unknown[]> {
   const SQL = await initSqlJs({
     locateFile: (file) => require.resolve(`sql.js/dist/${file}`),
   });
@@ -389,16 +425,43 @@ function keywordSql(term: string): string {
       WHERE keyword_tag.asset_file_id = f.id
         AND lower(keyword_tag.tag) LIKE ${sqlString(pattern)}
     )
-    OR EXISTS (
-      SELECT 1 FROM asset_source_metadata keyword_meta
-      WHERE keyword_meta.asset_file_id = f.id
-        AND lower(keyword_meta.value) LIKE ${sqlString(pattern)}
-    )
   )`;
 }
 
 function searchTerms(query: string): string[] {
   return [...new Set(query.toLowerCase().split(/[^a-z0-9-]+/u).filter((word) => word.length >= 2))].slice(0, 8);
+}
+
+function suggestWhereSql(words: string[]): string {
+  const where = ["s.license_posture != 'blocked'", "o.review_status != 'blocked'"];
+  if (words.length > 0) {
+    where.push(`(${words.slice(0, 8).map((word) => keywordSql(word)).join(" OR ")})`);
+  }
+  return where.join(" AND ");
+}
+
+function suggestScoreSql(words: string[]): string {
+  const terms = words.slice(0, 8);
+  if (terms.length === 0) {
+    return "f.is_direct_download";
+  }
+  return terms.map((word) => {
+    const exact = sqlString(word);
+    const pattern = sqlString(`%${word}%`);
+    return `(
+      CASE WHEN lower(f.id) = ${exact} THEN 12 WHEN lower(f.id) LIKE ${pattern} THEN 8 ELSE 0 END
+      + CASE WHEN lower(f.direct_name) = ${exact} THEN 12 WHEN lower(f.direct_name) LIKE ${pattern} THEN 8 ELSE 0 END
+      + CASE WHEN lower(f.game_category) LIKE ${pattern} THEN 5 ELSE 0 END
+      + CASE WHEN lower(s.name) LIKE ${pattern} THEN 4 ELSE 0 END
+      + CASE WHEN EXISTS (
+        SELECT 1 FROM asset_tags score_tag
+        WHERE score_tag.asset_file_id = f.id
+          AND lower(score_tag.tag) LIKE ${pattern}
+      ) THEN 4 ELSE 0 END
+      + CASE WHEN lower(f.import_notes) LIKE ${pattern} THEN 2 ELSE 0 END
+      + CASE WHEN lower(s.notes) LIKE ${pattern} THEN 1 ELSE 0 END
+    )`;
+  }).join(" + ");
 }
 
 function sqlString(value: string): string {

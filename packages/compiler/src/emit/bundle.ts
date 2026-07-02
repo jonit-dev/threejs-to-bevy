@@ -574,7 +574,8 @@ function structuredMeshAsset(item: unknown): IInternalAsset[] {
   }
   if (kind === "primitive") {
     const primitive = readString(item.primitive);
-    return primitive === undefined ? [] : [{ format: "generated", id, kind: "mesh", primitive }];
+    const size = readNumberArray(item.size);
+    return primitive === undefined ? [] : [{ format: "generated", id, kind: "mesh", primitive, ...(size === undefined ? {} : { size }) }];
   }
   if (kind !== "custom" || !Array.isArray(item.attributes)) {
     return [];
@@ -680,6 +681,10 @@ function readString(value: unknown): string | undefined {
 
 function readNumber(value: unknown): number | undefined {
   return typeof value === "number" && Number.isFinite(value) ? value : undefined;
+}
+
+function readNumberArray(value: unknown): number[] | undefined {
+  return Array.isArray(value) && value.every((item) => typeof item === "number" && Number.isFinite(item)) ? value : undefined;
 }
 
 function readRecordList(value: unknown): Record<string, unknown>[] {

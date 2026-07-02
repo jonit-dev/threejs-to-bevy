@@ -14,6 +14,7 @@ const defaultWorkflowDoc = resolve(root, "docs/workflows/open-source-3d-asset-ki
 const defaultOs3aSnapshot = resolve(root, "docs/data/os3a-asset-sources.snapshot.json");
 const defaultPolyhavenSnapshot = resolve(root, "docs/data/polyhaven-asset-sources.snapshot.json");
 const defaultAmbientcgSnapshot = resolve(root, "docs/data/ambientcg-asset-sources.snapshot.json");
+const defaultObjaverseSnapshot = resolve(root, "docs/data/objaverse-glb-asset-sources.snapshot.json");
 const defaultOut = resolve(root, "packages/cli/data/asset-sources.sqlite");
 const schemaVersion = "1";
 
@@ -25,6 +26,7 @@ async function main() {
   const os3aSnapshotPath = resolve(root, args.os3aSnapshot ?? defaultOs3aSnapshot);
   const polyhavenSnapshotPath = resolve(root, args.polyhavenSnapshot ?? defaultPolyhavenSnapshot);
   const ambientcgSnapshotPath = resolve(root, args.ambientcgSnapshot ?? defaultAmbientcgSnapshot);
+  const objaverseSnapshotPath = resolve(root, args.objaverseSnapshot ?? defaultObjaverseSnapshot);
   const outPath = resolve(root, args.out ?? defaultOut);
   const records = dedupeRecords([
     ...await readSeed(seedPath),
@@ -32,6 +34,7 @@ async function main() {
     ...await readOs3aSnapshotRecords(os3aSnapshotPath),
     ...await readPolyhavenSnapshotRecords(polyhavenSnapshotPath),
     ...await readAmbientcgSnapshotRecords(ambientcgSnapshotPath),
+    ...await readObjaverseSnapshotRecords(objaverseSnapshotPath),
     ...readCuratedDirectRecords(),
   ]);
   validateRecords(records);
@@ -40,7 +43,7 @@ async function main() {
     const temp = await mkdtemp(resolve(tmpdir(), "tn-asset-sources-"));
     try {
       const checkDb = resolve(temp, "asset-sources.sqlite");
-      const report = await buildCatalog({ outPath: checkDb, records, ambientcgSnapshotPath, os3aSnapshotPath, polyhavenSnapshotPath, schemaPath, seedPath, workflowDocPath });
+      const report = await buildCatalog({ outPath: checkDb, records, ambientcgSnapshotPath, objaverseSnapshotPath, os3aSnapshotPath, polyhavenSnapshotPath, schemaPath, seedPath, workflowDocPath });
       const current = await readFile(outPath);
       const generated = await readFile(checkDb);
       if (!current.equals(generated)) {
@@ -53,7 +56,7 @@ async function main() {
     return;
   }
 
-  const report = await buildCatalog({ outPath, records, ambientcgSnapshotPath, os3aSnapshotPath, polyhavenSnapshotPath, schemaPath, seedPath, workflowDocPath });
+  const report = await buildCatalog({ outPath, records, ambientcgSnapshotPath, objaverseSnapshotPath, os3aSnapshotPath, polyhavenSnapshotPath, schemaPath, seedPath, workflowDocPath });
   printReport(report, false);
 }
 
@@ -328,10 +331,11 @@ async function readSeed(seedPath) {
     });
 }
 
-async function buildCatalog({ outPath, records, ambientcgSnapshotPath, os3aSnapshotPath, polyhavenSnapshotPath, schemaPath, seedPath, workflowDocPath }) {
+async function buildCatalog({ outPath, records, ambientcgSnapshotPath, objaverseSnapshotPath, os3aSnapshotPath, polyhavenSnapshotPath, schemaPath, seedPath, workflowDocPath }) {
   const schema = await readFile(schemaPath, "utf8");
   const workflowDoc = await readFile(workflowDocPath, "utf8");
   const ambientcgSnapshot = await readFile(ambientcgSnapshotPath, "utf8");
+  const objaverseSnapshot = await readFile(objaverseSnapshotPath, "utf8");
   const os3aSnapshot = await readFile(os3aSnapshotPath, "utf8");
   const polyhavenSnapshot = await readFile(polyhavenSnapshotPath, "utf8");
   await mkdir(dirname(outPath), { recursive: true });
@@ -346,6 +350,7 @@ async function buildCatalog({ outPath, records, ambientcgSnapshotPath, os3aSnaps
       insert("catalog_meta", { key: "seed_sha256", value: hashText(await readFile(seedPath, "utf8")) }),
       insert("catalog_meta", { key: "workflow_doc_sha256", value: hashText(workflowDoc) }),
       insert("catalog_meta", { key: "ambientcg_snapshot_sha256", value: hashText(ambientcgSnapshot) }),
+      insert("catalog_meta", { key: "objaverse_snapshot_sha256", value: hashText(objaverseSnapshot) }),
       insert("catalog_meta", { key: "os3a_snapshot_sha256", value: hashText(os3aSnapshot) }),
       insert("catalog_meta", { key: "polyhaven_snapshot_sha256", value: hashText(polyhavenSnapshot) }),
       insert("catalog_meta", { key: "builder", value: "scripts/build-asset-source-catalog.mjs" }),
@@ -832,6 +837,126 @@ function categoryForAmbientcgAsset(asset, text) {
     return categoryForWorkflowRow(lower);
   }
   return "pbr-test";
+}
+
+async function readObjaverseSnapshotRecords(snapshotPath) {
+  const snapshot = JSON.parse(await readFile(snapshotPath, "utf8"));
+  if (!Array.isArray(snapshot.assets)) {
+    throw new Error(`Invalid Objaverse snapshot at ${snapshotPath}: assets array is required.`);
+  }
+  return snapshot.assets
+    .filter((asset) => asset.license === "by" && typeof asset.downloadUrl === "string" && asset.downloadUrl.endsWith(".glb"))
+    .map((asset) => objaverseRecord({ asset, snapshotPath }));
+}
+
+function objaverseRecord({ asset, snapshotPath }) {
+  const uid = String(asset.uid);
+  const tags = Array.isArray(asset.tags) ? asset.tags : [];
+  const categories = Array.isArray(asset.categories) ? asset.categories : [];
+  const text = [
+    asset.name,
+    asset.description,
+    ...tags,
+    ...categories,
+  ].filter(Boolean).join(" ");
+  const category = categoryForObjaverseAsset(text);
+  return {
+    origin: {
+      id: "origin-objaverse-cc-by-glbs",
+      originType: "api",
+      originName: "Objaverse 1.0 CC-BY GLB metadata",
+      originUrl: "https://huggingface.co/datasets/allenai/objaverse",
+      originPath: snapshotPath,
+      originSection: "metadata and glbs",
+      originRef: "objaverse-1.0",
+      originLineStart: null,
+      originLineEnd: null,
+      importerName: "objaverse-glb-snapshot",
+      importerVersion: "1",
+      importedOn: "2026-07-02",
+      reviewStatus: "reviewed",
+      reviewEvidence: "Objaverse metadata provides per-object Creative Commons licenses; this snapshot filters to license='by' and GLB object paths from the Hugging Face dataset.",
+      notes: "Direct GLB records selected from Objaverse 1.0 for model-heavy game asset sourcing.",
+    },
+    source: {
+      id: "source-objaverse-cc-by-glbs",
+      name: "Objaverse 1.0 CC-BY GLB objects",
+      sourceKind: "direct-file",
+      sourceUrl: "https://huggingface.co/datasets/allenai/objaverse",
+      provenanceUrl: snapshotPath,
+      creator: "Objaverse and Sketchfab contributors",
+      licenseId: "CC-BY-4.0",
+      licenseUrl: "https://creativecommons.org/licenses/by/4.0/",
+      licensePosture: "permissive-attribution",
+      redistributionAllowed: 1,
+      attributionRequired: 1,
+      notes: "Shared source for Objaverse CC-BY GLB object records; per-object attribution and original viewer URLs are stored in asset metadata.",
+      cautions: "CC-BY attribution is required. Inspect model bounds, texture dependencies, triangle count, age/content suitability, and runtime performance before use.",
+      reviewedOn: "2026-07-02",
+      reviewedBy: "repo-curation",
+    },
+    file: {
+      id: `objaverse-${uid}-glb`,
+      directName: asset.name ?? uid,
+      gameCategory: category,
+      downloadUrl: asset.downloadUrl,
+      format: "glb",
+      fileRole: "model",
+      previewUrl: asset.thumbnailUrl ?? asset.viewerUrl ?? null,
+      sha256: null,
+      byteSize: null,
+      engineFit: "web-and-native",
+      importNotes: "Direct Objaverse CC-BY GLB record; preserve attribution, inspect with tn asset inspect, and run tn model-test after download.",
+      isDirectDownload: 1,
+    },
+    tags: tagsForWorkflowRow(`${text} ${category} objaverse sketchfab cc-by glb model`).slice(0, 16),
+    sourceMetadata: {
+      objaverseUid: uid,
+      objaverseLicense: asset.license,
+      objaverseObjectPath: asset.objectPath ?? "",
+      objaverseViewerUrl: asset.viewerUrl ?? "",
+      objaverseApiUri: asset.uri ?? "",
+      objaverseAuthorUsername: asset.user?.username ?? "",
+      objaverseAuthorDisplayName: asset.user?.displayName ?? "",
+      objaverseAuthorProfileUrl: asset.user?.profileUrl ?? "",
+      objaverseCategories: categories.join("|"),
+      objaverseTags: tags.join("|"),
+      objaverseFaceCount: asset.faceCount ?? "",
+      objaverseVertexCount: asset.vertexCount ?? "",
+      objaverseAnimationCount: asset.animationCount ?? "",
+      objaverseAgeRestricted: asset.isAgeRestricted === true ? "true" : "false",
+      objaverseSnapshotPath: snapshotPath,
+    },
+  };
+}
+
+function categoryForObjaverseAsset(text) {
+  const lower = text.toLowerCase();
+  if (lower.includes("weapon") || lower.includes("military") || lower.includes("sword") || lower.includes("gun") || lower.includes("knife")) {
+    return "rpg-adventure";
+  }
+  if (lower.includes("vehicle") || lower.includes("car") || lower.includes("truck") || lower.includes("motorcycle") || lower.includes("racing")) {
+    return "racing";
+  }
+  if (lower.includes("character") || lower.includes("person") || lower.includes("creature") || lower.includes("animal") || lower.includes("humanoid")) {
+    return "rpg-adventure";
+  }
+  if (lower.includes("building") || lower.includes("city") || lower.includes("architecture") || lower.includes("street") || lower.includes("urban")) {
+    return "city-builder";
+  }
+  if (lower.includes("furniture") || lower.includes("chair") || lower.includes("table") || lower.includes("room") || lower.includes("interior")) {
+    return "cozy-interiors";
+  }
+  if (lower.includes("tree") || lower.includes("plant") || lower.includes("rock") || lower.includes("terrain") || lower.includes("nature")) {
+    return "nature-terrain";
+  }
+  if (lower.includes("space") || lower.includes("robot") || lower.includes("sci-fi") || lower.includes("spaceship")) {
+    return "space";
+  }
+  if (lower.includes("sports") || lower.includes("ball") || lower.includes("game")) {
+    return "sports-minigames";
+  }
+  return "general";
 }
 
 function os3aRecord({ asset, project, snapshotPath }) {
@@ -1335,6 +1460,9 @@ function parseArgs(argv) {
       index += 1;
     } else if (arg === "--ambientcg-snapshot") {
       args.ambientcgSnapshot = argv[index + 1];
+      index += 1;
+    } else if (arg === "--objaverse-snapshot") {
+      args.objaverseSnapshot = argv[index + 1];
       index += 1;
     } else {
       throw new Error(`Unknown argument: ${arg}`);

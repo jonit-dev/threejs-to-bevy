@@ -121,7 +121,7 @@ const commands: Record<string, ICommandDefinition> = {
   mesh: {
     description: "Create structured primitive and custom mesh source documents.",
     implemented: true,
-    usage: "tn mesh primitive <mesh-id> --kind <box|sphere|cylinder|cone|plane> [--project <path>] [--json]\n              tn mesh custom <mesh-id> --attributes '<json-array>' [--indices '<json-array>'] [--storage binary] [--project <path>] [--json]",
+    usage: "tn mesh primitive <mesh-id> --kind <box|sphere|cylinder|cone|plane> [--size n,n,...] [--file <path>] [--project <path>] [--json]\n              tn mesh custom <mesh-id> --attributes '<json-array>' [--indices '<json-array>'] [--storage binary] [--project <path>] [--json]",
   },
   "compare-images": {
     description: "Compare two PNG screenshots and report visual deltas.",
@@ -161,7 +161,7 @@ const commands: Record<string, ICommandDefinition> = {
   physics: {
     description: "Add typed physics components to structured scene source.",
     implemented: true,
-    usage: "tn physics add-rigid-body <scene-id> <entity-id> [--kind <dynamic|kinematic|static>] [--mass <n>] [--damping <n>] [--gravity-scale <n>] [--project <path>] [--json]\n              tn physics add-collider <scene-id> <entity-id> [--kind <box|sphere|capsule|cylinder|mesh>] [--size x,y,z] [--radius <n>] [--height <n>] [--trigger <true|false>] [--project <path>] [--json]",
+    usage: "tn physics add-rigid-body <scene-id> <entity-id> [--kind <dynamic|kinematic|static>] [--mass <n>] [--damping <n>] [--gravity-scale <n>] [--velocity x,y,z] [--angular-velocity x,y,z] [--enabled-translations x,y,z] [--ccd <true|false>] [--ccd-mode <linear|swept-aabb>] [--project <path>] [--json]\n              tn physics add-collider <scene-id> <entity-id> [--kind <box|sphere|capsule|cylinder|mesh>] [--size x,y,z] [--center x,y,z] [--radius <n>] [--height <n>] [--friction <n>] [--restitution <n>] [--layer <name>] [--mask <layer-a,layer-b>] [--trigger <true|false>] [--project <path>] [--json]",
   },
   nav: {
     description: "Add typed navigation/character-agent components to structured scene source.",

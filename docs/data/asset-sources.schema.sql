@@ -84,6 +84,8 @@ CREATE INDEX idx_source_origins_review ON source_origins(review_status);
 CREATE INDEX idx_asset_files_category ON asset_files(game_category);
 CREATE INDEX idx_asset_files_format ON asset_files(format);
 CREATE INDEX idx_asset_files_role ON asset_files(file_role);
+CREATE INDEX idx_asset_files_direct_format_category_id ON asset_files(is_direct_download, format, game_category, id);
+CREATE INDEX idx_asset_files_role_format_category_id ON asset_files(file_role, format, game_category, id);
 CREATE INDEX idx_asset_sources_license ON asset_sources(license_id);
 CREATE INDEX idx_asset_files_direct ON asset_files(is_direct_download);
 CREATE INDEX idx_asset_source_metadata_key ON asset_source_metadata(key);

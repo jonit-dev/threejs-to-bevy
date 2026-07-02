@@ -369,15 +369,19 @@ export async function meshCommand(argv: readonly string[], options: ISourceComma
       return renderUsage(json, indices.diagnostic, "Mesh --indices must be a JSON array of numbers.");
     }
     if (meshId === undefined || attributes.value === undefined) {
-      return renderUsage(json, "TN_MESH_CUSTOM_ARGS_MISSING", "Usage: tn mesh custom <mesh-id> --attributes '<json-array>' [--indices '<json-array>'] [--storage binary] [--project <path>] [--json]");
+    return renderUsage(json, "TN_MESH_CUSTOM_ARGS_MISSING", "Usage: tn mesh custom <mesh-id> --attributes '<json-array>' [--indices '<json-array>'] [--storage binary] [--project <path>] [--json]");
     }
     return renderAuthoringResult("mesh", await createMeshCustom({ attributes: attributes.value as Array<{ itemSize: number; name: string; values: number[] }>, indices: indices.value, meshId, projectPath, storage: readFlag(normalizedArgv, "--storage") }), json, `Custom mesh '${meshId}' created.`);
   }
   const kind = readFlag(normalizedArgv, "--kind");
-  if (normalizedArgv[0] !== "primitive" || meshId === undefined || kind === undefined) {
-    return renderUsage(json, "TN_MESH_PRIMITIVE_ARGS_MISSING", "Usage: tn mesh primitive <mesh-id> --kind <box|sphere|cylinder|cone|plane> [--project <path>] [--json]\n       tn mesh custom <mesh-id> --attributes '<json-array>' [--indices '<json-array>'] [--storage binary] [--project <path>] [--json]");
+  const size = parseJsonNumberArrayFlag(normalizedArgv, "--size", "TN_MESH_SIZE_INVALID");
+  if (size.diagnostic !== undefined) {
+    return renderUsage(json, size.diagnostic, "Mesh --size must be a JSON array or comma-separated list of numbers.");
   }
-  return renderAuthoringResult("mesh", await createMeshPrimitive({ projectPath, meshId, kind }), json, `Mesh '${meshId}' created.`);
+  if (normalizedArgv[0] !== "primitive" || meshId === undefined || kind === undefined) {
+    return renderUsage(json, "TN_MESH_PRIMITIVE_ARGS_MISSING", "Usage: tn mesh primitive <mesh-id> --kind <box|sphere|cylinder|cone|plane> [--size n,n,...] [--file <path>] [--project <path>] [--json]\n       tn mesh custom <mesh-id> --attributes '<json-array>' [--indices '<json-array>'] [--storage binary] [--project <path>] [--json]");
+  }
+  return renderAuthoringResult("mesh", await createMeshPrimitive({ file: readFlag(normalizedArgv, "--file"), projectPath, meshId, kind, size: size.value }), json, `Mesh '${meshId}' created.`);
 }
 
 export async function prefabCommand(argv: readonly string[], options: ISourceCommandOptions = {}): Promise<ICommandResult> {
@@ -1009,6 +1013,7 @@ export async function systemCommand(argv: readonly string[], options: ISourceCom
         commands: commands.value,
         eventReads: readCsvFlag(normalizedArgv, "--event-reads"),
         eventWrites: readCsvFlag(normalizedArgv, "--event-writes"),
+        file: readFlag(normalizedArgv, "--file"),
         projectPath,
         queries: queries.value,
         reads: readCsvFlag(normalizedArgv, "--reads"),
@@ -1318,6 +1323,14 @@ function parseJsonObjectFlag(argv: readonly string[], flag: string, diagnosticCo
 }
 
 function parseJsonNumberArrayFlag(argv: readonly string[], flag: string, diagnosticCode: string): { diagnostic?: string; value?: number[] } {
+  const raw = readFlag(argv, flag);
+  if (raw === undefined) {
+    return {};
+  }
+  if (!raw.trim().startsWith("[")) {
+    const values = raw.split(",").map((entry) => Number(entry.trim()));
+    return values.length > 0 && values.every((entry) => Number.isFinite(entry)) ? { value: values } : { diagnostic: diagnosticCode };
+  }
   const parsed = parseJsonFlag(argv, flag);
   if (parsed.diagnostic !== undefined || parsed.value === undefined) {
     return parsed as { diagnostic?: string; value?: number[] };
@@ -1329,7 +1342,7 @@ function parseJsonNumberArrayFlag(argv: readonly string[], flag: string, diagnos
 }
 
 function systemSetMetadataUsage(): string {
-  return "Usage: tn system set-metadata <system-id> [--schedule update|fixedUpdate|startup|postUpdate] [--reads A,B] [--writes A,B] [--resource-reads R] [--resource-writes R] [--event-reads E] [--event-writes E] [--services service.name] [--queries '<json-array>'] [--commands '<json-array>'] [--after system] [--before system] [--project <path>] [--json]";
+  return "Usage: tn system set-metadata <system-id> [--schedule update|fixedUpdate|startup|postUpdate] [--reads A,B] [--writes A,B] [--resource-reads R] [--resource-writes R] [--event-reads E] [--event-writes E] [--services service.name] [--queries '<json-array>'] [--commands '<json-array>'] [--after system] [--before system] [--file <path>] [--project <path>] [--json]";
 }
 
 function parseOptionalNumber(argv: readonly string[], flag: string): { diagnostic?: string; value?: number } {
@@ -1422,6 +1435,7 @@ const flagsWithValues = new Set([
   "--roughness",
   "--schedule",
   "--shape",
+  "--size",
   "--render-path",
   "--src",
   "--source-clip",

@@ -106,6 +106,91 @@ test("dispatch registers physics and nav typed source commands", async () => {
   }
 });
 
+test("physics command writes advanced rigid body and collider fields", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-cli-physics-advanced-"));
+  try {
+    const create = await dispatch(["scene", "create", "scene.physics", "--project", root, "--json"]);
+    const entity = await dispatch(["scene", "add-entity", "scene.physics", "ball", "--project", root, "--json"]);
+    const body = await dispatch([
+      "physics",
+      "add-rigid-body",
+      "scene.physics",
+      "ball",
+      "--kind",
+      "dynamic",
+      "--mass",
+      "6",
+      "--damping",
+      "0.08",
+      "--gravity-scale",
+      "0",
+      "--velocity",
+      "0.4,0,-8",
+      "--angular-velocity",
+      "-32,0,-0.8",
+      "--enabled-translations",
+      "true,false,true",
+      "--ccd",
+      "true",
+      "--ccd-mode",
+      "linear",
+      "--project",
+      root,
+      "--json",
+    ]);
+    const collider = await dispatch([
+      "physics",
+      "add-collider",
+      "scene.physics",
+      "ball",
+      "--kind",
+      "sphere",
+      "--radius",
+      "0.28",
+      "--friction",
+      "0.62",
+      "--restitution",
+      "0.18",
+      "--layer",
+      "ball",
+      "--mask",
+      "pin,world",
+      "--project",
+      root,
+      "--json",
+    ]);
+    const scene = JSON.parse(await readFile(join(root, "content", "scenes", "scene.physics.scene.json"), "utf8")) as {
+      entities: Array<{ components?: Record<string, unknown>; id: string }>;
+    };
+    const components = scene.entities.find((item) => item.id === "ball")?.components;
+
+    assert.equal(create.exitCode, 0);
+    assert.equal(entity.exitCode, 0);
+    assert.equal(body.exitCode, 0);
+    assert.equal(collider.exitCode, 0);
+    assert.deepEqual(components?.RigidBody, {
+      angularVelocity: [-32, 0, -0.8],
+      ccd: { enabled: true, mode: "linear" },
+      damping: 0.08,
+      enabledTranslations: [true, false, true],
+      gravityScale: 0,
+      kind: "dynamic",
+      mass: 6,
+      velocity: [0.4, 0, -8],
+    });
+    assert.deepEqual(components?.Collider, {
+      friction: 0.62,
+      kind: "sphere",
+      layer: "ball",
+      mask: ["pin", "world"],
+      radius: 0.28,
+      restitution: 0.18,
+    });
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
 test("should inspect scene hierarchy when bundle is valid", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-editor-inspect-"));
   const previousInitCwd = process.env.INIT_CWD;

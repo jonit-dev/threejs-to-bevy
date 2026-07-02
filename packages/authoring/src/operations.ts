@@ -574,6 +574,7 @@ export interface ICreateMeshPrimitiveOptions extends IAuthoringOperationContext 
   file?: string;
   meshId: string;
   kind: string;
+  size?: number[];
 }
 
 export interface ICreateMeshCustomOptions extends IAuthoringOperationContext {
@@ -1975,6 +1976,11 @@ export async function createMeshPrimitive(options: ICreateMeshPrimitiveOptions):
       const mesh = existing ?? { id: options.meshId };
       mesh.kind = "primitive";
       mesh.primitive = options.kind;
+      if (options.size !== undefined) {
+        mesh.size = options.size;
+      } else {
+        delete mesh.size;
+      }
       delete mesh.attributes;
       delete mesh.indices;
       delete mesh.storage;
@@ -2288,9 +2294,10 @@ export async function attachSystemScript(options: IAttachSystemScriptOptions): P
 export async function setSystemMetadata(options: ISetSystemMetadataOptions): Promise<IAuthoringOperationResult> {
   return mutateSourceDocument(options, "systems", options.systemId, (data, file) => {
     const systems = ensureArrayProperty(data, "systems");
-    const system = findSceneItem(systems, options.systemId);
+    const scriptLifecycles = ensureArrayProperty(data, "scriptLifecycles");
+    const system = findSceneItem(systems, options.systemId) ?? findSceneItem(scriptLifecycles, options.systemId);
     if (system === undefined) {
-      return [missingReferenceDiagnostic(file, "/systems", "system", options.systemId, idsFromArray(systems))];
+      return [missingReferenceDiagnostic(file, "/systems", "system", options.systemId, [...idsFromArray(systems), ...idsFromArray(scriptLifecycles)])];
     }
     for (const key of systemStringListMetadataKeys) {
       const value = options[key];
@@ -2793,6 +2800,11 @@ async function validateAuthoringDocument(
                 suggestion: "Use 'box', 'sphere', 'cylinder', 'cone', or 'plane'.",
               }),
             );
+          }
+          if (item.size !== undefined) {
+            if (!Array.isArray(item.size) || item.size.length === 0 || item.size.some((value) => typeof value !== "number" || !Number.isFinite(value) || value <= 0)) {
+              diagnostics.push(typeDiagnostic(file, `${path}/size`, "mesh primitive size must be a non-empty array of positive finite numbers.", item.size));
+            }
           }
         },
       });

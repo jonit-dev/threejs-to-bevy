@@ -476,7 +476,7 @@ test("prefab input and mesh operations write deterministic structured docs", asy
     const inputAxis = await inputCommand(["add-axis", "kart", "MoveX", "--negative-keys", "A,ArrowLeft", "--positive-keys", "D,ArrowRight", "--value", "gamepad.leftStickX", "--project", root, "--json"]);
     const inputControls = await inputCommand(["set-controls", "kart", "--profile", "default", "--rows", "[{\"kind\":\"action\",\"actionOrAxisId\":\"accelerate\",\"defaultBindings\":[\"keyboard.KeyW\"],\"uiNodeId\":\"settings.accelerate\"},{\"kind\":\"axis\",\"actionOrAxisId\":\"MoveX\",\"axisSlot\":\"positive\",\"defaultBindings\":[\"keyboard.KeyD\"]}]", "--project", root, "--json"]);
     const inputOverride = await inputCommand(["set-override", "kart", "accelerate", "--profile", "default", "--device", "keyboard", "--control", "ArrowUp", "--updated-at", "2026-06-23T00:00:00.000Z", "--project", root, "--json"]);
-    const mesh = await meshCommand(["primitive", "mesh.kart.body", "--kind", "box", "--project", root, "--json"]);
+    const mesh = await meshCommand(["primitive", "mesh.kart.body", "--kind", "box", "--size", "1.2,0.6,2.4", "--project", root, "--json"]);
     const customMesh = await meshCommand([
       "custom",
       "mesh.kart.triangle",
@@ -515,7 +515,7 @@ test("prefab input and mesh operations write deterministic structured docs", asy
       ],
     });
     assert.deepEqual(inputDoc.persistedBindingOverrides, [{ actionOrAxisId: "accelerate", control: "ArrowUp", device: "keyboard", profileId: "default", updatedAt: "2026-06-23T00:00:00.000Z" }]);
-    assert.deepEqual(meshDoc.meshes, [{ id: "mesh.kart.body", kind: "primitive", primitive: "box" }]);
+    assert.deepEqual(meshDoc.meshes, [{ id: "mesh.kart.body", kind: "primitive", primitive: "box", size: [1.2, 0.6, 2.4] }]);
     assert.deepEqual(customMeshDoc.meshes, [{
       attributes: [{ itemSize: 3, name: "position", values: [0, 0, 0, 1, 0, 0, 0, 1, 0] }],
       id: "mesh.kart.triangle",

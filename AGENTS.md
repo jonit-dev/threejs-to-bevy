@@ -148,8 +148,17 @@ after downloading or referencing a selected model.
 
 - For games where physical interaction is core to the mechanic, such as
   bowling, billiards, racing collisions, platforming, throwing, stacking, or
-  projectile impacts, consider authored physics up front rather than adding
-  purely visual/scripted motion as the default.
+  projectile impacts, authored physics is required up front. Use the portable
+  physics components and runtime services first; do not implement the core
+  mechanic as purely visual/scripted motion unless a focused probe proves the
+  current runtime cannot express the required behavior.
+- If a game idea obviously involves physical contact, gravity, momentum,
+  collision response, rolling, bouncing, sliding, throwing, stacking, or
+  projectile impact, add `RigidBody`, `Collider`, and appropriate physics
+  material/trigger metadata to the durable structured source before writing the
+  gameplay loop. Scripts may apply input impulses, reset state, score events, or
+  provide deterministic fallback behavior, but they must not replace the
+  authored physics contract for the primary mechanic.
 - Prefer the portable physics contract exposed by the SDK/IR: `RigidBody`,
   `Collider`, physics materials, triggers/sensors, contact filtering, CCD, and
   supported runtime physics services. If the current runtime cannot express the

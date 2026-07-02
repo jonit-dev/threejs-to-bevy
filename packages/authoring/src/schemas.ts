@@ -111,7 +111,7 @@ export const inputControlsSettingsKeys = new Set(["profileId", "rows"]);
 export const inputControlsSettingsRowKeys = new Set(["actionOrAxisId", "axisSlot", "captureState", "defaultBindings", "kind", "uiNodeId"]);
 export const inputPersistedBindingOverrideKeys = new Set(["actionOrAxisId", "axisSlot", "control", "deadzone", "device", "modifiers", "profileId", "scale", "updatedAt"]);
 export const audioSoundKeys = new Set(["id", "asset"]);
-export const meshKeys = new Set(["attributes", "id", "indices", "kind", "primitive", "storage"]);
+export const meshKeys = new Set(["attributes", "id", "indices", "kind", "primitive", "size", "storage"]);
 export const supportedGeneratorOverwritePolicies = new Set(["manual", "replace", "skip"]);
 export const supportedPrefabPrimitives = new Set(["box", "capsule", "cone", "cylinder", "plane", "sphere"]);
 export const supportedMeshPrimitives = new Set(["box", "cone", "cylinder", "plane", "sphere"]);
@@ -461,6 +461,7 @@ export interface IMeshDeclaration {
   indices?: number[];
   kind: "custom" | "primitive";
   primitive?: "box" | "cone" | "custom" | "cylinder" | "plane" | "sphere";
+  size?: number[];
   storage?: "binary";
 }
 
