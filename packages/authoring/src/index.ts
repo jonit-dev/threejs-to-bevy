@@ -126,6 +126,26 @@ export {
   validateGameQualityReport,
 } from "./gameWorkflow.js";
 export type {
+  GameAgentProjectKind,
+  ICreateGameAgentInventoryOptions,
+  IGameAgentAssetSummary,
+  IGameAgentHighValueSurface,
+  IGameAgentInputSummary,
+  IGameAgentInventory,
+  IGameAgentMaterialSummary,
+  IGameAgentProductionSummary,
+  IGameAgentSceneSummary,
+  IGameAgentScriptReference,
+  IGameAgentScriptSystem,
+  IGameAgentSourceFamily,
+  IGameAgentUiSummary,
+} from "./gameAgentInventory.js";
+export {
+  createGameAgentInventory,
+  GAME_AGENT_INVENTORY_SCHEMA,
+  GAME_AGENT_INVENTORY_VERSION,
+} from "./gameAgentInventory.js";
+export type {
   IAuthoringOperationContext,
   IAuthoringOperationResult,
   IAddEntityOptions,

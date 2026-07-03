@@ -7,7 +7,29 @@
     "playableLoop": "Accelerate through the dressed rally track, steer around barriers, reach checkpoints, and recover from off-track drift.",
     "controls": ["keyboard.KeyW", "keyboard.KeyA", "keyboard.KeyS", "keyboard.KeyD", "keyboard.ArrowUp", "keyboard.ArrowLeft", "keyboard.ArrowDown", "keyboard.ArrowRight"],
     "objective": "Drive the player car through checkpoint gates while the rival car and track dressing communicate race progress.",
+    "progression": "Checkpoint gates, rival car placement, and track dressing provide the baseline progression path for a vehicle checkpoint slice.",
     "failRetry": "Use the authored reset behavior when the player leaves the road or reload the preview for a clean retry.",
+    "feedbackMoments": [
+      "Car motion responds to acceleration and steering input.",
+      "Checkpoint gates provide readable objective progress.",
+      "Barriers and track edges make off-track recovery visible."
+    ],
+    "assetPlan": {
+      "playerHero": "Kenney-style rally car GLB from the starter kit.",
+      "obstacleEnemy": "Track barriers, pylons, and rival car surfaces from the starter kit.",
+      "rewardInteractable": "Checkpoint gate and finish/checker assets from the starter kit.",
+      "worldEnvironment": "Reusable rally road, stand, tree, light, and barrier GLB kit pieces.",
+      "uiHud": "Rally HUD/status source is expected when promoted from kit to generated game.",
+      "audioFeedback": "Audio feedback is not authored in the starter baseline."
+    },
+    "scriptModules": [
+      {
+        "module": "src/scripts/racing.ts",
+        "export": "updateRally",
+        "ownsState": ["Transform", "PlayerCar", "RivalCar", "RallyState"],
+        "referencedBy": ["content/systems/rally.systems.json"]
+      }
+    ],
     "proofCommands": [
       "tn authoring validate --project . --json",
       "tn build --project . --json",

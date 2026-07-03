@@ -4,10 +4,10 @@ import { isAbsolute, resolve } from "node:path";
 import { buildProject, loadProjectConfig, validateBundle } from "@threenative/compiler";
 import {
   applyAuthoringRecipe,
+  createGameAgentInventory,
   createGameQualityReport,
   GAME_WORKFLOW_PHASE_IDS,
   listAuthoringRecipeIds,
-  loadAuthoringProject,
   probeGameAssetProviders,
   supportedPrefabPrimitives,
   validateGameQualityReport,
@@ -56,6 +56,13 @@ interface IGamePlan {
   };
   diagnostics: unknown[];
   goal: string;
+  inventory: {
+    diagnostics: Array<{ code: string; message: string; path?: string; severity: string }>;
+    primarySceneId?: string;
+    projectKind: string;
+    recommendedOperations: string[];
+    sourceFamilies: Array<{ count: number; files: string[]; kind: string }>;
+  };
   message: string;
   mutate: false;
   phases: Array<{ id: string; order: number; summary: string }>;
@@ -139,6 +146,9 @@ export async function gameCommand(argv: readonly string[], options: IGameCommand
   if (subcommand === "providers") {
     return gameProvidersCommand(normalizedArgv.slice(1));
   }
+  if (subcommand === "inspect") {
+    return gameInspectCommand(normalizedArgv.slice(1));
+  }
   if (subcommand === "score") {
     return gameScoreCommand(normalizedArgv.slice(1), "score", options);
   }
@@ -163,10 +173,21 @@ export async function gameCommand(argv: readonly string[], options: IGameCommand
       code: "TN_GAME_SUBCOMMAND_UNKNOWN",
       message: `Unknown game workflow subcommand '${subcommand}'.`,
       subcommand,
-      usage: "tn game <plan|improve|providers|score|qa|release> [--project <path>] [--json]",
+      usage: "tn game <inspect|plan|improve|providers|score|qa|release> [--project <path>] [--json]",
     },
     { exitCode: 1, json, stderr: !json },
   );
+}
+
+async function gameInspectCommand(argv: readonly string[]): Promise<ICommandResult> {
+  const normalizedArgv = argv[0] === "--" ? argv.slice(1) : argv;
+  const json = normalizedArgv.includes("--json");
+  const projectPath = resolveProjectPath(normalizedArgv);
+  const inventory = await createGameAgentInventory({ projectPath });
+  return {
+    exitCode: 0,
+    stdout: json ? `${JSON.stringify(inventory, null, 2)}\n` : renderInventory(inventory),
+  };
 }
 
 async function gameScoreCommand(argv: readonly string[], mode: GameProductionMode, options: IGameCommandOptions = {}): Promise<ICommandResult> {
@@ -269,7 +290,8 @@ async function gamePlanCommand(argv: readonly string[]): Promise<ICommandResult>
   }
 
   const recipeIds = listAuthoringRecipeIds();
-  const defaults = await inferPlanDefaults(projectPath);
+  const inventory = await createGameAgentInventory({ projectPath });
+  const defaults = inferPlanDefaults(inventory);
   const gameCategory = inferGameCategory(goal);
   const plan: IGamePlan = {
     acceptanceCriteria: [
@@ -289,8 +311,20 @@ async function gamePlanCommand(argv: readonly string[]): Promise<ICommandResult>
       objective: `Turn '${goal.trim()}' into one concrete verb, one target, and one measurable success condition.`,
       progression: "Add at least one escalation such as score, lap, wave, timer, obstacle density, or collectible count.",
     },
-    diagnostics: [],
+    diagnostics: buildPlanDiagnostics(inventory),
     goal,
+    inventory: {
+      diagnostics: inventory.diagnostics.map((diagnostic) => ({
+        code: diagnostic.code,
+        message: diagnostic.message,
+        ...(diagnostic.path === undefined ? {} : { path: diagnostic.path }),
+        severity: diagnostic.severity,
+      })),
+      ...(inventory.primaryScene === undefined ? {} : { primarySceneId: inventory.primaryScene.id }),
+      projectKind: inventory.projectKind,
+      recommendedOperations: inventory.recommendedOperations,
+      sourceFamilies: inventory.sourceFamilies.map((family) => ({ count: family.count, files: family.files, kind: family.kind })),
+    },
     message: "Deterministic game-production plan generated without mutating source.",
     mutate: false,
     phases: GAME_WORKFLOW_PHASE_IDS.map((id, index) => ({ id, order: index + 1, summary: phaseSummary(id) })),
@@ -306,30 +340,8 @@ async function gamePlanCommand(argv: readonly string[]): Promise<ICommandResult>
     ],
     recipeIds,
     schema: "threenative.game-plan",
-    scriptPlan: [
-      {
-        exportName: "updatePlayer",
-        module: "src/scripts/player.ts",
-        proof: "tn playtest --project . --entity <player-id> --press KeyboardEvent.code --frames 30 --expect-moved --json",
-        responsibility: "Read portable input and move the player through smooth fixed-time motion.",
-        state: ["input axes", "velocity or movement intent", "grounded/active state when relevant"],
-      },
-      {
-        exportName: "updateGameRules",
-        module: "src/scripts/rules.ts",
-        proof: "tn game score --project . --json reports playable-loop evidence instead of TN_GAME_PLAYABLE_LOOP_MISSING.",
-        responsibility: "Track objective progress, win/fail/retry state, scoring, and milestone events.",
-        state: ["score/progress", "timer or lives when relevant", "game phase"],
-      },
-      {
-        exportName: "updateFeedback",
-        module: "src/scripts/feedback.ts",
-        proof: "Screenshot or recording shows visual state changes when the player acts or reaches an objective.",
-        responsibility: "Drive authored UI/resource cues, animation triggers, particles, sound events, or camera emphasis through supported portable APIs.",
-        state: ["last event", "feedback cooldowns", "UI-visible status values"],
-      },
-    ],
-    sourcePlan: buildSourcePlan(),
+    scriptPlan: buildScriptPlan(inventory),
+    sourcePlan: buildSourcePlan(inventory),
     steps: [
       {
         apply: true,
@@ -494,6 +506,7 @@ async function gameImproveCommand(argv: readonly string[]): Promise<ICommandResu
 function renderGameHelp(json: boolean, subcommand?: string): string {
   const payload = {
     commands: [
+      "tn game inspect [--project <path>] [--json]",
       "tn game plan --goal <text> [--project <path>] [--json]",
       "tn game improve --apply-plan <file> [--project <path>] [--json]",
       "tn game providers [--json]",
@@ -509,6 +522,19 @@ function renderGameHelp(json: boolean, subcommand?: string): string {
     return `${JSON.stringify(payload, null, 2)}\n`;
   }
   return `${payload.message}\n\n${payload.commands.map((command) => `  ${command}`).join("\n")}\n`;
+}
+
+function renderInventory(inventory: Awaited<ReturnType<typeof createGameAgentInventory>>): string {
+  const primaryScene = inventory.primaryScene === undefined ? "none" : `${inventory.primaryScene.id} (${inventory.primaryScene.file})`;
+  const scripts = inventory.scripts.length === 0 ? "none" : inventory.scripts.map((script) => `${script.module}#${script.exportName}`).join(", ");
+  return [
+    `Game agent inventory: ${inventory.projectKind}`,
+    `Project: ${inventory.projectPath}`,
+    `Primary scene: ${primaryScene}`,
+    `Scripts: ${scripts}`,
+    `Diagnostics: ${inventory.diagnostics.length}`,
+    "",
+  ].join("\n");
 }
 
 async function gameScaleCommand(argv: readonly string[]): Promise<ICommandResult> {
@@ -873,12 +899,58 @@ function buildPolishPlan(): IGamePlan["polishPlan"] {
   ];
 }
 
-function buildSourcePlan(): IGamePlan["sourcePlan"] {
+function buildScriptPlan(inventory: Awaited<ReturnType<typeof createGameAgentInventory>>): IGamePlan["scriptPlan"] {
+  const existingScripts = inventory.scripts.map((script) => ({
+    exportName: script.exportName,
+    module: script.module,
+    proof: "tn playtest --project . --entity <player-id> --press KeyboardEvent.code --frames 30 --expect-moved --json",
+    responsibility: "Continue the existing structured-source gameplay system and keep component/resource ownership declared.",
+    state: scriptStateForInventory(inventory),
+  }));
+  if (existingScripts.length > 0) {
+    return existingScripts;
+  }
+  return [
+    {
+      exportName: "updatePlayer",
+      module: "src/scripts/player.ts",
+      proof: "tn playtest --project . --entity <player-id> --press KeyboardEvent.code --frames 30 --expect-moved --json",
+      responsibility: "Read portable input and move the player through smooth fixed-time motion.",
+      state: ["input axes", "velocity or movement intent", "grounded/active state when relevant"],
+    },
+    {
+      exportName: "updateGameRules",
+      module: "src/scripts/rules.ts",
+      proof: "tn game score --project . --json reports playable-loop evidence instead of TN_GAME_PLAYABLE_LOOP_MISSING.",
+      responsibility: "Track objective progress, win/fail/retry state, scoring, and milestone events.",
+      state: ["score/progress", "timer or lives when relevant", "game phase"],
+    },
+    {
+      exportName: "updateFeedback",
+      module: "src/scripts/feedback.ts",
+      proof: "Screenshot or recording shows visual state changes when the player acts or reaches an objective.",
+      responsibility: "Drive authored UI/resource cues, animation triggers, particles, sound events, or camera emphasis through supported portable APIs.",
+      state: ["last event", "feedback cooldowns", "UI-visible status values"],
+    },
+  ];
+}
+
+function scriptStateForInventory(inventory: Awaited<ReturnType<typeof createGameAgentInventory>>): string[] {
+  const state = new Set<string>();
+  for (const system of inventory.scriptSystems) {
+    for (const item of [...system.reads, ...system.writes, ...system.resourceReads, ...system.resourceWrites]) {
+      state.add(item);
+    }
+  }
+  return state.size === 0 ? ["declared gameplay state from structured source"] : [...state].sort();
+}
+
+function buildSourcePlan(inventory: Awaited<ReturnType<typeof createGameAgentInventory>>): IGamePlan["sourcePlan"] {
   const prefabPrimitiveList = [...supportedPrefabPrimitives].join(", ");
   return [
     {
       document: "scene",
-      path: "content/scenes/arena.scene.json",
+      path: pathForFamily(inventory, "scene", "content/scenes/arena.scene.json"),
       supportedShape: [
         "Use scene entities, scene-local prefabs, resources, camera, light, MeshRenderer-compatible components, and authored transforms.",
         `Scene-local prefab primitives are limited to ${prefabPrimitiveList}.`,
@@ -893,7 +965,7 @@ function buildSourcePlan(): IGamePlan["sourcePlan"] {
     },
     {
       document: "input",
-      path: "content/input/arena.input.json",
+      path: pathForFamily(inventory, "input", "content/input/arena.input.json"),
       supportedShape: [
         "Declare actions with string bindings such as keyboard.KeyW, keyboard.ArrowLeft, and keyboard.Space.",
         "Use stable action ids that scripts read through context.input.axis1 or context.input.action/pressed.",
@@ -906,7 +978,7 @@ function buildSourcePlan(): IGamePlan["sourcePlan"] {
     },
     {
       document: "systems",
-      path: "content/systems/arena.systems.json",
+      path: pathForFamily(inventory, "systems", "content/systems/arena.systems.json"),
       supportedShape: [
         "Reference src/scripts/**/*.ts module/export pairs from fixedUpdate for input-driven gameplay loops.",
         "Declare every component/resource read and write, including Transform, custom gameplay components, and GameState.",
@@ -919,7 +991,7 @@ function buildSourcePlan(): IGamePlan["sourcePlan"] {
     },
     {
       document: "ui",
-      path: "content/ui/hud.ui.json",
+      path: pathForFamily(inventory, "ui", "content/ui/hud.ui.json"),
       supportedShape: [
         "Use retained UI nodes with type, text, style, layout, and a bindings array that maps node ids to GameState fields.",
         "Represent gameplay, pause, settings, loading, fail-retry, win-milestone, and touch-controls states.",
@@ -932,7 +1004,7 @@ function buildSourcePlan(): IGamePlan["sourcePlan"] {
     },
     {
       document: "materials",
-      path: "content/materials/arena.materials.json",
+      path: pathForFamily(inventory, "material", "content/materials/arena.materials.json"),
       supportedShape: [
         "Use material rows with id, color, roughness, metalness, emissive, and supported texture-slot fields.",
         "Preserve authored color/material intent in source; fix mapping or runtime setup if screenshots differ.",
@@ -945,7 +1017,7 @@ function buildSourcePlan(): IGamePlan["sourcePlan"] {
     },
     {
       document: "assets",
-      path: "content/assets/arena.assets.json",
+      path: pathForFamily(inventory, "asset", "content/assets/arena.assets.json"),
       supportedShape: [
         "Record asset rows with id, path, and type for source/model/audio/texture/document evidence.",
         "Preserve SQLite catalog ids, source URLs, provenance URLs, license evidence, and fallback notes next to committed assets.",
@@ -957,6 +1029,10 @@ function buildSourcePlan(): IGamePlan["sourcePlan"] {
       operations: ["tn asset source search --game-category <category> --format glb --direct-only --json", "tn asset source get <asset-source-id> --json", "tn asset add ... --json"],
     },
   ];
+}
+
+function pathForFamily(inventory: Awaited<ReturnType<typeof createGameAgentInventory>>, kind: string, fallback: string): string {
+  return inventory.sourceFamilies.find((family) => family.kind === kind)?.files[0] ?? fallback;
 }
 
 function inferGameCategory(goal: string): string {
@@ -1007,18 +1083,44 @@ function inferGameCategory(goal: string): string {
   return "arcade";
 }
 
-async function inferPlanDefaults(projectPath: string): Promise<{ cameraId: string; playerId: string; sceneId: string }> {
-  const project = await loadAuthoringProject({ projectPath });
-  const scene = project.documents.find((document) => document.kind === "scene" && isRecord(document.data));
-  const sceneData = isRecord(scene?.data) ? scene.data : {};
-  const entities = Array.isArray(sceneData.entities) ? sceneData.entities.filter(isRecord) : [];
-  const player = entities.find((entity) => typeof entity.id === "string" && entity.id.toLowerCase().includes("player"));
-  const camera = entities.find((entity) => typeof entity.id === "string" && entity.id.toLowerCase().includes("camera"));
+function inferPlanDefaults(inventory: Awaited<ReturnType<typeof createGameAgentInventory>>): { cameraId: string; playerId: string; sceneId: string } {
+  const entityIds = inventory.primaryScene?.entityIds ?? [];
+  const playerId = entityIds.find((id) => id.toLowerCase().includes("player"));
+  const cameraId = inventory.primaryScene?.cameraIds[0] ?? entityIds.find((id) => id.toLowerCase().includes("camera"));
   return {
-    cameraId: typeof camera?.id === "string" ? camera.id : "camera.main",
-    playerId: typeof player?.id === "string" ? player.id : "player",
-    sceneId: typeof sceneData.id === "string" ? sceneData.id : "arena",
+    cameraId: cameraId ?? "camera.main",
+    playerId: playerId ?? "player",
+    sceneId: inventory.primaryScene?.id ?? "arena",
   };
+}
+
+function buildPlanDiagnostics(inventory: Awaited<ReturnType<typeof createGameAgentInventory>>): Array<{ code: string; message: string; path?: string; severity: "warning" }> {
+  const diagnostics: Array<{ code: string; message: string; path?: string; severity: "warning" }> = [];
+  if (inventory.primaryScene === undefined) {
+    diagnostics.push({
+      code: "TN_GAME_PLAN_SOURCE_DEFAULT_FALLBACK",
+      message: "Game plan used fallback scene defaults because the project inventory has no primary scene.",
+      path: "/steps/playable-loop/recipeArgs/sceneId",
+      severity: "warning",
+    });
+  }
+  if ((inventory.primaryScene?.cameraIds.length ?? 0) === 0) {
+    diagnostics.push({
+      code: "TN_GAME_PLAN_SOURCE_DEFAULT_FALLBACK",
+      message: "Game plan used fallback camera defaults because the project inventory has no camera entity.",
+      path: "/steps/playable-loop/recipeArgs/cameraId",
+      severity: "warning",
+    });
+  }
+  if (inventory.primaryScene?.entityIds.some((id) => id.toLowerCase().includes("player")) !== true) {
+    diagnostics.push({
+      code: "TN_GAME_PLAN_SOURCE_DEFAULT_FALLBACK",
+      message: "Game plan used fallback player entity defaults because the project inventory has no player-like entity id.",
+      path: "/steps/playable-loop/recipeArgs/entityId",
+      severity: "warning",
+    });
+  }
+  return diagnostics;
 }
 
 async function runGameQaProof(argv: readonly string[], projectPath: string, options: IGameCommandOptions): Promise<IGameProofRun> {

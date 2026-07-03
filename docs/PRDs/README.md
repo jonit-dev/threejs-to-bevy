@@ -31,6 +31,10 @@ This index separates current cleanup work from historical milestone batches.
   init/create front door, task-oriented help, doctor diagnostics, asset/model
   inspection, transform/camera guardrails, screenshot/video proof, runtime
   debug overlay, and racing template evidence.
+- [Agent-Friendly 3D Game Creation Contract](other/agent-friendly-3d-game-creation-contract.md):
+  example-derived game inventory, source-aware planning, normalized production
+  metadata, common vertical-slice recipes, and drift gates that make generated
+  3D game creation easier for AI agents.
 - [Bowling Lane Agent-Friendly Scene Source Refactor](done/other/bowling-lane-agent-friendly-scene-source.md):
   compact prefab defaults, repeated layout source, source inspection, CLI
   operations, and bowling-lane migration to prevent thousand-line scene JSON

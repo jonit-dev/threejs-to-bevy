@@ -81,6 +81,130 @@ test("plans a playable loop without writing files", async () => {
   }
 });
 
+test("should print game inspect inventory as json", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-game-inspect-"));
+  try {
+    await mkdir(join(root, "content/scenes"), { recursive: true });
+    await mkdir(join(root, "content/systems"), { recursive: true });
+    await writeFile(join(root, "package.json"), `${JSON.stringify({ name: "inspect-generated-game" }, null, 2)}\n`);
+    await writeFile(join(root, "threenative.config.json"), `${JSON.stringify({
+      entry: "content/scenes/arena.scene.json",
+      production: {
+        assetPlan: {
+          audioFeedback: "visual feedback",
+          obstacleEnemy: "hazards",
+          playerHero: "hero",
+          rewardInteractable: "reward",
+          uiHud: "hud",
+          worldEnvironment: "world",
+        },
+        proofCommands: ["tn game score --project . --json"],
+      },
+      schema: "threenative.project",
+    }, null, 2)}\n`);
+    await writeFile(join(root, "content/scenes/arena.scene.json"), `${JSON.stringify({
+      entities: [{ id: "camera.main", components: { camera: { mode: "perspective" } } }],
+      id: "arena",
+      schema: "threenative.scene",
+    }, null, 2)}\n`);
+    await writeFile(join(root, "content/systems/arena.systems.json"), `${JSON.stringify({
+      id: "arena-systems",
+      schema: "threenative.systems",
+      systems: [{ id: "gameplay", script: { export: "updatePlayer", module: "src/scripts/player.ts" } }],
+    }, null, 2)}\n`);
+
+    const result = await gameCommand(["inspect", "--project", root, "--json"]);
+    const payload = JSON.parse(result.stdout) as {
+      primaryScene?: { id: string };
+      projectKind: string;
+      schema: string;
+      scripts: Array<{ exportName: string; module: string }>;
+    };
+
+    assert.equal(result.exitCode, 0);
+    assert.equal(payload.schema, "threenative.game-agent-inventory");
+    assert.equal(payload.projectKind, "generated-game");
+    assert.equal(payload.primaryScene?.id, "arena");
+    assert.equal(payload.scripts.some((script) => script.module === "src/scripts/player.ts" && script.exportName === "updatePlayer"), true);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should include project inventory in generated game plan", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-game-plan-inventory-"));
+  try {
+    await mkdir(join(root, "content/scenes"), { recursive: true });
+    await mkdir(join(root, "content/input"), { recursive: true });
+    await mkdir(join(root, "content/systems"), { recursive: true });
+    await mkdir(join(root, "content/ui"), { recursive: true });
+    await mkdir(join(root, "content/materials"), { recursive: true });
+    await mkdir(join(root, "content/assets"), { recursive: true });
+    await writeFile(join(root, "package.json"), `${JSON.stringify({ name: "inventory-backed-generated-game" }, null, 2)}\n`);
+    await writeFile(join(root, "threenative.config.json"), `${JSON.stringify({ entry: "content/scenes/harbor.scene.json", schema: "threenative.project" }, null, 2)}\n`);
+    await writeFile(join(root, "content/scenes/harbor.scene.json"), `${JSON.stringify({
+      entities: [
+        { id: "camera.hero", components: { camera: { mode: "perspective" } } },
+        { id: "player.boat" },
+      ],
+      id: "harbor",
+      schema: "threenative.scene",
+    }, null, 2)}\n`);
+    await writeFile(join(root, "content/input/harbor.input.json"), `${JSON.stringify({ actions: [{ bindings: ["keyboard.KeyD"], id: "move-right" }], id: "harbor-input", schema: "threenative.input" }, null, 2)}\n`);
+    await writeFile(join(root, "content/systems/harbor.systems.json"), `${JSON.stringify({
+      id: "harbor-systems",
+      schema: "threenative.systems",
+      systems: [{ id: "boat", resourceWrites: ["GameState"], script: { export: "updateBoat", module: "src/scripts/boat.ts" }, writes: ["Transform"] }],
+    }, null, 2)}\n`);
+    await writeFile(join(root, "content/ui/harbor.ui.json"), `${JSON.stringify({ id: "harbor-ui", nodes: [{ id: "status", text: "Ready", type: "text" }], schema: "threenative.ui" }, null, 2)}\n`);
+    await writeFile(join(root, "content/materials/harbor.materials.json"), `${JSON.stringify({ id: "harbor-materials", materials: [{ color: "#336699", id: "boat" }], schema: "threenative.materials" }, null, 2)}\n`);
+    await writeFile(join(root, "content/assets/harbor.assets.json"), `${JSON.stringify({ assets: [{ id: "boat-model", path: "assets/boat.glb", type: "model" }], id: "harbor-assets", schema: "threenative.assets" }, null, 2)}\n`);
+
+    const result = await gameCommand(["plan", "--project", root, "--goal", "top down rescue game", "--json"]);
+    const payload = JSON.parse(result.stdout) as {
+      inventory: { primarySceneId?: string; projectKind: string };
+      scriptPlan: Array<{ exportName: string; module: string; state: string[] }>;
+      sourcePlan: Array<{ document: string; path: string }>;
+      steps: Array<{ id: string; recipeArgs?: { cameraId?: string; entityId?: string; sceneId?: string } }>;
+    };
+
+    assert.equal(result.exitCode, 0);
+    assert.equal(payload.inventory.projectKind, "generated-game");
+    assert.equal(payload.inventory.primarySceneId, "harbor");
+    assert.equal(payload.sourcePlan.some((source) => source.document === "scene" && source.path === "content/scenes/harbor.scene.json"), true);
+    assert.equal(payload.sourcePlan.some((source) => source.document === "systems" && source.path === "content/systems/harbor.systems.json"), true);
+    assert.equal(payload.scriptPlan.some((script) => script.module === "src/scripts/boat.ts" && script.exportName === "updateBoat" && script.state.includes("GameState")), true);
+    assert.equal(payload.steps.find((step) => step.id === "playable-loop")?.recipeArgs?.sceneId, "harbor");
+    assert.equal(payload.steps.find((step) => step.id === "playable-loop")?.recipeArgs?.cameraId, "camera.hero");
+    assert.equal(payload.steps.find((step) => step.id === "playable-loop")?.recipeArgs?.entityId, "player.boat");
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should preserve non-mutating plan contract when inventory has gaps", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-game-plan-inventory-gaps-"));
+  try {
+    const result = await gameCommand(["plan", "--project", root, "--goal", "minimal arena", "--json"]);
+    const payload = JSON.parse(result.stdout) as {
+      diagnostics: Array<{ code: string; severity: string }>;
+      inventory: { projectKind: string };
+      mutate: boolean;
+      steps: Array<{ id: string; recipeArgs?: { cameraId?: string; entityId?: string; sceneId?: string } }>;
+    };
+
+    assert.equal(result.exitCode, 0);
+    assert.equal(payload.mutate, false);
+    assert.equal(payload.inventory.projectKind, "unknown");
+    assert.equal(payload.diagnostics.every((diagnostic) => diagnostic.code === "TN_GAME_PLAN_SOURCE_DEFAULT_FALLBACK" && diagnostic.severity === "warning"), true);
+    assert.equal(payload.steps.find((step) => step.id === "playable-loop")?.recipeArgs?.sceneId, "arena");
+    assert.equal(payload.steps.find((step) => step.id === "playable-loop")?.recipeArgs?.cameraId, "camera.main");
+    assert.equal(payload.steps.find((step) => step.id === "playable-loop")?.recipeArgs?.entityId, "player");
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
 test("improve persists the applied game plan as canonical production evidence", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-game-improve-plan-evidence-"));
   try {

@@ -46,12 +46,21 @@ coverage with screenshots or report rows alone. Authored
 multiple colors and roughness values for main gameplay/world surfaces, so a
 single flat placeholder material cannot satisfy generated-game visual proof.
 
+`tn game inspect --project <path> --json` emits the agent-readable
+`threenative.game-agent-inventory` report. The report names the project kind,
+source document families and paths, primary scene, script module/export owners,
+input, UI, assets, materials, high-value surfaces, proof commands, diagnostics,
+and recommended next operations. Agents should use it as the first project map
+before opening individual source files.
+
 `tn game plan --goal <text> --json` is the required planning entry point before
 source mutation for generated games. It emits a non-mutating
-`threenative.game-plan` artifact with design loop, controls, objective,
-progression, fail/retry, feedback, source-shape guidance for scene, input,
-systems, UI, materials, and assets documents, script, polish, and proof command
-sections. Generated-game proof keeps this output at
+`threenative.game-plan` artifact with the current inventory summary, design
+loop, controls, objective, progression, fail/retry, feedback, source-shape
+guidance for scene, input, systems, UI, materials, and assets documents, script,
+polish, and proof command sections. The plan uses inventory paths and scene
+defaults when present, and emits fallback diagnostics when source defaults are
+inferred. Generated-game proof keeps this output at
 `artifacts/game-production/plan.json`. The plan must also retain
 `acceptanceCriteria` entries that cover the objective/input playable loop,
 asset provenance, script/source wiring, authored visual baseline, and proof
