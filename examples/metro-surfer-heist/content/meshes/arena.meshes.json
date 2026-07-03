@@ -1,0 +1,9 @@
+{
+  "schema": "threenative.meshes",
+  "version": "0.1.0",
+  "id": "arena-surface-meshes",
+  "meshes": [
+    { "id": "mesh.road.plane", "kind": "primitive", "primitive": "plane" },
+    { "id": "mesh.platform.slab", "kind": "primitive", "primitive": "box" }
+  ]
+}

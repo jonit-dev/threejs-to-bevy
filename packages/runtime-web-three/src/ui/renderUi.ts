@@ -87,7 +87,7 @@ function renderNode(node: IUiNodeIr, world: IWorldIr): IRenderedUiNode {
     ...(node.step === undefined ? {} : { step: node.step }),
     ...(node.style === undefined ? {} : { style: node.style }),
     ...(node.src === undefined ? {} : { src: node.src }),
-    text: node.text ?? (typeof bindingValue === "string" || typeof bindingValue === "number" ? String(bindingValue) : undefined),
+    text: typeof bindingValue === "string" || typeof bindingValue === "number" ? String(bindingValue) : node.text,
     value: typeof bindingValue === "number" ? bindingValue : node.value,
     ...(node.valueText === undefined ? {} : { valueText: node.valueText }),
   };

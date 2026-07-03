@@ -73,6 +73,10 @@ plan before mutating source:
   audio-feedback. For each one, decide whether to use catalog assets, a
   cohesive open-source pack, generated/local tooling output, authored custom
   meshes, or a documented fallback.
+- The first playable pass must already use recognizable custom/imported art for
+  high-value surfaces. A local GLB assembled from plain boxes, capsules,
+  spheres, or cylinders is still placeholder art unless it has a clearly
+  authored, domain-specific silhouette and material treatment.
 - For 3D model surfaces, the first sourcing action must be the CLI search over
   the shipped SQLite asset-source library
   (`packages/cli/data/asset-sources.sqlite`), not a web search or hand-made
@@ -88,6 +92,14 @@ plan before mutating source:
 - The plan must include a polish pass for silhouettes, materials, lighting,
   camera framing, environment context, set dressing, motion/VFX/audio feedback,
   UI states, mobile fit, and performance budget.
+- For humanoid, creature, vehicle, or otherwise living/active hero assets, the
+  plan must inventory available model animation clips and declare the intended
+  idle/run/action clips in structured source. A rigged GLB is not complete if
+  its clips are not wired, played, and verified in motion.
+- The plan must include a relative-scale check for the hero, vehicles, large
+  obstacles, rewards, landmarks, and environment pieces. Do not fix readability
+  by making one asset physically incoherent; adjust camera, animation speed,
+  pose, lighting, or surrounding scale instead.
 - Treat the plan as a checklist while implementing. If asset sourcing or a
   runtime capability fails, update the plan with the fallback and evidence
   instead of silently downgrading to dull placeholder geometry.
@@ -112,7 +124,10 @@ scene before falling back to primitives:
    compatible pack with a consistent style and clear redistribution terms.
 5. If no usable pack exists, author a coherent set of custom meshes.
 6. Use primitive geometry only as the last fallback or prototype state. Finished
-   defaults should not look like unrelated placeholders.
+   defaults should not look like unrelated placeholders. Do not mark a game
+   finished because primitives were exported to GLB; primitive-derived models
+   must be visually judged like primitives unless their silhouette, proportions,
+   materials, and context read as intentional custom art.
 
 When selecting SQLite catalog assets, run
 `tn asset source get <asset-source-id> --json`, then report and preserve the
@@ -135,14 +150,29 @@ after downloading or referencing a selected model.
   games need walls, floors, props, entrances, scale cues, and purposeful
   lighting; arena games need boundaries, cover or hazards, spawn/readability
   markers, and background detail.
+- Animate active characters and vehicles when suitable clips exist. For
+  imported GLB/glTF actors, inspect embedded clips, declare them on the model
+  asset, select a gameplay-appropriate source clip, and capture proof that the
+  clip visibly advances at runtime.
+- Preserve believable relative scale. A player should not read as tall as a
+  train, truck, building, or other known large object. Before calling a vehicle
+  or character scene visually done, run `tn game scale --project <path> --json`
+  or equivalent runtime-bounds proof and resolve scale diagnostics.
 - Prefer cohesive asset kits, modular environment pieces, authored meshes, or
   generated meshes with intentional proportions and materials. When primitives
   are unavoidable, combine and dress them so they read as designed objects, not
   placeholders.
+- For hero/player, primary obstacle/enemy/vehicle, reward/interactable, and the
+  dominant environment landmark, use imported/catalog assets or authored custom
+  meshes by default. If any of those surfaces remains primitive or
+  primitive-looking, record the blocker and keep iterating instead of calling
+  the game done.
 - Before calling visual work done, inspect a screenshot or browser/native proof
   and fix obvious cheapness: empty horizons, untextured gray shapes, missing
   shadows, incoherent scale, unclear objectives, floating objects, bland floors,
-  or scenes that look like debug geometry.
+  primitive-looking hero/vehicle silhouettes, or scenes that look like debug
+  geometry. Runtime asset counts or "GLB is present" are not sufficient proof;
+  the visible screenshot must show the intended custom/imported assets.
 
 ## Gameplay Physics
 

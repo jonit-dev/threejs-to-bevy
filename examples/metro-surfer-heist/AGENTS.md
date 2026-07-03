@@ -53,7 +53,10 @@ Rules for this generated ThreeNative project.
   primitive geometry.
 - If the planned asset source or runtime capability is unavailable, record the
   fallback and keep the game visually coherent. Do not silently collapse the
-  plan into unrelated primitive placeholders.
+  plan into unrelated primitive placeholders. For finished examples, continue
+  through the documented fallback order: curated/open-source pack, compatible
+  GitHub/open-source pack, generated/local custom GLB or mesh assets, then
+  primitive fallback only for prototype or runtime fallback fields.
 - Treat the game as a small polished vertical slice, not a blockout. Do not
   accept primitive-only placeholder scenes as finished games. Add a cohesive
   visual baseline by default: custom meshes or imported model assets, shaped
@@ -83,9 +86,12 @@ Rules for this generated ThreeNative project.
   lighting; arena games need boundaries, cover or hazards, spawn/readability
   markers, and background detail.
 - When primitives are unavoidable, combine and dress them so they read as
-  designed objects, not placeholders. Exporting primitive assemblies to GLB is
-  not enough by itself; primitive-derived models must still pass visual
-  inspection as intentional custom assets.
+  designed objects, not placeholders. If a custom asset can be generated or
+  authored locally, prefer committing that local asset and referencing it from
+  structured source with `prefab.asset`, keeping primitives only as explicit
+  fallback geometry. Exporting primitive assemblies to GLB is not enough by
+  itself; primitive-derived models must still pass visual inspection as
+  intentional custom assets.
 - For game art, first query the SQLite-backed CLI asset library and use proper
   direct GLB/glTF records when suitable. If no direct record fits, check the
   repo's open-source 3D asset kit workflow and use a coherent pack when

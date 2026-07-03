@@ -1,0 +1,24 @@
+{
+  "schema": "threenative.materials",
+  "version": "0.1.0",
+  "id": "arena-materials",
+  "materials": [
+    { "id": "mat.sky", "color": "#7fb7d8", "roughness": 1 },
+    { "id": "mat.track.bed", "color": "#2f3f46", "roughness": 0.9 },
+    { "id": "mat.lane", "color": "#3f555e", "roughness": 0.86 },
+    { "id": "mat.road.asphalt", "color": "#697477", "baseColorTexture": "tex.road.asphalt.albedo", "normalTexture": "tex.road.asphalt.normal", "metallicRoughnessTexture": "tex.road.asphalt.roughness", "roughness": 0.97, "metalness": 0 },
+    { "id": "mat.road.lane.worn", "color": "#7a8586", "baseColorTexture": "tex.road.asphalt.albedo", "normalTexture": "tex.road.asphalt.normal", "metallicRoughnessTexture": "tex.road.asphalt.roughness", "roughness": 0.96, "metalness": 0 },
+    { "id": "mat.rail", "color": "#d2d9d6", "roughness": 0.38, "metalness": 0.55 },
+    { "id": "mat.runner.body", "color": "#f36f45", "roughness": 0.45 },
+    { "id": "mat.runner.cap", "color": "#29a3a3", "roughness": 0.42 },
+    { "id": "mat.coin", "color": "#ffd23f", "emissive": "#e6a900", "roughness": 0.22, "metalness": 0.45 },
+    { "id": "mat.train", "color": "#265f7e", "roughness": 0.52, "metalness": 0.18 },
+    { "id": "mat.barrier", "color": "#f05a5f", "roughness": 0.5 },
+    { "id": "mat.gate", "color": "#f6e0a1", "roughness": 0.48 },
+    { "id": "mat.platform", "color": "#69777d", "roughness": 0.82 },
+    { "id": "mat.platform.tile", "color": "#c8bea2", "baseColorTexture": "tex.platform.tile.albedo", "metallicRoughnessTexture": "tex.platform.tile.roughness", "roughness": 0.76 },
+    { "id": "mat.sign", "color": "#f6c85f", "emissive": "#4a2b00", "roughness": 0.55 },
+    { "id": "mat.sign.alt", "color": "#4fd0c8", "emissive": "#053633", "roughness": 0.42 },
+    { "id": "mat.speed.line", "color": "#f4fbff", "emissive": "#a8ddff", "roughness": 0.25 }
+  ]
+}

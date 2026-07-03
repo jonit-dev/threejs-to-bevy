@@ -1,0 +1,23 @@
+{
+  "schema": "threenative.ui",
+  "version": "0.1.0",
+  "id": "hud",
+  "nodes": [
+    { "id": "score", "type": "text", "text": "Score 0", "style": { "color": "#f8fbff", "fontSize": 24, "fontWeight": "bold", "textAlign": "center" }, "layout": { "justify": "center", "align": "top", "top": 22, "width": 1280 } },
+    { "id": "coins", "type": "text", "text": "Coins 0/12", "style": { "color": "#ffd23f", "fontSize": 22, "fontWeight": "bold", "textAlign": "center" }, "layout": { "justify": "center", "align": "top", "top": 54, "width": 1280 } },
+    { "id": "distance", "type": "text", "text": "Metro 0m", "style": { "color": "#e8f3ff", "fontSize": 20, "fontWeight": "bold", "textAlign": "center" }, "layout": { "justify": "center", "align": "top", "top": 86, "width": 1280 } },
+    { "id": "status", "type": "text", "text": "Switch lanes, jump red barriers, duck low gates", "style": { "color": "#ffffff", "fontSize": 19, "fontWeight": "bold", "textAlign": "center" }, "layout": { "justify": "center", "align": "bottom", "top": 676, "width": 1280 } },
+    { "id": "state.loading", "type": "text", "text": "Loading metro route", "layout": { "justify": "center", "align": "center", "top": 1200, "width": 1280 } },
+    { "id": "state.pause", "type": "text", "text": "Paused", "layout": { "justify": "center", "align": "center", "top": 1230, "width": 1280 } },
+    { "id": "state.settings", "type": "text", "text": "Settings", "layout": { "justify": "center", "align": "center", "top": 1260, "width": 1280 } },
+    { "id": "state.fail-retry", "type": "text", "text": "Caught - press R", "layout": { "justify": "center", "align": "center", "top": 1290, "width": 1280 } },
+    { "id": "state.win-milestone", "type": "text", "text": "Objective cleared", "layout": { "justify": "center", "align": "center", "top": 1320, "width": 1280 } },
+    { "id": "state.touch-controls", "type": "text", "text": "Swipe mobile-control", "layout": { "justify": "center", "align": "center", "top": 1350, "width": 1280 } }
+  ],
+  "bindings": [
+    { "node": "score", "resource": "GameState.scoreText" },
+    { "node": "coins", "resource": "GameState.coinsText" },
+    { "node": "distance", "resource": "GameState.distanceText" },
+    { "node": "status", "resource": "GameState.status" }
+  ]
+}

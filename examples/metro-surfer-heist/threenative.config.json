@@ -1,0 +1,42 @@
+{
+  "schema": "threenative.project",
+  "version": "0.1.0",
+  "entry": "content/scenes/arena.scene.json",
+  "outDir": "dist/metro-surfer-heist.bundle",
+  "production": {
+    "playableLoop": "Run through a three-lane metro track, switch lanes, jump barriers, duck low gates, collect coins, dodge trains, and clear score objectives before retrying after a crash.",
+    "controls": [
+      "keyboard.KeyA",
+      "keyboard.ArrowLeft",
+      "keyboard.KeyD",
+      "keyboard.ArrowRight",
+      "keyboard.KeyW",
+      "keyboard.ArrowUp",
+      "keyboard.Space",
+      "keyboard.KeyS",
+      "keyboard.ArrowDown",
+      "keyboard.KeyR",
+      "keyboard.Enter"
+    ],
+    "objective": "Collect 12 coins and run 260 meters while staying alive.",
+    "progression": "Runner speed increases with distance, hazards recycle faster, and score rises from both distance and coins.",
+    "failRetry": "Colliding with a train, failing to jump a red barrier, or failing to duck a low gate enters failed state; R or Enter resets the route.",
+    "proofCommands": [
+      "tn authoring validate --project . --json",
+      "tn build --project . --json",
+      "tn verify --project . --frames 3 --expect-motion --json",
+      "tn playtest --project . --entity runner --press KeyD --frames 30 --expect-moved --json",
+      "tn game score --project . --json",
+      "tn game qa --project . --run-proof --json",
+      "tn game release --project . --json"
+    ],
+    "assetProvenance": {
+      "catalogSearches": [
+        "tn asset source search --game-category runner --format glb --direct-only --json -> TN_ASSET_SOURCE_CATALOG_FAILED: packages/cli/data/asset-sources.sqlite unable to open",
+        "tn asset source search --game-category urban --format glb --direct-only --json -> TN_ASSET_SOURCE_CATALOG_FAILED: packages/cli/data/asset-sources.sqlite unable to open"
+      ],
+      "fallback": "The player, obstacles, rewards, metro rails, platforms, and signage are backed by a cohesive local custom GLB kit generated with @gltf-transform. Primitive geometry remains only as explicit runtime fallback because the required catalog database is unavailable."
+    }
+  },
+  "template": "structured-source-starter"
+}

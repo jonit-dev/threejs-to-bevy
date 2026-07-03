@@ -17,6 +17,19 @@ test("ui should update health bar from resource", () => {
   assert.equal(rendered.root.children[0]?.value, 5);
 });
 
+test("ui should prefer resource binding text over authored fallback text", () => {
+  const world = makeWorld();
+  world.resources = { ...world.resources, Score: { text: "Score 3" } };
+  const rendered = renderUi(makeUi(), world);
+
+  assert.equal(rendered.root.children[3]?.text, "Score 3");
+
+  world.resources = { ...world.resources, Score: { text: "Score 9" } };
+  rendered.update();
+
+  assert.equal(rendered.root.children[3]?.text, "Score 9");
+});
+
 test("ui should dispatch pause action from button", () => {
   const rendered = renderUi(makeUi(), makeWorld());
 
@@ -58,6 +71,7 @@ function makeUi(): IUiIr {
             markers: [],
           },
         },
+        { id: "score", kind: "text", text: "Score 0", binding: { kind: "resource", name: "Score", field: "text" } },
       ],
     },
   };

@@ -1,0 +1,19 @@
+{
+  "schema": "threenative.systems",
+  "version": "0.1.0",
+  "id": "arena-systems",
+  "systems": [
+    {
+      "id": "metro-surfer-heist",
+      "schedule": "fixedUpdate",
+      "reads": ["Transform", "RunnerPlayer", "Coin", "RunnerHazard"],
+      "writes": ["Transform", "RunnerPlayer", "Coin", "RunnerHazard"],
+      "resourceReads": ["GameState"],
+      "resourceWrites": ["GameState"],
+      "script": {
+        "module": "src/scripts/player.ts",
+        "export": "metroSurferHeistSystem"
+      }
+    }
+  ]
+}

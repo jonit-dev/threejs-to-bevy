@@ -1281,6 +1281,54 @@ test("should emit ui ir for scene with portable hud", async () => {
   }
 });
 
+test("should emit structured ui bindings from retained source documents", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-emit-structured-ui-"));
+  try {
+    const config = {
+      entry: "src/game.ts",
+      outDir: "dist/game.bundle",
+      projectPath: root,
+      schema: "threenative.project" as const,
+      version: "0.1.0" as const,
+    };
+
+    const bundlePath = await emitBundle(config, makeScene(), {
+      authoringDocuments: [
+        {
+          data: {
+            schema: "threenative.ui",
+            version: "0.1.0",
+            id: "hud",
+            nodes: [
+              { id: "score", type: "text", text: "Score 0" },
+              {
+                id: "panel",
+                type: "column",
+                children: [{ id: "coins", type: "text", text: "Coins 0/12" }],
+              },
+            ],
+            bindings: [
+              { node: "score", resource: "GameState.scoreText" },
+              { node: "coins", resource: "GameState.coinsText" },
+            ],
+          },
+          file: join(root, "content", "ui", "hud.ui.json"),
+          kind: "ui",
+          projectRelativePath: "content/ui/hud.ui.json",
+        },
+      ],
+    });
+    const ui = JSON.parse(await readFile(join(bundlePath, "ui.ir.json"), "utf8"));
+    const score = ui.root.children.find((node: { id: string }) => node.id === "score");
+    const panel = ui.root.children.find((node: { id: string }) => node.id === "panel");
+
+    assert.deepEqual(score.binding, { field: "scoreText", kind: "resource", name: "GameState" });
+    assert.deepEqual(panel.children[0].binding, { field: "coinsText", kind: "resource", name: "GameState" });
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
 test("should reject unsafe asset copy destinations before writing files", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-emit-unsafe-asset-"));
   try {

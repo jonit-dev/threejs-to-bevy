@@ -462,14 +462,46 @@ function readStructuredUi(documents: readonly IAuthoringDocument[] | undefined):
 
 function structuredUiDocument(data: Record<string, unknown>): IUiIr {
   const id = readString(data.id) ?? "ui";
+  const bindings = readStructuredUiBindings(data);
   const nodes = readRecordList(data.nodes).flatMap((node) => structuredUiNode(node));
+  const boundNodes = nodes.map((node) => applyStructuredUiBindings(node, bindings));
   const root: IUiNodeIr = nodes.length === 1
-    ? nodes[0] ?? { id: `${id}.root`, kind: "stack" }
-    : { children: nodes, id: `${id}.root`, kind: "stack" };
+    ? boundNodes[0] ?? { id: `${id}.root`, kind: "stack" }
+    : { children: boundNodes, id: `${id}.root`, kind: "stack" };
   return {
     schema: IR_SCHEMA_IDS.ui,
     version: IR_VERSION,
     root,
+  };
+}
+
+function readStructuredUiBindings(data: Record<string, unknown>): Map<string, IUiNodeIr["binding"]> {
+  const bindings = new Map<string, IUiNodeIr["binding"]>();
+  for (const binding of readRecordList(data.bindings)) {
+    const node = readString(binding.node);
+    const resource = readString(binding.resource);
+    if (node === undefined || resource === undefined) {
+      continue;
+    }
+    const [name, ...fieldParts] = resource.split(".");
+    if (name === undefined || name.length === 0) {
+      continue;
+    }
+    bindings.set(node, {
+      ...(fieldParts.length === 0 ? {} : { field: fieldParts.join(".") }),
+      kind: "resource",
+      name,
+    });
+  }
+  return bindings;
+}
+
+function applyStructuredUiBindings(node: IUiNodeIr, bindings: ReadonlyMap<string, IUiNodeIr["binding"]>): IUiNodeIr {
+  const binding = bindings.get(node.id);
+  return {
+    ...node,
+    ...(binding === undefined ? {} : { binding }),
+    ...(node.children === undefined ? {} : { children: node.children.map((child) => applyStructuredUiBindings(child, bindings)) }),
   };
 }
 

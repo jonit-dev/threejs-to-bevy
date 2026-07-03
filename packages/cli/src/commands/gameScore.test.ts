@@ -415,6 +415,7 @@ test("passes axis assertions through QA proof playtest", async () => {
     );
     assert.deepEqual(seenArgs.find((args) => args[0] === "artifact-check" && args.includes("artifacts/game-production/motion.webm")), ["artifact-check", "artifacts/game-production/motion.webm"]);
     assert.deepEqual(seenArgs.find((args) => args[0] === "visual-quality-proof"), ["visual-quality-proof", "artifacts/game-production/visual-quality.json"]);
+    assert.deepEqual(seenArgs.find((args) => args[0] === "scale-proof"), ["scale-proof", "artifacts/game-production/scale-analysis.json"]);
     assert.deepEqual(seenArgs.find((args) => args[0] === "performance-proof"), ["performance-proof", "artifacts/game-production/performance.json"]);
     assert.deepEqual(seenArgs.find((args) => args[0] === "asset-budget-proof"), ["asset-budget-proof", "artifacts/game-production/asset-budget.json"]);
     assert.deepEqual(seenArgs.find((args) => args[0] === "ui-fit-proof"), ["ui-fit-proof", "artifacts/game-production/ui-fit.json"]);
