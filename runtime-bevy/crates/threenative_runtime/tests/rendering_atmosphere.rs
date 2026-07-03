@@ -1,4 +1,5 @@
 use std::{
+    collections::HashMap,
     fs,
     path::{Path, PathBuf},
     time::{SystemTime, UNIX_EPOCH},
@@ -12,8 +13,11 @@ use bevy::{
 };
 use threenative_loader::load_bundle;
 use threenative_runtime::{
-    map_world::map_bundle_into_world,
-    rendering::{apply_atmosphere_to_world, normalize_textured_material, observe_atmosphere},
+    map_world::{map_bundle_into_world, NativeMaterialHandles},
+    rendering::{
+        apply_atmosphere_to_world, normalize_loaded_gltf_materials, normalize_textured_material,
+        observe_atmosphere,
+    },
 };
 
 #[test]
@@ -200,6 +204,53 @@ fn textured_gltf_materials_should_preserve_lit_cutout_rendering() {
     let mut untextured = StandardMaterial::default();
     assert!(!normalize_textured_material(&mut untextured));
     assert_eq!(untextured.alpha_mode, AlphaMode::Opaque);
+}
+
+#[test]
+fn loaded_gltf_material_normalization_should_skip_authored_textured_materials() {
+    let mut app = App::new();
+    app.init_resource::<Assets<StandardMaterial>>();
+    let authored = app
+        .world_mut()
+        .resource_mut::<Assets<StandardMaterial>>()
+        .add(StandardMaterial {
+            base_color: Color::srgb(0.2, 0.3, 0.4),
+            base_color_texture: Some(Handle::default()),
+            ..Default::default()
+        });
+    let loaded = app
+        .world_mut()
+        .resource_mut::<Assets<StandardMaterial>>()
+        .add(StandardMaterial {
+            base_color: Color::srgb(0.2, 0.3, 0.4),
+            base_color_texture: Some(Handle::default()),
+            ..Default::default()
+        });
+    app.insert_resource(NativeMaterialHandles(HashMap::from([(
+        "mat.authored".to_owned(),
+        authored.clone(),
+    )])));
+    app.add_systems(Update, normalize_loaded_gltf_materials);
+
+    app.update();
+
+    let materials = app.world().resource::<Assets<StandardMaterial>>();
+    let authored_color = materials
+        .get(&authored)
+        .expect("authored material should exist")
+        .base_color
+        .to_srgba();
+    let loaded_color = materials
+        .get(&loaded)
+        .expect("loaded material should exist")
+        .base_color
+        .to_srgba();
+    assert!((authored_color.red - 0.2).abs() < 0.01);
+    assert!((authored_color.green - 0.3).abs() < 0.01);
+    assert!((authored_color.blue - 0.4).abs() < 0.01);
+    assert!((loaded_color.red - 1.0).abs() < 0.01);
+    assert!((loaded_color.green - 1.0).abs() < 0.01);
+    assert!((loaded_color.blue - 1.0).abs() < 0.01);
 }
 
 #[test]

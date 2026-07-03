@@ -31,8 +31,8 @@ fn systems_context_should_build_declared_query_snapshot() {
     assert!(snapshot.entities[0].components.contains_key("Transform"));
     assert!(snapshot.entities[0].components.contains_key("Rotator"));
     assert!(!snapshot.entities[0].components.contains_key("Health"));
-    assert_eq!(snapshot.input.actions.get("MoveForward"), Some(&true));
-    assert_eq!(snapshot.input.axes.get("MoveX"), Some(&1.0));
+    assert_eq!(snapshot.input.actions.get("MoveForward"), None);
+    assert_eq!(snapshot.input.axes.get("MoveX"), None);
     assert_eq!(snapshot.time.fixed_dt, 0.016);
 }
 

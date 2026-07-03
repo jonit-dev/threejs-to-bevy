@@ -2,6 +2,7 @@ use std::{env, fs, path::Path, path::PathBuf, process::ExitCode};
 
 use bevy::{
     app::AppExit, prelude::*, render::view::screenshot::ScreenshotManager, window::PrimaryWindow,
+    winit::{UpdateMode, WinitSettings},
 };
 use image::GenericImageView;
 use threenative_loader::{AssetsManifest, load_bundle};
@@ -137,6 +138,10 @@ fn main() -> ExitCode {
     app.insert_resource(CaptureConfig {
         captures,
         max_frame,
+    })
+    .insert_resource(WinitSettings {
+        focused_mode: UpdateMode::Continuous,
+        unfocused_mode: UpdateMode::Continuous,
     })
     .insert_resource(required_model_assets(&bundle.assets))
     .insert_resource(TextureAssetsReady::default())

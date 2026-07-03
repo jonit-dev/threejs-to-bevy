@@ -3,12 +3,13 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use threenative_loader::load_bundle;
+use threenative_loader::{InputAxisIr, InputBindingIr, InputIr, load_bundle};
 use threenative_runtime::{
+    input::{NativeInputState, map_keyboard_event},
     systems_context::{NativeSystemTimeSnapshot, build_system_context_snapshot},
     systems_host::{
         diagnose_native_system_host, ensure_native_system_host_supported, run_native_systems_once,
-        unsupported_native_system_host_diagnostic,
+        run_native_systems_once_with_input, unsupported_native_system_host_diagnostic,
     },
 };
 
@@ -107,8 +108,28 @@ fn systems_host_should_apply_declared_resource_write() {
 fn systems_host_should_expose_context_ergonomics_helpers() {
     let root = write_context_ergonomics_bundle("context-ergonomics");
     let mut bundle = load_bundle(&root).expect("scripted bundle should load");
+    let input = InputIr {
+        schema: "threenative.input".to_owned(),
+        version: "0.1.0".to_owned(),
+        actions: Vec::new(),
+        axes: vec![InputAxisIr {
+            id: "MoveX".to_owned(),
+            negative: vec![InputBindingIr::Keyboard {
+                code: "KeyA".to_owned(),
+            }],
+            positive: vec![InputBindingIr::Keyboard {
+                code: "KeyD".to_owned(),
+            }],
+            value: None,
+        }],
+        controls_settings: None,
+        persisted_binding_overrides: Vec::new(),
+    };
+    let mut state = NativeInputState::default();
+    map_keyboard_event(&input, "KeyD", true, &mut state);
 
-    run_native_systems_once(&mut bundle, time()).expect("system should run");
+    run_native_systems_once_with_input(&mut bundle, time(), Some(&state))
+        .expect("system should run");
 
     assert_eq!(
         bundle.world.resources.get("RallyState"),

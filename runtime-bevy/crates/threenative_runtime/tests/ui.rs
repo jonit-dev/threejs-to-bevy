@@ -294,6 +294,49 @@ fn ui_should_spawn_bevy_entities_with_stable_ids_and_hierarchy() {
 }
 
 #[test]
+fn ui_should_apply_text_layout_and_fullscreen_root_defaults() {
+    let ui: UiIr = serde_json::from_value(serde_json::json!({
+        "schema": "threenative.ui",
+        "version": "0.1.0",
+        "root": {
+            "id": "hud.root",
+            "kind": "stack",
+            "children": [{
+                "id": "state.hidden",
+                "kind": "text",
+                "layout": {
+                    "position": "absolute",
+                    "inset": { "left": 0, "right": 0, "top": 1200 },
+                    "justify": "center",
+                    "align": "center"
+                },
+                "text": "Paused"
+            }]
+        }
+    }))
+    .expect("ui should deserialize");
+    let mut app = App::new();
+
+    map_ui_into_world(app.world_mut(), &ui).expect("ui should map into world");
+
+    let entities_by_id = collect_ui_entities(app.world_mut());
+    let root_style = app
+        .world()
+        .get::<Style>(entities_by_id["hud.root"])
+        .expect("root should have style");
+    assert_eq!(root_style.position_type, PositionType::Absolute);
+    assert_eq!(root_style.width, Val::Percent(100.0));
+    assert_eq!(root_style.height, Val::Percent(100.0));
+    assert_eq!(root_style.overflow, Overflow::clip());
+    let hidden_style = app
+        .world()
+        .get::<Style>(entities_by_id["state.hidden"])
+        .expect("text should have authored layout style");
+    assert_eq!(hidden_style.position_type, PositionType::Absolute);
+    assert_eq!(hidden_style.top, Val::Px(1200.0));
+}
+
+#[test]
 fn ui_should_spawn_native_minimap_children() {
     let ui: UiIr = serde_json::from_value(serde_json::json!({
         "schema": "threenative.ui",

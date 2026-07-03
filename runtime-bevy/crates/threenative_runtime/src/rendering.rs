@@ -7,6 +7,8 @@ use image::ImageReader;
 use threenative_components::ThreeNativeId;
 use threenative_loader::{ColorIr, EnvironmentTextureSourceIr, LoadedBundle};
 
+use crate::map_world::NativeMaterialHandles;
+
 // Calibrated against atmosphere fog scenes (parity-smoke, v8-rendering-quality, v3 forest).
 const THREE_COMPAT_ATMOSPHERE_SUN_ILLUMINANCE_PER_INTENSITY: f32 = 1.388;
 
@@ -409,8 +411,17 @@ pub fn apply_environment_lighting_to_world(
     observation
 }
 
-pub fn normalize_loaded_gltf_materials(mut materials: ResMut<Assets<StandardMaterial>>) {
-    for (_, material) in materials.iter_mut() {
+pub fn normalize_loaded_gltf_materials(
+    authored_materials: Option<Res<NativeMaterialHandles>>,
+    mut materials: ResMut<Assets<StandardMaterial>>,
+) {
+    for (id, material) in materials.iter_mut() {
+        if authored_materials
+            .as_ref()
+            .is_some_and(|handles| handles.0.values().any(|handle| handle.id() == id))
+        {
+            continue;
+        }
         normalize_textured_material(material);
     }
 }

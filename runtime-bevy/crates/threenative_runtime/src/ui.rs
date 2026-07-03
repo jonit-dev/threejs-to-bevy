@@ -367,7 +367,7 @@ pub fn map_ui_into_world(world: &mut World, ui: &UiIr) -> Result<(), UiDiagnosti
     build_native_ui(ui)?;
 
     let mut entities_by_id = HashMap::new();
-    spawn_node(world, &ui.root, &ui.fonts, &mut entities_by_id);
+    spawn_node(world, &ui.root, &ui.fonts, &mut entities_by_id, true);
     attach_children(world, &ui.root, &entities_by_id);
 
     Ok(())
@@ -779,6 +779,7 @@ fn spawn_node(
     node: &UiNodeIr,
     fonts: &[UiFontAssetIr],
     entities_by_id: &mut HashMap<String, Entity>,
+    is_root: bool,
 ) -> Entity {
     let entity = match node.kind.as_str() {
         "text" => world
@@ -794,7 +795,7 @@ fn spawn_node(
             .id(),
         "button" | "textInput" | "touchControl" | "slider" | "scrollbar" => world
             .spawn(ButtonBundle {
-                style: leaf_style(node),
+                style: ui_node_style(node, is_root, leaf_style),
                 background_color: background_color(node, (0.15, 0.17, 0.2, 1.0)),
                 border_color: border_color(node),
                 border_radius: border_radius(node),
@@ -803,7 +804,7 @@ fn spawn_node(
             .id(),
         "bar" => world
             .spawn(NodeBundle {
-                style: bar_style(node),
+                style: ui_node_style(node, is_root, bar_style),
                 background_color: background_color(node, (0.16, 0.18, 0.2, 1.0)),
                 border_color: border_color(node),
                 border_radius: border_radius(node),
@@ -812,7 +813,7 @@ fn spawn_node(
             .id(),
         "minimap" => world
             .spawn(NodeBundle {
-                style: minimap_style(node),
+                style: ui_node_style(node, is_root, minimap_style),
                 background_color: minimap_background_color(node),
                 border_color: border_color(node),
                 border_radius: border_radius(node),
@@ -822,7 +823,7 @@ fn spawn_node(
         "image" => world
             .spawn((
                 ImageBundle {
-                    style: leaf_style(node),
+                    style: ui_node_style(node, is_root, leaf_style),
                     image: ui_image(world, node),
                     background_color: background_color(node, (0.0, 0.0, 0.0, 0.0)),
                     ..Default::default()
@@ -833,7 +834,7 @@ fn spawn_node(
             .id(),
         _ => world
             .spawn(NodeBundle {
-                style: layout_style(node),
+                style: ui_node_style(node, is_root, layout_style),
                 background_color: background_color(node, (0.0, 0.0, 0.0, 0.0)),
                 border_color: border_color(node),
                 border_radius: border_radius(node),
@@ -936,10 +937,36 @@ fn spawn_node(
 
     entities_by_id.insert(node.id.clone(), entity);
     for child in &node.children {
-        spawn_node(world, child, fonts, entities_by_id);
+        spawn_node(world, child, fonts, entities_by_id, false);
     }
 
     entity
+}
+
+fn ui_node_style(
+    node: &UiNodeIr,
+    is_root: bool,
+    build_style: impl FnOnce(&UiNodeIr) -> Style,
+) -> Style {
+    let mut style = build_style(node);
+    if is_root {
+        style.position_type = PositionType::Absolute;
+        if node.layout.as_ref().and_then(|layout| layout.width).is_none() {
+            style.width = Val::Percent(100.0);
+        }
+        if node.layout.as_ref().and_then(|layout| layout.height).is_none() {
+            style.height = Val::Percent(100.0);
+        }
+        if node
+            .layout
+            .as_ref()
+            .and_then(|layout| layout.overflow.as_deref())
+            .is_none()
+        {
+            style.overflow = Overflow::clip();
+        }
+    }
+    style
 }
 
 fn attach_children(world: &mut World, node: &UiNodeIr, entities_by_id: &HashMap<String, Entity>) {
@@ -1526,6 +1553,7 @@ fn text_bundle(
     };
     bundle.text.justify = text_justify(node);
     bundle.text.linebreak_behavior = text_wrap(node);
+    bundle.style = leaf_style(node);
     bundle
 }
 

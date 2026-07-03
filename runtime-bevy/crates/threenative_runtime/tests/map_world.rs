@@ -55,6 +55,33 @@ fn cube_fixture_directional_light_should_use_web_tuned_illuminance() {
 }
 
 #[test]
+fn untransformed_directional_light_should_use_three_default_direction() {
+    let mut bundle = load_bundle(cube_fixture()).expect("cube fixture should load");
+    let entity = bundle
+        .world
+        .entities
+        .iter_mut()
+        .find(|entity| entity.id == "light.key")
+        .expect("cube key light should exist");
+    entity.components.transform = None;
+
+    let mut app = App::new();
+    map_bundle_into_world(app.world_mut(), &bundle).expect("bundle should map");
+
+    let mut query = app.world_mut().query::<(&ThreeNativeId, &Transform)>();
+    let transform = query
+        .iter(app.world())
+        .find_map(|(stable_id, transform)| (stable_id.0 == "light.key").then_some(transform))
+        .expect("cube key light transform should be spawned");
+
+    assert_eq!(transform.translation, Vec3::Y);
+    assert!(
+        transform.forward().dot(Vec3::NEG_Y) > 0.99,
+        "untransformed directional lights should point from Three.js default +Y toward the origin"
+    );
+}
+
+#[test]
 fn cube_fixture_without_authored_ambient_should_disable_bevy_default_fill() {
     let bundle = load_bundle(cube_fixture()).expect("cube fixture should load");
     let mut app = App::new();

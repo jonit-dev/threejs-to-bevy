@@ -452,7 +452,7 @@ fn assert_point_light(world: &mut World, id: &str) {
         .find_map(|(stable_id, light)| (stable_id.0 == id).then_some(light).flatten())
         .expect("point light should be spawned");
 
-    assert!((light.intensity - (2.0 * std::f32::consts::TAU * 2.0 * 90.0 / 1.7)).abs() < 0.01);
+    assert!((light.intensity - 2.0).abs() < 0.01);
     assert!((light.range - 12.0).abs() < 0.01);
     assert!((light.shadow_depth_bias - 0.002).abs() < 0.0001);
     assert!((light.shadow_normal_bias - 0.04).abs() < 0.0001);
@@ -465,7 +465,7 @@ fn assert_spot_light(world: &mut World, id: &str) {
         .find_map(|(stable_id, light)| (stable_id.0 == id).then_some(light).flatten())
         .expect("spot light should be spawned");
 
-    assert!((light.intensity - (3.0 * std::f32::consts::TAU * 2.0 * 90.0 / 1.7)).abs() < 0.01);
+    assert!((light.intensity - 3.0).abs() < 0.01);
     assert!((light.range - 16.0).abs() < 0.01);
     assert!((light.outer_angle - 0.65).abs() < 0.01);
     assert!((light.shadow_depth_bias - 0.003).abs() < 0.0001);

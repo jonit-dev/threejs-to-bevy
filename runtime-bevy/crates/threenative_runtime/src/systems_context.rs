@@ -272,7 +272,7 @@ pub fn build_system_context_snapshot_with_events_input_and_diff(
         entities,
         events: merged_event_queues(bundle, events),
         input: input.map_or_else(
-            NativeSystemInputSnapshot::fixed_trace,
+            NativeSystemInputSnapshot::neutral,
             NativeSystemInputSnapshot::from_native_input,
         ),
         local_data: local_data_snapshot(bundle.local_data.as_ref()),
@@ -732,6 +732,13 @@ fn merged_event_queues(
 }
 
 impl NativeSystemInputSnapshot {
+    pub fn neutral() -> Self {
+        Self {
+            actions: BTreeMap::new(),
+            axes: BTreeMap::new(),
+        }
+    }
+
     pub fn fixed_trace() -> Self {
         Self {
             actions: BTreeMap::from([("MoveForward".to_owned(), true), ("Jump".to_owned(), true)]),

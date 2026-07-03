@@ -9,7 +9,7 @@ use bevy::{
         smaa::SmaaSettings,
         tonemapping::Tonemapping,
     },
-    gltf::GltfAssetLabel,
+    gltf::{Gltf, GltfAssetLabel},
     math::primitives::{
         Annulus, Capsule3d, Circle as PrimitiveCircle, Cone, ConicalFrustum, Cuboid, Cylinder,
         Extrusion, Rectangle, RegularPolygon, Sphere, Torus,
@@ -50,11 +50,11 @@ use crate::stylized_nature::{grass_material_policy, resolve_source_assets};
 // native adapter uses neutral camera exposure and keeps non-atmosphere
 // directional intensity close to Three's authored scalar.
 pub const THREE_COMPAT_DIRECTIONAL_ILLUMINANCE_PER_INTENSITY: f32 = 1.0;
-pub const THREE_COMPAT_AMBIENT_BRIGHTNESS_PER_INTENSITY: f32 = 0.7;
+pub const THREE_COMPAT_AMBIENT_BRIGHTNESS_PER_INTENSITY: f32 = 0.25;
 // Environment bundles duplicate authored lights in world.ir.json and atmosphere;
 // keep the world directional contribution low so it stacks with atmosphere sun.
 const THREE_COMPAT_ENVIRONMENT_DIRECTIONAL_ILLUMINANCE_PER_INTENSITY: f32 = 1.7;
-const THREE_COMPAT_POINT_LUMENS_PER_CANDELA: f32 = std::f32::consts::TAU * 2.0 * (90.0 / 1.7);
+const THREE_COMPAT_POINT_LUMENS_PER_CANDELA: f32 = 1.0;
 const THREE_COMPAT_DEFAULT_RANGE: f32 = 1_000.0;
 const THREE_COMPAT_DEFAULT_CAMERA_EV100: f32 = -0.263_034_4;
 
@@ -134,9 +134,11 @@ pub struct NativeAnimationPlayback {
 
 #[derive(Clone, Component, Debug, PartialEq)]
 pub struct NativeAnimationSceneBinding {
+    pub gltf: Handle<Gltf>,
     pub clip: Handle<AnimationClip>,
     pub loop_: bool,
     pub speed: f32,
+    pub source_clip: String,
 }
 
 #[derive(Debug, Error)]
@@ -1598,12 +1600,14 @@ fn spawn_entity(
                 let scene_binding = playback.as_ref().and_then(|playback| {
                     world.contains_resource::<Assets<AnimationClip>>().then(|| {
                         NativeAnimationSceneBinding {
+                            gltf: asset_server.load(scene_path.clone()),
                             clip: asset_server.load(
                                 GltfAssetLabel::Animation(animation_clip_index(asset, playback))
                                     .from_asset(scene_path.clone()),
                             ),
                             loop_: playback.loop_,
                             speed: playback.speed,
+                            source_clip: playback.source_clip.clone(),
                         }
                     })
                 });
@@ -1736,8 +1740,7 @@ fn spawn_entity(
                 .id());
         }
         if light.kind == "directional" {
-            let mut light_transform = transform;
-            light_transform.look_at(Vec3::ZERO, Vec3::Y);
+            let light_transform = directional_light_transform(transform, entity);
             return Ok(world
                 .spawn(DirectionalLightBundle {
                     directional_light: DirectionalLight {
@@ -1847,16 +1850,25 @@ fn model_scene_path(asset: &AssetIr) -> Option<String> {
 
 pub fn bind_native_animation_players(
     mut commands: Commands,
+    gltfs: Res<Assets<Gltf>>,
     mut graphs: ResMut<Assets<AnimationGraph>>,
     bindings: Query<&NativeAnimationSceneBinding>,
     parents: Query<&Parent>,
-    mut players: Query<(Entity, &mut AnimationPlayer), Added<AnimationPlayer>>,
+    mut players: Query<(Entity, &mut AnimationPlayer, Option<&Handle<AnimationGraph>>)>,
 ) {
-    for (entity, mut player) in &mut players {
+    for (entity, mut player, graph_handle) in &mut players {
+        if graph_handle.is_some() {
+            continue;
+        }
         let Some(binding) = ancestor_animation_binding(entity, &parents, &bindings) else {
             continue;
         };
-        let (graph, animation) = AnimationGraph::from_clip(binding.clip.clone());
+        let clip = gltfs
+            .get(&binding.gltf)
+            .and_then(|gltf| gltf.named_animations.get(binding.source_clip.as_str()))
+            .cloned()
+            .unwrap_or_else(|| binding.clip.clone());
+        let (graph, animation) = AnimationGraph::from_clip(clip);
         let active = player.play(animation);
         active.set_speed(binding.speed);
         if binding.loop_ {
@@ -2553,6 +2565,24 @@ fn map_transform(entity: &WorldEntity) -> Transform {
         }
     }
     transform
+}
+
+fn directional_light_transform(transform: Transform, entity: &WorldEntity) -> Transform {
+    let mut light_transform = transform;
+    let has_authored_position = entity
+        .components
+        .transform
+        .as_ref()
+        .and_then(|source| source.position)
+        .is_some();
+    if !has_authored_position {
+        // Three.js DirectionalLight defaults to a light positioned on +Y and
+        // targeted at the origin. Mirror that direction when the IR omits a
+        // transform instead of looking from the origin back into itself.
+        light_transform.translation = Vec3::Y;
+    }
+    light_transform.look_at(Vec3::ZERO, Vec3::Y);
+    light_transform
 }
 
 fn color_to_bevy(color: &ColorIr) -> Color {
