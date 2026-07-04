@@ -54,4 +54,5 @@ into one of the contextual groups above.
 3. [contracts/README.md](contracts/README.md)
 4. [runtime/README.md](runtime/README.md)
 5. [workflows/developer-workflow.md](workflows/developer-workflow.md)
-6. [visual-parity-policy.md](visual-parity-policy.md)
+6. [render-look-profiles.md](render-look-profiles.md)
+7. [visual-parity-policy.md](visual-parity-policy.md)

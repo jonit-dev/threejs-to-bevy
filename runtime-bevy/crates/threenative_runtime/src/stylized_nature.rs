@@ -15,7 +15,7 @@ const TREE_TRUNK_MODEL_FIELD: &str = "treeTrunkModel";
 #[derive(Clone, Debug, Default)]
 pub struct StylizedSourceAssets {
     pub grass_mesh: Option<Handle<Mesh>>,
-    pub leaves_scene: Option<Handle<Scene>>,
+    pub leaves_mesh: Option<Handle<Mesh>>,
     pub trunk_scene: Option<Handle<Scene>>,
 }
 
@@ -46,7 +46,7 @@ pub fn resolve_source_assets(
             asset_server,
             bundle_path,
         ),
-        leaves_scene: component_scene(
+        leaves_mesh: component_primitive_mesh(
             component,
             TREE_LEAVES_MODEL_FIELD,
             assets_by_id,

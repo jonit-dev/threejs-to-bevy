@@ -11,6 +11,7 @@ CLI, and runtimes must honor.
 - [UI](ui.md)
 - [IR](ir.md)
 - [Environment Scene IR](environment-scene-ir.md)
+- [Render Look Profiles](render-look-profiles.md)
 - [Diagnostics](diagnostics.md)
 - [Authoring Source Documents](authoring-source-documents.md)
 - [Authoring MCP and Editor Adapter](authoring-mcp.md)

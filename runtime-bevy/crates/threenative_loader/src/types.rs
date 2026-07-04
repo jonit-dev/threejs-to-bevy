@@ -1166,6 +1166,8 @@ pub struct RuntimeRendererConfig {
     pub color_grading: Option<RuntimeRendererColorGradingConfig>,
     #[serde(rename = "depthOfField")]
     pub depth_of_field: Option<RuntimeRendererDepthOfFieldConfig>,
+    #[serde(rename = "renderLook")]
+    pub render_look: Option<RuntimeRenderLookProfileConfig>,
     #[serde(rename = "renderPath")]
     pub render_path: Option<String>,
 }
@@ -1176,6 +1178,25 @@ pub struct RuntimeRendererBloomConfig {
     pub enabled: bool,
     pub intensity: f32,
     pub threshold: f32,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RuntimeRenderLookProfileConfig {
+    pub version: u32,
+    pub profile: String,
+    pub overrides: Option<RuntimeRenderLookOverridesConfig>,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RuntimeRenderLookOverridesConfig {
+    pub bloom_intensity: Option<f32>,
+    pub contrast: Option<f32>,
+    pub environment_intensity: Option<f32>,
+    pub exposure: Option<f32>,
+    pub saturation: Option<f32>,
+    pub shadow_quality: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]

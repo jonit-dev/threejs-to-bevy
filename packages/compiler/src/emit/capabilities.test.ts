@@ -138,8 +138,10 @@ test("should derive ECS and runtime capabilities from schemas and runtime config
     runtimeConfig: {
       renderer: {
         antialias: "taa",
+        bloom: { enabled: true, intensity: 0.35, threshold: 0.8 },
         colorGrading: { toneMapping: "aces" },
         depthOfField: { aperture: 0.03, enabled: true, focusDistance: 12, maxBlur: 0.02 },
+        renderLook: { version: 1, profile: "balanced" },
       },
       schema: "threenative.runtime-config",
       time: { fixedDelta: 1 / 60, paused: false },
@@ -170,7 +172,13 @@ test("should derive ECS and runtime capabilities from schemas and runtime config
   assert.deepEqual(capabilities.ecs, ["component-reflection", "component-schemas", "event-schemas", "resource-schemas"]);
   assert.ok(capabilities.rendering?.includes("antialias.taa"));
   assert.ok(capabilities.rendering?.includes("color-grading"));
+  assert.ok(capabilities.rendering?.includes("color-management.srgb"));
   assert.ok(capabilities.rendering?.includes("depth-of-field"));
+  assert.ok(capabilities.rendering?.includes("look-profile.v1"));
+  assert.ok(capabilities.rendering?.includes("postprocess.bloom"));
+  assert.ok(capabilities.rendering?.includes("profile.balanced"));
+  assert.ok(capabilities.rendering?.includes("shadow.directional"));
+  assert.ok(capabilities.rendering?.includes("tone-mapping"));
   assert.deepEqual(capabilities.runtime, ["config", "fixed-timestep"]);
   assert.deepEqual(capabilities.scripting, ["component-reflection", "schedule.update", "systems"]);
 });

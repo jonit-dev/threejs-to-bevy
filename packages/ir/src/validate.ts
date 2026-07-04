@@ -783,6 +783,10 @@ function validateRuntimeConfig(config: unknown, path: string, diagnostics: IIrDi
       suggestion: "Use renderPath: 'forward' or omit renderPath.",
     });
   }
+  const renderLook = isRecord(renderer) ? renderer.renderLook : undefined;
+  if (renderLook !== undefined) {
+    validateRenderLook(renderLook, `${path}/renderer/renderLook`, diagnostics);
+  }
   const colorGrading = isRecord(renderer) ? renderer.colorGrading : undefined;
   if (colorGrading !== undefined) {
     validateColorGrading(colorGrading, `${path}/renderer/colorGrading`, diagnostics);
@@ -825,7 +829,7 @@ function validateRuntimeConfig(config: unknown, path: string, diagnostics: IIrDi
 }
 
 function validateUnsupportedRendererFields(renderer: Record<string, unknown>, path: string, diagnostics: IIrDiagnostic[]): void {
-  const supported = new Set(["antialias", "bloom", "colorGrading", "depthOfField", "renderPath"]);
+  const supported = new Set(["antialias", "bloom", "colorGrading", "depthOfField", "renderLook", "renderPath"]);
   const advanced = new Map([
     ["autoExposure", "Auto exposure is explicitly deferred in V9."],
     ["customPasses", "Custom post-processing passes are explicitly deferred in V9."],
@@ -850,6 +854,133 @@ function validateUnsupportedRendererFields(renderer: Record<string, unknown>, pa
       severity: "error",
       suggestion: "Remove the field or wait for a PRD that promotes it with cross-runtime evidence.",
     });
+  }
+}
+
+const PROMOTED_RENDER_LOOK_PROFILES = new Set(["parity", "balanced"]);
+const RESERVED_RENDER_LOOK_PROFILES = new Set(["cinematic", "stylized"]);
+const RENDER_LOOK_OVERRIDE_RANGES = {
+  bloomIntensity: [0, 2],
+  contrast: [-0.5, 0.5],
+  environmentIntensity: [0, 4],
+  exposure: [0.25, 4],
+  saturation: [0, 2],
+} as const;
+
+function validateRenderLook(value: unknown, path: string, diagnostics: IIrDiagnostic[]): void {
+  if (!isRecord(value)) {
+    diagnostics.push({
+      code: "TN_RENDER_PROFILE_UNSUPPORTED",
+      message: "Renderer renderLook must be a portable profile object.",
+      path,
+      severity: "error",
+      suggestion: "Use { version: 1, profile: 'parity' | 'balanced' }.",
+    });
+    return;
+  }
+
+  if (value.version !== 1) {
+    diagnostics.push({
+      code: "TN_RENDER_PROFILE_UNSUPPORTED",
+      message: "Renderer renderLook must use version 1.",
+      path: `${path}/version`,
+      severity: "error",
+      suggestion: "Use renderLook.version: 1.",
+    });
+  }
+
+  const profile = value.profile;
+  if (typeof profile !== "string" || (!PROMOTED_RENDER_LOOK_PROFILES.has(profile) && !RESERVED_RENDER_LOOK_PROFILES.has(profile))) {
+    diagnostics.push({
+      code: "TN_RENDER_PROFILE_UNSUPPORTED",
+      limit: ["parity", "balanced"],
+      message: "Renderer renderLook profile must be a promoted portable profile.",
+      path: `${path}/profile`,
+      severity: "error",
+      suggestion: "Use 'parity' for deterministic conformance or 'balanced' for new game defaults.",
+      value: typeof profile === "string" ? profile : undefined,
+    });
+  } else if (RESERVED_RENDER_LOOK_PROFILES.has(profile)) {
+    diagnostics.push({
+      code: "TN_RENDER_PROFILE_UNSUPPORTED",
+      limit: ["parity", "balanced"],
+      message: `Renderer renderLook profile '${profile}' is reserved until web and Bevy screenshot proof exists.`,
+      path: `${path}/profile`,
+      severity: "error",
+      suggestion: "Use 'parity' or 'balanced' until this profile is promoted.",
+      value: profile,
+    });
+  }
+
+  const overrides = value.overrides;
+  if (overrides !== undefined) {
+    if (!isRecord(overrides)) {
+      diagnostics.push({
+        code: "TN_RENDER_LOOK_OUT_OF_RANGE",
+        message: "Renderer renderLook overrides must be an object.",
+        path: `${path}/overrides`,
+        severity: "error",
+        suggestion: "Use bounded numeric overrides or omit overrides.",
+      });
+    } else {
+      validateRenderLookOverrides(overrides, `${path}/overrides`, diagnostics);
+    }
+  }
+
+  for (const key of Object.keys(value)) {
+    if (key === "version" || key === "profile" || key === "overrides") {
+      continue;
+    }
+    diagnostics.push({
+      code: "TN_RENDER_PROFILE_UNSUPPORTED",
+      message: `Renderer renderLook field '${key}' is not portable profile data.`,
+      path: `${path}/${key}`,
+      severity: "error",
+      suggestion: "Remove renderer-specific renderLook payloads; use promoted profile names and bounded overrides only.",
+    });
+  }
+}
+
+function validateRenderLookOverrides(overrides: Record<string, unknown>, path: string, diagnostics: IIrDiagnostic[]): void {
+  for (const key of Object.keys(overrides)) {
+    if (!(key in RENDER_LOOK_OVERRIDE_RANGES) && key !== "shadowQuality") {
+      diagnostics.push({
+        code: "TN_RENDER_PROFILE_UNSUPPORTED",
+        message: `Renderer renderLook override '${key}' is not portable.`,
+        path: `${path}/${key}`,
+        severity: "error",
+        suggestion: "Use exposure, contrast, saturation, bloomIntensity, shadowQuality, or environmentIntensity.",
+      });
+      continue;
+    }
+    if (key === "shadowQuality") {
+      const quality = overrides.shadowQuality;
+      if (!["off", "low", "medium", "high"].includes(quality as string)) {
+        diagnostics.push({
+          code: "TN_RENDER_LOOK_OUT_OF_RANGE",
+          limit: ["off", "low", "medium", "high"],
+          message: "Renderer renderLook shadowQuality must be off, low, medium, or high.",
+          path: `${path}/shadowQuality`,
+          severity: "error",
+          suggestion: "Use a promoted portable shadow quality value.",
+          value: typeof quality === "string" ? quality : undefined,
+        });
+      }
+      continue;
+    }
+    const [minimum, maximum] = RENDER_LOOK_OVERRIDE_RANGES[key as keyof typeof RENDER_LOOK_OVERRIDE_RANGES];
+    const overrideValue = overrides[key];
+    if (typeof overrideValue !== "number" || !Number.isFinite(overrideValue) || overrideValue < minimum || overrideValue > maximum) {
+      diagnostics.push({
+        code: "TN_RENDER_LOOK_OUT_OF_RANGE",
+        limit: maximum,
+        message: `Renderer renderLook ${key} must be a finite number from ${minimum} to ${maximum}.`,
+        path: `${path}/${key}`,
+        severity: "error",
+        suggestion: `Use ${key} in the supported range ${minimum}..${maximum}.`,
+        value: typeof overrideValue === "number" ? overrideValue : undefined,
+      });
+    }
   }
 }
 

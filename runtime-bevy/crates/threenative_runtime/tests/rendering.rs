@@ -219,6 +219,58 @@ fn rendering_should_map_runtime_bloom_to_camera() {
 }
 
 #[test]
+fn rendering_should_map_balanced_render_look_to_native_bloom() {
+    let root = write_rendering_bundle();
+    write(
+        &root,
+        "runtime.config.json",
+        r#"{
+  "schema": "threenative.runtime-config",
+  "version": "0.1.0",
+  "renderer": { "antialias": "msaa4", "renderLook": { "version": 1, "profile": "balanced", "overrides": { "bloomIntensity": 0.45 } } },
+  "time": { "fixedDelta": 0.016666666666666666, "paused": false },
+  "window": { "height": 720, "width": 1280 }
+}"#,
+    );
+    let bundle = load_bundle(&root).expect("rendering bundle should load");
+    let mut app = App::new();
+
+    map_bundle_into_world(app.world_mut(), &bundle).expect("bundle should map");
+
+    let mut query = app.world_mut().query::<&BloomSettings>();
+    let bloom = query.single(app.world());
+    assert!((bloom.intensity - 0.45).abs() < 0.01);
+    assert!((bloom.prefilter_settings.threshold - 0.85).abs() < 0.01);
+
+    fs::remove_dir_all(root).expect("temporary bundle should be removed");
+}
+
+#[test]
+fn rendering_should_preserve_parity_render_look_without_native_bloom() {
+    let root = write_rendering_bundle();
+    write(
+        &root,
+        "runtime.config.json",
+        r#"{
+  "schema": "threenative.runtime-config",
+  "version": "0.1.0",
+  "renderer": { "antialias": "msaa4", "renderLook": { "version": 1, "profile": "parity" } },
+  "time": { "fixedDelta": 0.016666666666666666, "paused": false },
+  "window": { "height": 720, "width": 1280 }
+}"#,
+    );
+    let bundle = load_bundle(&root).expect("rendering bundle should load");
+    let mut app = App::new();
+
+    map_bundle_into_world(app.world_mut(), &bundle).expect("bundle should map");
+
+    let mut query = app.world_mut().query::<&BloomSettings>();
+    assert!(query.iter(app.world()).next().is_none());
+
+    fs::remove_dir_all(root).expect("temporary bundle should be removed");
+}
+
+#[test]
 fn rendering_should_map_expanded_generated_primitive_catalog() {
     let root = write_primitive_catalog_bundle();
     let bundle = load_bundle(&root).expect("primitive catalog bundle should load");

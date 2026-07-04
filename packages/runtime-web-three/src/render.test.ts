@@ -6,7 +6,7 @@ import type { IRuntimeConfigIr } from "@threenative/ir";
 
 import type { IWebBundle } from "./loadBundle.js";
 import { mapWorld } from "./mapWorld.js";
-import { applyRendererColorManagement, collectWebRuntimeDiagnostics, createRenderedParticleObjects, createWebRenderLifecycle, renderCameraViews, webBloomSettings, webDepthOfFieldSettings, webRendererParameters } from "./render.js";
+import { applyRendererColorManagement, applyRenderLookSceneDefaults, collectWebRuntimeDiagnostics, createRenderedParticleObjects, createWebRenderLifecycle, renderCameraViews, webBloomSettings, webDepthOfFieldSettings, webRendererParameters } from "./render.js";
 
 function runtimeConfig(
   antialias: NonNullable<IRuntimeConfigIr["renderer"]>["antialias"],
@@ -173,6 +173,62 @@ test("should map runtime bloom settings to web post-processing settings", () => 
     intensity: 0.35,
     threshold: 0.8,
   });
+});
+
+test("should preserve parity render look without artistic passes", () => {
+  assert.deepEqual(webBloomSettings(runtimeConfig("msaa4", { renderLook: { version: 1, profile: "parity" } })), {
+    enabled: false,
+    intensity: 0.15,
+    threshold: 0,
+  });
+  const renderer = mockRenderer();
+  applyRendererColorManagement(renderer, undefined);
+  const scene = new THREE.Scene();
+  scene.background = new THREE.Color("#111318");
+  applyRenderLookSceneDefaults(scene, { appliedProfile: "parity" });
+  assert.equal(renderer.toneMapping, THREE.NoToneMapping);
+  assert.equal(renderer.toneMappingExposure, 1);
+  assert.equal(scene.background.getHexString(), "111318");
+  assert.equal(scene.children.filter((child) => child instanceof THREE.Light).length, 0);
+});
+
+test("should map balanced render look to supported web renderer settings", () => {
+  const renderer = mockRenderer();
+  const config = runtimeConfig("msaa4", {
+    renderLook: {
+      version: 1,
+      profile: "balanced",
+      overrides: { bloomIntensity: 0.4, contrast: 0.1, exposure: 1.1, saturation: 1.15 },
+    },
+  });
+
+  applyRendererColorManagement(renderer, undefined, {
+    contrast: 0.1,
+    exposure: 1.1,
+    saturation: 1.15,
+    toneMapping: "aces",
+  });
+
+  assert.deepEqual(webBloomSettings(config), {
+    enabled: true,
+    intensity: 0.4,
+    threshold: 0.85,
+  });
+  assert.equal(renderer.toneMapping, THREE.ACESFilmicToneMapping);
+  assert.equal(renderer.toneMappingExposure, 1.1);
+});
+
+test("should add balanced sky and fill lights when a scene has no authored lighting", () => {
+  const scene = new THREE.Scene();
+  scene.background = new THREE.Color("#111318");
+
+  applyRenderLookSceneDefaults(scene, { appliedProfile: "balanced" });
+
+  assert.equal(scene.background.getHexString(), "109eff");
+  assert.deepEqual(scene.children.map((child) => child.name).sort(), [
+    "renderLook.balanced.ambientFill",
+    "renderLook.balanced.keyLight",
+  ]);
 });
 
 test("should map runtime depth of field settings to web post-processing settings", () => {

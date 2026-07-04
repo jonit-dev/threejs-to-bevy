@@ -36,6 +36,7 @@
         "input": ["content/input/arena.input.json"],
         "materials": ["content/materials/arena.materials.json"],
         "meshes": ["content/meshes/arena.meshes.json"],
+        "runtime": ["content/runtime/default.runtime.json"],
         "scene": ["content/scenes/arena.scene.json"],
         "systems": ["content/systems/arena.systems.json"],
         "ui": ["content/ui/hud.ui.json"],

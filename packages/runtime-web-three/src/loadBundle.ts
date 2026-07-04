@@ -58,7 +58,7 @@ export async function validateAndLoadBundle(source: string): Promise<IWebBundle>
     throw new Error("Bundle validation for fetchable sources is not supported yet; pass a local bundle path to validate before loading.");
   }
   const irPackage = "@threenative/ir";
-  const { validateBundle } = await import(irPackage);
+  const { validateBundle } = await dynamicImport<{ validateBundle(source: string): Promise<{ diagnostics: IIrDiagnostic[]; ok: boolean }> }>(irPackage);
   const result = await validateBundle(source);
   if (!result.ok) {
     throw new WebBundleValidationError(result.diagnostics);
@@ -187,7 +187,6 @@ async function readBundleBytes(source: string, file: string): Promise<Uint8Array
   }
   const fsModule = nodeModuleName("fs/promises");
   const pathModule = nodeModuleName("path");
-  const dynamicImport = new Function("moduleName", "return import(moduleName)") as <T>(moduleName: string) => Promise<T>;
   const { readFile } = await dynamicImport<{ readFile(path: string): Promise<Uint8Array> }>(fsModule);
   const { resolve } = await dynamicImport<{ resolve(...paths: string[]): string }>(pathModule);
   return readFile(resolve(source, file));
@@ -205,9 +204,6 @@ async function readBundleJson<T>(source: string, file: string): Promise<T> {
 
   const fsModule = nodeModuleName("fs/promises");
   const pathModule = nodeModuleName("path");
-  const dynamicImport = new Function("moduleName", "return import(moduleName)") as <T>(
-    moduleName: string,
-  ) => Promise<T>;
   const { readFile } = await dynamicImport<{ readFile(path: string, encoding: "utf8"): Promise<string> }>(
     fsModule,
   );
@@ -217,6 +213,11 @@ async function readBundleJson<T>(source: string, file: string): Promise<T> {
 
 function nodeModuleName(name: string): string {
   return `node:${name}`;
+}
+
+function dynamicImport<T>(moduleName: string): Promise<T> {
+  const importer = new Function("moduleName", "return import(moduleName)") as <T>(moduleName: string) => Promise<T>;
+  return importer<T>(moduleName);
 }
 
 function isFetchable(source: string): boolean {

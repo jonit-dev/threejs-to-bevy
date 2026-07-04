@@ -1,12 +1,12 @@
-use ::threenative_runtime::{
-    cameras::{build_render_layer_map, render_layers_for_names, update_native_camera_helpers},
-    map_world::map_bundle_into_world,
-};
 use bevy::prelude::*;
 use bevy::render::camera::ClearColorConfig;
 use serde_json::json;
 use threenative_components::ThreeNativeId;
-use threenative_loader::{WorldEntity, load_bundle};
+use threenative_loader::{load_bundle, WorldEntity};
+use threenative_runtime::{
+    cameras::{build_render_layer_map, render_layers_for_names, update_native_camera_helpers},
+    map_world::map_bundle_into_world,
+};
 
 #[test]
 fn should_map_ordered_cameras_to_bevy_camera_order_and_viewport() {
@@ -77,6 +77,29 @@ fn should_map_ordered_cameras_to_bevy_camera_order_and_viewport() {
     assert_eq!(left_viewport.physical_size, UVec2::new(640, 720));
     assert_eq!(right_viewport.physical_position, UVec2::new(640, 0));
     assert_eq!(right_viewport.physical_size, UVec2::new(640, 720));
+}
+
+#[test]
+fn should_use_world_clear_color_for_cameras_without_authored_clear() {
+    let bundle = load_bundle(cube_fixture()).expect("cube fixture should load");
+    let mut app = App::new();
+    app.world_mut()
+        .insert_resource(ClearColor(Color::srgb(0.2, 0.4, 0.6)));
+
+    map_bundle_into_world(app.world_mut(), &bundle).expect("bundle should map");
+
+    let mut query = app.world_mut().query::<(&ThreeNativeId, &Camera)>();
+    let camera = query
+        .iter(app.world())
+        .find_map(|(id, camera)| (id.0 == "camera.main").then_some(camera))
+        .expect("camera should exist");
+    let ClearColorConfig::Custom(color) = camera.clear_color else {
+        panic!("camera should inherit the world clear color explicitly");
+    };
+    let clear = color.to_srgba();
+    assert!((clear.red - 0.2).abs() < 0.001);
+    assert!((clear.green - 0.4).abs() < 0.001);
+    assert!((clear.blue - 0.6).abs() < 0.001);
 }
 
 #[test]

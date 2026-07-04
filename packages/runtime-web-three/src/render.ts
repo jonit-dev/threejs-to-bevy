@@ -19,6 +19,7 @@ import {
 import { advanceAnimationPlayback, hasAnimationPlayback, loadPendingMaterialTextures, loadWorldModelAssets, mapWorld, type IRuntimeDiagnostic, type IThreeWorld } from "./mapWorld.js";
 import { applyEnvironmentBookmark, createEnvironmentRuntime, loadEnvironmentAssetInstances } from "./environment.js";
 import { applyAtmosphereProfile, applyEnvironmentLighting, applyThreeCompatFogDistance } from "./rendering.js";
+import { applyWebRenderLookProfile } from "./rendering/applyRenderLookProfile.js";
 import { createGameLoopState, runGameFrame } from "./gameLoop.js";
 import { initializePhysicsRuntime } from "./physics.js";
 import { attachInputListeners, createInputState } from "./input.js";
@@ -177,7 +178,9 @@ export async function renderBundle(source: string, container: HTMLElement, optio
   const effectLog = createSystemEffectLog();
   const systemModule = await loadSystemModule(source, bundle.manifest);
   const renderer = new THREE.WebGLRenderer(webRendererParameters(bundle.runtimeConfig));
-  applyRendererColorManagement(renderer, bundle.environmentScene?.atmosphere?.colorManagement, bundle.runtimeConfig?.renderer?.colorGrading);
+  const renderLook = applyWebRenderLookProfile(bundle.runtimeConfig);
+  applyRendererColorManagement(renderer, bundle.environmentScene?.atmosphere?.colorManagement, renderLook.colorGrading);
+  applyRenderLookSceneDefaults(mapped.scene, renderLook);
   const pipeline = createRenderPipeline(renderer, mapped, bundle.world, bundle.runtimeConfig, bundle.assets, bundle.materials);
   const colliderDebugOverlay = options.debugColliders === true ? createColliderDebugOverlay(mapped, bundle.world) : undefined;
   const canvas = renderer.domElement;
@@ -706,11 +709,12 @@ export function webRendererParameters(config?: IRuntimeConfigIr): THREE.WebGLRen
 }
 
 export function webBloomSettings(config?: IRuntimeConfigIr): IWebBloomSettings {
+  const renderLook = applyWebRenderLookProfile(config);
   const bloom = config?.renderer?.bloom;
   return {
-    enabled: bloom?.enabled ?? false,
-    intensity: bloom?.intensity ?? 0.15,
-    threshold: bloom?.threshold ?? 0,
+    enabled: bloom?.enabled ?? renderLook.bloom?.enabled ?? false,
+    intensity: bloom?.intensity ?? renderLook.bloom?.intensity ?? 0.15,
+    threshold: bloom?.threshold ?? renderLook.bloom?.threshold ?? 0,
   };
 }
 
@@ -937,6 +941,33 @@ export function applyRendererColorManagement(
   }
   renderer.toneMapping = toneMapping === "aces" ? THREE.ACESFilmicToneMapping : THREE.NoToneMapping;
   renderer.toneMappingExposure = exposure ?? 1;
+}
+
+export function applyRenderLookSceneDefaults(
+  scene: THREE.Scene,
+  renderLook: { appliedProfile: "parity" | "balanced" },
+): void {
+  if (renderLook.appliedProfile !== "balanced") {
+    return;
+  }
+  if (scene.background instanceof THREE.Color && scene.background.getHexString() === "111318") {
+    scene.background = new THREE.Color("#109eff");
+  }
+  let hasLight = false;
+  scene.traverse((object) => {
+    if (object instanceof THREE.Light) {
+      hasLight = true;
+    }
+  });
+  if (hasLight) {
+    return;
+  }
+  const ambient = new THREE.AmbientLight("#dce8ff", 0.65);
+  ambient.name = "renderLook.balanced.ambientFill";
+  const key = new THREE.DirectionalLight("#fff2d0", 1.1);
+  key.name = "renderLook.balanced.keyLight";
+  key.position.set(-2.5, 4, 3);
+  scene.add(ambient, key);
 }
 
 function resizeRenderer(renderer: THREE.WebGLRenderer, pipeline: IRenderPipeline, mapped: IThreeWorld, container: HTMLElement): void {

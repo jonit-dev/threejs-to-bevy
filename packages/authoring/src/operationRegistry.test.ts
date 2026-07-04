@@ -52,6 +52,8 @@ test("should dispatch existing structured source operations through the registry
       await dispatchAuthoringOperation({ args: { environmentId: "arena", walkability: { terrain: { height: 0, surface: "terrain.arena" } } }, name: "environment.set_walkability", projectPath: root }),
       await dispatchAuthoringOperation({ args: { environmentId: "arena", probe: { bounds: { max: [3, 4, 3], min: [-3, 0, -3] }, influenceRadius: 5, source: { asset: "tex.env", mode: "equirect" } }, probeId: "probe.center" }, name: "environment.set_light_probe", projectPath: root }),
       await dispatchAuthoringOperation({ args: { exportName: "generateArena", generatorId: "arena.layout", inputHash: "sha256:inputs", modulePath: "src/generators/arena.ts", outputHash: "sha256:outputs", outputs: ["content/scenes/arena.scene.json"], overwritePolicy: "manual" }, name: "generator.record", projectPath: root }),
+      await dispatchAuthoringOperation({ args: { renderProfile: "parity", runtimeId: "desktop" }, name: "runtime.create", projectPath: root }),
+      await dispatchAuthoringOperation({ args: { renderLookContrast: 0.1, renderLookExposure: 1.1, renderLookShadowQuality: "high", renderProfile: "balanced", runtimeId: "desktop" }, name: "runtime.set_rendering", projectPath: root }),
       await dispatchAuthoringOperation({ args: { sceneId: "scene.generated" }, name: "scene.create", projectPath: root }),
       await dispatchAuthoringOperation({ args: { materialId: "mat.player" }, name: "material.create", projectPath: root }),
       await dispatchAuthoringOperation({
@@ -132,6 +134,9 @@ test("should dispatch existing structured source operations through the registry
       budgets?: Record<string, unknown>;
       targets: string[];
     };
+    const runtime = JSON.parse(await readFile(join(root, "content", "runtime", "desktop.runtime.json"), "utf8")) as {
+      renderer?: { renderLook?: Record<string, unknown> };
+    };
     const scene = JSON.parse(await readFile(join(root, "content", "scenes", "arena.scene.json"), "utf8")) as {
       activation?: string;
       entities: Array<{ components?: Record<string, unknown>; id: string; transform?: { position?: number[] } }>;
@@ -163,6 +168,7 @@ test("should dispatch existing structured source operations through the registry
     assert.deepEqual(prefab.entities[0]?.components, { Collider: { kind: "box", size: [1, 1, 1] }, RigidBody: { kind: "dynamic" } });
     assert.deepEqual(target.targets, ["desktop"]);
     assert.deepEqual(target.budgets, { maxBundleBytes: 1048576, supportedTextureFormats: ["png"] });
+    assert.deepEqual(runtime.renderer?.renderLook, { version: 1, profile: "balanced", overrides: { contrast: 0.1, exposure: 1.1, shadowQuality: "high" } });
     assert.deepEqual(scene.prefabs, [{ asset: "assets/player.glb", color: "#00ffaa", id: "prefab.player", primitive: "sphere" }]);
     assert.deepEqual(scene.instances?.map((instance) => instance.id), ["prefab-player.01", "rack.01", "rack.02", "rack.03", "rack.04", "rack.05", "rack.06", "rack.07", "rack.08", "rack.09", "rack.10"]);
     assert.deepEqual(scene.instances?.find((instance) => instance.id === "prefab-player.01")?.transform?.position, [1, 0, 2]);

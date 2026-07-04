@@ -72,6 +72,8 @@ export function deriveRequiredCapabilities(source: ICapabilitySource): IBundleMa
     add("runtime", "fixed-timestep");
     if (source.runtimeConfig.renderer?.colorGrading !== undefined) {
       add("rendering", "color-grading");
+      add("rendering", "color-management.srgb");
+      add("rendering", "tone-mapping");
     }
     if (source.runtimeConfig.renderer?.depthOfField !== undefined) {
       add("rendering", "depth-of-field");
@@ -82,6 +84,19 @@ export function deriveRequiredCapabilities(source: ICapabilitySource): IBundleMa
     }
     if (source.runtimeConfig.renderer?.renderPath === "forward") {
       add("rendering", "render-path.forward");
+    }
+    const renderLook = source.runtimeConfig.renderer?.renderLook;
+    if (renderLook !== undefined) {
+      add("rendering", "look-profile.v1");
+      add("rendering", `profile.${renderLook.profile}`);
+      if (renderLook.profile === "balanced") {
+        add("rendering", "color-management.srgb");
+        add("rendering", "tone-mapping");
+        add("rendering", "shadow.directional");
+      }
+    }
+    if (source.runtimeConfig.renderer?.bloom?.enabled === true || renderLook?.profile === "balanced") {
+      add("rendering", "postprocess.bloom");
     }
   }
 

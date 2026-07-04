@@ -77,6 +77,9 @@ import {
   supportedLightKinds,
   supportedMaterialAlphaModes,
   supportedRendererAntialiasModes,
+  supportedRenderLookProfiles,
+  supportedRenderLookReservedProfiles,
+  supportedRenderLookShadowQualities,
   uiDocumentKeys,
   supportedRigidBodyKinds,
   supportedSceneActivationPolicies,
@@ -499,6 +502,7 @@ export interface ISetEnvironmentSourceAssetLodOptions extends IAuthoringOperatio
 
 export interface ICreateRuntimeConfigOptions extends IAuthoringOperationContext {
   runtimeId: string;
+  renderProfile?: string;
 }
 
 export interface ISetRuntimeWindowOptions extends IAuthoringOperationContext {
@@ -514,6 +518,13 @@ export interface ISetRuntimeRenderingOptions extends IAuthoringOperationContext 
   bloomEnabled?: boolean;
   bloomIntensity?: number;
   bloomThreshold?: number;
+  renderProfile?: string;
+  renderLookBloomIntensity?: number;
+  renderLookContrast?: number;
+  renderLookEnvironmentIntensity?: number;
+  renderLookExposure?: number;
+  renderLookSaturation?: number;
+  renderLookShadowQuality?: string;
   renderPath?: string;
 }
 
@@ -1814,7 +1825,7 @@ export async function createRuntimeConfig(options: ICreateRuntimeConfigOptions):
     kind: "runtime",
     id: options.runtimeId,
     file: `content/runtime/${options.runtimeId}.runtime.json`,
-    data: defaultRuntimeConfigData(options.runtimeId),
+    data: defaultRuntimeConfigData(options.runtimeId, options.renderProfile),
   });
 }
 
@@ -1955,9 +1966,37 @@ export async function setRuntimeRendering(options: ISetRuntimeRenderingOptions):
     apply: (data) => {
       const renderer = isRecord(data.renderer) ? data.renderer : {};
       const bloom = isRecord(renderer.bloom) ? renderer.bloom : {};
+      const renderLook = isRecord(renderer.renderLook) ? renderer.renderLook : {};
+      const renderLookOverrides = isRecord(renderLook.overrides) ? renderLook.overrides : {};
+      const nextRenderLookOverrides = {
+        ...renderLookOverrides,
+        ...(options.renderLookBloomIntensity === undefined ? {} : { bloomIntensity: options.renderLookBloomIntensity }),
+        ...(options.renderLookContrast === undefined ? {} : { contrast: options.renderLookContrast }),
+        ...(options.renderLookEnvironmentIntensity === undefined ? {} : { environmentIntensity: options.renderLookEnvironmentIntensity }),
+        ...(options.renderLookExposure === undefined ? {} : { exposure: options.renderLookExposure }),
+        ...(options.renderLookSaturation === undefined ? {} : { saturation: options.renderLookSaturation }),
+        ...(options.renderLookShadowQuality === undefined ? {} : { shadowQuality: options.renderLookShadowQuality }),
+      };
+      const shouldSetRenderLook = options.renderProfile !== undefined
+        || options.renderLookBloomIntensity !== undefined
+        || options.renderLookContrast !== undefined
+        || options.renderLookEnvironmentIntensity !== undefined
+        || options.renderLookExposure !== undefined
+        || options.renderLookSaturation !== undefined
+        || options.renderLookShadowQuality !== undefined;
       data.renderer = {
         ...renderer,
         ...(options.antialias === undefined ? {} : { antialias: options.antialias }),
+        ...(shouldSetRenderLook
+          ? {
+              renderLook: {
+                ...renderLook,
+                version: 1,
+                profile: options.renderProfile ?? renderLook.profile ?? "balanced",
+                ...(Object.keys(nextRenderLookOverrides).length === 0 ? {} : { overrides: nextRenderLookOverrides }),
+              },
+            }
+          : {}),
         ...(options.renderPath === undefined ? {} : { renderPath: options.renderPath }),
         ...(options.bloomEnabled === undefined && options.bloomIntensity === undefined && options.bloomThreshold === undefined
           ? {}
@@ -2426,12 +2465,12 @@ const systemStringListMetadataKeys = [
   "writes",
 ] as const;
 
-function defaultRuntimeConfigData(runtimeId: string): Record<string, unknown> {
+function defaultRuntimeConfigData(runtimeId: string, renderProfile = "balanced"): Record<string, unknown> {
   return {
     schema: runtimeDocumentSchema,
     version: "0.1.0",
     id: runtimeId,
-    renderer: { antialias: "msaa4" },
+    renderer: { antialias: "msaa4", renderLook: { version: 1, profile: renderProfile } },
     time: { fixedDelta: 1 / 60, paused: false },
     window: { height: 720, width: 1280 },
   };
@@ -3063,7 +3102,7 @@ async function validateRuntimeDocument(file: string, data: unknown): Promise<IAu
     diagnostics.push(typeDiagnostic(file, "/renderer", "Runtime renderer config must be a JSON object.", data.renderer));
   }
   if (renderer !== undefined) {
-    diagnostics.push(...unknownKeyDiagnostics(file, "/renderer", renderer, new Set(["antialias", "bloom", "renderPath"])));
+    diagnostics.push(...unknownKeyDiagnostics(file, "/renderer", renderer, new Set(["antialias", "bloom", "renderLook", "renderPath"])));
     const antialias = readString(renderer.antialias);
     if (renderer.antialias !== undefined && (antialias === undefined || !supportedRendererAntialiasModes.has(antialias))) {
       diagnostics.push(typeDiagnostic(file, "/renderer/antialias", "runtime renderer antialias must be one of none, msaa2, msaa4, msaa8, fxaa, taa, or smaa.", renderer.antialias));
@@ -3089,9 +3128,58 @@ async function validateRuntimeDocument(file: string, data: unknown): Promise<IAu
         diagnostics.push(typeDiagnostic(file, "/renderer/bloom/threshold", "runtime renderer bloom threshold must be non-negative.", bloom.threshold));
       }
     }
+    if (renderer.renderLook !== undefined) {
+      validateRuntimeRenderLook(diagnostics, file, renderer.renderLook);
+    }
   }
 
   return diagnostics;
+}
+
+function validateRuntimeRenderLook(diagnostics: IAuthoringDiagnostic[], file: string, value: unknown): void {
+  const renderLook = isRecord(value) ? value : undefined;
+  if (renderLook === undefined) {
+    diagnostics.push(typeDiagnostic(file, "/renderer/renderLook", "runtime renderer renderLook must be a JSON object.", value));
+    return;
+  }
+  diagnostics.push(...unknownKeyDiagnostics(file, "/renderer/renderLook", renderLook, new Set(["version", "profile", "overrides"])));
+  if (renderLook.version !== 1) {
+    diagnostics.push(typeDiagnostic(file, "/renderer/renderLook/version", "runtime renderer renderLook version must be 1.", renderLook.version));
+  }
+  const profile = readString(renderLook.profile);
+  if (profile === undefined || (!supportedRenderLookProfiles.has(profile) && !supportedRenderLookReservedProfiles.has(profile))) {
+    diagnostics.push(typeDiagnostic(file, "/renderer/renderLook/profile", "runtime renderer renderLook profile must be 'parity' or 'balanced'.", renderLook.profile));
+  } else if (supportedRenderLookReservedProfiles.has(profile)) {
+    diagnostics.push(typeDiagnostic(file, "/renderer/renderLook/profile", "runtime renderer renderLook profile is reserved until runtime screenshot proof promotes it.", renderLook.profile));
+  }
+  const overrides = isRecord(renderLook.overrides) ? renderLook.overrides : undefined;
+  if (renderLook.overrides !== undefined && overrides === undefined) {
+    diagnostics.push(typeDiagnostic(file, "/renderer/renderLook/overrides", "runtime renderer renderLook overrides must be a JSON object.", renderLook.overrides));
+  }
+  if (overrides !== undefined) {
+    diagnostics.push(...unknownKeyDiagnostics(file, "/renderer/renderLook/overrides", overrides, new Set(["bloomIntensity", "contrast", "environmentIntensity", "exposure", "saturation", "shadowQuality"])));
+    validateRuntimeRenderLookNumber(diagnostics, file, overrides, "bloomIntensity", 0, 2);
+    validateRuntimeRenderLookNumber(diagnostics, file, overrides, "contrast", -0.5, 0.5);
+    validateRuntimeRenderLookNumber(diagnostics, file, overrides, "environmentIntensity", 0, 4);
+    validateRuntimeRenderLookNumber(diagnostics, file, overrides, "exposure", 0.25, 4);
+    validateRuntimeRenderLookNumber(diagnostics, file, overrides, "saturation", 0, 2);
+    if (overrides.shadowQuality !== undefined) {
+      const shadowQuality = readString(overrides.shadowQuality);
+      if (shadowQuality === undefined || !supportedRenderLookShadowQualities.has(shadowQuality)) {
+        diagnostics.push(typeDiagnostic(file, "/renderer/renderLook/overrides/shadowQuality", "runtime renderer renderLook shadowQuality must be off, low, medium, or high.", overrides.shadowQuality));
+      }
+    }
+  }
+}
+
+function validateRuntimeRenderLookNumber(diagnostics: IAuthoringDiagnostic[], file: string, overrides: Record<string, unknown>, key: string, minimum: number, maximum: number): void {
+  const value = overrides[key];
+  if (value === undefined) {
+    return;
+  }
+  if (typeof value !== "number" || !Number.isFinite(value) || value < minimum || value > maximum) {
+    diagnostics.push(typeDiagnostic(file, `/renderer/renderLook/overrides/${key}`, `runtime renderer renderLook ${key} must be between ${minimum} and ${maximum}.`, value));
+  }
 }
 
 async function validateTargetProfileDocument(file: string, data: unknown): Promise<IAuthoringDiagnostic[]> {

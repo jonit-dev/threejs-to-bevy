@@ -209,6 +209,15 @@ export {
   type SceneTransitionKind,
 } from "./sceneLifecycle.js";
 export {
+  balancedRenderLook,
+  parityRenderLook,
+  renderLookProfile,
+  type IRenderLookOverrides,
+  type IRenderLookProfileDeclaration,
+  type RenderLookProfileName,
+  type RenderLookShadowQuality,
+} from "./render-look.js";
+export {
   scriptLifecycle,
   type IScriptLifecycleOptions,
 } from "./scriptLifecycle.js";

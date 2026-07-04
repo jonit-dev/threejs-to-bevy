@@ -677,6 +677,101 @@ test("should accept promoted runtime renderer quality metadata", async () => {
   }
 });
 
+test("should accept parity and balanced render look profiles", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-ir-render-look-valid-"));
+  try {
+    await writeBundle(root, { current: 100, max: 100 });
+    await writeRuntimeConfig(root, {
+      antialias: "msaa4",
+      renderLook: { version: 1, profile: "parity" },
+    });
+
+    let result = await validateBundle(root);
+
+    assert.equal(result.ok, true);
+    assert.deepEqual(result.diagnostics, []);
+
+    await writeRuntimeConfig(root, {
+      antialias: "msaa4",
+      renderLook: {
+        version: 1,
+        profile: "balanced",
+        overrides: { bloomIntensity: 0.4, contrast: 0.1, environmentIntensity: 1.2, exposure: 1.1, saturation: 1.15, shadowQuality: "high" },
+      },
+    });
+
+    result = await validateBundle(root);
+
+    assert.equal(result.ok, true);
+    assert.deepEqual(result.diagnostics, []);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should reject out of range render look overrides", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-ir-render-look-range-invalid-"));
+  try {
+    await writeBundle(root, { current: 100, max: 100 });
+    await writeRuntimeConfig(root, {
+      antialias: "msaa4",
+      renderLook: {
+        version: 1,
+        profile: "balanced",
+        overrides: { bloomIntensity: 3, contrast: 0.7, environmentIntensity: 5, exposure: 0, saturation: -0.1, shadowQuality: "ultra" },
+      },
+    });
+
+    const result = await validateBundle(root);
+
+    assert.equal(result.ok, false);
+    assert.deepEqual(
+      result.diagnostics.map((diagnostic) => [diagnostic.code, diagnostic.path, diagnostic.suggestion]),
+      [
+        ["TN_RENDER_LOOK_OUT_OF_RANGE", "runtime.config.json/renderer/renderLook/overrides/bloomIntensity", "Use bloomIntensity in the supported range 0..2."],
+        ["TN_RENDER_LOOK_OUT_OF_RANGE", "runtime.config.json/renderer/renderLook/overrides/contrast", "Use contrast in the supported range -0.5..0.5."],
+        ["TN_RENDER_LOOK_OUT_OF_RANGE", "runtime.config.json/renderer/renderLook/overrides/environmentIntensity", "Use environmentIntensity in the supported range 0..4."],
+        ["TN_RENDER_LOOK_OUT_OF_RANGE", "runtime.config.json/renderer/renderLook/overrides/exposure", "Use exposure in the supported range 0.25..4."],
+        ["TN_RENDER_LOOK_OUT_OF_RANGE", "runtime.config.json/renderer/renderLook/overrides/saturation", "Use saturation in the supported range 0..2."],
+        ["TN_RENDER_LOOK_OUT_OF_RANGE", "runtime.config.json/renderer/renderLook/overrides/shadowQuality", "Use a promoted portable shadow quality value."],
+      ],
+    );
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should reject backend-specific render look payloads", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-ir-render-look-backend-invalid-"));
+  try {
+    await writeBundle(root, { current: 100, max: 100 });
+    await writeRuntimeConfig(root, {
+      antialias: "msaa4",
+      renderLook: {
+        version: 1,
+        profile: "balanced",
+        bevyComponent: "BloomSettings",
+        threePasses: ["UnrealBloomPass"],
+        overrides: { composerPass: "custom", exposure: 1.1 },
+      },
+    });
+
+    const result = await validateBundle(root);
+
+    assert.equal(result.ok, false);
+    assert.deepEqual(
+      result.diagnostics.map((diagnostic) => [diagnostic.code, diagnostic.path]),
+      [
+        ["TN_RENDER_PROFILE_UNSUPPORTED", "runtime.config.json/renderer/renderLook/overrides/composerPass"],
+        ["TN_RENDER_PROFILE_UNSUPPORTED", "runtime.config.json/renderer/renderLook/bevyComponent"],
+        ["TN_RENDER_PROFILE_UNSUPPORTED", "runtime.config.json/renderer/renderLook/threePasses"],
+      ],
+    );
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
 test("should reject invalid runtime renderer antialias modes", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-ir-runtime-renderer-invalid-"));
   try {

@@ -1,11 +1,11 @@
 use std::path::Path;
 
-use bevy::prelude::*;
+use bevy::{prelude::*, render::camera::ClearColorConfig};
 use thiserror::Error;
 use threenative_components::ThreeNativeId;
 use threenative_loader::{
-    EnvironmentSceneIr, LoadError, LoadedBundle, MaterialsIr, MeshRendererComponent,
-    TransformComponent, UiBindingIr, UiNodeIr, WorldIr, load_bundle,
+    load_bundle, EnvironmentSceneIr, LoadError, LoadedBundle, MaterialsIr, MeshRendererComponent,
+    TransformComponent, UiBindingIr, UiNodeIr, WorldIr,
 };
 
 pub mod animation;
@@ -175,6 +175,7 @@ pub fn app_from_bundle(bundle_path: impl AsRef<Path>) -> Result<App, RuntimeErro
         warn!("{diagnostic}");
     }
     map_world::map_bundle_into_world(app.world_mut(), &bundle)?;
+    sync_default_camera_clear_color(app.world_mut());
     environment::map_environment_into_world(app.world_mut(), &bundle);
     for diagnostic in audio::spawn_startup_audio(app.world_mut(), &bundle) {
         warn!("{}", diagnostic.message);
@@ -252,6 +253,18 @@ pub fn app_from_bundle(bundle_path: impl AsRef<Path>) -> Result<App, RuntimeErro
         app.add_systems(Update, run_scripted_runtime_systems);
     }
     Ok(app)
+}
+
+fn sync_default_camera_clear_color(world: &mut World) {
+    let Some(clear_color) = world.get_resource::<ClearColor>().map(|clear| clear.0) else {
+        return;
+    };
+    let mut query = world.query::<&mut Camera>();
+    for mut camera in query.iter_mut(world) {
+        if matches!(camera.clear_color, ClearColorConfig::Default) {
+            camera.clear_color = ClearColorConfig::Custom(clear_color);
+        }
+    }
 }
 
 pub fn native_scene_startup_diagnostics(

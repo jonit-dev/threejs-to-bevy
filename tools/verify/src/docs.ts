@@ -163,6 +163,7 @@ const APPROVED_ROOT_DOCS = new Set([
   "verify-v6.md",
   "verify-v7.md",
   "verify-v8-procedural-mesh.md",
+  "render-look-profiles.md",
   "visual-parity-policy.md",
 ]);
 

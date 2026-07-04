@@ -5,7 +5,8 @@ use serde::Serialize;
 use threenative_components::ThreeNativeId;
 use threenative_loader::{
     AnimationClipIr, AssetIr, ColorIr, EnvironmentMapIr, EnvironmentSceneIr, LoadedBundle,
-    MaterialIr, MeshGenerationIr, RuntimeConfigIr, SkyboxIr, SystemQueryIr, UiIr, WorldEntity,
+    MaterialIr, MeshGenerationIr, RuntimeConfigIr, RuntimeRendererConfig, SkyboxIr, SystemQueryIr,
+    UiIr, WorldEntity,
 };
 
 use crate::audio::{
@@ -135,6 +136,8 @@ pub struct RuntimeRendererReport {
     pub depth_of_field: Option<RuntimeDepthOfFieldReport>,
     pub post_processing: RuntimePostProcessingReport,
     #[serde(skip_serializing_if = "Option::is_none")]
+    pub render_look: Option<RuntimeRenderLookReport>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub render_path: Option<String>,
 }
 
@@ -185,6 +188,40 @@ pub struct RuntimePostProcessingReport {
 pub struct RuntimePostProcessingSkipReport {
     pub feature: String,
     pub reason: String,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RuntimeRenderLookReport {
+    pub applied_profile: String,
+    pub fallbacks: Vec<RuntimeRenderLookFallbackReport>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub overrides: Option<RuntimeRenderLookOverridesReport>,
+    pub requested_profile: String,
+}
+
+#[derive(Debug, Serialize)]
+pub struct RuntimeRenderLookFallbackReport {
+    pub code: String,
+    pub feature: String,
+    pub reason: String,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RuntimeRenderLookOverridesReport {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub bloom_intensity: Option<f32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub contrast: Option<f32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub environment_intensity: Option<f32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub exposure: Option<f32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub saturation: Option<f32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub shadow_quality: Option<String>,
 }
 
 #[derive(Debug, Serialize)]
@@ -828,14 +865,28 @@ fn report_runtime_config(
     config: Option<&RuntimeConfigIr>,
 ) -> Option<ConformanceRuntimeConfigReport> {
     let renderer = config.and_then(|config| config.renderer.as_ref())?;
+    let render_look = runtime_render_look_report(renderer);
+    let bloom_report = renderer.bloom.as_ref().map(|bloom| RuntimeBloomReport {
+        enabled: bloom.enabled,
+        intensity: bloom.intensity,
+        threshold: bloom.threshold,
+    }).or_else(|| {
+        renderer.render_look.as_ref().and_then(|render_look| {
+            (render_look.profile == "balanced").then(|| RuntimeBloomReport {
+                enabled: true,
+                intensity: render_look
+                    .overrides
+                    .as_ref()
+                    .and_then(|overrides| overrides.bloom_intensity)
+                    .unwrap_or(0.25),
+                threshold: 0.85,
+            })
+        })
+    });
     Some(ConformanceRuntimeConfigReport {
         renderer: Some(RuntimeRendererReport {
             antialias: Some(renderer.antialias.clone()),
-            bloom: renderer.bloom.as_ref().map(|bloom| RuntimeBloomReport {
-                enabled: bloom.enabled,
-                intensity: bloom.intensity,
-                threshold: bloom.threshold,
-            }),
+            bloom: bloom_report,
             color_grading: renderer.color_grading.as_ref().map(|color_grading| {
                 RuntimeColorGradingReport {
                     contrast: color_grading.contrast,
@@ -861,6 +912,10 @@ fn report_runtime_config(
                         .bloom
                         .as_ref()
                         .and_then(|bloom| bloom.enabled.then(|| "bloom".to_owned())),
+                    renderer.render_look.as_ref().and_then(|render_look| {
+                        (renderer.bloom.is_none() && render_look.profile == "balanced")
+                            .then(|| "bloom".to_owned())
+                    }),
                     renderer
                         .color_grading
                         .as_ref()
@@ -873,10 +928,62 @@ fn report_runtime_config(
                 .into_iter()
                 .flatten()
                 .collect(),
-                skipped: Vec::new(),
+                skipped: render_look
+                    .as_ref()
+                    .map(|render_look| {
+                        render_look
+                            .fallbacks
+                            .iter()
+                            .map(|fallback| RuntimePostProcessingSkipReport {
+                                feature: fallback.feature.clone(),
+                                reason: fallback.reason.clone(),
+                            })
+                            .collect()
+                    })
+                    .unwrap_or_default(),
             },
+            render_look,
             render_path: renderer.render_path.clone(),
         }),
+    })
+}
+
+fn runtime_render_look_report(renderer: &RuntimeRendererConfig) -> Option<RuntimeRenderLookReport> {
+    let requested_profile = renderer
+        .render_look
+        .as_ref()
+        .map(|render_look| render_look.profile.clone())
+        .unwrap_or_else(|| "parity".to_owned());
+    let applied_profile = if requested_profile == "balanced" {
+        "balanced"
+    } else {
+        "parity"
+    }
+    .to_owned();
+    let fallbacks = match requested_profile.as_str() {
+        "cinematic" | "stylized" => vec![RuntimeRenderLookFallbackReport {
+            code: "TN_RENDER_PROFILE_FALLBACK_USED".to_owned(),
+            feature: format!("profile.{requested_profile}"),
+            reason: "Bevy runtime only promotes parity and balanced render look profiles.".to_owned(),
+        }],
+        _ => Vec::new(),
+    };
+    Some(RuntimeRenderLookReport {
+        applied_profile,
+        fallbacks,
+        overrides: renderer
+            .render_look
+            .as_ref()
+            .and_then(|render_look| render_look.overrides.as_ref())
+            .map(|overrides| RuntimeRenderLookOverridesReport {
+                bloom_intensity: overrides.bloom_intensity,
+                contrast: overrides.contrast,
+                environment_intensity: overrides.environment_intensity,
+                exposure: overrides.exposure,
+                saturation: overrides.saturation,
+                shadow_quality: overrides.shadow_quality.clone(),
+            }),
+        requested_profile,
     })
 }
 

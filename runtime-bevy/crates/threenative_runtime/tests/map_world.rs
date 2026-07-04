@@ -272,6 +272,15 @@ fn stylized_nature_should_use_native_compatible_source_assets() {
         stylized_source_bundle(&root, "model.trunk", "model.leaves", "model.grass", 32);
     bundle.assets.assets.push(
         serde_json::from_value(json!({
+            "id": "tex.stylized-scene.sky",
+            "kind": "texture",
+            "format": "png",
+            "path": "assets/sky.png"
+        }))
+        .expect("sky texture asset should deserialize"),
+    );
+    bundle.assets.assets.push(
+        serde_json::from_value(json!({
             "id": "model.trunk",
             "kind": "model",
             "format": "glb",
@@ -307,6 +316,7 @@ fn stylized_nature_should_use_native_compatible_source_assets() {
         ScenePlugin,
     ));
     app.init_asset::<Mesh>();
+    app.init_asset::<Image>();
 
     map_bundle_into_world(app.world_mut(), &bundle).expect("bundle should map");
     let names = world_names(app.world_mut());
@@ -314,6 +324,7 @@ fn stylized_nature_should_use_native_compatible_source_assets() {
     assert!(names.iter().any(|name| name.contains("source-trunk")));
     assert!(names.iter().any(|name| name.contains("source-leaves")));
     assert!(names.iter().any(|name| name.contains("source-grass")));
+    assert!(sky_material_has_texture(app.world_mut()));
     assert!(!names.iter().any(|name| name.ends_with(".tree-0.trunk")));
     assert!(!names.iter().any(|name| name.ends_with(".tree-0.leaf-0")));
     assert!(!names.iter().any(|name| name.contains("stylized-grass")));
@@ -323,6 +334,11 @@ fn stylized_nature_should_use_native_compatible_source_assets() {
     assert!(!names
         .iter()
         .any(|name| name.contains("soft-stylized-cloud")));
+    assert!(!names.iter().any(|name| name.contains("path-pebble")));
+    assert!(!names.iter().any(|name| name.contains("path-crack")));
+    assert!(!names
+        .iter()
+        .any(|name| name.contains("source-dirt-path-ribbon")));
 }
 #[test]
 fn stylized_nature_should_keep_fallback_for_missing_or_unsupported_source_assets() {
@@ -422,6 +438,24 @@ fn world_names(world: &mut World) -> Vec<String> {
         .iter(world)
         .map(|name| name.as_str().to_owned())
         .collect()
+}
+
+fn sky_material_has_texture(world: &mut World) -> bool {
+    let sky_materials = {
+        let mut query = world.query::<(&Name, &Handle<StandardMaterial>)>();
+        query
+            .iter(world)
+            .filter(|(name, _)| name.as_str().contains("stylized-soft-sky-gradient"))
+            .map(|(_, handle)| handle.clone())
+            .collect::<Vec<_>>()
+    };
+    let materials = world.resource::<Assets<StandardMaterial>>();
+    sky_materials.iter().any(|handle| {
+        materials
+            .get(handle)
+            .and_then(|material| material.base_color_texture.as_ref())
+            .is_some()
+    })
 }
 
 fn temp_bundle_root(prefix: &str) -> PathBuf {

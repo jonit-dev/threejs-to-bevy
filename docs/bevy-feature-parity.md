@@ -358,6 +358,15 @@ remaining gaps by usefulness for building and shipping ordinary 3D games:
   terrain asset-group policy, bounded instancing policy, specular texture proof,
   extended material preset proof, manifest streaming diagnostics, and advanced
   renderer boundary diagnostics.
+- `P2` Render look profile selection is partially promoted for `parity` and
+  `balanced` source/config/runtime semantics. Web and Bevy both load the same
+  `renderer.renderLook` profile, report requested/applied/fallback values, and
+  keep `cinematic`/`stylized` reserved until screenshot proof exists. New
+  maintained starters default to `balanced`; missing profiles remain `parity`
+  for existing projects and conformance fixtures. `pnpm verify:render-look` is
+  available as a focused threshold gate with captured web screenshots and
+  screenshot-derived metrics. It is intentionally not in the release profile
+  until the browser capture path is promoted for CI release runs.
 - `P3` Advanced renderer and physics breadth. Custom shaders, bindless,
   volumetrics, SSR, deferred rendering, decals, auto exposure, DOF, motion blur,
   virtual geometry, full constraints, vehicles, ragdolls, soft bodies, arbitrary
@@ -549,6 +558,9 @@ web/Bevy evidence exist.
         formats remain deferred
 - [x] `P1` Bloom through runtime config in web and native camera runtime
 - [x] `P1` MSAA anti-aliasing modes through runtime config in web and native
+- [x] `P2` Render look profiles for `parity` and `balanced` source/runtime
+      semantics with captured web screenshot metrics; release-profile
+      promotion remains pending CI capture promotion
 - [x] `P2` FXAA, TAA, and SMAA anti-aliasing modes
 - [x] `P2` Color grading and filmic metadata observations
 - [x] `P3` Auto exposure diagnostic boundary (V10-02, V10-03 calibration)

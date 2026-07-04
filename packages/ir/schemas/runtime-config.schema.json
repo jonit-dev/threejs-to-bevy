@@ -47,6 +47,27 @@
             "maxBlur": { "type": "number", "minimum": 0 }
           }
         },
+        "renderLook": {
+          "type": "object",
+          "required": ["version", "profile"],
+          "additionalProperties": false,
+          "properties": {
+            "version": { "const": 1 },
+            "profile": { "enum": ["parity", "balanced", "cinematic", "stylized"] },
+            "overrides": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "bloomIntensity": { "type": "number", "minimum": 0, "maximum": 2 },
+                "contrast": { "type": "number", "minimum": -0.5, "maximum": 0.5 },
+                "environmentIntensity": { "type": "number", "minimum": 0, "maximum": 4 },
+                "exposure": { "type": "number", "minimum": 0.25, "maximum": 4 },
+                "saturation": { "type": "number", "minimum": 0, "maximum": 2 },
+                "shadowQuality": { "enum": ["off", "low", "medium", "high"] }
+              }
+            }
+          }
+        },
         "renderPath": { "const": "forward" }
       }
     },

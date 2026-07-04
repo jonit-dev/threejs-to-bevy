@@ -1,4 +1,8 @@
 use bevy::prelude::*;
+use threenative_loader::{
+    RuntimeConfigIr, RuntimeRenderLookOverridesConfig, RuntimeRenderLookProfileConfig,
+    RuntimeRendererConfig, RuntimeTimeConfig, RuntimeWindowConfig,
+};
 use threenative_runtime::{conformance::report_bevy_conformance, map_world::map_bundle_into_world};
 
 mod support;
@@ -196,6 +200,76 @@ fn should_report_v9_environment_lighting_budgets_and_renderer_quality() {
     assert_eq!(
         report_json["runtimeConfig"]["renderer"]["postProcessing"]["skipped"],
         serde_json::json!([])
+    );
+}
+
+#[test]
+fn should_report_render_look_fallbacks() {
+    let mut fixture = load_conformance_fixture("basic-scene");
+    fixture.bundle.runtime_config = Some(RuntimeConfigIr {
+        schema: "threenative.runtime-config".to_owned(),
+        version: "0.1.0".to_owned(),
+        renderer: Some(RuntimeRendererConfig {
+            antialias: "msaa4".to_owned(),
+            bloom: None,
+            color_grading: None,
+            depth_of_field: None,
+            render_look: Some(RuntimeRenderLookProfileConfig {
+                version: 1,
+                profile: "stylized".to_owned(),
+                overrides: Some(RuntimeRenderLookOverridesConfig {
+                    bloom_intensity: Some(0.4),
+                    contrast: None,
+                    environment_intensity: None,
+                    exposure: Some(1.1),
+                    saturation: Some(1.15),
+                    shadow_quality: None,
+                }),
+            }),
+            render_path: None,
+        }),
+        time: RuntimeTimeConfig {
+            fixed_delta: 1.0 / 60.0,
+            paused: false,
+        },
+        window: RuntimeWindowConfig {
+            height: 720.0,
+            title: None,
+            width: 1280.0,
+        },
+    });
+    let mut app = App::new();
+
+    map_bundle_into_world(app.world_mut(), &fixture.bundle).unwrap();
+    let report = report_bevy_conformance(app.world_mut(), &fixture.bundle, fixture.name);
+    let report_json = serde_json::to_value(&report).expect("report should serialize");
+
+    let render_look = &report_json["runtimeConfig"]["renderer"]["renderLook"];
+    assert_eq!(render_look["appliedProfile"], "parity");
+    assert_eq!(render_look["requestedProfile"], "stylized");
+    assert_eq!(
+        render_look["fallbacks"],
+        serde_json::json!([{
+            "code": "TN_RENDER_PROFILE_FALLBACK_USED",
+            "feature": "profile.stylized",
+            "reason": "Bevy runtime only promotes parity and balanced render look profiles."
+        }])
+    );
+    assert!(
+        (render_look["overrides"]["bloomIntensity"].as_f64().unwrap() - 0.4).abs()
+            < 0.000001
+    );
+    assert!((render_look["overrides"]["exposure"].as_f64().unwrap() - 1.1).abs() < 0.000001);
+    assert!(
+        (render_look["overrides"]["saturation"].as_f64().unwrap() - 1.15).abs()
+            < 0.000001
+    );
+    assert_eq!(
+        report_json["runtimeConfig"]["renderer"]["postProcessing"]["skipped"],
+        serde_json::json!([{
+            "feature": "profile.stylized",
+            "reason": "Bevy runtime only promotes parity and balanced render look profiles."
+        }])
     );
 }
 

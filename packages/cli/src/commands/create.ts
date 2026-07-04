@@ -28,16 +28,18 @@ export async function createProject(argv: readonly string[], options: ICreateOpt
   const json = normalizedArgv.includes("--json");
   const templateFlagIndex = normalizedArgv.indexOf("--template");
   const requestedTemplate = templateFlagIndex === -1 ? undefined : normalizedArgv[templateFlagIndex + 1];
+  const renderProfileFlagIndex = normalizedArgv.indexOf("--render-profile");
+  const renderProfile = renderProfileFlagIndex === -1 ? "balanced" : normalizedArgv[renderProfileFlagIndex + 1];
   const destinationArg = normalizedArgv.find((arg, index) => {
     const previous = normalizedArgv[index - 1];
-    return !arg.startsWith("-") && previous !== "--template";
+    return !arg.startsWith("-") && previous !== "--template" && previous !== "--render-profile";
   });
 
   if (destinationArg === undefined) {
     return diagnosticResult(
       {
         code: "TN_CREATE_DESTINATION_REQUIRED",
-        message: `Usage: tn ${commandName} <name> [${formatTemplateUsage()}] [--json]`,
+        message: `Usage: tn ${commandName} <name> [${formatTemplateUsage()}] [--render-profile parity|balanced|cinematic|stylized] [--json]`,
       },
       { exitCode: 1, json, stderr: true },
     );
@@ -50,6 +52,16 @@ export async function createProject(argv: readonly string[], options: ICreateOpt
         code: "TN_CREATE_TEMPLATE_UNSUPPORTED",
         message: `Template '${requestedTemplate ?? ""}' is not supported. Canonical options: ${formatTemplateUsage()}.`,
         template: requestedTemplate,
+      },
+      { exitCode: 1, json, stderr: true },
+    );
+  }
+  if (!isRenderProfile(renderProfile)) {
+    return diagnosticResult(
+      {
+        code: "TN_CREATE_RENDER_PROFILE_UNSUPPORTED",
+        message: "Render profile must be one of parity, balanced, cinematic, or stylized.",
+        profile: renderProfile,
       },
       { exitCode: 1, json, stderr: true },
     );
@@ -85,6 +97,7 @@ export async function createProject(argv: readonly string[], options: ICreateOpt
   await mkdir(projectPath, { recursive: true });
   await copyTemplateFiles(templateSourcePath, projectPath);
   await rewriteProjectTemplateMetadata(projectPath, definition.canonical);
+  await rewriteRuntimeRenderProfile(projectPath, renderProfile);
 
   if (sourceCheckout) {
     await rewriteLocalWorkspaceDependencies(projectPath);
@@ -105,6 +118,7 @@ export async function createProject(argv: readonly string[], options: ICreateOpt
       "tn help scaffold",
       "tn help visual-qa",
     ],
+    renderProfile,
     template: definition.canonical,
   };
 
@@ -119,6 +133,27 @@ export async function createProject(argv: readonly string[], options: ICreateOpt
     exitCode: 0,
     stdout: `${payload.message}\nNext commands:\n  cd ${projectPath}\n  pnpm install\n  pnpm run validate\n  pnpm run build\n  pnpm run dev:web\n  pnpm run verify\nDocs: tn help scaffold, tn help visual-qa\n`,
   };
+}
+
+function isRenderProfile(value: string | undefined): value is "parity" | "balanced" | "cinematic" | "stylized" {
+  return value === "parity" || value === "balanced" || value === "cinematic" || value === "stylized";
+}
+
+async function rewriteRuntimeRenderProfile(projectPath: string, renderProfile: "parity" | "balanced" | "cinematic" | "stylized"): Promise<void> {
+  const runtimePath = resolve(projectPath, "content/runtime/default.runtime.json");
+  try {
+    const runtime = JSON.parse(await readFile(runtimePath, "utf8")) as Record<string, unknown>;
+    const renderer = typeof runtime.renderer === "object" && runtime.renderer !== null && !Array.isArray(runtime.renderer)
+      ? runtime.renderer as Record<string, unknown>
+      : {};
+    runtime.renderer = {
+      ...renderer,
+      renderLook: { version: 1, profile: renderProfile },
+    };
+    await writeFile(runtimePath, `${JSON.stringify(runtime, null, 2)}\n`, "utf8");
+  } catch {
+    // Templates without runtime source keep their existing shape.
+  }
 }
 
 async function copyTemplateFiles(templateSourcePath: string, projectPath: string): Promise<void> {

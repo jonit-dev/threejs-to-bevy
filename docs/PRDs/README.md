@@ -141,7 +141,7 @@ This index separates current cleanup work from historical milestone batches.
 - [Advanced Visual Effects, Lighting, and Material Depth](other/advanced-visual-effects-lighting-material-depth.md):
   remaining advanced lighting, material, atmosphere, post-processing, deferred
   renderer, virtual geometry, and custom post-processing gaps.
-- [Beautiful Defaults Render Look Profiles](other/beautiful-defaults-render-look-profiles.md):
+- [Beautiful Defaults Render Look Profiles](done/beautiful-defaults-render-look-profiles.md):
   profile selection for parity versus game-quality rendering that reuses
   existing runtime, atmosphere, material, and visual proof contracts.
 - [Advanced Animation and Physics Depth](other/advanced-animation-physics-depth.md):

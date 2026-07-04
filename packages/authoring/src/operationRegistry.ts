@@ -355,8 +355,9 @@ const operationEntries = [
     setSchemaEntry({ fields: requiredObject(args, "fields"), kind: requiredString(args, "kind"), projectPath, schemaDocId: requiredString(args, "schemaDocId"), schemaId: requiredString(args, "schemaId") })),
   operation(descriptor("runtime.create", "Create a structured runtime config source document.", "runtime", "source-document", [
     stringArg("runtimeId"),
+    stringArg("renderProfile", false),
   ]), async ({ args, projectPath }) =>
-    createRuntimeConfig({ projectPath, runtimeId: requiredString(args, "runtimeId") })),
+    createRuntimeConfig({ projectPath, renderProfile: optionalString(args, "renderProfile"), runtimeId: requiredString(args, "runtimeId") })),
   operation(descriptor("runtime.set_window", "Set primary runtime window source fields.", "runtime", "source-document", [
     stringArg("runtimeId"),
     numberArg("height", false),
@@ -370,9 +371,31 @@ const operationEntries = [
     booleanArg("bloomEnabled", false),
     numberArg("bloomIntensity", false),
     numberArg("bloomThreshold", false),
+    stringArg("renderProfile", false),
+    numberArg("renderLookBloomIntensity", false),
+    numberArg("renderLookContrast", false),
+    numberArg("renderLookEnvironmentIntensity", false),
+    numberArg("renderLookExposure", false),
+    numberArg("renderLookSaturation", false),
+    stringArg("renderLookShadowQuality", false),
     stringArg("renderPath", false),
   ]), async ({ args, projectPath }) =>
-    setRuntimeRendering({ antialias: optionalString(args, "antialias"), bloomEnabled: optionalBoolean(args, "bloomEnabled"), bloomIntensity: optionalNumber(args, "bloomIntensity"), bloomThreshold: optionalNumber(args, "bloomThreshold"), projectPath, renderPath: optionalString(args, "renderPath"), runtimeId: requiredString(args, "runtimeId") })),
+    setRuntimeRendering({
+      antialias: optionalString(args, "antialias"),
+      bloomEnabled: optionalBoolean(args, "bloomEnabled"),
+      bloomIntensity: optionalNumber(args, "bloomIntensity"),
+      bloomThreshold: optionalNumber(args, "bloomThreshold"),
+      projectPath,
+      renderLookBloomIntensity: optionalNumber(args, "renderLookBloomIntensity"),
+      renderLookContrast: optionalNumber(args, "renderLookContrast"),
+      renderLookEnvironmentIntensity: optionalNumber(args, "renderLookEnvironmentIntensity"),
+      renderLookExposure: optionalNumber(args, "renderLookExposure"),
+      renderLookSaturation: optionalNumber(args, "renderLookSaturation"),
+      renderLookShadowQuality: optionalString(args, "renderLookShadowQuality"),
+      renderPath: optionalString(args, "renderPath"),
+      renderProfile: optionalString(args, "renderProfile"),
+      runtimeId: requiredString(args, "runtimeId"),
+    })),
   operation(descriptor("target.set_profile", "Create or update a structured target profile source document.", "target", "source-document", [
     stringArg("targetProfileId"),
     stringArrayArg("targets"),

@@ -143,6 +143,12 @@ export interface IConformanceRuntimeConfigReport {
       applied: string[];
       skipped: Array<{ feature: string; reason: string }>;
     };
+    renderLook?: {
+      appliedProfile: "parity" | "balanced";
+      fallbacks: Array<{ code: string; feature: string; reason: string }>;
+      overrides?: NonNullable<NonNullable<NonNullable<IRuntimeConfigIr["renderer"]>["renderLook"]>["overrides"]>;
+      requestedProfile: NonNullable<NonNullable<IRuntimeConfigIr["renderer"]>["renderLook"]>["profile"] | "parity";
+    };
     renderPath?: NonNullable<IRuntimeConfigIr["renderer"]>["renderPath"];
   };
 }

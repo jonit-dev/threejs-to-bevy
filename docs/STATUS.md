@@ -318,6 +318,24 @@ for project id, authoring version, source roots, and build targets, with matchin
 editor rows.
 Runtime config source commands now create runtime docs and set promoted primary
 window plus renderer quality fields that lower into `runtime.config.json`.
+Render look profiles now add a compact source-backed selector under
+`renderer.renderLook` for `parity` and `balanced`. Maintained
+`structured-source-starter` projects default to `balanced`; omitted profiles
+and conformance-style fixtures continue to behave as `parity`. SDK helpers,
+IR/schema validation, authoring operations, `tn create --render-profile`, and
+`tn runtime set-rendering --render-profile` expose only portable profile names
+and bounded overrides. Web and Bevy consume the same semantic profile and report
+requested/applied/fallback values; unsupported reserved profiles and raw
+renderer-specific payloads fail with stable diagnostics. The focused
+`pnpm verify:render-look` gate writes
+`tools/verify/artifacts/render-look/verification-report.json` and
+`contact-sheet.svg`, captures parity/balanced web screenshots under
+`tools/verify/artifacts/render-look/screenshots/`, and reports
+`evidenceMode: "captured-screenshots"` with screenshot-derived metrics. Current
+proof shows `balanced` lifting average luminance by 0.610685 and saturation by
+0.26873 over `parity` with no fallback diagnostics. The gate remains a focused
+gate, not a release-profile gate, until the browser capture path is promoted for
+CI release runs.
 
 Portable script helper imports now have a first supported bundle path:
 `src/scripts/**/*.ts` may use named imports from

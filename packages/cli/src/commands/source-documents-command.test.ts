@@ -282,9 +282,39 @@ test("runtime command creates and updates promoted source fields", async () => {
   try {
     const create = await runtimeCommand(["create", "desktop", "--project", root, "--json"]);
     const window = await runtimeCommand(["set-window", "desktop", "--width", "1920", "--height", "1080", "--title", "Arena", "--project", root, "--json"]);
-    const rendering = await runtimeCommand(["set-rendering", "desktop", "--antialias", "msaa8", "--bloom", "true", "--bloom-intensity", "0.4", "--bloom-threshold", "0.85", "--render-path", "forward", "--project", root, "--json"]);
+    const rendering = await runtimeCommand([
+      "set-rendering",
+      "desktop",
+      "--antialias",
+      "msaa8",
+      "--render-profile",
+      "balanced",
+      "--render-look-exposure",
+      "1.1",
+      "--render-look-contrast",
+      "0.1",
+      "--render-look-saturation",
+      "1.15",
+      "--render-look-bloom-intensity",
+      "0.4",
+      "--render-look-shadow-quality",
+      "high",
+      "--render-look-environment-intensity",
+      "1.2",
+      "--bloom",
+      "true",
+      "--bloom-intensity",
+      "0.4",
+      "--bloom-threshold",
+      "0.85",
+      "--render-path",
+      "forward",
+      "--project",
+      root,
+      "--json",
+    ]);
     const doc = JSON.parse(await readFile(join(root, "content", "runtime", "desktop.runtime.json"), "utf8")) as {
-      renderer?: { antialias?: string; bloom?: Record<string, unknown>; renderPath?: string };
+      renderer?: { antialias?: string; bloom?: Record<string, unknown>; renderLook?: Record<string, unknown>; renderPath?: string };
       time?: Record<string, unknown>;
       window?: Record<string, unknown>;
     };
@@ -294,7 +324,16 @@ test("runtime command creates and updates promoted source fields", async () => {
     assert.equal(rendering.exitCode, 0);
     assert.deepEqual(doc.window, { height: 1080, title: "Arena", width: 1920 });
     assert.deepEqual(doc.time, { fixedDelta: 1 / 60, paused: false });
-    assert.deepEqual(doc.renderer, { antialias: "msaa8", bloom: { enabled: true, intensity: 0.4, threshold: 0.85 }, renderPath: "forward" });
+    assert.deepEqual(doc.renderer, {
+      antialias: "msaa8",
+      bloom: { enabled: true, intensity: 0.4, threshold: 0.85 },
+      renderLook: {
+        version: 1,
+        profile: "balanced",
+        overrides: { bloomIntensity: 0.4, contrast: 0.1, environmentIntensity: 1.2, exposure: 1.1, saturation: 1.15, shadowQuality: "high" },
+      },
+      renderPath: "forward",
+    });
   } finally {
     await rm(root, { force: true, recursive: true });
   }

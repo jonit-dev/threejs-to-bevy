@@ -696,9 +696,9 @@ export async function runtimeCommand(argv: readonly string[], options: ISourceCo
 
   if (subcommand === "create") {
     if (runtimeId === undefined) {
-      return renderUsage(json, "TN_RUNTIME_CREATE_ARGS_MISSING", "Usage: tn runtime create <runtime-id> [--project <path>] [--json]");
+      return renderUsage(json, "TN_RUNTIME_CREATE_ARGS_MISSING", runtimeCreateUsage());
     }
-    return renderAuthoringResult("runtime", await createRuntimeConfig({ projectPath, runtimeId }), json, `Runtime config '${runtimeId}' created.`);
+    return renderAuthoringResult("runtime", await createRuntimeConfig({ projectPath, renderProfile: readFlag(normalizedArgv, "--render-profile"), runtimeId }), json, `Runtime config '${runtimeId}' created.`);
   }
 
   if (subcommand === "set-window") {
@@ -727,7 +727,15 @@ export async function runtimeCommand(argv: readonly string[], options: ISourceCo
     if (runtimeId === undefined) {
       return renderUsage(json, "TN_RUNTIME_SET_RENDERING_ARGS_MISSING", runtimeSetRenderingUsage());
     }
-    const numbers = parseNumberFlags(normalizedArgv, ["--bloom-intensity", "--bloom-threshold"]);
+    const numbers = parseNumberFlags(normalizedArgv, [
+      "--bloom-intensity",
+      "--bloom-threshold",
+      "--render-look-bloom-intensity",
+      "--render-look-contrast",
+      "--render-look-environment-intensity",
+      "--render-look-exposure",
+      "--render-look-saturation",
+    ]);
     if (numbers.diagnostic !== undefined) {
       return renderUsage(json, numbers.diagnostic, "Runtime rendering numeric flags must be finite numbers.");
     }
@@ -743,7 +751,14 @@ export async function runtimeCommand(argv: readonly string[], options: ISourceCo
         bloomIntensity: numbers.values["--bloom-intensity"],
         bloomThreshold: numbers.values["--bloom-threshold"],
         projectPath,
+        renderLookBloomIntensity: numbers.values["--render-look-bloom-intensity"],
+        renderLookContrast: numbers.values["--render-look-contrast"],
+        renderLookEnvironmentIntensity: numbers.values["--render-look-environment-intensity"],
+        renderLookExposure: numbers.values["--render-look-exposure"],
+        renderLookSaturation: numbers.values["--render-look-saturation"],
+        renderLookShadowQuality: readFlag(normalizedArgv, "--render-look-shadow-quality"),
         renderPath: readFlag(normalizedArgv, "--render-path"),
+        renderProfile: readFlag(normalizedArgv, "--render-profile"),
         runtimeId,
       }),
       json,
@@ -1098,8 +1113,12 @@ function runtimeSetWindowUsage(): string {
   return "Usage: tn runtime set-window <runtime-id> [--width <n>] [--height <n>] [--title <title>] [--project <path>] [--json]";
 }
 
+function runtimeCreateUsage(): string {
+  return "Usage: tn runtime create <runtime-id> [--render-profile parity|balanced|cinematic|stylized] [--project <path>] [--json]";
+}
+
 function runtimeSetRenderingUsage(): string {
-  return "Usage: tn runtime set-rendering <runtime-id> [--antialias none|msaa2|msaa4|msaa8|fxaa|taa|smaa] [--bloom true|false] [--bloom-intensity <n>] [--bloom-threshold <n>] [--render-path forward] [--project <path>] [--json]";
+  return "Usage: tn runtime set-rendering <runtime-id> [--antialias none|msaa2|msaa4|msaa8|fxaa|taa|smaa] [--render-profile parity|balanced|cinematic|stylized] [--render-look-exposure <n>] [--render-look-contrast <n>] [--render-look-saturation <n>] [--render-look-bloom-intensity <n>] [--render-look-shadow-quality off|low|medium|high] [--render-look-environment-intensity <n>] [--bloom true|false] [--bloom-intensity <n>] [--bloom-threshold <n>] [--render-path forward] [--project <path>] [--json]";
 }
 
 function targetSetUsage(): string {
@@ -1436,7 +1455,14 @@ const flagsWithValues = new Set([
   "--schedule",
   "--shape",
   "--size",
+  "--render-look-bloom-intensity",
+  "--render-look-contrast",
+  "--render-look-environment-intensity",
+  "--render-look-exposure",
+  "--render-look-saturation",
+  "--render-look-shadow-quality",
   "--render-path",
+  "--render-profile",
   "--src",
   "--source-clip",
   "--source-roots",

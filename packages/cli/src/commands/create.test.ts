@@ -41,6 +41,10 @@ test("should create starter template files", async () => {
     assert.equal(config.entry, "content/scenes/arena.scene.json");
     assert.equal(config.template, "structured-source-starter");
     await assert.rejects(access(join(payload.path, "src", "game.ts")));
+    const runtime = JSON.parse(await readFile(join(payload.path, "content", "runtime", "default.runtime.json"), "utf8")) as {
+      renderer?: { renderLook?: { profile?: string; version?: number } };
+    };
+    assert.deepEqual(runtime.renderer?.renderLook, { version: 1, profile: "balanced" });
 
     const agentInstructions = await readFile(join(payload.path, "AGENTS.md"), "utf8");
     const claudeInstructions = await readFile(join(payload.path, "CLAUDE.md"), "utf8");
@@ -68,6 +72,24 @@ test("should create starter template files", async () => {
     assert.equal(packageJson.dependencies["@threenative/r3f"], undefined);
     assert.equal(packageJson.dependencies["@threenative/ui"], undefined);
     assert.equal(packageJson.devDependencies["@threenative/cli"], "file:.threenative/cli");
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should scaffold parity render look when requested", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-create-render-profile-"));
+  try {
+    const result = await createProject(["my-game", "--render-profile", "parity", "--json"], { cwd: root });
+    const payload = JSON.parse(result.stdout) as { code: string; path: string; renderProfile: string };
+    const runtime = JSON.parse(await readFile(join(payload.path, "content", "runtime", "default.runtime.json"), "utf8")) as {
+      renderer?: { renderLook?: { profile?: string; version?: number } };
+    };
+
+    assert.equal(result.exitCode, 0);
+    assert.equal(payload.code, "TN_CREATE_OK");
+    assert.equal(payload.renderProfile, "parity");
+    assert.deepEqual(runtime.renderer?.renderLook, { version: 1, profile: "parity" });
   } finally {
     await rm(root, { force: true, recursive: true });
   }
@@ -145,6 +167,7 @@ test("should create structured-source starter template with editable content doc
     assert.equal(config.outDir, "dist/structured-source-starter.bundle");
     assert.equal(config.template, "structured-source-starter");
     assert.equal(config.production?.proofCommands?.some((command) => command.includes("tn game qa") && command.includes("--run-proof")), true);
+    assert.equal(config.production?.agent?.sourceShape?.runtime?.includes("content/runtime/default.runtime.json"), true);
     assert.equal(config.production?.agent?.sourceShape?.scene?.includes("content/scenes/arena.scene.json"), true);
     assert.equal(config.production?.agent?.sourceShape?.scripts?.includes("src/scripts/player.ts"), true);
     assert.equal(config.production?.agent?.highValueSurfaces?.some((surface) => surface.id === "playerHero" && surface.sourcePath === "content/scenes/arena.scene.json"), true);

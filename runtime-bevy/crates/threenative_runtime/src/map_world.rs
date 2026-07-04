@@ -18,7 +18,7 @@ use bevy::{
     prelude::*,
     render::{
         alpha::AlphaMode,
-        camera::{Exposure, ScalingMode},
+        camera::{ClearColorConfig, Exposure, ScalingMode},
         mesh::{Indices, MeshVertexAttribute, PrimitiveTopology, VertexAttributeValues},
         render_asset::RenderAssetUsages,
         render_resource::VertexFormat,
@@ -198,6 +198,7 @@ pub fn map_bundle_into_world(world: &mut World, bundle: &LoadedBundle) -> Result
     ensure_ambient_light_contract(world, bundle, camera_atmosphere);
     let camera_color_management = camera_atmosphere.map(|profile| &profile.color_management);
     let bloom_settings = bloom_settings_for_runtime(bundle.runtime_config.as_ref());
+    let default_camera_clear_color = world.get_resource::<ClearColor>().map(|clear| clear.0);
     let layer_map = build_render_layer_map(bundle);
     world.insert_resource(layer_map.clone());
     let render_target_registry = allocate_render_targets(world, bundle);
@@ -238,6 +239,7 @@ pub fn map_bundle_into_world(world: &mut World, bundle: &LoadedBundle) -> Result
             camera_color_management,
             camera_atmosphere,
             bloom_settings.as_ref(),
+            default_camera_clear_color,
             bundle.runtime_config.as_ref(),
             &render_target_registry,
             &mut material_handles,
@@ -327,16 +329,34 @@ fn insert_camera_antialias(spawned: &mut EntityWorldMut, config: Option<&Runtime
 }
 
 fn bloom_settings_for_runtime(config: Option<&RuntimeConfigIr>) -> Option<BloomSettings> {
-    let bloom = config
-        .and_then(|config| config.renderer.as_ref())
-        .and_then(|renderer| renderer.bloom.as_ref())?;
-    if !bloom.enabled {
+    let renderer = config.and_then(|config| config.renderer.as_ref())?;
+    let (enabled, intensity, threshold) = if let Some(bloom) = renderer.bloom.as_ref() {
+        (bloom.enabled, bloom.intensity, bloom.threshold)
+    } else if renderer
+        .render_look
+        .as_ref()
+        .is_some_and(|render_look| render_look.profile == "balanced")
+    {
+        (
+            true,
+            renderer
+                .render_look
+                .as_ref()
+                .and_then(|render_look| render_look.overrides.as_ref())
+                .and_then(|overrides| overrides.bloom_intensity)
+                .unwrap_or(0.25),
+            0.85,
+        )
+    } else {
+        return None;
+    };
+    if !enabled {
         return None;
     }
     Some(BloomSettings {
-        intensity: bloom.intensity,
+        intensity,
         prefilter_settings: BloomPrefilterSettings {
-            threshold: bloom.threshold,
+            threshold,
             ..Default::default()
         },
         ..Default::default()
@@ -541,6 +561,9 @@ fn spawn_stylized_nature(
 
     let source_assets =
         resolve_source_assets(component, assets_by_id, asset_server.as_ref(), bundle_path);
+    let source_backed = source_assets.grass_mesh.is_some()
+        || source_assets.leaves_mesh.is_some()
+        || source_assets.trunk_scene.is_some();
     let grass_policy = grass_material_policy(component, &source_assets);
     let grass_material = world
         .resource_mut::<Assets<StandardMaterial>>()
@@ -588,7 +611,7 @@ fn spawn_stylized_nature(
         .add(StandardMaterial {
             base_color: Color::WHITE,
             base_color_texture: texture_handle_by_id(
-                "tex.stylizedScene.sky",
+                "tex.stylized-scene.sky",
                 assets_by_id,
                 asset_server.as_ref(),
             ),
@@ -696,53 +719,55 @@ fn spawn_stylized_nature(
         (-0.55, 0.34, 0.03, 1.35, 0.48),
         (0.85, 0.26, 0.02, 1.18, 0.42),
     ];
-    for (cloud_index, (cx, cy, cz, group_scale)) in cloud_groups.iter().copied().enumerate() {
-        for (puff_index, (px, py, pz, sx, sy)) in cloud_puffs.iter().copied().enumerate() {
-            let transform =
-                Transform::from_xyz(cx + px * group_scale, cy + py * group_scale, cz + pz)
-                    .with_scale(Vec3::new(sx * group_scale, sy * group_scale, 0.12));
-            children.push(
-                world
-                    .spawn(PbrBundle {
-                        mesh: cloud_mesh.clone(),
-                        material: cloud_material.clone(),
-                        transform,
-                        ..Default::default()
-                    })
-                    .insert((
-                        Name::new(format!("{entity_id}.soft-cloud-{cloud_index}-{puff_index}")),
-                        NotShadowCaster,
-                        NotShadowReceiver,
-                    ))
-                    .id(),
-            );
-            if puff_index == 0 || puff_index == 2 {
+    if !source_backed {
+        for (cloud_index, (cx, cy, cz, group_scale)) in cloud_groups.iter().copied().enumerate() {
+            for (puff_index, (px, py, pz, sx, sy)) in cloud_puffs.iter().copied().enumerate() {
+                let transform =
+                    Transform::from_xyz(cx + px * group_scale, cy + py * group_scale, cz + pz)
+                        .with_scale(Vec3::new(sx * group_scale, sy * group_scale, 0.12));
                 children.push(
                     world
                         .spawn(PbrBundle {
                             mesh: cloud_mesh.clone(),
-                            material: cloud_shadow_material.clone(),
-                            transform: Transform::from_xyz(
-                                cx + px * group_scale + 0.08,
-                                cy + py * group_scale - 0.18,
-                                cz + pz - 0.02,
-                            )
-                            .with_scale(Vec3::new(
-                                sx * group_scale * 0.95,
-                                sy * group_scale * 0.48,
-                                0.08,
-                            )),
+                            material: cloud_material.clone(),
+                            transform,
                             ..Default::default()
                         })
                         .insert((
-                            Name::new(format!(
-                                "{entity_id}.soft-cloud-shadow-{cloud_index}-{puff_index}"
-                            )),
+                            Name::new(format!("{entity_id}.soft-cloud-{cloud_index}-{puff_index}")),
                             NotShadowCaster,
                             NotShadowReceiver,
                         ))
                         .id(),
                 );
+                if puff_index == 0 || puff_index == 2 {
+                    children.push(
+                        world
+                            .spawn(PbrBundle {
+                                mesh: cloud_mesh.clone(),
+                                material: cloud_shadow_material.clone(),
+                                transform: Transform::from_xyz(
+                                    cx + px * group_scale + 0.08,
+                                    cy + py * group_scale - 0.18,
+                                    cz + pz - 0.02,
+                                )
+                                .with_scale(Vec3::new(
+                                    sx * group_scale * 0.95,
+                                    sy * group_scale * 0.48,
+                                    0.08,
+                                )),
+                                ..Default::default()
+                            })
+                            .insert((
+                                Name::new(format!(
+                                    "{entity_id}.soft-cloud-shadow-{cloud_index}-{puff_index}"
+                                )),
+                                NotShadowCaster,
+                                NotShadowReceiver,
+                            ))
+                            .id(),
+                    );
+                }
             }
         }
     }
@@ -760,55 +785,61 @@ fn spawn_stylized_nature(
             )))
             .id(),
     );
-    children.push(
-        world
-            .spawn(PbrBundle {
-                mesh: source_path_mesh,
-                material: source_path_material,
-                transform: Transform::from_xyz(0.0, 0.045, 0.0),
-                ..Default::default()
-            })
-            .insert(Name::new(format!("{entity_id}.source-dirt-path-ribbon")))
-            .id(),
-    );
-    let mut path_random = Lcg::new(2401);
-    for index in 0..96usize {
-        let z = size / 2.0 - (index as f32 / 95.0) * size + (path_random.next() - 0.5) * 0.45;
-        let center = stylized_path_center(z);
-        let x = center + (path_random.next() - 0.5) * path_width * 0.72;
-        let y = stylized_terrain_height(x, z) + 0.09;
-        let yaw = path_random.next() * std::f32::consts::TAU;
-        let sx = 0.75 + path_random.next() * 0.85;
-        let sz = 0.7 + path_random.next() * 0.65;
+    if !source_backed {
         children.push(
             world
                 .spawn(PbrBundle {
-                    mesh: path_pebble_mesh.clone(),
-                    material: path_pebble_material.clone(),
-                    transform: Transform::from_xyz(x, y, z)
-                        .with_rotation(Quat::from_rotation_y(yaw))
-                        .with_scale(Vec3::new(sx, 1.0, sz)),
+                    mesh: source_path_mesh,
+                    material: source_path_material,
+                    transform: Transform::from_xyz(0.0, 0.045, 0.0),
                     ..Default::default()
                 })
-                .insert(Name::new(format!("{entity_id}.path-pebble-{index}")))
+                .insert(Name::new(format!("{entity_id}.source-dirt-path-ribbon")))
                 .id(),
         );
-        if index % 3 == 0 {
-            let crack_x = x + (path_random.next() - 0.5) * 0.18;
-            let crack_z = z + (path_random.next() - 0.5) * 0.18;
+    }
+    if !source_backed {
+        let mut path_random = Lcg::new(2401);
+        for index in 0..96usize {
+            let z = size / 2.0 - (index as f32 / 95.0) * size + (path_random.next() - 0.5) * 0.45;
+            let center = stylized_path_center(z);
+            let x = center + (path_random.next() - 0.5) * path_width * 0.72;
+            let y = stylized_terrain_height(x, z) + 0.09;
+            let yaw = path_random.next() * std::f32::consts::TAU;
+            let sx = 0.75 + path_random.next() * 0.85;
+            let sz = 0.7 + path_random.next() * 0.65;
             children.push(
                 world
                     .spawn(PbrBundle {
-                        mesh: path_crack_mesh.clone(),
-                        material: path_crack_material.clone(),
-                        transform: Transform::from_xyz(crack_x, y + 0.018, crack_z)
-                            .with_rotation(Quat::from_rotation_y(yaw + path_random.next() * 0.65))
-                            .with_scale(Vec3::new(0.65 + path_random.next() * 0.55, 1.0, 0.7)),
+                        mesh: path_pebble_mesh.clone(),
+                        material: path_pebble_material.clone(),
+                        transform: Transform::from_xyz(x, y, z)
+                            .with_rotation(Quat::from_rotation_y(yaw))
+                            .with_scale(Vec3::new(sx, 1.0, sz)),
                         ..Default::default()
                     })
-                    .insert(Name::new(format!("{entity_id}.path-crack-{index}")))
+                    .insert(Name::new(format!("{entity_id}.path-pebble-{index}")))
                     .id(),
             );
+            if index % 3 == 0 {
+                let crack_x = x + (path_random.next() - 0.5) * 0.18;
+                let crack_z = z + (path_random.next() - 0.5) * 0.18;
+                children.push(
+                    world
+                        .spawn(PbrBundle {
+                            mesh: path_crack_mesh.clone(),
+                            material: path_crack_material.clone(),
+                            transform: Transform::from_xyz(crack_x, y + 0.018, crack_z)
+                                .with_rotation(Quat::from_rotation_y(
+                                    yaw + path_random.next() * 0.65,
+                                ))
+                                .with_scale(Vec3::new(0.65 + path_random.next() * 0.55, 1.0, 0.7)),
+                            ..Default::default()
+                        })
+                        .insert(Name::new(format!("{entity_id}.path-crack-{index}")))
+                        .id(),
+                );
+            }
         }
     }
     let mut random = Lcg::new(1337);
@@ -937,14 +968,15 @@ fn spawn_stylized_nature(
             (-3.87, 6.79, -4.47, 1.3, 0.76),
             (-2.08, 10.5, 0.18, 2.5, 0.9),
         ];
-        if let Some(source_leaves_scene) = source_assets.leaves_scene.as_ref() {
+        if let Some(source_leaves_mesh) = source_assets.leaves_mesh.as_ref() {
             for (leaf_index, (lx, ly, lz, leaf_yaw, source_scale)) in
                 source_leaf_offsets.iter().copied().enumerate()
             {
                 tree_children.push(
                     world
-                        .spawn(SceneBundle {
-                            scene: source_leaves_scene.clone(),
+                        .spawn(PbrBundle {
+                            mesh: source_leaves_mesh.clone(),
+                            material: leaf_material.clone(),
                             transform: Transform::from_xyz(lx, ly, lz)
                                 .with_rotation(Quat::from_rotation_y(leaf_yaw))
                                 .with_scale(Vec3::splat(source_scale)),
@@ -1296,6 +1328,11 @@ fn add_stylized_tree_material(
         .add(StandardMaterial {
             base_color: color,
             double_sided,
+            alpha_mode: if double_sided {
+                AlphaMode::Mask(0.1)
+            } else {
+                AlphaMode::Opaque
+            },
             perceptual_roughness: 0.9,
             ..Default::default()
         })
@@ -1535,6 +1572,7 @@ fn spawn_entity(
     camera_color_management: Option<&threenative_loader::AtmosphereColorManagementIr>,
     camera_atmosphere: Option<&AtmosphereProfileIr>,
     bloom_settings: Option<&BloomSettings>,
+    default_camera_clear_color: Option<Color>,
     runtime_config: Option<&RuntimeConfigIr>,
     render_target_registry: &NativeRenderTargetRegistry,
     material_handles: &mut NativeMaterialHandles,
@@ -1709,6 +1747,11 @@ fn spawn_entity(
         );
         if let Some(mut camera_component) = spawned.get_mut::<Camera>() {
             camera_component.hdr = camera_color_management.is_some();
+            if camera.clear.is_none() {
+                if let Some(clear_color) = default_camera_clear_color {
+                    camera_component.clear_color = ClearColorConfig::Custom(clear_color);
+                }
+            }
         }
         if let Some(projection) = camera.projection.as_ref() {
             if projection.kind == "matrix" {
@@ -1854,7 +1897,11 @@ pub fn bind_native_animation_players(
     mut graphs: ResMut<Assets<AnimationGraph>>,
     bindings: Query<&NativeAnimationSceneBinding>,
     parents: Query<&Parent>,
-    mut players: Query<(Entity, &mut AnimationPlayer, Option<&Handle<AnimationGraph>>)>,
+    mut players: Query<(
+        Entity,
+        &mut AnimationPlayer,
+        Option<&Handle<AnimationGraph>>,
+    )>,
 ) {
     for (entity, mut player, graph_handle) in &mut players {
         if graph_handle.is_some() {

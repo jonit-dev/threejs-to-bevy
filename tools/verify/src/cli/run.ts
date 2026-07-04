@@ -130,6 +130,19 @@ export const FOCUSED_GATES: Record<string, FocusedGate> = {
       protects: "Runtime LOD/material evidence, asset streaming diagnostics, and renderer boundary guarantees.",
     },
   },
+  "verify:render-look": {
+    commands: [
+      ["pnpm", "--filter", "@threenative/verify-tools", "build"],
+      ["node", "tools/verify/dist/cli/renderLook.js"],
+    ],
+    description: "Render look profile quality gate.",
+    metadata: {
+      owner: "tools/verify render-look gate",
+      profile: "focused",
+      reason: "Compares parity and balanced render-look evidence so beautiful defaults cannot regress into flat screenshots.",
+      protects: "Render-look profile quality, parity profile isolation, and artifact-backed visual improvement thresholds.",
+    },
+  },
   "verify:runtime-gameplay-host": {
     commands: [
       ["pnpm", "--filter", "@threenative/ir", "build"],

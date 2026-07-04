@@ -33,6 +33,7 @@ import type { IThreeWorld } from "./mapWorld.js";
 import { listScreenshotExportDeclarations } from "./renderTargets.js";
 import { detectPhysicsEvents } from "./physics.js";
 import { traceSceneLifecycle } from "./sceneManager.js";
+import { applyWebRenderLookProfile } from "./rendering/applyRenderLookProfile.js";
 
 type IRuntimeLightReport = NonNullable<IConformanceEntityReport["light"]>["runtime"];
 
@@ -147,20 +148,29 @@ function reportRuntimeConfig(config: IRuntimeConfigIr | undefined): IConformance
   if (config?.renderer === undefined) {
     return undefined;
   }
+  const renderLook = applyWebRenderLookProfile(config);
+  const bloom = config.renderer.bloom ?? renderLook.bloom;
+  const colorGrading = config.renderer.colorGrading ?? renderLook.colorGrading;
   return {
     renderer: {
       antialias: config.renderer.antialias,
-      ...(config.renderer.bloom === undefined ? {} : { bloom: config.renderer.bloom }),
-      ...(config.renderer.colorGrading === undefined ? {} : { colorGrading: config.renderer.colorGrading }),
+      ...(bloom === undefined ? {} : { bloom }),
+      ...(colorGrading === undefined ? {} : { colorGrading }),
       ...(config.renderer.depthOfField === undefined ? {} : { depthOfField: config.renderer.depthOfField }),
       postProcessing: {
         applied: [
-          ...(config.renderer.bloom?.enabled === true ? ["bloom"] : []),
-          ...(config.renderer.colorGrading === undefined ? [] : ["colorGrading"]),
+          ...(bloom?.enabled === true ? ["bloom"] : []),
+          ...(colorGrading === undefined ? [] : ["colorGrading"]),
           ...(config.renderer.depthOfField?.enabled === true ? ["depthOfField"] : []),
           ...postAntialiasFeatures(config.renderer.antialias),
         ],
-        skipped: [],
+        skipped: renderLook.fallbacks.map((fallback) => ({ feature: fallback.feature, reason: fallback.reason })),
+      },
+      renderLook: {
+        appliedProfile: renderLook.appliedProfile,
+        fallbacks: renderLook.fallbacks,
+        ...(config.renderer.renderLook?.overrides === undefined ? {} : { overrides: config.renderer.renderLook.overrides }),
+        requestedProfile: renderLook.requestedProfile,
       },
       ...(config.renderer.renderPath === undefined ? {} : { renderPath: config.renderer.renderPath }),
     },
