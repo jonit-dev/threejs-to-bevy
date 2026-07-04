@@ -4,7 +4,7 @@ use std::{
 };
 
 use quickjs_rusty::Context;
-use serde_json::{Value, json};
+use serde_json::{json, Value};
 use thiserror::Error;
 use threenative_loader::{LoadedBundle, SystemIr};
 
@@ -12,9 +12,9 @@ use crate::{
     component_diff::ComponentDiffCache,
     input::NativeInputState,
     systems_context::{
-        NativeSystemTimeSnapshot, build_system_context_snapshot_with_events_input_and_diff,
+        build_system_context_snapshot_with_events_input_and_diff, NativeSystemTimeSnapshot,
     },
-    systems_effects::{NativeSystemEffectLog, NativeSystemEffects, apply_system_effects},
+    systems_effects::{apply_system_effects, NativeSystemEffectLog, NativeSystemEffects},
     systems_host_bridge::BRIDGE_SOURCE,
 };
 

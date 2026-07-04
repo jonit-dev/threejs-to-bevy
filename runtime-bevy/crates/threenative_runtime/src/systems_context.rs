@@ -1,13 +1,13 @@
 use std::collections::BTreeMap;
 
 use serde::Serialize;
-use serde_json::{Value, json};
+use serde_json::{json, Value};
 use threenative_loader::{
     EntityComponents, LoadedBundle, LocalDataIr, SystemIr, SystemQueryIr, SystemStateSourceIr,
     UiIr, UiNodeIr,
 };
 
-use crate::component_diff::{ComponentDiffCache, changed_components as resolve_changed_components};
+use crate::component_diff::{changed_components as resolve_changed_components, ComponentDiffCache};
 use crate::input::NativeInputState;
 use crate::mesh_bounds::mesh_aabb;
 
@@ -350,8 +350,10 @@ fn ui_snapshot(ui: &UiIr) -> NativeUiSnapshot {
 }
 
 fn collect_ui_nodes(node: &UiNodeIr, nodes: &mut Vec<NativeUiNodeSnapshot>) {
-    let focusable =
-        node.focusable.unwrap_or(false) || node.kind == "button" || node.kind == "textInput" || node.kind == "touchControl";
+    let focusable = node.focusable.unwrap_or(false)
+        || node.kind == "button"
+        || node.kind == "textInput"
+        || node.kind == "touchControl";
     nodes.push(NativeUiNodeSnapshot {
         action: node.action.clone(),
         disabled: node.disabled.unwrap_or(false),

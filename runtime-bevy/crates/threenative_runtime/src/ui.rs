@@ -1,8 +1,8 @@
 use std::collections::HashMap;
 
 use bevy::a11y::{
-    AccessibilityNode,
     accesskit::{NodeBuilder, Role},
+    AccessibilityNode,
 };
 use bevy::input::mouse::{MouseScrollUnit, MouseWheel};
 use bevy::prelude::*;
@@ -751,7 +751,8 @@ fn find_node<'a>(nodes: &[&'a UiNodeIr], id: &str) -> Option<&'a UiNodeIr> {
 }
 
 fn is_focusable(node: &UiNodeIr) -> bool {
-    node.focusable == Some(true) || matches!(node.kind.as_str(), "button" | "textInput" | "touchControl")
+    node.focusable == Some(true)
+        || matches!(node.kind.as_str(), "button" | "textInput" | "touchControl")
 }
 
 fn navigation_target(node: &UiNodeIr, input: &str) -> Option<String> {
@@ -951,10 +952,20 @@ fn ui_node_style(
     let mut style = build_style(node);
     if is_root {
         style.position_type = PositionType::Absolute;
-        if node.layout.as_ref().and_then(|layout| layout.width).is_none() {
+        if node
+            .layout
+            .as_ref()
+            .and_then(|layout| layout.width)
+            .is_none()
+        {
             style.width = Val::Percent(100.0);
         }
-        if node.layout.as_ref().and_then(|layout| layout.height).is_none() {
+        if node
+            .layout
+            .as_ref()
+            .and_then(|layout| layout.height)
+            .is_none()
+        {
             style.height = Val::Percent(100.0);
         }
         if node

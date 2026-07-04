@@ -7,15 +7,15 @@ use std::{
     io::{Read, Write},
     net::{SocketAddr, TcpListener, TcpStream},
     sync::{
-        Arc,
         atomic::{AtomicBool, Ordering},
+        Arc,
     },
     thread::{self, JoinHandle},
 };
 
 use crate::overlay::{
-    NativeOverlayBridge, NativeOverlayInputPolicy, OverlayDiagnostic, native_overlay_input_policy,
-    report_unsupported_desktop_webview, sorted_overlay_mount_order,
+    native_overlay_input_policy, report_unsupported_desktop_webview, sorted_overlay_mount_order,
+    NativeOverlayBridge, NativeOverlayInputPolicy, OverlayDiagnostic,
 };
 use bevy::prelude::*;
 #[cfg(feature = "native-webview")]
@@ -437,8 +437,8 @@ fn build_native_overlay_webview(
     bounds: NativeOverlayBounds,
 ) -> Result<(wry::WebView, Option<gtk::Window>), String> {
     use wry::{
-        Rect, WebViewBuilderExtUnix,
         dpi::{LogicalPosition, LogicalSize},
+        Rect, WebViewBuilderExtUnix,
     };
 
     let gtk_window = gtk::Window::new(gtk::WindowType::Popup);
@@ -773,8 +773,8 @@ fn resize_wry_webview(
 #[cfg(feature = "native-webview")]
 fn set_wry_webview_bounds(webview: &wry::WebView, bounds: NativeOverlayBounds) -> wry::Result<()> {
     use wry::{
-        Rect,
         dpi::{LogicalPosition, LogicalSize},
+        Rect,
     };
 
     webview.set_bounds(Rect {

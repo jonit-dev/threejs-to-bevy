@@ -16,9 +16,9 @@ use crate::cameras::{active_camera_ids, camera_order};
 use crate::physics::detect_physics_events;
 use crate::render_targets::list_screenshot_exports;
 use crate::scene_manager::{
-    SceneLifecycleOperation, SceneLifecycleRuntimeState, trace_scene_lifecycle,
+    trace_scene_lifecycle, SceneLifecycleOperation, SceneLifecycleRuntimeState,
 };
-use crate::ui::{UiDiagnostic, build_native_ui};
+use crate::ui::{build_native_ui, UiDiagnostic};
 
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -866,23 +866,27 @@ fn report_runtime_config(
 ) -> Option<ConformanceRuntimeConfigReport> {
     let renderer = config.and_then(|config| config.renderer.as_ref())?;
     let render_look = runtime_render_look_report(renderer);
-    let bloom_report = renderer.bloom.as_ref().map(|bloom| RuntimeBloomReport {
-        enabled: bloom.enabled,
-        intensity: bloom.intensity,
-        threshold: bloom.threshold,
-    }).or_else(|| {
-        renderer.render_look.as_ref().and_then(|render_look| {
-            (render_look.profile == "balanced").then(|| RuntimeBloomReport {
-                enabled: true,
-                intensity: render_look
-                    .overrides
-                    .as_ref()
-                    .and_then(|overrides| overrides.bloom_intensity)
-                    .unwrap_or(0.25),
-                threshold: 0.85,
-            })
+    let bloom_report = renderer
+        .bloom
+        .as_ref()
+        .map(|bloom| RuntimeBloomReport {
+            enabled: bloom.enabled,
+            intensity: bloom.intensity,
+            threshold: bloom.threshold,
         })
-    });
+        .or_else(|| {
+            renderer.render_look.as_ref().and_then(|render_look| {
+                (render_look.profile == "balanced").then(|| RuntimeBloomReport {
+                    enabled: true,
+                    intensity: render_look
+                        .overrides
+                        .as_ref()
+                        .and_then(|overrides| overrides.bloom_intensity)
+                        .unwrap_or(0.25),
+                    threshold: 0.85,
+                })
+            })
+        });
     Some(ConformanceRuntimeConfigReport {
         renderer: Some(RuntimeRendererReport {
             antialias: Some(renderer.antialias.clone()),
@@ -964,7 +968,8 @@ fn runtime_render_look_report(renderer: &RuntimeRendererConfig) -> Option<Runtim
         "cinematic" | "stylized" => vec![RuntimeRenderLookFallbackReport {
             code: "TN_RENDER_PROFILE_FALLBACK_USED".to_owned(),
             feature: format!("profile.{requested_profile}"),
-            reason: "Bevy runtime only promotes parity and balanced render look profiles.".to_owned(),
+            reason: "Bevy runtime only promotes parity and balanced render look profiles."
+                .to_owned(),
         }],
         _ => Vec::new(),
     };

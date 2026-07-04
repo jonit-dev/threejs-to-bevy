@@ -1,4 +1,4 @@
-use serde_json::{Value, json};
+use serde_json::{json, Value};
 
 pub fn report_disabled_entity_query_participation(entity: &str, participates: bool) -> Value {
     json!({

@@ -1,4 +1,4 @@
-use serde_json::{Value, json};
+use serde_json::{json, Value};
 use threenative_loader::{LoadedBundle, MaterialIr};
 
 pub fn trace_rendering_residuals(bundle: &LoadedBundle) -> Value {

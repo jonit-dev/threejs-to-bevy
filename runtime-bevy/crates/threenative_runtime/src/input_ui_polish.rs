@@ -4,7 +4,7 @@ use serde::Serialize;
 use serde_json::Value;
 use threenative_loader::{InputBindingIr, InputIr, LoadedBundle, UiIr, UiNodeIr, WorldIr};
 
-use crate::ui::{UiNavigationTrace, trace_ui_navigation};
+use crate::ui::{trace_ui_navigation, UiNavigationTrace};
 
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -208,7 +208,12 @@ pub fn trace_input_ui_polish(bundle: &LoadedBundle) -> InputUiPolishReport {
         ui: UiPolishReport {
             disabled_update: disabled_updates(ui, &polish),
             focus_narration: focus_narration(ui),
-            interaction_coverage: interaction_coverage(bundle.input.as_ref(), ui, &polish, &navigation),
+            interaction_coverage: interaction_coverage(
+                bundle.input.as_ref(),
+                ui,
+                &polish,
+                &navigation,
+            ),
             navigation,
             rich_text: rich_text(ui),
             scroll: scroll_trace(ui),
@@ -417,7 +422,11 @@ fn interaction_coverage(
             status: "covered",
         });
     }
-    if navigation.events.iter().any(|event| event.kind == "activate") {
+    if navigation
+        .events
+        .iter()
+        .any(|event| event.kind == "activate")
+    {
         rows.push(InteractionCoverage {
             evidence: "ui.navigation.activate",
             kind: "activation",

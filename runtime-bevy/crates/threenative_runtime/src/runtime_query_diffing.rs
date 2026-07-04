@@ -1,9 +1,9 @@
 use serde::Serialize;
-use serde_json::{Value, json};
+use serde_json::{json, Value};
 use threenative_loader::LoadedBundle;
 
 use crate::systems_context::NativeSystemTimeSnapshot;
-use crate::systems_host::{NativeSystemsHostRun, run_native_systems_once};
+use crate::systems_host::{run_native_systems_once, NativeSystemsHostRun};
 
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]

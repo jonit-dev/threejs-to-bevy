@@ -811,13 +811,11 @@ mod tests {
                 "TN_BEVY_SYSTEM_WRITE_UNDECLARED",
             ]
         );
-        assert!(
-            bundle
-                .world
-                .entities
-                .iter()
-                .all(|entity| entity.id != "marker")
-        );
+        assert!(bundle
+            .world
+            .entities
+            .iter()
+            .all(|entity| entity.id != "marker"));
         assert_eq!(
             bundle
                 .world

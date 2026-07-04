@@ -6,9 +6,9 @@ use std::{
 
 use bevy::{
     input::{
-        ButtonInput,
         gamepad::{GamepadAxis, GamepadAxisType, GamepadButton, GamepadButtonType, Gamepads},
         mouse::MouseMotion,
+        ButtonInput,
     },
     prelude::*,
     window::PrimaryWindow,
@@ -289,7 +289,11 @@ fn classify_single_touch(
     }
     if distance >= 40.0 && duration_ms <= 700.0 {
         let direction = if delta_x.abs() >= delta_y.abs() {
-            if delta_x >= 0.0 { "right" } else { "left" }
+            if delta_x >= 0.0 {
+                "right"
+            } else {
+                "left"
+            }
         } else if delta_y >= 0.0 {
             "down"
         } else {
