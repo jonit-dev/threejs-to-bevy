@@ -1,7 +1,7 @@
 import { mkdir, readdir, readFile, stat, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 
-import { createGameQualityReport, validateGameQualityReport } from "@threenative/authoring";
+import { createGameAgentInventory, createGameQualityReport, validateGameQualityReport } from "@threenative/authoring";
 
 import { resolveArtifactTargets } from "./artifacts.js";
 import { type StepSummary, type VerificationDiagnostic } from "./runner.js";
@@ -15,6 +15,7 @@ export interface IGameProductionGateResult {
 
 export interface IGameProductionGateProject {
   projectPath: string;
+  requireAgentInventory?: boolean;
   requireCleanRelease?: boolean;
   requireGameplaySource?: boolean;
   requireMaterialSource?: boolean;
@@ -44,6 +45,7 @@ const GENERATED_GAME_PROJECTS = [
   "examples/harbor-lantern-ferry",
   "examples/lantern-orchard",
   "examples/magnet-yard-sorter",
+  "examples/metro-surfer-heist",
   "examples/moon-canyon-courier",
   "examples/neon-sushi-rush",
   "examples/paper-plane-postmaster",
@@ -101,6 +103,7 @@ export async function runGameProductionGate(options: IGameProductionGateOptions 
   const steps: StepSummary[] = [];
   if (options.generatedGames === true) {
     diagnostics.push(...await generatedGameInventoryDiagnostics(root, projects));
+    diagnostics.push(...await generatedGameReadmeScriptDiagnostics(root, projects));
   }
   for (const project of projects) {
     const startedAtMs = Date.now();
@@ -123,6 +126,7 @@ export async function runGameProductionGate(options: IGameProductionGateOptions 
         suggestedFix: diagnostic.suggestedFix ?? diagnostic.suggestion,
       })),
       ...(project.requireCleanRelease === true ? cleanReleaseDiagnostics(report.release.risks, project.projectPath) : []),
+      ...(project.requireAgentInventory === true ? await agentInventoryDiagnostics(projectPath, project.projectPath) : []),
       ...(project.requireGameplaySource === true ? await gameplaySourceDiagnostics(projectPath, project.projectPath) : []),
       ...(project.requireMaterialSource === true ? await materialSourceDiagnostics(projectPath, project.projectPath) : []),
       ...(project.requirePlanArtifact === true ? await planArtifactDiagnostics(projectPath, project.projectPath) : []),
@@ -142,6 +146,7 @@ export async function runGameProductionGate(options: IGameProductionGateOptions 
       stdout: JSON.stringify({
         blockers: report.blockers.length,
         projectPath,
+        requireAgentInventory: project.requireAgentInventory === true,
         requireGameplaySource: project.requireGameplaySource === true,
         requireMaterialSource: project.requireMaterialSource === true,
         requirePlanArtifact: project.requirePlanArtifact === true,
@@ -216,6 +221,33 @@ async function generatedGameInventoryDiagnostics(root: string, projects: IGamePr
   }];
 }
 
+async function generatedGameReadmeScriptDiagnostics(root: string, projects: IGameProductionGateProject[]): Promise<VerificationDiagnostic[]> {
+  const diagnostics: VerificationDiagnostic[] = [];
+  for (const project of projects) {
+    const projectPath = resolve(root, project.projectPath);
+    const [readme, packageJson] = await Promise.all([
+      readOptionalText(resolve(projectPath, "README.md")),
+      readOptionalJson(resolve(projectPath, "package.json")),
+    ]);
+    if (readme === undefined || packageJson === undefined || !isRecord(packageJson.scripts)) {
+      continue;
+    }
+    const scripts = packageJson.scripts;
+    const referencedScripts = [...readme.matchAll(/pnpm run ([A-Za-z0-9:_-]+)/g)].map((match) => match[1]).filter((script): script is string => script !== undefined);
+    const missing = [...new Set(referencedScripts.filter((script) => !hasNonEmptyString(scripts[script])))].sort();
+    if (missing.length > 0) {
+      diagnostics.push({
+        code: "TN_VERIFY_GENERATED_GAME_README_SCRIPT_MISSING",
+        message: `${project.projectPath}: README references missing package scripts: ${missing.join(", ")}.`,
+        path: `${project.projectPath}/README.md`,
+        severity: "error",
+        suggestedFix: "Add the referenced scripts to package.json or update the README useful commands block.",
+      });
+    }
+  }
+  return diagnostics;
+}
+
 async function discoverGeneratedGameCandidates(root: string): Promise<string[]> {
   const examplesPath = resolve(root, "examples");
   let entries: { isDirectory(): boolean; name: string }[];
@@ -242,7 +274,19 @@ function resolveProjects(options: IGameProductionGateOptions): IGameProductionGa
     return options.projects;
   }
   if (options.generatedGames === true) {
-    return GENERATED_GAME_PROJECTS.map((projectPath) => ({ projectPath, requireCleanRelease: true, requireGameplaySource: true, requireMaterialSource: true, requirePlanArtifact: true, requireQaProof: true, requireReleaseReport: true, requireUiSource: true, requireVisualProvenance: true, requireVisualQuality: true }));
+    return GENERATED_GAME_PROJECTS.map((projectPath) => ({
+      projectPath,
+      requireAgentInventory: projectPath === "examples/metro-surfer-heist",
+      requireCleanRelease: true,
+      requireGameplaySource: true,
+      requireMaterialSource: true,
+      requirePlanArtifact: true,
+      requireQaProof: true,
+      requireReleaseReport: true,
+      requireUiSource: true,
+      requireVisualProvenance: true,
+      requireVisualQuality: true,
+    }));
   }
   return [{ projectPath: options.projectPath ?? "tools/verify/fixtures/game-production" }];
 }
@@ -251,6 +295,7 @@ function requiredProofCounts(projects: IGameProductionGateProject[]): Record<str
   const counts: Record<string, number> = {};
   for (const project of projects) {
     incrementIfRequired(counts, "cleanRelease", project.requireCleanRelease);
+    incrementIfRequired(counts, "agentInventory", project.requireAgentInventory);
     incrementIfRequired(counts, "gameplaySource", project.requireGameplaySource);
     incrementIfRequired(counts, "materialSource", project.requireMaterialSource);
     incrementIfRequired(counts, "planArtifact", project.requirePlanArtifact);
@@ -261,6 +306,57 @@ function requiredProofCounts(projects: IGameProductionGateProject[]): Record<str
     incrementIfRequired(counts, "visualQuality", project.requireVisualQuality);
   }
   return counts;
+}
+
+async function agentInventoryDiagnostics(projectPath: string, displayPath: string): Promise<VerificationDiagnostic[]> {
+  const inventory = await createGameAgentInventory({ projectPath });
+  const diagnostics: VerificationDiagnostic[] = inventory.diagnostics.map((diagnostic) => ({
+    code: diagnostic.code,
+    message: `${displayPath}: ${diagnostic.message}`,
+    path: diagnostic.path,
+    severity: diagnostic.severity === "error" ? "error" : "warning",
+    suggestedFix: diagnostic.suggestion,
+  }));
+  const requiredFamilies = ["scene", "systems", "ui", "input", "material", "asset"] as const;
+  for (const family of requiredFamilies) {
+    if (!inventory.sourceFamilies.some((sourceFamily) => sourceFamily.kind === family && sourceFamily.count > 0)) {
+      diagnostics.push({
+        code: "TN_VERIFY_GAME_AGENT_INVENTORY_SOURCE_OWNER_MISSING",
+        message: `${displayPath}: game agent inventory is missing source family '${family}'.`,
+        path: `content/${family}`,
+        severity: "error",
+        suggestedFix: "Add the structured source document or classify this project outside the generated-game gate.",
+      });
+    }
+  }
+  if (inventory.scripts.length === 0) {
+    diagnostics.push({
+      code: "TN_VERIFY_GAME_AGENT_INVENTORY_SCRIPT_OWNER_MISSING",
+      message: `${displayPath}: game agent inventory has no script module/export owner.`,
+      path: "content/systems",
+      severity: "error",
+      suggestedFix: "Declare a system script module/export in structured source or production.agent.scriptModules.",
+    });
+  }
+  if (inventory.highValueSurfaces.some((surface) => surface.status !== "declared")) {
+    diagnostics.push({
+      code: "TN_VERIFY_GAME_AGENT_INVENTORY_SURFACE_MISSING",
+      message: `${displayPath}: game agent inventory has undeclared high-value surfaces.`,
+      path: "threenative.config.json#/production/agent/highValueSurfaces",
+      severity: "error",
+      suggestedFix: "Declare player, obstacle, reward, world, UI, and audio surface ownership in production.agent.highValueSurfaces.",
+    });
+  }
+  if (inventory.proofCommands.length === 0) {
+    diagnostics.push({
+      code: "TN_VERIFY_GAME_AGENT_INVENTORY_PROOF_COMMANDS_MISSING",
+      message: `${displayPath}: game agent inventory has no proof commands.`,
+      path: "threenative.config.json#/production/proofCommands",
+      severity: "error",
+      suggestedFix: "Add production proof commands or package game:* scripts.",
+    });
+  }
+  return diagnostics;
 }
 
 function incrementIfRequired(counts: Record<string, number>, key: string, required: boolean | undefined): void {
@@ -1508,6 +1604,23 @@ async function hasMotionProofStep(projectPath: string, step: Record<string, unkn
     return fileStat.isFile() && fileStat.size > 0;
   } catch {
     return false;
+  }
+}
+
+async function readOptionalJson(path: string): Promise<Record<string, unknown> | undefined> {
+  try {
+    const parsed = JSON.parse(await readFile(path, "utf8")) as unknown;
+    return isRecord(parsed) ? parsed : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+async function readOptionalText(path: string): Promise<string | undefined> {
+  try {
+    return await readFile(path, "utf8");
+  } catch {
+    return undefined;
   }
 }
 

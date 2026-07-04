@@ -53,7 +53,7 @@ test("plans a playable loop without writing files", async () => {
     };
     const after = await listAll(root);
 
-    assert.equal(result.exitCode, 0);
+    assert.equal(result.exitCode, 0, `${result.stdout}\n${result.stderr}`);
     assert.equal(payload.schema, "threenative.game-plan");
     assert.equal(payload.mutate, false);
     assert.equal(payload.design.objective.includes("arcade collector"), true);
@@ -121,7 +121,7 @@ test("should print game inspect inventory as json", async () => {
       scripts: Array<{ exportName: string; module: string }>;
     };
 
-    assert.equal(result.exitCode, 0);
+    assert.equal(result.exitCode, 0, `${result.stdout}\n${result.stderr}`);
     assert.equal(payload.schema, "threenative.game-agent-inventory");
     assert.equal(payload.projectKind, "generated-game");
     assert.equal(payload.primaryScene?.id, "arena");
@@ -165,7 +165,7 @@ test("should include project inventory in generated game plan", async () => {
       inventory: { primarySceneId?: string; projectKind: string };
       scriptPlan: Array<{ exportName: string; module: string; state: string[] }>;
       sourcePlan: Array<{ document: string; path: string }>;
-      steps: Array<{ id: string; recipeArgs?: { cameraId?: string; entityId?: string; sceneId?: string } }>;
+      steps: Array<{ id: string; recipe?: string; recipeArgs?: { cameraId?: string; entityId?: string; sceneId?: string }; recipeSourceOwners?: Record<string, string[]> }>;
     };
 
     assert.equal(result.exitCode, 0);
@@ -177,6 +177,8 @@ test("should include project inventory in generated game plan", async () => {
     assert.equal(payload.steps.find((step) => step.id === "playable-loop")?.recipeArgs?.sceneId, "harbor");
     assert.equal(payload.steps.find((step) => step.id === "playable-loop")?.recipeArgs?.cameraId, "camera.hero");
     assert.equal(payload.steps.find((step) => step.id === "playable-loop")?.recipeArgs?.entityId, "player.boat");
+    assert.equal(payload.steps.some((step) => step.recipe === "top-down-collector" && step.recipeSourceOwners?.scene?.includes("scene.attach_script")), true);
+    assert.equal(payload.steps.some((step) => step.recipe === "lane-runner"), true);
   } finally {
     await rm(root, { force: true, recursive: true });
   }
@@ -235,6 +237,62 @@ test("improve persists the applied game plan as canonical production evidence", 
     assert.equal(persisted.goal, "clockwork garden heist");
     assert.equal(persisted.mutate, false);
     assert.equal(Array.isArray((persisted as { acceptanceCriteria?: unknown }).acceptanceCriteria), true);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should apply a supported vertical slice recipe from a valid plan", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-game-improve-vertical-recipe-"));
+  try {
+    await writePassingGameProject(root);
+    const planResult = await gameCommand(["plan", "--project", root, "--goal", "coin collector", "--json"]);
+    const plan = JSON.parse(planResult.stdout) as {
+      steps: Array<Record<string, unknown>>;
+    };
+    plan.steps = [
+      {
+        apply: true,
+        id: "top-down-collector-slice",
+        phase: "gameplay",
+        recipe: "top-down-collector",
+        recipeArgs: {
+          cameraId: "camera.main",
+          inputDocId: "arena-input",
+          playerId: "collector.player",
+          sceneId: "arena",
+        },
+        summary: "Apply compact collector source slice.",
+      },
+    ];
+    await writeFile(join(root, "plan-input.json"), `${JSON.stringify(plan, null, 2)}\n`);
+    await writeFile(
+      join(root, "src/scripts/player.ts"),
+      "export function topDownCollectorSystem(ctx: any) { void ctx; }\n",
+    );
+
+    const result = await gameCommand(["improve", "--project", root, "--apply-plan", "plan-input.json", "--json"]);
+    const payload = JSON.parse(result.stdout) as {
+      applied: Array<{ filesWritten: string[]; ok: boolean; recipe: string }>;
+      ok: boolean;
+      planArtifactPath?: string;
+    };
+    const scene = JSON.parse(await readFile(join(root, "content/scenes/arena.scene.json"), "utf8")) as {
+      entities?: Array<{ id?: string }>;
+      systems?: Array<{ id?: string; script?: { export?: string; module?: string } }>;
+    };
+    const input = JSON.parse(await readFile(join(root, "content/input/arena.input.json"), "utf8")) as {
+      axes?: Array<{ id?: string }>;
+    };
+
+    assert.equal(result.exitCode, 0);
+    assert.equal(payload.ok, true);
+    assert.equal(payload.applied[0]?.recipe, "top-down-collector");
+    assert.equal(payload.planArtifactPath?.endsWith("artifacts/game-production/plan.json"), true);
+    assert.equal(input.axes?.some((axis) => axis.id === "MoveX"), true);
+    assert.equal(scene.entities?.some((entity) => entity.id === "collector.player"), true);
+    assert.equal(scene.entities?.some((entity) => entity.id === "coin.01"), true);
+    assert.equal(scene.systems?.some((system) => system.script?.module === "src/scripts/player.ts" && system.script.export === "topDownCollectorSystem"), true);
   } finally {
     await rm(root, { force: true, recursive: true });
   }
@@ -616,7 +674,7 @@ test("infers QA proof playtest arguments from project production proof commands"
       entry: "content/scenes/arena.scene.json",
       production: {
         proofCommands: [
-          "tn playtest --project . --entity player --press KeyD --frames 42 --expect-axis x --json",
+          "tn playtest --project . --entity player --press keyboard.KeyD --frames 42 --expect-axis x --json",
           "tn game qa --project . --run-proof --json",
         ],
       },
@@ -665,8 +723,9 @@ async function writePassingGameProject(root: string): Promise<void> {
     schema: "threenative.scene",
     version: "0.1.0",
     id: "arena",
-    entities: [
-      { id: "player", components: { VisualProvenance: { notes: "procedural custom player hero obstacle hazard collectible reward world environment ui hud audio feedback" } } },
+	    entities: [
+	      { id: "camera.main" },
+	      { id: "player", components: { VisualProvenance: { notes: "procedural custom player hero obstacle hazard collectible reward world environment ui hud audio feedback" } } },
       { id: "hazard.obstacle", components: { Hazard: { kind: "obstacle-enemy" } } },
       { id: "reward.collectible", components: { Collectible: { kind: "reward-interactable" } } },
     ],

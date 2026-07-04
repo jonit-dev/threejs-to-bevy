@@ -82,13 +82,25 @@ export interface IGameAgentMaterialSummary {
 
 export interface IGameAgentHighValueSurface {
   id: string;
+  provenanceStatus?: string;
   source: "production.assetPlan" | "source";
   sourcePath?: string;
   status: "declared" | "missing";
   summary?: string;
 }
 
+export interface IGameAgentNormalizedMetadata {
+  assetSourcing: string[];
+  highValueSurfaces: Array<{ id: string; provenanceStatus?: string; sourcePath?: string; summary?: string }>;
+  knownBlockers: string[];
+  proofCommands: string[];
+  scriptModules: Array<{ exportName: string; module: string; ownsState: string[]; referencedBy: string[] }>;
+  sourceShape: Record<string, string[]>;
+  uiStates: Array<{ id: string; expectation?: string; sourcePath?: string }>;
+}
+
 export interface IGameAgentProductionSummary {
+  agent?: IGameAgentNormalizedMetadata;
   assetPlan?: Record<string, string>;
   controls: string[];
   failRetry?: string;
@@ -152,7 +164,8 @@ export async function createGameAgentInventory(options: ICreateGameAgentInventor
   const project = await loadAuthoringProject({ projectPath: options.projectPath });
   const config = await readOptionalJson(resolve(project.projectPath, "threenative.config.json"), "threenative.config.json");
   const packageJson = await readOptionalJson(resolve(project.projectPath, "package.json"), "package.json");
-  const production = readProduction(config.data);
+  const plan = await readOptionalJson(resolve(project.projectPath, "artifacts/game-production/plan.json"), "artifacts/game-production/plan.json");
+  const production = readProduction(config.data, plan.data);
   const projectKind = classifyGameAgentProject(project, config.data, packageJson.data);
   const sourceFamilies = buildSourceFamilies(project.documents);
   const primaryScene = selectPrimaryScene(project.documents, config.data);
@@ -164,6 +177,7 @@ export async function createGameAgentInventory(options: ICreateGameAgentInventor
     ...project.diagnostics,
     ...config.diagnostics,
     ...packageJson.diagnostics,
+    ...plan.diagnostics,
     ...diagnosticsForProject(projectKind, sourceFamilies, primaryScene, scripts, proofCommands, highValueSurfaces),
   ];
 
@@ -351,11 +365,14 @@ function collectHighValueSurfaces(production: IGameAgentProductionSummary, docum
   const surfaces = new Map<string, IGameAgentHighValueSurface>();
   const productionAssetPlan = productionAssetPlanObject(production);
   for (const surface of requiredSurfaces) {
-    const summary = readStringField(productionAssetPlan, surface);
+    const normalizedSurface = production.agent?.highValueSurfaces.find((entry) => entry.id === surface);
+    const summary = normalizedSurface?.summary ?? readStringField(productionAssetPlan, surface);
     surfaces.set(surface, {
       id: surface,
       source: "production.assetPlan",
       status: summary === undefined ? "missing" : "declared",
+      ...(normalizedSurface?.provenanceStatus === undefined ? {} : { provenanceStatus: normalizedSurface.provenanceStatus }),
+      ...(normalizedSurface?.sourcePath === undefined ? {} : { sourcePath: normalizedSurface.sourcePath }),
       ...(summary === undefined ? {} : { summary }),
     });
   }
@@ -378,30 +395,155 @@ function collectHighValueSurfaces(production: IGameAgentProductionSummary, docum
   return [...surfaces.values()].sort((left, right) => left.id.localeCompare(right.id));
 }
 
-function readProduction(config: unknown): IGameAgentProductionSummary {
+function readProduction(config: unknown, plan: unknown): IGameAgentProductionSummary {
   const production = isRecord(config) && isRecord(config.production) ? config.production : {};
-  const assetPlan = isRecord(production.assetPlan)
-    ? Object.fromEntries(Object.entries(production.assetPlan).filter((entry): entry is [string, string] => typeof entry[1] === "string" && entry[1].trim() !== ""))
-    : undefined;
-  const scriptModules = Array.isArray(production.scriptModules)
-    ? production.scriptModules.filter(isRecord).map((entry) => ({
-        exportName: readStringField(entry, "export") ?? readStringField(entry, "exportName") ?? "unknown",
-        module: readStringField(entry, "module") ?? "unknown",
-        ownsState: readStringArray(entry.ownsState),
-        referencedBy: readStringArray(entry.referencedBy),
-      }))
-    : [];
+  const agent = readNormalizedAgentMetadata(production.agent);
+  const assetPlan = mergeAssetPlans(
+    readProductionAssetPlan(production.assetPlan),
+    readPlanAssetPlan(plan),
+  );
+  const scriptModules = mergeScriptModules(readScriptModules(production.scriptModules), agent?.scriptModules ?? []);
+  const proofCommands = mergeStringArrays(
+    mergeStringArrays(readStringArray(production.proofCommands), agent?.proofCommands ?? []),
+    readStringArray(isRecord(plan) ? plan.proofCommands : undefined),
+  );
   return {
-    ...(assetPlan === undefined ? {} : { assetPlan }),
+    ...(agent === undefined ? {} : { agent }),
+    ...(Object.keys(assetPlan).length === 0 ? {} : { assetPlan }),
     controls: readStringArray(production.controls),
     failRetry: readStringField(production, "failRetry"),
     feedbackMoments: readStringArray(production.feedbackMoments),
     objective: readStringField(production, "objective"),
     playableLoop: readStringField(production, "playableLoop"),
     progression: readStringField(production, "progression"),
-    proofCommands: readStringArray(production.proofCommands),
+    proofCommands,
     scriptModules,
   };
+}
+
+function readProductionAssetPlan(value: unknown): Record<string, string> {
+  return isRecord(value)
+    ? Object.fromEntries(Object.entries(value).filter((entry): entry is [string, string] => typeof entry[1] === "string" && entry[1].trim() !== ""))
+    : {};
+}
+
+function readPlanAssetPlan(value: unknown): Record<string, string> {
+  if (!isRecord(value) || !Array.isArray(value.assetPlan)) {
+    return {};
+  }
+  const rows: Record<string, string> = {};
+  for (const entry of value.assetPlan.filter(isRecord)) {
+    const id = planSurfaceToProductionKey(readStringField(entry, "surface"));
+    const summary = readStringField(entry, "selected")
+      ?? readStringField(entry, "fallback")
+      ?? readStringField(entry, "sourcePreference");
+    if (id !== undefined && summary !== undefined) {
+      rows[id] = summary;
+    }
+  }
+  return rows;
+}
+
+function mergeAssetPlans(left: Record<string, string>, right: Record<string, string>): Record<string, string> {
+  return { ...right, ...left };
+}
+
+function planSurfaceToProductionKey(surface: string | undefined): string | undefined {
+  switch (surface) {
+    case "audio-feedback":
+      return "audioFeedback";
+    case "obstacle-enemy":
+      return "obstacleEnemy";
+    case "player-hero":
+      return "playerHero";
+    case "reward-interactable":
+      return "rewardInteractable";
+    case "ui-hud":
+      return "uiHud";
+    case "world-environment":
+      return "worldEnvironment";
+    default:
+      return undefined;
+  }
+}
+
+function readNormalizedAgentMetadata(value: unknown): IGameAgentNormalizedMetadata | undefined {
+  if (!isRecord(value)) {
+    return undefined;
+  }
+  return {
+    assetSourcing: readStringArray(value.assetSourcing),
+    highValueSurfaces: readHighValueSurfaceRows(value.highValueSurfaces),
+    knownBlockers: readStringArray(value.knownBlockers),
+    proofCommands: readStringArray(value.proofCommands),
+    scriptModules: readScriptModules(value.scriptModules),
+    sourceShape: readSourceShape(value.sourceShape),
+    uiStates: readUiStateRows(value.uiStates),
+  };
+}
+
+function readHighValueSurfaceRows(value: unknown): IGameAgentNormalizedMetadata["highValueSurfaces"] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+  return value.filter(isRecord).map((entry) => ({
+    id: readStringField(entry, "id") ?? "unknown",
+    ...(readStringField(entry, "provenanceStatus") === undefined ? {} : { provenanceStatus: readStringField(entry, "provenanceStatus") }),
+    ...(readStringField(entry, "sourcePath") === undefined ? {} : { sourcePath: readStringField(entry, "sourcePath") }),
+    ...(readStringField(entry, "summary") === undefined ? {} : { summary: readStringField(entry, "summary") }),
+  })).filter((entry) => entry.id !== "unknown").sort((left, right) => left.id.localeCompare(right.id));
+}
+
+function readScriptModules(value: unknown): IGameAgentNormalizedMetadata["scriptModules"] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+  return value.filter(isRecord).map((entry) => ({
+    exportName: readStringField(entry, "export") ?? readStringField(entry, "exportName") ?? "unknown",
+    module: readStringField(entry, "module") ?? "unknown",
+    ownsState: readStringArray(entry.ownsState),
+    referencedBy: readStringArray(entry.referencedBy),
+  })).filter((entry) => entry.module !== "unknown" && entry.exportName !== "unknown");
+}
+
+function readUiStateRows(value: unknown): IGameAgentNormalizedMetadata["uiStates"] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+  return value.filter(isRecord).map((entry) => ({
+    id: readStringField(entry, "id") ?? "unknown",
+    ...(readStringField(entry, "expectation") === undefined ? {} : { expectation: readStringField(entry, "expectation") }),
+    ...(readStringField(entry, "sourcePath") === undefined ? {} : { sourcePath: readStringField(entry, "sourcePath") }),
+  })).filter((entry) => entry.id !== "unknown").sort((left, right) => left.id.localeCompare(right.id));
+}
+
+function readSourceShape(value: unknown): Record<string, string[]> {
+  if (!isRecord(value)) {
+    return {};
+  }
+  const sourceShape: Record<string, string[]> = {};
+  for (const [key, row] of Object.entries(value)) {
+    const paths = readStringArray(row);
+    if (paths.length > 0) {
+      sourceShape[key] = paths;
+    }
+  }
+  return sourceShape;
+}
+
+function mergeScriptModules(
+  legacy: IGameAgentNormalizedMetadata["scriptModules"],
+  normalized: IGameAgentNormalizedMetadata["scriptModules"],
+): IGameAgentNormalizedMetadata["scriptModules"] {
+  const rows = new Map<string, IGameAgentNormalizedMetadata["scriptModules"][number]>();
+  for (const row of [...legacy, ...normalized]) {
+    rows.set(`${row.module}#${row.exportName}`, row);
+  }
+  return [...rows.values()].sort((left, right) => left.module.localeCompare(right.module) || left.exportName.localeCompare(right.exportName));
+}
+
+function mergeStringArrays(left: readonly string[], right: readonly string[]): string[] {
+  return [...new Set([...left, ...right])].sort();
 }
 
 function productionAssetPlanObject(production: IGameAgentProductionSummary): unknown {
@@ -432,7 +574,7 @@ function classifyGameAgentProject(project: IAuthoringProject, config: unknown, p
   if (families.has("environment") && !families.has("input") && !families.has("systems")) {
     return "environment-component";
   }
-  if (families.has("scene") && (families.has("systems") || families.has("input") || readProduction(config).playableLoop !== undefined)) {
+  if (families.has("scene") && (families.has("systems") || families.has("input") || readProduction(config, undefined).playableLoop !== undefined)) {
     return "generated-game";
   }
   return "unknown";
@@ -453,18 +595,21 @@ function diagnosticsForProject(
   }
   if (projectKind === "generated-game") {
     for (const family of requiredGeneratedGameFamilies) {
+      if (family === "prefab" && (primaryScene?.prefabCount ?? 0) > 0) {
+        continue;
+      }
       if ((familyCounts.get(family) ?? 0) === 0) {
         diagnostics.push(warning("TN_GAME_AGENT_SOURCE_FAMILY_MISSING", `Generated game is missing content source family '${family}'.`, `content/${family}`, "Add the source document or record why this maintained example is not a generated game."));
       }
     }
     if (scripts.length === 0) {
-      diagnostics.push(warning("TN_GAME_AGENT_SCRIPT_OWNER_MISSING", "Generated game inventory could not find a script module/export owner.", "content/systems", "Declare script.module and script.export in content/systems or production.scriptModules."));
+      diagnostics.push(warning("TN_GAME_AGENT_SCRIPT_OWNER_MISSING", "Generated game inventory could not find a script module/export owner.", "content/systems", "Declare script.module and script.export in content/systems or production.agent.scriptModules."));
     }
     if (proofCommands.length === 0) {
       diagnostics.push(warning("TN_GAME_AGENT_PROOF_COMMANDS_MISSING", "Generated game inventory could not find production proof commands.", "threenative.config.json#/production/proofCommands", "Add proof commands or package game:* scripts."));
     }
     for (const surface of surfaces.filter((surface) => surface.status === "missing")) {
-      diagnostics.push(warning("TN_GAME_AGENT_HIGH_VALUE_SURFACE_MISSING", `Generated game production metadata is missing high-value surface '${surface.id}'.`, "threenative.config.json#/production/assetPlan", "Declare player/world/reward/UI/audio surface intent in production metadata."));
+      diagnostics.push(warning("TN_GAME_AGENT_HIGH_VALUE_SURFACE_MISSING", `Generated game production metadata is missing high-value surface '${surface.id}'.`, "threenative.config.json#/production/agent/highValueSurfaces", "Declare player/world/reward/UI/audio surface intent in production.agent.highValueSurfaces."));
     }
   }
   if (projectKind === "physics-lab" && primaryScene === undefined) {
@@ -493,7 +638,7 @@ function recommendedOperations(
     operations.push("tn scene system attach --module src/scripts/player.ts --export updatePlayer --json");
   }
   if (surfaces.some((surface) => surface.status === "missing") && projectKind === "generated-game") {
-    operations.push("Update threenative.config.json production.assetPlan with high-value surface owners.");
+    operations.push("Update threenative.config.json production.agent.highValueSurfaces with high-value surface owners.");
   }
   if (proofCommands.length === 0 && projectKind !== "unknown") {
     operations.push("Add production.proofCommands or package game:* scripts.");

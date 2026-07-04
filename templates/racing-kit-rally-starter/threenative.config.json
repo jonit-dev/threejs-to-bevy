@@ -30,6 +30,77 @@
         "referencedBy": ["content/systems/rally.systems.json"]
       }
     ],
+    "agent": {
+      "sourceShape": {
+        "input": ["content/input/rally.input.json"],
+        "scene": ["content/scenes/rally.scene.json"],
+        "systems": ["content/systems/rally.systems.json"],
+        "scripts": ["src/scripts/racing.ts"],
+        "assets": ["assets/*.glb"]
+      },
+      "highValueSurfaces": [
+        {
+          "id": "playerHero",
+          "sourcePath": "assets/raceCarRed.glb",
+          "provenanceStatus": "local-file",
+          "summary": "Kenney-style rally car GLB from the starter kit."
+        },
+        {
+          "id": "obstacleEnemy",
+          "sourcePath": "assets/barrierRed.glb",
+          "provenanceStatus": "local-file",
+          "summary": "Track barriers, pylons, and rival car surfaces from the starter kit."
+        },
+        {
+          "id": "rewardInteractable",
+          "sourcePath": "content/scenes/rally.scene.json",
+          "provenanceStatus": "source",
+          "summary": "Checkpoint gate and finish/checker assets from the starter kit."
+        },
+        {
+          "id": "worldEnvironment",
+          "sourcePath": "content/scenes/rally.scene.json",
+          "provenanceStatus": "local-kit",
+          "summary": "Reusable rally road, stand, tree, light, and barrier GLB kit pieces."
+        },
+        {
+          "id": "uiHud",
+          "sourcePath": "threenative.config.json#/production/assetPlan",
+          "provenanceStatus": "expected",
+          "summary": "Rally HUD/status source is expected when promoted from kit to generated game."
+        },
+        {
+          "id": "audioFeedback",
+          "sourcePath": "threenative.config.json#/production/assetPlan",
+          "provenanceStatus": "not-authored",
+          "summary": "Audio feedback is not authored in the starter baseline."
+        }
+      ],
+      "scriptModules": [
+        {
+          "module": "src/scripts/racing.ts",
+          "export": "updateRally",
+          "ownsState": ["Transform", "PlayerCar", "RivalCar", "RallyState"],
+          "referencedBy": ["content/systems/rally.systems.json"]
+        }
+      ],
+      "uiStates": [
+        { "id": "gameplay", "sourcePath": "content/scenes/rally.scene.json", "expectation": "Checkpoint progress is visible through scene and script state." }
+      ],
+      "assetSourcing": [
+        "Starter uses a cohesive local racing kit; preserve asset provenance when promoting the kit to a generated game."
+      ],
+      "proofCommands": [
+        "tn authoring validate --project . --json",
+        "tn build --project . --json",
+        "tn playtest --project . --entity player.car --press KeyW --frames 60 --expect-moved --json",
+        "tn game qa --project . --run-proof --json",
+        "tn game release --project . --json"
+      ],
+      "knownBlockers": [
+        "Audio feedback and full retained HUD source are intentionally outside the asset-kit starter baseline."
+      ]
+    },
     "proofCommands": [
       "tn authoring validate --project . --json",
       "tn build --project . --json",

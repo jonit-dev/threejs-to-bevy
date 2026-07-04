@@ -30,6 +30,81 @@
         "referencedBy": ["content/systems/arena.systems.json"]
       }
     ],
+    "agent": {
+      "sourceShape": {
+        "assets": ["content/assets/arena.assets.json"],
+        "input": ["content/input/arena.input.json"],
+        "materials": ["content/materials/arena.materials.json"],
+        "meshes": ["content/meshes/arena.meshes.json"],
+        "scene": ["content/scenes/arena.scene.json"],
+        "systems": ["content/systems/arena.systems.json"],
+        "ui": ["content/ui/hud.ui.json"],
+        "scripts": ["src/scripts/player.ts"]
+      },
+      "highValueSurfaces": [
+        {
+          "id": "playerHero",
+          "sourcePath": "content/scenes/arena.scene.json",
+          "provenanceStatus": "starter-placeholder",
+          "summary": "Starter player entity is source-owned placeholder geometry intended to be replaced by catalog, kit, or authored custom art."
+        },
+        {
+          "id": "obstacleEnemy",
+          "sourcePath": "threenative.config.json#/production/assetPlan",
+          "provenanceStatus": "not-authored",
+          "summary": "No obstacle/enemy is authored in the starter baseline."
+        },
+        {
+          "id": "rewardInteractable",
+          "sourcePath": "content/scenes/arena.scene.json",
+          "provenanceStatus": "source",
+          "summary": "Goal zone is the starter reward/interactable surface."
+        },
+        {
+          "id": "worldEnvironment",
+          "sourcePath": "content/scenes/arena.scene.json",
+          "provenanceStatus": "source",
+          "summary": "Arena floor, camera, light, and goal context provide the starter world surface."
+        },
+        {
+          "id": "uiHud",
+          "sourcePath": "content/ui/hud.ui.json",
+          "provenanceStatus": "source",
+          "summary": "Starter HUD/source UI is the baseline for objective and state text."
+        },
+        {
+          "id": "audioFeedback",
+          "sourcePath": "content/assets/arena.assets.json",
+          "provenanceStatus": "local-file",
+          "summary": "Starter goal-ping audio asset is available for feedback wiring."
+        }
+      ],
+      "scriptModules": [
+        {
+          "module": "src/scripts/player.ts",
+          "export": "updatePlayer",
+          "ownsState": ["Transform", "GameState"],
+          "referencedBy": ["content/systems/arena.systems.json"]
+        }
+      ],
+      "uiStates": [
+        { "id": "gameplay", "sourcePath": "content/ui/hud.ui.json", "expectation": "HUD can display objective status." },
+        { "id": "fail-retry", "sourcePath": "threenative.config.json#/production/failRetry", "expectation": "Starter records retry limitation before a full fail state is authored." }
+      ],
+      "assetSourcing": [
+        "Starter assets are local source-owned baseline surfaces; run tn asset source search --format glb --direct-only --json before replacing high-value art."
+      ],
+      "proofCommands": [
+        "tn authoring validate --project . --json",
+        "tn build --project . --json",
+        "tn playtest --project . --entity player --press keyboard.KeyD --frames 30 --expect-moved --json",
+        "tn game qa --project . --run-proof --json",
+        "tn game release --project . --json"
+      ],
+      "knownBlockers": [
+        "Starter player and world surfaces are intentionally minimal until a generated game goal selects art direction."
+      ]
+    },
     "proofCommands": [
       "tn authoring validate --project . --json",
       "tn build --project . --json",

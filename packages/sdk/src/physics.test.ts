@@ -48,6 +48,8 @@ test("physics should create primitive solver material and body metadata", () => 
     {
       angularVelocity: [0, 0.5, 0],
       damping: 0.1,
+      enabledRotations: undefined,
+      enabledTranslations: undefined,
       gravityScale: 0.5,
       inverseMass: 0.5,
       kind: "dynamic",
@@ -60,6 +62,8 @@ test("physics should create primitive solver material and body metadata", () => 
   assert.deepEqual(rigidBody("static", { inverseMass: 0 }), {
     angularVelocity: undefined,
     damping: undefined,
+    enabledRotations: undefined,
+    enabledTranslations: undefined,
     gravityScale: undefined,
     inverseMass: 0,
     kind: "static",

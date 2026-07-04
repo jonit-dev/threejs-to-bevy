@@ -73,6 +73,34 @@ test("requires visual-quality proof for generated-game aggregate projects", asyn
   }
 });
 
+test("fails when a generated game lacks agent inventory source owners", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-generated-game-agent-inventory-gate-"));
+  try {
+    await mkdir(join(root, "content/scenes"), { recursive: true });
+    await writeFile(join(root, "content/scenes/arena.scene.json"), `${JSON.stringify({ schema: "threenative.scene", id: "arena" }, null, 2)}\n`);
+    const reportPath = join(root, "artifacts/game-production/verification-report.json");
+
+    const result = await runGameProductionGate({
+      projects: [{ projectPath: ".", requireAgentInventory: true }],
+      reportPath,
+      root,
+    });
+    const report = JSON.parse(await readFile(reportPath, "utf8")) as {
+      diagnostics: Array<{ code: string; path?: string }>;
+      steps: Array<{ stdout: string }>;
+      summary: { requiredProofCounts: { agentInventory: number } };
+    };
+
+    assert.equal(result.ok, false);
+    assert.equal(report.diagnostics.some((diagnostic) => diagnostic.code === "TN_VERIFY_GAME_AGENT_INVENTORY_SOURCE_OWNER_MISSING" && diagnostic.path === "content/systems"), true);
+    assert.equal(report.diagnostics.some((diagnostic) => diagnostic.code === "TN_VERIFY_GAME_AGENT_INVENTORY_SCRIPT_OWNER_MISSING"), true);
+    assert.equal(report.summary.requiredProofCounts.agentInventory, 1);
+    assert.equal(report.steps.some((step) => JSON.parse(step.stdout).requireAgentInventory === true), true);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
 test("rejects generated-game aggregate inventory drift", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-generated-game-inventory-gate-"));
   try {
@@ -98,6 +126,30 @@ test("rejects generated-game aggregate inventory drift", async () => {
     assert.equal(report.ok, false);
     assert.equal(report.summary.mode, "generated-games");
     assert.equal(report.diagnostics.some((diagnostic) => diagnostic.code === "TN_VERIFY_GENERATED_GAME_INVENTORY_DRIFT" && diagnostic.message.includes("examples/new-random-game")), true);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("rejects generated-game README references to missing package scripts", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-generated-game-readme-script-gate-"));
+  try {
+    await mkdir(join(root, "content/scenes"), { recursive: true });
+    await mkdir(join(root, "examples/readme-script-game"), { recursive: true });
+    await writeFile(join(root, "content/scenes/arena.scene.json"), `${JSON.stringify({ schema: "threenative.scene", id: "arena" }, null, 2)}\n`);
+    await writeFile(join(root, "examples/readme-script-game/package.json"), `${JSON.stringify({ scripts: { build: "tn build" } }, null, 2)}\n`);
+    await writeFile(join(root, "examples/readme-script-game/README.md"), "Useful commands:\n\n```bash\npnpm run game:qa\n```\n");
+    const reportPath = join(root, "artifacts/game-production/verification-report.json");
+
+    const result = await runGameProductionGate({
+      generatedGames: true,
+      projects: [{ projectPath: "." }, { projectPath: "examples/readme-script-game" }],
+      reportPath,
+      root,
+    });
+
+    assert.equal(result.ok, false);
+    assert.equal(result.diagnostics.some((diagnostic) => diagnostic.code === "TN_VERIFY_GENERATED_GAME_README_SCRIPT_MISSING" && diagnostic.message.includes("game:qa")), true);
   } finally {
     await rm(root, { force: true, recursive: true });
   }

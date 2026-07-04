@@ -21,6 +21,106 @@
     "objective": "Collect 12 coins and run 260 meters while staying alive.",
     "progression": "Runner speed increases with distance, hazards recycle faster, and score rises from both distance and coins.",
     "failRetry": "Colliding with a train, failing to jump a red barrier, or failing to duck a low gate enters failed state; R or Enter resets the route.",
+    "feedbackMoments": [
+      "Runner lane changes are visible during input-driven playtest proof.",
+      "Coins update HUD progress when collected.",
+      "Jump barriers, duck gates, and trains produce crash/retry state on failed avoidance.",
+      "Distance and score HUD text advance while the runner survives."
+    ],
+    "assetPlan": {
+      "playerHero": "Local custom GLB runner-thief model with runner silhouette and metro heist styling.",
+      "obstacleEnemy": "Local custom GLB metro train, jump-barrier, and duck-gate hazards.",
+      "rewardInteractable": "Local custom GLB coin collectibles placed across the three-lane route.",
+      "worldEnvironment": "Local custom GLB metro rails, platforms, signs, skyline, speed lines, and set dressing.",
+      "uiHud": "Retained HUD source for score, distance, coins, retry, objective, and mobile/control states.",
+      "audioFeedback": "Goal-ping audio asset retained as feedback source; current gameplay proof is visual/HUD focused."
+    },
+    "scriptModules": [
+      {
+        "module": "src/scripts/player.ts",
+        "export": "metroSurferHeistSystem",
+        "ownsState": ["RunnerPlayer", "RunnerHazard", "Coin", "Transform", "GameState"],
+        "referencedBy": ["content/scenes/arena.scene.json", "content/systems/arena.systems.json"]
+      }
+    ],
+    "agent": {
+      "sourceShape": {
+        "assets": ["content/assets/arena.assets.json"],
+        "input": ["content/input/arena.input.json"],
+        "materials": ["content/materials/arena.materials.json"],
+        "meshes": ["content/meshes/arena.meshes.json"],
+        "scene": ["content/scenes/arena.scene.json"],
+        "systems": ["content/systems/arena.systems.json"],
+        "ui": ["content/ui/hud.ui.json"],
+        "scripts": ["src/scripts/player.ts"]
+      },
+      "highValueSurfaces": [
+        {
+          "id": "playerHero",
+          "sourcePath": "content/assets/arena.assets.json",
+          "provenanceStatus": "local-file",
+          "summary": "Local custom GLB runner-thief model with runner silhouette and metro heist styling."
+        },
+        {
+          "id": "obstacleEnemy",
+          "sourcePath": "content/assets/arena.assets.json",
+          "provenanceStatus": "local-file",
+          "summary": "Local custom GLB metro train, jump-barrier, and duck-gate hazards."
+        },
+        {
+          "id": "rewardInteractable",
+          "sourcePath": "content/assets/arena.assets.json",
+          "provenanceStatus": "local-file",
+          "summary": "Local custom GLB coin collectibles placed across the three-lane route."
+        },
+        {
+          "id": "worldEnvironment",
+          "sourcePath": "content/scenes/arena.scene.json",
+          "provenanceStatus": "local-kit",
+          "summary": "Local custom GLB metro rails, platforms, signs, skyline, speed lines, and set dressing."
+        },
+        {
+          "id": "uiHud",
+          "sourcePath": "content/ui/hud.ui.json",
+          "provenanceStatus": "source",
+          "summary": "Retained HUD source for score, distance, coins, retry, objective, and mobile/control states."
+        },
+        {
+          "id": "audioFeedback",
+          "sourcePath": "content/assets/arena.assets.json",
+          "provenanceStatus": "local-file",
+          "summary": "Goal-ping audio asset retained as feedback source; current gameplay proof is visual/HUD focused."
+        }
+      ],
+      "scriptModules": [
+        {
+          "module": "src/scripts/player.ts",
+          "export": "metroSurferHeistSystem",
+          "ownsState": ["RunnerPlayer", "RunnerHazard", "Coin", "Transform", "GameState"],
+          "referencedBy": ["content/scenes/arena.scene.json", "content/systems/arena.systems.json"]
+        }
+      ],
+      "uiStates": [
+        { "id": "gameplay", "sourcePath": "content/ui/hud.ui.json", "expectation": "Score, distance, coins, and status HUD update during play." },
+        { "id": "fail-retry", "sourcePath": "content/ui/hud.ui.json", "expectation": "Crash state prompts retry input." },
+        { "id": "win-milestone", "sourcePath": "content/ui/hud.ui.json", "expectation": "Objective completion state is represented in retained UI source." },
+        { "id": "touch-controls", "sourcePath": "content/ui/hud.ui.json", "expectation": "Mobile-control state is represented in retained UI source." }
+      ],
+      "assetSourcing": [
+        "tn asset source search --game-category runner --format glb --direct-only --json -> TN_ASSET_SOURCE_CATALOG_FAILED because packages/cli/data/asset-sources.sqlite could not be opened.",
+        "tn asset source search --game-category urban --format glb --direct-only --json -> TN_ASSET_SOURCE_CATALOG_FAILED because packages/cli/data/asset-sources.sqlite could not be opened.",
+        "Fallback: cohesive local custom GLB metro runner kit generated with @gltf-transform."
+      ],
+      "proofCommands": [
+        "tn authoring validate --project . --json",
+        "tn build --project . --json",
+        "tn playtest --project . --entity runner --press KeyD --frames 30 --expect-moved --json",
+        "tn verify --project . --frames 3 --expect-motion --json",
+        "tn game qa --project . --run-proof --json",
+        "tn game release --project . --json"
+      ],
+      "knownBlockers": []
+    },
     "proofCommands": [
       "tn authoring validate --project . --json",
       "tn build --project . --json",

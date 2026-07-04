@@ -131,13 +131,24 @@ test("should create structured-source starter template with editable content doc
     const config = JSON.parse(await readFile(join(payload.path, "threenative.config.json"), "utf8")) as {
       entry: string;
       outDir: string;
-      production?: { proofCommands?: string[] };
+      production?: {
+        agent?: {
+          highValueSurfaces?: Array<{ id?: string; provenanceStatus?: string; sourcePath?: string }>;
+          scriptModules?: Array<{ export?: string; module?: string; referencedBy?: string[] }>;
+          sourceShape?: Record<string, string[]>;
+        };
+        proofCommands?: string[];
+      };
       template: string;
     };
     assert.equal(config.entry, "content/scenes/arena.scene.json");
     assert.equal(config.outDir, "dist/structured-source-starter.bundle");
     assert.equal(config.template, "structured-source-starter");
     assert.equal(config.production?.proofCommands?.some((command) => command.includes("tn game qa") && command.includes("--run-proof")), true);
+    assert.equal(config.production?.agent?.sourceShape?.scene?.includes("content/scenes/arena.scene.json"), true);
+    assert.equal(config.production?.agent?.sourceShape?.scripts?.includes("src/scripts/player.ts"), true);
+    assert.equal(config.production?.agent?.highValueSurfaces?.some((surface) => surface.id === "playerHero" && surface.sourcePath === "content/scenes/arena.scene.json"), true);
+    assert.equal(config.production?.agent?.scriptModules?.some((script) => script.module === "src/scripts/player.ts" && script.export === "updatePlayer"), true);
 
     const sceneDoc = await readFile(join(payload.path, "content/scenes/arena.scene.json"), "utf8");
     const uiDocPath = join(payload.path, "content/ui/hud.ui.json");
@@ -193,6 +204,11 @@ test("should create racing kit rally starter with reusable race scene structure"
       entry: string;
       outDir: string;
       production?: {
+        agent?: {
+          highValueSurfaces?: Array<{ id?: string; provenanceStatus?: string; sourcePath?: string }>;
+          scriptModules?: Array<{ export?: string; module?: string; referencedBy?: string[] }>;
+          sourceShape?: Record<string, string[]>;
+        };
         controls?: string[];
         objective?: string;
         playableLoop?: string;
@@ -208,6 +224,9 @@ test("should create racing kit rally starter with reusable race scene structure"
     assert.match(config.production?.objective ?? "", /checkpoint/i);
     assert.equal(config.production?.proofCommands?.some((command) => command.includes("tn playtest") && command.includes("--expect-moved")), true);
     assert.equal(config.production?.proofCommands?.some((command) => command.includes("tn game qa") && command.includes("--run-proof")), true);
+    assert.equal(config.production?.agent?.sourceShape?.scene?.includes("content/scenes/rally.scene.json"), true);
+    assert.equal(config.production?.agent?.highValueSurfaces?.some((surface) => surface.id === "playerHero" && surface.provenanceStatus === "local-file"), true);
+    assert.equal(config.production?.agent?.scriptModules?.some((script) => script.module === "src/scripts/racing.ts" && script.export === "updateRally"), true);
 
     const sceneDoc = await readFile(join(payload.path, "content/scenes/rally.scene.json"), "utf8");
     const systemDoc = await readFile(join(payload.path, "content/systems/rally.systems.json"), "utf8");

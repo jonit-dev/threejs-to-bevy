@@ -70,6 +70,88 @@ test("should classify physics labs without requiring content source", async () =
   }
 });
 
+test("should merge normalized production metadata into inventory", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-agent-inventory-normalized-"));
+  try {
+    await writeJson(root, "package.json", { name: "normalized-generated-game" });
+    await writeJson(root, "threenative.config.json", {
+      entry: "content/scenes/arena.scene.json",
+      production: {
+        agent: {
+          assetSourcing: ["catalog search blocked; local authored kit retained"],
+          highValueSurfaces: [
+            { id: "playerHero", provenanceStatus: "local-file", sourcePath: "content/assets/arena.assets.json", summary: "Agent hero surface" },
+            { id: "obstacleEnemy", provenanceStatus: "authored", sourcePath: "content/scenes/arena.scene.json", summary: "Agent obstacle surface" },
+            { id: "rewardInteractable", provenanceStatus: "local-file", sourcePath: "content/assets/arena.assets.json", summary: "Agent reward surface" },
+            { id: "worldEnvironment", provenanceStatus: "authored", sourcePath: "content/scenes/arena.scene.json", summary: "Agent world surface" },
+            { id: "uiHud", provenanceStatus: "source", sourcePath: "content/ui/hud.ui.json", summary: "Agent HUD surface" },
+            { id: "audioFeedback", provenanceStatus: "blocked", sourcePath: "content/assets/arena.assets.json", summary: "Agent audio surface" },
+          ],
+          knownBlockers: ["audio runtime trigger not wired"],
+          proofCommands: ["tn game qa --project . --run-proof --json"],
+          scriptModules: [{ export: "agentUpdate", module: "src/scripts/agent.ts", ownsState: ["GameState"], referencedBy: ["content/systems/arena.systems.json"] }],
+          sourceShape: {
+            scene: ["content/scenes/arena.scene.json"],
+            systems: ["content/systems/arena.systems.json"],
+          },
+          uiStates: [{ id: "gameplay", expectation: "HUD updates score", sourcePath: "content/ui/hud.ui.json" }],
+        },
+      },
+      schema: "threenative.project",
+    });
+    await writeGameContent(root);
+
+    const inventory = await createGameAgentInventory({ projectPath: root });
+
+    assert.equal(inventory.production.agent?.knownBlockers.includes("audio runtime trigger not wired"), true);
+    assert.equal(inventory.production.agent?.sourceShape.scene?.includes("content/scenes/arena.scene.json"), true);
+    assert.equal(inventory.production.agent?.uiStates.some((state) => state.id === "gameplay" && state.sourcePath === "content/ui/hud.ui.json"), true);
+    assert.equal(inventory.proofCommands.includes("tn game qa --project . --run-proof --json"), true);
+    assert.equal(inventory.scripts.some((script) => script.module === "src/scripts/agent.ts" && script.exportName === "agentUpdate"), true);
+    assert.equal(inventory.highValueSurfaces.find((surface) => surface.id === "playerHero")?.sourcePath, "content/assets/arena.assets.json");
+    assert.equal(inventory.highValueSurfaces.find((surface) => surface.id === "playerHero")?.provenanceStatus, "local-file");
+    assert.equal(inventory.diagnostics.some((diagnostic) => diagnostic.code === "TN_GAME_AGENT_HIGH_VALUE_SURFACE_MISSING"), false);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should merge persisted game plan surface inventory into generated-game inventory", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-agent-inventory-plan-"));
+  try {
+    await writeJson(root, "package.json", { name: "plan-backed-generated-game" });
+    await writeJson(root, "threenative.config.json", {
+      entry: "content/scenes/arena.scene.json",
+      production: {
+        proofCommands: ["tn game qa --project . --run-proof --json"],
+      },
+      schema: "threenative.project",
+    });
+    await writeGameContent(root);
+    await writeJson(root, "artifacts/game-production/plan.json", {
+      assetPlan: [
+        { fallback: "Authored hero kit.", sourcePreference: "catalog-first", surface: "player-hero" },
+        { fallback: "Authored hazards.", sourcePreference: "catalog-first", surface: "obstacle-enemy" },
+        { fallback: "Authored rewards.", sourcePreference: "catalog-first", surface: "reward-interactable" },
+        { fallback: "Authored world kit.", sourcePreference: "catalog-first", surface: "world-environment" },
+        { fallback: "Retained HUD source.", sourcePreference: "source", surface: "ui-hud" },
+        { fallback: "Local audio cue.", sourcePreference: "local-file", surface: "audio-feedback" },
+      ],
+      proofCommands: ["tn authoring validate --project . --json", "tn build --project . --json"],
+      schema: "threenative.game-plan",
+    });
+
+    const inventory = await createGameAgentInventory({ projectPath: root });
+
+    assert.equal(inventory.highValueSurfaces.every((surface) => surface.status === "declared"), true);
+    assert.equal(inventory.highValueSurfaces.find((surface) => surface.id === "playerHero")?.summary, "Authored hero kit.");
+    assert.equal(inventory.proofCommands.includes("tn authoring validate --project . --json"), true);
+    assert.equal(inventory.diagnostics.some((diagnostic) => diagnostic.code === "TN_GAME_AGENT_HIGH_VALUE_SURFACE_MISSING"), false);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
 test("should classify racing kit projects separately from generated games", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-agent-inventory-racing-kit-"));
   try {
@@ -117,7 +199,7 @@ test("should report incomplete generated-game source owners as warnings", async 
     assert.equal(inventory.diagnostics.some((diagnostic) => diagnostic.code === "TN_GAME_AGENT_SOURCE_FAMILY_MISSING" && diagnostic.message.includes("systems")), true);
     assert.equal(inventory.diagnostics.some((diagnostic) => diagnostic.code === "TN_GAME_AGENT_SCRIPT_OWNER_MISSING"), true);
     assert.equal(inventory.diagnostics.some((diagnostic) => diagnostic.code === "TN_GAME_AGENT_HIGH_VALUE_SURFACE_MISSING"), true);
-    assert.equal(inventory.recommendedOperations.some((operation) => operation.includes("production.assetPlan")), true);
+    assert.equal(inventory.recommendedOperations.some((operation) => operation.includes("production.agent.highValueSurfaces")), true);
   } finally {
     await rm(root, { force: true, recursive: true });
   }

@@ -133,6 +133,7 @@ export type {
   IGameAgentInputSummary,
   IGameAgentInventory,
   IGameAgentMaterialSummary,
+  IGameAgentNormalizedMetadata,
   IGameAgentProductionSummary,
   IGameAgentSceneSummary,
   IGameAgentScriptReference,

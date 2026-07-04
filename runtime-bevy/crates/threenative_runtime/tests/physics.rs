@@ -90,12 +90,14 @@ fn physics_should_trace_dynamic_box_falling_onto_static_floor() {
 
     assert_eq!(observations.len(), 4);
     assert_eq!(observations[0].contact, None);
-    assert_eq!(observations[0].position, [0.0, 1.692586, 0.0]);
+    assert_eq!(observations[0].position, [0.0, 1.386875, 0.0]);
     assert_eq!(observations[0].velocity, [0.0, -2.4525, 0.0]);
-    assert_eq!(observations[1].contact, None);
+    assert_eq!(observations[1].contact.as_deref(), Some("floor"));
+    assert_eq!(observations[1].position, [0.0, 0.55, 0.0]);
+    assert_eq!(observations[1].velocity, [0.0, 0.0, 0.0]);
     assert_eq!(observations[2].contact.as_deref(), Some("floor"));
-    assert_eq!(observations[2].position, [0.000502, 0.544722, 0.000395]);
-    assert_eq!(observations[2].velocity, [-0.003061, 0.002566, -0.003559]);
+    assert_eq!(observations[2].position, [0.0, 0.55, 0.0]);
+    assert_eq!(observations[2].velocity, [0.0, 0.0, 0.0]);
     assert_eq!(observations[2].gravity_scale, 1.0);
     assert_eq!(observations[2].damping, 0.0);
     assert_eq!(observations[2].friction, 0.5);
@@ -118,8 +120,8 @@ fn physics_should_trace_dynamic_mesh_ccd_against_track_collider() {
         .expect("car observation should exist");
     assert_eq!(car.ccd, Some(true));
     assert_eq!(car.contact.as_deref(), Some("track"));
-    assert_eq!(car.position, [0.000347, 0.344163, -0.000416]);
-    assert_eq!(car.velocity, [0.008323, 0.111974, -0.015286]);
+    assert_eq!(car.position, [0.0, 0.35, 0.0]);
+    assert_eq!(car.velocity, [0.0, 0.0, 0.0]);
 
     let joints = trace_physics_joints(&bundle);
     assert_eq!(joints.len(), 1);

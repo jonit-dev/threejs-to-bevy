@@ -4,6 +4,7 @@ Workflow docs cover contributor, asset, and automation practices.
 
 - [Developer Workflow](developer-workflow.md)
 - [AI Workflows](ai-workflows.md)
+- [Agent Game Creation](agent-game-creation.md)
 - [Conventions](conventions.md)
 - [Compact Scene Source](compact-scene-source.md)
 - [Asset Pipeline](asset-pipeline.md)

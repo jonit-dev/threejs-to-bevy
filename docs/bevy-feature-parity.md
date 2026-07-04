@@ -118,27 +118,31 @@ implementation:
   now include `game:plan`, `game:improve`, `game:score`, proof-running
   `game:qa`, and `game:release` scripts plus production metadata for loop,
   controls, objective, retry path, and proof commands.
-  `pnpm verify:template-production` gates those maintained starters directly
-  and is included in the release focused-gate profile. This improves the
-  starting authoring loop; it does not add a Bevy runtime capability.
+  `pnpm verify:template-production` gates those maintained starters directly,
+  including normalized `production.agent` source-owner metadata, and is
+  included in the release focused-gate profile. This improves the starting
+  authoring loop; it does not add a Bevy runtime capability.
 - `pnpm verify:generated-games` aggregates generated-game release proof for
   `asteroid-mail-runner`, `clockwork-garden-heist`, `copper-rail-switcher`,
   `crystal-cavern`, `firefly-grove-keeper`, `glassworks-prism-sorter`,
   `harbor-lantern-ferry`, `lantern-orchard`, `magnet-yard-sorter`,
-  `moon-canyon-courier`, `neon-sushi-rush`, `paper-plane-postmaster`,
+  `metro-surfer-heist`, `moon-canyon-courier`, `neon-sushi-rush`, `paper-plane-postmaster`,
   `river-rescue`, `rooftop-wind-courier`, `sky-lighthouse-relay`,
   `storm-buoy-rescue`, `sunken-library-salvage`, `tidepool-crab-courier`,
   `toy-train-yard-switcher`, and `windup-workshop-sorter`, requiring zero
-  release blockers/risks,
+  release blockers/risks and a persisted
   `artifacts/game-production/plan.json` with schema
   `threenative.game-plan`, `mutate:false`, complete design/source/script/
   asset/polish/proof sections, source-shape guidance for scene/input/systems/
   UI/materials/assets documents, proof commands for authoring validate, build,
   input-driven playtest, screenshot, game score, QA `--run-proof`, and release,
   acceptance criteria for the objective/input loop, asset/provenance,
-  script/source wiring, authored visual baseline, and proof loop, and
-  first-step direct GLB catalog search
-  guidance, a durable gameplay system source declaration under
+  script/source wiring, authored visual baseline, and proof loop, and first-step
+  direct GLB catalog search guidance,
+  with opt-in game-agent inventory diagnostics available for stricter migration
+  batches, and README/package script drift checks. This remains generated-game
+  workflow evidence, not a Bevy runtime parity claim. The gate also requires a
+  durable gameplay system source declaration under
   `content/systems` or `content/scenes` that points at an existing
   `src/scripts/**/*.ts` named export, declares `GameState` writes, and records
   component/resource access, retained `content/ui/*.ui.json` HUD source with

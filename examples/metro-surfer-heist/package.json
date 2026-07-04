@@ -7,9 +7,11 @@
     "dev:web": "tn dev --target web",
     "playtest": "tn playtest --json",
     "game:plan": "tn game plan --goal \"three lane metro endless runner with coins, trains, jump barriers, duck gates, objectives, and retry\" --project . --json",
+    "game:improve": "tn game improve --apply-plan artifacts/game-production/plan.json --project . --json",
     "game:score": "tn game score --project . --json",
-    "game:qa": "tn game qa --project . --run-proof --json",
+    "game:qa": "tn game qa --project . --run-proof --entity runner --press KeyD --expect-axis x --json",
     "game:release": "tn game release --project . --json",
+    "recipe:controller": "tn game plan --goal \"three lane metro runner controller\" --project . --json",
     "validate": "tn validate",
     "validate:authoring": "tn authoring validate --json",
     "verify": "tn verify --frames 3 --expect-motion --json"

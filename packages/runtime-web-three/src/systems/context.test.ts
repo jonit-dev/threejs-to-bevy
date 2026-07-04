@@ -70,6 +70,7 @@ test("should expose state and transform helper facades through existing effects"
       value: {
         position: [1, 2, 3],
         rotation: [0, 0.707107, 0, 0.707107],
+        scale: [1, 1, 1],
       },
     },
   ]);

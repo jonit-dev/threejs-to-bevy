@@ -134,6 +134,7 @@ async function templateDiagnosticsFor(templateName: string, templatePath: string
 
   const config = await readJson(configPath);
   const production = isRecord(config?.production) ? config.production : undefined;
+  const agent = isRecord(production?.agent) ? production.agent : undefined;
   const proofCommands = hasStringArray(production?.proofCommands) ? production.proofCommands : [];
   const missingProofCommands = REQUIRED_PROOF_COMMANDS.filter((proof) => !proofCommands.some(proof.matches)).map((proof) => proof.id);
   if (!isRecord(production)
@@ -149,6 +150,21 @@ async function templateDiagnosticsFor(templateName: string, templatePath: string
       path: configPath,
       severity: "error",
       suggestedFix: "Add a production block with playableLoop, controls, objective, failRetry, and authoring/build/playtest/screenshot/score/QA/release proofCommands.",
+    });
+  }
+  if (!isRecord(agent)
+    || !isRecord(agent.sourceShape)
+    || !hasNonEmptyArray(agent.highValueSurfaces)
+    || !hasNonEmptyArray(agent.scriptModules)
+    || !hasNonEmptyArray(agent.uiStates)
+    || !hasStringArray(agent.proofCommands)
+  ) {
+    diagnostics.push({
+      code: "TN_TEMPLATE_PRODUCTION_AGENT_METADATA_INCOMPLETE",
+      message: `${templateName}: threenative.config.json production.agent must define sourceShape, highValueSurfaces, scriptModules, uiStates, and proofCommands.`,
+      path: configPath,
+      severity: "error",
+      suggestedFix: "Add normalized production.agent metadata so tn game inspect can identify source owners, script owners, UI states, high-value surfaces, and proof commands.",
     });
   }
 
@@ -196,6 +212,10 @@ function hasNonEmptyString(value: unknown): value is string {
 
 function hasStringArray(value: unknown): value is string[] {
   return Array.isArray(value) && value.length > 0 && value.every(hasNonEmptyString);
+}
+
+function hasNonEmptyArray(value: unknown): value is unknown[] {
+  return Array.isArray(value) && value.length > 0;
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {

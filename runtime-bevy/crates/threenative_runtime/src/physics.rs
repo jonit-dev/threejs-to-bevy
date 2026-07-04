@@ -104,7 +104,7 @@ pub fn trace_rigid_body_primitives(
         .collect::<Vec<_>>();
     let mut observations = Vec::new();
     for step in 1..=steps {
-        let contacts = step_rapier_bodies(&mut entities, fixed_delta, [0.0, -9.81, 0.0]);
+        let contacts = step_primitive_bodies(&mut entities, fixed_delta, [0.0, -9.81, 0.0]);
         for entity in entities
             .iter()
             .filter(|entity| entity.body_kind.as_deref() == Some("dynamic"))
@@ -231,6 +231,181 @@ fn integrate_entities(entities: &mut [SimulatedEntity], fixed_delta: f32) {
     }
 }
 
+fn step_primitive_bodies(
+    entities: &mut [SimulatedEntity],
+    fixed_delta: f32,
+    gravity: [f32; 3],
+) -> BTreeMap<String, Vec<String>> {
+    let previous_centers = entities
+        .iter()
+        .map(|entity| (entity.id.clone(), entity.center))
+        .collect::<BTreeMap<_, _>>();
+    for entity in entities.iter_mut() {
+        integrate_entity(entity, fixed_delta, gravity);
+    }
+
+    let mut static_or_kinematic = entities
+        .iter()
+        .filter(|entity| {
+            matches!(
+                entity.body_kind.as_deref(),
+                Some("static") | Some("kinematic")
+            )
+        })
+        .cloned()
+        .collect::<Vec<_>>();
+    static_or_kinematic.sort_by(compare_entity_bottom_then_id);
+
+    let mut dynamic_indices = entities
+        .iter()
+        .enumerate()
+        .filter(|(_, entity)| entity.body_kind.as_deref() == Some("dynamic"))
+        .map(|(index, _)| index)
+        .collect::<Vec<_>>();
+    dynamic_indices
+        .sort_by(|left, right| compare_entity_bottom_then_id(&entities[*left], &entities[*right]));
+
+    let mut contacts: BTreeMap<String, Vec<String>> = BTreeMap::new();
+    let mut settled_dynamics = Vec::new();
+    for index in dynamic_indices {
+        let previous_center = previous_centers.get(&entities[index].id).copied();
+        let mut blockers = static_or_kinematic.clone();
+        blockers.extend(settled_dynamics.clone());
+        blockers.sort_by(|left, right| left.id.cmp(&right.id));
+        for blocker in blockers {
+            if blocker.id == entities[index].id {
+                continue;
+            }
+            if resolve_vertical_contact(&mut entities[index], &blocker, previous_center) {
+                contacts
+                    .entry(entities[index].id.clone())
+                    .or_default()
+                    .push(blocker.id.clone());
+            }
+        }
+        if let Some(values) = contacts.get_mut(&entities[index].id) {
+            values.sort();
+        }
+        settled_dynamics.push(entities[index].clone());
+    }
+
+    contacts
+}
+
+fn integrate_entity(entity: &mut SimulatedEntity, fixed_delta: f32, gravity: [f32; 3]) {
+    let Some(body_kind) = entity.body_kind.as_deref() else {
+        return;
+    };
+    if body_kind != "dynamic" && body_kind != "kinematic" {
+        return;
+    }
+    let source_velocity = entity.velocity.unwrap_or([0.0, 0.0, 0.0]);
+    let damping_factor = (1.0 - entity.damping * fixed_delta).max(0.0);
+    let gravity_scale = if body_kind == "dynamic" {
+        entity.gravity_scale
+    } else {
+        0.0
+    };
+    let velocity = [
+        (source_velocity[0] + gravity[0] * gravity_scale * fixed_delta) * damping_factor,
+        (source_velocity[1] + gravity[1] * gravity_scale * fixed_delta) * damping_factor,
+        (source_velocity[2] + gravity[2] * gravity_scale * fixed_delta) * damping_factor,
+    ];
+    entity.velocity = Some(velocity);
+    entity.center = [
+        entity.center[0] + velocity[0] * fixed_delta,
+        entity.center[1] + velocity[1] * fixed_delta,
+        entity.center[2] + velocity[2] * fixed_delta,
+    ];
+}
+
+fn resolve_vertical_contact(
+    entity: &mut SimulatedEntity,
+    floor: &SimulatedEntity,
+    previous_center: Option<[f32; 3]>,
+) -> bool {
+    let bounds = Bounds {
+        center: [
+            entity.center[0] + entity.collider_center[0],
+            entity.center[1] + entity.collider_center[1],
+            entity.center[2] + entity.collider_center[2],
+        ],
+        half_extents: entity.half_extents,
+        id: &entity.id,
+        layer: entity.layer.as_deref(),
+        mask: &entity.mask,
+        trigger: entity.trigger,
+    };
+    let floor_bounds = simulated_entity_bounds(floor);
+    let previous_bounds_center = previous_center.map(|center| {
+        [
+            center[0] + entity.collider_center[0],
+            center[1] + entity.collider_center[1],
+            center[2] + entity.collider_center[2],
+        ]
+    });
+    if !overlaps(&bounds, &floor_bounds)
+        && !swept_vertical_overlap(entity, &bounds, &floor_bounds, previous_bounds_center)
+    {
+        return false;
+    }
+
+    let floor_top = floor_bounds.center[1] + floor_bounds.half_extents[1];
+    let resolved_y = floor_top + bounds.half_extents[1];
+    entity.center[1] = round(resolved_y);
+    let restitution = entity.restitution.max(floor.restitution);
+    let friction = (entity.friction + floor.friction) / 2.0;
+    let velocity = entity.velocity.unwrap_or([0.0, 0.0, 0.0]);
+    let next_y = if velocity[1] < 0.0 {
+        -velocity[1] * restitution
+    } else {
+        velocity[1]
+    };
+    let friction_factor = (1.0 - friction).max(0.0);
+    entity.velocity = Some([
+        velocity[0] * friction_factor,
+        if next_y.abs() < 0.000001 { 0.0 } else { next_y },
+        velocity[2] * friction_factor,
+    ]);
+    true
+}
+
+fn swept_vertical_overlap(
+    entity: &SimulatedEntity,
+    bounds: &Bounds<'_>,
+    floor_bounds: &Bounds<'_>,
+    previous_center: Option<[f32; 3]>,
+) -> bool {
+    if !entity.ccd {
+        return false;
+    }
+    let Some(previous_center) = previous_center else {
+        return false;
+    };
+    let previous_bottom = previous_center[1] - bounds.half_extents[1];
+    let current_bottom = bounds.center[1] - bounds.half_extents[1];
+    let floor_top = floor_bounds.center[1] + floor_bounds.half_extents[1];
+    let x_overlaps = (bounds.center[0] - floor_bounds.center[0]).abs()
+        <= bounds.half_extents[0] + floor_bounds.half_extents[0];
+    let z_overlaps = (bounds.center[2] - floor_bounds.center[2]).abs()
+        <= bounds.half_extents[2] + floor_bounds.half_extents[2];
+    x_overlaps && z_overlaps && previous_bottom >= floor_top && current_bottom <= floor_top
+}
+
+fn compare_entity_bottom_then_id(
+    left: &SimulatedEntity,
+    right: &SimulatedEntity,
+) -> std::cmp::Ordering {
+    entity_bottom(left)
+        .partial_cmp(&entity_bottom(right))
+        .unwrap_or(std::cmp::Ordering::Equal)
+        .then(left.id.cmp(&right.id))
+}
+
+fn entity_bottom(entity: &SimulatedEntity) -> f32 {
+    entity.center[1] - entity.half_extents[1]
+}
+
 #[derive(Clone)]
 struct SimulatedEntity {
     body_kind: Option<String>,
@@ -280,7 +455,11 @@ fn step_rapier_bodies(
         }
         .translation(vector![entity.center[0], entity.center[1], entity.center[2]].into())
         .linvel(vector![velocity[0], velocity[1], velocity[2]].into())
-        .gravity_scale(if body_kind == "dynamic" { entity.gravity_scale } else { 0.0 })
+        .gravity_scale(if body_kind == "dynamic" {
+            entity.gravity_scale
+        } else {
+            0.0
+        })
         .linear_damping(entity.damping)
         .angular_damping(entity.damping)
         .ccd_enabled(entity.ccd);
@@ -300,11 +479,14 @@ fn step_rapier_bodies(
         }
         let groups = rapier_collision_groups(entity, &layer_bits);
         let collider = rapier_collider(entity)
-            .translation(vector![
-                entity.collider_center[0],
-                entity.collider_center[1],
-                entity.collider_center[2]
-            ].into())
+            .translation(
+                vector![
+                    entity.collider_center[0],
+                    entity.collider_center[1],
+                    entity.collider_center[2]
+                ]
+                .into(),
+            )
             .friction(entity.friction)
             .restitution(entity.restitution)
             .sensor(entity.trigger)

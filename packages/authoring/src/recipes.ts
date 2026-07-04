@@ -6,7 +6,18 @@ import {
 } from "./operationRegistry.js";
 import { type IAuthoringOperationResult } from "./operations.js";
 
-export type AuthoringRecipeId = "collectible" | "health-bar" | "kinematic-character" | "third-person-controller" | "trigger-zone";
+export type AuthoringRecipeId =
+  | "collectible"
+  | "dressed-environment-kit"
+  | "health-bar"
+  | "kinematic-character"
+  | "lane-runner"
+  | "obstacle-avoider"
+  | "physics-target"
+  | "third-person-controller"
+  | "top-down-collector"
+  | "trigger-zone"
+  | "vehicle-checkpoint";
 
 export interface IAuthoringRecipeOperation {
   args: Record<string, unknown>;
@@ -21,10 +32,13 @@ export interface IAuthoringRecipePlanOptions {
 
 export interface IAuthoringRecipePlanResult {
   diagnostics: IAuthoringDiagnostic[];
+  generatedIds: Record<string, string[]>;
   ok: boolean;
   operations: IAuthoringRecipeOperation[];
+  proofCommands: string[];
   projectPath?: string;
   recipeId: string;
+  sourceOwners: Record<string, string[]>;
 }
 
 export interface IApplyAuthoringRecipeOptions extends IAuthoringRecipePlanOptions {
@@ -43,7 +57,19 @@ export interface IAuthoringRecipeApplyResult extends IAuthoringRecipePlanResult 
   stoppedAt?: number;
 }
 
-const authoringRecipeIds: AuthoringRecipeId[] = ["third-person-controller", "collectible", "trigger-zone", "kinematic-character", "health-bar"];
+const authoringRecipeIds: AuthoringRecipeId[] = [
+  "third-person-controller",
+  "collectible",
+  "trigger-zone",
+  "kinematic-character",
+  "health-bar",
+  "top-down-collector",
+  "lane-runner",
+  "vehicle-checkpoint",
+  "obstacle-avoider",
+  "physics-target",
+  "dressed-environment-kit",
+];
 
 export function listAuthoringRecipeIds(): AuthoringRecipeId[] {
   return [...authoringRecipeIds];
@@ -62,23 +88,30 @@ export function planAuthoringRecipe(options: IAuthoringRecipePlanOptions): IAuth
           value: options.recipeId,
         }),
       ],
+      generatedIds: {},
       ok: false,
       operations: [],
+      proofCommands: [],
       projectPath: options.projectPath,
       recipeId: options.recipeId,
+      sourceOwners: {},
     };
   }
 
   const diagnostics = requiredRecipeArgs(options.recipeId, options.args, recipe.required);
   const operations = diagnostics.length === 0 ? recipe.plan(options.args) : [];
   diagnostics.push(...operations.flatMap((operation, index) => operationDiagnostics(options.recipeId, operation, index)));
+  const metadata = diagnostics.length === 0 ? recipeMetadata(options.recipeId as AuthoringRecipeId, recipe, options.args, operations) : emptyRecipeMetadata();
 
   return {
     diagnostics,
+    generatedIds: metadata.generatedIds,
     ok: diagnostics.length === 0,
     operations,
+    proofCommands: metadata.proofCommands,
     projectPath: options.projectPath,
     recipeId: options.recipeId,
+    sourceOwners: metadata.sourceOwners,
   };
 }
 
@@ -142,8 +175,15 @@ export async function applyAuthoringRecipe(options: IApplyAuthoringRecipeOptions
 }
 
 interface IRecipePlanner {
+  metadata?(args: Record<string, unknown>, operations: readonly IAuthoringRecipeOperation[]): IRecipeMetadata;
   plan(args: Record<string, unknown>): IAuthoringRecipeOperation[];
   required: readonly string[];
+}
+
+interface IRecipeMetadata {
+  generatedIds: Record<string, string[]>;
+  proofCommands: string[];
+  sourceOwners: Record<string, string[]>;
 }
 
 const recipePlanners: Record<AuthoringRecipeId, IRecipePlanner> = {
@@ -225,7 +265,209 @@ const recipePlanners: Record<AuthoringRecipeId, IRecipePlanner> = {
       ];
     },
   },
+  "top-down-collector": {
+    required: ["sceneId", "playerId", "cameraId"],
+    plan: (args) => {
+      const sceneId = requiredStringValue(args, "sceneId");
+      const playerId = requiredStringValue(args, "playerId");
+      const cameraId = requiredStringValue(args, "cameraId");
+      const goalId = optionalStringValue(args, "goalId") ?? "coin.01";
+      const scoreResourceId = optionalStringValue(args, "scoreResourceId") ?? "GameState.scoreText";
+      const inputDocId = optionalStringValue(args, "inputDocId") ?? `${sceneId}-input`;
+      const systemId = optionalStringValue(args, "systemId") ?? "top-down-collector";
+      const modulePath = optionalStringValue(args, "modulePath") ?? "src/scripts/player.ts";
+      const exportName = optionalStringValue(args, "exportName") ?? "topDownCollectorSystem";
+      return [
+        operation("input.add_axis", { inputDocId, axisId: "MoveX", negativeKeys: ["KeyA", "ArrowLeft"], positiveKeys: ["KeyD", "ArrowRight"] }),
+        operation("input.add_axis", { inputDocId, axisId: "MoveZ", negativeKeys: ["KeyS", "ArrowDown"], positiveKeys: ["KeyW", "ArrowUp"] }),
+        operation("scene.add_prefab", { sceneId, prefabId: `${playerId}.prefab`, primitive: "capsule", color: optionalStringValue(args, "playerColor") ?? "#38bdf8" }),
+        operation("scene.add_entity", { sceneId, entityId: playerId, prefabId: `${playerId}.prefab` }),
+        operation("scene.set_transform", { sceneId, entityId: playerId, position: optionalVector3Value(args, "playerPosition") ?? [0, 0.8, 0] }),
+        operation("scene.set_rigid_body", { sceneId, entityId: playerId, kind: "kinematic" }),
+        operation("scene.set_collider", { sceneId, entityId: playerId, kind: "capsule", height: 1.6, radius: 0.35 }),
+        operation("scene.set_character_controller", { sceneId, entityId: playerId, grounding: "raycast", moveXAxis: "MoveX", moveZAxis: "MoveZ", speed: optionalNumberValue(args, "speed") ?? 5 }),
+        operation("scene.set_camera_component", { sceneId, entityId: cameraId, mode: "third-person-follow", targetId: playerId, fovY: 50 }),
+        operation("scene.add_prefab", { sceneId, prefabId: `${goalId}.prefab`, primitive: "sphere", color: optionalStringValue(args, "goalColor") ?? "#ffd166" }),
+        operation("scene.add_entity", { sceneId, entityId: goalId, prefabId: `${goalId}.prefab` }),
+        operation("scene.set_transform", { sceneId, entityId: goalId, position: optionalVector3Value(args, "goalPosition") ?? [2, 0.6, -2] }),
+        operation("scene.set_collider", { sceneId, entityId: goalId, kind: "sphere", radius: 0.45, trigger: true }),
+        operation("scene.add_resource", { sceneId, resourceId: scoreResourceId, path: "score.text", value: "Score 0" }),
+        operation("scene.add_ui_node", { sceneId, uiNodeId: "hud.score" }),
+        operation("scene.bind_ui", { sceneId, uiNodeId: "hud.score", resourcePath: scoreResourceId }),
+        operation("scene.attach_script", { sceneId, systemId, modulePath, exportName }),
+      ];
+    },
+  },
+  "lane-runner": {
+    required: ["sceneId", "playerId", "cameraId"],
+    plan: (args) => {
+      const sceneId = requiredStringValue(args, "sceneId");
+      const playerId = requiredStringValue(args, "playerId");
+      const cameraId = requiredStringValue(args, "cameraId");
+      const hazardId = optionalStringValue(args, "hazardId") ?? "hazard.barrier.01";
+      const inputDocId = optionalStringValue(args, "inputDocId") ?? `${sceneId}-input`;
+      const systemId = optionalStringValue(args, "systemId") ?? "lane-runner";
+      return [
+        operation("input.add_action", { inputDocId, actionId: "move-left", keys: ["KeyA", "ArrowLeft"] }),
+        operation("input.add_action", { inputDocId, actionId: "move-right", keys: ["KeyD", "ArrowRight"] }),
+        operation("input.add_action", { inputDocId, actionId: "jump", keys: ["KeyW", "ArrowUp", "Space"] }),
+        operation("scene.add_prefab", { sceneId, prefabId: `${playerId}.prefab`, primitive: "capsule", color: optionalStringValue(args, "playerColor") ?? "#f97316" }),
+        operation("scene.add_entity", { sceneId, entityId: playerId, prefabId: `${playerId}.prefab` }),
+        operation("scene.set_transform", { sceneId, entityId: playerId, position: optionalVector3Value(args, "playerPosition") ?? [0, 0.8, 2.5] }),
+        operation("scene.set_rigid_body", { sceneId, entityId: playerId, kind: "kinematic" }),
+        operation("scene.set_collider", { sceneId, entityId: playerId, kind: "capsule", height: 1.6, radius: 0.35 }),
+        operation("scene.set_camera_component", { sceneId, entityId: cameraId, mode: "third-person-follow", targetId: playerId, fovY: 55 }),
+        operation("scene.add_prefab", { sceneId, prefabId: `${hazardId}.prefab`, primitive: "box", color: optionalStringValue(args, "hazardColor") ?? "#ef4444" }),
+        operation("scene.add_entity", { sceneId, entityId: hazardId, prefabId: `${hazardId}.prefab` }),
+        operation("scene.set_transform", { sceneId, entityId: hazardId, position: optionalVector3Value(args, "hazardPosition") ?? [1.5, 0.45, -6], scale: [0.8, 0.7, 0.35] }),
+        operation("scene.set_collider", { sceneId, entityId: hazardId, kind: "box", size: [0.8, 0.7, 0.35], trigger: true }),
+        operation("scene.attach_script", { sceneId, systemId, modulePath: optionalStringValue(args, "modulePath") ?? "src/scripts/player.ts", exportName: optionalStringValue(args, "exportName") ?? "laneRunnerSystem" }),
+      ];
+    },
+  },
+  "vehicle-checkpoint": {
+    required: ["sceneId", "vehicleId", "cameraId"],
+    plan: (args) => {
+      const sceneId = requiredStringValue(args, "sceneId");
+      const vehicleId = requiredStringValue(args, "vehicleId");
+      const cameraId = requiredStringValue(args, "cameraId");
+      const checkpointId = optionalStringValue(args, "checkpointId") ?? "checkpoint.01";
+      const inputDocId = optionalStringValue(args, "inputDocId") ?? `${sceneId}-input`;
+      return [
+        operation("input.add_axis", { inputDocId, axisId: "Steer", negativeKeys: ["KeyA", "ArrowLeft"], positiveKeys: ["KeyD", "ArrowRight"] }),
+        operation("input.add_axis", { inputDocId, axisId: "Throttle", negativeKeys: ["KeyS", "ArrowDown"], positiveKeys: ["KeyW", "ArrowUp"] }),
+        operation("scene.add_prefab", { sceneId, prefabId: `${vehicleId}.prefab`, primitive: "box", color: optionalStringValue(args, "vehicleColor") ?? "#2563eb" }),
+        operation("scene.add_entity", { sceneId, entityId: vehicleId, prefabId: `${vehicleId}.prefab` }),
+        operation("scene.set_transform", { sceneId, entityId: vehicleId, position: optionalVector3Value(args, "vehiclePosition") ?? [0, 0.35, 2], scale: [1.4, 0.55, 2.2] }),
+        operation("scene.set_rigid_body", { sceneId, entityId: vehicleId, kind: "kinematic" }),
+        operation("scene.set_collider", { sceneId, entityId: vehicleId, kind: "box", size: [1.4, 0.55, 2.2] }),
+        operation("scene.set_camera_component", { sceneId, entityId: cameraId, mode: "third-person-follow", targetId: vehicleId, fovY: 60 }),
+        operation("scene.add_prefab", { sceneId, prefabId: `${checkpointId}.prefab`, primitive: "torus", color: optionalStringValue(args, "checkpointColor") ?? "#22c55e" }),
+        operation("scene.add_entity", { sceneId, entityId: checkpointId, prefabId: `${checkpointId}.prefab` }),
+        operation("scene.set_transform", { sceneId, entityId: checkpointId, position: optionalVector3Value(args, "checkpointPosition") ?? [0, 1.2, -8], scale: [2, 2, 0.2] }),
+        operation("scene.set_collider", { sceneId, entityId: checkpointId, kind: "box", size: [2.2, 2.2, 0.35], trigger: true }),
+        operation("scene.attach_script", { sceneId, systemId: optionalStringValue(args, "systemId") ?? "vehicle-checkpoint", modulePath: optionalStringValue(args, "modulePath") ?? "src/scripts/player.ts", exportName: optionalStringValue(args, "exportName") ?? "vehicleCheckpointSystem" }),
+      ];
+    },
+  },
+  "obstacle-avoider": {
+    required: ["sceneId", "playerId"],
+    plan: (args) => {
+      const sceneId = requiredStringValue(args, "sceneId");
+      const playerId = requiredStringValue(args, "playerId");
+      const obstacleId = optionalStringValue(args, "obstacleId") ?? "obstacle.01";
+      return [
+        operation("scene.add_entity", { sceneId, entityId: playerId, prefabId: optionalStringValue(args, "playerPrefabId") }),
+        operation("scene.set_rigid_body", { sceneId, entityId: playerId, kind: "kinematic" }),
+        operation("scene.set_collider", { sceneId, entityId: playerId, kind: "capsule", height: 1.6, radius: 0.35 }),
+        operation("scene.add_prefab", { sceneId, prefabId: `${obstacleId}.prefab`, primitive: "box", color: optionalStringValue(args, "obstacleColor") ?? "#dc2626" }),
+        operation("scene.add_entity", { sceneId, entityId: obstacleId, prefabId: `${obstacleId}.prefab` }),
+        operation("scene.set_transform", { sceneId, entityId: obstacleId, position: optionalVector3Value(args, "obstaclePosition") ?? [0, 0.5, -3], scale: optionalVector3Value(args, "obstacleScale") ?? [1, 1, 1] }),
+        operation("scene.set_collider", { sceneId, entityId: obstacleId, kind: "box", size: optionalVector3Value(args, "obstacleSize") ?? [1, 1, 1], trigger: true }),
+        operation("scene.attach_script", { sceneId, systemId: optionalStringValue(args, "systemId") ?? "obstacle-avoider", modulePath: optionalStringValue(args, "modulePath") ?? "src/scripts/player.ts", exportName: optionalStringValue(args, "exportName") ?? "obstacleAvoiderSystem" }),
+      ];
+    },
+  },
+  "physics-target": {
+    required: ["sceneId", "targetId"],
+    plan: (args) => {
+      const sceneId = requiredStringValue(args, "sceneId");
+      const targetId = requiredStringValue(args, "targetId");
+      const projectileId = optionalStringValue(args, "projectileId") ?? "projectile.01";
+      return [
+        operation("scene.add_prefab", { sceneId, prefabId: `${targetId}.prefab`, primitive: "sphere", color: optionalStringValue(args, "targetColor") ?? "#facc15" }),
+        operation("scene.add_entity", { sceneId, entityId: targetId, prefabId: `${targetId}.prefab` }),
+        operation("scene.set_transform", { sceneId, entityId: targetId, position: optionalVector3Value(args, "targetPosition") ?? [0, 1, -5] }),
+        operation("scene.set_rigid_body", { sceneId, entityId: targetId, kind: "dynamic", mass: optionalNumberValue(args, "targetMass") ?? 1 }),
+        operation("scene.set_collider", { sceneId, entityId: targetId, kind: "sphere", radius: optionalNumberValue(args, "targetRadius") ?? 0.5 }),
+        operation("scene.add_prefab", { sceneId, prefabId: `${projectileId}.prefab`, primitive: "sphere", color: optionalStringValue(args, "projectileColor") ?? "#38bdf8" }),
+        operation("scene.add_entity", { sceneId, entityId: projectileId, prefabId: `${projectileId}.prefab` }),
+        operation("scene.set_transform", { sceneId, entityId: projectileId, position: optionalVector3Value(args, "projectilePosition") ?? [0, 1, 2] }),
+        operation("scene.set_rigid_body", { sceneId, entityId: projectileId, kind: "dynamic", mass: optionalNumberValue(args, "projectileMass") ?? 0.4 }),
+        operation("scene.set_collider", { sceneId, entityId: projectileId, kind: "sphere", radius: optionalNumberValue(args, "projectileRadius") ?? 0.25 }),
+        operation("scene.attach_script", { sceneId, systemId: optionalStringValue(args, "systemId") ?? "physics-target", modulePath: optionalStringValue(args, "modulePath") ?? "src/scripts/player.ts", exportName: optionalStringValue(args, "exportName") ?? "physicsTargetSystem" }),
+      ];
+    },
+  },
+  "dressed-environment-kit": {
+    required: ["sceneId"],
+    plan: (args) => {
+      const sceneId = requiredStringValue(args, "sceneId");
+      const groupId = optionalStringValue(args, "groupId") ?? "environment.dressing";
+      return [
+        operation("material.create", { materialId: "mat.ground" }),
+        operation("material.set", { materialId: "mat.ground", color: optionalStringValue(args, "groundColor") ?? "#4b5563", roughness: 0.95, metalness: 0 }),
+        operation("material.create", { materialId: "mat.landmark" }),
+        operation("material.set", { materialId: "mat.landmark", color: optionalStringValue(args, "landmarkColor") ?? "#f59e0b", roughness: 0.7, metalness: 0 }),
+        operation("scene.add_group", { sceneId, groupId, name: "Environment Dressing" }),
+        operation("scene.add_prefab", { sceneId, prefabId: "prefab.ground", primitive: "box", color: optionalStringValue(args, "groundColor") ?? "#4b5563" }),
+        operation("scene.add_entity", { sceneId, entityId: "ground", prefabId: "prefab.ground" }),
+        operation("scene.set_transform", { sceneId, entityId: "ground", position: [0, -0.08, -2], scale: optionalVector3Value(args, "groundScale") ?? [12, 0.12, 18] }),
+        operation("scene.add_prefab", { sceneId, prefabId: "prefab.landmark", primitive: "box", color: optionalStringValue(args, "landmarkColor") ?? "#f59e0b" }),
+        operation("scene.add_entity", { sceneId, entityId: "landmark.01", prefabId: "prefab.landmark" }),
+        operation("scene.set_transform", { sceneId, entityId: "landmark.01", position: optionalVector3Value(args, "landmarkPosition") ?? [-4, 1.2, -7], scale: [1.2, 2.4, 1.2] }),
+        operation("scene.add_entity", { sceneId, entityId: "light.key" }),
+        operation("scene.set_light", { sceneId, entityId: "light.key", kind: "directional", intensity: optionalNumberValue(args, "lightIntensity") ?? 2.5, color: optionalStringValue(args, "lightColor") ?? "#fff4d6" }),
+      ];
+    },
+  },
 };
+
+for (const [recipeId, planner] of Object.entries(recipePlanners) as Array<[AuthoringRecipeId, IRecipePlanner]>) {
+  planner.metadata ??= (args, operations) => defaultRecipeMetadata(recipeId, args, operations);
+}
+
+function recipeMetadata(recipeId: AuthoringRecipeId, planner: IRecipePlanner, args: Record<string, unknown>, operations: readonly IAuthoringRecipeOperation[]): IRecipeMetadata {
+  return planner.metadata?.(args, operations) ?? defaultRecipeMetadata(recipeId, args, operations);
+}
+
+function defaultRecipeMetadata(recipeId: AuthoringRecipeId, args: Record<string, unknown>, operations: readonly IAuthoringRecipeOperation[]): IRecipeMetadata {
+  const sourceOwners: Record<string, string[]> = {};
+  const generatedIds: Record<string, string[]> = {};
+  for (const operationInput of operations) {
+    const descriptor = getAuthoringOperationDescriptor(operationInput.name);
+    if (descriptor !== undefined) {
+      addUnique(sourceOwners, descriptor.sourceFamily, descriptor.name);
+    }
+    for (const [key, value] of Object.entries(operationInput.args)) {
+      if (typeof value === "string" && (key === "entityId" || key === "prefabId" || key === "resourceId" || key === "systemId" || key === "uiNodeId" || key.endsWith("Id"))) {
+        addUnique(generatedIds, key, value);
+      }
+    }
+  }
+  const sceneId = optionalStringValue(args, "sceneId") ?? "arena";
+  const entityId = optionalStringValue(args, "playerId") ?? optionalStringValue(args, "vehicleId") ?? optionalStringValue(args, "targetId") ?? optionalStringValue(args, "entityId") ?? "<player-id>";
+  return {
+    generatedIds: sortRecordArrays(generatedIds),
+    proofCommands: [
+      "tn authoring validate --project . --json",
+      "tn build --project . --json",
+      `tn scene inspect ${sceneId} --json`,
+      `tn playtest --project . --entity ${entityId} --press KeyD --frames 30 --expect-moved --json`,
+    ],
+    sourceOwners: sortRecordArrays(sourceOwners),
+  };
+}
+
+function emptyRecipeMetadata(): IRecipeMetadata {
+  return {
+    generatedIds: {},
+    proofCommands: [],
+    sourceOwners: {},
+  };
+}
+
+function addUnique(record: Record<string, string[]>, key: string, value: string): void {
+  const values = record[key] ?? [];
+  if (!values.includes(value)) {
+    values.push(value);
+  }
+  record[key] = values;
+}
+
+function sortRecordArrays(record: Record<string, string[]>): Record<string, string[]> {
+  return Object.fromEntries(Object.entries(record).sort(([left], [right]) => left.localeCompare(right)).map(([key, values]) => [key, [...values].sort()]));
+}
 
 function requiredRecipeArgs(recipeId: string, args: Record<string, unknown>, required: readonly string[]): IAuthoringDiagnostic[] {
   return required.flatMap((name) => {

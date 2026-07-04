@@ -8,6 +8,8 @@ import {
   createGameQualityReport,
   GAME_WORKFLOW_PHASE_IDS,
   listAuthoringRecipeIds,
+  loadAuthoringProject,
+  planAuthoringRecipe,
   probeGameAssetProviders,
   supportedPrefabPrimitives,
   validateGameQualityReport,
@@ -31,6 +33,9 @@ interface IGamePlanStep {
   phase: string;
   recipe?: string;
   recipeArgs?: Record<string, unknown>;
+  recipeGeneratedIds?: Record<string, string[]>;
+  recipeProofCommands?: string[];
+  recipeSourceOwners?: Record<string, string[]>;
   command?: string;
   apply: boolean;
   summary: string;
@@ -342,39 +347,122 @@ async function gamePlanCommand(argv: readonly string[]): Promise<ICommandResult>
     schema: "threenative.game-plan",
     scriptPlan: buildScriptPlan(inventory),
     sourcePlan: buildSourcePlan(inventory),
-    steps: [
-      {
-        apply: true,
-        id: "playable-loop",
-        phase: "gameplay",
-        recipe: "third-person-controller",
-        recipeArgs: {
-          cameraId: defaults.cameraId,
-          entityId: defaults.playerId,
-          sceneId: defaults.sceneId,
-        },
-        summary: "Create or verify a player verb, objective, input path, camera, and feedback loop.",
-      },
-      {
-        apply: true,
-        id: "collectible-or-goal",
-        phase: "gameplay",
-        recipe: "collectible",
-        recipeArgs: {
-          entityId: "goal",
-          sceneId: defaults.sceneId,
-        },
-        summary: "Add a concrete objective or reward target that changes state.",
-      },
-      { apply: false, id: "ui-states", phase: "ui", command: "tn ui ... --json", summary: "Represent gameplay, pause, settings, loading, fail/retry, win/milestone, and touch-control states in retained UI source." },
-      { apply: false, id: "asset-ledger", phase: "assets", command: "tn asset add ... --json", summary: "Record local, procedural, generated, hybrid, or blocked sourcing for player/world/reward/UI/audio surfaces." },
-      { apply: false, id: "proof", phase: "qa", command: "tn game qa --project . --run-proof --json", summary: "Collect screenshot, mobile, playtest, performance, and release evidence before claiming done." },
-    ],
+    steps: buildGamePlanSteps(defaults),
   };
 
   return {
     exitCode: 0,
     stdout: json ? `${JSON.stringify(plan, null, 2)}\n` : renderPlan(plan),
+  };
+}
+
+function buildGamePlanSteps(defaults: { cameraId: string; playerId: string; sceneId: string }): IGamePlanStep[] {
+  return [
+    recipeStep({
+      apply: true,
+      id: "playable-loop",
+      phase: "gameplay",
+      recipe: "third-person-controller",
+      recipeArgs: {
+        cameraId: defaults.cameraId,
+        entityId: defaults.playerId,
+        sceneId: defaults.sceneId,
+      },
+      summary: "Create or verify a player verb, objective, input path, camera, and feedback loop.",
+    }),
+    recipeStep({
+      apply: true,
+      id: "collectible-or-goal",
+      phase: "gameplay",
+      recipe: "collectible",
+      recipeArgs: {
+        entityId: "goal",
+        sceneId: defaults.sceneId,
+      },
+      summary: "Add a concrete objective or reward target that changes state.",
+    }),
+    recipeStep({
+      apply: false,
+      id: "top-down-collector-slice",
+      phase: "gameplay",
+      recipe: "top-down-collector",
+      recipeArgs: {
+        cameraId: defaults.cameraId,
+        inputDocId: `${defaults.sceneId}-input`,
+        playerId: defaults.playerId,
+        sceneId: defaults.sceneId,
+      },
+      summary: "Use when the requested game is a compact top-down collectible loop with score feedback.",
+    }),
+    recipeStep({
+      apply: false,
+      id: "lane-runner-slice",
+      phase: "gameplay",
+      recipe: "lane-runner",
+      recipeArgs: {
+        cameraId: defaults.cameraId,
+        playerId: defaults.playerId,
+        sceneId: defaults.sceneId,
+      },
+      summary: "Use when the requested game is a lane runner with hazards, jumps, and forward motion.",
+    }),
+    recipeStep({
+      apply: false,
+      id: "vehicle-checkpoint-slice",
+      phase: "gameplay",
+      recipe: "vehicle-checkpoint",
+      recipeArgs: {
+        cameraId: defaults.cameraId,
+        sceneId: defaults.sceneId,
+        vehicleId: defaults.playerId,
+      },
+      summary: "Use when the requested game centers on a vehicle reaching checkpoint triggers.",
+    }),
+    recipeStep({
+      apply: false,
+      id: "obstacle-avoider-slice",
+      phase: "gameplay",
+      recipe: "obstacle-avoider",
+      recipeArgs: {
+        playerId: defaults.playerId,
+        sceneId: defaults.sceneId,
+      },
+      summary: "Use when the requested game focuses on dodging or timing around clear hazards.",
+    }),
+    recipeStep({
+      apply: false,
+      id: "physics-target-slice",
+      phase: "gameplay",
+      recipe: "physics-target",
+      recipeArgs: {
+        sceneId: defaults.sceneId,
+        targetId: "target.01",
+      },
+      summary: "Use when physical impact, projectile contact, or target knocking is central to the loop.",
+    }),
+    recipeStep({
+      apply: false,
+      id: "dressed-environment-kit",
+      phase: "visuals",
+      recipe: "dressed-environment-kit",
+      recipeArgs: {
+        sceneId: defaults.sceneId,
+      },
+      summary: "Use to add a bounded first pass of ground, landmark, lighting, and material context.",
+    }),
+    { apply: false, id: "ui-states", phase: "ui", command: "tn ui ... --json", summary: "Represent gameplay, pause, settings, loading, fail/retry, win/milestone, and touch-control states in retained UI source." },
+    { apply: false, id: "asset-ledger", phase: "assets", command: "tn asset add ... --json", summary: "Record local, procedural, generated, hybrid, or blocked sourcing for player/world/reward/UI/audio surfaces." },
+    { apply: false, id: "proof", phase: "qa", command: "tn game qa --project . --run-proof --json", summary: "Collect screenshot, mobile, playtest, performance, and release evidence before claiming done." },
+  ];
+}
+
+function recipeStep(step: IGamePlanStep & { recipe: string; recipeArgs: Record<string, unknown> }): IGamePlanStep {
+  const plan = planAuthoringRecipe({ args: step.recipeArgs, recipeId: step.recipe });
+  return {
+    ...step,
+    recipeGeneratedIds: plan.generatedIds,
+    recipeProofCommands: plan.proofCommands,
+    recipeSourceOwners: plan.sourceOwners,
   };
 }
 
@@ -1085,7 +1173,7 @@ function inferGameCategory(goal: string): string {
 
 function inferPlanDefaults(inventory: Awaited<ReturnType<typeof createGameAgentInventory>>): { cameraId: string; playerId: string; sceneId: string } {
   const entityIds = inventory.primaryScene?.entityIds ?? [];
-  const playerId = entityIds.find((id) => id.toLowerCase().includes("player"));
+  const playerId = entityIds.find(isPlayerLikeEntityId);
   const cameraId = inventory.primaryScene?.cameraIds[0] ?? entityIds.find((id) => id.toLowerCase().includes("camera"));
   return {
     cameraId: cameraId ?? "camera.main",
@@ -1112,7 +1200,7 @@ function buildPlanDiagnostics(inventory: Awaited<ReturnType<typeof createGameAge
       severity: "warning",
     });
   }
-  if (inventory.primaryScene?.entityIds.some((id) => id.toLowerCase().includes("player")) !== true) {
+  if (inventory.primaryScene?.entityIds.some(isPlayerLikeEntityId) !== true) {
     diagnostics.push({
       code: "TN_GAME_PLAN_SOURCE_DEFAULT_FALLBACK",
       message: "Game plan used fallback player entity defaults because the project inventory has no player-like entity id.",
@@ -1121,6 +1209,14 @@ function buildPlanDiagnostics(inventory: Awaited<ReturnType<typeof createGameAge
     });
   }
   return diagnostics;
+}
+
+function isPlayerLikeEntityId(id: string): boolean {
+  const lower = id.toLowerCase();
+  if (lower.includes("camera")) {
+    return false;
+  }
+  return lower.includes("player") || lower.includes("runner") || lower.includes("hero") || lower.includes("avatar") || lower.includes("boat") || lower.includes("car");
 }
 
 async function runGameQaProof(argv: readonly string[], projectPath: string, options: IGameCommandOptions): Promise<IGameProofRun> {
@@ -1170,7 +1266,7 @@ async function writeDoctorProof(projectPath: string, result: ICommandResult): Pr
 function buildQaProofSteps(argv: readonly string[], proofDefaults: IProofDefaults = {}): IGameProofStepSpec[] {
   const url = readFlag(argv, "--url");
   const entity = readFlag(argv, "--entity") ?? proofDefaults.entity;
-  const press = readFlag(argv, "--press") ?? proofDefaults.press;
+  const press = normalizeProofPress(readFlag(argv, "--press") ?? proofDefaults.press);
   const expectAxis = readFlag(argv, "--expect-axis") ?? proofDefaults.expectAxis;
   const frames = readFlag(argv, "--frames") ?? proofDefaults.frames ?? "30";
   const steps: IGameProofStepSpec[] = [
@@ -1307,6 +1403,10 @@ function buildQaProofSteps(argv: readonly string[], proofDefaults: IProofDefault
   return steps;
 }
 
+function normalizeProofPress(press: string | undefined): string | undefined {
+  return press?.startsWith("keyboard.") === true ? press.slice("keyboard.".length) : press;
+}
+
 interface IProofDefaults {
   entity?: string;
   expectAxis?: string;
@@ -1337,7 +1437,8 @@ async function readProjectProofDefaults(projectPath: string): Promise<IProofDefa
 }
 
 async function inferProofDefaultsFromSource(projectPath: string): Promise<IProofDefaults> {
-  const defaults = await inferPlanDefaults(projectPath);
+  const inventory = await createGameAgentInventory({ projectPath });
+  const defaults = inferPlanDefaults(inventory);
   return {
     entity: defaults.playerId,
     expectAxis: "x",

@@ -32,6 +32,7 @@ test("rejects maintained starters without game-production scripts and metadata",
     assert.equal(result.diagnostics.some((diagnostic) => diagnostic.code === "TN_TEMPLATE_PRODUCTION_SCRIPT_MISSING" && diagnostic.path?.endsWith("package.json")), true);
     assert.equal(result.diagnostics.some((diagnostic) => diagnostic.code === "TN_TEMPLATE_PRODUCTION_QA_PROOF_MISSING"), true);
     assert.equal(result.diagnostics.some((diagnostic) => diagnostic.code === "TN_TEMPLATE_PRODUCTION_METADATA_INCOMPLETE" && diagnostic.path?.endsWith("threenative.config.json")), true);
+    assert.equal(result.diagnostics.some((diagnostic) => diagnostic.code === "TN_TEMPLATE_PRODUCTION_AGENT_METADATA_INCOMPLETE" && diagnostic.path?.endsWith("threenative.config.json")), true);
     assert.equal(result.diagnostics.some((diagnostic) => diagnostic.code === "TN_TEMPLATE_PRODUCTION_DOCS_INCOMPLETE" && diagnostic.path?.endsWith("AGENTS.md")), true);
   } finally {
     await rm(root, { force: true, recursive: true });
@@ -67,6 +68,27 @@ test("accepts maintained starters with production scripts metadata and instructi
           "tn game qa --project . --run-proof --json",
           "tn game release --project . --json",
         ],
+        agent: {
+          highValueSurfaces: [
+            { id: "playerHero", provenanceStatus: "source", sourcePath: "content/scenes/rally.scene.json", summary: "Vehicle hero source." },
+          ],
+          proofCommands: [
+            "tn authoring validate --project . --json",
+            "tn build --project . --json",
+          ],
+          scriptModules: [
+            { exportName: "rallySystem", module: "src/scripts/rally.ts", ownsState: ["GameState"], referencedBy: ["content/systems/rally.systems.json"] },
+          ],
+          sourceShape: {
+            scene: ["content/scenes/rally.scene.json"],
+            scripts: ["src/scripts/rally.ts"],
+            systems: ["content/systems/rally.systems.json"],
+            ui: ["content/ui/hud.ui.json"],
+          },
+          uiStates: [
+            { id: "gameplay", sourcePath: "content/ui/hud.ui.json" },
+          ],
+        },
       },
       schema: "threenative.project",
       template: "racing-kit-rally-starter",

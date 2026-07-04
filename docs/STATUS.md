@@ -108,7 +108,10 @@ scaffold the same production loop through `game:plan`, `game:improve`,
 `threenative.config.json` production metadata for loop, controls, objective,
 retry path, and proof commands. `pnpm verify:template-production` is registered
 as the maintained-starter gate for those scripts, production metadata, and
-starter instructions, and it is included in the release focused-gate profile.
+starter instructions. The gate now also requires normalized
+`production.agent` metadata with source shape, high-value surfaces, script
+owners, UI states, and proof commands, and it is included in the release
+focused-gate profile.
 `tn game score --project . --json`
 inspects structured source and proof artifacts for gameplay, assets, visuals,
 UI, debug, QA, and release ledgers. `tn game qa --run-proof --json`
@@ -149,7 +152,7 @@ release-ready or native parity claim.
 audits `asteroid-mail-runner`, `clockwork-garden-heist`,
 `copper-rail-switcher`, `crystal-cavern`, `firefly-grove-keeper`,
 `glassworks-prism-sorter`, `harbor-lantern-ferry`, `lantern-orchard`,
-`magnet-yard-sorter`, `moon-canyon-courier`, `neon-sushi-rush`,
+`magnet-yard-sorter`, `metro-surfer-heist`, `moon-canyon-courier`, `neon-sushi-rush`,
 `paper-plane-postmaster`, `river-rescue`, `rooftop-wind-courier`,
 `sky-lighthouse-relay`, `storm-buoy-rescue`, `tidepool-crab-courier`,
 `sunken-library-salvage`, `toy-train-yard-switcher`, and
@@ -169,6 +172,10 @@ retained `content/ui/*.ui.json` HUD source with multiple text/status nodes and
 loading, fail/retry, win/milestone, and touch-control state affordances,
 authored `content/materials/*.json` source with multiple material rows,
 distinct colors, and roughness values,
+opt-in `requireAgentInventory` diagnostics for projects that must expose the
+game-agent inventory source owners, script owners, high-value surfaces, and
+proof commands before joining a stricter generated-game migration batch,
+README/package script drift checks,
 clean release risks, `qa-report.json` with a passing `proofRun` containing the
 required doctor/build/playtest/desktop screenshot/mobile screenshot/recorded
 motion/quality/budget/fit proof steps, input-driven playtest movement above the

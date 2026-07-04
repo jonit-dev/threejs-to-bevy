@@ -53,6 +53,37 @@ input, UI, assets, materials, high-value surfaces, proof commands, diagnostics,
 and recommended next operations. Agents should use it as the first project map
 before opening individual source files.
 
+Projects may provide normalized agent metadata at
+`threenative.config.json#/production/agent`. This section is additive to the
+human-readable `production` fields and is the preferred machine-readable ledger
+for new projects. Stable keys are:
+
+- `sourceShape`: document families mapped to editable source paths such as
+  `content/scenes/*.scene.json`, `content/systems/*.systems.json`,
+  `content/ui/*.ui.json`, and `src/scripts/**/*.ts`.
+- `highValueSurfaces`: rows with `id`, `sourcePath`, `provenanceStatus`, and
+  `summary` for `playerHero`, `obstacleEnemy`, `rewardInteractable`,
+  `worldEnvironment`, `uiHud`, and `audioFeedback`.
+- `scriptModules`: `module`, `export`, `ownsState`, and `referencedBy` rows for
+  gameplay systems.
+- `uiStates`: expected retained UI states and their owning source paths.
+- `assetSourcing`: catalog search, selected asset, or fallback evidence.
+- `proofCommands`: reproducible local proof commands.
+- `knownBlockers`: explicit limitations that should not be silently downgraded
+  into placeholder source.
+
+`content/**/*.json` and `src/scripts/**/*.ts` remain durable source. Generated
+`dist/**`, persisted reports, screenshots, and bundle JSON are proof artifacts,
+not authoring inputs.
+
+`tn game inspect --json` reports the project classification, durable source
+owners, scripts, script systems, UI bindings, input, materials, assets,
+high-value surface inventory, production metadata, proof commands, diagnostics,
+and recommended bounded authoring operations. For generated-game examples it may
+also read the persisted `artifacts/game-production/plan.json` evidence to merge
+declared high-value surfaces and proof commands into the inventory without
+mutating source.
+
 `tn game plan --goal <text> --json` is the required planning entry point before
 source mutation for generated games. It emits a non-mutating
 `threenative.game-plan` artifact with the current inventory summary, design
@@ -94,6 +125,9 @@ is not enrolled in the aggregate generated-game inventory. When visual-quality
 sidecars exist, the same summary records min/max color-bucket and local-contrast
 ranges plus minimum nonblank and visible-bounds ratios, making visual-quality
 ratchet candidates visible in release artifacts before thresholds are raised.
+The gate also rejects generated-game README script references that are missing
+from the example `package.json`, so copy-pasted local workflow commands stay
+executable.
 
 Maintained game starters must scaffold the same loop rather than leaving it to
 agent memory: package scripts should include `game:plan`, `game:improve`,

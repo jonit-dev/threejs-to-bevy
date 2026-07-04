@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { getAuthoringOperationDescriptor } from "./operationRegistry.js";
-import { planAuthoringRecipe } from "./recipes.js";
+import { listAuthoringRecipeIds, planAuthoringRecipe } from "./recipes.js";
 
 test("should produce deterministic operations for third-person-controller", () => {
   const plan = planAuthoringRecipe({
@@ -30,4 +30,51 @@ test("should report stable diagnostics for unsupported recipe ids", () => {
 
   assert.equal(plan.ok, false);
   assert.equal(plan.diagnostics[0]?.code, "TN_AUTHORING_RECIPE_UNSUPPORTED");
+});
+
+test("should plan top down collector as a vertical game slice", () => {
+  const plan = planAuthoringRecipe({
+    args: {
+      cameraId: "camera.main",
+      inputDocId: "arena-input",
+      playerId: "player",
+      sceneId: "arena",
+    },
+    recipeId: "top-down-collector",
+  });
+
+  assert.equal(plan.ok, true);
+  assert.equal(plan.operations.every((operation) => getAuthoringOperationDescriptor(operation.name) !== undefined), true);
+  assert.equal(plan.operations.some((operation) => operation.name === "input.add_axis" && operation.args.axisId === "MoveX"), true);
+  assert.equal(plan.operations.some((operation) => operation.name === "scene.add_entity" && operation.args.entityId === "player"), true);
+  assert.equal(plan.operations.some((operation) => operation.name === "scene.add_entity" && operation.args.entityId === "coin.01"), true);
+  assert.equal(plan.operations.some((operation) => operation.name === "scene.add_ui_node" && operation.args.uiNodeId === "hud.score"), true);
+  assert.equal(plan.operations.some((operation) => operation.name === "scene.attach_script" && operation.args.modulePath === "src/scripts/player.ts"), true);
+  assert.deepEqual(plan.generatedIds.entityId?.includes("player"), true);
+  assert.deepEqual(plan.generatedIds.entityId?.includes("coin.01"), true);
+  assert.equal(plan.sourceOwners.input?.includes("input.add_axis"), true);
+  assert.equal(plan.sourceOwners.scene?.includes("scene.attach_script"), true);
+  assert.equal(plan.proofCommands.some((command) => command.includes("tn playtest") && command.includes("--entity player")), true);
+});
+
+test("should register common 3d game vertical slice recipes with supported operations", () => {
+  const recipeArgs = {
+    "dressed-environment-kit": { sceneId: "arena" },
+    "lane-runner": { cameraId: "camera.main", playerId: "runner", sceneId: "arena" },
+    "obstacle-avoider": { playerId: "player", sceneId: "arena" },
+    "physics-target": { sceneId: "arena", targetId: "target.01" },
+    "top-down-collector": { cameraId: "camera.main", playerId: "player", sceneId: "arena" },
+    "vehicle-checkpoint": { cameraId: "camera.main", sceneId: "arena", vehicleId: "kart" },
+  } as const;
+
+  for (const [recipeId, args] of Object.entries(recipeArgs)) {
+    assert.equal(listAuthoringRecipeIds().includes(recipeId as never), true);
+    const plan = planAuthoringRecipe({ args, recipeId });
+    assert.equal(plan.ok, true, `${recipeId} should plan`);
+    assert.equal(plan.operations.length > 0, true, `${recipeId} should emit operations`);
+    assert.equal(plan.operations.every((operation) => getAuthoringOperationDescriptor(operation.name) !== undefined), true, `${recipeId} should use supported operations`);
+    assert.equal(Object.keys(plan.sourceOwners).length > 0, true, `${recipeId} should declare source owners`);
+    assert.equal(Object.keys(plan.generatedIds).length > 0, true, `${recipeId} should declare generated IDs`);
+    assert.equal(plan.proofCommands.some((command) => command.includes("tn authoring validate")), true, `${recipeId} should declare proof commands`);
+  }
 });
