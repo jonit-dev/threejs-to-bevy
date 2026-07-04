@@ -12,7 +12,8 @@ Repo-wide instructions for AI coding agents working on ThreeNative.
 - Keep source ASCII unless the file already has a reason not to.
 - Capability/release-gate changes must update `docs/STATUS.md` and
   `docs/bevy-feature-parity.md`.
-- Finished PRDs move to `docs/PRDs/done`.
+- Finished PRDs must be moved from active planning folders to
+  `docs/PRDs/done`.
 
 ## Product Boundary
 

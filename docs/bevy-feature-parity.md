@@ -34,7 +34,7 @@ Priority labels on unchecked items:
 ### V10 Residual Ownership Map
 
 V9 closes the practical small-game parity surface and leaves a smaller residual
-set. V10 planning now assigns those remaining unchecked items without claiming
+set. V10 planning assigned those residual items without claiming
 implementation:
 
 - `V10-01` owns final-gap triage, aggregate V10 gate planning, and diagnostics
@@ -207,15 +207,15 @@ implementation:
   mobile` captures visible HUD text. This is an authoring/compiler/runtime-web
   proof improvement, not a new Bevy-only UI capability.
 
-Unchecked rows below should remain unchecked until their V10 owner adds SDK/IR,
-validation, compiler, web, Bevy, conformance, docs, and artifact evidence, or
-adds stable diagnostics that make the feature explicitly unsupported.
+Residual rows below should not be treated as implementation claims unless they
+name SDK/IR, validation, compiler, web, Bevy, conformance, docs, and artifact
+evidence, or stable diagnostics that make the feature explicitly unsupported.
 
 ### Post-V10 PRD Slice Map
 
-The unchecked backlog is now split into current planning PRDs without claiming
+The residual backlog is now split into planning PRDs without claiming new
 implementation. These slices supersede the coarse V10 ownership map for future
-execution order while keeping all checklist rows unchecked until evidence lands:
+execution order while keeping parity claims tied to explicit evidence:
 
 - [Runtime Gameplay Host Semantics](PRDs/done/other/post-v10-runtime-gameplay-host.md):
   now release-gated by `pnpm verify:runtime-gameplay-host` for P0/P1 ECS host
@@ -245,6 +245,28 @@ execution order while keeping all checklist rows unchecked until evidence lands:
   profiler/GPU timing reports, signed/mobile packaging preflight,
   domain-specific repair hints, debug rendering, and production boundary
   diagnostics.
+
+The latest parity pass has no remaining unchecked checklist rows in this file;
+future work is now tracked as active PRD slices for diagnostic boundaries or
+promotion evidence rather than raw unchecked items. The current active slices
+based on the residual wording below are:
+
+- [Render Look, Shadow, and Bloom Polish Profiles](PRDs/other/render-look-shadow-bloom-polish.md):
+  screenshot-backed `balanced` profile promotion, bounded shadow/bloom/exposure
+  polish controls, and reserved `cinematic`/`stylized` profile evidence.
+- [Imported glTF Visual Fidelity](PRDs/other/imported-gltf-visual-fidelity.md):
+  material-extension reports, texture transforms, extras, morph target names,
+  and unsupported-extension diagnostics that preserve source provenance.
+- [Camera and Post-Processing Boundaries](PRDs/other/camera-post-processing-boundaries.md):
+  depth-of-field visual calibration and stable diagnostics for auto exposure,
+  motion blur, SSR, mirrors, deferred rendering, volumetrics, and custom post
+  passes.
+- [Dense Scene LOD and Texture Delivery](PRDs/other/dense-scene-lod-texture-delivery.md):
+  billboard impostors, dense-prop draw-grouping reports, texture fallback
+  selection, and target-profile diagnostics for compressed texture families.
+- [Animation, Morph, Mask, and Lightweight VFX Polish](PRDs/other/animation-morph-mask-vfx-polish.md):
+  morph targets, animation masks, bounded blend residuals, and deterministic
+  script-triggered VFX commands.
 
 ### Prioritized Native Gap Backlog
 
@@ -411,11 +433,12 @@ The current upstream Bevy examples catalog also exposes feature families that
 were previously missing or too coarsely represented in this tracker. Some of
 these rows may be beyond the pinned Bevy `=0.14.2` baseline, so they are tracked
 as watchlist items until a PRD either verifies baseline relevance, promotes a
-portable subset, or adds stable diagnostics. Newly added unchecked rows below
-cover editable text and IME, UI viewport nodes, UI drag and drop, custom UI
-materials, window/cursor/power behavior, runtime asset authoring/saving,
-generated asset export, glTF extension processing, and deeper ECS query/callback
-ergonomics. These rows are not implementation claims.
+portable subset, or adds stable diagnostics. The watchlist covers editable text
+and IME, UI viewport nodes, UI drag and drop, custom UI materials,
+window/cursor/power behavior, runtime asset authoring/saving, generated asset
+export, glTF extension processing, and deeper ECS query/callback ergonomics.
+These rows are not implementation claims unless their checklist text names
+evidence or diagnostics.
 
 ### Advanced Visual Polish Research Notes
 

@@ -11,6 +11,9 @@ backlog unless a nested PRD says it has been superseded.
 
 ### Runtime And Gameplay Parity
 
+- [SDK Physics Collider Contract Boundary](other/sdk-physics-collider-contract-boundary.md):
+  remove the public SDK path that can emit unsupported cylinder physics
+  colliders while keeping raw IR rejection and documentation explicit.
 - [Portable Scripting Character and Physics Contacts](other/portable-scripting-character-physics-contacts.md):
   richer primitive contact filtering, character movement observations, slope
   and push semantics, and stable diagnostics for unsupported physics breadth.
@@ -49,12 +52,32 @@ backlog unless a nested PRD says it has been superseded.
 
 ### Advanced And Boundary Work
 
+- [Render Look, Shadow, and Bloom Polish Profiles](other/render-look-shadow-bloom-polish.md):
+  bounded render-look profile, shadow quality, bloom, exposure, and material
+  default polish with web/Bevy screenshot evidence before `cinematic` or
+  `stylized` profiles are promoted.
+- [Imported glTF Visual Fidelity](other/imported-gltf-visual-fidelity.md):
+  glTF material-extension reports, texture transforms, extras, morph target
+  names, unsupported-extension diagnostics, and web/Bevy evidence without
+  exposing loader internals.
+- [Camera and Post-Processing Boundaries](other/camera-post-processing-boundaries.md):
+  depth-of-field visual calibration, auto exposure, motion blur, SSR, mirrors,
+  deferred rendering, volumetrics, and custom post-processing promotion bars or
+  stable diagnostics.
+- [Dense Scene LOD and Texture Delivery](other/dense-scene-lod-texture-delivery.md):
+  billboard impostors, dense-prop affordability, draw-grouping reports, texture
+  fallback selection, and target-profile diagnostics for optional compressed
+  formats.
+- [Animation, Morph, Mask, and Lightweight VFX Polish](other/animation-morph-mask-vfx-polish.md):
+  morph target names/weights, animation masks, bounded blend residuals, and
+  ThreeNative-owned particle/VFX commands with deterministic web/Bevy proof.
 - [Advanced Visual Effects, Lighting, and Material Depth](other/advanced-visual-effects-lighting-material-depth.md):
-  remaining advanced lighting, material, atmosphere, post-processing, deferred
-  renderer, virtual geometry, and custom post-processing gaps.
+  umbrella reference for advanced lighting, material, atmosphere,
+  post-processing, deferred renderer, virtual geometry, and custom
+  post-processing boundaries.
 - [Advanced Animation and Physics Depth](other/advanced-animation-physics-depth.md):
-  remaining retargeting, IK, arbitrary blend-tree, constraint, triangle
-  narrow-phase, vehicle, soft-body, and ragdoll gaps.
+  umbrella reference for retargeting, IK, arbitrary blend-tree, constraint,
+  triangle narrow-phase, vehicle, soft-body, and ragdoll boundaries.
 - [External Services, Media, and Non-Portable Boundaries](other/external-services-media-boundaries.md):
   cloud/account storage, custom decoders, streaming/network audio, online
   services, alternate authoring models, 2D workflows, and backend-only
