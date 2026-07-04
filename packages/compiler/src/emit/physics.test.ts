@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { boxCollider, BoxGeometry, meshCollider, Mesh, MeshStandardMaterial, physics, physicsJoint, rigidBody, Scene } from "@threenative/sdk";
+import { boxCollider, BoxGeometry, capsuleCollider, meshCollider, Mesh, MeshStandardMaterial, physics, physicsJoint, rigidBody, Scene, sphereCollider } from "@threenative/sdk";
 
 import { sceneToWorld } from "./scene-to-world.js";
 
@@ -99,4 +99,33 @@ test("should emit bounded mesh collider CCD and suspension joint metadata", () =
   assert.deepEqual(chassis?.components.RigidBody, { ccd: { enabled: true, maxSubsteps: 4, mode: "swept-aabb" }, kind: "dynamic", velocity: [0, -12, 0] });
   assert.deepEqual(chassis?.components.Collider, { kind: "mesh", mesh: { bounds: { center: [0, 0.25, 0], size: [2, 0.5, 4] }, source: "mesh.car", triangleCount: 128 } });
   assert.deepEqual(wheel?.components.PhysicsJoint, { axis: [0, 1, 0], connectedEntity: "car.chassis", damping: 0.6, kind: "suspension", stiffness: 12, travel: 0.4 });
+});
+
+test("physics emit should stay within promoted collider kinds", () => {
+  const scene = new Scene({ id: "scene" });
+  const colliders = [
+    { collider: boxCollider([1, 1, 1]), id: "box" },
+    { collider: sphereCollider(0.5), id: "sphere" },
+    { collider: capsuleCollider(0.25, 1), id: "capsule" },
+    { collider: meshCollider({ mesh: { bounds: { size: [1, 1, 1] }, triangleCount: 12 } }), id: "mesh" },
+  ] as const;
+
+  for (const { collider, id } of colliders) {
+    scene.add(
+      new Mesh({
+        geometry: new BoxGeometry(),
+        id,
+        material: new MeshStandardMaterial(),
+        physics: physics({ body: rigidBody("static"), collider }),
+      }),
+    );
+  }
+
+  const emitted = sceneToWorld(scene);
+  const emittedKinds = emitted.world.entities
+    .map((entity) => entity.components.Collider?.kind)
+    .filter((kind): kind is "box" | "capsule" | "mesh" | "sphere" => kind !== undefined)
+    .sort();
+
+  assert.deepEqual(emittedKinds, ["box", "capsule", "mesh", "sphere"]);
 });

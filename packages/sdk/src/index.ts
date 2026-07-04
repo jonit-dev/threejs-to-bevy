@@ -340,7 +340,6 @@ export {
 export {
   boxCollider,
   capsuleCollider,
-  cylinderCollider,
   meshCollider,
   physics,
   physicsJoint,

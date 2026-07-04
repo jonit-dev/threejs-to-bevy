@@ -29,11 +29,11 @@ This was a read-only audit of source behavior. The only intentional repository m
 ### 1. Public SDK Physics Contract Can Emit IR That Validation Rejects
 
 - **Refs:** `packages/sdk/src/physics.ts:5`, `packages/sdk/src/physics.ts:197`, `packages/ir/src/validate.ts:2161`, `packages/ir/src/physics.test.ts:190`
-- **Current pattern:** `PhysicsColliderKind` and `cylinderCollider()` expose `cylinder` publicly, while IR validation accepts only `box`, `capsule`, `mesh`, and `sphere`. The IR tests explicitly expect cylinder to be unsupported.
-- **Impact:** Users can author with the public SDK and produce invalid portable IR. This is a concrete symptom of split contract truth between SDK builders and IR validation.
-- **Recommendation:** Pick one contract source. Either deprecate/remove public `cylinderCollider()` until promoted, or promote cylinder through IR validation, schemas, compiler capability derivation, web/Bevy mapping, and conformance.
-- **Risk:** Medium. If existing users rely on the SDK helper, removal needs a clear diagnostic/migration path.
-- **Verification needed:** Add a compiler emit test for `cylinderCollider()` that asserts either a stable compiler diagnostic or a valid bundle. Run `pnpm --filter @threenative/sdk test`, `pnpm --filter @threenative/compiler test`, and `pnpm --filter @threenative/ir test`.
+- **Original pattern:** `PhysicsColliderKind` and `cylinderCollider()` exposed `cylinder` publicly, while IR validation accepted only `box`, `capsule`, `mesh`, and `sphere`. The IR tests explicitly expected cylinder to be unsupported.
+- **Impact:** Users could author with the public SDK and produce invalid portable IR. This was a concrete symptom of split contract truth between SDK builders and IR validation.
+- **Resolution:** The SDK now removes `cylinder` from `PhysicsColliderKind`, stops exporting `cylinderCollider()`, keeps raw/stale IR cylinder rejection stable, and documents that cylinder mesh primitives are not cylinder physics colliders.
+- **Risk:** Medium. If existing users relied on the SDK helper, removal needs a clear diagnostic/migration path.
+- **Verification:** `pnpm --filter @threenative/sdk test`, `pnpm --filter @threenative/compiler test`, `pnpm --filter @threenative/ir test`, and `pnpm check:docs`.
 
 ### 2. Native Runtime System Scheduling Diverges From Web Game Loop Semantics
 

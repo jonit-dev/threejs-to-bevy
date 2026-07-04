@@ -2,7 +2,7 @@ import { assertFiniteNumber, assertNonNegativeNumber, assertNormalizedNumber, as
 import type { Vector3Tuple } from "./math/Vector3.js";
 
 export type PhysicsBodyKind = "dynamic" | "kinematic" | "static";
-export type PhysicsColliderKind = "box" | "capsule" | "cylinder" | "mesh" | "sphere";
+export type PhysicsColliderKind = "box" | "capsule" | "mesh" | "sphere";
 export type Boolean3Tuple = readonly [boolean, boolean, boolean];
 
 export interface IPhysicsFilterOptions {
@@ -192,12 +192,6 @@ export function capsuleCollider(radius: number, height: number, options: { senso
   assertPositiveNumber(height, "TN_SDK_PHYSICS_COLLIDER_INVALID_HEIGHT", "Collider.height");
   const sensor = normalizeSensor(options.sensor);
   return { ...normalizeColliderCenter(options), height, kind: "capsule", radius, ...(sensor === undefined ? {} : { sensor }), trigger: options.trigger, ...normalizeFilter(options), ...normalizeMaterial(options) };
-}
-
-export function cylinderCollider(radius: number, height: number, options: { trigger?: boolean } & ColliderCenterOptions & IPhysicsFilterOptions & IPhysicsMaterialOptions = {}): IColliderDeclaration {
-  assertPositiveNumber(radius, "TN_SDK_PHYSICS_COLLIDER_INVALID_RADIUS", "Collider.radius");
-  assertPositiveNumber(height, "TN_SDK_PHYSICS_COLLIDER_INVALID_HEIGHT", "Collider.height");
-  return { ...normalizeColliderCenter(options), height, kind: "cylinder", radius, trigger: options.trigger, ...normalizeFilter(options), ...normalizeMaterial(options) };
 }
 
 export function meshCollider(options: { mesh?: IMeshColliderDeclaration; trigger?: boolean } & ColliderCenterOptions & IPhysicsFilterOptions & IPhysicsMaterialOptions = {}): IColliderDeclaration {

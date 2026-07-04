@@ -523,6 +523,8 @@ Practical order for game-polish work:
 
 - [x] Translation, rotation, scale, and nested transforms
 - [x] Basic 3D mesh primitives: box, sphere, plane, capsule, cylinder
+  (renderable mesh primitive only; portable physics collider helpers remain
+  box, sphere, capsule, and mesh, and raw cylinder colliders are rejected)
 - [x] Source/editor primitive mesh declaration edits
 - [x] Structured source and CLI torus primitive declarations for mesh rows and scene prefabs
 - [x] Bounding/raycast-style queries for promoted physics traces

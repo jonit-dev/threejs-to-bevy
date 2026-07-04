@@ -1,8 +1,12 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
+import * as sdk from "./index.js";
 import { SdkError } from "./errors.js";
-import { boxCollider, capsuleCollider, meshCollider, rigidBody, sphereCollider } from "./physics.js";
+import { boxCollider, capsuleCollider, meshCollider, rigidBody, sphereCollider, type PhysicsColliderKind } from "./physics.js";
+
+type AssertNever<T extends never> = T;
+type UnsupportedPublicColliderKind = AssertNever<Exclude<PhysicsColliderKind, "box" | "capsule" | "mesh" | "sphere">>;
 
 test("physics should create deterministic collider filters and slopes", () => {
   assert.deepEqual(boxCollider([1, 2, 3], { layer: "player", mask: ["world", "sensor"], slope: { axis: "x", direction: 1, rise: 1, run: 2 }, trigger: true }), {
@@ -31,6 +35,16 @@ test("physics should create deterministic collider filters and slopes", () => {
     layer: "world",
     trigger: undefined,
   });
+});
+
+test("physics should expose only promoted portable collider helpers", () => {
+  const _unsupportedColliderKind: UnsupportedPublicColliderKind | undefined = undefined;
+  assert.equal(_unsupportedColliderKind, undefined);
+  assert.deepEqual(
+    [boxCollider([1, 2, 3]), sphereCollider(1), capsuleCollider(0.5, 2), meshCollider()].map((collider) => collider.kind),
+    ["box", "sphere", "capsule", "mesh"],
+  );
+  assert.equal("cylinderCollider" in sdk, false);
 });
 
 test("physics should create primitive solver material and body metadata", () => {

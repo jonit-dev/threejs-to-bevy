@@ -11,9 +11,6 @@ backlog unless a nested PRD says it has been superseded.
 
 ### Runtime And Gameplay Parity
 
-- [SDK Physics Collider Contract Boundary](other/sdk-physics-collider-contract-boundary.md):
-  remove the public SDK path that can emit unsupported cylinder physics
-  colliders while keeping raw IR rejection and documentation explicit.
 - [Portable Scripting Character and Physics Contacts](other/portable-scripting-character-physics-contacts.md):
   richer primitive contact filtering, character movement observations, slope
   and push semantics, and stable diagnostics for unsupported physics breadth.
@@ -114,6 +111,7 @@ Useful completed reference groups:
   [Editor AI Chat ECS Control](done/other/editor-ai-chat-ecs-control.md).
 - Runtime and parity references:
   [Web and Bevy Scripting Host Conformance](done/other/web-bevy-scripting-host-conformance.md),
+  [SDK Physics Collider Contract Boundary](done/other/sdk-physics-collider-contract-boundary.md),
   [Scene Lifecycle and Game Flow Contract](done/other/scene-lifecycle-and-flow-contract.md),
   [Bundle Safety and Runtime Robustness Hardening](done/other/bundle-safety-runtime-robustness-hardening.md),
   [Native Game Loop State Parity](done/other/native-game-loop-state-parity.md),

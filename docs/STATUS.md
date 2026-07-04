@@ -2095,6 +2095,11 @@ plane, capsule, and cylinder. The SDK/compiler emit deterministic primitive
 size tuples, IR validation rejects malformed tuple arity/radii/sides, the web
 runtime maps them to Three.js geometry, and the Bevy runtime maps them to native
 Bevy mesh primitives including `Extrusion<Rectangle>`.
+Cylinder mesh primitives are renderable geometry only; promoted portable
+physics collider helpers remain box, sphere, capsule, and mesh. The SDK no
+longer exports a `cylinderCollider()` helper or includes `cylinder` in
+`PhysicsColliderKind`, while raw/stale IR with `Collider.kind: "cylinder"`
+continues to fail with `TN_IR_PHYSICS_COLLIDER_UNSUPPORTED`.
 Structured source authoring now accepts `torus` in both scene prefab primitives
 and `content/meshes/*.meshes.json` primitive rows. The CLI mesh command help and
 tests cover `tn mesh primitive --kind torus`, and compiler coverage proves scene
