@@ -262,8 +262,9 @@ remaining gaps by usefulness for building and shipping ordinary 3D games:
   `pnpm verify:runtime-gameplay-host`, which compares web and Bevy live
   rendered-entity reconciliation, event-window policy, dynamic state handoff,
   command-time/removal hook ordering, system-local evidence, stoppable observer
-  propagation, bounded timer/channel semantics, and stable diagnostics for raw
-  handles, runtime plugins, workers, timers, and unbounded promises.
+  propagation, bounded timer/channel semantics, native startup-once and
+  accumulator-based fixed tick loop-state evidence, and stable diagnostics for
+  raw handles, runtime plugins, workers, timers, and unbounded promises.
 - `P1` Scene-scoped lifecycle fields are promoted for compiler/runtime scope
   evidence: scene-local input maps, system schedules, and UI roots lower into
   bundle documents with scoped scene references, and web/Bevy scene managers
@@ -416,6 +417,50 @@ materials, window/cursor/power behavior, runtime asset authoring/saving,
 generated asset export, glTF extension processing, and deeper ECS query/callback
 ergonomics. These rows are not implementation claims.
 
+### Advanced Visual Polish Research Notes
+
+This section expands the backlog for features that make authored games look
+finished: richer light transport, camera/post-processing, material response,
+asset LOD, animation feel, particles, and texture delivery. It is intentionally
+source-of-truth neutral: Bevy `=0.14.2` shows what the native adapter could use,
+but ThreeNative promotion still requires portable SDK/IR semantics, validation,
+compiler lowering, web Three.js mapping, Bevy mapping, conformance evidence, and
+clear unsupported-feature diagnostics.
+
+Rows below are planning guidance, not implementation claims:
+
+| Feature family | Bevy 0.14 signal | Game-polish value | ThreeNative promotion bar |
+| -------------- | ---------------- | ----------------- | ------------------------- |
+| HDR emissive bloom | Bevy's 3D bloom example uses HDR cameras, bloom settings, and emissive materials; ThreeNative already has runtime bloom config and emissive material metadata. | Pickups, magic, signage, vehicle lamps, warning lights, and diegetic UI read immediately instead of looking like flat colored meshes. | Keep as `P1`: prove threshold/intensity/exposure interactions with web and Bevy screenshots, preserve invalid metadata diagnostics, and avoid per-adapter color tuning. |
+| Filmic look controls | Bevy 0.14 adds filmic color grading and existing tone mapping/exposure controls; ThreeNative render-look profiles already reserve `balanced`, `cinematic`, and `stylized`. | Cohesive mood, less washed-out lighting, better dusk/night/cave readability, and material response that feels authored. | Promote only bounded semantic controls first: tone map, exposure, saturation, contrast, bloom intensity, and shadow quality profile rows. `cinematic`/`stylized` stay reserved until web and Bevy screenshot proof exists. |
+| Auto exposure | Bevy 0.14 exposes camera auto-exposure, but it is histogram-driven and platform-sensitive. | Useful for tunnels, caves, explosions, day/night transitions, and bright outdoor-to-indoor cuts. | Keep `P3` diagnostic-only until deterministic capture, adaptation speed, EV range, metering/fallback policy, and web parity are defined. |
+| Depth of field | Bevy 0.14 has focal-distance/aperture depth-of-field examples; ThreeNative currently records a runtime-config/report boundary. | Hero-object focus, scale cues, menu scenes, and cinematic moments. | Promote after visual blur calibration, mobile/performance budget, camera ownership rules, and unsupported-platform fallback evidence. |
+| Motion blur and motion vectors | Bevy 0.14 includes per-object motion blur and improved motion vectors/TAA for animated meshes. | Racing, projectiles, fast enemies, camera pans, and attacks feel smoother. | Keep diagnostic-only until both runtimes expose compatible motion-vector or authored approximation behavior with shutter/samples, prepass requirements, and screenshot/video proof. |
+| Screen-space reflections and deferred rendering | Bevy 0.14 SSR is deferred-only, has WebGL limitations, and is constrained to smooth surfaces. | Wet floors, water, glossy metal, mirrors, and polished interiors. | Do not expose Bevy SSR directly. Future contract should prefer material/environment reflection intent plus fallback tiers; `SSR`, mirrors, and deferred path remain stable diagnostics until web fallback and Bevy evidence are proven. |
+| Volumetric fog and light shafts | Bevy 0.14 adds volumetric fog/light shafts with camera settings and directional shadowed light participation. | Forest shafts, caves, arenas, magic beams, underwater haze, and atmospheric screenshots. | Keep `P3` diagnostic-only unless a shared profile can define density/scattering, participating light kinds, shadow dependency, light-count limits, and performance budgets across web and Bevy. |
+| Advanced PBR and glTF extensions | Bevy 0.14 release notes and glTF loader cover texture transforms, clearcoat, transmission, emissive strength, anisotropy, extras, and morph-related metadata. | Imported assets retain authored glass, varnish, brushed metal, trim sheets, emissive signage, and material identity. | Preserve/report supported metadata, promote only fields with web/Bevy visual or report parity, and diagnose unsupported extensions, shader transforms, and Bevy feature-flag gaps. |
+| Morph targets | Bevy 0.14 loads morph target data and has a morph-target animation example. | Facial expressions, squash/stretch, damage states, shape variants, and expressive collectibles. | Promote as `P2` only with glTF morph-name extraction, validated weight targets, deterministic weight tracks, web/Bevy mapping, and visible silhouette proof. |
+| Animation graph blending | Bevy 0.14 introduces `AnimationGraph`; ThreeNative already has constrained graph metadata and blending traces. | Idle/run/action transitions stop looking mechanical, especially for humanoid or vehicle rigs. | Keep the portable state-machine/blend-second contract; reject raw Bevy graph assets, arbitrary graph topology, IK, retargeting, and backend-only animation handles. |
+| Particles and lightweight VFX | Bevy 0.14 has no general built-in 3D particle system, while ThreeNative promotes bounded deterministic rendered particles. | Dust, sparks, pickups, impacts, exhaust, splashes, and objective feedback. | Treat as a ThreeNative-owned portable effect: CPU-deterministic seed, max count/rate/lifetime caps, billboard or simple mesh representation, alpha material constraints, and web/Bevy visible-region proof. |
+| Decals and surface marks | Bevy 0.14 has no broadly portable built-in decal API in the official example surface. | Tire marks, scorch marks, bullet hits, puddles, route arrows, and signage overlays. | Start, if promoted, with authored surface-aligned decal quads and material/depth policy. Projected/deferred decals remain `P3` diagnostics. |
+| Billboard impostors and HLOD | Bevy 0.14 visibility ranges explicitly support distance-based replacement patterns, but not a complete portable billboard-facing contract. | Distant trees, crowds, signs, and VFX remain readable without dense geometry. | Add authored camera-facing quad impostor metadata, distance/fade thresholds, material constraints, and web/Bevy selection/facing proof before claiming support. |
+| GPU instancing and dense props | Bevy 0.14 has renderer batching/GPU preprocessing and shader-instancing examples; ThreeNative has native instancing evidence for repeated content. | Grass, rocks, debris, crowds, city props, and repeated set dressing become affordable. | Promote repeated static model/material batching and bounded per-instance transform/color only with draw-grouping reports; arbitrary instance buffers and custom shader attributes remain diagnostics. |
+| Texture compression and delivery | Bevy's image loader is feature-gated for formats such as WebP, JPEG, KTX2/DDS/Basis paths, and device compressed formats. The runtime currently enables only a subset. | Smaller downloads, faster load, HDR/environment-map feasibility, and mobile budget control. | Separate source acceptance from target/device support. Require target-profile diagnostics, fallback texture selection, and per-target evidence before enabling native compressed texture features. |
+
+Practical order for game-polish work:
+
+1. Promote and release-gate screenshot-backed `balanced` render look defaults
+   across web and Bevy.
+2. Add bounded polish presets for shadows, bloom, exposure, and material
+   defaults before exposing high-end renderer internals.
+3. Improve imported-asset fidelity through glTF material-extension reports,
+   morph-target metadata, and animation blend proof.
+4. Add dense-scene affordability through LOD, impostors, instancing reports, and
+   texture target-profile diagnostics.
+5. Keep SSR, volumetrics, auto exposure, motion blur, projected decals, custom
+   post-processing, deferred rendering, bindless resources, and raw shader
+   features diagnostic-only until portable semantics and visual evidence exist.
+
 ### 🧩 ECS, App, and Scheduling
 
 - [x] Entities, stable IDs, components, and component schemas
@@ -502,12 +547,20 @@ ergonomics. These rows are not implementation claims.
 - [x] `P2` Point-light PCF/shadow-filtering metadata parity
 - [x] `P1` Shadow bias controls
 - [x] `P1` Per-mesh shadow caster/receiver controls
-- [x] `P3` Spherical/area-light behavior as a diagnostic-only boundary (V10-02)
-- [x] `P3` Lightmaps and mixed baked/dynamic lighting as a diagnostic-only boundary (V10-02)
+- [x] `P3` Spherical/area-light behavior as a diagnostic-only boundary until
+      web/Bevy light-shape semantics, fallbacks, and screenshot proof exist
+      (V10-02)
+- [x] `P3` Lightmaps and mixed baked/dynamic lighting as a diagnostic-only
+      boundary until authoring, bake provenance, asset packaging, and runtime
+      fallback semantics exist (V10-02)
 - [x] `P2` Light probes and environment maps
   - [x] V9-04 SDK/IR/compiler/runtime conformance contract and evidence for
         bundle-local skybox, environment-map, and bounded light-probe declarations
 - [x] `P2` Light/probe gizmo debug observations
+- [x] `P2` Shadow quality profile backlog for small-game polish: map bounded
+      low/medium/high profile rows to point-light PCF, directional cascade
+      distance/count, map size, bias defaults, light budgets, and screenshot
+      evidence before treating the profile as a visual parity claim
 
 ### 🎨 Materials, Textures, and Shaders
 
@@ -524,7 +577,10 @@ ergonomics. These rows are not implementation claims.
 - [x] `P1` Specular texture maps
 - [x] `P1` Structured source/CLI/editor mutation for promoted material PBR fields and texture slots
 - [x] `P3` Parallax mapping and depth maps as a diagnostic-only boundary (V10-02)
-- [x] `P3` Anisotropy, specular tint, and advanced PBR fields as a diagnostic-only boundary (V10-02)
+- [x] `P3` Anisotropy, specular tint, and advanced PBR fields as a
+      diagnostic-only boundary until scalar/texture/tangent requirements,
+      glTF extension import policy, web mapping, Bevy feature flags, and
+      visual proof are defined (V10-02)
 - [x] `P1` Authored texture repeat/wrap/filter/UV transform controls in IR, web runtime mapping, native sampler/UV application, and conformance observations
 - [x] `P1` WebP texture asset format support across SDK/IR validation, compiler emission, web runtime loading, and Bevy asset loading
 - [x] `P2` Multiple generated-mesh UV channels
@@ -534,6 +590,11 @@ ergonomics. These rows are not implementation claims.
 - [x] `P2` Advanced blend parity diagnostics on Bevy beyond normal alpha/mask/blend policy
 - [x] `P2` Native specular texture rendering proof
 - [x] `P2` Broader extended-material catalog policy beyond current constrained presets
+- [x] `P2` glTF advanced material extension policy backlog: preserve/report Bevy
+      0.14-supported texture transform, clearcoat, transmission, emissive
+      strength, extras, and anisotropy metadata, but promote only fields with
+      web/Bevy report or screenshot parity and stable unsupported-extension
+      diagnostics
 - [x] `P3` Custom shaders, shader defs, storage buffers, and render phases diagnostic boundary (V10-02)
 - [x] `P3` Bindless materials/textures diagnostic boundary (V10-02)
 
@@ -554,7 +615,10 @@ web/Bevy evidence exist.
 - [x] `P1` Seven-scene web/Bevy baseline visual parity gate, including v1
       canonical no-ambient fill and crystal runner ambient calibration evidence
 - [x] `P3` Atmospheric scattering and atmospheric fog through bounded atmosphere/fog profiles (V10-02, V10-03 calibration)
-- [x] `P3` Volumetric fog and volumetric lighting diagnostic boundary (V10-02, V10-03 calibration)
+- [x] `P3` Volumetric fog and volumetric lighting diagnostic boundary until
+      density/scattering profiles, participating light limits, shadow-map
+      dependency, web fallback, and performance budgets are proven (V10-02,
+      V10-03 calibration)
 - [x] `P1` Skyboxes and cubemap/equirect texture handling
   - [x] V9-04 validates bundle-local cubemap/equirect texture refs, emits
         rendering capabilities, reports web/native skybox observations, and writes
@@ -568,18 +632,36 @@ web/Bevy evidence exist.
       promotion remains pending CI capture promotion
 - [x] `P2` FXAA, TAA, and SMAA anti-aliasing modes
 - [x] `P2` Color grading and filmic metadata observations
-- [x] `P3` Auto exposure diagnostic boundary (V10-02, V10-03 calibration)
-- [x] `P2` Depth of field runtime-config/report boundary (visual blur calibration deferred)
-- [x] `P3` Motion blur and motion vectors diagnostic boundary (V10-02, V10-03 calibration)
-- [x] `P3` Screen-space reflections and mirrors diagnostic boundary (V10-02, V10-03 calibration)
-- [x] `P2` Decals diagnostic boundary (V10-02, V10-03 calibration)
-- [x] `P3` Deferred rendering diagnostic boundary (V10-02)
+- [x] `P3` Auto exposure diagnostic boundary until deterministic histogram,
+      adaptation-speed, EV-range, capture, and web fallback behavior exist
+      (V10-02, V10-03 calibration)
+- [x] `P2` Depth of field runtime-config/report boundary; visual blur
+      calibration, camera ownership rules, mobile fallback, and performance
+      budgets remain deferred
+- [x] `P3` Motion blur and motion vectors diagnostic boundary until shutter,
+      sample count, prepass, animated-mesh motion vectors, web fallback, and
+      video/screenshot proof exist (V10-02, V10-03 calibration)
+- [x] `P3` Screen-space reflections and mirrors diagnostic boundary; Bevy 0.14
+      SSR is deferred-path and platform constrained, so portable promotion must
+      define material/reflection intent and forward/web fallback first (V10-02,
+      V10-03 calibration)
+- [x] `P2` Decals diagnostic boundary; surface-aligned decal quads are the first
+      portable candidate, while projected/deferred decals remain unsupported
+      until shared renderer semantics exist (V10-02, V10-03 calibration)
+- [x] `P3` Deferred rendering diagnostic boundary; portable source should express
+      visual intent rather than selecting a Bevy render path directly (V10-02)
 - [x] `P2` Visibility ranges/HLOD fade observations
 - [x] `P1` Renderer-level native instancing and batching parity
 - [x] `P1` Visual runtime LOD mesh swapping
 - [x] `P2` Arbitrary user-authored instancing APIs as bounded report policy
 - [x] `P2` Custom GPU instance attributes diagnostic boundary
 - [x] `P2` Compressed skybox/environment texture format diagnostics
+- [x] `P2` Billboard/impostor LOD backlog for camera-facing quad impostors with
+      visibility ranges, fade/selection proof, and material constraints
+- [x] `P2` Compressed texture target-profile backlog for WebP/JPEG baseline and
+      optional KTX2/DDS/Basis/BC/ETC2/ASTC support with device diagnostics,
+      fallback texture selection, environment-map policy, and per-target
+      evidence
 - [x] `P3` Virtual geometry/meshlet rendering diagnostic boundary (V10-02, V10-03 calibration)
 - [x] `P3` Custom post-processing passes diagnostic boundary (V10-02, V10-03 calibration)
 
@@ -603,6 +685,10 @@ diagnostics until portable promotion criteria and web/Bevy evidence exist.
 - [x] `P2` glTF extras and custom glTF vertex attributes
 - [x] `P1` Query/update spawned glTF scene entities
 - [x] `P2` glTF extension processing policy with promoted AnimationGraph metadata import and stable diagnostics for executable/custom transforms
+- [x] `P2` Imported glTF visual-fidelity backlog for material-extension reports,
+      morph target names, extras, texture transforms, and unsupported extension
+      diagnostics that preserve source provenance without exposing Bevy loader
+      internals as authoring API
 - [x] `P1` Scene viewer/editor inspection workflow
 - [x] `P1` CLI glTF/GLB asset inspection for bounds, dependency checks, and scale calibration (`tn asset inspect`)
 - [x] `P1` Modular track proof reports connector continuity, actor-on-road placement, and actor footprint versus material-derived lane width (`tn scene proof-modular-track`)
@@ -628,13 +714,23 @@ diagnostics until portable promotion criteria and web/Bevy evidence exist.
 - [x] `P1` Transform animation authored in code/IR
 - [x] `P1` `animation.query` / `animation.stop` declared command-shape/service-payload parity
 - [x] `P1` Animation blending beyond fixed graph traces
-- [x] `P2` Animation masks
+- [x] `P2` Animation masks backlog: prove portable skeleton target addressing,
+      per-joint mask validation against loaded glTF nodes, web/Bevy blend
+      behavior, and visual evidence before claiming partial-body animation
 - [x] `P1` Stateful animation stop/state query runtime semantics
-- [x] `P2` Morph-target animation
+- [x] `P2` Morph-target animation backlog: extract glTF morph names, validate
+      authored weight targets, emit deterministic weight tracks, map to web and
+      Bevy, and prove visible silhouette change
 - [x] `P3` Retargeting and inverse kinematics diagnostic boundary (V10-02)
 - [x] `P2` UI/property animation
-- [x] `P2` Arbitrary blend trees beyond bounded crossfade/graph traces as a diagnostic boundary
-- [x] `P1` Rendered particle systems
+- [x] `P2` Arbitrary blend trees beyond bounded crossfade/graph traces as a
+      diagnostic boundary; raw Bevy `AnimationGraph` assets, arbitrary graph
+      topology, IK, retargeting, and backend animation handles remain outside
+      the portable source contract
+- [x] `P1` Rendered particle systems through a ThreeNative-owned bounded VFX
+      contract: deterministic seed, max count/rate/lifetime caps, simple mesh or
+      billboard representation, alpha material constraints, and web/Bevy
+      visible-region proof; this is not Bevy-native particle-system parity
 
 ### 🧱 Physics, Collision, and Character Movement
 

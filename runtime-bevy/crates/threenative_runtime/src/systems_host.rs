@@ -38,6 +38,43 @@ pub struct NativeSystemsHostRun {
     pub logs: Vec<NativeSystemEffectLog>,
 }
 
+#[derive(bevy::prelude::Resource, Debug, Clone, PartialEq)]
+pub struct NativeGameLoopState {
+    pub accumulator: f32,
+    pub elapsed: f32,
+    pub frame: u64,
+    pub paused: bool,
+    pub startup_complete: bool,
+    pub tick: u64,
+}
+
+impl NativeGameLoopState {
+    pub fn new(paused: bool) -> Self {
+        Self {
+            accumulator: 0.0,
+            elapsed: 0.0,
+            frame: 0,
+            paused,
+            startup_complete: false,
+            tick: 0,
+        }
+    }
+}
+
+impl Default for NativeGameLoopState {
+    fn default() -> Self {
+        Self::new(false)
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct NativeGameLoopRunOptions<'a> {
+    pub delta: f32,
+    pub fixed_delta: f32,
+    pub input: Option<&'a NativeInputState>,
+    pub paused: bool,
+}
+
 pub fn diagnose_native_system_host(bundle: &LoadedBundle) -> Vec<SystemsHostDiagnostic> {
     let mut diagnostics = Vec::new();
     if bundle.manifest.entry.scripts.is_none() {
@@ -124,6 +161,78 @@ pub fn run_native_systems_once_with_input(
     time: NativeSystemTimeSnapshot,
     input: Option<&NativeInputState>,
 ) -> Result<NativeSystemsHostRun, SystemsHostError> {
+    let schedules = ["startup", "fixedUpdate", "update", "postUpdate"];
+    run_native_system_schedules(bundle, &schedules, time, input)
+}
+
+pub fn run_native_systems_frame_with_input(
+    bundle: &mut LoadedBundle,
+    state: &mut NativeGameLoopState,
+    options: NativeGameLoopRunOptions<'_>,
+    mut step_physics: impl FnMut(&mut LoadedBundle, f32),
+) -> Result<NativeSystemsHostRun, SystemsHostError> {
+    if options.fixed_delta <= 0.0 {
+        return Err(host_error(
+            "TN_BEVY_SYSTEM_FIXED_DELTA_INVALID",
+            format!(
+                "Native game loop fixed_delta must be greater than zero, got {}.",
+                options.fixed_delta
+            ),
+        ));
+    }
+
+    state.paused = options.paused;
+    state.elapsed += options.delta;
+    state.accumulator += options.delta;
+
+    let mut run = NativeSystemsHostRun::default();
+    if !state.paused {
+        if !state.startup_complete {
+            let time = loop_time_snapshot(0.0, state.elapsed, options.fixed_delta, state.paused);
+            run.logs.extend(
+                run_native_system_schedules(bundle, &["startup"], time, options.input)?.logs,
+            );
+            state.startup_complete = true;
+        }
+
+        while state.accumulator >= options.fixed_delta {
+            step_physics(bundle, options.fixed_delta);
+            let time = loop_time_snapshot(
+                options.fixed_delta,
+                state.elapsed,
+                options.fixed_delta,
+                state.paused,
+            );
+            run.logs.extend(
+                run_native_system_schedules(bundle, &["fixedUpdate"], time, options.input)?.logs,
+            );
+            state.tick += 1;
+            state.accumulator -= options.fixed_delta;
+        }
+
+        let variable_time =
+            loop_time_snapshot(options.delta, state.elapsed, options.fixed_delta, state.paused);
+        run.logs.extend(
+            run_native_system_schedules(
+                bundle,
+                &["update", "postUpdate"],
+                variable_time,
+                options.input,
+            )?
+            .logs,
+        );
+    }
+    state.frame += 1;
+
+    Ok(run)
+}
+
+fn run_native_system_schedules(
+    bundle: &mut LoadedBundle,
+    schedules: &[&str],
+    time: NativeSystemTimeSnapshot,
+    input: Option<&NativeInputState>,
+) -> Result<NativeSystemsHostRun, SystemsHostError> {
     ensure_native_system_host_supported(bundle)?;
     if bundle.manifest.entry.scripts.is_none() {
         return Ok(NativeSystemsHostRun::default());
@@ -176,7 +285,7 @@ pub fn run_native_systems_once_with_input(
 
     let mut logs = Vec::new();
     let mut diff_cache = ComponentDiffCache::default();
-    for schedule in ["startup", "fixedUpdate", "update", "postUpdate"] {
+    for schedule in schedules {
         let scheduled_systems = ordered_systems_for_schedule(&systems, schedule);
         let tracked_components = scheduled_systems
             .iter()
@@ -208,6 +317,22 @@ pub fn run_native_systems_once_with_input(
     }
 
     Ok(NativeSystemsHostRun { logs })
+}
+
+fn loop_time_snapshot(
+    delta: f32,
+    elapsed: f32,
+    fixed_delta: f32,
+    paused: bool,
+) -> NativeSystemTimeSnapshot {
+    NativeSystemTimeSnapshot {
+        delta,
+        dt: delta,
+        elapsed,
+        fixed_delta,
+        fixed_dt: fixed_delta,
+        paused,
+    }
 }
 
 fn ordered_systems_for_schedule<'a>(systems: &'a [SystemIr], schedule: &str) -> Vec<&'a SystemIr> {

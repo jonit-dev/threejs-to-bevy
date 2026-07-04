@@ -1,177 +1,19 @@
 # ThreeNative PRDs
 
-This index separates current cleanup work from historical milestone batches.
+This index separates open planning work from completed PRDs and historical
+milestone batches. For current implementation status, read
+[../STATUS.md](../STATUS.md) first.
 
 ## Current Initiatives
 
-- [Versioned Debt Cleanup](archive/cleanup-versioned-debt.md): capability naming, typed
-  verification tooling, template registry, fixture catalog, and docs front door
-  migration.
-- [IR Contract Drift Hardening](done/other/ir-contract-drift-hardening.md): contract
-  source-of-truth policy, schema/type/Rust drift gates, validating runtime load
-  path, and shared validation cleanup.
-- [Example-Local Artifacts, Fixtures, and Docs Structure](done/artifact-fixture-layout-reorg.md):
-  canonical artifact roots, example-local verification evidence, aggregate
-  reports, shared IR fixture ownership, contextual docs grouping, and layout
-  drift checks.
-- [Verification Gates and Package Scripts Reorg](done/other/verification-gates-and-package-scripts-reorg.md):
-  typed verify-tool gate ownership, wrapper-only legacy scripts, root
-  `package.json` cleanup, recursive test ownership, and compatibility aliases.
-- [Verification Strategy and Speed](done/verification-strategy-and-speed.md):
-  test-vs-gate ownership, verification script classification, build-once
-  release orchestration, gate profiles, and timing budgets.
-- [P0 Editor Zustand Store Completion and Guardrails](done/other/p0-editor-zustand-store-completion.md):
-  complete the editor-session state refactor by keeping derived editor models,
-  selection/move orchestration, and local-state regression guardrails behind the
-  Zustand store boundary before lower-priority editor/state work expands.
-- [AI-Consumable Distribution Contract](done/other/ai-consumable-distribution-contract.md):
-  published declarations, schemas, capabilities, diagnostics, examples, and AI
-  docs that make installed packages understandable without repository source.
-- [Target Profile Contract Hardening](done/other/target-profile-contract-hardening.md):
-  target-profile schema/type/fixture/native-loader drift cleanup so conformance
-  cannot pass with stale schema literals or unsupported target values.
-- [Agent-Friendly Project Scaffolding and Visual Debugging Workflows](other/agent-friendly-project-and-visual-debugging-workflows.md):
-  init/create front door, task-oriented help, doctor diagnostics, asset/model
-  inspection, transform/camera guardrails, screenshot/video proof, runtime
-  debug overlay, and racing template evidence.
-- [Agent-Friendly 3D Game Creation Contract](done/other/agent-friendly-3d-game-creation-contract.md):
-  example-derived game inventory, source-aware planning, normalized production
-  metadata, common vertical-slice recipes, and drift gates that make generated
-  3D game creation easier for AI agents.
-- [Bowling Lane Agent-Friendly Scene Source Refactor](done/other/bowling-lane-agent-friendly-scene-source.md):
-  compact prefab defaults, repeated layout source, source inspection, CLI
-  operations, and bowling-lane migration to prevent thousand-line scene JSON
-  while preserving portable physics/runtime semantics.
-- [Playable Game Authoring Loop Hardening](done/other/game-authoring-loop-hardening.md):
-  strict input/source validation, fresh dev-preview rebuilds, CLI playability
-  proof, modular-kit assembly diagnostics, camera/scale proof, and starter
-  template quality gates from the racing-kit session learnings.
-- [Source-Backed Plugin System](other/plugin-system.md): portable plugin
-  manifests, deterministic source-backed install/remove operations, compiler
-  provenance, runtime metadata parity, plugin verification gates, and a sample
-  checkpoint-orb plugin proven working in a playable game.
-- [Shippable Asset Source Catalog](done/other/shippable-asset-source-catalog.md):
-  SQLite-backed direct asset URL catalog, CLI search/get/suggest commands,
-  workflow-doc extraction, and query-first agent instructions for third-party
-  game art sourcing.
-- [Agentic Game Production Workflow](done/other/agentic-game-production-workflow.md):
-  director-style game-production orchestration adapted from Three.js game
-  skills into ThreeNative source-backed CLI/editor workflows, phase ledgers,
-  scorecards, asset/audio provenance, QA, and release gates.
-- [Agent-Safe Scene Authoring CLI](done/other/agent-safe-scene-authoring-cli.md):
-  shared authoring core, `tn scene ... --json` operations, schema/semantic
-  validation, deterministic diagnostics, and AI-safe scene mutation workflow.
-- [Authoring Graph and Provenance Capture](done/other/authoring-graph-provenance-capture.md):
-  compiler-owned authoring graph, declaration provenance, source-path
-  diagnostics, duplicate/conflict checks, and deterministic normalization.
-- [Modular SDK Authoring Declarations](done/other/modular-sdk-authoring-declarations.md):
-  data-first/module-first SDK declarations for scenes, entities, prefabs,
-  resources, systems, input, UI, audio, and assets.
-- [Script Module References and Manifest](done/other/script-module-references-and-manifest.md):
-  source module/export script refs, generated script manifest, collision
-  diagnostics, helper import policy, and generated-script source boundaries.
-- [Portable Scripting Ergonomics, Stdlib, and Lifecycle Facade](done/other/portable-scripting-ergonomics-stdlib-and-lifecycle.md):
-  core script context ergonomics, importable pure helper stdlib, opt-in domain
-  kits, lifecycle authoring aliases, helper import bundling, and web/Bevy
-  conformance evidence so future scripts do not carry local mini-standard
-  libraries.
-- [TypeScript Authoring Facade and Script Ergonomics](done/other/typescript-authoring-facade-and-script-ergonomics.md):
-  TypeScript ergonomics over the shared authoring operation registry, one-way
-  generators, recipes, script helper integration, and editor code mode while
-  preserving structured ECS source as the editable truth.
-- [Web and Bevy Scripting Host Conformance](done/other/web-bevy-scripting-host-conformance.md):
-  shared scripting service matrix, effect validation parity, ambient API
-  diagnostics, and web/native conformance fixtures.
-- [Modular Template Migration and Proof](done/other/modular-template-migration-and-proof.md):
-  canonical template migration to modular authoring, CLI validation, web proof,
-  and native proof where claimed.
-- [Editor Snapshot and Source Patch Bridge](done/other/editor-snapshot-source-patch-bridge.md):
-  source/generated/runtime document classification, structured source patches,
-  live edit policy, and deterministic editor diffs.
-- [Authoring MCP Wrapper](done/other/authoring-mcp-wrapper.md):
-  optional MCP tools as thin wrappers over the same authoring core/CLI behavior.
-- [Editor-Ready Modular Authoring and Scripting Architecture](other/editor-ready-modular-authoring-and-scripting-architecture.md):
-  source-of-truth boundaries, modular authoring graph/provenance, script module
-  references, editor-safe source documents, and web/Bevy runtime parity.
-- [Editor Script Body Code Mode](other/editor-script-body-code-mode.md):
-  planned bounded code-mode workflow for creating, opening, editing, and
-  validating project-local `src/scripts/**/*.ts` modules while preserving
-  module/export script references as structured source data.
-- [Editor AI Chat ECS Control](done/other/editor-ai-chat-ecs-control.md):
-  planned approval-based AI chat workflow that can inspect editor context,
-  propose registry-backed ECS operation plans, apply approved source mutations,
-  validate/build, and prove emitted IR without making MCP or generated bundles a
-  new source of truth.
-- [Editor Functional Gap Closure](done/other/editor-functional-gap-closure.md):
-  completed conversion of visible editor placeholders and partial workflows into
-  source-backed, verified actions or explicit disabled diagnostics, including
-  Add Component completion, terrain, script-reference editing, hierarchy
-  view-only status, settings/playback honesty, and editor-authored physics
-  source/IR plus runtime residual proof.
-- [Complete Structured Authoring Parity](other/complete-structured-authoring-parity.md):
-  full structured source coverage for map/editor-owned data, CLI/MCP/editor
-  operation parity with TypeScript-era authoring, bundle import, provenance, and
-  round-trip proof without TypeScript reverse-generation.
-- [Editor Package Shell and Adapter Contract](done/other/editor-package-shell-and-adapter-contract.md):
-  first-class `@threenative/editor` package shell, CLI launch path, and
-  ThreeNative-shaped adapter models that can reuse Vibe Coder visual patterns
-  without adopting its ECS/runtime source model.
-- [Editor Source Path and Operation Bridge](done/other/editor-source-path-and-operation-bridge.md):
-  prerequisite hardening for `content/**` editor source-path classification and
-  shared `@threenative/authoring` operation metadata consumed by CLI, MCP, and
-  editor adapters.
-- [Editor Source Document Workbench](done/other/editor-source-document-workbench.md):
-  editable project workbench over structured source documents using shared
-  `@threenative/authoring` operations, with CLI/MCP/editor operation parity.
-- [Editor Runtime Preview and Vibe UI Port](done/other/editor-runtime-preview-and-vibe-ui-port.md):
-  runtime-web-three preview host, selection correlation, catalog preview panels,
-  and browser smoke evidence while keeping Vibe Coder's R3F/Rapier ECS out of
-  the source-of-truth path.
-- [P0 Editor Zustand State Store Refactor](done/other/editor-zustand-state-store-refactor.md):
-  centralize editor-session state for modal, selection, project payload,
-  hierarchy nesting, viewport transforms, async operations, and dev fixture
-  workflows before functional editor state expands further.
-- [Functional Editor Viewport, Gizmo, and Selection](done/other/functional-editor-viewport-gizmo-and-selection.md):
-  source-backed hierarchy/viewport selection sync, real move/rotate/scale gizmo
-  modes, transform persistence, viewport visual cues, and Playwright evidence.
-- [Functional Editor Scene, Assets, and Environment](done/other/functional-editor-scene-assets-and-environment.md):
-  source-backed scene lifecycle, Add Object/model asset flows, environment
-  skybox/terrain/LOD visibility, GLB loading proof, and build artifact evidence.
-- [Functional Editor Operations, Modals, and Inspector Completion](done/other/functional-editor-operations-modals-and-inspector-completion.md):
-  source operation coverage for inspector fields and modal actions, add
-  component/default persistence, delete/settings/save/build behavior, and
-  functional editor e2e coverage.
-- [Advanced Visual Effects, Lighting, and Material Depth](other/advanced-visual-effects-lighting-material-depth.md):
-  remaining advanced lighting, material, atmosphere, post-processing, deferred
-  renderer, virtual geometry, and custom post-processing gaps.
-- [Beautiful Defaults Render Look Profiles](done/beautiful-defaults-render-look-profiles.md):
-  profile selection for parity versus game-quality rendering that reuses
-  existing runtime, atmosphere, material, and visual proof contracts.
-- [Advanced Animation and Physics Depth](other/advanced-animation-physics-depth.md):
-  remaining retargeting, IK, arbitrary blend-tree, constraint, triangle
-  narrow-phase, vehicle, soft-body, and ragdoll gaps.
-- [UI Platform and Desktop Residuals](done/other/ui-platform-desktop-residuals.md):
-  remaining gesture, virtual keyboard, world UI, italic text, advanced grid,
-  broad gamepad/touch UI, and desktop webview packaging gaps.
-- [External Services, Media, and Non-Portable Boundaries](other/external-services-media-boundaries.md):
-  cloud/account storage, custom decoders, streaming/network audio, online
-  services, alternate authoring models, 2D workflows, and backend-only
-  diagnostic boundaries.
-- [Bevy Catalog Watchlist Residuals](done/other/bevy-catalog-watchlist-residuals.md):
-  newly tracked upstream Bevy catalog gaps for ECS callbacks/query ergonomics,
-  editable text/IME, UI viewport and drag behavior, window/cursor/power policy,
-  runtime asset authoring/export, generated assets, and glTF extension
-  processing.
-- [Portable Scripting Runtime Query Diffing](done/other/portable-scripting-runtime-query-diffing.md):
-  hidden runtime diffing for `changed` queries with deterministic web/Bevy
-  component snapshots, explicit metadata compatibility, and conformance
-  evidence.
+Open PRDs live under `docs/PRDs/other/`. Treat these as the active planning
+backlog unless a nested PRD says it has been superseded.
+
+### Runtime And Gameplay Parity
+
 - [Portable Scripting Character and Physics Contacts](other/portable-scripting-character-physics-contacts.md):
   richer primitive contact filtering, character movement observations, slope
   and push semantics, and stable diagnostics for unsupported physics breadth.
-- [Portable Scripting Runtime Prefabs and Hierarchy Commands](done/other/portable-scripting-runtime-prefabs-hierarchy.md):
-  bundle-local runtime prefab catalogs, deterministic instantiation, hierarchy
-  mutation commands, and rendered entity ownership/teardown parity.
 - [Portable Scripting Delayed Commands and Bounded Scheduling](other/portable-scripting-delayed-commands-scheduling.md):
   fixed-tick delayed command scheduling beyond timer helpers while keeping
   promises, workers, wall-clock timers, and platform schedulers unsupported.
@@ -180,46 +22,97 @@ This index separates current cleanup work from historical milestone batches.
   service logs and visual/runtime evidence.
 - [Portable Scripting Audio Facade](other/portable-scripting-audio-facade.md):
   `ctx.audio` play/stop/query over declared audio IR with logical playback IDs,
-  private runtime handles, and stable unsupported streaming/platform diagnostics.
-- [Script Stdlib Common Gameplay Helpers](done/other/script-stdlib-common-gameplay-helpers.md):
-  expanded `@threenative/script-stdlib` helper inventory for the common numeric,
-  vector, bounds, easing, deterministic random, color, and HUD-formatting chores
-  shared by most portable game scripts.
-- [Portable Scripting UI, Persistence, and Settings Facades](done/other/portable-scripting-ui-persistence-settings-facades.md):
-  bounded `ctx.ui`, `ctx.persistence`, and `ctx.settings` APIs over retained UI
-  and local-data IR without exposing DOM, native widget, filesystem, cloud, or
-  platform handles.
-- [Scene Lifecycle and Game Flow Contract](done/other/scene-lifecycle-and-flow-contract.md):
-  scene modules, lifecycle phases, transitions, loading, overlays, persistent
-  state, and cross-runtime scene manager parity.
-- [Bundle Safety and Runtime Robustness Hardening](done/other/bundle-safety-runtime-robustness-hardening.md):
-  bundle path containment, atomic emit, generated payload validation, runtime
-  teardown, scatter guardrails, and conformance-backed runtime parity.
-- [Post-V10 Runtime Gameplay Host Semantics](done/other/post-v10-runtime-gameplay-host.md):
-  live rendered-entity ECS host behavior, lifecycle semantics, event windows,
-  hooks, system locals, bounded async services, and runtime plugin diagnostics.
-- [Post-V10 Durable Persistence and State-Preserving Reload](done/other/post-v10-persistence-hot-reload.md):
-  durable Bevy save/settings backend, autosave/checkpoint restore, reload state
-  policy, and cloud/filesystem boundary diagnostics.
-- [Post-V10 Input, UI, and Platform UX Polish](done/other/post-v10-input-ui-platform-polish.md):
-  host touch streams, settings-screen polish, UI mutation, nested scrolling,
-  spatial navigation, focus narration, virtual keyboard behavior, and device
+  private runtime handles, and stable unsupported streaming/platform
   diagnostics.
-- [Post-V10 Rendering, Materials, Geometry, and Asset Residuals](done/other/post-v10-rendering-materials-geometry-residuals.md):
-  runtime LOD, streamed terrain, material proof, instancing, asset streaming,
-  glTF custom attribute policy, and advanced renderer diagnostics.
-- [Post-V10 Animation, Physics, and Navigation Residuals](done/other/post-v10-animation-physics-navigation-residuals.md):
-  animation masks, morph targets, UI animation, sloped mesh grounding,
-  constraints, mesh narrow phase, dynamic navmesh, crowd steering, and advanced
-  physics diagnostics.
-- [Post-V10 Production Audio, Diagnostics, Profiling, and Packaging](done/other/post-v10-production-audio-diagnostics-packaging.md):
-  live audio mixer/effects, audio device diagnostics, profiler/GPU timing
-  reports, signed/mobile packaging preflight, repair hints, and debug rendering.
+
+### Authoring, Editor, And Plugins
+
+- [Complete Structured Authoring Parity](other/complete-structured-authoring-parity.md):
+  full structured source coverage for map/editor-owned data, CLI/MCP/editor
+  operation parity with TypeScript-era authoring, bundle import, provenance, and
+  round-trip proof without TypeScript reverse-generation.
+- [Editor-Ready Modular Authoring and Scripting Architecture](other/editor-ready-modular-authoring-and-scripting-architecture.md):
+  source-of-truth boundaries, modular authoring graph/provenance, script module
+  references, editor-safe source documents, and web/Bevy runtime parity.
+- [Editor Script Body Code Mode](other/editor-script-body-code-mode.md):
+  bounded code-mode workflow for creating, opening, editing, and validating
+  project-local `src/scripts/**/*.ts` modules while preserving module/export
+  script references as structured source data.
+- [Source-Backed Plugin System](other/plugin-system.md):
+  portable plugin manifests, deterministic source-backed install/remove
+  operations, compiler provenance, runtime metadata parity, plugin verification
+  gates, and a sample checkpoint-orb plugin proven working in a playable game.
+- [Agent-Friendly Project Scaffolding and Visual Debugging Workflows](other/agent-friendly-project-and-visual-debugging-workflows.md):
+  init/create front door, task-oriented help, doctor diagnostics, asset/model
+  inspection, transform/camera guardrails, screenshot/video proof, runtime
+  debug overlay, and racing template evidence.
+
+### Advanced And Boundary Work
+
+- [Advanced Visual Effects, Lighting, and Material Depth](other/advanced-visual-effects-lighting-material-depth.md):
+  remaining advanced lighting, material, atmosphere, post-processing, deferred
+  renderer, virtual geometry, and custom post-processing gaps.
+- [Advanced Animation and Physics Depth](other/advanced-animation-physics-depth.md):
+  remaining retargeting, IK, arbitrary blend-tree, constraint, triangle
+  narrow-phase, vehicle, soft-body, and ragdoll gaps.
+- [External Services, Media, and Non-Portable Boundaries](other/external-services-media-boundaries.md):
+  cloud/account storage, custom decoders, streaming/network audio, online
+  services, alternate authoring models, 2D workflows, and backend-only
+  diagnostic boundaries.
+
+## Completed Reference PRDs
+
+Completed PRDs live under `docs/PRDs/done/`. They remain linked for context,
+evidence trails, and source-boundary decisions, but they are not active backlog.
+
+Useful completed reference groups:
+
+- Core authoring and provenance:
+  [Agent-Safe Scene Authoring CLI](done/other/agent-safe-scene-authoring-cli.md),
+  [Authoring Graph and Provenance Capture](done/other/authoring-graph-provenance-capture.md),
+  [Modular SDK Authoring Declarations](done/other/modular-sdk-authoring-declarations.md),
+  [Script Module References and Manifest](done/other/script-module-references-and-manifest.md),
+  [TypeScript Authoring Facade and Script Ergonomics](done/other/typescript-authoring-facade-and-script-ergonomics.md).
+- Game-production workflow:
+  [Agent-Friendly 3D Game Creation Contract](done/other/agent-friendly-3d-game-creation-contract.md),
+  [Playable Game Authoring Loop Hardening](done/other/game-authoring-loop-hardening.md),
+  [Shippable Asset Source Catalog](done/other/shippable-asset-source-catalog.md),
+  [Agentic Game Production Workflow](done/other/agentic-game-production-workflow.md),
+  [Bowling Lane Agent-Friendly Scene Source Refactor](done/other/bowling-lane-agent-friendly-scene-source.md).
+- Editor implementation references:
+  [Editor Package Shell and Adapter Contract](done/other/editor-package-shell-and-adapter-contract.md),
+  [Editor Source Path and Operation Bridge](done/other/editor-source-path-and-operation-bridge.md),
+  [Editor Source Document Workbench](done/other/editor-source-document-workbench.md),
+  [Editor Runtime Preview and Vibe UI Port](done/other/editor-runtime-preview-and-vibe-ui-port.md),
+  [Functional Editor Viewport, Gizmo, and Selection](done/other/functional-editor-viewport-gizmo-and-selection.md),
+  [Functional Editor Scene, Assets, and Environment](done/other/functional-editor-scene-assets-and-environment.md),
+  [Functional Editor Operations, Modals, and Inspector Completion](done/other/functional-editor-operations-modals-and-inspector-completion.md),
+  [Editor Functional Gap Closure](done/other/editor-functional-gap-closure.md),
+  [Editor AI Chat ECS Control](done/other/editor-ai-chat-ecs-control.md).
+- Runtime and parity references:
+  [Web and Bevy Scripting Host Conformance](done/other/web-bevy-scripting-host-conformance.md),
+  [Scene Lifecycle and Game Flow Contract](done/other/scene-lifecycle-and-flow-contract.md),
+  [Bundle Safety and Runtime Robustness Hardening](done/other/bundle-safety-runtime-robustness-hardening.md),
+  [Native Game Loop State Parity](done/other/native-game-loop-state-parity.md),
+  [Post-V10 Runtime Gameplay Host Semantics](done/other/post-v10-runtime-gameplay-host.md),
+  [Post-V10 Durable Persistence and State-Preserving Reload](done/other/post-v10-persistence-hot-reload.md),
+  [Post-V10 Input, UI, and Platform UX Polish](done/other/post-v10-input-ui-platform-polish.md),
+  [Post-V10 Rendering, Materials, Geometry, and Asset Residuals](done/other/post-v10-rendering-materials-geometry-residuals.md),
+  [Post-V10 Animation, Physics, and Navigation Residuals](done/other/post-v10-animation-physics-navigation-residuals.md),
+  [Post-V10 Production Audio, Diagnostics, Profiling, and Packaging](done/other/post-v10-production-audio-diagnostics-packaging.md).
+- Release and distribution:
+  [Versioned Debt Cleanup](archive/cleanup-versioned-debt.md),
+  [IR Contract Drift Hardening](done/other/ir-contract-drift-hardening.md),
+  [Example-Local Artifacts, Fixtures, and Docs Structure](done/artifact-fixture-layout-reorg.md),
+  [Verification Gates and Package Scripts Reorg](done/other/verification-gates-and-package-scripts-reorg.md),
+  [Verification Strategy and Speed](done/verification-strategy-and-speed.md),
+  [AI-Consumable Distribution Contract](done/other/ai-consumable-distribution-contract.md),
+  [Target Profile Contract Hardening](done/other/target-profile-contract-hardening.md).
 
 ## Historical Milestone Archive
 
-Numbered milestone folders (`v1` through `v9`) are historical planning batches.
-They remain in place for link stability and are indexed under
+Numbered milestone folders (`v1` through `v10`) are historical planning
+batches. They remain in place for link stability and are indexed under
 [archive/milestones/README.md](archive/milestones/README.md).
 
 Do not treat milestone folder names as the current product front door. Read

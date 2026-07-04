@@ -1,6 +1,6 @@
 use std::path::Path;
 
-use bevy::{prelude::*, render::camera::ClearColorConfig};
+use bevy::{ecs::system::SystemParam, prelude::*, render::camera::ClearColorConfig};
 use thiserror::Error;
 use threenative_components::ThreeNativeId;
 use threenative_loader::{
@@ -87,7 +87,7 @@ pub struct NativeSceneStartupDiagnostic {
 }
 
 pub fn app_from_bundle(bundle_path: impl AsRef<Path>) -> Result<App, RuntimeError> {
-    let mut bundle = load_bundle(bundle_path)?;
+    let bundle = load_bundle(bundle_path)?;
     let scene_diagnostics = native_scene_startup_diagnostics(
         &bundle.world,
         &bundle.materials,
@@ -120,17 +120,10 @@ pub fn app_from_bundle(bundle_path: impl AsRef<Path>) -> Result<App, RuntimeErro
     }
     systems_host::ensure_native_system_host_supported(&bundle)?;
     let has_scripts = bundle.manifest.entry.scripts.is_some();
-    systems_host::run_native_systems_once(
-        &mut bundle,
-        systems_context::NativeSystemTimeSnapshot {
-            delta: 1.0 / 60.0,
-            dt: 1.0 / 60.0,
-            elapsed: 0.0,
-            fixed_delta: 1.0 / 60.0,
-            fixed_dt: 1.0 / 60.0,
-            paused: false,
-        },
-    )?;
+    let initially_paused = bundle
+        .runtime_config
+        .as_ref()
+        .is_some_and(|config| config.time.paused);
     let asset_root = bundle.bundle_path.display().to_string();
     let window = bundle.runtime_config.as_ref().map(|config| &config.window);
     #[cfg(feature = "native-webview")]
@@ -250,6 +243,7 @@ pub fn app_from_bundle(bundle_path: impl AsRef<Path>) -> Result<App, RuntimeErro
     );
     if has_scripts {
         app.insert_resource(ScriptedRuntimeBundle { bundle });
+        app.insert_resource(systems_host::NativeGameLoopState::new(initially_paused));
         app.add_systems(Update, run_scripted_runtime_systems);
     }
     Ok(app)
@@ -426,8 +420,14 @@ struct ScriptedRuntimeBundle {
     bundle: LoadedBundle,
 }
 
+#[derive(SystemParam)]
+struct ScriptedRuntimeParams<'w> {
+    runtime: Option<ResMut<'w, ScriptedRuntimeBundle>>,
+    loop_state: Option<ResMut<'w, systems_host::NativeGameLoopState>>,
+}
+
 fn run_scripted_runtime_systems(
-    mut runtime: Option<ResMut<ScriptedRuntimeBundle>>,
+    mut scripted: ScriptedRuntimeParams,
     input: Option<Res<input::NativeInputState>>,
     material_handles: Option<Res<map_world::NativeMaterialHandles>>,
     time: Res<Time>,
@@ -441,26 +441,35 @@ fn run_scripted_runtime_systems(
         &mut Visibility,
     )>,
 ) {
-    let Some(ref mut runtime) = runtime else {
+    let Some(ref mut runtime) = scripted.runtime else {
+        return;
+    };
+    let Some(ref mut loop_state) = scripted.loop_state else {
         return;
     };
     let delta = time.delta_seconds();
-    let fixed_delta = 1.0 / 60.0;
-    let snapshot = systems_context::NativeSystemTimeSnapshot {
+    let fixed_delta = runtime
+        .bundle
+        .runtime_config
+        .as_ref()
+        .map_or(1.0 / 60.0, |config| config.time.fixed_delta);
+    let paused = runtime
+        .bundle
+        .runtime_config
+        .as_ref()
+        .is_some_and(|config| config.time.paused);
+    let options = systems_host::NativeGameLoopRunOptions {
         delta,
-        dt: delta,
-        elapsed: time.elapsed_seconds(),
         fixed_delta,
-        fixed_dt: fixed_delta,
-        paused: false,
+        input: input.as_deref(),
+        paused,
     };
 
-    physics::step_bundle_physics(&mut runtime.bundle, fixed_delta);
-
-    if let Err(error) = systems_host::run_native_systems_once_with_input(
+    if let Err(error) = systems_host::run_native_systems_frame_with_input(
         &mut runtime.bundle,
-        snapshot,
-        input.as_deref(),
+        &mut *loop_state,
+        options,
+        physics::step_bundle_physics,
     ) {
         error!("{error}");
         return;
@@ -622,5 +631,177 @@ fn apply_transform_component(target: &mut Transform, source: &TransformComponent
     }
     if let Some(scale) = source.scale {
         target.scale = Vec3::new(scale[0], scale[1], scale[2]);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::{fs, path::Path, time::Duration};
+
+    use threenative_loader::load_bundle;
+
+    use super::*;
+
+    #[test]
+    fn scripted_runtime_should_preserve_startup_state_across_bevy_update_frames() {
+        let root = write_scripted_runtime_bundle("bevy-startup-state", 0.1);
+        let mut app = scripted_runtime_app(&root);
+
+        advance_app(&mut app, 0.1);
+        advance_app(&mut app, 0.1);
+
+        let runtime = app.world().resource::<ScriptedRuntimeBundle>();
+        assert_eq!(
+            runtime.bundle.world.resources.get("LoopCounts"),
+            Some(&serde_json::json!({
+                "fixed": 2,
+                "post": 2,
+                "startup": 1,
+                "update": 2
+            }))
+        );
+        let state = app.world().resource::<systems_host::NativeGameLoopState>();
+        assert_eq!(state.frame, 2);
+        assert_eq!(state.tick, 2);
+        assert!(state.startup_complete);
+    }
+
+    #[test]
+    fn scripted_runtime_should_step_fixed_update_by_accumulated_bevy_delta() {
+        let root = write_scripted_runtime_bundle("bevy-fixed-accumulator", 0.25);
+        let mut app = scripted_runtime_app(&root);
+
+        advance_app(&mut app, 0.1);
+        advance_app(&mut app, 0.1);
+        advance_app(&mut app, 0.1);
+
+        let runtime = app.world().resource::<ScriptedRuntimeBundle>();
+        assert_eq!(
+            runtime.bundle.world.resources.get("LoopCounts"),
+            Some(&serde_json::json!({
+                "fixed": 1,
+                "post": 3,
+                "startup": 1,
+                "update": 3
+            }))
+        );
+        let state = app.world().resource::<systems_host::NativeGameLoopState>();
+        assert!((state.accumulator - 0.05).abs() < f32::EPSILON * 8.0);
+        assert_eq!(state.frame, 3);
+        assert_eq!(state.tick, 1);
+    }
+
+    fn scripted_runtime_app(root: &Path) -> App {
+        let bundle = load_bundle(root).expect("scripted test bundle should load");
+        let mut app = App::new();
+        app.insert_resource(Time::<()>::default());
+        app.insert_resource(ScriptedRuntimeBundle { bundle });
+        app.insert_resource(systems_host::NativeGameLoopState::default());
+        app.add_systems(Update, run_scripted_runtime_systems);
+        app
+    }
+
+    fn advance_app(app: &mut App, seconds: f32) {
+        app.world_mut()
+            .resource_mut::<Time<()>>()
+            .advance_by(Duration::from_secs_f32(seconds));
+        app.update();
+    }
+
+    fn write_scripted_runtime_bundle(name: &str, fixed_delta: f32) -> std::path::PathBuf {
+        let root = std::env::temp_dir().join(format!(
+            "tn-scripted-runtime-{name}-{}",
+            std::process::id()
+        ));
+        if root.exists() {
+            fs::remove_dir_all(&root).expect("old temp bundle should be removed");
+        }
+        fs::create_dir_all(&root).expect("temp bundle should be created");
+        write_test_file(
+            &root,
+            "manifest.json",
+            r#"{
+  "schema": "threenative.bundle",
+  "version": "0.1.0",
+  "name": "scripted-runtime-test",
+  "requiredCapabilities": {},
+  "entry": { "world": "world.ir.json", "systems": "systems.ir.json", "scripts": "scripts.bundle.js" },
+  "files": { "assets": "assets.manifest.json", "materials": "materials.ir.json", "runtimeConfig": "runtime.config.json", "targetProfile": "target.profile.json" }
+}"#,
+        );
+        write_test_file(
+            &root,
+            "runtime.config.json",
+            &format!(
+                r#"{{
+  "schema": "threenative.runtime-config",
+  "version": "0.1.0",
+  "time": {{ "fixedDelta": {fixed_delta}, "paused": false }},
+  "window": {{ "width": 1280, "height": 720 }}
+}}"#
+            ),
+        );
+        write_test_file(
+            &root,
+            "world.ir.json",
+            r#"{
+  "schema": "threenative.world",
+  "version": "0.1.0",
+  "entities": [],
+  "resources": {
+    "LoopCounts": { "fixed": 0, "post": 0, "startup": 0, "update": 0 }
+  }
+}"#,
+        );
+        write_test_file(
+            &root,
+            "systems.ir.json",
+            r#"{
+  "schema": "threenative.systems",
+  "version": "0.1.0",
+  "systems": [
+    { "name": "boot", "schedule": "startup", "reads": [], "writes": [], "queries": [], "commands": [], "eventReads": [], "eventWrites": [], "resourceReads": ["LoopCounts"], "resourceWrites": ["LoopCounts"], "services": [], "script": { "bundle": "scripts.bundle.js", "exportName": "system_boot" } },
+    { "name": "tick", "schedule": "fixedUpdate", "reads": [], "writes": [], "queries": [], "commands": [], "eventReads": [], "eventWrites": [], "resourceReads": ["LoopCounts"], "resourceWrites": ["LoopCounts"], "services": [], "script": { "bundle": "scripts.bundle.js", "exportName": "system_tick" } },
+    { "name": "update", "schedule": "update", "reads": [], "writes": [], "queries": [], "commands": [], "eventReads": [], "eventWrites": [], "resourceReads": ["LoopCounts"], "resourceWrites": ["LoopCounts"], "services": [], "script": { "bundle": "scripts.bundle.js", "exportName": "system_update" } },
+    { "name": "post", "schedule": "postUpdate", "reads": [], "writes": [], "queries": [], "commands": [], "eventReads": [], "eventWrites": [], "resourceReads": ["LoopCounts"], "resourceWrites": ["LoopCounts"], "services": [], "script": { "bundle": "scripts.bundle.js", "exportName": "system_post" } }
+  ]
+}"#,
+        );
+        write_test_file(
+            &root,
+            "scripts.bundle.js",
+            r#"const bump = (ctx, key) => {
+  const counts = ctx.resources.get("LoopCounts");
+  counts[key] += 1;
+  ctx.resources.set("LoopCounts", counts);
+};
+const system_boot = (ctx) => bump(ctx, "startup");
+const system_tick = (ctx) => bump(ctx, "fixed");
+const system_update = (ctx) => bump(ctx, "update");
+const system_post = (ctx) => bump(ctx, "post");
+export const systemIds = Object.freeze({ "system_boot": "boot", "system_tick": "tick", "system_update": "update", "system_post": "post" });
+export const systems = Object.freeze({ "system_boot": system_boot, "system_tick": system_tick, "system_update": system_update, "system_post": system_post });
+"#,
+        );
+        write_test_file(
+            &root,
+            "assets.manifest.json",
+            r#"{"schema":"threenative.assets","version":"0.1.0","assets":[]}"#,
+        );
+        write_test_file(
+            &root,
+            "materials.ir.json",
+            r#"{"schema":"threenative.materials","version":"0.1.0","materials":[]}"#,
+        );
+        write_test_file(
+            &root,
+            "target.profile.json",
+            r#"{"schema":"threenative.target-profile","version":"0.1.0","targets":["desktop"]}"#,
+        );
+        root
+    }
+
+    fn write_test_file(root: &Path, file: &str, contents: &str) {
+        fs::write(root.join(file), contents).expect("test bundle file should be written");
     }
 }

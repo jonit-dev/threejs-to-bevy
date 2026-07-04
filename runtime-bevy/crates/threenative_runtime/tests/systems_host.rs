@@ -8,8 +8,10 @@ use threenative_runtime::{
     input::{NativeInputState, map_keyboard_event},
     systems_context::{NativeSystemTimeSnapshot, build_system_context_snapshot},
     systems_host::{
-        diagnose_native_system_host, ensure_native_system_host_supported, run_native_systems_once,
-        run_native_systems_once_with_input, unsupported_native_system_host_diagnostic,
+        NativeGameLoopRunOptions, NativeGameLoopState, diagnose_native_system_host,
+        ensure_native_system_host_supported, run_native_systems_frame_with_input,
+        run_native_systems_once, run_native_systems_once_with_input,
+        unsupported_native_system_host_diagnostic,
     },
 };
 
@@ -496,6 +498,106 @@ fn systems_host_should_run_startup_before_update() {
 }
 
 #[test]
+fn systems_host_should_run_startup_once_when_native_loop_advances_multiple_frames() {
+    let root = write_loop_state_bundle("loop-startup-once");
+    let mut bundle = load_bundle(&root).expect("scripted bundle should load");
+    let mut state = NativeGameLoopState::default();
+    let mut physics_steps = 0;
+
+    run_native_systems_frame_with_input(
+        &mut bundle,
+        &mut state,
+        loop_options(0.25, 0.25, false),
+        |_bundle, _fixed_delta| physics_steps += 1,
+    )
+    .expect("first frame should run");
+    run_native_systems_frame_with_input(
+        &mut bundle,
+        &mut state,
+        loop_options(0.25, 0.25, false),
+        |_bundle, _fixed_delta| physics_steps += 1,
+    )
+    .expect("second frame should run");
+
+    assert_eq!(
+        bundle.world.resources.get("LoopCounts"),
+        Some(&serde_json::json!({
+            "fixed": 2,
+            "post": 2,
+            "startup": 1,
+            "update": 2
+        }))
+    );
+    assert_eq!(physics_steps, 2);
+    assert_eq!(state.frame, 2);
+    assert_eq!(state.tick, 2);
+    assert!(state.startup_complete);
+}
+
+#[test]
+fn systems_host_should_run_fixed_update_once_per_accumulated_fixed_tick() {
+    let root = write_loop_state_bundle("loop-fixed-accumulator");
+    let mut bundle = load_bundle(&root).expect("scripted bundle should load");
+    let mut state = NativeGameLoopState::default();
+    let mut physics_steps = 0;
+
+    run_native_systems_frame_with_input(
+        &mut bundle,
+        &mut state,
+        loop_options(0.6, 0.25, false),
+        |_bundle, _fixed_delta| physics_steps += 1,
+    )
+    .expect("frame should run");
+
+    assert_eq!(
+        bundle.world.resources.get("LoopCounts"),
+        Some(&serde_json::json!({
+            "fixed": 2,
+            "post": 1,
+            "startup": 1,
+            "update": 1
+        }))
+    );
+    assert_eq!(physics_steps, 2);
+    assert!((state.accumulator - 0.1).abs() < f32::EPSILON * 8.0);
+    assert_eq!(state.tick, 2);
+    assert_eq!(state.frame, 1);
+}
+
+#[test]
+fn systems_host_should_skip_gameplay_schedules_while_native_loop_is_paused() {
+    let root = write_loop_state_bundle("loop-paused");
+    let mut bundle = load_bundle(&root).expect("scripted bundle should load");
+    let mut state = NativeGameLoopState::default();
+    let mut physics_steps = 0;
+
+    run_native_systems_frame_with_input(
+        &mut bundle,
+        &mut state,
+        loop_options(1.0, 0.25, true),
+        |_bundle, _fixed_delta| physics_steps += 1,
+    )
+    .expect("paused frame should be accounted");
+
+    assert_eq!(
+        bundle.world.resources.get("LoopCounts"),
+        Some(&serde_json::json!({
+            "fixed": 0,
+            "post": 0,
+            "startup": 0,
+            "update": 0
+        }))
+    );
+    assert_eq!(physics_steps, 0);
+    assert_eq!(state.elapsed, 1.0);
+    assert_eq!(state.accumulator, 1.0);
+    assert_eq!(state.frame, 1);
+    assert_eq!(state.tick, 0);
+    assert!(!state.startup_complete);
+    assert!(state.paused);
+}
+
+#[test]
 fn systems_host_should_run_systems_using_ordering_constraints() {
     let root = write_ordering_bundle("ordering-constraints");
     let mut bundle = load_bundle(&root).expect("scripted bundle should load");
@@ -605,6 +707,129 @@ fn systems_host_should_keep_unsupported_diagnostic_for_unavailable_builds() {
     assert_eq!(diagnostic.severity, "error");
     assert_eq!(diagnostic.system_id.as_deref(), Some("movePlayer"));
     assert!(diagnostic.message.contains("QuickJS host"));
+}
+
+fn loop_options(
+    delta: f32,
+    fixed_delta: f32,
+    paused: bool,
+) -> NativeGameLoopRunOptions<'static> {
+    NativeGameLoopRunOptions {
+        delta,
+        fixed_delta,
+        input: None,
+        paused,
+    }
+}
+
+fn write_loop_state_bundle(name: &str) -> PathBuf {
+    let root = root(name);
+    write_base_bundle(&root, true);
+    write_json(
+        &root,
+        "world.ir.json",
+        r#"{
+  "schema": "threenative.world",
+  "version": "0.1.0",
+  "entities": [],
+  "resources": {
+    "LoopCounts": { "fixed": 0, "post": 0, "startup": 0, "update": 0 }
+  }
+}"#,
+    );
+    write_json(
+        &root,
+        "systems.ir.json",
+        r#"{
+  "schema": "threenative.systems",
+  "version": "0.1.0",
+  "systems": [
+    {
+      "name": "boot",
+      "schedule": "startup",
+      "reads": [],
+      "writes": [],
+      "queries": [],
+      "commands": [],
+      "eventReads": [],
+      "eventWrites": [],
+      "resourceReads": ["LoopCounts"],
+      "resourceWrites": ["LoopCounts"],
+      "services": [],
+      "script": { "bundle": "scripts.bundle.js", "exportName": "system_boot" }
+    },
+    {
+      "name": "tick",
+      "schedule": "fixedUpdate",
+      "reads": [],
+      "writes": [],
+      "queries": [],
+      "commands": [],
+      "eventReads": [],
+      "eventWrites": [],
+      "resourceReads": ["LoopCounts"],
+      "resourceWrites": ["LoopCounts"],
+      "services": [],
+      "script": { "bundle": "scripts.bundle.js", "exportName": "system_tick" }
+    },
+    {
+      "name": "update",
+      "schedule": "update",
+      "reads": [],
+      "writes": [],
+      "queries": [],
+      "commands": [],
+      "eventReads": [],
+      "eventWrites": [],
+      "resourceReads": ["LoopCounts"],
+      "resourceWrites": ["LoopCounts"],
+      "services": [],
+      "script": { "bundle": "scripts.bundle.js", "exportName": "system_update" }
+    },
+    {
+      "name": "post",
+      "schedule": "postUpdate",
+      "reads": [],
+      "writes": [],
+      "queries": [],
+      "commands": [],
+      "eventReads": [],
+      "eventWrites": [],
+      "resourceReads": ["LoopCounts"],
+      "resourceWrites": ["LoopCounts"],
+      "services": [],
+      "script": { "bundle": "scripts.bundle.js", "exportName": "system_post" }
+    }
+  ]
+}"#,
+    );
+    fs::write(
+        root.join("scripts.bundle.js"),
+        r#"const bump = (ctx, key) => {
+  const counts = ctx.resources.get("LoopCounts");
+  counts[key] += 1;
+  ctx.resources.set("LoopCounts", counts);
+};
+const system_boot = (ctx) => bump(ctx, "startup");
+const system_tick = (ctx) => bump(ctx, "fixed");
+const system_update = (ctx) => bump(ctx, "update");
+const system_post = (ctx) => bump(ctx, "post");
+export const systemIds = Object.freeze({
+  "system_boot": "boot",
+  "system_tick": "tick",
+  "system_update": "update",
+  "system_post": "post"
+});
+export const systems = Object.freeze({
+  "system_boot": system_boot,
+  "system_tick": system_tick,
+  "system_update": system_update,
+  "system_post": system_post
+});
+"#,
+    )
+    .expect("script bundle should be written");
+    root
 }
 
 fn write_startup_bundle(name: &str) -> PathBuf {

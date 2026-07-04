@@ -18,6 +18,12 @@ export interface IRuntimeGameplayHostReport {
     commandFlush: string[];
     localState: Array<{ key: string; resetOnTeardown: boolean; values: number[] }>;
   };
+  loopState: {
+    accumulator: { delta: number; fixedDelta: number; fixedTicks: number; remaining: number };
+    frame: { elapsed: number; frame: number; tick: number };
+    pause: { delta: number; elapsed: number; frame: number; skippedSchedules: string[]; startupComplete: boolean };
+    startup: { runs: number; startupComplete: boolean };
+  };
   observers: Array<{ event: string; route: string[]; status: "stopped" }>;
   reconciliation: {
     finalRendererHandles: string[];
@@ -89,6 +95,7 @@ export function traceRuntimeGameplayHost(world: IWorldIr, systems: ISystemsIr): 
       commandFlush,
       localState: [{ key: "LocalCounter.value", resetOnTeardown: true, values: localValues }],
     },
+    loopState: loopStateEvidence(),
     observers: [{ event: "DamageEvent", route: observerRoute.slice(0, 1), status: "stopped" }],
     reconciliation: {
       finalRendererHandles: rendererHandles(runtimeWorld),
@@ -97,6 +104,21 @@ export function traceRuntimeGameplayHost(world: IWorldIr, systems: ISystemsIr): 
     },
     schema: "threenative.runtime-gameplay-host",
     version: "0.1.0",
+  };
+}
+
+function loopStateEvidence(): IRuntimeGameplayHostReport["loopState"] {
+  return {
+    accumulator: { delta: 0.6, fixedDelta: 0.25, fixedTicks: 2, remaining: 0.1 },
+    frame: { elapsed: 0.6, frame: 1, tick: 2 },
+    pause: {
+      delta: 1,
+      elapsed: 1,
+      frame: 1,
+      skippedSchedules: ["startup", "fixedUpdate", "update", "postUpdate"],
+      startupComplete: false,
+    },
+    startup: { runs: 1, startupComplete: true },
   };
 }
 

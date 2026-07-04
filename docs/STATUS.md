@@ -2592,9 +2592,12 @@ through `pnpm verify:runtime-gameplay-host`. The `runtime-gameplay-host`
 conformance fixture declares live rendered gameplay entity spawn/despawn,
 event-window policy, state handoff, command-time/removal hook ordering,
 system-local state evidence, stoppable observer propagation, and bounded
-timer/channel semantics. The gate validates the fixture, compares matching web
-and Bevy reports, writes `web-report.json`, `native-report.json`, `diff.json`,
-and `verification-report.json` under
+timer/channel semantics. Native scripted runtime loop state now mirrors the web
+game loop for startup-once, accumulator-based fixed ticks, frame/tick accounting,
+and paused-frame schedule skipping; the focused report includes `loopState`
+evidence for these invariants. The gate validates the fixture, compares matching
+web and Bevy reports, writes `web-report.json`, `native-report.json`,
+`diff.json`, and `verification-report.json` under
 `tools/verify/artifacts/runtime-gameplay-host/`, and is part of release
 verification. Dynamic runtime plugin loading, raw Bevy/renderer handles,
 arbitrary workers, unbounded promises, and arbitrary timer/platform APIs remain

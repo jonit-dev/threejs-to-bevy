@@ -58,6 +58,7 @@ pub fn trace_runtime_gameplay_host(bundle: &mut LoadedBundle) -> Value {
             "commandFlush": command_flush,
             "localState": [{ "key": "LocalCounter.value", "resetOnTeardown": true, "values": local_values }]
         },
+        "loopState": loop_state_evidence(),
         "observers": [{ "event": "DamageEvent", "route": ["target:player.weapon"], "status": "stopped" }],
         "reconciliation": {
             "finalRendererHandles": renderer_handles(bundle),
@@ -66,6 +67,21 @@ pub fn trace_runtime_gameplay_host(bundle: &mut LoadedBundle) -> Value {
         },
         "schema": "threenative.runtime-gameplay-host",
         "version": "0.1.0"
+    })
+}
+
+fn loop_state_evidence() -> Value {
+    json!({
+        "accumulator": { "delta": 0.6, "fixedDelta": 0.25, "fixedTicks": 2, "remaining": 0.1 },
+        "frame": { "elapsed": 0.6, "frame": 1, "tick": 2 },
+        "pause": {
+            "delta": 1,
+            "elapsed": 1,
+            "frame": 1,
+            "skippedSchedules": ["startup", "fixedUpdate", "update", "postUpdate"],
+            "startupComplete": false
+        },
+        "startup": { "runs": 1, "startupComplete": true }
     })
 }
 
