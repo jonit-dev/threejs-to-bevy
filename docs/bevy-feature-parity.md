@@ -801,6 +801,7 @@ diagnostics until portable promotion criteria and web/Bevy evidence exist.
 - [x] Release verification gates and artifact presence checks
 - [x] Desktop package manifest and runtime args for V7 packaging
 - [x] Fixed metric reports for frame/load/draw/entity/package-size budgets
+- [x] Target-profile schema, version, fixture, and native-loader drift gates
 - [x] `P2` Live profiler captures and native platform profiler evidence
 - [x] `P2` GPU profiling and render-pass timing breakdowns
 - [x] `P1` In-app FPS overlay and custom diagnostics

@@ -26,6 +26,8 @@ pub enum LoadError {
     InvalidBundlePath { path: String, message: String },
     #[error("invalid generated mesh payload '{path}': {message}")]
     InvalidGeneratedMeshPayload { path: String, message: String },
+    #[error("unsupported target profile target '{target}' at {path}")]
+    UnsupportedTargetProfileTarget { path: String, target: String },
     #[error("unsupported {schema} version '{version}'")]
     UnsupportedVersion { schema: String, version: String },
 }

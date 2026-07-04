@@ -27,6 +27,9 @@ This index separates current cleanup work from historical milestone batches.
 - [AI-Consumable Distribution Contract](done/other/ai-consumable-distribution-contract.md):
   published declarations, schemas, capabilities, diagnostics, examples, and AI
   docs that make installed packages understandable without repository source.
+- [Target Profile Contract Hardening](done/other/target-profile-contract-hardening.md):
+  target-profile schema/type/fixture/native-loader drift cleanup so conformance
+  cannot pass with stale schema literals or unsupported target values.
 - [Agent-Friendly Project Scaffolding and Visual Debugging Workflows](other/agent-friendly-project-and-visual-debugging-workflows.md):
   init/create front door, task-oriented help, doctor diagnostics, asset/model
   inspection, transform/camera guardrails, screenshot/video proof, runtime

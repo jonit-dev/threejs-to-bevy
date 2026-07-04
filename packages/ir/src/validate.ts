@@ -75,6 +75,7 @@ const MAX_RESIDUAL_ANIMATION_TIME_SECONDS = 600;
 const MAX_DYNAMIC_NAV_REGIONS = 64;
 const MAX_DYNAMIC_NAV_OBSTACLES = 32;
 const MAX_CROWD_AGENTS = 16;
+const TARGET_PROFILE_TARGETS = new Set(["desktop", "web"]);
 
 /**
  * Validates a generated ThreeNative bundle directory.
@@ -163,7 +164,8 @@ export async function validateBundle(bundlePath: string): Promise<IBundleValidat
     validateScenes(scenes, manifest.entry.scenes ?? IR_DOCUMENTS.scenes.fileName, world, assets, input, audio, ui, systems, diagnostics);
   }
   if (targetProfile !== undefined) {
-    if (targetProfile.targets.length === 0) {
+    validateTargetProfile(targetProfile, manifest.files.targetProfile, diagnostics);
+    if (Array.isArray(targetProfile.targets) && targetProfile.targets.length === 0) {
       diagnostics.push({
         code: "TN_IR_TARGETS_EMPTY",
         message: "Target profile must include at least one target.",
@@ -210,6 +212,53 @@ export async function validateBundle(bundlePath: string): Promise<IBundleValidat
   }
 
   return { diagnostics, ok: diagnostics.length === 0 };
+}
+
+function validateTargetProfile(targetProfile: ITargetProfile, path: string, diagnostics: IIrDiagnostic[]): void {
+  const profile = targetProfile as unknown as Record<string, unknown>;
+  if (profile.schema !== IR_SCHEMA_IDS.targetProfile) {
+    diagnostics.push({
+      code: "TN_IR_TARGET_PROFILE_SCHEMA_UNSUPPORTED",
+      message: `Target profile schema must be '${IR_SCHEMA_IDS.targetProfile}'.`,
+      path: `${path}/schema`,
+      severity: "error",
+      suggestion: "Update target.profile.json to use the canonical target-profile schema literal.",
+      value: typeof profile.schema === "string" ? profile.schema : undefined,
+    });
+  }
+  if (profile.version !== IR_VERSION) {
+    diagnostics.push({
+      code: "TN_IR_TARGET_PROFILE_VERSION_UNSUPPORTED",
+      message: `Target profile version must be '${IR_VERSION}'.`,
+      path: `${path}/version`,
+      severity: "error",
+      suggestion: "Regenerate the bundle or update target.profile.json to the supported IR version.",
+      value: typeof profile.version === "string" ? profile.version : undefined,
+    });
+  }
+  if (!Array.isArray(profile.targets)) {
+    diagnostics.push({
+      code: "TN_IR_TARGETS_INVALID",
+      message: "Target profile targets must be an array.",
+      path: `${path}/targets`,
+      severity: "error",
+      suggestion: "Declare one or more supported target profile names.",
+    });
+    return;
+  }
+  profile.targets.forEach((target, index) => {
+    if (typeof target !== "string" || !TARGET_PROFILE_TARGETS.has(target)) {
+      diagnostics.push({
+        code: "TN_IR_TARGET_PROFILE_TARGET_UNSUPPORTED",
+        limit: [...TARGET_PROFILE_TARGETS].sort(),
+        message: `Unsupported target profile target '${String(target)}'.`,
+        path: `${path}/targets/${index}`,
+        severity: "error",
+        suggestion: "Use 'desktop' for native desktop bundles; Bevy remains an adapter-private runtime name.",
+        value: typeof target === "string" ? target : undefined,
+      });
+    }
+  });
 }
 
 async function validateTargetBudgets(

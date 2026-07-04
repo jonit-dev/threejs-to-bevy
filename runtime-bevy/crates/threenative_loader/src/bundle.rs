@@ -27,7 +27,7 @@ pub fn load_bundle(bundle_path: impl AsRef<Path>) -> Result<LoadedBundle, LoadEr
     ensure_supported(&assets.schema, &assets.version)?;
     hydrate_generated_mesh_assets(&mut assets, bundle_path)?;
     let target_profile: TargetProfile = read_json(bundle_path, &manifest.files.target_profile)?;
-    ensure_supported(&target_profile.schema, &target_profile.version)?;
+    ensure_target_profile_supported(&target_profile, &manifest.files.target_profile)?;
     let animations = match manifest.entry.animations.as_ref() {
         Some(file) => {
             let animations: AnimationsIr = read_json(bundle_path, file)?;
@@ -185,4 +185,28 @@ fn ensure_supported(schema: &str, version: &str) -> Result<(), LoadError> {
         schema: schema.to_owned(),
         version: version.to_owned(),
     })
+}
+
+fn ensure_target_profile_supported(profile: &TargetProfile, path: &str) -> Result<(), LoadError> {
+    const TARGET_PROFILE_SCHEMA: &str = "threenative.target-profile";
+    const TARGET_PROFILE_VERSION: &str = "0.1.0";
+    const SUPPORTED_TARGETS: &[&str] = &["desktop", "web"];
+
+    if profile.schema != TARGET_PROFILE_SCHEMA || profile.version != TARGET_PROFILE_VERSION {
+        return Err(LoadError::UnsupportedVersion {
+            schema: profile.schema.clone(),
+            version: profile.version.clone(),
+        });
+    }
+
+    for (index, target) in profile.targets.iter().enumerate() {
+        if !SUPPORTED_TARGETS.contains(&target.as_str()) {
+            return Err(LoadError::UnsupportedTargetProfileTarget {
+                path: format!("{path}/targets/{index}"),
+                target: target.clone(),
+            });
+        }
+    }
+
+    Ok(())
 }

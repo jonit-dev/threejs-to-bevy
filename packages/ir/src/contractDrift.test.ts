@@ -129,6 +129,21 @@ test("contractDrift should keep runtime config antialias aligned across schema T
   assert.doesNotMatch(loaderTypes, /pub antialias: Option<String>,/);
 });
 
+test("contractDrift should keep target profile target enum aligned", async () => {
+  const schema = await readJson<{ properties: { targets: { items: { enum: string[] } } } }>(
+    resolve(packageRoot, "schemas/target-profile.schema.json"),
+  );
+  const types = await readFile(resolve(packageRoot, "src/types.ts"), "utf8");
+  const match = types.match(/targets:\s*Array<([^>]+)>;/);
+  const targetUnion = match?.[1];
+
+  assert.ok(targetUnion, "ITargetProfile.targets union should be inspectable");
+  const targetLiterals = [...targetUnion.matchAll(/"([^"]+)"/g)].map((item) => item[1]).sort();
+
+  assert.deepEqual(schema.properties.targets.items.enum.sort(), ["desktop", "web"]);
+  assert.deepEqual(targetLiterals, schema.properties.targets.items.enum.sort());
+});
+
 test("contractDrift should keep world component extension point explicit across schema TypeScript and Rust", async () => {
   const schema = await readJson<{
     properties: {

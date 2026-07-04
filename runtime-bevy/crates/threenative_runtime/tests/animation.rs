@@ -210,7 +210,7 @@ fn write_animation_bundle() -> PathBuf {
     .expect("materials should be written");
     std::fs::write(
         root.join("target.profile.json"),
-        r#"{ "schema": "threenative.target-profile", "version": "0.1.0", "targets": ["web", "bevy"] }"#,
+        r#"{ "schema": "threenative.target-profile", "version": "0.1.0", "targets": ["web", "desktop"] }"#,
     )
     .expect("target profile should be written");
     std::fs::write(root.join("assets/hero.glb"), b"placeholder").expect("asset should be written");

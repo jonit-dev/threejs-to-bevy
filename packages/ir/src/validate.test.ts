@@ -123,6 +123,91 @@ test("should reject schema missing entity reference", async () => {
   }
 });
 
+test("should reject stale target profile schema literal", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-ir-target-profile-schema-"));
+  try {
+    await writeBundle(root, { current: 100, max: 100 });
+    await writeJson(root, "target.profile.json", { schema: "threenative.targetProfile", version: "0.1.0", targets: ["web"] });
+
+    const result = await validateBundle(root);
+
+    assert.equal(result.ok, false);
+    assert.deepEqual(
+      result.diagnostics.filter((diagnostic) => diagnostic.code === "TN_IR_TARGET_PROFILE_SCHEMA_UNSUPPORTED"),
+      [
+        {
+          code: "TN_IR_TARGET_PROFILE_SCHEMA_UNSUPPORTED",
+          message: "Target profile schema must be 'threenative.target-profile'.",
+          path: "target.profile.json/schema",
+          severity: "error",
+          suggestion: "Update target.profile.json to use the canonical target-profile schema literal.",
+          value: "threenative.targetProfile",
+        },
+      ],
+    );
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should reject unsupported target profile version", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-ir-target-profile-version-"));
+  try {
+    await writeBundle(root, { current: 100, max: 100 });
+    await writeJson(root, "target.profile.json", { schema: "threenative.target-profile", version: "1.0.0", targets: ["web"] });
+
+    const result = await validateBundle(root);
+
+    assert.equal(result.ok, false);
+    assert.equal(result.diagnostics.find((diagnostic) => diagnostic.code === "TN_IR_TARGET_PROFILE_VERSION_UNSUPPORTED")?.path, "target.profile.json/version");
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should reject unsupported target profile target", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-ir-target-profile-target-"));
+  try {
+    await writeBundle(root, { current: 100, max: 100 });
+    await writeJson(root, "target.profile.json", { schema: "threenative.target-profile", version: "0.1.0", targets: ["web", "bevy"] });
+
+    const result = await validateBundle(root);
+
+    assert.equal(result.ok, false);
+    assert.deepEqual(
+      result.diagnostics.filter((diagnostic) => diagnostic.code === "TN_IR_TARGET_PROFILE_TARGET_UNSUPPORTED"),
+      [
+        {
+          code: "TN_IR_TARGET_PROFILE_TARGET_UNSUPPORTED",
+          limit: ["desktop", "web"],
+          message: "Unsupported target profile target 'bevy'.",
+          path: "target.profile.json/targets/1",
+          severity: "error",
+          suggestion: "Use 'desktop' for native desktop bundles; Bevy remains an adapter-private runtime name.",
+          value: "bevy",
+        },
+      ],
+    );
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should accept canonical web desktop target profile", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-ir-target-profile-canonical-"));
+  try {
+    await writeBundle(root, { current: 100, max: 100 });
+    await writeJson(root, "target.profile.json", { schema: "threenative.target-profile", version: "0.1.0", targets: ["web", "desktop"] });
+
+    const result = await validateBundle(root);
+
+    assert.equal(result.ok, true);
+    assert.equal(result.diagnostics.some((diagnostic) => diagnostic.path.startsWith("target.profile.json")), false);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
 test("should reject schema unknown component fields", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-ir-schema-extra-"));
   try {

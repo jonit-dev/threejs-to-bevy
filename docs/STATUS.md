@@ -2182,6 +2182,16 @@ produce a desktop package. The Bevy catalog residual registry also exposes
 package outputs, with web and Bevy report helpers preserving the output target,
 profile path, and authored target value.
 
+Target-profile contract hardening now keeps the serialized profile vocabulary
+canonical across schema, TypeScript types, conformance fixtures, IR validation,
+and the Bevy loader. `validateBundle` rejects stale
+`threenative.targetProfile` literals, unsupported target-profile versions, and
+adapter-private target names such as `bevy` with stable
+`target.profile.json/...` diagnostics, and loader tests reject the same drift
+before native runtime consumption. `pnpm --filter @threenative/ir test`,
+`pnpm verify:conformance`, and `cargo test --manifest-path
+runtime-bevy/Cargo.toml target_profile` provide the current evidence.
+
 The Bevy catalog residual pass now makes glTF metadata-transform import policy
 explicit: `AnimationGraph` metadata transforms are the promoted schema-backed
 path, while executable/custom processors and unknown metadata transforms produce

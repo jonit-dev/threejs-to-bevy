@@ -23,6 +23,32 @@ test("should validate every conformance fixture", async () => {
   }
 });
 
+test("should keep conformance target profiles canonical", async () => {
+  const fixtures = await listConformanceFixtures();
+  const supportedTargets = new Set(["desktop", "web"]);
+  const diagnostics: string[] = [];
+
+  for (const fixture of fixtures) {
+    const profilePath = resolve(fixture.bundlePath, "target.profile.json");
+    const profile = JSON.parse(await readFile(profilePath, "utf8")) as { schema?: unknown; targets?: unknown };
+
+    if (profile.schema !== "threenative.target-profile") {
+      diagnostics.push(`${fixture.name}: ${profilePath}/schema is ${String(profile.schema)}`);
+    }
+    if (!Array.isArray(profile.targets)) {
+      diagnostics.push(`${fixture.name}: ${profilePath}/targets is not an array`);
+      continue;
+    }
+    profile.targets.forEach((target, index) => {
+      if (typeof target !== "string" || !supportedTargets.has(target)) {
+        diagnostics.push(`${fixture.name}: ${profilePath}/targets/${index} is ${String(target)}`);
+      }
+    });
+  }
+
+  assert.deepEqual(diagnostics, []);
+});
+
 test("should define V7 conformance fixture categories before runtime claims", async () => {
   const catalog = JSON.parse(await readFile(resolve(packageRoot, "fixtures/conformance/v7-fixture-catalog.json"), "utf8"));
 

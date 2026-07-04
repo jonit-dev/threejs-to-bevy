@@ -88,6 +88,50 @@ fn should_reject_malicious_manifest_document_path() {
 }
 
 #[test]
+fn should_reject_stale_target_profile_schema() {
+    let root = temp_bundle_dir();
+    write_minimal_bundle(&root);
+    write_json(
+        &root,
+        "target.profile.json",
+        r#"{ "schema": "threenative.targetProfile", "version": "0.1.0", "targets": ["desktop"] }"#,
+    );
+
+    let error = load_bundle(&root).expect_err("stale target profile schema should fail");
+
+    match error {
+        LoadError::UnsupportedVersion { schema, version } => {
+            assert_eq!(schema, "threenative.targetProfile");
+            assert_eq!(version, "0.1.0");
+        }
+        other => panic!("expected unsupported target profile schema error, got {other:?}"),
+    }
+    fs::remove_dir_all(root).expect("temp bundle should be removed");
+}
+
+#[test]
+fn should_reject_unsupported_target_profile_target() {
+    let root = temp_bundle_dir();
+    write_minimal_bundle(&root);
+    write_json(
+        &root,
+        "target.profile.json",
+        r#"{ "schema": "threenative.target-profile", "version": "0.1.0", "targets": ["web", "bevy"] }"#,
+    );
+
+    let error = load_bundle(&root).expect_err("unsupported target profile target should fail");
+
+    match error {
+        LoadError::UnsupportedTargetProfileTarget { path, target } => {
+            assert_eq!(path, "target.profile.json/targets/1");
+            assert_eq!(target, "bevy");
+        }
+        other => panic!("expected unsupported target profile target error, got {other:?}"),
+    }
+    fs::remove_dir_all(root).expect("temp bundle should be removed");
+}
+
+#[test]
 fn should_reject_malformed_generated_mesh_payloads() {
     let root = temp_bundle_dir();
     write_generated_mesh_bundle(&root);

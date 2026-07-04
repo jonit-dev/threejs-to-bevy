@@ -1,5 +1,5 @@
 {
   "schema": "threenative.target-profile",
   "version": "0.1.0",
-  "targets": ["web", "bevy"]
+  "targets": ["web", "desktop"]
 }
