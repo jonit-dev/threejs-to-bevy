@@ -132,6 +132,59 @@ fn should_reject_unsupported_target_profile_target() {
 }
 
 #[test]
+fn should_load_prefab_template_mesh_renderer_without_mesh() {
+    let root = temp_bundle_dir();
+    write_minimal_bundle(&root);
+    write_json(
+        &root,
+        "manifest.json",
+        r#"{
+          "schema": "threenative.bundle",
+          "version": "0.1.0",
+          "name": "prefab-template",
+          "requiredCapabilities": {},
+          "entry": { "world": "world.ir.json", "prefabs": "prefabs.ir.json" },
+          "files": {
+            "assets": "assets.manifest.json",
+            "materials": "materials.ir.json",
+            "prefabs": "prefabs.ir.json",
+            "targetProfile": "target.profile.json"
+          }
+        }"#,
+    );
+    write_json(
+        &root,
+        "prefabs.ir.json",
+        r#"{
+          "schema": "threenative.prefabs",
+          "version": "0.1.0",
+          "prefabs": [{
+            "id": "prefab.player",
+            "root": "player",
+            "entities": [{
+              "id": "player",
+              "components": { "MeshRenderer": { "material": "mat.player" } }
+            }]
+          }]
+        }"#,
+    );
+
+    let bundle =
+        load_bundle(&root).expect("prefab template with material-only MeshRenderer should load");
+    let renderer = bundle
+        .prefabs
+        .as_ref()
+        .and_then(|prefabs| prefabs.prefabs.first())
+        .and_then(|prefab| prefab.entities.first())
+        .and_then(|entity| entity.components.mesh_renderer.as_ref())
+        .expect("prefab template MeshRenderer should deserialize");
+
+    assert_eq!(renderer.material, "mat.player");
+    assert_eq!(renderer.mesh, None);
+    fs::remove_dir_all(root).expect("temp bundle should be removed");
+}
+
+#[test]
 fn should_reject_malformed_generated_mesh_payloads() {
     let root = temp_bundle_dir();
     write_generated_mesh_bundle(&root);

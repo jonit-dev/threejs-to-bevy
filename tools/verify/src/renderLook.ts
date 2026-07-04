@@ -1,12 +1,18 @@
-import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { execFile } from "node:child_process";
+import { mkdir, mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
+import { promisify } from "node:util";
 
 import { resolveArtifactTargets, toRepoRelative } from "./artifacts.js";
 import type { VerificationDiagnostic } from "./runner.js";
 
+const execFileAsync = promisify(execFile);
+
 export interface RenderLookMetricSample {
   averageLuminance: number;
+  bevyNonblankArea?: number;
+  bevyScreenshotPath?: string;
   brightPixelContribution: number;
   contrast: number;
   edgeClarity: number;
@@ -52,6 +58,8 @@ export async function runRenderLookGate(options: { metricsPath?: string; reportP
         contactSheet: toRepoRelative(root, contactSheetPath),
         parityScreenshot: metrics.parity.screenshotPath,
         balancedScreenshot: metrics.balanced.screenshotPath,
+        parityBevyScreenshot: metrics.parity.bevyScreenshotPath,
+        balancedBevyScreenshot: metrics.balanced.bevyScreenshotPath,
       },
       code: ok ? "TN_VERIFY_RENDER_LOOK_OK" : "TN_VERIFY_RENDER_LOOK_FAILED",
       diagnostics,
@@ -112,6 +120,15 @@ export function analyzeRenderLookMetrics(metrics: RenderLookMetricInput): Verifi
         path: sample.screenshotPath,
         severity: "error",
         suggestedFix: "Fix camera framing, renderer readiness, or capture setup before comparing render-look quality.",
+      });
+    }
+    if (sample.bevyNonblankArea !== undefined && sample.bevyNonblankArea < 0.2) {
+      diagnostics.push({
+        code: "TN_RENDER_LOOK_BEVY_SCREENSHOT_BLANK",
+        message: `${name} render-look Bevy screenshot has too little nonblank area.`,
+        path: sample.bevyScreenshotPath,
+        severity: "error",
+        suggestedFix: "Fix native render-look mapping, camera framing, capture timing, or asset readiness before promoting cross-runtime evidence.",
       });
     }
     for (const fallback of sample.fallbackDiagnostics ?? []) {
@@ -184,13 +201,30 @@ async function captureRenderLookMetrics(options: { artifactsDir: string; root: s
   type StartWebPreview = (options: { bundlePath: string; silent: boolean }) => Promise<{ close(): Promise<void> | void; url: string }>;
   type CaptureScreenshot = (options: { outPath: string; url: string; waitReady: boolean }) => Promise<{ diagnostics: readonly { code: string; message: string; severity: "error" | "warning" }[] }>;
   type ReadPngFrame = (path: string) => Promise<{ data: ArrayLike<number>; height: number; width: number }>;
+  type NativeCaptureInvocation = { args: string[]; command: string; cwd?: string };
 
-  const [{ createProject }, { buildProject }, { startWebPreview }, { captureScreenshot }, { readPngFrame }] = await Promise.all([
+  const [{ createProject }, { buildProject }, { startWebPreview }, { captureScreenshot }, { readPngFrame }, { cargoCaptureEnv, resolveCargoCommand }, { resolveNativeCaptureInvocation }] = await Promise.all([
     import("../../../packages/cli/dist/commands/create.js") as Promise<{ createProject: CreateProject }>,
     import("../../../packages/compiler/dist/index.js") as Promise<{ buildProject: BuildProject }>,
     import("../../../packages/runtime-web-three/dist/index.js") as Promise<{ startWebPreview: StartWebPreview }>,
     import("../../../packages/cli/dist/commands/visualProof.js") as Promise<{ captureScreenshot: CaptureScreenshot }>,
     import("../../../packages/cli/dist/verify/compareImages.js") as unknown as Promise<{ readPngFrame: ReadPngFrame }>,
+    import("../../../packages/cli/dist/verify/captureCargo.js") as Promise<{
+      cargoCaptureEnv(): NodeJS.ProcessEnv;
+      resolveCargoCommand(): string;
+    }>,
+    import("../../../packages/cli/dist/commands/sceneProof.js") as Promise<{
+      resolveNativeCaptureInvocation(options: {
+        bundlePath: string;
+        cameraId: string;
+        captureBinaryPath?: string;
+        cargoCommand: string;
+        env: NodeJS.ProcessEnv;
+        frame: number;
+        outPath: string;
+        repoRoot: string;
+      }): NativeCaptureInvocation;
+    }>,
   ]);
   const tempRoot = await mkdtemp(join(tmpdir(), "tn-render-look-gate-"));
   const screenshotsDir = resolve(options.artifactsDir, "screenshots");
@@ -210,8 +244,21 @@ async function captureRenderLookMetrics(options: { artifactsDir: string; root: s
       servers.push(server);
       const screenshotPath = resolve(screenshotsDir, `${profile}.png`);
       const capture = await captureScreenshot({ outPath: screenshotPath, url: server.url, waitReady: true });
+      const bevyScreenshotPath = resolve(screenshotsDir, `${profile}-bevy.png`);
+      await captureBevyScreenshot({
+        bundlePath,
+        cargoCaptureEnv,
+        readPngFrame,
+        resolveCargoCommand,
+        resolveNativeCaptureInvocation,
+        root: options.root,
+        screenshotPath: bevyScreenshotPath,
+      });
+      const bevyMetrics = await deriveScreenshotMetrics({ path: bevyScreenshotPath, profile, readPngFrame });
       metrics[profile] = {
         ...await deriveScreenshotMetrics({ path: screenshotPath, profile, readPngFrame }),
+        bevyNonblankArea: bevyMetrics.nonblankArea,
+        bevyScreenshotPath: bevyMetrics.screenshotPath,
         fallbackDiagnostics: capture.diagnostics,
       };
     }
@@ -222,6 +269,59 @@ async function captureRenderLookMetrics(options: { artifactsDir: string; root: s
     await Promise.allSettled(servers.map((server) => server.close()));
     await rm(tempRoot, { force: true, recursive: true });
   }
+}
+
+async function captureBevyScreenshot(options: {
+  bundlePath: string;
+  cargoCaptureEnv(): NodeJS.ProcessEnv;
+  readPngFrame(path: string): Promise<{ data: ArrayLike<number>; height: number; width: number }>;
+  resolveCargoCommand(): string;
+  resolveNativeCaptureInvocation(options: {
+    bundlePath: string;
+    cameraId: string;
+    captureBinaryPath?: string;
+    cargoCommand: string;
+    env: NodeJS.ProcessEnv;
+    frame: number;
+    outPath: string;
+    repoRoot: string;
+  }): { args: string[]; command: string; cwd?: string };
+  root: string;
+  screenshotPath: string;
+}): Promise<void> {
+  const env = options.cargoCaptureEnv();
+  const cameraId = await readActiveCameraId(options.bundlePath) ?? "camera.main";
+  const invocation = options.resolveNativeCaptureInvocation({
+    bundlePath: options.bundlePath,
+    cameraId,
+    cargoCommand: options.resolveCargoCommand(),
+    env,
+    frame: 120,
+    outPath: options.screenshotPath,
+    repoRoot: options.root,
+  });
+  await execFileAsync(invocation.command, invocation.args, { cwd: invocation.cwd, env, timeout: invocation.cwd === undefined ? 120_000 : 180_000 });
+  const info = await stat(options.screenshotPath);
+  if (info.size === 0) {
+    throw new Error(`Bevy render-look screenshot capture wrote an empty PNG: ${options.screenshotPath}`);
+  }
+  await options.readPngFrame(options.screenshotPath);
+}
+
+async function readActiveCameraId(bundlePath: string): Promise<string | undefined> {
+  const world = JSON.parse(await readFile(resolve(bundlePath, "world.ir.json"), "utf8")) as {
+    entities?: Array<{ components?: Record<string, unknown>; id?: unknown }>;
+    resources?: { ActiveCamera?: { entity?: unknown }; ActiveCameras?: { cameras?: Array<{ entity?: unknown }> } };
+  };
+  const activeCamera = world.resources?.ActiveCamera?.entity;
+  if (typeof activeCamera === "string" && activeCamera.trim() !== "") {
+    return activeCamera;
+  }
+  const firstActiveCamera = world.resources?.ActiveCameras?.cameras?.find((camera) => typeof camera.entity === "string")?.entity;
+  if (typeof firstActiveCamera === "string" && firstActiveCamera.trim() !== "") {
+    return firstActiveCamera;
+  }
+  return world.entities?.find((entity) => typeof entity.id === "string" && entity.components?.Camera !== undefined)?.id as string | undefined;
 }
 
 async function deriveScreenshotMetrics(options: {

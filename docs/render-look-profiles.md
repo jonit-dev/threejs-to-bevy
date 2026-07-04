@@ -77,8 +77,10 @@ The gate writes:
 - `tools/verify/artifacts/render-look/contact-sheet.svg`
 - `tools/verify/artifacts/render-look/screenshots/parity.png`
 - `tools/verify/artifacts/render-look/screenshots/balanced.png`
+- `tools/verify/artifacts/render-look/screenshots/parity-bevy.png`
+- `tools/verify/artifacts/render-look/screenshots/balanced-bevy.png`
 
 The report should use `evidenceMode: "captured-screenshots"` with no
-diagnostics. Release-profile promotion still requires keeping the browser
+diagnostics. Release-profile promotion still requires keeping the screenshot
 capture path deterministic in CI and recording manual contact-sheet inspection
 as evidence.

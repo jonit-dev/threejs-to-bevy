@@ -292,7 +292,7 @@ pub struct TransformComponent {
 #[serde(rename_all = "camelCase")]
 pub struct MeshRendererComponent {
     pub cast_shadow: Option<bool>,
-    pub mesh: String,
+    pub mesh: Option<String>,
     pub material: String,
     pub receive_shadow: Option<bool>,
     pub visible: Option<bool>,

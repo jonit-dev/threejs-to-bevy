@@ -664,11 +664,10 @@ fn would_create_hierarchy_cycle(bundle: &LoadedBundle, child_id: &str, parent_id
 }
 
 fn read_mesh_renderer(value: &Value) -> Option<MeshRendererComponent> {
-    let mesh = value.get("mesh").and_then(Value::as_str)?;
     let material = value.get("material").and_then(Value::as_str)?;
     Some(MeshRendererComponent {
         cast_shadow: value.get("castShadow").and_then(Value::as_bool),
-        mesh: mesh.to_owned(),
+        mesh: value.get("mesh").and_then(Value::as_str).map(str::to_owned),
         material: material.to_owned(),
         receive_shadow: value.get("receiveShadow").and_then(Value::as_bool),
         visible: value.get("visible").and_then(Value::as_bool),
@@ -811,11 +810,13 @@ mod tests {
                 "TN_BEVY_SYSTEM_WRITE_UNDECLARED",
             ]
         );
-        assert!(bundle
-            .world
-            .entities
-            .iter()
-            .all(|entity| entity.id != "marker"));
+        assert!(
+            bundle
+                .world
+                .entities
+                .iter()
+                .all(|entity| entity.id != "marker")
+        );
         assert_eq!(
             bundle
                 .world

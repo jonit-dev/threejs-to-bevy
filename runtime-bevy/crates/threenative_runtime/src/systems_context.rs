@@ -1,13 +1,13 @@
 use std::collections::BTreeMap;
 
 use serde::Serialize;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use threenative_loader::{
     EntityComponents, LoadedBundle, LocalDataIr, SystemIr, SystemQueryIr, SystemStateSourceIr,
     UiIr, UiNodeIr,
 };
 
-use crate::component_diff::{changed_components as resolve_changed_components, ComponentDiffCache};
+use crate::component_diff::{ComponentDiffCache, changed_components as resolve_changed_components};
 use crate::input::NativeInputState;
 use crate::mesh_bounds::mesh_aabb;
 
@@ -447,13 +447,14 @@ pub fn mesh_bounds(bundle: &LoadedBundle) -> BTreeMap<String, NativeMeshBoundsSn
             if renderer.visible == Some(false) {
                 return None;
             }
-            let asset = assets_by_id.get(renderer.mesh.as_str())?;
+            let mesh_id = renderer.mesh.as_deref()?;
+            let asset = assets_by_id.get(mesh_id)?;
             let bounds = mesh_aabb(asset)?;
             Some((
                 entity.id.clone(),
                 NativeMeshBoundsSnapshot {
                     max: bounds.max.map(f64::from),
-                    mesh: renderer.mesh.clone(),
+                    mesh: mesh_id.to_owned(),
                     min: bounds.min.map(f64::from),
                 },
             ))

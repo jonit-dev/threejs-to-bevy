@@ -16,9 +16,9 @@ use crate::cameras::{active_camera_ids, camera_order};
 use crate::physics::detect_physics_events;
 use crate::render_targets::list_screenshot_exports;
 use crate::scene_manager::{
-    trace_scene_lifecycle, SceneLifecycleOperation, SceneLifecycleRuntimeState,
+    SceneLifecycleOperation, SceneLifecycleRuntimeState, trace_scene_lifecycle,
 };
-use crate::ui::{build_native_ui, UiDiagnostic};
+use crate::ui::{UiDiagnostic, build_native_ui};
 
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -524,7 +524,8 @@ pub struct MeshRendererReport {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub cast_shadow: Option<bool>,
     pub material: String,
-    pub mesh: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub mesh: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub receive_shadow: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -1630,7 +1631,7 @@ fn report_entity(
             .components
             .mesh_renderer
             .as_ref()
-            .map(|renderer| renderer.mesh.clone()),
+            .and_then(|renderer| renderer.mesh.clone()),
         parent: runtime.and_then(|runtime| runtime.parent.clone()),
         transform: runtime.and_then(|runtime| {
             runtime.transform.as_ref().map(|transform| TransformReport {

@@ -35,12 +35,12 @@ use threenative_loader::{
 
 use crate::assets::{load_texture_asset, texture_uv_transform};
 use crate::cameras::{
-    active_camera_ids, apply_camera_components, build_render_layer_map, camera_order,
-    render_layers_for_names, NativeRenderLayerMap,
+    NativeRenderLayerMap, active_camera_ids, apply_camera_components, build_render_layer_map,
+    camera_order, render_layers_for_names,
 };
 use crate::render_targets::{
-    allocate_render_targets, camera_render_target, NativeCustomProjection,
-    NativeRenderTargetRegistry,
+    NativeCustomProjection, NativeRenderTargetRegistry, allocate_render_targets,
+    camera_render_target,
 };
 use crate::rendering::spawn_rendered_particles;
 use crate::stylized_nature::{grass_material_policy, resolve_source_assets};
@@ -1616,13 +1616,19 @@ fn spawn_entity(
     }
 
     if let Some(renderer) = &entity.components.mesh_renderer {
-        let asset =
-            assets_by_id
-                .get(renderer.mesh.as_str())
-                .ok_or_else(|| MapError::MissingMesh {
-                    entity_id: entity.id.clone(),
-                    mesh_id: renderer.mesh.clone(),
-                })?;
+        let mesh_id = renderer
+            .mesh
+            .as_deref()
+            .ok_or_else(|| MapError::MissingMesh {
+                entity_id: entity.id.clone(),
+                mesh_id: "<missing>".to_owned(),
+            })?;
+        let asset = assets_by_id
+            .get(mesh_id)
+            .ok_or_else(|| MapError::MissingMesh {
+                entity_id: entity.id.clone(),
+                mesh_id: mesh_id.to_owned(),
+            })?;
         let material = materials_by_id
             .get(renderer.material.as_str())
             .ok_or_else(|| MapError::MissingMaterial {

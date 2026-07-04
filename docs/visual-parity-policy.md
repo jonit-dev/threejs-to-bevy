@@ -57,8 +57,8 @@ quality proof is metric and artifact based; it must show a visibly richer
 result without creating pixel-perfect web/Bevy expectations.
 
 Use `pnpm verify:render-look` for the focused render-look threshold check. The
-gate captures parity and balanced web screenshots by default and compares
-screenshot-derived metrics. A passing report uses
+gate captures parity and balanced web plus Bevy screenshots by default and
+compares screenshot-derived web metrics. A passing report uses
 `evidenceMode: "captured-screenshots"` and writes the screenshot paths under
 `tools/verify/artifacts/render-look/screenshots/`. This remains a focused
 quality gate until promoted into the release profile.

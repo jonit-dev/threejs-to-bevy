@@ -47,7 +47,7 @@ fn should_report_basic_scene_conformance_semantics() {
     assert_eq!(
         cube.mesh_renderer
             .as_ref()
-            .map(|renderer| renderer.mesh.as_str()),
+            .and_then(|renderer| renderer.mesh.as_deref()),
         Some("mesh.cube")
     );
     assert_eq!(
@@ -187,12 +187,8 @@ fn should_report_v9_environment_lighting_budgets_and_renderer_quality() {
     let depth_of_field = &report_json["runtimeConfig"]["renderer"]["depthOfField"];
     assert_eq!(depth_of_field["enabled"], true);
     assert_eq!(depth_of_field["focusDistance"], 8.0);
-    assert!(
-        (depth_of_field["aperture"].as_f64().unwrap() - 0.025).abs() < 0.000001
-    );
-    assert!(
-        (depth_of_field["maxBlur"].as_f64().unwrap() - 0.012).abs() < 0.000001
-    );
+    assert!((depth_of_field["aperture"].as_f64().unwrap() - 0.025).abs() < 0.000001);
+    assert!((depth_of_field["maxBlur"].as_f64().unwrap() - 0.012).abs() < 0.000001);
     assert_eq!(
         report_json["runtimeConfig"]["renderer"]["postProcessing"]["applied"],
         serde_json::json!(["colorGrading", "depthOfField"])
@@ -255,15 +251,9 @@ fn should_report_render_look_fallbacks() {
             "reason": "Bevy runtime only promotes parity and balanced render look profiles."
         }])
     );
-    assert!(
-        (render_look["overrides"]["bloomIntensity"].as_f64().unwrap() - 0.4).abs()
-            < 0.000001
-    );
+    assert!((render_look["overrides"]["bloomIntensity"].as_f64().unwrap() - 0.4).abs() < 0.000001);
     assert!((render_look["overrides"]["exposure"].as_f64().unwrap() - 1.1).abs() < 0.000001);
-    assert!(
-        (render_look["overrides"]["saturation"].as_f64().unwrap() - 1.15).abs()
-            < 0.000001
-    );
+    assert!((render_look["overrides"]["saturation"].as_f64().unwrap() - 1.15).abs() < 0.000001);
     assert_eq!(
         report_json["runtimeConfig"]["renderer"]["postProcessing"]["skipped"],
         serde_json::json!([{

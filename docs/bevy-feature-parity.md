@@ -392,9 +392,9 @@ remaining gaps by usefulness for building and shipping ordinary 3D games:
   keep `cinematic`/`stylized` reserved until screenshot proof exists. New
   maintained starters default to `balanced`; missing profiles remain `parity`
   for existing projects and conformance fixtures. `pnpm verify:render-look` is
-  available as a focused threshold gate with captured web screenshots and
-  screenshot-derived metrics. It is intentionally not in the release profile
-  until the browser capture path is promoted for CI release runs.
+  available as a focused threshold gate with captured web/Bevy screenshots and
+  screenshot-derived web metrics. It is intentionally not in the release profile
+  until the screenshot capture path is promoted for CI release runs.
 - `P3` Advanced renderer and physics breadth. Custom shaders, bindless,
   volumetrics, SSR, deferred rendering, decals, auto exposure, DOF, motion blur,
   virtual geometry, full constraints, vehicles, ragdolls, soft bodies, arbitrary

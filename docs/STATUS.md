@@ -354,13 +354,13 @@ requested/applied/fallback values; unsupported reserved profiles and raw
 renderer-specific payloads fail with stable diagnostics. The focused
 `pnpm verify:render-look` gate writes
 `tools/verify/artifacts/render-look/verification-report.json` and
-`contact-sheet.svg`, captures parity/balanced web screenshots under
+`contact-sheet.svg`, captures parity/balanced web and Bevy screenshots under
 `tools/verify/artifacts/render-look/screenshots/`, and reports
 `evidenceMode: "captured-screenshots"` with screenshot-derived metrics. Current
 proof shows `balanced` lifting average luminance by 0.610685 and saturation by
-0.26873 over `parity` with no fallback diagnostics. The gate remains a focused
-gate, not a release-profile gate, until the browser capture path is promoted for
-CI release runs.
+0.26873 over `parity` with no fallback diagnostics and nonblank Bevy captures
+for both profiles. The gate remains a focused gate, not a release-profile gate,
+until the screenshot capture path is promoted for CI release runs.
 
 Portable script helper imports now have a first supported bundle path:
 `src/scripts/**/*.ts` may use named imports from

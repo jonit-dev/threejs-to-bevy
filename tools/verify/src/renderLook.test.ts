@@ -7,8 +7,8 @@ import test from "node:test";
 import { analyzeRenderLookMetrics, runRenderLookGate, type RenderLookMetricInput } from "./renderLook.js";
 
 const passingMetrics: RenderLookMetricInput = {
-  parity: { averageLuminance: 0.44, brightPixelContribution: 0.02, contrast: 0.2, edgeClarity: 0.48, nonblankArea: 0.82, profile: "parity", saturation: 0.28 },
-  balanced: { averageLuminance: 0.62, brightPixelContribution: 0.08, contrast: 0.34, edgeClarity: 0.54, nonblankArea: 0.86, profile: "balanced", saturation: 0.48 },
+  parity: { averageLuminance: 0.44, bevyNonblankArea: 0.81, bevyScreenshotPath: "tools/verify/artifacts/render-look/screenshots/parity-bevy.png", brightPixelContribution: 0.02, contrast: 0.2, edgeClarity: 0.48, nonblankArea: 0.82, profile: "parity", saturation: 0.28 },
+  balanced: { averageLuminance: 0.62, bevyNonblankArea: 0.84, bevyScreenshotPath: "tools/verify/artifacts/render-look/screenshots/balanced-bevy.png", brightPixelContribution: 0.08, contrast: 0.34, edgeClarity: 0.54, nonblankArea: 0.86, profile: "balanced", saturation: 0.48 },
 };
 
 test("should fail when parity fixture uses balanced profile", () => {
@@ -29,6 +29,15 @@ test("should fail when balanced screenshot is visually flat", () => {
   assert.equal(diagnostics.some((diagnostic) => diagnostic.code === "TN_RENDER_LOOK_VISUALLY_FLAT"), true);
 });
 
+test("should fail when captured Bevy render look screenshot is blank", () => {
+  const diagnostics = analyzeRenderLookMetrics({
+    parity: passingMetrics.parity,
+    balanced: { ...passingMetrics.balanced, bevyNonblankArea: 0.01 },
+  });
+
+  assert.equal(diagnostics.some((diagnostic) => diagnostic.code === "TN_RENDER_LOOK_BEVY_SCREENSHOT_BLANK"), true);
+});
+
 test("should pass screenshot-derived metrics without evidence warning", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-render-look-screenshot-metrics-"));
   try {
@@ -37,7 +46,7 @@ test("should pass screenshot-derived metrics without evidence warning", async ()
 
     const result = await runRenderLookGate({ metricsPath, root });
     const report = JSON.parse(await readFile(result.reportPath, "utf8")) as {
-      artifacts: { contactSheet: string };
+      artifacts: { balancedBevyScreenshot: string; contactSheet: string; parityBevyScreenshot: string };
       evidenceMode: string;
       ok: boolean;
       thresholds: { averageLuminanceDelta: number; saturationDelta: number };
@@ -49,6 +58,8 @@ test("should pass screenshot-derived metrics without evidence warning", async ()
     assert.deepEqual(result.diagnostics, []);
     assert.equal(report.ok, true);
     assert.equal(report.artifacts.contactSheet, "tools/verify/artifacts/render-look/contact-sheet.svg");
+    assert.equal(report.artifacts.parityBevyScreenshot, "tools/verify/artifacts/render-look/screenshots/parity-bevy.png");
+    assert.equal(report.artifacts.balancedBevyScreenshot, "tools/verify/artifacts/render-look/screenshots/balanced-bevy.png");
     assert.equal(report.evidenceMode, "screenshot-metrics");
     assert.equal(report.thresholds.averageLuminanceDelta, 0.15);
     assert.equal(report.thresholds.saturationDelta, 0.08);
