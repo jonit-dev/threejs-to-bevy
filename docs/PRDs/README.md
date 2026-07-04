@@ -43,6 +43,10 @@ This index separates current cleanup work from historical milestone batches.
   strict input/source validation, fresh dev-preview rebuilds, CLI playability
   proof, modular-kit assembly diagnostics, camera/scale proof, and starter
   template quality gates from the racing-kit session learnings.
+- [Source-Backed Plugin System](other/plugin-system.md): portable plugin
+  manifests, deterministic source-backed install/remove operations, compiler
+  provenance, runtime metadata parity, plugin verification gates, and a sample
+  checkpoint-orb plugin proven working in a playable game.
 - [Shippable Asset Source Catalog](done/other/shippable-asset-source-catalog.md):
   SQLite-backed direct asset URL catalog, CLI search/get/suggest commands,
   workflow-doc extraction, and query-first agent instructions for third-party
@@ -137,6 +141,9 @@ This index separates current cleanup work from historical milestone batches.
 - [Advanced Visual Effects, Lighting, and Material Depth](other/advanced-visual-effects-lighting-material-depth.md):
   remaining advanced lighting, material, atmosphere, post-processing, deferred
   renderer, virtual geometry, and custom post-processing gaps.
+- [Beautiful Defaults Render Look Profiles](other/beautiful-defaults-render-look-profiles.md):
+  profile selection for parity versus game-quality rendering that reuses
+  existing runtime, atmosphere, material, and visual proof contracts.
 - [Advanced Animation and Physics Depth](other/advanced-animation-physics-depth.md):
   remaining retargeting, IK, arbitrary blend-tree, constraint, triangle
   narrow-phase, vehicle, soft-body, and ragdoll gaps.
