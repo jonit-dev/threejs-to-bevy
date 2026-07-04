@@ -142,6 +142,10 @@ export async function packageCommand(
 
   try {
     const bundlePath = resolve(cwd, bundle);
+    const targetProfileDiagnostic = await readDesktopTargetDiagnostic(bundlePath);
+    if (targetProfileDiagnostic !== undefined) {
+      return diagnosticResult(targetProfileDiagnostic, { exitCode: 1, json, stderr: true });
+    }
     const validation = await validateBundle(bundlePath);
     if (!validation.ok) {
       return diagnosticResult(
@@ -411,41 +415,53 @@ function flagValue(argv: readonly string[], flag: string): string | undefined {
 }
 
 async function assertDesktopTarget(bundlePath: string): Promise<void> {
-  const manifest = JSON.parse(await readFile(resolve(bundlePath, "manifest.json"), "utf8")) as {
-    files?: { targetProfile?: string };
-  };
-  const targetProfilePath = manifest.files?.targetProfile;
-  if (targetProfilePath === undefined) {
-    throw new Error("Bundle manifest does not reference target.profile.json.");
+  const diagnostic = await readDesktopTargetDiagnostic(bundlePath);
+  if (diagnostic !== undefined) {
+    throw new PackageDiagnosticError(diagnostic);
   }
-  const targetProfileValidation = validateBundleRelativePath(targetProfilePath);
-  if (!targetProfileValidation.ok) {
-    throw new Error(targetProfileValidation.message ?? `Bundle target profile path '${targetProfilePath}' is invalid.`);
+}
+
+async function readDesktopTargetDiagnostic(bundlePath: string): Promise<PackageDiagnosticError["diagnostic"] | undefined> {
+  try {
+    const manifest = JSON.parse(await readFile(resolve(bundlePath, "manifest.json"), "utf8")) as {
+      files?: { targetProfile?: string };
+    };
+    const targetProfilePath = manifest.files?.targetProfile;
+    if (targetProfilePath === undefined) {
+      return undefined;
+    }
+    const targetProfileValidation = validateBundleRelativePath(targetProfilePath);
+    if (!targetProfileValidation.ok) {
+      return undefined;
+    }
+    const profile = JSON.parse(await readFile(resolve(bundlePath, targetProfilePath), "utf8")) as { targets?: unknown };
+    const targets = Array.isArray(profile.targets) ? profile.targets : [];
+    if (!targets.includes("desktop")) {
+      return {
+        code: "TN_PACKAGE_TARGET_PROFILE_UNSUPPORTED",
+        message: "Bundle target profile must include 'desktop' for desktop packaging.",
+        path: `${targetProfilePath}/targets`,
+        severity: "error",
+        suggestion: "Add 'desktop' to target.profile.json targets before running 'tn package --target desktop'.",
+        target: "desktop",
+        value: targets,
+      };
+    }
+    if (targets.some((target) => target === "mobile" || target === "ios" || target === "android" || target === "online")) {
+      return {
+        code: "TN_PACKAGE_TARGET_PROFILE_UNSUPPORTED",
+        message: "Mobile and online publishing targets are outside desktop packaging scope.",
+        path: `${targetProfilePath}/targets`,
+        severity: "error",
+        suggestion: "Use package preflight for mobile targets or remove mobile/online targets from the desktop package profile.",
+        target: "desktop",
+        value: targets,
+      };
+    }
+  } catch {
+    return undefined;
   }
-  const profile = JSON.parse(await readFile(resolve(bundlePath, targetProfilePath), "utf8")) as { targets?: unknown };
-  const targets = Array.isArray(profile.targets) ? profile.targets : [];
-  if (!targets.includes("desktop")) {
-    throw new PackageDiagnosticError({
-      code: "TN_PACKAGE_TARGET_PROFILE_UNSUPPORTED",
-      message: "Bundle target profile must include 'desktop' for desktop packaging.",
-      path: `${targetProfilePath}/targets`,
-      severity: "error",
-      suggestion: "Add 'desktop' to target.profile.json targets before running 'tn package --target desktop'.",
-      target: "desktop",
-      value: targets,
-    });
-  }
-  if (targets.some((target) => target === "mobile" || target === "ios" || target === "android" || target === "online")) {
-    throw new PackageDiagnosticError({
-      code: "TN_PACKAGE_TARGET_PROFILE_UNSUPPORTED",
-      message: "Mobile and online publishing targets are outside desktop packaging scope.",
-      path: `${targetProfilePath}/targets`,
-      severity: "error",
-      suggestion: "Use package preflight for mobile targets or remove mobile/online targets from the desktop package profile.",
-      target: "desktop",
-      value: targets,
-    });
-  }
+  return undefined;
 }
 
 async function listRelativeFiles(root: string, prefix = ""): Promise<string[]> {
