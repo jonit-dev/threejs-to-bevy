@@ -8,7 +8,7 @@ import { analyzeRenderLookMetrics, runRenderLookGate, type RenderLookMetricInput
 
 const passingMetrics: RenderLookMetricInput = {
   parity: { averageLuminance: 0.44, brightPixelContribution: 0.02, contrast: 0.2, edgeClarity: 0.48, nonblankArea: 0.82, profile: "parity", saturation: 0.28 },
-  balanced: { averageLuminance: 0.52, brightPixelContribution: 0.08, contrast: 0.34, edgeClarity: 0.54, nonblankArea: 0.86, profile: "balanced", saturation: 0.48 },
+  balanced: { averageLuminance: 0.62, brightPixelContribution: 0.08, contrast: 0.34, edgeClarity: 0.54, nonblankArea: 0.86, profile: "balanced", saturation: 0.48 },
 };
 
 test("should fail when parity fixture uses balanced profile", () => {

@@ -207,11 +207,11 @@ test("should emit structured source environment documents", async () => {
       }, null, 2)}\n`,
     );
     await writeFile(
-      join(projectPath, "content/runtime/desktop.runtime.json"),
+      join(projectPath, "content/runtime/default.runtime.json"),
       `${JSON.stringify({
         schema: "threenative.runtime-config",
         version: "0.1.0",
-        id: "desktop",
+        id: "default",
         renderer: { antialias: "msaa8", renderPath: "forward" },
         time: { fixedDelta: 1 / 30, paused: false },
         window: { height: 900, title: "Structured Runtime", width: 1600 },
