@@ -32,7 +32,7 @@ ThreeNative game without guessing or hand-building one-off harnesses.
 - `package.json`
 - `docs/PRDs/README.md`
 - `docs/PRDs/done/other/ai-consumable-distribution-contract.md`
-- `docs/PRDs/other/ui-platform-desktop-residuals.md`
+- `docs/PRDs/done/other/ui-platform-desktop-residuals.md`
 - `packages/cli/src/index.ts`
 - `packages/cli/src/commands/create.ts`
 - `packages/cli/src/commands/dev.ts`

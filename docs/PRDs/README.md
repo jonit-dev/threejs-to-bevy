@@ -147,14 +147,14 @@ This index separates current cleanup work from historical milestone batches.
 - [Advanced Animation and Physics Depth](other/advanced-animation-physics-depth.md):
   remaining retargeting, IK, arbitrary blend-tree, constraint, triangle
   narrow-phase, vehicle, soft-body, and ragdoll gaps.
-- [UI Platform and Desktop Residuals](other/ui-platform-desktop-residuals.md):
+- [UI Platform and Desktop Residuals](done/other/ui-platform-desktop-residuals.md):
   remaining gesture, virtual keyboard, world UI, italic text, advanced grid,
   broad gamepad/touch UI, and desktop webview packaging gaps.
 - [External Services, Media, and Non-Portable Boundaries](other/external-services-media-boundaries.md):
   cloud/account storage, custom decoders, streaming/network audio, online
   services, alternate authoring models, 2D workflows, and backend-only
   diagnostic boundaries.
-- [Bevy Catalog Watchlist Residuals](other/bevy-catalog-watchlist-residuals.md):
+- [Bevy Catalog Watchlist Residuals](done/other/bevy-catalog-watchlist-residuals.md):
   newly tracked upstream Bevy catalog gaps for ECS callbacks/query ergonomics,
   editable text/IME, UI viewport and drag behavior, window/cursor/power policy,
   runtime asset authoring/export, generated assets, and glTF extension

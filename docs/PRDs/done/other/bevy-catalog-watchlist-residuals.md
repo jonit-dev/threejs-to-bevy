@@ -18,7 +18,7 @@ contributors without clear promotion or diagnostic targets.
 - `docs/bevy-feature-parity.md`
 - `docs/STATUS.md`
 - `docs/PRDs/README.md`
-- `docs/PRDs/other/ui-platform-desktop-residuals.md`
+- `docs/PRDs/done/other/ui-platform-desktop-residuals.md`
 - `docs/PRDs/other/advanced-visual-effects-lighting-material-depth.md`
 - `docs/PRDs/other/external-services-media-boundaries.md`
 - `/home/joao/.claude/skills/prd-creator/SKILL.md`
