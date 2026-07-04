@@ -93,6 +93,7 @@
       "proofCommands": [
         "tn authoring validate --project . --json",
         "tn build --project . --json",
+        "tn scene proof-camera racing-kit-rally --camera camera.main --target player.car --min-occupancy 0.04 --json",
         "tn playtest --project . --entity player.car --press KeyW --frames 60 --expect-moved --json",
         "tn game qa --project . --run-proof --json",
         "tn game release --project . --json"
@@ -104,6 +105,7 @@
     "proofCommands": [
       "tn authoring validate --project . --json",
       "tn build --project . --json",
+      "tn scene proof-camera racing-kit-rally --camera camera.main --target player.car --min-occupancy 0.04 --json",
       "tn playtest --project . --entity player.car --press KeyW --frames 60 --expect-moved --json",
       "tn screenshot --project . --url <preview-url> --out artifacts/game-production/screenshot.png --wait-ready --json",
       "tn game score --project . --json",

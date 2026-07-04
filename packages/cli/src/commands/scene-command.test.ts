@@ -574,6 +574,54 @@ test("scene-command rejects modular track actors staged off the road surface", a
   }
 });
 
+test("scene-command warns when vehicle scale is too large for lane width", async () => {
+  const root = await createSceneProject();
+  try {
+    await mkdir(join(root, "assets"), { recursive: true });
+    await writeFile(join(root, "assets", "corner.glb"), makeRoadGlb("corner"));
+    const add = await sceneCommand([
+      "add-modular-track",
+      "scene.arena",
+      "--asset-dir",
+      "assets",
+      "--prefix",
+      "road.tile",
+      "--layout",
+      JSON.stringify([
+        { asset: "corner.glb", center: [0, 0], yaw: 0 },
+        { asset: "corner.glb", center: [2, 0], yaw: 270 },
+        { asset: "corner.glb", center: [2, 2], yaw: 180 },
+        { asset: "corner.glb", center: [0, 2], yaw: 90 },
+      ]),
+      "--project",
+      root,
+      "--json",
+    ]);
+    const transform = await sceneCommand(["set-transform", "scene.arena", "player-kart", "--position", "1,0.2,0.5", "--scale", "2,1,2", "--project", root, "--json"]);
+    const proof = await sceneCommand(["proof-modular-track", "scene.arena", "--asset-dir", "assets", "--prefix", "road.tile", "--actors", "player-kart", "--project", root, "--json"]);
+    const payload = JSON.parse(proof.stdout) as {
+      actorReports: Array<{ actorId: string; laneWidth: number; ratio: number; verdict: string }>;
+      diagnostics: Array<{ code: string; message: string; severity: string; suggestion?: string }>;
+    };
+
+    assert.equal(add.exitCode, 0);
+    assert.equal(transform.exitCode, 0);
+    assert.equal(proof.exitCode, 0);
+    assert.equal(payload.actorReports[0]?.actorId, "player-kart");
+    assert.equal(payload.actorReports[0]?.laneWidth, 1.35);
+    assert.equal(payload.actorReports[0]?.ratio, 1.481481);
+    assert.equal(payload.actorReports[0]?.verdict, "too-large");
+    assert.equal(payload.diagnostics.some((diagnostic) =>
+      diagnostic.code === "TN_SCENE_MODULAR_TRACK_VEHICLE_TOO_LARGE_FOR_LANE"
+      && diagnostic.severity === "warning"
+      && diagnostic.message.includes("1.481481")
+      && diagnostic.suggestion?.includes("Reduce the actor X/Z scale") === true
+    ), true);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
 test("scene-command rejects modular tracks with open connectors", async () => {
   const root = await createSceneProject();
   try {
@@ -676,6 +724,97 @@ test("scene-command frames a camera with look-at rotation and no roll", async ()
     assert.equal(validate.exitCode, 0);
     assert.deepEqual(camera?.transform?.position, [-5, 1.6, 10]);
     assert.deepEqual(camera?.transform?.rotation, [-0.235545, -1.570796, 0]);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("scene-command proof-camera passes for visible framed target", async () => {
+  const root = await createSceneProject({ minimal: true });
+
+  try {
+    await sceneCommand(["set-camera-look-at", "scene.arena", "chase-camera", "--position", "-5,1.6,0", "--target", "0,0.4,0", "--project", root, "--json"]);
+    const proof = await sceneCommand([
+      "proof-camera",
+      "scene.arena",
+      "--camera",
+      "chase-camera",
+      "--target",
+      "player-kart",
+      "--min-occupancy",
+      "0.03",
+      "--project",
+      root,
+      "--json",
+    ]);
+    const payload = JSON.parse(proof.stdout) as {
+      metrics: { approximateRoll: number; screenOccupancy: number; targetVisible: boolean };
+    };
+
+    assert.equal(proof.exitCode, 0);
+    assert.equal(payload.metrics.targetVisible, true);
+    assert.equal(payload.metrics.approximateRoll, 0);
+    assert.equal(payload.metrics.screenOccupancy >= 0.03, true);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("scene-command proof-camera fails when player occupancy is below threshold", async () => {
+  const root = await createSceneProject({ minimal: true });
+
+  try {
+    await sceneCommand(["set-camera-look-at", "scene.arena", "chase-camera", "--position", "-5,1.6,0", "--target", "0,0.4,0", "--project", root, "--json"]);
+    const proof = await sceneCommand([
+      "proof-camera",
+      "scene.arena",
+      "--camera",
+      "chase-camera",
+      "--target",
+      "player-kart",
+      "--min-occupancy",
+      "0.5",
+      "--project",
+      root,
+      "--json",
+    ]);
+    const payload = JSON.parse(proof.stdout) as {
+      diagnostics: Array<{ code: string; message: string }>;
+      metrics: { screenOccupancy: number };
+    };
+
+    assert.equal(proof.exitCode, 1);
+    assert.equal(payload.diagnostics.some((diagnostic) => diagnostic.code === "TN_SCENE_CAMERA_PROOF_OCCUPANCY_TOO_LOW" && diagnostic.message.includes(String(payload.metrics.screenOccupancy))), true);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("scene-command proof-camera fails when active camera target is outside viewport", async () => {
+  const root = await createSceneProject({ minimal: true });
+
+  try {
+    await sceneCommand(["set-camera-look-at", "scene.arena", "chase-camera", "--position", "-5,1.6,0", "--target", "0,0.4,0", "--project", root, "--json"]);
+    await sceneCommand(["set-transform", "scene.arena", "player-kart", "--position", "0,0,20", "--project", root, "--json"]);
+    const proof = await sceneCommand([
+      "proof-camera",
+      "scene.arena",
+      "--camera",
+      "chase-camera",
+      "--target",
+      "player-kart",
+      "--project",
+      root,
+      "--json",
+    ]);
+    const payload = JSON.parse(proof.stdout) as {
+      diagnostics: Array<{ code: string; message: string }>;
+      metrics: { targetVisible: boolean };
+    };
+
+    assert.equal(proof.exitCode, 1);
+    assert.equal(payload.metrics.targetVisible, false);
+    assert.equal(payload.diagnostics.some((diagnostic) => diagnostic.code === "TN_SCENE_CAMERA_PROOF_TARGET_OUTSIDE_VIEW" && diagnostic.message.includes("chase-camera") && diagnostic.message.includes("player-kart")), true);
   } finally {
     await rm(root, { force: true, recursive: true });
   }

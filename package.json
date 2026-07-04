@@ -38,6 +38,7 @@
     "verify:runtime-query-diffing": "pnpm build:verify-tools && node tools/verify/dist/cli/run.js verify:runtime-query-diffing",
     "verify:scripting-helpers-lifecycle": "pnpm build:verify-tools && node tools/verify/dist/cli/run.js verify:scripting-helpers-lifecycle",
     "verify:template-production": "pnpm build:verify-tools && node tools/verify/dist/cli/run.js verify:template-production",
+    "verify:template-playability": "pnpm build:verify-tools && node tools/verify/dist/cli/run.js verify:template-playability",
     "verify:ui-persistence-settings-facades": "pnpm build:verify-tools && node tools/verify/dist/cli/run.js verify:ui-persistence-settings-facades",
     "verify:smoke": "pnpm check:names && pnpm check:docs",
     "prepare": "husky"

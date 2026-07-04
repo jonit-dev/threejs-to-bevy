@@ -32,7 +32,7 @@ agents can find usable assets before doing web research.
 - `docs/PRDs/README.md`
 - `docs/workflows/open-source-3d-asset-kits.md`
 - `docs/PRDs/other/agent-friendly-project-and-visual-debugging-workflows.md`
-- `docs/PRDs/other/game-authoring-loop-hardening.md`
+- `docs/PRDs/done/other/game-authoring-loop-hardening.md`
 - `packages/cli/src/index.ts`
 - `packages/cli/src/commands/asset.ts`
 - `packages/cli/src/commands/asset.test.ts`

@@ -50,6 +50,27 @@ or fail with `TN_SCENE_PROOF_NATIVE_HEADLESS_XVFB_MISSING` when the user must
 install/use Xvfb or run in a graphical session. The focused smoke proof mutates
 and validates a source scene, then builds and validates the same project's
 normal bundle.
+The game-authoring loop now also includes source-level camera framing proof:
+`tn scene set-camera-look-at` writes a no-roll camera transform from authored
+position/target vectors, and `tn scene proof-camera <scene-id> --camera <id>
+--target <entity-id> --json` reports active camera, target visibility,
+normalized screen position, projected occupancy, roll, clipping range, and
+target world bounds with stable diagnostics for low occupancy, outside-viewport
+targets, excessive roll, clipping failures, and missing camera/target IDs. This
+proof consumes durable structured scene source and produces numeric guidance
+before runtime screenshot inspection; web/native screenshot parity remains a
+separate runtime proof step.
+Modular track proof now reports material-derived connector continuity,
+actor-on-road checks, and actor footprint versus lane-width ratios for
+`tn scene proof-modular-track ... --actors`, warning when a vehicle consumes too
+much of the inferred road surface before screenshot inspection.
+The dev preview loop now rebuilds durable source before one-shot `tn dev`
+previews, emits `bundlePath`, `bundleHash`, `buildTime`, and
+`sourceBuildStatus`, exposes the same metadata from
+`/__threenative/dev-state.json`, and marks non-watch launches with
+`TN_DEV_NOT_WATCHING`. Watch rebuild failures keep last-good bundle evidence via
+`stale` and `lastGoodBundlePath` fields so browser previews cannot silently
+masquerade as current source.
 `@threenative/mcp-server` now
 provides optional AI-facing wrappers for inspect/validate/mutate/build/
 screenshot/verify operations by delegating to the same `tn ... --json` command
@@ -111,7 +132,11 @@ as the maintained-starter gate for those scripts, production metadata, and
 starter instructions. The gate now also requires normalized
 `production.agent` metadata with source shape, high-value surfaces, script
 owners, UI states, and proof commands, and it is included in the release
-focused-gate profile.
+focused-gate profile. `pnpm verify:template-playability` now scaffolds the
+racing starter into a temp project, validates and builds durable source, proves
+camera framing and modular track actor fit, runs a web `tn playtest` throttle
+movement proof, then corrupts the starter input binding to verify malformed
+keyboard controls fail authoring validation before runtime.
 `tn game score --project . --json`
 inspects structured source and proof artifacts for gameplay, assets, visuals,
 UI, debug, QA, and release ledgers. `tn game qa --run-proof --json`

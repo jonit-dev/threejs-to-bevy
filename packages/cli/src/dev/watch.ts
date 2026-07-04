@@ -14,7 +14,9 @@ export interface IWatchReport {
   bundlePath?: string;
   code: "TN_DEV_WATCH_REBUILD_OK" | "TN_DEV_WATCH_REBUILD_FAILED";
   diagnostics: IWatchDiagnostic[];
+  lastGoodBundlePath?: string;
   projectPath: string;
+  stale?: boolean;
   status: "pass" | "fail";
 }
 
@@ -35,13 +37,17 @@ export async function startDevWatch(projectPath: string, options: IDevWatchOptio
   const resolvedProjectPath = resolve(projectPath);
   const watchedPaths = await collectWatchedPaths(resolvedProjectPath);
   const initialReport = await rebuildProject(resolvedProjectPath);
+  let lastGoodBundlePath = initialReport.status === "pass" ? initialReport.bundlePath : undefined;
   options.onReport?.(initialReport);
 
   const watchers: FSWatcher[] = [];
   let timer: NodeJS.Timeout | undefined;
 
   const rebuild = async () => {
-    const report = await rebuildProject(resolvedProjectPath);
+    const report = markStaleBuild(await rebuildProject(resolvedProjectPath), lastGoodBundlePath);
+    if (report.status === "pass") {
+      lastGoodBundlePath = report.bundlePath;
+    }
     options.onReport?.(report);
     return report;
   };
@@ -73,6 +79,27 @@ export async function startDevWatch(projectPath: string, options: IDevWatchOptio
     initialReport,
     rebuild,
     watchedPaths,
+  };
+}
+
+function markStaleBuild(report: IWatchReport, lastGoodBundlePath: string | undefined): IWatchReport {
+  if (report.status === "pass" || lastGoodBundlePath === undefined) {
+    return report;
+  }
+  return {
+    ...report,
+    lastGoodBundlePath,
+    stale: true,
+    diagnostics: [
+      ...report.diagnostics,
+      {
+        code: "TN_DEV_WATCH_LAST_GOOD_STALE",
+        file: lastGoodBundlePath,
+        message: `Rebuild failed; preview should keep serving last good bundle '${lastGoodBundlePath}'.`,
+        severity: "info",
+        suggestedFix: "Fix the reported source error; the next passing rebuild will replace the stale preview bundle.",
+      },
+    ],
   };
 }
 

@@ -122,6 +122,11 @@ implementation:
   including normalized `production.agent` source-owner metadata, and is
   included in the release focused-gate profile. This improves the starting
   authoring loop; it does not add a Bevy runtime capability.
+- `pnpm verify:template-playability` now proves the racing starter's first-use
+  loop from a fresh scaffold: authoring validate, build, source camera proof,
+  modular track actor/lane proof, web `tn playtest` throttle movement, and a
+  negative malformed-input validation check. This is a web authoring-loop proof;
+  native/Bevy playtest injection remains pending.
 - `pnpm verify:generated-games` aggregates generated-game release proof for
   `asteroid-mail-runner`, `clockwork-garden-heist`, `copper-rail-switcher`,
   `crystal-cavern`, `firefly-grove-keeper`, `glassworks-prism-sorter`,
@@ -600,6 +605,7 @@ diagnostics until portable promotion criteria and web/Bevy evidence exist.
 - [x] `P2` glTF extension processing policy with promoted AnimationGraph metadata import and stable diagnostics for executable/custom transforms
 - [x] `P1` Scene viewer/editor inspection workflow
 - [x] `P1` CLI glTF/GLB asset inspection for bounds, dependency checks, and scale calibration (`tn asset inspect`)
+- [x] `P1` Modular track proof reports connector continuity, actor-on-road placement, and actor footprint versus material-derived lane width (`tn scene proof-modular-track`)
 - [x] `P1` Packaged CLI asset source catalog for reviewed direct GLB records and typed pack/material/texture/HDRI fallback records (`tn asset source search/get/suggest/export`)
 - [x] `P1` CLI one-model proof reports with scale presets, screen occupancy verdicts, isolated-proof caveats, and screenshot captured/unavailable states (`tn model-test`)
 - [x] `P1` Dev-time asset file watching and explicit reload diagnostics
@@ -831,6 +837,7 @@ diagnostics until portable promotion criteria and web/Bevy evidence exist.
 - [x] Registry-backed CLI/source mutation and compiler lowering for reusable component/resource schema documents
 - [x] Registry-backed CLI/source mutation and compiler lowering for input controls-settings and persisted binding override metadata
 - [x] Typed CLI/source operations for common ECS components (`camera`, `light`, `mesh-renderer`, `render-layers`, `visibility`, `rigid-body`, `collider`, `character-controller`), including camera projection/frustum fields
+- [x] Source-level camera framing proof with `tn scene set-camera-look-at` and `tn scene proof-camera`, reporting target visibility, projected occupancy, roll, clipping range, and world bounds before web/Bevy screenshot proof
 - [x] Discoverable `tn physics add-rigid-body`, `tn physics add-collider`, and `tn nav add-agent` CLI aliases over promoted source components
 - [x] CLI/source operations for promoted model animation clips, graph states, and bounded particle emitters
 - [x] One-way generator provenance source documents plus `generator.record` / `tn generator record`
@@ -860,6 +867,7 @@ diagnostics until portable promotion criteria and web/Bevy evidence exist.
 - [x] `P1` Gamepad, scene viewer, and asset preview tools
 - [x] `P2` Connected-device gamepad inspection
 - [x] `P2` Hot reload with state policy
+- [x] Dev preview freshness metadata and stale-watch diagnostics for the CLI web preview loop (`tn dev --target web`)
 - [x] `P1` Debug draw APIs for gameplay systems
 - [x] `P1` Live runtime scene mutation
 - [x] `P2` Full native desktop visual editor shell as an explicit deferred boundary; current editor support is browser/CLI plus package inspection

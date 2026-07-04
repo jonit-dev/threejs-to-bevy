@@ -57,7 +57,7 @@ source-shape contract, and drift checks that keep examples/templates aligned.
 - `docs/workflows/compact-scene-source.md`
 - `docs/workflows/open-source-3d-asset-kits.md`
 - `docs/PRDs/other/agent-friendly-project-and-visual-debugging-workflows.md`
-- `docs/PRDs/other/game-authoring-loop-hardening.md`
+- `docs/PRDs/done/other/game-authoring-loop-hardening.md`
 
 **Current Behavior:**
 

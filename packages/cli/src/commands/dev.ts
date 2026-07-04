@@ -1,4 +1,5 @@
-import { access } from "node:fs/promises";
+import { readFile, stat } from "node:fs/promises";
+import { createHash } from "node:crypto";
 import { resolve } from "node:path";
 import { buildProject, loadProjectConfig, validateBundle } from "@threenative/compiler";
 import type { IAssetReloadReportIr, IGltfSceneMetadataIr } from "@threenative/ir";
@@ -77,11 +78,13 @@ export async function devCommand(
     }
 
     const bundlePath = await ensureProjectBundle(projectPath);
+    const metadata = await bundleMetadata(bundlePath);
 
     if (target === "desktop") {
       const process = (options.bevyRunner ?? runBevyRuntime)({ bundlePath });
       const payload = {
         bundlePath,
+        ...metadata,
         code: "TN_DEV_DESKTOP_READY",
         message: "Desktop preview starting with Bevy runtime.",
       };
@@ -93,11 +96,21 @@ export async function devCommand(
       };
     }
 
-    const server = await startWebPreview({ bundlePath });
+    const server = await startWebPreview({ bundlePath, metadata });
     const url = previewUrl(server.url, debugColliders);
     const payload = {
+      bundlePath,
+      ...metadata,
       code: "TN_DEV_WEB_READY",
       debugColliders,
+      diagnostics: [
+        {
+          code: "TN_DEV_NOT_WATCHING",
+          message: "Web preview is serving the bundle built at startup; run with --watch for rebuilds after source changes.",
+          severity: "warning",
+          suggestion: "Use tn dev --target web --watch for the edit/build/preview loop.",
+        },
+      ],
       message: `Web preview ready at ${url}`,
       url,
     };
@@ -196,13 +209,8 @@ function removedGltfHandlePaths(assetId: string, before: IGltfSceneMetadataIr | 
 }
 
 async function ensureProjectBundle(projectPath: string): Promise<string> {
-  const config = await loadProjectConfig(projectPath);
-  const bundlePath = resolve(projectPath, config.outDir);
-  try {
-    await access(resolve(bundlePath, "manifest.json"));
-  } catch {
-    await buildProject(projectPath);
-  }
+  const build = await buildProject(projectPath);
+  const bundlePath = build.bundlePath;
 
   const report = await validateBundle(bundlePath);
   if (!report.ok) {
@@ -210,4 +218,14 @@ async function ensureProjectBundle(projectPath: string): Promise<string> {
   }
 
   return bundlePath;
+}
+
+async function bundleMetadata(bundlePath: string): Promise<{ buildTime: string; bundleHash: string; sourceBuildStatus: "current" }> {
+  const manifestPath = resolve(bundlePath, "manifest.json");
+  const [manifest, manifestStat] = await Promise.all([readFile(manifestPath), stat(manifestPath)]);
+  return {
+    buildTime: manifestStat.mtime.toISOString(),
+    bundleHash: createHash("sha256").update(manifest).digest("hex"),
+    sourceBuildStatus: "current",
+  };
 }

@@ -22,6 +22,7 @@ tn asset inspect assets --recursive --json
 tn scene generate-modular-track racing-kit-rally --asset-dir assets --shape oval --size medium --prefix road.modular --json
 tn scene proof-modular-track racing-kit-rally --asset-dir assets --prefix road.modular --actors player.car,rival.car --json
 tn scene set-camera-look-at racing-kit-rally camera.main --position -5.45,1.65,10.5 --target 1.55,0.38,10.5 --json
+tn scene proof-camera racing-kit-rally --camera camera.main --target player.car --min-occupancy 0.04 --json
 tn playtest --project . --entity player.car --press KeyW --frames 60 --expect-moved --json
 pnpm run game:qa
 pnpm run game:release

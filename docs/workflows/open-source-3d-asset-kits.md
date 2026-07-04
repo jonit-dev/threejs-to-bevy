@@ -358,6 +358,10 @@ Redistribution allowed:
   or embedded through the asset pipeline.
 - Bounds: prefer assets with valid glTF accessor `min`/`max` data so
   `tn asset inspect` can report scale reliably.
+- Modular tracks: run `tn scene proof-modular-track ... --actors` after
+  placement. The JSON report checks connector continuity, actor-on-road
+  placement, and actor footprint versus material-derived lane width so scale
+  problems are visible before screenshot inspection.
 - Materials: use authored PBR maps and color-space metadata; avoid screenshot
   matching by changing adapter defaults.
 - Size: keep fixtures small enough for normal verification gates. Use large

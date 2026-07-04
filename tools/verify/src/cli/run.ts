@@ -298,6 +298,21 @@ export const FOCUSED_GATES: Record<string, FocusedGate> = {
       protects: "Fresh-project game-production scripts, proof-running QA defaults, and production metadata for playable loops.",
     },
   },
+  "verify:template-playability": {
+    commands: [
+      ["pnpm", "--filter", "@threenative/runtime-web-three", "build"],
+      ["pnpm", "--filter", "@threenative/cli", "build"],
+      ["pnpm", "--filter", "@threenative/verify-tools", "build"],
+      ["node", "tools/verify/dist/templatePlayability.js"],
+    ],
+    description: "Maintained racing starter runtime playability gate.",
+    metadata: {
+      owner: "tools/verify template-playability gate",
+      profile: "focused",
+      reason: "Scaffolds the racing starter and runs validation, build, camera proof, modular track proof, playtest, and malformed-input negative proof.",
+      protects: "Starter throttle movement, canonical controls, camera framing, track scale, and input validation before first-use regressions ship.",
+    },
+  },
   "verify:v10:ecs-tags-groups": {
     commands: [
       ["pnpm", "--filter", "@threenative/ir", "test", "--", "--run", "conformance"],

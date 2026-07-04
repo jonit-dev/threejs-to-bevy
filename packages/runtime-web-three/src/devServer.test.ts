@@ -17,6 +17,13 @@ test("should start web dev server for valid bundle", async () => {
     const manifestResponse = await fetch(new URL("/bundle/manifest.json", server.url));
     assert.equal(manifestResponse.ok, true);
     assert.equal((await manifestResponse.json()).schema, "threenative.bundle");
+    const metadataResponse = await fetch(new URL("/__threenative/dev-state.json", server.url));
+    const metadata = await metadataResponse.json() as { bundleHash: string; bundlePath: string; schema: string; sourceBuildStatus: string };
+    assert.equal(metadataResponse.ok, true);
+    assert.equal(metadata.schema, "threenative.dev-preview-state");
+    assert.match(metadata.bundleHash, /^[a-f0-9]{64}$/);
+    assert.equal(metadata.bundlePath, resolve(process.cwd(), "../ir/fixtures/cube-scene/game.bundle"));
+    assert.equal(metadata.sourceBuildStatus, "current");
   } finally {
     await server.close();
   }

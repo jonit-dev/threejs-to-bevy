@@ -42,7 +42,7 @@ This index separates current cleanup work from historical milestone batches.
   compact prefab defaults, repeated layout source, source inspection, CLI
   operations, and bowling-lane migration to prevent thousand-line scene JSON
   while preserving portable physics/runtime semantics.
-- [Playable Game Authoring Loop Hardening](other/game-authoring-loop-hardening.md):
+- [Playable Game Authoring Loop Hardening](done/other/game-authoring-loop-hardening.md):
   strict input/source validation, fresh dev-preview rebuilds, CLI playability
   proof, modular-kit assembly diagnostics, camera/scale proof, and starter
   template quality gates from the racing-kit session learnings.

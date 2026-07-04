@@ -34,7 +34,7 @@ sample plugin works inside a playable game.
 
 - `AGENTS.md`
 - `docs/PRDs/README.md`
-- `docs/PRDs/other/game-authoring-loop-hardening.md`
+- `docs/PRDs/done/other/game-authoring-loop-hardening.md`
 - `docs/PRDs/done/other/authoring-mcp-wrapper.md`
 - `packages/ir/src/systems.ts`
 - `packages/ir/src/systemsValidation.ts`

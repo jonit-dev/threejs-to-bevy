@@ -1,4 +1,6 @@
 import { createReadStream } from "node:fs";
+import { readFile, stat } from "node:fs/promises";
+import { createHash } from "node:crypto";
 import type { Socket } from "node:net";
 import { extname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -7,12 +9,21 @@ import { createServer, type Plugin, type ViteDevServer } from "vite";
 
 export interface IWebPreviewServer {
   close(): Promise<void>;
+  metadata: IWebPreviewMetadata;
   url: string;
+}
+
+export interface IWebPreviewMetadata {
+  buildTime: string;
+  bundleHash: string;
+  bundlePath: string;
+  sourceBuildStatus: "current" | "stale";
 }
 
 export async function startWebPreview(options: {
   bundlePath: string;
   host?: string;
+  metadata?: Partial<IWebPreviewMetadata>;
   port?: number;
   silent?: boolean;
 }): Promise<IWebPreviewServer> {
@@ -21,9 +32,10 @@ export async function startWebPreview(options: {
     throw new Error(report.diagnostics[0]?.message ?? "Bundle validation failed.");
   }
 
+  const metadata = await bundleMetadata(options.bundlePath, options.metadata);
   const root = resolve(fileURLToPath(new URL("..", import.meta.url)));
   const server = await createServer({
-    plugins: [bundlePlugin(options.bundlePath)],
+    plugins: [bundlePlugin(options.bundlePath, metadata)],
     root,
     logLevel: options.silent === true ? "silent" : "info",
     optimizeDeps: {
@@ -68,13 +80,34 @@ export async function startWebPreview(options: {
         httpServer.close(() => resolveClose());
       });
     },
+    metadata,
     url,
   };
 }
 
-function bundlePlugin(bundlePath: string): Plugin {
+async function bundleMetadata(bundlePath: string, overrides: Partial<IWebPreviewMetadata> | undefined): Promise<IWebPreviewMetadata> {
+  const manifestPath = resolve(bundlePath, "manifest.json");
+  const manifest = await readFile(manifestPath);
+  const modified = await stat(manifestPath);
+  return {
+    buildTime: overrides?.buildTime ?? modified.mtime.toISOString(),
+    bundleHash: overrides?.bundleHash ?? createHash("sha256").update(manifest).digest("hex"),
+    bundlePath: overrides?.bundlePath ?? bundlePath,
+    sourceBuildStatus: overrides?.sourceBuildStatus ?? "current",
+  };
+}
+
+function bundlePlugin(bundlePath: string, metadata: IWebPreviewMetadata): Plugin {
   return {
     configureServer(server) {
+      server.middlewares.use("/__threenative/dev-state.json", (_request, response) => {
+        response.setHeader("Content-Type", "application/json; charset=utf-8");
+        response.end(`${JSON.stringify({
+          schema: "threenative.dev-preview-state",
+          version: "0.1.0",
+          ...metadata,
+        }, null, 2)}\n`);
+      });
       server.middlewares.use("/bundle", (request, response, next) => {
         const url = request.url ?? "/";
         if (url.includes("..")) {

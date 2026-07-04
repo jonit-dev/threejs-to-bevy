@@ -44,7 +44,7 @@ this PRD.
 - `docs/PRDs/other/complete-structured-authoring-parity.md`
 - `docs/PRDs/other/editor-ready-modular-authoring-and-scripting-architecture.md`
 - `docs/PRDs/other/editor-script-body-code-mode.md`
-- `docs/PRDs/other/game-authoring-loop-hardening.md`
+- `docs/PRDs/done/other/game-authoring-loop-hardening.md`
 - `docs/PRDs/other/portable-scripting-ergonomics-stdlib-and-lifecycle.md`
 - `docs/STATUS.md`
 - `docs/bevy-feature-parity.md`

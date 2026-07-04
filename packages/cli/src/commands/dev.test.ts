@@ -46,12 +46,19 @@ test("should start web dev server for valid bundle", async () => {
     await cp("../../templates/structured-source-starter", root, { recursive: true });
     const result = await devCommand(["--target", "web", "--json"], root);
     try {
-      const payload = JSON.parse(result.stdout) as { code: string; url: string };
+      const payload = JSON.parse(result.stdout) as { bundleHash: string; buildTime: string; code: string; diagnostics: Array<{ code: string }>; sourceBuildStatus: string; url: string };
       assert.equal(result.exitCode, 0);
       assert.equal(payload.code, "TN_DEV_WEB_READY");
+      assert.match(payload.bundleHash, /^[a-f0-9]{64}$/);
+      assert.equal(Number.isNaN(Date.parse(payload.buildTime)), false);
+      assert.equal(payload.sourceBuildStatus, "current");
+      assert.equal(payload.diagnostics.some((diagnostic) => diagnostic.code === "TN_DEV_NOT_WATCHING"), true);
       assert.match(payload.url, /^http:\/\/127\.0\.0\.1:/);
       const response = await fetch(payload.url);
       assert.equal(response.ok, true);
+      const metadata = await fetch(new URL("/__threenative/dev-state.json", payload.url)).then((state) => state.json()) as { bundleHash: string; sourceBuildStatus: string };
+      assert.equal(metadata.bundleHash, payload.bundleHash);
+      assert.equal(metadata.sourceBuildStatus, "current");
     } finally {
       await result.server?.close();
     }
@@ -131,6 +138,31 @@ test("should surface validation diagnostics during watch", async () => {
       assert.equal(diagnostic?.severity, "error");
       assert.equal(diagnostic?.file, "content/scenes/arena.scene.json");
       assert.match(diagnostic?.suggestedFix ?? "", /scene/i);
+    } finally {
+      result.watcher?.close();
+    }
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should report stale last-good bundle when rebuild fails", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-dev-watch-stale-"));
+  try {
+    await cp("../../templates/structured-source-starter", root, { recursive: true });
+    const result = await devCommand(["--target", "desktop", "--watch", "--json"], root);
+    try {
+      const initial = JSON.parse(result.stdout) as { initialReport: { bundlePath: string; status: string } };
+      const sourcePath = join(root, "content", "scenes", "arena.scene.json");
+      const source = await readFile(sourcePath, "utf8");
+      await writeFile(sourcePath, source.replace('"id": "arena"', '"id": ""'));
+      const report = await result.watcher?.rebuild();
+
+      assert.equal(initial.initialReport.status, "pass");
+      assert.equal(report?.status, "fail");
+      assert.equal(report?.stale, true);
+      assert.equal(report?.lastGoodBundlePath, initial.initialReport.bundlePath);
+      assert.equal(report?.diagnostics.some((diagnostic) => diagnostic.code === "TN_DEV_WATCH_LAST_GOOD_STALE"), true);
     } finally {
       result.watcher?.close();
     }
