@@ -349,6 +349,16 @@ First refactor pass evidence:
 - Verification: `pnpm --filter @threenative/authoring test`,
   `pnpm --filter @threenative/cli test`, and `pnpm check:source-size`.
 
+Second refactor pass evidence:
+
+- Extracted `MeshBuilder` primitive generation, transform/color helpers,
+  normal recalculation, bounds helpers, and value validation from
+  `packages/sdk/src/geometry/meshBuilder.ts` to
+  `packages/sdk/src/geometry/meshBuilderParts.ts`; the public fluent facade
+  remains in `meshBuilder.ts`, which decreased from 798 to 320 lines.
+- Verification: `pnpm --filter @threenative/sdk test` and
+  `pnpm check:source-size`.
+
 ## 7. Acceptance Criteria
 
 - [x] `pnpm check:source-size` warning count is reduced from 19, or each remaining warning has an explicit owner and follow-up note.
@@ -356,6 +366,6 @@ First refactor pass evidence:
 - [ ] IR validation has shared validation/diagnostic helpers used by core, UI, and asset validation.
 - [ ] Web and Bevy runtime world mapping keep behavior while moving feature-specific mapping into smaller modules.
 - [ ] CLI command files preserve command registration but delegate implementation to narrow command services.
-- [ ] `MeshBuilder` remains public API-compatible while primitive generation, transforms, normals, colors, and build validation are separated internally.
+- [x] `MeshBuilder` remains public API-compatible while primitive generation, transforms, normals, colors, and build validation are separated internally.
 - [ ] All phase-specific tests pass.
 - [ ] `pnpm verify:conformance` passes after IR/runtime/compiler phases.
