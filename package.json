@@ -9,6 +9,7 @@
     "build:verify-tools": "pnpm --filter @threenative/verify-tools build",
     "check:asset-sources": "node scripts/build-asset-source-catalog.mjs --check",
     "check:docs": "pnpm build:verify-tools && node tools/verify/dist/cli/check-docs.js",
+    "check:godzilla": "node scripts/check-godzilla-sources.mjs",
     "check:names": "node scripts/check-current-names.mjs",
     "lint": "pnpm -r --if-present lint",
     "test": "node scripts/run-root-tests.mjs",
