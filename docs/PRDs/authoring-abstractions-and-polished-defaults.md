@@ -608,3 +608,24 @@ table and before/after screenshots)_
   `--rotation` / `--rotation-deg` use.
 - Evidence run: `pnpm --filter @threenative/authoring test` and
   `pnpm --filter @threenative/cli test`.
+
+### Phase 7 Movement-Rig Checkpoint
+
+- Retrofitted `examples/humanoid-physics-course/src/scripts/player.ts` to use
+  `CharacterRig.update` and `CameraRig.thirdPerson` for player locomotion and
+  camera follow instead of hand-rolled input normalization, speed easing, yaw
+  smoothing, `character.move` scaling, and camera boom math.
+- Added durable source resources plus resource schemas for the stdlib rig
+  states (`tn.characterRig.player` and `tn.cameraRig.camera.main`) so systems
+  access remains explicit and build validation keeps enforcing resource
+  contracts.
+- Promoted all new stdlib rig helper namespaces through the compiler's
+  supported script import allowlist.
+- Removed the example's velocity-zeroing workaround from player movement; the
+  Phase 1 script-authority runtime fix now owns same-tick kinematic
+  double-integration prevention.
+- Evidence run: `pnpm --filter @threenative/compiler test`,
+  `node .threenative/cli/index.js authoring validate --json`,
+  `node .threenative/cli/index.js build`,
+  `node .threenative/cli/index.js verify --frames 2 --json`, and directional
+  playtests for `KeyW`, `KeyS`, `KeyA`, and `KeyD`.

@@ -17,10 +17,12 @@
         "Transform"
       ],
       "resourceReads": [
-        "GameState"
+        "GameState",
+        "tn.characterRig.player"
       ],
       "resourceWrites": [
-        "GameState"
+        "GameState",
+        "tn.characterRig.player"
       ],
       "services": [
         "character.move",
@@ -42,10 +44,12 @@
         "Transform"
       ],
       "resourceReads": [
-        "GameState"
+        "GameState",
+        "tn.cameraRig.camera.main"
       ],
       "resourceWrites": [
-        "GameState"
+        "GameState",
+        "tn.cameraRig.camera.main"
       ],
       "script": {
         "module": "src/scripts/player.ts",

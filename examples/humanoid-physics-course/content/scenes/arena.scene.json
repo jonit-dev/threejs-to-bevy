@@ -235,6 +235,24 @@
         "hits": 0,
         "elapsed": 0
       }
+    },
+    {
+      "id": "tn.characterRig.player",
+      "value": {
+        "dirX": 0,
+        "dirZ": 1,
+        "speed": 0,
+        "yaw": 0
+      }
+    },
+    {
+      "id": "tn.cameraRig.camera.main",
+      "value": {
+        "followX": 0,
+        "followY": 0,
+        "followZ": 0,
+        "yaw": 0
+      }
     }
   ]
 }
