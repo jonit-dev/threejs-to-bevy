@@ -18,15 +18,30 @@
       ],
       "resourceReads": [
         "GameState",
-        "tn.characterRig.player"
+        "tn.characterRig.player",
+        "tn.triggerCooldown.hazard.sweeper.01",
+        "tn.triggerCooldown.hazard.sweeper.02",
+        "tn.triggerEx.checkpoint.01",
+        "tn.triggerEx.checkpoint.02",
+        "tn.triggerEx.finish.pad",
+        "tn.triggerEx.hazard.sweeper.01",
+        "tn.triggerEx.hazard.sweeper.02"
       ],
       "resourceWrites": [
         "GameState",
-        "tn.characterRig.player"
+        "tn.characterRig.player",
+        "tn.triggerCooldown.hazard.sweeper.01",
+        "tn.triggerCooldown.hazard.sweeper.02",
+        "tn.triggerEx.checkpoint.01",
+        "tn.triggerEx.checkpoint.02",
+        "tn.triggerEx.finish.pad",
+        "tn.triggerEx.hazard.sweeper.01",
+        "tn.triggerEx.hazard.sweeper.02"
       ],
       "services": [
         "character.move",
-        "animation.play"
+        "animation.play",
+        "physics.sensor"
       ],
       "script": {
         "module": "src/scripts/player.ts",

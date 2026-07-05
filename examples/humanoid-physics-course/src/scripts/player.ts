@@ -1,4 +1,4 @@
-import { CameraRig, CharacterRig, NumberEx, Quat, Vec3 } from "@threenative/script-stdlib";
+import { CameraRig, CharacterRig, NumberEx, RespawnEx, TriggerEx } from "@threenative/script-stdlib";
 
 type ScriptContext = any;
 type Vec3Tuple = [number, number, number];
@@ -16,14 +16,11 @@ export function updateHumanoidCourse(context: ScriptContext): void {
   const BOUNDS = { max: [4.8, Number.POSITIVE_INFINITY, 6.4] as Vec3Tuple, min: [-4.8, Number.NEGATIVE_INFINITY, -6.5] as Vec3Tuple };
   // Soldier.glb's rest pose faces -Z (see the baked rotation on the
   // "Character" root node in assets/models/Soldier.glb), so CharacterRig
-  // needs forwardAxis "-z". CameraRig.thirdPerson always assumes a +Z-forward
-  // target, so the yaw fed into it is offset by PI to stay on the correct
-  // side of a -Z-forward mesh (see updateThirdPersonCamera); CharacterRig's
-  // own cameraYaw input (which only rotates the raw input vector, not a
-  // facing) uses CameraRig's returned yaw as-is, since that stays in the
-  // library's native +Z convention throughout.
+  // needs forwardAxis "-z". CharacterRig isolates that correction to the
+  // mesh's own quaternion, so rig.yaw and GameState.cameraYaw both stay in
+  // the plain "+Z is yaw 0" convention shared by CameraRig -- no offset math
+  // needed anywhere in this file.
   const FORWARD_AXIS = "-z";
-  const CAMERA_YAW_OFFSET = Math.PI;
 
   const isRecord = (value: unknown): value is Record<string, unknown> => typeof value === "object" && value !== null;
 
@@ -40,19 +37,15 @@ export function updateHumanoidCourse(context: ScriptContext): void {
     context.resources?.set?.("GameState", { ...state, ...patch });
   };
   const reset = (): void => {
-    player.transform().setPose(START_POSITION, Quat.fromYaw(0));
-    player.patch?.("CoursePlayer", { checkpoint: 0, finished: false, hits: 0, lastHitAt: -10, speed: 0, yaw: 0 });
-    context.resources?.set?.("tn.characterRig.player", { dirX: 0, dirZ: 1, speed: 0, yaw: 0 });
-    // Camera rig yaw starts pre-aligned to playerYaw(0) + CAMERA_YAW_OFFSET so
-    // the boom doesn't visibly swing 180 degrees into place after a retry.
-    context.resources?.set?.("tn.cameraRig.camera.main", { followX: START_POSITION[0], followY: START_POSITION[1], followZ: START_POSITION[2], yaw: CAMERA_YAW_OFFSET });
-    patchState({
-      cameraYaw: CAMERA_YAW_OFFSET,
-      checkpoint: 0,
-      checkpointTotal: 2,
-      elapsed: 0,
-      hits: 0,
-      status: "Course",
+    RespawnEx.reset(context, player, {
+      components: { CoursePlayer: { checkpoint: 0, finished: false, hits: 0, lastHitAt: -10, speed: 0, yaw: 0 } },
+      position: START_POSITION,
+      resources: {
+        GameState: { cameraYaw: 0, checkpoint: 0, checkpointTotal: 2, elapsed: 0, hits: 0, status: "Course" },
+        "tn.cameraRig.camera.main": { followX: START_POSITION[0], followY: START_POSITION[1], followZ: START_POSITION[2], yaw: 0 },
+        "tn.characterRig.player": { dirX: 0, dirZ: 1, speed: 0, yaw: 0 },
+      },
+      yaw: 0,
     });
   };
 
@@ -108,16 +101,14 @@ export function updateHumanoidCourse(context: ScriptContext): void {
   for (const entity of entities) {
     const check = entity.get?.("Checkpoint");
     if (isRecord(check) && Number(check.order) === checkpoint + 1) {
-      const checkPosition = entity.transform().positionOr([0, 0, 0]);
-      if (Vec3.distance2d(next, checkPosition) < 0.78) {
+      if (TriggerEx.entered(context, entity, { component: "CoursePlayer" }).length > 0) {
         checkpoint += 1;
         status = `Checkpoint ${checkpoint}/2 cleared: ${String(check.label ?? "course marker")}.`;
       }
     }
     const finish = entity.get?.("FinishZone");
     if (isRecord(finish)) {
-      const finishPosition = entity.transform().positionOr([0, 0, -6.1]);
-      if (checkpoint >= 2 && Vec3.distance2d(next, finishPosition) < Number(finish.radius ?? 0.95)) {
+      if (checkpoint >= 2 && TriggerEx.entered(context, entity, { component: "CoursePlayer" }).length > 0) {
         player.patch?.("CoursePlayer", { ...stats, checkpoint, finished: true, hits, speed: 0, sprinting: false, yaw: rig.yaw });
         patchState({
           checkpoint,
@@ -130,7 +121,7 @@ export function updateHumanoidCourse(context: ScriptContext): void {
       }
     }
     const hazard = entity.get?.("KinematicMover");
-    if (isRecord(hazard) && Vec3.distance2d(next, entity.transform().positionOr([0, 0, 0])) < 0.82 && elapsed - lastHitAt > HIT_COOLDOWN) {
+    if (isRecord(hazard) && TriggerEx.entered(context, entity, { component: "CoursePlayer" }).length > 0 && TriggerEx.cooldown(context, entity.id, HIT_COOLDOWN)) {
       hits += 1;
       lastHitAt = elapsed;
       status = "Hazard hit. Press R or keep moving.";
@@ -157,9 +148,6 @@ export function updateThirdPersonCamera(context: ScriptContext): void {
   const CAMERA_LIFT = 0.55;
   const LOOK_AHEAD = 1.15;
   const SHOULDER = 0.3;
-  // See the matching comment in updateHumanoidCourse: compensates
-  // CameraRig.thirdPerson's +Z-forward assumption for our -Z-forward mesh.
-  const CAMERA_YAW_OFFSET = Math.PI;
 
   const isRecord = (value: unknown): value is Record<string, unknown> => typeof value === "object" && value !== null;
   const player = context.entity?.("player");
@@ -172,30 +160,27 @@ export function updateThirdPersonCamera(context: ScriptContext): void {
   const playerYaw = isRecord(stats) ? NumberEx.finite(Number(stats.yaw), 0) : 0;
   const sprinting = isRecord(stats) ? Boolean(stats.sprinting) : false;
 
-  // CameraRig.thirdPerson assumes a +Z-forward target and rotates offset/
-  // lookAhead/shoulderOffset by the yaw we pass it. Feeding it playerYaw+PI
-  // (see CAMERA_YAW_OFFSET) keeps the boom on the correct side of our
-  // -Z-forward mesh, but it also flips the rig's local "right" axis versus
-  // this example's old hand-rolled right vector, so shoulderOffset's sign is
-  // negated to land on the same shoulder as before. lookAhead carries the
-  // pivot height (rotateYaw preserves y untouched) since followPose looks
-  // directly at the follow point, unlike the old code's separate pivot lift.
+  // playerYaw is already in CameraRig's plain "+Z is yaw 0" convention (see
+  // CharacterRig's forwardAxis handling in updateHumanoidCourse), so it can
+  // be passed straight through with no offset. lookAhead carries the pivot
+  // height (rotateYaw preserves y untouched) since followPose looks directly
+  // at the follow point rather than a separately lifted pivot.
   const rig = CameraRig.thirdPerson(context, {
     cameraId: "camera.main",
     followSmoothing: FOLLOW_SMOOTHING,
     lookAhead: [0, PIVOT_HEIGHT, LOOK_AHEAD],
     maxYawSpeed: MAX_YAW_SPEED,
     offset: [0, CAMERA_LIFT, -BASE_DISTANCE],
-    shoulderOffset: [-SHOULDER, 0, 0],
+    shoulderOffset: [SHOULDER, 0, 0],
     sprintPullback: SPRINT_PULLBACK,
     sprinting,
     target: player,
-    yaw: playerYaw + CAMERA_YAW_OFFSET,
+    yaw: playerYaw,
   });
 
-  // Stored as-is (not un-offset): the camera's forward direction in the
-  // library's native +Z convention is exactly what rotates raw stick input
-  // into world space for camera-relative movement in CharacterRig.
+  // rig.yaw is the camera's actual forward direction in the same plain
+  // convention CharacterRig's cameraYaw expects, so no offset is needed here
+  // either.
   context.resources?.set?.("GameState", {
     ...(isRecord(context.resources?.get?.("GameState")) ? context.resources.get("GameState") : {}),
     cameraYaw: NumberEx.round(rig.yaw, 6),

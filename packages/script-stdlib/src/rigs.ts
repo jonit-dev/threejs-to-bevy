@@ -156,7 +156,7 @@ interface ICameraRigState extends Record<string, unknown> {
 }
 
 interface ITriggerExState extends Record<string, unknown> {
-  active: string[];
+  active: string;
 }
 
 interface ITriggerCooldownState extends Record<string, unknown> {
@@ -184,14 +184,19 @@ export const CharacterRig = Object.freeze({
     }
     const moving = state.speed > EPSILON;
     const moveDirection = moving ? Vec3.normalize([NumberEx.finite(state.dirX, inputDirection[0]), 0, NumberEx.finite(state.dirZ, inputDirection[2])]) : [0, 0, 0] as const;
-    const targetYaw = hasInput ? yawForForwardAxis(inputDirection, options.forwardAxis ?? "+z") : state.yaw;
+    // state.yaw always stays in the library's plain "+Z is yaw 0" convention
+    // (the same convention CameraRig, BasisEx, and Vec3.rotateYaw use), so it
+    // can be shared with CameraRig/cameraYaw without further translation.
+    // forwardAxis only corrects the mesh's own rest-pose facing below, at the
+    // point the quaternion is built.
+    const targetYaw = hasInput ? BasisEx.forwardToYaw(inputDirection) : state.yaw;
     const maxTurn = Math.max(0, NumberEx.finite(options.maxTurnSpeed, Math.PI * 8)) * dt;
     const smoothing = Math.max(0, NumberEx.finite(options.turnSmoothing, 1));
     const yawStep = smoothing <= EPSILON ? maxTurn : maxTurn * Math.min(1, smoothing);
     state.yaw = moveAngleToward(state.yaw, targetYaw, yawStep);
     const trace = moving ? context.character?.move(entityRef, { direction: [moveDirection[0], moveDirection[2]], fixedDelta: dt, speed: state.speed }) ?? null : null;
     const position = clampVec3(Vec3.from(trace?.resolved, start), options.bounds);
-    transform?.setPose(position, Quat.fromYaw(state.yaw));
+    transform?.setPose(position, Quat.fromYaw(state.yaw + meshYawOffset(options.forwardAxis ?? "+z")));
     playCharacterClip(context, entityRef, state.speed, sprinting, options.clips);
     return { moving, position, speed: state.speed, sprinting, yaw: state.yaw };
   },
@@ -225,13 +230,13 @@ export const CameraRig = Object.freeze({
 export const TriggerEx = Object.freeze({
   entered(context: IRigContextLike, triggerRef: string | ISystemEntityLike, options: ITriggerExOptions = {}): ISystemEntityLike[] {
     const sensorId = typeof triggerRef === "string" ? triggerRef : triggerRef.id;
-    const state = context.state<ITriggerExState>(`tn.triggerEx.${sensorId}`, { active: [] });
+    const state = context.state<ITriggerExState>(`tn.triggerEx.${sensorId}`, { active: "" });
     const result = context.physics?.sensor({ sensor: sensorId, phases: ["enter", "stay"] });
     if (result === undefined) {
-      state.active = [];
+      state.active = "";
       return [];
     }
-    const previous = new Set(state.active);
+    const previous = new Set(state.active.split("\n").filter((id) => id.length > 0));
     const current = new Set<string>();
     const entered: ISystemEntityLike[] = [];
     for (const event of result.events) {
@@ -249,7 +254,7 @@ export const TriggerEx = Object.freeze({
         }
       }
     }
-    state.active = [...current].sort();
+    state.active = [...current].sort().join("\n");
     return entered;
   },
 
@@ -352,18 +357,20 @@ function clampVec3(value: Vec3Tuple, bounds: ICharacterRigOptions["bounds"]): Ve
   ];
 }
 
-function yawForForwardAxis(direction: Vec3Value, forwardAxis: ForwardAxis): number {
-  const yaw = BasisEx.forwardToYaw(direction);
+// Correction applied only to the mesh's own quaternion, so a rig's stored/
+// returned yaw always stays in the plain "+Z is yaw 0" convention regardless
+// of which way the authored mesh's rest pose actually faces.
+function meshYawOffset(forwardAxis: ForwardAxis): number {
   if (forwardAxis === "-z") {
-    return yaw + Math.PI;
+    return Math.PI;
   }
   if (forwardAxis === "+x") {
-    return yaw - Math.PI / 2;
+    return -Math.PI / 2;
   }
   if (forwardAxis === "-x") {
-    return yaw + Math.PI / 2;
+    return Math.PI / 2;
   }
-  return yaw;
+  return 0;
 }
 
 function moveAngleToward(current: number, target: number, maxDelta: number): number {

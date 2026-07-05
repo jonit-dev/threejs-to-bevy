@@ -629,3 +629,21 @@ table and before/after screenshots)_
   `node .threenative/cli/index.js build`,
   `node .threenative/cli/index.js verify --frames 2 --json`, and directional
   playtests for `KeyW`, `KeyS`, `KeyA`, and `KeyD`.
+
+### Phase 7 Trigger-Helper Checkpoint
+
+- Retrofitted retry handling to `RespawnEx.reset` and checkpoint, finish, and
+  hazard detection to `TriggerEx.entered`; hazard hits now use
+  `TriggerEx.cooldown` instead of script-local elapsed-time distance checks.
+- Added explicit sensor metadata to the gameplay trigger colliders and
+  declared `physics.sensor` in the course system services.
+- Changed `TriggerEx` active-occupant state from an array to a
+  newline-delimited string in typed and bundled stdlib source so helper state
+  can be represented by declared resource schemas in structured projects.
+- Declared trigger/cooldown helper state schemas and resource access for the
+  humanoid course proof scene.
+- Evidence run: `pnpm --filter @threenative/script-stdlib test`,
+  `node .threenative/cli/index.js authoring validate --json`,
+  `node .threenative/cli/index.js build`,
+  `node .threenative/cli/index.js verify --frames 2 --json`, and directional
+  playtests for `KeyW`, `KeyS`, `KeyA`, and `KeyD`.

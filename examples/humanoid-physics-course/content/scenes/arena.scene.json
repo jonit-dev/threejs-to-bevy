@@ -169,7 +169,7 @@
       "transform": { "position": [0, 0.72, 4.15], "scale": [1, 1, 1] },
       "components": {
         "MeshRenderer": { "mesh": "mesh.hazard", "material": "mat.hazard", "castShadow": true, "receiveShadow": true },
-        "Collider": { "kind": "box", "size": [1.55, 0.2, 0.28], "layer": "hazard", "trigger": true },
+        "Collider": { "kind": "box", "size": [1.55, 0.2, 0.28], "layer": "hazard", "mask": ["player"], "trigger": true, "sensor": { "interactionKind": "hazard", "phases": ["enter", "stay"], "trackOccupants": true } },
         "RigidBody": { "kind": "kinematic", "gravityScale": 0 },
         "KinematicMover": { "mode": "sine", "axis": "x", "radius": 2.1, "phase": 0.1, "speed": 1.25 }
       }
@@ -179,7 +179,7 @@
       "transform": { "position": [0, 0.88, -0.65], "rotation": [0, 1.570796, 0] },
       "components": {
         "MeshRenderer": { "mesh": "mesh.hazard", "material": "mat.hazard", "castShadow": true, "receiveShadow": true },
-        "Collider": { "kind": "box", "size": [1.55, 0.2, 0.28], "layer": "hazard", "trigger": true },
+        "Collider": { "kind": "box", "size": [1.55, 0.2, 0.28], "layer": "hazard", "mask": ["player"], "trigger": true, "sensor": { "interactionKind": "hazard", "phases": ["enter", "stay"], "trackOccupants": true } },
         "RigidBody": { "kind": "kinematic", "gravityScale": 0 },
         "KinematicMover": { "mode": "sine", "axis": "z", "radius": 1.8, "phase": 1.4, "speed": 1.05 }
       }
@@ -189,7 +189,7 @@
       "transform": { "position": [-2.35, 0.7, 1.72], "rotation": [-1.570796, 0, 0], "scale": [1.1, 1.1, 1] },
       "components": {
         "MeshRenderer": { "mesh": "mesh.checkpoint", "material": "mat.checkpoint" },
-        "Collider": { "kind": "box", "size": [1.16, 0.08, 1.16], "layer": "checkpoint", "trigger": true },
+        "Collider": { "kind": "box", "size": [1.16, 0.08, 1.16], "layer": "checkpoint", "mask": ["player"], "trigger": true, "sensor": { "interactionKind": "checkpoint", "phases": ["enter", "stay"], "trackOccupants": true } },
         "RigidBody": { "kind": "static" },
         "Checkpoint": { "order": 1, "label": "Stairs" }
       }
@@ -199,7 +199,7 @@
       "transform": { "position": [2.15, 0.56, 1.15], "rotation": [-1.570796, 0, 0], "scale": [1.1, 1.1, 1] },
       "components": {
         "MeshRenderer": { "mesh": "mesh.checkpoint", "material": "mat.checkpoint" },
-        "Collider": { "kind": "box", "size": [1.16, 0.08, 1.16], "layer": "checkpoint", "trigger": true },
+        "Collider": { "kind": "box", "size": [1.16, 0.08, 1.16], "layer": "checkpoint", "mask": ["player"], "trigger": true, "sensor": { "interactionKind": "checkpoint", "phases": ["enter", "stay"], "trackOccupants": true } },
         "RigidBody": { "kind": "static" },
         "Checkpoint": { "order": 2, "label": "Ramp" }
       }
@@ -209,7 +209,7 @@
       "transform": { "position": [0, 0.04, -6.1], "rotation": [-1.570796, 0, 0], "scale": [1.5, 1.5, 1] },
       "components": {
         "MeshRenderer": { "mesh": "mesh.checkpoint", "material": "mat.checkpoint" },
-        "Collider": { "kind": "box", "size": [1.56, 0.08, 1.56], "layer": "checkpoint", "trigger": true },
+        "Collider": { "kind": "box", "size": [1.56, 0.08, 1.56], "layer": "checkpoint", "mask": ["player"], "trigger": true, "sensor": { "interactionKind": "zone", "phases": ["enter", "stay"], "trackOccupants": true } },
         "RigidBody": { "kind": "static" },
         "FinishZone": { "radius": 0.95 }
       }

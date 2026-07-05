@@ -32,6 +32,48 @@
         "speed": { "kind": "number" },
         "yaw": { "kind": "number" }
       }
+    },
+    {
+      "id": "tn.triggerCooldown.hazard.sweeper.01",
+      "fields": {
+        "nextReady": { "kind": "number" }
+      }
+    },
+    {
+      "id": "tn.triggerCooldown.hazard.sweeper.02",
+      "fields": {
+        "nextReady": { "kind": "number" }
+      }
+    },
+    {
+      "id": "tn.triggerEx.checkpoint.01",
+      "fields": {
+        "active": { "kind": "string" }
+      }
+    },
+    {
+      "id": "tn.triggerEx.checkpoint.02",
+      "fields": {
+        "active": { "kind": "string" }
+      }
+    },
+    {
+      "id": "tn.triggerEx.finish.pad",
+      "fields": {
+        "active": { "kind": "string" }
+      }
+    },
+    {
+      "id": "tn.triggerEx.hazard.sweeper.01",
+      "fields": {
+        "active": { "kind": "string" }
+      }
+    },
+    {
+      "id": "tn.triggerEx.hazard.sweeper.02",
+      "fields": {
+        "active": { "kind": "string" }
+      }
     }
   ]
 }
