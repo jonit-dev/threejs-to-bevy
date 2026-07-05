@@ -332,14 +332,26 @@ Manual checkpoint is required for Phase 3 if runtime screenshots or visual mappi
 
 **Evidence Required:**
 
-- [ ] Baseline `pnpm check:source-size` output captured: 19 warnings.
-- [ ] Each phase records before/after warning count.
-- [ ] No public SDK export, CLI command, diagnostic code, or IR bundle shape changes unless separately approved.
-- [ ] Existing tests pass for each touched package.
+- [x] Baseline `pnpm check:source-size` output captured: 19 warnings.
+- [x] First refactor pass recorded after warning count: 18 warnings.
+- [x] No public SDK export, CLI command, diagnostic code, or IR bundle shape changes unless separately approved.
+- [x] Existing tests pass for each touched package in the first refactor pass.
+
+First refactor pass evidence:
+
+- Extracted UI recipe construction helpers from `packages/authoring/src/operations.ts`
+  to `packages/authoring/src/operations/uiRecipes.ts`; `operations.ts`
+  decreased from 5413 to 5253 lines.
+- Extracted asset vector presentation helpers from
+  `packages/cli/src/commands/asset.ts` to
+  `packages/cli/src/commands/asset/vectorPresentation.ts`; `asset.ts` dropped
+  below the source-size warning threshold.
+- Verification: `pnpm --filter @threenative/authoring test`,
+  `pnpm --filter @threenative/cli test`, and `pnpm check:source-size`.
 
 ## 7. Acceptance Criteria
 
-- [ ] `pnpm check:source-size` warning count is reduced from 19, or each remaining warning has an explicit owner and follow-up note.
+- [x] `pnpm check:source-size` warning count is reduced from 19, or each remaining warning has an explicit owner and follow-up note.
 - [ ] `packages/authoring/src/operations.ts` is split by operation family and no longer grows as the default home for all authoring behavior.
 - [ ] IR validation has shared validation/diagnostic helpers used by core, UI, and asset validation.
 - [ ] Web and Bevy runtime world mapping keep behavior while moving feature-specific mapping into smaller modules.

@@ -7,6 +7,7 @@ import type { IGltfSceneAssetIr } from "@threenative/ir";
 
 import { exportAssetSourcesJsonl, getAssetSource, searchAssetSources, suggestAssetSources, type IAssetSourceRecord, type IAssetSourceSearchOptions } from "../assetSourceCatalog/catalog.js";
 import { diagnosticResult, type ICommandResult } from "../diagnostics.js";
+import { formatVec, formatVec2, rotateXZ } from "./asset/vectorPresentation.js";
 
 type Severity = "info" | "warning" | "error";
 
@@ -1166,12 +1167,6 @@ function scale(a: Vec3, scalar: number): Vec3 { return [round(a[0] * scalar), ro
 function length(a: Vec3): number { return Math.sqrt(a[0] ** 2 + a[1] ** 2 + a[2] ** 2); }
 function round(value: number): number { return Number(value.toFixed(6)); }
 
-function rotateXZ(point: [number, number], yawRadians: number): [number, number] {
-  const cos = Math.cos(yawRadians);
-  const sin = Math.sin(yawRadians);
-  return [round(cos * point[0] + sin * point[1]), round(-sin * point[0] + cos * point[1])];
-}
-
 function renderInspectReport(report: InspectReport): string {
   const bounds = report.bounds === undefined ? "Bounds: unavailable" : `Bounds: min ${formatVec(report.bounds.min)}, max ${formatVec(report.bounds.max)}, size ${formatVec(report.bounds.size)}, center ${formatVec(report.bounds.center)}`;
   const counts = report.counts === undefined ? "" : `Scenes: ${report.counts.scenes}, nodes: ${report.counts.nodes}, meshes: ${report.counts.meshes}, materials: ${report.counts.materials}, images: ${report.counts.images}`;
@@ -1195,12 +1190,4 @@ function renderCatalogReport(report: AssetCatalogReport): string {
   }).join("\n");
   const diagnostics = report.diagnostics.length === 0 ? "Diagnostics: none" : `Diagnostics:\n${report.diagnostics.map((diagnostic) => `  [${diagnostic.severity}] ${diagnostic.code}: ${diagnostic.message}`).join("\n")}`;
   return `${report.message}\nDirectory: ${report.directory.path} (${report.directory.recursive ? "recursive" : "shallow"})\nInspected: ${report.summary.inspected}, warnings: ${report.summary.warnings}, errors: ${report.summary.errors}\nAssets:\n${rows.length === 0 ? "  none" : rows}\n${diagnostics}\n`;
-}
-
-function formatVec(vec: Vec3): string {
-  return `[${vec.map((value) => round(value)).join(", ")}]`;
-}
-
-function formatVec2(vec: [number, number]): string {
-  return `[${vec.map((value) => round(value)).join(", ")}]`;
 }
