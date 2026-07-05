@@ -10,7 +10,6 @@ import {
   listAuthoringRecipeIds,
   loadAuthoringProject,
   planAuthoringRecipe,
-  probeGameAssetProviders,
   supportedPrefabPrimitives,
   validateGameQualityReport,
   type GameProductionMode,
@@ -28,6 +27,7 @@ import { analyzeNonblank, analyzeProjectedBounds, averageColor, type IPixelFrame
 import { readPngFrame } from "../verify/compareImages.js";
 import { buildCommand } from "./build.js";
 import { doctorCommand } from "./doctor.js";
+import { gameProvidersCommand } from "./game/providers.js";
 import { playtestCommand } from "./playtest.js";
 import { recordCommand, screenshotCommand } from "./visualProof.js";
 
@@ -311,20 +311,6 @@ async function ensureReleaseAssetBudgetProof(projectPath: string): Promise<void>
     projectPath,
     "tn game release",
   );
-}
-
-async function gameProvidersCommand(argv: readonly string[]): Promise<ICommandResult> {
-  const normalizedArgv = argv[0] === "--" ? argv.slice(1) : argv;
-  const json = normalizedArgv.includes("--json");
-  const payload = {
-    code: "TN_GAME_PROVIDER_PROBES",
-    message: "Optional game asset/audio generation providers are local tooling only; credential values are redacted.",
-    providers: probeGameAssetProviders(process.env),
-  };
-  return {
-    exitCode: 0,
-    stdout: json ? `${JSON.stringify(payload, null, 2)}\n` : `${payload.message}\n`,
-  };
 }
 
 async function gamePlanCommand(argv: readonly string[]): Promise<ICommandResult> {

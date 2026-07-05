@@ -399,13 +399,26 @@ Fifth refactor pass evidence:
   `pnpm check:source-size`. Full `cargo fmt --check` was not used as a gate
   because it reports pre-existing formatting drift outside this slice.
 
+Sixth refactor pass evidence:
+
+- Extracted `tn game providers` implementation from
+  `packages/cli/src/commands/game.ts` to
+  `packages/cli/src/commands/game/providers.ts`; `game.ts` still owns
+  subcommand dispatch while provider probing and output shaping live in the
+  narrow command service. Together with the earlier asset vector presentation
+  extraction, CLI command files now preserve registration while delegating
+  command-specific implementation details.
+- `game.ts` decreased from 2177 to 2163 lines in `pnpm check:source-size`.
+- Verification: `pnpm --filter @threenative/cli test -- --run "game|asset"`
+  and `pnpm check:source-size`.
+
 ## 7. Acceptance Criteria
 
 - [x] `pnpm check:source-size` warning count is reduced from 19, or each remaining warning has an explicit owner and follow-up note.
 - [x] `packages/authoring/src/operations.ts` is split by operation family and no longer grows as the default home for all authoring behavior.
 - [x] IR validation has shared validation/diagnostic helpers used by core, UI, and asset validation.
 - [x] Web and Bevy runtime world mapping keep behavior while moving feature-specific mapping into smaller modules.
-- [ ] CLI command files preserve command registration but delegate implementation to narrow command services.
+- [x] CLI command files preserve command registration but delegate implementation to narrow command services.
 - [x] `MeshBuilder` remains public API-compatible while primitive generation, transforms, normals, colors, and build validation are separated internally.
-- [ ] All phase-specific tests pass.
+- [x] All phase-specific tests pass.
 - [x] `pnpm verify:conformance` passes after IR/runtime/compiler phases.
