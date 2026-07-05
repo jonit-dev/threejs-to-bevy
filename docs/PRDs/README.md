@@ -27,10 +27,6 @@ backlog unless a nested PRD says it has been superseded.
 
 ### Authoring, Editor, And Plugins
 
-- [Source Size SRP Refactor Plan](other/source-size-srp-refactor-plan.md):
-  split oversized authoring, IR, runtime, CLI, compiler, verification, and SDK
-  hotspots behind stable public entry points, using `pnpm check:source-size`
-  as the refactor baseline.
 - [Complete Structured Authoring Parity](done/complete-structured-authoring-parity.md):
   full structured source coverage for map/editor-owned data, CLI/MCP/editor
   operation parity with TypeScript-era authoring, bundle import, provenance, and
@@ -136,6 +132,7 @@ Useful completed reference groups:
   [Post-V10 Production Audio, Diagnostics, Profiling, and Packaging](done/other/post-v10-production-audio-diagnostics-packaging.md).
 - Release and distribution:
   [Versioned Debt Cleanup](archive/cleanup-versioned-debt.md),
+  [Source Size SRP Refactor Plan](done/source-size-srp-refactor-plan.md),
   [IR Contract Drift Hardening](done/other/ir-contract-drift-hardening.md),
   [Example-Local Artifacts, Fixtures, and Docs Structure](done/artifact-fixture-layout-reorg.md),
   [Verification Gates and Package Scripts Reorg](done/other/verification-gates-and-package-scripts-reorg.md),
