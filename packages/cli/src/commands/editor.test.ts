@@ -527,6 +527,8 @@ async function writeBundleFixture(bundlePath: string, includeGltfScene = false):
         {
           assetId: "model.level",
           customAttributes: [{ componentType: "f32", itemSize: 3, name: "_WIND", shaderConsumption: "inspectionOnly", targetMesh: "mesh:Door" }],
+          materials: [],
+          morphTargets: [],
           nodes: [{ extras: { gameplayTag: "door" }, name: "Door", path: "/Root/Door", spawnedHandleEligible: true }],
         },
       ],

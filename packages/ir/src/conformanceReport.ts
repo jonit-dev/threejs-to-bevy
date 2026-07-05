@@ -2,6 +2,7 @@ import type { IRuntimeDiagnostic } from "./runtimeDiagnostics.js";
 import type { IRuntimeConfigIr } from "./runtimeConfig.js";
 import type { IAssetIr, IMaterialIr, Quat, Vec3 } from "./types.js";
 import type { IEnvironmentMapIr, ILightProbeIr, ISkyboxIr } from "./types.js";
+import type { IGltfSceneAssetIr } from "./gltfScene.js";
 
 export interface IConformanceAssetReport {
   animations?: Extract<IAssetIr, { animations?: unknown }>["animations"];
@@ -25,6 +26,10 @@ export interface IConformanceAssetReport {
   vertexCount?: number;
   wrapS?: Extract<IAssetIr, { wrapS?: unknown }>["wrapS"];
   wrapT?: Extract<IAssetIr, { wrapT?: unknown }>["wrapT"];
+}
+
+export interface IConformanceGltfFidelityReport {
+  assets: Array<Pick<IGltfSceneAssetIr, "assetId" | "customAttributes" | "materials" | "morphTargets">>;
 }
 
 export interface IConformanceMaterialReport {
@@ -271,6 +276,7 @@ export interface IConformanceReport {
   environment?: IConformanceEnvironmentReport;
   events: IConformanceEventReport[];
   fixture: string;
+  gltfFidelity?: IConformanceGltfFidelityReport;
   lightBudget?: IConformanceLightBudgetReport;
   materials: IConformanceMaterialReport[];
   resources: IConformanceResourceReport[];

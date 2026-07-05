@@ -116,11 +116,11 @@ sequenceDiagram
 
 **Implementation:**
 
-- [ ] Report texture transforms, extras, material extensions, and morph target
+- [x] Report texture transforms, extras, material extensions, and morph target
   names with provenance.
-- [ ] Add stable diagnostics for unsupported extensions and custom executable
+- [x] Add stable diagnostics for unsupported extensions and custom executable
   transforms.
-- [ ] Preserve metadata without implying runtime visual support.
+- [x] Preserve metadata without implying runtime visual support.
 
 **Tests Required:**
 
@@ -152,10 +152,10 @@ sequenceDiagram
 
 **Implementation:**
 
-- [ ] Prove promoted material metadata in web and Bevy reports.
-- [ ] Add screenshot proof only for fields whose visual result can be compared
+- [x] Prove promoted material metadata in web and Bevy reports.
+- [x] Add screenshot proof only for fields whose visual result can be compared
   without per-adapter tuning.
-- [ ] Keep anisotropy/specular tint and loader feature flags diagnostic-only
+- [x] Keep anisotropy/specular tint and loader feature flags diagnostic-only
   until visual proof exists.
 
 **Tests Required:**
@@ -180,7 +180,7 @@ sequenceDiagram
 
 ## 5. Acceptance Criteria
 
-- [ ] glTF metadata preservation is source-provenanced and schema-backed.
-- [ ] Unsupported extensions fail or warn with stable diagnostics.
-- [ ] Promoted fields have web and Bevy report or screenshot evidence.
-- [ ] No Bevy loader internals become public authoring API.
+- [x] glTF metadata preservation is source-provenanced and schema-backed.
+- [x] Unsupported extensions fail or warn with stable diagnostics.
+- [x] Promoted fields have web and Bevy report or screenshot evidence.
+- [x] No Bevy loader internals become public authoring API.

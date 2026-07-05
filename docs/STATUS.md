@@ -1390,17 +1390,24 @@ embedded, and HTTPS network asset source modes plus deterministic asset groups;
 IR validation rejects oversized embedded payloads, unsupported network target
 profiles, unsafe bundle paths, duplicate groups, and group references to unknown
 assets; compiler output can include deterministic glTF scene metadata for named
-nodes, selected extras, and custom vertex attributes; spawned glTF scene handles
+nodes, selected extras, custom vertex attributes, material-extension metadata,
+texture transforms, and morph target names; `tn asset inspect --json` reports
+the same metadata with stable unsupported-extension diagnostics such as
+`TN_ASSET_GLTF_EXTENSION_PROCESSOR_UNSUPPORTED`; spawned glTF scene handles
 support portable transform, visibility, material, and extras lookup operations
 with web and Bevy runtime observations; `tn editor inspect` emits structured
 scene inspection JSON; and dev reload classification reports reloadable,
-state-preserving, rebuild-required, and unsupported changes. The aggregate
-proof is `pnpm verify:v9:assets-gltf-scene-workflow`, which writes
+state-preserving, rebuild-required, and unsupported changes. Web and Bevy
+conformance reports expose matching `gltfFidelity` metadata for promoted
+material/morph/custom-attribute rows, with `pnpm verify:gltf-fidelity`
+guarding report drift. The aggregate proof is
+`pnpm verify:v9:assets-gltf-scene-workflow`, which writes
 `inspection.json`, `web-report.json`, `native-report.json`,
 `reload-report.json`, and `diff.json` under
-`tools/verify/artifacts/assets-gltf-scene-workflow/`. Custom asset loaders/custom asset
-types, arbitrary runtime file/network access from scripts, and custom shader
-consumption of glTF custom attributes remain deferred.
+`tools/verify/artifacts/assets-gltf-scene-workflow/`. Custom asset
+loaders/custom asset types, arbitrary runtime file/network access from scripts,
+visual promotion of anisotropy/specular tint without screenshot proof, and
+custom shader consumption of glTF custom attributes remain deferred.
 
 V8-11 now has a focused rendering-quality slice for fog and sky visual parity:
 `pnpm verify:v8:rendering-quality` uses the shared drift-surface fixture,

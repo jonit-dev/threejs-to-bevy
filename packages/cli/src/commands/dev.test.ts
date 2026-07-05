@@ -20,13 +20,13 @@ test("dev watch should report reloadable texture edits", () => {
 test("dev watch should require rebuild when gltf node topology changes", () => {
   const report = classifyDevAssetReload({
     afterGltfScene: {
-      assets: [{ assetId: "model.level", customAttributes: [], nodes: [{ name: "Window", path: "/Root/Window", spawnedHandleEligible: true }] }],
+      assets: [{ assetId: "model.level", customAttributes: [], materials: [], morphTargets: [], nodes: [{ name: "Window", path: "/Root/Window", spawnedHandleEligible: true }] }],
       schema: "threenative.gltf-scene",
       version: "0.1.0",
     },
     assetId: "model.level",
     beforeGltfScene: {
-      assets: [{ assetId: "model.level", customAttributes: [], nodes: [{ name: "Door", path: "/Root/Door", spawnedHandleEligible: true }] }],
+      assets: [{ assetId: "model.level", customAttributes: [], materials: [], morphTargets: [], nodes: [{ name: "Door", path: "/Root/Door", spawnedHandleEligible: true }] }],
       schema: "threenative.gltf-scene",
       version: "0.1.0",
     },

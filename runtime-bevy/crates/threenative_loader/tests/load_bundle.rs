@@ -328,6 +328,55 @@ fn should_load_optional_environment_scene_ir() {
     fs::remove_dir_all(root).expect("temp bundle should be removed");
 }
 
+#[test]
+fn should_load_optional_gltf_scene_metadata() {
+    let root = temp_bundle_dir();
+    write_minimal_bundle(&root);
+    write_json(
+        &root,
+        "manifest.json",
+        r#"{
+          "schema": "threenative.bundle",
+          "version": "0.1.0",
+          "name": "gltf-fidelity",
+          "requiredCapabilities": {},
+          "entry": { "world": "world.ir.json" },
+          "files": {
+            "assets": "assets.manifest.json",
+            "gltfScene": "gltf.scene.json",
+            "materials": "materials.ir.json",
+            "targetProfile": "target.profile.json"
+          }
+        }"#,
+    );
+    write_json(
+        &root,
+        "gltf.scene.json",
+        r#"{
+          "schema": "threenative.gltf-scene",
+          "version": "0.1.0",
+          "assets": [{
+            "assetId": "model.hero",
+            "customAttributes": [],
+            "materials": [{ "material": "material:HeroVisor", "extensions": [{ "extension": "KHR_materials_clearcoat", "path": "/materials/0/extensions/KHR_materials_clearcoat", "properties": ["clearcoatFactor"], "status": "promoted" }], "textureTransforms": [] }],
+            "morphTargets": [{ "mesh": "mesh:Face", "path": "/meshes/0/extras/targetNames/0", "source": "mesh.extras.targetNames", "target": "Smile" }],
+            "nodes": []
+          }]
+        }"#,
+    );
+
+    let bundle = load_bundle(&root).expect("bundle should load gltf metadata");
+    let gltf_scene = bundle.gltf_scene.expect("gltf scene metadata");
+
+    assert_eq!(gltf_scene.assets[0].asset_id, "model.hero");
+    assert_eq!(
+        gltf_scene.assets[0].materials[0]["material"],
+        "material:HeroVisor"
+    );
+    assert_eq!(gltf_scene.assets[0].morph_targets[0]["target"], "Smile");
+    fs::remove_dir_all(root).expect("temp bundle should be removed");
+}
+
 fn cube_fixture() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join("../../../packages/ir/fixtures/cube-scene/game.bundle")

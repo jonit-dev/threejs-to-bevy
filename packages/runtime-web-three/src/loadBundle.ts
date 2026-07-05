@@ -17,6 +17,7 @@ import type {
   IUiIr,
   IWorldIr,
   IIrDiagnostic,
+  IGltfSceneMetadataIr,
 } from "@threenative/ir";
 import { assertBundleRelativePath } from "@threenative/ir/bundlePaths";
 
@@ -26,6 +27,7 @@ export interface IWebBundle {
   audio?: IAudioIr;
   componentSchemas?: IIrSchemaFile;
   environmentScene?: IEnvironmentSceneIr;
+  gltfScene?: IGltfSceneMetadataIr;
   input?: IInputIr;
   localData?: ILocalDataIr;
   manifest: IBundleManifest;
@@ -83,6 +85,8 @@ export async function loadBundle(source: string): Promise<IWebBundle> {
       : await readBundleJson<IEnvironmentSceneIr>(source, manifest.entry.environmentScene);
   const input =
     manifest.files.input === undefined ? undefined : await readBundleJson<IInputIr>(source, manifest.files.input);
+  const gltfScene =
+    manifest.files.gltfScene === undefined ? undefined : await readBundleJson<IGltfSceneMetadataIr>(source, manifest.files.gltfScene);
   const localData =
     manifest.entry.localData === undefined
       ? manifest.files.localData === undefined
@@ -115,6 +119,7 @@ export async function loadBundle(source: string): Promise<IWebBundle> {
     audio,
     componentSchemas,
     environmentScene,
+    gltfScene,
     input,
     localData,
     manifest,

@@ -4,9 +4,9 @@ use bevy::{prelude::*, render::camera::ScalingMode};
 use serde::Serialize;
 use threenative_components::ThreeNativeId;
 use threenative_loader::{
-    AnimationClipIr, AssetIr, ColorIr, EnvironmentMapIr, EnvironmentSceneIr, LoadedBundle,
-    MaterialIr, MeshGenerationIr, RuntimeConfigIr, RuntimeRendererConfig, SkyboxIr, SystemQueryIr,
-    UiIr, WorldEntity,
+    AnimationClipIr, AssetIr, ColorIr, EnvironmentMapIr, EnvironmentSceneIr, GltfSceneAssetIr,
+    LoadedBundle, MaterialIr, MeshGenerationIr, RuntimeConfigIr, RuntimeRendererConfig, SkyboxIr,
+    SystemQueryIr, UiIr, WorldEntity,
 };
 
 use crate::audio::{
@@ -37,6 +37,8 @@ pub struct ConformanceReport {
     pub events: Vec<ConformanceEventReport>,
     pub fixture: String,
     #[serde(skip_serializing_if = "Option::is_none")]
+    pub gltf_fidelity: Option<ConformanceGltfFidelityReport>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub light_budget: Option<ConformanceLightBudgetReport>,
     pub materials: Vec<ConformanceMaterialReport>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -53,6 +55,21 @@ pub struct ConformanceReport {
     pub systems: Option<Vec<ConformanceSystemReport>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub ui: Option<ConformanceUiReport>,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ConformanceGltfFidelityReport {
+    pub assets: Vec<ConformanceGltfAssetReport>,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ConformanceGltfAssetReport {
+    pub asset_id: String,
+    pub custom_attributes: Vec<serde_json::Value>,
+    pub materials: Vec<serde_json::Value>,
+    pub morph_targets: Vec<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize)]
@@ -671,6 +688,7 @@ pub fn report_bevy_conformance(
         environment: bundle.environment_scene.as_ref().map(report_environment),
         events: report_events(bundle),
         fixture: fixture.into(),
+        gltf_fidelity: report_gltf_fidelity(bundle),
         light_budget: report_light_budget(bundle),
         materials: bundle
             .materials
@@ -696,6 +714,32 @@ pub fn report_bevy_conformance(
         systems: report_systems(bundle),
         ui: ui_report.and_then(|report| report.report),
     }
+}
+
+fn report_gltf_fidelity(bundle: &LoadedBundle) -> Option<ConformanceGltfFidelityReport> {
+    let scene = bundle.gltf_scene.as_ref()?;
+    let mut assets = scene
+        .assets
+        .iter()
+        .map(report_gltf_asset)
+        .collect::<Vec<_>>();
+    assets.sort_by(|left, right| left.asset_id.cmp(&right.asset_id));
+    Some(ConformanceGltfFidelityReport { assets })
+}
+
+fn report_gltf_asset(asset: &GltfSceneAssetIr) -> ConformanceGltfAssetReport {
+    ConformanceGltfAssetReport {
+        asset_id: asset.asset_id.clone(),
+        custom_attributes: sorted_values(&asset.custom_attributes),
+        materials: sorted_values(&asset.materials),
+        morph_targets: sorted_values(&asset.morph_targets),
+    }
+}
+
+fn sorted_values(values: &[serde_json::Value]) -> Vec<serde_json::Value> {
+    let mut sorted = values.to_vec();
+    sorted.sort_by(|left, right| left.to_string().cmp(&right.to_string()));
+    sorted
 }
 
 fn report_scene_lifecycle(bundle: &LoadedBundle) -> Option<SceneLifecycleRuntimeState> {

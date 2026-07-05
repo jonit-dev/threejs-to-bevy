@@ -56,6 +56,41 @@ test("should report basic scene conformance semantics", async () => {
   assert.equal(report.entities.find((entity) => entity.id === "light.key")?.light?.kind, "directional");
 });
 
+test("should report promoted glTF material metadata", async () => {
+  const bundle = await loadBundle(resolve(process.cwd(), "../ir/fixtures/conformance/basic-scene/game.bundle"));
+  bundle.gltfScene = {
+    assets: [
+      {
+        assetId: "model.hero",
+        customAttributes: [],
+        materials: [
+          {
+            extensions: [{
+              extension: "KHR_materials_clearcoat",
+              path: "/materials/0/extensions/KHR_materials_clearcoat",
+              properties: ["clearcoatFactor"],
+              status: "promoted",
+            }],
+            material: "material:HeroVisor",
+            textureTransforms: [],
+          },
+        ],
+        morphTargets: [{ mesh: "mesh:Face", path: "/meshes/0/extras/targetNames/0", source: "mesh.extras.targetNames", target: "Smile" }],
+        nodes: [],
+      },
+    ],
+    schema: "threenative.gltf-scene",
+    version: "0.1.0",
+  };
+
+  const mapped = mapWorld(bundle);
+  const report = reportWebConformance(bundle, mapped, "gltf-fidelity");
+
+  assert.equal(report.gltfFidelity?.assets[0]?.assetId, "model.hero");
+  assert.equal(report.gltfFidelity?.assets[0]?.materials[0]?.extensions[0]?.extension, "KHR_materials_clearcoat");
+  assert.equal(report.gltfFidelity?.assets[0]?.morphTargets[0]?.target, "Smile");
+});
+
 test("should report promoted generated primitive mapping semantics", async () => {
   const bundle = await loadBundle(resolve(process.cwd(), "../ir/fixtures/conformance/primitive-mapping/game.bundle"));
   const mapped = mapWorld(bundle);

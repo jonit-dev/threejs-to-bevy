@@ -41,6 +41,8 @@ export interface ISceneInspectionReport {
   gltfAssets: readonly {
     assetId: string;
     customAttributes: readonly unknown[];
+    materials: readonly unknown[];
+    morphTargets: readonly unknown[];
     nodes: readonly unknown[];
   }[];
   schema: SceneInspectionSchema;
@@ -67,6 +69,8 @@ export function buildSceneInspectionReport(documents: ISceneInspectionDocuments)
       .map((asset) => ({
         assetId: asset.assetId,
         customAttributes: [...asset.customAttributes].sort((left, right) => JSON.stringify(left).localeCompare(JSON.stringify(right))),
+        materials: [...asset.materials].sort((left, right) => JSON.stringify(left).localeCompare(JSON.stringify(right))),
+        morphTargets: [...asset.morphTargets].sort((left, right) => JSON.stringify(left).localeCompare(JSON.stringify(right))),
         nodes: [...asset.nodes].sort((left, right) => left.path.localeCompare(right.path)),
       }))
       .sort((left, right) => left.assetId.localeCompare(right.assetId)),

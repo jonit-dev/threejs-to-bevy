@@ -69,10 +69,14 @@ export {
   MAX_GLTF_EXTRAS_DEPTH,
   validateGltfSceneMetadata,
   type IGltfCustomAttributeIr,
+  type IGltfMaterialExtensionIr,
+  type IGltfMaterialMetadataIr,
+  type IGltfMorphTargetIr,
   type IGltfSceneAssetIr,
   type IGltfSceneMetadataIr,
   type IGltfSceneNodeIr,
   type IGltfNodeTransformIr,
+  type IGltfTextureTransformIr,
 } from "./gltfScene.js";
 export {
   normalizeGltfSceneHandlesIr,

@@ -46,6 +46,8 @@ test("gltfSceneHandles should reject ambiguous gltf node handle refs", () => {
       {
         assetId: "model.level",
         customAttributes: [],
+        materials: [],
+        morphTargets: [],
         nodes: [
           { name: "Door", path: "/Root/Door", spawnedHandleEligible: true },
           { name: "Door", path: "/Root/Group/Door", spawnedHandleEligible: true },
@@ -65,6 +67,8 @@ function metadata(): IGltfSceneMetadataIr {
       {
         assetId: "model.level",
         customAttributes: [],
+        materials: [],
+        morphTargets: [],
         nodes: [
           { name: "Door", path: "/Root/Door", spawnedHandleEligible: true },
           { name: "Window", path: "/Root/Window", spawnedHandleEligible: true },

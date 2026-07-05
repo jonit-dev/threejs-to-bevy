@@ -55,6 +55,8 @@ test("sceneInspection should include gltf extras and custom attributes in inspec
         {
           assetId: "model.level",
           customAttributes: [{ componentType: "f32", itemSize: 3, name: "_WIND", shaderConsumption: "inspectionOnly", targetMesh: "mesh:Door" }],
+          materials: [{ extensions: [{ extension: "KHR_materials_clearcoat", path: "/materials/0/extensions/KHR_materials_clearcoat", properties: ["clearcoatFactor"], status: "promoted" }], material: "material:Paint", textureTransforms: [] }],
+          morphTargets: [{ mesh: "mesh:Face", path: "/meshes/0/extras/targetNames/0", source: "mesh.extras.targetNames", target: "Smile" }],
           nodes: [{ extras: { gameplayTag: "door" }, name: "Door", path: "/Root/Door", spawnedHandleEligible: true }],
         },
       ],
@@ -77,6 +79,8 @@ test("sceneInspection should include gltf extras and custom attributes in inspec
     {
       assetId: "model.level",
       customAttributes: [{ componentType: "f32", itemSize: 3, name: "_WIND", shaderConsumption: "inspectionOnly", targetMesh: "mesh:Door" }],
+      materials: [{ extensions: [{ extension: "KHR_materials_clearcoat", path: "/materials/0/extensions/KHR_materials_clearcoat", properties: ["clearcoatFactor"], status: "promoted" }], material: "material:Paint", textureTransforms: [] }],
+      morphTargets: [{ mesh: "mesh:Face", path: "/meshes/0/extras/targetNames/0", source: "mesh.extras.targetNames", target: "Smile" }],
       nodes: [{ extras: { gameplayTag: "door" }, name: "Door", path: "/Root/Door", spawnedHandleEligible: true }],
     },
   ]);

@@ -1,7 +1,9 @@
 import { access, readFile, readdir, stat } from "node:fs/promises";
-import { dirname, extname, isAbsolute, join, resolve } from "node:path";
+import { basename, dirname, extname, isAbsolute, join, resolve } from "node:path";
 
 import { addAsset, type IAuthoringOperationResult } from "@threenative/authoring";
+import { extractGltfAssetMetadata } from "@threenative/compiler";
+import type { IGltfSceneAssetIr } from "@threenative/ir";
 
 import { exportAssetSourcesJsonl, getAssetSource, searchAssetSources, suggestAssetSources, type IAssetSourceRecord, type IAssetSourceSearchOptions } from "../assetSourceCatalog/catalog.js";
 import { diagnosticResult, type ICommandResult } from "../diagnostics.js";
@@ -159,6 +161,7 @@ interface InspectReport {
     path: string;
     type: "glb" | "gltf" | "unknown";
   };
+  gltf?: IGltfSceneAssetIr;
   message: string;
   modular?: ModularPlacementReport;
 }
@@ -519,6 +522,8 @@ export async function inspectAsset(assetPath: string): Promise<InspectReport> {
   const bounds = computeBounds(gltf, diagnostics);
   const calibration = bounds === undefined ? undefined : computeCalibration(bounds, diagnostics);
   const modular = bounds === undefined ? undefined : computeModularPlacement(bounds, diagnostics, computeRoadConnectors(gltf, binaryChunk, bounds));
+  const gltfMetadata = extractGltfAssetMetadata(assetIdForInspect(assetPath), gltf);
+  diagnostics.push(...gltfMetadataDiagnostics(gltfMetadata));
 
   const report: InspectReport = {
     bounds,
@@ -537,11 +542,34 @@ export async function inspectAsset(assetPath: string): Promise<InspectReport> {
     dependencies,
     diagnostics,
     file: { byteSize, path: assetPath, type },
+    gltf: gltfMetadata,
     message: "Asset inspection completed.",
     modular,
   };
 
   return report;
+}
+
+function assetIdForInspect(assetPath: string): string {
+  return `asset:${basename(assetPath, extname(assetPath))}`;
+}
+
+function gltfMetadataDiagnostics(metadata: IGltfSceneAssetIr): AssetDiagnostic[] {
+  const diagnostics: AssetDiagnostic[] = [];
+  for (const material of metadata.materials) {
+    for (const extension of material.extensions) {
+      if (extension.status !== "unsupported") {
+        continue;
+      }
+      diagnostics.push({
+        code: extension.properties.includes("processor") ? "TN_ASSET_GLTF_EXTENSION_PROCESSOR_UNSUPPORTED" : "TN_ASSET_GLTF_EXTENSION_UNSUPPORTED",
+        message: `glTF material extension '${extension.extension}' on ${material.material} is not portable; preserve it as inspection metadata or author supported ThreeNative material data.`,
+        path: extension.path,
+        severity: "warning",
+      });
+    }
+  }
+  return diagnostics;
 }
 
 async function inspectAssetCatalog(directoryPath: string, options: { recursive: boolean }): Promise<AssetCatalogReport> {
@@ -1152,8 +1180,9 @@ function renderInspectReport(report: InspectReport): string {
     : `Dependencies:\n${report.dependencies.map((dependency) => `  - [${dependency.missing === true ? "missing" : dependency.embedded ? "embedded" : "ok"}] ${dependency.kind}: ${dependency.uri ?? dependency.path ?? "embedded"}`).join("\n")}`;
   const calibration = report.calibration === undefined ? "Calibration: unavailable" : `Calibration: camera distance ${report.calibration.camera.recommendedDistance}m, targetHeight2m scale ${report.calibration.fitScales.targetHeight2m ?? "n/a"}, targetLength4m scale ${report.calibration.fitScales.targetLength4m ?? "n/a"}, lane verdict ${report.calibration.gameplay.verdict}`;
   const modular = report.modular === undefined ? "Modular: unavailable" : `Modular: footprint X/Z size ${formatVec2(report.modular.footprint.size)}, center ${formatVec2(report.modular.footprint.center)}, origin correction ${formatVec(report.modular.originCorrection)}, yaw0 ${formatVec(report.modular.placement.cardinalYaw[0]?.entityPositionForFootprintCenterAtOrigin ?? report.modular.originCorrection)}, yaw90 ${formatVec(report.modular.placement.cardinalYaw[1]?.entityPositionForFootprintCenterAtOrigin ?? report.modular.originCorrection)}, suggested cell ${report.modular.snap.suggestedCellSize}`;
+  const gltf = report.gltf === undefined ? "glTF metadata: unavailable" : `glTF metadata: materials ${report.gltf.materials.length}, morph targets ${report.gltf.morphTargets.length}, custom attributes ${report.gltf.customAttributes.length}`;
   const diagnostics = report.diagnostics.length === 0 ? "Diagnostics: none" : `Diagnostics:\n${report.diagnostics.map((diagnostic) => `  [${diagnostic.severity}] ${diagnostic.code}: ${diagnostic.message}`).join("\n")}`;
-  return `${report.message}\nFile: ${report.file.path} (${report.file.type}, ${report.file.byteSize ?? "unknown"} bytes)\n${counts}\n${bounds}\n${calibration}\n${modular}\n${dependencies}\n${diagnostics}\n`;
+  return `${report.message}\nFile: ${report.file.path} (${report.file.type}, ${report.file.byteSize ?? "unknown"} bytes)\n${counts}\n${bounds}\n${calibration}\n${modular}\n${gltf}\n${dependencies}\n${diagnostics}\n`;
 }
 
 function renderCatalogReport(report: AssetCatalogReport): string {

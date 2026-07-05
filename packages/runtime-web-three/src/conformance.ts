@@ -59,6 +59,7 @@ export function reportWebConformance(
     environment: bundle.environmentScene === undefined ? undefined : reportEnvironment(bundle.environmentScene),
     events: reportEvents(observedEvents(bundle.world)),
     fixture,
+    gltfFidelity: reportGltfFidelity(bundle),
     lightBudget: reportLightBudget(bundle.world),
     materials: bundle.materials.materials.map(reportMaterial).sort((left, right) => left.id.localeCompare(right.id)),
     resources: reportResources(bundle.world.resources ?? {}),
@@ -68,6 +69,22 @@ export function reportWebConformance(
     screenshotExports: reportScreenshotExports(bundle.world),
     systems: reportSystems(bundle),
     ui: bundle.ui === undefined ? undefined : reportUi(bundle.ui),
+  };
+}
+
+function reportGltfFidelity(bundle: IWebBundle): IConformanceReport["gltfFidelity"] {
+  if (bundle.gltfScene === undefined) {
+    return undefined;
+  }
+  return {
+    assets: bundle.gltfScene.assets
+      .map((asset) => ({
+        assetId: asset.assetId,
+        customAttributes: [...asset.customAttributes].sort((left, right) => JSON.stringify(left).localeCompare(JSON.stringify(right))),
+        materials: [...asset.materials].sort((left, right) => JSON.stringify(left).localeCompare(JSON.stringify(right))),
+        morphTargets: [...asset.morphTargets].sort((left, right) => JSON.stringify(left).localeCompare(JSON.stringify(right))),
+      }))
+      .sort((left, right) => left.assetId.localeCompare(right.assetId)),
   };
 }
 

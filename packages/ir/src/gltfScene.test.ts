@@ -9,6 +9,8 @@ test("should reject oversized gltf extras", () => {
       {
         assetId: "model.level",
         customAttributes: [],
+        materials: [],
+        morphTargets: [],
         nodes: [
           {
             extras: { payload: "x".repeat(MAX_GLTF_EXTRAS_BYTES + 1) },
@@ -39,6 +41,8 @@ test("should reject duplicate spawned gltf handle paths", () => {
       {
         assetId: "model.level",
         customAttributes: [],
+        materials: [],
+        morphTargets: [],
         nodes: [
           { name: "Door", path: "/Root/Door", spawnedHandleEligible: true },
           { name: "Door", path: "/Root/Door", spawnedHandleEligible: true },
@@ -54,4 +58,34 @@ test("should reject duplicate spawned gltf handle paths", () => {
   assert.equal(diagnostics.filter((item) => item.code === "TN_IR_GLTF_SCENE_HANDLE_PATH_DUPLICATE").length, 2);
   assert.equal(diagnostics[0]?.path, "gltf.scene.json/assets/0/nodes/1/path");
   assert.match(diagnostics[0]?.suggestion ?? "", /full node paths/);
+});
+
+test("should reject invalid gltf material metadata", () => {
+  const metadata: IGltfSceneMetadataIr = {
+    assets: [
+      {
+        assetId: "model.level",
+        customAttributes: [],
+        materials: [
+          {
+            extensions: [{ extension: "KHR_materials_clearcoat", path: "", properties: ["clearcoatFactor"], status: "promoted" }],
+            material: "HeroVisor",
+            textureTransforms: [{ extension: "KHR_texture_transform", offset: [1, 2, 3] as unknown as [number, number], path: "/materials/0/baseColor", textureSlot: "baseColorTexture" }],
+          },
+        ],
+        morphTargets: [{ mesh: "Face", path: "/meshes/0/targets/0", source: "mesh.extras.targetNames", target: "" }],
+        nodes: [{ path: "/Root", spawnedHandleEligible: false }],
+      },
+    ],
+    schema: "threenative.gltf-scene",
+    version: "0.1.0",
+  };
+
+  const codes = validateGltfSceneMetadata(metadata).map((diagnostic) => diagnostic.code);
+
+  assert.equal(codes.includes("TN_IR_GLTF_SCENE_MATERIAL_REF_INVALID"), true);
+  assert.equal(codes.includes("TN_IR_GLTF_SCENE_EXTENSION_PATH_INVALID"), true);
+  assert.equal(codes.includes("TN_IR_GLTF_SCENE_TEXTURE_TRANSFORM_OFFSET_INVALID"), true);
+  assert.equal(codes.includes("TN_IR_GLTF_SCENE_MORPH_TARGET_MESH_INVALID"), true);
+  assert.equal(codes.includes("TN_IR_GLTF_SCENE_MORPH_TARGET_NAME_INVALID"), true);
 });

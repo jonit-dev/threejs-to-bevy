@@ -254,9 +254,6 @@ based on the residual wording below are:
 - [Render Look, Shadow, and Bloom Polish Profiles](PRDs/other/render-look-shadow-bloom-polish.md):
   screenshot-backed `balanced` profile promotion, bounded shadow/bloom/exposure
   polish controls, and reserved `cinematic`/`stylized` profile evidence.
-- [Imported glTF Visual Fidelity](PRDs/other/imported-gltf-visual-fidelity.md):
-  material-extension reports, texture transforms, extras, morph target names,
-  and unsupported-extension diagnostics that preserve source provenance.
 - [Camera and Post-Processing Boundaries](PRDs/other/camera-post-processing-boundaries.md):
   depth-of-field visual calibration and stable diagnostics for auto exposure,
   motion blur, SSR, mirrors, deferred rendering, volumetrics, and custom post
@@ -710,10 +707,12 @@ diagnostics until portable promotion criteria and web/Bevy evidence exist.
 - [x] `P2` glTF extras and custom glTF vertex attributes
 - [x] `P1` Query/update spawned glTF scene entities
 - [x] `P2` glTF extension processing policy with promoted AnimationGraph metadata import and stable diagnostics for executable/custom transforms
-- [x] `P2` Imported glTF visual-fidelity backlog for material-extension reports,
-      morph target names, extras, texture transforms, and unsupported extension
-      diagnostics that preserve source provenance without exposing Bevy loader
-      internals as authoring API
+- [x] `P2` Imported glTF visual-fidelity backlog: compiler/inspection metadata
+      now preserves material extensions, texture transforms, material/node
+      extras, and morph target names; `tn asset inspect` reports unsupported
+      extension processors with stable diagnostics; web and Bevy conformance
+      expose matching `gltfFidelity` report rows guarded by
+      `pnpm verify:gltf-fidelity`.
 - [x] `P1` Scene viewer/editor inspection workflow
 - [x] `P1` CLI glTF/GLB asset inspection for bounds, dependency checks, and scale calibration (`tn asset inspect`)
 - [x] `P1` Modular track proof reports connector continuity, actor-on-road placement, and actor footprint versus material-derived lane width (`tn scene proof-modular-track`)

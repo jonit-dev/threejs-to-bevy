@@ -4,8 +4,9 @@ use serde::Deserialize;
 
 use crate::{
     AnimationsIr, AssetsManifest, AudioIr, BundleManifest, EnvironmentSceneIr, InputIr, LoadError,
-    LoadedBundle, LocalDataIr, MaterialsIr, OverlaysIr, PrefabsIr, RuntimeConfigIr, ScenesIr,
-    SchemaFileIr, SystemsIr, TargetProfile, WorldIr, generated_mesh, paths,
+    GltfSceneMetadataIr, LoadedBundle, LocalDataIr, MaterialsIr, OverlaysIr, PrefabsIr,
+    RuntimeConfigIr, ScenesIr, SchemaFileIr, SystemsIr, TargetProfile, WorldIr,
+    generated_mesh, paths,
 };
 
 pub fn load_bundle(bundle_path: impl AsRef<Path>) -> Result<LoadedBundle, LoadError> {
@@ -41,6 +42,14 @@ pub fn load_bundle(bundle_path: impl AsRef<Path>) -> Result<LoadedBundle, LoadEr
             let schemas: SchemaFileIr = read_json(bundle_path, file)?;
             ensure_supported(&schemas.schema, &schemas.version)?;
             Some(schemas)
+        }
+        None => None,
+    };
+    let gltf_scene = match manifest.files.gltf_scene.as_ref() {
+        Some(file) => {
+            let metadata: GltfSceneMetadataIr = read_json(bundle_path, file)?;
+            ensure_supported(&metadata.schema, &metadata.version)?;
+            Some(metadata)
         }
         None => None,
     };
@@ -142,6 +151,7 @@ pub fn load_bundle(bundle_path: impl AsRef<Path>) -> Result<LoadedBundle, LoadEr
         audio,
         component_schemas,
         environment_scene,
+        gltf_scene,
         input,
         local_data,
         manifest,

@@ -200,6 +200,8 @@ function buildFixture() {
       {
         assetId: "model.level",
         customAttributes: [{ componentType: 5126, name: "_WIND_WEIGHT", type: "SCALAR" }],
+        materials: [],
+        morphTargets: [],
         nodes: [
           {
             extras: { gameplayTag: "door", socket: "entry" },

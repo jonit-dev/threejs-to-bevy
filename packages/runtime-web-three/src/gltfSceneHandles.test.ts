@@ -10,6 +10,8 @@ test("gltfSceneHandles should update spawned gltf node transform and visibility"
         {
           assetId: "model.level",
           customAttributes: [],
+          materials: [],
+          morphTargets: [],
           nodes: [
             {
               name: "Door",

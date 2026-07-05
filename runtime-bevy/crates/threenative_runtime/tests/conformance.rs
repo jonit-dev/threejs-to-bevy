@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 use threenative_loader::{
-    RuntimeConfigIr, RuntimeRenderLookOverridesConfig, RuntimeRenderLookProfileConfig,
-    RuntimeRendererConfig, RuntimeTimeConfig, RuntimeWindowConfig,
+    GltfSceneAssetIr, GltfSceneMetadataIr, RuntimeConfigIr, RuntimeRenderLookOverridesConfig,
+    RuntimeRenderLookProfileConfig, RuntimeRendererConfig, RuntimeTimeConfig, RuntimeWindowConfig,
 };
 use threenative_runtime::{conformance::report_bevy_conformance, map_world::map_bundle_into_world};
 
@@ -132,6 +132,49 @@ fn should_report_basic_scene_conformance_semantics() {
         .and_then(|entities| entities.iter().find(|entity| entity["id"] == "camera.main"))
         .expect("camera entity should be serialized");
     assert_eq!(camera["camera"]["fovY"], 60.0);
+}
+
+#[test]
+fn should_report_promoted_gltf_material_metadata() {
+    let fixture = load_conformance_fixture("basic-scene");
+    let mut bundle = fixture.bundle;
+    bundle.gltf_scene = Some(GltfSceneMetadataIr {
+        schema: "threenative.gltf-scene".to_owned(),
+        version: "0.1.0".to_owned(),
+        assets: vec![GltfSceneAssetIr {
+            asset_id: "model.hero".to_owned(),
+            custom_attributes: vec![],
+            materials: vec![serde_json::json!({
+                "material": "material:HeroVisor",
+                "extensions": [{
+                    "extension": "KHR_materials_clearcoat",
+                    "path": "/materials/0/extensions/KHR_materials_clearcoat",
+                    "properties": ["clearcoatFactor"],
+                    "status": "promoted"
+                }],
+                "textureTransforms": []
+            })],
+            morph_targets: vec![serde_json::json!({
+                "mesh": "mesh:Face",
+                "path": "/meshes/0/extras/targetNames/0",
+                "source": "mesh.extras.targetNames",
+                "target": "Smile"
+            })],
+            nodes: vec![],
+        }],
+    });
+    let mut app = App::new();
+    map_bundle_into_world(app.world_mut(), &bundle).expect("basic fixture should map");
+
+    let report = report_bevy_conformance(app.world_mut(), &bundle, "gltf-fidelity");
+    let gltf = report.gltf_fidelity.expect("gltf fidelity report");
+
+    assert_eq!(gltf.assets[0].asset_id, "model.hero");
+    assert_eq!(
+        gltf.assets[0].materials[0]["extensions"][0]["extension"],
+        "KHR_materials_clearcoat"
+    );
+    assert_eq!(gltf.assets[0].morph_targets[0]["target"], "Smile");
 }
 
 #[test]

@@ -37,6 +37,7 @@ pub struct BundleFiles {
     pub animations: Option<String>,
     pub assets: String,
     pub component_schemas: Option<String>,
+    pub gltf_scene: Option<String>,
     pub input: Option<String>,
     pub local_data: Option<String>,
     pub materials: String,
@@ -53,6 +54,7 @@ pub struct LoadedBundle {
     pub audio: Option<AudioIr>,
     pub component_schemas: Option<SchemaFileIr>,
     pub environment_scene: Option<EnvironmentSceneIr>,
+    pub gltf_scene: Option<GltfSceneMetadataIr>,
     pub input: Option<InputIr>,
     pub local_data: Option<LocalDataIr>,
     pub manifest: BundleManifest,
@@ -65,6 +67,29 @@ pub struct LoadedBundle {
     pub target_profile: TargetProfile,
     pub ui: Option<UiIr>,
     pub world: WorldIr,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct GltfSceneMetadataIr {
+    pub schema: String,
+    pub version: String,
+    #[serde(default)]
+    pub assets: Vec<GltfSceneAssetIr>,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct GltfSceneAssetIr {
+    pub asset_id: String,
+    #[serde(default)]
+    pub custom_attributes: Vec<serde_json::Value>,
+    #[serde(default)]
+    pub materials: Vec<serde_json::Value>,
+    #[serde(default)]
+    pub morph_targets: Vec<serde_json::Value>,
+    #[serde(default)]
+    pub nodes: Vec<serde_json::Value>,
 }
 
 #[derive(Clone, Debug, Deserialize)]

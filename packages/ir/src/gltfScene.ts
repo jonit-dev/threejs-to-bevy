@@ -30,9 +30,44 @@ export interface IGltfCustomAttributeIr {
   targetMesh: string;
 }
 
+export interface IGltfMaterialExtensionIr {
+  extension: string;
+  path: string;
+  properties: readonly string[];
+  status: "inspectionOnly" | "promoted" | "unsupported";
+}
+
+export interface IGltfTextureTransformIr {
+  extension: "KHR_texture_transform";
+  offset?: readonly [number, number];
+  path: string;
+  rotation?: number;
+  scale?: readonly [number, number];
+  texCoord?: number;
+  textureSlot: string;
+}
+
+export interface IGltfMaterialMetadataIr {
+  extensions: readonly IGltfMaterialExtensionIr[];
+  extras?: unknown;
+  material: string;
+  name?: string;
+  textureTransforms: readonly IGltfTextureTransformIr[];
+}
+
+export interface IGltfMorphTargetIr {
+  defaultWeight?: number;
+  mesh: string;
+  path: string;
+  source: "mesh.extras.targetNames" | "mesh.primitives.targets";
+  target: string;
+}
+
 export interface IGltfSceneAssetIr {
   assetId: string;
   customAttributes: readonly IGltfCustomAttributeIr[];
+  materials: readonly IGltfMaterialMetadataIr[];
+  morphTargets: readonly IGltfMorphTargetIr[];
   nodes: readonly IGltfSceneNodeIr[];
 }
 
@@ -125,6 +160,26 @@ function validateGltfSceneAsset(asset: IGltfSceneAssetIr, path: string, diagnost
   } else {
     asset.customAttributes.forEach((attribute, index) => validateGltfCustomAttribute(attribute, `${path}/customAttributes/${index}`, diagnostics));
   }
+  if (!Array.isArray(asset.materials)) {
+    diagnostics.push({
+      code: "TN_IR_GLTF_SCENE_MATERIALS_INVALID",
+      message: "glTF scene metadata materials must be an array.",
+      path: `${path}/materials`,
+      severity: "error",
+    });
+  } else {
+    asset.materials.forEach((material, index) => validateGltfMaterialMetadata(asset.assetId, material, `${path}/materials/${index}`, diagnostics));
+  }
+  if (!Array.isArray(asset.morphTargets)) {
+    diagnostics.push({
+      code: "TN_IR_GLTF_SCENE_MORPH_TARGETS_INVALID",
+      message: "glTF scene metadata morphTargets must be an array.",
+      path: `${path}/morphTargets`,
+      severity: "error",
+    });
+  } else {
+    asset.morphTargets.forEach((target, index) => validateGltfMorphTarget(target, `${path}/morphTargets/${index}`, diagnostics));
+  }
 }
 
 function validateGltfSceneNode(assetId: string, node: IGltfSceneNodeIr, path: string, diagnostics: IIrDiagnostic[]): void {
@@ -186,6 +241,94 @@ function validateGltfCustomAttribute(attribute: IGltfCustomAttributeIr, path: st
       severity: "error",
     });
   }
+}
+
+function validateGltfMaterialMetadata(assetId: string, material: IGltfMaterialMetadataIr, path: string, diagnostics: IIrDiagnostic[]): void {
+  if (typeof material.material !== "string" || !material.material.startsWith("material:")) {
+    diagnostics.push({
+      code: "TN_IR_GLTF_SCENE_MATERIAL_REF_INVALID",
+      message: "glTF material metadata material must be a material: reference.",
+      path: `${path}/material`,
+      severity: "error",
+    });
+  }
+  if (material.name !== undefined && (typeof material.name !== "string" || material.name.trim() === "")) {
+    diagnostics.push({ code: "TN_IR_GLTF_SCENE_MATERIAL_NAME_INVALID", message: "glTF material metadata name must be non-empty when provided.", path: `${path}/name`, severity: "error" });
+  }
+  if (material.extras !== undefined) {
+    validateExtras(assetId, material.material, material.extras, `${path}/extras`, diagnostics);
+  }
+  if (!Array.isArray(material.extensions)) {
+    diagnostics.push({ code: "TN_IR_GLTF_SCENE_MATERIAL_EXTENSIONS_INVALID", message: "glTF material metadata extensions must be an array.", path: `${path}/extensions`, severity: "error" });
+  } else {
+    material.extensions.forEach((extension, index) => validateGltfMaterialExtension(extension, `${path}/extensions/${index}`, diagnostics));
+  }
+  if (!Array.isArray(material.textureTransforms)) {
+    diagnostics.push({ code: "TN_IR_GLTF_SCENE_TEXTURE_TRANSFORMS_INVALID", message: "glTF material metadata textureTransforms must be an array.", path: `${path}/textureTransforms`, severity: "error" });
+  } else {
+    material.textureTransforms.forEach((transform, index) => validateGltfTextureTransform(transform, `${path}/textureTransforms/${index}`, diagnostics));
+  }
+}
+
+function validateGltfMaterialExtension(extension: IGltfMaterialExtensionIr, path: string, diagnostics: IIrDiagnostic[]): void {
+  if (typeof extension.extension !== "string" || extension.extension.trim() === "") {
+    diagnostics.push({ code: "TN_IR_GLTF_SCENE_EXTENSION_ID_INVALID", message: "glTF material extension id must be non-empty.", path: `${path}/extension`, severity: "error" });
+  }
+  if (typeof extension.path !== "string" || extension.path.trim() === "") {
+    diagnostics.push({ code: "TN_IR_GLTF_SCENE_EXTENSION_PATH_INVALID", message: "glTF material extension path must be non-empty.", path: `${path}/path`, severity: "error" });
+  }
+  if (!Array.isArray(extension.properties) || extension.properties.some((property) => typeof property !== "string" || property.trim() === "")) {
+    diagnostics.push({ code: "TN_IR_GLTF_SCENE_EXTENSION_PROPERTIES_INVALID", message: "glTF material extension properties must be non-empty strings.", path: `${path}/properties`, severity: "error" });
+  }
+  if (extension.status !== "inspectionOnly" && extension.status !== "promoted" && extension.status !== "unsupported") {
+    diagnostics.push({ code: "TN_IR_GLTF_SCENE_EXTENSION_STATUS_INVALID", message: "glTF material extension status must be promoted, inspectionOnly, or unsupported.", path: `${path}/status`, severity: "error" });
+  }
+}
+
+function validateGltfTextureTransform(transform: IGltfTextureTransformIr, path: string, diagnostics: IIrDiagnostic[]): void {
+  if (transform.extension !== "KHR_texture_transform") {
+    diagnostics.push({ code: "TN_IR_GLTF_SCENE_TEXTURE_TRANSFORM_EXTENSION_INVALID", message: "glTF texture transform extension must be KHR_texture_transform.", path: `${path}/extension`, severity: "error" });
+  }
+  if (typeof transform.path !== "string" || transform.path.trim() === "") {
+    diagnostics.push({ code: "TN_IR_GLTF_SCENE_TEXTURE_TRANSFORM_PATH_INVALID", message: "glTF texture transform path must be non-empty.", path: `${path}/path`, severity: "error" });
+  }
+  if (typeof transform.textureSlot !== "string" || transform.textureSlot.trim() === "") {
+    diagnostics.push({ code: "TN_IR_GLTF_SCENE_TEXTURE_TRANSFORM_SLOT_INVALID", message: "glTF texture transform textureSlot must be non-empty.", path: `${path}/textureSlot`, severity: "error" });
+  }
+  if (transform.offset !== undefined && !isPair(transform.offset)) {
+    diagnostics.push({ code: "TN_IR_GLTF_SCENE_TEXTURE_TRANSFORM_OFFSET_INVALID", message: "glTF texture transform offset must contain two finite numbers.", path: `${path}/offset`, severity: "error" });
+  }
+  if (transform.scale !== undefined && !isPair(transform.scale)) {
+    diagnostics.push({ code: "TN_IR_GLTF_SCENE_TEXTURE_TRANSFORM_SCALE_INVALID", message: "glTF texture transform scale must contain two finite numbers.", path: `${path}/scale`, severity: "error" });
+  }
+  if (transform.rotation !== undefined && !Number.isFinite(transform.rotation)) {
+    diagnostics.push({ code: "TN_IR_GLTF_SCENE_TEXTURE_TRANSFORM_ROTATION_INVALID", message: "glTF texture transform rotation must be a finite number.", path: `${path}/rotation`, severity: "error" });
+  }
+  if (transform.texCoord !== undefined && (!Number.isInteger(transform.texCoord) || transform.texCoord < 0)) {
+    diagnostics.push({ code: "TN_IR_GLTF_SCENE_TEXTURE_TRANSFORM_TEXCOORD_INVALID", message: "glTF texture transform texCoord must be a non-negative integer.", path: `${path}/texCoord`, severity: "error" });
+  }
+}
+
+function validateGltfMorphTarget(target: IGltfMorphTargetIr, path: string, diagnostics: IIrDiagnostic[]): void {
+  if (typeof target.mesh !== "string" || !target.mesh.startsWith("mesh:")) {
+    diagnostics.push({ code: "TN_IR_GLTF_SCENE_MORPH_TARGET_MESH_INVALID", message: "glTF morph target mesh must be a mesh: reference.", path: `${path}/mesh`, severity: "error" });
+  }
+  if (typeof target.target !== "string" || target.target.trim() === "") {
+    diagnostics.push({ code: "TN_IR_GLTF_SCENE_MORPH_TARGET_NAME_INVALID", message: "glTF morph target name must be non-empty.", path: `${path}/target`, severity: "error" });
+  }
+  if (typeof target.path !== "string" || target.path.trim() === "") {
+    diagnostics.push({ code: "TN_IR_GLTF_SCENE_MORPH_TARGET_PATH_INVALID", message: "glTF morph target path must be non-empty.", path: `${path}/path`, severity: "error" });
+  }
+  if (target.source !== "mesh.extras.targetNames" && target.source !== "mesh.primitives.targets") {
+    diagnostics.push({ code: "TN_IR_GLTF_SCENE_MORPH_TARGET_SOURCE_INVALID", message: "glTF morph target source must name the metadata source.", path: `${path}/source`, severity: "error" });
+  }
+  if (target.defaultWeight !== undefined && (!Number.isFinite(target.defaultWeight) || target.defaultWeight < 0 || target.defaultWeight > 1)) {
+    diagnostics.push({ code: "TN_IR_GLTF_SCENE_MORPH_TARGET_WEIGHT_INVALID", message: "glTF morph target defaultWeight must be between 0 and 1.", path: `${path}/defaultWeight`, severity: "error" });
+  }
+}
+
+function isPair(value: readonly number[]): value is readonly [number, number] {
+  return value.length === 2 && value.every((item) => Number.isFinite(item));
 }
 
 function validateExtras(assetId: string, nodePath: string, value: unknown, path: string, diagnostics: IIrDiagnostic[]): void {

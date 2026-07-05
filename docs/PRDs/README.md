@@ -49,10 +49,6 @@ backlog unless a nested PRD says it has been superseded.
 
 ### Advanced And Boundary Work
 
-- [Imported glTF Visual Fidelity](other/imported-gltf-visual-fidelity.md):
-  glTF material-extension reports, texture transforms, extras, morph target
-  names, unsupported-extension diagnostics, and web/Bevy evidence without
-  exposing loader internals.
 - [Camera and Post-Processing Boundaries](other/camera-post-processing-boundaries.md):
   depth-of-field visual calibration, auto exposure, motion blur, SSR, mirrors,
   deferred rendering, volumetrics, and custom post-processing promotion bars or
@@ -109,6 +105,7 @@ Useful completed reference groups:
   [Web and Bevy Scripting Host Conformance](done/other/web-bevy-scripting-host-conformance.md),
   [SDK Physics Collider Contract Boundary](done/other/sdk-physics-collider-contract-boundary.md),
   [Render Look, Shadow, and Bloom Polish Profiles](done/other/render-look-shadow-bloom-polish.md),
+  [Imported glTF Visual Fidelity](done/other/imported-gltf-visual-fidelity.md),
   [Scene Lifecycle and Game Flow Contract](done/other/scene-lifecycle-and-flow-contract.md),
   [Bundle Safety and Runtime Robustness Hardening](done/other/bundle-safety-runtime-robustness-hardening.md),
   [Native Game Loop State Parity](done/other/native-game-loop-state-parity.md),

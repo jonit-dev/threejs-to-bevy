@@ -101,6 +101,72 @@ test("should render modular placement guidance in text inspect output", async ()
   }
 });
 
+test("should report glTF material extension metadata", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-asset-inspect-gltf-materials-"));
+  try {
+    await writeFile(join(root, "hero.gltf"), `${JSON.stringify({
+      ...fixtureGltf,
+      buffers: [],
+      images: [],
+      materials: [
+        {
+          extensions: {
+            KHR_materials_clearcoat: { clearcoatFactor: 0.5 },
+            VENDOR_custom_shader: { processor: "executable" },
+          },
+          extras: { gameplayMaterial: "visor" },
+          name: "HeroVisor",
+          pbrMetallicRoughness: {
+            baseColorTexture: {
+              index: 0,
+              extensions: {
+                KHR_texture_transform: {
+                  offset: [0.25, 0.5],
+                  scale: [2, 2],
+                },
+              },
+            },
+          },
+        },
+      ],
+      meshes: [
+        {
+          extras: { targetNames: ["Smile"] },
+          primitives: [{ attributes: { POSITION: 0 }, material: 0, targets: [{ POSITION: 0 }] }],
+          weights: [0.3],
+        },
+      ],
+    }, null, 2)}\n`);
+
+    const result = await assetCommand(["inspect", join(root, "hero.gltf"), "--json"]);
+    const payload = JSON.parse(result.stdout) as {
+      diagnostics: Array<{ code: string; path?: string; severity: string }>;
+      gltf: {
+        assetId: string;
+        materials: Array<{
+          extensions: Array<{ extension: string; path: string; status: string }>;
+          material: string;
+          textureTransforms: Array<{ offset: number[]; path: string; textureSlot: string }>;
+        }>;
+        morphTargets: Array<{ defaultWeight: number; target: string }>;
+      };
+    };
+
+    assert.equal(result.exitCode, 0);
+    assert.equal(payload.gltf.assetId, "asset:hero");
+    assert.deepEqual(payload.gltf.materials[0]?.extensions.map((extension) => [extension.extension, extension.status]), [
+      ["KHR_materials_clearcoat", "promoted"],
+      ["VENDOR_custom_shader", "unsupported"],
+    ]);
+    assert.equal(payload.gltf.materials[0]?.textureTransforms[0]?.textureSlot, "pbrMetallicRoughness.baseColorTexture");
+    assert.deepEqual(payload.gltf.materials[0]?.textureTransforms[0]?.offset, [0.25, 0.5]);
+    assert.deepEqual(payload.gltf.morphTargets, [{ defaultWeight: 0.3, mesh: "mesh:0", path: "/meshes/0/extras/targetNames/0", source: "mesh.extras.targetNames", target: "Smile" }]);
+    assert.equal(payload.diagnostics.some((diagnostic) => diagnostic.code === "TN_ASSET_GLTF_EXTENSION_PROCESSOR_UNSUPPORTED" && diagnostic.path === "/materials/0/extensions/VENDOR_custom_shader" && diagnostic.severity === "warning"), true);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
 test("should omit modular pivot diagnostic for centered model footprints", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-asset-inspect-centered-modular-"));
   try {

@@ -1,13 +1,13 @@
 import { readFile } from "node:fs/promises";
 import { extname, resolve } from "node:path";
 
-import type { IGltfCustomAttributeIr, IGltfSceneAssetIr, IGltfSceneMetadataIr, IGltfSceneNodeIr, IGltfNodeTransformIr } from "@threenative/ir";
+import type { IGltfCustomAttributeIr, IGltfMaterialMetadataIr, IGltfMorphTargetIr, IGltfSceneAssetIr, IGltfSceneMetadataIr, IGltfSceneNodeIr, IGltfNodeTransformIr, IGltfTextureTransformIr } from "@threenative/ir";
 
 import type { IInternalAsset } from "../emit/asset-copy.js";
 
 interface IGltfDocument {
   accessors?: readonly IGltfAccessor[];
-  materials?: readonly { name?: string }[];
+  materials?: readonly IGltfMaterial[];
   meshes?: readonly IGltfMesh[];
   nodes?: readonly IGltfNode[];
   scene?: number;
@@ -26,13 +26,40 @@ interface IGltfNode {
 }
 
 interface IGltfMesh {
+  extras?: { targetNames?: readonly string[] } & Record<string, unknown>;
   name?: string;
   primitives?: readonly IGltfPrimitive[];
+  weights?: readonly number[];
 }
 
 interface IGltfPrimitive {
   attributes?: Record<string, number>;
   material?: number;
+  targets?: readonly Record<string, number>[];
+}
+
+interface IGltfMaterial {
+  emissiveTexture?: IGltfTextureInfo;
+  extensions?: Record<string, Record<string, unknown>>;
+  extras?: unknown;
+  name?: string;
+  normalTexture?: IGltfTextureInfo;
+  occlusionTexture?: IGltfTextureInfo;
+  pbrMetallicRoughness?: {
+    baseColorTexture?: IGltfTextureInfo;
+    metallicRoughnessTexture?: IGltfTextureInfo;
+  };
+}
+
+interface IGltfTextureInfo {
+  extensions?: {
+    KHR_texture_transform?: {
+      offset?: readonly number[];
+      rotation?: number;
+      scale?: readonly number[];
+      texCoord?: number;
+    };
+  };
 }
 
 interface IGltfAccessor {
@@ -92,6 +119,8 @@ export function extractGltfAssetMetadata(assetId: string, document: IGltfDocumen
   return {
     assetId,
     customAttributes: customAttributes.sort(compareCustomAttributes),
+    materials: extractMaterialMetadata(document),
+    morphTargets: extractMorphTargets(document),
     nodes: emittedNodes.sort((left, right) => left.path.localeCompare(right.path)),
   };
 }
@@ -218,6 +247,96 @@ function extractCustomAttributes(document: IGltfDocument): IGltfCustomAttributeI
   return attributes;
 }
 
+function extractMaterialMetadata(document: IGltfDocument): IGltfMaterialMetadataIr[] {
+  return (document.materials ?? [])
+    .map((material, index) => {
+      const extensions = Object.entries(material.extensions ?? {})
+        .map(([extension, value]) => ({
+          extension,
+          path: `/materials/${index}/extensions/${extension}`,
+          properties: Object.keys(value ?? {}).sort((left, right) => left.localeCompare(right)),
+          status: gltfMaterialExtensionStatus(extension),
+        }))
+        .sort((left, right) => left.extension.localeCompare(right.extension));
+      const textureTransforms = extractTextureTransforms(material, index);
+      return {
+        extensions,
+        ...(material.extras === undefined ? {} : { extras: material.extras }),
+        material: materialRef(material, index),
+        ...(typeof material.name === "string" && material.name.trim() !== "" ? { name: material.name } : {}),
+        textureTransforms,
+      };
+    })
+    .filter((material) => material.extensions.length > 0 || material.textureTransforms.length > 0 || material.extras !== undefined);
+}
+
+function extractTextureTransforms(material: IGltfMaterial, materialIndex: number): IGltfTextureTransformIr[] {
+  const slots: Array<[string, IGltfTextureInfo | undefined]> = [
+    ["pbrMetallicRoughness.baseColorTexture", material.pbrMetallicRoughness?.baseColorTexture],
+    ["pbrMetallicRoughness.metallicRoughnessTexture", material.pbrMetallicRoughness?.metallicRoughnessTexture],
+    ["normalTexture", material.normalTexture],
+    ["occlusionTexture", material.occlusionTexture],
+    ["emissiveTexture", material.emissiveTexture],
+  ];
+  for (const [extension, value] of Object.entries(material.extensions ?? {})) {
+    for (const [key, nested] of Object.entries(value ?? {})) {
+      if (key.endsWith("Texture") && isTextureInfo(nested)) {
+        slots.push([`${extension}.${key}`, nested]);
+      }
+    }
+  }
+  return slots.flatMap(([textureSlot, texture]) => {
+    const transform = texture?.extensions?.KHR_texture_transform;
+    if (transform === undefined) {
+      return [];
+    }
+    const offset = tuple2(transform.offset);
+    const scale = tuple2(transform.scale);
+    return [{
+      extension: "KHR_texture_transform" as const,
+      ...(offset === undefined ? {} : { offset }),
+      path: `/materials/${materialIndex}/${textureSlot}/extensions/KHR_texture_transform`,
+      ...(typeof transform.rotation === "number" && Number.isFinite(transform.rotation) ? { rotation: transform.rotation } : {}),
+      ...(scale === undefined ? {} : { scale }),
+      ...(Number.isInteger(transform.texCoord) ? { texCoord: transform.texCoord } : {}),
+      textureSlot,
+    }];
+  }).sort((left, right) => left.path.localeCompare(right.path));
+}
+
+function extractMorphTargets(document: IGltfDocument): IGltfMorphTargetIr[] {
+  const targets: IGltfMorphTargetIr[] = [];
+  document.meshes?.forEach((mesh, meshIndex) => {
+    const meshName = meshRef(mesh, meshIndex);
+    const namedTargets = mesh.extras?.targetNames;
+    if (Array.isArray(namedTargets)) {
+      namedTargets.forEach((target, targetIndex) => {
+        if (typeof target === "string" && target.trim() !== "") {
+          targets.push({
+            ...(typeof mesh.weights?.[targetIndex] === "number" ? { defaultWeight: mesh.weights[targetIndex] } : {}),
+            mesh: meshName,
+            path: `/meshes/${meshIndex}/extras/targetNames/${targetIndex}`,
+            source: "mesh.extras.targetNames",
+            target,
+          });
+        }
+      });
+      return;
+    }
+    const primitiveTargetCount = Math.max(0, ...((mesh.primitives ?? []).map((primitive) => primitive.targets?.length ?? 0)));
+    for (let targetIndex = 0; targetIndex < primitiveTargetCount; targetIndex += 1) {
+      targets.push({
+        ...(typeof mesh.weights?.[targetIndex] === "number" ? { defaultWeight: mesh.weights[targetIndex] } : {}),
+        mesh: meshName,
+        path: `/meshes/${meshIndex}/primitives/*/targets/${targetIndex}`,
+        source: "mesh.primitives.targets",
+        target: `target_${targetIndex}`,
+      });
+    }
+  });
+  return targets.sort((left, right) => left.mesh.localeCompare(right.mesh) || left.target.localeCompare(right.target));
+}
+
 function materialRefs(mesh: IGltfMesh | undefined, document: IGltfDocument): string[] {
   const refs = new Set<string>();
   mesh?.primitives?.forEach((primitive) => {
@@ -238,6 +357,20 @@ function meshRef(mesh: IGltfMesh | undefined, index: number): string {
 
 function materialRef(material: { name?: string } | undefined, index: number): string {
   return typeof material?.name === "string" && material.name.trim() !== "" ? `material:${material.name}` : `material:${index}`;
+}
+
+function gltfMaterialExtensionStatus(extension: string): IGltfMaterialMetadataIr["extensions"][number]["status"] {
+  if (extension === "KHR_materials_clearcoat" || extension === "KHR_materials_transmission" || extension === "KHR_materials_emissive_strength") {
+    return "promoted";
+  }
+  if (extension === "KHR_materials_anisotropy" || extension === "KHR_materials_specular") {
+    return "inspectionOnly";
+  }
+  return "unsupported";
+}
+
+function isTextureInfo(value: unknown): value is IGltfTextureInfo {
+  return value !== null && typeof value === "object";
 }
 
 function pathSegment(node: IGltfNode, index: number): string {
@@ -288,6 +421,13 @@ function tuple3(value: unknown): [number, number, number] | undefined {
     return undefined;
   }
   return [value[0] as number, value[1] as number, value[2] as number];
+}
+
+function tuple2(value: unknown): [number, number] | undefined {
+  if (!Array.isArray(value) || value.length !== 2 || !value.every((item) => typeof item === "number" && Number.isFinite(item))) {
+    return undefined;
+  }
+  return [value[0] as number, value[1] as number];
 }
 
 function tuple4(value: unknown): [number, number, number, number] | undefined {
