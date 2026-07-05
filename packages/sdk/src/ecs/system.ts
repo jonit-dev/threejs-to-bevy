@@ -14,6 +14,10 @@ export type SystemService =
   | "assets.load"
   | "character.move"
   | "navigation.path"
+  | "particles.burst"
+  | "particles.reset"
+  | "particles.start"
+  | "particles.stop"
   | "physics.overlap"
   | "physics.raycast"
   | "physics.sensor"
@@ -111,6 +115,12 @@ export interface ISystemContext {
     play(entity: ISystemEntity | string, clip: string, options?: Record<string, unknown>): void;
     query(entity: ISystemEntity | string, clip?: string): { active: boolean; clip?: string; entity: string; paused: boolean; stopped: boolean; timeSeconds: number };
     stop(entity: ISystemEntity | string, clip?: string): { accepted: true; stopped: true };
+  };
+  particles: {
+    burst(asset: string, emitter: string, options?: { count?: number; seed?: number | string }): IParticleCommandResult;
+    reset(asset: string, emitter: string, options?: { seed?: number | string }): IParticleCommandResult;
+    start(asset: string, emitter: string, options?: { count?: number; seed?: number | string }): IParticleCommandResult;
+    stop(asset: string, emitter: string): IParticleCommandResult;
   };
   audio: {
     play(soundId: string, options?: import("../audio.js").IScriptAudioPlayOptions): import("../audio.js").IScriptAudioPlayResult;
@@ -342,6 +352,18 @@ export interface ISystemContext {
     fixedDt: number;
   };
   state<T extends Record<string, unknown>>(key: string, defaults: T): T;
+}
+
+export interface IParticleCommandResult {
+  accepted: boolean;
+  active: boolean;
+  asset: string;
+  command: "burst" | "reset" | "start" | "stop";
+  count: number;
+  emitter: string;
+  maxParticles: number;
+  seed: number;
+  status: "burst" | "missing-emitter" | "reset" | "started" | "stopped";
 }
 
 export function defineSystem(config: IV4SystemConfig, run?: PortableSystem): ISystemDeclaration {

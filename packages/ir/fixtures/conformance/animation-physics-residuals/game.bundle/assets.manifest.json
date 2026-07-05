@@ -42,6 +42,15 @@
           "id": "Smile"
         }
       ],
+      "particleEmitters": [
+        {
+          "id": "dust",
+          "lifetimeSeconds": 0.5,
+          "maxParticles": 8,
+          "ratePerSecond": 8,
+          "shape": "point"
+        }
+      ],
       "path": "assets/hero.glb",
       "skeleton": {
         "joints": [

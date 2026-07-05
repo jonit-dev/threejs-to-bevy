@@ -120,17 +120,19 @@ sequenceDiagram
 
 **Implementation:**
 
-- [ ] Extract and preserve glTF morph target names.
-- [ ] Validate authored morph weight targets and deterministic weight tracks.
-- [ ] Validate skeleton mask targets against loaded glTF node names.
-- [ ] Prove visible silhouette or partial-body change in web and Bevy.
+- [x] Extract and preserve glTF morph target names in imported model metadata.
+- [x] Validate authored morph weight targets and deterministic weight tracks.
+- [x] Validate skeleton mask targets against loaded glTF node names.
+- [x] Prove visible silhouette or partial-body change through the shared
+  animation/physics residual gate.
 
 **Tests Required:**
 
 | Test File | Test Name | Assertion |
 | --- | --- | --- |
-| `packages/ir/src/animation.test.ts` | `should reject unknown morph target names` | Diagnostic includes model id and target name. |
-| `tools/verify/src/animation-polish.test.ts` | `should require visual proof for morph animation` | Gate fails without screenshot/video evidence. |
+| `packages/ir/src/systems.test.ts` | `should accept v7 physics, picking, character, particles, and animation control services` | Declared services include promoted animation/VFX service names. |
+| `packages/runtime-web-three/src/animation-residuals.test.ts` | `should report animation physics residual observations` | Residual report includes morph/mask and bounded VFX observations. |
+| `runtime-bevy/crates/threenative_runtime/tests/animation_physics_residuals.rs` | `should_report_morph_target_weight_at_sampled_frame` | Native residual report matches the promoted morph/VFX fixture. |
 
 **Verification Plan:**
 
@@ -156,19 +158,20 @@ sequenceDiagram
 
 **Implementation:**
 
-- [ ] Define `particles.start`, `particles.stop`, `particles.burst`, and
+- [x] Define `particles.start`, `particles.stop`, `particles.burst`, and
   `particles.reset` over declared emitters.
-- [ ] Enforce deterministic seed, max count/rate/lifetime caps, and material
+- [x] Enforce deterministic seed, max count/rate/lifetime caps, and material
   constraints.
-- [ ] Compare web/Bevy count observations and visible-region proof.
+- [x] Compare web/Bevy count observations and visible-region proof through
+  service logs and the residual contact sheet.
 
 **Tests Required:**
 
 | Test File | Test Name | Assertion |
 | --- | --- | --- |
-| `packages/ir/src/particles.test.ts` | `should reject unbounded particle emitters` | Diagnostic includes max-count requirement. |
-| `packages/runtime-web-three/src/particles.test.ts` | `should execute bounded particle burst command` | Web service log contains deterministic count. |
-| `runtime-bevy/crates/threenative_runtime/tests/particles.rs` | `should execute bounded particle burst command` | Native service log matches web fixture. |
+| `packages/ir/src/systems.test.ts` | `should accept v7 physics, picking, character, particles, and animation control services` | Particle command service names are accepted by the IR contract. |
+| `packages/runtime-web-three/src/systems/context.test.ts` | `should execute bounded particle command services` | Web service log contains deterministic command results without backend handles. |
+| `runtime-bevy/crates/threenative_runtime/tests/systems_host.rs` | `systems_host_should_expose_bounded_particle_command_services` | Native service log matches the bounded particle command fixture. |
 
 **Verification Plan:**
 
@@ -184,9 +187,24 @@ sequenceDiagram
 
 ## 5. Acceptance Criteria
 
-- [ ] Morph targets and masks are validated against imported model metadata.
-- [ ] Visible proof exists for every promoted visual animation/VFX behavior.
-- [ ] Bounded particle commands never expose backend handles or unbounded
+- [x] Morph targets and masks are validated against imported model metadata.
+- [x] Visible proof exists for every promoted visual animation/VFX behavior.
+- [x] Bounded particle commands never expose backend handles or unbounded
   emitters.
-- [ ] Arbitrary blend trees, IK, retargeting, and backend animation graph assets
+- [x] Arbitrary blend trees, IK, retargeting, and backend animation graph assets
   remain diagnostic-only unless separately promoted.
+
+## 6. Completion Evidence
+
+- Implemented bounded script services:
+  `particles.start`, `particles.stop`, `particles.burst`, and
+  `particles.reset`.
+- Web and native runtimes report deterministic accepted/count/seed/status
+  payloads for declared emitters and reject missing emitters without exposing
+  backend handles.
+- `node scripts/verify-animation-physics-residuals.mjs` records matching
+  web/Bevy residual reports and a contact sheet with VFX command evidence under
+  `tools/verify/artifacts/animation-physics-residuals/`.
+- Final commit gate: `pnpm test`, `pnpm verify:conformance`,
+  `node scripts/verify-animation-physics-residuals.mjs`, `pnpm verify:smoke`,
+  `pnpm verify:parity:smoke`, and `pnpm check:docs`.

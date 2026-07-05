@@ -8,6 +8,7 @@ type ModelAsset = Extract<IAssetsManifest["assets"][number], { kind: "model" }> 
   animations?: Array<{ id: string; mask?: string }>;
   masks?: Array<{ id: string; joints: string[] }>;
   morphClips?: Array<{ id: string; keyframes: Array<{ timeSeconds: number; weight: number }>; target: string }>;
+  particleEmitters?: Array<{ id: string; lifetimeSeconds: number; maxParticles: number; ratePerSecond: number }>;
 };
 
 export interface IAnimationPhysicsResidualReport {
@@ -15,6 +16,7 @@ export interface IAnimationPhysicsResidualReport {
     masks: IAnimationMaskObservation[];
     morphTargets: IMorphTargetObservation[];
     propertySamples: ITransformAnimationSample[];
+    vfxCommands: IParticleCommandObservation[];
   };
   navigation: {
     crowd: ICrowdObservation[];
@@ -46,6 +48,16 @@ export interface IMorphTargetObservation {
   weight: number;
 }
 
+export interface IParticleCommandObservation {
+  asset: string;
+  command: "burst";
+  count: number;
+  emitter: string;
+  maxParticles: number;
+  seed: number;
+  status: "burst";
+}
+
 export interface IOffMeshLinkObservation {
   from: string;
   id: string;
@@ -71,6 +83,7 @@ export function traceAnimationPhysicsResiduals(
       masks: traceAnimationMasks(assets),
       morphTargets: traceMorphTargets(assets, options.morphTimeSeconds ?? 0.5),
       propertySamples: sampleTransformAnimations(animations, { timeSeconds: fixedDelta }),
+      vfxCommands: traceParticleCommands(assets),
     },
     navigation: traceNavigationResiduals(world),
     physics: {
@@ -108,6 +121,18 @@ function traceMorphTargets(assets: IAssetsManifest, timeSeconds: number): IMorph
       weight: sampleWeight(clip.keyframes, timeSeconds),
     }));
   }).sort((left, right) => left.asset.localeCompare(right.asset) || left.clip.localeCompare(right.clip) || left.target.localeCompare(right.target));
+}
+
+function traceParticleCommands(assets: IAssetsManifest): IParticleCommandObservation[] {
+  return modelAssets(assets).flatMap((asset) => (asset.particleEmitters ?? []).map((emitter) => ({
+    asset: asset.id,
+    command: "burst" as const,
+    count: Math.min(emitter.maxParticles, Math.max(1, Math.floor(emitter.ratePerSecond * emitter.lifetimeSeconds))),
+    emitter: emitter.id,
+    maxParticles: emitter.maxParticles,
+    seed: stableSeed(`${asset.id}/${emitter.id}/burst`),
+    status: "burst" as const,
+  }))).sort((left, right) => left.asset.localeCompare(right.asset) || left.emitter.localeCompare(right.emitter));
 }
 
 function traceNavigationResiduals(world: IWorldIr): IAnimationPhysicsResidualReport["navigation"] {
@@ -168,4 +193,13 @@ function cloneWorld(world: IWorldIr): IWorldIr {
 
 function round(value: number): number {
   return Number(value.toFixed(6));
+}
+
+function stableSeed(value: string): number {
+  let hash = 2166136261;
+  for (const char of value) {
+    hash ^= char.charCodeAt(0);
+    hash = Math.imul(hash, 16777619);
+  }
+  return hash >>> 0;
 }

@@ -59,7 +59,7 @@ if (!validation.ok) {
       ],
       deferred: ["IK", "retargeting", "vehicles", "soft bodies", "ragdolls", "public backend physics/nav handles"],
       ok: diff.ok,
-      promoted: ["animation masks", "morph target animation", "UI/property transform animation", "sloped mesh grounding", "bounded dynamic navmesh rebake", "off-mesh links", "small crowd steering"],
+      promoted: ["animation masks", "morph target animation", "script-triggered bounded VFX commands", "UI/property transform animation", "sloped mesh grounding", "bounded dynamic navmesh rebake", "off-mesh links", "small crowd steering"],
       status: diff.ok ? "passed" : "failed",
       tolerance: { numeric: 0.000001, ordering: "stable ids" },
     });
@@ -86,12 +86,12 @@ async function writeVisualEvidence(web, native) {
   const height = 180;
   const sheet = new PNG({ height: height * 2, width });
   fill(sheet, [14, 18, 24, 255]);
-  drawResidualFrame(sheet, 0, web.animation.morphTargets[0]?.weight ?? 0, web.physics.characterGrounding[0]?.resolved ?? [0, 0, 0], web.navigation.crowd);
-  drawResidualFrame(sheet, height, native.animation.morphTargets[0]?.weight ?? 0, native.physics.characterGrounding[0]?.resolved ?? [0, 0, 0], native.navigation.crowd);
+  drawResidualFrame(sheet, 0, web.animation.morphTargets[0]?.weight ?? 0, web.animation.vfxCommands[0]?.count ?? 0, web.physics.characterGrounding[0]?.resolved ?? [0, 0, 0], web.navigation.crowd);
+  drawResidualFrame(sheet, height, native.animation.morphTargets[0]?.weight ?? 0, native.animation.vfxCommands[0]?.count ?? 0, native.physics.characterGrounding[0]?.resolved ?? [0, 0, 0], native.navigation.crowd);
   await writeFile(resolve(artifactRoot, "contact-sheet.png"), PNG.sync.write(sheet));
 }
 
-function drawResidualFrame(png, yOffset, morphWeight, resolved, crowd) {
+function drawResidualFrame(png, yOffset, morphWeight, vfxCount, resolved, crowd) {
   rect(png, 24, yOffset + 132, 192, 8, [68, 96, 72, 255]);
   const rampX = 120;
   for (let x = 0; x < 96; x += 1) {
@@ -100,6 +100,9 @@ function drawResidualFrame(png, yOffset, morphWeight, resolved, crowd) {
   }
   rect(png, 48 + Math.round(resolved[0] * 36), yOffset + 132 - Math.round(resolved[1] * 36), 16, 28, [96, 165, 250, 255]);
   rect(png, 248, yOffset + 48, 36, Math.max(2, Math.round(morphWeight * 72)), [244, 114, 182, 255]);
+  for (let index = 0; index < Math.min(16, vfxCount); index += 1) {
+    rect(png, 256 + (index % 4) * 8, yOffset + 124 - Math.floor(index / 4) * 8, 5, 5, [125, 211, 252, 255]);
+  }
   for (const [index, agent] of (crowd ?? []).entries()) {
     rect(png, 236 + Math.round(agent.position[0] * 32), yOffset + 132 + index * 10, 8, 8, [251, 191, 36, 255]);
   }
@@ -134,6 +137,10 @@ async function writeReport(report) {
   await writeJson(targets.reportPath, {
     generatedBy: "scripts/verify-animation-physics-residuals.mjs",
     prd: "docs/PRDs/done/other/post-v10-animation-physics-navigation-residuals.md",
+    prds: [
+      "docs/PRDs/done/other/post-v10-animation-physics-navigation-residuals.md",
+      "docs/PRDs/done/other/animation-morph-mask-vfx-polish.md",
+    ],
     schema: "threenative.animation-physics-residuals-verification",
     ...report,
   });

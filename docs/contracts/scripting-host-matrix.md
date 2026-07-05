@@ -36,6 +36,10 @@ depend on `window`, `document`, workers, `fetch`, websockets, timers, `process`,
 | `audio.stop` | `ctx.audio.stop` | implemented | implemented | Script audio playback stop. |
 | `character.move` | `ctx.character.move` | implemented | implemented | Bounded character movement observation. |
 | `navigation.path` | `ctx.navigation.path` | implemented | implemented | Static navigation path query. |
+| `particles.burst` | `ctx.particles.burst` | implemented | implemented | Deterministic one-shot bounded emitter command. |
+| `particles.reset` | `ctx.particles.reset` | implemented | implemented | Reset declared emitter runtime state. |
+| `particles.start` | `ctx.particles.start` | implemented | implemented | Start declared bounded emitter state. |
+| `particles.stop` | `ctx.particles.stop` | implemented | implemented | Stop declared bounded emitter state. |
 | `persistence.delete` | `ctx.persistence.delete` | implemented | implemented | Declared save-slot delete. |
 | `persistence.listSlots` | `ctx.persistence.listSlots` | implemented | implemented | Save-slot listing. |
 | `persistence.load` | `ctx.persistence.load` | implemented | implemented | Declared save-slot load. |

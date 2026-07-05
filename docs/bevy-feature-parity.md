@@ -247,14 +247,14 @@ execution order while keeping parity claims tied to explicit evidence:
   diagnostics.
 
 The latest parity pass has no remaining unchecked checklist rows in this file;
-future work is now tracked as active PRD slices for diagnostic boundaries or
-promotion evidence rather than raw unchecked items. The current active slices
-based on the residual wording below are:
+future work is now tracked as PRD slices for diagnostic boundaries or promotion
+evidence rather than raw unchecked items. Recent completed slices based on the
+residual wording below are:
 
-- [Render Look, Shadow, and Bloom Polish Profiles](PRDs/other/render-look-shadow-bloom-polish.md):
+- [Render Look, Shadow, and Bloom Polish Profiles](PRDs/done/other/render-look-shadow-bloom-polish.md):
   screenshot-backed `balanced` profile promotion, bounded shadow/bloom/exposure
   polish controls, and reserved `cinematic`/`stylized` profile evidence.
-- [Animation, Morph, Mask, and Lightweight VFX Polish](PRDs/other/animation-morph-mask-vfx-polish.md):
+- [Animation, Morph, Mask, and Lightweight VFX Polish](PRDs/done/other/animation-morph-mask-vfx-polish.md):
   morph targets, animation masks, bounded blend residuals, and deterministic
   script-triggered VFX commands.
 
@@ -731,23 +731,26 @@ diagnostics until portable promotion criteria and web/Bevy evidence exist.
 - [x] `P1` Transform animation authored in code/IR
 - [x] `P1` `animation.query` / `animation.stop` declared command-shape/service-payload parity
 - [x] `P1` Animation blending beyond fixed graph traces
-- [x] `P2` Animation masks backlog: prove portable skeleton target addressing,
-      per-joint mask validation against loaded glTF nodes, web/Bevy blend
-      behavior, and visual evidence before claiming partial-body animation
+- [x] `P2` Animation masks: portable skeleton target addressing, per-joint mask
+      validation against loaded glTF nodes, web/Bevy blend behavior, and
+      residual visual evidence are promoted for the bounded subset.
 - [x] `P1` Stateful animation stop/state query runtime semantics
-- [x] `P2` Morph-target animation backlog: extract glTF morph names, validate
-      authored weight targets, emit deterministic weight tracks, map to web and
-      Bevy, and prove visible silhouette change
+- [x] `P2` Morph-target animation: extracted glTF morph names, authored weight
+      target validation, deterministic weight tracks, web/Bevy mapping, and
+      visible residual evidence are promoted for the bounded subset.
 - [x] `P3` Retargeting and inverse kinematics diagnostic boundary (V10-02)
 - [x] `P2` UI/property animation
 - [x] `P2` Arbitrary blend trees beyond bounded crossfade/graph traces as a
       diagnostic boundary; raw Bevy `AnimationGraph` assets, arbitrary graph
       topology, IK, retargeting, and backend animation handles remain outside
       the portable source contract
-- [x] `P1` Rendered particle systems through a ThreeNative-owned bounded VFX
-      contract: deterministic seed, max count/rate/lifetime caps, simple mesh or
-      billboard representation, alpha material constraints, and web/Bevy
-      visible-region proof; this is not Bevy-native particle-system parity
+- [x] `P1` Script-triggered lightweight VFX through a ThreeNative-owned bounded
+      command contract: `particles.start`, `particles.stop`, `particles.burst`,
+      and `particles.reset` run only over declared emitters with deterministic
+      seed/count/status observations, max count/rate/lifetime caps, simple mesh
+      or billboard representation, alpha material constraints, and web/Bevy
+      visible-region proof. This is not Bevy-native particle-system parity and
+      does not expose backend particle handles.
 
 ### 🧱 Physics, Collision, and Character Movement
 

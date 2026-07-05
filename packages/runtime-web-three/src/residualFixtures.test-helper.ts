@@ -13,6 +13,7 @@ export function residualAssets(): IAssetsManifest {
         masks: [{ id: "upperBody", joints: ["Spine", "Arm.L", "Arm.R"] }],
         morphClips: [{ id: "smile", target: "Smile", keyframes: [{ timeSeconds: 0, weight: 0 }, { timeSeconds: 1, weight: 1 }] }],
         morphTargets: [{ defaultWeight: 0, id: "Smile" }],
+        particleEmitters: [{ id: "dust", lifetimeSeconds: 0.5, maxParticles: 8, ratePerSecond: 8, shape: "point" }],
         path: "assets/hero.glb",
         skeleton: { joints: ["Root", "Spine", "Arm.L", "Arm.R"] },
       },

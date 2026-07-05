@@ -64,6 +64,12 @@ export interface ISystemContext {
     query(playbackId: string): ReturnType<typeof audioQueryPayload>["result"];
     stop(playbackId: string): ReturnType<typeof audioStopPayload>["result"];
   };
+  particles: {
+    burst(asset: string, emitter: string, options?: IParticleCommandOptions): IParticleCommandResult;
+    reset(asset: string, emitter: string, options?: Pick<IParticleCommandOptions, "seed">): IParticleCommandResult;
+    start(asset: string, emitter: string, options?: IParticleCommandOptions): IParticleCommandResult;
+    stop(asset: string, emitter: string): IParticleCommandResult;
+  };
   assets: {
     get(id: unknown): IAssetsManifest["assets"][number] | null;
     list(): IAssetsManifest["assets"];
@@ -246,7 +252,24 @@ export interface IQueuedResourceWrite {
 
 export interface IQueuedServiceCall {
   payload: unknown;
-  service: "animation.play" | "animation.query" | "animation.stop" | "audio.play" | "audio.query" | "audio.stop" | "assets.load" | "character.move" | "navigation.path" | "physics.overlap" | "physics.raycast" | "physics.sensor" | "physics.shapeCast" | "picking.mesh" | "picking.pointerRay" | "persistence.delete" | "persistence.listSlots" | "persistence.load" | "persistence.save" | "scene.change" | "scene.current" | "scene.loadAdditive" | "scene.pop" | "scene.push" | "scene.unload" | "settings.export" | "settings.get" | "settings.import" | "settings.set" | "ui.activate" | "ui.focus" | "ui.read" | "ui.setDisabled" | "ui.setValue";
+  service: "animation.play" | "animation.query" | "animation.stop" | "audio.play" | "audio.query" | "audio.stop" | "assets.load" | "character.move" | "navigation.path" | "particles.burst" | "particles.reset" | "particles.start" | "particles.stop" | "physics.overlap" | "physics.raycast" | "physics.sensor" | "physics.shapeCast" | "picking.mesh" | "picking.pointerRay" | "persistence.delete" | "persistence.listSlots" | "persistence.load" | "persistence.save" | "scene.change" | "scene.current" | "scene.loadAdditive" | "scene.pop" | "scene.push" | "scene.unload" | "settings.export" | "settings.get" | "settings.import" | "settings.set" | "ui.activate" | "ui.focus" | "ui.read" | "ui.setDisabled" | "ui.setValue";
+}
+
+export interface IParticleCommandOptions {
+  count?: number;
+  seed?: number | string;
+}
+
+export interface IParticleCommandResult {
+  accepted: boolean;
+  active: boolean;
+  asset: string;
+  command: "burst" | "reset" | "start" | "stop";
+  count: number;
+  emitter: string;
+  maxParticles: number;
+  seed: number;
+  status: "burst" | "missing-emitter" | "reset" | "started" | "stopped";
 }
 
 export interface IUiFocusResult {
@@ -334,6 +357,7 @@ export function createSystemContext(
   const random = createDeterministicRandom(randomSeed(world));
   const animations = new AnimationRuntimeController();
   const scriptAudio = new ScriptAudioRuntimeController(options.audio);
+  const particles = createParticleCommandService(options.assets);
   const persistence = options.persistence ?? createWebPersistenceService(options.localData ?? emptyLocalData());
   const ui = createScriptUiState(options.ui);
   const findEntity = (id: string): ISystemEntityView | undefined => {
@@ -382,6 +406,32 @@ export function createSystemContext(
           const payload = audioStopPayload({ playbackId }, scriptAudio.stop(playbackId));
           services.push({ payload, service: "audio.stop" });
           return cloneValue(payload.result) as ReturnType<typeof audioStopPayload>["result"];
+        },
+      },
+      particles: {
+        burst(asset, emitter, particleOptions = {}) {
+          const request = { asset, emitter, options: cloneValue(particleOptions) };
+          const result = particles.execute("burst", asset, emitter, particleOptions);
+          services.push({ payload: { request, result: cloneValue(result) }, service: "particles.burst" });
+          return cloneValue(result);
+        },
+        reset(asset, emitter, particleOptions = {}) {
+          const request = { asset, emitter, options: cloneValue(particleOptions) };
+          const result = particles.execute("reset", asset, emitter, particleOptions);
+          services.push({ payload: { request, result: cloneValue(result) }, service: "particles.reset" });
+          return cloneValue(result);
+        },
+        start(asset, emitter, particleOptions = {}) {
+          const request = { asset, emitter, options: cloneValue(particleOptions) };
+          const result = particles.execute("start", asset, emitter, particleOptions);
+          services.push({ payload: { request, result: cloneValue(result) }, service: "particles.start" });
+          return cloneValue(result);
+        },
+        stop(asset, emitter) {
+          const request = { asset, emitter };
+          const result = particles.execute("stop", asset, emitter);
+          services.push({ payload: { request, result: cloneValue(result) }, service: "particles.stop" });
+          return cloneValue(result);
         },
       },
       assets: {
@@ -1282,6 +1332,92 @@ function emptyLocalData(): ILocalDataIr {
     settings: [],
     version: "0.1.0",
   };
+}
+
+function createParticleCommandService(assets: IAssetsManifest | undefined): {
+  execute(command: IParticleCommandResult["command"], assetId: string, emitterId: string, options?: IParticleCommandOptions): IParticleCommandResult;
+} {
+  const active = new Map<string, IParticleCommandResult>();
+  const emitters = new Map<string, { lifetimeSeconds: number; maxParticles: number; ratePerSecond: number }>();
+  for (const asset of assets?.assets ?? []) {
+    if (asset.kind !== "model") {
+      continue;
+    }
+    for (const emitter of asset.particleEmitters ?? []) {
+      emitters.set(`${asset.id}/${emitter.id}`, {
+        lifetimeSeconds: emitter.lifetimeSeconds,
+        maxParticles: emitter.maxParticles,
+        ratePerSecond: emitter.ratePerSecond,
+      });
+    }
+  }
+
+  return {
+    execute(command, assetId, emitterId, options = {}) {
+      const key = `${assetId}/${emitterId}`;
+      const emitter = emitters.get(key);
+      const seed = stableParticleSeed(options.seed ?? `${key}/${command}`);
+      if (emitter === undefined) {
+        return {
+          accepted: false,
+          active: false,
+          asset: assetId,
+          command,
+          count: 0,
+          emitter: emitterId,
+          maxParticles: 0,
+          seed,
+          status: "missing-emitter",
+        };
+      }
+      const requestedCount = command === "stop" || command === "reset"
+        ? 0
+        : options.count ?? Math.max(1, Math.floor(emitter.ratePerSecond * emitter.lifetimeSeconds));
+      const count = Math.min(emitter.maxParticles, Math.max(0, Math.floor(Number.isFinite(requestedCount) ? requestedCount : 0)));
+      const result: IParticleCommandResult = {
+        accepted: true,
+        active: command === "start" || command === "burst",
+        asset: assetId,
+        command,
+        count,
+        emitter: emitterId,
+        maxParticles: emitter.maxParticles,
+        seed,
+        status: particleCommandStatus(command),
+      };
+      if (command === "stop" || command === "reset") {
+        active.delete(key);
+      } else {
+        active.set(key, result);
+      }
+      return cloneValue(result);
+    },
+  };
+}
+
+function particleCommandStatus(command: IParticleCommandResult["command"]): IParticleCommandResult["status"] {
+  switch (command) {
+    case "burst":
+      return "burst";
+    case "reset":
+      return "reset";
+    case "start":
+      return "started";
+    case "stop":
+      return "stopped";
+  }
+}
+
+function stableParticleSeed(value: number | string): number {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return Math.abs(Math.floor(value)) >>> 0;
+  }
+  let hash = 2166136261;
+  for (const char of String(value)) {
+    hash ^= char.charCodeAt(0);
+    hash = Math.imul(hash, 16777619);
+  }
+  return hash >>> 0;
 }
 
 function createScriptUiState(ui: IUiIr | undefined): {

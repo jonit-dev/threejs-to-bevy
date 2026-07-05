@@ -1212,6 +1212,17 @@ dynamic navmesh rebakes, off-mesh links, and crowd steering, and writes JSON
 reports plus a visual contact sheet under
 `tools/verify/artifacts/animation-physics-residuals/`. The same gate is part of
 `pnpm verify:release`.
+The animation/morph/mask/VFX polish slice also promotes script-triggered
+bounded particle commands as a ThreeNative-owned service contract:
+`particles.start`, `particles.stop`, `particles.burst`, and `particles.reset`
+execute only against declared emitters, return deterministic
+accepted/count/seed/status payloads in web and Bevy service logs, clamp counts
+to authored max-count/rate/lifetime metadata, and never expose backend particle
+handles. The residual gate records matching VFX command observations in the
+web/native JSON reports and contact sheet. Arbitrary blend trees, IK,
+retargeting, raw backend animation graphs, and native particle-system handles
+remain diagnostic-only boundaries unless a later PRD promotes a narrower
+portable contract.
 
 Post-V10 input/UI/platform polish now has a focused evidence gate:
 `pnpm verify:input-ui-polish`. The gate validates

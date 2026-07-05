@@ -78,13 +78,13 @@ test("should accept built-in transform system access without custom schema", asy
   }
 });
 
-test("should accept v7 physics, picking, character, and animation control services", async () => {
+test("should accept v7 physics, picking, character, particles, and animation control services", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-ir-systems-v7-services-"));
   try {
     await writeBundle(root, {
       commands: [],
       reads: ["Transform"],
-      services: ["animation.play", "animation.query", "animation.stop", "character.move", "physics.overlap", "physics.raycast", "physics.shapeCast", "picking.mesh", "picking.pointerRay"],
+      services: ["animation.play", "animation.query", "animation.stop", "character.move", "particles.burst", "particles.reset", "particles.start", "particles.stop", "physics.overlap", "physics.raycast", "physics.shapeCast", "picking.mesh", "picking.pointerRay"],
       writes: ["Transform"],
     });
 

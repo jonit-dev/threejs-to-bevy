@@ -92,6 +92,53 @@ function __tnInvokeSystem(options) {
       ? { accepted: true, asset: clone(asset), id, status: "ready" }
       : { accepted: false, asset: null, id, status: "missing" };
   };
+  const particleEmitters = new Map();
+  for (const asset of data.assets || []) {
+    for (const emitter of asset.particleEmitters || []) {
+      particleEmitters.set(`${asset.id}/${emitter.id}`, {
+        lifetimeSeconds: Number(emitter.lifetimeSeconds || 0),
+        maxParticles: Math.max(0, Math.floor(Number(emitter.maxParticles || 0))),
+        ratePerSecond: Number(emitter.ratePerSecond || 0)
+      });
+    }
+  }
+  const particleStates = {};
+  const particleSeed = (value) => {
+    if (Number.isFinite(Number(value)) && typeof value !== "string") return Math.abs(Math.floor(Number(value))) >>> 0;
+    let hash = 2166136261;
+    for (const char of String(value)) {
+      hash ^= char.charCodeAt(0);
+      hash = Math.imul(hash, 16777619);
+    }
+    return hash >>> 0;
+  };
+  const particleStatus = (command) => command === "start" ? "started" : (command === "stop" ? "stopped" : command);
+  const particleCommand = (command, asset, emitter, options = {}) => {
+    const key = `${asset}/${emitter}`;
+    const declaration = particleEmitters.get(key);
+    const seed = particleSeed(options.seed ?? `${key}/${command}`);
+    if (!declaration) {
+      return { accepted: false, active: false, asset, command, count: 0, emitter, maxParticles: 0, seed, status: "missing-emitter" };
+    }
+    const requested = command === "stop" || command === "reset"
+      ? 0
+      : (options.count ?? Math.max(1, Math.floor(declaration.ratePerSecond * declaration.lifetimeSeconds)));
+    const numericCount = Number.isFinite(Number(requested)) ? Number(requested) : 0;
+    const result = {
+      accepted: true,
+      active: command === "start" || command === "burst",
+      asset,
+      command,
+      count: Math.min(declaration.maxParticles, Math.max(0, Math.floor(numericCount))),
+      emitter,
+      maxParticles: declaration.maxParticles,
+      seed,
+      status: particleStatus(command)
+    };
+    if (command === "stop" || command === "reset") delete particleStates[key];
+    else particleStates[key] = clone(result);
+    return clone(result);
+  };
   const changedValues = (value, entityId) => {
     if (Array.isArray(value)) return value.filter((item) => typeof item === "string");
     if (!value || typeof value !== "object") return [];
@@ -952,6 +999,32 @@ function __tnInvokeSystem(options) {
         const request = { id: normalize(id) };
         const result = loadAsset(request.id);
         effects.services.push({ service: "assets.load", payload: { request, result } });
+        return clone(result);
+      }
+    },
+    particles: {
+      burst(asset, emitter, options = {}) {
+        const request = { asset, emitter, options: clone(options) };
+        const result = particleCommand("burst", asset, emitter, options);
+        effects.services.push({ service: "particles.burst", payload: { request, result: clone(result) } });
+        return clone(result);
+      },
+      reset(asset, emitter, options = {}) {
+        const request = { asset, emitter, options: clone(options) };
+        const result = particleCommand("reset", asset, emitter, options);
+        effects.services.push({ service: "particles.reset", payload: { request, result: clone(result) } });
+        return clone(result);
+      },
+      start(asset, emitter, options = {}) {
+        const request = { asset, emitter, options: clone(options) };
+        const result = particleCommand("start", asset, emitter, options);
+        effects.services.push({ service: "particles.start", payload: { request, result: clone(result) } });
+        return clone(result);
+      },
+      stop(asset, emitter) {
+        const request = { asset, emitter };
+        const result = particleCommand("stop", asset, emitter);
+        effects.services.push({ service: "particles.stop", payload: { request, result: clone(result) } });
         return clone(result);
       }
     },

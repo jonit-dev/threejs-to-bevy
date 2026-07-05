@@ -3,12 +3,12 @@ use serde_json::Value;
 use threenative_loader::{AssetIr, LoadedBundle, MorphKeyframeIr};
 
 use crate::{
-    animation::{sample_transform_animations, TransformAnimationSample},
-    character::{trace_character_controllers, CharacterTraceAxis, CharacterTraceObservation},
-    navigation::{trace_navigation_paths, NavigationPathResult},
+    animation::{TransformAnimationSample, sample_transform_animations},
+    character::{CharacterTraceAxis, CharacterTraceObservation, trace_character_controllers},
+    navigation::{NavigationPathResult, trace_navigation_paths},
     physics::{
-        trace_physics_joints, trace_rigid_body_primitives, PhysicsJointObservation,
-        RigidBodyTraceObservation,
+        PhysicsJointObservation, RigidBodyTraceObservation, trace_physics_joints,
+        trace_rigid_body_primitives,
     },
 };
 
@@ -28,6 +28,7 @@ pub struct AnimationResidualReport {
     pub masks: Vec<AnimationMaskObservation>,
     pub morph_targets: Vec<MorphTargetObservation>,
     pub property_samples: Vec<TransformAnimationSample>,
+    pub vfx_commands: Vec<ParticleCommandObservation>,
 }
 
 #[derive(Debug, Serialize)]
@@ -47,6 +48,18 @@ pub struct MorphTargetObservation {
     pub target: String,
     pub time_seconds: f32,
     pub weight: f32,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ParticleCommandObservation {
+    pub asset: String,
+    pub command: String,
+    pub count: u32,
+    pub emitter: String,
+    pub max_particles: u32,
+    pub seed: u32,
+    pub status: String,
 }
 
 #[derive(Debug, Serialize)]
@@ -99,6 +112,7 @@ pub fn trace_animation_physics_residuals(bundle: &LoadedBundle) -> AnimationPhys
             masks: trace_animation_masks(bundle),
             morph_targets: trace_morph_targets(bundle, 0.5),
             property_samples: sample_transform_animations(bundle, 1.0),
+            vfx_commands: trace_particle_commands(bundle),
         },
         navigation: trace_navigation_residuals(bundle),
         physics: PhysicsResidualReport {
@@ -187,6 +201,42 @@ fn morph_observations_for_asset(asset: &AssetIr, time_seconds: f32) -> Vec<Morph
             weight: sample_weight(&clip.keyframes, time_seconds),
         })
         .collect()
+}
+
+fn trace_particle_commands(bundle: &LoadedBundle) -> Vec<ParticleCommandObservation> {
+    let mut observations = bundle
+        .assets
+        .assets
+        .iter()
+        .filter(|asset| asset.kind == "model")
+        .flat_map(|asset| {
+            asset
+                .particle_emitters
+                .as_deref()
+                .unwrap_or(&[])
+                .iter()
+                .map(|emitter| {
+                    let count = ((emitter.rate_per_second * emitter.lifetime_seconds).floor() as u32)
+                        .max(1)
+                        .min(emitter.max_particles);
+                    ParticleCommandObservation {
+                        asset: asset.id.clone(),
+                        command: "burst".to_owned(),
+                        count,
+                        emitter: emitter.id.clone(),
+                        max_particles: emitter.max_particles,
+                        seed: stable_seed(&format!("{}/{}/burst", asset.id, emitter.id)),
+                        status: "burst".to_owned(),
+                    }
+                })
+        })
+        .collect::<Vec<_>>();
+    observations.sort_by(|left, right| {
+        left.asset
+            .cmp(&right.asset)
+            .then(left.emitter.cmp(&right.emitter))
+    });
+    observations
 }
 
 fn trace_navigation_residuals(bundle: &LoadedBundle) -> NavigationResidualReport {
@@ -308,4 +358,13 @@ fn vec3_field(value: &Value, key: &str) -> [f32; 3] {
 
 fn round(value: f32) -> f32 {
     (value * 1_000_000.0).round() / 1_000_000.0
+}
+
+fn stable_seed(value: &str) -> u32 {
+    let mut hash = 2_166_136_261_u32;
+    for byte in value.bytes() {
+        hash ^= u32::from(byte);
+        hash = hash.wrapping_mul(16_777_619);
+    }
+    hash
 }

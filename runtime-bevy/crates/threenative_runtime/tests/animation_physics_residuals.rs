@@ -20,6 +20,9 @@ fn should_report_morph_target_weight_at_sampled_frame() {
     assert_eq!(report.animation.morph_targets[0].time_seconds, 0.5);
     assert_eq!(report.animation.morph_targets[0].weight, 0.5);
     assert_eq!(report.animation.masks[0].clips, vec!["wave".to_owned()]);
+    assert_eq!(report.animation.vfx_commands[0].asset, "model.hero");
+    assert_eq!(report.animation.vfx_commands[0].emitter, "dust");
+    assert_eq!(report.animation.vfx_commands[0].count, 4);
 }
 
 #[test]
@@ -89,6 +92,7 @@ fn write_residual_bundle(name: &str) -> PathBuf {
       "masks": [{ "id": "upperBody", "joints": ["Spine", "Arm.L", "Arm.R"] }],
       "morphClips": [{ "id": "smile", "target": "Smile", "keyframes": [{ "timeSeconds": 0, "weight": 0 }, { "timeSeconds": 1, "weight": 1 }] }],
       "morphTargets": [{ "defaultWeight": 0, "id": "Smile" }],
+      "particleEmitters": [{ "id": "dust", "lifetimeSeconds": 0.5, "maxParticles": 8, "ratePerSecond": 8, "shape": "point" }],
       "path": "assets/hero.glb",
       "skeleton": { "joints": ["Root", "Spine", "Arm.L", "Arm.R"] }
     }

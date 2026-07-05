@@ -49,9 +49,6 @@ backlog unless a nested PRD says it has been superseded.
 
 ### Advanced And Boundary Work
 
-- [Animation, Morph, Mask, and Lightweight VFX Polish](other/animation-morph-mask-vfx-polish.md):
-  morph target names/weights, animation masks, bounded blend residuals, and
-  ThreeNative-owned particle/VFX commands with deterministic web/Bevy proof.
 - [Advanced Visual Effects, Lighting, and Material Depth](other/advanced-visual-effects-lighting-material-depth.md):
   umbrella reference for advanced lighting, material, atmosphere,
   post-processing, deferred renderer, virtual geometry, and custom
@@ -76,6 +73,9 @@ backlog unless a nested PRD says it has been superseded.
   target-profile texture variant diagnostics, deterministic baseline fallback
   selection, and continued diagnostic boundaries for arbitrary GPU instance
   buffers.
+- [Animation, Morph, Mask, and Lightweight VFX Polish](done/other/animation-morph-mask-vfx-polish.md):
+  morph target names/weights, animation masks, bounded blend residuals, and
+  ThreeNative-owned particle/VFX commands with deterministic web/Bevy proof.
 
 Completed PRDs live under `docs/PRDs/done/`. They remain linked for context,
 evidence trails, and source-boundary decisions, but they are not active backlog.

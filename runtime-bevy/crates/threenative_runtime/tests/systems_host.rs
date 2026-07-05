@@ -389,6 +389,40 @@ fn systems_host_should_expose_animation_query_and_stop_services() {
 }
 
 #[test]
+fn systems_host_should_expose_bounded_particle_command_services() {
+    let root = write_particle_service_bundle("particle-command-context");
+    let mut bundle = load_bundle(&root).expect("particle command bundle should load");
+
+    let run = run_native_systems_once(&mut bundle, time()).expect("system should run");
+
+    assert_eq!(
+        bundle.world.resources.get("ParticleReport"),
+        Some(&serde_json::json!({
+            "burstCount": 8,
+            "burstStatus": "burst",
+            "resetStatus": "reset",
+            "startCount": 4,
+            "startStatus": "started",
+            "stopStatus": "stopped"
+        }))
+    );
+    let service_names: Vec<_> = run.logs[0]
+        .entries
+        .iter()
+        .filter_map(|entry| entry.service.as_deref())
+        .collect();
+    assert_eq!(
+        service_names,
+        vec![
+            "particles.burst",
+            "particles.reset",
+            "particles.start",
+            "particles.stop"
+        ]
+    );
+}
+
+#[test]
 fn should_stop_animation_state_when_stop_service_is_called() {
     let root = write_animation_control_service_bundle("animation-control-stop-context");
     let mut bundle = load_bundle(&root).expect("scripted bundle should load");
@@ -709,11 +743,7 @@ fn systems_host_should_keep_unsupported_diagnostic_for_unavailable_builds() {
     assert!(diagnostic.message.contains("QuickJS host"));
 }
 
-fn loop_options(
-    delta: f32,
-    fixed_delta: f32,
-    paused: bool,
-) -> NativeGameLoopRunOptions<'static> {
+fn loop_options(delta: f32, fixed_delta: f32, paused: bool) -> NativeGameLoopRunOptions<'static> {
     NativeGameLoopRunOptions {
         delta,
         fixed_delta,
@@ -2232,6 +2262,86 @@ fn write_context_ergonomics_bundle(name: &str) -> PathBuf {
 };
 export const systemIds = Object.freeze({ "system_ergonomics": "ergonomics" });
 export const systems = Object.freeze({ "system_ergonomics": system_ergonomics });
+"#,
+    )
+    .expect("script bundle should be written");
+    root
+}
+
+fn write_particle_service_bundle(name: &str) -> PathBuf {
+    let root = root(name);
+    write_base_bundle(&root, true);
+    fs::create_dir_all(root.join("assets")).expect("asset dir should exist");
+    fs::write(root.join("assets/hero.glb"), "model").expect("model should be written");
+    write_json(
+        &root,
+        "assets.manifest.json",
+        r#"{
+  "schema": "threenative.assets",
+  "version": "0.1.0",
+  "assets": [
+    {
+      "format": "glb",
+      "id": "model.hero",
+      "kind": "model",
+      "particleEmitters": [{ "id": "dust", "lifetimeSeconds": 0.5, "maxParticles": 8, "ratePerSecond": 8, "shape": "point" }],
+      "path": "assets/hero.glb"
+    }
+  ]
+}"#,
+    );
+    write_json(
+        &root,
+        "world.ir.json",
+        r#"{
+  "schema": "threenative.world",
+  "version": "0.1.0",
+  "entities": [],
+  "resources": { "ParticleReport": {} }
+}"#,
+    );
+    write_json(
+        &root,
+        "systems.ir.json",
+        r#"{
+  "schema": "threenative.systems",
+  "version": "0.1.0",
+  "systems": [
+    {
+      "name": "particleCommands",
+      "schedule": "update",
+      "reads": [],
+      "writes": [],
+      "queries": [],
+      "commands": [],
+      "eventReads": [],
+      "eventWrites": [],
+      "resourceReads": ["ParticleReport"],
+      "resourceWrites": ["ParticleReport"],
+      "services": ["particles.start", "particles.burst", "particles.stop", "particles.reset"],
+      "script": { "bundle": "scripts.bundle.js", "exportName": "system_particleCommands" }
+    }
+  ]
+}"#,
+    );
+    fs::write(
+        root.join("scripts.bundle.js"),
+        r#"const system_particleCommands = (ctx) => {
+  const started = ctx.particles.start("model.hero", "dust", { seed: 7 });
+  const burst = ctx.particles.burst("model.hero", "dust", { count: 99, seed: "impact" });
+  const stopped = ctx.particles.stop("model.hero", "dust");
+  const reset = ctx.particles.reset("model.hero", "dust");
+  ctx.resources.set("ParticleReport", {
+    burstCount: burst.count,
+    burstStatus: burst.status,
+    resetStatus: reset.status,
+    startCount: started.count,
+    startStatus: started.status,
+    stopStatus: stopped.status
+  });
+};
+export const systemIds = Object.freeze({ "system_particleCommands": "particleCommands" });
+export const systems = Object.freeze({ "system_particleCommands": system_particleCommands });
 "#,
     )
     .expect("script bundle should be written");

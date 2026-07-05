@@ -108,12 +108,24 @@ pub struct NativeAssetDeclaration {
     pub format: String,
     pub id: String,
     pub kind: String,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub particle_emitters: Vec<NativeParticleEmitterDeclaration>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub path: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub primitive: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub size: Option<Vec<f32>>,
+}
+
+#[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct NativeParticleEmitterDeclaration {
+    pub id: String,
+    pub lifetime_seconds: f32,
+    pub max_particles: u32,
+    pub rate_per_second: f32,
+    pub shape: String,
 }
 
 #[derive(Clone, Debug, Serialize)]
@@ -413,6 +425,19 @@ pub fn asset_declarations(bundle: &LoadedBundle) -> Vec<NativeAssetDeclaration> 
             format: asset.format.clone(),
             id: asset.id.clone(),
             kind: asset.kind.clone(),
+            particle_emitters: asset
+                .particle_emitters
+                .as_deref()
+                .unwrap_or(&[])
+                .iter()
+                .map(|emitter| NativeParticleEmitterDeclaration {
+                    id: emitter.id.clone(),
+                    lifetime_seconds: emitter.lifetime_seconds,
+                    max_particles: emitter.max_particles,
+                    rate_per_second: emitter.rate_per_second,
+                    shape: emitter.shape.clone(),
+                })
+                .collect(),
             path: asset.path.clone(),
             primitive: asset.primitive.clone(),
             size: asset.size.clone(),

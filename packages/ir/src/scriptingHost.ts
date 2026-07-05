@@ -5,7 +5,7 @@ export type ScriptHostSupport = "implemented" | "unsupported";
 export interface IScriptHostServiceMatrixEntry {
   bevy: ScriptHostSupport;
   context: string;
-  domain: "animation" | "assets" | "audio" | "character" | "navigation" | "persistence" | "physics" | "picking" | "scene" | "settings" | "ui";
+  domain: "animation" | "assets" | "audio" | "character" | "navigation" | "particles" | "persistence" | "physics" | "picking" | "scene" | "settings" | "ui";
   service: IrSystemService;
   web: ScriptHostSupport;
 }
@@ -20,6 +20,10 @@ export const SCRIPT_HOST_SERVICE_MATRIX = [
   { bevy: "implemented", context: "ctx.audio.stop", domain: "audio", service: "audio.stop", web: "implemented" },
   { bevy: "implemented", context: "ctx.character.move", domain: "character", service: "character.move", web: "implemented" },
   { bevy: "implemented", context: "ctx.navigation.path", domain: "navigation", service: "navigation.path", web: "implemented" },
+  { bevy: "implemented", context: "ctx.particles.burst", domain: "particles", service: "particles.burst", web: "implemented" },
+  { bevy: "implemented", context: "ctx.particles.reset", domain: "particles", service: "particles.reset", web: "implemented" },
+  { bevy: "implemented", context: "ctx.particles.start", domain: "particles", service: "particles.start", web: "implemented" },
+  { bevy: "implemented", context: "ctx.particles.stop", domain: "particles", service: "particles.stop", web: "implemented" },
   { bevy: "implemented", context: "ctx.persistence.delete", domain: "persistence", service: "persistence.delete", web: "implemented" },
   { bevy: "implemented", context: "ctx.persistence.listSlots", domain: "persistence", service: "persistence.listSlots", web: "implemented" },
   { bevy: "implemented", context: "ctx.persistence.load", domain: "persistence", service: "persistence.load", web: "implemented" },

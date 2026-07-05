@@ -283,6 +283,45 @@ test("should log script audio service calls", () => {
   ]);
 });
 
+test("should execute bounded particle command services", () => {
+  const { context, services } = createSystemContext(makeWorld(), { assets: makeAssets(), delta: 0.016, fixedDelta: 0.016 });
+
+  const started = context.particles.start("model.hero", "dust", { seed: 7 });
+  const burst = context.particles.burst("model.hero", "dust", { count: 99, seed: "impact" });
+  const stopped = context.particles.stop("model.hero", "dust");
+  const reset = context.particles.reset("model.hero", "dust");
+
+  assert.deepEqual(started, {
+    accepted: true,
+    active: true,
+    asset: "model.hero",
+    command: "start",
+    count: 4,
+    emitter: "dust",
+    maxParticles: 8,
+    seed: 7,
+    status: "started",
+  });
+  assert.deepEqual(burst, {
+    accepted: true,
+    active: true,
+    asset: "model.hero",
+    command: "burst",
+    count: 8,
+    emitter: "dust",
+    maxParticles: 8,
+    seed: 510767767,
+    status: "burst",
+  });
+  assert.equal(stopped.status, "stopped");
+  assert.equal(reset.status, "reset");
+  assert.deepEqual(services.map((service) => service.service), ["particles.start", "particles.burst", "particles.stop", "particles.reset"]);
+  assert.deepEqual(services[1]?.payload, {
+    request: { asset: "model.hero", emitter: "dust", options: { count: 99, seed: "impact" } },
+    result: burst,
+  });
+});
+
 test("should stop animation state when stop service is called", () => {
   const { context } = createSystemContext(makeWorld(), { delta: 0.016, fixedDelta: 0.016 });
 
@@ -773,6 +812,13 @@ function makeAssets() {
   return {
     assets: [
       { format: "generated" as const, id: "mesh.crate", kind: "mesh" as const, primitive: "box" as const, size: [1, 1, 1] },
+      {
+        format: "glb" as const,
+        id: "model.hero",
+        kind: "model" as const,
+        particleEmitters: [{ id: "dust", lifetimeSeconds: 0.5, maxParticles: 8, ratePerSecond: 8, shape: "point" as const }],
+        path: "assets/hero.glb",
+      },
     ],
     schema: "threenative.assets" as const,
     version: "0.1.0" as const,
