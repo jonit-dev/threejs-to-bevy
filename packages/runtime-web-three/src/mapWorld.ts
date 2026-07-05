@@ -15,6 +15,7 @@ import {
 import type { IWebBundle } from "./loadBundle.js";
 import { atmosphereColorManagementExposure } from "./rendering.js";
 import type { IRenderTargetRegistry } from "./renderTargets.js";
+import type { ISystemEffectLogEntry } from "./systems/log.js";
 import { bundleUrl, isLoadableModelFormat } from "./worldMapping/assets.js";
 import { colorToThree } from "./worldMapping/colors.js";
 import { attachWorldHierarchy } from "./worldMapping/hierarchy.js";
@@ -466,7 +467,9 @@ function scaleWorldLightIntensity(
 function attachLoadedModel(object: THREE.Object3D, asset: Extract<IAssetIr, { kind: "model" }>, gltf: IGltfModel, shadowSettings: IShadowSettings): void {
   const model = gltf.scene;
   model.name = model.name === "" ? `model:${asset.id}` : model.name;
-  prepareLoadedModel(model, shadowSettings);
+  const overrideMaterial = object instanceof THREE.Mesh ? object.material : undefined;
+  const overrideMaterialId = object.userData.threeNativeMaterialId as string | undefined;
+  prepareLoadedModel(model, shadowSettings, overrideMaterial, overrideMaterialId);
   clearPlaceholderGeometry(object);
   object.add(model);
 
@@ -486,16 +489,142 @@ function attachLoadedModel(object: THREE.Object3D, asset: Extract<IAssetIr, { ki
   action.play();
   object.userData.threeNativeAnimationMixer = mixer;
   object.userData.threeNativeAnimationAction = action;
+  object.userData.threeNativeAnimationAsset = asset.id;
   object.userData.threeNativeAnimationClip = clip.name;
+  object.userData.threeNativeAnimationClips = gltf.animations ?? [];
 }
 
-function prepareLoadedModel(model: THREE.Object3D, shadowSettings: IShadowSettings): void {
+export function applyAnimationServiceEffects(mapped: IThreeWorld, entries: readonly ISystemEffectLogEntry[]): void {
+  for (const entry of entries) {
+    if (entry.kind === "service" && entry.service === "animation.play") {
+      applyAnimationPlayService(mapped, entry.payload);
+    }
+  }
+}
+
+function applyAnimationPlayService(mapped: IThreeWorld, payload: unknown): void {
+  if (!isRecord(payload) || !isRecord(payload.request) || !isRecord(payload.result)) {
+    return;
+  }
+  const entityId = typeof payload.request.entity === "string" ? payload.request.entity : undefined;
+  const object = entityId === undefined ? undefined : mapped.objectsById.get(entityId);
+  const mixer = object?.userData.threeNativeAnimationMixer as THREE.AnimationMixer | undefined;
+  const clips = object?.userData.threeNativeAnimationClips as THREE.AnimationClip[] | undefined;
+  if (object === undefined || mixer === undefined || clips === undefined) {
+    return;
+  }
+  const sourceClip = typeof payload.result.sourceClip === "string"
+    ? payload.result.sourceClip
+    : typeof payload.request.clip === "string"
+      ? payload.request.clip
+      : undefined;
+  if (sourceClip === undefined) {
+    return;
+  }
+  const speed = numberOr(payload.result.speed, 1);
+  const loop = payload.result.loop !== false;
+  const asset = typeof object.userData.threeNativeAnimationAsset === "string" ? object.userData.threeNativeAnimationAsset : "";
+  const clip = selectAnimationClip(clips, {
+    activeState: sourceClip,
+    asset,
+    clip: sourceClip,
+    loop,
+    sourceClip,
+    speed,
+    timeSeconds: 0,
+  });
+  if (clip === undefined) {
+    return;
+  }
+  if (object.userData.threeNativeAnimationClip === clip.name) {
+    const currentAction = object.userData.threeNativeAnimationAction as THREE.AnimationAction | undefined;
+    if (currentAction !== undefined) {
+      currentAction.timeScale = speed;
+      currentAction.setLoop(loop ? THREE.LoopRepeat : THREE.LoopOnce, loop ? Infinity : 1);
+    }
+    return;
+  }
+  const previousAction = object.userData.threeNativeAnimationAction as THREE.AnimationAction | undefined;
+  previousAction?.fadeOut(0.12);
+  const action = mixer.clipAction(clip);
+  action.reset();
+  action.setLoop(loop ? THREE.LoopRepeat : THREE.LoopOnce, loop ? Infinity : 1);
+  action.clampWhenFinished = !loop;
+  action.timeScale = speed;
+  action.fadeIn(0.12).play();
+  object.userData.threeNativeAnimationAction = action;
+  object.userData.threeNativeAnimationClip = clip.name;
+  object.userData.threeNativeAnimation = {
+    activeState: typeof payload.result.activeState === "string" ? payload.result.activeState : clip.name,
+    asset,
+    clip: typeof payload.result.clip === "string" ? payload.result.clip : clip.name,
+    loop,
+    sourceClip: clip.name,
+    speed,
+    timeSeconds: 0,
+  } satisfies IAnimationPlaybackState;
+}
+
+function numberOr(value: unknown, fallback: number): number {
+  return typeof value === "number" && Number.isFinite(value) ? value : fallback;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function prepareLoadedModel(
+  model: THREE.Object3D,
+  shadowSettings: IShadowSettings,
+  overrideMaterial: THREE.Material | THREE.Material[] | undefined,
+  overrideMaterialId: string | undefined,
+): void {
   model.traverse((child) => {
     if (child instanceof THREE.Mesh) {
       child.castShadow = shadowSettings.castShadow ?? true;
       child.receiveShadow = shadowSettings.receiveShadow ?? true;
+      if (overrideMaterial !== undefined) {
+        child.material = applyLoadedModelMaterialOverride(child.material, overrideMaterial);
+        if (overrideMaterialId !== undefined) {
+          child.userData.threeNativeMaterialId = overrideMaterialId;
+        }
+      }
     }
   });
+}
+
+function applyLoadedModelMaterialOverride(
+  loadedMaterial: THREE.Material | THREE.Material[],
+  overrideMaterial: THREE.Material | THREE.Material[],
+): THREE.Material | THREE.Material[] {
+  if (Array.isArray(loadedMaterial)) {
+    return loadedMaterial.map((material, index) => mergeLoadedModelMaterial(material, Array.isArray(overrideMaterial) ? overrideMaterial[index] ?? overrideMaterial[0] : overrideMaterial));
+  }
+  return mergeLoadedModelMaterial(loadedMaterial, Array.isArray(overrideMaterial) ? overrideMaterial[0] : overrideMaterial);
+}
+
+function mergeLoadedModelMaterial(loadedMaterial: THREE.Material, overrideMaterial: THREE.Material | undefined): THREE.Material {
+  const merged = loadedMaterial.clone();
+  if (overrideMaterial === undefined) {
+    return merged;
+  }
+  if ("color" in merged && "color" in overrideMaterial && merged.color instanceof THREE.Color && overrideMaterial.color instanceof THREE.Color) {
+    merged.color.copy(overrideMaterial.color);
+  }
+  if ("roughness" in merged && "roughness" in overrideMaterial && typeof overrideMaterial.roughness === "number") {
+    merged.roughness = overrideMaterial.roughness;
+  }
+  if ("metalness" in merged && "metalness" in overrideMaterial && typeof overrideMaterial.metalness === "number") {
+    merged.metalness = overrideMaterial.metalness;
+  }
+  if ("emissive" in merged && "emissive" in overrideMaterial && merged.emissive instanceof THREE.Color && overrideMaterial.emissive instanceof THREE.Color) {
+    merged.emissive.copy(overrideMaterial.emissive);
+  }
+  if ("emissiveIntensity" in merged && "emissiveIntensity" in overrideMaterial && typeof overrideMaterial.emissiveIntensity === "number") {
+    merged.emissiveIntensity = overrideMaterial.emissiveIntensity;
+  }
+  merged.needsUpdate = true;
+  return merged;
 }
 
 function applyShadowSettings(object: THREE.Object3D, shadowSettings: IShadowSettings): void {

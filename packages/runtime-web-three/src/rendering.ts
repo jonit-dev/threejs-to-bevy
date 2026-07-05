@@ -59,12 +59,26 @@ export function applyAtmosphereProfile(scene: THREE.Scene, profile: IAtmosphereP
   }
   const sun = new THREE.DirectionalLight(toThreeColor(profile.sun.color), profile.sun.intensity);
   sun.name = profile.sun.id;
-  sun.position.set(-profile.sun.direction[0], -profile.sun.direction[1], -profile.sun.direction[2]);
+  const shadowDistance = Math.max(1, profile.shadows.maxDistance);
+  sun.position.set(
+    -profile.sun.direction[0] * shadowDistance,
+    -profile.sun.direction[1] * shadowDistance,
+    -profile.sun.direction[2] * shadowDistance,
+  );
   sun.castShadow = profile.sun.castsShadow && profile.shadows.enabled;
   sun.shadow.mapSize.width = profile.shadows.mapSize;
   sun.shadow.mapSize.height = profile.shadows.mapSize;
   sun.shadow.bias = profile.shadows.bias;
   sun.shadow.normalBias = profile.shadows.normalBias;
+  sun.shadow.camera.near = 0.1;
+  sun.shadow.camera.far = shadowDistance * 2;
+  sun.shadow.camera.left = -shadowDistance / 2;
+  sun.shadow.camera.right = shadowDistance / 2;
+  sun.shadow.camera.top = shadowDistance / 2;
+  sun.shadow.camera.bottom = -shadowDistance / 2;
+  sun.shadow.camera.updateProjectionMatrix();
+  sun.target.name = `${profile.sun.id}.target`;
+  scene.add(sun.target);
   scene.add(sun);
   scene.add(new THREE.AmbientLight(toThreeColor(profile.ambient.color), profile.ambient.intensity));
 

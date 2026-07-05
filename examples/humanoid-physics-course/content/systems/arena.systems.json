@@ -1,0 +1,56 @@
+{
+  "schema": "threenative.systems",
+  "version": "0.1.0",
+  "id": "arena-systems",
+  "systems": [
+    {
+      "id": "humanoid-course",
+      "schedule": "fixedUpdate",
+      "reads": [
+        "Checkpoint",
+        "FinishZone",
+        "SweeperHazard"
+      ],
+      "writes": [
+        "CoursePlayer",
+        "RigidBody",
+        "Transform"
+      ],
+      "resourceReads": [
+        "GameState"
+      ],
+      "resourceWrites": [
+        "GameState"
+      ],
+      "services": [
+        "character.move",
+        "animation.play"
+      ],
+      "script": {
+        "module": "src/scripts/player.ts",
+        "export": "updateHumanoidCourse"
+      }
+    },
+    {
+      "id": "third-person-camera",
+      "schedule": "postUpdate",
+      "reads": [
+        "CoursePlayer",
+        "Transform"
+      ],
+      "writes": [
+        "Transform"
+      ],
+      "resourceReads": [
+        "GameState"
+      ],
+      "resourceWrites": [
+        "GameState"
+      ],
+      "script": {
+        "module": "src/scripts/player.ts",
+        "export": "updateThirdPersonCamera"
+      }
+    }
+  ]
+}

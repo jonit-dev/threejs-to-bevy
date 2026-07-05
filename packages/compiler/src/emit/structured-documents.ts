@@ -360,6 +360,12 @@ function readNumberArray(value: unknown): number[] | undefined {
   return Array.isArray(value) && value.every((item) => typeof item === "number" && Number.isFinite(item)) ? value : undefined;
 }
 
+function readVec2(value: unknown): [number, number] | undefined {
+  return Array.isArray(value) && value.length === 2 && value.every((item) => typeof item === "number" && Number.isFinite(item))
+    ? [value[0], value[1]]
+    : undefined;
+}
+
 function readRecordList(value: unknown): Record<string, unknown>[] {
   return Array.isArray(value) ? value.filter(isRecord) : [];
 }

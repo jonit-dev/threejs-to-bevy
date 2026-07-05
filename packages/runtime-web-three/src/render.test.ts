@@ -6,7 +6,7 @@ import type { IRuntimeConfigIr } from "@threenative/ir";
 
 import type { IWebBundle } from "./loadBundle.js";
 import { mapWorld } from "./mapWorld.js";
-import { applyRendererColorManagement, applyRenderLookSceneDefaults, collectWebRuntimeDiagnostics, createRenderedParticleObjects, createWebRenderLifecycle, renderCameraViews, webBloomSettings, webDepthOfFieldSettings, webRendererParameters } from "./render.js";
+import { applyRendererColorManagement, applyRendererShadowSettings, applyRenderLookSceneDefaults, collectWebRuntimeDiagnostics, createRenderedParticleObjects, createWebRenderLifecycle, renderCameraViews, webBloomSettings, webDepthOfFieldSettings, webRendererParameters } from "./render.js";
 
 function runtimeConfig(
   antialias: NonNullable<IRuntimeConfigIr["renderer"]>["antialias"],
@@ -65,10 +65,22 @@ test("should let runtime color grading drive renderer tone mapping and exposure"
 function mockRenderer(): THREE.WebGLRenderer {
   return {
     outputColorSpace: THREE.NoColorSpace,
+    shadowMap: { enabled: false, type: THREE.BasicShadowMap },
     toneMapping: THREE.NoToneMapping,
     toneMappingExposure: 1,
   } as THREE.WebGLRenderer;
 }
+
+test("should enable renderer shadow maps from render look quality", () => {
+  const renderer = mockRenderer();
+  applyRendererShadowSettings(renderer, runtimeConfig("msaa4", { renderLook: { version: 1, profile: "balanced", overrides: { shadowQuality: "high" } } }));
+  assert.equal(renderer.shadowMap.enabled, true);
+  assert.equal(renderer.shadowMap.type, THREE.PCFSoftShadowMap);
+
+  applyRendererShadowSettings(renderer, runtimeConfig("none", { renderLook: { version: 1, profile: "parity", overrides: { shadowQuality: "off" } } }));
+  assert.equal(renderer.shadowMap.enabled, false);
+  assert.equal(renderer.shadowMap.type, THREE.BasicShadowMap);
+});
 
 test("should map runtime antialias modes to WebGL renderer parameters", () => {
   assert.deepEqual(webRendererParameters(runtimeConfig("none")), {

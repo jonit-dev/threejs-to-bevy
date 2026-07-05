@@ -1,0 +1,28 @@
+{
+  "name": "@threenative/example-humanoid-physics-course",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tn build",
+    "dev:web": "tn dev --target web",
+    "playtest": "tn playtest --json",
+    "game:plan": "tn game plan --goal \"UE5-style third-person humanoid physics obstacle test course with Soldier.glb, textured surfaces, physics crates, ramps, stairs, hazards, checkpoints, and readable HUD\" --project . --json > artifacts/game-production/plan.json",
+    "game:improve": "tn game improve --apply-plan artifacts/game-production/plan.json --project . --json",
+    "game:score": "tn game score --project . --json",
+    "game:qa": "tn game qa --project . --run-proof --json",
+    "game:release": "tn game release --project . --json",
+    "recipe:controller": "tn recipe third-person-controller --scene arena --entity player --camera camera.main --dry-run --json",
+    "validate": "tn validate",
+    "validate:authoring": "tn authoring validate --json",
+    "verify": "tn verify --frames 2 --json"
+  },
+  "dependencies": {
+    "@threenative/script-stdlib": "file:/home/joao/projects/threejs-to-bevy/packages/script-stdlib",
+    "@threenative/sdk": "file:/home/joao/projects/threejs-to-bevy/packages/sdk"
+  },
+  "devDependencies": {
+    "@threenative/cli": "file:.threenative/cli",
+    "@types/node": "^20.19.25",
+    "typescript": "^5.9.3"
+  }
+}

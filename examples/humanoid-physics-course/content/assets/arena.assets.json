@@ -1,0 +1,32 @@
+{
+  "schema": "threenative.assets",
+  "version": "0.1.0",
+  "id": "arena-assets",
+  "assets": [
+    {
+      "id": "model.soldier",
+      "type": "model",
+      "path": "assets/models/Soldier.glb",
+      "animations": [
+        { "id": "idle", "sourceClip": "Idle", "loop": true, "speed": 1 },
+        { "id": "run", "sourceClip": "Run", "loop": true, "speed": 1.15 },
+        { "id": "walk", "sourceClip": "Walk", "loop": true, "speed": 1.1 }
+      ]
+    },
+    {
+      "id": "tex.surface.ue-grid",
+      "type": "texture",
+      "path": "assets/textures/ue-test-surface.png",
+      "repeat": [24, 24],
+      "wrapS": "repeat",
+      "wrapT": "repeat",
+      "minFilter": "linearMipmapLinear",
+      "magFilter": "linear"
+    },
+    {
+      "id": "asset.goal-ping",
+      "path": "assets/goal-ping.wav",
+      "type": "audio"
+    }
+  ]
+}

@@ -1,0 +1,20 @@
+{
+  "schema": "threenative.meshes",
+  "version": "0.1.0",
+  "id": "arena-meshes",
+  "meshes": [
+    { "id": "mesh.floor", "kind": "primitive", "primitive": "box", "size": [12, 0.18, 18] },
+    { "id": "mesh.platform", "kind": "primitive", "primitive": "box", "size": [3.2, 0.28, 2.6] },
+    { "id": "mesh.step.low", "kind": "primitive", "primitive": "box", "size": [2.2, 0.22, 0.72] },
+    { "id": "mesh.step.mid", "kind": "primitive", "primitive": "box", "size": [2.2, 0.44, 0.72] },
+    { "id": "mesh.step.high", "kind": "primitive", "primitive": "box", "size": [2.2, 0.66, 0.72] },
+    { "id": "mesh.ramp", "kind": "primitive", "primitive": "box", "size": [2.5, 0.28, 2.4] },
+    { "id": "mesh.wall", "kind": "primitive", "primitive": "box", "size": [0.28, 1.45, 2.2] },
+    { "id": "mesh.low-wall", "kind": "primitive", "primitive": "box", "size": [2.4, 0.42, 0.32] },
+    { "id": "mesh.crate", "kind": "primitive", "primitive": "box", "size": [0.78, 0.78, 0.78] },
+    { "id": "mesh.hazard", "kind": "primitive", "primitive": "box", "size": [1.55, 0.2, 0.28] },
+    { "id": "mesh.checkpoint", "kind": "primitive", "primitive": "cylinder", "size": [0.52, 0.06] },
+    { "id": "mesh.marker", "kind": "primitive", "primitive": "box", "size": [0.12, 1.2, 0.12] },
+    { "id": "mesh.backdrop", "kind": "primitive", "primitive": "box", "size": [12, 2.4, 0.28] }
+  ]
+}

@@ -45,6 +45,36 @@ test("character trace should move and ground a controller from declared axes", (
   ]);
 });
 
+test("character trace should honor collider center offsets on feet-origin characters", () => {
+  const world = makeCharacterWorld();
+  const player = world.entities.find((entity) => entity.id === "player");
+  const floor = world.entities.find((entity) => entity.id === "floor");
+  if (floor !== undefined) {
+    floor.components.Collider = { kind: "box", size: [6, 1, 6] };
+  }
+  if (player !== undefined) {
+    // Feet-origin character: transform at the floor surface, capsule raised by center.
+    player.components.Collider = { center: [0, 1, 0], height: 2, kind: "capsule", radius: 0.34 };
+    player.components.Transform = { position: [0, 0.5, 0] };
+  }
+
+  const trace = traceCharacterControllers(world, {
+    axes: { MoveX: 0.5, MoveZ: 0 },
+    fixedDelta: 1,
+  });
+
+  assert.deepEqual(trace, [
+    {
+      desired: [1, 0.5, 0],
+      entity: "player",
+      groundEntity: "floor",
+      grounded: true,
+      resolved: [1, 0.5, 0],
+      start: [0, 0.5, 0],
+    },
+  ]);
+});
+
 test("character trace should stop before a blocking collider", () => {
   const trace = traceCharacterControllers(makeCharacterWorld(), {
     axes: { MoveX: 1, MoveZ: 0 },

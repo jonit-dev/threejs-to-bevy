@@ -1,0 +1,240 @@
+{
+  "schema": "threenative.scene",
+  "version": "0.1.0",
+  "id": "arena",
+  "entities": [
+    {
+      "id": "camera.main",
+      "transform": { "position": [0, 1.95, 8.65], "rotation": [-0.22, 0, 0] },
+      "components": {
+        "camera": { "mode": "perspective", "fovY": 62, "near": 0.05, "far": 90 }
+      }
+    },
+    { "id": "light.ambient", "components": { "Light": { "kind": "ambient", "color": "#e2e8ea", "intensity": 1.25 } } },
+    {
+      "id": "light.key",
+      "transform": { "position": [-4.8, 8.4, 5.8], "rotation": [-0.92, -0.42, 0] },
+      "components": { "Light": { "kind": "directional", "color": "#fff0d0", "intensity": 4.6 } }
+    },
+    {
+      "id": "light.finish",
+      "transform": { "position": [0, 2.2, -6.6] },
+      "components": { "Light": { "kind": "point", "color": "#d8e3e5", "intensity": 0.18, "range": 5.5 } }
+    },
+    {
+      "id": "light.left-fill",
+      "transform": { "position": [-4.7, 1.4, 3.8] },
+      "components": { "Light": { "kind": "point", "color": "#c8d6da", "intensity": 0.1, "range": 4.5 } }
+    },
+    {
+      "id": "light.right-fill",
+      "transform": { "position": [4.7, 1.4, 3.8] },
+      "components": { "Light": { "kind": "point", "color": "#c8d6da", "intensity": 0.1, "range": 4.5 } }
+    },
+    {
+      "id": "sky.backdrop",
+      "transform": { "position": [0, 1.1, -8.7], "rotation": [0, 0, 0], "scale": [1, 1, 1] },
+      "components": {
+        "MeshRenderer": { "mesh": "mesh.backdrop", "material": "mat.course.dark", "castShadow": true, "receiveShadow": true }
+      }
+    },
+    {
+      "id": "course.floor",
+      "transform": { "position": [0, -0.09, -0.2] },
+      "components": {
+        "MeshRenderer": { "mesh": "mesh.floor", "material": "mat.course.surface", "receiveShadow": true },
+        "Collider": { "kind": "box", "size": [12, 0.18, 18], "layer": "world", "friction": 0.92, "restitution": 0.02 },
+        "RigidBody": { "kind": "static" }
+      }
+    },
+    {
+      "id": "player",
+      "transform": { "position": [0, 0.02, 5.0], "rotation": [0, 0, 0], "scale": [1, 1, 1] },
+      "components": {
+        "MeshRenderer": { "mesh": "model.soldier", "material": "mat.soldier.placeholder", "castShadow": true, "receiveShadow": true },
+        "CharacterController": {
+          "blocking": true,
+          "grounding": "raycast",
+          "moveXAxis": "MoveX",
+          "moveZAxis": "MoveZ",
+          "speed": 3.1,
+          "stepOffset": 0.36
+        },
+        "Collider": { "kind": "capsule", "height": 1.8, "radius": 0.34, "center": [0, 0.9, 0], "layer": "player", "mask": ["world", "pushable", "hazard", "checkpoint"] },
+        "RigidBody": { "kind": "kinematic", "velocity": [0, 0, 0] },
+        "CoursePlayer": { "speed": 3.1, "checkpoint": 0, "hits": 0, "finished": false, "yaw": 0 }
+      }
+    },
+    {
+      "id": "start.marker",
+      "transform": { "position": [0, 0.03, 5.0], "rotation": [-1.570796, 0, 0], "scale": [1.2, 1.2, 1] },
+      "components": {
+        "MeshRenderer": { "mesh": "mesh.checkpoint", "material": "mat.checkpoint" }
+      }
+    },
+    {
+      "id": "wall.left",
+      "transform": { "position": [-5.6, 0.72, -0.2], "scale": [1, 1, 7.6] },
+      "components": {
+        "MeshRenderer": { "mesh": "mesh.wall", "material": "mat.course.dark", "castShadow": true, "receiveShadow": true },
+        "Collider": { "kind": "box", "size": [0.28, 1.45, 16.8], "layer": "world" },
+        "RigidBody": { "kind": "static" }
+      }
+    },
+    {
+      "id": "wall.right",
+      "transform": { "position": [5.6, 0.72, -0.2], "scale": [1, 1, 7.6] },
+      "components": {
+        "MeshRenderer": { "mesh": "mesh.wall", "material": "mat.course.dark", "castShadow": true, "receiveShadow": true },
+        "Collider": { "kind": "box", "size": [0.28, 1.45, 16.8], "layer": "world" },
+        "RigidBody": { "kind": "static" }
+      }
+    },
+    {
+      "id": "stairs.step.01",
+      "transform": { "position": [-2.35, 0.11, 3.25] },
+      "components": {
+        "MeshRenderer": { "mesh": "mesh.step.low", "material": "mat.course.surface", "castShadow": true, "receiveShadow": true },
+        "Collider": { "kind": "box", "size": [2.2, 0.22, 0.72], "layer": "world" },
+        "RigidBody": { "kind": "static" }
+      }
+    },
+    {
+      "id": "stairs.step.02",
+      "transform": { "position": [-2.35, 0.22, 2.56] },
+      "components": {
+        "MeshRenderer": { "mesh": "mesh.step.mid", "material": "mat.course.surface", "castShadow": true, "receiveShadow": true },
+        "Collider": { "kind": "box", "size": [2.2, 0.44, 0.72], "layer": "world" },
+        "RigidBody": { "kind": "static" }
+      }
+    },
+    {
+      "id": "stairs.step.03",
+      "transform": { "position": [-2.35, 0.33, 1.87] },
+      "components": {
+        "MeshRenderer": { "mesh": "mesh.step.high", "material": "mat.course.surface", "castShadow": true, "receiveShadow": true },
+        "Collider": { "kind": "box", "size": [2.2, 0.66, 0.72], "layer": "world" },
+        "RigidBody": { "kind": "static" }
+      }
+    },
+    {
+      "id": "ramp.main",
+      "transform": { "position": [2.15, 0.28, 2.6], "rotation": [0.18, 0, 0] },
+      "components": {
+        "MeshRenderer": { "mesh": "mesh.ramp", "material": "mat.course.surface", "castShadow": true, "receiveShadow": true },
+        "Collider": { "kind": "box", "size": [2.5, 0.28, 2.4], "layer": "world" },
+        "RigidBody": { "kind": "static" }
+      }
+    },
+    {
+      "id": "ledge.platform",
+      "transform": { "position": [0, 0.52, 0.7] },
+      "components": {
+        "MeshRenderer": { "mesh": "mesh.platform", "material": "mat.course.surface", "castShadow": true, "receiveShadow": true },
+        "Collider": { "kind": "box", "size": [3.2, 0.28, 2.6], "layer": "world" },
+        "RigidBody": { "kind": "static" }
+      }
+    },
+    {
+      "id": "blocker.wall",
+      "transform": { "position": [0, 0.28, -1.35] },
+      "components": {
+        "MeshRenderer": { "mesh": "mesh.low-wall", "material": "mat.course.edge", "castShadow": true, "receiveShadow": true },
+        "Collider": { "kind": "box", "size": [2.4, 0.42, 0.32], "layer": "world" },
+        "RigidBody": { "kind": "static" }
+      }
+    },
+    {
+      "id": "crate.push.01",
+      "transform": { "position": [-1.15, 0.39, -2.5] },
+      "components": {
+        "MeshRenderer": { "mesh": "mesh.crate", "material": "mat.crate", "castShadow": true, "receiveShadow": true },
+        "Collider": { "kind": "box", "size": [0.78, 0.78, 0.78], "layer": "pushable", "mask": ["world", "player"] },
+        "RigidBody": { "kind": "dynamic", "mass": 2.5, "inverseMass": 0.4, "damping": 0.35, "velocity": [0, 0, 0] },
+        "PushCrate": { "home": [-1.15, 0.39, -2.5] }
+      }
+    },
+    {
+      "id": "crate.push.02",
+      "transform": { "position": [1.05, 0.39, -3.05] },
+      "components": {
+        "MeshRenderer": { "mesh": "mesh.crate", "material": "mat.crate", "castShadow": true, "receiveShadow": true },
+        "Collider": { "kind": "box", "size": [0.78, 0.78, 0.78], "layer": "pushable", "mask": ["world", "player"] },
+        "RigidBody": { "kind": "dynamic", "mass": 3.2, "inverseMass": 0.3125, "damping": 0.35, "velocity": [0, 0, 0] },
+        "PushCrate": { "home": [1.05, 0.39, -3.05] }
+      }
+    },
+    {
+      "id": "hazard.sweeper.01",
+      "transform": { "position": [0, 0.72, 4.15], "scale": [1, 1, 1] },
+      "components": {
+        "MeshRenderer": { "mesh": "mesh.hazard", "material": "mat.hazard", "castShadow": true, "receiveShadow": true },
+        "Collider": { "kind": "box", "size": [1.55, 0.2, 0.28], "layer": "hazard", "trigger": true },
+        "RigidBody": { "kind": "kinematic", "gravityScale": 0 },
+        "SweeperHazard": { "origin": [0, 0.72, 4.15], "axis": "x", "radius": 2.1, "phase": 0.1, "speed": 1.25 }
+      }
+    },
+    {
+      "id": "hazard.sweeper.02",
+      "transform": { "position": [0, 0.88, -0.65], "rotation": [0, 1.570796, 0] },
+      "components": {
+        "MeshRenderer": { "mesh": "mesh.hazard", "material": "mat.hazard", "castShadow": true, "receiveShadow": true },
+        "Collider": { "kind": "box", "size": [1.55, 0.2, 0.28], "layer": "hazard", "trigger": true },
+        "RigidBody": { "kind": "kinematic", "gravityScale": 0 },
+        "SweeperHazard": { "origin": [0, 0.88, -0.65], "axis": "z", "radius": 1.8, "phase": 1.4, "speed": 1.05 }
+      }
+    },
+    {
+      "id": "checkpoint.01",
+      "transform": { "position": [-2.35, 0.7, 1.72], "rotation": [-1.570796, 0, 0], "scale": [1.1, 1.1, 1] },
+      "components": {
+        "MeshRenderer": { "mesh": "mesh.checkpoint", "material": "mat.checkpoint" },
+        "Collider": { "kind": "box", "size": [1.16, 0.08, 1.16], "layer": "checkpoint", "trigger": true },
+        "RigidBody": { "kind": "static" },
+        "Checkpoint": { "order": 1, "label": "Stairs" }
+      }
+    },
+    {
+      "id": "checkpoint.02",
+      "transform": { "position": [2.15, 0.56, 1.15], "rotation": [-1.570796, 0, 0], "scale": [1.1, 1.1, 1] },
+      "components": {
+        "MeshRenderer": { "mesh": "mesh.checkpoint", "material": "mat.checkpoint" },
+        "Collider": { "kind": "box", "size": [1.16, 0.08, 1.16], "layer": "checkpoint", "trigger": true },
+        "RigidBody": { "kind": "static" },
+        "Checkpoint": { "order": 2, "label": "Ramp" }
+      }
+    },
+    {
+      "id": "finish.pad",
+      "transform": { "position": [0, 0.04, -6.1], "rotation": [-1.570796, 0, 0], "scale": [1.5, 1.5, 1] },
+      "components": {
+        "MeshRenderer": { "mesh": "mesh.checkpoint", "material": "mat.checkpoint" },
+        "Collider": { "kind": "box", "size": [1.56, 0.08, 1.56], "layer": "checkpoint", "trigger": true },
+        "RigidBody": { "kind": "static" },
+        "FinishZone": { "radius": 0.95 }
+      }
+    },
+    {
+      "id": "finish.arch.left",
+      "transform": { "position": [-1.15, 0.62, -6.1] },
+      "components": { "MeshRenderer": { "mesh": "mesh.marker", "material": "mat.checkpoint", "castShadow": true } }
+    },
+    {
+      "id": "finish.arch.right",
+      "transform": { "position": [1.15, 0.62, -6.1] },
+      "components": { "MeshRenderer": { "mesh": "mesh.marker", "material": "mat.checkpoint", "castShadow": true } }
+    }
+  ],
+  "resources": [
+    {
+      "id": "GameState",
+      "value": {
+        "status": "Course",
+        "checkpointText": "Checkpoint 0/2",
+        "hitText": "Hits 0",
+        "timerText": "00.0",
+        "hudLine": "CP 0/2  Hits 0  00.0"
+      }
+    }
+  ]
+}

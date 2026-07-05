@@ -76,10 +76,13 @@ function traceCharacter(
     controller.speed,
     fixedDelta,
   ));
+  // Collision math runs in collider space (transform + collider center offset);
+  // reported positions stay in transform space.
+  const offset = colliderOffset(collider);
   const characterHalfExtents = halfExtents(collider);
   const horizontal = controller.blocking === true
-    ? resolveHorizontalContact(entity.id, start, desired, characterHalfExtents, blockers, controller.stepOffset ?? 0, controller.slopeLimit ?? DEFAULT_SLOPE_LIMIT, controller.pushPolicy)
-    : { position: desired };
+    ? resolveHorizontalContact(entity.id, add(start, offset), add(desired, offset), characterHalfExtents, blockers, controller.stepOffset ?? 0, controller.slopeLimit ?? DEFAULT_SLOPE_LIMIT, controller.pushPolicy)
+    : { position: add(desired, offset) };
   const ground = controller.grounding === "raycast"
     ? groundPosition(entity.id, horizontal.position, characterHalfExtents, blockers, fixedDelta, controller.slopeLimit ?? DEFAULT_SLOPE_LIMIT)
     : { position: horizontal.position };
@@ -92,7 +95,7 @@ function traceCharacter(
     grounded: ground.entity !== undefined,
     ...(ground.platformDelta === undefined ? {} : { platformDelta: ground.platformDelta }),
     ...(horizontal.pushed === undefined ? {} : { pushed: horizontal.pushed }),
-    resolved: ground.position,
+    resolved: subtract(ground.position, offset),
     start,
     ...(horizontal.tooHeavy === undefined ? {} : { tooHeavy: horizontal.tooHeavy }),
   };
@@ -232,12 +235,16 @@ function entityBounds(entity: IWorldEntity): IBounds | undefined {
     return undefined;
   }
   return {
-    center: vector(entity.components.Transform?.position),
+    center: add(vector(entity.components.Transform?.position), colliderOffset(collider)),
     halfExtents: halfExtents(collider),
     id: entity.id,
     slope: slope(collider),
     velocity: entity.components.RigidBody?.velocity,
   };
+}
+
+function colliderOffset(collider: IColliderComponent): Vec3 {
+  return vector(collider.center ?? (collider.kind === "mesh" ? collider.mesh?.bounds.center : undefined));
 }
 
 function halfExtents(collider: IColliderComponent): Vec3 {
@@ -319,6 +326,10 @@ const DEFAULT_SLOPE_LIMIT = 45;
 
 function add(left: Vec3, right: Vec3): Vec3 {
   return [left[0] + right[0], left[1] + right[1], left[2] + right[2]];
+}
+
+function subtract(left: Vec3, right: Vec3): Vec3 {
+  return [left[0] - right[0], left[1] - right[1], left[2] - right[2]];
 }
 
 function scale(vector: Vec3, amount: number): Vec3 {

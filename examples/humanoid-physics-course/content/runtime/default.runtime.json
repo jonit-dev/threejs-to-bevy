@@ -1,0 +1,40 @@
+{
+  "schema": "threenative.runtime-config",
+  "version": "0.1.0",
+  "id": "default",
+  "renderer": {
+    "antialias": "msaa4",
+    "bloom": {
+      "enabled": true,
+      "intensity": 0.22,
+      "threshold": 0.82
+    },
+    "colorGrading": {
+      "contrast": 0.02,
+      "exposure": 1.08,
+      "saturation": 0.98,
+      "toneMapping": "aces"
+    },
+    "renderLook": {
+      "version": 1,
+      "profile": "balanced",
+      "overrides": {
+        "bloomIntensity": 0.22,
+        "contrast": 0.06,
+        "environmentIntensity": 0.85,
+        "exposure": 1.08,
+        "saturation": 0.98,
+        "shadowQuality": "high"
+      }
+    }
+  },
+  "time": {
+    "fixedDelta": 0.016666666666666666,
+    "paused": false
+  },
+  "window": {
+    "height": 720,
+    "width": 1280,
+    "title": "Humanoid Physics Course"
+  }
+}

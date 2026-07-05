@@ -181,6 +181,7 @@ export async function renderBundle(source: string, container: HTMLElement, optio
   const renderer = new THREE.WebGLRenderer(webRendererParameters(bundle.runtimeConfig));
   const renderLook = applyWebRenderLookProfile(bundle.runtimeConfig);
   applyRendererColorManagement(renderer, bundle.environmentScene?.atmosphere?.colorManagement, renderLook.colorGrading);
+  applyRendererShadowSettings(renderer, bundle.runtimeConfig);
   applyRenderLookSceneDefaults(mapped.scene, renderLook);
   const pipeline = createRenderPipeline(renderer, mapped, bundle.world, bundle.runtimeConfig, bundle.assets, bundle.materials);
   const colliderDebugOverlay = options.debugColliders === true ? createColliderDebugOverlay(mapped, bundle.world) : undefined;
@@ -991,6 +992,21 @@ export function applyRendererColorManagement(
   }
   renderer.toneMapping = toneMapping === "aces" ? THREE.ACESFilmicToneMapping : THREE.NoToneMapping;
   renderer.toneMappingExposure = exposure ?? 1;
+}
+
+export function applyRendererShadowSettings(renderer: THREE.WebGLRenderer, config?: IRuntimeConfigIr): void {
+  const quality = config?.renderer?.renderLook?.overrides?.shadowQuality
+    ?? (config?.renderer?.renderLook?.profile === "balanced" ? "high" : "medium");
+  renderer.shadowMap.enabled = quality !== "off";
+  if (quality === "high") {
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    return;
+  }
+  if (quality === "medium") {
+    renderer.shadowMap.type = THREE.PCFShadowMap;
+    return;
+  }
+  renderer.shadowMap.type = THREE.BasicShadowMap;
 }
 
 export function applyRenderLookSceneDefaults(

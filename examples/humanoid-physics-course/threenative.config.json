@@ -1,0 +1,171 @@
+{
+  "schema": "threenative.project",
+  "version": "0.1.0",
+  "entry": "content/scenes/arena.scene.json",
+  "outDir": "dist/humanoid-physics-course.bundle",
+  "production": {
+    "playableLoop": "Move the Soldier through a UE-style physics test course, clear two checkpoint pads, avoid moving sweepers, push through crates, and cross the finish pad.",
+    "controls": [
+      "keyboard.KeyW",
+      "keyboard.KeyA",
+      "keyboard.KeyS",
+      "keyboard.KeyD",
+      "keyboard.ArrowUp",
+      "keyboard.ArrowLeft",
+      "keyboard.ArrowDown",
+      "keyboard.ArrowRight",
+      "keyboard.ShiftLeft",
+      "keyboard.ShiftRight",
+      "keyboard.KeyR"
+    ],
+    "objective": "Clear both checkpoint pads and reach the glowing finish pad.",
+    "progression": "The route escalates from flat movement to stairs, a ramp, a ledge platform, pushable crates, sweep hazards, and a finish gate.",
+    "failRetry": "Hazard hits are counted in HUD state; press R to reset the course.",
+    "feedbackMoments": [
+      "Soldier movement switches between idle, walk, and Shift-held run animation clips.",
+      "Checkpoint, hit, timer, and finish state update retained HUD bindings.",
+      "Moving sweepers and pushable crates provide physics-course feedback."
+    ],
+    "assetPlan": {
+      "playerHero": "Three.js example Soldier.glb is used as the humanoid with Idle, Walk, and Run clips declared in structured asset source.",
+      "obstacleEnemy": "Authored sweep hazards, stairs, ramp, ledge, walls, and pushable crates provide obstacle-course surfaces with collider metadata.",
+      "rewardInteractable": "Checkpoint pads and finish pad are authored trigger/interactable surfaces with emissive material treatment.",
+      "worldEnvironment": "Textured UE-style floor, walls, backdrop, lighting, ramps, stairs, and set-dressing markers build the course environment.",
+      "uiHud": "Retained HUD binds objective, checkpoint, hit, and timer text from GameState.",
+      "audioFeedback": "Starter goal-ping audio asset is available for feedback wiring."
+    },
+    "scriptModules": [
+      {
+        "module": "src/scripts/player.ts",
+        "export": "updateHumanoidCourse",
+        "ownsState": [
+          "Transform",
+          "GameState"
+        ],
+        "referencedBy": [
+          "content/systems/arena.systems.json"
+        ]
+      }
+    ],
+    "agent": {
+      "sourceShape": {
+        "assets": [
+          "content/assets/arena.assets.json"
+        ],
+        "input": [
+          "content/input/arena.input.json"
+        ],
+        "materials": [
+          "content/materials/arena.materials.json"
+        ],
+        "meshes": [
+          "content/meshes/arena.meshes.json"
+        ],
+        "environment": [
+          "content/environment/arena.environment.json"
+        ],
+        "runtime": [
+          "content/runtime/default.runtime.json"
+        ],
+        "scene": [
+          "content/scenes/arena.scene.json"
+        ],
+        "systems": [
+          "content/systems/arena.systems.json"
+        ],
+        "ui": [
+          "content/ui/hud.ui.json"
+        ],
+        "scripts": [
+          "src/scripts/player.ts"
+        ]
+      },
+      "highValueSurfaces": [
+        {
+          "id": "playerHero",
+          "sourcePath": "content/scenes/arena.scene.json",
+          "provenanceStatus": "starter-placeholder",
+          "summary": "Starter player entity is source-owned placeholder geometry intended to be replaced by catalog, kit, or authored custom art."
+        },
+        {
+          "id": "obstacleEnemy",
+          "sourcePath": "threenative.config.json#/production/assetPlan",
+          "provenanceStatus": "not-authored",
+          "summary": "No obstacle/enemy is authored in the starter baseline."
+        },
+        {
+          "id": "rewardInteractable",
+          "sourcePath": "content/scenes/arena.scene.json",
+          "provenanceStatus": "source",
+          "summary": "Goal zone is the starter reward/interactable surface."
+        },
+        {
+          "id": "worldEnvironment",
+          "sourcePath": "content/scenes/arena.scene.json",
+          "provenanceStatus": "source",
+          "summary": "Arena floor, camera, light, and goal context provide the starter world surface."
+        },
+        {
+          "id": "uiHud",
+          "sourcePath": "content/ui/hud.ui.json",
+          "provenanceStatus": "source",
+          "summary": "Starter HUD/source UI is the baseline for objective and state text."
+        },
+        {
+          "id": "audioFeedback",
+          "sourcePath": "content/assets/arena.assets.json",
+          "provenanceStatus": "local-file",
+          "summary": "Starter goal-ping audio asset is available for feedback wiring."
+        }
+      ],
+      "scriptModules": [
+        {
+          "module": "src/scripts/player.ts",
+          "export": "updateHumanoidCourse",
+          "ownsState": [
+            "Transform",
+            "GameState"
+          ],
+          "referencedBy": [
+            "content/systems/arena.systems.json"
+          ]
+        }
+      ],
+      "uiStates": [
+        {
+          "id": "gameplay",
+          "sourcePath": "content/ui/hud.ui.json",
+          "expectation": "HUD can display objective status."
+        },
+        {
+          "id": "fail-retry",
+          "sourcePath": "threenative.config.json#/production/failRetry",
+          "expectation": "Starter records retry limitation before a full fail state is authored."
+        }
+      ],
+      "assetSourcing": [
+          "Catalog search was run for rpg-adventure direct GLB records; user-specified Three.js Soldier.glb is used for the humanoid and documented in docs/asset-provenance.md."
+      ],
+      "proofCommands": [
+        "tn authoring validate --project . --json",
+        "tn build --project . --json",
+        "tn playtest --project . --entity player --press keyboard.KeyW --frames 30 --expect-moved --json",
+        "tn game qa --project . --run-proof --json",
+        "tn game release --project . --json"
+      ],
+      "knownBlockers": [
+        "Three.js Soldier.glb licensing is inherited from the upstream three.js examples repository; preserve source URL and dev ref in docs/asset-provenance.md."
+      ]
+    },
+    "proofCommands": [
+      "tn authoring validate --project . --json",
+      "tn build --project . --json",
+      "tn playtest --project . --entity player --press keyboard.KeyW --frames 30 --expect-moved --json",
+      "tn screenshot --project . --url <preview-url> --out artifacts/game-production/screenshot.png --wait-ready --json",
+      "tn game score --project . --json",
+      "tn game qa --project . --run-proof --json",
+      "tn game release --project . --json"
+    ]
+  },
+  "template": "structured-source-starter"
+}

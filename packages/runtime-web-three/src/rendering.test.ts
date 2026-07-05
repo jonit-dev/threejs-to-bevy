@@ -29,6 +29,15 @@ test("rendering should map atmosphere profile to three scene settings", () => {
   assert.equal(observation.shadowNormalBias, 0.02);
   assert.equal(observation.skyHorizonColor, "#d6c39d");
   assert.equal(scene.children.some((child) => child instanceof THREE.DirectionalLight), true);
+  const sun = scene.children.find((child): child is THREE.DirectionalLight => child instanceof THREE.DirectionalLight);
+  assert.ok(sun);
+  assert.equal(sun.castShadow, true);
+  assert.equal(sun.shadow.camera.left, -22.5);
+  assert.equal(sun.shadow.camera.right, 22.5);
+  assert.equal(sun.shadow.camera.top, 22.5);
+  assert.equal(sun.shadow.camera.bottom, -22.5);
+  assert.equal(sun.shadow.camera.far, 90);
+  assert.equal(scene.children.includes(sun.target), true);
   assert.equal(scene.fog instanceof THREE.FogExp2, true);
 });
 

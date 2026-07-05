@@ -1,0 +1,78 @@
+{
+  "schema": "threenative.environment-scene",
+  "version": "0.1.0",
+  "id": "arena-environment",
+  "atmosphere": {
+    "active": true,
+    "id": "atmosphere.ue-course",
+    "sun": {
+      "id": "sun.ue-course",
+      "color": "#fff2d4",
+      "direction": [-0.56, -0.74, -0.38],
+      "intensity": 6.2,
+      "castsShadow": true
+    },
+    "ambient": {
+      "color": "#b7c2c8",
+      "intensity": 0.26,
+      "mode": "constant"
+    },
+    "fog": {
+      "enabled": true,
+      "mode": "exponential",
+      "color": "#9fb3bf",
+      "density": 0.014
+    },
+    "sky": {
+      "color": "#93adc0",
+      "horizonColor": "#d7dde1"
+    },
+    "colorManagement": {
+      "exposure": 1.08,
+      "outputColorSpace": "srgb",
+      "textureColorSpace": "srgb",
+      "toneMapping": "aces"
+    },
+    "shadows": {
+      "enabled": true,
+      "mapSize": 2048,
+      "bias": -0.00025,
+      "normalBias": 0.012,
+      "cascadeCount": 1,
+      "maxDistance": 26,
+      "receiverPolicy": "terrain-and-path"
+    }
+  },
+  "skybox": {
+    "mode": "equirect",
+    "asset": "tex.sky.ambientcg-daysky-003b",
+    "intensity": 0.42,
+    "assetRefs": [
+      {
+        "id": "tex.sky.ambientcg-daysky-003b",
+        "kind": "texture",
+        "format": "jpeg",
+        "path": "assets/textures/DaySkyHDRI003B_2K_TONEMAPPED.jpg"
+      }
+    ]
+  },
+  "environmentMap": {
+    "mode": "equirect",
+    "asset": "tex.sky.ambientcg-daysky-003b",
+    "intent": "reflection-and-irradiance",
+    "intensity": 0.36,
+    "assetRefs": [
+      {
+        "id": "tex.sky.ambientcg-daysky-003b",
+        "kind": "texture",
+        "format": "jpeg",
+        "path": "assets/textures/DaySkyHDRI003B_2K_TONEMAPPED.jpg"
+      }
+    ]
+  },
+  "path": {
+    "id": "path.validation",
+    "points": [[-24, 0, -24], [-23, 0, -24]],
+    "width": 0.1
+  }
+}

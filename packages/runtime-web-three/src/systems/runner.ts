@@ -4,7 +4,7 @@ import type { IWebInputState } from "../input.js";
 import { createComponentDiffCache } from "./componentDiff.js";
 import { createSystemContext } from "./context.js";
 import { applySystemEffects } from "./effects.js";
-import { appendSystemEffectLog, type ISystemEffectLog } from "./log.js";
+import { appendSystemEffectLog, type ISystemEffectLog, type ISystemEffectLogEntry } from "./log.js";
 import { createWebPersistenceService, type IWebPersistenceService } from "./services/persistence.js";
 
 export type SystemFunction = (context: unknown) => unknown | Promise<unknown>;
@@ -16,6 +16,7 @@ export interface ISystemModule {
 
 export interface ISystemRunResult {
   diagnostics: IRuntimeDiagnostic[];
+  entries: ISystemEffectLogEntry[];
 }
 
 export async function loadSystemModule(source: string, manifest: IBundleManifest): Promise<ISystemModule> {
@@ -58,6 +59,7 @@ export async function runSchedule(options: {
   world: IWorldIr;
 }): Promise<ISystemRunResult> {
   const diagnostics: IRuntimeDiagnostic[] = [];
+  const entries: ISystemEffectLogEntry[] = [];
   const scheduledSystems = orderedSystemsForSchedule(options.systems.systems, options.schedule);
   const componentDiff = createComponentDiffCache();
   const persistence = options.localData === undefined ? undefined : createWebPersistenceService(options.localData);
@@ -66,8 +68,9 @@ export async function runSchedule(options: {
   for (const system of scheduledSystems) {
     const result = await runSystem(system, { ...options, componentDiff, persistence });
     diagnostics.push(...result.diagnostics);
+    entries.push(...result.entries);
   }
-  return { diagnostics };
+  return { diagnostics, entries };
 }
 
 async function runSystem(
@@ -95,7 +98,7 @@ async function runSystem(
   },
 ): Promise<ISystemRunResult> {
   if (system.script === undefined) {
-    return { diagnostics: [] };
+    return { diagnostics: [], entries: [] };
   }
   const fn = readSystemFunction(options.module, system.script.exportName);
   const { commands, context, events, resources, services } = createSystemContext(options.world, {
@@ -120,7 +123,7 @@ async function runSystem(
   if (options.effectLog !== undefined) {
     appendSystemEffectLog(options.effectLog, result.entries);
   }
-  return { diagnostics: result.diagnostics };
+  return { diagnostics: result.diagnostics, entries: result.entries };
 }
 
 function orderedSystemsForSchedule(systems: readonly IIrSystemDeclaration[], schedule: IrSystemSchedule): IIrSystemDeclaration[] {

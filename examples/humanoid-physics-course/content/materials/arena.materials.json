@@ -1,0 +1,67 @@
+{
+  "schema": "threenative.materials",
+  "version": "0.1.0",
+  "id": "arena-materials",
+  "materials": [
+    {
+      "id": "mat.soldier.placeholder",
+      "color": "#9faab2",
+      "roughness": 0.74,
+      "metalness": 0.05
+    },
+    {
+      "id": "mat.course.surface",
+      "color": "#c9cac6",
+      "roughness": 0.82,
+      "metalness": 0.02,
+      "baseColorTexture": "tex.surface.ue-grid"
+    },
+    {
+      "id": "mat.course.dark",
+      "color": "#6f7472",
+      "roughness": 0.8,
+      "metalness": 0.02,
+      "baseColorTexture": "tex.surface.ue-grid",
+      "emissive": "#111414",
+      "emissiveIntensity": 0.02
+    },
+    {
+      "id": "mat.course.edge",
+      "color": "#8f918c",
+      "roughness": 0.76,
+      "metalness": 0.03,
+      "baseColorTexture": "tex.surface.ue-grid"
+    },
+    {
+      "id": "mat.crate",
+      "color": "#8f6237",
+      "roughness": 0.82,
+      "metalness": 0.02,
+      "baseColorTexture": "tex.surface.ue-grid"
+    },
+    {
+      "id": "mat.hazard",
+      "color": "#9b302e",
+      "roughness": 0.62,
+      "metalness": 0.08,
+      "baseColorTexture": "tex.surface.ue-grid",
+      "emissive": "#260a0a",
+      "emissiveIntensity": 0.08
+    },
+    {
+      "id": "mat.checkpoint",
+      "color": "#6d9d95",
+      "roughness": 0.55,
+      "metalness": 0.08,
+      "baseColorTexture": "tex.surface.ue-grid",
+      "emissive": "#0d2f2b",
+      "emissiveIntensity": 0.16
+    },
+    {
+      "id": "mat.sky",
+      "color": "#94aab8",
+      "roughness": 1,
+      "metalness": 0
+    }
+  ]
+}

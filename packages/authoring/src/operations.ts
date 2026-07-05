@@ -3140,7 +3140,7 @@ async function validateRuntimeDocument(file: string, data: unknown): Promise<IAu
     diagnostics.push(typeDiagnostic(file, "/renderer", "Runtime renderer config must be a JSON object.", data.renderer));
   }
   if (renderer !== undefined) {
-    diagnostics.push(...unknownKeyDiagnostics(file, "/renderer", renderer, new Set(["antialias", "bloom", "renderLook", "renderPath"])));
+    diagnostics.push(...unknownKeyDiagnostics(file, "/renderer", renderer, new Set(["antialias", "bloom", "colorGrading", "renderLook", "renderPath"])));
     const antialias = readString(renderer.antialias);
     if (renderer.antialias !== undefined && (antialias === undefined || !supportedRendererAntialiasModes.has(antialias))) {
       diagnostics.push(typeDiagnostic(file, "/renderer/antialias", "runtime renderer antialias must be one of none, msaa2, msaa4, msaa8, fxaa, taa, or smaa.", renderer.antialias));
@@ -3165,6 +3165,23 @@ async function validateRuntimeDocument(file: string, data: unknown): Promise<IAu
       if (typeof bloom.threshold === "number" && Number.isFinite(bloom.threshold) && bloom.threshold < 0) {
         diagnostics.push(typeDiagnostic(file, "/renderer/bloom/threshold", "runtime renderer bloom threshold must be non-negative.", bloom.threshold));
       }
+    }
+    const colorGrading = isRecord(renderer.colorGrading) ? renderer.colorGrading : undefined;
+    if (renderer.colorGrading !== undefined && colorGrading === undefined) {
+      diagnostics.push(typeDiagnostic(file, "/renderer/colorGrading", "runtime renderer colorGrading must be a JSON object.", renderer.colorGrading));
+    }
+    if (colorGrading !== undefined) {
+      diagnostics.push(...unknownKeyDiagnostics(file, "/renderer/colorGrading", colorGrading, new Set(["contrast", "exposure", "lut", "saturation", "temperature", "tint", "toneMapping"])));
+      for (const key of ["contrast", "temperature", "tint"]) {
+        validateOptionalNumber(diagnostics, file, `/renderer/colorGrading/${key}`, colorGrading[key], `runtime renderer colorGrading ${key} must be finite.`);
+      }
+      validateOptionalPositiveNumber(diagnostics, file, "/renderer/colorGrading/exposure", colorGrading.exposure, "runtime renderer colorGrading exposure must be positive.");
+      validateOptionalNonNegativeNumber(diagnostics, file, "/renderer/colorGrading/saturation", colorGrading.saturation, "runtime renderer colorGrading saturation must be non-negative.");
+      const toneMapping = readString(colorGrading.toneMapping);
+      if (colorGrading.toneMapping !== undefined && (toneMapping === undefined || !new Set(["aces", "linear", "none", "reinhard"]).has(toneMapping))) {
+        diagnostics.push(typeDiagnostic(file, "/renderer/colorGrading/toneMapping", "runtime renderer colorGrading toneMapping must be aces, linear, none, or reinhard.", colorGrading.toneMapping));
+      }
+      validateOptionalString(diagnostics, file, "/renderer/colorGrading/lut", colorGrading.lut, "runtime renderer colorGrading LUT must be a non-empty asset id.");
     }
     if (renderer.renderLook !== undefined) {
       validateRuntimeRenderLook(diagnostics, file, renderer.renderLook);
@@ -4099,8 +4116,27 @@ function validateOptionalNumber(diagnostics: IAuthoringDiagnostic[], file: strin
   }
 }
 
+function validateOptionalNonNegativeNumber(diagnostics: IAuthoringDiagnostic[], file: string, path: string, value: unknown, message: string): void {
+  if (value !== undefined && (typeof value !== "number" || !Number.isFinite(value) || value < 0)) {
+    diagnostics.push(typeDiagnostic(file, path, message, value));
+  }
+}
+
 function validateOptionalNonNegativeInteger(diagnostics: IAuthoringDiagnostic[], file: string, path: string, value: unknown, message: string): void {
   if (value !== undefined && (!Number.isInteger(value) || Number(value) < 0)) {
+    diagnostics.push(typeDiagnostic(file, path, message, value));
+  }
+}
+
+function validateOptionalVec2(diagnostics: IAuthoringDiagnostic[], file: string, path: string, value: unknown, message: string): void {
+  if (value !== undefined && (!Array.isArray(value) || value.length !== 2 || value.some((item) => typeof item !== "number" || !Number.isFinite(item)))) {
+    diagnostics.push(typeDiagnostic(file, path, message, value));
+  }
+}
+
+function validateOptionalStringEnum(diagnostics: IAuthoringDiagnostic[], file: string, path: string, value: unknown, allowed: ReadonlySet<string>, message: string): void {
+  const text = readString(value);
+  if (value !== undefined && (text === undefined || !allowed.has(text))) {
     diagnostics.push(typeDiagnostic(file, path, message, value));
   }
 }
@@ -4207,6 +4243,16 @@ function validateAssetDeclaration(diagnostics: IAuthoringDiagnostic[], path: str
     return;
   }
   validateGeneratedPathString(diagnostics, file, `${path}/path`, item.path, "asset path must be a non-empty source path.");
+  if (type === "texture") {
+    validateOptionalVec2(diagnostics, file, `${path}/repeat`, item.repeat, "texture repeat must be a pair of finite numbers.");
+    validateOptionalVec2(diagnostics, file, `${path}/offset`, item.offset, "texture offset must be a pair of finite numbers.");
+    validateOptionalVec2(diagnostics, file, `${path}/center`, item.center, "texture center must be a pair of finite numbers.");
+    validateOptionalNumber(diagnostics, file, `${path}/rotation`, item.rotation, "texture rotation must be finite.");
+    validateOptionalStringEnum(diagnostics, file, `${path}/wrapS`, item.wrapS, new Set(["clampToEdge", "mirroredRepeat", "repeat"]), "texture wrapS must be clampToEdge, mirroredRepeat, or repeat.");
+    validateOptionalStringEnum(diagnostics, file, `${path}/wrapT`, item.wrapT, new Set(["clampToEdge", "mirroredRepeat", "repeat"]), "texture wrapT must be clampToEdge, mirroredRepeat, or repeat.");
+    validateOptionalStringEnum(diagnostics, file, `${path}/minFilter`, item.minFilter, new Set(["linear", "linearMipmapLinear", "linearMipmapNearest", "nearest", "nearestMipmapLinear", "nearestMipmapNearest"]), "texture minFilter must be a promoted texture filter.");
+    validateOptionalStringEnum(diagnostics, file, `${path}/magFilter`, item.magFilter, new Set(["linear", "nearest"]), "texture magFilter must be linear or nearest.");
+  }
 }
 
 function validateRenderTargetAssetDeclaration(diagnostics: IAuthoringDiagnostic[], file: string, path: string, item: Record<string, unknown>): void {

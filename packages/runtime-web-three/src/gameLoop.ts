@@ -1,7 +1,7 @@
 import type { IAssetsManifest, IIrSchemaFile, IRuntimeConfigIr, ISystemsIr, IWorldIr } from "@threenative/ir";
 import type { IWebInputState } from "./input.js";
 import type { IThreeWorld } from "./mapWorld.js";
-import { syncMeshRendererMaterials, syncTransforms } from "./mapWorld.js";
+import { applyAnimationServiceEffects, syncMeshRendererMaterials, syncTransforms } from "./mapWorld.js";
 import { stepPhysics } from "./physics.js";
 import { runSchedule, type ISystemModule } from "./systems/runner.js";
 import type { ISystemEffectLog } from "./systems/log.js";
@@ -52,33 +52,34 @@ export async function runGameFrame(options: {
     state.accumulator += options.delta;
     if (!state.paused) {
       if (!state.startupComplete) {
-        collectDiagnostics(options.mapped, await runSchedule({ ...options, delta: 0, elapsed: state.elapsed, fixedDelta, frame: state.frame, paused: state.paused, schedule: "startup", tick: state.tick }));
+        collectSystemResult(options.mapped, await runSchedule({ ...options, delta: 0, elapsed: state.elapsed, fixedDelta, frame: state.frame, paused: state.paused, schedule: "startup", tick: state.tick }));
         state.startupComplete = true;
       }
       while (state.accumulator >= fixedDelta) {
         stepPhysics(options.world, fixedDelta);
-        collectDiagnostics(
+        collectSystemResult(
           options.mapped,
           await runSchedule({ ...options, delta: fixedDelta, elapsed: state.elapsed, fixedDelta, frame: state.frame, paused: state.paused, schedule: "fixedUpdate", tick: state.tick }),
         );
         state.tick += 1;
         state.accumulator -= fixedDelta;
       }
-      collectDiagnostics(options.mapped, await runSchedule({ ...options, elapsed: state.elapsed, fixedDelta, frame: state.frame, paused: state.paused, schedule: "update", tick: state.tick }));
-      collectDiagnostics(options.mapped, await runSchedule({ ...options, elapsed: state.elapsed, fixedDelta, frame: state.frame, paused: state.paused, schedule: "postUpdate", tick: state.tick }));
+      collectSystemResult(options.mapped, await runSchedule({ ...options, elapsed: state.elapsed, fixedDelta, frame: state.frame, paused: state.paused, schedule: "update", tick: state.tick }));
+      collectSystemResult(options.mapped, await runSchedule({ ...options, elapsed: state.elapsed, fixedDelta, frame: state.frame, paused: state.paused, schedule: "postUpdate", tick: state.tick }));
     }
     state.frame += 1;
   } else {
-    collectDiagnostics(options.mapped, await runSchedule({ ...options, delta: 0, fixedDelta, frame: 0, schedule: "startup", tick: 0 }));
+    collectSystemResult(options.mapped, await runSchedule({ ...options, delta: 0, fixedDelta, frame: 0, schedule: "startup", tick: 0 }));
     stepPhysics(options.world, fixedDelta);
-    collectDiagnostics(options.mapped, await runSchedule({ ...options, fixedDelta, frame: 0, schedule: "fixedUpdate", tick: 0 }));
-    collectDiagnostics(options.mapped, await runSchedule({ ...options, fixedDelta, frame: 0, schedule: "update", tick: 0 }));
-    collectDiagnostics(options.mapped, await runSchedule({ ...options, fixedDelta, frame: 0, schedule: "postUpdate", tick: 0 }));
+    collectSystemResult(options.mapped, await runSchedule({ ...options, fixedDelta, frame: 0, schedule: "fixedUpdate", tick: 0 }));
+    collectSystemResult(options.mapped, await runSchedule({ ...options, fixedDelta, frame: 0, schedule: "update", tick: 0 }));
+    collectSystemResult(options.mapped, await runSchedule({ ...options, fixedDelta, frame: 0, schedule: "postUpdate", tick: 0 }));
   }
   syncTransforms(options.world, options.mapped.objectsById);
   syncMeshRendererMaterials(options.world, options.mapped.objectsById);
 }
 
-function collectDiagnostics(mapped: IThreeWorld, result: { diagnostics: IThreeWorld["diagnostics"] }): void {
+function collectSystemResult(mapped: IThreeWorld, result: { diagnostics: IThreeWorld["diagnostics"]; entries: Parameters<typeof applyAnimationServiceEffects>[1] }): void {
   mapped.diagnostics.push(...result.diagnostics);
+  applyAnimationServiceEffects(mapped, result.entries);
 }

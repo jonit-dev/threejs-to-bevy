@@ -1,0 +1,46 @@
+{
+  "schema": "threenative.ui",
+  "version": "0.1.0",
+  "id": "hud",
+  "nodes": [
+    {
+      "id": "hud.status",
+      "type": "text",
+      "text": "Course",
+      "style": { "color": "#f7fbff", "fontSize": 16, "fontWeight": "bold" },
+      "layout": { "justify": "start", "align": "center", "left": 24, "top": 18, "width": 160 }
+    },
+    {
+      "id": "hud.progress",
+      "type": "text",
+      "text": "CP 0/2  Hits 0  00.0",
+      "style": { "color": "#76ffd8", "fontSize": 15, "fontWeight": "bold" },
+      "layout": { "justify": "start", "align": "center", "left": 24, "top": 42, "width": 300 }
+    },
+    {
+      "id": "state.loading",
+      "type": "text",
+      "text": "Loading physics course",
+      "style": { "opacity": 0 },
+      "layout": { "justify": "center", "align": "center", "top": 1200, "width": 1280 }
+    },
+    {
+      "id": "state.settings",
+      "type": "text",
+      "text": "Settings",
+      "style": { "opacity": 0 },
+      "layout": { "justify": "center", "align": "center", "top": 1260, "width": 1280 }
+    },
+    {
+      "id": "state.touch-controls",
+      "type": "text",
+      "text": "Touch soldier mobile-control",
+      "style": { "opacity": 0 },
+      "layout": { "justify": "center", "align": "center", "top": 1350, "width": 1280 }
+    }
+  ],
+  "bindings": [
+    { "node": "hud.status", "resource": "GameState.status" },
+    { "node": "hud.progress", "resource": "GameState.hudLine" }
+  ]
+}
