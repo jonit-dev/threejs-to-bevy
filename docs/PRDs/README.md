@@ -64,11 +64,6 @@ backlog unless a nested PRD says it has been superseded.
   portable plugin manifests, deterministic source-backed install/remove
   operations, compiler provenance, runtime metadata parity, plugin verification
   gates, and a sample checkpoint-orb plugin proven working in a playable game.
-- [Agent-Friendly Project Scaffolding and Visual Debugging Workflows](other/agent-friendly-project-and-visual-debugging-workflows.md):
-  init/create front door, task-oriented help, doctor diagnostics, asset/model
-  inspection, transform/camera guardrails, screenshot/video proof, runtime
-  debug overlay, and racing template evidence.
-
 ### Advanced And Boundary Work
 
 - [Portable Shader Material Parity](other/portable-shader-material-parity.md):
@@ -120,6 +115,7 @@ Useful completed reference groups:
   [TypeScript Authoring Facade and Script Ergonomics](done/other/typescript-authoring-facade-and-script-ergonomics.md).
 - Game-production workflow:
   [Agent Game Planning Template and Init Scaffold](done/agent-game-planning-template-and-init-scaffold.md),
+  [Agent-Friendly Project Scaffolding and Visual Debugging Workflows](done/agent-friendly-project-and-visual-debugging-workflows.md),
   [Agent-Friendly 3D Game Creation Contract](done/other/agent-friendly-3d-game-creation-contract.md),
   [Playable Game Authoring Loop Hardening](done/other/game-authoring-loop-hardening.md),
   [Shippable Asset Source Catalog](done/other/shippable-asset-source-catalog.md),

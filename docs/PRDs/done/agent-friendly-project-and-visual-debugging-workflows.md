@@ -314,13 +314,13 @@ sequenceDiagram
 
 - [x] Check `package.json`, package manager, required scripts, local CLI shim,
   config file, source entrypoint, bundle output, and template metadata.
-- [ ] Check bundle files: `manifest.json`, `world.ir.json`, `assets.manifest.json`,
+- [x] Check bundle files: `manifest.json`, `world.ir.json`, `assets.manifest.json`,
   `runtime.config.json`, schemas, and script bundle.
 - [x] Optionally probe a running preview URL: canvas exists, ready flag, runtime
   diagnostics, console errors, loaded asset statuses, visible mesh count if
   runtime exposes it.
 - [x] Output severity levels: `ok`, `warning`, `error`, `unavailable`.
-- [ ] Include exact next command for each failure.
+- [x] Include exact next command for each failure.
 
 **Tests required:**
 
@@ -600,7 +600,7 @@ sequenceDiagram
   world-space bounds, final transform scale, projected screen-space bounds,
   camera distance, frustum/clipping state, and material/texture load state.
 - [x] Add optional debug overlay toggle for humans.
-- [ ] Ensure `tn doctor`, `tn screenshot`, and `tn verify` can consume the
+- [x] Ensure `tn doctor`, `tn screenshot`, and `tn verify` can consume the
   diagnostics without relying only on console output.
 
 **Tests required:**
@@ -637,7 +637,7 @@ sequenceDiagram
 
 **Files:**
 
-- `templates/racing-kart/` — new canonical racing template with player, rivals,
+- `templates/racing-kit-rally-starter/` — canonical racing template with player, rivals,
   camera, HUD, and visual proof fixture.
 - `templates/third-person/` — optional future template.
 - `packages/cli/src/templates/registry.ts` — register templates and aliases.
@@ -646,7 +646,7 @@ sequenceDiagram
 
 **Implementation:**
 
-- [x] Add `racing-kart` template covering the exact failure modes from the
+- [x] Add `racing-kit-rally-starter` template covering the exact failure modes from the
   prototype: foreground player, visible rivals, curved track, HUD, camera helper,
   model scale, screenshot-ready composition.
 - [x] Include an explicit scale-calibration fixture in the template: real asset
@@ -659,23 +659,24 @@ sequenceDiagram
 
 **Tests required:**
 
-- Template registry tests proving `racing-kart` scaffolds.
+- Template registry tests proving `racing-kit-rally-starter` scaffolds.
 - Template validate/build test.
 - Visual screenshot smoke proof if capture is available.
 
 **Verification:**
 
-- Command: `pnpm tn -- create /tmp/tn-racing --template racing-kart && cd
+- Command: `pnpm tn -- create /tmp/tn-racing --template racing-kit-rally-starter && cd
   /tmp/tn-racing && pnpm install && pnpm run validate && pnpm run build`
 - Expected result: scaffolded racing template validates/builds and produces
   screenshot-ready output.
 
 **Progress Evidence:**
 
-- `templates/racing-kart` is registered as canonical `racing-kart` with legacy
-  alias `racing`. It includes player/rival primitive karts, a curved track, HUD,
-  Camera `follow` metadata, `assets/kart-scale-calibration.json`, gameplay
-  tests, and `tn help examples` discoverability.
+- `templates/racing-kit-rally-starter` is registered as canonical
+  `racing-kit-rally-starter`. It includes local Kenney Racing Kit player/rival
+  cars, modular curved track pieces, HUD, chase-camera behavior, production
+  metadata, camera/modular-track proof commands, template-production and
+  template-playability gates, and `tn help scaffold` discoverability.
 
 ## 5. Verification Strategy
 
@@ -728,10 +729,10 @@ works end-to-end.
 - [x] `tn screenshot` captures a ready preview frame plus JSON metadata.
 - [x] `tn record` captures a short gameplay video with optional scripted input or
   reports a stable unavailable state.
-- [ ] Runtime debug diagnostics expose active camera, canvas, loaded assets,
+- [x] Runtime debug diagnostics expose active camera, canvas, loaded assets,
   resource failures, visible mesh/scene information where practical, and recent
   runtime errors.
-- [ ] Runtime/model diagnostics expose final world bounds, final scale,
+- [x] Runtime/model diagnostics expose final world bounds, final scale,
   projected screen-space bounds, camera distance, and frustum/clipping state so
   “asset loaded but wrong scale” is diagnosable without guessing.
 - [x] A canonical racing/kart example or template demonstrates player kart,
