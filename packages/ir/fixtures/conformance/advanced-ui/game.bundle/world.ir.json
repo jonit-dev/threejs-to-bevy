@@ -1,0 +1,35 @@
+{
+  "schema": "threenative.world",
+  "version": "0.1.0",
+  "entities": [
+    {
+      "id": "enemy.1",
+      "components": {
+        "Transform": {
+          "position": [8, 0, 12]
+        }
+      }
+    },
+    {
+      "id": "pickup.energy",
+      "components": {
+        "Transform": {
+          "position": [2, 0, 4]
+        }
+      }
+    }
+  ],
+  "resources": {
+    "FormState": {
+      "invalid": true
+    },
+    "PlayerVitals": {
+      "critical": true
+    },
+    "QuestState": {
+      "targetActive": true
+    }
+  },
+  "events": {},
+  "prefabs": []
+}

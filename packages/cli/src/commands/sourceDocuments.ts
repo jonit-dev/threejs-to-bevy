@@ -6,8 +6,10 @@ import {
   addInputAxis,
   addParticleEmitter,
   addPrefabComponent,
+  addUiComponentInstance,
   addUiNodeDocument,
   addUiText,
+  applyUiRecipe,
   attachSystemScript,
   bindUiDocument,
   createAudioDocument,
@@ -23,6 +25,7 @@ import {
   createSchemaDocument,
   createUiDocument,
   recordGeneratorProvenance,
+  removeUiComponentInstance,
   setMaterial,
   setEnvironmentLightProbe,
   setEnvironmentMap,
@@ -117,6 +120,78 @@ export async function uiCommand(argv: readonly string[], options: ISourceCommand
     );
   }
 
+  if (subcommand === "add-component") {
+    const uiDocId = readPositional(normalizedArgv, 1);
+    const nodeId = readPositional(normalizedArgv, 2);
+    const componentId = readFlag(normalizedArgv, "--component");
+    const props = parseJsonObjectFlag(normalizedArgv, "--props", "TN_UI_COMPONENT_PROPS_INVALID");
+    if (props.diagnostic !== undefined) {
+      return renderUsage(json, props.diagnostic, "UI component props must be a JSON object.");
+    }
+    if (uiDocId === undefined || nodeId === undefined || componentId === undefined) {
+      return renderUsage(json, "TN_UI_ADD_COMPONENT_ARGS_MISSING", "Usage: tn ui add-component <ui-doc-id> <node-id> --component <component-id> [--props <json-object>] [--project <path>] [--json]");
+    }
+    return renderAuthoringResult(
+      "ui",
+      await addUiComponentInstance({
+        componentId,
+        nodeId,
+        projectPath,
+        props: props.value,
+        uiDocId,
+      }),
+      json,
+      `UI component instance '${nodeId}' added.`,
+    );
+  }
+
+  if (subcommand === "remove-component") {
+    const uiDocId = readPositional(normalizedArgv, 1);
+    const nodeId = readPositional(normalizedArgv, 2);
+    if (uiDocId === undefined || nodeId === undefined) {
+      return renderUsage(json, "TN_UI_REMOVE_COMPONENT_ARGS_MISSING", "Usage: tn ui remove-component <ui-doc-id> <node-id> [--project <path>] [--json]");
+    }
+    return renderAuthoringResult(
+      "ui",
+      await removeUiComponentInstance({
+        nodeId,
+        projectPath,
+        uiDocId,
+      }),
+      json,
+      `UI component instance '${nodeId}' removed.`,
+    );
+  }
+
+  if (subcommand === "recipe") {
+    const uiDocId = readPositional(normalizedArgv, 1);
+    const recipe = readPositional(normalizedArgv, 2);
+    const props = parseJsonObjectFlag(normalizedArgv, "--props", "TN_UI_RECIPE_PROPS_INVALID");
+    const actions = parseJsonObjectFlag(normalizedArgv, "--actions", "TN_UI_RECIPE_ACTIONS_INVALID");
+    const bindings = parseJsonObjectFlag(normalizedArgv, "--bindings", "TN_UI_RECIPE_BINDINGS_INVALID");
+    const invalidJson = props.diagnostic ?? actions.diagnostic ?? bindings.diagnostic;
+    if (invalidJson !== undefined) {
+      return renderUsage(json, invalidJson, "UI recipe props, actions, and bindings must be JSON objects.");
+    }
+    if (uiDocId === undefined || recipe === undefined) {
+      return renderUsage(json, "TN_UI_RECIPE_ARGS_MISSING", "Usage: tn ui recipe <ui-doc-id> <recipe-id> [--id <instance-id>] [--props <json-object>] [--actions <json-object>] [--bindings <json-object>] [--project <path>] [--json]");
+    }
+    return renderAuthoringResult(
+      "ui",
+      await applyUiRecipe({
+        actions: stringRecord(actions.value),
+        bindings: stringRecord(bindings.value),
+        projectPath,
+        props: props.value,
+        recipe,
+        recipeId: readFlag(normalizedArgv, "--id"),
+        uiDocId,
+      }),
+      json,
+      `UI recipe '${recipe}' applied.`,
+    );
+  }
+
   if (subcommand === "set-layout") {
     const uiDocId = readPositional(normalizedArgv, 1);
     const nodeId = readPositional(normalizedArgv, 2);
@@ -191,7 +266,7 @@ export async function uiCommand(argv: readonly string[], options: ISourceCommand
     return renderAuthoringResult("ui", await bindUiDocument({ projectPath, uiDocId, nodeId, resourcePath }), json, `UI node '${nodeId}' bound.`);
   }
 
-  return renderUsage(json, "TN_UI_COMMAND_UNKNOWN", "Usage: tn ui create|add-text|add-node|set-layout|set-style|bind ... [--json]");
+  return renderUsage(json, "TN_UI_COMMAND_UNKNOWN", "Usage: tn ui create|add-text|add-node|add-component|remove-component|recipe|set-layout|set-style|bind ... [--json]");
 }
 
 export async function projectCommand(argv: readonly string[], options: ISourceCommandOptions = {}): Promise<ICommandResult> {
@@ -1341,6 +1416,13 @@ function parseJsonObjectFlag(argv: readonly string[], flag: string, diagnosticCo
   return { value: parsed.value };
 }
 
+function stringRecord(value: Record<string, unknown> | undefined): Record<string, string> | undefined {
+  if (value === undefined) {
+    return undefined;
+  }
+  return Object.fromEntries(Object.entries(value).filter((entry): entry is [string, string] => typeof entry[1] === "string"));
+}
+
 function parseJsonNumberArrayFlag(argv: readonly string[], flag: string, diagnosticCode: string): { diagnostic?: string; value?: number[] } {
   const raw = readFlag(argv, flag);
   if (raw === undefined) {
@@ -1423,6 +1505,7 @@ const flagsWithValues = new Set([
   "--clearcoat-texture",
   "--clip",
   "--color",
+  "--component",
   "--emissive",
   "--emissive-intensity",
   "--emissive-texture",
@@ -1447,6 +1530,7 @@ const flagsWithValues = new Set([
   "--occlusion-texture",
   "--opacity",
   "--positive-keys",
+  "--props",
   "--project",
   "--rate",
   "--build-targets",

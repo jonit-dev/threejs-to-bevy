@@ -96,6 +96,7 @@ import {
   systemQueryKeys,
   transformKeys,
   uiBindingKeys,
+  uiComponentInstanceKeys,
   uiKeys,
   uiNodeKeys,
   uiStyleKeys,
@@ -422,6 +423,43 @@ export interface IAddUiNodeDocumentOptions extends IAuthoringOperationContext {
   src?: string;
   text?: string;
   value?: number;
+}
+
+export interface IAddUiComponentInstanceOptions extends IAuthoringOperationContext {
+  uiDocId: string;
+  nodeId: string;
+  componentId: string;
+  props?: Record<string, unknown>;
+}
+
+export type UiSourceRecipeKind =
+  | "dialog-box"
+  | "enemy-health-bar"
+  | "hud-status-cluster"
+  | "interact-prompt"
+  | "inventory-grid"
+  | "item-detail-panel"
+  | "loading-overlay"
+  | "nameplate"
+  | "notification-toast"
+  | "off-screen-indicator"
+  | "pause-menu"
+  | "pickup-label"
+  | "quest-marker"
+  | "settings-list";
+
+export interface IApplyUiRecipeOptions extends IAuthoringOperationContext {
+  uiDocId: string;
+  recipe: UiSourceRecipeKind | string;
+  recipeId?: string;
+  actions?: Record<string, string>;
+  bindings?: Record<string, string>;
+  props?: Record<string, unknown>;
+}
+
+export interface IRemoveUiComponentInstanceOptions extends IAuthoringOperationContext {
+  uiDocId: string;
+  nodeId: string;
 }
 
 export interface ISetUiLayoutOptions extends IAuthoringOperationContext {
@@ -1643,6 +1681,239 @@ export async function addUiNodeDocument(options: IAddUiNodeDocumentOptions): Pro
     if (existing === undefined) {
       nodes.push(node);
     }
+  });
+}
+
+export async function addUiComponentInstance(options: IAddUiComponentInstanceOptions): Promise<IAuthoringOperationResult> {
+  return mutateSourceDocument(options, "ui", options.uiDocId, (data) => {
+    const nodes = ensureArrayProperty(data, "nodes");
+    const existing = findSceneItem(nodes, options.nodeId);
+    const node = existing ?? { id: options.nodeId };
+    node.type = "component";
+    node.component = {
+      ref: options.componentId,
+      ...(options.props === undefined ? {} : { props: cloneJson(options.props) }),
+    };
+    if (existing === undefined) {
+      nodes.push(node);
+    }
+  });
+}
+
+export async function applyUiRecipe(options: IApplyUiRecipeOptions): Promise<IAuthoringOperationResult> {
+  return mutateSourceDocument(options, "ui", options.uiDocId, (data) => {
+    const recipe = buildUiSourceRecipe(options.recipe, options.recipeId ?? options.recipe, options);
+    const nodes = ensureArrayProperty(data, "nodes");
+    for (const recipeNode of recipe.nodes) {
+      const existing = findSceneItem(nodes, recipeNode.id);
+      if (existing === undefined) {
+        nodes.push(recipeNode);
+      } else {
+        Object.assign(existing, recipeNode);
+      }
+    }
+    const bindings = ensureArrayProperty(data, "bindings");
+    for (const binding of recipe.bindings) {
+      const existing = bindings.find((candidate) => candidate.node === binding.node);
+      if (existing === undefined) {
+        bindings.push(binding);
+      } else {
+        existing.resource = binding.resource;
+      }
+    }
+    data.components = mergeById(readArray(data.components) ?? [], recipe.components);
+    data.screens = mergeById(readArray(data.screens) ?? [], recipe.screens);
+    data.focusOrder = [...new Set([...(Array.isArray(data.focusOrder) ? data.focusOrder.filter((id): id is string => typeof id === "string") : []), ...recipe.focusOrder])];
+    data.recipes = mergeById(readArray(data.recipes) ?? [], [{ id: recipe.id, kind: options.recipe, props: cloneJson(options.props ?? {}) }]);
+    data.provenance = { ...(isRecord(data.provenance) ? data.provenance : {}), ...recipe.provenance };
+  });
+}
+
+function buildUiSourceRecipe(recipe: string, id: string, options: Pick<IApplyUiRecipeOptions, "actions" | "bindings" | "props">): {
+  bindings: Array<{ node: string; resource: string }>;
+  components: Array<Record<string, unknown>>;
+  focusOrder: string[];
+  id: string;
+  nodes: Array<Record<string, unknown> & { id: string }>;
+  provenance: Record<string, unknown>;
+  screens: Array<Record<string, unknown> & { id: string }>;
+} {
+  if (recipe === "inventory-grid") {
+    const visibleCount = boundedRecipeCount(options.props?.items, 8);
+    const totalCount = Math.max(visibleCount, requestedRecipeCount(options.props?.items, visibleCount));
+    const slots = Array.from({ length: visibleCount }, (_, index) => ({
+      id: `${id}.slot.${index + 1}`,
+      type: "button",
+      label: `Slot ${index + 1}`,
+      action: options.actions?.inspect ?? "inventory.inspect",
+      layout: { width: 96, height: 96 },
+    }));
+    const root = {
+      id,
+      type: "column",
+      label: "Inventory",
+      layout: { anchor: "center", padding: 16 },
+      responsive: responsiveRules({ desktop: { width: 640 }, mobile: { width: 320 }, tablet: { width: 520 } }),
+      ...(totalCount > visibleCount ? { virtualRange: { buffer: 2, itemCount: totalCount, itemExtent: 104, orientation: "vertical", viewportExtent: 416 } } : {}),
+    };
+    return recipeOutput(id, recipe, [root, ...slots], slots.map((slot) => slot.id), options, [
+      { id: `${id}.slot`, props: [{ id: "label", required: true }], root: { id: "root", kind: "button", label: "$props.label" } },
+    ]);
+  }
+  if (recipe === "settings-list") {
+    const rows = ["audio", "video", "controls"].map((name) => ({
+      id: `${id}.${name}`,
+      type: "button",
+      label: `${capitalize(name)} settings`,
+      action: options.actions?.[name] ?? `settings.${name}`,
+    }));
+    return recipeOutput(
+      id,
+      recipe,
+      [
+        {
+          id,
+          type: "column",
+          label: "Settings",
+          layout: { anchor: "center", padding: 16, width: 360 },
+          responsive: responsiveRules({ desktop: { width: 420 }, mobile: { width: 320 }, tablet: { width: 380 } }),
+        },
+        ...rows,
+      ],
+      rows.map((row) => row.id),
+      options,
+    );
+  }
+  if (attachedUiRecipeKinds.has(recipe)) {
+    return attachedUiSourceRecipe(recipe, id, options);
+  }
+  const defaults: Record<string, { children: string[]; label: string; role: string }> = {
+    "dialog-box": { children: ["message", "confirm", "cancel"], label: "Dialog Box", role: "dialog" },
+    "hud-status-cluster": { children: ["health", "score"], label: "HUD Status Cluster", role: "hud" },
+    "item-detail-panel": { children: ["title", "description", "use"], label: "Item Detail Panel", role: "overlay" },
+    "loading-overlay": { children: ["message", "progress"], label: "Loading Overlay", role: "loading" },
+    "notification-toast": { children: ["message"], label: "Notification Toast", role: "overlay" },
+    "pause-menu": { children: ["resume", "settings", "quit"], label: "Pause Menu", role: "menu" },
+  };
+  const preset = defaults[recipe] ?? defaults["pause-menu"]!;
+  const children = preset.children.map((child) => ({ id: `${id}.${child}`, type: child === "progress" ? "bar" : "button", label: recipeNodeLabel(child), action: options.actions?.[child] ?? `${id}.${child}` }));
+  return recipeOutput(id, recipe, [{ id, type: "column", label: preset.label, layout: { anchor: preset.role === "hud" ? "top-left" : "center", padding: 12 } }, ...children], children.map((child) => child.id), options, [], preset.role);
+}
+
+const attachedUiRecipeKinds = new Set(["nameplate", "enemy-health-bar", "interact-prompt", "pickup-label", "quest-marker", "off-screen-indicator"]);
+
+function attachedUiSourceRecipe(recipe: string, id: string, options: Pick<IApplyUiRecipeOptions, "actions" | "bindings" | "props">) {
+  const targetId = typeof options.props?.targetId === "string" ? options.props.targetId : typeof options.props?.entityId === "string" ? options.props.entityId : "target";
+  const label = typeof options.props?.label === "string" ? options.props.label : recipeNodeLabel(recipe);
+  const attachTo = {
+    target: { kind: "entity", id: targetId },
+    anchor: "top-center",
+    localOffset: [0, 1.4, 0],
+    ...(recipe === "off-screen-indicator" ? { clamp: "screenEdge" } : {}),
+  };
+  const child =
+    recipe === "enemy-health-bar"
+      ? { id: `${id}.bar`, type: "bar", label: "Health", value: typeof options.props?.value === "number" ? options.props.value : 1, layout: { width: 96, height: 8 } }
+      : {
+          id: `${id}.label`,
+          type: recipe === "interact-prompt" ? "button" : "text",
+          label,
+          text: label,
+          action: options.actions?.interact ?? options.actions?.select ?? `${id}.select`,
+        };
+  return recipeOutput(
+    id,
+    recipe,
+    [
+      { id, type: "column", label: recipeNodeLabel(recipe), attachTo, layout: { anchor: "center", padding: 6 } },
+      child,
+    ],
+    recipe === "interact-prompt" ? [`${id}.label`] : [],
+    options,
+    [],
+    "hud",
+  );
+}
+
+function recipeOutput(
+  id: string,
+  recipe: string,
+  nodes: Array<Record<string, unknown> & { id: string }>,
+  focusOrder: string[],
+  options: Pick<IApplyUiRecipeOptions, "actions" | "bindings">,
+  components: Array<Record<string, unknown>> = [],
+  role = "menu",
+) {
+  return {
+    bindings: Object.entries(options.bindings ?? {}).map(([node, resource]) => ({ node: node.includes(".") ? node : `${id}.${node}`, resource })),
+    components,
+    focusOrder,
+    id,
+    nodes,
+    provenance: { [`recipes/${id}`]: { kind: recipe, source: "tn.ui.recipe", version: 1 } },
+    screens: [{ id, role, root: id, stackPolicy: role === "hud" ? "overlay" : "push", focusScope: { entry: focusOrder[0] ?? id, backAction: options.actions?.back ?? "ui.back", inputCapture: role === "hud" ? "none" : "keyboard", restore: "previous" } }],
+  };
+}
+
+function boundedRecipeCount(value: unknown, fallback: number): number {
+  return typeof value === "number" && Number.isFinite(value) ? Math.max(1, Math.min(32, Math.trunc(value))) : fallback;
+}
+
+function requestedRecipeCount(value: unknown, fallback: number): number {
+  return typeof value === "number" && Number.isFinite(value) ? Math.max(1, Math.trunc(value)) : fallback;
+}
+
+function responsiveRules(layouts: Record<"desktop" | "mobile" | "tablet", Record<string, unknown>>): Array<{ layout: Record<string, unknown>; target: "desktop" | "mobile" | "tablet" }> {
+  return (["desktop", "mobile", "tablet"] as const).map((target) => ({ target, layout: layouts[target] }));
+}
+
+function mergeById(existing: unknown[], next: Array<Record<string, unknown> & { id?: unknown }>): Array<unknown> {
+  const merged = existing.filter(isRecord).map((entry) => ({ ...entry }));
+  for (const item of next) {
+    if (typeof item.id !== "string") {
+      continue;
+    }
+    const target = merged.find((entry) => entry.id === item.id);
+    if (target === undefined) {
+      merged.push({ ...item });
+    } else {
+      Object.assign(target, item);
+    }
+  }
+  return merged;
+}
+
+function recipeNodeLabel(value: string): string {
+  return value.split("-").map(capitalize).join(" ");
+}
+
+function capitalize(value: string): string {
+  return value.length === 0 ? value : `${value[0]?.toUpperCase()}${value.slice(1)}`;
+}
+
+export async function removeUiComponentInstance(options: IRemoveUiComponentInstanceOptions): Promise<IAuthoringOperationResult> {
+  return mutateSourceDocument(options, "ui", options.uiDocId, (data, file) => {
+    const nodes = ensureArrayProperty(data, "nodes");
+    const index = nodes.findIndex((node) => node.id === options.nodeId);
+    if (index === -1) {
+      return [missingReferenceDiagnostic(file, "/nodes", "ui-node", options.nodeId, idsFromArray(nodes))];
+    }
+    const node = nodes[index];
+    if (node === undefined) {
+      return [missingReferenceDiagnostic(file, "/nodes", "ui-node", options.nodeId, idsFromArray(nodes))];
+    }
+    if (node.type !== "component") {
+      return [
+        typeDiagnostic(
+          file,
+          `/nodes/${index}/type`,
+          "UI node must be a component instance to remove it with remove-component.",
+          node.type,
+        ),
+      ];
+    }
+    nodes.splice(index, 1);
+    return [];
   });
 }
 
@@ -3449,14 +3720,85 @@ function validateUiNodes(diagnostics: IAuthoringDiagnostic[], file: string, valu
     const path = `/nodes/${index}`;
     const type = readString(node.type);
     if (node.type !== undefined && (type === undefined || !supportedUiNodeTypes.has(type))) {
-      validateEnumString(diagnostics, file, `${path}/type`, node.type, supportedUiNodeTypes, "UI node type", "Use 'text', 'textInput', 'button', 'image', 'bar', 'slider', 'row', 'column', or 'stack'.");
+      validateEnumString(diagnostics, file, `${path}/type`, node.type, supportedUiNodeTypes, "UI node type", "Use 'text', 'textInput', 'button', 'image', 'bar', 'slider', 'row', 'column', 'stack', or 'component'.");
     }
     validateOptionalString(diagnostics, file, `${path}/text`, node.text, "UI node text must be a non-empty string.");
     validateOptionalString(diagnostics, file, `${path}/label`, node.label, "UI node label must be a non-empty string.");
     validateOptionalString(diagnostics, file, `${path}/action`, node.action, "UI node action must be a non-empty action id.");
     validateOptionalString(diagnostics, file, `${path}/src`, node.src, "UI image src must be a non-empty asset id or source path.");
     validateOptionalNumber(diagnostics, file, `${path}/value`, node.value, "UI node value must be a finite number.");
+    validateUiComponentInstance(diagnostics, file, `${path}/component`, node.component);
     validateUiStyle(diagnostics, file, `${path}/style`, node.style);
+    validateUiResponsiveRules(diagnostics, file, `${path}/responsive`, node.responsive);
+    validateUiVirtualRange(diagnostics, file, `${path}/virtualRange`, node.virtualRange);
+  }
+}
+
+function validateUiResponsiveRules(diagnostics: IAuthoringDiagnostic[], file: string, path: string, value: unknown): void {
+  if (value === undefined) {
+    return;
+  }
+  const rules = readArray(value);
+  if (rules === undefined) {
+    diagnostics.push(typeDiagnostic(file, path, "UI responsive rules must be an array.", value));
+    return;
+  }
+  const seen = new Set<string>();
+  for (const [index, rule] of rules.entries()) {
+    const rulePath = `${path}/${index}`;
+    if (!isRecord(rule)) {
+      diagnostics.push(typeDiagnostic(file, rulePath, "UI responsive rule must be an object.", rule));
+      continue;
+    }
+    const target = readString(rule.target);
+    if (target === undefined || !["desktop", "mobile", "tablet"].includes(target)) {
+      diagnostics.push(typeDiagnostic(file, `${rulePath}/target`, "UI responsive target must be desktop, mobile, or tablet.", rule.target));
+    } else if (seen.has(target)) {
+      diagnostics.push(typeDiagnostic(file, `${rulePath}/target`, `UI responsive target '${target}' is duplicated.`, rule.target));
+    } else {
+      seen.add(target);
+    }
+    if (rule.layout !== undefined && !isRecord(rule.layout)) {
+      diagnostics.push(typeDiagnostic(file, `${rulePath}/layout`, "UI responsive layout must be an object when present.", rule.layout));
+    }
+  }
+}
+
+function validateUiVirtualRange(diagnostics: IAuthoringDiagnostic[], file: string, path: string, value: unknown): void {
+  if (value === undefined) {
+    return;
+  }
+  if (!isRecord(value)) {
+    diagnostics.push(typeDiagnostic(file, path, "UI virtual range must be an object.", value));
+    return;
+  }
+  for (const key of ["itemCount", "itemExtent", "viewportExtent"] as const) {
+    if (typeof value[key] !== "number" || !Number.isFinite(value[key]) || value[key] <= 0) {
+      diagnostics.push(typeDiagnostic(file, `${path}/${key}`, `UI virtual range ${key} must be a finite positive number.`, value[key]));
+    }
+  }
+  if (value.buffer !== undefined && (typeof value.buffer !== "number" || !Number.isFinite(value.buffer) || value.buffer < 0)) {
+    diagnostics.push(typeDiagnostic(file, `${path}/buffer`, "UI virtual range buffer must be a finite non-negative number.", value.buffer));
+  }
+  if (value.orientation !== undefined && value.orientation !== "horizontal" && value.orientation !== "vertical") {
+    diagnostics.push(typeDiagnostic(file, `${path}/orientation`, "UI virtual range orientation must be horizontal or vertical.", value.orientation));
+  }
+}
+
+function validateUiComponentInstance(diagnostics: IAuthoringDiagnostic[], file: string, path: string, value: unknown): void {
+  if (value === undefined) {
+    return;
+  }
+  if (!isRecord(value)) {
+    diagnostics.push(typeDiagnostic(file, path, "UI component instance must be an object.", value));
+    return;
+  }
+  diagnostics.push(...unknownKeyDiagnostics(file, path, value, uiComponentInstanceKeys));
+  if (readString(value.ref) === undefined) {
+    diagnostics.push(typeDiagnostic(file, `${path}/ref`, "UI component ref must be a non-empty component id.", value.ref));
+  }
+  if (value.props !== undefined && !isRecord(value.props)) {
+    diagnostics.push(typeDiagnostic(file, `${path}/props`, "UI component props must be an object when present.", value.props));
   }
 }
 

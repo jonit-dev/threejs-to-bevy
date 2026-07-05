@@ -197,6 +197,163 @@ font family fallback, letter spacing, or OpenType font variations. The IR
 validator rejects those requests with stable diagnostics so runtimes do not
 silently diverge.
 
+## Theme Tokens
+
+Advanced UI composition starts with a bounded build-time token layer. A UI
+document may declare `theme.tokens` with stable IDs and one of these token
+kinds: `color`, `spacing`, `radius`, `border`, `shadow`, `gradient`,
+`fontFamily`, `textSize`, `icon`, `image`, or `focusRing`.
+
+Nodes and component variants may reference tokens through `tokenRefs` for
+promoted retained fields such as layout spacing, style colors, border radius,
+font family, font size, image tint, gradient colors, and shadow color. The
+compiler resolves those references to concrete retained `layout`, `style`, and
+`image` fields before runtime mapping, so web and Bevy still consume plain
+retained UI values instead of CSS variables or native theme handles.
+
+Rules:
+
+- Token IDs must be unique and non-empty.
+- Aliases must point at existing tokens of the same kind and cannot form cycles.
+- Unknown token refs, unsupported token kinds, and field/kind mismatches fail
+  validation with `TN_IR_UI_*` diagnostics.
+- Token refs are source/build metadata. Generated runtime UI should not depend
+  on browser CSS custom properties, system font fallback, native theme handles,
+  or adapter-local style lookup.
+
+## Reusable Components
+
+UI source may declare reusable `components` with stable IDs, typed props, an
+ordinary retained-node `root` template, and optional slot names. Source nodes
+with `kind: "component"` reference one component by ID and provide props/slots.
+
+Compiler expansion happens before runtime mapping:
+
+- Generated node IDs are deterministic: `<instance-id>.<template-node-id>`.
+- Prop placeholders in template string fields use `$props.<name>` and are
+  replaced from instance props or component prop defaults.
+- Generated nodes are ordinary retained UI nodes after expansion.
+- `generatedNodeProvenance` records the source component, instance ID, template
+  node ID, and source path for each generated node.
+
+Validation rejects missing component refs, missing required props, undeclared
+props, undeclared slots, duplicate component IDs, duplicate prop IDs, and
+component cycles. Direct mutation of generated runtime nodes is not a durable
+source edit; tooling should patch the component definition or instance source
+instead.
+
+## Screens And Focus Scopes
+
+UI documents may declare `screens` for HUD, menu, modal, overlay, loading, and
+dialog flows. Each screen names a retained node root and can declare a bounded
+stack policy: `replace`, `push`, `pop`, `overlay`, or `exclusiveModal`.
+
+Focus scopes define the entry node, restore policy, escape/back action, focus
+trap intent, and input capture policy. Capture is explicit: `none`, `pointer`,
+`keyboard`, `pointer-and-keyboard`, or `modal`.
+
+Validation rejects missing screen roots, missing screen stack references, focus
+scope entries that are not focusable, focus traps without an escape/back
+action, modal/dialog screens without input capture, hidden active screens, and
+multiple active exclusive modals. Web runtime traces can report deterministic
+push/pop focus restoration without requiring full visual transition parity.
+The Bevy adapter preserves this metadata and reports deterministic dispatch
+traces that block lower active screens when a higher modal captures input.
+
+## Game UI Recipes
+
+Bounded game UI recipes are source-authoring conveniences, not a runtime-only
+component system. `uiRecipe`, `ui.apply_recipe`, and `tn ui recipe` emit
+ordinary retained UI source nodes plus optional `bindings`, `screens`,
+`focusOrder`, `components`, and provenance entries. Supported recipe families
+cover HUD status clusters, pause menus, settings lists, inventory grids, item
+detail panels, dialog boxes, notification toasts, and loading overlays.
+
+Recipe proof requires desktop and mobile screenshots plus accessibility reports
+under `artifacts/advanced-ui/`; missing artifacts fail the advanced UI gate.
+
+## Responsive Rules And Virtual Lists
+
+Retained UI nodes may declare bounded responsive rules keyed by target profile
+class:
+
+```json
+{
+  "id": "inventory",
+  "kind": "column",
+  "responsive": [
+    { "target": "desktop", "layout": { "width": 640 } },
+    { "target": "mobile", "layout": { "width": 320 } },
+    { "target": "tablet", "layout": { "width": 520 } }
+  ]
+}
+```
+
+Rules use canonical target classes (`desktop`, `mobile`, `tablet`) rather than
+arbitrary CSS media queries. Duplicate targets and invalid layout payloads fail
+validation.
+
+Large retained menus must stay bounded. Nodes with more than 100 generated
+children require `virtualRange` metadata:
+
+```json
+{
+  "id": "inventory",
+  "kind": "column",
+  "virtualRange": {
+    "buffer": 2,
+    "itemCount": 200,
+    "itemExtent": 104,
+    "orientation": "vertical",
+    "viewportExtent": 416
+  }
+}
+```
+
+Web and Bevy runtime traces expose deterministic visible item start/end IDs for
+the same virtual range input. Recipe helpers may emit only the bounded visible
+node set while preserving the authored total item count in `virtualRange`.
+
+Advanced UI proof requires desktop/mobile fit reports under
+`artifacts/advanced-ui/fit/`. Fit reports fail when they contain clipping,
+overlap, missing focus, or unsafe-area violations.
+
+## Common Affordances
+
+Retained UI supports bounded metadata for routine game prompts and feedback:
+
+- `glyph`: logical input prompt for an action with a target glyph set
+  (`keyboard`, `gamepad`, or `touch`) and optional label.
+- `tooltip`: anchor node, open policy (`focus`, `hover`, or `manual`), delay,
+  dismissal action, focus behavior, and accessible description.
+- `localization`: key, fallback text, typed params, and optional plural/select
+  cases. Missing fallback text is a validation error.
+- `progress`: presentation variant for bars, rings, radial fills, segmented
+  meters, textual formatting, and cooldown state.
+- `feedback`: logical audio/haptic hooks for focus, activation, or value
+  changes. Hooks name logical targets; they do not expose native handles.
+- `toastQueues`: bounded queue metadata with priority, duration, max visible
+  count, stacking direction, and duplicate coalescing policy.
+
+Web traces report deterministic toast queue coalescing. Native Bevy traces
+preserve tooltip and glyph observations so UI affordance metadata remains
+visible without relying on adapter-local DOM or native widget handles.
+
+## Bounded Visual Effects
+
+Retained UI nodes can declare bounded `effects` presets for portable emphasis:
+
+- `glow`, `outline`, `pulse`, `tint`, and `focusRing`
+- triggers for `focus`, `hover`, `selected`, `disabled`, and declared
+  resource/component predicates
+- finite pulse timing and fallback strategies such as `shadow`, `outline`, or
+  `tint`
+
+Effects are data-only retained UI metadata. UI validation rejects arbitrary CSS
+filters, shader/material references, renderer handles, unsupported blend modes,
+and unbounded pulse loops. Web and Bevy traces report the active node, state,
+effect id, kind, and applied direct or fallback strategy.
+
 ## State And Bindings
 
 Game UI should read from declared ECS resources/components through bindings.

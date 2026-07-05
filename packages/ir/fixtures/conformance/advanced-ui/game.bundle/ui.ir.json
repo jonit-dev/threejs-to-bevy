@@ -1,0 +1,144 @@
+{
+  "schema": "threenative.ui",
+  "version": "0.1.0",
+  "root": {
+    "id": "advanced.ui",
+    "kind": "column",
+    "children": [
+      {
+        "id": "selected.item",
+        "kind": "button",
+        "label": "Crystal Key",
+        "action": "InspectItem",
+        "effects": [
+          {
+            "id": "selected.item.glow",
+            "kind": "glow",
+            "trigger": "selected",
+            "color": "#66ccff",
+            "radius": 12,
+            "intensity": 0.75,
+            "fallback": "shadow"
+          }
+        ]
+      },
+      {
+        "id": "quest.target",
+        "kind": "button",
+        "label": "Ancient Door",
+        "action": "TrackQuest",
+        "effects": [
+          {
+            "id": "quest.target.pulse",
+            "kind": "pulse",
+            "trigger": "predicate",
+            "predicate": {
+              "resource": "QuestState",
+              "field": "targetActive",
+              "equals": true
+            },
+            "pulse": {
+              "durationMs": 900,
+              "iterations": 3
+            },
+            "fallback": "outline"
+          }
+        ]
+      },
+      {
+        "id": "invalid.input",
+        "kind": "text",
+        "text": "Name required",
+        "effects": [
+          {
+            "id": "invalid.input.outline",
+            "kind": "outline",
+            "trigger": "predicate",
+            "predicate": {
+              "resource": "FormState",
+              "field": "invalid",
+              "equals": true
+            },
+            "color": "#ff3366",
+            "radius": 2
+          }
+        ]
+      },
+      {
+        "id": "critical.health",
+        "kind": "bar",
+        "accessibilityLabel": "Critical health",
+        "value": 2,
+        "max": 10,
+        "effects": [
+          {
+            "id": "critical.health.tint",
+            "kind": "tint",
+            "trigger": "predicate",
+            "predicate": {
+              "resource": "PlayerVitals",
+              "field": "critical",
+              "equals": true
+            },
+            "color": "#ff0033",
+            "intensity": 0.65
+          }
+        ]
+      },
+      {
+        "id": "focused.confirm",
+        "kind": "button",
+        "label": "Confirm",
+        "action": "Confirm",
+        "focusable": true,
+        "effects": [
+          {
+            "id": "focused.confirm.ring",
+            "kind": "focusRing",
+            "trigger": "focus",
+            "color": "#ffffff",
+            "radius": 4,
+            "fallback": "outline"
+          }
+        ]
+      },
+      {
+        "id": "enemy.nameplate",
+        "kind": "text",
+        "text": "Scout",
+        "attachTo": {
+          "target": {
+            "kind": "entity",
+            "id": "enemy.1"
+          },
+          "localOffset": [0, 2, 0],
+          "anchor": "top",
+          "clamp": "screenEdge",
+          "distanceScale": {
+            "min": 0.6,
+            "max": 1.2
+          },
+          "occlusion": "hide",
+          "maxDistance": 80,
+          "sortPriority": 10
+        }
+      },
+      {
+        "id": "pickup.label",
+        "kind": "text",
+        "text": "Energy Cell",
+        "attachTo": {
+          "target": {
+            "kind": "selectedEntity",
+            "binding": "selection.current"
+          },
+          "localOffset": [0, 1, 0],
+          "anchor": "bottom",
+          "clamp": "screenEdge",
+          "occlusion": "show",
+          "sortPriority": 5
+        }
+      }
+    ]
+  }
+}

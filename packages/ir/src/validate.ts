@@ -199,7 +199,7 @@ export async function validateBundle(bundlePath: string): Promise<IBundleValidat
     validateRuntimeConfig(runtimeConfig, manifest.files.runtimeConfig ?? IR_DOCUMENTS.runtimeConfig.fileName, diagnostics);
   }
   if (ui !== undefined) {
-    validateUi(ui, manifest.entry.ui ?? IR_DOCUMENTS.ui.fileName, diagnostics);
+    validateUi(ui, manifest.entry.ui ?? IR_DOCUMENTS.ui.fileName, diagnostics, new Set((world?.entities ?? []).map((entity) => entity.id)));
   }
   if (overlays !== undefined) {
     diagnostics.push(...validateOverlaysIr(overlays, manifest.entry.overlays ?? IR_DOCUMENTS.overlays.fileName));

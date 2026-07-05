@@ -1,5 +1,6 @@
 import { resolveScriptAlias, formatDeprecationDiagnostic } from "./legacyAliases.js";
 
+export { verifyAdvancedUiArtifacts, type IAdvancedUiArtifactReport } from "./advancedUi.js";
 export { checkDocs, formatDocsReport } from "./docs.js";
 export { editorAiChatArtifactPaths, runEditorAiChatGate, type IEditorAiChatArtifacts, type IEditorAiChatReport } from "./editorAiChat.js";
 export { runEditorRequiredOperationsSmoke, type IEditorRequiredOperationsReport } from "./editorRequiredOperations.js";

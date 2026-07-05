@@ -610,6 +610,19 @@ function collectUiCapabilities(ui: IUiIr | undefined, add: (domain: string, capa
   if (ui.safeArea !== undefined) {
     add("ui", "safe-area");
   }
+  if ((ui.screens ?? []).length > 0) {
+    add("ui", "screen-stack");
+    for (const screen of ui.screens ?? []) {
+      add("ui", `screen.${screen.role}`);
+      if (screen.focusScope !== undefined) {
+        add("ui", "focus-scope");
+        add("ui", `input-capture.${screen.focusScope.inputCapture}`);
+      }
+      if (screen.stackPolicy !== undefined) {
+        add("ui", `stack-policy.${screen.stackPolicy}`);
+      }
+    }
+  }
   if ((ui.fonts ?? []).length > 0) {
     add("ui", "font-assets");
     for (const font of ui.fonts ?? []) {

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import type { IAssetsManifest, IMaterialsIr, IWorldIr } from "@threenative/ir";
+import type { IAssetsManifest, IMaterialsIr, IUiIr, IWorldIr } from "@threenative/ir";
 
 import { deriveRequiredCapabilities } from "./capabilities.js";
 
@@ -297,6 +297,29 @@ test("derives overlay capabilities", () => {
   assert.deepEqual(capabilities.overlay, ["bridge", "input.pointer", "target.desktop", "target.web", "transparent", "webview"]);
 });
 
+test("derives UI screen stack and focus scope capabilities", () => {
+  const capabilities = deriveRequiredCapabilities({
+    assets: assetsManifest([]),
+    materials: materialsIr([]),
+    ui: uiIr(),
+  });
+
+  assert.deepEqual(capabilities.ui, [
+    "action",
+    "focus-scope",
+    "input-capture.modal",
+    "node.button",
+    "node.column",
+    "node.stack",
+    "runtime",
+    "screen-stack",
+    "screen.menu",
+    "screen.modal",
+    "stack-policy.exclusiveModal",
+    "stack-policy.push",
+  ]);
+});
+
 function assetsManifest(assets: IAssetsManifest["assets"]): IAssetsManifest {
   return { assets, schema: "threenative.assets", version: "0.1.0" };
 }
@@ -311,5 +334,25 @@ function worldIr(world: Pick<IWorldIr, "entities" | "resources">): IWorldIr {
     resources: world.resources,
     schema: "threenative.world",
     version: "0.1.0",
+  };
+}
+
+function uiIr(): IUiIr {
+  return {
+    schema: "threenative.ui",
+    version: "0.1.0",
+    root: {
+      id: "ui.root",
+      kind: "stack",
+      children: [
+        { id: "pause.panel", kind: "column", children: [{ id: "resume", kind: "button", action: "Resume", label: "Resume" }] },
+        { id: "confirm.dialog", kind: "column", children: [{ id: "confirm.cancel", kind: "button", action: "UiCancel", label: "Cancel" }] },
+      ],
+    },
+    screens: [
+      { id: "pause", role: "menu", root: "pause.panel", stackPolicy: "push", focusScope: { entry: "resume", inputCapture: "modal" } },
+      { id: "confirm", role: "modal", root: "confirm.dialog", stackPolicy: "exclusiveModal", focusScope: { entry: "confirm.cancel", inputCapture: "modal" } },
+    ],
+    screenStack: { active: ["pause", "confirm"], policy: "exclusiveModal" },
   };
 }

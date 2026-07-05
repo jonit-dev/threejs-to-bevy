@@ -842,6 +842,13 @@ diagnostics until portable promotion criteria and web/Bevy evidence exist.
 - [x] `P1` UI background/text color, borders, rounded corners, and opacity
 - [x] `P1` Portable UI shadow/linear-gradient metadata and web DOM rendering
 - [x] `P1` Native-rendered UI shadows and gradients
+- [x] `P1` Build-time UI theme tokens and token refs lower to concrete retained layout/style/image fields before web or Bevy runtime mapping
+- [x] `P1` Source-level reusable UI component instances expand to ordinary retained UI nodes with deterministic IDs and generated-node provenance before runtime mapping
+- [x] `P1` UI screen stack, modal/dialog roles, focus scopes, restore policy, and input-capture metadata validate in IR with deterministic web focus-restoration and Bevy modal input-capture dispatch trace proof
+- [x] `P1` Bounded game UI recipes generate ordinary editable source nodes, bindings, screens, focus order, and provenance with required screenshot/accessibility proof artifacts
+- [x] `P1` Responsive target-class UI recipe metadata, bounded virtual range metadata for large retained lists, deterministic web/Bevy visible-range traces, and desktop/mobile UI-fit artifact checks
+- [x] `P1` Common UI affordance metadata for input glyph prompts, tooltips, localization fallback/cases, progress/cooldown presentation, toast queues, and logical feedback hooks with web/native observation traces
+- [x] `P1` Bounded retained UI effect presets for glow, outline, pulse, tint, and focus rings with renderer escape-hatch diagnostics, advanced UI fixture states, and web/native strategy traces
 - [x] `P1` Basic UI text size, alignment, and wrapping
 - [x] `P1` Portable UI text weight/decoration metadata and web DOM rendering
 - [x] `P1` Rich text styling: font assets, inline spans, and native-rendered weight/decoration

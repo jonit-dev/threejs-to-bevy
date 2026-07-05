@@ -16,7 +16,7 @@ export const meshDocumentSchema = "threenative.meshes";
 export const generatorDocumentSchema = "threenative.generator-provenance";
 
 export const sceneDocumentKeys = new Set(["schema", "version", "id", "kind", "activation", "initial", "entities", "instances", "prefabs", "resources", "systems", "scriptLifecycles", "ui", "provenance"]);
-export const uiDocumentKeys = new Set(["schema", "version", "id", "nodes", "bindings", "provenance"]);
+export const uiDocumentKeys = new Set(["schema", "version", "id", "nodes", "bindings", "components", "focusOrder", "screens", "recipes", "provenance"]);
 export const materialDocumentKeys = new Set(["schema", "version", "id", "materials", "provenance"]);
 export const assetDocumentKeys = new Set(["schema", "version", "id", "assets", "provenance"]);
 export const inputDocumentKeys = new Set(["schema", "version", "id", "actions", "axes", "controlsSettings", "persistedBindingOverrides", "provenance"]);
@@ -76,7 +76,8 @@ export const scriptLifecycleKeys = new Set([
   "writes",
 ]);
 export const uiKeys = new Set(["nodes", "bindings"]);
-export const uiNodeKeys = new Set(["id", "action", "label", "layout", "src", "style", "text", "type", "value"]);
+export const uiNodeKeys = new Set(["id", "action", "attachTo", "component", "label", "layout", "responsive", "src", "style", "text", "type", "value", "virtualRange"]);
+export const uiComponentInstanceKeys = new Set(["ref", "props"]);
 export const uiStyleKeys = new Set(["backgroundColor", "borderColor", "borderRadius", "borderWidth", "color", "fontSize", "fontWeight", "opacity", "textAlign", "textDecoration", "wrap"]);
 export const uiBindingKeys = new Set(["node", "resource"]);
 export const resourceKeys = new Set(["id", "path", "value"]);
@@ -138,7 +139,7 @@ export const supportedRenderLookReservedProfiles = new Set(["cinematic", "styliz
 export const supportedRenderLookShadowQualities = new Set(["high", "low", "medium", "off"]);
 export const supportedSceneActivationPolicies = new Set(["additive", "exclusive", "loading", "overlay", "persistent"]);
 export const supportedSceneLifecycleKinds = new Set(["credits", "cutscene", "level", "loading", "menu", "overlay", "system"]);
-export const supportedUiNodeTypes = new Set(["bar", "button", "column", "image", "row", "slider", "stack", "text", "textInput"]);
+export const supportedUiNodeTypes = new Set(["bar", "button", "column", "component", "image", "row", "slider", "stack", "text", "textInput"]);
 export const supportedUiTextAlignments = new Set(["center", "left", "right"]);
 export const supportedUiTextDecorations = new Set(["lineThrough", "none", "underline"]);
 export const supportedInputCaptureStates = new Set(["applied", "conflict-confirmation", "idle", "rejected", "reset-to-default", "waiting-for-input"]);
@@ -294,13 +295,28 @@ export interface ISceneUi {
 export interface ISceneUiNode {
   id: string;
   action?: string;
+  attachTo?: Record<string, unknown>;
+  component?: ISceneUiComponentInstance;
   label?: string;
   layout?: Record<string, unknown>;
+  responsive?: Array<{ layout?: Record<string, unknown>; target: "desktop" | "mobile" | "tablet" }>;
   src?: string;
   style?: ISceneUiStyle;
   text?: string;
-  type?: "bar" | "button" | "column" | "image" | "row" | "slider" | "stack" | "text" | "textInput";
+  type?: "bar" | "button" | "column" | "component" | "image" | "row" | "slider" | "stack" | "text" | "textInput";
   value?: number;
+  virtualRange?: {
+    buffer?: number;
+    itemCount: number;
+    itemExtent: number;
+    orientation?: "horizontal" | "vertical";
+    viewportExtent: number;
+  };
+}
+
+export interface ISceneUiComponentInstance {
+  ref: string;
+  props?: Record<string, unknown>;
 }
 
 export interface ISceneUiStyle {
@@ -328,6 +344,10 @@ export interface IUiDocument {
   id: string;
   nodes?: ISceneUiNode[];
   bindings?: ISceneUiBinding[];
+  components?: unknown[];
+  focusOrder?: string[];
+  screens?: unknown[];
+  recipes?: unknown[];
 }
 
 export interface IMaterialDocument {

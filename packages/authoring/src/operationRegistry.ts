@@ -13,9 +13,11 @@ import {
   addResource,
   addTag,
   addTenPinLayout,
+  addUiComponentInstance,
   addUiNode,
   addUiNodeDocument,
   addUiText,
+  applyUiRecipe,
   attachScript,
   attachSystemScript,
   bindUi,
@@ -35,6 +37,7 @@ import {
   createUiDocument,
   recordGeneratorProvenance,
   removeComponent,
+  removeUiComponentInstance,
   setCamera,
   setCameraComponent,
   setCharacterControllerComponent,
@@ -713,6 +716,27 @@ const operationEntries = [
     numberArg("value", false),
   ]), async ({ args, projectPath }) =>
     addUiNodeDocument({ action: optionalString(args, "action"), label: optionalString(args, "label"), nodeId: requiredString(args, "nodeId"), projectPath, src: optionalString(args, "src"), text: optionalString(args, "text"), type: requiredString(args, "type"), uiDocId: requiredString(args, "uiDocId"), value: optionalNumber(args, "value") })),
+  operation(descriptor("ui.add_component", "Add or update a reusable UI component instance in structured source.", "ui", "source-document", [
+    stringArg("uiDocId"),
+    stringArg("nodeId"),
+    stringArg("componentId"),
+    objectArg("props", false),
+  ]), async ({ args, projectPath }) =>
+    addUiComponentInstance({ componentId: requiredString(args, "componentId"), nodeId: requiredString(args, "nodeId"), projectPath, props: optionalObject(args, "props"), uiDocId: requiredString(args, "uiDocId") })),
+  operation(descriptor("ui.apply_recipe", "Add or update a bounded retained UI recipe in structured source.", "ui", "source-document", [
+    stringArg("uiDocId"),
+    stringArg("recipe"),
+    stringArg("recipeId", false),
+    objectArg("actions", false),
+    objectArg("bindings", false),
+    objectArg("props", false),
+  ]), async ({ args, projectPath }) =>
+    applyUiRecipe({ actions: optionalStringRecord(args, "actions"), bindings: optionalStringRecord(args, "bindings"), projectPath, props: optionalObject(args, "props"), recipe: requiredString(args, "recipe"), recipeId: optionalString(args, "recipeId"), uiDocId: requiredString(args, "uiDocId") })),
+  operation(descriptor("ui.remove_component", "Remove a reusable UI component instance from structured source.", "ui", "source-document", [
+    stringArg("uiDocId"),
+    stringArg("nodeId"),
+  ]), async ({ args, projectPath }) =>
+    removeUiComponentInstance({ nodeId: requiredString(args, "nodeId"), projectPath, uiDocId: requiredString(args, "uiDocId") })),
   operation(descriptor("ui.set_layout", "Set retained UI layout fields in a structured UI document.", "ui", "source-document", [
     stringArg("uiDocId"),
     stringArg("nodeId"),
@@ -1042,6 +1066,14 @@ function optionalStringArray(args: Record<string, unknown>, key: string): string
 function optionalObject(args: Record<string, unknown>, key: string): Record<string, unknown> | undefined {
   const value = args[key];
   return isObject(value) ? value : undefined;
+}
+
+function optionalStringRecord(args: Record<string, unknown>, key: string): Record<string, string> | undefined {
+  const value = optionalObject(args, key);
+  if (value === undefined) {
+    return undefined;
+  }
+  return Object.fromEntries(Object.entries(value).filter((entry): entry is [string, string] => typeof entry[1] === "string"));
 }
 
 function optionalObjectArray(args: Record<string, unknown>, key: string): Record<string, unknown>[] | undefined {

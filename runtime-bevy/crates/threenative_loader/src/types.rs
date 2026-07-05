@@ -1282,7 +1282,39 @@ pub struct UiIr {
     pub input_actions: Option<UiInputActionsIr>,
     #[serde(rename = "safeArea")]
     pub safe_area: Option<UiSafeAreaIr>,
+    #[serde(rename = "screenStack")]
+    pub screen_stack: Option<UiScreenStackIr>,
+    pub screens: Option<Vec<UiScreenIr>>,
     pub root: UiNodeIr,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UiScreenIr {
+    pub active: Option<bool>,
+    pub focus_scope: Option<UiFocusScopeIr>,
+    pub hidden: Option<bool>,
+    pub id: String,
+    pub role: String,
+    pub root: String,
+    pub stack_policy: Option<String>,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UiFocusScopeIr {
+    pub back_action: Option<String>,
+    pub entry: String,
+    pub escape_action: Option<String>,
+    pub input_capture: String,
+    pub restore: Option<String>,
+    pub trap: Option<bool>,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+pub struct UiScreenStackIr {
+    pub active: Vec<String>,
+    pub policy: String,
 }
 
 #[derive(Clone, Debug, Deserialize)]
@@ -1309,11 +1341,16 @@ pub struct UiNodeIr {
     pub accessibility_label: Option<String>,
     pub action: Option<String>,
     pub anchor_id: Option<String>,
+    #[serde(rename = "attachTo")]
+    pub attach_to: Option<UiAttachmentIr>,
     pub binding: Option<UiBindingIr>,
     #[serde(default)]
     pub children: Vec<UiNodeIr>,
     pub disabled: Option<bool>,
+    #[serde(default)]
+    pub effects: Vec<UiEffectPresetIr>,
     pub focusable: Option<bool>,
+    pub glyph: Option<UiGlyphPromptIr>,
     pub id: String,
     pub image: Option<UiImageMetadataIr>,
     pub kind: String,
@@ -1331,8 +1368,99 @@ pub struct UiNodeIr {
     pub style: Option<UiStyleIr>,
     pub src: Option<String>,
     pub text: Option<String>,
+    pub tooltip: Option<UiTooltipIr>,
     pub value: Option<f32>,
     pub value_text: Option<String>,
+    #[serde(rename = "virtualRange")]
+    pub virtual_range: Option<UiVirtualRangeIr>,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UiVirtualRangeIr {
+    pub buffer: Option<usize>,
+    pub item_count: usize,
+    pub item_extent: f32,
+    pub orientation: Option<String>,
+    pub viewport_extent: f32,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UiEffectPresetIr {
+    pub color: Option<String>,
+    pub fallback: Option<String>,
+    pub id: String,
+    pub intensity: Option<f32>,
+    pub kind: String,
+    pub predicate: Option<UiEffectPredicateIr>,
+    pub pulse: Option<UiEffectPulseIr>,
+    pub radius: Option<f32>,
+    pub trigger: String,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UiEffectPredicateIr {
+    pub component: Option<String>,
+    pub entity: Option<String>,
+    pub field: Option<String>,
+    pub resource: Option<String>,
+    pub equals: Option<serde_json::Value>,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UiEffectPulseIr {
+    pub duration_ms: f32,
+    pub iterations: Option<u32>,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UiAttachmentIr {
+    pub anchor: Option<String>,
+    pub clamp: Option<String>,
+    pub distance_scale: Option<UiAttachmentDistanceScaleIr>,
+    pub local_offset: Option<[f32; 3]>,
+    pub max_distance: Option<f32>,
+    pub occlusion: Option<String>,
+    pub sort_priority: Option<f32>,
+    pub target: UiAttachmentTargetIr,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UiAttachmentDistanceScaleIr {
+    pub max: f32,
+    pub min: f32,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UiAttachmentTargetIr {
+    pub binding: Option<String>,
+    pub id: Option<String>,
+    pub kind: String,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UiGlyphPromptIr {
+    pub action: String,
+    pub glyph_set: Option<String>,
+    pub label: Option<String>,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UiTooltipIr {
+    pub anchor: String,
+    pub delay_ms: Option<f32>,
+    pub description: String,
+    pub dismiss_action: Option<String>,
+    pub focus: Option<String>,
+    pub open: String,
 }
 
 #[derive(Clone, Debug, Deserialize)]

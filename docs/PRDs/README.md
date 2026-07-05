@@ -11,6 +11,11 @@ backlog unless a nested PRD says it has been superseded.
 
 ### Runtime And Gameplay Parity
 
+- [GameBlocks-Informed Gameplay Accuracy](other/gameblocks-informed-gameplay-accuracy.md):
+  use the useful portable semantics from GameBlocks as source material for
+  ThreeNative-owned gameplay-block planning descriptors, pure script helpers,
+  recipe metadata, and conformance proof without importing Three.js/Rapier/DOM
+  runtime code.
 - [Portable Scripting Character and Physics Contacts](other/portable-scripting-character-physics-contacts.md):
   richer primitive contact filtering, character movement observations, slope
   and push semantics, and stable diagnostics for unsupported physics breadth.
@@ -65,6 +70,10 @@ backlog unless a nested PRD says it has been superseded.
   constrained authored shader materials with explicit uniforms/textures,
   generated web GLSL and Bevy WGSL, stable diagnostics for raw/backend shader
   escape hatches, and visual parity evidence across both engines.
+- [Portable Photoreal Rendering and Post-Processing](other/portable-photoreal-rendering-and-postprocessing.md):
+  portable HDRI/environment lighting, AO, bloom, DOF, SSR, motion blur, and
+  fallback diagnostics with Three.js implementations kept adapter-private and
+  Bevy parity/reporting required before promoted claims.
 - [Advanced Visual Effects, Lighting, and Material Depth](other/advanced-visual-effects-lighting-material-depth.md):
   umbrella reference for advanced lighting, material, atmosphere,
   post-processing, deferred renderer, virtual geometry, and custom

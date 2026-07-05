@@ -1,8 +1,8 @@
 use std::collections::HashMap;
 
 use bevy::a11y::{
-    AccessibilityNode,
     accesskit::{NodeBuilder, Role},
+    AccessibilityNode,
 };
 use bevy::input::mouse::{MouseScrollUnit, MouseWheel};
 use bevy::prelude::*;
@@ -351,6 +351,114 @@ pub struct UiNavigationEvent {
     pub kind: String,
 }
 
+#[derive(Debug, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct NativeUiScreenDispatchTrace {
+    pub events: Vec<NativeUiScreenDispatchObservation>,
+}
+
+#[derive(Debug, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct NativeUiScreenDispatchObservation {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub action: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub blocked_by: Option<String>,
+    pub dispatched: bool,
+    pub input: String,
+    pub node: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub screen: Option<String>,
+}
+
+#[derive(Debug, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct NativeUiVirtualListRangeTrace {
+    pub end_index: isize,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub end_item: Option<String>,
+    pub node: String,
+    pub start_index: isize,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub start_item: Option<String>,
+}
+
+#[derive(Debug, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct NativeUiAffordanceTrace {
+    pub glyphs: Vec<NativeUiGlyphObservation>,
+    pub tooltips: Vec<NativeUiTooltipObservation>,
+}
+
+#[derive(Debug, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct NativeUiGlyphObservation {
+    pub action: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub glyph_set: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub label: Option<String>,
+    pub node: String,
+}
+
+#[derive(Debug, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct NativeUiTooltipObservation {
+    pub anchor: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub delay_ms: Option<f32>,
+    pub description: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub dismiss_action: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub focus: Option<String>,
+    pub node: String,
+    pub open: String,
+}
+
+#[derive(Debug, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct NativeUiEffectPresetTrace {
+    pub effects: Vec<NativeUiEffectPresetObservation>,
+}
+
+#[derive(Debug, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct NativeUiEffectPresetObservation {
+    pub effect: String,
+    pub kind: String,
+    pub node: String,
+    pub state: String,
+    pub strategy: String,
+}
+
+#[derive(Debug, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct NativeUiAttachmentProjectionTrace {
+    pub projections: Vec<NativeUiAttachmentProjectionObservation>,
+}
+
+#[derive(Debug, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct NativeUiAttachmentProjectionObservation {
+    pub camera: String,
+    pub clamped: bool,
+    pub depth: f32,
+    pub node: String,
+    pub occluded: bool,
+    pub scale: f32,
+    pub screen: NativeUiScreenPosition,
+    pub target: String,
+    pub visible_nodes: Vec<String>,
+}
+
+#[derive(Debug, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct NativeUiScreenPosition {
+    pub x: f32,
+    pub y: f32,
+}
+
 #[derive(Clone, Debug, Error, PartialEq)]
 #[error("{code}: {message} at {path}")]
 pub struct UiDiagnostic {
@@ -635,6 +743,239 @@ pub fn trace_ui_navigation(ui: &UiIr, inputs: &[&str]) -> UiNavigationTrace {
     }
 }
 
+pub fn trace_native_ui_screen_dispatch(
+    ui: &UiIr,
+    inputs: &[(&str, &str)],
+) -> NativeUiScreenDispatchTrace {
+    let mut nodes = Vec::new();
+    collect_nodes(&ui.root, &mut nodes);
+    let active_screens = active_ui_screens(ui);
+    let events = inputs
+        .iter()
+        .map(|(node_id, input)| {
+            let node = find_node(&nodes, node_id);
+            let screen = active_screens
+                .iter()
+                .find(|screen| node_is_within_root(&ui.root, &screen.root, node_id))
+                .map(|screen| screen.id.clone());
+            let blocked_by = screen.as_ref().and_then(|screen_id| {
+                let screen_index = active_screens
+                    .iter()
+                    .position(|screen| screen.id == *screen_id)?;
+                active_screens[screen_index + 1..]
+                    .iter()
+                    .rev()
+                    .find(|screen| {
+                        screen
+                            .focus_scope
+                            .as_ref()
+                            .is_some_and(|scope| scope.input_capture != "none")
+                    })
+                    .map(|screen| screen.id.clone())
+            });
+            NativeUiScreenDispatchObservation {
+                action: (*input == "activate")
+                    .then(|| node.and_then(|node| node.action.clone()))
+                    .flatten(),
+                blocked_by: blocked_by.clone(),
+                dispatched: blocked_by.is_none(),
+                input: (*input).to_owned(),
+                node: (*node_id).to_owned(),
+                screen,
+            }
+        })
+        .collect();
+    NativeUiScreenDispatchTrace { events }
+}
+
+pub fn trace_native_ui_virtual_list_range(
+    ui: &UiIr,
+    node_id: &str,
+    scroll_offset: f32,
+) -> NativeUiVirtualListRangeTrace {
+    let mut nodes = Vec::new();
+    collect_nodes(&ui.root, &mut nodes);
+    let Some(node) = find_node(&nodes, node_id) else {
+        return NativeUiVirtualListRangeTrace {
+            end_index: -1,
+            end_item: None,
+            node: node_id.to_owned(),
+            start_index: -1,
+            start_item: None,
+        };
+    };
+    let Some(range) = node.virtual_range.as_ref() else {
+        return NativeUiVirtualListRangeTrace {
+            end_index: -1,
+            end_item: None,
+            node: node.id.clone(),
+            start_index: -1,
+            start_item: None,
+        };
+    };
+    let buffer = range.buffer.unwrap_or(0);
+    let start_index =
+        ((scroll_offset / range.item_extent).floor() as isize - buffer as isize).max(0);
+    let visible_count = (range.viewport_extent / range.item_extent).ceil() as usize + buffer * 2;
+    let end_index = ((start_index as usize + visible_count).saturating_sub(1))
+        .min(range.item_count.saturating_sub(1)) as isize;
+    NativeUiVirtualListRangeTrace {
+        end_index,
+        end_item: node
+            .children
+            .get(end_index as usize)
+            .map(|child| child.id.clone()),
+        node: node.id.clone(),
+        start_index,
+        start_item: node
+            .children
+            .get(start_index as usize)
+            .map(|child| child.id.clone()),
+    }
+}
+
+pub fn trace_native_ui_affordances(ui: &UiIr) -> NativeUiAffordanceTrace {
+    let mut nodes = Vec::new();
+    collect_nodes(&ui.root, &mut nodes);
+    NativeUiAffordanceTrace {
+        glyphs: nodes
+            .iter()
+            .filter_map(|node| {
+                node.glyph.as_ref().map(|glyph| NativeUiGlyphObservation {
+                    action: glyph.action.clone(),
+                    glyph_set: glyph.glyph_set.clone(),
+                    label: glyph.label.clone(),
+                    node: node.id.clone(),
+                })
+            })
+            .collect(),
+        tooltips: nodes
+            .iter()
+            .filter_map(|node| {
+                node.tooltip
+                    .as_ref()
+                    .map(|tooltip| NativeUiTooltipObservation {
+                        anchor: tooltip.anchor.clone(),
+                        delay_ms: tooltip.delay_ms,
+                        description: tooltip.description.clone(),
+                        dismiss_action: tooltip.dismiss_action.clone(),
+                        focus: tooltip.focus.clone(),
+                        node: node.id.clone(),
+                        open: tooltip.open.clone(),
+                    })
+            })
+            .collect(),
+    }
+}
+
+pub fn trace_native_ui_effect_presets(
+    ui: &UiIr,
+    active_states: &[&str],
+) -> NativeUiEffectPresetTrace {
+    let mut nodes = Vec::new();
+    collect_nodes(&ui.root, &mut nodes);
+    let mut effects = nodes
+        .iter()
+        .flat_map(|node| {
+            node.effects.iter().filter_map(|effect| {
+                if effect.trigger != "predicate"
+                    && !active_states
+                        .iter()
+                        .any(|state| *state == effect.trigger.as_str())
+                {
+                    return None;
+                }
+                Some(NativeUiEffectPresetObservation {
+                    effect: effect.id.clone(),
+                    kind: effect.kind.clone(),
+                    node: node.id.clone(),
+                    state: effect.trigger.clone(),
+                    strategy: native_ui_effect_strategy(effect),
+                })
+            })
+        })
+        .collect::<Vec<_>>();
+    effects.sort_by(|left, right| {
+        format!("{}:{}", left.node, left.effect).cmp(&format!("{}:{}", right.node, right.effect))
+    });
+    NativeUiEffectPresetTrace { effects }
+}
+
+fn native_ui_effect_strategy(effect: &threenative_loader::UiEffectPresetIr) -> String {
+    match effect.kind.as_str() {
+        "glow" | "pulse" => effect
+            .fallback
+            .as_ref()
+            .filter(|fallback| fallback.as_str() != "none")
+            .map(|fallback| format!("fallback:{fallback}"))
+            .unwrap_or_else(|| "direct".to_owned()),
+        _ => "direct".to_owned(),
+    }
+}
+
+pub fn trace_native_ui_attachment_projection(
+    ui: &UiIr,
+    target_entity: &str,
+    world_position: [f32; 3],
+    camera_id: &str,
+    viewport: [f32; 2],
+) -> NativeUiAttachmentProjectionTrace {
+    let mut nodes = Vec::new();
+    collect_nodes(&ui.root, &mut nodes);
+    let mut projections = nodes
+        .iter()
+        .filter_map(|node| {
+            let attach = node.attach_to.as_ref()?;
+            let target = attach.target.id.as_deref()?;
+            if attach.target.kind != "entity" || target != target_entity {
+                return None;
+            }
+            let offset = attach.local_offset.unwrap_or([0.0, 0.0, 0.0]);
+            let projected = [
+                viewport[0] / 2.0 + world_position[0] + offset[0],
+                viewport[1] / 2.0 - (world_position[1] + offset[1]),
+            ];
+            let screen = if attach.clamp.as_deref() == Some("screenEdge") {
+                [
+                    projected[0].clamp(0.0, viewport[0]),
+                    projected[1].clamp(0.0, viewport[1]),
+                ]
+            } else {
+                projected
+            };
+            Some(NativeUiAttachmentProjectionObservation {
+                camera: camera_id.to_owned(),
+                clamped: screen != projected,
+                depth: world_position[2] + offset[2],
+                node: node.id.clone(),
+                occluded: false,
+                scale: native_attachment_scale(attach.distance_scale.as_ref(), world_position[2]),
+                screen: NativeUiScreenPosition {
+                    x: screen[0],
+                    y: screen[1],
+                },
+                target: target.to_owned(),
+                visible_nodes: std::iter::once(node.id.clone())
+                    .chain(node.children.iter().map(|child| child.id.clone()))
+                    .collect(),
+            })
+        })
+        .collect::<Vec<_>>();
+    projections.sort_by(|left, right| left.node.cmp(&right.node));
+    NativeUiAttachmentProjectionTrace { projections }
+}
+
+fn native_attachment_scale(
+    scale: Option<&threenative_loader::UiAttachmentDistanceScaleIr>,
+    depth: f32,
+) -> f32 {
+    let Some(scale) = scale else {
+        return 1.0;
+    };
+    let normalized = (depth.abs() / 100.0).clamp(0.0, 1.0);
+    scale.max - (scale.max - scale.min) * normalized
+}
+
 pub fn trace_native_ui_visual_effects(world: &mut World) -> NativeUiVisualEffectTrace {
     let mut query = world.query::<(
         &ThreeNativeId,
@@ -748,6 +1089,48 @@ fn collect_nodes<'a>(node: &'a UiNodeIr, nodes: &mut Vec<&'a UiNodeIr>) {
 
 fn find_node<'a>(nodes: &[&'a UiNodeIr], id: &str) -> Option<&'a UiNodeIr> {
     nodes.iter().copied().find(|node| node.id == id)
+}
+
+fn active_ui_screens(ui: &UiIr) -> Vec<&threenative_loader::UiScreenIr> {
+    let Some(screens) = ui.screens.as_ref() else {
+        return Vec::new();
+    };
+    let active = ui
+        .screen_stack
+        .as_ref()
+        .map(|stack| stack.active.clone())
+        .unwrap_or_else(|| {
+            screens
+                .iter()
+                .filter(|screen| screen.active == Some(true))
+                .map(|screen| screen.id.clone())
+                .collect()
+        });
+    active
+        .iter()
+        .filter_map(|id| {
+            screens
+                .iter()
+                .find(|screen| screen.id == *id && screen.hidden != Some(true))
+        })
+        .collect()
+}
+
+fn node_is_within_root(node: &UiNodeIr, root_id: &str, target_id: &str) -> bool {
+    if node.id == root_id {
+        return contains_node_id(node, target_id);
+    }
+    node.children
+        .iter()
+        .any(|child| node_is_within_root(child, root_id, target_id))
+}
+
+fn contains_node_id(node: &UiNodeIr, target_id: &str) -> bool {
+    node.id == target_id
+        || node
+            .children
+            .iter()
+            .any(|child| contains_node_id(child, target_id))
 }
 
 fn is_focusable(node: &UiNodeIr) -> bool {

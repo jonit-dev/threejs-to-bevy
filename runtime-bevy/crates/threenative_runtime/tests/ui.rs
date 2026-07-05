@@ -5,20 +5,22 @@ use std::{
     time::{SystemTime, UNIX_EPOCH},
 };
 
-use bevy::a11y::{AccessibilityNode, accesskit::Role};
+use bevy::a11y::{accesskit::Role, AccessibilityNode};
 use bevy::prelude::*;
 use bevy::text::BreakLineOn;
 use bevy::ui::IsDefaultUiCamera;
 use threenative_components::ThreeNativeId;
-use threenative_loader::{UiIr, UiNodeIr, load_bundle};
+use threenative_loader::{load_bundle, UiIr, UiNodeIr};
 use threenative_runtime::ui::{
+    build_native_ui, diagnose_native_ui_visual_support, dispatch_native_ui_actions,
+    install_native_ui_overlay_camera, map_ui_into_world, queue_native_ui_text_input_value,
+    trace_native_ui_affordances, trace_native_ui_attachment_projection,
+    trace_native_ui_effect_presets, trace_native_ui_screen_dispatch, trace_native_ui_text_styles,
+    trace_native_ui_virtual_list_range, trace_native_ui_visual_effects, trace_ui_navigation,
     NativeUiAction, NativeUiActionEvent, NativeUiActionQueue, NativeUiBar, NativeUiGradient,
     NativeUiImageSrc, NativeUiKind, NativeUiMinimapMarker, NativeUiMinimapPathPoint,
     NativeUiRenderedGradient, NativeUiRenderedShadow, NativeUiRenderedTextStyle,
-    NativeUiScrollContainer, NativeUiShadow, NativeUiStyle, NativeUiWidget, build_native_ui,
-    diagnose_native_ui_visual_support, dispatch_native_ui_actions,
-    install_native_ui_overlay_camera, map_ui_into_world, queue_native_ui_text_input_value,
-    trace_native_ui_text_styles, trace_native_ui_visual_effects, trace_ui_navigation,
+    NativeUiScrollContainer, NativeUiShadow, NativeUiStyle, NativeUiWidget,
 };
 
 mod support;
@@ -419,6 +421,8 @@ fn ui_should_dispatch_native_button_and_touch_actions() {
         fonts: Vec::new(),
         focus_order: None,
         input_actions: None,
+        screen_stack: None,
+        screens: None,
         safe_area: None,
         schema: "threenative.ui".to_owned(),
         version: "0.1.0".to_owned(),
@@ -426,15 +430,19 @@ fn ui_should_dispatch_native_button_and_touch_actions() {
             action: None,
             accessibility_label: None,
             anchor_id: None,
+            attach_to: None,
             binding: None,
             children: vec![UiNodeIr {
                 action: Some("Jump".to_owned()),
                 accessibility_label: None,
                 anchor_id: None,
+                attach_to: None,
                 binding: None,
                 children: Vec::new(),
                 disabled: None,
+                effects: Vec::new(),
                 focusable: None,
+                glyph: None,
                 id: "jump".to_owned(),
                 image: None,
                 kind: "touchControl".to_owned(),
@@ -451,11 +459,15 @@ fn ui_should_dispatch_native_button_and_touch_actions() {
                 src: None,
                 style: None,
                 text: None,
+                tooltip: None,
                 value: None,
                 value_text: None,
+                virtual_range: None,
             }],
             disabled: None,
+            effects: Vec::new(),
             focusable: None,
+            glyph: None,
             id: "hud".to_owned(),
             image: None,
             kind: "column".to_owned(),
@@ -471,8 +483,10 @@ fn ui_should_dispatch_native_button_and_touch_actions() {
             step: None,
             src: None,
             text: None,
+            tooltip: None,
             value: None,
             value_text: None,
+            virtual_range: None,
             style: None,
         },
     };
@@ -491,12 +505,11 @@ fn ui_should_dispatch_native_button_and_touch_actions() {
     );
 
     app.update();
-    assert!(
-        app.world()
-            .resource::<NativeUiActionQueue>()
-            .events
-            .is_empty()
-    );
+    assert!(app
+        .world()
+        .resource::<NativeUiActionQueue>()
+        .events
+        .is_empty());
 
     app.world_mut()
         .entity_mut(jump)
@@ -519,19 +532,25 @@ fn ui_should_preserve_text_input_value_events() {
         fonts: Vec::new(),
         focus_order: None,
         input_actions: None,
+        screen_stack: None,
+        screens: None,
         root: UiNodeIr {
             action: None,
             accessibility_label: None,
             anchor_id: None,
+            attach_to: None,
             binding: None,
             children: vec![UiNodeIr {
                 action: Some("SetPlayerName".to_owned()),
                 accessibility_label: None,
                 anchor_id: None,
+                attach_to: None,
                 binding: None,
                 children: Vec::new(),
                 disabled: None,
+                effects: Vec::new(),
                 focusable: None,
+                glyph: None,
                 id: "player-name".to_owned(),
                 image: None,
                 kind: "textInput".to_owned(),
@@ -548,11 +567,15 @@ fn ui_should_preserve_text_input_value_events() {
                 src: None,
                 style: None,
                 text: Some("Hero".to_owned()),
+                tooltip: None,
                 value: None,
                 value_text: None,
+                virtual_range: None,
             }],
             disabled: None,
+            effects: Vec::new(),
             focusable: None,
+            glyph: None,
             id: "hud".to_owned(),
             image: None,
             kind: "column".to_owned(),
@@ -568,8 +591,10 @@ fn ui_should_preserve_text_input_value_events() {
             step: None,
             src: None,
             text: None,
+            tooltip: None,
             value: None,
             value_text: None,
+            virtual_range: None,
             style: None,
         },
         safe_area: None,
@@ -627,6 +652,8 @@ fn ui_should_reject_unsupported_ui_node() {
         fonts: Vec::new(),
         focus_order: None,
         input_actions: None,
+        screen_stack: None,
+        screens: None,
         safe_area: None,
         schema: "threenative.ui".to_owned(),
         version: "0.1.0".to_owned(),
@@ -634,10 +661,13 @@ fn ui_should_reject_unsupported_ui_node() {
             action: None,
             accessibility_label: None,
             anchor_id: None,
+            attach_to: None,
             binding: None,
             children: Vec::new(),
             disabled: None,
+            effects: Vec::new(),
             focusable: None,
+            glyph: None,
             id: "bad".to_owned(),
             image: None,
             kind: "html".to_owned(),
@@ -653,8 +683,10 @@ fn ui_should_reject_unsupported_ui_node() {
             step: None,
             src: None,
             text: None,
+            tooltip: None,
             value: None,
             value_text: None,
+            virtual_range: None,
             style: None,
         },
     };
@@ -701,6 +733,201 @@ fn ui_navigation_trace_should_support_reverse_tab() {
         vec![("settings", "tab"), ("play", "shiftTab")]
     );
     assert_eq!(trace.final_focus.as_deref(), Some("play"));
+}
+
+#[test]
+fn should_apply_screen_stack_input_capture() {
+    let ui: UiIr = serde_json::from_value(serde_json::json!({
+        "schema": "threenative.ui",
+        "version": "0.1.0",
+        "root": {
+            "id": "root",
+            "kind": "stack",
+            "children": [
+                {
+                    "id": "hud",
+                    "kind": "column",
+                    "children": [{ "id": "pause", "kind": "button", "action": "Pause", "focusable": true }]
+                },
+                {
+                    "id": "confirm",
+                    "kind": "column",
+                    "children": [{ "id": "confirm.cancel", "kind": "button", "action": "Cancel", "focusable": true }]
+                }
+            ]
+        },
+        "screens": [
+            {
+                "id": "hud",
+                "root": "hud",
+                "role": "hud",
+                "stackPolicy": "replace",
+                "focusScope": { "entry": "pause", "inputCapture": "none", "restore": "none" }
+            },
+            {
+                "id": "confirm",
+                "root": "confirm",
+                "role": "modal",
+                "stackPolicy": "exclusiveModal",
+                "focusScope": {
+                    "entry": "confirm.cancel",
+                    "inputCapture": "modal",
+                    "restore": "previous",
+                    "trap": true,
+                    "escapeAction": "Cancel"
+                }
+            }
+        ],
+        "screenStack": { "active": ["hud", "confirm"], "policy": "exclusiveModal" }
+    }))
+    .expect("screen stack UI should deserialize");
+
+    let trace = trace_native_ui_screen_dispatch(
+        &ui,
+        &[("pause", "activate"), ("confirm.cancel", "activate")],
+    );
+
+    assert_eq!(trace.events.len(), 2);
+    assert_eq!(trace.events[0].screen.as_deref(), Some("hud"));
+    assert_eq!(trace.events[0].blocked_by.as_deref(), Some("confirm"));
+    assert_eq!(trace.events[0].dispatched, false);
+    assert_eq!(trace.events[0].action.as_deref(), Some("Pause"));
+    assert_eq!(trace.events[1].screen.as_deref(), Some("confirm"));
+    assert_eq!(trace.events[1].blocked_by, None);
+    assert_eq!(trace.events[1].dispatched, true);
+    assert_eq!(trace.events[1].action.as_deref(), Some("Cancel"));
+}
+
+#[test]
+fn should_preserve_native_virtual_list_range() {
+    let ui: UiIr = serde_json::from_value(serde_json::json!({
+        "schema": "threenative.ui",
+        "version": "0.1.0",
+        "root": {
+            "id": "inventory",
+            "kind": "column",
+            "virtualRange": { "buffer": 1, "itemCount": 200, "itemExtent": 24, "viewportExtent": 96 },
+            "children": (0..200).map(|index| serde_json::json!({
+                "id": format!("item.{index}"),
+                "kind": "button",
+                "label": format!("Item {index}"),
+                "action": "InspectItem"
+            })).collect::<Vec<_>>()
+        }
+    }))
+    .expect("virtual list UI should deserialize");
+
+    let trace = trace_native_ui_virtual_list_range(&ui, "inventory", 120.0);
+
+    assert_eq!(trace.node, "inventory");
+    assert_eq!(trace.start_index, 4);
+    assert_eq!(trace.start_item.as_deref(), Some("item.4"));
+    assert_eq!(trace.end_index, 9);
+    assert_eq!(trace.end_item.as_deref(), Some("item.9"));
+}
+
+#[test]
+fn should_preserve_tooltip_and_glyph_observations() {
+    let ui: UiIr = serde_json::from_value(serde_json::json!({
+        "schema": "threenative.ui",
+        "version": "0.1.0",
+        "root": {
+            "id": "interact",
+            "kind": "button",
+            "label": "Open",
+            "action": "Interact",
+            "glyph": { "action": "Interact", "glyphSet": "gamepad", "label": "A" },
+            "tooltip": {
+                "anchor": "interact",
+                "delayMs": 250,
+                "description": "Open the selected chest.",
+                "dismissAction": "Cancel",
+                "focus": "preserve",
+                "open": "focus"
+            }
+        }
+    }))
+    .expect("affordance UI should deserialize");
+
+    let trace = trace_native_ui_affordances(&ui);
+
+    assert_eq!(trace.glyphs.len(), 1);
+    assert_eq!(trace.glyphs[0].node, "interact");
+    assert_eq!(trace.glyphs[0].action, "Interact");
+    assert_eq!(trace.glyphs[0].glyph_set.as_deref(), Some("gamepad"));
+    assert_eq!(trace.glyphs[0].label.as_deref(), Some("A"));
+    assert_eq!(trace.tooltips.len(), 1);
+    assert_eq!(trace.tooltips[0].node, "interact");
+    assert_eq!(trace.tooltips[0].anchor, "interact");
+    assert_eq!(trace.tooltips[0].description, "Open the selected chest.");
+    assert_eq!(trace.tooltips[0].dismiss_action.as_deref(), Some("Cancel"));
+}
+
+#[test]
+fn should_preserve_native_ui_effect_observations() {
+    let ui: UiIr = serde_json::from_value(serde_json::json!({
+        "schema": "threenative.ui",
+        "version": "0.1.0",
+        "root": {
+            "id": "inventory.slot.0",
+            "kind": "button",
+            "label": "Crystal Key",
+            "effects": [
+                {
+                    "color": "#66ccff",
+                    "fallback": "shadow",
+                    "id": "selected.glow",
+                    "kind": "glow",
+                    "radius": 12,
+                    "trigger": "selected"
+                }
+            ]
+        }
+    }))
+    .expect("effect UI should deserialize");
+
+    let trace = trace_native_ui_effect_presets(&ui, &["selected"]);
+
+    assert_eq!(trace.effects.len(), 1);
+    assert_eq!(trace.effects[0].node, "inventory.slot.0");
+    assert_eq!(trace.effects[0].effect, "selected.glow");
+    assert_eq!(trace.effects[0].state, "selected");
+    assert_eq!(trace.effects[0].strategy, "fallback:shadow");
+}
+
+#[test]
+fn should_clamp_off_screen_attached_ui_marker() {
+    let ui: UiIr = serde_json::from_value(serde_json::json!({
+        "schema": "threenative.ui",
+        "version": "0.1.0",
+        "root": {
+            "id": "quest.marker",
+            "kind": "text",
+            "text": "Quest",
+            "attachTo": {
+                "target": { "kind": "entity", "id": "quest.target" },
+                "localOffset": [0, 2, 0],
+                "anchor": "top",
+                "clamp": "screenEdge",
+                "distanceScale": { "min": 0.5, "max": 1.25 }
+            }
+        }
+    }))
+    .expect("attached UI should deserialize");
+
+    let trace = trace_native_ui_attachment_projection(
+        &ui,
+        "quest.target",
+        [1000.0, 10.0, 20.0],
+        "main.camera",
+        [800.0, 600.0],
+    );
+
+    assert_eq!(trace.projections.len(), 1);
+    assert_eq!(trace.projections[0].target, "quest.target");
+    assert_eq!(trace.projections[0].camera, "main.camera");
+    assert_eq!(trace.projections[0].clamped, true);
+    assert_eq!(trace.projections[0].screen.x, 800.0);
 }
 
 fn write_ui_bundle() -> PathBuf {

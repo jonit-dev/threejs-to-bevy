@@ -335,11 +335,11 @@ optional webview overlays:
 
 **Implementation:**
 
-- [ ] Define bounded tokens for color, spacing, radius, border, shadow,
+- [x] Define bounded tokens for color, spacing, radius, border, shadow,
   gradient, font family, text size, icon/image refs, and focus ring.
-- [ ] Allow component variants to reference tokens by stable IDs.
-- [ ] Resolve tokens to concrete retained style/image/font fields during build.
-- [ ] Reject unknown tokens, circular aliases, unsupported token types, and
+- [x] Allow component variants to reference tokens by stable IDs.
+- [x] Resolve tokens to concrete retained style/image/font fields during build.
+- [x] Reject unknown tokens, circular aliases, unsupported token types, and
   runtime-specific CSS/native style fields.
 
 **Tests Required:**
@@ -369,12 +369,12 @@ optional webview overlays:
 
 **Implementation:**
 
-- [ ] Add source-level component definitions with typed props and slots.
-- [ ] Expand components into retained nodes with deterministic generated IDs.
-- [ ] Preserve provenance from generated nodes to source component, prop, and
+- [x] Add source-level component definitions with typed props and slots.
+- [x] Expand components into retained nodes with deterministic generated IDs.
+- [x] Preserve provenance from generated nodes to source component, prop, and
   slot paths.
-- [ ] Add CLI operations for create/use/update/remove component instances.
-- [ ] Reject component cycles, missing required props, invalid slot children,
+- [x] Add CLI operations for create/use/update/remove component instances.
+- [x] Reject component cycles, missing required props, invalid slot children,
   duplicate generated IDs, and attempts to mutate generated IR directly.
 
 **Tests Required:**
@@ -383,7 +383,8 @@ optional webview overlays:
 |-----------|-----------|-----------|
 | `packages/compiler/src/emit/ui.test.tsx` | `should expand reusable UI component with stable node IDs` | Rebuild emits identical IDs. |
 | `packages/compiler/src/emit/ui.test.tsx` | `should preserve source provenance for generated UI nodes` | Provenance maps node to component source path. |
-| `packages/cli/src/commands/source-documents-command.test.ts` | `should update component props through tn ui` | Source document changes and generated IR rebuilds. |
+| `packages/cli/src/commands/source-documents-command.test.ts` | `ui command adds component instance source metadata` | Source document adds, updates, and removes component instance metadata through `tn ui`. |
+| `packages/authoring/src/operationRegistry.test.ts` | `should expose operation metadata and registry diagnostics` | Registry exposes component instance source operations deterministically. |
 
 **User Verification:**
 
@@ -404,14 +405,14 @@ optional webview overlays:
 
 **Implementation:**
 
-- [ ] Add screen definitions with `hud`, `menu`, `modal`, `overlay`,
+- [x] Add screen definitions with `hud`, `menu`, `modal`, `overlay`,
   `loading`, and `dialog` roles.
-- [ ] Add stack policies: replace, push, pop, overlay, and exclusive modal.
-- [ ] Add focus scopes with entry node, restore behavior, escape/back action,
+- [x] Add stack policies: replace, push, pop, overlay, and exclusive modal.
+- [x] Add focus scopes with entry node, restore behavior, escape/back action,
   and input capture policy.
-- [ ] Emit deterministic transition observations without requiring full visual
+- [x] Emit deterministic transition observations without requiring full visual
   animation parity.
-- [ ] Reject focus traps without exit action, modal overlays without capture
+- [x] Reject focus traps without exit action, modal overlays without capture
   policy, duplicate active exclusive screens, and hidden screens with active
   focus.
 
@@ -420,7 +421,7 @@ optional webview overlays:
 | Test File | Test Name | Assertion |
 |-----------|-----------|-----------|
 | `packages/ir/src/ui.test.ts` | `should reject modal focus trap without exit action` | Diagnostic code/path are stable. |
-| `packages/runtime-web-three/src/ui-screen-stack.test.ts` | `should restore focus after modal pop` | Previous focused node is restored. |
+| `packages/runtime-web-three/src/ui/screenStack.test.ts` | `ui screen stack trace should restore focus after modal pop` | Previous focused node is restored. |
 | `runtime-bevy/crates/threenative_runtime/tests/ui.rs` | `should apply screen stack input capture` | Hidden/lower screen does not dispatch action. |
 
 **User Verification:**
@@ -442,13 +443,13 @@ optional webview overlays:
 
 **Implementation:**
 
-- [ ] Add bounded recipes for HUD status cluster, pause menu, settings list,
+- [x] Add bounded recipes for HUD status cluster, pause menu, settings list,
   inventory grid, item detail panel, dialog box, notification toast, and
   loading overlay.
-- [ ] Allow recipes to bind resources/settings/actions through declared props.
-- [ ] Generate accessible names, focus order, and responsive anchors by default.
-- [ ] Add CLI/editor operation metadata for adding and customizing recipes.
-- [ ] Keep recipe output as ordinary retained UI nodes with provenance.
+- [x] Allow recipes to bind resources/settings/actions through declared props.
+- [x] Generate accessible names, focus order, and responsive anchors by default.
+- [x] Add CLI/editor operation metadata for adding and customizing recipes.
+- [x] Keep recipe output as ordinary retained UI nodes with provenance.
 
 **Tests Required:**
 
@@ -477,13 +478,13 @@ optional webview overlays:
 
 **Implementation:**
 
-- [ ] Add responsive recipe breakpoints by target profile class, not arbitrary
+- [x] Add responsive recipe breakpoints by target profile class, not arbitrary
   CSS media queries.
-- [ ] Add list and grid virtualization metadata for large inventories and save
+- [x] Add list and grid virtualization metadata for large inventories and save
   lists, with deterministic visible range observations.
-- [ ] Extend UI-fit proof to catch clipping, overlap, missing focus targets,
+- [x] Extend UI-fit proof to catch clipping, overlap, missing focus targets,
   and unsafe-area violations on desktop and mobile viewports.
-- [ ] Reject unbounded generated node counts where virtualization is required.
+- [x] Reject unbounded generated node counts where virtualization is required.
 
 **Tests Required:**
 
@@ -512,17 +513,17 @@ optional webview overlays:
 
 **Implementation:**
 
-- [ ] Add logical controller glyph refs for declared input actions and target
+- [x] Add logical controller glyph refs for declared input actions and target
   profile glyph sets.
-- [ ] Add tooltip/popover metadata with open policy, anchor node, delay,
+- [x] Add tooltip/popover metadata with open policy, anchor node, delay,
   dismissal action, focus behavior, and accessible description.
-- [ ] Add toast queue metadata with priority, duration, max visible count,
+- [x] Add toast queue metadata with priority, duration, max visible count,
   stacking direction, and duplicate coalescing policy.
-- [ ] Add progress/cooldown variants for bars, rings, radial fills, segmented
+- [x] Add progress/cooldown variants for bars, rings, radial fills, segmented
   meters, and textual value formatting when supported by retained nodes.
-- [ ] Add localization keys with typed params, fallback text, plural/select
+- [x] Add localization keys with typed params, fallback text, plural/select
   cases, and missing-key diagnostics.
-- [ ] Add UI feedback hooks that emit logical audio/haptic events through
+- [x] Add UI feedback hooks that emit logical audio/haptic events through
   declared services when supported by target profile.
 
 **Tests Required:**
@@ -554,14 +555,14 @@ optional webview overlays:
 
 **Implementation:**
 
-- [ ] Add effect metadata for glow, outline, pulse, tint, focus ring, and
+- [x] Add effect metadata for glow, outline, pulse, tint, focus ring, and
   fallback shadow strategy.
-- [ ] Allow effects to bind to focus/hover/selected/disabled and declared
+- [x] Allow effects to bind to focus/hover/selected/disabled and declared
   resource/component predicates.
-- [ ] Emit runtime reports that record the applied strategy for each effect.
-- [ ] Reject arbitrary CSS filters, shader refs, render handles, unsupported
+- [x] Emit runtime reports that record the applied strategy for each effect.
+- [x] Reject arbitrary CSS filters, shader refs, render handles, unsupported
   blend modes, and unbounded animation loops.
-- [ ] Add visual fixture states for selected item, quest target, invalid input,
+- [x] Add visual fixture states for selected item, quest target, invalid input,
   critical health, and focused button.
 
 **Tests Required:**
@@ -715,3 +716,151 @@ pnpm verify:advanced-ui
 
 If implementation changes shared runtime contracts, include
 `pnpm verify:conformance` before release-gate updates.
+
+## Verification Evidence
+
+### Phase 1: Theme Tokens and Variants
+
+- Implemented bounded `theme.tokens` and `tokenRefs` IR metadata in
+  `packages/ir/src/types.ts`.
+- Added validation for duplicate/invalid token IDs, unsupported token kinds,
+  alias cycles, unresolved refs, and field/kind mismatches in
+  `packages/ir/src/uiValidation.ts`.
+- Added SDK helpers in `packages/sdk/src/ui.ts` and public exports from
+  `packages/sdk/src/index.ts`.
+- Added compiler lowering in `packages/compiler/src/emit/ui.ts`; emitted
+  runtime nodes receive concrete retained `layout`, `style`, and `image`
+  values and no `tokenRefs`.
+- Updated `docs/contracts/ui.md`, `docs/STATUS.md`, and
+  `docs/bevy-feature-parity.md` for the token slice only.
+- Verification run:
+  - `pnpm --filter @threenative/sdk test -- --run ui`
+  - `pnpm --filter @threenative/ir test -- --run ui`
+  - `pnpm --filter @threenative/compiler test -- --run ui`
+
+### Phase 2: Component Expansion and Provenance
+
+- Implemented source-level `components`, `kind: "component"` instance nodes,
+  typed props, slot metadata, and generated-node provenance types in
+  `packages/ir/src/types.ts`.
+- Added validation for component refs, required props, undeclared props/slots,
+  duplicate definitions, duplicate props, component cycles, and generated ID
+  collisions in `packages/ir/src/uiValidation.ts`.
+- Added SDK helpers for component definitions and instances in
+  `packages/sdk/src/ui.ts`.
+- Added compiler expansion in `packages/compiler/src/emit/ui.ts`; generated
+  IDs use `<instance-id>.<template-node-id>` and generated provenance records
+  source component, instance, template node, and source path.
+- Added `tn ui add-component ... --component ... --props ...`, `tn ui
+  remove-component ...`, `ui.add_component`, `ui.remove_component`, and
+  authoring source validation for component instance nodes. Verified with
+  `pnpm --filter @threenative/cli test -- --run "ui command adds component instance source metadata"`.
+- Verification run:
+  - `pnpm --filter @threenative/sdk test -- --run ui`
+  - `pnpm --filter @threenative/ir test -- --run ui`
+  - `pnpm --filter @threenative/ir test -- --run "component instances|screen stack|modal focus trap"`
+  - `pnpm --filter @threenative/authoring test -- --run "operation"`
+
+### Phase 3: Screen Stack, Modals, and Focus Scopes
+
+- Added UI screen/focus metadata to `packages/ir/src/types.ts`: screen roles,
+  stack policies, focus scopes, input capture, restore policy, and transition
+  observations.
+- Added validation in `packages/ir/src/uiValidation.ts` for missing screen
+  roots/refs, invalid roles/policies, invalid focus entries, focus traps
+  without exit actions, modal/dialog screens without input capture, hidden
+  active screens, and multiple active exclusive modals.
+- Added deterministic web runtime trace coverage for modal push/pop focus
+  restoration in `packages/runtime-web-three/src/ui/screenStack.ts`.
+- Added capability tags for `ui:screen-stack`, `ui:focus-scope`,
+  `ui:input-capture.*`, and `ui:stack-policy.*`.
+- Added Bevy loader metadata and deterministic native dispatch trace coverage
+  for modal input capture in `runtime-bevy/crates/threenative_runtime/src/ui.rs`.
+- Verification run:
+  - `pnpm --filter @threenative/ir test -- --run "screen stack|modal focus trap|ui should accept screen"`
+  - `pnpm --filter @threenative/ir build && pnpm --filter @threenative/runtime-web-three test -- --run "screen stack"`
+  - `pnpm --filter @threenative/compiler test -- --run "UI screen stack|capabilities"`
+  - `cargo test -p threenative_runtime --test ui should_apply_screen_stack_input_capture`
+  - `pnpm check:docs`
+  - `pnpm --filter @threenative/compiler test -- --run ui`
+
+### Phase 4: Game UI Recipes
+
+- Added bounded SDK recipe helpers for HUD status clusters, pause menus,
+  settings lists, inventory grids, item detail panels, dialog boxes,
+  notification toasts, and loading overlays in `packages/sdk/src/ui.ts`.
+- Added `ui.apply_recipe` authoring operation metadata and `tn ui recipe ...`
+  source mutation support. Recipes write ordinary source `nodes`, `bindings`,
+  `screens`, `focusOrder`, and provenance entries.
+- Added starter recipe provenance metadata to
+  `templates/structured-source-starter/content/ui/hud.ui.json`.
+- Added `tools/verify/src/advancedUi.ts` to require desktop/mobile recipe
+  screenshots and accessibility reports before accepting advanced UI proof.
+- Verification run:
+  - `pnpm --filter @threenative/sdk test -- --run ui`
+  - `pnpm --filter @threenative/authoring test -- --run "operation|recipe"`
+  - `pnpm --filter @threenative/cli test -- --run "settings recipe|ui command adds component"`
+  - `pnpm --filter @threenative/verify-tools test -- --run "recipe screenshots"`
+
+### Phase 5: Responsive Fit, Lists, and Large Menus
+
+- Added UI IR `responsive` rules keyed by target profile class
+  (`desktop`, `mobile`, `tablet`) and `virtualRange` metadata for bounded
+  large retained lists.
+- Added source schema validation for responsive and virtual range metadata.
+  SDK and CLI recipe generation now emits responsive breakpoints for inventory
+  and settings recipes, and large inventory recipes cap emitted visible nodes
+  while preserving the full item count through `virtualRange`.
+- Added deterministic web and Bevy virtual-list range traces for start/end
+  visible item IDs.
+- Extended `verifyAdvancedUiArtifacts()` to require desktop/mobile fit reports
+  and fail on clipping, overlap, missing focus, or unsafe-area violations.
+- Verification run:
+  - `pnpm --filter @threenative/ir test -- --run "large list"`
+  - `pnpm --filter @threenative/runtime-web-three test -- --run "visible item range"`
+  - `cargo test -p threenative_runtime --test ui should_preserve_native_virtual_list_range`
+  - `cargo test -p threenative_runtime --test ui`
+  - `pnpm --filter @threenative/sdk test -- --run "inventory recipe|ui"`
+  - `pnpm --filter @threenative/authoring test -- --run "operation|recipe"`
+  - `pnpm --filter @threenative/cli test -- --run "settings recipe|ui command adds component"`
+  - `pnpm --filter @threenative/verify-tools test -- --run "recipe screenshots|ui fit"`
+
+### Phase 6: Common Affordances
+
+- Added retained UI affordance metadata for glyph prompts, tooltips,
+  localization fallbacks, progress presentation variants, feedback hooks, and
+  toast queues in `packages/ir/src/types.ts`.
+- Added IR validation for glyph action refs, tooltip policy/description,
+  localization fallback text, progress variants, feedback targets, and bounded
+  toast queue settings.
+- Added SDK helpers for glyph prompts, tooltips, localization declarations, and
+  toast queues.
+- Added deterministic web toast queue coalescing trace and native Bevy
+  tooltip/glyph preservation trace.
+- Verification run:
+  - `pnpm --filter @threenative/ir build`
+  - `pnpm --filter @threenative/ir test -- --run "glyph prompt|localization key"`
+  - `pnpm --filter @threenative/runtime-web-three test -- --run "coalesce duplicate toast"`
+  - `cargo test -p threenative_runtime --test ui should_preserve_tooltip_and_glyph_observations`
+  - `cargo test -p threenative_runtime --test ui`
+  - `cargo test -p threenative_runtime --test ui_debug`
+  - `pnpm --filter @threenative/sdk test -- --run "affordance helper|ui"`
+
+### Phase 7: Bounded Visual Effects
+
+- Added retained UI effect metadata for glow, outline, pulse, tint, focus ring,
+  fallback strategies, finite pulse timing, and focus/hover/selected/disabled
+  or predicate triggers in `packages/ir/src/types.ts`.
+- Added IR diagnostics for renderer-specific CSS filters, shader/material
+  refs, render handles, unsupported effect fields, invalid predicates, and
+  unbounded pulse iterations.
+- Added deterministic web and native Bevy effect strategy traces that report
+  node id, effect id, state, kind, and direct/fallback strategy.
+- Added the `packages/ir/fixtures/conformance/advanced-ui/game.bundle`
+  fixture with selected item, quest target, invalid input, critical health, and
+  focused button states.
+- Verification run:
+  - `pnpm --filter @threenative/ir build`
+  - `pnpm --filter @threenative/ir test -- --run "bounded UI glow|custom UI shader"`
+  - `pnpm --filter @threenative/runtime-web-three test -- --run "active selected glow strategy"`
+  - `cargo test -p threenative_runtime --test ui should_preserve_native_ui_effect_observations`

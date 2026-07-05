@@ -153,6 +153,458 @@ test("ui should validate explicit flex layout metadata", async () => {
   }
 });
 
+test("ui should accept bounded UI theme tokens", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-ui-theme-"));
+  try {
+    await writeTestBundle(root, { manifest: { entry: { ui: "ui.ir.json" } } });
+    await writeJson(root, "ui.ir.json", {
+      schema: "threenative.ui",
+      version: "0.1.0",
+      theme: {
+        tokens: [
+          { id: "color.panel", kind: "color", value: "#101820cc" },
+          { id: "space.panel", kind: "spacing", value: 16 },
+          { id: "radius.panel", kind: "radius", value: 8 },
+        ],
+        componentVariants: [
+          {
+            id: "panel",
+            tokenRefs: {
+              layout: { padding: "space.panel" },
+              style: { backgroundColor: "color.panel", borderRadius: "radius.panel" },
+            },
+          },
+        ],
+      },
+      root: {
+        id: "hud",
+        kind: "column",
+        tokenRefs: {
+          layout: { padding: "space.panel" },
+          style: { backgroundColor: "color.panel", borderRadius: "radius.panel" },
+        },
+      },
+    });
+
+    const result = await validateBundle(root);
+
+    assert.equal(result.ok, true);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("ui should reject unresolved UI token references", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-ui-token-missing-"));
+  try {
+    await writeTestBundle(root, { manifest: { entry: { ui: "ui.ir.json" } } });
+    await writeJson(root, "ui.ir.json", {
+      schema: "threenative.ui",
+      version: "0.1.0",
+      theme: { tokens: [{ id: "color.panel", kind: "color", value: "#101820cc" }] },
+      root: {
+        id: "hud",
+        kind: "column",
+        tokenRefs: {
+          layout: { padding: "space.missing" },
+        },
+      },
+    });
+
+    const result = await validateBundle(root);
+
+    assert.equal(result.ok, false);
+    assert.equal(result.diagnostics[0]?.code, "TN_IR_UI_TOKEN_REF_UNRESOLVED");
+    assert.equal(result.diagnostics[0]?.path, "ui.ir.json/root/tokenRefs/layout/padding");
+    assert.match(result.diagnostics[0]?.message ?? "", /space\.missing/);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("ui should reject circular UI token aliases", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-ui-token-cycle-"));
+  try {
+    await writeTestBundle(root, { manifest: { entry: { ui: "ui.ir.json" } } });
+    await writeJson(root, "ui.ir.json", {
+      schema: "threenative.ui",
+      version: "0.1.0",
+      theme: {
+        tokens: [
+          { id: "space.a", kind: "spacing", value: { alias: "space.b" } },
+          { id: "space.b", kind: "spacing", value: { alias: "space.a" } },
+        ],
+      },
+      root: { id: "hud", kind: "column" },
+    });
+
+    const result = await validateBundle(root);
+
+    assert.equal(result.ok, false);
+    assert.equal(result.diagnostics.some((diagnostic) => diagnostic.code === "TN_IR_UI_THEME_TOKEN_ALIAS_CYCLE"), true);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("ui should accept reusable UI component instances", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-ui-component-"));
+  try {
+    await writeTestBundle(root, { manifest: { entry: { ui: "ui.ir.json" } } });
+    await writeJson(root, "ui.ir.json", {
+      schema: "threenative.ui",
+      version: "0.1.0",
+      components: [
+        {
+          id: "inventorySlot",
+          props: [{ id: "label", required: true }],
+          root: { id: "root", kind: "button", label: "$props.label", action: "InspectItem" },
+        },
+      ],
+      root: {
+        id: "inventory",
+        kind: "row",
+        children: [
+          { id: "slot.potion", kind: "component", component: { ref: "inventorySlot", props: { label: "Potion" } } },
+        ],
+      },
+    });
+
+    const result = await validateBundle(root);
+
+    assert.equal(result.ok, true);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("ui should reject component instances with missing required props", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-ui-component-prop-missing-"));
+  try {
+    await writeTestBundle(root, { manifest: { entry: { ui: "ui.ir.json" } } });
+    await writeJson(root, "ui.ir.json", {
+      schema: "threenative.ui",
+      version: "0.1.0",
+      components: [
+        {
+          id: "inventorySlot",
+          props: [{ id: "label", required: true }],
+          root: { id: "root", kind: "button", label: "$props.label", action: "InspectItem" },
+        },
+      ],
+      root: {
+        id: "inventory",
+        kind: "row",
+        children: [
+          { id: "slot.potion", kind: "component", component: { ref: "inventorySlot", props: {} } },
+        ],
+      },
+    });
+
+    const result = await validateBundle(root);
+
+    assert.equal(result.ok, false);
+    assert.equal(result.diagnostics.some((diagnostic) => diagnostic.code === "TN_IR_UI_COMPONENT_PROP_MISSING"), true);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("ui should reject component instances that generate duplicate node IDs", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-ui-component-generated-duplicate-"));
+  try {
+    await writeTestBundle(root, { manifest: { entry: { ui: "ui.ir.json" } } });
+    await writeJson(root, "ui.ir.json", {
+      schema: "threenative.ui",
+      version: "0.1.0",
+      components: [
+        {
+          id: "inventorySlot",
+          root: { id: "label", kind: "text", text: "Potion" },
+        },
+      ],
+      root: {
+        id: "inventory",
+        kind: "row",
+        children: [
+          { id: "slot", kind: "component", component: { ref: "inventorySlot" } },
+          { id: "slot.label", kind: "text", text: "Collision" },
+        ],
+      },
+    });
+
+    const result = await validateBundle(root);
+
+    assert.equal(result.ok, false);
+    assert.equal(result.diagnostics.some((diagnostic) => diagnostic.code === "TN_IR_UI_COMPONENT_GENERATED_ID_DUPLICATE"), true);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("ui should accept screen stack and focus scope metadata", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-ui-screen-stack-"));
+  try {
+    await writeTestBundle(root, { manifest: { entry: { ui: "ui.ir.json" } } });
+    await writeJson(root, "ui.ir.json", {
+      schema: "threenative.ui",
+      version: "0.1.0",
+      focusOrder: ["resume", "confirm.cancel"],
+      screens: [
+        {
+          id: "pause",
+          role: "menu",
+          root: "pause.panel",
+          stackPolicy: "push",
+          focusScope: { entry: "resume", inputCapture: "keyboard", restore: "previous" },
+        },
+        {
+          id: "confirm",
+          role: "modal",
+          root: "confirm.dialog",
+          stackPolicy: "exclusiveModal",
+          focusScope: { entry: "confirm.cancel", escapeAction: "UiCancel", inputCapture: "modal", restore: "previous", trap: true },
+        },
+      ],
+      screenStack: {
+        active: ["pause", "confirm"],
+        policy: "exclusiveModal",
+        transitions: [{ from: "pause", kind: "exclusiveModal", to: "confirm" }],
+      },
+      root: {
+        id: "ui.root",
+        kind: "stack",
+        children: [
+          { id: "pause.panel", kind: "column", children: [{ id: "resume", kind: "button", label: "Resume", action: "Resume" }] },
+          { id: "confirm.dialog", kind: "column", children: [{ id: "confirm.cancel", kind: "button", label: "Cancel", action: "UiCancel" }] },
+        ],
+      },
+    });
+
+    const result = await validateBundle(root);
+
+    assert.equal(result.ok, true);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("ui should reject modal focus trap without exit action", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-ui-modal-trap-"));
+  try {
+    await writeTestBundle(root, { manifest: { entry: { ui: "ui.ir.json" } } });
+    await writeJson(root, "ui.ir.json", {
+      schema: "threenative.ui",
+      version: "0.1.0",
+      screens: [
+        {
+          id: "confirm",
+          role: "modal",
+          root: "confirm.dialog",
+          stackPolicy: "exclusiveModal",
+          focusScope: { entry: "confirm.cancel", inputCapture: "none", trap: true },
+        },
+      ],
+      screenStack: { active: ["confirm"], policy: "exclusiveModal" },
+      root: {
+        id: "confirm.dialog",
+        kind: "column",
+        children: [{ id: "confirm.cancel", kind: "button", label: "Cancel", action: "UiCancel" }],
+      },
+    });
+
+    const result = await validateBundle(root);
+
+    assert.equal(result.ok, false);
+    assert.deepEqual(
+      result.diagnostics.map((diagnostic) => [diagnostic.code, diagnostic.path]),
+      [
+        ["TN_IR_UI_FOCUS_TRAP_EXIT_MISSING", "ui.ir.json/screens/0/focusScope"],
+        ["TN_IR_UI_MODAL_CAPTURE_MISSING", "ui.ir.json/screens/0/focusScope/inputCapture"],
+      ],
+    );
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should reject large list without virtualized range policy", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-ui-large-list-"));
+  try {
+    await writeTestBundle(root, { manifest: { entry: { ui: "ui.ir.json" } } });
+    await writeJson(root, "ui.ir.json", {
+      schema: "threenative.ui",
+      version: "0.1.0",
+      root: {
+        id: "inventory",
+        kind: "column",
+        children: Array.from({ length: 101 }, (_, index) => ({
+          id: `item.${index}`,
+          kind: "button",
+          label: `Item ${index}`,
+          action: "InspectItem",
+        })),
+      },
+    });
+
+    const result = await validateBundle(root);
+
+    assert.equal(result.ok, false);
+    assert.equal(result.diagnostics.some((diagnostic) => diagnostic.code === "TN_IR_UI_VIRTUAL_RANGE_REQUIRED" && diagnostic.path === "ui.ir.json/root/virtualRange"), true);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should accept input glyph prompt for declared action", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-ui-glyph-"));
+  try {
+    await writeTestBundle(root, { manifest: { entry: { ui: "ui.ir.json" } } });
+    await writeJson(root, "ui.ir.json", {
+      schema: "threenative.ui",
+      version: "0.1.0",
+      root: {
+        id: "interact",
+        kind: "button",
+        label: "Open",
+        action: "Interact",
+        glyph: { action: "Interact", glyphSet: "gamepad", label: "A" },
+        tooltip: { anchor: "interact", description: "Open the selected chest.", dismissAction: "Cancel", focus: "preserve", open: "focus", delayMs: 250 },
+        feedback: [{ trigger: "activate", audio: "ui.confirm" }],
+      },
+    });
+
+    const result = await validateBundle(root);
+
+    assert.equal(result.ok, true);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should reject localization key without fallback", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-ui-localization-"));
+  try {
+    await writeTestBundle(root, { manifest: { entry: { ui: "ui.ir.json" } } });
+    await writeJson(root, "ui.ir.json", {
+      schema: "threenative.ui",
+      version: "0.1.0",
+      root: {
+        id: "quest.prompt",
+        kind: "text",
+        localization: { key: "quest.prompt" },
+      },
+    });
+
+    const result = await validateBundle(root);
+
+    assert.equal(result.ok, false);
+    assert.equal(result.diagnostics[0]?.code, "TN_IR_UI_LOCALIZATION_FALLBACK_MISSING");
+    assert.equal(result.diagnostics[0]?.path, "ui.ir.json/root/localization/fallback");
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should accept bounded UI glow effect preset", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-ui-effect-glow-"));
+  try {
+    await writeTestBundle(root, { manifest: { entry: { ui: "ui.ir.json" } } });
+    await writeJson(root, "ui.ir.json", {
+      schema: "threenative.ui",
+      version: "0.1.0",
+      root: {
+        id: "quest.target",
+        kind: "button",
+        label: "Ancient Door",
+        action: "InspectQuestTarget",
+        effects: [
+          {
+            color: "#66ccff",
+            fallback: "shadow",
+            id: "selected.glow",
+            intensity: 0.75,
+            kind: "glow",
+            radius: 12,
+            trigger: "selected",
+          },
+        ],
+      },
+    });
+
+    const result = await validateBundle(root);
+
+    assert.equal(result.ok, true);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should reject custom UI shader effect", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-ui-effect-shader-"));
+  try {
+    await writeTestBundle(root, { manifest: { entry: { ui: "ui.ir.json" } } });
+    await writeJson(root, "ui.ir.json", {
+      schema: "threenative.ui",
+      version: "0.1.0",
+      root: {
+        id: "critical.health",
+        kind: "bar",
+        effects: [
+          {
+            id: "custom.shader",
+            kind: "glow",
+            shaderRef: "materials/ui-critical.wgsl",
+            trigger: "predicate",
+            predicate: { resource: "PlayerVitals", field: "critical", equals: true },
+          },
+        ],
+      },
+    });
+
+    const result = await validateBundle(root);
+
+    assert.equal(result.ok, false);
+    assert.equal(result.diagnostics.some((diagnostic) => diagnostic.code === "TN_IR_UI_EFFECT_ESCAPE_UNSUPPORTED" && diagnostic.path === "ui.ir.json/root/effects/0/shaderRef"), true);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should reject attached UI target that is not a declared entity", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-ui-attachment-target-"));
+  try {
+    await writeTestBundle(root, { manifest: { entry: { ui: "ui.ir.json", world: "world.ir.json" } } });
+    await writeJson(root, "world.ir.json", {
+      schema: "threenative.world",
+      version: "0.1.0",
+      entities: [{ id: "player", components: { Transform: { position: [0, 0, 0] } } }],
+    });
+    await writeJson(root, "ui.ir.json", {
+      schema: "threenative.ui",
+      version: "0.1.0",
+      root: {
+        id: "enemy.nameplate",
+        kind: "text",
+        text: "Scout",
+        attachTo: {
+          target: { kind: "entity", id: "missing.enemy" },
+          localOffset: [0, 2, 0],
+          anchor: "top",
+          clamp: "screenEdge",
+        },
+      },
+    });
+
+    const result = await validateBundle(root);
+
+    assert.equal(result.ok, false);
+    assert.equal(result.diagnostics.some((diagnostic) => diagnostic.code === "TN_IR_UI_ATTACHMENT_TARGET_UNDECLARED" && diagnostic.path === "ui.ir.json/root/attachTo/target/id" && diagnostic.message.includes("missing.enemy")), true);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
 test("ui should reject unsupported typography policy fields", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-ui-typography-unsupported-"));
   try {

@@ -232,6 +232,27 @@ from `visual-quality.json` sidecars, including min/max color-bucket and local
 contrast values, so release evidence shows when generated-game screenshots are
 passing but still visually flat.
 
+The first advanced retained-UI composition slices are now source/IR-backed.
+UI theme tokens lower at build time to concrete retained layout/style/image
+fields, reusable component instances expand to ordinary retained nodes with
+deterministic generated IDs and provenance, and UI documents can declare
+screen stacks, modal/dialog roles, focus scopes, restore policy, and explicit
+input capture. Current runtime proof includes deterministic web modal push/pop
+focus restoration and Bevy modal input-capture dispatch traces. Bounded game UI
+recipes now generate editable source nodes, bindings, screens, focus order, and
+provenance through SDK helpers, `ui.apply_recipe`, and `tn ui recipe`; the
+advanced UI gate requires desktop/mobile screenshots, accessibility reports,
+and fit reports. Responsive recipe metadata is keyed by target profile class,
+large inventory recipes cap emitted visible nodes with `virtualRange` metadata,
+and web/Bevy traces report deterministic virtual-list ranges. Common
+affordance metadata now covers glyph prompts, tooltips, localization
+fallbacks/cases, progress/cooldown presentation, toast queues, and logical
+feedback hooks with deterministic web toast coalescing and native glyph/tooltip
+observation proof. Bounded retained UI effect presets now cover glow, outline,
+pulse, tint, and focus-ring emphasis with focus/hover/selected/disabled and
+predicate triggers, renderer escape-hatch diagnostics, an advanced UI
+conformance fixture, and matching web/native strategy traces.
+
 The agent debugging workflow now has a stronger `tn doctor` gate. It checks
 package manager state, CLI dependency/local shim setup, required scripts,
 template metadata, source entrypoint, required bundle files, and
@@ -308,6 +329,18 @@ authoring provenance; the compiler normalizes starter-style full-width HUD
 rows into left/right anchored UI so desktop and mobile screenshot proof capture
 the retained HUD overlay. Broader UI/resource and runtime parity references
 remain future structured-authoring work.
+The first advanced portable UI composition slice adds bounded `theme.tokens`
+and node/component `tokenRefs` metadata for retained UI. Token references are
+validated for duplicate IDs, alias cycles, missing tokens, and field/kind
+mismatches, and compiler UI emission resolves them to concrete retained
+layout/style/image values before runtime consumption. This is a build-time
+visual-language contract only. The next slice adds source-level reusable UI
+components with typed props, component instance nodes, deterministic generated
+node IDs, and `generatedNodeProvenance` records so generated retained nodes can
+be traced back to component source. Screen stacks, modal focus scopes, bounded
+recipes, responsive target-class recipe rules, virtualized large-list metadata,
+UI-fit proof artifacts, common affordance metadata, and bounded retained UI
+effect presets are implemented; world-attached UI remains active PRD work.
 The Phase 3 bundle import slice adds `@threenative/authoring` `importBundle()`
 and `tn bundle import <bundle-dir> --project <path> --mode source --json`
 for recoverable generated catalog import. It normalizes `world.ir.json`,

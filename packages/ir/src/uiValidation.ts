@@ -1,8 +1,8 @@
-import type { IUiIr, IUiNodeIr } from "./types.js";
+import type { IUiComponentDefinitionIr, IUiFocusScopeIr, IUiIr, IUiNodeIr, IUiThemeTokenIr, UiThemeTokenKind } from "./types.js";
 import type { IIrDiagnostic } from "./validate.js";
 import { isRecord } from "./validationPrimitives.js";
 
-export function validateUi(ui: IUiIr, path: string, diagnostics: IIrDiagnostic[]): void {
+export function validateUi(ui: IUiIr, path: string, diagnostics: IIrDiagnostic[], entityIds = new Set<string>()): void {
   if (ui.schema !== "threenative.ui" || ui.version !== "0.1.0") {
     diagnostics.push({
       code: "TN_IR_UI_VERSION_UNSUPPORTED",
@@ -13,14 +13,26 @@ export function validateUi(ui: IUiIr, path: string, diagnostics: IIrDiagnostic[]
   const ids = new Set<string>();
   const focusableIds = new Set<string>();
   const fontFamilies = validateUiFonts(ui, path, diagnostics);
-  validateUiNode(ui.root, `${path}/root`, diagnostics, ids, fontFamilies);
+  const themeTokens = validateUiTheme(ui, path, diagnostics);
+  const components = validateUiComponents(ui, path, diagnostics, fontFamilies, themeTokens, entityIds);
+  validateUiNode(ui.root, `${path}/root`, diagnostics, ids, fontFamilies, themeTokens, components, entityIds);
+  validateUiGeneratedComponentIds(ui.root, `${path}/root`, diagnostics, ids, components);
   collectFocusableUiIds(ui.root, focusableIds);
   validateUiMetadata(ui, path, diagnostics, ids, focusableIds);
 }
-function validateUiNode(node: IUiNodeIr, path: string, diagnostics: IIrDiagnostic[], ids: Set<string>, fontFamilies: Set<string>): void {
+function validateUiNode(
+  node: IUiNodeIr,
+  path: string,
+  diagnostics: IIrDiagnostic[],
+  ids: Set<string>,
+  fontFamilies: Set<string>,
+  themeTokens: Map<string, IUiThemeTokenIr>,
+  components: Map<string, IUiComponentDefinitionIr>,
+  entityIds: Set<string>,
+): void {
   const raw = node as unknown as Record<string, unknown>;
   for (const key of Object.keys(raw)) {
-    if (!["accessibilityLabel", "action", "anchorId", "binding", "children", "disabled", "focusable", "id", "image", "kind", "label", "layout", "max", "min", "minimap", "navigation", "orientation", "role", "spans", "src", "step", "style", "text", "value", "valueText"].includes(key)) {
+    if (!["accessibilityLabel", "action", "anchorId", "attachTo", "binding", "children", "component", "disabled", "effects", "feedback", "focusable", "glyph", "id", "image", "kind", "label", "layout", "localization", "max", "min", "minimap", "navigation", "orientation", "progress", "responsive", "role", "spans", "src", "step", "style", "text", "tokenRefs", "tooltip", "value", "valueText", "virtualRange"].includes(key)) {
       diagnostics.push({
         code: "TN_IR_UI_FIELD_UNSUPPORTED",
         message: `UI node '${node.id}' uses unsupported field '${key}'.`,
@@ -30,7 +42,13 @@ function validateUiNode(node: IUiNodeIr, path: string, diagnostics: IIrDiagnosti
   }
   validateUnsupportedUiRequests(raw, path, diagnostics);
   validateUiLayout(node.layout, `${path}/layout`, diagnostics);
+  validateUiResponsiveRules(node, `${path}/responsive`, diagnostics);
+  validateUiVirtualRange(node, path, diagnostics);
+  validateUiAttachment(node, path, diagnostics, entityIds);
+  validateUiEffects(node, path, diagnostics);
+  validateUiAffordances(node, path, diagnostics);
   validateUiStyle(node.style, `${path}/style`, diagnostics, fontFamilies);
+  validateUiTokenRefs(node.tokenRefs, `${path}/tokenRefs`, diagnostics, themeTokens);
   validateUiSpans(node, path, diagnostics, fontFamilies);
   validateUiImageMetadata(node, path, diagnostics);
   if (node.kind === "minimap") {
@@ -38,13 +56,14 @@ function validateUiNode(node: IUiNodeIr, path: string, diagnostics: IIrDiagnosti
   }
   validateUiWidget(node, path, diagnostics);
   validateUiAccessibility(node, path, diagnostics);
-  if (!["bar", "button", "column", "contextMenu", "image", "minimap", "row", "scrollbar", "slider", "stack", "text", "textInput", "touchControl"].includes(node.kind)) {
+  if (!["bar", "button", "column", "component", "contextMenu", "image", "minimap", "row", "scrollbar", "slider", "stack", "text", "textInput", "touchControl"].includes(node.kind)) {
     diagnostics.push({
       code: "TN_IR_UI_NODE_UNSUPPORTED",
       message: `Unsupported UI node kind '${String(node.kind)}'.`,
       path: `${path}/kind`,
     });
   }
+  validateUiComponentInstance(node, path, diagnostics, components);
   if (ids.has(node.id)) {
     diagnostics.push({
       code: "TN_IR_UI_ID_DUPLICATE",
@@ -84,7 +103,7 @@ function validateUiNode(node: IUiNodeIr, path: string, diagnostics: IIrDiagnosti
       suggestion: "Use slider, scrollbar, or contextMenu widgets in V9; defer virtual keyboard UI until mobile packaging is promoted.",
     });
   }
-  node.children?.forEach((child, index) => validateUiNode(child, `${path}/children/${index}`, diagnostics, ids, fontFamilies));
+  node.children?.forEach((child, index) => validateUiNode(child, `${path}/children/${index}`, diagnostics, ids, fontFamilies, themeTokens, components, entityIds));
 }
 
 function validateUnsupportedUiRequests(raw: Record<string, unknown>, path: string, diagnostics: IIrDiagnostic[]): void {
@@ -291,6 +310,342 @@ function validateUiFonts(ui: IUiIr, path: string, diagnostics: IIrDiagnostic[]):
     });
   });
   return families;
+}
+
+function validateUiTheme(ui: IUiIr, path: string, diagnostics: IIrDiagnostic[]): Map<string, IUiThemeTokenIr> {
+  const tokens = new Map<string, IUiThemeTokenIr>();
+  if (ui.theme === undefined) {
+    return tokens;
+  }
+  const rawTheme = ui.theme as unknown;
+  if (!isRecord(rawTheme)) {
+    diagnostics.push({ code: "TN_IR_UI_THEME_INVALID", message: "UI theme must be an object.", path: `${path}/theme` });
+    return tokens;
+  }
+  for (const key of Object.keys(rawTheme)) {
+    if (!["componentVariants", "tokens"].includes(key)) {
+      diagnostics.push({ code: "TN_IR_UI_THEME_FIELD_UNSUPPORTED", message: `UI theme uses unsupported field '${key}'.`, path: `${path}/theme/${key}` });
+    }
+  }
+  if (!Array.isArray(ui.theme.tokens)) {
+    diagnostics.push({ code: "TN_IR_UI_THEME_TOKENS_INVALID", message: "UI theme tokens must be an array.", path: `${path}/theme/tokens` });
+    return tokens;
+  }
+  ui.theme.tokens.forEach((token, index) => {
+    const tokenPath = `${path}/theme/tokens/${index}`;
+    if (typeof token.id !== "string" || token.id.trim() === "") {
+      diagnostics.push({ code: "TN_IR_UI_THEME_TOKEN_ID_INVALID", message: "UI theme token id must be a non-empty string.", path: `${tokenPath}/id` });
+      return;
+    }
+    if (tokens.has(token.id)) {
+      diagnostics.push({ code: "TN_IR_UI_THEME_TOKEN_DUPLICATE", message: `UI theme token '${token.id}' is duplicated.`, path: `${tokenPath}/id` });
+    }
+    tokens.set(token.id, token);
+    validateUiThemeToken(token, tokenPath, diagnostics);
+  });
+  for (const token of ui.theme.tokens) {
+    validateUiThemeTokenAlias(token, `${path}/theme/tokens`, diagnostics, tokens, []);
+  }
+  ui.theme.componentVariants?.forEach((variant, index) => {
+    const variantPath = `${path}/theme/componentVariants/${index}`;
+    if (typeof variant.id !== "string" || variant.id.trim() === "") {
+      diagnostics.push({ code: "TN_IR_UI_VARIANT_ID_INVALID", message: "UI component variant id must be a non-empty string.", path: `${variantPath}/id` });
+    }
+    validateUiTokenRefs(variant.tokenRefs, `${variantPath}/tokenRefs`, diagnostics, tokens);
+  });
+  return tokens;
+}
+
+function validateUiComponents(
+  ui: IUiIr,
+  path: string,
+  diagnostics: IIrDiagnostic[],
+  fontFamilies: Set<string>,
+  themeTokens: Map<string, IUiThemeTokenIr>,
+  entityIds: Set<string>,
+): Map<string, IUiComponentDefinitionIr> {
+  const components = new Map<string, IUiComponentDefinitionIr>();
+  if (ui.components === undefined) {
+    return components;
+  }
+  ui.components.forEach((component, index) => {
+    const componentPath = `${path}/components/${index}`;
+    if (typeof component.id !== "string" || component.id.trim() === "") {
+      diagnostics.push({ code: "TN_IR_UI_COMPONENT_ID_INVALID", message: "UI component id must be a non-empty string.", path: `${componentPath}/id` });
+      return;
+    }
+    if (components.has(component.id)) {
+      diagnostics.push({ code: "TN_IR_UI_COMPONENT_DUPLICATE", message: `UI component '${component.id}' is duplicated.`, path: `${componentPath}/id` });
+    }
+    components.set(component.id, component);
+    const props = new Set<string>();
+    component.props?.forEach((prop, propIndex) => {
+      if (typeof prop.id !== "string" || prop.id.trim() === "") {
+        diagnostics.push({ code: "TN_IR_UI_COMPONENT_PROP_INVALID", message: "UI component prop id must be a non-empty string.", path: `${componentPath}/props/${propIndex}/id` });
+      } else if (props.has(prop.id)) {
+        diagnostics.push({ code: "TN_IR_UI_COMPONENT_PROP_DUPLICATE", message: `UI component prop '${prop.id}' is duplicated.`, path: `${componentPath}/props/${propIndex}/id` });
+      }
+      props.add(String(prop.id));
+    });
+    const templateIds = new Set<string>();
+    validateUiNode(component.root, `${componentPath}/root`, diagnostics, templateIds, fontFamilies, themeTokens, components, entityIds);
+  });
+  for (const component of ui.components) {
+    validateUiComponentCycles(component, components, [], `${path}/components`);
+  }
+  return components;
+
+  function validateUiComponentCycles(component: IUiComponentDefinitionIr, all: Map<string, IUiComponentDefinitionIr>, stack: string[], componentPath: string): void {
+    if (stack.includes(component.id)) {
+      diagnostics.push({ code: "TN_IR_UI_COMPONENT_CYCLE", message: `UI component cycle includes '${component.id}'.`, path: componentPath });
+      return;
+    }
+    for (const ref of collectComponentRefs(component.root)) {
+      const target = all.get(ref);
+      if (target !== undefined) {
+        validateUiComponentCycles(target, all, [...stack, component.id], componentPath);
+      }
+    }
+  }
+}
+
+function collectComponentRefs(node: IUiNodeIr): string[] {
+  return [
+    ...(node.kind === "component" && node.component?.ref !== undefined ? [node.component.ref] : []),
+    ...(node.children ?? []).flatMap(collectComponentRefs),
+    ...Object.values(node.component?.slots ?? {}).flatMap((slot) => slot.flatMap(collectComponentRefs)),
+  ];
+}
+
+function validateUiComponentInstance(node: IUiNodeIr, path: string, diagnostics: IIrDiagnostic[], components: Map<string, IUiComponentDefinitionIr>): void {
+  if (node.kind !== "component") {
+    if (node.component !== undefined) {
+      diagnostics.push({ code: "TN_IR_UI_COMPONENT_INSTANCE_INVALID", message: "UI component metadata is only supported on component nodes.", path: `${path}/component` });
+    }
+    return;
+  }
+  if (node.component === undefined) {
+    diagnostics.push({ code: "TN_IR_UI_COMPONENT_REF_MISSING", message: "UI component nodes must declare component metadata.", path: `${path}/component` });
+    return;
+  }
+  const component = components.get(node.component.ref);
+  if (component === undefined) {
+    diagnostics.push({ code: "TN_IR_UI_COMPONENT_REF_UNRESOLVED", message: `UI component node '${node.id}' references missing component '${node.component.ref}'.`, path: `${path}/component/ref` });
+    return;
+  }
+  const props = node.component.props ?? {};
+  const declaredProps = new Map((component.props ?? []).map((prop) => [prop.id, prop]));
+  for (const [propId, prop] of declaredProps) {
+    if (prop.required === true && props[propId] === undefined && prop.defaultValue === undefined) {
+      diagnostics.push({ code: "TN_IR_UI_COMPONENT_PROP_MISSING", message: `UI component '${component.id}' requires prop '${propId}'.`, path: `${path}/component/props/${propId}` });
+    }
+  }
+  for (const propId of Object.keys(props)) {
+    if (!declaredProps.has(propId)) {
+      diagnostics.push({ code: "TN_IR_UI_COMPONENT_PROP_UNDECLARED", message: `UI component '${component.id}' does not declare prop '${propId}'.`, path: `${path}/component/props/${propId}` });
+    }
+  }
+  const declaredSlots = new Set(component.slots ?? []);
+  for (const [slotId, children] of Object.entries(node.component.slots ?? {})) {
+    if (!declaredSlots.has(slotId)) {
+      diagnostics.push({ code: "TN_IR_UI_COMPONENT_SLOT_UNDECLARED", message: `UI component '${component.id}' does not declare slot '${slotId}'.`, path: `${path}/component/slots/${slotId}` });
+    }
+    children.forEach((child, index) => validateUiNode(child, `${path}/component/slots/${slotId}/${index}`, diagnostics, new Set<string>(), new Set<string>(), new Map<string, IUiThemeTokenIr>(), components, new Set<string>()));
+  }
+}
+
+function validateUiGeneratedComponentIds(
+  node: IUiNodeIr,
+  path: string,
+  diagnostics: IIrDiagnostic[],
+  sourceIds: Set<string>,
+  components: Map<string, IUiComponentDefinitionIr>,
+): void {
+  if (node.kind === "component" && node.component !== undefined) {
+    const component = components.get(node.component.ref);
+    if (component !== undefined) {
+      const generatedIds = new Set<string>();
+      collectGeneratedComponentIds(component.root, node.id, `${path}/component`, diagnostics, generatedIds, sourceIds);
+    }
+  }
+  node.children?.forEach((child, index) => validateUiGeneratedComponentIds(child, `${path}/children/${index}`, diagnostics, sourceIds, components));
+}
+
+function collectGeneratedComponentIds(
+  node: IUiNodeIr,
+  instanceId: string,
+  path: string,
+  diagnostics: IIrDiagnostic[],
+  generatedIds: Set<string>,
+  sourceIds: Set<string>,
+): void {
+  const generatedId = `${instanceId}.${node.id}`;
+  if (generatedIds.has(generatedId) || sourceIds.has(generatedId)) {
+    diagnostics.push({
+      code: "TN_IR_UI_COMPONENT_GENERATED_ID_DUPLICATE",
+      message: `UI component generated node ID '${generatedId}' collides with an existing node ID.`,
+      path: `${path}/root/id`,
+    });
+  }
+  generatedIds.add(generatedId);
+  node.children?.forEach((child, index) => collectGeneratedComponentIds(child, instanceId, `${path}/root/children/${index}`, diagnostics, generatedIds, sourceIds));
+}
+
+function validateUiThemeToken(token: IUiThemeTokenIr, path: string, diagnostics: IIrDiagnostic[]): void {
+  if (!["border", "color", "focusRing", "fontFamily", "gradient", "icon", "image", "radius", "shadow", "spacing", "textSize"].includes(token.kind)) {
+    diagnostics.push({ code: "TN_IR_UI_THEME_TOKEN_KIND_INVALID", message: "UI theme token kind is not in the portable token set.", path: `${path}/kind` });
+    return;
+  }
+  if (isRecord(token.value) && token.value.alias !== undefined) {
+    if (typeof token.value.alias !== "string" || token.value.alias.trim() === "") {
+      diagnostics.push({ code: "TN_IR_UI_THEME_TOKEN_ALIAS_INVALID", message: "UI theme token alias must reference a non-empty token id.", path: `${path}/value/alias` });
+    }
+    return;
+  }
+  switch (token.kind) {
+    case "color":
+      validateTokenString(token.value, /^#(?:[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/, "TN_IR_UI_THEME_TOKEN_VALUE_INVALID", "Color tokens must be #RRGGBB or #RRGGBBAA.", `${path}/value`, diagnostics);
+      break;
+    case "spacing":
+    case "radius":
+    case "border":
+    case "textSize":
+      if (typeof token.value !== "number" || !Number.isFinite(token.value) || token.value < 0) {
+        diagnostics.push({ code: "TN_IR_UI_THEME_TOKEN_VALUE_INVALID", message: `${token.kind} tokens must be finite non-negative numbers.`, path: `${path}/value` });
+      }
+      break;
+    case "fontFamily":
+    case "icon":
+    case "image":
+      if (typeof token.value !== "string" || token.value.trim() === "") {
+        diagnostics.push({ code: "TN_IR_UI_THEME_TOKEN_VALUE_INVALID", message: `${token.kind} tokens must be non-empty strings.`, path: `${path}/value` });
+      }
+      break;
+    case "gradient":
+      validateUiGradient(token.value, `${path}/value`, diagnostics);
+      break;
+    case "shadow":
+      validateUiShadow(token.value, `${path}/value`, diagnostics);
+      break;
+    case "focusRing":
+      validateFocusRingToken(token.value, `${path}/value`, diagnostics);
+      break;
+  }
+}
+
+function validateUiThemeTokenAlias(token: IUiThemeTokenIr, path: string, diagnostics: IIrDiagnostic[], tokens: Map<string, IUiThemeTokenIr>, stack: string[]): void {
+  if (!isRecord(token.value) || typeof token.value.alias !== "string") {
+    return;
+  }
+  const target = tokens.get(token.value.alias);
+  if (target === undefined) {
+    diagnostics.push({ code: "TN_IR_UI_THEME_TOKEN_ALIAS_MISSING", message: `UI theme token '${token.id}' aliases missing token '${token.value.alias}'.`, path: `${path}/${token.id}/value/alias` });
+    return;
+  }
+  if (target.kind !== token.kind) {
+    diagnostics.push({ code: "TN_IR_UI_THEME_TOKEN_ALIAS_KIND_INVALID", message: `UI theme token '${token.id}' aliases '${target.id}' with a different token kind.`, path: `${path}/${token.id}/value/alias` });
+  }
+  if (stack.includes(token.id)) {
+    diagnostics.push({ code: "TN_IR_UI_THEME_TOKEN_ALIAS_CYCLE", message: `UI theme token alias cycle includes '${token.id}'.`, path: `${path}/${token.id}/value/alias` });
+    return;
+  }
+  validateUiThemeTokenAlias(target, path, diagnostics, tokens, [...stack, token.id]);
+}
+
+function validateUiTokenRefs(value: unknown, path: string, diagnostics: IIrDiagnostic[], tokens: Map<string, IUiThemeTokenIr>): void {
+  if (value === undefined) {
+    return;
+  }
+  if (!isRecord(value)) {
+    diagnostics.push({ code: "TN_IR_UI_TOKEN_REFS_INVALID", message: "UI tokenRefs must be an object.", path });
+    return;
+  }
+  for (const key of Object.keys(value)) {
+    if (!["image", "layout", "style"].includes(key)) {
+      diagnostics.push({ code: "TN_IR_UI_TOKEN_REF_FIELD_UNSUPPORTED", message: `UI tokenRefs uses unsupported section '${key}'.`, path: `${path}/${key}` });
+    }
+  }
+  validateTokenRefMap(value.layout, `${path}/layout`, diagnostics, tokens, {
+    columnGap: ["spacing"],
+    height: ["spacing"],
+    maxHeight: ["spacing"],
+    maxWidth: ["spacing"],
+    minHeight: ["spacing"],
+    minWidth: ["spacing"],
+    padding: ["spacing"],
+    rowGap: ["spacing"],
+    width: ["spacing"],
+  });
+  if (isRecord(value.layout)) {
+    validateTokenRefMap(value.layout.inset, `${path}/layout/inset`, diagnostics, tokens, { bottom: ["spacing"], left: ["spacing"], right: ["spacing"], top: ["spacing"] });
+  }
+  validateTokenRefMap(value.style, `${path}/style`, diagnostics, tokens, {
+    backgroundColor: ["color"],
+    borderColor: ["color"],
+    borderRadius: ["radius"],
+    borderWidth: ["border"],
+    color: ["color"],
+    fontFamily: ["fontFamily"],
+    fontSize: ["textSize"],
+    shadow: ["shadow"],
+  });
+  if (isRecord(value.style)) {
+    validateTokenRefMap(value.style.gradient, `${path}/style/gradient`, diagnostics, tokens, { from: ["color"], to: ["color"] });
+    validateTokenRefMap(value.style.shadow, `${path}/style/shadow`, diagnostics, tokens, { color: ["color"] });
+  }
+  validateTokenRefMap(value.image, `${path}/image`, diagnostics, tokens, { tint: ["color"] });
+}
+
+function validateTokenRefMap(value: unknown, path: string, diagnostics: IIrDiagnostic[], tokens: Map<string, IUiThemeTokenIr>, allowed: Record<string, readonly UiThemeTokenKind[]>): void {
+  if (value === undefined) {
+    return;
+  }
+  if (!isRecord(value)) {
+    diagnostics.push({ code: "TN_IR_UI_TOKEN_REFS_INVALID", message: "UI token reference section must be an object.", path });
+    return;
+  }
+  for (const [field, tokenId] of Object.entries(value)) {
+    const kinds = allowed[field];
+    if (kinds === undefined) {
+      diagnostics.push({ code: "TN_IR_UI_TOKEN_REF_FIELD_UNSUPPORTED", message: `UI token reference field '${field}' is not supported here.`, path: `${path}/${field}` });
+      continue;
+    }
+    if (typeof tokenId !== "string" || tokenId.trim() === "") {
+      diagnostics.push({ code: "TN_IR_UI_TOKEN_REF_INVALID", message: `UI token reference '${field}' must be a non-empty token id.`, path: `${path}/${field}` });
+      continue;
+    }
+    const token = tokens.get(tokenId);
+    if (token === undefined) {
+      diagnostics.push({ code: "TN_IR_UI_TOKEN_REF_UNRESOLVED", message: `UI token reference '${field}' points to missing token '${tokenId}'.`, path: `${path}/${field}` });
+    } else if (!kinds.includes(token.kind)) {
+      diagnostics.push({ code: "TN_IR_UI_TOKEN_REF_KIND_INVALID", message: `UI token reference '${field}' requires ${kinds.join(" or ")} token, got '${token.kind}'.`, path: `${path}/${field}` });
+    }
+  }
+}
+
+function validateTokenString(value: unknown, pattern: RegExp, code: string, message: string, path: string, diagnostics: IIrDiagnostic[]): void {
+  if (typeof value !== "string" || !pattern.test(value)) {
+    diagnostics.push({ code, message, path });
+  }
+}
+
+function validateFocusRingToken(value: unknown, path: string, diagnostics: IIrDiagnostic[]): void {
+  if (!isRecord(value)) {
+    diagnostics.push({ code: "TN_IR_UI_THEME_TOKEN_VALUE_INVALID", message: "focusRing tokens must be objects.", path });
+    return;
+  }
+  for (const key of Object.keys(value)) {
+    if (!["color", "radius", "width"].includes(key)) {
+      diagnostics.push({ code: "TN_IR_UI_THEME_TOKEN_VALUE_INVALID", message: `focusRing token field '${key}' is unsupported.`, path: `${path}/${key}` });
+    }
+  }
+  validateTokenString(value.color, /^#(?:[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/, "TN_IR_UI_THEME_TOKEN_VALUE_INVALID", "focusRing color must be #RRGGBB or #RRGGBBAA.", `${path}/color`, diagnostics);
+  for (const key of ["radius", "width"]) {
+    const item = value[key];
+    if (item !== undefined && (typeof item !== "number" || !Number.isFinite(item) || item < 0)) {
+      diagnostics.push({ code: "TN_IR_UI_THEME_TOKEN_VALUE_INVALID", message: `focusRing ${key} must be a finite non-negative number.`, path: `${path}/${key}` });
+    }
+  }
 }
 
 function validateUiSpans(node: IUiNodeIr, path: string, diagnostics: IIrDiagnostic[], fontFamilies: Set<string>): void {
@@ -538,6 +893,314 @@ function validateUiLayout(value: unknown, path: string, diagnostics: IIrDiagnost
   }
 }
 
+function validateUiResponsiveRules(node: IUiNodeIr, path: string, diagnostics: IIrDiagnostic[]): void {
+  if (node.responsive === undefined) {
+    return;
+  }
+  if (!Array.isArray(node.responsive)) {
+    diagnostics.push({ code: "TN_IR_UI_RESPONSIVE_INVALID", message: "UI responsive rules must be an array.", path });
+    return;
+  }
+  const targets = new Set<string>();
+  node.responsive.forEach((rule, index) => {
+    const rulePath = `${path}/${index}`;
+    if (!isRecord(rule)) {
+      diagnostics.push({ code: "TN_IR_UI_RESPONSIVE_INVALID", message: "UI responsive rule must be an object.", path: rulePath });
+      return;
+    }
+    for (const key of Object.keys(rule)) {
+      if (!["layout", "target"].includes(key)) {
+        diagnostics.push({ code: "TN_IR_UI_RESPONSIVE_FIELD_UNSUPPORTED", message: `UI responsive rule uses unsupported field '${key}'.`, path: `${rulePath}/${key}` });
+      }
+    }
+    if (!["desktop", "mobile", "tablet"].includes(String(rule.target))) {
+      diagnostics.push({ code: "TN_IR_UI_RESPONSIVE_TARGET_INVALID", message: "UI responsive target must be desktop, mobile, or tablet.", path: `${rulePath}/target` });
+    } else if (targets.has(String(rule.target))) {
+      diagnostics.push({ code: "TN_IR_UI_RESPONSIVE_TARGET_DUPLICATE", message: `UI responsive target '${String(rule.target)}' is duplicated.`, path: `${rulePath}/target` });
+    }
+    targets.add(String(rule.target));
+    validateUiLayout(rule.layout, `${rulePath}/layout`, diagnostics);
+  });
+}
+
+function validateUiVirtualRange(node: IUiNodeIr, path: string, diagnostics: IIrDiagnostic[]): void {
+  const childCount = node.children?.length ?? 0;
+  if (childCount > 100 && node.virtualRange === undefined) {
+    diagnostics.push({
+      code: "TN_IR_UI_VIRTUAL_RANGE_REQUIRED",
+      message: `UI node '${node.id}' has ${childCount} children; add virtualRange metadata for large lists or grids.`,
+      path: `${path}/virtualRange`,
+    });
+  }
+  if (node.virtualRange === undefined) {
+    return;
+  }
+  if (!isRecord(node.virtualRange)) {
+    diagnostics.push({ code: "TN_IR_UI_VIRTUAL_RANGE_INVALID", message: "UI virtualRange must be an object.", path: `${path}/virtualRange` });
+    return;
+  }
+  for (const key of Object.keys(node.virtualRange)) {
+    if (!["buffer", "itemCount", "itemExtent", "orientation", "viewportExtent"].includes(key)) {
+      diagnostics.push({ code: "TN_IR_UI_VIRTUAL_RANGE_FIELD_UNSUPPORTED", message: `UI virtualRange uses unsupported field '${key}'.`, path: `${path}/virtualRange/${key}` });
+    }
+  }
+  for (const key of ["itemCount", "itemExtent", "viewportExtent"]) {
+    const value = node.virtualRange[key as keyof typeof node.virtualRange];
+    if (typeof value !== "number" || !Number.isFinite(value) || value <= 0) {
+      diagnostics.push({ code: "TN_IR_UI_VIRTUAL_RANGE_NUMBER_INVALID", message: `UI virtualRange ${key} must be a finite positive number.`, path: `${path}/virtualRange/${key}` });
+    }
+  }
+  if (node.virtualRange.buffer !== undefined && (typeof node.virtualRange.buffer !== "number" || !Number.isFinite(node.virtualRange.buffer) || node.virtualRange.buffer < 0)) {
+    diagnostics.push({ code: "TN_IR_UI_VIRTUAL_RANGE_NUMBER_INVALID", message: "UI virtualRange buffer must be a finite non-negative number.", path: `${path}/virtualRange/buffer` });
+  }
+  if (node.virtualRange.orientation !== undefined && !["horizontal", "vertical"].includes(String(node.virtualRange.orientation))) {
+    diagnostics.push({ code: "TN_IR_UI_VIRTUAL_RANGE_ORIENTATION_INVALID", message: "UI virtualRange orientation must be horizontal or vertical.", path: `${path}/virtualRange/orientation` });
+  }
+}
+
+function validateUiAttachment(node: IUiNodeIr, path: string, diagnostics: IIrDiagnostic[], entityIds: Set<string>): void {
+  if (node.attachTo === undefined) {
+    return;
+  }
+  if (!isRecord(node.attachTo)) {
+    diagnostics.push({ code: "TN_IR_UI_ATTACHMENT_INVALID", message: "UI attachTo metadata must be an object.", path: `${path}/attachTo` });
+    return;
+  }
+  for (const key of Object.keys(node.attachTo)) {
+    if (["cameraHandle", "renderToTexture", "sceneMesh", "surface3d", "worldSpaceMesh"].includes(key)) {
+      diagnostics.push({
+        code: "TN_IR_UI_ATTACHMENT_SURFACE_UNSUPPORTED",
+        message: `UI attachment '${node.id}' uses unsupported 3D/render surface field '${key}'.`,
+        path: `${path}/attachTo/${key}`,
+        suggestion: "Keep attached UI as retained screen-space UI with attachTo projection metadata.",
+      });
+    } else if (!["anchor", "clamp", "distanceScale", "localOffset", "maxDistance", "occlusion", "sortPriority", "target"].includes(key)) {
+      diagnostics.push({ code: "TN_IR_UI_ATTACHMENT_FIELD_UNSUPPORTED", message: `UI attachTo uses unsupported field '${key}'.`, path: `${path}/attachTo/${key}` });
+    }
+  }
+  const attach = node.attachTo;
+  if (!isRecord(attach.target)) {
+    diagnostics.push({ code: "TN_IR_UI_ATTACHMENT_TARGET_INVALID", message: "UI attachTo target must be an object.", path: `${path}/attachTo/target` });
+  } else {
+    if (!["entity", "prefabInstance", "selectedEntity"].includes(String(attach.target.kind))) {
+      diagnostics.push({ code: "TN_IR_UI_ATTACHMENT_TARGET_KIND_INVALID", message: "UI attachTo target kind must be entity, prefabInstance, or selectedEntity.", path: `${path}/attachTo/target/kind` });
+    }
+    if (attach.target.kind === "entity") {
+      if (typeof attach.target.id !== "string" || attach.target.id.trim() === "") {
+        diagnostics.push({ code: "TN_IR_UI_ATTACHMENT_TARGET_INVALID", message: "UI entity attachment target must include a non-empty id.", path: `${path}/attachTo/target/id` });
+      } else if (!entityIds.has(attach.target.id)) {
+        diagnostics.push({ code: "TN_IR_UI_ATTACHMENT_TARGET_UNDECLARED", message: `UI node '${node.id}' attaches to undeclared entity '${attach.target.id}'.`, path: `${path}/attachTo/target/id` });
+      }
+    }
+    if (attach.target.kind === "selectedEntity" && (typeof attach.target.binding !== "string" || attach.target.binding.trim() === "")) {
+      diagnostics.push({ code: "TN_IR_UI_ATTACHMENT_TARGET_INVALID", message: "UI selectedEntity attachment target must include a binding.", path: `${path}/attachTo/target/binding` });
+    }
+  }
+  if (attach.anchor !== undefined && !["bottom", "center", "left", "right", "top"].includes(String(attach.anchor))) {
+    diagnostics.push({ code: "TN_IR_UI_ATTACHMENT_ANCHOR_INVALID", message: "UI attachment anchor must be top, bottom, left, right, or center.", path: `${path}/attachTo/anchor` });
+  }
+  if (attach.clamp !== undefined && !["none", "screenEdge"].includes(String(attach.clamp))) {
+    diagnostics.push({ code: "TN_IR_UI_ATTACHMENT_CLAMP_INVALID", message: "UI attachment clamp must be none or screenEdge.", path: `${path}/attachTo/clamp` });
+  }
+  if (attach.occlusion !== undefined && !["fade", "hide", "show"].includes(String(attach.occlusion))) {
+    diagnostics.push({ code: "TN_IR_UI_ATTACHMENT_OCCLUSION_INVALID", message: "UI attachment occlusion must be show, hide, or fade.", path: `${path}/attachTo/occlusion` });
+  }
+  if (attach.localOffset !== undefined && (!Array.isArray(attach.localOffset) || attach.localOffset.length !== 3 || attach.localOffset.some((value) => typeof value !== "number" || !Number.isFinite(value)))) {
+    diagnostics.push({ code: "TN_IR_UI_ATTACHMENT_OFFSET_INVALID", message: "UI attachment localOffset must be a finite Vec3.", path: `${path}/attachTo/localOffset` });
+  }
+  if (attach.distanceScale !== undefined) {
+    if (!isRecord(attach.distanceScale) || typeof attach.distanceScale.min !== "number" || typeof attach.distanceScale.max !== "number" || !Number.isFinite(attach.distanceScale.min) || !Number.isFinite(attach.distanceScale.max) || attach.distanceScale.min <= 0 || attach.distanceScale.max < attach.distanceScale.min) {
+      diagnostics.push({ code: "TN_IR_UI_ATTACHMENT_SCALE_INVALID", message: "UI attachment distanceScale must include finite positive min <= max.", path: `${path}/attachTo/distanceScale` });
+    }
+  }
+  if (attach.maxDistance !== undefined && (typeof attach.maxDistance !== "number" || !Number.isFinite(attach.maxDistance) || attach.maxDistance <= 0)) {
+    diagnostics.push({ code: "TN_IR_UI_ATTACHMENT_DISTANCE_INVALID", message: "UI attachment maxDistance must be finite and positive.", path: `${path}/attachTo/maxDistance` });
+  }
+  if (attach.sortPriority !== undefined && (typeof attach.sortPriority !== "number" || !Number.isFinite(attach.sortPriority))) {
+    diagnostics.push({ code: "TN_IR_UI_ATTACHMENT_SORT_INVALID", message: "UI attachment sortPriority must be finite.", path: `${path}/attachTo/sortPriority` });
+  }
+}
+
+function validateUiEffects(node: IUiNodeIr, path: string, diagnostics: IIrDiagnostic[]): void {
+  if (node.effects === undefined) {
+    return;
+  }
+  if (!Array.isArray(node.effects)) {
+    diagnostics.push({ code: "TN_IR_UI_EFFECTS_INVALID", message: "UI effects must be an array.", path: `${path}/effects` });
+    return;
+  }
+  const ids = new Set<string>();
+  node.effects.forEach((effect, index) => {
+    const effectPath = `${path}/effects/${index}`;
+    if (!isRecord(effect)) {
+      diagnostics.push({ code: "TN_IR_UI_EFFECT_INVALID", message: "UI effect metadata must be an object.", path: effectPath });
+      return;
+    }
+    for (const key of Object.keys(effect)) {
+      if (["shader", "shaderRef", "material", "materialRef", "filter", "cssFilter", "renderHandle"].includes(key)) {
+        diagnostics.push({
+          code: "TN_IR_UI_EFFECT_ESCAPE_UNSUPPORTED",
+          message: `UI effect '${String(effect.id ?? index)}' uses unsupported renderer-specific field '${key}'.`,
+          path: `${effectPath}/${key}`,
+          suggestion: "Use bounded glow, outline, pulse, tint, or focusRing presets with fallback strategy metadata.",
+        });
+      } else if (!["color", "fallback", "id", "intensity", "kind", "predicate", "pulse", "radius", "trigger"].includes(key)) {
+        diagnostics.push({ code: "TN_IR_UI_EFFECT_FIELD_UNSUPPORTED", message: `UI effect uses unsupported field '${key}'.`, path: `${effectPath}/${key}` });
+      }
+    }
+    if (typeof effect.id !== "string" || effect.id.trim() === "") {
+      diagnostics.push({ code: "TN_IR_UI_EFFECT_ID_INVALID", message: "UI effect id must be a non-empty string.", path: `${effectPath}/id` });
+    } else if (ids.has(effect.id)) {
+      diagnostics.push({ code: "TN_IR_UI_EFFECT_ID_DUPLICATE", message: `UI effect '${effect.id}' is duplicated on node '${node.id}'.`, path: `${effectPath}/id` });
+    }
+    ids.add(String(effect.id));
+    if (!["focusRing", "glow", "outline", "pulse", "tint"].includes(String(effect.kind))) {
+      diagnostics.push({ code: "TN_IR_UI_EFFECT_KIND_INVALID", message: "UI effect kind must be glow, outline, pulse, tint, or focusRing.", path: `${effectPath}/kind` });
+    }
+    if (!["disabled", "focus", "hover", "predicate", "selected"].includes(String(effect.trigger))) {
+      diagnostics.push({ code: "TN_IR_UI_EFFECT_TRIGGER_INVALID", message: "UI effect trigger must be focus, hover, selected, disabled, or predicate.", path: `${effectPath}/trigger` });
+    }
+    if (effect.fallback !== undefined && !["none", "outline", "shadow", "tint"].includes(String(effect.fallback))) {
+      diagnostics.push({ code: "TN_IR_UI_EFFECT_FALLBACK_INVALID", message: "UI effect fallback must be none, outline, shadow, or tint.", path: `${effectPath}/fallback` });
+    }
+    for (const key of ["intensity", "radius"] as const) {
+      const value = effect[key];
+      if (value !== undefined && (typeof value !== "number" || !Number.isFinite(value) || value < 0)) {
+        diagnostics.push({ code: "TN_IR_UI_EFFECT_NUMBER_INVALID", message: `UI effect ${key} must be a finite non-negative number.`, path: `${effectPath}/${key}` });
+      }
+    }
+    if (effect.pulse !== undefined) {
+      if (!isRecord(effect.pulse)) {
+        diagnostics.push({ code: "TN_IR_UI_EFFECT_PULSE_INVALID", message: "UI effect pulse metadata must be an object.", path: `${effectPath}/pulse` });
+      } else {
+        if (typeof effect.pulse.durationMs !== "number" || !Number.isFinite(effect.pulse.durationMs) || effect.pulse.durationMs <= 0) {
+          diagnostics.push({ code: "TN_IR_UI_EFFECT_PULSE_INVALID", message: "UI effect pulse durationMs must be finite and positive.", path: `${effectPath}/pulse/durationMs` });
+        }
+        const iterations = (effect.pulse as { iterations?: unknown }).iterations;
+        if (iterations !== undefined && (typeof iterations !== "number" || !Number.isInteger(iterations) || iterations <= 0)) {
+          diagnostics.push({ code: "TN_IR_UI_EFFECT_UNBOUNDED_ANIMATION", message: "UI pulse effects must declare a positive finite iteration count when iterations are present.", path: `${effectPath}/pulse/iterations` });
+        }
+      }
+    }
+    if (effect.trigger === "predicate") {
+      validateUiEffectPredicate(effect.predicate, `${effectPath}/predicate`, diagnostics);
+    } else if (effect.predicate !== undefined) {
+      diagnostics.push({ code: "TN_IR_UI_EFFECT_PREDICATE_TRIGGER_INVALID", message: "UI effect predicates are only valid with predicate triggers.", path: `${effectPath}/predicate` });
+    }
+  });
+}
+
+function validateUiEffectPredicate(predicate: unknown, path: string, diagnostics: IIrDiagnostic[]): void {
+  if (!isRecord(predicate)) {
+    diagnostics.push({ code: "TN_IR_UI_EFFECT_PREDICATE_INVALID", message: "UI predicate effects must declare predicate metadata.", path });
+    return;
+  }
+  for (const key of Object.keys(predicate)) {
+    if (!["component", "entity", "equals", "field", "resource"].includes(key)) {
+      diagnostics.push({ code: "TN_IR_UI_EFFECT_PREDICATE_FIELD_UNSUPPORTED", message: `UI effect predicate uses unsupported field '${key}'.`, path: `${path}/${key}` });
+    }
+  }
+  const hasResource = typeof predicate.resource === "string" && predicate.resource.trim() !== "";
+  const hasComponent = typeof predicate.component === "string" && predicate.component.trim() !== "" && typeof predicate.entity === "string" && predicate.entity.trim() !== "";
+  if (!hasResource && !hasComponent) {
+    diagnostics.push({ code: "TN_IR_UI_EFFECT_PREDICATE_TARGET_INVALID", message: "UI effect predicate must target a declared resource or component/entity pair.", path });
+  }
+}
+
+function validateUiAffordances(node: IUiNodeIr, path: string, diagnostics: IIrDiagnostic[]): void {
+  if (node.glyph !== undefined) {
+    if (!isRecord(node.glyph)) {
+      diagnostics.push({ code: "TN_IR_UI_GLYPH_INVALID", message: "UI glyph metadata must be an object.", path: `${path}/glyph` });
+    } else {
+      if (typeof node.glyph.action !== "string" || node.glyph.action.trim() === "") {
+        diagnostics.push({ code: "TN_IR_UI_GLYPH_ACTION_INVALID", message: "UI glyph action must be a non-empty action id.", path: `${path}/glyph/action` });
+      }
+      if (node.glyph.glyphSet !== undefined && !["gamepad", "keyboard", "touch"].includes(String(node.glyph.glyphSet))) {
+        diagnostics.push({ code: "TN_IR_UI_GLYPH_SET_INVALID", message: "UI glyph set must be keyboard, gamepad, or touch.", path: `${path}/glyph/glyphSet` });
+      }
+      if (node.action !== undefined && node.glyph.action !== node.action) {
+        diagnostics.push({ code: "TN_IR_UI_GLYPH_ACTION_INVALID", message: "UI glyph action must match the node action when both are declared.", path: `${path}/glyph/action` });
+      }
+    }
+  }
+  if (node.tooltip !== undefined) {
+    if (!isRecord(node.tooltip)) {
+      diagnostics.push({ code: "TN_IR_UI_TOOLTIP_INVALID", message: "UI tooltip metadata must be an object.", path: `${path}/tooltip` });
+    } else {
+      if (typeof node.tooltip.anchor !== "string" || node.tooltip.anchor.trim() === "") {
+        diagnostics.push({ code: "TN_IR_UI_TOOLTIP_ANCHOR_INVALID", message: "UI tooltip anchor must be a non-empty node id.", path: `${path}/tooltip/anchor` });
+      }
+      if (!["focus", "hover", "manual"].includes(String(node.tooltip.open))) {
+        diagnostics.push({ code: "TN_IR_UI_TOOLTIP_OPEN_INVALID", message: "UI tooltip open policy must be focus, hover, or manual.", path: `${path}/tooltip/open` });
+      }
+      if (typeof node.tooltip.description !== "string" || node.tooltip.description.trim() === "") {
+        diagnostics.push({ code: "TN_IR_UI_TOOLTIP_DESCRIPTION_INVALID", message: "UI tooltip description must be non-empty.", path: `${path}/tooltip/description` });
+      }
+      if (node.tooltip.delayMs !== undefined && (!Number.isFinite(node.tooltip.delayMs) || node.tooltip.delayMs < 0)) {
+        diagnostics.push({ code: "TN_IR_UI_TOOLTIP_DELAY_INVALID", message: "UI tooltip delayMs must be a finite non-negative number.", path: `${path}/tooltip/delayMs` });
+      }
+      if (node.tooltip.focus !== undefined && !["move", "preserve"].includes(String(node.tooltip.focus))) {
+        diagnostics.push({ code: "TN_IR_UI_TOOLTIP_FOCUS_INVALID", message: "UI tooltip focus behavior must be move or preserve.", path: `${path}/tooltip/focus` });
+      }
+    }
+  }
+  if (node.localization !== undefined) {
+    if (!isRecord(node.localization)) {
+      diagnostics.push({ code: "TN_IR_UI_LOCALIZATION_INVALID", message: "UI localization metadata must be an object.", path: `${path}/localization` });
+    } else {
+      if (typeof node.localization.key !== "string" || node.localization.key.trim() === "") {
+        diagnostics.push({ code: "TN_IR_UI_LOCALIZATION_KEY_INVALID", message: "UI localization key must be non-empty.", path: `${path}/localization/key` });
+      }
+      if (typeof node.localization.fallback !== "string" || node.localization.fallback.trim() === "") {
+        diagnostics.push({ code: "TN_IR_UI_LOCALIZATION_FALLBACK_MISSING", message: "UI localization metadata must include non-empty fallback text.", path: `${path}/localization/fallback` });
+      }
+      if (node.localization.params !== undefined && !isRecord(node.localization.params)) {
+        diagnostics.push({ code: "TN_IR_UI_LOCALIZATION_PARAMS_INVALID", message: "UI localization params must be an object when present.", path: `${path}/localization/params` });
+      }
+      if (node.localization.cases !== undefined) {
+        if (!isRecord(node.localization.cases)) {
+          diagnostics.push({ code: "TN_IR_UI_LOCALIZATION_CASES_INVALID", message: "UI localization cases must be an object when present.", path: `${path}/localization/cases` });
+        } else {
+          Object.entries(node.localization.cases).forEach(([caseId, text]) => {
+            if (caseId.trim() === "" || typeof text !== "string" || text.trim() === "") {
+              diagnostics.push({ code: "TN_IR_UI_LOCALIZATION_CASES_INVALID", message: "UI localization case ids and text must be non-empty strings.", path: `${path}/localization/cases/${caseId}` });
+            }
+          });
+        }
+      }
+    }
+  }
+  if (node.progress !== undefined) {
+    if (!isRecord(node.progress)) {
+      diagnostics.push({ code: "TN_IR_UI_PROGRESS_INVALID", message: "UI progress metadata must be an object.", path: `${path}/progress` });
+    } else {
+      if (node.progress.kind !== undefined && !["bar", "radial", "ring", "segmented", "text"].includes(String(node.progress.kind))) {
+        diagnostics.push({ code: "TN_IR_UI_PROGRESS_KIND_INVALID", message: "UI progress kind must be bar, ring, radial, segmented, or text.", path: `${path}/progress/kind` });
+      }
+      const segments = (node.progress as { segments?: unknown }).segments;
+      if (segments !== undefined && (typeof segments !== "number" || !Number.isInteger(segments) || segments <= 0)) {
+        diagnostics.push({ code: "TN_IR_UI_PROGRESS_SEGMENTS_INVALID", message: "UI progress segments must be a positive integer.", path: `${path}/progress/segments` });
+      }
+      if (node.progress.cooldown !== undefined && typeof node.progress.cooldown !== "boolean") {
+        diagnostics.push({ code: "TN_IR_UI_PROGRESS_COOLDOWN_INVALID", message: "UI progress cooldown must be a boolean when present.", path: `${path}/progress/cooldown` });
+      }
+    }
+  }
+  for (const [index, feedback] of (node.feedback ?? []).entries()) {
+    const feedbackPath = `${path}/feedback/${index}`;
+    if (!isRecord(feedback)) {
+      diagnostics.push({ code: "TN_IR_UI_FEEDBACK_INVALID", message: "UI feedback hook must be an object.", path: feedbackPath });
+      continue;
+    }
+    if (!["activate", "focus", "valueChange"].includes(String(feedback.trigger))) {
+      diagnostics.push({ code: "TN_IR_UI_FEEDBACK_TRIGGER_INVALID", message: "UI feedback trigger must be activate, focus, or valueChange.", path: `${feedbackPath}/trigger` });
+    }
+    if (feedback.audio === undefined && feedback.haptic === undefined) {
+      diagnostics.push({ code: "TN_IR_UI_FEEDBACK_TARGET_MISSING", message: "UI feedback hook must declare audio or haptic target.", path: feedbackPath });
+    }
+  }
+}
+
 function validateUiGridLayout(value: unknown, path: string, diagnostics: IIrDiagnostic[]): void {
   if (value === undefined) {
     return;
@@ -594,7 +1257,7 @@ function collectFocusableUiIds(node: IUiNodeIr, focusableIds: Set<string>): void
 function validateUiMetadata(ui: IUiIr, path: string, diagnostics: IIrDiagnostic[], ids: Set<string>, focusableIds: Set<string>): void {
   const raw = ui as unknown as Record<string, unknown>;
   for (const key of Object.keys(raw)) {
-    if (!["focusOrder", "fonts", "inputActions", "root", "safeArea", "schema", "version"].includes(key)) {
+    if (!["components", "focusOrder", "fonts", "generatedNodeProvenance", "inputActions", "root", "safeArea", "schema", "screenStack", "screens", "theme", "toastQueues", "version"].includes(key)) {
       diagnostics.push({
         code: "TN_IR_UI_FIELD_UNSUPPORTED",
         message: `UI IR uses unsupported field '${key}'.`,
@@ -605,7 +1268,111 @@ function validateUiMetadata(ui: IUiIr, path: string, diagnostics: IIrDiagnostic[
   validateUiFocusOrder(ui.focusOrder, `${path}/focusOrder`, diagnostics, focusableIds);
   validateUiSafeArea(ui.safeArea, `${path}/safeArea`, diagnostics);
   validateUiInputActions(ui.inputActions, `${path}/inputActions`, diagnostics);
+  validateUiToastQueues(ui, path, diagnostics);
   validateUiNavigation(ui.root, `${path}/root`, diagnostics, ids, focusableIds);
+  validateUiScreens(ui, path, diagnostics, ids, focusableIds);
+}
+
+function validateUiToastQueues(ui: IUiIr, path: string, diagnostics: IIrDiagnostic[]): void {
+  for (const [index, queue] of (ui.toastQueues ?? []).entries()) {
+    const queuePath = `${path}/toastQueues/${index}`;
+    if (typeof queue.id !== "string" || queue.id.trim() === "") {
+      diagnostics.push({ code: "TN_IR_UI_TOAST_QUEUE_ID_INVALID", message: "UI toast queue id must be non-empty.", path: `${queuePath}/id` });
+    }
+    if (!Number.isFinite(queue.durationMs) || queue.durationMs <= 0) {
+      diagnostics.push({ code: "TN_IR_UI_TOAST_QUEUE_DURATION_INVALID", message: "UI toast queue durationMs must be finite and positive.", path: `${queuePath}/durationMs` });
+    }
+    if (!Number.isInteger(queue.maxVisible) || queue.maxVisible <= 0) {
+      diagnostics.push({ code: "TN_IR_UI_TOAST_QUEUE_MAX_VISIBLE_INVALID", message: "UI toast queue maxVisible must be a positive integer.", path: `${queuePath}/maxVisible` });
+    }
+    if (queue.coalesce !== undefined && !["count", "drop", "none"].includes(queue.coalesce)) {
+      diagnostics.push({ code: "TN_IR_UI_TOAST_QUEUE_COALESCE_INVALID", message: "UI toast queue coalesce must be count, drop, or none.", path: `${queuePath}/coalesce` });
+    }
+  }
+}
+
+function validateUiScreens(ui: IUiIr, path: string, diagnostics: IIrDiagnostic[], ids: Set<string>, focusableIds: Set<string>): void {
+  const screens = ui.screens ?? [];
+  const screenIds = new Set<string>();
+  const activeIds = new Set(ui.screenStack?.active ?? screens.filter((screen) => screen.active === true).map((screen) => screen.id));
+  let activeExclusiveCount = 0;
+
+  screens.forEach((screen, index) => {
+    const screenPath = `${path}/screens/${index}`;
+    if (typeof screen.id !== "string" || screen.id.trim() === "") {
+      diagnostics.push({ code: "TN_IR_UI_SCREEN_ID_INVALID", message: "UI screen id must be a non-empty string.", path: `${screenPath}/id` });
+    } else if (screenIds.has(screen.id)) {
+      diagnostics.push({ code: "TN_IR_UI_SCREEN_DUPLICATE", message: `UI screen '${screen.id}' is duplicated.`, path: `${screenPath}/id` });
+    }
+    screenIds.add(String(screen.id));
+    if (!["dialog", "hud", "loading", "menu", "modal", "overlay"].includes(String(screen.role))) {
+      diagnostics.push({ code: "TN_IR_UI_SCREEN_ROLE_INVALID", message: "UI screen role must be hud, menu, modal, overlay, loading, or dialog.", path: `${screenPath}/role` });
+    }
+    if (!ids.has(screen.root)) {
+      diagnostics.push({ code: "TN_IR_UI_SCREEN_ROOT_INVALID", message: `UI screen '${screen.id}' references missing root node '${screen.root}'.`, path: `${screenPath}/root` });
+    }
+    if (screen.stackPolicy !== undefined && !["exclusiveModal", "overlay", "pop", "push", "replace"].includes(screen.stackPolicy)) {
+      diagnostics.push({ code: "TN_IR_UI_SCREEN_STACK_POLICY_INVALID", message: "UI screen stackPolicy must be replace, push, pop, overlay, or exclusiveModal.", path: `${screenPath}/stackPolicy` });
+    }
+    if (activeIds.has(screen.id) && (screen.stackPolicy === "exclusiveModal" || screen.role === "modal")) {
+      activeExclusiveCount += 1;
+    }
+    if (activeIds.has(screen.id) && screen.hidden === true) {
+      diagnostics.push({ code: "TN_IR_UI_SCREEN_ACTIVE_HIDDEN", message: `UI screen '${screen.id}' is hidden but active in the screen stack.`, path: `${screenPath}/hidden` });
+    }
+    validateUiFocusScope(screen.focusScope, `${screenPath}/focusScope`, diagnostics, focusableIds);
+    if ((screen.role === "modal" || screen.role === "dialog" || screen.stackPolicy === "exclusiveModal") && screen.focusScope?.inputCapture === "none") {
+      diagnostics.push({ code: "TN_IR_UI_MODAL_CAPTURE_MISSING", message: `UI modal screen '${screen.id}' must capture input.`, path: `${screenPath}/focusScope/inputCapture` });
+    }
+  });
+
+  if (activeExclusiveCount > 1) {
+    diagnostics.push({ code: "TN_IR_UI_SCREEN_EXCLUSIVE_DUPLICATE", message: "Only one active exclusive modal screen is allowed.", path: `${path}/screenStack/active` });
+  }
+  validateUiScreenStack(ui.screenStack, `${path}/screenStack`, diagnostics, screenIds);
+}
+
+function validateUiFocusScope(focusScope: IUiFocusScopeIr | undefined, path: string, diagnostics: IIrDiagnostic[], focusableIds: Set<string>): void {
+  if (focusScope === undefined) {
+    return;
+  }
+  if (!focusableIds.has(focusScope.entry)) {
+    diagnostics.push({ code: "TN_IR_UI_FOCUS_SCOPE_ENTRY_INVALID", message: `UI focus scope entry '${focusScope.entry}' must reference a focusable node.`, path: `${path}/entry` });
+  }
+  if (focusScope.trap === true && focusScope.escapeAction === undefined && focusScope.backAction === undefined) {
+    diagnostics.push({ code: "TN_IR_UI_FOCUS_TRAP_EXIT_MISSING", message: "UI focus traps must declare escapeAction or backAction.", path });
+  }
+  if (!["keyboard", "modal", "none", "pointer", "pointer-and-keyboard"].includes(String(focusScope.inputCapture))) {
+    diagnostics.push({ code: "TN_IR_UI_INPUT_CAPTURE_INVALID", message: "UI inputCapture must be none, pointer, keyboard, pointer-and-keyboard, or modal.", path: `${path}/inputCapture` });
+  }
+  if (focusScope.restore !== undefined && focusScope.restore !== "none" && focusScope.restore !== "previous") {
+    diagnostics.push({ code: "TN_IR_UI_FOCUS_RESTORE_INVALID", message: "UI focus restore must be previous or none.", path: `${path}/restore` });
+  }
+}
+
+function validateUiScreenStack(stack: IUiIr["screenStack"], path: string, diagnostics: IIrDiagnostic[], screenIds: Set<string>): void {
+  if (stack === undefined) {
+    return;
+  }
+  if (!Array.isArray(stack.active)) {
+    diagnostics.push({ code: "TN_IR_UI_SCREEN_STACK_ACTIVE_INVALID", message: "UI screenStack.active must be an array.", path: `${path}/active` });
+    return;
+  }
+  stack.active.forEach((id, index) => {
+    if (typeof id !== "string" || id.trim() === "") {
+      diagnostics.push({ code: "TN_IR_UI_SCREEN_STACK_ACTIVE_INVALID", message: "UI screenStack.active entries must be non-empty screen IDs.", path: `${path}/active/${index}` });
+    } else if (!screenIds.has(id)) {
+      diagnostics.push({ code: "TN_IR_UI_SCREEN_STACK_REF_INVALID", message: `UI screenStack references missing screen '${id}'.`, path: `${path}/active/${index}` });
+    }
+  });
+  if (stack.policy !== undefined && !["exclusiveModal", "overlay", "pop", "push", "replace"].includes(stack.policy)) {
+    diagnostics.push({ code: "TN_IR_UI_SCREEN_STACK_POLICY_INVALID", message: "UI screenStack policy must be replace, push, pop, overlay, or exclusiveModal.", path: `${path}/policy` });
+  }
+  stack.transitions?.forEach((transition, index) => {
+    if (!["exclusiveModal", "overlay", "pop", "push", "replace"].includes(transition.kind)) {
+      diagnostics.push({ code: "TN_IR_UI_SCREEN_TRANSITION_INVALID", message: "UI screen transition kind must be replace, push, pop, overlay, or exclusiveModal.", path: `${path}/transitions/${index}/kind` });
+    }
+  });
 }
 
 function validateUiFocusOrder(value: unknown, path: string, diagnostics: IIrDiagnostic[], focusableIds: Set<string>): void {

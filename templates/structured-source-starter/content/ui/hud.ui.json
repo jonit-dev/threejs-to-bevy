@@ -20,6 +20,19 @@
       "node": "countdown",
       "resource": "GameState.countdown"
     }
-  ]
+  ],
+  "recipes": [
+    {
+      "id": "hud.status",
+      "kind": "hud-status-cluster",
+      "props": {}
+    }
+  ],
+  "provenance": {
+    "recipes/hud.status": {
+      "kind": "hud-status-cluster",
+      "source": "template.structured-source-starter",
+      "version": 1
+    }
+  }
 }
-

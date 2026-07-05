@@ -41,6 +41,146 @@ test("countdown UI can be created centered and bound without manual JSON editing
   }
 });
 
+test("ui command adds component instance source metadata", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-cli-ui-component-"));
+  try {
+    const create = await uiCommand(["create", "inventory", "--project", root, "--json"]);
+    const add = await uiCommand([
+      "add-component",
+      "inventory",
+      "slot.potion",
+      "--component",
+      "inventorySlot",
+      "--props",
+      "{\"label\":\"Potion\",\"count\":\"3\"}",
+      "--project",
+      root,
+      "--json",
+    ]);
+    const update = await uiCommand([
+      "add-component",
+      "inventory",
+      "slot.potion",
+      "--component",
+      "inventorySlot",
+      "--props",
+      "{\"label\":\"Potion\",\"count\":\"4\"}",
+      "--project",
+      root,
+      "--json",
+    ]);
+    const ui = JSON.parse(await readFile(join(root, "content", "ui", "inventory.ui.json"), "utf8")) as {
+      nodes: Array<{ component?: { props?: Record<string, unknown>; ref: string }; id: string; type: string }>;
+    };
+    const remove = await uiCommand(["remove-component", "inventory", "slot.potion", "--project", root, "--json"]);
+    const removed = JSON.parse(await readFile(join(root, "content", "ui", "inventory.ui.json"), "utf8")) as {
+      nodes: Array<{ component?: { props?: Record<string, unknown>; ref: string }; id: string; type: string }>;
+    };
+
+    assert.equal(create.exitCode, 0);
+    assert.equal(add.exitCode, 0);
+    assert.equal(update.exitCode, 0);
+    assert.deepEqual(ui.nodes, [
+      { id: "slot.potion", type: "component", component: { ref: "inventorySlot", props: { count: "4", label: "Potion" } } },
+    ]);
+    assert.deepEqual((JSON.parse(add.stdout) as { filesWritten: string[] }).filesWritten, ["content/ui/inventory.ui.json"]);
+    assert.equal(remove.exitCode, 0);
+    assert.deepEqual(removed.nodes, []);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should add settings recipe through tn ui recipe", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-cli-ui-recipe-"));
+  try {
+    const create = await uiCommand(["create", "menus", "--project", root, "--json"]);
+    const recipe = await uiCommand([
+      "recipe",
+      "menus",
+      "settings-list",
+      "--id",
+      "settings",
+      "--actions",
+      "{\"audio\":\"settings.audio.open\",\"back\":\"settings.close\"}",
+      "--bindings",
+      "{\"audio\":\"Settings.audio\"}",
+      "--project",
+      root,
+      "--json",
+    ]);
+    const ui = JSON.parse(await readFile(join(root, "content", "ui", "menus.ui.json"), "utf8")) as {
+      bindings: Array<{ node: string; resource: string }>;
+      focusOrder: string[];
+      nodes: Array<{ action?: string; id: string; label?: string; type: string }>;
+      recipes: Array<{ id: string; kind: string }>;
+      screens: Array<{ focusScope?: { backAction?: string; inputCapture?: string; restore?: string; entry?: string }; id: string; role: string; root: string; stackPolicy?: string }>;
+    };
+
+    assert.equal(create.exitCode, 0);
+    assert.equal(recipe.exitCode, 0);
+    assert.equal(ui.nodes.find((node) => node.id === "settings")?.label, "Settings");
+    assert.equal(ui.nodes.find((node) => node.id === "settings.audio")?.action, "settings.audio.open");
+    assert.deepEqual(ui.bindings, [{ node: "settings.audio", resource: "Settings.audio" }]);
+    assert.deepEqual(ui.focusOrder, ["settings.audio", "settings.video", "settings.controls"]);
+    assert.deepEqual(ui.screens[0], {
+      id: "settings",
+      role: "menu",
+      root: "settings",
+      stackPolicy: "push",
+      focusScope: { entry: "settings.audio", backAction: "settings.close", inputCapture: "keyboard", restore: "previous" },
+    });
+    assert.deepEqual(ui.recipes, [{ id: "settings", kind: "settings-list", props: {} }]);
+    assert.deepEqual((JSON.parse(recipe.stdout) as { filesWritten: string[] }).filesWritten, ["content/ui/menus.ui.json"]);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should add attached nameplate recipe through tn ui recipe", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-cli-ui-attached-recipe-"));
+  try {
+    const create = await uiCommand(["create", "hud", "--project", root, "--json"]);
+    const recipe = await uiCommand([
+      "recipe",
+      "hud",
+      "nameplate",
+      "--id",
+      "enemy.name",
+      "--props",
+      "{\"targetId\":\"enemy.1\",\"label\":\"Scout\"}",
+      "--project",
+      root,
+      "--json",
+    ]);
+    const ui = JSON.parse(await readFile(join(root, "content", "ui", "hud.ui.json"), "utf8")) as {
+      nodes: Array<{ attachTo?: unknown; id: string; label?: string; text?: string; type: string }>;
+      recipes: Array<{ id: string; kind: string; props?: Record<string, unknown> }>;
+      screens: Array<{ focusScope?: { inputCapture?: string }; id: string; role: string; root: string; stackPolicy?: string }>;
+    };
+
+    assert.equal(create.exitCode, 0);
+    assert.equal(recipe.exitCode, 0);
+    assert.deepEqual(ui.nodes.find((node) => node.id === "enemy.name")?.attachTo, {
+      target: { kind: "entity", id: "enemy.1" },
+      anchor: "top-center",
+      localOffset: [0, 1.4, 0],
+    });
+    assert.equal(ui.nodes.find((node) => node.id === "enemy.name.label")?.text, "Scout");
+    assert.deepEqual(ui.screens[0], {
+      id: "enemy.name",
+      role: "hud",
+      root: "enemy.name",
+      stackPolicy: "overlay",
+      focusScope: { entry: "enemy.name", backAction: "ui.back", inputCapture: "none", restore: "previous" },
+    });
+    assert.deepEqual(ui.recipes, [{ id: "enemy.name", kind: "nameplate", props: { targetId: "enemy.1", label: "Scout" } }]);
+    assert.deepEqual((JSON.parse(recipe.stdout) as { filesWritten: string[] }).filesWritten, ["content/ui/hud.ui.json"]);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
 test("material command creates and updates source doc", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-cli-material-doc-"));
   try {
