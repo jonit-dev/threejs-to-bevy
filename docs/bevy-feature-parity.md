@@ -849,6 +849,7 @@ diagnostics until portable promotion criteria and web/Bevy evidence exist.
 - [x] `P1` Responsive target-class UI recipe metadata, bounded virtual range metadata for large retained lists, deterministic web/Bevy visible-range traces, and desktop/mobile UI-fit artifact checks
 - [x] `P1` Common UI affordance metadata for input glyph prompts, tooltips, localization fallback/cases, progress/cooldown presentation, toast queues, and logical feedback hooks with web/native observation traces
 - [x] `P1` Bounded retained UI effect presets for glow, outline, pulse, tint, and focus rings with renderer escape-hatch diagnostics, advanced UI fixture states, and web/native strategy traces
+- [x] `P1` World-attached retained UI for nameplates, health bars, interact prompts, pickup labels, quest markers, and off-screen indicators with web/Bevy projection traces and asserted visual parity reports
 - [x] `P1` Basic UI text size, alignment, and wrapping
 - [x] `P1` Portable UI text weight/decoration metadata and web DOM rendering
 - [x] `P1` Rich text styling: font assets, inline spans, and native-rendered weight/decoration

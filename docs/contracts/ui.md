@@ -268,9 +268,26 @@ ordinary retained UI source nodes plus optional `bindings`, `screens`,
 `focusOrder`, `components`, and provenance entries. Supported recipe families
 cover HUD status clusters, pause menus, settings lists, inventory grids, item
 detail panels, dialog boxes, notification toasts, and loading overlays.
+World-attached recipe variants cover nameplates, enemy health bars, interact
+prompts, pickup labels, quest markers, and off-screen indicators.
 
 Recipe proof requires desktop and mobile screenshots plus accessibility reports
 under `artifacts/advanced-ui/`; missing artifacts fail the advanced UI gate.
+
+## World-Attached UI
+
+Retained UI nodes may declare `attachTo` to project a declared world target into
+screen-space UI. Targets can reference declared entity IDs, prefab instance IDs,
+or a selected-entity binding. Attachment metadata supports local world offset,
+screen anchor, distance scale range, off-screen clamping, occlusion policy, max
+distance, and sort priority.
+
+Attached UI remains retained screen-space UI. Validation rejects true 3D UI
+surfaces, render-to-texture UI, scene mesh handles, direct camera handles, and
+other renderer-private handles. Web and Bevy adapters emit projection traces
+with target id, camera id, projected position, depth, clamp/occlusion state,
+scale, and visible node ids. The advanced UI gate also requires asserted
+web/Bevy visual parity reports for retained effects and attachments.
 
 ## Responsive Rules And Virtual Lists
 

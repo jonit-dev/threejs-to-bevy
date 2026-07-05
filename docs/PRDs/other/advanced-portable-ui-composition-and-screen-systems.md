@@ -593,15 +593,15 @@ optional webview overlays:
 
 **Implementation:**
 
-- [ ] Add `attachTo` metadata for declared entity IDs, prefab instance IDs, and
+- [x] Add `attachTo` metadata for declared entity IDs, prefab instance IDs, and
   selected-entity bindings.
-- [ ] Support local world offset, screen-space anchor, distance scale range,
+- [x] Support local world offset, screen-space anchor, distance scale range,
   off-screen clamp, occlusion policy, max distance, and sort priority.
-- [ ] Add default recipes for nameplate, enemy health bar, interact prompt,
+- [x] Add default recipes for nameplate, enemy health bar, interact prompt,
   pickup label, quest marker, and off-screen indicator.
-- [ ] Keep attached UI rendered as retained screen-space UI and reject true 3D
+- [x] Keep attached UI rendered as retained screen-space UI and reject true 3D
   UI surfaces, render-to-texture, scene mesh handles, and direct camera handles.
-- [ ] Emit projection traces with target entity, camera id, projected screen
+- [x] Emit projection traces with target entity, camera id, projected screen
   position, depth, clamped state, occluded state, scale, and visible node ids.
 
 **Tests Required:**
@@ -864,3 +864,30 @@ If implementation changes shared runtime contracts, include
   - `pnpm --filter @threenative/ir test -- --run "bounded UI glow|custom UI shader"`
   - `pnpm --filter @threenative/runtime-web-three test -- --run "active selected glow strategy"`
   - `cargo test -p threenative_runtime --test ui should_preserve_native_ui_effect_observations`
+
+### Phase 8: World-Attached UI
+
+- Added retained `attachTo` metadata for declared entity targets,
+  selected-entity bindings, local offsets, anchors, distance scaling,
+  off-screen clamping, occlusion policy, max distance, and sort priority.
+- Added diagnostics for undeclared targets and renderer-specific attachment
+  escape hatches such as camera handles, render-to-texture, scene meshes, and
+  true world-space UI surfaces.
+- Added deterministic web and native Bevy projection traces with projected
+  screen position, depth, clamp state, occlusion state, scale, and visible node
+  ids.
+- Added source-level default recipes for nameplates, enemy health bars,
+  interact prompts, pickup labels, quest markers, and off-screen indicators in
+  SDK and `tn ui recipe`.
+- Added advanced UI gate requirements for asserted web/Bevy visual parity
+  reports at `artifacts/advanced-ui/visual-parity/effects.json` and
+  `artifacts/advanced-ui/visual-parity/attachments.json`.
+- Verification run:
+  - `pnpm --filter @threenative/sdk test -- --run "attached ui recipe|inventory recipe"`
+  - `pnpm --filter @threenative/authoring build`
+  - `pnpm --filter @threenative/cli build`
+  - `node --test --test-name-pattern "attached nameplate recipe" packages/cli/dist/commands/source-documents-command.test.js`
+  - `pnpm --filter @threenative/ir build && pnpm --filter @threenative/ir test -- --run "attached UI target|validate every conformance fixture"`
+  - `pnpm --filter @threenative/runtime-web-three test -- --run "project nameplate"`
+  - `cargo test -p threenative_runtime --test ui should_clamp_off_screen_attached_ui_marker`
+  - `pnpm --filter @threenative/verify-tools test -- --run "advanced ui|visual parity|recipe screenshots|ui fit"`

@@ -251,7 +251,12 @@ feedback hooks with deterministic web toast coalescing and native glyph/tooltip
 observation proof. Bounded retained UI effect presets now cover glow, outline,
 pulse, tint, and focus-ring emphasis with focus/hover/selected/disabled and
 predicate triggers, renderer escape-hatch diagnostics, an advanced UI
-conformance fixture, and matching web/native strategy traces.
+conformance fixture, and matching web/native strategy traces. World-attached
+retained UI now projects declared entity and selected-entity targets to
+screen-space retained UI with deterministic web/native traces, source-level
+recipes for nameplates, health bars, interact prompts, pickup labels, quest
+markers, and off-screen indicators, plus asserted web/Bevy visual parity
+reports for effects and attachments.
 
 The agent debugging workflow now has a stronger `tn doctor` gate. It checks
 package manager state, CLI dependency/local shim setup, required scripts,
@@ -339,8 +344,9 @@ components with typed props, component instance nodes, deterministic generated
 node IDs, and `generatedNodeProvenance` records so generated retained nodes can
 be traced back to component source. Screen stacks, modal focus scopes, bounded
 recipes, responsive target-class recipe rules, virtualized large-list metadata,
-UI-fit proof artifacts, common affordance metadata, and bounded retained UI
-effect presets are implemented; world-attached UI remains active PRD work.
+UI-fit proof artifacts, common affordance metadata, bounded retained UI effect
+presets, and world-attached retained UI are implemented; the advanced UI
+verification/release gate remains active PRD work.
 The Phase 3 bundle import slice adds `@threenative/authoring` `importBundle()`
 and `tn bundle import <bundle-dir> --project <path> --mode source --json`
 for recoverable generated catalog import. It normalizes `world.ir.json`,
