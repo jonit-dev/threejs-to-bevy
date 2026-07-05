@@ -17,13 +17,14 @@ import {
   renderTargetCameraPasses,
   type IRenderTargetRegistry,
 } from "./renderTargets.js";
-import { advanceAnimationPlayback, hasAnimationPlayback, loadPendingMaterialTextures, loadWorldModelAssets, mapWorld, type IRuntimeDiagnostic, type IThreeWorld } from "./mapWorld.js";
+import { advanceAnimationPlayback, hasAnimationPlayback, loadPendingMaterialTextures, loadWorldModelAssets, mapWorld, syncTransforms, type IRuntimeDiagnostic, type IThreeWorld } from "./mapWorld.js";
 import { applyEnvironmentBookmark, createEnvironmentRuntime, loadEnvironmentAssetInstances } from "./environment.js";
 import { applyAtmosphereProfile, applyEnvironmentLighting, applyThreeCompatFogDistance } from "./rendering.js";
 import { applyWebRenderLookProfile } from "./rendering/applyRenderLookProfile.js";
 import { createGameLoopState, runGameFrame } from "./gameLoop.js";
 import { initializePhysicsRuntime } from "./physics.js";
 import { attachInputListeners, createInputState } from "./input.js";
+import { hasKinematicMovers, stepKinematicMovers } from "./kinematicMover.js";
 import { loadSystemModule } from "./systems/runner.js";
 import { createSystemEffectLog, type ISystemEffectLog } from "./systems/log.js";
 import { createUiDomOverlay } from "./ui/domOverlay.js";
@@ -217,13 +218,17 @@ export async function renderBundle(source: string, container: HTMLElement, optio
       world: bundle.world,
     });
     uiOverlay?.update();
+  } else if (hasKinematicMovers(bundle.world)) {
+    stepKinematicMovers(bundle.world, 1 / 60);
+    syncTransforms(bundle.world, mapped.objectsById);
+    uiOverlay?.update();
   }
   advanceAnimationPlayback(mapped, 1 / 60);
   colliderDebugOverlay?.update();
   pipeline.render();
   logStartupDiagnostics(mapped.diagnostics);
   let lifecycle: IWebRenderLifecycle | undefined;
-  if (bundle.systems !== undefined || hasAnimationPlayback(mapped)) {
+  if (bundle.systems !== undefined || hasAnimationPlayback(mapped) || hasKinematicMovers(bundle.world)) {
     let lastTime = performance.now();
     lifecycle = createWebRenderLifecycle({
       diagnostics: mapped.diagnostics,
@@ -248,6 +253,10 @@ export async function renderBundle(source: string, container: HTMLElement, optio
             systems: bundle.systems,
             world: bundle.world,
           });
+        } else if (hasKinematicMovers(bundle.world)) {
+          stepKinematicMovers(bundle.world, loopState.elapsed + delta);
+          loopState.elapsed += delta;
+          syncTransforms(bundle.world, mapped.objectsById);
         }
         advanceAnimationPlayback(mapped, delta);
         uiOverlay?.update();

@@ -5,7 +5,8 @@ type Vec3Tuple = [number, number, number];
 
 // Shared conventions for both systems:
 // - Soldier.glb rest pose faces -Z, so world forward for yaw is
-//   [-sin(yaw), 0, -cos(yaw)] and heading = atan2(-dirX, -dirZ).
+//   [-sin(yaw), 0, -cos(yaw)] and heading = cameraYaw + atan2(-dirX, -dirZ)
+//   (camera-relative input, matching CharacterRig's cameraYaw convention).
 // - CoursePlayer carries gameplay state (speed/heading/yaw/checkpoint/...).
 // - GameState carries HUD text plus the camera rig state.
 
@@ -17,9 +18,6 @@ export function updateHumanoidCourse(context: ScriptContext): void {
   const DECELERATION = 15;
   const TURN_SMOOTHING = 11;
   const MAX_TURN_SPEED = 9.5;
-  // Must match CharacterController.speed in arena.scene.json; the controller
-  // integrates speed * fixedDelta, so we scale fixedDelta by speed/CONTROLLER_SPEED.
-  const CONTROLLER_SPEED = 3.1;
   const HIT_COOLDOWN = 0.8;
   const START_POSITION: Vec3Tuple = [0, 0.02, 5.0];
 
@@ -91,13 +89,17 @@ export function updateHumanoidCourse(context: ScriptContext): void {
     return;
   }
 
-  // Input -> normalized planar direction (x right, z toward camera at start).
+  // Input -> normalized planar direction in camera space (x screen-right,
+  // z toward camera). Standard third-person controls are camera-relative:
+  // the local stick direction is rotated by the camera rig's current yaw so
+  // "right" always means screen-right, no matter where the camera points.
   const axisX = context.input.axis1("MoveX", { negative: "move-left", positive: "move-right" });
   const axisZ = context.input.axis1("MoveZ", { negative: "move-back", positive: "move-forward" });
   const inputLength = Math.hypot(axisX, axisZ);
   const hasInput = inputLength > 0.05;
   const dirX = hasInput ? axisX / Math.max(1, inputLength) : 0;
   const dirZ = hasInput ? -axisZ / Math.max(1, inputLength) : 0;
+  const cameraYaw = NumberEx.finite(Number(state.cameraYaw), 0);
   const sprinting = hasInput && (context.input.pressed?.("sprint") || context.input.action?.("sprint"));
 
   // Speed eases toward its target so starts and stops carry weight.
@@ -108,7 +110,7 @@ export function updateHumanoidCourse(context: ScriptContext): void {
 
   // Heading persists while decelerating so releasing input glides straight.
   const currentYaw = NumberEx.finite(Number(stats.yaw), 0);
-  const heading = hasInput ? Math.atan2(-dirX, -dirZ) : NumberEx.finite(Number(stats.heading), currentYaw);
+  const heading = hasInput ? cameraYaw + Math.atan2(-dirX, -dirZ) : NumberEx.finite(Number(stats.heading), currentYaw);
   const moving = speed > 0.02;
 
   // Facing chases the heading: exponential ease capped at MAX_TURN_SPEED.
@@ -121,8 +123,9 @@ export function updateHumanoidCourse(context: ScriptContext): void {
   const moveDirection = forwardOfYaw(yaw);
   const characterMove = moving
     ? context.character?.move?.(player, {
-        axes: { MoveX: moveDirection[0], MoveZ: moveDirection[2] },
-        fixedDelta: delta * speed / CONTROLLER_SPEED,
+        direction: [moveDirection[0], moveDirection[2]],
+        fixedDelta: delta,
+        speed,
       })
     : null;
   const resolved = isRecord(characterMove) && isVec3(characterMove.resolved)
@@ -245,11 +248,19 @@ export function updateThirdPersonCamera(context: ScriptContext): void {
   const followCurrent = isVec3(state.cameraFollow) ? state.cameraFollow : playerPosition;
   const follow = Vec3.lerp(followCurrent, playerPosition, 1 - Math.exp(-FOLLOW_SMOOTHING * dt)) as Vec3Tuple;
 
-  // Yaw chases the character's facing slowly, capped so 180-degree turns
-  // swing the camera over ~1.7s instead of whipping around.
+  // Yaw lazily re-centers behind the character, scaled by how aligned the
+  // facing already is with the camera: full chase when running away from the
+  // camera, half-rate orbit on lateral strafes, and no chase when running
+  // toward the camera so backing up never whips the boom 180 degrees.
   const yawCurrent = NumberEx.finite(Number(state.cameraYaw), playerYaw);
-  const yawStep = AngleEx.deltaAngle(yawCurrent, playerYaw) * (1 - Math.exp(-YAW_SMOOTHING * dt));
-  const cameraYaw = yawCurrent + NumberEx.clamp(yawStep, -MAX_YAW_SPEED * dt, MAX_YAW_SPEED * dt);
+  const playerForward = forwardOfYaw(playerYaw);
+  const cameraForward = forwardOfYaw(yawCurrent);
+  const alignment = NumberEx.saturate(
+    (playerForward[0] * cameraForward[0] + playerForward[2] * cameraForward[2] + 1) / 2,
+  );
+  const yawStep = AngleEx.deltaAngle(yawCurrent, playerYaw) * (1 - Math.exp(-YAW_SMOOTHING * dt)) * alignment;
+  const yawCap = MAX_YAW_SPEED * alignment * dt;
+  const cameraYaw = yawCurrent + NumberEx.clamp(yawStep, -yawCap, yawCap);
 
   // Boom stretches slightly at sprint for a sense of momentum.
   const distanceCurrent = NumberEx.finite(Number(state.cameraDistance), BASE_DISTANCE);
@@ -257,7 +268,7 @@ export function updateThirdPersonCamera(context: ScriptContext): void {
   const distance = distanceCurrent + (distanceTarget - distanceCurrent) * (1 - Math.exp(-DISTANCE_SMOOTHING * dt));
 
   const forward = forwardOfYaw(cameraYaw);
-  const right: Vec3Tuple = [forward[2], 0, -forward[0]];
+  const right: Vec3Tuple = [-forward[2], 0, forward[0]];
   const pivot: Vec3Tuple = [follow[0], follow[1] + PIVOT_HEIGHT, follow[2]];
   const eye = Vec3.round([
     pivot[0] - forward[0] * distance + right[0] * SHOULDER,

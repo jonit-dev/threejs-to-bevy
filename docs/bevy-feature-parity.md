@@ -118,6 +118,20 @@ implementation:
   renderer, DOM, filesystem, worker, timer, or native-handle script access.
   It is authoring/compiler guidance rather than a new native runtime
   capability claim.
+- The authoring-abstractions Phase 1 web runtime slice promotes direct
+  `ctx.character.move(entity, { direction, speed })` tracing and web
+  script-authored kinematic transform authority to remove same-tick
+  double-integration. IR validation covers inconsistent `RigidBody.mass` /
+  `inverseMass` and suspect zero-centered character capsules. Native Bevy does
+  not yet have an equivalent script-authority execution hook for this new web
+  runtime behavior; treat it as an explicit parity gap until a focused native
+  trace or conformance fixture proves the same semantics.
+- The authoring-abstractions Phase 4 slice introduces a portable
+  `KinematicMover` IR component shape and formatted UI binding validation.
+  Web runtime support currently covers sine movers, stable authored-origin
+  tracking, derivative kinematic velocity, and formatted UI text resolution.
+  Native Bevy does not yet map or prove the new `KinematicMover` component, and
+  no web/Bevy conformance fixture has been added for this contract yet.
 - `tn game plan --json` now emits a schema-tagged
   `threenative.game-plan` artifact with non-mutating source-shape guidance for
   scene, input, systems, UI, materials, and assets documents, including

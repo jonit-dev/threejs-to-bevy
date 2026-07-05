@@ -108,6 +108,7 @@ export function validatePhysicsComponents(entity: IWorldIr["entities"][number], 
     if (colliderRecord.kind === "capsule") {
       validatePositiveFinite(colliderRecord.radius, `${path}/components/Collider/radius`, "TN_IR_PHYSICS_COLLIDER_RADIUS_INVALID", diagnostics);
       validatePositiveFinite(colliderRecord.height, `${path}/components/Collider/height`, "TN_IR_PHYSICS_COLLIDER_HEIGHT_INVALID", diagnostics);
+      validateCharacterCapsuleCenter(entity, colliderRecord, `${path}/components/Collider`, diagnostics);
     }
     if (colliderRecord.kind === "mesh" && colliderRecord.trigger === true) {
       diagnostics.push({
@@ -197,6 +198,34 @@ export function validatePhysicsComponents(entity: IWorldIr["entities"][number], 
   if (jointRecord !== undefined) {
     validatePhysicsJoint(jointRecord, `${path}/components/PhysicsJoint`, entity.id, entityIds, diagnostics);
   }
+}
+
+function validateCharacterCapsuleCenter(entity: IWorldIr["entities"][number], collider: Record<string, unknown>, path: string, diagnostics: IIrDiagnostic[]): void {
+  if (entity.components.CharacterController === undefined) {
+    return;
+  }
+  const height = collider.height;
+  const radius = collider.radius;
+  if (typeof height !== "number" || !Number.isFinite(height) || typeof radius !== "number" || !Number.isFinite(radius)) {
+    return;
+  }
+  if (height / 2 <= radius) {
+    return;
+  }
+  if (collider.center === undefined || !isZeroVec3(collider.center)) {
+    return;
+  }
+  diagnostics.push({
+    code: "TN_PHYSICS_CAPSULE_CENTER_SUSPECT",
+    message: "CharacterController capsules authored at feet origin should set Collider.center to half the capsule height.",
+    path: `${path}/center`,
+    severity: "warning",
+    suggestion: `Set Collider.center to [0, ${height / 2}, 0] when the Transform position represents the character feet.`,
+  });
+}
+
+function isZeroVec3(value: unknown): boolean {
+  return Array.isArray(value) && value.length === 3 && value.every((entry) => typeof entry === "number" && Number.isFinite(entry) && Math.abs(entry) <= 0.000001);
 }
 
 function validateMeshColliderMetadata(value: unknown, path: string, diagnostics: IIrDiagnostic[]): void {

@@ -3,6 +3,7 @@ import test from "node:test";
 import type { IIrSystemDeclaration, IWorldIr } from "@threenative/ir";
 
 import { applySystemEffects } from "./effects.js";
+import { stepPhysics } from "../physics.js";
 
 test("should apply transform patch after system", () => {
   const world = makeWorld();
@@ -23,6 +24,33 @@ test("should apply transform patch after system", () => {
   assert.equal(result.diagnostics[0]?.severity, "warning");
   assert.deepEqual(world.entities[0]?.components.Transform, { position: [1, 0, 0], rotation: [0, 0, 0, 1], scale: [2, 2, 2] });
   assert.equal(result.entries[0]?.kind, "patch");
+});
+
+test("should let script-authored kinematic transform skip same-tick velocity integration", () => {
+  const world = makeWorld();
+  world.entities[0]!.components = {
+    Collider: { kind: "box", size: [1, 1, 1] },
+    RigidBody: { kind: "kinematic", velocity: [10, 0, 0] },
+    Transform: { position: [0, 0, 0], rotation: [0, 0, 0, 1], scale: [1, 1, 1] },
+  };
+
+  const result = applySystemEffects(
+    world,
+    makeSystem({ writes: ["Transform"] }),
+    {
+      commands: [{ component: "Transform", entity: "player", kind: "setComponent", source: "entity", value: { position: [1, 0, 0] } }],
+      events: [],
+      resources: [],
+      services: [],
+    },
+    { frame: 0, tick: 0 },
+  );
+  stepPhysics(world, 1);
+
+  assert.equal(result.diagnostics[0]?.code, "TN_WEB_TRANSFORM_PARTIAL_PATCH_MERGED");
+  assert.deepEqual(world.entities[0]?.components.Transform?.position, [1, 0, 0]);
+  stepPhysics(world, 1);
+  assert.deepEqual(world.entities[0]?.components.Transform?.position, [11, 0, 0]);
 });
 
 test("should flush spawn command after stage", () => {

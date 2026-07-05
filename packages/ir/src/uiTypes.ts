@@ -1,8 +1,8 @@
 import type { SchemaVersion, UiSchema, Vec3 } from "./types.js";
 
 export type IUiBinding =
-  | { kind: "resource"; name: string; field?: string }
-  | { component: string; entity: string; field?: string; kind: "component" };
+  | { fields?: readonly string[]; field?: string; format?: string; kind: "resource"; name: string }
+  | { component: string; entity: string; fields?: readonly string[]; field?: string; format?: string; kind: "component" };
 export type IUiAccessibilityRole = "button" | "group" | "image" | "list" | "listitem" | "none" | "progressbar" | "text";
 export type UiTargetProfileClass = "desktop" | "mobile" | "tablet";
 

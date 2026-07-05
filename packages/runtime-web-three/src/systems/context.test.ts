@@ -379,6 +379,35 @@ test("should expose character move service call", () => {
   });
 });
 
+test("should expose character move speed and direction overrides", () => {
+  const world = makeWorld();
+  const player = world.entities.find((entity) => entity.id === "player");
+  assert.ok(player);
+  player.components.Collider = { kind: "box", layer: "player", mask: ["world"], size: [0.5, 1, 0.5] };
+  player.components.CharacterController = {
+    blocking: false,
+    grounding: "none",
+    moveXAxis: "MoveX",
+    moveZAxis: "MoveZ",
+    speed: 2,
+  };
+  const { context, services } = createSystemContext(world, { delta: 0.016, fixedDelta: 1 });
+
+  const result = context.character.move("player", { direction: [0, -1], fixedDelta: 0.25, speed: 8 });
+
+  assert.deepEqual(result, {
+    desired: [0, 1, -2],
+    entity: "player",
+    grounded: false,
+    resolved: [0, 1, -2],
+    start: [0, 1, 0],
+  });
+  assert.deepEqual(services[0]?.payload, {
+    request: { entity: "player", options: { direction: [0, -1], fixedDelta: 0.25, speed: 8 } },
+    result,
+  });
+});
+
 test("should expose bundle asset metadata and log asset load service calls", () => {
   const { context, services } = createSystemContext(makeWorld(), { assets: makeAssets(), delta: 0.016, fixedDelta: 0.016 });
 

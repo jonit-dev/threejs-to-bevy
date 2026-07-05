@@ -357,6 +357,17 @@ export interface IRigidBodyComponent {
   velocity?: Vec3;
 }
 
+export interface IKinematicMoverComponent {
+  axis?: "x" | "y" | "z";
+  direction?: Vec3;
+  loop?: boolean;
+  mode: "sine" | "waypoints";
+  phase?: number;
+  radius?: number;
+  speed: number;
+  waypoints?: readonly Vec3[];
+}
+
 export interface IColliderComponent {
   center?: Vec3;
   friction?: number;
@@ -433,6 +444,7 @@ export interface IWorldEntity {
     MeshRenderer?: IMeshRendererComponent;
     Collider?: IColliderComponent;
     RenderLayers?: IRenderLayersComponent;
+    KinematicMover?: IKinematicMoverComponent;
     PhysicsJoint?: IPhysicsJointComponent;
     RigidBody?: IRigidBodyComponent;
     Transform?: ITransformComponent;

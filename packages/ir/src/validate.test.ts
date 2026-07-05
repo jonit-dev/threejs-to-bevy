@@ -5,6 +5,7 @@ import { join } from "node:path";
 import test from "node:test";
 
 import { IR_DOCUMENTS } from "./documents.js";
+import { writeTestBundle } from "./testFixtures.js";
 import { validateBundle } from "./validate.js";
 
 test("should return diagnostics for malformed manifest shape", async () => {
@@ -1463,6 +1464,141 @@ test("should reject unbounded dynamic mesh collider and invalid joint metadata",
     ]) {
       assert.equal(diagnostics.some(([code, path]) => code === expected[0] && path === expected[1]), true);
     }
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should reject mismatched mass metadata and warn on suspect character capsule center", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-ir-physics-body-capsule-invalid-"));
+  try {
+    await writeBundle(root, { current: 100, max: 100 });
+    await writeJson(root, "manifest.json", {
+      schema: "threenative.bundle",
+      version: "0.1.0",
+      name: "physics-footgun-test",
+      requiredCapabilities: {},
+      entry: { input: "input.ir.json", world: "world.ir.json" },
+      files: {
+        assets: "assets.manifest.json",
+        componentSchemas: "schemas/components.schema.json",
+        materials: "materials.ir.json",
+        targetProfile: "target.profile.json",
+      },
+    });
+    await writeJson(root, "input.ir.json", {
+      schema: "threenative.input",
+      version: "0.1.0",
+      actions: [],
+      axes: [
+        { id: "MoveX", negative: [], positive: [] },
+        { id: "MoveZ", negative: [], positive: [] },
+      ],
+    });
+    await writeJson(root, "world.ir.json", {
+      schema: "threenative.world",
+      version: "0.1.0",
+      entities: [
+        {
+          id: "player",
+          components: {
+            CharacterController: {
+              blocking: true,
+              grounding: "raycast",
+              moveXAxis: "MoveX",
+              moveZAxis: "MoveZ",
+              speed: 3,
+            },
+            Collider: { center: [0, 0, 0], height: 2, kind: "capsule", radius: 0.35 },
+            RigidBody: { kind: "kinematic" },
+            Transform: { position: [0, 0, 0] },
+          },
+        },
+        {
+          id: "crate",
+          components: {
+            Collider: { kind: "box", size: [1, 1, 1] },
+            RigidBody: { inverseMass: 0.1, kind: "dynamic", mass: 2 },
+            Transform: { position: [2, 0, 0] },
+          },
+        },
+      ],
+      resources: {},
+      events: {},
+      prefabs: [],
+    });
+
+    const result = await validateBundle(root);
+    const diagnostics = result.diagnostics.map((diagnostic) => [diagnostic.code, diagnostic.path, diagnostic.severity]);
+
+    assert.equal(result.ok, false);
+    assert.equal(diagnostics.some(([code, path]) => code === "TN_IR_PHYSICS_BODY_INVERSE_MASS_INVALID" && path === "world.ir.json/entities/1/components/RigidBody/inverseMass"), true);
+    assert.equal(diagnostics.some(([code, path, severity]) => code === "TN_PHYSICS_CAPSULE_CENTER_SUSPECT" && path === "world.ir.json/entities/0/components/Collider/center" && severity === "warning"), true);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should accept sine KinematicMover component", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-ir-kinematic-mover-accept-"));
+  try {
+    await writeTestBundle(root, {
+      world: {
+        schema: "threenative.world",
+        version: "0.1.0",
+        entities: [
+          {
+            id: "hazard",
+            components: {
+              KinematicMover: { axis: "x", mode: "sine", phase: 0.25, radius: 2, speed: 3 },
+              Transform: { position: [1, 0, 2] },
+            },
+          },
+        ],
+      },
+    });
+
+    const result = await validateBundle(root);
+
+    assert.equal(result.ok, true);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should reject invalid KinematicMover mode and fields", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-ir-kinematic-mover-reject-"));
+  try {
+    await writeTestBundle(root, {
+      world: {
+        schema: "threenative.world",
+        version: "0.1.0",
+        entities: [
+          {
+            id: "hazard",
+            components: {
+              KinematicMover: { axis: "q", mode: "orbit", radius: -1, speed: "fast" },
+              Transform: { position: [0, 0, 0] },
+            } as unknown as Record<string, unknown>,
+          },
+        ],
+      },
+    });
+
+    const result = await validateBundle(root);
+
+    assert.equal(result.ok, false);
+    assert.deepEqual(
+      result.diagnostics
+        .filter((diagnostic) => diagnostic.path.startsWith("world.ir.json/entities/0/components/KinematicMover"))
+        .map((diagnostic) => diagnostic.code),
+      [
+        "TN_IR_KINEMATIC_MOVER_MODE_INVALID",
+        "TN_IR_KINEMATIC_MOVER_SPEED_INVALID",
+        "TN_IR_KINEMATIC_MOVER_AXIS_INVALID",
+        "TN_IR_KINEMATIC_MOVER_RADIUS_INVALID",
+      ],
+    );
   } finally {
     await rm(root, { force: true, recursive: true });
   }

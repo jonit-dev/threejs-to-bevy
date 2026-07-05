@@ -2,6 +2,7 @@ import type { IAssetsManifest, IIrSchemaFile, IRuntimeConfigIr, ISystemsIr, IWor
 import type { IWebInputState } from "./input.js";
 import type { IThreeWorld } from "./mapWorld.js";
 import { applyAnimationServiceEffects, syncMeshRendererMaterials, syncTransforms } from "./mapWorld.js";
+import { stepKinematicMovers } from "./kinematicMover.js";
 import { stepPhysics } from "./physics.js";
 import { runSchedule, type ISystemModule } from "./systems/runner.js";
 import type { ISystemEffectLog } from "./systems/log.js";
@@ -56,6 +57,7 @@ export async function runGameFrame(options: {
         state.startupComplete = true;
       }
       while (state.accumulator >= fixedDelta) {
+        stepKinematicMovers(options.world, state.elapsed);
         stepPhysics(options.world, fixedDelta);
         collectSystemResult(
           options.mapped,
@@ -70,6 +72,7 @@ export async function runGameFrame(options: {
     state.frame += 1;
   } else {
     collectSystemResult(options.mapped, await runSchedule({ ...options, delta: 0, fixedDelta, frame: 0, schedule: "startup", tick: 0 }));
+    stepKinematicMovers(options.world, fixedDelta);
     stepPhysics(options.world, fixedDelta);
     collectSystemResult(options.mapped, await runSchedule({ ...options, fixedDelta, frame: 0, schedule: "fixedUpdate", tick: 0 }));
     collectSystemResult(options.mapped, await runSchedule({ ...options, fixedDelta, frame: 0, schedule: "update", tick: 0 }));

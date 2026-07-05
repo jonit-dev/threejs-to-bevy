@@ -9,23 +9,29 @@ import {
   Bounds2,
   Bounds3,
   CameraMath,
+  CameraRig,
   CheckpointRaceEx,
   ColorEx,
+  CharacterRig,
   ControllerEx,
   Ease,
   InputEx,
+  KinematicMoverEx,
   MotionEx,
   NumberEx,
   Quat,
   RandomEx,
+  RespawnEx,
   SCRIPT_STDLIB_BUNDLE_SOURCE,
   SpawnEx,
   TextEx,
   TimerEx,
   TransformMath,
+  TriggerEx,
   Vec2,
   Vec3,
 } from "./index.js";
+import type { QuatTuple, Vec3Tuple } from "./index.js";
 
 const sampleExpression = `({
   AngleEx: {
@@ -67,6 +73,27 @@ const sampleExpression = `({
     orbitPose: CameraMath.orbitPose({ target: [0, 0, 0], yaw: 0.5, pitch: 0.25, distance: 8 }),
     shakeOffset: CameraMath.shakeOffset(12, 0.5, 2)
   },
+  CharacterRig: (() => {
+    const states = {};
+    const calls = [];
+    const player = { id: "player", pose: { position: [0, 1, 0], rotation: [0, 0, 0, 1] }, transform() { return { positionOr: () => this.pose.position, yawOr: () => Quat.yaw(this.pose.rotation), setPose: (position, rotation) => { this.pose = { position, rotation }; } }; } };
+    const camera = { id: "camera", pose: { position: [0, 3, -6], rotation: [0, 0, 0, 1] }, transform() { return { positionOr: () => this.pose.position, yawOr: () => Quat.yaw(this.pose.rotation), setPose: (position, rotation) => { this.pose = { position, rotation }; } }; } };
+    const context = { animation: { play: (...args) => calls.push(args) }, character: { move: (entity, options) => ({ resolved: Vec3.add(player.pose.position, Vec3.scale([options.direction[0], 0, options.direction[1]], options.speed * options.fixedDelta)) }) }, entity: (id) => id === "player" ? player : camera, input: { action: (name) => name === "Sprint", axis: (name) => name === "MoveZ" ? 1 : 0 }, state: (key, defaults) => states[key] ??= { ...defaults }, time: { fixedDt: 0.1, delta: 0.1 } };
+    const character = CharacterRig.update(context, "player", { clips: { run: { clip: "run", referenceSpeed: 5.5 }, walk: "walk" }, sprintAction: "Sprint" });
+    const follow = CameraRig.thirdPerson(context, { cameraId: "camera", sprinting: character.sprinting, target: "player", yaw: character.yaw });
+    return { animation: calls.at(-1)?.[1], camera: Vec3.round(camera.pose.position, 3), character: { moving: character.moving, position: Vec3.round(character.position, 3), speed: NumberEx.round(character.speed, 3), sprinting: character.sprinting, yaw: NumberEx.round(character.yaw, 3) }, follow: NumberEx.round(follow.yaw, 3) };
+  })(),
+  Phase3Rig: (() => {
+    const states = {};
+    const resources = {};
+    const player = { id: "player", components: { Collider: { layer: "player" }, RigidBody: {}, Transform: { position: [0, 1, 0], rotation: Quat.identity() } }, pose: { position: [0, 1, 0], rotation: Quat.identity() }, get(component) { return this.components[component]; }, has(component) { return this.components[component] !== undefined; }, patch(component, value) { this.components[component] = { ...(this.components[component] ?? {}), ...value }; }, transform() { return { positionOr: () => this.pose.position, yawOr: () => Quat.yaw(this.pose.rotation), setPose: (position, rotation) => { this.pose = { position, rotation }; this.components.Transform = { position, rotation }; } }; } };
+    const context = { entity: (id) => id === "player" ? player : undefined, physics: { sensor: () => ({ events: [{ occupants: ["player"], phase: "stay", sensor: "goal" }] }) }, resources: { set: (name, value) => { resources[name] = value; } }, state: (key, defaults) => states[key] ??= { ...defaults }, time: { elapsed: 0.5 } };
+    const first = TriggerEx.entered(context, "goal", { component: "Collider", layer: "player" }).map((entity) => entity.id);
+    const second = TriggerEx.entered(context, "goal", { component: "Collider", layer: "player" }).map((entity) => entity.id);
+    const sweep = KinematicMoverEx.sweep(context, "player", { direction: [1, 0, 0], origin: [1, 0, 2], radius: 2, speed: 2 });
+    const reset = RespawnEx.reset(context, "player", { components: { Health: { hp: 3 } }, position: [0, 1, 0], resources: { status: "ready" }, yaw: Math.PI / 2 });
+    return { first, reset: { entity: reset.entity, position: Vec3.round(reset.position, 3) }, resource: resources.status, second, sweep: { position: Vec3.round(sweep.position, 3), velocity: Vec3.round(sweep.velocity, 3) } };
+  })(),
   CheckpointRaceEx: {
     finish: CheckpointRaceEx.passCheckpoint(CheckpointRaceEx.passCheckpoint(CheckpointRaceEx.start(CheckpointRaceEx.init()), { checkpointCount: 2, lapsToFinish: 1, timeSeconds: 1 }), { checkpointCount: 2, lapsToFinish: 1, timeSeconds: 2 }),
     reset: CheckpointRaceEx.reset(CheckpointRaceEx.init({ status: "finished", lap: 2 }))
@@ -276,6 +303,114 @@ test("should reduce common gameplay boilerplate without host state", () => {
   assert.deepEqual(Vec3.round(camera.position, 3), [0, 4, -8]);
 });
 
+test("should ease speed toward target and cap turn rate when CharacterRig updates", () => {
+  const context = createRigContext({ moveZ: 1 });
+  let result = CharacterRig.update(context, "player", {
+    acceleration: 2,
+    clips: { walk: { clip: "walk", referenceSpeed: 2 } },
+    maxTurnSpeed: Math.PI / 4,
+    walkSpeed: 4,
+  });
+  for (let index = 1; index < 60; index += 1) {
+    result = CharacterRig.update(context, "player", {
+      acceleration: 2,
+      clips: { walk: { clip: "walk", referenceSpeed: 2 } },
+      maxTurnSpeed: Math.PI / 4,
+      walkSpeed: 4,
+    });
+  }
+
+  assert.deepEqual(Vec3.round(result.position, 6), [0, 1, 20.2]);
+  assert.equal(NumberEx.round(result.speed, 6), 4);
+  assert.equal(NumberEx.round(result.yaw, 6), 0);
+  assert.equal(context.animations.at(-1)?.clip, "walk");
+  assert.equal(NumberEx.round(Number(context.animations.at(-1)?.options.speed), 6), 2);
+});
+
+test("should keep last movement direction while CharacterRig decelerates", () => {
+  const input = { moveZ: 1 };
+  const context = createRigContext(input);
+  const first = CharacterRig.update(context, "player", { acceleration: 20, deceleration: 2, walkSpeed: 4 });
+  const beforeRelease = context.entities.player!.pose.position;
+
+  input.moveZ = 0;
+  const second = CharacterRig.update(context, "player", { acceleration: 20, deceleration: 2, walkSpeed: 4 });
+
+  assert.equal(first.moving, true);
+  assert.equal(second.moving, true);
+  assert.equal(second.speed < first.speed, true);
+  assert.equal(second.speed > 0, true);
+  assert.equal(context.entities.player!.pose.position[2] > beforeRelease[2], true);
+});
+
+test("should converge camera behind moving target without overshoot when CameraRig follows", () => {
+  const context = createRigContext({ moveZ: 1 });
+  const yawErrors: number[] = [];
+  for (let index = 0; index < 12; index += 1) {
+    const character = CharacterRig.update(context, "player", { cameraYaw: Math.PI / 2, maxTurnSpeed: Math.PI, walkSpeed: 3 });
+    const camera = CameraRig.thirdPerson(context, { cameraId: "camera", target: "player", yaw: character.yaw, yawSmoothing: 1 });
+    yawErrors.push(Math.abs(Math.PI / 2 - camera.yaw));
+  }
+
+  assert.equal(yawErrors.every((value, index) => index === 0 || value <= yawErrors[index - 1]! + 0.000001), true);
+  assert.equal(yawErrors.at(-1)! < yawErrors[0]!, true);
+  assert.deepEqual(Vec3.round(context.entities.camera!.pose.position, 3), [-1.899, 4.2, -0.55]);
+});
+
+test("should report trigger entry once while overlap persists", () => {
+  const context = createRigContext();
+  context.sensorEvents.push({ occupants: ["player"], phase: "stay", sensor: "goal" });
+
+  assert.deepEqual(TriggerEx.entered(context, "goal", { component: "Collider", layer: "player" }).map((entity) => entity.id), ["player"]);
+  assert.deepEqual(TriggerEx.entered(context, "goal", { component: "Collider", layer: "player" }), []);
+
+  context.sensorEvents.length = 0;
+  assert.deepEqual(TriggerEx.entered(context, "goal", { component: "Collider", layer: "player" }), []);
+  context.sensorEvents.push({ occupants: ["player"], phase: "stay", sensor: "goal" });
+  assert.deepEqual(TriggerEx.entered(context, "goal", { component: "Collider", layer: "player" }).map((entity) => entity.id), ["player"]);
+});
+
+test("should gate trigger cooldown through context state", () => {
+  const context = createRigContext();
+
+  context.time.elapsed = 1;
+  assert.equal(TriggerEx.cooldown(context, "hazard", 0.5), true);
+  context.time.elapsed = 1.25;
+  assert.equal(TriggerEx.cooldown(context, "hazard", 0.5), false);
+  context.time.elapsed = 1.5;
+  assert.equal(TriggerEx.cooldown(context, "hazard", 0.5), true);
+});
+
+test("should emit swept kinematic position and derivative velocity", () => {
+  const context = createRigContext();
+  context.time.elapsed = 0.5;
+
+  const result = KinematicMoverEx.sweep(context, "player", { direction: [1, 0, 0], origin: [1, 0, 2], radius: 2, speed: 2 });
+
+  assert.deepEqual(Vec3.round(result.position, 6), [2.682942, 0, 2]);
+  assert.deepEqual(Vec3.round(result.velocity, 6), [2.161209, 0, 0]);
+  assert.deepEqual(Vec3.round(context.entities.player!.pose.position, 6), [2.682942, 0, 2]);
+  assert.deepEqual(Vec3.round(context.entities.player!.components.RigidBody!.velocity as Vec3Tuple, 6), [2.161209, 0, 0]);
+});
+
+test("should reset pose, components, and resources through RespawnEx", () => {
+  const context = createRigContext();
+
+  const result = RespawnEx.reset(context, "player", {
+    components: { Health: { hp: 3, max: 5 }, RigidBody: { velocity: [0, 0, 0] } },
+    position: [2, 3, 4],
+    resources: { status: "ready" },
+    yaw: Math.PI / 2,
+  });
+
+  assert.deepEqual(result, { entity: "player", position: [2, 3, 4] });
+  assert.deepEqual(context.entities.player!.pose.position, [2, 3, 4]);
+  assert.equal(NumberEx.round(Quat.yaw(context.entities.player!.pose.rotation), 6), NumberEx.round(Math.PI / 2, 6));
+  assert.deepEqual(context.entities.player!.components.Health, { hp: 3, max: 5 });
+  assert.deepEqual(context.entities.player!.components.RigidBody!.velocity, [0, 0, 0]);
+  assert.equal(context.resourcesStore.status, "ready");
+});
+
 test("should keep stdlib helpers deterministic and host-free", () => {
   const context = vm.createContext(Object.create(null));
   const script = new vm.Script(`${SCRIPT_STDLIB_BUNDLE_SOURCE}; ({
@@ -381,6 +516,8 @@ function exportedSamples(): unknown {
       orbitPose: CameraMath.orbitPose({ target: [0, 0, 0], yaw: 0.5, pitch: 0.25, distance: 8 }),
       shakeOffset: CameraMath.shakeOffset(12, 0.5, 2),
     },
+    CharacterRig: rigSample(),
+    Phase3Rig: phase3RigSample(),
     CheckpointRaceEx: {
       finish: CheckpointRaceEx.passCheckpoint(
         CheckpointRaceEx.passCheckpoint(CheckpointRaceEx.start(CheckpointRaceEx.init()), { checkpointCount: 2, lapsToFinish: 1, timeSeconds: 1 }),
@@ -510,6 +647,171 @@ function exportedSamples(): unknown {
       scale: Vec3.scale([2, 3, 4], 2),
       sub: Vec3.sub([5, 6, 7], [1, 2, 3]),
       withY: Vec3.withY([1, 2, 3], 9),
+    },
+  };
+}
+
+function rigSample(): unknown {
+  const context = createRigContext({ moveZ: 1, sprint: true });
+  const character = CharacterRig.update(context, "player", {
+    clips: { run: { clip: "run", referenceSpeed: 5.5 }, walk: "walk" },
+    sprintAction: "Sprint",
+  });
+  const follow = CameraRig.thirdPerson(context, { cameraId: "camera", sprinting: character.sprinting, target: "player", yaw: character.yaw });
+  return {
+    animation: context.animations.at(-1)?.clip,
+    camera: Vec3.round(context.entities.camera!.pose.position, 3),
+    character: {
+      moving: character.moving,
+      position: Vec3.round(character.position, 3),
+      speed: NumberEx.round(character.speed, 3),
+      sprinting: character.sprinting,
+      yaw: NumberEx.round(character.yaw, 3),
+    },
+    follow: NumberEx.round(follow.yaw, 3),
+  };
+}
+
+function phase3RigSample(): unknown {
+  const context = createRigContext();
+  context.time.elapsed = 0.5;
+  context.sensorEvents.push({ occupants: ["player"], phase: "stay", sensor: "goal" });
+  const first = TriggerEx.entered(context, "goal", { component: "Collider", layer: "player" }).map((entity) => entity.id);
+  const second = TriggerEx.entered(context, "goal", { component: "Collider", layer: "player" }).map((entity) => entity.id);
+  const sweep = KinematicMoverEx.sweep(context, "player", { direction: [1, 0, 0], origin: [1, 0, 2], radius: 2, speed: 2 });
+  const reset = RespawnEx.reset(context, "player", {
+    components: { Health: { hp: 3 } },
+    position: [0, 1, 0],
+    resources: { status: "ready" },
+    yaw: Math.PI / 2,
+  });
+  return {
+    first,
+    reset: { entity: reset.entity, position: Vec3.round(reset.position, 3) },
+    resource: context.resourcesStore.status,
+    second,
+    sweep: { position: Vec3.round(sweep.position, 3), velocity: Vec3.round(sweep.velocity, 3) },
+  };
+}
+
+function createRigContext(input: { moveX?: number; moveZ?: number; sprint?: boolean } = {}): {
+  animation: { play(entity: unknown, clip: string, options: Record<string, unknown>): void };
+  animations: Array<{ clip: string; entity: unknown; options: Record<string, unknown> }>;
+  character: { move(entity: unknown, options: { direction: [number, number]; fixedDelta: number; speed: number }): { resolved: Vec3Tuple } };
+  entities: Record<string, ReturnType<typeof createRigEntity>>;
+  entity(id: string): ReturnType<typeof createRigEntity> | undefined;
+  input: { action(name: string): boolean; axis(name: string): number };
+  physics: { sensor(options?: { phases?: Array<"enter" | "exit" | "stay">; sensor?: string }): { events: Array<{ occupants: string[]; phase: "enter" | "exit" | "stay"; sensor: string }> } };
+  resources: { set(name: string, value: unknown): void };
+  resourcesStore: Record<string, unknown>;
+  sensorEvents: Array<{ occupants: string[]; phase: "enter" | "exit" | "stay"; sensor: string }>;
+  state<T extends object>(key: string, defaults: T): T;
+  stateStore: Record<string, object>;
+  time: { delta: number; elapsed: number; fixedDelta(): number; fixedDt: number };
+} {
+  const entities: Record<string, ReturnType<typeof createRigEntity>> = {
+    camera: createRigEntity("camera", [0, 3, -6]),
+    player: createRigEntity("player", [0, 1, 0]),
+  };
+  const animations: Array<{ clip: string; entity: unknown; options: Record<string, unknown> }> = [];
+  const resourcesStore: Record<string, unknown> = {};
+  const sensorEvents: Array<{ occupants: string[]; phase: "enter" | "exit" | "stay"; sensor: string }> = [];
+  const stateStore: Record<string, object> = {};
+  return {
+    animations,
+    character: {
+      move(entity: unknown, options: { direction: [number, number]; fixedDelta: number; speed: number }) {
+        const target = typeof entity === "string" ? entities[entity]! : entity as ReturnType<typeof createRigEntity>;
+        const resolved = Vec3.add(target.pose.position, Vec3.scale([options.direction[0], 0, options.direction[1]], options.speed * options.fixedDelta));
+        return { resolved };
+      },
+    },
+    animation: {
+      play(entity: unknown, clip: string, options: Record<string, unknown>) {
+        animations.push({ clip, entity, options });
+      },
+    },
+    entities,
+    entity(id: string) {
+      return entities[id];
+    },
+    input: {
+      action(name: string) {
+        return name === "Sprint" ? input.sprint === true : false;
+      },
+      axis(name: string) {
+        return name === "MoveX" ? input.moveX ?? 0 : name === "MoveZ" ? input.moveZ ?? 0 : 0;
+      },
+    },
+    physics: {
+      sensor(options?: { phases?: Array<"enter" | "exit" | "stay">; sensor?: string }) {
+        return {
+          events: sensorEvents.filter((event) => (options?.sensor === undefined || event.sensor === options.sensor) && (options?.phases === undefined || options.phases.includes(event.phase))),
+        };
+      },
+    },
+    resources: {
+      set(name: string, value: unknown) {
+        resourcesStore[name] = value;
+      },
+    },
+    resourcesStore,
+    sensorEvents,
+    state<T extends object>(key: string, defaults: T): T {
+      stateStore[key] ??= { ...defaults };
+      return stateStore[key] as T;
+    },
+    stateStore,
+    time: {
+      delta: 0.1,
+      elapsed: 0,
+      fixedDt: 0.1,
+      fixedDelta() {
+        return 0.1;
+      },
+    },
+  };
+}
+
+function createRigEntity(id: string, position: Vec3Tuple): {
+  components: Record<string, Record<string, unknown>>;
+  get<T = unknown>(component: string): T | undefined;
+  has(component: string): boolean;
+  id: string;
+  patch(component: string, value: unknown): void;
+  pose: { position: Vec3Tuple; rotation: QuatTuple };
+  set(component: string, value: unknown): void;
+  transform(): { positionOr(fallback: Vec3Tuple): Vec3Tuple; setPose(position: Vec3Tuple, rotation: QuatTuple): void; yawOr(fallback: number): number };
+} {
+  return {
+    components: {
+      Collider: { layer: id === "player" ? "player" : "default" },
+      RigidBody: {},
+      Transform: { position, rotation: Quat.identity() },
+    },
+    get<T = unknown>(component: string): T | undefined {
+      return this.components[component] as T | undefined;
+    },
+    has(component: string): boolean {
+      return this.components[component] !== undefined;
+    },
+    id,
+    patch(component: string, value: unknown): void {
+      this.components[component] = { ...(this.components[component] ?? {}), ...(typeof value === "object" && value !== null ? value : { value }) };
+    },
+    pose: { position, rotation: Quat.identity() },
+    set(component: string, value: unknown): void {
+      this.components[component] = typeof value === "object" && value !== null ? { ...value as Record<string, unknown> } : { value };
+    },
+    transform() {
+      return {
+        positionOr: () => this.pose.position,
+        setPose: (nextPosition, nextRotation) => {
+          this.pose = { position: Vec3.from(nextPosition), rotation: Quat.from(nextRotation) };
+          this.components.Transform = { position: this.pose.position, rotation: this.pose.rotation };
+        },
+        yawOr: (fallback) => Quat.yaw(this.pose.rotation, fallback),
+      };
     },
   };
 }

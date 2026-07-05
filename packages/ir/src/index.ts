@@ -236,6 +236,7 @@ export type {
   IUiToastQueueIr,
   IUiTooltipIr,
   IUiVirtualRangeIr,
+  IKinematicMoverComponent,
   UiEffectPresetKind,
   UiEffectTrigger,
   UiFocusRestorePolicy,

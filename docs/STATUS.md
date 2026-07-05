@@ -107,6 +107,34 @@ returns the registry operation plan, `tn recipe ... --json` applies it through
 the shared dispatcher, and `@threenative/authoring-client` exposes the same
 plans via `planRecipe()` / `recipe()` so TypeScript authoring keeps the same
 traceable source-mutation contract.
+The authoring-abstractions Phase 1 runtime slice has started by removing two
+third-person movement footguns from the web runtime: `ctx.character.move` now
+accepts direct `{ direction, speed }` overrides while preserving the legacy
+axis/fixed-delta path, and script-authored kinematic `Transform` writes skip
+same-tick velocity integration in the web physics step. IR validation now also
+rejects inconsistent authored `RigidBody.mass`/`inverseMass` pairs and warns
+with `TN_PHYSICS_CAPSULE_CENTER_SUSPECT` when a `CharacterController` capsule
+explicitly authors `Collider.center: [0, 0, 0]` despite a taller-than-radius
+capsule. Focused evidence: `pnpm --filter @threenative/runtime-web-three test`,
+`pnpm --filter @threenative/ir test`, and `pnpm verify:conformance`.
+The same PRD now has an initial stdlib rig slice: `CharacterRig.update` and
+`CameraRig.thirdPerson` live in `@threenative/script-stdlib`, keep internal
+smoothing state in `context.state(...)`, call the promoted web character move
+override, set actor/camera poses, and mirror behavior in
+`SCRIPT_STDLIB_BUNDLE_SOURCE`. The follow-on Phase 3 slice adds
+`TriggerEx.entered` / `TriggerEx.cooldown`, `KinematicMoverEx.sweep`, and
+`RespawnEx.reset` to the same typed and bundled stdlib surface so common trigger
+edges, sine-swept kinematic hazards, and respawn resets no longer require
+game-local plumbing. Focused evidence:
+`pnpm --filter @threenative/script-stdlib test`.
+The Phase 4 IR/runtime slice now accepts a declarative `KinematicMover`
+component and formatted UI bindings with accepted/rejected IR tests. The web
+runtime drives sine `KinematicMover` entities before physics, preserves the
+authored origin to avoid drift, mirrors derivative velocity into kinematic
+`RigidBody` components, and resolves formatted resource/component UI text.
+Focused evidence: `pnpm --filter @threenative/ir test` and
+`pnpm --filter @threenative/runtime-web-three test`. Native Bevy mapping for
+the new `KinematicMover` component is still a documented parity gap.
 Game velocity kits now add a read-first construction layer over that source
 boundary: `tn game plan --json` includes non-mutating kit candidates,
 `tn game next --json` persists `artifacts/game-production/task-graph.json`

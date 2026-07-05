@@ -50,6 +50,7 @@ function validateUiNode(
   validateUiAttachment(node, path, diagnostics, entityIds);
   validateUiEffects(node, path, diagnostics);
   validateUiAffordances(node, path, diagnostics);
+  validateUiBinding(node, path, diagnostics);
   validateUiStyle(node.style, `${path}/style`, diagnostics, fontFamilies);
   validateUiTokenRefs(node.tokenRefs, `${path}/tokenRefs`, diagnostics, themeTokens);
   validateUiSpans(node, path, diagnostics, fontFamilies);
@@ -107,6 +108,90 @@ function validateUiNode(
     });
   }
   node.children?.forEach((child, index) => validateUiNode(child, `${path}/children/${index}`, diagnostics, ids, fontFamilies, themeTokens, components, entityIds));
+}
+
+function validateUiBinding(node: IUiNodeIr, path: string, diagnostics: IIrDiagnostic[]): void {
+  const binding = node.binding;
+  if (binding === undefined) {
+    return;
+  }
+  if (!isRecord(binding)) {
+    diagnostics.push({ code: "TN_IR_UI_BINDING_INVALID", message: `UI node '${node.id}' binding must be an object.`, path: `${path}/binding`, severity: "error" });
+    return;
+  }
+  const allowed = binding.kind === "resource"
+    ? ["field", "fields", "format", "kind", "name"]
+    : binding.kind === "component"
+      ? ["component", "entity", "field", "fields", "format", "kind"]
+      : [];
+  if (allowed.length === 0) {
+    diagnostics.push({ code: "TN_IR_UI_BINDING_INVALID", message: `UI node '${node.id}' binding kind must be resource or component.`, path: `${path}/binding/kind`, severity: "error" });
+    return;
+  }
+  validateUnsupportedFields(diagnostics, binding, allowed, (key) => ({
+    code: "TN_IR_UI_BINDING_FIELD_UNSUPPORTED",
+    message: `UI node '${node.id}' binding uses unsupported field '${key}'.`,
+    path: `${path}/binding/${key}`,
+    severity: "error",
+  }));
+  if (binding.kind === "resource" && (typeof binding.name !== "string" || binding.name.trim() === "")) {
+    diagnostics.push({ code: "TN_IR_UI_BINDING_INVALID", message: `UI node '${node.id}' resource binding requires a non-empty name.`, path: `${path}/binding/name`, severity: "error" });
+  }
+  if (binding.kind === "component") {
+    if (typeof binding.entity !== "string" || binding.entity.trim() === "") {
+      diagnostics.push({ code: "TN_IR_UI_BINDING_INVALID", message: `UI node '${node.id}' component binding requires a non-empty entity.`, path: `${path}/binding/entity`, severity: "error" });
+    }
+    if (typeof binding.component !== "string" || binding.component.trim() === "") {
+      diagnostics.push({ code: "TN_IR_UI_BINDING_INVALID", message: `UI node '${node.id}' component binding requires a non-empty component.`, path: `${path}/binding/component`, severity: "error" });
+    }
+  }
+  if (binding.field !== undefined && (typeof binding.field !== "string" || binding.field.trim() === "")) {
+    diagnostics.push({ code: "TN_IR_UI_BINDING_FIELD_INVALID", message: "UI binding field must be a non-empty string.", path: `${path}/binding/field`, severity: "error" });
+  }
+  const fields = binding.fields;
+  if (fields !== undefined && (!Array.isArray(fields) || fields.length === 0 || fields.some((field) => typeof field !== "string" || field.trim() === ""))) {
+    diagnostics.push({ code: "TN_IR_UI_BINDING_FIELDS_INVALID", message: "UI binding fields must be a non-empty array of field names.", path: `${path}/binding/fields`, severity: "error" });
+  }
+  validateUiBindingFormat(binding.format, `${path}/binding/format`, fields ?? (typeof binding.field === "string" ? [binding.field] : []), diagnostics);
+}
+
+function validateUiBindingFormat(value: unknown, path: string, fields: readonly string[], diagnostics: IIrDiagnostic[]): void {
+  if (value === undefined) {
+    return;
+  }
+  if (typeof value !== "string" || value.trim() === "") {
+    diagnostics.push({ code: "TN_IR_UI_BINDING_FORMAT_INVALID", message: "UI binding format must be a non-empty string.", path, severity: "error" });
+    return;
+  }
+  const placeholders = [...value.matchAll(/\{([^{}]+)\}/g)];
+  if (placeholders.length === 0) {
+    diagnostics.push({ code: "TN_IR_UI_BINDING_FORMAT_INVALID", message: "UI binding format must include at least one placeholder.", path, severity: "error" });
+    return;
+  }
+  for (const match of placeholders) {
+    const token = match[1] ?? "";
+    const [field, formatter, extra] = token.split(":");
+    if (extra !== undefined || field === undefined || field.trim() === "") {
+      diagnostics.push({ code: "TN_IR_UI_BINDING_FORMAT_INVALID", message: "UI binding placeholders must use {field} or {field:fixed1} syntax.", path, severity: "error" });
+      continue;
+    }
+    if (fields.length > 0 && !fields.includes(field)) {
+      diagnostics.push({
+        code: "TN_IR_UI_BINDING_FORMAT_FIELD_MISSING",
+        message: `UI binding format references field '${field}' that is not listed in binding.fields.`,
+        path,
+        severity: "error",
+      });
+    }
+    if (formatter !== undefined && !/^fixed\d$/.test(formatter) && !/^pad\d+$/.test(formatter)) {
+      diagnostics.push({
+        code: "TN_IR_UI_BINDING_FORMAT_INVALID",
+        message: "UI binding format supports only fixed<n> and pad<n> formatters.",
+        path,
+        severity: "error",
+      });
+    }
+  }
 }
 
 function validateUnsupportedUiRequests(raw: Record<string, unknown>, path: string, diagnostics: IIrDiagnostic[]): void {

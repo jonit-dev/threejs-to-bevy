@@ -735,10 +735,73 @@ function validateWorld(world: IWorldIr, path: string, diagnostics: IIrDiagnostic
   validateNavigationResources(world, `${path}/resources`, diagnostics);
   validateRenderingLightBudget(world.resources?.RenderingLightBudget, `${path}/resources/RenderingLightBudget`, diagnostics, world.entities);
   world.entities.forEach((entity, index) => validateTransformComponents(entity, `${path}/entities/${index}`, diagnostics));
+  world.entities.forEach((entity, index) => validateKinematicMoverComponent(entity, `${path}/entities/${index}`, diagnostics));
   world.entities.forEach((entity, index) => validateRenderComponents(entity, `${path}/entities/${index}`, diagnostics));
   const entityIds = new Set(world.entities.map((entity) => entity.id));
   world.entities.forEach((entity, index) => validatePhysicsComponents(entity, `${path}/entities/${index}`, entityIds, diagnostics));
   world.entities.forEach((entity, index) => validateCharacterComponents(entity, `${path}/entities/${index}`, input, diagnostics));
+}
+
+function validateKinematicMoverComponent(entity: IWorldEntity, path: string, diagnostics: IIrDiagnostic[]): void {
+  const mover = entity.components.KinematicMover;
+  if (mover === undefined) {
+    return;
+  }
+  if (!isRecord(mover)) {
+    diagnostics.push({ code: "TN_IR_KINEMATIC_MOVER_INVALID", message: `KinematicMover '${entity.id}' must be an object.`, path: `${path}/components/KinematicMover`, severity: "error" });
+    return;
+  }
+  validateUnsupportedFields(diagnostics, mover, ["axis", "direction", "loop", "mode", "phase", "radius", "speed", "waypoints"], (key) => ({
+    code: "TN_IR_KINEMATIC_MOVER_FIELD_UNSUPPORTED",
+    message: `KinematicMover '${entity.id}' uses unsupported field '${key}'.`,
+    path: `${path}/components/KinematicMover/${key}`,
+    severity: "error",
+  }));
+  if (mover.mode !== "sine" && mover.mode !== "waypoints") {
+    diagnostics.push({
+      code: "TN_IR_KINEMATIC_MOVER_MODE_INVALID",
+      message: "KinematicMover.mode must be sine or waypoints.",
+      path: `${path}/components/KinematicMover/mode`,
+      severity: "error",
+      suggestion: "Use mode: 'sine' for oscillating hazards or mode: 'waypoints' for path movers.",
+    });
+  }
+  validateFiniteNumber(mover.speed, `${path}/components/KinematicMover/speed`, "TN_IR_KINEMATIC_MOVER_SPEED_INVALID", diagnostics);
+  if (mover.axis !== undefined && mover.axis !== "x" && mover.axis !== "y" && mover.axis !== "z") {
+    diagnostics.push({ code: "TN_IR_KINEMATIC_MOVER_AXIS_INVALID", message: "KinematicMover.axis must be x, y, or z.", path: `${path}/components/KinematicMover/axis`, severity: "error" });
+  }
+  if (mover.direction !== undefined) {
+    validateFiniteVec3(mover.direction, `${path}/components/KinematicMover/direction`, "TN_IR_KINEMATIC_MOVER_DIRECTION_INVALID", diagnostics);
+  }
+  if (mover.phase !== undefined) {
+    validateFiniteNumber(mover.phase, `${path}/components/KinematicMover/phase`, "TN_IR_KINEMATIC_MOVER_PHASE_INVALID", diagnostics);
+  }
+  if (mover.radius !== undefined) {
+    validateFiniteMinimum(mover.radius, 0, `${path}/components/KinematicMover/radius`, "TN_IR_KINEMATIC_MOVER_RADIUS_INVALID", diagnostics);
+  }
+  if (mover.loop !== undefined && typeof mover.loop !== "boolean") {
+    diagnostics.push({ code: "TN_IR_KINEMATIC_MOVER_LOOP_INVALID", message: "KinematicMover.loop must be boolean.", path: `${path}/components/KinematicMover/loop`, severity: "error" });
+  }
+  if (mover.mode === "sine" && mover.waypoints !== undefined) {
+    diagnostics.push({
+      code: "TN_IR_KINEMATIC_MOVER_WAYPOINTS_INVALID",
+      message: "KinematicMover.waypoints is only supported when mode is waypoints.",
+      path: `${path}/components/KinematicMover/waypoints`,
+      severity: "error",
+    });
+  }
+  if (mover.mode === "waypoints") {
+    if (!Array.isArray(mover.waypoints) || mover.waypoints.length < 2) {
+      diagnostics.push({
+        code: "TN_IR_KINEMATIC_MOVER_WAYPOINTS_INVALID",
+        message: "Waypoint KinematicMover requires at least two waypoint positions.",
+        path: `${path}/components/KinematicMover/waypoints`,
+        severity: "error",
+      });
+    } else {
+      mover.waypoints.forEach((waypoint, index) => validateFiniteVec3(waypoint, `${path}/components/KinematicMover/waypoints/${index}`, "TN_IR_KINEMATIC_MOVER_WAYPOINTS_INVALID", diagnostics));
+    }
+  }
 }
 
 function validateMeshRendererReferences(

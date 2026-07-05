@@ -57,6 +57,7 @@ export interface IPhysicsJointObservation {
 }
 
 const previousPairsByWorld = new WeakMap<IWorldIr, Map<string, IDetectedPair>>();
+const scriptAuthoredTransformsByWorld = new WeakMap<IWorldIr, Set<string>>();
 let rapierInitialized = false;
 let rapierInitialization: Promise<void> | undefined;
 
@@ -71,10 +72,12 @@ export async function initializePhysicsRuntime(): Promise<void> {
 }
 
 export function stepPhysics(world: IWorldIr, fixedDelta = 1 / 60): IPhysicsEventPayload[] {
+  const scriptAuthoredTransforms = scriptAuthoredTransformsByWorld.get(world) ?? new Set<string>();
+  scriptAuthoredTransformsByWorld.delete(world);
   if (rapierInitialized) {
-    stepRapierBodies(world, fixedDelta, [0, -9.81, 0]);
+    stepRapierBodies(world, fixedDelta, [0, -9.81, 0], scriptAuthoredTransforms);
   } else {
-    stepPrimitiveBodies(world, fixedDelta, [0, -9.81, 0]);
+    stepPrimitiveBodies(world, fixedDelta, [0, -9.81, 0], scriptAuthoredTransforms);
   }
 
   const currentPairs = detectPairs(world.entities.flatMap((entity) => colliderBounds(entity)));
@@ -87,7 +90,13 @@ export function stepPhysics(world: IWorldIr, fixedDelta = 1 / 60): IPhysicsEvent
   return [...collisions, ...triggers];
 }
 
-function stepRapierBodies(world: IWorldIr, fixedDelta: number, gravity: Vec3): void {
+export function markScriptAuthoredTransform(world: IWorldIr, entity: string): void {
+  const authored = scriptAuthoredTransformsByWorld.get(world) ?? new Set<string>();
+  authored.add(entity);
+  scriptAuthoredTransformsByWorld.set(world, authored);
+}
+
+function stepRapierBodies(world: IWorldIr, fixedDelta: number, gravity: Vec3, scriptAuthoredTransforms: ReadonlySet<string>): void {
   const rapierWorld = new RAPIER.World({ x: gravity[0], y: gravity[1], z: gravity[2] });
   const substeps = physicsSubsteps(fixedDelta);
   rapierWorld.integrationParameters.dt = fixedDelta / substeps;
@@ -154,6 +163,9 @@ function stepRapierBodies(world: IWorldIr, fixedDelta: number, gravity: Vec3): v
   for (const entity of world.entities) {
     const body = bodies.get(entity.id);
     if (body === undefined || entity.components.Transform?.position === undefined || entity.components.RigidBody === undefined) {
+      continue;
+    }
+    if (scriptAuthoredTransforms.has(entity.id) && entity.components.RigidBody.kind === "kinematic") {
       continue;
     }
     const translation = body.translation();
@@ -237,7 +249,7 @@ export function traceRigidBodyPrimitive(world: IWorldIr, input: IRigidBodyTraceI
   const gravity = input.gravity ?? [0, -9.81, 0];
   const observations: IRigidBodyTraceObservation[] = [];
   for (let step = 1; step <= (input.steps ?? 4); step += 1) {
-    const contacts = stepPrimitiveBodies(world, fixedDelta, gravity);
+    const contacts = stepPrimitiveBodies(world, fixedDelta, gravity, new Set());
     for (const entity of world.entities) {
       const body = entity.components.RigidBody;
       const collider = entity.components.Collider;
@@ -321,7 +333,7 @@ function eventPayloads(event: PhysicsEventName, currentPairs: Map<string, IDetec
   return payloads.sort(comparePhysicsEvents);
 }
 
-function stepPrimitiveBodies(world: IWorldIr, fixedDelta: number, gravity: Vec3): Map<string, string[]> {
+function stepPrimitiveBodies(world: IWorldIr, fixedDelta: number, gravity: Vec3, scriptAuthoredTransforms: ReadonlySet<string> = new Set()): Map<string, string[]> {
   const contacts = new Map<string, string[]>();
   const previousCenters = new Map<string, Vec3>();
   for (const entity of world.entities) {
@@ -331,6 +343,9 @@ function stepPrimitiveBodies(world: IWorldIr, fixedDelta: number, gravity: Vec3)
     }
   }
   for (const entity of world.entities) {
+    if (scriptAuthoredTransforms.has(entity.id) && entity.components.RigidBody?.kind === "kinematic") {
+      continue;
+    }
     integrateEntity(entity, fixedDelta, gravity);
   }
   const staticOrKinematic = world.entities

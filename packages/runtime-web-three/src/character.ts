@@ -2,7 +2,9 @@ import type { IColliderComponent, IWorldEntity, IWorldIr, Vec3 } from "@threenat
 
 export interface ICharacterTraceInput {
   axes?: Readonly<Record<string, number>>;
+  direction?: readonly [number, number];
   fixedDelta?: number;
+  speed?: number;
 }
 
 export interface ICharacterTraceObservation {
@@ -53,7 +55,7 @@ export function traceCharacterControllers(world: IWorldIr, input: ICharacterTrac
 
   return world.entities
     .filter((entity) => entity.components.CharacterController !== undefined)
-    .map((entity) => traceCharacter(entity, blockers, axes, fixedDelta))
+    .map((entity) => traceCharacter(entity, blockers, axes, fixedDelta, input.direction, input.speed))
     .sort((left, right) => left.entity.localeCompare(right.entity));
 }
 
@@ -62,6 +64,8 @@ function traceCharacter(
   blockers: readonly IWorldEntity[],
   axes: Readonly<Record<string, number>>,
   fixedDelta: number,
+  direction: readonly [number, number] | undefined,
+  speed: number | undefined,
 ): ICharacterTraceObservation {
   const controller = entity.components.CharacterController;
   const collider = entity.components.Collider;
@@ -71,9 +75,9 @@ function traceCharacter(
   }
 
   const desired = add(start, movementDelta(
-    axes[controller.moveXAxis] ?? 0,
-    axes[controller.moveZAxis] ?? 0,
-    controller.speed,
+    direction?.[0] ?? axes[controller.moveXAxis] ?? 0,
+    direction?.[1] ?? axes[controller.moveZAxis] ?? 0,
+    speed ?? controller.speed,
     fixedDelta,
   ));
   // Collision math runs in collider space (transform + collider center offset);

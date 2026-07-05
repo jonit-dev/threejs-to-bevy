@@ -45,6 +45,26 @@ test("character trace should move and ground a controller from declared axes", (
   ]);
 });
 
+test("character trace should honor direct direction and speed overrides", () => {
+  const trace = traceCharacterControllers(makeCharacterWorld(), {
+    axes: { MoveX: 1, MoveZ: 0 },
+    direction: [0, 1],
+    fixedDelta: 0.5,
+    speed: 6,
+  });
+
+  assert.deepEqual(trace, [
+    {
+      desired: [0, 1, 3],
+      entity: "player",
+      groundEntity: "floor",
+      grounded: true,
+      resolved: [0, 1.05, 3],
+      start: [0, 1, 0],
+    },
+  ]);
+});
+
 test("character trace should honor collider center offsets on feet-origin characters", () => {
   const world = makeCharacterWorld();
   const player = world.entities.find((entity) => entity.id === "player");

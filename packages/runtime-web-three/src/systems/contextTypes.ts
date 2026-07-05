@@ -313,7 +313,9 @@ export interface IAssetLoadResult {
 
 export interface ICharacterMoveRequest {
   axes?: Record<string, number>;
+  direction?: [number, number];
   fixedDelta?: number;
+  speed?: number;
 }
 
 export interface IPhysicsSensorRequest {

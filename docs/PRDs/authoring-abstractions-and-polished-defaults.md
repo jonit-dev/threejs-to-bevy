@@ -523,3 +523,71 @@ screenshots, playtest by hand). Continue only on PASS.
 
 _(fill in per phase during execution; include the Phase 7 token/LOC benchmark
 table and before/after screenshots)_
+
+### Phase 1 Partial Checkpoint
+
+- Implemented web `ctx.character.move(entity, { direction, speed })` support
+  while preserving the existing `axes` / `fixedDelta` path.
+- Implemented web script-authored kinematic transform authority: entity-sourced
+  `Transform` writes mark the entity for the next physics step, and kinematic
+  velocity integration is skipped once for that same tick.
+- Added IR validation coverage for inconsistent `RigidBody.mass` /
+  `inverseMass` and warning `TN_PHYSICS_CAPSULE_CENTER_SUSPECT` for explicit
+  zero-centered character capsules.
+- Recorded the remaining native parity gap in `docs/bevy-feature-parity.md`;
+  Bevy does not yet prove equivalent script-authority behavior.
+- Evidence run:
+  `pnpm --filter @threenative/runtime-web-three test`,
+  `pnpm --filter @threenative/ir test`, and `pnpm verify:conformance`.
+
+### Phase 2 Partial Checkpoint
+
+- Added `CharacterRig.update` and `CameraRig.thirdPerson` to
+  `@threenative/script-stdlib`.
+- Rigs store internal smoothing state only through `context.state(...)`, call
+  Phase 1 `context.character.move` direction/speed overrides, set entity/camera
+  poses, and optionally play idle/walk/run animation clips.
+- Mirrored the same rig behavior in `SCRIPT_STDLIB_BUNDLE_SOURCE` and extended
+  typed/bundle parity samples.
+- Added deterministic mock-context tests for character acceleration/turn
+  behavior and third-person camera convergence.
+- Evidence run: `pnpm --filter @threenative/script-stdlib test`.
+
+### Phase 3 Partial Checkpoint
+
+- Added `TriggerEx.entered` and `TriggerEx.cooldown` to
+  `@threenative/script-stdlib` for state-backed trigger edge detection and
+  cooldown gates over `context.physics.sensor(...)`.
+- Added `KinematicMoverEx.sweep` for sine-swept kinematic motion that writes
+  pose and patches derivative `RigidBody.velocity`.
+- Added `RespawnEx.reset` for pose, component, and resource reset wiring.
+- Mirrored all Phase 3 helpers in `SCRIPT_STDLIB_BUNDLE_SOURCE` and extended
+  typed/bundle parity samples.
+- Added deterministic tests for persistent trigger overlap edge detection,
+  cooldown state, kinematic derivative velocity, and respawn reset behavior.
+- Evidence run: `pnpm --filter @threenative/script-stdlib test`.
+
+### Phase 4 Partial Checkpoint
+
+- Added `KinematicMover` to IR world entity components with validation for
+  accepted sine/waypoint shapes and rejected malformed mover fields.
+- Added formatted UI binding support to IR validation and web UI resolution,
+  including fixed-decimal and padded-field placeholders.
+- Added web runtime sine `KinematicMover` stepping before physics, preserving
+  the authored origin across frames and writing derivative velocity to
+  kinematic `RigidBody` components.
+- Recorded the remaining native parity gap in `docs/bevy-feature-parity.md`;
+  Bevy does not yet map or prove the declarative `KinematicMover` contract.
+- Fixed the stdlib `CharacterRig` deceleration bug where movement speed stayed
+  nonzero after input release but the move request used a zero direction.
+- Retrofitted `examples/humanoid-physics-course` to call
+  `context.character.move` with direct `direction` and `speed`, removing the
+  local `CONTROLLER_SPEED` coupling.
+- Evidence run: `pnpm --filter @threenative/ir test`,
+  `pnpm --filter @threenative/runtime-web-three test`,
+  `pnpm --filter @threenative/script-stdlib test`,
+  `node .threenative/cli/index.js authoring validate --json`,
+  `node .threenative/cli/index.js build`,
+  `node .threenative/cli/index.js verify --frames 2 --json`,
+  `node .threenative/cli/index.js game score --project . --json`, and
+  directional playtests for `KeyW`, `KeyS`, `KeyA`, and `KeyD`.

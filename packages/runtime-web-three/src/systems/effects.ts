@@ -10,6 +10,7 @@ import {
   type IQueuedServiceCall,
 } from "./context.js";
 import type { ISystemEffectLogEntry } from "./log.js";
+import { markScriptAuthoredTransform } from "../physics.js";
 
 export interface ISystemEffects {
   commands: ReadonlyArray<IQueuedCommand>;
@@ -32,7 +33,16 @@ export function applySystemEffects(
   applyEvents(world, effects.events);
   applyResourceWrites(world, effects.resources);
   applyCommands(world, effects.commands, options.prefabs);
+  markScriptAuthoredTransformWrites(world, effects.commands);
   return { diagnostics, entries };
+}
+
+function markScriptAuthoredTransformWrites(world: IWorldIr, commands: ReadonlyArray<IQueuedCommand>): void {
+  for (const command of commands) {
+    if (command.source === "entity" && command.kind === "setComponent" && command.component === "Transform") {
+      markScriptAuthoredTransform(world, command.entity);
+    }
+  }
 }
 
 export function validateSystemEffects(system: IIrSystemDeclaration, effects: ISystemEffects): IRuntimeDiagnostic[] {

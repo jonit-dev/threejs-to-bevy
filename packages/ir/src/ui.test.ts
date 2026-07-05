@@ -125,6 +125,76 @@ test("ui should accept text input widgets with deterministic value actions", asy
   }
 });
 
+test("ui should accept formatted resource bindings", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-ui-format-binding-"));
+  try {
+    await writeTestBundle(root, { manifest: { entry: { ui: "ui.ir.json" } } });
+    await writeJson(root, "ui.ir.json", {
+      schema: "threenative.ui",
+      version: "0.1.0",
+      root: {
+        id: "hud",
+        kind: "column",
+        children: [
+          {
+            id: "checkpoint",
+            kind: "text",
+            binding: { fields: ["checkpoint", "total"], format: "CP {checkpoint}/{total}", kind: "resource", name: "Race" },
+          },
+          {
+            id: "timer",
+            kind: "text",
+            binding: { field: "seconds", format: "Time {seconds:fixed1}", kind: "resource", name: "Race" },
+          },
+        ],
+      },
+    });
+
+    const result = await validateBundle(root);
+
+    assert.equal(result.ok, true);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("ui should reject invalid formatted resource bindings", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-ui-format-binding-invalid-"));
+  try {
+    await writeTestBundle(root, { manifest: { entry: { ui: "ui.ir.json" } } });
+    await writeJson(root, "ui.ir.json", {
+      schema: "threenative.ui",
+      version: "0.1.0",
+      root: {
+        id: "hud",
+        kind: "column",
+        children: [
+          {
+            id: "checkpoint",
+            kind: "text",
+            binding: { fields: ["checkpoint"], format: "CP {checkpoint}/{total}", kind: "resource", name: "Race" },
+          },
+          {
+            id: "timer",
+            kind: "text",
+            binding: { field: "seconds", format: "Time {seconds:precision2}", kind: "resource", name: "Race" },
+          },
+        ],
+      },
+    });
+
+    const result = await validateBundle(root);
+
+    assert.equal(result.ok, false);
+    assert.deepEqual(
+      result.diagnostics.filter((diagnostic) => diagnostic.path.endsWith("/binding/format")).map((diagnostic) => diagnostic.code),
+      ["TN_IR_UI_BINDING_FORMAT_FIELD_MISSING", "TN_IR_UI_BINDING_FORMAT_INVALID"],
+    );
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
 test("ui should validate explicit flex layout metadata", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-ui-layout-"));
   try {

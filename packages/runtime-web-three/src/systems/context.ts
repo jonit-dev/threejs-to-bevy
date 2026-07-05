@@ -201,7 +201,9 @@ export function createSystemContext(
           };
           const result = traceCharacterControllers(world, {
             axes: moveOptions.axes ?? characterAxes(world, options.input),
+            direction: moveOptions.direction,
             fixedDelta: moveOptions.fixedDelta ?? options.fixedDelta,
+            speed: moveOptions.speed,
           }).find((observation) => observation.entity === entityId) ?? null;
           services.push({ payload: { request, result }, service: "character.move" });
           return cloneValue(result) as ICharacterTraceObservation | null;

@@ -30,6 +30,21 @@ test("ui should prefer resource binding text over authored fallback text", () =>
   assert.equal(rendered.root.children[3]?.text, "Score 9");
 });
 
+test("ui should render formatted resource binding text", () => {
+  const world = makeWorld();
+  world.resources = { ...world.resources, Race: { checkpoint: 1, seconds: 12.34, total: 2 } };
+  const rendered = renderUi(makeUi(), world);
+
+  assert.equal(rendered.root.children[4]?.text, "CP 1/2");
+  assert.equal(rendered.root.children[5]?.text, "Time 12.3");
+
+  world.resources = { ...world.resources, Race: { checkpoint: 2, seconds: 3.02, total: 2 } };
+  rendered.update();
+
+  assert.equal(rendered.root.children[4]?.text, "CP 2/2");
+  assert.equal(rendered.root.children[5]?.text, "Time 3.0");
+});
+
 test("ui should dispatch pause action from button", () => {
   const rendered = renderUi(makeUi(), makeWorld());
 
@@ -72,6 +87,8 @@ function makeUi(): IUiIr {
           },
         },
         { id: "score", kind: "text", text: "Score 0", binding: { kind: "resource", name: "Score", field: "text" } },
+        { id: "checkpoint", kind: "text", text: "CP 0/0", binding: { kind: "resource", name: "Race", fields: ["checkpoint", "total"], format: "CP {checkpoint}/{total}" } },
+        { id: "timer", kind: "text", text: "Time 0.0", binding: { kind: "resource", name: "Race", field: "seconds", format: "Time {seconds:fixed1}" } },
       ],
     },
   };
