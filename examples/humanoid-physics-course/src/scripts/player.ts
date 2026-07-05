@@ -116,7 +116,9 @@ export function updateHumanoidCourse(context: ScriptContext): void {
   const yaw = currentYaw + NumberEx.clamp(turnStep, -MAX_TURN_SPEED * delta, MAX_TURN_SPEED * delta);
 
   const position = player.transform().positionOr(START_POSITION);
-  const moveDirection = forwardOfYaw(heading);
+  // Move along the eased visual yaw (not the raw input heading) so the body
+  // never translates in a direction it isn't yet facing.
+  const moveDirection = forwardOfYaw(yaw);
   const characterMove = moving
     ? context.character?.move?.(player, {
         axes: { MoveX: moveDirection[0], MoveZ: moveDirection[2] },
