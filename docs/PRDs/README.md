@@ -11,6 +11,15 @@ backlog unless a nested PRD says it has been superseded.
 
 ### Runtime And Gameplay Parity
 
+- [Native Parity Closure and Proof Loop](other/native-parity-closure-and-proof-loop.md):
+  Bevy ports of script kinematic authority, `KinematicMover`, and
+  `character.move` overrides, plus a native proof harness so
+  `tn playtest/screenshot/record/game qa` work with `--target desktop` and a
+  parity ratchet gate keeps closed rows closed.
+- [Declarative Gameplay Flow: Spawners, Game-Flow State Machines, Sequencer](other/declarative-gameplay-flow-spawners-sequencer.md):
+  data-first `Spawner` component, bounded `GameFlow` state machines, and a
+  typed-track `Sequence` timeline so waves, macro game state, and cutscenes
+  need zero script, with web/Bevy conformance traces.
 - [Portable Scripting Character and Physics Contacts](other/portable-scripting-character-physics-contacts.md):
   richer primitive contact filtering, character movement observations, slope
   and push semantics, and stable diagnostics for unsupported physics breadth.
@@ -27,6 +36,11 @@ backlog unless a nested PRD says it has been superseded.
 
 ### Authoring, Editor, And Plugins
 
+- [Actor Archetypes and Typed Scripting](other/actor-archetypes-and-typed-scripting.md):
+  generated typed script context and id unions, `defineBehavior`
+  single-source system declarations, and re-appliable parameterized actor
+  archetypes (`tn actor add character --asset <glb>`) with provenance and
+  automatic animation-clip wiring.
 - [Complete Structured Authoring Parity](done/complete-structured-authoring-parity.md):
   full structured source coverage for map/editor-owned data, CLI/MCP/editor
   operation parity with TypeScript-era authoring, bundle import, provenance, and
@@ -52,6 +66,15 @@ backlog unless a nested PRD says it has been superseded.
   gates, and a sample checkpoint-orb plugin proven working in a playable game.
 ### Advanced And Boundary Work
 
+- [Cinematic Default Look](other/cinematic-default-look.md):
+  promote `cinematic`/`stylized` render-look profiles with per-target quality
+  ladders, make cinematic the zero-config default for new projects, and gate
+  the default look against regression with committed reference evidence.
+- [Believable Worlds: Heightfield Terrain and Biome Dressing](other/believable-world-terrain-and-biome-dressing.md):
+  rendered+collidable heightfield terrain on both runtimes,
+  compiler-expanded deterministic scatter layers, and a one-command
+  `tn world generate --biome <name>` dressed play space with catalog
+  provenance.
 - [Portable Shader Material Parity](other/portable-shader-material-parity.md):
   constrained authored shader materials with explicit uniforms/textures,
   generated web GLSL and Bevy WGSL, stable diagnostics for raw/backend shader
