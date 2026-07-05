@@ -3,7 +3,9 @@ import { dirname, relative, resolve } from "node:path";
 
 import { isGeneratedArtifactPath, normalizeRelativePath, writeAuthoringJsonDocument, type AuthoringDocumentKind, type IAuthoringDocument } from "./documents.js";
 import { authoringDiagnostic, hasAuthoringErrors, sortAuthoringDiagnostics, type IAuthoringDiagnostic } from "./diagnostics.js";
+import { validateMaterialDocument } from "./operations/materialValidation.js";
 import { buildUiSourceRecipe, mergeById } from "./operations/uiRecipes.js";
+import { generatedPathDiagnostic, typeDiagnostic, validateGeneratedPathString } from "./operations/validationHelpers.js";
 import { loadAuthoringProject, type IAuthoringProject } from "./project.js";
 import {
   cameraComponentKeys,
@@ -31,9 +33,7 @@ import {
   instanceKeys,
   lightComponentKeys,
   logicalIdPattern,
-  materialDocumentKeys,
   materialDocumentSchema,
-  materialKeys,
   meshDocumentKeys,
   meshDocumentSchema,
   meshRendererComponentKeys,
@@ -76,7 +76,6 @@ import {
   supportedInputOverrideDevices,
   supportedInputRebindKinds,
   supportedLightKinds,
-  supportedMaterialAlphaModes,
   supportedRendererAntialiasModes,
   supportedRenderLookProfiles,
   supportedRenderLookReservedProfiles,
@@ -610,38 +609,6 @@ export interface ISetMaterialOptions extends IAuthoringOperationContext {
   transmission?: number;
   transmissionTexture?: string;
 }
-
-const materialTextureKeys = [
-  "baseColorTexture",
-  "clearcoatRoughnessTexture",
-  "clearcoatTexture",
-  "emissiveTexture",
-  "metallicRoughnessTexture",
-  "normalTexture",
-  "occlusionTexture",
-  "transmissionTexture",
-] as const;
-
-const materialFiniteNumberKeys = [
-  "alphaCutoff",
-  "clearcoat",
-  "clearcoatRoughness",
-  "emissiveIntensity",
-  "metalness",
-  "opacity",
-  "roughness",
-  "transmission",
-] as const;
-
-const materialNormalizedNumberKeys = [
-  "alphaCutoff",
-  "clearcoat",
-  "clearcoatRoughness",
-  "metalness",
-  "opacity",
-  "roughness",
-  "transmission",
-] as const;
 
 export interface ICreateMeshPrimitiveOptions extends IAuthoringOperationContext {
   file?: string;
@@ -2985,46 +2952,7 @@ async function validateAuthoringDocument(
     case "generator":
       return validateGeneratorDocument(file, data);
     case "material":
-      return validateDeclarationDocument(file, data, {
-        declarationKeys: materialKeys,
-        duplicateKind: "material",
-        expectedSchema: materialDocumentSchema,
-        idKind: "material document",
-        listName: "materials",
-        rootKeys: materialDocumentKeys,
-        validateItem: (diagnostics, path, item) => {
-          validateGeneratedPathString(diagnostics, file, `${path}/asset`, item.asset, "material asset must be a non-empty source path.");
-          if (item.color !== undefined && readString(item.color) === undefined) {
-            diagnostics.push(typeDiagnostic(file, `${path}/color`, "material color must be a non-empty string.", item.color));
-          }
-          if (item.emissive !== undefined && readString(item.emissive) === undefined) {
-            diagnostics.push(typeDiagnostic(file, `${path}/emissive`, "material emissive color must be a non-empty string.", item.emissive));
-          }
-          const alphaMode = readString(item.alphaMode);
-          if (item.alphaMode !== undefined && (alphaMode === undefined || !supportedMaterialAlphaModes.has(alphaMode))) {
-            diagnostics.push(typeDiagnostic(file, `${path}/alphaMode`, "material alphaMode must be 'opaque', 'mask', or 'blend'.", item.alphaMode));
-          }
-          for (const key of materialTextureKeys) {
-            if (item[key] !== undefined && readString(item[key]) === undefined) {
-              diagnostics.push(typeDiagnostic(file, `${path}/${key}`, `material ${key} must be a non-empty asset id string.`, item[key]));
-            }
-          }
-          for (const key of materialFiniteNumberKeys) {
-            if (item[key] !== undefined && (typeof item[key] !== "number" || !Number.isFinite(item[key]))) {
-              diagnostics.push(typeDiagnostic(file, `${path}/${key}`, `material ${key} must be a finite number.`, item[key]));
-            }
-          }
-          for (const key of materialNormalizedNumberKeys) {
-            const value = item[key];
-            if (typeof value === "number" && Number.isFinite(value) && (value < 0 || value > 1)) {
-              diagnostics.push(typeDiagnostic(file, `${path}/${key}`, `material ${key} must be between 0 and 1.`, value));
-            }
-          }
-          if (typeof item.emissiveIntensity === "number" && Number.isFinite(item.emissiveIntensity) && item.emissiveIntensity < 0) {
-            diagnostics.push(typeDiagnostic(file, `${path}/emissiveIntensity`, "material emissiveIntensity must be non-negative.", item.emissiveIntensity));
-          }
-        },
-      });
+      return validateMaterialDocument(file, data, validateDeclarationDocument);
     case "mesh":
       return validateDeclarationDocument(file, data, {
         declarationKeys: meshKeys,
@@ -4267,15 +4195,6 @@ function validateResources(diagnostics: IAuthoringDiagnostic[], file: string, va
   });
 }
 
-function validateGeneratedPathString(diagnostics: IAuthoringDiagnostic[], file: string, path: string, value: unknown, message: string): void {
-  const sourcePath = readString(value);
-  if (value !== undefined && sourcePath === undefined) {
-    diagnostics.push(typeDiagnostic(file, path, message, value));
-  } else if (sourcePath !== undefined && isGeneratedArtifactPath(sourcePath)) {
-    diagnostics.push(generatedPathDiagnostic(file, path, sourcePath));
-  }
-}
-
 function validateAssetDeclaration(diagnostics: IAuthoringDiagnostic[], path: string, item: Record<string, unknown>, file: string): void {
   const type = readString(item.type);
   if (type === "render-target") {
@@ -5163,16 +5082,6 @@ function unknownKeyDiagnostics(file: string, path: string, value: Record<string,
     );
 }
 
-function typeDiagnostic(file: string, path: string, message: string, value: unknown): IAuthoringDiagnostic {
-  return authoringDiagnostic({
-    code: "TN_AUTHORING_SHAPE_INVALID",
-    file,
-    message,
-    path,
-    value,
-  });
-}
-
 function missingReferenceDiagnostic(file: string, path: string, kind: string, value: string, candidates: readonly string[]): IAuthoringDiagnostic {
   return authoringDiagnostic({
     code: "TN_AUTHORING_REF_MISSING",
@@ -5181,17 +5090,6 @@ function missingReferenceDiagnostic(file: string, path: string, kind: string, va
     path,
     value,
     suggestion: closestIdSuggestion(value, candidates),
-  });
-}
-
-function generatedPathDiagnostic(file: string, path: string, value: string): IAuthoringDiagnostic {
-  return authoringDiagnostic({
-    code: "TN_AUTHORING_GENERATED_SOURCE_PATH",
-    file,
-    message: "Generated bundle artifacts cannot be used as authoring source paths.",
-    path,
-    value,
-    suggestion: "Reference durable source files instead of dist/game.bundle or scripts.bundle.js.",
   });
 }
 

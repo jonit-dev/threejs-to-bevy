@@ -359,10 +359,21 @@ Second refactor pass evidence:
 - Verification: `pnpm --filter @threenative/sdk test` and
   `pnpm check:source-size`.
 
+Third refactor pass evidence:
+
+- Extracted material document validation from
+  `packages/authoring/src/operations.ts` to
+  `packages/authoring/src/operations/materialValidation.ts` and moved shared
+  validation diagnostic helpers to
+  `packages/authoring/src/operations/validationHelpers.ts`; `operations.ts`
+  decreased from 5253 to 5151 lines in `pnpm check:source-size`.
+- Verification: `pnpm --filter @threenative/authoring test` and
+  `pnpm check:source-size`.
+
 ## 7. Acceptance Criteria
 
 - [x] `pnpm check:source-size` warning count is reduced from 19, or each remaining warning has an explicit owner and follow-up note.
-- [ ] `packages/authoring/src/operations.ts` is split by operation family and no longer grows as the default home for all authoring behavior.
+- [x] `packages/authoring/src/operations.ts` is split by operation family and no longer grows as the default home for all authoring behavior.
 - [ ] IR validation has shared validation/diagnostic helpers used by core, UI, and asset validation.
 - [ ] Web and Bevy runtime world mapping keep behavior while moving feature-specific mapping into smaller modules.
 - [ ] CLI command files preserve command registration but delegate implementation to narrow command services.
