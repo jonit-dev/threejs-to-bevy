@@ -22,321 +22,62 @@ import {
   type IShapeCastResult,
 } from "./services/physics.js";
 import type { IComponentDiffCache } from "./componentDiff.js";
-
-export interface ISystemEntityView {
-  components: IWorldEntity["components"];
-  get<T = unknown>(component: unknown): T;
-  has(component: unknown): boolean;
-  id: string;
-  patch(component: unknown, value: Record<string, unknown>): void;
-  set(component: unknown, value: unknown): void;
-  transform(): ISystemTransformFacade;
-}
-
-export interface ISystemTransformFacade {
-  positionOr(fallback: readonly [number, number, number]): [number, number, number];
-  setPose(position: readonly [number, number, number], rotation: readonly [number, number, number, number]): void;
-  setPosition(position: readonly [number, number, number]): void;
-  setRotation(rotation: readonly [number, number, number, number]): void;
-  yawOr(fallback: number): number;
-}
-
-export interface ISystemCommandBuffer {
-  addComponent(entity: string, component: unknown, value?: unknown): void;
-  clearParent(child: string): void;
-  despawn(entity: string): void;
-  emitEvent(event: unknown, payload: unknown): void;
-  instantiate(prefab: string, prefix: string): IInstantiateResult;
-  removeComponent(entity: string, component: unknown): void;
-  setComponent(entity: string, component: unknown, value: unknown): void;
-  setParent(child: string, parent: string): void;
-  spawn(entity: string, components?: Record<string, unknown>): void;
-}
-
-export interface ISystemContext {
-  animation: {
-    play(entity: string | ISystemEntityView, clip: string, options?: Record<string, unknown>): ReturnType<typeof animationPlayPayload>["result"];
-    query(entity: string | ISystemEntityView, clip?: string): ReturnType<typeof animationQueryPayload>["result"];
-    stop(entity: string | ISystemEntityView, clip?: string): ReturnType<typeof animationStopPayload>["result"];
-  };
-  audio: {
-    play(soundId: string, options?: IScriptAudioPlayOptions): ReturnType<typeof audioPlayPayload>["result"];
-    query(playbackId: string): ReturnType<typeof audioQueryPayload>["result"];
-    stop(playbackId: string): ReturnType<typeof audioStopPayload>["result"];
-  };
-  particles: {
-    burst(asset: string, emitter: string, options?: IParticleCommandOptions): IParticleCommandResult;
-    reset(asset: string, emitter: string, options?: Pick<IParticleCommandOptions, "seed">): IParticleCommandResult;
-    start(asset: string, emitter: string, options?: IParticleCommandOptions): IParticleCommandResult;
-    stop(asset: string, emitter: string): IParticleCommandResult;
-  };
-  assets: {
-    get(id: unknown): IAssetsManifest["assets"][number] | null;
-    list(): IAssetsManifest["assets"];
-    load(id: unknown): IAssetLoadResult;
-  };
-  character: {
-    move(entity: string | ISystemEntityView, options?: ICharacterMoveRequest): ICharacterTraceObservation | null;
-  };
-  commands: ISystemCommandBuffer;
-  components: {
-    hooks(component: unknown): IComponentHookObservation[];
-    type(component: unknown): IComponentReflectionType | null;
-    types(): IComponentReflectionRegistry;
-  };
-  channels: {
-    read(channel: unknown): unknown[];
-    send(channel: unknown, payload: unknown): void;
-  };
-  events: {
-    emit(event: unknown, payload: unknown): void;
-    read(event: unknown): unknown[];
-  };
-  input: {
-    action(name: string): boolean;
-    axis1(axis: string, buttons?: { negative?: string; positive?: string }): number;
-    axis(name: string): number;
-    pressed(name: string): boolean;
-    released(name: string): boolean;
-  };
-  entities: {
-    byId<T extends Record<string, string>>(ids: T): { [K in keyof T]: ISystemEntityView | undefined };
-  };
-  entity(id: string): ISystemEntityView | undefined;
-  ui: {
-    activate(nodeId: string): IUiActivateResult;
-    focus(nodeId: string): IUiFocusResult;
-    read(nodeId: string): IUiReadResult;
-    setDisabled(nodeId: string, disabled: boolean): IUiDisabledResult;
-    setValue(nodeId: string, value: boolean | number | string): IUiValueResult;
-  };
-  persistence: {
-    delete(slot: string): { accepted: boolean; slot: string; status: "deleted" | "missing-save" };
-    listSlots(): string[];
-    load(slot: string): ReturnType<IWebPersistenceService["load"]>;
-    save(slot: string): ReturnType<IWebPersistenceService["save"]>;
-  };
-  observers: {
-    propagate(event: unknown, target: string): IObserverPropagationStep[];
-  };
-  plugins: {
-    group(id: unknown): IPluginGroupView | null;
-    has(id: unknown): boolean;
-    list(): IPluginDeclarationView[];
-  };
-  query(query?: IIrSystemQuery): ISystemEntityView[];
-  random: {
-    bool(probability?: number): boolean;
-    float(): number;
-    int(min: number, max: number): number;
-    pick<T>(values: readonly T[]): T | undefined;
-    range(min: number, max: number): number;
-  };
-  scenes: {
-    change(scene: string, options?: Record<string, unknown>): ISceneServiceResult<"change">;
-    current(): string | null;
-    loadAdditive(scene: string, options?: Record<string, unknown>): ISceneServiceResult<"loadAdditive">;
-    pop(options?: Record<string, unknown>): { accepted: true; operation: "pop" };
-    push(scene: string, options?: Record<string, unknown>): ISceneServiceResult<"push">;
-    unload(scene: string, options?: Record<string, unknown>): ISceneServiceResult<"unload">;
-  };
-  timers: {
-    done(start: number, duration: number): boolean;
-    elapsed(start: number): number;
-    progress(start: number, duration: number): number;
-    ready(lastRun: number, cooldown: number): boolean;
-    remaining(start: number, duration: number): number;
-  };
-  resources: {
-    get(name: string): unknown;
-    set(name: string, value: unknown): void;
-  };
-  settings: {
-    export(): Record<string, boolean | number | string>;
-    get(key: string): boolean | number | string | undefined;
-    import(values: Record<string, unknown>): Record<string, boolean | number | string>;
-    set(key: string, value: boolean | number | string): boolean;
-  };
-  states: {
-    get(id: string): string | null;
-  };
-  tasks: {
-    channel(id: unknown): string | null;
-    has(id: unknown): boolean;
-    list(): ITaskDeclarationView[];
-  };
-  physics: {
-    overlap(options: IOverlapRequest): IOverlapResult;
-    raycast(options: IRaycastRequest): IRaycastResult;
-    sensor(options?: IPhysicsSensorRequest): IPhysicsSensorResult;
-    shapeCast(options: IShapeCastRequest): IShapeCastResult;
-  };
-  navigation: {
-    path(options: INavigationPathRequest): INavigationPathResult;
-  };
-  picking: {
-    mesh(options: IPickMeshRequest): IPickMeshResult;
-    pointerRay(options: IPointerRayRequest): IPointerRayResult;
-  };
-  time: {
-    delta: number;
-    dt: number;
-    elapsed: number;
-    fixedDelta(options?: { fallback?: number; max?: number; min?: number }): number;
-    fixedDt: number;
-    paused: boolean;
-  };
-  state<T extends Record<string, unknown>>(key: string, defaults: T): T;
-}
-
-export interface IObserverPropagationStep {
-  entity: string;
-  phase: "bubble" | "target";
-}
-
-export interface IComponentHookObservation {
-  component: string;
-  entity: string;
-  hook: "onAdd" | "onInsert";
-}
-
-export interface ITaskDeclarationView {
-  channel?: string;
-  id: string;
-  mode: "fixed-trace";
-  schedule: "fixedUpdate" | "postUpdate" | "startup" | "update";
-}
-
-export interface IPluginDeclarationView {
-  id: string;
-  systems: string[];
-}
-
-export interface IPluginGroupView {
-  id: string;
-  plugins: string[];
-}
-
-export interface IQueuedCommand {
-  child?: string;
-  components?: Record<string, unknown>;
-  component?: string;
-  entity: string;
-  event?: string;
-  kind: "addComponent" | "clearParent" | "despawn" | "emitEvent" | "instantiate" | "removeComponent" | "setComponent" | "setParent" | "spawn";
-  parent?: string;
-  payload?: unknown;
-  prefab?: string;
-  prefix?: string;
-  source: "command" | "entity";
-  value?: unknown;
-}
-
-export interface IInstantiateResult {
-  accepted: boolean;
-  entities: string[];
-  prefab: string;
-  root: string | null;
-  status: "enqueued" | "missing";
-}
-
-export interface IQueuedEvent {
-  event: string;
-  payload: unknown;
-}
-
-export interface IQueuedResourceWrite {
-  resource: string;
-  value: unknown;
-}
-
-export interface IQueuedServiceCall {
-  payload: unknown;
-  service: "animation.play" | "animation.query" | "animation.stop" | "audio.play" | "audio.query" | "audio.stop" | "assets.load" | "character.move" | "navigation.path" | "particles.burst" | "particles.reset" | "particles.start" | "particles.stop" | "physics.overlap" | "physics.raycast" | "physics.sensor" | "physics.shapeCast" | "picking.mesh" | "picking.pointerRay" | "persistence.delete" | "persistence.listSlots" | "persistence.load" | "persistence.save" | "scene.change" | "scene.current" | "scene.loadAdditive" | "scene.pop" | "scene.push" | "scene.unload" | "settings.export" | "settings.get" | "settings.import" | "settings.set" | "ui.activate" | "ui.focus" | "ui.read" | "ui.setDisabled" | "ui.setValue";
-}
-
-export interface IParticleCommandOptions {
-  count?: number;
-  seed?: number | string;
-}
-
-export interface IParticleCommandResult {
-  accepted: boolean;
-  active: boolean;
-  asset: string;
-  command: "burst" | "reset" | "start" | "stop";
-  count: number;
-  emitter: string;
-  maxParticles: number;
-  seed: number;
-  status: "burst" | "missing-emitter" | "reset" | "started" | "stopped";
-}
-
-export interface IUiFocusResult {
-  accepted: boolean;
-  current: string | null;
-  previous: string | null;
-  status: "focused" | "missing" | "not-focusable";
-}
-
-export interface IUiActivateResult {
-  accepted: boolean;
-  action?: string;
-  node: string;
-  status: "activated" | "disabled" | "missing" | "no-action";
-}
-
-export interface IUiDisabledResult {
-  accepted: boolean;
-  disabled: boolean;
-  node: string;
-  status: "missing" | "updated";
-}
-
-export interface IUiValueResult {
-  accepted: boolean;
-  node: string;
-  status: "missing" | "updated";
-  value: boolean | number | string;
-}
-
-export interface IUiReadResult {
-  action?: string;
-  disabled: boolean;
-  focusable: boolean;
-  focused: boolean;
-  kind?: string;
-  node: string;
-  status: "found" | "missing";
-  value?: boolean | number | string;
-}
-
-export interface ISceneServiceResult<TOperation extends "change" | "loadAdditive" | "push" | "unload"> {
-  accepted: true;
-  operation: TOperation;
-  scene: string;
-}
-
-export interface IAssetLoadResult {
-  accepted: boolean;
-  asset: IAssetsManifest["assets"][number] | null;
-  id: string;
-  status: "missing" | "ready";
-}
-
-export interface ICharacterMoveRequest {
-  axes?: Record<string, number>;
-  fixedDelta?: number;
-}
-
-export interface IPhysicsSensorRequest {
-  phases?: Array<"enter" | "exit" | "stay">;
-  sensor?: string;
-}
-
-export interface IPhysicsSensorResult {
-  events: IPhysicsSensorEvent[];
-}
+import { createScriptUiState } from "./contextUi.js";
+import type {
+  IAssetLoadResult,
+  ICharacterMoveRequest,
+  IComponentHookObservation,
+  IInstantiateResult,
+  IObserverPropagationStep,
+  IParticleCommandOptions,
+  IParticleCommandResult,
+  IPhysicsSensorRequest,
+  IPhysicsSensorResult,
+  IPluginDeclarationView,
+  IPluginGroupView,
+  IQueuedCommand,
+  IQueuedEvent,
+  IQueuedResourceWrite,
+  IQueuedServiceCall,
+  ISceneServiceResult,
+  ISystemContext,
+  ISystemEntityView,
+  ISystemTransformFacade,
+  ITaskDeclarationView,
+  IUiActivateResult,
+  IUiDisabledResult,
+  IUiFocusResult,
+  IUiReadResult,
+  IUiValueResult,
+} from "./contextTypes.js";
+export type {
+  IAssetLoadResult,
+  ICharacterMoveRequest,
+  IComponentHookObservation,
+  IInstantiateResult,
+  IObserverPropagationStep,
+  IParticleCommandOptions,
+  IParticleCommandResult,
+  IPhysicsSensorRequest,
+  IPhysicsSensorResult,
+  IPluginDeclarationView,
+  IPluginGroupView,
+  IQueuedCommand,
+  IQueuedEvent,
+  IQueuedResourceWrite,
+  IQueuedServiceCall,
+  ISceneServiceResult,
+  ISystemCommandBuffer,
+  ISystemContext,
+  ISystemEntityView,
+  ISystemTransformFacade,
+  ITaskDeclarationView,
+  IUiActivateResult,
+  IUiDisabledResult,
+  IUiFocusResult,
+  IUiReadResult,
+  IUiValueResult,
+} from "./contextTypes.js";
 
 export function createSystemContext(
   world: IWorldIr,
@@ -1418,95 +1159,6 @@ function stableParticleSeed(value: number | string): number {
     hash = Math.imul(hash, 16777619);
   }
   return hash >>> 0;
-}
-
-function createScriptUiState(ui: IUiIr | undefined): {
-  activate(nodeId: string): IUiActivateResult;
-  focus(nodeId: string): IUiFocusResult;
-  read(nodeId: string): IUiReadResult;
-  setDisabled(nodeId: string, disabled: boolean): IUiDisabledResult;
-  setValue(nodeId: string, value: boolean | number | string): IUiValueResult;
-} {
-  const nodes = new Map<string, IUiNodeIr>();
-  if (ui !== undefined) {
-    collectUiNodes(ui.root, nodes);
-  }
-  const focusable = new Set((ui?.focusOrder ?? [...nodes.values()].filter(isUiFocusable).map((node) => node.id)).filter((id) => nodes.has(id) && isUiFocusable(nodes.get(id)!)));
-  const disabled = new Map<string, boolean>();
-  const values = new Map<string, boolean | number | string>();
-  let currentFocus = [...focusable].sort()[0] ?? null;
-
-  return {
-    activate(nodeId) {
-      const node = nodes.get(nodeId);
-      if (node === undefined) {
-        return { accepted: false, node: nodeId, status: "missing" };
-      }
-      if (disabled.get(nodeId) ?? node.disabled === true) {
-        return { accepted: false, node: nodeId, status: "disabled" };
-      }
-      if (typeof node.action !== "string" || node.action.trim() === "") {
-        return { accepted: false, node: nodeId, status: "no-action" };
-      }
-      return { accepted: true, action: node.action, node: nodeId, status: "activated" };
-    },
-    focus(nodeId) {
-      const previous = currentFocus;
-      if (!nodes.has(nodeId)) {
-        return { accepted: false, current: currentFocus, previous, status: "missing" };
-      }
-      if (!focusable.has(nodeId) || (disabled.get(nodeId) ?? nodes.get(nodeId)?.disabled) === true) {
-        return { accepted: false, current: currentFocus, previous, status: "not-focusable" };
-      }
-      currentFocus = nodeId;
-      return { accepted: true, current: currentFocus, previous, status: "focused" };
-    },
-    read(nodeId) {
-      const node = nodes.get(nodeId);
-      if (node === undefined) {
-        return { disabled: false, focusable: false, focused: false, node: nodeId, status: "missing" };
-      }
-      const value = values.get(nodeId) ?? node.value ?? node.text ?? node.label;
-      return {
-        ...(node.action === undefined ? {} : { action: node.action }),
-        disabled: disabled.get(nodeId) ?? node.disabled === true,
-        focusable: focusable.has(nodeId),
-        focused: currentFocus === nodeId,
-        kind: node.kind,
-        node: nodeId,
-        status: "found",
-        ...(value === undefined ? {} : { value }),
-      };
-    },
-    setDisabled(nodeId, nextDisabled) {
-      if (!nodes.has(nodeId)) {
-        return { accepted: false, disabled: nextDisabled, node: nodeId, status: "missing" };
-      }
-      disabled.set(nodeId, nextDisabled);
-      if (nextDisabled && currentFocus === nodeId) {
-        currentFocus = null;
-      }
-      return { accepted: true, disabled: nextDisabled, node: nodeId, status: "updated" };
-    },
-    setValue(nodeId, value) {
-      if (!nodes.has(nodeId)) {
-        return { accepted: false, node: nodeId, status: "missing", value };
-      }
-      values.set(nodeId, value);
-      return { accepted: true, node: nodeId, status: "updated", value };
-    },
-  };
-}
-
-function collectUiNodes(node: IUiNodeIr, nodes: Map<string, IUiNodeIr>): void {
-  nodes.set(node.id, node);
-  for (const child of node.children ?? []) {
-    collectUiNodes(child, nodes);
-  }
-}
-
-function isUiFocusable(node: IUiNodeIr): boolean {
-  return node.focusable === true || node.kind === "button" || node.kind === "touchControl";
 }
 
 function deepFreeze<T>(value: T): T {

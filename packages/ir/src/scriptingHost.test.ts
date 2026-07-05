@@ -19,7 +19,7 @@ test("scripting host matrix should match SDK IR web Bevy and docs surfaces", asy
   const [sdkSystem, irSystems, webContext, bevyMatrix, docsMatrix] = await Promise.all([
     readRepo("packages/sdk/src/ecs/system.ts"),
     readRepo("packages/ir/src/systems.ts"),
-    readRepo("packages/runtime-web-three/src/systems/context.ts"),
+    readRepo("packages/runtime-web-three/src/systems/contextTypes.ts"),
     readRepo("runtime-bevy/crates/threenative_runtime/src/scripting_host_matrix.rs"),
     readRepo("docs/contracts/scripting-host-matrix.md"),
   ]);

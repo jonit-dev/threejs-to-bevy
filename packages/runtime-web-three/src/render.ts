@@ -1,6 +1,7 @@
 import * as THREE from "three";
 import { EffectComposer } from "three/examples/jsm/postprocessing/EffectComposer.js";
 import { RenderPass } from "three/examples/jsm/postprocessing/RenderPass.js";
+import { ShaderPass } from "three/examples/jsm/postprocessing/ShaderPass.js";
 import { UnrealBloomPass } from "three/examples/jsm/postprocessing/UnrealBloomPass.js";
 import type { IAssetsManifest, IAtmosphereProfileIr, ICameraClear, IMaterialsIr, IRuntimeConfigIr, IWorldIr } from "@threenative/ir";
 import { loadBundle, type IWebBundle } from "./loadBundle.js";
@@ -728,6 +729,17 @@ export function webDepthOfFieldSettings(config?: IRuntimeConfigIr): IWebDepthOfF
   };
 }
 
+function webColorGradingSettings(config?: IRuntimeConfigIr): NonNullable<NonNullable<IRuntimeConfigIr["renderer"]>["colorGrading"]> | undefined {
+  return config?.renderer?.colorGrading ?? applyWebRenderLookProfile(config).colorGrading;
+}
+
+function needsColorGradingPass(colorGrading: NonNullable<NonNullable<IRuntimeConfigIr["renderer"]>["colorGrading"]> | undefined): boolean {
+  if (colorGrading === undefined) {
+    return false;
+  }
+  return (colorGrading.contrast ?? 0) !== 0 || (colorGrading.saturation ?? 1) !== 1;
+}
+
 export interface IRenderPassRecord {
   cameraId: string;
   clear?: ICameraClear;
@@ -868,9 +880,10 @@ function createRenderPipeline(
     bindRenderTargetTextures(mapped, renderTargets, materials?.materials ?? []);
   }
   const bloom = webBloomSettings(config);
+  const colorGrading = webColorGradingSettings(config);
   const backbufferViews = mapped.cameraViews.filter((view) => view.targetKind === "backbuffer");
-  const useBloom = bloom.enabled && backbufferViews.length <= 1;
-  if (!useBloom) {
+  const useComposer = backbufferViews.length <= 1 && (bloom.enabled || needsColorGradingPass(colorGrading));
+  if (!useComposer) {
     return {
       render: (delta = 0) => {
         renderCameraViews(renderer, mapped, world, delta, renderTargets);
@@ -880,11 +893,48 @@ function createRenderPipeline(
   }
   const composer = new EffectComposer(renderer);
   composer.addPass(new RenderPass(mapped.scene, mapped.camera));
-  composer.addPass(new UnrealBloomPass(new THREE.Vector2(1, 1), bloom.intensity, 0, bloom.threshold));
+  if (bloom.enabled) {
+    composer.addPass(new UnrealBloomPass(new THREE.Vector2(1, 1), bloom.intensity, 0, bloom.threshold));
+  }
+  if (colorGrading !== undefined && needsColorGradingPass(colorGrading)) {
+    composer.addPass(colorGradingPass(colorGrading));
+  }
   return {
     render: () => composer.render(),
     setSize: (width, height) => composer.setSize(width, height),
   };
+}
+
+function colorGradingPass(colorGrading: NonNullable<NonNullable<IRuntimeConfigIr["renderer"]>["colorGrading"]>): ShaderPass {
+  const pass = new ShaderPass({
+    uniforms: {
+      contrast: { value: colorGrading.contrast ?? 0 },
+      saturation: { value: colorGrading.saturation ?? 1 },
+      tDiffuse: { value: null },
+    },
+    vertexShader: `
+      varying vec2 vUv;
+      void main() {
+        vUv = uv;
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+      }
+    `,
+    fragmentShader: `
+      uniform sampler2D tDiffuse;
+      uniform float contrast;
+      uniform float saturation;
+      varying vec2 vUv;
+
+      void main() {
+        vec4 color = texture2D(tDiffuse, vUv);
+        float luminance = dot(color.rgb, vec3(0.2126, 0.7152, 0.0722));
+        color.rgb = mix(vec3(luminance), color.rgb, saturation);
+        color.rgb = (color.rgb - 0.5) * (1.0 + contrast) + 0.5;
+        gl_FragColor = vec4(clamp(color.rgb, 0.0, 1.0), color.a);
+      }
+    `,
+  });
+  return pass;
 }
 
 function renderedParticleCount(maxParticles: number, ratePerSecond: number, elapsedSeconds: number): number {
