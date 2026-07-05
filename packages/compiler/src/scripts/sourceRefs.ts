@@ -7,6 +7,9 @@ import type { ICompilerDiagnostic } from "../diagnostics.js";
 import { SUPPORTED_SCRIPT_HELPER_IMPORTS, type ISystemScriptSource, type SupportedScriptHelperImport } from "./bundle.js";
 
 const supportedScriptHelperBindings: Record<SupportedScriptHelperImport, ReadonlySet<string>> = {
+  "@threenative/checkpoint-race-kit": new Set(["CheckpointRaceKit"]),
+  "@threenative/collector-kit": new Set(["CollectorKit"]),
+  "@threenative/lane-runner-kit": new Set(["LaneRunnerKit"]),
   "@threenative/racing-kit": new Set(["CheckpointRace", "Track2D"]),
   "@threenative/script-stdlib": new Set([
     "AngleEx",

@@ -32,11 +32,6 @@ backlog unless a nested PRD says it has been superseded.
 
 ### Authoring, Editor, And Plugins
 
-- [Game Development Velocity Kits](other/game-development-velocity-kits.md):
-  source-backed gameplay kits, recipe manifests, `tn game next`,
-  incremental proof reuse, and editor production-panel wiring to reduce time
-  from game idea to playable verified slice without bypassing durable source or
-  release evidence.
 - [Source Size SRP Refactor Plan](other/source-size-srp-refactor-plan.md):
   split oversized authoring, IR, runtime, CLI, compiler, verification, and SDK
   hotspots behind stable public entry points, using `pnpm check:source-size`
@@ -114,6 +109,7 @@ Useful completed reference groups:
   [Script Module References and Manifest](done/other/script-module-references-and-manifest.md),
   [TypeScript Authoring Facade and Script Ergonomics](done/other/typescript-authoring-facade-and-script-ergonomics.md).
 - Game-production workflow:
+  [Game Development Velocity Kits](done/game-development-velocity-kits.md),
   [Agent Game Planning Template and Init Scaffold](done/agent-game-planning-template-and-init-scaffold.md),
   [Agent-Friendly Project Scaffolding and Visual Debugging Workflows](done/agent-friendly-project-and-visual-debugging-workflows.md),
   [Agent-Friendly 3D Game Creation Contract](done/other/agent-friendly-3d-game-creation-contract.md),

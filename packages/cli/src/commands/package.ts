@@ -1,5 +1,5 @@
 import { spawn } from "node:child_process";
-import { cp, chmod, mkdir, readFile, readdir, rm, writeFile } from "node:fs/promises";
+import { access, cp, chmod, mkdir, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import { basename, dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { validateBundle } from "@threenative/compiler";
@@ -627,8 +627,19 @@ wait "$SERVER_PID"
 }
 
 async function runNodeModule(binName: string, args: readonly string[]): Promise<void> {
-  const executable = process.platform === "win32" ? `${binName}.cmd` : binName;
+  const executableName = process.platform === "win32" ? `${binName}.cmd` : binName;
+  const localExecutable = resolve(fileURLToPath(new URL("../../../../node_modules/.bin/", import.meta.url)), executableName);
+  const executable = await pathExists(localExecutable) ? localExecutable : executableName;
   await runCommand(executable, args);
+}
+
+async function pathExists(path: string): Promise<boolean> {
+  try {
+    await access(path);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 async function buildDesktopRuntime(options: { outputPath: string }): Promise<string> {

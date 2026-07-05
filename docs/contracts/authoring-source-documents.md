@@ -32,12 +32,24 @@ First-class structured source document families:
   defaults.
 - `content/systems/*.systems.json`: system schedule, queries, reads, writes,
   commands, resources, and script references.
+- `content/proofs/*.proof.json`: tooling-only proof recipes for inputs,
+  expected artifacts, and required validation/build/playtest/screenshot
+  commands. These documents guide CLI/editor proof workflows and are not
+  runtime gameplay data.
 - `content/runtime/*.runtime.json` and `content/targets/*.target.json`:
   runtime config and target profile data when those settings are editor-owned.
 
 TypeScript files under `src/scripts/**/*.ts` are durable source for gameplay
 behavior modules. TypeScript files under `src/generators/**/*.ts` may be
 durable source for optional one-way generators that emit structured documents.
+
+Recipe operations are bounded source mutations. `tn recipe <recipe-id>` and
+`tn recipe apply <recipe-id>` may write only declared `content/**/*.json` source
+documents and `src/scripts/**/*.ts` scaffolds through the shared authoring
+operation registry. Recipes must preflight required source documents, report
+stable diagnostics before partial mutation, and must not persist changes to
+`dist/**`, emitted IR JSON, `scripts.bundle.js`, runtime handles, or other
+generated artifacts.
 
 ## Compact Scene Instances
 
@@ -122,6 +134,7 @@ The IR editor patch contract treats structured documents under
 `content/**/*.materials.json`, `content/**/*.meshes.json`,
 `content/**/*.input.json`, `content/**/*.systems.json`,
 `content/**/*.prefab.json`, `content/**/*.audio.json`,
+`content/**/*.proof.json`,
 `content/**/*.runtime.json`, and `threenative.authoring.json` as
 source-persistable. Generated bundle/cache
 paths such as `dist/**`, `game.bundle/**`, `scripts.bundle.js`, generated IR

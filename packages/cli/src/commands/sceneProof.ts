@@ -10,6 +10,7 @@ import { inspectScene, validateScene } from "@threenative/authoring";
 import { type ICommandResult } from "../diagnostics.js";
 import { cargoCaptureEnv, resolveCaptureBinaryPath, resolveCargoCommand } from "../verify/captureCargo.js";
 import { captureScreenshot } from "./visualProof.js";
+import { buildProofArtifactMetadata, type IProofArtifactMetadata } from "../game/proofManifest.js";
 
 const execFileAsync = promisify(execFile);
 const nativeHeadlessDiagnosticCode = "TN_SCENE_PROOF_NATIVE_HEADLESS_XVFB_MISSING";
@@ -46,6 +47,7 @@ interface IProofReport {
     sceneSourceFile: string;
     sourceConnectedToBundle: boolean;
   };
+  proofMetadata: IProofArtifactMetadata;
   sceneId: string;
   schema: "threenative.scene-proof-report";
   status: "fail" | "pass" | "warning";
@@ -375,7 +377,7 @@ async function writeFailedReport(options: {
   return { exitCode: 1, stderr: `Scene proof failed.\nReport: ${resolve(options.outDir, "proof-report.json")}\n`, stdout: "" };
 }
 
-async function writeReports(options: Omit<IProofReport, "generatedAt" | "schema" | "version"> & { outDir: string }): Promise<IProofReport> {
+async function writeReports(options: Omit<IProofReport, "generatedAt" | "proofMetadata" | "schema" | "version"> & { outDir: string }): Promise<IProofReport> {
   const reportPath = resolve(options.outDir, "proof-report.json");
   const markdownPath = resolve(options.outDir, "proof.md");
   const report: IProofReport = {
@@ -386,6 +388,10 @@ async function writeReports(options: Omit<IProofReport, "generatedAt" | "schema"
     generatedAt: new Date().toISOString(),
     projectPath: options.projectPath,
     provenance: options.provenance,
+    proofMetadata: await buildProofArtifactMetadata({
+      commandParameters: { command: "tn scene proof", sceneId: options.sceneId, status: options.status },
+      projectPath: options.projectPath,
+    }),
     sceneId: options.sceneId,
     schema: "threenative.scene-proof-report",
     status: options.status,

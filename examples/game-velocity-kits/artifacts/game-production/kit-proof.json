@@ -1,0 +1,70 @@
+{
+  "schema": "threenative.game-velocity-kit-proof",
+  "version": "0.1.0",
+  "generatedBy": "Game Development Velocity Kits PRD",
+  "kits": [
+    {
+      "id": "top-down-collector",
+      "package": "@threenative/collector-kit",
+      "recipe": "top-down-collector",
+      "blocks": ["controller.top-down", "objective.collect-all", "feedback.score-hud"],
+      "reducerPackage": true,
+      "recipeManifest": true,
+      "assetRoleGuidance": true,
+      "uiStateProof": true,
+      "playtestRecipe": true,
+      "screenshotProof": true,
+      "scaleProof": true,
+      "qaArtifact": true,
+      "evidence": [
+        "packages/collector-kit/src/index.test.ts",
+        "packages/cli/src/game/kits.test.ts",
+        "packages/cli/src/commands/recipe.test.ts",
+        "packages/cli/src/game/proofManifest.test.ts",
+        "packages/cli/src/game/taskGraph.test.ts"
+      ]
+    },
+    {
+      "id": "lane-runner",
+      "package": "@threenative/lane-runner-kit",
+      "recipe": "lane-runner",
+      "blocks": ["controller.lane-runner", "spawn.lane-obstacle", "feedback.distance-hud"],
+      "reducerPackage": true,
+      "recipeManifest": true,
+      "assetRoleGuidance": true,
+      "uiStateProof": true,
+      "playtestRecipe": true,
+      "screenshotProof": true,
+      "scaleProof": true,
+      "qaArtifact": true,
+      "evidence": [
+        "packages/lane-runner-kit/src/index.test.ts",
+        "packages/cli/src/game/kits.test.ts",
+        "packages/cli/src/commands/recipe.test.ts",
+        "packages/cli/src/game/proofManifest.test.ts",
+        "packages/cli/src/game/taskGraph.test.ts"
+      ]
+    },
+    {
+      "id": "checkpoint-race",
+      "package": "@threenative/checkpoint-race-kit",
+      "recipe": "vehicle-checkpoint",
+      "blocks": ["controller.vehicle", "objective.checkpoints", "feedback.race-hud"],
+      "reducerPackage": true,
+      "recipeManifest": true,
+      "assetRoleGuidance": true,
+      "uiStateProof": true,
+      "playtestRecipe": true,
+      "screenshotProof": true,
+      "scaleProof": true,
+      "qaArtifact": true,
+      "evidence": [
+        "packages/checkpoint-race-kit/src/index.test.ts",
+        "packages/cli/src/game/kits.test.ts",
+        "packages/cli/src/commands/recipe.test.ts",
+        "packages/cli/src/game/proofManifest.test.ts",
+        "packages/cli/src/game/taskGraph.test.ts"
+      ]
+    }
+  ]
+}

@@ -102,6 +102,12 @@ Selected records must be expanded with
 `tn asset source get <asset-source-id> --json` so the plan or implementation
 notes preserve catalog id, source/provenance URLs, origin, license evidence,
 review status, and fallback decisions.
+The plan also includes read-only `kitCandidates` entries backed by
+`threenative.game-kit-manifest` metadata. A candidate names the kit id, version,
+recipe id, score, `mutate: false`, `toolingOnly: true`, acceptance criteria,
+asset roles, block ids, source owners, and proof commands. These candidates are
+planning guidance only; source mutation still requires an explicit bounded
+recipe or game-improve command.
 The plan's proof commands must cover the full local production loop:
 `tn authoring validate`, `tn build`, input-driven `tn playtest`,
 `tn screenshot`, `tn game score`, `tn game qa --run-proof`, and
@@ -114,6 +120,37 @@ canonical plan evidence. When application succeeds, it persists the exact
 applied plan to
 `artifacts/game-production/plan.json`, so the generated-game aggregate gate can
 verify the planning evidence without relying on a separate manual copy step.
+
+`tn game next --project <path> --json` derives a read-first
+`threenative.game-task-graph` artifact and writes it to
+`artifacts/game-production/task-graph.json`. Recommendations include `id`,
+`operationId`, concrete command, source owner, expected proof, phase, priority,
+summary, and blocking diagnostics. The first task graph implementation covers
+common generated-game blockers: missing gameplay script wiring, missing retained
+UI source, missing or placeholder high-value asset evidence, missing runtime
+screenshot proof, stale screenshot proof after source changes, and missing
+relative-scale proof. It does not mutate durable source; it only writes the task
+graph artifact.
+
+`tn prove changed --project <path> --json` evaluates durable source
+(`content/**/*.json` and `src/scripts/**/*.ts`), local assets, and emitted
+bundle files against a previous `threenative.proof-manifest` when one is
+provided through `--previous`. It emits stable freshness diagnostics:
+`TN_VERIFY_SOURCE_HASH_MISMATCH`, `TN_VERIFY_BUNDLE_HASH_MISMATCH`,
+`TN_VERIFY_ASSET_CHANGED`, and `TN_VERIFY_PROOF_STALE`, plus focused proof
+recommendations for validation, build, playtest, asset inspection, model test,
+and screenshot refresh. The command is read-only by default; pass
+`--write-manifest` to write
+`artifacts/game-production/proof-manifest.json`. Pass `--run` to execute the
+deterministic recommendations currently owned by the proof runner, such as
+authoring validation and build; recommendations that still contain placeholders
+are skipped with `TN_PROVE_RUN_PLACEHOLDER` instead of guessing entity IDs,
+preview URLs, or asset paths. Screenshot, record, playtest, scene-proof, and
+game-QA sidecar artifacts include artifact-local `proofMetadata` with source
+hash, optional bundle hash, command parameters, and hashed file count.
+`tn proof diff --from <manifest> --to <manifest> --json` compares two proof
+manifests and reports added, removed, and changed inputs by role.
+
 `pnpm verify:generated-games` is included in the release focused-gate profile
 so aggregate generated-game proof remains part of release evidence. Its
 aggregate `verification-report.json` includes a `summary` object with the gate
@@ -127,7 +164,11 @@ ranges plus minimum nonblank and visible-bounds ratios, making visual-quality
 ratchet candidates visible in release artifacts before thresholds are raised.
 The gate also rejects generated-game README script references that are missing
 from the example `package.json`, so copy-pasted local workflow commands stay
-executable.
+executable. Promoted game velocity kits are also release-ratcheted through
+`examples/game-velocity-kits/artifacts/game-production/kit-proof.json`; missing
+or incomplete reducer package, recipe manifest, asset-role, UI, playtest,
+screenshot, scale, or QA evidence fails the generated-game aggregate with
+`TN_VERIFY_GAME_KIT_PROOF_MISSING` or `TN_VERIFY_GAME_KIT_PROOF_INVALID`.
 
 Maintained game starters must scaffold the same loop rather than leaving it to
 agent memory: package scripts should include `game:plan`, `game:improve`,

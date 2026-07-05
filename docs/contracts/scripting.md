@@ -173,7 +173,9 @@ Validation rules:
   `scripts.manifest.json`.
 - Portable scripts may import named helpers only from supported helper packages:
   `@threenative/script-stdlib` for pure gameplay math/reducer helpers and
-  `@threenative/racing-kit` for opt-in racing/checkpoint helpers.
+  `@threenative/racing-kit`, `@threenative/collector-kit`,
+  `@threenative/lane-runner-kit`, and
+  `@threenative/checkpoint-race-kit` for opt-in domain reducers.
   Arbitrary npm packages, relative helper module graphs, default imports,
   namespace imports, aliased imports, and re-exports are rejected before
   runtime.

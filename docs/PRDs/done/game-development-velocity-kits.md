@@ -303,13 +303,13 @@ sequenceDiagram
 
 **Implementation:**
 
-- [ ] Define `threenative.game-kit-manifest` with id, version, blocks,
+- [x] Define `threenative.game-kit-manifest` with id, version, blocks,
   parameters, source owners, prefab roles, script refs, input/UI/resource
   requirements, asset roles, proof commands, and diagnostics.
-- [ ] Add read-only kit suggestions to `tn game plan --json`.
-- [ ] Keep all kit suggestions non-mutating and clearly marked as tooling
+- [x] Add read-only kit suggestions to `tn game plan --json`.
+- [x] Keep all kit suggestions non-mutating and clearly marked as tooling
   guidance.
-- [ ] Add diagnostics for invalid manifests and unsupported block capability.
+- [x] Add diagnostics for invalid manifests and unsupported block capability.
 
 **Tests Required:**
 
@@ -340,13 +340,13 @@ sequenceDiagram
 
 **Implementation:**
 
-- [ ] Implement `tn recipe apply <kit-id> --project . --json` for the first
+- [x] Implement `tn recipe apply <kit-id> --project . --json` for the first
   top-down collector skeleton.
-- [ ] Write only declared `content/**/*.json` and `src/scripts/**/*.ts` paths
+- [x] Write only declared `content/**/*.json` and `src/scripts/**/*.ts` paths
   through structured authoring operations or explicit script scaffolds.
-- [ ] Generate prefab roles, input bindings, systems, UI bindings, script
+- [x] Generate prefab roles, input bindings, systems, UI bindings, script
   references, and proof recipe stubs.
-- [ ] Reject missing/incompatible source documents before partial mutation.
+- [x] Reject missing/incompatible source documents before partial mutation.
 
 **Tests Required:**
 
@@ -377,14 +377,14 @@ sequenceDiagram
 
 **Implementation:**
 
-- [ ] Emit top recommendations with operation id, command, source owner,
+- [x] Emit top recommendations with operation id, command, source owner,
   expected proof, phase, priority, and blocking diagnostics.
-- [ ] Persist `artifacts/game-production/task-graph.json` after `plan`,
+- [x] Persist `artifacts/game-production/task-graph.json` after `plan`,
   `recipe apply`, `qa`, and `next`.
-- [ ] Cover common blockers: missing script export, missing UI state, missing
+- [x] Cover common blockers: missing script export, missing UI state, missing
   asset provenance, stale screenshot, unproven scale, and placeholder
   high-value surface.
-- [ ] Keep `next` useful in read-only mode; do not require `--apply`.
+- [x] Keep `next` useful in read-only mode; do not require `--apply`.
 
 **Tests Required:**
 
@@ -415,14 +415,14 @@ sequenceDiagram
 
 **Implementation:**
 
-- [ ] Add proof metadata to selected existing playtest, scene proof, screenshot,
+- [x] Add proof metadata to selected existing playtest, scene proof, screenshot,
   and game QA artifacts.
-- [ ] Implement read-only `tn prove changed --json` recommendations first.
-- [ ] Add `--run` only after command selection is deterministic and tested.
-- [ ] Emit stable diagnostics such as `TN_VERIFY_PROOF_STALE`,
+- [x] Implement read-only `tn prove changed --json` recommendations first.
+- [x] Add `--run` only after command selection is deterministic and tested.
+- [x] Emit stable diagnostics such as `TN_VERIFY_PROOF_STALE`,
   `TN_VERIFY_SOURCE_HASH_MISMATCH`, `TN_VERIFY_BUNDLE_HASH_MISMATCH`, and
   `TN_VERIFY_ASSET_CHANGED`.
-- [ ] Add `tn proof diff --from <artifact> --to <artifact> --json` for
+- [x] Add `tn proof diff --from <artifact> --to <artifact> --json` for
   diagnostic, transform, asset, screenshot, timing, and bundle changes.
 
 **Tests Required:**
@@ -455,13 +455,13 @@ sequenceDiagram
 
 **Implementation:**
 
-- [ ] Ship top-down collector, lane runner, and checkpoint race kits with pure
+- [x] Ship top-down collector, lane runner, and checkpoint race kits with pure
   reducers and recipe manifests.
-- [ ] Keep runtime facades out of reducers; scripts own `ctx` access and state
+- [x] Keep runtime facades out of reducers; scripts own `ctx` access and state
   persistence explicitly.
-- [ ] Add catalog-first asset role guidance and fallback evidence for each
+- [x] Add catalog-first asset role guidance and fallback evidence for each
   promoted kit.
-- [ ] Add playtest recipes, screenshot proof, UI state proof, scale proof, and
+- [x] Add playtest recipes, screenshot proof, UI state proof, scale proof, and
   generated-game QA artifacts for the maintained examples.
 
 **Tests Required:**
@@ -496,15 +496,15 @@ sequenceDiagram
 
 **Implementation:**
 
-- [ ] Add read-only panel rows for phase status, block status, source owners,
+- [x] Add read-only panel rows for phase status, block status, source owners,
   recommendations, proof freshness, and artifacts.
-- [ ] Wire safe buttons only to existing bounded operations and CLI JSON
+- [x] Wire safe buttons only to existing bounded operations and CLI JSON
   contracts.
-- [ ] Add operation parity checks so CLI and editor do not drift.
-- [ ] Ratchet `verify:generated-games` and release aggregation to require kit
+- [x] Add operation parity checks so CLI and editor do not drift.
+- [x] Ratchet `verify:generated-games` and release aggregation to require kit
   manifest, source, script, asset, UI, playtest, screenshot, and parity status
   evidence for promoted kits.
-- [ ] Update status and Bevy parity docs because this changes capability and
+- [x] Update status and Bevy parity docs because this changes capability and
   release-gate claims.
 
 **Tests Required:**

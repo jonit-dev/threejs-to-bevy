@@ -20,6 +20,9 @@ import { startWebPreview, type IWebPreviewServer } from "@threenative/runtime-we
 import { chromium } from "playwright";
 
 import { diagnosticResult, type ICommandResult } from "../diagnostics.js";
+import { matchGameKitCandidates, type IGameKitCandidate } from "../game/kits.js";
+import { buildProofArtifactMetadata } from "../game/proofManifest.js";
+import { buildGameTaskGraph } from "../game/taskGraph.js";
 import { analyzeGameScaleEntities, type IGameScaleEntityInput } from "../verify/gameScale.js";
 import { analyzeNonblank, analyzeProjectedBounds, averageColor, type IPixelFrame } from "../verify/imageAnalysis.js";
 import { readPngFrame } from "../verify/compareImages.js";
@@ -68,6 +71,7 @@ interface IGamePlan {
     recommendedOperations: string[];
     sourceFamilies: Array<{ count: number; files: string[]; kind: string }>;
   };
+  kitCandidates: IGameKitCandidate[];
   message: string;
   mutate: false;
   phases: Array<{ id: string; order: number; summary: string }>;
@@ -169,6 +173,9 @@ export async function gameCommand(argv: readonly string[], options: IGameCommand
   if (subcommand === "plan") {
     return gamePlanCommand(normalizedArgv.slice(1));
   }
+  if (subcommand === "next") {
+    return gameNextCommand(normalizedArgv.slice(1));
+  }
   if (subcommand === "improve") {
     return gameImproveCommand(normalizedArgv.slice(1));
   }
@@ -178,10 +185,33 @@ export async function gameCommand(argv: readonly string[], options: IGameCommand
       code: "TN_GAME_SUBCOMMAND_UNKNOWN",
       message: `Unknown game workflow subcommand '${subcommand}'.`,
       subcommand,
-      usage: "tn game <inspect|plan|improve|providers|score|qa|release> [--project <path>] [--json]",
+      usage: "tn game <inspect|plan|next|improve|providers|score|qa|release> [--project <path>] [--json]",
     },
     { exitCode: 1, json, stderr: !json },
   );
+}
+
+async function gameNextCommand(argv: readonly string[]): Promise<ICommandResult> {
+  const normalizedArgv = argv[0] === "--" ? argv.slice(1) : argv;
+  const json = normalizedArgv.includes("--json");
+  const projectPath = resolveProjectPath(normalizedArgv);
+  const { graph, outPath } = await persistGameTaskGraph(projectPath);
+  const payload = {
+    ...graph,
+    reportPath: outPath,
+  };
+  return {
+    exitCode: 0,
+    stdout: json ? `${JSON.stringify(payload, null, 2)}\n` : renderTaskGraph(payload),
+  };
+}
+
+async function persistGameTaskGraph(projectPath: string): Promise<{ graph: Awaited<ReturnType<typeof buildGameTaskGraph>>; outPath: string }> {
+  const graph = await buildGameTaskGraph({ projectPath });
+  const outPath = resolve(projectPath, "artifacts/game-production/task-graph.json");
+  await mkdir(resolve(outPath, ".."), { recursive: true });
+  await writeFile(outPath, `${JSON.stringify(graph, null, 2)}\n`, "utf8");
+  return { graph, outPath };
 }
 
 async function gameInspectCommand(argv: readonly string[]): Promise<ICommandResult> {
@@ -232,6 +262,9 @@ async function gameScoreCommand(argv: readonly string[], mode: GameProductionMod
       ...withProofRun,
       reportPath: outPath,
     };
+    if (mode === "qa") {
+      await persistGameTaskGraph(projectPath);
+    }
     const stdoutPayload = compactReportForStdout(withArtifact);
     return {
       exitCode: withArtifact.ok ? 0 : 1,
@@ -298,6 +331,7 @@ async function gamePlanCommand(argv: readonly string[]): Promise<ICommandResult>
   const inventory = await createGameAgentInventory({ projectPath });
   const defaults = inferPlanDefaults(inventory);
   const gameCategory = inferGameCategory(goal);
+  const kitCandidates = matchGameKitCandidates(goal);
   const plan: IGamePlan = {
     acceptanceCriteria: [
       "A player can understand the objective from the first screen and complete or fail the loop with real input.",
@@ -330,6 +364,7 @@ async function gamePlanCommand(argv: readonly string[]): Promise<ICommandResult>
       recommendedOperations: inventory.recommendedOperations,
       sourceFamilies: inventory.sourceFamilies.map((family) => ({ count: family.count, files: family.files, kind: family.kind })),
     },
+    kitCandidates,
     message: "Deterministic game-production plan generated without mutating source.",
     mutate: false,
     phases: GAME_WORKFLOW_PHASE_IDS.map((id, index) => ({ id, order: index + 1, summary: phaseSummary(id) })),
@@ -349,6 +384,7 @@ async function gamePlanCommand(argv: readonly string[]): Promise<ICommandResult>
     sourcePlan: buildSourcePlan(inventory),
     steps: buildGamePlanSteps(defaults),
   };
+  await persistGameTaskGraph(projectPath);
 
   return {
     exitCode: 0,
@@ -596,6 +632,7 @@ function renderGameHelp(json: boolean, subcommand?: string): string {
     commands: [
       "tn game inspect [--project <path>] [--json]",
       "tn game plan --goal <text> [--project <path>] [--json]",
+      "tn game next [--project <path>] [--json]",
       "tn game improve --apply-plan <file> [--project <path>] [--json]",
       "tn game providers [--json]",
       "tn game score [--project <path>] [--json]",
@@ -623,6 +660,11 @@ function renderInventory(inventory: Awaited<ReturnType<typeof createGameAgentInv
     `Diagnostics: ${inventory.diagnostics.length}`,
     "",
   ].join("\n");
+}
+
+function renderTaskGraph(graph: Awaited<ReturnType<typeof buildGameTaskGraph>> & { reportPath: string }): string {
+  const rows = graph.recommendations.map((recommendation) => `  ${recommendation.priority} ${recommendation.id}: ${recommendation.command}`).join("\n");
+  return `Game task graph: ${graph.ok ? "ready" : "blocked"}\nReport: ${graph.reportPath}\n\nNext actions:\n${rows}\n\nDiagnostics: ${graph.diagnostics.length}\n`;
 }
 
 async function gameScaleCommand(argv: readonly string[]): Promise<ICommandResult> {
@@ -1258,6 +1300,10 @@ async function writeDoctorProof(projectPath: string, result: ICommandResult): Pr
   const payload = {
     ...(parsed ?? { rawStdout: result.stdout }),
     generatedBy: "tn game qa --run-proof",
+    proofMetadata: await buildProofArtifactMetadata({
+      commandParameters: { command: "tn game qa --run-proof", proof: "doctor" },
+      projectPath,
+    }),
     schema: "threenative.game-doctor-proof",
   };
   await writeFile(outputPath, `${JSON.stringify(payload, null, 2)}\n`, "utf8");
@@ -1584,6 +1630,10 @@ async function writePerformanceProof(step: IGameProofStepSpec, projectPath: stri
     schema: "threenative.game-performance-proof",
     version: "0.1.0",
     generatedAt: new Date().toISOString(),
+    proofMetadata: await buildProofArtifactMetadata({
+      commandParameters: { command: "tn game qa --run-proof", proof: "performance" },
+      projectPath,
+    }),
     source: "tn game qa --run-proof",
     targetFps: 60,
     frameBudgetMs: 16.67,
@@ -1617,6 +1667,10 @@ async function writeAssetBudgetProof(step: IGameProofStepSpec, projectPath: stri
     schema: "threenative.game-asset-budget-proof",
     version: "0.1.0",
     generatedAt: new Date().toISOString(),
+    proofMetadata: await buildProofArtifactMetadata({
+      commandParameters: { command: source, proof: "asset-budget" },
+      projectPath,
+    }),
     source,
     budgets: {
       distBytes: 10 * 1024 * 1024,
@@ -1654,6 +1708,10 @@ async function writeVisualQualityProof(step: IGameProofStepSpec, projectPath: st
       schema: "threenative.game-visual-quality-proof",
       version: "0.1.0",
       generatedAt: new Date().toISOString(),
+      proofMetadata: await buildProofArtifactMetadata({
+        commandParameters: { command: "tn game qa --run-proof", proof: "visual-quality" },
+        projectPath,
+      }),
       source: "tn game qa --run-proof",
       screenshot: "artifacts/game-production/screenshot.png",
       metrics,
@@ -1683,6 +1741,10 @@ async function writeVisualQualityProof(step: IGameProofStepSpec, projectPath: st
       schema: "threenative.game-visual-quality-proof",
       version: "0.1.0",
       generatedAt: new Date().toISOString(),
+      proofMetadata: await buildProofArtifactMetadata({
+        commandParameters: { command: "tn game qa --run-proof", proof: "visual-quality" },
+        projectPath,
+      }),
       source: "tn game qa --run-proof",
       screenshot: "artifacts/game-production/screenshot.png",
       diagnostics,
@@ -1722,6 +1784,10 @@ async function writeUiFitProof(step: IGameProofStepSpec, projectPath: string): P
     schema: "threenative.game-ui-fit-proof",
     version: "0.1.0",
     generatedAt: new Date().toISOString(),
+    proofMetadata: await buildProofArtifactMetadata({
+      commandParameters: { command: "tn game qa --run-proof", proof: "ui-fit" },
+      projectPath,
+    }),
     source: "tn game qa --run-proof",
     viewport: { height: 844, preset: "mobile", width: 390 },
     evidence: {

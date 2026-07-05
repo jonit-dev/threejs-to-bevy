@@ -98,6 +98,16 @@ implementation:
   asset-budget proof for already-built projects when that sidecar is missing.
   This improves generated-game release evidence and does not claim native/Bevy
   input injection parity.
+- Game-development velocity kits now provide source-backed kit candidates in
+  `tn game plan`, read-only `tn game next` task graphs, `tn prove changed`
+  proof manifests/diffs, artifact-local proof metadata on selected proof
+  reports, and promoted pure reducer helper imports for
+  `@threenative/collector-kit`, `@threenative/lane-runner-kit`, and
+  `@threenative/checkpoint-race-kit`. `pnpm verify:generated-games` also
+  ratchets the promoted kit proof artifact for reducer, recipe, asset-role,
+  UI, playtest, screenshot, scale, and QA evidence. This is an authoring and
+  release-evidence improvement; it does not add a new Bevy runtime gameplay
+  capability.
 - `tn game plan --json` now emits a schema-tagged
   `threenative.game-plan` artifact with non-mutating source-shape guidance for
   scene, input, systems, UI, materials, and assets documents, including

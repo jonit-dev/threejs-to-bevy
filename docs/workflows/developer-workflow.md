@@ -186,10 +186,17 @@ Command expectations:
   owning file and declared entity, prefab, resource, system, and UI node IDs.
 - `tn recipe <recipe-id> ... --dry-run --json` returns the composed
   registry-backed operation plan for common objects without writing source.
-  Running the same command without `--dry-run` applies the operations through
+  Running the same command without `--dry-run`, or the explicit
+  `tn recipe apply <recipe-id> ... --json` form, applies the operations through
   the shared authoring registry. Current recipes are
   `third-person-controller`, `collectible`, `trigger-zone`,
-  `kinematic-character`, and `health-bar`.
+  `kinematic-character`, `health-bar`, `top-down-collector`, `lane-runner`,
+  and `vehicle-checkpoint`.
+- Promoted game velocity kits expose optional pure reducer packages:
+  `@threenative/collector-kit`, `@threenative/lane-runner-kit`, and
+  `@threenative/checkpoint-race-kit`. Scripts may import these reducers for
+  deterministic state transitions, but scripts still own all `ctx` access,
+  component/resource reads, and source-backed state persistence explicitly.
 - `tn scene add-entity`, `set-transform`, `set-camera`, `attach-script`, and
   `bind-ui` mutate supported structured source scenes only after preflight
   validation, then validate again before writing deterministic source JSON.

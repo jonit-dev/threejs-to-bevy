@@ -18,6 +18,7 @@ import { modelTestCommand } from "./commands/modelTest.js";
 import { packageCommand } from "./commands/package.js";
 import { playtestCommand } from "./commands/playtest.js";
 import { navCommand, physicsCommand } from "./commands/physicsNav.js";
+import { proofCommand, proveCommand } from "./commands/proof.js";
 import { recipeCommand } from "./commands/recipe.js";
 import { sceneCommand } from "./commands/scene.js";
 import { animationCommand, audioCommand, environmentCommand, generatorCommand, inputCommand, materialCommand, meshCommand, particleCommand, prefabCommand, projectCommand, resourcesCommand, runtimeCommand, schemaCommand, systemCommand, targetCommand, uiCommand } from "./commands/sourceDocuments.js";
@@ -81,7 +82,7 @@ const commands: Record<string, ICommandDefinition> = {
   game: {
     description: "Plan, score, QA, and release-check source-backed game production evidence.",
     implemented: true,
-    usage: "tn game plan --goal <text> [--project <path>] [--json]\n              tn game improve --apply-plan <file> [--project <path>] [--json]\n              tn game providers [--json]\n              tn game score [--project <path>] [--json]\n              tn game scale [--project <path>] [--url <preview-url>] [--out <file>] [--json]\n              tn game qa [--project <path>] [--run-proof] [--url <preview-url>] [--entity <id>] [--press <KeyboardEvent.code>] [--expect-axis x|y|z] [--record] [--out <file>] [--json]\n              tn game release [--project <path>] [--out <file>] [--json]",
+    usage: "tn game plan --goal <text> [--project <path>] [--json]\n              tn game next [--project <path>] [--json]\n              tn game improve --apply-plan <file> [--project <path>] [--json]\n              tn game providers [--json]\n              tn game score [--project <path>] [--json]\n              tn game scale [--project <path>] [--url <preview-url>] [--out <file>] [--json]\n              tn game qa [--project <path>] [--run-proof] [--url <preview-url>] [--entity <id>] [--press <KeyboardEvent.code>] [--expect-axis x|y|z] [--record] [--out <file>] [--json]\n              tn game release [--project <path>] [--out <file>] [--json]",
   },
   "model-test": {
     description: "Generate a one-model proof project with scale, bounds, ruler, and camera hints.",
@@ -148,10 +149,20 @@ const commands: Record<string, ICommandDefinition> = {
     implemented: true,
     usage: "tn playtest --project <path> --entity <id> --press <KeyboardEvent.code> --frames <n> [--expect-moved] [--expect-axis x|y|z] [--debug] [--json]",
   },
+  prove: {
+    description: "Evaluate changed durable source/assets/bundles against proof manifests.",
+    implemented: true,
+    usage: "tn prove changed [--project <path>] [--previous <manifest>] [--write-manifest] [--run] [--json]",
+  },
+  proof: {
+    description: "Inspect and compare proof manifest artifacts.",
+    implemented: true,
+    usage: "tn proof diff --from <manifest> --to <manifest> [--json]",
+  },
   recipe: {
     description: "Apply composed registry-backed recipes for common game objects.",
     implemented: true,
-    usage: "tn recipe <third-person-controller|collectible|trigger-zone|kinematic-character|health-bar> --scene <scene-id> --entity <entity-id> [--camera <camera-id>] [--module <path>] [--export <name>] [--dry-run] [--project <path>] [--json]",
+    usage: "tn recipe [apply] <recipe-id> --scene <scene-id> [--entity <entity-id>|--player <player-id>|--vehicle <vehicle-id>] [--camera <camera-id>] [--module <path>] [--export <name>] [--dry-run] [--project <path>] [--json]",
   },
   particle: {
     description: "Add bounded particle emitter metadata to structured model asset source.",
@@ -362,6 +373,14 @@ export async function dispatch(argv: readonly string[]): Promise<ICommandResult>
 
   if (commandName === "playtest") {
     return playtestCommand(normalizedArgv.slice(1));
+  }
+
+  if (commandName === "prove") {
+    return proveCommand(normalizedArgv.slice(1));
+  }
+
+  if (commandName === "proof") {
+    return proofCommand(normalizedArgv.slice(1));
   }
 
   if (commandName === "recipe") {

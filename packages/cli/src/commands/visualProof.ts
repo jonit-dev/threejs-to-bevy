@@ -5,6 +5,7 @@ import { promisify } from "node:util";
 import { chromium } from "playwright";
 
 import { diagnosticResult, type ICommandResult } from "../diagnostics.js";
+import { buildProofArtifactMetadata, type IProofArtifactMetadata } from "../game/proofManifest.js";
 import { readPngFrame } from "../verify/compareImages.js";
 import { analyzeNonblank, defaultNonblankThreshold } from "../verify/imageAnalysis.js";
 
@@ -32,6 +33,7 @@ export interface IVisualProofReport {
     requestFailures: string[];
   };
   outPath: string;
+  proofMetadata?: IProofArtifactMetadata;
   runtimeReady: unknown;
   url: string;
   viewport: VisualViewport;
@@ -85,12 +87,19 @@ export async function screenshotCommand(argv: readonly string[], cwd = process.e
 
   try {
     const report = await captureScreenshot({ command: normalizedArgv, outPath, url, viewport: viewport.value, waitReady });
+    const reportWithMetadata = {
+      ...report,
+      proofMetadata: await buildProofArtifactMetadata({
+        commandParameters: { command: "tn screenshot", out: outArg, url, viewport: viewportArg ?? "desktop", waitReady },
+        projectPath: baseCwd,
+      }),
+    };
     const hasErrors = report.diagnostics?.some((diagnostic) => diagnostic.severity === "error") ?? false;
     return {
       exitCode: hasErrors ? 1 : 0,
       stdout: json
-        ? `${JSON.stringify({ code: hasErrors ? "TN_SCREENSHOT_FAILED" : "TN_SCREENSHOT_OK", ...report }, null, 2)}\n`
-        : `Screenshot captured.\nOutput: ${report.outPath}\nBytes: ${report.byteSize}\n`,
+        ? `${JSON.stringify({ code: hasErrors ? "TN_SCREENSHOT_FAILED" : "TN_SCREENSHOT_OK", ...reportWithMetadata }, null, 2)}\n`
+        : `Screenshot captured.\nOutput: ${reportWithMetadata.outPath}\nBytes: ${reportWithMetadata.byteSize}\n`,
     };
   } catch (error) {
     return diagnosticResult({ code: "TN_SCREENSHOT_FAILED", message: errorMessage(error) }, { exitCode: 1, json, stderr: !json });
@@ -127,11 +136,18 @@ export async function recordCommand(argv: readonly string[], cwd = process.env.I
     const inputScript = await resolveRecordInputScript(inputScriptArg, baseCwd);
     const recorder = options.recorder ?? recordPreview;
     const report = await recorder({ inputScript, outPath, seconds, url });
+    const reportWithMetadata = {
+      ...report,
+      proofMetadata: await buildProofArtifactMetadata({
+        commandParameters: { command: "tn record", durationSeconds: seconds, inputScript: report.inputScript, out: outArg, url },
+        projectPath: baseCwd,
+      }),
+    };
     return {
       exitCode: 0,
       stdout: json
-        ? `${JSON.stringify({ code: "TN_RECORD_OK", ...report }, null, 2)}\n`
-        : `Recording captured.\nOutput: ${report.outPath}\nFormat: ${report.format}\nSeconds: ${report.seconds}\nFPS: ${report.fps}\nBytes: ${report.byteSize}\n`,
+        ? `${JSON.stringify({ code: "TN_RECORD_OK", ...reportWithMetadata }, null, 2)}\n`
+        : `Recording captured.\nOutput: ${reportWithMetadata.outPath}\nFormat: ${reportWithMetadata.format}\nSeconds: ${reportWithMetadata.seconds}\nFPS: ${reportWithMetadata.fps}\nBytes: ${reportWithMetadata.byteSize}\n`,
     };
   } catch (error) {
     return diagnosticResult({ code: "TN_RECORD_UNAVAILABLE", message: errorMessage(error) }, { exitCode: 1, json, stderr: !json });

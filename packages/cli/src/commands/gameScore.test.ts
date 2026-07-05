@@ -75,7 +75,8 @@ test("plans a playable loop without writing files", async () => {
     assert.equal(payload.steps.some((step) => step.phase === "gameplay" && step.recipe === "third-person-controller"), true);
     assert.equal(payload.proofCommands.some((command) => command.startsWith("tn playtest")), true);
     assert.equal(payload.proofCommands.some((command) => command.includes("tn game qa") && command.includes("--run-proof")), true);
-    assert.deepEqual(after, before);
+    assert.deepEqual(after.filter((entry) => entry !== "artifacts" && !entry.startsWith("artifacts/")), before);
+    assert.equal(after.includes("artifacts/game-production/task-graph.json"), true);
   } finally {
     await rm(root, { force: true, recursive: true });
   }
@@ -163,6 +164,7 @@ test("should include project inventory in generated game plan", async () => {
     const result = await gameCommand(["plan", "--project", root, "--goal", "top down rescue game", "--json"]);
     const payload = JSON.parse(result.stdout) as {
       inventory: { primarySceneId?: string; projectKind: string };
+      kitCandidates: Array<{ blocks: Array<{ id: string; proofCommands: string[]; sourceOwners: Record<string, string[]> }>; kitId: string; mutate: boolean; recipeId: string; toolingOnly: boolean }>;
       scriptPlan: Array<{ exportName: string; module: string; state: string[] }>;
       sourcePlan: Array<{ document: string; path: string }>;
       steps: Array<{ id: string; recipe?: string; recipeArgs?: { cameraId?: string; entityId?: string; sceneId?: string }; recipeSourceOwners?: Record<string, string[]> }>;
@@ -177,6 +179,12 @@ test("should include project inventory in generated game plan", async () => {
     assert.equal(payload.steps.find((step) => step.id === "playable-loop")?.recipeArgs?.sceneId, "harbor");
     assert.equal(payload.steps.find((step) => step.id === "playable-loop")?.recipeArgs?.cameraId, "camera.hero");
     assert.equal(payload.steps.find((step) => step.id === "playable-loop")?.recipeArgs?.entityId, "player.boat");
+    assert.equal(payload.kitCandidates[0]?.kitId, "top-down-collector");
+    assert.equal(payload.kitCandidates[0]?.mutate, false);
+    assert.equal(payload.kitCandidates[0]?.toolingOnly, true);
+    assert.equal(payload.kitCandidates[0]?.recipeId, "top-down-collector");
+    assert.equal(payload.kitCandidates[0]?.blocks.some((block) => block.id === "controller.top-down" && block.proofCommands.some((command) => command.startsWith("tn playtest"))), true);
+    assert.equal(payload.kitCandidates[0]?.blocks.some((block) => block.sourceOwners.scripts?.includes("src/scripts/player.ts")), true);
     assert.equal(payload.steps.some((step) => step.recipe === "top-down-collector" && step.recipeSourceOwners?.scene?.includes("scene.attach_script")), true);
     assert.equal(payload.steps.some((step) => step.recipe === "lane-runner"), true);
   } finally {
@@ -202,6 +210,36 @@ test("should preserve non-mutating plan contract when inventory has gaps", async
     assert.equal(payload.steps.find((step) => step.id === "playable-loop")?.recipeArgs?.sceneId, "arena");
     assert.equal(payload.steps.find((step) => step.id === "playable-loop")?.recipeArgs?.cameraId, "camera.main");
     assert.equal(payload.steps.find((step) => step.id === "playable-loop")?.recipeArgs?.entityId, "player");
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should persist game next task graph", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-game-next-"));
+  try {
+    await mkdir(join(root, "content/scenes"), { recursive: true });
+    await writeFile(join(root, "content/scenes/arena.scene.json"), `${JSON.stringify({ entities: [], id: "arena", schema: "threenative.scene" }, null, 2)}\n`);
+
+    const result = await gameCommand(["next", "--project", root, "--json"]);
+    const payload = JSON.parse(result.stdout) as {
+      code: string;
+      recommendations: Array<{ command: string; id: string; sourceOwner: string }>;
+      reportPath: string;
+    };
+    const persisted = JSON.parse(await readFile(join(root, "artifacts/game-production/task-graph.json"), "utf8")) as {
+      code: string;
+      recommendations: Array<{ id: string }>;
+    };
+
+    assert.equal(result.exitCode, 0);
+    assert.equal(payload.code, "TN_GAME_TASK_GRAPH");
+    assert.equal(payload.reportPath.endsWith("artifacts/game-production/task-graph.json"), true);
+    assert.equal(payload.recommendations[0]?.id, "wire-gameplay-script");
+    assert.equal(payload.recommendations[0]?.command.includes("tn recipe apply"), true);
+    assert.equal(payload.recommendations[0]?.sourceOwner.includes("src/scripts"), true);
+    assert.equal(persisted.code, "TN_GAME_TASK_GRAPH");
+    assert.equal(persisted.recommendations[0]?.id, "wire-gameplay-script");
   } finally {
     await rm(root, { force: true, recursive: true });
   }

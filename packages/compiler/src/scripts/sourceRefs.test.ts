@@ -115,7 +115,7 @@ test("should record promoted gameplay reducer imports", async () => {
     await mkdir(join(root, "src/scripts"), { recursive: true });
     await writeFile(
       join(root, "src/scripts/player.ts"),
-      `import { ArrayEx, CameraMath, ColorEx, InputEx, MotionEx, RandomEx, TextEx, TimerEx } from "@threenative/script-stdlib";\nexport const updatePlayer = () => ({ camera: CameraMath.followPose({ target: [0, 0, 0] }), color: ColorEx.toHex("#336699"), input: InputEx.axis2([1, 1]), motion: MotionEx.integrate([0, 0, 0], [1, 0, 0], 0.1), random: RandomEx.pickIndex(1, 2, 3), text: TextEx.percent(0.5), timer: TimerEx.cooldown(1, 0.1), item: ArrayEx.cycle(["a"], 2) });\n`,
+      `import { CollectorKit } from "@threenative/collector-kit";\nimport { LaneRunnerKit } from "@threenative/lane-runner-kit";\nimport { CheckpointRaceKit } from "@threenative/checkpoint-race-kit";\nexport const updatePlayer = () => ({ collector: CollectorKit.initial(), runner: LaneRunnerKit.initial(), race: CheckpointRaceKit.initial() });\n`,
     );
 
     const systems: ISystemScriptSource[] = [
@@ -136,8 +136,16 @@ test("should record promoted gameplay reducer imports", async () => {
     assert.deepEqual(result.diagnostics, []);
     assert.deepEqual(result.systems[0]?.script?.helperImports, [
       {
-        imported: ["ArrayEx", "CameraMath", "ColorEx", "InputEx", "MotionEx", "RandomEx", "TextEx", "TimerEx"],
-        module: "@threenative/script-stdlib",
+        imported: ["CheckpointRaceKit"],
+        module: "@threenative/checkpoint-race-kit",
+      },
+      {
+        imported: ["CollectorKit"],
+        module: "@threenative/collector-kit",
+      },
+      {
+        imported: ["LaneRunnerKit"],
+        module: "@threenative/lane-runner-kit",
       },
     ]);
   } finally {

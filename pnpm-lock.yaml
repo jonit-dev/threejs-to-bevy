@@ -52,6 +52,12 @@ importers:
         specifier: ^20.19.25
         version: 20.19.43
 
+  packages/checkpoint-race-kit:
+    devDependencies:
+      '@types/node':
+        specifier: ^20.19.25
+        version: 20.19.43
+
   packages/cli:
     dependencies:
       '@threenative/authoring':
@@ -69,9 +75,6 @@ importers:
       '@threenative/runtime-web-three':
         specifier: workspace:*
         version: link:../runtime-web-three
-      '@types/sql.js':
-        specifier: ^1.4.11
-        version: 1.4.11
       playwright:
         specifier: ^1.60.0
         version: 1.60.0
@@ -91,6 +94,15 @@ importers:
       '@types/pngjs':
         specifier: ^6.0.5
         version: 6.0.5
+      '@types/sql.js':
+        specifier: ^1.4.11
+        version: 1.4.11
+
+  packages/collector-kit:
+    devDependencies:
+      '@types/node':
+        specifier: ^20.19.25
+        version: 20.19.43
 
   packages/compiler:
     dependencies:
@@ -167,6 +179,12 @@ importers:
         version: 7.3.5(@types/node@20.19.43)
 
   packages/ir:
+    devDependencies:
+      '@types/node':
+        specifier: ^20.19.25
+        version: 20.19.43
+
+  packages/lane-runner-kit:
     devDependencies:
       '@types/node':
         specifier: ^20.19.25

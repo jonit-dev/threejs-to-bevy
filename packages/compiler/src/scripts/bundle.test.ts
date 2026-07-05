@@ -238,6 +238,33 @@ test("should bundle supported racing kit imports", () => {
   assert.match(result.code ?? "", /const system_rallyLoop = \(context\) => CheckpointRace\.hud/);
 });
 
+test("should bundle promoted game velocity kit imports", () => {
+  const result = bundleSystemScripts([
+    {
+      name: "kitLoop",
+      script: {
+        exportName: "system_kitLoop",
+        helperImports: [
+          { imported: ["CollectorKit"], module: "@threenative/collector-kit" },
+          { imported: ["LaneRunnerKit"], module: "@threenative/lane-runner-kit" },
+          { imported: ["CheckpointRaceKit"], module: "@threenative/checkpoint-race-kit" },
+        ],
+        source: "() => ({ collector: CollectorKit.hud(CollectorKit.initial()), lane: LaneRunnerKit.tick(LaneRunnerKit.initial(), 1).score, race: CheckpointRaceKit.initial().status })",
+      },
+    },
+  ]);
+
+  assert.deepEqual(result.diagnostics, []);
+  assert.match(result.code ?? "", /const CollectorKit = Object\.freeze/);
+  assert.match(result.code ?? "", /const LaneRunnerKit = Object\.freeze/);
+  assert.match(result.code ?? "", /const CheckpointRaceKit = Object\.freeze/);
+  assert.deepEqual(runBundledSystem(result.code, "system_kitLoop"), {
+    collector: "Score 0 | Lives 3",
+    lane: 6,
+    race: "racing",
+  });
+});
+
 test("should normalize method shorthand system functions", () => {
   const result = bundleSystemScripts([
     {

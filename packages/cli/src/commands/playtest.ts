@@ -5,6 +5,7 @@ import { startWebPreview, type IWebPreviewServer } from "@threenative/runtime-we
 import { chromium } from "playwright";
 
 import { diagnosticResult, type ICommandResult } from "../diagnostics.js";
+import { buildProofArtifactMetadata, type IProofArtifactMetadata } from "../game/proofManifest.js";
 
 declare global {
   // Browser preview global exposed by @threenative/runtime-web-three.
@@ -48,6 +49,7 @@ export interface IPlaytestReport {
   movementDelta?: Vec3;
   movementThreshold: number;
   pass: boolean;
+  proofMetadata?: IProofArtifactMetadata;
   runtime: "web";
   url?: string;
 }
@@ -94,11 +96,18 @@ export async function playtestCommand(
   try {
     const runner = options.runner ?? runWebPlaytest;
     const report = await runner({ debugColliders, entityId, ...(expectAxis === undefined ? {} : { expectAxis }), expectMoved, frames, movementThreshold, press, projectPath });
+    const reportWithMetadata = {
+      ...report,
+      proofMetadata: await buildProofArtifactMetadata({
+        commandParameters: { command: "tn playtest", debugColliders, entity: entityId, expectAxis, expectMoved, frames, movementThreshold, press },
+        projectPath,
+      }),
+    };
     const code = report.pass ? "TN_PLAYTEST_OK" : "TN_PLAYTEST_FAILED";
     return {
       exitCode: report.pass ? 0 : 1,
       stdout: json
-        ? `${JSON.stringify({ code, ...report }, null, 2)}\n`
+        ? `${JSON.stringify({ code, ...reportWithMetadata }, null, 2)}\n`
         : `${report.pass ? "Playtest passed" : "Playtest failed"}: ${report.entity} moved ${report.distance.toFixed(4)} units.\n`,
     };
   } catch (error) {

@@ -101,11 +101,29 @@ commands now cover the compact bowling workflow:
 IDs.
 Authoring recipes now provide task-level composed operation plans for
 `third-person-controller`, `collectible`, `trigger-zone`,
-`kinematic-character`, and `health-bar`. `tn recipe ... --dry-run --json`
+`kinematic-character`, `health-bar`, `top-down-collector`, `lane-runner`, and
+`vehicle-checkpoint`. `tn recipe ... --dry-run --json`
 returns the registry operation plan, `tn recipe ... --json` applies it through
 the shared dispatcher, and `@threenative/authoring-client` exposes the same
 plans via `planRecipe()` / `recipe()` so TypeScript authoring keeps the same
 traceable source-mutation contract.
+Game velocity kits now add a read-first construction layer over that source
+boundary: `tn game plan --json` includes non-mutating kit candidates,
+`tn game next --json` persists `artifacts/game-production/task-graph.json`
+with concrete next actions for missing scripts, UI, asset provenance, stale
+screenshots, and scale proof, and `tn prove changed --json`/`tn proof diff
+--json` select focused validation/build/playtest/screenshot/asset proof from a
+hash manifest. `tn prove changed --run` executes deterministic owned steps and
+skips placeholder commands with stable diagnostics rather than guessing.
+Screenshot, record, playtest, scene proof, and game-QA sidecars now include
+artifact-local proof metadata for source/bundle freshness.
+`@threenative/collector-kit`, `@threenative/lane-runner-kit`, and
+`@threenative/checkpoint-race-kit` expose pure reducer helpers and are accepted
+as named portable script helper imports alongside the stdlib and racing kit.
+The editor production panel read model can consume the same task graph and
+proof freshness rows, and `pnpm verify:generated-games` now requires the
+promoted kit proof artifact under
+`examples/game-velocity-kits/artifacts/game-production/kit-proof.json`.
 
 The first agentic game-production workflow slice is implemented as a
 source-backed report contract rather than a raw Three.js scaffold. `tn game

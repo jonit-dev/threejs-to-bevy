@@ -217,6 +217,12 @@ supported stdlib equivalent.
 - [x] Compiler script source resolution accepts the racing-kit import path,
   bundles helper declarations into `scripts.bundle.js`, and records helper
   import metadata in `scripts.manifest.json`.
+- [x] Named imports from `@threenative/collector-kit`,
+  `@threenative/lane-runner-kit`, and
+  `@threenative/checkpoint-race-kit` are supported for promoted game velocity
+  reducers. These expose `CollectorKit`, `LaneRunnerKit`, and
+  `CheckpointRaceKit` as pure data reducers; scripts still own all runtime
+  context access and source-backed state persistence.
 
 Domain kits are opt-in packages. They must stay pure, deterministic, and
 data-driven; engine APIs such as `ctx.input`, `ctx.entity`, resources, and
@@ -233,8 +239,9 @@ context-helper bridge is `pnpm verify:scripting-helpers-lifecycle`.
 - [ ] Unsupported arbitrary npm dependencies in portable scripts.
 - [ ] Unsupported namespace, default, aliased, re-exported, relative, or
   arbitrary package helper imports in portable scripts; use named
-  `@threenative/script-stdlib` or `@threenative/racing-kit` imports for
-  promoted helpers.
+  `@threenative/script-stdlib`, `@threenative/racing-kit`,
+  `@threenative/collector-kit`, `@threenative/lane-runner-kit`, or
+  `@threenative/checkpoint-race-kit` imports for promoted helpers.
 - [ ] Unsupported unbounded async/await, promises, workers, and unrestricted
   async timers in systems; bounded fixed-trace tasks/channels and deterministic
   timer helpers are the portable subset.
