@@ -370,13 +370,24 @@ Third refactor pass evidence:
 - Verification: `pnpm --filter @threenative/authoring test` and
   `pnpm check:source-size`.
 
+Fourth refactor pass evidence:
+
+- Added `packages/ir/src/validationDiagnostics.ts` as a shared unsupported
+  field diagnostic helper and wired it through core animation validation
+  (`packages/ir/src/validate.ts`), retained UI validation
+  (`packages/ir/src/uiValidation.ts`), and asset source validation
+  (`packages/ir/src/assetValidation.ts`) without changing diagnostic codes,
+  paths, severities, or messages.
+- Verification: `pnpm --filter @threenative/ir test`, `pnpm check:source-size`,
+  and `pnpm verify:conformance`.
+
 ## 7. Acceptance Criteria
 
 - [x] `pnpm check:source-size` warning count is reduced from 19, or each remaining warning has an explicit owner and follow-up note.
 - [x] `packages/authoring/src/operations.ts` is split by operation family and no longer grows as the default home for all authoring behavior.
-- [ ] IR validation has shared validation/diagnostic helpers used by core, UI, and asset validation.
+- [x] IR validation has shared validation/diagnostic helpers used by core, UI, and asset validation.
 - [ ] Web and Bevy runtime world mapping keep behavior while moving feature-specific mapping into smaller modules.
 - [ ] CLI command files preserve command registration but delegate implementation to narrow command services.
 - [x] `MeshBuilder` remains public API-compatible while primitive generation, transforms, normals, colors, and build validation are separated internally.
 - [ ] All phase-specific tests pass.
-- [ ] `pnpm verify:conformance` passes after IR/runtime/compiler phases.
+- [x] `pnpm verify:conformance` passes after IR/runtime/compiler phases.

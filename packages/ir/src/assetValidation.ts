@@ -3,6 +3,7 @@ import { resolve } from "node:path";
 
 import type { IAssetsManifest, ITargetProfile } from "./types.js";
 import type { IIrDiagnostic } from "./validate.js";
+import { validateUnsupportedFields } from "./validationDiagnostics.js";
 import { isRecord, validateFiniteRange, validatePositiveFinite, validateUniqueIds, validateVec3 } from "./validationPrimitives.js";
 
 const MAX_RESIDUAL_ANIMATION_TIME_SECONDS = 600;
@@ -152,11 +153,12 @@ function validateEmbeddedAssetSource(
     });
     return;
   }
-  for (const key of Object.keys(value)) {
-    if (!["byteLength", "data", "encoding", "hash", "mediaType"].includes(key)) {
-      diagnostics.push({ code: "TN_IR_ASSET_EMBEDDED_FIELD_UNSUPPORTED", message: `Embedded asset '${asset.id}' uses unsupported field '${key}'.`, path: `${path}/${key}`, severity: "error" });
-    }
-  }
+  validateUnsupportedFields(diagnostics, value, ["byteLength", "data", "encoding", "hash", "mediaType"], (key) => ({
+    code: "TN_IR_ASSET_EMBEDDED_FIELD_UNSUPPORTED",
+    message: `Embedded asset '${asset.id}' uses unsupported field '${key}'.`,
+    path: `${path}/${key}`,
+    severity: "error",
+  }));
   if (value.encoding !== "base64") {
     diagnostics.push({ code: "TN_IR_ASSET_EMBEDDED_ENCODING_UNSUPPORTED", message: "Embedded asset encoding must be base64.", path: `${path}/encoding`, severity: "error" });
   }
@@ -199,11 +201,12 @@ function validateNetworkAssetSource(
     });
     return;
   }
-  for (const key of Object.keys(value)) {
-    if (!["cachePolicy", "integrity", "url"].includes(key)) {
-      diagnostics.push({ code: "TN_IR_ASSET_NETWORK_FIELD_UNSUPPORTED", message: `Network asset '${asset.id}' uses unsupported field '${key}'.`, path: `${path}/${key}`, severity: "error" });
-    }
-  }
+  validateUnsupportedFields(diagnostics, value, ["cachePolicy", "integrity", "url"], (key) => ({
+    code: "TN_IR_ASSET_NETWORK_FIELD_UNSUPPORTED",
+    message: `Network asset '${asset.id}' uses unsupported field '${key}'.`,
+    path: `${path}/${key}`,
+    severity: "error",
+  }));
   const url = value.url;
   if (typeof url !== "string" || !isHttpsUrl(url)) {
     diagnostics.push({

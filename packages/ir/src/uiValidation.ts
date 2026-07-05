@@ -1,5 +1,6 @@
 import type { IUiComponentDefinitionIr, IUiFocusScopeIr, IUiIr, IUiNodeIr, IUiThemeTokenIr, UiThemeTokenKind } from "./types.js";
 import type { IIrDiagnostic } from "./validate.js";
+import { validateUnsupportedFields } from "./validationDiagnostics.js";
 import { isRecord } from "./validationPrimitives.js";
 
 export function validateUi(ui: IUiIr, path: string, diagnostics: IIrDiagnostic[], entityIds = new Set<string>()): void {
@@ -31,15 +32,16 @@ function validateUiNode(
   entityIds: Set<string>,
 ): void {
   const raw = node as unknown as Record<string, unknown>;
-  for (const key of Object.keys(raw)) {
-    if (!["accessibilityLabel", "action", "anchorId", "attachTo", "binding", "children", "component", "disabled", "effects", "feedback", "focusable", "glyph", "id", "image", "kind", "label", "layout", "localization", "max", "min", "minimap", "navigation", "orientation", "progress", "responsive", "role", "spans", "src", "step", "style", "text", "tokenRefs", "tooltip", "value", "valueText", "virtualRange"].includes(key)) {
-      diagnostics.push({
-        code: "TN_IR_UI_FIELD_UNSUPPORTED",
-        message: `UI node '${node.id}' uses unsupported field '${key}'.`,
-        path: `${path}/${key}`,
-      });
-    }
-  }
+  validateUnsupportedFields(
+    diagnostics,
+    raw,
+    ["accessibilityLabel", "action", "anchorId", "attachTo", "binding", "children", "component", "disabled", "effects", "feedback", "focusable", "glyph", "id", "image", "kind", "label", "layout", "localization", "max", "min", "minimap", "navigation", "orientation", "progress", "responsive", "role", "spans", "src", "step", "style", "text", "tokenRefs", "tooltip", "value", "valueText", "virtualRange"],
+    (key) => ({
+      code: "TN_IR_UI_FIELD_UNSUPPORTED",
+      message: `UI node '${node.id}' uses unsupported field '${key}'.`,
+      path: `${path}/${key}`,
+    }),
+  );
   validateUnsupportedUiRequests(raw, path, diagnostics);
   validateUiLayout(node.layout, `${path}/layout`, diagnostics);
   validateUiResponsiveRules(node, `${path}/responsive`, diagnostics);

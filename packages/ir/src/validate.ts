@@ -54,6 +54,7 @@ import {
   validatePositiveVec3,
   validateUniqueIds,
 } from "./validationPrimitives.js";
+import { validateUnsupportedFields } from "./validationDiagnostics.js";
 
 export interface IIrDiagnostic {
   code: string;
@@ -346,17 +347,13 @@ function validateAnimations(
     });
   }
   const raw = animations as unknown as Record<string, unknown>;
-  for (const key of Object.keys(raw)) {
-    if (!["schema", "transformClips", "version"].includes(key)) {
-      diagnostics.push({
-        code: "TN_IR_ANIMATIONS_FIELD_UNSUPPORTED",
-        message: `Animations IR uses unsupported field '${key}'.`,
-        path: `${path}/${key}`,
-        severity: "error",
-        suggestion: "Use transformClips for portable transform animation; keep IK, morph targets, masks, and engine controllers out of portable IR.",
-      });
-    }
-  }
+  validateUnsupportedFields(diagnostics, raw, ["schema", "transformClips", "version"], (key) => ({
+    code: "TN_IR_ANIMATIONS_FIELD_UNSUPPORTED",
+    message: `Animations IR uses unsupported field '${key}'.`,
+    path: `${path}/${key}`,
+    severity: "error",
+    suggestion: "Use transformClips for portable transform animation; keep IK, morph targets, masks, and engine controllers out of portable IR.",
+  }));
   if (!Array.isArray(raw.transformClips)) {
     diagnostics.push({
       code: "TN_IR_TRANSFORM_ANIMATION_CLIPS_INVALID",
