@@ -375,11 +375,11 @@ export async function sceneCommand(argv: readonly string[], options: ISceneComma
     const sceneId = readPositional(normalizedArgv, 1);
     const entityId = readPositional(normalizedArgv, 2);
     if (sceneId === undefined || entityId === undefined) {
-      return renderUsage(json, "TN_SCENE_SET_TRANSFORM_ARGS_MISSING", "Usage: tn scene set-transform <scene-id> <entity-id> [--position x,y,z] [--rotation x,y,z] [--scale x,y,z] [--project <path>] [--json]");
+      return renderUsage(json, "TN_SCENE_SET_TRANSFORM_ARGS_MISSING", "Usage: tn scene set-transform <scene-id> <entity-id> [--position x,y,z] [--rotation x,y,z|--rotation-deg x,y,z] [--scale x,y,z] [--project <path>] [--json]");
     }
     const vectors = parseTransformVectors(normalizedArgv);
     if (vectors.diagnostic !== undefined) {
-      return renderUsage(json, vectors.diagnostic, "Transform vectors must use x,y,z numeric values.");
+      return renderUsage(json, vectors.diagnostic, "Transform vectors must use x,y,z numeric values; use either --rotation or --rotation-deg, not both.");
     }
     const result = await setTransform({ projectPath, sceneId, entityId, ...vectors.value });
     return renderSceneResult(result, json, result.ok ? `Transform for '${entityId}' updated.` : `Transform for '${entityId}' was not updated.`);
@@ -496,4 +496,3 @@ export async function sceneCommand(argv: readonly string[], options: ISceneComma
 
   return renderUsage(json, "TN_SCENE_COMMAND_UNKNOWN", sceneUsage());
 }
-

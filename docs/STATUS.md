@@ -135,6 +135,14 @@ authored origin to avoid drift, mirrors derivative velocity into kinematic
 Focused evidence: `pnpm --filter @threenative/ir test` and
 `pnpm --filter @threenative/runtime-web-three test`. Native Bevy mapping for
 the new `KinematicMover` component is still a documented parity gap.
+The Phase 5 authoring paper-cut slice upgrades the
+`third-person-controller` recipe to stamp feet-origin capsule colliders with
+`center: [0, height / 2, 0]`, extends `scene.set_collider` so that center is a
+first-class authoring operation argument, fixes `tn material set` so it can
+update a material row inside grouped multi-material documents, and adds
+`tn scene set-transform --rotation-deg x,y,z` for degree-authored transforms.
+Focused evidence: `pnpm --filter @threenative/authoring test` and
+`pnpm --filter @threenative/cli test`.
 Game velocity kits now add a read-first construction layer over that source
 boundary: `tn game plan --json` includes non-mutating kit candidates,
 `tn game next --json` persists `artifacts/game-production/task-graph.json`

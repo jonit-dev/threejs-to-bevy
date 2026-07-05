@@ -646,11 +646,12 @@ const operationEntries = [
     stringArg("entityId"),
     stringArg("kind", false),
     vectorArg("size", false),
+    vectorArg("center", false),
     numberArg("radius", false),
     numberArg("height", false),
     booleanArg("trigger", false),
   ]), async ({ args, projectPath }) =>
-    setColliderComponent({ entityId: requiredString(args, "entityId"), height: optionalNumber(args, "height"), kind: optionalString(args, "kind"), projectPath, radius: optionalNumber(args, "radius"), sceneId: requiredString(args, "sceneId"), size: optionalVector3(args, "size"), trigger: optionalBoolean(args, "trigger") })),
+    setColliderComponent({ center: optionalVector3(args, "center"), entityId: requiredString(args, "entityId"), height: optionalNumber(args, "height"), kind: optionalString(args, "kind"), projectPath, radius: optionalNumber(args, "radius"), sceneId: requiredString(args, "sceneId"), size: optionalVector3(args, "size"), trigger: optionalBoolean(args, "trigger") })),
   operation(descriptor("scene.set_character_controller", "Set a typed CharacterController component with defaults.", "scene", "source-document", [
     stringArg("sceneId"),
     stringArg("entityId"),

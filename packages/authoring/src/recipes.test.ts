@@ -18,11 +18,36 @@ test("should produce deterministic operations for third-person-controller", () =
   assert.deepEqual(plan.operations, [
     { name: "scene.add_entity", args: { sceneId: "arena", entityId: "player" } },
     { name: "scene.set_rigid_body", args: { sceneId: "arena", entityId: "player", kind: "kinematic" } },
-    { name: "scene.set_collider", args: { sceneId: "arena", entityId: "player", kind: "capsule", height: 1.8, radius: 0.35 } },
+    { name: "scene.set_collider", args: { sceneId: "arena", entityId: "player", kind: "capsule", center: [0, 0.9, 0], height: 1.8, radius: 0.35 } },
     { name: "scene.set_character_controller", args: { sceneId: "arena", entityId: "player", grounding: "raycast", moveXAxis: "MoveX", moveZAxis: "MoveZ", speed: 6 } },
     { name: "scene.set_camera_component", args: { sceneId: "arena", entityId: "camera.main", mode: "third-person-follow", targetId: "player" } },
   ]);
   assert.equal(plan.operations.every((operation) => getAuthoringOperationDescriptor(operation.name) !== undefined), true);
+});
+
+test("should stamp capsule center at half height when third-person recipe applies", () => {
+  const plan = planAuthoringRecipe({
+    args: {
+      cameraId: "camera.main",
+      entityId: "player",
+      height: 2.2,
+      radius: 0.4,
+      sceneId: "arena",
+    },
+    recipeId: "third-person-controller",
+  });
+
+  const collider = plan.operations.find((operation) => operation.name === "scene.set_collider");
+
+  assert.equal(plan.ok, true);
+  assert.deepEqual(collider?.args, {
+    sceneId: "arena",
+    entityId: "player",
+    kind: "capsule",
+    center: [0, 1.1, 0],
+    height: 2.2,
+    radius: 0.4,
+  });
 });
 
 test("should report stable diagnostics for unsupported recipe ids", () => {

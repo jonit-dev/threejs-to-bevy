@@ -132,6 +132,12 @@ implementation:
   tracking, derivative kinematic velocity, and formatted UI text resolution.
   Native Bevy does not yet map or prove the new `KinematicMover` component, and
   no web/Bevy conformance fixture has been added for this contract yet.
+- The authoring-abstractions Phase 5 paper-cut slice improves structured
+  authoring commands and recipes: third-person recipes now stamp safe capsule
+  centers, material editing works inside grouped material documents, and scene
+  transforms accept degree-authored rotations. These are source-authoring
+  ergonomics and validation-path improvements; they do not add a new Bevy
+  runtime capability.
 - `tn game plan --json` now emits a schema-tagged
   `threenative.game-plan` artifact with non-mutating source-shape guidance for
   scene, input, systems, UI, materials, and assets documents, including

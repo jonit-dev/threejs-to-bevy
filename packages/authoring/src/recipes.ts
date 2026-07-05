@@ -205,10 +205,12 @@ const recipePlanners: Record<AuthoringRecipeId, IRecipePlanner> = {
       const sceneId = requiredStringValue(args, "sceneId");
       const entityId = requiredStringValue(args, "entityId");
       const cameraId = requiredStringValue(args, "cameraId");
+      const height = optionalNumberValue(args, "height") ?? 1.8;
+      const radius = optionalNumberValue(args, "radius") ?? 0.35;
       return [
         operation("scene.add_entity", { sceneId, entityId, prefabId: optionalStringValue(args, "prefabId") }),
         operation("scene.set_rigid_body", { sceneId, entityId, kind: "kinematic" }),
-        operation("scene.set_collider", { sceneId, entityId, kind: "capsule", height: optionalNumberValue(args, "height") ?? 1.8, radius: optionalNumberValue(args, "radius") ?? 0.35 }),
+        operation("scene.set_collider", { sceneId, entityId, kind: "capsule", center: [0, height / 2, 0], height, radius }),
         operation("scene.set_character_controller", { sceneId, entityId, grounding: "raycast", moveXAxis: optionalStringValue(args, "moveXAxis") ?? "MoveX", moveZAxis: optionalStringValue(args, "moveZAxis") ?? "MoveZ", speed: optionalNumberValue(args, "speed") ?? 6 }),
         operation("scene.set_camera_component", { sceneId, entityId: cameraId, mode: "third-person-follow", targetId: entityId }),
       ];

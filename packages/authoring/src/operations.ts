@@ -338,6 +338,7 @@ export interface ISetColliderComponentOptions extends IAuthoringOperationContext
   entityId: string;
   kind?: string;
   size?: [number, number, number];
+  center?: [number, number, number];
   radius?: number;
   height?: number;
   trigger?: boolean;
@@ -1478,6 +1479,7 @@ export async function setColliderComponent(options: ISetColliderComponentOptions
     value: {
       kind: options.kind ?? "box",
       ...(options.size === undefined ? { size: [1, 1, 1] } : { size: options.size }),
+      ...(options.center === undefined ? {} : { center: options.center }),
       ...(options.radius === undefined ? {} : { radius: options.radius }),
       ...(options.height === undefined ? {} : { height: options.height }),
       ...(options.trigger === undefined ? {} : { trigger: options.trigger }),
@@ -2144,7 +2146,9 @@ export async function createMaterial(options: ICreateMaterialOptions): Promise<I
 }
 
 export async function setMaterial(options: ISetMaterialOptions): Promise<IAuthoringOperationResult> {
-  return mutateSourceDocument(options, "material", options.materialId, (data, file) => {
+  const project = await loadAuthoringProject({ projectPath: options.projectPath });
+  const document = project.documents.find((candidate) => candidate.kind === "material" && isRecord(candidate.data) && idsFromArray(candidate.data.materials).includes(options.materialId));
+  const mutateMaterial = (data: Record<string, unknown>, file: string): void | IAuthoringDiagnostic[] => {
     const materials = ensureArrayProperty(data, "materials");
     const material = findSceneItem(materials, options.materialId);
     if (material === undefined) {
@@ -2172,7 +2176,13 @@ export async function setMaterial(options: ISetMaterialOptions): Promise<IAuthor
     setOptionalNumber(material, "roughness", options.roughness);
     setOptionalNumber(material, "transmission", options.transmission);
     return [];
-  });
+  };
+
+  if (document !== undefined) {
+    return mutateLoadedSourceDocument(project, document, mutateMaterial);
+  }
+
+  return mutateSourceDocument(options, "material", options.materialId, mutateMaterial);
 }
 
 export async function createMeshPrimitive(options: ICreateMeshPrimitiveOptions): Promise<IAuthoringOperationResult> {

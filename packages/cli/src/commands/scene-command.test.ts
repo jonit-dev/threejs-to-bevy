@@ -367,6 +367,24 @@ test("scene-command mutates structured scene documents deterministically", async
   }
 });
 
+test("scene-command converts degree rotations when setting transforms", async () => {
+  const root = await createSceneProject({ minimal: true });
+
+  try {
+    const add = await sceneCommand(["add-entity", "scene.arena", "rival-kart", "--prefab", "kart", "--project", root, "--json"]);
+    const transform = await sceneCommand(["set-transform", "scene.arena", "rival-kart", "--rotation-deg", "0,90,180", "--project", root, "--json"]);
+    const scene = JSON.parse(await readFile(join(root, "content", "scenes", "arena.scene.json"), "utf8")) as {
+      entities: Array<{ id: string; transform?: { rotation?: number[] } }>;
+    };
+
+    assert.equal(add.exitCode, 0);
+    assert.equal(transform.exitCode, 0);
+    assert.deepEqual(scene.entities.find((entity) => entity.id === "rival-kart")?.transform?.rotation, [0, 1.570796, 3.141593]);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
 test("scene-command assembles modular track tiles with inspected pivot corrections", async () => {
   const root = await createSceneProject();
   try {

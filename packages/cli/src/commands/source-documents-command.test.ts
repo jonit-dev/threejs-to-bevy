@@ -265,6 +265,39 @@ test("material command creates and updates source doc", async () => {
   }
 });
 
+test("material command sets a material inside a grouped material document", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-cli-material-grouped-"));
+  try {
+    await mkdir(join(root, "content", "materials"), { recursive: true });
+    await writeFile(
+      join(root, "content", "materials", "arena.materials.json"),
+      `${JSON.stringify({
+        schema: "threenative.materials",
+        version: "0.1.0",
+        id: "arena-materials",
+        materials: [
+          { id: "mat.floor", color: "#ffffff" },
+          { id: "mat.wall", color: "#cccccc" },
+        ],
+      }, null, 2)}\n`,
+    );
+
+    const set = await materialCommand(["set", "mat.wall", "--color", "#112233", "--roughness", "0.75", "--project", root, "--json"]);
+    const doc = JSON.parse(await readFile(join(root, "content", "materials", "arena.materials.json"), "utf8")) as {
+      materials: Array<Record<string, unknown>>;
+    };
+
+    assert.equal(set.exitCode, 0);
+    assert.deepEqual(doc.materials, [
+      { id: "mat.floor", color: "#ffffff" },
+      { id: "mat.wall", color: "#112233", roughness: 0.75 },
+    ]);
+    assert.deepEqual((JSON.parse(set.stdout) as { filesWritten: string[] }).filesWritten, ["content/materials/arena.materials.json"]);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
 test("material command rejects invalid numeric PBR flags", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-cli-material-invalid-"));
   try {

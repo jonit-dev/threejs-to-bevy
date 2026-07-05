@@ -176,7 +176,7 @@ export function readPositional(argv: readonly string[], index: number): string |
   return positionals[index];
 }
 
-const flagsWithValues = new Set(["--project", "--file", "--world", "--prefab", "--primitive", "--color", "--asset", "--asset-dir", "--layout", "--prefix", "--path", "--value", "--position", "--rotation", "--scale", "--components", "--origin", "--spacing", "--mode", "--target", "--module", "--export", "--resource", "--out", "--web-url", "--camera", "--native-frame", "--kind", "--activation", "--name", "--intensity", "--range", "--angle", "--mesh", "--material", "--mass", "--damping", "--gravity-scale", "--size", "--radius", "--height", "--speed", "--move-x", "--move-z", "--grounding", "--slope-limit", "--step-offset", "--visible", "--cast-shadow", "--receive-shadow", "--trigger", "--blocking", "--shape", "--straight-count", "--min-occupancy", "--max-roll"]);
+const flagsWithValues = new Set(["--project", "--file", "--world", "--prefab", "--primitive", "--color", "--asset", "--asset-dir", "--layout", "--prefix", "--path", "--value", "--position", "--rotation", "--rotation-deg", "--scale", "--components", "--origin", "--spacing", "--mode", "--target", "--module", "--export", "--resource", "--out", "--web-url", "--camera", "--native-frame", "--kind", "--activation", "--name", "--intensity", "--range", "--angle", "--mesh", "--material", "--mass", "--damping", "--gravity-scale", "--size", "--radius", "--height", "--speed", "--move-x", "--move-z", "--grounding", "--slope-limit", "--step-offset", "--visible", "--cast-shadow", "--receive-shadow", "--trigger", "--blocking", "--shape", "--straight-count", "--min-occupancy", "--max-roll"]);
 
 export function sceneUsage(): string {
   return "Usage: tn scene create <scene-id> [--file <path>] [--project <path>] [--json]\n       tn scene add-prefab-instance <scene-id> <instance-id> --prefab <prefab-id> [--position x,y,z] [--components <json-object>] [--replace] [--project <path>] [--json]\n       tn scene layout ten-pin <scene-id> --prefab <prefab-id> [--prefix pin] [--origin x,y,z] [--spacing n] [--replace] [--project <path>] [--json]\n       tn scene add-tag <scene-id> <entity-id> <tag> [--project <path>] [--json]\n       tn scene add-group <scene-id> <group-id> [--name <label>] [--position x,y,z] [--project <path>] [--json]\n       tn scene set-camera-look-at <scene-id> <camera-id> --position x,y,z --target x,y,z [--project <path>] [--json]\n       tn scene proof-camera <scene-id> --camera <camera-id> --target <entity-id> [--min-occupancy <n>] [--max-roll <radians>] [--project <path>] [--json]\n       tn scene generate-modular-track <scene-id> --asset-dir <path> [--shape oval] [--size small|medium|large] [--straight-count <odd-number>] [--prefix <id-prefix>] [--project <path>] [--json]\n       tn scene add-modular-track <scene-id> --asset-dir <path> --layout <json-array> [--prefix <id-prefix>] [--project <path>] [--json]\n       tn scene proof-modular-track <scene-id> --asset-dir <path> [--prefix <id-prefix>] [--actors <entity-id,...>] [--project <path>] [--json]\n       tn scene lifecycle add <scene-id> [--kind <kind>] [--activation <policy>] [--initial] [--project <path>] [--json]\n       tn scene validate [scene-id] [--project <path>] [--json]\n       tn scene inspect <scene-id> [--project <path>] [--json]\n       tn scene proof <scene-id> --project <path> --out <dir> [--web-url <url>] [--native] [--json]";
@@ -250,6 +250,9 @@ export function parseStringListFlag(argv: readonly string[], flag: string): { di
 
 export function parseTransformVectors(argv: readonly string[]): { diagnostic?: string; value?: { position?: [number, number, number]; rotation?: [number, number, number]; scale?: [number, number, number] } } {
   const value: { position?: [number, number, number]; rotation?: [number, number, number]; scale?: [number, number, number] } = {};
+  if (readFlag(argv, "--rotation") !== undefined && readFlag(argv, "--rotation-deg") !== undefined) {
+    return { diagnostic: "TN_SCENE_ROTATION_FLAGS_CONFLICT" };
+  }
   for (const [flag, key] of [
     ["--position", "position"],
     ["--rotation", "rotation"],
@@ -264,6 +267,14 @@ export function parseTransformVectors(argv: readonly string[]): { diagnostic?: s
       return { diagnostic: "TN_SCENE_VECTOR_INVALID" };
     }
     value[key] = vector;
+  }
+  const rotationDeg = readFlag(argv, "--rotation-deg");
+  if (rotationDeg !== undefined) {
+    const vector = parseVector3(rotationDeg);
+    if (vector === undefined) {
+      return { diagnostic: "TN_SCENE_VECTOR_INVALID" };
+    }
+    value.rotation = vector.map((value) => round(value * Math.PI / 180)) as [number, number, number];
   }
   return { value };
 }

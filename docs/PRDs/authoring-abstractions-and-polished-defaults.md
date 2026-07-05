@@ -591,3 +591,20 @@ table and before/after screenshots)_
   `node .threenative/cli/index.js verify --frames 2 --json`,
   `node .threenative/cli/index.js game score --project . --json`, and
   directional playtests for `KeyW`, `KeyS`, `KeyA`, and `KeyD`.
+
+### Phase 5 Partial Checkpoint
+
+- Upgraded the `third-person-controller` authoring recipe to emit a capsule
+  collider `center` at half the authored height, removing the feet-origin
+  capsule footgun for recipe users.
+- Extended the `scene.set_collider` authoring operation to accept a `center`
+  vector so recipes and clients can persist safe collider centers without raw
+  JSON edits.
+- Fixed `tn material set` to locate and update material rows inside grouped
+  multi-material documents instead of requiring document id and material id to
+  match.
+- Added `tn scene set-transform --rotation-deg x,y,z`, converting authored
+  degrees to stable radian source values and rejecting conflicting
+  `--rotation` / `--rotation-deg` use.
+- Evidence run: `pnpm --filter @threenative/authoring test` and
+  `pnpm --filter @threenative/cli test`.
