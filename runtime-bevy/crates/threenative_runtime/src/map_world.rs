@@ -35,15 +35,16 @@ use threenative_loader::{
 
 use crate::assets::{load_texture_asset, texture_uv_transform};
 use crate::cameras::{
-    NativeRenderLayerMap, active_camera_ids, apply_camera_components, build_render_layer_map,
-    camera_order, render_layers_for_names,
+    active_camera_ids, apply_camera_components, build_render_layer_map, camera_order,
+    render_layers_for_names, NativeRenderLayerMap,
 };
 use crate::render_targets::{
-    NativeCustomProjection, NativeRenderTargetRegistry, allocate_render_targets,
-    camera_render_target,
+    allocate_render_targets, camera_render_target, NativeCustomProjection,
+    NativeRenderTargetRegistry,
 };
 use crate::rendering::spawn_rendered_particles;
 use crate::stylized_nature::{grass_material_policy, resolve_source_assets};
+use crate::world_mapping::attach_entity_hierarchy;
 
 // ThreeNative lights are authored in Three.js-style scalar units. Bevy stores
 // physically named units and multiplies lighting by camera Exposure, so the
@@ -249,22 +250,7 @@ pub fn map_bundle_into_world(world: &mut World, bundle: &LoadedBundle) -> Result
     }
     world.insert_resource(material_handles);
 
-    for entity in &bundle.world.entities {
-        let Some(parent_id) = entity
-            .components
-            .hierarchy
-            .as_ref()
-            .and_then(|hierarchy| hierarchy.parent.as_deref())
-        else {
-            continue;
-        };
-        if let (Some(child), Some(parent)) = (
-            entities_by_id.get(entity.id.as_str()),
-            entities_by_id.get(parent_id),
-        ) {
-            world.entity_mut(*parent).push_children(&[*child]);
-        }
-    }
+    attach_entity_hierarchy(world, bundle, &entities_by_id);
     spawn_rendered_particles(world, bundle, 1.0);
 
     Ok(())

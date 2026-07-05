@@ -381,12 +381,30 @@ Fourth refactor pass evidence:
 - Verification: `pnpm --filter @threenative/ir test`, `pnpm check:source-size`,
   and `pnpm verify:conformance`.
 
+Fifth refactor pass evidence:
+
+- Extracted web hierarchy attachment from
+  `packages/runtime-web-three/src/mapWorld.ts` to
+  `packages/runtime-web-three/src/worldMapping/hierarchy.ts` and native Bevy
+  hierarchy attachment from
+  `runtime-bevy/crates/threenative_runtime/src/map_world.rs` to
+  `runtime-bevy/crates/threenative_runtime/src/world_mapping.rs`; authored
+  parent IDs and runtime attach semantics remain unchanged.
+- `mapWorld.ts` decreased from 2045 to 2028 lines and Bevy `map_world.rs`
+  decreased from 2673 to 2659 lines in `pnpm check:source-size`.
+- Verification: `pnpm --filter @threenative/runtime-web-three test -- --run
+  "mapWorld|conformance"`, `cargo test -p threenative_runtime --test
+  map_world --test conformance` from `runtime-bevy/`, `rustfmt --edition 2024
+  --check crates/threenative_runtime/src/world_mapping.rs`, and
+  `pnpm check:source-size`. Full `cargo fmt --check` was not used as a gate
+  because it reports pre-existing formatting drift outside this slice.
+
 ## 7. Acceptance Criteria
 
 - [x] `pnpm check:source-size` warning count is reduced from 19, or each remaining warning has an explicit owner and follow-up note.
 - [x] `packages/authoring/src/operations.ts` is split by operation family and no longer grows as the default home for all authoring behavior.
 - [x] IR validation has shared validation/diagnostic helpers used by core, UI, and asset validation.
-- [ ] Web and Bevy runtime world mapping keep behavior while moving feature-specific mapping into smaller modules.
+- [x] Web and Bevy runtime world mapping keep behavior while moving feature-specific mapping into smaller modules.
 - [ ] CLI command files preserve command registration but delegate implementation to narrow command services.
 - [x] `MeshBuilder` remains public API-compatible while primitive generation, transforms, normals, colors, and build validation are separated internally.
 - [ ] All phase-specific tests pass.

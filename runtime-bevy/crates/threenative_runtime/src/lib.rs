@@ -4,8 +4,8 @@ use bevy::{ecs::system::SystemParam, prelude::*, render::camera::ClearColorConfi
 use thiserror::Error;
 use threenative_components::ThreeNativeId;
 use threenative_loader::{
-    EnvironmentSceneIr, LoadError, LoadedBundle, MaterialsIr, MeshRendererComponent,
-    TransformComponent, UiBindingIr, UiNodeIr, WorldIr, load_bundle,
+    load_bundle, EnvironmentSceneIr, LoadError, LoadedBundle, MaterialsIr, MeshRendererComponent,
+    TransformComponent, UiBindingIr, UiNodeIr, WorldIr,
 };
 
 pub mod animation;
@@ -57,6 +57,7 @@ pub mod ui;
 pub mod ui_debug;
 pub mod ui_persistence_settings_facades;
 pub mod walkability;
+pub mod world_mapping;
 
 #[derive(Debug, Error)]
 pub enum RuntimeError {

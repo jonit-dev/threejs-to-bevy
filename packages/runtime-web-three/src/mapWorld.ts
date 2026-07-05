@@ -15,6 +15,7 @@ import {
 import type { IWebBundle } from "./loadBundle.js";
 import { atmosphereColorManagementExposure } from "./rendering.js";
 import type { IRenderTargetRegistry } from "./renderTargets.js";
+import { attachWorldHierarchy } from "./worldMapping/hierarchy.js";
 
 export type { IRuntimeDiagnostic } from "@threenative/ir";
 export type { ICameraViewPlan } from "./cameras.js";
@@ -159,20 +160,7 @@ export function mapWorld(bundle: IWebBundle): IThreeWorld {
     objectsById.set(entity.id, object);
   }
 
-  for (const entity of entities) {
-    const object = objectsById.get(entity.id);
-    if (object === undefined) {
-      continue;
-    }
-
-    const parentId = readParentId(entity);
-    const parent = parentId === undefined ? undefined : objectsById.get(parentId);
-    if (parent !== undefined) {
-      parent.add(object);
-    } else {
-      scene.add(object);
-    }
-  }
+  attachWorldHierarchy(scene, entities, objectsById);
 
   const cameras = new Map<string, THREE.Camera>();
   for (const entity of entities) {
@@ -2031,11 +2019,6 @@ function emissiveBloomObservation(entityId: string, material: IMaterialIr): IWeb
 function colorLuminance(color: IMaterialIr["color"]): number {
   const three = colorToThree(color);
   return three.r * 0.2126 + three.g * 0.7152 + three.b * 0.0722;
-}
-
-function readParentId(entity: IWorldEntity): string | undefined {
-  const hierarchy = entity.components.Hierarchy as { parent?: string } | undefined;
-  return hierarchy?.parent;
 }
 
 function readActiveCamera(bundle: IWebBundle): string | undefined {
