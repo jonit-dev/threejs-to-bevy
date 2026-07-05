@@ -62,6 +62,24 @@ test("should fail when bevy screenshot drifts from web", async () => {
   }
 });
 
+test("should fail near-black web screenshots as blank evidence", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-baseline-visual-dark-web-"));
+  try {
+    const report = await verifyBaselineVisualCheckpoint({
+      artifactDir: root,
+      bundlePath: root,
+      checkpoint: v1Checkpoint,
+      screenshotCapturer: async ({ artifactDir }) =>
+        mockCapture(artifactDir, solidFrame([20, 20, 20]), solidFrame([120, 140, 160])),
+    });
+
+    assert.equal(report.status, "fail");
+    assert.ok(report.diagnostics.some((diagnostic) => diagnostic.code === "TN_BASELINE_VISUAL_WEB_BLANK"));
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
 test("should fail when bevy is darker than web", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-baseline-visual-underexposure-"));
   try {

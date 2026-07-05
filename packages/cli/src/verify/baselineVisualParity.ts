@@ -3,7 +3,7 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { promisify } from "node:util";
 import { startWebPreview } from "@threenative/runtime-web-three";
-import { chromium } from "playwright";
+import { chromium, type Page } from "playwright";
 import { PNG } from "pngjs";
 
 import { cargoCaptureEnv, resolveCaptureBinaryPath, resolveCargoCommand } from "./captureCargo.js";
@@ -207,14 +207,14 @@ export async function verifyBaselineVisualCheckpoint(options: {
   const bevyRegion = applyRegion(bevy, options.checkpoint.region);
   const webNonblank = analyzeNonblank(webRegion);
   const bevyNonblank = analyzeNonblank(bevyRegion);
-  if (!webNonblank.ok) {
+  if (!webNonblank.ok || isFrameTooDark(webRegion)) {
     diagnostics.push({
       code: "TN_BASELINE_VISUAL_WEB_BLANK",
       message: `Web screenshot is blank or near-blank for checkpoint '${options.checkpoint.id}': ${capture.webScreenshotPath}`,
       severity: "error",
     });
   }
-  if (!bevyNonblank.ok) {
+  if (!bevyNonblank.ok || isFrameTooDark(bevyRegion)) {
     diagnostics.push({
       code: "TN_BASELINE_VISUAL_BEVY_BLANK",
       message: `Bevy screenshot is blank or near-blank for checkpoint '${options.checkpoint.id}': ${capture.bevyScreenshotPath}`,
@@ -356,11 +356,41 @@ async function captureThreeJsScreenshot(
     if (settleFrames > 0) {
       await page.waitForTimeout(Math.max(500, settleFrames * 16));
     }
-    await page.screenshot({ path: outputPath });
+    await captureCanvasPng(page, outputPath);
+    await assertScreenshotWritten(outputPath, "Three.js web");
   } finally {
     await browser.close();
     await server.close();
   }
+}
+
+async function captureCanvasPng(page: Page, outputPath: string): Promise<void> {
+  let lastError: unknown;
+  for (let attempt = 1; attempt <= 5; attempt += 1) {
+    try {
+      const pngBase64 = await page.evaluate(`(() => {
+        const canvas = document.querySelector("canvas");
+        if (!(canvas instanceof HTMLCanvasElement)) {
+          throw new Error("ThreeNative web preview did not create a canvas.");
+        }
+        const dataUrl = canvas.toDataURL("image/png");
+        return dataUrl.slice(dataUrl.indexOf(",") + 1);
+      })()`);
+      if (typeof pngBase64 !== "string" || pngBase64.length === 0) {
+        throw new Error("ThreeNative web preview returned an invalid canvas PNG.");
+      }
+      await writeFile(outputPath, Buffer.from(pngBase64, "base64"));
+      await assertScreenshotWritten(outputPath, "Three.js web");
+      return;
+    } catch (error) {
+      lastError = error;
+      if (attempt < 5) {
+        await page.waitForTimeout(500);
+      }
+    }
+  }
+  const message = lastError instanceof Error ? lastError.message : String(lastError);
+  throw new Error(`Three.js web screenshot capture failed after 5 attempts: ${message}`);
 }
 
 async function captureBevyScreenshot(
@@ -435,6 +465,17 @@ async function assertScreenshotWritten(path: string, runtime: string): Promise<v
   if (peakLuma < 35) {
     throw new Error(`${runtime} screenshot capture wrote a blank/dark PNG: ${path}`);
   }
+}
+
+function isFrameTooDark(frame: IPixelFrame): boolean {
+  let peakLuma = 0;
+  for (let index = 0; index < frame.data.length; index += 4) {
+    const red = frame.data[index] ?? 0;
+    const green = frame.data[index + 1] ?? 0;
+    const blue = frame.data[index + 2] ?? 0;
+    peakLuma = Math.max(peakLuma, Math.floor((red + green + blue) / 3));
+  }
+  return peakLuma < 35;
 }
 
 function applyRegion(frame: IPixelFrame, region?: INormalizedRegion): IPixelFrame {
