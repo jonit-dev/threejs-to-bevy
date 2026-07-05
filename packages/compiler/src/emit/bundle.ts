@@ -467,12 +467,22 @@ function readStructuredUiBindings(data: Record<string, unknown>): Map<string, IU
       continue;
     }
     bindings.set(node, {
+      ...structuredUiBindingFields(binding),
       ...(fieldParts.length === 0 ? {} : { field: fieldParts.join(".") }),
       kind: "resource",
       name,
     });
   }
   return bindings;
+}
+
+function structuredUiBindingFields(binding: Record<string, unknown>): { fields?: string[]; format?: string } {
+  const fields = readStringList(binding.fields);
+  const format = readString(binding.format);
+  return {
+    ...(fields.length === 0 ? {} : { fields }),
+    ...(format === undefined ? {} : { format }),
+  };
 }
 
 function applyStructuredUiBindings(node: IUiNodeIr, bindings: ReadonlyMap<string, IUiNodeIr["binding"]>): IUiNodeIr {

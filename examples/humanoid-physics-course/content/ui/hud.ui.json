@@ -48,6 +48,11 @@
   ],
   "bindings": [
     { "node": "hud.status", "resource": "GameState.status" },
-    { "node": "hud.progress", "resource": "GameState.hudLine" }
+    {
+      "node": "hud.progress",
+      "resource": "GameState",
+      "fields": ["checkpoint", "checkpointTotal", "hits", "elapsed"],
+      "format": "CP {checkpoint}/{checkpointTotal}  Hits {hits}  {elapsed:fixed1}"
+    }
   ]
 }

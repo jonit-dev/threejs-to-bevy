@@ -8,7 +8,7 @@ type Vec3Tuple = [number, number, number];
 //   [-sin(yaw), 0, -cos(yaw)] and heading = cameraYaw + atan2(-dirX, -dirZ)
 //   (camera-relative input, matching CharacterRig's cameraYaw convention).
 // - CoursePlayer carries gameplay state (speed/heading/yaw/checkpoint/...).
-// - GameState carries HUD text plus the camera rig state.
+// - GameState carries HUD values plus the camera rig state.
 
 export function updateHumanoidCourse(context: ScriptContext): void {
   // Movement feel tunables.
@@ -45,16 +45,13 @@ export function updateHumanoidCourse(context: ScriptContext): void {
     player.patch?.("CoursePlayer", { speed: 0, heading: 0, checkpoint: 0, hits: 0, finished: false, yaw: 0, lastHitAt: -10 });
     patchState({
       checkpoint: 0,
+      checkpointTotal: 2,
       elapsed: 0,
       hits: 0,
       status: "Course",
       cameraYaw: 0,
       cameraFollow: START_POSITION,
       cameraDistance: 4.1,
-      checkpointText: "Checkpoint 0/2",
-      hitText: "Hits 0",
-      timerText: "00.0",
-      hudLine: "CP 0/2  Hits 0  00.0",
     });
   };
 
@@ -62,25 +59,6 @@ export function updateHumanoidCourse(context: ScriptContext): void {
     reset();
     context.animation?.play?.(player, "idle", { loop: true, sourceClip: "Idle" });
     return;
-  }
-
-  // Sweeper hazards ride a sine wave; velocity carries the true derivative so
-  // physics prediction between script ticks matches the analytic path.
-  for (const entity of entities) {
-    const hazard = entity.get?.("SweeperHazard");
-    if (!isRecord(hazard) || !isVec3(hazard.origin)) {
-      continue;
-    }
-    const angularSpeed = Number(hazard.speed ?? 1);
-    const radius = Number(hazard.radius ?? 1);
-    const angle = elapsed * angularSpeed + Number(hazard.phase ?? 0);
-    const wave = Math.sin(angle) * radius;
-    const waveVelocity = Math.cos(angle) * angularSpeed * radius;
-    const next = hazard.axis === "z"
-      ? [hazard.origin[0], hazard.origin[1], hazard.origin[2] + wave] as Vec3Tuple
-      : [hazard.origin[0] + wave, hazard.origin[1], hazard.origin[2]] as Vec3Tuple;
-    entity.transform().setPosition(Vec3.round(next, 6));
-    entity.patch?.("RigidBody", { kind: "kinematic", gravityScale: 0, velocity: hazard.axis === "z" ? [0, 0, waveVelocity] : [waveVelocity, 0, 0] });
   }
 
   const stats = player.get?.("CoursePlayer") ?? { speed: 0, heading: 0, checkpoint: 0, hits: 0, finished: false, yaw: 0 };
@@ -175,18 +153,15 @@ export function updateHumanoidCourse(context: ScriptContext): void {
         player.patch?.("CoursePlayer", { ...stats, checkpoint, hits, finished: true, heading, speed: 0, yaw });
         patchState({
           checkpoint,
+          checkpointTotal: 2,
           elapsed,
           hits,
           status: "Course complete. Press R to run again.",
-          checkpointText: "Checkpoint 2/2",
-          hitText: `Hits ${hits}`,
-          timerText: elapsed.toFixed(1),
-          hudLine: `CP 2/2  Hits ${hits}  ${elapsed.toFixed(1)}`,
         });
         return;
       }
     }
-    const hazard = entity.get?.("SweeperHazard");
+    const hazard = entity.get?.("KinematicMover");
     if (isRecord(hazard) && Vec3.distance2d(next, entity.transform().positionOr([0, 0, 0])) < 0.82 && elapsed - lastHitAt > HIT_COOLDOWN) {
       hits += 1;
       lastHitAt = elapsed;
@@ -197,13 +172,10 @@ export function updateHumanoidCourse(context: ScriptContext): void {
   player.patch?.("CoursePlayer", { ...stats, checkpoint, hits, finished: false, heading, lastHitAt, speed, yaw });
   patchState({
     checkpoint,
+    checkpointTotal: 2,
     elapsed,
     hits,
     status,
-    checkpointText: `Checkpoint ${checkpoint}/2`,
-    hitText: `Hits ${hits}`,
-    timerText: elapsed.toFixed(1),
-    hudLine: `CP ${checkpoint}/2  Hits ${hits}  ${elapsed.toFixed(1)}`,
   });
 }
 

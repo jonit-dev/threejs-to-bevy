@@ -143,6 +143,17 @@ update a material row inside grouped multi-material documents, and adds
 `tn scene set-transform --rotation-deg x,y,z` for degree-authored transforms.
 Focused evidence: `pnpm --filter @threenative/authoring test` and
 `pnpm --filter @threenative/cli test`.
+The humanoid physics course now applies the non-player-movement authoring
+abstractions in durable source: sweeper hazards use declarative
+`KinematicMover`, HUD progress uses formatted `GameState` UI bindings instead
+of script-built strings, and push crates omit redundant `inverseMass` when
+`mass` is authored. Source validation accepts/rejects the promoted
+`KinematicMover` and formatted binding shapes, and compiler lowering preserves
+formatted structured UI bindings into `ui.ir.json`. Focused evidence:
+`pnpm --filter @threenative/authoring test`,
+`pnpm --filter @threenative/compiler test`, and
+`tn verify --frames 2 --json` plus `tn game qa --run-proof --json` in
+`examples/humanoid-physics-course`.
 Game velocity kits now add a read-first construction layer over that source
 boundary: `tn game plan --json` includes non-mutating kit candidates,
 `tn game next --json` persists `artifacts/game-production/task-graph.json`

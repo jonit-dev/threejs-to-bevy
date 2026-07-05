@@ -31,6 +31,7 @@ import {
   inputDocumentSchema,
   inputPersistedBindingOverrideKeys,
   instanceKeys,
+  kinematicMoverComponentKeys,
   lightComponentKeys,
   logicalIdPattern,
   materialDocumentSchema,
@@ -75,6 +76,8 @@ import {
   supportedInputCaptureStates,
   supportedInputOverrideDevices,
   supportedInputRebindKinds,
+  supportedKinematicMoverAxes,
+  supportedKinematicMoverModes,
   supportedLightKinds,
   supportedRendererAntialiasModes,
   supportedRenderLookProfiles,
@@ -3460,6 +3463,7 @@ async function validateUiDocument(file: string, data: unknown): Promise<IAuthori
     if (binding.resource !== undefined && readString(binding.resource) === undefined) {
       diagnostics.push(typeDiagnostic(file, `${path}/resource`, "ui binding resource must be a non-empty resource id.", binding.resource));
     }
+    validateUiBindingFormat(diagnostics, file, path, binding);
   });
   return sortAuthoringDiagnostics(diagnostics);
 }
@@ -3901,6 +3905,8 @@ function validateComponents(
       validateColliderComponent(diagnostics, file, `${path}/Collider`, component);
     } else if (kind === "CharacterController") {
       validateCharacterControllerComponent(diagnostics, file, `${path}/CharacterController`, component);
+    } else if (kind === "KinematicMover") {
+      validateKinematicMoverComponent(diagnostics, file, `${path}/KinematicMover`, component);
     } else if (kind === "Visibility") {
       validateVisibilityComponent(diagnostics, file, `${path}/Visibility`, component);
     }
@@ -4010,6 +4016,26 @@ function validateCharacterControllerComponent(diagnostics: IAuthoringDiagnostic[
   validateOptionalNumber(diagnostics, file, `${path}/slopeLimit`, value.slopeLimit, "character controller slopeLimit must be a finite number.");
   validateOptionalNumber(diagnostics, file, `${path}/stepOffset`, value.stepOffset, "character controller stepOffset must be a finite number.");
   validateOptionalString(diagnostics, file, `${path}/interactAction`, value.interactAction, "character controller interactAction must be a non-empty input action id.");
+}
+
+function validateKinematicMoverComponent(diagnostics: IAuthoringDiagnostic[], file: string, path: string, value: Record<string, unknown>): void {
+  diagnostics.push(...unknownKeyDiagnostics(file, path, value, kinematicMoverComponentKeys));
+  validateEnumString(diagnostics, file, `${path}/mode`, value.mode, supportedKinematicMoverModes, "kinematic mover mode", "Use 'sine' or 'waypoints'.");
+  validateRequiredNumber(diagnostics, file, `${path}/speed`, value.speed, "kinematic mover speed must be a finite number.");
+  validateOptionalStringEnum(diagnostics, file, `${path}/axis`, value.axis, supportedKinematicMoverAxes, "kinematic mover axis must be 'x', 'y', or 'z'.");
+  validateOptionalNumber(diagnostics, file, `${path}/phase`, value.phase, "kinematic mover phase must be a finite number.");
+  validateOptionalNumber(diagnostics, file, `${path}/radius`, value.radius, "kinematic mover radius must be a finite number.");
+  if (typeof value.radius === "number" && value.radius < 0) {
+    diagnostics.push(typeDiagnostic(file, `${path}/radius`, "kinematic mover radius must be non-negative.", value.radius));
+  }
+  validateOptionalBoolean(diagnostics, file, `${path}/loop`, value.loop, "kinematic mover loop must be a boolean.");
+  if (value.direction !== undefined && !isVector3(value.direction)) {
+    diagnostics.push(typeDiagnostic(file, `${path}/direction`, "kinematic mover direction must be a three-number vector.", value.direction));
+  }
+  const waypoints = readArray(value.waypoints);
+  if (value.waypoints !== undefined && (waypoints === undefined || waypoints.some((waypoint) => !isVector3(waypoint)))) {
+    diagnostics.push(typeDiagnostic(file, `${path}/waypoints`, "kinematic mover waypoints must be an array of three-number vectors.", value.waypoints));
+  }
 }
 
 function validateVisibilityComponent(diagnostics: IAuthoringDiagnostic[], file: string, path: string, value: Record<string, unknown>): void {
@@ -4576,7 +4602,30 @@ function validateUi(diagnostics: IAuthoringDiagnostic[], file: string, value: un
     } else if (!resourceIds.some((resourceId) => resource === resourceId || resource.startsWith(`${resourceId}.`))) {
       diagnostics.push(missingReferenceDiagnostic(file, `${path}/resource`, "resource", resource, resourceIds));
     }
+    validateUiBindingFormat(diagnostics, file, path, binding);
   });
+}
+
+function validateUiBindingFormat(diagnostics: IAuthoringDiagnostic[], file: string, path: string, binding: Record<string, unknown>): void {
+  validateStringList(diagnostics, file, `${path}/fields`, binding.fields, "ui binding fields must be non-empty strings.");
+  validateOptionalString(diagnostics, file, `${path}/format`, binding.format, "ui binding format must be a non-empty string.");
+  const format = readString(binding.format);
+  if (format === undefined) {
+    return;
+  }
+  const fields = readArray(binding.fields)?.map((field) => readString(field)).filter((field): field is string => field !== undefined);
+  const allowed = fields === undefined || fields.length === 0 ? undefined : new Set(fields);
+  for (const token of format.matchAll(/\{([^{}]+)\}/g)) {
+    const [fieldValue, formatter] = String(token[1] ?? "").split(":");
+    const field = fieldValue ?? "";
+    if (field.trim() === "" || (allowed !== undefined && !allowed.has(field))) {
+      diagnostics.push(typeDiagnostic(file, `${path}/format`, "ui binding format placeholders must reference declared fields.", binding.format));
+      continue;
+    }
+    if (formatter !== undefined && !/^fixed\d+$/.test(formatter) && !/^pad\d+$/.test(formatter)) {
+      diagnostics.push(typeDiagnostic(file, `${path}/format`, "ui binding format supports fixedN and padN formatters.", binding.format));
+    }
+  }
 }
 
 function inspectSceneDocument(file: string, data: unknown, sourceLineCount = 0): ISceneInspection | undefined {

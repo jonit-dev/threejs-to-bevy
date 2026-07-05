@@ -79,7 +79,7 @@ export const uiKeys = new Set(["nodes", "bindings"]);
 export const uiNodeKeys = new Set(["id", "action", "attachTo", "component", "label", "layout", "responsive", "src", "style", "text", "type", "value", "virtualRange"]);
 export const uiComponentInstanceKeys = new Set(["ref", "props"]);
 export const uiStyleKeys = new Set(["backgroundColor", "borderColor", "borderRadius", "borderWidth", "color", "fontSize", "fontWeight", "opacity", "textAlign", "textDecoration", "wrap"]);
-export const uiBindingKeys = new Set(["node", "resource"]);
+export const uiBindingKeys = new Set(["fields", "format", "node", "resource"]);
 export const resourceKeys = new Set(["id", "path", "value"]);
 export const schemaEntryKeys = new Set(["id", "fields"]);
 export const prefabKeys = new Set(["id", "primitive", "color", "asset"]);
@@ -118,11 +118,12 @@ export const supportedGeneratorOverwritePolicies = new Set(["manual", "replace",
 export const supportedPrefabPrimitives = new Set(["box", "capsule", "cone", "cylinder", "plane", "sphere", "torus"]);
 export const supportedMeshPrimitives = new Set(["box", "cone", "cylinder", "plane", "sphere", "torus"]);
 
-export const supportedComponentKinds = new Set(["camera", "CharacterController", "Collider", "Light", "MeshRenderer", "RenderLayers", "RigidBody", "Visibility"]);
+export const supportedComponentKinds = new Set(["camera", "CharacterController", "Collider", "KinematicMover", "Light", "MeshRenderer", "RenderLayers", "RigidBody", "Visibility"]);
 export const cameraComponentKeys = new Set(["far", "fovY", "mode", "near", "size", "target"]);
 export const characterControllerComponentKeys = new Set(["blocking", "grounding", "interactAction", "moveXAxis", "moveZAxis", "slopeLimit", "speed", "stepOffset"]);
 export const colliderComponentKeys = new Set(["center", "friction", "height", "kind", "layer", "mask", "radius", "restitution", "sensor", "size", "trigger"]);
 export const lightComponentKeys = new Set(["angle", "color", "intensity", "kind", "range", "shadowBias", "shadowNormalBias"]);
+export const kinematicMoverComponentKeys = new Set(["axis", "direction", "loop", "mode", "phase", "radius", "speed", "waypoints"]);
 export const meshRendererComponentKeys = new Set(["castShadow", "material", "mesh", "receiveShadow", "visible"]);
 export const renderLayersComponentKeys = new Set(["layers"]);
 export const rigidBodyComponentKeys = new Set(["angularVelocity", "ccd", "damping", "enabledRotations", "enabledTranslations", "gravityScale", "inverseMass", "kind", "mass", "sleepThreshold", "solverIterations", "velocity"]);
@@ -131,6 +132,8 @@ export const supportedCameraModes = new Set(["third-person-follow", "perspective
 export const supportedCharacterControllerGrounding = new Set(["none", "raycast"]);
 export const supportedColliderKinds = new Set(["box", "capsule", "cylinder", "mesh", "sphere"]);
 export const supportedLightKinds = new Set(["ambient", "directional", "point", "spot"]);
+export const supportedKinematicMoverAxes = new Set(["x", "y", "z"]);
+export const supportedKinematicMoverModes = new Set(["sine", "waypoints"]);
 export const supportedRigidBodyKinds = new Set(["dynamic", "kinematic", "static"]);
 export const supportedMaterialAlphaModes = new Set(["blend", "mask", "opaque"]);
 export const supportedRendererAntialiasModes = new Set(["fxaa", "msaa2", "msaa4", "msaa8", "none", "smaa", "taa"]);
@@ -334,6 +337,8 @@ export interface ISceneUiStyle {
 }
 
 export interface ISceneUiBinding {
+  fields?: string[];
+  format?: string;
   node: string;
   resource: string;
 }

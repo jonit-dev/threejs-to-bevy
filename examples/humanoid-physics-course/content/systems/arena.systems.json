@@ -9,7 +9,7 @@
       "reads": [
         "Checkpoint",
         "FinishZone",
-        "SweeperHazard"
+        "KinematicMover"
       ],
       "writes": [
         "CoursePlayer",

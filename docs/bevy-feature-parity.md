@@ -130,6 +130,10 @@ implementation:
   `KinematicMover` IR component shape and formatted UI binding validation.
   Web runtime support currently covers sine movers, stable authored-origin
   tracking, derivative kinematic velocity, and formatted UI text resolution.
+  Structured source validation and compiler lowering now preserve
+  `KinematicMover` components and formatted retained UI bindings, and
+  `examples/humanoid-physics-course` uses those abstractions for its
+  non-player-movement hazard/HUD source.
   Native Bevy does not yet map or prove the new `KinematicMover` component, and
   no web/Bevy conformance fixture has been added for this contract yet.
 - The authoring-abstractions Phase 5 paper-cut slice improves structured

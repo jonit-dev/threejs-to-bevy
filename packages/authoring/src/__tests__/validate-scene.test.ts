@@ -195,6 +195,78 @@ test("validateScene reports typed component diagnostics", async () => {
   }
 });
 
+test("validateScene accepts kinematic movers and formatted UI bindings", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-scene-abstractions-valid-"));
+  try {
+    await writeScene(root, {
+      schema: "threenative.scene",
+      id: "scene.abstractions",
+      resources: [{ id: "GameState" }],
+      entities: [
+        {
+          id: "sweeper",
+          components: {
+            KinematicMover: { mode: "sine", axis: "x", radius: 2.1, phase: 0.1, speed: 1.25 },
+          },
+        },
+      ],
+      ui: {
+        nodes: [{ id: "hud-progress" }],
+        bindings: [
+          {
+            node: "hud-progress",
+            resource: "GameState",
+            fields: ["checkpoint", "checkpointTotal", "hits", "elapsed"],
+            format: "CP {checkpoint}/{checkpointTotal}  Hits {hits}  {elapsed:fixed1}",
+          },
+        ],
+      },
+    });
+
+    const result = await validateScene({ projectPath: root, sceneId: "scene.abstractions" });
+
+    assert.equal(result.ok, true);
+    assert.deepEqual(result.diagnostics, []);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("validateScene rejects invalid kinematic movers and formatted UI bindings", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-scene-abstractions-invalid-"));
+  try {
+    await writeScene(root, {
+      schema: "threenative.scene",
+      id: "scene.abstractions",
+      resources: [{ id: "GameState" }],
+      entities: [
+        {
+          id: "sweeper",
+          components: {
+            KinematicMover: { mode: "orbit", axis: "q", radius: -1, speed: "fast", waypoints: [[0, 0]] },
+          },
+        },
+      ],
+      ui: {
+        nodes: [{ id: "hud-progress" }],
+        bindings: [{ node: "hud-progress", resource: "GameState", fields: ["checkpoint"], format: "CP {checkpoint}/{total} {elapsed:precision2}" }],
+      },
+    });
+
+    const result = await validateScene({ projectPath: root, sceneId: "scene.abstractions" });
+
+    assert.equal(result.ok, false);
+    assert.equal(result.diagnostics.some((diagnostic) => diagnostic.path === "/entities/0/components/KinematicMover/mode" && diagnostic.code === "TN_AUTHORING_COMPONENT_VALUE_INVALID"), true);
+    assert.equal(result.diagnostics.some((diagnostic) => diagnostic.path === "/entities/0/components/KinematicMover/axis" && diagnostic.code === "TN_AUTHORING_SHAPE_INVALID"), true);
+    assert.equal(result.diagnostics.some((diagnostic) => diagnostic.path === "/entities/0/components/KinematicMover/radius" && diagnostic.code === "TN_AUTHORING_SHAPE_INVALID"), true);
+    assert.equal(result.diagnostics.some((diagnostic) => diagnostic.path === "/entities/0/components/KinematicMover/speed" && diagnostic.code === "TN_AUTHORING_SHAPE_INVALID"), true);
+    assert.equal(result.diagnostics.some((diagnostic) => diagnostic.path === "/entities/0/components/KinematicMover/waypoints" && diagnostic.code === "TN_AUTHORING_SHAPE_INVALID"), true);
+    assert.equal(result.diagnostics.filter((diagnostic) => diagnostic.path === "/ui/bindings/0/format" && diagnostic.code === "TN_AUTHORING_SHAPE_INVALID").length, 2);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
 test("scene mutations validate before writing deterministic source", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-scene-mutate-"));
   try {

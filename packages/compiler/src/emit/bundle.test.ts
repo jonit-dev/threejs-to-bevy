@@ -1309,7 +1309,12 @@ test("should emit structured ui bindings from retained source documents", async 
             ],
             bindings: [
               { node: "score", resource: "GameState.scoreText" },
-              { node: "coins", resource: "GameState.coinsText" },
+              {
+                node: "coins",
+                resource: "GameState",
+                fields: ["coins", "total"],
+                format: "Coins {coins}/{total}",
+              },
             ],
           },
           file: join(root, "content", "ui", "hud.ui.json"),
@@ -1323,7 +1328,7 @@ test("should emit structured ui bindings from retained source documents", async 
     const panel = ui.root.children.find((node: { id: string }) => node.id === "panel");
 
     assert.deepEqual(score.binding, { field: "scoreText", kind: "resource", name: "GameState" });
-    assert.deepEqual(panel.children[0].binding, { field: "coinsText", kind: "resource", name: "GameState" });
+    assert.deepEqual(panel.children[0].binding, { fields: ["coins", "total"], format: "Coins {coins}/{total}", kind: "resource", name: "GameState" });
   } finally {
     await rm(root, { force: true, recursive: true });
   }
