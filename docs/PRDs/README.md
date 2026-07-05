@@ -32,6 +32,15 @@ backlog unless a nested PRD says it has been superseded.
 
 ### Authoring, Editor, And Plugins
 
+- [Game Development Velocity Kits](other/game-development-velocity-kits.md):
+  source-backed gameplay kits, recipe manifests, `tn game next`,
+  incremental proof reuse, and editor production-panel wiring to reduce time
+  from game idea to playable verified slice without bypassing durable source or
+  release evidence.
+- [Source Size SRP Refactor Plan](other/source-size-srp-refactor-plan.md):
+  split oversized authoring, IR, runtime, CLI, compiler, verification, and SDK
+  hotspots behind stable public entry points, using `pnpm check:source-size`
+  as the refactor baseline.
 - [Complete Structured Authoring Parity](other/complete-structured-authoring-parity.md):
   full structured source coverage for map/editor-owned data, CLI/MCP/editor
   operation parity with TypeScript-era authoring, bundle import, provenance, and
