@@ -1,26 +1,33 @@
-import { NumberEx, Vec3 } from "@threenative/script-stdlib";
+import { AngleEx, NumberEx, Quat, Vec3 } from "@threenative/script-stdlib";
 
 type ScriptContext = any;
 type Vec3Tuple = [number, number, number];
-type QuatTuple = [number, number, number, number];
+
+// Shared conventions for both systems:
+// - Soldier.glb rest pose faces -Z, so world forward for yaw is
+//   [-sin(yaw), 0, -cos(yaw)] and heading = atan2(-dirX, -dirZ).
+// - CoursePlayer carries gameplay state (speed/heading/yaw/checkpoint/...).
+// - GameState carries HUD text plus the camera rig state.
 
 export function updateHumanoidCourse(context: ScriptContext): void {
-  const startPosition: Vec3Tuple = [0, 0.02, 5.0];
+  // Movement feel tunables.
+  const WALK_SPEED = 2.0;
+  const SPRINT_SPEED = 3.8;
+  const ACCELERATION = 11;
+  const DECELERATION = 15;
+  const TURN_SMOOTHING = 11;
+  const MAX_TURN_SPEED = 9.5;
+  // Must match CharacterController.speed in arena.scene.json; the controller
+  // integrates speed * fixedDelta, so we scale fixedDelta by speed/CONTROLLER_SPEED.
+  const CONTROLLER_SPEED = 3.1;
+  const HIT_COOLDOWN = 0.8;
+  const START_POSITION: Vec3Tuple = [0, 0.02, 5.0];
+
   const isRecord = (value: unknown): value is Record<string, unknown> => typeof value === "object" && value !== null;
   const isVec3 = (value: unknown): value is Vec3Tuple => Array.isArray(value) &&
     value.length === 3 &&
     value.every((item) => typeof item === "number" && Number.isFinite(item));
-  const distance2d = (a: Vec3Tuple, b: Vec3Tuple): number => {
-    const dx = a[0] - b[0];
-    const dz = a[2] - b[2];
-    return Math.sqrt(dx * dx + dz * dz);
-  };
-  const yawToQuat = (yaw: number): QuatTuple => {
-    const half = yaw * 0.5;
-    return [0, Number(Math.sin(half).toFixed(6)), 0, Number(Math.cos(half).toFixed(6))];
-  };
-  const wrapAngle = (angle: number): number => Math.atan2(Math.sin(angle), Math.cos(angle));
-  const lerpAngle = (from: number, to: number, alpha: number): number => from + wrapAngle(to - from) * NumberEx.clamp(alpha, 0, 1);
+  const forwardOfYaw = (yaw: number): Vec3Tuple => [-Math.sin(yaw), 0, -Math.cos(yaw)];
 
   const delta = context.time.fixedDelta({ fallback: 1 / 60, max: 1 / 30, min: 0.001 });
   const elapsed = typeof context.time.elapsed === "number" ? context.time.elapsed : 0;
@@ -36,15 +43,16 @@ export function updateHumanoidCourse(context: ScriptContext): void {
     context.resources?.set?.("GameState", { ...state, ...patch });
   };
   const reset = (): void => {
-    player.transform().setPose(startPosition, yawToQuat(0));
-    player.patch?.("CoursePlayer", { speed: 3.1, checkpoint: 0, hits: 0, finished: false, yaw: 0 });
+    player.transform().setPose(START_POSITION, Quat.fromYaw(0));
+    player.patch?.("CoursePlayer", { speed: 0, heading: 0, checkpoint: 0, hits: 0, finished: false, yaw: 0, lastHitAt: -10 });
     patchState({
       checkpoint: 0,
       elapsed: 0,
       hits: 0,
       status: "Course",
-      cameraOrbit: 0,
       cameraYaw: 0,
+      cameraFollow: START_POSITION,
+      cameraDistance: 4.1,
       checkpointText: "Checkpoint 0/2",
       hitText: "Hits 0",
       timerText: "00.0",
@@ -58,6 +66,8 @@ export function updateHumanoidCourse(context: ScriptContext): void {
     return;
   }
 
+  // Sweeper hazards ride a sine wave; velocity carries the true derivative so
+  // physics prediction between script ticks matches the analytic path.
   for (const entity of entities) {
     const hazard = entity.get?.("SweeperHazard");
     if (!isRecord(hazard) || !isVec3(hazard.origin)) {
@@ -75,50 +85,69 @@ export function updateHumanoidCourse(context: ScriptContext): void {
     entity.patch?.("RigidBody", { kind: "kinematic", gravityScale: 0, velocity: hazard.axis === "z" ? [0, 0, waveVelocity] : [waveVelocity, 0, 0] });
   }
 
-  const stats = player.get?.("CoursePlayer") ?? { speed: 3.1, checkpoint: 0, hits: 0, finished: false, yaw: 0 };
+  const stats = player.get?.("CoursePlayer") ?? { speed: 0, heading: 0, checkpoint: 0, hits: 0, finished: false, yaw: 0 };
   if (stats.finished === true) {
     context.animation?.play?.(player, "idle", { loop: true, sourceClip: "Idle" });
     return;
   }
 
+  // Input -> normalized planar direction (x right, z toward camera at start).
   const axisX = context.input.axis1("MoveX", { negative: "move-left", positive: "move-right" });
   const axisZ = context.input.axis1("MoveZ", { negative: "move-back", positive: "move-forward" });
-  const length = Math.max(1, Math.sqrt(axisX * axisX + axisZ * axisZ));
-  const position = player.transform().positionOr(startPosition);
-  const moving = Math.abs(axisX) + Math.abs(axisZ) > 0.05;
-  const sprinting = moving && (context.input.pressed?.("sprint") || context.input.action?.("sprint"));
-  const moveX = axisX / length;
-  const moveZ = -axisZ / length;
-  const speedScale = sprinting ? 1.18 : 0.62;
+  const inputLength = Math.hypot(axisX, axisZ);
+  const hasInput = inputLength > 0.05;
+  const dirX = hasInput ? axisX / Math.max(1, inputLength) : 0;
+  const dirZ = hasInput ? -axisZ / Math.max(1, inputLength) : 0;
+  const sprinting = hasInput && (context.input.pressed?.("sprint") || context.input.action?.("sprint"));
+
+  // Speed eases toward its target so starts and stops carry weight.
+  const currentSpeed = NumberEx.finite(Number(stats.speed), 0);
+  const targetSpeed = hasInput ? (sprinting ? SPRINT_SPEED : WALK_SPEED) : 0;
+  const rate = targetSpeed > currentSpeed ? ACCELERATION : DECELERATION;
+  const speed = NumberEx.moveToward(currentSpeed, targetSpeed, rate * delta);
+
+  // Heading persists while decelerating so releasing input glides straight.
+  const currentYaw = NumberEx.finite(Number(stats.yaw), 0);
+  const heading = hasInput ? Math.atan2(-dirX, -dirZ) : NumberEx.finite(Number(stats.heading), currentYaw);
+  const moving = speed > 0.02;
+
+  // Facing chases the heading: exponential ease capped at MAX_TURN_SPEED.
+  const turnStep = AngleEx.deltaAngle(currentYaw, heading) * (1 - Math.exp(-TURN_SMOOTHING * delta));
+  const yaw = currentYaw + NumberEx.clamp(turnStep, -MAX_TURN_SPEED * delta, MAX_TURN_SPEED * delta);
+
+  const position = player.transform().positionOr(START_POSITION);
+  const moveDirection = forwardOfYaw(heading);
   const characterMove = moving
-    ? context.character?.move?.(player, { axes: { MoveX: moveX, MoveZ: moveZ }, fixedDelta: delta * speedScale })
+    ? context.character?.move?.(player, {
+        axes: { MoveX: moveDirection[0], MoveZ: moveDirection[2] },
+        fixedDelta: delta * speed / CONTROLLER_SPEED,
+      })
     : null;
   const resolved = isRecord(characterMove) && isVec3(characterMove.resolved)
     ? characterMove.resolved
-    : [position[0] + moveX * 3.1 * delta * speedScale, position[1], position[2] + moveZ * 3.1 * delta * speedScale] as Vec3Tuple;
+    : [position[0] + moveDirection[0] * speed * delta, position[1], position[2] + moveDirection[2] * speed * delta] as Vec3Tuple;
   const next: Vec3Tuple = Vec3.round([
     NumberEx.clamp(resolved[0], -4.8, 4.8),
     position[1],
     NumberEx.clamp(resolved[2], -6.5, 6.4),
-  ], 6);
-  const currentYaw = Number(stats.yaw ?? 0);
-  // Soldier.glb's rest pose faces +Z, so the movement-facing yaw is offset by pi.
-  const targetYaw = moving ? Math.atan2(-moveX, -moveZ) : currentYaw;
-  const yaw = lerpAngle(currentYaw, targetYaw, 1 - Math.exp(-delta * 14));
-  player.transform().setPose(next, yawToQuat(yaw));
-  const effectiveSpeed = 3.1 * speedScale;
+  ], 6) as Vec3Tuple;
+  player.transform().setPose(next, Quat.fromYaw(yaw));
   // Script-driven setPose is authoritative; keep kinematic velocity at zero so
   // stepPhysics does not integrate the same motion a second time each tick.
   player.patch?.("RigidBody", { kind: "kinematic", velocity: [0, 0, 0] });
-  const animationClip = moving ? (sprinting ? "run" : "walk") : "idle";
-  const sourceClip = moving ? (sprinting ? "Run" : "Walk") : "Idle";
+
+  // Animation tracks actual speed so foot cadence matches ground motion.
+  const running = speed > 2.6;
+  const animationClip = moving ? (running ? "run" : "walk") : "idle";
+  const sourceClip = moving ? (running ? "Run" : "Walk") : "Idle";
+  const referenceSpeed = running ? SPRINT_SPEED : WALK_SPEED;
   context.animation?.play?.(player, animationClip, {
     activeState: animationClip,
-    blendSeconds: 0.16,
+    blendSeconds: 0.22,
     durationSeconds: 1,
     loop: true,
     sourceClip,
-    speed: sprinting ? 1.15 : moving ? 1.05 : 1,
+    speed: moving ? NumberEx.clamp(speed / referenceSpeed, 0.7, 1.35) : 1,
   });
 
   let checkpoint = Number(stats.checkpoint ?? state.checkpoint ?? 0);
@@ -129,7 +158,7 @@ export function updateHumanoidCourse(context: ScriptContext): void {
     const check = entity.get?.("Checkpoint");
     if (isRecord(check) && Number(check.order) === checkpoint + 1) {
       const checkPosition = entity.transform().positionOr([0, 0, 0]);
-      if (distance2d(next, checkPosition) < 0.78) {
+      if (Vec3.distance2d(next, checkPosition) < 0.78) {
         checkpoint += 1;
         status = `Checkpoint ${checkpoint}/2 cleared: ${String(check.label ?? "course marker")}.`;
       }
@@ -137,8 +166,8 @@ export function updateHumanoidCourse(context: ScriptContext): void {
     const finish = entity.get?.("FinishZone");
     if (isRecord(finish)) {
       const finishPosition = entity.transform().positionOr([0, 0, -6.1]);
-      if (checkpoint >= 2 && distance2d(next, finishPosition) < Number(finish.radius ?? 0.95)) {
-        player.patch?.("CoursePlayer", { ...stats, checkpoint, hits, finished: true, yaw });
+      if (checkpoint >= 2 && Vec3.distance2d(next, finishPosition) < Number(finish.radius ?? 0.95)) {
+        player.patch?.("CoursePlayer", { ...stats, checkpoint, hits, finished: true, heading, speed: 0, yaw });
         patchState({
           checkpoint,
           elapsed,
@@ -153,14 +182,14 @@ export function updateHumanoidCourse(context: ScriptContext): void {
       }
     }
     const hazard = entity.get?.("SweeperHazard");
-    if (isRecord(hazard) && distance2d(next, entity.transform().positionOr([0, 0, 0])) < 0.82 && elapsed - lastHitAt > 0.8) {
+    if (isRecord(hazard) && Vec3.distance2d(next, entity.transform().positionOr([0, 0, 0])) < 0.82 && elapsed - lastHitAt > HIT_COOLDOWN) {
       hits += 1;
       lastHitAt = elapsed;
       status = "Hazard hit. Press R or keep moving.";
     }
   }
 
-  player.patch?.("CoursePlayer", { ...stats, checkpoint, hits, finished: false, lastHitAt, speed: effectiveSpeed, yaw });
+  player.patch?.("CoursePlayer", { ...stats, checkpoint, hits, finished: false, heading, lastHitAt, speed, yaw });
   patchState({
     checkpoint,
     elapsed,
@@ -174,73 +203,29 @@ export function updateHumanoidCourse(context: ScriptContext): void {
 }
 
 export function updateThirdPersonCamera(context: ScriptContext): void {
-  const startPosition: Vec3Tuple = [0, 0.02, 5.0];
+  // Camera rig tunables. The boom hangs off a smoothed follow point and a
+  // lazily-chasing yaw, so eye and look-at can never disagree within a frame.
+  const YAW_SMOOTHING = 3.2;
+  const MAX_YAW_SPEED = 1.9;
+  const FOLLOW_SMOOTHING = 9;
+  const BASE_DISTANCE = 4.1;
+  const SPRINT_PULLBACK = 0.55;
+  const DISTANCE_SMOOTHING = 2.5;
+  const PIVOT_HEIGHT = 1.45;
+  const CAMERA_LIFT = 0.55;
+  const LOOK_AHEAD = 1.15;
+  const SHOULDER = 0.3;
+  const SPRINT_SPEED = 3.8;
+  const START_POSITION: Vec3Tuple = [0, 0.02, 5.0];
+
   const isRecord = (value: unknown): value is Record<string, unknown> => typeof value === "object" && value !== null;
   const isVec3 = (value: unknown): value is Vec3Tuple => Array.isArray(value) &&
     value.length === 3 &&
     value.every((item) => typeof item === "number" && Number.isFinite(item));
-  const lerpVec3 = (from: Vec3Tuple, to: Vec3Tuple, alpha: number): Vec3Tuple => [
-    from[0] + (to[0] - from[0]) * alpha,
-    from[1] + (to[1] - from[1]) * alpha,
-    from[2] + (to[2] - from[2]) * alpha,
-  ];
-  const wrapAngle = (angle: number): number => Math.atan2(Math.sin(angle), Math.cos(angle));
-  const lerpAngle = (from: number, to: number, alpha: number): number => from + wrapAngle(to - from) * NumberEx.clamp(alpha, 0, 1);
-  const normalize = (value: Vec3Tuple): Vec3Tuple => {
-    const length = Math.hypot(value[0], value[1], value[2]) || 1;
-    return [value[0] / length, value[1] / length, value[2] / length];
-  };
-  const cross = (a: Vec3Tuple, b: Vec3Tuple): Vec3Tuple => [
-    a[1] * b[2] - a[2] * b[1],
-    a[2] * b[0] - a[0] * b[2],
-    a[0] * b[1] - a[1] * b[0],
-  ];
-  const roundQuat = (value: number): number => Number(value.toFixed(6));
-  const quatFromMatrix = (m11: number, m12: number, m13: number, m21: number, m22: number, m23: number, m31: number, m32: number, m33: number): QuatTuple => {
-    const trace = m11 + m22 + m33;
-    let x = 0;
-    let y = 0;
-    let z = 0;
-    let w = 1;
-    if (trace > 0) {
-      const s = 0.5 / Math.sqrt(trace + 1);
-      w = 0.25 / s;
-      x = (m32 - m23) * s;
-      y = (m13 - m31) * s;
-      z = (m21 - m12) * s;
-    } else if (m11 > m22 && m11 > m33) {
-      const s = 2 * Math.sqrt(1 + m11 - m22 - m33);
-      w = (m32 - m23) / s;
-      x = 0.25 * s;
-      y = (m12 + m21) / s;
-      z = (m13 + m31) / s;
-    } else if (m22 > m33) {
-      const s = 2 * Math.sqrt(1 + m22 - m11 - m33);
-      w = (m13 - m31) / s;
-      x = (m12 + m21) / s;
-      y = 0.25 * s;
-      z = (m23 + m32) / s;
-    } else {
-      const s = 2 * Math.sqrt(1 + m33 - m11 - m22);
-      w = (m21 - m12) / s;
-      x = (m13 + m31) / s;
-      y = (m23 + m32) / s;
-      z = 0.25 * s;
-    }
-    return [roundQuat(x), roundQuat(y), roundQuat(z), roundQuat(w)];
-  };
-  const lookAtQuat = (eye: Vec3Tuple, target: Vec3Tuple): QuatTuple => {
-    const z = normalize([eye[0] - target[0], eye[1] - target[1], eye[2] - target[2]]);
-    const x = normalize(cross([0, 1, 0], z));
-    const y = cross(z, x);
-    return quatFromMatrix(
-      x[0], y[0], z[0],
-      x[1], y[1], z[1],
-      x[2], y[2], z[2],
-    );
-  };
+  const forwardOfYaw = (yaw: number): Vec3Tuple => [-Math.sin(yaw), 0, -Math.cos(yaw)];
 
-  const delta = context.time.fixedDelta({ fallback: 1 / 60, max: 1 / 30, min: 0.001 });
+  // This system runs on the frame schedule, so smooth with the frame delta.
+  const dt = NumberEx.clamp(NumberEx.finite(context.time?.delta, 1 / 60), 0.001, 0.05);
   const player = context.entity?.("player");
   const camera = context.entity?.("camera.main");
   if (player === undefined || camera === undefined) {
@@ -249,33 +234,47 @@ export function updateThirdPersonCamera(context: ScriptContext): void {
 
   const resource = context.resources?.get?.("GameState");
   const state = isRecord(resource) ? resource : {};
-  const playerPosition = player.transform().positionOr(startPosition);
-  const playerStats = player.get?.("CoursePlayer");
-  const yaw = isRecord(playerStats) && typeof playerStats.yaw === "number" ? playerStats.yaw : 0;
-  // Orbit angle lags the character's yaw so the eye and its look-at target
-  // never disagree on facing within a frame (that mismatch caused the wobble).
-  const currentCameraYaw = typeof state.cameraYaw === "number" ? state.cameraYaw : yaw;
-  const cameraYaw = lerpAngle(currentCameraYaw, yaw, 1 - Math.exp(-delta * 10));
-  // Soldier.glb's rest pose faces -Z, so this is the model's current world-space forward.
-  const forward: Vec3Tuple = [-Math.sin(cameraYaw), 0, -Math.cos(cameraYaw)];
+  const stats = player.get?.("CoursePlayer");
+  const playerYaw = isRecord(stats) ? NumberEx.finite(Number(stats.yaw), 0) : 0;
+  const playerSpeed = isRecord(stats) ? NumberEx.finite(Number(stats.speed), 0) : 0;
+  const playerPosition = player.transform().positionOr(START_POSITION);
+
+  // Follow point eases toward the player, hiding fixed-tick stepping.
+  const followCurrent = isVec3(state.cameraFollow) ? state.cameraFollow : playerPosition;
+  const follow = Vec3.lerp(followCurrent, playerPosition, 1 - Math.exp(-FOLLOW_SMOOTHING * dt)) as Vec3Tuple;
+
+  // Yaw chases the character's facing slowly, capped so 180-degree turns
+  // swing the camera over ~1.7s instead of whipping around.
+  const yawCurrent = NumberEx.finite(Number(state.cameraYaw), playerYaw);
+  const yawStep = AngleEx.deltaAngle(yawCurrent, playerYaw) * (1 - Math.exp(-YAW_SMOOTHING * dt));
+  const cameraYaw = yawCurrent + NumberEx.clamp(yawStep, -MAX_YAW_SPEED * dt, MAX_YAW_SPEED * dt);
+
+  // Boom stretches slightly at sprint for a sense of momentum.
+  const distanceCurrent = NumberEx.finite(Number(state.cameraDistance), BASE_DISTANCE);
+  const distanceTarget = BASE_DISTANCE + SPRINT_PULLBACK * NumberEx.saturate(playerSpeed / SPRINT_SPEED);
+  const distance = distanceCurrent + (distanceTarget - distanceCurrent) * (1 - Math.exp(-DISTANCE_SMOOTHING * dt));
+
+  const forward = forwardOfYaw(cameraYaw);
   const right: Vec3Tuple = [forward[2], 0, -forward[0]];
-  const distance = 4.15;
-  const height = 1.82;
-  const shoulder = 0.34;
-  const lookAhead = 1.2;
-  const eyeHeight = 1.5;
-  const desiredPosition: Vec3Tuple = [
-    playerPosition[0] - forward[0] * distance + right[0] * shoulder,
-    playerPosition[1] + height,
-    playerPosition[2] - forward[2] * distance + right[2] * shoulder,
-  ];
-  const currentPosition = isVec3(state.cameraPosition) ? state.cameraPosition : camera.transform().positionOr(desiredPosition);
-  const cameraPosition = Vec3.round(lerpVec3(currentPosition, desiredPosition, 1 - Math.exp(-delta * 11.5)), 6);
+  const pivot: Vec3Tuple = [follow[0], follow[1] + PIVOT_HEIGHT, follow[2]];
+  const eye = Vec3.round([
+    pivot[0] - forward[0] * distance + right[0] * SHOULDER,
+    pivot[1] + CAMERA_LIFT,
+    pivot[2] - forward[2] * distance + right[2] * SHOULDER,
+  ], 6) as Vec3Tuple;
   const target = Vec3.round([
-    playerPosition[0] + forward[0] * lookAhead,
-    playerPosition[1] + eyeHeight,
-    playerPosition[2] + forward[2] * lookAhead,
-  ], 6);
-  context.resources?.set?.("GameState", { ...state, cameraOrbit: 0, cameraPosition, cameraTarget: target, cameraYaw });
-  camera.transform().setPose(cameraPosition, lookAtQuat(cameraPosition, target));
+    pivot[0] + forward[0] * LOOK_AHEAD,
+    pivot[1],
+    pivot[2] + forward[2] * LOOK_AHEAD,
+  ], 6) as Vec3Tuple;
+
+  context.resources?.set?.("GameState", {
+    ...state,
+    cameraDistance: NumberEx.round(distance, 6),
+    cameraFollow: Vec3.round(follow, 6),
+    cameraPosition: eye,
+    cameraTarget: target,
+    cameraYaw: NumberEx.round(cameraYaw, 6),
+  });
+  camera.transform().setPose(eye, Quat.lookAt(eye, target));
 }

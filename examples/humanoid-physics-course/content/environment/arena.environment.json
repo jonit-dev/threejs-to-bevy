@@ -8,27 +8,31 @@
     "sun": {
       "id": "sun.ue-course",
       "color": "#fff2d4",
-      "direction": [-0.56, -0.74, -0.38],
-      "intensity": 6.2,
+      "direction": [
+        -0.56,
+        -0.74,
+        -0.38
+      ],
+      "intensity": 5.0,
       "castsShadow": true
     },
     "ambient": {
-      "color": "#b7c2c8",
-      "intensity": 0.26,
+      "color": "#cfd8de",
+      "intensity": 0.45,
       "mode": "constant"
     },
     "fog": {
       "enabled": true,
       "mode": "exponential",
-      "color": "#9fb3bf",
-      "density": 0.014
+      "color": "#ccd5dc",
+      "density": 0.008
     },
     "sky": {
       "color": "#93adc0",
       "horizonColor": "#d7dde1"
     },
     "colorManagement": {
-      "exposure": 1.08,
+      "exposure": 1.18,
       "outputColorSpace": "srgb",
       "textureColorSpace": "srgb",
       "toneMapping": "aces"
@@ -36,10 +40,10 @@
     "shadows": {
       "enabled": true,
       "mapSize": 2048,
-      "bias": -0.00025,
-      "normalBias": 0.012,
+      "bias": -0.0002,
+      "normalBias": 0.015,
       "cascadeCount": 1,
-      "maxDistance": 26,
+      "maxDistance": 16,
       "receiverPolicy": "terrain-and-path"
     }
   },
@@ -60,7 +64,7 @@
     "mode": "equirect",
     "asset": "tex.sky.ambientcg-daysky-003b",
     "intent": "reflection-and-irradiance",
-    "intensity": 0.36,
+    "intensity": 0.9,
     "assetRefs": [
       {
         "id": "tex.sky.ambientcg-daysky-003b",
@@ -72,7 +76,18 @@
   },
   "path": {
     "id": "path.validation",
-    "points": [[-24, 0, -24], [-23, 0, -24]],
+    "points": [
+      [
+        -24,
+        0,
+        -24
+      ],
+      [
+        -23,
+        0,
+        -24
+      ]
+    ],
     "width": 0.1
   }
 }

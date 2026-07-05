@@ -203,6 +203,14 @@ test("should keep exported and bundled helper behavior identical", () => {
   assert.deepEqual(bundled, exported);
 });
 
+test("should round-trip yaw through fromYaw as a y-axis rotation", () => {
+  assert.equal(NumberEx.round(Quat.yaw(Quat.fromYaw(Math.PI / 2)), 6), NumberEx.round(Math.PI / 2, 6));
+  assert.equal(NumberEx.round(Quat.yaw(Quat.fromYaw(-1.2)), 6), -1.2);
+  assert.deepEqual(Vec3.round(Quat.rotateVec3(Quat.fromYaw(Math.PI / 2), [0, 0, 1]), 6), [1, 0, 0]);
+  assert.deepEqual(Vec3.round(Quat.rotateVec3(Quat.fromEuler(Math.PI / 2, 0, 0), [0, 0, 1]), 6), [0, -1, 0]);
+  assert.deepEqual(Vec3.round(Quat.rotateVec3(Quat.fromEuler(0, 0, Math.PI / 2), [1, 0, 0]), 6), [0, 1, 0]);
+});
+
 test("should compute common gameplay math deterministically", () => {
   assert.deepEqual(Vec2.round(Vec2.rotate([1, 0], Math.PI / 2), 6), [0, 1]);
   assert.equal(NumberEx.round(AngleEx.radToDeg(Math.PI), 3), 180);

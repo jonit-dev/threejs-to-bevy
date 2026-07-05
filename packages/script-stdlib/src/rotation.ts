@@ -17,13 +17,19 @@ export const Quat = Object.freeze({
     ];
   },
   fromEuler(pitch = 0, yaw = 0, roll = 0): QuatTuple {
+    // YXZ intrinsic order for a y-up world: pitch about X, yaw about Y, roll about Z.
     const cy = Math.cos(NumberEx.finite(yaw, 0) * 0.5);
     const sy = Math.sin(NumberEx.finite(yaw, 0) * 0.5);
     const cp = Math.cos(NumberEx.finite(pitch, 0) * 0.5);
     const sp = Math.sin(NumberEx.finite(pitch, 0) * 0.5);
     const cr = Math.cos(NumberEx.finite(roll, 0) * 0.5);
     const sr = Math.sin(NumberEx.finite(roll, 0) * 0.5);
-    return Quat.normalize([sr * cp * cy - cr * sp * sy, cr * sp * cy + sr * cp * sy, cr * cp * sy - sr * sp * cy, cr * cp * cy + sr * sp * sy]);
+    return Quat.normalize([
+      sp * cy * cr + cp * sy * sr,
+      cp * sy * cr - sp * cy * sr,
+      cp * cy * sr - sp * sy * cr,
+      cp * cy * cr + sp * sy * sr,
+    ]);
   },
   fromYaw(yaw: number): QuatTuple {
     return Quat.fromEuler(0, yaw, 0);

@@ -8,16 +8,151 @@
       "type": "model",
       "path": "assets/models/Soldier.glb",
       "animations": [
-        { "id": "idle", "sourceClip": "Idle", "loop": true, "speed": 1 },
-        { "id": "run", "sourceClip": "Run", "loop": true, "speed": 1.15 },
-        { "id": "walk", "sourceClip": "Walk", "loop": true, "speed": 1.1 }
+        {
+          "id": "idle",
+          "sourceClip": "Idle",
+          "loop": true,
+          "speed": 1
+        },
+        {
+          "id": "run",
+          "sourceClip": "Run",
+          "loop": true,
+          "speed": 1.15
+        },
+        {
+          "id": "walk",
+          "sourceClip": "Walk",
+          "loop": true,
+          "speed": 1.1
+        }
       ]
     },
     {
       "id": "tex.surface.ue-grid",
       "type": "texture",
       "path": "assets/textures/ue-test-surface.png",
-      "repeat": [24, 24],
+      "repeat": [
+        24,
+        24
+      ],
+      "wrapS": "repeat",
+      "wrapT": "repeat",
+      "minFilter": "linearMipmapLinear",
+      "magFilter": "linear"
+    },
+    {
+      "id": "tex.concrete.floor.color",
+      "type": "texture",
+      "path": "assets/textures/concrete042a_color.jpg",
+      "repeat": [
+        5,
+        7.5
+      ],
+      "wrapS": "repeat",
+      "wrapT": "repeat",
+      "minFilter": "linearMipmapLinear",
+      "magFilter": "linear"
+    },
+    {
+      "id": "tex.concrete.floor.normal",
+      "type": "texture",
+      "path": "assets/textures/concrete042a_normal.jpg",
+      "repeat": [
+        5,
+        7.5
+      ],
+      "wrapS": "repeat",
+      "wrapT": "repeat",
+      "minFilter": "linearMipmapLinear",
+      "magFilter": "linear"
+    },
+    {
+      "id": "tex.concrete.floor.roughness",
+      "type": "texture",
+      "path": "assets/textures/concrete042a_roughness.jpg",
+      "repeat": [
+        5,
+        7.5
+      ],
+      "wrapS": "repeat",
+      "wrapT": "repeat",
+      "minFilter": "linearMipmapLinear",
+      "magFilter": "linear"
+    },
+    {
+      "id": "tex.concrete.wall.color",
+      "type": "texture",
+      "path": "assets/textures/concrete034_color.jpg",
+      "repeat": [
+        4,
+        1
+      ],
+      "wrapS": "repeat",
+      "wrapT": "repeat",
+      "minFilter": "linearMipmapLinear",
+      "magFilter": "linear"
+    },
+    {
+      "id": "tex.concrete.wall.normal",
+      "type": "texture",
+      "path": "assets/textures/concrete034_normal.jpg",
+      "repeat": [
+        4,
+        1
+      ],
+      "wrapS": "repeat",
+      "wrapT": "repeat",
+      "minFilter": "linearMipmapLinear",
+      "magFilter": "linear"
+    },
+    {
+      "id": "tex.concrete.wall.roughness",
+      "type": "texture",
+      "path": "assets/textures/concrete034_roughness.jpg",
+      "repeat": [
+        4,
+        1
+      ],
+      "wrapS": "repeat",
+      "wrapT": "repeat",
+      "minFilter": "linearMipmapLinear",
+      "magFilter": "linear"
+    },
+    {
+      "id": "tex.planks.crate.color",
+      "type": "texture",
+      "path": "assets/textures/planks037b_color.jpg",
+      "repeat": [
+        1,
+        1
+      ],
+      "wrapS": "repeat",
+      "wrapT": "repeat",
+      "minFilter": "linearMipmapLinear",
+      "magFilter": "linear"
+    },
+    {
+      "id": "tex.planks.crate.normal",
+      "type": "texture",
+      "path": "assets/textures/planks037b_normal.jpg",
+      "repeat": [
+        1,
+        1
+      ],
+      "wrapS": "repeat",
+      "wrapT": "repeat",
+      "minFilter": "linearMipmapLinear",
+      "magFilter": "linear"
+    },
+    {
+      "id": "tex.planks.crate.roughness",
+      "type": "texture",
+      "path": "assets/textures/planks037b_roughness.jpg",
+      "repeat": [
+        1,
+        1
+      ],
       "wrapS": "repeat",
       "wrapT": "repeat",
       "minFilter": "linearMipmapLinear",
@@ -27,6 +162,45 @@
       "id": "asset.goal-ping",
       "path": "assets/goal-ping.wav",
       "type": "audio"
+    },
+    {
+      "id": "tex.grid.floor",
+      "type": "texture",
+      "path": "assets/textures/ue-test-surface.png",
+      "wrapS": "repeat",
+      "wrapT": "repeat",
+      "minFilter": "linearMipmapLinear",
+      "magFilter": "linear",
+      "repeat": [
+        12,
+        18
+      ]
+    },
+    {
+      "id": "tex.grid.wall",
+      "type": "texture",
+      "path": "assets/textures/ue-test-surface.png",
+      "wrapS": "repeat",
+      "wrapT": "repeat",
+      "minFilter": "linearMipmapLinear",
+      "magFilter": "linear",
+      "repeat": [
+        6,
+        1.5
+      ]
+    },
+    {
+      "id": "tex.grid.block",
+      "type": "texture",
+      "path": "assets/textures/ue-test-surface.png",
+      "wrapS": "repeat",
+      "wrapT": "repeat",
+      "minFilter": "linearMipmapLinear",
+      "magFilter": "linear",
+      "repeat": [
+        2,
+        2
+      ]
     }
   ]
 }

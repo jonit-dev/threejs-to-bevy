@@ -7,15 +7,22 @@
       "id": "hud.status",
       "type": "text",
       "text": "Course",
-      "style": { "color": "#f7fbff", "fontSize": 16, "fontWeight": "bold" },
-      "layout": { "justify": "start", "align": "center", "left": 24, "top": 18, "width": 160 }
+      "style": { "color": "#f7fbff", "fontSize": 18, "fontWeight": "bold" },
+      "layout": { "justify": "start", "align": "center", "left": 24, "top": 20, "width": 460 }
     },
     {
       "id": "hud.progress",
       "type": "text",
       "text": "CP 0/2  Hits 0  00.0",
       "style": { "color": "#76ffd8", "fontSize": 15, "fontWeight": "bold" },
-      "layout": { "justify": "start", "align": "center", "left": 24, "top": 42, "width": 300 }
+      "layout": { "justify": "start", "align": "center", "left": 24, "top": 46, "width": 300 }
+    },
+    {
+      "id": "hud.controls",
+      "type": "text",
+      "text": "WASD move   Shift sprint   R retry",
+      "style": { "color": "#c8d4dc", "fontSize": 13, "opacity": 0.85 },
+      "layout": { "justify": "start", "align": "center", "left": 24, "top": 688, "width": 400 }
     },
     {
       "id": "state.loading",

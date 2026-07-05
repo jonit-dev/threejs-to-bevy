@@ -5,57 +5,55 @@
   "materials": [
     {
       "id": "mat.soldier.placeholder",
-      "color": "#9faab2",
-      "roughness": 0.74,
+      "color": "#ffffff",
+      "roughness": 0.85,
       "metalness": 0.05
     },
     {
       "id": "mat.course.surface",
-      "color": "#c9cac6",
-      "roughness": 0.82,
-      "metalness": 0.02,
-      "baseColorTexture": "tex.surface.ue-grid"
+      "color": "#d6d3cd",
+      "roughness": 0.9,
+      "metalness": 0.0,
+      "baseColorTexture": "tex.grid.floor"
     },
     {
       "id": "mat.course.dark",
-      "color": "#6f7472",
-      "roughness": 0.8,
-      "metalness": 0.02,
-      "baseColorTexture": "tex.surface.ue-grid",
-      "emissive": "#111414",
-      "emissiveIntensity": 0.02
+      "color": "#b7b4ae",
+      "roughness": 0.9,
+      "metalness": 0.0,
+      "baseColorTexture": "tex.grid.wall"
     },
     {
       "id": "mat.course.edge",
-      "color": "#8f918c",
-      "roughness": 0.76,
-      "metalness": 0.03,
-      "baseColorTexture": "tex.surface.ue-grid"
+      "color": "#8a8880",
+      "roughness": 0.9,
+      "metalness": 0.0,
+      "baseColorTexture": "tex.grid.block"
     },
     {
       "id": "mat.crate",
-      "color": "#8f6237",
-      "roughness": 0.82,
-      "metalness": 0.02,
-      "baseColorTexture": "tex.surface.ue-grid"
+      "color": "#ffffff",
+      "roughness": 1,
+      "metalness": 0,
+      "baseColorTexture": "tex.planks.crate.color",
+      "normalTexture": "tex.planks.crate.normal",
+      "metallicRoughnessTexture": "tex.planks.crate.roughness"
     },
     {
       "id": "mat.hazard",
-      "color": "#9b302e",
-      "roughness": 0.62,
-      "metalness": 0.08,
-      "baseColorTexture": "tex.surface.ue-grid",
-      "emissive": "#260a0a",
-      "emissiveIntensity": 0.08
+      "color": "#b8352c",
+      "roughness": 0.45,
+      "metalness": 0.15,
+      "emissive": "#5a100c",
+      "emissiveIntensity": 0.6
     },
     {
       "id": "mat.checkpoint",
-      "color": "#6d9d95",
-      "roughness": 0.55,
-      "metalness": 0.08,
-      "baseColorTexture": "tex.surface.ue-grid",
-      "emissive": "#0d2f2b",
-      "emissiveIntensity": 0.16
+      "color": "#37d6b5",
+      "roughness": 0.4,
+      "metalness": 0.05,
+      "emissive": "#12a488",
+      "emissiveIntensity": 1.1
     },
     {
       "id": "mat.sky",

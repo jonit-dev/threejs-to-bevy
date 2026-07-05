@@ -6,12 +6,12 @@
     "antialias": "msaa4",
     "bloom": {
       "enabled": true,
-      "intensity": 0.22,
-      "threshold": 0.82
+      "intensity": 0.18,
+      "threshold": 0.88
     },
     "colorGrading": {
       "contrast": 0.02,
-      "exposure": 1.08,
+      "exposure": 1.18,
       "saturation": 0.98,
       "toneMapping": "aces"
     },
@@ -21,8 +21,8 @@
       "overrides": {
         "bloomIntensity": 0.22,
         "contrast": 0.06,
-        "environmentIntensity": 0.85,
-        "exposure": 1.08,
+        "environmentIntensity": 1.0,
+        "exposure": 1.18,
         "saturation": 0.98,
         "shadowQuality": "high"
       }

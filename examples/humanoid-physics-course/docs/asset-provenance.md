@@ -46,3 +46,36 @@
 
 - Stairs, ramp, platform, walls, sweep hazards, push crates, checkpoint pads, and finish markers are authored structured-source primitives.
 - These are not claimed as imported art. They are custom obstacle-course test geometry with deliberate scale, materials, physics metadata, and the supplied surface texture.
+
+## Course PBR Texture Sets (ambientCG, CC0-1.0)
+
+All three sets downloaded 2026-07-05 from ambientCG (CC0-1.0, no attribution
+required). Selected files from each ZIP: `*_Color.jpg`, `*_NormalGL.jpg`,
+`*_Roughness.jpg`, renamed to lowercase set-prefixed names.
+
+### Concrete042A (floor)
+
+- Assets: `assets/textures/concrete042a_{color,normal,roughness}.jpg`
+- Role: course floor surface (`mat.course.surface`)
+- Source URL: `https://ambientcg.com/a/Concrete042A`
+- Download URL: `https://ambientcg.com/get?file=Concrete042A_2K-JPG.zip`
+- Color map SHA-256: `0625a9d04eb59e6b90fb668a3ffb656701199a70383af341dae7f6ac36f29f5f`
+- Dimensions: 2048 x 2048 JPEG.
+
+### Concrete034 (walls, edges)
+
+- Assets: `assets/textures/concrete034_{color,normal,roughness}.jpg`
+- Role: wall and edge surfaces (`mat.course.dark`, `mat.course.edge`)
+- Source URL: `https://ambientcg.com/a/Concrete034`
+- Download URL: `https://ambientcg.com/get?file=Concrete034_1K-JPG.zip`
+- Color map SHA-256: `8ceb9186d990b31fce785e06fdc6974c160f1d27c43f6160266f164deba713aa`
+- Dimensions: 1024 x 1024 JPEG.
+
+### Planks037B (crates)
+
+- Assets: `assets/textures/planks037b_{color,normal,roughness}.jpg`
+- Role: pushable crate surfaces (`mat.crate`)
+- Source URL: `https://ambientcg.com/a/Planks037B`
+- Download URL: `https://ambientcg.com/get?file=Planks037B_1K-JPG.zip`
+- Color map SHA-256: `462bb92babb5ecd248525020e5bd20f1abffaa27313c57c88c68388f0c2aa5b1`
+- Dimensions: 1024 x 1024 JPEG.
