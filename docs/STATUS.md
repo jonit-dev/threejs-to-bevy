@@ -131,8 +131,11 @@ retry path, and proof commands. `pnpm verify:template-production` is registered
 as the maintained-starter gate for those scripts, production metadata, and
 starter instructions. The gate now also requires normalized
 `production.agent` metadata with source shape, high-value surfaces, script
-owners, UI states, and proof commands, and it is included in the release
-focused-gate profile. `pnpm verify:template-playability` now scaffolds the
+owners, UI states, and proof commands. It also requires the shared
+`AGENT_GAME_PLAN.md` worksheet, starter README/AGENTS references, catalog-first
+asset sourcing commands, and native UI versus React webview UI planning notes,
+and it is included in the release focused-gate profile. `pnpm
+verify:template-playability` now scaffolds the
 racing starter into a temp project, validates and builds durable source, proves
 camera framing and modular track actor fit, runs a web `tn playtest` throttle
 movement proof, then corrupts the starter input binding to verify malformed
@@ -1079,7 +1082,11 @@ and passed `tn verify` with nonblank 1280x720 frames. The CLI tarball now also
 ships the Bevy runtime source under `dist/runtime-bevy`, and
 `pnpm verify:distribution` confirms a generated project installed from packed
 tarballs can compile the bundled native runtime with Cargo before packaging a
-desktop bundle. Run `pnpm verify:distribution` to reproduce the local
+desktop bundle. The same proof now packs the `@threenative/authoring-client`
+and `@threenative/script-stdlib` workspace packages, confirms the packed CLI
+ships `dist/template-files/_shared/AGENT_GAME_PLAN.md`, and verifies
+`tn create --json` returns `planningInstructions: "AGENT_GAME_PLAN.md"` in the
+clean consumer project. Run `pnpm verify:distribution` to reproduce the local
 packed-tarball proof from a clean temporary npm consumer project. Run `pnpm run
 deploy -- --dry-run` to execute the guarded release path: full repo
 verification, distribution proof, ordered pack, local desktop distributable

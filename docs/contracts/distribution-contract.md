@@ -55,6 +55,10 @@ Promoted package-local artifacts:
 - Generated starter templates that are meant for agent-assisted authoring must
   include local `AGENTS.md` and `CLAUDE.md` files that point agents at
   `tn ... --json` and durable source documents instead of generated bundles.
+- Agent-assisted game starters must also include the shared
+  `AGENT_GAME_PLAN.md` scaffold in the CLI template distribution. `tn create`
+  and `tn init` copy it into generated projects, and JSON output names it as
+  `planningInstructions` so agents can plan before mutating source.
 
 `scripts/check-distribution-contract.mjs` enforces declarations, declaration
 maps, `files` entries, type-aware public exports, and the promoted IR

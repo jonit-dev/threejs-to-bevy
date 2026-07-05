@@ -927,6 +927,7 @@ diagnostics until portable promotion criteria and web/Bevy evidence exist.
 - [x] Web runtime advisory diagnostics for partial `Transform` patches that merge omitted rotation/scale fields
 - [x] IR distribution capability manifest and diagnostics catalog metadata
 - [x] AI-consumable packed artifacts and clean-consumer metadata access are release-gated
+- [x] Agent game planning worksheet scaffold and catalog-first starter instructions are release-gated through template-production and distribution proof
 - [x] Conformance reports for web and Bevy observations
 - [x] Release verification gates and artifact presence checks
 - [x] Desktop package manifest and runtime args for V7 packaging

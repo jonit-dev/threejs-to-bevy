@@ -90,6 +90,8 @@ async function templateDiagnosticsFor(templateName: string, templatePath: string
   const configPath = resolve(templatePath, "threenative.config.json");
   const readmePath = resolve(templatePath, "README.md");
   const agentsPath = resolve(templatePath, "AGENTS.md");
+  const templatePlanPath = resolve(templatePath, "AGENT_GAME_PLAN.md");
+  const sharedPlanPath = resolve(templatePath, "..", "_shared", "AGENT_GAME_PLAN.md");
 
   const packageJson = await readJson(packagePath);
   const scripts = isRecord(packageJson?.scripts) ? packageJson.scripts : {};
@@ -180,6 +182,68 @@ async function templateDiagnosticsFor(templateName: string, templatePath: string
         suggestedFix: "Document the plan/improve/QA/release workflow in maintained starter instructions.",
       });
     }
+  }
+
+  const templatePlanText = await readText(templatePlanPath);
+  const sharedPlanText = await readText(sharedPlanPath);
+  const planPath = templatePlanText.trim() === "" ? sharedPlanPath : templatePlanPath;
+  const planText = templatePlanText.trim() === "" ? sharedPlanText : templatePlanText;
+  if (planText.trim() === "") {
+    diagnostics.push({
+      code: "TN_TEMPLATE_AGENT_PLAN_MISSING",
+      message: `${templateName}: maintained game starter must scaffold AGENT_GAME_PLAN.md from templates/_shared or a template-owned file.`,
+      path: planPath,
+      severity: "error",
+      suggestedFix: "Copy templates/_shared/AGENT_GAME_PLAN.md into created projects and include it in maintained starter checks.",
+    });
+  } else {
+    const missingPlanTerms = [
+      "Playable Loop",
+      "Player/hero",
+      "Obstacle/enemy/vehicle",
+      "Reward/interactable",
+      "World/environment",
+      "UI/HUD",
+      "Audio feedback",
+      "tn asset source get <asset-source-id> --json",
+      "native ThreeNative UI",
+      "React webview UI",
+      "inventories",
+      "cannot attach to a 3D element",
+    ].filter((term) => !planText.includes(term));
+    const hasCatalogSearch = planText.includes("tn asset source search --game-category <category>")
+      && planText.includes("--format glb")
+      && planText.includes("--direct-only")
+      && planText.includes("--json");
+
+    if (missingPlanTerms.length > 0 || !hasCatalogSearch) {
+      diagnostics.push({
+        code: "TN_TEMPLATE_AGENT_PLAN_ASSET_CATALOG_MISSING",
+        message: `${templateName}: AGENT_GAME_PLAN.md must require high-value surface planning, catalog-first asset sourcing, provenance, native UI, and React webview UI limits${missingPlanTerms.length > 0 ? `; missing ${missingPlanTerms.join(", ")}` : ""}.`,
+        path: planPath,
+        severity: "error",
+        suggestedFix: "Restore the shared game planning worksheet with catalog search/get commands, UI approach guidance, and all high-value surface rows.",
+      });
+    }
+  }
+
+  const readmeText = await readText(readmePath);
+  const agentsText = await readText(agentsPath);
+  const missingReferences: string[] = [];
+  if (!readmeText.includes("AGENT_GAME_PLAN.md")) {
+    missingReferences.push("README.md");
+  }
+  if (!agentsText.includes("AGENT_GAME_PLAN.md") || !/first game-creation action/i.test(agentsText)) {
+    missingReferences.push("AGENTS.md");
+  }
+  if (missingReferences.length > 0) {
+    diagnostics.push({
+      code: "TN_TEMPLATE_AGENT_PLAN_REFERENCE_MISSING",
+      message: `${templateName}: ${missingReferences.join(" and ")} must point agents to AGENT_GAME_PLAN.md as the first game-creation action.`,
+      path: missingReferences.includes("AGENTS.md") ? agentsPath : readmePath,
+      severity: "error",
+      suggestedFix: "Reference AGENT_GAME_PLAN.md from starter README and AGENTS.md before source mutation guidance.",
+    });
   }
 
   return diagnostics;

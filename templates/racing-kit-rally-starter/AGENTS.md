@@ -17,8 +17,9 @@ Rules for Racing Kit Rally starter projects.
   imports from portable gameplay scripts.
 - Do not edit generated `dist/` output.
 - Prefer `tn ... --json` commands for scene, asset, and proof mutations.
-- Before changing the racing slice substantially, run `pnpm run game:plan` and
-  keep `artifacts/game-production/plan.json` with the work. Use
+- Before changing the racing slice substantially, open `AGENT_GAME_PLAN.md` as
+  the first game-creation action, then run `pnpm run game:plan` and keep
+  `artifacts/game-production/plan.json` with the work. Use
   `pnpm run game:improve` only for bounded recipe steps from that complete
   plan.
 - Keep `threenative.config.json` production metadata current: playable loop,

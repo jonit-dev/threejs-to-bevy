@@ -21,7 +21,10 @@ requires it.
 
 ## Plan Before Mutation
 
-Run a non-mutating plan:
+In generated starter projects, open `AGENT_GAME_PLAN.md` first. It is the local
+worksheet for playable loop, high-value surfaces, native UI versus React
+webview UI decisions, catalog-first asset sourcing, animation/scale, source
+ownership, polish, and proof. Then run a non-mutating plan:
 
 ```bash
 tn game plan --goal "<game idea>" --project . --json
@@ -29,7 +32,8 @@ tn game plan --goal "<game idea>" --project . --json
 
 The plan records playable loop, controls, objective, progression, retry path,
 feedback moments, source owners, script owners, asset sourcing commands, polish
-tasks, and proof commands. Persisted production work keeps the applied plan at
+tasks, and proof commands. The worksheet is the human/agent checklist;
+persisted production work keeps machine-readable evidence at
 `artifacts/game-production/plan.json`.
 
 ## Apply Bounded Recipes

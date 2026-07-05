@@ -29,10 +29,11 @@ Rules for this generated ThreeNative project.
 
 ## Default Game Quality
 
-- Before creating or substantially changing the game, run
+- Before creating or substantially changing the game, open
+  `AGENT_GAME_PLAN.md` as the first game-creation action, then run
   `tn game plan --goal "<game idea>" --project . --json` or write an
-  equivalent local plan if the CLI is unavailable. Use it as an implementation
-  checklist, not as decorative prose.
+  equivalent local plan if the CLI is unavailable. Use the worksheet and plan as
+  implementation checklists, not decorative prose.
 - The plan must cover game design, assets, scripts, polish, and proof: playable
   loop, controls, objective, progression, fail/retry, feedback cues,
   player/hero asset, obstacle/enemy asset, reward/interactable asset,

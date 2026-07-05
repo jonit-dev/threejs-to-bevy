@@ -6,6 +6,39 @@ import test from "node:test";
 
 import { runTemplateProductionGate } from "./templateProductionGate.js";
 
+const completeAgentGamePlan = `# Agent Game Plan
+
+## Playable Loop
+
+Plan controls, objective, progression, fail/retry path, scoring, and feedback.
+
+## High-Value Surface Inventory
+
+| Surface | Source owner | Asset/source plan | Fallback blocker |
+| --- | --- | --- | --- |
+| Player/hero | content/scenes/rally.scene.json | catalog | |
+| Obstacle/enemy/vehicle | content/scenes/rally.scene.json | catalog | |
+| Reward/interactable | content/scenes/rally.scene.json | catalog | |
+| World/environment | content/scenes/rally.scene.json | catalog | |
+| UI/HUD | content/ui/hud.ui.json | native UI | |
+| Audio feedback | content/assets/rally.assets.json | source | |
+
+## UI Approach
+
+Use native ThreeNative UI for portable HUD and React webview UI for screen-space
+panels such as inventories. React webview UI cannot attach to a 3D element.
+
+## Asset Sourcing Plan
+
+\`\`\`bash
+tn asset source search --game-category <category> --format glb --direct-only --json
+tn asset source get <asset-source-id> --json
+\`\`\`
+
+Record source URL, provenance URL, origin, license evidence, review status,
+downloaded date, conversion notes, and fallback notes.
+`;
+
 test("rejects maintained starters without game-production scripts and metadata", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-template-production-"));
   try {
@@ -34,6 +67,36 @@ test("rejects maintained starters without game-production scripts and metadata",
     assert.equal(result.diagnostics.some((diagnostic) => diagnostic.code === "TN_TEMPLATE_PRODUCTION_METADATA_INCOMPLETE" && diagnostic.path?.endsWith("threenative.config.json")), true);
     assert.equal(result.diagnostics.some((diagnostic) => diagnostic.code === "TN_TEMPLATE_PRODUCTION_AGENT_METADATA_INCOMPLETE" && diagnostic.path?.endsWith("threenative.config.json")), true);
     assert.equal(result.diagnostics.some((diagnostic) => diagnostic.code === "TN_TEMPLATE_PRODUCTION_DOCS_INCOMPLETE" && diagnostic.path?.endsWith("AGENTS.md")), true);
+    assert.equal(result.diagnostics.some((diagnostic) => diagnostic.code === "TN_TEMPLATE_AGENT_PLAN_MISSING" && diagnostic.path?.endsWith("AGENT_GAME_PLAN.md")), true);
+    assert.equal(result.diagnostics.some((diagnostic) => diagnostic.code === "TN_TEMPLATE_AGENT_PLAN_REFERENCE_MISSING"), true);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("rejects maintained starters without catalog-first planning worksheet", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-template-production-plan-"));
+  try {
+    const templatePath = join(root, "templates/structured-source-starter");
+    await mkdir(templatePath, { recursive: true });
+    await writeFile(join(templatePath, "package.json"), `${JSON.stringify({
+      scripts: {
+        "game:improve": "tn game improve --apply-plan artifacts/game-production/plan.json --project . --json",
+        "game:plan": "tn game plan --goal \"arena\" --project . --json > artifacts/game-production/plan.json",
+        "game:qa": "tn game qa --project . --run-proof --json",
+        "game:release": "tn game release --project . --json",
+        "game:score": "tn game score --project . --json",
+      },
+    }, null, 2)}\n`);
+    await writeFile(join(templatePath, "threenative.config.json"), `${JSON.stringify(completeProductionConfig("structured-source-starter"), null, 2)}\n`);
+    await writeFile(join(templatePath, "README.md"), "Start with AGENT_GAME_PLAN.md, then run game:plan, game:improve, game:qa, and game:release.\n");
+    await writeFile(join(templatePath, "AGENTS.md"), "Open AGENT_GAME_PLAN.md as the first game-creation action, then use game:plan, game:improve, game:qa, and game:release.\n");
+    await writeFile(join(templatePath, "AGENT_GAME_PLAN.md"), "Plan first, then get models somehow.\n");
+
+    const result = await runTemplateProductionGate({ root, templates: ["structured-source-starter"] });
+
+    assert.equal(result.ok, false);
+    assert.equal(result.diagnostics.some((diagnostic) => diagnostic.code === "TN_TEMPLATE_AGENT_PLAN_ASSET_CATALOG_MISSING"), true);
   } finally {
     await rm(root, { force: true, recursive: true });
   }
@@ -53,48 +116,10 @@ test("accepts maintained starters with production scripts metadata and instructi
         "game:score": "tn game score --project . --json",
       },
     }, null, 2)}\n`);
-    await writeFile(join(templatePath, "threenative.config.json"), `${JSON.stringify({
-      production: {
-        controls: ["keyboard.KeyW"],
-        failRetry: "Reset the run.",
-        objective: "Reach checkpoints.",
-        playableLoop: "Accelerate through checkpoints.",
-        proofCommands: [
-          "tn authoring validate --project . --json",
-          "tn build --project . --json",
-          "tn playtest --project . --entity player.car --press KeyW --frames 60 --expect-moved --json",
-          "tn screenshot --project . --url <preview-url> --out artifacts/game-production/screenshot.png --wait-ready --json",
-          "tn game score --project . --json",
-          "tn game qa --project . --run-proof --json",
-          "tn game release --project . --json",
-        ],
-        agent: {
-          highValueSurfaces: [
-            { id: "playerHero", provenanceStatus: "source", sourcePath: "content/scenes/rally.scene.json", summary: "Vehicle hero source." },
-          ],
-          proofCommands: [
-            "tn authoring validate --project . --json",
-            "tn build --project . --json",
-          ],
-          scriptModules: [
-            { exportName: "rallySystem", module: "src/scripts/rally.ts", ownsState: ["GameState"], referencedBy: ["content/systems/rally.systems.json"] },
-          ],
-          sourceShape: {
-            scene: ["content/scenes/rally.scene.json"],
-            scripts: ["src/scripts/rally.ts"],
-            systems: ["content/systems/rally.systems.json"],
-            ui: ["content/ui/hud.ui.json"],
-          },
-          uiStates: [
-            { id: "gameplay", sourcePath: "content/ui/hud.ui.json" },
-          ],
-        },
-      },
-      schema: "threenative.project",
-      template: "racing-kit-rally-starter",
-    }, null, 2)}\n`);
-    await writeFile(join(templatePath, "README.md"), "Run game:plan, game:improve, game:qa, and game:release for the production loop.\n");
-    await writeFile(join(templatePath, "AGENTS.md"), "Use game:plan, game:improve, game:qa, and game:release before calling a game done.\n");
+    await writeFile(join(templatePath, "threenative.config.json"), `${JSON.stringify(completeProductionConfig("racing-kit-rally-starter"), null, 2)}\n`);
+    await writeFile(join(templatePath, "README.md"), "Start with AGENT_GAME_PLAN.md, then run game:plan, game:improve, game:qa, and game:release for the production loop.\n");
+    await writeFile(join(templatePath, "AGENTS.md"), "Open AGENT_GAME_PLAN.md as the first game-creation action, then use game:plan, game:improve, game:qa, and game:release before calling a game done.\n");
+    await writeFile(join(templatePath, "AGENT_GAME_PLAN.md"), completeAgentGamePlan);
 
     const result = await runTemplateProductionGate({ root, templates: ["racing-kit-rally-starter"] });
 
@@ -104,3 +129,46 @@ test("accepts maintained starters with production scripts metadata and instructi
     await rm(root, { force: true, recursive: true });
   }
 });
+
+function completeProductionConfig(template: string): Record<string, unknown> {
+  return {
+    production: {
+      controls: ["keyboard.KeyW"],
+      failRetry: "Reset the run.",
+      objective: "Reach checkpoints.",
+      playableLoop: "Accelerate through checkpoints.",
+      proofCommands: [
+        "tn authoring validate --project . --json",
+        "tn build --project . --json",
+        "tn playtest --project . --entity player.car --press KeyW --frames 60 --expect-moved --json",
+        "tn screenshot --project . --url <preview-url> --out artifacts/game-production/screenshot.png --wait-ready --json",
+        "tn game score --project . --json",
+        "tn game qa --project . --run-proof --json",
+        "tn game release --project . --json",
+      ],
+      agent: {
+        highValueSurfaces: [
+          { id: "playerHero", provenanceStatus: "source", sourcePath: "content/scenes/rally.scene.json", summary: "Vehicle hero source." },
+        ],
+        proofCommands: [
+          "tn authoring validate --project . --json",
+          "tn build --project . --json",
+        ],
+        scriptModules: [
+          { exportName: "rallySystem", module: "src/scripts/rally.ts", ownsState: ["GameState"], referencedBy: ["content/systems/rally.systems.json"] },
+        ],
+        sourceShape: {
+          scene: ["content/scenes/rally.scene.json"],
+          scripts: ["src/scripts/rally.ts"],
+          systems: ["content/systems/rally.systems.json"],
+          ui: ["content/ui/hud.ui.json"],
+        },
+        uiStates: [
+          { id: "gameplay", sourcePath: "content/ui/hud.ui.json" },
+        ],
+      },
+    },
+    schema: "threenative.project",
+    template,
+  };
+}

@@ -21,6 +21,8 @@ const repoRoot = resolve(sourceTemplatesRoot, "..");
 const cliBin = resolve(repoRoot, "packages/cli/dist/index.js");
 const publishedPackageVersion = "0.1.0";
 const generatedTemplateEntryNames = new Set(["dist", "node_modules", "artifacts"]);
+const agentGamePlanPath = "AGENT_GAME_PLAN.md";
+const sharedAgentGamePlanPath = `_shared/${agentGamePlanPath}`;
 
 export async function createProject(argv: readonly string[], options: ICreateOptions = {}): Promise<ICommandResult> {
   const commandName = options.commandName ?? "create";
@@ -93,9 +95,35 @@ export async function createProject(argv: readonly string[], options: ICreateOpt
   const sourceCheckout = await isSourceCheckout();
   const templatesRoot = sourceCheckout ? sourceTemplatesRoot : packagedTemplatesRoot;
   const templateSourcePath = resolveTemplateSourcePath(templatesRoot, definition);
+  const templateOwnedPlanPath = resolve(templateSourcePath, agentGamePlanPath);
+  const sharedPlanPath = resolve(templatesRoot, sharedAgentGamePlanPath);
+
+  if (await pathExists(templateOwnedPlanPath)) {
+    return diagnosticResult(
+      {
+        code: "TN_CREATE_AGENT_PLAN_CONFLICT",
+        message: `Template '${definition.canonical}' owns ${agentGamePlanPath}; shared planning instructions cannot be scaffolded without an explicit registry override.`,
+        path: templateOwnedPlanPath,
+        suggestedFix: `Move the template-owned plan to templates/_shared/${agentGamePlanPath} or add a future registry override before scaffolding.`,
+      },
+      { exitCode: 1, json, stderr: true },
+    );
+  }
+  if (!(await pathExists(sharedPlanPath))) {
+    return diagnosticResult(
+      {
+        code: "TN_CREATE_AGENT_PLAN_MISSING",
+        message: `Shared planning instructions are missing at '${sharedPlanPath}'.`,
+        path: sharedPlanPath,
+        suggestedFix: `Add templates/_shared/${agentGamePlanPath} before creating agent-assisted game projects.`,
+      },
+      { exitCode: 1, json, stderr: true },
+    );
+  }
 
   await mkdir(projectPath, { recursive: true });
   await copyTemplateFiles(templateSourcePath, projectPath);
+  await copySharedPlanningInstructions(sharedPlanPath, projectPath);
   await rewriteProjectTemplateMetadata(projectPath, definition.canonical);
   await rewriteRuntimeRenderProfile(projectPath, renderProfile);
 
@@ -110,9 +138,11 @@ export async function createProject(argv: readonly string[], options: ICreateOpt
     code: "TN_CREATE_OK",
     command: commandName,
     message: `Created ${definition.canonical} project at '${projectPath}'.`,
-    nextCommands: ["pnpm install", "pnpm run validate", "pnpm run build", "pnpm run dev:web", "pnpm run verify"],
+    nextCommands: ["pnpm install", "pnpm run game:plan", "pnpm run validate", "pnpm run build", "pnpm run dev:web", "pnpm run verify"],
     path: projectPath,
+    planningInstructions: agentGamePlanPath,
     referenceDocs: [
+      agentGamePlanPath,
       "docs/workflows/developer-workflow.md",
       "docs/workflows/ai-workflows.md",
       "tn help scaffold",
@@ -131,7 +161,7 @@ export async function createProject(argv: readonly string[], options: ICreateOpt
 
   return {
     exitCode: 0,
-    stdout: `${payload.message}\nNext commands:\n  cd ${projectPath}\n  pnpm install\n  pnpm run validate\n  pnpm run build\n  pnpm run dev:web\n  pnpm run verify\nDocs: tn help scaffold, tn help visual-qa\n`,
+    stdout: `${payload.message}\nPlanning: open ${agentGamePlanPath} and run pnpm run game:plan before mutating game source.\nNext commands:\n  cd ${projectPath}\n  pnpm install\n  pnpm run game:plan\n  pnpm run validate\n  pnpm run build\n  pnpm run dev:web\n  pnpm run verify\nDocs: ${agentGamePlanPath}, tn help scaffold, tn help visual-qa\n`,
   };
 }
 
@@ -162,6 +192,21 @@ async function copyTemplateFiles(templateSourcePath: string, projectPath: string
     force: false,
     filter: (sourcePath) => shouldCopyTemplatePath(templateSourcePath, sourcePath),
   });
+}
+
+async function copySharedPlanningInstructions(sharedPlanPath: string, projectPath: string): Promise<void> {
+  await cp(sharedPlanPath, resolve(projectPath, agentGamePlanPath), {
+    force: false,
+  });
+}
+
+async function pathExists(path: string): Promise<boolean> {
+  try {
+    await access(path);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 function shouldCopyTemplatePath(templateSourcePath: string, sourcePath: string): boolean {

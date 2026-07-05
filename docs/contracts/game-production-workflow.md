@@ -133,9 +133,15 @@ Maintained game starters must scaffold the same loop rather than leaving it to
 agent memory: package scripts should include `game:plan`, `game:improve`,
 `game:score`, proof-running `game:qa`, and `game:release`; project production
 metadata should name playable loop, controls, objective, retry path, and proof
-commands. `pnpm verify:template-production` checks maintained starters directly
-and is included in the release focused-gate profile so this scaffolding cannot
-drift out of newly created projects.
+commands. New agent-assisted game projects also scaffold
+`AGENT_GAME_PLAN.md`. That Markdown file is the local human/agent worksheet for
+playable loop, high-value surfaces, native UI versus React webview UI choices,
+catalog-first asset sourcing, source owners, polish, scale, and proof.
+`artifacts/game-production/plan.json` remains the machine-readable evidence
+emitted by `tn game plan` or persisted by `tn game improve --apply-plan`.
+`pnpm verify:template-production` checks maintained starters directly and is
+included in the release focused-gate profile so this scaffolding cannot drift
+out of newly created projects.
 
 `tn game qa --run-proof --json` executes the available proof steps and embeds a
 `proofRun` object beside the report. Required proof failures preserve the

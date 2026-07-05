@@ -10,6 +10,9 @@ and chase-camera behavior lives in `src/scripts/racing.ts`.
   grip bounds, reset behavior, and the low chase camera.
 - `content/assets/rally.assets.json` keeps every GLB reference local to
   `assets/` so generated projects run without manual downloads.
+- For major game changes, start with `AGENT_GAME_PLAN.md`; it is the local
+  checklist for playable loop, catalog-first assets, UI approach, source
+  owners, polish, scale, and proof before source mutation.
 
 Useful commands:
 
@@ -33,3 +36,5 @@ pnpm run verify
 checkpoint objective, retry path, and production proof commands. Keep that
 metadata current when changing the starter so `tn game qa --run-proof` and
 `tn game release` remain meaningful evidence instead of after-the-fact notes.
+`AGENT_GAME_PLAN.md` is the human/agent worksheet for this loop, while
+`artifacts/game-production/plan.json` is the machine-readable plan evidence.

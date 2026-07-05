@@ -11,6 +11,8 @@ export const packageOrder = [
   ["@threenative/sdk", "packages/sdk"],
   ["@threenative/ir", "packages/ir"],
   ["@threenative/authoring", "packages/authoring"],
+  ["@threenative/authoring-client", "packages/authoring-client"],
+  ["@threenative/script-stdlib", "packages/script-stdlib"],
   ["@threenative/ui", "packages/ui"],
   ["@threenative/r3f", "packages/r3f"],
   ["@threenative/compiler", "packages/compiler"],
@@ -175,9 +177,15 @@ async function listTgz(dir) {
 async function verifyGeneratedProjectAgentInstructions(projectDir) {
   const agents = await readFile(join(projectDir, "AGENTS.md"), "utf8");
   const claude = await readFile(join(projectDir, "CLAUDE.md"), "utf8");
+  const plan = await readFile(join(projectDir, "AGENT_GAME_PLAN.md"), "utf8");
   for (const phrase of ["tn scene ... --json", "content/**/*.json", "Do not edit them as the fix"]) {
     if (!agents.includes(phrase)) {
       throw new Error(`Generated AGENTS.md is missing required phrase '${phrase}'.`);
+    }
+  }
+  for (const phrase of ["tn asset source search --game-category <category> --format glb --direct-only --json", "tn asset source get <asset-source-id> --json", "High-Value Surface Inventory"]) {
+    if (!plan.includes(phrase)) {
+      throw new Error(`Generated AGENT_GAME_PLAN.md is missing required phrase '${phrase}'.`);
     }
   }
   if (!claude.includes("Use `AGENTS.md`")) {
@@ -193,6 +201,8 @@ async function rewriteGameDependencies(projectDir, packageTarballs) {
     "@threenative/sdk": `file:${packageTarballs.get("@threenative/sdk")}`,
     "@threenative/ir": `file:${packageTarballs.get("@threenative/ir")}`,
     "@threenative/authoring": `file:${packageTarballs.get("@threenative/authoring")}`,
+    "@threenative/authoring-client": `file:${packageTarballs.get("@threenative/authoring-client")}`,
+    "@threenative/script-stdlib": `file:${packageTarballs.get("@threenative/script-stdlib")}`,
     "@threenative/ui": `file:${packageTarballs.get("@threenative/ui")}`,
     "@threenative/r3f": `file:${packageTarballs.get("@threenative/r3f")}`,
     "@threenative/compiler": `file:${packageTarballs.get("@threenative/compiler")}`,

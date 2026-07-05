@@ -12,17 +12,21 @@ test("should create starter template files", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-create-"));
   try {
     const result = await createProject(["my-game", "--json"], { cwd: root });
-    const payload = JSON.parse(result.stdout) as { code: string; nextCommands: string[]; path: string; referenceDocs: string[]; template: string };
+    const payload = JSON.parse(result.stdout) as { code: string; nextCommands: string[]; path: string; planningInstructions: string; referenceDocs: string[]; template: string };
 
     assert.equal(result.exitCode, 0);
     assert.equal(payload.code, "TN_CREATE_OK");
     assert.equal(payload.template, "structured-source-starter");
+    assert.equal(payload.planningInstructions, "AGENT_GAME_PLAN.md");
     assert.equal(payload.nextCommands.includes("pnpm run dev:web"), true);
+    assert.equal(payload.nextCommands.includes("pnpm run game:plan"), true);
+    assert.equal(payload.referenceDocs.includes("AGENT_GAME_PLAN.md"), true);
     assert.equal(payload.referenceDocs.includes("tn help scaffold"), true);
 
     const files = await readdir(payload.path);
     assert.equal(files.includes(".gitignore"), true);
     assert.equal(files.includes("AGENTS.md"), true);
+    assert.equal(files.includes("AGENT_GAME_PLAN.md"), true);
     assert.equal(files.includes("CLAUDE.md"), true);
     assert.equal(files.includes("README.md"), true);
     assert.equal(files.includes("dist"), false);
@@ -47,9 +51,16 @@ test("should create starter template files", async () => {
     assert.deepEqual(runtime.renderer?.renderLook, { version: 1, profile: "balanced" });
 
     const agentInstructions = await readFile(join(payload.path, "AGENTS.md"), "utf8");
+    const planningInstructions = await readFile(join(payload.path, "AGENT_GAME_PLAN.md"), "utf8");
     const claudeInstructions = await readFile(join(payload.path, "CLAUDE.md"), "utf8");
     assert.match(agentInstructions, /tn scene \.\.\. --json/);
     assert.match(agentInstructions, /Do not edit them as the fix/);
+    assert.match(agentInstructions, /AGENT_GAME_PLAN\.md/);
+    assert.match(planningInstructions, /tn asset source search --game-category <category> --format glb --direct-only --json/);
+    assert.match(planningInstructions, /Player\/hero/);
+    assert.match(planningInstructions, /Audio feedback/);
+    assert.match(planningInstructions, /React webview UI/);
+    assert.match(planningInstructions, /tn game release --project \. --json/);
     assert.match(claudeInstructions, /Use `AGENTS\.md`/);
 
     const packageJson = JSON.parse(await readFile(join(payload.path, "package.json"), "utf8")) as {
@@ -104,6 +115,7 @@ test("should initialize starter project through init alias with create payload s
       command: string;
       nextCommands: string[];
       path: string;
+      planningInstructions: string;
       referenceDocs: string[];
       template: string;
     };
@@ -112,12 +124,18 @@ test("should initialize starter project through init alias with create payload s
     assert.equal(payload.code, "TN_CREATE_OK");
     assert.equal(payload.command, "init");
     assert.equal(payload.template, "structured-source-starter");
-    assert.deepEqual(payload.nextCommands, ["pnpm install", "pnpm run validate", "pnpm run build", "pnpm run dev:web", "pnpm run verify"]);
+    assert.equal(payload.planningInstructions, "AGENT_GAME_PLAN.md");
+    assert.deepEqual(payload.nextCommands, ["pnpm install", "pnpm run game:plan", "pnpm run validate", "pnpm run build", "pnpm run dev:web", "pnpm run verify"]);
+    assert.equal(payload.referenceDocs.includes("AGENT_GAME_PLAN.md"), true);
     assert.equal(payload.referenceDocs.includes("docs/workflows/developer-workflow.md"), true);
 
     const files = await readdir(payload.path);
+    const planningInstructions = await readFile(join(payload.path, "AGENT_GAME_PLAN.md"), "utf8");
     assert.equal(files.includes("package.json"), true);
+    assert.equal(files.includes("AGENT_GAME_PLAN.md"), true);
     assert.equal(files.includes("threenative.config.json"), true);
+    assert.match(planningInstructions, /Complete this worksheet before creating or substantially changing game source/);
+    assert.match(planningInstructions, /tn asset source get <asset-source-id> --json/);
   } finally {
     await rm(root, { force: true, recursive: true });
   }
@@ -130,6 +148,8 @@ test("should print explicit first-project next commands in human output", async 
 
     assert.equal(result.exitCode, 0);
     assert.match(result.stdout, /pnpm install/);
+    assert.match(result.stdout, /AGENT_GAME_PLAN\.md/);
+    assert.match(result.stdout, /pnpm run game:plan/);
     assert.match(result.stdout, /pnpm run validate/);
     assert.match(result.stdout, /pnpm run build/);
     assert.match(result.stdout, /pnpm run dev:web/);
@@ -192,6 +212,7 @@ test("should create structured-source starter template with editable content doc
     assert.match(readme, /@threenative\/authoring-client/);
     assert.match(readme, /pnpm run recipe:controller/);
     await access(join(payload.path, "assets", "goal-ping.wav"));
+    await access(join(payload.path, "AGENT_GAME_PLAN.md"));
     await assert.rejects(access(join(payload.path, "src/game.ts")));
     await assert.rejects(access(join(payload.path, "dist", "structured-source-starter.bundle")));
 
@@ -217,11 +238,13 @@ test("should create racing kit rally starter with reusable race scene structure"
   const root = await mkdtemp(join(tmpdir(), "tn-create-racing-kit-"));
   try {
     const result = await createProject(["rally", "--template", "racing-kit-rally-starter", "--json"], { cwd: root });
-    const payload = JSON.parse(result.stdout) as { code: string; path: string; template: string };
+    const payload = JSON.parse(result.stdout) as { code: string; path: string; planningInstructions: string; referenceDocs?: string[]; template: string };
 
     assert.equal(result.exitCode, 0);
     assert.equal(payload.code, "TN_CREATE_OK");
     assert.equal(payload.template, "racing-kit-rally-starter");
+    assert.equal(payload.planningInstructions, "AGENT_GAME_PLAN.md");
+    assert.equal(payload.referenceDocs?.includes("AGENT_GAME_PLAN.md"), true);
 
     const config = JSON.parse(await readFile(join(payload.path, "threenative.config.json"), "utf8")) as {
       entry: string;
@@ -254,6 +277,7 @@ test("should create racing kit rally starter with reusable race scene structure"
     const sceneDoc = await readFile(join(payload.path, "content/scenes/rally.scene.json"), "utf8");
     const systemDoc = await readFile(join(payload.path, "content/systems/rally.systems.json"), "utf8");
     const scriptSource = await readFile(join(payload.path, "src/scripts/racing.ts"), "utf8");
+    const planningInstructions = await readFile(join(payload.path, "AGENT_GAME_PLAN.md"), "utf8");
     const packageJson = JSON.parse(await readFile(join(payload.path, "package.json"), "utf8")) as {
       scripts: Record<string, string>;
     };
@@ -264,6 +288,9 @@ test("should create racing kit rally starter with reusable race scene structure"
     assert.match(systemDoc, /"module": "src\/scripts\/racing\.ts"/);
     assert.match(scriptSource, /function updateCamera/);
     assert.match(scriptSource, /CHECKPOINTS/);
+    assert.match(planningInstructions, /tn asset source search --game-category <category> --format glb --direct-only --json/);
+    assert.match(planningInstructions, /High-Value Surface Inventory/);
+    assert.match(planningInstructions, /tn model-test assets\/<model>\.glb --json/);
     assert.match(packageJson.scripts["game:plan"] ?? "", /tn game plan --goal/);
     assert.equal(packageJson.scripts["game:improve"], "tn game improve --apply-plan artifacts/game-production/plan.json --project . --json");
     assert.equal(packageJson.scripts["game:qa"], "tn game qa --project . --run-proof --json");

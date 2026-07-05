@@ -14,6 +14,9 @@ TypeScript stays thin.
 - `dist/**`, emitted IR JSON, and `scripts.bundle.js` are generated output.
 - AI coding agents should read `AGENTS.md` or `CLAUDE.md` and prefer
   `tn ... --json` commands for deterministic source edits.
+- For game creation or major gameplay changes, start with
+  `AGENT_GAME_PLAN.md`; it is the local checklist for playable loop, assets,
+  UI, source owners, polish, and proof before source mutation.
 - Default generated games should ship with smooth movement and a deliberate
   visual baseline, not primitive-only placeholders. Use custom meshes, imported
   assets, authored materials, lighting, landmarks, screenshot proof, motion
@@ -36,10 +39,11 @@ tn ui set-layout hud countdown --justify center --align center --top 48 --width 
 
 Production metadata in `threenative.config.json` declares the starter's
 playable loop, controls, objective, retry policy, and proof commands. Use
-`tn game plan --goal "<game idea>" --json` before mutating source. The plan is
-the production checklist: gameplay loop, controls, objective, asset inventory,
-script modules/exports, owned state, polish pass, fallback choices, and proof
-commands. For GLB/glTF models, start from the SQLite-backed CLI asset library:
+`AGENT_GAME_PLAN.md` and
+`tn game plan --goal "<game idea>" --json` before mutating source. The
+worksheet is the local planning checklist; `artifacts/game-production/plan.json`
+is the machine-readable evidence. For GLB/glTF models, start from the
+SQLite-backed CLI asset library:
 `tn asset source search --game-category <category> --format glb --direct-only --json`,
 then `tn asset source get <asset-source-id> --json` for selected records. Then use
 `tn game improve --apply-plan artifacts/game-production/plan.json --json`,

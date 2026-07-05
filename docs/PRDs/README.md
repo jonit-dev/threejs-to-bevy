@@ -41,7 +41,7 @@ backlog unless a nested PRD says it has been superseded.
   split oversized authoring, IR, runtime, CLI, compiler, verification, and SDK
   hotspots behind stable public entry points, using `pnpm check:source-size`
   as the refactor baseline.
-- [Complete Structured Authoring Parity](other/complete-structured-authoring-parity.md):
+- [Complete Structured Authoring Parity](done/complete-structured-authoring-parity.md):
   full structured source coverage for map/editor-owned data, CLI/MCP/editor
   operation parity with TypeScript-era authoring, bundle import, provenance, and
   round-trip proof without TypeScript reverse-generation.
@@ -68,10 +68,6 @@ backlog unless a nested PRD says it has been superseded.
   init/create front door, task-oriented help, doctor diagnostics, asset/model
   inspection, transform/camera guardrails, screenshot/video proof, runtime
   debug overlay, and racing template evidence.
-- [Agent Game Planning Template and Init Scaffold](other/agent-game-planning-template-and-init-scaffold.md):
-  scaffolded plan-first Markdown worksheet for agent-created games, default
-  `tn init` inclusion, catalog-first asset sourcing instructions, and
-  template-production drift checks.
 
 ### Advanced And Boundary Work
 
@@ -123,6 +119,7 @@ Useful completed reference groups:
   [Script Module References and Manifest](done/other/script-module-references-and-manifest.md),
   [TypeScript Authoring Facade and Script Ergonomics](done/other/typescript-authoring-facade-and-script-ergonomics.md).
 - Game-production workflow:
+  [Agent Game Planning Template and Init Scaffold](done/agent-game-planning-template-and-init-scaffold.md),
   [Agent-Friendly 3D Game Creation Contract](done/other/agent-friendly-3d-game-creation-contract.md),
   [Playable Game Authoring Loop Hardening](done/other/game-authoring-loop-hardening.md),
   [Shippable Asset Source Catalog](done/other/shippable-asset-source-catalog.md),
