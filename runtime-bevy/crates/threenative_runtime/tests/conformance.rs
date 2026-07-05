@@ -206,6 +206,12 @@ fn should_report_v9_environment_lighting_budgets_and_renderer_quality() {
             "sourceAsset:env.Tree"
         ])
     );
+    assert_eq!(
+        report_json["environment"]["lodImpostors"],
+        serde_json::json!([
+            { "asset": "model.env.TreeLow", "material": "mat.ground", "mode": "cameraFacingQuad", "sourceAsset": "env.Tree" }
+        ])
+    );
     assert_eq!(report_json["lightBudget"]["overBudget"], true);
     assert_eq!(
         report_json["lightBudget"]["culledLights"],

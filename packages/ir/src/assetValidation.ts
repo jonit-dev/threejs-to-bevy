@@ -7,6 +7,8 @@ import { isRecord, validateFiniteRange, validatePositiveFinite, validateUniqueId
 
 const MAX_RESIDUAL_ANIMATION_TIME_SECONDS = 600;
 const MAX_EMBEDDED_ASSET_BYTES = 64 * 1024;
+const TEXTURE_DELIVERY_FORMATS = ["basis", "bc", "dds", "etc2", "astc", "jpeg", "ktx2", "png", "webp"] as const;
+const BASELINE_TEXTURE_FORMATS = new Set(["jpeg", "png", "webp"]);
 
 export async function validateAssets(
   assets: IAssetsManifest,
@@ -16,6 +18,7 @@ export async function validateAssets(
   diagnostics: IIrDiagnostic[],
 ): Promise<void> {
   assets.assets.forEach((asset, index) => validateAssetMetadata(asset, `${path}/assets/${index}`, diagnostics));
+  validateTextureDelivery(assets, targetProfile, `${path}/assets`, diagnostics);
   validateAssetGroups(assets, `${path}/groups`, diagnostics);
   await Promise.all(
     assets.assets.map(async (asset, index) => {
@@ -374,7 +377,7 @@ function validateAssetMetadata(asset: IAssetsManifest["assets"][number], path: s
     asset.kind === "mesh"
       ? ["attributes", "binaryAttributes", "binaryIndices", "bounds", "budget", "format", "generation", "id", "indices", "kind", "primitive", "size", "topology", "usage"]
       : asset.kind === "texture"
-        ? ["center", "format", "id", "kind", "magFilter", "minFilter", "offset", "path", "repeat", "rotation", "wrapS", "wrapT"]
+        ? ["center", "fallback", "format", "id", "kind", "magFilter", "minFilter", "offset", "path", "repeat", "rotation", "variants", "wrapS", "wrapT"]
         : asset.kind === "render-target"
           ? ["format", "height", "id", "kind", "sampleCount", "usage", "width"]
           : asset.kind === "buffer"
@@ -424,6 +427,129 @@ function validateAssetMetadata(asset: IAssetsManifest["assets"][number], path: s
   }
   if (asset.kind === "render-target") {
     validateRenderTargetAsset(asset, path, diagnostics);
+  }
+}
+
+function validateTextureDelivery(
+  assets: IAssetsManifest,
+  targetProfile: ITargetProfile | undefined,
+  path: string,
+  diagnostics: IIrDiagnostic[],
+): void {
+  const targets = targetProfile?.targets ?? [];
+  const supportedFormats = new Set(targetProfile?.budgets?.supportedTextureFormats ?? ["jpeg", "png", "webp"]);
+  assets.assets.forEach((asset, index) => {
+    if (asset.kind !== "texture") {
+      return;
+    }
+    const assetPath = `${path}/${index}`;
+    if (asset.fallback !== undefined && asset.fallback !== asset.id) {
+      diagnostics.push({
+        code: "TN_IR_TEXTURE_FALLBACK_INVALID",
+        message: `Texture asset '${asset.id}' fallback must point at its selected manifest texture id.`,
+        path: `${assetPath}/fallback`,
+        severity: "error",
+        suggestion: "Keep the manifest texture as the deterministic fallback and put optional target-specific files in variants.",
+        value: asset.fallback,
+      });
+    }
+    if (asset.variants === undefined) {
+      return;
+    }
+    if (!Array.isArray(asset.variants) || asset.variants.length === 0) {
+      diagnostics.push({
+        code: "TN_IR_TEXTURE_VARIANTS_INVALID",
+        message: `Texture asset '${asset.id}' variants must be a non-empty array when declared.`,
+        path: `${assetPath}/variants`,
+        severity: "error",
+        suggestion: "Remove variants or add target-specific texture variant metadata.",
+      });
+      return;
+    }
+    let hasSupportedFallback = supportedFormats.has(asset.format) && BASELINE_TEXTURE_FORMATS.has(asset.format);
+    asset.variants.forEach((variant, variantIndex) => {
+      const variantPath = `${assetPath}/variants/${variantIndex}`;
+      validateTextureVariant(asset.id, variant, variantPath, diagnostics);
+      if (!isRecord(variant)) {
+        return;
+      }
+      const format = typeof variant.format === "string" ? variant.format : undefined;
+      if (variant.fallback === true && format !== undefined && supportedFormats.has(format) && BASELINE_TEXTURE_FORMATS.has(format)) {
+        hasSupportedFallback = true;
+      }
+      const variantTargets = Array.isArray(variant.targets) ? variant.targets.filter((target): target is "desktop" | "web" => target === "desktop" || target === "web") : targets;
+      const appliesToTarget = targets.length === 0 || variantTargets.length === 0 || targets.some((target) => variantTargets.includes(target));
+      if (format !== undefined && appliesToTarget && !supportedFormats.has(format)) {
+        diagnostics.push({
+          code: "TN_IR_TEXTURE_VARIANT_FORMAT_UNSUPPORTED_FOR_TARGET",
+          limit: [...supportedFormats].sort(),
+          message: `Texture asset '${asset.id}' variant format '${format}' is not supported by target profile '${targets.join(",") || "unknown"}'.`,
+          path: `${variantPath}/format`,
+          severity: "error",
+          suggestion: "Add a supported baseline fallback texture or restrict the variant targets to profiles that support the format.",
+          target: targets.join(",") || undefined,
+          value: format,
+        });
+      }
+    });
+    if (!hasSupportedFallback) {
+      diagnostics.push({
+        code: "TN_IR_TEXTURE_VARIANT_FALLBACK_MISSING",
+        limit: [...supportedFormats].sort(),
+        message: `Texture asset '${asset.id}' declares variants but no supported baseline fallback for target profile '${targets.join(",") || "unknown"}'.`,
+        path: `${assetPath}/fallback`,
+        severity: "error",
+        suggestion: "Use a manifest texture format supported by the target profile, or mark a baseline jpeg/png/webp variant as fallback.",
+        target: targets.join(",") || undefined,
+        value: asset.format,
+      });
+    }
+  });
+}
+
+function validateTextureVariant(assetId: string, value: unknown, path: string, diagnostics: IIrDiagnostic[]): void {
+  if (!isRecord(value)) {
+    diagnostics.push({ code: "TN_IR_TEXTURE_VARIANT_INVALID", message: `Texture asset '${assetId}' variant must be an object.`, path, severity: "error" });
+    return;
+  }
+  for (const key of Object.keys(value)) {
+    if (!["fallback", "format", "path", "targets"].includes(key)) {
+      diagnostics.push({ code: "TN_IR_TEXTURE_VARIANT_FIELD_UNSUPPORTED", message: `Texture asset '${assetId}' variant uses unsupported field '${key}'.`, path: `${path}/${key}`, severity: "error" });
+    }
+  }
+  if (!TEXTURE_DELIVERY_FORMATS.includes(value.format as never)) {
+    diagnostics.push({
+      code: "TN_IR_TEXTURE_VARIANT_FORMAT_INVALID",
+      limit: [...TEXTURE_DELIVERY_FORMATS],
+      message: `Texture asset '${assetId}' variant format must be a promoted texture delivery format.`,
+      path: `${path}/format`,
+      severity: "error",
+      suggestion: "Use jpeg, png, webp, ktx2, dds, basis, bc, etc2, or astc.",
+      value: typeof value.format === "string" ? value.format : undefined,
+    });
+  }
+  if (typeof value.path !== "string" || value.path.trim() === "" || value.path.startsWith("/") || value.path.includes("..")) {
+    diagnostics.push({
+      code: "TN_IR_TEXTURE_VARIANT_PATH_INVALID",
+      message: `Texture asset '${assetId}' variant path must be bundle-relative and non-empty.`,
+      path: `${path}/path`,
+      severity: "error",
+      suggestion: "Place optional texture variants under the emitted bundle assets directory.",
+    });
+  }
+  if (value.fallback !== undefined && typeof value.fallback !== "boolean") {
+    diagnostics.push({ code: "TN_IR_TEXTURE_VARIANT_FALLBACK_INVALID", message: `Texture asset '${assetId}' variant fallback must be boolean.`, path: `${path}/fallback`, severity: "error" });
+  }
+  if (value.targets !== undefined) {
+    if (!Array.isArray(value.targets) || value.targets.length === 0) {
+      diagnostics.push({ code: "TN_IR_TEXTURE_VARIANT_TARGETS_INVALID", message: `Texture asset '${assetId}' variant targets must be a non-empty array.`, path: `${path}/targets`, severity: "error" });
+    } else {
+      value.targets.forEach((target, index) => {
+        if (target !== "desktop" && target !== "web") {
+          diagnostics.push({ code: "TN_IR_TEXTURE_VARIANT_TARGET_UNSUPPORTED", message: `Texture asset '${assetId}' variant target '${String(target)}' is unsupported.`, path: `${path}/targets/${index}`, severity: "error" });
+        }
+      });
+    }
   }
 }
 
@@ -1224,7 +1350,7 @@ function assetFormatMatches(kind: string, format: string, extension: string | un
     return format === "glb" || format === "gltf";
   }
   if (kind === "texture") {
-    return format === "jpeg" || format === "png" || format === "webp";
+    return TEXTURE_DELIVERY_FORMATS.includes(format as never);
   }
   if (kind === "audio") {
     return format === "mp3" || format === "ogg" || format === "wav";

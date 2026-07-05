@@ -330,6 +330,49 @@ test("assets should accept expanded generated mesh primitive catalog", async () 
   }
 });
 
+test("assets should reject unsupported target texture variants with fallback metadata", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-assets-texture-variants-"));
+  try {
+    await writeTestBundle(root, {
+      createAssetsDir: true,
+      targetProfile: {
+        schema: "threenative.target-profile",
+        version: "0.1.0",
+        targets: ["web"],
+        budgets: { supportedTextureFormats: ["png", "webp"] },
+      },
+    });
+    await writeFile(join(root, "assets", "leaf.png"), "texture");
+    await writeJson(root, "assets.manifest.json", {
+      schema: "threenative.assets",
+      version: "0.1.0",
+      assets: [
+        {
+          id: "tex.leaf",
+          kind: "texture",
+          format: "png",
+          path: "assets/leaf.png",
+          fallback: "tex.leaf",
+          variants: [
+            { format: "ktx2", path: "assets/leaf.ktx2", targets: ["web"] },
+            { format: "webp", path: "assets/leaf.webp", targets: ["web"] },
+          ],
+        },
+      ],
+    });
+
+    const result = await validateBundle(root);
+
+    assert.equal(result.ok, false);
+    assert.deepEqual(
+      result.diagnostics.map((diagnostic) => [diagnostic.code, diagnostic.path, diagnostic.target, diagnostic.value]),
+      [["TN_IR_TEXTURE_VARIANT_FORMAT_UNSUPPORTED_FOR_TARGET", "assets.manifest.json/assets/0/variants/0/format", "web", "ktx2"]],
+    );
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
 test("assets should reject invalid generated mesh primitive dimensions", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-assets-generated-mesh-invalid-"));
   try {

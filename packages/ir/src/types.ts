@@ -190,6 +190,14 @@ export type TextureMinFilter =
   | "nearestMipmapLinear"
   | "nearestMipmapNearest";
 export type TextureMagFilter = "linear" | "nearest";
+export type TextureDeliveryFormat = "basis" | "bc" | "dds" | "etc2" | "astc" | "jpeg" | "ktx2" | "png" | "webp";
+
+export interface ITextureVariantIr {
+  fallback?: boolean;
+  format: TextureDeliveryFormat;
+  path: string;
+  targets?: Array<"desktop" | "web">;
+}
 
 export interface ITransformComponent {
   position?: Vec3;
@@ -717,7 +725,8 @@ export type IAssetIr =
     } & IAssetSourceIr
   | {
       center?: Vec2;
-      format: "jpeg" | "png" | "webp";
+      format: TextureDeliveryFormat;
+      fallback?: string;
       id: string;
       kind: "texture";
       magFilter?: TextureMagFilter;
@@ -726,6 +735,7 @@ export type IAssetIr =
       path?: string;
       repeat?: Vec2;
       rotation?: number;
+      variants?: ITextureVariantIr[];
       wrapS?: TextureWrapMode;
       wrapT?: TextureWrapMode;
     } & IAssetSourceIr
@@ -859,7 +869,7 @@ export interface ITargetProfile {
     maxAssetBytes?: number;
     maxBundleBytes?: number;
     supportedModelFormats?: Array<"glb" | "gltf">;
-    supportedTextureFormats?: Array<"jpeg" | "png" | "webp">;
+    supportedTextureFormats?: TextureDeliveryFormat[];
   };
   performance?: IPerformanceProfile;
 }
@@ -1087,6 +1097,10 @@ export interface IEnvironmentLodLevelIr {
   fade?: {
     endDistance: number;
     startDistance: number;
+  };
+  impostor?: {
+    material: string;
+    mode: "cameraFacingQuad";
   };
   maxDistance: number;
   minDistance: number;

@@ -1437,6 +1437,17 @@ screen-space reflections, volumetrics, virtual geometry, custom post passes,
 compressed skybox formats, and broader editor debug overlay systems remain
 deferred until separately proven.
 
+The dense-scene LOD/texture-delivery PRD is complete as a metadata and report
+slice. Environment LOD levels can declare `impostor: { mode:
+"cameraFacingQuad", material }`; IR validation rejects malformed impostor
+metadata and continues to enforce ordered LOD/fade ranges. Web and Bevy reports
+now expose matching `lodImpostors` entries for the rendering-lights fixture, and
+asset-load traces include deterministic texture delivery rows with selected
+fallback path plus optional target-specific variants. Texture assets remain
+baseline-selected by default (`jpeg`/`png`/`webp`), while optional
+`ktx2`/`dds`/`basis`/`bc`/`etc2`/`astc` variants emit target-profile diagnostics
+when requested by unsupported targets.
+
 The camera/post-processing boundary PRD is complete as a diagnostic/report
 contract slice. `runtime.config.json` validation rejects auto exposure, motion
 blur/motion vectors, SSR/mirrors, deferred render paths, volumetrics, decals,

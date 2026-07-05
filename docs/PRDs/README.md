@@ -49,10 +49,6 @@ backlog unless a nested PRD says it has been superseded.
 
 ### Advanced And Boundary Work
 
-- [Dense Scene LOD and Texture Delivery](other/dense-scene-lod-texture-delivery.md):
-  billboard impostors, dense-prop affordability, draw-grouping reports, texture
-  fallback selection, and target-profile diagnostics for optional compressed
-  formats.
 - [Animation, Morph, Mask, and Lightweight VFX Polish](other/animation-morph-mask-vfx-polish.md):
   morph target names/weights, animation masks, bounded blend residuals, and
   ThreeNative-owned particle/VFX commands with deterministic web/Bevy proof.
@@ -75,6 +71,11 @@ backlog unless a nested PRD says it has been superseded.
   auto exposure, motion blur, SSR/mirrors, deferred rendering, volumetrics, and
   custom post-processing, and compiler capability checks that avoid backend
   render-path selections.
+- [Dense Scene LOD and Texture Delivery](done/other/dense-scene-lod-texture-delivery.md):
+  camera-facing quad impostor metadata, web/native dense-content reports,
+  target-profile texture variant diagnostics, deterministic baseline fallback
+  selection, and continued diagnostic boundaries for arbitrary GPU instance
+  buffers.
 
 Completed PRDs live under `docs/PRDs/done/`. They remain linked for context,
 evidence trails, and source-boundary decisions, but they are not active backlog.

@@ -138,6 +138,36 @@ test("environment should reject HLOD fade metadata when ranges overlap invalidly
   );
 });
 
+test("environment should reject invalid LOD impostor metadata", () => {
+  const scene = makeScene({
+    sourceAssets: [
+      {
+        asset: "model.env.Tree",
+        category: "tree",
+        id: "env.Tree",
+        lod: [
+          {
+            asset: "model.env.TreeLow",
+            impostor: { material: "", mode: "sphericalBillboard" } as never,
+            minDistance: 18,
+            maxDistance: 60,
+          },
+        ],
+      },
+    ],
+  });
+
+  const diagnostics = validateEnvironmentSceneIr(scene, makeAssets({ includeLod: true }), "environment.scene.json");
+
+  assert.deepEqual(
+    diagnostics.map((diagnostic) => [diagnostic.code, diagnostic.path]),
+    [
+      ["TN_IR_ENVIRONMENT_LOD_IMPOSTOR_MODE_UNSUPPORTED", "environment.scene.json/sourceAssets/0/lod/0/impostor/mode"],
+      ["TN_IR_ENVIRONMENT_LOD_IMPOSTOR_MATERIAL_INVALID", "environment.scene.json/sourceAssets/0/lod/0/impostor/material"],
+    ],
+  );
+});
+
 test("environment should reject backend-specific renderer and content fields", () => {
   const scene = {
     ...makeScene({

@@ -310,6 +310,7 @@ test("should report V9 environment lighting, light budgets, and renderer quality
   assert.equal(report.environment?.environmentMap?.intent, "reflection-and-irradiance");
   assert.deepEqual(report.environment?.debugGizmos, ["instance:tree.hero", "lightProbe:probe.center", "sourceAsset:env.Tree"]);
   assert.deepEqual(report.environment?.hlodFades, [{ asset: "model.env.TreeLow", endDistance: 32, sourceAsset: "env.Tree", startDistance: 24 }]);
+  assert.deepEqual(report.environment?.lodImpostors, [{ asset: "model.env.TreeLow", material: "mat.ground", mode: "cameraFacingQuad", sourceAsset: "env.Tree" }]);
   assert.deepEqual(report.environment?.sourceAssetVisibility, [{ endDistance: 96, id: "env.Tree", maxDistance: 120, minDistance: 0, startDistance: 72 }]);
   assert.deepEqual(report.environment?.instanceVisibility, [{ id: "tree.hero", maxDistance: 90, minDistance: 0 }]);
 

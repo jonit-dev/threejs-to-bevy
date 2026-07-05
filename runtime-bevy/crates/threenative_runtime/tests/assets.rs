@@ -23,6 +23,7 @@ fn assets_should_load_asset_manifest_entries() {
             bounds: None,
             budget: None,
             center: None,
+            fallback: None,
             generation: None,
             height: None,
             indices: None,
@@ -42,6 +43,7 @@ fn assets_should_load_asset_manifest_entries() {
             size: None,
             topology: None,
             usage: None,
+            variants: None,
             width: None,
             wrap_s: None,
             wrap_t: None,
@@ -64,7 +66,7 @@ fn asset_load_trace_should_sort_assets_and_model_scene_refs_deterministically() 
         schema: "threenative.assets".to_owned(),
         version: "0.1.0".to_owned(),
         assets: vec![
-            make_asset("texture.hero", "texture", "png", "assets/hero.png"),
+            texture_asset_with_variant(),
             make_asset("model.tree.low", "model", "gltf", "assets/tree-low.gltf"),
             make_asset("model.tree", "model", "gltf", "assets/tree.gltf"),
         ],
@@ -92,6 +94,10 @@ fn asset_load_trace_should_sort_assets_and_model_scene_refs_deterministically() 
             lod: vec![threenative_loader::EnvironmentLodLevelIr {
                 asset: "model.tree.low".to_owned(),
                 fade: None,
+                impostor: Some(threenative_loader::LodImpostorIr {
+                    material: "mat.tree.impostor".to_owned(),
+                    mode: "cameraFacingQuad".to_owned(),
+                }),
                 min_distance: 20.0,
                 max_distance: 80.0,
             }],
@@ -141,9 +147,19 @@ fn asset_load_trace_should_sort_assets_and_model_scene_refs_deterministically() 
                 {
                     "asset": "model.tree",
                     "category": "tree",
+                    "impostors": [{ "asset": "model.tree.low", "material": "mat.tree.impostor", "mode": "cameraFacingQuad" }],
                     "instanceIds": ["tree.a", "tree.b"],
                     "lodAssets": ["model.tree.low"],
                     "sourceAsset": "env.tree"
+                }
+            ],
+            "textureDelivery": [
+                {
+                    "fallback": "texture.hero",
+                    "format": "png",
+                    "id": "texture.hero",
+                    "selectedPath": "assets/hero.png",
+                    "variants": [{ "format": "ktx2", "path": "assets/hero.ktx2", "targets": ["desktop"] }]
                 }
             ]
         })
@@ -179,6 +195,7 @@ fn make_asset(id: &str, kind: &str, format: &str, path: &str) -> AssetIr {
         bounds: None,
         budget: None,
         center: None,
+        fallback: None,
         generation: None,
         height: None,
         indices: None,
@@ -198,8 +215,21 @@ fn make_asset(id: &str, kind: &str, format: &str, path: &str) -> AssetIr {
         size: None,
         topology: None,
         usage: None,
+        variants: None,
         width: None,
         wrap_s: None,
         wrap_t: None,
     }
+}
+
+fn texture_asset_with_variant() -> AssetIr {
+    let mut asset = make_asset("texture.hero", "texture", "png", "assets/hero.png");
+    asset.fallback = Some("texture.hero".to_owned());
+    asset.variants = Some(vec![threenative_loader::TextureVariantIr {
+        fallback: None,
+        format: "ktx2".to_owned(),
+        path: "assets/hero.ktx2".to_owned(),
+        targets: Some(vec!["desktop".to_owned()]),
+    }]);
+    asset
 }

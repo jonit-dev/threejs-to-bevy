@@ -437,6 +437,8 @@ pub struct ConformanceEnvironmentReport {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub light_probes: Option<Vec<threenative_loader::LightProbeIr>>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    pub lod_impostors: Option<Vec<LodImpostorReport>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub path: Option<String>,
     pub scatter: Vec<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -455,6 +457,15 @@ pub struct HlodFadeReport {
     pub end_distance: f32,
     pub source_asset: String,
     pub start_distance: f32,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LodImpostorReport {
+    pub asset: String,
+    pub material: String,
+    pub mode: String,
+    pub source_asset: String,
 }
 
 #[derive(Debug, Serialize)]
@@ -1442,6 +1453,20 @@ fn report_environment(environment: &EnvironmentSceneIr) -> ConformanceEnvironmen
             })
         })
         .collect::<Vec<_>>();
+    let lod_impostors = environment
+        .source_assets
+        .iter()
+        .flat_map(|asset| {
+            asset.lod.iter().filter_map(|level| {
+                level.impostor.as_ref().map(|impostor| LodImpostorReport {
+                    asset: level.asset.clone(),
+                    material: impostor.material.clone(),
+                    mode: impostor.mode.clone(),
+                    source_asset: asset.id.clone(),
+                })
+            })
+        })
+        .collect::<Vec<_>>();
     let instance_visibility = environment
         .instances
         .iter()
@@ -1482,6 +1507,7 @@ fn report_environment(environment: &EnvironmentSceneIr) -> ConformanceEnvironmen
         instance_visibility: (!instance_visibility.is_empty()).then_some(instance_visibility),
         light_probes: (!environment.light_probes.is_empty())
             .then(|| environment.light_probes.clone()),
+        lod_impostors: (!lod_impostors.is_empty()).then_some(lod_impostors),
         path: Some(environment.path.id.clone()),
         scatter,
         skybox: environment.skybox.clone(),

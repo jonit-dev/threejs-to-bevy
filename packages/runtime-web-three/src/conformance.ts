@@ -440,6 +440,13 @@ function reportEnvironment(environment: IEnvironmentSceneIr): IConformanceEnviro
           }],
     ),
     lightProbes: environment.lightProbes,
+    lodImpostors: environment.sourceAssets.flatMap((asset) =>
+      (asset.lod ?? []).flatMap((level) =>
+        level.impostor === undefined
+          ? []
+          : [{ asset: level.asset, material: level.impostor.material, mode: level.impostor.mode, sourceAsset: asset.id }],
+      ),
+    ),
     path: environment.path.id,
     scatter: (environment.scatter ?? []).map((scatter) => scatter.id).sort(),
     skybox: environment.skybox,

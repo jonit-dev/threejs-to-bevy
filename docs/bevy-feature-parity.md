@@ -254,9 +254,6 @@ based on the residual wording below are:
 - [Render Look, Shadow, and Bloom Polish Profiles](PRDs/other/render-look-shadow-bloom-polish.md):
   screenshot-backed `balanced` profile promotion, bounded shadow/bloom/exposure
   polish controls, and reserved `cinematic`/`stylized` profile evidence.
-- [Dense Scene LOD and Texture Delivery](PRDs/other/dense-scene-lod-texture-delivery.md):
-  billboard impostors, dense-prop draw-grouping reports, texture fallback
-  selection, and target-profile diagnostics for compressed texture families.
 - [Animation, Morph, Mask, and Lightweight VFX Polish](PRDs/other/animation-morph-mask-vfx-polish.md):
   morph targets, animation masks, bounded blend residuals, and deterministic
   script-triggered VFX commands.
@@ -674,12 +671,12 @@ web/Bevy evidence exist.
 - [x] `P2` Arbitrary user-authored instancing APIs as bounded report policy
 - [x] `P2` Custom GPU instance attributes diagnostic boundary
 - [x] `P2` Compressed skybox/environment texture format diagnostics
-- [x] `P2` Billboard/impostor LOD backlog for camera-facing quad impostors with
-      visibility ranges, fade/selection proof, and material constraints
-- [x] `P2` Compressed texture target-profile backlog for WebP/JPEG baseline and
-      optional KTX2/DDS/Basis/BC/ETC2/ASTC support with device diagnostics,
-      fallback texture selection, environment-map policy, and per-target
-      evidence
+- [x] `P2` Billboard/impostor LOD metadata for camera-facing quad impostors with
+      ordered distance/fade validation plus web/Bevy report evidence; visual
+      screenshot calibration remains a later dense-scene polish gate
+- [x] `P2` Texture delivery target-profile metadata for WebP/JPEG/PNG baseline
+      fallback and optional KTX2/DDS/Basis/BC/ETC2/ASTC variants, with
+      deterministic selected-path reports and unsupported-target diagnostics
 - [x] `P3` Virtual geometry/meshlet rendering diagnostic boundary (V10-02, V10-03 calibration)
 - [x] `P3` Custom post-processing passes diagnostic boundary (V10-02, V10-03 calibration)
 

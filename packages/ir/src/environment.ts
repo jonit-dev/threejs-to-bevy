@@ -205,8 +205,59 @@ function validateSourceAssetLod(
       });
     }
     validateFadeBand(level.fade, `${levelPath}/fade`, diagnostics);
+    validateLodImpostor(level.impostor, `${levelPath}/impostor`, diagnostics);
     previousMaxDistance = Math.max(previousMaxDistance, level.maxDistance);
   });
+}
+
+function validateLodImpostor(
+  impostor: { material: string; mode: "cameraFacingQuad" } | undefined,
+  path: string,
+  diagnostics: IIrDiagnostic[],
+): void {
+  if (impostor === undefined) {
+    return;
+  }
+  if (typeof impostor !== "object" || impostor === null || Array.isArray(impostor)) {
+    diagnostics.push({
+      code: "TN_IR_ENVIRONMENT_LOD_IMPOSTOR_INVALID",
+      message: "Environment LOD impostor metadata must be an object.",
+      path,
+      severity: "error",
+      suggestion: "Use impostor: { mode: 'cameraFacingQuad', material: '<material-id>' }.",
+    });
+    return;
+  }
+  for (const key of Object.keys(impostor)) {
+    if (key !== "material" && key !== "mode") {
+      diagnostics.push({
+        code: "TN_IR_ENVIRONMENT_LOD_IMPOSTOR_FIELD_UNSUPPORTED",
+        message: `Environment LOD impostor metadata uses unsupported field '${key}'.`,
+        path: `${path}/${key}`,
+        severity: "error",
+        suggestion: "Keep impostors as bounded camera-facing quad metadata.",
+      });
+    }
+  }
+  if (impostor.mode !== "cameraFacingQuad") {
+    diagnostics.push({
+      code: "TN_IR_ENVIRONMENT_LOD_IMPOSTOR_MODE_UNSUPPORTED",
+      message: "Environment LOD impostor mode must be cameraFacingQuad.",
+      path: `${path}/mode`,
+      severity: "error",
+      suggestion: "Use a camera-facing quad impostor until other billboard policies are promoted.",
+      value: typeof impostor.mode === "string" ? impostor.mode : undefined,
+    });
+  }
+  if (typeof impostor.material !== "string" || impostor.material.trim() === "") {
+    diagnostics.push({
+      code: "TN_IR_ENVIRONMENT_LOD_IMPOSTOR_MATERIAL_INVALID",
+      message: "Environment LOD impostor material must be a non-empty material id.",
+      path: `${path}/material`,
+      severity: "error",
+      suggestion: "Reference an authored material for the billboard quad impostor.",
+    });
+  }
 }
 
 function validateVisibilityRange(

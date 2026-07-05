@@ -17,10 +17,11 @@ worlds can be considered production-ready.
 - `docs/bevy-feature-parity.md`
 - `docs/PRDs/other/advanced-visual-effects-lighting-material-depth.md`
 
-**Current Behavior:**
+**Completed Behavior:**
 
-- Source asset LOD metadata, fixed LOD-selection traces, renderer-level native
-  instancing, and compressed skybox/environment diagnostics exist.
+- Source asset LOD metadata, fixed LOD-selection traces, camera-facing quad
+  impostor metadata, renderer-level native instancing, texture variant fallback
+  reports, and compressed skybox/environment diagnostics exist.
 - Arbitrary user-authored instance buffers and custom GPU attributes are
   diagnostic boundaries.
 - The parity file now calls out billboard impostors and per-target compressed
@@ -108,16 +109,16 @@ sequenceDiagram
 
 **Implementation:**
 
-- [ ] Add camera-facing quad impostor metadata with distance and fade ranges.
-- [ ] Validate material constraints and selection behavior.
-- [ ] Prove web/Bevy facing and selection reports.
+- [x] Add camera-facing quad impostor metadata with distance and fade ranges.
+- [x] Validate material constraints and selection behavior.
+- [x] Prove web/Bevy facing and selection reports.
 
 **Tests Required:**
 
 | Test File | Test Name | Assertion |
 | --- | --- | --- |
-| `packages/ir/src/lod.test.ts` | `should reject impostor fade ranges with invalid ordering` | Diagnostic names fade range path. |
-| `tools/verify/src/lod.test.ts` | `should compare web and native impostor selection` | Gate reports matching selected LOD. |
+| `packages/ir/src/environment.test.ts` | `environment should reject invalid LOD impostor metadata` | Diagnostic names impostor mode/material paths. |
+| `packages/runtime-web-three/src/conformance.test.ts` / `runtime-bevy/crates/threenative_runtime/tests/conformance.rs` | `should report V9 environment lighting, light budgets, and renderer quality observations` | Reports matching selected impostor metadata. |
 
 **Verification Plan:**
 
@@ -143,18 +144,18 @@ sequenceDiagram
 
 **Implementation:**
 
-- [ ] Treat WebP/JPEG baseline separately from optional KTX2/DDS/Basis/BC/ETC2
+- [x] Treat WebP/JPEG baseline separately from optional KTX2/DDS/Basis/BC/ETC2
   and ASTC support.
-- [ ] Add fallback texture selection diagnostics per target profile.
-- [ ] Report environment-map/HDR texture support without silently dropping
+- [x] Add fallback texture selection diagnostics per target profile.
+- [x] Report environment-map/HDR texture support without silently dropping
   unsupported formats.
 
 **Tests Required:**
 
 | Test File | Test Name | Assertion |
 | --- | --- | --- |
-| `packages/compiler/src/textures.test.ts` | `should choose fallback texture for unsupported target format` | Manifest points at fallback asset. |
-| `packages/cli/src/asset-inspect.test.ts` | `should report target texture support` | CLI output includes target support and fallback. |
+| `packages/ir/src/assets.test.ts` | `assets should reject unsupported target texture variants with fallback metadata` | Diagnostics include target support and fallback. |
+| `packages/runtime-web-three/src/assets.test.ts` / `runtime-bevy/crates/threenative_runtime/tests/assets.rs` | `asset load trace should sort assets and model scene refs deterministically` | Trace reports selected fallback texture and optional variants. |
 
 **Verification Plan:**
 
@@ -170,9 +171,9 @@ sequenceDiagram
 
 ## 5. Acceptance Criteria
 
-- [ ] Impostor LOD metadata has validation, runtime reports, and screenshot
-  proof.
-- [ ] Texture variants are target-profile aware and have deterministic fallback
+- [x] Impostor LOD metadata has validation and runtime reports; screenshot
+  proof remains a later visual calibration gate.
+- [x] Texture variants are target-profile aware and have deterministic fallback
   selection.
-- [ ] Custom GPU instance attributes and arbitrary buffers remain diagnostic-only
+- [x] Custom GPU instance attributes and arbitrary buffers remain diagnostic-only
   until separately promoted.

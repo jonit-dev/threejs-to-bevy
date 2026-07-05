@@ -33,6 +33,7 @@ pub struct NativeAssetLoadTrace {
     pub barrier: NativeAssetLoadBarrierTrace,
     pub assets: Vec<NativeAssetLoadTraceAsset>,
     pub gltf_scenes: Vec<NativeGltfSceneTrace>,
+    pub texture_delivery: Vec<NativeTextureDeliveryTrace>,
 }
 
 #[derive(Debug, PartialEq, Serialize)]
@@ -60,9 +61,39 @@ pub struct NativeAssetLoadTraceAsset {
 pub struct NativeGltfSceneTrace {
     pub asset: String,
     pub category: String,
+    pub impostors: Vec<NativeLodImpostorTrace>,
     pub instance_ids: Vec<String>,
     pub lod_assets: Vec<String>,
     pub source_asset: String,
+}
+
+#[derive(Debug, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct NativeLodImpostorTrace {
+    pub asset: String,
+    pub material: String,
+    pub mode: String,
+}
+
+#[derive(Debug, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct NativeTextureDeliveryTrace {
+    pub fallback: String,
+    pub format: String,
+    pub id: String,
+    pub selected_path: String,
+    pub variants: Vec<NativeTextureVariantTrace>,
+}
+
+#[derive(Debug, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct NativeTextureVariantTrace {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub fallback: Option<bool>,
+    pub format: String,
+    pub path: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub targets: Option<Vec<String>>,
 }
 
 pub fn resolve_asset_manifest(manifest: &AssetsManifest) -> HashMap<String, NativeAssetRef> {
@@ -218,7 +249,50 @@ pub fn trace_asset_load_synchronization(
         },
         assets,
         gltf_scenes,
+        texture_delivery: trace_texture_delivery(manifest),
     }
+}
+
+fn trace_texture_delivery(manifest: &AssetsManifest) -> Vec<NativeTextureDeliveryTrace> {
+    let mut traces: Vec<_> = manifest
+        .assets
+        .iter()
+        .filter(|asset| asset.kind == "texture" && (asset.variants.is_some() || asset.fallback.is_some()))
+        .filter_map(|asset| {
+            let path = asset.path.as_ref()?;
+            let mut variants: Vec<_> = asset
+                .variants
+                .as_ref()
+                .map(|variants| {
+                    variants
+                        .iter()
+                        .map(|variant| {
+                            let mut targets = variant.targets.clone();
+                            if let Some(targets) = targets.as_mut() {
+                                targets.sort();
+                            }
+                            NativeTextureVariantTrace {
+                                fallback: variant.fallback,
+                                format: variant.format.clone(),
+                                path: variant.path.clone(),
+                                targets,
+                            }
+                        })
+                        .collect()
+                })
+                .unwrap_or_default();
+            variants.sort_by(|left, right| left.path.cmp(&right.path));
+            Some(NativeTextureDeliveryTrace {
+                fallback: asset.fallback.clone().unwrap_or_else(|| asset.id.clone()),
+                format: asset.format.clone(),
+                id: asset.id.clone(),
+                selected_path: path.clone(),
+                variants,
+            })
+        })
+        .collect();
+    traces.sort_by(|left, right| left.id.cmp(&right.id));
+    traces
 }
 
 fn trace_gltf_scenes(environment_scene: Option<&EnvironmentSceneIr>) -> Vec<NativeGltfSceneTrace> {
@@ -242,9 +316,22 @@ fn trace_gltf_scenes(environment_scene: Option<&EnvironmentSceneIr>) -> Vec<Nati
                 .map(|level| level.asset.clone())
                 .collect();
             lod_assets.sort();
+            let mut impostors: Vec<_> = source_asset
+                .lod
+                .iter()
+                .filter_map(|level| {
+                    level.impostor.as_ref().map(|impostor| NativeLodImpostorTrace {
+                        asset: level.asset.clone(),
+                        material: impostor.material.clone(),
+                        mode: impostor.mode.clone(),
+                    })
+                })
+                .collect();
+            impostors.sort_by(|left, right| left.asset.cmp(&right.asset));
             NativeGltfSceneTrace {
                 asset: source_asset.asset.clone(),
                 category: source_asset.category.clone(),
+                impostors,
                 instance_ids,
                 lod_assets,
                 source_asset: source_asset.id.clone(),

@@ -75,6 +75,7 @@ export interface IConformanceEnvironmentReport {
   instances: string[];
   instanceVisibility?: Array<{ endDistance?: number; id: string; maxDistance: number; minDistance: number; startDistance?: number }>;
   lightProbes?: ILightProbeIr[];
+  lodImpostors?: Array<{ asset: string; material: string; mode: "cameraFacingQuad"; sourceAsset: string }>;
   path?: string;
   scatter: string[];
   skybox?: ISkyboxIr;

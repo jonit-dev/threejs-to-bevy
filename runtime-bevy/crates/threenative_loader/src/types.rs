@@ -650,6 +650,7 @@ pub struct AssetIr {
     pub bounds: Option<AssetBoundsIr>,
     pub budget: Option<MeshBudgetIr>,
     pub center: Option<[f32; 2]>,
+    pub fallback: Option<String>,
     pub generation: Option<MeshGenerationIr>,
     pub indices: Option<Vec<u32>>,
     #[serde(rename = "magFilter")]
@@ -673,12 +674,22 @@ pub struct AssetIr {
     pub skeleton: Option<ModelSkeletonIr>,
     pub topology: Option<String>,
     pub usage: Option<String>,
+    pub variants: Option<Vec<TextureVariantIr>>,
     pub width: Option<f32>,
     pub height: Option<f32>,
     #[serde(rename = "wrapS")]
     pub wrap_s: Option<String>,
     #[serde(rename = "wrapT")]
     pub wrap_t: Option<String>,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TextureVariantIr {
+    pub fallback: Option<bool>,
+    pub format: String,
+    pub path: String,
+    pub targets: Option<Vec<String>>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -1750,8 +1761,16 @@ pub struct EnvironmentSourceAssetIr {
 pub struct EnvironmentLodLevelIr {
     pub asset: String,
     pub fade: Option<FadeRangeIr>,
+    pub impostor: Option<LodImpostorIr>,
     pub min_distance: f32,
     pub max_distance: f32,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LodImpostorIr {
+    pub material: String,
+    pub mode: String,
 }
 
 #[derive(Clone, Debug, Deserialize)]

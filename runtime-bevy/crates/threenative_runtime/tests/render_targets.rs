@@ -28,6 +28,7 @@ fn should_map_camera_target_to_bevy_image_output() {
         bounds: None,
         budget: None,
         center: None,
+        fallback: None,
         generation: None,
         indices: None,
         mag_filter: None,
@@ -47,6 +48,7 @@ fn should_map_camera_target_to_bevy_image_output() {
         wrap_t: None,
         sample_count: None,
         skeleton: None,
+        variants: None,
     });
     bundle.assets.assets.push(AssetIr {
         id: "rt.depth".to_owned(),
@@ -63,6 +65,7 @@ fn should_map_camera_target_to_bevy_image_output() {
         bounds: None,
         budget: None,
         center: None,
+        fallback: None,
         generation: None,
         indices: None,
         mag_filter: None,
@@ -82,6 +85,7 @@ fn should_map_camera_target_to_bevy_image_output() {
         wrap_t: None,
         sample_count: None,
         skeleton: None,
+        variants: None,
     });
     bundle.world.entities.push(WorldEntity {
         id: "camera.monitor".to_owned(),

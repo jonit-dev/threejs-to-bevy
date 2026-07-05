@@ -19,7 +19,14 @@ test("asset load trace should sort assets and model scene refs deterministically
       schema: "threenative.assets",
       version: "0.1.0",
       assets: [
-        { id: "texture.hero", kind: "texture", format: "png", path: "assets/hero.png" },
+        {
+          id: "texture.hero",
+          kind: "texture",
+          format: "png",
+          path: "assets/hero.png",
+          fallback: "texture.hero",
+          variants: [{ format: "ktx2", path: "assets/hero.ktx2", targets: ["desktop"] }],
+        },
         { id: "model.tree.low", kind: "model", format: "gltf", path: "assets/tree-low.gltf" },
         { id: "model.tree", kind: "model", format: "gltf", path: "assets/tree.gltf" },
       ],
@@ -54,9 +61,19 @@ test("asset load trace should sort assets and model scene refs deterministically
       {
         asset: "model.tree",
         category: "tree",
+        impostors: [],
         instanceIds: ["tree.a", "tree.b"],
         lodAssets: ["model.tree.low"],
         sourceAsset: "env.tree",
+      },
+    ],
+    textureDelivery: [
+      {
+        fallback: "texture.hero",
+        format: "png",
+        id: "texture.hero",
+        selectedPath: "assets/hero.png",
+        variants: [{ format: "ktx2", path: "assets/hero.ktx2", targets: ["desktop"] }],
       },
     ],
   });

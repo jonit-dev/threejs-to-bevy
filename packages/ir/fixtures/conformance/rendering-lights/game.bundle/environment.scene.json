@@ -57,6 +57,10 @@
             "endDistance": 32,
             "startDistance": 24
           },
+          "impostor": {
+            "material": "mat.ground",
+            "mode": "cameraFacingQuad"
+          },
           "maxDistance": 80,
           "minDistance": 20
         }
