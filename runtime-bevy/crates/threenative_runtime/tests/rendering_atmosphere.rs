@@ -13,7 +13,7 @@ use bevy::{
 };
 use threenative_loader::load_bundle;
 use threenative_runtime::{
-    map_world::{map_bundle_into_world, NativeMaterialHandles},
+    map_world::{NativeMaterialHandles, map_bundle_into_world},
     rendering::{
         apply_atmosphere_to_world, normalize_loaded_gltf_materials, normalize_textured_material,
         observe_atmosphere,

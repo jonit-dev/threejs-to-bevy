@@ -1,4 +1,4 @@
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use threenative_loader::{AudioIr, LoadedBundle};
 
 use crate::audio::{trace_audio_lifecycle, trace_audio_support};

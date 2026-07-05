@@ -2,7 +2,7 @@ use bevy::prelude::*;
 use bevy::render::camera::ClearColorConfig;
 use serde_json::json;
 use threenative_components::ThreeNativeId;
-use threenative_loader::{load_bundle, WorldEntity};
+use threenative_loader::{WorldEntity, load_bundle};
 use threenative_runtime::{
     cameras::{build_render_layer_map, render_layers_for_names, update_native_camera_helpers},
     map_world::map_bundle_into_world,

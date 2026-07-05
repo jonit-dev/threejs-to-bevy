@@ -4,7 +4,7 @@ use serde::Serialize;
 use serde_json::Value;
 use threenative_loader::{InputBindingIr, InputIr, LoadedBundle, UiIr, UiNodeIr, WorldIr};
 
-use crate::ui::{trace_ui_navigation, UiNavigationTrace};
+use crate::ui::{UiNavigationTrace, trace_ui_navigation};
 
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]

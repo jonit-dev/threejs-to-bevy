@@ -1,9 +1,9 @@
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use threenative_loader::{LoadedBundle, SystemIr};
 
 use crate::systems_effects::{
-    apply_system_effects, NativeSystemCommandEffect, NativeSystemEffects,
-    NativeSystemResourceEffect,
+    NativeSystemCommandEffect, NativeSystemEffects, NativeSystemResourceEffect,
+    apply_system_effects,
 };
 
 pub fn trace_runtime_gameplay_host(bundle: &mut LoadedBundle) -> Value {

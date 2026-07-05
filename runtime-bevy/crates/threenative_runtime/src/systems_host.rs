@@ -4,7 +4,7 @@ use std::{
 };
 
 use quickjs_rusty::Context;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use thiserror::Error;
 use threenative_loader::{LoadedBundle, SystemIr};
 
@@ -12,9 +12,9 @@ use crate::{
     component_diff::ComponentDiffCache,
     input::NativeInputState,
     systems_context::{
-        build_system_context_snapshot_with_events_input_and_diff, NativeSystemTimeSnapshot,
+        NativeSystemTimeSnapshot, build_system_context_snapshot_with_events_input_and_diff,
     },
-    systems_effects::{apply_system_effects, NativeSystemEffectLog, NativeSystemEffects},
+    systems_effects::{NativeSystemEffectLog, NativeSystemEffects, apply_system_effects},
     systems_host_bridge::BRIDGE_SOURCE,
 };
 
@@ -210,8 +210,12 @@ pub fn run_native_systems_frame_with_input(
             state.accumulator -= options.fixed_delta;
         }
 
-        let variable_time =
-            loop_time_snapshot(options.delta, state.elapsed, options.fixed_delta, state.paused);
+        let variable_time = loop_time_snapshot(
+            options.delta,
+            state.elapsed,
+            options.fixed_delta,
+            state.paused,
+        );
         run.logs.extend(
             run_native_system_schedules(
                 bundle,

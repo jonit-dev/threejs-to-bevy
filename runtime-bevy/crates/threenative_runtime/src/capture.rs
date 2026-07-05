@@ -1,7 +1,10 @@
 use std::{env, fs, path::Path, path::PathBuf, process::ExitCode};
 
 use bevy::{
-    app::AppExit, prelude::*, render::view::screenshot::ScreenshotManager, window::PrimaryWindow,
+    app::AppExit,
+    prelude::*,
+    render::view::screenshot::ScreenshotManager,
+    window::PrimaryWindow,
     winit::{UpdateMode, WinitSettings},
 };
 use image::GenericImageView;

@@ -7,11 +7,10 @@ use std::{
 use bevy::{asset::AssetPlugin, prelude::*, scene::ScenePlugin};
 use serde_json::json;
 use threenative_components::ThreeNativeId;
-use threenative_loader::{load_bundle, WorldEntity};
+use threenative_loader::{WorldEntity, load_bundle};
 use threenative_runtime::map_world::{
-    map_bundle_into_world, STYLIZED_NATURE_RUNTIME_DEFAULTS,
-    THREE_COMPAT_AMBIENT_BRIGHTNESS_PER_INTENSITY,
-    THREE_COMPAT_DIRECTIONAL_ILLUMINANCE_PER_INTENSITY,
+    STYLIZED_NATURE_RUNTIME_DEFAULTS, THREE_COMPAT_AMBIENT_BRIGHTNESS_PER_INTENSITY,
+    THREE_COMPAT_DIRECTIONAL_ILLUMINANCE_PER_INTENSITY, map_bundle_into_world,
 };
 
 #[test]
@@ -328,17 +327,23 @@ fn stylized_nature_should_use_native_compatible_source_assets() {
     assert!(!names.iter().any(|name| name.ends_with(".tree-0.trunk")));
     assert!(!names.iter().any(|name| name.ends_with(".tree-0.leaf-0")));
     assert!(!names.iter().any(|name| name.contains("stylized-grass")));
-    assert!(!names
-        .iter()
-        .any(|name| name.contains("soft-gradient-sky-card")));
-    assert!(!names
-        .iter()
-        .any(|name| name.contains("soft-stylized-cloud")));
+    assert!(
+        !names
+            .iter()
+            .any(|name| name.contains("soft-gradient-sky-card"))
+    );
+    assert!(
+        !names
+            .iter()
+            .any(|name| name.contains("soft-stylized-cloud"))
+    );
     assert!(!names.iter().any(|name| name.contains("path-pebble")));
     assert!(!names.iter().any(|name| name.contains("path-crack")));
-    assert!(!names
-        .iter()
-        .any(|name| name.contains("source-dirt-path-ribbon")));
+    assert!(
+        !names
+            .iter()
+            .any(|name| name.contains("source-dirt-path-ribbon"))
+    );
 }
 #[test]
 fn stylized_nature_should_keep_fallback_for_missing_or_unsupported_source_assets() {

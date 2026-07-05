@@ -4,8 +4,8 @@ use bevy::{ecs::system::SystemParam, prelude::*, render::camera::ClearColorConfi
 use thiserror::Error;
 use threenative_components::ThreeNativeId;
 use threenative_loader::{
-    load_bundle, EnvironmentSceneIr, LoadError, LoadedBundle, MaterialsIr, MeshRendererComponent,
-    TransformComponent, UiBindingIr, UiNodeIr, WorldIr,
+    EnvironmentSceneIr, LoadError, LoadedBundle, MaterialsIr, MeshRendererComponent,
+    TransformComponent, UiBindingIr, UiNodeIr, WorldIr, load_bundle,
 };
 
 pub mod animation;
@@ -709,10 +709,8 @@ mod tests {
     }
 
     fn write_scripted_runtime_bundle(name: &str, fixed_delta: f32) -> std::path::PathBuf {
-        let root = std::env::temp_dir().join(format!(
-            "tn-scripted-runtime-{name}-{}",
-            std::process::id()
-        ));
+        let root =
+            std::env::temp_dir().join(format!("tn-scripted-runtime-{name}-{}", std::process::id()));
         if root.exists() {
             fs::remove_dir_all(&root).expect("old temp bundle should be removed");
         }

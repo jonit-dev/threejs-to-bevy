@@ -31,6 +31,14 @@ backlog unless a nested PRD says it has been superseded.
   full structured source coverage for map/editor-owned data, CLI/MCP/editor
   operation parity with TypeScript-era authoring, bundle import, provenance, and
   round-trip proof without TypeScript reverse-generation.
+- [Advanced Portable UI Composition and Screen Systems](other/advanced-portable-ui-composition-and-screen-systems.md):
+  reusable retained UI components, theme tokens, screen stacks, modal/focus
+  scopes, game UI recipes, responsive fit proof, and source-backed CLI/editor
+  operations without making webview overlays the default portable UI path.
+- [Optional React App Shell and Pre-Game Flow](other/optional-react-app-shell-and-pre-game-flow.md):
+  bundle-local React/CSS app-shell startup for title, login, profile, settings,
+  and launcher flows before initial game activation, using typed bridge
+  messages without making React the portable game UI contract.
 - [Editor-Ready Modular Authoring and Scripting Architecture](other/editor-ready-modular-authoring-and-scripting-architecture.md):
   source-of-truth boundaries, modular authoring graph/provenance, script module
   references, editor-safe source documents, and web/Bevy runtime parity.
@@ -46,9 +54,17 @@ backlog unless a nested PRD says it has been superseded.
   init/create front door, task-oriented help, doctor diagnostics, asset/model
   inspection, transform/camera guardrails, screenshot/video proof, runtime
   debug overlay, and racing template evidence.
+- [Agent Game Planning Template and Init Scaffold](other/agent-game-planning-template-and-init-scaffold.md):
+  scaffolded plan-first Markdown worksheet for agent-created games, default
+  `tn init` inclusion, catalog-first asset sourcing instructions, and
+  template-production drift checks.
 
 ### Advanced And Boundary Work
 
+- [Portable Shader Material Parity](other/portable-shader-material-parity.md):
+  constrained authored shader materials with explicit uniforms/textures,
+  generated web GLSL and Bevy WGSL, stable diagnostics for raw/backend shader
+  escape hatches, and visual parity evidence across both engines.
 - [Advanced Visual Effects, Lighting, and Material Depth](other/advanced-visual-effects-lighting-material-depth.md):
   umbrella reference for advanced lighting, material, atmosphere,
   post-processing, deferred renderer, virtual geometry, and custom

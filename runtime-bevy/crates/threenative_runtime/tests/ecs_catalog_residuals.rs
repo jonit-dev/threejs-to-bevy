@@ -45,9 +45,13 @@ fn should_report_known_gltf_metadata_transform_policy() {
 
 #[test]
 fn should_report_target_profile_output_diagnostics() {
-    let report = target_profile_output_diagnostic("native", vec!["web"], "target.profile.json/targets");
+    let report =
+        target_profile_output_diagnostic("native", vec!["web"], "target.profile.json/targets");
 
-    assert_eq!(report["code"], "TN_CATALOG_TARGET_PROFILE_OUTPUT_UNSUPPORTED");
+    assert_eq!(
+        report["code"],
+        "TN_CATALOG_TARGET_PROFILE_OUTPUT_UNSUPPORTED"
+    );
     assert_eq!(
         report["message"],
         "Target profile for 'native' output must include 'desktop'."

@@ -5,7 +5,10 @@ use serde_json::Value;
 use threenative_loader::{SystemIr, SystemQueryIr, load_bundle};
 use threenative_runtime::{
     character::{CharacterTraceAxis, CharacterTraceObservation, trace_character_controllers},
-    physics::{PhysicsJointObservation, RigidBodyTraceObservation, trace_physics_joints, trace_rigid_body_primitives},
+    physics::{
+        PhysicsJointObservation, RigidBodyTraceObservation, trace_physics_joints,
+        trace_rigid_body_primitives,
+    },
     physics_sensors::{PhysicsSensorEvent, trace_physics_sensors},
     systems_context::{NativeSystemTimeSnapshot, build_system_context_snapshot},
     systems_services::{
@@ -72,24 +75,26 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
     let output_path = PathBuf::from(args.next().ok_or("missing output path")?);
     let bundle = load_bundle(bundle_path)?;
     let trace = match scene_id.as_str() {
-        "physics-character-obstacles" => PhysicsSelfVerificationTrace::Character(CharacterTraceReport {
-            character: trace_character_controllers(
-                &bundle,
-                &[
-                    CharacterTraceAxis {
-                        id: "MoveX",
-                        value: 1.0,
-                    },
-                    CharacterTraceAxis {
-                        id: "MoveZ",
-                        value: 0.0,
-                    },
-                ],
-                1.0,
-            ),
-            runtime: "bevy",
-            sensors: trace_physics_sensors(&bundle, 3, 1.0),
-        }),
+        "physics-character-obstacles" => {
+            PhysicsSelfVerificationTrace::Character(CharacterTraceReport {
+                character: trace_character_controllers(
+                    &bundle,
+                    &[
+                        CharacterTraceAxis {
+                            id: "MoveX",
+                            value: 1.0,
+                        },
+                        CharacterTraceAxis {
+                            id: "MoveZ",
+                            value: 0.0,
+                        },
+                    ],
+                    1.0,
+                ),
+                runtime: "bevy",
+                sensors: trace_physics_sensors(&bundle, 3, 1.0),
+            })
+        }
         "physics-query-lab" => {
             let snapshot = build_system_context_snapshot(&bundle, &query_system(), fixed_time());
             PhysicsSelfVerificationTrace::Query(QueryTraceReport {
