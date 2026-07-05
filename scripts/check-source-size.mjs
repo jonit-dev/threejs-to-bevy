@@ -24,7 +24,7 @@ const defaultOptions = {
   repoRoot,
 };
 
-export async function checkGodzillaSources(options = {}) {
+export async function checkSourceSize(options = {}) {
   const config = { ...defaultOptions, ...options };
   const files = await collectSourceFiles(config.repoRoot);
   const diagnostics = [];
@@ -37,7 +37,7 @@ export async function checkGodzillaSources(options = {}) {
 
     if (lines > maxLines) {
       diagnostics.push({
-        code: "TN_GODZILLA_FILE_LINES",
+        code: "TN_SOURCE_SIZE_FILE_LINES",
         lineCount: lines,
         maxLines,
         message: `${path} has ${lines} lines, above the ${maxLines}-line warning threshold. Consider splitting responsibilities before adding more behavior.`,
@@ -59,7 +59,7 @@ export async function checkGodzillaSources(options = {}) {
   });
 
   return {
-    code: diagnostics.length === 0 ? "TN_GODZILLA_SOURCE_WARNINGS_NONE" : "TN_GODZILLA_SOURCE_WARNINGS",
+    code: diagnostics.length === 0 ? "TN_SOURCE_SIZE_WARNINGS_NONE" : "TN_SOURCE_SIZE_WARNINGS",
     diagnostics,
     ok: true,
     status: diagnostics.length === 0 ? "pass" : "warning",
@@ -135,7 +135,7 @@ function findBlocks(content, path, maxLines, pattern, kind, language) {
     }
     const name = match[1] ?? "anonymous";
     diagnostics.push({
-      code: "TN_GODZILLA_BLOCK_LINES",
+      code: "TN_SOURCE_SIZE_BLOCK_LINES",
       kind,
       line: startLine,
       lineCount,
@@ -250,7 +250,7 @@ function readStringFlag(args, name, fallback) {
 async function main() {
   const args = process.argv.slice(2);
   const json = args.includes("--json");
-  const result = await checkGodzillaSources({
+  const result = await checkSourceSize({
     maxBlockLines: readNumberFlag(args, "--max-block-lines", defaultOptions.maxBlockLines),
     maxFileLines: readNumberFlag(args, "--max-file-lines", defaultOptions.maxFileLines),
     maxTestFileLines: readNumberFlag(args, "--max-test-file-lines", defaultOptions.maxTestFileLines),
@@ -263,11 +263,11 @@ async function main() {
   }
 
   if (result.diagnostics.length === 0) {
-    process.stdout.write(`Godzilla source scan passed: ${result.summary.filesScanned} files scanned, 0 warnings.\n`);
+    process.stdout.write(`Source size scan passed: ${result.summary.filesScanned} files scanned, 0 warnings.\n`);
     return;
   }
 
-  process.stdout.write(`Godzilla source scan found ${result.diagnostics.length} warning(s); exit code remains 0.\n`);
+  process.stdout.write(`Source size scan found ${result.diagnostics.length} warning(s); exit code remains 0.\n`);
   for (const diagnostic of result.diagnostics) {
     process.stdout.write(`warning ${diagnostic.code}: ${diagnostic.message}\n`);
   }

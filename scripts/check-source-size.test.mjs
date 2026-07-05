@@ -4,12 +4,12 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import test from "node:test";
 
-import { checkGodzillaSources } from "./check-godzilla-sources.mjs";
+import { checkSourceSize } from "./check-source-size.mjs";
 
 test("should report oversized TypeScript files and classes as warnings without failing", async () => {
   const root = await makeRepo({
-    "packages/demo/src/Godzilla.ts": [
-      "export class Godzilla {",
+    "packages/demo/src/ExcellentlyLargeType.ts": [
+      "export class ExcellentlyLargeType {",
       "  one() { return 1; }",
       "  two() { return 2; }",
       "  three() { return 3; }",
@@ -18,7 +18,7 @@ test("should report oversized TypeScript files and classes as warnings without f
     ].join("\n"),
   });
   try {
-    const result = await checkGodzillaSources({
+    const result = await checkSourceSize({
       maxBlockLines: 3,
       maxFileLines: 5,
       maxTestFileLines: 20,
@@ -29,8 +29,8 @@ test("should report oversized TypeScript files and classes as warnings without f
     assert.equal(result.status, "warning");
     assert.equal(result.summary.warnings, 2);
     assert.equal(result.diagnostics.every((diagnostic) => diagnostic.severity === "warning"), true);
-    assert.equal(result.diagnostics.some((diagnostic) => diagnostic.code === "TN_GODZILLA_FILE_LINES"), true);
-    assert.equal(result.diagnostics.some((diagnostic) => diagnostic.code === "TN_GODZILLA_BLOCK_LINES" && diagnostic.kind === "class"), true);
+    assert.equal(result.diagnostics.some((diagnostic) => diagnostic.code === "TN_SOURCE_SIZE_FILE_LINES"), true);
+    assert.equal(result.diagnostics.some((diagnostic) => diagnostic.code === "TN_SOURCE_SIZE_BLOCK_LINES" && diagnostic.kind === "class"), true);
   } finally {
     await rm(root, { force: true, recursive: true });
   }
@@ -48,7 +48,7 @@ test("should use the looser test-file threshold", async () => {
     ].join("\n"),
   });
   try {
-    const result = await checkGodzillaSources({
+    const result = await checkSourceSize({
       maxBlockLines: 20,
       maxFileLines: 3,
       maxTestFileLines: 20,
@@ -66,18 +66,18 @@ test("should use the looser test-file threshold", async () => {
 test("should report oversized Rust structs and impl blocks as warnings", async () => {
   const root = await makeRepo({
     "runtime-bevy/crates/demo/src/lib.rs": [
-      "pub struct Godzilla {",
+      "pub struct ExcellentlyLargeType {",
       "    value: i32,",
       "    other: i32,",
       "}",
-      "impl Godzilla {",
+      "impl ExcellentlyLargeType {",
       "    pub fn one(&self) -> i32 { self.value }",
       "    pub fn two(&self) -> i32 { self.other }",
       "}",
     ].join("\n"),
   });
   try {
-    const result = await checkGodzillaSources({
+    const result = await checkSourceSize({
       maxBlockLines: 2,
       maxFileLines: 100,
       maxTestFileLines: 100,
@@ -86,7 +86,7 @@ test("should report oversized Rust structs and impl blocks as warnings", async (
 
     assert.equal(result.ok, true);
     assert.equal(result.status, "warning");
-    assert.equal(result.diagnostics.filter((diagnostic) => diagnostic.code === "TN_GODZILLA_BLOCK_LINES").length, 2);
+    assert.equal(result.diagnostics.filter((diagnostic) => diagnostic.code === "TN_SOURCE_SIZE_BLOCK_LINES").length, 2);
     assert.equal(result.diagnostics.some((diagnostic) => diagnostic.kind === "type"), true);
     assert.equal(result.diagnostics.some((diagnostic) => diagnostic.kind === "impl"), true);
   } finally {
@@ -95,7 +95,7 @@ test("should report oversized Rust structs and impl blocks as warnings", async (
 });
 
 async function makeRepo(files) {
-  const root = await mkdtemp(join(tmpdir(), "tn-godzilla-sources-"));
+  const root = await mkdtemp(join(tmpdir(), "tn-source-size-sources-"));
   for (const [file, content] of Object.entries(files)) {
     const path = join(root, file);
     await mkdir(dirname(path), { recursive: true });
