@@ -49,10 +49,6 @@ backlog unless a nested PRD says it has been superseded.
 
 ### Advanced And Boundary Work
 
-- [Camera and Post-Processing Boundaries](other/camera-post-processing-boundaries.md):
-  depth-of-field visual calibration, auto exposure, motion blur, SSR, mirrors,
-  deferred rendering, volumetrics, and custom post-processing promotion bars or
-  stable diagnostics.
 - [Dense Scene LOD and Texture Delivery](other/dense-scene-lod-texture-delivery.md):
   billboard impostors, dense-prop affordability, draw-grouping reports, texture
   fallback selection, and target-profile diagnostics for optional compressed
@@ -73,6 +69,12 @@ backlog unless a nested PRD says it has been superseded.
   diagnostic boundaries.
 
 ## Completed Reference PRDs
+
+- [Camera and Post-Processing Boundaries](done/other/camera-post-processing-boundaries.md):
+  depth-of-field report-only runtime semantics, target-profile diagnostics for
+  auto exposure, motion blur, SSR/mirrors, deferred rendering, volumetrics, and
+  custom post-processing, and compiler capability checks that avoid backend
+  render-path selections.
 
 Completed PRDs live under `docs/PRDs/done/`. They remain linked for context,
 evidence trails, and source-boundary decisions, but they are not active backlog.

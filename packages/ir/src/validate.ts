@@ -826,10 +826,13 @@ function validateRuntimeConfig(config: unknown, path: string, diagnostics: IIrDi
   if (renderPath !== undefined && renderPath !== "forward") {
     diagnostics.push({
       code: "TN_IR_RENDERER_ADVANCED_FEATURE_UNSUPPORTED",
+      limit: RENDERER_ADVANCED_PROMOTION_EVIDENCE.deferred,
       message: "Runtime renderer renderPath only supports 'forward' in V9; deferred rendering is explicitly unsupported.",
       path: `${path}/renderer/renderPath`,
       severity: "error",
-      suggestion: "Use renderPath: 'forward' or omit renderPath.",
+      suggestion: rendererAdvancedSuggestion("deferred"),
+      target: "web,bevy",
+      value: typeof renderPath === "string" ? renderPath : undefined,
     });
   }
   const renderLook = isRecord(renderer) ? renderer.renderLook : undefined;
@@ -879,11 +882,14 @@ function validateRuntimeConfig(config: unknown, path: string, diagnostics: IIrDi
 
 function validateUnsupportedRendererFields(renderer: Record<string, unknown>, path: string, diagnostics: IIrDiagnostic[]): void {
   const supported = new Set(["antialias", "bloom", "colorGrading", "depthOfField", "renderLook", "renderPath"]);
-  const advanced = new Map([
+  const advanced = new Map<string, string>([
     ["autoExposure", "Auto exposure is explicitly deferred in V9."],
     ["customPasses", "Custom post-processing passes are explicitly deferred in V9."],
+    ["customPostPasses", "Custom post-processing passes are explicitly deferred in V9."],
     ["decals", "Decals are diagnostic-only until both runtimes prove a portable mapping."],
     ["deferred", "Deferred rendering is explicitly deferred in V9; use renderPath: 'forward'."],
+    ["mirror", "Screen-space reflections and mirrors are explicitly deferred in V9."],
+    ["mirrors", "Screen-space reflections and mirrors are explicitly deferred in V9."],
     ["motionBlur", "Motion blur and motion vectors are explicitly deferred in V9."],
     ["motionVectors", "Motion blur and motion vectors are explicitly deferred in V9."],
     ["screenSpaceReflections", "Screen-space reflections and mirrors are explicitly deferred in V9."],
@@ -898,12 +904,62 @@ function validateUnsupportedRendererFields(renderer: Record<string, unknown>, pa
     }
     diagnostics.push({
       code: advanced.has(key) ? "TN_IR_RENDERER_ADVANCED_FEATURE_UNSUPPORTED" : "TN_IR_RENDERER_POST_EFFECT_UNSUPPORTED",
+      ...(advanced.has(key) ? { limit: RENDERER_ADVANCED_PROMOTION_EVIDENCE[rendererAdvancedBoundary(key)] } : {}),
       message: advanced.get(key) ?? `Runtime renderer field '${key}' is not promoted in V9.`,
       path: `${path}/${key}`,
       severity: "error",
-      suggestion: "Remove the field or wait for a PRD that promotes it with cross-runtime evidence.",
+      suggestion: advanced.has(key)
+        ? rendererAdvancedSuggestion(rendererAdvancedBoundary(key))
+        : "Remove the field or wait for a PRD that promotes it with cross-runtime evidence.",
+      ...(advanced.has(key) ? { target: "web,bevy" } : {}),
     });
   }
+}
+
+const RENDERER_ADVANCED_PROMOTION_EVIDENCE = {
+  autoExposure: ["deterministic histogram policy", "web/native exposure convergence report", "mobile fallback budget"],
+  customPost: ["finite portable effect catalog", "shader/resource binding contract", "web/native screenshot evidence"],
+  decals: ["surface-aligned authoring semantics", "depth sorting policy", "web/native screenshot evidence"],
+  deferred: ["forward-renderer fallback", "target-profile render-path policy", "web/native screenshot evidence"],
+  motion: ["shutter/sample semantics", "motion-vector or authored approximation policy", "video/screenshot proof"],
+  reflections: ["material/reflection intent contract", "non-SSR fallback tier", "web/native screenshot evidence"],
+  virtualGeometry: ["meshlet/LOD authoring contract", "runtime memory budget", "web/native performance proof"],
+  volumetrics: ["density/scattering profile", "participating-light limits", "web/native performance and screenshot proof"],
+} as const satisfies Record<string, readonly string[]>;
+
+type RendererAdvancedBoundary = keyof typeof RENDERER_ADVANCED_PROMOTION_EVIDENCE;
+
+function rendererAdvancedBoundary(key: string): RendererAdvancedBoundary {
+  if (key === "autoExposure") {
+    return "autoExposure";
+  }
+  if (key === "customPasses" || key === "customPostPasses") {
+    return "customPost";
+  }
+  if (key === "decals") {
+    return "decals";
+  }
+  if (key === "deferred") {
+    return "deferred";
+  }
+  if (key === "motionBlur" || key === "motionVectors") {
+    return "motion";
+  }
+  if (key === "screenSpaceReflections" || key === "ssr" || key === "mirror" || key === "mirrors") {
+    return "reflections";
+  }
+  if (key === "virtualGeometry") {
+    return "virtualGeometry";
+  }
+  if (key === "volumetricFog" || key === "volumetricLighting") {
+    return "volumetrics";
+  }
+  return "customPost";
+}
+
+function rendererAdvancedSuggestion(boundary: RendererAdvancedBoundary): string {
+  const evidence = RENDERER_ADVANCED_PROMOTION_EVIDENCE[boundary].join(", ");
+  return `Remove the field or keep the visual intent in authored materials/camera data until promotion provides ${evidence}.`;
 }
 
 const PROMOTED_RENDER_LOOK_PROFILES = new Set(["parity", "balanced"]);

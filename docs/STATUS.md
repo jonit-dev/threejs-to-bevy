@@ -1437,6 +1437,18 @@ screen-space reflections, volumetrics, virtual geometry, custom post passes,
 compressed skybox formats, and broader editor debug overlay systems remain
 deferred until separately proven.
 
+The camera/post-processing boundary PRD is complete as a diagnostic/report
+contract slice. `runtime.config.json` validation rejects auto exposure, motion
+blur/motion vectors, SSR/mirrors, deferred render paths, volumetrics, decals,
+virtual geometry, and custom post passes through
+`TN_IR_RENDERER_ADVANCED_FEATURE_UNSUPPORTED`, including the affected `web,bevy`
+target surface and the missing promotion evidence in the diagnostic metadata.
+The compiler capability derivation preserves portable `render-path.forward` and
+`depth-of-field` capabilities without emitting Bevy/deferred/prepass render-path
+selections. DOF remains intentionally report-only: web and Bevy conformance
+reports preserve focal distance, aperture, enabled state, and max blur, but no
+visual blur promotion is claimed without calibrated screenshot proof.
+
 ## V4 Proves
 
 V4 is complete for the primitive native scripting proof. It proves one

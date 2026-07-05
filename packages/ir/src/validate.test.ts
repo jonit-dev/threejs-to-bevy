@@ -881,8 +881,10 @@ test("should reject unsupported advanced renderer requests with stable diagnosti
       antialias: "msaa4",
       autoExposure: true,
       customPasses: [{ fragment: "frag.wgsl" }],
+      customPostPasses: [{ id: "chromatic", shader: "chromatic.wgsl" }],
       decals: true,
       deferred: true,
+      mirrors: true,
       motionBlur: true,
       motionVectors: true,
       renderPath: "deferred",
@@ -901,8 +903,10 @@ test("should reject unsupported advanced renderer requests with stable diagnosti
       [
         ["TN_IR_RENDERER_ADVANCED_FEATURE_UNSUPPORTED", "runtime.config.json/renderer/autoExposure"],
         ["TN_IR_RENDERER_ADVANCED_FEATURE_UNSUPPORTED", "runtime.config.json/renderer/customPasses"],
+        ["TN_IR_RENDERER_ADVANCED_FEATURE_UNSUPPORTED", "runtime.config.json/renderer/customPostPasses"],
         ["TN_IR_RENDERER_ADVANCED_FEATURE_UNSUPPORTED", "runtime.config.json/renderer/decals"],
         ["TN_IR_RENDERER_ADVANCED_FEATURE_UNSUPPORTED", "runtime.config.json/renderer/deferred"],
+        ["TN_IR_RENDERER_ADVANCED_FEATURE_UNSUPPORTED", "runtime.config.json/renderer/mirrors"],
         ["TN_IR_RENDERER_ADVANCED_FEATURE_UNSUPPORTED", "runtime.config.json/renderer/motionBlur"],
         ["TN_IR_RENDERER_ADVANCED_FEATURE_UNSUPPORTED", "runtime.config.json/renderer/motionVectors"],
         ["TN_IR_RENDERER_ADVANCED_FEATURE_UNSUPPORTED", "runtime.config.json/renderer/screenSpaceReflections"],
@@ -912,6 +916,23 @@ test("should reject unsupported advanced renderer requests with stable diagnosti
         ["TN_IR_RENDERER_ADVANCED_FEATURE_UNSUPPORTED", "runtime.config.json/renderer/volumetricLighting"],
         ["TN_IR_RENDERER_ADVANCED_FEATURE_UNSUPPORTED", "runtime.config.json/renderer/renderPath"],
       ],
+    );
+    assert.equal(result.diagnostics.every((diagnostic) => diagnostic.target === "web,bevy"), true);
+    assert.deepEqual(
+      result.diagnostics.find((diagnostic) => diagnostic.path === "runtime.config.json/renderer/autoExposure")?.limit,
+      ["deterministic histogram policy", "web/native exposure convergence report", "mobile fallback budget"],
+    );
+    assert.deepEqual(
+      result.diagnostics.find((diagnostic) => diagnostic.path === "runtime.config.json/renderer/motionBlur")?.limit,
+      ["shutter/sample semantics", "motion-vector or authored approximation policy", "video/screenshot proof"],
+    );
+    assert.deepEqual(
+      result.diagnostics.find((diagnostic) => diagnostic.path === "runtime.config.json/renderer/mirrors")?.limit,
+      ["material/reflection intent contract", "non-SSR fallback tier", "web/native screenshot evidence"],
+    );
+    assert.equal(
+      result.diagnostics.find((diagnostic) => diagnostic.path === "runtime.config.json/renderer/renderPath")?.suggestion?.includes("target-profile render-path policy"),
+      true,
     );
   } finally {
     await rm(root, { force: true, recursive: true });

@@ -183,6 +183,28 @@ test("should derive ECS and runtime capabilities from schemas and runtime config
   assert.deepEqual(capabilities.scripting, ["component-reflection", "schedule.update", "systems"]);
 });
 
+test("should not derive backend render path selections from runtime config", () => {
+  const capabilities = deriveRequiredCapabilities({
+    assets: assetsManifest([]),
+    materials: materialsIr([]),
+    runtimeConfig: {
+      renderer: {
+        antialias: "msaa4",
+        depthOfField: { aperture: 0.03, enabled: true, focusDistance: 12, maxBlur: 0.02 },
+        renderPath: "forward",
+      },
+      schema: "threenative.runtime-config",
+      time: { fixedDelta: 1 / 60, paused: false },
+      version: "0.1.0",
+      window: { height: 720, width: 1280 },
+    },
+  });
+
+  assert.ok(capabilities.rendering?.includes("render-path.forward"));
+  assert.ok(capabilities.rendering?.includes("depth-of-field"));
+  assert.equal(capabilities.rendering?.some((capability) => /bevy|deferred|prepass|render-graph/i.test(capability)), false);
+});
+
 test("should derive multi-view camera capabilities", () => {
   const capabilities = deriveRequiredCapabilities({
     assets: assetsManifest([

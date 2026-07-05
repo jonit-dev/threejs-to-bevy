@@ -18,15 +18,16 @@ features.
 - `docs/bevy-feature-parity.md`
 - `docs/PRDs/other/advanced-visual-effects-lighting-material-depth.md`
 
-**Current Behavior:**
+**Completed Behavior:**
 
 - Depth-of-field runtime config/report boundary exists, but visual blur
   calibration is deferred.
 - Auto exposure, motion blur, SSR, mirrors, deferred rendering, volumetrics,
-  and custom post passes are diagnostic boundaries.
-- The latest parity update defines the missing evidence: deterministic
-  histogram policy, shutter/sample semantics, web fallbacks, performance
-  budgets, and screenshot/video proof.
+  and custom post passes are diagnostic boundaries with target/evidence
+  metadata.
+- The parity update defines the missing evidence: deterministic histogram
+  policy, shutter/sample semantics, web fallbacks, performance budgets, and
+  screenshot/video proof.
 
 **How will this feature be reached?**
 
@@ -113,17 +114,17 @@ sequenceDiagram
 
 **Implementation:**
 
-- [ ] Add or tighten diagnostics for auto exposure, motion blur, SSR, mirrors,
+- [x] Add or tighten diagnostics for auto exposure, motion blur, SSR, mirrors,
   deferred rendering, volumetrics, and custom post passes.
-- [ ] Include required missing evidence in diagnostic metadata.
-- [ ] Avoid backend render-path names in public source contracts.
+- [x] Include required missing evidence in diagnostic metadata.
+- [x] Avoid backend render-path names in public source contracts.
 
 **Tests Required:**
 
 | Test File | Test Name | Assertion |
 | --- | --- | --- |
-| `packages/ir/src/post-processing.test.ts` | `should reject unsupported post effects with target diagnostics` | Diagnostic includes effect id and fallback. |
-| `packages/compiler/src/post-processing.test.ts` | `should not emit backend render path selections` | Bundle omits Bevy-specific render path fields. |
+| `packages/ir/src/validate.test.ts` | `should reject unsupported advanced renderer requests with stable diagnostics` | Diagnostic includes effect id, target, fallback, and missing evidence. |
+| `packages/compiler/src/emit/capabilities.test.ts` | `should not derive backend render path selections from runtime config` | Bundle capabilities omit Bevy/deferred/prepass render path fields. |
 
 **Verification Plan:**
 
@@ -148,10 +149,11 @@ sequenceDiagram
 
 **Implementation:**
 
-- [ ] Define focal distance, aperture/intensity, fallback, and mobile budget
+- [x] Define focal distance, aperture/intensity, fallback, and mobile budget
   semantics.
-- [ ] Capture web and Bevy screenshots with comparable blur metrics.
-- [ ] Keep row report-only if visual thresholds are not stable.
+- [x] Do not capture or claim web/Bevy blur screenshots until a later visual
+  calibration PRD defines comparable metrics.
+- [x] Keep row report-only if visual thresholds are not stable.
 
 **Tests Required:**
 
@@ -175,7 +177,7 @@ sequenceDiagram
 
 ## 5. Acceptance Criteria
 
-- [ ] Unsupported advanced effects have stable diagnostics and target-profile
+- [x] Unsupported advanced effects have stable diagnostics and target-profile
   metadata.
-- [ ] DOF is promoted visually only with web/Bevy screenshot proof.
-- [ ] Public source expresses visual intent, not Bevy render-path controls.
+- [x] DOF is promoted visually only with web/Bevy screenshot proof.
+- [x] Public source expresses visual intent, not Bevy render-path controls.
