@@ -1,0 +1,35 @@
+import { isAbsolute, resolve } from "node:path";
+
+export function resolveProjectPath(argv: readonly string[]): string {
+  const project = readFlag(argv, "--project") ?? ".";
+  const cwd = process.env.INIT_CWD ?? process.cwd();
+  return isAbsolute(project) ? project : resolve(cwd, project);
+}
+
+export function readFlag(argv: readonly string[], flag: string): string | undefined {
+  const index = argv.indexOf(flag);
+  if (index === -1) {
+    return undefined;
+  }
+  return argv[index + 1];
+}
+
+export function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+export function hasNonEmptyString(value: unknown): value is string {
+  return typeof value === "string" && value.trim() !== "";
+}
+
+export function hasStringArray(value: unknown): value is string[] {
+  return Array.isArray(value) && value.length > 0 && value.every(hasNonEmptyString);
+}
+
+export function isPlayerLikeEntityId(id: string): boolean {
+  const lower = id.toLowerCase();
+  if (lower.includes("camera")) {
+    return false;
+  }
+  return lower.includes("player") || lower.includes("runner") || lower.includes("hero") || lower.includes("avatar") || lower.includes("boat") || lower.includes("car");
+}

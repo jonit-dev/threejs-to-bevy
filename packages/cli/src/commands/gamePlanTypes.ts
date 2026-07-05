@@ -1,0 +1,87 @@
+import { type IGameKitCandidate } from "../game/kits.js";
+
+export interface IGamePlanStep {
+  id: string;
+  phase: string;
+  recipe?: string;
+  recipeArgs?: Record<string, unknown>;
+  recipeGameplayBlocks?: string[];
+  recipeGeneratedIds?: Record<string, string[]>;
+  recipeProofCommands?: string[];
+  recipeProofHints?: string[];
+  recipeScriptResponsibilities?: string[];
+  recipeSourceOwners?: Record<string, string[]>;
+  command?: string;
+  apply: boolean;
+  summary: string;
+}
+
+export interface IGameplayBlockDescriptor {
+  appliesWhen: string[];
+  cautions: string[];
+  helperImports: string[];
+  id: string;
+  kind: "ai" | "basis" | "camera" | "combat" | "controller" | "objective" | "spawn" | "world";
+  proof: string[];
+  recipeIds: string[];
+  scriptResponsibilities: string[];
+  source: "gameblocks-inspired" | "threenative";
+}
+
+export interface IGamePlan {
+  acceptanceCriteria: string[];
+  assetPlan: Array<{
+    fallback: string;
+    requiredEvidence: string[];
+    searchCommand?: string;
+    sourcePreference: string;
+    surface: string;
+  }>;
+  code: "TN_GAME_PLAN";
+  design: {
+    controls: string[];
+    failRetry: string;
+    feedback: string[];
+    loop: string;
+    objective: string;
+    progression: string;
+  };
+  diagnostics: unknown[];
+  goal: string;
+  inventory: {
+    diagnostics: Array<{ code: string; message: string; path?: string; severity: string }>;
+    primarySceneId?: string;
+    projectKind: string;
+    recommendedOperations: string[];
+    sourceFamilies: Array<{ count: number; files: string[]; kind: string }>;
+  };
+  gameplayBlocks: IGameplayBlockDescriptor[];
+  kitCandidates: IGameKitCandidate[];
+  message: string;
+  mutate: false;
+  phases: Array<{ id: string; order: number; summary: string }>;
+  polishPlan: Array<{
+    acceptance: string;
+    category: string;
+    sourceSurface: string;
+    treatment: string;
+  }>;
+  proofCommands: string[];
+  recipeIds: string[];
+  schema: "threenative.game-plan";
+  scriptPlan: Array<{
+    module: string;
+    exportName: string;
+    responsibility: string;
+    state: string[];
+    proof: string;
+  }>;
+  sourcePlan: Array<{
+    document: string;
+    path: string;
+    supportedShape: string[];
+    avoid: string[];
+    operations: string[];
+  }>;
+  steps: IGamePlanStep[];
+}
