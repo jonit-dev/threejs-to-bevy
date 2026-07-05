@@ -36,7 +36,7 @@ backlog unless a nested PRD says it has been superseded.
   full structured source coverage for map/editor-owned data, CLI/MCP/editor
   operation parity with TypeScript-era authoring, bundle import, provenance, and
   round-trip proof without TypeScript reverse-generation.
-- [Advanced Portable UI Composition and Screen Systems](other/advanced-portable-ui-composition-and-screen-systems.md):
+- [Advanced Portable UI Composition and Screen Systems](done/other/advanced-portable-ui-composition-and-screen-systems.md):
   reusable retained UI components, theme tokens, screen stacks, modal/focus
   scopes, game UI recipes, responsive fit proof, and source-backed CLI/editor
   operations without making webview overlays the default portable UI path.

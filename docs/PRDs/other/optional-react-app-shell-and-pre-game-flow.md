@@ -23,7 +23,7 @@ panels, or launcher flows that run before the initial game scene starts.
 
 - `docs/contracts/ui.md`
 - `docs/PRDs/done/v8/V8-05-optional-react-webview-overlay.md`
-- `docs/PRDs/other/advanced-portable-ui-composition-and-screen-systems.md`
+- `docs/PRDs/done/other/advanced-portable-ui-composition-and-screen-systems.md`
 - `packages/sdk/src/overlay.ts`
 - `packages/ir/src/overlays.ts`
 - `packages/compiler/src/overlay/emit.ts`
