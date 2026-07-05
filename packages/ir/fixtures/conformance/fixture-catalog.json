@@ -3,6 +3,25 @@
   "version": "0.1.0",
   "fixtures": [
     {
+      "canonicalId": "gameplay-blocks",
+      "owner": "ir-contract",
+      "sourceExample": "gameplay-blocks",
+      "regenerateCommand": "pnpm verify:conformance",
+      "canonicalArtifactGate": "conformance",
+      "ownerDocs": "docs/PRDs/done/gameblocks-informed-gameplay-accuracy.md",
+      "aggregateGate": "verify:conformance",
+      "bundlePath": "packages/ir/fixtures/conformance/gameplay-blocks/game.bundle",
+      "promotedCapabilities": [
+        "scripting:helper.basis",
+        "scripting:helper.controller",
+        "scripting:helper.checkpoint-race",
+        "scripting:helper.spawn-region"
+      ],
+      "reportArtifacts": [
+        "packages/ir/artifacts/conformance/verification-report.json"
+      ]
+    },
+    {
       "canonicalId": "animation-physics-residuals",
       "owner": "ir-contract",
       "sourceExample": "animation-physics-residuals",

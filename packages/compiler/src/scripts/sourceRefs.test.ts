@@ -109,6 +109,42 @@ test("should record promoted gameplay math helper imports", async () => {
   }
 });
 
+test("should allow gameplay accuracy stdlib imports", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-script-source-ref-gameplay-accuracy-"));
+  try {
+    await mkdir(join(root, "src/scripts"), { recursive: true });
+    await writeFile(
+      join(root, "src/scripts/player.ts"),
+      `import { BasisEx, CheckpointRaceEx, ControllerEx, SpawnEx } from "@threenative/script-stdlib";\nexport const updatePlayer = () => ({ basis: BasisEx.create(), controller: ControllerEx.worldCardinalCharacter({ dt: 0.1 }), race: CheckpointRaceEx.init(), spawn: SpawnEx.sample({ seed: 1, region: { kind: "rect", min: [0, 0], max: [1, 1] } }) });\n`,
+    );
+
+    const systems: ISystemScriptSource[] = [
+      {
+        name: "updatePlayer",
+        script: {
+          exportName: "system_updatePlayer",
+          sourceRef: {
+            export: "updatePlayer",
+            module: "src/scripts/player.ts",
+            systemId: "updatePlayer",
+          },
+        },
+      },
+    ];
+    const result = resolveSystemScriptSources(systems, root);
+
+    assert.deepEqual(result.diagnostics, []);
+    assert.deepEqual(result.systems[0]?.script?.helperImports, [
+      {
+        imported: ["BasisEx", "CheckpointRaceEx", "ControllerEx", "SpawnEx"],
+        module: "@threenative/script-stdlib",
+      },
+    ]);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
 test("should record promoted gameplay reducer imports", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-script-source-ref-gameplay-reducers-"));
   try {

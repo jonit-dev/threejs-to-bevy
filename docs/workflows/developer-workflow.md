@@ -191,7 +191,16 @@ Command expectations:
   the shared authoring registry. Current recipes are
   `third-person-controller`, `collectible`, `trigger-zone`,
   `kinematic-character`, `health-bar`, `top-down-collector`, `lane-runner`,
-  and `vehicle-checkpoint`.
+  `vehicle-checkpoint`, `obstacle-avoider`, `physics-target`, and
+  `dressed-environment-kit`. Recipe plans also expose `gameplayBlocks`, proof
+  hints, and script responsibilities so `tn game plan` can name the exact
+  controller, camera, objective, UI, or world semantics a recipe is meant to
+  prove.
+- GameBlocks-informed pure gameplay helpers are available as named
+  `@threenative/script-stdlib` imports: `BasisEx`, `ControllerEx`,
+  `CheckpointRaceEx`, and `SpawnEx`. These helpers use tuples/plain objects
+  only and do not expose GameBlocks, Three.js, Rapier, DOM, filesystem,
+  timers, renderer, Bevy, or native runtime handles.
 - Promoted game velocity kits expose optional pure reducer packages:
   `@threenative/collector-kit`, `@threenative/lane-runner-kit`, and
   `@threenative/checkpoint-race-kit`. Scripts may import these reducers for

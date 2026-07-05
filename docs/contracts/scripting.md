@@ -85,6 +85,14 @@ Bevy schedule stage starts
 TS systems never receive native Bevy handles. They receive stable SDK entity IDs
 and plain component/resource data.
 
+Scripts can reduce common movement and gameplay-state mistakes through named
+pure helper imports from `@threenative/script-stdlib`. The current
+GameBlocks-informed helpers are `BasisEx`, `ControllerEx`,
+`CheckpointRaceEx`, and `SpawnEx`; they operate on tuples/plain objects, are
+host-free, and are accepted only as named imports. They do not import
+GameBlocks, Three.js, Rapier, DOM, filesystem, timers, renderer handles, or
+Bevy runtime handles.
+
 Example system:
 
 ```ts

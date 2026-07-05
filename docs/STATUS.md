@@ -124,6 +124,19 @@ The editor production panel read model can consume the same task graph and
 proof freshness rows, and `pnpm verify:generated-games` now requires the
 promoted kit proof artifact under
 `examples/game-velocity-kits/artifacts/game-production/kit-proof.json`.
+GameBlocks-informed gameplay accuracy now adds ThreeNative-owned planning and
+helper semantics without taking a GameBlocks runtime dependency:
+`tn game plan --json` emits optional `gameplayBlocks` descriptors for basis,
+controller, camera, objective, spawn, and world semantics; authoring recipe
+plans expose matching `gameplayBlocks`, script responsibilities, and proof
+hints; `@threenative/script-stdlib` exports host-free `BasisEx`,
+`ControllerEx`, `CheckpointRaceEx`, and `SpawnEx`; the compiler accepts those
+helpers only through named `@threenative/script-stdlib` imports; and
+`pnpm verify:generated-games` validates persisted gameplay-block plan evidence
+when present. The reviewed GameBlocks inventory is documented at
+`docs/workflows/gameblocks-reference-inventory.md`; Three.js, Rapier, DOM,
+localStorage, filesystem, worker, timer, renderer, Bevy, and native handles
+remain rejected user-script boundaries.
 
 The first agentic game-production workflow slice is implemented as a
 source-backed report contract rather than a raw Three.js scaffold. `tn game

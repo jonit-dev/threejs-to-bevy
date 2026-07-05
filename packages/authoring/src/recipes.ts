@@ -32,12 +32,15 @@ export interface IAuthoringRecipePlanOptions {
 
 export interface IAuthoringRecipePlanResult {
   diagnostics: IAuthoringDiagnostic[];
+  gameplayBlocks: string[];
   generatedIds: Record<string, string[]>;
   ok: boolean;
   operations: IAuthoringRecipeOperation[];
   proofCommands: string[];
+  proofHints: string[];
   projectPath?: string;
   recipeId: string;
+  scriptResponsibilities: string[];
   sourceOwners: Record<string, string[]>;
 }
 
@@ -88,12 +91,15 @@ export function planAuthoringRecipe(options: IAuthoringRecipePlanOptions): IAuth
           value: options.recipeId,
         }),
       ],
+      gameplayBlocks: [],
       generatedIds: {},
       ok: false,
       operations: [],
       proofCommands: [],
+      proofHints: [],
       projectPath: options.projectPath,
       recipeId: options.recipeId,
+      scriptResponsibilities: [],
       sourceOwners: {},
     };
   }
@@ -105,12 +111,15 @@ export function planAuthoringRecipe(options: IAuthoringRecipePlanOptions): IAuth
 
   return {
     diagnostics,
+    gameplayBlocks: metadata.gameplayBlocks,
     generatedIds: metadata.generatedIds,
     ok: diagnostics.length === 0,
     operations,
     proofCommands: metadata.proofCommands,
+    proofHints: metadata.proofHints,
     projectPath: options.projectPath,
     recipeId: options.recipeId,
+    scriptResponsibilities: metadata.scriptResponsibilities,
     sourceOwners: metadata.sourceOwners,
   };
 }
@@ -181,8 +190,11 @@ interface IRecipePlanner {
 }
 
 interface IRecipeMetadata {
+  gameplayBlocks: string[];
   generatedIds: Record<string, string[]>;
   proofCommands: string[];
+  proofHints: string[];
+  scriptResponsibilities: string[];
   sourceOwners: Record<string, string[]>;
 }
 
@@ -438,6 +450,7 @@ function defaultRecipeMetadata(recipeId: AuthoringRecipeId, args: Record<string,
   const sceneId = optionalStringValue(args, "sceneId") ?? "arena";
   const entityId = optionalStringValue(args, "playerId") ?? optionalStringValue(args, "vehicleId") ?? optionalStringValue(args, "targetId") ?? optionalStringValue(args, "entityId") ?? "<player-id>";
   return {
+    gameplayBlocks: recipeGameplayBlocks(recipeId),
     generatedIds: sortRecordArrays(generatedIds),
     proofCommands: [
       "tn authoring validate --project . --json",
@@ -445,16 +458,62 @@ function defaultRecipeMetadata(recipeId: AuthoringRecipeId, args: Record<string,
       `tn scene inspect ${sceneId} --json`,
       `tn playtest --project . --entity ${entityId} --press KeyD --frames 30 --expect-moved --json`,
     ],
+    proofHints: recipeProofHints(recipeId),
+    scriptResponsibilities: recipeScriptResponsibilities(recipeId),
     sourceOwners: sortRecordArrays(sourceOwners),
   };
 }
 
 function emptyRecipeMetadata(): IRecipeMetadata {
   return {
+    gameplayBlocks: [],
     generatedIds: {},
     proofCommands: [],
+    proofHints: [],
+    scriptResponsibilities: [],
     sourceOwners: {},
   };
+}
+
+function recipeGameplayBlocks(recipeId: AuthoringRecipeId): string[] {
+  const blocks: Record<AuthoringRecipeId, string[]> = {
+    collectible: ["objective.collectible", "state.resource-score", "proof.ui-binding"],
+    "dressed-environment-kit": ["world.dressed-play-space", "proof.screenshot-scale"],
+    "health-bar": ["state.health-resource", "proof.ui-binding"],
+    "kinematic-character": ["basis.y-up-z-forward", "controller.world-cardinal-character", "proof.playtest-motion"],
+    "lane-runner": ["basis.y-up-z-forward", "controller.lane-runner", "camera.position-follow", "objective.obstacle-avoid", "state.fail-retry", "proof.playtest-motion"],
+    "obstacle-avoider": ["basis.y-up-z-forward", "controller.world-cardinal-character", "objective.obstacle-avoid", "state.fail-retry", "proof.trigger-event"],
+    "physics-target": ["basis.y-up-z-forward", "objective.physics-target", "spawn.region-sampler", "proof.physics-contact"],
+    "third-person-controller": ["basis.y-up-z-forward", "controller.world-cardinal-character", "camera.position-follow", "proof.playtest-motion"],
+    "top-down-collector": ["basis.y-up-z-forward", "controller.top-down-cardinal", "camera.position-follow", "objective.collectible", "state.resource-score", "proof.ui-binding"],
+    "trigger-zone": ["objective.trigger-zone", "proof.trigger-event"],
+    "vehicle-checkpoint": ["basis.y-up-z-forward", "controller.vehicle-cardinal", "camera.position-follow", "objective.checkpoint-lap", "spawn.region-sampler", "proof.playtest-motion"],
+  };
+  return blocks[recipeId];
+}
+
+function recipeProofHints(recipeId: AuthoringRecipeId): string[] {
+  const hints: Partial<Record<AuthoringRecipeId, string[]>> = {
+    "dressed-environment-kit": ["Capture screenshot proof with visible ground, landmark, lighting, and scale cues."],
+    "lane-runner": ["Playtest lateral lane input and jump input; verify fail/retry state changes on hazard trigger."],
+    "physics-target": ["Record contact or impulse evidence for the target and projectile before claiming physics behavior."],
+    "top-down-collector": ["Playtest MoveX/MoveZ axes and verify HUD score text updates after collection."],
+    "vehicle-checkpoint": ["Playtest throttle/steer axes and verify checkpoint trigger progress or lap state."],
+  };
+  return hints[recipeId] ?? ["Validate source, build, inspect scene wiring, and run a movement or trigger proof tied to the recipe."];
+}
+
+function recipeScriptResponsibilities(recipeId: AuthoringRecipeId): string[] {
+  const responsibilities: Partial<Record<AuthoringRecipeId, string[]>> = {
+    collectible: ["owns collectible trigger state", "owns HUD/resource update"],
+    "lane-runner": ["owns lane movement intent", "owns hazard collision fail/retry state", "owns score/distance resource"],
+    "obstacle-avoider": ["owns movement intent", "owns hazard trigger fail state"],
+    "physics-target": ["owns projectile/target scoring state", "owns contact proof resource"],
+    "third-person-controller": ["owns movement intent", "owns camera target assumptions"],
+    "top-down-collector": ["owns top-down movement intent", "owns collectible progress", "owns HUD text"],
+    "vehicle-checkpoint": ["owns vehicle movement intent", "owns checkpoint progress", "owns lap/fail-retry state"],
+  };
+  return responsibilities[recipeId] ?? ["owns declared source mutations and proof evidence for the recipe"];
 }
 
 function addUnique(record: Record<string, string[]>, key: string, value: string): void {

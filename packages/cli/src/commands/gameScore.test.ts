@@ -42,6 +42,7 @@ test("plans a playable loop without writing files", async () => {
       acceptanceCriteria: string[];
       assetPlan: Array<{ requiredEvidence: string[]; searchCommand?: string; surface: string }>;
       design: { objective: string; loop: string };
+      gameplayBlocks: Array<{ helperImports: string[]; id: string; kind: string; proof: string[]; recipeIds: string[]; source: string }>;
       mutate: boolean;
       polishPlan: Array<{ category: string; treatment: string }>;
       proofCommands: string[];
@@ -49,7 +50,7 @@ test("plans a playable loop without writing files", async () => {
       schema: string;
       scriptPlan: Array<{ exportName: string; module: string; responsibility: string }>;
       sourcePlan: Array<{ avoid: string[]; document: string; operations: string[]; path: string; supportedShape: string[] }>;
-      steps: Array<{ phase: string; recipe?: string }>;
+      steps: Array<{ phase: string; recipe?: string; recipeGameplayBlocks?: string[]; recipeProofHints?: string[]; recipeScriptResponsibilities?: string[] }>;
     };
     const after = await listAll(root);
 
@@ -72,7 +73,13 @@ test("plans a playable loop without writing files", async () => {
     assert.equal(payload.polishPlan.some((item) => item.category === "lighting-environment" && item.treatment.includes("ground detail")), true);
     assert.equal(payload.acceptanceCriteria.some((criterion) => criterion.includes("authored materials")), true);
     assert.equal(payload.recipeIds.includes("third-person-controller"), true);
+    assert.equal(payload.gameplayBlocks.some((block) => block.id === "basis.y-up-z-forward" && block.helperImports.includes("BasisEx")), true);
+    assert.equal(payload.gameplayBlocks.some((block) => block.kind === "controller" && block.proof.some((command) => command.includes("tn playtest"))), true);
+    assert.equal(payload.gameplayBlocks.some((block) => block.id === "objective.collectible" && block.source === "threenative"), true);
     assert.equal(payload.steps.some((step) => step.phase === "gameplay" && step.recipe === "third-person-controller"), true);
+    assert.equal(payload.steps.some((step) => step.recipe === "top-down-collector" && step.recipeGameplayBlocks?.includes("controller.top-down-cardinal") === true), true);
+    assert.equal(payload.steps.some((step) => step.recipe === "top-down-collector" && step.recipeProofHints?.some((hint) => hint.includes("HUD score")) === true), true);
+    assert.equal(payload.steps.some((step) => step.recipe === "top-down-collector" && step.recipeScriptResponsibilities?.includes("owns collectible progress") === true), true);
     assert.equal(payload.proofCommands.some((command) => command.startsWith("tn playtest")), true);
     assert.equal(payload.proofCommands.some((command) => command.includes("tn game qa") && command.includes("--run-proof")), true);
     assert.deepEqual(after.filter((entry) => entry !== "artifacts" && !entry.startsWith("artifacts/")), before);
@@ -164,10 +171,11 @@ test("should include project inventory in generated game plan", async () => {
     const result = await gameCommand(["plan", "--project", root, "--goal", "top down rescue game", "--json"]);
     const payload = JSON.parse(result.stdout) as {
       inventory: { primarySceneId?: string; projectKind: string };
+      gameplayBlocks: Array<{ id: string; recipeIds: string[] }>;
       kitCandidates: Array<{ blocks: Array<{ id: string; proofCommands: string[]; sourceOwners: Record<string, string[]> }>; kitId: string; mutate: boolean; recipeId: string; toolingOnly: boolean }>;
       scriptPlan: Array<{ exportName: string; module: string; state: string[] }>;
       sourcePlan: Array<{ document: string; path: string }>;
-      steps: Array<{ id: string; recipe?: string; recipeArgs?: { cameraId?: string; entityId?: string; sceneId?: string }; recipeSourceOwners?: Record<string, string[]> }>;
+      steps: Array<{ id: string; recipe?: string; recipeArgs?: { cameraId?: string; entityId?: string; sceneId?: string }; recipeGameplayBlocks?: string[]; recipeProofHints?: string[]; recipeSourceOwners?: Record<string, string[]> }>;
     };
 
     assert.equal(result.exitCode, 0);
@@ -185,8 +193,34 @@ test("should include project inventory in generated game plan", async () => {
     assert.equal(payload.kitCandidates[0]?.recipeId, "top-down-collector");
     assert.equal(payload.kitCandidates[0]?.blocks.some((block) => block.id === "controller.top-down" && block.proofCommands.some((command) => command.startsWith("tn playtest"))), true);
     assert.equal(payload.kitCandidates[0]?.blocks.some((block) => block.sourceOwners.scripts?.includes("src/scripts/player.ts")), true);
+    assert.equal(payload.gameplayBlocks.some((block) => block.id === "controller.top-down-cardinal" && block.recipeIds.includes("top-down-collector")), true);
     assert.equal(payload.steps.some((step) => step.recipe === "top-down-collector" && step.recipeSourceOwners?.scene?.includes("scene.attach_script")), true);
+    assert.equal(payload.steps.some((step) => step.recipe === "top-down-collector" && step.recipeGameplayBlocks?.includes("proof.ui-binding") === true), true);
+    assert.equal(payload.steps.some((step) => step.recipe === "top-down-collector" && step.recipeProofHints?.some((hint) => hint.includes("MoveX/MoveZ")) === true), true);
     assert.equal(payload.steps.some((step) => step.recipe === "lane-runner"), true);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should map checkpoint racing goals to vehicle and checkpoint blocks", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-game-plan-checkpoint-blocks-"));
+  try {
+    const before = await listAll(root);
+    const result = await gameCommand(["plan", "--project", root, "--goal", "checkpoint kart racing game", "--json"]);
+    const payload = JSON.parse(result.stdout) as {
+      gameplayBlocks: Array<{ id: string; recipeIds: string[] }>;
+      mutate: boolean;
+      steps: Array<{ recipe?: string; recipeGameplayBlocks?: string[] }>;
+    };
+    const after = await listAll(root);
+
+    assert.equal(result.exitCode, 0);
+    assert.equal(payload.mutate, false);
+    assert.equal(payload.gameplayBlocks.some((block) => block.id === "controller.vehicle-cardinal" && block.recipeIds.includes("vehicle-checkpoint")), true);
+    assert.equal(payload.gameplayBlocks.some((block) => block.id === "objective.checkpoint-lap" && block.recipeIds.includes("vehicle-checkpoint")), true);
+    assert.equal(payload.steps.some((step) => step.recipe === "vehicle-checkpoint" && step.recipeGameplayBlocks?.includes("objective.checkpoint-lap") === true), true);
+    assert.deepEqual(after.filter((entry) => entry !== "artifacts" && !entry.startsWith("artifacts/")), before);
   } finally {
     await rm(root, { force: true, recursive: true });
   }

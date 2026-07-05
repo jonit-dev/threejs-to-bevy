@@ -793,6 +793,7 @@ async function planArtifactDiagnostics(projectPath: string, label: string): Prom
       ...acceptancePlanDiagnostics(parsed, label, path),
       ...assetPlanDiagnostics(parsed, label, path),
       ...sourceScriptPolishPlanDiagnostics(parsed, label, path),
+      ...gameplayBlockPlanDiagnostics(parsed, label, path),
     ];
     return diagnostics;
   } catch (error) {
@@ -876,6 +877,47 @@ function assetPlanDiagnostics(plan: Record<string, unknown>, label: string, path
     });
   }
   return diagnostics;
+}
+
+function gameplayBlockPlanDiagnostics(plan: Record<string, unknown>, label: string, path: string): VerificationDiagnostic[] {
+  if (plan.gameplayBlocks === undefined) {
+    return [];
+  }
+  if (!Array.isArray(plan.gameplayBlocks)) {
+    return [{
+      code: "TN_VERIFY_GAME_PLAN_GAMEPLAY_BLOCKS_INVALID",
+      message: `${label}: generated-game plan gameplayBlocks must be an array when present.`,
+      path: `${path}/gameplayBlocks`,
+      severity: "error",
+      suggestedFix: "Regenerate the plan with tn game plan --goal <game idea> --project <path> --json and preserve the gameplayBlocks array.",
+    }];
+  }
+  const blocks = plan.gameplayBlocks.filter(isRecord);
+  const validKinds = new Set(["basis", "controller", "camera", "objective", "spawn", "ai", "combat", "world"]);
+  const validSources = new Set(["threenative", "gameblocks-inspired"]);
+  const invalidRows = blocks.filter((block) => {
+    return !hasNonEmptyString(block.id)
+      || !validKinds.has(String(block.kind))
+      || !validSources.has(String(block.source))
+      || !hasStringArray(block.appliesWhen)
+      || !hasStringArray(block.helperImports)
+      || !hasStringArray(block.recipeIds)
+      || !hasStringArray(block.scriptResponsibilities)
+      || !hasStringArray(block.proof)
+      || !hasStringArray(block.cautions);
+  });
+  const missingRequired = ["basis.y-up-z-forward"].filter((id) => !blocks.some((block) => block.id === id));
+  const hasActionableBlock = blocks.some((block) => hasStringArray(block.helperImports) && hasStringArray(block.proof) && (block.helperImports as unknown[]).length > 0 && (block.proof as unknown[]).some((entry) => typeof entry === "string" && entry.includes("tn ")));
+  if (invalidRows.length === 0 && missingRequired.length === 0 && hasActionableBlock) {
+    return [];
+  }
+  return [{
+    code: "TN_VERIFY_GAME_PLAN_GAMEPLAY_BLOCKS_INVALID",
+    message: `${label}: generated-game plan gameplayBlocks must preserve basis, helper imports, recipe IDs, script responsibilities, proof commands, cautions, kind, and source metadata.`,
+    path: `${path}/gameplayBlocks`,
+    severity: "error",
+    suggestedFix: "Regenerate the plan with current tn game plan output and keep the complete gameplayBlocks rows.",
+  }];
 }
 
 function sourceScriptPolishPlanDiagnostics(plan: Record<string, unknown>, label: string, path: string): VerificationDiagnostic[] {

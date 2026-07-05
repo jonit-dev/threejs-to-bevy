@@ -1,0 +1,30 @@
+{
+  "schema": "threenative.resource-schemas",
+  "version": "0.1.0",
+  "schemas": {
+    "GameplayBlockProbe": {
+      "fields": {
+        "basisYaw": {
+          "kind": "number",
+          "required": true
+        },
+        "camera": {
+          "kind": "vec3",
+          "required": true
+        },
+        "checkpointEvents": {
+          "kind": "string",
+          "required": true
+        },
+        "movement": {
+          "kind": "vec3",
+          "required": true
+        },
+        "spawn": {
+          "kind": "vec2",
+          "required": true
+        }
+      }
+    }
+  }
+}

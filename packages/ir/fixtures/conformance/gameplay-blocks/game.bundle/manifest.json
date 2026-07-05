@@ -1,0 +1,30 @@
+{
+  "schema": "threenative.bundle",
+  "version": "0.1.0",
+  "name": "conformance-gameplay-blocks",
+  "requiredCapabilities": {
+    "ecs": [
+      "resources",
+      "resource-schemas"
+    ],
+    "scripting": [
+      "resource-reads",
+      "resource-writes",
+      "schedule.startup",
+      "script-bundle",
+      "systems"
+    ]
+  },
+  "entry": {
+    "world": "world.ir.json",
+    "systems": "systems.ir.json",
+    "scripts": "scripts.bundle.js"
+  },
+  "files": {
+    "assets": "assets.manifest.json",
+    "materials": "materials.ir.json",
+    "scripts": "scripts.bundle.js",
+    "targetProfile": "target.profile.json",
+    "resourceSchemas": "schemas/resources.schema.json"
+  }
+}

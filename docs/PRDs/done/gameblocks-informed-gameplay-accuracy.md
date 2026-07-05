@@ -292,14 +292,14 @@ sequenceDiagram
 
 **Implementation:**
 
-- [ ] Add a GameBlocks reference inventory doc with selected modules and
+- [x] Add a GameBlocks reference inventory doc with selected modules and
   rejected modules.
-- [ ] Add deterministic `buildGameplayBlocks(goal, inventory)` output for
+- [x] Add deterministic `buildGameplayBlocks(goal, inventory)` output for
   top-down, lane runner, checkpoint/vehicle, physics target, combat, and
   generic third-person goals.
-- [ ] Include block IDs, helper imports, matching recipe IDs, cautions, and
+- [x] Include block IDs, helper imports, matching recipe IDs, cautions, and
   proof commands.
-- [ ] Keep `mutate:false` and all existing plan fields backward-compatible.
+- [x] Keep `mutate:false` and all existing plan fields backward-compatible.
 
 **Tests Required:**
 
@@ -329,15 +329,15 @@ sequenceDiagram
 
 **Implementation:**
 
-- [ ] Implement `BasisEx.create({ right, up, forward })`, validation for three
+- [x] Implement `BasisEx.create({ right, up, forward })`, validation for three
   distinct axes, and right-cross-forward handedness checks.
-- [ ] Implement `BasisEx.controlSignal`, `toPlanar`, `fromBasisComponents`,
+- [x] Implement `BasisEx.controlSignal`, `toPlanar`, `fromBasisComponents`,
   `flatten`, `distance2d`, `forwardToYaw`, and `yawPitchRollFrame` using plain
   tuples/objects.
-- [ ] Implement `ControllerEx.worldCardinalCharacter` as a pure reducer that
+- [x] Implement `ControllerEx.worldCardinalCharacter` as a pure reducer that
   converts input axes, current position/velocity/yaw, `dt`, speed, turn rate,
   gravity, and jump into next intent data.
-- [ ] Keep helpers deterministic, host-free, dependency-free, and JSON
+- [x] Keep helpers deterministic, host-free, dependency-free, and JSON
   serializable.
 
 **Tests Required:**
@@ -370,15 +370,15 @@ sequenceDiagram
 
 **Implementation:**
 
-- [ ] Map existing recipes to block IDs:
+- [x] Map existing recipes to block IDs:
   `third-person-controller`, `top-down-collector`, `lane-runner`,
   `vehicle-checkpoint`, `obstacle-avoider`, `physics-target`, and
   `dressed-environment-kit`.
-- [ ] Add script responsibility hints such as `owns movement intent`,
+- [x] Add script responsibility hints such as `owns movement intent`,
   `owns checkpoint progress`, `owns fail/retry state`, and `owns HUD text`.
-- [ ] Add proof hints with expected movement axis, trigger event, UI binding,
+- [x] Add proof hints with expected movement axis, trigger event, UI binding,
   and screenshot/QA evidence.
-- [ ] Ensure `tn game improve` persists the same metadata in
+- [x] Ensure `tn game improve` persists the same metadata in
   `artifacts/game-production/plan.json`.
 
 **Tests Required:**
@@ -408,13 +408,13 @@ sequenceDiagram
 
 **Implementation:**
 
-- [ ] Add `CheckpointRaceEx` functions for init, start, step, checkpoint pass,
+- [x] Add `CheckpointRaceEx` functions for init, start, step, checkpoint pass,
   lap complete, finish ordering, snapshot, and reset using plain data.
-- [ ] Add `SpawnEx` region contracts for rect, circle, polygon, and segment
+- [x] Add `SpawnEx` region contracts for rect, circle, polygon, and segment
   corridor, plus block-region rejection and deterministic sampled points from
   `RandomEx`.
-- [ ] Keep event ordering deterministic and stable for generated-game proof.
-- [ ] Avoid wall-clock time. Callers pass `dt` and persist returned state in
+- [x] Keep event ordering deterministic and stable for generated-game proof.
+- [x] Avoid wall-clock time. Callers pass `dt` and persist returned state in
   declared resources.
 
 **Tests Required:**
@@ -446,13 +446,13 @@ sequenceDiagram
 
 **Implementation:**
 
-- [ ] Add a compact conformance fixture that uses `BasisEx`,
+- [x] Add a compact conformance fixture that uses `BasisEx`,
   `ControllerEx`, `CameraMath`, and `CheckpointRaceEx`.
-- [ ] Capture expected service/effect observations for movement, checkpoint
+- [x] Capture expected service/effect observations for movement, checkpoint
   progress, UI resource write, and retry state.
-- [ ] Require generated-game production gate to preserve `gameplayBlocks` when
+- [x] Require generated-game production gate to preserve `gameplayBlocks` when
   `plan.json` includes them, without making old plans invalid.
-- [ ] Add release-gate docs/status updates if this phase promotes a new shared
+- [x] Add release-gate docs/status updates if this phase promotes a new shared
   runtime contract.
 
 **Tests Required:**
@@ -475,7 +475,7 @@ After each phase, run an automated PRD checkpoint review:
 ```text
 Use Task tool with:
 - subagent_type: "prd-work-reviewer"
-- prompt: "Review checkpoint for phase <N> of PRD at docs/PRDs/other/gameblocks-informed-gameplay-accuracy.md"
+- prompt: "Review checkpoint for phase <N> of PRD at docs/PRDs/done/gameblocks-informed-gameplay-accuracy.md"
 ```
 
 Continue only after the reviewer reports PASS. Phase 5 also needs manual
@@ -495,30 +495,29 @@ change.
 
 **Evidence Required:**
 
-- [ ] Plan output includes `gameplayBlocks` without mutating project files.
-- [ ] New stdlib helpers pass export and injected bundle parity tests.
-- [ ] Compiler accepts only promoted named helper imports.
-- [ ] Existing recipes expose block metadata and proof hints.
-- [ ] Generated-game production proof preserves block metadata when present.
-- [ ] Web and Bevy conformance fixtures prove shared semantics if runtime
+- [x] Plan output includes `gameplayBlocks` without mutating project files.
+- [x] New stdlib helpers pass export and injected bundle parity tests.
+- [x] Compiler accepts only promoted named helper imports.
+- [x] Existing recipes expose block metadata and proof hints.
+- [x] Generated-game production proof preserves block metadata when present.
+- [x] Web and Bevy conformance fixtures prove shared semantics if runtime
   behavior is promoted.
 
 ## 7. Acceptance Criteria
 
-- [ ] GameBlocks reference inventory is committed with upstream commit,
+- [x] GameBlocks reference inventory is committed with upstream commit,
   selected modules, rejected modules, and MIT license handling.
-- [ ] `tn game plan --json` emits optional, deterministic `gameplayBlocks`
+- [x] `tn game plan --json` emits optional, deterministic `gameplayBlocks`
   guidance for common generated-game goals.
-- [ ] `@threenative/script-stdlib` includes promoted pure basis/controller and
+- [x] `@threenative/script-stdlib` includes promoted pure basis/controller and
   selected state reducer helpers with host-free tests.
-- [ ] Authoring recipes advertise matching gameplay block metadata and proof
+- [x] Authoring recipes advertise matching gameplay block metadata and proof
   responsibilities.
-- [ ] Generated-game proof gates preserve and validate block evidence when
+- [x] Generated-game proof gates preserve and validate block evidence when
   present.
-- [ ] No Three.js, Rapier, DOM, localStorage, filesystem, worker, timer, Bevy,
+- [x] No Three.js, Rapier, DOM, localStorage, filesystem, worker, timer, Bevy,
   or renderer handles are exposed to user scripts.
-- [ ] All specified focused tests pass.
-- [ ] `pnpm verify:conformance` passes for any shared runtime contract touched.
-- [ ] Capability/release-gate changes, if any, update `docs/STATUS.md` and
+- [x] All specified focused tests pass.
+- [x] `pnpm verify:conformance` passes for any shared runtime contract touched.
+- [x] Capability/release-gate changes, if any, update `docs/STATUS.md` and
   `docs/bevy-feature-parity.md`.
-

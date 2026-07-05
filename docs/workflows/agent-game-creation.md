@@ -35,6 +35,19 @@ feedback moments, source owners, script owners, asset sourcing commands, polish
 tasks, and proof commands. The worksheet is the human/agent checklist;
 persisted production work keeps machine-readable evidence at
 `artifacts/game-production/plan.json`.
+Before writing scripts, inspect the plan's `gameplayBlocks` rows. Select the
+matching basis, controller, camera, objective, spawn, or world block, then use
+its helper imports and proof commands as the movement/state contract. Common
+block IDs include:
+
+| Block | Use |
+| --- | --- |
+| `basis.y-up-z-forward` | Shared right/up/forward signs and planar conversion through `BasisEx`. |
+| `controller.world-cardinal-character` | Character movement intent through `ControllerEx.worldCardinalCharacter`. |
+| `camera.position-follow` | Source-owned follow camera framing through `CameraMath`. |
+| `objective.collectible` | Triggered pickup/score loops with retained UI resource updates. |
+| `objective.checkpoint-lap` | Ordered checkpoint, lap, finish, and retry state through `CheckpointRaceEx`. |
+| `spawn.region-sampler` | Deterministic spawn points through `SpawnEx` and `RandomEx`. |
 
 ## Apply Bounded Recipes
 
@@ -63,9 +76,13 @@ Common 3D game recipes:
 Recipe plan output includes:
 
 - `recipeGeneratedIds`: IDs the recipe expects to create or touch.
+- `recipeGameplayBlocks`: block IDs that describe the recipe's controller,
+  camera, objective, world, or proof semantics.
 - `recipeSourceOwners`: source families and bounded operations used.
 - `recipeProofCommands`: local commands to validate, build, inspect, and
   playtest the slice.
+- `recipeProofHints` and `recipeScriptResponsibilities`: source-owned behavior
+  and evidence the attached script module is expected to prove.
 
 ## Asset And Visual Work
 

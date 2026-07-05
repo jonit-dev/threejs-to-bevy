@@ -88,6 +88,24 @@ unsupported.
 - [ ] Unsupported wall-clock timer scheduling inside portable systems.
 - [ ] Unsupported platform RNG access inside portable systems.
 
+### Pure Script Helper Imports
+
+Scripts may import promoted pure helpers by named import from
+`@threenative/script-stdlib`. The compiler records these helper imports in
+script provenance and rejects default, namespace, relative, host, or backend
+imports.
+
+- [x] Gameplay math and data helpers: `NumberEx`, `AngleEx`, `Vec2`, `Vec3`,
+  `Quat`, `TransformMath`, `Bounds2`, `Bounds3`, `ColorEx`, `Ease`, `TextEx`,
+  `InputEx`, `MotionEx`, `TimerEx`, `ArrayEx`, `CameraMath`, and `RandomEx`.
+- [x] GameBlocks-informed pure gameplay helpers: `BasisEx`,
+  `ControllerEx`, `CheckpointRaceEx`, and `SpawnEx`.
+- [x] Promoted reducer-kit helper imports:
+  `@threenative/collector-kit`, `@threenative/lane-runner-kit`, and
+  `@threenative/checkpoint-race-kit`.
+- [ ] Unsupported helper imports that expose Three.js, Rapier, Bevy, DOM,
+  localStorage, filesystem, worker, timer, renderer, or native runtime handles.
+
 ### Resources, Events, Commands, and Lifecycle
 
 - [x] Typed event emission through `ctx.events.emit(Event, payload)`.

@@ -108,6 +108,17 @@ recipe id, score, `mutate: false`, `toolingOnly: true`, acceptance criteria,
 asset roles, block ids, source owners, and proof commands. These candidates are
 planning guidance only; source mutation still requires an explicit bounded
 recipe or game-improve command.
+The plan also includes optional read-only `gameplayBlocks` descriptors. These
+rows name ThreeNative-owned gameplay semantics inspired by the reviewed
+GameBlocks inventory, such as `basis.y-up-z-forward`,
+`controller.world-cardinal-character`, `camera.position-follow`,
+`objective.collectible`, `objective.checkpoint-lap`, and
+`spawn.region-sampler`. Each block records kind, source, helper imports,
+matching recipe IDs, script responsibilities, proof commands, and cautions.
+They are not runtime dependencies and do not expose Three.js, Rapier, Bevy,
+DOM, storage, filesystem, worker, timer, renderer, or native handles.
+Generated-game plan validation preserves these rows when present and reports
+`TN_VERIFY_GAME_PLAN_GAMEPLAY_BLOCKS_INVALID` for malformed block evidence.
 The plan's proof commands must cover the full local production loop:
 `tn authoring validate`, `tn build`, input-driven `tn playtest`,
 `tn screenshot`, `tn game score`, `tn game qa --run-proof`, and
@@ -120,6 +131,11 @@ canonical plan evidence. When application succeeds, it persists the exact
 applied plan to
 `artifacts/game-production/plan.json`, so the generated-game aggregate gate can
 verify the planning evidence without relying on a separate manual copy step.
+Recipe-backed plan steps may include `recipeGameplayBlocks`,
+`recipeProofHints`, and `recipeScriptResponsibilities`; these are copied from
+the authoring recipe registry so CLI plans, recipe dry-runs, and persisted plan
+evidence describe the same movement, camera, objective, UI, and proof
+responsibilities.
 
 `tn game next --project <path> --json` derives a read-first
 `threenative.game-task-graph` artifact and writes it to

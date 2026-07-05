@@ -36,12 +36,27 @@ interface IGamePlanStep {
   phase: string;
   recipe?: string;
   recipeArgs?: Record<string, unknown>;
+  recipeGameplayBlocks?: string[];
   recipeGeneratedIds?: Record<string, string[]>;
   recipeProofCommands?: string[];
+  recipeProofHints?: string[];
+  recipeScriptResponsibilities?: string[];
   recipeSourceOwners?: Record<string, string[]>;
   command?: string;
   apply: boolean;
   summary: string;
+}
+
+interface IGameplayBlockDescriptor {
+  appliesWhen: string[];
+  cautions: string[];
+  helperImports: string[];
+  id: string;
+  kind: "ai" | "basis" | "camera" | "combat" | "controller" | "objective" | "spawn" | "world";
+  proof: string[];
+  recipeIds: string[];
+  scriptResponsibilities: string[];
+  source: "gameblocks-inspired" | "threenative";
 }
 
 interface IGamePlan {
@@ -71,6 +86,7 @@ interface IGamePlan {
     recommendedOperations: string[];
     sourceFamilies: Array<{ count: number; files: string[]; kind: string }>;
   };
+  gameplayBlocks: IGameplayBlockDescriptor[];
   kitCandidates: IGameKitCandidate[];
   message: string;
   mutate: false;
@@ -332,6 +348,7 @@ async function gamePlanCommand(argv: readonly string[]): Promise<ICommandResult>
   const defaults = inferPlanDefaults(inventory);
   const gameCategory = inferGameCategory(goal);
   const kitCandidates = matchGameKitCandidates(goal);
+  const gameplayBlocks = buildGameplayBlocks(goal);
   const plan: IGamePlan = {
     acceptanceCriteria: [
       "A player can understand the objective from the first screen and complete or fail the loop with real input.",
@@ -364,6 +381,7 @@ async function gamePlanCommand(argv: readonly string[]): Promise<ICommandResult>
       recommendedOperations: inventory.recommendedOperations,
       sourceFamilies: inventory.sourceFamilies.map((family) => ({ count: family.count, files: family.files, kind: family.kind })),
     },
+    gameplayBlocks,
     kitCandidates,
     message: "Deterministic game-production plan generated without mutating source.",
     mutate: false,
@@ -496,10 +514,156 @@ function recipeStep(step: IGamePlanStep & { recipe: string; recipeArgs: Record<s
   const plan = planAuthoringRecipe({ args: step.recipeArgs, recipeId: step.recipe });
   return {
     ...step,
+    recipeGameplayBlocks: plan.gameplayBlocks,
     recipeGeneratedIds: plan.generatedIds,
     recipeProofCommands: plan.proofCommands,
+    recipeProofHints: plan.proofHints,
+    recipeScriptResponsibilities: plan.scriptResponsibilities,
     recipeSourceOwners: plan.sourceOwners,
   };
+}
+
+function buildGameplayBlocks(goal: string): IGameplayBlockDescriptor[] {
+  const text = goal.toLowerCase();
+  const blocks = new Map<string, IGameplayBlockDescriptor>();
+  const add = (block: IGameplayBlockDescriptor): void => {
+    blocks.set(block.id, block);
+  };
+  add(gameplayBlock({
+    appliesWhen: ["all generated 3D games"],
+    cautions: ["Use this descriptor as the only source of truth for right/up/forward signs before authoring movement math."],
+    helperImports: ["BasisEx"],
+    id: "basis.y-up-z-forward",
+    kind: "basis",
+    proof: ["pnpm --filter @threenative/script-stdlib test"],
+    recipeIds: ["third-person-controller", "top-down-collector", "lane-runner", "vehicle-checkpoint"],
+    scriptResponsibilities: ["convert planar input through BasisEx before writing Transform or velocity state"],
+    source: "gameblocks-inspired",
+  }));
+  add(gameplayBlock({
+    appliesWhen: ["third-person", "top-down", "obstacle", "generic character goals"],
+    cautions: ["Do not read runtime camera or renderer objects; pass input, dt, pose, and velocity as plain data."],
+    helperImports: ["BasisEx", "ControllerEx"],
+    id: "controller.world-cardinal-character",
+    kind: "controller",
+    proof: ["tn playtest --project . --entity <player-id> --press KeyD --frames 30 --expect-moved --json"],
+    recipeIds: ["third-person-controller", "kinematic-character", "obstacle-avoider"],
+    scriptResponsibilities: ["owns movement intent", "owns yaw/velocity resource writes"],
+    source: "gameblocks-inspired",
+  }));
+  add(gameplayBlock({
+    appliesWhen: ["camera follows player, vehicle, runner, or top-down pawn"],
+    cautions: ["Camera target and offset must be authored source data or pure CameraMath output, not adapter handles."],
+    helperImports: ["CameraMath"],
+    id: "camera.position-follow",
+    kind: "camera",
+    proof: ["tn screenshot --project . --url <preview-url> --out artifacts/game-production/screenshot.png --wait-ready --json"],
+    recipeIds: ["third-person-controller", "top-down-collector", "lane-runner", "vehicle-checkpoint"],
+    scriptResponsibilities: ["keeps target framing and follow offset consistent with authored camera source"],
+    source: "gameblocks-inspired",
+  }));
+  if (matchesAny(text, ["collect", "coin", "pickup", "rescue", "salvage", "gather"])) {
+    add(gameplayBlock({
+      appliesWhen: ["collector and rescue goals"],
+      cautions: ["Trigger collection must update declared resources and retained UI instead of DOM HUD state."],
+      helperImports: ["CollectorKit", "BasisEx", "ControllerEx"],
+      id: "objective.collectible",
+      kind: "objective",
+      proof: ["tn game qa --project . --run-proof --json"],
+      recipeIds: ["collectible", "top-down-collector"],
+      scriptResponsibilities: ["owns collectible progress", "owns score resource and HUD text"],
+      source: "threenative",
+    }));
+    add(gameplayBlock({
+      appliesWhen: ["top-down collectors and compact arena pickups"],
+      cautions: ["Forward/right signs come from BasisEx; avoid hand-authored axis swaps in scripts."],
+      helperImports: ["BasisEx", "ControllerEx"],
+      id: "controller.top-down-cardinal",
+      kind: "controller",
+      proof: ["tn playtest --project . --entity <player-id> --press KeyW --frames 30 --expect-moved --json"],
+      recipeIds: ["top-down-collector"],
+      scriptResponsibilities: ["owns top-down movement intent"],
+      source: "gameblocks-inspired",
+    }));
+  }
+  if (matchesAny(text, ["lane", "runner", "run", "dodge", "avoid", "hazard"])) {
+    add(gameplayBlock({
+      appliesWhen: ["lane runner and obstacle dodging goals"],
+      cautions: ["Lane state must be plain resource data with deterministic fail/retry events."],
+      helperImports: ["LaneRunnerKit", "BasisEx"],
+      id: "controller.lane-runner",
+      kind: "controller",
+      proof: ["tn playtest --project . --entity <player-id> --press ArrowLeft --frames 30 --expect-moved --json"],
+      recipeIds: ["lane-runner", "obstacle-avoider"],
+      scriptResponsibilities: ["owns lane index", "owns forward progression", "owns hazard fail state"],
+      source: "gameblocks-inspired",
+    }));
+    add(gameplayBlock({
+      appliesWhen: ["hazard, obstacle, timing, and dodge loops"],
+      cautions: ["Do not infer collisions from screenshots; preserve trigger/contact evidence."],
+      helperImports: ["LaneRunnerKit"],
+      id: "objective.obstacle-avoid",
+      kind: "objective",
+      proof: ["tn game qa --project . --run-proof --json"],
+      recipeIds: ["lane-runner", "obstacle-avoider"],
+      scriptResponsibilities: ["owns fail/retry state", "owns obstacle trigger events"],
+      source: "threenative",
+    }));
+  }
+  if (matchesAny(text, ["race", "checkpoint", "lap", "vehicle", "kart", "car", "boat", "courier", "ferry"])) {
+    add(gameplayBlock({
+      appliesWhen: ["vehicle and checkpoint racing goals"],
+      cautions: ["This is kinematic intent, not promoted wheel or drivetrain physics."],
+      helperImports: ["BasisEx", "CheckpointRaceEx"],
+      id: "controller.vehicle-cardinal",
+      kind: "controller",
+      proof: ["tn playtest --project . --entity <vehicle-id> --press KeyW --frames 30 --expect-moved --json"],
+      recipeIds: ["vehicle-checkpoint"],
+      scriptResponsibilities: ["owns throttle/steer intent", "owns checkpoint-facing yaw"],
+      source: "gameblocks-inspired",
+    }));
+    add(gameplayBlock({
+      appliesWhen: ["checkpoint, lap, race, delivery-route, and waypoint objectives"],
+      cautions: ["Checkpoint order and lap finish events must come from plain reducer state, not visible mesh order guesses."],
+      helperImports: ["CheckpointRaceEx"],
+      id: "objective.checkpoint-lap",
+      kind: "objective",
+      proof: ["tn game qa --project . --run-proof --json"],
+      recipeIds: ["vehicle-checkpoint"],
+      scriptResponsibilities: ["owns checkpoint progress", "owns lap and finish events", "owns retry state"],
+      source: "gameblocks-inspired",
+    }));
+  }
+  if (matchesAny(text, ["spawn", "wave", "enemy", "combat", "target", "projectile", "physics"])) {
+    add(gameplayBlock({
+      appliesWhen: ["spawned targets, waves, projectile targets, and combat arenas"],
+      cautions: ["Spawn regions are plain data; do not sample from runtime geometry or physics backends."],
+      helperImports: ["SpawnEx", "RandomEx"],
+      id: "spawn.region-sampler",
+      kind: "spawn",
+      proof: ["tn game qa --project . --run-proof --json"],
+      recipeIds: ["physics-target", "vehicle-checkpoint"],
+      scriptResponsibilities: ["owns deterministic spawn points", "owns blocked-region rejection"],
+      source: "gameblocks-inspired",
+    }));
+  }
+  return [...blocks.values()].sort((left, right) => left.id.localeCompare(right.id));
+}
+
+function gameplayBlock(input: IGameplayBlockDescriptor): IGameplayBlockDescriptor {
+  return {
+    ...input,
+    appliesWhen: [...input.appliesWhen],
+    cautions: [...input.cautions],
+    helperImports: [...input.helperImports].sort(),
+    proof: [...input.proof],
+    recipeIds: [...input.recipeIds].sort(),
+    scriptResponsibilities: [...input.scriptResponsibilities],
+  };
+}
+
+function matchesAny(text: string, needles: readonly string[]): boolean {
+  return needles.some((needle) => text.includes(needle));
 }
 
 async function gameImproveCommand(argv: readonly string[]): Promise<ICommandResult> {

@@ -5,10 +5,13 @@ import vm from "node:vm";
 import {
   AngleEx,
   ArrayEx,
+  BasisEx,
   Bounds2,
   Bounds3,
   CameraMath,
+  CheckpointRaceEx,
   ColorEx,
+  ControllerEx,
   Ease,
   InputEx,
   MotionEx,
@@ -16,6 +19,7 @@ import {
   Quat,
   RandomEx,
   SCRIPT_STDLIB_BUNDLE_SOURCE,
+  SpawnEx,
   TextEx,
   TimerEx,
   TransformMath,
@@ -52,10 +56,20 @@ const sampleExpression = `({
     overlaps: Bounds3.overlaps(Bounds3.aabb([0, 0, 0], [2, 2, 2]), Bounds3.aabb([1, 1, 1], [3, 3, 3])),
     size: Bounds3.size(Bounds3.aabb([0, 0, 0], [2, 4, 6]))
   },
+  BasisEx: {
+    controlSignal: BasisEx.controlSignal({ x: 1, y: 1 }),
+    distance2d: BasisEx.distance2d([0, 9, 0], [3, -4, 4]),
+    planar: BasisEx.toPlanar([2, 5, -3]),
+    yaw: NumberEx.round(BasisEx.forwardToYaw([1, 0, 1]), 6)
+  },
   CameraMath: {
     followPose: CameraMath.followPose({ target: [1, 0, 2], yaw: Math.PI / 2, offset: [0, 3, -6] }),
     orbitPose: CameraMath.orbitPose({ target: [0, 0, 0], yaw: 0.5, pitch: 0.25, distance: 8 }),
     shakeOffset: CameraMath.shakeOffset(12, 0.5, 2)
+  },
+  CheckpointRaceEx: {
+    finish: CheckpointRaceEx.passCheckpoint(CheckpointRaceEx.passCheckpoint(CheckpointRaceEx.start(CheckpointRaceEx.init()), { checkpointCount: 2, lapsToFinish: 1, timeSeconds: 1 }), { checkpointCount: 2, lapsToFinish: 1, timeSeconds: 2 }),
+    reset: CheckpointRaceEx.reset(CheckpointRaceEx.init({ status: "finished", lap: 2 }))
   },
   ColorEx: {
     hex: ColorEx.hex("#336699cc"),
@@ -79,6 +93,9 @@ const sampleExpression = `({
   InputEx: {
     axis: InputEx.axis(0.6, { deadzone: 0.2, exponent: 2 }),
     axis2: InputEx.axis2({ x: 0.2, y: 1 }, { deadzone: 0.1 })
+  },
+  ControllerEx: {
+    cardinal: ControllerEx.worldCardinalCharacter({ dt: 0.5, grounded: true, input: [1, 1], position: [0, 0, 0], speed: 4, turnRate: Math.PI, yaw: 0 })
   },
   MotionEx: {
     arrive: MotionEx.arrive({ position: [0, 0, 0], target: [0, 0, 5], slowingDistance: 10, maxSpeed: 8 }),
@@ -118,6 +135,10 @@ const sampleExpression = `({
     pickIndex: RandomEx.pickIndex(42, 3, 7),
     range: RandomEx.range(42, 3, 10, 20),
     rangeInt: RandomEx.rangeInt(42, 3, 1, 6)
+  },
+  SpawnEx: {
+    contains: SpawnEx.contains({ kind: "rect", min: [-1, -1], max: [1, 1] }, [0.5, 0.5]),
+    sample: SpawnEx.sample({ seed: 12, index: 1, region: { kind: "rect", min: [0, 0], max: [4, 4] }, blocked: [{ kind: "circle", center: [2, 2], radius: 0.5 }] })
   },
   TextEx: {
     fixed: TextEx.fixed(12.345, 2),
@@ -190,6 +211,44 @@ test("should compute common gameplay math deterministically", () => {
   assert.deepEqual(Vec3.round(Vec3.projectOnPlane([1, 2, 3], [0, 1, 0]), 3), [1, 0, 3]);
 });
 
+test("should validate gameplay basis descriptors", () => {
+  assert.deepEqual(BasisEx.create({ right: "x", up: "y", forward: "z" }).forwardVector, [0, 0, 1]);
+  assert.throws(() => BasisEx.create({ right: "x", up: "x", forward: "z" }), /TN_STDLIB_BASIS_AXIS_DUPLICATE/);
+  assert.throws(() => BasisEx.create({ right: "x", up: "-y", forward: "z" }), /TN_STDLIB_BASIS_HANDEDNESS_INVALID/);
+});
+
+test("should convert cardinal controls through BasisEx deterministically", () => {
+  const signal = BasisEx.controlSignal({ x: 1, y: 1 });
+  const controller = ControllerEx.worldCardinalCharacter({ dt: 0.25, grounded: true, input: [0, 1], position: [0, 1, 0], speed: 8, turnRate: Math.PI, yaw: 0 });
+
+  assert.deepEqual(Vec3.round(signal.world, 6), [0.707107, 0, 0.707107]);
+  assert.equal(NumberEx.round(signal.yaw, 6), 0.785398);
+  assert.deepEqual(Vec3.round(controller.position, 3), [0, 1, 2]);
+  assert.deepEqual(Vec3.round(controller.velocity, 3), [0, 0, 8]);
+});
+
+test("should emit checkpoint race events in stable order", () => {
+  const started = CheckpointRaceEx.start(CheckpointRaceEx.init(), 0);
+  const first = CheckpointRaceEx.passCheckpoint(started, { checkpointCount: 2, lapsToFinish: 1, timeSeconds: 3 });
+  const finished = CheckpointRaceEx.passCheckpoint(first, { checkpointCount: 2, lapsToFinish: 1, timeSeconds: 7 });
+
+  assert.deepEqual(first.events.map((event) => event.kind), ["checkpoint"]);
+  assert.deepEqual(finished.events.map((event) => event.kind), ["checkpoint", "lap", "player-finish", "race-finish"]);
+  assert.equal(finished.status, "finished");
+  assert.equal(finished.lap, 1);
+});
+
+test("should sample spawn regions while rejecting blocked regions", () => {
+  const region = { kind: "rect" as const, min: [0, 0] as const, max: [1, 1] as const };
+  const fullyBlocked = { kind: "rect" as const, min: [0, 0] as const, max: [1, 1] as const };
+  const sampled = SpawnEx.sample({ seed: 22, index: 0, region, blocked: [{ kind: "circle", center: [0.5, 0.5], radius: 0.1 }], attempts: 4 });
+
+  assert.equal(SpawnEx.contains(region, [0.2, 0.8]), true);
+  assert.equal(SpawnEx.contains({ kind: "polygon", points: [[0, 0], [2, 0], [1, 2]] }, [1, 0.5]), true);
+  assert.notEqual(sampled, null);
+  assert.deepEqual(SpawnEx.sample({ seed: 22, index: 0, region, blocked: [fullyBlocked], attempts: 4 }), null);
+});
+
 test("should compute random color and text helpers deterministically", () => {
   assert.equal(RandomEx.hash32(42, 3), RandomEx.hash32(42, 3));
   assert.equal(RandomEx.rangeInt(42, 3, 1, 6), RandomEx.rangeInt(42, 3, 1, 6));
@@ -242,6 +301,30 @@ test("should keep stdlib helpers deterministic and host-free", () => {
   assert.deepEqual(roundedJson(result.motion), { heading: 1.570796, speed: 3, velocity: [3, 0, 0] });
 });
 
+test("should keep BasisEx and ControllerEx host-free in bundle source", () => {
+  const context = vm.createContext(Object.create(null));
+  const script = new vm.Script(`${SCRIPT_STDLIB_BUNDLE_SOURCE}; ({
+    basis: BasisEx.controlSignal({ x: 1, y: 0 }),
+    controller: ControllerEx.worldCardinalCharacter({ dt: 0.5, input: [0, 1], speed: 2, position: [0, 0, 0] }),
+    race: CheckpointRaceEx.passCheckpoint(CheckpointRaceEx.start(CheckpointRaceEx.init()), { checkpointCount: 1, lapsToFinish: 1, timeSeconds: 1 }).events.map((event) => event.kind),
+    spawn: SpawnEx.sample({ seed: 1, region: { kind: "rect", min: [0, 0], max: [1, 1] } }),
+    globals: { process: typeof process, window: typeof window, document: typeof document }
+  });`);
+  const result = script.runInContext(context) as {
+    basis: unknown;
+    controller: unknown;
+    globals: Record<string, string>;
+    race: string[];
+    spawn: unknown;
+  };
+
+  assert.deepEqual(roundedJson(result.globals), { document: "undefined", process: "undefined", window: "undefined" });
+  assert.deepEqual(roundedJson(result.basis), { input: [1, 0], world: [1, 0, 0], yaw: 1.570796 });
+  assert.deepEqual(roundedJson(result.controller), { grounded: false, intent: [0, 0, 2], position: [0, 0, 1], velocity: [0, 0, 2], yaw: 0 });
+  assert.deepEqual(roundedJson(result.race), ["checkpoint", "lap", "player-finish", "race-finish"]);
+  assert.notEqual(result.spawn, null);
+});
+
 function exportedSamples(): unknown {
   return {
     AngleEx: {
@@ -279,10 +362,23 @@ function exportedSamples(): unknown {
       overlaps: Bounds3.overlaps(Bounds3.aabb([0, 0, 0], [2, 2, 2]), Bounds3.aabb([1, 1, 1], [3, 3, 3])),
       size: Bounds3.size(Bounds3.aabb([0, 0, 0], [2, 4, 6])),
     },
+    BasisEx: {
+      controlSignal: BasisEx.controlSignal({ x: 1, y: 1 }),
+      distance2d: BasisEx.distance2d([0, 9, 0], [3, -4, 4]),
+      planar: BasisEx.toPlanar([2, 5, -3]),
+      yaw: NumberEx.round(BasisEx.forwardToYaw([1, 0, 1]), 6),
+    },
     CameraMath: {
       followPose: CameraMath.followPose({ target: [1, 0, 2], yaw: Math.PI / 2, offset: [0, 3, -6] }),
       orbitPose: CameraMath.orbitPose({ target: [0, 0, 0], yaw: 0.5, pitch: 0.25, distance: 8 }),
       shakeOffset: CameraMath.shakeOffset(12, 0.5, 2),
+    },
+    CheckpointRaceEx: {
+      finish: CheckpointRaceEx.passCheckpoint(
+        CheckpointRaceEx.passCheckpoint(CheckpointRaceEx.start(CheckpointRaceEx.init()), { checkpointCount: 2, lapsToFinish: 1, timeSeconds: 1 }),
+        { checkpointCount: 2, lapsToFinish: 1, timeSeconds: 2 },
+      ),
+      reset: CheckpointRaceEx.reset(CheckpointRaceEx.init({ status: "finished", lap: 2 })),
     },
     ColorEx: {
       hex: ColorEx.hex("#336699cc"),
@@ -306,6 +402,9 @@ function exportedSamples(): unknown {
     InputEx: {
       axis: InputEx.axis(0.6, { deadzone: 0.2, exponent: 2 }),
       axis2: InputEx.axis2({ x: 0.2, y: 1 }, { deadzone: 0.1 }),
+    },
+    ControllerEx: {
+      cardinal: ControllerEx.worldCardinalCharacter({ dt: 0.5, grounded: true, input: [1, 1], position: [0, 0, 0], speed: 4, turnRate: Math.PI, yaw: 0 }),
     },
     MotionEx: {
       arrive: MotionEx.arrive({ position: [0, 0, 0], target: [0, 0, 5], slowingDistance: 10, maxSpeed: 8 }),
@@ -345,6 +444,10 @@ function exportedSamples(): unknown {
       pickIndex: RandomEx.pickIndex(42, 3, 7),
       range: RandomEx.range(42, 3, 10, 20),
       rangeInt: RandomEx.rangeInt(42, 3, 1, 6),
+    },
+    SpawnEx: {
+      contains: SpawnEx.contains({ kind: "rect", min: [-1, -1], max: [1, 1] }, [0.5, 0.5]),
+      sample: SpawnEx.sample({ seed: 12, index: 1, region: { kind: "rect", min: [0, 0], max: [4, 4] }, blocked: [{ kind: "circle", center: [2, 2], radius: 0.5 }] }),
     },
     TextEx: {
       fixed: TextEx.fixed(12.345, 2),

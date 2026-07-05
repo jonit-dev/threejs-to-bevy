@@ -108,6 +108,16 @@ implementation:
   UI, playtest, screenshot, scale, and QA evidence. This is an authoring and
   release-evidence improvement; it does not add a new Bevy runtime gameplay
   capability.
+- GameBlocks-informed gameplay accuracy now adds source-owned
+  `gameplayBlocks` planning descriptors, recipe block/proof metadata, and pure
+  named stdlib helpers (`BasisEx`, `ControllerEx`, `CheckpointRaceEx`,
+  `SpawnEx`) for generated-game movement, camera, objective, and spawn
+  semantics. The helpers are proven by stdlib bundle parity and compiler
+  import validation, and generated-game plan evidence is validated when
+  present. This does not vendor GameBlocks and does not add Bevy, Rapier,
+  renderer, DOM, filesystem, worker, timer, or native-handle script access.
+  It is authoring/compiler guidance rather than a new native runtime
+  capability claim.
 - `tn game plan --json` now emits a schema-tagged
   `threenative.game-plan` artifact with non-mutating source-shape guidance for
   scene, input, systems, UI, materials, and assets documents, including

@@ -351,6 +351,58 @@ test("rejects production plan artifacts without full proof command guidance", as
   }
 });
 
+test("should preserve gameplay block plan evidence", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-generated-game-plan-gameplay-blocks-"));
+  try {
+    await mkdir(join(root, "content/scenes"), { recursive: true });
+    await mkdir(join(root, "artifacts/game-production"), { recursive: true });
+    await writeFile(join(root, "content/scenes/arena.scene.json"), `${JSON.stringify({ schema: "threenative.scene", id: "arena" }, null, 2)}\n`);
+    const plan = validGamePlan();
+    plan.gameplayBlocks = [
+      validGameplayBlock("basis.y-up-z-forward", "basis"),
+      validGameplayBlock("controller.world-cardinal-character", "controller"),
+    ];
+    await writeFile(join(root, "artifacts/game-production/plan.json"), `${JSON.stringify(plan, null, 2)}\n`);
+    const reportPath = join(root, "artifacts/game-production/verification-report.json");
+
+    const result = await runGameProductionGate({
+      projects: [{ projectPath: ".", requirePlanArtifact: true }],
+      reportPath,
+      root,
+    });
+
+    assert.equal(result.diagnostics.some((diagnostic) => diagnostic.code === "TN_VERIFY_GAME_PLAN_GAMEPLAY_BLOCKS_INVALID"), false);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("rejects malformed gameplay block plan evidence", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-generated-game-plan-gameplay-blocks-invalid-"));
+  try {
+    await mkdir(join(root, "content/scenes"), { recursive: true });
+    await mkdir(join(root, "artifacts/game-production"), { recursive: true });
+    await writeFile(join(root, "content/scenes/arena.scene.json"), `${JSON.stringify({ schema: "threenative.scene", id: "arena" }, null, 2)}\n`);
+    const plan = validGamePlan();
+    plan.gameplayBlocks = [
+      { id: "controller.world-cardinal-character", kind: "controller", source: "gameblocks-inspired" },
+    ];
+    await writeFile(join(root, "artifacts/game-production/plan.json"), `${JSON.stringify(plan, null, 2)}\n`);
+    const reportPath = join(root, "artifacts/game-production/verification-report.json");
+
+    const result = await runGameProductionGate({
+      projects: [{ projectPath: ".", requirePlanArtifact: true }],
+      reportPath,
+      root,
+    });
+
+    assert.equal(result.ok, false);
+    assert.equal(result.diagnostics.some((diagnostic) => diagnostic.code === "TN_VERIFY_GAME_PLAN_GAMEPLAY_BLOCKS_INVALID"), true);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
 test("rejects production plan artifacts without generated-game acceptance criteria", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-generated-game-plan-acceptance-gate-"));
   try {
@@ -2117,6 +2169,20 @@ function validGamePlan(): Record<string, unknown> {
       "tn game qa --project . --run-proof --json",
       "tn game release --project . --json",
     ],
+  };
+}
+
+function validGameplayBlock(id: string, kind: string): Record<string, unknown> {
+  return {
+    appliesWhen: ["generated-game goals"],
+    cautions: ["Keep helper use plain-data and host-free."],
+    helperImports: ["BasisEx", "ControllerEx"],
+    id,
+    kind,
+    proof: ["tn playtest --project . --entity <player-id> --press KeyD --frames 30 --expect-moved --json"],
+    recipeIds: ["third-person-controller"],
+    scriptResponsibilities: ["owns movement intent"],
+    source: "gameblocks-inspired",
   };
 }
 

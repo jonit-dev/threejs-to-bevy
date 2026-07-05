@@ -1,0 +1,27 @@
+{
+  "schema": "threenative.systems",
+  "version": "0.1.0",
+  "systems": [
+    {
+      "name": "gameplayBlockProbe",
+      "schedule": "startup",
+      "commands": [],
+      "eventReads": [],
+      "eventWrites": [],
+      "queries": [],
+      "reads": [],
+      "resourceReads": [
+        "GameplayBlockProbe"
+      ],
+      "resourceWrites": [
+        "GameplayBlockProbe"
+      ],
+      "services": [],
+      "script": {
+        "bundle": "scripts.bundle.js",
+        "exportName": "system_gameplayBlockProbe"
+      },
+      "writes": []
+    }
+  ]
+}

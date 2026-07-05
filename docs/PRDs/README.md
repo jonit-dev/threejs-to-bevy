@@ -11,11 +11,6 @@ backlog unless a nested PRD says it has been superseded.
 
 ### Runtime And Gameplay Parity
 
-- [GameBlocks-Informed Gameplay Accuracy](other/gameblocks-informed-gameplay-accuracy.md):
-  use the useful portable semantics from GameBlocks as source material for
-  ThreeNative-owned gameplay-block planning descriptors, pure script helpers,
-  recipe metadata, and conformance proof without importing Three.js/Rapier/DOM
-  runtime code.
 - [Portable Scripting Character and Physics Contacts](other/portable-scripting-character-physics-contacts.md):
   richer primitive contact filtering, character movement observations, slope
   and push semantics, and stable diagnostics for unsupported physics breadth.
@@ -109,6 +104,7 @@ Useful completed reference groups:
   [Script Module References and Manifest](done/other/script-module-references-and-manifest.md),
   [TypeScript Authoring Facade and Script Ergonomics](done/other/typescript-authoring-facade-and-script-ergonomics.md).
 - Game-production workflow:
+  [GameBlocks-Informed Gameplay Accuracy](done/gameblocks-informed-gameplay-accuracy.md),
   [Game Development Velocity Kits](done/game-development-velocity-kits.md),
   [Agent Game Planning Template and Init Scaffold](done/agent-game-planning-template-and-init-scaffold.md),
   [Agent-Friendly Project Scaffolding and Visual Debugging Workflows](done/agent-friendly-project-and-visual-debugging-workflows.md),

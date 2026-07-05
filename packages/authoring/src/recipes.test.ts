@@ -55,6 +55,9 @@ test("should plan top down collector as a vertical game slice", () => {
   assert.equal(plan.sourceOwners.input?.includes("input.add_axis"), true);
   assert.equal(plan.sourceOwners.scene?.includes("scene.attach_script"), true);
   assert.equal(plan.proofCommands.some((command) => command.includes("tn playtest") && command.includes("--entity player")), true);
+  assert.equal(plan.gameplayBlocks.includes("controller.top-down-cardinal"), true);
+  assert.equal(plan.scriptResponsibilities.includes("owns collectible progress"), true);
+  assert.equal(plan.proofHints.some((hint) => hint.includes("HUD score")), true);
 });
 
 test("should register common 3d game vertical slice recipes with supported operations", () => {
@@ -76,5 +79,26 @@ test("should register common 3d game vertical slice recipes with supported opera
     assert.equal(Object.keys(plan.sourceOwners).length > 0, true, `${recipeId} should declare source owners`);
     assert.equal(Object.keys(plan.generatedIds).length > 0, true, `${recipeId} should declare generated IDs`);
     assert.equal(plan.proofCommands.some((command) => command.includes("tn authoring validate")), true, `${recipeId} should declare proof commands`);
+    assert.equal(plan.gameplayBlocks.length > 0, true, `${recipeId} should declare gameplay blocks`);
+    assert.equal(plan.proofHints.length > 0, true, `${recipeId} should declare proof hints`);
+    assert.equal(plan.scriptResponsibilities.length > 0, true, `${recipeId} should declare script responsibilities`);
+  }
+});
+
+test("should expose gameplay block metadata for maintained recipes", () => {
+  const recipeArgs = {
+    "dressed-environment-kit": { sceneId: "arena" },
+    "lane-runner": { cameraId: "camera.main", playerId: "runner", sceneId: "arena" },
+    "obstacle-avoider": { playerId: "player", sceneId: "arena" },
+    "physics-target": { sceneId: "arena", targetId: "target.01" },
+    "third-person-controller": { cameraId: "camera.main", entityId: "player", sceneId: "arena" },
+    "top-down-collector": { cameraId: "camera.main", playerId: "player", sceneId: "arena" },
+    "vehicle-checkpoint": { cameraId: "camera.main", sceneId: "arena", vehicleId: "kart" },
+  } as const;
+
+  for (const [recipeId, args] of Object.entries(recipeArgs)) {
+    const plan = planAuthoringRecipe({ args, recipeId });
+    assert.equal(plan.ok, true, `${recipeId} should plan`);
+    assert.equal(plan.gameplayBlocks.some((block) => block.startsWith("controller.") || block.startsWith("objective.") || block.startsWith("world.") || block.startsWith("proof.")), true, `${recipeId} should expose gameplay block metadata`);
   }
 });
