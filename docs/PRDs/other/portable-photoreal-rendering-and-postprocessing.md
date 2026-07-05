@@ -24,7 +24,7 @@ Score basis: +2 expands renderer/source/IR contracts, +2 spans SDK/IR/compiler/w
 - `AGENTS.md`
 - `package.json`
 - `docs/PRDs/README.md`
-- `docs/PRDs/other/advanced-visual-effects-lighting-material-depth.md`
+- `docs/PRDs/done/advanced-visual-effects-lighting-material-depth.md`
 - `docs/PRDs/done/other/camera-post-processing-boundaries.md`
 - `docs/PRDs/done/beautiful-defaults-render-look-profiles.md`
 - `docs/PRDs/done/other/render-look-shadow-bloom-polish.md`

@@ -23,7 +23,7 @@ look profile.
 - `docs/visual-parity-policy.md`
 - `docs/PRDs/README.md`
 - `docs/PRDs/other/default-game-visual-polish.md`
-- `docs/PRDs/other/advanced-visual-effects-lighting-material-depth.md`
+- `docs/PRDs/done/advanced-visual-effects-lighting-material-depth.md`
 - `packages/ir/src/runtimeConfig.ts`
 - `packages/ir/schemas/runtime-config.schema.json`
 - `packages/runtime-web-three/src/render.ts`

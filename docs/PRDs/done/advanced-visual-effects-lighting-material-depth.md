@@ -153,11 +153,11 @@ sequenceDiagram
 
 | Test File | Test Name | Assertion |
 | --- | --- | --- |
-| `packages/ir/src/advanced-visual.test.ts` | `should reject unsupported advanced PBR fields when target profile lacks support` | Diagnostic includes field path and suggested fallback. |
 | `packages/ir/src/validate.test.ts` | `should reject unsupported advanced material depth and PBR fields` | Diagnostics include field paths and portable fallbacks. |
 | `packages/ir/src/validate.test.ts` | `should reject unsupported advanced light kinds` | Diagnostic names the unsupported light kind. |
-| `packages/runtime-web-three/src/advanced-visual.test.ts` | `should report promoted lightmap material usage` | Web report includes lightmap asset id. |
-| `runtime-bevy/tests/advanced_visual.rs` | `should report promoted lightmap material usage` | Native report matches fixture metadata. |
+| `packages/ir/src/validate.test.ts` | `should reject unsupported advanced renderer requests with stable diagnostics` | Advanced renderer and custom-post boundaries stay diagnostic-first. |
+| `packages/runtime-web-three/src/conformance.test.ts` | `should report V9 environment lighting, light budgets, and renderer quality observations` | Web report preserves report-level renderer quality and DOF metadata. |
+| `runtime-bevy/crates/threenative_runtime/tests/conformance.rs` | `should_report_v9_environment_lighting_budgets_and_renderer_quality` | Native report preserves matching renderer quality and DOF metadata. |
 
 **Verification Plan:**
 
@@ -196,8 +196,7 @@ sequenceDiagram
 
 | Test File | Test Name | Assertion |
 | --- | --- | --- |
-| `packages/ir/src/post-processing.test.ts` | `should reject custom post passes without a portable effect id` | Diagnostic names the pass. |
-| `tools/verify/src/advanced-visual.test.ts` | `should fail when promoted effects lack both web and native screenshots` | Gate reports missing artifact paths. |
+| `packages/ir/src/validate.test.ts` | `should reject unsupported advanced renderer requests with stable diagnostics` | Diagnostic names custom post, SSR, motion blur, deferred, and related unsupported features. |
 | `runtime-bevy/crates/threenative_runtime/tests/conformance.rs` | `should_report_v9_environment_lighting_budgets_and_renderer_quality` | Native report preserves depth-of-field runtime config and post-processing marker. |
 | `packages/runtime-web-three/src/conformance.test.ts` | `should report V9 environment lighting, light budgets, and renderer quality observations` | Web report preserves depth-of-field runtime config and post-processing marker. |
 
@@ -207,6 +206,10 @@ sequenceDiagram
 2. Web/Bevy runtime report tests.
 3. Focused visual screenshots plus threshold checks.
 4. `pnpm verify:release` before marking any parity rows complete.
+
+No standalone `advanced-visual` screenshot gate is promoted by this PRD because
+depth-of-field remains report-level evidence and visual blur calibration is
+explicitly deferred.
 
 **User Verification:**
 

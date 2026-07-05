@@ -17,7 +17,7 @@ visual-polish slice before exposing high-end renderer internals.
 - `docs/bevy-feature-parity.md`
 - `docs/STATUS.md`
 - `docs/PRDs/README.md`
-- `docs/PRDs/other/advanced-visual-effects-lighting-material-depth.md`
+- `docs/PRDs/done/advanced-visual-effects-lighting-material-depth.md`
 
 **Current Behavior:**
 

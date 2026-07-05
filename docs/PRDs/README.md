@@ -64,10 +64,6 @@ backlog unless a nested PRD says it has been superseded.
   portable HDRI/environment lighting, AO, bloom, DOF, SSR, motion blur, and
   fallback diagnostics with Three.js implementations kept adapter-private and
   Bevy parity/reporting required before promoted claims.
-- [Advanced Visual Effects, Lighting, and Material Depth](other/advanced-visual-effects-lighting-material-depth.md):
-  umbrella reference for advanced lighting, material, atmosphere,
-  post-processing, deferred renderer, virtual geometry, and custom
-  post-processing boundaries.
 - [Advanced Animation and Physics Depth](other/advanced-animation-physics-depth.md):
   umbrella reference for retargeting, IK, arbitrary blend-tree, constraint,
   triangle narrow-phase, vehicle, soft-body, and ragdoll boundaries.
@@ -124,6 +120,7 @@ Useful completed reference groups:
   [Editor Functional Gap Closure](done/other/editor-functional-gap-closure.md),
   [Editor AI Chat ECS Control](done/other/editor-ai-chat-ecs-control.md).
 - Runtime and parity references:
+  [Advanced Visual Effects, Lighting, and Material Depth](done/advanced-visual-effects-lighting-material-depth.md),
   [Web and Bevy Scripting Host Conformance](done/other/web-bevy-scripting-host-conformance.md),
   [SDK Physics Collider Contract Boundary](done/other/sdk-physics-collider-contract-boundary.md),
   [Render Look, Shadow, and Bloom Polish Profiles](done/other/render-look-shadow-bloom-polish.md),

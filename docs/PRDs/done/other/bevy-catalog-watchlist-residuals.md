@@ -19,7 +19,7 @@ contributors without clear promotion or diagnostic targets.
 - `docs/STATUS.md`
 - `docs/PRDs/README.md`
 - `docs/PRDs/done/other/ui-platform-desktop-residuals.md`
-- `docs/PRDs/other/advanced-visual-effects-lighting-material-depth.md`
+- `docs/PRDs/done/advanced-visual-effects-lighting-material-depth.md`
 - `docs/PRDs/other/external-services-media-boundaries.md`
 - `/home/joao/.claude/skills/prd-creator/SKILL.md`
 - Bevy examples catalog: https://bevy.org/examples/

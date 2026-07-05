@@ -15,7 +15,7 @@ worlds can be considered production-ready.
 **Files Analyzed:**
 
 - `docs/bevy-feature-parity.md`
-- `docs/PRDs/other/advanced-visual-effects-lighting-material-depth.md`
+- `docs/PRDs/done/advanced-visual-effects-lighting-material-depth.md`
 
 **Completed Behavior:**
 

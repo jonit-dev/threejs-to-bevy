@@ -20,7 +20,7 @@ Three.js and native Bevy.
 - `docs/PRDs/README.md`
 - `docs/PRDs/done/v8/V8-07-material-texture-shader-parity.md`
 - `docs/PRDs/done/v10/V10-02-advanced-renderer-materials-and-physics.md`
-- `docs/PRDs/other/advanced-visual-effects-lighting-material-depth.md`
+- `docs/PRDs/done/advanced-visual-effects-lighting-material-depth.md`
 - `docs/contracts/sdk.md`
 - `docs/contracts/ir.md`
 - `docs/STATUS.md`
