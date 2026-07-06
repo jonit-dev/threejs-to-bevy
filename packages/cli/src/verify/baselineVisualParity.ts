@@ -1,5 +1,5 @@
-import { execFile } from "node:child_process";
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { execFile, spawn } from "node:child_process";
+import { copyFile, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { promisify } from "node:util";
 import { startWebPreview } from "@threenative/runtime-web-three";
@@ -10,6 +10,7 @@ import { cargoCaptureEnv, resolveCaptureBinaryPath, resolveCargoCommand } from "
 import { readPngFrame } from "./compareImages.js";
 import {
   analyzeNonblank,
+  absoluteRegion,
   compareFramesDetailed,
   cropFrame,
   type IDetailedFrameComparison,
@@ -45,7 +46,7 @@ export const BASELINE_VISUAL_CHECKPOINTS: readonly IBaselineVisualCheckpoint[] =
     projectRelativePath: "examples/stylized-nature-component",
     bundleRelativePath: "examples/stylized-nature-component/dist/stylized-nature-component.bundle",
     cameraId: "camera.main",
-    captureFrame: 90,
+    captureFrame: 5,
     // Dense source-backed foliage and PBR differ structurally across web and
     // Bevy. This checkpoint guards against blank frames, missing sky/background,
     // overexposure, and severe luminance drift rather than pixel parity.
@@ -77,6 +78,24 @@ export const BASELINE_VISUAL_CHECKPOINTS: readonly IBaselineVisualCheckpoint[] =
       minSignedAverageBrightnessDelta: -0.03,
     },
   },
+  {
+    id: "humanoid-physics-course-checkpoint-emissive",
+    projectRelativePath: "examples/humanoid-physics-course",
+    bundleRelativePath: "examples/humanoid-physics-course/dist/humanoid-physics-course.bundle",
+    cameraId: "camera.main",
+    captureFrame: 5,
+    region: { x: 0.44765625, y: 0.63333333, width: 0.1046875, height: 0.07916667 },
+    // Focus the exact cyan checkpoint dome region that drove the parity
+    // investigation so emissive drift cannot hide inside full-frame averages.
+    thresholds: {
+      maxAverageBrightnessDelta: 0.07,
+      maxChangedPixelRatio: 1,
+      maxClippedRatioDelta: 0.001,
+      maxP95ChannelDelta: 0.18,
+      maxSignedAverageBrightnessDelta: 0.05,
+      minSignedAverageBrightnessDelta: -0.05,
+    },
+  },
 ] as const;
 
 /** Fast single-scene structured-source hook for web↔Bevy smoke parity. */
@@ -85,7 +104,7 @@ export const PARITY_SMOKE_CHECKPOINT: IBaselineVisualCheckpoint = {
   projectRelativePath: "examples/stylized-nature-component",
   bundleRelativePath: "examples/stylized-nature-component/dist/stylized-nature-component.bundle",
   cameraId: "camera.main",
-  captureFrame: 90,
+  captureFrame: 5,
   // Fast hook for catastrophic visual regressions in the source-backed
   // stylized scene: blank capture, missing skybox, clipping, or large exposure
   // drift. Full-scene grass/path pixels are not a stable cross-runtime oracle.
@@ -131,6 +150,8 @@ export type BaselineVisualScreenshotCapturer = (options: {
   checkpoint: IBaselineVisualCheckpoint;
 }) => Promise<{ bevyScreenshotPath: string; webScreenshotPath: string }>;
 
+type BaselineVisualCaptureResult = Awaited<ReturnType<BaselineVisualScreenshotCapturer>>;
+
 export async function verifyBaselineVisualParity(options: {
   artifactDir: string;
   checkpoints?: readonly IBaselineVisualCheckpoint[];
@@ -141,6 +162,7 @@ export async function verifyBaselineVisualParity(options: {
   const checkpoints = options.checkpoints ?? BASELINE_VISUAL_CHECKPOINTS;
   const reports: IBaselineVisualCheckpointReport[] = [];
   const diagnostics: IBaselineVisualParityReport["diagnostics"] = [];
+  const captureCache = new Map<string, Promise<BaselineVisualCaptureResult>>();
 
   for (const checkpoint of checkpoints) {
     const bundlePath = resolve(options.repoRoot, checkpoint.bundleRelativePath);
@@ -151,7 +173,12 @@ export async function verifyBaselineVisualParity(options: {
         bundlePath,
         checkpoint,
         repoRoot: options.repoRoot,
-        screenshotCapturer: options.screenshotCapturer,
+        screenshotCapturer:
+          options.screenshotCapturer ??
+          cachedBaselineVisualScreenshotCapturer({
+            cache: captureCache,
+            repoRoot: options.repoRoot,
+          }),
       });
       reports.push(report);
       diagnostics.push(...report.diagnostics);
@@ -196,6 +223,45 @@ export async function verifyBaselineVisualParity(options: {
   };
   await writeFile(reportPath, `${JSON.stringify(result, null, 2)}\n`);
   return result;
+}
+
+function cachedBaselineVisualScreenshotCapturer(options: {
+  cache: Map<string, Promise<BaselineVisualCaptureResult>>;
+  repoRoot: string;
+}): BaselineVisualScreenshotCapturer {
+  return async ({ artifactDir, bundlePath, checkpoint }) => {
+    const output = {
+      bevyScreenshotPath: resolve(artifactDir, "bevy.png"),
+      webScreenshotPath: resolve(artifactDir, "web.png"),
+    };
+    const cacheKey = [
+      resolve(bundlePath),
+      checkpoint.cameraId,
+      checkpoint.captureFrame,
+      checkpoint.webReadyTimeoutMs ?? 30_000,
+    ].join("\u0000");
+    let cached = options.cache.get(cacheKey);
+    if (cached === undefined) {
+      const cacheDir = resolve(artifactDir, ".capture-cache");
+      cached = captureBaselineVisualScreenshots({
+        artifactDir: cacheDir,
+        bundlePath,
+        checkpoint,
+        repoRoot: options.repoRoot,
+      });
+      options.cache.set(cacheKey, cached);
+    }
+    const capture = await cached;
+    if (capture.webScreenshotPath !== output.webScreenshotPath) {
+      await mkdir(artifactDir, { recursive: true });
+      await copyFile(capture.webScreenshotPath, output.webScreenshotPath);
+    }
+    if (capture.bevyScreenshotPath !== output.bevyScreenshotPath) {
+      await mkdir(artifactDir, { recursive: true });
+      await copyFile(capture.bevyScreenshotPath, output.bevyScreenshotPath);
+    }
+    return output;
+  };
 }
 
 export async function verifyBaselineVisualCheckpoint(options: {
@@ -332,6 +398,7 @@ async function captureBaselineVisualScreenshots(options: {
   checkpoint: IBaselineVisualCheckpoint;
   repoRoot?: string;
 }): Promise<{ bevyScreenshotPath: string; webScreenshotPath: string }> {
+  await mkdir(options.artifactDir, { recursive: true });
   const webScreenshotPath = resolve(options.artifactDir, "web.png");
   const bevyScreenshotPath = resolve(options.artifactDir, "bevy.png");
   await captureThreeJsScreenshot(
@@ -358,6 +425,7 @@ async function captureThreeJsScreenshot(
   settleFrames: number,
   readyTimeoutMs = 30_000,
 ): Promise<void> {
+  await rm(outputPath, { force: true });
   const server = await startWebPreview({ bundlePath });
   const browser = await chromium.launch({ headless: true });
   try {
@@ -430,8 +498,9 @@ async function captureBevyScreenshot(
   let lastError: unknown;
   for (let attempt = 1; attempt <= 3; attempt += 1) {
     try {
+      await rm(outputPath, { force: true });
       if (captureBinary !== undefined) {
-        await execFileAsync(captureBinary, captureArgs, {
+        await captureBevyWithBinary(captureBinary, captureArgs, outputPath, {
           cwd: runtimeRoot,
           env: cargoCaptureEnv(),
           timeout: 300_000,
@@ -474,6 +543,78 @@ async function captureBevyScreenshot(
   throw new Error(`Bevy screenshot capture failed after 3 attempts: ${message}`);
 }
 
+async function captureBevyWithBinary(
+  captureBinary: string,
+  captureArgs: readonly string[],
+  outputPath: string,
+  options: { cwd: string; env: NodeJS.ProcessEnv; timeout: number },
+): Promise<void> {
+  await new Promise<void>((resolveCapture, rejectCapture) => {
+    const child = spawn(captureBinary, [...captureArgs], {
+      cwd: options.cwd,
+      env: options.env,
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+    let stdout = "";
+    let stderr = "";
+    let settled = false;
+    let poll: NodeJS.Timeout | undefined;
+    let timeout: NodeJS.Timeout | undefined;
+    const startedAt = Date.now();
+    const finish = (error?: Error): void => {
+      if (settled) {
+        return;
+      }
+      settled = true;
+      if (poll !== undefined) {
+        clearInterval(poll);
+      }
+      if (timeout !== undefined) {
+        clearTimeout(timeout);
+      }
+      if (child.exitCode === null && child.signalCode === null) {
+        child.kill();
+      }
+      if (error !== undefined) {
+        rejectCapture(error);
+      } else {
+        resolveCapture();
+      }
+    };
+    poll = setInterval(() => {
+      assertScreenshotWritten(outputPath, "Bevy")
+        .then(() => finish())
+        .catch(() => {
+          if (Date.now() - startedAt > options.timeout) {
+            finish(new Error(`Bevy screenshot capture timed out after ${options.timeout}ms.`));
+          }
+        });
+    }, 250);
+    timeout = setTimeout(() => {
+      finish(new Error(`Bevy screenshot capture timed out after ${options.timeout}ms.`));
+    }, options.timeout);
+    child.stdout?.on("data", (chunk: Buffer) => {
+      stdout += chunk.toString("utf8");
+    });
+    child.stderr?.on("data", (chunk: Buffer) => {
+      stderr += chunk.toString("utf8");
+    });
+    child.on("error", (error) => finish(error));
+    child.on("exit", (code, signal) => {
+      assertScreenshotWritten(outputPath, "Bevy")
+        .then(() => finish())
+        .catch((error: unknown) => {
+          const message = error instanceof Error ? error.message : String(error);
+          finish(
+            new Error(
+              `Bevy screenshot capture exited before writing a valid PNG (code ${code ?? "null"}, signal ${signal ?? "null"}): ${message}\n${stdout}${stderr}`,
+            ),
+          );
+        });
+    });
+  });
+}
+
 async function assertScreenshotWritten(path: string, runtime: string): Promise<void> {
   const png = PNG.sync.read(await readFile(path));
   if (png.width <= 0 || png.height <= 0) {
@@ -506,7 +647,7 @@ function applyRegion(frame: IPixelFrame, region?: INormalizedRegion): IPixelFram
   if (region === undefined) {
     return frame;
   }
-  return cropFrame(frame, region);
+  return cropFrame(frame, absoluteRegion(frame, region));
 }
 
 function analyzeClippedRatio(frame: IPixelFrame): number {

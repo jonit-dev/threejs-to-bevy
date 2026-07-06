@@ -18,11 +18,12 @@ use bevy::{
     prelude::*,
     render::{
         alpha::AlphaMode,
-        camera::{ClearColorConfig, Exposure, ScalingMode},
+        camera::{ClearColorConfig, Exposure, RenderTarget, ScalingMode},
+        extract_resource::ExtractResource,
         mesh::{Indices, MeshVertexAttribute, PrimitiveTopology, VertexAttributeValues},
         render_asset::RenderAssetUsages,
-        render_resource::VertexFormat,
-        view::ColorGrading,
+        render_resource::{Extent3d, TextureDimension, TextureFormat, TextureUsages, VertexFormat},
+        view::{ColorGrading, visibility::RenderLayers},
     },
 };
 use serde_json::Value;
@@ -59,8 +60,13 @@ const THREE_COMPAT_POINT_LUMENS_PER_CANDELA: f32 = 1.0;
 const THREE_COMPAT_DEFAULT_RANGE: f32 = 1_000.0;
 const THREE_COMPAT_DEFAULT_CAMERA_EV100: f32 = -0.263_034_4;
 const THREE_COMPAT_SKY_DOME_RADIUS: f32 = 72.0;
-const THREE_COMPAT_EMISSIVE_INTENSITY_SCALE: f32 = 2.5;
+const THREE_COMPAT_EMISSIVE_INTENSITY_SCALE: f32 = 4.0;
+const THREE_COMPAT_COLOR_GRADING_SATURATION_SCALE: f32 = 1.35;
+const THREE_COMPAT_CAMERA_EXPOSURE_SCALE: f32 = 1.08;
 const THREE_COMPAT_FOG_EXP2_DENSITY_SCALE: f32 = 0.65;
+const THREE_COMPAT_EMISSIVE_MASK_LAYER: usize = 63;
+const THREE_COMPAT_EMISSIVE_MASK_WIDTH: u32 = 1280;
+const THREE_COMPAT_EMISSIVE_MASK_HEIGHT: u32 = 720;
 
 pub struct StylizedNatureRuntimeDefaults {
     pub bark_color: &'static str,
@@ -104,6 +110,14 @@ pub struct NativeMaterialPolicy {
 
 #[derive(Resource, Default)]
 pub struct NativeMaterialHandles(pub HashMap<String, Handle<StandardMaterial>>);
+
+#[derive(Clone, Debug, ExtractResource, Resource)]
+pub struct NativeEmissiveMarkerMask {
+    pub image: Handle<Image>,
+    pub layer: usize,
+    pub height: u32,
+    pub width: u32,
+}
 
 #[derive(Clone, Component, Debug, PartialEq)]
 pub struct NativeEnvironmentSkyDome {
@@ -236,6 +250,14 @@ pub fn map_bundle_into_world(world: &mut World, bundle: &LoadedBundle) -> Result
         .iter()
         .map(|material| (material.id.as_str(), material))
         .collect::<HashMap<_, _>>();
+    if bundle
+        .materials
+        .materials
+        .iter()
+        .any(uses_emissive_black_base)
+    {
+        ensure_emissive_marker_mask(world);
+    }
     let mut material_handles = NativeMaterialHandles::default();
     world.insert_resource(crate::assets::build_texture_controls_registry(
         &bundle.assets,
@@ -541,6 +563,32 @@ fn ensure_asset_resources(world: &mut World) {
     if !world.contains_resource::<Assets<Scene>>() {
         world.init_resource::<Assets<Scene>>();
     }
+}
+
+fn ensure_emissive_marker_mask(world: &mut World) {
+    if world.contains_resource::<NativeEmissiveMarkerMask>() {
+        return;
+    }
+    let mut image = Image::new_fill(
+        Extent3d {
+            width: THREE_COMPAT_EMISSIVE_MASK_WIDTH,
+            height: THREE_COMPAT_EMISSIVE_MASK_HEIGHT,
+            depth_or_array_layers: 1,
+        },
+        TextureDimension::D2,
+        &[0, 0, 0, 255],
+        TextureFormat::Rgba8UnormSrgb,
+        RenderAssetUsages::default(),
+    );
+    image.texture_descriptor.usage =
+        TextureUsages::RENDER_ATTACHMENT | TextureUsages::TEXTURE_BINDING | TextureUsages::COPY_SRC;
+    let handle = world.resource_mut::<Assets<Image>>().add(image);
+    world.insert_resource(NativeEmissiveMarkerMask {
+        image: handle,
+        layer: THREE_COMPAT_EMISSIVE_MASK_LAYER,
+        height: THREE_COMPAT_EMISSIVE_MASK_HEIGHT,
+        width: THREE_COMPAT_EMISSIVE_MASK_WIDTH,
+    });
 }
 
 #[derive(Clone, Component, Debug, PartialEq)]
@@ -1794,12 +1842,13 @@ fn spawn_entity(
             .entry(material.id.clone())
             .or_insert_with(|| material_handle.clone());
         let mut spawned = world.spawn(PbrBundle {
-            mesh,
+            mesh: mesh.clone(),
             material: material_handle,
             transform,
             visibility: map_visibility(entity),
             ..Default::default()
         });
+        let spawned_id = spawned.id();
         spawned.insert((stable_id, name));
         spawned.insert(policy);
         if let Some(policy) = emissive_bloom_policy(material) {
@@ -1812,7 +1861,28 @@ fn spawn_entity(
         if let Some(playback) = animation_playback(asset) {
             spawned.insert(playback);
         }
-        return Ok(spawned.id());
+        drop(spawned);
+        if uses_emissive_black_base(material)
+            && world.contains_resource::<NativeEmissiveMarkerMask>()
+        {
+            let mask_material = add_emissive_mask_material(world);
+            let proxy = world
+                .spawn(PbrBundle {
+                    mesh,
+                    material: mask_material,
+                    visibility: Visibility::Inherited,
+                    ..Default::default()
+                })
+                .insert((
+                    Name::new(format!("{}.emissive-mask", entity.id)),
+                    RenderLayers::layer(THREE_COMPAT_EMISSIVE_MASK_LAYER),
+                    NotShadowCaster,
+                    NotShadowReceiver,
+                ))
+                .id();
+            world.entity_mut(spawned_id).push_children(&[proxy]);
+        }
+        return Ok(spawned_id);
     }
 
     if let Some(camera) = &entity.components.camera {
@@ -1838,9 +1908,9 @@ fn spawn_entity(
                 runtime_color_grading,
             ),
             exposure: exposure_for_profile(camera_color_management, runtime_color_grading),
-            projection,
+            projection: projection.clone(),
             tonemapping: tonemapping_for_profile(camera_color_management, runtime_color_grading),
-            transform,
+            transform: transform.clone(),
             ..Default::default()
         });
         if let Some(fog) = fog_settings_for_profile(camera_atmosphere) {
@@ -1899,7 +1969,12 @@ fn spawn_entity(
             }
         }
         insert_camera_antialias(&mut spawned, runtime_config);
-        return Ok(spawned.id());
+        let camera_id = spawned.id();
+        drop(spawned);
+        if is_active {
+            spawn_emissive_mask_camera(world, camera, &projection, transform);
+        }
+        return Ok(camera_id);
     }
 
     if let Some(light) = &entity.components.light {
@@ -2015,6 +2090,43 @@ fn insert_shadow_markers(
     }
 }
 
+fn spawn_emissive_mask_camera(
+    world: &mut World,
+    camera: &threenative_loader::CameraComponent,
+    projection: &Projection,
+    transform: Transform,
+) {
+    let Some(mask) = world.get_resource::<NativeEmissiveMarkerMask>().cloned() else {
+        return;
+    };
+    let mut spawned = world.spawn(Camera3dBundle {
+        camera: Camera {
+            clear_color: ClearColorConfig::Custom(Color::BLACK),
+            hdr: false,
+            is_active: true,
+            order: -10_000,
+            target: RenderTarget::Image(mask.image.clone()),
+            ..Default::default()
+        },
+        projection: projection.clone(),
+        tonemapping: Tonemapping::None,
+        transform,
+        ..Default::default()
+    });
+    spawned.insert((
+        Name::new("native.emissive-marker-mask-camera"),
+        RenderLayers::layer(mask.layer),
+    ));
+    if camera.follow.is_some()
+        || camera.orbit.is_some()
+        || camera.screen_shake.is_some()
+        || camera.view_model.is_some()
+    {
+        spawned.insert(crate::cameras::NativeCameraHelperState::default());
+        spawned.insert(crate::cameras::NativeCameraMetadata(camera.clone()));
+    }
+}
+
 fn model_scene_path(asset: &AssetIr) -> Option<String> {
     if asset.kind != "model" || !matches!(asset.format.as_str(), "gltf" | "glb") {
         return None;
@@ -2083,7 +2195,8 @@ fn color_grading_for_profile(
     }
     if let Some(runtime_color_grading) = runtime_color_grading {
         if let Some(saturation) = runtime_color_grading.saturation {
-            grading.global.post_saturation = saturation.max(0.0);
+            grading.global.post_saturation =
+                (saturation * THREE_COMPAT_COLOR_GRADING_SATURATION_SCALE).max(0.0);
         }
         if let Some(contrast) = runtime_color_grading.contrast {
             let section_contrast = (1.0 + contrast).max(0.0);
@@ -2124,6 +2237,7 @@ fn exposure_for_profile(
     runtime_color_grading: Option<&threenative_loader::RuntimeRendererColorGradingConfig>,
 ) -> Exposure {
     if let Some(exposure) = runtime_color_grading.and_then(|grading| grading.exposure) {
+        let exposure = exposure * THREE_COMPAT_CAMERA_EXPOSURE_SCALE;
         return Exposure {
             ev100: -exposure.max(0.001).log2(),
         };
@@ -2133,7 +2247,7 @@ fn exposure_for_profile(
             ev100: THREE_COMPAT_DEFAULT_CAMERA_EV100,
         };
     };
-    let exposure = color_management.exposure.max(0.001);
+    let exposure = (color_management.exposure * THREE_COMPAT_CAMERA_EXPOSURE_SCALE).max(0.001);
     Exposure {
         ev100: -exposure.log2(),
     }
@@ -2696,7 +2810,8 @@ fn add_material(
     asset_server: Option<&AssetServer>,
     render_target_registry: &NativeRenderTargetRegistry,
 ) -> Handle<StandardMaterial> {
-    let unlit_color_display = uses_unlit_emissive_display(material);
+    let emissive_display_base = uses_emissive_display_base(material);
+    let emissive_black_base = uses_emissive_black_base(material);
     let base_texture_asset = material
         .base_color_texture
         .as_deref()
@@ -2707,7 +2822,13 @@ fn add_material(
     let extended = material.kind == "extended";
     let mut standard = StandardMaterial {
         alpha_mode: alpha_mode(material),
-        base_color: color_with_opacity(&material.color, opacity_for_material(material)),
+        base_color: if emissive_black_base {
+            Color::BLACK
+        } else if emissive_display_base {
+            emissive_display_base_color(material)
+        } else {
+            color_with_opacity(&material.color, opacity_for_material(material))
+        },
         base_color_texture: texture_handle(
             material.base_color_texture.as_deref(),
             assets_by_id,
@@ -2734,12 +2855,20 @@ fn add_material(
             .and_then(|extension| extension.double_sided)
             .unwrap_or(false),
         emissive: emissive_color(material),
+        emissive_exposure_weight: if material.kind == "extended"
+            && (material.emissive.is_some() || material.emissive_texture.is_some())
+        {
+            1.0
+        } else {
+            0.0
+        },
         emissive_texture: texture_handle(
             material.emissive_texture.as_deref(),
             assets_by_id,
             asset_server,
             render_target_registry,
         ),
+        fog_enabled: material.emissive.is_none() && material.emissive_texture.is_none(),
         metallic: material.metalness.unwrap_or(0.0),
         metallic_roughness_texture: texture_handle(
             material.metallic_roughness_texture.as_deref(),
@@ -2768,7 +2897,7 @@ fn add_material(
             asset_server,
             render_target_registry,
         ),
-        unlit: extended || unlit_color_display,
+        unlit: extended,
         uv_transform,
         ..Default::default()
     };
@@ -2780,6 +2909,18 @@ fn add_material(
     world
         .resource_mut::<Assets<StandardMaterial>>()
         .add(standard)
+}
+
+fn add_emissive_mask_material(world: &mut World) -> Handle<StandardMaterial> {
+    world
+        .resource_mut::<Assets<StandardMaterial>>()
+        .add(StandardMaterial {
+            base_color: Color::WHITE,
+            emissive: LinearRgba::WHITE,
+            fog_enabled: false,
+            unlit: true,
+            ..Default::default()
+        })
 }
 
 fn material_policy(material: &MaterialIr) -> NativeMaterialPolicy {
@@ -2837,12 +2978,45 @@ fn emissive_color(material: &MaterialIr) -> LinearRgba {
     linear * material.emissive_intensity.unwrap_or(1.0) * THREE_COMPAT_EMISSIVE_INTENSITY_SCALE
 }
 
-fn uses_unlit_emissive_display(material: &MaterialIr) -> bool {
-    material.emissive.is_some()
+fn emissive_display_base_color(material: &MaterialIr) -> Color {
+    let base = color_with_opacity(&material.color, opacity_for_material(material)).to_srgba();
+    let Some(emissive) = material.emissive.as_ref() else {
+        return Color::srgba(base.red, base.green, base.blue, base.alpha);
+    };
+    let emissive_srgba = color_to_bevy(emissive).to_srgba();
+    let emissive_intensity = material.emissive_intensity.unwrap_or(1.0).max(0.0);
+    let emissive_peak = emissive_srgba
+        .red
+        .max(emissive_srgba.green)
+        .max(emissive_srgba.blue)
+        .max(0.001);
+    let display_intensity = emissive_intensity.max(1.0);
+    Color::srgba(
+        emissive_srgba.red / emissive_peak * display_intensity,
+        emissive_srgba.green / emissive_peak * display_intensity,
+        emissive_srgba.blue / emissive_peak * display_intensity,
+        base.alpha,
+    )
+}
+
+fn uses_emissive_display_base(material: &MaterialIr) -> bool {
+    material.kind == "extended"
+        && material.emissive.is_some()
         && material.emissive_bloom.is_none()
         && material.emissive_intensity.unwrap_or(1.0) >= 1.0
         && material.metalness.unwrap_or(0.0) <= 0.1
         && material.roughness.unwrap_or(1.0) >= 0.35
+        && material.base_color_texture.is_none()
+}
+
+fn uses_emissive_black_base(material: &MaterialIr) -> bool {
+    material.kind == "standard"
+        && material.emissive.is_some()
+        && material.emissive_bloom.is_none()
+        && material.emissive_intensity.unwrap_or(1.0) >= 1.0
+        && material.metalness.unwrap_or(0.0) <= 0.1
+        && material.roughness.unwrap_or(1.0) >= 0.35
+        && material.base_color_texture.is_none()
 }
 
 fn texture_handle(

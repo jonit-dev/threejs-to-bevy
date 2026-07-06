@@ -16,19 +16,19 @@ use bevy::{
     prelude::*,
     render::{
         alpha::AlphaMode,
-        camera::Exposure,
+        camera::{Exposure, RenderTarget},
         mesh::{Indices, MeshVertexAttribute, VertexAttributeValues},
         render_resource::VertexFormat,
-        view::ColorGrading,
+        view::{ColorGrading, visibility::RenderLayers},
     },
     scene::ScenePlugin,
 };
 use threenative_components::ThreeNativeId;
 use threenative_loader::load_bundle;
 use threenative_runtime::map_world::{
-    NativeAnimationPlayback, THREE_COMPAT_DIRECTIONAL_ILLUMINANCE_PER_INTENSITY,
-    advance_native_animation_playback, bind_native_animation_players, map_bundle_into_world,
-    trace_native_emissive_bloom,
+    NativeAnimationPlayback, NativeEmissiveMarkerMask,
+    THREE_COMPAT_DIRECTIONAL_ILLUMINANCE_PER_INTENSITY, advance_native_animation_playback,
+    bind_native_animation_players, map_bundle_into_world, trace_native_emissive_bloom,
 };
 use threenative_runtime::rendering::{
     NativeParticleMaterialPolicy, NativeRenderedParticle, apply_environment_lighting_to_world,
@@ -556,7 +556,7 @@ fn assert_material(world: &mut World, id: &str) {
     assert!((color.blue - 0x99 as f32 / 255.0).abs() < 0.01);
     assert!((color.alpha - 0.65).abs() < 0.01);
     assert_eq!(material.alpha_mode, AlphaMode::Mask(0.35));
-    assert!((material.emissive.blue - 6.25).abs() < 0.01);
+    assert!((material.emissive.blue - 10.0).abs() < 0.01);
     assert!(material.base_color_texture.is_some());
     assert!(material.emissive_texture.is_some());
     assert!(material.metallic_roughness_texture.is_some());
@@ -581,7 +581,7 @@ fn assert_emissive_bloom_trace(world: &mut World) {
     assert!(observation.enabled);
     assert!((observation.material_intensity - 0.8).abs() < 0.01);
     assert!((observation.threshold - 0.1).abs() < 0.01);
-    assert!((observation.contribution - 0.36).abs() < 0.01);
+    assert!((observation.contribution - 0.576).abs() < 0.01);
     assert!(observation.exceeds_threshold);
 }
 
@@ -1162,21 +1162,73 @@ fn write_animated_model_bundle() -> PathBuf {
 }
 
 #[test]
-fn emissive_color_cards_should_map_to_unlit_base_color() {
+fn emissive_color_cards_should_preserve_standard_base_color() {
     let root = write_emissive_color_card_bundle();
     let bundle = load_bundle(&root).expect("emissive color card bundle should load");
     let mut app = App::new();
     map_bundle_into_world(app.world_mut(), &bundle).expect("bundle should map");
 
     let material = material_for(app.world_mut(), "swatch.red");
-    assert!(material.unlit);
+    assert!(!material.unlit);
+    assert!(!material.fog_enabled);
+    assert!(material.emissive_exposure_weight.abs() < 0.001);
     assert!(material.emissive.red > 0.0);
     assert!(material.emissive.red > material.emissive.green);
     assert!(material.emissive.red > material.emissive.blue);
     let color = material.base_color.to_srgba();
-    assert!((color.red - 0xe6 as f32 / 255.0).abs() < 0.01);
-    assert!((color.green - 0x19 as f32 / 255.0).abs() < 0.01);
-    assert!((color.blue - 0x4b as f32 / 255.0).abs() < 0.01);
+    assert!(color.red < 0.01);
+    assert!(color.green < 0.01);
+    assert!(color.blue < 0.01);
+}
+
+#[test]
+fn standard_emissive_markers_should_generate_native_mask_input() {
+    let root = write_emissive_color_card_bundle();
+    let bundle = load_bundle(&root).expect("emissive color card bundle should load");
+    let mut app = App::new();
+    map_bundle_into_world(app.world_mut(), &bundle).expect("bundle should map");
+
+    let mask = app
+        .world()
+        .get_resource::<NativeEmissiveMarkerMask>()
+        .expect("marker-style emissive material should allocate mask target");
+    assert_eq!(mask.width, 1280);
+    assert_eq!(mask.height, 720);
+    assert_eq!(mask.layer, 63);
+    let mask_image = mask.image.clone();
+    let mask_layer = mask.layer;
+
+    let mut cameras = app
+        .world_mut()
+        .query::<(&Camera, &RenderLayers, Option<&Name>)>();
+    let mask_camera = cameras
+        .iter(app.world())
+        .find(|(camera, layers, name)| {
+            matches!(&camera.target, RenderTarget::Image(handle) if *handle == mask_image)
+                && layers.intersects(&RenderLayers::layer(mask_layer))
+                && name.is_some_and(|name| name.as_str() == "native.emissive-marker-mask-camera")
+        })
+        .expect("active camera should get an offscreen marker mask camera");
+    assert!(mask_camera.0.is_active);
+
+    let mut proxies = app
+        .world_mut()
+        .query::<(&Name, &RenderLayers, &Handle<StandardMaterial>)>();
+    let proxy = proxies
+        .iter(app.world())
+        .find(|(name, layers, _)| {
+            name.as_str() == "swatch.red.emissive-mask"
+                && layers.intersects(&RenderLayers::layer(mask_layer))
+        })
+        .expect("marker mesh should get a mask proxy on the private layer");
+    let materials = app.world().resource::<Assets<StandardMaterial>>();
+    let material = materials
+        .get(proxy.2)
+        .expect("mask proxy material should exist");
+    assert!(material.unlit);
+    assert!(!material.fog_enabled);
+
+    fs::remove_dir_all(root).expect("temporary bundle should be removed");
 }
 
 #[test]
@@ -1216,11 +1268,11 @@ fn cameras_should_map_runtime_color_grading_to_native_sections() {
         .expect("runtime color grading camera should be spawned");
     assert_eq!(*camera.1, Tonemapping::AcesFitted);
     assert!((camera.2.global.exposure - 0.0).abs() < 0.001);
-    assert!((camera.2.global.post_saturation - 0.82).abs() < 0.001);
+    assert!((camera.2.global.post_saturation - 1.107).abs() < 0.001);
     for section in camera.2.all_sections() {
         assert!((section.contrast - 1.14).abs() < 0.001);
     }
-    assert!((camera.3.exposure() - 0.983).abs() < 0.001);
+    assert!((camera.3.exposure() - 1.062).abs() < 0.001);
 
     fs::remove_dir_all(root).expect("temporary bundle should be removed");
 }
@@ -1382,13 +1434,21 @@ fn write_emissive_color_card_bundle() -> PathBuf {
   "version": "0.1.0",
   "entities": [
     {
+      "id": "camera.main",
+      "components": {
+        "Camera": { "kind": "orthographic", "near": 0.1, "far": 20, "size": 4.5 },
+        "Transform": { "position": [0, 0, 5] }
+      }
+    },
+    {
       "id": "swatch.red",
       "components": {
         "MeshRenderer": { "mesh": "mesh.plane", "material": "mat.red" },
         "Transform": { "position": [0, 0, 0] }
       }
     }
-  ]
+  ],
+  "resources": { "ActiveCamera": { "entity": "camera.main" } }
 }"##,
     );
     write(

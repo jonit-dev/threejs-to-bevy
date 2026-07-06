@@ -1,6 +1,6 @@
 use bevy::render::{
     render_asset::RenderAssetUsages,
-    render_resource::{Extent3d, TextureDimension, TextureFormat},
+    render_resource::{Extent3d, TextureDimension, TextureFormat, TextureUsages},
     texture::{Image, ImageSampler},
 };
 use threenative_loader::{
@@ -87,6 +87,28 @@ fn default_texture_quality_should_generate_mipmaps_for_loaded_gltf_textures() {
         image.sampler,
         ImageSampler::Descriptor(ref descriptor) if descriptor.anisotropy_clamp == 8
     ));
+}
+
+#[test]
+fn default_texture_quality_should_skip_render_targets() {
+    let mut image = Image::new(
+        Extent3d {
+            width: 1280,
+            height: 720,
+            depth_or_array_layers: 1,
+        },
+        TextureDimension::D2,
+        vec![0; 1280 * 720 * 4],
+        TextureFormat::Rgba8UnormSrgb,
+        RenderAssetUsages::default(),
+    );
+    image.texture_descriptor.usage =
+        TextureUsages::RENDER_ATTACHMENT | TextureUsages::TEXTURE_BINDING | TextureUsages::COPY_SRC;
+
+    assert!(!apply_default_texture_quality(&mut image));
+
+    assert_eq!(image.texture_descriptor.mip_level_count, 1);
+    assert!(matches!(image.sampler, ImageSampler::Default));
 }
 
 #[test]

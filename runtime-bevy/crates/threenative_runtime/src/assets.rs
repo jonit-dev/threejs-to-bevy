@@ -5,7 +5,7 @@ use bevy::{
     math::{Affine2, Vec2},
     prelude::*,
     render::{
-        render_resource::TextureFormat,
+        render_resource::{TextureFormat, TextureUsages},
         texture::{ImageAddressMode, ImageFilterMode, ImageSampler, ImageSamplerDescriptor},
     },
 };
@@ -202,6 +202,13 @@ pub fn apply_texture_sampler_controls(image: &mut Image, controls: &TextureAsset
 
 pub fn apply_default_texture_quality(image: &mut Image) -> bool {
     if !matches!(image.sampler, ImageSampler::Default) {
+        return false;
+    }
+    if image
+        .texture_descriptor
+        .usage
+        .contains(TextureUsages::RENDER_ATTACHMENT)
+    {
         return false;
     }
     generate_rgba_mipmaps(image);

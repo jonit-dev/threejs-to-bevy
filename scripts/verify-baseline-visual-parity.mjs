@@ -82,9 +82,10 @@ export async function verifyBaselineVisualParityGate(options = {}) {
     }
   }
 
+  const visualStartedAt = Date.now();
   const visual = await verifyBaselineVisualParity({ artifactDir, repoRoot: root });
   steps.push({
-    durationMs: 0,
+    durationMs: Date.now() - visualStartedAt,
     exitCode: visual.status === "pass" ? 0 : 1,
     name: "verify baseline visual parity checkpoints",
     stderr: visual.diagnostics.map((diagnostic) => diagnostic.message).join("\n"),

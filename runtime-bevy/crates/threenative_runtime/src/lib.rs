@@ -19,6 +19,7 @@ pub mod character;
 pub mod component_diff;
 pub mod conformance;
 pub mod debug_overlay;
+pub mod emissive_postprocess;
 pub mod environment;
 pub mod first_person;
 pub mod gizmo_geometry;
@@ -178,6 +179,7 @@ pub fn app_from_bundle_with_options(
                 ..Default::default()
             }),
     );
+    app.add_plugins(emissive_postprocess::NativeEmissivePostProcessPlugin);
     rendering::apply_atmosphere_to_world(app.world_mut(), &bundle);
     let environment_lighting =
         rendering::apply_environment_lighting_to_world(app.world_mut(), &bundle);
