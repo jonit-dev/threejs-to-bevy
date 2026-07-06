@@ -8,22 +8,29 @@ export interface IRendererInfoLike {
 
 export interface IPerformanceMetricSummary {
   averageFrameMs: number;
+  averageFps?: number;
   audioVoiceCount?: number;
+  budgetFrameMs?: number;
   bundleBytes: number;
   debugDrawCount?: number;
   drawCalls: number;
   drawEstimate: number;
   environmentInstances: number;
+  framesOverBudget?: number;
   geometries: number;
   instancedGroups: number;
   instances: number;
   instancingGroupCount: number;
+  jankFramePercent?: number;
   loadMs: number;
   localDataSlotCount?: number;
   memoryEstimateBytes?: number;
+  minFps?: number;
   p95FrameMs: number;
+  p95Fps?: number;
   programs: number;
   saveLatencyMs?: number;
+  sampleCount?: number;
   sourceAssets: number;
   textures: number;
   textureBytes: number;
@@ -35,17 +42,40 @@ export interface IPerformanceMetricSummary {
   worstFrameMs: number;
 }
 
-export function summarizeFrameTimings(samples: readonly number[]): Pick<IPerformanceMetricSummary, "averageFrameMs" | "p95FrameMs" | "worstFrameMs"> {
+export interface IFrameTimingSummary {
+  averageFrameMs: number;
+  averageFps: number;
+  budgetFrameMs: number;
+  framesOverBudget: number;
+  jankFramePercent: number;
+  minFps: number;
+  p95FrameMs: number;
+  p95Fps: number;
+  sampleCount: number;
+  worstFrameMs: number;
+}
+
+export function summarizeFrameTimings(samples: readonly number[], budgetFrameMs = 1000 / 60): IFrameTimingSummary {
   if (samples.length === 0) {
-    return { averageFrameMs: 0, p95FrameMs: 0, worstFrameMs: 0 };
+    return { averageFrameMs: 0, averageFps: 0, budgetFrameMs, framesOverBudget: 0, jankFramePercent: 0, minFps: 0, p95FrameMs: 0, p95Fps: 0, sampleCount: 0, worstFrameMs: 0 };
   }
   const sorted = [...samples].sort((left, right) => left - right);
   const averageFrameMs = samples.reduce((total, sample) => total + sample, 0) / samples.length;
   const p95Index = Math.min(sorted.length - 1, Math.ceil(sorted.length * 0.95) - 1);
+  const p95FrameMs = sorted[p95Index] ?? 0;
+  const worstFrameMs = sorted[sorted.length - 1] ?? 0;
+  const framesOverBudget = samples.filter((sample) => sample > budgetFrameMs).length;
   return {
     averageFrameMs,
-    p95FrameMs: sorted[p95Index] ?? 0,
-    worstFrameMs: sorted[sorted.length - 1] ?? 0,
+    averageFps: fpsFromFrameMs(averageFrameMs),
+    budgetFrameMs,
+    framesOverBudget,
+    jankFramePercent: (framesOverBudget / samples.length) * 100,
+    minFps: fpsFromFrameMs(worstFrameMs),
+    p95FrameMs,
+    p95Fps: fpsFromFrameMs(p95FrameMs),
+    sampleCount: samples.length,
+    worstFrameMs,
   };
 }
 
@@ -96,4 +126,8 @@ export function collectPerformanceSummary(options: {
     uninstancedRepeatedProps: options.instancingPlan.uninstancedRepeatedPropCount,
     uiNodeCount: options.supportMetrics?.uiNodeCount ?? 0,
   };
+}
+
+function fpsFromFrameMs(frameMs: number): number {
+  return frameMs <= 0 ? 0 : 1000 / frameMs;
 }

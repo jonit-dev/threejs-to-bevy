@@ -1,4 +1,9 @@
-use std::{collections::BTreeSet, fs, path::Path, time::Duration};
+use std::{
+    collections::BTreeSet,
+    fs,
+    path::Path,
+    time::{Duration, Instant},
+};
 
 use bevy::{
     app::ScheduleRunnerPlugin,
@@ -55,7 +60,9 @@ pub struct NativeProofHarnessOptions {
 pub struct NativeProofHarnessState {
     commands: Vec<NativeProofHarnessCommand>,
     held_keys: BTreeSet<KeyCode>,
+    last_sample_at: Instant,
     readiness_out_path: String,
+    started_at: Instant,
     tick: u64,
 }
 
@@ -72,7 +79,15 @@ pub struct NativeProofHarnessReadiness {
     pub ok: bool,
     pub tick: u64,
     pub diagnostics: Vec<NativeProofHarnessDiagnostic>,
+    pub performance: NativeProofHarnessPerformanceSample,
     pub transforms: Vec<NativeProofHarnessTransformSample>,
+}
+
+#[derive(Clone, Debug, Serialize, PartialEq)]
+pub struct NativeProofHarnessPerformanceSample {
+    pub elapsed_ms: f64,
+    pub fps: f64,
+    pub frame_ms: f64,
 }
 
 #[derive(Clone, Debug, Serialize, PartialEq, Eq)]
@@ -126,13 +141,27 @@ impl NativeProofHarnessState {
         Self {
             commands: stream.commands,
             held_keys: BTreeSet::new(),
+            last_sample_at: Instant::now(),
             readiness_out_path: readiness_out_path.into(),
+            started_at: Instant::now(),
             tick: 0,
         }
     }
 
     pub fn tick(&self) -> u64 {
         self.tick
+    }
+
+    fn performance_sample(&mut self) -> NativeProofHarnessPerformanceSample {
+        let now = Instant::now();
+        let frame_ms = duration_ms(now.saturating_duration_since(self.last_sample_at));
+        let elapsed_ms = duration_ms(now.saturating_duration_since(self.started_at));
+        self.last_sample_at = now;
+        NativeProofHarnessPerformanceSample {
+            elapsed_ms,
+            fps: if frame_ms <= 0.0 { 0.0 } else { 1000.0 / frame_ms },
+            frame_ms,
+        }
     }
 }
 
@@ -223,7 +252,8 @@ pub fn apply_native_proof_harness_commands(
     let tick = state.tick;
     let mut diagnostics = Vec::new();
     if !native_proof_harness_models_ready(asset_server.as_deref(), required_models.as_deref()) {
-        write_native_proof_harness_sample(&state, tick, diagnostics, transforms.iter());
+        let performance = state.performance_sample();
+        write_native_proof_harness_sample(&state, tick, diagnostics, performance, transforms.iter());
         return;
     }
     let harness_commands = state
@@ -284,7 +314,8 @@ pub fn apply_native_proof_harness_commands(
     for key_code in &state.held_keys {
         keyboard.press(*key_code);
     }
-    write_native_proof_harness_sample(&state, tick, diagnostics, transforms.iter());
+    let performance = state.performance_sample();
+    write_native_proof_harness_sample(&state, tick, diagnostics, performance, transforms.iter());
     if !hold_tick {
         state.tick += advance_ticks;
     }
@@ -370,6 +401,7 @@ fn write_native_proof_harness_sample<'a>(
     state: &NativeProofHarnessState,
     tick: u64,
     diagnostics: Vec<NativeProofHarnessDiagnostic>,
+    performance: NativeProofHarnessPerformanceSample,
     transforms: impl IntoIterator<Item = (&'a ThreeNativeId, &'a Transform)>,
 ) {
     let ok = diagnostics
@@ -381,12 +413,17 @@ fn write_native_proof_harness_sample<'a>(
         ok,
         tick,
         diagnostics,
+        performance,
         transforms: native_proof_harness_transform_samples(transforms),
     };
     if let Err(error) = write_native_proof_harness_readiness(&state.readiness_out_path, &readiness)
     {
         error!("{error}");
     }
+}
+
+fn duration_ms(duration: Duration) -> f64 {
+    duration.as_secs_f64() * 1000.0
 }
 
 fn route_proof_ui_to_scene_camera(

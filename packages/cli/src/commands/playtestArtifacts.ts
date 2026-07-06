@@ -61,7 +61,10 @@ export async function writePlaytestArtifactBundle(options: {
   };
   await writeJsonIfMissing(artifacts.console, []);
   await writeJsonIfMissing(artifacts.network, []);
-  await writeJsonIfMissing(artifacts.runtimeTrace, {});
+  await writeJsonIfMissing(artifacts.runtimeTrace, {
+    performance: options.report.performance ?? null,
+    runtimeDiagnostics: options.report.observations?.runtimeDiagnostics ?? null,
+  });
   await writeJsonIfMissing(artifacts.effectLog, options.report.effectLog ?? {});
   await writeJson(artifacts.observations, {
     after: options.report.after ?? null,
@@ -71,6 +74,7 @@ export async function writePlaytestArtifactBundle(options: {
     ...(options.report.observations === undefined ? {} : options.report.observations),
     follow: options.report.follow ?? null,
     movementDelta: options.report.movementDelta ?? null,
+    performance: options.report.performance ?? null,
   });
   const summary: IPlaytestSummary = {
     ...options.report,

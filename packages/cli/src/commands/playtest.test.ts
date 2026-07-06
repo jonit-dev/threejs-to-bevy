@@ -28,18 +28,33 @@ test("playtest command should pass when target transform changes after input", a
         movementDelta: [1, 0, 0],
         movementThreshold: options.movementThreshold,
         pass: true,
+        performance: {
+          averageFrameMs: 16,
+          averageFps: 62.5,
+          budgetFrameMs: 16.666666666666668,
+          framesOverBudget: 0,
+          jankFramePercent: 0,
+          minFps: 50,
+          p95FrameMs: 18,
+          p95Fps: 55.55555555555556,
+          sampleCount: 3,
+          source: "web-runtime",
+          worstFrameMs: 20,
+        },
         runtime: "web",
         url: "http://127.0.0.1:5173/",
       }),
     },
   );
-  const payload = JSON.parse(result.stdout) as { artifacts: { summary: string }; code: string; distance: number; entity: string; input: string; reproduceCommand: string; scenario: string };
+  const payload = JSON.parse(result.stdout) as { artifacts: { summary: string }; code: string; distance: number; entity: string; input: string; performance: { sampleCount: number; source: string }; reproduceCommand: string; scenario: string };
 
   assert.equal(result.exitCode, 0);
   assert.equal(payload.code, "TN_PLAYTEST_OK");
   assert.equal(payload.entity, "player.car");
   assert.equal(payload.input, "KeyW");
   assert.equal(payload.distance, 1);
+  assert.equal(payload.performance.source, "web-runtime");
+  assert.equal(payload.performance.sampleCount, 3);
   assert.equal(payload.scenario, "player.car-KeyW");
   assert.match(payload.artifacts.summary, /artifacts\/playtest\/player.car-KeyW\/.+\/summary\.json$/);
   assert.match(payload.reproduceCommand, /tn playtest --project \./);
@@ -281,6 +296,7 @@ test("playtest command should run desktop target through native proof harness", 
             `${JSON.stringify({
               diagnostics: [],
               ok: true,
+              performance: { elapsed_ms: 0, fps: 62.5, frame_ms: 16 },
               schema: "threenative.native-proof-readiness",
               tick: 0,
               transforms: [{ entity: "player", position: [0, 0, 0] }],
@@ -295,6 +311,7 @@ test("playtest command should run desktop target through native proof harness", 
             `${JSON.stringify({
               diagnostics: [],
               ok: true,
+              performance: { elapsed_ms: 33.3334, fps: 30, frame_ms: 33.3334 },
               schema: "threenative.native-proof-readiness",
               tick: 37,
               transforms: [{ entity: "player", position: [0, 0, -1] }],
@@ -311,7 +328,7 @@ test("playtest command should run desktop target through native proof harness", 
   );
   const payload = JSON.parse(result.stdout) as { artifacts: { observations: string; summary: string }; code: string; distance: number; runtime: string; target: string };
   const commandStream = JSON.parse(await readFile(commandStreamPath ?? "", "utf8")) as { commands: Array<{ code?: string; frames?: number; pressed?: boolean; tick: number; type: string }> };
-  const summary = JSON.parse(await readFile(payload.artifacts.summary, "utf8")) as { diagnostics: unknown[]; movementDelta: number[]; nativeRecording: { frames: Array<{ byteSize: number; tick: number }> }; runtime: string; target: string };
+  const summary = JSON.parse(await readFile(payload.artifacts.summary, "utf8")) as { diagnostics: unknown[]; movementDelta: number[]; nativeRecording: { frames: Array<{ byteSize: number; tick: number }> }; performance: { framesOverBudget: number; sampleCount: number; source: string; worstFrameMs: number }; runtime: string; target: string };
   const observations = JSON.parse(await readFile(payload.artifacts.observations, "utf8")) as { runtimeDiagnostics: { readiness: Array<{ tick: number }> } };
 
   assert.equal(result.exitCode, 0);
@@ -322,18 +339,21 @@ test("playtest command should run desktop target through native proof harness", 
   assert.deepEqual(summary.movementDelta, [0, 0, -1]);
   assert.deepEqual(summary.diagnostics, []);
   assert.deepEqual(summary.nativeRecording.frames, []);
+  assert.equal(summary.performance.source, "native-proof-harness");
+  assert.equal(summary.performance.sampleCount, 2);
+  assert.equal(summary.performance.framesOverBudget, 1);
+  assert.equal(summary.performance.worstFrameMs, 33.3334);
   assert.equal(summary.runtime, "bevy");
   assert.equal(summary.target, "desktop");
   assert.deepEqual(commandStream.commands.map((command) => ({ code: command.code, frames: command.frames, pressed: command.pressed, tick: command.tick, type: command.type })), [
     { code: "KeyW", frames: undefined, pressed: true, tick: 6, type: "key" },
-    { code: undefined, frames: 30, pressed: undefined, tick: 6, type: "advance" },
     { code: "KeyW", frames: undefined, pressed: false, tick: 36, type: "key" },
     { code: undefined, frames: undefined, pressed: undefined, tick: 38, type: "exit" },
   ]);
   assert.deepEqual(observations.runtimeDiagnostics.readiness.map((sample) => sample.tick), [0, 37]);
 });
 
-test("playtest command should fast-forward desktop native screenshot-only proofs", async () => {
+test("playtest command should step desktop native screenshot proofs without collapsing frame timing", async () => {
   const root = await playtestTempRoot();
   await cp(join(import.meta.dirname, "../template-files/structured-source-starter"), root, { recursive: true });
   let commandStreamPath: string | undefined;
@@ -395,7 +415,6 @@ test("playtest command should fast-forward desktop native screenshot-only proofs
   assert.deepEqual(commandStream.commands.map((command) => ({ code: command.code, frames: command.frames, pressed: command.pressed, tick: command.tick, type: command.type })), [
     { code: undefined, frames: undefined, pressed: undefined, tick: 5, type: "screenshot" },
     { code: "KeyW", frames: undefined, pressed: true, tick: 6, type: "key" },
-    { code: undefined, frames: 30, pressed: undefined, tick: 6, type: "advance" },
     { code: "KeyW", frames: undefined, pressed: false, tick: 36, type: "key" },
     { code: undefined, frames: undefined, pressed: undefined, tick: 37, type: "screenshot" },
     { code: undefined, frames: undefined, pressed: undefined, tick: 38, type: "exit" },

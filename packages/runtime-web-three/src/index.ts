@@ -16,7 +16,7 @@ export { loadBundle, validateAndLoadBundle, WebBundleValidationError, type IWebB
 export { reportWebConformance } from "./conformance.js";
 export { applyEnvironmentBookmark, createEnvironmentRuntime, loadEnvironmentAssetInstances, observeEnvironmentScene, traceEnvironmentContent, type IEnvironmentObservation, type IEnvironmentRuntime } from "./environment.js";
 export { buildInstancingPlan, type IInstancingGroup, type IInstancingPlan } from "./instancing.js";
-export { collectPerformanceSummary, summarizeFrameTimings, type IPerformanceMetricSummary } from "./performanceMetrics.js";
+export { collectPerformanceSummary, summarizeFrameTimings, type IFrameTimingSummary, type IPerformanceMetricSummary } from "./performanceMetrics.js";
 export { renderDebugOverlay, type IWebDebugCounter, type IWebDebugDrawPrimitive, type IWebDebugOverlayInput, type IWebDebugOverlayModel, type IWebDebugOverlayRow } from "./debugOverlay.js";
 export { renderEditorInspectorPanels, type IEditorInspectorPanelModel } from "./editor/inspector.js";
 export { applyAtmosphereProfile, observeAtmosphereProfile, type IAtmosphereObservation } from "./rendering.js";
@@ -41,7 +41,7 @@ export { renderUi, type IRenderedUi, type IRenderedUiNode } from "./ui/renderUi.
 export { createWebDragPickingRecognizer, resolveTopPickingTarget, type IWebDragPickingEvent, type IWebDragPickingFrame, type IWebDragPickingRecognizer, type IWebPickingDebugOverlayReport, type IWebPickingTarget, type IWebPickingVec2, type IWebPickingVec3 } from "./picking/drag.js";
 export { traceUiNavigation, type IUiNavigationTrace, type IUiNavigationTraceInput } from "./ui/navigation.js";
 export { createUiDomOverlay, type IUiDomOverlay } from "./ui/domOverlay.js";
-export { createRenderedParticleObjects, renderBundle, type IRenderResult } from "./render.js";
+export { createRenderedParticleObjects, renderBundle, type IRenderResult, type IWebRuntimePerformanceSnapshot } from "./render.js";
 export {
   createSystemContext,
   componentHookObservations,

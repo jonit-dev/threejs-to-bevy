@@ -15,7 +15,9 @@ declare global {
     __THREENATIVE_RUNTIME__?: {
       debugColliderCount?: number;
       entityWorldPosition(id: string): [number, number, number] | undefined;
+      performanceSnapshot?(): unknown;
       resourceSnapshot?(id: string): unknown;
+      resetPerformanceTrace?(): void;
       runtimeDiagnosticsSnapshot?(): unknown;
       uiNodeSnapshot?(id: string): unknown;
     };
@@ -37,7 +39,9 @@ const result = await renderBundle(bundleUrl, container, {
 window.__THREENATIVE_RUNTIME__ = {
   debugColliderCount: result.debugColliderCount,
   entityWorldPosition: result.entityWorldPosition,
+  performanceSnapshot: result.performanceSnapshot,
   resourceSnapshot: result.resourceSnapshot,
+  resetPerformanceTrace: result.resetPerformanceTrace,
   runtimeDiagnosticsSnapshot: result.runtimeDiagnosticsSnapshot,
   uiNodeSnapshot: result.uiNodeSnapshot,
 };

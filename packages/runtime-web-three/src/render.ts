@@ -31,6 +31,7 @@ import { createUiDomOverlay } from "./ui/domOverlay.js";
 import { renderUi, type IRenderedUi, type IRenderedUiNode } from "./ui/renderUi.js";
 import { createWebAudioElementSink, createWebAudioRuntime } from "./audio.js";
 import { createWebOverlayHost, type IWebOverlayHost } from "./overlay/host.js";
+import { summarizeFrameTimings, type IFrameTimingSummary } from "./performanceMetrics.js";
 
 export interface IRenderResult {
   canvas: HTMLCanvasElement;
@@ -39,6 +40,8 @@ export interface IRenderResult {
   dispose(): void;
   effectLog: ISystemEffectLog;
   entityWorldPosition(id: string): [number, number, number] | undefined;
+  performanceSnapshot(): IWebRuntimePerformanceSnapshot;
+  resetPerformanceTrace(): void;
   renderer: THREE.WebGLRenderer;
   resourceSnapshot(id: string): unknown;
   runtimeDiagnostics: IWebRuntimeDiagnostics;
@@ -46,6 +49,18 @@ export interface IRenderResult {
   overlayHost?: IWebOverlayHost;
   ui?: IRenderedUi;
   uiNodeSnapshot(id: string): IRenderedUiNode | undefined;
+}
+
+export interface IWebRuntimePerformanceSnapshot {
+  frameSamplesMs: number[];
+  renderer: {
+    drawCalls: number;
+    geometries: number;
+    programs: number;
+    textures: number;
+    triangles: number;
+  };
+  summary: IFrameTimingSummary;
 }
 
 export interface IRenderOptions {
@@ -201,6 +216,7 @@ export async function renderBundle(source: string, container: HTMLElement, optio
     mapped.diagnostics.push(...audioSink.diagnostics);
   }
 
+  let performanceTrace: number[] = [];
   prepareRenderContainer(container);
   canvas.style.display = "block";
   container.replaceChildren(...([canvas, uiOverlay?.element, overlayHost?.element].filter((child) => child !== undefined) as Node[]));
@@ -233,6 +249,7 @@ export async function renderBundle(source: string, container: HTMLElement, optio
   let lifecycle: IWebRenderLifecycle | undefined;
   if (bundle.systems !== undefined || hasAnimationPlayback(mapped) || hasKinematicMovers(bundle.world)) {
     let lastTime = performance.now();
+    const frameSamplesMs: number[] = [];
     lifecycle = createWebRenderLifecycle({
       diagnostics: mapped.diagnostics,
       onDispose: () => {
@@ -242,6 +259,10 @@ export async function renderBundle(source: string, container: HTMLElement, optio
       async frame(time: number) {
         const delta = Math.max(0, (time - lastTime) / 1000);
         lastTime = time;
+        frameSamplesMs.push(delta * 1000);
+        if (frameSamplesMs.length > 600) {
+          frameSamplesMs.splice(0, frameSamplesMs.length - 600);
+        }
         if (bundle.systems !== undefined) {
           await runGameFrame({
             assets: bundle.assets,
@@ -267,6 +288,7 @@ export async function renderBundle(source: string, container: HTMLElement, optio
         pipeline.render(delta);
       },
     });
+    performanceTrace = frameSamplesMs;
     lifecycle.schedule();
   }
 
@@ -294,6 +316,12 @@ export async function renderBundle(source: string, container: HTMLElement, optio
     },
     ...(overlayHost === undefined ? {} : { overlayHost }),
     renderer,
+    performanceSnapshot() {
+      return webRuntimePerformanceSnapshot(renderer, performanceTrace);
+    },
+    resetPerformanceTrace() {
+      performanceTrace.length = 0;
+    },
     resourceSnapshot(id: string) {
       return cloneJsonValue(bundle.world.resources?.[id]);
     },
@@ -326,6 +354,21 @@ function findRenderedUiNode(node: IRenderedUiNode, id: string): IRenderedUiNode 
 
 function cloneJsonValue<T>(value: T): T {
   return value === undefined ? value : JSON.parse(JSON.stringify(value)) as T;
+}
+
+function webRuntimePerformanceSnapshot(renderer: THREE.WebGLRenderer, frameSamplesMs: readonly number[]): IWebRuntimePerformanceSnapshot {
+  const info = renderer.info;
+  return {
+    frameSamplesMs: [...frameSamplesMs],
+    renderer: {
+      drawCalls: info.render.calls,
+      geometries: info.memory.geometries,
+      programs: info.programs?.length ?? 0,
+      textures: info.memory.textures,
+      triangles: info.render.triangles,
+    },
+    summary: summarizeFrameTimings(frameSamplesMs),
+  };
 }
 
 export function collectWebRuntimeDiagnostics(mapped: IThreeWorld, bundle: IWebBundle): IWebRuntimeDiagnostics {

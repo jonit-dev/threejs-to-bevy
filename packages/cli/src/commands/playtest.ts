@@ -4,7 +4,7 @@ import type { ChildProcess } from "node:child_process";
 import { dirname, resolve } from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
 import { buildProject, loadProjectConfig, validateBundle } from "@threenative/compiler";
-import { startWebPreview, type IWebPreviewServer } from "@threenative/runtime-web-three";
+import { startWebPreview, summarizeFrameTimings, type IFrameTimingSummary, type IWebPreviewServer } from "@threenative/runtime-web-three";
 import { chromium } from "playwright";
 
 import { diagnosticResult, type ICommandResult } from "../diagnostics.js";
@@ -29,7 +29,9 @@ declare global {
   var __THREENATIVE_RUNTIME__: {
     debugColliderCount?: number;
     entityWorldPosition?(id: string): Vec3 | undefined;
+    performanceSnapshot?(): unknown;
     resourceSnapshot?(id: string): unknown;
+    resetPerformanceTrace?(): void;
     runtimeDiagnosticsSnapshot?(): unknown;
     uiNodeSnapshot?(id: string): unknown;
   } | undefined;
@@ -77,6 +79,17 @@ export interface IPlaytestNativeRecording {
   mode: "png-sequence";
 }
 
+export interface IPlaytestPerformanceReport extends IFrameTimingSummary {
+  renderer?: {
+    drawCalls?: number;
+    geometries?: number;
+    programs?: number;
+    textures?: number;
+    triangles?: number;
+  };
+  source: "native-proof-harness" | "web-runtime";
+}
+
 export interface IPlaytestReport {
   after?: ITransformSample;
   artifact?: string;
@@ -99,6 +112,7 @@ export interface IPlaytestReport {
   nativeRecording?: IPlaytestNativeRecording;
   observations?: IPlaytestObservations;
   pass: boolean;
+  performance?: IPlaytestPerformanceReport;
   proofMetadata?: IProofArtifactMetadata;
   reproduceCommand?: string;
   runtime: "bevy" | "web";
@@ -414,6 +428,7 @@ async function runNativePlaytest(options: IPlaytestRunOptions, bevyRunner: BevyR
     });
   }
   const nativeRecording = await writeNativeRecordingManifest({ ...recordingPlan, frames: recordingFrames });
+  const performance = nativePerformanceReport(readinessSamples);
   const screenshotDiagnostics = options.nativeScreenshots
     ? [beforeArtifact, afterArtifact, ...recordingFrames.map((frame) => frame.path)]
     : recordingFrames.map((frame) => frame.path);
@@ -468,6 +483,7 @@ async function runNativePlaytest(options: IPlaytestRunOptions, bevyRunner: BevyR
       runtimeDiagnostics: { readiness: readinessSamples },
     },
     pass: !hasErrors,
+    ...(performance === undefined ? {} : { performance }),
     runtime: "bevy",
     scenario: options.scenario.name,
     target: options.scenario.target,
@@ -477,7 +493,6 @@ async function runNativePlaytest(options: IPlaytestRunOptions, bevyRunner: BevyR
 function nativeHarnessCommandStream(scenario: IPlaytestScenario, artifacts: { afterArtifact?: string; beforeArtifact?: string; recordingFrames?: readonly IPlaytestNativeRecordingFrame[] }): unknown {
   const commands: Array<Record<string, unknown>> = [];
   const captureTicks = nativeScenarioCaptureTicks(scenario);
-  const canFastForward = (artifacts.recordingFrames ?? []).length === 0;
   let tick = captureTicks.beforeTick + 1;
   if (artifacts.beforeArtifact !== undefined) {
     commands.push({ path: artifacts.beforeArtifact, tick: captureTicks.beforeTick, type: "screenshot" });
@@ -489,9 +504,6 @@ function nativeHarnessCommandStream(scenario: IPlaytestScenario, artifacts: { af
     if (step.press !== undefined) {
       commands.push({ code: step.press, pressed: true, tick, type: "key" });
       const holdFrames = Math.max(1, step.holdFrames ?? 1);
-      if (canFastForward && holdFrames > 1) {
-        commands.push({ frames: holdFrames, tick, type: "advance" });
-      }
       tick += holdFrames;
       if (step.release) {
         commands.push({ code: step.press, pressed: false, tick, type: "key" });
@@ -700,6 +712,19 @@ function nativeHarnessTimeoutMs(scenario: IPlaytestScenario): number {
   return Math.max(180000, frames * (1000 / 30) + 10000);
 }
 
+function nativePerformanceReport(samples: readonly Record<string, unknown>[]): IPlaytestPerformanceReport | undefined {
+  const frameSamples = samples
+    .map((sample) => isRecord(sample.performance) ? sample.performance.frameMs ?? sample.performance.frame_ms : undefined)
+    .filter((sample): sample is number => typeof sample === "number" && Number.isFinite(sample) && sample >= 0);
+  if (frameSamples.length === 0) {
+    return undefined;
+  }
+  return {
+    ...summarizeFrameTimings(frameSamples),
+    source: "native-proof-harness",
+  };
+}
+
 async function probePreview(options: IPlaytestRunOptions & { url: string }): Promise<IPlaytestReport> {
   const diagnostics: IPlaytestDiagnostic[] = [];
   const artifact = resolve(options.artifactDirectory, "after.png");
@@ -733,6 +758,7 @@ async function probePreview(options: IPlaytestRunOptions & { url: string }): Pro
       });
     }
     await page.waitForTimeout(Math.max(120, options.scenario.warmupFrames * (1000 / 60)));
+    await resetWebPerformanceTrace(page);
     const observationIds = scenarioObservationIds(options.scenario);
     const beforeResources = await readResourceSnapshots(page, observationIds.resources);
     const beforeHud = await readHudSnapshots(page, observationIds.hud);
@@ -756,6 +782,8 @@ async function probePreview(options: IPlaytestRunOptions & { url: string }): Pro
     const debugColliderCount = await page.evaluate(() => globalThis.__THREENATIVE_RUNTIME__?.debugColliderCount);
     const effectLog = await readEffectLog(page);
     const runtimeDiagnostics = await readRuntimeDiagnostics(page);
+    const performanceSnapshot = await readWebPerformanceSnapshot(page);
+    const performance = webPerformanceReport(performanceSnapshot);
     const observations: IPlaytestObservations = {
       console: consoleEntries,
       ...(typeof debugColliderCount === "number" ? { debugColliderCount } : {}),
@@ -763,13 +791,13 @@ async function probePreview(options: IPlaytestRunOptions & { url: string }): Pro
       hud: mergeSnapshots(beforeHud, await readHudSnapshots(page, observationIds.hud)),
       network: networkEntries,
       resources: mergeSnapshots(beforeResources, await readResourceSnapshots(page, observationIds.resources)),
-      runtimeDiagnostics,
+      runtimeDiagnostics: { diagnostics: runtimeDiagnostics, performance: performanceSnapshot },
     };
     await page.screenshot({ path: artifact });
     await writeFile(resolve(options.artifactDirectory, "console.json"), `${JSON.stringify(consoleEntries, null, 2)}\n`, "utf8");
     await writeFile(resolve(options.artifactDirectory, "network.json"), `${JSON.stringify(networkEntries, null, 2)}\n`, "utf8");
     await writeFile(resolve(options.artifactDirectory, "effect-log.json"), `${JSON.stringify(effectLog ?? {}, null, 2)}\n`, "utf8");
-    await writeFile(resolve(options.artifactDirectory, "runtime-trace.json"), `${JSON.stringify(runtimeDiagnostics ?? {}, null, 2)}\n`, "utf8");
+    await writeFile(resolve(options.artifactDirectory, "runtime-trace.json"), `${JSON.stringify({ diagnostics: runtimeDiagnostics ?? {}, performance: performanceSnapshot ?? null }, null, 2)}\n`, "utf8");
     const artifactSize = await stat(artifact);
     if (artifactSize.size === 0) {
       diagnostics.push({ code: "TN_PLAYTEST_SCREENSHOT_EMPTY", message: "Playtest screenshot artifact is empty.", severity: "warning" });
@@ -826,6 +854,7 @@ async function probePreview(options: IPlaytestRunOptions & { url: string }): Pro
       movementThreshold: options.movementThreshold,
       observations,
       pass: !hasErrors,
+      ...(performance === undefined ? {} : { performance }),
       runtime: "web",
       scenario: options.scenario.name,
       target: options.scenario.target,
@@ -1002,6 +1031,47 @@ async function readRuntimeDiagnostics(page: { evaluate<T>(fn: () => T): Promise<
   return page.evaluate(() => globalThis.__THREENATIVE_RUNTIME__?.runtimeDiagnosticsSnapshot?.() ?? globalThis.__THREENATIVE_READY__?.runtimeDiagnostics ?? null);
 }
 
+async function readWebPerformanceSnapshot(page: { evaluate<T>(fn: () => T): Promise<T> }): Promise<unknown> {
+  return page.evaluate(() => globalThis.__THREENATIVE_RUNTIME__?.performanceSnapshot?.() ?? null);
+}
+
+async function resetWebPerformanceTrace(page: { evaluate<T>(fn: () => T): Promise<T> }): Promise<void> {
+  await page.evaluate(() => {
+    globalThis.__THREENATIVE_RUNTIME__?.resetPerformanceTrace?.();
+  });
+}
+
+function webPerformanceReport(snapshot: unknown): IPlaytestPerformanceReport | undefined {
+  if (!isRecord(snapshot) || !isRecord(snapshot.summary)) {
+    return undefined;
+  }
+  const summary = snapshot.summary;
+  const renderer = isRecord(snapshot.renderer) ? snapshot.renderer : undefined;
+  const report: IPlaytestPerformanceReport = {
+    averageFrameMs: numberValue(summary.averageFrameMs),
+    averageFps: numberValue(summary.averageFps),
+    budgetFrameMs: numberValue(summary.budgetFrameMs),
+    framesOverBudget: numberValue(summary.framesOverBudget),
+    jankFramePercent: numberValue(summary.jankFramePercent),
+    minFps: numberValue(summary.minFps),
+    p95FrameMs: numberValue(summary.p95FrameMs),
+    p95Fps: numberValue(summary.p95Fps),
+    sampleCount: numberValue(summary.sampleCount),
+    source: "web-runtime",
+    worstFrameMs: numberValue(summary.worstFrameMs),
+  };
+  if (renderer !== undefined) {
+    report.renderer = {
+      drawCalls: optionalNumber(renderer.drawCalls),
+      geometries: optionalNumber(renderer.geometries),
+      programs: optionalNumber(renderer.programs),
+      textures: optionalNumber(renderer.textures),
+      triangles: optionalNumber(renderer.triangles),
+    };
+  }
+  return report;
+}
+
 async function readResourceSnapshots(page: import("playwright").Page, ids: readonly string[]): Promise<Record<string, unknown>> {
   const result: Record<string, unknown> = {};
   for (const id of ids) {
@@ -1120,6 +1190,10 @@ function safeFilePart(value: string): string {
 
 function numberValue(value: unknown): number {
   return typeof value === "number" && Number.isFinite(value) ? value : 0;
+}
+
+function optionalNumber(value: unknown): number | undefined {
+  return typeof value === "number" && Number.isFinite(value) ? value : undefined;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

@@ -149,6 +149,9 @@ fn should_write_readiness_json_matching_schema() {
     assert_eq!(payload["ok"], true);
     assert_eq!(payload["tick"], 0);
     assert_eq!(payload["diagnostics"], serde_json::json!([]));
+    assert!(payload["performance"]["elapsed_ms"].as_f64().is_some());
+    assert!(payload["performance"]["frame_ms"].as_f64().is_some());
+    assert!(payload["performance"]["fps"].as_f64().is_some());
     assert!(payload["transforms"].as_array().is_some());
 
     fs::remove_dir_all(root).expect("temp proof harness dir should be removed");
