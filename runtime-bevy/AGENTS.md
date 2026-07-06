@@ -12,3 +12,10 @@ Rules for the native Bevy runtime.
 ```bash
 cargo test
 ```
+
+- To self-verify native behavior against an emitted bundle, use
+  `tn scene proof <scene> --project <path> --native` and scenario playtests
+  run with `tn playtest ... --target desktop`; keep the evidence under the
+  owning `artifacts/<gate>/` folder.
+- For changes to shared web/Bevy contracts, also run `pnpm verify:conformance`
+  from the repo root.

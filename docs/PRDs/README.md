@@ -6,6 +6,39 @@ milestone batches. For current implementation status, read
 
 ## Current Initiatives
 
+### Agent Ergonomics (2026-07-05)
+
+The [agent-ergonomics bundle](agent-ergonomics-2026-07-05/README.md)
+operationalizes `CHALLENGES.md`: measure whether agents can build games
+through ThreeNative at reasonable token cost, then fix the measured
+frictions. Execution order matters; PRD-000 lands first, then PRD-001 gates
+the rest.
+
+- [Convention Alignment](agent-ergonomics-2026-07-05/PRD-000-convention-alignment.md):
+  convention-first design rule plus a KISS pass on the script context —
+  source-authored axis mapping behind `getAxis`, `transform.position`
+  property access, engine-owned `fixedDelta` clamping, proof-time rounding,
+  and prescriptive legacy-idiom diagnostics, with web/Bevy conformance
+  evidence.
+- [Agent Authoring Benchmark](agent-ergonomics-2026-07-05/PRD-001-agent-authoring-benchmark.md):
+  neutral scoring harness and run protocol measuring tokens-to-playable for
+  identical game prompts under vanilla Three.js vs ThreeNative; produces the
+  kill/continue verdict.
+- [Authoring Cookbook](agent-ergonomics-2026-07-05/PRD-002-authoring-cookbook.md):
+  16 CI-validated, pattern-sized worked examples exposed via `tn cookbook`
+  and indexed in generated starter agent instructions.
+- [Single-Command Iteration Loop](agent-ergonomics-2026-07-05/PRD-003-single-command-iteration-loop.md):
+  `tn iterate` collapses validate/build/screenshot/playtest into one JSON
+  response with guaranteed preview teardown.
+- [Prescriptive Diagnostics](agent-ergonomics-2026-07-05/PRD-004-prescriptive-diagnostics.md):
+  structured `fix` field on the shared diagnostic contract for the top
+  agent-hit rejection codes, with snippet-validity tests and MCP parity.
+- [Meta-Layer Compression](agent-ergonomics-2026-07-05/PRD-005-meta-layer-compression.md):
+  STATUS.md becomes a <=250-line enforced index over per-capability docs;
+  the generated-games release gate prunes to 5 representative examples plus
+  a build-only sweep. Supersedes
+  [Docs Front Door Compaction](other/docs-front-door-compaction.md).
+
 Open PRDs usually live under `docs/PRDs/other/`. The near-term proof
 infrastructure bundle lives under
 `docs/PRDs/proof-first-engine-loop-2026-07-05/`; broader capability, docs,
@@ -18,6 +51,14 @@ execution bundle.
   makes committed scenario playtests the default generated-game proof unit,
   adds QA scenario coverage reporting, ratchets generated-game gates away from
   ephemeral one-shot movement proof, and polishes watch-mode repair events.
+- [Native Render Parity and Performance](proof-first-engine-loop-2026-07-05/PRD-018-native-render-parity-and-performance.md):
+  fixes Bevy adapter contract gaps exposed by humanoid-physics-course
+  (directional shadows hardcoded off, authored lights discarded under
+  atmosphere, emissive below bloom threshold, missing tangents and texture
+  color-space roles, static HUD bindings) and native performance
+  anti-patterns (debug-build launch, per-frame QuickJS and Rapier rebuilds,
+  per-frame asset re-uploads), closed by a side-by-side parity and
+  frame-time proof gate.
 - [Native Parity Closure and Proof Loop](proof-first-engine-loop-2026-07-05/PRD-002-native-parity-closure-and-proof-loop.md):
   Bevy ports of script kinematic authority, `KinematicMover`, and
   `character.move` overrides, plus a native proof harness so

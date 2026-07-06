@@ -12,3 +12,6 @@ Rules for TypeScript packages.
 - Prefer precise types over casts. Follow ESM `NodeNext` patterns.
 - Runtime packages consume IR schemas/bundles; they must not invent parallel
   game-state source formats.
+- Self-verify with the narrowest package test first (`pnpm --filter
+  @threenative/<package> test`), then `pnpm typecheck`. For changes to shared
+  IR or runtime contracts, also run `pnpm verify:conformance`.

@@ -26,6 +26,12 @@ Rules for runnable examples.
   placeholder acceptance, no clunky one-frame player snaps unless deliberately
   tweened as a grid mechanic, and no completion claim without build, nonblank
   screenshot, visible motion, and input-playtest evidence.
+- Self-verify with the narrowest proof first: `tn playtest --discover --json`
+  to find provable entities, a committed `playtests/*.playtest.json` scenario
+  with `--stable-artifacts` as the edit loop, `tn scene proof <scene>` for
+  scene evidence (`--native` for the Bevy runtime), and `tn game
+  score/qa --run-proof/release` before completion claims. Keep the resulting
+  evidence under `examples/<name>/artifacts/<gate>/`.
 - Audio-feedback assets must be real local audio files when referenced. Do not
   create text placeholders with `.wav` or `.mp3` extensions; generate, source,
   or reuse a valid RIFF/WAVE file with provenance, then let QA/release validate

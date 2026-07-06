@@ -29,10 +29,11 @@ Rules for this generated ThreeNative project.
 
 ## Default Game Quality
 
-- Before creating or substantially changing the game, run
+- Before creating or substantially changing the game, open
+  `AGENT_GAME_PLAN.md` as the first game-creation action, then run
   `tn game plan --goal "<game idea>" --project . --json` or write an
-  equivalent local plan if the CLI is unavailable. Use it as an implementation
-  checklist, not as decorative prose.
+  equivalent local plan if the CLI is unavailable. Use the worksheet and plan as
+  implementation checklists, not decorative prose.
 - The plan must cover game design, assets, scripts, polish, and proof: playable
   loop, controls, objective, progression, fail/retry, feedback cues,
   player/hero asset, obstacle/enemy asset, reward/interactable asset,
@@ -40,6 +41,20 @@ Rules for this generated ThreeNative project.
   owned state, source-document references, silhouettes, materials, lighting,
   camera framing, set dressing, UI states, mobile fit, performance, screenshot
   proof, motion proof, and input playtest proof.
+- While implementing, use `tn playtest` as a repair loop after gameplay,
+  controls, script, or state changes. Run `tn playtest --discover --json` or
+  `--suggest-scenario <name>` to find provable entities and a starting
+  scenario. Prefer a committed scenario under `playtests/*.playtest.json`
+  with `--stable-artifacts` for multi-step mechanics (add `--watch
+  --pass-once` while iterating); otherwise run the one-shot
+  `--entity/--press/--expect-moved` proof. Inspect `summary.json`,
+  diagnostics, screenshots, and effect logs, fix the owning durable
+  source/script, and rerun before broader QA. Before release claims, rerun
+  the scenario with `--target desktop` so the native runtime is proved, not
+  only web.
+- Apply gameplay recipes only as bounded steps from a complete plan, for example
+  `tn recipe apply top-down-collector --scene <scene> --player <entity> --camera <camera> --json`.
+  Keep recipe output in `content/**/*.json` and `src/scripts/**/*.ts`.
 - The first playable pass must already use recognizable custom/imported art for
   high-value surfaces. A local GLB made from plain boxes, capsules, spheres, or
   cylinders still counts as placeholder art unless it has a clearly authored,
@@ -53,10 +68,10 @@ Rules for this generated ThreeNative project.
   primitive geometry.
 - If the planned asset source or runtime capability is unavailable, record the
   fallback and keep the game visually coherent. Do not silently collapse the
-  plan into unrelated primitive placeholders. For finished examples, continue
-  through the documented fallback order: curated/open-source pack, compatible
-  GitHub/open-source pack, generated/local custom GLB or mesh assets, then
-  primitive fallback only for prototype or runtime fallback fields.
+  plan into unrelated primitive placeholders. Continue through the documented
+  fallback order: curated/open-source pack, compatible GitHub/open-source
+  pack, generated/local custom GLB or mesh assets, then primitive fallback
+  only for prototype or runtime fallback fields.
 - Treat the game as a small polished vertical slice, not a blockout. Do not
   accept primitive-only placeholder scenes as finished games. Add a cohesive
   visual baseline by default: custom meshes or imported model assets, shaped
@@ -121,19 +136,32 @@ Rules for this generated ThreeNative project.
 
 ## Verify
 
+Self-verify in this order: narrowest structural check, then focused gameplay
+proof, then the production gates. Do not skip from an edit straight to a
+release claim.
+
 ```bash
+# 1. Structural checks after any source edit
 pnpm run validate:authoring
 pnpm run build
+tn scene validate arena --json
+tn scene inspect arena --json
+
+# 2. Focused gameplay proof after gameplay/input/script changes
+tn playtest --project . --discover --json
+tn playtest --project . --scenario playtests/<name>.playtest.json --stable-artifacts --json
+pnpm run playtest
+
+# 3. Scene and runtime proof (add --native for the native runtime)
+tn scene proof arena --project . --json
+
+# 4. Production gates before calling work done
 pnpm run game:plan
 pnpm run game:improve
 pnpm run verify
-pnpm run playtest
 pnpm run game:score
 pnpm run game:qa
 pnpm run game:release
-tn scene validate arena --json
-tn scene inspect arena --json
-tn scene proof arena --project . --json
 ```
 
 On diagnostics, keep code/path in notes and fix the owning source document or

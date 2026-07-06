@@ -92,6 +92,14 @@ plan before mutating source:
 - The plan must name script modules/exports under `src/scripts/**/*.ts`, the
   state they own, the source documents that reference them, and how their
   behavior will be proved.
+- The plan must name the first `tn playtest` proof to run while implementing.
+  Use `tn playtest --discover --json` or `--suggest-scenario <name>` to find
+  provable entities and a starting scenario. Prefer a committed scenario under
+  `playtests/*.playtest.json` when the gameplay needs more than one input or
+  assertion; otherwise name the one-shot command with `--entity`, `--press`,
+  `--frames`, and expected movement/axis. Use `--stable-artifacts` or `--out`
+  during iteration so each run has a clear `summary.json`, screenshots, effect
+  log, diagnostics, and reproduction command.
 - The plan must include a polish pass for silhouettes, materials, lighting,
   camera framing, environment context, set dressing, motion/VFX/audio feedback,
   UI states, mobile fit, and performance budget.
@@ -106,6 +114,13 @@ plan before mutating source:
 - Treat the plan as a checklist while implementing. If asset sourcing or a
   runtime capability fails, update the plan with the fallback and evidence
   instead of silently downgrading to dull placeholder geometry.
+- Iterate with `tn playtest` before claiming the game works: after each
+  gameplay or input change, run the narrowest playtest (`--watch --pass-once`
+  helps while iterating), inspect failing diagnostics/artifacts, repair the
+  durable source or script that owns the failure, and rerun until the proof
+  passes. Before release claims, rerun the scenario with `--target desktop`
+  so the native runtime is proved, not only web. A screenshot or build alone
+  is not gameplay proof.
 
 ## Game Asset Sourcing
 
@@ -209,6 +224,8 @@ Useful loop:
 tn scene validate arena --json
 tn scene inspect arena --json
 tn scene proof arena --project . --json
+tn playtest --project . --discover --json
+tn playtest --project . --scenario playtests/<name>.playtest.json --stable-artifacts --json
 pnpm run validate:authoring
 pnpm run build
 pnpm run verify

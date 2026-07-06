@@ -137,14 +137,26 @@ gameplay/input/script change, run the focused playtest, read `summary.json`
 plus diagnostics/artifacts, repair the owning `content/**/*.json` or
 `src/scripts/**/*.ts`, and rerun until the proof passes.
 
+Discover what is provable before writing a scenario:
+
+```bash
+tn playtest --project . --discover --json
+tn playtest --project . --suggest-scenario smoke-movement --json
+```
+
 For multi-step mechanics, create a committed scenario under
-`playtests/*.playtest.json` and run it with stable artifacts:
+`playtests/*.playtest.json` and run it with stable artifacts. Use `--watch`
+while iterating, and rerun with `--target desktop` to prove the native
+runtime, not only web:
 
 ```bash
 tn playtest --project . --scenario playtests/smoke-movement.playtest.json --stable-artifacts --json
+tn playtest --project . --scenario playtests/smoke-movement.playtest.json --watch --pass-once --json
+tn playtest --project . --scenario playtests/smoke-movement.playtest.json --target desktop --json
 ```
 
-For a one-input smoke proof, use the one-shot form:
+For a one-input smoke proof, use the one-shot form, then finish with the
+production loop:
 
 ```bash
 tn authoring validate --project . --json
@@ -152,6 +164,7 @@ tn build --project . --json
 tn scene inspect <scene-id> --project . --json
 tn playtest --project . --entity <entity-id> --press KeyD --frames 30 --expect-moved --json
 tn screenshot --project . --url <preview-url> --out artifacts/game-production/screenshot.png --wait-ready --json
+tn game scale --project . --json
 tn game score --project . --json
 tn game qa --project . --run-proof --json
 tn game release --project . --json

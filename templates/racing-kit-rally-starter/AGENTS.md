@@ -33,16 +33,24 @@ Rules for Racing Kit Rally starter projects.
   nonblank screenshot, visible motion, and input playtest before calling the
   game done.
 - Iterate with `tn playtest` after controls, vehicle handling, camera follow,
-  checkpoint, HUD, or retry changes. Use a committed
+  checkpoint, HUD, or retry changes. Run `tn playtest --discover --json` or
+  `--suggest-scenario <name>` to find provable entities first. Use a committed
   `playtests/*.playtest.json` scenario with `--stable-artifacts` for multi-step
-  behavior; inspect the playtest `summary.json`, diagnostics, screenshots, and
-  effect log, fix the owning source/script, and rerun before `tn game qa`.
+  behavior (add `--watch --pass-once` while iterating); inspect the playtest
+  `summary.json`, diagnostics, screenshots, and effect log, fix the owning
+  source/script, and rerun before `tn game qa`. Before release claims, rerun
+  the scenario with `--target desktop` so the native runtime is proved, not
+  only web.
 
 ## Verify
+
+Self-verify in this order: structural checks, focused playtest proof, then
+production gates.
 
 ```bash
 pnpm run validate:authoring
 pnpm run build
+tn playtest --project . --scenario playtests/<name>.playtest.json --stable-artifacts --json
 pnpm run playtest
 pnpm run game:score
 pnpm run game:qa
