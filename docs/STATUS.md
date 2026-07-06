@@ -117,6 +117,11 @@ with `TN_PHYSICS_CAPSULE_CENTER_SUSPECT` when a `CharacterController` capsule
 explicitly authors `Collider.center: [0, 0, 0]` despite a taller-than-radius
 capsule. Focused evidence: `pnpm --filter @threenative/runtime-web-three test`,
 `pnpm --filter @threenative/ir test`, and `pnpm verify:conformance`.
+Native Bevy now mirrors the script-authored kinematic transform authority slice:
+system effect application reports `Transform` patch entity ids, the native game
+loop carries those ids into the next physics step, and kinematic velocity
+integration is skipped once without losing authored velocity. Focused evidence:
+`cargo test --manifest-path runtime-bevy/Cargo.toml -p threenative_runtime`.
 The same PRD now has an initial stdlib rig slice: `CharacterRig.update` and
 `CameraRig.thirdPerson` live in `@threenative/script-stdlib`, keep internal
 smoothing state in `context.state(...)`, call the promoted web character move
@@ -133,8 +138,15 @@ runtime drives sine `KinematicMover` entities before physics, preserves the
 authored origin to avoid drift, mirrors derivative velocity into kinematic
 `RigidBody` components, and resolves formatted resource/component UI text.
 Focused evidence: `pnpm --filter @threenative/ir test` and
-`pnpm --filter @threenative/runtime-web-three test`. Native Bevy mapping for
-the new `KinematicMover` component is still a documented parity gap.
+`pnpm --filter @threenative/runtime-web-three test`. Native Bevy now maps the
+sine `KinematicMover` component through `threenative_loader`, preserves
+authored mover origins in native loop state, mirrors derivative velocity into
+kinematic `RigidBody` components, and feeds moved entities into the native
+script-pose physics skip path so the authored sine pose is not double
+integrated. Focused evidence:
+`cargo test --manifest-path runtime-bevy/Cargo.toml -p threenative_loader should_load_kinematic_mover_component`,
+`cargo test --manifest-path runtime-bevy/Cargo.toml -p threenative_runtime kinematic_mover_should`,
+and `pnpm verify:conformance`.
 The Phase 5 authoring paper-cut slice upgrades the
 `third-person-controller` recipe to stamp feet-origin capsule colliders with
 `center: [0, height / 2, 0]`, extends `scene.set_collider` so that center is a

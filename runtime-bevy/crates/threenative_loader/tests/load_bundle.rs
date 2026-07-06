@@ -1,10 +1,13 @@
 use std::{
     fs,
     path::{Path, PathBuf},
+    sync::atomic::{AtomicU64, Ordering},
     time::{SystemTime, UNIX_EPOCH},
 };
 
 use threenative_loader::{LoadError, load_bundle};
+
+static TEMP_BUNDLE_COUNTER: AtomicU64 = AtomicU64::new(0);
 
 #[test]
 fn should_load_cube_fixture_bundle() {
@@ -32,6 +35,44 @@ fn should_load_cube_fixture_bundle() {
             .iter()
             .any(|entity| entity.id == "light.key" && entity.components.light.is_some())
     );
+}
+
+#[test]
+fn should_load_kinematic_mover_component() {
+    let root = temp_bundle_dir();
+    write_minimal_bundle(&root);
+    write_json(
+        &root,
+        "world.ir.json",
+        r#"{
+          "schema": "threenative.world",
+          "version": "0.1.0",
+          "entities": [
+            {
+              "id": "hazard",
+              "components": {
+                "KinematicMover": { "direction": [1, 0, 0], "mode": "sine", "radius": 2, "speed": 2 },
+                "RigidBody": { "kind": "kinematic" },
+                "Transform": { "position": [1, 0, 2] }
+              }
+            }
+          ]
+        }"#,
+    );
+
+    let bundle = load_bundle(&root).expect("kinematic mover bundle should load");
+    let mover = bundle.world.entities[0]
+        .components
+        .kinematic_mover
+        .as_ref()
+        .expect("kinematic mover should deserialize");
+
+    assert_eq!(mover.mode, "sine");
+    assert_eq!(mover.direction, Some([1.0, 0.0, 0.0]));
+    assert_eq!(mover.radius, Some(2.0));
+    assert_eq!(mover.speed, 2.0);
+
+    fs::remove_dir_all(root).expect("temp bundle should be removed");
 }
 
 #[test]
@@ -387,7 +428,9 @@ fn temp_bundle_dir() -> PathBuf {
         .duration_since(UNIX_EPOCH)
         .expect("clock should be after epoch")
         .as_nanos();
-    let path = std::env::temp_dir().join(format!("tn-audio-loader-{stamp}"));
+    let counter = TEMP_BUNDLE_COUNTER.fetch_add(1, Ordering::Relaxed);
+    let process = std::process::id();
+    let path = std::env::temp_dir().join(format!("tn-audio-loader-{process}-{stamp}-{counter}"));
     fs::create_dir_all(&path).expect("temp bundle dir should be created");
     path
 }

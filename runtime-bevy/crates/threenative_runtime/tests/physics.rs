@@ -1,4 +1,5 @@
 use std::{
+    collections::BTreeSet,
     fs,
     path::PathBuf,
     time::{SystemTime, UNIX_EPOCH},
@@ -6,8 +7,8 @@ use std::{
 
 use threenative_loader::load_bundle;
 use threenative_runtime::physics::{
-    detect_physics_event_trace, detect_physics_events, trace_physics_joints,
-    trace_rigid_body_primitives,
+    detect_physics_event_trace, detect_physics_events, step_bundle_physics_with_script_poses,
+    trace_physics_joints, trace_rigid_body_primitives,
 };
 
 #[test]
@@ -40,6 +41,59 @@ fn physics_should_emit_fixed_trace_phases() {
     assert_eq!(events[0].phase, "enter");
     assert_eq!(events[1].phase, "stay");
     assert_eq!(events[2].phase, "exit");
+
+    fs::remove_dir_all(root).expect("temporary bundle should be removed");
+}
+
+#[test]
+fn physics_should_skip_script_posed_kinematic_velocity_once() {
+    let root = write_physics_trace_bundle();
+    let mut bundle = load_bundle(&root).expect("physics bundle should load");
+    let mut script_posed_entities = BTreeSet::new();
+    script_posed_entities.insert("player".to_owned());
+
+    step_bundle_physics_with_script_poses(&mut bundle, 1.0, &script_posed_entities);
+
+    let player = bundle
+        .world
+        .entities
+        .iter()
+        .find(|entity| entity.id == "player")
+        .expect("player should exist");
+    assert_eq!(
+        player
+            .components
+            .transform
+            .as_ref()
+            .and_then(|transform| transform.position),
+        Some([-0.5, 0.0, 0.0])
+    );
+    assert_eq!(
+        player
+            .components
+            .rigid_body
+            .as_ref()
+            .and_then(|body| body.velocity),
+        Some([0.75, 0.0, 0.0])
+    );
+
+    step_bundle_physics_with_script_poses(&mut bundle, 1.0, &BTreeSet::new());
+
+    let player = bundle
+        .world
+        .entities
+        .iter()
+        .find(|entity| entity.id == "player")
+        .expect("player should exist");
+    let position = player
+        .components
+        .transform
+        .as_ref()
+        .and_then(|transform| transform.position)
+        .expect("player transform should have a position");
+    assert!((position[0] - 0.25).abs() < 0.00001);
+    assert_eq!(position[1], 0.0);
+    assert_eq!(position[2], 0.0);
 
     fs::remove_dir_all(root).expect("temporary bundle should be removed");
 }

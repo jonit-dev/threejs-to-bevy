@@ -1,3 +1,5 @@
+use std::collections::BTreeSet;
+
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use threenative_loader::{
@@ -74,6 +76,12 @@ pub struct NativeSystemEffectLog {
     pub version: u8,
 }
 
+#[derive(Clone, Debug, PartialEq)]
+pub struct NativeSystemEffectsApplied {
+    pub log: NativeSystemEffectLog,
+    pub transform_patches: BTreeSet<String>,
+}
+
 #[derive(Clone, Debug, Serialize, PartialEq)]
 pub struct NativeSystemEffectLogEntry {
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -106,11 +114,23 @@ pub fn apply_system_effects(
     frame: u32,
     tick: u32,
 ) -> Result<NativeSystemEffectLog, Vec<NativeSystemEffectDiagnostic>> {
+    apply_system_effects_with_report(bundle, system, effects, frame, tick)
+        .map(|applied| applied.log)
+}
+
+pub fn apply_system_effects_with_report(
+    bundle: &mut LoadedBundle,
+    system: &SystemIr,
+    effects: &NativeSystemEffects,
+    frame: u32,
+    tick: u32,
+) -> Result<NativeSystemEffectsApplied, Vec<NativeSystemEffectDiagnostic>> {
     let diagnostics = validate_system_effects(system, effects);
     let log = native_effect_log(system, effects, frame, tick);
     if !diagnostics.is_empty() {
         return Err(diagnostics);
     }
+    let transform_patches = transform_patches_for_effects(effects);
 
     for event in &effects.events {
         apply_event(bundle, event);
@@ -125,7 +145,10 @@ pub fn apply_system_effects(
         apply_resource(bundle, resource);
     }
 
-    Ok(log)
+    Ok(NativeSystemEffectsApplied {
+        log,
+        transform_patches,
+    })
 }
 
 pub fn validate_system_effects(
@@ -268,6 +291,24 @@ fn declares_command(system: &SystemIr, command: &NativeSystemCommandEffect) -> b
                     .unwrap_or(true)
         }
     })
+}
+
+fn transform_patches_for_effects(effects: &NativeSystemEffects) -> BTreeSet<String> {
+    let mut entity_ids = effects
+        .patches
+        .iter()
+        .filter(|patch| patch.component == "Transform")
+        .map(|patch| patch.entity.clone())
+        .collect::<BTreeSet<_>>();
+    for command in &effects.commands {
+        if matches!(command.command.as_str(), "addComponent" | "setComponent")
+            && command.component.as_deref() == Some("Transform")
+            && let Some(entity) = command.entity.as_ref()
+        {
+            entity_ids.insert(entity.clone());
+        }
+    }
+    entity_ids
 }
 
 pub fn native_effect_log(

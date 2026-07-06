@@ -14,7 +14,9 @@ use crate::{
     systems_context::{
         NativeSystemTimeSnapshot, build_system_context_snapshot_with_events_input_and_diff,
     },
-    systems_effects::{NativeSystemEffectLog, NativeSystemEffects, apply_system_effects},
+    systems_effects::{
+        NativeSystemEffectLog, NativeSystemEffects, apply_system_effects_with_report,
+    },
     systems_host_bridge::BRIDGE_SOURCE,
 };
 
@@ -36,6 +38,7 @@ pub struct SystemsHostError {
 #[derive(Debug, Default)]
 pub struct NativeSystemsHostRun {
     pub logs: Vec<NativeSystemEffectLog>,
+    pub transform_patches: BTreeSet<String>,
 }
 
 #[derive(bevy::prelude::Resource, Debug, Clone, PartialEq)]
@@ -43,7 +46,9 @@ pub struct NativeGameLoopState {
     pub accumulator: f32,
     pub elapsed: f32,
     pub frame: u64,
+    pub kinematic_mover_origins: BTreeMap<String, [f32; 3]>,
     pub paused: bool,
+    pub script_posed_entities: BTreeSet<String>,
     pub startup_complete: bool,
     pub tick: u64,
 }
@@ -54,7 +59,9 @@ impl NativeGameLoopState {
             accumulator: 0.0,
             elapsed: 0.0,
             frame: 0,
+            kinematic_mover_origins: BTreeMap::new(),
             paused,
+            script_posed_entities: BTreeSet::new(),
             startup_complete: false,
             tick: 0,
         }
@@ -169,7 +176,7 @@ pub fn run_native_systems_frame_with_input(
     bundle: &mut LoadedBundle,
     state: &mut NativeGameLoopState,
     options: NativeGameLoopRunOptions<'_>,
-    mut step_physics: impl FnMut(&mut LoadedBundle, f32),
+    mut step_physics: impl FnMut(&mut LoadedBundle, f32, &BTreeSet<String>),
 ) -> Result<NativeSystemsHostRun, SystemsHostError> {
     if options.fixed_delta <= 0.0 {
         return Err(host_error(
@@ -189,23 +196,44 @@ pub fn run_native_systems_frame_with_input(
     if !state.paused {
         if !state.startup_complete {
             let time = loop_time_snapshot(0.0, state.elapsed, options.fixed_delta, state.paused);
-            run.logs.extend(
-                run_native_system_schedules(bundle, &["startup"], time, options.input)?.logs,
-            );
+            let startup_run =
+                run_native_system_schedules(bundle, &["startup"], time, options.input)?;
+            state
+                .script_posed_entities
+                .extend(startup_run.transform_patches.iter().cloned());
+            run.transform_patches
+                .extend(startup_run.transform_patches.iter().cloned());
+            run.logs.extend(startup_run.logs);
             state.startup_complete = true;
         }
 
         while state.accumulator >= options.fixed_delta {
-            step_physics(bundle, options.fixed_delta);
+            let mover_observations = crate::kinematic_mover::step_bundle_kinematic_movers(
+                bundle,
+                state.elapsed,
+                &mut state.kinematic_mover_origins,
+            );
+            state.script_posed_entities.extend(
+                mover_observations
+                    .iter()
+                    .map(|observation| observation.entity.clone()),
+            );
+            step_physics(bundle, options.fixed_delta, &state.script_posed_entities);
+            state.script_posed_entities.clear();
             let time = loop_time_snapshot(
                 options.fixed_delta,
                 state.elapsed,
                 options.fixed_delta,
                 state.paused,
             );
-            run.logs.extend(
-                run_native_system_schedules(bundle, &["fixedUpdate"], time, options.input)?.logs,
-            );
+            let fixed_run =
+                run_native_system_schedules(bundle, &["fixedUpdate"], time, options.input)?;
+            state
+                .script_posed_entities
+                .extend(fixed_run.transform_patches.iter().cloned());
+            run.transform_patches
+                .extend(fixed_run.transform_patches.iter().cloned());
+            run.logs.extend(fixed_run.logs);
             state.tick += 1;
             state.accumulator -= options.fixed_delta;
         }
@@ -216,15 +244,18 @@ pub fn run_native_systems_frame_with_input(
             options.fixed_delta,
             state.paused,
         );
-        run.logs.extend(
-            run_native_system_schedules(
-                bundle,
-                &["update", "postUpdate"],
-                variable_time,
-                options.input,
-            )?
-            .logs,
-        );
+        let variable_run = run_native_system_schedules(
+            bundle,
+            &["update", "postUpdate"],
+            variable_time,
+            options.input,
+        )?;
+        state
+            .script_posed_entities
+            .extend(variable_run.transform_patches.iter().cloned());
+        run.transform_patches
+            .extend(variable_run.transform_patches.iter().cloned());
+        run.logs.extend(variable_run.logs);
     }
     state.frame += 1;
 
@@ -288,6 +319,7 @@ fn run_native_system_schedules(
         })?;
 
     let mut logs = Vec::new();
+    let mut transform_patches = BTreeSet::new();
     let mut diff_cache = ComponentDiffCache::default();
     for schedule in schedules {
         let scheduled_systems = ordered_systems_for_schedule(&systems, schedule);
@@ -308,19 +340,23 @@ fn run_native_system_schedules(
                 input,
                 Some(&diff_cache),
             )?;
-            let log =
-                apply_system_effects(bundle, system, &effects, 1, 1).map_err(|diagnostics| {
+            let applied = apply_system_effects_with_report(bundle, system, &effects, 1, 1)
+                .map_err(|diagnostics| {
                     let first = diagnostics
                         .into_iter()
                         .next()
                         .expect("invalid effects should include diagnostics");
                     host_error(first.code, first.message)
                 })?;
-            logs.push(log);
+            logs.push(applied.log);
+            transform_patches.extend(applied.transform_patches);
         }
     }
 
-    Ok(NativeSystemsHostRun { logs })
+    Ok(NativeSystemsHostRun {
+        logs,
+        transform_patches,
+    })
 }
 
 fn loop_time_snapshot(

@@ -295,6 +295,7 @@ pub struct EntityComponents {
     pub camera: Option<CameraComponent>,
     pub collider: Option<ColliderComponent>,
     pub hierarchy: Option<HierarchyComponent>,
+    pub kinematic_mover: Option<KinematicMoverComponent>,
     pub light: Option<LightComponent>,
     pub mesh_renderer: Option<MeshRendererComponent>,
     pub physics_joint: Option<PhysicsJointComponent>,
@@ -311,6 +312,20 @@ pub struct TransformComponent {
     pub position: Option<[f32; 3]>,
     pub rotation: Option<[f32; 4]>,
     pub scale: Option<[f32; 3]>,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct KinematicMoverComponent {
+    pub axis: Option<String>,
+    pub direction: Option<[f32; 3]>,
+    #[serde(rename = "loop")]
+    pub loop_enabled: Option<bool>,
+    pub mode: String,
+    pub phase: Option<f32>,
+    pub radius: Option<f32>,
+    pub speed: f32,
+    pub waypoints: Option<Vec<[f32; 3]>>,
 }
 
 #[derive(Clone, Debug, Deserialize)]

@@ -9,7 +9,7 @@ use threenative_runtime::scene_manager::apply_scene_service_effects;
 use threenative_runtime::systems_effects::{
     NativeSystemCommandEffect, NativeSystemEffects, NativeSystemEventEffect,
     NativeSystemPatchEffect, NativeSystemResourceEffect, NativeSystemServiceEffect,
-    apply_system_effects,
+    apply_system_effects, apply_system_effects_with_report,
 };
 
 #[test]
@@ -43,6 +43,32 @@ fn systems_effects_should_apply_declared_transform_patch() {
     assert_eq!(log.schema, "threenative.web-system-effects");
     assert_eq!(log.entries[0].frame, 7);
     assert_eq!(log.entries[0].tick, 11);
+}
+
+#[test]
+fn systems_effects_should_report_transform_patch_entities() {
+    let root = write_bundle("report-transform-patch");
+    let mut bundle = load_bundle(&root).expect("bundle should load");
+    let system = bundle
+        .systems
+        .as_ref()
+        .expect("systems should load")
+        .systems[0]
+        .clone();
+    let effects = NativeSystemEffects {
+        patches: vec![NativeSystemPatchEffect {
+            entity: "player".to_owned(),
+            component: "Transform".to_owned(),
+            value: json!({ "position": [2, 3, 4] }),
+        }],
+        ..Default::default()
+    };
+
+    let applied = apply_system_effects_with_report(&mut bundle, &system, &effects, 7, 11)
+        .expect("declared effect should apply");
+
+    assert!(applied.transform_patches.contains("player"));
+    assert_eq!(applied.log.entries[0].kind, "patch");
 }
 
 #[test]

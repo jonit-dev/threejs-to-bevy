@@ -122,10 +122,12 @@ implementation:
   `ctx.character.move(entity, { direction, speed })` tracing and web
   script-authored kinematic transform authority to remove same-tick
   double-integration. IR validation covers inconsistent `RigidBody.mass` /
-  `inverseMass` and suspect zero-centered character capsules. Native Bevy does
-  not yet have an equivalent script-authority execution hook for this new web
-  runtime behavior; treat it as an explicit parity gap until a focused native
-  trace or conformance fixture proves the same semantics.
+  `inverseMass` and suspect zero-centered character capsules. Native Bevy now
+  mirrors the script-authored kinematic transform authority path by carrying
+  successful `Transform` patch entity ids from system effects into the next
+  physics step and skipping kinematic velocity integration once while preserving
+  authored velocity. Focused evidence:
+  `cargo test --manifest-path runtime-bevy/Cargo.toml -p threenative_runtime`.
 - The authoring-abstractions Phase 4 slice introduces a portable
   `KinematicMover` IR component shape and formatted UI binding validation.
   Web runtime support currently covers sine movers, stable authored-origin
@@ -134,8 +136,14 @@ implementation:
   `KinematicMover` components and formatted retained UI bindings, and
   `examples/humanoid-physics-course` uses those abstractions for its
   non-player-movement hazard/HUD source.
-  Native Bevy does not yet map or prove the new `KinematicMover` component, and
-  no web/Bevy conformance fixture has been added for this contract yet.
+  Native Bevy now maps and proves sine `KinematicMover` components through the
+  loader and fixed-step runtime loop: native preserves authored origins, writes
+  derivative kinematic velocity, and feeds moved entities into the script-pose
+  physics skip path to avoid same-step double integration. Focused evidence:
+  `cargo test --manifest-path runtime-bevy/Cargo.toml -p threenative_loader should_load_kinematic_mover_component`,
+  `cargo test --manifest-path runtime-bevy/Cargo.toml -p threenative_runtime kinematic_mover_should`,
+  and `pnpm verify:conformance`. Waypoint mover runtime behavior remains
+  unsupported until a shared web/Bevy conformance fixture is added for it.
 - The authoring-abstractions Phase 5 paper-cut slice improves structured
   authoring commands and recipes: third-person recipes now stamp safe capsule
   centers, material editing works inside grouped material documents, and scene

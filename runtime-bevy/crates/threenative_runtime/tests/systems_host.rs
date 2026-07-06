@@ -542,14 +542,14 @@ fn systems_host_should_run_startup_once_when_native_loop_advances_multiple_frame
         &mut bundle,
         &mut state,
         loop_options(0.25, 0.25, false),
-        |_bundle, _fixed_delta| physics_steps += 1,
+        |_bundle, _fixed_delta, _script_posed_entities| physics_steps += 1,
     )
     .expect("first frame should run");
     run_native_systems_frame_with_input(
         &mut bundle,
         &mut state,
         loop_options(0.25, 0.25, false),
-        |_bundle, _fixed_delta| physics_steps += 1,
+        |_bundle, _fixed_delta, _script_posed_entities| physics_steps += 1,
     )
     .expect("second frame should run");
 
@@ -579,7 +579,7 @@ fn systems_host_should_run_fixed_update_once_per_accumulated_fixed_tick() {
         &mut bundle,
         &mut state,
         loop_options(0.6, 0.25, false),
-        |_bundle, _fixed_delta| physics_steps += 1,
+        |_bundle, _fixed_delta, _script_posed_entities| physics_steps += 1,
     )
     .expect("frame should run");
 
@@ -609,7 +609,7 @@ fn systems_host_should_skip_gameplay_schedules_while_native_loop_is_paused() {
         &mut bundle,
         &mut state,
         loop_options(1.0, 0.25, true),
-        |_bundle, _fixed_delta| physics_steps += 1,
+        |_bundle, _fixed_delta, _script_posed_entities| physics_steps += 1,
     )
     .expect("paused frame should be accounted");
 
@@ -629,6 +629,40 @@ fn systems_host_should_skip_gameplay_schedules_while_native_loop_is_paused() {
     assert_eq!(state.tick, 0);
     assert!(!state.startup_complete);
     assert!(state.paused);
+}
+
+#[test]
+fn systems_host_should_carry_script_posed_entities_to_next_physics_step() {
+    let root = write_bundle("loop-script-pose-skip", "system_movePlayer");
+    let mut bundle = load_bundle(&root).expect("scripted bundle should load");
+    let mut state = NativeGameLoopState::default();
+
+    let run = run_native_systems_frame_with_input(
+        &mut bundle,
+        &mut state,
+        loop_options(0.1, 0.25, false),
+        |_bundle, _fixed_delta, script_posed_entities| {
+            assert!(script_posed_entities.is_empty());
+        },
+    )
+    .expect("first frame should run update");
+
+    assert!(run.transform_patches.contains("player"));
+    assert!(state.script_posed_entities.contains("player"));
+
+    let mut saw_script_pose = false;
+    run_native_systems_frame_with_input(
+        &mut bundle,
+        &mut state,
+        loop_options(0.25, 0.25, false),
+        |_bundle, _fixed_delta, script_posed_entities| {
+            saw_script_pose = script_posed_entities.contains("player");
+        },
+    )
+    .expect("second frame should run physics");
+
+    assert!(saw_script_pose);
+    assert!(state.script_posed_entities.contains("player"));
 }
 
 #[test]

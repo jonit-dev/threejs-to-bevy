@@ -1,4 +1,5 @@
 use std::collections::BTreeMap;
+use std::collections::BTreeSet;
 
 use rapier3d::prelude::*;
 use serde::Serialize;
@@ -160,13 +161,26 @@ pub fn trace_physics_joints(bundle: &LoadedBundle) -> Vec<PhysicsJointObservatio
 }
 
 pub fn step_bundle_physics(bundle: &mut LoadedBundle, fixed_delta: f32) {
+    step_bundle_physics_with_script_poses(bundle, fixed_delta, &BTreeSet::new());
+}
+
+pub fn step_bundle_physics_with_script_poses(
+    bundle: &mut LoadedBundle,
+    fixed_delta: f32,
+    script_posed_entities: &BTreeSet<String>,
+) {
     let mut entities = bundle
         .world
         .entities
         .iter()
         .filter_map(simulated_entity)
         .collect::<Vec<_>>();
-    step_rapier_bodies(&mut entities, fixed_delta, [0.0, -9.81, 0.0]);
+    step_rapier_bodies(
+        &mut entities,
+        fixed_delta,
+        [0.0, -9.81, 0.0],
+        script_posed_entities,
+    );
     for simulated in entities {
         let Some(entity) = bundle
             .world
@@ -435,6 +449,7 @@ fn step_rapier_bodies(
     entities: &mut [SimulatedEntity],
     fixed_delta: f32,
     gravity: [f32; 3],
+    script_posed_entities: &BTreeSet<String>,
 ) -> BTreeMap<String, Vec<String>> {
     let mut world = PhysicsWorld::new();
     world.gravity = vector![gravity[0], gravity[1], gravity[2]].into();
@@ -447,7 +462,14 @@ fn step_rapier_bodies(
         let Some(body_kind) = entity.body_kind.as_deref() else {
             continue;
         };
-        let velocity = entity.velocity.unwrap_or([0.0, 0.0, 0.0]);
+        let source_velocity = entity.velocity.unwrap_or([0.0, 0.0, 0.0]);
+        let should_skip_velocity = entity.body_kind.as_deref() == Some("kinematic")
+            && script_posed_entities.contains(&entity.id);
+        let velocity = if should_skip_velocity {
+            [0.0, 0.0, 0.0]
+        } else {
+            source_velocity
+        };
         let mut body = match body_kind {
             "dynamic" => RigidBodyBuilder::dynamic(),
             "kinematic" => RigidBodyBuilder::kinematic_velocity_based(),
@@ -504,11 +526,18 @@ fn step_rapier_bodies(
         let Some(handle) = handles.get(&entity.id) else {
             continue;
         };
+        let source_velocity = entity.velocity.unwrap_or([0.0, 0.0, 0.0]);
         let body = &world.bodies[*handle];
         let translation = body.translation();
         let velocity = body.linvel();
-        entity.center = [translation.x, translation.y, translation.z];
-        entity.velocity = Some([velocity.x, velocity.y, velocity.z]);
+        if entity.body_kind.as_deref() == Some("kinematic")
+            && script_posed_entities.contains(&entity.id)
+        {
+            entity.velocity = Some(source_velocity);
+        } else {
+            entity.center = [translation.x, translation.y, translation.z];
+            entity.velocity = Some([velocity.x, velocity.y, velocity.z]);
+        }
     }
 
     contacts_from_overlaps(entities)
