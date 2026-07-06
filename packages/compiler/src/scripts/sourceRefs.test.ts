@@ -212,7 +212,42 @@ test("should reject unsupported script helper imports", async () => {
 
     assert.equal(result.diagnostics[0]?.code, "TN_SCRIPT_UNSUPPORTED_IMPORT");
     assert.equal(result.diagnostics[0]?.target, "kartArcadePhysics");
+    assert.equal(result.diagnostics[0]?.fix?.allowed?.includes("@threenative/script-stdlib"), true);
+    assert.equal(result.diagnostics[0]?.fix?.snippet, 'import { Vec3 } from "@threenative/script-stdlib";');
     assert.equal(result.systems[0]?.script?.source, undefined);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should clear unsupported import diagnostic when fix snippet is applied", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-script-source-ref-import-fix-"));
+  try {
+    await mkdir(join(root, "src/scripts"), { recursive: true });
+    const scriptPath = join(root, "src/scripts/kart.ts");
+    await writeFile(scriptPath, `import * as THREE from "three";\nexport const kartArcadePhysics = () => THREE.Vector3;\n`);
+
+    const systems: ISystemScriptSource[] = [
+      {
+        name: "kartArcadePhysics",
+        script: {
+          exportName: "system_kartArcadePhysics",
+          sourceRef: {
+            export: "kartArcadePhysics",
+            module: "src/scripts/kart.ts",
+            systemId: "kartArcadePhysics",
+          },
+        },
+      },
+    ];
+    const rejected = resolveSystemScriptSources(systems, root);
+    assert.equal(rejected.diagnostics[0]?.code, "TN_SCRIPT_UNSUPPORTED_IMPORT");
+
+    await writeFile(scriptPath, `${rejected.diagnostics[0]?.fix?.snippet ?? ""}\nexport const kartArcadePhysics = () => Vec3.add([1, 0, 0], [0, 0, 1]);\n`);
+    const fixed = resolveSystemScriptSources(systems, root);
+
+    assert.deepEqual(fixed.diagnostics, []);
+    assert.match(fixed.systems[0]?.script?.source ?? "", /Vec3\.add/);
   } finally {
     await rm(root, { force: true, recursive: true });
   }
@@ -351,6 +386,7 @@ export function copperRailSwitcherSystem(context: unknown) {
       ],
     );
     assert.equal(result.diagnostics[0]?.code, "TN_SCRIPT_MODULE_LOCAL_REFERENCE_UNSUPPORTED");
+    assert.equal(result.diagnostics[0]?.fix?.snippet?.includes("const speed = 3.5"), true);
     assert.match(result.diagnostics[0]?.message ?? "", /scripts\.bundle\.js/);
     assert.match(result.diagnostics[0]?.suggestion ?? "", /Inline deterministic helpers/);
     assert.equal(result.systems[0]?.script?.source, undefined);

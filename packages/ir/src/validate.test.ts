@@ -298,7 +298,9 @@ test("should reject mesh renderer material references missing from materials doc
     const result = await validateBundle(root);
 
     assert.equal(result.ok, false);
-    assert.equal(result.diagnostics.find((diagnostic) => diagnostic.code === "TN_IR_MESH_RENDERER_MATERIAL_MISSING")?.path, "world.ir.json/entities/0/components/MeshRenderer/material");
+    const diagnostic = result.diagnostics.find((candidate) => candidate.code === "TN_IR_MESH_RENDERER_MATERIAL_MISSING");
+    assert.equal(diagnostic?.path, "world.ir.json/entities/0/components/MeshRenderer/material");
+    assert.equal(diagnostic?.fix?.instruction.includes("durable material source document"), true);
   } finally {
     await rm(root, { force: true, recursive: true });
   }
@@ -434,7 +436,9 @@ test("should reject non finite transform values", async () => {
     const result = await validateBundle(root);
 
     assert.equal(result.ok, false);
-    assert.equal(result.diagnostics.find((diagnostic) => diagnostic.code === "TN_IR_TRANSFORM_VALUE_INVALID")?.path, "world.ir.json/entities/0/components/Transform/position");
+    const diagnostic = result.diagnostics.find((candidate) => candidate.code === "TN_IR_TRANSFORM_VALUE_INVALID");
+    assert.equal(diagnostic?.path, "world.ir.json/entities/0/components/Transform/position");
+    assert.equal(diagnostic?.fix?.snippet?.includes('"scale": [1, 1, 1]'), true);
   } finally {
     await rm(root, { force: true, recursive: true });
   }

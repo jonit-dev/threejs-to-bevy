@@ -6,6 +6,10 @@ export interface ICommandResult {
 
 export interface IDiagnosticPayload {
   code: string;
+  fix?: {
+    instruction: string;
+    [key: string]: unknown;
+  };
   message: string;
   severity?: "error" | "warning" | "info";
   [key: string]: unknown;
@@ -17,7 +21,7 @@ export function diagnosticResult(
 ): ICommandResult {
   const normalizedPayload =
     options.exitCode === 0 || payload.severity !== undefined ? payload : { ...payload, severity: "error" as const };
-  const body = options.json ? `${JSON.stringify(normalizedPayload, null, 2)}\n` : `${payload.message}\n`;
+  const body = options.json ? `${JSON.stringify(normalizedPayload, null, 2)}\n` : `${formatHumanDiagnostic(payload)}\n`;
 
   if (!options.json && options.stderr === true) {
     return {
@@ -31,6 +35,14 @@ export function diagnosticResult(
     exitCode: options.exitCode,
     stdout: body,
   };
+}
+
+function formatHumanDiagnostic(payload: IDiagnosticPayload): string {
+  const lines = [payload.message];
+  if (payload.fix?.instruction !== undefined) {
+    lines.push(`Fix: ${payload.fix.instruction}`);
+  }
+  return lines.join("\n");
 }
 
 export function formatPackageRepairHintDiagnostic(options: {

@@ -53,6 +53,13 @@ import { validateUnsupportedFields } from "./validationDiagnostics.js";
 
 export interface IIrDiagnostic {
   code: string;
+  fix?: {
+    allowed?: readonly string[];
+    cookbook?: string;
+    docs?: string;
+    instruction: string;
+    snippet?: string;
+  };
   limit?: number | readonly string[];
   message: string;
   path: string;
@@ -821,6 +828,12 @@ function validateMeshRendererReferences(
     if (renderer.material !== undefined && !materialIds.has(renderer.material)) {
       diagnostics.push({
         code: "TN_IR_MESH_RENDERER_MATERIAL_MISSING",
+        fix: {
+          cookbook: "materials-first-pass",
+          docs: "docs/contracts/ir.md",
+          instruction: "Add the missing material to the durable material source document or update MeshRenderer.material to an existing material id.",
+          snippet: '{ "id": "mat.default", "color": "#ffffff", "roughness": 0.8, "metalness": 0 }',
+        },
         message: `Entity '${entity.id}' references missing material '${renderer.material}'.`,
         path: `${path}/entities/${entityIndex}/components/MeshRenderer/material`,
         severity: "error",
@@ -851,6 +864,11 @@ function validateTransformComponents(entity: IWorldEntity, path: string, diagnos
     if (values !== undefined && (!Array.isArray(values) || values.some((value) => typeof value !== "number" || !Number.isFinite(value)))) {
       diagnostics.push({
         code: "TN_IR_TRANSFORM_VALUE_INVALID",
+        fix: {
+          docs: "docs/contracts/ir.md",
+          instruction: "Use finite numeric Transform vectors; repair the durable scene source that emitted this IR path.",
+          snippet: '{ "Transform": { "position": [0, 0, 0], "rotation": [0, 0, 0], "scale": [1, 1, 1] } }',
+        },
         message: `Entity '${entity.id}' has an invalid Transform.${key} value.`,
         path: `${path}/components/Transform/${key}`,
         severity: "error",

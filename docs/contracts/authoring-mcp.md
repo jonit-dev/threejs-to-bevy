@@ -13,7 +13,27 @@ closely as their transport allows:
   reports it.
 - `filesWritten`: project-relative structured source documents written.
 - `diagnostics`: stable authoring diagnostics with code, severity, file/path,
-  value, related references, and suggestion when available.
+  value, related references, suggestion, and optional structured `fix` when
+  available.
+
+Diagnostic `fix` payloads are additive and optional. When present, adapters
+must preserve them unchanged:
+
+```ts
+{
+  instruction: string;
+  snippet?: string;
+  allowed?: string[];
+  cookbook?: string;
+  docs?: string;
+}
+```
+
+`instruction` is the machine-readable repair step. `snippet` is an example that
+must pass the relevant validator in tests when the repair is code-shaped.
+`allowed` lists valid package names or values for allowlist diagnostics.
+`cookbook` names a matching executable cookbook entry when one exists, and
+`docs` points at the durable contract or workflow that owns the rule.
 
 MCP results may include transport metadata such as the delegated CLI argv and
 exit code, but that metadata is not an authoring contract. The wrapped
@@ -25,7 +45,7 @@ MCP tools must be thin wrappers:
 
 - translate tool arguments to an existing authoring core operation or
   `tn ... --json` command;
-- preserve CLI/core diagnostics and result fields;
+- preserve CLI/core diagnostics, including `fix`, and result fields;
 - keep project-root allowlists and path guardrails;
 - reject traversal paths and generated output paths when a tool argument is a
   source path;

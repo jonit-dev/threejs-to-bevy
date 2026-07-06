@@ -1,3 +1,5 @@
+import { prescriptiveFixForCode } from "@threenative/authoring";
+
 import type { ICompilerDiagnostic } from "../diagnostics.js";
 import { maskStringAndCommentText } from "./lexical.js";
 
@@ -91,6 +93,7 @@ export function diagnosePortableSystem(source: IPortableSystemSource): ICompiler
       {
         code: rule.code,
         file: source.file,
+        fix: prescriptiveFixForCode(rule.code),
         message: `System '${source.systemName}' uses unsupported ${rule.label}.`,
         path: `systems/${source.systemName}`,
         severity: "error" as const,

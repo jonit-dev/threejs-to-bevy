@@ -13,7 +13,7 @@ import { AUTHORING_MCP_TOOLS, callAuthoringMcpTool, type IAuthoringMcpResult } f
 
 interface IJsonPayload {
   code: string;
-  diagnostics?: Array<{ code: string; path?: string; suggestion?: string }>;
+  diagnostics?: Array<{ code: string; fix?: { docs?: string; instruction: string; snippet?: string }; path?: string; suggestion?: string }>;
   filesWritten?: string[];
   imported?: Array<{ artifact: string; file: string; kind: string }>;
   ok?: boolean;
@@ -79,6 +79,8 @@ test("mcp wrapper preserves CLI diagnostics and suggestions", async () => {
     assert.deepEqual(mcp.content, JSON.parse(cli.stdout));
     assert.equal((mcp.content as IJsonPayload).diagnostics?.[0]?.code, "TN_AUTHORING_REF_MISSING");
     assert.equal((mcp.content as IJsonPayload).diagnostics?.[0]?.suggestion, "Did you mean 'player-kart'?");
+    assert.deepEqual((mcp.content as IJsonPayload).diagnostics?.[0]?.fix, (JSON.parse(cli.stdout) as IJsonPayload).diagnostics?.[0]?.fix);
+    assert.equal((mcp.content as IJsonPayload).diagnostics?.[0]?.fix?.instruction.includes("Create the referenced durable declaration"), true);
   } finally {
     await rm(root, { force: true, recursive: true });
   }

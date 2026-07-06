@@ -42,9 +42,17 @@ interface IGameProductionGateOptions {
   root?: string;
 }
 
-const GENERATED_GAME_PROJECTS = [
+// Representative generated-game release evidence set.
+// Current repo inventory has two generated games with production plan artifacts:
+// humanoid-physics-course covers native scenario/character physics proof, and
+// metro-surfer-heist covers runner/collector/trigger UI production evidence.
+export const GENERATED_GAME_PROJECTS = [
   "examples/humanoid-physics-course",
   "examples/metro-surfer-heist",
+] as const;
+
+export const GENERATED_GAME_BUILD_ONLY_PROJECTS = [
+  "examples/stylized-nature-component",
 ] as const;
 
 export async function runGameProductionGate(options: IGameProductionGateOptions = {}): Promise<IGameProductionGateResult> {
@@ -160,19 +168,32 @@ export async function runGameProductionGate(options: IGameProductionGateOptions 
 }
 
 async function generatedGameInventoryDiagnostics(root: string, projects: IGameProductionGateProject[]): Promise<VerificationDiagnostic[]> {
-  const listed = new Set(projects.map((project) => project.projectPath));
+  const releaseListed = new Set(projects.map((project) => project.projectPath));
+  const buildOnlyListed = new Set(GENERATED_GAME_BUILD_ONLY_PROJECTS);
+  const listed = new Set([...releaseListed, ...buildOnlyListed]);
+  const overlap = [...releaseListed].filter((projectPath) => buildOnlyListed.has(projectPath as (typeof GENERATED_GAME_BUILD_ONLY_PROJECTS)[number]));
   const candidates = await discoverGeneratedGameCandidates(root);
   const unlisted = candidates.filter((candidate) => !listed.has(candidate));
-  if (unlisted.length === 0) {
-    return [];
+  const diagnostics: VerificationDiagnostic[] = [];
+  if (overlap.length > 0) {
+    diagnostics.push({
+      code: "TN_VERIFY_GENERATED_GAME_INVENTORY_OVERLAP",
+      message: `Generated-game examples must be either release-enrolled or build-only, not both: ${overlap.join(", ")}.`,
+      path: "tools/verify/src/gameProductionGate.ts",
+      severity: "error",
+      suggestedFix: "Remove overlapping examples from GENERATED_GAME_BUILD_ONLY_PROJECTS or GENERATED_GAME_PROJECTS.",
+    });
   }
-  return [{
-    code: "TN_VERIFY_GENERATED_GAME_INVENTORY_DRIFT",
-    message: `Generated-game aggregate inventory is missing production-artifact candidates: ${unlisted.join(", ")}.`,
-    path: "tools/verify/src/gameProductionGate.ts",
-    severity: "error",
-    suggestedFix: "Add each generated game with artifacts/game-production/plan.json to GENERATED_GAME_PROJECTS, or remove stale production artifacts if it is not a maintained generated-game proof.",
-  }];
+  if (unlisted.length > 0) {
+    diagnostics.push({
+      code: "TN_VERIFY_GENERATED_GAME_INVENTORY_DRIFT",
+      message: `Generated-game aggregate inventory is missing production-artifact candidates: ${unlisted.join(", ")}.`,
+      path: "tools/verify/src/gameProductionGate.ts",
+      severity: "error",
+      suggestedFix: "Add each generated game with artifacts/game-production/plan.json to GENERATED_GAME_PROJECTS or GENERATED_GAME_BUILD_ONLY_PROJECTS, or remove stale production artifacts if it is not maintained.",
+    });
+  }
+  return diagnostics;
 }
 
 async function generatedGameReadmeScriptDiagnostics(root: string, projects: IGameProductionGateProject[]): Promise<VerificationDiagnostic[]> {

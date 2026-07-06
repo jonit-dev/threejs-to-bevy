@@ -1,5 +1,25 @@
 # PRD: Docs Front Door Compaction
 
+Status: superseded and closed by
+[Meta-Layer Compression](../agent-ergonomics-2026-07-05/PRD-005-meta-layer-compression.md).
+
+Delivered by the superseding PRD:
+
+- `docs/STATUS.md` is now a <=250-line capability index.
+- Prior STATUS evidence prose is preserved under
+  `docs/status/capabilities/full-status-archive.md`.
+- Capability docs under `docs/status/capabilities/*.md` are linked from the
+  STATUS index and enforced by `pnpm check:docs`.
+- Active PRD links were updated to point at completed PRD-004 and this
+  superseded PRD.
+
+Not delivered here:
+
+- `docs/bevy-feature-parity.md` was not restructured into a new quick table;
+  PRD-005 scoped it to link-only updates because parity evidence is already
+  separately structured.
+- Roadmap/PRD sequencing was not expanded beyond the active PRD index updates.
+
 `Planning Mode: Principal Architect`
 `Complexity: 5 -> MEDIUM mode`
 

@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import { relative, resolve, sep } from "node:path";
 import ts from "typescript";
 
+import { prescriptiveFixForCode } from "@threenative/authoring";
 import type { ICompilerDiagnostic } from "../diagnostics.js";
 import { SUPPORTED_SCRIPT_HELPER_IMPORTS, type ISystemScriptSource, type SupportedScriptHelperImport } from "./bundle.js";
 
@@ -221,6 +222,7 @@ function unsupportedHelperImportDiagnostic(systemName: string, module: string, e
   return {
     code: "TN_SCRIPT_UNSUPPORTED_IMPORT",
     file: module,
+    fix: prescriptiveFixForCode("TN_SCRIPT_UNSUPPORTED_IMPORT"),
     message: `System '${systemName}' script module imports unsupported helper '${specifier ?? "<unknown>"}'.`,
     path: `systems/${systemName}/script/sourceRef/module`,
     severity: "error",
@@ -320,6 +322,7 @@ function diagnoseModuleLocalReferences(systemName: string, module: string, expor
   return [...references].sort().map((name) => ({
     code: "TN_SCRIPT_MODULE_LOCAL_REFERENCE_UNSUPPORTED",
     file: module,
+    fix: prescriptiveFixForCode("TN_SCRIPT_MODULE_LOCAL_REFERENCE_UNSUPPORTED"),
     message: `System '${systemName}' script export '${exportName}' references module-local value '${name}', which is not emitted into scripts.bundle.js.`,
     path: `systems/${systemName}/script/sourceRef/moduleLocals/${name}`,
     severity: "error" as const,

@@ -37,11 +37,22 @@ Execution order is intentional:
    `artifacts/iterate/latest/`, copies the full artifact directory with
    `--keep`, documents iterate as the starter inner loop, and is covered by
    CLI tests plus `pnpm verify:template-production`.
-4. [PRD-004 Prescriptive Diagnostics](PRD-004-prescriptive-diagnostics.md):
+4. [PRD-004 Prescriptive Diagnostics](../done/agent-ergonomics-2026-07-05/PRD-004-prescriptive-diagnostics.md)
+   (done):
    top agent-hit diagnostics carry the fix, not just the violation.
-5. [PRD-005 Meta-Layer Compression](PRD-005-meta-layer-compression.md):
-   STATUS.md becomes a bounded index; the generated-games release gate keeps
-   3-5 representative examples.
+   Implementation status: shared authoring/compiler/IR diagnostics accept
+   optional structured `fix` payloads; the committed top-15 registry includes
+   evidence and snippet validation; compiler, IR, playtest scenario, CLI text,
+   and MCP parity tests cover passthrough; web and desktop humanoid movement
+   playtests passed after the change.
+5. [PRD-005 Meta-Layer Compression](../done/agent-ergonomics-2026-07-05/PRD-005-meta-layer-compression.md)
+   (done):
+   STATUS.md is a 67-line enforced index over capability docs; prior STATUS
+   prose is preserved under `docs/status/capabilities/full-status-archive.md`;
+   `check:docs` enforces the line budget, capability links, and orphan checks;
+   the current generated-game gate audits the two production-plan examples
+   present in this repo, and `verify:example-build-sweep` covers the remaining
+   build-only example.
 
 Decision gate: after PRD-001's pilot report, re-run the benchmark after
 PRD-002/003/004 land. If ThreeNative cannot get within ~2x of vanilla

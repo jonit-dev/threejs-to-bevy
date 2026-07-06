@@ -142,6 +142,28 @@ test("rejects generated-game aggregate inventory drift", async () => {
   }
 });
 
+test("accepts generated-game candidates listed as build-only examples", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-generated-game-build-only-inventory-"));
+  try {
+    await mkdir(join(root, "content/scenes"), { recursive: true });
+    await mkdir(join(root, "examples/stylized-nature-component/artifacts/game-production"), { recursive: true });
+    await writeFile(join(root, "content/scenes/arena.scene.json"), `${JSON.stringify({ schema: "threenative.scene", id: "arena" }, null, 2)}\n`);
+    await writeFile(join(root, "examples/stylized-nature-component/artifacts/game-production/plan.json"), `${JSON.stringify({ schema: "threenative.game-plan", mutate: false }, null, 2)}\n`);
+    const reportPath = join(root, "artifacts/game-production/verification-report.json");
+
+    const result = await runGameProductionGate({
+      generatedGames: true,
+      projects: [{ projectPath: "." }],
+      reportPath,
+      root,
+    });
+
+    assert.equal(result.diagnostics.some((diagnostic) => diagnostic.code === "TN_VERIFY_GENERATED_GAME_INVENTORY_DRIFT"), false);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
 test("rejects generated-game README references to missing package scripts", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-generated-game-readme-script-gate-"));
   try {

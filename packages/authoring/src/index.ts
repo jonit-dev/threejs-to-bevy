@@ -1,10 +1,13 @@
 export type {
   AuthoringDiagnosticSeverity,
   IAuthoringDiagnostic,
+  IAuthoringDiagnosticFix,
   IAuthoringDiagnosticInput,
   IAuthoringDiagnosticRelated,
 } from "./diagnostics.js";
 export { authoringDiagnostic, hasAuthoringErrors, sortAuthoringDiagnostics, unsupportedOperationDiagnostic } from "./diagnostics.js";
+export type { IPrescriptiveDiagnosticCode } from "./prescriptiveCodes.js";
+export { PRESCRIPTIVE_DIAGNOSTIC_CODES, prescriptiveFixForCode } from "./prescriptiveCodes.js";
 export type { AuthoringDocumentKind, IAuthoringDocument, IReadAuthoringDocumentResult } from "./documents.js";
 export {
   classifyAuthoringDocument,

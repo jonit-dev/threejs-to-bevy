@@ -29,6 +29,7 @@
     "verify:focused": "pnpm build:verify-tools && node tools/verify/dist/cli/run.js",
     "verify:game-production": "pnpm build:verify-tools && node tools/verify/dist/cli/run.js verify:game-production",
     "verify:generated-games": "pnpm build:verify-tools && node tools/verify/dist/cli/run.js verify:generated-games",
+    "verify:example-build-sweep": "pnpm build:verify-tools && node tools/verify/dist/cli/run.js verify:example-build-sweep",
     "verify:gltf-fidelity": "pnpm build:verify-tools && node --test tools/verify/dist/gltfFidelity.test.js",
     "verify:full": "pnpm verify:all && pnpm verify:release",
     "verify:parity:push": "node scripts/verify-parity-push.mjs",
@@ -44,7 +45,7 @@
     "verify:template-production": "pnpm build:verify-tools && node tools/verify/dist/cli/run.js verify:template-production",
     "verify:template-playability": "pnpm build:verify-tools && node tools/verify/dist/cli/run.js verify:template-playability",
     "verify:ui-persistence-settings-facades": "pnpm build:verify-tools && node tools/verify/dist/cli/run.js verify:ui-persistence-settings-facades",
-    "verify:smoke": "pnpm check:names && pnpm check:docs",
+    "verify:smoke": "pnpm check:names && pnpm check:docs && pnpm verify:example-build-sweep",
     "prepare": "husky"
   },
   "devDependencies": {

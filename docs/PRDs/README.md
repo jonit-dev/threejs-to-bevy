@@ -30,14 +30,15 @@ the rest.
 - [Single-Command Iteration Loop](done/agent-ergonomics-2026-07-05/PRD-003-single-command-iteration-loop.md):
   `tn iterate` collapses validate/build/screenshot/playtest into one JSON
   response with guaranteed preview teardown.
-- [Prescriptive Diagnostics](agent-ergonomics-2026-07-05/PRD-004-prescriptive-diagnostics.md):
+- [Prescriptive Diagnostics](done/agent-ergonomics-2026-07-05/PRD-004-prescriptive-diagnostics.md):
   structured `fix` field on the shared diagnostic contract for the top
   agent-hit rejection codes, with snippet-validity tests and MCP parity.
-- [Meta-Layer Compression](agent-ergonomics-2026-07-05/PRD-005-meta-layer-compression.md):
+- [Meta-Layer Compression](done/agent-ergonomics-2026-07-05/PRD-005-meta-layer-compression.md):
   STATUS.md becomes a <=250-line enforced index over per-capability docs;
-  the generated-games release gate prunes to 5 representative examples plus
-  a build-only sweep. Supersedes
-  [Docs Front Door Compaction](other/docs-front-door-compaction.md).
+  the current generated-game release gate audits the two production-plan
+  examples in this repo plus a build-only sweep for the remaining example.
+  Supersedes
+  [Docs Front Door Compaction](done/other/docs-front-door-compaction.md).
 
 Open PRDs usually live under `docs/PRDs/other/`. The near-term proof
 infrastructure bundle lives under
@@ -120,10 +121,11 @@ execution bundle.
   portable plugin manifests, deterministic source-backed install/remove
   operations, compiler provenance, runtime metadata parity, plugin verification
   gates, and a sample checkpoint-orb plugin proven working in a playable game.
-- [Docs Front Door Compaction](other/docs-front-door-compaction.md):
+- [Docs Front Door Compaction](done/other/docs-front-door-compaction.md):
   keeps `STATUS.md`, parity docs, and the PRD index sharp by moving historical
   evidence to appendices and adding docs checks for current commands, gaps, and
-  roadmap-to-PRD links.
+  roadmap-to-PRD links. Superseded and closed by
+  [Meta-Layer Compression](done/agent-ergonomics-2026-07-05/PRD-005-meta-layer-compression.md).
 
 ### Advanced And Boundary Work
 

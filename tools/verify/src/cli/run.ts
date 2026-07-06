@@ -285,6 +285,25 @@ export const FOCUSED_GATES: Record<string, FocusedGate> = {
       protects: "Generated-game QA/release evidence, clean release risks, and objective screenshot quality sidecars.",
     },
   },
+  "verify:example-build-sweep": {
+    commands: [
+      ["pnpm", "--filter", "@threenative/sdk", "build"],
+      ["pnpm", "--filter", "@threenative/ir", "build"],
+      ["pnpm", "--filter", "@threenative/authoring", "build"],
+      ["pnpm", "--filter", "@threenative/compiler", "build"],
+      ["pnpm", "--filter", "@threenative/runtime-web-three", "build"],
+      ["pnpm", "--filter", "@threenative/cli", "build"],
+      ["pnpm", "--filter", "@threenative/verify-tools", "build"],
+      ["node", "tools/verify/dist/cli/example-build-sweep.js"],
+    ],
+    description: "Build-only sweep for generated-game examples outside the release evidence set.",
+    metadata: {
+      owner: "tools/verify example-build-sweep gate",
+      profile: "smoke",
+      reason: "Keeps de-enrolled examples buildable without requiring full QA/release evidence.",
+      protects: "Generated-game inventory pruning, example build drift, and release gate scope.",
+    },
+  },
   "verify:template-production": {
     commands: [
       ["pnpm", "--filter", "@threenative/verify-tools", "build"],
@@ -376,6 +395,7 @@ const RELEASE_PROFILE_GATES = [
   "verify:animation-physics-residuals",
   "verify:bundle-safety-hardening",
   "verify:generated-games",
+  "verify:example-build-sweep",
   "verify:input-ui-polish",
   "verify:persistence-reload",
   "verify:production-hardening",

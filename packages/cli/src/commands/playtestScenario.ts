@@ -102,6 +102,11 @@ export interface IPlaytestScenario {
 
 export interface IPlaytestScenarioDiagnostic {
   code: "TN_PLAYTEST_SCENARIO_INVALID" | "TN_PLAYTEST_SCENARIO_NOT_FOUND" | "TN_PLAYTEST_SCENARIO_STEP_INVALID";
+  fix?: {
+    docs?: string;
+    instruction: string;
+    snippet?: string;
+  };
   message: string;
   severity: "error";
   suggestion?: string;
@@ -362,6 +367,11 @@ function validateViewport(value: unknown): IPlaytestViewport {
 function invalidScenario(scenarioPath: string, message: string): PlaytestScenarioError {
   return new PlaytestScenarioError({
     code: "TN_PLAYTEST_SCENARIO_INVALID",
+    fix: {
+      docs: "docs/workflows/playtesting.md",
+      instruction: "Use playtest schemaVersion 1 with a file-safe name, target, viewport, warmupFrames, and non-empty steps.",
+      snippet: '{ "schemaVersion": 1, "name": "forward-smoke", "target": "web", "viewport": { "width": 1280, "height": 720 }, "warmupFrames": 10, "steps": [{ "press": "KeyW", "holdFrames": 30, "release": true }] }',
+    },
     message: `Playtest scenario '${scenarioPath}' is invalid: ${message}`,
     severity: "error",
     suggestion: "Use schemaVersion 1 with a file-safe name, a supported target, and non-empty steps.",
@@ -371,6 +381,11 @@ function invalidScenario(scenarioPath: string, message: string): PlaytestScenari
 function invalidStep(scenarioPath: string, message: string): PlaytestScenarioError {
   return new PlaytestScenarioError({
     code: "TN_PLAYTEST_SCENARIO_STEP_INVALID",
+    fix: {
+      docs: "docs/workflows/playtesting.md",
+      instruction: "Give each step either a press with positive holdFrames or a positive waitFrames value.",
+      snippet: '{ "press": "KeyW", "holdFrames": 30, "release": true }',
+    },
     message: `Playtest scenario '${scenarioPath}' has an invalid step: ${message}`,
     severity: "error",
     suggestion: "Each step must define press or waitFrames; holdFrames and waitFrames must be positive integers.",

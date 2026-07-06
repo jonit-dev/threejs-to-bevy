@@ -160,6 +160,7 @@ test("rejects generated bundle paths as source", async () => {
 
     assert.equal(result.document, undefined);
     assert.equal(result.diagnostics[0]?.code, "TN_AUTHORING_GENERATED_SOURCE_PATH");
+    assert.equal(result.diagnostics[0]?.fix?.instruction.includes("durable source document"), true);
     assert.equal(basenameResult.document, undefined);
     assert.equal(basenameResult.diagnostics[0]?.code, "TN_AUTHORING_GENERATED_SOURCE_PATH");
   } finally {

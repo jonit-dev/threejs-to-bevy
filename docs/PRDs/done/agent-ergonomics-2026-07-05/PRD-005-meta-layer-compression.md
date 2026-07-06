@@ -1,5 +1,15 @@
 # PRD: Meta-Layer Compression (STATUS Index + Gate Pruning)
 
+Status: done.
+
+Implementation note: the PRD was written against a stale 21-generated-game
+inventory. At execution time this repo had two generated-game production
+candidates (`humanoid-physics-course`, `metro-surfer-heist`) and one remaining
+example (`stylized-nature-component`). The release gate therefore remains
+enrolled on the two production-plan candidates, and the new build-only sweep
+covers the remaining example. The no-third-state inventory rule is enforced
+against the current production-plan candidates.
+
 `Planning Mode: Principal Architect`
 `Complexity: 5 -> MEDIUM mode`
 

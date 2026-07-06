@@ -50,6 +50,43 @@ test("should document canonical verify tool paths", async () => {
   assert.equal(result.ok, true, result.diagnostics.map((diagnostic) => diagnostic.message).join("\n"));
 });
 
+test("should fail with line count when STATUS budget is exceeded", async () => {
+  const root = await makeDocsRepo();
+  await writeFile(
+    join(root, "docs/STATUS.md"),
+    [
+      "# Status",
+      "legacy milestone names remain.",
+      "[cleanup PRD](PRDs/archive/cleanup-versioned-debt.md)",
+      "`pnpm verify:release`",
+      "`verify:scripting-helpers-lifecycle`",
+      "[authoring](status/capabilities/authoring.md)",
+      ...Array.from({ length: 260 }, (_, index) => `filler ${index}`),
+    ].join("\n"),
+  );
+
+  const result = await checkDocs(root);
+
+  assert.equal(result.ok, false);
+  assert.equal(
+    result.diagnostics.some((diagnostic) => diagnostic.code === "TN_DOCS_STATUS_LINE_BUDGET_EXCEEDED" && diagnostic.message.includes("250")),
+    true,
+  );
+});
+
+test("should fail when a capability doc is orphaned", async () => {
+  const root = await makeDocsRepo();
+  await writeFile(join(root, "docs/status/capabilities/orphan.md"), "# Orphan\n");
+
+  const result = await checkDocs(root);
+
+  assert.equal(result.ok, false);
+  assert.equal(
+    result.diagnostics.some((diagnostic) => diagnostic.code === "TN_DOCS_STATUS_CAPABILITY_ORPHAN" && diagnostic.path === "docs/status/capabilities/orphan.md"),
+    true,
+  );
+});
+
 test("should require stable contributor gates", async () => {
   const root = await makeDocsRepo();
   await writeFile(
@@ -85,6 +122,8 @@ async function makeDocsRepo() {
     await mkdir(join(root, "docs", group), { recursive: true });
     await writeFile(join(root, "docs", group, "README.md"), `# ${group}\n`);
   }
+  await mkdir(join(root, "docs/status/capabilities"), { recursive: true });
+  await writeFile(join(root, "docs/status/capabilities/authoring.md"), "# Authoring\n");
   await writeFile(join(root, "docs/PRDs/README.md"), "# PRDs\n\n[cleanup](archive/cleanup-versioned-debt.md)\n");
   await mkdir(join(root, "docs/PRDs/archive"), { recursive: true });
   await writeFile(join(root, "docs/PRDs/archive/cleanup-versioned-debt.md"), "# cleanup\n");
@@ -106,7 +145,7 @@ Run \`pnpm verify:release\`.
   );
   await writeFile(
     join(root, "docs/STATUS.md"),
-    "# Status\n\nlegacy milestone names remain.\n\n[cleanup PRD](PRDs/archive/cleanup-versioned-debt.md)\n\n`pnpm verify:release`\n\n`verify:scripting-helpers-lifecycle`\n",
+    "# Status\n\nlegacy milestone names remain.\n\n[cleanup PRD](PRDs/archive/cleanup-versioned-debt.md)\n\n`pnpm verify:release`\n\n`verify:scripting-helpers-lifecycle`\n\n[authoring](status/capabilities/authoring.md)\n",
   );
   await writeFile(
     join(root, "docs/contracts/scripting.md"),

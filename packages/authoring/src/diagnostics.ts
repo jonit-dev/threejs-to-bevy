@@ -1,3 +1,5 @@
+import { prescriptiveFixForCode } from "./prescriptiveCodes.js";
+
 export type AuthoringDiagnosticSeverity = "error" | "warning" | "info";
 
 export interface IAuthoringDiagnosticRelated {
@@ -6,11 +8,20 @@ export interface IAuthoringDiagnosticRelated {
   message: string;
 }
 
+export interface IAuthoringDiagnosticFix {
+  allowed?: readonly string[];
+  cookbook?: string;
+  docs?: string;
+  instruction: string;
+  snippet?: string;
+}
+
 export interface IAuthoringDiagnostic {
   code: string;
   severity: AuthoringDiagnosticSeverity;
   message: string;
   file?: string;
+  fix?: IAuthoringDiagnosticFix;
   path?: string;
   value?: unknown;
   suggestion?: string;
@@ -22,6 +33,7 @@ export interface IAuthoringDiagnosticInput {
   message: string;
   severity?: AuthoringDiagnosticSeverity;
   file?: string;
+  fix?: IAuthoringDiagnosticFix;
   path?: string;
   value?: unknown;
   suggestion?: string;
@@ -29,11 +41,13 @@ export interface IAuthoringDiagnosticInput {
 }
 
 export function authoringDiagnostic(input: IAuthoringDiagnosticInput): IAuthoringDiagnostic {
+  const fix = input.fix ?? prescriptiveFixForCode(input.code);
   return {
     code: input.code,
     severity: input.severity ?? "error",
     message: input.message,
     ...(input.file === undefined ? {} : { file: input.file }),
+    ...(fix === undefined ? {} : { fix }),
     ...(input.path === undefined ? {} : { path: input.path }),
     ...(input.value === undefined ? {} : { value: input.value }),
     ...(input.suggestion === undefined ? {} : { suggestion: input.suggestion }),

@@ -8,6 +8,8 @@ export interface DocsCheckResult {
   ok: boolean;
 }
 
+const STATUS_LINE_BUDGET = 250;
+
 export async function checkDocs(root: string): Promise<DocsCheckResult> {
   const diagnostics: VerificationDiagnostic[] = [];
   const statusPath = resolve(root, "docs/STATUS.md");
@@ -97,6 +99,7 @@ export async function checkDocs(root: string): Promise<DocsCheckResult> {
 
   diagnostics.push(...(await checkScriptingHelperDocs(root, status, packageJson)));
   diagnostics.push(...(await checkDocsLayout(root, readme, status)));
+  diagnostics.push(...(await checkStatusCapabilityIndex(root, status)));
 
   // @ts-expect-error legacy mjs gate consumed during typed-tools migration
   const namesModule = (await import("../../../scripts/check-current-names.mjs")) as {
@@ -116,6 +119,58 @@ export async function checkDocs(root: string): Promise<DocsCheckResult> {
   }
 
   return { diagnostics, ok: diagnostics.length === 0 };
+}
+
+async function checkStatusCapabilityIndex(root: string, status: string): Promise<VerificationDiagnostic[]> {
+  const diagnostics: VerificationDiagnostic[] = [];
+  if (!status) {
+    return diagnostics;
+  }
+
+  const lineCount = status.split(/\r?\n/).length;
+  if (lineCount > STATUS_LINE_BUDGET) {
+    diagnostics.push({
+      code: "TN_DOCS_STATUS_LINE_BUDGET_EXCEEDED",
+      message: `docs/STATUS.md has ${lineCount} lines; keep it at or below ${STATUS_LINE_BUDGET} lines and move detail to docs/status/capabilities/*.md.`,
+      path: "docs/STATUS.md",
+      severity: "error",
+    });
+  }
+
+  const capabilityLinks = markdownLinks(status)
+    .map((link) => link.split("#")[0] ?? "")
+    .filter((link) => link.startsWith("status/capabilities/") && link.endsWith(".md"));
+  const linked = new Set(capabilityLinks.map((link) => `docs/${link}`));
+  for (const link of capabilityLinks) {
+    const target = resolve(root, "docs", link);
+    if (!(await exists(target))) {
+      diagnostics.push({
+        code: "TN_DOCS_STATUS_CAPABILITY_LINK_BROKEN",
+        message: `docs/STATUS.md links to missing capability document '${link}'.`,
+        path: "docs/STATUS.md",
+        severity: "error",
+      });
+    }
+  }
+
+  const capabilityDir = resolve(root, "docs/status/capabilities");
+  const entries = await readdir(capabilityDir, { withFileTypes: true }).catch(() => []);
+  for (const entry of entries) {
+    if (!entry.isFile() || !entry.name.endsWith(".md")) {
+      continue;
+    }
+    const path = `docs/status/capabilities/${entry.name}`;
+    if (!linked.has(path)) {
+      diagnostics.push({
+        code: "TN_DOCS_STATUS_CAPABILITY_ORPHAN",
+        message: `Capability document '${path}' must be linked from docs/STATUS.md.`,
+        path,
+        severity: "error",
+      });
+    }
+  }
+
+  return diagnostics;
 }
 
 async function checkScriptingHelperDocs(root: string, status: string, packageJson: string): Promise<VerificationDiagnostic[]> {

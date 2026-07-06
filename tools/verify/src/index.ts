@@ -8,6 +8,7 @@ export { resolveArtifactTargets, toRepoRelative, type ArtifactOwner, type Artifa
 export { loadFixtureCatalog, resolveFixtureId, listCurrentFixtures } from "./conformance.js";
 export { runLegacyScriptAlias, resolveScriptAlias, formatDeprecationDiagnostic, listDeprecatedScriptAliases, isRegisteredGate, SCRIPT_ALIASES } from "./legacyAliases.js";
 export { runGameProductionGate, type IGameProductionGateResult } from "./gameProductionGate.js";
+export { runExampleBuildSweep, type IExampleBuildSweepResult } from "./exampleBuildSweep.js";
 export { runReleaseGate } from "./release.js";
 export { analyzeRenderLookMetrics, runRenderLookGate, type RenderLookGateResult, type RenderLookMetricInput, type RenderLookMetricSample } from "./renderLook.js";
 export { checkV9QualityGates, V9_FOCUSED_SCRIPT_NAMES, V9_SAMPLE_SCENES } from "./v9QualityGates.js";
