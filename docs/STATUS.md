@@ -122,6 +122,11 @@ system effect application reports `Transform` patch entity ids, the native game
 loop carries those ids into the next physics step, and kinematic velocity
 integration is skipped once without losing authored velocity. Focused evidence:
 `cargo test --manifest-path runtime-bevy/Cargo.toml -p threenative_runtime`.
+Native Bevy also honors `character.move` direction/speed overrides in the
+script host bridge and the shared V7 character trace now samples both axis input
+and direct override input. Focused evidence:
+`cargo test --manifest-path runtime-bevy/Cargo.toml -p threenative_runtime systems_host_should_expose_character_move_service`
+and `pnpm verify:conformance`.
 The same PRD now has an initial stdlib rig slice: `CharacterRig.update` and
 `CameraRig.thirdPerson` live in `@threenative/script-stdlib`, keep internal
 smoothing state in `context.state(...)`, call the promoted web character move

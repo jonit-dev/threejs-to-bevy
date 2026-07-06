@@ -126,8 +126,12 @@ implementation:
   mirrors the script-authored kinematic transform authority path by carrying
   successful `Transform` patch entity ids from system effects into the next
   physics step and skipping kinematic velocity integration once while preserving
-  authored velocity. Focused evidence:
-  `cargo test --manifest-path runtime-bevy/Cargo.toml -p threenative_runtime`.
+  authored velocity. Native Bevy also honors `character.move` direction/speed
+  overrides in the script host bridge, and the shared V7 character trace now
+  samples both axis input and direct override input. Focused evidence:
+  `cargo test --manifest-path runtime-bevy/Cargo.toml -p threenative_runtime`,
+  `cargo test --manifest-path runtime-bevy/Cargo.toml -p threenative_runtime systems_host_should_expose_character_move_service`,
+  and `pnpm verify:conformance`.
 - The authoring-abstractions Phase 4 slice introduces a portable
   `KinematicMover` IR component shape and formatted UI binding validation.
   Web runtime support currently covers sine movers, stable authored-origin

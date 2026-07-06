@@ -12,6 +12,7 @@
       "rejectedBundlePath": "packages/ir/fixtures/conformance/v7-rejected-physics-character/game.bundle",
       "targetCapabilities": [
         "character:blocking-runtime",
+        "character:move-override",
         "physics:contact-filtering",
         "physics:deterministic-contact-order",
         "physics:shape-cast"

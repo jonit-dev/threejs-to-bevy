@@ -35,6 +35,14 @@ pub struct CharacterTraceAxis<'a> {
     pub value: f32,
 }
 
+#[derive(Clone, Copy)]
+pub struct CharacterTraceInput<'a> {
+    pub axes: &'a [CharacterTraceAxis<'a>],
+    pub direction: Option<[f32; 2]>,
+    pub fixed_delta: f32,
+    pub speed: Option<f32>,
+}
+
 const SUPPORT_TOLERANCE: f32 = 0.1;
 const DEFAULT_SLOPE_LIMIT: f32 = 45.0;
 
@@ -95,6 +103,21 @@ pub fn trace_character_controllers(
     axes: &[CharacterTraceAxis<'_>],
     fixed_delta: f32,
 ) -> Vec<CharacterTraceObservation> {
+    trace_character_controllers_with_input(
+        bundle,
+        CharacterTraceInput {
+            axes,
+            direction: None,
+            fixed_delta,
+            speed: None,
+        },
+    )
+}
+
+pub fn trace_character_controllers_with_input(
+    bundle: &LoadedBundle,
+    input: CharacterTraceInput<'_>,
+) -> Vec<CharacterTraceObservation> {
     let mut blockers = bundle
         .world
         .entities
@@ -113,7 +136,7 @@ pub fn trace_character_controllers(
         .world
         .entities
         .iter()
-        .filter_map(|entity| trace_character(entity, &blockers, axes, fixed_delta))
+        .filter_map(|entity| trace_character(entity, &blockers, input))
         .collect::<Vec<_>>();
     observations.sort_by(|left, right| left.entity.cmp(&right.entity));
     observations
@@ -122,19 +145,26 @@ pub fn trace_character_controllers(
 fn trace_character(
     entity: &WorldEntity,
     blockers: &[&WorldEntity],
-    axes: &[CharacterTraceAxis<'_>],
-    fixed_delta: f32,
+    input: CharacterTraceInput<'_>,
 ) -> Option<CharacterTraceObservation> {
     let controller = character_controller(entity)?;
     let collider = entity.components.collider.as_ref()?;
     let start = position(entity);
+    let axis_x = input
+        .direction
+        .map(|direction| direction[0])
+        .unwrap_or_else(|| axis_value(input.axes, &controller.move_x_axis));
+    let axis_z = input
+        .direction
+        .map(|direction| direction[1])
+        .unwrap_or_else(|| axis_value(input.axes, &controller.move_z_axis));
     let desired = add(
         start,
         movement_delta(
-            axis_value(axes, &controller.move_x_axis),
-            axis_value(axes, &controller.move_z_axis),
-            controller.speed,
-            fixed_delta,
+            axis_x,
+            axis_z,
+            input.speed.unwrap_or(controller.speed),
+            input.fixed_delta,
         ),
     );
     let character_half_extents = half_extents(collider);
@@ -163,7 +193,7 @@ fn trace_character(
             horizontal.position,
             character_half_extents,
             blockers,
-            fixed_delta,
+            input.fixed_delta,
             controller.slope_limit.unwrap_or(DEFAULT_SLOPE_LIMIT),
         )
     } else {

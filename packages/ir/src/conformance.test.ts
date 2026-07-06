@@ -195,6 +195,7 @@ test("should include capability tags for each conformance fixture", async () => 
     "character:blocking",
     "character:controller",
     "character:grounding",
+    "character:move-override",
     "input:axes",
     "physics:collider.box",
     "physics:collider.sphere",

@@ -432,12 +432,17 @@ function __tnInvokeSystem(options) {
       const fixedDelta = Number(moveOptions.fixedDelta ?? data.time.fixedDelta ?? 1);
       const axes = moveOptions.axes || {};
       const start = readVec3(entity.components.Transform && entity.components.Transform.position, [0, 0, 0]);
-      const desired = addVec3(start, characterMovementDelta(
-        Number(axes[controller.moveXAxis] ?? data.input.axes[controller.moveXAxis] ?? 0),
-        Number(axes[controller.moveZAxis] ?? data.input.axes[controller.moveZAxis] ?? 0),
-        Number(controller.speed ?? 0),
-        fixedDelta
-      ));
+      const direction = Array.isArray(moveOptions.direction) ? moveOptions.direction : undefined;
+      const speed = Number(moveOptions.speed ?? controller.speed ?? 0);
+      const desired = addVec3(start, direction === undefined
+        ? characterMovementDelta(
+            Number(axes[controller.moveXAxis] ?? data.input.axes[controller.moveXAxis] ?? 0),
+            Number(axes[controller.moveZAxis] ?? data.input.axes[controller.moveZAxis] ?? 0),
+            speed,
+            fixedDelta
+          )
+        : characterMovementDelta(Number(direction[0] ?? 0), Number(direction[1] ?? 0), speed, fixedDelta)
+      );
       const blockers = solidColliderEntities;
       const halfExtents = readColliderHalfExtents(collider);
       const slopeLimit = Number(controller.slopeLimit ?? 45);

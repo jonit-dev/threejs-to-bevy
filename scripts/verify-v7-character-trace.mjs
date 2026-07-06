@@ -48,11 +48,20 @@ export async function verifyV7CharacterTrace(options = {}) {
 async function runWebTrace(root, bundlePath) {
   const runtime = await import(pathToFileURL(resolve(root, "packages/runtime-web-three/dist/index.js")).href);
   const bundle = await runtime.loadBundle(bundlePath);
+  const axes = { MoveX: 1, MoveZ: 0 };
   return normalizeReport({
-    observations: runtime.traceCharacterControllers(bundle.world, {
-      axes: { MoveX: 1, MoveZ: 0 },
-      fixedDelta: 1,
-    }),
+    observations: [
+      ...runtime.traceCharacterControllers(bundle.world, {
+        axes,
+        fixedDelta: 1,
+      }),
+      ...runtime.traceCharacterControllers(bundle.world, {
+        axes,
+        direction: [0, 1],
+        fixedDelta: 0.5,
+        speed: 6,
+      }),
+    ],
     schema: "threenative.character-trace",
     version: "0.1.0",
   });

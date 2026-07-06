@@ -16,7 +16,8 @@
     "character": [
       "blocking",
       "controller",
-      "grounding"
+      "grounding",
+      "move-override"
     ],
     "input": [
       "axes"

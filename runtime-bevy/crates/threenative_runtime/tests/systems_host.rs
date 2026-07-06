@@ -257,6 +257,17 @@ fn systems_host_should_expose_character_move_service() {
         .find(|entry| entry.kind == "service" && entry.service.as_deref() == Some("character.move"))
         .expect("character move service call should be logged");
     assert_eq!(service_entry.service.as_deref(), Some("character.move"));
+    let expected_request = serde_json::json!({
+        "entity": "player",
+        "options": { "direction": [1, 0], "fixedDelta": 0.5, "speed": 2 }
+    });
+    assert_eq!(
+        service_entry
+            .payload
+            .as_ref()
+            .and_then(|payload| payload.get("request")),
+        Some(&expected_request)
+    );
 }
 
 #[test]
@@ -1382,7 +1393,7 @@ fn write_character_service_bundle(name: &str) -> PathBuf {
     fs::write(
         root.join("scripts.bundle.js"),
         r#"const system_moveCharacter = (ctx) => {
-  const result = ctx.character.move("player", { axes: { MoveX: 1, MoveZ: 0 }, fixedDelta: 0.5 });
+  const result = ctx.character.move("player", { direction: [1, 0], fixedDelta: 0.5, speed: 2 });
   const rounded = result.resolved.map((value) => Number(value.toFixed(6)));
   ctx.resources.set("CharacterReport", {
     entity: result.entity,
