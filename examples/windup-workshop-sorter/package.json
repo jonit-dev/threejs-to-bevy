@@ -8,7 +8,7 @@
     "dev:web": "tn dev --target web --project .",
     "validate": "tn validate --project .",
     "verify": "tn verify --project . --frames 3 --expect-motion",
-    "playtest": "tn playtest --project . --entity player --press KeyD --frames 30 --expect-moved --expect-axis x"
+    "playtest": "tn playtest --scenario playtests/smoke-movement.playtest.json --stable-artifacts --json"
   },
   "dependencies": {
     "@threenative/script-stdlib": "workspace:*",

@@ -19,7 +19,7 @@
     "objective": "Collect Relics 3/3, then reach the air bell with oxygen remaining.",
     "failRetry": "Eel contact or oxygen timeout fails the dive; Space resets diver, relics, and oxygen.",
     "proofCommands": [
-      "tn playtest --project . --entity player --press KeyD --expect-axis x --json",
+      "tn playtest --project . --scenario playtests/smoke-movement.playtest.json --stable-artifacts --json",
       "tn screenshot --project . --url <preview-url> --out artifacts/game-production/screenshot.png --wait-ready --json",
       "tn game qa --project . --run-proof --json",
       "tn game score --project . --json",

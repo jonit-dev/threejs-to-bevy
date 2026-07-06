@@ -19,7 +19,7 @@
     "objective": "Recover Buoys 5/5 at the lighthouse dock before Storm reaches zero.",
     "failRetry": "Touching a whirlpool or timing out enters failed state; Space resets the rescue.",
     "proofCommands": [
-      "tn playtest --project . --entity player --press KeyD --expect-axis x --json",
+      "tn playtest --project . --scenario playtests/smoke-movement.playtest.json --stable-artifacts --json",
       "tn screenshot --project . --url <preview-url> --out artifacts/game-production/screenshot.png --wait-ready --json",
       "tn game qa --project . --run-proof --json",
       "tn game score --project . --json",

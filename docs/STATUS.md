@@ -147,6 +147,15 @@ override, set actor/camera poses, and mirror behavior in
 edges, sine-swept kinematic hazards, and respawn resets no longer require
 game-local plumbing. Focused evidence:
 `pnpm --filter @threenative/script-stdlib test`.
+The proof-first engine loop now ratchets generated-game QA toward committed
+scenario evidence. `tn game qa --run-proof` records `scenarioCoverage` with
+committed scenario paths, assertion ids, artifact directories, reproduction
+commands, and proof source hashes; one-shot `--entity/--press` playtests remain
+ephemeral fallback evidence and cannot satisfy generated-game release proof.
+`tn playtest --watch --json` emits compact repair events (`start`,
+`diagnostic`, `artifact`, `pass`, `fail`, `stop`) for agent repair loops.
+Native/Bevy scenario execution remains explicitly unsupported until the native
+parity PRD promotes that target.
 The Phase 4 IR/runtime slice now accepts a declarative `KinematicMover`
 component and formatted UI bindings with accepted/rejected IR tests. The web
 runtime drives sine `KinematicMover` entities before physics, preserves the

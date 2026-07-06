@@ -1,5 +1,6 @@
+import { createHash } from "node:crypto";
 import { readdir, readFile, stat } from "node:fs/promises";
-import { resolve } from "node:path";
+import { join, resolve } from "node:path";
 
 import { type VerificationDiagnostic } from "./runner.js";
 import { type IGameProductionGateProject } from "./gameProductionGate.js";
@@ -361,6 +362,9 @@ export async function qaProofDiagnostics(projectPath: string, label: string): Pr
     for (const id of REQUIRED_QA_PROOF_STEP_IDS) {
       const step = steps.find((candidate) => candidate.id === id);
       if (step === undefined) {
+        if (id === "playtest" && await hasCommittedScenarioCoverage(projectPath, proofRun)) {
+          continue;
+        }
         diagnostics.push({
           code: "TN_VERIFY_GAME_QA_PROOF_STEP_MISSING",
           message: `${label}: QA proof step '${id}' is missing.`,
@@ -388,16 +392,17 @@ export async function qaProofDiagnostics(projectPath: string, label: string): Pr
           suggestedFix: "Run tn record --project <path> --url <preview-url> --out artifacts/game-production/motion.webm --json, then rerun tn game qa --run-proof.",
         });
       }
-      if (id === "playtest" && !(await hasPlaytestProofStep(projectPath, step))) {
+      if (id === "playtest" && !(await hasPlaytestProofStep(projectPath, step)) && !(await hasCommittedScenarioCoverage(projectPath, proofRun))) {
         diagnostics.push({
           code: "TN_VERIFY_GAME_QA_PLAYTEST_PROOF_INVALID",
-          message: `${label}: QA proof step 'playtest' must prove input-driven entity movement and reference an existing screenshot artifact.`,
+          message: `${label}: QA proof must prove input-driven entity movement through committed scenario playtests and artifact evidence.`,
           path: `${path}/proofRun/steps/playtest`,
           severity: "error",
-          suggestedFix: "Run tn playtest --project <path> --entity <id> --press <KeyboardEvent.code> --expect-moved --expect-axis <axis> --json, then rerun tn game qa --run-proof.",
+          suggestedFix: "Run tn playtest --project <path> --scenario playtests/<name>.playtest.json --stable-artifacts --json, then rerun tn game qa --run-proof.",
         });
       }
     }
+    diagnostics.push(...await scenarioCoverageDiagnostics(projectPath, proofRun, label, path));
     diagnostics.push(...await sidecarProofDiagnostics(projectPath, label));
     return diagnostics;
   } catch (error) {
@@ -409,6 +414,80 @@ export async function qaProofDiagnostics(projectPath: string, label: string): Pr
       suggestedFix: "Run tn game qa --project <path> --run-proof --json and keep artifacts/game-production/qa-report.json.",
     }];
   }
+}
+
+async function scenarioCoverageDiagnostics(projectPath: string, proofRun: Record<string, unknown>, label: string, path: string): Promise<VerificationDiagnostic[]> {
+  const coverage = isRecord(proofRun.scenarioCoverage) ? proofRun.scenarioCoverage : undefined;
+  const scenarios = Array.isArray(coverage?.scenarios) ? coverage.scenarios.filter(isRecord) : [];
+  if (coverage === undefined || coverage.kind !== "committed" || scenarios.length === 0) {
+    return [{
+      code: "TN_VERIFY_GAME_QA_SCENARIO_COVERAGE_MISSING",
+      message: `${label}: generated-game QA proof must include committed playtests/*.playtest.json scenario coverage, not only one-shot movement proof.`,
+      path: `${path}/proofRun/scenarioCoverage`,
+      severity: "error",
+      suggestedFix: "Add a playtests/smoke.playtest.json scenario, run tn game qa --project <path> --run-proof --json, and keep artifacts/game-production/qa-report.json.",
+    }];
+  }
+  const diagnostics: VerificationDiagnostic[] = [];
+  const sourceHash = await currentSourceHash(projectPath);
+  for (const scenario of scenarios) {
+    const scenarioPath = typeof scenario.path === "string" ? scenario.path : undefined;
+    const scenarioName = typeof scenario.scenario === "string" ? scenario.scenario : scenarioPath ?? "unknown";
+    if (scenario.kind !== "committed" || scenarioPath === undefined || !(await artifactPathExists(projectPath, scenarioPath))) {
+      diagnostics.push({
+        code: "TN_VERIFY_GAME_QA_SCENARIO_FILE_MISSING",
+        message: `${label}: committed scenario coverage is missing an existing playtests/*.playtest.json file for '${scenarioName}'.`,
+        path: scenarioPath === undefined ? `${path}/proofRun/scenarioCoverage` : resolve(projectPath, scenarioPath),
+        severity: "error",
+        suggestedFix: "Restore the scenario file or rerun tn game qa --project <path> --run-proof --json after updating proof coverage.",
+      });
+      continue;
+    }
+    if (scenario.status !== "passed") {
+      diagnostics.push({
+        code: "TN_VERIFY_GAME_QA_SCENARIO_FAILED",
+        message: `${label}: committed scenario '${scenarioPath}' did not pass in the QA proof run.`,
+        path: `${path}/proofRun/scenarioCoverage/${scenarioPath}`,
+        severity: "error",
+        suggestedFix: `Run tn playtest --project <path> --scenario ${scenarioPath} --stable-artifacts --json and fix the reported diagnostics.`,
+      });
+    }
+    const summary = typeof scenario.summary === "string" ? scenario.summary : undefined;
+    const artifactDirectory = typeof scenario.artifactDirectory === "string" ? scenario.artifactDirectory : undefined;
+    if ((summary === undefined || !(await artifactPathExists(projectPath, summary))) && (artifactDirectory === undefined || !(await artifactPathExists(projectPath, artifactDirectory)))) {
+      diagnostics.push({
+        code: "TN_VERIFY_GAME_QA_SCENARIO_ARTIFACT_MISSING",
+        message: `${label}: committed scenario '${scenarioPath}' must reference an existing summary or artifact directory.`,
+        path: `${path}/proofRun/scenarioCoverage/${scenarioPath}`,
+        severity: "error",
+        suggestedFix: `Run tn playtest --project <path> --scenario ${scenarioPath} --stable-artifacts --json, then rerun tn game qa --run-proof.`,
+      });
+    }
+    const manifestPath = typeof scenario.manifest === "string" ? scenario.manifest : undefined;
+    if (manifestPath === undefined || !(await scenarioManifestMatches(projectPath, manifestPath, scenarioName))) {
+      diagnostics.push({
+        code: "TN_VERIFY_GAME_QA_SCENARIO_MANIFEST_INVALID",
+        message: `${label}: committed scenario '${scenarioPath}' must have a playtest manifest matching the scenario name.`,
+        path: manifestPath === undefined ? `${path}/proofRun/scenarioCoverage/${scenarioPath}/manifest` : resolve(projectPath, manifestPath),
+        severity: "error",
+        suggestedFix: `Run tn playtest --project <path> --scenario ${scenarioPath} --stable-artifacts --json so manifest.json is refreshed.`,
+      });
+    }
+    if (typeof scenario.proofSourceHash !== "string" || scenario.proofSourceHash !== sourceHash) {
+      diagnostics.push({
+        code: "TN_VERIFY_GAME_QA_SCENARIO_PROOF_STALE",
+        message: `${label}: committed scenario '${scenarioPath}' proof source hash does not match current durable source.`,
+        path: `${path}/proofRun/scenarioCoverage/${scenarioPath}/proofSourceHash`,
+        severity: "error",
+        suggestedFix: `Run tn playtest --project <path> --scenario ${scenarioPath} --stable-artifacts --json, then rerun tn game qa --run-proof --json.`,
+      });
+    }
+  }
+  return diagnostics;
+}
+
+async function hasCommittedScenarioCoverage(projectPath: string, proofRun: Record<string, unknown>): Promise<boolean> {
+  return (await scenarioCoverageDiagnostics(projectPath, proofRun, "project", "artifacts/game-production/qa-report.json")).length === 0;
 }
 
 async function qaReportShapeDiagnostics(projectPath: string, report: Record<string, unknown>, label: string, path: string): Promise<VerificationDiagnostic[]> {
@@ -758,10 +837,60 @@ async function artifactEvidenceExists(projectPath: string, evidence: unknown): P
 async function artifactPathExists(projectPath: string, path: string): Promise<boolean> {
   try {
     const fileStat = await stat(resolve(projectPath, path));
-    return fileStat.isFile() && fileStat.size > 0;
+    return fileStat.isDirectory() || (fileStat.isFile() && fileStat.size > 0);
   } catch {
     return false;
   }
+}
+
+async function scenarioManifestMatches(projectPath: string, manifestPath: string, scenarioName: string): Promise<boolean> {
+  try {
+    const parsed = JSON.parse(await readFile(resolve(projectPath, manifestPath), "utf8")) as unknown;
+    return isRecord(parsed) && parsed.scenario === scenarioName && parsed.pass === true;
+  } catch {
+    return false;
+  }
+}
+
+async function currentSourceHash(projectPath: string): Promise<string> {
+  const rows = [
+    ...await sourceHashRows(resolve(projectPath, "content"), "content"),
+    ...await sourceHashRows(resolve(projectPath, "src", "scripts"), join("src", "scripts")),
+  ].sort((left, right) => left.path.localeCompare(right.path));
+  const hash = createHash("sha256");
+  for (const row of rows) {
+    hash.update(`${row.path}\0${row.hash}\n`);
+  }
+  return hash.digest("hex");
+}
+
+async function sourceHashRows(directory: string, relativeRoot: string): Promise<Array<{ hash: string; path: string }>> {
+  try {
+    const info = await stat(directory);
+    if (!info.isDirectory()) {
+      return [];
+    }
+  } catch {
+    return [];
+  }
+  const entries = await readdir(directory, { withFileTypes: true });
+  const rows: Array<{ hash: string; path: string }> = [];
+  for (const entry of entries) {
+    const childPath = resolve(directory, entry.name);
+    const childRelative = join(relativeRoot, entry.name);
+    if (entry.isDirectory()) {
+      rows.push(...await sourceHashRows(childPath, childRelative));
+      continue;
+    }
+    if (!entry.isFile()) {
+      continue;
+    }
+    rows.push({
+      hash: createHash("sha256").update(await readFile(childPath)).digest("hex"),
+      path: childRelative.replace(/\\/g, "/"),
+    });
+  }
+  return rows;
 }
 
 async function readPngDimensions(path: string): Promise<{ height: number; width: number } | undefined> {

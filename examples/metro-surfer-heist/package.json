@@ -5,7 +5,7 @@
   "scripts": {
     "build": "tn build",
     "dev:web": "tn dev --target web",
-    "playtest": "tn playtest --json",
+    "playtest": "tn playtest --scenario playtests/smoke-movement.playtest.json --stable-artifacts --json",
     "game:plan": "tn game plan --goal \"three lane metro endless runner with coins, trains, jump barriers, duck gates, objectives, and retry\" --project . --json",
     "game:improve": "tn game improve --apply-plan artifacts/game-production/plan.json --project . --json",
     "game:score": "tn game score --project . --json",

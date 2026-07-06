@@ -114,7 +114,7 @@
       "proofCommands": [
         "tn authoring validate --project . --json",
         "tn build --project . --json",
-        "tn playtest --project . --entity runner --press KeyD --frames 30 --expect-moved --json",
+        "tn playtest --project . --scenario playtests/smoke-movement.playtest.json --stable-artifacts --json",
         "tn verify --project . --frames 3 --expect-motion --json",
         "tn game qa --project . --run-proof --json",
         "tn game release --project . --json"
@@ -125,7 +125,7 @@
       "tn authoring validate --project . --json",
       "tn build --project . --json",
       "tn verify --project . --frames 3 --expect-motion --json",
-      "tn playtest --project . --entity runner --press KeyD --frames 30 --expect-moved --json",
+      "tn playtest --project . --scenario playtests/smoke-movement.playtest.json --stable-artifacts --json",
       "tn game score --project . --json",
       "tn game qa --project . --run-proof --json",
       "tn game release --project . --json"

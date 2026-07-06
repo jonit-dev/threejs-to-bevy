@@ -102,6 +102,39 @@ test("rejects maintained starters without catalog-first planning worksheet", asy
   }
 });
 
+test("should require starter scenario proof commands", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-template-production-scenario-proof-"));
+  try {
+    const templatePath = join(root, "templates/racing-kit-rally-starter");
+    await mkdir(templatePath, { recursive: true });
+    const config = completeProductionConfig("racing-kit-rally-starter");
+    const production = config.production as { proofCommands: string[] };
+    production.proofCommands = production.proofCommands.map((command) =>
+      command.includes("tn playtest") ? "tn playtest --project . --entity player.car --press KeyW --frames 60 --expect-moved --json" : command,
+    );
+    await writeFile(join(templatePath, "package.json"), `${JSON.stringify({
+      scripts: {
+        "game:improve": "tn game improve --apply-plan artifacts/game-production/plan.json --project . --json",
+        "game:plan": "tn game plan --goal \"rally\" --project . --json > artifacts/game-production/plan.json",
+        "game:qa": "tn game qa --project . --run-proof --json",
+        "game:release": "tn game release --project . --json",
+        "game:score": "tn game score --project . --json",
+      },
+    }, null, 2)}\n`);
+    await writeFile(join(templatePath, "threenative.config.json"), `${JSON.stringify(config, null, 2)}\n`);
+    await writeFile(join(templatePath, "README.md"), "Start with AGENT_GAME_PLAN.md, then run game:plan, game:improve, game:qa, and game:release for the production loop.\n");
+    await writeFile(join(templatePath, "AGENTS.md"), "Open AGENT_GAME_PLAN.md as the first game-creation action, then use game:plan, game:improve, game:qa, and game:release before calling a game done.\n");
+    await writeFile(join(templatePath, "AGENT_GAME_PLAN.md"), completeAgentGamePlan);
+
+    const result = await runTemplateProductionGate({ root, templates: ["racing-kit-rally-starter"] });
+
+    assert.equal(result.ok, false);
+    assert.equal(result.diagnostics.some((diagnostic) => diagnostic.code === "TN_TEMPLATE_PRODUCTION_METADATA_INCOMPLETE" && diagnostic.message.includes("playtest scenario")), true);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
 test("accepts maintained starters with production scripts metadata and instructions", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-template-production-pass-"));
   try {
@@ -140,7 +173,7 @@ function completeProductionConfig(template: string): Record<string, unknown> {
       proofCommands: [
         "tn authoring validate --project . --json",
         "tn build --project . --json",
-        "tn playtest --project . --entity player.car --press KeyW --frames 60 --expect-moved --json",
+        "tn playtest --project . --scenario playtests/rally-throttle.playtest.json --stable-artifacts --json",
         "tn screenshot --project . --url <preview-url> --out artifacts/game-production/screenshot.png --wait-ready --json",
         "tn game score --project . --json",
         "tn game qa --project . --run-proof --json",

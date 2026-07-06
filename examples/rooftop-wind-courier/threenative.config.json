@@ -19,7 +19,7 @@
     "objective": "Collect Parcels 3/3, then land on the delivery pad before the timer reaches zero.",
     "failRetry": "Touching a gust hazard or timing out enters failed state; Space resets the route.",
     "proofCommands": [
-      "tn playtest --project . --entity player --press KeyD --expect-axis x --json",
+      "tn playtest --project . --scenario playtests/smoke-movement.playtest.json --stable-artifacts --json",
       "tn screenshot --project . --url <preview-url> --out artifacts/game-production/screenshot.png --wait-ready --json",
       "tn game qa --project . --run-proof --json",
       "tn game score --project . --json",

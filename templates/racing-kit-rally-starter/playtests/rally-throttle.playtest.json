@@ -1,0 +1,38 @@
+{
+  "schemaVersion": 1,
+  "name": "rally-throttle",
+  "target": "web",
+  "viewport": {
+    "width": 1280,
+    "height": 720
+  },
+  "subject": "player.car",
+  "warmupFrames": 5,
+  "steps": [
+    {
+      "label": "throttle",
+      "press": "KeyW",
+      "holdFrames": 60,
+      "release": true
+    }
+  ],
+  "assert": {
+    "movement": {
+      "entity": "player.car",
+      "minDistance": 0.2,
+      "minVelocity": 0.002
+    },
+    "diagnostics": {
+      "runtimeReady": true,
+      "noConsoleErrors": true,
+      "noNetworkErrors": true,
+      "noRuntimeDiagnostics": true
+    }
+  },
+  "artifacts": {
+    "screenshots": "before-after",
+    "console": true,
+    "network": true,
+    "runtimeTrace": true
+  }
+}

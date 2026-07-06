@@ -5,7 +5,7 @@
   "scripts": {
     "build": "tn build",
     "dev:web": "tn dev --target web",
-    "playtest": "tn playtest --json",
+    "playtest": "tn playtest --scenario playtests/smoke-movement.playtest.json --stable-artifacts --json",
     "recipe:controller": "tn game plan --goal \"moon canyon courier controller\" --project . --json",
     "game:score": "tn game score --project . --json",
     "game:qa": "tn game qa --project . --json",

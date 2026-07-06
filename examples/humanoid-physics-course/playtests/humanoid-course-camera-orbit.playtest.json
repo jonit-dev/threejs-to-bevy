@@ -1,0 +1,44 @@
+{
+  "schemaVersion": 1,
+  "name": "humanoid-course-camera-orbit",
+  "target": "web",
+  "viewport": {
+    "width": 1280,
+    "height": 720
+  },
+  "subject": "player",
+  "warmupFrames": 5,
+  "steps": [
+    {
+      "waitFrames": 10,
+      "release": false
+    }
+  ],
+  "assert": {
+    "camera": {
+      "entity": "camera.main",
+      "follows": "player",
+      "within": 8
+    },
+    "visibility": [
+      {
+        "entity": "player",
+        "minProjectedPixels": 1200,
+        "maxOffscreenRatio": 0.05
+      }
+    ],
+    "diagnostics": {
+      "noConsoleErrors": true,
+      "noNetworkErrors": true,
+      "noRuntimeDiagnostics": true,
+      "runtimeReady": true
+    }
+  },
+  "artifacts": {
+    "screenshots": "before-after",
+    "effectLog": "focused",
+    "runtimeTrace": true,
+    "console": true,
+    "network": true
+  }
+}

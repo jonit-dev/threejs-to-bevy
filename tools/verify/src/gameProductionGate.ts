@@ -50,6 +50,7 @@ const GENERATED_GAME_PROJECTS = [
   "examples/firefly-grove-keeper",
   "examples/glassworks-prism-sorter",
   "examples/harbor-lantern-ferry",
+  "examples/humanoid-physics-course",
   "examples/lantern-orchard",
   "examples/magnet-yard-sorter",
   "examples/metro-surfer-heist",

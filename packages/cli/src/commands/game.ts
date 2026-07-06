@@ -690,6 +690,7 @@ function compactReportForStdout(report: IGameWorkflowReport & { proofRun?: IGame
       : {
           diagnostics: report.proofRun.diagnostics,
           ok: report.proofRun.ok,
+          scenarioCoverage: report.proofRun.scenarioCoverage,
           steps: report.proofRun.steps.map((step) => ({
             code: step.code,
             command: step.command,

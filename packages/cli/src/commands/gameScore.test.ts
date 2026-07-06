@@ -752,8 +752,11 @@ test("qa run-proof discovers playtest scenarios and records summaries", async ()
           return {
             exitCode: 0,
             stdout: `${JSON.stringify({
+              assertions: [{ id: "movement", pass: true }],
               artifacts: { directory: `artifacts/playtest/${step.id}/latest`, summary: `artifacts/playtest/${step.id}/latest/summary.json` },
               code: step.command === "playtest" ? "TN_PLAYTEST_OK" : "TN_TEST_STEP_OK",
+              proofMetadata: { sourceHash: "source-hash" },
+              reproduceCommand: `tn playtest --project . --scenario ${step.args[3]} --stable-artifacts --json`,
               scenario: step.id.replace("playtest:", ""),
             })}\n`,
           };
@@ -761,7 +764,13 @@ test("qa run-proof discovers playtest scenarios and records summaries", async ()
       },
     );
     const payload = JSON.parse(result.stdout) as {
-      proofRun: { steps: Array<{ evidence?: { scenario?: string; summary?: string }; id: string }> };
+      proofRun: {
+        scenarioCoverage: {
+          kind: string;
+          scenarios: Array<{ assertions: string[]; kind: string; path?: string; proofSourceHash?: string; reproduceCommand?: string; scenario?: string; status: string; summary?: string }>;
+        };
+        steps: Array<{ evidence?: { scenario?: string; summary?: string }; id: string }>;
+      };
     };
     const playtestArgs = seenArgs.filter((args) => args[0] === "playtest");
 
@@ -771,6 +780,15 @@ test("qa run-proof discovers playtest scenarios and records summaries", async ()
       ["playtest", "--project", ".", "--scenario", "playtests/smoke-movement.playtest.json", "--stable-artifacts", "--json"],
     ]);
     assert.equal(payload.proofRun.steps.some((step) => step.id === "playtest:smoke-movement" && step.evidence?.scenario === "smoke-movement" && step.evidence.summary?.includes("summary.json")), true);
+    assert.equal(payload.proofRun.scenarioCoverage.kind, "committed");
+    assert.equal(payload.proofRun.scenarioCoverage.scenarios.some((scenario) =>
+      scenario.kind === "committed"
+      && scenario.path === "playtests/smoke-movement.playtest.json"
+      && scenario.status === "passed"
+      && scenario.assertions.includes("movement")
+      && scenario.proofSourceHash === "source-hash"
+      && scenario.reproduceCommand?.includes("--scenario playtests/smoke-movement.playtest.json") === true
+    ), true);
   } finally {
     await rm(root, { force: true, recursive: true });
   }

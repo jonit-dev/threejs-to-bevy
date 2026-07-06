@@ -274,7 +274,7 @@ test("should create racing kit rally starter with reusable race scene structure"
     assert.equal(config.production?.controls?.includes("keyboard.KeyW"), true);
     assert.match(config.production?.playableLoop ?? "", /accelerate/i);
     assert.match(config.production?.objective ?? "", /checkpoint/i);
-    assert.equal(config.production?.proofCommands?.some((command) => command.includes("tn playtest") && command.includes("--expect-moved")), true);
+    assert.equal(config.production?.proofCommands?.some((command) => command.includes("tn playtest") && command.includes("--scenario playtests/rally-throttle.playtest.json")), true);
     assert.equal(config.production?.proofCommands?.some((command) => command.includes("tn game qa") && command.includes("--run-proof")), true);
     assert.equal(config.production?.agent?.sourceShape?.scene?.includes("content/scenes/rally.scene.json"), true);
     assert.equal(config.production?.agent?.highValueSurfaces?.some((surface) => surface.id === "playerHero" && surface.provenanceStatus === "local-file"), true);

@@ -149,7 +149,7 @@
       "proofCommands": [
         "tn authoring validate --project . --json",
         "tn build --project . --json",
-        "tn playtest --project . --entity player --press keyboard.KeyW --frames 30 --expect-moved --json",
+        "tn playtest --project . --scenario playtests/humanoid-course-forward-movement.playtest.json --stable-artifacts --json",
         "tn game qa --project . --run-proof --json",
         "tn game release --project . --json"
       ],
@@ -160,7 +160,7 @@
     "proofCommands": [
       "tn authoring validate --project . --json",
       "tn build --project . --json",
-      "tn playtest --project . --entity player --press keyboard.KeyW --frames 30 --expect-moved --json",
+      "tn playtest --project . --scenario playtests/humanoid-course-forward-movement.playtest.json --stable-artifacts --json",
       "tn screenshot --project . --url <preview-url> --out artifacts/game-production/screenshot.png --wait-ready --json",
       "tn game score --project . --json",
       "tn game qa --project . --run-proof --json",

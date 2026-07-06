@@ -19,7 +19,7 @@
     "objective": "Collect Gems 3/3 plus Key 1/1, then cross the moon gate before the timer reaches zero.",
     "failRetry": "Touching a sentry lamp or timing out enters a failed state; Space resets the game state and all collectibles.",
     "proofCommands": [
-      "tn playtest --project . --entity player --press KeyD --expect-axis x --json",
+      "tn playtest --project . --scenario playtests/smoke-movement.playtest.json --stable-artifacts --json",
       "tn screenshot --project . --url <preview-url> --out artifacts/game-production/screenshot.png --wait-ready --json",
       "tn game qa --project . --run-proof --json",
       "tn game score --project . --json",

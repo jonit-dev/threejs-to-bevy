@@ -5,13 +5,17 @@ import { join, resolve } from "node:path";
 import type { ICommandResult } from "../diagnostics.js";
 
 export interface IPlaytestWatchEvent {
+  artifact?: string;
   code?: string;
-  event: "change" | "run:complete" | "run:start" | "start" | "stop";
+  event: "artifact" | "change" | "diagnostic" | "fail" | "pass" | "start" | "stop";
   exitCode?: number;
   maxRuns?: number;
+  message?: string;
   pass?: boolean;
   path?: string;
+  report?: Record<string, unknown>;
   run?: number;
+  repairCommand?: string;
   summary?: string;
 }
 
@@ -44,16 +48,33 @@ export async function playtestWatchCommand(options: {
 
   const run = async (): Promise<boolean> => {
     runCount += 1;
-    emit({ event: "run:start", run: runCount });
+    emit({ event: "start", run: runCount });
     const result = await options.runOnce(baseArgv);
     lastExitCode = result.exitCode;
-    const summary = parseRunSummary(result.stdout);
+    const summary = parseRunReport(result.stdout);
     lastPass = result.exitCode === 0;
+    if (summary.artifact !== undefined) {
+      emit({ artifact: summary.artifact, event: "artifact", run: runCount });
+    }
+    if (summary.artifactDirectory !== undefined) {
+      emit({ artifact: summary.artifactDirectory, event: "artifact", run: runCount });
+    }
+    for (const diagnostic of summary.diagnostics) {
+      emit({
+        code: diagnostic.code,
+        event: "diagnostic",
+        message: diagnostic.message,
+        repairCommand: repairCommand(baseArgv),
+        run: runCount,
+      });
+    }
     emit({
       ...(summary.code === undefined ? {} : { code: summary.code }),
-      event: "run:complete",
+      event: lastPass ? "pass" : "fail",
       exitCode: result.exitCode,
       pass: lastPass,
+      repairCommand: lastPass ? undefined : repairCommand(baseArgv),
+      ...(summary.report === undefined ? {} : { report: summary.report }),
       run: runCount,
       ...(summary.summary === undefined ? {} : { summary: summary.summary }),
     });
@@ -155,20 +176,45 @@ function stripWatchArgs(argv: readonly string[]): string[] {
   return result;
 }
 
-function parseRunSummary(stdout: string): { code?: string; summary?: string } {
+function parseRunReport(stdout: string): {
+  artifact?: string;
+  artifactDirectory?: string;
+  code?: string;
+  diagnostics: Array<{ code?: string; message?: string }>;
+  report?: Record<string, unknown>;
+  summary?: string;
+} {
   try {
     const parsed = JSON.parse(stdout) as unknown;
     if (typeof parsed === "object" && parsed !== null && !Array.isArray(parsed)) {
       const record = parsed as Record<string, unknown>;
+      const artifacts = typeof record.artifacts === "object" && record.artifacts !== null && !Array.isArray(record.artifacts)
+        ? record.artifacts as Record<string, unknown>
+        : undefined;
       return {
+        artifact: typeof record.artifact === "string" ? record.artifact : undefined,
+        artifactDirectory: typeof artifacts?.directory === "string" ? artifacts.directory : undefined,
         ...(typeof record.code === "string" ? { code: record.code } : {}),
+        diagnostics: Array.isArray(record.diagnostics)
+          ? record.diagnostics
+            .filter((diagnostic): diagnostic is Record<string, unknown> => typeof diagnostic === "object" && diagnostic !== null && !Array.isArray(diagnostic))
+            .map((diagnostic) => ({
+              code: typeof diagnostic.code === "string" ? diagnostic.code : undefined,
+              message: typeof diagnostic.message === "string" ? diagnostic.message : undefined,
+            }))
+          : [],
+        report: record,
         summary: typeof record.scenario === "string" ? record.scenario : typeof record.message === "string" ? record.message : undefined,
       };
     }
   } catch {
     // Text-mode or invalid output still gets a stable run event.
   }
-  return {};
+  return { diagnostics: [] };
+}
+
+function repairCommand(argv: readonly string[]): string {
+  return `tn playtest ${argv.join(" ")}`;
 }
 
 function watchResult(events: readonly IPlaytestWatchEvent[], json: boolean, exitCode: number): ICommandResult {
@@ -181,8 +227,8 @@ function watchResult(events: readonly IPlaytestWatchEvent[], json: boolean, exit
 }
 
 function renderTextEvent(event: IPlaytestWatchEvent): string {
-  if (event.event === "run:complete") {
-    return `playtest run ${event.run ?? "?"}: ${event.pass === true ? "pass" : "fail"}`;
+  if (event.event === "pass" || event.event === "fail") {
+    return `playtest run ${event.run ?? "?"}: ${event.event}`;
   }
   if (event.event === "change") {
     return `playtest change: ${event.path ?? "(unknown)"}`;

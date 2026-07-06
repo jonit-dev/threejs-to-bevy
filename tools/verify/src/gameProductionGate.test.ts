@@ -9,6 +9,7 @@ import {
   cleanAssetAudioLedgerRows,
   cleanPersistedQualitySections,
   cleanProductionCommandRows,
+  currentTestSourceHash,
   validGamePlan,
   validGameplayBlock,
   writeGameplaySystemSource,
@@ -1377,6 +1378,168 @@ test("rejects generated-game QA playtest proof without input-driven movement", a
   }
 });
 
+test("rejects generated-game proof with only ephemeral playtest coverage", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-generated-game-ephemeral-playtest-gate-"));
+  try {
+    await mkdir(join(root, "content/scenes"), { recursive: true });
+    await mkdir(join(root, "artifacts/game-production"), { recursive: true });
+    await writeFile(join(root, "content/scenes/arena.scene.json"), `${JSON.stringify({ schema: "threenative.scene", id: "arena" }, null, 2)}\n`);
+    await writeFile(join(root, "artifacts/game-production/qa-report.json"), `${JSON.stringify({
+      ok: true,
+      proofRun: {
+        ok: true,
+        scenarioCoverage: {
+          kind: "ephemeral",
+          scenarios: [{ assertions: ["movement"], kind: "ephemeral", scenario: "player-KeyD", status: "passed", stepId: "playtest" }],
+        },
+        steps: [
+          { id: "doctor", exitCode: 0 },
+          { id: "build", exitCode: 0 },
+          { id: "playtest", exitCode: 0 },
+          { id: "screenshot", exitCode: 0 },
+          { id: "mobile-viewport", exitCode: 0 },
+          { id: "record", exitCode: 0, code: "TN_GAME_QA_ARTIFACT_OK" },
+          { id: "visual-quality", exitCode: 0 },
+          { id: "performance", exitCode: 0 },
+          { id: "asset-budget", exitCode: 0 },
+          { id: "ui-fit", exitCode: 0 },
+        ],
+      },
+    }, null, 2)}\n`);
+    const reportPath = join(root, "artifacts/game-production/verification-report.json");
+
+    const result = await runGameProductionGate({
+      projects: [{ projectPath: ".", requireQaProof: true }],
+      reportPath,
+      root,
+    });
+
+    assert.equal(result.ok, false);
+    assert.equal(result.diagnostics.some((diagnostic) => diagnostic.code === "TN_VERIFY_GAME_QA_SCENARIO_COVERAGE_MISSING"), true);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("rejects stale scenario proof sidecar", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-generated-game-stale-scenario-gate-"));
+  try {
+    await mkdir(join(root, "content/scenes"), { recursive: true });
+    await mkdir(join(root, "playtests"), { recursive: true });
+    await mkdir(join(root, "artifacts/game-production"), { recursive: true });
+    await mkdir(join(root, "artifacts/playtest/smoke/latest"), { recursive: true });
+    await writeFile(join(root, "content/scenes/arena.scene.json"), `${JSON.stringify({ schema: "threenative.scene", id: "arena" }, null, 2)}\n`);
+    await writeFile(join(root, "playtests/smoke.playtest.json"), `${JSON.stringify({ schemaVersion: 1, name: "smoke", subject: "player", steps: [{ press: "KeyD" }] }, null, 2)}\n`);
+    await writeFile(join(root, "artifacts/playtest/smoke/latest/summary.json"), "{}\n");
+    await writeFile(join(root, "artifacts/playtest/smoke/latest/manifest.json"), `${JSON.stringify({ scenario: "smoke", pass: true }, null, 2)}\n`);
+    await writeFile(join(root, "artifacts/game-production/qa-report.json"), `${JSON.stringify({
+      ok: true,
+      proofRun: {
+        ok: true,
+        scenarioCoverage: {
+          kind: "committed",
+          scenarios: [{
+            artifactDirectory: "artifacts/playtest/smoke/latest",
+            assertions: ["movement"],
+            kind: "committed",
+            manifest: "artifacts/playtest/smoke/latest/manifest.json",
+            path: "playtests/smoke.playtest.json",
+            proofSourceHash: "stale",
+            reproduceCommand: "tn playtest --project . --scenario playtests/smoke.playtest.json --stable-artifacts --json",
+            scenario: "smoke",
+            status: "passed",
+            stepId: "playtest:smoke",
+            summary: "artifacts/playtest/smoke/latest/summary.json",
+          }],
+        },
+        steps: [
+          { id: "doctor", exitCode: 0 },
+          { id: "build", exitCode: 0 },
+          { id: "playtest:smoke", exitCode: 0 },
+          { id: "screenshot", exitCode: 0 },
+          { id: "mobile-viewport", exitCode: 0 },
+          { id: "record", exitCode: 0, code: "TN_GAME_QA_ARTIFACT_OK" },
+          { id: "visual-quality", exitCode: 0 },
+          { id: "performance", exitCode: 0 },
+          { id: "asset-budget", exitCode: 0 },
+          { id: "ui-fit", exitCode: 0 },
+        ],
+      },
+    }, null, 2)}\n`);
+    const reportPath = join(root, "artifacts/game-production/verification-report.json");
+
+    const result = await runGameProductionGate({
+      projects: [{ projectPath: ".", requireQaProof: true }],
+      reportPath,
+      root,
+    });
+
+    assert.equal(result.ok, false);
+    assert.equal(result.diagnostics.some((diagnostic) => diagnostic.code === "TN_VERIFY_GAME_QA_SCENARIO_PROOF_STALE" && diagnostic.suggestedFix?.includes("playtests/smoke.playtest.json")), true);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("accepts committed scenario proof with fresh manifest", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-generated-game-fresh-scenario-gate-"));
+  try {
+    await mkdir(join(root, "content/scenes"), { recursive: true });
+    await mkdir(join(root, "playtests"), { recursive: true });
+    await mkdir(join(root, "artifacts/game-production"), { recursive: true });
+    await mkdir(join(root, "artifacts/playtest/smoke/latest"), { recursive: true });
+    await writeFile(join(root, "content/scenes/arena.scene.json"), `${JSON.stringify({ schema: "threenative.scene", id: "arena" }, null, 2)}\n`);
+    await writeFile(join(root, "playtests/smoke.playtest.json"), `${JSON.stringify({ schemaVersion: 1, name: "smoke", subject: "player", steps: [{ press: "KeyD" }] }, null, 2)}\n`);
+    await writeFile(join(root, "artifacts/playtest/smoke/latest/summary.json"), "{}\n");
+    await writeFile(join(root, "artifacts/playtest/smoke/latest/manifest.json"), `${JSON.stringify({ scenario: "smoke", pass: true }, null, 2)}\n`);
+    await writeFile(join(root, "artifacts/game-production/qa-report.json"), `${JSON.stringify({
+      ok: true,
+      proofRun: {
+        ok: true,
+        scenarioCoverage: {
+          kind: "committed",
+          scenarios: [{
+            artifactDirectory: "artifacts/playtest/smoke/latest",
+            assertions: ["movement"],
+            kind: "committed",
+            manifest: "artifacts/playtest/smoke/latest/manifest.json",
+            path: "playtests/smoke.playtest.json",
+            proofSourceHash: await currentTestSourceHash(root),
+            reproduceCommand: "tn playtest --project . --scenario playtests/smoke.playtest.json --stable-artifacts --json",
+            scenario: "smoke",
+            status: "passed",
+            stepId: "playtest:smoke",
+            summary: "artifacts/playtest/smoke/latest/summary.json",
+          }],
+        },
+        steps: [
+          { id: "doctor", exitCode: 0 },
+          { id: "build", exitCode: 0 },
+          { id: "playtest:smoke", exitCode: 0 },
+          { id: "screenshot", exitCode: 0 },
+          { id: "mobile-viewport", exitCode: 0 },
+          { id: "record", exitCode: 0, code: "TN_GAME_QA_ARTIFACT_OK" },
+          { id: "visual-quality", exitCode: 0 },
+          { id: "performance", exitCode: 0 },
+          { id: "asset-budget", exitCode: 0 },
+          { id: "ui-fit", exitCode: 0 },
+        ],
+      },
+    }, null, 2)}\n`);
+    const reportPath = join(root, "artifacts/game-production/verification-report.json");
+
+    const result = await runGameProductionGate({
+      projects: [{ projectPath: ".", requireQaProof: true }],
+      reportPath,
+      root,
+    });
+
+    assert.equal(result.diagnostics.some((diagnostic) => diagnostic.code.startsWith("TN_VERIFY_GAME_QA_SCENARIO_")), false);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
 test("rejects generated-game QA reports without real motion proof", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-generated-game-motion-proof-gate-"));
   try {
@@ -1775,4 +1938,3 @@ test("rejects generated-game QA sidecars with stale artifact byte sizes", async 
     await rm(root, { force: true, recursive: true });
   }
 });
-

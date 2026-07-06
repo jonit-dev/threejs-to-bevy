@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdir, mkdtemp, readFile, writeFile } from "node:fs/promises";
+import { cp, mkdir, mkdtemp, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import test from "node:test";
 import { tmpdir } from "node:os";
@@ -256,15 +256,19 @@ test("playtest command should reject invalid scenario files with stable diagnost
   assert.match(payload.message, /invalid step/);
 });
 
-test("playtest command should reject unsupported native targets explicitly", async () => {
+test("playtest command should report unsupported native targets explicitly", async () => {
   const root = await playtestTempRoot();
-  await writeFile(join(root, "desktop.playtest.json"), JSON.stringify({ schemaVersion: 1, name: "desktop", target: "desktop", subject: "player", steps: [{ press: "KeyW" }] }), "utf8");
-  const result = await playtestCommand(["--project", ".", "--scenario", "desktop.playtest.json", "--json"], root);
-  const payload = JSON.parse(result.stdout) as { code: string; message: string };
+  await cp("../../templates/structured-source-starter", root, { recursive: true });
+  const result = await playtestCommand(
+    ["--project", ".", "--target", "desktop", "--entity", "player", "--press", "KeyW", "--frames", "30", "--expect-moved", "--json"],
+    root,
+  );
+  const payload = JSON.parse(result.stdout) as { code: string; message: string; suggestion: string };
 
   assert.equal(result.exitCode, 2);
   assert.equal(payload.code, "TN_PLAYTEST_TARGET_UNSUPPORTED");
   assert.match(payload.message, /desktop/);
+  assert.match(payload.suggestion, /native parity PRD/i);
 });
 
 test("playtest command should discover source-backed candidates", async () => {
@@ -527,14 +531,46 @@ test("playtest watch should emit stable JSON events and debounce changes", async
       watchHooks: { changes: ["src/scripts/player.ts", "src/scripts/player.ts"], debounceMs: 1 },
     },
   );
-  const events = result.stdout.trim().split("\n").map((line) => JSON.parse(line) as { event: string; run?: number });
+  const events = result.stdout.trim().split("\n").map((line) => JSON.parse(line) as { artifact?: string; event: string; report?: { code?: string }; run?: number });
 
   assert.equal(result.exitCode, 0);
   assert.equal(runs, 2);
   assert.equal(events[0]?.event, "start");
   assert.equal(events.filter((event) => event.event === "change").length, 2);
-  assert.deepEqual(events.filter((event) => event.event === "run:complete").map((event) => event.run), [1, 2]);
+  assert.deepEqual(events.filter((event) => event.event === "pass").map((event) => event.run), [1, 2]);
+  assert.equal(events.some((event) => event.event === "artifact" && event.artifact?.includes("artifacts/playtest/smoke")), true);
+  assert.equal(events.some((event) => event.event === "pass" && event.report?.code === "TN_PLAYTEST_OK"), true);
   assert.equal(events.at(-1)?.event, "stop");
+});
+
+test("playtest watch should emit diagnostic repair events with stable ids", async () => {
+  const root = await playtestTempRoot();
+  const result = await playtestCommand(
+    ["--project", ".", "--entity", "player", "--press", "KeyD", "--watch", "--max-runs", "1", "--json"],
+    root,
+    {
+      runner: async (options) => ({
+        after: { frame: 30, position: [0, 0, 0], tick: 30 },
+        before: { frame: 0, position: [0, 0, 0], tick: 0 },
+        debugColliders: options.debugColliders,
+        diagnostics: [{ code: "TN_PLAYTEST_INPUT_NO_EFFECT", message: "No movement.", severity: "error" }],
+        distance: 0,
+        entity: options.entityId,
+        expectMoved: options.expectMoved,
+        frames: options.frames,
+        input: options.press,
+        movementDelta: [0, 0, 0],
+        movementThreshold: options.movementThreshold,
+        pass: false,
+        runtime: "web",
+      }),
+    },
+  );
+  const events = result.stdout.trim().split("\n").map((line) => JSON.parse(line) as { code?: string; event: string; repairCommand?: string });
+
+  assert.equal(result.exitCode, 1);
+  assert.equal(events.some((event) => event.event === "diagnostic" && event.code === "TN_PLAYTEST_INPUT_NO_EFFECT" && event.repairCommand?.includes("--entity player") === true), true);
+  assert.equal(events.some((event) => event.event === "fail" && event.repairCommand?.startsWith("tn playtest ") === true), true);
 });
 
 test("playtest watch should stop after first passing run with pass-once", async () => {
@@ -569,7 +605,7 @@ test("playtest watch should stop after first passing run with pass-once", async 
 
   assert.equal(result.exitCode, 0);
   assert.equal(runs, 1);
-  assert.deepEqual(events.filter((event) => event.event === "run:complete").map((event) => event.run), [1]);
+  assert.deepEqual(events.filter((event) => event.event === "pass").map((event) => event.run), [1]);
   assert.equal(events.at(-1)?.event, "stop");
 });
 

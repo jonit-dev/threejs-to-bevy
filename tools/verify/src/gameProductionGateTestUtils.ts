@@ -1,5 +1,6 @@
-import { mkdir, writeFile } from "node:fs/promises";
-import { join } from "node:path";
+import { createHash } from "node:crypto";
+import { mkdir, readdir, readFile, stat, writeFile } from "node:fs/promises";
+import { join, resolve } from "node:path";
 
 export function cleanPersistedQualitySections(options: { scorecardScore?: number; uiPresent?: boolean } = {}): Record<string, unknown> {
   const scorecardIds = [
@@ -131,6 +132,46 @@ export async function writeMaterialSource(root: string, materials: Record<string
     id: "arena-materials",
     materials,
   }, null, 2)}\n`);
+}
+
+export async function currentTestSourceHash(projectPath: string): Promise<string> {
+  const rows = [
+    ...await testSourceHashRows(resolve(projectPath, "content"), "content"),
+    ...await testSourceHashRows(resolve(projectPath, "src", "scripts"), join("src", "scripts")),
+  ].sort((left, right) => left.path.localeCompare(right.path));
+  const hash = createHash("sha256");
+  for (const row of rows) {
+    hash.update(`${row.path}\0${row.hash}\n`);
+  }
+  return hash.digest("hex");
+}
+
+async function testSourceHashRows(directory: string, relativeRoot: string): Promise<Array<{ hash: string; path: string }>> {
+  try {
+    const info = await stat(directory);
+    if (!info.isDirectory()) {
+      return [];
+    }
+  } catch {
+    return [];
+  }
+  const entries = await readdir(directory, { withFileTypes: true });
+  const rows: Array<{ hash: string; path: string }> = [];
+  for (const entry of entries) {
+    const childPath = resolve(directory, entry.name);
+    const childRelative = join(relativeRoot, entry.name);
+    if (entry.isDirectory()) {
+      rows.push(...await testSourceHashRows(childPath, childRelative));
+      continue;
+    }
+    if (entry.isFile()) {
+      rows.push({
+        hash: createHash("sha256").update(await readFile(childPath)).digest("hex"),
+        path: childRelative.replace(/\\/g, "/"),
+      });
+    }
+  }
+  return rows;
 }
 
 export function validGamePlan(): Record<string, unknown> {

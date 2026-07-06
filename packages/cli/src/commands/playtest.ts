@@ -239,7 +239,7 @@ export async function playtestCommand(
         {
           code: "TN_PLAYTEST_TARGET_UNSUPPORTED",
           message: `Playtest target '${scenario.target}' is recognized but no runner exists yet.`,
-          suggestion: "Use --target web until native trace capture is implemented.",
+          suggestion: "Use --target web until the native parity PRD promotes native scenario execution.",
         },
         { exitCode: 2, json, stderr: !json },
       );

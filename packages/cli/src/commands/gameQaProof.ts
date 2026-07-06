@@ -38,7 +38,26 @@ interface IGameProofStepResult {
   summary: string;
 }
 
+interface IGameScenarioCoverageEntry {
+  artifactDirectory?: string;
+  assertions: string[];
+  kind: "committed" | "ephemeral";
+  manifest?: string;
+  path?: string;
+  proofSourceHash?: string;
+  reproduceCommand?: string;
+  scenario?: string;
+  status: "failed" | "passed";
+  stepId: string;
+  summary?: string;
+  target?: string;
+}
+
 export interface IGameProofRun {
+  scenarioCoverage: {
+    kind: "committed" | "ephemeral" | "missing";
+    scenarios: IGameScenarioCoverageEntry[];
+  };
   diagnostics: Array<{ code: string; message: string; phase: string; severity: "error" | "warning"; suggestedFix?: string }>;
   ok: boolean;
   steps: IGameProofStepResult[];
@@ -97,6 +116,7 @@ export async function runGameQaProof(argv: readonly string[], projectPath: strin
   return {
     diagnostics,
     ok: diagnostics.every((diagnostic) => diagnostic.severity !== "error"),
+    scenarioCoverage: buildScenarioCoverage(results),
     steps: results,
   };
 }
@@ -841,12 +861,58 @@ function playtestEvidence(result: ICommandResult): Record<string, unknown> {
     return {};
   }
   const artifacts = isRecord(parsed.artifacts) ? parsed.artifacts : undefined;
+  const proofMetadata = isRecord(parsed.proofMetadata) ? parsed.proofMetadata : undefined;
   return {
+    assertions: Array.isArray(parsed.assertions)
+      ? parsed.assertions
+        .filter(isRecord)
+        .map((assertion) => typeof assertion.id === "string" ? assertion.id : undefined)
+        .filter((id): id is string => id !== undefined)
+      : [],
     ...(typeof parsed.scenario === "string" ? { scenario: parsed.scenario } : {}),
     ...(typeof parsed.target === "string" ? { target: parsed.target } : {}),
+    ...(typeof parsed.reproduceCommand === "string" ? { reproduceCommand: parsed.reproduceCommand } : {}),
+    ...(typeof proofMetadata?.sourceHash === "string" ? { proofSourceHash: proofMetadata.sourceHash } : {}),
     ...(typeof artifacts?.summary === "string" ? { summary: artifacts.summary } : {}),
     ...(typeof artifacts?.directory === "string" ? { directory: artifacts.directory } : {}),
+    ...(typeof artifacts?.manifest === "string" ? { manifest: artifacts.manifest } : {}),
   };
+}
+
+function buildScenarioCoverage(results: readonly IGameProofStepResult[]): IGameProofRun["scenarioCoverage"] {
+  const playtestSteps = results.filter((result) => result.command === "playtest");
+  const scenarios = playtestSteps.map((step): IGameScenarioCoverageEntry => {
+    const evidence = isRecord(step.evidence) ? step.evidence : {};
+    const committedPath = readScenarioPath(step.args);
+    return {
+      assertions: Array.isArray(evidence.assertions) ? evidence.assertions.filter((item): item is string => typeof item === "string") : [],
+      kind: committedPath === undefined ? "ephemeral" : "committed",
+      ...(typeof evidence.directory === "string" ? { artifactDirectory: evidence.directory } : {}),
+      ...(typeof evidence.manifest === "string" ? { manifest: evidence.manifest } : {}),
+      ...(committedPath === undefined ? {} : { path: committedPath }),
+      ...(typeof evidence.proofSourceHash === "string" ? { proofSourceHash: evidence.proofSourceHash } : {}),
+      ...(typeof evidence.reproduceCommand === "string" ? { reproduceCommand: evidence.reproduceCommand } : {}),
+      ...(typeof evidence.scenario === "string" ? { scenario: evidence.scenario } : {}),
+      status: step.exitCode === 0 ? "passed" : "failed",
+      stepId: step.id,
+      ...(typeof evidence.summary === "string" ? { summary: evidence.summary } : {}),
+      ...(typeof evidence.target === "string" ? { target: evidence.target } : {}),
+    };
+  });
+  return {
+    kind: scenarios.length === 0
+      ? "missing"
+      : scenarios.every((scenario) => scenario.kind === "committed")
+        ? "committed"
+        : "ephemeral",
+    scenarios,
+  };
+}
+
+function readScenarioPath(args: readonly string[]): string | undefined {
+  const index = args.indexOf("--scenario");
+  const value = index === -1 ? undefined : args[index + 1];
+  return typeof value === "string" && value.length > 0 ? value : undefined;
 }
 
 function stepFailureCode(step: IGameProofStepSpec): string {

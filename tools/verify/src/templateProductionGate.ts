@@ -24,7 +24,7 @@ const REQUIRED_GAME_SCRIPTS = ["game:plan", "game:improve", "game:score", "game:
 const REQUIRED_PROOF_COMMANDS = [
   { id: "authoring validate", matches: (command: string) => command.includes("tn authoring validate") },
   { id: "build", matches: (command: string) => command.includes("tn build") },
-  { id: "playtest", matches: (command: string) => command.includes("tn playtest") && command.includes("--expect-moved") },
+  { id: "playtest scenario", matches: (command: string) => command.includes("tn playtest") && command.includes("--scenario") && command.includes("playtests/") },
   { id: "screenshot", matches: (command: string) => command.includes("tn screenshot") },
   { id: "score", matches: (command: string) => command.includes("tn game score") },
   { id: "qa --run-proof", matches: (command: string) => command.includes("tn game qa") && command.includes("--run-proof") },
@@ -151,7 +151,7 @@ async function templateDiagnosticsFor(templateName: string, templatePath: string
       message: `${templateName}: threenative.config.json must define production loop, controls, objective, retry path, and proof commands${missingProofCommands.length > 0 ? `; missing ${missingProofCommands.join(", ")}` : ""}.`,
       path: configPath,
       severity: "error",
-      suggestedFix: "Add a production block with playableLoop, controls, objective, failRetry, and authoring/build/playtest/screenshot/score/QA/release proofCommands.",
+      suggestedFix: "Add a production block with playableLoop, controls, objective, failRetry, and authoring/build/scenario-playtest/screenshot/score/QA/release proofCommands.",
     });
   }
   if (!isRecord(agent)

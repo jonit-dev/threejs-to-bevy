@@ -52,7 +52,7 @@
       "tn authoring validate --project . --json",
       "tn build --project . --json",
       "tn verify --project . --frames 3 --expect-motion --json",
-      "tn playtest --project . --entity player --press KeyD --expect-axis x --json",
+      "tn playtest --project . --scenario playtests/smoke-movement.playtest.json --stable-artifacts --json",
       "tn game qa --project . --run-proof --url <preview-url> --entity player --press KeyD --expect-axis x --json",
       "tn game score --project . --json",
       "tn game release --project . --json"
