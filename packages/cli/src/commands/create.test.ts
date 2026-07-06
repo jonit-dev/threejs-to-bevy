@@ -83,6 +83,9 @@ test("should create starter template files", async () => {
     assert.equal(packageJson.dependencies["@threenative/r3f"], undefined);
     assert.equal(packageJson.dependencies["@threenative/ui"], undefined);
     assert.equal(packageJson.devDependencies["@threenative/cli"], "file:.threenative/cli");
+    await access(join(payload.path, "playtests", "smoke-movement.playtest.json"));
+    await access(join(payload.path, "playtests", "camera-follow.playtest.json"));
+    await access(join(payload.path, "playtests", "hud-resource.playtest.json"));
   } finally {
     await rm(root, { force: true, recursive: true });
   }
@@ -213,6 +216,9 @@ test("should create structured-source starter template with editable content doc
     assert.match(readme, /pnpm run recipe:controller/);
     await access(join(payload.path, "assets", "goal-ping.wav"));
     await access(join(payload.path, "AGENT_GAME_PLAN.md"));
+    await access(join(payload.path, "playtests", "smoke-movement.playtest.json"));
+    await access(join(payload.path, "playtests", "camera-follow.playtest.json"));
+    await access(join(payload.path, "playtests", "hud-resource.playtest.json"));
     await assert.rejects(access(join(payload.path, "src/game.ts")));
     await assert.rejects(access(join(payload.path, "dist", "structured-source-starter.bundle")));
 
@@ -297,6 +303,9 @@ test("should create racing kit rally starter with reusable race scene structure"
     assert.equal(packageJson.scripts["game:release"], "tn game release --project . --json");
     await access(join(payload.path, "assets", "roadCornerLarge.glb"));
     await access(join(payload.path, "assets", "raceCarRed.glb"));
+    await access(join(payload.path, "playtests", "smoke-movement.playtest.json"));
+    await access(join(payload.path, "playtests", "camera-follow.playtest.json"));
+    await access(join(payload.path, "playtests", "hud-resource.playtest.json"));
 
     const validate = await authoringCommand(["validate", "--project", payload.path, "--json"], { cwd: root });
     const validationPayload = JSON.parse(validate.stdout) as { code: string; ok: boolean };

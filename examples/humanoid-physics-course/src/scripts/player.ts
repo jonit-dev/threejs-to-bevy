@@ -54,6 +54,15 @@ export function updateHumanoidCourse(context: ScriptContext): void {
   const stats = player.get?.("CoursePlayer") ?? { checkpoint: 0, finished: false, hits: 0, lastHitAt: -10 };
 
   const playClip = (clip: string, sourceClip: string, speed: number): void => {
+    const currentClip = typeof move.clip === "string" ? move.clip : "";
+    const currentSourceClip = typeof move.sourceClip === "string" ? move.sourceClip : "";
+    const currentSpeed = typeof move.clipSpeed === "number" ? move.clipSpeed : 0;
+    if (currentClip === clip && currentSourceClip === sourceClip && Math.abs(currentSpeed - speed) < 0.08) {
+      return;
+    }
+    move.clip = clip;
+    move.sourceClip = sourceClip;
+    move.clipSpeed = speed;
     context.animation?.play?.(player, clip, { blendSeconds: 0.22, loop: true, sourceClip, speed });
   };
   const reset = (): void => {
@@ -153,11 +162,15 @@ export function updateHumanoidCourse(context: ScriptContext): void {
 }
 
 export function updateThirdPersonCamera(context: ScriptContext): void {
-  const CAMERA_DISTANCE = 4.15;
-  const CAMERA_PITCH = 0.28;
+  const CAMERA_DISTANCE = 5.0;
   const LOOK_HEIGHT = 1.45;
-  const LOOK_SENSITIVITY = 0.0014;
-  const MAX_LOOK_STEP = 0.045;
+  const DEFAULT_PITCH = 0.28;
+  const MIN_PITCH = 0.12;
+  const MAX_PITCH = 0.62;
+  const LOOK_SENSITIVITY = 0.002;
+  const MAX_LOOK_STEP = 0.07;
+  const PITCH_SENSITIVITY = 0.0012;
+  const MAX_PITCH_STEP = 0.045;
 
   const entities = context.query();
   const player = entities.find((entity: any) => entity.id === "player");
@@ -166,18 +179,23 @@ export function updateThirdPersonCamera(context: ScriptContext): void {
     return;
   }
 
-  const move = context.state("tn.thirdPerson.player", { cameraYaw: 0, speed: 0, yaw: Math.PI });
+  const move = context.state("tn.thirdPerson.player", { cameraPitch: DEFAULT_PITCH, cameraYaw: 0, speed: 0, yaw: Math.PI });
   if (!Number.isFinite(move.cameraYaw)) {
     move.cameraYaw = 0;
   }
+  if (!Number.isFinite(move.cameraPitch)) {
+    move.cameraPitch = DEFAULT_PITCH;
+  }
   const lookX = NumberEx.clamp(context.input?.axis?.("LookX") ?? 0, -36, 36);
+  const lookY = NumberEx.clamp(context.input?.axis?.("LookY") ?? 0, -36, 36);
   move.cameraYaw = NumberEx.repeat(move.cameraYaw - NumberEx.clamp(lookX * LOOK_SENSITIVITY, -MAX_LOOK_STEP, MAX_LOOK_STEP), Math.PI * 2);
+  move.cameraPitch = NumberEx.clamp(move.cameraPitch - NumberEx.clamp(lookY * PITCH_SENSITIVITY, -MAX_PITCH_STEP, MAX_PITCH_STEP), MIN_PITCH, MAX_PITCH);
 
   const playerPosition = player.transform?.().positionOr([0, 0.02, 5.0]) ?? [0, 0.02, 5.0];
   const target = Vec3.add(playerPosition, [0, LOOK_HEIGHT, 0]);
   const pose = CameraMath.orbitPose({
     distance: CAMERA_DISTANCE,
-    pitch: CAMERA_PITCH,
+    pitch: move.cameraPitch,
     target,
     yaw: move.cameraYaw,
   });

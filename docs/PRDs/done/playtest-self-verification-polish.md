@@ -644,7 +644,7 @@ Documentation-only validation:
 
 ```bash
 npx -y pnpm@10.25.0 check:docs
-git diff --check -- docs/PRDs/other/playtest-self-verification-polish.md docs/PRDs/README.md
+git diff --check -- docs/PRDs/done/playtest-self-verification-polish.md docs/PRDs/README.md
 ```
 
 Implementation PRs should run the narrowest matching commands from each phase,

@@ -27,8 +27,20 @@
     {
       "id": "tn.thirdPerson.player",
       "fields": {
+        "cameraPitch": {
+          "kind": "number"
+        },
         "cameraYaw": {
           "kind": "number"
+        },
+        "clip": {
+          "kind": "string"
+        },
+        "clipSpeed": {
+          "kind": "number"
+        },
+        "sourceClip": {
+          "kind": "string"
         },
         "speed": {
           "kind": "number"

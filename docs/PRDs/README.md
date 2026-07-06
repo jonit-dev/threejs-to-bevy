@@ -11,10 +11,6 @@ backlog unless a nested PRD says it has been superseded.
 
 ### Runtime And Gameplay Parity
 
-- [Playtest Self-Verification Polish](other/playtest-self-verification-polish.md):
-  scenario-driven `tn playtest` for agent self-verification, with discovery,
-  multi-step input, richer assertions, artifact bundles, watch mode, QA
-  integration, and a target-neutral bridge for future native proof.
 - [Native Parity Closure and Proof Loop](other/native-parity-closure-and-proof-loop.md):
   Bevy ports of script kinematic authority, `KinematicMover`, and
   `character.move` overrides, plus a native proof harness so
@@ -129,6 +125,7 @@ Useful completed reference groups:
   [Agent-Friendly Project Scaffolding and Visual Debugging Workflows](done/agent-friendly-project-and-visual-debugging-workflows.md),
   [Agent-Friendly 3D Game Creation Contract](done/other/agent-friendly-3d-game-creation-contract.md),
   [Playable Game Authoring Loop Hardening](done/other/game-authoring-loop-hardening.md),
+  [Playtest Self-Verification Polish](done/playtest-self-verification-polish.md),
   [Shippable Asset Source Catalog](done/other/shippable-asset-source-catalog.md),
   [Agentic Game Production Workflow](done/other/agentic-game-production-workflow.md),
   [Bowling Lane Agent-Friendly Scene Source Refactor](done/other/bowling-lane-agent-friendly-scene-source.md).

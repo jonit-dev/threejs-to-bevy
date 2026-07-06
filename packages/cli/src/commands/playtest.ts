@@ -10,6 +10,7 @@ import { evaluateRichPlaytestAssertions, type IPlaytestAssertionResult, type IPl
 import { defaultPlaytestArtifactDirectory, writePlaytestArtifactBundle, type IPlaytestArtifactBundle } from "./playtestArtifacts.js";
 import { discoverPlaytestTargets, suggestPlaytestScenario, type IPlaytestDiscoveryReport } from "./playtestDiscovery.js";
 import { applyScenarioOverrides, loadPlaytestScenario, oneShotScenario, parsePlaytestTarget, parseViewport, PlaytestScenarioError, type IPlaytestScenario } from "./playtestScenario.js";
+import { createPlaytestTargetRunner } from "./playtestTargets.js";
 import { playtestWatchCommand, readPlaytestWatchMaxRuns, type IPlaytestWatchHooks } from "./playtestWatch.js";
 
 declare global {
@@ -232,7 +233,8 @@ export async function playtestCommand(
           ...(viewport === undefined ? {} : { viewport }),
         })
       : applyScenarioOverrides(await loadPlaytestScenario(projectPath, scenarioPath), { target, viewport });
-    if (scenario.target !== "web") {
+    const selectedRunner = createPlaytestTargetRunner(scenario.target, options.runner ?? runWebPlaytest);
+    if (selectedRunner === undefined) {
       return diagnosticResult(
         {
           code: "TN_PLAYTEST_TARGET_UNSUPPORTED",
@@ -264,9 +266,8 @@ export async function playtestCommand(
       );
     }
     const runDirectory = resolvePath(projectPath, readFlag(normalizedArgv, "--out") ?? defaultPlaytestArtifactDirectory(projectPath, scenario.name, stableArtifacts));
-    const runner = options.runner ?? runWebPlaytest;
     const started = Date.now();
-    const report = await runner({
+    const report = await selectedRunner.run({
       artifactDirectory: runDirectory,
       debugColliders,
       entityId: primary.entityId,

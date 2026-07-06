@@ -123,6 +123,39 @@ function buildQaProofSteps(argv: readonly string[], proofDefaults: IProofDefault
   const press = normalizeProofPress(readFlag(argv, "--press") ?? proofDefaults.press);
   const expectAxis = readFlag(argv, "--expect-axis") ?? proofDefaults.expectAxis;
   const frames = readFlag(argv, "--frames") ?? proofDefaults.frames ?? "30";
+  const playtestSteps: IGameProofStepSpec[] = playtestScenarios.length > 0
+    ? playtestScenarios.map((scenario): IGameProofStepSpec => ({
+        args: ["--project", ".", "--scenario", scenario, "--stable-artifacts", "--json"],
+        command: "playtest",
+        id: `playtest:${basename(scenario, ".playtest.json")}`,
+        phase: "gameplay",
+        required: true,
+        summary: `Run focused playtest scenario ${scenario}.`,
+      }))
+    : [
+        entity !== undefined && press !== undefined
+          ? {
+              args: [
+                "--project",
+                ".",
+                "--entity",
+                entity,
+                "--press",
+                press,
+                "--frames",
+                frames,
+                "--expect-moved",
+                ...(expectAxis === undefined ? [] : ["--expect-axis", expectAxis]),
+                "--json",
+              ],
+              command: "playtest",
+              id: "playtest",
+              phase: "gameplay",
+              required: true,
+              summary: "Run web input proof and assert the main input path changes state.",
+            }
+          : missingArgumentStep("playtest", "gameplay", "tn game qa --run-proof requires --entity and --press to execute playtest proof."),
+      ];
   const steps: IGameProofStepSpec[] = [
     {
       args: ["--project", ".", "--json"],
@@ -140,39 +173,7 @@ function buildQaProofSteps(argv: readonly string[], proofDefaults: IProofDefault
       required: true,
       summary: "Build the project bundle before visual and interaction proof.",
     },
-    ...(playtestScenarios.length > 0
-      ? playtestScenarios.map((scenario) => ({
-          args: ["--project", ".", "--scenario", scenario, "--stable-artifacts", "--json"],
-          command: "playtest" as const,
-          id: `playtest:${basename(scenario, ".playtest.json")}`,
-          phase: "gameplay" as const,
-          required: true,
-          summary: `Run focused playtest scenario ${scenario}.`,
-        }))
-      : [
-          entity !== undefined && press !== undefined
-            ? {
-          args: [
-            "--project",
-            ".",
-            "--entity",
-            entity,
-            "--press",
-            press,
-            "--frames",
-            frames,
-            "--expect-moved",
-            ...(expectAxis === undefined ? [] : ["--expect-axis", expectAxis]),
-            "--json",
-          ],
-          command: "playtest",
-          id: "playtest",
-          phase: "gameplay",
-          required: true,
-          summary: "Run web input proof and assert the main input path changes state.",
-        }
-            : missingArgumentStep("playtest", "gameplay", "tn game qa --run-proof requires --entity and --press to execute playtest proof."),
-        ]),
+    ...playtestSteps,
     url !== undefined
       ? {
           args: ["--project", ".", "--url", url, "--out", "artifacts/game-production/screenshot.png", "--wait-ready", "--json"],

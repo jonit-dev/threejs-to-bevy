@@ -736,6 +736,46 @@ test("checks existing screenshot proof when QA proof URL is omitted", async () =
   }
 });
 
+test("qa run-proof discovers playtest scenarios and records summaries", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-game-qa-playtest-scenarios-"));
+  try {
+    await writePassingGameProject(root);
+    await mkdir(join(root, "playtests"), { recursive: true });
+    await writeFile(join(root, "playtests/smoke-movement.playtest.json"), JSON.stringify({ schemaVersion: 1, name: "smoke-movement", subject: "player", steps: [{ press: "KeyD" }] }), "utf8");
+    await writeFile(join(root, "playtests/hud-resource.playtest.json"), JSON.stringify({ schemaVersion: 1, name: "hud-resource", subject: "player", steps: [{ waitFrames: 5 }] }), "utf8");
+    const seenArgs: string[][] = [];
+    const result = await gameCommand(
+      ["qa", "--project", root, "--run-proof", "--json"],
+      {
+        proofRunner: async (step) => {
+          seenArgs.push([step.command, ...step.args]);
+          return {
+            exitCode: 0,
+            stdout: `${JSON.stringify({
+              artifacts: { directory: `artifacts/playtest/${step.id}/latest`, summary: `artifacts/playtest/${step.id}/latest/summary.json` },
+              code: step.command === "playtest" ? "TN_PLAYTEST_OK" : "TN_TEST_STEP_OK",
+              scenario: step.id.replace("playtest:", ""),
+            })}\n`,
+          };
+        },
+      },
+    );
+    const payload = JSON.parse(result.stdout) as {
+      proofRun: { steps: Array<{ evidence?: { scenario?: string; summary?: string }; id: string }> };
+    };
+    const playtestArgs = seenArgs.filter((args) => args[0] === "playtest");
+
+    assert.equal(result.exitCode, 0);
+    assert.deepEqual(playtestArgs, [
+      ["playtest", "--project", ".", "--scenario", "playtests/hud-resource.playtest.json", "--stable-artifacts", "--json"],
+      ["playtest", "--project", ".", "--scenario", "playtests/smoke-movement.playtest.json", "--stable-artifacts", "--json"],
+    ]);
+    assert.equal(payload.proofRun.steps.some((step) => step.id === "playtest:smoke-movement" && step.evidence?.scenario === "smoke-movement" && step.evidence.summary?.includes("summary.json")), true);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
 test("infers QA proof playtest arguments from project production proof commands", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-game-qa-proof-defaults-"));
   try {

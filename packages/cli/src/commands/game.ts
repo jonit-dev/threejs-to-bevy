@@ -694,6 +694,7 @@ function compactReportForStdout(report: IGameWorkflowReport & { proofRun?: IGame
             code: step.code,
             command: step.command,
             durationMs: step.durationMs,
+            evidence: step.evidence,
             exitCode: step.exitCode,
             id: step.id,
             phase: step.phase,
@@ -1154,4 +1155,3 @@ function buildPlanDiagnostics(inventory: Awaited<ReturnType<typeof createGameAge
   }
   return diagnostics;
 }
-

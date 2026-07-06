@@ -1,0 +1,44 @@
+{
+  "schemaVersion": 1,
+  "name": "hud-resource",
+  "target": "web",
+  "viewport": {
+    "width": 1280,
+    "height": 720
+  },
+  "subject": "player",
+  "warmupFrames": 5,
+  "steps": [
+    {
+      "label": "sample-hud",
+      "waitFrames": 10
+    }
+  ],
+  "assert": {
+    "resources": [
+      {
+        "id": "GameState",
+        "path": "countdown",
+        "equals": "Ready"
+      }
+    ],
+    "hud": [
+      {
+        "id": "countdown",
+        "textIncludes": "Ready"
+      }
+    ],
+    "diagnostics": {
+      "runtimeReady": true,
+      "noConsoleErrors": true,
+      "noNetworkErrors": true,
+      "noRuntimeDiagnostics": true
+    }
+  },
+  "artifacts": {
+    "screenshots": "before-after",
+    "console": true,
+    "network": true,
+    "runtimeTrace": true
+  }
+}

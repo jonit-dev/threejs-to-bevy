@@ -1,0 +1,50 @@
+{
+  "schemaVersion": 1,
+  "name": "camera-follow",
+  "target": "web",
+  "viewport": {
+    "width": 1280,
+    "height": 720
+  },
+  "subject": "player.car",
+  "warmupFrames": 5,
+  "steps": [
+    {
+      "label": "throttle",
+      "press": "KeyW",
+      "holdFrames": 60,
+      "release": true
+    }
+  ],
+  "assert": {
+    "movement": {
+      "entity": "player.car",
+      "minDistance": 0.2
+    },
+    "camera": {
+      "entity": "camera.main",
+      "follows": "player.car",
+      "within": 8,
+      "targetInViewport": true
+    },
+    "visibility": [
+      {
+        "entity": "player.car",
+        "minProjectedPixels": 1000,
+        "maxOffscreenRatio": 0.1
+      }
+    ],
+    "diagnostics": {
+      "runtimeReady": true,
+      "noConsoleErrors": true,
+      "noNetworkErrors": true,
+      "noRuntimeDiagnostics": true
+    }
+  },
+  "artifacts": {
+    "screenshots": "before-after",
+    "console": true,
+    "network": true,
+    "runtimeTrace": true
+  }
+}
