@@ -62,6 +62,9 @@
       "resourceWrites": [
         "tn.thirdPerson.player"
       ],
+      "services": [
+        "physics.raycast"
+      ],
       "script": {
         "module": "src/scripts/player.ts",
         "export": "updateThirdPersonCamera"

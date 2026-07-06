@@ -162,7 +162,9 @@ export function updateHumanoidCourse(context: ScriptContext): void {
 }
 
 export function updateThirdPersonCamera(context: ScriptContext): void {
-  const CAMERA_DISTANCE = 5.0;
+  const CAMERA_DISTANCE = 5.2;
+  const MIN_CAMERA_DISTANCE = 1.35;
+  const CAMERA_COLLISION_PADDING = 0.28;
   const LOOK_HEIGHT = 1.45;
   const DEFAULT_PITCH = 0.28;
   const MIN_PITCH = 0.12;
@@ -171,6 +173,24 @@ export function updateThirdPersonCamera(context: ScriptContext): void {
   const MAX_LOOK_STEP = 0.07;
   const PITCH_SENSITIVITY = 0.0012;
   const MAX_PITCH_STEP = 0.045;
+  const ROTATION_ROUNDING = 5;
+  const POSITION_ROUNDING = 5;
+
+  const normalizeVec3 = (value: Vec3Tuple): Vec3Tuple => {
+    const length = Math.hypot(value[0], value[1], value[2]);
+    return length > 0.000001 ? [value[0] / length, value[1] / length, value[2] / length] : [0, 0, 1];
+  };
+  const roundVec3 = (value: Vec3Tuple, digits: number): Vec3Tuple => [
+    NumberEx.round(value[0], digits),
+    NumberEx.round(value[1], digits),
+    NumberEx.round(value[2], digits),
+  ];
+  const roundQuat = (value: [number, number, number, number], digits: number): [number, number, number, number] => [
+    NumberEx.round(value[0], digits),
+    NumberEx.round(value[1], digits),
+    NumberEx.round(value[2], digits),
+    NumberEx.round(value[3], digits),
+  ];
 
   const entities = context.query();
   const player = entities.find((entity: any) => entity.id === "player");
@@ -199,5 +219,24 @@ export function updateThirdPersonCamera(context: ScriptContext): void {
     target,
     yaw: move.cameraYaw,
   });
-  camera.transform?.().setPose(Vec3.round(pose.position, 4), pose.rotation);
+  const desired = pose.position as Vec3Tuple;
+  const toCamera = normalizeVec3([desired[0] - target[0], desired[1] - target[1], desired[2] - target[2]]);
+  const ray = context.physics?.raycast?.({
+    direction: toCamera,
+    ignore: ["player"],
+    mask: ["world", "pushable"],
+    maxDistance: CAMERA_DISTANCE,
+    origin: target,
+  });
+  const collisionDistance = ray?.hit === true ? Math.max(MIN_CAMERA_DISTANCE, Number(ray.distance) - CAMERA_COLLISION_PADDING) : CAMERA_DISTANCE;
+  const cameraDistance = Number.isFinite(collisionDistance) ? collisionDistance : CAMERA_DISTANCE;
+  const collisionResolved: Vec3Tuple = [
+    target[0] + toCamera[0] * cameraDistance,
+    target[1] + toCamera[1] * cameraDistance,
+    target[2] + toCamera[2] * cameraDistance,
+  ];
+
+  const resolvedPosition: Vec3Tuple = roundVec3(collisionResolved, POSITION_ROUNDING);
+  const resolvedPose = CameraMath.lookAtPose(resolvedPosition, target);
+  camera.transform?.().setPose(resolvedPosition, roundQuat(resolvedPose.rotation, ROTATION_ROUNDING));
 }
