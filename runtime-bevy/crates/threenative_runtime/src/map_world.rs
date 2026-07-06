@@ -14,7 +14,7 @@ use bevy::{
         Annulus, Capsule3d, Circle as PrimitiveCircle, Cone, ConicalFrustum, Cuboid, Cylinder,
         Extrusion, Rectangle, RegularPolygon, Sphere, Torus,
     },
-    pbr::{FogFalloff, FogSettings, NotShadowCaster, NotShadowReceiver},
+    pbr::{FogFalloff, FogSettings, NotShadowCaster, NotShadowReceiver, ShadowFilteringMethod},
     prelude::*,
     render::{
         alpha::AlphaMode,
@@ -42,7 +42,7 @@ use crate::render_targets::{
     NativeCustomProjection, NativeRenderTargetRegistry, allocate_render_targets,
     camera_render_target,
 };
-use crate::rendering::spawn_rendered_particles;
+use crate::rendering::{NativeEnvironmentMapHandles, spawn_rendered_particles};
 use crate::stylized_nature::{grass_material_policy, resolve_source_assets};
 use crate::world_mapping::attach_entity_hierarchy;
 
@@ -59,6 +59,8 @@ const THREE_COMPAT_POINT_LUMENS_PER_CANDELA: f32 = 1.0;
 const THREE_COMPAT_DEFAULT_RANGE: f32 = 1_000.0;
 const THREE_COMPAT_DEFAULT_CAMERA_EV100: f32 = -0.263_034_4;
 const THREE_COMPAT_SKY_DOME_RADIUS: f32 = 72.0;
+const THREE_COMPAT_EMISSIVE_INTENSITY_SCALE: f32 = 2.5;
+const THREE_COMPAT_FOG_EXP2_DENSITY_SCALE: f32 = 0.65;
 
 pub struct StylizedNatureRuntimeDefaults {
     pub bark_color: &'static str,
@@ -205,6 +207,11 @@ pub fn map_bundle_into_world(world: &mut World, bundle: &LoadedBundle) -> Result
         .filter(|profile| profile.active);
     ensure_ambient_light_contract(world, bundle, camera_atmosphere);
     let camera_color_management = camera_atmosphere.map(|profile| &profile.color_management);
+    let runtime_color_grading = bundle
+        .runtime_config
+        .as_ref()
+        .and_then(|config| config.renderer.as_ref())
+        .and_then(|renderer| renderer.color_grading.as_ref());
     let bloom_settings = bloom_settings_for_runtime(bundle.runtime_config.as_ref());
     let default_camera_clear_color = world.get_resource::<ClearColor>().map(|clear| clear.0);
     let layer_map = build_render_layer_map(bundle);
@@ -245,6 +252,7 @@ pub fn map_bundle_into_world(world: &mut World, bundle: &LoadedBundle) -> Result
             &active_camera_set,
             fallback_active.as_deref(),
             camera_color_management,
+            runtime_color_grading,
             camera_atmosphere,
             bloom_settings.as_ref(),
             default_camera_clear_color,
@@ -1666,6 +1674,7 @@ fn spawn_entity(
     active_cameras: &std::collections::HashSet<&str>,
     fallback_active_camera: Option<&str>,
     camera_color_management: Option<&threenative_loader::AtmosphereColorManagementIr>,
+    runtime_color_grading: Option<&threenative_loader::RuntimeRendererColorGradingConfig>,
     camera_atmosphere: Option<&AtmosphereProfileIr>,
     bloom_settings: Option<&BloomSettings>,
     default_camera_clear_color: Option<Color>,
@@ -1807,6 +1816,7 @@ fn spawn_entity(
     }
 
     if let Some(camera) = &entity.components.camera {
+        let environment_map = world.get_resource::<NativeEnvironmentMapHandles>().cloned();
         let projection = if camera.kind == "orthographic" {
             Projection::Orthographic(OrthographicProjection {
                 far: camera.far,
@@ -1823,10 +1833,13 @@ fn spawn_entity(
             })
         };
         let mut spawned = world.spawn(Camera3dBundle {
-            color_grading: color_grading_for_profile(camera_color_management),
-            exposure: exposure_for_profile(camera_color_management),
+            color_grading: color_grading_for_profile(
+                camera_color_management,
+                runtime_color_grading,
+            ),
+            exposure: exposure_for_profile(camera_color_management, runtime_color_grading),
             projection,
-            tonemapping: tonemapping_for_profile(camera_color_management),
+            tonemapping: tonemapping_for_profile(camera_color_management, runtime_color_grading),
             transform,
             ..Default::default()
         });
@@ -1848,7 +1861,9 @@ fn spawn_entity(
             camera_render_target(camera, render_target_registry),
         );
         if let Some(mut camera_component) = spawned.get_mut::<Camera>() {
-            camera_component.hdr = camera_color_management.is_some();
+            camera_component.hdr = camera_color_management.is_some()
+                || runtime_color_grading.is_some()
+                || bloom_settings.is_some();
             if camera.clear.is_none() {
                 if let Some(clear_color) = default_camera_clear_color {
                     camera_component.clear_color = ClearColorConfig::Custom(clear_color);
@@ -1868,6 +1883,20 @@ fn spawn_entity(
         spawned.insert((stable_id, name, map_visibility(entity)));
         if let Some(bloom_settings) = bloom_settings {
             spawned.insert(bloom_settings.clone());
+        }
+        if camera_atmosphere
+            .is_some_and(|profile| profile.sun.casts_shadow && profile.shadows.enabled)
+        {
+            spawned.insert(ShadowFilteringMethod::Gaussian);
+        }
+        if is_active {
+            if let Some(environment_map) = environment_map {
+                spawned.insert(EnvironmentMapLight {
+                    diffuse_map: environment_map.diffuse_map.clone(),
+                    specular_map: environment_map.specular_map.clone(),
+                    intensity: environment_map.intensity,
+                });
+            }
         }
         insert_camera_antialias(&mut spawned, runtime_config);
         return Ok(spawned.id());
@@ -2046,10 +2075,22 @@ fn ancestor_animation_binding<'a>(
 
 fn color_grading_for_profile(
     color_management: Option<&threenative_loader::AtmosphereColorManagementIr>,
+    runtime_color_grading: Option<&threenative_loader::RuntimeRendererColorGradingConfig>,
 ) -> ColorGrading {
     let mut grading = ColorGrading::default();
-    if color_management.is_some() {
+    if color_management.is_some() || runtime_color_grading.is_some() {
         grading.global.exposure = 0.0;
+    }
+    if let Some(runtime_color_grading) = runtime_color_grading {
+        if let Some(saturation) = runtime_color_grading.saturation {
+            grading.global.post_saturation = saturation.max(0.0);
+        }
+        if let Some(contrast) = runtime_color_grading.contrast {
+            let section_contrast = (1.0 + contrast).max(0.0);
+            for section in grading.all_sections_mut() {
+                section.contrast = section_contrast;
+            }
+        }
     }
     grading
 }
@@ -2067,7 +2108,7 @@ fn fog_settings_for_profile(profile: Option<&AtmosphereProfileIr>) -> Option<Fog
         // Three.js `FogExp2` uses squared exponential falloff; match Bevy's
         // `FogFalloff::ExponentialSquared`, not linear `Exponential`.
         "exponential" => FogFalloff::ExponentialSquared {
-            density: fog.density.unwrap_or(0.0).max(0.0),
+            density: (fog.density.unwrap_or(0.0) * THREE_COMPAT_FOG_EXP2_DENSITY_SCALE).max(0.0),
         },
         _ => return None,
     };
@@ -2080,7 +2121,13 @@ fn fog_settings_for_profile(profile: Option<&AtmosphereProfileIr>) -> Option<Fog
 
 fn exposure_for_profile(
     color_management: Option<&threenative_loader::AtmosphereColorManagementIr>,
+    runtime_color_grading: Option<&threenative_loader::RuntimeRendererColorGradingConfig>,
 ) -> Exposure {
+    if let Some(exposure) = runtime_color_grading.and_then(|grading| grading.exposure) {
+        return Exposure {
+            ev100: -exposure.max(0.001).log2(),
+        };
+    }
     let Some(color_management) = color_management else {
         return Exposure {
             ev100: THREE_COMPAT_DEFAULT_CAMERA_EV100,
@@ -2088,14 +2135,18 @@ fn exposure_for_profile(
     };
     let exposure = color_management.exposure.max(0.001);
     Exposure {
-        ev100: -(1.2 * exposure).log2(),
+        ev100: -exposure.log2(),
     }
 }
 
 fn tonemapping_for_profile(
     color_management: Option<&threenative_loader::AtmosphereColorManagementIr>,
+    runtime_color_grading: Option<&threenative_loader::RuntimeRendererColorGradingConfig>,
 ) -> Tonemapping {
-    match color_management.map(|profile| profile.tone_mapping.as_str()) {
+    match runtime_color_grading
+        .and_then(|grading| grading.tone_mapping.as_deref())
+        .or_else(|| color_management.map(|profile| profile.tone_mapping.as_str()))
+    {
         Some("aces") => Tonemapping::AcesFitted,
         Some("none") => Tonemapping::None,
         None => Tonemapping::None,
@@ -2103,22 +2154,12 @@ fn tonemapping_for_profile(
     }
 }
 
-fn camera_exposure_value(
-    color_management: Option<&threenative_loader::AtmosphereColorManagementIr>,
-) -> f32 {
-    color_management
-        .map(|profile| profile.exposure)
-        .unwrap_or(1.0)
-        .max(0.001)
-}
-
 fn directional_illuminance(
     intensity: f32,
-    color_management: Option<&threenative_loader::AtmosphereColorManagementIr>,
+    _color_management: Option<&threenative_loader::AtmosphereColorManagementIr>,
     atmosphere: Option<&AtmosphereProfileIr>,
 ) -> f32 {
-    intensity / camera_exposure_value(color_management)
-        * directional_illuminance_per_intensity(atmosphere)
+    intensity * directional_illuminance_per_intensity(atmosphere)
 }
 
 fn directional_illuminance_per_intensity(atmosphere: Option<&AtmosphereProfileIr>) -> f32 {
@@ -2131,14 +2172,34 @@ fn directional_illuminance_per_intensity(atmosphere: Option<&AtmosphereProfileIr
 
 fn point_lumens(
     intensity: f32,
-    color_management: Option<&threenative_loader::AtmosphereColorManagementIr>,
+    _color_management: Option<&threenative_loader::AtmosphereColorManagementIr>,
 ) -> f32 {
-    intensity / camera_exposure_value(color_management) * THREE_COMPAT_POINT_LUMENS_PER_CANDELA
+    intensity * THREE_COMPAT_POINT_LUMENS_PER_CANDELA
 }
 
 fn add_mesh(world: &mut World, asset: &AssetIr) -> Handle<Mesh> {
-    let mesh = match asset.primitive.as_deref() {
+    let mut mesh = match asset.primitive.as_deref() {
         Some("custom") => custom_mesh(asset),
+        Some("box") => three_box_mesh([
+            asset
+                .size
+                .as_ref()
+                .and_then(|size| size.first())
+                .copied()
+                .unwrap_or(1.0),
+            asset
+                .size
+                .as_ref()
+                .and_then(|size| size.get(1))
+                .copied()
+                .unwrap_or(1.0),
+            asset
+                .size
+                .as_ref()
+                .and_then(|size| size.get(2))
+                .copied()
+                .unwrap_or(1.0),
+        ]),
         Some("sphere") => Mesh::from(Sphere {
             radius: asset
                 .size
@@ -2304,7 +2365,117 @@ fn add_mesh(world: &mut World, asset: &AssetIr) -> Handle<Mesh> {
             ))
         }
     };
+    generate_tangents_if_possible(&mut mesh);
     world.resource_mut::<Assets<Mesh>>().add(mesh)
+}
+
+fn generate_tangents_if_possible(mesh: &mut Mesh) {
+    if mesh.attribute(Mesh::ATTRIBUTE_TANGENT).is_some()
+        || mesh.attribute(Mesh::ATTRIBUTE_POSITION).is_none()
+        || mesh.attribute(Mesh::ATTRIBUTE_NORMAL).is_none()
+        || mesh.attribute(Mesh::ATTRIBUTE_UV_0).is_none()
+        || mesh.indices().is_none()
+    {
+        return;
+    }
+    let _ = mesh.generate_tangents();
+}
+
+fn three_box_mesh(size: [f32; 3]) -> Mesh {
+    let hx = size[0] * 0.5;
+    let hy = size[1] * 0.5;
+    let hz = size[2] * 0.5;
+    let positions = vec![
+        [hx, hy, hz],
+        [hx, hy, -hz],
+        [hx, -hy, hz],
+        [hx, -hy, -hz],
+        [-hx, hy, -hz],
+        [-hx, hy, hz],
+        [-hx, -hy, -hz],
+        [-hx, -hy, hz],
+        [-hx, hy, -hz],
+        [hx, hy, -hz],
+        [-hx, hy, hz],
+        [hx, hy, hz],
+        [-hx, -hy, hz],
+        [hx, -hy, hz],
+        [-hx, -hy, -hz],
+        [hx, -hy, -hz],
+        [-hx, hy, hz],
+        [hx, hy, hz],
+        [-hx, -hy, hz],
+        [hx, -hy, hz],
+        [hx, hy, -hz],
+        [-hx, hy, -hz],
+        [hx, -hy, -hz],
+        [-hx, -hy, -hz],
+    ];
+    let normals = vec![
+        [1.0, 0.0, 0.0],
+        [1.0, 0.0, 0.0],
+        [1.0, 0.0, 0.0],
+        [1.0, 0.0, 0.0],
+        [-1.0, 0.0, 0.0],
+        [-1.0, 0.0, 0.0],
+        [-1.0, 0.0, 0.0],
+        [-1.0, 0.0, 0.0],
+        [0.0, 1.0, 0.0],
+        [0.0, 1.0, 0.0],
+        [0.0, 1.0, 0.0],
+        [0.0, 1.0, 0.0],
+        [0.0, -1.0, 0.0],
+        [0.0, -1.0, 0.0],
+        [0.0, -1.0, 0.0],
+        [0.0, -1.0, 0.0],
+        [0.0, 0.0, 1.0],
+        [0.0, 0.0, 1.0],
+        [0.0, 0.0, 1.0],
+        [0.0, 0.0, 1.0],
+        [0.0, 0.0, -1.0],
+        [0.0, 0.0, -1.0],
+        [0.0, 0.0, -1.0],
+        [0.0, 0.0, -1.0],
+    ];
+    let uvs = vec![
+        [0.0, 1.0],
+        [1.0, 1.0],
+        [0.0, 0.0],
+        [1.0, 0.0],
+        [0.0, 1.0],
+        [1.0, 1.0],
+        [0.0, 0.0],
+        [1.0, 0.0],
+        [0.0, 1.0],
+        [1.0, 1.0],
+        [0.0, 0.0],
+        [1.0, 0.0],
+        [0.0, 1.0],
+        [1.0, 1.0],
+        [0.0, 0.0],
+        [1.0, 0.0],
+        [0.0, 1.0],
+        [1.0, 1.0],
+        [0.0, 0.0],
+        [1.0, 0.0],
+        [0.0, 1.0],
+        [1.0, 1.0],
+        [0.0, 0.0],
+        [1.0, 0.0],
+    ];
+    let indices = Indices::U32(vec![
+        0, 2, 1, 2, 3, 1, 4, 6, 5, 6, 7, 5, 8, 10, 9, 10, 11, 9, 12, 14, 13, 14, 15, 13, 16, 18,
+        17, 18, 19, 17, 20, 22, 21, 22, 23, 21,
+    ]);
+
+    Mesh::new(
+        PrimitiveTopology::TriangleList,
+        RenderAssetUsages::default(),
+    )
+    .with_inserted_attribute(Mesh::ATTRIBUTE_POSITION, positions)
+    .with_inserted_attribute(Mesh::ATTRIBUTE_NORMAL, normals)
+    .with_inserted_attribute(Mesh::ATTRIBUTE_UV_0, uvs)
+    .with_inserted_indices(indices)
 }
 
 fn animation_playback(asset: &AssetIr) -> Option<NativeAnimationPlayback> {
@@ -2562,11 +2733,7 @@ fn add_material(
             .as_ref()
             .and_then(|extension| extension.double_sided)
             .unwrap_or(false),
-        emissive: if unlit_color_display {
-            LinearRgba::BLACK
-        } else {
-            emissive_color(material)
-        },
+        emissive: emissive_color(material),
         emissive_texture: texture_handle(
             material.emissive_texture.as_deref(),
             assets_by_id,
@@ -2667,14 +2834,15 @@ fn emissive_color(material: &MaterialIr) -> LinearRgba {
         return LinearRgba::BLACK;
     };
     let linear = color_to_bevy(color).to_linear();
-    linear * material.emissive_intensity.unwrap_or(1.0)
+    linear * material.emissive_intensity.unwrap_or(1.0) * THREE_COMPAT_EMISSIVE_INTENSITY_SCALE
 }
 
 fn uses_unlit_emissive_display(material: &MaterialIr) -> bool {
     material.emissive.is_some()
         && material.emissive_bloom.is_none()
-        && material.metalness.unwrap_or(0.0) <= 0.0
-        && material.roughness.unwrap_or(1.0) >= 0.99
+        && material.emissive_intensity.unwrap_or(1.0) >= 1.0
+        && material.metalness.unwrap_or(0.0) <= 0.1
+        && material.roughness.unwrap_or(1.0) >= 0.35
 }
 
 fn texture_handle(

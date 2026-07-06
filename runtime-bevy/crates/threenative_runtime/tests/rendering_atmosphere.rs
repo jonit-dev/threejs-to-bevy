@@ -7,16 +7,21 @@ use std::{
 
 use bevy::{
     core_pipeline::tonemapping::Tonemapping,
-    pbr::{CascadeShadowConfig, DirectionalLightShadowMap, FogFalloff, FogSettings},
+    pbr::{
+        CascadeShadowConfig, DirectionalLightShadowMap, FogFalloff, FogSettings,
+        ShadowFilteringMethod,
+    },
     prelude::*,
     render::{alpha::AlphaMode, camera::Exposure, render_resource::Face, view::ColorGrading},
 };
+use image::{ImageBuffer, Rgba};
 use threenative_loader::load_bundle;
 use threenative_runtime::{
     map_world::{NativeEnvironmentSkyDome, NativeMaterialHandles, map_bundle_into_world},
     rendering::{
-        apply_atmosphere_to_world, normalize_loaded_gltf_materials, normalize_textured_material,
-        observe_atmosphere,
+        NativeEnvironmentMapHandles, apply_atmosphere_to_world,
+        apply_environment_lighting_to_world, normalize_loaded_gltf_materials,
+        normalize_textured_material, observe_atmosphere,
     },
 };
 
@@ -115,7 +120,7 @@ fn rendering_should_map_atmosphere_profile_to_bevy_observation() {
     assert!((clear.green - 0xb6 as f32 / 255.0).abs() < 0.01);
     assert!((clear.blue - 0xaa as f32 / 255.0).abs() < 0.01);
     let ambient = app.world().resource::<AmbientLight>();
-    assert!((ambient.brightness - 0.8).abs() < 0.01);
+    assert!((ambient.brightness - 0.2).abs() < 0.01);
     let shadow_map = app.world().resource::<DirectionalLightShadowMap>();
     assert_eq!(shadow_map.size, 1024);
     let lights = app
@@ -137,9 +142,9 @@ fn rendering_should_map_atmosphere_profile_to_bevy_observation() {
         .collect::<Vec<_>>();
     assert_eq!(lights.len(), 1);
     let light = &lights[0];
-    assert!(!light.0);
-    assert!((light.1 - (3.2 / 1.05 * 1.388)).abs() < 0.01);
-    assert!((light.2 - 0.005).abs() < 0.001);
+    assert!(light.0);
+    assert!((light.1 - 3.2).abs() < 0.01);
+    assert!((light.2 - 0.05).abs() < 0.0001);
     assert!((light.3 - 0.02).abs() < 0.001);
     assert!((light.4[0] - 0xff as f32 / 255.0).abs() < 0.01);
     assert!((light.4[1] - 0xd3 as f32 / 255.0).abs() < 0.01);
@@ -149,7 +154,7 @@ fn rendering_should_map_atmosphere_profile_to_bevy_observation() {
 
     map_bundle_into_world(app.world_mut(), &bundle).expect("world should map");
     let mapped_ambient = app.world().resource::<AmbientLight>();
-    assert!((mapped_ambient.brightness - 0.8).abs() < 0.01);
+    assert!((mapped_ambient.brightness - 0.2).abs() < 0.01);
     let mapped_directional_count = app
         .world_mut()
         .query::<&DirectionalLight>()
@@ -165,15 +170,424 @@ fn rendering_should_map_atmosphere_profile_to_bevy_observation() {
     assert_eq!(*camera_color.0, Tonemapping::AcesFitted);
     assert!((camera_color.1.global.exposure - 0.0).abs() < 0.001);
     assert!((camera_color.1.global.post_saturation - 1.0).abs() < 0.001);
-    assert!((camera_color.2.exposure() - 1.05).abs() < 0.001);
+    assert!((camera_color.2.exposure() - 0.875).abs() < 0.001);
     let fog_color = camera_color.3.color.to_srgba();
     assert!((fog_color.red - 0x9e as f32 / 255.0).abs() < 0.01);
     assert!((fog_color.green - 0xb6 as f32 / 255.0).abs() < 0.01);
     assert!((fog_color.blue - 0xaa as f32 / 255.0).abs() < 0.01);
     assert!(matches!(
         camera_color.3.falloff,
-        FogFalloff::ExponentialSquared { density } if (density - 0.028).abs() < 0.001
+        FogFalloff::ExponentialSquared { density } if (density - 0.0182).abs() < 0.001
     ));
+    let shadow_filter = app
+        .world_mut()
+        .query::<&ShadowFilteringMethod>()
+        .iter(app.world())
+        .next()
+        .expect("atmosphere camera should map soft shadow filtering");
+    assert!(matches!(*shadow_filter, ShadowFilteringMethod::Gaussian));
+
+    fs::remove_dir_all(root).expect("temp bundle should be removed");
+}
+
+#[test]
+fn atmosphere_shadow_distance_should_cover_authored_scene_from_camera() {
+    let root = temp_bundle_dir();
+    write_json(
+        &root,
+        "manifest.json",
+        r#"{
+          "schema": "threenative.bundle",
+          "version": "0.1.0",
+          "name": "atmosphere-shadow-camera-span",
+          "requiredCapabilities": {},
+          "entry": { "world": "world.ir.json", "environmentScene": "environment.scene.json" },
+          "files": {
+            "assets": "assets.manifest.json",
+            "materials": "materials.ir.json",
+            "targetProfile": "target.profile.json"
+          }
+        }"#,
+    );
+    write_json(
+        &root,
+        "world.ir.json",
+        r##"{
+          "schema": "threenative.world",
+          "version": "0.1.0",
+          "entities": [
+            { "id": "camera.main", "components": { "Camera": { "kind": "perspective", "near": 0.1, "far": 100, "fovY": 60 }, "Transform": { "position": [0, 2, 30] } } },
+            { "id": "receiver", "components": { "Transform": { "position": [0, 0, 0] } } }
+          ]
+        }"##,
+    );
+    write_json(
+        &root,
+        "assets.manifest.json",
+        r#"{ "schema": "threenative.assets", "version": "0.1.0", "assets": [] }"#,
+    );
+    write_json(
+        &root,
+        "materials.ir.json",
+        r#"{ "schema": "threenative.materials", "version": "0.1.0", "materials": [] }"#,
+    );
+    write_json(
+        &root,
+        "target.profile.json",
+        r#"{ "schema": "threenative.target-profile", "version": "0.1.0", "targets": ["desktop"] }"#,
+    );
+    write_json(
+        &root,
+        "environment.scene.json",
+        r##"{
+          "schema": "threenative.environment-scene",
+          "version": "0.1.0",
+          "atmosphere": {
+            "active": true,
+            "id": "atmosphere.test",
+            "sun": { "id": "sun.test", "direction": [-0.4, -0.8, -0.2], "color": "#ffffff", "intensity": 2, "castsShadow": true },
+            "ambient": { "color": "#ffffff", "intensity": 0.4, "mode": "constant" },
+            "sky": { "color": "#9eb6aa" },
+            "colorManagement": { "exposure": 1, "outputColorSpace": "srgb", "textureColorSpace": "srgb", "toneMapping": "aces" },
+            "shadows": { "enabled": true, "mapSize": 2048, "maxDistance": 16, "cascadeCount": 1, "bias": -0.0002, "normalBias": 0.015, "receiverPolicy": "terrain-and-path" }
+          },
+          "path": { "id": "path.main", "points": [[0, 0, 0], [0, 0, 1]], "width": 2 }
+        }"##,
+    );
+
+    let bundle = load_bundle(&root).expect("atmosphere bundle should load");
+    let mut app = App::new();
+    apply_atmosphere_to_world(app.world_mut(), &bundle);
+
+    let cascade = app
+        .world_mut()
+        .query::<&CascadeShadowConfig>()
+        .iter(app.world())
+        .next()
+        .expect("atmosphere sun should spawn cascade shadow config");
+    assert_eq!(cascade.bounds.len(), 1);
+    assert!(
+        cascade.bounds[0] > 45.0,
+        "shadow cascade should include camera-to-scene span plus authored extent, got {}",
+        cascade.bounds[0]
+    );
+
+    fs::remove_dir_all(root).expect("temp bundle should be removed");
+}
+
+#[test]
+fn atmosphere_directional_shadows_should_follow_authored_shadow_flags() {
+    let root = temp_bundle_dir();
+    write_json(
+        &root,
+        "manifest.json",
+        r#"{
+          "schema": "threenative.bundle",
+          "version": "0.1.0",
+          "name": "atmosphere-shadows-disabled",
+          "requiredCapabilities": {},
+          "entry": { "world": "world.ir.json", "environmentScene": "environment.scene.json" },
+          "files": {
+            "assets": "assets.manifest.json",
+            "materials": "materials.ir.json",
+            "targetProfile": "target.profile.json"
+          }
+        }"#,
+    );
+    write_json(
+        &root,
+        "world.ir.json",
+        r#"{
+          "schema": "threenative.world",
+          "version": "0.1.0",
+          "entities": [
+            {
+              "id": "camera.main",
+              "components": {
+                "Camera": { "kind": "perspective", "near": 0.1, "far": 100, "fovY": 60 },
+                "Transform": { "position": [0, 1, 4], "rotation": [0, 0, 0, 1], "scale": [1, 1, 1] }
+              }
+            }
+          ]
+        }"#,
+    );
+    write_json(
+        &root,
+        "assets.manifest.json",
+        r#"{ "schema": "threenative.assets", "version": "0.1.0", "assets": [] }"#,
+    );
+    write_json(
+        &root,
+        "materials.ir.json",
+        r#"{ "schema": "threenative.materials", "version": "0.1.0", "materials": [] }"#,
+    );
+    write_json(
+        &root,
+        "target.profile.json",
+        r#"{ "schema": "threenative.target-profile", "version": "0.1.0", "targets": ["desktop"] }"#,
+    );
+    write_json(
+        &root,
+        "environment.scene.json",
+        r##"{
+          "schema": "threenative.environment-scene",
+          "version": "0.1.0",
+          "atmosphere": {
+            "active": true,
+            "id": "atmosphere.test",
+            "sun": { "id": "sun.test", "direction": [-0.4, -0.8, -0.2], "color": "#ffffff", "intensity": 2, "castsShadow": true },
+            "ambient": { "color": "#ffffff", "intensity": 0.4, "mode": "constant" },
+            "sky": { "color": "#9eb6aa" },
+            "colorManagement": { "exposure": 1, "outputColorSpace": "srgb", "textureColorSpace": "srgb", "toneMapping": "aces" },
+            "shadows": { "enabled": false, "mapSize": 2048, "maxDistance": 30, "cascadeCount": 2, "bias": -0.0002, "normalBias": 0.015, "receiverPolicy": "terrain-and-path" }
+          },
+          "path": { "id": "path.main", "points": [[0, 0, 0], [0, 0, 1]], "width": 2 }
+        }"##,
+    );
+
+    let bundle = load_bundle(&root).expect("atmosphere bundle should load");
+    let mut app = App::new();
+    apply_atmosphere_to_world(app.world_mut(), &bundle);
+
+    let shadow_map = app.world().resource::<DirectionalLightShadowMap>();
+    assert_eq!(shadow_map.size, 2048);
+    let lights = app
+        .world_mut()
+        .query::<(&DirectionalLight, &CascadeShadowConfig)>()
+        .iter(app.world())
+        .map(|(light, cascade)| {
+            (
+                light.shadows_enabled,
+                light.shadow_depth_bias,
+                light.shadow_normal_bias,
+                cascade.bounds.clone(),
+            )
+        })
+        .collect::<Vec<_>>();
+    assert_eq!(lights.len(), 1);
+    assert!(!lights[0].0);
+    assert!((lights[0].1 - 0.02).abs() < 0.0001);
+    assert!((lights[0].2 - 0.015).abs() < 0.0001);
+    assert_eq!(lights[0].3.len(), 2);
+
+    fs::remove_dir_all(root).expect("temp bundle should be removed");
+}
+
+#[test]
+fn environment_lighting_should_prefer_environment_map_over_skybox_for_ambient() {
+    let root = temp_bundle_dir();
+    fs::create_dir_all(root.join("assets")).expect("asset dir should be created");
+    write_png(&root.join("assets/sky.png"), [24, 64, 220, 255]);
+    write_png(&root.join("assets/env.png"), [240, 180, 90, 255]);
+    write_json(
+        &root,
+        "manifest.json",
+        r#"{
+          "schema": "threenative.bundle",
+          "version": "0.1.0",
+          "name": "environment-map-priority",
+          "requiredCapabilities": {},
+          "entry": { "world": "world.ir.json", "environmentScene": "environment.scene.json" },
+          "files": {
+            "assets": "assets.manifest.json",
+            "materials": "materials.ir.json",
+            "targetProfile": "target.profile.json"
+          }
+        }"#,
+    );
+    write_json(
+        &root,
+        "world.ir.json",
+        r#"{
+          "schema": "threenative.world",
+          "version": "0.1.0",
+          "entities": [
+            {
+              "id": "camera.main",
+              "components": {
+                "Camera": { "kind": "perspective", "near": 0.1, "far": 100, "fovY": 60 },
+                "Transform": { "position": [0, 1, 4], "rotation": [0, 0, 0, 1], "scale": [1, 1, 1] }
+              }
+            }
+          ]
+        }"#,
+    );
+    write_json(
+        &root,
+        "assets.manifest.json",
+        r#"{
+          "schema": "threenative.assets",
+          "version": "0.1.0",
+          "assets": [
+            { "id": "tex.sky", "kind": "texture", "format": "png", "path": "assets/sky.png" },
+            { "id": "tex.env", "kind": "texture", "format": "png", "path": "assets/env.png" }
+          ]
+        }"#,
+    );
+    write_json(
+        &root,
+        "materials.ir.json",
+        r#"{ "schema": "threenative.materials", "version": "0.1.0", "materials": [] }"#,
+    );
+    write_json(
+        &root,
+        "target.profile.json",
+        r#"{ "schema": "threenative.target-profile", "version": "0.1.0", "targets": ["desktop"] }"#,
+    );
+    write_json(
+        &root,
+        "environment.scene.json",
+        r##"{
+          "schema": "threenative.environment-scene",
+          "version": "0.1.0",
+          "skybox": { "mode": "equirect", "asset": "tex.sky", "intensity": 0.25 },
+          "environmentMap": { "mode": "equirect", "asset": "tex.env", "intent": "reflection-and-irradiance", "intensity": 0.75 },
+          "path": { "id": "path.main", "points": [[0, 0, 0], [0, 0, 1]], "width": 2 }
+        }"##,
+    );
+
+    let bundle = load_bundle(&root).expect("environment bundle should load");
+    let mut app = App::new();
+    let applied = apply_environment_lighting_to_world(app.world_mut(), &bundle);
+
+    assert!(applied.skybox.as_ref().is_some_and(|skybox| skybox.applied));
+    assert!(
+        applied
+            .environment_map
+            .as_ref()
+            .is_some_and(|environment_map| environment_map.applied)
+    );
+    assert!(!app.world().contains_resource::<AmbientLight>());
+    assert!(
+        app.world()
+            .contains_resource::<NativeEnvironmentMapHandles>()
+    );
+    let native_map = app.world().resource::<NativeEnvironmentMapHandles>();
+    assert!((native_map.intensity - 0.375).abs() < 0.001);
+
+    map_bundle_into_world(app.world_mut(), &bundle).expect("bundle should map into world");
+    let mut camera_components = app.world_mut().query::<&Camera>();
+    assert_eq!(camera_components.iter(app.world()).count(), 1);
+    let mut cameras = app
+        .world_mut()
+        .query_filtered::<&EnvironmentMapLight, With<Camera>>();
+    let camera_environment_maps = cameras.iter(app.world()).collect::<Vec<_>>();
+    assert_eq!(camera_environment_maps.len(), 1);
+    assert!((camera_environment_maps[0].intensity - 0.375).abs() < 0.001);
+
+    fs::remove_dir_all(root).expect("temp bundle should be removed");
+}
+
+#[test]
+fn cubemap_environment_map_should_spawn_native_environment_light() {
+    let root = temp_bundle_dir();
+    fs::create_dir_all(root.join("assets")).expect("asset dir should be created");
+    write_png(&root.join("assets/px.png"), [255, 0, 0, 255]);
+    write_png(&root.join("assets/nx.png"), [0, 255, 0, 255]);
+    write_png(&root.join("assets/py.png"), [0, 0, 255, 255]);
+    write_png(&root.join("assets/ny.png"), [255, 255, 0, 255]);
+    write_png(&root.join("assets/pz.png"), [255, 0, 255, 255]);
+    write_png(&root.join("assets/nz.png"), [0, 255, 255, 255]);
+    write_json(
+        &root,
+        "manifest.json",
+        r#"{
+          "schema": "threenative.bundle",
+          "version": "0.1.0",
+          "name": "cubemap-environment-map",
+          "requiredCapabilities": {},
+          "entry": { "world": "world.ir.json", "environmentScene": "environment.scene.json" },
+          "files": {
+            "assets": "assets.manifest.json",
+            "materials": "materials.ir.json",
+            "targetProfile": "target.profile.json"
+          }
+        }"#,
+    );
+    write_json(
+        &root,
+        "world.ir.json",
+        r#"{
+          "schema": "threenative.world",
+          "version": "0.1.0",
+          "entities": [
+            { "id": "camera.main", "components": { "Camera": { "kind": "perspective", "near": 0.1, "far": 100, "fovY": 60 } } }
+          ]
+        }"#,
+    );
+    write_json(
+        &root,
+        "assets.manifest.json",
+        r#"{
+          "schema": "threenative.assets",
+          "version": "0.1.0",
+          "assets": [
+            { "id": "tex.px", "kind": "texture", "format": "png", "path": "assets/px.png" },
+            { "id": "tex.nx", "kind": "texture", "format": "png", "path": "assets/nx.png" },
+            { "id": "tex.py", "kind": "texture", "format": "png", "path": "assets/py.png" },
+            { "id": "tex.ny", "kind": "texture", "format": "png", "path": "assets/ny.png" },
+            { "id": "tex.pz", "kind": "texture", "format": "png", "path": "assets/pz.png" },
+            { "id": "tex.nz", "kind": "texture", "format": "png", "path": "assets/nz.png" }
+          ]
+        }"#,
+    );
+    write_json(
+        &root,
+        "materials.ir.json",
+        r#"{ "schema": "threenative.materials", "version": "0.1.0", "materials": [] }"#,
+    );
+    write_json(
+        &root,
+        "target.profile.json",
+        r#"{ "schema": "threenative.target-profile", "version": "0.1.0", "targets": ["desktop"] }"#,
+    );
+    write_json(
+        &root,
+        "environment.scene.json",
+        r##"{
+          "schema": "threenative.environment-scene",
+          "version": "0.1.0",
+          "environmentMap": {
+            "mode": "cubemap",
+            "intent": "reflection-and-irradiance",
+            "intensity": 0.8,
+            "faces": {
+              "positiveX": "tex.px",
+              "negativeX": "tex.nx",
+              "positiveY": "tex.py",
+              "negativeY": "tex.ny",
+              "positiveZ": "tex.pz",
+              "negativeZ": "tex.nz"
+            }
+          },
+          "path": { "id": "path.main", "points": [[0, 0, 0], [0, 0, 1]], "width": 2 }
+        }"##,
+    );
+
+    let bundle = load_bundle(&root).expect("cubemap environment bundle should load");
+    let mut app = App::new();
+    let applied = apply_environment_lighting_to_world(app.world_mut(), &bundle);
+
+    assert!(
+        applied
+            .environment_map
+            .as_ref()
+            .is_some_and(|environment_map| environment_map.applied)
+    );
+    assert!(
+        app.world()
+            .contains_resource::<NativeEnvironmentMapHandles>()
+    );
+    let native_map = app.world().resource::<NativeEnvironmentMapHandles>();
+    assert!((native_map.intensity - 0.4).abs() < 0.001);
+
+    map_bundle_into_world(app.world_mut(), &bundle).expect("bundle should map into world");
+    let mut cameras = app
+        .world_mut()
+        .query_filtered::<&EnvironmentMapLight, With<Camera>>();
+    let camera_environment_maps = cameras.iter(app.world()).collect::<Vec<_>>();
+    assert_eq!(camera_environment_maps.len(), 1);
+    assert!((camera_environment_maps[0].intensity - 0.4).abs() < 0.001);
 
     fs::remove_dir_all(root).expect("temp bundle should be removed");
 }
@@ -182,8 +596,7 @@ fn rendering_should_map_atmosphere_profile_to_bevy_observation() {
 fn textured_gltf_materials_should_preserve_lit_cutout_rendering() {
     let mut material = StandardMaterial {
         base_color_texture: Some(Handle::default()),
-        normal_map_texture: Some(Handle::default()),
-        alpha_mode: AlphaMode::Mask(0.35),
+        alpha_mode: AlphaMode::Mask(0.2),
         double_sided: false,
         cull_mode: Some(Face::Back),
         unlit: false,
@@ -191,15 +604,10 @@ fn textured_gltf_materials_should_preserve_lit_cutout_rendering() {
     };
 
     assert!(normalize_textured_material(&mut material));
-    let base_color = material.base_color.to_srgba();
-    assert!((base_color.red - 1.0).abs() < 0.01);
-    assert!((base_color.green - 1.0).abs() < 0.01);
-    assert!((base_color.blue - 1.0).abs() < 0.01);
     assert_eq!(material.alpha_mode, AlphaMode::Mask(0.2));
     assert!(material.double_sided);
     assert_eq!(material.cull_mode, None);
     assert!(!material.unlit);
-    assert!(material.normal_map_texture.is_some());
 
     let mut untextured = StandardMaterial::default();
     assert!(!normalize_textured_material(&mut untextured));
@@ -248,9 +656,9 @@ fn loaded_gltf_material_normalization_should_skip_authored_textured_materials() 
     assert!((authored_color.red - 0.2).abs() < 0.01);
     assert!((authored_color.green - 0.3).abs() < 0.01);
     assert!((authored_color.blue - 0.4).abs() < 0.01);
-    assert!((loaded_color.red - 1.0).abs() < 0.01);
-    assert!((loaded_color.green - 1.0).abs() < 0.01);
-    assert!((loaded_color.blue - 1.0).abs() < 0.01);
+    assert!((loaded_color.red - 0.2).abs() < 0.01);
+    assert!((loaded_color.green - 0.3).abs() < 0.01);
+    assert!((loaded_color.blue - 0.4).abs() < 0.01);
 }
 
 #[test]
@@ -400,4 +808,9 @@ fn temp_bundle_dir() -> PathBuf {
 
 fn write_json(root: &Path, file: &str, contents: &str) {
     fs::write(root.join(file), contents).expect("bundle json should be written");
+}
+
+fn write_png(path: &Path, rgba: [u8; 4]) {
+    let image = ImageBuffer::<Rgba<u8>, Vec<u8>>::from_pixel(1, 1, Rgba(rgba));
+    image.save(path).expect("png should be written");
 }

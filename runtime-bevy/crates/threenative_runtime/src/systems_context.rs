@@ -799,6 +799,7 @@ pub fn component_value(components: &EntityComponents, component: &str) -> Option
         }),
         "Collider" => components.collider.as_ref().map(|collider| {
             json!({
+                "center": collider.center,
                 "kind": collider.kind,
                 "height": collider.height,
                 "layer": collider.layer,
@@ -858,9 +859,29 @@ fn readable_components(system: &SystemIr) -> Vec<String> {
         components.extend(query.changed.iter().cloned());
         components.extend(query.with.iter().cloned());
     }
+    for service in &system.services {
+        components.extend(service_readable_components(service));
+    }
     components.sort();
     components.dedup();
     components
+}
+
+fn service_readable_components(service: &str) -> Vec<String> {
+    match service {
+        "character.move" => vec![
+            "CharacterController".to_owned(),
+            "Collider".to_owned(),
+            "RigidBody".to_owned(),
+            "Transform".to_owned(),
+        ],
+        "physics.overlap" | "physics.raycast" | "physics.sensor" | "physics.shapeCast" => vec![
+            "Collider".to_owned(),
+            "RigidBody".to_owned(),
+            "Transform".to_owned(),
+        ],
+        _ => Vec::new(),
+    }
 }
 
 fn matches_declared_queries(

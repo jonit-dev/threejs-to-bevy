@@ -16,8 +16,11 @@ const v1Checkpoint = BASELINE_VISUAL_CHECKPOINTS[0]!;
 
 test("baseline visual checkpoints include canonical guard scenes", () => {
   const ids = BASELINE_VISUAL_CHECKPOINTS.map((checkpoint) => checkpoint.id);
-  assert.deepEqual(ids, ["structured-stylized-nature"]);
-  assert.ok(BASELINE_VISUAL_CHECKPOINTS.every((checkpoint) => checkpoint.projectRelativePath === "examples/stylized-nature-component"));
+  assert.deepEqual(ids, ["structured-stylized-nature", "humanoid-physics-course"]);
+  assert.deepEqual(BASELINE_VISUAL_CHECKPOINTS.map((checkpoint) => checkpoint.projectRelativePath), [
+    "examples/stylized-nature-component",
+    "examples/humanoid-physics-course",
+  ]);
 });
 
 test("parity smoke checkpoint targets the single-scene hook fixture", async () => {

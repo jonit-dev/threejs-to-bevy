@@ -22,8 +22,8 @@ export function cargoCaptureEnv(): NodeJS.ProcessEnv {
 export function resolveCaptureBinaryPath(repoRoot: string): string | undefined {
   const runtimeRoot = resolve(repoRoot, "runtime-bevy");
   const candidates = [
-    join(runtimeRoot, "target/debug/threenative_capture"),
     join(runtimeRoot, "target/release/threenative_capture"),
+    join(runtimeRoot, "target/debug/threenative_capture"),
   ];
   return candidates.find((candidate) => existsSync(candidate));
 }

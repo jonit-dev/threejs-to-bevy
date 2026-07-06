@@ -1,11 +1,17 @@
-use std::{env, fs, path::Path, path::PathBuf, process::ExitCode};
+use std::{
+    env, fs,
+    path::{Path, PathBuf},
+    process::{self, ExitCode},
+    thread,
+    time::{Duration, Instant},
+};
 
 use bevy::{
     app::AppExit,
     prelude::*,
     render::view::screenshot::ScreenshotManager,
     ui::IsDefaultUiCamera,
-    window::PrimaryWindow,
+    window::{PrimaryWindow, RequestRedraw},
     winit::{UpdateMode, WinitSettings},
 };
 use image::GenericImageView;
@@ -16,12 +22,13 @@ use threenative_runtime::{
     environment::apply_environment_bookmark,
 };
 
-const MIN_CAPTURE_FRAME: u32 = 90;
+const MIN_CAPTURE_FRAME: u32 = 2;
 const SCREENSHOT_VALIDATION_DELAY_FRAMES: u32 = 4;
 const SCREENSHOT_ATTEMPT_TIMEOUT_FRAMES: u32 = 30;
 const MAX_CAPTURE_RETRIES: u32 = 5;
 const MIN_SCREENSHOT_BYTES: u64 = 1_024;
 const MIN_SCREENSHOT_PEAK_LUMA: u8 = 35;
+const ASSET_READINESS_GRACE: Duration = Duration::from_secs(3);
 
 #[derive(Resource)]
 struct CaptureConfig {
@@ -35,9 +42,11 @@ struct CaptureTarget {
     request_frame: u32,
     requested_at_frame: Option<u32>,
     retry_count: u32,
-    texture_grace_frames: u32,
     validated: bool,
 }
+
+#[derive(Resource)]
+struct CaptureClock(Instant);
 
 #[derive(Default, Resource)]
 struct TextureAssetsReady(bool);
@@ -75,7 +84,6 @@ fn main() -> ExitCode {
                 request_frame: first_frame,
                 requested_at_frame: None,
                 retry_count: 0,
-                texture_grace_frames: first_frame.saturating_add(120),
                 validated: false,
             },
             CaptureTarget {
@@ -83,7 +91,6 @@ fn main() -> ExitCode {
                 request_frame: second_frame,
                 requested_at_frame: None,
                 retry_count: 0,
-                texture_grace_frames: second_frame.saturating_add(120),
                 validated: false,
             },
         ]
@@ -93,7 +100,6 @@ fn main() -> ExitCode {
             request_frame: first_frame,
             requested_at_frame: None,
             retry_count: 0,
-            texture_grace_frames: first_frame.saturating_add(120),
             validated: false,
         }]
     };
@@ -139,6 +145,7 @@ fn main() -> ExitCode {
         .iter()
         .map(|capture| capture.output_path.clone())
         .collect::<Vec<_>>();
+    spawn_capture_completion_exit(final_output_paths.clone());
     let required_model_assets = app
         .world()
         .get_resource::<AssetServer>()
@@ -153,6 +160,7 @@ fn main() -> ExitCode {
         unfocused_mode: UpdateMode::Continuous,
     })
     .insert_resource(required_model_assets)
+    .insert_resource(CaptureClock(Instant::now()))
     .insert_resource(TextureAssetsReady::default())
     .insert_resource(ModelAssetsReady::default())
     .add_systems(
@@ -160,7 +168,8 @@ fn main() -> ExitCode {
         (
             wait_for_texture_assets,
             wait_for_model_assets,
-            disable_capture_ui_cameras,
+            route_capture_ui_to_scene_camera,
+            request_capture_redraw,
             request_screenshot,
         ),
     );
@@ -187,6 +196,17 @@ fn parse_frame(value: Option<&String>, fallback: u32) -> Result<u32, ExitCode> {
         }
         None => Ok(fallback),
     }
+}
+
+fn spawn_capture_completion_exit(paths: Vec<PathBuf>) {
+    thread::spawn(move || {
+        loop {
+            if paths.iter().all(|path| screenshot_is_valid(path)) {
+                process::exit(0);
+            }
+            thread::sleep(Duration::from_millis(25));
+        }
+    });
 }
 
 fn prepare_output_path(output_path: &PathBuf) -> Result<(), ExitCode> {
@@ -270,10 +290,33 @@ fn wait_for_model_assets(
     }
 }
 
-fn disable_capture_ui_cameras(mut cameras: Query<&mut Camera, With<IsDefaultUiCamera>>) {
-    for mut camera in &mut cameras {
-        camera.is_active = false;
+fn route_capture_ui_to_scene_camera(
+    mut routed: Local<bool>,
+    mut commands: Commands,
+    mut ui_cameras: Query<(Entity, &mut Camera), With<IsDefaultUiCamera>>,
+    scene_cameras: Query<(Entity, &Camera), Without<IsDefaultUiCamera>>,
+    root_ui_nodes: Query<Entity, (With<Node>, Without<Parent>)>,
+) {
+    if *routed {
+        return;
     }
+    for (entity, mut camera) in &mut ui_cameras {
+        camera.is_active = false;
+        commands.entity(entity).remove::<IsDefaultUiCamera>();
+    }
+    let Some((scene_camera, _)) = scene_cameras
+        .iter()
+        .filter(|(_, camera)| camera.is_active)
+        .max_by_key(|(_, camera)| camera.order)
+    else {
+        return;
+    };
+    for root_node in &root_ui_nodes {
+        commands
+            .entity(root_node)
+            .insert(TargetCamera(scene_camera));
+    }
+    *routed = true;
 }
 
 fn request_screenshot(
@@ -281,6 +324,7 @@ fn request_screenshot(
     mut config: ResMut<CaptureConfig>,
     textures_ready: Res<TextureAssetsReady>,
     models_ready: Res<ModelAssetsReady>,
+    clock: Res<CaptureClock>,
     windows: Query<Entity, With<PrimaryWindow>>,
     mut screenshots: ResMut<ScreenshotManager>,
     mut exit: EventWriter<AppExit>,
@@ -292,7 +336,7 @@ fn request_screenshot(
                 continue;
             }
             let assets_ready = textures_ready.0 && models_ready.0;
-            let should_capture = assets_ready || *frame >= capture.texture_grace_frames;
+            let should_capture = assets_ready || clock.0.elapsed() >= ASSET_READINESS_GRACE;
             let trigger_frame = capture.request_frame.max(MIN_CAPTURE_FRAME);
             if capture.requested_at_frame.is_none()
                 && *frame >= trigger_frame
@@ -340,6 +384,12 @@ fn request_screenshot(
             config.max_frame
         );
         exit.send(AppExit::error());
+    }
+}
+
+fn request_capture_redraw(config: Res<CaptureConfig>, mut redraw: EventWriter<RequestRedraw>) {
+    if config.captures.iter().any(|capture| !capture.validated) {
+        redraw.send(RequestRedraw);
     }
 }
 

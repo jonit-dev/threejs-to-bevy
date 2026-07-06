@@ -249,7 +249,7 @@ pub fn app_from_bundle_with_options(
         app.add_systems(PreUpdate, input::capture_native_input);
     }
     if let Some(proof_harness) = options.proof_harness {
-        proof_harness::install_native_proof_harness(&mut app, proof_harness)?;
+        proof_harness::install_native_proof_harness(&mut app, proof_harness, &bundle.assets)?;
     }
     app.add_systems(
         Update,
@@ -447,8 +447,11 @@ struct ScriptedRuntimeParams<'w> {
 }
 
 fn run_scripted_runtime_systems(
+    mut commands: Commands,
     mut scripted: ScriptedRuntimeParams,
     input: Option<Res<input::NativeInputState>>,
+    proof_harness: Option<Res<proof_harness::NativeProofHarnessState>>,
+    fast_forward: Option<Res<proof_harness::NativeProofHarnessFastForward>>,
     material_handles: Option<Res<map_world::NativeMaterialHandles>>,
     time: Res<Time>,
     mut transforms: Query<(&ThreeNativeId, &mut Transform)>,
@@ -467,32 +470,47 @@ fn run_scripted_runtime_systems(
     let Some(ref mut loop_state) = scripted.loop_state else {
         return;
     };
-    let delta = time.delta_seconds();
     let fixed_delta = runtime
         .bundle
         .runtime_config
         .as_ref()
         .map_or(1.0 / 60.0, |config| config.time.fixed_delta);
+    let delta = if proof_harness.is_some() {
+        fixed_delta
+    } else {
+        time.delta_seconds()
+    };
     let paused = runtime
         .bundle
         .runtime_config
         .as_ref()
         .is_some_and(|config| config.time.paused);
-    let options = systems_host::NativeGameLoopRunOptions {
-        delta,
-        fixed_delta,
-        input: input.as_deref(),
-        paused,
+    let frame_count = if proof_harness.is_some() {
+        fast_forward.as_ref().map_or(1, |advance| advance.0.max(1))
+    } else {
+        1
     };
 
-    if let Err(error) = systems_host::run_native_systems_frame_with_input(
-        &mut runtime.bundle,
-        &mut *loop_state,
-        options,
-        physics::step_bundle_physics_with_script_poses,
-    ) {
-        error!("{error}");
-        return;
+    for _ in 0..frame_count {
+        let options = systems_host::NativeGameLoopRunOptions {
+            delta,
+            fixed_delta,
+            input: input.as_deref(),
+            paused,
+        };
+
+        if let Err(error) = systems_host::run_native_systems_frame_with_input(
+            &mut runtime.bundle,
+            &mut *loop_state,
+            options,
+            physics::step_bundle_physics_with_script_poses,
+        ) {
+            error!("{error}");
+            return;
+        }
+    }
+    if fast_forward.is_some_and(|advance| advance.0 > 0) {
+        commands.insert_resource(proof_harness::NativeProofHarnessFastForward::default());
     }
 
     sync_scripted_transforms(&runtime.bundle, &mut transforms);
@@ -589,14 +607,28 @@ fn resolve_ui_binding<'a>(
     binding: &UiBindingIr,
 ) -> Option<serde_json::Value> {
     match binding {
-        UiBindingIr::Resource { name, field } => {
+        UiBindingIr::Resource {
+            name,
+            field,
+            fields,
+            format,
+        } => {
             let value = bundle.world.resources.get(name)?;
+            if let Some(format) = format {
+                return Some(serde_json::Value::String(format_ui_binding_value(
+                    format,
+                    value,
+                    fields_for_binding(field.as_deref(), fields),
+                )));
+            }
             resolve_bound_field(value, field.as_deref()).cloned()
         }
         UiBindingIr::Component {
             component,
             entity,
             field,
+            fields,
+            format,
         } => {
             let entity = bundle
                 .world
@@ -604,9 +636,66 @@ fn resolve_ui_binding<'a>(
                 .iter()
                 .find(|item| item.id == *entity)?;
             let value = systems_context::component_value(&entity.components, component)?;
+            if let Some(format) = format {
+                return Some(serde_json::Value::String(format_ui_binding_value(
+                    format,
+                    &value,
+                    fields_for_binding(field.as_deref(), fields),
+                )));
+            }
             resolve_bound_field(&value, field.as_deref()).cloned()
         }
     }
+}
+
+fn fields_for_binding<'a>(field: Option<&'a str>, fields: &'a [String]) -> Vec<&'a str> {
+    if fields.is_empty() {
+        field.into_iter().collect()
+    } else {
+        fields.iter().map(String::as_str).collect()
+    }
+}
+
+fn format_ui_binding_value(format: &str, source: &serde_json::Value, fields: Vec<&str>) -> String {
+    let mut rendered = String::new();
+    let mut rest = format;
+    while let Some(open) = rest.find('{') {
+        let (prefix, after_open) = rest.split_at(open);
+        rendered.push_str(prefix);
+        let after_open = &after_open[1..];
+        let Some(close) = after_open.find('}') else {
+            rendered.push('{');
+            rendered.push_str(after_open);
+            return rendered;
+        };
+        let (token, after_close) = after_open.split_at(close);
+        let mut parts = token.splitn(2, ':');
+        let field = parts.next().unwrap_or_default();
+        let formatter = parts.next();
+        if fields.is_empty() || fields.iter().any(|candidate| *candidate == field) {
+            let value = source.get(field).unwrap_or(&serde_json::Value::Null);
+            rendered.push_str(&format_ui_scalar(value, formatter));
+        }
+        rest = &after_close[1..];
+    }
+    rendered.push_str(rest);
+    rendered
+}
+
+fn format_ui_scalar(value: &serde_json::Value, formatter: Option<&str>) -> String {
+    let Some(formatter) = formatter else {
+        return value_to_ui_text(value);
+    };
+    let numeric = value.as_f64().unwrap_or(0.0);
+    if let Some(digits) = formatter.strip_prefix("fixed") {
+        let digits = digits.parse::<usize>().unwrap_or(0);
+        return format!("{numeric:.digits$}");
+    }
+    if let Some(width) = formatter.strip_prefix("pad") {
+        let width = width.parse::<usize>().unwrap_or(0);
+        return format!("{:0>width$}", numeric.trunc() as i64);
+    }
+    value_to_ui_text(value)
 }
 
 fn resolve_bound_field<'a>(

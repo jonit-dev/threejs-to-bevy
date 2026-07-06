@@ -158,7 +158,7 @@ export async function sceneProofCommand(argv: readonly string[], options: IScene
   if (native) {
     const bevyPath = resolve(outDir, "bevy.png");
     const resolvedCameraId = cameraId ?? await readActiveCameraId(bundlePath) ?? "camera.main";
-    const repoRoot = options.repoRoot ?? resolveDefaultNativeRepoRoot();
+    const repoRoot = options.repoRoot ?? resolveDefaultNativeRepoRoot(process.env);
     const nativeCommand = formatNativeCaptureCommand({
       bundlePath,
       cameraId: resolvedCameraId,
@@ -292,7 +292,10 @@ function nativeCaptureTimeout(invocation: INativeCaptureInvocation): number {
   return invocation.cwd === undefined ? 120_000 : 180_000;
 }
 
-function resolveDefaultNativeRepoRoot(): string {
+function resolveDefaultNativeRepoRoot(env: NodeJS.ProcessEnv = process.env): string {
+  if (env.THREENATIVE_REPO_ROOT !== undefined && env.THREENATIVE_REPO_ROOT.trim() !== "") {
+    return resolve(env.THREENATIVE_REPO_ROOT);
+  }
   const packagedDistRoot = resolve(fileURLToPath(new URL("..", import.meta.url)));
   if (existsSync(resolve(packagedDistRoot, "runtime-bevy", "Cargo.toml"))) {
     return packagedDistRoot;

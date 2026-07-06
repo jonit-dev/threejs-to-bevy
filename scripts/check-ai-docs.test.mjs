@@ -6,7 +6,6 @@ const requiredFiles = [
   "llms.txt",
   "llms-full.txt",
   "docs/workflows/ai-distribution.md",
-  "examples/ai-reference/README.md",
 ];
 
 const requiredPhrases = [
@@ -17,7 +16,6 @@ const requiredPhrases = [
   "@threenative/ir/schemas/*",
   "@threenative/ir/capabilities/threenative.capabilities.json",
   "@threenative/ir/diagnostics/diagnostics.catalog.json",
-  "examples/ai-reference/README.md",
   "AGENTS.md",
   "CLAUDE.md",
   "tn create",
@@ -38,7 +36,6 @@ test("should include required package schema diagnostic and example links in llm
 
   assert.match(docs["llms.txt"], /docs\/workflows\/ai-distribution\.md/);
   assert.match(docs["llms-full.txt"], /docs\/contracts\/distribution-contract\.md/);
-  assert.match(docs["examples/ai-reference/README.md"], /tn scene validate/);
 });
 
 function escapeRegExp(value) {

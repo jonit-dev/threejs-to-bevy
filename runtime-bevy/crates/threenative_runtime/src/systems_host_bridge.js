@@ -220,6 +220,7 @@ function __tnInvokeSystem(options) {
       const size = readColliderSize(collider);
       return [size[0] / 2, size[1] / 2, size[2] / 2];
     };
+    const colliderOffset = (collider) => readVec3(collider && collider.center, [0, 0, 0]);
     const queryHalfExtents = (shape) => {
       if (shape && shape.kind === "sphere") return [Number(shape.radius || 0), Number(shape.radius || 0), Number(shape.radius || 0)];
       if (shape && shape.kind === "box" && Array.isArray(shape.halfExtents)) return readVec3(shape.halfExtents, [0.5, 0.5, 0.5]);
@@ -345,7 +346,10 @@ function __tnInvokeSystem(options) {
       const collider = entity.components.Collider;
       if (!collider) return undefined;
       return {
-        center: readVec3(entity.components.Transform && entity.components.Transform.position, [0, 0, 0]),
+        center: addVec3(
+          readVec3(entity.components.Transform && entity.components.Transform.position, [0, 0, 0]),
+          colliderOffset(collider)
+        ),
         halfExtents: readColliderHalfExtents(collider),
         id: entity.id,
         slope: collider.slope ? {
@@ -444,11 +448,12 @@ function __tnInvokeSystem(options) {
         : characterMovementDelta(Number(direction[0] ?? 0), Number(direction[1] ?? 0), speed, fixedDelta)
       );
       const blockers = solidColliderEntities;
+      const offset = colliderOffset(collider);
       const halfExtents = readColliderHalfExtents(collider);
       const slopeLimit = Number(controller.slopeLimit ?? 45);
       const horizontal = controller.blocking === true
-        ? resolveHorizontalContact(entity.id, start, desired, halfExtents, blockers, Number(controller.stepOffset ?? 0), slopeLimit)
-        : { position: desired };
+        ? resolveHorizontalContact(entity.id, addVec3(start, offset), addVec3(desired, offset), halfExtents, blockers, Number(controller.stepOffset ?? 0), slopeLimit)
+        : { position: addVec3(desired, offset) };
       const ground = controller.grounding === "raycast"
         ? groundPosition(entity.id, horizontal.position, halfExtents, blockers, fixedDelta, slopeLimit)
         : { position: horizontal.position };
@@ -459,7 +464,11 @@ function __tnInvokeSystem(options) {
         ...(ground.entity === undefined ? {} : { groundEntity: ground.entity }),
         grounded: ground.entity !== undefined,
         ...(ground.platformDelta === undefined ? {} : { platformDelta: ground.platformDelta }),
-        resolved: ground.position,
+        resolved: [
+          ground.position[0] - offset[0],
+          ground.position[1] - offset[1],
+          ground.position[2] - offset[2]
+        ],
         start
       };
     };

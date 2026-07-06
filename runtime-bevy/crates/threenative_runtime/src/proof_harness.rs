@@ -1,14 +1,25 @@
-use std::{fs, path::Path};
+use std::{collections::BTreeSet, fs, path::Path, time::Duration};
 
 use bevy::{
-    input::ButtonInput, prelude::*, render::view::screenshot::ScreenshotManager,
-    window::PrimaryWindow,
+    app::ScheduleRunnerPlugin,
+    asset::LoadState,
+    input::ButtonInput,
+    prelude::*,
+    render::view::screenshot::ScreenshotManager,
+    ui::{IsDefaultUiCamera, TargetCamera},
+    window::{PrimaryWindow, RequestRedraw},
+    winit::{UpdateMode, WinitSettings},
 };
+use image::GenericImageView;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use threenative_components::ThreeNativeId;
+use threenative_loader::AssetsManifest;
 
 use crate::input::portable_key_code;
+
+const MIN_PROOF_SCREENSHOT_BYTES: u64 = 1024;
+const MIN_PROOF_SCREENSHOT_PEAK_LUMA: u8 = 16;
 
 #[derive(Clone, Debug, Deserialize, PartialEq, Eq)]
 pub struct NativeProofHarnessCommandStream {
@@ -29,6 +40,7 @@ pub struct NativeProofHarnessCommand {
 #[serde(tag = "type", rename_all = "camelCase")]
 pub enum NativeProofHarnessAction {
     Key { code: String, pressed: bool },
+    Advance { frames: u64 },
     Screenshot { path: String },
     Exit,
 }
@@ -42,9 +54,16 @@ pub struct NativeProofHarnessOptions {
 #[derive(Clone, Debug, Resource)]
 pub struct NativeProofHarnessState {
     commands: Vec<NativeProofHarnessCommand>,
+    held_keys: BTreeSet<KeyCode>,
     readiness_out_path: String,
     tick: u64,
 }
+
+#[derive(Clone, Debug, Resource)]
+pub struct NativeProofHarnessRequiredModels(Vec<Handle<Scene>>);
+
+#[derive(Clone, Debug, Default, Resource)]
+pub struct NativeProofHarnessFastForward(pub u64);
 
 #[derive(Clone, Debug, Serialize, PartialEq)]
 pub struct NativeProofHarnessReadiness {
@@ -106,6 +125,7 @@ impl NativeProofHarnessState {
     ) -> Self {
         Self {
             commands: stream.commands,
+            held_keys: BTreeSet::new(),
             readiness_out_path: readiness_out_path.into(),
             tick: 0,
         }
@@ -119,16 +139,46 @@ impl NativeProofHarnessState {
 pub fn install_native_proof_harness(
     app: &mut App,
     options: NativeProofHarnessOptions,
+    manifest: &AssetsManifest,
 ) -> Result<(), NativeProofHarnessError> {
     let stream = load_native_proof_harness_stream(&options.command_stream_path)?;
-    app.insert_resource(NativeProofHarnessState::from_stream(
-        stream,
-        options.readiness_out_path,
-    ));
+    let waits_for_render_assets = stream
+        .commands
+        .iter()
+        .any(|command| matches!(command.action, NativeProofHarnessAction::Screenshot { .. }));
+    let required_models = if waits_for_render_assets {
+        app.world()
+            .get_resource::<AssetServer>()
+            .map(|asset_server| proof_harness_required_models(asset_server, manifest))
+            .unwrap_or_else(|| NativeProofHarnessRequiredModels(Vec::new()))
+    } else {
+        NativeProofHarnessRequiredModels(Vec::new())
+    };
+    let update_mode = if waits_for_render_assets {
+        UpdateMode::Continuous
+    } else {
+        UpdateMode::reactive(Duration::ZERO)
+    };
+    app.insert_resource(required_models)
+        .insert_resource(NativeProofHarnessState::from_stream(
+            stream,
+            options.readiness_out_path,
+        ))
+        .init_resource::<NativeProofHarnessFastForward>()
+        .insert_resource(WinitSettings {
+            focused_mode: update_mode,
+            unfocused_mode: update_mode,
+        });
+    if !waits_for_render_assets {
+        app.add_plugins(ScheduleRunnerPlugin::run_loop(Duration::ZERO));
+    }
     app.add_systems(
         PreUpdate,
         apply_native_proof_harness_commands.before(crate::input::capture_native_input),
     );
+    if waits_for_render_assets {
+        app.add_systems(Update, request_native_proof_redraw);
+    }
     Ok(())
 }
 
@@ -157,28 +207,41 @@ pub fn load_native_proof_harness_stream(
 }
 
 pub fn apply_native_proof_harness_commands(
+    mut commands: Commands,
     mut state: ResMut<NativeProofHarnessState>,
     mut keyboard: ResMut<ButtonInput<KeyCode>>,
     mut exit: EventWriter<AppExit>,
     windows: Query<Entity, With<PrimaryWindow>>,
     mut screenshots: Option<ResMut<ScreenshotManager>>,
     transforms: Query<(&ThreeNativeId, &Transform)>,
+    asset_server: Option<Res<AssetServer>>,
+    required_models: Option<Res<NativeProofHarnessRequiredModels>>,
+    mut ui_cameras: Query<(Entity, &mut Camera), With<IsDefaultUiCamera>>,
+    scene_cameras: Query<(Entity, &Camera), Without<IsDefaultUiCamera>>,
+    root_ui_nodes: Query<Entity, (With<Node>, Without<Parent>)>,
 ) {
     let tick = state.tick;
     let mut diagnostics = Vec::new();
-    let commands = state
+    if !native_proof_harness_models_ready(asset_server.as_deref(), required_models.as_deref()) {
+        write_native_proof_harness_sample(&state, tick, diagnostics, transforms.iter());
+        return;
+    }
+    let harness_commands = state
         .commands
         .iter()
         .filter(|command| command.tick == tick)
         .cloned()
         .collect::<Vec<_>>();
-    for command in commands {
+    let mut hold_tick = false;
+    let mut advance_ticks = 1;
+    for command in harness_commands {
         match command.action {
             NativeProofHarnessAction::Key { code, pressed } => {
                 if let Some(key_code) = portable_key_code(&code) {
                     if pressed {
-                        keyboard.press(key_code);
+                        state.held_keys.insert(key_code);
                     } else {
+                        state.held_keys.remove(&key_code);
                         keyboard.release(key_code);
                     }
                 } else {
@@ -189,7 +252,17 @@ pub fn apply_native_proof_harness_commands(
                     });
                 }
             }
+            NativeProofHarnessAction::Advance { frames } => {
+                advance_ticks = advance_ticks.max(frames.max(1));
+                commands.insert_resource(NativeProofHarnessFastForward(frames.max(1)));
+            }
             NativeProofHarnessAction::Screenshot { path } => {
+                route_proof_ui_to_scene_camera(
+                    &mut commands,
+                    &mut ui_cameras,
+                    &scene_cameras,
+                    &root_ui_nodes,
+                );
                 match request_native_proof_screenshot(&path, &windows, screenshots.as_deref_mut()) {
                     Ok(()) => {}
                     Err(message) => diagnostics.push(NativeProofHarnessDiagnostic {
@@ -200,10 +273,105 @@ pub fn apply_native_proof_harness_commands(
                 }
             }
             NativeProofHarnessAction::Exit => {
-                exit.send(AppExit::Success);
+                if native_proof_screenshots_ready(&state.commands, tick) {
+                    exit.send(AppExit::Success);
+                } else {
+                    hold_tick = true;
+                }
             }
         }
     }
+    for key_code in &state.held_keys {
+        keyboard.press(*key_code);
+    }
+    write_native_proof_harness_sample(&state, tick, diagnostics, transforms.iter());
+    if !hold_tick {
+        state.tick += advance_ticks;
+    }
+}
+
+fn native_proof_screenshots_ready(commands: &[NativeProofHarnessCommand], tick: u64) -> bool {
+    commands
+        .iter()
+        .filter(|command| command.tick <= tick)
+        .filter_map(|command| match &command.action {
+            NativeProofHarnessAction::Screenshot { path } => Some(Path::new(path)),
+            _ => None,
+        })
+        .all(native_proof_screenshot_is_valid)
+}
+
+fn native_proof_screenshot_is_valid(path: &Path) -> bool {
+    let Ok(metadata) = fs::metadata(path) else {
+        return false;
+    };
+    if metadata.len() < MIN_PROOF_SCREENSHOT_BYTES {
+        return false;
+    }
+    let Ok(image) = image::open(path) else {
+        return false;
+    };
+    image.pixels().any(|(_, _, rgba)| {
+        ((rgba[0] as u16 + rgba[1] as u16 + rgba[2] as u16) / 3) as u8
+            >= MIN_PROOF_SCREENSHOT_PEAK_LUMA
+    })
+}
+
+fn request_native_proof_redraw(
+    state: Res<NativeProofHarnessState>,
+    mut redraw: EventWriter<RequestRedraw>,
+) {
+    let has_screenshots = state
+        .commands
+        .iter()
+        .any(|command| matches!(command.action, NativeProofHarnessAction::Screenshot { .. }));
+    if has_screenshots {
+        redraw.send(RequestRedraw);
+    }
+}
+
+fn proof_harness_required_models(
+    asset_server: &AssetServer,
+    manifest: &AssetsManifest,
+) -> NativeProofHarnessRequiredModels {
+    NativeProofHarnessRequiredModels(
+        manifest
+            .assets
+            .iter()
+            .filter(|asset| asset.kind == "model")
+            .filter_map(|asset| asset.path.as_ref())
+            .map(|path| {
+                asset_server.load(bevy::gltf::GltfAssetLabel::Scene(0).from_asset(path.clone()))
+            })
+            .collect(),
+    )
+}
+
+fn native_proof_harness_models_ready(
+    asset_server: Option<&AssetServer>,
+    required_models: Option<&NativeProofHarnessRequiredModels>,
+) -> bool {
+    let Some(required_models) = required_models else {
+        return true;
+    };
+    if required_models.0.is_empty() {
+        return true;
+    }
+    let Some(asset_server) = asset_server else {
+        return true;
+    };
+    required_models.0.iter().all(|scene| {
+        matches!(asset_server.load_state(scene), LoadState::Loaded)
+            && asset_server.is_loaded_with_dependencies(scene)
+    })
+}
+
+fn write_native_proof_harness_sample<'a>(
+    state: &NativeProofHarnessState,
+    tick: u64,
+    diagnostics: Vec<NativeProofHarnessDiagnostic>,
+    transforms: impl IntoIterator<Item = (&'a ThreeNativeId, &'a Transform)>,
+) {
     let ok = diagnostics
         .iter()
         .all(|diagnostic| diagnostic.severity != "error");
@@ -213,13 +381,36 @@ pub fn apply_native_proof_harness_commands(
         ok,
         tick,
         diagnostics,
-        transforms: native_proof_harness_transform_samples(transforms.iter()),
+        transforms: native_proof_harness_transform_samples(transforms),
     };
     if let Err(error) = write_native_proof_harness_readiness(&state.readiness_out_path, &readiness)
     {
         error!("{error}");
     }
-    state.tick += 1;
+}
+
+fn route_proof_ui_to_scene_camera(
+    commands: &mut Commands,
+    ui_cameras: &mut Query<(Entity, &mut Camera), With<IsDefaultUiCamera>>,
+    scene_cameras: &Query<(Entity, &Camera), Without<IsDefaultUiCamera>>,
+    root_ui_nodes: &Query<Entity, (With<Node>, Without<Parent>)>,
+) {
+    let Some((scene_camera, _)) = scene_cameras
+        .iter()
+        .filter(|(_, camera)| camera.is_active)
+        .max_by_key(|(_, camera)| camera.order)
+    else {
+        return;
+    };
+    for (entity, mut camera) in ui_cameras.iter_mut() {
+        camera.is_active = false;
+        commands.entity(entity).remove::<IsDefaultUiCamera>();
+    }
+    for root_node in root_ui_nodes.iter() {
+        commands
+            .entity(root_node)
+            .insert(TargetCamera(scene_camera));
+    }
 }
 
 fn request_native_proof_screenshot(

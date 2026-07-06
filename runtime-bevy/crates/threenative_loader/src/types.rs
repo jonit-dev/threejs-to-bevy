@@ -1482,12 +1482,21 @@ pub struct UiTooltipIr {
 #[serde(tag = "kind")]
 pub enum UiBindingIr {
     #[serde(rename = "resource")]
-    Resource { name: String, field: Option<String> },
+    Resource {
+        name: String,
+        field: Option<String>,
+        #[serde(default)]
+        fields: Vec<String>,
+        format: Option<String>,
+    },
     #[serde(rename = "component")]
     Component {
         component: String,
         entity: String,
         field: Option<String>,
+        #[serde(default)]
+        fields: Vec<String>,
+        format: Option<String>,
     },
 }
 

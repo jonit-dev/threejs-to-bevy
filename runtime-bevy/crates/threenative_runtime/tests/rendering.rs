@@ -59,6 +59,8 @@ fn rendering_should_map_visibility_and_v2_lights() {
         [2.0, 2.0, 2.0],
     );
     assert_material(app.world_mut(), "cube.visible");
+    assert_mesh_has_tangents(app.world_mut(), "cube.visible");
+    assert_mesh_has_three_box_uvs(app.world_mut(), "cube.visible");
     assert_emissive_bloom_trace(app.world_mut());
     assert_extended_blend_material(app.world_mut(), "plane.glass");
     assert!(has_component::<NotShadowCaster>(
@@ -102,6 +104,16 @@ fn should_report_native_skybox_and_environment_map_observations() {
     let applied = apply_environment_lighting_to_world(app.world_mut(), &fixture.bundle);
     assert!(applied.skybox.as_ref().is_some_and(|skybox| skybox.applied));
     assert!(app.world().contains_resource::<ClearColor>());
+    assert!(!app.world().contains_resource::<AmbientLight>());
+
+    let mut authored_app = App::new();
+    authored_app.insert_resource(AmbientLight {
+        color: Color::srgb(1.0, 1.0, 1.0),
+        brightness: 0.4,
+    });
+    apply_environment_lighting_to_world(authored_app.world_mut(), &fixture.bundle);
+    let authored_ambient = authored_app.world().resource::<AmbientLight>();
+    assert!((authored_ambient.brightness - 0.4).abs() < 0.001);
 }
 
 #[test]
@@ -544,7 +556,7 @@ fn assert_material(world: &mut World, id: &str) {
     assert!((color.blue - 0x99 as f32 / 255.0).abs() < 0.01);
     assert!((color.alpha - 0.65).abs() < 0.01);
     assert_eq!(material.alpha_mode, AlphaMode::Mask(0.35));
-    assert!((material.emissive.blue - 2.5).abs() < 0.01);
+    assert!((material.emissive.blue - 6.25).abs() < 0.01);
     assert!(material.base_color_texture.is_some());
     assert!(material.emissive_texture.is_some());
     assert!(material.metallic_roughness_texture.is_some());
@@ -569,7 +581,7 @@ fn assert_emissive_bloom_trace(world: &mut World) {
     assert!(observation.enabled);
     assert!((observation.material_intensity - 0.8).abs() < 0.01);
     assert!((observation.threshold - 0.1).abs() < 0.01);
-    assert!((observation.contribution - 0.1444).abs() < 0.01);
+    assert!((observation.contribution - 0.36).abs() < 0.01);
     assert!(observation.exceeds_threshold);
 }
 
@@ -675,6 +687,43 @@ fn assert_procedural_mesh_attributes(world: &mut World, id: &str) {
         Some(VertexAttributeValues::Float32x4(values)) if values.len() == 228
     ));
     assert!(matches!(mesh.indices(), Some(Indices::U32(indices)) if indices.len() == 630));
+}
+
+fn assert_mesh_has_tangents(world: &mut World, id: &str) {
+    let mesh = mesh_for_id(world, id);
+    assert!(
+        mesh.attribute(Mesh::ATTRIBUTE_TANGENT).is_some(),
+        "normal-mapped mesh should have generated tangents"
+    );
+}
+
+fn assert_mesh_has_three_box_uvs(world: &mut World, id: &str) {
+    let mesh = mesh_for_id(world, id);
+    let uvs = mesh
+        .attribute(Mesh::ATTRIBUTE_UV_0)
+        .expect("box mesh should have uv0");
+    let VertexAttributeValues::Float32x2(uvs) = uvs else {
+        panic!("box uv0 should be float32x2");
+    };
+    assert_eq!(uvs.first().copied(), Some([0.0, 1.0]));
+    assert_eq!(uvs.get(1).copied(), Some([1.0, 1.0]));
+    assert_eq!(uvs.get(2).copied(), Some([0.0, 0.0]));
+    assert_eq!(uvs.get(3).copied(), Some([1.0, 0.0]));
+}
+
+fn mesh_for_id(world: &mut World, id: &str) -> Mesh {
+    let handle = {
+        let mut query = world.query::<(&ThreeNativeId, &Handle<Mesh>)>();
+        query
+            .iter(world)
+            .find_map(|(stable_id, handle)| (stable_id.0 == id).then_some(handle.clone()))
+            .expect("entity mesh handle should be spawned")
+    };
+    let mesh = world
+        .resource::<Assets<Mesh>>()
+        .get(&handle)
+        .expect("mesh asset should be registered");
+    mesh.clone()
 }
 
 fn animation_playback_for(world: &mut World, id: &str) -> NativeAnimationPlayback {
@@ -1121,7 +1170,9 @@ fn emissive_color_cards_should_map_to_unlit_base_color() {
 
     let material = material_for(app.world_mut(), "swatch.red");
     assert!(material.unlit);
-    assert_eq!(material.emissive, LinearRgba::BLACK);
+    assert!(material.emissive.red > 0.0);
+    assert!(material.emissive.red > material.emissive.green);
+    assert!(material.emissive.red > material.emissive.blue);
     let color = material.base_color.to_srgba();
     assert!((color.red - 0xe6 as f32 / 255.0).abs() < 0.01);
     assert!((color.green - 0x19 as f32 / 255.0).abs() < 0.01);
@@ -1149,6 +1200,31 @@ fn cameras_without_atmosphere_should_use_three_style_neutral_exposure() {
     fs::remove_dir_all(root).expect("temporary bundle should be removed");
 }
 
+#[test]
+fn cameras_should_map_runtime_color_grading_to_native_sections() {
+    let root = write_runtime_color_grading_camera_bundle();
+    let bundle = load_bundle(&root).expect("runtime color grading camera bundle should load");
+    let mut app = App::new();
+    map_bundle_into_world(app.world_mut(), &bundle).expect("bundle should map");
+
+    let mut query = app
+        .world_mut()
+        .query::<(&ThreeNativeId, &Tonemapping, &ColorGrading, &Exposure)>();
+    let camera = query
+        .iter(app.world())
+        .find(|(stable_id, _, _, _)| stable_id.0 == "camera.color")
+        .expect("runtime color grading camera should be spawned");
+    assert_eq!(*camera.1, Tonemapping::AcesFitted);
+    assert!((camera.2.global.exposure - 0.0).abs() < 0.001);
+    assert!((camera.2.global.post_saturation - 0.82).abs() < 0.001);
+    for section in camera.2.all_sections() {
+        assert!((section.contrast - 1.14).abs() < 0.001);
+    }
+    assert!((camera.3.exposure() - 0.983).abs() < 0.001);
+
+    fs::remove_dir_all(root).expect("temporary bundle should be removed");
+}
+
 fn write_color_parity_camera_bundle() -> PathBuf {
     let root = std::env::temp_dir().join(format!(
         "tn-rendering-color-parity-camera-{}",
@@ -1168,6 +1244,77 @@ fn write_color_parity_camera_bundle() -> PathBuf {
   "requiredCapabilities": {},
   "entry": { "world": "world.ir.json" },
   "files": { "assets": "assets.manifest.json", "materials": "materials.ir.json", "targetProfile": "target.profile.json" }
+}"#,
+    );
+    write(
+        &root,
+        "world.ir.json",
+        r##"{
+  "schema": "threenative.world",
+  "version": "0.1.0",
+  "entities": [
+    {
+      "id": "camera.color",
+      "components": {
+        "Camera": { "kind": "orthographic", "near": 0.1, "far": 20, "size": 4.5 },
+        "Transform": { "position": [0, 0, 5] }
+      }
+    }
+  ],
+  "resources": { "ActiveCamera": { "entity": "camera.color" } }
+}"##,
+    );
+    write(
+        &root,
+        "assets.manifest.json",
+        r#"{ "schema": "threenative.assets", "version": "0.1.0", "assets": [] }"#,
+    );
+    write(
+        &root,
+        "materials.ir.json",
+        r#"{ "schema": "threenative.materials", "version": "0.1.0", "materials": [] }"#,
+    );
+    write(
+        &root,
+        "target.profile.json",
+        r#"{ "schema": "threenative.target-profile", "version": "0.1.0", "targets": ["desktop"] }"#,
+    );
+    root
+}
+
+fn write_runtime_color_grading_camera_bundle() -> PathBuf {
+    let root = std::env::temp_dir().join(format!(
+        "tn-rendering-runtime-color-grading-camera-{}",
+        SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("system time should be after unix epoch")
+            .as_nanos()
+    ));
+    fs::create_dir_all(&root).expect("temporary bundle directory should be created");
+    write(
+        &root,
+        "manifest.json",
+        r#"{
+  "schema": "threenative.bundle",
+  "version": "0.1.0",
+  "name": "runtime-color-grading-camera",
+  "requiredCapabilities": {},
+  "entry": { "world": "world.ir.json" },
+  "files": { "assets": "assets.manifest.json", "materials": "materials.ir.json", "runtimeConfig": "runtime.config.json", "targetProfile": "target.profile.json" }
+}"#,
+    );
+    write(
+        &root,
+        "runtime.config.json",
+        r#"{
+  "schema": "threenative.runtime-config",
+  "version": "0.1.0",
+    "renderer": {
+    "antialias": "msaa4",
+    "colorGrading": { "contrast": 0.14, "exposure": 1.18, "saturation": 0.82, "toneMapping": "aces" }
+  },
+  "time": { "fixedDelta": 0.016666666666666666, "paused": false },
+  "window": { "height": 720, "width": 1280 }
 }"#,
     );
     write(
@@ -1267,8 +1414,8 @@ fn write_emissive_color_card_bundle() -> PathBuf {
     "color": "#e6194b",
     "emissive": "#e6194b",
     "emissiveIntensity": 1,
-    "metalness": 0,
-    "roughness": 1
+    "metalness": 0.05,
+    "roughness": 0.4
   }]
 }"##,
     );

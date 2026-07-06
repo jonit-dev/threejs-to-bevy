@@ -36,8 +36,6 @@ await cp(sourceBevyRuntime, outputBevyRuntime, {
 
 await cleanGeneratedDirectory(outputAiDocs);
 await mkdir(resolve(outputAiDocs, "docs", "workflows"), { recursive: true });
-await mkdir(resolve(outputAiDocs, "examples", "ai-reference"), { recursive: true });
 await cp(resolve(repoRoot, "llms.txt"), resolve(outputAiDocs, "llms.txt"));
 await cp(resolve(repoRoot, "llms-full.txt"), resolve(outputAiDocs, "llms-full.txt"));
 await cp(resolve(repoRoot, "docs", "workflows", "ai-distribution.md"), resolve(outputAiDocs, "docs", "workflows", "ai-distribution.md"));
-await cp(resolve(repoRoot, "examples", "ai-reference", "README.md"), resolve(outputAiDocs, "examples", "ai-reference", "README.md"));

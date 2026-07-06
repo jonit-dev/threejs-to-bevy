@@ -4,8 +4,12 @@ use bevy::{
     asset::AssetPath,
     math::{Affine2, Vec2},
     prelude::*,
-    render::texture::{ImageAddressMode, ImageFilterMode, ImageSampler, ImageSamplerDescriptor},
+    render::{
+        render_resource::TextureFormat,
+        texture::{ImageAddressMode, ImageFilterMode, ImageSampler, ImageSamplerDescriptor},
+    },
 };
+use image::{ImageBuffer, Rgba, Rgba32FImage, RgbaImage, imageops::FilterType};
 use serde::Serialize;
 use threenative_loader::{AssetIr, AssetsManifest, EnvironmentSceneIr};
 
@@ -139,6 +143,9 @@ pub fn apply_loaded_texture_controls(
         };
         apply_texture_sampler_controls(image, controls);
     }
+    for (_, image) in images.iter_mut() {
+        apply_default_texture_quality(image);
+    }
 }
 
 pub fn load_texture_asset(asset_server: &AssetServer, path: &str) -> Handle<Image> {
@@ -170,6 +177,10 @@ pub fn apply_texture_sampler_controls(image: &mut Image, controls: &TextureAsset
         .as_deref()
         .map(map_filter_mode)
         .unwrap_or(ImageFilterMode::Linear);
+    let requests_mipmaps = controls
+        .min_filter
+        .as_deref()
+        .is_some_and(texture_filter_requests_mipmaps);
     image.sampler = ImageSampler::Descriptor(ImageSamplerDescriptor {
         address_mode_u: address_u,
         address_mode_v: address_v,
@@ -177,8 +188,38 @@ pub fn apply_texture_sampler_controls(image: &mut Image, controls: &TextureAsset
         mag_filter,
         min_filter,
         mipmap_filter: min_filter,
+        anisotropy_clamp: if requests_mipmaps && matches!(min_filter, ImageFilterMode::Linear) {
+            8
+        } else {
+            1
+        },
         ..Default::default()
     });
+    if requests_mipmaps {
+        generate_rgba_mipmaps(image);
+    }
+}
+
+pub fn apply_default_texture_quality(image: &mut Image) -> bool {
+    if !matches!(image.sampler, ImageSampler::Default) {
+        return false;
+    }
+    generate_rgba_mipmaps(image);
+    image.sampler = ImageSampler::Descriptor(ImageSamplerDescriptor {
+        address_mode_u: ImageAddressMode::Repeat,
+        address_mode_v: ImageAddressMode::Repeat,
+        address_mode_w: ImageAddressMode::Repeat,
+        mag_filter: ImageFilterMode::Linear,
+        min_filter: ImageFilterMode::Linear,
+        mipmap_filter: ImageFilterMode::Linear,
+        anisotropy_clamp: if image.texture_descriptor.mip_level_count > 1 {
+            8
+        } else {
+            1
+        },
+        ..Default::default()
+    });
+    true
 }
 
 pub fn texture_uv_transform(asset: &AssetIr) -> Affine2 {
@@ -215,6 +256,133 @@ fn map_filter_mode(value: &str) -> ImageFilterMode {
         "nearest" | "nearestMipmapNearest" | "nearestMipmapLinear" => ImageFilterMode::Nearest,
         _ => ImageFilterMode::Linear,
     }
+}
+
+fn texture_filter_requests_mipmaps(value: &str) -> bool {
+    matches!(
+        value,
+        "linearMipmapLinear"
+            | "linearMipmapNearest"
+            | "nearestMipmapLinear"
+            | "nearestMipmapNearest"
+    )
+}
+
+fn generate_rgba_mipmaps(image: &mut Image) {
+    if image.texture_descriptor.dimension != bevy::render::render_resource::TextureDimension::D2
+        || image.texture_descriptor.size.depth_or_array_layers != 1
+        || image.texture_descriptor.mip_level_count > 1
+        || !matches!(
+            image.texture_descriptor.format,
+            TextureFormat::Rgba8Unorm | TextureFormat::Rgba8UnormSrgb
+        )
+    {
+        return;
+    }
+    let width = image.texture_descriptor.size.width;
+    let height = image.texture_descriptor.size.height;
+    let expected_base_len = width as usize * height as usize * 4;
+    if width <= 1 && height <= 1 || image.data.len() != expected_base_len {
+        return;
+    }
+    if image.texture_descriptor.format == TextureFormat::Rgba8UnormSrgb {
+        generate_srgb_rgba_mipmaps(image, width, height);
+        return;
+    }
+    let Some(mut current) = RgbaImage::from_raw(width, height, image.data.clone()) else {
+        return;
+    };
+    let mut mip_data = image.data.clone();
+    let mut mip_count = 1;
+    let mut mip_width = width;
+    let mut mip_height = height;
+    while mip_width > 1 || mip_height > 1 {
+        mip_width = (mip_width / 2).max(1);
+        mip_height = (mip_height / 2).max(1);
+        current = image::imageops::resize(&current, mip_width, mip_height, FilterType::Triangle);
+        mip_data.extend_from_slice(current.as_raw());
+        mip_count += 1;
+    }
+    image.data = mip_data;
+    image.texture_descriptor.mip_level_count = mip_count;
+}
+
+fn generate_srgb_rgba_mipmaps(image: &mut Image, width: u32, height: u32) {
+    let Some(mut current) = linear_rgba_image_from_srgb_bytes(width, height, &image.data) else {
+        return;
+    };
+    let mut mip_data = image.data.clone();
+    let mut mip_count = 1;
+    let mut mip_width = width;
+    let mut mip_height = height;
+    while mip_width > 1 || mip_height > 1 {
+        mip_width = (mip_width / 2).max(1);
+        mip_height = (mip_height / 2).max(1);
+        current = image::imageops::resize(&current, mip_width, mip_height, FilterType::Triangle);
+        mip_data.extend(srgb_bytes_from_linear_rgba_image(&current));
+        mip_count += 1;
+    }
+    image.data = mip_data;
+    image.texture_descriptor.mip_level_count = mip_count;
+}
+
+fn linear_rgba_image_from_srgb_bytes(width: u32, height: u32, data: &[u8]) -> Option<Rgba32FImage> {
+    let pixels: Vec<Rgba<f32>> = data
+        .chunks_exact(4)
+        .map(|pixel| {
+            Rgba([
+                srgb_u8_to_linear(pixel[0]),
+                srgb_u8_to_linear(pixel[1]),
+                srgb_u8_to_linear(pixel[2]),
+                f32::from(pixel[3]) / 255.0,
+            ])
+        })
+        .collect();
+    ImageBuffer::from_vec(
+        width,
+        height,
+        pixels
+            .into_iter()
+            .flat_map(|pixel| pixel.0)
+            .collect::<Vec<_>>(),
+    )
+}
+
+fn srgb_bytes_from_linear_rgba_image(image: &Rgba32FImage) -> Vec<u8> {
+    image
+        .pixels()
+        .flat_map(|pixel| {
+            [
+                linear_to_srgb_u8(pixel[0]),
+                linear_to_srgb_u8(pixel[1]),
+                linear_to_srgb_u8(pixel[2]),
+                linear_alpha_to_u8(pixel[3]),
+            ]
+        })
+        .collect()
+}
+
+fn srgb_u8_to_linear(value: u8) -> f32 {
+    let normalized = f32::from(value) / 255.0;
+    if normalized <= 0.04045 {
+        normalized / 12.92
+    } else {
+        ((normalized + 0.055) / 1.055).powf(2.4)
+    }
+}
+
+fn linear_to_srgb_u8(value: f32) -> u8 {
+    let clamped = value.clamp(0.0, 1.0);
+    let encoded = if clamped <= 0.0031308 {
+        clamped * 12.92
+    } else {
+        1.055 * clamped.powf(1.0 / 2.4) - 0.055
+    };
+    (encoded * 255.0).round() as u8
+}
+
+fn linear_alpha_to_u8(value: f32) -> u8 {
+    (value.clamp(0.0, 1.0) * 255.0).round() as u8
 }
 
 pub fn trace_asset_load_synchronization(

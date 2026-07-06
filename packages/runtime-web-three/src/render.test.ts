@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import * as THREE from "three";
 
-import type { IRuntimeConfigIr } from "@threenative/ir";
+import { RENDER_LOOK_PROFILE_PRESETS, type IRuntimeConfigIr } from "@threenative/ir";
 
 import type { IWebBundle } from "./loadBundle.js";
 import { mapWorld } from "./mapWorld.js";
@@ -228,6 +228,32 @@ test("should map balanced render look to supported web renderer settings", () =>
   });
   assert.equal(renderer.toneMapping, THREE.ACESFilmicToneMapping);
   assert.equal(renderer.toneMappingExposure, 1.1);
+});
+
+test("should map balanced render look defaults from the shared IR preset", () => {
+  const renderer = mockRenderer();
+  const preset = RENDER_LOOK_PROFILE_PRESETS.balanced;
+  const config = runtimeConfig("msaa4", {
+    renderLook: {
+      version: 1,
+      profile: "balanced",
+    },
+  });
+
+  applyRendererColorManagement(renderer, undefined, {
+    contrast: preset.contrast,
+    exposure: preset.exposure,
+    saturation: preset.saturation,
+    toneMapping: preset.toneMapping,
+  });
+
+  assert.deepEqual(webBloomSettings(config), {
+    enabled: true,
+    intensity: preset.bloomIntensity,
+    threshold: 0.85,
+  });
+  assert.equal(renderer.toneMapping, THREE.ACESFilmicToneMapping);
+  assert.equal(renderer.toneMappingExposure, preset.exposure);
 });
 
 test("should add balanced sky and fill lights when a scene has no authored lighting", () => {

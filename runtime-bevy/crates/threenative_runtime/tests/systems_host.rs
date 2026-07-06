@@ -3,7 +3,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use threenative_loader::{InputAxisIr, InputBindingIr, InputIr, load_bundle};
+use threenative_loader::{InputAxisIr, InputBindingIr, InputIr, LoadedBundle, load_bundle};
 use threenative_runtime::{
     input::{NativeInputState, map_keyboard_event},
     systems_context::{NativeSystemTimeSnapshot, build_system_context_snapshot},
@@ -248,7 +248,7 @@ fn systems_host_should_expose_character_move_service() {
             "entity": "player",
             "grounded": true,
             "ground": "floor",
-            "resolved": [1, 0.55, 0]
+            "resolved": [1, 0.05, 0]
         }))
     );
     let service_entry = run.logs[0]
@@ -271,6 +271,41 @@ fn systems_host_should_expose_character_move_service() {
 }
 
 #[test]
+fn systems_host_should_translate_humanoid_course_player_from_keyboard_forward() {
+    let root = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../../examples/humanoid-physics-course/dist/humanoid-physics-course.bundle");
+    let mut bundle = load_bundle(&root).expect("humanoid course bundle should load");
+    let input = bundle
+        .input
+        .clone()
+        .expect("humanoid course should include input");
+    let mut state = NativeInputState::default();
+    map_keyboard_event(&input, "KeyW", true, &mut state);
+    assert_eq!(state.axis("MoveZ"), 1.0);
+
+    let before = entity_position(&bundle, "player").expect("player should have a transform");
+    let run = run_native_systems_frame_with_input(
+        &mut bundle,
+        &mut NativeGameLoopState::new(false),
+        NativeGameLoopRunOptions {
+            delta: 1.0 / 60.0,
+            fixed_delta: 1.0 / 60.0,
+            input: Some(&state),
+            paused: false,
+        },
+        |_bundle, _fixed_delta, _script_posed_entities| {},
+    )
+    .expect("humanoid course systems should run");
+    let after = entity_position(&bundle, "player").expect("player should still have a transform");
+
+    assert!(
+        after[2] < before[2] - 0.001,
+        "expected KeyW to move player forward on -Z, before={before:?}, after={after:?}, logs={:?}",
+        run.logs
+    );
+}
+
+#[test]
 fn systems_host_should_expose_physics_raycast_service() {
     let root = write_physics_raycast_service_bundle("physics-raycast-context");
     let mut bundle = load_bundle(&root).expect("scripted bundle should load");
@@ -289,7 +324,9 @@ fn systems_host_should_expose_physics_raycast_service() {
     let service_entry = run.logs[0]
         .entries
         .iter()
-        .find(|entry| entry.kind == "service" && entry.service.as_deref() == Some("physics.raycast"))
+        .find(|entry| {
+            entry.kind == "service" && entry.service.as_deref() == Some("physics.raycast")
+        })
         .expect("physics raycast service call should be logged");
     let expected_request = serde_json::json!({
         "direction": [0, 0, -1],
@@ -1243,7 +1280,7 @@ fn write_picking_bundle(name: &str) -> PathBuf {
     {
       "id": "crate",
       "components": {
-        "Transform": { "position": [0, 0, 0], "rotation": [0, 0, 0, 1], "scale": [1, 1, 1] },
+        "Transform": { "position": [0, 0.05, 0], "rotation": [0, 0, 0, 1], "scale": [1, 1, 1] },
         "MeshRenderer": { "mesh": "mesh.crate", "material": "mat.crate" }
       }
     }
@@ -1384,8 +1421,8 @@ fn write_character_service_bundle(name: &str) -> PathBuf {
     {
       "id": "player",
       "components": {
-        "Transform": { "position": [0, 1, 0], "rotation": [0, 0, 0, 1], "scale": [1, 1, 1] },
-        "Collider": { "kind": "box", "size": [0.5, 1, 0.5], "layer": "player", "mask": ["world"] },
+        "Transform": { "position": [0, 0, 0], "rotation": [0, 0, 0, 1], "scale": [1, 1, 1] },
+        "Collider": { "center": [0, 0.9, 0], "height": 1.8, "kind": "capsule", "layer": "player", "mask": ["world"], "radius": 0.25 },
         "RigidBody": { "kind": "kinematic" },
         "CharacterController": {
           "blocking": true,
@@ -2278,6 +2315,16 @@ export const systems = Object.freeze({ "system_reportUi": system_reportUi });
     )
     .expect("script bundle should be written");
     root
+}
+
+fn entity_position(bundle: &LoadedBundle, entity_id: &str) -> Option<[f32; 3]> {
+    bundle
+        .world
+        .entities
+        .iter()
+        .find(|entity| entity.id == entity_id)
+        .and_then(|entity| entity.components.transform.as_ref())
+        .and_then(|transform| transform.position)
 }
 
 fn write_bundle(name: &str, export_name: &str) -> PathBuf {

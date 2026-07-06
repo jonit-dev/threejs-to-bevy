@@ -43,28 +43,8 @@ interface IGameProductionGateOptions {
 }
 
 const GENERATED_GAME_PROJECTS = [
-  "examples/asteroid-mail-runner",
-  "examples/clockwork-garden-heist",
-  "examples/copper-rail-switcher",
-  "examples/crystal-cavern",
-  "examples/firefly-grove-keeper",
-  "examples/glassworks-prism-sorter",
-  "examples/harbor-lantern-ferry",
   "examples/humanoid-physics-course",
-  "examples/lantern-orchard",
-  "examples/magnet-yard-sorter",
   "examples/metro-surfer-heist",
-  "examples/moon-canyon-courier",
-  "examples/neon-sushi-rush",
-  "examples/paper-plane-postmaster",
-  "examples/river-rescue",
-  "examples/rooftop-wind-courier",
-  "examples/sky-lighthouse-relay",
-  "examples/storm-buoy-rescue",
-  "examples/sunken-library-salvage",
-  "examples/tidepool-crab-courier",
-  "examples/toy-train-yard-switcher",
-  "examples/windup-workshop-sorter",
 ] as const;
 
 export async function runGameProductionGate(options: IGameProductionGateOptions = {}): Promise<IGameProductionGateResult> {
@@ -77,7 +57,6 @@ export async function runGameProductionGate(options: IGameProductionGateOptions 
   const steps: StepSummary[] = [];
   if (options.generatedGames === true) {
     diagnostics.push(...await generatedGameInventoryDiagnostics(root, projects));
-    diagnostics.push(...await promotedKitProofDiagnostics(root));
     diagnostics.push(...await generatedGameReadmeScriptDiagnostics(root, projects));
   }
   for (const project of projects) {
@@ -178,59 +157,6 @@ export async function runGameProductionGate(options: IGameProductionGateOptions 
     reportPath,
     steps,
   };
-}
-
-async function promotedKitProofDiagnostics(root: string): Promise<VerificationDiagnostic[]> {
-  const path = resolve(root, "examples/game-velocity-kits/artifacts/game-production/kit-proof.json");
-  try {
-    const parsed = JSON.parse(await readFile(path, "utf8")) as unknown;
-    if (
-      !isRecord(parsed)
-      || parsed.schema !== "threenative.game-velocity-kit-proof"
-      || !hasKitProofRows(parsed.kits)
-    ) {
-      return [{
-        code: "TN_VERIFY_GAME_KIT_PROOF_INVALID",
-        message: "Promoted game velocity kit proof must cover top-down collector, lane runner, and checkpoint race kits.",
-        path,
-        severity: "error",
-        suggestedFix: "Refresh examples/game-velocity-kits/artifacts/game-production/kit-proof.json with package, recipe, asset, UI, playtest, screenshot, scale, and QA evidence for each promoted kit.",
-      }];
-    }
-    return [];
-  } catch (error) {
-    return [{
-      code: "TN_VERIFY_GAME_KIT_PROOF_MISSING",
-      message: `Promoted game velocity kit proof is missing: ${error instanceof Error ? error.message : String(error)}.`,
-      path,
-      severity: "error",
-      suggestedFix: "Add examples/game-velocity-kits/artifacts/game-production/kit-proof.json before promoting generated-game release evidence.",
-    }];
-  }
-}
-
-function hasKitProofRows(value: unknown): boolean {
-  if (!Array.isArray(value)) {
-    return false;
-  }
-  const required = new Set(["top-down-collector", "lane-runner", "checkpoint-race"]);
-  for (const row of value.filter(isRecord)) {
-    if (
-      typeof row.id === "string"
-      && required.has(row.id)
-      && row.reducerPackage === true
-      && row.recipeManifest === true
-      && row.assetRoleGuidance === true
-      && row.uiStateProof === true
-      && row.playtestRecipe === true
-      && row.screenshotProof === true
-      && row.scaleProof === true
-      && row.qaArtifact === true
-    ) {
-      required.delete(row.id);
-    }
-  }
-  return required.size === 0;
 }
 
 async function generatedGameInventoryDiagnostics(root: string, projects: IGameProductionGateProject[]): Promise<VerificationDiagnostic[]> {

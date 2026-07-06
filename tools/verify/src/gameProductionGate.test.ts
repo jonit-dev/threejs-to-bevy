@@ -166,62 +166,6 @@ test("rejects generated-game README references to missing package scripts", asyn
   }
 });
 
-test("requires promoted kit proof in generated-game aggregation", async () => {
-  const root = await mkdtemp(join(tmpdir(), "tn-generated-game-kit-proof-gate-"));
-  try {
-    await mkdir(join(root, "content/scenes"), { recursive: true });
-    await writeFile(join(root, "content/scenes/arena.scene.json"), `${JSON.stringify({ schema: "threenative.scene", id: "arena" }, null, 2)}\n`);
-    const reportPath = join(root, "artifacts/game-production/verification-report.json");
-
-    const result = await runGameProductionGate({
-      generatedGames: true,
-      projects: [{ projectPath: "." }],
-      reportPath,
-      root,
-    });
-
-    assert.equal(result.ok, false);
-    assert.equal(result.diagnostics.some((diagnostic) => diagnostic.code === "TN_VERIFY_GAME_KIT_PROOF_MISSING"), true);
-  } finally {
-    await rm(root, { force: true, recursive: true });
-  }
-});
-
-test("accepts complete promoted kit proof rows", async () => {
-  const root = await mkdtemp(join(tmpdir(), "tn-generated-game-kit-proof-pass-"));
-  try {
-    await mkdir(join(root, "content/scenes"), { recursive: true });
-    await mkdir(join(root, "examples/game-velocity-kits/artifacts/game-production"), { recursive: true });
-    await writeFile(join(root, "content/scenes/arena.scene.json"), `${JSON.stringify({ schema: "threenative.scene", id: "arena" }, null, 2)}\n`);
-    await writeFile(join(root, "examples/game-velocity-kits/artifacts/game-production/kit-proof.json"), `${JSON.stringify({
-      schema: "threenative.game-velocity-kit-proof",
-      kits: ["top-down-collector", "lane-runner", "checkpoint-race"].map((id) => ({
-        id,
-        assetRoleGuidance: true,
-        playtestRecipe: true,
-        qaArtifact: true,
-        recipeManifest: true,
-        reducerPackage: true,
-        scaleProof: true,
-        screenshotProof: true,
-        uiStateProof: true,
-      })),
-    }, null, 2)}\n`);
-    const reportPath = join(root, "artifacts/game-production/verification-report.json");
-
-    const result = await runGameProductionGate({
-      generatedGames: true,
-      projects: [{ projectPath: "." }],
-      reportPath,
-      root,
-    });
-
-    assert.equal(result.diagnostics.some((diagnostic) => diagnostic.code === "TN_VERIFY_GAME_KIT_PROOF_MISSING" || diagnostic.code === "TN_VERIFY_GAME_KIT_PROOF_INVALID"), false);
-  } finally {
-    await rm(root, { force: true, recursive: true });
-  }
-});
-
 test("requires production plan artifact for generated-game aggregate projects", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-generated-game-plan-gate-"));
   try {

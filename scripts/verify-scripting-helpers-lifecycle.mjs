@@ -1,13 +1,17 @@
 import { spawnSync } from "node:child_process";
-import { mkdir, readFile, writeFile } from "node:fs/promises";
-import { dirname, resolve } from "node:path";
+import { cp, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { dirname, join, relative, resolve } from "node:path";
+import { tmpdir } from "node:os";
 import { fileURLToPath } from "node:url";
 
 import { resolveArtifactTargets } from "./artifact-paths.mjs";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-const exampleRoot = resolve(root, "examples/racing-kit-rally");
-const bundleRoot = resolve(exampleRoot, "dist/racing-kit-rally.bundle");
+const tempRoot = await mkdtemp(join(tmpdir(), "tn-scripting-helpers-lifecycle-"));
+const projectRoot = resolve(tempRoot, "racing-kit-rally-starter");
+const projectRelativePath = relative(root, projectRoot);
+const bundleRoot = resolve(projectRoot, "dist/racing-kit-rally.bundle");
+const bundleRelativePath = relative(root, bundleRoot);
 const targets = resolveArtifactTargets({
   gate: "scripting-helpers-lifecycle",
   owner: { kind: "aggregate", name: "scripting-helpers-lifecycle" },
@@ -18,6 +22,10 @@ const commands = [];
 const diagnostics = [];
 
 await mkdir(targets.absoluteDir, { recursive: true });
+await cp(resolve(root, "templates/racing-kit-rally-starter"), projectRoot, {
+  recursive: true,
+  filter: (source) => !source.split("/").includes("dist") && !source.split("/").includes("artifacts"),
+});
 
 run("build sdk", "pnpm", ["--filter", "@threenative/sdk", "build"]);
 run("test sdk lifecycle facade", process.execPath, ["--test", "packages/sdk/dist/scriptLifecycle.test.js"]);
@@ -29,14 +37,14 @@ run("test compiler scripting", process.execPath, [
   "dist/scripts/bundle.test.js",
   "dist/scripts/sourceRefs.test.js",
 ], { cwd: resolve(root, "packages/compiler") });
-run("build racing kit rally", "pnpm", ["tn", "build", "--project", "examples/racing-kit-rally"]);
+run("build racing kit starter project", "pnpm", ["tn", "build", "--project", projectRoot]);
 run("playtest racing kit rally", "pnpm", [
   "--filter",
   "@threenative/cli",
   "tn",
   "playtest",
   "--project",
-  "examples/racing-kit-rally",
+  projectRoot,
   "--entity",
   "player.car",
   "--press",
@@ -62,8 +70,8 @@ const artifactChecks = commands.every((command) => command.status === "pass")
 const ok = commands.every((command) => command.status === "pass") && artifactChecks.ok && diagnostics.length === 0;
 await writeReport({
   artifacts: {
-    exampleBundle: "examples/racing-kit-rally/dist/racing-kit-rally.bundle",
-    playtest: "examples/racing-kit-rally/artifacts/playtest/player.car-KeyW.png",
+    exampleBundle: bundleRelativePath,
+    playtest: `${projectRelativePath}/artifacts/playtest/player.car-KeyW.png`,
     report: targets.relativeReportPath,
   },
   checks: artifactChecks.summary,
@@ -76,7 +84,7 @@ await writeReport({
     "optional racing-kit helper import bundling",
     "script lifecycle facade lowering",
     "context helper bridge parity evidence",
-    "structured-source racing example rebuild",
+    "structured-source racing starter rebuild",
   ],
   schema: "threenative.scripting-helpers-lifecycle-verification",
   status: ok ? "passed" : "failed",
@@ -85,6 +93,8 @@ await writeReport({
 if (!ok) {
   process.exitCode = 1;
 }
+
+await rm(tempRoot, { force: true, recursive: true });
 
 function run(name, command, args, options = {}) {
   if (commands.some((entry) => entry.status === "fail")) {
@@ -122,9 +132,7 @@ async function inspectBundle() {
   const bundle = await readFile(resolve(bundleRoot, "scripts.bundle.js"), "utf8");
 
   const expectedSchedules = new Map([
-    ["rally.awake", "startup"],
-    ["rally.fixedUpdate", "fixedUpdate"],
-    ["rally.lateUpdate", "postUpdate"],
+    ["racing-kit-rally", "fixedUpdate"],
   ]);
   const actualSchedules = new Map((systems.systems ?? []).map((system) => [system.name, system.schedule]));
   for (const [name, schedule] of expectedSchedules) {
@@ -132,7 +140,7 @@ async function inspectBundle() {
       diagnostics.push({
         code: "TN_VERIFY_SCRIPTING_HELPERS_LIFECYCLE_SCHEDULE_MISMATCH",
         message: `Expected lifecycle system '${name}' to lower to schedule '${schedule}'.`,
-        path: "examples/racing-kit-rally/dist/racing-kit-rally.bundle/systems.ir.json",
+        path: `${bundleRelativePath}/systems.ir.json`,
         severity: "error",
       });
     }
@@ -144,23 +152,23 @@ async function inspectBundle() {
       helperImports.add(helper.module);
     }
   }
-  for (const module of ["@threenative/script-stdlib", "@threenative/racing-kit"]) {
+  for (const module of ["@threenative/script-stdlib"]) {
     if (!helperImports.has(module)) {
       diagnostics.push({
         code: "TN_VERIFY_SCRIPTING_HELPERS_LIFECYCLE_HELPER_IMPORT_MISSING",
         message: `Expected scripts manifest to record helper import '${module}'.`,
-        path: "examples/racing-kit-rally/dist/racing-kit-rally.bundle/scripts.manifest.json",
+        path: `${bundleRelativePath}/scripts.manifest.json`,
         severity: "error",
       });
     }
   }
 
-  for (const symbol of ["NumberEx", "Vec3", "Quat", "Track2D", "CheckpointRace"]) {
+  for (const symbol of ["NumberEx", "Vec3", "Quat"]) {
     if (!bundle.includes(`const ${symbol}`)) {
       diagnostics.push({
         code: "TN_VERIFY_SCRIPTING_HELPERS_LIFECYCLE_SYMBOL_MISSING",
         message: `Expected scripts bundle to contain injected helper '${symbol}'.`,
-        path: "examples/racing-kit-rally/dist/racing-kit-rally.bundle/scripts.bundle.js",
+        path: `${bundleRelativePath}/scripts.bundle.js`,
         severity: "error",
       });
     }

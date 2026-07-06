@@ -1,6 +1,6 @@
 import { spawn, type ChildProcess } from "node:child_process";
 import { existsSync } from "node:fs";
-import { dirname, resolve } from "node:path";
+import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 export interface IBevyRuntimeInvocation {
@@ -89,10 +89,44 @@ export function bevyRuntimeArgs(
   return args;
 }
 
+export function resolveBevyRuntimeBinaryPath(
+  repoRoot: string,
+  env: BevyRuntimeEnvironment = process.env,
+): string | undefined {
+  const runtimeRoot = resolve(repoRoot, "runtime-bevy");
+  const profile = env.TN_NATIVE_PROFILE === "debug" ? "debug" : "release";
+  const fallbackProfile = profile === "debug" ? "release" : "debug";
+  const candidates = [
+    join(runtimeRoot, `target/${profile}/threenative_runtime`),
+    join(runtimeRoot, `target/${fallbackProfile}/threenative_runtime`),
+  ];
+  return candidates.find((candidate) => existsSync(candidate));
+}
+
+function bevyRuntimeBinaryArgs(invocation: IBevyRuntimeInvocation): string[] {
+  const args = [invocation.bundlePath];
+  if (invocation.proofHarness !== undefined) {
+    args.push(
+      "--proof-harness",
+      invocation.proofHarness.commandStreamPath,
+      "--readiness-out",
+      invocation.proofHarness.readinessOutPath,
+    );
+  }
+  return args;
+}
+
 export function runBevyRuntime(invocation: IBevyRuntimeInvocation): BevyRuntimeProcess {
   const repoRoot = resolve(fileURLToPath(new URL("../../../../", import.meta.url)));
   const bundledManifestPath = resolve(fileURLToPath(new URL("../runtime-bevy/Cargo.toml", import.meta.url)));
   const runtime = resolveBevyRuntime(repoRoot, process.env, bundledManifestPath);
+  const binaryPath = resolveBevyRuntimeBinaryPath(repoRoot, process.env);
+  if (binaryPath !== undefined) {
+    return spawn(binaryPath, bevyRuntimeBinaryArgs(invocation), {
+      cwd: runtime.cwd,
+      stdio: "inherit",
+    });
+  }
   return spawn("cargo", bevyRuntimeArgs(repoRoot, invocation, process.env, bundledManifestPath), {
     cwd: runtime.cwd,
     stdio: "inherit",

@@ -111,7 +111,7 @@ test("playtest command should pass expect-axis to runner", async () => {
 
 test("playtest command should reject invalid expect-axis", async () => {
   const result = await playtestCommand(
-    ["--project", "examples/lantern-orchard", "--entity", "player", "--press", "KeyD", "--frames", "45", "--expect-axis", "forward", "--json"],
+    ["--project", "examples/metro-surfer-heist", "--entity", "runner", "--press", "KeyD", "--frames", "45", "--expect-axis", "forward", "--json"],
     "/repo",
   );
   const payload = JSON.parse(result.stdout) as { code: string; message: string };
@@ -276,6 +276,150 @@ test("playtest command should run desktop target through native proof harness", 
           assert.ok(readinessOutPath);
           await mkdir(join(dirname(readinessOutPath), "native-recording"), { recursive: true });
           await writeFile(join(dirname(readinessOutPath), "before.png"), "fake-native-before-png");
+          await writeFile(
+            readinessOutPath,
+            `${JSON.stringify({
+              diagnostics: [],
+              ok: true,
+              schema: "threenative.native-proof-readiness",
+              tick: 0,
+              transforms: [{ entity: "player", position: [0, 0, 0] }],
+              version: "0.1.0",
+            })}\n`,
+            "utf8",
+          );
+          await new Promise((resolve) => setTimeout(resolve, 35));
+          await writeFile(join(dirname(readinessOutPath), "after.png"), "fake-native-after-png");
+          await writeFile(
+            readinessOutPath,
+            `${JSON.stringify({
+              diagnostics: [],
+              ok: true,
+              schema: "threenative.native-proof-readiness",
+              tick: 37,
+              transforms: [{ entity: "player", position: [0, 0, -1] }],
+              version: "0.1.0",
+            })}\n`,
+            "utf8",
+          );
+          await new Promise((resolve) => setTimeout(resolve, 10));
+          process.emit("exit", 0, null);
+        })();
+        return process;
+      },
+    },
+  );
+  const payload = JSON.parse(result.stdout) as { artifacts: { observations: string; summary: string }; code: string; distance: number; runtime: string; target: string };
+  const commandStream = JSON.parse(await readFile(commandStreamPath ?? "", "utf8")) as { commands: Array<{ code?: string; frames?: number; pressed?: boolean; tick: number; type: string }> };
+  const summary = JSON.parse(await readFile(payload.artifacts.summary, "utf8")) as { diagnostics: unknown[]; movementDelta: number[]; nativeRecording: { frames: Array<{ byteSize: number; tick: number }> }; runtime: string; target: string };
+  const observations = JSON.parse(await readFile(payload.artifacts.observations, "utf8")) as { runtimeDiagnostics: { readiness: Array<{ tick: number }> } };
+
+  assert.equal(result.exitCode, 0);
+  assert.equal(payload.code, "TN_PLAYTEST_OK");
+  assert.equal(payload.runtime, "bevy");
+  assert.equal(payload.target, "desktop");
+  assert.equal(payload.distance, 1);
+  assert.deepEqual(summary.movementDelta, [0, 0, -1]);
+  assert.deepEqual(summary.diagnostics, []);
+  assert.deepEqual(summary.nativeRecording.frames, []);
+  assert.equal(summary.runtime, "bevy");
+  assert.equal(summary.target, "desktop");
+  assert.deepEqual(commandStream.commands.map((command) => ({ code: command.code, frames: command.frames, pressed: command.pressed, tick: command.tick, type: command.type })), [
+    { code: "KeyW", frames: undefined, pressed: true, tick: 6, type: "key" },
+    { code: undefined, frames: 30, pressed: undefined, tick: 6, type: "advance" },
+    { code: "KeyW", frames: undefined, pressed: false, tick: 36, type: "key" },
+    { code: undefined, frames: undefined, pressed: undefined, tick: 38, type: "exit" },
+  ]);
+  assert.deepEqual(observations.runtimeDiagnostics.readiness.map((sample) => sample.tick), [0, 37]);
+});
+
+test("playtest command should fast-forward desktop native screenshot-only proofs", async () => {
+  const root = await playtestTempRoot();
+  await cp(join(import.meta.dirname, "../template-files/structured-source-starter"), root, { recursive: true });
+  let commandStreamPath: string | undefined;
+  let readinessOutPath: string | undefined;
+  const result = await playtestCommand(
+    ["--project", ".", "--target", "desktop", "--entity", "player", "--press", "KeyW", "--frames", "30", "--expect-moved", "--native-screenshots", "--json"],
+    root,
+    {
+      bevyRunner: (invocation) => {
+        commandStreamPath = invocation.proofHarness?.commandStreamPath;
+        readinessOutPath = invocation.proofHarness?.readinessOutPath;
+        const process = new EventEmitter() as ChildProcess;
+        process.kill = () => true;
+        void (async () => {
+          assert.ok(readinessOutPath);
+          await mkdir(dirname(readinessOutPath), { recursive: true });
+          await writeFile(join(dirname(readinessOutPath), "before.png"), "fake-native-before-png");
+          await writeFile(
+            readinessOutPath,
+            `${JSON.stringify({
+              diagnostics: [],
+              ok: true,
+              schema: "threenative.native-proof-readiness",
+              tick: 0,
+              transforms: [{ entity: "player", position: [0, 0, 0] }],
+              version: "0.1.0",
+            })}\n`,
+            "utf8",
+          );
+          await new Promise((resolve) => setTimeout(resolve, 35));
+          await writeFile(join(dirname(readinessOutPath), "after.png"), "fake-native-after-png");
+          await writeFile(
+            readinessOutPath,
+            `${JSON.stringify({
+              diagnostics: [],
+              ok: true,
+              schema: "threenative.native-proof-readiness",
+              tick: 37,
+              transforms: [{ entity: "player", position: [0, 0, -1] }],
+              version: "0.1.0",
+            })}\n`,
+            "utf8",
+          );
+          await new Promise((resolve) => setTimeout(resolve, 10));
+          process.emit("exit", 0, null);
+        })();
+        return process;
+      },
+    },
+  );
+  const payload = JSON.parse(result.stdout) as { artifacts: { summary: string }; code: string };
+  const commandStream = JSON.parse(await readFile(commandStreamPath ?? "", "utf8")) as { commands: Array<{ code?: string; frames?: number; path?: string; pressed?: boolean; tick: number; type: string }> };
+  const summary = JSON.parse(await readFile(payload.artifacts.summary, "utf8")) as { artifact?: string; nativeRecording: { frames: Array<{ byteSize: number; tick: number }> } };
+
+  assert.equal(result.exitCode, 0);
+  assert.equal(payload.code, "TN_PLAYTEST_OK");
+  assert.match(summary.artifact ?? "", /after\.png$/);
+  assert.deepEqual(summary.nativeRecording.frames, []);
+  assert.deepEqual(commandStream.commands.map((command) => ({ code: command.code, frames: command.frames, pressed: command.pressed, tick: command.tick, type: command.type })), [
+    { code: undefined, frames: undefined, pressed: undefined, tick: 5, type: "screenshot" },
+    { code: "KeyW", frames: undefined, pressed: true, tick: 6, type: "key" },
+    { code: undefined, frames: 30, pressed: undefined, tick: 6, type: "advance" },
+    { code: "KeyW", frames: undefined, pressed: false, tick: 36, type: "key" },
+    { code: undefined, frames: undefined, pressed: undefined, tick: 37, type: "screenshot" },
+    { code: undefined, frames: undefined, pressed: undefined, tick: 38, type: "exit" },
+  ]);
+});
+
+test("playtest command should opt into desktop native recording screenshots", async () => {
+  const root = await playtestTempRoot();
+  await cp(join(import.meta.dirname, "../template-files/structured-source-starter"), root, { recursive: true });
+  let commandStreamPath: string | undefined;
+  let readinessOutPath: string | undefined;
+  const result = await playtestCommand(
+    ["--project", ".", "--target", "desktop", "--entity", "player", "--press", "KeyW", "--frames", "30", "--expect-moved", "--native-recording", "--json"],
+    root,
+    {
+      bevyRunner: (invocation) => {
+        commandStreamPath = invocation.proofHarness?.commandStreamPath;
+        readinessOutPath = invocation.proofHarness?.readinessOutPath;
+        const process = new EventEmitter() as ChildProcess;
+        process.kill = () => true;
+        void (async () => {
+          assert.ok(readinessOutPath);
+          await mkdir(join(dirname(readinessOutPath), "native-recording"), { recursive: true });
+          await writeFile(join(dirname(readinessOutPath), "before.png"), "fake-native-before-png");
           for (let index = 0; index < 5; index += 1) {
             await writeFile(join(dirname(readinessOutPath), "native-recording", `frame-${String(index).padStart(3, "0")}.png`), `fake-native-recording-${index}`);
           }
@@ -299,7 +443,7 @@ test("playtest command should run desktop target through native proof harness", 
               diagnostics: [],
               ok: true,
               schema: "threenative.native-proof-readiness",
-              tick: 30,
+              tick: 37,
               transforms: [{ entity: "player", position: [0, 0, -1] }],
               version: "0.1.0",
             })}\n`,
@@ -312,35 +456,15 @@ test("playtest command should run desktop target through native proof harness", 
       },
     },
   );
-  const payload = JSON.parse(result.stdout) as { artifacts: { observations: string; summary: string }; code: string; distance: number; runtime: string; target: string };
-  const commandStream = JSON.parse(await readFile(commandStreamPath ?? "", "utf8")) as { commands: Array<{ code?: string; pressed?: boolean; tick: number; type: string }> };
-  const summary = JSON.parse(await readFile(payload.artifacts.summary, "utf8")) as { diagnostics: unknown[]; movementDelta: number[]; nativeRecording: { frames: Array<{ byteSize: number; tick: number }> }; runtime: string; target: string };
-  const observations = JSON.parse(await readFile(payload.artifacts.observations, "utf8")) as { runtimeDiagnostics: { readiness: Array<{ tick: number }> } };
+  const payload = JSON.parse(result.stdout) as { artifacts: { summary: string }; code: string };
+  const commandStream = JSON.parse(await readFile(commandStreamPath ?? "", "utf8")) as { commands: Array<{ tick: number; type: string }> };
+  const summary = JSON.parse(await readFile(payload.artifacts.summary, "utf8")) as { nativeRecording: { frames: Array<{ byteSize: number; tick: number }> } };
 
   assert.equal(result.exitCode, 0);
   assert.equal(payload.code, "TN_PLAYTEST_OK");
-  assert.equal(payload.runtime, "bevy");
-  assert.equal(payload.target, "desktop");
-  assert.equal(payload.distance, 1);
-  assert.deepEqual(summary.movementDelta, [0, 0, -1]);
-  assert.deepEqual(summary.diagnostics, []);
-  assert.deepEqual(summary.nativeRecording.frames.map((frame) => frame.tick), [1, 8, 16, 24, 31]);
+  assert.deepEqual(summary.nativeRecording.frames.map((frame) => frame.tick), [6, 13, 21, 29, 36]);
   assert.equal(summary.nativeRecording.frames.every((frame) => frame.byteSize > 0), true);
-  assert.equal(summary.runtime, "bevy");
-  assert.equal(summary.target, "desktop");
-  assert.deepEqual(commandStream.commands.map((command) => ({ code: command.code, pressed: command.pressed, tick: command.tick, type: command.type })), [
-    { code: undefined, pressed: undefined, tick: 0, type: "screenshot" },
-    { code: undefined, pressed: undefined, tick: 1, type: "screenshot" },
-    { code: undefined, pressed: undefined, tick: 8, type: "screenshot" },
-    { code: undefined, pressed: undefined, tick: 16, type: "screenshot" },
-    { code: undefined, pressed: undefined, tick: 24, type: "screenshot" },
-    { code: undefined, pressed: undefined, tick: 31, type: "screenshot" },
-    { code: "KeyW", pressed: true, tick: 1, type: "key" },
-    { code: "KeyW", pressed: false, tick: 31, type: "key" },
-    { code: undefined, pressed: undefined, tick: 32, type: "screenshot" },
-    { code: undefined, pressed: undefined, tick: 66, type: "exit" },
-  ]);
-  assert.deepEqual(observations.runtimeDiagnostics.readiness.map((sample) => sample.tick), [0, 30]);
+  assert.deepEqual(commandStream.commands.filter((command) => command.type === "screenshot").map((command) => command.tick), [5, 6, 13, 21, 29, 36, 37]);
 });
 
 test("playtest command should discover source-backed candidates", async () => {

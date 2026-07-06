@@ -24,7 +24,6 @@ export const requiredAiDocFiles = [
   "llms.txt",
   "llms-full.txt",
   "docs/workflows/ai-distribution.md",
-  "examples/ai-reference/README.md",
 ];
 
 export const requiredIrMetadataFiles = [

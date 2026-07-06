@@ -58,6 +58,25 @@ export const BASELINE_VISUAL_CHECKPOINTS: readonly IBaselineVisualCheckpoint[] =
       minSignedAverageBrightnessDelta: -0.06,
     },
   },
+  {
+    id: "humanoid-physics-course",
+    projectRelativePath: "examples/humanoid-physics-course",
+    bundleRelativePath: "examples/humanoid-physics-course/dist/humanoid-physics-course.bundle",
+    cameraId: "camera.main",
+    captureFrame: 5,
+    // Guard the proof-first humanoid scene at the frame used by the manual
+    // side-by-side investigation. Full-scene structural pixels still vary
+    // across rasterizers, so the asserted contract is luminance, p95 channel,
+    // and exposure drift rather than exact pixel identity.
+    thresholds: {
+      maxAverageBrightnessDelta: 0.05,
+      maxChangedPixelRatio: 1,
+      maxClippedRatioDelta: 0.001,
+      maxP95ChannelDelta: 0.12,
+      maxSignedAverageBrightnessDelta: 0.03,
+      minSignedAverageBrightnessDelta: -0.03,
+    },
+  },
 ] as const;
 
 /** Fast single-scene structured-source hook for web↔Bevy smoke parity. */
@@ -354,7 +373,7 @@ async function captureThreeJsScreenshot(
       throw new Error(`Timed out waiting for ThreeNative web preview readiness at ${url} (${title}): ${String(error)}`);
     }
     if (settleFrames > 0) {
-      await page.waitForTimeout(Math.max(500, settleFrames * 16));
+      await waitForAnimationFrames(page, settleFrames);
     }
     await captureCanvasPng(page, outputPath);
     await assertScreenshotWritten(outputPath, "Three.js web");
@@ -362,6 +381,11 @@ async function captureThreeJsScreenshot(
     await browser.close();
     await server.close();
   }
+}
+
+async function waitForAnimationFrames(page: Page, frameCount: number): Promise<void> {
+  const timeoutMs = Math.max(100, Math.min(2_000, Math.floor(frameCount) * 16));
+  await page.waitForTimeout(timeoutMs);
 }
 
 async function captureCanvasPng(page: Page, outputPath: string): Promise<void> {

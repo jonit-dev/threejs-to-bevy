@@ -1,8 +1,14 @@
+use bevy::render::{
+    render_asset::RenderAssetUsages,
+    render_resource::{Extent3d, TextureDimension, TextureFormat},
+    texture::{Image, ImageSampler},
+};
 use threenative_loader::{
     AssetIr, AssetsManifest, EnvironmentInstanceIr, EnvironmentPathIr, EnvironmentSceneIr,
     EnvironmentSourceAssetIr,
 };
 use threenative_runtime::assets::{
+    TextureAssetControls, apply_default_texture_quality, apply_texture_sampler_controls,
     resolve_asset_manifest, texture_asset_path, trace_asset_load_synchronization,
 };
 
@@ -58,6 +64,91 @@ fn assets_should_load_asset_manifest_entries() {
             .map(|asset| asset.path.as_str()),
         Some("assets/player.glb")
     );
+}
+
+#[test]
+fn default_texture_quality_should_generate_mipmaps_for_loaded_gltf_textures() {
+    let mut image = Image::new(
+        Extent3d {
+            width: 4,
+            height: 4,
+            depth_or_array_layers: 1,
+        },
+        TextureDimension::D2,
+        vec![255; 4 * 4 * 4],
+        TextureFormat::Rgba8UnormSrgb,
+        RenderAssetUsages::default(),
+    );
+
+    assert!(apply_default_texture_quality(&mut image));
+
+    assert_eq!(image.texture_descriptor.mip_level_count, 3);
+    assert!(matches!(
+        image.sampler,
+        ImageSampler::Descriptor(ref descriptor) if descriptor.anisotropy_clamp == 8
+    ));
+}
+
+#[test]
+fn texture_sampler_controls_should_generate_requested_mipmaps() {
+    let mut image = Image::new(
+        Extent3d {
+            width: 4,
+            height: 4,
+            depth_or_array_layers: 1,
+        },
+        TextureDimension::D2,
+        vec![255; 4 * 4 * 4],
+        TextureFormat::Rgba8UnormSrgb,
+        RenderAssetUsages::default(),
+    );
+    apply_texture_sampler_controls(
+        &mut image,
+        &TextureAssetControls {
+            mag_filter: Some("linear".to_owned()),
+            min_filter: Some("linearMipmapLinear".to_owned()),
+            path: "assets/grid.png".to_owned(),
+            wrap_s: Some("repeat".to_owned()),
+            wrap_t: Some("repeat".to_owned()),
+        },
+    );
+
+    assert_eq!(image.texture_descriptor.mip_level_count, 3);
+    assert_eq!(image.data.len(), (4 * 4 * 4) + (2 * 2 * 4) + (4));
+    assert!(matches!(
+        image.sampler,
+        ImageSampler::Descriptor(ref descriptor) if descriptor.anisotropy_clamp == 8
+    ));
+}
+
+#[test]
+fn texture_sampler_controls_should_generate_srgb_mipmaps_in_linear_light() {
+    let mut image = Image::new(
+        Extent3d {
+            width: 2,
+            height: 2,
+            depth_or_array_layers: 1,
+        },
+        TextureDimension::D2,
+        vec![
+            0, 0, 0, 255, 255, 255, 255, 255, 255, 255, 255, 255, 0, 0, 0, 255,
+        ],
+        TextureFormat::Rgba8UnormSrgb,
+        RenderAssetUsages::default(),
+    );
+    apply_texture_sampler_controls(
+        &mut image,
+        &TextureAssetControls {
+            mag_filter: Some("linear".to_owned()),
+            min_filter: Some("linearMipmapLinear".to_owned()),
+            path: "assets/checker.png".to_owned(),
+            wrap_s: Some("repeat".to_owned()),
+            wrap_t: Some("repeat".to_owned()),
+        },
+    );
+
+    assert_eq!(image.texture_descriptor.mip_level_count, 2);
+    assert_eq!(&image.data[16..20], &[188, 188, 188, 255]);
 }
 
 #[test]

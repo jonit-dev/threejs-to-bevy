@@ -22,7 +22,7 @@ const WEB_RENDER_LOOK_PROFILE_PRESETS = {
   balanced: {
     bloomIntensity: 0.25,
     contrast: 0.08,
-    exposure: 1.35,
+    exposure: 1.05,
     saturation: 1.08,
     toneMapping: "aces",
   },

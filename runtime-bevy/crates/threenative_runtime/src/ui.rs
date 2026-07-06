@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, fs};
 
 use bevy::a11y::{
     AccessibilityNode,
@@ -17,6 +17,12 @@ use threenative_loader::{
     UiMinimapBoundsIr, UiMinimapMarkerIr, UiNodeIr, UiRichTextSpanIr, UiShadowIr, UiStyleIr,
 };
 
+const DEFAULT_UI_FONT_PATHS: &[&str] = &[
+    "/usr/share/fonts/Adwaita/AdwaitaMono-Bold.ttf",
+    "/usr/share/fonts/TTF/DejaVuSansMono-Bold.ttf",
+    "/usr/share/fonts/truetype/dejavu/DejaVuSansMono-Bold.ttf",
+];
+
 #[derive(Clone, Component, Debug, Eq, PartialEq)]
 pub struct NativeUiKind(pub String);
 
@@ -34,6 +40,9 @@ pub struct NativeUiActionEvent {
 pub struct NativeUiActionQueue {
     pub events: Vec<NativeUiActionEvent>,
 }
+
+#[derive(Clone, Debug, Resource)]
+struct NativeUiFallbackFont(Handle<Font>);
 
 #[derive(Clone, Component, Debug, PartialEq)]
 pub struct NativeUiBar {
@@ -474,11 +483,32 @@ pub fn build_native_ui(ui: &UiIr) -> Result<NativeUiNode, UiDiagnostic> {
 pub fn map_ui_into_world(world: &mut World, ui: &UiIr) -> Result<(), UiDiagnostic> {
     build_native_ui(ui)?;
 
+    install_native_ui_fallback_font(world);
     let mut entities_by_id = HashMap::new();
     spawn_node(world, &ui.root, &ui.fonts, &mut entities_by_id, true);
     attach_children(world, &ui.root, &entities_by_id);
 
     Ok(())
+}
+
+fn install_native_ui_fallback_font(world: &mut World) {
+    if world.get_resource::<NativeUiFallbackFont>().is_some() {
+        return;
+    }
+    let Some(mut fonts) = world.get_resource_mut::<Assets<Font>>() else {
+        return;
+    };
+    for path in DEFAULT_UI_FONT_PATHS {
+        let Ok(bytes) = fs::read(path) else {
+            continue;
+        };
+        let Ok(font) = Font::try_from_bytes(bytes) else {
+            continue;
+        };
+        let handle = fonts.add(font);
+        world.insert_resource(NativeUiFallbackFont(handle));
+        return;
+    }
 }
 
 pub fn install_native_ui_overlay_camera(world: &mut World) {
@@ -1715,7 +1745,7 @@ fn minimap_binding_value(
     binding: &UiBindingIr,
 ) -> Option<serde_json::Value> {
     match binding {
-        UiBindingIr::Resource { name, field } => {
+        UiBindingIr::Resource { name, field, .. } => {
             let value = bundle.world.resources.get(name)?;
             let value = match field {
                 Some(field) => value.get(field)?,
@@ -1968,6 +1998,11 @@ fn text_style(
     let font = font_family
         .and_then(|family| fonts.iter().find(|font| font.family == family))
         .and_then(|font| asset_server.map(|asset_server| asset_server.load(font.asset.clone())))
+        .or_else(|| {
+            world
+                .get_resource::<NativeUiFallbackFont>()
+                .map(|font| font.0.clone())
+        })
         .unwrap_or_default();
     TextStyle {
         color: span

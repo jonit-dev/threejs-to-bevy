@@ -20,12 +20,12 @@ test("should fail when a packed package omits AI docs or metadata", async () => 
       skip: new Set(["capabilities/threenative.capabilities.json"]),
     });
     await writeInstalledAiDocs(projectDir, {
-      skip: new Set(["examples/ai-reference/README.md"]),
+      skip: new Set(["docs/workflows/ai-distribution.md"]),
     });
 
     const diagnostics = await validateInstalledDistributionArtifacts(projectDir);
     assertDiagnosticsInclude(diagnostics, "TN_DISTRIBUTION_PACKED_METADATA_MISSING", "capabilities/threenative.capabilities.json");
-    assertDiagnosticsInclude(diagnostics, "TN_DISTRIBUTION_AI_DOC_MISSING", "examples/ai-reference/README.md");
+    assertDiagnosticsInclude(diagnostics, "TN_DISTRIBUTION_AI_DOC_MISSING", "docs/workflows/ai-distribution.md");
   } finally {
     await rm(projectDir, { force: true, recursive: true });
   }

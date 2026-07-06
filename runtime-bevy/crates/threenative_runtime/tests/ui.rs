@@ -5,22 +5,22 @@ use std::{
     time::{SystemTime, UNIX_EPOCH},
 };
 
-use bevy::a11y::{accesskit::Role, AccessibilityNode};
+use bevy::a11y::{AccessibilityNode, accesskit::Role};
 use bevy::prelude::*;
 use bevy::text::BreakLineOn;
 use bevy::ui::IsDefaultUiCamera;
 use threenative_components::ThreeNativeId;
-use threenative_loader::{load_bundle, UiIr, UiNodeIr};
+use threenative_loader::{UiIr, UiNodeIr, load_bundle};
 use threenative_runtime::ui::{
-    build_native_ui, diagnose_native_ui_visual_support, dispatch_native_ui_actions,
+    NativeUiAction, NativeUiActionEvent, NativeUiActionQueue, NativeUiBar, NativeUiGradient,
+    NativeUiImageSrc, NativeUiKind, NativeUiMinimapMarker, NativeUiMinimapPathPoint,
+    NativeUiRenderedGradient, NativeUiRenderedShadow, NativeUiRenderedTextStyle,
+    NativeUiScrollContainer, NativeUiShadow, NativeUiStyle, NativeUiWidget, build_native_ui,
+    diagnose_native_ui_visual_support, dispatch_native_ui_actions,
     install_native_ui_overlay_camera, map_ui_into_world, queue_native_ui_text_input_value,
     trace_native_ui_affordances, trace_native_ui_attachment_projection,
     trace_native_ui_effect_presets, trace_native_ui_screen_dispatch, trace_native_ui_text_styles,
     trace_native_ui_virtual_list_range, trace_native_ui_visual_effects, trace_ui_navigation,
-    NativeUiAction, NativeUiActionEvent, NativeUiActionQueue, NativeUiBar, NativeUiGradient,
-    NativeUiImageSrc, NativeUiKind, NativeUiMinimapMarker, NativeUiMinimapPathPoint,
-    NativeUiRenderedGradient, NativeUiRenderedShadow, NativeUiRenderedTextStyle,
-    NativeUiScrollContainer, NativeUiShadow, NativeUiStyle, NativeUiWidget,
 };
 
 mod support;
@@ -505,11 +505,12 @@ fn ui_should_dispatch_native_button_and_touch_actions() {
     );
 
     app.update();
-    assert!(app
-        .world()
-        .resource::<NativeUiActionQueue>()
-        .events
-        .is_empty());
+    assert!(
+        app.world()
+            .resource::<NativeUiActionQueue>()
+            .events
+            .is_empty()
+    );
 
     app.world_mut()
         .entity_mut(jump)

@@ -1,8 +1,10 @@
 import assert from "node:assert/strict";
-import { resolve } from "node:path";
+import { mkdir, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join, resolve } from "node:path";
 import test from "node:test";
 
-import { bevyRuntimeArgs, resolveBevyRuntime } from "./bevy.js";
+import { bevyRuntimeArgs, resolveBevyRuntime, resolveBevyRuntimeBinaryPath } from "./bevy.js";
 
 test("should select threenative runtime binary", () => {
   const repoRoot = "/repo";
@@ -72,6 +74,22 @@ test("should pass native proof harness files to runtime binary", () => {
       "/tmp/readiness.json",
     ],
   );
+});
+
+test("should prefer an existing release runtime binary for native playtest startup", async () => {
+  const repoRoot = join(tmpdir(), `tn-bevy-runtime-binary-${process.pid}-${Date.now()}`);
+  const releaseBinary = join(repoRoot, "runtime-bevy/target/release/threenative_runtime");
+  const debugBinary = join(repoRoot, "runtime-bevy/target/debug/threenative_runtime");
+  await mkdir(join(repoRoot, "runtime-bevy/target/release"), { recursive: true });
+  await mkdir(join(repoRoot, "runtime-bevy/target/debug"), { recursive: true });
+  await writeFile(releaseBinary, "");
+  await writeFile(debugBinary, "");
+  try {
+    assert.equal(resolveBevyRuntimeBinaryPath(repoRoot, {}), releaseBinary);
+    assert.equal(resolveBevyRuntimeBinaryPath(repoRoot, { TN_NATIVE_PROFILE: "debug" }), debugBinary);
+  } finally {
+    await rm(repoRoot, { force: true, recursive: true });
+  }
 });
 
 test("should resolve Bevy runtime from explicit repo root", () => {
