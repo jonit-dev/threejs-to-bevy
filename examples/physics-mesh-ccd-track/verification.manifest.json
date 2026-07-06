@@ -1,5 +1,0 @@
-{
-  "bundle": "packages/ir/fixtures/conformance/physics-mesh-ccd-track/game.bundle",
-  "gate": "physics-self-verification",
-  "scene": "physics-mesh-ccd-track"
-}

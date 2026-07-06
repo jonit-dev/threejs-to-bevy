@@ -1,7 +1,0 @@
-{
-  "schema": "threenative.project",
-  "version": "0.1.0",
-  "entry": "content/scenes/arena.scene.json",
-  "outDir": "dist/paper-plane-postmaster.bundle"
-}
-

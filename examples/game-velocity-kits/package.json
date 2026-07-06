@@ -1,9 +1,0 @@
-{
-  "name": "game-velocity-kits",
-  "private": true,
-  "type": "module",
-  "scripts": {
-    "test:kits": "pnpm --filter @threenative/collector-kit test && pnpm --filter @threenative/lane-runner-kit test && pnpm --filter @threenative/checkpoint-race-kit test",
-    "verify": "pnpm run test:kits && pnpm verify:generated-games"
-  }
-}
