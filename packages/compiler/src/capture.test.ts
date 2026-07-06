@@ -264,6 +264,36 @@ test("build should lower structured scene entry into runtime bundle with attache
   }
 });
 
+test("build should lower third-person-follow camera into runtime follow helper", async () => {
+  const root = await makeProject("export default {};\n");
+  await mkdir(join(root, "content", "scenes"), { recursive: true });
+  await writeConfig(root, "content/scenes/follow-cam.scene.json");
+  await writeFile(
+    join(root, "content", "scenes", "follow-cam.scene.json"),
+    `${JSON.stringify({
+      schema: "threenative.scene",
+      version: "0.1.0",
+      id: "follow-cam",
+      prefabs: [{ id: "hero-prefab", primitive: "capsule", color: "#38bdf8" }],
+      entities: [
+        { id: "hero", prefab: "hero-prefab", transform: { position: [0, 0.9, 0] } },
+        { id: "chase-camera", components: { camera: { mode: "third-person-follow", target: "hero" } }, transform: { position: [0, 3.2, 5.8] } },
+      ],
+    }, null, 2)}\n`,
+  );
+
+  try {
+    const { bundlePath } = await buildProject(root);
+    const world = JSON.parse(await readFile(join(bundlePath, "world.ir.json"), "utf8")) as { entities: Array<{ id: string; components: Record<string, unknown> }> };
+    const camera = world.entities.find((entity) => entity.id === "chase-camera")?.components.Camera as { follow?: { offset: number[]; smoothing: number; target: string } } | undefined;
+    // smoothing is an exponential rate per second shared by both runtime
+    // adapters; sub-1 values leave the camera visibly frozen behind the target.
+    assert.deepEqual(camera?.follow, { offset: [0, 2.4, 5.5], smoothing: 8, target: "hero" });
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
 test("should reject unsupported root", async () => {
   const root = await makeProject("export default {};\n");
   try {

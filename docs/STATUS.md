@@ -227,6 +227,16 @@ infers basic playtest defaults from authored player/input source when
 assertions, and embeds their diagnostics in one report.
 `tn game qa --json` and `tn game release --json` write mode-specific reports
 under `artifacts/game-production/`.
+`tn playtest` now supports signed axis assertions (`--expect-axis +z|-z|...`)
+so movement direction, not just magnitude, is proven, and follow-camera
+assertions (`--follow <entityId> [--follow-within <units>]`) that fail when the
+follower stays static while the target moves or settles too far from it. The
+web runtime now advances camera helpers (follow/orbit/view-model/shake) on the
+post-processing composer render path too, and follow/orbit helpers persist
+their pose into the world IR transform so the per-frame transform sync no
+longer pins helper-driven cameras at their authored spawn pose; structured
+`third-person-follow` cameras also emit the shared runtime default smoothing
+rate (8/s) instead of a near-frozen 0.2/s.
 `@threenative/authoring` validates the `threenative.game-quality-report`
 contract, including exact phase ids, visual scorecard categories, UI states,
 asset/audio surfaces, evidence rows, blockers, and stable diagnostics for

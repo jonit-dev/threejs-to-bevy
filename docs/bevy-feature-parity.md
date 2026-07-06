@@ -591,6 +591,11 @@ Practical order for game-polish work:
 - [x] Source/CLI/editor render-target declarations lower into the asset manifest
 - [x] `P3` Custom projections
 - [x] `P1` Camera effects: screen shake, orbit, pan, zoom, and view models
+- [x] `P1` Follow/orbit camera helpers converge on both runtimes: the web
+  adapter now runs camera helpers on the post-processing composer path and
+  persists helper poses into the world IR transform (matching Bevy's persistent
+  transform semantics), proven by `tn playtest --follow` assertions in
+  `examples/humanoid-physics-course`
 - [x] `P2` Screenshot/export camera workflows
 - [x] `P2` Residual camera diagnostics and editor/debug tooling
 

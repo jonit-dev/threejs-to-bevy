@@ -7,72 +7,88 @@
     {
       "id": "GameState",
       "fields": {
-        "cameraYaw": { "kind": "number" },
-        "checkpoint": { "kind": "number" },
-        "checkpointTotal": { "kind": "number" },
-        "elapsed": { "kind": "number" },
-        "hits": { "kind": "number" },
-        "status": { "kind": "string" }
+        "checkpoint": {
+          "kind": "number"
+        },
+        "checkpointTotal": {
+          "kind": "number"
+        },
+        "elapsed": {
+          "kind": "number"
+        },
+        "hits": {
+          "kind": "number"
+        },
+        "status": {
+          "kind": "string"
+        }
       }
     },
     {
-      "id": "tn.cameraRig.camera.main",
+      "id": "tn.thirdPerson.player",
       "fields": {
-        "followX": { "kind": "number" },
-        "followY": { "kind": "number" },
-        "followZ": { "kind": "number" },
-        "yaw": { "kind": "number" }
-      }
-    },
-    {
-      "id": "tn.characterRig.player",
-      "fields": {
-        "dirX": { "kind": "number" },
-        "dirZ": { "kind": "number" },
-        "speed": { "kind": "number" },
-        "yaw": { "kind": "number" }
+        "speed": {
+          "kind": "number"
+        },
+        "yaw": {
+          "kind": "number"
+        }
       }
     },
     {
       "id": "tn.triggerCooldown.hazard.sweeper.01",
       "fields": {
-        "nextReady": { "kind": "number" }
+        "nextReady": {
+          "kind": "number"
+        }
       }
     },
     {
       "id": "tn.triggerCooldown.hazard.sweeper.02",
       "fields": {
-        "nextReady": { "kind": "number" }
+        "nextReady": {
+          "kind": "number"
+        }
       }
     },
     {
       "id": "tn.triggerEx.checkpoint.01",
       "fields": {
-        "active": { "kind": "string" }
+        "active": {
+          "kind": "string"
+        }
       }
     },
     {
       "id": "tn.triggerEx.checkpoint.02",
       "fields": {
-        "active": { "kind": "string" }
+        "active": {
+          "kind": "string"
+        }
       }
     },
     {
       "id": "tn.triggerEx.finish.pad",
       "fields": {
-        "active": { "kind": "string" }
+        "active": {
+          "kind": "string"
+        }
       }
     },
     {
       "id": "tn.triggerEx.hazard.sweeper.01",
       "fields": {
-        "active": { "kind": "string" }
+        "active": {
+          "kind": "string"
+        }
       }
     },
     {
       "id": "tn.triggerEx.hazard.sweeper.02",
       "fields": {
-        "active": { "kind": "string" }
+        "active": {
+          "kind": "string"
+        }
       }
     }
   ]

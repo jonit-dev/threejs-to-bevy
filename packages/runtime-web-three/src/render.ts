@@ -910,7 +910,12 @@ function createRenderPipeline(
     composer.addPass(colorGradingPass(colorGrading));
   }
   return {
-    render: () => composer.render(),
+    // The composer path bypasses renderCameraViews, so camera helpers
+    // (follow/orbit/view-model/shake) must still advance here.
+    render: (delta = 0) => {
+      updateCameraHelpers(world, mapped.objectsById, delta);
+      composer.render();
+    },
     setSize: (width, height) => composer.setSize(width, height),
   };
 }

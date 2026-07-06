@@ -11,6 +11,10 @@ backlog unless a nested PRD says it has been superseded.
 
 ### Runtime And Gameplay Parity
 
+- [Playtest Self-Verification Polish](other/playtest-self-verification-polish.md):
+  scenario-driven `tn playtest` for agent self-verification, with discovery,
+  multi-step input, richer assertions, artifact bundles, watch mode, QA
+  integration, and a target-neutral bridge for future native proof.
 - [Native Parity Closure and Proof Loop](other/native-parity-closure-and-proof-loop.md):
   Bevy ports of script kinematic authority, `KinematicMover`, and
   `character.move` overrides, plus a native proof harness so

@@ -1,57 +1,176 @@
 {
-  "schema": "threenative.scene",
-  "version": "0.1.0",
-  "id": "arena",
   "entities": [
     {
+      "components": {
+        "camera": {
+          "far": 90,
+          "fovY": 62,
+          "mode": "third-person-follow",
+          "near": 0.05,
+          "target": "player"
+        }
+      },
       "id": "camera.main",
-      "transform": { "position": [0, 1.95, 8.65], "rotation": [-0.22, 0, 0] },
-      "components": {
-        "camera": { "mode": "perspective", "fovY": 62, "near": 0.05, "far": 90 }
+      "transform": {
+        "position": [
+          0,
+          1.95,
+          8.65
+        ],
+        "rotation": [
+          -0.22,
+          0,
+          0
+        ]
       }
     },
-    { "id": "light.ambient", "components": { "Light": { "kind": "ambient", "color": "#e2e8ea", "intensity": 1.25 } } },
     {
+      "components": {
+        "Light": {
+          "color": "#e2e8ea",
+          "intensity": 1.25,
+          "kind": "ambient"
+        }
+      },
+      "id": "light.ambient"
+    },
+    {
+      "components": {
+        "Light": {
+          "color": "#fff0d0",
+          "intensity": 4.6,
+          "kind": "directional"
+        }
+      },
       "id": "light.key",
-      "transform": { "position": [-4.8, 8.4, 5.8], "rotation": [-0.92, -0.42, 0] },
-      "components": { "Light": { "kind": "directional", "color": "#fff0d0", "intensity": 4.6 } }
+      "transform": {
+        "position": [
+          -4.8,
+          8.4,
+          5.8
+        ],
+        "rotation": [
+          -0.92,
+          -0.42,
+          0
+        ]
+      }
     },
     {
+      "components": {
+        "Light": {
+          "color": "#d8e3e5",
+          "intensity": 0.18,
+          "kind": "point",
+          "range": 5.5
+        }
+      },
       "id": "light.finish",
-      "transform": { "position": [0, 2.2, -6.6] },
-      "components": { "Light": { "kind": "point", "color": "#d8e3e5", "intensity": 0.18, "range": 5.5 } }
+      "transform": {
+        "position": [
+          0,
+          2.2,
+          -6.6
+        ]
+      }
     },
     {
+      "components": {
+        "Light": {
+          "color": "#c8d6da",
+          "intensity": 0.1,
+          "kind": "point",
+          "range": 4.5
+        }
+      },
       "id": "light.left-fill",
-      "transform": { "position": [-4.7, 1.4, 3.8] },
-      "components": { "Light": { "kind": "point", "color": "#c8d6da", "intensity": 0.1, "range": 4.5 } }
+      "transform": {
+        "position": [
+          -4.7,
+          1.4,
+          3.8
+        ]
+      }
     },
     {
+      "components": {
+        "Light": {
+          "color": "#c8d6da",
+          "intensity": 0.1,
+          "kind": "point",
+          "range": 4.5
+        }
+      },
       "id": "light.right-fill",
-      "transform": { "position": [4.7, 1.4, 3.8] },
-      "components": { "Light": { "kind": "point", "color": "#c8d6da", "intensity": 0.1, "range": 4.5 } }
+      "transform": {
+        "position": [
+          4.7,
+          1.4,
+          3.8
+        ]
+      }
     },
     {
+      "components": {
+        "MeshRenderer": {
+          "castShadow": true,
+          "material": "mat.course.dark",
+          "mesh": "mesh.backdrop",
+          "receiveShadow": true
+        }
+      },
       "id": "sky.backdrop",
-      "transform": { "position": [0, 1.1, -8.7], "rotation": [0, 0, 0], "scale": [1, 1, 1] },
-      "components": {
-        "MeshRenderer": { "mesh": "mesh.backdrop", "material": "mat.course.dark", "castShadow": true, "receiveShadow": true }
+      "transform": {
+        "position": [
+          0,
+          1.1,
+          -8.7
+        ],
+        "rotation": [
+          0,
+          0,
+          0
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
       }
     },
     {
+      "components": {
+        "Collider": {
+          "friction": 0.92,
+          "kind": "box",
+          "layer": "world",
+          "restitution": 0.02,
+          "size": [
+            12,
+            0.18,
+            18
+          ]
+        },
+        "MeshRenderer": {
+          "material": "mat.course.surface",
+          "mesh": "mesh.floor",
+          "receiveShadow": true
+        },
+        "RigidBody": {
+          "kind": "static"
+        }
+      },
       "id": "course.floor",
-      "transform": { "position": [0, -0.09, -0.2] },
-      "components": {
-        "MeshRenderer": { "mesh": "mesh.floor", "material": "mat.course.surface", "receiveShadow": true },
-        "Collider": { "kind": "box", "size": [12, 0.18, 18], "layer": "world", "friction": 0.92, "restitution": 0.02 },
-        "RigidBody": { "kind": "static" }
+      "transform": {
+        "position": [
+          0,
+          -0.09,
+          -0.2
+        ]
       }
     },
     {
-      "id": "player",
-      "transform": { "position": [0, 0.02, 5.0], "rotation": [0, 0, 0], "scale": [1, 1, 1] },
       "components": {
-        "MeshRenderer": { "mesh": "model.soldier", "material": "mat.soldier.placeholder", "castShadow": true, "receiveShadow": true },
         "CharacterController": {
           "blocking": true,
           "grounding": "raycast",
@@ -60,199 +179,760 @@
           "speed": 3.1,
           "stepOffset": 0.36
         },
-        "Collider": { "kind": "capsule", "height": 1.8, "radius": 0.34, "center": [0, 0.9, 0], "layer": "player", "mask": ["world", "pushable", "hazard", "checkpoint"] },
-        "RigidBody": { "kind": "kinematic", "velocity": [0, 0, 0] },
-        "CoursePlayer": { "speed": 3.1, "checkpoint": 0, "hits": 0, "finished": false, "yaw": 0 }
+        "Collider": {
+          "center": [
+            0,
+            0.9,
+            0
+          ],
+          "height": 1.8,
+          "kind": "capsule",
+          "layer": "player",
+          "mask": [
+            "world",
+            "pushable",
+            "hazard",
+            "checkpoint"
+          ],
+          "radius": 0.34
+        },
+        "CoursePlayer": {
+          "checkpoint": 0,
+          "finished": false,
+          "hits": 0,
+          "speed": 3.1,
+          "yaw": 0
+        },
+        "MeshRenderer": {
+          "castShadow": true,
+          "material": "mat.soldier.placeholder",
+          "mesh": "model.soldier",
+          "receiveShadow": true
+        },
+        "RigidBody": {
+          "kind": "kinematic",
+          "velocity": [
+            0,
+            0,
+            0
+          ]
+        }
+      },
+      "id": "player",
+      "transform": {
+        "position": [
+          0,
+          0.02,
+          5
+        ],
+        "rotation": [
+          0,
+          0,
+          0
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
       }
     },
     {
+      "components": {
+        "MeshRenderer": {
+          "material": "mat.checkpoint",
+          "mesh": "mesh.checkpoint"
+        }
+      },
       "id": "start.marker",
-      "transform": { "position": [0, 0.03, 5.0], "rotation": [-1.570796, 0, 0], "scale": [1.2, 1.2, 1] },
-      "components": {
-        "MeshRenderer": { "mesh": "mesh.checkpoint", "material": "mat.checkpoint" }
+      "transform": {
+        "position": [
+          0,
+          0.03,
+          5
+        ],
+        "rotation": [
+          -1.570796,
+          0,
+          0
+        ],
+        "scale": [
+          1.2,
+          1.2,
+          1
+        ]
       }
     },
     {
+      "components": {
+        "Collider": {
+          "kind": "box",
+          "layer": "world",
+          "size": [
+            0.28,
+            1.45,
+            16.8
+          ]
+        },
+        "MeshRenderer": {
+          "castShadow": true,
+          "material": "mat.course.dark",
+          "mesh": "mesh.wall",
+          "receiveShadow": true
+        },
+        "RigidBody": {
+          "kind": "static"
+        }
+      },
       "id": "wall.left",
-      "transform": { "position": [-5.6, 0.72, -0.2], "scale": [1, 1, 7.6] },
-      "components": {
-        "MeshRenderer": { "mesh": "mesh.wall", "material": "mat.course.dark", "castShadow": true, "receiveShadow": true },
-        "Collider": { "kind": "box", "size": [0.28, 1.45, 16.8], "layer": "world" },
-        "RigidBody": { "kind": "static" }
+      "transform": {
+        "position": [
+          -5.6,
+          0.72,
+          -0.2
+        ],
+        "scale": [
+          1,
+          1,
+          7.6
+        ]
       }
     },
     {
+      "components": {
+        "Collider": {
+          "kind": "box",
+          "layer": "world",
+          "size": [
+            0.28,
+            1.45,
+            16.8
+          ]
+        },
+        "MeshRenderer": {
+          "castShadow": true,
+          "material": "mat.course.dark",
+          "mesh": "mesh.wall",
+          "receiveShadow": true
+        },
+        "RigidBody": {
+          "kind": "static"
+        }
+      },
       "id": "wall.right",
-      "transform": { "position": [5.6, 0.72, -0.2], "scale": [1, 1, 7.6] },
-      "components": {
-        "MeshRenderer": { "mesh": "mesh.wall", "material": "mat.course.dark", "castShadow": true, "receiveShadow": true },
-        "Collider": { "kind": "box", "size": [0.28, 1.45, 16.8], "layer": "world" },
-        "RigidBody": { "kind": "static" }
+      "transform": {
+        "position": [
+          5.6,
+          0.72,
+          -0.2
+        ],
+        "scale": [
+          1,
+          1,
+          7.6
+        ]
       }
     },
     {
+      "components": {
+        "Collider": {
+          "kind": "box",
+          "layer": "world",
+          "size": [
+            2.2,
+            0.22,
+            0.72
+          ]
+        },
+        "MeshRenderer": {
+          "castShadow": true,
+          "material": "mat.course.surface",
+          "mesh": "mesh.step.low",
+          "receiveShadow": true
+        },
+        "RigidBody": {
+          "kind": "static"
+        }
+      },
       "id": "stairs.step.01",
-      "transform": { "position": [-2.35, 0.11, 3.25] },
-      "components": {
-        "MeshRenderer": { "mesh": "mesh.step.low", "material": "mat.course.surface", "castShadow": true, "receiveShadow": true },
-        "Collider": { "kind": "box", "size": [2.2, 0.22, 0.72], "layer": "world" },
-        "RigidBody": { "kind": "static" }
+      "transform": {
+        "position": [
+          -2.35,
+          0.11,
+          3.25
+        ]
       }
     },
     {
+      "components": {
+        "Collider": {
+          "kind": "box",
+          "layer": "world",
+          "size": [
+            2.2,
+            0.44,
+            0.72
+          ]
+        },
+        "MeshRenderer": {
+          "castShadow": true,
+          "material": "mat.course.surface",
+          "mesh": "mesh.step.mid",
+          "receiveShadow": true
+        },
+        "RigidBody": {
+          "kind": "static"
+        }
+      },
       "id": "stairs.step.02",
-      "transform": { "position": [-2.35, 0.22, 2.56] },
-      "components": {
-        "MeshRenderer": { "mesh": "mesh.step.mid", "material": "mat.course.surface", "castShadow": true, "receiveShadow": true },
-        "Collider": { "kind": "box", "size": [2.2, 0.44, 0.72], "layer": "world" },
-        "RigidBody": { "kind": "static" }
+      "transform": {
+        "position": [
+          -2.35,
+          0.22,
+          2.56
+        ]
       }
     },
     {
+      "components": {
+        "Collider": {
+          "kind": "box",
+          "layer": "world",
+          "size": [
+            2.2,
+            0.66,
+            0.72
+          ]
+        },
+        "MeshRenderer": {
+          "castShadow": true,
+          "material": "mat.course.surface",
+          "mesh": "mesh.step.high",
+          "receiveShadow": true
+        },
+        "RigidBody": {
+          "kind": "static"
+        }
+      },
       "id": "stairs.step.03",
-      "transform": { "position": [-2.35, 0.33, 1.87] },
-      "components": {
-        "MeshRenderer": { "mesh": "mesh.step.high", "material": "mat.course.surface", "castShadow": true, "receiveShadow": true },
-        "Collider": { "kind": "box", "size": [2.2, 0.66, 0.72], "layer": "world" },
-        "RigidBody": { "kind": "static" }
+      "transform": {
+        "position": [
+          -2.35,
+          0.33,
+          1.87
+        ]
       }
     },
     {
+      "components": {
+        "Collider": {
+          "kind": "box",
+          "layer": "world",
+          "size": [
+            2.5,
+            0.28,
+            2.4
+          ]
+        },
+        "MeshRenderer": {
+          "castShadow": true,
+          "material": "mat.course.surface",
+          "mesh": "mesh.ramp",
+          "receiveShadow": true
+        },
+        "RigidBody": {
+          "kind": "static"
+        }
+      },
       "id": "ramp.main",
-      "transform": { "position": [2.15, 0.28, 2.6], "rotation": [0.18, 0, 0] },
-      "components": {
-        "MeshRenderer": { "mesh": "mesh.ramp", "material": "mat.course.surface", "castShadow": true, "receiveShadow": true },
-        "Collider": { "kind": "box", "size": [2.5, 0.28, 2.4], "layer": "world" },
-        "RigidBody": { "kind": "static" }
+      "transform": {
+        "position": [
+          2.15,
+          0.28,
+          2.6
+        ],
+        "rotation": [
+          0.18,
+          0,
+          0
+        ]
       }
     },
     {
+      "components": {
+        "Collider": {
+          "kind": "box",
+          "layer": "world",
+          "size": [
+            3.2,
+            0.28,
+            2.6
+          ]
+        },
+        "MeshRenderer": {
+          "castShadow": true,
+          "material": "mat.course.surface",
+          "mesh": "mesh.platform",
+          "receiveShadow": true
+        },
+        "RigidBody": {
+          "kind": "static"
+        }
+      },
       "id": "ledge.platform",
-      "transform": { "position": [0, 0.52, 0.7] },
-      "components": {
-        "MeshRenderer": { "mesh": "mesh.platform", "material": "mat.course.surface", "castShadow": true, "receiveShadow": true },
-        "Collider": { "kind": "box", "size": [3.2, 0.28, 2.6], "layer": "world" },
-        "RigidBody": { "kind": "static" }
+      "transform": {
+        "position": [
+          0,
+          0.52,
+          0.7
+        ]
       }
     },
     {
+      "components": {
+        "Collider": {
+          "kind": "box",
+          "layer": "world",
+          "size": [
+            2.4,
+            0.42,
+            0.32
+          ]
+        },
+        "MeshRenderer": {
+          "castShadow": true,
+          "material": "mat.course.edge",
+          "mesh": "mesh.low-wall",
+          "receiveShadow": true
+        },
+        "RigidBody": {
+          "kind": "static"
+        }
+      },
       "id": "blocker.wall",
-      "transform": { "position": [0, 0.28, -1.35] },
-      "components": {
-        "MeshRenderer": { "mesh": "mesh.low-wall", "material": "mat.course.edge", "castShadow": true, "receiveShadow": true },
-        "Collider": { "kind": "box", "size": [2.4, 0.42, 0.32], "layer": "world" },
-        "RigidBody": { "kind": "static" }
+      "transform": {
+        "position": [
+          0,
+          0.28,
+          -1.35
+        ]
       }
     },
     {
+      "components": {
+        "Collider": {
+          "kind": "box",
+          "layer": "pushable",
+          "mask": [
+            "world",
+            "player"
+          ],
+          "size": [
+            0.78,
+            0.78,
+            0.78
+          ]
+        },
+        "MeshRenderer": {
+          "castShadow": true,
+          "material": "mat.crate",
+          "mesh": "mesh.crate",
+          "receiveShadow": true
+        },
+        "PushCrate": {
+          "home": [
+            -1.15,
+            0.39,
+            -2.5
+          ]
+        },
+        "RigidBody": {
+          "damping": 0.35,
+          "kind": "dynamic",
+          "mass": 2.5,
+          "velocity": [
+            0,
+            0,
+            0
+          ]
+        }
+      },
       "id": "crate.push.01",
-      "transform": { "position": [-1.15, 0.39, -2.5] },
-      "components": {
-        "MeshRenderer": { "mesh": "mesh.crate", "material": "mat.crate", "castShadow": true, "receiveShadow": true },
-        "Collider": { "kind": "box", "size": [0.78, 0.78, 0.78], "layer": "pushable", "mask": ["world", "player"] },
-        "RigidBody": { "kind": "dynamic", "mass": 2.5, "damping": 0.35, "velocity": [0, 0, 0] },
-        "PushCrate": { "home": [-1.15, 0.39, -2.5] }
+      "transform": {
+        "position": [
+          -1.15,
+          0.39,
+          -2.5
+        ]
       }
     },
     {
+      "components": {
+        "Collider": {
+          "kind": "box",
+          "layer": "pushable",
+          "mask": [
+            "world",
+            "player"
+          ],
+          "size": [
+            0.78,
+            0.78,
+            0.78
+          ]
+        },
+        "MeshRenderer": {
+          "castShadow": true,
+          "material": "mat.crate",
+          "mesh": "mesh.crate",
+          "receiveShadow": true
+        },
+        "PushCrate": {
+          "home": [
+            1.05,
+            0.39,
+            -3.05
+          ]
+        },
+        "RigidBody": {
+          "damping": 0.35,
+          "kind": "dynamic",
+          "mass": 3.2,
+          "velocity": [
+            0,
+            0,
+            0
+          ]
+        }
+      },
       "id": "crate.push.02",
-      "transform": { "position": [1.05, 0.39, -3.05] },
-      "components": {
-        "MeshRenderer": { "mesh": "mesh.crate", "material": "mat.crate", "castShadow": true, "receiveShadow": true },
-        "Collider": { "kind": "box", "size": [0.78, 0.78, 0.78], "layer": "pushable", "mask": ["world", "player"] },
-        "RigidBody": { "kind": "dynamic", "mass": 3.2, "damping": 0.35, "velocity": [0, 0, 0] },
-        "PushCrate": { "home": [1.05, 0.39, -3.05] }
+      "transform": {
+        "position": [
+          1.05,
+          0.39,
+          -3.05
+        ]
       }
     },
     {
+      "components": {
+        "Collider": {
+          "kind": "box",
+          "layer": "hazard",
+          "mask": [
+            "player"
+          ],
+          "sensor": {
+            "interactionKind": "hazard",
+            "phases": [
+              "enter",
+              "stay"
+            ],
+            "trackOccupants": true
+          },
+          "size": [
+            1.55,
+            0.2,
+            0.28
+          ],
+          "trigger": true
+        },
+        "KinematicMover": {
+          "axis": "x",
+          "mode": "sine",
+          "phase": 0.1,
+          "radius": 2.1,
+          "speed": 1.25
+        },
+        "MeshRenderer": {
+          "castShadow": true,
+          "material": "mat.hazard",
+          "mesh": "mesh.hazard",
+          "receiveShadow": true
+        },
+        "RigidBody": {
+          "gravityScale": 0,
+          "kind": "kinematic"
+        }
+      },
       "id": "hazard.sweeper.01",
-      "transform": { "position": [0, 0.72, 4.15], "scale": [1, 1, 1] },
-      "components": {
-        "MeshRenderer": { "mesh": "mesh.hazard", "material": "mat.hazard", "castShadow": true, "receiveShadow": true },
-        "Collider": { "kind": "box", "size": [1.55, 0.2, 0.28], "layer": "hazard", "mask": ["player"], "trigger": true, "sensor": { "interactionKind": "hazard", "phases": ["enter", "stay"], "trackOccupants": true } },
-        "RigidBody": { "kind": "kinematic", "gravityScale": 0 },
-        "KinematicMover": { "mode": "sine", "axis": "x", "radius": 2.1, "phase": 0.1, "speed": 1.25 }
+      "transform": {
+        "position": [
+          0,
+          0.72,
+          4.15
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
       }
     },
     {
+      "components": {
+        "Collider": {
+          "kind": "box",
+          "layer": "hazard",
+          "mask": [
+            "player"
+          ],
+          "sensor": {
+            "interactionKind": "hazard",
+            "phases": [
+              "enter",
+              "stay"
+            ],
+            "trackOccupants": true
+          },
+          "size": [
+            1.55,
+            0.2,
+            0.28
+          ],
+          "trigger": true
+        },
+        "KinematicMover": {
+          "axis": "z",
+          "mode": "sine",
+          "phase": 1.4,
+          "radius": 1.8,
+          "speed": 1.05
+        },
+        "MeshRenderer": {
+          "castShadow": true,
+          "material": "mat.hazard",
+          "mesh": "mesh.hazard",
+          "receiveShadow": true
+        },
+        "RigidBody": {
+          "gravityScale": 0,
+          "kind": "kinematic"
+        }
+      },
       "id": "hazard.sweeper.02",
-      "transform": { "position": [0, 0.88, -0.65], "rotation": [0, 1.570796, 0] },
-      "components": {
-        "MeshRenderer": { "mesh": "mesh.hazard", "material": "mat.hazard", "castShadow": true, "receiveShadow": true },
-        "Collider": { "kind": "box", "size": [1.55, 0.2, 0.28], "layer": "hazard", "mask": ["player"], "trigger": true, "sensor": { "interactionKind": "hazard", "phases": ["enter", "stay"], "trackOccupants": true } },
-        "RigidBody": { "kind": "kinematic", "gravityScale": 0 },
-        "KinematicMover": { "mode": "sine", "axis": "z", "radius": 1.8, "phase": 1.4, "speed": 1.05 }
+      "transform": {
+        "position": [
+          0,
+          0.88,
+          -0.65
+        ],
+        "rotation": [
+          0,
+          1.570796,
+          0
+        ]
       }
     },
     {
+      "components": {
+        "Checkpoint": {
+          "label": "Stairs",
+          "order": 1
+        },
+        "Collider": {
+          "kind": "box",
+          "layer": "checkpoint",
+          "mask": [
+            "player"
+          ],
+          "sensor": {
+            "interactionKind": "checkpoint",
+            "phases": [
+              "enter",
+              "stay"
+            ],
+            "trackOccupants": true
+          },
+          "size": [
+            1.16,
+            0.08,
+            1.16
+          ],
+          "trigger": true
+        },
+        "MeshRenderer": {
+          "material": "mat.checkpoint",
+          "mesh": "mesh.checkpoint"
+        },
+        "RigidBody": {
+          "kind": "static"
+        }
+      },
       "id": "checkpoint.01",
-      "transform": { "position": [-2.35, 0.7, 1.72], "rotation": [-1.570796, 0, 0], "scale": [1.1, 1.1, 1] },
-      "components": {
-        "MeshRenderer": { "mesh": "mesh.checkpoint", "material": "mat.checkpoint" },
-        "Collider": { "kind": "box", "size": [1.16, 0.08, 1.16], "layer": "checkpoint", "mask": ["player"], "trigger": true, "sensor": { "interactionKind": "checkpoint", "phases": ["enter", "stay"], "trackOccupants": true } },
-        "RigidBody": { "kind": "static" },
-        "Checkpoint": { "order": 1, "label": "Stairs" }
+      "transform": {
+        "position": [
+          -2.35,
+          0.7,
+          1.72
+        ],
+        "rotation": [
+          -1.570796,
+          0,
+          0
+        ],
+        "scale": [
+          1.1,
+          1.1,
+          1
+        ]
       }
     },
     {
+      "components": {
+        "Checkpoint": {
+          "label": "Ramp",
+          "order": 2
+        },
+        "Collider": {
+          "kind": "box",
+          "layer": "checkpoint",
+          "mask": [
+            "player"
+          ],
+          "sensor": {
+            "interactionKind": "checkpoint",
+            "phases": [
+              "enter",
+              "stay"
+            ],
+            "trackOccupants": true
+          },
+          "size": [
+            1.16,
+            0.08,
+            1.16
+          ],
+          "trigger": true
+        },
+        "MeshRenderer": {
+          "material": "mat.checkpoint",
+          "mesh": "mesh.checkpoint"
+        },
+        "RigidBody": {
+          "kind": "static"
+        }
+      },
       "id": "checkpoint.02",
-      "transform": { "position": [2.15, 0.56, 1.15], "rotation": [-1.570796, 0, 0], "scale": [1.1, 1.1, 1] },
-      "components": {
-        "MeshRenderer": { "mesh": "mesh.checkpoint", "material": "mat.checkpoint" },
-        "Collider": { "kind": "box", "size": [1.16, 0.08, 1.16], "layer": "checkpoint", "mask": ["player"], "trigger": true, "sensor": { "interactionKind": "checkpoint", "phases": ["enter", "stay"], "trackOccupants": true } },
-        "RigidBody": { "kind": "static" },
-        "Checkpoint": { "order": 2, "label": "Ramp" }
+      "transform": {
+        "position": [
+          2.15,
+          0.56,
+          1.15
+        ],
+        "rotation": [
+          -1.570796,
+          0,
+          0
+        ],
+        "scale": [
+          1.1,
+          1.1,
+          1
+        ]
       }
     },
     {
+      "components": {
+        "Collider": {
+          "kind": "box",
+          "layer": "checkpoint",
+          "mask": [
+            "player"
+          ],
+          "sensor": {
+            "interactionKind": "zone",
+            "phases": [
+              "enter",
+              "stay"
+            ],
+            "trackOccupants": true
+          },
+          "size": [
+            1.56,
+            0.08,
+            1.56
+          ],
+          "trigger": true
+        },
+        "FinishZone": {
+          "radius": 0.95
+        },
+        "MeshRenderer": {
+          "material": "mat.checkpoint",
+          "mesh": "mesh.checkpoint"
+        },
+        "RigidBody": {
+          "kind": "static"
+        }
+      },
       "id": "finish.pad",
-      "transform": { "position": [0, 0.04, -6.1], "rotation": [-1.570796, 0, 0], "scale": [1.5, 1.5, 1] },
-      "components": {
-        "MeshRenderer": { "mesh": "mesh.checkpoint", "material": "mat.checkpoint" },
-        "Collider": { "kind": "box", "size": [1.56, 0.08, 1.56], "layer": "checkpoint", "mask": ["player"], "trigger": true, "sensor": { "interactionKind": "zone", "phases": ["enter", "stay"], "trackOccupants": true } },
-        "RigidBody": { "kind": "static" },
-        "FinishZone": { "radius": 0.95 }
+      "transform": {
+        "position": [
+          0,
+          0.04,
+          -6.1
+        ],
+        "rotation": [
+          -1.570796,
+          0,
+          0
+        ],
+        "scale": [
+          1.5,
+          1.5,
+          1
+        ]
       }
     },
     {
+      "components": {
+        "MeshRenderer": {
+          "castShadow": true,
+          "material": "mat.checkpoint",
+          "mesh": "mesh.marker"
+        }
+      },
       "id": "finish.arch.left",
-      "transform": { "position": [-1.15, 0.62, -6.1] },
-      "components": { "MeshRenderer": { "mesh": "mesh.marker", "material": "mat.checkpoint", "castShadow": true } }
+      "transform": {
+        "position": [
+          -1.15,
+          0.62,
+          -6.1
+        ]
+      }
     },
     {
+      "components": {
+        "MeshRenderer": {
+          "castShadow": true,
+          "material": "mat.checkpoint",
+          "mesh": "mesh.marker"
+        }
+      },
       "id": "finish.arch.right",
-      "transform": { "position": [1.15, 0.62, -6.1] },
-      "components": { "MeshRenderer": { "mesh": "mesh.marker", "material": "mat.checkpoint", "castShadow": true } }
+      "transform": {
+        "position": [
+          1.15,
+          0.62,
+          -6.1
+        ]
+      }
     }
   ],
+  "id": "arena",
   "resources": [
     {
       "id": "GameState",
       "value": {
-        "status": "Course",
         "checkpoint": 0,
         "checkpointTotal": 2,
+        "elapsed": 0,
         "hits": 0,
-        "elapsed": 0
-      }
-    },
-    {
-      "id": "tn.characterRig.player",
-      "value": {
-        "dirX": 0,
-        "dirZ": 1,
-        "speed": 0,
-        "yaw": 0
-      }
-    },
-    {
-      "id": "tn.cameraRig.camera.main",
-      "value": {
-        "followX": 0,
-        "followY": 0,
-        "followZ": 0,
-        "yaw": 0
+        "status": "Course"
       }
     }
-  ]
+  ],
+  "schema": "threenative.scene",
+  "version": "0.1.0"
 }

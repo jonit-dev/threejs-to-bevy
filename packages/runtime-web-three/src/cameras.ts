@@ -222,6 +222,21 @@ function updateFollowHelper(
   const smoothing = follow.smoothing ?? 8;
   lerpVector3(camera.position, desired, smoothing, delta);
   camera.lookAt(target.getWorldPosition(new THREE.Vector3()));
+  writeBackCameraPose(entity, camera);
+}
+
+// Persist the helper-driven pose into the world IR so the per-frame
+// syncTransforms pass re-applies it instead of resetting the camera to its
+// authored transform (which would pin the camera near its spawn pose).
+function writeBackCameraPose(entity: IWorldEntity, camera: THREE.Camera): void {
+  if (entity.components.Transform === undefined) {
+    return;
+  }
+  entity.components.Transform = {
+    ...entity.components.Transform,
+    position: [camera.position.x, camera.position.y, camera.position.z],
+    rotation: [camera.quaternion.x, camera.quaternion.y, camera.quaternion.z, camera.quaternion.w],
+  };
 }
 
 function updateOrbitHelper(
@@ -254,6 +269,7 @@ function updateOrbitHelper(
   const desired = targetPosition.clone().add(offset);
   lerpVector3(camera.position, desired, smoothing, delta);
   camera.lookAt(targetPosition);
+  writeBackCameraPose(entity, camera);
 }
 
 function updateScreenShake(

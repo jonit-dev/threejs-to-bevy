@@ -541,7 +541,9 @@ function cameraObjectFromEntity(entityId: string, camera: unknown, transform: Re
     : new PerspectiveCamera({
         far,
         fovY: readPositiveNumber(cameraRecord?.fovY) ?? 52,
-        ...(mode === "third-person-follow" && target !== undefined ? { follow: { offset: [0, 2.4, 5.5], smoothing: 0.2, target } } : {}),
+        // Both runtime adapters read follow.smoothing as an exponential rate
+        // per second (default 8), not a per-frame lerp factor.
+        ...(mode === "third-person-follow" && target !== undefined ? { follow: { offset: [0, 2.4, 5.5], smoothing: 8, target } } : {}),
         id: entityId,
         near,
       });
