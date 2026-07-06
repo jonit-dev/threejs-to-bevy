@@ -17,5 +17,18 @@
         "keyboard.ArrowRight"
       ]
     }
+  ],
+  "axes": [
+    {
+      "id": "MoveX",
+      "negative": [
+        "keyboard.KeyA",
+        "keyboard.ArrowLeft"
+      ],
+      "positive": [
+        "keyboard.KeyD",
+        "keyboard.ArrowRight"
+      ]
+    }
   ]
 }

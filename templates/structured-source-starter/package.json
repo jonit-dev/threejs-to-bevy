@@ -5,6 +5,7 @@
   "scripts": {
     "build": "tn build",
     "dev:web": "tn dev --target web",
+    "iterate": "tn iterate --project . --json",
     "playtest": "tn playtest --scenario playtests/smoke-movement.playtest.json --stable-artifacts --json",
     "playtest:native": "tn playtest --scenario playtests/native-smoke-movement.playtest.json --stable-artifacts --json",
     "game:plan": "tn game plan --goal \"small arena collectible game\" --project . --json > artifacts/game-production/plan.json",

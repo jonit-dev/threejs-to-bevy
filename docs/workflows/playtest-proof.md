@@ -3,6 +3,13 @@
 Use `tn playtest` when a game needs proof that input changes gameplay state, not
 just proof that the scene renders.
 
+Use `tn iterate --project . --json` as the default inner loop when an agent
+needs one response for authoring validation, build, screenshot capture, and the
+first committed playtest scenario. It writes fast repair-loop artifacts under
+`artifacts/iterate/latest/`. Those artifacts are intentionally not release
+evidence; run the committed `tn playtest --stable-artifacts`, `tn game qa
+--run-proof`, and desktop/native playtest commands before completion claims.
+
 ```bash
 tn playtest --project examples/racing-kit-rally --entity player.car --press KeyW --frames 60 --expect-moved --json
 ```

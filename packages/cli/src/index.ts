@@ -7,6 +7,7 @@ import { assetCommand } from "./commands/asset.js";
 import { authoringCommand } from "./commands/authoring.js";
 import { buildCommand } from "./commands/build.js";
 import { bundleCommand } from "./commands/bundle.js";
+import { cookbookCommand } from "./commands/cookbook.js";
 import { compareImagesCommand } from "./commands/compareImages.js";
 import { createProject, initProject } from "./commands/create.js";
 import { devCommand } from "./commands/dev.js";
@@ -14,6 +15,7 @@ import { doctorCommand } from "./commands/doctor.js";
 import { editorCommand } from "./commands/editor.js";
 import { gameCommand } from "./commands/game.js";
 import { helpCommand } from "./commands/help.js";
+import { iterateCommand } from "./commands/iterate.js";
 import { modelTestCommand } from "./commands/modelTest.js";
 import { packageCommand } from "./commands/package.js";
 import { playtestCommand } from "./commands/playtest.js";
@@ -64,10 +66,20 @@ const commands: Record<string, ICommandDefinition> = {
     implemented: true,
     usage: "tn create <name> [--template <template>] [--json]",
   },
+  cookbook: {
+    description: "List and show validated agent authoring cookbook examples.",
+    implemented: true,
+    usage: "tn cookbook list [--json]\n              tn cookbook show <id> [--json]",
+  },
   init: {
     description: "Alias for create with first-project next steps.",
     implemented: true,
     usage: "tn init <name> [--template <template>] [--json]",
+  },
+  iterate: {
+    description: "Run validate, build, screenshot, and optional playtest as one agent iteration loop.",
+    implemented: true,
+    usage: "tn iterate [--project <path>] [--scenario playtests/<name>.playtest.json] [--skip-playtest] [--keep] [--json]",
   },
   help: {
     description: "Show task-oriented help for scaffold, assets, camera, transform, visual QA, screenshot, and record workflows.",
@@ -311,6 +323,10 @@ export async function dispatch(argv: readonly string[]): Promise<ICommandResult>
     return initProject(normalizedArgv.slice(1));
   }
 
+  if (commandName === "iterate") {
+    return iterateCommand(normalizedArgv.slice(1));
+  }
+
   if (commandName === "help") {
     return helpCommand(normalizedArgv.slice(1));
   }
@@ -341,6 +357,10 @@ export async function dispatch(argv: readonly string[]): Promise<ICommandResult>
 
   if (commandName === "bundle") {
     return bundleCommand(normalizedArgv.slice(1));
+  }
+
+  if (commandName === "cookbook") {
+    return cookbookCommand(normalizedArgv.slice(1));
   }
 
   if (commandName === "input") {

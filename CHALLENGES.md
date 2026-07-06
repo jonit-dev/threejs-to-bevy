@@ -127,6 +127,10 @@ engine parity. Effort allocation does not currently match that answer.
    stack cannot get within ~2x of vanilla on tokens-to-playable, the
    authoring layer needs surgery before any other work; if it can, the
    thesis holds and effort should go to the visual contract and cookbook.
+   As of 2026-07-06, `tools/agent-benchmark` provides the protocol, prompts,
+   schemas, neutral scorer, and smoke evidence for one vanilla fixture plus
+   one ThreeNative example. Those fixture token counts are harness proof, not
+   the decisive human-operated pilot data.
 2. **Cookbook over reference docs.** Models learn unseen DSLs from few-shot
    complete examples far better than from reference documentation. Distill
    the existing example games into 10-20 pattern-sized pairs ("goal:

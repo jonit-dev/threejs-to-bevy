@@ -26,9 +26,28 @@ Rules for this generated ThreeNative project.
   use namespace/default/aliased stdlib imports, or import arbitrary npm,
   relative helper modules, DOM, Node, timer, filesystem, network, Three.js, or
   Bevy APIs from portable scripts.
+- Write scripts against the convention-first context surface documented in the
+  repo contract: read movement with `context.input.getAxis("MoveX")`, read and
+  assign `entity.transform().position`, and use `context.time.fixedDelta` as a
+  readonly number. Do not put axis button mappings, fixed-step clamps, or proof
+  rounding in user scripts.
 
 ## Default Game Quality
 
+- Worked examples first: before inventing a new gameplay, camera, UI,
+  physics, asset, or polish pattern, inspect the executable cookbook. Use
+  `tn cookbook list --json` to see available patterns and
+  `tn cookbook show <id> --json` to load one complete goal -> commands ->
+  source delta -> script -> proof example. Good starting ids:
+  `player-move-wasd`, `follow-camera`, `hud-score-binding`,
+  `collectible-respawn`, `trigger-zone-win`, `fail-retry-reset`,
+  `kinematic-hazard`, `physics-knockdown`, `glb-hero-animation`,
+  `catalog-asset-provenance`, `materials-pass`, `mobile-hud-fit`,
+  `pause-ui-state`, `sound-cue`, `scale-check`, `lane-runner-spawn`,
+  `checkpoint-race-progress`, and `top-down-collector-recipe`.
+- In the ThreeNative repo, if you change a reusable authoring pattern or CLI
+  mutation surface, update the matching cookbook entry or add a new one, then
+  run `pnpm verify:cookbook`.
 - Before creating or substantially changing the game, open
   `AGENT_GAME_PLAN.md` as the first game-creation action, then run
   `tn game plan --goal "<game idea>" --project . --json` or write an
@@ -41,17 +60,16 @@ Rules for this generated ThreeNative project.
   owned state, source-document references, silhouettes, materials, lighting,
   camera framing, set dressing, UI states, mobile fit, performance, screenshot
   proof, motion proof, and input playtest proof.
-- While implementing, use `tn playtest` as a repair loop after gameplay,
-  controls, script, or state changes. Run `tn playtest --discover --json` or
-  `--suggest-scenario <name>` to find provable entities and a starting
-  scenario. Prefer a committed scenario under `playtests/*.playtest.json`
-  with `--stable-artifacts` for multi-step mechanics (add `--watch
-  --pass-once` while iterating); otherwise run the one-shot
-  `--entity/--press/--expect-moved` proof. Inspect `summary.json`,
-  diagnostics, screenshots, and effect logs, fix the owning durable
-  source/script, and rerun before broader QA. Before release claims, rerun
-  the scenario with `--target desktop` so the native runtime is proved, not
-  only web.
+- While implementing, use `pnpm run iterate` or `tn iterate --project . --json`
+  as the default repair loop after gameplay, controls, script, source, or
+  visual changes. It runs authoring validation, build, screenshot capture, and
+  the first committed playtest scenario in one report under
+  `artifacts/iterate/latest/`. Inspect the report, diagnostics, screenshot,
+  and playtest artifacts, fix the owning durable source/script, and rerun.
+  Use `tn playtest --discover --json` or `--suggest-scenario <name>` when you
+  need a new scenario, `tn playtest --watch --pass-once` for focused gameplay
+  repairs, and before release claims rerun the scenario with `--target desktop`
+  so the native runtime is proved, not only web.
 - Apply gameplay recipes only as bounded steps from a complete plan, for example
   `tn recipe apply top-down-collector --scene <scene> --player <entity> --camera <camera> --json`.
   Keep recipe output in `content/**/*.json` and `src/scripts/**/*.ts`.
@@ -147,15 +165,19 @@ pnpm run build
 tn scene validate arena --json
 tn scene inspect arena --json
 
-# 2. Focused gameplay proof after gameplay/input/script changes
+# 2. Default inner loop after gameplay/input/script/source changes
+pnpm run iterate
+tn iterate --project . --json
+
+# 3. Focused gameplay proof when authoring or repairing scenarios directly
 tn playtest --project . --discover --json
 tn playtest --project . --scenario playtests/<name>.playtest.json --stable-artifacts --json
 pnpm run playtest
 
-# 3. Scene and runtime proof (add --native for the native runtime)
+# 4. Scene and runtime proof (add --native for the native runtime)
 tn scene proof arena --project . --json
 
-# 4. Production gates before calling work done
+# 5. Production gates before calling work done
 pnpm run game:plan
 pnpm run game:improve
 pnpm run verify
@@ -166,3 +188,6 @@ pnpm run game:release
 
 On diagnostics, keep code/path in notes and fix the owning source document or
 script.
+`tn iterate` artifacts are fast repair-loop evidence only; they do not replace
+`game:qa`, `game:release`, or desktop playtest evidence before completion
+claims.

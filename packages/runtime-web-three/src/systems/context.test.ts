@@ -28,10 +28,11 @@ test("should expose fixed input trace", () => {
 
   assert.equal(context.input.action("MoveForward"), true);
   assert.equal(context.input.axis("MoveX"), 1);
+  assert.equal(context.input.getAxis("MoveX"), 1);
   assert.equal(context.input.axis1("MoveX", { negative: "Brake", positive: "MoveForward" }), 1);
   assert.equal(context.input.pressed("Jump"), true);
   assert.equal(context.time.fixedDt, 0.016);
-  assert.equal(context.time.fixedDelta({ fallback: 0.02, max: 0.01, min: 0.001 }), 0.01);
+  assert.equal(context.time.fixedDelta, 0.016);
 });
 
 test("should look up entities by id deterministically", () => {
@@ -58,6 +59,7 @@ test("should expose state and transform helper facades through existing effects"
   const transform = player.transform();
   transform.setPose([1, 2, 3], [0, 0.707107, 0, 0.707107]);
 
+  assert.deepEqual(transform.position, [0, 1, 0]);
   assert.deepEqual(transform.positionOr([9, 9, 9]), [0, 1, 0]);
   assert.equal(Math.round(transform.yawOr(0) * 1000) / 1000, 0);
   assert.deepEqual(resources, [{ resource: "RallyState", value: { lap: 1, message: "Go", speed: 12 } }]);
@@ -70,6 +72,29 @@ test("should expose state and transform helper facades through existing effects"
       value: {
         position: [1, 2, 3],
         rotation: [0, 0.707107, 0, 0.707107],
+        scale: [1, 1, 1],
+      },
+    },
+  ]);
+});
+
+test("should apply property write when transform position is assigned", () => {
+  const world = makeWorld();
+  const { commands, context } = createSystemContext(world, { delta: 0.016, fixedDelta: 0.016 });
+  const player = context.entity("player");
+  assert.ok(player);
+
+  player.transform().position = [2, 3, 4];
+
+  assert.deepEqual(commands, [
+    {
+      component: "Transform",
+      entity: "player",
+      kind: "setComponent",
+      source: "entity",
+      value: {
+        position: [2, 3, 4],
+        rotation: [0, 0, 0, 1],
         scale: [1, 1, 1],
       },
     },

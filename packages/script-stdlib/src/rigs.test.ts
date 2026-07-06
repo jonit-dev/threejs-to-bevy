@@ -61,7 +61,7 @@ interface IFakeContext {
   resources: { set(name: string, value: unknown): void };
   physics: { raycast(options: { direction: Vec3Tuple; ignore?: readonly string[]; mask?: readonly string[]; maxDistance?: number; origin: Vec3Tuple }): { distance?: number; hit?: boolean } | null };
   state<T extends object>(key: string, defaults: T): T;
-  time: { delta: number; elapsed: number; fixedDelta(): number };
+  time: { delta: number; elapsed: number; fixedDelta: number };
 }
 
 function createContext(entities: IFakeEntity[]): IFakeContext {
@@ -114,7 +114,9 @@ function createContext(entities: IFakeEntity[]): IFakeContext {
     time: {
       delta: 1 / 60,
       elapsed: 0,
-      fixedDelta: () => context.fixedDelta,
+      get fixedDelta() {
+        return context.fixedDelta;
+      },
     },
   };
   return context;

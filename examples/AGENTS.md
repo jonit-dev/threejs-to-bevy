@@ -22,6 +22,9 @@ Rules for runnable examples.
   Use `tn scene inspect --json` before large scene edits, then validate and
   build the durable source instead of expanding repeated component blocks by
   hand.
+- When an example introduces or changes a reusable authoring, gameplay, asset,
+  proof, or CLI workflow, update the matching `docs/cookbook` entry or add one,
+  then run `pnpm verify:cookbook`.
 - Playable examples must look and feel credible by default: no primitive-only
   placeholder acceptance, no clunky one-frame player snaps unless deliberately
   tweened as a grid mechanic, and no completion claim without build, nonblank

@@ -63,6 +63,25 @@ test("should reject undeclared transform write", () => {
   assert.match(diagnostics[0]?.suggestion ?? "", /writes/);
 });
 
+test("should reject legacy script context idioms with fix snippets", () => {
+  const diagnostics = diagnosePortableSystem({
+    exportName: "movePlayer",
+    file: "src/scripts/player.ts",
+    resourceWrites: ["GameState"],
+    source:
+      '(context) => { const entity = context.query()[0]; const position = entity.transform().positionOr([0, 0, 0]); const axis = context.input.axis1("MoveX", { negative: "left", positive: "right" }); const dt = context.time.fixedDelta({ fallback: 1 / 60 }); const state = context.state("GameState", { axis, dt, x: 0 }); state.x = position[0] + axis * dt; }',
+    systemName: "movePlayer",
+  });
+
+  assert.deepEqual(
+    diagnostics.map((diagnostic) => diagnostic.code),
+    ["TN_SCRIPT_LEGACY_AXIS1", "TN_SCRIPT_LEGACY_POSITION_OR", "TN_SCRIPT_LEGACY_FIXED_DELTA_OPTIONS"],
+  );
+  assert.match(diagnostics[0]?.fix?.snippet ?? "", /getAxis/);
+  assert.match(diagnostics[1]?.fix?.snippet ?? "", /transform\(\)\.position/);
+  assert.match(diagnostics[2]?.fix?.snippet ?? "", /time\.fixedDelta/);
+});
+
 test("should validate resource writes against resourceWrites", () => {
   const missing = diagnosePortableSystem({
     resourceWrites: [],

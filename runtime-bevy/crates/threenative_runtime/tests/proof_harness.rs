@@ -198,12 +198,12 @@ fn should_parse_screenshot_commands_and_report_missing_window_as_warning() {
 #[test]
 fn should_snapshot_transform_positions_for_readiness() {
     let player = ThreeNativeId("player".to_owned());
-    let player_transform = Transform::from_xyz(1.0, 2.0, 3.0);
+    let player_transform = Transform::from_xyz(1.1234567, 2.0, 3.7654321);
     let samples = native_proof_harness_transform_samples([(&player, &player_transform)]);
 
     assert_eq!(samples.len(), 1);
     assert_eq!(samples[0].entity, "player");
-    assert_eq!(samples[0].position, [1.0, 2.0, 3.0]);
+    assert_eq!(samples[0].position, [1.123457, 2.0, 3.765432]);
 }
 
 fn temp_dir(name: &str) -> std::path::PathBuf {

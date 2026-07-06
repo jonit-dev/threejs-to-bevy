@@ -859,7 +859,8 @@ async function currentSourceHash(projectPath: string): Promise<string> {
   ].sort((left, right) => left.path.localeCompare(right.path));
   const hash = createHash("sha256");
   for (const row of rows) {
-    hash.update(`${row.path}\0${row.hash}\n`);
+    hash.update(row.path);
+    hash.update(row.hash);
   }
   return hash.digest("hex");
 }

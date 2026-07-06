@@ -138,7 +138,7 @@ export async function createProject(argv: readonly string[], options: ICreateOpt
     code: "TN_CREATE_OK",
     command: commandName,
     message: `Created ${definition.canonical} project at '${projectPath}'.`,
-    nextCommands: ["pnpm install", "pnpm run game:plan", "pnpm run validate", "pnpm run build", "pnpm run dev:web", "pnpm run verify"],
+    nextCommands: ["pnpm install", "pnpm run game:plan", "pnpm run validate", "pnpm run build", "pnpm run iterate", "pnpm run dev:web", "pnpm run verify"],
     path: projectPath,
     planningInstructions: agentGamePlanPath,
     referenceDocs: [
@@ -161,7 +161,7 @@ export async function createProject(argv: readonly string[], options: ICreateOpt
 
   return {
     exitCode: 0,
-    stdout: `${payload.message}\nPlanning: open ${agentGamePlanPath} and run pnpm run game:plan before mutating game source.\nNext commands:\n  cd ${projectPath}\n  pnpm install\n  pnpm run game:plan\n  pnpm run validate\n  pnpm run build\n  pnpm run dev:web\n  pnpm run verify\nDocs: ${agentGamePlanPath}, tn help scaffold, tn help visual-qa\n`,
+    stdout: `${payload.message}\nPlanning: open ${agentGamePlanPath} and run pnpm run game:plan before mutating game source.\nNext commands:\n  cd ${projectPath}\n  pnpm install\n  pnpm run game:plan\n  pnpm run validate\n  pnpm run build\n  pnpm run iterate\n  pnpm run dev:web\n  pnpm run verify\nDocs: ${agentGamePlanPath}, tn help scaffold, tn help visual-qa\n`,
   };
 }
 

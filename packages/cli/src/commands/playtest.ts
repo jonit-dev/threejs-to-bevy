@@ -727,7 +727,7 @@ function readNativePosition(value: unknown): Vec3 | undefined {
   if (!Array.isArray(value) || value.length < 3) {
     return undefined;
   }
-  const position = value.slice(0, 3).map((item) => (typeof item === "number" && Number.isFinite(item) ? item : Number.NaN));
+  const position = value.slice(0, 3).map((item) => (typeof item === "number" && Number.isFinite(item) ? roundSample(item) : Number.NaN));
   return position.every(Number.isFinite) ? position as Vec3 : undefined;
 }
 
@@ -1261,8 +1261,12 @@ function readPosition(value: unknown): Vec3 | undefined {
   if (!isRecord(value) || !Array.isArray(value.position) || value.position.length < 3) {
     return undefined;
   }
-  const position = value.position.slice(0, 3).map((item) => (typeof item === "number" && Number.isFinite(item) ? item : Number.NaN));
+  const position = value.position.slice(0, 3).map((item) => (typeof item === "number" && Number.isFinite(item) ? roundSample(item) : Number.NaN));
   return position.every(Number.isFinite) ? position as Vec3 : undefined;
+}
+
+function roundSample(value: number): number {
+  return Number(value.toFixed(6));
 }
 
 function delta3(left: Vec3, right: Vec3): Vec3 {

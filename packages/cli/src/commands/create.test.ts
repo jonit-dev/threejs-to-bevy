@@ -19,6 +19,7 @@ test("should create starter template files", async () => {
     assert.equal(payload.template, "structured-source-starter");
     assert.equal(payload.planningInstructions, "AGENT_GAME_PLAN.md");
     assert.equal(payload.nextCommands.includes("pnpm run dev:web"), true);
+    assert.equal(payload.nextCommands.includes("pnpm run iterate"), true);
     assert.equal(payload.nextCommands.includes("pnpm run game:plan"), true);
     assert.equal(payload.referenceDocs.includes("AGENT_GAME_PLAN.md"), true);
     assert.equal(payload.referenceDocs.includes("tn help scaffold"), true);
@@ -71,7 +72,8 @@ test("should create starter template files", async () => {
     assert.equal(packageJson.scripts.validate, "tn validate");
     assert.equal(packageJson.scripts.build, "tn build");
     assert.equal(packageJson.scripts["dev:web"], "tn dev --target web");
-    assert.equal(packageJson.scripts.playtest, "tn playtest --json");
+    assert.equal(packageJson.scripts.iterate, "tn iterate --project . --json");
+    assert.equal(packageJson.scripts.playtest, "tn playtest --scenario playtests/smoke-movement.playtest.json --stable-artifacts --json");
     assert.match(packageJson.scripts["game:plan"] ?? "", /tn game plan --goal/);
     assert.equal(packageJson.scripts["game:improve"], "tn game improve --apply-plan artifacts/game-production/plan.json --project . --json");
     assert.equal(packageJson.scripts["game:qa"], "tn game qa --project . --run-proof --json");
@@ -128,7 +130,7 @@ test("should initialize starter project through init alias with create payload s
     assert.equal(payload.command, "init");
     assert.equal(payload.template, "structured-source-starter");
     assert.equal(payload.planningInstructions, "AGENT_GAME_PLAN.md");
-    assert.deepEqual(payload.nextCommands, ["pnpm install", "pnpm run game:plan", "pnpm run validate", "pnpm run build", "pnpm run dev:web", "pnpm run verify"]);
+    assert.deepEqual(payload.nextCommands, ["pnpm install", "pnpm run game:plan", "pnpm run validate", "pnpm run build", "pnpm run iterate", "pnpm run dev:web", "pnpm run verify"]);
     assert.equal(payload.referenceDocs.includes("AGENT_GAME_PLAN.md"), true);
     assert.equal(payload.referenceDocs.includes("docs/workflows/developer-workflow.md"), true);
 
@@ -155,6 +157,7 @@ test("should print explicit first-project next commands in human output", async 
     assert.match(result.stdout, /pnpm run game:plan/);
     assert.match(result.stdout, /pnpm run validate/);
     assert.match(result.stdout, /pnpm run build/);
+    assert.match(result.stdout, /pnpm run iterate/);
     assert.match(result.stdout, /pnpm run dev:web/);
     assert.match(result.stdout, /pnpm run verify/);
     assert.match(result.stdout, /tn help scaffold/);

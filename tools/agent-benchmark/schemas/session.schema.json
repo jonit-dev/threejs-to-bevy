@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "schema": "threenative.agent-benchmark-session",
+  "version": 1,
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "version", "runId", "promptId", "condition", "tokenCount", "iterationCount", "stopReason", "humanRubric"],
+  "properties": {
+    "schema": { "const": "threenative.agent-benchmark-session" },
+    "version": { "const": 1 },
+    "runId": { "type": "string", "minLength": 1 },
+    "promptId": { "type": "string", "minLength": 1 },
+    "condition": { "enum": ["vanilla", "threenative"] },
+    "tokenCount": { "type": "number", "minimum": 0 },
+    "iterationCount": { "type": "number", "minimum": 0 },
+    "stopReason": { "enum": ["claimed-playable", "token-cap", "operator-stopped", "failed-setup"] },
+    "finishedAt": { "type": "string" },
+    "humanRubric": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["playability", "visual"],
+      "properties": {
+        "playability": { "type": "number", "minimum": 0, "maximum": 3 },
+        "visual": { "type": "number", "minimum": 0, "maximum": 3 },
+        "notes": { "type": "string" }
+      }
+    }
+  }
+}

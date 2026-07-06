@@ -108,6 +108,17 @@ implementation:
   UI, playtest, screenshot, scale, and QA evidence. This is an authoring and
   release-evidence improvement; it does not add a new Bevy runtime gameplay
   capability.
+- The authoring cookbook now exposes CI-validated worked examples through
+  `tn cookbook list/show --json`, ships the examples with generated-project
+  starter guidance, and verifies them with `pnpm verify:cookbook` by applying
+  each pattern to a fresh structured-source starter and building it. This is an
+  agent-authoring ergonomics improvement; it does not add a new Bevy runtime
+  capability.
+- `tn iterate --project <path> --json` now composes authoring validation,
+  build, web screenshot capture, and the first committed playtest scenario into
+  one fast repair-loop report under `artifacts/iterate/latest/`. This improves
+  agent iteration ergonomics and does not add a new Bevy runtime capability or
+  replace release/desktop proof.
 - GameBlocks-informed gameplay accuracy now adds source-owned
   `gameplayBlocks` planning descriptors, recipe block/proof metadata, and pure
   named stdlib helpers (`BasisEx`, `ControllerEx`, `CheckpointRaceEx`,
@@ -400,11 +411,13 @@ remaining gaps by usefulness for building and shipping ordinary 3D games:
   `packages/compiler/src/scripts/sourceRefs.test.ts`.
 - `P1` Core script context ergonomics now exist in SDK typings, web runtime
   context, and the Bevy QuickJS bridge for entity lookup, shallow resource
-  state, clamped fixed delta, normalized one-axis input, and Transform facade
-  read/write helpers. Focused compiler, web, and native tests prove
-  helper-driven resource writes and Transform patches use existing diagnostics
-  and effect validation paths; `pnpm verify:scripting-helpers-lifecycle`
-  carries the focused release evidence.
+  state, source-authored `getAxis`, readonly `fixedDelta`, and Transform
+  `position` property read/write helpers. Legacy `axis1`, `positionOr`, and
+  option-bag `fixedDelta(...)` user-script idioms are compiler diagnostics with
+  fix snippets. Focused compiler, web, and native tests prove helper-driven
+  resource writes and Transform patches use existing diagnostics and effect
+  validation paths; `pnpm verify:scripting-helpers-lifecycle` carries the
+  focused release evidence.
 - `P1` Script lifecycle authoring facade now lowers SDK
   `scriptLifecycle(...)` declarations and structured-source `scriptLifecycles`
   entries into existing portable schedules with source module/export refs.

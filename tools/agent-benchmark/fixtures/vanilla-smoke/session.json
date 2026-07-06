@@ -1,0 +1,15 @@
+{
+  "schema": "threenative.agent-benchmark-session",
+  "version": 1,
+  "runId": "vanilla-smoke",
+  "promptId": "collector",
+  "condition": "vanilla",
+  "tokenCount": 1000,
+  "iterationCount": 1,
+  "stopReason": "claimed-playable",
+  "humanRubric": {
+    "playability": 2,
+    "visual": 1,
+    "notes": "Static smoke fixture for scorer verification, not pilot data."
+  }
+}

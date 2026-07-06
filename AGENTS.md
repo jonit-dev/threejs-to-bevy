@@ -12,8 +12,18 @@ Repo-wide instructions for AI coding agents working on ThreeNative.
 - Keep source ASCII unless the file already has a reason not to.
 - Capability/release-gate changes must update `docs/STATUS.md` and
   `docs/bevy-feature-parity.md`.
+- Update `docs/cookbook` and rerun `pnpm verify:cookbook` when reusable
+  authoring patterns or CLI mutations change.
 - Finished PRDs must be moved from active planning folders to
   `docs/PRDs/done`.
+
+## Portable API Conventions
+
+- Follow `docs/contracts/script-context-conventions.md` for portable script
+  context naming. Prefer `ctx.input.getAxis("MoveX")`,
+  `entity.transform().position`, and readonly `ctx.time.fixedDelta` in new
+  source, and keep engine policy in source data, runtime defaults, or proof
+  capture code rather than scattered through gameplay scripts.
 
 ## Product Boundary
 

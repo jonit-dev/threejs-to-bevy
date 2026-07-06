@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "schema": "threenative.agent-benchmark-report",
+  "version": 1,
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "version", "generatedAt", "runCount", "promptSummaries", "verdict", "diagnostics"],
+  "properties": {
+    "schema": { "const": "threenative.agent-benchmark-report" },
+    "version": { "const": 1 },
+    "generatedAt": { "type": "string" },
+    "runCount": { "type": "number", "minimum": 0 },
+    "promptSummaries": { "type": "array" },
+    "diagnostics": { "type": "array" },
+    "verdict": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "summary", "threshold"],
+      "properties": {
+        "status": { "enum": ["pass", "fail", "insufficient-data"] },
+        "summary": { "type": "string" },
+        "threshold": { "const": "threenative-median-tokens <= 2x vanilla-median-tokens" }
+      }
+    }
+  }
+}

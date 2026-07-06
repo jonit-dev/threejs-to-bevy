@@ -1094,12 +1094,12 @@ fn write_interpolated_update_read_bundle(name: &str) -> PathBuf {
         root.join("scripts.bundle.js"),
         r#"const system_tick = (ctx) => {
   const transform = ctx.entity("mover").transform();
-  const position = transform.positionOr([0, 0, 0]);
-  transform.setPosition([position[0] + 10, 0, 0]);
+  const position = transform.position;
+  transform.position = [position[0] + 10, 0, 0];
 };
 const system_updateCamera = (ctx) => {
-  const moverPosition = ctx.entity("mover").transform().positionOr([0, 0, 0]);
-  ctx.entity("camera").transform().setPosition([moverPosition[0], 0, 0]);
+  const moverPosition = ctx.entity("mover").transform().position;
+  ctx.entity("camera").transform().position = [moverPosition[0], 0, 0];
 };
 export const systemIds = Object.freeze({ "system_tick": "tick", "system_updateCamera": "updateCamera" });
 export const systems = Object.freeze({ "system_tick": system_tick, "system_updateCamera": system_updateCamera });
@@ -2591,11 +2591,11 @@ fn write_context_ergonomics_bundle(name: &str) -> PathBuf {
   const player = ctx.entity("player");
   const ids = ctx.entities.byId({ camera: "camera.main", missing: "missing" });
   const state = ctx.state("RallyState", { lap: 0, speed: 0, dt: 0, missing: false, camera: "" });
-  state.speed = ctx.input.axis1("MoveX", { positive: "MoveForward" });
-  state.dt = ctx.time.fixedDelta({ fallback: 0.02, min: 0.001, max: 0.05 });
+  state.speed = ctx.input.getAxis("MoveX");
+  state.dt = ctx.time.fixedDelta;
   state.camera = ids.camera.id;
   state.missing = ids.missing === undefined;
-  player.transform().setPosition([player.transform().positionOr([0, 0, 0])[0] + state.speed, 0, 0]);
+  player.transform().position = [player.transform().position[0] + state.speed, 0, 0];
 };
 export const systemIds = Object.freeze({ "system_ergonomics": "ergonomics" });
 export const systems = Object.freeze({ "system_ergonomics": system_ergonomics });

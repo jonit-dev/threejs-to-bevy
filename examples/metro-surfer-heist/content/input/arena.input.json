@@ -8,5 +8,8 @@
     { "id": "jump", "bindings": ["keyboard.KeyW", "keyboard.ArrowUp", "keyboard.Space"] },
     { "id": "duck", "bindings": ["keyboard.KeyS", "keyboard.ArrowDown"] },
     { "id": "retry", "bindings": ["keyboard.KeyR", "keyboard.Enter"] }
+  ],
+  "axes": [
+    { "id": "MoveX", "negative": ["keyboard.KeyA", "keyboard.ArrowLeft"], "positive": ["keyboard.KeyD", "keyboard.ArrowRight"] }
   ]
 }

@@ -131,11 +131,11 @@ sequenceDiagram
 
 **Implementation:**
 
-- [ ] Step-runner utility: ordered steps, fail-fast with `skipped` marking,
+- [x] Step-runner utility: ordered steps, fail-fast with `skipped` marking,
   aggregate diagnostics, per-step timing.
-- [ ] Wire validate + build steps by calling existing internals directly
+- [x] Wire validate + build steps by calling existing internals directly
   (no subprocess spawning of our own CLI).
-- [ ] `--json` output validates against the new report schema.
+- [x] `--json` output validates against the new report schema.
 
 **Tests Required:**
 | Test File | Test Name | Assertion |
@@ -161,11 +161,11 @@ sequenceDiagram
 
 **Implementation:**
 
-- [ ] Ephemeral-port preview start with readiness wait; teardown in
+- [x] Ephemeral-port preview start with readiness wait; teardown in
   `finally` including SIGINT handling.
-- [ ] Screenshot step reuses the `tn screenshot` capture + metric path;
+- [x] Screenshot step reuses the `tn screenshot` capture + metric path;
   playtest step reuses scenario execution with default resolution rules.
-- [ ] Artifacts written to `artifacts/iterate/latest/` (report, PNG,
+- [x] Artifacts written to `artifacts/iterate/latest/` (report, PNG,
   playtest observations); `--keep` copies to timestamped dir.
 
 **Tests Required:**
@@ -201,10 +201,10 @@ sequenceDiagram
 
 **Implementation:**
 
-- [ ] Replace the multi-command "useful loop" in starter instructions with
+- [x] Replace the multi-command "useful loop" in starter instructions with
   `tn iterate` as the default inner loop; keep the full commands listed as
   the underlying steps.
-- [ ] State explicitly that iterate artifacts are not release evidence.
+- [x] State explicitly that iterate artifacts are not release evidence.
 
 **Tests Required:**
 | Test File | Test Name | Assertion |
@@ -224,11 +224,11 @@ is visual.
 
 ## 6. Acceptance Criteria
 
-- [ ] One command returns validate/build/screenshot/playtest results in a
+- [x] One command returns validate/build/screenshot/playtest results in a
   single schema-valid JSON with all diagnostics.
-- [ ] Fail-fast marks downstream steps `skipped`; exit code reflects worst
+- [x] Fail-fast marks downstream steps `skipped`; exit code reflects worst
   step.
-- [ ] No port/process leak across repeated runs (tested).
-- [ ] Starter templates document iterate as the default agent loop.
-- [ ] `docs/STATUS.md` updated; `pnpm --filter @threenative/cli test` and
+- [x] No port/process leak across repeated runs (tested).
+- [x] Starter templates document iterate as the default agent loop.
+- [x] `docs/STATUS.md` updated; `pnpm --filter @threenative/cli test` and
   `pnpm verify:template-production` pass.

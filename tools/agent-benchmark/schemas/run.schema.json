@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "schema": "threenative.agent-benchmark-run",
+  "version": 1,
+  "type": "object",
+  "additionalProperties": true,
+  "required": ["schema", "version", "runId", "promptId", "condition", "candidate", "session", "ok", "diagnostics", "artifacts", "generatedAt"],
+  "properties": {
+    "schema": { "const": "threenative.agent-benchmark-run" },
+    "version": { "const": 1 },
+    "runId": { "type": "string", "minLength": 1 },
+    "promptId": { "type": "string", "minLength": 1 },
+    "condition": { "enum": ["vanilla", "threenative"] },
+    "candidate": { "type": "string", "minLength": 1 },
+    "ok": { "type": "boolean" },
+    "generatedAt": { "type": "string" },
+    "session": { "$ref": "session.schema.json" },
+    "diagnostics": { "type": "array" },
+    "artifacts": { "type": "object" },
+    "metrics": { "type": "object" }
+  }
+}

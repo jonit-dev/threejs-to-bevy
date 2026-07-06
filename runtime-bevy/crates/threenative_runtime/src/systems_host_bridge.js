@@ -955,6 +955,12 @@ function __tnInvokeSystem(options) {
       return clone(result);
     };
   const transformFacade = (source) => ({
+    get position() {
+      return readVec3(source.components.Transform && source.components.Transform.position, [0, 0, 0]);
+    },
+    set position(position) {
+      effects.patches.push({ entity: source.id, component: "Transform", value: { ...(source.components.Transform || {}), position: readVec3(position, [0, 0, 0]) } });
+    },
     positionOr(fallback) {
       return readVec3(source.components.Transform && source.components.Transform.position, fallback);
     },
@@ -994,11 +1000,7 @@ function __tnInvokeSystem(options) {
   const context = {
     time: {
       ...data.time,
-      fixedDelta(options = {}) {
-        const fallback = finiteNumber(options.fallback ?? data.time.dt, 0.016);
-        const raw = finiteNumber(data.time.fixedDt, finiteNumber(data.time.dt, fallback));
-        return clamp(raw, finiteNumber(options.min, 0), finiteNumber(options.max, Number.POSITIVE_INFINITY));
-      }
+      fixedDelta: finiteNumber(data.time.fixedDt, finiteNumber(data.time.dt, 0.016))
     },
     random: createRandom(randomSeed),
     timers: createTimers(data.time.elapsed),
@@ -1060,6 +1062,7 @@ function __tnInvokeSystem(options) {
         return clamp(axis + negative + positive, -1, 1);
       },
       axis(name) { return Number(data.input.axes[name] ?? 0); },
+      getAxis(name) { return Number(data.input.axes[name] ?? 0); },
       pressed() { return false; },
       released() { return false; }
     },

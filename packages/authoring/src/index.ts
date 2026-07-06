@@ -147,6 +147,17 @@ export {
   GAME_AGENT_INVENTORY_VERSION,
 } from "./gameAgentInventory.js";
 export type {
+  IIterateDiagnostic,
+  IIterateReport,
+  IIterateStepReport,
+  IterateStepStatus,
+} from "./iterateReport.js";
+export {
+  ITERATE_REPORT_SCHEMA,
+  ITERATE_REPORT_VERSION,
+  validateIterateReport,
+} from "./iterateReport.js";
+export type {
   IAuthoringOperationContext,
   IAuthoringOperationResult,
   IAddEntityOptions,

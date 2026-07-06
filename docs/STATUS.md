@@ -107,6 +107,26 @@ returns the registry operation plan, `tn recipe ... --json` applies it through
 the shared dispatcher, and `@threenative/authoring-client` exposes the same
 plans via `planRecipe()` / `recipe()` so TypeScript authoring keeps the same
 traceable source-mutation contract.
+The authoring cookbook now adds CI-validated, few-shot worked examples for
+agent game creation. Entries live under [cookbook/](cookbook/) and use a
+machine-parseable format documented in [cookbook/FORMAT.md](cookbook/FORMAT.md):
+frontmatter plus `commands`, `source-delta`, `script`, and `proof` sections.
+`tn cookbook list --json` and `tn cookbook show <id> --json` expose those
+examples from generated projects, and generated starter `AGENTS.md` points
+agents at the cookbook before they invent a new gameplay, camera, UI, physics,
+asset, or polish pattern. `pnpm verify:cookbook` copies each entry into a fresh
+structured-source starter, applies the real CLI commands, writes the script,
+then runs authoring validation and build while reporting results to
+`tools/verify/artifacts/cookbook/verification-report.json`.
+The fast authoring iteration loop now has a single CLI entry point:
+`tn iterate --project <path> --json`. The command returns a
+`threenative.iterate-report` with ordered validate, build, screenshot, and
+playtest steps, writes `artifacts/iterate/latest/report.json`, captures a web
+screenshot through an owned preview server, resolves the first committed
+`playtests/*.playtest.json` scenario by default, and marks downstream steps
+`skipped` when an earlier step fails. Iterate artifacts are intentionally
+repair-loop evidence only and do not replace generated-game QA, release, or
+desktop/native playtest proof.
 The authoring-abstractions Phase 1 runtime slice has started by removing two
 third-person movement footguns from the web runtime: `ctx.character.move` now
 accepts direct `{ direction, speed }` overrides while preserving the legacy
@@ -597,19 +617,24 @@ shapes with `TN_SCRIPT_UNSUPPORTED_IMPORT`. Current evidence is
 `pnpm --filter @threenative/compiler test`, `pnpm check:docs`, and
 `pnpm verify:scripting-helpers-lifecycle`.
 
-The first core script context ergonomics are now implemented in the SDK types,
+The core script context ergonomics are now convention-aligned in the SDK types,
 web runtime context, and Bevy QuickJS bridge: `ctx.entity`,
-`ctx.entities.byId`, `ctx.state`, `ctx.time.fixedDelta(...)`,
-`ctx.input.axis1(...)`, and entity `transform()` helpers for position/yaw reads
-plus pose/position/rotation writes. Helper writes lower to existing
-component/resource effects, so undeclared `Transform` and resource writes still
-fail through compiler diagnostics and the same runtime validators. Current
-focused evidence is `pnpm --filter @threenative/script-stdlib test`,
+`ctx.entities.byId`, `ctx.state`, source-authored `ctx.input.getAxis("MoveX")`,
+readonly `ctx.time.fixedDelta`, and `entity.transform().position` property
+reads/writes. `setPosition` remains an explicit alias over the same effect path.
+Legacy `axis1`, `positionOr`, and option-bag `fixedDelta(...)` user-script
+idioms now fail compiler validation with `TN_SCRIPT_LEGACY_*` diagnostics and
+structured fix snippets. Helper writes lower to existing component/resource
+effects, so undeclared `Transform` and resource writes still fail through
+compiler diagnostics and the same runtime validators. Current focused evidence
+is `pnpm --filter @threenative/script-stdlib test`,
 `pnpm --filter @threenative/compiler test`,
 `pnpm --filter @threenative/runtime-web-three test`, and
-`cargo test -p threenative_runtime systems_host`. Release evidence is covered by
-`pnpm verify:scripting-helpers-lifecycle`, which runs a web playtest against the
-helper-driven rally bundle and the Bevy context-helper bridge test.
+`cargo test -p threenative_runtime --test systems_host
+systems_host_should_translate_humanoid_course_player_from_keyboard_forward`.
+Release evidence is covered by `pnpm verify:scripting-helpers-lifecycle`, which
+runs a web playtest against the helper-driven rally bundle and the Bevy
+context-helper bridge test.
 
 The script lifecycle facade now exists for SDK and structured-source authoring:
 `scriptLifecycle(...)` plus `content/**` `scriptLifecycles` entries lower

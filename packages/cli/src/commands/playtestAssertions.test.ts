@@ -29,6 +29,28 @@ test("rich visibility assertions should still fail web reports without projected
   assert.equal(result.diagnostics.some((diagnostic) => diagnostic.code === "TN_PLAYTEST_VISIBILITY_FAILED"), true);
 });
 
+test("rich visibility assertions should read wrapped web runtime diagnostics", () => {
+  const result = evaluateRichPlaytestAssertions({
+    report: reportWithRuntimeDiagnostics("web", {
+      diagnostics: {
+        scene: {
+          renderedEntities: [
+            {
+              id: "player",
+              projectedBounds: { min: [-0.1, -0.1], max: [0.1, 0.1] },
+            },
+          ],
+        },
+      },
+    }),
+    scenario: visibilityScenario("web"),
+  });
+  const assertion = result.assertions.find((item) => item.id === "visibility.player");
+
+  assert.equal(result.diagnostics.length, 0);
+  assert.equal(assertion?.pass, true);
+});
+
 function visibilityScenario(target: "desktop" | "web"): IPlaytestScenario {
   return {
     assert: {

@@ -1,0 +1,25 @@
+{
+  "name": "@threenative/agent-benchmark",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "bin": {
+    "tn-agent-benchmark": "./dist/index.js"
+  },
+  "scripts": {
+    "build": "pnpm --filter @threenative/cli build && tsc -p tsconfig.json",
+    "lint": "tsc -p tsconfig.json --noEmit",
+    "test": "pnpm build && node dist/runTests.js",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@threenative/cli": "workspace:*",
+    "playwright": "^1.60.0",
+    "pngjs": "^7.0.0"
+  },
+  "devDependencies": {
+    "@threenative/verify-tools": "workspace:*",
+    "@types/node": "^20.19.25",
+    "@types/pngjs": "^6.0.5"
+  }
+}

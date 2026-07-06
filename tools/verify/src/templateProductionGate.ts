@@ -19,7 +19,7 @@ export interface TemplateProductionGateResult {
 }
 
 const DEFAULT_TEMPLATE_NAMES = ["structured-source-starter", "racing-kit-rally-starter"] as const;
-const REQUIRED_GAME_SCRIPTS = ["game:plan", "game:improve", "game:score", "game:qa", "game:release"] as const;
+const REQUIRED_GAME_SCRIPTS = ["iterate", "game:plan", "game:improve", "game:score", "game:qa", "game:release"] as const;
 
 const REQUIRED_PROOF_COMMANDS = [
   { id: "authoring validate", matches: (command: string) => command.includes("tn authoring validate") },
@@ -102,7 +102,7 @@ async function templateDiagnosticsFor(templateName: string, templatePath: string
         message: `${templateName}: maintained game starter must define package script '${script}'.`,
         path: packagePath,
         severity: "error",
-        suggestedFix: "Add game:plan, game:improve, game:score, proof-running game:qa, and game:release scripts to the template package.json.",
+        suggestedFix: "Add iterate, game:plan, game:improve, game:score, proof-running game:qa, and game:release scripts to the template package.json.",
       });
     }
   }
@@ -172,7 +172,7 @@ async function templateDiagnosticsFor(templateName: string, templatePath: string
 
   for (const path of [readmePath, agentsPath]) {
     const text = await readText(path);
-    const missingTerms = ["game:plan", "game:improve", "game:qa", "game:release"].filter((term) => !text.includes(term));
+    const missingTerms = ["iterate", "game:plan", "game:improve", "game:qa", "game:release"].filter((term) => !text.includes(term));
     if (missingTerms.length > 0) {
       diagnostics.push({
         code: "TN_TEMPLATE_PRODUCTION_DOCS_INCOMPLETE",

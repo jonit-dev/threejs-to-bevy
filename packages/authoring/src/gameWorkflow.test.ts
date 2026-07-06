@@ -222,7 +222,7 @@ void addLaneMarks;
 void addRoadsideProps;
 void addLighting;
 `);
-    await writeFile(join(root, "src/scripts/game.ts"), "export function update(ctx: any) { const moveProgress = ctx.time.fixedDelta({ fallback: 1 / 60 }); void moveProgress; }\n");
+    await writeFile(join(root, "src/scripts/game.ts"), "export function update(ctx: any) { const moveProgress = ctx.time.fixedDelta; void moveProgress; }\n");
 
     const report = await createGameQualityReport({ projectPath: root });
 
@@ -363,7 +363,7 @@ async function writeMinimalProject(root: string): Promise<void> {
     materials: [{ id: "player-style", color: "#ffffff" }],
   }, null, 2)}\n`);
   await writeTinyWav(join(root, "assets/hit.wav"));
-  await writeFile(join(root, "src/scripts/game.ts"), "export function update(ctx: any) { const dt = ctx.time.fixedDelta({ fallback: 1 / 60 }); const moveProgress = Math.min(1, dt); void moveProgress; }\n");
+  await writeFile(join(root, "src/scripts/game.ts"), "export function update(ctx: any) { const dt = ctx.time.fixedDelta; const moveProgress = Math.min(1, dt); void moveProgress; }\n");
 }
 
 async function writeTinyWav(path: string): Promise<void> {

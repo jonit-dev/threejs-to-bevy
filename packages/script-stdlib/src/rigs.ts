@@ -14,6 +14,7 @@ interface ISystemEntityLike {
   patch?(component: unknown, value: unknown): void;
   set?(component: unknown, value: unknown): void;
   transform?(): {
+    position?: Vec3Tuple;
     positionOr(fallback: readonly [number, number, number]): Vec3Tuple;
     setPose(position: readonly [number, number, number], rotation: readonly [number, number, number, number]): void;
     yawOr(fallback: number): number;
@@ -44,7 +45,7 @@ interface IRigContextLike {
     delta?: number;
     dt?: number;
     elapsed?: number;
-    fixedDelta?(options?: { fallback?: number }): number;
+    fixedDelta?: number | ((options?: { fallback?: number }) => number);
     fixedDt?: number;
   };
 }
@@ -432,7 +433,11 @@ function playCharacterClip(context: IRigContextLike, entity: string | ISystemEnt
 }
 
 function readFixedDelta(context: IRigContextLike): number {
-  return context.time?.fixedDelta?.({ fallback: context.time?.fixedDt ?? 1 / 60 }) ?? context.time?.fixedDt ?? context.time?.delta ?? 1 / 60;
+  const fixedDelta = context.time?.fixedDelta;
+  if (typeof fixedDelta === "number") {
+    return fixedDelta;
+  }
+  return fixedDelta?.({ fallback: context.time?.fixedDt ?? 1 / 60 }) ?? context.time?.fixedDt ?? context.time?.delta ?? 1 / 60;
 }
 
 function readDelta(context: IRigContextLike): number {

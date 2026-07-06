@@ -21,6 +21,7 @@ export interface ISystemEntityView {
 }
 
 export interface ISystemTransformFacade {
+  position: [number, number, number];
   positionOr(fallback: readonly [number, number, number]): [number, number, number];
   setPose(position: readonly [number, number, number], rotation: readonly [number, number, number, number]): void;
   setPosition(position: readonly [number, number, number]): void;
@@ -83,6 +84,7 @@ export interface ISystemContext {
     action(name: string): boolean;
     axis1(axis: string, buttons?: { negative?: string; positive?: string }): number;
     axis(name: string): number;
+    getAxis(axis: string): number;
     pressed(name: string): boolean;
     released(name: string): boolean;
   };
@@ -169,7 +171,7 @@ export interface ISystemContext {
     delta: number;
     dt: number;
     elapsed: number;
-    fixedDelta(options?: { fallback?: number; max?: number; min?: number }): number;
+    fixedDelta: number;
     fixedDt: number;
     paused: boolean;
   };

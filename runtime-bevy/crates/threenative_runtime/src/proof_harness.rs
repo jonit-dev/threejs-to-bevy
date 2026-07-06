@@ -503,12 +503,16 @@ pub fn native_proof_harness_transform_samples<'a>(
         .map(|(id, transform)| NativeProofHarnessTransformSample {
             entity: id.0.clone(),
             position: [
-                transform.translation.x,
-                transform.translation.y,
-                transform.translation.z,
+                round_transform_sample(transform.translation.x),
+                round_transform_sample(transform.translation.y),
+                round_transform_sample(transform.translation.z),
             ],
         })
         .collect()
+}
+
+fn round_transform_sample(value: f32) -> f32 {
+    (value * 1_000_000.0).round() / 1_000_000.0
 }
 
 pub fn write_native_proof_harness_readiness(

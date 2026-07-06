@@ -99,7 +99,61 @@ export function diagnosePortableSystem(source: IPortableSystemSource): ICompiler
       },
     ];
   });
+  diagnostics.push(...diagnoseLegacyIdioms(source, codeOnlySource));
   diagnostics.push(...diagnoseDeclaredAccess(source));
+  return diagnostics;
+}
+
+function diagnoseLegacyIdioms(source: IPortableSystemSource, codeOnlySource: string): ICompilerDiagnostic[] {
+  const diagnostics: ICompilerDiagnostic[] = [];
+  if (/\b(?:context|ctx)\.input\.axis1\s*\(/.test(codeOnlySource) || /\.input\.axis1\s*\(/.test(codeOnlySource)) {
+    diagnostics.push({
+      code: "TN_SCRIPT_LEGACY_AXIS1",
+      file: source.file,
+      fix: {
+        docs: "docs/contracts/script-context-conventions.md",
+        instruction: "Declare the axis action mapping in content/input/*.input.json and read the signed value with getAxis.",
+        snippet: 'const moveX = context.input.getAxis("MoveX");',
+      },
+      message: `System '${source.systemName}' uses legacy input.axis1; use input.getAxis with source-authored axis mappings.`,
+      path: `systems/${source.systemName}/input/getAxis`,
+      severity: "error",
+      suggestion: "Replace input.axis1(...) with input.getAxis(...) and move negative/positive actions into the input source document.",
+      target: source.exportName,
+    });
+  }
+  if (/\.positionOr\s*\(/.test(codeOnlySource)) {
+    diagnostics.push({
+      code: "TN_SCRIPT_LEGACY_POSITION_OR",
+      file: source.file,
+      fix: {
+        docs: "docs/contracts/script-context-conventions.md",
+        instruction: "Read the authored/live transform position through the position property.",
+        snippet: "const position = entity.transform().position;",
+      },
+      message: `System '${source.systemName}' uses legacy transform.positionOr; use transform.position.`,
+      path: `systems/${source.systemName}/transform/position`,
+      severity: "error",
+      suggestion: "Replace transform.positionOr(fallback) with transform.position.",
+      target: source.exportName,
+    });
+  }
+  if (/\b(?:context|ctx)\.time\.fixedDelta\s*\(/.test(codeOnlySource) || /\.time\.fixedDelta\s*\(/.test(codeOnlySource)) {
+    diagnostics.push({
+      code: "TN_SCRIPT_LEGACY_FIXED_DELTA_OPTIONS",
+      file: source.file,
+      fix: {
+        docs: "docs/contracts/script-context-conventions.md",
+        instruction: "Read fixedDelta as a readonly number; configure clamps in runtime source data instead of script options.",
+        snippet: "const delta = context.time.fixedDelta;",
+      },
+      message: `System '${source.systemName}' calls legacy time.fixedDelta(...); use the fixedDelta property.`,
+      path: `systems/${source.systemName}/time/fixedDelta`,
+      severity: "error",
+      suggestion: "Replace time.fixedDelta(...) with time.fixedDelta.",
+      target: source.exportName,
+    });
+  }
   return diagnostics;
 }
 

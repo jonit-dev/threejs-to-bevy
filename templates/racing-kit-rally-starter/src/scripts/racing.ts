@@ -64,7 +64,7 @@ export function updateRally(context: ScriptContext): void {
     speed = NumberEx.clamp(speed, -5.5, 15.5 * trackGrip);
     yaw -= NumberEx.clamp(steer, -1, 1) * (1.15 + Math.abs(speed) * 0.16) * delta;
 
-    const next = Vec3.withY(Vec3.round(Vec3.add(position, Vec3.scale(Vec3.rotateYaw([0, 0, 1], yaw), speed * delta)), 6), 0.02);
+    const next = Vec3.withY(Vec3.add(position, Vec3.scale(Vec3.rotateYaw([0, 0, 1], yaw), speed * delta)), 0.02);
     playerEntity.patch("Transform", { position: next, rotation: Quat.fromYaw(yaw) });
 
     const target = CHECKPOINTS[checkpoint % CHECKPOINTS.length] ?? CHECKPOINTS[0]!;
@@ -101,7 +101,7 @@ export function updateRally(context: ScriptContext): void {
     const yaw = Math.atan2(target[0] - position[0], target[2] - position[2]);
     const follow = Math.min(1, delta * 2.8);
     rivalEntity.patch("Transform", {
-      position: Vec3.withY(Vec3.round(Vec3.lerp(position, target, follow), 6), 0.02),
+      position: Vec3.withY(Vec3.lerp(position, target, follow), 0.02),
       rotation: Quat.fromYaw(yaw),
     });
     context.resources.set("RallyState", { ...state, rivalPhase: NumberEx.round(phase, 6) });
@@ -118,7 +118,7 @@ export function updateRally(context: ScriptContext): void {
       yaw: Quat.yaw(transform.rotation, START_YAW),
     });
     cameraEntity.patch("Transform", {
-      position: Vec3.round(pose.position, 6),
+      position: pose.position,
       rotation: Quat.normalize(pose.rotation),
     });
   }
@@ -133,7 +133,7 @@ export function updateRally(context: ScriptContext): void {
     const nextIndex = (index + 1) % CHECKPOINTS.length;
     const start = CHECKPOINTS[index] ?? CHECKPOINTS[0]!;
     const end = CHECKPOINTS[nextIndex] ?? CHECKPOINTS[0]!;
-    return Vec3.withY(Vec3.round(Vec3.lerp(start, end, scaled - Math.floor(scaled)), 6), 0.02) as Vec3Tuple;
+    return Vec3.withY(Vec3.lerp(start, end, scaled - Math.floor(scaled)), 0.02) as Vec3Tuple;
   }
 
   function onTrack(position: Vec3Tuple): boolean {

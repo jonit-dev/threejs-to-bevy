@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>Vanilla Smoke Benchmark Fixture</title>
+    <style>
+      html, body { margin: 0; min-height: 100%; background: #101820; overflow: hidden; }
+      canvas { display: block; width: 100vw; height: 100vh; }
+    </style>
+  </head>
+  <body>
+    <canvas id="game"></canvas>
+    <script type="module">
+      const canvas = document.getElementById("game");
+      const ctx = canvas.getContext("2d");
+      const player = { x: 120, y: 240 };
+      const keys = new Set();
+      const pickups = [
+        { x: 420, y: 180 },
+        { x: 520, y: 340 },
+        { x: 720, y: 260 }
+      ];
+      addEventListener("keydown", (event) => keys.add(event.code));
+      addEventListener("keyup", (event) => keys.delete(event.code));
+      function resize() {
+        canvas.width = innerWidth;
+        canvas.height = innerHeight;
+      }
+      function frame() {
+        if (keys.has("ArrowRight") || keys.has("KeyD")) player.x += 6;
+        if (keys.has("ArrowLeft") || keys.has("KeyA")) player.x -= 6;
+        if (keys.has("ArrowUp") || keys.has("KeyW")) player.y -= 4;
+        if (keys.has("ArrowDown") || keys.has("KeyS")) player.y += 4;
+        ctx.fillStyle = "#101820";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = "#2dd4bf";
+        ctx.fillRect(80, 80, canvas.width - 160, canvas.height - 160);
+        ctx.fillStyle = "#0f172a";
+        ctx.fillRect(100, 100, canvas.width - 200, canvas.height - 200);
+        ctx.fillStyle = "#facc15";
+        for (const pickup of pickups) {
+          ctx.beginPath();
+          ctx.arc(pickup.x, pickup.y, 18, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        ctx.fillStyle = "#38bdf8";
+        ctx.fillRect(player.x - 22, player.y - 22, 44, 44);
+        ctx.fillStyle = "#ffffff";
+        ctx.font = "24px sans-serif";
+        ctx.fillText("Collect 3", 32, 42);
+        requestAnimationFrame(frame);
+      }
+      resize();
+      addEventListener("resize", resize);
+      frame();
+    </script>
+  </body>
+</html>

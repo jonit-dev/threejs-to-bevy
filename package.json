@@ -23,6 +23,7 @@
     "verify:all": "pnpm verify && pnpm verify:conformance",
     "verify:changed": "pnpm verify",
     "verify:conformance": "pnpm build:verify-tools && node tools/verify/dist/cli/conformance.js",
+    "verify:cookbook": "pnpm --filter @threenative/cli build && pnpm build:verify-tools && node tools/verify/dist/cookbookGate.js",
     "verify:distribution": "node scripts/verify-distribution-release.mjs",
     "verify:editor-required-operations": "node scripts/verify-editor-required-operations.mjs",
     "verify:focused": "pnpm build:verify-tools && node tools/verify/dist/cli/run.js",

@@ -125,10 +125,10 @@ sequenceDiagram
 
 **Implementation:**
 
-- [ ] Define and document the four-section format with one canonical example.
-- [ ] Write the 4 entries by distilling starter/example patterns; every
+- [x] Define and document the four-section format with one canonical example.
+- [x] Write the 4 entries by distilling starter/example patterns; every
   command in them must be a real current `tn` surface.
-- [ ] Parser returns a typed entry object; malformed entries produce stable
+- [x] Parser returns a typed entry object; malformed entries produce stable
   diagnostics with file/section paths.
 
 **Tests Required:**
@@ -154,12 +154,12 @@ sequenceDiagram
 
 **Implementation:**
 
-- [ ] Apply each entry's `commands` block through the real CLI against a
+- [x] Apply each entry's `commands` block through the real CLI against a
   temp copy of `structured-source-starter`; write `script` files; run
   `tn authoring validate` + build.
-- [ ] Negative test: a fixture entry with an invalid operation fails the
+- [x] Negative test: a fixture entry with an invalid operation fails the
   gate with the entry id and failing command in the report.
-- [ ] Write report to `tools/verify/artifacts/cookbook/verification-report.json`.
+- [x] Write report to `tools/verify/artifacts/cookbook/verification-report.json`.
 
 **Tests Required:**
 | Test File | Test Name | Assertion |
@@ -189,9 +189,9 @@ report plus per-entry temp build logs.
 
 **Implementation:**
 
-- [ ] `list` returns id/goal/category rows; `show` returns the parsed entry.
-- [ ] Unknown id -> `TN_COOKBOOK_UNKNOWN_ID` + nearest match.
-- [ ] Starter AGENTS.md gets a "Worked examples first" section instructing
+- [x] `list` returns id/goal/category rows; `show` returns the parsed entry.
+- [x] Unknown id -> `TN_COOKBOOK_UNKNOWN_ID` + nearest match.
+- [x] Starter AGENTS.md gets a "Worked examples first" section instructing
   agents to check `tn cookbook list` before authoring a new pattern.
 
 **Tests Required:**
@@ -212,11 +212,11 @@ report plus per-entry temp build logs.
 
 **Implementation:**
 
-- [ ] Add entries for: trigger-zone win, fail/retry reset, kinematic hazard,
+- [x] Add entries for: trigger-zone win, fail/retry reset, kinematic hazard,
   physics knockdown, GLB hero import + animation clip, catalog asset search
   + provenance, materials pass, mobile HUD fit, pause UI state, sound cue,
   scale check, lane-runner spawn pattern.
-- [ ] All entries pass `verify:cookbook`.
+- [x] All entries pass `verify:cookbook`.
 
 **Tests Required:** covered by the Phase 2 gate.
 
@@ -232,9 +232,9 @@ checkpoint needed (CLI/docs surface; the executable gate is the proof).
 
 ## 6. Acceptance Criteria
 
-- [ ] 16 validated entries; `verify:cookbook` green and failing correctly on
+- [x] 16 validated entries; `verify:cookbook` green and failing correctly on
   a corrupted fixture.
-- [ ] `tn cookbook list/show --json` works inside a generated project.
-- [ ] Generated starter AGENTS.md points agents at the cookbook first.
-- [ ] `docs/STATUS.md` updated (capability note) per repo rule.
-- [ ] `pnpm check:docs` passes with the new docs linked.
+- [x] `tn cookbook list/show --json` works inside a generated project.
+- [x] Generated starter AGENTS.md points agents at the cookbook first.
+- [x] `docs/STATUS.md` updated (capability note) per repo rule.
+- [x] `pnpm check:docs` passes with the new docs linked.

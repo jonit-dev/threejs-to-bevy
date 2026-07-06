@@ -258,6 +258,28 @@ importers:
 
   packages/ui: {}
 
+  tools/agent-benchmark:
+    dependencies:
+      '@threenative/cli':
+        specifier: workspace:*
+        version: link:../../packages/cli
+      playwright:
+        specifier: ^1.60.0
+        version: 1.60.0
+      pngjs:
+        specifier: ^7.0.0
+        version: 7.0.0
+    devDependencies:
+      '@threenative/verify-tools':
+        specifier: workspace:*
+        version: link:../verify
+      '@types/node':
+        specifier: ^20.19.25
+        version: 20.19.43
+      '@types/pngjs':
+        specifier: ^6.0.5
+        version: 6.0.5
+
   tools/verify:
     devDependencies:
       '@threenative/authoring':

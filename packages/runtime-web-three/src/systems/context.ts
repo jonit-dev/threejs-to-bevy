@@ -298,6 +298,9 @@ export function createSystemContext(
         axis(name) {
           return options.input?.axis(name) ?? 0;
         },
+        getAxis(name) {
+          return options.input?.axis(name) ?? 0;
+        },
         pressed(name) {
           return options.input?.pressed(name) ?? false;
         },
@@ -537,11 +540,7 @@ export function createSystemContext(
         delta: options.delta,
         dt: options.delta,
         elapsed: options.elapsed ?? 0,
-        fixedDelta(deltaOptions = {}) {
-          const fallback = finiteNumber(deltaOptions.fallback ?? options.delta, 0.016);
-          const raw = finiteNumber(options.fixedDelta, finiteNumber(options.delta, fallback));
-          return clamp(raw, finiteNumber(deltaOptions.min, 0), finiteNumber(deltaOptions.max, Number.POSITIVE_INFINITY));
-        },
+        fixedDelta: finiteNumber(options.fixedDelta, finiteNumber(options.delta, 0.016)),
         fixedDt: options.fixedDelta,
         paused: options.paused ?? false,
       },
@@ -814,6 +813,12 @@ function createEntityView(entity: IWorldEntity, commands: IQueuedCommand[]): ISy
     },
     transform(): ISystemTransformFacade {
       return {
+        get position() {
+          return vec3((isRecord(components.Transform) ? components.Transform.position : undefined), [0, 0, 0]);
+        },
+        set position(position) {
+          queueTransformPatch({ position: vec3(position, [0, 0, 0]) });
+        },
         positionOr(fallback) {
           return vec3((isRecord(components.Transform) ? components.Transform.position : undefined), fallback);
         },

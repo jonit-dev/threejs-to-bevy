@@ -5,6 +5,7 @@
   "scripts": {
     "build": "tn build",
     "dev:web": "tn dev --target web",
+    "iterate": "tn iterate --project . --json",
     "playtest": "tn playtest --scenario playtests/rally-throttle.playtest.json --stable-artifacts --json",
     "game:plan": "tn game plan --goal \"racing kit rally checkpoint game\" --project . --json > artifacts/game-production/plan.json",
     "game:improve": "tn game improve --apply-plan artifacts/game-production/plan.json --project . --json",

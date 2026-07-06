@@ -8,6 +8,14 @@
     ".": {
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
+    },
+    "./cookbook": {
+      "types": "./dist/cookbook/parse.d.ts",
+      "default": "./dist/cookbook/parse.js"
+    },
+    "./screenshotMetrics": {
+      "types": "./dist/commands/screenshotMetrics.d.ts",
+      "default": "./dist/commands/screenshotMetrics.js"
     }
   },
   "bin": {

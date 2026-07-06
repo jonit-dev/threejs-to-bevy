@@ -17,6 +17,14 @@ changing repo-wide agent guidance.
 - Finished PRDs must be moved from active planning folders to
   `docs/PRDs/done`.
 
+## Portable API Conventions
+
+- Follow `docs/contracts/script-context-conventions.md` for portable script
+  context naming. Prefer `ctx.input.getAxis("MoveX")`,
+  `entity.transform().position`, and readonly `ctx.time.fixedDelta` in new
+  source, and keep engine policy in source data, runtime defaults, or proof
+  capture code rather than scattered through gameplay scripts.
+
 ## Product Boundary
 
 ThreeNative flow:

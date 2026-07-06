@@ -906,7 +906,7 @@ async function writePassingGameProject(root: string): Promise<void> {
     id: "arena-materials",
     materials: [{ id: "mat.procedural", color: "#ffffff", roughness: 0.5 }],
   }, null, 2)}\n`);
-  await writeFile(join(root, "src/scripts/game.ts"), "export function update(ctx: any) { const dt = ctx.time.fixedDelta({ fallback: 1 / 60 }); const moveProgress = Math.min(1, dt); void moveProgress; }\n");
+  await writeFile(join(root, "src/scripts/game.ts"), "export function update(ctx: any) { const dt = ctx.time.fixedDelta; const moveProgress = Math.min(1, dt); void moveProgress; }\n");
   await writeTinyWav(join(root, "assets/hit.wav"));
   await writeFile(join(root, "artifacts/playtest/player-KeyD.png"), "not-a-real-png");
   await writeFile(join(root, "artifacts/game-production/screenshot.png"), "not-a-real-png");

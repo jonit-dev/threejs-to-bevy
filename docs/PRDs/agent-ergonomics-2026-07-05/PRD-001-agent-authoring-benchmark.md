@@ -135,11 +135,11 @@ sequenceDiagram
 
 **Implementation:**
 
-- [ ] Write protocol with explicit "playable" definition (input moves a
+- [x] Write protocol with explicit "playable" definition (input moves a
   visible actor toward a visible objective; win/fail path reachable).
-- [ ] Write 4 prompts, each naming loop, controls, objective, and a visual
+- [x] Write 4 prompts, each naming loop, controls, objective, and a visual
   bar, identical wording for both conditions.
-- [ ] Define schemas with `schema`/`version` fields per repo convention.
+- [x] Define schemas with `schema`/`version` fields per repo convention.
 
 **Tests Required:**
 | Test File | Test Name | Assertion |
@@ -165,13 +165,13 @@ sequenceDiagram
 
 **Implementation:**
 
-- [ ] Extract metric functions from `gameQaProof.ts` path into
+- [x] Extract metric functions from `gameQaProof.ts` path into
   `screenshotMetrics.ts`; update existing callers (behavior-preserving).
-- [ ] `score` launches the candidate's `dev`/`start` script (or a static
+- [x] `score` launches the candidate's `dev`/`start` script (or a static
   server for plain HTML), captures before/after screenshots around injected
   keys, computes metrics + pixel movement delta, merges `session.json`.
-- [ ] Emit `TN_BENCH_*` diagnostics instead of throwing.
-- [ ] `aggregate` merges run reports and computes per-prompt medians and the
+- [x] Emit `TN_BENCH_*` diagnostics instead of throwing.
+- [x] `aggregate` merges run reports and computes per-prompt medians and the
   2x threshold verdict.
 
 **Tests Required:**
@@ -210,6 +210,9 @@ sequenceDiagram
 **Implementation:**
 
 - [ ] Operator executes 8 sessions per protocol (collector + lane-runner).
+  Status 2026-07-06: blocked on manual fresh-agent sessions. Smoke evidence
+  exists under `tools/verify/artifacts/agent-benchmark/smoke/` and is not
+  pilot data.
 - [ ] Aggregate and write the decision note: which frictions dominated
   (dialect, loop, visuals) based on transcript failure notes.
 
@@ -229,9 +232,10 @@ experiment outcome, not code.
 
 ## 6. Acceptance Criteria
 
-- [ ] Scoring CLI grades both a ThreeNative project and a vanilla fixture
+- [x] Scoring CLI grades both a ThreeNative project and a vanilla fixture
   without code changes per candidate.
-- [ ] Metric extraction is behavior-preserving (existing CLI tests pass).
+- [x] Metric extraction is behavior-preserving (existing CLI tests pass).
 - [ ] Pilot report exists with per-condition medians and an explicit verdict.
-- [ ] `pnpm build`, `pnpm typecheck`, and touched-package tests pass.
-- [ ] No CI/release gate enrollment (explicitly out of scope).
+  Smoke aggregate exists; decisive pilot report still requires real sessions.
+- [x] `pnpm build`, `pnpm typecheck`, and touched-package tests pass.
+- [x] No CI/release gate enrollment (explicitly out of scope).

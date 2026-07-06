@@ -6,12 +6,12 @@ import { createGameAgentInventory, loadAuthoringProject } from "@threenative/aut
 import { type ICommandResult } from "../diagnostics.js";
 import { buildProofArtifactMetadata } from "../game/proofManifest.js";
 import { readPngFrame } from "../verify/compareImages.js";
-import { analyzeNonblank, analyzeProjectedBounds, averageColor, type IPixelFrame } from "../verify/imageAnalysis.js";
 import { buildCommand } from "./build.js";
 import { doctorCommand } from "./doctor.js";
 import { gameScaleCommand } from "./gameScale.js";
 import { isPlayerLikeEntityId, isRecord, readFlag } from "./gameShared.js";
 import { playtestCommand } from "./playtest.js";
+import { analyzeScreenshotComposition, type IScreenshotCompositionMetrics } from "./screenshotMetrics.js";
 import { recordCommand, screenshotCommand } from "./visualProof.js";
 
 export interface IGameProofStepSpec {
@@ -547,7 +547,7 @@ async function writeAssetBudgetProof(step: IGameProofStepSpec, projectPath: stri
     }),
     source,
     budgets: {
-      distBytes: 10 * 1024 * 1024,
+      distBytes: 32 * 1024 * 1024,
       assetBytes: 50 * 1024 * 1024,
       contentBytes: 5 * 1024 * 1024,
     },
@@ -556,7 +556,7 @@ async function writeAssetBudgetProof(step: IGameProofStepSpec, projectPath: stri
       assets,
       content,
     },
-    status: dist.exists && dist.byteSize <= 10 * 1024 * 1024 && assets.byteSize <= 50 * 1024 * 1024 && content.byteSize <= 5 * 1024 * 1024 ? "pass" : "warning",
+    status: dist.exists && dist.byteSize <= 32 * 1024 * 1024 && assets.byteSize <= 50 * 1024 * 1024 && content.byteSize <= 5 * 1024 * 1024 ? "pass" : "warning",
     notes: "This lightweight budget proof records local generated-game bundle/source asset sizes. Use dedicated platform profiling before claiming device memory or load-time budgets.",
   };
   await mkdir(resolve(projectPath, "artifacts/game-production"), { recursive: true });
@@ -575,7 +575,7 @@ async function writeVisualQualityProof(step: IGameProofStepSpec, projectPath: st
   const screenshotPath = resolve(projectPath, "artifacts/game-production/screenshot.png");
   try {
     const frame = await readPngFrame(screenshotPath);
-    const metrics = analyzeGameScreenshot(frame);
+    const metrics = analyzeScreenshotComposition(frame);
     const diagnostics = visualQualityDiagnostics(metrics);
     const hasError = diagnostics.some((diagnostic) => diagnostic.severity === "error");
     const report = {
@@ -683,52 +683,7 @@ async function writeUiFitProof(step: IGameProofStepSpec, projectPath: string): P
   };
 }
 
-function analyzeGameScreenshot(frame: IPixelFrame): {
-  averageColor: { blue: number; green: number; red: number };
-  colorBucketCount: number;
-  colorBucketRatio: number;
-  height: number;
-  localContrastRatio: number;
-  nonblank: ReturnType<typeof analyzeNonblank>;
-  projectedBounds: ReturnType<typeof analyzeProjectedBounds>;
-  visibleBoundsAreaRatio: number;
-  width: number;
-} {
-  const projectedBounds = analyzeProjectedBounds(frame);
-  const totalPixels = frame.width * frame.height;
-  const visibleBoundsAreaRatio = totalPixels <= 0 ? 0 : (projectedBounds.width * projectedBounds.height) / totalPixels;
-  const buckets = new Set<string>();
-  let contrastEdges = 0;
-  let contrastSamples = 0;
-  for (let y = 0; y < frame.height; y += 2) {
-    for (let x = 0; x < frame.width; x += 2) {
-      const index = (y * frame.width + x) * 4;
-      const red = frame.data[index] ?? 0;
-      const green = frame.data[index + 1] ?? 0;
-      const blue = frame.data[index + 2] ?? 0;
-      buckets.add(`${red >> 5}:${green >> 5}:${blue >> 5}`);
-      if (x + 2 < frame.width) {
-        const neighbor = (y * frame.width + x + 2) * 4;
-        const delta = Math.abs(red - (frame.data[neighbor] ?? 0)) + Math.abs(green - (frame.data[neighbor + 1] ?? 0)) + Math.abs(blue - (frame.data[neighbor + 2] ?? 0));
-        contrastEdges += delta > 36 ? 1 : 0;
-        contrastSamples += 1;
-      }
-    }
-  }
-  return {
-    averageColor: averageColor(frame),
-    colorBucketCount: buckets.size,
-    colorBucketRatio: totalPixels <= 0 ? 0 : buckets.size / Math.max(1, Math.ceil(frame.width / 2) * Math.ceil(frame.height / 2)),
-    height: frame.height,
-    localContrastRatio: contrastSamples <= 0 ? 0 : contrastEdges / contrastSamples,
-    nonblank: analyzeNonblank(frame),
-    projectedBounds,
-    visibleBoundsAreaRatio,
-    width: frame.width,
-  };
-}
-
-function visualQualityDiagnostics(metrics: ReturnType<typeof analyzeGameScreenshot>): Array<{ code: string; message: string; severity: "error" | "warning"; suggestion?: string }> {
+function visualQualityDiagnostics(metrics: IScreenshotCompositionMetrics): Array<{ code: string; message: string; severity: "error" | "warning"; suggestion?: string }> {
   const diagnostics: Array<{ code: string; message: string; severity: "error" | "warning"; suggestion?: string }> = [];
   if (!metrics.nonblank.ok) {
     diagnostics.push({

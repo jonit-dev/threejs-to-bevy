@@ -27,6 +27,7 @@ Useful commands:
 ```bash
 pnpm run validate:authoring
 pnpm run build
+pnpm run iterate
 pnpm run game:plan
 pnpm run game:improve
 pnpm run recipe:controller

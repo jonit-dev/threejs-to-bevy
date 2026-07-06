@@ -1,10 +1,10 @@
-import { NumberEx, Vec3 } from "@threenative/script-stdlib";
+import { NumberEx } from "@threenative/script-stdlib";
 
 type ScriptContext = any;
 type Vec3Tuple = [number, number, number];
 
 export function metroSurferHeistSystem(context: ScriptContext): void {
-  const delta = context.time.fixedDelta({ fallback: 1 / 60, max: 1 / 30, min: 0.001 });
+  const delta = context.time.fixedDelta;
   const elapsed = typeof context.time.elapsed === "number" ? context.time.elapsed : 0;
   const entities = context.query();
   const runner = entities.find((entity: any) => entity.id === "runner");
@@ -37,7 +37,7 @@ export function metroSurferHeistSystem(context: ScriptContext): void {
       if (part?.target !== "runner" || !isVec3(part.offset)) continue;
       const bob = Math.sin(elapsed * 12) * 0.025;
       const duckDrop = ducking ? 0.22 : 0;
-      entity.transform().setPosition(Vec3.round([base[0] + part.offset[0], base[1] + part.offset[1] + bob - duckDrop, base[2] + part.offset[2]], 6));
+      entity.transform().setPosition([base[0] + part.offset[0], base[1] + part.offset[1] + bob - duckDrop, base[2] + part.offset[2]]);
     }
   };
   const resetGame = (): void => {
@@ -80,7 +80,7 @@ export function metroSurferHeistSystem(context: ScriptContext): void {
 
   const phase = typeof state.phase === "string" ? state.phase : "playing";
   const stats = runner.get?.("RunnerPlayer") ?? { lane: 1, targetLane: 1, jump: 0, duckTimer: 0, laneCooldown: 0 };
-  const current = runner.transform().positionOr([0, 0.55, runnerZ]);
+  const current = runner.transform().position;
   if (phase !== "playing") {
     syncParts(current, false);
     if (actionPressed("retry") || actionPressed("jump")) resetGame();
@@ -89,7 +89,7 @@ export function metroSurferHeistSystem(context: ScriptContext): void {
 
   let lane = Number(stats.targetLane ?? stats.lane ?? 1);
   let laneCooldown = Math.max(0, Number(stats.laneCooldown ?? 0) - delta);
-  const moveAxis = context.input.axis1("MoveX", { negative: "move-left", positive: "move-right" });
+  const moveAxis = context.input.getAxis("MoveX");
   if (laneCooldown <= 0 && (moveAxis < -0.2 || actionPressed("move-left"))) {
     lane = NumberEx.clamp(lane - 1, 0, 2);
     laneCooldown = 0.16;
@@ -106,11 +106,11 @@ export function metroSurferHeistSystem(context: ScriptContext): void {
   const ducking = duckTimer > 0;
   const baseY = ducking ? 0.42 : 0.55;
   const targetX = laneX(lane);
-  const next: Vec3Tuple = Vec3.round([
+  const next: Vec3Tuple = [
     current[0] + (targetX - current[0]) * Math.min(1, delta * 12),
     baseY + jumpArc,
     runnerZ
-  ], 6);
+  ];
   runner.transform().setPosition(next);
   syncParts(next, ducking);
 
@@ -124,7 +124,7 @@ export function metroSurferHeistSystem(context: ScriptContext): void {
   for (const entity of entities) {
     const coin = entity.get?.("Coin");
     if (coin === undefined) continue;
-    const currentCoin = entity.transform().positionOr([laneX(Number(coin.lane ?? 1)), 0.58, Number(coin.z ?? -3)]);
+    const currentCoin = entity.transform().position;
     const previousZ = currentCoin[2];
     let z = previousZ + speed * delta;
     let laneForCoin = Number(coin.lane ?? 1);
@@ -134,7 +134,7 @@ export function metroSurferHeistSystem(context: ScriptContext): void {
     }
     const bob = Math.sin(elapsed * 5.5 + Number(coin.phase ?? 0)) * 0.06;
     const coinPosition: Vec3Tuple = [laneX(laneForCoin), 0.58 + bob, z];
-    entity.transform().setPosition(Vec3.round(coinPosition, 6));
+    entity.transform().setPosition(coinPosition);
     entity.patch?.("Coin", { ...coin, lane: laneForCoin, z });
     const sameLane = Math.abs(next[0] - coinPosition[0]) < 0.58;
     const crossedRunner = previousZ <= runnerZ && z >= runnerZ;
@@ -155,13 +155,13 @@ export function metroSurferHeistSystem(context: ScriptContext): void {
     if (!isRecord(hazard)) continue;
     const height = hazard.kind === "gate" ? 1.05 : hazard.kind === "barrier" ? 0.37 : 0.92;
     let hazardLane = Number(hazard.lane ?? 1);
-    let z = Number(hazard.z ?? entity.transform().positionOr([0, height, -5])[2]) + speed * delta;
+    let z = Number(hazard.z ?? entity.transform().position[2] ?? -5) + speed * delta;
     if (z > recycleZ) {
       hazardLane = (hazardLane + 1 + Math.floor(previousDistance / 35)) % 3;
       z = farZ - 2.5 - ((previousDistance / 20) % 4);
     }
     const position: Vec3Tuple = [laneX(hazardLane), height, z];
-    entity.transform().setPosition(Vec3.round(position, 6));
+    entity.transform().setPosition(position);
     entity.patch?.("RunnerHazard", { ...hazard, lane: hazardLane, z });
     const laneOverlap = Math.abs(next[0] - position[0]) < 0.66;
     const zOverlap = Math.abs(next[2] - position[2]) < (hazard.kind === "train" ? 0.95 : 0.58);

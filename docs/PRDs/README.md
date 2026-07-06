@@ -14,7 +14,7 @@ through ThreeNative at reasonable token cost, then fix the measured
 frictions. Execution order matters; PRD-000 lands first, then PRD-001 gates
 the rest.
 
-- [Convention Alignment](agent-ergonomics-2026-07-05/PRD-000-convention-alignment.md):
+- [Convention Alignment](done/agent-ergonomics-2026-07-05/PRD-000-convention-alignment.md):
   convention-first design rule plus a KISS pass on the script context —
   source-authored axis mapping behind `getAxis`, `transform.position`
   property access, engine-owned `fixedDelta` clamping, proof-time rounding,
@@ -24,10 +24,10 @@ the rest.
   neutral scoring harness and run protocol measuring tokens-to-playable for
   identical game prompts under vanilla Three.js vs ThreeNative; produces the
   kill/continue verdict.
-- [Authoring Cookbook](agent-ergonomics-2026-07-05/PRD-002-authoring-cookbook.md):
-  16 CI-validated, pattern-sized worked examples exposed via `tn cookbook`
+- [Authoring Cookbook](done/agent-ergonomics-2026-07-05/PRD-002-authoring-cookbook.md):
+  18 CI-validated, pattern-sized worked examples exposed via `tn cookbook`
   and indexed in generated starter agent instructions.
-- [Single-Command Iteration Loop](agent-ergonomics-2026-07-05/PRD-003-single-command-iteration-loop.md):
+- [Single-Command Iteration Loop](done/agent-ergonomics-2026-07-05/PRD-003-single-command-iteration-loop.md):
   `tn iterate` collapses validate/build/screenshot/playtest into one JSON
   response with guaranteed preview teardown.
 - [Prescriptive Diagnostics](agent-ergonomics-2026-07-05/PRD-004-prescriptive-diagnostics.md):

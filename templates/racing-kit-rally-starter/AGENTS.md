@@ -22,6 +22,13 @@ Rules for Racing Kit Rally starter projects.
   `artifacts/game-production/plan.json` with the work. Use
   `pnpm run game:improve` only for bounded recipe steps from that complete
   plan.
+- Use `pnpm run iterate` as the default inner repair loop after source,
+  script, gameplay, or visual changes. It writes fast-loop artifacts under
+  `artifacts/iterate/latest/`; keep `game:qa` and desktop/native playtests for
+  completion evidence.
+- In the ThreeNative repo, if you change a reusable authoring, racing,
+  asset, proof, or CLI workflow, update the matching cookbook entry or add a
+  new one, then run `pnpm verify:cookbook`.
 - Keep `threenative.config.json` production metadata current: playable loop,
   canonical controls, checkpoint objective, retry path, and proof commands.
 - Keep generated games visually polished and responsive by default. A finished
@@ -50,6 +57,7 @@ production gates.
 ```bash
 pnpm run validate:authoring
 pnpm run build
+pnpm run iterate
 tn playtest --project . --scenario playtests/<name>.playtest.json --stable-artifacts --json
 pnpm run playtest
 pnpm run game:score

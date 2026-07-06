@@ -221,9 +221,10 @@ function evaluateVisibilityAssertion(
   viewport: { height: number; width: number },
   runtimeDiagnosticsValue: unknown,
 ): { assertion: IPlaytestAssertionResult; diagnostic?: IPlaytestDiagnostic } {
-  const rendered = renderedEntity(runtimeDiagnosticsValue, entity);
-  const supportsProjectedBounds = renderedEntitiesAreReported(runtimeDiagnosticsValue);
-  if (!supportsProjectedBounds && hasNativeReadinessSamples(runtimeDiagnosticsValue)) {
+  const diagnosticsSnapshot = runtimeDiagnosticsSnapshot(runtimeDiagnosticsValue);
+  const rendered = renderedEntity(diagnosticsSnapshot, entity);
+  const supportsProjectedBounds = renderedEntitiesAreReported(diagnosticsSnapshot);
+  if (!supportsProjectedBounds && hasNativeReadinessSamples(diagnosticsSnapshot)) {
     return {
       assertion: {
         details: {
@@ -315,12 +316,23 @@ function projectedOffscreenRatio(min: [number, number], max: [number, number]): 
 }
 
 function runtimeDiagnostics(value: unknown): unknown[] {
-  if (!isRecord(value)) {
+  const snapshot = runtimeDiagnosticsSnapshot(value);
+  if (snapshot !== value) {
+    return runtimeDiagnostics(snapshot);
+  }
+  if (!isRecord(snapshot)) {
     return [];
   }
-  const recentRuntimeErrors = Array.isArray(value.recentRuntimeErrors) ? value.recentRuntimeErrors : [];
-  const resourceFailures = isRecord(value.assets) && Array.isArray(value.assets.resourceFailures) ? value.assets.resourceFailures : [];
+  const recentRuntimeErrors = Array.isArray(snapshot.recentRuntimeErrors) ? snapshot.recentRuntimeErrors : [];
+  const resourceFailures = isRecord(snapshot.assets) && Array.isArray(snapshot.assets.resourceFailures) ? snapshot.assets.resourceFailures : [];
   return [...recentRuntimeErrors, ...resourceFailures];
+}
+
+function runtimeDiagnosticsSnapshot(value: unknown): unknown {
+  if (isRecord(value) && isRecord(value.diagnostics)) {
+    return value.diagnostics;
+  }
+  return value;
 }
 
 function consoleErrors(entries: Array<{ type: string }>): Array<{ type: string }> {
