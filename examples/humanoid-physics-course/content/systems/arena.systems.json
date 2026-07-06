@@ -17,7 +17,8 @@
       ],
       "resourceReads": [
         "GameState",
-        "tn.thirdPerson.player",
+        "tn.cameraOrbitRig.camera.main",
+        "tn.characterRig.player",
         "tn.triggerCooldown.hazard.sweeper.01",
         "tn.triggerCooldown.hazard.sweeper.02",
         "tn.triggerEx.checkpoint.01",
@@ -28,7 +29,8 @@
       ],
       "resourceWrites": [
         "GameState",
-        "tn.thirdPerson.player",
+        "tn.cameraOrbitRig.camera.main",
+        "tn.characterRig.player",
         "tn.triggerCooldown.hazard.sweeper.01",
         "tn.triggerCooldown.hazard.sweeper.02",
         "tn.triggerEx.checkpoint.01",
@@ -40,34 +42,12 @@
       "services": [
         "character.move",
         "animation.play",
+        "physics.raycast",
         "physics.sensor"
       ],
       "script": {
         "module": "src/scripts/player.ts",
         "export": "updateHumanoidCourse"
-      }
-    },
-    {
-      "id": "third-person-camera",
-      "schedule": "postUpdate",
-      "reads": [
-        "CoursePlayer"
-      ],
-      "writes": [
-        "Transform"
-      ],
-      "resourceReads": [
-        "tn.thirdPerson.player"
-      ],
-      "resourceWrites": [
-        "tn.thirdPerson.player"
-      ],
-      "services": [
-        "physics.raycast"
-      ],
-      "script": {
-        "module": "src/scripts/player.ts",
-        "export": "updateThirdPersonCamera"
       }
     }
   ]

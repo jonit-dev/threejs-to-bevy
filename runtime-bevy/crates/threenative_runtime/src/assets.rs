@@ -257,7 +257,9 @@ fn trace_texture_delivery(manifest: &AssetsManifest) -> Vec<NativeTextureDeliver
     let mut traces: Vec<_> = manifest
         .assets
         .iter()
-        .filter(|asset| asset.kind == "texture" && (asset.variants.is_some() || asset.fallback.is_some()))
+        .filter(|asset| {
+            asset.kind == "texture" && (asset.variants.is_some() || asset.fallback.is_some())
+        })
         .filter_map(|asset| {
             let path = asset.path.as_ref()?;
             let mut variants: Vec<_> = asset
@@ -320,11 +322,14 @@ fn trace_gltf_scenes(environment_scene: Option<&EnvironmentSceneIr>) -> Vec<Nati
                 .lod
                 .iter()
                 .filter_map(|level| {
-                    level.impostor.as_ref().map(|impostor| NativeLodImpostorTrace {
-                        asset: level.asset.clone(),
-                        material: impostor.material.clone(),
-                        mode: impostor.mode.clone(),
-                    })
+                    level
+                        .impostor
+                        .as_ref()
+                        .map(|impostor| NativeLodImpostorTrace {
+                            asset: level.asset.clone(),
+                            material: impostor.material.clone(),
+                            mode: impostor.mode.clone(),
+                        })
                 })
                 .collect();
             impostors.sort_by(|left, right| left.asset.cmp(&right.asset));

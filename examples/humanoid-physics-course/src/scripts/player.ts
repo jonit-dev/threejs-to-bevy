@@ -1,138 +1,97 @@
-import { CameraMath, NumberEx, Quat, TriggerEx, Vec3 } from "@threenative/script-stdlib";
+import { CameraRig, CharacterRig, RespawnEx, TriggerEx } from "@threenative/script-stdlib";
 
 type ScriptContext = any;
 type Vec3Tuple = [number, number, number];
 
-// Default third-person character movement, written against the engine
-// primitives directly: camera-relative input axes -> character.move collision
-// trace -> Transform pose. The camera orbit is driven by updateThirdPersonCamera.
 export function updateHumanoidCourse(context: ScriptContext): void {
   const WALK_SPEED = 2.0;
   const SPRINT_SPEED = 3.8;
   const ACCELERATION = 12;
   const DECELERATION = 18;
   const TURN_SPEED = 10;
-  const RUN_CLIP_THRESHOLD = 2.6;
   const HIT_COOLDOWN = 0.8;
   const START_POSITION: Vec3Tuple = [0, 0.02, 5.0];
   const BOUNDS_MIN: Vec3Tuple = [-4.8, Number.NEGATIVE_INFINITY, -6.5];
   const BOUNDS_MAX: Vec3Tuple = [4.8, Number.POSITIVE_INFINITY, 6.4];
-
-  const isRecord = (value: unknown): value is Record<string, unknown> => typeof value === "object" && value !== null;
-  const stepToward = (current: number, target: number, maxDelta: number): number =>
-    current < target ? Math.min(target, current + maxDelta) : Math.max(target, current - maxDelta);
-  const turnToward = (current: number, target: number, maxDelta: number): number => {
-    const twoPi = Math.PI * 2;
-    let delta = (target - current) % twoPi;
-    if (delta > Math.PI) {
-      delta -= twoPi;
-    }
-    if (delta < -Math.PI) {
-      delta += twoPi;
-    }
-    return current + NumberEx.clamp(delta, -maxDelta, maxDelta);
-  };
-  const soldierRotation = (yaw: number): [number, number, number, number] => Quat.fromYaw(yaw + Math.PI);
-
+  const GAME_STATE_START = { checkpoint: 0, checkpointTotal: 2, elapsed: 0, hits: 0, status: "Course" };
   const entities = context.query();
   const player = entities.find((entity: any) => entity.id === "player");
   if (player === undefined) {
     return;
   }
 
+  const isRecord = (value: unknown): value is Record<string, unknown> => typeof value === "object" && value !== null;
   const elapsed = typeof context.time?.elapsed === "number" ? context.time.elapsed : 0;
-  const dt = Math.max(0, context.time?.fixedDelta?.({ fallback: 1 / 60 }) ?? 1 / 60);
-  const move = context.state("tn.thirdPerson.player", { cameraYaw: 0, speed: 0, yaw: Math.PI });
-  if (!Number.isFinite(move.cameraYaw)) {
-    move.cameraYaw = 0;
-  }
-  if (!Number.isFinite(move.yaw)) {
-    move.yaw = Math.PI;
-  }
   const gameState = context.resources?.get?.("GameState");
   const state = isRecord(gameState) ? gameState : {};
   const stats = player.get?.("CoursePlayer") ?? { checkpoint: 0, finished: false, hits: 0, lastHitAt: -10 };
 
-  const playClip = (clip: string, sourceClip: string, speed: number): void => {
-    const currentClip = typeof move.clip === "string" ? move.clip : "";
-    const currentSourceClip = typeof move.sourceClip === "string" ? move.sourceClip : "";
-    const currentSpeed = typeof move.clipSpeed === "number" ? move.clipSpeed : 0;
-    if (currentClip === clip && currentSourceClip === sourceClip && Math.abs(currentSpeed - speed) < 0.08) {
-      return;
-    }
-    move.clip = clip;
-    move.sourceClip = sourceClip;
-    move.clipSpeed = speed;
-    context.animation?.play?.(player, clip, { blendSeconds: 0.22, loop: true, sourceClip, speed });
-  };
   const reset = (): void => {
-    player.transform?.().setPose(START_POSITION, soldierRotation(Math.PI));
-    player.patch?.("CoursePlayer", { checkpoint: 0, finished: false, hits: 0, lastHitAt: -10 });
-    move.cameraYaw = 0;
-    move.speed = 0;
-    move.yaw = Math.PI;
-    context.resources?.set?.("GameState", { checkpoint: 0, checkpointTotal: 2, elapsed: 0, hits: 0, status: "Course" });
-    playClip("idle", "Idle", 1);
+    RespawnEx.reset(context, player, {
+      components: { CoursePlayer: { checkpoint: 0, finished: false, hits: 0, lastHitAt: -10 } },
+      position: START_POSITION,
+      resources: { GameState: GAME_STATE_START },
+      stateKeys: ["tn.cameraOrbitRig.camera.main", "tn.characterRig.player"],
+      yaw: Math.PI,
+    });
   };
 
   if (context.input?.pressed?.("retry") || context.input?.action?.("retry")) {
     reset();
     return;
   }
+
+  const camera = CameraRig.orbitThirdPerson(context, {
+    cameraId: "camera.main",
+    collision: {
+      ignore: ["player"],
+      mask: ["world", "pushable"],
+      padding: 0.28,
+    },
+    distance: 5.2,
+    input: {
+      lookX: "LookX",
+      lookY: "LookY",
+      maxPitchStep: 0.045,
+      maxYawStep: 0.07,
+      pitchSensitivity: 0.0012,
+      yawSensitivity: 0.002,
+    },
+    lookHeight: 1.45,
+    minDistance: 1.35,
+    pitch: {
+      default: 0.28,
+      max: 0.62,
+      min: 0.12,
+    },
+    rounding: {
+      positionDigits: 5,
+      rotationDigits: 5,
+    },
+    target: player,
+  });
+
   if (stats.finished === true) {
-    playClip("idle", "Idle", 1);
     return;
   }
 
-  // --- movement ---
-  const inputX = context.input?.axis?.("MoveX") ?? 0;
-  const inputZ = context.input?.axis?.("MoveZ") ?? 0;
-  const cameraYaw = Number.isFinite(move.cameraYaw) ? move.cameraYaw : 0;
-  const forwardX = -Math.sin(cameraYaw);
-  const forwardZ = -Math.cos(cameraYaw);
-  const rightX = Math.cos(cameraYaw);
-  const rightZ = -Math.sin(cameraYaw);
-  let dirX = rightX * inputX + forwardX * inputZ;
-  let dirZ = rightZ * inputX + forwardZ * inputZ;
-  const magnitude = Math.hypot(dirX, dirZ);
-  const hasInput = magnitude > 0.001;
-  if (hasInput) {
-    dirX /= magnitude;
-    dirZ /= magnitude;
-  }
+  CharacterRig.update(context, player, {
+    acceleration: ACCELERATION,
+    bounds: { max: BOUNDS_MAX, min: BOUNDS_MIN },
+    cameraYaw: camera.yaw,
+    clips: {
+      idle: { clip: "idle", sourceClip: "Idle" },
+      run: { clip: "run", referenceSpeed: SPRINT_SPEED, sourceClip: "Run" },
+      walk: { clip: "walk", referenceSpeed: WALK_SPEED, sourceClip: "Walk" },
+    },
+    deceleration: DECELERATION,
+    forwardAxis: "-z",
+    maxTurnSpeed: TURN_SPEED,
+    sprintAction: "sprint",
+    sprintSpeed: SPRINT_SPEED,
+    walkSpeed: WALK_SPEED,
+  });
 
-  const sprinting = hasInput && context.input?.action?.("sprint") === true;
-  const targetSpeed = hasInput ? (sprinting ? SPRINT_SPEED : WALK_SPEED) : 0;
-  const rate = targetSpeed > move.speed ? ACCELERATION : DECELERATION;
-  move.speed = stepToward(move.speed, targetSpeed, rate * dt);
-  if (hasInput) {
-    move.yaw = turnToward(move.yaw, Math.atan2(dirX, dirZ), TURN_SPEED * dt);
-  }
-
-  const moving = move.speed > 0.001;
-  if (moving) {
-    const moveX = Math.sin(move.yaw);
-    const moveZ = Math.cos(move.yaw);
-    const trace = context.character?.move?.(player, { direction: [moveX, moveZ], fixedDelta: dt, speed: move.speed });
-    const current = player.transform?.().positionOr(START_POSITION) ?? START_POSITION;
-    const resolved: Vec3Tuple = Array.isArray(trace?.resolved) ? (trace.resolved as Vec3Tuple) : (current as Vec3Tuple);
-    const position: Vec3Tuple = [
-      NumberEx.clamp(resolved[0], BOUNDS_MIN[0], BOUNDS_MAX[0]),
-      NumberEx.clamp(resolved[1], BOUNDS_MIN[1], BOUNDS_MAX[1]),
-      NumberEx.clamp(resolved[2], BOUNDS_MIN[2], BOUNDS_MAX[2]),
-    ];
-    player.transform?.().setPose(position, soldierRotation(move.yaw));
-  }
-
-  const running = move.speed > RUN_CLIP_THRESHOLD;
-  if (moving) {
-    const referenceSpeed = running ? SPRINT_SPEED : WALK_SPEED;
-    playClip(running ? "run" : "walk", running ? "Run" : "Walk", NumberEx.clamp(move.speed / referenceSpeed, 0.7, 1.35));
-  } else {
-    playClip("idle", "Idle", 1);
-  }
-
-  // --- course progress ---
   let checkpoint = Number(stats.checkpoint ?? 0);
   let hits = Number(stats.hits ?? 0);
   let lastHitAt = Number(stats.lastHitAt ?? -10);
@@ -159,84 +118,4 @@ export function updateHumanoidCourse(context: ScriptContext): void {
 
   player.patch?.("CoursePlayer", { checkpoint, finished, hits, lastHitAt });
   context.resources?.set?.("GameState", { ...state, checkpoint, checkpointTotal: 2, elapsed, hits, status });
-}
-
-export function updateThirdPersonCamera(context: ScriptContext): void {
-  const CAMERA_DISTANCE = 5.2;
-  const MIN_CAMERA_DISTANCE = 1.35;
-  const CAMERA_COLLISION_PADDING = 0.28;
-  const LOOK_HEIGHT = 1.45;
-  const DEFAULT_PITCH = 0.28;
-  const MIN_PITCH = 0.12;
-  const MAX_PITCH = 0.62;
-  const LOOK_SENSITIVITY = 0.002;
-  const MAX_LOOK_STEP = 0.07;
-  const PITCH_SENSITIVITY = 0.0012;
-  const MAX_PITCH_STEP = 0.045;
-  const ROTATION_ROUNDING = 5;
-  const POSITION_ROUNDING = 5;
-
-  const normalizeVec3 = (value: Vec3Tuple): Vec3Tuple => {
-    const length = Math.hypot(value[0], value[1], value[2]);
-    return length > 0.000001 ? [value[0] / length, value[1] / length, value[2] / length] : [0, 0, 1];
-  };
-  const roundVec3 = (value: Vec3Tuple, digits: number): Vec3Tuple => [
-    NumberEx.round(value[0], digits),
-    NumberEx.round(value[1], digits),
-    NumberEx.round(value[2], digits),
-  ];
-  const roundQuat = (value: [number, number, number, number], digits: number): [number, number, number, number] => [
-    NumberEx.round(value[0], digits),
-    NumberEx.round(value[1], digits),
-    NumberEx.round(value[2], digits),
-    NumberEx.round(value[3], digits),
-  ];
-
-  const entities = context.query();
-  const player = entities.find((entity: any) => entity.id === "player");
-  const camera = entities.find((entity: any) => entity.id === "camera.main");
-  if (player === undefined || camera === undefined) {
-    return;
-  }
-
-  const move = context.state("tn.thirdPerson.player", { cameraPitch: DEFAULT_PITCH, cameraYaw: 0, speed: 0, yaw: Math.PI });
-  if (!Number.isFinite(move.cameraYaw)) {
-    move.cameraYaw = 0;
-  }
-  if (!Number.isFinite(move.cameraPitch)) {
-    move.cameraPitch = DEFAULT_PITCH;
-  }
-  const lookX = NumberEx.clamp(context.input?.axis?.("LookX") ?? 0, -36, 36);
-  const lookY = NumberEx.clamp(context.input?.axis?.("LookY") ?? 0, -36, 36);
-  move.cameraYaw = NumberEx.repeat(move.cameraYaw - NumberEx.clamp(lookX * LOOK_SENSITIVITY, -MAX_LOOK_STEP, MAX_LOOK_STEP), Math.PI * 2);
-  move.cameraPitch = NumberEx.clamp(move.cameraPitch - NumberEx.clamp(lookY * PITCH_SENSITIVITY, -MAX_PITCH_STEP, MAX_PITCH_STEP), MIN_PITCH, MAX_PITCH);
-
-  const playerPosition = player.transform?.().positionOr([0, 0.02, 5.0]) ?? [0, 0.02, 5.0];
-  const target = Vec3.add(playerPosition, [0, LOOK_HEIGHT, 0]);
-  const pose = CameraMath.orbitPose({
-    distance: CAMERA_DISTANCE,
-    pitch: move.cameraPitch,
-    target,
-    yaw: move.cameraYaw,
-  });
-  const desired = pose.position as Vec3Tuple;
-  const toCamera = normalizeVec3([desired[0] - target[0], desired[1] - target[1], desired[2] - target[2]]);
-  const ray = context.physics?.raycast?.({
-    direction: toCamera,
-    ignore: ["player"],
-    mask: ["world", "pushable"],
-    maxDistance: CAMERA_DISTANCE,
-    origin: target,
-  });
-  const collisionDistance = ray?.hit === true ? Math.max(MIN_CAMERA_DISTANCE, Number(ray.distance) - CAMERA_COLLISION_PADDING) : CAMERA_DISTANCE;
-  const cameraDistance = Number.isFinite(collisionDistance) ? collisionDistance : CAMERA_DISTANCE;
-  const collisionResolved: Vec3Tuple = [
-    target[0] + toCamera[0] * cameraDistance,
-    target[1] + toCamera[1] * cameraDistance,
-    target[2] + toCamera[2] * cameraDistance,
-  ];
-
-  const resolvedPosition: Vec3Tuple = roundVec3(collisionResolved, POSITION_ROUNDING);
-  const resolvedPose = CameraMath.lookAtPose(resolvedPosition, target);
-  camera.transform?.().setPose(resolvedPosition, roundQuat(resolvedPose.rotation, ROTATION_ROUNDING));
 }

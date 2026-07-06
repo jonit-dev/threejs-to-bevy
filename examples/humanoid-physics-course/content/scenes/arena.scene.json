@@ -198,9 +198,7 @@
         "CoursePlayer": {
           "checkpoint": 0,
           "finished": false,
-          "hits": 0,
-          "speed": 3.1,
-          "yaw": 0
+          "hits": 0
         },
         "MeshRenderer": {
           "castShadow": true,

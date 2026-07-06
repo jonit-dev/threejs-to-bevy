@@ -14,6 +14,13 @@ Use `CameraRig.thirdPerson(context, options)` for a smoothed follow camera. It
 stores follow/yaw state in `context.state("tn.cameraRig." + cameraId, ...)` and
 sets the camera pose directly.
 
+Use `CameraRig.orbitThirdPerson(context, options)` for a player-controlled
+orbit camera. It reads configurable `LookX`/`LookY` axes, stores yaw/pitch state
+in `context.state("tn.cameraOrbitRig." + cameraId, ...)`, clamps pitch and
+per-frame look steps, raycasts from the look target to the desired camera boom
+when collision options are provided, sets the camera pose, and returns the
+movement yaw to feed into `CharacterRig.update`.
+
 Use `TriggerEx.entered(context, sensor, options)` for persistent trigger
 overlaps that should fire once per entrant. It consumes
 `context.physics.sensor(...)`, stores the active occupant set in
@@ -27,7 +34,9 @@ the derivative velocity for runtime collision response.
 
 Use `RespawnEx.reset(context, entity, options)` for checkpoint/fail-state reset
 logic. It restores pose, patches requested components, and updates named
-resources through `context.resources.set(...)`.
+resources through `context.resources.set(...)`. Pass `stateKeys` to reset named
+rig state resources such as `tn.cameraOrbitRig.camera.main` and
+`tn.characterRig.player` during retry/fail flows.
 
 These helpers are mirrored in `SCRIPT_STDLIB_BUNDLE_SOURCE`; package tests
 assert typed/bundled parity.

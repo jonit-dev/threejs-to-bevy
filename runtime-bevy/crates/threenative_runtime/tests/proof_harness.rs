@@ -1,9 +1,11 @@
 use std::{fs, time::SystemTime};
 
 use bevy::{app::PreUpdate, input::ButtonInput, prelude::*};
+use threenative_components::ThreeNativeId;
 use threenative_runtime::proof_harness::{
     NativeProofHarnessCommand, NativeProofHarnessCommandStream, NativeProofHarnessState,
     apply_native_proof_harness_commands, load_native_proof_harness_stream,
+    native_proof_harness_transform_samples,
 };
 
 #[test]
@@ -99,8 +101,20 @@ fn should_write_readiness_json_matching_schema() {
     assert_eq!(payload["ok"], true);
     assert_eq!(payload["tick"], 0);
     assert_eq!(payload["diagnostics"], serde_json::json!([]));
+    assert!(payload["transforms"].as_array().is_some());
 
     fs::remove_dir_all(root).expect("temp proof harness dir should be removed");
+}
+
+#[test]
+fn should_snapshot_transform_positions_for_readiness() {
+    let player = ThreeNativeId("player".to_owned());
+    let player_transform = Transform::from_xyz(1.0, 2.0, 3.0);
+    let samples = native_proof_harness_transform_samples([(&player, &player_transform)]);
+
+    assert_eq!(samples.len(), 1);
+    assert_eq!(samples[0].entity, "player");
+    assert_eq!(samples[0].position, [1.0, 2.0, 3.0]);
 }
 
 fn temp_dir(name: &str) -> std::path::PathBuf {

@@ -78,10 +78,11 @@ const sampleExpression = `({
     const calls = [];
     const player = { id: "player", pose: { position: [0, 1, 0], rotation: [0, 0, 0, 1] }, transform() { return { positionOr: () => this.pose.position, yawOr: () => Quat.yaw(this.pose.rotation), setPose: (position, rotation) => { this.pose = { position, rotation }; } }; } };
     const camera = { id: "camera", pose: { position: [0, 3, -6], rotation: [0, 0, 0, 1] }, transform() { return { positionOr: () => this.pose.position, yawOr: () => Quat.yaw(this.pose.rotation), setPose: (position, rotation) => { this.pose = { position, rotation }; } }; } };
-    const context = { animation: { play: (...args) => calls.push(args) }, character: { move: (entity, options) => ({ resolved: Vec3.add(player.pose.position, Vec3.scale([options.direction[0], 0, options.direction[1]], options.speed * options.fixedDelta)) }) }, entity: (id) => id === "player" ? player : camera, input: { action: (name) => name === "Sprint", axis: (name) => name === "MoveZ" ? 1 : 0 }, state: (key, defaults) => states[key] ??= { ...defaults }, time: { fixedDt: 0.1, delta: 0.1 } };
+    const context = { animation: { play: (...args) => calls.push(args) }, character: { move: (entity, options) => ({ resolved: Vec3.add(player.pose.position, Vec3.scale([options.direction[0], 0, options.direction[1]], options.speed * options.fixedDelta)) }) }, entity: (id) => id === "player" ? player : camera, input: { action: (name) => name === "Sprint", axis: (name) => name === "MoveZ" ? 1 : name === "LookX" ? 12 : name === "LookY" ? -8 : 0 }, physics: { raycast: () => ({ hit: true, distance: 3.5 }) }, state: (key, defaults) => states[key] ??= { ...defaults }, time: { fixedDt: 0.1, delta: 0.1 } };
     const character = CharacterRig.update(context, "player", { clips: { run: { clip: "run", referenceSpeed: 5.5 }, walk: "walk" }, sprintAction: "Sprint" });
     const follow = CameraRig.thirdPerson(context, { cameraId: "camera", sprinting: character.sprinting, target: "player", yaw: character.yaw });
-    return { animation: calls.at(-1)?.[1], camera: Vec3.round(camera.pose.position, 3), character: { moving: character.moving, position: Vec3.round(character.position, 3), speed: NumberEx.round(character.speed, 3), sprinting: character.sprinting, yaw: NumberEx.round(character.yaw, 3) }, follow: NumberEx.round(follow.yaw, 3) };
+    const orbit = CameraRig.orbitThirdPerson(context, { cameraId: "camera", collision: { ignore: ["player"], mask: ["world"], padding: 0.25 }, distance: 5, input: { maxPitchStep: 0.04, maxYawStep: 0.05 }, lookHeight: 1.25, minDistance: 1.25, pitch: { default: 0.2, min: 0.1, max: 0.5 }, rounding: { positionDigits: 3, rotationDigits: 3 }, target: "player" });
+    return { animation: calls.at(-1)?.[1], camera: Vec3.round(camera.pose.position, 3), character: { moving: character.moving, position: Vec3.round(character.position, 3), speed: NumberEx.round(character.speed, 3), sprinting: character.sprinting, yaw: NumberEx.round(character.yaw, 3) }, follow: NumberEx.round(follow.yaw, 3), orbit: { collided: orbit.collided, distance: NumberEx.round(orbit.distance, 3), pitch: NumberEx.round(orbit.pitch, 3), position: Vec3.round(orbit.position, 3), yaw: NumberEx.round(orbit.yaw, 3) } };
   })(),
   Phase3Rig: (() => {
     const states = {};
@@ -652,12 +653,23 @@ function exportedSamples(): unknown {
 }
 
 function rigSample(): unknown {
-  const context = createRigContext({ moveZ: 1, sprint: true });
+  const context = createRigContext({ lookX: 12, lookY: -8, moveZ: 1, sprint: true });
   const character = CharacterRig.update(context, "player", {
     clips: { run: { clip: "run", referenceSpeed: 5.5 }, walk: "walk" },
     sprintAction: "Sprint",
   });
   const follow = CameraRig.thirdPerson(context, { cameraId: "camera", sprinting: character.sprinting, target: "player", yaw: character.yaw });
+  const orbit = CameraRig.orbitThirdPerson(context, {
+    cameraId: "camera",
+    collision: { ignore: ["player"], mask: ["world"], padding: 0.25 },
+    distance: 5,
+    input: { maxPitchStep: 0.04, maxYawStep: 0.05 },
+    lookHeight: 1.25,
+    minDistance: 1.25,
+    pitch: { default: 0.2, min: 0.1, max: 0.5 },
+    rounding: { positionDigits: 3, rotationDigits: 3 },
+    target: "player",
+  });
   return {
     animation: context.animations.at(-1)?.clip,
     camera: Vec3.round(context.entities.camera!.pose.position, 3),
@@ -669,6 +681,13 @@ function rigSample(): unknown {
       yaw: NumberEx.round(character.yaw, 3),
     },
     follow: NumberEx.round(follow.yaw, 3),
+    orbit: {
+      collided: orbit.collided,
+      distance: NumberEx.round(orbit.distance, 3),
+      pitch: NumberEx.round(orbit.pitch, 3),
+      position: Vec3.round(orbit.position, 3),
+      yaw: NumberEx.round(orbit.yaw, 3),
+    },
   };
 }
 
@@ -694,14 +713,17 @@ function phase3RigSample(): unknown {
   };
 }
 
-function createRigContext(input: { moveX?: number; moveZ?: number; sprint?: boolean } = {}): {
+function createRigContext(input: { lookX?: number; lookY?: number; moveX?: number; moveZ?: number; sprint?: boolean } = {}): {
   animation: { play(entity: unknown, clip: string, options: Record<string, unknown>): void };
   animations: Array<{ clip: string; entity: unknown; options: Record<string, unknown> }>;
   character: { move(entity: unknown, options: { direction: [number, number]; fixedDelta: number; speed: number }): { resolved: Vec3Tuple } };
   entities: Record<string, ReturnType<typeof createRigEntity>>;
   entity(id: string): ReturnType<typeof createRigEntity> | undefined;
   input: { action(name: string): boolean; axis(name: string): number };
-  physics: { sensor(options?: { phases?: Array<"enter" | "exit" | "stay">; sensor?: string }): { events: Array<{ occupants: string[]; phase: "enter" | "exit" | "stay"; sensor: string }> } };
+  physics: {
+    raycast(options: { direction: Vec3Tuple; ignore?: readonly string[]; mask?: readonly string[]; maxDistance?: number; origin: Vec3Tuple }): { distance: number; hit: boolean };
+    sensor(options?: { phases?: Array<"enter" | "exit" | "stay">; sensor?: string }): { events: Array<{ occupants: string[]; phase: "enter" | "exit" | "stay"; sensor: string }> };
+  };
   resources: { set(name: string, value: unknown): void };
   resourcesStore: Record<string, unknown>;
   sensorEvents: Array<{ occupants: string[]; phase: "enter" | "exit" | "stay"; sensor: string }>;
@@ -740,10 +762,13 @@ function createRigContext(input: { moveX?: number; moveZ?: number; sprint?: bool
         return name === "Sprint" ? input.sprint === true : false;
       },
       axis(name: string) {
-        return name === "MoveX" ? input.moveX ?? 0 : name === "MoveZ" ? input.moveZ ?? 0 : 0;
+        return name === "MoveX" ? input.moveX ?? 0 : name === "MoveZ" ? input.moveZ ?? 0 : name === "LookX" ? input.lookX ?? 0 : name === "LookY" ? input.lookY ?? 0 : 0;
       },
     },
     physics: {
+      raycast() {
+        return { distance: 3.5, hit: true };
+      },
       sensor(options?: { phases?: Array<"enter" | "exit" | "stay">; sensor?: string }) {
         return {
           events: sensorEvents.filter((event) => (options?.sensor === undefined || event.sensor === options.sensor) && (options?.phases === undefined || options.phases.includes(event.phase))),

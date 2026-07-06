@@ -42,7 +42,7 @@
 
     { "id": "crate.base", "prefab": "prefab.crate", "transform": { "position": [0, 0.34, 4.12], "scale": [1.1, 0.48, 0.76] }, "components": { "ToyCrate": { "radius": 1.02 } } },
     { "id": "crate.glow", "prefab": "prefab.bay-marker", "transform": { "position": [0, 0.05, 4.12], "scale": [1.2, 0.04, 1.2] } },
-    { "id": "toy.train", "prefab": "prefab.toy", "transform": { "position": [0, 0.82, 4.12], "scale": [0.46, 0.24, 0.34] } },
+    { "id": "toy.train", "prefab": "prefab.toy", "transform": { "position": [0, 0.91, 4.12], "scale": [0.46, 0.42, 0.34] } },
 
     { "id": "player", "prefab": "prefab.mouse-body", "transform": { "position": [0, 0.36, 3.42], "scale": [0.42, 0.24, 0.34] }, "components": { "MouseCourier": { "speed": 3.05, "gears": 0, "bays": 0 } } },
     { "id": "player.nose", "prefab": "prefab.mouse-nose", "transform": { "position": [0, 0.34, 3.1], "scale": [0.16, 0.1, 0.18] }, "components": { "MouseFollower": { "offset": [0, -0.02, -0.32] } } },

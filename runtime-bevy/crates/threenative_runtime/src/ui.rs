@@ -1,8 +1,8 @@
 use std::collections::HashMap;
 
 use bevy::a11y::{
-    accesskit::{NodeBuilder, Role},
     AccessibilityNode,
+    accesskit::{NodeBuilder, Role},
 };
 use bevy::input::mouse::{MouseScrollUnit, MouseWheel};
 use bevy::prelude::*;

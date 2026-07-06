@@ -216,7 +216,8 @@ fn trace_particle_commands(bundle: &LoadedBundle) -> Vec<ParticleCommandObservat
                 .unwrap_or(&[])
                 .iter()
                 .map(|emitter| {
-                    let count = ((emitter.rate_per_second * emitter.lifetime_seconds).floor() as u32)
+                    let count = ((emitter.rate_per_second * emitter.lifetime_seconds).floor()
+                        as u32)
                         .max(1)
                         .min(emitter.max_particles);
                     ParticleCommandObservation {

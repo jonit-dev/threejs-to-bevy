@@ -147,6 +147,23 @@ override, set actor/camera poses, and mirror behavior in
 edges, sine-swept kinematic hazards, and respawn resets no longer require
 game-local plumbing. Focused evidence:
 `pnpm --filter @threenative/script-stdlib test`.
+The third-person orbit residuals slice promotes `CameraRig.orbitThirdPerson`
+and `RespawnEx.reset({ stateKeys })` in the same typed and bundled stdlib
+surface. Orbit camera scripts now read bounded look axes, persist yaw/pitch in
+`tn.cameraOrbitRig.<cameraId>`, clamp pitch/per-frame look steps, use
+`physics.raycast` for camera-boom occlusion, round optional pose output for
+stable proofs, and return the movement yaw consumed by `CharacterRig.update`.
+`examples/humanoid-physics-course/src/scripts/player.ts` now delegates orbit
+math, movement smoothing, direct-speed character movement, bounds, and
+idle/walk/run clip source mapping to stdlib helpers while retaining only course
+checkpoint/hazard/finish rules. Focused evidence:
+`pnpm --filter @threenative/script-stdlib test`, `pnpm tn -- authoring validate
+--project examples/humanoid-physics-course --json`, `tn playtest --project .
+--scenario playtests/humanoid-course-forward-movement.playtest.json --out
+artifacts/playtest/humanoid-course-forward-movement/latest --json`, and `tn
+playtest --project . --scenario playtests/humanoid-course-camera-orbit.playtest.json
+--out artifacts/playtest/humanoid-course-camera-orbit/latest --json`.
+
 The proof-first engine loop now ratchets generated-game QA toward committed
 scenario evidence. `tn game qa --run-proof` records `scenarioCoverage` with
 committed scenario paths, assertion ids, artifact directories, reproduction

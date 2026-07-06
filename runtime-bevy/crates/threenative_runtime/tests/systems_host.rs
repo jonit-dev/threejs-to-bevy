@@ -271,6 +271,43 @@ fn systems_host_should_expose_character_move_service() {
 }
 
 #[test]
+fn systems_host_should_expose_physics_raycast_service() {
+    let root = write_physics_raycast_service_bundle("physics-raycast-context");
+    let mut bundle = load_bundle(&root).expect("scripted bundle should load");
+
+    let run = run_native_systems_once(&mut bundle, time()).expect("system should run");
+
+    assert_eq!(
+        bundle.world.resources.get("RaycastReport"),
+        Some(&serde_json::json!({
+            "distance": 3.5,
+            "entity": "wall",
+            "hit": true,
+            "point": [0, 1, -3.5]
+        }))
+    );
+    let service_entry = run.logs[0]
+        .entries
+        .iter()
+        .find(|entry| entry.kind == "service" && entry.service.as_deref() == Some("physics.raycast"))
+        .expect("physics raycast service call should be logged");
+    let expected_request = serde_json::json!({
+        "direction": [0, 0, -1],
+        "ignore": ["player"],
+        "mask": ["world"],
+        "maxDistance": 10,
+        "origin": [0, 1, 0]
+    });
+    assert_eq!(
+        service_entry
+            .payload
+            .as_ref()
+            .and_then(|payload| payload.get("request")),
+        Some(&expected_request)
+    );
+}
+
+#[test]
 fn systems_host_should_expose_audio_facade() {
     let root = write_audio_facade_service_bundle("audio-facade-context");
     let mut bundle = load_bundle(&root).expect("audio facade bundle should load");
@@ -1404,6 +1441,86 @@ fn write_character_service_bundle(name: &str) -> PathBuf {
 };
 export const systemIds = Object.freeze({ "system_moveCharacter": "moveCharacter" });
 export const systems = Object.freeze({ "system_moveCharacter": system_moveCharacter });
+"#,
+    )
+    .expect("script bundle should be written");
+    root
+}
+
+fn write_physics_raycast_service_bundle(name: &str) -> PathBuf {
+    let root = root(name);
+    write_base_bundle(&root, true);
+    write_json(
+        &root,
+        "world.ir.json",
+        r#"{
+  "schema": "threenative.world",
+  "version": "0.1.0",
+  "entities": [
+    {
+      "id": "player",
+      "components": {
+        "Transform": { "position": [0, 1, 0], "rotation": [0, 0, 0, 1], "scale": [1, 1, 1] },
+        "Collider": { "kind": "box", "size": [0.5, 1, 0.5], "layer": "player", "mask": ["world"] }
+      }
+    },
+    {
+      "id": "wall",
+      "components": {
+        "Transform": { "position": [0, 1, -4], "rotation": [0, 0, 0, 1], "scale": [1, 1, 1] },
+        "Collider": { "kind": "box", "size": [2, 2, 1], "layer": "world", "mask": ["player"] },
+        "RigidBody": { "kind": "static" }
+      }
+    }
+  ],
+  "resources": {
+    "RaycastReport": {}
+  }
+}"#,
+    );
+    write_json(
+        &root,
+        "systems.ir.json",
+        r#"{
+  "schema": "threenative.systems",
+  "version": "0.1.0",
+  "systems": [
+    {
+      "name": "raycastPhysics",
+      "schedule": "update",
+      "reads": ["Transform", "Collider"],
+      "writes": [],
+      "queries": [],
+      "commands": [],
+      "eventReads": [],
+      "eventWrites": [],
+      "resourceReads": ["RaycastReport"],
+      "resourceWrites": ["RaycastReport"],
+      "services": ["physics.raycast"],
+      "script": { "bundle": "scripts.bundle.js", "exportName": "system_raycastPhysics" }
+    }
+  ]
+}"#,
+    );
+    fs::write(
+        root.join("scripts.bundle.js"),
+        r#"const system_raycastPhysics = (ctx) => {
+  const result = ctx.physics.raycast({
+    direction: [0, 0, -1],
+    ignore: ["player"],
+    mask: ["world"],
+    maxDistance: 10,
+    origin: [0, 1, 0]
+  });
+  ctx.resources.set("RaycastReport", {
+    distance: result.distance,
+    entity: result.entity,
+    hit: result.hit,
+    point: result.point
+  });
+};
+export const systemIds = Object.freeze({ "system_raycastPhysics": "raycastPhysics" });
+export const systems = Object.freeze({ "system_raycastPhysics": system_raycastPhysics });
 "#,
     )
     .expect("script bundle should be written");

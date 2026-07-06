@@ -4,6 +4,7 @@ use bevy::{
     app::AppExit,
     prelude::*,
     render::view::screenshot::ScreenshotManager,
+    ui::IsDefaultUiCamera,
     window::PrimaryWindow,
     winit::{UpdateMode, WinitSettings},
 };
@@ -45,7 +46,7 @@ struct TextureAssetsReady(bool);
 struct ModelAssetsReady(bool);
 
 #[derive(Default, Resource)]
-struct RequiredModelAssets(Vec<String>);
+struct RequiredModelAssets(Vec<Handle<Scene>>);
 
 fn main() -> ExitCode {
     let args = env::args().collect::<Vec<_>>();
@@ -138,6 +139,11 @@ fn main() -> ExitCode {
         .iter()
         .map(|capture| capture.output_path.clone())
         .collect::<Vec<_>>();
+    let required_model_assets = app
+        .world()
+        .get_resource::<AssetServer>()
+        .map(|asset_server| required_model_assets(asset_server, &bundle.assets))
+        .unwrap_or_default();
     app.insert_resource(CaptureConfig {
         captures,
         max_frame,
@@ -146,7 +152,7 @@ fn main() -> ExitCode {
         focused_mode: UpdateMode::Continuous,
         unfocused_mode: UpdateMode::Continuous,
     })
-    .insert_resource(required_model_assets(&bundle.assets))
+    .insert_resource(required_model_assets)
     .insert_resource(TextureAssetsReady::default())
     .insert_resource(ModelAssetsReady::default())
     .add_systems(
@@ -154,6 +160,7 @@ fn main() -> ExitCode {
         (
             wait_for_texture_assets,
             wait_for_model_assets,
+            disable_capture_ui_cameras,
             request_screenshot,
         ),
     );
@@ -204,13 +211,17 @@ fn prepare_output_path(output_path: &PathBuf) -> Result<(), ExitCode> {
     Ok(())
 }
 
-fn required_model_assets(manifest: &AssetsManifest) -> RequiredModelAssets {
+fn required_model_assets(
+    asset_server: &AssetServer,
+    manifest: &AssetsManifest,
+) -> RequiredModelAssets {
     RequiredModelAssets(
         manifest
             .assets
             .iter()
             .filter(|asset| asset.kind == "model")
             .filter_map(|asset| asset.path.clone())
+            .map(|path| asset_server.load(bevy::gltf::GltfAssetLabel::Scene(0).from_asset(path)))
             .collect(),
     )
 }
@@ -250,12 +261,18 @@ fn wait_for_model_assets(
         ready.0 = true;
         return;
     }
-    if required.0.iter().all(|path| {
-        let scene: Handle<Scene> =
-            asset_server.load(bevy::gltf::GltfAssetLabel::Scene(0).from_asset(path.to_owned()));
-        asset_server.is_loaded_with_dependencies(&scene)
-    }) {
+    if required
+        .0
+        .iter()
+        .all(|scene| asset_server.is_loaded_with_dependencies(scene))
+    {
         ready.0 = true;
+    }
+}
+
+fn disable_capture_ui_cameras(mut cameras: Query<&mut Camera, With<IsDefaultUiCamera>>) {
+    for mut camera in &mut cameras {
+        camera.is_active = false;
     }
 }
 

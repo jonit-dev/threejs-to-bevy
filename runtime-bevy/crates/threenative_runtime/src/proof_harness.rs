@@ -3,6 +3,7 @@ use std::{fs, path::Path};
 use bevy::{input::ButtonInput, prelude::*};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
+use threenative_components::ThreeNativeId;
 
 use crate::input::portable_key_code;
 
@@ -41,13 +42,14 @@ pub struct NativeProofHarnessState {
     tick: u64,
 }
 
-#[derive(Clone, Debug, Serialize, PartialEq, Eq)]
+#[derive(Clone, Debug, Serialize, PartialEq)]
 pub struct NativeProofHarnessReadiness {
     pub schema: &'static str,
     pub version: &'static str,
     pub ok: bool,
     pub tick: u64,
     pub diagnostics: Vec<NativeProofHarnessDiagnostic>,
+    pub transforms: Vec<NativeProofHarnessTransformSample>,
 }
 
 #[derive(Clone, Debug, Serialize, PartialEq, Eq)]
@@ -55,6 +57,12 @@ pub struct NativeProofHarnessDiagnostic {
     pub code: String,
     pub message: String,
     pub severity: String,
+}
+
+#[derive(Clone, Debug, Serialize, PartialEq)]
+pub struct NativeProofHarnessTransformSample {
+    pub entity: String,
+    pub position: [f32; 3],
 }
 
 #[derive(Debug, Error)]
@@ -148,6 +156,7 @@ pub fn apply_native_proof_harness_commands(
     mut state: ResMut<NativeProofHarnessState>,
     mut keyboard: ResMut<ButtonInput<KeyCode>>,
     mut exit: EventWriter<AppExit>,
+    transforms: Query<(&ThreeNativeId, &Transform)>,
 ) {
     let tick = state.tick;
     let mut diagnostics = Vec::new();
@@ -188,12 +197,29 @@ pub fn apply_native_proof_harness_commands(
         ok,
         tick,
         diagnostics,
+        transforms: native_proof_harness_transform_samples(transforms.iter()),
     };
     if let Err(error) = write_native_proof_harness_readiness(&state.readiness_out_path, &readiness)
     {
         error!("{error}");
     }
     state.tick += 1;
+}
+
+pub fn native_proof_harness_transform_samples<'a>(
+    transforms: impl IntoIterator<Item = (&'a ThreeNativeId, &'a Transform)>,
+) -> Vec<NativeProofHarnessTransformSample> {
+    transforms
+        .into_iter()
+        .map(|(id, transform)| NativeProofHarnessTransformSample {
+            entity: id.0.clone(),
+            position: [
+                transform.translation.x,
+                transform.translation.y,
+                transform.translation.z,
+            ],
+        })
+        .collect()
 }
 
 pub fn write_native_proof_harness_readiness(

@@ -33,6 +33,7 @@ interface IRigContextLike {
     axis(name: string): number;
   };
   physics?: {
+    raycast?(options: { direction: Vec3Value; ignore?: readonly string[]; mask?: readonly string[]; maxDistance?: number; origin: Vec3Value }): { distance?: number; hit?: boolean } | null;
     sensor(options?: { phases?: Array<"enter" | "exit" | "stay">; sensor?: string }): { events: IPhysicsSensorEventLike[] };
   };
   resources?: {
@@ -110,6 +111,47 @@ export interface ICameraRigResult {
   readonly yaw: number;
 }
 
+export interface IOrbitCameraRigOptions {
+  readonly cameraId?: string;
+  readonly collision?: {
+    readonly ignore?: readonly string[];
+    readonly mask?: readonly string[];
+    readonly padding?: number;
+  };
+  readonly distance?: number;
+  readonly input?: {
+    readonly lookX?: string;
+    readonly lookY?: string;
+    readonly maxAxisMagnitude?: number;
+    readonly maxPitchStep?: number;
+    readonly maxYawStep?: number;
+    readonly pitchSensitivity?: number;
+    readonly yawSensitivity?: number;
+  };
+  readonly lookHeight?: number;
+  readonly minDistance?: number;
+  readonly pitch?: {
+    readonly default?: number;
+    readonly max?: number;
+    readonly min?: number;
+  };
+  readonly rounding?: {
+    readonly positionDigits?: number;
+    readonly rotationDigits?: number;
+  };
+  readonly target: string | ISystemEntityLike;
+  readonly yaw?: number;
+}
+
+export interface IOrbitCameraRigResult {
+  readonly collided: boolean;
+  readonly distance: number;
+  readonly pitch: number;
+  readonly position: Vec3Tuple;
+  readonly target: Vec3Tuple;
+  readonly yaw: number;
+}
+
 export interface ITriggerExOptions {
   readonly component?: string;
   readonly layer?: string;
@@ -133,6 +175,7 @@ export interface IRespawnExOptions {
   readonly components?: Record<string, unknown>;
   readonly position?: Vec3Value;
   readonly resources?: Record<string, unknown>;
+  readonly stateKeys?: readonly string[];
   readonly yaw?: number;
 }
 
@@ -152,6 +195,11 @@ interface ICameraRigState extends Record<string, unknown> {
   followX: number;
   followY: number;
   followZ: number;
+  yaw: number;
+}
+
+interface IOrbitCameraRigState extends Record<string, unknown> {
+  pitch: number;
   yaw: number;
 }
 
@@ -224,6 +272,60 @@ export const CameraRig = Object.freeze({
     const pose = CameraMath.followPose({ offset: Vec3.add(offset, shoulder), target: [state.followX, state.followY, state.followZ], yaw: state.yaw });
     camera?.transform?.().setPose(pose.position, pose.rotation);
     return { yaw: state.yaw };
+  },
+
+  orbitThirdPerson(context: IRigContextLike, options: IOrbitCameraRigOptions): IOrbitCameraRigResult {
+    const target = typeof options.target === "string" ? context.entity?.(options.target) : options.target;
+    const cameraId = options.cameraId ?? "camera";
+    const camera = context.entity?.(cameraId);
+    const targetPosition = target?.transform?.().positionOr([0, 0, 0]) ?? readComponentPosition(target, [0, 0, 0]);
+    const lookHeight = NumberEx.finite(options.lookHeight, 1.5);
+    const lookTarget = Vec3.add(targetPosition, [0, lookHeight, 0]);
+    const pitchMin = NumberEx.finite(options.pitch?.min, -Math.PI / 3);
+    const pitchMax = NumberEx.finite(options.pitch?.max, Math.PI / 3);
+    const defaultPitch = NumberEx.clamp(NumberEx.finite(options.pitch?.default, 0.25), pitchMin, pitchMax);
+    const state = context.state<IOrbitCameraRigState>(`tn.cameraOrbitRig.${cameraId}`, {
+      pitch: defaultPitch,
+      yaw: NumberEx.finite(options.yaw, 0),
+    });
+
+    const maxAxisMagnitude = Math.max(0, NumberEx.finite(options.input?.maxAxisMagnitude, 36));
+    const lookAxes = clampVec2Magnitude([
+      context.input?.axis(options.input?.lookX ?? "LookX") ?? 0,
+      context.input?.axis(options.input?.lookY ?? "LookY") ?? 0,
+    ], maxAxisMagnitude);
+    const yawStep = NumberEx.clamp(lookAxes[0] * NumberEx.finite(options.input?.yawSensitivity, 0.002), -Math.max(0, NumberEx.finite(options.input?.maxYawStep, 0.07)), Math.max(0, NumberEx.finite(options.input?.maxYawStep, 0.07)));
+    const pitchStep = NumberEx.clamp(lookAxes[1] * NumberEx.finite(options.input?.pitchSensitivity, 0.0012), -Math.max(0, NumberEx.finite(options.input?.maxPitchStep, 0.045)), Math.max(0, NumberEx.finite(options.input?.maxPitchStep, 0.045)));
+    state.yaw = NumberEx.repeat(NumberEx.finite(state.yaw, NumberEx.finite(options.yaw, 0)) - yawStep, Math.PI * 2);
+    state.pitch = NumberEx.clamp(NumberEx.finite(state.pitch, defaultPitch) - pitchStep, pitchMin, pitchMax);
+
+    const desiredDistance = Math.max(0, NumberEx.finite(options.distance, 5));
+    const desiredPose = CameraMath.orbitPose({ distance: desiredDistance, pitch: state.pitch, target: lookTarget, yaw: state.yaw });
+    const toCamera = Vec3.normalize(Vec3.sub(desiredPose.position, lookTarget));
+    const hit = options.collision === undefined ? null : context.physics?.raycast?.({
+      direction: toCamera,
+      ignore: options.collision.ignore,
+      mask: options.collision.mask,
+      maxDistance: desiredDistance,
+      origin: lookTarget,
+    }) ?? null;
+    const minDistance = Math.max(0, NumberEx.finite(options.minDistance, 0));
+    const padding = Math.max(0, NumberEx.finite(options.collision?.padding, 0));
+    const hitDistance = hit?.hit === true ? NumberEx.finite(hit.distance, desiredDistance) : desiredDistance;
+    const resolvedDistance = hit?.hit === true ? Math.min(desiredDistance, Math.max(minDistance, hitDistance - padding)) : desiredDistance;
+    const position = Vec3.add(lookTarget, Vec3.scale(toCamera, resolvedDistance));
+    const roundedPosition = options.rounding?.positionDigits === undefined ? position : Vec3.round(position, options.rounding.positionDigits);
+    const resolvedPose = CameraMath.lookAtPose(roundedPosition, lookTarget);
+    const roundedRotation = options.rounding?.rotationDigits === undefined ? resolvedPose.rotation : roundQuat(resolvedPose.rotation, options.rounding.rotationDigits);
+    camera?.transform?.().setPose(roundedPosition, roundedRotation);
+    return {
+      collided: hit?.hit === true,
+      distance: resolvedDistance,
+      pitch: state.pitch,
+      position: roundedPosition,
+      target: lookTarget,
+      yaw: NumberEx.repeat(state.yaw + Math.PI, Math.PI * 2),
+    };
   },
 });
 
@@ -307,6 +409,9 @@ export const RespawnEx = Object.freeze({
     for (const [name, value] of Object.entries(options.resources ?? {})) {
       context.resources?.set(name, value);
     }
+    for (const key of options.stateKeys ?? []) {
+      context.resources?.set(key, {});
+    }
     return { entity: entityId, position };
   },
 });
@@ -354,6 +459,22 @@ function clampVec3(value: Vec3Tuple, bounds: ICharacterRigOptions["bounds"]): Ve
     NumberEx.clamp(value[0], min[0], max[0]),
     NumberEx.clamp(value[1], min[1], max[1]),
     NumberEx.clamp(value[2], min[2], max[2]),
+  ];
+}
+
+function clampVec2Magnitude(value: Vec2Value, maxMagnitude: number): [number, number] {
+  const vec = Vec2.from(value);
+  const max = Math.max(0, NumberEx.finite(maxMagnitude, 0));
+  const length = Vec2.length(vec);
+  return length > max && length > EPSILON ? [vec[0] * max / length, vec[1] * max / length] : [vec[0], vec[1]];
+}
+
+function roundQuat(value: QuatTuple, digits: number): QuatTuple {
+  return [
+    NumberEx.round(value[0], digits),
+    NumberEx.round(value[1], digits),
+    NumberEx.round(value[2], digits),
+    NumberEx.round(value[3], digits),
   ];
 }
 

@@ -13,7 +13,7 @@ use bevy::{
 };
 use threenative_loader::load_bundle;
 use threenative_runtime::{
-    map_world::{NativeMaterialHandles, map_bundle_into_world},
+    map_world::{NativeEnvironmentSkyDome, NativeMaterialHandles, map_bundle_into_world},
     rendering::{
         apply_atmosphere_to_world, normalize_loaded_gltf_materials, normalize_textured_material,
         observe_atmosphere,
@@ -283,6 +283,109 @@ fn textured_gltf_materials_should_render_cutout_backfaces_for_foliage() {
     assert_eq!(material.alpha_mode, AlphaMode::Mask(0.2));
     assert!(material.double_sided);
     assert_eq!(material.cull_mode, None);
+}
+
+#[test]
+fn equirect_skybox_should_spawn_native_sky_dome() {
+    let root = temp_bundle_dir();
+    write_json(
+        &root,
+        "manifest.json",
+        r#"{
+          "schema": "threenative.bundle",
+          "version": "0.1.0",
+          "name": "skybox",
+          "requiredCapabilities": {},
+          "entry": { "world": "world.ir.json", "environmentScene": "environment.scene.json" },
+          "files": {
+            "assets": "assets.manifest.json",
+            "materials": "materials.ir.json",
+            "targetProfile": "target.profile.json"
+          }
+        }"#,
+    );
+    write_json(
+        &root,
+        "world.ir.json",
+        r#"{
+          "schema": "threenative.world",
+          "version": "0.1.0",
+          "entities": [
+            { "id": "camera.main", "components": { "Camera": { "kind": "perspective", "near": 0.1, "far": 100, "fovY": 60 } } }
+          ]
+        }"#,
+    );
+    write_json(
+        &root,
+        "assets.manifest.json",
+        r#"{
+          "schema": "threenative.assets",
+          "version": "0.1.0",
+          "assets": [
+            { "id": "tex.sky", "kind": "texture", "format": "jpeg", "path": "assets/sky.jpg" }
+          ]
+        }"#,
+    );
+    write_json(
+        &root,
+        "materials.ir.json",
+        r#"{ "schema": "threenative.materials", "version": "0.1.0", "materials": [] }"#,
+    );
+    write_json(
+        &root,
+        "target.profile.json",
+        r#"{ "schema": "threenative.target-profile", "version": "0.1.0", "targets": ["desktop"] }"#,
+    );
+    write_json(
+        &root,
+        "environment.scene.json",
+        r##"{
+          "schema": "threenative.environment-scene",
+          "version": "0.1.0",
+          "skybox": { "mode": "equirect", "asset": "tex.sky", "intensity": 0.42 },
+          "path": { "id": "path.main", "points": [[0, 0, 0], [0, 0, 1]], "width": 2 }
+        }"##,
+    );
+
+    let bundle = load_bundle(&root).expect("skybox bundle should load");
+    let mut app = App::new();
+    app.add_plugins((MinimalPlugins, AssetPlugin::default()));
+    app.init_asset::<Image>();
+    app.init_asset::<Mesh>();
+    app.init_asset::<StandardMaterial>();
+    map_bundle_into_world(app.world_mut(), &bundle).expect("world should map");
+
+    let sky = app
+        .world_mut()
+        .query::<&NativeEnvironmentSkyDome>()
+        .iter(app.world())
+        .cloned()
+        .collect::<Vec<_>>();
+    assert_eq!(
+        sky,
+        vec![NativeEnvironmentSkyDome {
+            asset: "tex.sky".to_owned(),
+            mode: "equirect".to_owned(),
+        }]
+    );
+    let sky_materials = app
+        .world_mut()
+        .query::<(&NativeEnvironmentSkyDome, &Handle<StandardMaterial>)>()
+        .iter(app.world())
+        .map(|(_, handle)| handle.clone())
+        .collect::<Vec<_>>();
+    let material_handles = app.world().resource::<Assets<StandardMaterial>>();
+    let sky_material_count = sky_materials
+        .iter()
+        .filter(|handle| {
+            material_handles
+                .get(*handle)
+                .is_some_and(|material| material.unlit && material.base_color_texture.is_some())
+        })
+        .count();
+    assert_eq!(sky_material_count, 1);
+
+    fs::remove_dir_all(root).expect("temp bundle should be removed");
 }
 
 fn temp_bundle_dir() -> PathBuf {

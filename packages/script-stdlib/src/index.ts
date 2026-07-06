@@ -30,6 +30,8 @@ export type {
   ICharacterRigResult,
   IKinematicMoverExOptions,
   IKinematicMoverExResult,
+  IOrbitCameraRigOptions,
+  IOrbitCameraRigResult,
   IRespawnExOptions,
   IRespawnExResult,
   ITriggerExOptions,

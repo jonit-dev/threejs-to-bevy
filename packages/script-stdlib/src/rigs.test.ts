@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { CameraRig, CharacterRig } from "./rigs.js";
+import { CameraRig, CharacterRig, RespawnEx } from "./rigs.js";
 import { Quat } from "./rotation.js";
 import type { QuatTuple, Vec3Tuple } from "./types.js";
 import { Vec3 } from "./vectors.js";
@@ -48,29 +48,34 @@ function createEntity(id: string, position: Vec3Tuple): IFakeEntity {
 
 interface IFakeContext {
   entities: Map<string, IFakeEntity>;
-  resources: Map<string, object>;
+  resourceStore: Map<string, object>;
   axes: Record<string, number>;
   actions: Record<string, boolean>;
   elapsed: number;
   fixedDelta: number;
+  raycastResult: { distance?: number; hit?: boolean } | null;
+  raycastCalls: Array<{ direction: Vec3Tuple; ignore?: readonly string[]; mask?: readonly string[]; maxDistance?: number; origin: Vec3Tuple }>;
   entity(id: string): IFakeEntity | undefined;
   input: { axis(name: string): number; action(name: string): boolean };
   character: { move(entityRef: string | IFakeEntity, options: { direction?: [number, number]; fixedDelta?: number; speed?: number }): { resolved: Vec3Tuple } };
-  resources_: { set(name: string, value: unknown): void };
+  resources: { set(name: string, value: unknown): void };
+  physics: { raycast(options: { direction: Vec3Tuple; ignore?: readonly string[]; mask?: readonly string[]; maxDistance?: number; origin: Vec3Tuple }): { distance?: number; hit?: boolean } | null };
   state<T extends object>(key: string, defaults: T): T;
   time: { delta: number; elapsed: number; fixedDelta(): number };
 }
 
 function createContext(entities: IFakeEntity[]): IFakeContext {
   const entityMap = new Map(entities.map((entity) => [entity.id, entity]));
-  const resources = new Map<string, object>();
+  const resourceStore = new Map<string, object>();
   const context: IFakeContext = {
     entities: entityMap,
-    resources,
+    resourceStore,
     axes: {},
     actions: {},
     elapsed: 0,
     fixedDelta: 1 / 60,
+    raycastResult: null,
+    raycastCalls: [],
     entity(id) {
       return entityMap.get(id);
     },
@@ -89,16 +94,22 @@ function createContext(entities: IFakeEntity[]): IFakeContext {
         return { resolved };
       },
     },
-    resources_: {
+    resources: {
       set(name, value) {
-        resources.set(name, value as object);
+        resourceStore.set(name, value as object);
+      },
+    },
+    physics: {
+      raycast(options) {
+        context.raycastCalls.push(options);
+        return context.raycastResult;
       },
     },
     state(key, defaults) {
-      if (!resources.has(key)) {
-        resources.set(key, { ...defaults });
+      if (!resourceStore.has(key)) {
+        resourceStore.set(key, { ...defaults });
       }
-      return resources.get(key) as never;
+      return resourceStore.get(key) as never;
     },
     time: {
       delta: 1 / 60,
@@ -119,6 +130,11 @@ function stepMoveForward(context: IFakeContext, player: IFakeEntity, ticks: numb
       walkSpeed: 3,
     });
   }
+}
+
+function roundNumber(value: number, digits: number): number {
+  const scale = 10 ** digits;
+  return Math.round(value * scale) / scale;
 }
 
 test("CharacterRig.update: forwardAxis -z faces the mesh toward its actual movement direction", () => {
@@ -178,6 +194,125 @@ test("CameraRig.thirdPerson: camera sits behind the target and looks at it, trac
   // look direction.
   const lookDirection = Quat.rotateVec3(camera.rotation, [0, 0, -1]);
   assert.ok(lookDirection[2] > 0.9, `camera should look back toward +Z (the target), got ${lookDirection}`);
+});
+
+test("CameraRig.orbitThirdPerson: should update orbit yaw and pitch from look axes", () => {
+  const player = createEntity("player", [0, 0, 0]);
+  const camera = createEntity("camera.main", [0, 0, 0]);
+  const context = createContext([player, camera]);
+  context.axes.LookX = 100;
+  context.axes.LookY = 100;
+
+  const rig = CameraRig.orbitThirdPerson(context as never, {
+    cameraId: "camera.main",
+    distance: 5.2,
+    input: {
+      maxAxisMagnitude: 100,
+      maxPitchStep: 0.045,
+      maxYawStep: 0.07,
+      pitchSensitivity: 0.0012,
+      yawSensitivity: 0.002,
+    },
+    lookHeight: 1.45,
+    pitch: { default: 0.28, min: 0.12, max: 0.62 },
+    target: player,
+  });
+
+  assert.equal(roundNumber(rig.yaw, 6), roundNumber(Math.PI - 0.07, 6));
+  assert.equal(roundNumber(rig.pitch, 6), 0.235);
+  assert.deepEqual(Vec3.round(rig.target, 6), [0, 1.45, 0]);
+});
+
+test("CameraRig.orbitThirdPerson: should clamp orbit pitch", () => {
+  const player = createEntity("player", [0, 0, 0]);
+  const camera = createEntity("camera.main", [0, 0, 0]);
+  const context = createContext([player, camera]);
+  context.axes.LookY = -100;
+
+  const rig = CameraRig.orbitThirdPerson(context as never, {
+    cameraId: "camera.main",
+    input: { maxAxisMagnitude: 100, maxPitchStep: 1, pitchSensitivity: 1 },
+    pitch: { default: 0.28, min: 0.12, max: 0.62 },
+    target: player,
+  });
+
+  assert.equal(rig.pitch, 0.62);
+});
+
+test("CameraRig.orbitThirdPerson: should shorten orbit camera when raycast hits", () => {
+  const player = createEntity("player", [0, 0, 0]);
+  const camera = createEntity("camera.main", [0, 0, 0]);
+  const context = createContext([player, camera]);
+  context.raycastResult = { distance: 2.1, hit: true };
+
+  const rig = CameraRig.orbitThirdPerson(context as never, {
+    cameraId: "camera.main",
+    collision: { ignore: ["player"], mask: ["world", "pushable"], padding: 0.28 },
+    distance: 5.2,
+    minDistance: 1.35,
+    pitch: { default: 0.28, min: 0.12, max: 0.62 },
+    rounding: { positionDigits: 5, rotationDigits: 5 },
+    target: player,
+  });
+
+  assert.equal(rig.collided, true);
+  assert.equal(roundNumber(rig.distance, 6), 1.82);
+  assert.deepEqual(rig.position, Vec3.round(rig.position, 5));
+  assert.deepEqual(camera.rotation, [
+    roundNumber(camera.rotation[0], 5),
+    roundNumber(camera.rotation[1], 5),
+    roundNumber(camera.rotation[2], 5),
+    roundNumber(camera.rotation[3], 5),
+  ]);
+  assert.equal(context.raycastCalls[0]?.maxDistance, 5.2);
+  assert.deepEqual(context.raycastCalls[0]?.ignore, ["player"]);
+  assert.deepEqual(context.raycastCalls[0]?.mask, ["world", "pushable"]);
+});
+
+test("Coordination: should move forward relative to orbit camera yaw", () => {
+  const player = createEntity("player", [0, 0, 0]);
+  const camera = createEntity("camera.main", [0, 0, 0]);
+  const context = createContext([player, camera]);
+  context.axes.MoveZ = 1;
+  const cameraResult = CameraRig.orbitThirdPerson(context as never, {
+    cameraId: "camera.main",
+    distance: 5,
+    target: player,
+    yaw: 0,
+  });
+
+  for (let i = 0; i < 30; i += 1) {
+    CharacterRig.update(context as never, player, {
+      cameraYaw: cameraResult.yaw,
+      forwardAxis: "-z",
+      maxTurnSpeed: 20,
+      walkSpeed: 3,
+    });
+  }
+
+  assert.ok(player.position[2] < -1, `expected orbit-relative forward to move away from +Z camera, got ${player.position}`);
+});
+
+test("Coordination: should reset character and orbit rig state when requested", () => {
+  const player = createEntity("player", [0, 0, 0]);
+  const camera = createEntity("camera.main", [0, 0, 0]);
+  const context = createContext([player, camera]);
+  context.axes.LookX = 1;
+  context.axes.MoveZ = 1;
+  const cameraResult = CameraRig.orbitThirdPerson(context as never, { cameraId: "camera.main", target: player });
+  CharacterRig.update(context as never, player, { cameraYaw: cameraResult.yaw, walkSpeed: 3 });
+
+  assert.notEqual((context.resourceStore.get("tn.cameraOrbitRig.camera.main") as { yaw?: number } | undefined)?.yaw, undefined);
+  assert.notEqual((context.resourceStore.get("tn.characterRig.player") as { speed?: number } | undefined)?.speed, undefined);
+
+  RespawnEx.reset(context as never, player, {
+    position: [0, 0, 0],
+    stateKeys: ["tn.cameraOrbitRig.camera.main", "tn.characterRig.player"],
+    yaw: Math.PI,
+  });
+
+  assert.deepEqual(context.resourceStore.get("tn.cameraOrbitRig.camera.main"), {});
+  assert.deepEqual(context.resourceStore.get("tn.characterRig.player"), {});
 });
 
 test("Coordination: CharacterRig cameraYaw fed with CameraRig's own returned yaw keeps 'forward' input moving the character directly away from the camera", () => {

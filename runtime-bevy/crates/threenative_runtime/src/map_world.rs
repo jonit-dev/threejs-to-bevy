@@ -35,12 +35,12 @@ use threenative_loader::{
 
 use crate::assets::{load_texture_asset, texture_uv_transform};
 use crate::cameras::{
-    active_camera_ids, apply_camera_components, build_render_layer_map, camera_order,
-    render_layers_for_names, NativeRenderLayerMap,
+    NativeRenderLayerMap, active_camera_ids, apply_camera_components, build_render_layer_map,
+    camera_order, render_layers_for_names,
 };
 use crate::render_targets::{
-    allocate_render_targets, camera_render_target, NativeCustomProjection,
-    NativeRenderTargetRegistry,
+    NativeCustomProjection, NativeRenderTargetRegistry, allocate_render_targets,
+    camera_render_target,
 };
 use crate::rendering::spawn_rendered_particles;
 use crate::stylized_nature::{grass_material_policy, resolve_source_assets};
@@ -58,6 +58,7 @@ const THREE_COMPAT_ENVIRONMENT_DIRECTIONAL_ILLUMINANCE_PER_INTENSITY: f32 = 1.7;
 const THREE_COMPAT_POINT_LUMENS_PER_CANDELA: f32 = 1.0;
 const THREE_COMPAT_DEFAULT_RANGE: f32 = 1_000.0;
 const THREE_COMPAT_DEFAULT_CAMERA_EV100: f32 = -0.263_034_4;
+const THREE_COMPAT_SKY_DOME_RADIUS: f32 = 72.0;
 
 pub struct StylizedNatureRuntimeDefaults {
     pub bark_color: &'static str,
@@ -101,6 +102,12 @@ pub struct NativeMaterialPolicy {
 
 #[derive(Resource, Default)]
 pub struct NativeMaterialHandles(pub HashMap<String, Handle<StandardMaterial>>);
+
+#[derive(Clone, Component, Debug, PartialEq)]
+pub struct NativeEnvironmentSkyDome {
+    pub asset: String,
+    pub mode: String,
+}
 
 #[derive(Clone, Component, Debug, PartialEq)]
 pub struct NativeEmissiveBloomPolicy {
@@ -250,10 +257,113 @@ pub fn map_bundle_into_world(world: &mut World, bundle: &LoadedBundle) -> Result
     }
     world.insert_resource(material_handles);
 
+    spawn_environment_sky_dome(world, bundle, &assets_by_id);
+
     attach_entity_hierarchy(world, bundle, &entities_by_id);
     spawn_rendered_particles(world, bundle, 1.0);
 
     Ok(())
+}
+
+fn spawn_environment_sky_dome(
+    world: &mut World,
+    bundle: &LoadedBundle,
+    assets_by_id: &HashMap<&str, &AssetIr>,
+) {
+    let Some(skybox) = bundle
+        .environment_scene
+        .as_ref()
+        .and_then(|scene| scene.skybox.as_ref())
+        .filter(|skybox| skybox.mode == "equirect")
+    else {
+        return;
+    };
+    let Some(asset_id) = skybox.asset.as_deref() else {
+        return;
+    };
+    let Some(asset) = assets_by_id.get(asset_id) else {
+        return;
+    };
+    let Some(path) = asset.path.as_ref() else {
+        return;
+    };
+    let Some(asset_server) = world.get_resource::<AssetServer>().cloned() else {
+        return;
+    };
+    let texture = load_texture_asset(&asset_server, path);
+    let mesh = sky_dome_mesh(THREE_COMPAT_SKY_DOME_RADIUS);
+    let mesh = world.resource_mut::<Assets<Mesh>>().add(mesh);
+    let material = world
+        .resource_mut::<Assets<StandardMaterial>>()
+        .add(StandardMaterial {
+            alpha_mode: AlphaMode::Opaque,
+            base_color: Color::WHITE,
+            base_color_texture: Some(texture),
+            cull_mode: None,
+            double_sided: true,
+            perceptual_roughness: 1.0,
+            reflectance: 0.0,
+            unlit: true,
+            ..Default::default()
+        });
+    world.spawn((
+        PbrBundle {
+            mesh,
+            material,
+            transform: Transform::IDENTITY,
+            ..Default::default()
+        },
+        Name::new("threenative.environment.skybox.equirect"),
+        NativeEnvironmentSkyDome {
+            asset: asset_id.to_owned(),
+            mode: skybox.mode.clone(),
+        },
+        NotShadowCaster,
+        NotShadowReceiver,
+    ));
+}
+
+fn sky_dome_mesh(radius: f32) -> Mesh {
+    let columns = 64usize;
+    let rows = 32usize;
+    let mut positions = Vec::with_capacity((columns + 1) * (rows + 1));
+    let mut normals = Vec::with_capacity((columns + 1) * (rows + 1));
+    let mut uvs = Vec::with_capacity((columns + 1) * (rows + 1));
+    for row in 0..=rows {
+        let v = row as f32 / rows as f32;
+        let theta = v * std::f32::consts::PI;
+        let y = theta.cos();
+        let r = theta.sin();
+        for column in 0..=columns {
+            let u = column as f32 / columns as f32;
+            let phi = u * std::f32::consts::TAU;
+            let x = r * phi.sin();
+            let z = r * phi.cos();
+            positions.push([x * radius, y * radius, z * radius]);
+            normals.push([-x, -y, -z]);
+            uvs.push([1.0 - u, v]);
+        }
+    }
+    let mut indices = Vec::with_capacity(columns * rows * 6);
+    let stride = columns + 1;
+    for row in 0..rows {
+        for column in 0..columns {
+            let a = (row * stride + column) as u32;
+            let b = a + 1;
+            let c = ((row + 1) * stride + column) as u32;
+            let d = c + 1;
+            indices.extend_from_slice(&[a, c, b, b, c, d]);
+        }
+    }
+    let mut mesh = Mesh::new(
+        PrimitiveTopology::TriangleList,
+        RenderAssetUsages::default(),
+    );
+    mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, positions);
+    mesh.insert_attribute(Mesh::ATTRIBUTE_NORMAL, normals);
+    mesh.insert_attribute(Mesh::ATTRIBUTE_UV_0, uvs);
+    mesh.insert_indices(Indices::U32(indices));
+    mesh
 }
 
 fn apply_runtime_config(world: &mut World, config: Option<&RuntimeConfigIr>) {

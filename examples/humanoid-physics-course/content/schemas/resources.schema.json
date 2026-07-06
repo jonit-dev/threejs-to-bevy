@@ -25,22 +25,24 @@
       }
     },
     {
-      "id": "tn.thirdPerson.player",
+      "id": "tn.cameraOrbitRig.camera.main",
       "fields": {
-        "cameraPitch": {
+        "pitch": {
           "kind": "number"
         },
-        "cameraYaw": {
+        "yaw": {
+          "kind": "number"
+        }
+      }
+    },
+    {
+      "id": "tn.characterRig.player",
+      "fields": {
+        "dirX": {
           "kind": "number"
         },
-        "clip": {
-          "kind": "string"
-        },
-        "clipSpeed": {
+        "dirZ": {
           "kind": "number"
-        },
-        "sourceClip": {
-          "kind": "string"
         },
         "speed": {
           "kind": "number"

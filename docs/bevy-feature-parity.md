@@ -363,6 +363,19 @@ remaining gaps by usefulness for building and shipping ordinary 3D games:
   @threenative/script-stdlib test` proves export/bundle parity for every
   promoted helper, and `pnpm verify:scripting-helpers-lifecycle` records the
   focused helper import, web playtest, and Bevy context-helper bridge evidence.
+- `P1` Third-person orbit camera scripting now uses only shared portable script
+  contracts: `context.input.axis`, `context.state`, `Transform.setPose`,
+  `context.character.move({ direction, speed })`, `context.animation.play`, and
+  `context.physics.raycast`. The typed and bundled stdlib surfaces expose
+  `CameraRig.orbitThirdPerson`, and `humanoid-physics-course` uses it with
+  `CharacterRig.update` for camera-relative movement. Native host parity for
+  direct-speed character movement, raycast service payloads, animation payloads,
+  transform patch reporting, and script-posed kinematic authority is covered by
+  `cargo test --manifest-path runtime-bevy/Cargo.toml -p threenative_runtime
+  systems_host` and `cargo test --manifest-path runtime-bevy/Cargo.toml -p
+  threenative_runtime physics`. The committed humanoid course playtests are
+  currently web-target proofs; native/Bevy playtest input injection remains the
+  broader playtest target gap documented elsewhere.
 - `P1` Source-referenced portable systems now reject module-local helper or
   constant references with `TN_SCRIPT_MODULE_LOCAL_REFERENCE_UNSUPPORTED`,
   because only the selected export is emitted into `scripts.bundle.js`.

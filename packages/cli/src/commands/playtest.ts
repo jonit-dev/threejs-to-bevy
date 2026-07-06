@@ -1,11 +1,15 @@
-import { mkdir, stat, writeFile } from "node:fs/promises";
+import { mkdir, readFile, stat, writeFile } from "node:fs/promises";
+import { once } from "node:events";
+import type { ChildProcess } from "node:child_process";
 import { dirname, resolve } from "node:path";
+import { setTimeout as delay } from "node:timers/promises";
 import { buildProject, loadProjectConfig, validateBundle } from "@threenative/compiler";
 import { startWebPreview, type IWebPreviewServer } from "@threenative/runtime-web-three";
 import { chromium } from "playwright";
 
 import { diagnosticResult, type ICommandResult } from "../diagnostics.js";
 import { buildProofArtifactMetadata, type IProofArtifactMetadata } from "../game/proofManifest.js";
+import { runBevyRuntime, type BevyRuntimeRunner } from "../native/bevy.js";
 import { evaluateRichPlaytestAssertions, type IPlaytestAssertionResult, type IPlaytestDiagnostic, type IPlaytestObservations } from "./playtestAssertions.js";
 import { defaultPlaytestArtifactDirectory, writePlaytestArtifactBundle, type IPlaytestArtifactBundle } from "./playtestArtifacts.js";
 import { discoverPlaytestTargets, suggestPlaytestScenario, type IPlaytestDiscoveryReport } from "./playtestDiscovery.js";
@@ -80,13 +84,14 @@ export interface IPlaytestReport {
   pass: boolean;
   proofMetadata?: IProofArtifactMetadata;
   reproduceCommand?: string;
-  runtime: "web";
+  runtime: "bevy" | "web";
   scenario?: string;
   target?: string;
   url?: string;
 }
 
 export interface IPlaytestCommandOptions {
+  bevyRunner?: BevyRuntimeRunner;
   runner?: (options: IPlaytestRunOptions) => Promise<IPlaytestReport>;
   watchHooks?: IPlaytestWatchHooks;
 }
@@ -233,7 +238,11 @@ export async function playtestCommand(
           ...(viewport === undefined ? {} : { viewport }),
         })
       : applyScenarioOverrides(await loadPlaytestScenario(projectPath, scenarioPath), { target, viewport });
-    const selectedRunner = createPlaytestTargetRunner(scenario.target, options.runner ?? runWebPlaytest);
+    const selectedRunner = createPlaytestTargetRunner(
+      scenario.target,
+      options.runner ?? runWebPlaytest,
+      (runOptions) => runNativePlaytest(runOptions, options.bevyRunner ?? runBevyRuntime),
+    );
     if (selectedRunner === undefined) {
       return diagnosticResult(
         {
@@ -340,6 +349,178 @@ async function runWebPlaytest(options: IPlaytestRunOptions): Promise<IPlaytestRe
   } finally {
     await server?.close();
   }
+}
+
+async function runNativePlaytest(options: IPlaytestRunOptions, bevyRunner: BevyRuntimeRunner): Promise<IPlaytestReport> {
+  const bundlePath = await ensureProjectBundle(options.projectPath);
+  const commandStreamPath = resolve(options.artifactDirectory, "native-proof-harness.json");
+  const readinessPath = resolve(options.artifactDirectory, "native-readiness.json");
+  await mkdir(options.artifactDirectory, { recursive: true });
+  await writeFile(commandStreamPath, `${JSON.stringify(nativeHarnessCommandStream(options.scenario), null, 2)}\n`, "utf8");
+  const process = bevyRunner({
+    bundlePath,
+    proofHarness: {
+      commandStreamPath,
+      readinessOutPath: readinessPath,
+    },
+  });
+  const readinessSamples = await collectNativeReadiness(process, readinessPath, nativeHarnessTimeoutMs(options.scenario));
+  const before = transformSampleFromReadiness(readinessSamples[0], options.entityId);
+  const after = transformSampleFromReadiness(readinessSamples.at(-1), options.entityId);
+  const followBefore = options.follow === undefined ? undefined : transformSampleFromReadiness(readinessSamples[0], options.follow.entityId);
+  const followAfter = options.follow === undefined ? undefined : transformSampleFromReadiness(readinessSamples.at(-1), options.follow.entityId);
+  const diagnostics: IPlaytestDiagnostic[] = readinessSamples
+    .flatMap((sample) => Array.isArray(sample.diagnostics) ? sample.diagnostics : [])
+    .filter((diagnostic): diagnostic is IPlaytestDiagnostic => isRecord(diagnostic) && typeof diagnostic.code === "string" && typeof diagnostic.message === "string")
+    .map((diagnostic) => ({ code: diagnostic.code, message: diagnostic.message, severity: diagnostic.severity === "warning" ? "warning" : "error", suggestion: diagnostic.suggestion }));
+  if (before === undefined || after === undefined) {
+    diagnostics.push({
+      code: "TN_PLAYTEST_ENTITY_NOT_FOUND",
+      message: `No native Transform evidence was found for entity '${options.entityId}'.`,
+      severity: "error",
+      suggestion: "Check the entity id and ensure the native proof harness readiness includes the entity Transform.",
+    });
+  }
+  const movementDelta = before === undefined || after === undefined ? undefined : delta3(before.position, after.position);
+  const distance = movementDelta === undefined ? 0 : length3(movementDelta);
+  const follow = options.follow === undefined
+    ? undefined
+    : {
+        ...(followAfter === undefined ? {} : { after: followAfter }),
+        ...(followBefore === undefined ? {} : { before: followBefore }),
+        entity: options.follow.entityId,
+        ...(followBefore === undefined || followAfter === undefined ? {} : { moved: length3(delta3(followBefore.position, followAfter.position)) }),
+        ...(followAfter === undefined || after === undefined ? {} : { separation: length3(delta3(after.position, followAfter.position)) }),
+        within: options.follow.within,
+      };
+  diagnostics.push(
+    ...evaluateMovementDiagnostics({
+      distance,
+      entityId: options.entityId,
+      expectAxis: parseAxisExpectation(options.expectAxis),
+      expectMoved: options.expectMoved,
+      follow,
+      movementDelta,
+      movementThreshold: options.movementThreshold,
+      press: options.press,
+    }),
+  );
+  const hasErrors = diagnostics.some((diagnostic) => diagnostic.severity === "error");
+  return {
+    ...(after === undefined ? {} : { after }),
+    ...(before === undefined ? {} : { before }),
+    debugColliders: options.debugColliders,
+    diagnostics,
+    distance,
+    entity: options.entityId,
+    ...(options.expectAxis === undefined ? {} : { expectAxis: options.expectAxis }),
+    expectMoved: options.expectMoved,
+    ...(follow === undefined ? {} : { follow }),
+    frames: options.frames,
+    input: options.press,
+    ...(movementDelta === undefined ? {} : { movementDelta }),
+    movementThreshold: options.movementThreshold,
+    observations: {
+      console: [],
+      effectLog: {},
+      hud: {},
+      network: [],
+      resources: {},
+      runtimeDiagnostics: { readiness: readinessSamples },
+    },
+    pass: !hasErrors,
+    runtime: "bevy",
+    scenario: options.scenario.name,
+    target: options.scenario.target,
+  };
+}
+
+function nativeHarnessCommandStream(scenario: IPlaytestScenario): unknown {
+  const commands: Array<Record<string, unknown>> = [];
+  let tick = Math.max(1, scenario.warmupFrames);
+  for (const step of scenario.steps) {
+    if (step.press !== undefined) {
+      commands.push({ code: step.press, pressed: true, tick, type: "key" });
+      const holdFrames = Math.max(1, step.holdFrames ?? 1);
+      tick += holdFrames;
+      if (step.release) {
+        commands.push({ code: step.press, pressed: false, tick, type: "key" });
+      }
+    }
+    tick += Math.max(0, step.waitFrames ?? 0);
+  }
+  commands.push({ tick: tick + 2, type: "exit" });
+  return {
+    commands,
+    schema: "threenative.native-proof-harness",
+    version: "0.1.0",
+  };
+}
+
+async function collectNativeReadiness(process: ChildProcess, readinessPath: string, timeoutMs: number): Promise<Record<string, unknown>[]> {
+  const samples: Record<string, unknown>[] = [];
+  const started = Date.now();
+  let lastTick: number | undefined;
+  let exited = false;
+  const exitPromise = once(process, "exit").then(() => {
+    exited = true;
+  });
+  while (!exited && Date.now() - started < timeoutMs) {
+    const sample = await readNativeReadiness(readinessPath);
+    const tick = typeof sample?.tick === "number" ? sample.tick : undefined;
+    if (sample !== undefined && tick !== lastTick) {
+      samples.push(sample);
+      lastTick = tick;
+    }
+    await Promise.race([exitPromise, delay(25)]);
+  }
+  const finalSample = await readNativeReadiness(readinessPath);
+  const finalTick = typeof finalSample?.tick === "number" ? finalSample.tick : undefined;
+  if (finalSample !== undefined && finalTick !== lastTick) {
+    samples.push(finalSample);
+  }
+  if (!exited) {
+    process.kill();
+    throw new Error(`Native playtest proof harness did not exit within ${timeoutMs}ms.`);
+  }
+  return samples;
+}
+
+async function readNativeReadiness(path: string): Promise<Record<string, unknown> | undefined> {
+  try {
+    const value = JSON.parse(await readFile(path, "utf8")) as unknown;
+    return isRecord(value) ? value : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function transformSampleFromReadiness(sample: Record<string, unknown> | undefined, entityId: string): ITransformSample | undefined {
+  if (sample === undefined || !Array.isArray(sample.transforms)) {
+    return undefined;
+  }
+  const transform = sample.transforms
+    .filter((item): item is Record<string, unknown> => isRecord(item))
+    .find((item) => item.entity === entityId);
+  const position = readNativePosition(transform?.position);
+  if (position === undefined) {
+    return undefined;
+  }
+  const tick = typeof sample.tick === "number" ? sample.tick : 0;
+  return { frame: tick, position, tick };
+}
+
+function readNativePosition(value: unknown): Vec3 | undefined {
+  if (!Array.isArray(value) || value.length < 3) {
+    return undefined;
+  }
+  const position = value.slice(0, 3).map((item) => (typeof item === "number" && Number.isFinite(item) ? item : Number.NaN));
+  return position.every(Number.isFinite) ? position as Vec3 : undefined;
+}
+
+function nativeHarnessTimeoutMs(scenario: IPlaytestScenario): number {
+  const frames = scenario.steps.reduce((total, step) => total + Math.max(1, step.holdFrames ?? 1) + Math.max(0, step.waitFrames ?? 0), scenario.warmupFrames);
+  return Math.max(10000, frames * (1000 / 30) + 10000);
 }
 
 async function probePreview(options: IPlaytestRunOptions & { url: string }): Promise<IPlaytestReport> {

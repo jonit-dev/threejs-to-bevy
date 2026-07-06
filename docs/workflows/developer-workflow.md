@@ -163,6 +163,13 @@ tn screenshot --url http://127.0.0.1:5173 --out artifacts/proof/frame.png
 tn record --url http://127.0.0.1:5173 --out artifacts/proof/motion.webm --duration 5
 ```
 
+`third-person-controller` currently stamps the declarative follow-camera
+component. For player-controlled orbit cameras, author a portable script that
+imports `CameraRig.orbitThirdPerson` from `@threenative/script-stdlib`, declares
+`LookX`/`LookY`, `physics.raycast`, and the `tn.cameraOrbitRig.<cameraId>` /
+`tn.characterRig.<entityId>` resources in structured source, and feed the
+returned yaw into `CharacterRig.update`.
+
 Command expectations:
 
 - `tn init` is the first-project alias for `tn create`. It creates a project
