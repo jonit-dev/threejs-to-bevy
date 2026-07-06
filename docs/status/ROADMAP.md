@@ -1,372 +1,210 @@
-# Roadmap
+# ThreeNative Roadmap
 
-This roadmap is organized around product claims, not implementation phases. The
-project should advance only when a version makes the TypeScript authoring loop
-more useful, more portable, and easier to verify.
+Status: proposed 2026-07-05. This is the strategic front door for "what next";
+`docs/STATUS.md` remains the front door for "what works today".
 
-The short version:
+## North Star
 
-```txt
-Build a Three.js-syntax-first game engine from the ground up.
-Use Bevy behavior as the game-engine reference model.
-Keep Bevy adapter-private and preserve easy TypeScript authoring for humans and
-LLMs.
-Promote features only when SDK, IR, validation, web Three.js, native Bevy,
-conformance, examples, and docs agree.
-```
+A viable game engine where an AI agent (or human) can go from a game idea to a
+polished, performant, playable game that runs identically on web (Three.js) and
+native (Bevy), and can *prove* it at every step.
 
-## Product Direction
+That decomposes into five product qualities, in priority order:
 
-ThreeNative is a TypeScript game SDK with a familiar Three.js-like authoring
-surface, validated portable game IR, a Three.js web runtime, and a native Bevy
-runtime adapter.
+1. **Easy agent dev** — the authoring-to-proof loop is fast, bounded, and
+   trustworthy. An agent can always answer "does my game work?" cheaply.
+2. **Parity** — one IR, two runtimes, same behavior. Parity is proven by
+   shared trace contracts and behavioral tests, not by duplicated code and
+   subjective screenshots.
+3. **Nice looks** — the zero-config default output looks like a finished game,
+   not a tech demo. Cinematic look, real materials, believable environments.
+4. **Efficient** — dense scenes are affordable at runtime (instancing,
+   culling, LOD, streaming), proven by measured budgets, not metadata.
+5. **Viable** — the capability surface covers what real small/mid games need
+   (gameplay flow, animation depth, terrain, distribution), with everything
+   else failing loudly at a documented boundary.
 
-```txt
-Three.js-like TypeScript authoring
-  -> optional supported R3F/JSX capture
-  -> SDK/ECS capture and validation
-  -> versioned game IR bundle
-  -> Three.js web runtime
-  -> Bevy native runtime
-```
+## Where We Are (2026-07)
 
-The core claim is not "compile arbitrary Three.js to Rust." The core claim is:
+Strengths: unusually broad promoted surface — ECS/app model, portable
+scripting with effect validation, PBR rendering baseline, physics + character
+controller, skeletal animation, retained UI, spatial audio, persistence,
+structured-source authoring (CLI/MCP/editor), desktop packaging, and a large
+verify-gate suite.
 
-```txt
-Write game code with a small, easy, Three.js-shaped TypeScript API.
-Get explicit portable ECS/game data.
-Run it on web through Three.js.
-Run it natively through Bevy.
-```
+The binding constraints (per `docs/audits/FOUNDATIONAL_BOTTLENECK_AUDIT_2026-07-05.md`):
 
-The public API should stay easy for LLMs and TypeScript developers: simple
-constructors, predictable object composition, explicit components, direct asset
-references, stable diagnostics, and examples that can be copied and modified.
-Bevy is the reference for engine behavior and feature coverage, not the authoring
-surface users write against.
+- **Proof asymmetry**: `tn playtest`/`screenshot`/`record`/`game qa` input
+  proof is web-only; the Bevy runtime has no behavioral proof path.
+- **Narrow proof loop**: playtest is single-input, movement-centric, one-shot;
+  no scenario sequences, weak assertions, no fast failure-to-fix tier.
+- **Contract sprawl**: authoring operations monolith (5k+ lines), duplicated
+  web/Bevy mapping code, 2.8k-line status docs — velocity tax on every change.
+- **Visual ceiling**: `cinematic` look, terrain/open worlds, and advanced
+  rendering are aspirational tiers; the default output reads "stylized demo".
 
-Three.js is a rendering engine and browser runtime substrate. Bevy is the
-game-engine reference for common portable behavior: ECS, schedules, resources,
-input, physics, animation, audio, UI, assets, scenes, diagnostics, packaging,
-and runtime behavior. The web target implements those game-engine features on
-top of Three.js. The native target maps the same portable contracts onto Bevy.
+The roadmap sequences fixes to those constraints. Rule of thumb: **do not
+start a phase's headline feature until the previous phase's proof
+infrastructure exists to verify it.**
 
-The active status and release gate live in [STATUS.md](STATUS.md). The detailed
-drift tracker and Bevy-derived backlog live in
-[bevy-feature-parity.md](bevy-feature-parity.md). This roadmap should stay
-short enough to guide priorities without duplicating those evidence documents.
+## Active PRD Slices
 
-## Non-Negotiable Boundaries
+Use these implementation PRDs as the executable backlog for this roadmap:
 
-- Users write TypeScript, not Bevy Rust.
-- Bevy remains an internal native runtime adapter.
-- The SDK supports a useful Three.js-like game-engine subset, not arbitrary
-  Three.js projects.
-- Raw Three.js objects, renderer internals, Bevy handles, browser APIs,
-  filesystem APIs, network APIs, workers, timers, and arbitrary npm packages are
-  not portable gameplay APIs.
-- R3F/JSX is an optional authoring/capture layer, not the runtime contract.
-- Supported R3F/JSX lowers to the same IR as the direct SDK API.
-- The compiler emits explicit versioned IR instead of compiling arbitrary
-  JavaScript or Three.js state.
-- Web runs directly on Three.js. Native runs through Bevy first, not through a
-  WebView.
-- Gameplay authoring stays TypeScript. Native scripting runs the same
-  constrained JavaScript bundle through an embedded QuickJS-style host.
-- Unsupported APIs fail with explicit diagnostics rather than being ignored.
-- MCP, online services, collaboration, public plugins, and custom renderer work
-  come after the SDK, compiler, CLI, validator, runtime, and conformance
-  foundations are real.
+- **Phase 1 — Agent Proof Loop:**
+  `docs/PRDs/proof-first-engine-loop-2026-07-05/PRD-001-agent-proof-loop-scenario-ratchet.md`
+- **Phase 2 — Native Parity Closure:**
+  `docs/PRDs/proof-first-engine-loop-2026-07-05/PRD-002-native-parity-closure-and-proof-loop.md`
+- **Phase 3 — Nice Looks by Default:**
+  `docs/PRDs/proof-first-engine-loop-2026-07-05/PRD-004-cinematic-default-look.md` and
+  `docs/PRDs/proof-first-engine-loop-2026-07-05/PRD-005-believable-world-terrain-and-biome-dressing.md`
+- **Phase 4 — Efficient at Scale:**
+  `docs/PRDs/proof-first-engine-loop-2026-07-05/PRD-006-runtime-proven-efficient-scale.md`
+- **Phase 5 — Capability Depth:**
+  `docs/PRDs/proof-first-engine-loop-2026-07-05/PRD-007-declarative-gameplay-flow-spawners-sequencer.md`,
+  `docs/PRDs/proof-first-engine-loop-2026-07-05/PRD-008-actor-archetypes-and-typed-scripting.md`,
+  `docs/PRDs/proof-first-engine-loop-2026-07-05/PRD-011-portable-scripting-audio-facade.md`,
+  `docs/PRDs/proof-first-engine-loop-2026-07-05/PRD-010-portable-scripting-delayed-commands-scheduling.md`,
+  `docs/PRDs/proof-first-engine-loop-2026-07-05/PRD-012-portable-scripting-particle-commands.md`,
+  `docs/PRDs/proof-first-engine-loop-2026-07-05/PRD-009-portable-scripting-character-physics-contacts.md`,
+  `docs/PRDs/proof-first-engine-loop-2026-07-05/PRD-013-portable-shader-material-parity.md`,
+  `docs/PRDs/proof-first-engine-loop-2026-07-05/PRD-014-portable-photoreal-rendering-and-postprocessing.md`,
+  `docs/PRDs/proof-first-engine-loop-2026-07-05/PRD-015-advanced-animation-physics-depth.md`, and
+  `docs/PRDs/proof-first-engine-loop-2026-07-05/PRD-016-external-services-media-boundaries.md`,
+  `docs/PRDs/proof-first-engine-loop-2026-07-05/PRD-017-signed-installers-store-packaging.md`
+- **Continuous Tracks:**
+  `docs/PRDs/proof-first-engine-loop-2026-07-05/PRD-003-contract-de-sprawl-authoring-runtime-traces.md` and
+  `docs/PRDs/other/docs-front-door-compaction.md`
 
-## Version Goals
+## Phase 1 — Agent Proof Loop (the foundation)
 
-| Version | Goal | Main Proof |
-| --- | --- | --- |
-| V1 | Prove the full source-to-runtime loop. | A scaffolded TypeScript scene emits IR, validates, renders in web Three.js, runs in native Bevy, and can be visually verified. |
-| V2 | Prove a small playable game loop. | A developer or AI can build, validate, preview, and iterate on a playable arena-style game with portable assets, input, UI, audio, physics, and constrained gameplay systems. |
-| V3 | Prove rich environment bundling and runtime content. | A dense first-person forest-path scene validates as one bundle and runs through web and Bevy with budget and visual evidence. |
-| V4 | Prove native TypeScript gameplay scripting. | The same `scripts.bundle.js` runs in web JavaScript and embedded QuickJS in Bevy with equivalent ECS effects and diagnostics. |
-| V5 | Prove the foundation is maintainable while improving visual quality. | Refactoring, conformance, Rust coverage, fixture cleanup, diagnostics, release gates, and selected rendering/content upgrades reduce drift. |
-| V6 | Close the highest-value common game-engine gaps. | The most common missing gameplay, rendering, input, UI, audio, asset, animation, physics, tooling, and diagnostics features are promoted with cross-runtime evidence. |
-| V7 | Close deeper engine/runtime gaps. | Advanced or harder parity work left after V6 is promoted or explicitly deferred with the same evidence standard. |
-| V8 | Prove local editor and inspector workflows. | Local save/load, structured diffs, inspector/editor data, and preview workflows author the same SDK/ECS/IR data without online scope. |
-| V9 | Prove online service boundaries. | Publishing, hosted validation, asset-cache/sync foundations, auth boundaries, and remote artifacts are optional and have deterministic local fallback. |
-| V10 | Prove collaboration and replication. | Multi-user editing and runtime replication build on stable V8 data flows and V9 service boundaries. |
+Goal: `tn playtest` becomes the default self-verification harness every agent
+runs before claiming "works". Everything later in this roadmap is verified
+through it.
 
-## Completed Foundation: V1-V5
+- Scenario-driven playtests: `playtests/*.playtest.json` with multi-step input
+  sequences (move, wait, interact, assert), not one keypress.
+- Rich assertions: resources/GameState values, UI text/visibility, camera
+  pose/occupancy, physics contacts/triggers, diagnostics-clean, entity
+  position/bounds — in addition to existing signed-axis and follow checks.
+- `tn playtest --discover`: infer runnable scenarios from authored input +
+  player source so a bare project still gets a smoke playtest.
+- Artifact bundle per run (report + screenshot + optional recording) with the
+  existing freshness sidecar metadata; `--watch` mode for the edit loop.
+- Proof tiering promoted as an explicit contract: `tn playtest` (seconds) →
+  `tn game qa --run-proof` (scenario smoke, minutes) → `verify:*` (release).
+  Generated-project instructions and templates teach this tier order.
 
-V1-V5 are treated as the completed foundation for planning purposes. Their
-detailed evidence belongs in [STATUS.md](STATUS.md), PRDs, gates, examples, and
-artifacts rather than in this roadmap.
+Exit criteria: every maintained starter and generated-game example carries at
+least one scenario playtest; `verify:generated-games` requires it; the audit's
+"agents cannot cheaply prove a game works" finding is closed.
 
-What they established:
+## Phase 2 — Native Parity Closure (parity you can prove)
 
-- scaffolded project creation, validation, bundle build, web preview, native
-  run, and visual self-verification loops
-- a supported Three.js-like SDK subset that captures to explicit ECS/game IR
-- web Three.js and native Bevy runtime adapters consuming the same bundle data
-- bundle-local glTF/GLB, texture, material, camera, light, transform, hierarchy,
-  UI, audio, input, physics, environment, and scripting contracts where claimed
-- constrained TypeScript systems emitted as `systems.ir.json` and
-  `scripts.bundle.js`
-- embedded QuickJS native scripting with cross-runtime effect-log conformance
-  under `pnpm verify:v4`
-- conformance reports, native tests, visual artifacts, diagnostics, and release
-  gates that make drift visible
+Goal: the Bevy runtime is a first-class proof target, and parity claims move
+from duplicated implementations + visual gates to shared behavioral contracts.
 
-Historical detail should not be re-expanded here. If a completed feature later
-regresses or turns out to be schema-only, move it back into the parity tracker
-and promote it again through a current gate.
+- Native proof harness: `tn playtest --target desktop`, `tn screenshot`, and
+  `tn game qa` drive the Bevy runtime with the same scenario files and
+  assertion vocabulary (headless via Xvfb where needed).
+- Parity ratchet gate: every scenario playtest that passes on web must pass on
+  native for promoted capabilities; regressions block release.
+- Trace contracts over code duplication: extract small shared semantic-state
+  trace schemas (transform/physics/UI/animation snapshots) that both adapters
+  emit, so conformance compares traces instead of maintaining parallel logic.
+  Use this to justify — not precede — refactors of the Bevy mapping hotspots
+  (`map_world.rs`, `ui.rs`, `conformance.rs`, loader `types.rs`).
+- Close the remaining Partial parity rows (point/spot light fidelity, texture
+  slots, instancing/batching, atmosphere, first-person walkthrough on Bevy)
+  under the new ratchet rather than as one-off screenshot fixes.
 
-## Current Priority: Ground-Up Three.js-Style Engine
+Exit criteria: an agent can build a game and prove it behaves the same on both
+runtimes without reading Rust; `docs/bevy-feature-parity.md` Partial rows for
+promoted capabilities reach Supported or are explicitly re-scoped.
 
-The next roadmap work should keep reinforcing the same product shape:
+## Phase 3 — Nice Looks by Default (the visual bar)
 
-- Make the TypeScript API feel like a deliberately small Three.js game engine,
-  not a Bevy binding and not an arbitrary Three.js compatibility layer.
-- Prefer simple authoring primitives that LLMs can use reliably: meshes,
-  materials, lights, cameras, scenes, components, systems, input maps, UI nodes,
-  sounds, colliders, animations, and assets with stable names and examples.
-- Use Bevy behavior to decide what "game-engine complete" means, then expose it
-  through TypeScript concepts that fit the existing SDK.
-- Treat the IR bundle as the source of truth between authoring, compiler, CLI,
-  web runtime, and native runtime.
-- Keep examples self-contained and runnable so agents can build, preview,
-  inspect artifacts, and repair failures without manual interpretation.
+Goal: a zero-config generated game looks art-directed. "Finished" is judged by
+screenshots and motion, verified through the Phase 1/2 proof loop.
 
-## V6: Common Game-Engine Feature Parity
+- Promote the `cinematic` render-look profile on both runtimes with
+  screenshot-backed regression references; make it the default for new
+  projects (`balanced` and `parity` remain selectable).
+- Bounded polish presets: shadow quality, bloom/exposure, material presets,
+  and glTF material-extension/morph/blend fidelity — the parity doc's
+  "practical order for game-polish work" items 2–3.
+- Believable environments, first slice: portable heightfield terrain
+  (rendered + collidable on both runtimes), scatter/biome dressing, and
+  `tn world generate --biome` so generated games stop shipping empty horizons.
+- Raise the game-production visual gates to match: primitive-placeholder and
+  flat-screenshot diagnostics tighten once cinematic default lands, so the
+  quality floor moves with the capability.
 
-Goal: make the engine cover the common feature set needed by most small 3D
-games, while preserving the easy Three.js-like syntax.
+Exit criteria: a fresh `tn create` + `tn game plan/improve` project passes the
+visual scorecard with the cinematic default and a dressed environment, proven
+by nonblank/contrast metrics plus scenario playtests on web and native.
 
-V6 should promote the highest-value open items from
-[bevy-feature-parity.md](bevy-feature-parity.md). A V6 item is done only when
-the supported surface is present in SDK authoring, IR/schema, validation,
-compiler output, web runtime behavior, Bevy runtime behavior where claimed,
-conformance, docs, examples, and the release gate.
+## Phase 4 — Efficient at Scale (performance you can measure)
 
-### V6 Focus Areas
+Goal: dense worlds are affordable and the budget claims are runtime-proven.
 
-- Camera and view basics:
-  - multiple active cameras, camera ordering, viewports, render layers, and
-    common camera helpers such as orbit, pan, zoom, shake, and view models
-- Material and texture gaps:
-  - transparency sorting and richer blend behavior
-  - HDR bloom contribution from emissive materials
-  - specular texture maps
-  - native visual application of texture sampler and UV transform controls
-- Rendering basics:
-  - native visual parity for fog, sky, atmosphere, shadows, color management,
-    and environment maps where already represented in IR
-  - skyboxes and cubemap/compressed texture handling
-  - renderer-level instancing and batching for repeated content
-- Assets and scenes:
-  - multi-asset load synchronization
-  - query/update APIs for spawned glTF scene entities
-  - stable asset diagnostics and repair hints for common import failures
-- Animation and particles:
-  - visual skeletal animation deformation from loaded glTF clips
-  - transform animation authored in code/IR
-  - stop/state query APIs
-  - rendered particle systems for bounded common cases
-- Physics and character movement:
-  - full rigid-body solver parity for common cases
-  - broader sensors beyond current trigger/overlap scope
-  - character interaction volumes and object pushing
-  - pathfinding/navmesh only if it is needed by the V6 functional game proof
-- Input, picking, and controls:
-  - interactive rebinding UI/persistence
-  - richer gamepad/touch event streams and diagnostics
-  - drag-and-drop picking events and picking debug overlays
-- UI, text, and accessibility:
-  - native-rendered UI shadows, gradients, weight, and decoration parity
-  - font assets and inline rich text spans
-  - UI texture atlases, 9-slice scaling, flipping, and tiling
-  - standard widgets needed by small games, such as sliders and scrollbars
-  - target-specific accessibility diagnostics where practical
-- Audio:
-  - real 3D spatial attenuation and listener movement
-  - mixer buses, effects, ducking, routing behavior, and state-driven music
-    transitions
-- Diagnostics, tooling, packaging, and performance:
-  - in-app FPS/diagnostics overlay
-  - broader target profiles and repair hints
-  - larger stress-test fixtures for UI, text, lights, cubes, animated models,
-    and dense repeated content
+- Runtime-proven instancing/batching and LOD swap on both runtimes under a
+  measured stress gate (frame time, draw calls, entity counts) — moving these
+  from report-level metadata to enforced budgets.
+- Terrain tile/chunk streaming with LOD (advanced-features Tier 2), gated on
+  the Phase 3 terrain slice.
+- Texture compression (KTX2/Basis) on native; asset-budget gates extended to
+  cover it.
+- Performance tiering in target profiles: authored budgets per target class,
+  with `tn game qa` failing when a scenario playtest exceeds them.
 
-### V6 Success Criteria
+Exit criteria: a benchmark scene (dense scatter + animated actors) meets
+authored frame budgets on both runtimes in CI-comparable runs.
 
-- A maintained V6 functional game demonstrates the promoted common features
-  through visible gameplay or inspectable artifacts.
-- The SDK examples preserve easy Three.js-like syntax and do not expose Bevy
-  concepts as user-facing requirements.
-- Promoted features fail closed on unsupported targets with stable diagnostics.
-- The parity tracker has no ambiguous "partly works" claim for any V6-promoted
-  feature; each row is either supported with evidence, intentionally partial
-  with named gaps, or deferred.
-- `pnpm verify:v6` or the current successor gate is authoritative for the V6
-  claim and writes machine-readable artifacts an AI agent can use to localize
-  failures.
+## Phase 5 — Capability Depth (a viable engine's long tail)
 
-### V6 Explicit Exclusions
+Sequenced behind the proof loop; each item ships with scenario proof and a
+parity ratchet entry. Draw from the active PRD backlog in priority order:
 
-- online services, networking, replication, or collaboration
-- visual editor and inspector UI
-- public plugin/native extension APIs
-- arbitrary Three.js, R3F, Drei, React DOM, browser, filesystem, network, or
-  platform API compatibility
-- arbitrary npm dependencies or unrestricted async behavior inside portable
-  systems
-- custom Rust/wgpu runtime replacement
-- broad shader/material graph work without a narrow portable contract
+1. Declarative gameplay flow (`Spawner`, `GameFlow`, `Sequence`) — removes the
+   biggest remaining script burden for common game shapes.
+2. Typed scripting + actor archetypes (`defineBehavior`,
+   `tn actor add character --asset <glb>`) — the largest remaining agent-DX
+   win in authoring.
+3. Scripting facades: audio (`ctx.audio`), delayed commands/scheduling,
+   particle commands, contact filtering/slope-push semantics.
+4. Portable shader/material extension points and a narrow post-processing
+   graph (advanced-features Tier 3 entry, capability-gated).
+5. Advanced animation/physics depth (IK, retargeting, blend trees, vehicles,
+   ragdoll) — promote selectively based on generated-game demand.
+6. Distribution: signed installers and store packaging move from preflight
+   diagnostics to real flows when credentials/context exist.
 
-## V7: Deep Engine Gap Closure
+## Continuous Tracks (every phase)
 
-Goal: close deeper parity gaps that are important for richer 3D games but too
-large or risky for the common-feature milestone.
+- **Contract de-sprawl**: split the authoring operations monolith by source
+  family behind the stable registry facade; keep the Bevy mapping hotspots
+  shrinking via trace contracts. Refactors ride behind the proof loop.
+- **Docs front doors**: keep STATUS.md/parity docs answering "what is current,
+  what do I run" in the first screen; move historical evidence to appendices
+  or `docs/audits/`. Dense front doors are an agent-DX bug.
+- **Boundary honesty**: unsupported surfaces keep failing with stable
+  diagnostics; nothing is promoted without web+Bevy proof. Networking,
+  cloud services, and 2D remain explicit non-goals.
 
-V7 should continue to use [bevy-feature-parity.md](bevy-feature-parity.md) as
-the backlog. Promote only the slices that can pass the full evidence chain.
-Everything else should be explicitly deferred with diagnostics or documented as
-not portable.
+## Non-Goals (unchanged)
 
-### V7 Focus Areas
+- Multiplayer/networking, cloud accounts/saves, streaming media decoders.
+- A native desktop visual editor (browser editor + CLI remain the surface).
+- Pixel-identical rendering between runtimes (parity is same-source,
+  same-bundle, same-behavior; not same-pixels).
 
-- Advanced camera and rendering:
-  - render-to-texture, depth-only camera targets, custom projections, screenshot
-    and export workflows
-  - FXAA/TAA/SMAA, color grading, depth of field, decals, HLOD fade behavior,
-    custom post-processing, and other target-gated renderer features
-- Advanced lights and atmosphere:
-  - clustered-light budgets, point-light shadow-filter parity, light probes,
-    lightmaps, mixed baked/dynamic lighting, area-light behavior, and debug
-    light gizmos
-- Advanced materials and shaders:
-  - custom materials, extended materials, parallax/depth maps, advanced PBR
-    fields, custom shaders, shader defs, storage buffers, render phases, and
-    bindless material/texture strategies
-- Advanced assets and animation:
-  - embedded assets, web/network asset loading if it can remain deterministic,
-    glTF extras/custom vertex attributes, hot reload with state policy, masks,
-    morph targets, retargeting, IK, UI/property animation, and richer particle
-    behavior
-- Advanced physics and navigation:
-  - dynamic mesh colliders, external physics backend strategy, navmesh/pathing,
-    richer solver behavior, and arbitrary sloped mesh terrain support
-- Advanced UI/audio/input:
-  - render-to-texture and 3D-world UI, virtual keyboards/context menus, UI
-    transforms, platform audio diagnostics, generated tone playback, streaming
-    only if target-gated, and richer device overlays
-- Performance and packaging:
-  - live profiler captures, native platform profiler evidence, GPU timing,
-    signed installers, mobile packaging, and broader platform target profiles
-- Debugging tools:
-  - debug draw APIs, scene viewer, asset preview, gamepad tools, hierarchy
-    inspection, property editing, and gizmo overlays that feed the later editor
-    track
+## Sequencing Rationale
 
-### V7 Success Criteria
-
-- Every V7-promoted item has SDK/IR/compiler/validation/runtime/conformance/docs
-  evidence, or is explicitly documented as web-only/native-only where that is
-  the intended contract.
-- A maintained functional scene or runtime artifact demonstrates the promoted
-  deep features.
-- Remaining gaps in the parity tracker are triaged as V8 editor work, later
-  product work, or intentionally non-portable.
-- The V7 gate includes focused web, Bevy, Rust, conformance, docs, visual, and
-  artifact evidence for every V7 claim.
-
-### V7 Explicit Exclusions
-
-- online services, auth, hosted projects, publishing, or remote asset sync
-- collaboration, multiplayer, replication, presence, or conflict resolution
-- public plugin/native extension APIs unless a later roadmap revision promotes
-  them explicitly
-- custom runtime/editor renderer replacement
-- arbitrary npm dependencies, platform APIs, raw Three.js/Bevy access, or broad
-  shader graph compatibility
-
-## V8: Local Editor And Inspector Foundations
-
-Goal: introduce editor-oriented workflows after core engine gaps are under
-control, without taking on online services, collaboration, networking, or
-replication.
-
-V8 should prove that editor-authored data can be a first-class input to the same
-SDK/ECS/IR pipeline as code-authored projects. The editor is a structured
-authoring surface over portable scene, asset, component, and system data. It is
-not a separate runtime, not a hidden source of truth, and not an excuse to bypass
-compiler validation.
-
-Candidate work:
-
-- visual scene hierarchy and property inspector
-- transform, light, bounds, camera, collider, and UI gizmos
-- asset preview and scene viewer workflows
-- structured project snapshots, diffs, apply, save, and load
-- bundle preview and local verification artifacts
-- debug draw surfaces that reuse runtime/editor-safe geometry helpers
-
-## V9: Online Project And Publishing Foundations
-
-Goal: introduce optional online service boundaries for project workflows without
-taking on real-time collaboration, gameplay networking, or replication.
-
-Candidate work:
-
-- auth and project identity boundaries
-- hosted project metadata
-- publish/share flows for built bundles or previews
-- remote validation jobs that produce local-compatible diagnostics
-- optional remote asset/artifact cache with deterministic keys
-- explicit login/logout, target profile handling, and service-disabled mode
-
-Success requires offline build, validate, preview, and native workflows to keep
-working with no service credentials.
-
-## V10: Collaboration And Runtime Replication
-
-Goal: introduce real-time collaboration and runtime networking only after local
-editor data flows and online service boundaries are deterministic.
-
-Candidate work:
-
-- presence and selection sharing
-- operation logs or structured patches for scene data
-- conflict detection and deterministic merge rules
-- replayable collaboration fixtures
-- target-gated network capability declarations
-- replication for selected ECS components, resources, events, and commands
-- deterministic local simulation fallback
-- multi-client artifact logs for operations, replicated state, conflicts, and
-  rollbacks
-
-## V11+ Candidates: Advanced Engine Extensibility
-
-These remain outside committed version gates until feature parity, editor,
-online-service, and collaboration/replication foundations are proven:
-
-- public native extension or plugin API
-- sandboxed Luau or Lua mods
-- custom Rust/wgpu runtime evaluation if Bevy blocks product-critical needs
-- binary bundle format
-- React Native WebGPU experiments for validation
-
-## Cross-Version Release Gates
-
-Before calling any version complete:
-
-- supported APIs are documented
-- unsupported APIs fail with explicit diagnostics
-- IR schema changes are versioned
-- CLI behavior is stable enough for examples
-- validator covers the new surface area
-- at least one functional 3D scene uses the new capability when applicable
-- examples can be rebuilt from source
-- web and Bevy behavior is tested for every cross-runtime claim
-- conformance artifacts make SDK/compiler/runtime drift inspectable
-- docs match the actual supported API and parity tracker
-
-The roadmap should stay honest: move forward only when the end-to-end
-source-to-runtime loop gets stronger, not when isolated pieces exist.
+The 2026-07-05 bottleneck audit concluded the constraint is not missing engine
+features but that agents cannot cheaply prove a game works. Phase 1 fixes the
+loop; Phase 2 uses it to make parity a ratchet instead of a re-verification
+tax; Phases 3–4 spend the resulting velocity on the two user-visible gaps
+(looks, performance); Phase 5 deepens capability only where the proof loop and
+generated-game demand justify it. Starting anywhere later in the sequence
+re-creates the current situation: features that exist but cannot be trusted.

@@ -16,7 +16,7 @@ shadow/IBL stack by hand.
 
 **Relationship to existing PRDs (read first, do not duplicate):**
 
-- `docs/PRDs/other/portable-photoreal-rendering-and-postprocessing.md` builds
+- `docs/PRDs/proof-first-engine-loop-2026-07-05/PRD-014-portable-photoreal-rendering-and-postprocessing.md` builds
   the portable *capability plumbing* (AO, HDRI/IBL, DOF, SSR, motion blur
   fields + diagnostics). This PRD consumes those capabilities; it does not
   re-specify them.

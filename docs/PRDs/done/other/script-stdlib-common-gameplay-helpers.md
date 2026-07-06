@@ -25,7 +25,7 @@ portable across web JavaScript and Bevy QuickJS.
 - `packages/AGENTS.md`
 - `docs/PRDs/README.md`
 - `docs/PRDs/done/other/portable-scripting-ergonomics-stdlib-and-lifecycle.md`
-- `docs/PRDs/other/portable-scripting-audio-facade.md`
+- `docs/PRDs/proof-first-engine-loop-2026-07-05/PRD-011-portable-scripting-audio-facade.md`
 - `docs/contracts/scripting.md`
 - `docs/STATUS.md`
 - `docs/bevy-feature-parity.md`

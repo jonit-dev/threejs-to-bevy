@@ -261,6 +261,13 @@ with HUD counter each reachable in one command + generated stub.
 **Verification Plan:** `pnpm build && pnpm verify && pnpm verify:conformance`;
 `pnpm check:docs`; full playtest matrix on the retrofit example.
 
+**Orbit camera note:** `CameraRig.orbitThirdPerson` is now the promoted stdlib
+surface for player-controlled third-person orbit cameras. The future character
+archetype should make camera mode explicit (`follow` versus `orbit`) and stamp
+orbit script/input wiring only after recipe/archetype operations can represent
+the required helper import, pointer-delta axes, `physics.raycast` access, and
+rig state resources without hidden runtime handles.
+
 ## 5. Checkpoint Protocol
 
 Spawn `prd-work-reviewer` after every phase. Manual checkpoints additionally
@@ -297,5 +304,5 @@ for Phase 3 and 4 (feel/animation proof via `tn record` motion evidence).
   (per-entity component typing)? Default: yes if it falls out of the same
   schema walk; otherwise follow-up.
 - Vehicle archetype physics depth depends on
-  `docs/PRDs/other/advanced-animation-physics-depth.md` boundaries — start
+  `docs/PRDs/proof-first-engine-loop-2026-07-05/PRD-015-advanced-animation-physics-depth.md` boundaries — start
   with kinematic-or-joint-based arcade vehicles; document the boundary.

@@ -18,7 +18,7 @@ cannot command particle playback beyond declared emitter behavior.
 **Files Analyzed:**
 
 - `docs/contracts/scripting-api.md`
-- `docs/PRDs/other/advanced-animation-physics-depth.md`
+- `docs/PRDs/proof-first-engine-loop-2026-07-05/PRD-015-advanced-animation-physics-depth.md`
 - `packages/sdk/src/animation.ts`
 - `packages/ir/src/animation-residuals.test.ts`
 - `packages/runtime-web-three/src/animation.ts`
@@ -246,7 +246,7 @@ sequenceDiagram
 After each phase, spawn the `prd-work-reviewer` agent with:
 
 ```txt
-Review checkpoint for phase [N] of PRD at docs/PRDs/other/portable-scripting-particle-commands.md
+Review checkpoint for phase [N] of PRD at docs/PRDs/proof-first-engine-loop-2026-07-05/PRD-012-portable-scripting-particle-commands.md
 ```
 
 Continue only after PASS. Manual verification is required after Phase 3 because

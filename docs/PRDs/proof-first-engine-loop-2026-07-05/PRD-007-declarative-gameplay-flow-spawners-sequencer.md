@@ -33,7 +33,7 @@ IR out, zero script for the common 80%.
   machines; `GameFlow` reuses its validation philosophy (explicit states,
   explicit transitions, no arbitrary code in data).
 - Delayed command scheduling
-  (`other/portable-scripting-delayed-commands-scheduling.md`) is script-side;
+  (`proof-first-engine-loop-2026-07-05/PRD-010-portable-scripting-delayed-commands-scheduling.md`) is script-side;
   sequencer tracks are data-side. Coordinate tick semantics with it.
 
 **Files Analyzed:**

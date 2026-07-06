@@ -15,8 +15,8 @@ without exposing backend animation graphs or particle handles.
 **Files Analyzed:**
 
 - `docs/bevy-feature-parity.md`
-- `docs/PRDs/other/advanced-animation-physics-depth.md`
-- `docs/PRDs/other/portable-scripting-particle-commands.md`
+- `docs/PRDs/proof-first-engine-loop-2026-07-05/PRD-015-advanced-animation-physics-depth.md`
+- `docs/PRDs/proof-first-engine-loop-2026-07-05/PRD-012-portable-scripting-particle-commands.md`
 
 **Current Behavior:**
 

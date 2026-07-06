@@ -236,7 +236,7 @@ sequenceDiagram
   diagnostic and promotion guidance.
 
 **Checkpoint:** Automated review after this phase:
-`Review checkpoint for phase 1 of PRD at docs/PRDs/other/portable-shader-material-parity.md`.
+`Review checkpoint for phase 1 of PRD at docs/PRDs/proof-first-engine-loop-2026-07-05/PRD-013-portable-shader-material-parity.md`.
 
 #### Phase 2: SDK, Structured Source, and Compiler Emit - Authors can create shader materials without hand-editing bundles.
 
@@ -284,7 +284,7 @@ sequenceDiagram
   valid bundle, and generated `dist/**` remains derived.
 
 **Checkpoint:** Automated review after this phase:
-`Review checkpoint for phase 2 of PRD at docs/PRDs/other/portable-shader-material-parity.md`.
+`Review checkpoint for phase 2 of PRD at docs/PRDs/proof-first-engine-loop-2026-07-05/PRD-013-portable-shader-material-parity.md`.
 
 #### Phase 3: Codegen and Runtime Mapping - The same shader IR runs in web and Bevy.
 
@@ -329,7 +329,7 @@ sequenceDiagram
   textures, policy, and generated target metadata.
 
 **Checkpoint:** Automated review after this phase:
-`Review checkpoint for phase 3 of PRD at docs/PRDs/other/portable-shader-material-parity.md`.
+`Review checkpoint for phase 3 of PRD at docs/PRDs/proof-first-engine-loop-2026-07-05/PRD-013-portable-shader-material-parity.md`.
 
 #### Phase 4: Visual Parity Evidence - Shader output is visibly comparable across engines.
 
@@ -373,7 +373,7 @@ sequenceDiagram
   contact sheet, and pass/fail region samples.
 
 **Checkpoint:** Automated plus manual visual review after this phase:
-`Review checkpoint for phase 4 of PRD at docs/PRDs/other/portable-shader-material-parity.md`.
+`Review checkpoint for phase 4 of PRD at docs/PRDs/proof-first-engine-loop-2026-07-05/PRD-013-portable-shader-material-parity.md`.
 
 #### Phase 5: Docs, Gates, and Release Boundary - Shader parity becomes a tracked supported capability.
 
@@ -416,7 +416,7 @@ sequenceDiagram
   implying arbitrary raw shader parity.
 
 **Checkpoint:** Automated review after this phase:
-`Review checkpoint for phase 5 of PRD at docs/PRDs/other/portable-shader-material-parity.md`.
+`Review checkpoint for phase 5 of PRD at docs/PRDs/proof-first-engine-loop-2026-07-05/PRD-013-portable-shader-material-parity.md`.
 
 ## 6. Verification Strategy
 
