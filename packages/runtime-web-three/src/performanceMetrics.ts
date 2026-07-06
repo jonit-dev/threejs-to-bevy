@@ -55,6 +55,39 @@ export interface IFrameTimingSummary {
   worstFrameMs: number;
 }
 
+export interface IFrameTimingTrace {
+  readonly samples: readonly number[];
+  record(timeMs: number): { deltaMs: number; sampled: boolean };
+  reset(): void;
+}
+
+export function createFrameTimingTrace(maxSamples = 600): IFrameTimingTrace {
+  const samples: number[] = [];
+  let lastTimeMs: number | undefined;
+  return {
+    get samples() {
+      return samples;
+    },
+    record(timeMs: number) {
+      const previousTimeMs = lastTimeMs;
+      lastTimeMs = timeMs;
+      if (previousTimeMs === undefined) {
+        return { deltaMs: 0, sampled: false };
+      }
+      const deltaMs = Math.max(0, timeMs - previousTimeMs);
+      samples.push(deltaMs);
+      if (samples.length > maxSamples) {
+        samples.splice(0, samples.length - maxSamples);
+      }
+      return { deltaMs, sampled: true };
+    },
+    reset() {
+      samples.length = 0;
+      lastTimeMs = undefined;
+    },
+  };
+}
+
 export function summarizeFrameTimings(samples: readonly number[], budgetFrameMs = 1000 / 60): IFrameTimingSummary {
   if (samples.length === 0) {
     return { averageFrameMs: 0, averageFps: 0, budgetFrameMs, framesOverBudget: 0, jankFramePercent: 0, minFps: 0, p95FrameMs: 0, p95Fps: 0, sampleCount: 0, worstFrameMs: 0 };

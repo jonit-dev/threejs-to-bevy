@@ -1,4 +1,4 @@
-import { mkdir, readFile, stat, writeFile } from "node:fs/promises";
+import { mkdir, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { once } from "node:events";
 import type { ChildProcess } from "node:child_process";
 import { dirname, resolve } from "node:path";
@@ -80,6 +80,7 @@ export interface IPlaytestNativeRecording {
 }
 
 export interface IPlaytestPerformanceReport extends IFrameTimingSummary {
+  measurement?: "headless-browser-cadence" | "native-frame-cadence";
   renderer?: {
     drawCalls?: number;
     geometries?: number;
@@ -87,7 +88,28 @@ export interface IPlaytestPerformanceReport extends IFrameTimingSummary {
     textures?: number;
     triangles?: number;
   };
-  source: "native-proof-harness" | "web-runtime";
+  source: "native-proof-harness" | "web-runtime" | "web-runtime-headless";
+}
+
+export interface IPlaytestNativeFrameSample {
+  diagnostics: number;
+  elapsedMs?: number;
+  fps?: number;
+  frameMs: number;
+  tick: number;
+  transforms: number;
+}
+
+export interface IPlaytestNativeFrameSampleReport {
+  budgetMs: number;
+  samples: IPlaytestNativeFrameSample[];
+  summaries: {
+    afterTick10?: IFrameTimingSummary;
+    afterTick20?: IFrameTimingSummary;
+    all?: IFrameTimingSummary;
+    dropFirst?: IFrameTimingSummary;
+    startupTicks?: IFrameTimingSummary;
+  };
 }
 
 export interface IPlaytestReport {
@@ -402,6 +424,7 @@ async function runNativePlaytest(options: IPlaytestRunOptions, bevyRunner: BevyR
     : { recordingFrames };
   await mkdir(options.artifactDirectory, { recursive: true });
   await mkdir(recordingPlan.directory, { recursive: true });
+  await rm(readinessPath, { force: true });
   await writeFile(commandStreamPath, `${JSON.stringify(nativeHarnessCommandStream(options.scenario, screenshotArtifacts), null, 2)}\n`, "utf8");
   const process = bevyRunner({
     bundlePath,
@@ -428,6 +451,7 @@ async function runNativePlaytest(options: IPlaytestRunOptions, bevyRunner: BevyR
     });
   }
   const nativeRecording = await writeNativeRecordingManifest({ ...recordingPlan, frames: recordingFrames });
+  const nativeFrameSamples = nativeFrameSampleReport(readinessSamples);
   const performance = nativePerformanceReport(readinessSamples);
   const screenshotDiagnostics = options.nativeScreenshots
     ? [beforeArtifact, afterArtifact, ...recordingFrames.map((frame) => frame.path)]
@@ -480,7 +504,7 @@ async function runNativePlaytest(options: IPlaytestRunOptions, bevyRunner: BevyR
       hud: {},
       network: [],
       resources: {},
-      runtimeDiagnostics: { readiness: readinessSamples },
+      runtimeDiagnostics: { nativeFrameSamples, readiness: readinessSamples },
     },
     pass: !hasErrors,
     ...(performance === undefined ? {} : { performance }),
@@ -713,16 +737,64 @@ function nativeHarnessTimeoutMs(scenario: IPlaytestScenario): number {
 }
 
 function nativePerformanceReport(samples: readonly Record<string, unknown>[]): IPlaytestPerformanceReport | undefined {
-  const frameSamples = samples
-    .map((sample) => isRecord(sample.performance) ? sample.performance.frameMs ?? sample.performance.frame_ms : undefined)
-    .filter((sample): sample is number => typeof sample === "number" && Number.isFinite(sample) && sample >= 0);
+  const frameSamples = nativeFrameSamples(samples).map((sample) => sample.frameMs);
   if (frameSamples.length === 0) {
     return undefined;
   }
   return {
     ...summarizeFrameTimings(frameSamples),
+    measurement: "native-frame-cadence",
     source: "native-proof-harness",
   };
+}
+
+function nativeFrameSampleReport(samples: readonly Record<string, unknown>[]): IPlaytestNativeFrameSampleReport {
+  const frameSamples = nativeFrameSamples(samples);
+  return {
+    budgetMs: 1000 / 60,
+    samples: frameSamples,
+    summaries: {
+      ...nativeFrameSampleSummary("all", frameSamples),
+      ...nativeFrameSampleSummary("dropFirst", frameSamples.slice(1)),
+      ...nativeFrameSampleSummary("startupTicks", frameSamples.filter((sample) => sample.tick <= 10)),
+      ...nativeFrameSampleSummary("afterTick10", frameSamples.filter((sample) => sample.tick > 10)),
+      ...nativeFrameSampleSummary("afterTick20", frameSamples.filter((sample) => sample.tick > 20)),
+    },
+  };
+}
+
+function nativeFrameSampleSummary(key: keyof IPlaytestNativeFrameSampleReport["summaries"], samples: readonly IPlaytestNativeFrameSample[]): Partial<IPlaytestNativeFrameSampleReport["summaries"]> {
+  if (samples.length === 0) {
+    return {};
+  }
+  return { [key]: summarizeFrameTimings(samples.map((sample) => sample.frameMs)) };
+}
+
+function nativeFrameSamples(samples: readonly Record<string, unknown>[]): IPlaytestNativeFrameSample[] {
+  return samples
+    .map((sample) => {
+      const performance = isRecord(sample.performance) ? sample.performance : undefined;
+      const frameMs = readFiniteNumber(performance?.frameMs ?? performance?.frame_ms);
+      const tick = readFiniteNumber(sample.tick);
+      if (frameMs === undefined || tick === undefined || frameMs < 0) {
+        return undefined;
+      }
+      const elapsedMs = readFiniteNumber(performance?.elapsedMs ?? performance?.elapsed_ms);
+      const fps = readFiniteNumber(performance?.fps);
+      return {
+        diagnostics: Array.isArray(sample.diagnostics) ? sample.diagnostics.length : 0,
+        ...(elapsedMs === undefined ? {} : { elapsedMs }),
+        ...(fps === undefined ? {} : { fps }),
+        frameMs,
+        tick,
+        transforms: Array.isArray(sample.transforms) ? sample.transforms.length : 0,
+      };
+    })
+    .filter((sample): sample is IPlaytestNativeFrameSample => sample !== undefined);
+}
+
+function readFiniteNumber(value: unknown): number | undefined {
+  return typeof value === "number" && Number.isFinite(value) ? value : undefined;
 }
 
 async function probePreview(options: IPlaytestRunOptions & { url: string }): Promise<IPlaytestReport> {
@@ -757,7 +829,9 @@ async function probePreview(options: IPlaytestRunOptions & { url: string }): Pro
         suggestion: "Run tn verify --json or inspect preview runtime diagnostics before playtesting.",
       });
     }
-    await page.waitForTimeout(Math.max(120, options.scenario.warmupFrames * (1000 / 60)));
+    await page.waitForTimeout(120);
+    await resetWebPerformanceTrace(page);
+    await waitForWebFrameSamples(page, options.scenario.warmupFrames, Math.max(1_000, options.scenario.warmupFrames * (1000 / 15)));
     await resetWebPerformanceTrace(page);
     const observationIds = scenarioObservationIds(options.scenario);
     const beforeResources = await readResourceSnapshots(page, observationIds.resources);
@@ -768,13 +842,13 @@ async function probePreview(options: IPlaytestRunOptions & { url: string }): Pro
     for (const step of options.scenario.steps) {
       if (step.press !== undefined) {
         await dispatchKeyboardCode(page, "keydown", step.press);
-        await page.waitForTimeout(Math.max(1, step.holdFrames ?? options.frames) * (1000 / 60));
+        await waitForWebFrameAdvance(page, Math.max(1, step.holdFrames ?? options.frames));
         if (step.release) {
           await dispatchKeyboardCode(page, "keyup", step.press);
         }
       }
       if (step.waitFrames !== undefined) {
-        await page.waitForTimeout(step.waitFrames * (1000 / 60));
+        await waitForWebFrameAdvance(page, step.waitFrames);
       }
     }
     const after = await readTransformSample(page, options.entityId);
@@ -1035,10 +1109,48 @@ async function readWebPerformanceSnapshot(page: { evaluate<T>(fn: () => T): Prom
   return page.evaluate(() => globalThis.__THREENATIVE_RUNTIME__?.performanceSnapshot?.() ?? null);
 }
 
+async function readWebPerformanceSampleCount(page: { evaluate<T>(fn: () => T): Promise<T> }): Promise<number | undefined> {
+  const value = await page.evaluate(() => globalThis.__THREENATIVE_RUNTIME__?.performanceSnapshot?.());
+  if (!isRecord(value) || !isRecord(value.summary)) {
+    return undefined;
+  }
+  return optionalNumber(value.summary.sampleCount);
+}
+
 async function resetWebPerformanceTrace(page: { evaluate<T>(fn: () => T): Promise<T> }): Promise<void> {
   await page.evaluate(() => {
     globalThis.__THREENATIVE_RUNTIME__?.resetPerformanceTrace?.();
   });
+}
+
+async function waitForWebFrameAdvance(page: import("playwright").Page, frames: number): Promise<void> {
+  const start = await readWebPerformanceSampleCount(page);
+  if (start === undefined) {
+    await page.waitForTimeout(frames * (1000 / 60));
+    return;
+  }
+  await waitForWebFrameSamples(page, start + frames, Math.max(1_000, frames * (1000 / 15)));
+}
+
+async function waitForWebFrameSamples(page: import("playwright").Page, minimumSamples: number, timeoutMs: number): Promise<void> {
+  if (minimumSamples <= 0) {
+    return;
+  }
+  try {
+    await page.waitForFunction(
+      (expected) => {
+        const snapshot = globalThis.__THREENATIVE_RUNTIME__?.performanceSnapshot?.();
+        return typeof snapshot === "object"
+          && snapshot !== null
+          && typeof (snapshot as { summary?: { sampleCount?: unknown } }).summary?.sampleCount === "number"
+          && (snapshot as { summary: { sampleCount: number } }).summary.sampleCount >= expected;
+      },
+      minimumSamples,
+      { timeout: timeoutMs },
+    );
+  } catch {
+    await page.waitForTimeout(Math.min(timeoutMs, minimumSamples * (1000 / 60)));
+  }
 }
 
 function webPerformanceReport(snapshot: unknown): IPlaytestPerformanceReport | undefined {
@@ -1053,11 +1165,12 @@ function webPerformanceReport(snapshot: unknown): IPlaytestPerformanceReport | u
     budgetFrameMs: numberValue(summary.budgetFrameMs),
     framesOverBudget: numberValue(summary.framesOverBudget),
     jankFramePercent: numberValue(summary.jankFramePercent),
+    measurement: "headless-browser-cadence",
     minFps: numberValue(summary.minFps),
     p95FrameMs: numberValue(summary.p95FrameMs),
     p95Fps: numberValue(summary.p95Fps),
     sampleCount: numberValue(summary.sampleCount),
-    source: "web-runtime",
+    source: "web-runtime-headless",
     worstFrameMs: numberValue(summary.worstFrameMs),
   };
   if (renderer !== undefined) {

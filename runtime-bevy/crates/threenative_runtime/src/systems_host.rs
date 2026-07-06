@@ -1,6 +1,9 @@
 use std::{
+    cell::RefCell,
     collections::{BTreeMap, BTreeSet},
     fs,
+    path::PathBuf,
+    time::SystemTime,
 };
 
 use quickjs_rusty::Context;
@@ -20,6 +23,19 @@ use crate::{
     systems_host_bridge::BRIDGE_SOURCE,
     transform_interpolation::{TransformSample, interpolate_transform},
 };
+
+const MAX_FIXED_STEPS_PER_FRAME: f32 = 5.0;
+
+thread_local! {
+    static SCRIPT_HOST: RefCell<Option<NativeScriptHost>> = const { RefCell::new(None) };
+}
+
+struct NativeScriptHost {
+    context: Context,
+    modified: Option<SystemTime>,
+    script_path: PathBuf,
+    size: u64,
+}
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SystemsHostDiagnostic {
@@ -198,6 +214,9 @@ pub fn run_native_systems_frame_with_input(
     state.paused = options.paused;
     state.elapsed += options.delta;
     state.accumulator += options.delta;
+    state.accumulator = state
+        .accumulator
+        .min(options.fixed_delta * MAX_FIXED_STEPS_PER_FRAME);
 
     let mut run = NativeSystemsHostRun::default();
     if !state.paused {
@@ -452,7 +471,91 @@ fn run_native_system_schedules(
                 "Bundle does not reference scripts.bundle.js.",
             )
         })?;
-    let script_source = fs::read_to_string(&script_path).map_err(|source| {
+    let mut logs = Vec::new();
+    let mut transform_patches = BTreeSet::new();
+    let mut diff_cache = ComponentDiffCache::default();
+
+    with_script_host(&script_path, |context| {
+        for schedule in schedules {
+            let scheduled_systems = ordered_systems_for_schedule(&systems, schedule);
+            let tracked_components = scheduled_systems
+                .iter()
+                .flat_map(|system| system.queries.iter())
+                .flat_map(|query| query.changed.iter())
+                .cloned()
+                .collect::<Vec<_>>();
+            diff_cache.begin_schedule_stage(bundle, &tracked_components);
+            for system in scheduled_systems {
+                let effects = call_system_export(
+                    context,
+                    bundle,
+                    system,
+                    time.clone(),
+                    BTreeMap::new(),
+                    input,
+                    Some(&diff_cache),
+                )?;
+                let applied = apply_system_effects_with_report(bundle, system, &effects, 1, 1)
+                    .map_err(|diagnostics| {
+                        let first = diagnostics
+                            .into_iter()
+                            .next()
+                            .expect("invalid effects should include diagnostics");
+                        host_error(first.code, first.message)
+                    })?;
+                logs.push(applied.log);
+                transform_patches.extend(applied.transform_patches);
+            }
+        }
+        Ok(())
+    })?;
+
+    Ok(NativeSystemsHostRun {
+        logs,
+        transform_patches,
+    })
+}
+
+fn with_script_host<T>(
+    script_path: &PathBuf,
+    run: impl FnOnce(&Context) -> Result<T, SystemsHostError>,
+) -> Result<T, SystemsHostError> {
+    SCRIPT_HOST.with(|host| {
+        let script_metadata = script_host_metadata(script_path)?;
+        let mut host = host.borrow_mut();
+        let needs_init = host.as_ref().is_none_or(|host| {
+            host.script_path != *script_path
+                || host.size != script_metadata.0
+                || host.modified != script_metadata.1
+        });
+        if needs_init {
+            *host = Some(create_script_host(script_path, script_metadata)?);
+        }
+        let context = &host
+            .as_ref()
+            .expect("script host should be initialized")
+            .context;
+        run(context)
+    })
+}
+
+fn script_host_metadata(
+    script_path: &PathBuf,
+) -> Result<(u64, Option<SystemTime>), SystemsHostError> {
+    let metadata = fs::metadata(script_path).map_err(|source| {
+        host_error(
+            "TN_BEVY_SYSTEM_SCRIPT_READ_FAILED",
+            format!("Failed to stat {}: {source}", script_path.display()),
+        )
+    })?;
+    Ok((metadata.len(), metadata.modified().ok()))
+}
+
+fn create_script_host(
+    script_path: &PathBuf,
+    metadata: (u64, Option<SystemTime>),
+) -> Result<NativeScriptHost, SystemsHostError> {
+    let script_source = fs::read_to_string(script_path).map_err(|source| {
         host_error(
             "TN_BEVY_SYSTEM_SCRIPT_READ_FAILED",
             format!("Failed to read {}: {source}", script_path.display()),
@@ -474,45 +577,18 @@ fn run_native_system_schedules(
                 format!("Failed to load scripts.bundle.js in QuickJS: {source}"),
             )
         })?;
+    context.eval(&bridge_source(), false).map_err(|source| {
+        host_error(
+            "TN_BEVY_SYSTEM_BRIDGE_LOAD_FAILED",
+            format!("Failed to load native system bridge in QuickJS: {source}"),
+        )
+    })?;
 
-    let mut logs = Vec::new();
-    let mut transform_patches = BTreeSet::new();
-    let mut diff_cache = ComponentDiffCache::default();
-    for schedule in schedules {
-        let scheduled_systems = ordered_systems_for_schedule(&systems, schedule);
-        let tracked_components = scheduled_systems
-            .iter()
-            .flat_map(|system| system.queries.iter())
-            .flat_map(|query| query.changed.iter())
-            .cloned()
-            .collect::<Vec<_>>();
-        diff_cache.begin_schedule_stage(bundle, &tracked_components);
-        for system in scheduled_systems {
-            let effects = call_system_export(
-                &context,
-                bundle,
-                system,
-                time.clone(),
-                BTreeMap::new(),
-                input,
-                Some(&diff_cache),
-            )?;
-            let applied = apply_system_effects_with_report(bundle, system, &effects, 1, 1)
-                .map_err(|diagnostics| {
-                    let first = diagnostics
-                        .into_iter()
-                        .next()
-                        .expect("invalid effects should include diagnostics");
-                    host_error(first.code, first.message)
-                })?;
-            logs.push(applied.log);
-            transform_patches.extend(applied.transform_patches);
-        }
-    }
-
-    Ok(NativeSystemsHostRun {
-        logs,
-        transform_patches,
+    Ok(NativeScriptHost {
+        context,
+        modified: metadata.1,
+        script_path: script_path.clone(),
+        size: metadata.0,
     })
 }
 
@@ -628,7 +704,11 @@ fn call_system_export(
     let snapshot = build_system_context_snapshot_with_events_input_and_diff(
         bundle, system, time, events, input, diff_cache,
     );
-    let snapshot_json = serde_json::to_string(&snapshot).map_err(|source| {
+    let payload_json = serde_json::to_string(&json!({
+        "exportName": export_name,
+        "snapshot": snapshot,
+    }))
+    .map_err(|source| {
         host_error(
             "TN_BEVY_SYSTEM_CONTEXT_SERIALIZE_FAILED",
             format!(
@@ -637,35 +717,28 @@ fn call_system_export(
             ),
         )
     })?;
-    let invoke_source = format!(
-        "{}\n__tnInvokeSystem({});",
-        BRIDGE_SOURCE,
-        json!({
-            "exportName": export_name,
-            "snapshot": serde_json::from_str::<Value>(&snapshot_json)
-                .unwrap_or(Value::Null),
-        })
-    );
 
-    let effects_json: String = context.eval_as(&invoke_source).map_err(|source| {
-        let missing_fragment = format!("System export '{}' was not found", export_name);
-        if source.to_string().contains(&missing_fragment) {
-            return host_error(
-                "TN_BEVY_SYSTEM_EXPORT_MISSING",
+    let effects_json: String = context
+        .eval_as(&format!("__tnInvokeSystemJson({});", json!(payload_json)))
+        .map_err(|source| {
+            let missing_fragment = format!("System export '{}' was not found", export_name);
+            if source.to_string().contains(&missing_fragment) {
+                return host_error(
+                    "TN_BEVY_SYSTEM_EXPORT_MISSING",
+                    format!(
+                        "System '{}' references missing script export '{}'.",
+                        system.name, export_name
+                    ),
+                );
+            }
+            host_error(
+                "TN_BEVY_SYSTEM_SCRIPT_EXECUTION_FAILED",
                 format!(
-                    "System '{}' references missing script export '{}'.",
+                    "Failed to execute system '{}' export '{}': {source}",
                     system.name, export_name
                 ),
-            );
-        }
-        host_error(
-            "TN_BEVY_SYSTEM_SCRIPT_EXECUTION_FAILED",
-            format!(
-                "Failed to execute system '{}' export '{}': {source}",
-                system.name, export_name
-            ),
-        )
-    })?;
+            )
+        })?;
 
     serde_json::from_str(&effects_json).map_err(|source| {
         host_error(
@@ -681,6 +754,12 @@ fn call_system_export(
 fn module_source(script_source: &str) -> String {
     format!(
         "{script_source}\nglobalThis.__tnExports = {{ systems, systemIds: typeof systemIds === 'undefined' ? {{}} : systemIds }};\n"
+    )
+}
+
+fn bridge_source() -> String {
+    format!(
+        "{BRIDGE_SOURCE}\nglobalThis.__tnInvokeSystemJson = function(payload) {{ return __tnInvokeSystem(JSON.parse(payload)); }};\n"
     )
 }
 

@@ -61,6 +61,7 @@ pub struct NativeProofHarnessState {
     commands: Vec<NativeProofHarnessCommand>,
     held_keys: BTreeSet<KeyCode>,
     last_sample_at: Instant,
+    readiness_directory_created: bool,
     readiness_out_path: String,
     started_at: Instant,
     tick: u64,
@@ -142,6 +143,7 @@ impl NativeProofHarnessState {
             commands: stream.commands,
             held_keys: BTreeSet::new(),
             last_sample_at: Instant::now(),
+            readiness_directory_created: false,
             readiness_out_path: readiness_out_path.into(),
             started_at: Instant::now(),
             tick: 0,
@@ -159,7 +161,11 @@ impl NativeProofHarnessState {
         self.last_sample_at = now;
         NativeProofHarnessPerformanceSample {
             elapsed_ms,
-            fps: if frame_ms <= 0.0 { 0.0 } else { 1000.0 / frame_ms },
+            fps: if frame_ms <= 0.0 {
+                0.0
+            } else {
+                1000.0 / frame_ms
+            },
             frame_ms,
         }
     }
@@ -253,7 +259,13 @@ pub fn apply_native_proof_harness_commands(
     let mut diagnostics = Vec::new();
     if !native_proof_harness_models_ready(asset_server.as_deref(), required_models.as_deref()) {
         let performance = state.performance_sample();
-        write_native_proof_harness_sample(&state, tick, diagnostics, performance, transforms.iter());
+        write_native_proof_harness_sample(
+            &mut state,
+            tick,
+            diagnostics,
+            performance,
+            transforms.iter(),
+        );
         return;
     }
     let harness_commands = state
@@ -315,7 +327,13 @@ pub fn apply_native_proof_harness_commands(
         keyboard.press(*key_code);
     }
     let performance = state.performance_sample();
-    write_native_proof_harness_sample(&state, tick, diagnostics, performance, transforms.iter());
+    write_native_proof_harness_sample(
+        &mut state,
+        tick,
+        diagnostics,
+        performance,
+        transforms.iter(),
+    );
     if !hold_tick {
         state.tick += advance_ticks;
     }
@@ -398,7 +416,7 @@ fn native_proof_harness_models_ready(
 }
 
 fn write_native_proof_harness_sample<'a>(
-    state: &NativeProofHarnessState,
+    state: &mut NativeProofHarnessState,
     tick: u64,
     diagnostics: Vec<NativeProofHarnessDiagnostic>,
     performance: NativeProofHarnessPerformanceSample,
@@ -416,8 +434,11 @@ fn write_native_proof_harness_sample<'a>(
         performance,
         transforms: native_proof_harness_transform_samples(transforms),
     };
-    if let Err(error) = write_native_proof_harness_readiness(&state.readiness_out_path, &readiness)
-    {
+    if let Err(error) = write_native_proof_harness_readiness(
+        &state.readiness_out_path,
+        &readiness,
+        &mut state.readiness_directory_created,
+    ) {
         error!("{error}");
     }
 }
@@ -493,16 +514,18 @@ pub fn native_proof_harness_transform_samples<'a>(
 pub fn write_native_proof_harness_readiness(
     path: impl AsRef<Path>,
     readiness: &NativeProofHarnessReadiness,
+    directory_created: &mut bool,
 ) -> Result<(), NativeProofHarnessError> {
     let path = path.as_ref();
     let path_label = path.display().to_string();
-    if let Some(parent) = path.parent() {
+    if !*directory_created && let Some(parent) = path.parent() {
         fs::create_dir_all(parent).map_err(|source| NativeProofHarnessError::WriteReadiness {
             path: path_label.clone(),
             source,
         })?;
+        *directory_created = true;
     }
-    let json = serde_json::to_string_pretty(readiness).map_err(|source| {
+    let json = serde_json::to_string(readiness).map_err(|source| {
         NativeProofHarnessError::SerializeReadiness {
             path: path_label.clone(),
             source,

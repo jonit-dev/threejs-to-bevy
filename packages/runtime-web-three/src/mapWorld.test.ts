@@ -651,10 +651,17 @@ test("mapWorld should apply supported material texture slots", () => {
   assert.equal(cube.material.clearcoatRoughnessMap?.userData.threenativeAssetId, "tex.clearcoatRoughness");
   assert.equal(cube.material.transmissionMap?.userData.threenativeAssetId, "tex.transmission");
   assert.equal(cube.material.map?.userData.threenativeUrl, "http://example.test/bundle/assets/albedo.png");
+  assert.equal(cube.material.map?.colorSpace, THREE.SRGBColorSpace);
+  assert.equal(cube.material.emissiveMap?.colorSpace, THREE.SRGBColorSpace);
+  assert.equal(cube.material.normalMap?.colorSpace, THREE.NoColorSpace);
+  assert.equal(cube.material.roughnessMap?.colorSpace, THREE.NoColorSpace);
+  assert.equal(cube.material.metalnessMap?.colorSpace, THREE.NoColorSpace);
+  assert.equal(cube.material.aoMap?.colorSpace, THREE.NoColorSpace);
   assert.equal(cube.material.map?.wrapS, THREE.RepeatWrapping);
   assert.equal(cube.material.map?.wrapT, THREE.MirroredRepeatWrapping);
   assert.equal(cube.material.map?.minFilter, THREE.NearestMipmapLinearFilter);
   assert.equal(cube.material.map?.magFilter, THREE.NearestFilter);
+  assert.equal(cube.material.map?.anisotropy, 8);
   assert.deepEqual(cube.material.map?.repeat.toArray(), [4, 2]);
   assert.deepEqual(cube.material.map?.offset.toArray(), [0.25, 0.5]);
   assert.deepEqual(cube.material.map?.center.toArray(), [0.5, 0.5]);

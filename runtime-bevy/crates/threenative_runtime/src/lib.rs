@@ -1,4 +1,4 @@
-use std::path::Path;
+use std::{collections::HashMap, path::Path};
 
 use bevy::{ecs::system::SystemParam, prelude::*, render::camera::ClearColorConfig};
 use thiserror::Error;
@@ -563,12 +563,15 @@ fn sync_scripted_transforms(
     } else {
         None
     };
+    let entities_by_id = bundle
+        .world
+        .entities
+        .iter()
+        .map(|entity| (entity.id.as_str(), entity))
+        .collect::<HashMap<_, _>>();
     for (stable_id, mut target) in transforms.iter_mut() {
-        let Some(source) = bundle
-            .world
-            .entities
-            .iter()
-            .find(|entity| entity.id == stable_id.0)
+        let Some(source) = entities_by_id
+            .get(stable_id.0.as_str())
             .and_then(|entity| entity.components.transform.as_ref())
         else {
             continue;
@@ -597,12 +600,15 @@ fn sync_scripted_materials(
     let Some(material_handles) = material_handles else {
         return;
     };
+    let entities_by_id = bundle
+        .world
+        .entities
+        .iter()
+        .map(|entity| (entity.id.as_str(), entity))
+        .collect::<HashMap<_, _>>();
     for (stable_id, mut target) in materials.iter_mut() {
-        let Some(source) = bundle
-            .world
-            .entities
-            .iter()
-            .find(|entity| entity.id == stable_id.0)
+        let Some(source) = entities_by_id
+            .get(stable_id.0.as_str())
             .and_then(|entity| entity.components.mesh_renderer.as_ref())
         else {
             continue;

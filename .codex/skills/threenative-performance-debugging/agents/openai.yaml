@@ -1,0 +1,4 @@
+interface:
+  display_name: "ThreeNative Performance Debugging"
+  short_description: "Debug ThreeNative playtest FPS and frame timing."
+  default_prompt: "Investigate a ThreeNative performance problem using playtest artifacts, frame samples, runtime traces, controlled bundle variants, and narrow verification."

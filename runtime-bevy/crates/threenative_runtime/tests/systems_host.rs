@@ -281,7 +281,7 @@ fn systems_host_should_translate_humanoid_course_player_from_keyboard_forward() 
         .expect("humanoid course should include input");
     let mut state = NativeInputState::default();
     map_keyboard_event(&input, "KeyW", true, &mut state);
-    assert_eq!(state.axis("MoveZ"), 1.0);
+    assert_eq!(state.axis("MoveZ"), -1.0);
 
     let before = entity_position(&bundle, "player").expect("player should have a transform");
     let run = run_native_systems_frame_with_input(
@@ -680,6 +680,36 @@ fn systems_host_should_run_fixed_update_once_per_accumulated_fixed_tick() {
     assert_eq!(physics_steps, 2);
     assert!((state.accumulator - 0.1).abs() < f32::EPSILON * 8.0);
     assert_eq!(state.tick, 2);
+    assert_eq!(state.frame, 1);
+}
+
+#[test]
+fn systems_host_should_clamp_fixed_update_catchup_steps() {
+    let root = write_loop_state_bundle("loop-fixed-clamp");
+    let mut bundle = load_bundle(&root).expect("scripted bundle should load");
+    let mut state = NativeGameLoopState::default();
+    let mut physics_steps = 0;
+
+    run_native_systems_frame_with_input(
+        &mut bundle,
+        &mut state,
+        loop_options(10.0, 0.25, false),
+        |_bundle, _fixed_delta, _script_posed_entities| physics_steps += 1,
+    )
+    .expect("frame should run");
+
+    assert_eq!(
+        bundle.world.resources.get("LoopCounts"),
+        Some(&serde_json::json!({
+            "fixed": 5,
+            "post": 1,
+            "startup": 1,
+            "update": 1
+        }))
+    );
+    assert_eq!(physics_steps, 5);
+    assert_eq!(state.accumulator, 0.0);
+    assert_eq!(state.tick, 5);
     assert_eq!(state.frame, 1);
 }
 

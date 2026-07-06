@@ -1,9 +1,14 @@
+use std::cell::RefCell;
 use std::collections::BTreeMap;
 use std::collections::BTreeSet;
 
 use rapier3d::prelude::*;
 use serde::Serialize;
 use threenative_loader::{ColliderComponent, LoadedBundle, WorldEntity};
+
+thread_local! {
+    static RAPIER_CACHE: RefCell<Option<PersistentRapierWorld>> = const { RefCell::new(None) };
+}
 
 #[derive(Clone, Debug, PartialEq, Serialize)]
 pub struct PhysicsEvent {
@@ -451,96 +456,199 @@ fn step_rapier_bodies(
     gravity: [f32; 3],
     script_posed_entities: &BTreeSet<String>,
 ) -> BTreeMap<String, Vec<String>> {
-    let mut world = PhysicsWorld::new();
-    world.gravity = vector![gravity[0], gravity[1], gravity[2]].into();
-    let substeps = physics_substeps(fixed_delta);
-    world.integration_parameters.dt = fixed_delta / substeps as f32;
-    world.integration_parameters.num_solver_iterations = 12;
-    let mut handles = BTreeMap::new();
-    let layer_bits = layer_bits_for_entities(entities);
-    for entity in entities.iter() {
-        let Some(body_kind) = entity.body_kind.as_deref() else {
-            continue;
-        };
-        let source_velocity = entity.velocity.unwrap_or([0.0, 0.0, 0.0]);
-        let should_skip_velocity = entity.body_kind.as_deref() == Some("kinematic")
-            && script_posed_entities.contains(&entity.id);
-        let velocity = if should_skip_velocity {
-            [0.0, 0.0, 0.0]
-        } else {
-            source_velocity
-        };
-        let mut body = match body_kind {
-            "dynamic" => RigidBodyBuilder::dynamic(),
-            "kinematic" => RigidBodyBuilder::kinematic_velocity_based(),
-            _ => RigidBodyBuilder::fixed(),
+    RAPIER_CACHE.with(|cache| {
+        let mut cache = cache.borrow_mut();
+        let signature = rapier_world_signature(entities, gravity);
+        if cache
+            .as_ref()
+            .is_none_or(|cache| cache.signature != signature)
+        {
+            *cache = Some(PersistentRapierWorld::new(entities, gravity, signature));
         }
-        .translation(vector![entity.center[0], entity.center[1], entity.center[2]].into())
-        .linvel(vector![velocity[0], velocity[1], velocity[2]].into())
-        .gravity_scale(if body_kind == "dynamic" {
-            entity.gravity_scale
-        } else {
-            0.0
-        })
-        .linear_damping(entity.damping)
-        .angular_damping(entity.damping)
-        .ccd_enabled(entity.ccd);
-        if let Some(enabled) = entity.enabled_translations {
-            body = body.enabled_translations(enabled[0], enabled[1], enabled[2]);
+        cache
+            .as_mut()
+            .expect("rapier cache should be initialized")
+            .step(entities, fixed_delta, script_posed_entities)
+    })
+}
+
+struct PersistentRapierWorld {
+    handles: BTreeMap<String, RigidBodyHandle>,
+    signature: Vec<String>,
+    world: PhysicsWorld,
+}
+
+impl PersistentRapierWorld {
+    fn new(entities: &[SimulatedEntity], gravity: [f32; 3], signature: Vec<String>) -> Self {
+        let mut world = PhysicsWorld::new();
+        world.gravity = vector![gravity[0], gravity[1], gravity[2]].into();
+        world.integration_parameters.num_solver_iterations = 12;
+        let mut handles = BTreeMap::new();
+        let layer_bits = layer_bits_for_entities(entities);
+        for entity in entities {
+            let Some(body_kind) = entity.body_kind.as_deref() else {
+                continue;
+            };
+            let mut body = match body_kind {
+                "dynamic" => RigidBodyBuilder::dynamic(),
+                "kinematic" => RigidBodyBuilder::kinematic_velocity_based(),
+                _ => RigidBodyBuilder::fixed(),
+            }
+            .translation(vector![entity.center[0], entity.center[1], entity.center[2]].into())
+            .linvel(vector![0.0, 0.0, 0.0].into())
+            .gravity_scale(if body_kind == "dynamic" {
+                entity.gravity_scale
+            } else {
+                0.0
+            })
+            .linear_damping(entity.damping)
+            .angular_damping(entity.damping)
+            .ccd_enabled(entity.ccd);
+            if let Some(enabled) = entity.enabled_translations {
+                body = body.enabled_translations(enabled[0], enabled[1], enabled[2]);
+            }
+            if let Some(enabled) = entity.enabled_rotations {
+                body = body.enabled_rotations(enabled[0], enabled[1], enabled[2]);
+            }
+            if let Some(mass) = entity.mass {
+                if body_kind == "dynamic" {
+                    body = body.additional_mass(mass);
+                }
+            }
+            if let Some(iterations) = entity.solver_iterations {
+                body = body.additional_solver_iterations(iterations.saturating_sub(1) as usize);
+            }
+            let groups = rapier_collision_groups(entity, &layer_bits);
+            let collider = rapier_collider(entity)
+                .translation(
+                    vector![
+                        entity.collider_center[0],
+                        entity.collider_center[1],
+                        entity.collider_center[2]
+                    ]
+                    .into(),
+                )
+                .friction(entity.friction)
+                .restitution(entity.restitution)
+                .sensor(entity.trigger)
+                .collision_groups(groups)
+                .solver_groups(groups);
+            let (body_handle, _) = world.insert(body, collider);
+            handles.insert(entity.id.clone(), body_handle);
         }
-        if let Some(enabled) = entity.enabled_rotations {
-            body = body.enabled_rotations(enabled[0], enabled[1], enabled[2]);
+
+        Self {
+            handles,
+            signature,
+            world,
         }
-        if let Some(mass) = entity.mass {
-            if body_kind == "dynamic" {
-                body = body.additional_mass(mass);
+    }
+
+    fn step(
+        &mut self,
+        entities: &mut [SimulatedEntity],
+        fixed_delta: f32,
+        script_posed_entities: &BTreeSet<String>,
+    ) -> BTreeMap<String, Vec<String>> {
+        let substeps = physics_substeps(fixed_delta);
+        self.world.integration_parameters.dt = fixed_delta / substeps as f32;
+
+        for entity in entities.iter() {
+            let Some(handle) = self.handles.get(&entity.id).copied() else {
+                continue;
+            };
+            let Some(body) = self.world.bodies.get_mut(handle) else {
+                continue;
+            };
+            let source_velocity = entity.velocity.unwrap_or([0.0, 0.0, 0.0]);
+            let should_skip_velocity = entity.body_kind.as_deref() == Some("kinematic")
+                && script_posed_entities.contains(&entity.id);
+            let velocity = if should_skip_velocity {
+                [0.0, 0.0, 0.0]
+            } else {
+                source_velocity
+            };
+            body.set_translation(
+                vector![entity.center[0], entity.center[1], entity.center[2]].into(),
+                false,
+            );
+            body.set_linvel(vector![velocity[0], velocity[1], velocity[2]].into(), false);
+        }
+
+        for _ in 0..substeps {
+            self.world.step();
+        }
+
+        for entity in entities.iter_mut() {
+            let Some(handle) = self.handles.get(&entity.id) else {
+                continue;
+            };
+            let source_velocity = entity.velocity.unwrap_or([0.0, 0.0, 0.0]);
+            let body = &self.world.bodies[*handle];
+            let translation = body.translation();
+            let velocity = body.linvel();
+            if entity.body_kind.as_deref() == Some("kinematic")
+                && script_posed_entities.contains(&entity.id)
+            {
+                entity.velocity = Some(source_velocity);
+            } else {
+                entity.center = [translation.x, translation.y, translation.z];
+                entity.velocity = Some([velocity.x, velocity.y, velocity.z]);
             }
         }
-        if let Some(iterations) = entity.solver_iterations {
-            body = body.additional_solver_iterations(iterations.saturating_sub(1) as usize);
-        }
+
+        contacts_from_overlaps(entities)
+    }
+}
+
+fn rapier_world_signature(entities: &[SimulatedEntity], gravity: [f32; 3]) -> Vec<String> {
+    let layer_bits = layer_bits_for_entities(entities);
+    let mut signature = vec![format!(
+        "gravity:{}/{}/{}",
+        gravity[0].to_bits(),
+        gravity[1].to_bits(),
+        gravity[2].to_bits()
+    )];
+    signature.extend(entities.iter().filter_map(|entity| {
+        let body_kind = entity.body_kind.as_deref()?;
         let groups = rapier_collision_groups(entity, &layer_bits);
-        let collider = rapier_collider(entity)
-            .translation(
-                vector![
-                    entity.collider_center[0],
-                    entity.collider_center[1],
-                    entity.collider_center[2]
-                ]
-                .into(),
-            )
-            .friction(entity.friction)
-            .restitution(entity.restitution)
-            .sensor(entity.trigger)
-            .collision_groups(groups)
-            .solver_groups(groups);
-        let (body_handle, _) = world.insert(body, collider);
-        handles.insert(entity.id.clone(), body_handle);
-    }
-
-    for _ in 0..substeps {
-        world.step();
-    }
-
-    for entity in entities.iter_mut() {
-        let Some(handle) = handles.get(&entity.id) else {
-            continue;
-        };
-        let source_velocity = entity.velocity.unwrap_or([0.0, 0.0, 0.0]);
-        let body = &world.bodies[*handle];
-        let translation = body.translation();
-        let velocity = body.linvel();
-        if entity.body_kind.as_deref() == Some("kinematic")
-            && script_posed_entities.contains(&entity.id)
-        {
-            entity.velocity = Some(source_velocity);
-        } else {
-            entity.center = [translation.x, translation.y, translation.z];
-            entity.velocity = Some([velocity.x, velocity.y, velocity.z]);
-        }
-    }
-
-    contacts_from_overlaps(entities)
+        Some(format!(
+            concat!(
+                "{}|body={}|ccd={}|collider={}|center={}/{}/{}|collider_center={}/{}/{}|",
+                "damping={}|enabled_t={:?}|enabled_r={:?}|friction={}|gravity={}|height={:?}|",
+                "half={}/{}/{}|layer={:?}|mask={:?}|mass={:?}|radius={:?}|restitution={}|solver={:?}|trigger={}|groups={:?}"
+            ),
+            entity.id,
+            body_kind,
+            entity.ccd,
+            entity.collider_kind,
+            0,
+            0,
+            0,
+            entity.collider_center[0].to_bits(),
+            entity.collider_center[1].to_bits(),
+            entity.collider_center[2].to_bits(),
+            entity.damping.to_bits(),
+            entity.enabled_translations,
+            entity.enabled_rotations,
+            entity.friction.to_bits(),
+            entity.gravity_scale.to_bits(),
+            entity.height.map(f32::to_bits),
+            entity.half_extents[0].to_bits(),
+            entity.half_extents[1].to_bits(),
+            entity.half_extents[2].to_bits(),
+            entity.layer,
+            entity.mask,
+            entity.mass.map(f32::to_bits),
+            entity.radius.map(f32::to_bits),
+            entity.restitution.to_bits(),
+            entity.solver_iterations,
+            entity.trigger,
+            groups
+        ))
+    }));
+    signature.sort();
+    signature
 }
 
 fn physics_substeps(fixed_delta: f32) -> usize {

@@ -716,7 +716,22 @@ pub fn normalize_loaded_gltf_materials(
     authored_materials: Option<Res<NativeMaterialHandles>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
-    for (id, material) in materials.iter_mut() {
+    let candidates = materials
+        .iter()
+        .filter_map(|(id, material)| {
+            if authored_materials
+                .as_ref()
+                .is_some_and(|handles| handles.0.values().any(|handle| handle.id() == id))
+            {
+                return None;
+            }
+            textured_material_needs_normalization(material).then_some(id)
+        })
+        .collect::<Vec<_>>();
+    for id in candidates {
+        let Some(material) = materials.get_mut(id) else {
+            continue;
+        };
         if authored_materials
             .as_ref()
             .is_some_and(|handles| handles.0.values().any(|handle| handle.id() == id))
@@ -728,16 +743,20 @@ pub fn normalize_loaded_gltf_materials(
 }
 
 pub fn normalize_textured_material(material: &mut StandardMaterial) -> bool {
-    if material.base_color_texture.is_none()
-        || material.unlit
-        || material.normal_map_texture.is_some()
-        || !matches!(material.alpha_mode, AlphaMode::Mask(value) if value <= 0.2)
-    {
+    if !textured_material_needs_normalization(material) {
         return false;
     }
     material.double_sided = true;
     material.cull_mode = None;
     true
+}
+
+fn textured_material_needs_normalization(material: &StandardMaterial) -> bool {
+    material.base_color_texture.is_some()
+        && !material.unlit
+        && material.normal_map_texture.is_none()
+        && matches!(material.alpha_mode, AlphaMode::Mask(value) if value <= 0.2)
+        && (!material.double_sided || material.cull_mode.is_some())
 }
 
 fn color_string(color: &ColorIr) -> String {

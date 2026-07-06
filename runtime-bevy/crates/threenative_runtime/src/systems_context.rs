@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 
-use serde::Serialize;
+use serde::{Serialize, Serializer, ser::SerializeStruct};
 use serde_json::{Value, json};
 use threenative_loader::{
     EntityComponents, LoadedBundle, LocalDataIr, SystemIr, SystemQueryIr, SystemStateSourceIr,
@@ -142,8 +142,7 @@ pub struct NativeMeshBoundsSnapshot {
     pub min: [f64; 3],
 }
 
-#[derive(Clone, Debug, Serialize)]
-#[serde(rename_all = "camelCase")]
+#[derive(Clone, Debug)]
 pub struct NativeSystemTimeSnapshot {
     pub delta: f32,
     pub dt: f32,
@@ -151,6 +150,26 @@ pub struct NativeSystemTimeSnapshot {
     pub fixed_delta: f32,
     pub fixed_dt: f32,
     pub paused: bool,
+}
+
+impl Serialize for NativeSystemTimeSnapshot {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let mut state = serializer.serialize_struct("NativeSystemTimeSnapshot", 6)?;
+        state.serialize_field("delta", &rounded_time(self.delta))?;
+        state.serialize_field("dt", &rounded_time(self.dt))?;
+        state.serialize_field("elapsed", &rounded_time(self.elapsed))?;
+        state.serialize_field("fixedDelta", &rounded_time(self.fixed_delta))?;
+        state.serialize_field("fixedDt", &rounded_time(self.fixed_dt))?;
+        state.serialize_field("paused", &self.paused)?;
+        state.end()
+    }
+}
+
+fn rounded_time(value: f32) -> f64 {
+    (f64::from(value) * 1_000_000.0).round() / 1_000_000.0
 }
 
 #[derive(Clone, Debug, Default, Serialize)]

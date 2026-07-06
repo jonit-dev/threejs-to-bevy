@@ -933,6 +933,7 @@ function mapTextureSlot(
     threenativeSlot: slot,
     threenativeUrl: url,
   };
+  texture.colorSpace = textureColorSpaceForSlot(slot);
   applyTextureControls(texture, asset);
   if (canLoadImageInRuntime()) {
     enqueuePendingTextureLoad(
@@ -940,13 +941,19 @@ function mapTextureSlot(
         .loadAsync(url)
         .then((loaded) => {
           texture.image = loaded.image;
-          texture.colorSpace = THREE.SRGBColorSpace;
+          texture.colorSpace = textureColorSpaceForSlot(slot);
           texture.needsUpdate = true;
         })
         .catch(() => undefined),
     );
   }
   return texture;
+}
+
+function textureColorSpaceForSlot(slot: Parameters<typeof mapTextureSlot>[1]): THREE.ColorSpace {
+  return slot === "baseColorTexture" || slot === "emissiveTexture"
+    ? THREE.SRGBColorSpace
+    : THREE.NoColorSpace;
 }
 
 function applyTransform(object: THREE.Object3D, entity: IWorldEntity): void {

@@ -14,6 +14,7 @@ export interface IPlaytestArtifactBundle {
   effectLog: string;
   manifest: string;
   network: string;
+  nativeFrameSamples: string;
   nativeRecording: string;
   nativeRecordingDirectory: string;
   observations: string;
@@ -53,6 +54,7 @@ export async function writePlaytestArtifactBundle(options: {
     effectLog: resolve(options.runDirectory, "effect-log.json"),
     manifest: resolve(options.runDirectory, "manifest.json"),
     network: resolve(options.runDirectory, "network.json"),
+    nativeFrameSamples: resolve(options.runDirectory, "native-frame-samples.json"),
     nativeRecording: resolve(options.runDirectory, "native-recording.json"),
     nativeRecordingDirectory: resolve(options.runDirectory, "native-recording"),
     observations: resolve(options.runDirectory, "observations.json"),
@@ -66,6 +68,7 @@ export async function writePlaytestArtifactBundle(options: {
     runtimeDiagnostics: options.report.observations?.runtimeDiagnostics ?? null,
   });
   await writeJsonIfMissing(artifacts.effectLog, options.report.effectLog ?? {});
+  await writeJson(artifacts.nativeFrameSamples, nativeFrameSamples(options.report) ?? { samples: [], summaries: {} });
   await writeJson(artifacts.observations, {
     after: options.report.after ?? null,
     before: options.report.before ?? null,
@@ -97,6 +100,18 @@ export async function writePlaytestArtifactBundle(options: {
     target: options.scenario.target,
   });
   return { artifacts, summary };
+}
+
+function nativeFrameSamples(report: IPlaytestReport): unknown {
+  const runtimeDiagnostics = report.observations?.runtimeDiagnostics;
+  if (!isRecord(runtimeDiagnostics)) {
+    return undefined;
+  }
+  return runtimeDiagnostics.nativeFrameSamples;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 function buildAssertions(report: IPlaytestReport): Array<{ id: string; pass: boolean; details?: Record<string, unknown> }> {

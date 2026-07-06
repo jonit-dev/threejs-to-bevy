@@ -31,7 +31,7 @@ export function createSystemEffectLog(): ISystemEffectLog {
 }
 
 export function appendSystemEffectLog(log: ISystemEffectLog, entries: ReadonlyArray<ISystemEffectLogEntry>): void {
-  log.entries.push(...entries.map((entry) => normalizeEntry(entry)));
+  log.entries.push(...entries);
   if (log.entries.length > maxEffectLogEntries) {
     log.entries.splice(0, log.entries.length - maxEffectLogEntries);
   }

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { collectPerformanceSummary, summarizeFrameTimings } from "./performanceMetrics.js";
+import { collectPerformanceSummary, createFrameTimingTrace, summarizeFrameTimings } from "./performanceMetrics.js";
 
 test("performanceMetrics should summarize frame timing samples with average p95 and worst frame", () => {
   const summary = summarizeFrameTimings([10, 12, 14, 20]);
@@ -9,6 +9,20 @@ test("performanceMetrics should summarize frame timing samples with average p95 
   assert.equal(summary.averageFrameMs, 14);
   assert.equal(summary.p95FrameMs, 20);
   assert.equal(summary.worstFrameMs, 20);
+});
+
+test("frame timing trace should re-anchor after reset without sampling stale elapsed time", () => {
+  const trace = createFrameTimingTrace();
+
+  assert.deepEqual(trace.record(100), { deltaMs: 0, sampled: false });
+  assert.deepEqual(trace.record(116), { deltaMs: 16, sampled: true });
+  assert.deepEqual(trace.samples, [16]);
+
+  trace.reset();
+
+  assert.deepEqual(trace.record(1000), { deltaMs: 0, sampled: false });
+  assert.deepEqual(trace.record(1016), { deltaMs: 16, sampled: true });
+  assert.deepEqual(trace.samples, [16]);
 });
 
 test("should include support overlay metrics when diagnostics are enabled", () => {

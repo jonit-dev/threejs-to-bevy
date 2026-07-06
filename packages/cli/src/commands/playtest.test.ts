@@ -326,9 +326,10 @@ test("playtest command should run desktop target through native proof harness", 
       },
     },
   );
-  const payload = JSON.parse(result.stdout) as { artifacts: { observations: string; summary: string }; code: string; distance: number; runtime: string; target: string };
+  const payload = JSON.parse(result.stdout) as { artifacts: { nativeFrameSamples: string; observations: string; summary: string }; code: string; distance: number; runtime: string; target: string };
   const commandStream = JSON.parse(await readFile(commandStreamPath ?? "", "utf8")) as { commands: Array<{ code?: string; frames?: number; pressed?: boolean; tick: number; type: string }> };
   const summary = JSON.parse(await readFile(payload.artifacts.summary, "utf8")) as { diagnostics: unknown[]; movementDelta: number[]; nativeRecording: { frames: Array<{ byteSize: number; tick: number }> }; performance: { framesOverBudget: number; sampleCount: number; source: string; worstFrameMs: number }; runtime: string; target: string };
+  const nativeFrameSamples = JSON.parse(await readFile(payload.artifacts.nativeFrameSamples, "utf8")) as { samples: Array<{ frameMs: number; tick: number }>; summaries: { all: { sampleCount: number; worstFrameMs: number }; dropFirst: { sampleCount: number; worstFrameMs: number } } };
   const observations = JSON.parse(await readFile(payload.artifacts.observations, "utf8")) as { runtimeDiagnostics: { readiness: Array<{ tick: number }> } };
 
   assert.equal(result.exitCode, 0);
@@ -343,6 +344,13 @@ test("playtest command should run desktop target through native proof harness", 
   assert.equal(summary.performance.sampleCount, 2);
   assert.equal(summary.performance.framesOverBudget, 1);
   assert.equal(summary.performance.worstFrameMs, 33.3334);
+  assert.deepEqual(nativeFrameSamples.samples.map((sample) => ({ frameMs: sample.frameMs, tick: sample.tick })), [
+    { frameMs: 16, tick: 0 },
+    { frameMs: 33.3334, tick: 37 },
+  ]);
+  assert.equal(nativeFrameSamples.summaries.all.sampleCount, 2);
+  assert.equal(nativeFrameSamples.summaries.dropFirst.sampleCount, 1);
+  assert.equal(nativeFrameSamples.summaries.dropFirst.worstFrameMs, 33.3334);
   assert.equal(summary.runtime, "bevy");
   assert.equal(summary.target, "desktop");
   assert.deepEqual(commandStream.commands.map((command) => ({ code: command.code, frames: command.frames, pressed: command.pressed, tick: command.tick, type: command.type })), [
@@ -351,6 +359,80 @@ test("playtest command should run desktop target through native proof harness", 
     { code: undefined, frames: undefined, pressed: undefined, tick: 38, type: "exit" },
   ]);
   assert.deepEqual(observations.runtimeDiagnostics.readiness.map((sample) => sample.tick), [0, 37]);
+});
+
+test("playtest command should ignore stale native readiness in reused artifact directories", async () => {
+  const root = await playtestTempRoot();
+  await cp(join(import.meta.dirname, "../template-files/structured-source-starter"), root, { recursive: true });
+  const outDir = join(root, "artifacts/reused-native");
+  await mkdir(outDir, { recursive: true });
+  await writeFile(
+    join(outDir, "native-readiness.json"),
+    `${JSON.stringify({
+      diagnostics: [],
+      ok: true,
+      performance: { elapsed_ms: 9999, fps: 1, frame_ms: 999 },
+      schema: "threenative.native-proof-readiness",
+      tick: 999,
+      transforms: [{ entity: "player", position: [999, 0, 0] }],
+      version: "0.1.0",
+    })}\n`,
+    "utf8",
+  );
+  const result = await playtestCommand(
+    ["--project", ".", "--target", "desktop", "--entity", "player", "--press", "KeyW", "--frames", "30", "--expect-moved", "--out", "artifacts/reused-native", "--json"],
+    root,
+    {
+      bevyRunner: (invocation) => {
+        const readinessOutPath = invocation.proofHarness?.readinessOutPath;
+        const process = new EventEmitter() as ChildProcess;
+        process.kill = () => true;
+        void (async () => {
+          assert.ok(readinessOutPath);
+          await mkdir(dirname(readinessOutPath), { recursive: true });
+          await new Promise((resolve) => setTimeout(resolve, 35));
+          await writeFile(
+            readinessOutPath,
+            `${JSON.stringify({
+              diagnostics: [],
+              ok: true,
+              performance: { elapsed_ms: 0, fps: 62.5, frame_ms: 16 },
+              schema: "threenative.native-proof-readiness",
+              tick: 0,
+              transforms: [{ entity: "player", position: [0, 0, 0] }],
+              version: "0.1.0",
+            })}\n`,
+            "utf8",
+          );
+          await new Promise((resolve) => setTimeout(resolve, 35));
+          await writeFile(
+            readinessOutPath,
+            `${JSON.stringify({
+              diagnostics: [],
+              ok: true,
+              performance: { elapsed_ms: 33.3334, fps: 30, frame_ms: 33.3334 },
+              schema: "threenative.native-proof-readiness",
+              tick: 37,
+              transforms: [{ entity: "player", position: [0, 0, -1] }],
+              version: "0.1.0",
+            })}\n`,
+            "utf8",
+          );
+          process.emit("exit", 0, null);
+        })();
+        return process;
+      },
+    },
+  );
+  const payload = JSON.parse(result.stdout) as { artifacts: { nativeFrameSamples: string; observations: string }; code: string; distance: number };
+  const observations = JSON.parse(await readFile(payload.artifacts.observations, "utf8")) as { runtimeDiagnostics: { readiness: Array<{ tick: number }> } };
+  const nativeFrameSamples = JSON.parse(await readFile(payload.artifacts.nativeFrameSamples, "utf8")) as { samples: Array<{ tick: number }> };
+
+  assert.equal(result.exitCode, 0);
+  assert.equal(payload.code, "TN_PLAYTEST_OK");
+  assert.equal(payload.distance, 1);
+  assert.deepEqual(observations.runtimeDiagnostics.readiness.map((sample) => sample.tick), [0, 37]);
+  assert.deepEqual(nativeFrameSamples.samples.map((sample) => sample.tick), [0, 37]);
 });
 
 test("playtest command should step desktop native screenshot proofs without collapsing frame timing", async () => {

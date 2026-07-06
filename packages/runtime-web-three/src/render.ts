@@ -31,7 +31,7 @@ import { createUiDomOverlay } from "./ui/domOverlay.js";
 import { renderUi, type IRenderedUi, type IRenderedUiNode } from "./ui/renderUi.js";
 import { createWebAudioElementSink, createWebAudioRuntime } from "./audio.js";
 import { createWebOverlayHost, type IWebOverlayHost } from "./overlay/host.js";
-import { summarizeFrameTimings, type IFrameTimingSummary } from "./performanceMetrics.js";
+import { createFrameTimingTrace, summarizeFrameTimings, type IFrameTimingSummary } from "./performanceMetrics.js";
 
 export interface IRenderResult {
   canvas: HTMLCanvasElement;
@@ -217,6 +217,9 @@ export async function renderBundle(source: string, container: HTMLElement, optio
   }
 
   let performanceTrace: number[] = [];
+  let resetPerformanceTrace = () => {
+    performanceTrace.length = 0;
+  };
   prepareRenderContainer(container);
   canvas.style.display = "block";
   container.replaceChildren(...([canvas, uiOverlay?.element, overlayHost?.element].filter((child) => child !== undefined) as Node[]));
@@ -248,8 +251,8 @@ export async function renderBundle(source: string, container: HTMLElement, optio
   logStartupDiagnostics(mapped.diagnostics);
   let lifecycle: IWebRenderLifecycle | undefined;
   if (bundle.systems !== undefined || hasAnimationPlayback(mapped) || hasKinematicMovers(bundle.world)) {
-    let lastTime = performance.now();
-    const frameSamplesMs: number[] = [];
+    const frameTimings = createFrameTimingTrace();
+    resetPerformanceTrace = () => frameTimings.reset();
     lifecycle = createWebRenderLifecycle({
       diagnostics: mapped.diagnostics,
       onDispose: () => {
@@ -257,12 +260,8 @@ export async function renderBundle(source: string, container: HTMLElement, optio
         renderer.dispose();
       },
       async frame(time: number) {
-        const delta = Math.max(0, (time - lastTime) / 1000);
-        lastTime = time;
-        frameSamplesMs.push(delta * 1000);
-        if (frameSamplesMs.length > 600) {
-          frameSamplesMs.splice(0, frameSamplesMs.length - 600);
-        }
+        const timing = frameTimings.record(time);
+        const delta = timing.deltaMs / 1000;
         if (bundle.systems !== undefined) {
           await runGameFrame({
             assets: bundle.assets,
@@ -288,7 +287,7 @@ export async function renderBundle(source: string, container: HTMLElement, optio
         pipeline.render(delta);
       },
     });
-    performanceTrace = frameSamplesMs;
+    performanceTrace = frameTimings.samples as number[];
     lifecycle.schedule();
   }
 
@@ -320,7 +319,7 @@ export async function renderBundle(source: string, container: HTMLElement, optio
       return webRuntimePerformanceSnapshot(renderer, performanceTrace);
     },
     resetPerformanceTrace() {
-      performanceTrace.length = 0;
+      resetPerformanceTrace();
     },
     resourceSnapshot(id: string) {
       return cloneJsonValue(bundle.world.resources?.[id]);

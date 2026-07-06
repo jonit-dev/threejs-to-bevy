@@ -21,6 +21,7 @@ export function canLoadImageInRuntime(): boolean {
 }
 
 export function applyTextureControls(texture: THREE.Texture, asset: Extract<IAssetIr, { kind: "texture" }>): void {
+  let minFilter: THREE.MinificationTextureFilter | undefined;
   if (asset.wrapS !== undefined) {
     texture.wrapS = textureWrapMode(asset.wrapS);
   }
@@ -28,7 +29,8 @@ export function applyTextureControls(texture: THREE.Texture, asset: Extract<IAss
     texture.wrapT = textureWrapMode(asset.wrapT);
   }
   if (asset.minFilter !== undefined) {
-    texture.minFilter = textureMinFilter(asset.minFilter);
+    minFilter = textureMinFilter(asset.minFilter);
+    texture.minFilter = minFilter;
   }
   if (asset.magFilter !== undefined) {
     texture.magFilter = textureMagFilter(asset.magFilter);
@@ -44,6 +46,9 @@ export function applyTextureControls(texture: THREE.Texture, asset: Extract<IAss
   }
   if (asset.rotation !== undefined) {
     texture.rotation = asset.rotation;
+  }
+  if (minFilter !== undefined && usesMipmaps(minFilter)) {
+    texture.anisotropy = 8;
   }
   texture.needsUpdate = true;
 }
@@ -78,4 +83,11 @@ function textureMinFilter(value: NonNullable<Extract<IAssetIr, { kind: "texture"
 
 function textureMagFilter(value: NonNullable<Extract<IAssetIr, { kind: "texture" }>["magFilter"]>): THREE.MagnificationTextureFilter {
   return value === "nearest" ? THREE.NearestFilter : THREE.LinearFilter;
+}
+
+function usesMipmaps(value: THREE.MinificationTextureFilter): boolean {
+  return value === THREE.NearestMipmapNearestFilter
+    || value === THREE.NearestMipmapLinearFilter
+    || value === THREE.LinearMipmapNearestFilter
+    || value === THREE.LinearMipmapLinearFilter;
 }

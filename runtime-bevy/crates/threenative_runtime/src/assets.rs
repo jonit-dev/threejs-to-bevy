@@ -1,7 +1,10 @@
-use std::{collections::HashMap, path::Path};
+use std::{
+    collections::{HashMap, HashSet},
+    path::Path,
+};
 
 use bevy::{
-    asset::AssetPath,
+    asset::{AssetId, AssetPath},
     math::{Affine2, Vec2},
     prelude::*,
     render::{
@@ -134,17 +137,39 @@ pub fn build_texture_controls_registry(manifest: &AssetsManifest) -> TextureAsse
 pub fn apply_loaded_texture_controls(
     asset_server: Res<AssetServer>,
     controls: Res<TextureAssetControlsRegistry>,
+    mut applied: Local<HashSet<AssetId<Image>>>,
     mut images: ResMut<Assets<Image>>,
 ) {
     for controls in controls.0.values() {
         let handle = load_texture_asset(&asset_server, &controls.path);
+        let id = handle.id();
+        if applied.contains(&id) {
+            continue;
+        }
         let Some(image) = images.get_mut(&handle) else {
             continue;
         };
         apply_texture_sampler_controls(image, controls);
+        applied.insert(id);
     }
-    for (_, image) in images.iter_mut() {
+    let pending_defaults = images
+        .iter()
+        .filter_map(|(id, image)| {
+            (!applied.contains(&id)
+                && matches!(image.sampler, ImageSampler::Default)
+                && !image
+                    .texture_descriptor
+                    .usage
+                    .contains(TextureUsages::RENDER_ATTACHMENT))
+            .then_some(id)
+        })
+        .collect::<Vec<_>>();
+    for id in pending_defaults {
+        let Some(image) = images.get_mut(id) else {
+            continue;
+        };
         apply_default_texture_quality(image);
+        applied.insert(id);
     }
 }
 
