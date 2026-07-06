@@ -1,0 +1,7 @@
+{
+  "schema": "threenative.project",
+  "version": "0.1.0",
+  "entry": "content/scenes/stylized-nature.scene.json",
+  "outDir": "dist/stylized-nature-component.bundle",
+  "template": "stylized-nature-component"
+}

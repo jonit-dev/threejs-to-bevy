@@ -1,0 +1,97 @@
+{
+  "schema": "threenative.scene",
+  "version": "0.1.0",
+  "id": "stylized.nature.component.scene",
+  "kind": "level",
+  "entities": [
+    {
+      "id": "camera.main",
+      "transform": {
+        "position": [
+          1.98,
+          4.46,
+          22.31
+        ],
+        "rotation": [
+          -0.18,
+          0.08,
+          0
+        ]
+      },
+      "components": {
+        "camera": {
+          "mode": "perspective",
+          "fovY": 50,
+          "near": 0.05,
+          "far": 100
+        }
+      }
+    },
+    {
+      "id": "stylized-nature-patch",
+      "components": {
+        "StylizedNature": {
+          "density": "high",
+          "size": 40,
+          "grassCount": 5000,
+          "treeCount": 4,
+          "pathWidth": 3,
+          "windStrength": 0.25,
+          "groundColor": "#6aa14f",
+          "grassRootColor": "#6aa14f",
+          "grassTipColor": "#a1cc33",
+          "pathColor": "#9b6543",
+          "leafColor": "#4a6b27",
+          "grassColorMap": "tex.stylized-scene.grass.color",
+          "grassNormalMap": "tex.stylized-scene.grass.normal",
+          "grassRoughnessMap": "tex.stylized-scene.grass.roughness",
+          "dirtColorMap": "tex.stylized-scene.dirt.color",
+          "dirtNormalMap": "tex.stylized-scene.dirt.normal",
+          "dirtRoughnessMap": "tex.stylized-scene.dirt.roughness",
+          "dirtAoMap": "tex.stylized-scene.dirt.ao",
+          "dirtHeightMap": "tex.stylized-scene.dirt.height",
+          "dirtMetallicMap": "tex.stylized-scene.dirt.metallic",
+          "pathMaskMap": "tex.stylized-scene.path.mask",
+          "noiseMap": "tex.stylized-scene.noise",
+          "grassModel": "model.stylized-scene.grass.blades",
+          "treeLeavesModel": "model.stylized-scene.tree.leaves",
+          "treeTrunkModel": "model.stylized-scene.tree.trunk",
+          "leavesAlphaMap": "tex.stylized-scene.tree.leaves.alpha"
+        }
+      }
+    },
+    {
+      "id": "light.sun",
+      "transform": {
+        "position": [
+          18,
+          16,
+          10
+        ]
+      },
+      "components": {
+        "Light": {
+          "kind": "directional",
+          "color": "#fff1cf",
+          "intensity": 3
+        }
+      }
+    },
+    {
+      "id": "light.ambient",
+      "components": {
+        "Light": {
+          "kind": "ambient",
+          "color": "#fff1cf",
+          "intensity": 0.35
+        }
+      }
+    }
+  ],
+  "prefabs": [],
+  "resources": [],
+  "systems": [],
+  "ui": {
+    "nodes": []
+  }
+}
