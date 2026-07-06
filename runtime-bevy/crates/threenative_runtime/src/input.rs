@@ -11,7 +11,7 @@ use bevy::{
         mouse::MouseMotion,
     },
     prelude::*,
-    window::PrimaryWindow,
+    window::{CursorGrabMode, PrimaryWindow},
 };
 use threenative_loader::{InputBindingIr, InputIr, PersistedBindingOverrideIr};
 
@@ -22,6 +22,52 @@ pub struct NativeInputMap(pub InputIr);
 pub struct NativeInputState {
     actions: HashSet<String>,
     axes: HashMap<String, f32>,
+}
+
+pub fn apply_native_pointer_delta_cursor_policy(
+    input: Option<Res<NativeInputMap>>,
+    proof_harness: Option<Res<crate::proof_harness::NativeProofHarnessState>>,
+    mouse_buttons: Res<ButtonInput<MouseButton>>,
+    mut windows: Query<&mut Window, With<PrimaryWindow>>,
+) {
+    let Some(input) = input else {
+        return;
+    };
+    if proof_harness.is_some() {
+        return;
+    }
+    if !input_uses_pointer_delta(&input.0) {
+        return;
+    }
+    let Ok(mut window) = windows.get_single_mut() else {
+        return;
+    };
+    if window.cursor.grab_mode == CursorGrabMode::Locked {
+        return;
+    }
+    if !mouse_buttons.pressed(MouseButton::Left) && !mouse_buttons.pressed(MouseButton::Right) {
+        return;
+    }
+    window.cursor.grab_mode = CursorGrabMode::Locked;
+    window.cursor.visible = false;
+}
+
+pub fn input_uses_pointer_delta(input: &InputIr) -> bool {
+    input.axes.iter().any(|axis| {
+        axis.value
+            .iter()
+            .chain(axis.positive.iter())
+            .chain(axis.negative.iter())
+            .any(|binding| {
+                matches!(
+                    binding,
+                    InputBindingIr::Pointer {
+                        axis: Some(axis),
+                        ..
+                    } if axis == "deltaX" || axis == "deltaY"
+                )
+            })
+    })
 }
 
 #[derive(Debug, Default, Resource)]
@@ -1086,6 +1132,8 @@ fn key_code(code: &str) -> Option<KeyCode> {
         "Escape" => Some(KeyCode::Escape),
         "Space" => Some(KeyCode::Space),
         "Tab" => Some(KeyCode::Tab),
+        "ShiftLeft" => Some(KeyCode::ShiftLeft),
+        "ShiftRight" => Some(KeyCode::ShiftRight),
         "ArrowDown" => Some(KeyCode::ArrowDown),
         "ArrowLeft" => Some(KeyCode::ArrowLeft),
         "ArrowRight" => Some(KeyCode::ArrowRight),

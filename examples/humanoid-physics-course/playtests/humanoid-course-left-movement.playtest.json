@@ -1,0 +1,34 @@
+{
+  "schemaVersion": 1,
+  "name": "humanoid-course-left-movement",
+  "target": "desktop",
+  "viewport": {
+    "width": 1280,
+    "height": 720
+  },
+  "subject": "player",
+  "warmupFrames": 0,
+  "steps": [
+    {
+      "press": "KeyA",
+      "holdFrames": 30,
+      "release": true
+    }
+  ],
+  "assert": {
+    "movement": {
+      "entity": "player",
+      "axis": "-x",
+      "minDistance": 0.01
+    },
+    "diagnostics": {
+      "noRuntimeDiagnostics": true,
+      "runtimeReady": true
+    }
+  },
+  "artifacts": {
+    "screenshots": "before-after",
+    "effectLog": "focused",
+    "runtimeTrace": true
+  }
+}

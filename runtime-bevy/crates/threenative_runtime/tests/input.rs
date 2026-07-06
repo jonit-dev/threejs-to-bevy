@@ -10,13 +10,14 @@ use bevy::{
         mouse::MouseMotion,
     },
     prelude::*,
-    window::PrimaryWindow,
+    window::{CursorGrabMode, PrimaryWindow},
 };
 use threenative_loader::{InputActionIr, InputAxisIr, InputBindingIr, InputIr};
 use threenative_runtime::input::{
     NativeInputAxisRebindSlot, NativeInputMap, NativeInputRebindTarget, NativeInputState,
     NativeTouchGestureEvent, NativeTouchGesturePoint, NativeTouchGestureTracker, NativeTouchState,
-    capture_native_input, map_keyboard_event, map_pointer_button_event, rebind_native_input,
+    apply_native_pointer_delta_cursor_policy, capture_native_input, input_uses_pointer_delta,
+    map_keyboard_event, map_pointer_button_event, rebind_native_input,
     report_native_gamepad_capabilities,
 };
 
@@ -269,6 +270,75 @@ fn should_capture_bevy_keyboard_and_pointer_input() {
     assert!(state.action("Attack"));
     assert_eq!(state.axis("MoveX"), 1.0);
     assert_eq!(state.axis("LookX"), 0.5);
+}
+
+#[test]
+fn should_detect_pointer_delta_axes_for_native_mouse_look() {
+    let input = InputIr {
+        schema: "threenative.input".to_owned(),
+        version: "0.1.0".to_owned(),
+        actions: vec![],
+        axes: vec![InputAxisIr {
+            id: "LookX".to_owned(),
+            negative: vec![],
+            positive: vec![],
+            value: Some(InputBindingIr::Pointer {
+                button: None,
+                axis: Some("deltaX".to_owned()),
+            }),
+        }],
+        controls_settings: None,
+        persisted_binding_overrides: vec![],
+    };
+
+    assert!(input_uses_pointer_delta(&input));
+}
+
+#[test]
+fn should_grab_cursor_for_native_pointer_delta_axes() {
+    let mut app = App::new();
+    app.insert_resource(NativeInputMap(InputIr {
+        schema: "threenative.input".to_owned(),
+        version: "0.1.0".to_owned(),
+        actions: vec![],
+        axes: vec![InputAxisIr {
+            id: "LookX".to_owned(),
+            negative: vec![],
+            positive: vec![],
+            value: Some(InputBindingIr::Pointer {
+                button: None,
+                axis: Some("deltaX".to_owned()),
+            }),
+        }],
+        controls_settings: None,
+        persisted_binding_overrides: vec![],
+    }));
+    app.insert_resource(ButtonInput::<MouseButton>::default());
+    app.world_mut().spawn((
+        Window {
+            resolution: (200.0, 100.0).into(),
+            ..Default::default()
+        },
+        PrimaryWindow,
+    ));
+    app.add_systems(PreUpdate, apply_native_pointer_delta_cursor_policy);
+
+    app.update();
+
+    let mut query = app.world_mut().query::<&Window>();
+    let window = query.single(app.world());
+    assert_eq!(window.cursor.grab_mode, CursorGrabMode::None);
+    assert!(window.cursor.visible);
+
+    app.world_mut()
+        .resource_mut::<ButtonInput<MouseButton>>()
+        .press(MouseButton::Left);
+    app.update();
+
+    let mut query = app.world_mut().query::<&Window>();
+    let window = query.single(app.world());
+    assert_eq!(window.cursor.grab_mode, CursorGrabMode::Locked);
+    assert!(!window.cursor.visible);
 }
 
 #[test]

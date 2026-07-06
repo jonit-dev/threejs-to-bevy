@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import type { ISystemsIr, IWorldIr } from "@threenative/ir";
+import * as THREE from "three";
 
 import { createGameLoopState, runGameFrame } from "./gameLoop.js";
 import type { IThreeWorld } from "./mapWorld.js";
@@ -110,18 +111,94 @@ test("gameLoop should run startup once before gameplay schedules", async () => {
   assert.equal(state.startupComplete, true);
 });
 
-function makeWorld(): IWorldIr {
-  return { schema: "threenative.world", version: "0.1.0", entities: [] };
+test("gameLoop should interpolate fixed-update transform poses for rendering", async () => {
+  const state = createGameLoopState({
+    schema: "threenative.runtime-config",
+    version: "0.1.0",
+    time: { fixedDelta: 0.25, paused: false },
+    window: { height: 720, width: 1280 },
+  });
+  const world = makeWorld([{ id: "mover", position: [0, 0, 0] }]);
+  const mover = new THREE.Object3D();
+  const mapped = makeMapped(new Map([["mover", mover]]));
+
+  await runGameFrame({
+    delta: 0.25,
+    fixedDelta: 0.25,
+    mapped,
+    module: { systems: { tick: moveMoverBy(10) } },
+    state,
+    systems: makeSystems([system("tick", "fixedUpdate", ["Transform"])]),
+    world,
+  });
+  assert.deepEqual(world.entities[0]?.components.Transform?.position, [10, 0, 0]);
+  assert.equal(mover.position.x, 0);
+
+  await runGameFrame({
+    delta: 0.125,
+    fixedDelta: 0.25,
+    mapped,
+    module: { systems: { tick: moveMoverBy(10) } },
+    state,
+    systems: makeSystems([system("tick", "fixedUpdate", ["Transform"])]),
+    world,
+  });
+
+  assert.deepEqual(world.entities[0]?.components.Transform?.position, [10, 0, 0]);
+  assert.equal(mover.position.x, 5);
+});
+
+test("gameLoop should keep variable-update transform writes authoritative over fixed interpolation", async () => {
+  const state = createGameLoopState({
+    schema: "threenative.runtime-config",
+    version: "0.1.0",
+    time: { fixedDelta: 0.25, paused: false },
+    window: { height: 720, width: 1280 },
+  });
+  const world = makeWorld([{ id: "mover", position: [0, 0, 0] }]);
+  const mover = new THREE.Object3D();
+
+  await runGameFrame({
+    delta: 0.25,
+    fixedDelta: 0.25,
+    mapped: makeMapped(new Map([["mover", mover]])),
+    module: {
+      systems: {
+        tick: moveMoverBy(10),
+        update: setMoverPosition([20, 0, 0]),
+      },
+    },
+    state,
+    systems: makeSystems([
+      system("tick", "fixedUpdate", ["Transform"]),
+      system("update", "update", ["Transform"]),
+    ]),
+    world,
+  });
+
+  assert.deepEqual(world.entities[0]?.components.Transform?.position, [20, 0, 0]);
+  assert.equal(mover.position.x, 20);
+});
+
+function makeWorld(entities: Array<{ id: string; position: [number, number, number] }> = []): IWorldIr {
+  return {
+    schema: "threenative.world",
+    version: "0.1.0",
+    entities: entities.map((entity) => ({
+      id: entity.id,
+      components: { Transform: { position: entity.position } },
+    })),
+  };
 }
 
-function makeMapped(): IThreeWorld {
+function makeMapped(objectsById: Map<string, THREE.Object3D> = new Map()): IThreeWorld {
   return {
     camera: {} as IThreeWorld["camera"],
     cameras: new Map(),
     cameraViews: [],
     diagnostics: [],
     layerAllocation: new Map([["default", 0]]),
-    objectsById: new Map(),
+    objectsById,
     scene: {} as IThreeWorld["scene"],
   };
 }
@@ -134,7 +211,7 @@ function makeSystems(systems = [system("tick", "fixedUpdate")]): ISystemsIr {
   };
 }
 
-function system(name: string, schedule: "fixedUpdate" | "postUpdate" | "startup" | "update"): ISystemsIr["systems"][number] {
+function system(name: string, schedule: "fixedUpdate" | "postUpdate" | "startup" | "update", writes: string[] = []): ISystemsIr["systems"][number] {
   return {
     commands: [],
     eventReads: [],
@@ -147,6 +224,20 @@ function system(name: string, schedule: "fixedUpdate" | "postUpdate" | "startup"
     services: [],
     schedule,
     script: { bundle: "scripts.bundle.js", exportName: name },
-    writes: [],
+    writes,
+  };
+}
+
+function moveMoverBy(distance: number): (context: any) => void {
+  return (context: any) => {
+    const transform = context.entity("mover")?.transform();
+    const position = transform?.positionOr([0, 0, 0]) ?? [0, 0, 0];
+    transform?.setPosition([position[0] + distance, position[1], position[2]]);
+  };
+}
+
+function setMoverPosition(position: [number, number, number]): (context: any) => void {
+  return (context: any) => {
+    context.entity("mover")?.transform().setPosition(position);
   };
 }

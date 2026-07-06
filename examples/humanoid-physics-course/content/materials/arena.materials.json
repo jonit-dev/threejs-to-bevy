@@ -49,11 +49,13 @@
     },
     {
       "id": "mat.checkpoint",
+      "alphaMode": "blend",
       "color": "#37d6b5",
       "roughness": 0.4,
       "metalness": 0.05,
       "emissive": "#12a488",
-      "emissiveIntensity": 1.1
+      "emissiveIntensity": 0.55,
+      "opacity": 0.32
     },
     {
       "id": "mat.sky",

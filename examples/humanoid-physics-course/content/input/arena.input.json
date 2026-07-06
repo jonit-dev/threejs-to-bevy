@@ -12,7 +12,7 @@
   ],
   "axes": [
     { "id": "MoveX", "negative": ["keyboard.KeyA", "keyboard.ArrowLeft"], "positive": ["keyboard.KeyD", "keyboard.ArrowRight"] },
-    { "id": "MoveZ", "negative": ["keyboard.KeyS", "keyboard.ArrowDown"], "positive": ["keyboard.KeyW", "keyboard.ArrowUp"] },
+    { "id": "MoveZ", "negative": ["keyboard.KeyW", "keyboard.ArrowUp"], "positive": ["keyboard.KeyS", "keyboard.ArrowDown"] },
     { "id": "LookX", "negative": [], "positive": [], "value": "pointer.deltaX" },
     { "id": "LookY", "negative": [], "positive": [], "value": "pointer.deltaY" }
   ]

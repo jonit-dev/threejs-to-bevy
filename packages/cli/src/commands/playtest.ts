@@ -572,7 +572,7 @@ async function nativeScreenshotDiagnostics(paths: readonly string[]): Promise<IP
         diagnostics.push({
           code: "TN_PLAYTEST_NATIVE_SCREENSHOT_EMPTY",
           message: `Native playtest screenshot artifact is empty: ${path}`,
-          severity: "warning",
+          severity: "error",
         });
       } else if (await looksLikePng(path)) {
         const nonblank = analyzeNonblank(await readPngFrame(path));
@@ -580,7 +580,7 @@ async function nativeScreenshotDiagnostics(paths: readonly string[]): Promise<IP
           diagnostics.push({
             code: "TN_PLAYTEST_NATIVE_SCREENSHOT_BLANK",
             message: `Native playtest screenshot artifact is visually blank: ${path}`,
-            severity: "warning",
+            severity: "error",
             suggestion: "Capture after the first rendered frame or inspect native proof harness camera/render readiness.",
           });
         }
@@ -589,7 +589,7 @@ async function nativeScreenshotDiagnostics(paths: readonly string[]): Promise<IP
       diagnostics.push({
         code: "TN_PLAYTEST_NATIVE_SCREENSHOT_MISSING",
         message: `Native playtest screenshot artifact was not written: ${path}`,
-        severity: "warning",
+        severity: "error",
         suggestion: "Run on a desktop/headless environment that supports Bevy window screenshots, or inspect native-readiness diagnostics.",
       });
     }

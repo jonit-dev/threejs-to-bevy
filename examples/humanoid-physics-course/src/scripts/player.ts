@@ -41,44 +41,16 @@ export function updateHumanoidCourse(context: ScriptContext): void {
     return;
   }
 
-  const camera = CameraRig.orbitThirdPerson(context, {
-    cameraId: "camera.main",
-    collision: {
-      ignore: ["player"],
-      mask: ["world", "pushable"],
-      padding: 0.28,
-    },
-    distance: 5.2,
-    input: {
-      lookX: "LookX",
-      lookY: "LookY",
-      maxPitchStep: 0.045,
-      maxYawStep: 0.07,
-      pitchSensitivity: 0.0012,
-      yawSensitivity: 0.002,
-    },
-    lookHeight: 1.45,
-    minDistance: 1.35,
-    pitch: {
-      default: 0.28,
-      max: 0.62,
-      min: 0.12,
-    },
-    rounding: {
-      positionDigits: 5,
-      rotationDigits: 5,
-    },
-    target: player,
-  });
-
   if (stats.finished === true) {
     return;
   }
 
+  const cameraState = context.resources?.get?.("tn.cameraOrbitRig.camera.main");
+  const cameraYaw = isRecord(cameraState) && typeof cameraState.yaw === "number" ? cameraState.yaw : 0;
   CharacterRig.update(context, player, {
     acceleration: ACCELERATION,
     bounds: { max: BOUNDS_MAX, min: BOUNDS_MIN },
-    cameraYaw: camera.yaw,
+    cameraYaw,
     clips: {
       idle: { clip: "idle", sourceClip: "Idle" },
       run: { clip: "run", referenceSpeed: SPRINT_SPEED, sourceClip: "Run" },
@@ -118,4 +90,41 @@ export function updateHumanoidCourse(context: ScriptContext): void {
 
   player.patch?.("CoursePlayer", { checkpoint, finished, hits, lastHitAt });
   context.resources?.set?.("GameState", { ...state, checkpoint, checkpointTotal: 2, elapsed, hits, status });
+}
+
+export function updateHumanoidCamera(context: ScriptContext): void {
+  const player = context.query().find((entity: any) => entity.id === "player");
+  if (player === undefined) {
+    return;
+  }
+
+  CameraRig.orbitThirdPerson(context, {
+    cameraId: "camera.main",
+    collision: {
+      ignore: ["player"],
+      mask: ["world", "pushable"],
+      padding: 0.28,
+    },
+    distance: 5.2,
+    input: {
+      lookX: "LookX",
+      lookY: "LookY",
+      maxPitchStep: 0.045,
+      maxYawStep: 0.07,
+      pitchSensitivity: 0.0012,
+      yawSensitivity: 0.002,
+    },
+    lookHeight: 1.45,
+    minDistance: 1.35,
+    pitch: {
+      default: 0.28,
+      max: 0.62,
+      min: 0.12,
+    },
+    rounding: {
+      positionDigits: 5,
+      rotationDigits: 5,
+    },
+    target: player,
+  });
 }

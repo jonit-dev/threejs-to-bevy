@@ -603,7 +603,7 @@ Practical order for game-polish work:
   - [x] Compiler-only Three.js BufferGeometry import/snapshot
 - [x] Mesh bounds, AABB/sphere intersection utilities, and sampling
 - [x] Curves, splines, easing functions, and path sampling
-- [x] `P1` Transform interpolation/smoothing helpers
+- [x] `P1` Transform interpolation/smoothing helpers and fixed-tick visual transform interpolation in web/Bevy runtime loops
 - [x] `P2` Gizmo geometry as debug/editor-only output
 - [x] `P2` Runtime mesh deformation diagnostic boundary
 - [x] `P2` Chunked/streamed mesh terrain and world geometry policy
@@ -807,7 +807,7 @@ diagnostics until portable promotion criteria and web/Bevy evidence exist.
 - [x] Constrained animation graph metadata
 - [x] Animation event-marker metadata and fixed event traces
 - [x] Bounded particle-emitter metadata and deterministic spawn traces
-- [x] Runtime animation playback binding and time advancement for model renderers in web and Bevy
+- [x] Runtime animation playback binding, scripted `animation.play` service consumption, and time advancement for model renderers in web and Bevy
 - [x] `P0` Visual skeletal animation deformation from loaded glTF clips
 - [x] `P1` Transform animation authored in code/IR
 - [x] `P1` `animation.query` / `animation.stop` declared command-shape/service-payload parity

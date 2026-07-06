@@ -8,7 +8,7 @@ use bevy::input::mouse::{MouseScrollUnit, MouseWheel};
 use bevy::prelude::*;
 use bevy::render::camera::ClearColorConfig;
 use bevy::text::BreakLineOn;
-use bevy::ui::IsDefaultUiCamera;
+use bevy::ui::{IsDefaultUiCamera, TargetCamera};
 use serde::Serialize;
 use thiserror::Error;
 use threenative_components::ThreeNativeId;
@@ -525,6 +525,42 @@ pub fn install_native_ui_overlay_camera(world: &mut World) {
         Name::new("threenative.ui.overlay.camera"),
         IsDefaultUiCamera,
     ));
+}
+
+pub fn route_native_ui_to_active_scene_camera(world: &mut World) -> bool {
+    let scene_camera = world
+        .query_filtered::<(Entity, &Camera), Without<IsDefaultUiCamera>>()
+        .iter(world)
+        .filter(|(_, camera)| camera.is_active)
+        .max_by_key(|(_, camera)| camera.order)
+        .map(|(entity, _)| entity);
+    let Some(scene_camera) = scene_camera else {
+        return false;
+    };
+
+    let overlay_cameras = world
+        .query_filtered::<Entity, With<IsDefaultUiCamera>>()
+        .iter(world)
+        .collect::<Vec<_>>();
+    for entity in overlay_cameras {
+        if let Some(mut entity_mut) = world.get_entity_mut(entity) {
+            entity_mut.remove::<IsDefaultUiCamera>();
+            if let Some(mut camera) = entity_mut.get_mut::<Camera>() {
+                camera.is_active = false;
+            }
+        }
+    }
+
+    let root_nodes = world
+        .query_filtered::<Entity, (With<Node>, Without<Parent>)>()
+        .iter(world)
+        .collect::<Vec<_>>();
+    for root_node in root_nodes {
+        world
+            .entity_mut(root_node)
+            .insert(TargetCamera(scene_camera));
+    }
+    true
 }
 
 pub fn diagnose_native_ui_visual_support(ui: &UiIr) -> Vec<UiDiagnostic> {

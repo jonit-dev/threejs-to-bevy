@@ -402,6 +402,61 @@ test("playtest command should fast-forward desktop native screenshot-only proofs
   ]);
 });
 
+test("playtest command should fail desktop native screenshot proofs when screenshots are missing", async () => {
+  const root = await playtestTempRoot();
+  await cp(join(import.meta.dirname, "../template-files/structured-source-starter"), root, { recursive: true });
+  let readinessOutPath: string | undefined;
+  const result = await playtestCommand(
+    ["--project", ".", "--target", "desktop", "--entity", "player", "--press", "KeyW", "--frames", "30", "--expect-moved", "--native-screenshots", "--json"],
+    root,
+    {
+      bevyRunner: (invocation) => {
+        readinessOutPath = invocation.proofHarness?.readinessOutPath;
+        const process = new EventEmitter() as ChildProcess;
+        process.kill = () => true;
+        void (async () => {
+          assert.ok(readinessOutPath);
+          await mkdir(dirname(readinessOutPath), { recursive: true });
+          await writeFile(
+            readinessOutPath,
+            `${JSON.stringify({
+              diagnostics: [],
+              ok: true,
+              schema: "threenative.native-proof-readiness",
+              tick: 0,
+              transforms: [{ entity: "player", position: [0, 0, 0] }],
+              version: "0.1.0",
+            })}\n`,
+            "utf8",
+          );
+          await new Promise((resolve) => setTimeout(resolve, 35));
+          await writeFile(
+            readinessOutPath,
+            `${JSON.stringify({
+              diagnostics: [],
+              ok: true,
+              schema: "threenative.native-proof-readiness",
+              tick: 37,
+              transforms: [{ entity: "player", position: [0, 0, -1] }],
+              version: "0.1.0",
+            })}\n`,
+            "utf8",
+          );
+          await new Promise((resolve) => setTimeout(resolve, 10));
+          process.emit("exit", 0, null);
+        })();
+        return process;
+      },
+    },
+  );
+  const payload = JSON.parse(result.stdout) as { artifacts: { summary: string }; code: string };
+  const summary = JSON.parse(await readFile(payload.artifacts.summary, "utf8")) as { diagnostics: Array<{ code: string; severity: string }> };
+
+  assert.equal(result.exitCode, 1);
+  assert.equal(payload.code, "TN_PLAYTEST_FAILED");
+  assert.equal(summary.diagnostics.some((diagnostic) => diagnostic.code === "TN_PLAYTEST_NATIVE_SCREENSHOT_MISSING" && diagnostic.severity === "error"), true);
+});
+
 test("playtest command should opt into desktop native recording screenshots", async () => {
   const root = await playtestTempRoot();
   await cp(join(import.meta.dirname, "../template-files/structured-source-starter"), root, { recursive: true });

@@ -41,7 +41,7 @@
       "enabled": true,
       "mapSize": 2048,
       "bias": -0.0002,
-      "normalBias": 0.015,
+      "normalBias": 0.035,
       "cascadeCount": 1,
       "maxDistance": 16,
       "receiverPolicy": "terrain-and-path"

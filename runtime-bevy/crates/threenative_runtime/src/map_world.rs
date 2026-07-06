@@ -158,11 +158,28 @@ pub struct NativeAnimationPlayback {
 
 #[derive(Clone, Component, Debug, PartialEq)]
 pub struct NativeAnimationSceneBinding {
+    pub asset: String,
+    pub clip_speeds: HashMap<String, f32>,
     pub gltf: Handle<Gltf>,
     pub clip: Handle<AnimationClip>,
     pub loop_: bool,
     pub speed: f32,
     pub source_clip: String,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct NativeAnimationServiceCommand {
+    pub active_state: Option<String>,
+    pub clip: String,
+    pub entity: String,
+    pub loop_: bool,
+    pub source_clip: String,
+    pub speed: f32,
+}
+
+#[derive(Debug, Default, Resource)]
+pub struct NativeAnimationServiceQueue {
+    pub commands: Vec<NativeAnimationServiceCommand>,
 }
 
 #[derive(Debug, Error)]
@@ -1797,6 +1814,8 @@ fn spawn_entity(
                 let scene_binding = playback.as_ref().and_then(|playback| {
                     world.contains_resource::<Assets<AnimationClip>>().then(|| {
                         NativeAnimationSceneBinding {
+                            asset: asset.id.clone(),
+                            clip_speeds: animation_clip_speeds(asset),
                             gltf: asset_server.load(scene_path.clone()),
                             clip: asset_server.load(
                                 GltfAssetLabel::Animation(animation_clip_index(asset, playback))
@@ -2168,6 +2187,139 @@ pub fn bind_native_animation_players(
     }
 }
 
+pub fn queue_native_animation_service_effects(
+    queue: &mut NativeAnimationServiceQueue,
+    logs: &[crate::systems_effects::NativeSystemEffectLog],
+) {
+    for entry in logs.iter().flat_map(|log| &log.entries) {
+        if entry.kind != "service" || entry.service.as_deref() != Some("animation.play") {
+            continue;
+        }
+        let Some(payload) = entry.payload.as_ref() else {
+            continue;
+        };
+        let Some(command) = native_animation_service_command(payload) else {
+            continue;
+        };
+        queue.commands.push(command);
+    }
+}
+
+pub fn apply_native_animation_service_effects(
+    mut commands: Commands,
+    gltfs: Res<Assets<Gltf>>,
+    mut graphs: ResMut<Assets<AnimationGraph>>,
+    mut queue: ResMut<NativeAnimationServiceQueue>,
+    bindings: Query<(
+        Entity,
+        &NativeAnimationSceneBinding,
+        Option<&NativeAnimationPlayback>,
+        Option<&ThreeNativeId>,
+    )>,
+    parents: Query<&Parent>,
+    mut players: Query<Entity, With<AnimationPlayer>>,
+) {
+    let requests = queue.commands.drain(..).collect::<Vec<_>>();
+    for request in requests {
+        let mut applied = false;
+        for player_entity in &mut players {
+            let Some((binding_entity, binding, playback, stable_id)) =
+                ancestor_animation_target(player_entity, &parents, &bindings)
+            else {
+                continue;
+            };
+            if stable_id.is_none_or(|id| id.0 != request.entity) {
+                continue;
+            }
+            let speed = request.speed
+                * native_declared_clip_speed(binding, &request.clip, &request.source_clip);
+            let next_playback = NativeAnimationPlayback {
+                active_state: request.active_state.clone(),
+                asset: binding.asset.clone(),
+                clip: request.clip.clone(),
+                loop_: request.loop_,
+                source_clip: request.source_clip.clone(),
+                speed,
+                time_seconds: 0.0,
+            };
+            commands.entity(binding_entity).insert(next_playback);
+            if playback
+                .as_ref()
+                .is_some_and(|current| current.source_clip == request.source_clip)
+            {
+                commands.add(move |world: &mut World| {
+                    if let Some(mut player) = world.get_mut::<AnimationPlayer>(player_entity) {
+                        for (_, active) in player.playing_animations_mut() {
+                            active.set_speed(speed);
+                        }
+                    }
+                });
+                applied = true;
+                continue;
+            }
+            let clip = gltfs
+                .get(&binding.gltf)
+                .and_then(|gltf| {
+                    gltf.named_animations
+                        .get(request.source_clip.as_str())
+                        .or_else(|| gltf.named_animations.get(request.clip.as_str()))
+                })
+                .cloned()
+                .unwrap_or_else(|| binding.clip.clone());
+            let (graph, animation) = AnimationGraph::from_clip(clip);
+            let graph_handle = graphs.add(graph);
+            commands.add(move |world: &mut World| {
+                let Some(mut player) = world.get_mut::<AnimationPlayer>(player_entity) else {
+                    return;
+                };
+                let active = player.play(animation);
+                active.set_speed(speed);
+                if request.loop_ {
+                    active.repeat();
+                }
+                world.entity_mut(player_entity).insert(graph_handle);
+            });
+            applied = true;
+        }
+        if !applied {
+            queue.commands.push(request);
+        }
+    }
+}
+
+fn native_animation_service_command(payload: &Value) -> Option<NativeAnimationServiceCommand> {
+    let request = payload.get("request")?;
+    let result = payload.get("result")?;
+    let entity = request.get("entity")?.as_str()?.to_owned();
+    let clip = result
+        .get("clip")
+        .and_then(Value::as_str)
+        .or_else(|| request.get("clip").and_then(Value::as_str))?
+        .to_owned();
+    let source_clip = result
+        .get("sourceClip")
+        .and_then(Value::as_str)
+        .or_else(|| request.get("clip").and_then(Value::as_str))
+        .unwrap_or(clip.as_str())
+        .to_owned();
+    let speed = result
+        .get("speed")
+        .and_then(Value::as_f64)
+        .filter(|value| value.is_finite() && *value > 0.0)
+        .unwrap_or(1.0) as f32;
+    Some(NativeAnimationServiceCommand {
+        active_state: result
+            .get("activeState")
+            .and_then(Value::as_str)
+            .map(str::to_owned),
+        clip,
+        entity,
+        loop_: result.get("loop").and_then(Value::as_bool).unwrap_or(true),
+        source_clip,
+        speed,
+    })
+}
+
 fn ancestor_animation_binding<'a>(
     entity: Entity,
     parents: &Query<&Parent>,
@@ -2177,6 +2329,33 @@ fn ancestor_animation_binding<'a>(
     loop {
         if let Ok(binding) = bindings.get(current) {
             return Some(binding);
+        }
+        let Ok(parent) = parents.get(current) else {
+            return None;
+        };
+        current = parent.get();
+    }
+}
+
+fn ancestor_animation_target<'a>(
+    entity: Entity,
+    parents: &Query<&Parent>,
+    bindings: &'a Query<(
+        Entity,
+        &NativeAnimationSceneBinding,
+        Option<&NativeAnimationPlayback>,
+        Option<&ThreeNativeId>,
+    )>,
+) -> Option<(
+    Entity,
+    &'a NativeAnimationSceneBinding,
+    Option<&'a NativeAnimationPlayback>,
+    Option<&'a ThreeNativeId>,
+)> {
+    let mut current = entity;
+    loop {
+        if let Ok((entity, binding, playback, stable_id)) = bindings.get(current) {
+            return Some((entity, binding, playback, stable_id));
         }
         let Ok(parent) = parents.get(current) else {
             return None;
@@ -2611,6 +2790,37 @@ fn animation_playback(asset: &AssetIr) -> Option<NativeAnimationPlayback> {
         speed: clip.speed.unwrap_or(1.0),
         time_seconds: 0.0,
     })
+}
+
+fn animation_clip_speeds(asset: &AssetIr) -> HashMap<String, f32> {
+    asset
+        .animations
+        .as_deref()
+        .map_or_else(HashMap::new, |animations| {
+            let mut speeds = HashMap::new();
+            for clip in animations {
+                let speed = clip.speed.unwrap_or(1.0);
+                speeds.insert(clip.id.clone(), speed);
+                speeds.insert(
+                    clip.source_clip.clone().unwrap_or_else(|| clip.id.clone()),
+                    speed,
+                );
+            }
+            speeds
+        })
+}
+
+fn native_declared_clip_speed(
+    binding: &NativeAnimationSceneBinding,
+    clip: &str,
+    source_clip: &str,
+) -> f32 {
+    binding
+        .clip_speeds
+        .get(source_clip)
+        .or_else(|| binding.clip_speeds.get(clip))
+        .copied()
+        .unwrap_or(1.0)
 }
 
 fn animation_clip_index(asset: &AssetIr, playback: &NativeAnimationPlayback) -> usize {

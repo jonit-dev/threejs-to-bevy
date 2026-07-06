@@ -65,6 +65,54 @@ fn should_apply_injected_action_exactly_at_requested_tick() {
 }
 
 #[test]
+fn should_apply_shift_modifier_with_movement_key() {
+    let root = temp_dir("input-shift-injection");
+    let readiness_path = root.join("readiness.json");
+    let mut app = App::new();
+    app.add_event::<AppExit>();
+    app.insert_resource(ButtonInput::<KeyCode>::default());
+    app.insert_resource(NativeProofHarnessState::from_stream(
+        NativeProofHarnessCommandStream {
+            schema: "threenative.native-proof-harness".to_owned(),
+            version: "0.1.0".to_owned(),
+            commands: vec![
+                serde_json::from_value::<NativeProofHarnessCommand>(serde_json::json!({
+                    "tick": 1,
+                    "type": "key",
+                    "code": "ShiftLeft",
+                    "pressed": true
+                }))
+                .expect("command should parse"),
+                serde_json::from_value::<NativeProofHarnessCommand>(serde_json::json!({
+                    "tick": 2,
+                    "type": "key",
+                    "code": "KeyW",
+                    "pressed": true
+                }))
+                .expect("command should parse"),
+            ],
+        },
+        readiness_path.display().to_string(),
+    ));
+    app.add_systems(PreUpdate, apply_native_proof_harness_commands);
+
+    app.update();
+    app.update();
+    assert!(
+        app.world()
+            .resource::<ButtonInput<KeyCode>>()
+            .pressed(KeyCode::ShiftLeft)
+    );
+
+    app.update();
+    let keyboard = app.world().resource::<ButtonInput<KeyCode>>();
+    assert!(keyboard.pressed(KeyCode::ShiftLeft));
+    assert!(keyboard.pressed(KeyCode::KeyW));
+
+    fs::remove_dir_all(root).expect("temp proof harness dir should be removed");
+}
+
+#[test]
 fn should_write_readiness_json_matching_schema() {
     let root = temp_dir("readiness");
     let stream_path = root.join("commands.json");

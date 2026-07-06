@@ -8,7 +8,7 @@ use std::{
 use bevy::a11y::{AccessibilityNode, accesskit::Role};
 use bevy::prelude::*;
 use bevy::text::BreakLineOn;
-use bevy::ui::IsDefaultUiCamera;
+use bevy::ui::{IsDefaultUiCamera, TargetCamera};
 use threenative_components::ThreeNativeId;
 use threenative_loader::{UiIr, UiNodeIr, load_bundle};
 use threenative_runtime::ui::{
@@ -18,8 +18,9 @@ use threenative_runtime::ui::{
     NativeUiScrollContainer, NativeUiShadow, NativeUiStyle, NativeUiWidget, build_native_ui,
     diagnose_native_ui_visual_support, dispatch_native_ui_actions,
     install_native_ui_overlay_camera, map_ui_into_world, queue_native_ui_text_input_value,
-    trace_native_ui_affordances, trace_native_ui_attachment_projection,
-    trace_native_ui_effect_presets, trace_native_ui_screen_dispatch, trace_native_ui_text_styles,
+    route_native_ui_to_active_scene_camera, trace_native_ui_affordances,
+    trace_native_ui_attachment_projection, trace_native_ui_effect_presets,
+    trace_native_ui_screen_dispatch, trace_native_ui_text_styles,
     trace_native_ui_virtual_list_range, trace_native_ui_visual_effects, trace_ui_navigation,
 };
 
@@ -413,6 +414,43 @@ fn ui_should_install_dedicated_overlay_camera_above_scene_cameras() {
         overlay.clear_color,
         bevy::render::camera::ClearColorConfig::None
     ));
+}
+
+#[test]
+fn ui_should_route_roots_to_scene_camera_for_interactive_native_rendering() {
+    let root = write_ui_bundle();
+    let bundle = load_bundle(&root).expect("ui bundle should load");
+    let ui = bundle.ui.as_ref().expect("ui ir should be loaded");
+    let mut app = App::new();
+    let scene_camera = app
+        .world_mut()
+        .spawn(Camera3dBundle {
+            camera: Camera {
+                order: 4,
+                ..Default::default()
+            },
+            ..Default::default()
+        })
+        .id();
+
+    map_ui_into_world(app.world_mut(), ui).expect("ui should map into world");
+    install_native_ui_overlay_camera(app.world_mut());
+
+    assert!(route_native_ui_to_active_scene_camera(app.world_mut()));
+
+    let mut overlay_query = app
+        .world_mut()
+        .query_filtered::<&Camera, With<IsDefaultUiCamera>>();
+    assert_eq!(overlay_query.iter(app.world()).count(), 0);
+
+    let entities_by_id = collect_ui_entities(app.world_mut());
+    let target = app
+        .world()
+        .get::<TargetCamera>(entities_by_id["hud"])
+        .expect("root HUD should target the active scene camera");
+    assert_eq!(target.0, scene_camera);
+
+    fs::remove_dir_all(root).expect("temporary bundle should be removed");
 }
 
 #[test]

@@ -194,7 +194,9 @@ pub fn app_from_bundle_with_options(
     }
     if let Some(ui) = bundle.ui.as_ref() {
         ui::map_ui_into_world(app.world_mut(), ui)?;
-        ui::install_native_ui_overlay_camera(app.world_mut());
+        if !ui::route_native_ui_to_active_scene_camera(app.world_mut()) {
+            ui::install_native_ui_overlay_camera(app.world_mut());
+        }
         app.init_resource::<ui::NativeUiActionQueue>();
         app.add_systems(
             Update,
@@ -248,7 +250,14 @@ pub fn app_from_bundle_with_options(
         );
         app.insert_resource(input::NativeInputMap(input_map));
         app.init_resource::<input::NativeInputState>();
-        app.add_systems(PreUpdate, input::capture_native_input);
+        app.add_systems(
+            PreUpdate,
+            (
+                input::apply_native_pointer_delta_cursor_policy,
+                input::capture_native_input,
+            )
+                .chain(),
+        );
     }
     if let Some(proof_harness) = options.proof_harness {
         proof_harness::install_native_proof_harness(&mut app, proof_harness, &bundle.assets)?;
@@ -266,7 +275,15 @@ pub fn app_from_bundle_with_options(
     if has_scripts {
         app.insert_resource(ScriptedRuntimeBundle { bundle });
         app.insert_resource(systems_host::NativeGameLoopState::new(initially_paused));
-        app.add_systems(Update, run_scripted_runtime_systems);
+        app.init_resource::<map_world::NativeAnimationServiceQueue>();
+        app.add_systems(
+            Update,
+            (
+                run_scripted_runtime_systems,
+                map_world::apply_native_animation_service_effects,
+            )
+                .chain(),
+        );
     }
     Ok(app)
 }
@@ -465,6 +482,7 @@ fn run_scripted_runtime_systems(
         &mut BackgroundColor,
         &mut Visibility,
     )>,
+    mut animation_queue: Option<ResMut<map_world::NativeAnimationServiceQueue>>,
 ) {
     let Some(ref mut runtime) = scripted.runtime else {
         return;
@@ -501,21 +519,34 @@ fn run_scripted_runtime_systems(
             paused,
         };
 
-        if let Err(error) = systems_host::run_native_systems_frame_with_input(
+        let run = systems_host::run_native_systems_frame_with_input(
             &mut runtime.bundle,
             &mut *loop_state,
             options,
             physics::step_bundle_physics_with_script_poses,
-        ) {
-            error!("{error}");
-            return;
+        );
+        match run {
+            Ok(run) => {
+                if let Some(queue) = animation_queue.as_deref_mut() {
+                    map_world::queue_native_animation_service_effects(queue, &run.logs);
+                }
+            }
+            Err(error) => {
+                error!("{error}");
+                return;
+            }
         }
     }
     if fast_forward.is_some_and(|advance| advance.0 > 0) {
         commands.insert_resource(proof_harness::NativeProofHarnessFastForward::default());
     }
 
-    sync_scripted_transforms(&runtime.bundle, &mut transforms);
+    sync_scripted_transforms(
+        &runtime.bundle,
+        Some(&**loop_state),
+        fixed_delta,
+        &mut transforms,
+    );
     sync_scripted_materials(&runtime.bundle, material_handles.as_deref(), &mut materials);
     sync_scripted_ui_text(&runtime.bundle, &mut text_nodes);
     ui::sync_native_minimap_markers(&runtime.bundle, &mut minimap_markers);
@@ -523,8 +554,15 @@ fn run_scripted_runtime_systems(
 
 fn sync_scripted_transforms(
     bundle: &LoadedBundle,
+    loop_state: Option<&systems_host::NativeGameLoopState>,
+    fixed_delta: f32,
     transforms: &mut Query<(&ThreeNativeId, &mut Transform)>,
 ) {
+    let interpolation_alpha = if fixed_delta > 0.0 {
+        loop_state.map(|state| (state.accumulator / fixed_delta).clamp(0.0, 1.0))
+    } else {
+        None
+    };
     for (stable_id, mut target) in transforms.iter_mut() {
         let Some(source) = bundle
             .world
@@ -535,7 +573,19 @@ fn sync_scripted_transforms(
         else {
             continue;
         };
-        apply_transform_component(&mut target, source);
+        if let (Some(state), Some(alpha)) = (loop_state, interpolation_alpha)
+            && state.fixed_transform_entities.contains(&stable_id.0)
+            && let (Some(previous), Some(current)) = (
+                state.fixed_transform_previous.get(&stable_id.0),
+                state.fixed_transform_current.get(&stable_id.0),
+            )
+        {
+            let interpolated =
+                transform_interpolation::interpolate_transform(*previous, *current, alpha);
+            apply_transform_sample(&mut target, interpolated);
+        } else {
+            apply_transform_component(&mut target, source);
+        }
     }
 }
 
@@ -745,6 +795,20 @@ fn apply_transform_component(target: &mut Transform, source: &TransformComponent
     }
 }
 
+fn apply_transform_sample(
+    target: &mut Transform,
+    source: transform_interpolation::TransformSample,
+) {
+    target.translation = Vec3::new(source.position[0], source.position[1], source.position[2]);
+    target.rotation = Quat::from_xyzw(
+        source.rotation[0],
+        source.rotation[1],
+        source.rotation[2],
+        source.rotation[3],
+    );
+    target.scale = Vec3::new(source.scale[0], source.scale[1], source.scale[2]);
+}
+
 #[cfg(test)]
 mod tests {
     use std::{fs, path::Path, time::Duration};
@@ -802,6 +866,43 @@ mod tests {
         assert_eq!(state.tick, 1);
     }
 
+    #[test]
+    fn scripted_runtime_should_interpolate_fixed_transform_visuals() {
+        let root = write_transform_runtime_bundle("bevy-transform-interpolation", false);
+        let mut app = scripted_transform_runtime_app(&root);
+
+        advance_app(&mut app, 0.25);
+        {
+            let runtime = app.world().resource::<ScriptedRuntimeBundle>();
+            assert_eq!(
+                runtime
+                    .bundle
+                    .world
+                    .entities
+                    .iter()
+                    .find(|entity| entity.id == "mover")
+                    .and_then(|entity| entity.components.transform.as_ref())
+                    .and_then(|transform| transform.position),
+                Some([10.0, 0.0, 0.0])
+            );
+        }
+        assert_eq!(mover_translation(&mut app), Vec3::new(0.0, 0.0, 0.0));
+
+        advance_app(&mut app, 0.125);
+
+        assert_eq!(mover_translation(&mut app), Vec3::new(5.0, 0.0, 0.0));
+    }
+
+    #[test]
+    fn scripted_runtime_should_keep_update_transform_visuals_authoritative() {
+        let root = write_transform_runtime_bundle("bevy-transform-update-authority", true);
+        let mut app = scripted_transform_runtime_app(&root);
+
+        advance_app(&mut app, 0.25);
+
+        assert_eq!(mover_translation(&mut app), Vec3::new(20.0, 0.0, 0.0));
+    }
+
     fn scripted_runtime_app(root: &Path) -> App {
         let bundle = load_bundle(root).expect("scripted test bundle should load");
         let mut app = App::new();
@@ -812,11 +913,33 @@ mod tests {
         app
     }
 
+    fn scripted_transform_runtime_app(root: &Path) -> App {
+        let bundle = load_bundle(root).expect("scripted test bundle should load");
+        let mut app = App::new();
+        app.insert_resource(Time::<()>::default());
+        app.insert_resource(ScriptedRuntimeBundle { bundle });
+        app.insert_resource(systems_host::NativeGameLoopState::default());
+        app.world_mut().spawn((
+            ThreeNativeId("mover".to_owned()),
+            Transform::from_xyz(0.0, 0.0, 0.0),
+        ));
+        app.add_systems(Update, run_scripted_runtime_systems);
+        app
+    }
+
     fn advance_app(app: &mut App, seconds: f32) {
         app.world_mut()
             .resource_mut::<Time<()>>()
             .advance_by(Duration::from_secs_f32(seconds));
         app.update();
+    }
+
+    fn mover_translation(app: &mut App) -> Vec3 {
+        let mut query = app.world_mut().query::<(&ThreeNativeId, &Transform)>();
+        query
+            .iter(app.world())
+            .find_map(|(id, transform)| (id.0 == "mover").then_some(transform.translation))
+            .expect("mover entity should exist")
     }
 
     fn write_scripted_runtime_bundle(name: &str, fixed_delta: f32) -> std::path::PathBuf {
@@ -891,6 +1014,108 @@ const system_post = (ctx) => bump(ctx, "post");
 export const systemIds = Object.freeze({ "system_boot": "boot", "system_tick": "tick", "system_update": "update", "system_post": "post" });
 export const systems = Object.freeze({ "system_boot": system_boot, "system_tick": system_tick, "system_update": system_update, "system_post": system_post });
 "#,
+        );
+        write_test_file(
+            &root,
+            "assets.manifest.json",
+            r#"{"schema":"threenative.assets","version":"0.1.0","assets":[]}"#,
+        );
+        write_test_file(
+            &root,
+            "materials.ir.json",
+            r#"{"schema":"threenative.materials","version":"0.1.0","materials":[]}"#,
+        );
+        write_test_file(
+            &root,
+            "target.profile.json",
+            r#"{"schema":"threenative.target-profile","version":"0.1.0","targets":["desktop"]}"#,
+        );
+        root
+    }
+
+    fn write_transform_runtime_bundle(name: &str, update_transform: bool) -> std::path::PathBuf {
+        let root =
+            std::env::temp_dir().join(format!("tn-scripted-runtime-{name}-{}", std::process::id()));
+        if root.exists() {
+            fs::remove_dir_all(&root).expect("old temp bundle should be removed");
+        }
+        fs::create_dir_all(&root).expect("temp bundle should be created");
+        write_test_file(
+            &root,
+            "manifest.json",
+            r#"{
+  "schema": "threenative.bundle",
+  "version": "0.1.0",
+  "name": "scripted-transform-runtime-test",
+  "requiredCapabilities": {},
+  "entry": { "world": "world.ir.json", "systems": "systems.ir.json", "scripts": "scripts.bundle.js" },
+  "files": { "assets": "assets.manifest.json", "materials": "materials.ir.json", "runtimeConfig": "runtime.config.json", "targetProfile": "target.profile.json" }
+}"#,
+        );
+        write_test_file(
+            &root,
+            "runtime.config.json",
+            r#"{
+  "schema": "threenative.runtime-config",
+  "version": "0.1.0",
+  "time": { "fixedDelta": 0.25, "paused": false },
+  "window": { "width": 1280, "height": 720 }
+}"#,
+        );
+        write_test_file(
+            &root,
+            "world.ir.json",
+            r#"{
+  "schema": "threenative.world",
+  "version": "0.1.0",
+  "entities": [
+    { "id": "mover", "components": { "Transform": { "position": [0, 0, 0] } } }
+  ],
+  "resources": {}
+}"#,
+        );
+        let systems = if update_transform {
+            r#"[
+    { "name": "tick", "schedule": "fixedUpdate", "reads": [], "writes": ["Transform"], "queries": [], "commands": [], "eventReads": [], "eventWrites": [], "resourceReads": [], "resourceWrites": [], "services": [], "script": { "bundle": "scripts.bundle.js", "exportName": "system_tick" } },
+    { "name": "update", "schedule": "update", "reads": [], "writes": ["Transform"], "queries": [], "commands": [], "eventReads": [], "eventWrites": [], "resourceReads": [], "resourceWrites": [], "services": [], "script": { "bundle": "scripts.bundle.js", "exportName": "system_update" } }
+  ]"#
+        } else {
+            r#"[
+    { "name": "tick", "schedule": "fixedUpdate", "reads": [], "writes": ["Transform"], "queries": [], "commands": [], "eventReads": [], "eventWrites": [], "resourceReads": [], "resourceWrites": [], "services": [], "script": { "bundle": "scripts.bundle.js", "exportName": "system_tick" } },
+    { "name": "update", "schedule": "update", "reads": [], "writes": [], "queries": [], "commands": [], "eventReads": [], "eventWrites": [], "resourceReads": [], "resourceWrites": [], "services": [], "script": { "bundle": "scripts.bundle.js", "exportName": "system_noop" } }
+  ]"#
+        };
+        write_test_file(
+            &root,
+            "systems.ir.json",
+            &format!(
+                r#"{{
+  "schema": "threenative.systems",
+  "version": "0.1.0",
+  "systems": {systems}
+}}"#
+            ),
+        );
+        let update_body = if update_transform {
+            r#"const system_update = (ctx) => ctx.entity("mover").transform().setPosition([20, 0, 0]);"#
+        } else {
+            r#"const system_update = system_noop;"#
+        };
+        write_test_file(
+            &root,
+            "scripts.bundle.js",
+            &format!(
+                r#"const system_tick = (ctx) => {{
+  const transform = ctx.entity("mover").transform();
+  const position = transform.positionOr([0, 0, 0]);
+  transform.setPosition([position[0] + 10, position[1], position[2]]);
+}};
+const system_noop = () => undefined;
+{update_body}
+export const systemIds = Object.freeze({{ "system_tick": "tick", "system_update": "update", "system_noop": "update" }});
+export const systems = Object.freeze({{ "system_tick": system_tick, "system_update": system_update, "system_noop": system_noop }});
+"#
+            ),
         );
         write_test_file(
             &root,

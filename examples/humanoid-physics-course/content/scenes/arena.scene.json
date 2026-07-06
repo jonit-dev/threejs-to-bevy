@@ -114,8 +114,7 @@
         "MeshRenderer": {
           "castShadow": true,
           "material": "mat.course.dark",
-          "mesh": "mesh.backdrop",
-          "receiveShadow": true
+          "mesh": "mesh.backdrop"
         }
       },
       "id": "sky.backdrop",
@@ -272,7 +271,6 @@
           ]
         },
         "MeshRenderer": {
-          "castShadow": true,
           "material": "mat.course.dark",
           "mesh": "mesh.wall",
           "receiveShadow": true
@@ -307,7 +305,6 @@
           ]
         },
         "MeshRenderer": {
-          "castShadow": true,
           "material": "mat.course.dark",
           "mesh": "mesh.wall",
           "receiveShadow": true
@@ -342,7 +339,6 @@
           ]
         },
         "MeshRenderer": {
-          "castShadow": true,
           "material": "mat.course.surface",
           "mesh": "mesh.step.low",
           "receiveShadow": true
@@ -372,7 +368,6 @@
           ]
         },
         "MeshRenderer": {
-          "castShadow": true,
           "material": "mat.course.surface",
           "mesh": "mesh.step.mid",
           "receiveShadow": true
@@ -402,7 +397,6 @@
           ]
         },
         "MeshRenderer": {
-          "castShadow": true,
           "material": "mat.course.surface",
           "mesh": "mesh.step.high",
           "receiveShadow": true
@@ -432,7 +426,6 @@
           ]
         },
         "MeshRenderer": {
-          "castShadow": true,
           "material": "mat.course.surface",
           "mesh": "mesh.ramp",
           "receiveShadow": true
@@ -467,7 +460,6 @@
           ]
         },
         "MeshRenderer": {
-          "castShadow": true,
           "material": "mat.course.surface",
           "mesh": "mesh.platform",
           "receiveShadow": true
@@ -497,7 +489,6 @@
           ]
         },
         "MeshRenderer": {
-          "castShadow": true,
           "material": "mat.course.edge",
           "mesh": "mesh.low-wall",
           "receiveShadow": true

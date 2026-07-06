@@ -1,0 +1,40 @@
+{
+  "schemaVersion": 1,
+  "name": "humanoid-course-sprint-forward",
+  "target": "desktop",
+  "viewport": {
+    "width": 1280,
+    "height": 720
+  },
+  "subject": "player",
+  "warmupFrames": 0,
+  "steps": [
+    {
+      "press": "ShiftLeft",
+      "holdFrames": 1,
+      "release": false
+    },
+    {
+      "press": "KeyW",
+      "holdFrames": 60,
+      "release": true
+    }
+  ],
+  "assert": {
+    "movement": {
+      "entity": "player",
+      "axis": "-z",
+      "minDistance": 0.01,
+      "minVelocity": 0.04
+    },
+    "diagnostics": {
+      "noRuntimeDiagnostics": true,
+      "runtimeReady": true
+    }
+  },
+  "artifacts": {
+    "screenshots": "before-after",
+    "effectLog": "focused",
+    "runtimeTrace": true
+  }
+}

@@ -26,8 +26,9 @@ use bevy::{
 use threenative_components::ThreeNativeId;
 use threenative_loader::load_bundle;
 use threenative_runtime::map_world::{
-    NativeAnimationPlayback, NativeEmissiveMarkerMask,
-    THREE_COMPAT_DIRECTIONAL_ILLUMINANCE_PER_INTENSITY, advance_native_animation_playback,
+    NativeAnimationPlayback, NativeAnimationServiceCommand, NativeAnimationServiceQueue,
+    NativeEmissiveMarkerMask, THREE_COMPAT_DIRECTIONAL_ILLUMINANCE_PER_INTENSITY,
+    advance_native_animation_playback, apply_native_animation_service_effects,
     bind_native_animation_players, map_bundle_into_world, trace_native_emissive_bloom,
 };
 use threenative_runtime::rendering::{
@@ -478,6 +479,68 @@ fn rendering_should_bind_added_animation_players_to_model_renderer_clip() {
         .expect("animation player should be playing the selected clip");
     assert_eq!(active.repeat_mode(), RepeatAnimation::Forever);
     assert!((active.speed() - 1.0).abs() < 0.01);
+
+    fs::remove_dir_all(root).expect("temporary bundle should be removed");
+}
+
+#[test]
+fn rendering_should_apply_animation_play_service_to_native_animation_player() {
+    let root = write_animated_model_bundle();
+    let bundle = load_bundle(&root).expect("animated model bundle should load");
+    let mut app = App::new();
+    app.add_plugins((
+        MinimalPlugins,
+        AssetPlugin {
+            file_path: root.display().to_string(),
+            ..Default::default()
+        },
+        AnimationPlugin,
+        ScenePlugin,
+        GltfPlugin::default(),
+    ));
+    app.init_resource::<NativeAnimationServiceQueue>();
+    app.add_systems(
+        Update,
+        (
+            bind_native_animation_players,
+            apply_native_animation_service_effects,
+        )
+            .chain(),
+    );
+    app.finish();
+    app.cleanup();
+
+    map_bundle_into_world(app.world_mut(), &bundle).expect("bundle should map");
+    let hero = entity_for_id(app.world_mut(), "hero");
+    let player = app.world_mut().spawn(AnimationPlayer::default()).id();
+    app.world_mut().entity_mut(hero).push_children(&[player]);
+
+    app.update();
+    app.world_mut()
+        .resource_mut::<NativeAnimationServiceQueue>()
+        .commands
+        .push(NativeAnimationServiceCommand {
+            active_state: Some("run".to_owned()),
+            clip: "run".to_owned(),
+            entity: "hero".to_owned(),
+            loop_: true,
+            source_clip: "Armature|Run".to_owned(),
+            speed: 2.0,
+        });
+    app.update();
+
+    let playback = animation_playback_for(app.world_mut(), "hero");
+    assert_eq!(playback.clip, "run");
+    assert_eq!(playback.source_clip, "Armature|Run");
+    assert!((playback.speed - 2.5).abs() < 0.01);
+    let player_ref = app.world().entity(player).get::<AnimationPlayer>().unwrap();
+    let active = player_ref
+        .playing_animations()
+        .next()
+        .map(|(_index, active)| active)
+        .expect("animation player should be playing the requested service clip");
+    assert_eq!(active.repeat_mode(), RepeatAnimation::Forever);
+    assert!((active.speed() - 2.5).abs() < 0.01);
 
     fs::remove_dir_all(root).expect("temporary bundle should be removed");
 }

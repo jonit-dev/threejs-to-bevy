@@ -29,7 +29,6 @@
       ],
       "resourceWrites": [
         "GameState",
-        "tn.cameraOrbitRig.camera.main",
         "tn.characterRig.player",
         "tn.triggerCooldown.hazard.sweeper.01",
         "tn.triggerCooldown.hazard.sweeper.02",
@@ -42,12 +41,34 @@
       "services": [
         "character.move",
         "animation.play",
-        "physics.raycast",
         "physics.sensor"
       ],
       "script": {
         "module": "src/scripts/player.ts",
         "export": "updateHumanoidCourse"
+      }
+    },
+    {
+      "id": "humanoid-camera",
+      "schedule": "update",
+      "reads": [
+        "Transform"
+      ],
+      "writes": [
+        "Transform"
+      ],
+      "resourceReads": [
+        "tn.cameraOrbitRig.camera.main"
+      ],
+      "resourceWrites": [
+        "tn.cameraOrbitRig.camera.main"
+      ],
+      "services": [
+        "physics.raycast"
+      ],
+      "script": {
+        "module": "src/scripts/player.ts",
+        "export": "updateHumanoidCamera"
       }
     }
   ]

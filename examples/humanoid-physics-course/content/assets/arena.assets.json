@@ -172,8 +172,8 @@
       "minFilter": "linearMipmapLinear",
       "magFilter": "linear",
       "repeat": [
-        12,
-        18
+        8,
+        12
       ]
     },
     {
@@ -185,8 +185,8 @@
       "minFilter": "linearMipmapLinear",
       "magFilter": "linear",
       "repeat": [
-        6,
-        1.5
+        4,
+        1
       ]
     },
     {
@@ -198,8 +198,8 @@
       "minFilter": "linearMipmapLinear",
       "magFilter": "linear",
       "repeat": [
-        2,
-        2
+        1.5,
+        1.5
       ]
     }
   ]

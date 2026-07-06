@@ -6,7 +6,7 @@ use std::{
 use quickjs_rusty::Context;
 use serde_json::{Value, json};
 use thiserror::Error;
-use threenative_loader::{LoadedBundle, SystemIr};
+use threenative_loader::{LoadedBundle, SystemIr, TransformComponent};
 
 use crate::{
     component_diff::ComponentDiffCache,
@@ -18,6 +18,7 @@ use crate::{
         NativeSystemEffectLog, NativeSystemEffects, apply_system_effects_with_report,
     },
     systems_host_bridge::BRIDGE_SOURCE,
+    transform_interpolation::TransformSample,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -45,6 +46,9 @@ pub struct NativeSystemsHostRun {
 pub struct NativeGameLoopState {
     pub accumulator: f32,
     pub elapsed: f32,
+    pub fixed_transform_current: BTreeMap<String, TransformSample>,
+    pub fixed_transform_entities: BTreeSet<String>,
+    pub fixed_transform_previous: BTreeMap<String, TransformSample>,
     pub frame: u64,
     pub kinematic_mover_origins: BTreeMap<String, [f32; 3]>,
     pub paused: bool,
@@ -58,6 +62,9 @@ impl NativeGameLoopState {
         Self {
             accumulator: 0.0,
             elapsed: 0.0,
+            fixed_transform_current: BTreeMap::new(),
+            fixed_transform_entities: BTreeSet::new(),
+            fixed_transform_previous: BTreeMap::new(),
             frame: 0,
             kinematic_mover_origins: BTreeMap::new(),
             paused,
@@ -208,6 +215,7 @@ pub fn run_native_systems_frame_with_input(
         }
 
         while state.accumulator >= options.fixed_delta {
+            let before_fixed = snapshot_bundle_transforms(bundle);
             let mover_observations = crate::kinematic_mover::step_bundle_kinematic_movers(
                 bundle,
                 state.elapsed,
@@ -234,10 +242,12 @@ pub fn run_native_systems_frame_with_input(
             run.transform_patches
                 .extend(fixed_run.transform_patches.iter().cloned());
             run.logs.extend(fixed_run.logs);
+            record_fixed_transform_step(state, before_fixed, snapshot_bundle_transforms(bundle));
             state.tick += 1;
             state.accumulator -= options.fixed_delta;
         }
 
+        let before_variable = snapshot_bundle_transforms(bundle);
         let variable_time = loop_time_snapshot(
             options.delta,
             state.elapsed,
@@ -256,10 +266,70 @@ pub fn run_native_systems_frame_with_input(
         run.transform_patches
             .extend(variable_run.transform_patches.iter().cloned());
         run.logs.extend(variable_run.logs);
+        remove_variable_transform_writes(
+            state,
+            before_variable,
+            snapshot_bundle_transforms(bundle),
+        );
     }
     state.frame += 1;
 
     Ok(run)
+}
+
+fn record_fixed_transform_step(
+    state: &mut NativeGameLoopState,
+    before: BTreeMap<String, TransformSample>,
+    after: BTreeMap<String, TransformSample>,
+) {
+    state.fixed_transform_previous = before.clone();
+    state.fixed_transform_current = after.clone();
+    state.fixed_transform_entities = changed_transform_entities(&before, &after);
+}
+
+fn remove_variable_transform_writes(
+    state: &mut NativeGameLoopState,
+    before: BTreeMap<String, TransformSample>,
+    after: BTreeMap<String, TransformSample>,
+) {
+    for id in changed_transform_entities(&before, &after) {
+        state.fixed_transform_entities.remove(&id);
+    }
+}
+
+fn snapshot_bundle_transforms(bundle: &LoadedBundle) -> BTreeMap<String, TransformSample> {
+    bundle
+        .world
+        .entities
+        .iter()
+        .filter_map(|entity| {
+            entity
+                .components
+                .transform
+                .as_ref()
+                .map(|transform| (entity.id.clone(), transform_sample(transform)))
+        })
+        .collect()
+}
+
+fn transform_sample(transform: &TransformComponent) -> TransformSample {
+    TransformSample {
+        position: transform.position.unwrap_or([0.0, 0.0, 0.0]),
+        rotation: transform.rotation.unwrap_or([0.0, 0.0, 0.0, 1.0]),
+        scale: transform.scale.unwrap_or([1.0, 1.0, 1.0]),
+    }
+}
+
+fn changed_transform_entities(
+    before: &BTreeMap<String, TransformSample>,
+    after: &BTreeMap<String, TransformSample>,
+) -> BTreeSet<String> {
+    before
+        .keys()
+        .chain(after.keys())
+        .filter(|id| before.get(*id) != after.get(*id))
+        .cloned()
+        .collect()
 }
 
 fn run_native_system_schedules(
