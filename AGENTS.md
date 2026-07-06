@@ -90,6 +90,13 @@ plan before mutating source:
 - The plan must name script modules/exports under `src/scripts/**/*.ts`, the
   state they own, the source documents that reference them, and how their
   behavior will be proved.
+- The plan must name the first `tn playtest` proof to run while implementing.
+  Prefer a committed scenario under `playtests/*.playtest.json` when the
+  gameplay needs more than one input or assertion; otherwise name the one-shot
+  command with `--entity`, `--press`, `--frames`, and expected movement/axis.
+  Use `--stable-artifacts` or `--out` during iteration so each run has a clear
+  `summary.json`, screenshots, effect log, diagnostics, and reproduction
+  command.
 - The plan must include a polish pass for silhouettes, materials, lighting,
   camera framing, environment context, set dressing, motion/VFX/audio feedback,
   UI states, mobile fit, and performance budget.
@@ -104,6 +111,11 @@ plan before mutating source:
 - Treat the plan as a checklist while implementing. If asset sourcing or a
   runtime capability fails, update the plan with the fallback and evidence
   instead of silently downgrading to dull placeholder geometry.
+- Iterate with `tn playtest` before claiming the game works: after each
+  gameplay or input change, run the narrowest playtest, inspect failing
+  diagnostics/artifacts, repair the durable source or script that owns the
+  failure, and rerun until the proof passes. A screenshot or build alone is not
+  gameplay proof.
 
 ## Game Asset Sourcing
 

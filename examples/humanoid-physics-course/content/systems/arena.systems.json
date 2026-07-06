@@ -46,6 +46,26 @@
         "module": "src/scripts/player.ts",
         "export": "updateHumanoidCourse"
       }
+    },
+    {
+      "id": "third-person-camera",
+      "schedule": "postUpdate",
+      "reads": [
+        "CoursePlayer"
+      ],
+      "writes": [
+        "Transform"
+      ],
+      "resourceReads": [
+        "tn.thirdPerson.player"
+      ],
+      "resourceWrites": [
+        "tn.thirdPerson.player"
+      ],
+      "script": {
+        "module": "src/scripts/player.ts",
+        "export": "updateThirdPersonCamera"
+      }
     }
   ]
 }

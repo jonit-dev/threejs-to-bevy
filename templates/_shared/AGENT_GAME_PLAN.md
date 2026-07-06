@@ -132,6 +132,19 @@ handles.
 ## Proof Checklist
 
 Run the narrowest relevant proof first, then finish with the production loop.
+Use `tn playtest` as an edit loop, not only as a final gate: after each
+gameplay/input/script change, run the focused playtest, read `summary.json`
+plus diagnostics/artifacts, repair the owning `content/**/*.json` or
+`src/scripts/**/*.ts`, and rerun until the proof passes.
+
+For multi-step mechanics, create a committed scenario under
+`playtests/*.playtest.json` and run it with stable artifacts:
+
+```bash
+tn playtest --project . --scenario playtests/smoke-movement.playtest.json --stable-artifacts --json
+```
+
+For a one-input smoke proof, use the one-shot form:
 
 ```bash
 tn authoring validate --project . --json

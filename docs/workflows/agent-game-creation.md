@@ -110,5 +110,12 @@ tn playtest --project . --entity <entity-id> --press KeyD --frames 30 --expect-m
 tn game qa --project . --run-proof --json
 ```
 
+Treat `tn playtest` as the main gameplay iteration loop. After changing
+controls, scripts, state, camera follow, pickups, hazards, or win/fail logic,
+run the focused playtest, inspect its diagnostics and artifacts, fix the
+durable source that owns the failure, and rerun before moving to broader QA.
+Use a committed `playtests/*.playtest.json` scenario plus
+`--stable-artifacts` when the mechanic needs multiple inputs or assertions.
+
 For a production candidate, finish with `tn game release --project . --json`
 and keep the generated evidence under `artifacts/game-production/`.

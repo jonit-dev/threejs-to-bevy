@@ -28,7 +28,7 @@ import { hasKinematicMovers, stepKinematicMovers } from "./kinematicMover.js";
 import { loadSystemModule } from "./systems/runner.js";
 import { createSystemEffectLog, type ISystemEffectLog } from "./systems/log.js";
 import { createUiDomOverlay } from "./ui/domOverlay.js";
-import { renderUi, type IRenderedUi } from "./ui/renderUi.js";
+import { renderUi, type IRenderedUi, type IRenderedUiNode } from "./ui/renderUi.js";
 import { createWebAudioElementSink, createWebAudioRuntime } from "./audio.js";
 import { createWebOverlayHost, type IWebOverlayHost } from "./overlay/host.js";
 
@@ -40,9 +40,12 @@ export interface IRenderResult {
   effectLog: ISystemEffectLog;
   entityWorldPosition(id: string): [number, number, number] | undefined;
   renderer: THREE.WebGLRenderer;
+  resourceSnapshot(id: string): unknown;
   runtimeDiagnostics: IWebRuntimeDiagnostics;
+  runtimeDiagnosticsSnapshot(): IWebRuntimeDiagnostics;
   overlayHost?: IWebOverlayHost;
   ui?: IRenderedUi;
+  uiNodeSnapshot(id: string): IRenderedUiNode | undefined;
 }
 
 export interface IRenderOptions {
@@ -291,9 +294,38 @@ export async function renderBundle(source: string, container: HTMLElement, optio
     },
     ...(overlayHost === undefined ? {} : { overlayHost }),
     renderer,
+    resourceSnapshot(id: string) {
+      return cloneJsonValue(bundle.world.resources?.[id]);
+    },
     runtimeDiagnostics: collectWebRuntimeDiagnostics(mapped, bundle),
+    runtimeDiagnosticsSnapshot() {
+      return collectWebRuntimeDiagnostics(mapped, bundle);
+    },
     ...(ui === undefined ? {} : { ui }),
+    uiNodeSnapshot(id: string) {
+      if (ui === undefined) {
+        return undefined;
+      }
+      return cloneJsonValue(findRenderedUiNode(ui.root, id)) as IRenderedUiNode | undefined;
+    },
   };
+}
+
+function findRenderedUiNode(node: IRenderedUiNode, id: string): IRenderedUiNode | undefined {
+  if (node.id === id) {
+    return node;
+  }
+  for (const child of node.children) {
+    const found = findRenderedUiNode(child, id);
+    if (found !== undefined) {
+      return found;
+    }
+  }
+  return undefined;
+}
+
+function cloneJsonValue<T>(value: T): T {
+  return value === undefined ? value : JSON.parse(JSON.stringify(value)) as T;
 }
 
 export function collectWebRuntimeDiagnostics(mapped: IThreeWorld, bundle: IWebBundle): IWebRuntimeDiagnostics {

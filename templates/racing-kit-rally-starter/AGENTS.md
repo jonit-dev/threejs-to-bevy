@@ -32,6 +32,11 @@ Rules for Racing Kit Rally starter projects.
   boxes, empty horizons, and one-frame player movement snaps. Verify build,
   nonblank screenshot, visible motion, and input playtest before calling the
   game done.
+- Iterate with `tn playtest` after controls, vehicle handling, camera follow,
+  checkpoint, HUD, or retry changes. Use a committed
+  `playtests/*.playtest.json` scenario with `--stable-artifacts` for multi-step
+  behavior; inspect the playtest `summary.json`, diagnostics, screenshots, and
+  effect log, fix the owning source/script, and rerun before `tn game qa`.
 
 ## Verify
 

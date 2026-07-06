@@ -5,9 +5,8 @@
         "camera": {
           "far": 90,
           "fovY": 62,
-          "mode": "third-person-follow",
-          "near": 0.05,
-          "target": "player"
+          "mode": "perspective",
+          "near": 0.05
         }
       },
       "id": "camera.main",

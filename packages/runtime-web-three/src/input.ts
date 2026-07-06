@@ -159,6 +159,7 @@ export function createInputState(input?: IInputIr, options: IWebInputStateOption
   const keys = new Set<string>();
   const pointerButtons = new Set<number>();
   const pointerAxes = new Map<string, number>();
+  const pendingPointerAxes = new Map<string, number>();
   const gamepadButtons = new Set<string>();
   const gamepadAxes = new Map<string, number>();
   const touchControls = new Set<string>();
@@ -258,8 +259,10 @@ export function createInputState(input?: IInputIr, options: IWebInputStateOption
         frameReleasedActions.add(action);
       }
       pendingReleasedActions.clear();
-      pointerAxes.set("deltaX", 0);
-      pointerAxes.set("deltaY", 0);
+      pointerAxes.set("deltaX", pendingPointerAxes.get("deltaX") ?? 0);
+      pointerAxes.set("deltaY", pendingPointerAxes.get("deltaY") ?? 0);
+      pendingPointerAxes.set("deltaX", 0);
+      pendingPointerAxes.set("deltaY", 0);
     },
     handleGamepadButton(control, pressed) {
       if (pressed) {
@@ -294,8 +297,12 @@ export function createInputState(input?: IInputIr, options: IWebInputStateOption
       if (event.clientY !== undefined) {
         pointerAxes.set("y", Math.max(0, Math.min(1, event.clientY / height)));
       }
-      pointerAxes.set("deltaX", event.movementX ?? 0);
-      pointerAxes.set("deltaY", event.movementY ?? 0);
+      const deltaX = (pendingPointerAxes.get("deltaX") ?? 0) + (event.movementX ?? 0);
+      const deltaY = (pendingPointerAxes.get("deltaY") ?? 0) + (event.movementY ?? 0);
+      pendingPointerAxes.set("deltaX", deltaX);
+      pendingPointerAxes.set("deltaY", deltaY);
+      pointerAxes.set("deltaX", deltaX);
+      pointerAxes.set("deltaY", deltaY);
     },
     handlePointerUp(event) {
       pointerButtons.delete(event.button);

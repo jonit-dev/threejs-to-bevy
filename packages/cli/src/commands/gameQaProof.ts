@@ -1,5 +1,5 @@
 import { access, mkdir, readdir, readFile, stat, writeFile } from "node:fs/promises";
-import { isAbsolute, resolve } from "node:path";
+import { basename, isAbsolute, relative, resolve } from "node:path";
 
 import { createGameAgentInventory, loadAuthoringProject } from "@threenative/authoring";
 
@@ -29,6 +29,7 @@ interface IGameProofStepResult {
   command: string;
   diagnostics: Array<{ code: string; message: string; phase: string; severity: "error" | "warning"; suggestedFix?: string }>;
   durationMs: number;
+  evidence?: Record<string, unknown>;
   exitCode: number;
   id: string;
   phase: string;
@@ -68,7 +69,8 @@ export async function ensureReleaseAssetBudgetProof(projectPath: string): Promis
 
 export async function runGameQaProof(argv: readonly string[], projectPath: string, options: IGameCommandOptions): Promise<IGameProofRun> {
   const proofDefaults = await readProjectProofDefaults(projectPath);
-  const steps = buildQaProofSteps(argv, proofDefaults);
+  const playtestScenarios = await discoverQaPlaytestScenarios(projectPath, readFlag(argv, "--playtest-scenarios"));
+  const steps = buildQaProofSteps(argv, proofDefaults, playtestScenarios);
   const results: IGameProofStepResult[] = [];
   for (const step of steps) {
     const startedAt = Date.now();
@@ -82,6 +84,7 @@ export async function runGameQaProof(argv: readonly string[], projectPath: strin
       command: step.command,
       diagnostics: proofStepDiagnostics(step, result),
       durationMs: Date.now() - startedAt,
+      ...(step.command === "playtest" ? { evidence: playtestEvidence(result) } : {}),
       exitCode: result.exitCode,
       id: step.id,
       phase: step.phase,
@@ -114,7 +117,7 @@ async function writeDoctorProof(projectPath: string, result: ICommandResult): Pr
   await writeFile(outputPath, `${JSON.stringify(payload, null, 2)}\n`, "utf8");
 }
 
-function buildQaProofSteps(argv: readonly string[], proofDefaults: IProofDefaults = {}): IGameProofStepSpec[] {
+function buildQaProofSteps(argv: readonly string[], proofDefaults: IProofDefaults = {}, playtestScenarios: readonly string[] = []): IGameProofStepSpec[] {
   const url = readFlag(argv, "--url");
   const entity = readFlag(argv, "--entity") ?? proofDefaults.entity;
   const press = normalizeProofPress(readFlag(argv, "--press") ?? proofDefaults.press);
@@ -137,8 +140,18 @@ function buildQaProofSteps(argv: readonly string[], proofDefaults: IProofDefault
       required: true,
       summary: "Build the project bundle before visual and interaction proof.",
     },
-    entity !== undefined && press !== undefined
-      ? {
+    ...(playtestScenarios.length > 0
+      ? playtestScenarios.map((scenario) => ({
+          args: ["--project", ".", "--scenario", scenario, "--stable-artifacts", "--json"],
+          command: "playtest" as const,
+          id: `playtest:${basename(scenario, ".playtest.json")}`,
+          phase: "gameplay" as const,
+          required: true,
+          summary: `Run focused playtest scenario ${scenario}.`,
+        }))
+      : [
+          entity !== undefined && press !== undefined
+            ? {
           args: [
             "--project",
             ".",
@@ -158,7 +171,8 @@ function buildQaProofSteps(argv: readonly string[], proofDefaults: IProofDefault
           required: true,
           summary: "Run web input proof and assert the main input path changes state.",
         }
-      : missingArgumentStep("playtest", "gameplay", "tn game qa --run-proof requires --entity and --press to execute playtest proof."),
+            : missingArgumentStep("playtest", "gameplay", "tn game qa --run-proof requires --entity and --press to execute playtest proof."),
+        ]),
     url !== undefined
       ? {
           args: ["--project", ".", "--url", url, "--out", "artifacts/game-production/screenshot.png", "--wait-ready", "--json"],
@@ -285,6 +299,40 @@ async function readProjectProofDefaults(projectPath: string): Promise<IProofDefa
   } catch {
     return inferProofDefaultsFromSource(projectPath);
   }
+}
+
+async function discoverQaPlaytestScenarios(projectPath: string, pattern: string | undefined): Promise<string[]> {
+  const searchPattern = pattern ?? "playtests/*.playtest.json";
+  const globIndex = searchPattern.indexOf("*");
+  const searchRoot = globIndex === -1 ? searchPattern : searchPattern.slice(0, globIndex);
+  const root = resolve(projectPath, searchRoot.replace(/[/\\][^/\\]*$/, ""));
+  try {
+    const rootStat = await stat(root);
+    if (!rootStat.isDirectory()) {
+      return pathMatchesScenario(searchPattern) ? [relative(projectPath, root)] : [];
+    }
+  } catch {
+    return [];
+  }
+  const entries = await readdir(root, { recursive: true });
+  return entries
+    .map((entry) => relative(projectPath, resolve(root, String(entry))))
+    .filter((entry) => pathMatchesScenario(entry))
+    .filter((entry) => matchesPlaytestGlob(entry, searchPattern))
+    .sort()
+    .slice(0, 5);
+}
+
+function pathMatchesScenario(path: string): boolean {
+  return path.endsWith(".playtest.json");
+}
+
+function matchesPlaytestGlob(path: string, pattern: string): boolean {
+  if (!pattern.includes("*")) {
+    return path === pattern;
+  }
+  const [prefix = "", suffix = ""] = pattern.split("*");
+  return path.startsWith(prefix) && path.endsWith(suffix);
 }
 
 async function inferProofDefaultsFromSource(projectPath: string): Promise<IProofDefaults> {
@@ -784,6 +832,20 @@ function proofStepDiagnostics(
       suggestedFix: stepRepairHint(step),
     },
   ];
+}
+
+function playtestEvidence(result: ICommandResult): Record<string, unknown> {
+  const parsed = readResultPayload(result);
+  if (parsed === undefined) {
+    return {};
+  }
+  const artifacts = isRecord(parsed.artifacts) ? parsed.artifacts : undefined;
+  return {
+    ...(typeof parsed.scenario === "string" ? { scenario: parsed.scenario } : {}),
+    ...(typeof parsed.target === "string" ? { target: parsed.target } : {}),
+    ...(typeof artifacts?.summary === "string" ? { summary: artifacts.summary } : {}),
+    ...(typeof artifacts?.directory === "string" ? { directory: artifacts.directory } : {}),
+  };
 }
 
 function stepFailureCode(step: IGameProofStepSpec): string {

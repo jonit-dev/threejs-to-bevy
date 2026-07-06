@@ -1,4 +1,4 @@
-import { mkdir, stat } from "node:fs/promises";
+import { mkdir, stat, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { buildProject, loadProjectConfig, validateBundle } from "@threenative/compiler";
 import { startWebPreview, type IWebPreviewServer } from "@threenative/runtime-web-three";
@@ -6,14 +6,25 @@ import { chromium } from "playwright";
 
 import { diagnosticResult, type ICommandResult } from "../diagnostics.js";
 import { buildProofArtifactMetadata, type IProofArtifactMetadata } from "../game/proofManifest.js";
+import { evaluateRichPlaytestAssertions, type IPlaytestAssertionResult, type IPlaytestDiagnostic, type IPlaytestObservations } from "./playtestAssertions.js";
+import { defaultPlaytestArtifactDirectory, writePlaytestArtifactBundle, type IPlaytestArtifactBundle } from "./playtestArtifacts.js";
+import { discoverPlaytestTargets, suggestPlaytestScenario, type IPlaytestDiscoveryReport } from "./playtestDiscovery.js";
+import { applyScenarioOverrides, loadPlaytestScenario, oneShotScenario, parsePlaytestTarget, parseViewport, PlaytestScenarioError, type IPlaytestScenario } from "./playtestScenario.js";
+import { playtestWatchCommand, readPlaytestWatchMaxRuns, type IPlaytestWatchHooks } from "./playtestWatch.js";
 
 declare global {
   // Browser preview global exposed by @threenative/runtime-web-three.
   // The CLI reads it through Playwright to verify gameplay effects.
   var __THREENATIVE_EFFECT_LOG__: unknown;
+  var __THREENATIVE_READY__: {
+    runtimeDiagnostics?: unknown;
+  } | undefined;
   var __THREENATIVE_RUNTIME__: {
     debugColliderCount?: number;
     entityWorldPosition?(id: string): Vec3 | undefined;
+    resourceSnapshot?(id: string): unknown;
+    runtimeDiagnosticsSnapshot?(): unknown;
+    uiNodeSnapshot?(id: string): unknown;
   } | undefined;
 }
 
@@ -28,13 +39,6 @@ export interface IAxisExpectation {
 export interface IFollowExpectation {
   entityId: string;
   within: number;
-}
-
-interface IPlaytestDiagnostic {
-  code: string;
-  message: string;
-  severity: "error" | "warning";
-  suggestion?: string;
 }
 
 interface ITransformSample {
@@ -55,12 +59,15 @@ export interface IPlaytestFollowReport {
 export interface IPlaytestReport {
   after?: ITransformSample;
   artifact?: string;
+  assertionResults?: IPlaytestAssertionResult[];
+  artifacts?: IPlaytestArtifactBundle;
   before?: ITransformSample;
   debugColliderCount?: number;
   debugColliders: boolean;
   diagnostics: IPlaytestDiagnostic[];
   distance: number;
   entity: string;
+  effectLog?: unknown;
   expectAxis?: string;
   expectMoved: boolean;
   follow?: IPlaytestFollowReport;
@@ -68,14 +75,33 @@ export interface IPlaytestReport {
   input: string;
   movementDelta?: Vec3;
   movementThreshold: number;
+  observations?: IPlaytestObservations;
   pass: boolean;
   proofMetadata?: IProofArtifactMetadata;
+  reproduceCommand?: string;
   runtime: "web";
+  scenario?: string;
+  target?: string;
   url?: string;
 }
 
 export interface IPlaytestCommandOptions {
-  runner?: (options: { debugColliders: boolean; entityId: string; expectAxis?: string; expectMoved: boolean; follow?: IFollowExpectation; frames: number; movementThreshold: number; press: string; projectPath: string }) => Promise<IPlaytestReport>;
+  runner?: (options: IPlaytestRunOptions) => Promise<IPlaytestReport>;
+  watchHooks?: IPlaytestWatchHooks;
+}
+
+export interface IPlaytestRunOptions {
+  artifactDirectory: string;
+  debugColliders: boolean;
+  entityId: string;
+  expectAxis?: string;
+  expectMoved: boolean;
+  follow?: IFollowExpectation;
+  frames: number;
+  movementThreshold: number;
+  press: string;
+  projectPath: string;
+  scenario: IPlaytestScenario;
 }
 
 export async function playtestCommand(
@@ -86,6 +112,7 @@ export async function playtestCommand(
   const normalizedArgv = argv[0] === "--" ? argv.slice(1) : argv;
   const json = normalizedArgv.includes("--json");
   const projectPath = resolvePath(cwd, readFlag(normalizedArgv, "--project") ?? ".");
+  const scenarioPath = readFlag(normalizedArgv, "--scenario");
   const entityId = readFlag(normalizedArgv, "--entity");
   const press = readFlag(normalizedArgv, "--press") ?? readFlag(normalizedArgv, "--input");
   const frames = readPositiveInteger(readFlag(normalizedArgv, "--frames"), 60);
@@ -96,12 +123,42 @@ export async function playtestCommand(
   const follow = followEntity === undefined ? undefined : { entityId: followEntity, within: readPositiveNumber(readFlag(normalizedArgv, "--follow-within"), 10) };
   const debugColliders = normalizedArgv.includes("--debug") || normalizedArgv.includes("--debug-colliders");
   const expectMoved = normalizedArgv.includes("--expect-moved");
+  const targetRaw = readFlag(normalizedArgv, "--target");
+  const target = parsePlaytestTarget(targetRaw);
+  const viewportRaw = readFlag(normalizedArgv, "--viewport");
+  const viewport = parseViewport(viewportRaw);
+  const stableArtifacts = normalizedArgv.includes("--stable-artifacts");
+  const discover = normalizedArgv.includes("--discover");
+  const suggestScenario = readFlag(normalizedArgv, "--suggest-scenario");
+  const watchMode = normalizedArgv.includes("--watch");
+  if (watchMode) {
+    return playtestWatchCommand({
+      argv: normalizedArgv,
+      cwd,
+      failFast: normalizedArgv.includes("--fail-fast"),
+      hooks: options.watchHooks,
+      json,
+      maxRuns: readPlaytestWatchMaxRuns(readFlag(normalizedArgv, "--max-runs")),
+      passOnce: normalizedArgv.includes("--pass-once"),
+      projectPath,
+      runOnce: (args) => playtestCommand(args, cwd, { runner: options.runner }),
+    });
+  }
 
-  if (entityId === undefined || press === undefined) {
+  if (targetRaw !== undefined && target === undefined) {
     return diagnosticResult(
       {
-        code: "TN_PLAYTEST_USAGE",
-        message: "Usage: tn playtest --project <path> --entity <id> --press <KeyboardEvent.code> --frames <n> [--expect-moved] [--expect-axis x|y|z|+x|-x|+y|-y|+z|-z] [--follow <entityId>] [--follow-within <units>] [--debug] [--json]",
+        code: "TN_PLAYTEST_SCENARIO_INVALID",
+        message: "--target must be one of: web, desktop, bevy.",
+      },
+      { exitCode: 2, json, stderr: !json },
+    );
+  }
+  if (viewportRaw !== undefined && viewport === undefined) {
+    return diagnosticResult(
+      {
+        code: "TN_PLAYTEST_SCENARIO_INVALID",
+        message: "--viewport must use WIDTHxHEIGHT, for example 1280x720.",
       },
       { exitCode: 2, json, stderr: !json },
     );
@@ -117,23 +174,139 @@ export async function playtestCommand(
   }
 
   try {
+    if (discover) {
+      const discovery = await discoverPlaytestTargets(projectPath);
+      const payload = {
+        ...discovery,
+        message: discovery.code === "TN_PLAYTEST_DISCOVERY_EMPTY" ? "No strong playtest discovery candidates were found." : "Playtest discovery candidates found.",
+        severity: discovery.code === "TN_PLAYTEST_DISCOVERY_EMPTY" ? "warning" : "info",
+      };
+      return {
+        exitCode: 0,
+        stdout: json ? `${JSON.stringify(payload, null, 2)}\n` : renderDiscoveryText(discovery),
+      };
+    }
+    if (suggestScenario !== undefined) {
+      const scenario = await suggestPlaytestScenario(projectPath, suggestScenario);
+      return {
+        exitCode: 0,
+        stdout: `${JSON.stringify(scenario, null, 2)}\n`,
+      };
+    }
+    if (scenarioPath === undefined && entityId === undefined) {
+      const discovery = await discoverPlaytestTargets(projectPath);
+      return diagnosticResult(
+        {
+          code: "TN_PLAYTEST_ENTITY_REQUIRED",
+          message: "No playtest subject/entity was provided.",
+          severity: "error",
+          suggestion: "Pass --entity <id>, add subject/assert.movement.entity to a scenario, or run tn playtest --discover --json.",
+          suggestions: discovery.controllableEntities.slice(0, 5),
+        },
+        { exitCode: 2, json, stderr: !json },
+      );
+    }
+    if (scenarioPath === undefined && press === undefined) {
+      const discovery = await discoverPlaytestTargets(projectPath);
+      return diagnosticResult(
+        {
+          code: "TN_PLAYTEST_INPUT_REQUIRED",
+          message: "No playtest input step was provided.",
+          severity: "error",
+          suggestion: "Pass --press <KeyboardEvent.code>, add a press step to a scenario, or run tn playtest --discover --json.",
+          suggestions: discovery.inputs.slice(0, 5),
+        },
+        { exitCode: 2, json, stderr: !json },
+      );
+    }
+    const scenario = scenarioPath === undefined
+      ? oneShotScenario({
+          ...(expectAxisRaw === undefined ? {} : { expectAxis: expectAxisRaw }),
+          expectMoved,
+          ...(follow === undefined ? {} : { follow }),
+          frames,
+          movementThreshold,
+          press: press ?? "",
+          subject: entityId ?? "",
+          ...(target === undefined ? {} : { target }),
+          ...(viewport === undefined ? {} : { viewport }),
+        })
+      : applyScenarioOverrides(await loadPlaytestScenario(projectPath, scenarioPath), { target, viewport });
+    if (scenario.target !== "web") {
+      return diagnosticResult(
+        {
+          code: "TN_PLAYTEST_TARGET_UNSUPPORTED",
+          message: `Playtest target '${scenario.target}' is recognized but no runner exists yet.`,
+          suggestion: "Use --target web until native trace capture is implemented.",
+        },
+        { exitCode: 2, json, stderr: !json },
+      );
+    }
+    const primary = primaryRunOptions(scenario, { expectMoved, fallbackEntityId: entityId, fallbackFollow: follow, fallbackFrames: frames, fallbackMovementThreshold: movementThreshold, fallbackPress: press });
+    if (primary.entityId === undefined) {
+      return diagnosticResult(
+        {
+          code: "TN_PLAYTEST_ENTITY_REQUIRED",
+          message: "No playtest subject/entity was provided.",
+          suggestion: "Pass --entity <id> or add subject/assert.movement.entity to the scenario.",
+        },
+        { exitCode: 2, json, stderr: !json },
+      );
+    }
+    if (scenarioPath === undefined && primary.press === undefined) {
+      return diagnosticResult(
+        {
+          code: "TN_PLAYTEST_INPUT_REQUIRED",
+          message: "No playtest input step was provided.",
+          suggestion: "Pass --press <KeyboardEvent.code> or add a press step to the scenario.",
+        },
+        { exitCode: 2, json, stderr: !json },
+      );
+    }
+    const runDirectory = resolvePath(projectPath, readFlag(normalizedArgv, "--out") ?? defaultPlaytestArtifactDirectory(projectPath, scenario.name, stableArtifacts));
     const runner = options.runner ?? runWebPlaytest;
-    const report = await runner({ debugColliders, entityId, ...(expectAxisRaw === undefined ? {} : { expectAxis: expectAxisRaw }), expectMoved, ...(follow === undefined ? {} : { follow }), frames, movementThreshold, press, projectPath });
-    const reportWithMetadata = {
+    const started = Date.now();
+    const report = await runner({
+      artifactDirectory: runDirectory,
+      debugColliders,
+      entityId: primary.entityId,
+      ...(primary.expectAxis === undefined ? {} : { expectAxis: primary.expectAxis }),
+      expectMoved: primary.expectMoved,
+      ...(primary.follow === undefined ? {} : { follow: primary.follow }),
+      frames: primary.frames,
+      movementThreshold: primary.movementThreshold,
+      press: primary.press ?? "",
+      projectPath,
+      scenario,
+    });
+    const richAssertions = evaluateRichPlaytestAssertions({ report, scenario });
+    const allDiagnostics = [...report.diagnostics, ...richAssertions.diagnostics];
+    const hasErrors = allDiagnostics.some((diagnostic) => diagnostic.severity === "error");
+    const reportWithAssertions: IPlaytestReport = {
       ...report,
-      proofMetadata: await buildProofArtifactMetadata({
-        commandParameters: { command: "tn playtest", debugColliders, entity: entityId, expectAxis: expectAxisRaw, expectMoved, follow: followEntity, followWithin: follow?.within, frames, movementThreshold, press },
-        projectPath,
-      }),
+      assertionResults: [...(report.assertionResults ?? []), ...richAssertions.assertions],
+      diagnostics: allDiagnostics,
+      pass: report.pass && !hasErrors,
     };
-    const code = report.pass ? "TN_PLAYTEST_OK" : "TN_PLAYTEST_FAILED";
+    const proofMetadata = await buildProofArtifactMetadata({
+      commandParameters: { command: "tn playtest", debugColliders, entity: primary.entityId, expectAxis: primary.expectAxis, expectMoved: primary.expectMoved, follow: primary.follow?.entityId, followWithin: primary.follow?.within, frames: primary.frames, movementThreshold: primary.movementThreshold, press: primary.press, scenario: scenarioPath, target: scenario.target },
+      projectPath,
+    });
+    const reportWithMetadata: IPlaytestReport = {
+      ...reportWithAssertions,
+      proofMetadata,
+    };
+    const bundle = await writePlaytestArtifactBundle({ durationMs: Date.now() - started, projectPath, proofMetadata, report: reportWithMetadata, runDirectory, scenario });
     return {
-      exitCode: report.pass ? 0 : 1,
+      exitCode: reportWithMetadata.pass ? 0 : 1,
       stdout: json
-        ? `${JSON.stringify({ code, ...reportWithMetadata }, null, 2)}\n`
-        : `${report.pass ? "Playtest passed" : "Playtest failed"}: ${report.entity} moved ${report.distance.toFixed(4)} units.\n`,
+        ? `${JSON.stringify(bundle.summary, null, 2)}\n`
+        : `${reportWithMetadata.pass ? "Playtest passed" : "Playtest failed"}: ${report.entity} moved ${report.distance.toFixed(4)} units. Artifacts: ${bundle.artifacts.directory}\n`,
     };
   } catch (error) {
+    if (error instanceof PlaytestScenarioError) {
+      return diagnosticResult({ ...error.diagnostic }, { exitCode: 2, json, stderr: !json });
+    }
     return diagnosticResult(
       {
         code: error instanceof BrowserUnavailableError ? "TN_PLAYTEST_BROWSER_UNAVAILABLE" : "TN_PLAYTEST_FAILED",
@@ -144,7 +317,20 @@ export async function playtestCommand(
   }
 }
 
-async function runWebPlaytest(options: { debugColliders: boolean; entityId: string; expectAxis?: string; expectMoved: boolean; follow?: IFollowExpectation; frames: number; movementThreshold: number; press: string; projectPath: string }): Promise<IPlaytestReport> {
+function renderDiscoveryText(discovery: IPlaytestDiscoveryReport): string {
+  const lines = [
+    discovery.code === "TN_PLAYTEST_DISCOVERY_EMPTY" ? "No strong playtest discovery candidates were found." : "Playtest discovery candidates:",
+    `  entities: ${discovery.controllableEntities.slice(0, 5).map((item) => item.id).join(", ") || "(none)"}`,
+    `  inputs: ${discovery.inputs.slice(0, 5).map((item) => item.id).join(", ") || "(none)"}`,
+    `  cameras: ${discovery.cameras.slice(0, 5).map((item) => item.id).join(", ") || "(none)"}`,
+    `  resources: ${discovery.resources.slice(0, 5).map((item) => item.id).join(", ") || "(none)"}`,
+    `  hud: ${discovery.hud.slice(0, 5).map((item) => item.id).join(", ") || "(none)"}`,
+    `  presets: ${discovery.scenarioPresets.map((item) => item.id).join(", ") || "(none)"}`,
+  ];
+  return `${lines.join("\n")}\n`;
+}
+
+async function runWebPlaytest(options: IPlaytestRunOptions): Promise<IPlaytestReport> {
   const bundlePath = await ensureProjectBundle(options.projectPath);
   let server: IWebPreviewServer | undefined;
   try {
@@ -155,9 +341,10 @@ async function runWebPlaytest(options: { debugColliders: boolean; entityId: stri
   }
 }
 
-async function probePreview(options: { debugColliders: boolean; entityId: string; expectAxis?: string; expectMoved: boolean; follow?: IFollowExpectation; frames: number; movementThreshold: number; press: string; projectPath: string; url: string }): Promise<IPlaytestReport> {
+async function probePreview(options: IPlaytestRunOptions & { url: string }): Promise<IPlaytestReport> {
   const diagnostics: IPlaytestDiagnostic[] = [];
-  const artifact = resolve(options.projectPath, "artifacts", "playtest", `${safeFilePart(options.entityId)}-${safeFilePart(options.press)}.png`);
+  const artifact = resolve(options.artifactDirectory, "after.png");
+  const beforeArtifact = resolve(options.artifactDirectory, "before.png");
   await mkdir(dirname(artifact), { recursive: true });
   let browser;
   try {
@@ -166,7 +353,15 @@ async function probePreview(options: { debugColliders: boolean; entityId: string
     throw new BrowserUnavailableError(error instanceof Error ? error.message : String(error));
   }
   try {
-    const page = await browser.newPage({ viewport: { height: 720, width: 1280 } });
+    const page = await browser.newPage({ viewport: options.scenario.viewport });
+    const consoleEntries: Array<{ text: string; type: string }> = [];
+    const networkEntries: Array<{ method: string; url: string }> = [];
+    page.on("console", (message) => {
+      consoleEntries.push({ text: message.text(), type: message.type() });
+    });
+    page.on("requestfailed", (request) => {
+      networkEntries.push({ method: request.method(), url: request.url() });
+    });
     await page.goto(options.url, { waitUntil: "domcontentloaded" });
     try {
       await page.waitForFunction("Boolean(globalThis.__THREENATIVE_READY__?.ok)", undefined, { timeout: 10000 });
@@ -178,17 +373,45 @@ async function probePreview(options: { debugColliders: boolean; entityId: string
         suggestion: "Run tn verify --json or inspect preview runtime diagnostics before playtesting.",
       });
     }
-    await page.waitForTimeout(120);
+    await page.waitForTimeout(Math.max(120, options.scenario.warmupFrames * (1000 / 60)));
+    const observationIds = scenarioObservationIds(options.scenario);
+    const beforeResources = await readResourceSnapshots(page, observationIds.resources);
+    const beforeHud = await readHudSnapshots(page, observationIds.hud);
     const before = await readTransformSample(page, options.entityId);
     const followBefore = options.follow === undefined ? undefined : await readTransformSample(page, options.follow.entityId);
-    await dispatchKeyboardCode(page, "keydown", options.press);
-    await page.waitForTimeout(Math.max(1, options.frames) * (1000 / 60));
-    await dispatchKeyboardCode(page, "keyup", options.press);
+    await page.screenshot({ path: beforeArtifact });
+    for (const step of options.scenario.steps) {
+      if (step.press !== undefined) {
+        await dispatchKeyboardCode(page, "keydown", step.press);
+        await page.waitForTimeout(Math.max(1, step.holdFrames ?? options.frames) * (1000 / 60));
+        if (step.release) {
+          await dispatchKeyboardCode(page, "keyup", step.press);
+        }
+      }
+      if (step.waitFrames !== undefined) {
+        await page.waitForTimeout(step.waitFrames * (1000 / 60));
+      }
+    }
     await page.waitForTimeout(3000);
     const after = await readTransformSample(page, options.entityId);
     const followAfter = options.follow === undefined ? undefined : await readTransformSample(page, options.follow.entityId);
     const debugColliderCount = await page.evaluate(() => globalThis.__THREENATIVE_RUNTIME__?.debugColliderCount);
+    const effectLog = await readEffectLog(page);
+    const runtimeDiagnostics = await readRuntimeDiagnostics(page);
+    const observations: IPlaytestObservations = {
+      console: consoleEntries,
+      ...(typeof debugColliderCount === "number" ? { debugColliderCount } : {}),
+      effectLog,
+      hud: mergeSnapshots(beforeHud, await readHudSnapshots(page, observationIds.hud)),
+      network: networkEntries,
+      resources: mergeSnapshots(beforeResources, await readResourceSnapshots(page, observationIds.resources)),
+      runtimeDiagnostics,
+    };
     await page.screenshot({ path: artifact });
+    await writeFile(resolve(options.artifactDirectory, "console.json"), `${JSON.stringify(consoleEntries, null, 2)}\n`, "utf8");
+    await writeFile(resolve(options.artifactDirectory, "network.json"), `${JSON.stringify(networkEntries, null, 2)}\n`, "utf8");
+    await writeFile(resolve(options.artifactDirectory, "effect-log.json"), `${JSON.stringify(effectLog ?? {}, null, 2)}\n`, "utf8");
+    await writeFile(resolve(options.artifactDirectory, "runtime-trace.json"), `${JSON.stringify(runtimeDiagnostics ?? {}, null, 2)}\n`, "utf8");
     const artifactSize = await stat(artifact);
     if (artifactSize.size === 0) {
       diagnostics.push({ code: "TN_PLAYTEST_SCREENSHOT_EMPTY", message: "Playtest screenshot artifact is empty.", severity: "warning" });
@@ -235,6 +458,7 @@ async function probePreview(options: { debugColliders: boolean; entityId: string
       diagnostics,
       distance,
       entity: options.entityId,
+      effectLog,
       ...(options.expectAxis === undefined ? {} : { expectAxis: options.expectAxis }),
       expectMoved: options.expectMoved,
       ...(follow === undefined ? {} : { follow }),
@@ -242,13 +466,52 @@ async function probePreview(options: { debugColliders: boolean; entityId: string
       input: options.press,
       ...(movementDelta === undefined ? {} : { movementDelta }),
       movementThreshold: options.movementThreshold,
+      observations,
       pass: !hasErrors,
       runtime: "web",
+      scenario: options.scenario.name,
+      target: options.scenario.target,
       url: options.url,
     };
   } finally {
     await browser.close();
   }
+}
+
+function primaryRunOptions(
+  scenario: IPlaytestScenario,
+  fallback: {
+    expectMoved: boolean;
+    fallbackEntityId?: string;
+    fallbackFollow?: IFollowExpectation;
+    fallbackFrames: number;
+    fallbackMovementThreshold: number;
+    fallbackPress?: string;
+  },
+): {
+  entityId?: string;
+  expectAxis?: string;
+  expectMoved: boolean;
+  follow?: IFollowExpectation;
+  frames: number;
+  movementThreshold: number;
+  press?: string;
+} {
+  const movement = scenario.assert?.movement;
+  const camera = scenario.assert?.camera;
+  const firstPressStep = scenario.steps.find((step) => step.press !== undefined);
+  const entityId = movement?.entity ?? scenario.subject ?? fallback.fallbackEntityId;
+  const minDistance = movement?.minDistance ?? fallback.fallbackMovementThreshold;
+  const press = firstPressStep?.press ?? fallback.fallbackPress;
+  return {
+    ...(entityId === undefined ? {} : { entityId }),
+    ...(movement?.axis === undefined ? {} : { expectAxis: movement.axis }),
+    expectMoved: fallback.expectMoved || movement?.minDistance !== undefined || movement?.axis !== undefined,
+    ...(camera?.entity === undefined ? fallback.fallbackFollow === undefined ? {} : { follow: fallback.fallbackFollow } : { follow: { entityId: camera.entity, within: camera.within ?? 10 } }),
+    frames: firstPressStep?.holdFrames ?? fallback.fallbackFrames,
+    movementThreshold: minDistance,
+    ...(press === undefined ? {} : { press }),
+  };
 }
 
 export function evaluateMovementDiagnostics(input: {
@@ -375,6 +638,48 @@ async function ensureProjectBundle(projectPath: string): Promise<string> {
 
 async function readEffectLog(page: { evaluate<T>(fn: () => T): Promise<T> }): Promise<unknown> {
   return page.evaluate(() => globalThis.__THREENATIVE_EFFECT_LOG__);
+}
+
+async function readRuntimeDiagnostics(page: { evaluate<T>(fn: () => T): Promise<T> }): Promise<unknown> {
+  return page.evaluate(() => globalThis.__THREENATIVE_RUNTIME__?.runtimeDiagnosticsSnapshot?.() ?? globalThis.__THREENATIVE_READY__?.runtimeDiagnostics ?? null);
+}
+
+async function readResourceSnapshots(page: import("playwright").Page, ids: readonly string[]): Promise<Record<string, unknown>> {
+  const result: Record<string, unknown> = {};
+  for (const id of ids) {
+    result[id] = await page.evaluate((resourceId) => globalThis.__THREENATIVE_RUNTIME__?.resourceSnapshot?.(resourceId) ?? null, id);
+  }
+  return result;
+}
+
+async function readHudSnapshots(page: import("playwright").Page, ids: readonly string[]): Promise<Record<string, unknown>> {
+  const result: Record<string, unknown> = {};
+  for (const id of ids) {
+    result[id] = await page.evaluate((nodeId) => globalThis.__THREENATIVE_RUNTIME__?.uiNodeSnapshot?.(nodeId) ?? null, id);
+  }
+  return result;
+}
+
+function mergeSnapshots(before: Record<string, unknown>, after: Record<string, unknown>): Record<string, { after?: unknown; before?: unknown }> {
+  const result: Record<string, { after?: unknown; before?: unknown }> = {};
+  for (const id of new Set([...Object.keys(before), ...Object.keys(after)])) {
+    result[id] = {
+      ...(Object.hasOwn(after, id) ? { after: after[id] } : {}),
+      ...(Object.hasOwn(before, id) ? { before: before[id] } : {}),
+    };
+  }
+  return result;
+}
+
+function scenarioObservationIds(scenario: IPlaytestScenario): { hud: string[]; resources: string[] } {
+  return {
+    hud: unique((scenario.assert?.hud ?? []).map((assertion) => assertion.id)),
+    resources: unique((scenario.assert?.resources ?? []).map((assertion) => assertion.id)),
+  };
+}
+
+function unique(values: readonly string[]): string[] {
+  return [...new Set(values)];
 }
 
 async function readTransformSample(page: import("playwright").Page, entityId: string): Promise<ITransformSample | undefined> {

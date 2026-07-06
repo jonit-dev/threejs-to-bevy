@@ -15,6 +15,9 @@ declare global {
     __THREENATIVE_RUNTIME__?: {
       debugColliderCount?: number;
       entityWorldPosition(id: string): [number, number, number] | undefined;
+      resourceSnapshot?(id: string): unknown;
+      runtimeDiagnosticsSnapshot?(): unknown;
+      uiNodeSnapshot?(id: string): unknown;
     };
   }
 }
@@ -34,6 +37,9 @@ const result = await renderBundle(bundleUrl, container, {
 window.__THREENATIVE_RUNTIME__ = {
   debugColliderCount: result.debugColliderCount,
   entityWorldPosition: result.entityWorldPosition,
+  resourceSnapshot: result.resourceSnapshot,
+  runtimeDiagnosticsSnapshot: result.runtimeDiagnosticsSnapshot,
+  uiNodeSnapshot: result.uiNodeSnapshot,
 };
 
 updateReadyState();
@@ -81,7 +87,8 @@ setInterval(() => {
 }, 1000);
 
 function updateReadyState(): void {
-  result.runtimeDiagnostics.recentRuntimeErrors = result.diagnostics.filter((diagnostic) => diagnostic.severity === "error").slice(-10);
+  const runtimeDiagnostics = result.runtimeDiagnosticsSnapshot();
+  runtimeDiagnostics.recentRuntimeErrors = result.diagnostics.filter((diagnostic) => diagnostic.severity === "error").slice(-10);
   window.__THREENATIVE_READY__ = {
     canvas: {
       height: result.canvas.height,
@@ -89,6 +96,6 @@ function updateReadyState(): void {
     },
     diagnostics: result.diagnostics,
     ok: result.diagnostics.every((diagnostic) => diagnostic.severity !== "error"),
-    runtimeDiagnostics: result.runtimeDiagnostics,
+    runtimeDiagnostics,
   };
 }

@@ -1,12 +1,16 @@
 import assert from "node:assert/strict";
+import { mkdir, mkdtemp, readFile, writeFile } from "node:fs/promises";
+import { join } from "node:path";
 import test from "node:test";
+import { tmpdir } from "node:os";
 
 import { evaluateMovementDiagnostics, parseAxisExpectation, playtestCommand } from "./playtest.js";
 
 test("playtest command should pass when target transform changes after input", async () => {
+  const root = await playtestTempRoot();
   const result = await playtestCommand(
-    ["--project", "examples/racing-kit-rally", "--entity", "player.car", "--press", "KeyW", "--frames", "60", "--expect-moved", "--json"],
-    "/repo",
+    ["--project", ".", "--entity", "player.car", "--press", "KeyW", "--frames", "60", "--expect-moved", "--json"],
+    root,
     {
       runner: async (options) => ({
         after: { frame: 60, position: [1, 0, 0], tick: 60 },
@@ -27,19 +31,24 @@ test("playtest command should pass when target transform changes after input", a
       }),
     },
   );
-  const payload = JSON.parse(result.stdout) as { code: string; distance: number; entity: string; input: string };
+  const payload = JSON.parse(result.stdout) as { artifacts: { summary: string }; code: string; distance: number; entity: string; input: string; reproduceCommand: string; scenario: string };
 
   assert.equal(result.exitCode, 0);
   assert.equal(payload.code, "TN_PLAYTEST_OK");
   assert.equal(payload.entity, "player.car");
   assert.equal(payload.input, "KeyW");
   assert.equal(payload.distance, 1);
+  assert.equal(payload.scenario, "player.car-KeyW");
+  assert.match(payload.artifacts.summary, /artifacts\/playtest\/player.car-KeyW\/.+\/summary\.json$/);
+  assert.match(payload.reproduceCommand, /tn playtest --project \./);
+  assert.equal(JSON.parse(await readFile(payload.artifacts.summary, "utf8")).code, "TN_PLAYTEST_OK");
 });
 
 test("playtest command should fail when entity does not move after input", async () => {
+  const root = await playtestTempRoot();
   const result = await playtestCommand(
-    ["--project", "examples/racing-kit-rally", "--entity", "player.car", "--press", "KeyW", "--frames", "60", "--expect-moved", "--json"],
-    "/repo",
+    ["--project", ".", "--entity", "player.car", "--press", "KeyW", "--frames", "60", "--expect-moved", "--json"],
+    root,
     {
       runner: async (options) => ({
         after: { frame: 60, position: [0, 0, 0], tick: 60 },
@@ -67,9 +76,10 @@ test("playtest command should fail when entity does not move after input", async
 });
 
 test("playtest command should pass expect-axis to runner", async () => {
+  const root = await playtestTempRoot();
   const result = await playtestCommand(
-    ["--project", "examples/lantern-orchard", "--entity", "player", "--press", "KeyD", "--frames", "45", "--expect-moved", "--expect-axis", "x", "--json"],
-    "/repo",
+    ["--project", ".", "--entity", "player", "--press", "KeyD", "--frames", "45", "--expect-moved", "--expect-axis", "x", "--json"],
+    root,
     {
       runner: async (options) => ({
         after: { frame: 45, position: [2.5, 0.03, 3], tick: 45 },
@@ -110,9 +120,10 @@ test("playtest command should reject invalid expect-axis", async () => {
 });
 
 test("playtest command should pass debug collider flag to runner", async () => {
+  const root = await playtestTempRoot();
   const result = await playtestCommand(
-    ["--project", "examples/bowling-alley", "--entity", "ball", "--press", "Space", "--frames", "20", "--debug", "--json"],
-    "/repo",
+    ["--project", ".", "--entity", "ball", "--press", "Space", "--frames", "20", "--debug", "--json"],
+    root,
     {
       runner: async (options) => ({
         before: { frame: 0, position: [0, 0, 0], tick: 0 },
@@ -139,10 +150,11 @@ test("playtest command should pass debug collider flag to runner", async () => {
 });
 
 test("playtest command should pass signed expect-axis and follow options to runner", async () => {
+  const root = await playtestTempRoot();
   let received: { expectAxis?: string; follow?: { entityId: string; within: number } } | undefined;
   const result = await playtestCommand(
-    ["--project", "examples/humanoid-physics-course", "--entity", "player", "--press", "KeyW", "--frames", "45", "--expect-moved", "--expect-axis", "-z", "--follow", "camera.main", "--follow-within", "7.5", "--json"],
-    "/repo",
+    ["--project", ".", "--entity", "player", "--press", "KeyW", "--frames", "45", "--expect-moved", "--expect-axis", "-z", "--follow", "camera.main", "--follow-within", "7.5", "--json"],
+    root,
     {
       runner: async (options) => {
         received = { expectAxis: options.expectAxis, follow: options.follow };
@@ -173,6 +185,392 @@ test("playtest command should pass signed expect-axis and follow options to runn
   assert.equal(payload.expectAxis, "-z");
   assert.equal(payload.follow.entity, "camera.main");
   assert.deepEqual(received, { expectAxis: "-z", follow: { entityId: "camera.main", within: 7.5 } });
+});
+
+test("playtest command should load scenario steps and preserve order", async () => {
+  const root = await playtestTempRoot();
+  await writeFile(
+    join(root, "smoke.playtest.json"),
+    `${JSON.stringify({
+      schemaVersion: 1,
+      name: "smoke-movement",
+      target: "web",
+      subject: "player",
+      steps: [
+        { label: "forward", press: "KeyW", holdFrames: 45, release: true, waitFrames: 5 },
+        { label: "right", press: "KeyD", holdFrames: 20, release: true },
+      ],
+      assert: { movement: { entity: "player", minDistance: 0.25, axis: "-z" }, camera: { entity: "camera.main", follows: "player", within: 8 } },
+    }, null, 2)}\n`,
+    "utf8",
+  );
+  let receivedSteps: readonly unknown[] = [];
+  const result = await playtestCommand(
+    ["--project", ".", "--scenario", "smoke.playtest.json", "--stable-artifacts", "--json"],
+    root,
+    {
+      runner: async (options) => {
+        receivedSteps = options.scenario.steps;
+        return {
+          after: { frame: 65, position: [0, 0, -1], tick: 65 },
+          before: { frame: 0, position: [0, 0, 0], tick: 0 },
+          debugColliders: options.debugColliders,
+          diagnostics: [],
+          distance: 1,
+          entity: options.entityId,
+          expectAxis: options.expectAxis,
+          expectMoved: options.expectMoved,
+          follow: { entity: "camera.main", moved: 1, separation: 4, within: options.follow?.within ?? 0 },
+          frames: options.frames,
+          input: options.press,
+          movementDelta: [0, 0, -1],
+          movementThreshold: options.movementThreshold,
+          pass: true,
+          runtime: "web",
+        };
+      },
+    },
+  );
+  const payload = JSON.parse(result.stdout) as { artifacts: { directory: string; manifest: string }; code: string; scenario: string };
+
+  assert.equal(result.exitCode, 0);
+  assert.equal(payload.code, "TN_PLAYTEST_OK");
+  assert.equal(payload.scenario, "smoke-movement");
+  assert.equal(payload.artifacts.directory, join(root, "artifacts/playtest/smoke-movement/latest"));
+  assert.deepEqual(receivedSteps, [
+    { holdFrames: 45, label: "forward", press: "KeyW", release: true, waitFrames: 5 },
+    { holdFrames: 20, label: "right", press: "KeyD", release: true },
+  ]);
+  const manifest = JSON.parse(await readFile(payload.artifacts.manifest, "utf8")) as { scenario: string };
+  assert.equal(manifest.scenario, "smoke-movement");
+});
+
+test("playtest command should reject invalid scenario files with stable diagnostics", async () => {
+  const root = await playtestTempRoot();
+  await writeFile(join(root, "bad.playtest.json"), JSON.stringify({ schemaVersion: 1, name: "bad", steps: [{ holdFrames: 0 }] }), "utf8");
+  const result = await playtestCommand(["--project", ".", "--scenario", "bad.playtest.json", "--json"], root);
+  const payload = JSON.parse(result.stdout) as { code: string; message: string };
+
+  assert.equal(result.exitCode, 2);
+  assert.equal(payload.code, "TN_PLAYTEST_SCENARIO_STEP_INVALID");
+  assert.match(payload.message, /invalid step/);
+});
+
+test("playtest command should reject unsupported native targets explicitly", async () => {
+  const root = await playtestTempRoot();
+  await writeFile(join(root, "desktop.playtest.json"), JSON.stringify({ schemaVersion: 1, name: "desktop", target: "desktop", subject: "player", steps: [{ press: "KeyW" }] }), "utf8");
+  const result = await playtestCommand(["--project", ".", "--scenario", "desktop.playtest.json", "--json"], root);
+  const payload = JSON.parse(result.stdout) as { code: string; message: string };
+
+  assert.equal(result.exitCode, 2);
+  assert.equal(payload.code, "TN_PLAYTEST_TARGET_UNSUPPORTED");
+  assert.match(payload.message, /desktop/);
+});
+
+test("playtest command should discover source-backed candidates", async () => {
+  const root = await playtestTempRoot();
+  await writeDiscoveryFixture(root);
+  const result = await playtestCommand(["--project", ".", "--discover", "--json"], root);
+  const payload = JSON.parse(result.stdout) as {
+    cameras: Array<{ id: string }>;
+    code: string;
+    controllableEntities: Array<{ id: string; reasons: string[] }>;
+    hud: Array<{ id: string }>;
+    inputs: Array<{ id: string }>;
+    resources: Array<{ id: string }>;
+    scenarioPresets: Array<{ id: string }>;
+  };
+
+  assert.equal(result.exitCode, 0);
+  assert.equal(payload.code, "TN_PLAYTEST_DISCOVERY_OK");
+  assert.equal(payload.controllableEntities[0]?.id, "player");
+  assert.equal(payload.controllableEntities[0]?.reasons.includes("CharacterController"), true);
+  assert.equal(payload.inputs.some((input) => input.id === "KeyD"), true);
+  assert.equal(payload.cameras.some((camera) => camera.id === "camera.main"), true);
+  assert.equal(payload.resources.some((resource) => resource.id === "GameState"), true);
+  assert.equal(payload.hud.some((node) => node.id === "hud.status"), true);
+  assert.equal(payload.scenarioPresets.some((preset) => preset.id === "smoke-movement"), true);
+});
+
+test("playtest command should include discovery suggestions for missing entity and input", async () => {
+  const root = await playtestTempRoot();
+  await writeDiscoveryFixture(root);
+  const missingEntity = await playtestCommand(["--project", ".", "--press", "KeyD", "--json"], root);
+  const missingEntityPayload = JSON.parse(missingEntity.stdout) as { code: string; suggestions: Array<{ id: string }> };
+  const missingInput = await playtestCommand(["--project", ".", "--entity", "player", "--json"], root);
+  const missingInputPayload = JSON.parse(missingInput.stdout) as { code: string; suggestions: Array<{ id: string }> };
+
+  assert.equal(missingEntity.exitCode, 2);
+  assert.equal(missingEntityPayload.code, "TN_PLAYTEST_ENTITY_REQUIRED");
+  assert.equal(missingEntityPayload.suggestions[0]?.id, "player");
+  assert.equal(missingInput.exitCode, 2);
+  assert.equal(missingInputPayload.code, "TN_PLAYTEST_INPUT_REQUIRED");
+  assert.equal(missingInputPayload.suggestions.some((suggestion) => suggestion.id === "KeyD"), true);
+});
+
+test("playtest command should suggest scenario JSON that can be run", async () => {
+  const root = await playtestTempRoot();
+  await writeDiscoveryFixture(root);
+  const suggested = await playtestCommand(["--project", ".", "--suggest-scenario", "smoke-movement", "--json"], root);
+  const scenario = JSON.parse(suggested.stdout) as { assert: { movement: { entity: string } }; name: string; steps: Array<{ press: string }>; subject: string };
+  await writeFile(join(root, "suggested.playtest.json"), suggested.stdout, "utf8");
+  let receivedSubject: string | undefined;
+  const run = await playtestCommand(
+    ["--project", ".", "--scenario", "suggested.playtest.json", "--json"],
+    root,
+    {
+      runner: async (options) => {
+        receivedSubject = options.scenario.subject;
+        return {
+          after: { frame: 30, position: [1, 0, 0], tick: 30 },
+          before: { frame: 0, position: [0, 0, 0], tick: 0 },
+          debugColliders: false,
+          diagnostics: [],
+          distance: 1,
+          entity: options.entityId,
+          expectMoved: options.expectMoved,
+          frames: options.frames,
+          input: options.press,
+          movementDelta: [1, 0, 0],
+          movementThreshold: options.movementThreshold,
+          pass: true,
+          runtime: "web",
+        };
+      },
+    },
+  );
+
+  assert.equal(suggested.exitCode, 0);
+  assert.equal(scenario.name, "smoke-movement");
+  assert.equal(scenario.subject, "player");
+  assert.equal(scenario.assert.movement.entity, "player");
+  assert.equal(scenario.steps[0]?.press, "KeyD");
+  assert.equal(run.exitCode, 0);
+  assert.equal(receivedSubject, "player");
+});
+
+test("playtest command should evaluate rich scenario assertions", async () => {
+  const root = await playtestTempRoot();
+  await writeFile(
+    join(root, "rich.playtest.json"),
+    `${JSON.stringify({
+      schemaVersion: 1,
+      name: "rich-assertions",
+      target: "web",
+      viewport: { width: 1280, height: 720 },
+      subject: "player",
+      steps: [{ press: "KeyW", holdFrames: 60, release: true }],
+      assert: {
+        movement: { entity: "player", minDistance: 0.5, minVelocity: 0.01, rotationChanged: true },
+        resources: [{ id: "game", path: "started", equals: true }],
+        hud: [{ id: "hud.status", textIncludes: "Go", changed: true }],
+        contacts: [{ entity: "player", with: "pickup.zone", kind: "trigger", minCount: 1 }],
+        animation: [{ entity: "player", clip: "Run", entered: true, advancedFrames: 10 }],
+        visibility: [{ entity: "player", minProjectedPixels: 1200, maxOffscreenRatio: 0.05 }],
+        diagnostics: { noConsoleErrors: true, noNetworkErrors: true, noRuntimeDiagnostics: true },
+      },
+    }, null, 2)}\n`,
+    "utf8",
+  );
+  const result = await playtestCommand(
+    ["--project", ".", "--scenario", "rich.playtest.json", "--json"],
+    root,
+    {
+      runner: async (options) => ({
+        after: { frame: 60, position: [1, 0, 0], tick: 60 },
+        before: { frame: 0, position: [0, 0, 0], tick: 0 },
+        debugColliders: options.debugColliders,
+        diagnostics: [],
+        distance: 1,
+        entity: options.entityId,
+        effectLog: {
+          entries: [
+            { command: "setComponent", component: "Transform", entity: "player", kind: "patch", value: { position: [0, 0, 0], rotation: [0, 0, 0] } },
+            { command: "setComponent", component: "Transform", entity: "player", kind: "patch", value: { position: [1, 0, 0], rotation: [0, 0.2, 0] } },
+            { entity: "player", kind: "trigger", type: "contact", with: "pickup.zone" },
+            { clip: "Run", entity: "player", kind: "animation", state: "advanced" },
+          ],
+        },
+        expectMoved: options.expectMoved,
+        frames: options.frames,
+        input: options.press,
+        movementDelta: [1, 0, 0],
+        movementThreshold: options.movementThreshold,
+        observations: {
+          console: [],
+          effectLog: {},
+          hud: { "hud.status": { before: { text: "Ready" }, after: { text: "Go 1" } } },
+          network: [],
+          resources: { game: { before: { started: false }, after: { started: true } } },
+          runtimeDiagnostics: {
+            assets: { resourceFailures: [] },
+            recentRuntimeErrors: [],
+            scene: { renderedEntities: [{ id: "player", projectedBounds: { min: [-0.1, -0.1], max: [0.1, 0.1] } }] },
+          },
+        },
+        pass: true,
+        runtime: "web",
+      }),
+    },
+  );
+  const payload = JSON.parse(result.stdout) as { assertions: Array<{ id: string; pass: boolean }>; code: string; diagnostics: Array<{ code: string }> };
+
+  assert.equal(result.exitCode, 0);
+  assert.equal(payload.code, "TN_PLAYTEST_OK");
+  assert.equal(payload.diagnostics.length, 0);
+  assert.equal(payload.assertions.some((assertion) => assertion.id === "resource.game.started" && assertion.pass), true);
+  assert.equal(payload.assertions.some((assertion) => assertion.id === "hud.hud.status" && assertion.pass), true);
+  assert.equal(payload.assertions.some((assertion) => assertion.id === "visibility.player" && assertion.pass), true);
+  assert.equal(payload.assertions.some((assertion) => assertion.id === "movement.rotation" && assertion.pass), true);
+});
+
+test("playtest command should fail rich assertions with stable diagnostics", async () => {
+  const root = await playtestTempRoot();
+  await writeFile(
+    join(root, "rich-fail.playtest.json"),
+    `${JSON.stringify({
+      schemaVersion: 1,
+      name: "rich-fail",
+      target: "web",
+      subject: "player",
+      steps: [{ press: "KeyW", holdFrames: 20, release: true }],
+      assert: {
+        movement: { entity: "player", minVelocity: 2, rotationChanged: true },
+        resources: [{ id: "score", path: "value", gte: 1 }],
+        hud: [{ id: "hud.score", textIncludes: "1" }],
+        contacts: [{ entity: "player", with: "pickup.zone", kind: "trigger", minCount: 1 }],
+        animation: [{ entity: "player", clip: "Run", entered: true }],
+        visibility: [{ entity: "player", minProjectedPixels: 1200 }],
+        diagnostics: { noConsoleErrors: true, noNetworkErrors: true, noRuntimeDiagnostics: true },
+      },
+    }, null, 2)}\n`,
+    "utf8",
+  );
+  const result = await playtestCommand(
+    ["--project", ".", "--scenario", "rich-fail.playtest.json", "--json"],
+    root,
+    {
+      runner: async (options) => ({
+        after: { frame: 20, position: [0.1, 0, 0], tick: 20 },
+        before: { frame: 0, position: [0, 0, 0], tick: 0 },
+        debugColliders: options.debugColliders,
+        diagnostics: [],
+        distance: 0.1,
+        entity: options.entityId,
+        effectLog: { entries: [] },
+        expectMoved: options.expectMoved,
+        frames: options.frames,
+        input: options.press,
+        movementDelta: [0.1, 0, 0],
+        movementThreshold: options.movementThreshold,
+        observations: {
+          console: [{ text: "boom", type: "error" }],
+          effectLog: {},
+          hud: { "hud.score": { after: { text: "Score 0" }, before: { text: "Score 0" } } },
+          network: [{ method: "GET", url: "http://127.0.0.1/missing.glb" }],
+          resources: { score: { after: { value: 0 }, before: { value: 0 } } },
+          runtimeDiagnostics: {
+            assets: { resourceFailures: [] },
+            recentRuntimeErrors: [{ code: "TN_WEB_SCRIPT_ERROR", severity: "error" }],
+            scene: { renderedEntities: [] },
+          },
+        },
+        pass: true,
+        runtime: "web",
+      }),
+    },
+  );
+  const payload = JSON.parse(result.stdout) as { code: string; diagnostics: Array<{ code: string }> };
+  const codes = payload.diagnostics.map((diagnostic) => diagnostic.code);
+
+  assert.equal(result.exitCode, 1);
+  assert.equal(payload.code, "TN_PLAYTEST_FAILED");
+  assert.equal(codes.includes("TN_PLAYTEST_RESOURCE_ASSERTION_FAILED"), true);
+  assert.equal(codes.includes("TN_PLAYTEST_HUD_ASSERTION_FAILED"), true);
+  assert.equal(codes.includes("TN_PLAYTEST_CONTACT_NOT_OBSERVED"), true);
+  assert.equal(codes.includes("TN_PLAYTEST_ANIMATION_NOT_OBSERVED"), true);
+  assert.equal(codes.includes("TN_PLAYTEST_VISIBILITY_FAILED"), true);
+  assert.equal(codes.includes("TN_PLAYTEST_CONSOLE_ERROR"), true);
+  assert.equal(codes.includes("TN_PLAYTEST_NETWORK_ERROR"), true);
+  assert.equal(codes.includes("TN_PLAYTEST_RUNTIME_DIAGNOSTIC"), true);
+  assert.equal(codes.includes("TN_PLAYTEST_VELOCITY_ASSERTION_FAILED"), true);
+  assert.equal(codes.includes("TN_PLAYTEST_ROTATION_ASSERTION_FAILED"), true);
+});
+
+test("playtest watch should emit stable JSON events and debounce changes", async () => {
+  const root = await playtestTempRoot();
+  await mkdir(join(root, "playtests"), { recursive: true });
+  await writeFile(join(root, "playtests/smoke.playtest.json"), JSON.stringify({ schemaVersion: 1, name: "smoke", subject: "player", steps: [{ press: "KeyD" }] }), "utf8");
+  let runs = 0;
+  const result = await playtestCommand(
+    ["--project", ".", "--scenario", "playtests/smoke.playtest.json", "--watch", "--max-runs", "2", "--json"],
+    root,
+    {
+      runner: async (options) => {
+        runs += 1;
+        return {
+          after: { frame: 30, position: [runs, 0, 0], tick: 30 },
+          before: { frame: 0, position: [0, 0, 0], tick: 0 },
+          debugColliders: options.debugColliders,
+          diagnostics: [],
+          distance: runs,
+          entity: options.entityId,
+          expectMoved: options.expectMoved,
+          frames: options.frames,
+          input: options.press,
+          movementDelta: [runs, 0, 0],
+          movementThreshold: options.movementThreshold,
+          pass: true,
+          runtime: "web",
+        };
+      },
+      watchHooks: { changes: ["src/scripts/player.ts", "src/scripts/player.ts"], debounceMs: 1 },
+    },
+  );
+  const events = result.stdout.trim().split("\n").map((line) => JSON.parse(line) as { event: string; run?: number });
+
+  assert.equal(result.exitCode, 0);
+  assert.equal(runs, 2);
+  assert.equal(events[0]?.event, "start");
+  assert.equal(events.filter((event) => event.event === "change").length, 2);
+  assert.deepEqual(events.filter((event) => event.event === "run:complete").map((event) => event.run), [1, 2]);
+  assert.equal(events.at(-1)?.event, "stop");
+});
+
+test("playtest watch should stop after first passing run with pass-once", async () => {
+  const root = await playtestTempRoot();
+  let runs = 0;
+  const result = await playtestCommand(
+    ["--project", ".", "--entity", "player", "--press", "KeyD", "--watch", "--max-runs", "3", "--pass-once", "--json"],
+    root,
+    {
+      runner: async (options) => {
+        runs += 1;
+        return {
+          after: { frame: 30, position: [1, 0, 0], tick: 30 },
+          before: { frame: 0, position: [0, 0, 0], tick: 0 },
+          debugColliders: options.debugColliders,
+          diagnostics: [],
+          distance: 1,
+          entity: options.entityId,
+          expectMoved: options.expectMoved,
+          frames: options.frames,
+          input: options.press,
+          movementDelta: [1, 0, 0],
+          movementThreshold: options.movementThreshold,
+          pass: true,
+          runtime: "web",
+        };
+      },
+      watchHooks: { changes: ["src/scripts/player.ts"], debounceMs: 1 },
+    },
+  );
+  const events = result.stdout.trim().split("\n").map((line) => JSON.parse(line) as { event: string; run?: number });
+
+  assert.equal(result.exitCode, 0);
+  assert.equal(runs, 1);
+  assert.deepEqual(events.filter((event) => event.event === "run:complete").map((event) => event.run), [1]);
+  assert.equal(events.at(-1)?.event, "stop");
 });
 
 test("parseAxisExpectation should accept plain and signed axes and reject junk", () => {
@@ -265,5 +663,38 @@ test("playtest command should require entity and keyboard input", async () => {
   const payload = JSON.parse(result.stdout) as { code: string };
 
   assert.equal(result.exitCode, 2);
-  assert.equal(payload.code, "TN_PLAYTEST_USAGE");
+  assert.equal(payload.code, "TN_PLAYTEST_ENTITY_REQUIRED");
 });
+
+async function playtestTempRoot(): Promise<string> {
+  return mkdtemp(join(tmpdir(), "tn-playtest-"));
+}
+
+async function writeDiscoveryFixture(root: string): Promise<void> {
+  await mkdir(join(root, "content", "scenes"), { recursive: true });
+  await mkdir(join(root, "content", "input"), { recursive: true });
+  await writeFile(
+    join(root, "content", "scenes", "arena.scene.json"),
+    `${JSON.stringify({
+      schema: "threenative.scene",
+      id: "arena",
+      entities: [
+        { id: "arena.floor", transform: { position: [0, 0, 0] } },
+        { id: "player", components: { characterController: {}, transform: {} }, transform: { position: [0, 0, 0] } },
+        { id: "camera.main", components: { camera: { mode: "perspective" } } },
+      ],
+      resources: [{ id: "GameState", value: { score: 0 } }],
+      ui: { nodes: [{ id: "hud.status", type: "text", text: "Ready" }] },
+    }, null, 2)}\n`,
+    "utf8",
+  );
+  await writeFile(
+    join(root, "content", "input", "arena.input.json"),
+    `${JSON.stringify({
+      schema: "threenative.input",
+      id: "arena-input",
+      actions: [{ id: "move-right", bindings: ["keyboard.KeyD"] }],
+    }, null, 2)}\n`,
+    "utf8",
+  );
+}

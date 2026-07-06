@@ -145,9 +145,9 @@ const commands: Record<string, ICommandDefinition> = {
     usage: "tn package --target desktop --bundle <path> [--runtime bevy|webview] [--format portable|archive|installer] [--out <path>] [--json]",
   },
   playtest: {
-    description: "Run a web input proof and assert that a game entity responds.",
+    description: "Run a web input proof or scenario and assert that gameplay responds.",
     implemented: true,
-    usage: "tn playtest --project <path> --entity <id> --press <KeyboardEvent.code> --frames <n> [--expect-moved] [--expect-axis x|y|z] [--debug] [--json]",
+    usage: "tn playtest --project <path> --entity <id> --press <KeyboardEvent.code> --frames <n> [--expect-moved] [--expect-axis x|y|z|+x|-x|+y|-y|+z|-z] [--follow <entityId>] [--debug] [--json]\n             tn playtest --project <path> --scenario playtests/<name>.playtest.json [--out <dir>] [--stable-artifacts] [--target web|desktop|bevy] [--viewport 1280x720] [--json]\n             tn playtest --project <path> --scenario playtests/<name>.playtest.json --watch [--max-runs <n>] [--fail-fast] [--pass-once] [--json]\n             tn playtest --project <path> --discover --json\n             tn playtest --project <path> --suggest-scenario smoke-movement --json",
   },
   prove: {
     description: "Evaluate changed durable source/assets/bundles against proof manifests.",

@@ -29,8 +29,10 @@ test("input should track pointer action pressed released and position", () => {
   assert.equal(input.pressed("Attack"), true);
 
   input.beginFrame();
+  assert.equal(input.axis("PointerDeltaX"), 3);
   assert.equal(input.pressed("Attack"), true);
   input.beginFrame();
+  assert.equal(input.axis("PointerDeltaX"), 0);
   assert.equal(input.pressed("Attack"), false);
   input.handlePointerUp({ button: 0 });
   assert.equal(input.released("Attack"), true);

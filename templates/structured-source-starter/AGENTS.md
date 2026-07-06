@@ -41,6 +41,12 @@ Rules for this generated ThreeNative project.
   owned state, source-document references, silhouettes, materials, lighting,
   camera framing, set dressing, UI states, mobile fit, performance, screenshot
   proof, motion proof, and input playtest proof.
+- While implementing, use `tn playtest` as a repair loop after gameplay,
+  controls, script, or state changes. Prefer a scenario under
+  `playtests/*.playtest.json` with `--stable-artifacts` for multi-step
+  mechanics; otherwise run the one-shot `--entity/--press/--expect-moved`
+  proof. Inspect `summary.json`, diagnostics, screenshots, and effect logs,
+  fix the owning durable source/script, and rerun before broader QA.
 - Apply gameplay recipes only as bounded steps from a complete plan, for example
   `tn recipe apply top-down-collector --scene <scene> --player <entity> --camera <camera> --json`.
   Keep recipe output in `content/**/*.json` and `src/scripts/**/*.ts`.
