@@ -248,8 +248,15 @@ implementation:
   and reporting movement delta/distance plus screenshot evidence. Optional
   `--expect-axis x|y|z` catches false positives where autonomous idle motion
   moves the entity but the requested input does not affect the intended axis.
-  Native/Bevy playtest injection is still pending, so this is marked as web
-  proof rather than Bevy parity.
+  Native/Bevy now has the first proof-harness runtime contract: structured
+  keyboard commands are applied before native input capture on exact ticks,
+  readiness is written as `threenative.native-proof-readiness`, and the CLI
+  Bevy launcher passes harness/readiness files through to the runtime. Evidence:
+  `cargo test --manifest-path runtime-bevy/Cargo.toml -p threenative_runtime
+  --test proof_harness` and `pnpm --filter @threenative/cli exec node --test
+  dist/native/bevy.test.js`. `tn playtest --target desktop`, native screenshot,
+  and native record command support remain pending, so full command parity is
+  not yet claimed.
 - Structured scene source now has compact prefab-backed `instances` for repeated
   ECS entities. This is an authoring/compiler ergonomics improvement: emitted
   bundles still contain ordinary world entities and do not introduce any

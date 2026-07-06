@@ -127,6 +127,16 @@ script host bridge and the shared V7 character trace now samples both axis input
 and direct override input. Focused evidence:
 `cargo test --manifest-path runtime-bevy/Cargo.toml -p threenative_runtime systems_host_should_expose_character_move_service`
 and `pnpm verify:conformance`.
+The native proof-harness contract now has a first deterministic Bevy runtime
+slice: `threenative_runtime <bundle> --proof-harness <commands.json>
+--readiness-out <readiness.json>` reads schema-validated keyboard injection
+commands, applies them before native input capture on the requested tick, writes
+`threenative.native-proof-readiness`, and the CLI Bevy launcher can pass the
+harness/readiness file pair through to the runtime. Focused evidence:
+`cargo test --manifest-path runtime-bevy/Cargo.toml -p threenative_runtime --test proof_harness`
+and `pnpm --filter @threenative/cli exec node --test dist/native/bevy.test.js`.
+`tn playtest --target desktop`, native screenshot, and native record command
+support remain the next PRD phase.
 The same PRD now has an initial stdlib rig slice: `CharacterRig.update` and
 `CameraRig.thirdPerson` live in `@threenative/script-stdlib`, keep internal
 smoothing state in `context.state(...)`, call the promoted web character move

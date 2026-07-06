@@ -1130,6 +1130,10 @@ fn key_code(code: &str) -> Option<KeyCode> {
     }
 }
 
+pub fn portable_key_code(code: &str) -> Option<KeyCode> {
+    key_code(code)
+}
+
 fn pointer_button(button: u8) -> Option<MouseButton> {
     match button {
         0 => Some(MouseButton::Left),

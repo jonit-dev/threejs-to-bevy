@@ -38,6 +38,7 @@ pub mod physics;
 pub mod physics_sensors;
 pub mod picking;
 pub mod production_hardening;
+pub mod proof_harness;
 pub mod render_targets;
 pub mod render_transitions;
 pub mod rendering;
@@ -72,6 +73,8 @@ pub enum RuntimeError {
     SceneReadiness(String),
     #[error(transparent)]
     Ui(#[from] ui::UiDiagnostic),
+    #[error(transparent)]
+    ProofHarness(#[from] proof_harness::NativeProofHarnessError),
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -89,6 +92,18 @@ pub struct NativeSceneStartupDiagnostic {
 }
 
 pub fn app_from_bundle(bundle_path: impl AsRef<Path>) -> Result<App, RuntimeError> {
+    app_from_bundle_with_options(bundle_path, RuntimeOptions::default())
+}
+
+#[derive(Clone, Debug, Default)]
+pub struct RuntimeOptions {
+    pub proof_harness: Option<proof_harness::NativeProofHarnessOptions>,
+}
+
+pub fn app_from_bundle_with_options(
+    bundle_path: impl AsRef<Path>,
+    options: RuntimeOptions,
+) -> Result<App, RuntimeError> {
     let bundle = load_bundle(bundle_path)?;
     let scene_diagnostics = native_scene_startup_diagnostics(
         &bundle.world,
@@ -232,6 +247,9 @@ pub fn app_from_bundle(bundle_path: impl AsRef<Path>) -> Result<App, RuntimeErro
         app.insert_resource(input::NativeInputMap(input_map));
         app.init_resource::<input::NativeInputState>();
         app.add_systems(PreUpdate, input::capture_native_input);
+    }
+    if let Some(proof_harness) = options.proof_harness {
+        proof_harness::install_native_proof_harness(&mut app, proof_harness)?;
     }
     app.add_systems(
         Update,

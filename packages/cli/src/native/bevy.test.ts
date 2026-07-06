@@ -21,6 +21,40 @@ test("should select threenative runtime binary", () => {
   ]);
 });
 
+test("should pass native proof harness files to runtime binary", () => {
+  const repoRoot = "/repo";
+  const bundlePath = "/project/dist/game.bundle";
+
+  assert.deepEqual(
+    bevyRuntimeArgs(
+      repoRoot,
+      {
+        bundlePath,
+        proofHarness: {
+          commandStreamPath: "/tmp/proof-harness.json",
+          readinessOutPath: "/tmp/readiness.json",
+        },
+      },
+      {},
+    ),
+    [
+      "run",
+      "--manifest-path",
+      resolve(repoRoot, "runtime-bevy/Cargo.toml"),
+      "-p",
+      "threenative_runtime",
+      "--bin",
+      "threenative_runtime",
+      "--",
+      bundlePath,
+      "--proof-harness",
+      "/tmp/proof-harness.json",
+      "--readiness-out",
+      "/tmp/readiness.json",
+    ],
+  );
+});
+
 test("should resolve Bevy runtime from explicit repo root", () => {
   assert.deepEqual(resolveBevyRuntime("/installed/cli", { THREENATIVE_REPO_ROOT: "/repo" }), {
     cwd: resolve("/repo"),

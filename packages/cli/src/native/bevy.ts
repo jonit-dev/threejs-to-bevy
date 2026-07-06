@@ -5,6 +5,10 @@ import { fileURLToPath } from "node:url";
 
 export interface IBevyRuntimeInvocation {
   bundlePath: string;
+  proofHarness?: {
+    commandStreamPath: string;
+    readinessOutPath: string;
+  };
 }
 
 export interface IBevyRuntimeResolution {
@@ -59,7 +63,7 @@ export function bevyRuntimeArgs(
   bundledManifestPath?: string,
 ): string[] {
   const runtime = resolveBevyRuntime(repoRoot, env, bundledManifestPath);
-  return [
+  const args = [
     "run",
     "--manifest-path",
     runtime.manifestPath,
@@ -70,6 +74,15 @@ export function bevyRuntimeArgs(
     "--",
     invocation.bundlePath,
   ];
+  if (invocation.proofHarness !== undefined) {
+    args.push(
+      "--proof-harness",
+      invocation.proofHarness.commandStreamPath,
+      "--readiness-out",
+      invocation.proofHarness.readinessOutPath,
+    );
+  }
+  return args;
 }
 
 export function runBevyRuntime(invocation: IBevyRuntimeInvocation): BevyRuntimeProcess {
