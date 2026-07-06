@@ -751,6 +751,31 @@ fn systems_host_should_carry_script_posed_entities_to_next_physics_step() {
 }
 
 #[test]
+fn systems_host_should_expose_interpolated_fixed_transforms_to_update_reads() {
+    let root = write_interpolated_update_read_bundle("loop-interpolated-update-read");
+    let mut bundle = load_bundle(&root).expect("scripted bundle should load");
+    let mut state = NativeGameLoopState::default();
+
+    run_native_systems_frame_with_input(
+        &mut bundle,
+        &mut state,
+        loop_options(0.25, 0.25, false),
+        |_bundle, _fixed_delta, _script_posed_entities| {},
+    )
+    .expect("first frame should run");
+    run_native_systems_frame_with_input(
+        &mut bundle,
+        &mut state,
+        loop_options(0.125, 0.25, false),
+        |_bundle, _fixed_delta, _script_posed_entities| {},
+    )
+    .expect("partial frame should run");
+
+    assert_eq!(entity_position(&bundle, "mover"), Some([10.0, 0.0, 0.0]));
+    assert_eq!(entity_position(&bundle, "camera"), Some([5.0, 0.0, 0.0]));
+}
+
+#[test]
 fn systems_host_should_run_systems_using_ordering_constraints() {
     let root = write_ordering_bundle("ordering-constraints");
     let mut bundle = load_bundle(&root).expect("scripted bundle should load");
@@ -975,6 +1000,79 @@ export const systems = Object.freeze({
   "system_update": system_update,
   "system_post": system_post
 });
+"#,
+    )
+    .expect("script bundle should be written");
+    root
+}
+
+fn write_interpolated_update_read_bundle(name: &str) -> PathBuf {
+    let root = root(name);
+    write_base_bundle(&root, true);
+    write_json(
+        &root,
+        "world.ir.json",
+        r#"{
+  "schema": "threenative.world",
+  "version": "0.1.0",
+  "entities": [
+    { "id": "mover", "components": { "Transform": { "position": [0, 0, 0], "rotation": [0, 0, 0, 1], "scale": [1, 1, 1] } } },
+    { "id": "camera", "components": { "Transform": { "position": [0, 0, 0], "rotation": [0, 0, 0, 1], "scale": [1, 1, 1] } } }
+  ],
+  "resources": {}
+}"#,
+    );
+    write_json(
+        &root,
+        "systems.ir.json",
+        r#"{
+  "schema": "threenative.systems",
+  "version": "0.1.0",
+  "systems": [
+    {
+      "name": "tick",
+      "schedule": "fixedUpdate",
+      "reads": ["Transform"],
+      "writes": ["Transform"],
+      "queries": [{ "with": ["Transform"], "without": [] }],
+      "commands": [],
+      "eventReads": [],
+      "eventWrites": [],
+      "resourceReads": [],
+      "resourceWrites": [],
+      "services": [],
+      "script": { "bundle": "scripts.bundle.js", "exportName": "system_tick" }
+    },
+    {
+      "name": "updateCamera",
+      "schedule": "update",
+      "reads": ["Transform"],
+      "writes": ["Transform"],
+      "queries": [{ "with": ["Transform"], "without": [] }],
+      "commands": [],
+      "eventReads": [],
+      "eventWrites": [],
+      "resourceReads": [],
+      "resourceWrites": [],
+      "services": [],
+      "script": { "bundle": "scripts.bundle.js", "exportName": "system_updateCamera" }
+    }
+  ]
+}"#,
+    );
+    fs::write(
+        root.join("scripts.bundle.js"),
+        r#"const system_tick = (ctx) => {
+  const transform = ctx.entity("mover").transform();
+  const position = transform.positionOr([0, 0, 0]);
+  transform.setPosition([position[0] + 10, 0, 0]);
+};
+const system_updateCamera = (ctx) => {
+  const moverPosition = ctx.entity("mover").transform().positionOr([0, 0, 0]);
+  ctx.entity("camera").transform().setPosition([moverPosition[0], 0, 0]);
+};
+export const systemIds = Object.freeze({ "system_tick": "tick", "system_updateCamera": "updateCamera" });
+export const systems = Object.freeze({ "system_tick": system_tick, "system_updateCamera": system_updateCamera });
 "#,
     )
     .expect("script bundle should be written");

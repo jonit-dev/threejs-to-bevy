@@ -132,6 +132,17 @@ implementation:
   `cargo test --manifest-path runtime-bevy/Cargo.toml -p threenative_runtime`,
   `cargo test --manifest-path runtime-bevy/Cargo.toml -p threenative_runtime systems_host_should_expose_character_move_service`,
   and `pnpm verify:conformance`.
+- Native Bevy now matches the web runtime contract for pointer-look and
+  variable-schedule transform reads: pointer `deltaX`/`deltaY` axes remain raw
+  per-frame pixel deltas instead of normalized axes, click-to-lock pointer
+  cursor capture persists until Escape for pointer-delta scenes, and
+  update/postUpdate script context reads see interpolated fixed-step
+  `Transform` values before render sync. Variable-schedule `Transform` writes
+  remain authoritative, and native camera helper smoothing/shake now uses the
+  real Bevy frame delta instead of a hardcoded 60 Hz step. Focused evidence:
+  `cargo test --manifest-path runtime-bevy/Cargo.toml -p threenative_runtime input`,
+  `cargo test --manifest-path runtime-bevy/Cargo.toml -p threenative_runtime systems_host_should_expose_interpolated_fixed_transforms_to_update_reads`,
+  and `pnpm --filter @threenative/runtime-web-three test -- gameLoop`.
 - The authoring-abstractions Phase 4 slice introduces a portable
   `KinematicMover` IR component shape and formatted UI binding validation.
   Web runtime support currently covers sine movers, stable authored-origin

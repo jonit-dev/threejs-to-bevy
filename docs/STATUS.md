@@ -127,6 +127,18 @@ script host bridge and the shared V7 character trace now samples both axis input
 and direct override input. Focused evidence:
 `cargo test --manifest-path runtime-bevy/Cargo.toml -p threenative_runtime systems_host_should_expose_character_move_service`
 and `pnpm verify:conformance`.
+Native input and script scheduling now preserve the shared web/native
+third-person camera contract: pointer `deltaX`/`deltaY` axes are delivered as
+raw per-frame pixel deltas instead of normalized axes, native pointer-look
+scenes lock the cursor on click until Escape, and variable-schedule scripts
+observe interpolated fixed-step transforms before rendering. This keeps script
+camera rigs aligned with the visual pose used by fixed-step interpolation while
+preserving variable-schedule transform write authority. Native camera
+follow/orbit/shake helpers now use Bevy frame delta for smoothing and decay
+rather than assuming 60 Hz. Focused evidence:
+`cargo test --manifest-path runtime-bevy/Cargo.toml -p threenative_runtime input`,
+`cargo test --manifest-path runtime-bevy/Cargo.toml -p threenative_runtime systems_host_should_expose_interpolated_fixed_transforms_to_update_reads`,
+and `pnpm --filter @threenative/runtime-web-three test -- gameLoop`.
 The native proof-harness contract now has a first deterministic Bevy runtime
 slice: `threenative_runtime <bundle> --proof-harness <commands.json>
 --readiness-out <readiness.json>` reads schema-validated keyboard injection

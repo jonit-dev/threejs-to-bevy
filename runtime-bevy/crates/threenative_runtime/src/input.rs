@@ -11,7 +11,7 @@ use bevy::{
         mouse::MouseMotion,
     },
     prelude::*,
-    window::{CursorGrabMode, PrimaryWindow},
+    window::{CursorGrabMode, CursorMoved, PrimaryWindow},
 };
 use threenative_loader::{InputBindingIr, InputIr, PersistedBindingOverrideIr};
 
@@ -27,6 +27,7 @@ pub struct NativeInputState {
 pub fn apply_native_pointer_delta_cursor_policy(
     input: Option<Res<NativeInputMap>>,
     proof_harness: Option<Res<crate::proof_harness::NativeProofHarnessState>>,
+    keyboard: Res<ButtonInput<KeyCode>>,
     mouse_buttons: Res<ButtonInput<MouseButton>>,
     mut windows: Query<&mut Window, With<PrimaryWindow>>,
 ) {
@@ -42,10 +43,17 @@ pub fn apply_native_pointer_delta_cursor_policy(
     let Ok(mut window) = windows.get_single_mut() else {
         return;
     };
+    if keyboard.just_pressed(KeyCode::Escape) {
+        window.cursor.grab_mode = CursorGrabMode::None;
+        window.cursor.visible = true;
+        return;
+    }
     if window.cursor.grab_mode == CursorGrabMode::Locked {
         return;
     }
-    if !mouse_buttons.pressed(MouseButton::Left) && !mouse_buttons.pressed(MouseButton::Right) {
+    if !mouse_buttons.just_pressed(MouseButton::Left)
+        && !mouse_buttons.just_pressed(MouseButton::Right)
+    {
         return;
     }
     window.cursor.grab_mode = CursorGrabMode::Locked;
@@ -952,13 +960,20 @@ pub fn capture_native_input(
             })
             .next()
             .unwrap_or(0.0);
-        let value = if pointer_value != 0.0 {
-            pointer_value
+        let (value, clamp_axis) = if pointer_value != 0.0 {
+            (pointer_value, false)
         } else {
-            digital_value
+            (digital_value, true)
         };
         if value != 0.0 {
-            state.axes.insert(axis.id.clone(), value.clamp(-1.0, 1.0));
+            state.axes.insert(
+                axis.id.clone(),
+                if clamp_axis {
+                    value.clamp(-1.0, 1.0)
+                } else {
+                    value
+                },
+            );
         }
     }
 }

@@ -203,6 +203,7 @@ pub fn apply_camera_components(
 }
 
 pub fn update_native_camera_helpers(
+    time: Option<Res<Time>>,
     mut queries: ParamSet<(
         Query<(
             &mut Transform,
@@ -217,13 +218,17 @@ pub fn update_native_camera_helpers(
         .iter()
         .map(|(id, transform)| (id.0.clone(), transform.translation))
         .collect::<HashMap<_, _>>();
+    let delta = time
+        .as_ref()
+        .map(|time| time.delta_seconds())
+        .unwrap_or(1.0 / 60.0);
     for (mut transform, mut state, metadata) in queries.p0().iter_mut() {
         let camera = &metadata.0;
         if let Some(follow) = camera.follow.as_ref() {
-            apply_follow_helper(&mut transform, follow, &target_positions, 1.0 / 60.0);
+            apply_follow_helper(&mut transform, follow, &target_positions, delta);
         }
         if let Some(orbit) = camera.orbit.as_ref() {
-            apply_orbit_helper(&mut transform, orbit, &target_positions, 1.0 / 60.0);
+            apply_orbit_helper(&mut transform, orbit, &target_positions, delta);
         }
         if let Some(view_model) = camera.view_model.as_ref() {
             if let Some(offset) = view_model.offset {
@@ -231,9 +236,9 @@ pub fn update_native_camera_helpers(
             }
         }
         if let Some(shake) = camera.screen_shake.as_ref() {
-            apply_screen_shake(&mut transform, shake, &mut state, 1.0 / 60.0);
+            apply_screen_shake(&mut transform, shake, &mut state, delta);
         } else {
-            state.shake_strength = lerp_scalar(state.shake_strength, 0.0, 6.0, 1.0 / 60.0);
+            state.shake_strength = lerp_scalar(state.shake_strength, 0.0, 6.0, delta);
         }
     }
 }

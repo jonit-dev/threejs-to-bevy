@@ -180,6 +180,65 @@ test("gameLoop should keep variable-update transform writes authoritative over f
   assert.equal(mover.position.x, 20);
 });
 
+test("gameLoop should expose interpolated fixed transforms to variable-update reads", async () => {
+  const state = createGameLoopState({
+    schema: "threenative.runtime-config",
+    version: "0.1.0",
+    time: { fixedDelta: 0.25, paused: false },
+    window: { height: 720, width: 1280 },
+  });
+  const world = makeWorld([
+    { id: "mover", position: [0, 0, 0] },
+    { id: "camera", position: [0, 0, 0] },
+  ]);
+  const mover = new THREE.Object3D();
+  const camera = new THREE.Object3D();
+  const mapped = makeMapped(new Map([
+    ["mover", mover],
+    ["camera", camera],
+  ]));
+
+  await runGameFrame({
+    delta: 0.25,
+    fixedDelta: 0.25,
+    mapped,
+    module: {
+      systems: {
+        tick: moveMoverBy(10),
+        update: copyMoverXToCamera(),
+      },
+    },
+    state,
+    systems: makeSystems([
+      system("tick", "fixedUpdate", ["Transform"]),
+      system("update", "update", ["Transform"]),
+    ]),
+    world,
+  });
+  await runGameFrame({
+    delta: 0.125,
+    fixedDelta: 0.25,
+    mapped,
+    module: {
+      systems: {
+        tick: moveMoverBy(10),
+        update: copyMoverXToCamera(),
+      },
+    },
+    state,
+    systems: makeSystems([
+      system("tick", "fixedUpdate", ["Transform"]),
+      system("update", "update", ["Transform"]),
+    ]),
+    world,
+  });
+
+  assert.deepEqual(world.entities[0]?.components.Transform?.position, [10, 0, 0]);
+  assert.deepEqual(world.entities[1]?.components.Transform?.position, [5, 0, 0]);
+  assert.equal(mover.position.x, 5);
+  assert.equal(camera.position.x, 5);
+});
+
 function makeWorld(entities: Array<{ id: string; position: [number, number, number] }> = []): IWorldIr {
   return {
     schema: "threenative.world",
@@ -239,5 +298,12 @@ function moveMoverBy(distance: number): (context: any) => void {
 function setMoverPosition(position: [number, number, number]): (context: any) => void {
   return (context: any) => {
     context.entity("mover")?.transform().setPosition(position);
+  };
+}
+
+function copyMoverXToCamera(): (context: any) => void {
+  return (context: any) => {
+    const position = context.entity("mover")?.transform().positionOr([0, 0, 0]) ?? [0, 0, 0];
+    context.entity("camera")?.transform().setPosition([position[0], 0, 0]);
   };
 }

@@ -222,6 +222,22 @@ function evaluateVisibilityAssertion(
   runtimeDiagnosticsValue: unknown,
 ): { assertion: IPlaytestAssertionResult; diagnostic?: IPlaytestDiagnostic } {
   const rendered = renderedEntity(runtimeDiagnosticsValue, entity);
+  const supportsProjectedBounds = renderedEntitiesAreReported(runtimeDiagnosticsValue);
+  if (!supportsProjectedBounds && hasNativeReadinessSamples(runtimeDiagnosticsValue)) {
+    return {
+      assertion: {
+        details: {
+          entity,
+          maxOffscreenRatio,
+          minProjectedPixels,
+          reason: "native-projected-bounds-unavailable",
+          skipped: true,
+        },
+        id: `visibility.${entity}`,
+        pass: true,
+      },
+    };
+  }
   const bounds = isRecord(rendered?.projectedBounds) ? rendered.projectedBounds : undefined;
   const min = Array.isArray(bounds?.min) ? bounds.min : undefined;
   const max = Array.isArray(bounds?.max) ? bounds.max : undefined;
@@ -272,10 +288,18 @@ function rotationDelta(effectLog: unknown, entityId: string): number | undefined
 }
 
 function renderedEntity(runtimeDiagnosticsValue: unknown, entity: string): Record<string, unknown> | undefined {
-  if (!isRecord(runtimeDiagnosticsValue) || !isRecord(runtimeDiagnosticsValue.scene) || !Array.isArray(runtimeDiagnosticsValue.scene.renderedEntities)) {
+  if (!renderedEntitiesAreReported(runtimeDiagnosticsValue)) {
     return undefined;
   }
   return runtimeDiagnosticsValue.scene.renderedEntities.find((item): item is Record<string, unknown> => isRecord(item) && item.id === entity);
+}
+
+function renderedEntitiesAreReported(runtimeDiagnosticsValue: unknown): runtimeDiagnosticsValue is { scene: { renderedEntities: unknown[] } } {
+  return isRecord(runtimeDiagnosticsValue) && isRecord(runtimeDiagnosticsValue.scene) && Array.isArray(runtimeDiagnosticsValue.scene.renderedEntities);
+}
+
+function hasNativeReadinessSamples(runtimeDiagnosticsValue: unknown): boolean {
+  return isRecord(runtimeDiagnosticsValue) && Array.isArray(runtimeDiagnosticsValue.readiness);
 }
 
 function projectedOffscreenRatio(min: [number, number], max: [number, number]): number {

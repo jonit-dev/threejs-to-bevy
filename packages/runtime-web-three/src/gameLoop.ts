@@ -81,10 +81,14 @@ export async function runGameFrame(options: {
         state.tick += 1;
         state.accumulator -= fixedDelta;
       }
+      const rawBeforeVariable = snapshotWorldTransforms(options.world);
+      const overlaidEntities = overlayInterpolatedFixedTransforms(options.world, state, fixedDelta);
       const beforeVariable = snapshotWorldTransforms(options.world);
       collectSystemResult(options.mapped, await runSchedule({ ...options, elapsed: state.elapsed, fixedDelta, frame: state.frame, paused: state.paused, schedule: "update", tick: state.tick }));
       collectSystemResult(options.mapped, await runSchedule({ ...options, elapsed: state.elapsed, fixedDelta, frame: state.frame, paused: state.paused, schedule: "postUpdate", tick: state.tick }));
-      removeVariableTransformWrites(state, beforeVariable, snapshotWorldTransforms(options.world));
+      const afterVariable = snapshotWorldTransforms(options.world);
+      restoreUnwrittenFixedTransforms(options.world, rawBeforeVariable, beforeVariable, afterVariable, overlaidEntities);
+      removeVariableTransformWrites(state, beforeVariable, afterVariable);
     }
     state.frame += 1;
   } else {
@@ -145,6 +149,57 @@ function applyFixedTransformInterpolation(mapped: IThreeWorld, state: IGameLoopS
       object.scale.fromArray([...(interpolated.scale ?? [1, 1, 1])]);
     }
   }
+}
+
+function overlayInterpolatedFixedTransforms(world: IWorldIr, state: IGameLoopState, fixedDelta: number): Set<string> {
+  const overlaid = new Set<string>();
+  if (fixedDelta <= 0 || state.interpolation.fixedEntities.size === 0) {
+    return overlaid;
+  }
+  const alpha = Math.min(1, Math.max(0, state.accumulator / fixedDelta));
+  for (const id of state.interpolation.fixedEntities) {
+    const previous = state.interpolation.previous.get(id);
+    const current = state.interpolation.current.get(id);
+    const entity = world.entities.find((candidate) => candidate.id === id);
+    if (previous === undefined || current === undefined || entity?.components.Transform === undefined) {
+      continue;
+    }
+    entity.components.Transform = transformSampleToComponent(interpolateTransform(previous, current, alpha));
+    overlaid.add(id);
+  }
+  return overlaid;
+}
+
+function restoreUnwrittenFixedTransforms(
+  world: IWorldIr,
+  rawBeforeVariable: Map<string, ITransformSample>,
+  beforeVariable: Map<string, ITransformSample>,
+  afterVariable: Map<string, ITransformSample>,
+  overlaidEntities: Set<string>,
+): void {
+  if (overlaidEntities.size === 0) {
+    return;
+  }
+  const variableWrites = changedTransformEntities(beforeVariable, afterVariable);
+  for (const id of overlaidEntities) {
+    if (variableWrites.has(id)) {
+      continue;
+    }
+    const entity = world.entities.find((candidate) => candidate.id === id);
+    const raw = rawBeforeVariable.get(id);
+    if (entity?.components.Transform === undefined || raw === undefined) {
+      continue;
+    }
+    entity.components.Transform = transformSampleToComponent(raw);
+  }
+}
+
+function transformSampleToComponent(sample: ITransformSample): NonNullable<IWorldIr["entities"][number]["components"]["Transform"]> {
+  return {
+    ...(sample.position === undefined ? {} : { position: [...sample.position] }),
+    ...(sample.rotation === undefined ? {} : { rotation: [...sample.rotation] }),
+    ...(sample.scale === undefined ? {} : { scale: [...sample.scale] }),
+  };
 }
 
 function snapshotWorldTransforms(world: IWorldIr): Map<string, ITransformSample> {

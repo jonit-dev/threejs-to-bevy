@@ -18,7 +18,7 @@ use crate::{
         NativeSystemEffectLog, NativeSystemEffects, apply_system_effects_with_report,
     },
     systems_host_bridge::BRIDGE_SOURCE,
-    transform_interpolation::TransformSample,
+    transform_interpolation::{TransformSample, interpolate_transform},
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -247,6 +247,12 @@ pub fn run_native_systems_frame_with_input(
             state.accumulator -= options.fixed_delta;
         }
 
+        let raw_before_variable = snapshot_bundle_transforms(bundle);
+        let overlaid_entities = overlay_interpolated_fixed_transforms(
+            bundle,
+            state,
+            interpolation_alpha(state, options.fixed_delta),
+        );
         let before_variable = snapshot_bundle_transforms(bundle);
         let variable_time = loop_time_snapshot(
             options.delta,
@@ -266,11 +272,15 @@ pub fn run_native_systems_frame_with_input(
         run.transform_patches
             .extend(variable_run.transform_patches.iter().cloned());
         run.logs.extend(variable_run.logs);
-        remove_variable_transform_writes(
-            state,
-            before_variable,
-            snapshot_bundle_transforms(bundle),
+        let after_variable = snapshot_bundle_transforms(bundle);
+        restore_unwritten_fixed_transforms(
+            bundle,
+            &raw_before_variable,
+            &before_variable,
+            &after_variable,
+            &overlaid_entities,
         );
+        remove_variable_transform_writes(state, before_variable, after_variable);
     }
     state.frame += 1;
 
@@ -310,6 +320,83 @@ fn snapshot_bundle_transforms(bundle: &LoadedBundle) -> BTreeMap<String, Transfo
                 .map(|transform| (entity.id.clone(), transform_sample(transform)))
         })
         .collect()
+}
+
+fn overlay_interpolated_fixed_transforms(
+    bundle: &mut LoadedBundle,
+    state: &NativeGameLoopState,
+    alpha: f32,
+) -> BTreeSet<String> {
+    let mut overlaid = BTreeSet::new();
+    if state.fixed_transform_entities.is_empty() {
+        return overlaid;
+    }
+    for entity in &mut bundle.world.entities {
+        if !state.fixed_transform_entities.contains(&entity.id) {
+            continue;
+        }
+        let Some(previous) = state.fixed_transform_previous.get(&entity.id) else {
+            continue;
+        };
+        let Some(current) = state.fixed_transform_current.get(&entity.id) else {
+            continue;
+        };
+        let transform = entity
+            .components
+            .transform
+            .get_or_insert_with(default_transform_component);
+        apply_transform_sample(transform, interpolate_transform(*previous, *current, alpha));
+        overlaid.insert(entity.id.clone());
+    }
+    overlaid
+}
+
+fn restore_unwritten_fixed_transforms(
+    bundle: &mut LoadedBundle,
+    raw_before_variable: &BTreeMap<String, TransformSample>,
+    before_variable: &BTreeMap<String, TransformSample>,
+    after_variable: &BTreeMap<String, TransformSample>,
+    overlaid_entities: &BTreeSet<String>,
+) {
+    if overlaid_entities.is_empty() {
+        return;
+    }
+    let variable_writes = changed_transform_entities(before_variable, after_variable);
+    for entity in &mut bundle.world.entities {
+        if !overlaid_entities.contains(&entity.id) || variable_writes.contains(&entity.id) {
+            continue;
+        }
+        let Some(sample) = raw_before_variable.get(&entity.id) else {
+            continue;
+        };
+        let transform = entity
+            .components
+            .transform
+            .get_or_insert_with(default_transform_component);
+        apply_transform_sample(transform, *sample);
+    }
+}
+
+fn interpolation_alpha(state: &NativeGameLoopState, fixed_delta: f32) -> f32 {
+    if fixed_delta <= 0.0 {
+        0.0
+    } else {
+        (state.accumulator / fixed_delta).clamp(0.0, 1.0)
+    }
+}
+
+fn default_transform_component() -> TransformComponent {
+    TransformComponent {
+        position: Some([0.0, 0.0, 0.0]),
+        rotation: Some([0.0, 0.0, 0.0, 1.0]),
+        scale: Some([1.0, 1.0, 1.0]),
+    }
+}
+
+fn apply_transform_sample(transform: &mut TransformComponent, sample: TransformSample) {
+    transform.position = Some(sample.position);
+    transform.rotation = Some(sample.rotation);
+    transform.scale = Some(sample.scale);
 }
 
 fn transform_sample(transform: &TransformComponent) -> TransformSample {

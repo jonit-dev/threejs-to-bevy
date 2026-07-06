@@ -262,14 +262,14 @@ fn should_capture_bevy_keyboard_and_pointer_input() {
         .resource_mut::<ButtonInput<MouseButton>>()
         .press(MouseButton::Left);
     app.world_mut().send_event(MouseMotion {
-        delta: Vec2::new(0.5, 0.0),
+        delta: Vec2::new(40.0, 0.0),
     });
     app.update();
 
     let state = app.world().resource::<NativeInputState>();
     assert!(state.action("Attack"));
     assert_eq!(state.axis("MoveX"), 1.0);
-    assert_eq!(state.axis("LookX"), 0.5);
+    assert_eq!(state.axis("LookX"), 40.0);
 }
 
 #[test]
@@ -313,6 +313,7 @@ fn should_grab_cursor_for_native_pointer_delta_axes() {
         controls_settings: None,
         persisted_binding_overrides: vec![],
     }));
+    app.insert_resource(ButtonInput::<KeyCode>::default());
     app.insert_resource(ButtonInput::<MouseButton>::default());
     app.world_mut().spawn((
         Window {
@@ -339,6 +340,16 @@ fn should_grab_cursor_for_native_pointer_delta_axes() {
     let window = query.single(app.world());
     assert_eq!(window.cursor.grab_mode, CursorGrabMode::Locked);
     assert!(!window.cursor.visible);
+
+    app.world_mut()
+        .resource_mut::<ButtonInput<KeyCode>>()
+        .press(KeyCode::Escape);
+    app.update();
+
+    let mut query = app.world_mut().query::<&Window>();
+    let window = query.single(app.world());
+    assert_eq!(window.cursor.grab_mode, CursorGrabMode::None);
+    assert!(window.cursor.visible);
 }
 
 #[test]
