@@ -1,6 +1,9 @@
 use std::{fs, path::Path};
 
-use bevy::{input::ButtonInput, prelude::*};
+use bevy::{
+    input::ButtonInput, prelude::*, render::view::screenshot::ScreenshotManager,
+    window::PrimaryWindow,
+};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use threenative_components::ThreeNativeId;
@@ -26,6 +29,7 @@ pub struct NativeProofHarnessCommand {
 #[serde(tag = "type", rename_all = "camelCase")]
 pub enum NativeProofHarnessAction {
     Key { code: String, pressed: bool },
+    Screenshot { path: String },
     Exit,
 }
 
@@ -156,6 +160,8 @@ pub fn apply_native_proof_harness_commands(
     mut state: ResMut<NativeProofHarnessState>,
     mut keyboard: ResMut<ButtonInput<KeyCode>>,
     mut exit: EventWriter<AppExit>,
+    windows: Query<Entity, With<PrimaryWindow>>,
+    mut screenshots: Option<ResMut<ScreenshotManager>>,
     transforms: Query<(&ThreeNativeId, &Transform)>,
 ) {
     let tick = state.tick;
@@ -183,6 +189,16 @@ pub fn apply_native_proof_harness_commands(
                     });
                 }
             }
+            NativeProofHarnessAction::Screenshot { path } => {
+                match request_native_proof_screenshot(&path, &windows, screenshots.as_deref_mut()) {
+                    Ok(()) => {}
+                    Err(message) => diagnostics.push(NativeProofHarnessDiagnostic {
+                        code: "TN_NATIVE_PROOF_SCREENSHOT_FAILED".to_owned(),
+                        message,
+                        severity: "warning".to_owned(),
+                    }),
+                }
+            }
             NativeProofHarnessAction::Exit => {
                 exit.send(AppExit::Success);
             }
@@ -204,6 +220,30 @@ pub fn apply_native_proof_harness_commands(
         error!("{error}");
     }
     state.tick += 1;
+}
+
+fn request_native_proof_screenshot(
+    path: &str,
+    windows: &Query<Entity, With<PrimaryWindow>>,
+    screenshots: Option<&mut ScreenshotManager>,
+) -> Result<(), String> {
+    let window = windows
+        .get_single()
+        .map_err(|_| "Native proof screenshot requires a primary window.".to_owned())?;
+    let screenshots = screenshots
+        .ok_or_else(|| "Native proof screenshot manager is not available.".to_owned())?;
+    let output_path = Path::new(path);
+    if let Some(parent) = output_path.parent() {
+        fs::create_dir_all(parent).map_err(|error| {
+            format!(
+                "Failed to create native proof screenshot directory '{}': {error}",
+                parent.display()
+            )
+        })?;
+    }
+    screenshots
+        .save_screenshot_to_disk(window, output_path)
+        .map_err(|error| format!("Failed to request native proof screenshot '{path}': {error}"))
 }
 
 pub fn native_proof_harness_transform_samples<'a>(

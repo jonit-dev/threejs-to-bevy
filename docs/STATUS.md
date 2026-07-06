@@ -131,12 +131,35 @@ The native proof-harness contract now has a first deterministic Bevy runtime
 slice: `threenative_runtime <bundle> --proof-harness <commands.json>
 --readiness-out <readiness.json>` reads schema-validated keyboard injection
 commands, applies them before native input capture on the requested tick, writes
-`threenative.native-proof-readiness`, and the CLI Bevy launcher can pass the
-harness/readiness file pair through to the runtime. Focused evidence:
+`threenative.native-proof-readiness`, and `tn playtest --target desktop|bevy`
+now runs that harness through the CLI Bevy launcher, samples before/after
+native transforms, evaluates the same movement/follow/axis diagnostics used by
+web playtests, requests native `before.png`/`after.png` screenshots through the
+same harness stream, records a short native `png-sequence` under
+`native-recording/` with a `native-recording.json` manifest, and writes summary,
+manifest, observations, runtime trace, and reproduction artifacts.
+`templates/structured-source-starter` now includes
+`playtests/native-smoke-movement.playtest.json` plus a `playtest:native` script
+as a committed desktop scenario fixture, and `examples/lantern-orchard` now
+includes the same generated-game native fixture and script. Focused evidence:
 `cargo test --manifest-path runtime-bevy/Cargo.toml -p threenative_runtime --test proof_harness`
 and `pnpm --filter @threenative/cli exec node --test dist/native/bevy.test.js`.
-`tn playtest --target desktop`, native screenshot, and native record command
-support remain the next PRD phase.
+Local runtime evidence:
+`THREENATIVE_REPO_ROOT=/home/joao/projects/threejs-to-bevy TN_NATIVE_PROFILE=debug node packages/cli/dist/index.js playtest --project templates/structured-source-starter --scenario playtests/native-smoke-movement.playtest.json --out /tmp/tn-native-smoke-playtest --json`
+passed with movement above threshold, empty diagnostics, native screenshots at
+`/tmp/tn-native-smoke-playtest/before.png` and
+`/tmp/tn-native-smoke-playtest/after.png`, and a five-frame native recording
+manifest at `/tmp/tn-native-smoke-playtest/native-recording.json`. A web/native
+scenario diff is also written at
+`tools/verify/artifacts/native-playtest/scenario-diff.json`; the latest local
+diff passed with empty diagnostics and points at the Bevy before/after
+screenshots plus `native-recording.json`. Encoded native video export remains a
+future polish item rather than a parity blocker for `tn playtest`.
+Generated-game fixture evidence:
+`THREENATIVE_REPO_ROOT=/home/joao/projects/threejs-to-bevy TN_NATIVE_PROFILE=debug node packages/cli/dist/index.js playtest --project examples/lantern-orchard --scenario playtests/native-smoke-movement.playtest.json --out tools/verify/artifacts/native-playtest/lantern-orchard-bevy --json`
+passed with empty diagnostics, native before/after screenshots, and five
+non-empty PNG-sequence frames recorded in
+`tools/verify/artifacts/native-playtest/lantern-orchard-bevy/native-recording.json`.
 The same PRD now has an initial stdlib rig slice: `CharacterRig.update` and
 `CameraRig.thirdPerson` live in `@threenative/script-stdlib`, keep internal
 smoothing state in `context.state(...)`, call the promoted web character move
@@ -171,8 +194,10 @@ commands, and proof source hashes; one-shot `--entity/--press` playtests remain
 ephemeral fallback evidence and cannot satisfy generated-game release proof.
 `tn playtest --watch --json` emits compact repair events (`start`,
 `diagnostic`, `artifact`, `pass`, `fail`, `stop`) for agent repair loops.
-Native/Bevy scenario execution remains explicitly unsupported until the native
-parity PRD promotes that target.
+Native/Bevy scenario execution is now available for proof-harness-backed
+keyboard movement assertions with native before/after screenshot requests;
+native short recording is emitted as a PNG sequence plus manifest, while encoded
+native video export remains follow-on polish.
 The Phase 4 IR/runtime slice now accepts a declarative `KinematicMover`
 component and formatted UI bindings with accepted/rejected IR tests. The web
 runtime drives sine `KinematicMover` entities before physics, preserves the

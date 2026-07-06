@@ -20,10 +20,13 @@ export interface IPlaytestTargetRunner {
 export function createPlaytestTargetRunner(
   target: PlaytestTarget,
   webRunner: (options: IPlaytestRunOptions) => Promise<IPlaytestReport>,
-  _nativeRunner?: (options: IPlaytestRunOptions) => Promise<IPlaytestReport>,
+  nativeRunner?: (options: IPlaytestRunOptions) => Promise<IPlaytestReport>,
 ): IPlaytestTargetRunner | undefined {
   if (target === "web") {
     return { run: webRunner, target };
+  }
+  if ((target === "desktop" || target === "bevy") && nativeRunner !== undefined) {
+    return { run: nativeRunner, target };
   }
   return undefined;
 }

@@ -95,8 +95,10 @@ flowchart LR
       internally treated as an ephemeral scenario.
 - [x] Committed scenario files are required for maintained starters and
       generated-game release proof.
-- [x] Native targets stay explicit `TN_PLAYTEST_TARGET_UNSUPPORTED` until the
-      native parity PRD lands.
+- [x] Native targets run proof-harness-backed keyboard movement scenarios once
+      the native parity PRD slice lands, including before/after screenshots and
+      short PNG-sequence recording artifacts; encoded native video export remains
+      follow-on polish.
 - [x] Scenario artifact bundles must include `summary.json`, screenshots,
       effect log, manifest, diagnostics, and reproduction command.
 
@@ -163,6 +165,8 @@ sequenceDiagram
 
 - `templates/structured-source-starter/playtests/smoke-movement.playtest.json`
   - committed starter proof.
+- `templates/structured-source-starter/playtests/native-smoke-movement.playtest.json`
+  - committed desktop proof-harness fixture.
 - `templates/racing-kit-rally-starter/playtests/rally-throttle.playtest.json`
   - committed starter proof.
 - `templates/*/threenative.config.json` - proof commands prefer scenarios.

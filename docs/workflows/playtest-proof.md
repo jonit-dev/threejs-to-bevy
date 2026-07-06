@@ -60,7 +60,24 @@ Use `--pass-once` when an agent should stop after the first passing repair:
 tn playtest --project . --scenario playtests/smoke-movement.playtest.json --watch --pass-once --json
 ```
 
-Native/Bevy scenario execution remains out of scope for this proof loop and
-returns `TN_PLAYTEST_TARGET_UNSUPPORTED`. That work belongs to the native parity
-PRD; `tn playtest` is currently a web-runtime gameplay proof over the emitted
-portable bundle.
+Native/Bevy scenario execution is available for keyboard-driven movement proof
+through `tn playtest --target desktop|bevy`. The native path uses the Bevy proof
+harness readiness stream and writes the same summary/manifest/observations
+artifact shape as web playtests, including harness-requested `before.png` and
+`after.png` screenshots when the desktop environment supports Bevy window
+capture. Native playtests also write a short `png-sequence` under
+`native-recording/` with a `native-recording.json` manifest. Encoded native
+video export is still follow-on polish; use the PNG sequence or web recording
+when motion-video proof is required.
+
+The structured-source starter includes a committed native fixture:
+
+```bash
+tn playtest --project . --scenario playtests/native-smoke-movement.playtest.json --stable-artifacts --json
+```
+
+Generated examples can carry the same target-specific fixture; for example:
+
+```bash
+tn playtest --project examples/lantern-orchard --scenario playtests/native-smoke-movement.playtest.json --stable-artifacts --json
+```

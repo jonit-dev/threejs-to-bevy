@@ -107,6 +107,44 @@ fn should_write_readiness_json_matching_schema() {
 }
 
 #[test]
+fn should_parse_screenshot_commands_and_report_missing_window_as_warning() {
+    let root = temp_dir("screenshot");
+    let readiness_path = root.join("readiness.json");
+    let screenshot_path = root.join("before.png");
+    let mut app = App::new();
+    app.add_event::<AppExit>();
+    app.insert_resource(ButtonInput::<KeyCode>::default());
+    app.insert_resource(NativeProofHarnessState::from_stream(
+        NativeProofHarnessCommandStream {
+            schema: "threenative.native-proof-harness".to_owned(),
+            version: "0.1.0".to_owned(),
+            commands: vec![
+                serde_json::from_value::<NativeProofHarnessCommand>(serde_json::json!({
+                    "tick": 0,
+                    "type": "screenshot",
+                    "path": screenshot_path.display().to_string()
+                }))
+                .expect("command should parse"),
+            ],
+        },
+        readiness_path.display().to_string(),
+    ));
+    app.add_systems(PreUpdate, apply_native_proof_harness_commands);
+    app.update();
+
+    let readiness = fs::read_to_string(&readiness_path).expect("readiness should be written");
+    let payload: serde_json::Value =
+        serde_json::from_str(&readiness).expect("readiness should be valid json");
+    assert_eq!(
+        payload["diagnostics"][0]["code"],
+        "TN_NATIVE_PROOF_SCREENSHOT_FAILED"
+    );
+    assert_eq!(payload["diagnostics"][0]["severity"], "warning");
+
+    fs::remove_dir_all(root).expect("temp proof harness dir should be removed");
+}
+
+#[test]
 fn should_snapshot_transform_positions_for_readiness() {
     let player = ThreeNativeId("player".to_owned());
     let player_transform = Transform::from_xyz(1.0, 2.0, 3.0);

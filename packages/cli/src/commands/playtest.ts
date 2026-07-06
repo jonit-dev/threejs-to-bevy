@@ -61,6 +61,20 @@ export interface IPlaytestFollowReport {
   within: number;
 }
 
+export interface IPlaytestNativeRecordingFrame {
+  byteSize?: number;
+  index: number;
+  path: string;
+  tick: number;
+}
+
+export interface IPlaytestNativeRecording {
+  directory: string;
+  frames: IPlaytestNativeRecordingFrame[];
+  manifest: string;
+  mode: "png-sequence";
+}
+
 export interface IPlaytestReport {
   after?: ITransformSample;
   artifact?: string;
@@ -80,6 +94,7 @@ export interface IPlaytestReport {
   input: string;
   movementDelta?: Vec3;
   movementThreshold: number;
+  nativeRecording?: IPlaytestNativeRecording;
   observations?: IPlaytestObservations;
   pass: boolean;
   proofMetadata?: IProofArtifactMetadata;
@@ -248,7 +263,7 @@ export async function playtestCommand(
         {
           code: "TN_PLAYTEST_TARGET_UNSUPPORTED",
           message: `Playtest target '${scenario.target}' is recognized but no runner exists yet.`,
-          suggestion: "Use --target web until the native parity PRD promotes native scenario execution.",
+          suggestion: "Use --target web, or run from a CLI build with the native Bevy proof-harness runner available.",
         },
         { exitCode: 2, json, stderr: !json },
       );
@@ -355,8 +370,13 @@ async function runNativePlaytest(options: IPlaytestRunOptions, bevyRunner: BevyR
   const bundlePath = await ensureProjectBundle(options.projectPath);
   const commandStreamPath = resolve(options.artifactDirectory, "native-proof-harness.json");
   const readinessPath = resolve(options.artifactDirectory, "native-readiness.json");
+  const beforeArtifact = resolve(options.artifactDirectory, "before.png");
+  const afterArtifact = resolve(options.artifactDirectory, "after.png");
+  const recordingPlan = nativeRecordingPlan(options.artifactDirectory, options.scenario);
+  const captureTicks = nativeScenarioCaptureTicks(options.scenario);
   await mkdir(options.artifactDirectory, { recursive: true });
-  await writeFile(commandStreamPath, `${JSON.stringify(nativeHarnessCommandStream(options.scenario), null, 2)}\n`, "utf8");
+  await mkdir(recordingPlan.directory, { recursive: true });
+  await writeFile(commandStreamPath, `${JSON.stringify(nativeHarnessCommandStream(options.scenario, { afterArtifact, beforeArtifact, recordingFrames: recordingPlan.frames }), null, 2)}\n`, "utf8");
   const process = bevyRunner({
     bundlePath,
     proofHarness: {
@@ -365,10 +385,10 @@ async function runNativePlaytest(options: IPlaytestRunOptions, bevyRunner: BevyR
     },
   });
   const readinessSamples = await collectNativeReadiness(process, readinessPath, nativeHarnessTimeoutMs(options.scenario));
-  const before = transformSampleFromReadiness(readinessSamples[0], options.entityId);
-  const after = transformSampleFromReadiness(readinessSamples.at(-1), options.entityId);
-  const followBefore = options.follow === undefined ? undefined : transformSampleFromReadiness(readinessSamples[0], options.follow.entityId);
-  const followAfter = options.follow === undefined ? undefined : transformSampleFromReadiness(readinessSamples.at(-1), options.follow.entityId);
+  const before = transformSampleNearTick(readinessSamples, options.entityId, captureTicks.beforeTick, "before");
+  const after = transformSampleNearTick(readinessSamples, options.entityId, captureTicks.afterTick, "after");
+  const followBefore = options.follow === undefined ? undefined : transformSampleNearTick(readinessSamples, options.follow.entityId, captureTicks.beforeTick, "before");
+  const followAfter = options.follow === undefined ? undefined : transformSampleNearTick(readinessSamples, options.follow.entityId, captureTicks.afterTick, "after");
   const diagnostics: IPlaytestDiagnostic[] = readinessSamples
     .flatMap((sample) => Array.isArray(sample.diagnostics) ? sample.diagnostics : [])
     .filter((diagnostic): diagnostic is IPlaytestDiagnostic => isRecord(diagnostic) && typeof diagnostic.code === "string" && typeof diagnostic.message === "string")
@@ -381,6 +401,8 @@ async function runNativePlaytest(options: IPlaytestRunOptions, bevyRunner: BevyR
       suggestion: "Check the entity id and ensure the native proof harness readiness includes the entity Transform.",
     });
   }
+  const nativeRecording = await writeNativeRecordingManifest(recordingPlan);
+  diagnostics.push(...await nativeScreenshotDiagnostics([beforeArtifact, afterArtifact, ...recordingPlan.frames.map((frame) => frame.path)]));
   const movementDelta = before === undefined || after === undefined ? undefined : delta3(before.position, after.position);
   const distance = movementDelta === undefined ? 0 : length3(movementDelta);
   const follow = options.follow === undefined
@@ -408,6 +430,7 @@ async function runNativePlaytest(options: IPlaytestRunOptions, bevyRunner: BevyR
   const hasErrors = diagnostics.some((diagnostic) => diagnostic.severity === "error");
   return {
     ...(after === undefined ? {} : { after }),
+    artifact: afterArtifact,
     ...(before === undefined ? {} : { before }),
     debugColliders: options.debugColliders,
     diagnostics,
@@ -420,6 +443,7 @@ async function runNativePlaytest(options: IPlaytestRunOptions, bevyRunner: BevyR
     input: options.press,
     ...(movementDelta === undefined ? {} : { movementDelta }),
     movementThreshold: options.movementThreshold,
+    nativeRecording,
     observations: {
       console: [],
       effectLog: {},
@@ -435,9 +459,13 @@ async function runNativePlaytest(options: IPlaytestRunOptions, bevyRunner: BevyR
   };
 }
 
-function nativeHarnessCommandStream(scenario: IPlaytestScenario): unknown {
+function nativeHarnessCommandStream(scenario: IPlaytestScenario, artifacts: { afterArtifact: string; beforeArtifact: string; recordingFrames?: readonly IPlaytestNativeRecordingFrame[] }): unknown {
   const commands: Array<Record<string, unknown>> = [];
   let tick = Math.max(1, scenario.warmupFrames);
+  commands.push({ path: artifacts.beforeArtifact, tick: Math.max(0, tick - 1), type: "screenshot" });
+  for (const frame of artifacts.recordingFrames ?? []) {
+    commands.push({ path: frame.path, tick: frame.tick, type: "screenshot" });
+  }
   for (const step of scenario.steps) {
     if (step.press !== undefined) {
       commands.push({ code: step.press, pressed: true, tick, type: "key" });
@@ -449,12 +477,90 @@ function nativeHarnessCommandStream(scenario: IPlaytestScenario): unknown {
     }
     tick += Math.max(0, step.waitFrames ?? 0);
   }
-  commands.push({ tick: tick + 2, type: "exit" });
+  commands.push({ path: artifacts.afterArtifact, tick: tick + 1, type: "screenshot" });
+  commands.push({ tick: tick + 35, type: "exit" });
   return {
     commands,
     schema: "threenative.native-proof-harness",
     version: "0.1.0",
   };
+}
+
+function nativeRecordingPlan(artifactDirectory: string, scenario: IPlaytestScenario): IPlaytestNativeRecording {
+  const directory = resolve(artifactDirectory, "native-recording");
+  const manifest = resolve(artifactDirectory, "native-recording.json");
+  const { afterTick, beforeTick } = nativeScenarioCaptureTicks(scenario);
+  const span = Math.max(1, afterTick - beforeTick);
+  const firstRecordingTick = beforeTick + 1;
+  const lastRecordingTick = Math.max(firstRecordingTick, afterTick - 1);
+  const ticks = unique([
+    firstRecordingTick,
+    beforeTick + Math.max(1, Math.round(span * 0.25)),
+    beforeTick + Math.max(1, Math.round(span * 0.5)),
+    beforeTick + Math.max(1, Math.round(span * 0.75)),
+    lastRecordingTick,
+  ].map((tick) => Math.min(lastRecordingTick, Math.max(firstRecordingTick, tick)))).sort((left, right) => left - right);
+  return {
+    directory,
+    frames: ticks.map((tick, index) => ({
+      index,
+      path: resolve(directory, `frame-${String(index).padStart(3, "0")}.png`),
+      tick,
+    })),
+    manifest,
+    mode: "png-sequence",
+  };
+}
+
+function nativeScenarioCaptureTicks(scenario: IPlaytestScenario): { afterTick: number; beforeTick: number } {
+  let tick = Math.max(1, scenario.warmupFrames);
+  const beforeTick = Math.max(0, tick - 1);
+  for (const step of scenario.steps) {
+    if (step.press !== undefined) {
+      tick += Math.max(1, step.holdFrames ?? 1);
+    }
+    tick += Math.max(0, step.waitFrames ?? 0);
+  }
+  return { afterTick: tick + 1, beforeTick };
+}
+
+async function writeNativeRecordingManifest(plan: IPlaytestNativeRecording): Promise<IPlaytestNativeRecording> {
+  const frames: IPlaytestNativeRecordingFrame[] = [];
+  for (const frame of plan.frames) {
+    try {
+      const artifact = await stat(frame.path);
+      frames.push({ ...frame, byteSize: artifact.size });
+    } catch {
+      frames.push(frame);
+    }
+  }
+  const recording = { ...plan, frames };
+  await writeFile(plan.manifest, `${JSON.stringify(recording, null, 2)}\n`, "utf8");
+  return recording;
+}
+
+async function nativeScreenshotDiagnostics(paths: readonly string[]): Promise<IPlaytestDiagnostic[]> {
+  const diagnostics: IPlaytestDiagnostic[] = [];
+  for (const path of paths) {
+    try {
+      const artifact = await stat(path);
+      if (artifact.size === 0) {
+        diagnostics.push({
+          code: "TN_PLAYTEST_NATIVE_SCREENSHOT_EMPTY",
+          message: `Native playtest screenshot artifact is empty: ${path}`,
+          severity: "warning",
+        });
+      }
+    } catch {
+      diagnostics.push({
+        code: "TN_PLAYTEST_NATIVE_SCREENSHOT_MISSING",
+        message: `Native playtest screenshot artifact was not written: ${path}`,
+        severity: "warning",
+        suggestion: "Run on a desktop/headless environment that supports Bevy window screenshots, or inspect native-readiness diagnostics.",
+      });
+    }
+  }
+  return diagnostics;
 }
 
 async function collectNativeReadiness(process: ChildProcess, readinessPath: string, timeoutMs: number): Promise<Record<string, unknown>[]> {
@@ -510,6 +616,19 @@ function transformSampleFromReadiness(sample: Record<string, unknown> | undefine
   return { frame: tick, position, tick };
 }
 
+function transformSampleNearTick(samples: readonly Record<string, unknown>[], entityId: string, tick: number, mode: "after" | "before"): ITransformSample | undefined {
+  const candidates = samples
+    .map((sample) => transformSampleFromReadiness(sample, entityId))
+    .filter((sample): sample is ITransformSample => sample !== undefined);
+  if (candidates.length === 0) {
+    return undefined;
+  }
+  if (mode === "before") {
+    return candidates.filter((sample) => sample.tick <= tick).at(-1) ?? candidates[0];
+  }
+  return candidates.find((sample) => sample.tick >= tick) ?? candidates.at(-1);
+}
+
 function readNativePosition(value: unknown): Vec3 | undefined {
   if (!Array.isArray(value) || value.length < 3) {
     return undefined;
@@ -520,7 +639,7 @@ function readNativePosition(value: unknown): Vec3 | undefined {
 
 function nativeHarnessTimeoutMs(scenario: IPlaytestScenario): number {
   const frames = scenario.steps.reduce((total, step) => total + Math.max(1, step.holdFrames ?? 1) + Math.max(0, step.waitFrames ?? 0), scenario.warmupFrames);
-  return Math.max(10000, frames * (1000 / 30) + 10000);
+  return Math.max(180000, frames * (1000 / 30) + 10000);
 }
 
 async function probePreview(options: IPlaytestRunOptions & { url: string }): Promise<IPlaytestReport> {
@@ -860,7 +979,7 @@ function scenarioObservationIds(scenario: IPlaytestScenario): { hud: string[]; r
   };
 }
 
-function unique(values: readonly string[]): string[] {
+function unique<T>(values: readonly T[]): T[] {
   return [...new Set(values)];
 }
 

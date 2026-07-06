@@ -248,10 +248,15 @@ implementation:
   and reporting movement delta/distance plus screenshot evidence. Optional
   `--expect-axis x|y|z` catches false positives where autonomous idle motion
   moves the entity but the requested input does not affect the intended axis.
-  Native/Bevy scenario execution remains explicit
-  `TN_PLAYTEST_TARGET_UNSUPPORTED` until the native parity PRD promotes the
-  target; committed generated-game scenarios are web-target proof in this
-  ratchet.
+  `tn playtest --target desktop|bevy` now runs the native proof harness for
+  keyboard movement scenarios, writes artifact-local readiness/observation
+  reports, requests native `before.png`/`after.png` screenshots in the same run,
+  records a short native `png-sequence` with a `native-recording.json` manifest,
+  and evaluates the same movement, signed-axis, and follow diagnostics. The
+  structured-source starter includes `playtests/native-smoke-movement.playtest.json`
+  as a committed desktop fixture, and `examples/lantern-orchard` includes a
+  generated-game native fixture with matching artifact evidence. Encoded native
+  video export remains follow-on polish.
 - Structured scene source now has compact prefab-backed `instances` for repeated
   ECS entities. This is an authoring/compiler ergonomics improvement: emitted
   bundles still contain ordinary world entities and do not introduce any

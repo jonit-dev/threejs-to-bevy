@@ -16,6 +16,24 @@ test("should select threenative runtime binary", () => {
     "threenative_runtime",
     "--bin",
     "threenative_runtime",
+    "--release",
+    "--",
+    bundlePath,
+  ]);
+});
+
+test("should omit release profile when native debug profile is requested", () => {
+  const repoRoot = "/repo";
+  const bundlePath = "/project/dist/game.bundle";
+
+  assert.deepEqual(bevyRuntimeArgs(repoRoot, { bundlePath }, { TN_NATIVE_PROFILE: "debug" }), [
+    "run",
+    "--manifest-path",
+    resolve(repoRoot, "runtime-bevy/Cargo.toml"),
+    "-p",
+    "threenative_runtime",
+    "--bin",
+    "threenative_runtime",
     "--",
     bundlePath,
   ]);
@@ -45,6 +63,7 @@ test("should pass native proof harness files to runtime binary", () => {
       "threenative_runtime",
       "--bin",
       "threenative_runtime",
+      "--release",
       "--",
       bundlePath,
       "--proof-harness",

@@ -20,7 +20,9 @@ export type BevyRuntimeProcess = ChildProcess;
 
 export type BevyRuntimeRunner = (invocation: IBevyRuntimeInvocation) => BevyRuntimeProcess;
 
-type BevyRuntimeEnvironment = Partial<Record<"THREENATIVE_BEVY_MANIFEST" | "THREENATIVE_REPO_ROOT", string>>;
+type BevyRuntimeEnvironment = Partial<
+  Record<"THREENATIVE_BEVY_MANIFEST" | "THREENATIVE_REPO_ROOT" | "TN_NATIVE_PROFILE", string>
+>;
 
 export function resolveBevyRuntime(
   repoRoot: string,
@@ -71,9 +73,11 @@ export function bevyRuntimeArgs(
     "threenative_runtime",
     "--bin",
     "threenative_runtime",
-    "--",
-    invocation.bundlePath,
   ];
+  if (env.TN_NATIVE_PROFILE !== "debug") {
+    args.push("--release");
+  }
+  args.push("--", invocation.bundlePath);
   if (invocation.proofHarness !== undefined) {
     args.push(
       "--proof-harness",

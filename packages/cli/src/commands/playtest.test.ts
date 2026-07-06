@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
+import type { ChildProcess } from "node:child_process";
+import { EventEmitter } from "node:events";
 import { cp, mkdir, mkdtemp, readFile, writeFile } from "node:fs/promises";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import test from "node:test";
 import { tmpdir } from "node:os";
 
@@ -256,19 +258,89 @@ test("playtest command should reject invalid scenario files with stable diagnost
   assert.match(payload.message, /invalid step/);
 });
 
-test("playtest command should report unsupported native targets explicitly", async () => {
+test("playtest command should run desktop target through native proof harness", async () => {
   const root = await playtestTempRoot();
-  await cp("../../templates/structured-source-starter", root, { recursive: true });
+  await cp(join(import.meta.dirname, "../template-files/structured-source-starter"), root, { recursive: true });
+  let commandStreamPath: string | undefined;
+  let readinessOutPath: string | undefined;
   const result = await playtestCommand(
     ["--project", ".", "--target", "desktop", "--entity", "player", "--press", "KeyW", "--frames", "30", "--expect-moved", "--json"],
     root,
+    {
+      bevyRunner: (invocation) => {
+        commandStreamPath = invocation.proofHarness?.commandStreamPath;
+        readinessOutPath = invocation.proofHarness?.readinessOutPath;
+        const process = new EventEmitter() as ChildProcess;
+        process.kill = () => true;
+        void (async () => {
+          assert.ok(readinessOutPath);
+          await mkdir(join(dirname(readinessOutPath), "native-recording"), { recursive: true });
+          await writeFile(join(dirname(readinessOutPath), "before.png"), "fake-native-before-png");
+          for (let index = 0; index < 5; index += 1) {
+            await writeFile(join(dirname(readinessOutPath), "native-recording", `frame-${String(index).padStart(3, "0")}.png`), `fake-native-recording-${index}`);
+          }
+          await writeFile(
+            readinessOutPath,
+            `${JSON.stringify({
+              diagnostics: [],
+              ok: true,
+              schema: "threenative.native-proof-readiness",
+              tick: 0,
+              transforms: [{ entity: "player", position: [0, 0, 0] }],
+              version: "0.1.0",
+            })}\n`,
+            "utf8",
+          );
+          await new Promise((resolve) => setTimeout(resolve, 35));
+          await writeFile(join(dirname(readinessOutPath), "after.png"), "fake-native-after-png");
+          await writeFile(
+            readinessOutPath,
+            `${JSON.stringify({
+              diagnostics: [],
+              ok: true,
+              schema: "threenative.native-proof-readiness",
+              tick: 30,
+              transforms: [{ entity: "player", position: [0, 0, -1] }],
+              version: "0.1.0",
+            })}\n`,
+            "utf8",
+          );
+          await new Promise((resolve) => setTimeout(resolve, 10));
+          process.emit("exit", 0, null);
+        })();
+        return process;
+      },
+    },
   );
-  const payload = JSON.parse(result.stdout) as { code: string; message: string; suggestion: string };
+  const payload = JSON.parse(result.stdout) as { artifacts: { observations: string; summary: string }; code: string; distance: number; runtime: string; target: string };
+  const commandStream = JSON.parse(await readFile(commandStreamPath ?? "", "utf8")) as { commands: Array<{ code?: string; pressed?: boolean; tick: number; type: string }> };
+  const summary = JSON.parse(await readFile(payload.artifacts.summary, "utf8")) as { diagnostics: unknown[]; movementDelta: number[]; nativeRecording: { frames: Array<{ byteSize: number; tick: number }> }; runtime: string; target: string };
+  const observations = JSON.parse(await readFile(payload.artifacts.observations, "utf8")) as { runtimeDiagnostics: { readiness: Array<{ tick: number }> } };
 
-  assert.equal(result.exitCode, 2);
-  assert.equal(payload.code, "TN_PLAYTEST_TARGET_UNSUPPORTED");
-  assert.match(payload.message, /desktop/);
-  assert.match(payload.suggestion, /native parity PRD/i);
+  assert.equal(result.exitCode, 0);
+  assert.equal(payload.code, "TN_PLAYTEST_OK");
+  assert.equal(payload.runtime, "bevy");
+  assert.equal(payload.target, "desktop");
+  assert.equal(payload.distance, 1);
+  assert.deepEqual(summary.movementDelta, [0, 0, -1]);
+  assert.deepEqual(summary.diagnostics, []);
+  assert.deepEqual(summary.nativeRecording.frames.map((frame) => frame.tick), [1, 8, 16, 24, 31]);
+  assert.equal(summary.nativeRecording.frames.every((frame) => frame.byteSize > 0), true);
+  assert.equal(summary.runtime, "bevy");
+  assert.equal(summary.target, "desktop");
+  assert.deepEqual(commandStream.commands.map((command) => ({ code: command.code, pressed: command.pressed, tick: command.tick, type: command.type })), [
+    { code: undefined, pressed: undefined, tick: 0, type: "screenshot" },
+    { code: undefined, pressed: undefined, tick: 1, type: "screenshot" },
+    { code: undefined, pressed: undefined, tick: 8, type: "screenshot" },
+    { code: undefined, pressed: undefined, tick: 16, type: "screenshot" },
+    { code: undefined, pressed: undefined, tick: 24, type: "screenshot" },
+    { code: undefined, pressed: undefined, tick: 31, type: "screenshot" },
+    { code: "KeyW", pressed: true, tick: 1, type: "key" },
+    { code: "KeyW", pressed: false, tick: 31, type: "key" },
+    { code: undefined, pressed: undefined, tick: 32, type: "screenshot" },
+    { code: undefined, pressed: undefined, tick: 66, type: "exit" },
+  ]);
+  assert.deepEqual(observations.runtimeDiagnostics.readiness.map((sample) => sample.tick), [0, 30]);
 });
 
 test("playtest command should discover source-backed candidates", async () => {

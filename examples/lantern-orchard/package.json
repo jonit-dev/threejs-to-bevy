@@ -6,6 +6,7 @@
     "build": "node ../../packages/cli/dist/index.js build",
     "dev:web": "node ../../packages/cli/dist/index.js dev --target web",
     "playtest": "tn playtest --scenario playtests/smoke-movement.playtest.json --stable-artifacts --json",
+    "playtest:native": "tn playtest --scenario playtests/native-smoke-movement.playtest.json --stable-artifacts --json",
     "game:score": "node ../../packages/cli/dist/index.js game score --project . --json",
     "game:qa": "node ../../packages/cli/dist/index.js game qa --project . --json",
     "game:release": "node ../../packages/cli/dist/index.js game release --project . --json",

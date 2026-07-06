@@ -14,6 +14,8 @@ export interface IPlaytestArtifactBundle {
   effectLog: string;
   manifest: string;
   network: string;
+  nativeRecording: string;
+  nativeRecordingDirectory: string;
   observations: string;
   runtimeTrace: string;
   summary: string;
@@ -51,6 +53,8 @@ export async function writePlaytestArtifactBundle(options: {
     effectLog: resolve(options.runDirectory, "effect-log.json"),
     manifest: resolve(options.runDirectory, "manifest.json"),
     network: resolve(options.runDirectory, "network.json"),
+    nativeRecording: resolve(options.runDirectory, "native-recording.json"),
+    nativeRecordingDirectory: resolve(options.runDirectory, "native-recording"),
     observations: resolve(options.runDirectory, "observations.json"),
     runtimeTrace: resolve(options.runDirectory, "runtime-trace.json"),
     summary: resolve(options.runDirectory, "summary.json"),
