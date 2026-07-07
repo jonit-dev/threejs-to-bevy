@@ -16,7 +16,7 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
   if (command === "aggregate") {
     return aggregateCommand(argv.slice(1));
   }
-  process.stderr.write("Usage: tn-agent-benchmark score --candidate <dir> --condition <vanilla|threenative> [--session <path>] [--out <path>] [--json]\n       tn-agent-benchmark aggregate --runs <dir-or-file> [--out <path>] [--json]\n");
+  process.stderr.write("Usage: tn-agent-benchmark score --candidate <dir> --condition <vanilla|threenative|typed-spec> [--session <path>] [--out <path>] [--json]\n       tn-agent-benchmark aggregate --runs <dir-or-file> [--out <path>] [--json]\n");
   return 1;
 }
 
@@ -27,8 +27,8 @@ async function scoreCommand(argv: readonly string[]): Promise<number> {
   const outArg = readFlag(argv, "--out");
   const url = readFlag(argv, "--url");
   const sessionArg = readFlag(argv, "--session");
-  if (candidateArg === undefined || (condition !== "vanilla" && condition !== "threenative")) {
-    return writeResult({ code: "TN_BENCH_USAGE", message: "Usage: score --candidate <dir> --condition <vanilla|threenative> [--session <path>] [--out <path>] [--url <url>] [--json]" }, json, 1);
+  if (candidateArg === undefined || (condition !== "vanilla" && condition !== "threenative" && condition !== "typed-spec")) {
+    return writeResult({ code: "TN_BENCH_USAGE", message: "Usage: score --candidate <dir> --condition <vanilla|threenative|typed-spec> [--session <path>] [--out <path>] [--url <url>] [--json]" }, json, 1);
   }
   const candidate = resolve(candidateArg);
   const outPath = resolve(outArg ?? join(candidate, "artifacts/agent-benchmark/run-report.json"));

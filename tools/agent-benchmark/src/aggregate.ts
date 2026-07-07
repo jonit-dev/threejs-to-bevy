@@ -46,6 +46,7 @@ export async function aggregateRunReports(paths: readonly string[]): Promise<IBe
       diagnostics.push(...validateProofResult(run.report.promptId, run.report.proof));
     }
     const threenativeRuns = runs.filter((run) => run.report.promptId === promptId && run.report.condition === "threenative" && run.report.ok && runProofOk(run.report));
+    const typedSpecRuns = runs.filter((run) => run.report.promptId === promptId && run.report.condition === "typed-spec" && run.report.ok && runProofOk(run.report));
     const vanillaRuns = runs.filter((run) => run.report.promptId === promptId && run.report.condition === "vanilla" && run.report.ok && runProofOk(run.report));
     const threenativeMedianTokens = metricMedian(threenativeRuns, (run) => run.session.tokenCount);
     const vanillaMedianTokens = metricMedian(vanillaRuns, (run) => run.session.tokenCount);
@@ -56,6 +57,17 @@ export async function aggregateRunReports(paths: readonly string[]): Promise<IBe
     const threenativeMedianFailedCommandCount = metricMedian(threenativeRuns, (run) => run.session.failedCommandCount);
     const threenativeMedianIdenticalAssertionRepeats = metricMedian(threenativeRuns, (run) => run.session.identicalAssertionRepeatCount);
     const threenativeMedianMaxSameDiagnostic = metricMedian(threenativeRuns, (run) => run.session.maxConsecutiveSameDiagnostic);
+    const typedSpecTrial = typedSpecTrialSummary({
+      threenativeMedianFailedCommandCount,
+      threenativeMedianIdenticalAssertionRepeats,
+      threenativeMedianMaxSameDiagnostic,
+      threenativeMedianTokens,
+      typedSpecMedianFailedCommandCount: metricMedian(typedSpecRuns, (run) => run.session.failedCommandCount),
+      typedSpecMedianIdenticalAssertionRepeats: metricMedian(typedSpecRuns, (run) => run.session.identicalAssertionRepeatCount),
+      typedSpecMedianMaxSameDiagnostic: metricMedian(typedSpecRuns, (run) => run.session.maxConsecutiveSameDiagnostic),
+      typedSpecMedianTokens: metricMedian(typedSpecRuns, (run) => run.session.tokenCount),
+      typedSpecRepeatCount: typedSpecRuns.length,
+    });
     const promptRuns = runs.filter((run) => run.report.promptId === promptId).map((run) => run.report);
     const behaviorMedian = {
       artifactForensicsCommandCount: behaviorMedianMetric(threenativeRuns, (behavior) => behavior.artifactForensicsCommandCount),
@@ -93,6 +105,7 @@ export async function aggregateRunReports(paths: readonly string[]): Promise<IBe
       promptClassification,
       proofBar: {
         requiredAssertions: requiredAssertionIds(promptId),
+        typedSpecPassed: typedSpecRuns.length > 0,
         threenativePassed: threenativeRuns.length > 0,
         vanillaPassed: vanillaRuns.length > 0,
       },
@@ -111,6 +124,7 @@ export async function aggregateRunReports(paths: readonly string[]): Promise<IBe
       threenativeMedianTokens,
       threenativeMedianToolOutputBytes: metricMedian(threenativeRuns, (run) => run.session.toolOutputBytes),
       threenativeMedianUncachedInputTokens: metricMedian(threenativeRuns, (run) => run.session.uncachedInputTokens),
+      typedSpecTrial,
       toolOutputMedian: {
         threenative: metricMedian(threenativeRuns, (run) => run.session.toolOutputBytes),
         vanilla: metricMedian(vanillaRuns, (run) => run.session.toolOutputBytes),
@@ -149,6 +163,7 @@ export async function aggregateRunReports(paths: readonly string[]): Promise<IBe
   );
   const hasErrorDiagnostics = diagnostics.some((diagnostic) => diagnostic.severity === "error");
   const status = comparable.length === 0 ? "insufficient-data" : failed.length === 0 && !hasErrorDiagnostics ? "pass" : "fail";
+  const typedSpecVerdict = typedSpecAggregateVerdict(promptSummaries);
   const summary = status === "insufficient-data"
     ? "No prompt has equal-proof successful run reports for both vanilla and ThreeNative."
     : status === "pass"
@@ -161,12 +176,82 @@ export async function aggregateRunReports(paths: readonly string[]): Promise<IBe
     runCount: runs.length,
     schema: "threenative.agent-benchmark-report",
     dialectConfusionFailureCount: dialectConfusionFailureCount(runs.map((run) => run.report)),
+    typedSpecVerdict,
     verdict: {
       status,
       summary,
       threshold: "equal-proof: continuity <=1.5x vanilla tokens; beyond-one-shot <=1.0x vanilla tokens; repeats >=3; failed commands ==0; retry chains <=1/0",
     },
     version: 2,
+  };
+}
+
+function typedSpecTrialSummary(options: {
+  threenativeMedianFailedCommandCount: number | null;
+  threenativeMedianIdenticalAssertionRepeats: number | null;
+  threenativeMedianMaxSameDiagnostic: number | null;
+  threenativeMedianTokens: number | null;
+  typedSpecMedianFailedCommandCount: number | null;
+  typedSpecMedianIdenticalAssertionRepeats: number | null;
+  typedSpecMedianMaxSameDiagnostic: number | null;
+  typedSpecMedianTokens: number | null;
+  typedSpecRepeatCount: number;
+}): IBenchmarkReport["promptSummaries"][number]["typedSpecTrial"] {
+  const rawTokenRatioToThreeNative = ratio(options.typedSpecMedianTokens, options.threenativeMedianTokens);
+  const withinTokenBudget = rawTokenRatioToThreeNative === null ? null : rawTokenRatioToThreeNative <= 1;
+  const withinFailedCommandBudget = options.typedSpecMedianFailedCommandCount === null ? null : options.typedSpecMedianFailedCommandCount <= FAILED_COMMAND_BUDGET;
+  const withinRetryChainBudget = options.typedSpecMedianIdenticalAssertionRepeats === null && options.typedSpecMedianMaxSameDiagnostic === null
+    ? null
+    : (options.typedSpecMedianIdenticalAssertionRepeats ?? 0) <= IDENTICAL_ASSERTION_REPEAT_BUDGET
+      && (options.typedSpecMedianMaxSameDiagnostic ?? 0) <= MAX_CONSECUTIVE_SAME_DIAGNOSTIC_BUDGET;
+  const withinRepeatBudget = options.typedSpecRepeatCount >= MIN_REPEATS_PER_CONDITION;
+  const hasComparableData = options.typedSpecMedianTokens !== null && options.threenativeMedianTokens !== null;
+  const status = !hasComparableData
+    ? "insufficient-data"
+    : withinRepeatBudget && withinTokenBudget === true && withinFailedCommandBudget !== false && withinRetryChainBudget !== false
+      ? "default-candidate"
+      : "experimental";
+  const summary = status === "insufficient-data"
+    ? "No equal-proof typed-spec and direct ThreeNative run reports are available for this prompt."
+    : status === "default-candidate"
+      ? "Typed-spec meets the default-candidate benchmark against direct ThreeNative for this prompt."
+      : "Typed-spec remains experimental for this prompt because repeats, token ratio, failed commands, or retry chains missed the benchmark.";
+
+  return {
+    failedCommandDelta: delta(options.typedSpecMedianFailedCommandCount, options.threenativeMedianFailedCommandCount),
+    identicalAssertionRepeatDelta: delta(options.typedSpecMedianIdenticalAssertionRepeats, options.threenativeMedianIdenticalAssertionRepeats),
+    maxSameDiagnosticDelta: delta(options.typedSpecMedianMaxSameDiagnostic, options.threenativeMedianMaxSameDiagnostic),
+    rawTokenRatioToThreeNative,
+    repeatCount: options.typedSpecRepeatCount,
+    status,
+    summary,
+    typedSpecMedianFailedCommandCount: options.typedSpecMedianFailedCommandCount,
+    typedSpecMedianIdenticalAssertionRepeats: options.typedSpecMedianIdenticalAssertionRepeats,
+    typedSpecMedianMaxSameDiagnostic: options.typedSpecMedianMaxSameDiagnostic,
+    typedSpecMedianTokens: options.typedSpecMedianTokens,
+    withinFailedCommandBudget,
+    withinRepeatBudget,
+    withinRetryChainBudget,
+    withinTokenBudget,
+  };
+}
+
+function typedSpecAggregateVerdict(promptSummaries: IBenchmarkReport["promptSummaries"]): IBenchmarkReport["typedSpecVerdict"] {
+  const comparable = promptSummaries.filter((summary) => summary.typedSpecTrial.status !== "insufficient-data");
+  const status = comparable.length === 0
+    ? "insufficient-data"
+    : comparable.every((summary) => summary.typedSpecTrial.status === "default-candidate")
+      ? "default-candidate"
+      : "experimental";
+  const summary = status === "insufficient-data"
+    ? "No prompt has equal-proof typed-spec and direct ThreeNative run reports."
+    : status === "default-candidate"
+      ? "Typed-spec meets the benchmark for becoming the default starter surface across comparable prompts."
+      : "Typed-spec remains experimental because at least one comparable prompt missed the benchmark.";
+  return {
+    status,
+    summary,
+    threshold: "typed-spec: equal proof repeats >=3; median tokens <= direct ThreeNative; failed commands ==0; retry chains <=1/0",
   };
 }
 
@@ -311,6 +396,13 @@ function ratio(left: number | null, right: number | null): number | null {
     return null;
   }
   return left / right;
+}
+
+function delta(left: number | null, right: number | null): number | null {
+  if (left === null || right === null) {
+    return null;
+  }
+  return left - right;
 }
 
 function median(values: number[]): number | null {

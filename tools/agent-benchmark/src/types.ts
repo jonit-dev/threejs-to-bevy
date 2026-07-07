@@ -1,6 +1,6 @@
 import { type IScreenshotCompositionMetrics } from "@threenative/cli/screenshotMetrics";
 
-export type BenchmarkCondition = "threenative" | "vanilla";
+export type BenchmarkCondition = "threenative" | "typed-spec" | "vanilla";
 export type BenchmarkPromptClass = "beyond-one-shot" | "continuity";
 export type BenchmarkStopReason = "claimed-playable" | "token-cap" | "operator-stopped" | "failed-setup";
 
@@ -119,6 +119,7 @@ export interface IBenchmarkReport {
     promptClassification: BenchmarkPromptClass | "unknown";
     proofBar: {
       requiredAssertions: string[];
+      typedSpecPassed: boolean;
       threenativePassed: boolean;
       vanillaPassed: boolean;
     };
@@ -137,6 +138,23 @@ export interface IBenchmarkReport {
     threenativeMedianTokens: number | null;
     threenativeMedianToolOutputBytes: number | null;
     threenativeMedianUncachedInputTokens: number | null;
+    typedSpecTrial: {
+      failedCommandDelta: number | null;
+      identicalAssertionRepeatDelta: number | null;
+      maxSameDiagnosticDelta: number | null;
+      rawTokenRatioToThreeNative: number | null;
+      repeatCount: number;
+      status: "default-candidate" | "experimental" | "insufficient-data";
+      summary: string;
+      typedSpecMedianFailedCommandCount: number | null;
+      typedSpecMedianIdenticalAssertionRepeats: number | null;
+      typedSpecMedianMaxSameDiagnostic: number | null;
+      typedSpecMedianTokens: number | null;
+      withinFailedCommandBudget: boolean | null;
+      withinRepeatBudget: boolean;
+      withinRetryChainBudget: boolean | null;
+      withinTokenBudget: boolean | null;
+    };
     toolOutputMedian: {
       threenative: number | null;
       vanilla: number | null;
@@ -166,6 +184,11 @@ export interface IBenchmarkReport {
   runCount: number;
   schema: "threenative.agent-benchmark-report";
   dialectConfusionFailureCount: number;
+  typedSpecVerdict: {
+    status: "default-candidate" | "experimental" | "insufficient-data";
+    summary: string;
+    threshold: "typed-spec: equal proof repeats >=3; median tokens <= direct ThreeNative; failed commands ==0; retry chains <=1/0";
+  };
   version: 2;
   verdict: {
     status: "pass" | "fail" | "insufficient-data";

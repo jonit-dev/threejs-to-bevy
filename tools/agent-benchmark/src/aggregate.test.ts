@@ -22,6 +22,41 @@ test("should compute equal-proof token medians", async () => {
   assert.equal(summary?.repeatCount.threenative, 3);
   assert.equal(summary?.repeatCount.vanilla, 3);
   assert.equal(summary?.rawTokenRatio, 1.4);
+  assert.equal(report.typedSpecVerdict.status, "insufficient-data");
+  assert.equal(summary?.typedSpecTrial.status, "insufficient-data");
+});
+
+test("should summarize typed spec trial against direct ThreeNative", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-agent-benchmark-typed-spec-"));
+  const paths = await writeRepeatedRunReports(root, { threenativeTokens: 1400, typedSpecTokens: 900, vanillaTokens: 1000 });
+  const report = await aggregateRunReports(paths);
+  const summary = report.promptSummaries[0];
+
+  assert.equal(report.verdict.status, "pass");
+  assert.equal(report.typedSpecVerdict.status, "default-candidate");
+  assert.equal(summary?.proofBar.typedSpecPassed, true);
+  assert.equal(summary?.typedSpecTrial.repeatCount, 3);
+  assert.equal(summary?.typedSpecTrial.rawTokenRatioToThreeNative, 900 / 1400);
+  assert.equal(summary?.typedSpecTrial.failedCommandDelta, 0);
+  assert.equal(summary?.typedSpecTrial.status, "default-candidate");
+  assert.equal(summary?.typedSpecTrial.withinTokenBudget, true);
+});
+
+test("should keep typed spec experimental when it misses trial budgets", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-agent-benchmark-typed-spec-fail-"));
+  const paths = await writeRepeatedRunReports(root, {
+    threenativeTokens: 1000,
+    typedSpecSession: { failedCommandCount: 1 },
+    typedSpecTokens: 1200,
+    vanillaTokens: 1000,
+  });
+  const report = await aggregateRunReports(paths);
+  const summary = report.promptSummaries[0];
+
+  assert.equal(report.typedSpecVerdict.status, "experimental");
+  assert.equal(summary?.typedSpecTrial.status, "experimental");
+  assert.equal(summary?.typedSpecTrial.withinTokenBudget, false);
+  assert.equal(summary?.typedSpecTrial.withinFailedCommandBudget, false);
 });
 
 test("should emit pivot verdict over equal-proof threshold", async () => {
@@ -146,6 +181,8 @@ async function writeRepeatedRunReports(root: string, options: {
   threenativeDiagnostics?: IBenchmarkRunReport["diagnostics"];
   threenativeSession?: Partial<IBenchmarkRunReport["session"]>;
   threenativeTokens: number;
+  typedSpecSession?: Partial<IBenchmarkRunReport["session"]>;
+  typedSpecTokens?: number;
   vanillaSession?: Partial<IBenchmarkRunReport["session"]>;
   vanillaTokens: number;
 }): Promise<string[]> {
@@ -166,11 +203,20 @@ async function writeRepeatedRunReports(root: string, options: {
       suffix: String(index),
     }), null, 2));
     paths.push(vanilla, threenative);
+    if (options.typedSpecTokens !== undefined) {
+      const typedSpec = join(root, `typed-spec-${index}.json`);
+      await writeFile(typedSpec, JSON.stringify(run("typed-spec", options.typedSpecTokens, {
+        promptId: options.promptId,
+        session: options.typedSpecSession,
+        suffix: String(index),
+      }), null, 2));
+      paths.push(typedSpec);
+    }
   }
   return paths;
 }
 
-function run(condition: "threenative" | "vanilla", tokenCount: number, options: {
+function run(condition: "threenative" | "typed-spec" | "vanilla", tokenCount: number, options: {
   diagnostics?: IBenchmarkRunReport["diagnostics"];
   promptId?: string;
   session?: Partial<IBenchmarkRunReport["session"]>;
@@ -206,7 +252,7 @@ function run(condition: "threenative" | "vanilla", tokenCount: number, options: 
       stopReason: "claimed-playable",
       tokenCount,
       toolOutputBytes: 4096,
-      toolStepCount: condition === "threenative" ? 13 : 4,
+      toolStepCount: condition === "vanilla" ? 4 : 13,
       uncachedInputTokens: tokenCount * 0.75,
       version: 2,
       ...options.session,

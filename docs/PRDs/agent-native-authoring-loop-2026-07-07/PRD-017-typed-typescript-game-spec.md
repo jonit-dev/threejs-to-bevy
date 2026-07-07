@@ -263,6 +263,12 @@ resource state, entity transforms, input IDs, and UI bindings.
 - [ ] Compare steps, failed commands, and retry chains against JSON source.
 - [ ] Decide whether typed spec becomes the default starter surface.
 
+**Implementation Note:** The agent benchmark contract now accepts a
+`typed-spec` condition and aggregate reports emit a separate `typedSpecVerdict`
+with per-prompt typed-spec-vs-direct-ThreeNative token, failed-command, and
+retry-chain metrics. This makes the focused trial executable without changing
+the existing vanilla-vs-ThreeNative round-5 verdict.
+
 **Tests Required:**
 
 | Test File | Test Name | Assertion |

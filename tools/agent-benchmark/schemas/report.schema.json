@@ -4,7 +4,7 @@
   "version": 2,
   "type": "object",
   "additionalProperties": false,
-  "required": ["schema", "version", "generatedAt", "runCount", "promptSummaries", "verdict", "diagnostics"],
+  "required": ["schema", "version", "generatedAt", "runCount", "promptSummaries", "verdict", "typedSpecVerdict", "diagnostics"],
   "properties": {
     "schema": { "const": "threenative.agent-benchmark-report" },
     "version": { "const": 2 },
@@ -27,7 +27,8 @@
           "withinRepeatBudget": { "type": "boolean" },
           "promptClassification": { "enum": ["continuity", "beyond-one-shot", "unknown"] },
           "repeatCount": { "type": "object" },
-          "proofBar": { "type": "object" }
+          "proofBar": { "type": "object" },
+          "typedSpecTrial": { "type": "object" }
         }
       }
     },
@@ -40,6 +41,16 @@
         "status": { "enum": ["pass", "fail", "insufficient-data"] },
         "summary": { "type": "string" },
         "threshold": { "const": "equal-proof: continuity <=1.5x vanilla tokens; beyond-one-shot <=1.0x vanilla tokens; repeats >=3; failed commands ==0; retry chains <=1/0" }
+      }
+    },
+    "typedSpecVerdict": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "summary", "threshold"],
+      "properties": {
+        "status": { "enum": ["default-candidate", "experimental", "insufficient-data"] },
+        "summary": { "type": "string" },
+        "threshold": { "const": "typed-spec: equal proof repeats >=3; median tokens <= direct ThreeNative; failed commands ==0; retry chains <=1/0" }
       }
     }
   }

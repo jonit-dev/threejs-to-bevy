@@ -10,7 +10,7 @@
     "version": { "const": 2 },
     "runId": { "type": "string", "minLength": 1 },
     "promptId": { "type": "string", "minLength": 1 },
-    "condition": { "enum": ["vanilla", "threenative"] },
+    "condition": { "enum": ["vanilla", "threenative", "typed-spec"] },
     "tokenCount": { "type": "number", "minimum": 0 },
     "inputTokens": { "type": "number", "minimum": 0 },
     "cachedInputTokens": { "type": "number", "minimum": 0 },

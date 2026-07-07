@@ -7,7 +7,7 @@ export interface ISchemaValidationResult {
   ok: boolean;
 }
 
-const conditions = new Set<BenchmarkCondition>(["threenative", "vanilla"]);
+const conditions = new Set<BenchmarkCondition>(["threenative", "typed-spec", "vanilla"]);
 const stopReasons = new Set(["claimed-playable", "token-cap", "operator-stopped", "failed-setup"]);
 
 export function validateSession(value: unknown): ISchemaValidationResult {

@@ -27,7 +27,10 @@ Current support:
   medians plus dialect-confusion failure counts. Round-5 aggregation now gates
   only equal-proof runs with prompt assertions, three repeats per condition,
   continuity `<= 1.5x` tokens, beyond-one-shot `<= 1.0x` tokens, and
-  failed-command/retry-chain budgets.
+  failed-command/retry-chain budgets. The benchmark scorer also accepts a
+  `typed-spec` condition and emits a separate typed-spec verdict comparing
+  typed source against direct ThreeNative without changing the vanilla
+  comparison gate.
 - The 2026-07-07 off-recipe benchmark keeps raw transcripts, sessions, scorer
   output, aggregate report, and agent behavior learnings under
   `tools/verify/artifacts/agent-benchmark/off-recipe-2026-07-07/`.

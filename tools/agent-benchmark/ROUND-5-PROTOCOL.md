@@ -1,7 +1,9 @@
 # Round 5 Equal-Proof Benchmark Protocol
 
 Round 5 compares vanilla Three.js and ThreeNative only after both conditions
-prove the same prompt mechanics.
+prove the same prompt mechanics. Typed-spec trial runs may be added as a third
+condition for the PRD-017 default-surface decision; they do not change the
+vanilla-vs-ThreeNative round-5 verdict.
 
 ## Prompt Set
 
@@ -26,6 +28,9 @@ The executable contract lives in
 - Retry-chain medians: same diagnostic `<= 1`; identical failed assertions
   `== 0`.
 - Tool-step median: `<= 30`.
+- Typed-spec trial threshold: typed-spec proof-passing repeats `>= 3`, median
+  raw tokens `<=` direct ThreeNative, failed-command median `0`, and
+  retry-chain medians within the same `<= 1` / `== 0` budget.
 
 ## Decision Rule
 
@@ -34,6 +39,9 @@ The executable contract lives in
   architecture decisions.
 - `fail` because equal-proof token or retry budgets exceed thresholds: use the
   result as input to the typed-spec or vanilla-lift decision PRDs.
+- `typedSpecVerdict.default-candidate`: typed-spec can become the starter
+  default only after comparable typed-spec runs satisfy the separate typed-spec
+  trial threshold across the focused prompt set.
 
 Raw tokens, cached/uncached tokens, cost-weighted tokens, tool-output bytes,
 behavior counters, and dialect-confusion counts remain supporting diagnostics.

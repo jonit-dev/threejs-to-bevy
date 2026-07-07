@@ -48,6 +48,16 @@ test("should accept version 2 session token breakdown", () => {
   assert.deepEqual(result.diagnostics, []);
 });
 
+test("should accept typed spec benchmark condition", () => {
+  const result = validateSession({
+    ...validSession(),
+    condition: "typed-spec",
+  });
+
+  assert.equal(result.ok, true);
+  assert.deepEqual(result.diagnostics, []);
+});
+
 test("should accept equal-proof aggregate threshold", () => {
   const result = validateAggregateReport({
     diagnostics: [],
@@ -56,6 +66,11 @@ test("should accept equal-proof aggregate threshold", () => {
     promptSummaries: [],
     runCount: 0,
     schema: "threenative.agent-benchmark-report",
+    typedSpecVerdict: {
+      status: "insufficient-data",
+      summary: "No prompt has equal-proof typed-spec and direct ThreeNative run reports.",
+      threshold: "typed-spec: equal proof repeats >=3; median tokens <= direct ThreeNative; failed commands ==0; retry chains <=1/0",
+    },
     verdict: {
       status: "insufficient-data",
       summary: "No prompt has equal-proof successful run reports for both vanilla and ThreeNative.",
