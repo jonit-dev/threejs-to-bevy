@@ -13,6 +13,10 @@ Current support:
   `tn iterate --json` output <= 2 KB. The current deterministic replay set
   covers all archetype scaffolds plus the `top-down-collector` and
   `lane-runner` `tn game plan --apply` paths that are supported today.
+- `pnpm verify:webview-package` packages the
+  `ui-persistence-settings-facades` conformance bundle through the desktop-web
+  path and records raw package, size, startup, input, settings, and save-slot
+  evidence under `tools/verify/artifacts/webview-package/`.
 - `pnpm verify:template-production` checks iterate-first starter guidance,
   compact-report guidance, and generated API-card parity.
 - Agent benchmark reports are version 2 token-cost artifacts with raw, cached,
@@ -31,6 +35,7 @@ Verification:
 
 - `pnpm verify:agent-io`
 - `pnpm verify:session-cost`
+- `pnpm verify:webview-package`
 - `pnpm check:docs`
 - `pnpm verify:smoke`
 - `pnpm verify:release`

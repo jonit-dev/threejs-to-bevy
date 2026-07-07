@@ -58,6 +58,10 @@ export async function checkDocs(root: string): Promise<DocsCheckResult> {
     [statusPath, status, "cleanup-versioned-debt.md", "docs/STATUS.md must link the versioned-debt cleanup PRD."],
     [statusPath, status, "legacy milestone", "docs/STATUS.md must state that version labels are legacy milestone names."],
     [statusPath, status, "verify:release", "docs/STATUS.md must name the current release gate script."],
+    [statusPath, status, "parity freeze", "docs/STATUS.md must state the native parity freeze policy."],
+    [statusPath, status, "runtime/native-path.md", "docs/STATUS.md must link the native path decision."],
+    [statusPath, status, "verify:webview-package", "docs/STATUS.md must reference the desktop-web package measurement gate."],
+    [readmePath, readme, "runtime/native-path.md", "docs/README.md must link the native path decision."],
     [readmePath, readme, "verify:release", "docs/README.md must reference the current release gate script."],
   ] as const) {
     if (content && !content.includes(phrase)) {

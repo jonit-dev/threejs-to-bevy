@@ -213,6 +213,24 @@ sequenceDiagram
 - Manual checkpoint after phases 1 and 3 because native artifacts/packages need
   direct inspection.
 
+## 5A. Progress Log
+
+2026-07-07 slice:
+
+- Added the parity freeze policy to `docs/STATUS.md`,
+  `docs/bevy-feature-parity.md`, and native/tooling capability docs.
+- Recorded the native path decision in `docs/runtime/native-path.md`.
+- Added `pnpm verify:webview-package`, which packages
+  `packages/ir/fixtures/conformance/ui-persistence-settings-facades/game.bundle`
+  through `tn package --runtime webview --format installer`.
+- Raw local evidence is written under
+  `tools/verify/artifacts/webview-package/`, including
+  `verification-report.json`, `package-output/desktop-web/package.report.json`,
+  `package-output/desktop-web/webview.inspection.json`, and the generated
+  archive/installer.
+- Remaining before moving this PRD to done: close the native proof P0 and do
+  the manual packaged-app launch inspection called out in phases 1 and 3.
+
 ## 6. Verification Strategy
 
 - Native proof harness.
@@ -227,4 +245,3 @@ sequenceDiagram
 - [ ] One webview-packaged example is measured for size/startup/input/save.
 - [ ] Native path decision is recorded and linked.
 - [ ] Future Bevy promotion requires shipped-game need evidence.
-

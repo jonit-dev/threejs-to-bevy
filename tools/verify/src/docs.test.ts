@@ -82,6 +82,22 @@ test("should pass compact STATUS", async () => {
   assert.equal(result.diagnostics.some((diagnostic) => diagnostic.code === "TN_DOCS_STATUS_LINE_BUDGET_EXCEEDED"), false);
 });
 
+test("should require native parity freeze front-door links", async () => {
+  const root = await makeDocsRepo();
+  await writeFile(
+    join(root, "docs/STATUS.md"),
+    "# Status\n\nlegacy milestone names remain.\n\n[cleanup PRD](PRDs/archive/cleanup-versioned-debt.md)\n\n`pnpm verify:release`\n\n`verify:scripting-helpers-lifecycle`\n\n[authoring](status/capabilities/authoring.md)\n",
+  );
+
+  const result = await checkDocs(root);
+
+  assert.equal(result.ok, false);
+  assert.equal(
+    result.diagnostics.some((diagnostic) => diagnostic.code === "TN_DOCS_FRONT_DOOR_PHRASE_MISSING" && diagnostic.message.includes("native parity freeze")),
+    true,
+  );
+});
+
 test("should fail when a capability doc is orphaned", async () => {
   const root = await makeDocsRepo();
   await writeFile(join(root, "docs/status/capabilities/orphan.md"), "# Orphan\n");
@@ -141,6 +157,8 @@ async function makeDocsRepo() {
 
 [cleanup PRD](PRDs/archive/cleanup-versioned-debt.md)
 
+Native [path decision](runtime/native-path.md).
+
 Run \`pnpm verify:release\`.
 
 - [Architecture](architecture/README.md)
@@ -153,7 +171,7 @@ Run \`pnpm verify:release\`.
   );
   await writeFile(
     join(root, "docs/STATUS.md"),
-    "# Status\n\nlegacy milestone names remain.\n\n[cleanup PRD](PRDs/archive/cleanup-versioned-debt.md)\n\n`pnpm verify:release`\n\n`verify:scripting-helpers-lifecycle`\n\n[authoring](status/capabilities/authoring.md)\n",
+    "# Status\n\nlegacy milestone names remain.\n\nNative parity freeze policy: require shipped-game evidence before promoting more Bevy work. See [native path](runtime/native-path.md).\n\n[cleanup PRD](PRDs/archive/cleanup-versioned-debt.md)\n\n`pnpm verify:release`\n\n`verify:scripting-helpers-lifecycle`\n\n`verify:webview-package`\n\n[authoring](status/capabilities/authoring.md)\n",
   );
   await writeFile(
     join(root, "docs/contracts/scripting.md"),
@@ -187,6 +205,7 @@ Run \`pnpm verify:release\`.
         "verify:focused": "node tools/verify/dist/cli/run.js",
         "verify:release": "node tools/verify/dist/cli/release.js",
         "verify:scripting-helpers-lifecycle": "node tools/verify/dist/cli/run.js verify:scripting-helpers-lifecycle",
+        "verify:webview-package": "node tools/verify/dist/cli/run.js verify:webview-package",
       },
     }),
   );

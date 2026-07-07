@@ -14,6 +14,11 @@ runtime those capabilities run on. Features should be promoted only when the
 portable SDK/IR contract works across the web Three.js runtime and the native
 Bevy runtime where support is claimed.
 
+Native parity freeze policy: new Bevy/native promotions are frozen unless a
+shipped-game need is documented with web evidence, native proof evidence, and a
+focused gate. The current native path decision is recorded in
+[docs/runtime/native-path.md](runtime/native-path.md).
+
 Version labels such as `V7`, `V8`, and `V9` are legacy milestone names retained
 in scripts, examples, and historical docs during a staged cleanup. See
 [PRDs/archive/cleanup-versioned-debt.md](PRDs/archive/cleanup-versioned-debt.md).
@@ -28,7 +33,7 @@ in scripts, examples, and historical docs during a staged cleanup. See
 | Physics | Active | Portable physics and character-control contracts exist for authored components and playtest-proved behavior. | [physics](status/capabilities/physics.md) |
 | UI | Active | Retained structured UI is the portable path; overlays are bounded and separate. | [ui](status/capabilities/ui.md) |
 | Assets | Active | Bundle-local assets, GLB/glTF, generated meshes, materials, audio, and catalog sourcing are validated. | [assets](status/capabilities/assets.md) |
-| Native parity | Active | Bevy consumes emitted IR and claims require native proof harness or desktop playtest evidence. | [native parity](status/capabilities/native-parity.md) |
+| Native parity | Frozen for promotion | Bevy consumes emitted IR; new native promotions require shipped-game evidence, native proof, and the native path decision. | [native parity](status/capabilities/native-parity.md) |
 | Game production | Active | Generated games target polished vertical slices with selectable L1 archetype scaffolds and compositional mechanic blocks; recipe-matched scaffold-first benchmarks pass, but the 2026-07-07 off-recipe authoring round fails the <=2x token gate. | [game production](status/capabilities/game-production.md) |
 | Editor | In progress | Editor and MCP surfaces must wrap authoring operations rather than owning a second source model. | [editor](status/capabilities/editor.md) |
 | Tooling/proof | Active | Verification tools own docs checks, agent IO/session-cost budgets, smoke/release gates, proof manifests, and aggregate artifacts. | [tooling/proof](status/capabilities/tooling-proof.md) |
@@ -52,7 +57,7 @@ pnpm verify:generated-games
 pnpm verify:release
 ```
 
-Focused capability gates include `pnpm verify:agent-io`, `pnpm verify:session-cost`, `pnpm verify:cookbook`,
+Focused capability gates include `pnpm verify:agent-io`, `pnpm verify:session-cost`, `pnpm verify:webview-package`, `pnpm verify:cookbook`,
 `pnpm verify:template-production`, `pnpm verify:conformance`,
 `pnpm verify:scripting-helpers-lifecycle`, and `pnpm verify:parity:smoke`.
 

@@ -15,6 +15,16 @@
 | ❌     | Not implemented in this repo.                                                 |
 | ⏭️     | Intentionally deferred or never portable.                                     |
 
+## Native Promotion Freeze
+
+New Bevy/native promotions are frozen unless a shipped-game need requires the
+work and the PRD includes web evidence, native proof evidence, and a focused
+gate. Use the desktop-web package path for practical demo/prototype
+distribution when exact current Three.js behavior matters more than native
+renderer promotion. The decision record is
+[runtime/native-path.md](runtime/native-path.md), and the desktop-web package
+measurement gate is `pnpm verify:webview-package`.
+
 ## Bevy Feature Checklist
 
 This checklist is a Bevy-derived backlog for the portable ThreeNative contract.
@@ -986,7 +996,7 @@ diagnostics until portable promotion criteria and web/Bevy evidence exist.
 - [x] `P2` UI drag-and-drop node interactions distinct from world picking drag events as a diagnostic-only boundary
 - [x] `P2` Custom UI material/shader declarations as diagnostic-only until bounded presets exist
 - [x] `P2` Broad gamepad/touch UI coverage through focused interaction fixture evidence
-- [x] `P2` Broad manually inspected desktop webview packaging artifact
+- [x] `P2` Desktop-web packaging artifact measured by `pnpm verify:webview-package`
 
 ### 🪟 Window and Platform Runtime
 

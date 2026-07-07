@@ -81,6 +81,21 @@ export const FOCUSED_GATES: Record<string, FocusedGate> = {
       protects: "Agent token budget, zero-repair scaffold paths, compact iterate summaries, and CI-visible session cost ratchets.",
     },
   },
+  "verify:webview-package": {
+    commands: [
+      ["pnpm", "--filter", "@threenative/runtime-web-three", "build"],
+      ["pnpm", "--filter", "@threenative/cli", "build"],
+      ["pnpm", "--filter", "@threenative/verify-tools", "build"],
+      ["node", "tools/verify/dist/webviewPackageGate.js"],
+    ],
+    description: "Desktop-web package measurement gate.",
+    metadata: {
+      owner: "tools/verify webview package gate",
+      profile: "focused",
+      reason: "Packages a real web/desktop conformance bundle through the desktop-web runtime and records size, startup, input, settings, and save-slot evidence.",
+      protects: "Native path decision evidence, webview fallback package artifact quality, and the parity-freeze boundary around Bevy promotion claims.",
+    },
+  },
   "verify:bundle-safety-hardening": {
     commands: [
       ["pnpm", "--filter", "@threenative/ir", "build"],

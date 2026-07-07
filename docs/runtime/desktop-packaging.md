@@ -67,6 +67,13 @@ Use this when you need:
 
 Do not treat this as a full Tauri/Wry app yet. Current `webview` packaging is a lightweight local-server launcher, not a signed embedded WebView binary. Future work can replace the launcher with a true Wry/Tauri shell while keeping the same `--runtime webview` CLI surface.
 
+The focused measurement gate is `pnpm verify:webview-package`. It packages the
+`ui-persistence-settings-facades` conformance bundle and writes raw evidence to
+`tools/verify/artifacts/webview-package/verification-report.json`, including
+package size, app size, archive size, startup inspection checks, retained UI
+input metadata, settings metadata, save-slot metadata, and measured launcher
+startup time.
+
 ## Formats
 
 All desktop runtimes support:
