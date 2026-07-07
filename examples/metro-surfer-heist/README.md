@@ -1,49 +1,53 @@
-# Structured Source Starter
+# Metro Surfer Heist
 
-This starter proves the editor-owned game data can live under `content/` while
-TypeScript stays thin.
+Metro Surfer Heist is a web-first ThreeNative vertical slice: a three-lane
+metro runner where the player switches lanes, jumps red barriers, ducks low
+gates, collects coins, avoids trains, and retries quickly after a crash.
 
-- Edit scene, UI, material, asset, input, system, and prefab data in
-  `content/**/*.json`.
-- Edit behavior in `src/scripts/**/*.ts`.
-- Use `tn ... --json`, recipes, or `@threenative/authoring-client` scripts as
-  source-mutation clients; they should write structured source, not generated
-  bundle files.
-- `threenative.config.json` builds from `content/scenes/arena.scene.json`, so
-  there is no TypeScript scene blob to reverse-patch.
-- `dist/**`, emitted IR JSON, and `scripts.bundle.js` are generated output.
-- AI coding agents should read `AGENTS.md` or `CLAUDE.md` and prefer
-  `tn ... --json` commands for deterministic source edits.
-- Default generated games should ship with smooth movement and a deliberate
-  visual baseline, not primitive-only placeholders. Use custom meshes, imported
-  assets, authored materials, lighting, landmarks, screenshot proof, motion
-  proof, and playtest proof before treating a generated game as complete.
+## Play
 
-Useful commands:
+Controls:
+
+| Action | Keys |
+| --- | --- |
+| Move left | `A`, `ArrowLeft` |
+| Move right | `D`, `ArrowRight` |
+| Jump | `W`, `ArrowUp`, `Space` |
+| Duck | `S`, `ArrowDown` |
+| Retry | `R`, `Enter` |
+
+Objective: collect 12 coins and run 260 meters without crashing.
+
+## Source
+
+- Durable data: `content/**/*.json`.
+- Durable behavior: `src/scripts/player.ts`.
+- Generated output: `dist/**`, emitted bundle JSON, and `scripts.bundle.js`.
+- Production metadata: `threenative.config.json`.
+
+## Useful Commands
+
+From the repo root:
 
 ```bash
-pnpm run validate:authoring
-pnpm run build
-pnpm run game:plan
-pnpm run game:improve
-pnpm run recipe:controller
-pnpm run playtest
-pnpm run game:score
-pnpm run game:qa
-pnpm run game:release
-tn ui set-layout hud countdown --justify center --align center --top 48 --width 1280 --project . --json
+node packages/cli/dist/index.js authoring validate --project examples/metro-surfer-heist --json
+node packages/cli/dist/index.js build --project examples/metro-surfer-heist --json
+node packages/cli/dist/index.js playtest --project examples/metro-surfer-heist --scenario playtests/smoke-movement.playtest.json --stable-artifacts --json
+node packages/cli/dist/index.js game qa --project examples/metro-surfer-heist --run-proof --entity runner --press KeyD --expect-axis x --json
+node packages/cli/dist/index.js game release --project examples/metro-surfer-heist --json
 ```
 
-Production metadata in `threenative.config.json` declares the starter's
-playable loop, controls, objective, retry policy, and proof commands. Use
-`tn game plan --goal "<game idea>" --json` before mutating source. The plan is
-the production checklist: gameplay loop, controls, objective, asset inventory,
-script modules/exports, owned state, polish pass, fallback choices, and proof
-commands. For GLB/glTF models, start from the SQLite-backed CLI asset library:
-`tn asset source search --game-category <category> --format glb --direct-only --json`,
-then `tn asset source get <asset-source-id> --json` for selected records. Then use
-`tn game improve --apply-plan artifacts/game-production/plan.json --json`,
-`tn game score --project . --json`, `tn game qa --project . --run-proof --json`,
-and `tn game release --project . --json` to collect structured phase ledgers,
-scorecards, UI-state coverage, asset/audio provenance, proof artifacts, and
-release blockers.
+## Release Evidence
+
+- Production plan: `artifacts/game-production/plan.json`.
+- QA report: `artifacts/game-production/qa-report.json`.
+- Release report: `artifacts/game-production/release-report.json`.
+- Screenshot: `artifacts/game-production/screenshot.png`.
+- Motion proof: `artifacts/game-production/motion.webm`.
+- Visual-quality sidecar: `artifacts/game-production/visual-quality.json`.
+- Release notes: `RELEASE.md`.
+- Friction report: `FRICTION.md`.
+- Credits and provenance: `CREDITS.md`.
+
+Current limitation: the game is release-ready locally, but there is no external
+public hosting URL recorded in this repo. See `FRICTION.md`.

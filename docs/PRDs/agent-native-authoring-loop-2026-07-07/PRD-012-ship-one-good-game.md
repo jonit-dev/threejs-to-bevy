@@ -264,3 +264,40 @@ sequenceDiagram
 - [ ] Friction log maps production issues to follow-up PRDs or non-goals.
 - [ ] No unsupported API is added only to serve the game without evidence.
 
+## 8. Progress Log
+
+### 2026-07-07
+
+Metro Surfer Heist was selected as the PRD-012 release candidate because it has
+real GLB hero, obstacle, reward, and environment assets plus existing
+game-production evidence.
+
+Completed local release-readiness docs:
+
+- `examples/metro-surfer-heist/README.md`
+- `examples/metro-surfer-heist/PLAN.md`
+- `examples/metro-surfer-heist/CREDITS.md`
+- `examples/metro-surfer-heist/FRICTION.md`
+- `examples/metro-surfer-heist/RELEASE.md`
+
+Verified through the repo-root CLI:
+
+- `node packages/cli/dist/index.js build --project examples/metro-surfer-heist --json`
+  passed with `TN_BUILD_OK`.
+- `node packages/cli/dist/index.js playtest --project examples/metro-surfer-heist --scenario playtests/smoke-movement.playtest.json --stable-artifacts --json`
+  passed with `TN_PLAYTEST_OK`; raw evidence is under
+  `examples/metro-surfer-heist/artifacts/playtest/smoke-movement/latest/`.
+- `node packages/cli/dist/index.js game qa --project examples/metro-surfer-heist --run-proof --entity runner --press KeyD --expect-axis x --json`
+  passed with zero blockers, zero diagnostics, and all seven phase ledgers
+  passing; raw report is
+  `examples/metro-surfer-heist/artifacts/game-production/qa-report.json`.
+- `node packages/cli/dist/index.js game release --project examples/metro-surfer-heist --json`
+  passed with zero release risks; raw report is
+  `examples/metro-surfer-heist/artifacts/game-production/release-report.json`.
+
+Known blockers before this PRD can move to done:
+
+- No external public hosting URL or deploy workflow is configured for the game.
+- No five-minute human playtest transcript is recorded.
+- Existing committed playtest coverage proves movement and production gates;
+  explicit progression and fail/retry scenario files are still absent.
