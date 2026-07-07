@@ -49,7 +49,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Install browser dependencies
-        run: pnpm exec playwright install --with-deps chromium
+        run: pnpm --filter @threenative/cli exec playwright install --with-deps chromium
 
       - name: Build workspace packages
         run: pnpm build
