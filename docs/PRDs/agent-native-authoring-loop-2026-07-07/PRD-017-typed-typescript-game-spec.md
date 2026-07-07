@@ -220,14 +220,19 @@ point back to `src/game.spec.ts` instead of generated `content/**/*.json`.
 **Implementation:**
 
 - [x] Add typed spec as an opt-in starter mode or experimental flag.
-- [ ] Add cookbook entries for resource state, entity transforms, input IDs,
+- [x] Add cookbook entries for resource state, entity transforms, input IDs,
   and UI bindings.
-- [ ] Run cookbook verification.
+- [x] Run cookbook verification.
 
 **Implementation Note:** `tn create --authoring typed-spec` now scaffolds
 `src/game.spec.ts`, runs the typed-spec compiler once to emit canonical
 `content/**/*.json`, and rewrites starter scripts so validate/build regenerate
 structured source before using the normal compiler path.
+
+**Implementation Note:** The cookbook gate supports `authoring: typed-spec`
+entries that write `src/game.spec.ts`, compile it, then run the normal
+authoring validation and build checks. Typed-spec cookbook entries now cover
+resource state, entity transforms, input IDs, and UI bindings.
 
 **Tests Required:**
 
@@ -285,8 +290,8 @@ structured source before using the normal compiler path.
 
 ## 7. Acceptance Criteria
 
-- [ ] A typed spec can represent the round-4 failure classes.
-- [ ] Invalid entity/resource/input IDs fail at TypeScript compile time.
-- [ ] Typed spec emits canonical structured source and existing IR bundles.
-- [ ] Starter/cookbook guidance is verified.
+- [x] A typed spec can represent the round-4 failure classes.
+- [x] Invalid entity/resource/input IDs fail at TypeScript compile time.
+- [x] Typed spec emits canonical structured source and existing IR bundles.
+- [x] Starter/cookbook guidance is verified.
 - [ ] Benchmark trial decides whether typed spec becomes default.

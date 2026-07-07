@@ -27,6 +27,7 @@ export interface ICookbookGateReport {
 }
 
 interface IParsedCookbookEntry {
+  authoring?: "typed-spec";
   commands: string[];
   id: string;
   script: string;
@@ -89,6 +90,18 @@ async function verifyEntry(options: { entry: IParsedCookbookEntry; root: string;
       await mkdir(resolve(outPath, ".."), { recursive: true });
       await writeFile(outPath, `${options.entry.script.trim()}\n`, "utf8");
     }
+    if (options.entry.authoring === "typed-spec") {
+      const result = runTnCommand("tn authoring compile-typed-spec --project . --json", options.root, projectPath);
+      commands.push(result);
+      if (result.exitCode !== 0) {
+        diagnostics.push({
+          code: "TN_COOKBOOK_GATE_TYPED_SPEC_FAILED",
+          message: `Entry '${options.entry.id}' failed typed spec compilation.`,
+          severity: "error",
+        });
+        return { commands, diagnostics, entryId: options.entry.id, ok: false };
+      }
+    }
     for (const command of ["tn authoring validate --project . --json", "tn build --project . --json"]) {
       const result = runTnCommand(command, options.root, projectPath);
       commands.push(result);
@@ -129,10 +142,12 @@ function runTnCommand(command: string, root: string, cwd: string): ICookbookGate
 
 function parseEntry(source: string, file: string): IParsedCookbookEntry | undefined {
   const id = /^id:\s*(.+)$/m.exec(source)?.[1]?.trim();
+  const authoringValue = /^authoring:\s*(.+)$/m.exec(source)?.[1]?.trim();
   const scriptPath = /^scriptPath:\s*(.+)$/m.exec(source)?.[1]?.trim();
   const commands = section(source, "commands")?.split(/\r?\n/).map((line) => line.trim()).filter((line) => line !== "" && !line.startsWith("#"));
   const script = section(source, "script") ?? "";
-  return id === undefined || commands === undefined ? undefined : { commands, id, script, scriptPath };
+  const authoring = authoringValue === "typed-spec" ? authoringValue : undefined;
+  return id === undefined || commands === undefined ? undefined : { authoring, commands, id, script, scriptPath };
 }
 
 function section(source: string, name: string): string | undefined {
