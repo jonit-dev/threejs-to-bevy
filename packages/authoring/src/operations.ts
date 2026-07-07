@@ -4004,7 +4004,12 @@ function validateRenderLayersComponent(diagnostics: IAuthoringDiagnostic[], file
 
 function validateRigidBodyComponent(diagnostics: IAuthoringDiagnostic[], file: string, path: string, value: Record<string, unknown>): void {
   diagnostics.push(...unknownKeyDiagnostics(file, path, value, rigidBodyComponentKeys));
-  validateEnumString(diagnostics, file, `${path}/kind`, value.kind, supportedRigidBodyKinds, "rigid body kind", "Use 'dynamic', 'kinematic', or 'static'.");
+  validateEnumString(diagnostics, file, `${path}/kind`, value.kind, supportedRigidBodyKinds, "rigid body kind", "Use 'dynamic', 'kinematic', or 'static'. Use 'static' for immovable fixed objects.", {
+    allowed: ["dynamic", "kinematic", "static"],
+    docs: "docs/contracts/ir.md",
+    instruction: "Replace RigidBody.kind with 'dynamic', 'kinematic', or 'static'. If you wrote 'fixed', use 'static'.",
+    snippet: "{ \"RigidBody\": { \"kind\": \"static\" } }",
+  });
   if (value.angularVelocity !== undefined && !isVector3(value.angularVelocity)) {
     diagnostics.push(typeDiagnostic(file, `${path}/angularVelocity`, "rigid body angularVelocity must be a three-number vector.", value.angularVelocity));
   }
@@ -4103,6 +4108,7 @@ function validateEnumString(
   allowed: ReadonlySet<string>,
   label: string,
   suggestion: string,
+  fix?: IAuthoringDiagnostic["fix"],
 ): void {
   const text = readString(value);
   if (text === undefined || !allowed.has(text)) {
@@ -4114,6 +4120,7 @@ function validateEnumString(
         path,
         value,
         suggestion,
+        ...(fix === undefined ? {} : { fix }),
       }),
     );
   }

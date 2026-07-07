@@ -187,6 +187,7 @@ test("validateScene reports typed component diagnostics", async () => {
     assert.equal(result.diagnostics.some((diagnostic) => diagnostic.path === "/entities/0/components/Light/intensity" && diagnostic.code === "TN_AUTHORING_SHAPE_INVALID"), true);
     assert.equal(result.diagnostics.some((diagnostic) => diagnostic.path === "/entities/0/components/RenderLayers/layers" && diagnostic.code === "TN_AUTHORING_SHAPE_INVALID"), true);
     assert.equal(result.diagnostics.some((diagnostic) => diagnostic.path === "/entities/0/components/RigidBody/kind" && diagnostic.code === "TN_AUTHORING_COMPONENT_VALUE_INVALID"), true);
+    assert.equal(result.diagnostics.some((diagnostic) => diagnostic.path === "/entities/0/components/RigidBody/kind" && diagnostic.fix?.snippet === "{ \"RigidBody\": { \"kind\": \"static\" } }"), true);
     assert.equal(result.diagnostics.some((diagnostic) => diagnostic.path === "/entities/0/components/Collider/size" && diagnostic.code === "TN_AUTHORING_SHAPE_INVALID"), true);
     assert.equal(result.diagnostics.some((diagnostic) => diagnostic.path === "/entities/0/components/CharacterController/grounding" && diagnostic.code === "TN_AUTHORING_COMPONENT_VALUE_INVALID"), true);
     assert.equal(result.diagnostics.some((diagnostic) => diagnostic.path === "/entities/0/components/Visibility/visible" && diagnostic.code === "TN_AUTHORING_SHAPE_INVALID"), true);

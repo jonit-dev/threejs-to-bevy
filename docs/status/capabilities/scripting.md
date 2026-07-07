@@ -19,6 +19,8 @@ Current support:
 - Compiler diagnostics reject unsupported imports, mutable module state,
   module-local helpers that cannot be emitted, legacy idioms, and undeclared
   access.
+- Bundle validation diagnostics for missing component/resource schemas include
+  copyable schema snippets and survive `tn build --json` wrapping.
 - The non-blocking `TN_SCRIPT_UNTYPED_CONTEXT` info diagnostic points old
   `type ScriptContext = any` scripts at the typed stdlib import.
 - Prescriptive `fix` snippets cover unsupported imports and module-local
@@ -26,6 +28,8 @@ Current support:
 
 Verification:
 
+- `tools/agent-benchmark/DIAGNOSTIC-FAILURE-AUDIT-2026-07-07.md`
+  ranks observed failed commands and repair actions.
 - `pnpm --filter @threenative/compiler test`
 - `pnpm verify:scripting-helpers-lifecycle`
 - `pnpm verify:conformance`

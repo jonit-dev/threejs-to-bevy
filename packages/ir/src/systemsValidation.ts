@@ -5,6 +5,38 @@ import { PROMOTED_SCRIPT_SERVICES } from "./scriptingHost.js";
 import { isBuiltInComponent, isBuiltInResource } from "./schemaValidation.js";
 import { isRecord } from "./validationPrimitives.js";
 
+function componentSchemaFix(component: string): NonNullable<IIrDiagnostic["fix"]> {
+  return {
+    docs: "docs/contracts/ir.md",
+    instruction: `Declare component '${component}' in component schemas before listing it in reads, writes, queries, or commands. If '${component}' is global game state, move it to resourceReads/resourceWrites and declare a resource schema instead.`,
+    snippet: JSON.stringify({
+      schema: "threenative.component-schemas",
+      version: "0.1.0",
+      schemas: {
+        [component]: {
+          fields: {},
+        },
+      },
+    }, null, 2),
+  };
+}
+
+function resourceSchemaFix(resource: string): NonNullable<IIrDiagnostic["fix"]> {
+  return {
+    docs: "docs/contracts/ir.md",
+    instruction: `Declare resource '${resource}' in resource schemas before listing it in resourceReads or resourceWrites.`,
+    snippet: JSON.stringify({
+      schema: "threenative.resource-schemas",
+      version: "0.1.0",
+      schemas: {
+        [resource]: {
+          fields: {},
+        },
+      },
+    }, null, 2),
+  };
+}
+
 export function validateSystems(
   systems: ISystemsIr,
   path: string,
@@ -69,6 +101,7 @@ export function validateSystems(
       if (!isBuiltInComponent(component) && componentSchemas[component] === undefined) {
         diagnostics.push({
           code: "TN_IR_SYSTEM_COMPONENT_SCHEMA_MISSING",
+          fix: componentSchemaFix(component),
           message: `System '${system.name}' reads component '${component}' without a schema.`,
           path: `${path}/systems/${systemIndex}/reads/${componentIndex}`,
         });
@@ -78,6 +111,7 @@ export function validateSystems(
       if (!isBuiltInComponent(component) && componentSchemas[component] === undefined) {
         diagnostics.push({
           code: "TN_IR_SYSTEM_COMPONENT_SCHEMA_MISSING",
+          fix: componentSchemaFix(component),
           message: `System '${system.name}' writes component '${component}' without a schema.`,
           path: `${path}/systems/${systemIndex}/writes/${componentIndex}`,
         });
@@ -87,6 +121,7 @@ export function validateSystems(
       if (!isBuiltInResource(resource) && resourceSchemas[resource] === undefined) {
         diagnostics.push({
           code: "TN_IR_SYSTEM_RESOURCE_SCHEMA_MISSING",
+          fix: resourceSchemaFix(resource),
           message: `System '${system.name}' reads resource '${resource}' without a schema.`,
           path: `${path}/systems/${systemIndex}/resourceReads/${resourceIndex}`,
         });
@@ -96,6 +131,7 @@ export function validateSystems(
       if (!isBuiltInResource(resource) && resourceSchemas[resource] === undefined) {
         diagnostics.push({
           code: "TN_IR_SYSTEM_RESOURCE_SCHEMA_MISSING",
+          fix: resourceSchemaFix(resource),
           message: `System '${system.name}' writes resource '${resource}' without a schema.`,
           path: `${path}/systems/${systemIndex}/resourceWrites/${resourceIndex}`,
         });
@@ -151,6 +187,7 @@ export function validateSystems(
         } else if (!isBuiltInComponent(component) && componentSchemas[component] === undefined) {
           diagnostics.push({
             code: "TN_IR_SYSTEM_COMPONENT_SCHEMA_MISSING",
+            fix: componentSchemaFix(component),
             message: `System '${system.name}' changed-query filter references component '${component}' without a schema.`,
             path: `${path}/systems/${systemIndex}/queries/${queryIndex}/changed/${componentIndex}`,
           });
@@ -160,6 +197,7 @@ export function validateSystems(
         if (!isBuiltInComponent(component) && componentSchemas[component] === undefined) {
           diagnostics.push({
             code: "TN_IR_SYSTEM_COMPONENT_SCHEMA_MISSING",
+            fix: componentSchemaFix(component),
             message: `System '${system.name}' queries component '${component}' without a schema.`,
             path: `${path}/systems/${systemIndex}/queries/${queryIndex}/with/${componentIndex}`,
           });
@@ -169,6 +207,7 @@ export function validateSystems(
         if (!isBuiltInComponent(component) && componentSchemas[component] === undefined) {
           diagnostics.push({
             code: "TN_IR_SYSTEM_COMPONENT_SCHEMA_MISSING",
+            fix: componentSchemaFix(component),
             message: `System '${system.name}' excludes component '${component}' without a schema.`,
             path: `${path}/systems/${systemIndex}/queries/${queryIndex}/without/${componentIndex}`,
           });
@@ -189,6 +228,7 @@ export function validateSystems(
         if (!isBuiltInComponent(command.component) && componentSchemas[command.component] === undefined) {
           diagnostics.push({
             code: "TN_IR_SYSTEM_COMPONENT_SCHEMA_MISSING",
+            fix: componentSchemaFix(command.component),
             message: `System '${system.name}' command references component '${command.component}' without a schema.`,
             path: `${path}/systems/${systemIndex}/commands/${commandIndex}/component`,
           });
@@ -206,6 +246,7 @@ export function validateSystems(
           if (!isBuiltInComponent(component) && componentSchemas[component] === undefined) {
             diagnostics.push({
               code: "TN_IR_SYSTEM_COMPONENT_SCHEMA_MISSING",
+              fix: componentSchemaFix(component),
               message: `System '${system.name}' command spawns component '${component}' without a schema.`,
               path: `${path}/systems/${systemIndex}/commands/${commandIndex}/components/${componentIndex}`,
             });

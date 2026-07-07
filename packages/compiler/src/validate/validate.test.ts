@@ -8,6 +8,7 @@ import { copyFixtureBundle } from "../testFixtures.js";
 
 const cubeFixture = resolve(process.cwd(), "../ir/fixtures/cube-scene/game.bundle");
 const audioFixture = resolve(process.cwd(), "../ir/fixtures/conformance/audio-playback/game.bundle");
+const resourcesFixture = resolve(process.cwd(), "../ir/fixtures/conformance/resources-events/game.bundle");
 
 test("validate should return TN-IR-2104 when material is missing", async () => {
   const bundle = await copyCubeFixture();
@@ -95,6 +96,27 @@ test("validate should preserve IR diagnostic limits and values", async () => {
     assert.equal(diagnostic?.limit, 1);
     assert.equal(typeof diagnostic?.value, "number");
     assert.match(diagnostic?.suggestion ?? "", /Reduce copied assets/);
+  } finally {
+    await rm(bundle, { force: true, recursive: true });
+  }
+});
+
+test("validate should preserve IR diagnostic fixes", async () => {
+  const bundle = await copyFixtureBundle(resourcesFixture, "tn-validate-resource-fix-");
+  try {
+    const manifestPath = join(bundle, "manifest.json");
+    const manifest = JSON.parse(await readFile(manifestPath, "utf8")) as { files?: Record<string, unknown> };
+    if (manifest.files !== undefined) {
+      delete manifest.files.resourceSchemas;
+    }
+    await writeFile(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
+
+    const report = await validateBundle(bundle);
+    const diagnostic = report.diagnostics.find((item) => item.code === "TN_IR_SYSTEM_RESOURCE_SCHEMA_MISSING");
+
+    assert.equal(report.ok, false);
+    assert.match(diagnostic?.fix?.instruction ?? "", /Declare resource 'Score'/);
+    assert.match(diagnostic?.fix?.snippet ?? "", /"Score"/);
   } finally {
     await rm(bundle, { force: true, recursive: true });
   }

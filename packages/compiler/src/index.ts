@@ -60,7 +60,18 @@ export async function buildProject(projectPath: string): Promise<{ bundlePath: s
     const report = await validateBundle(bundlePath);
     if (!report.ok) {
       const { CompilerError } = await import("./errors.js");
-      throw new CompilerError("TN_COMPILER_EMITTED_INVALID_BUNDLE", report.diagnostics[0]?.message ?? "Emitted bundle is invalid.");
+      const diagnostic = report.diagnostics[0];
+      throw new CompilerError(
+        "TN_COMPILER_EMITTED_INVALID_BUNDLE",
+        diagnostic?.message ?? "Emitted bundle is invalid.",
+        diagnostic === undefined
+          ? undefined
+          : {
+              ...diagnostic,
+              code: "TN_COMPILER_EMITTED_INVALID_BUNDLE",
+              severity: diagnostic.severity ?? "error",
+            },
+      );
     }
     return { bundlePath };
   } finally {

@@ -19,12 +19,16 @@ Current support:
   operations.
 - Prescriptive diagnostics now attach optional structured `fix` payloads for
   high-friction rejection codes.
+- Rigid body kind diagnostics include the exact `fixed` to `static` repair for
+  immovable authored bodies.
 
 Verification:
 
 - `tools/agent-benchmark/MUTATION-SURFACE-AUDIT-2026-07-07.md`
   maps observed raw `content/**` edit shapes to bounded commands or explicit
   deferrals.
+- `tools/agent-benchmark/DIAGNOSTIC-FAILURE-AUDIT-2026-07-07.md`
+  ranks failed benchmark command shapes and selected diagnostic fixes.
 - `pnpm --filter @threenative/authoring test`
 - `pnpm --filter @threenative/mcp-server test`
 - `pnpm verify:cookbook`

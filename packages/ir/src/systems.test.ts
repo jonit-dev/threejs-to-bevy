@@ -35,6 +35,8 @@ test("should reject schema ecs system component without schema", async () => {
     assert.equal(result.ok, false);
     assert.equal(result.diagnostics[0]?.code, "TN_IR_SYSTEM_COMPONENT_SCHEMA_MISSING");
     assert.equal(result.diagnostics[0]?.path, "systems.ir.json/systems/0/writes/0");
+    assert.match(result.diagnostics[0]?.fix?.instruction ?? "", /Declare component 'Helath'/);
+    assert.match(result.diagnostics[0]?.fix?.snippet ?? "", /"Helath"/);
   } finally {
     await rm(root, { force: true, recursive: true });
   }
@@ -338,6 +340,8 @@ test("should reject schema ecs system resource without schema", async () => {
     assert.equal(result.ok, false);
     assert.equal(result.diagnostics[0]?.code, "TN_IR_SYSTEM_RESOURCE_SCHEMA_MISSING");
     assert.equal(result.diagnostics[0]?.path, "systems.ir.json/systems/0/resourceReads/0");
+    assert.match(result.diagnostics[0]?.fix?.instruction ?? "", /Declare resource 'Score'/);
+    assert.match(result.diagnostics[0]?.fix?.snippet ?? "", /"Score"/);
   } finally {
     await rm(root, { force: true, recursive: true });
   }
