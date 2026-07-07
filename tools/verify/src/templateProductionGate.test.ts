@@ -91,7 +91,9 @@ test("rejects maintained starters without catalog-first planning worksheet", asy
     }, null, 2)}\n`);
     await writeFile(join(templatePath, "threenative.config.json"), `${JSON.stringify(completeProductionConfig("structured-source-starter"), null, 2)}\n`);
     await writeFile(join(templatePath, "README.md"), "Start with AGENT_GAME_PLAN.md, then run iterate, game:plan, game:improve, game:qa, and game:release.\n");
-    await writeFile(join(templatePath, "AGENTS.md"), "Open AGENT_GAME_PLAN.md as the first game-creation action, then use iterate, game:plan, game:improve, game:qa, and game:release.\n");
+    await mkdir(join(templatePath, "docs"), { recursive: true });
+    await writeFile(join(templatePath, "docs/API-CARD.md"), "# API Card\nScriptContext\n");
+    await writeFile(join(templatePath, "AGENTS.md"), "Open AGENT_GAME_PLAN.md as the first game-creation action. Read docs/API-CARD.md first. After changes, run pnpm run iterate as the default repair loop. Use compact playtest reports before deep logs, then use game:plan, game:improve, game:qa, and game:release.\n");
     await writeFile(join(templatePath, "AGENT_GAME_PLAN.md"), "Plan first, then get models somehow.\n");
 
     const result = await runTemplateProductionGate({ root, templates: ["structured-source-starter"] });
@@ -125,13 +127,75 @@ test("should require starter scenario proof commands", async () => {
     }, null, 2)}\n`);
     await writeFile(join(templatePath, "threenative.config.json"), `${JSON.stringify(config, null, 2)}\n`);
     await writeFile(join(templatePath, "README.md"), "Start with AGENT_GAME_PLAN.md, then run iterate, game:plan, game:improve, game:qa, and game:release for the production loop.\n");
-    await writeFile(join(templatePath, "AGENTS.md"), "Open AGENT_GAME_PLAN.md as the first game-creation action, then use iterate, game:plan, game:improve, game:qa, and game:release before calling a game done.\n");
+    await mkdir(join(templatePath, "docs"), { recursive: true });
+    await writeFile(join(templatePath, "docs/API-CARD.md"), "# API Card\nScriptContext\n");
+    await writeFile(join(templatePath, "AGENTS.md"), "Open AGENT_GAME_PLAN.md as the first game-creation action. Read docs/API-CARD.md first. After changes, run pnpm run iterate as the default repair loop. Use compact playtest reports before deep logs, then use game:plan, game:improve, game:qa, and game:release before calling a game done.\n");
     await writeFile(join(templatePath, "AGENT_GAME_PLAN.md"), completeAgentGamePlan);
 
     const result = await runTemplateProductionGate({ root, templates: ["racing-kit-rally-starter"] });
 
     assert.equal(result.ok, false);
     assert.equal(result.diagnostics.some((diagnostic) => diagnostic.code === "TN_TEMPLATE_PRODUCTION_METADATA_INCOMPLETE" && diagnostic.message.includes("playtest scenario")), true);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should require iterate as the starter repair loop", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-template-production-iterate-first-"));
+  try {
+    const templatePath = join(root, "templates/structured-source-starter");
+    await mkdir(join(templatePath, "docs"), { recursive: true });
+    await writeFile(join(templatePath, "package.json"), `${JSON.stringify({
+      scripts: {
+        "game:improve": "tn game improve --apply-plan artifacts/game-production/plan.json --project . --json",
+        "game:plan": "tn game plan --goal \"arena\" --project . --json",
+        "game:qa": "tn game qa --project . --run-proof --json",
+        "game:release": "tn game release --project . --json",
+        "game:score": "tn game score --project . --json",
+        iterate: "tn iterate --project . --json",
+      },
+    }, null, 2)}\n`);
+    await writeFile(join(templatePath, "threenative.config.json"), `${JSON.stringify(completeProductionConfig("structured-source-starter"), null, 2)}\n`);
+    await writeFile(join(templatePath, "README.md"), "Start with AGENT_GAME_PLAN.md, then run iterate, game:plan, game:improve, game:qa, and game:release for the production loop.\n");
+    await writeFile(join(templatePath, "docs/API-CARD.md"), "# API Card\nScriptContext\n");
+    await writeFile(join(templatePath, "AGENTS.md"), "Open AGENT_GAME_PLAN.md as the first game-creation action. Read docs/API-CARD.md first. Run validate, build, and playtest individually. Use compact playtest reports before deep logs, then game:plan, game:improve, game:qa, and game:release.\n");
+    await writeFile(join(templatePath, "AGENT_GAME_PLAN.md"), completeAgentGamePlan);
+
+    const result = await runTemplateProductionGate({ root, templates: ["structured-source-starter"] });
+
+    assert.equal(result.ok, false);
+    assert.equal(result.diagnostics.some((diagnostic) => diagnostic.code === "TN_TEMPLATE_ITERATE_FIRST_MISSING"), true);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should reject instructions that point agents at deep frame logs", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-template-production-deep-logs-"));
+  try {
+    const templatePath = join(root, "templates/structured-source-starter");
+    await mkdir(join(templatePath, "docs"), { recursive: true });
+    await writeFile(join(templatePath, "package.json"), `${JSON.stringify({
+      scripts: {
+        "game:improve": "tn game improve --apply-plan artifacts/game-production/plan.json --project . --json",
+        "game:plan": "tn game plan --goal \"arena\" --project . --json",
+        "game:qa": "tn game qa --project . --run-proof --json",
+        "game:release": "tn game release --project . --json",
+        "game:score": "tn game score --project . --json",
+        iterate: "tn iterate --project . --json",
+      },
+    }, null, 2)}\n`);
+    await writeFile(join(templatePath, "threenative.config.json"), `${JSON.stringify(completeProductionConfig("structured-source-starter"), null, 2)}\n`);
+    await writeFile(join(templatePath, "README.md"), "Start with AGENT_GAME_PLAN.md, then run iterate, game:plan, game:improve, game:qa, and game:release for the production loop.\n");
+    await writeFile(join(templatePath, "docs/API-CARD.md"), "# API Card\nScriptContext\n");
+    await writeFile(join(templatePath, "AGENTS.md"), "Open AGENT_GAME_PLAN.md as the first game-creation action. Read docs/API-CARD.md first. After changes, run pnpm run iterate as the default repair loop. Read effect-log.json and observations.json after every playtest, then game:plan, game:improve, game:qa, and game:release.\n");
+    await writeFile(join(templatePath, "AGENT_GAME_PLAN.md"), completeAgentGamePlan);
+
+    const result = await runTemplateProductionGate({ root, templates: ["structured-source-starter"] });
+
+    assert.equal(result.ok, false);
+    assert.equal(result.diagnostics.some((diagnostic) => diagnostic.code === "TN_TEMPLATE_COMPACT_REPORT_GUIDANCE_MISSING"), true);
   } finally {
     await rm(root, { force: true, recursive: true });
   }
@@ -154,7 +218,9 @@ test("accepts maintained starters with production scripts metadata and instructi
     }, null, 2)}\n`);
     await writeFile(join(templatePath, "threenative.config.json"), `${JSON.stringify(completeProductionConfig("racing-kit-rally-starter"), null, 2)}\n`);
     await writeFile(join(templatePath, "README.md"), "Start with AGENT_GAME_PLAN.md, then run iterate, game:plan, game:improve, game:qa, and game:release for the production loop.\n");
-    await writeFile(join(templatePath, "AGENTS.md"), "Open AGENT_GAME_PLAN.md as the first game-creation action, then use iterate, game:plan, game:improve, game:qa, and game:release before calling a game done.\n");
+    await mkdir(join(templatePath, "docs"), { recursive: true });
+    await writeFile(join(templatePath, "docs/API-CARD.md"), "# API Card\nScriptContext\n");
+    await writeFile(join(templatePath, "AGENTS.md"), "Open AGENT_GAME_PLAN.md as the first game-creation action. Read docs/API-CARD.md first. After changes, run pnpm run iterate as the default repair loop. Use compact playtest reports before deep logs, then use game:plan, game:improve, game:qa, and game:release before calling a game done.\n");
     await writeFile(join(templatePath, "AGENT_GAME_PLAN.md"), completeAgentGamePlan);
 
     const result = await runTemplateProductionGate({ root, templates: ["racing-kit-rally-starter"] });

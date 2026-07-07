@@ -9,6 +9,8 @@ Current support:
   deterministic formatting, source discovery, and generated-artifact rejection.
 - CLI-first scene, material, UI, system, prefab, physics, recipe, cookbook, and
   iterate workflows exposed through `tn ... --json`.
+- Maintained starters include `docs/API-CARD.md`, a compact generated
+  ScriptContext/source contract validated against `packages/script-stdlib`.
 - MCP and authoring-client adapters are thin wrappers over the same core
   operations.
 - Prescriptive diagnostics now attach optional structured `fix` payloads for

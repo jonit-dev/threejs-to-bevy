@@ -3,6 +3,7 @@ import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { resolveArtifactTargets } from "./artifacts.js";
+import { API_CARD_BUDGET_BYTES, renderScriptApiCard, validateApiCard } from "./apiCard.js";
 import { type StepSummary, type VerificationDiagnostic } from "./runner.js";
 
 export interface TemplateProductionGateOptions {
@@ -90,6 +91,7 @@ async function templateDiagnosticsFor(templateName: string, templatePath: string
   const configPath = resolve(templatePath, "threenative.config.json");
   const readmePath = resolve(templatePath, "README.md");
   const agentsPath = resolve(templatePath, "AGENTS.md");
+  const apiCardPath = resolve(templatePath, "docs", "API-CARD.md");
   const templatePlanPath = resolve(templatePath, "AGENT_GAME_PLAN.md");
   const sharedPlanPath = resolve(templatePath, "..", "_shared", "AGENT_GAME_PLAN.md");
 
@@ -182,6 +184,53 @@ async function templateDiagnosticsFor(templateName: string, templatePath: string
         suggestedFix: "Document the plan/improve/QA/release workflow in maintained starter instructions.",
       });
     }
+  }
+
+  const agentsDocText = await readText(agentsPath);
+  if (!/pnpm run iterate[\s\S]{0,120}default repair loop/i.test(agentsDocText)) {
+    diagnostics.push({
+      code: "TN_TEMPLATE_ITERATE_FIRST_MISSING",
+      message: `${templateName}: AGENTS.md must make pnpm run iterate the default repair loop after source/script/gameplay changes.`,
+      path: agentsPath,
+      severity: "error",
+      suggestedFix: "Move validate/build/playtest commands under focused fallback guidance and make pnpm run iterate the first post-edit loop.",
+    });
+  }
+  if (!/compact\s+playtest/i.test(agentsDocText) || !/deep\s+logs/i.test(agentsDocText)) {
+    diagnostics.push({
+      code: "TN_TEMPLATE_COMPACT_REPORT_GUIDANCE_MISSING",
+      message: `${templateName}: AGENTS.md must direct agents to compact reports before deep frame/effect logs.`,
+      path: agentsPath,
+      severity: "error",
+      suggestedFix: "Tell agents to use compact stdout or tn playtest report first, and open deep logs only when diagnostics point to them.",
+    });
+  }
+  if (!agentsDocText.includes("docs/API-CARD.md")) {
+    diagnostics.push({
+      code: "TN_TEMPLATE_API_CARD_REFERENCE_MISSING",
+      message: `${templateName}: AGENTS.md must point agents at docs/API-CARD.md before repo source spelunking.`,
+      path: agentsPath,
+      severity: "error",
+      suggestedFix: "Mention docs/API-CARD.md as the local ScriptContext/source contract in AGENTS.md.",
+    });
+  }
+  const cardText = await readText(apiCardPath);
+  const root = resolve(templatePath, "..", "..");
+  const sourceText = await readText(resolve(root, "packages/script-stdlib/src/script-context.ts"));
+  const expectedCard = sourceText === "" ? cardText : await renderScriptApiCard({ root });
+  const validation = sourceText === ""
+    ? { missingMembers: [], ok: cardText.trim() !== "", tooLarge: Buffer.byteLength(cardText, "utf8") > API_CARD_BUDGET_BYTES }
+    : validateApiCard({ card: cardText, source: sourceText });
+  if (cardText.trim() === "" || cardText.trim() !== expectedCard.trim() || !validation.ok) {
+    diagnostics.push({
+      code: validation.tooLarge ? "TN_TEMPLATE_API_CARD_BUDGET_EXCEEDED" : "TN_TEMPLATE_API_CARD_DRIFT",
+      message: validation.tooLarge
+        ? `${templateName}: docs/API-CARD.md exceeds ${API_CARD_BUDGET_BYTES} bytes.`
+        : `${templateName}: docs/API-CARD.md must match the generated ScriptContext API card; missing ${validation.missingMembers.join(", ") || "generated content parity"}.`,
+      path: apiCardPath,
+      severity: "error",
+      suggestedFix: "Regenerate docs/API-CARD.md from packages/script-stdlib/src/script-context.ts.",
+    });
   }
 
   const templatePlanText = await readText(templatePlanPath);

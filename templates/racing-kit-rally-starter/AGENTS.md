@@ -12,6 +12,9 @@ Rules for Racing Kit Rally starter projects.
   `TransformMath`, `Bounds2`, `Bounds3`, `Ease`, `RandomEx`, `ColorEx`,
   `TextEx`, `InputEx`, `MotionEx`, `TimerEx`, `ArrayEx`, `CameraMath`), not
   copied into `src/scripts/racing.ts`.
+- For the local script/source contract, read `docs/API-CARD.md` before opening
+  package source. It is generated from the supported `ScriptContext` surface and
+  common structured source shapes.
 - Do not use namespace/default/aliased stdlib imports or arbitrary npm,
   relative helper, DOM, Node, timer, filesystem, network, Three.js, or Bevy
   imports from portable gameplay scripts.
@@ -22,8 +25,8 @@ Rules for Racing Kit Rally starter projects.
   `artifacts/game-production/plan.json` with the work. Use
   `pnpm run game:improve` only for bounded recipe steps from that complete
   plan.
-- Use `pnpm run iterate` as the default inner repair loop after source,
-  script, gameplay, or visual changes. It writes fast-loop artifacts under
+- After source, script, gameplay, or visual changes, run `pnpm run iterate` as
+  the default repair loop. It writes fast-loop artifacts under
   `artifacts/iterate/latest/`; keep `game:qa` and desktop/native playtests for
   completion evidence.
 - In the ThreeNative repo, if you change a reusable authoring, racing,
@@ -44,11 +47,12 @@ Rules for Racing Kit Rally starter projects.
   `--suggest-scenario <name>` to find provable entities first. Use a committed
   `playtests/*.playtest.json` scenario with `--stable-artifacts` for multi-step
   behavior (add `--watch --pass-once` while iterating); inspect the compact
-  stdout or `tn playtest report --latest --scenario <name> --json`, fix the
-  owning source/script, and rerun before `tn game qa`. Open deep logs such as
-  `effect-log.json`, `observations.json`, or `runtime-trace.json` only when a
-  compact diagnostic points to them. Before release claims, rerun the scenario
-  with `--target desktop` so the native runtime is proved, not only web.
+  playtest stdout or `tn playtest report --latest --scenario <name> --json`,
+  fix the owning source/script, and rerun before `tn game qa`. Open deep logs
+  such as `effect-log.json`, `observations.json`, or `runtime-trace.json` only
+  when a compact diagnostic points to them. Before release claims, rerun the
+  scenario with `--target desktop` so the native runtime is proved, not only
+  web.
 
 ## Verify
 

@@ -22,6 +22,9 @@ Rules for this generated ThreeNative project.
 - For repeated portable helper code in `src/scripts/**/*.ts`, use named imports
   from `@threenative/script-stdlib`:
   `NumberEx`, `Vec3`, `Quat`, and `TransformMath`.
+- For the local script/source contract, read `docs/API-CARD.md` before opening
+  package source. It is generated from the supported `ScriptContext` surface and
+  common structured source shapes.
 - Do not copy local mini-standard libraries for clamp/round/vector/quaternion,
   use namespace/default/aliased stdlib imports, or import arbitrary npm,
   relative helper modules, DOM, Node, timer, filesystem, network, Three.js, or
@@ -60,9 +63,9 @@ Rules for this generated ThreeNative project.
   owned state, source-document references, silhouettes, materials, lighting,
   camera framing, set dressing, UI states, mobile fit, performance, screenshot
   proof, motion proof, and input playtest proof.
-- While implementing, use `pnpm run iterate` or `tn iterate --project . --json`
-  as the default repair loop after gameplay, controls, script, source, or
-  visual changes. It runs authoring validation, build, screenshot capture, and
+- After gameplay, controls, script, source, or visual changes, run
+  `pnpm run iterate` as the default repair loop. It runs authoring validation,
+  build, screenshot capture, and
   the first committed playtest scenario in one report under
   `artifacts/iterate/latest/`. Inspect the report, diagnostics, screenshot,
   and compact playtest reports, fix the owning durable source/script, and

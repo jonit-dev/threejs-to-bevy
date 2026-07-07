@@ -2,6 +2,7 @@ import { resolveScriptAlias, formatDeprecationDiagnostic } from "./legacyAliases
 
 export { verifyAdvancedUiArtifacts, type IAdvancedUiArtifactReport } from "./advancedUi.js";
 export { runAgentIoBudgetGate, type AgentIoBudgetCommand, type AgentIoBudgetMeasurement, type AgentIoBudgetResult } from "./agentIoBudget.js";
+export { API_CARD_BUDGET_BYTES, renderScriptApiCard, renderScriptApiCardFromSource, scriptContextMembers, validateApiCard, type ApiCardValidationResult } from "./apiCard.js";
 export { checkDocs, formatDocsReport } from "./docs.js";
 export { editorAiChatArtifactPaths, runEditorAiChatGate, type IEditorAiChatArtifacts, type IEditorAiChatReport } from "./editorAiChat.js";
 export { runEditorRequiredOperationsSmoke, type IEditorRequiredOperationsReport } from "./editorRequiredOperations.js";
