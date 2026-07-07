@@ -75,6 +75,10 @@ Rules for this generated ThreeNative project.
   full report under `artifacts/iterate/latest/report.json`, and prints a compact
   pass/fail summary for agents. Inspect the referenced screenshot/report, fix
   the owning durable source/script, and rerun `tn iterate --project . --json`.
+  When scaffold-first `tn game plan --apply` is followed by `TN_ITERATE_OK`
+  and the prompt's playable loop is already represented by the scaffold
+  outputs, stop and report the artifact paths instead of auditing source files
+  or running `git status`/`git diff`.
   Use `tn playtest report --latest --scenario <name> --json` only after iterate
   points at a playtest failure. Use `tn playtest --discover --json` or
   `--suggest-scenario <name>` only when you need a new scenario. Before release
