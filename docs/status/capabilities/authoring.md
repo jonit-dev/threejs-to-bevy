@@ -13,6 +13,8 @@ Current support:
   prefab/entity operations, UI binding, material editing, prefab material
   assignment, and compositional mechanic blocks; direct `content/**` edits
   remain a last resort.
+- Cookbook lookup supports both `tn cookbook show <id> --json` and the compact
+  `tn cookbook <id> --json` shorthand for validated pattern pairs.
 - Maintained starters include `docs/API-CARD.md`, a compact generated
   ScriptContext/source contract validated against `packages/script-stdlib`.
 - MCP and authoring-client adapters are thin wrappers over the same core
@@ -29,6 +31,8 @@ Verification:
   deferrals.
 - `tools/agent-benchmark/DIAGNOSTIC-FAILURE-AUDIT-2026-07-07.md`
   ranks failed benchmark command shapes and selected diagnostic fixes.
+- `tools/agent-benchmark/COOKBOOK-TOPIC-AUDIT-2026-07-07.md`
+  maps benchmark needs to the existing validated cookbook entries.
 - `pnpm --filter @threenative/authoring test`
 - `pnpm --filter @threenative/mcp-server test`
 - `pnpm verify:cookbook`

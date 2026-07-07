@@ -18,3 +18,21 @@ test("should suggest nearest id when id unknown", async () => {
   assert.equal(payload.code, "TN_COOKBOOK_UNKNOWN_ID");
   assert.equal(payload.suggestion, "player-move-wasd");
 });
+
+test("should show entry through direct topic shorthand", async () => {
+  const result = await cookbookCommand(["hud-score-binding", "--json"], process.cwd());
+  const payload = JSON.parse(result.stdout) as { code: string; entry?: { goal: string; id: string; proof: string } };
+  assert.equal(result.exitCode, 0);
+  assert.equal(payload.code, "TN_COOKBOOK_SHOW_OK");
+  assert.equal(payload.entry?.id, "hud-score-binding");
+  assert.match(payload.entry?.goal ?? "", /HUD/);
+  assert.match(payload.entry?.proof ?? "", /tn playtest/);
+});
+
+test("should suggest nearest id through direct topic shorthand", async () => {
+  const result = await cookbookCommand(["hud-score-bnding", "--json"], process.cwd());
+  const payload = JSON.parse(result.stdout) as { code: string; suggestion?: string };
+  assert.equal(result.exitCode, 1);
+  assert.equal(payload.code, "TN_COOKBOOK_UNKNOWN_ID");
+  assert.equal(payload.suggestion, "hud-score-binding");
+});

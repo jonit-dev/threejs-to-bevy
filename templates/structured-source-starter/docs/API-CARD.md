@@ -1,7 +1,7 @@
 # ThreeNative API Card
 
 Compact local contract for generated-project agents. Prefer this card,
-`tn cookbook show <id> --json`, and `tn iterate --project . --json` before
+`tn cookbook <id> --json`, and `tn iterate --project . --json` before
 reading repo package source.
 
 ## ScriptContext
@@ -130,9 +130,9 @@ tn add spawner --pattern grid --prefab pickup.prefab --count 5 --project . --jso
 tn prefab set-material prefab.player --material mat.player --project . --json
 tn scene inspect arena --node scaffold.player --project . --json
 tn playtest report --latest --scenario <name> --json
-tn cookbook show player-move-wasd --json
-tn cookbook show follow-camera --json
-tn cookbook show hud-score-binding --json
-tn cookbook show top-down-collector-recipe --json
-tn cookbook show lane-runner-spawn --json
+tn cookbook player-move-wasd --json
+tn cookbook follow-camera --json
+tn cookbook hud-score-binding --json
+tn cookbook top-down-collector-recipe --json
+tn cookbook lane-runner-spawn --json
 ```

@@ -75,7 +75,7 @@ const commands: Record<string, ICommandDefinition> = {
   cookbook: {
     description: "List and show validated agent authoring cookbook examples.",
     implemented: true,
-    usage: "tn cookbook list [--json]\n              tn cookbook show <id> [--json]",
+    usage: "tn cookbook list [--json]\n              tn cookbook show <id> [--json]\n              tn cookbook <id> [--json]",
   },
   init: {
     description: "Alias for create with first-project next steps.",

@@ -1,7 +1,7 @@
 # ThreeNative API Card
 
 Compact local contract for generated-project agents. Prefer this card,
-`tn cookbook show <id> --json`, and `pnpm run iterate` before reading repo
+`tn cookbook <id> --json`, and `pnpm run iterate` before reading repo
 package source.
 
 ## ScriptContext
@@ -106,9 +106,9 @@ interface ScriptTransformFacade {
 ```bash
 pnpm run iterate
 tn playtest report --latest --scenario <name> --json
-tn cookbook show player-move-wasd --json
-tn cookbook show follow-camera --json
-tn cookbook show hud-score-binding --json
-tn cookbook show top-down-collector-recipe --json
-tn cookbook show lane-runner-spawn --json
+tn cookbook player-move-wasd --json
+tn cookbook follow-camera --json
+tn cookbook hud-score-binding --json
+tn cookbook top-down-collector-recipe --json
+tn cookbook lane-runner-spawn --json
 ```

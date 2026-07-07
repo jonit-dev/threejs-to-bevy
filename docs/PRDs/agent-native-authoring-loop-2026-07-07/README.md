@@ -14,7 +14,7 @@ weight. These PRDs intentionally avoid broad new Bevy parity work.
 3. [PRD-003 Compositional Mechanic Blocks](../done/agent-native-authoring-loop-2026-07-07/PRD-003-compositional-mechanic-blocks.md) - done
 4. [PRD-004 Schema-Aware Mutation Surface](../done/agent-native-authoring-loop-2026-07-07/PRD-004-schema-aware-mutation-surface.md) - done
 5. [PRD-005 Prescriptive Diagnostics v2](../done/agent-native-authoring-loop-2026-07-07/PRD-005-prescriptive-diagnostics-v2.md) - done
-6. [PRD-006 Cookbook Few-Shot Pattern Pairs](PRD-006-cookbook-few-shot-pattern-pairs.md)
+6. [PRD-006 Cookbook Few-Shot Pattern Pairs](../done/agent-native-authoring-loop-2026-07-07/PRD-006-cookbook-few-shot-pattern-pairs.md) - done
 7. [PRD-007 Beautiful Scaffolds](PRD-007-beautiful-scaffolds.md)
 8. [PRD-008 API Pruning To In-Distribution Shapes](PRD-008-api-pruning-in-distribution-shapes.md)
 9. [PRD-009 Session Cost Ratchet In CI](PRD-009-session-cost-ratchet-ci.md)

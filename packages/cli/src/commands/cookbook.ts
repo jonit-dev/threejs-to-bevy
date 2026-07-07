@@ -19,24 +19,12 @@ export async function cookbookCommand(argv: readonly string[], cwd = process.env
     if (id === undefined) {
       return render({ code: "TN_COOKBOOK_SHOW_ID_MISSING", message: "Usage: tn cookbook show <id> [--json]" }, json, 2);
     }
-    const entries = await loadCookbookEntries(cwd);
-    const entry = entries.find((candidate) => candidate.id === id);
-    if (entry === undefined) {
-      return render({
-        code: "TN_COOKBOOK_UNKNOWN_ID",
-        diagnostics: [{
-          code: "TN_COOKBOOK_UNKNOWN_ID",
-          message: `Cookbook entry '${id}' was not found.`,
-          severity: "error",
-          suggestion: nearestId(id, entries.map((candidate) => candidate.id)),
-        }],
-        id,
-        suggestion: nearestId(id, entries.map((candidate) => candidate.id)),
-      }, json, 1);
-    }
-    return render({ code: "TN_COOKBOOK_SHOW_OK", entry }, json, 0);
+    return showCookbookEntry(id, cwd, json);
   }
-  return render({ code: "TN_COOKBOOK_USAGE", message: "Usage: tn cookbook list --json | tn cookbook show <id> --json" }, json, 2);
+  if (subcommand !== undefined) {
+    return showCookbookEntry(subcommand, cwd, json);
+  }
+  return render({ code: "TN_COOKBOOK_USAGE", message: "Usage: tn cookbook list --json | tn cookbook show <id> --json | tn cookbook <id> --json" }, json, 2);
 }
 
 export async function loadCookbookEntries(cwd = process.cwd()): Promise<ICookbookEntry[]> {
@@ -51,6 +39,26 @@ export async function loadCookbookEntries(cwd = process.cwd()): Promise<ICookboo
     }
   }
   return entries;
+}
+
+async function showCookbookEntry(id: string, cwd: string, json: boolean): Promise<ICommandResult> {
+  const entries = await loadCookbookEntries(cwd);
+  const entry = entries.find((candidate) => candidate.id === id);
+  if (entry === undefined) {
+    const suggestion = nearestId(id, entries.map((candidate) => candidate.id));
+    return render({
+      code: "TN_COOKBOOK_UNKNOWN_ID",
+      diagnostics: [{
+        code: "TN_COOKBOOK_UNKNOWN_ID",
+        message: `Cookbook entry '${id}' was not found.`,
+        severity: "error",
+        suggestion,
+      }],
+      id,
+      suggestion,
+    }, json, 1);
+  }
+  return render({ code: "TN_COOKBOOK_SHOW_OK", entry }, json, 0);
 }
 
 async function resolveCookbookDirectory(cwd: string): Promise<string> {

@@ -46,7 +46,7 @@ Rules for this generated ThreeNative project.
 - Worked examples first: before inventing a new gameplay, camera, UI,
   physics, asset, or polish pattern, inspect the executable cookbook. Use
   `tn cookbook list --json` to see available patterns and
-  `tn cookbook show <id> --json` to load one complete goal -> commands ->
+  `tn cookbook <id> --json` to load one complete goal -> commands ->
   source delta -> script -> proof example. Good starting ids:
   `player-move-wasd`, `follow-camera`, `hud-score-binding`,
   `collectible-respawn`, `trigger-zone-win`, `fail-retry-reset`,
