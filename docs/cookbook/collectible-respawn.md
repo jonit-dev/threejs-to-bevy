@@ -36,6 +36,6 @@ export function collectibleRespawn(): void {}
 
 ## proof
 ```bash
-tn scene inspect arena --project . --json
+tn scene inspect arena --node pickup.01 --project . --json
 tn playtest --project . --scenario playtests/smoke-movement.playtest.json --stable-artifacts --json
 ```

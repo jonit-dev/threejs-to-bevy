@@ -770,6 +770,11 @@ export interface ISceneInspection {
   uiNodes: string[];
 }
 
+export interface ISceneNodeInspection {
+  id: string;
+  matches: Array<{ kind: "entity" | "instance" | "prefab" | "resource" | "system" | "ui-binding" | "ui-node"; path: string; value: unknown }>;
+}
+
 export interface ICreateSceneResult extends IAuthoringOperationResult {
   sceneId: string;
   file: string;
@@ -784,6 +789,7 @@ export interface IImportWorldResult extends IAuthoringOperationResult {
 }
 
 export interface IInspectSceneResult extends IAuthoringOperationResult {
+  node?: ISceneNodeInspection;
   scene?: ISceneInspection;
 }
 
@@ -1089,7 +1095,7 @@ function nextSceneCommands(sceneId: string): string[] {
   ];
 }
 
-export async function inspectScene(options: IValidateSceneOptions & { sceneId: string }): Promise<IInspectSceneResult> {
+export async function inspectScene(options: IValidateSceneOptions & { nodeId?: string; sceneId: string }): Promise<IInspectSceneResult> {
   const project = await loadAuthoringProject({ projectPath: options.projectPath });
   const diagnostics = [...project.diagnostics];
   const sceneDocuments = project.documents.filter((document) => document.kind === "scene");
@@ -1112,10 +1118,23 @@ export async function inspectScene(options: IValidateSceneOptions & { sceneId: s
   }
 
   diagnostics.push(...(await validateSceneDocument(project.projectPath, sceneDocument.projectRelativePath, sceneDocument.data, { materialIds, prefabDocumentIds })));
+  const scene = inspectSceneDocument(sceneDocument.projectRelativePath, sceneDocument.data, await countSourceLines(sceneDocument.file));
+  const node = options.nodeId === undefined ? undefined : inspectSceneNode(sceneDocument.data, options.nodeId);
+  if (options.nodeId !== undefined && (node === undefined || node.matches.length === 0)) {
+    diagnostics.push(
+      authoringDiagnostic({
+        code: "TN_AUTHORING_SCENE_NODE_MISSING",
+        file: sceneDocument.projectRelativePath,
+        message: `No entity, prefab, resource, system, UI node, or UI binding with id '${options.nodeId}' was found in scene '${options.sceneId}'.`,
+        value: options.nodeId,
+        suggestion: "Run tn scene inspect <scene-id> --json to list available ids, then retry with --node <id>.",
+      }),
+    );
+  }
 
   return {
     ...authoringOperationResult({ diagnostics, projectPath: project.projectPath }),
-    scene: inspectSceneDocument(sceneDocument.projectRelativePath, sceneDocument.data, await countSourceLines(sceneDocument.file)),
+    ...(node === undefined ? { scene } : { node }),
   };
 }
 
@@ -4652,6 +4671,55 @@ function inspectSceneDocument(file: string, data: unknown, sourceLineCount = 0):
     systems: idsFromArray(data.systems),
     uiNodes: isRecord(data.ui) ? idsFromArray(data.ui.nodes) : [],
   };
+}
+
+function inspectSceneNode(data: unknown, nodeId: string): ISceneNodeInspection | undefined {
+  if (!isRecord(data)) {
+    return undefined;
+  }
+  const matches: ISceneNodeInspection["matches"] = [];
+  pushArrayIdMatches(matches, "entity", "/entities", data.entities, nodeId);
+  pushArrayIdMatches(matches, "instance", "/instances", data.instances, nodeId);
+  pushArrayIdMatches(matches, "prefab", "/prefabs", data.prefabs, nodeId);
+  pushArrayIdMatches(matches, "resource", "/resources", data.resources, nodeId);
+  pushArrayIdMatches(matches, "system", "/systems", data.systems, nodeId);
+  if (isRecord(data.ui)) {
+    pushArrayIdMatches(matches, "ui-node", "/ui/nodes", data.ui.nodes, nodeId);
+    readArray(data.ui.bindings)?.forEach((binding, index) => {
+      if (!isRecord(binding)) {
+        return;
+      }
+      const node = readString(binding.node);
+      const resource = readString(binding.resource);
+      if (node === nodeId || resource === nodeId || resource?.startsWith(`${nodeId}.`) === true) {
+        matches.push({
+          kind: "ui-binding",
+          path: `/ui/bindings/${index}`,
+          value: cloneJson(binding),
+        });
+      }
+    });
+  }
+  return { id: nodeId, matches };
+}
+
+function pushArrayIdMatches(
+  matches: ISceneNodeInspection["matches"],
+  kind: ISceneNodeInspection["matches"][number]["kind"],
+  path: string,
+  value: unknown,
+  nodeId: string,
+): void {
+  readArray(value)?.forEach((item, index) => {
+    if (!isRecord(item) || readString(item.id) !== nodeId) {
+      return;
+    }
+    matches.push({
+      kind,
+      path: `${path}/${index}`,
+      value: cloneJson(item),
+    });
+  });
 }
 
 function compactInstanceRecord(

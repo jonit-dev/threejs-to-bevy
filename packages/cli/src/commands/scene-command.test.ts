@@ -178,6 +178,73 @@ test("scene-command inspect returns source metadata for agents", async () => {
   }
 });
 
+test("scene-command inspect can target one scene node without dumping full scene metadata", async () => {
+  const root = await createSceneProject();
+
+  try {
+    const result = await sceneCommand(["inspect", "scene.arena", "--node", "player-kart", "--project", root, "--json"]);
+    const payload = JSON.parse(result.stdout) as {
+      code: string;
+      node: { id: string; matches: Array<{ kind: string; path: string; value: { id?: string; prefab?: string } }> };
+      scene?: unknown;
+    };
+
+    assert.equal(result.exitCode, 0);
+    assert.equal(payload.code, "TN_SCENE_OK");
+    assert.equal(payload.scene, undefined);
+    assert.equal(payload.node.id, "player-kart");
+    assert.deepEqual(payload.node.matches, [
+      {
+        kind: "entity",
+        path: "/entities/0",
+        value: { id: "player-kart", prefab: "kart", transform: { position: [0, 0, 0], rotation: [0, 0, 0], scale: [1, 1, 1] } },
+      },
+    ]);
+    assert.equal(result.stdout.includes("chase-camera"), false);
+    assert.equal(result.stdout.includes("score-label"), false);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("scene-command inspect targets UI bindings by resource id", async () => {
+  const root = await createSceneProject();
+
+  try {
+    const result = await sceneCommand(["inspect", "scene.arena", "--node", "hud.score", "--project", root, "--json"]);
+    const payload = JSON.parse(result.stdout) as {
+      node: { matches: Array<{ kind: string; path: string; value: { id?: string; node?: string; resource?: string } }> };
+    };
+
+    assert.equal(result.exitCode, 0);
+    assert.deepEqual(
+      payload.node.matches.map((match) => ({ kind: match.kind, path: match.path, value: match.value })),
+      [
+        { kind: "resource", path: "/resources/0", value: { id: "hud.score" } },
+        { kind: "ui-binding", path: "/ui/bindings/0", value: { node: "score-label", resource: "hud.score.value" } },
+      ],
+    );
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("scene-command inspect reports a missing targeted node with a fix hint", async () => {
+  const root = await createSceneProject();
+
+  try {
+    const result = await sceneCommand(["inspect", "scene.arena", "--node", "missing-node", "--project", root, "--json"]);
+    const payload = JSON.parse(result.stdout) as { diagnostics: Array<{ code: string; suggestion?: string }>; node: { id: string; matches: unknown[] } };
+
+    assert.equal(result.exitCode, 1);
+    assert.equal(payload.node.id, "missing-node");
+    assert.deepEqual(payload.node.matches, []);
+    assert.equal(payload.diagnostics.some((diagnostic) => diagnostic.code === "TN_AUTHORING_SCENE_NODE_MISSING" && diagnostic.suggestion?.includes("--node <id>")), true);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
 test("scene-command inspect reports compact instance and repeated-block evidence", async () => {
   const root = await createSceneProject();
 

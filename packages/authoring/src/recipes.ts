@@ -457,7 +457,7 @@ function defaultRecipeMetadata(recipeId: AuthoringRecipeId, args: Record<string,
     proofCommands: [
       "tn authoring validate --project . --json",
       "tn build --project . --json",
-      `tn scene inspect ${sceneId} --json`,
+      `tn scene inspect ${sceneId} --node ${entityId} --json`,
       `tn playtest --project . --entity ${entityId} --press KeyD --frames 30 --expect-moved --json`,
     ],
     proofHints: recipeProofHints(recipeId),

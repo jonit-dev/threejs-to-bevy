@@ -94,6 +94,11 @@ interface ScriptTransformFacade {
 
 ## Structured Source Shapes
 
+- Inspect one scene record with
+  `tn scene inspect arena --node <id> --project . --json` before reading a full
+  `content/scenes/*.scene.json` file. It matches entities, compact instances,
+  prefabs, resources, systems, UI nodes, and UI bindings that reference the
+  requested resource.
 - Scenes: `content/scenes/*.scene.json` own entities, transforms, components,
   cameras, resources, UI bindings, and script references.
 - Input: `content/input/*.input.json` uses actions with
@@ -111,6 +116,7 @@ interface ScriptTransformFacade {
 
 ```bash
 tn iterate --project . --json
+tn scene inspect arena --node scaffold.player --project . --json
 tn playtest report --latest --scenario <name> --json
 tn cookbook show player-move-wasd --json
 tn cookbook show follow-camera --json

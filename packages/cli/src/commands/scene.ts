@@ -93,9 +93,9 @@ export async function sceneCommand(argv: readonly string[], options: ISceneComma
   if (subcommand === "inspect") {
     const sceneId = readPositional(normalizedArgv, 1);
     if (sceneId === undefined) {
-      return renderUsage(json, "TN_SCENE_INSPECT_ID_MISSING", "Usage: tn scene inspect <scene-id> [--project <path>] [--json]");
+      return renderUsage(json, "TN_SCENE_INSPECT_ID_MISSING", "Usage: tn scene inspect <scene-id> [--node <id>] [--project <path>] [--json]");
     }
-    const result = await inspectScene({ projectPath, sceneId });
+    const result = await inspectScene({ projectPath, sceneId, nodeId: readFlag(normalizedArgv, "--node") });
     return renderSceneResult(result, json, result.ok ? `Scene '${sceneId}' inspected.` : `Scene '${sceneId}' inspection failed.`);
   }
 

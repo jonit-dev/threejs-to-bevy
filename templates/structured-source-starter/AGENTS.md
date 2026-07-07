@@ -15,6 +15,9 @@ Rules for this generated ThreeNative project.
 - Prefer deterministic CLI edits and diagnostics:
   `tn scene ... --json`, `tn ui ... --json`, and
   `tn material ... --json`.
+- Before opening a full scene JSON file to inspect one object, use targeted
+  scene inspection:
+  `tn scene inspect arena --node <entity-or-resource-or-ui-id> --project . --json`.
 - Edit JSON directly only when no CLI operation covers the change.
 - Preserve schema/version fields and stable IDs unless asked to rename.
 - Add behavior in `src/scripts/**/*.ts`, then reference module/exports from
