@@ -307,4 +307,7 @@ Verified through the repo-root CLI:
 Known blockers before this PRD can move to done:
 
 - No external public hosting URL or deploy workflow is configured for the game.
+- A local Pages-style static build attempt failed because the browser bundle
+  requested `node:fs/promises`; raw failure is
+  `examples/metro-surfer-heist/artifacts/verify/verification-report.json`.
 - No five-minute human playtest transcript is recorded.

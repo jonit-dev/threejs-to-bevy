@@ -70,7 +70,10 @@ so the conclusions can be rechecked instead of treated as taste.
 ## Improvements To Make
 
 - Add a static deploy workflow for release candidates. PRD-012 cannot close
-  honestly until a public URL can be produced and smoke-tested.
+  honestly until a public URL can be produced and smoke-tested. A local
+  Pages-style build attempt also showed the runtime shell needs a browser-only
+  static export; the current Vite build can pull `node:fs/promises` into the
+  browser bundle.
 - Make generated example scripts resolve the workspace CLI or print a precise
   repair hint. The no-install fallback should be documented in generated
   READMEs.
