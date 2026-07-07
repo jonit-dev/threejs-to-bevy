@@ -203,18 +203,23 @@ sequenceDiagram
 
 - `tools/verify/artifacts/agent-benchmark/pilot-2026-07/` - run reports,
   screenshots, `benchmark-report.json` (artifacts, not source).
-- `docs/PRDs/agent-ergonomics-2026-07-05/README.md` - record pilot verdict
+- `docs/PRDs/done/agent-ergonomics-2026-07-05/README.md` - record pilot verdict
   (edit).
 - `CHALLENGES.md` - update the "honest prior" with measured data (edit).
 
 **Implementation:**
 
-- [ ] Operator executes 8 sessions per protocol (collector + lane-runner).
+- [x] Operator executes 8 sessions per protocol (collector + lane-runner).
   Status 2026-07-06: blocked on manual fresh-agent sessions. Smoke evidence
   exists under `tools/verify/artifacts/agent-benchmark/smoke/` and is not
-  pilot data.
-- [ ] Aggregate and write the decision note: which frictions dominated
-  (dialect, loop, visuals) based on transcript failure notes.
+  pilot data. Status 2026-07-06 later: completed 8 fresh `codex exec`
+  sessions under
+  `tools/verify/artifacts/agent-benchmark/pilot-2026-07/candidates/`.
+- [x] Aggregate and write the decision note: which frictions dominated
+  (dialect, loop, visuals) based on transcript failure notes. Aggregate report
+  lives at
+  `tools/verify/artifacts/agent-benchmark/pilot-2026-07/benchmark-report.json`;
+  decision note is recorded in this PRD bundle README and `CHALLENGES.md`.
 
 **Tests Required:** none (data collection phase).
 
@@ -235,7 +240,11 @@ experiment outcome, not code.
 - [x] Scoring CLI grades both a ThreeNative project and a vanilla fixture
   without code changes per candidate.
 - [x] Metric extraction is behavior-preserving (existing CLI tests pass).
-- [ ] Pilot report exists with per-condition medians and an explicit verdict.
-  Smoke aggregate exists; decisive pilot report still requires real sessions.
+- [x] Pilot report exists with per-condition medians and an explicit verdict.
+  Decisive pilot report is
+  `tools/verify/artifacts/agent-benchmark/pilot-2026-07/benchmark-report.json`.
+  Verdict: fail. Collector median tokens were 1,984,022 ThreeNative vs
+  791,745 vanilla. Lane-runner median tokens were 4,013,006 ThreeNative vs
+  1,020,845 vanilla. ThreeNative exceeded the 2x threshold for both prompts.
 - [x] `pnpm build`, `pnpm typecheck`, and touched-package tests pass.
 - [x] No CI/release gate enrollment (explicitly out of scope).

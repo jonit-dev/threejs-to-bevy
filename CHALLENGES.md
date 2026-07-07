@@ -131,6 +131,16 @@ engine parity. Effort allocation does not currently match that answer.
    schemas, neutral scorer, and smoke evidence for one vanilla fixture plus
    one ThreeNative example. Those fixture token counts are harness proof, not
    the decisive human-operated pilot data.
+   Later on 2026-07-06, the first 8-session pilot was run for collector and
+   lane-runner prompts. Evidence lives in
+   `tools/verify/artifacts/agent-benchmark/pilot-2026-07/`. The verdict was
+   fail against the 2x threshold: collector median tokens were 1,984,022
+   ThreeNative vs 791,745 vanilla, and lane-runner median tokens were
+   4,013,006 ThreeNative vs 1,020,845 vanilla. Dominant frictions were
+   dialect/tool-loop repair cost, structured-source patch fragility, and
+   browser/runtime warning cleanup; one run in each condition also failed the
+   neutral movement probe, so the verdict should be read as "not close enough
+   yet," not as a final product death sentence.
 2. **Cookbook over reference docs.** Models learn unseen DSLs from few-shot
    complete examples far better than from reference documentation. Distill
    the existing example games into 10-20 pattern-sized pairs ("goal:
@@ -206,12 +216,14 @@ applying the methodology to a domain without two decades of Unity/Godot
 incumbency might each be worth more than ThreeNative itself.
 
 Honest prior at time of writing: roughly 40% that the benchmark comes back
-"close enough to continue." The dialect tax is real, and the
-visual-contract ceiling is the hardest fix — making IR-mediated scenes look
-as good as freestyle Three.js means promoting a lot of rendering surface,
-which drags the project back onto the parity treadmill. But 40% on a
-two-week test is a good bet when the alternatives are grinding on
-unmeasured or abandoning something that might work.
+"close enough to continue." The first pilot did not: ThreeNative exceeded
+2x vanilla median tokens on both comparable prompts. The dialect tax is
+real, and the visual-contract ceiling is the hardest fix — making
+IR-mediated scenes look as good as freestyle Three.js means promoting a lot
+of rendering surface, which drags the project back onto the parity treadmill.
+The rational next step is a post-fix re-run after the cookbook, collapsed
+loop, prescriptive diagnostics, and API-pruning work, not more parity breadth
+before the authoring-cost curve improves.
 
 The one guaranteed-waste option is the middle path: continuing to build
 parity slices and gates while the core question stays unanswered.

@@ -1,0 +1,96 @@
+{
+  "artifacts": {
+    "afterScreenshot": "after.png",
+    "beforeScreenshot": "before.png"
+  },
+  "candidate": "/home/joao/projects/threejs-to-bevy/tools/verify/artifacts/agent-benchmark/pilot-2026-07/candidates/collector-threenative-r1",
+  "condition": "threenative",
+  "diagnostics": [
+    {
+      "code": "TN_BENCH_BROWSER_LOGS",
+      "message": "Browser emitted 7 console log(s).",
+      "severity": "warning"
+    }
+  ],
+  "generatedAt": "2026-07-07T01:11:01.397Z",
+  "metrics": {
+    "after": {
+      "averageColor": {
+        "blue": 0.4550648658769063,
+        "green": 0.19018204912173203,
+        "red": 0.03126816533905229
+      },
+      "colorBucketCount": 25,
+      "colorBucketRatio": 0.00010850694444444444,
+      "height": 720,
+      "localContrastRatio": 0.015358198574161016,
+      "nonblank": {
+        "changedPixelRatio": 0.8812749565972222,
+        "ok": true,
+        "threshold": 0.002
+      },
+      "projectedBounds": {
+        "height": 720,
+        "nonblankPixelRatio": 0.8812749565972222,
+        "ok": true,
+        "width": 1280,
+        "x": 0,
+        "y": 0
+      },
+      "visibleBoundsAreaRatio": 1,
+      "width": 1280
+    },
+    "before": {
+      "averageColor": {
+        "blue": 0.45415010127314814,
+        "green": 0.19062947644335512,
+        "red": 0.032306768280228756
+      },
+      "colorBucketCount": 25,
+      "colorBucketRatio": 0.00010850694444444444,
+      "height": 720,
+      "localContrastRatio": 0.015679881759693967,
+      "nonblank": {
+        "changedPixelRatio": 0.8781488715277778,
+        "ok": true,
+        "threshold": 0.002
+      },
+      "projectedBounds": {
+        "height": 720,
+        "nonblankPixelRatio": 0.8781488715277778,
+        "ok": true,
+        "width": 1280,
+        "x": 0,
+        "y": 0
+      },
+      "visibleBoundsAreaRatio": 1,
+      "width": 1280
+    },
+    "movementDelta": {
+      "averageBrightnessDelta": 0.002636245007261973,
+      "changedPixelRatio": 0.010704210069444444,
+      "threshold": 0.001
+    }
+  },
+  "ok": true,
+  "promptId": "collector",
+  "runId": "collector-threenative-r1",
+  "schema": "threenative.agent-benchmark-run",
+  "session": {
+    "schema": "threenative.agent-benchmark-session",
+    "version": 1,
+    "runId": "collector-threenative-r1",
+    "promptId": "collector",
+    "condition": "threenative",
+    "tokenCount": 2043445,
+    "iterationCount": 10,
+    "stopReason": "claimed-playable",
+    "finishedAt": "2026-07-07T01:10:19.686Z",
+    "humanRubric": {
+      "playability": 2,
+      "visual": 2,
+      "notes": "Fresh codex exec session (r1). Token count is input+output+reasoning from final JSON usage ({\"input_tokens\":2026330,\"cached_input_tokens\":1836288,\"output_tokens\":15180,\"reasoning_output_tokens\":1935}). Iterations are transcript-derived: max(0,file_change_count-1)+failed_commands+failed_tool_calls = 10. Final response: Playable: yes. Built a ThreeNative structured-source top-down collector in the candidate directory. The player moves with WASD/arrow keys inside a bounded arena, collects visible gems, updates score/progress HUD, wins at `Gems 6/6`, and shows `Press R or Enter to restart`. Verified with: - `tn autho"
+    }
+  },
+  "version": 1
+}

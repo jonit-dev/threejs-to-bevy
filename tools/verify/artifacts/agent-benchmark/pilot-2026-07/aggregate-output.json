@@ -1,0 +1,30 @@
+{
+  "code": "TN_BENCH_AGGREGATE_OK",
+  "outPath": "/home/joao/projects/threejs-to-bevy/tools/verify/artifacts/agent-benchmark/pilot-2026-07/benchmark-report.json",
+  "report": {
+    "diagnostics": [],
+    "generatedAt": "2026-07-07T01:12:12.985Z",
+    "promptSummaries": [
+      {
+        "promptId": "collector",
+        "threenativeMedianTokens": 1984022,
+        "vanillaMedianTokens": 791745,
+        "withinTwoX": false
+      },
+      {
+        "promptId": "lane-runner",
+        "threenativeMedianTokens": 4013006,
+        "vanillaMedianTokens": 1020845,
+        "withinTwoX": false
+      }
+    ],
+    "runCount": 8,
+    "schema": "threenative.agent-benchmark-report",
+    "verdict": {
+      "status": "fail",
+      "summary": "ThreeNative exceeds 2x vanilla median tokens for at least one comparable prompt.",
+      "threshold": "threenative-median-tokens <= 2x vanilla-median-tokens"
+    },
+    "version": 1
+  }
+}

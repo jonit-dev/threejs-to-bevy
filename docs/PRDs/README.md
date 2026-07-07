@@ -4,15 +4,15 @@ This index separates open planning work from completed PRDs and historical
 milestone batches. For current implementation status, read
 [../STATUS.md](../STATUS.md) first.
 
-## Current Initiatives
+## Completed Initiatives
 
 ### Agent Ergonomics (2026-07-05)
 
-The [agent-ergonomics bundle](agent-ergonomics-2026-07-05/README.md)
-operationalizes `CHALLENGES.md`: measure whether agents can build games
+The [agent-ergonomics bundle](done/agent-ergonomics-2026-07-05/README.md)
+operationalized `CHALLENGES.md`: measure whether agents can build games
 through ThreeNative at reasonable token cost, then fix the measured
-frictions. Execution order matters; PRD-000 lands first, then PRD-001 gates
-the rest.
+frictions. Execution order mattered; PRD-000 landed first, PRD-001 measured
+the baseline, and PRD-002 through PRD-005 landed the ergonomics fixes.
 
 - [Convention Alignment](done/agent-ergonomics-2026-07-05/PRD-000-convention-alignment.md):
   convention-first design rule plus a KISS pass on the script context —
@@ -20,10 +20,12 @@ the rest.
   property access, engine-owned `fixedDelta` clamping, proof-time rounding,
   and prescriptive legacy-idiom diagnostics, with web/Bevy conformance
   evidence.
-- [Agent Authoring Benchmark](agent-ergonomics-2026-07-05/PRD-001-agent-authoring-benchmark.md):
+- [Agent Authoring Benchmark](done/agent-ergonomics-2026-07-05/PRD-001-agent-authoring-benchmark.md):
   neutral scoring harness and run protocol measuring tokens-to-playable for
   identical game prompts under vanilla Three.js vs ThreeNative; produces the
-  kill/continue verdict.
+  kill/continue verdict. First pilot evidence is in
+  `tools/verify/artifacts/agent-benchmark/pilot-2026-07/`; ThreeNative
+  exceeded the 2x token threshold on both comparable prompts.
 - [Authoring Cookbook](done/agent-ergonomics-2026-07-05/PRD-002-authoring-cookbook.md):
   18 CI-validated, pattern-sized worked examples exposed via `tn cookbook`
   and indexed in generated starter agent instructions.
@@ -39,6 +41,8 @@ the rest.
   examples in this repo plus a build-only sweep for the remaining example.
   Supersedes
   [Docs Front Door Compaction](done/other/docs-front-door-compaction.md).
+
+## Current Initiatives
 
 Open PRDs usually live under `docs/PRDs/other/`. The near-term proof
 infrastructure bundle lives under

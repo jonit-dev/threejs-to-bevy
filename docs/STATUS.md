@@ -35,7 +35,7 @@ in scripts, examples, and historical docs during a staged cleanup. See
 
 ## Current PRDs
 
-- [Agent Ergonomics](PRDs/agent-ergonomics-2026-07-05/README.md): active
+- [Agent Ergonomics](PRDs/done/agent-ergonomics-2026-07-05/README.md): done
   execution bundle for measuring and improving agent game creation.
 - [Proof-First Engine Loop](PRDs/proof-first-engine-loop-2026-07-05/): active
   runtime, native parity, gameplay, and proof-loop capability work.

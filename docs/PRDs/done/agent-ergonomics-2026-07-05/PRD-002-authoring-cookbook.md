@@ -208,7 +208,7 @@ report plus per-entry temp build logs.
 #### Phase 4: Scale to 16 entries across all high-value surfaces
 
 **Files:** 12 new entry files under `docs/cookbook/` (content, not code);
-`docs/PRDs/agent-ergonomics-2026-07-05/README.md` progress note (edit).
+`docs/PRDs/done/agent-ergonomics-2026-07-05/README.md` progress note (edit).
 
 **Implementation:**
 

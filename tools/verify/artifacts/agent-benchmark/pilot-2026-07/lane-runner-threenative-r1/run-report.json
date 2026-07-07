@@ -1,0 +1,96 @@
+{
+  "artifacts": {
+    "afterScreenshot": "after.png",
+    "beforeScreenshot": "before.png"
+  },
+  "candidate": "/home/joao/projects/threejs-to-bevy/tools/verify/artifacts/agent-benchmark/pilot-2026-07/candidates/lane-runner-threenative-r1",
+  "condition": "threenative",
+  "diagnostics": [
+    {
+      "code": "TN_BENCH_BROWSER_LOGS",
+      "message": "Browser emitted 7 console log(s).",
+      "severity": "warning"
+    }
+  ],
+  "generatedAt": "2026-07-07T01:11:50.359Z",
+  "metrics": {
+    "after": {
+      "averageColor": {
+        "blue": 0.5831402845860566,
+        "green": 0.2538829827069717,
+        "red": 0.05564700350626362
+      },
+      "colorBucketCount": 53,
+      "colorBucketRatio": 0.0002300347222222222,
+      "height": 720,
+      "localContrastRatio": 0.02829073204660059,
+      "nonblank": {
+        "changedPixelRatio": 0.9005436197916666,
+        "ok": true,
+        "threshold": 0.002
+      },
+      "projectedBounds": {
+        "height": 720,
+        "nonblankPixelRatio": 0.9005436197916666,
+        "ok": true,
+        "width": 1280,
+        "x": 0,
+        "y": 0
+      },
+      "visibleBoundsAreaRatio": 1,
+      "width": 1280
+    },
+    "before": {
+      "averageColor": {
+        "blue": 0.5717542977260349,
+        "green": 0.2509119264025054,
+        "red": 0.06386306423611111
+      },
+      "colorBucketCount": 68,
+      "colorBucketRatio": 0.0002951388888888889,
+      "height": 720,
+      "localContrastRatio": 0.02887758650669449,
+      "nonblank": {
+        "changedPixelRatio": 0.9008257378472222,
+        "ok": true,
+        "threshold": 0.002
+      },
+      "projectedBounds": {
+        "height": 720,
+        "nonblankPixelRatio": 0.9008257378472222,
+        "ok": true,
+        "width": 1280,
+        "x": 0,
+        "y": 0
+      },
+      "visibleBoundsAreaRatio": 1,
+      "width": 1280
+    },
+    "movementDelta": {
+      "averageBrightnessDelta": 0.01390592660674791,
+      "changedPixelRatio": 0.0721484375,
+      "threshold": 0.001
+    }
+  },
+  "ok": true,
+  "promptId": "lane-runner",
+  "runId": "lane-runner-threenative-r1",
+  "schema": "threenative.agent-benchmark-run",
+  "session": {
+    "schema": "threenative.agent-benchmark-session",
+    "version": 1,
+    "runId": "lane-runner-threenative-r1",
+    "promptId": "lane-runner",
+    "condition": "threenative",
+    "tokenCount": 4013006,
+    "iterationCount": 26,
+    "stopReason": "claimed-playable",
+    "finishedAt": "2026-07-07T01:10:19.717Z",
+    "humanRubric": {
+      "playability": 2,
+      "visual": 2,
+      "notes": "Fresh codex exec session (r1). Token count is input+output+reasoning from final JSON usage ({\"input_tokens\":3990602,\"cached_input_tokens\":3613184,\"output_tokens\":19788,\"reasoning_output_tokens\":2616}). Iterations are transcript-derived: max(0,file_change_count-1)+failed_commands+failed_tool_calls = 26. Final response: Playable: yes. Built the lane runner in durable ThreeNative source (`content/**/*.json`, `src/scripts/player.ts`). It has three lanes, keyboard lane changes with `A/D` or arrows, scrolling red hazards, gold rewards, distance/score HUD, visible finish target, collect feedback, fail feedback, and retr"
+    }
+  },
+  "version": 1
+}

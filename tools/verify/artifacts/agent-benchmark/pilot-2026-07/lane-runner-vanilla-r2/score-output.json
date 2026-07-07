@@ -1,0 +1,94 @@
+{
+  "code": "TN_BENCH_SCORE_OK",
+  "outPath": "/home/joao/projects/threejs-to-bevy/tools/verify/artifacts/agent-benchmark/pilot-2026-07/lane-runner-vanilla-r2/run-report.json",
+  "report": {
+    "artifacts": {
+      "afterScreenshot": "after.png",
+      "beforeScreenshot": "before.png"
+    },
+    "candidate": "/home/joao/projects/threejs-to-bevy/tools/verify/artifacts/agent-benchmark/pilot-2026-07/candidates/lane-runner-vanilla-r2",
+    "condition": "vanilla",
+    "diagnostics": [],
+    "generatedAt": "2026-07-07T01:11:28.245Z",
+    "metrics": {
+      "after": {
+        "averageColor": {
+          "blue": 0.14585397092864924,
+          "green": 0.20132007421023965,
+          "red": 0.16666170087826795
+        },
+        "colorBucketCount": 77,
+        "colorBucketRatio": 0.00033420138888888887,
+        "height": 720,
+        "localContrastRatio": 0.02587810815510346,
+        "nonblank": {
+          "changedPixelRatio": 1,
+          "ok": true,
+          "threshold": 0.002
+        },
+        "projectedBounds": {
+          "height": 720,
+          "nonblankPixelRatio": 1,
+          "ok": true,
+          "width": 1280,
+          "x": 0,
+          "y": 0
+        },
+        "visibleBoundsAreaRatio": 1,
+        "width": 1280
+      },
+      "before": {
+        "averageColor": {
+          "blue": 0.1447596592456427,
+          "green": 0.19999711073665577,
+          "red": 0.16704710052423746
+        },
+        "colorBucketCount": 73,
+        "colorBucketRatio": 0.00031684027777777776,
+        "height": 720,
+        "localContrastRatio": 0.024374021909233178,
+        "nonblank": {
+          "changedPixelRatio": 1,
+          "ok": true,
+          "threshold": 0.002
+        },
+        "projectedBounds": {
+          "height": 720,
+          "nonblankPixelRatio": 1,
+          "ok": true,
+          "width": 1280,
+          "x": 0,
+          "y": 0
+        },
+        "visibleBoundsAreaRatio": 1,
+        "width": 1280
+      },
+      "movementDelta": {
+        "averageBrightnessDelta": 0.017096225093044107,
+        "changedPixelRatio": 0.04818359375,
+        "threshold": 0.001
+      }
+    },
+    "ok": true,
+    "promptId": "lane-runner",
+    "runId": "lane-runner-vanilla-r2",
+    "schema": "threenative.agent-benchmark-run",
+    "session": {
+      "schema": "threenative.agent-benchmark-session",
+      "version": 1,
+      "runId": "lane-runner-vanilla-r2",
+      "promptId": "lane-runner",
+      "condition": "vanilla",
+      "tokenCount": 1020845,
+      "iterationCount": 4,
+      "stopReason": "claimed-playable",
+      "finishedAt": "2026-07-07T01:10:19.728Z",
+      "humanRubric": {
+        "playability": 2,
+        "visual": 2,
+        "notes": "Fresh codex exec session (r2). Token count is input+output+reasoning from final JSON usage ({\"input_tokens\":1007182,\"cached_input_tokens\":919296,\"output_tokens\":11327,\"reasoning_output_tokens\":2336}). Iterations are transcript-derived: max(0,file_change_count-1)+failed_commands+failed_tool_calls = 4. Final response: Implemented the lane runner in the candidate directory with: - [index.html](/home/joao/projects/threejs-to-bevy/tools/verify/artifacts/agent-benchmark/pilot-2026-07/candidates/lane-runner-vanilla-r2/index.html) - [styles.css](/home/joao/projects/threejs-to-bevy/tools/verify/artifacts/agent-benchmark"
+      }
+    },
+    "version": 1
+  }
+}
