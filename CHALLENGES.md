@@ -141,6 +141,23 @@ engine parity. Effort allocation does not currently match that answer.
    browser/runtime warning cleanup; one run in each condition also failed the
    neutral movement probe, so the verdict should be read as "not close enough
    yet," not as a final product death sentence.
+   On 2026-07-07, after the fix round (scaffold-first `tn game plan --apply`,
+   collapsed `tn iterate` verification, `tn scene inspect`, compact outputs,
+   prescriptive starter instructions), the rerun **passed** — dramatically:
+   collector 98k vs 791k vanilla median raw tokens (0.124x), lane-runner 84k
+   vs 1,021k (0.083x), 3.5 median tool steps, zero failed commands. Evidence:
+   `tools/verify/artifacts/agent-benchmark/scaffold-first-token-rerun-2026-07-07b/`.
+   **Read this pass narrowly.** The winning runs are two commands: the plan
+   recipe scaffolds the entire game and `tn iterate` verifies it. The two
+   benchmark prompts exactly match the two recipes built during the fix round,
+   so the number measures the recipe pipeline, not agent authoring — a fresh
+   agent asked for a game with no matching recipe would fall back onto the
+   dialect-authoring path the pilot measured. What the pass does prove: when
+   the loop is collapsed to few steps, per-step replay cost stops being fatal,
+   and the collapsed-loop/diagnostic work generalizes off-recipe even though
+   the scaffold win does not. The decisive unmeasured number is now the
+   **off-recipe** ratio: same protocol, a prompt no recipe covers, agent must
+   author real deltas on top of (or without) a scaffold.
 2. **Cookbook over reference docs.** Models learn unseen DSLs from few-shot
    complete examples far better than from reference documentation. Distill
    the existing example games into 10-20 pattern-sized pairs ("goal:
@@ -217,13 +234,18 @@ incumbency might each be worth more than ThreeNative itself.
 
 Honest prior at time of writing: roughly 40% that the benchmark comes back
 "close enough to continue." The first pilot did not: ThreeNative exceeded
-2x vanilla median tokens on both comparable prompts. The dialect tax is
-real, and the visual-contract ceiling is the hardest fix — making
-IR-mediated scenes look as good as freestyle Three.js means promoting a lot
-of rendering surface, which drags the project back onto the parity treadmill.
-The rational next step is a post-fix re-run after the cookbook, collapsed
-loop, prescriptive diagnostics, and API-pruning work, not more parity breadth
-before the authoring-cost curve improves.
+2x vanilla median tokens on both comparable prompts. The post-fix rerun
+(2026-07-07) then passed at 0.08-0.12x — but on prompts the scaffold recipes
+were purpose-built for, so it validates the "collapse the loop" thesis, not
+the general authoring-cost thesis. Two questions remain open and are now the
+real gate: (1) the off-recipe token ratio, where the agent must author
+mechanics no recipe provides; (2) the visual-contract ceiling, which the
+passing runs make vivid — the winning screenshot is exactly the "colored
+primitives under a directional light" look Challenge 3d predicts, and making
+IR-mediated scenes look as good as freestyle Three.js still risks dragging
+the project back onto the parity treadmill. The rational next step is an
+off-recipe benchmark condition, not more recipes for prompts the benchmark
+happens to contain.
 
 The one guaranteed-waste option is the middle path: continuing to build
 parity slices and gates while the core question stays unanswered.
