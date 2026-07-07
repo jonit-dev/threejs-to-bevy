@@ -109,6 +109,11 @@ flowchart LR
   external promises, and unmanaged scene/entity ownership.
 - [x] Reused utilities: timers helpers, systems lifecycle metadata, command
   validation, unsupported API diagnostics.
+- [x] Naming strategy: prefer explicit fixed-tick names over misleading
+  coroutine or wall-clock names. Use familiar time fields (`deltaTime`,
+  `fixedDeltaTime`, `time`) around the scheduler, but keep the scheduling API
+  visibly portable (`afterTicks`, bounded ownership, cancellation policy) so
+  agents do not infer browser timers, promises, or Unity coroutine semantics.
 
 **Data Changes:** Add bounded schedule metadata and pending queue observations;
 no database changes.

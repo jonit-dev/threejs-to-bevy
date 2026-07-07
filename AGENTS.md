@@ -19,6 +19,15 @@ Repo-wide instructions for AI coding agents working on ThreeNative.
 - Finished PRDs must be moved from active planning folders to
   `docs/PRDs/done`.
 
+## Engineering Mantras
+
+- Use abstractions for the heavy lifting whenever they are already available
+  or clearly pay for themselves, so the code stays DRY, KISS, and SRP.
+- Prefer convention over configuration. Script APIs should follow familiar
+  Unity naming, fields, and behavior where that fits ThreeNative, so authors
+  and agents can rely on established game-engine vocabulary instead of
+  inventing project-specific choices.
+
 ## Product Boundary
 
 ThreeNative flow:

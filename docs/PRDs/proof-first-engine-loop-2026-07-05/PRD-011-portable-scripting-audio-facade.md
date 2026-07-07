@@ -111,6 +111,11 @@ flowchart LR
   and emit diagnostics for unavailable devices or unsupported audio sources.
 - [x] Reused utilities: asset manifest lookup, audio validation, service logs,
   production audio diagnostics.
+- [x] Naming strategy: keep script calls close to familiar engine audio
+  vocabulary. `ctx.audio.play/stop/query` remains the minimal facade; options
+  should use Unity-like names where semantics match (`volume`, `pitch`, `loop`,
+  spatial/source entity) and must not expose backend `AudioSource`, WebAudio,
+  or Bevy handles.
 
 **Data Changes:** Add audio service names/result payloads; no database changes.
 

@@ -30,11 +30,15 @@ generated-game gates to reject projects that only prove one-shot movement.
 
 - Scenario files, discovery, rich assertions, stable artifacts, and watch-mode
   hooks exist in the CLI surface.
+- `tn game plan --apply --json` now creates scaffold-first, scenario-backed
+  starter source for the collector and lane-runner paths before agent patching.
+- Compact playtest reports, artifact-backed deep logs, and agent IO budget
+  gates now exist; new proof-loop output must preserve those token constraints.
 - `tn game qa --run-proof` discovers `playtests/*.playtest.json` and falls
   back to one-shot playtest flags when no scenario exists.
-- Generated-game gates still allow one-shot movement proof as sufficient in
-  several paths, and maintained templates/examples are not uniformly required
-  to ship committed scenario files.
+- Generated-game gates still need a final ratchet so scaffold-first and
+  generated-game release paths require committed scenario proof rather than
+  accepting ephemeral one-shot movement proof.
 - Native scenario execution is intentionally out of scope here; that belongs
   to `native-parity-closure-and-proof-loop.md`.
 
@@ -71,12 +75,15 @@ generated-game gates to reject projects that only prove one-shot movement.
 
 - Treat committed scenario playtests as the default proof artifact for any
   generated game or maintained starter.
+- Treat scaffold-first output as a first-class caller: generated projects from
+  `tn game plan --apply --json` must include committed scenarios and compact
+  reproduction commands from the start.
 - Keep one-shot flags backward-compatible, but downgrade them to fallback
   smoke evidence that cannot satisfy generated-game release gates when a
   project has enough source to infer a scenario.
 - Extend QA and verify reports with scenario coverage: scenarios discovered,
-  scenarios run, assertion types covered, artifacts produced, and reproduction
-  command.
+  scenarios run, assertion types covered, artifacts produced, and compact
+  reproduction command. Deep effect logs stay artifact-backed, not stdout.
 - Add scenario files to maintained starter/example projects and update
   templates so new generated projects inherit the proof loop.
 

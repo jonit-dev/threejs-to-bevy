@@ -120,6 +120,10 @@ flowchart LR
   diagnostics and suggested primitive alternatives.
 - [x] Reused utilities: current physics IR validation, character trace reports,
   system service logs, and conformance fixtures.
+- [x] Naming strategy: keep the script-facing shape convention-first. Prefer
+  Unity-like concepts where semantics match (`CharacterController`, `move`,
+  `isGrounded`, `slopeLimit`, `stepOffset`, `collisionFlags`) while preserving
+  existing ThreeNative aliases and diagnostics for unsupported solver breadth.
 
 **Data Changes:** Extend physics/character IR and observations; no database
 changes.

@@ -61,7 +61,7 @@ runtime visual effects, effect logs, and asset/material references.
 **How will this feature be reached?**
 
 - [x] Entry point identified: particle emitter declarations, script service
-  calls such as `ctx.particles.start/stop/burst/reset`, emitted systems IR,
+  calls such as `ctx.particles.play/stop/emit/clear`, emitted systems IR,
   runtime service facades, and visual/conformance gates.
 - [x] Caller file identified: SDK animation/particles module, compiler emit,
   web animation/particle runtime, Bevy animation/particle runtime.
@@ -110,6 +110,11 @@ flowchart LR
   unsupported blend/material modes, and host RNG.
 - [x] Reused utilities: seeded random helpers, animation fixtures, visual
   parity gates, service effect logs.
+- [x] Naming strategy: expose familiar particle verbs where semantics match.
+  Prefer `play`, `stop`, `emit`, and `clear` as canonical script names,
+  mirroring common `ParticleSystem` vocabulary; keep `start`, `burst`, and
+  `reset` only as aliases or lower-level diagnostics if existing contracts need
+  them.
 
 **Data Changes:** Add particle service names and command observations; no
 database changes.
@@ -142,7 +147,9 @@ sequenceDiagram
 
 **Implementation:**
 
-- [ ] Define `particles.start/stop/burst/reset` service names and payloads.
+- [ ] Define canonical `particles.play/stop/emit/clear` service names and
+      payloads, with `start`/`burst`/`reset` compatibility aliases only if
+      needed by existing authored content.
 - [ ] Require bounded emitter declarations and max live counts.
 - [ ] Reject backend particle handles and unbounded emitters.
 

@@ -35,6 +35,11 @@ IR out, zero script for the common 80%.
 - Delayed command scheduling
   (`proof-first-engine-loop-2026-07-05/PRD-010-portable-scripting-delayed-commands-scheduling.md`) is script-side;
   sequencer tracks are data-side. Coordinate tick semantics with it.
+- Scaffold-first planning (`docs/PRDs/other/agent-token-efficiency-scaffold-first.md`)
+  now applies playable starter structure before agent patching. This PRD must
+  extend that path with reusable `Spawner`, `GameFlow`, and `Sequence`
+  abstractions rather than teaching agents to hand-roll timers, wave state, or
+  cutscene scripts in generated source.
 
 **Files Analyzed:**
 
@@ -114,6 +119,11 @@ flowchart LR
       kinds to the six listed.
 - [ ] All authoring flows through new registry operations (`scene.set_spawner`,
       `flow.*`, `sequence.*`) so CLI, MCP, and editor share one pathway.
+- [ ] Public names follow familiar game-engine vocabulary where semantics
+      match. Use Unity-like names for concepts with direct analogs (`state`,
+      `transition`, `trigger`, `timeline`, `play`, `stop`, `timeScale`) and
+      keep ThreeNative-specific names only where the contract is materially
+      different.
 - [ ] Runtime services additions (`sequences.*`) extend the 37-service matrix
       in `packages/ir/src/scriptingHost.ts` with both hosts implemented or
       explicitly diagnosed — repo parity rule.
@@ -133,9 +143,11 @@ All versioned per IR conventions with accepted/rejected fixtures.
 - Callers: `packages/cli/src/index.ts` (+ new `flow.ts`, `sequence.ts`
   command files), `packages/authoring/src/operationRegistry.ts`, both runtime
   system schedulers, compiler emit + manifest.
-- Wiring: `tn game plan` maps "progression / fail-retry / feedback moments"
-  plan surfaces to `GameFlow` + `Sequence` recommendations; starter template
-  ships a minimal `GameFlow` (ready → playing → win) as the reference shape.
+- Wiring: `tn game plan` and `tn game plan --apply --json` map
+  "progression / fail-retry / feedback moments" plan surfaces to `GameFlow` +
+  `Sequence` recommendations; starter template ships a minimal `GameFlow`
+  (ready → playing → win) as the reference shape, and API cards summarize the
+  compact commands agents should copy.
 
 **User flow (agent):** plan says "waves of drones, win at 10 collected, lose
 on 0 hp, intro flyover" → agent runs ~6 bounded CLI commands (spawner on the
@@ -242,11 +254,13 @@ zero scripted state flags; HUD binds `{flow.state}`.
   headless and captures a short recording via the existing `tn record`
   plumbing).
 - `packages/cli/src/commands/game.ts` — plan surfaces → flow/sequence/spawner
-  recommendations.
+  recommendations and scaffold-first apply output.
 - `templates/structured-source-starter/` — minimal `GameFlow` + intro
   sequence; `AGENTS.md`/`CLAUDE.md` rule: "macro game state, waves, and
   cutscenes are data-first — reach for flow/spawner/sequence ops before
   scripts."
+- `templates/*/docs/API-CARD.md` — concise command examples for flow,
+  spawner, and sequence authoring.
 - `docs/STATUS.md`, `docs/bevy-feature-parity.md`, `docs/PRDs/README.md`,
   `docs/contracts/` page for the three contracts.
 

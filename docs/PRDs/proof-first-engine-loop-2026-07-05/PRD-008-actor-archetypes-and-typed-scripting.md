@@ -49,6 +49,10 @@ components, and Blueprints; this PRD delivers the data-first equivalents.
 
 - Wiring one collectible = 7 operations; a system = 2 duplicated JSON
   declarations + an untyped script export.
+- Generic typed `ScriptContext` exports, Unity-style input/time aliases,
+  `entity.get`/`resources.get` defaults, `resources.patch`, compact API cards,
+  and scaffold-first game plan apply have landed. Project-specific typegen,
+  single-source system metadata, and actor archetypes remain open.
 - Access lists drift from what the function body actually touches; the
   runtime validates effects against declarations only at play time.
 - Agents thread literal id strings (`"player"`, `"camera.main"`,
@@ -60,13 +64,12 @@ components, and Blueprints; this PRD delivers the data-first equivalents.
 
 **Approach (three stacked slices, each independently shippable):**
 
-1. **Project typegen** — `tn types generate` (auto-run by `tn build` and
-   `tn dev --watch`) emits `.threenative/types/` with: a `ProjectContext`
-   type (the `ISystemContext` specialized with the project's component,
-   resource, and event schemas), literal unions for entity ids, prefab ids,
-   resource ids, input action/axis names, and animation clip names. Scripts
-   opt in with one import line. Generated dir is git-ignored, rebuilt
-   deterministically.
+1. **Project typegen** — build on the shipped generic `ScriptContext` helper.
+   `tn types generate` (auto-run by `tn build` and `tn dev --watch`) emits
+   `.threenative/types/` with a project-specialized context, literal unions
+   for entity ids, prefab ids, resource ids, input action/axis names, and
+   animation clip names. Scripts keep one type-only import line. Generated dir
+   is git-ignored and rebuilt deterministically.
 2. **`defineBehavior` single declaration** — a script exports
    `defineBehavior({ id, schedule, reads, writes, services, ... }, fn)`;
    the compiler extracts the metadata at build time and synthesizes the
@@ -88,6 +91,9 @@ components, and Blueprints; this PRD delivers the data-first equivalents.
    `character` archetype auto-inventories GLB clips via the asset-inspect
    path and wires idle/walk/run to the constrained animation graph, failing
    with a diagnostic listing available clips when names don't match.
+   Archetypes are the shared abstraction that carries the heavy lifting for
+   hero, vehicle, pickup, camera, and prop setup; generated scripts should stay
+   small and focused on game-specific behavior.
 
 **Architecture:**
 
@@ -112,6 +118,11 @@ flowchart LR
       established dual-implementation contract.
 - [ ] Typegen reads durable source docs only (never `dist/**`), so types are
       correct before the first successful build.
+- [ ] Keep the public script API convention-first. Prefer Unity-like names and
+      semantics where they match (`getButtonDown`, `fixedDeltaTime`,
+      `deltaTime`, `transform.position`, `AudioSource`/`ParticleSystem`-style
+      verbs), keep existing aliases for compatibility, and add diagnostics
+      rather than making agents choose between project-specific names.
 - [ ] Archetypes emit ordered authoring operations through the existing
       `dispatchAuthoringOperation` registry — no new mutation pathway; the
       editor and MCP get archetypes for free.
@@ -134,10 +145,11 @@ migrations.
   `types.ts` command files), `packages/compiler` bundler post-step,
   `packages/authoring/src/operationRegistry.ts` (new `archetype.*`
   operations).
-- Wiring: starter template scripts rewritten on `defineBehavior` + typed
-  context; `tn game plan` recommends archetypes for high-value surfaces;
-  template `AGENTS.md`/`CLAUDE.md` name archetypes as the FIRST authoring
-  tool for hero/vehicle/pickup/camera surfaces.
+- Wiring: starter template scripts use typed context helpers now and move to
+  `defineBehavior` once metadata extraction lands; `tn game plan` and
+  `tn game plan --apply --json` recommend/apply archetypes for high-value
+  surfaces; template `AGENTS.md`/`CLAUDE.md` and API cards name archetypes as
+  the FIRST authoring tool for hero/vehicle/pickup/camera surfaces.
 
 **User flow (agent):** `tn actor add character --id hero --asset
 assets/knight.glb` → one command yields a walkable, animated,
@@ -159,7 +171,8 @@ extracts metadata; no systems JSON edited by hand.
   generated file specializes.
 - Compiler tests — snapshot the generated d.ts for the starter template.
 - `templates/structured-source-starter/src/scripts/player.ts` +
-  `tsconfig.json` — consume the generated types (replaces `any`).
+  `tsconfig.json` — narrow from generic `ScriptContext` to generated
+  project-specific types where available.
 
 **Tests Required:**
 | Test File | Test Name | Assertion |
@@ -240,7 +253,8 @@ locomotion; `tn actor update hero --set sprintSpeed=6` changes only that.
   `collider --size auto` derivation from the abstractions PRD Phase 5).
 - Authoring tests per archetype.
 - `packages/cli/src/commands/game.ts` — `tn game plan` maps high-value
-  surfaces to archetype suggestions.
+  surfaces to archetype suggestions and `--apply` can stamp supported
+  archetypes directly.
 
 **User Verification:** a drivable vehicle with chase camera and a collectible
 with HUD counter each reachable in one command + generated stub.
@@ -252,6 +266,8 @@ with HUD counter each reachable in one command + generated stub.
 - `templates/structured-source-starter/` — scripts on `defineBehavior` +
   typed context; systems doc reduced to attachments; `AGENTS.md`/`CLAUDE.md`
   updated ("use archetypes first; never hand-write access lists").
+- `templates/*/docs/API-CARD.md` — compact archetype/typegen/behavior examples
+  so agents do not rediscover lower-level JSON mutations.
 - One example (`examples/humanoid-physics-course` or a smaller one) —
   retrofit as evidence; record before/after: JSON docs touched, LOC,
   hand-maintained access lists (target: 0).

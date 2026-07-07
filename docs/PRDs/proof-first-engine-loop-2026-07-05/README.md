@@ -4,6 +4,17 @@ This folder is the ordered execution bundle for the 2026-07-05 proof-first
 engine roadmap. It keeps the roadmap-critical engine/product PRDs together and
 ordered by dependency and importance.
 
+## 2026-07-07 Refresh
+
+Recent agent-ergonomics work changed the baseline for this bundle:
+`tn game plan --apply --json`, compact API cards in starters, typed script
+context helpers, Unity-style input/time aliases, compact playtest reports, and
+agent IO budget gates now exist. PRDs in this bundle should build on those
+surfaces instead of adding bespoke project-specific APIs, verbose proof output,
+or duplicate script scaffolding. For future engine surfaces, prefer shared
+abstractions that do the heavy lifting and familiar Unity-like naming where the
+semantics genuinely match.
+
 ## Ordered PRDs
 
 1. [PRD-001 Agent Proof Loop Scenario Ratchet](PRD-001-agent-proof-loop-scenario-ratchet.md)
