@@ -11,6 +11,7 @@ export {
   Ease,
   InputEx,
   MotionEx,
+  Mathf,
   NumberEx,
   Quat,
   RandomEx,
@@ -18,6 +19,8 @@ export {
   TextEx,
   TimerEx,
   TransformMath,
+  Vector2,
+  Vector3,
   Vec2,
   Vec3,
 } from "./helpers.js";

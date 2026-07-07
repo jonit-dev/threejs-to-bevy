@@ -73,6 +73,43 @@ test("should allow supported script stdlib imports", async () => {
   }
 });
 
+test("should allow preferred script stdlib alias imports", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-script-source-ref-stdlib-aliases-"));
+  try {
+    await mkdir(join(root, "src/scripts"), { recursive: true });
+    await writeFile(
+      join(root, "src/scripts/player.ts"),
+      `import { Mathf, Vector2, Vector3, type ScriptContext } from "@threenative/script-stdlib";\nexport const updatePlayer = (context: ScriptContext) => ({ axis: Vector2.normalize([1, 1]), next: Vector3.add([1, 0, 0], [0, 0, 1]), speed: Mathf.clamp(context.time.fixedDelta * 10, 0, 1) });\n`,
+    );
+
+    const systems: ISystemScriptSource[] = [
+      {
+        name: "updatePlayer",
+        script: {
+          exportName: "system_updatePlayer",
+          sourceRef: {
+            export: "updatePlayer",
+            module: "src/scripts/player.ts",
+            systemId: "updatePlayer",
+          },
+        },
+      },
+    ];
+    const result = resolveSystemScriptSources(systems, root);
+
+    assert.deepEqual(result.diagnostics, []);
+    assert.deepEqual(result.systems[0]?.script?.helperImports, [
+      {
+        imported: ["Mathf", "Vector2", "Vector3"],
+        module: "@threenative/script-stdlib",
+      },
+    ]);
+    assert.match(result.systems[0]?.script?.source ?? "", /Vector3\.add/);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
 test("should ignore type-only script stdlib imports", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-script-source-ref-type-only-"));
   try {
@@ -278,7 +315,7 @@ test("should reject unsupported script helper imports", async () => {
     assert.equal(result.diagnostics[0]?.code, "TN_SCRIPT_UNSUPPORTED_IMPORT");
     assert.equal(result.diagnostics[0]?.target, "kartArcadePhysics");
     assert.equal(result.diagnostics[0]?.fix?.allowed?.includes("@threenative/script-stdlib"), true);
-    assert.equal(result.diagnostics[0]?.fix?.snippet, 'import { Vec3 } from "@threenative/script-stdlib";');
+    assert.equal(result.diagnostics[0]?.fix?.snippet, 'import { Vector3 } from "@threenative/script-stdlib";');
     assert.equal(result.systems[0]?.script?.source, undefined);
   } finally {
     await rm(root, { force: true, recursive: true });
@@ -308,11 +345,11 @@ test("should clear unsupported import diagnostic when fix snippet is applied", a
     const rejected = resolveSystemScriptSources(systems, root);
     assert.equal(rejected.diagnostics[0]?.code, "TN_SCRIPT_UNSUPPORTED_IMPORT");
 
-    await writeFile(scriptPath, `${rejected.diagnostics[0]?.fix?.snippet ?? ""}\nexport const kartArcadePhysics = () => Vec3.add([1, 0, 0], [0, 0, 1]);\n`);
+    await writeFile(scriptPath, `${rejected.diagnostics[0]?.fix?.snippet ?? ""}\nexport const kartArcadePhysics = () => Vector3.add([1, 0, 0], [0, 0, 1]);\n`);
     const fixed = resolveSystemScriptSources(systems, root);
 
     assert.deepEqual(fixed.diagnostics, []);
-    assert.match(fixed.systems[0]?.script?.source ?? "", /Vec3\.add/);
+    assert.match(fixed.systems[0]?.script?.source ?? "", /Vector3\.add/);
   } finally {
     await rm(root, { force: true, recursive: true });
   }

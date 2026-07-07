@@ -301,7 +301,7 @@ async function writeArchetypeProbe(projectPath: string, archetype: IGameArchetyp
 async function writeArchetypeScript(projectPath: string, archetype: IGameArchetypeDescriptor): Promise<void> {
   const absolutePath = resolve(projectPath, archetype.script.module);
   await mkdir(resolve(absolutePath, ".."), { recursive: true });
-  const source = `import { Vec3, type ScriptContext } from "@threenative/script-stdlib";
+  const source = `import { Vector3, type ScriptContext } from "@threenative/script-stdlib";
 
 export function ${archetype.script.exportName}(context: ScriptContext): void {
   const player = context.entity("player") ?? context.query({ limit: 1 })[0];
@@ -312,7 +312,7 @@ export function ${archetype.script.exportName}(context: ScriptContext): void {
   const position = transform.position;
   const direction = context.input.getAxis("MoveX");
   const delta = context.time.fixedDelta;
-  transform.position = Vec3.add(position, [direction * delta * 2.4, 0, 0]);
+  transform.position = Vector3.add(position, [direction * delta * 2.4, 0, 0]);
 }
 `;
   await writeFile(absolutePath, source, "utf8");

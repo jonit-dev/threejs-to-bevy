@@ -15,6 +15,7 @@ const NumberEx = Object.freeze({
   sign(value) { const number = NumberEx.finite(value, 0); return number === 0 ? 0 : Math.sign(number); },
   wrap(value, min, max) { const low = NumberEx.finite(min, 0); const high = NumberEx.finite(max, 0); const size = high - low; return Math.abs(size) <= EPSILON ? low : low + NumberEx.repeat(NumberEx.finite(value, low) - low, size); },
 });
+const Mathf = NumberEx;
 const AngleEx = Object.freeze({
   degToRad(degrees) { return (NumberEx.finite(degrees, 0) * Math.PI) / 180; },
   deltaAngle(current, target) { return NumberEx.repeat(NumberEx.finite(target, 0) - NumberEx.finite(current, 0) + Math.PI, Math.PI * 2) - Math.PI; },
@@ -55,6 +56,8 @@ const Vec3 = Object.freeze({
   sub(left, right) { const a = Vec3.from(left); const b = Vec3.from(right); return [a[0] - b[0], a[1] - b[1], a[2] - b[2]]; },
   withY(value, y) { const vec = Vec3.from(value); return [vec[0], NumberEx.finite(y, 0), vec[2]]; },
 });
+const Vector2 = Vec2;
+const Vector3 = Vec3;
 const Quat = Object.freeze({
   identity() { return [0, 0, 0, 1]; },
   from(value, fallback = [0, 0, 0, 1]) { const base = quatParts(value); const backup = quatParts(fallback); return [NumberEx.finite(base[0], NumberEx.finite(backup[0], 0)), NumberEx.finite(base[1], NumberEx.finite(backup[1], 0)), NumberEx.finite(base[2], NumberEx.finite(backup[2], 0)), NumberEx.finite(base[3], NumberEx.finite(backup[3], 1))]; },

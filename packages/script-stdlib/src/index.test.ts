@@ -17,6 +17,7 @@ import {
   Ease,
   InputEx,
   KinematicMoverEx,
+  Mathf,
   MotionEx,
   NumberEx,
   Quat,
@@ -27,6 +28,8 @@ import {
   TextEx,
   TimerEx,
   TransformMath,
+  Vector2,
+  Vector3,
   TriggerEx,
   Vec2,
   Vec3,
@@ -245,6 +248,31 @@ test("should compute common gameplay math deterministically", () => {
   assert.equal(Bounds2.containsPoint(Bounds2.rect(0, 0, 2, 2), [1, 1]), true);
   assert.equal(NumberEx.round(Ease.smootherStep(0.5), 6), 0.5);
   assert.deepEqual(Vec3.round(Vec3.projectOnPlane([1, 2, 3], [0, 1, 0]), 3), [1, 0, 3]);
+});
+
+test("should expose familiar helper aliases with the same behavior as legacy helpers", () => {
+  assert.equal(Mathf, NumberEx);
+  assert.equal(Vector2, Vec2);
+  assert.equal(Vector3, Vec3);
+  assert.equal(Mathf.clamp(4, 0, 2), NumberEx.clamp(4, 0, 2));
+  assert.deepEqual(Vector2.normalize([3, 4]), Vec2.normalize([3, 4]));
+  assert.deepEqual(Vector3.add([1, 2, 3], [4, 5, 6]), Vec3.add([1, 2, 3], [4, 5, 6]));
+});
+
+test("should bundle familiar helper aliases with the same behavior as legacy helpers", () => {
+  const context = vm.createContext({ console, Math });
+  const source = `${SCRIPT_STDLIB_BUNDLE_SOURCE}\n({
+    clamp: Mathf.clamp(4, 0, 2),
+    vec2: Vector2.normalize([3, 4]),
+    vec3: Vector3.add([1, 2, 3], [4, 5, 6])
+  })`;
+  const result = vm.runInContext(source, context) as Record<string, unknown>;
+
+  assert.deepEqual(JSON.parse(JSON.stringify(result)), {
+    clamp: NumberEx.clamp(4, 0, 2),
+    vec2: Vec2.normalize([3, 4]),
+    vec3: Vec3.add([1, 2, 3], [4, 5, 6]),
+  });
 });
 
 test("should validate gameplay basis descriptors", () => {

@@ -1,4 +1,4 @@
-import { Bounds2, CameraMath, NumberEx, Quat, TextEx, Vec3, type ScriptContext, type Vec3Tuple } from "@threenative/script-stdlib";
+import { Bounds2, CameraMath, Mathf, Quat, TextEx, Vector3, type ScriptContext, type Vec3Tuple } from "@threenative/script-stdlib";
 
 export function updateRally(context: ScriptContext): void {
   const START: Vec3Tuple = [-0.65, 0.02, 10.5];
@@ -15,7 +15,7 @@ export function updateRally(context: ScriptContext): void {
     return;
   }
 
-  const dt = NumberEx.clamp(context.time.fixedDeltaTime, 0.001, 0.05);
+  const dt = Mathf.clamp(context.time.fixedDeltaTime, 0.001, 0.05);
   updatePlayer(player, dt);
   updateRival(rival, dt, context.time.elapsed ?? 0);
   updateCamera(camera, player);
@@ -23,10 +23,10 @@ export function updateRally(context: ScriptContext): void {
   function updatePlayer(playerEntity: NonNullable<typeof player>, delta: number): void {
     const transform = playerEntity.get("Transform", { position: START, rotation: Quat.fromYaw(START_YAW) });
     const state = context.resources.get("RallyState", { checkpoint: 0, lap: 0, speed: 0 });
-    const position = Vec3.from(transform.position, START);
-    let speed = NumberEx.finite(state.speed, 0);
-    let checkpoint = NumberEx.finite(state.checkpoint, 0);
-    let lap = NumberEx.finite(state.lap, 0);
+    const position = Vector3.from(transform.position, START);
+    let speed = Mathf.finite(state.speed, 0);
+    let checkpoint = Mathf.finite(state.checkpoint, 0);
+    let lap = Mathf.finite(state.lap, 0);
     let yaw = Quat.yaw(transform.rotation, START_YAW);
 
     if (context.input.getButton("reset-car")) {
@@ -47,22 +47,22 @@ export function updateRally(context: ScriptContext): void {
     const throttle = context.input.getButton("throttle") ? 1 : 0;
     const brake = context.input.getButton("brake") ? 1 : 0;
     const steer =
-      NumberEx.finite(context.input.getAxis("steer"), 0) +
+      Mathf.finite(context.input.getAxis("steer"), 0) +
       (context.input.getButton("steer-right") ? 1 : 0) -
       (context.input.getButton("steer-left") ? 1 : 0);
     const trackGrip = onTrack(position) ? 1 : 0.42;
 
     speed += (throttle * 22.0 - brake * 18.0) * delta;
-    speed -= NumberEx.sign(speed) * Math.min(Math.abs(speed), (onTrack(position) ? 0.9 : 8.0) * delta);
-    speed = NumberEx.clamp(speed, -5.5, 15.5 * trackGrip);
-    yaw -= NumberEx.clamp(steer, -1, 1) * (1.15 + Math.abs(speed) * 0.16) * delta;
+    speed -= Mathf.sign(speed) * Math.min(Math.abs(speed), (onTrack(position) ? 0.9 : 8.0) * delta);
+    speed = Mathf.clamp(speed, -5.5, 15.5 * trackGrip);
+    yaw -= Mathf.clamp(steer, -1, 1) * (1.15 + Math.abs(speed) * 0.16) * delta;
 
-    const next = Vec3.withY(Vec3.add(position, Vec3.scale(Vec3.rotateYaw([0, 0, 1], yaw), speed * delta)), 0.02);
+    const next = Vector3.withY(Vector3.add(position, Vector3.scale(Vector3.rotateYaw([0, 0, 1], yaw), speed * delta)), 0.02);
     playerEntity.patch("Transform", { position: next, rotation: Quat.fromYaw(yaw) });
 
     const target = CHECKPOINTS[checkpoint % CHECKPOINTS.length] ?? CHECKPOINTS[0]!;
     let message = onTrack(next) ? "Hold the racing line" : "Off track: reduced grip";
-    if (Vec3.distance2d(next, target) < 1.8) {
+    if (Vector3.distance2d(next, target) < 1.8) {
       checkpoint += 1;
       message = `Checkpoint ${Math.min(checkpoint, CHECKPOINTS.length)}/${CHECKPOINTS.length}`;
     }
@@ -77,7 +77,7 @@ export function updateRally(context: ScriptContext): void {
       hud: hud(lap, checkpoint, speed),
       lap,
       message,
-      speed: NumberEx.round(speed, 6),
+      speed: Mathf.round(speed, 6),
     });
   }
 
@@ -87,16 +87,16 @@ export function updateRally(context: ScriptContext): void {
     }
     const transform = rivalEntity.get("Transform", { position: [-1.65, 0.02, 10.5] as Vec3Tuple });
     const state = context.resources.get("RallyState", { rivalPhase: 0 });
-    const position = Vec3.from(transform.position, [-1.65, 0.02, 10.5]);
-    const phase = NumberEx.repeat(NumberEx.finite(state.rivalPhase, 0) + delta * 0.28 + elapsed * 0, 1);
+    const position = Vector3.from(transform.position, [-1.65, 0.02, 10.5]);
+    const phase = Mathf.repeat(Mathf.finite(state.rivalPhase, 0) + delta * 0.28 + elapsed * 0, 1);
     const target = ovalPoint(phase);
     const yaw = Math.atan2(target[0] - position[0], target[2] - position[2]);
     const follow = Math.min(1, delta * 2.8);
     rivalEntity.patch("Transform", {
-      position: Vec3.withY(Vec3.lerp(position, target, follow), 0.02),
+      position: Vector3.withY(Vector3.lerp(position, target, follow), 0.02),
       rotation: Quat.fromYaw(yaw),
     });
-    context.resources.patch("RallyState", { rivalPhase: NumberEx.round(phase, 6) });
+    context.resources.patch("RallyState", { rivalPhase: Mathf.round(phase, 6) });
   }
 
   function updateCamera(cameraEntity: typeof camera, playerEntity: NonNullable<typeof player>): void {
@@ -106,7 +106,7 @@ export function updateRally(context: ScriptContext): void {
     const transform = playerEntity.get("Transform", { position: START, rotation: Quat.fromYaw(START_YAW) });
     const pose = CameraMath.followPose({
       offset: [0, 1.65, -4.8],
-      target: Vec3.add(Vec3.from(transform.position, START), [0, 0.38, 0]),
+      target: Vector3.add(Vector3.from(transform.position, START), [0, 0.38, 0]),
       yaw: Quat.yaw(transform.rotation, START_YAW),
     });
     cameraEntity.patch("Transform", {
@@ -116,12 +116,12 @@ export function updateRally(context: ScriptContext): void {
   }
 
   function ovalPoint(phase: number): Vec3Tuple {
-    const scaled = NumberEx.repeat(phase, 1) * CHECKPOINTS.length;
+    const scaled = Mathf.repeat(phase, 1) * CHECKPOINTS.length;
     const index = Math.floor(scaled) % CHECKPOINTS.length;
     const nextIndex = (index + 1) % CHECKPOINTS.length;
     const start = CHECKPOINTS[index] ?? CHECKPOINTS[0]!;
     const end = CHECKPOINTS[nextIndex] ?? CHECKPOINTS[0]!;
-    return Vec3.withY(Vec3.lerp(start, end, scaled - Math.floor(scaled)), 0.02) as Vec3Tuple;
+    return Vector3.withY(Vector3.lerp(start, end, scaled - Math.floor(scaled)), 0.02) as Vec3Tuple;
   }
 
   function onTrack(position: Vec3Tuple): boolean {

@@ -156,3 +156,5 @@ export const Vec3 = Object.freeze({
   },
 });
 
+export const Vector2 = Vec2;
+export const Vector3 = Vec3;

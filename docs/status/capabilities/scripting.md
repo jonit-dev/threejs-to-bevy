@@ -15,7 +15,9 @@ Current support:
 - Shallow default hydration and patching through `entity.get(..., defaults)`,
   `context.resources.get(..., defaults)`, and `context.resources.patch(...)`.
 - Supported named helper imports from `@threenative/script-stdlib` and promoted
-  gameplay kits.
+  gameplay kits. Familiar aliases `Mathf`, `Vector2`, and `Vector3` are
+  exact aliases for legacy `NumberEx`, `Vec2`, and `Vec3`, which remain
+  supported for one compatibility cycle.
 - Compiler diagnostics reject unsupported imports, mutable module state,
   module-local helpers that cannot be emitted, legacy idioms, and undeclared
   access.
@@ -30,6 +32,8 @@ Verification:
 
 - `tools/agent-benchmark/DIAGNOSTIC-FAILURE-AUDIT-2026-07-07.md`
   ranks observed failed commands and repair actions.
+- `tools/agent-benchmark/API-SHAPE-AUDIT-2026-07-07.md` classifies
+  benchmark-touched script helper shapes and alias decisions.
 - `pnpm --filter @threenative/compiler test`
 - `pnpm verify:scripting-helpers-lifecycle`
 - `pnpm verify:conformance`

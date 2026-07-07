@@ -81,10 +81,11 @@ interface ScriptTransformFacade {
   `setPosition([x, y, z])`, or `setPose(position, rotation)`.
 - Use `context.resources.get/set/patch` for game state and HUD bindings.
 - Use `context.time.fixedDelta` for deterministic fixed-step movement.
-- Supported helper imports: `NumberEx`, `Vec2`, `Vec3`, `Quat`,
+- Supported helper imports: `Mathf`, `Vector2`, `Vector3`, `Quat`,
   `TransformMath`, `Bounds2`, `Bounds3`, `Ease`, `RandomEx`,
   `ColorEx`, `TextEx`, `InputEx`, `MotionEx`, `TimerEx`,
   `ArrayEx`, and `CameraMath` from `@threenative/script-stdlib`.
+  Legacy aliases `NumberEx`, `Vec2`, and `Vec3` remain supported.
 - Do not import DOM, Node, filesystem, timer, network, Three.js, or Bevy APIs
   from portable scripts.
 

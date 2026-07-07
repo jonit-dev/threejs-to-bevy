@@ -107,9 +107,10 @@ Scripts may import promoted pure helpers by named import from
 script provenance and rejects default, namespace, relative, host, or backend
 imports.
 
-- [x] Gameplay math and data helpers: `NumberEx`, `AngleEx`, `Vec2`, `Vec3`,
+- [x] Gameplay math and data helpers: `Mathf`, `AngleEx`, `Vector2`, `Vector3`,
   `Quat`, `TransformMath`, `Bounds2`, `Bounds3`, `ColorEx`, `Ease`, `TextEx`,
   `InputEx`, `MotionEx`, `TimerEx`, `ArrayEx`, `CameraMath`, and `RandomEx`.
+  Legacy aliases `NumberEx`, `Vec2`, and `Vec3` remain supported.
 - [x] GameBlocks-informed pure gameplay helpers: `BasisEx`,
   `ControllerEx`, `CheckpointRaceEx`, and `SpawnEx`.
 - [x] Promoted reducer-kit helper imports:
@@ -220,12 +221,12 @@ imports.
   `ScriptQuatTuple`, and `ScriptTransformFacade` imports from
   `@threenative/script-stdlib` are supported for scripts. Type-only imports do
   not appear in `scripts.manifest.json` helper import metadata.
-- [x] `NumberEx.clamp(value, min, max)`,
-  `NumberEx.finite(value, fallback)`, and
-  `NumberEx.round(value, precision?)`.
-- [x] `Vec3.from(value, fallback?)`, `Vec3.add/sub/scale/lerp`,
-  `Vec3.normalize/cross`, `Vec3.distance2d(a, b)`, and
-  `Vec3.round(value, precision?)`.
+- [x] `Mathf.clamp(value, min, max)`,
+  `Mathf.finite(value, fallback)`, and
+  `Mathf.round(value, precision?)`.
+- [x] `Vector3.from(value, fallback?)`, `Vector3.add/sub/scale/lerp`,
+  `Vector3.normalize/cross`, `Vector3.distance2d(a, b)`, and
+  `Vector3.round(value, precision?)`.
 - [x] `Quat.fromYaw(yaw)`, `Quat.yaw(rotation, fallback?)`, and
   `Quat.lookAt(eye, target)`.
 - [x] `TransformMath.position(value, fallback?)`,

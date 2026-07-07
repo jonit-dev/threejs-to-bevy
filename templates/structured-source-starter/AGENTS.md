@@ -27,12 +27,12 @@ Rules for this generated ThreeNative project.
   structured source.
 - For repeated portable helper code in `src/scripts/**/*.ts`, use named imports
   from `@threenative/script-stdlib`:
-  `NumberEx`, `Vec3`, `Quat`, and `TransformMath`.
+  `Mathf`, `Vector3`, `Quat`, and `TransformMath`.
 - For the local script/source contract, read `docs/API-CARD.md` before opening
   package source. It is generated from the supported `ScriptContext` surface and
   common structured source shapes.
 - Do not copy local mini-standard libraries for clamp/round/vector/quaternion,
-  use namespace/default/aliased stdlib imports, or import arbitrary npm,
+  use namespace/default/import-renamed stdlib imports, or import arbitrary npm,
   relative helper modules, DOM, Node, timer, filesystem, network, Three.js, or
   Bevy APIs from portable scripts.
 - Write scripts against the convention-first context surface documented in the

@@ -214,13 +214,13 @@ Supported helper imports are bundled into `scripts.bundle.js` and recorded on
 the owning source entry in `scripts.manifest.json`:
 
 ```ts
-import { CameraMath, InputEx, MotionEx, NumberEx, Quat, TimerEx, Vec3 } from "@threenative/script-stdlib";
+import { CameraMath, InputEx, MotionEx, Mathf, Quat, TimerEx, Vector3 } from "@threenative/script-stdlib";
 
 export const drive = (ctx) => {
-  const dt = NumberEx.clamp(ctx.time.fixedDt ?? ctx.time.dt, 0.001, 0.05);
+  const dt = Mathf.clamp(ctx.time.fixedDt ?? ctx.time.dt, 0.001, 0.05);
   const input = InputEx.axis2([ctx.input.axis("steer"), ctx.input.axis("throttle")], { deadzone: 0.15 });
   const body = MotionEx.planarVelocity({ velocity: [0, 0, 0], input, maxSpeed: 7, acceleration: 20, friction: 9, dt });
-  const next = Vec3.round(Vec3.add([0, 0, 0], Vec3.scale(body.velocity, dt)));
+  const next = Vector3.round(Vector3.add([0, 0, 0], Vector3.scale(body.velocity, dt)));
   const attack = TimerEx.cooldown(ctx.resources.attackCooldown ?? 0, dt);
   return { camera: CameraMath.followPose({ target: next }), next, ready: attack.ready, rotation: Quat.fromYaw(body.heading) };
 };

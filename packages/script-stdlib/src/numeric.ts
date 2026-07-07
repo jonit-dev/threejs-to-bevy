@@ -75,3 +75,4 @@ export const AngleEx = Object.freeze({
   },
 });
 
+export const Mathf = NumberEx;

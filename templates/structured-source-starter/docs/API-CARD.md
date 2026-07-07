@@ -85,10 +85,11 @@ interface ScriptTransformFacade {
   `game.scoreText = "Score 1 / 5"`.
 - Use `context.time.fixedDelta` for deterministic fixed-step movement.
 - Use `Math.max(min, Math.min(max, value))` for simple clamps. Supported helper
-  imports when needed: `NumberEx`, `Vec2`, `Vec3`, `Quat`,
+  imports when needed: `Mathf`, `Vector2`, `Vector3`, `Quat`,
   `TransformMath`, `Bounds2`, `Bounds3`, `Ease`, `RandomEx`,
   `ColorEx`, `TextEx`, `InputEx`, `MotionEx`, `TimerEx`,
   `ArrayEx`, and `CameraMath` from `@threenative/script-stdlib`.
+  Legacy aliases `NumberEx`, `Vec2`, and `Vec3` remain supported.
 - Do not import DOM, Node, filesystem, timer, network, Three.js, or Bevy APIs
   from portable scripts.
 

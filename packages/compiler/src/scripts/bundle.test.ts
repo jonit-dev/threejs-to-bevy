@@ -123,6 +123,34 @@ test("should bundle supported script stdlib imports", () => {
   assert.match(result.code ?? "", /const system_kartArcadePhysics = \(context\) => Vec3\.round/);
 });
 
+test("should bundle preferred script stdlib aliases", () => {
+  const result = bundleSystemScripts([
+    {
+      name: "updatePlayer",
+      script: {
+        exportName: "system_updatePlayer",
+        helperImports: [
+          {
+            imported: ["Mathf", "Vector2", "Vector3"],
+            module: "@threenative/script-stdlib",
+          },
+        ],
+        source:
+          "(context) => ({ axis: Vector2.normalize([3, 4]), next: Vector3.add([1, 2, 3], [4, 5, 6]), speed: Mathf.clamp(4, 0, 2) })",
+      },
+    },
+  ]);
+
+  assert.deepEqual(result.diagnostics, []);
+  assert.match(result.code ?? "", /const Mathf = NumberEx/);
+  assert.match(result.code ?? "", /const Vector3 = Vec3/);
+  assert.deepEqual(runBundledSystem(result.code, "system_updatePlayer"), {
+    axis: [0.6, 0.8],
+    next: [5, 7, 9],
+    speed: 2,
+  });
+});
+
 test("should bundle promoted gameplay math helpers", () => {
   const result = bundleSystemScripts([
     {

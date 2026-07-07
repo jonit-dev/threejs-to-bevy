@@ -21,12 +21,12 @@ tn audio add-sound arena-audio goal.ping --asset asset.goal-ping --project . --j
 
 ## script
 ```ts
-import { Vec3, type ScriptContext } from "@threenative/script-stdlib";
+import { Vector3, type ScriptContext } from "@threenative/script-stdlib";
 
 export function movePlayerToGoal(context: ScriptContext): void {
   for (const entity of context.query()) {
     const transform = entity.transform();
-    transform.position = Vec3.add(transform.position, [context.input.getAxis("MoveX") * context.time.fixedDelta * 2.4, 0, 0]);
+    transform.position = Vector3.add(transform.position, [context.input.getAxis("MoveX") * context.time.fixedDelta * 2.4, 0, 0]);
   }
 }
 

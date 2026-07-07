@@ -8,14 +8,14 @@ Rules for Racing Kit Rally starter projects.
   use a coherent curated pack first, then a compatible GitHub/open-source pack,
   then custom meshes, and primitives only as the last fallback.
 - Repeated script math helpers belong in named
-  `@threenative/script-stdlib` imports (`NumberEx`, `Vec2`, `Vec3`, `Quat`,
+  `@threenative/script-stdlib` imports (`Mathf`, `Vector2`, `Vector3`, `Quat`,
   `TransformMath`, `Bounds2`, `Bounds3`, `Ease`, `RandomEx`, `ColorEx`,
   `TextEx`, `InputEx`, `MotionEx`, `TimerEx`, `ArrayEx`, `CameraMath`), not
   copied into `src/scripts/racing.ts`.
 - For the local script/source contract, read `docs/API-CARD.md` before opening
   package source. It is generated from the supported `ScriptContext` surface and
   common structured source shapes.
-- Do not use namespace/default/aliased stdlib imports or arbitrary npm,
+- Do not use namespace/default/import-renamed stdlib imports or arbitrary npm,
   relative helper, DOM, Node, timer, filesystem, network, Three.js, or Bevy
   imports from portable gameplay scripts.
 - Do not edit generated `dist/` output.
