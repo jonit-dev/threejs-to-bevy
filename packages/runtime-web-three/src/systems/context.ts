@@ -79,9 +79,41 @@ export type {
   IUiValueResult,
 } from "./contextTypes.js";
 
+export function createWebSystemRuntimeState(
+  world: IWorldIr,
+  options: { assets?: IAssetsManifest; audio?: import("@threenative/ir").IAudioIr },
+) {
+  const seed = randomSeed(world);
+  return {
+    animations: new AnimationRuntimeController(),
+    assets: options.assets,
+    audio: options.audio,
+    particles: createParticleCommandService(options.assets),
+    random: createDeterministicRandom(seed),
+    randomSeedKey: runtimeSeedKey(seed),
+    scriptAudio: new ScriptAudioRuntimeController(options.audio),
+  };
+}
+
+const webSystemRuntimeStates = new WeakMap<IWorldIr, ReturnType<typeof createWebSystemRuntimeState>>();
+
+export function webSystemRuntimeStateFor(
+  world: IWorldIr,
+  options: { assets?: IAssetsManifest; audio?: import("@threenative/ir").IAudioIr },
+): ReturnType<typeof createWebSystemRuntimeState> {
+  const seedKey = runtimeSeedKey(randomSeed(world));
+  const existing = webSystemRuntimeStates.get(world);
+  if (existing !== undefined && existing.assets === options.assets && existing.audio === options.audio && existing.randomSeedKey === seedKey) {
+    return existing;
+  }
+  const next = createWebSystemRuntimeState(world, options);
+  webSystemRuntimeStates.set(world, next);
+  return next;
+}
+
 export function createSystemContext(
   world: IWorldIr,
-  options: { assets?: IAssetsManifest; audio?: import("@threenative/ir").IAudioIr; componentDiff?: IComponentDiffCache; componentSchemas?: IIrSchemaFile; currentScene?: string | null; defaultQuery?: IIrSystemQuery; delta: number; elapsed?: number; fixedDelta: number; input?: IWebInputState; localData?: ILocalDataIr; paused?: boolean; persistence?: IWebPersistenceService; prefabs?: IPrefabsIr; systems?: ISystemsIr; ui?: IUiIr },
+  options: { assets?: IAssetsManifest; audio?: import("@threenative/ir").IAudioIr; componentDiff?: IComponentDiffCache; componentSchemas?: IIrSchemaFile; currentScene?: string | null; defaultQuery?: IIrSystemQuery; delta: number; elapsed?: number; fixedDelta: number; input?: IWebInputState; localData?: ILocalDataIr; paused?: boolean; persistence?: IWebPersistenceService; prefabs?: IPrefabsIr; runtimeState?: ReturnType<typeof createWebSystemRuntimeState>; systems?: ISystemsIr; ui?: IUiIr },
 ): {
   commands: IQueuedCommand[];
   context: ISystemContext;
@@ -95,10 +127,10 @@ export function createSystemContext(
   const services: IQueuedServiceCall[] = [];
   const states = evaluateStates(world, options.systems);
   const componentTypes = buildComponentReflectionRegistry(options.componentSchemas);
-  const random = createDeterministicRandom(randomSeed(world));
-  const animations = new AnimationRuntimeController();
-  const scriptAudio = new ScriptAudioRuntimeController(options.audio);
-  const particles = createParticleCommandService(options.assets);
+  const random = options.runtimeState?.random ?? createDeterministicRandom(randomSeed(world));
+  const animations = options.runtimeState?.animations ?? new AnimationRuntimeController();
+  const scriptAudio = options.runtimeState?.scriptAudio ?? new ScriptAudioRuntimeController(options.audio);
+  const particles = options.runtimeState?.particles ?? createParticleCommandService(options.assets);
   const persistence = options.persistence ?? createWebPersistenceService(options.localData ?? emptyLocalData());
   const ui = createScriptUiState(options.ui);
   const findEntity = (id: string): ISystemEntityView | undefined => {
@@ -728,6 +760,13 @@ function randomSeed(world: IWorldIr): unknown {
     return randomResource.seed;
   }
   return world.resources?.__randomSeed ?? 0;
+}
+
+function runtimeSeedKey(seed: unknown): string {
+  if (seed === null || typeof seed === "string" || typeof seed === "number" || typeof seed === "boolean") {
+    return `${typeof seed}:${String(seed)}`;
+  }
+  return `json:${JSON.stringify(seed) ?? "undefined"}`;
 }
 
 function createDeterministicRandom(seed: unknown): ISystemContext["random"] {

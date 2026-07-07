@@ -18,7 +18,7 @@ use threenative_loader::{InputBindingIr, InputIr, PersistedBindingOverrideIr};
 #[derive(Clone, Debug, Resource)]
 pub struct NativeInputMap(pub InputIr);
 
-#[derive(Debug, Default, Resource)]
+#[derive(Clone, Debug, Default, Resource)]
 pub struct NativeInputState {
     actions: HashSet<String>,
     axes: HashMap<String, f32>,
@@ -198,6 +198,19 @@ impl NativeInputState {
 
     pub fn action_ids(&self) -> impl Iterator<Item = &String> {
         self.actions.iter()
+    }
+
+    pub fn with_additional_actions<'a>(&self, actions: impl IntoIterator<Item = &'a str>) -> Self {
+        let mut next = self.clone();
+        next.actions.extend(actions.into_iter().map(str::to_owned));
+        next
+    }
+
+    pub fn from_action_ids<'a>(actions: impl IntoIterator<Item = &'a str>) -> Self {
+        Self {
+            actions: actions.into_iter().map(str::to_owned).collect(),
+            axes: HashMap::new(),
+        }
     }
 
     pub fn axes(&self) -> impl Iterator<Item = (&String, &f32)> {
@@ -943,11 +956,9 @@ pub fn capture_native_input(
             (false, true) => -1.0,
             _ => 0.0,
         };
-        let pointer_value = axis
+        let analog_value = axis
             .value
             .iter()
-            .chain(axis.positive.iter())
-            .chain(axis.negative.iter())
             .filter_map(|binding| {
                 binding_axis_value(
                     binding,
@@ -958,10 +969,32 @@ pub fn capture_native_input(
                     touch.as_deref(),
                 )
             })
-            .next()
+            .chain(axis.positive.iter().filter_map(|binding| {
+                signed_binding_axis_value(
+                    binding,
+                    1.0,
+                    pointer_delta,
+                    pointer_position,
+                    window_size,
+                    gamepad.as_ref(),
+                    touch.as_deref(),
+                )
+            }))
+            .chain(axis.negative.iter().filter_map(|binding| {
+                signed_binding_axis_value(
+                    binding,
+                    -1.0,
+                    pointer_delta,
+                    pointer_position,
+                    window_size,
+                    gamepad.as_ref(),
+                    touch.as_deref(),
+                )
+            }))
+            .find(|value| *value != 0.0)
             .unwrap_or(0.0);
-        let (value, clamp_axis) = if pointer_value != 0.0 {
-            (pointer_value, false)
+        let (value, clamp_axis) = if analog_value != 0.0 {
+            (analog_value, false)
         } else {
             (digital_value, true)
         };
@@ -976,6 +1009,26 @@ pub fn capture_native_input(
             );
         }
     }
+}
+
+fn signed_binding_axis_value(
+    binding: &InputBindingIr,
+    sign: f32,
+    pointer_delta: Vec2,
+    pointer_position: Option<Vec2>,
+    window_size: Option<Vec2>,
+    gamepad: Option<&GamepadInput>,
+    touch: Option<&NativeTouchState>,
+) -> Option<f32> {
+    binding_axis_value(
+        binding,
+        pointer_delta,
+        pointer_position,
+        window_size,
+        gamepad,
+        touch,
+    )
+    .map(|value| value.abs() * sign)
 }
 
 fn matches_keyboard(binding: &InputBindingIr, code: &str) -> bool {

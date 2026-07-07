@@ -132,6 +132,108 @@ fn systems_effects_should_apply_declared_custom_component_patch() {
 }
 
 #[test]
+fn systems_effects_should_patch_builtin_components_into_typed_fields() {
+    let root = write_bundle("apply-builtin-component");
+    let mut bundle = load_bundle(&root).expect("bundle should load");
+    let mut system = bundle
+        .systems
+        .as_ref()
+        .expect("systems should load")
+        .systems[0]
+        .clone();
+    system.writes.push("Collider".to_owned());
+    system.writes.push("RigidBody".to_owned());
+    system.writes.push("Visibility".to_owned());
+    let effects = NativeSystemEffects {
+        patches: vec![
+            NativeSystemPatchEffect {
+                entity: "player".to_owned(),
+                component: "Collider".to_owned(),
+                value: json!({ "kind": "box", "size": [1, 2, 3] }),
+            },
+            NativeSystemPatchEffect {
+                entity: "player".to_owned(),
+                component: "RigidBody".to_owned(),
+                value: json!({ "kind": "kinematic", "velocity": [4, 0, 0] }),
+            },
+            NativeSystemPatchEffect {
+                entity: "player".to_owned(),
+                component: "Visibility".to_owned(),
+                value: json!({ "visible": false }),
+            },
+        ],
+        ..Default::default()
+    };
+
+    apply_system_effects(&mut bundle, &system, &effects, 1, 1)
+        .expect("declared builtin component effects should apply");
+
+    let components = &bundle.world.entities[0].components;
+    assert_eq!(
+        components.collider.as_ref().map(|collider| collider.size),
+        Some(Some([1.0, 2.0, 3.0]))
+    );
+    assert_eq!(
+        components
+            .rigid_body
+            .as_ref()
+            .and_then(|body| body.velocity),
+        Some([4.0, 0.0, 0.0])
+    );
+    assert_eq!(
+        components
+            .visibility
+            .as_ref()
+            .map(|visibility| visibility.visible),
+        Some(false)
+    );
+    assert!(!components.extra.contains_key("Collider"));
+    assert!(!components.extra.contains_key("RigidBody"));
+    assert!(!components.extra.contains_key("Visibility"));
+}
+
+#[test]
+fn systems_effects_should_merge_partial_mesh_renderer_patches() {
+    let root = write_bundle("apply-mesh-renderer-partial");
+    let mut bundle = load_bundle(&root).expect("bundle should load");
+    bundle.world.entities[0].components.mesh_renderer =
+        Some(threenative_loader::MeshRendererComponent {
+            cast_shadow: Some(true),
+            mesh: Some("mesh.player".to_owned()),
+            material: "mat.player".to_owned(),
+            receive_shadow: Some(true),
+            visible: Some(true),
+        });
+    let mut system = bundle
+        .systems
+        .as_ref()
+        .expect("systems should load")
+        .systems[0]
+        .clone();
+    system.writes.push("MeshRenderer".to_owned());
+    let effects = NativeSystemEffects {
+        patches: vec![NativeSystemPatchEffect {
+            entity: "player".to_owned(),
+            component: "MeshRenderer".to_owned(),
+            value: json!({ "visible": false }),
+        }],
+        ..Default::default()
+    };
+
+    apply_system_effects(&mut bundle, &system, &effects, 1, 1)
+        .expect("declared mesh renderer patch should apply");
+
+    let renderer = bundle.world.entities[0]
+        .components
+        .mesh_renderer
+        .as_ref()
+        .expect("mesh renderer should remain present");
+    assert_eq!(renderer.material, "mat.player");
+    assert_eq!(renderer.mesh.as_deref(), Some("mesh.player"));
+    assert_eq!(renderer.visible, Some(false));
+}
+
+#[test]
 fn systems_effects_should_log_declared_event_write() {
     let root = write_bundle("apply-event");
     let mut bundle = load_bundle(&root).expect("bundle should load");

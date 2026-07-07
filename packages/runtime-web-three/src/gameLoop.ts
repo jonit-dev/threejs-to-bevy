@@ -59,12 +59,13 @@ export async function runGameFrame(options: {
   world: IWorldIr;
 }): Promise<void> {
   const fixedDelta = options.fixedDelta ?? options.runtimeConfig?.time.fixedDelta ?? 1 / 60;
+  const frameDelta = Math.min(Math.max(options.delta, 0), 0.25);
   options.input?.beginFrame();
   const state = options.state;
   if (state !== undefined) {
-    state.elapsed += options.delta;
-    state.accumulator += options.delta;
+    state.elapsed += frameDelta;
     if (!state.paused) {
+      state.accumulator += frameDelta;
       if (!state.startupComplete) {
         collectSystemResult(options.mapped, await runSchedule({ ...options, delta: 0, elapsed: state.elapsed, fixedDelta, frame: state.frame, paused: state.paused, schedule: "startup", tick: state.tick }));
         state.startupComplete = true;

@@ -2,7 +2,7 @@ import { createReadStream } from "node:fs";
 import { readFile, stat } from "node:fs/promises";
 import { createHash } from "node:crypto";
 import type { Socket } from "node:net";
-import { extname, resolve } from "node:path";
+import { extname, isAbsolute, normalize, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { validateBundle } from "@threenative/compiler";
 import { createServer, type Plugin, type ViteDevServer } from "vite";
@@ -109,14 +109,13 @@ function bundlePlugin(bundlePath: string, metadata: IWebPreviewMetadata): Plugin
         }, null, 2)}\n`);
       });
       server.middlewares.use("/bundle", (request, response, next) => {
-        const url = request.url ?? "/";
-        if (url.includes("..")) {
+        const filePath = resolveBundleFilePath(bundlePath, request.url ?? "/");
+        if (filePath === null) {
           response.statusCode = 400;
           response.end("Invalid bundle path");
           return;
         }
 
-        const filePath = resolve(bundlePath, url.replace(/^\//, ""));
         const stream = createReadStream(filePath);
         response.setHeader("Content-Type", contentTypeForBundleFile(filePath));
         stream.on("error", () => next());
@@ -125,6 +124,33 @@ function bundlePlugin(bundlePath: string, metadata: IWebPreviewMetadata): Plugin
     },
     name: "threenative-bundle",
   };
+}
+
+export function resolveBundleFilePath(bundlePath: string, url: string): string | null {
+  const rawPathname = url.split(/[?#]/, 1)[0] ?? "/";
+  if (rawPathname.startsWith("//")) {
+    return null;
+  }
+  let pathname: string;
+  try {
+    pathname = decodeURIComponent(rawPathname);
+  } catch {
+    return null;
+  }
+  if (pathname.includes("\0") || pathname.startsWith("//")) {
+    return null;
+  }
+  const root = resolve(bundlePath);
+  const normalizedPath = normalize(`.${pathname}`);
+  if (normalizedPath === ".." || normalizedPath.startsWith(`..${sep}`) || isAbsolute(normalizedPath)) {
+    return null;
+  }
+  const filePath = resolve(root, normalizedPath);
+  const relativePath = relative(root, filePath);
+  if (relativePath.startsWith("..") || isAbsolute(relativePath)) {
+    return null;
+  }
+  return filePath;
 }
 
 export function contentTypeForBundleFile(filePath: string): string {

@@ -29,6 +29,9 @@ pub struct NativeUiKind(pub String);
 #[derive(Clone, Component, Debug, Eq, PartialEq)]
 pub struct NativeUiAction(pub String);
 
+#[derive(Clone, Component, Debug, Eq, PartialEq)]
+pub struct NativeUiDisabled(pub bool);
+
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct NativeUiActionEvent {
     pub action: String,
@@ -1303,6 +1306,9 @@ fn spawn_node(
         if let Some(action) = node.action.as_ref() {
             entity_mut.insert(NativeUiAction(action.clone()));
         }
+        if let Some(disabled) = node.disabled {
+            entity_mut.insert(NativeUiDisabled(disabled));
+        }
         if let Some(accessibility) = accessibility_node(node) {
             entity_mut.insert(accessibility);
         }
@@ -1698,12 +1704,17 @@ pub fn scroll_native_ui(
 pub fn dispatch_native_ui_actions(
     mut queue: ResMut<NativeUiActionQueue>,
     interactions: Query<
-        (&Interaction, &NativeUiAction, &ThreeNativeId),
+        (
+            &Interaction,
+            &NativeUiAction,
+            &ThreeNativeId,
+            Option<&NativeUiDisabled>,
+        ),
         (Changed<Interaction>, With<Button>),
     >,
 ) {
-    for (interaction, action, id) in &interactions {
-        if *interaction == Interaction::Pressed {
+    for (interaction, action, id, disabled) in &interactions {
+        if *interaction == Interaction::Pressed && disabled.is_none_or(|disabled| !disabled.0) {
             queue.events.push(NativeUiActionEvent {
                 action: action.0.clone(),
                 node: id.0.clone(),
@@ -1711,6 +1722,17 @@ pub fn dispatch_native_ui_actions(
             });
         }
     }
+}
+
+pub fn drain_native_ui_action_ids(queue: &mut NativeUiActionQueue) -> Vec<String> {
+    let mut actions = queue
+        .events
+        .drain(..)
+        .map(|event| event.action)
+        .collect::<Vec<_>>();
+    actions.sort();
+    actions.dedup();
+    actions
 }
 
 pub fn queue_native_ui_text_input_value(

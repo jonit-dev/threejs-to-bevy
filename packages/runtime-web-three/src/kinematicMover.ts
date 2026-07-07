@@ -1,4 +1,5 @@
 import type { IKinematicMoverComponent, IWorldEntity, IWorldIr, Vec3 } from "@threenative/ir";
+import { markScriptAuthoredTransform } from "./physics.js";
 
 interface IMoverOriginState {
   position: Vec3;
@@ -28,6 +29,9 @@ export function stepKinematicMovers(world: IWorldIr, elapsedSeconds: number): IK
     const origin = originFor(entity, origins);
     if (mover.mode === "sine") {
       observations.push(applySineMover(entity, mover, origin.position, elapsedSeconds));
+      if (entity.components.RigidBody?.kind === "kinematic") {
+        markScriptAuthoredTransform(world, entity.id);
+      }
     }
   }
   return observations;

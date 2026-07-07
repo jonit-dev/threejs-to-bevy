@@ -4,6 +4,7 @@ import test from "node:test";
 import type { IWorldIr } from "@threenative/ir";
 
 import { hasKinematicMovers, stepKinematicMovers } from "./kinematicMover.js";
+import { stepPhysics } from "./physics.js";
 
 test("kinematic mover should write sine position and derivative velocity", () => {
   const world = makeWorld();
@@ -25,6 +26,17 @@ test("kinematic mover should keep initial authored origin instead of drifting", 
 
   assert.deepEqual(roundVec(world.entities[0]!.components.Transform!.position!), [2.818595, 0, 2]);
   assert.deepEqual(roundVec(world.entities[0]!.components.RigidBody!.velocity!), [-1.664587, 0, 0]);
+});
+
+test("kinematic mover should not be integrated again by same-tick physics", () => {
+  const world = makeWorld();
+
+  stepKinematicMovers(world, 0.5);
+  const movedPosition = world.entities[0]!.components.Transform!.position;
+  stepPhysics(world, 1);
+
+  assert.deepEqual(roundVec(world.entities[0]!.components.Transform!.position!), roundVec(movedPosition));
+  assert.deepEqual(roundVec(world.entities[0]!.components.RigidBody!.velocity!), [2.161209, 0, 0]);
 });
 
 function makeWorld(): IWorldIr {

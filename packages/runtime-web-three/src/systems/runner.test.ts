@@ -208,6 +208,66 @@ test("should run systems expose resources events and input context", async () =>
   assert.deepEqual(world.events.DamageEvent, [{ amount: 2 }, { amount: 0 }]);
 });
 
+test("should preserve random cursor across systems in the same schedule", async () => {
+  const world = makeWorld();
+  world.resources = { Random: { seed: "runner-state" } };
+  const systems = makeSystemsForExports("update", ["firstRoll", "secondRoll"]);
+  for (const system of systems.systems) {
+    system.resourceReads = ["Rolls"];
+    system.resourceWrites = ["Rolls"];
+  }
+
+  const result = await runSchedule({
+    module: {
+      systems: {
+        firstRoll(context: any) {
+          context.resources.set("Rolls", { first: context.random.float() });
+        },
+        secondRoll(context: any) {
+          const rolls = context.resources.get("Rolls", {});
+          context.resources.set("Rolls", { ...rolls, second: context.random.float() });
+        },
+      },
+    },
+    schedule: "update",
+    systems,
+    world,
+  });
+
+  assert.deepEqual(result.diagnostics, []);
+  const rolls = world.resources?.Rolls as { first: number; second: number };
+  assert.notEqual(rolls.first, rolls.second);
+});
+
+test("should preserve animation state across systems in the same schedule", async () => {
+  const world = makeWorld();
+  const systems = makeSystemsForExports("update", ["playRun", "queryRun"]);
+  for (const system of systems.systems) {
+    system.resourceWrites = ["AnimationQuery"];
+    system.services = ["animation.play", "animation.query"];
+  }
+
+  const result = await runSchedule({
+    module: {
+      systems: {
+        playRun(context: any) {
+          context.animation.play("player", "run");
+        },
+        queryRun(context: any) {
+          context.resources.set("AnimationQuery", context.animation.query("player", "run"));
+        },
+      },
+    },
+    schedule: "update",
+    systems,
+    world,
+  });
+
+  assert.deepEqual(result.diagnostics, []);
+  const query = world.resources?.AnimationQuery as { active: boolean };
+  assert.equal(query.active, true);
+});
+
 test("should run systems apply full command buffer semantics", async () => {
   const world = makeWorld();
   const systems = makeSystems("update", "useCommands");
@@ -585,11 +645,14 @@ function makePrefabs(): IPrefabsIr {
 }
 
 function makeSystems(schedule: "fixedUpdate" | "postUpdate" | "startup" | "update", exportName: string): ISystemsIr {
+  return makeSystemsForExports(schedule, [exportName]);
+}
+
+function makeSystemsForExports(schedule: "fixedUpdate" | "postUpdate" | "startup" | "update", exportNames: string[]): ISystemsIr {
   return {
     schema: "threenative.systems",
     version: "0.1.0",
-    systems: [
-      {
+    systems: exportNames.map((exportName) => ({
         commands: [],
         eventReads: [],
         eventWrites: [],
@@ -602,7 +665,6 @@ function makeSystems(schedule: "fixedUpdate" | "postUpdate" | "startup" | "updat
         schedule,
         script: { bundle: "scripts.bundle.js", exportName },
         writes: ["Transform"],
-      },
-    ],
+      })),
   };
 }

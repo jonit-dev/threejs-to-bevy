@@ -10,20 +10,20 @@ test("gameLoop should run fixed update at configured timestep", async () => {
   const state = createGameLoopState({
     schema: "threenative.runtime-config",
     version: "0.1.0",
-    time: { fixedDelta: 0.25, paused: false },
+    time: { fixedDelta: 0.1, paused: false },
     window: { height: 720, width: 1280 },
   });
   const world = makeWorld();
   let ticks = 0;
 
   await runGameFrame({
-    delta: 0.6,
+    delta: 0.2,
     mapped: makeMapped(),
     module: { systems: { tick: () => ticks++ } },
     runtimeConfig: {
       schema: "threenative.runtime-config",
       version: "0.1.0",
-      time: { fixedDelta: 0.25, paused: false },
+      time: { fixedDelta: 0.1, paused: false },
       window: { height: 720, width: 1280 },
     },
     state,
@@ -32,7 +32,7 @@ test("gameLoop should run fixed update at configured timestep", async () => {
   });
 
   assert.equal(ticks, 2);
-  assert.equal(state.accumulator, 0.09999999999999998);
+  assert.ok(Math.abs(state.accumulator) < 1e-10);
 });
 
 test("gameLoop should skip gameplay schedules while paused", async () => {
@@ -60,7 +60,32 @@ test("gameLoop should skip gameplay schedules while paused", async () => {
   });
 
   assert.equal(ticks, 0);
-  assert.equal(state.elapsed, 1);
+  assert.equal(state.elapsed, 0.25);
+  assert.equal(state.accumulator, 0);
+});
+
+test("gameLoop should clamp suspended-frame deltas", async () => {
+  const state = createGameLoopState({
+    schema: "threenative.runtime-config",
+    version: "0.1.0",
+    time: { fixedDelta: 0.1, paused: false },
+    window: { height: 720, width: 1280 },
+  });
+  let ticks = 0;
+
+  await runGameFrame({
+    delta: 60,
+    fixedDelta: 0.1,
+    mapped: makeMapped(),
+    module: { systems: { tick: () => ticks++ } },
+    state,
+    systems: makeSystems(),
+    world: makeWorld(),
+  });
+
+  assert.equal(ticks, 2);
+  assert.equal(state.elapsed, 0.25);
+  assert.ok(Math.abs(state.accumulator - 0.05) < 1e-10);
 });
 
 test("gameLoop should run startup once before gameplay schedules", async () => {

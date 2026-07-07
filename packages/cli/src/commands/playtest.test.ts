@@ -508,7 +508,7 @@ test("playtest command should run desktop target through native proof harness", 
   );
   const payload = JSON.parse(result.stdout) as { artifacts: { nativeFrameSamples: string; observations: string; summary: string }; code: string; distance: number; runtime: string; target: string };
   const commandStream = JSON.parse(await readFile(commandStreamPath ?? "", "utf8")) as { commands: Array<{ code?: string; frames?: number; pressed?: boolean; tick: number; type: string }> };
-  const summary = JSON.parse(await readFile(payload.artifacts.summary, "utf8")) as { diagnostics: unknown[]; movementDelta: number[]; nativeRecording: { frames: Array<{ byteSize: number; tick: number }> }; performance: { framesOverBudget: number; sampleCount: number; source: string; worstFrameMs: number }; runtime: string; target: string };
+  const summary = JSON.parse(await readFile(payload.artifacts.summary, "utf8")) as { diagnostics: unknown[]; movementDelta: number[]; nativeRecording: { frames: Array<{ byteSize: number; tick: number }> }; performance: { framesOverBudget: number; measurement: string; note: string; sampleCount: number; scope: string; source: string; worstFrameMs: number }; runtime: string; target: string };
   const nativeFrameSamples = JSON.parse(await readFile(payload.artifacts.nativeFrameSamples, "utf8")) as { samples: Array<{ frameMs: number; tick: number }>; summaries: { all: { sampleCount: number; worstFrameMs: number }; dropFirst: { sampleCount: number; worstFrameMs: number } } };
   const observations = JSON.parse(await readFile(payload.artifacts.observations, "utf8")) as { runtimeDiagnostics: { readiness: Array<{ tick: number }> } };
 
@@ -521,7 +521,10 @@ test("playtest command should run desktop target through native proof harness", 
   assert.deepEqual(summary.diagnostics, []);
   assert.deepEqual(summary.nativeRecording.frames, []);
   assert.equal(summary.performance.source, "native-proof-harness");
-  assert.equal(summary.performance.sampleCount, 2);
+  assert.equal(summary.performance.measurement, "native-proof-harness-cadence");
+  assert.equal(summary.performance.scope, "steady-state");
+  assert.match(summary.performance.note, /not a display\/vsync FPS measurement/u);
+  assert.equal(summary.performance.sampleCount, 1);
   assert.equal(summary.performance.framesOverBudget, 1);
   assert.equal(summary.performance.worstFrameMs, 33.3334);
   assert.deepEqual(nativeFrameSamples.samples.map((sample) => ({ frameMs: sample.frameMs, tick: sample.tick })), [

@@ -21,6 +21,12 @@ weight. These PRDs intentionally avoid broad new Bevy parity work.
 10. [PRD-010 Meta-Layer Compression](PRD-010-meta-layer-compression.md)
 11. [PRD-011 Native Path Decision And Parity Freeze](PRD-011-native-path-decision-parity-freeze.md)
 12. [PRD-012 Ship One Genuinely Good Game](PRD-012-ship-one-good-game.md)
+13. [PRD-013 Derived Resource Declarations](PRD-013-derived-resource-declarations.md)
+14. [PRD-014 Runtime Resource Parity Diagnostics](PRD-014-runtime-resource-parity-diagnostics.md)
+15. [PRD-015 Write-Time Validation And Retry Ratchet](PRD-015-write-time-validation-and-retry-ratchet.md)
+16. [PRD-016 Equal-Proof Benchmark Protocol](PRD-016-equal-proof-benchmark-protocol.md)
+17. [PRD-017 Typed TypeScript Game Spec](PRD-017-typed-typescript-game-spec.md)
+18. [PRD-018 Vanilla-Lift Pipeline Decision](PRD-018-vanilla-lift-pipeline-decision.md)
 
 ## Dependency Shape
 
@@ -32,10 +38,23 @@ weight. These PRDs intentionally avoid broad new Bevy parity work.
   parity breadth from pulling effort away from the authoring loop.
 - PRD-012 is the capstone and should start only after the scaffolds, blocks,
   cookbook, visual defaults, and native-path decision have usable slices.
+- PRDs 013-015 are the round-4 tactical fixes: remove mechanical resource
+  declaration failures, close the runtime resource-observation black box, and
+  make write-time validation plus retry-chain gates enforce one-step recovery.
+- PRD-016 corrects the benchmark protocol before the next decision round:
+  equal proof for vanilla and ThreeNative, at least three repeats, honest
+  parity thresholds, and beyond-one-shot prompts.
+- PRD-017 is the preferred architectural bet if tactical fixes reach parity
+  but not a decisive win: make typed TypeScript the authoring schema and keep
+  canonical JSON/IR as generated artifacts.
+- PRD-018 is decision-gated. Start it only if PRD-016 evidence shows direct
+  ThreeNative authoring remains above the equal-proof threshold after PRDs
+  013-015 land.
 
 ## Source Evidence
 
 - `CHALLENGES.md`
 - `tools/agent-benchmark/OFF-RECIPE-DIRECTIVE.md`
+- `tools/agent-benchmark/OFF-RECIPE-ROUND-4-RECOMMENDATIONS-2026-07-07.md`
 - `tools/agent-benchmark/TOKEN-COST-DIRECTION.md`
 - `tools/verify/artifacts/agent-benchmark/`

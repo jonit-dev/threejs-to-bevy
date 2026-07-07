@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { resolve } from "node:path";
 import test from "node:test";
 
-import { contentTypeForBundleFile, startWebPreview } from "./devServer.js";
+import { contentTypeForBundleFile, resolveBundleFilePath, startWebPreview } from "./devServer.js";
 
 test("should start web dev server for valid bundle", async () => {
   const server = await startWebPreview({
@@ -36,4 +36,13 @@ test("should serve bundle module scripts with JavaScript content type", () => {
   assert.equal(contentTypeForBundleFile("overlay/assets/potion.svg"), "image/svg+xml");
   assert.equal(contentTypeForBundleFile("manifest.json"), "application/json; charset=utf-8");
   assert.equal(contentTypeForBundleFile("assets/hit.wav"), "audio/wav");
+});
+
+test("should reject bundle paths outside the bundle root", () => {
+  const bundlePath = resolve("/tmp/project/dist/game.bundle");
+
+  assert.equal(resolveBundleFilePath(bundlePath, "/manifest.json?cache=1"), resolve(bundlePath, "manifest.json"));
+  assert.equal(resolveBundleFilePath(bundlePath, "//etc/passwd"), null);
+  assert.equal(resolveBundleFilePath(bundlePath, "/%2e%2e/secrets.txt"), null);
+  assert.equal(resolveBundleFilePath(bundlePath, "/nested/%2e%2e/manifest.json"), resolve(bundlePath, "manifest.json"));
 });

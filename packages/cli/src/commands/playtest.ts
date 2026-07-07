@@ -82,7 +82,8 @@ export interface IPlaytestNativeRecording {
 }
 
 export interface IPlaytestPerformanceReport extends IFrameTimingSummary {
-  measurement?: "headless-browser-cadence" | "native-frame-cadence";
+  measurement?: "headless-browser-cadence" | "native-proof-harness-cadence";
+  note?: string;
   renderer?: {
     drawCalls?: number;
     geometries?: number;
@@ -90,6 +91,7 @@ export interface IPlaytestPerformanceReport extends IFrameTimingSummary {
     textures?: number;
     triangles?: number;
   };
+  scope?: "all-samples" | "steady-state";
   source: "native-proof-harness" | "web-runtime" | "web-runtime-headless";
 }
 
@@ -536,7 +538,7 @@ async function runNativePlaytest(options: IPlaytestRunOptions, bevyRunner: BevyR
   }
   const nativeRecording = await writeNativeRecordingManifest({ ...recordingPlan, frames: recordingFrames });
   const nativeFrameSamples = nativeFrameSampleReport(readinessSamples);
-  const performance = nativePerformanceReport(readinessSamples);
+  const performance = nativePerformanceReport(readinessSamples, options.scenario);
   const screenshotDiagnostics = options.nativeScreenshots
     ? [beforeArtifact, afterArtifact, ...recordingFrames.map((frame) => frame.path)]
     : recordingFrames.map((frame) => frame.path);
@@ -820,16 +822,32 @@ function nativeHarnessTimeoutMs(scenario: IPlaytestScenario): number {
   return Math.max(180000, frames * (1000 / 30) + 10000);
 }
 
-function nativePerformanceReport(samples: readonly Record<string, unknown>[]): IPlaytestPerformanceReport | undefined {
-  const frameSamples = nativeFrameSamples(samples).map((sample) => sample.frameMs);
+function nativePerformanceReport(samples: readonly Record<string, unknown>[], scenario: IPlaytestScenario): IPlaytestPerformanceReport | undefined {
+  const frameSamples = nativePerformanceSamples(samples, scenario).map((sample) => sample.frameMs);
   if (frameSamples.length === 0) {
     return undefined;
   }
   return {
     ...summarizeFrameTimings(frameSamples),
-    measurement: "native-frame-cadence",
+    measurement: "native-proof-harness-cadence",
+    note: "Native proof-harness cadence excludes startup samples and is not a display/vsync FPS measurement.",
+    scope: "steady-state",
     source: "native-proof-harness",
   };
+}
+
+function nativePerformanceSamples(samples: readonly Record<string, unknown>[], scenario: IPlaytestScenario): IPlaytestNativeFrameSample[] {
+  const frameSamples = nativeFrameSamples(samples);
+  if (frameSamples.length === 0) {
+    return [];
+  }
+  const { beforeTick } = nativeScenarioCaptureTicks(scenario);
+  const postStartup = frameSamples.filter((sample) => sample.tick > Math.max(10, beforeTick));
+  if (postStartup.length > 0) {
+    return postStartup;
+  }
+  const postWarmup = frameSamples.filter((sample) => sample.tick > beforeTick);
+  return postWarmup.length > 0 ? postWarmup : frameSamples;
 }
 
 function nativeFrameSampleReport(samples: readonly Record<string, unknown>[]): IPlaytestNativeFrameSampleReport {

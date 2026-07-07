@@ -196,7 +196,10 @@ pub fn app_from_bundle_with_options(
         app.init_resource::<ui::NativeUiActionQueue>();
         app.add_systems(
             Update,
-            (ui::scroll_native_ui, ui::dispatch_native_ui_actions),
+            (
+                ui::scroll_native_ui,
+                ui::dispatch_native_ui_actions.before(run_scripted_runtime_systems),
+            ),
         );
     }
     match overlay_host::create_native_overlay_host_plan(
@@ -270,6 +273,7 @@ pub fn app_from_bundle_with_options(
     );
     if has_scripts {
         app.insert_resource(ScriptedRuntimeBundle { bundle });
+        app.insert_non_send_resource(ScriptedRuntimeMainThread);
         app.insert_resource(systems_host::NativeGameLoopState::new(initially_paused));
         app.init_resource::<map_world::NativeAnimationServiceQueue>();
         app.add_systems(
@@ -468,6 +472,8 @@ struct ScriptedRuntimeBundle {
     bundle: LoadedBundle,
 }
 
+struct ScriptedRuntimeMainThread;
+
 #[derive(SystemParam)]
 struct ScriptedRuntimeParams<'w> {
     runtime: Option<ResMut<'w, ScriptedRuntimeBundle>>,
@@ -477,6 +483,7 @@ struct ScriptedRuntimeParams<'w> {
 fn run_scripted_runtime_systems(
     mut commands: Commands,
     mut scripted: ScriptedRuntimeParams,
+    _main_thread: NonSend<ScriptedRuntimeMainThread>,
     input: Option<Res<input::NativeInputState>>,
     proof_harness: Option<Res<proof_harness::NativeProofHarnessState>>,
     fast_forward: Option<Res<proof_harness::NativeProofHarnessFastForward>>,
@@ -492,6 +499,7 @@ fn run_scripted_runtime_systems(
         &mut Visibility,
     )>,
     mut animation_queue: Option<ResMut<map_world::NativeAnimationServiceQueue>>,
+    mut ui_action_queue: Option<ResMut<ui::NativeUiActionQueue>>,
 ) {
     let Some(ref mut runtime) = scripted.runtime else {
         return;
@@ -519,12 +527,25 @@ fn run_scripted_runtime_systems(
     } else {
         1
     };
+    let queued_ui_actions = ui_action_queue
+        .as_deref_mut()
+        .map(ui::drain_native_ui_action_ids)
+        .unwrap_or_default();
+    let input_snapshot = if queued_ui_actions.is_empty() {
+        input.as_deref().cloned()
+    } else if let Some(input) = input.as_deref() {
+        Some(input.with_additional_actions(queued_ui_actions.iter().map(String::as_str)))
+    } else {
+        Some(input::NativeInputState::from_action_ids(
+            queued_ui_actions.iter().map(String::as_str),
+        ))
+    };
 
     for _ in 0..frame_count {
         let options = systems_host::NativeGameLoopRunOptions {
             delta,
             fixed_delta,
-            input: input.as_deref(),
+            input: input_snapshot.as_ref(),
             paused,
         };
 
@@ -918,11 +939,45 @@ mod tests {
         assert_eq!(mover_translation(&mut app), Vec3::new(20.0, 0.0, 0.0));
     }
 
+    #[test]
+    fn scripted_runtime_should_drain_native_ui_actions_into_input_snapshot() {
+        let root = write_scripted_runtime_bundle("bevy-ui-action-input", 0.1);
+        let mut app = scripted_runtime_app(&root);
+        app.insert_resource(ui::NativeUiActionQueue {
+            events: vec![ui::NativeUiActionEvent {
+                action: "Jump".to_owned(),
+                node: "jump".to_owned(),
+                value: None,
+            }],
+        });
+
+        advance_app(&mut app, 0.1);
+
+        let runtime = app.world().resource::<ScriptedRuntimeBundle>();
+        assert_eq!(
+            runtime
+                .bundle
+                .world
+                .resources
+                .get("LoopCounts")
+                .and_then(|counts| counts.get("uiJump"))
+                .and_then(serde_json::Value::as_bool),
+            Some(true)
+        );
+        assert!(
+            app.world()
+                .resource::<ui::NativeUiActionQueue>()
+                .events
+                .is_empty()
+        );
+    }
+
     fn scripted_runtime_app(root: &Path) -> App {
         let bundle = load_bundle(root).expect("scripted test bundle should load");
         let mut app = App::new();
         app.insert_resource(Time::<()>::default());
         app.insert_resource(ScriptedRuntimeBundle { bundle });
+        app.insert_non_send_resource(ScriptedRuntimeMainThread);
         app.insert_resource(systems_host::NativeGameLoopState::default());
         app.add_systems(Update, run_scripted_runtime_systems);
         app
@@ -933,6 +988,7 @@ mod tests {
         let mut app = App::new();
         app.insert_resource(Time::<()>::default());
         app.insert_resource(ScriptedRuntimeBundle { bundle });
+        app.insert_non_send_resource(ScriptedRuntimeMainThread);
         app.insert_resource(systems_host::NativeGameLoopState::default());
         app.world_mut().spawn((
             ThreeNativeId("mover".to_owned()),
@@ -1024,7 +1080,14 @@ mod tests {
 };
 const system_boot = (ctx) => bump(ctx, "startup");
 const system_tick = (ctx) => bump(ctx, "fixed");
-const system_update = (ctx) => bump(ctx, "update");
+const system_update = (ctx) => {
+  bump(ctx, "update");
+  if (ctx.input.action("Jump")) {
+    const counts = ctx.resources.get("LoopCounts");
+    counts.uiJump = true;
+    ctx.resources.set("LoopCounts", counts);
+  }
+};
 const system_post = (ctx) => bump(ctx, "post");
 export const systemIds = Object.freeze({ "system_boot": "boot", "system_tick": "tick", "system_update": "update", "system_post": "post" });
 export const systems = Object.freeze({ "system_boot": system_boot, "system_tick": system_tick, "system_update": system_update, "system_post": system_post });

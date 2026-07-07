@@ -32,8 +32,10 @@ pub struct NativeCameraMetadata(pub CameraComponent);
 
 #[derive(Clone, Debug, Component, Default)]
 pub struct NativeCameraHelperState {
+    pub shake_offset: Vec3,
     pub shake_phase: f32,
     pub shake_strength: f32,
+    pub view_model_offset: Vec3,
 }
 
 pub fn build_render_layer_map(bundle: &LoadedBundle) -> NativeRenderLayerMap {
@@ -224,6 +226,9 @@ pub fn update_native_camera_helpers(
         .unwrap_or(1.0 / 60.0);
     for (mut transform, mut state, metadata) in queries.p0().iter_mut() {
         let camera = &metadata.0;
+        transform.translation -= state.view_model_offset + state.shake_offset;
+        state.view_model_offset = Vec3::ZERO;
+        state.shake_offset = Vec3::ZERO;
         if let Some(follow) = camera.follow.as_ref() {
             apply_follow_helper(&mut transform, follow, &target_positions, delta);
         }
@@ -232,7 +237,8 @@ pub fn update_native_camera_helpers(
         }
         if let Some(view_model) = camera.view_model.as_ref() {
             if let Some(offset) = view_model.offset {
-                transform.translation += Vec3::new(offset[0], offset[1], offset[2]);
+                state.view_model_offset = Vec3::new(offset[0], offset[1], offset[2]);
+                transform.translation += state.view_model_offset;
             }
         }
         if let Some(shake) = camera.screen_shake.as_ref() {
@@ -303,13 +309,15 @@ fn apply_screen_shake(
     let decay = shake.decay.unwrap_or(4.0);
     state.shake_strength = lerp_scalar(state.shake_strength, 0.0, decay, delta);
     if state.shake_strength <= 1e-4 {
+        state.shake_offset = Vec3::ZERO;
         return;
     }
-    transform.translation += Vec3::new(
+    state.shake_offset = Vec3::new(
         state.shake_phase.sin() * state.shake_strength,
         (state.shake_phase * 1.3).cos() * state.shake_strength,
         (state.shake_phase * 0.7).sin() * state.shake_strength * 0.5,
     );
+    transform.translation += state.shake_offset;
 }
 
 fn lerp_scalar(current: f32, target: f32, smoothing: f32, delta: f32) -> f32 {

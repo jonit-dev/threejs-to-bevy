@@ -213,13 +213,14 @@ pub fn run_native_systems_frame_with_input(
 
     state.paused = options.paused;
     state.elapsed += options.delta;
-    state.accumulator += options.delta;
-    state.accumulator = state
-        .accumulator
-        .min(options.fixed_delta * MAX_FIXED_STEPS_PER_FRAME);
 
     let mut run = NativeSystemsHostRun::default();
     if !state.paused {
+        state.accumulator += options.delta;
+        state.accumulator = state
+            .accumulator
+            .min(options.fixed_delta * MAX_FIXED_STEPS_PER_FRAME);
+
         if !state.startup_complete {
             let time = loop_time_snapshot(0.0, state.elapsed, options.fixed_delta, state.paused);
             let startup_run =
@@ -509,6 +510,10 @@ fn run_native_system_schedules(
         }
         Ok(())
     })?;
+
+    if schedules.iter().any(|schedule| *schedule == "postUpdate") {
+        bundle.world.events.clear();
+    }
 
     Ok(NativeSystemsHostRun {
         logs,

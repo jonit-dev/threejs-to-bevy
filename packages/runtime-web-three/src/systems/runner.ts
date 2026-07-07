@@ -2,7 +2,7 @@ import type { IAssetsManifest, IAudioIr, IIrSchemaFile, IIrSystemDeclaration, IL
 import type { IWebInputState } from "../input.js";
 
 import { createComponentDiffCache } from "./componentDiff.js";
-import { createSystemContext } from "./context.js";
+import { createSystemContext, webSystemRuntimeStateFor } from "./context.js";
 import { applySystemEffects } from "./effects.js";
 import { appendSystemEffectLog, type ISystemEffectLog, type ISystemEffectLogEntry } from "./log.js";
 import { createWebPersistenceService, type IWebPersistenceService } from "./services/persistence.js";
@@ -44,10 +44,11 @@ export async function runSchedule(options: {
   const scheduledSystems = orderedSystemsForSchedule(options.systems.systems, options.schedule);
   const componentDiff = createComponentDiffCache();
   const persistence = options.localData === undefined ? undefined : createWebPersistenceService(options.localData);
+  const runtimeState = webSystemRuntimeStateFor(options.world, { assets: options.assets, audio: options.audio });
   const tracked = [...new Set(scheduledSystems.flatMap((system) => system.queries.flatMap((query) => query.changed ?? [])))].sort();
   componentDiff.beginScheduleStage(options.world, tracked);
   for (const system of scheduledSystems) {
-    const result = await runSystem(system, { ...options, componentDiff, persistence });
+    const result = await runSystem(system, { ...options, componentDiff, persistence, runtimeState });
     diagnostics.push(...result.diagnostics);
     entries.push(...result.entries);
   }
@@ -72,6 +73,7 @@ async function runSystem(
     paused?: boolean;
     persistence?: IWebPersistenceService;
     prefabs?: IPrefabsIr;
+    runtimeState?: ReturnType<typeof webSystemRuntimeStateFor>;
     systems: ISystemsIr;
     tick?: number;
     ui?: IUiIr;
@@ -96,6 +98,7 @@ async function runSystem(
     paused: options.paused ?? false,
     persistence: options.persistence,
     prefabs: options.prefabs,
+    runtimeState: options.runtimeState,
     systems: options.systems,
     ui: options.ui,
   });

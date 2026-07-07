@@ -3,9 +3,12 @@ use std::collections::BTreeSet;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use threenative_loader::{
-    EntityComponents, HierarchyComponent, LoadedBundle, MeshRendererComponent, SystemCommandIr,
-    SystemIr, TransformComponent, WorldEntity,
+    CameraComponent, ColliderComponent, EntityComponents, HierarchyComponent, LightComponent,
+    LoadedBundle, MeshRendererComponent, RigidBodyComponent, SystemCommandIr, SystemIr,
+    TransformComponent, VisibilityComponent, WorldEntity,
 };
+
+use crate::systems_context::component_value;
 
 #[derive(Clone, Debug, Default, Deserialize, PartialEq)]
 pub struct NativeSystemEffects {
@@ -443,14 +446,15 @@ fn apply_patch(bundle: &mut LoadedBundle, patch: &NativeSystemPatchEffect) {
     }
 
     if patch.component == "MeshRenderer" {
-        entity.components.mesh_renderer = read_mesh_renderer(&patch.value);
+        patch_mesh_renderer(&mut entity.components, &patch.value);
         return;
     }
 
-    entity
-        .components
-        .extra
-        .insert(patch.component.clone(), patch.value.clone());
+    patch_component_value(
+        &mut entity.components,
+        &patch.component,
+        patch.value.clone(),
+    );
 }
 
 fn apply_command(bundle: &mut LoadedBundle, command: &NativeSystemCommandEffect) {
@@ -630,6 +634,16 @@ fn apply_component_value(components: &mut EntityComponents, component: &str, val
         return;
     }
 
+    if component == "Camera" {
+        components.camera = serde_json::from_value::<CameraComponent>(value).ok();
+        return;
+    }
+
+    if component == "Collider" {
+        components.collider = serde_json::from_value::<ColliderComponent>(value).ok();
+        return;
+    }
+
     if component == "Hierarchy" {
         components.hierarchy = Some(HierarchyComponent {
             parent: value
@@ -640,7 +654,68 @@ fn apply_component_value(components: &mut EntityComponents, component: &str, val
         return;
     }
 
+    if component == "Light" {
+        components.light = serde_json::from_value::<LightComponent>(value).ok();
+        return;
+    }
+
+    if component == "RigidBody" {
+        components.rigid_body = serde_json::from_value::<RigidBodyComponent>(value).ok();
+        return;
+    }
+
+    if component == "Visibility" {
+        components.visibility = serde_json::from_value::<VisibilityComponent>(value).ok();
+        return;
+    }
+
     components.extra.insert(component.to_owned(), value);
+}
+
+fn patch_component_value(components: &mut EntityComponents, component: &str, value: Value) {
+    match component {
+        "Camera" | "Collider" | "Hierarchy" | "Light" | "RigidBody" | "Visibility" => {
+            let merged = component_value(components, component)
+                .map(|existing| merge_object_patch(existing, &value))
+                .unwrap_or(value);
+            apply_component_value(components, component, merged);
+        }
+        other => {
+            components.extra.insert(other.to_owned(), value);
+        }
+    }
+}
+
+fn patch_mesh_renderer(components: &mut EntityComponents, value: &Value) {
+    if let Some(existing) = components.mesh_renderer.as_mut() {
+        if let Some(cast_shadow) = value.get("castShadow").and_then(Value::as_bool) {
+            existing.cast_shadow = Some(cast_shadow);
+        }
+        if let Some(mesh) = value.get("mesh").and_then(Value::as_str) {
+            existing.mesh = Some(mesh.to_owned());
+        }
+        if let Some(material) = value.get("material").and_then(Value::as_str) {
+            existing.material = material.to_owned();
+        }
+        if let Some(receive_shadow) = value.get("receiveShadow").and_then(Value::as_bool) {
+            existing.receive_shadow = Some(receive_shadow);
+        }
+        if let Some(visible) = value.get("visible").and_then(Value::as_bool) {
+            existing.visible = Some(visible);
+        }
+        return;
+    }
+    components.mesh_renderer = read_mesh_renderer(value);
+}
+
+fn merge_object_patch(mut existing: Value, patch: &Value) -> Value {
+    let (Some(existing), Some(patch)) = (existing.as_object_mut(), patch.as_object()) else {
+        return patch.clone();
+    };
+    for (key, value) in patch {
+        existing.insert(key.clone(), value.clone());
+    }
+    Value::Object(existing.clone())
 }
 
 fn set_parent(bundle: &mut LoadedBundle, child_id: &str, parent_id: &str) {

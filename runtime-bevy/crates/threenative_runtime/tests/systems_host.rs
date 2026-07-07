@@ -3,7 +3,9 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use threenative_loader::{InputActionIr, InputAxisIr, InputBindingIr, InputIr, LoadedBundle, load_bundle};
+use threenative_loader::{
+    InputActionIr, InputAxisIr, InputBindingIr, InputIr, LoadedBundle, load_bundle,
+};
 use threenative_runtime::{
     input::{NativeInputState, map_keyboard_event},
     systems_context::{NativeSystemTimeSnapshot, build_system_context_snapshot},
@@ -752,7 +754,7 @@ fn systems_host_should_skip_gameplay_schedules_while_native_loop_is_paused() {
     );
     assert_eq!(physics_steps, 0);
     assert_eq!(state.elapsed, 1.0);
-    assert_eq!(state.accumulator, 1.0);
+    assert_eq!(state.accumulator, 0.0);
     assert_eq!(state.frame, 1);
     assert_eq!(state.tick, 0);
     assert!(!state.startup_complete);
@@ -853,10 +855,7 @@ fn systems_host_should_reconcile_spawned_entities_events_and_resources_across_sc
         bundle.world.resources.get("Score"),
         Some(&serde_json::json!({ "events": 2, "health": 1 }))
     );
-    assert_eq!(
-        bundle.world.events.get("Spawned"),
-        Some(&serde_json::json!([{ "via": "direct" }, { "via": "command" }]))
-    );
+    assert!(!bundle.world.events.contains_key("Spawned"));
 }
 
 #[test]
@@ -866,13 +865,7 @@ fn systems_host_should_expose_fixed_trace_tasks_and_channels() {
 
     let run = run_native_systems_once(&mut bundle, time()).expect("system should run");
 
-    assert_eq!(
-        bundle.world.events.get("LifecycleEvent"),
-        Some(&serde_json::json!([
-            { "phase": "seed" },
-            { "phase": "next", "taskChannel": "lifecycle", "taskCount": 1 }
-        ]))
-    );
+    assert!(!bundle.world.events.contains_key("LifecycleEvent"));
     assert_eq!(run.logs[0].entries[0].kind, "event");
     assert_eq!(
         run.logs[0].entries[0].payload,
@@ -2601,7 +2594,7 @@ fn write_context_ergonomics_bundle(name: &str) -> PathBuf {
     );
     fs::write(
         root.join("scripts.bundle.js"),
-r#"const system_ergonomics = (ctx) => {
+        r#"const system_ergonomics = (ctx) => {
   const player = ctx.entity("player");
   const ids = ctx.entities.byId({ camera: "camera.main", missing: "missing" });
   const current = ctx.resources.get("RallyState", { lap: 0, speed: 0 });

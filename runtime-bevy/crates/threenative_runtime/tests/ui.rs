@@ -12,11 +12,11 @@ use bevy::ui::{IsDefaultUiCamera, TargetCamera};
 use threenative_components::ThreeNativeId;
 use threenative_loader::{UiIr, UiNodeIr, load_bundle};
 use threenative_runtime::ui::{
-    NativeUiAction, NativeUiActionEvent, NativeUiActionQueue, NativeUiBar, NativeUiGradient,
-    NativeUiImageSrc, NativeUiKind, NativeUiMinimapMarker, NativeUiMinimapPathPoint,
-    NativeUiRenderedGradient, NativeUiRenderedShadow, NativeUiRenderedTextStyle,
-    NativeUiScrollContainer, NativeUiShadow, NativeUiStyle, NativeUiWidget, build_native_ui,
-    diagnose_native_ui_visual_support, dispatch_native_ui_actions,
+    NativeUiAction, NativeUiActionEvent, NativeUiActionQueue, NativeUiBar, NativeUiDisabled,
+    NativeUiGradient, NativeUiImageSrc, NativeUiKind, NativeUiMinimapMarker,
+    NativeUiMinimapPathPoint, NativeUiRenderedGradient, NativeUiRenderedShadow,
+    NativeUiRenderedTextStyle, NativeUiScrollContainer, NativeUiShadow, NativeUiStyle,
+    NativeUiWidget, build_native_ui, diagnose_native_ui_visual_support, dispatch_native_ui_actions,
     install_native_ui_overlay_camera, map_ui_into_world, queue_native_ui_text_input_value,
     route_native_ui_to_active_scene_camera, trace_native_ui_affordances,
     trace_native_ui_attachment_projection, trace_native_ui_effect_presets,
@@ -562,6 +562,26 @@ fn ui_should_dispatch_native_button_and_touch_actions() {
             node: "jump".to_owned(),
             value: None,
         }]
+    );
+
+    app.world_mut()
+        .resource_mut::<NativeUiActionQueue>()
+        .events
+        .clear();
+    app.world_mut()
+        .entity_mut(jump)
+        .insert((Interaction::None, NativeUiDisabled(true)));
+    app.update();
+    app.world_mut()
+        .entity_mut(jump)
+        .insert(Interaction::Pressed);
+    app.update();
+
+    assert!(
+        app.world()
+            .resource::<NativeUiActionQueue>()
+            .events
+            .is_empty()
     );
 }
 
