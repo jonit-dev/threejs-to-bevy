@@ -93,6 +93,22 @@ execution bundle.
 
 ### Authoring, Editor, And Plugins
 
+- [Agent Token Efficiency IO Budget](other/agent-token-efficiency-io-budget.md):
+  makes agent-facing CLI output compact by default, removes playtest
+  `effectLog`/full `observations` from stdout, keeps deep logs as artifacts,
+  adds compact playtest reports, and gates documented command stdout size.
+- [Agent Token Efficiency Loop and API Card](other/agent-token-efficiency-loop-and-api-card.md):
+  funnels generated-project agents through `tn iterate`, ships a compact
+  source-validated API card in starters, and makes game-plan stdout artifact
+  backed instead of long-lived full-plan context.
+- [Agent Benchmark Token Cost Metrics and Rerun](other/agent-benchmark-token-cost-rerun.md):
+  extends benchmark artifacts with cached/uncached token, tool-output,
+  failed-command, and cost-weighted fields, then reruns the unchanged pilot
+  protocol against the audit's <=0.5x raw-token target.
+- [Agent Token Efficiency Scaffold-First Game Plan Apply](other/agent-token-efficiency-scaffold-first.md):
+  conditional structural lever if P0/P1 fixes miss the <=0.5x target:
+  explicitly apply collector and lane-runner game plans into playable,
+  scenario-backed starter source before agent patching begins.
 - [Contract De-Sprawl Through Authoring Modules And Runtime Trace Contracts](proof-first-engine-loop-2026-07-05/PRD-003-contract-de-sprawl-authoring-runtime-traces.md):
   splits authoring operation implementation by source family, introduces
   focused runtime trace contracts, and shrinks native mapping hotspots behind
