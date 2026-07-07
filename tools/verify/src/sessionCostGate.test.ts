@@ -65,3 +65,27 @@ test("should fail when deterministic replay has failed commands", async () => {
   assert.equal(result.measurements[0]?.failedCommandCount, 1);
   assert.equal(result.diagnostics.some((diagnostic) => diagnostic.code === "TN_VERIFY_SESSION_COST_COMMAND_FAILED"), true);
 });
+
+test("should fail when identical failed assertions repeat", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-session-cost-gate-"));
+  const cases: SessionCostReplayCase[] = [{ archetype: "top-down", id: "archetype-top-down", kind: "archetype" }];
+  const repeatedAssertion = { details: { distance: 0, entity: "player" }, id: "movement", pass: false };
+  const result = await runSessionCostGate({
+    cases,
+    root,
+    run: async (command) => ({
+      durationMs: 1,
+      exitCode: 0,
+      stderr: "",
+      stdout: JSON.stringify({
+        assertions: [repeatedAssertion],
+        code: command.name?.endsWith(": iterate") === true ? "TN_ITERATE_OK" : "TN_CREATE_OK",
+        ok: true,
+      }),
+    }),
+  });
+
+  assert.equal(result.ok, false);
+  assert.equal(result.measurements[0]?.identicalAssertionRepeatCount, 1);
+  assert.equal(result.diagnostics.some((diagnostic) => diagnostic.code === "TN_VERIFY_SESSION_COST_ASSERTION_REPEAT_EXCEEDED"), true);
+});

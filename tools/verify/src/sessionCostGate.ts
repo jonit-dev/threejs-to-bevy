@@ -5,6 +5,7 @@ import { fileURLToPath } from "node:url";
 
 import { resolveArtifactTargets } from "./artifacts.js";
 import { runCommand, summarize, type CommandResult, type StepSummary, type VerificationDiagnostic } from "./runner.js";
+import { deriveRetryChainMetrics, type CommandOutputForMetrics } from "./sessionMetrics.js";
 
 export interface SessionCostReplayCase {
   archetype?: string;
@@ -16,9 +17,11 @@ export interface SessionCostReplayCase {
 export interface SessionCostMeasurement {
   failedCommandCount: number;
   id: string;
+  identicalAssertionRepeatCount: number;
   iterateOutputBytes: number;
   kind: SessionCostReplayCase["kind"];
   manualEditCount: number;
+  maxConsecutiveSameDiagnostic: number;
   projectPath?: string;
   toolStepCount: number;
 }
@@ -42,13 +45,17 @@ export interface SessionCostGateResult {
 
 export interface SessionCostThresholds {
   failedCommandCount: 0;
+  identicalAssertionRepeatCount: 0;
   iterateOutputBytes: number;
+  maxConsecutiveSameDiagnostic: number;
   toolStepCount: number;
 }
 
 const DEFAULT_THRESHOLDS: SessionCostThresholds = {
   failedCommandCount: 0,
+  identicalAssertionRepeatCount: 0,
   iterateOutputBytes: 2 * 1024,
+  maxConsecutiveSameDiagnostic: 1,
   toolStepCount: 12,
 };
 
@@ -127,6 +134,7 @@ async function runReplayCase(options: {
   let failedCommandCount = 0;
   let iterateOutputBytes = 0;
   let toolStepCount = 0;
+  const commandOutputs: CommandOutputForMetrics[] = [];
 
   const runStep = async (name: string, args: readonly string[]): Promise<CommandResult> => {
     toolStepCount += 1;
@@ -142,6 +150,10 @@ async function runReplayCase(options: {
         suggestedFix: "Fix the scaffold, recipe, or iterate command so the golden path runs without an agent repair loop.",
       });
     }
+    commandOutputs.push({
+      failed: result.exitCode !== 0,
+      output: result.stdout.trim() !== "" ? result.stdout : result.stderr,
+    });
     return result;
   };
 
@@ -158,12 +170,15 @@ async function runReplayCase(options: {
     validateIterateSummary(options.replayCase, iterate, options.diagnostics);
   }
 
+  const retryChains = deriveRetryChainMetrics(commandOutputs);
   const measurement: SessionCostMeasurement = {
     failedCommandCount,
     id: options.replayCase.id,
+    identicalAssertionRepeatCount: retryChains.identicalAssertionRepeatCount,
     iterateOutputBytes,
     kind: options.replayCase.kind,
     manualEditCount: 0,
+    maxConsecutiveSameDiagnostic: retryChains.maxConsecutiveSameDiagnostic,
     projectPath: options.projectPath,
     toolStepCount,
   };
@@ -197,6 +212,24 @@ function validateThresholds(measurement: SessionCostMeasurement, thresholds: Ses
       severity: "error",
       step: measurement.id,
       suggestedFix: "Keep tn iterate stdout compact and move deep details to artifact files.",
+    });
+  }
+  if (measurement.maxConsecutiveSameDiagnostic > thresholds.maxConsecutiveSameDiagnostic) {
+    diagnostics.push({
+      code: "TN_VERIFY_SESSION_COST_RETRY_CHAIN_EXCEEDED",
+      message: `${measurement.id}: repeated the same diagnostic ${measurement.maxConsecutiveSameDiagnostic} time(s); budget is ${thresholds.maxConsecutiveSameDiagnostic}.`,
+      severity: "error",
+      step: measurement.id,
+      suggestedFix: "Stop retrying unchanged failing commands; inspect the first diagnostic and apply its suggested fix before rerunning.",
+    });
+  }
+  if (measurement.identicalAssertionRepeatCount > thresholds.identicalAssertionRepeatCount) {
+    diagnostics.push({
+      code: "TN_VERIFY_SESSION_COST_ASSERTION_REPEAT_EXCEEDED",
+      message: `${measurement.id}: repeated ${measurement.identicalAssertionRepeatCount} identical failed playtest assertion(s); budget is ${thresholds.identicalAssertionRepeatCount}.`,
+      severity: "error",
+      step: measurement.id,
+      suggestedFix: "Use the latest playtest artifact diagnostics before rerunning the same scenario unchanged.",
     });
   }
 }

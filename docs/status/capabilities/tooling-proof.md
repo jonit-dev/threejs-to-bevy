@@ -10,9 +10,12 @@ Current support:
   playtest logs remain in artifact files while stdout stays compact.
 - `pnpm verify:session-cost` replays scaffold-first paths in CI without LLM
   agents and enforces tool steps <= 12, failed commands == 0, and compact
-  `tn iterate --json` output <= 2 KB. The current deterministic replay set
-  covers all archetype scaffolds plus the `top-down-collector` and
-  `lane-runner` `tn game plan --apply` paths that are supported today.
+  `tn iterate --json` output <= 2 KB. It also reports
+  `maxConsecutiveSameDiagnostic` and `identicalAssertionRepeatCount`, failing
+  when same-diagnostic retries exceed one or identical failed assertions repeat.
+  The current deterministic replay set covers all archetype scaffolds plus the
+  `top-down-collector` and `lane-runner` `tn game plan --apply` paths that are
+  supported today.
 - `pnpm verify:webview-package` packages the
   `ui-persistence-settings-facades` conformance bundle through the desktop-web
   path and records raw package, size, startup, input, settings, and save-slot

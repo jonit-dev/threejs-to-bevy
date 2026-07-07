@@ -13,6 +13,9 @@ Current support:
   prefab/entity operations, UI binding, material editing, prefab material
   assignment, and compositional mechanic blocks; direct `content/**` edits
   remain a last resort.
+- Source document and scene mutation helpers validate candidate source before
+  writing; generated-only scaffold writers are classified in the write-time
+  validation audit.
 - Cookbook lookup supports both `tn cookbook show <id> --json` and the compact
   `tn cookbook <id> --json` shorthand for validated pattern pairs.
 - Maintained starters include `docs/API-CARD.md`, a compact generated
@@ -31,6 +34,9 @@ Verification:
   deferrals.
 - `tools/agent-benchmark/DIAGNOSTIC-FAILURE-AUDIT-2026-07-07.md`
   ranks failed benchmark command shapes and selected diagnostic fixes.
+- `tools/agent-benchmark/WRITE-TIME-VALIDATION-AUDIT-2026-07-07.md`
+  classifies source writers as validate-before-write, generated-only, or
+  deferred.
 - `tools/agent-benchmark/COOKBOOK-TOPIC-AUDIT-2026-07-07.md`
   maps benchmark needs to the existing validated cookbook entries.
 - `pnpm --filter @threenative/authoring test`

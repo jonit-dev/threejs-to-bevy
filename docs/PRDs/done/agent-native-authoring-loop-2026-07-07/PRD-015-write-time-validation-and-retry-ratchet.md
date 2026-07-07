@@ -31,6 +31,11 @@ reports do not fail fast when the same diagnostic or assertion repeats.
   chains or identical assertion repeats.
 - Round 4 showed four-failure and nine-failure retry chains.
 
+**Implementation Note:** The existing `@threenative/authoring` source document
+and scene mutation helpers already validate candidate source before writing.
+This PRD records the writer policy in an audit artifact and adds the missing
+retry-chain metrics/gates to session-cost verification.
+
 ## Pre-Planning Findings
 
 **How will this feature be reached?**
@@ -118,11 +123,11 @@ sequenceDiagram
 
 **Implementation:**
 
-- [ ] List every command that writes `content/**/*.json` or generated starter
+- [x] List every command that writes `content/**/*.json` or generated starter
   source.
-- [ ] Mark each as validate-before-write, generated-only, or deferred with
+- [x] Mark each as validate-before-write, generated-only, or deferred with
   reason.
-- [ ] Identify the remaining round-4 schema mistakes that need instant
+- [x] Identify the remaining round-4 schema mistakes that need instant
   rejection.
 
 **Tests Required:**
@@ -148,9 +153,9 @@ sequenceDiagram
 
 **Implementation:**
 
-- [ ] Add a helper that validates candidate structured source before writing.
-- [ ] Convert highest-risk mutation commands to the helper.
-- [ ] Return exact fix snippets for invalid schema shape, invalid input ID, and
+- [x] Add a helper that validates candidate structured source before writing.
+- [x] Convert highest-risk mutation commands to the helper.
+- [x] Return exact fix snippets for invalid schema shape, invalid input ID, and
   legacy transform form.
 
 **Tests Required:**
@@ -177,11 +182,11 @@ sequenceDiagram
 
 **Implementation:**
 
-- [ ] Parse diagnostic codes from command/playtest JSON output where present.
-- [ ] Normalize playtest assertion signatures.
-- [ ] Report `maxConsecutiveSameDiagnostic` and
+- [x] Parse diagnostic codes from command/playtest JSON output where present.
+- [x] Normalize playtest assertion signatures.
+- [x] Report `maxConsecutiveSameDiagnostic` and
   `identicalAssertionRepeatCount`.
-- [ ] Fail aggregate gates when thresholds are exceeded.
+- [x] Fail aggregate gates when thresholds are exceeded.
 
 **Tests Required:**
 
@@ -207,15 +212,15 @@ sequenceDiagram
 
 **Implementation:**
 
-- [ ] Add thresholds to the local benchmark/session gate.
-- [ ] Document the one-retry rule and identical-assertion zero-repeat rule.
-- [ ] Update status with links to the round-4 failure evidence and new metric.
+- [x] Add thresholds to the local benchmark/session gate.
+- [x] Document the one-retry rule and identical-assertion zero-repeat rule.
+- [x] Update status with links to the round-4 failure evidence and new metric.
 
 **Tests Required:**
 
 | Test File | Test Name | Assertion |
 |-----------|-----------|-----------|
-| `tools/verify/src/sessionCostGate.test.ts` | `should fail retry-chain threshold breach` | diagnostic reports chain length and code |
+| `tools/verify/src/sessionCostGate.test.ts` | `should fail when identical failed assertions repeat` | diagnostic reports assertion repeat count |
 
 **User Verification:**
 
@@ -236,9 +241,9 @@ sequenceDiagram
 
 ## 7. Acceptance Criteria
 
-- [ ] All source-writing CLI paths have a validation policy.
-- [ ] Highest-risk mutation commands validate before writing.
-- [ ] Round-4 schema mistake classes fail immediately with exact fixes.
-- [ ] Benchmark reports include retry-chain and identical-assertion metrics.
-- [ ] Gates enforce max same-diagnostic chain `<= 1` and assertion repeats
+- [x] All source-writing CLI paths have a validation policy.
+- [x] Highest-risk mutation commands validate before writing.
+- [x] Round-4 schema mistake classes fail immediately with exact fixes.
+- [x] Benchmark reports include retry-chain and identical-assertion metrics.
+- [x] Gates enforce max same-diagnostic chain `<= 1` and assertion repeats
   `== 0`.

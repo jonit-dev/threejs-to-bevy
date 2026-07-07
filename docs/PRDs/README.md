@@ -125,7 +125,7 @@ execution bundle.
   resources reach runtime state, recording resource observations in playtest
   artifacts, and emitting named diagnostics when schema-declared values are not
   observed at runtime.
-- [Write-Time Validation And Retry Ratchet](agent-native-authoring-loop-2026-07-07/PRD-015-write-time-validation-and-retry-ratchet.md):
+- [Write-Time Validation And Retry Ratchet](done/agent-native-authoring-loop-2026-07-07/PRD-015-write-time-validation-and-retry-ratchet.md):
   routes source-writing commands through validate-before-write and extends
   benchmark metrics with same-diagnostic and identical-assertion retry-chain
   gates.

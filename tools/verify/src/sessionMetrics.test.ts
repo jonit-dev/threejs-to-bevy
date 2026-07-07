@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { deriveSessionCostMetricsFromEvents } from "./sessionMetrics.js";
+import { deriveRetryChainMetrics, deriveSessionCostMetricsFromEvents } from "./sessionMetrics.js";
 
 test("should derive tool step count from event log", () => {
   const metrics = deriveSessionCostMetricsFromEvents([
@@ -24,4 +24,55 @@ test("should derive failed command count", () => {
 
   assert.equal(metrics.toolStepCount, 3);
   assert.equal(metrics.failedCommandCount, 2);
+});
+
+test("should count consecutive same diagnostic failures", () => {
+  const metrics = deriveSessionCostMetricsFromEvents([
+    JSON.stringify({
+      item: {
+        aggregated_output: JSON.stringify({ diagnostics: [{ code: "TN_BAD_SCHEMA" }] }),
+        exit_code: 1,
+        id: "a",
+        status: "failed",
+        type: "command_execution",
+      },
+      type: "item.completed",
+    }),
+    JSON.stringify({
+      item: {
+        aggregated_output: JSON.stringify({ diagnostics: [{ code: "TN_BAD_SCHEMA" }] }),
+        exit_code: 1,
+        id: "b",
+        status: "failed",
+        type: "command_execution",
+      },
+      type: "item.completed",
+    }),
+    JSON.stringify({
+      item: {
+        aggregated_output: JSON.stringify({ diagnostics: [{ code: "TN_OTHER" }] }),
+        exit_code: 1,
+        id: "c",
+        status: "failed",
+        type: "command_execution",
+      },
+      type: "item.completed",
+    }),
+  ]);
+
+  assert.equal(metrics.maxConsecutiveSameDiagnostic, 1);
+  assert.equal(metrics.identicalAssertionRepeatCount, 0);
+});
+
+test("should count repeated identical playtest assertions", () => {
+  const output = JSON.stringify({
+    assertions: [{ details: { distance: 0, entity: "player" }, id: "movement", pass: false }],
+  });
+  const metrics = deriveRetryChainMetrics([
+    { failed: false, output },
+    { failed: false, output },
+  ]);
+
+  assert.equal(metrics.identicalAssertionRepeatCount, 1);
+  assert.equal(metrics.maxConsecutiveSameDiagnostic, 0);
 });
