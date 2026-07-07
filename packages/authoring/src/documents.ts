@@ -12,6 +12,12 @@ export interface IAuthoringDocument {
   projectRelativePath: string;
   kind: AuthoringDocumentKind;
   data: unknown;
+  sourceMap?: IAuthoringDocumentSourceMap;
+}
+
+export interface IAuthoringDocumentSourceMap {
+  pointers?: Record<string, string>;
+  sourcePath: string;
 }
 
 export interface IReadAuthoringDocumentResult {

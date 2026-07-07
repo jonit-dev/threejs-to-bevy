@@ -7,6 +7,8 @@ import test from "node:test";
 import { validateAuthoringProject } from "@threenative/authoring";
 import { defineTypedGameSpec } from "@threenative/sdk";
 
+import { buildAuthoringProvenanceDocument } from "../authoring/provenance.js";
+import type { IAuthoringGraph } from "../authoring/graph.js";
 import { buildProject } from "../index.js";
 import { compileTypedGameSpec } from "./compile.js";
 
@@ -42,7 +44,7 @@ test("should emit valid structured source from typed spec", async () => {
       },
     }],
   });
-  const documents = compileTypedGameSpec(spec, { projectPath: root });
+  const documents = compileTypedGameSpec(spec, { projectPath: root, sourcePath: "src/game.spec.ts" });
 
   for (const document of documents) {
     const path = join(root, document.projectRelativePath);
@@ -60,9 +62,25 @@ test("should emit valid structured source from typed spec", async () => {
 
   assert.equal(result.ok, true, result.diagnostics.map((diagnostic) => diagnostic.message).join("\n"));
   assert.equal(build.bundlePath.endsWith("dist/typed-spec-smoke.bundle"), true);
+  const provenance = buildAuthoringProvenanceDocument(authoringGraph(root), { documents, emitted: [] });
+  const playerOwner = provenance.ownership.find((entry) => entry.emitted.artifactKind === "entity" && entry.emitted.id === "player");
+  assert.equal(playerOwner?.source?.path, "src/game.spec.ts");
+  assert.equal(playerOwner?.source?.pointer, "/scenes/0/entities/0");
   assert.deepEqual(documents.map((document) => document.projectRelativePath).sort(), [
     "content/input/arena.input.json",
     "content/materials/game-materials.materials.json",
     "content/scenes/arena.scene.json",
   ]);
 });
+
+function authoringGraph(root: string): IAuthoringGraph {
+  return {
+    declarations: [],
+    diagnostics: [],
+    entryPath: "src/game.spec.ts",
+    modules: [],
+    projectRoot: root,
+    schema: "threenative.authoring-graph",
+    version: "0.1.0",
+  };
+}

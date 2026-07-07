@@ -375,13 +375,14 @@ function sourcePointer(
   modulePath?: string,
   exportName?: string,
 ): IAuthoringStructuredSourcePointer {
+  const sourceMap = document.sourceMap;
   return {
     category: document.kind,
     kind,
     ...(modulePath === undefined ? {} : { modulePath }),
     ...(exportName === undefined ? {} : { exportName }),
-    path: document.projectRelativePath,
-    pointer,
+    path: sourceMap?.sourcePath ?? document.projectRelativePath,
+    pointer: sourceMap?.pointers?.[pointer] ?? pointer,
   };
 }
 

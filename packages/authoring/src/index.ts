@@ -8,7 +8,7 @@ export type {
 export { authoringDiagnostic, hasAuthoringErrors, sortAuthoringDiagnostics, unsupportedOperationDiagnostic } from "./diagnostics.js";
 export type { IPrescriptiveDiagnosticCode } from "./prescriptiveCodes.js";
 export { PRESCRIPTIVE_DIAGNOSTIC_CODES, prescriptiveFixForCode } from "./prescriptiveCodes.js";
-export type { AuthoringDocumentKind, IAuthoringDocument, IReadAuthoringDocumentResult } from "./documents.js";
+export type { AuthoringDocumentKind, IAuthoringDocument, IAuthoringDocumentSourceMap, IReadAuthoringDocumentResult } from "./documents.js";
 export {
   classifyAuthoringDocument,
   classifyAuthoringDocumentPath,

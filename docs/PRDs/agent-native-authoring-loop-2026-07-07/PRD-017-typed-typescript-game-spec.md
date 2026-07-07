@@ -188,8 +188,12 @@ sequenceDiagram
 
 - [x] Compile a minimal spec with one scene, one resource, one system, and one
   UI binding into canonical JSON.
-- [ ] Preserve source maps/provenance back to the TS spec.
+- [x] Preserve source maps/provenance back to the TS spec.
 - [x] Run existing build flow from generated content.
+
+**Implementation Note:** Typed spec compilation now annotates generated
+authoring documents with source maps so authoring provenance ownership entries
+point back to `src/game.spec.ts` instead of generated `content/**/*.json`.
 
 **Tests Required:**
 
