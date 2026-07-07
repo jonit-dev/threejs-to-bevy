@@ -27,7 +27,7 @@ in scripts, examples, and historical docs during a staged cleanup. See
 
 | Area | Status | Current claim | Detail |
 | --- | --- | --- | --- |
-| Authoring | Active | Structured source, schema-aware CLI/MCP/client operations, cookbook, iterate, starter API cards, and prescriptive diagnostics are supported. | [authoring](status/capabilities/authoring.md) |
+| Authoring | Active | Structured source, schema-aware CLI/MCP/client operations, cookbook, iterate, starter API cards, prescriptive diagnostics, and an experimental typed game-spec slice are supported. | [authoring](status/capabilities/authoring.md) |
 | Scripting | Active | Portable TypeScript scripts use typed context APIs, convention-first helper aliases, supported helper imports, derived literal resource access declarations, runtime resource observations, and prescriptive diagnostics. | [scripting](status/capabilities/scripting.md) |
 | Rendering | Active | Authored rendering IR maps to web and native through adapter-private implementations, parity gates, and web/native-proved scaffold look presets. | [rendering](status/capabilities/rendering.md) |
 | Physics | Active | Portable physics and character-control contracts exist for authored components and playtest-proved behavior. | [physics](status/capabilities/physics.md) |

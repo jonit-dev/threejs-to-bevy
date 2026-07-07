@@ -16,6 +16,9 @@ Current support:
 - Source document and scene mutation helpers validate candidate source before
   writing; generated-only scaffold writers are classified in the write-time
   validation audit.
+- Experimental typed game-spec APIs can type-check high-friction IDs and emit
+  canonical scene/input/material source documents, but starter defaults and
+  cookbook guidance remain gated on benchmark evidence.
 - Cookbook lookup supports both `tn cookbook show <id> --json` and the compact
   `tn cookbook <id> --json` shorthand for validated pattern pairs.
 - Maintained starters include `docs/API-CARD.md`, a compact generated
@@ -37,6 +40,8 @@ Verification:
 - `tools/agent-benchmark/WRITE-TIME-VALIDATION-AUDIT-2026-07-07.md`
   classifies source writers as validate-before-write, generated-only, or
   deferred.
+- `docs/architecture/typed-game-spec.md` documents the experimental
+  TypeScript-spec boundary and remaining default-migration gates.
 - `tools/agent-benchmark/COOKBOOK-TOPIC-AUDIT-2026-07-07.md`
   maps benchmark needs to the existing validated cookbook entries.
 - `pnpm --filter @threenative/authoring test`

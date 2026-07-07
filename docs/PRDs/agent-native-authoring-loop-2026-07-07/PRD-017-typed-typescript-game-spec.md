@@ -35,6 +35,11 @@ the remaining agent cost even after adoption fixes.
 - Architectural Bet A and Bet C recommend making typed TS the schema and
   collapsing the multi-file surface.
 
+**Implementation Note:** An experimental vertical slice now exists: SDK typed
+spec types, compiler ID-union generation from structured source, and typed
+spec-to-canonical-source emission. Starter/cookbook/default migration and the
+benchmark decision remain open before this PRD is complete.
+
 ## Pre-Planning Findings
 
 **How will this feature be reached?**
@@ -123,10 +128,10 @@ sequenceDiagram
 
 **Implementation:**
 
-- [ ] Specify the minimal typed spec covering round-4 failure classes:
+- [x] Specify the minimal typed spec covering round-4 failure classes:
   resources, entity IDs, input IDs, transforms, systems, and script references.
-- [ ] Define generated type ownership and output paths.
-- [ ] Document non-goals: arbitrary Three.js, DOM, filesystem, workers, raw
+- [x] Define generated type ownership and output paths.
+- [x] Document non-goals: arbitrary Three.js, DOM, filesystem, workers, raw
   runtime handles.
 
 **Tests Required:**
@@ -153,9 +158,9 @@ sequenceDiagram
 
 **Implementation:**
 
-- [ ] Generate or hand-author the first typed facade from existing schemas.
-- [ ] Include branded unions for entity, resource, input, material, and UI IDs.
-- [ ] Add compile-time examples using `tsc --noEmit`.
+- [x] Generate or hand-author the first typed facade from existing schemas.
+- [x] Include branded unions for entity, resource, input, material, and UI IDs.
+- [x] Add compile-time examples using `tsc --noEmit`.
 
 **Tests Required:**
 
@@ -181,7 +186,7 @@ sequenceDiagram
 
 **Implementation:**
 
-- [ ] Compile a minimal spec with one scene, one resource, one system, and one
+- [x] Compile a minimal spec with one scene, one resource, one system, and one
   UI binding into canonical JSON.
 - [ ] Preserve source maps/provenance back to the TS spec.
 - [ ] Run existing build/playtest flow from generated content.

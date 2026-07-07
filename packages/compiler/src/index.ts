@@ -13,6 +13,8 @@ export { AUTHORING_PROVENANCE_FILE, authoringProvenanceDocument, buildAuthoringP
 export type { ICompilerDiagnostic, IValidationReport } from "./diagnostics.js";
 export type { IAuthoringEmittedDocument, IAuthoringProvenanceDocument, IBuildAuthoringProvenanceOptions } from "./authoring/provenance.js";
 export { normalizeAuthoringGraph } from "./authoring/normalize.js";
+export { compileTypedGameSpec, type ICompileTypedGameSpecOptions } from "./gameSpec/compile.js";
+export { generateTypedGameSpecIdTypes, type IGenerateTypedGameSpecTypesOptions } from "./gameSpec/typegen.js";
 export type {
   AuthoringDeclarationKind,
   AuthoringEmittedArtifactKind,
