@@ -56,11 +56,19 @@ export interface ITypedEntitySpec<TIds extends Partial<IGameSpecIds> = IGameSpec
 
 export interface ITypedEntityComponents<TIds extends Partial<IGameSpecIds> = IGameSpecIds> {
   CharacterController?: {
+    blocking?: boolean;
     grounding?: "none" | "raycast";
     moveXAxis?: IdOf<TIds, "input">;
     moveZAxis?: IdOf<TIds, "input">;
     speed?: number;
   };
+  Collider?: {
+    center?: readonly [number, number, number];
+    height?: number;
+    kind: "box" | "capsule" | "mesh" | "sphere";
+    radius?: number;
+    size?: readonly [number, number, number];
+  } & Record<string, unknown>;
   MeshRenderer?: {
     material?: IdOf<TIds, "material">;
     mesh?: string;

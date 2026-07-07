@@ -189,7 +189,7 @@ sequenceDiagram
 - [x] Compile a minimal spec with one scene, one resource, one system, and one
   UI binding into canonical JSON.
 - [ ] Preserve source maps/provenance back to the TS spec.
-- [ ] Run existing build/playtest flow from generated content.
+- [x] Run existing build flow from generated content.
 
 **Tests Required:**
 

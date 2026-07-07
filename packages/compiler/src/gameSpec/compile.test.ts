@@ -7,18 +7,27 @@ import test from "node:test";
 import { validateAuthoringProject } from "@threenative/authoring";
 import { defineTypedGameSpec } from "@threenative/sdk";
 
+import { buildProject } from "../index.js";
 import { compileTypedGameSpec } from "./compile.js";
 
 test("should emit valid structured source from typed spec", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-typed-game-spec-"));
   const spec = defineTypedGameSpec({
-    input: { actions: [{ bindings: ["keyboard.KeyD"], id: "move-x" }, { bindings: ["keyboard.KeyW"], id: "move-z" }], id: "arena" },
+    input: {
+      axes: [
+        { id: "move-x", negative: ["keyboard.KeyA"], positive: ["keyboard.KeyD"] },
+        { id: "move-z", negative: ["keyboard.KeyS"], positive: ["keyboard.KeyW"] },
+      ],
+      id: "arena",
+    },
     materials: [{ color: "#44aa88", id: "player-material" }],
     scenes: [{
       entities: [{
         components: {
-          CharacterController: { grounding: "none", moveXAxis: "move-x", moveZAxis: "move-z", speed: 4 },
+          CharacterController: { blocking: false, grounding: "none", moveXAxis: "move-x", moveZAxis: "move-z", speed: 4 },
+          Collider: { height: 1, kind: "capsule", radius: 0.25 },
           MeshRenderer: { material: "player-material" },
+          RigidBody: { kind: "kinematic" },
         },
         id: "player",
         transform: { position: [0, 0.5, 0] },
@@ -40,9 +49,17 @@ test("should emit valid structured source from typed spec", async () => {
     await mkdir(dirname(path), { recursive: true });
     await writeFile(path, `${JSON.stringify(document.data, null, 2)}\n`, "utf8");
   }
+  await writeFile(join(root, "threenative.config.json"), `${JSON.stringify({
+    entry: "content/scenes/arena.scene.json",
+    outDir: "dist/typed-spec-smoke.bundle",
+    schema: "threenative.project",
+    version: "0.1.0",
+  }, null, 2)}\n`, "utf8");
   const result = await validateAuthoringProject({ projectPath: root });
+  const build = await buildProject(root);
 
   assert.equal(result.ok, true, result.diagnostics.map((diagnostic) => diagnostic.message).join("\n"));
+  assert.equal(build.bundlePath.endsWith("dist/typed-spec-smoke.bundle"), true);
   assert.deepEqual(documents.map((document) => document.projectRelativePath).sort(), [
     "content/input/arena.input.json",
     "content/materials/game-materials.materials.json",
