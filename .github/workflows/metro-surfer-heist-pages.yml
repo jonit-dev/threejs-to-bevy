@@ -1,0 +1,98 @@
+name: Metro Surfer Heist Pages
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - .github/workflows/metro-surfer-heist-pages.yml
+      - examples/metro-surfer-heist/**
+      - packages/authoring/**
+      - packages/cli/**
+      - packages/compiler/**
+      - packages/ir/**
+      - packages/runtime-web-three/**
+      - packages/sdk/**
+      - packages/script-stdlib/**
+      - pnpm-lock.yaml
+      - package.json
+
+permissions:
+  contents: read
+  id-token: write
+  pages: write
+
+concurrency:
+  group: pages-metro-surfer-heist
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.25.0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build CLI
+        run: pnpm --filter @threenative/cli build
+
+      - name: Build Metro bundle
+        run: node packages/cli/dist/index.js build --project examples/metro-surfer-heist --json
+
+      - name: Build Pages shell
+        run: pnpm exec vite build packages/runtime-web-three --base /threejs-to-bevy/ --outDir /tmp/metro-pages --emptyOutDir
+
+      - name: Copy Metro bundle
+        run: cp -R examples/metro-surfer-heist/dist/metro-surfer-heist.bundle /tmp/metro-pages/bundle
+
+      - name: Reject Node-only browser imports
+        run: |
+          if grep -R "node:fs\|node:path" /tmp/metro-pages/assets; then
+            echo "Browser bundle contains Node-only imports."
+            exit 1
+          fi
+
+      - name: Verify static Pages shape
+        run: |
+          rm -rf /tmp/metro-pages-preview-root
+          mkdir -p /tmp/metro-pages-preview-root/threejs-to-bevy
+          cp -R /tmp/metro-pages/. /tmp/metro-pages-preview-root/threejs-to-bevy/
+          python3 -m http.server 4177 --bind 127.0.0.1 --directory /tmp/metro-pages-preview-root > /tmp/metro-pages-preview.log 2>&1 &
+          echo "$!" > /tmp/metro-pages-preview.pid
+          trap 'kill "$(cat /tmp/metro-pages-preview.pid)"' EXIT
+          sleep 2
+          node packages/cli/dist/index.js verify --project examples/metro-surfer-heist --url "http://127.0.0.1:4177/threejs-to-bevy/?bundle=./bundle" --frames 3 --expect-motion --json
+
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: /tmp/metro-pages
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

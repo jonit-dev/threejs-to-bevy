@@ -319,6 +319,12 @@ Release automation added:
   deploys through GitHub Pages on `main` or `workflow_dispatch`.
 - `examples/metro-surfer-heist/PLAYTEST-NOTE.md` is the required manual
   five-minute playtest note template.
+- Local workflow-path proof passed by building the CLI, building the Metro
+  bundle, building the Pages shell to `/tmp/metro-pages-local`, copying the
+  bundle into the artifact root, rejecting `node:fs`/`node:path` imports, and
+  serving a nested `/threejs-to-bevy/` preview before
+  `tn verify --url "http://127.0.0.1:4177/threejs-to-bevy/?bundle=./bundle"
+  --frames 3 --expect-motion --json` returned `TN_VERIFY_OK`.
 
 Known blockers before this PRD can move to done:
 
