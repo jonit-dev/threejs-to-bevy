@@ -11,12 +11,13 @@ surfaces:
 
 ## commands
 ```bash
+tn game plan --goal "lane runner with coins" --project . --apply --json
 tn recipe lane-runner --scene arena --player player --camera camera.main --dry-run --project . --json
 ```
 
 ## source-delta
 ```json
-{"recipe":"Dry-run first, inspect generated ids/proof commands, then apply with the same arguments."}
+{"recipe":"Use game plan --apply for the scaffold-first baseline; dry-run the recipe when inspecting generated ids/proof commands before a manual apply."}
 ```
 
 ## script
@@ -35,5 +36,5 @@ export function laneRunnerSystem(): void {}
 
 ## proof
 ```bash
-tn playtest --project . --suggest-scenario smoke-movement --json
+tn iterate --project . --scenario playtests/lane-runner.playtest.json --json
 ```

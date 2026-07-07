@@ -18,9 +18,13 @@ Run these before mutating `content/**/*.json` or `src/scripts/**/*.ts`:
 
 ```bash
 tn game inspect --project . --json
-tn game plan --goal "<game idea>" --project . --json
+tn game plan --goal "<game idea>" --project . --apply --json
 pnpm run game:plan
 ```
+
+Use `--apply` only when the goal matches a supported scaffold-first category
+such as top-down collector or lane runner. Omit `--apply` for non-mutating
+planning or unsupported genres.
 
 If a command is unavailable, record the diagnostic code, path, severity, and
 message here before choosing a fallback.

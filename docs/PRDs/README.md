@@ -109,9 +109,11 @@ execution bundle.
   `tools/verify/artifacts/agent-benchmark/token-cost-version-2-2026-07-07/`; it is
   not a fresh post-fix rerun and keeps scaffold-first active.
 - [Agent Token Efficiency Scaffold-First Game Plan Apply](other/agent-token-efficiency-scaffold-first.md):
-  conditional structural lever if P0/P1 fixes miss the <=0.5x target:
-  explicitly apply collector and lane-runner game plans into playable,
-  scenario-backed starter source before agent patching begins.
+  implemented structural lever after P0/P1 fixes missed the historical <=0.5x
+  target: `tn game plan --apply --json` explicitly applies collector and
+  lane-runner game plans into playable, scenario-backed starter source before
+  agent patching begins. A fresh scaffold-first benchmark rerun is still
+  required before promoting the token-efficiency claim.
 - [Contract De-Sprawl Through Authoring Modules And Runtime Trace Contracts](proof-first-engine-loop-2026-07-05/PRD-003-contract-de-sprawl-authoring-runtime-traces.md):
   splits authoring operation implementation by source family, introduces
   focused runtime trace contracts, and shrinks native mapping hotspots behind

@@ -11,12 +11,13 @@ surfaces:
 
 ## commands
 ```bash
+tn game plan --goal "small arena collectible game" --project . --apply --json
 tn recipe top-down-collector --scene arena --player player --camera camera.main --dry-run --project . --json
 ```
 
 ## source-delta
 ```json
-{"recipe":"Dry-run gives the exact operation plan, source owners, generated ids, and proof commands."}
+{"recipe":"Use game plan --apply for the scaffold-first baseline; dry-run the recipe when inspecting generated ids, source owners, and proof commands before a manual apply."}
 ```
 
 ## script
@@ -37,4 +38,5 @@ export function topDownCollectorSystem(): void {}
 ```bash
 tn authoring validate --project . --json
 tn build --project . --json
+tn iterate --project . --scenario playtests/top-down-collector.playtest.json --json
 ```

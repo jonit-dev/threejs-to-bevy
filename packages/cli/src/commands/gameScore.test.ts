@@ -127,6 +127,105 @@ test("should write full game plan artifact and print compact summary by default"
   }
 });
 
+test("should reject unsupported scaffold category with diagnostic", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-game-scaffold-unsupported-"));
+  try {
+    const before = await listAll(root);
+    const result = await gameCommand(["plan", "--project", root, "--goal", "abstract puzzle room", "--apply", "--json"]);
+    const payload = JSON.parse(result.stdout) as {
+      code: string;
+      message: string;
+    };
+    const after = await listAll(root);
+
+    assert.equal(result.exitCode, 1);
+    assert.equal(payload.code, "TN_GAME_SCAFFOLD_UNSUPPORTED_CATEGORY");
+    assert.match(payload.message, /top-down collector and lane-runner/);
+    assert.deepEqual(after.filter((entry) => entry !== "artifacts" && !entry.startsWith("artifacts/")), before);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should apply collector scaffold to a fresh starter", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-game-scaffold-collector-"));
+  try {
+    await writePassingGameProject(root);
+
+    const result = await gameCommand(["plan", "--project", root, "--goal", "coin collector", "--apply", "--json"]);
+    const payload = JSON.parse(result.stdout) as {
+      applied: Array<{ filesWritten: string[]; ok: boolean; recipe: string }>;
+      code: string;
+      ok: boolean;
+      plannedWrites: string[];
+      proofCommand: string;
+      scenarioPaths: string[];
+    };
+    const script = await readFile(join(root, "src/scripts/player.ts"), "utf8");
+    const scenario = JSON.parse(await readFile(join(root, "playtests/top-down-collector.playtest.json"), "utf8")) as {
+      assert?: { movement?: { entity?: string } };
+      name: string;
+      steps: Array<{ press?: string }>;
+    };
+    const evidence = JSON.parse(await readFile(join(root, "artifacts/game-production/scaffold-first.json"), "utf8")) as {
+      recipeId: string;
+      scenarioPaths: string[];
+      schema: string;
+    };
+
+    assert.equal(result.exitCode, 0, `${result.stdout}\n${result.stderr}`);
+    assert.equal(payload.code, "TN_GAME_SCAFFOLD_APPLIED");
+    assert.equal(payload.ok, true);
+    assert.equal(payload.applied[0]?.recipe, "top-down-collector");
+    assert.equal(payload.applied[0]?.filesWritten.includes("src/scripts/player.ts"), true);
+    assert.equal(payload.scenarioPaths.includes("playtests/top-down-collector.playtest.json"), true);
+    assert.equal(payload.proofCommand.includes("--scenario playtests/top-down-collector.playtest.json"), true);
+    assert.equal(payload.plannedWrites.includes("input.add_axis"), true);
+    assert.match(script, /export function topDownCollectorSystem/);
+    assert.equal(scenario.name, "top-down-collector");
+    assert.equal(scenario.steps[0]?.press, "KeyD");
+    assert.equal(scenario.assert?.movement?.entity, "scaffold.player");
+    assert.equal(evidence.schema, "threenative.game-scaffold-first");
+    assert.equal(evidence.recipeId, "top-down-collector");
+    assert.deepEqual(evidence.scenarioPaths, ["playtests/top-down-collector.playtest.json"]);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should apply lane-runner scaffold to a fresh starter", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-game-scaffold-lane-runner-"));
+  try {
+    await writePassingGameProject(root);
+
+    const result = await gameCommand(["plan", "--project", root, "--goal", "lane runner with coins", "--apply", "--json"]);
+    const payload = JSON.parse(result.stdout) as {
+      applied: Array<{ filesWritten: string[]; ok: boolean; recipe: string }>;
+      iterateArtifactPath: string;
+      ok: boolean;
+      plannedWrites: string[];
+      scenarioPaths: string[];
+    };
+    const script = await readFile(join(root, "src/scripts/player.ts"), "utf8");
+    const scenario = JSON.parse(await readFile(join(root, "playtests/lane-runner.playtest.json"), "utf8")) as {
+      name: string;
+      steps: Array<{ press?: string }>;
+    };
+
+    assert.equal(result.exitCode, 0, `${result.stdout}\n${result.stderr}`);
+    assert.equal(payload.ok, true);
+    assert.equal(payload.applied[0]?.recipe, "lane-runner");
+    assert.equal(payload.scenarioPaths.includes("playtests/lane-runner.playtest.json"), true);
+    assert.equal(payload.iterateArtifactPath, "artifacts/iterate/latest/report.json");
+    assert.equal(payload.plannedWrites.includes("input.add_action"), true);
+    assert.match(script, /export function laneRunnerSystem/);
+    assert.equal(scenario.name, "lane-runner");
+    assert.equal(scenario.steps[0]?.press, "ArrowRight");
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
 test("should print game inspect inventory as json", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-game-inspect-"));
   try {

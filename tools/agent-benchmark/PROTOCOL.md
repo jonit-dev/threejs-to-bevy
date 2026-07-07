@@ -83,3 +83,16 @@ Post-fix reruns must keep the original prompts, model conditions, run count,
 and stop rules unchanged. Store fresh rerun artifacts under a new dated
 `tools/verify/artifacts/agent-benchmark/<rerun-id>/` directory and link the
 aggregate report from the PRD/status docs.
+
+For ThreeNative collector and lane-runner reruns after scaffold-first support,
+begin the implementation session with:
+
+```bash
+tn game plan --goal "<benchmark prompt>" --project . --apply --json
+tn iterate --project . --json
+```
+
+Plain `tn game plan --json` remains the non-mutating planning baseline. The
+scaffold-first condition must keep generated `playtests/*.playtest.json`
+scenarios and `artifacts/game-production/scaffold-first.json` evidence so the
+rerun can prove whether the <=0.5x raw-token target is met or still fails.

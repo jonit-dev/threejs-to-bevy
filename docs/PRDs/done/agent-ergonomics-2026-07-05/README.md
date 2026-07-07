@@ -70,3 +70,7 @@ cached/uncached input, output tokens, tool-output bytes, failed commands, and
 cost-weighted tokens from the tracked pilot transcripts. This is not a fresh
 post-fix rerun; it fails the new <=0.5x raw-token target on both comparable
 prompts and activates scaffold-first work before more engine breadth.
+
+Scaffold-first support now exists for high-confidence collector and lane-runner
+goals through `tn game plan --apply --json`; the fresh benchmark rerun remains
+the proof gate for promoting or rejecting the <=0.5x token-efficiency claim.

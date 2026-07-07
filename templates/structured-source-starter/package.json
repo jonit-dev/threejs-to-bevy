@@ -8,7 +8,7 @@
     "iterate": "tn iterate --project . --json",
     "playtest": "tn playtest --scenario playtests/smoke-movement.playtest.json --stable-artifacts --json",
     "playtest:native": "tn playtest --scenario playtests/native-smoke-movement.playtest.json --stable-artifacts --json",
-    "game:plan": "tn game plan --goal \"small arena collectible game\" --project . --json",
+    "game:plan": "tn game plan --goal \"small arena collectible game\" --project . --apply --json",
     "game:improve": "tn game improve --apply-plan artifacts/game-production/plan.json --project . --json",
     "game:score": "tn game score --project . --json",
     "game:qa": "tn game qa --project . --run-proof --json",

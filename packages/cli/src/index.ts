@@ -94,7 +94,7 @@ const commands: Record<string, ICommandDefinition> = {
   game: {
     description: "Plan, score, QA, and release-check source-backed game production evidence.",
     implemented: true,
-    usage: "tn game plan --goal <text> [--project <path>] [--json] [--full-json]\n              tn game next [--project <path>] [--json]\n              tn game improve --apply-plan <file> [--project <path>] [--json]\n              tn game providers [--json]\n              tn game score [--project <path>] [--json]\n              tn game scale [--project <path>] [--url <preview-url>] [--out <file>] [--json]\n              tn game qa [--project <path>] [--run-proof] [--url <preview-url>] [--entity <id>] [--press <KeyboardEvent.code>] [--expect-axis x|y|z] [--record] [--out <file>] [--json]\n              tn game release [--project <path>] [--out <file>] [--json]",
+    usage: "tn game plan --goal <text> [--project <path>] [--json] [--full-json] [--apply]\n              tn game next [--project <path>] [--json]\n              tn game improve --apply-plan <file> [--project <path>] [--json]\n              tn game providers [--json]\n              tn game score [--project <path>] [--json]\n              tn game scale [--project <path>] [--url <preview-url>] [--out <file>] [--json]\n              tn game qa [--project <path>] [--run-proof] [--url <preview-url>] [--entity <id>] [--press <KeyboardEvent.code>] [--expect-axis x|y|z] [--record] [--out <file>] [--json]\n              tn game release [--project <path>] [--out <file>] [--json]",
   },
   "model-test": {
     description: "Generate a one-model proof project with scale, bounds, ruler, and camera hints.",

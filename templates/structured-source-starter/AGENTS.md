@@ -53,9 +53,10 @@ Rules for this generated ThreeNative project.
   run `pnpm verify:cookbook`.
 - Before creating or substantially changing the game, open
   `AGENT_GAME_PLAN.md` as the first game-creation action, then run
-  `tn game plan --goal "<game idea>" --project . --json` or write an
-  equivalent local plan if the CLI is unavailable. Use the worksheet and plan as
-  implementation checklists, not decorative prose.
+  `tn game plan --goal "<game idea>" --project . --apply --json` for supported
+  collector/lane-runner scaffolds, or omit `--apply` to keep planning
+  non-mutating. Use the worksheet and plan as implementation checklists, not
+  decorative prose.
 - The plan must cover game design, assets, scripts, polish, and proof: playable
   loop, controls, objective, progression, fail/retry, feedback cues,
   player/hero asset, obstacle/enemy asset, reward/interactable asset,

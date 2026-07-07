@@ -237,3 +237,17 @@ This is not a fresh post-fix rerun. It preserves the historical pilot decision
 under the stricter <=0.5x raw-token target: collector ratio 2.51x and
 lane-runner ratio 3.93x, both failing. Until a fresh post-P0/P1 rerun proves
 the target, scaffold-first remains the active next lever.
+
+## 9. Scaffold-First Implementation
+
+`tn game plan --goal "<goal>" --project . --apply --json` now applies the
+structural P2-1 lever for high-confidence collector and lane-runner goals. The
+command keeps plain planning non-mutating unless `--apply` is passed, applies
+the matching bounded recipe, appends the required script export when missing,
+writes a committed `playtests/*.playtest.json` scenario, and records
+`artifacts/game-production/scaffold-first.json`.
+
+This implementation does not by itself prove the <=0.5x token target. The next
+benchmark run must use the scaffold-first condition in
+`tools/agent-benchmark/PROTOCOL.md` and report whether collector and
+lane-runner now meet or still fail the raw-token gate.

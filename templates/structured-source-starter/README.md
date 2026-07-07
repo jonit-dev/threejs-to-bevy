@@ -41,9 +41,11 @@ tn ui set-layout hud countdown --justify center --align center --top 48 --width 
 Production metadata in `threenative.config.json` declares the starter's
 playable loop, controls, objective, retry policy, and proof commands. Use
 `AGENT_GAME_PLAN.md` and
-`tn game plan --goal "<game idea>" --json` before mutating source. The
-worksheet is the local planning checklist; `artifacts/game-production/plan.json`
-is the machine-readable evidence. For GLB/glTF models, start from the
+`tn game plan --goal "<game idea>" --apply --json` for supported
+collector/lane-runner scaffolds. Omit `--apply` when you only need a
+non-mutating plan. The worksheet is the local planning checklist;
+`artifacts/game-production/plan.json` is the machine-readable evidence. For
+GLB/glTF models, start from the
 SQLite-backed CLI asset library:
 `tn asset source search --game-category <category> --format glb --direct-only --json`,
 then `tn asset source get <asset-source-id> --json` for selected records. Then use

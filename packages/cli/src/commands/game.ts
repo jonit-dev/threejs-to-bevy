@@ -170,6 +170,7 @@ async function gamePlanCommand(argv: readonly string[]): Promise<ICommandResult>
   const normalizedArgv = argv[0] === "--" ? argv.slice(1) : argv;
   const json = normalizedArgv.includes("--json");
   const fullJson = normalizedArgv.includes("--full-json") || normalizedArgv.includes("--stdout-plan");
+  const apply = normalizedArgv.includes("--apply");
   const goal = readFlag(normalizedArgv, "--goal");
   const projectPath = resolveProjectPath(normalizedArgv);
   if (goal === undefined || goal.trim() === "") {
@@ -246,12 +247,269 @@ async function gamePlanCommand(argv: readonly string[]): Promise<ICommandResult>
   await mkdir(resolve(planArtifactPath, ".."), { recursive: true });
   await writeFile(planArtifactPath, `${JSON.stringify(plan, null, 2)}\n`, "utf8");
   await persistGameTaskGraph(projectPath);
+  if (apply) {
+    return applyGamePlanScaffold({ json, plan, planArtifactPath, projectPath });
+  }
   const compactPlan = compactGamePlanForStdout(plan, planArtifactPath);
 
   return {
     exitCode: 0,
     stdout: json ? `${JSON.stringify(fullJson ? plan : compactPlan, null, 2)}\n` : renderPlan(plan),
   };
+}
+
+interface IGameScaffoldDefinition {
+  exportName: string;
+  modulePath: string;
+  proofCommand: string;
+  recipeId: "lane-runner" | "top-down-collector";
+  scenario: {
+    axis: "x" | "z";
+    name: string;
+    path: string;
+    press: string;
+  };
+}
+
+async function applyGamePlanScaffold(options: { json: boolean; plan: IGamePlan; planArtifactPath: string; projectPath: string }): Promise<ICommandResult> {
+  const scaffold = selectGameScaffold(options.plan);
+  if (scaffold === undefined) {
+    return diagnosticResult(
+      {
+        code: "TN_GAME_SCAFFOLD_UNSUPPORTED_CATEGORY",
+        message: "tn game plan --apply only supports high-confidence top-down collector and lane-runner goals in this scaffold-first slice.",
+        suggestedFix: "Use a collector or lane-runner goal, or run tn game plan without --apply and apply a supported recipe manually.",
+      },
+      { exitCode: 1, json: options.json, stderr: !options.json },
+    );
+  }
+
+  const step = options.plan.steps.find((candidate) => candidate.recipe === scaffold.recipeId && isRecord(candidate.recipeArgs));
+  if (step === undefined || !isRecord(step.recipeArgs)) {
+    return diagnosticResult(
+      {
+        code: "TN_GAME_SCAFFOLD_STEP_MISSING",
+        message: `Generated plan did not include an applicable '${scaffold.recipeId}' scaffold step.`,
+        suggestedFix: "Regenerate the plan with the current tn game plan command.",
+      },
+      { exitCode: 1, json: options.json, stderr: !options.json },
+    );
+  }
+
+  const recipeArgs = {
+    ...step.recipeArgs,
+    exportName: scaffold.exportName,
+    modulePath: scaffold.modulePath,
+    playerId: "scaffold.player",
+  };
+  const playerId = stringValue(recipeArgs.playerId) ?? "scaffold.player";
+  const scriptPath = await ensureScaffoldScript(options.projectPath, scaffold, playerId);
+  const planned = planAuthoringRecipe({ args: recipeArgs, projectPath: options.projectPath, recipeId: scaffold.recipeId });
+  const result = planned.ok
+    ? await applyAuthoringRecipe({ args: recipeArgs, projectPath: options.projectPath, recipeId: scaffold.recipeId })
+    : { ...planned, changed: false, filesWritten: [], ok: false, operationResults: [] };
+
+  const diagnostics = result.diagnostics.map((diagnostic) => ({
+    code: diagnostic.code,
+    message: diagnostic.message,
+    path: diagnostic.path,
+    severity: diagnostic.severity,
+    value: diagnostic.value,
+  }));
+  if (!result.ok) {
+    const payload = {
+      applied: [],
+      code: "TN_GAME_SCAFFOLD_FAILED",
+      diagnostics,
+      message: "Scaffold-first plan application failed before writing scenario proof.",
+      ok: false,
+      plannedWrites: planned.operations.map((operation) => operation.name),
+      planArtifactPath: options.planArtifactPath,
+      projectPath: options.projectPath,
+      recipeId: scaffold.recipeId,
+    };
+    return {
+      exitCode: 1,
+      stdout: options.json ? `${JSON.stringify(payload, null, 2)}\n` : `${payload.message}\n`,
+    };
+  }
+
+  const scenarioPath = await writeScaffoldScenario(options.projectPath, scaffold, playerId);
+  const scaffoldEvidencePath = await writeScaffoldEvidence(options.projectPath, {
+    filesWritten: [...new Set([...result.filesWritten, scriptPath, scenarioPath])].sort(),
+    planArtifactPath: options.planArtifactPath,
+    recipeId: scaffold.recipeId,
+    scenarioPath,
+  });
+  await persistGameTaskGraph(options.projectPath);
+
+  const payload = {
+    applied: [{
+      changed: result.changed,
+      filesWritten: [...new Set([...result.filesWritten, scriptPath, scenarioPath, scaffoldEvidencePath])].sort(),
+      ok: result.ok,
+      recipe: scaffold.recipeId,
+    }],
+    code: "TN_GAME_SCAFFOLD_APPLIED",
+    diagnostics,
+    iterateArtifactPath: "artifacts/iterate/latest/report.json",
+    message: "Scaffold-first game plan applied through bounded recipe operations.",
+    ok: true,
+    planArtifactPath: options.planArtifactPath,
+    plannedWrites: planned.operations.map((operation) => operation.name),
+    projectPath: options.projectPath,
+    proofCommand: scaffold.proofCommand,
+    recipeId: scaffold.recipeId,
+    scenarioPaths: [scenarioPath],
+  };
+
+  return {
+    exitCode: 0,
+    stdout: options.json ? `${JSON.stringify(payload, null, 2)}\n` : `${payload.message}\n`,
+  };
+}
+
+function selectGameScaffold(plan: IGamePlan): IGameScaffoldDefinition | undefined {
+  const candidate = plan.kitCandidates.find((kit) => kit.score > 0 && (kit.recipeId === "top-down-collector" || kit.recipeId === "lane-runner"));
+  if (candidate?.recipeId === "top-down-collector") {
+    return {
+      exportName: "topDownCollectorSystem",
+      modulePath: "src/scripts/player.ts",
+      proofCommand: "tn playtest --project . --scenario playtests/top-down-collector.playtest.json --stable-artifacts --json",
+      recipeId: "top-down-collector",
+      scenario: { axis: "x", name: "top-down-collector", path: "playtests/top-down-collector.playtest.json", press: "KeyD" },
+    };
+  }
+  if (candidate?.recipeId === "lane-runner") {
+    return {
+      exportName: "laneRunnerSystem",
+      modulePath: "src/scripts/player.ts",
+      proofCommand: "tn playtest --project . --scenario playtests/lane-runner.playtest.json --stable-artifacts --json",
+      recipeId: "lane-runner",
+      scenario: { axis: "x", name: "lane-runner", path: "playtests/lane-runner.playtest.json", press: "ArrowRight" },
+    };
+  }
+  return undefined;
+}
+
+async function ensureScaffoldScript(projectPath: string, scaffold: IGameScaffoldDefinition, playerId: string): Promise<string> {
+  const absolutePath = resolve(projectPath, scaffold.modulePath);
+  await mkdir(resolve(absolutePath, ".."), { recursive: true });
+  let source = "";
+  try {
+    source = await readFile(absolutePath, "utf8");
+  } catch {
+    source = "";
+  }
+  if (new RegExp(`export\\s+function\\s+${scaffold.exportName}\\b`).test(source)) {
+    return scaffold.modulePath;
+  }
+  const nextSource = `${source.trimEnd()}${source.trim() === "" ? "" : "\n\n"}${scaffoldScriptSource(scaffold, playerId)}\n`;
+  await writeFile(absolutePath, nextSource, "utf8");
+  return scaffold.modulePath;
+}
+
+function scaffoldScriptSource(scaffold: IGameScaffoldDefinition, playerId: string): string {
+  if (scaffold.recipeId === "lane-runner") {
+    return `export function ${scaffold.exportName}(context: import("@threenative/script-stdlib").ScriptContext): void {
+  const player = context.entity("${playerId}") ?? context.query({ limit: 1 })[0];
+  if (player === undefined) {
+    return;
+  }
+  const transform = player.transform();
+  const position = transform.position;
+  const laneInput = (context.input.pressed("move-right") ? 1 : 0) - (context.input.pressed("move-left") ? 1 : 0);
+  const dt = context.time.fixedDelta || 1 / 60;
+  transform.setPosition([position[0] + laneInput * dt * 6, position[1], position[2] - dt * 3]);
+}`;
+  }
+  return `export function ${scaffold.exportName}(context: import("@threenative/script-stdlib").ScriptContext): void {
+  const player = context.entity("${playerId}") ?? context.query({ limit: 1 })[0];
+  if (player === undefined) {
+    return;
+  }
+  const transform = player.transform();
+  const position = transform.position;
+  const moveX = context.input.getAxis("MoveX");
+  const moveZ = context.input.getAxis("MoveZ");
+  const dt = context.time.fixedDelta || 1 / 60;
+  transform.setPosition([position[0] + moveX * dt * 5, position[1], position[2] - moveZ * dt * 5]);
+}`;
+}
+
+async function writeScaffoldScenario(projectPath: string, scaffold: IGameScaffoldDefinition, playerId: string): Promise<string> {
+  const absolutePath = resolve(projectPath, scaffold.scenario.path);
+  await mkdir(resolve(absolutePath, ".."), { recursive: true });
+  const scenario = {
+    artifacts: {
+      console: true,
+      network: true,
+      runtimeTrace: true,
+      screenshots: "before-after",
+    },
+    assert: {
+      diagnostics: {
+        noConsoleErrors: true,
+        noNetworkErrors: true,
+        noRuntimeDiagnostics: true,
+        runtimeReady: true,
+      },
+      movement: {
+        axis: scaffold.scenario.axis,
+        entity: playerId,
+        minDistance: 0.05,
+        minVelocity: 0.001,
+      },
+    },
+    name: scaffold.scenario.name,
+    schemaVersion: 1,
+    steps: [
+      {
+        holdFrames: 30,
+        label: "prove-input-movement",
+        press: scaffold.scenario.press,
+        release: true,
+      },
+    ],
+    subject: playerId,
+    target: "web",
+    viewport: {
+      height: 720,
+      width: 1280,
+    },
+    warmupFrames: 5,
+  };
+  await writeFile(absolutePath, `${JSON.stringify(scenario, null, 2)}\n`, "utf8");
+  return scaffold.scenario.path;
+}
+
+function stringValue(value: unknown): string | undefined {
+  return typeof value === "string" && value.trim() !== "" ? value : undefined;
+}
+
+async function writeScaffoldEvidence(projectPath: string, evidence: { filesWritten: string[]; planArtifactPath: string; recipeId: string; scenarioPath: string }): Promise<string> {
+  const relativePath = "artifacts/game-production/scaffold-first.json";
+  const absolutePath = resolve(projectPath, relativePath);
+  await mkdir(resolve(absolutePath, ".."), { recursive: true });
+  await writeFile(
+    absolutePath,
+    `${JSON.stringify(
+      {
+        filesWritten: evidence.filesWritten,
+        iterateCommand: `tn iterate --project . --scenario ${evidence.scenarioPath} --json`,
+        planArtifactPath: evidence.planArtifactPath,
+        proofCommand: `tn playtest --project . --scenario ${evidence.scenarioPath} --stable-artifacts --json`,
+        recipeId: evidence.recipeId,
+        scenarioPaths: [evidence.scenarioPath],
+        schema: "threenative.game-scaffold-first",
+        version: "0.1.0",
+      },
+      null,
+      2,
+    )}\n`,
+    "utf8",
+  );
+  return relativePath;
 }
 
 function compactGamePlanForStdout(plan: IGamePlan, planArtifactPath: string): Record<string, unknown> {
@@ -660,7 +918,7 @@ function renderGameHelp(json: boolean, subcommand?: string): string {
   const payload = {
     commands: [
       "tn game inspect [--project <path>] [--json]",
-      "tn game plan --goal <text> [--project <path>] [--json] [--full-json]",
+      "tn game plan --goal <text> [--project <path>] [--json] [--full-json] [--apply]",
       "tn game next [--project <path>] [--json]",
       "tn game improve --apply-plan <file> [--project <path>] [--json]",
       "tn game providers [--json]",
