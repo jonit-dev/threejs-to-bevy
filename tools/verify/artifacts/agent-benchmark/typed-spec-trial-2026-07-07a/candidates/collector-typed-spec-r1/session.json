@@ -1,0 +1,26 @@
+{
+  "schema": "threenative.agent-benchmark-session",
+  "version": 2,
+  "runId": "collector-typed-spec-r1",
+  "promptId": "collector",
+  "condition": "typed-spec",
+  "tokenCount": 4443576,
+  "inputTokens": 4423150,
+  "cachedInputTokens": 4030592,
+  "uncachedInputTokens": 392558,
+  "outputTokens": 20426,
+  "costWeightedTokens": 816043,
+  "toolOutputBytes": 311580,
+  "failedCommandCount": 9,
+  "toolStepCount": 65,
+  "identicalAssertionRepeatCount": 0,
+  "maxConsecutiveSameDiagnostic": 0,
+  "iterationCount": 10,
+  "stopReason": "claimed-playable",
+  "finishedAt": "2026-07-07T20:32:51.983Z",
+  "humanRubric": {
+    "playability": 3,
+    "visual": 2,
+    "notes": "Fresh typed-spec collector run. Final proof passed via collect-all iterate scenario; final response: Implemented the typed-spec collector benchmark in the candidate project.\n\nChanged:\n- [src/game.spec.ts](/home/joao/projects/threejs-to-bevy/tools/verify/artifacts/agent-benchmark/typed-spec-trial-2026-07-07a/candidates/collector-typed-spec-r1/src/game.spec.ts): arena, camera/ligh"
+  }
+}

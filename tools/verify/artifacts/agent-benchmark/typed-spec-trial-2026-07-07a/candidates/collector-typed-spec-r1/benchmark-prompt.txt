@@ -1,0 +1,14 @@
+You are running one ThreeNative typed-spec benchmark session.
+
+Condition-specific starter instructions:
+- Work only in this candidate project directory.
+- Use the generated ThreeNative workflow in AGENTS.md and CLAUDE.md.
+- This is the typed-spec condition: make durable authoring changes in src/game.spec.ts first, then compile it with `pnpm run authoring:compile` or `pnpm tn -- authoring compile-typed-spec --project . --json` before normal verification.
+- For game work, start before source mutation with `pnpm tn -- game plan --goal "collector benchmark: visible character, five pickups, score/progress, win state, retry path" --project . --json`.
+- After gameplay/input/source changes, verify with the generated project loop. Prefer `pnpm tn -- iterate --project . --json` when available. If package scripts exist for typed spec, use them when they are the documented local path.
+- Stop when you have a playable browser game matching the benchmark prompt and have run the relevant local verification. Do not edit files outside this candidate project.
+
+Benchmark prompt:
+Build a small browser game where the player controls a visible character with WASD or arrow keys, collects at least five visible pickups, and sees a score or progress indicator update. The objective is to collect all pickups. Include a clear win state and a retry path.
+
+Visual bar: the player, pickups, floor or arena boundary, and score UI must be readable without inspecting code.

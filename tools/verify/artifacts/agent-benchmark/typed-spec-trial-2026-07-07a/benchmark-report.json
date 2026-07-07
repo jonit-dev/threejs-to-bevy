@@ -1,0 +1,112 @@
+{
+  "diagnostics": [],
+  "generatedAt": "2026-07-07T20:35:01.033Z",
+  "promptSummaries": [
+    {
+      "behaviorMedian": {
+        "artifactForensicsCommandCount": null,
+        "discoveryCommandCount": null,
+        "engineSourceSearchCommandCount": null,
+        "iterateCommandCount": null,
+        "standaloneVerifyCommandCount": null
+      },
+      "costWeightedTokenRatio": null,
+      "dialectConfusionFailures": {
+        "threenative": 0,
+        "vanilla": 0
+      },
+      "failedCommandMedian": {
+        "threenative": null,
+        "vanilla": null
+      },
+      "iterationMedian": {
+        "threenative": null,
+        "vanilla": null
+      },
+      "promptId": "collector",
+      "promptClassification": "continuity",
+      "proofBar": {
+        "requiredAssertions": [
+          "keyboard-movement",
+          "pickup-objective",
+          "win-state",
+          "retry-path"
+        ],
+        "typedSpecPassed": true,
+        "threenativePassed": false,
+        "vanillaPassed": false
+      },
+      "rawTokenRatio": null,
+      "repeatCount": {
+        "threenative": 0,
+        "vanilla": 0
+      },
+      "threenativeMedianCachedInputTokens": null,
+      "threenativeMedianCostWeightedTokens": null,
+      "threenativeMedianFailedCommandCount": null,
+      "threenativeMedianInputTokens": null,
+      "threenativeMedianIterations": null,
+      "threenativeMedianOutputTokens": null,
+      "threenativeMedianToolStepCount": null,
+      "threenativeMedianTokens": null,
+      "threenativeMedianToolOutputBytes": null,
+      "threenativeMedianUncachedInputTokens": null,
+      "typedSpecTrial": {
+        "failedCommandDelta": null,
+        "identicalAssertionRepeatDelta": null,
+        "maxSameDiagnosticDelta": null,
+        "rawTokenRatioToThreeNative": null,
+        "repeatCount": 1,
+        "status": "insufficient-data",
+        "summary": "No equal-proof typed-spec and direct ThreeNative run reports are available for this prompt.",
+        "typedSpecMedianFailedCommandCount": 9,
+        "typedSpecMedianIdenticalAssertionRepeats": 0,
+        "typedSpecMedianMaxSameDiagnostic": 0,
+        "typedSpecMedianTokens": 4443576,
+        "withinFailedCommandBudget": false,
+        "withinRepeatBudget": false,
+        "withinRetryChainBudget": true,
+        "withinTokenBudget": null
+      },
+      "toolOutputMedian": {
+        "threenative": null,
+        "vanilla": null
+      },
+      "toolStepMedian": {
+        "threenative": null,
+        "vanilla": null
+      },
+      "vanillaMedianCachedInputTokens": null,
+      "vanillaMedianCostWeightedTokens": null,
+      "vanillaMedianFailedCommandCount": null,
+      "vanillaMedianInputTokens": null,
+      "vanillaMedianIterations": null,
+      "vanillaMedianOutputTokens": null,
+      "vanillaMedianToolStepCount": null,
+      "vanillaMedianTokens": null,
+      "vanillaMedianToolOutputBytes": null,
+      "vanillaMedianUncachedInputTokens": null,
+      "withinHalfX": null,
+      "withinEqualProofTokenBudget": null,
+      "withinFailedCommandBudget": null,
+      "withinInstructionAdoptionBudget": null,
+      "withinRepeatBudget": false,
+      "withinRetryChainBudget": null,
+      "withinStepBudget": null
+    }
+  ],
+  "runCount": 1,
+  "schema": "threenative.agent-benchmark-report",
+  "dialectConfusionFailureCount": 0,
+  "typedSpecVerdict": {
+    "status": "insufficient-data",
+    "summary": "No prompt has equal-proof typed-spec and direct ThreeNative run reports.",
+    "threshold": "typed-spec: equal proof repeats >=3; median tokens <= direct ThreeNative; failed commands ==0; retry chains <=1/0"
+  },
+  "verdict": {
+    "status": "insufficient-data",
+    "summary": "No prompt has equal-proof successful run reports for both vanilla and ThreeNative.",
+    "threshold": "equal-proof: continuity <=1.5x vanilla tokens; beyond-one-shot <=1.0x vanilla tokens; repeats >=3; failed commands ==0; retry chains <=1/0"
+  },
+  "version": 2
+}

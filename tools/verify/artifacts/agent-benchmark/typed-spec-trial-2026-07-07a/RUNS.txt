@@ -1,0 +1,15 @@
+Typed-spec focused benchmark trial
+Date: 2026-07-07
+PRD: docs/PRDs/agent-native-authoring-loop-2026-07-07/PRD-017-typed-typescript-game-spec.md
+Protocol: tools/agent-benchmark/ROUND-5-PROTOCOL.md
+Scope: partial collector typed-spec pilot; does not satisfy the three-repeat default decision threshold.
+Preparation:
+- Rebuilt @threenative/cli before candidate creation.
+- Rebuilt @threenative/agent-benchmark before scoring.
+- Created fresh candidate with `tn create collector-typed-spec-r1 --authoring typed-spec`.
+
+Required full decision matrix remains: 3 proof-passing typed-spec repeats and comparable direct ThreeNative repeats per focused prompt.
+
+Runs:
+START collector-typed-spec-r1 2026-07-07T13:20:57-07:00
+- Candidate moved from repo-root create output into `tools/verify/artifacts/agent-benchmark/typed-spec-trial-2026-07-07a/candidates/collector-typed-spec-r1`.

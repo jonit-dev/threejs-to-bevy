@@ -301,3 +301,49 @@ the existing vanilla-vs-ThreeNative round-5 verdict.
 - [x] Typed spec emits canonical structured source and existing IR bundles.
 - [x] Starter/cookbook guidance is verified.
 - [ ] Benchmark trial decides whether typed spec becomes default.
+
+## 8. Progress Log
+
+### 2026-07-07 typed-spec collector pilot
+
+Ran the first fresh focused benchmark repeat for the `collector` prompt under
+the `typed-spec` condition:
+
+- Evidence directory:
+  `tools/verify/artifacts/agent-benchmark/typed-spec-trial-2026-07-07a/`.
+- Run report:
+  `tools/verify/artifacts/agent-benchmark/typed-spec-trial-2026-07-07a/collector-typed-spec-r1/run-report.json`.
+- Aggregate report:
+  `tools/verify/artifacts/agent-benchmark/typed-spec-trial-2026-07-07a/benchmark-report.json`.
+- Final project proof:
+  `pnpm tn -- iterate --project . --scenario playtests/collect-all.playtest.json --json`
+  passed with `TN_ITERATE_OK` inside the candidate.
+
+Observed metrics for `collector-typed-spec-r1`:
+
+- Raw tokens: `4443576`.
+- Tool steps: `65`.
+- Failed commands: `9`.
+- Max same-diagnostic chain: `0`.
+- Identical assertion repeats: `0`.
+
+The run passed collector equal-proof assertions for keyboard movement, pickup
+objective, win state, and retry path. The aggregate verdict intentionally
+remains `insufficient-data`: this is one typed-spec repeat with no comparable
+fresh direct ThreeNative run in the same trial, while the default decision
+requires three proof-passing typed-spec repeats and comparable direct
+ThreeNative evidence across the focused prompt set.
+
+Friction found during the pilot:
+
+- The generated typed-spec package script still calls bare `tn`; isolated
+  benchmark candidates without `node_modules/.bin/tn` must use
+  `pnpm tn -- authoring compile-typed-spec --project . --json`.
+- The generated legacy `content/systems/arena.systems.json` referenced
+  `movePlayerToGoal` after the typed-spec script moved to `updateCollector`.
+- The typed-spec system `writes` field let the agent enter entity IDs, which
+  the compiler rejected as undeclared component writes.
+- A typed spec without an explicit camera reached build but failed runtime
+  readiness/canvas proof.
+- Runtime component patches such as `MeshRenderer.visible` require matching
+  system write declarations before playtest diagnostics clear.

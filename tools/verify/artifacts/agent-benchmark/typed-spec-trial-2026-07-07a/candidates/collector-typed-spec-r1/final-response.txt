@@ -1,0 +1,17 @@
+Implemented the typed-spec collector benchmark in the candidate project.
+
+Changed:
+- [src/game.spec.ts](/home/joao/projects/threejs-to-bevy/tools/verify/artifacts/agent-benchmark/typed-spec-trial-2026-07-07a/candidates/collector-typed-spec-r1/src/game.spec.ts): arena, camera/lights, visible player, five pickups, HUD state, retry input, collector system.
+- [src/scripts/player.ts](/home/joao/projects/threejs-to-bevy/tools/verify/artifacts/agent-benchmark/typed-spec-trial-2026-07-07a/candidates/collector-typed-spec-r1/src/scripts/player.ts): WASD/arrow movement, pickup collection, score updates, win state, retry reset.
+- [content/ui/hud.ui.json](/home/joao/projects/threejs-to-bevy/tools/verify/artifacts/agent-benchmark/typed-spec-trial-2026-07-07a/candidates/collector-typed-spec-r1/content/ui/hud.ui.json): readable score/status/retry HUD.
+- Added [playtests/collect-all.playtest.json](/home/joao/projects/threejs-to-bevy/tools/verify/artifacts/agent-benchmark/typed-spec-trial-2026-07-07a/candidates/collector-typed-spec-r1/playtests/collect-all.playtest.json).
+
+Verification:
+- Required plan command ran.
+- `pnpm run authoring:compile` failed because the package script calls bare `tn` and this candidate has no `node_modules/.bin`; used the documented local wrapper instead.
+- `pnpm tn -- authoring compile-typed-spec --project . --json` passed.
+- `pnpm tn -- iterate --project . --scenario playtests/collect-all.playtest.json --json` passed.
+
+Evidence:
+- Report: [artifacts/iterate/latest/report.json](/home/joao/projects/threejs-to-bevy/tools/verify/artifacts/agent-benchmark/typed-spec-trial-2026-07-07a/candidates/collector-typed-spec-r1/artifacts/iterate/latest/report.json)
+- Win screenshot: [artifacts/iterate/latest/playtest/after.png](/home/joao/projects/threejs-to-bevy/tools/verify/artifacts/agent-benchmark/typed-spec-trial-2026-07-07a/candidates/collector-typed-spec-r1/artifacts/iterate/latest/playtest/after.png)
