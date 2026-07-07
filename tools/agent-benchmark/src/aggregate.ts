@@ -35,8 +35,13 @@ export async function aggregateRunReports(paths: readonly string[]): Promise<IBe
     const vanillaMedianCostWeightedTokens = metricMedian(vanillaRuns, costWeightedTokens);
     const threenativeMedianToolStepCount = metricMedian(threenativeRuns, (run) => run.session.toolStepCount);
     const vanillaMedianToolStepCount = metricMedian(vanillaRuns, (run) => run.session.toolStepCount);
+    const promptRuns = runs.filter((run) => run.promptId === promptId);
     return {
       costWeightedTokenRatio: ratio(threenativeMedianCostWeightedTokens, vanillaMedianCostWeightedTokens),
+      dialectConfusionFailures: {
+        threenative: dialectConfusionFailureCount(promptRuns.filter((run) => run.condition === "threenative")),
+        vanilla: dialectConfusionFailureCount(promptRuns.filter((run) => run.condition === "vanilla")),
+      },
       failedCommandMedian: {
         threenative: metricMedian(threenativeRuns, (run) => run.session.failedCommandCount),
         vanilla: metricMedian(vanillaRuns, (run) => run.session.failedCommandCount),
@@ -93,6 +98,7 @@ export async function aggregateRunReports(paths: readonly string[]): Promise<IBe
     promptSummaries,
     runCount: runs.length,
     schema: "threenative.agent-benchmark-report",
+    dialectConfusionFailureCount: dialectConfusionFailureCount(runs),
     verdict: {
       status,
       summary,
@@ -100,6 +106,16 @@ export async function aggregateRunReports(paths: readonly string[]): Promise<IBe
     },
     version: 2,
   };
+}
+
+function dialectConfusionFailureCount(runs: readonly IBenchmarkRunReport[]): number {
+  return runs.filter((run) => run.diagnostics.some(isDialectConfusionDiagnostic)).length;
+}
+
+function isDialectConfusionDiagnostic(diagnostic: IBenchmarkDiagnostic): boolean {
+  return diagnostic.code === "TN_BENCH_DIALECT_CONFUSION"
+    || diagnostic.code === "TN_SCRIPT_LEGACY_IDIOM"
+    || /\bdialect[- ]confusion\b/i.test(diagnostic.message);
 }
 
 function metricMedian(runs: readonly IBenchmarkRunReport[], read: (run: IBenchmarkRunReport) => number | undefined): number | null {

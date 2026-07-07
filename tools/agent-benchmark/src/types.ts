@@ -66,6 +66,10 @@ export interface IBenchmarkReport {
   generatedAt: string;
   promptSummaries: Array<{
     costWeightedTokenRatio: number | null;
+    dialectConfusionFailures: {
+      threenative: number;
+      vanilla: number;
+    };
     failedCommandMedian: {
       threenative: number | null;
       vanilla: number | null;
@@ -109,6 +113,7 @@ export interface IBenchmarkReport {
   }>;
   runCount: number;
   schema: "threenative.agent-benchmark-report";
+  dialectConfusionFailureCount: number;
   version: 2;
   verdict: {
     status: "pass" | "fail" | "insufficient-data";

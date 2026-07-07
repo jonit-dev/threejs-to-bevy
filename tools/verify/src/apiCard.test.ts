@@ -40,3 +40,12 @@ test("should keep the API card below the context budget", async () => {
 
   assert.ok(Buffer.byteLength(card, "utf8") <= API_CARD_BUDGET_BYTES);
 });
+
+test("should prefer in-distribution helper aliases in the generated API card", async () => {
+  const source = await readFile(scriptContextPath, "utf8");
+  const card = renderScriptApiCardFromSource(source);
+
+  assert.match(card, /`Mathf`, `Vector2`, `Vector3`/);
+  assert.match(card, /Legacy aliases `NumberEx`, `Vec2`, and `Vec3` remain supported/);
+  assert.equal(card.indexOf("`Mathf`") < card.indexOf("`NumberEx`"), true);
+});

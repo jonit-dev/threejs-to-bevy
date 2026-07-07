@@ -39,6 +39,9 @@ bundle output semantics stay unchanged.
   `NumberEx`, `Vec2`, and `Vec3` remain supported.
 - Compiler helper import allowlists accept old and new names.
 - Prescriptive unsupported-import snippets now suggest `Vector3`.
+- Agent benchmark aggregate reports include `dialectConfusionFailureCount` and
+  per-prompt `dialectConfusionFailures` counters so future reruns can measure
+  whether migrated shapes stop producing dialect-confusion diagnostics.
 
 ## Verification
 

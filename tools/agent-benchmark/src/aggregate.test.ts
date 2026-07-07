@@ -51,6 +51,26 @@ test("should include failed command and tool output medians", async () => {
   assert.equal(summary?.toolOutputMedian.vanilla, 2048);
 });
 
+test("should count dialect-confusion failures", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-agent-benchmark-aggregate-"));
+  const vanilla = join(root, "vanilla.json");
+  const threenative = join(root, "threenative.json");
+  await writeFile(vanilla, JSON.stringify(run("vanilla", 1000), null, 2));
+  await writeFile(threenative, JSON.stringify({
+    ...run("threenative", 400),
+    diagnostics: [{
+      code: "TN_BENCH_DIALECT_CONFUSION",
+      message: "Agent used a legacy helper name after the preferred alias was documented.",
+      severity: "warning",
+    }],
+  }, null, 2));
+  const report = await aggregateRunReports([vanilla, threenative]);
+  const summary = report.promptSummaries[0];
+
+  assert.equal(report.dialectConfusionFailureCount, 1);
+  assert.deepEqual(summary?.dialectConfusionFailures, { threenative: 1, vanilla: 0 });
+});
+
 test("should fail present ThreeNative step budget above 12 steps", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-agent-benchmark-aggregate-"));
   const vanilla = join(root, "vanilla.json");

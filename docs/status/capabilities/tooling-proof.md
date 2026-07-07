@@ -21,7 +21,7 @@ Current support:
   compact-report guidance, and generated API-card parity.
 - Agent benchmark reports are version 2 token-cost artifacts with raw, cached,
   uncached, output, cost-weighted, iteration, failed-command, and tool-output
-  medians.
+  medians plus dialect-confusion failure counts.
 - The 2026-07-07 off-recipe benchmark keeps raw transcripts, sessions, scorer
   output, aggregate report, and agent behavior learnings under
   `tools/verify/artifacts/agent-benchmark/off-recipe-2026-07-07/`.

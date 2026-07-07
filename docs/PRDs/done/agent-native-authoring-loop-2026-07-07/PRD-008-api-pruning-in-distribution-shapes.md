@@ -104,9 +104,9 @@ sequenceDiagram
 
 **Implementation:**
 
-- [ ] Inventory exported shapes touched by benchmark agents.
-- [ ] Classify keep/alias/replace.
-- [ ] Record compatibility and migration risk.
+- [x] Inventory exported shapes touched by benchmark agents.
+- [x] Classify keep/alias/replace.
+- [x] Record compatibility and migration risk.
 
 **Tests Required:**
 
@@ -131,9 +131,9 @@ sequenceDiagram
 
 **Implementation:**
 
-- [ ] Add aliases for the first low-risk set.
-- [ ] Update import allowlists.
-- [ ] Add tests proving old and new names behave identically.
+- [x] Add aliases for the first low-risk set.
+- [x] Update import allowlists.
+- [x] Add tests proving old and new names behave identically.
 
 **Tests Required:**
 
@@ -159,9 +159,9 @@ sequenceDiagram
 
 **Implementation:**
 
-- [ ] Update starter scripts to preferred names.
-- [ ] Update cookbook/API card examples.
-- [ ] Keep deprecation notes compact.
+- [x] Update starter scripts to preferred names.
+- [x] Update cookbook/API card examples.
+- [x] Keep deprecation notes compact.
 
 **Tests Required:**
 
@@ -187,9 +187,9 @@ sequenceDiagram
 
 **Implementation:**
 
-- [ ] Add non-breaking deprecation diagnostics or docs for old names.
-- [ ] Add benchmark transcript classifier for dialect-confusion failures.
-- [ ] Update status docs with migration/evidence.
+- [x] Add non-breaking deprecation diagnostics or docs for old names.
+- [x] Add benchmark transcript classifier for dialect-confusion failures.
+- [x] Update status docs with migration/evidence.
 
 **Tests Required:**
 
@@ -216,12 +216,30 @@ sequenceDiagram
 - `pnpm verify:conformance` for shared contracts.
 - `pnpm verify:cookbook` after examples change.
 
+## 6A. Completion Evidence
+
+- API-shape inventory and migration notes:
+  `tools/agent-benchmark/API-SHAPE-AUDIT-2026-07-07.md`.
+- Preferred helper aliases and compatibility tests:
+  `packages/script-stdlib/src/index.ts`,
+  `packages/script-stdlib/src/index.test.ts`,
+  `packages/compiler/src/scripts/sourceRefs.test.ts`, and
+  `packages/compiler/src/scripts/bundle.test.ts`.
+- Starter/cookbook/API-card preferred names:
+  `templates/structured-source-starter/src/scripts/player.ts`,
+  `docs/cookbook/*.md`, `templates/*/docs/API-CARD.md`, and
+  `tools/verify/src/apiCard.ts`.
+- Legacy diagnostics and benchmark metric:
+  `packages/compiler/src/scripts/diagnostics.ts`,
+  `tools/agent-benchmark/src/aggregate.ts`, and
+  `tools/agent-benchmark/src/aggregate.test.ts`.
+
 ## 7. Acceptance Criteria
 
-- [ ] Every benchmark-touched public shape is classified.
-- [ ] Preferred aliases exist for evidenced low-risk bespoke names.
-- [ ] Starter/API card/cookbook prefer in-distribution names.
-- [ ] Legacy names remain working for one cycle.
-- [ ] Benchmark transcripts stop showing dialect-confusion failures for
-  migrated shapes.
-
+- [x] Every benchmark-touched public shape is classified.
+- [x] Preferred aliases exist for evidenced low-risk bespoke names.
+- [x] Starter/API card/cookbook prefer in-distribution names.
+- [x] Legacy names remain working for one cycle.
+- [x] Benchmark aggregate reports can count dialect-confusion failures for
+  migrated shapes; future benchmark reruns can compare the count against the
+  current raw transcript baseline.
