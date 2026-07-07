@@ -1,4 +1,4 @@
-import type { IAssetsManifest, IAudioIr, IBundleManifest, IIrSchemaFile, IIrSystemDeclaration, ILocalDataIr, IPrefabsIr, IRuntimeDiagnostic, IUiIr, IrSystemSchedule, ISystemsIr, IWorldIr } from "@threenative/ir";
+import type { IAssetsManifest, IAudioIr, IIrSchemaFile, IIrSystemDeclaration, ILocalDataIr, IPrefabsIr, IRuntimeDiagnostic, IUiIr, IrSystemSchedule, ISystemsIr, IWorldIr } from "@threenative/ir";
 import type { IWebInputState } from "../input.js";
 
 import { createComponentDiffCache } from "./componentDiff.js";
@@ -17,25 +17,6 @@ export interface ISystemModule {
 export interface ISystemRunResult {
   diagnostics: IRuntimeDiagnostic[];
   entries: ISystemEffectLogEntry[];
-}
-
-export async function loadSystemModule(source: string, manifest: IBundleManifest): Promise<ISystemModule> {
-  const scriptFile = manifest.entry.scripts ?? manifest.files.scripts;
-  if (scriptFile === undefined) {
-    return { systems: {} };
-  }
-  if (isFetchable(source)) {
-    return (await import(/* @vite-ignore */ `${source.replace(/\/$/, "")}/${scriptFile}`)) as ISystemModule;
-  }
-
-  const pathModule = nodeModuleName("path");
-  const urlModule = nodeModuleName("url");
-  const dynamicImport = new Function("moduleName", "return import(moduleName)") as <T>(
-    moduleName: string,
-  ) => Promise<T>;
-  const { resolve } = await dynamicImport<{ resolve(...paths: string[]): string }>(pathModule);
-  const { pathToFileURL } = await dynamicImport<{ pathToFileURL(path: string): URL }>(urlModule);
-  return (await import(/* @vite-ignore */ pathToFileURL(resolve(source, scriptFile)).href)) as ISystemModule;
 }
 
 export async function runSchedule(options: {
@@ -182,16 +163,4 @@ function readSystemFunction(module: ISystemModule, exportName: string): SystemFu
     throw new Error(`System export '${exportName}' was not found in scripts bundle.`);
   }
   return value as SystemFunction;
-}
-
-function nodeModuleName(name: string): string {
-  return `node:${name}`;
-}
-
-function isFetchable(source: string): boolean {
-  return (
-    source.startsWith("http://") ||
-    source.startsWith("https://") ||
-    (typeof window !== "undefined" && source.startsWith("/"))
-  );
 }

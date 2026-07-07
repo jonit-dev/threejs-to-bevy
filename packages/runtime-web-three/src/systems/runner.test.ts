@@ -5,7 +5,8 @@ import { join } from "node:path";
 import test from "node:test";
 import type { IPrefabsIr, ISystemsIr, IUiIr, IWorldIr } from "@threenative/ir";
 
-import { loadSystemModule, runSchedule } from "./runner.js";
+import { loadSystemModule } from "./moduleLoader.js";
+import { runSchedule } from "./runner.js";
 
 test("should run systems move entity during fixed update", async () => {
   const world = makeWorld();

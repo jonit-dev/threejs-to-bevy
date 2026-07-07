@@ -1,6 +1,7 @@
 import type { IBundleManifest, ILocalDataIr, ISystemsIr, IUiIr, IWorldIr } from "@threenative/ir";
 
-import { loadSystemModule, runSchedule } from "./systems/runner.js";
+import { loadSystemModule } from "./systems/moduleLoader.js";
+import { runSchedule } from "./systems/runner.js";
 
 export interface IUiPersistenceSettingsFacadesReport {
   facadeReport: Record<string, unknown>;

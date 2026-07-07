@@ -1,47 +1,9 @@
-import type {
-  IAssetsManifest,
-  IAnimationsIr,
-  IAudioIr,
-  IBundleManifest,
-  IEnvironmentSceneIr,
-  IInputIr,
-  IIrSchemaFile,
-  ILocalDataIr,
-  IMaterialsIr,
-  IOverlaysIr,
-  IPrefabsIr,
-  IRuntimeConfigIr,
-  IScenesIr,
-  ISystemsIr,
-  ITargetProfile,
-  IUiIr,
-  IWorldIr,
-  IIrDiagnostic,
-  IGltfSceneMetadataIr,
-} from "@threenative/ir";
+import type { IIrDiagnostic } from "@threenative/ir";
 import { assertBundleRelativePath } from "@threenative/ir/bundlePaths";
-
-export interface IWebBundle {
-  assets: IAssetsManifest;
-  animations?: IAnimationsIr;
-  audio?: IAudioIr;
-  componentSchemas?: IIrSchemaFile;
-  environmentScene?: IEnvironmentSceneIr;
-  gltfScene?: IGltfSceneMetadataIr;
-  input?: IInputIr;
-  localData?: ILocalDataIr;
-  manifest: IBundleManifest;
-  materials: IMaterialsIr;
-  runtimeConfig?: IRuntimeConfigIr;
-  scenes?: IScenesIr;
-  source?: string;
-  systems?: ISystemsIr;
-  targetProfile: ITargetProfile;
-  ui?: IUiIr;
-  overlays?: IOverlaysIr;
-  prefabs?: IPrefabsIr;
-  world: IWorldIr;
-}
+import { hydrateWebBundle } from "./bundleHydration.js";
+import { loadBundleUrl } from "./loadBundleUrl.js";
+import type { IWebBundle } from "./webBundle.js";
+export type { IWebBundle } from "./webBundle.js";
 
 export class WebBundleValidationError extends Error {
   constructor(public readonly diagnostics: readonly IIrDiagnostic[]) {
@@ -69,127 +31,25 @@ export async function validateAndLoadBundle(source: string): Promise<IWebBundle>
 }
 
 export async function loadBundle(source: string): Promise<IWebBundle> {
-  const manifest = await readBundleJson<IBundleManifest>(source, "manifest.json");
-
-  const audio =
-    manifest.entry.audio === undefined ? undefined : await readBundleJson<IAudioIr>(source, manifest.entry.audio);
-  const animations =
-    manifest.entry.animations === undefined ? undefined : await readBundleJson<IAnimationsIr>(source, manifest.entry.animations);
-  const systems =
-    manifest.entry.systems === undefined
-      ? undefined
-      : await readBundleJson<ISystemsIr>(source, manifest.entry.systems);
-  const environmentScene =
-    manifest.entry.environmentScene === undefined
-      ? undefined
-      : await readBundleJson<IEnvironmentSceneIr>(source, manifest.entry.environmentScene);
-  const input =
-    manifest.files.input === undefined ? undefined : await readBundleJson<IInputIr>(source, manifest.files.input);
-  const gltfScene =
-    manifest.files.gltfScene === undefined ? undefined : await readBundleJson<IGltfSceneMetadataIr>(source, manifest.files.gltfScene);
-  const localData =
-    manifest.entry.localData === undefined
-      ? manifest.files.localData === undefined
-        ? undefined
-        : await readBundleJson<ILocalDataIr>(source, manifest.files.localData)
-      : await readBundleJson<ILocalDataIr>(source, manifest.entry.localData);
-  const runtimeConfig =
-    manifest.files.runtimeConfig === undefined
-      ? undefined
-      : await readBundleJson<IRuntimeConfigIr>(source, manifest.files.runtimeConfig);
-  const componentSchemas =
-    manifest.files.componentSchemas === undefined
-      ? undefined
-      : await readBundleJson<IIrSchemaFile>(source, manifest.files.componentSchemas);
-  const ui = manifest.entry.ui === undefined ? undefined : await readBundleJson<IUiIr>(source, manifest.entry.ui);
-  const overlays =
-    manifest.entry.overlays === undefined ? undefined : await readBundleJson<IOverlaysIr>(source, manifest.entry.overlays);
-  const prefabs =
-    manifest.entry.prefabs === undefined
-      ? manifest.files.prefabs === undefined
-        ? undefined
-        : await readBundleJson<IPrefabsIr>(source, manifest.files.prefabs)
-      : await readBundleJson<IPrefabsIr>(source, manifest.entry.prefabs);
-  const scenes =
-    manifest.entry.scenes === undefined ? undefined : await readBundleJson<IScenesIr>(source, manifest.entry.scenes);
-  const assets = await hydrateGeneratedMeshAssets(await readBundleJson<IAssetsManifest>(source, manifest.files.assets), source);
-  return {
-    assets,
-    animations,
-    audio,
-    componentSchemas,
-    environmentScene,
-    gltfScene,
-    input,
-    localData,
-    manifest,
-    materials: await readBundleJson<IMaterialsIr>(source, manifest.files.materials),
-    runtimeConfig,
-    overlays,
-    prefabs,
-    scenes,
-    source,
-    systems,
-    targetProfile: await readBundleJson<ITargetProfile>(source, manifest.files.targetProfile),
-    ui,
-    world: await readBundleJson<IWorldIr>(source, manifest.entry.world),
-  };
-}
-
-async function hydrateGeneratedMeshAssets(assets: IAssetsManifest, source: string): Promise<IAssetsManifest> {
-  return {
-    ...assets,
-    assets: await Promise.all(assets.assets.map(async (asset) => {
-      if (asset.kind !== "mesh" || asset.primitive !== "custom" || asset.binaryAttributes === undefined) {
-        return asset;
-      }
-      const attributes = await Promise.all(asset.binaryAttributes.map(async (attribute) => ({
-        itemSize: attribute.itemSize,
-        name: attribute.name,
-        values: await readFloat32Payload(source, attribute.path, attribute.count * attribute.itemSize),
-      })));
-      const indices = asset.binaryIndices === undefined
-        ? undefined
-        : await readIndexPayload(source, asset.binaryIndices.path, asset.binaryIndices.count, asset.binaryIndices.format);
-      return {
-        ...asset,
-        attributes,
-        ...(indices === undefined ? {} : { indices }),
-      };
-    })),
-  };
-}
-
-async function readFloat32Payload(source: string, file: string, count: number): Promise<number[]> {
-  const bytes = await readBundleBytes(source, file);
-  const expectedBytes = count * 4;
-  if (bytes.byteLength !== expectedBytes) {
-    throw new Error(`Generated mesh float payload '${file}' has ${bytes.byteLength} bytes; expected ${expectedBytes}.`);
+  if (isFetchable(source)) {
+    return loadBundleUrl(source);
   }
-  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
-  return Array.from({ length: count }, (_, index) => view.getFloat32(index * 4, true));
-}
-
-async function readIndexPayload(source: string, file: string, count: number, format: "uint16" | "uint32"): Promise<number[]> {
-  const bytes = await readBundleBytes(source, file);
-  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
-  const itemBytes = format === "uint16" ? 2 : 4;
-  const expectedBytes = count * itemBytes;
-  if (bytes.byteLength !== expectedBytes) {
-    throw new Error(`Generated mesh index payload '${file}' has ${bytes.byteLength} bytes; expected ${expectedBytes} for ${format}.`);
-  }
-  return Array.from({ length: count }, (_, index) => format === "uint16" ? view.getUint16(index * itemBytes, true) : view.getUint32(index * itemBytes, true));
+  return hydrateWebBundle(source, {
+    readBytes(file) {
+      return readBundleBytes(source, file);
+    },
+    readJson<T>(file: string): Promise<T> {
+      return readBundleJson(source, file);
+    },
+  });
 }
 
 async function readBundleBytes(source: string, file: string): Promise<Uint8Array> {
   assertBundleRelativePath(file);
   if (isFetchable(source)) {
-    const response = await fetch(`${source.replace(/\/$/, "")}/${file}`);
-    if (!response.ok) {
-      throw new Error(`Failed to load bundle file '${file}': ${response.status}`);
-    }
-    return new Uint8Array(await response.arrayBuffer());
+    throw new Error("Fetchable byte reads should use loadBundleUrl directly.");
   }
+
   const fsModule = nodeModuleName("fs/promises");
   const pathModule = nodeModuleName("path");
   const { readFile } = await dynamicImport<{ readFile(path: string): Promise<Uint8Array> }>(fsModule);

@@ -2,10 +2,11 @@
 
 ## Summary
 
-Metro Surfer Heist is locally release-ready and passes the generated-game gate,
-but it is not externally hosted from this workspace. The release evidence is
-strong enough to validate the game-production loop; the remaining blocker is a
-deploy target and credentials.
+Metro Surfer Heist is locally release-ready, passes the generated-game gate,
+and now passes a local Pages-style static web verification. It is not
+externally hosted from this workspace. The release evidence is strong enough
+to validate the game-production loop; the remaining blockers are a deploy
+target/credentials and a human five-minute playtest note.
 
 ## Raw Evidence
 
@@ -18,6 +19,7 @@ deploy target and credentials.
 - Screenshot: `artifacts/game-production/screenshot.png`.
 - Motion proof: `artifacts/game-production/motion.webm`.
 - Visual quality: `artifacts/game-production/visual-quality.json`.
+- Local static web verification: `artifacts/verify/verification-report.json`.
 - Aggregate generated-game report:
   `tools/verify/artifacts/game-production/verification-report.json`.
 
@@ -26,7 +28,7 @@ deploy target and credentials.
 | Item | Evidence | Follow-up |
 | --- | --- | --- |
 | External public hosting is not configured in this repo. | No pages/deploy workflow or public URL exists for `examples/metro-surfer-heist`. | Add a deploy PRD or workflow for static example publishing. |
-| Runtime web preview is not yet a verified static Pages shell. | A local Pages-style Vite build of `packages/runtime-web-three` plus the Metro bundle failed `tn verify --url http://127.0.0.1:4177/threejs-to-bevy/?bundle=./bundle --frames 3 --expect-motion --json`; raw failure is `artifacts/verify/verification-report.json` and reports `node:fs/promises` in the browser bundle. | Add a browser-only static export for `@threenative/runtime-web-three` before enabling Pages deployment. |
+| Runtime web preview originally pulled Node-only loaders into the static browser bundle. | Initial local Pages-style verification failed on `node:fs/promises` and then `node:path`. The runtime now has browser-safe bundle/system loaders and passes `tn verify --url http://127.0.0.1:4177/threejs-to-bevy/?bundle=./bundle --frames 3 --expect-motion --json`; raw pass is `artifacts/verify/verification-report.json`. | Keep browser entries isolated from modules that contain Node dynamic imports; add this static Pages shape to release automation. |
 | Example-local `pnpm run build` can fail in a checkout without example-local `node_modules/.bin/tn`. | In this workspace `pnpm run build` and `pnpm run playtest` from `examples/metro-surfer-heist` failed with `tn: command not found`; repo-root `node packages/cli/dist/index.js ...` commands passed. | Make generated example scripts resolve the workspace CLI or document repo-root commands as the supported no-install fallback. |
 | Failed-state key retry was hard to prove deterministically in headless browser playtests. | `KeyR`, `Enter`, and held-key variants did not produce a reset in the failed-state branch under the harness. | Keep manual retry support, but also expose deterministic retry recovery state (`retryTimer`, `restartGrace`, `lastFailReason`) so fail/retry can be proved. |
 | Asset catalog lookup was unavailable during production. | `threenative.config.json` records `TN_ASSET_SOURCE_CATALOG_FAILED` for runner and urban searches. | Make the asset-source SQLite catalog available to generated examples or improve the diagnostic with repair steps. |

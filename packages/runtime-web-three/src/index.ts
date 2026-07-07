@@ -41,7 +41,8 @@ export { renderUi, type IRenderedUi, type IRenderedUiNode } from "./ui/renderUi.
 export { createWebDragPickingRecognizer, resolveTopPickingTarget, type IWebDragPickingEvent, type IWebDragPickingFrame, type IWebDragPickingRecognizer, type IWebPickingDebugOverlayReport, type IWebPickingTarget, type IWebPickingVec2, type IWebPickingVec3 } from "./picking/drag.js";
 export { traceUiNavigation, type IUiNavigationTrace, type IUiNavigationTraceInput } from "./ui/navigation.js";
 export { createUiDomOverlay, type IUiDomOverlay } from "./ui/domOverlay.js";
-export { createRenderedParticleObjects, renderBundle, type IRenderResult, type IWebRuntimePerformanceSnapshot } from "./render.js";
+export { createRenderedParticleObjects, renderLoadedBundle, type IRenderResult, type IWebRuntimePerformanceSnapshot } from "./render.js";
+export { renderBundle } from "./renderBundle.js";
 export {
   createSystemContext,
   componentHookObservations,
@@ -61,7 +62,8 @@ export {
   type IPersistenceSaveResult,
   type IWebPersistenceService,
 } from "./systems/services/persistence.js";
-export { loadSystemModule, runSchedule, type ISystemModule, type ISystemRunResult, type SystemFunction } from "./systems/runner.js";
+export { loadSystemModule } from "./systems/moduleLoader.js";
+export { runSchedule, type ISystemModule, type ISystemRunResult, type SystemFunction } from "./systems/runner.js";
 export {
   AnimationRuntimeController,
   advanceAnimationPlaybackState,

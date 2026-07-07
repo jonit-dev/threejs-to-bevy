@@ -33,6 +33,8 @@ so the conclusions can be rechecked instead of treated as taste.
   `examples/metro-surfer-heist/RELEASE.md`
 - Metro Surfer Heist friction log:
   `examples/metro-surfer-heist/FRICTION.md`
+- Metro Surfer Heist local static web verification:
+  `examples/metro-surfer-heist/artifacts/verify/verification-report.json`
 - Aggregate generated-game report:
   `tools/verify/artifacts/game-production/verification-report.json`
 
@@ -56,8 +58,12 @@ so the conclusions can be rechecked instead of treated as taste.
   native playtest failure caused by an old Bevy runtime binary even though the
   current bridge behavior was correct.
 - Agents treat "release-ready" and "published" as easy to conflate. PRD-012 is
-  locally green but still lacks an external public URL and a human five-minute
-  playtest note.
+  locally green, including a Pages-shaped static web smoke test, but still
+  lacks an external public URL and a human five-minute playtest note.
+- Browser bundles can silently inherit Node-only dynamic imports through shared
+  convenience modules. The Metro static proof failed until bundle loading,
+  system script loading, and `renderBundle(source, ...)` were split so browser
+  entries import only fetch/URL-safe modules.
 - Off-recipe work creates hidden integration debt. More complex prompts need
   asset provenance, proof artifacts, UI fit, performance, and release notes;
   agents tend to finish the playable slice before closing those loops.
@@ -70,10 +76,11 @@ so the conclusions can be rechecked instead of treated as taste.
 ## Improvements To Make
 
 - Add a static deploy workflow for release candidates. PRD-012 cannot close
-  honestly until a public URL can be produced and smoke-tested. A local
-  Pages-style build attempt also showed the runtime shell needs a browser-only
-  static export; the current Vite build can pull `node:fs/promises` into the
-  browser bundle.
+  honestly until a public URL can be produced and smoke-tested. The local
+  Pages-shaped shell is now proved, so the next gap is repeatable deployment
+  and public URL smoke evidence.
+- Add a browser-bundle regression check that greps emitted static assets for
+  `node:` imports and runs a local Pages-shaped `tn verify --url` smoke test.
 - Make generated example scripts resolve the workspace CLI or print a precise
   repair hint. The no-install fallback should be documented in generated
   READMEs.
@@ -96,5 +103,5 @@ so the conclusions can be rechecked instead of treated as taste.
 
 - PRD-007, PRD-008, PRD-010, and PRD-011 are done and committed.
 - PRD-012 is partially proven with Metro Surfer Heist, but remains active
-  because public hosting, explicit progression/fail-retry scenario files, and
-  a human five-minute playtest note are still missing.
+  because public hosting and a human five-minute playtest note are still
+  missing.

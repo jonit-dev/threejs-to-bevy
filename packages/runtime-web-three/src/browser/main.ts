@@ -1,5 +1,6 @@
 import { stableSystemEffectLog, type ISystemEffectLog } from "../systems/log.js";
-import { renderBundle } from "../render.js";
+import { loadBundleUrl } from "../loadBundleUrl.js";
+import { renderLoadedBundle } from "../render.js";
 import { renderDebugOverlay } from "../debugOverlay.js";
 
 declare global {
@@ -31,8 +32,9 @@ if (container === null) {
 
 const params = new URLSearchParams(window.location.search);
 const bundleUrl = params.get("bundle") ?? "/bundle";
+const resolvedBundleUrl = new URL(bundleUrl, window.location.href).href;
 const debugColliders = ["1", "true", "on"].includes(params.get("debugColliders") ?? "");
-const result = await renderBundle(bundleUrl, container, {
+const result = await renderLoadedBundle(await loadBundleUrl(resolvedBundleUrl), container, {
   bookmarkId: params.get("bookmark") ?? undefined,
   debugColliders,
 });

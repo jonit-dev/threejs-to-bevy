@@ -303,11 +303,14 @@ Verified through the repo-root CLI:
 - `node packages/cli/dist/index.js game release --project examples/metro-surfer-heist --json`
   passed with zero release risks; raw report is
   `examples/metro-surfer-heist/artifacts/game-production/release-report.json`.
+- `pnpm exec vite build packages/runtime-web-three --base /threejs-to-bevy/ --outDir /tmp/metro-pages-test --emptyOutDir`
+  passed after splitting browser-safe bundle and system loaders away from
+  Node-only filesystem loaders.
+- `node packages/cli/dist/index.js verify --project examples/metro-surfer-heist --url 'http://127.0.0.1:4177/threejs-to-bevy/?bundle=./bundle' --frames 3 --expect-motion --json`
+  passed with `TN_VERIFY_OK`; raw report is
+  `examples/metro-surfer-heist/artifacts/verify/verification-report.json`.
 
 Known blockers before this PRD can move to done:
 
 - No external public hosting URL or deploy workflow is configured for the game.
-- A local Pages-style static build attempt failed because the browser bundle
-  requested `node:fs/promises`; raw failure is
-  `examples/metro-surfer-heist/artifacts/verify/verification-report.json`.
 - No five-minute human playtest transcript is recorded.

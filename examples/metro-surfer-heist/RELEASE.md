@@ -2,11 +2,12 @@
 
 ## Status
 
-Local release-ready, externally unhosted.
+Local release-ready, locally static-web verified, externally unhosted.
 
 The game passes its local production evidence and the aggregate generated-game
-gate. A public URL is not recorded because this workspace has no configured
-external static hosting target or credentials.
+gate. It also passes a Pages-shaped local static web verification. A public URL
+is not recorded because this workspace has no configured external static
+hosting target or credentials.
 
 ## Evidence
 
@@ -30,6 +31,10 @@ external static hosting target or credentials.
 - `artifacts/game-production/screenshot.png`: desktop screenshot proof.
 - `artifacts/game-production/mobile-viewport.png`: mobile viewport proof.
 - `artifacts/game-production/motion.webm`: visible motion proof.
+- `artifacts/verify/verification-report.json`: `TN_VERIFY_OK` for a
+  local Pages-style static build at
+  `http://127.0.0.1:4177/threejs-to-bevy/?bundle=./bundle`, including nonblank
+  and expected-motion checks.
 
 ## Run Locally
 
@@ -42,6 +47,7 @@ node packages/cli/dist/index.js playtest --project examples/metro-surfer-heist -
 node packages/cli/dist/index.js playtest --project examples/metro-surfer-heist --scenario playtests/fail-retry.playtest.json --stable-artifacts --json
 node packages/cli/dist/index.js game qa --project examples/metro-surfer-heist --run-proof --entity runner --press KeyD --expect-axis x --json
 node packages/cli/dist/index.js game release --project examples/metro-surfer-heist --json
+pnpm exec vite build packages/runtime-web-three --base /threejs-to-bevy/ --outDir /tmp/metro-pages-test --emptyOutDir
 ```
 
 For interactive web play:
@@ -53,6 +59,7 @@ pnpm run dev:web
 
 ## Ship Blocker
 
-External hosting remains the only PRD-012 acceptance blocker. The next step is
-to add a static hosting workflow or deploy target for this example and record
-the public URL here.
+External hosting and a five-minute human playtest note remain the PRD-012
+acceptance blockers. The next step is to add a static hosting workflow or
+deploy target for this example, smoke-test the public URL, and record the URL
+here.

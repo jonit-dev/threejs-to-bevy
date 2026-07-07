@@ -4,7 +4,7 @@ import { RenderPass } from "three/examples/jsm/postprocessing/RenderPass.js";
 import { ShaderPass } from "three/examples/jsm/postprocessing/ShaderPass.js";
 import { UnrealBloomPass } from "three/examples/jsm/postprocessing/UnrealBloomPass.js";
 import type { IAssetsManifest, IAtmosphereProfileIr, ICameraClear, IMaterialsIr, IRuntimeConfigIr, IWorldIr } from "@threenative/ir";
-import { loadBundle, type IWebBundle } from "./loadBundle.js";
+import type { IWebBundle } from "./webBundle.js";
 import {
   updateCameraHelpers,
   updateCameraProjection,
@@ -25,7 +25,8 @@ import { createGameLoopState, runGameFrame } from "./gameLoop.js";
 import { initializePhysicsRuntime } from "./physics.js";
 import { attachInputListeners, createInputState } from "./input.js";
 import { hasKinematicMovers, stepKinematicMovers } from "./kinematicMover.js";
-import { loadSystemModule } from "./systems/runner.js";
+import { loadSystemModuleUrl } from "./systems/moduleLoaderUrl.js";
+import type { ISystemModule } from "./systems/runner.js";
 import { createSystemEffectLog, type ISystemEffectLog } from "./systems/log.js";
 import { createUiDomOverlay } from "./ui/domOverlay.js";
 import { renderUi, type IRenderedUi, type IRenderedUiNode } from "./ui/renderUi.js";
@@ -66,6 +67,7 @@ export interface IWebRuntimePerformanceSnapshot {
 export interface IRenderOptions {
   bookmarkId?: string;
   debugColliders?: boolean;
+  systemModuleLoader?: (source: string, manifest: IWebBundle["manifest"]) => Promise<ISystemModule>;
 }
 
 export interface IWebRuntimeDiagnostics {
@@ -155,8 +157,8 @@ export interface IWebRenderLifecycleOptions {
   requestAnimationFrame?: (callback: FrameRequestCallback) => number;
 }
 
-export async function renderBundle(source: string, container: HTMLElement, options: IRenderOptions = {}): Promise<IRenderResult> {
-  const bundle = await loadBundle(source);
+export async function renderLoadedBundle(bundle: IWebBundle, container: HTMLElement, options: IRenderOptions = {}): Promise<IRenderResult> {
+  const source = bundle.source ?? "";
   await initializePhysicsRuntime();
   const mapped = mapWorld(bundle);
   assertSceneReady(mapped.diagnostics);
@@ -196,7 +198,7 @@ export async function renderBundle(source: string, container: HTMLElement, optio
   const input = createInputState(bundle.input);
   const loopState = createGameLoopState(bundle.runtimeConfig);
   const effectLog = createSystemEffectLog();
-  const systemModule = await loadSystemModule(source, bundle.manifest);
+  const systemModule = await (options.systemModuleLoader ?? loadSystemModuleUrl)(source, bundle.manifest);
   const renderer = new THREE.WebGLRenderer(webRendererParameters(bundle.runtimeConfig));
   const renderLook = applyWebRenderLookProfile(bundle.runtimeConfig);
   applyRendererColorManagement(renderer, bundle.environmentScene?.atmosphere?.colorManagement, renderLook.colorGrading);

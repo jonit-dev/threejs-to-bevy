@@ -570,7 +570,7 @@ async function buildWebviewRuntime(options: { bundlePath: string; outputPath: st
   );
   await writeFile(
     resolve(sourceRoot, "src/main.js"),
-    `import { renderBundle } from "${fileURLToPath(new URL("../../../runtime-web-three/dist/render.js", import.meta.url))}";
+    `import { renderBundle } from "${fileURLToPath(new URL("../../../runtime-web-three/dist/renderBundle.js", import.meta.url))}";
 import { stableSystemEffectLog } from "${fileURLToPath(new URL("../../../runtime-web-three/dist/systems/log.js", import.meta.url))}";
 
 const container = document.getElementById("app");
