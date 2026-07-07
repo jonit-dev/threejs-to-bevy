@@ -15,6 +15,9 @@ Current support:
   composes L2 mechanic blocks into structured source, writes
   `content/mechanics/*.mechanic.json`, emits block playtest scenarios, and
   preserves authoring validation.
+- `tn look apply <arcade-neon|forest-dawn|sunset-racer|toybox-pop|noir-metal>`
+  applies curated scaffold polish through runtime and material source
+  operations without exposing renderer internals.
 - `tn game plan --apply --json` explicitly applies scaffold-first collector
   and lane-runner baselines through bounded recipe operations, writes committed
   playtest scenarios, and records `artifacts/game-production/scaffold-first.json`.
@@ -39,7 +42,8 @@ Verification:
 - `node ../../scripts/run-package-tests.mjs dist/commands/create.test.js`
   from `packages/cli` (324 CLI tests passed after a full workspace build,
   including archetype create/game-plan coverage).
-- `pnpm --filter @threenative/cli test` (327 CLI tests, including all six
+- `node --test packages/cli/dist/commands/look.test.js packages/cli/dist/verify/renderingQuality.test.js`
+- `pnpm --filter @threenative/cli test` (337 CLI tests, including all six
   mechanic block writers and authoring validation).
 - `pnpm verify:generated-games`
 - `pnpm verify:example-build-sweep`

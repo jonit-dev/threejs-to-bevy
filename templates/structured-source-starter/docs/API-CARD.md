@@ -100,6 +100,9 @@ interface ScriptTransformFacade {
 - Mechanic blocks: `tn add spawner|timer|trigger-sequence|score|projectile|follow-camera --json`
   writes `content/mechanics/*.mechanic.json`, mutates supported scene source,
   and emits `playtests/block-*.playtest.json` proof hooks.
+- Look profiles: `tn look list --json` shows curated portable presets.
+  `tn look apply arcade-neon --project . --json` writes bounded
+  `balanced` render-look overrides plus starter material colors.
 - Material assignment: use
   `tn prefab set-material <prefab-id> --material <material-id> --project . --json`
   instead of hand-editing `content/prefabs/*.prefab.json`.
@@ -127,6 +130,7 @@ interface ScriptTransformFacade {
 tn iterate --project . --json
 pnpm run playtest:archetype
 tn add spawner --pattern grid --prefab pickup.prefab --count 5 --project . --json
+tn look apply arcade-neon --project . --json
 tn prefab set-material prefab.player --material mat.player --project . --json
 tn scene inspect arena --node scaffold.player --project . --json
 tn playtest report --latest --scenario <name> --json

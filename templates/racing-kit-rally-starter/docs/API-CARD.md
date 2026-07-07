@@ -90,6 +90,9 @@ interface ScriptTransformFacade {
 
 ## Structured Source Shapes
 
+- Look profiles: `tn look list --json` shows curated portable presets.
+  `tn look apply sunset-racer --project . --json` writes bounded `balanced`
+  render-look overrides plus material colors where starter IDs exist.
 - Scenes: `content/scenes/*.scene.json` own entities, transforms, components,
   cameras, resources, UI bindings, and script references.
 - Input: `content/input/*.input.json` uses actions with
@@ -105,6 +108,7 @@ interface ScriptTransformFacade {
 
 ```bash
 pnpm run iterate
+tn look apply sunset-racer --project . --json
 tn playtest report --latest --scenario <name> --json
 tn cookbook player-move-wasd --json
 tn cookbook follow-camera --json

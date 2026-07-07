@@ -17,6 +17,7 @@ import { editorCommand } from "./commands/editor.js";
 import { gameCommand } from "./commands/game.js";
 import { helpCommand } from "./commands/help.js";
 import { iterateCommand } from "./commands/iterate.js";
+import { lookCommand } from "./commands/look.js";
 import { modelTestCommand } from "./commands/modelTest.js";
 import { packageCommand } from "./commands/package.js";
 import { playtestCommand } from "./commands/playtest.js";
@@ -86,6 +87,11 @@ const commands: Record<string, ICommandDefinition> = {
     description: "Run validate, build, screenshot, and optional playtest as one agent iteration loop.",
     implemented: true,
     usage: "tn iterate [--project <path>] [--scenario playtests/<name>.playtest.json] [--skip-playtest] [--keep] [--json]",
+  },
+  look: {
+    description: "List and apply curated portable look profiles to structured source projects.",
+    implemented: true,
+    usage: "tn look list [--json]\n              tn look apply <arcade-neon|forest-dawn|sunset-racer|toybox-pop|noir-metal> [--project <path>] [--json]",
   },
   help: {
     description: "Show task-oriented help for scaffold, assets, camera, transform, visual QA, screenshot, and record workflows.",
@@ -334,6 +340,10 @@ export async function dispatch(argv: readonly string[]): Promise<ICommandResult>
 
   if (commandName === "iterate") {
     return iterateCommand(normalizedArgv.slice(1));
+  }
+
+  if (commandName === "look") {
+    return lookCommand(normalizedArgv.slice(1));
   }
 
   if (commandName === "help") {

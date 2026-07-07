@@ -197,9 +197,14 @@ async function rewriteRuntimeRenderProfile(projectPath: string, renderProfile: "
     const renderer = typeof runtime.renderer === "object" && runtime.renderer !== null && !Array.isArray(runtime.renderer)
       ? runtime.renderer as Record<string, unknown>
       : {};
+    const existingRenderLook = typeof renderer.renderLook === "object" && renderer.renderLook !== null && !Array.isArray(renderer.renderLook)
+      ? renderer.renderLook as Record<string, unknown>
+      : {};
     runtime.renderer = {
       ...renderer,
-      renderLook: { version: 1, profile: renderProfile },
+      renderLook: renderProfile === "balanced"
+        ? { ...existingRenderLook, version: 1, profile: renderProfile }
+        : { version: 1, profile: renderProfile },
     };
     await writeFile(runtimePath, `${JSON.stringify(runtime, null, 2)}\n`, "utf8");
   } catch {

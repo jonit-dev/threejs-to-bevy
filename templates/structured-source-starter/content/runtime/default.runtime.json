@@ -6,7 +6,15 @@
     "antialias": "msaa4",
     "renderLook": {
       "version": 1,
-      "profile": "balanced"
+      "profile": "balanced",
+      "overrides": {
+        "bloomIntensity": 0.65,
+        "contrast": 0.22,
+        "environmentIntensity": 1.35,
+        "exposure": 1.08,
+        "saturation": 1.35,
+        "shadowQuality": "medium"
+      }
     }
   },
   "time": {

@@ -5,19 +5,27 @@
   "materials": [
     {
       "id": "mat.floor",
-      "color": "#34373d",
-      "roughness": 0.85
+      "color": "#111827",
+      "emissive": "#0ea5e9",
+      "emissiveIntensity": 0.08,
+      "metalness": 0.08,
+      "roughness": 0.62
     },
     {
       "id": "mat.player",
-      "color": "#2f80ed",
-      "roughness": 0.55
+      "color": "#22d3ee",
+      "emissive": "#0891b2",
+      "emissiveIntensity": 0.25,
+      "metalness": 0.15,
+      "roughness": 0.38
     },
     {
       "id": "mat.goal",
-      "color": "#f2c94c",
-      "roughness": 0.5
+      "color": "#facc15",
+      "emissive": "#f97316",
+      "emissiveIntensity": 0.35,
+      "metalness": 0.05,
+      "roughness": 0.42
     }
   ]
 }
-

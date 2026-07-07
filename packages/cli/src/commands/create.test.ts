@@ -47,9 +47,20 @@ test("should create starter template files", async () => {
     assert.equal(config.template, "structured-source-starter");
     await assert.rejects(access(join(payload.path, "src", "game.ts")));
     const runtime = JSON.parse(await readFile(join(payload.path, "content", "runtime", "default.runtime.json"), "utf8")) as {
-      renderer?: { renderLook?: { profile?: string; version?: number } };
+      renderer?: { renderLook?: { overrides?: Record<string, unknown>; profile?: string; version?: number } };
     };
-    assert.deepEqual(runtime.renderer?.renderLook, { version: 1, profile: "balanced" });
+    assert.deepEqual(runtime.renderer?.renderLook, {
+      version: 1,
+      profile: "balanced",
+      overrides: {
+        bloomIntensity: 0.65,
+        contrast: 0.22,
+        environmentIntensity: 1.35,
+        exposure: 1.08,
+        saturation: 1.35,
+        shadowQuality: "medium",
+      },
+    });
 
     const agentInstructions = await readFile(join(payload.path, "AGENTS.md"), "utf8");
     const planningInstructions = await readFile(join(payload.path, "AGENT_GAME_PLAN.md"), "utf8");

@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { analyzeRenderingQualityParity, analyzeV9RenderingLightsParity } from "./renderingQuality.js";
-import type { IPixelFrame } from "./imageAnalysis.js";
+import { analyzeVisualQuality, type IPixelFrame } from "./imageAnalysis.js";
 
 test("rendering quality parity accepts matching fog and sky regions", () => {
   const web = fixtureFrame();
@@ -58,6 +58,30 @@ test("V9 rendering lights parity rejects skybox and point-shadow drift", () => {
   assert.equal(result.regions.find((region) => region.name === "point-shadow-pcf")?.ok, false);
 });
 
+test("visual quality penalizes flat primitive frames", () => {
+  const flat = flatFrame([80, 80, 80]);
+  const result = analyzeVisualQuality(flat);
+
+  assert.equal(result.ok, false);
+  assert.equal(result.colorBucketCount, 1);
+  assert.equal(result.localContrast, 0);
+});
+
+test("visual quality accepts styled scaffold color and contrast", () => {
+  const styled = v9FixtureFrame({
+    dense: [36, 140, 88],
+    gizmo: [248, 196, 40],
+    reflection: [210, 232, 255],
+    shadow: [38, 44, 58],
+    skybox: [64, 128, 196],
+  });
+  const result = analyzeVisualQuality(styled);
+
+  assert.equal(result.ok, true);
+  assert.equal(result.colorBucketCount >= result.thresholds.minColorBuckets, true);
+  assert.equal(result.localContrast >= result.thresholds.minLocalContrast, true);
+});
+
 function fixtureFrame(overrides: Partial<Record<"fog" | "foreground" | "sky", [number, number, number]>> = {}): IPixelFrame {
   const width = 100;
   const height = 100;
@@ -81,6 +105,14 @@ function v9FixtureFrame(
   fillRect(data, width, 33, 58, 34, 18, overrides.shadow ?? [56, 63, 76]);
   fillRect(data, width, 8, 36, 22, 32, overrides.dense ?? [74, 118, 66]);
   fillRect(data, width, 70, 20, 22, 32, overrides.gizmo ?? [230, 194, 48]);
+  return { data, height, width };
+}
+
+function flatFrame(color: [number, number, number]): IPixelFrame {
+  const width = 100;
+  const height = 100;
+  const data = new Uint8ClampedArray(width * height * 4);
+  fillRect(data, width, 0, 0, width, height, color);
   return { data, height, width };
 }
 

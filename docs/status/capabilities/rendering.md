@@ -9,11 +9,18 @@ Current support:
 - Mesh/material/light/camera/source document validation and compiler lowering.
 - Render-look profiles, screenshot proof, color parity, lighting tone, and
   visual performance gates.
+- `tn look list` and `tn look apply <profile>` expose five curated scaffold
+  look presets that write only portable `balanced` render-look overrides and
+  material source mutations.
+- Visual-quality analysis now scores color bucket diversity and local contrast
+  so flat one-color primitive captures are distinguishable from styled
+  scaffold captures in focused tests.
 - Web Three.js is the primary runtime adapter; Bevy native parity is tracked
   separately.
 
 Verification:
 
+- `node --test packages/cli/dist/commands/look.test.js packages/cli/dist/verify/renderingQuality.test.js`
 - `pnpm verify:parity:smoke`
 - `pnpm verify:conformance`
 - `pnpm verify:release`

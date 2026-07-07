@@ -22,7 +22,15 @@ durable runtime source document with:
     "antialias": "msaa4",
     "renderLook": {
       "version": 1,
-      "profile": "balanced"
+      "profile": "balanced",
+      "overrides": {
+        "bloomIntensity": 0.65,
+        "contrast": 0.22,
+        "environmentIntensity": 1.35,
+        "exposure": 1.08,
+        "saturation": 1.35,
+        "shadowQuality": "medium"
+      }
     }
   }
 }
@@ -50,6 +58,18 @@ Update an existing runtime source document:
 ```bash
 tn runtime set-rendering default --render-profile balanced --json
 ```
+
+Apply a curated scaffold look preset while staying on the promoted portable
+`balanced` render-look contract:
+
+```bash
+tn look apply arcade-neon --project . --json
+```
+
+The look preset command currently exposes `arcade-neon`, `forest-dawn`,
+`sunset-racer`, `toybox-pop`, and `noir-metal`. Presets combine bounded
+`renderer.renderLook.overrides` with starter material palette edits; they do
+not promote reserved `cinematic` or `stylized` render-look profiles.
 
 Optional overrides stay bounded and semantic:
 

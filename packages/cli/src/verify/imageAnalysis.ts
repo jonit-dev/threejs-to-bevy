@@ -50,6 +50,16 @@ export interface IDetailedFrameComparison extends IFrameComparison {
   signedAverageColorDelta: IAverageColor;
 }
 
+export interface IVisualQualityCheck {
+  colorBucketCount: number;
+  localContrast: number;
+  ok: boolean;
+  thresholds: {
+    minColorBuckets: number;
+    minLocalContrast: number;
+  };
+}
+
 export const defaultNonblankThreshold = 0.002;
 export const defaultDiffThreshold = 0.001;
 
@@ -94,6 +104,63 @@ export function analyzeNonblank(frame: IPixelFrame, threshold = defaultNonblankT
   };
 }
 
+export function analyzeVisualQuality(
+  frame: IPixelFrame,
+  thresholds: { minColorBuckets?: number; minLocalContrast?: number } = {},
+): IVisualQualityCheck {
+  const minColorBuckets = thresholds.minColorBuckets ?? 4;
+  const minLocalContrast = thresholds.minLocalContrast ?? 0.04;
+  const buckets = new Set<string>();
+  let contrastTotal = 0;
+  let contrastSamples = 0;
+  let activeContrastTotal = 0;
+  let activeContrastSamples = 0;
+
+  for (let y = 0; y < frame.height; y += 1) {
+    for (let x = 0; x < frame.width; x += 1) {
+      const index = (y * frame.width + x) * 4;
+      const red = frame.data[index] ?? 0;
+      const green = frame.data[index + 1] ?? 0;
+      const blue = frame.data[index + 2] ?? 0;
+      const alpha = frame.data[index + 3] ?? 0;
+      if (alpha > 0) {
+        buckets.add(`${Math.floor(red / 32)}:${Math.floor(green / 32)}:${Math.floor(blue / 32)}`);
+      }
+      if (x + 1 < frame.width) {
+        const contrast = Math.abs(brightnessAt(frame, x, y) - brightnessAt(frame, x + 1, y));
+        contrastTotal += contrast;
+        contrastSamples += 1;
+        if (contrast > 0) {
+          activeContrastTotal += contrast;
+          activeContrastSamples += 1;
+        }
+      }
+      if (y + 1 < frame.height) {
+        const contrast = Math.abs(brightnessAt(frame, x, y) - brightnessAt(frame, x, y + 1));
+        contrastTotal += contrast;
+        contrastSamples += 1;
+        if (contrast > 0) {
+          activeContrastTotal += contrast;
+          activeContrastSamples += 1;
+        }
+      }
+    }
+  }
+
+  const localContrast = activeContrastSamples === 0
+    ? (contrastSamples === 0 ? 0 : contrastTotal / contrastSamples / 255)
+    : activeContrastTotal / activeContrastSamples / 255;
+  return {
+    colorBucketCount: buckets.size,
+    localContrast,
+    ok: buckets.size >= minColorBuckets && localContrast >= minLocalContrast,
+    thresholds: {
+      minColorBuckets,
+      minLocalContrast,
+    },
+  };
+}
+
 export function analyzeProjectedBounds(frame: IPixelFrame, threshold = defaultNonblankThreshold): IProjectedBoundsCheck {
   const totalPixels = frame.width * frame.height;
   let minX = frame.width;
@@ -131,6 +198,11 @@ export function analyzeProjectedBounds(frame: IPixelFrame, threshold = defaultNo
     x: empty ? 0 : minX,
     y: empty ? 0 : minY,
   };
+}
+
+function brightnessAt(frame: IPixelFrame, x: number, y: number): number {
+  const index = (y * frame.width + x) * 4;
+  return ((frame.data[index] ?? 0) + (frame.data[index + 1] ?? 0) + (frame.data[index + 2] ?? 0)) / 3;
 }
 
 export function analyzeRegionNonblank(
