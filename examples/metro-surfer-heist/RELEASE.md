@@ -35,6 +35,11 @@ hosting target or credentials.
   local Pages-style static build at
   `http://127.0.0.1:4177/threejs-to-bevy/?bundle=./bundle`, including nonblank
   and expected-motion checks.
+- `.github/workflows/metro-surfer-heist-pages.yml`: GitHub Pages release
+  workflow that rebuilds the game, verifies the local Pages-shaped shell,
+  rejects static browser bundles containing Node-only filesystem/path imports,
+  uploads the artifact, and deploys on `main` or manual dispatch.
+- `PLAYTEST-NOTE.md`: manual five-minute human playtest note template.
 
 ## Run Locally
 
@@ -60,6 +65,6 @@ pnpm run dev:web
 ## Ship Blocker
 
 External hosting and a five-minute human playtest note remain the PRD-012
-acceptance blockers. The next step is to add a static hosting workflow or
-deploy target for this example, smoke-test the public URL, and record the URL
-here.
+acceptance blockers. The static deploy workflow now exists; the next step is
+to run it from `main`, smoke-test the public URL, record the URL here, and fill
+`PLAYTEST-NOTE.md` after a human session.

@@ -35,6 +35,10 @@ so the conclusions can be rechecked instead of treated as taste.
   `examples/metro-surfer-heist/FRICTION.md`
 - Metro Surfer Heist local static web verification:
   `examples/metro-surfer-heist/artifacts/verify/verification-report.json`
+- Metro Surfer Heist Pages workflow:
+  `.github/workflows/metro-surfer-heist-pages.yml`
+- Metro Surfer Heist playtest note template:
+  `examples/metro-surfer-heist/PLAYTEST-NOTE.md`
 - Aggregate generated-game report:
   `tools/verify/artifacts/game-production/verification-report.json`
 
@@ -77,10 +81,11 @@ so the conclusions can be rechecked instead of treated as taste.
 
 - Add a static deploy workflow for release candidates. PRD-012 cannot close
   honestly until a public URL can be produced and smoke-tested. The local
-  Pages-shaped shell is now proved, so the next gap is repeatable deployment
-  and public URL smoke evidence.
+  Pages-shaped shell and GitHub Pages workflow now exist, so the next gap is a
+  successful external workflow run plus public URL smoke evidence.
 - Add a browser-bundle regression check that greps emitted static assets for
-  `node:` imports and runs a local Pages-shaped `tn verify --url` smoke test.
+  Node-only filesystem/path imports and runs a local Pages-shaped
+  `tn verify --url` smoke test.
 - Make generated example scripts resolve the workspace CLI or print a precise
   repair hint. The no-install fallback should be documented in generated
   READMEs.

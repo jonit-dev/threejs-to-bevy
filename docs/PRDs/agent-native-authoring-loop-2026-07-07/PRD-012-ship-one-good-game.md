@@ -310,7 +310,17 @@ Verified through the repo-root CLI:
   passed with `TN_VERIFY_OK`; raw report is
   `examples/metro-surfer-heist/artifacts/verify/verification-report.json`.
 
+Release automation added:
+
+- `.github/workflows/metro-surfer-heist-pages.yml` builds the Metro bundle,
+  builds the static runtime shell with `/threejs-to-bevy/` base, rejects
+  browser bundles containing Node-only filesystem/path imports, runs the local
+  Pages-shaped `tn verify --url` smoke test, uploads the Pages artifact, and
+  deploys through GitHub Pages on `main` or `workflow_dispatch`.
+- `examples/metro-surfer-heist/PLAYTEST-NOTE.md` is the required manual
+  five-minute playtest note template.
+
 Known blockers before this PRD can move to done:
 
-- No external public hosting URL or deploy workflow is configured for the game.
+- No successful external public hosting run or public URL is recorded yet.
 - No five-minute human playtest transcript is recorded.

@@ -20,6 +20,9 @@ target/credentials and a human five-minute playtest note.
 - Motion proof: `artifacts/game-production/motion.webm`.
 - Visual quality: `artifacts/game-production/visual-quality.json`.
 - Local static web verification: `artifacts/verify/verification-report.json`.
+- Static deploy workflow:
+  `.github/workflows/metro-surfer-heist-pages.yml`.
+- Human playtest note template: `PLAYTEST-NOTE.md`.
 - Aggregate generated-game report:
   `tools/verify/artifacts/game-production/verification-report.json`.
 
@@ -27,13 +30,13 @@ target/credentials and a human five-minute playtest note.
 
 | Item | Evidence | Follow-up |
 | --- | --- | --- |
-| External public hosting is not configured in this repo. | No pages/deploy workflow or public URL exists for `examples/metro-surfer-heist`. | Add a deploy PRD or workflow for static example publishing. |
+| External public hosting is not yet proved. | `.github/workflows/metro-surfer-heist-pages.yml` now builds, verifies, uploads, and deploys the static Metro release through GitHub Pages, but no successful external run or public URL is recorded in this workspace. | Run the workflow from `main`, record the Pages URL, and smoke-test the public URL. |
 | Runtime web preview originally pulled Node-only loaders into the static browser bundle. | Initial local Pages-style verification failed on `node:fs/promises` and then `node:path`. The runtime now has browser-safe bundle/system loaders and passes `tn verify --url http://127.0.0.1:4177/threejs-to-bevy/?bundle=./bundle --frames 3 --expect-motion --json`; raw pass is `artifacts/verify/verification-report.json`. | Keep browser entries isolated from modules that contain Node dynamic imports; add this static Pages shape to release automation. |
 | Example-local `pnpm run build` can fail in a checkout without example-local `node_modules/.bin/tn`. | In this workspace `pnpm run build` and `pnpm run playtest` from `examples/metro-surfer-heist` failed with `tn: command not found`; repo-root `node packages/cli/dist/index.js ...` commands passed. | Make generated example scripts resolve the workspace CLI or document repo-root commands as the supported no-install fallback. |
 | Failed-state key retry was hard to prove deterministically in headless browser playtests. | `KeyR`, `Enter`, and held-key variants did not produce a reset in the failed-state branch under the harness. | Keep manual retry support, but also expose deterministic retry recovery state (`retryTimer`, `restartGrace`, `lastFailReason`) so fail/retry can be proved. |
 | Asset catalog lookup was unavailable during production. | `threenative.config.json` records `TN_ASSET_SOURCE_CATALOG_FAILED` for runner and urban searches. | Make the asset-source SQLite catalog available to generated examples or improve the diagnostic with repair steps. |
 | Local custom assets lack third-party provenance URLs. | `CREDITS.md` can only classify them as local project assets. | Require generated/local asset manifests to record creation tool, date, and license posture. |
-| Existing production proof is strong but not a five-minute human playtest transcript. | QA/release artifacts prove build, motion, visual quality, budgets, and release blockers, but no human session note exists. | Add a manual playtest note template for shipped-game releases. |
+| Existing production proof is strong but not a five-minute human playtest transcript. | QA/release artifacts prove build, motion, visual quality, budgets, and release blockers, and `PLAYTEST-NOTE.md` now defines the note shape, but no completed human session note exists. | Fill the template after a human playtest against the published URL. |
 
 ## Non-Goals
 

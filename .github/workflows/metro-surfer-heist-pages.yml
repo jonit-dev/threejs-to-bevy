@@ -1,0 +1,118 @@
+name: Metro Surfer Heist Pages
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/metro-surfer-heist-pages.yml"
+      - "examples/metro-surfer-heist/**"
+      - "packages/authoring/**"
+      - "packages/cli/**"
+      - "packages/compiler/**"
+      - "packages/ir/**"
+      - "packages/runtime-web-three/**"
+      - "packages/sdk/**"
+      - "packages/script-stdlib/**"
+      - "pnpm-lock.yaml"
+      - "package.json"
+
+permissions:
+  contents: read
+  id-token: write
+  pages: write
+
+concurrency:
+  group: pages-metro-surfer-heist
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.25.0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          cache: pnpm
+          node-version: 22
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install browser dependencies
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Build workspace packages
+        run: pnpm build
+
+      - name: Build Metro bundle
+        run: node packages/cli/dist/index.js build --project examples/metro-surfer-heist --json
+
+      - name: Build static web shell
+        run: |
+          set -euo pipefail
+          STATIC_DIR="$RUNNER_TEMP/metro-pages"
+          pnpm exec vite build packages/runtime-web-three \
+            --base /threejs-to-bevy/ \
+            --outDir "$STATIC_DIR" \
+            --emptyOutDir
+          cp -R examples/metro-surfer-heist/dist/metro-surfer-heist.bundle "$STATIC_DIR/bundle"
+          touch "$STATIC_DIR/.nojekyll"
+          if grep -RE "node:(fs|path|url)|fs/promises" "$STATIC_DIR/assets"; then
+            echo "Static browser bundle contains Node-only imports." >&2
+            exit 1
+          fi
+
+      - name: Verify static web shell
+        run: |
+          set -euo pipefail
+          STATIC_DIR="$RUNNER_TEMP/metro-pages"
+          PAGES_ROOT="$RUNNER_TEMP/metro-pages-root"
+          mkdir -p "$PAGES_ROOT/threejs-to-bevy"
+          cp -R "$STATIC_DIR"/. "$PAGES_ROOT/threejs-to-bevy/"
+          python3 -m http.server 4177 --directory "$PAGES_ROOT" > "$RUNNER_TEMP/metro-pages-server.log" 2>&1 &
+          SERVER_PID=$!
+          cleanup() {
+            kill "$SERVER_PID" 2>/dev/null || true
+          }
+          trap cleanup EXIT
+          for _ in $(seq 1 30); do
+            if curl -fsS "http://127.0.0.1:4177/threejs-to-bevy/" >/dev/null; then
+              break
+            fi
+            sleep 1
+          done
+          node packages/cli/dist/index.js verify \
+            --project examples/metro-surfer-heist \
+            --url "http://127.0.0.1:4177/threejs-to-bevy/?bundle=./bundle" \
+            --frames 3 \
+            --expect-motion \
+            --json
+
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: ${{ runner.temp }}/metro-pages
+
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
