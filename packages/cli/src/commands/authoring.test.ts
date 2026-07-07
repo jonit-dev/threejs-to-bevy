@@ -35,9 +35,11 @@ test("authoring command inspects and validates structured source documents", asy
     assert.deepEqual(inspectPayload.documents, [{ kind: "scene", path: "content/scenes/arena.scene.json" }]);
 
     const validate = await authoringCommand(["validate", "--project", root, "--json"]);
-    const validatePayload = JSON.parse(validate.stdout) as { code: string; ok: boolean };
+    const validatePayload = JSON.parse(validate.stdout) as { code: string; next: string; notice: string; ok: boolean };
     assert.equal(validate.exitCode, 0);
     assert.equal(validatePayload.code, "TN_AUTHORING_VALIDATE_OK");
+    assert.equal(validatePayload.next, "tn iterate --project . --json");
+    assert.match(validatePayload.notice, /Standalone authoring validation is subsumed/);
     assert.equal(validatePayload.ok, true);
   } finally {
     await rm(root, { force: true, recursive: true });

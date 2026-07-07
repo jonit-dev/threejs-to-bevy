@@ -41,7 +41,7 @@ export async function captureCandidate(options: { candidate: string; outDir: str
       const page = await browser.newPage({ viewport: { height: 720, width: 1280 } });
       const browserLogs: string[] = [];
       page.on("console", (message) => browserLogs.push(`${message.type()}: ${message.text()}`));
-      await page.goto(preview.url, { waitUntil: "domcontentloaded" });
+      await page.goto(withBenchmarkAutostart(preview.url), { waitUntil: "domcontentloaded" });
       await page.waitForTimeout(750);
       const canvas = await page.$("canvas");
       if (canvas === null) {
@@ -53,6 +53,8 @@ export async function captureCandidate(options: { candidate: string; outDir: str
         });
         return { artifacts: {}, diagnostics };
       }
+      await page.mouse.click(640, 360);
+      await page.waitForTimeout(100);
       await page.screenshot({ fullPage: false, path: beforeScreenshot });
       for (const key of ["ArrowRight", "KeyD", "ArrowUp", "KeyW"]) {
         await page.keyboard.down(key);
@@ -95,6 +97,12 @@ export async function captureCandidate(options: { candidate: string; outDir: str
   } finally {
     await preview?.close();
   }
+}
+
+function withBenchmarkAutostart(url: string): string {
+  const parsed = new URL(url);
+  parsed.searchParams.set("tn-benchmark-autostart", "1");
+  return parsed.toString();
 }
 
 async function launchCandidatePreview(candidate: string): Promise<IPreviewHandle> {
@@ -206,7 +214,8 @@ async function waitForJsonPreviewUrl(child: ChildProcess, label: string): Promis
 async function launchStaticServer(root: string): Promise<IPreviewHandle> {
   const server = createServer(async (request, response) => {
     const rawUrl = request.url === undefined || request.url === "/" ? "/index.html" : request.url;
-    const pathname = decodeURIComponent(rawUrl.split("?")[0] ?? "/index.html");
+    const rawPathname = decodeURIComponent(rawUrl.split("?")[0] ?? "/index.html");
+    const pathname = rawPathname === "/" ? "/index.html" : rawPathname;
     const filePath = resolve(root, `.${pathname}`);
     if (!filePath.startsWith(resolve(root))) {
       response.writeHead(403).end("Forbidden");

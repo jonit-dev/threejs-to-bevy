@@ -103,6 +103,7 @@ test("should write full game plan artifact and print compact summary by default"
       assetPlan?: unknown;
       archetype?: string;
       fileMap: { scripts: unknown[]; source: unknown[] };
+      mechanicDecomposition: Array<{ command?: string; cookbookId?: string; mechanic: string }>;
       mutate: boolean;
       planArtifactPath: string;
       proofCommands: string[];
@@ -112,6 +113,7 @@ test("should write full game plan artifact and print compact summary by default"
     const fullPlan = JSON.parse(await readFile(join(root, "artifacts/game-production/plan.json"), "utf8")) as {
       mutate: boolean;
       schema: string;
+      mechanicDecomposition: unknown[];
       steps: unknown[];
       archetype: string;
     };
@@ -125,10 +127,14 @@ test("should write full game plan artifact and print compact summary by default"
     assert.equal(payload.steps, undefined);
     assert.equal(payload.fileMap.scripts.length > 0, true);
     assert.equal(payload.fileMap.source.length > 0, true);
+    assert.equal(payload.proofCommands[0], "tn iterate --project . --json");
     assert.equal(payload.proofCommands.some((command) => command.includes("tn game qa")), true);
+    assert.equal(payload.mechanicDecomposition.some((entry) => entry.mechanic === "movement" && typeof entry.command === "string"), true);
+    assert.equal(payload.mechanicDecomposition.some((entry) => entry.mechanic === "objective-progression" && typeof entry.cookbookId === "string"), true);
     assert.equal(fullPlan.schema, "threenative.game-plan");
     assert.equal(fullPlan.archetype, "top-down");
     assert.equal(fullPlan.mutate, false);
+    assert.equal(fullPlan.mechanicDecomposition.length > 0, true);
     assert.equal(fullPlan.steps.length > 0, true);
     assert.ok(Buffer.byteLength(result.stdout, "utf8") < 8192);
   } finally {

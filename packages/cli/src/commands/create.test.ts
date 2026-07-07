@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { spawnSync } from "node:child_process";
 import { access, mkdir, mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -29,6 +30,8 @@ test("should create starter template files", async () => {
     assert.equal(files.includes("AGENTS.md"), true);
     assert.equal(files.includes("AGENT_GAME_PLAN.md"), true);
     assert.equal(files.includes("CLAUDE.md"), true);
+    assert.equal(files.includes(".codex"), true);
+    assert.equal(files.includes("bin"), true);
     assert.equal(files.includes("README.md"), true);
     assert.equal(files.includes("dist"), false);
     assert.equal(files.includes("package.json"), true);
@@ -37,6 +40,8 @@ test("should create starter template files", async () => {
     assert.equal(files.includes("threenative.config.json"), true);
     await access(join(payload.path, "assets", "goal-ping.wav"));
     await access(join(payload.path, ".threenative", "cli", "index.js"));
+    await access(join(payload.path, "bin", "tn"));
+    await access(join(payload.path, ".codex", "skills", "threenative-workflow", "SKILL.md"));
     await assert.rejects(access(join(payload.path, "dist")));
 
     const config = JSON.parse(await readFile(join(payload.path, "threenative.config.json"), "utf8")) as {
@@ -65,6 +70,7 @@ test("should create starter template files", async () => {
     const agentInstructions = await readFile(join(payload.path, "AGENTS.md"), "utf8");
     const planningInstructions = await readFile(join(payload.path, "AGENT_GAME_PLAN.md"), "utf8");
     const claudeInstructions = await readFile(join(payload.path, "CLAUDE.md"), "utf8");
+    const codexSkill = await readFile(join(payload.path, ".codex", "skills", "threenative-workflow", "SKILL.md"), "utf8");
     assert.match(agentInstructions, /tn scene \.\.\. --json/);
     assert.match(agentInstructions, /Do not edit them as the fix/);
     assert.match(agentInstructions, /AGENT_GAME_PLAN\.md/);
@@ -74,12 +80,15 @@ test("should create starter template files", async () => {
     assert.match(planningInstructions, /React webview UI/);
     assert.match(planningInstructions, /tn game release --project \. --json/);
     assert.match(claudeInstructions, /Use `AGENTS\.md`/);
+    assert.match(codexSkill, /Use `AGENTS\.md` as the authoritative local instructions/);
+    assert.match(codexSkill, /pnpm tn -- iterate --project \. --json/);
 
     const packageJson = JSON.parse(await readFile(join(payload.path, "package.json"), "utf8")) as {
       dependencies: Record<string, string>;
       devDependencies: Record<string, string>;
       scripts: Record<string, string>;
     };
+    assert.equal(packageJson.scripts.tn, "node bin/tn");
     assert.equal(packageJson.scripts.validate, "tn validate");
     assert.equal(packageJson.scripts.build, "tn build");
     assert.equal(packageJson.scripts["dev:web"], "tn dev --target web");
@@ -97,6 +106,11 @@ test("should create starter template files", async () => {
     assert.equal(packageJson.dependencies["@threenative/r3f"], undefined);
     assert.equal(packageJson.dependencies["@threenative/ui"], undefined);
     assert.equal(packageJson.devDependencies["@threenative/cli"], "file:.threenative/cli");
+    const tnHelp = spawnSync("pnpm", ["--silent", "--dir", payload.path, "tn", "--", "help", "--json"], {
+      encoding: "utf8",
+    });
+    assert.equal(tnHelp.status, 0, `${tnHelp.stdout}\n${tnHelp.stderr}`);
+    assert.match(tnHelp.stdout, /TN_HELP/);
     await access(join(payload.path, "playtests", "smoke-movement.playtest.json"));
     await access(join(payload.path, "playtests", "camera-follow.playtest.json"));
     await access(join(payload.path, "playtests", "hud-resource.playtest.json"));
@@ -369,12 +383,15 @@ test("should create racing kit rally starter with reusable race scene structure"
     assert.match(planningInstructions, /tn asset source search --game-category <category> --format glb --direct-only --json/);
     assert.match(planningInstructions, /High-Value Surface Inventory/);
     assert.match(planningInstructions, /tn model-test assets\/<model>\.glb --json/);
+    assert.equal(packageJson.scripts.tn, "node bin/tn");
     assert.match(packageJson.scripts["game:plan"] ?? "", /tn game plan --goal/);
     assert.equal(packageJson.scripts["game:improve"], "tn game improve --apply-plan artifacts/game-production/plan.json --project . --json");
     assert.equal(packageJson.scripts["game:qa"], "tn game qa --project . --run-proof --json");
     assert.equal(packageJson.scripts["game:release"], "tn game release --project . --json");
     await access(join(payload.path, "assets", "roadCornerLarge.glb"));
     await access(join(payload.path, "assets", "raceCarRed.glb"));
+    await access(join(payload.path, "bin", "tn"));
+    await access(join(payload.path, ".codex", "skills", "threenative-workflow", "SKILL.md"));
     await access(join(payload.path, "playtests", "smoke-movement.playtest.json"));
     await access(join(payload.path, "playtests", "camera-follow.playtest.json"));
     await access(join(payload.path, "playtests", "hud-resource.playtest.json"));

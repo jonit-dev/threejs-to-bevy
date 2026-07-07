@@ -21,8 +21,8 @@ takes to reach the same playable game prompt in two conditions:
    `cachedInputTokens`, `uncachedInputTokens`, `outputTokens`,
    `toolOutputBytes`, and `failedCommandCount`. Keep `tokenCount` as the raw
    headline total. Record `toolStepCount` as the number of completed command
-   tool executions in the agent session; scaffold-first ThreeNative reruns
-   should stay at or below 12 steps.
+   tool executions in the agent session; off-recipe ThreeNative reruns should
+   stay at or below 30 steps.
 
 ## Playable Definition
 
@@ -44,6 +44,18 @@ The operator records two 0-3 scores in `session.json`.
 
 The scorer does not compute these fields; it only merges them with objective
 screenshot and movement metrics.
+
+## Scorer Start Contract
+
+Every candidate must be playable after either of these generic scorer start
+signals:
+
+- The preview URL includes `?tn-benchmark-autostart=1`.
+- The scorer clicks the page once before probing keyboard input.
+
+Candidates may also start immediately. The scorer applies both start signals
+before WASD/arrow-key probes so runs are not lost to menu/start-button handshake
+differences between conditions.
 
 ## Candidate Layout
 

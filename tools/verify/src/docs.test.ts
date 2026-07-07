@@ -138,6 +138,44 @@ test("should require stable contributor gates", async () => {
   );
 });
 
+test("should reject stale agent workflow entrypoints", async () => {
+  const root = await makeDocsRepo();
+  await mkdir(join(root, ".codex/skills/threenative-runner-playtest"), { recursive: true });
+  await writeFile(
+    join(root, ".codex/skills/threenative-runner-playtest/SKILL.md"),
+    [
+      "# Old Skill",
+      "node packages/cli/dist/index.js build --project examples/foo --json",
+      "pnpm tn -- verify --project examples/foo --json",
+    ].join("\n"),
+  );
+
+  const result = await checkDocs(root);
+
+  assert.equal(result.ok, false);
+  assert.equal(result.diagnostics.some((diagnostic) => diagnostic.code === "TN_DOCS_AGENT_WORKFLOW_STALE_CLI_ENTRYPOINT"), true);
+  assert.equal(result.diagnostics.some((diagnostic) => diagnostic.code === "TN_DOCS_AGENT_WORKFLOW_STALE_PNPM_ENTRYPOINT"), true);
+});
+
+test("should reject standalone validate build playtest loops in agent surfaces", async () => {
+  const root = await makeDocsRepo();
+  await mkdir(join(root, "templates/structured-source-starter"), { recursive: true });
+  await writeFile(
+    join(root, "templates/structured-source-starter/README.md"),
+    [
+      "# Starter",
+      "tn authoring validate --project . --json",
+      "tn build --project . --json",
+      "tn playtest --project . --scenario playtests/smoke.playtest.json --json",
+    ].join("\n"),
+  );
+
+  const result = await checkDocs(root);
+
+  assert.equal(result.ok, false);
+  assert.equal(result.diagnostics.some((diagnostic) => diagnostic.code === "TN_DOCS_AGENT_WORKFLOW_STALE_VERIFY_LOOP"), true);
+});
+
 async function makeDocsRepo() {
   const root = await mkdtemp(join(tmpdir(), "tn-docs-gate-"));
   await mkdir(join(root, "docs/PRDs"), { recursive: true });

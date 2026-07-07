@@ -69,6 +69,14 @@ export interface IGamePlan {
   };
   gameplayBlocks: IGameplayBlockDescriptor[];
   kitCandidates: IGameKitCandidate[];
+  mechanicDecomposition: Array<{
+    command?: string;
+    cookbookId?: string;
+    mechanic: string;
+    owner: string;
+    proof: string;
+    summary: string;
+  }>;
   message: string;
   mutate: false;
   phases: Array<{ id: string; order: number; summary: string }>;

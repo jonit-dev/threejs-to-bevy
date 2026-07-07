@@ -234,14 +234,15 @@ async function gamePlanCommand(argv: readonly string[]): Promise<ICommandResult>
     },
     gameplayBlocks,
     kitCandidates,
+    mechanicDecomposition: buildMechanicDecomposition(goal, gameplayBlocks, inventory),
     message: "Deterministic game-production plan generated without mutating source.",
     mutate: false,
     phases: GAME_WORKFLOW_PHASE_IDS.map((id, index) => ({ id, order: index + 1, summary: phaseSummary(id) })),
     polishPlan: buildPolishPlan(),
     proofCommands: [
-      "tn authoring validate --project . --json",
-      "tn build --project . --json",
-      "tn playtest --project . --entity <player-id> --press KeyboardEvent.code --frames 30 --expect-moved --json",
+      "tn iterate --project . --json",
+      "tn playtest report --latest --scenario <name> --json",
+      "tn playtest --project . --suggest-scenario smoke-movement --json",
       "tn screenshot --project . --url <preview-url> --out artifacts/game-production/screenshot.png --wait-ready --json",
       "tn game score --project . --json",
       "tn game qa --project . --run-proof --json",
@@ -867,6 +868,7 @@ function compactGamePlanForStdout(plan: IGamePlan, planArtifactPath: string): Re
     },
     goal: plan.goal,
     kitCandidates: plan.kitCandidates.slice(0, 3).map((kit) => ({ kitId: kit.kitId, recipeId: kit.recipeId, toolingOnly: kit.toolingOnly })),
+    mechanicDecomposition: plan.mechanicDecomposition,
     message: "Full game plan written to artifacts/game-production/plan.json.",
     milestones: plan.phases.map((phase) => ({ id: phase.id, order: phase.order, summary: phase.summary })),
     mutate: plan.mutate,
@@ -876,6 +878,92 @@ function compactGamePlanForStdout(plan: IGamePlan, planArtifactPath: string): Re
     schema: "threenative.game-plan-summary",
     version: "0.1.0",
   };
+}
+
+function buildMechanicDecomposition(
+  goal: string,
+  gameplayBlocks: readonly IGameplayBlockDescriptor[],
+  inventory: Awaited<ReturnType<typeof createGameAgentInventory>>,
+): IGamePlan["mechanicDecomposition"] {
+  const sourceOwner = inventory.primaryScene === undefined ? "content/scenes/arena.scene.json" : inventory.primaryScene.file;
+  const scriptOwner = inventory.scripts[0]?.module ?? "src/scripts/player.ts";
+  const blockByKind = new Map<string, IGameplayBlockDescriptor>();
+  for (const block of gameplayBlocks) {
+    if (!blockByKind.has(block.kind)) {
+      blockByKind.set(block.kind, block);
+    }
+  }
+  const movement = blockByKind.get("controller") ?? gameplayBlocks.find((block) => block.id.startsWith("controller."));
+  const objective = blockByKind.get("objective") ?? gameplayBlocks.find((block) => block.id.startsWith("objective."));
+  const camera = blockByKind.get("camera");
+  const spawn = blockByKind.get("spawn");
+  const rows: IGamePlan["mechanicDecomposition"] = [
+    mechanicRow({
+      block: movement,
+      command: movement?.recipeIds[0] === undefined ? "tn add follow-camera --project . --json" : `tn recipe apply ${movement.recipeIds[0]} --scene <scene-id> --entity <player-id> --camera <camera-id> --project . --json`,
+      fallbackCookbookId: "player-move-wasd",
+      mechanic: "movement",
+      owner: scriptOwner,
+      summary: "Author continuous input response through portable script state and declared Transform/resource writes.",
+    }),
+    mechanicRow({
+      block: objective,
+      command: objective?.recipeIds[0] === undefined ? "tn add score --project . --json" : `tn recipe apply ${objective.recipeIds[0]} --scene <scene-id> --entity <target-id> --project . --json`,
+      fallbackCookbookId: cookbookForGoal(goal),
+      mechanic: "objective-progression",
+      owner: sourceOwner,
+      summary: "Track progress, scoring, win/fail state, and retry through source-owned resources and retained UI.",
+    }),
+    mechanicRow({
+      block: camera,
+      command: "tn add follow-camera --project . --json",
+      fallbackCookbookId: "follow-camera",
+      mechanic: "camera-feedback",
+      owner: sourceOwner,
+      summary: "Keep the player, objective, and feedback moments framed without runtime adapter handles.",
+    }),
+    mechanicRow({
+      block: spawn,
+      command: spawn === undefined ? "tn add spawner --project . --json" : "tn add spawner --project . --json",
+      fallbackCookbookId: "kinematic-hazard",
+      mechanic: "hazards-or-rewards",
+      owner: sourceOwner,
+      summary: "Place hazards, rewards, checkpoints, or targets from data so playtests can discover stable IDs.",
+    }),
+  ];
+  return rows;
+}
+
+function mechanicRow(options: {
+  block?: IGameplayBlockDescriptor;
+  command: string;
+  fallbackCookbookId: string;
+  mechanic: string;
+  owner: string;
+  summary: string;
+}): IGamePlan["mechanicDecomposition"][number] {
+  return {
+    command: options.command,
+    cookbookId: options.block?.id ?? options.fallbackCookbookId,
+    mechanic: options.mechanic,
+    owner: options.owner,
+    proof: options.block?.proof[0] ?? "tn iterate --project . --json",
+    summary: options.summary,
+  };
+}
+
+function cookbookForGoal(goal: string): string {
+  const text = goal.toLowerCase();
+  if (matchesAny(text, ["race", "checkpoint", "lap", "vehicle", "kart", "car"])) {
+    return "checkpoint-race-progress";
+  }
+  if (matchesAny(text, ["physics", "knock", "throw", "projectile", "target"])) {
+    return "physics-knockdown";
+  }
+  if (matchesAny(text, ["collect", "coin", "pickup", "gather"])) {
+    return "collectible-respawn";
+  }
+  return "trigger-zone-win";
 }
 
 function buildGamePlanSteps(defaults: { cameraId: string; playerId: string; sceneId: string }): IGamePlanStep[] {
@@ -1459,10 +1547,11 @@ function gamePlanEvidenceDiagnostics(plan: Record<string, unknown>): Array<{
   }
 
   const proofCommands = hasStringArray(plan.proofCommands) ? plan.proofCommands : [];
+  const hasIterateProof = proofCommands.some((command) => command.includes("tn iterate"));
   const requiredProofCommands = [
-    (command: string) => command.includes("tn authoring validate"),
-    (command: string) => command.includes("tn build"),
-    (command: string) => command.includes("tn playtest") && command.includes("--expect-moved"),
+    (command: string) => hasIterateProof || command.includes("tn authoring validate"),
+    (command: string) => hasIterateProof || command.includes("tn build"),
+    (command: string) => hasIterateProof || (command.includes("tn playtest") && command.includes("--expect-moved")),
     (command: string) => command.includes("tn screenshot"),
     (command: string) => command.includes("tn game score"),
     (command: string) => command.includes("tn game qa") && command.includes("--run-proof"),

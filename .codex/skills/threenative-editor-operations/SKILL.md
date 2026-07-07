@@ -24,7 +24,9 @@ pnpm --filter @threenative/editor build
 3. Apply operations through `applyEditorOperationApi` or the editor server
    `POST /api/operation` route. Treat an operation as accepted only when
    `ok: true`.
-4. Rebuild with `buildProject(projectPath)` or `tn build --project <path>`.
+4. Verify with `tn iterate --project <path> --json`. Use `buildProject(projectPath)`
+   or `tn build --project <path> --json` only when the iterate diagnostic asks
+   for bundle-level proof.
 5. Assert both durable source JSON and emitted bundle JSON changed as expected.
 
 ## Focused Smoke

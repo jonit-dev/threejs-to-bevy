@@ -61,6 +61,14 @@ export interface IBenchmarkRunReport {
   version: 2;
 }
 
+export interface IBenchmarkBehaviorCounters {
+  artifactForensicsCommandCount: number;
+  discoveryCommandCount: number;
+  engineSourceSearchCommandCount: number;
+  iterateCommandCount: number;
+  standaloneVerifyCommandCount: number;
+}
+
 export interface IBenchmarkReport {
   diagnostics: IBenchmarkDiagnostic[];
   generatedAt: string;
@@ -77,6 +85,13 @@ export interface IBenchmarkReport {
     iterationMedian: {
       threenative: number | null;
       vanilla: number | null;
+    };
+    behaviorMedian: {
+      artifactForensicsCommandCount: number | null;
+      discoveryCommandCount: number | null;
+      engineSourceSearchCommandCount: number | null;
+      iterateCommandCount: number | null;
+      standaloneVerifyCommandCount: number | null;
     };
     promptId: string;
     rawTokenRatio: number | null;
@@ -109,6 +124,7 @@ export interface IBenchmarkReport {
     vanillaMedianToolOutputBytes: number | null;
     vanillaMedianUncachedInputTokens: number | null;
     withinHalfX: boolean | null;
+    withinInstructionAdoptionBudget: boolean | null;
     withinStepBudget: boolean | null;
   }>;
   runCount: number;

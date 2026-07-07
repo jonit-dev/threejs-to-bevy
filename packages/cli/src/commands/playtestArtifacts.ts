@@ -51,6 +51,7 @@ export interface IPlaytestSummary {
   movementDelta?: IPlaytestReport["movementDelta"];
   movementThreshold: number;
   nativeRecording?: IPlaytestReport["nativeRecording"];
+  next: string;
   pass: boolean;
   performance?: IPlaytestReport["performance"];
   proofMetadata?: IProofArtifactMetadata;
@@ -132,6 +133,7 @@ export async function writePlaytestArtifactBundle(options: {
     ...(options.report.movementDelta === undefined ? {} : { movementDelta: options.report.movementDelta }),
     movementThreshold: options.report.movementThreshold,
     ...(options.report.nativeRecording === undefined ? {} : { nativeRecording: options.report.nativeRecording }),
+    next: nextCommand(options.scenario, summaryReportCommand(options.scenario.name)),
     pass: options.report.pass,
     ...(options.report.performance === undefined ? {} : { performance: options.report.performance }),
     ...(options.proofMetadata === undefined ? {} : { proofMetadata: options.proofMetadata }),
@@ -151,6 +153,14 @@ export async function writePlaytestArtifactBundle(options: {
     target: options.scenario.target,
   });
   return { artifacts, summary };
+}
+
+function nextCommand(scenario: IPlaytestScenario, reportCommand: string): string {
+  return scenario.name === "" ? "tn iterate --project . --json" : reportCommand;
+}
+
+function summaryReportCommand(scenarioName: string): string {
+  return `tn playtest report --latest --scenario ${scenarioName} --json`;
 }
 
 export async function readPlaytestSummary(path: string): Promise<IPlaytestSummary> {

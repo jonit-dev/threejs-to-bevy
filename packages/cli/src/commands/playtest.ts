@@ -40,6 +40,8 @@ declare global {
 type Vec3 = [number, number, number];
 type MovementAxis = "x" | "y" | "z";
 
+const ITERATE_NOTICE = "Standalone playtest is subsumed by tn iterate --project . --json for the normal agent verify loop.";
+
 export interface IAxisExpectation {
   axis: MovementAxis;
   sign?: 1 | -1;
@@ -383,11 +385,15 @@ export async function playtestCommand(
     };
     const bundle = await writePlaytestArtifactBundle({ durationMs: Date.now() - started, projectPath, proofMetadata, report: reportWithMetadata, runDirectory, scenario });
     const stdoutPayload = includeEffectsStdout ? withVerboseEffects(bundle.summary, reportWithMetadata) : bundle.summary;
+    const next = reportWithMetadata.pass
+      ? "tn iterate --project . --json"
+      : `tn playtest report --latest --scenario ${scenario.name} --json`;
+    const payloadWithNext = { ...stdoutPayload, next, notice: ITERATE_NOTICE };
     return {
       exitCode: reportWithMetadata.pass ? 0 : 1,
       stdout: json
-        ? `${JSON.stringify(stdoutPayload, null, 2)}\n`
-        : `${reportWithMetadata.pass ? "Playtest passed" : "Playtest failed"}: ${report.entity} moved ${report.distance.toFixed(4)} units. Artifacts: ${bundle.artifacts.directory}\n`,
+        ? `${JSON.stringify(payloadWithNext, null, 2)}\n`
+        : `${reportWithMetadata.pass ? "Playtest passed" : "Playtest failed"}: ${report.entity} moved ${report.distance.toFixed(4)} units. Artifacts: ${bundle.artifacts.directory}\nNext: ${next}\nNotice: ${ITERATE_NOTICE}\n`,
     };
   } catch (error) {
     if (error instanceof PlaytestScenarioError) {

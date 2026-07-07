@@ -3,6 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "tn": "node bin/tn",
     "build": "tn build",
     "dev:web": "tn dev --target web",
     "iterate": "tn iterate --project . --json",

@@ -1,4 +1,4 @@
-import { mkdtemp, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
@@ -71,7 +71,7 @@ test("should count dialect-confusion failures", async () => {
   assert.deepEqual(summary?.dialectConfusionFailures, { threenative: 1, vanilla: 0 });
 });
 
-test("should fail present ThreeNative step budget above 12 steps", async () => {
+test("should pass present ThreeNative step budget at or below 30 steps", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-agent-benchmark-aggregate-"));
   const vanilla = join(root, "vanilla.json");
   const threenative = join(root, "threenative.json");
@@ -80,10 +80,123 @@ test("should fail present ThreeNative step budget above 12 steps", async () => {
   const report = await aggregateRunReports([vanilla, threenative]);
   const summary = report.promptSummaries[0];
 
+  assert.equal(report.verdict.status, "pass");
+  assert.equal(summary?.withinHalfX, true);
+  assert.equal(summary?.withinStepBudget, true);
+  assert.equal(summary?.toolStepMedian.threenative, 13);
+});
+
+test("should fail present ThreeNative step budget above 30 steps", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-agent-benchmark-aggregate-"));
+  const vanilla = join(root, "vanilla.json");
+  const threenative = join(root, "threenative.json");
+  await writeFile(vanilla, JSON.stringify({ ...run("vanilla", 1000), session: { ...run("vanilla", 1000).session, toolStepCount: 4 } }, null, 2));
+  await writeFile(threenative, JSON.stringify({ ...run("threenative", 400), session: { ...run("threenative", 400).session, toolStepCount: 31 } }, null, 2));
+  const report = await aggregateRunReports([vanilla, threenative]);
+  const summary = report.promptSummaries[0];
+
   assert.equal(report.verdict.status, "fail");
   assert.equal(summary?.withinHalfX, true);
   assert.equal(summary?.withinStepBudget, false);
-  assert.equal(summary?.toolStepMedian.threenative, 13);
+  assert.equal(summary?.toolStepMedian.threenative, 31);
+});
+
+test("should count instruction-adoption behavior from codex event sidecars", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-agent-benchmark-aggregate-"));
+  const vanilla = join(root, "vanilla.json");
+  const threenative = join(root, "threenative.json");
+  await writeFile(vanilla, JSON.stringify(run("vanilla", 1000), null, 2));
+  await writeFile(threenative, JSON.stringify(run("threenative", 400), null, 2));
+  await writeFile(
+    join(root, "codex-events.jsonl"),
+    [
+      commandEvent("tn game plan --goal test --project . --json"),
+      commandEvent("tn iterate --project . --json"),
+      commandEvent("tn authoring validate --project . --json"),
+      commandEvent("jq '.diagnostics' artifacts/playtest/smoke/latest/runtime-trace.json"),
+      commandEvent("rg \"move\" packages/cli/src examples"),
+    ].join("\n"),
+  );
+
+  const report = await aggregateRunReports([vanilla, threenative]);
+  const summary = report.promptSummaries[0];
+
+  assert.equal(report.verdict.status, "fail");
+  assert.equal(summary?.behaviorMedian.discoveryCommandCount, 1);
+  assert.equal(summary?.behaviorMedian.iterateCommandCount, 1);
+  assert.equal(summary?.behaviorMedian.standaloneVerifyCommandCount, 1);
+  assert.equal(summary?.behaviorMedian.artifactForensicsCommandCount, 1);
+  assert.equal(summary?.behaviorMedian.engineSourceSearchCommandCount, 1);
+  assert.equal(summary?.withinInstructionAdoptionBudget, false);
+});
+
+test("should pass instruction-adoption behavior when events use iterate and discovery only", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-agent-benchmark-aggregate-"));
+  const vanilla = join(root, "vanilla.json");
+  const threenative = join(root, "threenative.json");
+  await writeFile(vanilla, JSON.stringify(run("vanilla", 1000), null, 2));
+  await writeFile(threenative, JSON.stringify(run("threenative", 400), null, 2));
+  await writeFile(
+    join(root, "codex-events.jsonl"),
+    [
+      commandEvent("tn cookbook list --json"),
+      commandEvent("tn iterate --project . --json"),
+    ].join("\n"),
+  );
+
+  const report = await aggregateRunReports([vanilla, threenative]);
+  const summary = report.promptSummaries[0];
+
+  assert.equal(report.verdict.status, "pass");
+  assert.equal(summary?.withinInstructionAdoptionBudget, true);
+});
+
+test("should count distributable pnpm tn script invocations", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-agent-benchmark-aggregate-"));
+  const vanilla = join(root, "vanilla.json");
+  const threenative = join(root, "threenative.json");
+  await writeFile(vanilla, JSON.stringify(run("vanilla", 1000), null, 2));
+  await writeFile(threenative, JSON.stringify(run("threenative", 400), null, 2));
+  await writeFile(
+    join(root, "codex-events.jsonl"),
+    [
+      commandEvent("pnpm tn -- project map --project . --json"),
+      commandEvent("pnpm tn -- iterate --project . --json"),
+      commandEvent("pnpm tn -- build --project . --json"),
+    ].join("\n"),
+  );
+
+  const report = await aggregateRunReports([vanilla, threenative]);
+  const summary = report.promptSummaries[0];
+
+  assert.equal(summary?.behaviorMedian.discoveryCommandCount, 1);
+  assert.equal(summary?.behaviorMedian.iterateCommandCount, 1);
+  assert.equal(summary?.behaviorMedian.standaloneVerifyCommandCount, 1);
+  assert.equal(summary?.withinInstructionAdoptionBudget, false);
+});
+
+test("should read behavior sidecars from scorer candidate layout", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-agent-benchmark-layout-"));
+  const runDir = join(root, "checkpoint-race-threenative-r1");
+  const candidateDir = join(root, "candidates", "checkpoint-race-threenative-r1");
+  await mkdir(runDir, { recursive: true });
+  await mkdir(candidateDir, { recursive: true });
+  const threenative = join(runDir, "run-report.json");
+  await writeFile(threenative, JSON.stringify(run("threenative", 400), null, 2));
+  await writeFile(
+    join(candidateDir, "codex-events.jsonl"),
+    [
+      commandEvent("tn cookbook list --json"),
+      commandEvent("tn iterate --project . --json"),
+    ].join("\n"),
+  );
+
+  const report = await aggregateRunReports([threenative]);
+  const summary = report.promptSummaries[0];
+
+  assert.equal(summary?.behaviorMedian.discoveryCommandCount, 1);
+  assert.equal(summary?.behaviorMedian.iterateCommandCount, 1);
+  assert.equal(summary?.withinInstructionAdoptionBudget, true);
 });
 
 function run(condition: "threenative" | "vanilla", tokenCount: number) {
@@ -116,4 +229,14 @@ function run(condition: "threenative" | "vanilla", tokenCount: number) {
     },
     version: 2,
   };
+}
+
+function commandEvent(command: string): string {
+  return JSON.stringify({
+    item: {
+      command,
+      type: "command_execution",
+    },
+    type: "item.completed",
+  });
 }

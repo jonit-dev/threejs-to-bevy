@@ -46,10 +46,12 @@ test("playtest command should pass when target transform changes after input", a
       }),
     },
   );
-  const payload = JSON.parse(result.stdout) as { artifacts: { summary: string }; code: string; distance: number; entity: string; input: string; performance: { sampleCount: number; source: string }; reproduceCommand: string; scenario: string };
+  const payload = JSON.parse(result.stdout) as { artifacts: { summary: string }; code: string; distance: number; entity: string; input: string; next: string; notice: string; performance: { sampleCount: number; source: string }; reproduceCommand: string; scenario: string };
 
   assert.equal(result.exitCode, 0);
   assert.equal(payload.code, "TN_PLAYTEST_OK");
+  assert.equal(payload.next, "tn iterate --project . --json");
+  assert.match(payload.notice, /Standalone playtest is subsumed/);
   assert.equal(payload.entity, "player.car");
   assert.equal(payload.input, "KeyW");
   assert.equal(payload.distance, 1);

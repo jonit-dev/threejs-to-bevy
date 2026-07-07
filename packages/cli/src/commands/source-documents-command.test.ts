@@ -607,6 +607,45 @@ test("project command initializes source metadata", async () => {
   }
 });
 
+test("project command prints compact authoring project map", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-cli-project-map-"));
+  try {
+    await writeProjectFile(root, "threenative.config.json", `${JSON.stringify({ entry: "content/scenes/arena.scene.json", schema: "threenative.project" }, null, 2)}\n`);
+    await writeProjectFile(root, "src/scripts/player.ts", "export function movePlayer() {}\n");
+    await writeProjectFile(root, "content/scenes/arena.scene.json", `${JSON.stringify({
+      entities: [{ id: "player" }, { components: { camera: { mode: "perspective" } }, id: "camera.main" }],
+      id: "arena",
+      resources: [{ id: "GameState", value: { score: 0 } }],
+      schema: "threenative.scene",
+      systems: ["move-player"],
+    }, null, 2)}\n`);
+    await writeProjectFile(root, "content/systems/arena.systems.json", `${JSON.stringify({
+      id: "arena-systems",
+      schema: "threenative.systems",
+      systems: [{ id: "move-player", script: { export: "movePlayer", module: "src/scripts/player.ts" }, writes: ["Transform"] }],
+    }, null, 2)}\n`);
+
+    const result = await projectCommand(["map", "--project", root, "--json"]);
+    const payload = JSON.parse(result.stdout) as {
+      code: string;
+      files: Array<{ documentType: string; path: string; responsibility: string }>;
+      next: string;
+      primaryScene: { cameraIds: string[]; entityIds: string[]; id: string; resourceIds: string[] };
+      scripts: Array<{ exportName: string; module: string }>;
+    };
+
+    assert.equal(result.exitCode, 0);
+    assert.equal(payload.code, "TN_PROJECT_MAP_OK");
+    assert.equal(payload.primaryScene.id, "arena");
+    assert.equal(payload.primaryScene.entityIds.includes("player"), true);
+    assert.equal(payload.files.some((file) => file.path === "content/scenes/arena.scene.json" && file.documentType === "scene"), true);
+    assert.equal(payload.scripts.some((script) => script.module === "src/scripts/player.ts" && script.exportName === "movePlayer"), true);
+    assert.match(payload.next, /tn scene inspect/);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
 test("system command attaches script ref without generating script source", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-cli-system-doc-"));
   try {

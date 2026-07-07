@@ -104,6 +104,7 @@ export async function checkDocs(root: string): Promise<DocsCheckResult> {
   diagnostics.push(...(await checkScriptingHelperDocs(root, status, packageJson)));
   diagnostics.push(...(await checkDocsLayout(root, readme, status)));
   diagnostics.push(...(await checkStatusCapabilityIndex(root, status)));
+  diagnostics.push(...(await checkAgentWorkflowSurfaces(root)));
 
   // @ts-expect-error legacy mjs gate consumed during typed-tools migration
   const namesModule = (await import("../../../scripts/check-current-names.mjs")) as {
@@ -123,6 +124,66 @@ export async function checkDocs(root: string): Promise<DocsCheckResult> {
   }
 
   return { diagnostics, ok: diagnostics.length === 0 };
+}
+
+const AGENT_WORKFLOW_SURFACES = [
+  ".codex/skills/threenative-editor-operations/SKILL.md",
+  ".codex/skills/threenative-runner-playtest/SKILL.md",
+  ".codex/skills/threenative-visual-verification/SKILL.md",
+  "templates/structured-source-starter/AGENTS.md",
+  "templates/structured-source-starter/CLAUDE.md",
+  "templates/structured-source-starter/README.md",
+  "templates/racing-kit-rally-starter/AGENTS.md",
+  "templates/racing-kit-rally-starter/CLAUDE.md",
+  "templates/racing-kit-rally-starter/README.md",
+];
+
+async function checkAgentWorkflowSurfaces(root: string): Promise<VerificationDiagnostic[]> {
+  const diagnostics: VerificationDiagnostic[] = [];
+  for (const path of AGENT_WORKFLOW_SURFACES) {
+    const content = await readOptional(resolve(root, path));
+    if (!content) {
+      continue;
+    }
+    if (content.includes("node packages/cli/dist/index.js")) {
+      diagnostics.push({
+        code: "TN_DOCS_AGENT_WORKFLOW_STALE_CLI_ENTRYPOINT",
+        message: `${path} must use the documented 'tn ... --json' entry point instead of node packages/cli/dist/index.js.`,
+        path,
+        severity: "error",
+      });
+    }
+    if (content.includes("pnpm tn --")) {
+      diagnostics.push({
+        code: "TN_DOCS_AGENT_WORKFLOW_STALE_PNPM_ENTRYPOINT",
+        message: `${path} must not teach 'pnpm tn -- ...'; generated projects expose 'pnpm tn -- ...' only as a local script shim and instructions should use 'tn ... --json'.`,
+        path,
+        severity: "error",
+      });
+    }
+    if (mentionsStandaloneVerifyLoop(content)) {
+      diagnostics.push({
+        code: "TN_DOCS_AGENT_WORKFLOW_STALE_VERIFY_LOOP",
+        message: `${path} must steer gameplay/source verification through 'tn iterate --project . --json' before standalone validate/build/playtest commands.`,
+        path,
+        severity: "error",
+      });
+    }
+  }
+  return diagnostics;
+}
+
+function mentionsStandaloneVerifyLoop(content: string): boolean {
+  const lines = content
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter((line) => !line.startsWith("#") && !line.startsWith("-") && !line.startsWith("Use standalone"));
+  return lines.some((line, index) => {
+    const window = lines.slice(index, index + 8).join("\n");
+    return /(?:^|\n)tn authoring validate\b/.test(window)
+      && /(?:^|\n)tn build\b/.test(window)
+      && /(?:^|\n)tn playtest\b/.test(window);
+  });
 }
 
 async function checkStatusCapabilityIndex(root: string, status: string): Promise<VerificationDiagnostic[]> {

@@ -16,6 +16,7 @@ import {
   attachSystemScript,
   bindUiDocument,
   createAudioDocument,
+  createGameAgentInventory,
   createEnvironmentDocument,
   createMaterial,
   createMeshCustom,
@@ -306,7 +307,82 @@ export async function projectCommand(argv: readonly string[], options: ISourceCo
     );
   }
 
-  return renderUsage(json, "TN_PROJECT_COMMAND_UNKNOWN", projectInitSourceUsage());
+  if (subcommand === "map") {
+    const inventory = await createGameAgentInventory({ projectPath });
+    const files = inventory.sourceFamilies.flatMap((family) =>
+      family.files.map((file) => ({
+        documentType: family.kind,
+        path: file,
+        responsibility: responsibilityForDocumentKind(family.kind),
+      })),
+    );
+    const payload = {
+      code: "TN_PROJECT_MAP_OK",
+      files,
+      next: "tn scene inspect <scene-id> --node <entity-or-resource-or-ui-id> --project . --json",
+      primaryScene: inventory.primaryScene === undefined
+        ? undefined
+        : {
+            cameraIds: inventory.primaryScene.cameraIds,
+            entityIds: inventory.primaryScene.entityIds,
+            file: inventory.primaryScene.file,
+            id: inventory.primaryScene.id,
+            resourceIds: inventory.primaryScene.resourceIds,
+            systemIds: inventory.primaryScene.systemIds,
+          },
+      projectKind: inventory.projectKind,
+      recommendedOperations: inventory.recommendedOperations,
+      schema: "threenative.project-map",
+      scripts: inventory.scripts.map((script) => ({
+        exportName: script.exportName,
+        module: script.module,
+        responsibility: "Portable gameplay behavior referenced from structured source.",
+      })),
+      version: "0.1.0",
+    };
+    return {
+      exitCode: 0,
+      stdout: json ? `${JSON.stringify(payload, null, 2)}\n` : renderProjectMap(payload),
+    };
+  }
+
+  return renderUsage(json, "TN_PROJECT_COMMAND_UNKNOWN", `${projectInitSourceUsage()}\n       tn project map [--project <path>] [--json]`);
+}
+
+function responsibilityForDocumentKind(kind: string): string {
+  if (kind === "scene") {
+    return "Owns entity hierarchy, transforms, components, scene resources, cameras, lights, and prefab instances.";
+  }
+  if (kind === "systems") {
+    return "Owns portable script module/export references and declared component/resource access.";
+  }
+  if (kind === "input") {
+    return "Owns canonical keyboard/action/axis bindings consumed by scripts and playtests.";
+  }
+  if (kind === "ui") {
+    return "Owns retained HUD/UI nodes, bindings, layout, and visible game state.";
+  }
+  if (kind === "asset") {
+    return "Owns model, texture, audio, and source/provenance asset declarations.";
+  }
+  if (kind === "material") {
+    return "Owns authored material colors, surface parameters, texture slots, and emissive cues.";
+  }
+  return "Owns structured authoring source for this document family.";
+}
+
+function renderProjectMap(payload: {
+  files: Array<{ documentType: string; path: string; responsibility: string }>;
+  next: string;
+  primaryScene?: { id: string };
+  scripts: Array<{ exportName: string; module: string; responsibility: string }>;
+}): string {
+  return [
+    `Project map${payload.primaryScene === undefined ? "" : ` for scene ${payload.primaryScene.id}`}:`,
+    ...payload.files.map((file) => `  ${file.path} (${file.documentType}): ${file.responsibility}`),
+    ...payload.scripts.map((script) => `  ${script.module}#${script.exportName}: ${script.responsibility}`),
+    `Next: ${payload.next}`,
+  ].join("\n") + "\n";
 }
 
 export async function materialCommand(argv: readonly string[], options: ISourceCommandOptions = {}): Promise<ICommandResult> {

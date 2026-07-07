@@ -3,6 +3,9 @@ import { resolve } from "node:path";
 
 import { type ICommandResult } from "../diagnostics.js";
 
+const ITERATE_NOTICE = "Standalone authoring validation is subsumed by tn iterate --project . --json for the normal agent verify loop.";
+const ITERATE_NEXT = "tn iterate --project . --json";
+
 interface IAuthoringCommandOptions {
   cwd?: string;
 }
@@ -33,6 +36,8 @@ export async function authoringCommand(argv: readonly string[], options: IAuthor
       code: result.ok ? "TN_AUTHORING_VALIDATE_OK" : "TN_AUTHORING_VALIDATE_FAILED",
       message: result.ok ? "Authoring source validation passed." : "Authoring source validation failed.",
       ...result,
+      next: ITERATE_NEXT,
+      notice: ITERATE_NOTICE,
     };
     return renderPayload(payload, json, payload.message, result.ok ? 0 : 1);
   }
@@ -43,6 +48,9 @@ export async function authoringCommand(argv: readonly string[], options: IAuthor
 function renderPayload(payload: unknown, json: boolean, message: string, exitCode = 0): ICommandResult {
   if (json) {
     return { exitCode, stdout: `${JSON.stringify(payload, null, 2)}\n` };
+  }
+  if (isRecord(payload) && typeof payload.next === "string" && typeof payload.notice === "string") {
+    return { exitCode, stdout: `${message}\nNext: ${payload.next}\nNotice: ${payload.notice}\n` };
   }
   return { exitCode, stdout: `${message}\n` };
 }
@@ -60,4 +68,8 @@ function resolveProjectPath(argv: readonly string[], cwd = process.env.INIT_CWD 
   const index = argv.indexOf("--project");
   const project = index === -1 ? "." : argv[index + 1] ?? ".";
   return resolve(cwd, project);
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }

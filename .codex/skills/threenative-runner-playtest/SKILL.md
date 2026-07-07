@@ -9,13 +9,12 @@ Use this skill in the `threejs-to-bevy` repo for primitive runner examples that
 depend on scripted ECS systems moving render entities through `Transform`
 patches.
 
-## Build And Contract Checks
+## Agent Verify Loop
 
 Start from the repo root:
 
 ```bash
-node packages/cli/dist/index.js build --project examples/crystal-runner --json
-node packages/cli/dist/index.js validate --project examples/crystal-runner --json
+tn iterate --project examples/crystal-runner --json
 ```
 
 If package code changed, build the affected packages first:
@@ -26,7 +25,9 @@ pnpm --filter @threenative/runtime-web-three build
 pnpm --filter @threenative/cli build
 ```
 
-Inspect the emitted contract:
+Use standalone `tn build`, `tn authoring validate`, or `tn playtest` only when
+the compact iterate diagnostic asks for deeper proof. Inspect the emitted
+contract only after iterate has produced or refreshed the bundle:
 
 ```bash
 jq '{requiredCapabilities, entry, files}' examples/crystal-runner/dist/crystal-runner.bundle/manifest.json
@@ -47,10 +48,11 @@ Confirm:
 
 ## Web Runtime Playtest
 
-Run the automated verifier:
+Run the automated playtest only when iterate points at a playtest issue or when
+you need explicit scenario evidence:
 
 ```bash
-node packages/cli/dist/index.js verify --project examples/crystal-runner --frames 4 --expect-motion --json
+tn playtest --project examples/crystal-runner --scenario playtests/smoke-movement.playtest.json --stable-artifacts --json
 ```
 
 Required evidence:
@@ -100,7 +102,7 @@ done
 Compare early vs late captures:
 
 ```bash
-node packages/cli/dist/index.js compare-images \
+tn compare-images \
   examples/crystal-runner/artifacts/playtest/bevy-frame-30.png \
   examples/crystal-runner/artifacts/playtest/bevy-frame-240.png \
   --json

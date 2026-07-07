@@ -9,28 +9,24 @@ Use the repo CLI as the source of truth. Do not replace it with ad hoc browser c
 
 ## V1 Web Fast Loop
 
-1. Build once when source changed:
+1. Run the compact source/gameplay loop first:
    ```bash
-   pnpm tn -- build --project examples/v1-canonical
+   tn iterate --project examples/v1-canonical --json
    ```
-2. Start or reuse a web preview when repeatedly iterating:
+2. Start or reuse a web preview only when you are investigating a visual issue
+   that iterate has already narrowed:
    ```bash
-   pnpm tn -- dev --target web --project examples/v1-canonical --json
+   tn dev --target web --project examples/v1-canonical --json
    ```
 3. Reuse that URL for quick verification:
    ```bash
-   pnpm tn -- verify --project examples/v1-canonical --url <preview-url> --frames 2 --json
-   ```
-
-   After `pnpm --filter @threenative/cli build`, the fastest inner loop is:
-   ```bash
-   node packages/cli/dist/index.js verify --project examples/v1-canonical --url <preview-url> --frames 2 --json
+   tn verify --project examples/v1-canonical --url <preview-url> --frames 2 --json
    ```
 
 When no preview is running, use the full command:
 
 ```bash
-pnpm tn -- verify --project examples/v1-canonical --frames 2 --json
+tn iterate --project examples/v1-canonical --json
 ```
 
 ## Artifacts To Inspect
@@ -59,7 +55,7 @@ Always inspect the JSON report before deciding the scene is visually correct. It
 Use this when comparing two saved PNGs, including subtle lighting/color changes:
 
 ```bash
-pnpm tn -- compare-images <first.png> <second.png> --json
+tn compare-images <first.png> <second.png> --json
 ```
 
 Look at:
@@ -123,7 +119,7 @@ For manual or exploratory comparison, run `pnpm verify:v3`, then compare a
 matching bookmark pair:
 
 ```bash
-pnpm tn -- compare-images \
+tn compare-images \
   artifacts/v3/screenshots/<bookmark>.threejs.png \
   artifacts/v3/screenshots/<bookmark>.bevy-gltf.png \
   --json
@@ -148,7 +144,7 @@ To investigate lighting differences today:
 1. Run `pnpm verify:v3`.
 2. Inspect `artifacts/v3/v3-atmosphere-report.json`.
 3. Inspect `artifacts/v3/screenshots/threejs-bevy-side-by-side.png`.
-4. Run `pnpm tn -- compare-images` on matching bookmark PNGs.
+4. Run `tn compare-images` on matching bookmark PNGs.
 5. Use `averageBrightnessDelta` and `averageColorDelta` to describe the
    difference objectively.
 
@@ -168,8 +164,7 @@ Goal: prove both runtimes receive the same portable data.
 Use:
 
 ```bash
-pnpm tn -- build --project <project> --json
-pnpm tn -- validate --project <project> --json
+tn iterate --project <project> --json
 pnpm verify:conformance
 ```
 
@@ -258,7 +253,7 @@ Requirements for a useful capture:
 Current available metric command:
 
 ```bash
-pnpm tn -- compare-images <threejs.png> <bevy.png> --json
+tn compare-images <threejs.png> <bevy.png> --json
 ```
 
 Current metrics:
@@ -474,7 +469,7 @@ When the CLI report is not enough, inspect these files:
 A dedicated command would reduce manual work and should look like this:
 
 ```bash
-pnpm tn -- verify-render-parity \
+tn verify-render-parity \
   --bundle examples/v3-environment/dist/forest.bundle \
   --bookmark <bookmark-id> \
   --profile lighting-smoke \

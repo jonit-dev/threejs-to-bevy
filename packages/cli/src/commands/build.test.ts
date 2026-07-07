@@ -35,10 +35,12 @@ test("build should emit structured scripts diagnostic", async () => {
     );
 
     const result = await buildCommand(["--json"], root);
-    const payload = JSON.parse(result.stdout) as { code: string; severity: string; suggestion: string };
+    const payload = JSON.parse(result.stdout) as { code: string; next: string; notice: string; severity: string; suggestion: string };
 
     assert.equal(result.exitCode, 1);
     assert.equal(payload.code, "TN_SCRIPT_DOM_API_UNSUPPORTED");
+    assert.equal(payload.next, "tn iterate --project . --json");
+    assert.match(payload.notice, /Standalone build is subsumed/);
     assert.equal(payload.severity, "error");
     assert.match(payload.suggestion, /portable system context/);
   } finally {
@@ -71,10 +73,12 @@ test("build should emit structured portable script diagnostic", async () => {
     );
 
     const result = await buildCommand(["--json"], root);
-    const payload = JSON.parse(result.stdout) as { code: string; severity: string; suggestion: string };
+    const payload = JSON.parse(result.stdout) as { code: string; next: string; notice: string; severity: string; suggestion: string };
 
     assert.equal(result.exitCode, 1);
     assert.equal(payload.code, "TN_SCRIPT_NODE_API_UNSUPPORTED");
+    assert.equal(payload.next, "tn iterate --project . --json");
+    assert.match(payload.notice, /Standalone build is subsumed/);
     assert.equal(payload.severity, "error");
     assert.match(payload.suggestion, /filesystem/);
   } finally {
@@ -110,10 +114,11 @@ test("build should preserve emitted bundle schema fix", async () => {
     );
 
     const result = await buildCommand(["--json"], root);
-    const payload = JSON.parse(result.stdout) as { code: string; fix?: { instruction?: string; snippet?: string }; message: string; path: string };
+    const payload = JSON.parse(result.stdout) as { code: string; fix?: { instruction?: string; snippet?: string }; message: string; next: string; path: string };
 
     assert.equal(result.exitCode, 1);
     assert.equal(payload.code, "TN_COMPILER_EMITTED_INVALID_BUNDLE");
+    assert.equal(payload.next, "tn iterate --project . --json");
     assert.match(payload.message, /writes component 'GameState' without a schema/);
     assert.match(payload.path, /systems\.ir\.json/);
     assert.match(payload.fix?.instruction ?? "", /move it to resourceReads\/resourceWrites/);
