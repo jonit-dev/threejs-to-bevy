@@ -25,6 +25,7 @@ use bevy::{
 };
 use threenative_components::ThreeNativeId;
 use threenative_loader::load_bundle;
+use threenative_runtime::default_clear_color_for_bundle;
 use threenative_runtime::map_world::{
     NativeAnimationPlayback, NativeAnimationServiceCommand, NativeAnimationServiceQueue,
     NativeEmissiveMarkerMask, THREE_COMPAT_DIRECTIONAL_ILLUMINANCE_PER_INTENSITY,
@@ -254,6 +255,35 @@ fn rendering_should_map_balanced_render_look_to_native_bloom() {
     let bloom = query.single(app.world());
     assert!((bloom.intensity - 0.45).abs() < 0.01);
     assert!((bloom.prefilter_settings.threshold - 0.85).abs() < 0.01);
+
+    fs::remove_dir_all(root).expect("temporary bundle should be removed");
+}
+
+#[test]
+fn rendering_should_map_balanced_render_look_to_native_clear_color() {
+    let root = write_rendering_bundle();
+    let bundle = load_bundle(&root).expect("rendering bundle should load");
+    let parity = default_clear_color_for_bundle(&bundle).to_srgba();
+    assert!((parity.red - 17.0 / 255.0).abs() < 0.001);
+    assert!((parity.green - 19.0 / 255.0).abs() < 0.001);
+    assert!((parity.blue - 24.0 / 255.0).abs() < 0.001);
+
+    write(
+        &root,
+        "runtime.config.json",
+        r#"{
+  "schema": "threenative.runtime-config",
+  "version": "0.1.0",
+  "renderer": { "antialias": "msaa4", "renderLook": { "version": 1, "profile": "balanced" } },
+  "time": { "fixedDelta": 0.016666666666666666, "paused": false },
+  "window": { "height": 720, "width": 1280 }
+}"#,
+    );
+    let balanced_bundle = load_bundle(&root).expect("balanced rendering bundle should load");
+    let balanced = default_clear_color_for_bundle(&balanced_bundle).to_srgba();
+    assert!((balanced.red - 56.0 / 255.0).abs() < 0.001);
+    assert!((balanced.green - 189.0 / 255.0).abs() < 0.001);
+    assert!((balanced.blue - 248.0 / 255.0).abs() < 0.001);
 
     fs::remove_dir_all(root).expect("temporary bundle should be removed");
 }

@@ -82,6 +82,27 @@ test("should apply each look profile with portable source mutations", async () =
   }
 });
 
+test("should not duplicate profile data when applied twice", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-look-idempotent-"));
+  try {
+    const create = await createProject(["game", "--json"], { cwd: root });
+    const createPayload = JSON.parse(create.stdout) as { path: string };
+    const first = await lookCommand(["apply", "arcade-neon", "--project", createPayload.path, "--json"]);
+    const runtimeAfterFirst = await readFile(join(createPayload.path, "content", "runtime", "default.runtime.json"), "utf8");
+    const materialsAfterFirst = await readFile(join(createPayload.path, "content", "materials", "arena.materials.json"), "utf8");
+    const second = await lookCommand(["apply", "arcade-neon", "--project", createPayload.path, "--json"]);
+    const runtimeAfterSecond = await readFile(join(createPayload.path, "content", "runtime", "default.runtime.json"), "utf8");
+    const materialsAfterSecond = await readFile(join(createPayload.path, "content", "materials", "arena.materials.json"), "utf8");
+
+    assert.equal(first.exitCode, 0, first.stdout);
+    assert.equal(second.exitCode, 0, second.stdout);
+    assert.equal(runtimeAfterSecond, runtimeAfterFirst);
+    assert.equal(materialsAfterSecond, materialsAfterFirst);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
 test("should reject unknown look profiles", async () => {
   const result = await lookCommand(["apply", "sepia-space", "--json"]);
   const payload = JSON.parse(result.stdout) as { code: string; profile: string };

@@ -262,7 +262,7 @@ test("should add balanced sky and fill lights when a scene has no authored light
 
   applyRenderLookSceneDefaults(scene, { appliedProfile: "balanced" });
 
-  assert.equal(scene.background.getHexString(), "109eff");
+  assert.equal(scene.background.getHexString(), "38bdf8");
   assert.deepEqual(scene.children.map((child) => child.name).sort(), [
     "renderLook.balanced.ambientFill",
     "renderLook.balanced.keyLight",

@@ -153,32 +153,28 @@ pub fn app_from_bundle_with_options(
         Ok(None) | Err(_) => None,
     };
     let mut app = App::new();
-    app.insert_resource(ClearColor(Color::srgb(
-        17.0 / 255.0,
-        19.0 / 255.0,
-        24.0 / 255.0,
-    )))
-    .add_plugins(
-        DefaultPlugins
-            .set(AssetPlugin {
-                file_path: asset_root,
-                ..Default::default()
-            })
-            .set(WindowPlugin {
-                primary_window: Some(Window {
-                    resolution: (
-                        window.map_or(1280.0, |value| value.width),
-                        window.map_or(720.0, |value| value.height),
-                    )
-                        .into(),
-                    title: window
-                        .and_then(|value| value.title.clone())
-                        .unwrap_or_else(|| "ThreeNative Bevy Preview".to_owned()),
+    app.insert_resource(ClearColor(default_clear_color_for_bundle(&bundle)))
+        .add_plugins(
+            DefaultPlugins
+                .set(AssetPlugin {
+                    file_path: asset_root,
+                    ..Default::default()
+                })
+                .set(WindowPlugin {
+                    primary_window: Some(Window {
+                        resolution: (
+                            window.map_or(1280.0, |value| value.width),
+                            window.map_or(720.0, |value| value.height),
+                        )
+                            .into(),
+                        title: window
+                            .and_then(|value| value.title.clone())
+                            .unwrap_or_else(|| "ThreeNative Bevy Preview".to_owned()),
+                        ..Default::default()
+                    }),
                     ..Default::default()
                 }),
-                ..Default::default()
-            }),
-    );
+        );
     app.add_plugins(emissive_postprocess::NativeEmissivePostProcessPlugin);
     rendering::apply_atmosphere_to_world(app.world_mut(), &bundle);
     let environment_lighting =
@@ -286,6 +282,19 @@ pub fn app_from_bundle_with_options(
         );
     }
     Ok(app)
+}
+
+pub fn default_clear_color_for_bundle(bundle: &LoadedBundle) -> Color {
+    if bundle
+        .runtime_config
+        .as_ref()
+        .and_then(|config| config.renderer.as_ref())
+        .and_then(|renderer| renderer.render_look.as_ref())
+        .is_some_and(|render_look| render_look.profile == "balanced")
+    {
+        return Color::srgb(56.0 / 255.0, 189.0 / 255.0, 248.0 / 255.0);
+    }
+    Color::srgb(17.0 / 255.0, 19.0 / 255.0, 24.0 / 255.0)
 }
 
 fn sync_default_camera_clear_color(world: &mut World) {

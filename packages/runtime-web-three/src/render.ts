@@ -1105,7 +1105,7 @@ export function applyRenderLookSceneDefaults(
     return;
   }
   if (scene.background instanceof THREE.Color && scene.background.getHexString() === "111318") {
-    scene.background = new THREE.Color("#109eff");
+    scene.background = new THREE.Color("#38bdf8");
   }
   let hasLight = false;
   scene.traverse((object) => {

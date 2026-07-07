@@ -107,9 +107,9 @@ sequenceDiagram
 
 **Implementation:**
 
-- [ ] Add or promote `tn look apply <profile> --json`.
-- [ ] Define 4-6 portable profiles.
-- [ ] Validate profile mutations before writing.
+- [x] Add or promote `tn look apply <profile> --json`.
+- [x] Define 4-6 portable profiles.
+- [x] Validate profile mutations before writing.
 
 **Tests Required:**
 
@@ -135,9 +135,9 @@ sequenceDiagram
 
 **Implementation:**
 
-- [ ] Apply default profile to base starter.
-- [ ] Ensure archetype and block emitters preserve/extend the look profile.
-- [ ] Avoid profile duplication on repeated commands.
+- [x] Apply default profile to base starter.
+- [x] Ensure archetype and block emitters preserve/extend the look profile.
+- [x] Avoid profile duplication on repeated commands.
 
 **Tests Required:**
 
@@ -162,9 +162,9 @@ sequenceDiagram
 
 **Implementation:**
 
-- [ ] Add minimum color bucket and local contrast thresholds.
-- [ ] Keep nonblank checks as baseline.
-- [ ] Produce stable diagnostics with screenshot artifact links.
+- [x] Add minimum color bucket and local contrast thresholds.
+- [x] Keep nonblank checks as baseline.
+- [x] Produce stable diagnostics with screenshot artifact links.
 
 **Tests Required:**
 
@@ -189,9 +189,9 @@ sequenceDiagram
 
 **Implementation:**
 
-- [ ] Commit side-by-side evidence for starter/archetype/recipe screenshots.
-- [ ] Update capability docs with thresholds and artifact links.
-- [ ] Avoid any new Bevy parity claim unless proved.
+- [x] Commit side-by-side evidence for starter/archetype/recipe screenshots.
+- [x] Update capability docs with thresholds and artifact links.
+- [x] Avoid any new Bevy parity claim unless proved.
 
 **Tests Required:**
 
@@ -216,11 +216,27 @@ sequenceDiagram
 - Screenshot evidence for default scaffolds.
 - `pnpm check:docs` after capability updates.
 
+## 6A. Completion Evidence
+
+- CLI/profile surface: `packages/cli/src/commands/look.ts`,
+  `packages/cli/src/lookProfiles/registry.ts`, and
+  `packages/cli/src/commands/look.test.ts`.
+- Default starter/archetype/block preservation:
+  `packages/cli/src/commands/create.test.ts`,
+  `packages/cli/src/commands/add.test.ts`, and
+  `templates/structured-source-starter/content/runtime/default.runtime.json`.
+- Visual quality thresholds:
+  `packages/cli/src/verify/renderingQuality.test.ts` and
+  `packages/cli/src/verify/imageAnalysis.ts`.
+- Committed visual evidence:
+  `docs/pr-evidence/prd-007-beautiful-scaffolds/`.
+- Raw generated render-look report reference:
+  `tools/verify/artifacts/render-look/verification-report.json`.
+
 ## 7. Acceptance Criteria
 
-- [ ] 4-6 look profiles are available through CLI.
-- [ ] Starter, archetypes, and block outputs apply a curated default.
-- [ ] Visual scorer penalizes flat primitive output.
-- [ ] Evidence screenshots are committed and linked.
-- [ ] No new unsupported rendering contract is introduced.
-
+- [x] 4-6 look profiles are available through CLI.
+- [x] Starter, archetypes, and block outputs apply a curated default.
+- [x] Visual scorer penalizes flat primitive output.
+- [x] Evidence screenshots are committed and linked.
+- [x] No new unsupported rendering contract is introduced.

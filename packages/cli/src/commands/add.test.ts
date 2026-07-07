@@ -68,6 +68,9 @@ test("should add all compositional mechanic blocks with proof scenarios", async 
       prefabs: Array<{ id: string }>;
       resources: Array<{ id: string; value?: Record<string, unknown> }>;
     };
+    const runtime = JSON.parse(await readFile(join(project, "content/runtime/default.runtime.json"), "utf8")) as {
+      renderer?: { renderLook?: { overrides?: Record<string, unknown>; profile?: string; version?: number } };
+    };
     const script = await readFile(join(project, "src/scripts/mechanics.ts"), "utf8");
     assert.equal(scene.resources.some((resource) => resource.id === "RoundTimer" && resource.value?.limit === 30), true);
     assert.equal(scene.resources.some((resource) => resource.id === "TriggerSequence" && Array.isArray(resource.value?.triggers)), true);
@@ -76,6 +79,18 @@ test("should add all compositional mechanic blocks with proof scenarios", async 
     assert.equal(scene.prefabs.some((prefab) => prefab.id === "ball.prefab"), true);
     assert.equal(scene.resources.some((resource) => resource.id === "ProjectilePhysics" && resource.value?.rigidBody !== undefined), true);
     assert.equal(scene.entities.find((entity) => entity.id === "camera.main")?.components?.camera?.target, "player");
+    assert.deepEqual(runtime.renderer?.renderLook, {
+      version: 1,
+      profile: "balanced",
+      overrides: {
+        bloomIntensity: 0.65,
+        contrast: 0.22,
+        environmentIntensity: 1.35,
+        exposure: 1.08,
+        saturation: 1.35,
+        shadowQuality: "medium",
+      },
+    });
     assert.match(script, /export function updateScoreBlock/);
     assert.match(script, /export function updateProjectileBlock/);
 

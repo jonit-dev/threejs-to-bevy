@@ -2,6 +2,7 @@ import { execFile } from "node:child_process";
 import { mkdir, mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
+import { setTimeout as delay } from "node:timers/promises";
 import { promisify } from "node:util";
 
 import { resolveArtifactTargets, toRepoRelative } from "./artifacts.js";
@@ -300,12 +301,45 @@ async function captureBevyScreenshot(options: {
     outPath: options.screenshotPath,
     repoRoot: options.root,
   });
-  await execFileAsync(invocation.command, invocation.args, { cwd: invocation.cwd, env, timeout: invocation.cwd === undefined ? 120_000 : 180_000 });
+  await execNativeCaptureWithRetry(invocation, env);
   const info = await stat(options.screenshotPath);
   if (info.size === 0) {
     throw new Error(`Bevy render-look screenshot capture wrote an empty PNG: ${options.screenshotPath}`);
   }
   await options.readPngFrame(options.screenshotPath);
+}
+
+async function execNativeCaptureWithRetry(
+  invocation: { args: string[]; command: string; cwd?: string },
+  env: NodeJS.ProcessEnv,
+): Promise<void> {
+  const timeout = invocation.cwd === undefined ? 120_000 : 180_000;
+  let lastError: unknown;
+  for (let attempt = 1; attempt <= 3; attempt += 1) {
+    try {
+      await execFileAsync(invocation.command, invocation.args, { cwd: invocation.cwd, env, timeout });
+      return;
+    } catch (error) {
+      lastError = error;
+      if (!isSwapChainAcquireTimeout(error) || attempt === 3) {
+        throw error;
+      }
+      await delay(750 * attempt);
+    }
+  }
+  throw lastError;
+}
+
+function isSwapChainAcquireTimeout(error: unknown): boolean {
+  if (!(error instanceof Error)) {
+    return false;
+  }
+  const maybeChildError = error as Error & { stderr?: unknown };
+  const stderr = typeof maybeChildError.stderr === "string"
+    ? maybeChildError.stderr
+    : "";
+  return stderr.includes("Couldn't get swap chain texture")
+    && stderr.includes("A timeout was encountered while trying to acquire the next frame");
 }
 
 async function readActiveCameraId(bundlePath: string): Promise<string | undefined> {
