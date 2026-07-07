@@ -33,6 +33,19 @@ A run is playable only when all of these are true:
 - A win, fail, retry, or score/progression path is reachable.
 - The game renders to a browser canvas without a blank first screen.
 
+## Equal-Proof Contract
+
+Round 5 no longer accepts page-load smoke as a vanilla proof substitute. Every
+prompt has committed neutral assertions in
+`tools/agent-benchmark/src/proof-contract.ts`. Both `vanilla` and
+`threenative` run reports must store `proof.requiredAssertionIds`,
+`proof.assertions`, `proof.classification`, and `proof.ok`.
+
+Continuity prompts currently include `collector` and `lane-runner`.
+Beyond-one-shot prompts currently include `checkpoint-race` and
+`physics-knockdown`. The aggregate gate counts only successful runs whose
+proof assertions pass for the shared prompt contract.
+
 ## Human Rubric
 
 The operator records two 0-3 scores in `session.json`.
@@ -87,11 +100,22 @@ node tools/agent-benchmark/dist/index.js aggregate \
   --json
 ```
 
-The continuation target is now stricter than the original pilot screen:
-ThreeNative median raw tokens must be `<= 0.5x` vanilla median raw tokens for
-each comparable prompt. Cost-weighted tokens, cached/uncached input tokens,
-tool-output bytes, failed-command count, and iteration count are supporting
-root-cause metrics, not substitutes for the raw-token gate.
+The continuation target is now equal proof instead of the original unequal
+`<= 0.5x` raw-token screen:
+
+- Continuity prompts pass when ThreeNative median raw tokens are `<= 1.5x`
+  vanilla median raw tokens.
+- Beyond-one-shot prompts pass when ThreeNative median raw tokens are `<= 1.0x`
+  vanilla median raw tokens.
+- Each condition needs at least three proof-passing repeats per prompt.
+- ThreeNative failed-command median must be `0`.
+- ThreeNative retry-chain medians must stay at same-diagnostic `<= 1` and
+  identical failed assertions `== 0`.
+- ThreeNative tool-step median remains capped at `<= 30`.
+
+Cost-weighted tokens, cached/uncached input tokens, tool-output bytes, failed
+command count, retry chains, and iteration count remain root-cause metrics
+alongside the gate verdict.
 
 Post-fix reruns must keep the original prompts, model conditions, run count,
 and stop rules unchanged. Store fresh rerun artifacts under a new dated

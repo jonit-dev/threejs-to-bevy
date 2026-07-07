@@ -30,6 +30,8 @@ export function validateSession(value: unknown): ISchemaValidationResult {
   requireOptionalNonNegativeNumber(value, "costWeightedTokens", diagnostics);
   requireOptionalNonNegativeNumber(value, "toolOutputBytes", diagnostics);
   requireOptionalNonNegativeNumber(value, "failedCommandCount", diagnostics);
+  requireOptionalNonNegativeNumber(value, "identicalAssertionRepeatCount", diagnostics);
+  requireOptionalNonNegativeNumber(value, "maxConsecutiveSameDiagnostic", diagnostics);
   requireOptionalNonNegativeNumber(value, "toolStepCount", diagnostics);
   if (!isRecord(value.humanRubric)) {
     diagnostics.push({ code: "TN_BENCH_SCHEMA_HUMAN_RUBRIC", message: "Session humanRubric must be an object.", severity: "error" });
@@ -71,8 +73,8 @@ export function validateAggregateReport(value: unknown): ISchemaValidationResult
   }
   if (!isRecord(value.verdict)) {
     diagnostics.push({ code: "TN_BENCH_SCHEMA_VERDICT", message: "Aggregate report verdict must be an object.", severity: "error" });
-  } else if (value.verdict.threshold !== "threenative-median-tokens <= 0.5x vanilla-median-tokens") {
-    diagnostics.push({ code: "TN_BENCH_SCHEMA_THRESHOLD", message: "Aggregate report threshold must use the <=0.5x raw-token gate.", severity: "error" });
+  } else if (value.verdict.threshold !== "equal-proof: continuity <=1.5x vanilla tokens; beyond-one-shot <=1.0x vanilla tokens; repeats >=3; failed commands ==0; retry chains <=1/0") {
+    diagnostics.push({ code: "TN_BENCH_SCHEMA_THRESHOLD", message: "Aggregate report threshold must use the equal-proof round-5 gate.", severity: "error" });
   }
   return { diagnostics, ok: diagnostics.length === 0 };
 }

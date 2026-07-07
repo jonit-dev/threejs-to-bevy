@@ -129,7 +129,7 @@ execution bundle.
   routes source-writing commands through validate-before-write and extends
   benchmark metrics with same-diagnostic and identical-assertion retry-chain
   gates.
-- [Equal-Proof Benchmark Protocol](agent-native-authoring-loop-2026-07-07/PRD-016-equal-proof-benchmark-protocol.md):
+- [Equal-Proof Benchmark Protocol](done/agent-native-authoring-loop-2026-07-07/PRD-016-equal-proof-benchmark-protocol.md):
   replaces the unequal `<=0.5x` raw-token gate with equal mechanic proof,
   three repeats per condition, continuity plus beyond-one-shot prompts, and a
   decision report for round 5.

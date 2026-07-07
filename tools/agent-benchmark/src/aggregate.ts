@@ -1,10 +1,17 @@
 import { readFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 
+import { getProofContract, requiredAssertionIds, validateProofResult } from "./proof-contract.js";
 import { isBenchmarkRunReport } from "./schemas.js";
-import { type IBenchmarkBehaviorCounters, type IBenchmarkDiagnostic, type IBenchmarkReport, type IBenchmarkRunReport } from "./types.js";
+import { type BenchmarkPromptClass, type IBenchmarkBehaviorCounters, type IBenchmarkDiagnostic, type IBenchmarkReport, type IBenchmarkRunReport } from "./types.js";
 
 const CACHED_INPUT_TOKEN_WEIGHT = 0.1;
+const EQUAL_PROOF_CONTINUITY_RATIO = 1.5;
+const EQUAL_PROOF_BEYOND_ONE_SHOT_RATIO = 1.0;
+const MIN_REPEATS_PER_CONDITION = 3;
+const FAILED_COMMAND_BUDGET = 0;
+const IDENTICAL_ASSERTION_REPEAT_BUDGET = 0;
+const MAX_CONSECUTIVE_SAME_DIAGNOSTIC_BUDGET = 1;
 const THREENATIVE_STEP_BUDGET = 30;
 
 interface IRunWithBehavior {
@@ -33,14 +40,22 @@ export async function aggregateRunReports(paths: readonly string[]): Promise<IBe
   }
   const promptIds = Array.from(new Set(runs.map((run) => run.report.promptId))).sort();
   const promptSummaries = promptIds.map((promptId) => {
-    const threenativeRuns = runs.filter((run) => run.report.promptId === promptId && run.report.condition === "threenative" && run.report.ok);
-    const vanillaRuns = runs.filter((run) => run.report.promptId === promptId && run.report.condition === "vanilla" && run.report.ok);
+    const promptContract = getProofContract(promptId);
+    const promptRunsWithProofDiagnostics = runs.filter((run) => run.report.promptId === promptId);
+    for (const run of promptRunsWithProofDiagnostics) {
+      diagnostics.push(...validateProofResult(run.report.promptId, run.report.proof));
+    }
+    const threenativeRuns = runs.filter((run) => run.report.promptId === promptId && run.report.condition === "threenative" && run.report.ok && runProofOk(run.report));
+    const vanillaRuns = runs.filter((run) => run.report.promptId === promptId && run.report.condition === "vanilla" && run.report.ok && runProofOk(run.report));
     const threenativeMedianTokens = metricMedian(threenativeRuns, (run) => run.session.tokenCount);
     const vanillaMedianTokens = metricMedian(vanillaRuns, (run) => run.session.tokenCount);
     const threenativeMedianCostWeightedTokens = metricMedian(threenativeRuns, costWeightedTokens);
     const vanillaMedianCostWeightedTokens = metricMedian(vanillaRuns, costWeightedTokens);
     const threenativeMedianToolStepCount = metricMedian(threenativeRuns, (run) => run.session.toolStepCount);
     const vanillaMedianToolStepCount = metricMedian(vanillaRuns, (run) => run.session.toolStepCount);
+    const threenativeMedianFailedCommandCount = metricMedian(threenativeRuns, (run) => run.session.failedCommandCount);
+    const threenativeMedianIdenticalAssertionRepeats = metricMedian(threenativeRuns, (run) => run.session.identicalAssertionRepeatCount);
+    const threenativeMedianMaxSameDiagnostic = metricMedian(threenativeRuns, (run) => run.session.maxConsecutiveSameDiagnostic);
     const promptRuns = runs.filter((run) => run.report.promptId === promptId).map((run) => run.report);
     const behaviorMedian = {
       artifactForensicsCommandCount: behaviorMedianMetric(threenativeRuns, (behavior) => behavior.artifactForensicsCommandCount),
@@ -50,6 +65,15 @@ export async function aggregateRunReports(paths: readonly string[]): Promise<IBe
       standaloneVerifyCommandCount: behaviorMedianMetric(threenativeRuns, (behavior) => behavior.standaloneVerifyCommandCount),
     };
     const withinInstructionAdoptionBudget = instructionAdoptionBudget(behaviorMedian);
+    const rawTokenRatio = ratio(threenativeMedianTokens, vanillaMedianTokens);
+    const promptClassification: BenchmarkPromptClass | "unknown" = promptContract?.classification ?? "unknown";
+    const equalProofRatioBudget = promptClassification === "beyond-one-shot" ? EQUAL_PROOF_BEYOND_ONE_SHOT_RATIO : EQUAL_PROOF_CONTINUITY_RATIO;
+    const withinEqualProofTokenBudget = rawTokenRatio === null || promptClassification === "unknown" ? null : rawTokenRatio <= equalProofRatioBudget;
+    const withinFailedCommandBudget = threenativeMedianFailedCommandCount === null ? null : threenativeMedianFailedCommandCount <= FAILED_COMMAND_BUDGET;
+    const withinRetryChainBudget = threenativeMedianIdenticalAssertionRepeats === null && threenativeMedianMaxSameDiagnostic === null
+      ? null
+      : (threenativeMedianIdenticalAssertionRepeats ?? 0) <= IDENTICAL_ASSERTION_REPEAT_BUDGET
+        && (threenativeMedianMaxSameDiagnostic ?? 0) <= MAX_CONSECUTIVE_SAME_DIAGNOSTIC_BUDGET;
     return {
       behaviorMedian,
       costWeightedTokenRatio: ratio(threenativeMedianCostWeightedTokens, vanillaMedianCostWeightedTokens),
@@ -66,10 +90,20 @@ export async function aggregateRunReports(paths: readonly string[]): Promise<IBe
         vanilla: metricMedian(vanillaRuns, (run) => run.session.iterationCount),
       },
       promptId,
-      rawTokenRatio: ratio(threenativeMedianTokens, vanillaMedianTokens),
+      promptClassification,
+      proofBar: {
+        requiredAssertions: requiredAssertionIds(promptId),
+        threenativePassed: threenativeRuns.length > 0,
+        vanillaPassed: vanillaRuns.length > 0,
+      },
+      rawTokenRatio,
+      repeatCount: {
+        threenative: threenativeRuns.length,
+        vanilla: vanillaRuns.length,
+      },
       threenativeMedianCachedInputTokens: metricMedian(threenativeRuns, (run) => run.session.cachedInputTokens),
       threenativeMedianCostWeightedTokens,
-      threenativeMedianFailedCommandCount: metricMedian(threenativeRuns, (run) => run.session.failedCommandCount),
+      threenativeMedianFailedCommandCount,
       threenativeMedianInputTokens: metricMedian(threenativeRuns, (run) => run.session.inputTokens),
       threenativeMedianIterations: metricMedian(threenativeRuns, (run) => run.session.iterationCount),
       threenativeMedianOutputTokens: metricMedian(threenativeRuns, (run) => run.session.outputTokens),
@@ -96,18 +130,30 @@ export async function aggregateRunReports(paths: readonly string[]): Promise<IBe
       vanillaMedianToolOutputBytes: metricMedian(vanillaRuns, (run) => run.session.toolOutputBytes),
       vanillaMedianUncachedInputTokens: metricMedian(vanillaRuns, (run) => run.session.uncachedInputTokens),
       withinHalfX: threenativeMedianTokens === null || vanillaMedianTokens === null ? null : threenativeMedianTokens <= vanillaMedianTokens * 0.5,
+      withinEqualProofTokenBudget,
+      withinFailedCommandBudget,
       withinInstructionAdoptionBudget,
+      withinRepeatBudget: threenativeRuns.length >= MIN_REPEATS_PER_CONDITION && vanillaRuns.length >= MIN_REPEATS_PER_CONDITION,
+      withinRetryChainBudget,
       withinStepBudget: threenativeMedianToolStepCount === null ? null : threenativeMedianToolStepCount <= THREENATIVE_STEP_BUDGET,
     };
   });
-  const comparable = promptSummaries.filter((summary) => summary.withinHalfX !== null);
-  const failed = comparable.filter((summary) => summary.withinHalfX === false || summary.withinStepBudget === false || summary.withinInstructionAdoptionBudget === false);
-  const status = comparable.length === 0 ? "insufficient-data" : failed.length === 0 ? "pass" : "fail";
+  const comparable = promptSummaries.filter((summary) => summary.withinEqualProofTokenBudget !== null);
+  const failed = comparable.filter((summary) =>
+    summary.withinEqualProofTokenBudget === false
+    || summary.withinRepeatBudget === false
+    || summary.withinStepBudget === false
+    || summary.withinFailedCommandBudget === false
+    || summary.withinRetryChainBudget === false
+    || summary.withinInstructionAdoptionBudget === false
+  );
+  const hasErrorDiagnostics = diagnostics.some((diagnostic) => diagnostic.severity === "error");
+  const status = comparable.length === 0 ? "insufficient-data" : failed.length === 0 && !hasErrorDiagnostics ? "pass" : "fail";
   const summary = status === "insufficient-data"
-    ? "No prompt has successful run reports for both vanilla and ThreeNative."
+    ? "No prompt has equal-proof successful run reports for both vanilla and ThreeNative."
     : status === "pass"
-      ? "ThreeNative raw median tokens are <=0.5x vanilla for every comparable prompt, present step-count medians are within budget, and present instruction-adoption counters are within budget."
-      : "ThreeNative raw median tokens exceed 0.5x vanilla, present step-count medians exceed budget, or present instruction-adoption counters miss budget for at least one comparable prompt.";
+      ? "ThreeNative equal-proof median tokens are within continuity/beyond-one-shot thresholds, repeats are >=3, and step/failure/retry budgets are within limits."
+      : "ThreeNative equal-proof median tokens exceed the prompt threshold, repeats are below three, or step/failure/retry budgets exceeded limits.";
   return {
     diagnostics,
     generatedAt: new Date().toISOString(),
@@ -118,10 +164,14 @@ export async function aggregateRunReports(paths: readonly string[]): Promise<IBe
     verdict: {
       status,
       summary,
-      threshold: "threenative-median-tokens <= 0.5x vanilla-median-tokens",
+      threshold: "equal-proof: continuity <=1.5x vanilla tokens; beyond-one-shot <=1.0x vanilla tokens; repeats >=3; failed commands ==0; retry chains <=1/0",
     },
     version: 2,
   };
+}
+
+function runProofOk(run: IBenchmarkRunReport): boolean {
+  return validateProofResult(run.promptId, run.proof).length === 0;
 }
 
 function dialectConfusionFailureCount(runs: readonly IBenchmarkRunReport[]): number {

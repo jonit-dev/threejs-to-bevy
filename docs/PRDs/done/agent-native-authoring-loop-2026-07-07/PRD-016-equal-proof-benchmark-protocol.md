@@ -28,6 +28,11 @@ movement smoke, so raw-token ratio prices unequal products.
 - Vanilla sessions pass with a weaker proof bar than ThreeNative sessions.
 - `n=2` repeats allowed large median swings.
 
+**Implementation Note:** Round-5 proof contracts are committed in
+`tools/agent-benchmark/src/proof-contract.ts`, vanilla proof validation uses
+the same contract, and aggregate reports gate only proof-passing runs with
+three repeats and continuity/beyond-one-shot thresholds.
+
 ## Pre-Planning Findings
 
 **How will this feature be reached?**
@@ -109,15 +114,15 @@ sequenceDiagram
 **Files (max 5):**
 
 - `tools/agent-benchmark/ROUND-5-PROTOCOL.md`
-- `tools/agent-benchmark/prompts/*.json`
+- `tools/agent-benchmark/prompts/*.md`
 - `tools/agent-benchmark/proof-contract.ts`
 - `tools/agent-benchmark/proof-contract.test.ts`
 
 **Implementation:**
 
-- [ ] Add assertion specs for checkpoint race and physics knockdown.
-- [ ] Include displacement, objective, and fail/retry checks where applicable.
-- [ ] Mark current prompts as continuity prompts.
+- [x] Add assertion specs for checkpoint race and physics knockdown.
+- [x] Include displacement, objective, and fail/retry checks where applicable.
+- [x] Mark current prompts as continuity prompts.
 
 **Tests Required:**
 
@@ -137,15 +142,15 @@ sequenceDiagram
 - `tools/agent-benchmark/vanilla-proof.ts`
 - `tools/agent-benchmark/vanilla-proof.test.ts`
 - `tools/agent-benchmark/runner*.ts`
-- `tools/agent-benchmark/prompts/*.json`
+- `tools/agent-benchmark/prompts/*.md`
 - `tools/verify/src/sessionMetrics.ts`
 
 **Implementation:**
 
-- [ ] Add a browser/playtest adapter that can exercise vanilla games against
+- [x] Add a browser/playtest adapter that can exercise vanilla games against
   the neutral assertion contract.
-- [ ] Fail vanilla sessions that only pass page-load smoke.
-- [ ] Store proof artifacts next to TN artifacts.
+- [x] Fail vanilla sessions that only pass page-load smoke.
+- [x] Store proof artifacts next to TN artifacts.
 
 **Tests Required:**
 
@@ -163,24 +168,24 @@ sequenceDiagram
 
 **Files (max 5):**
 
-- `tools/agent-benchmark/prompts/*.json`
+- `tools/agent-benchmark/prompts/*.md`
 - `tools/agent-benchmark/ROUND-5-PROTOCOL.md`
 - `tools/agent-benchmark/report*.ts`
 - `tools/agent-benchmark/report*.test.ts`
 
 **Implementation:**
 
-- [ ] Add at least two beyond-one-shot prompts selected by generic criteria:
+- [x] Add at least two beyond-one-shot prompts selected by generic criteria:
   persistent save/load state, multi-mechanic coupling, tuned difficulty, or
   content-scale solvability.
-- [ ] Require at least three repeats per condition.
-- [ ] Keep current prompts for continuity.
+- [x] Require at least three repeats per condition.
+- [x] Keep current prompts for continuity.
 
 **Tests Required:**
 
 | Test File | Test Name | Assertion |
 |-----------|-----------|-----------|
-| report test | `should reject benchmark report with fewer than three repeats` | report has error diagnostic |
+| report test | `should reject benchmark report with fewer than three repeats` | report status is fail |
 | prompt test | `should classify continuity and beyond-one-shot prompts` | prompt metadata drives report sections |
 
 **User Verification:**
@@ -199,11 +204,11 @@ sequenceDiagram
 
 **Implementation:**
 
-- [ ] Gate continuity prompts at `<= 1.5x` equal-proof tokens plus step/retry
+- [x] Gate continuity prompts at `<= 1.5x` equal-proof tokens plus step/retry
   budgets.
-- [ ] Gate beyond-one-shot prompts at `<= 1.0x` equal-proof tokens where
+- [x] Gate beyond-one-shot prompts at `<= 1.0x` equal-proof tokens where
   vanilla must iterate.
-- [ ] Emit the decision rule from the recommendation document.
+- [x] Emit the decision rule from the recommendation document.
 
 **Tests Required:**
 
@@ -232,9 +237,9 @@ sequenceDiagram
 
 ## 7. Acceptance Criteria
 
-- [ ] Every benchmark prompt has committed equal-proof assertions.
-- [ ] Vanilla sessions must pass the same mechanic checks as TN sessions.
-- [ ] Repeats are at least three per condition.
-- [ ] Gate is changed from `<= 0.5x` raw tokens to equal-proof parity
+- [x] Every benchmark prompt has committed equal-proof assertions.
+- [x] Vanilla sessions must pass the same mechanic checks as TN sessions.
+- [x] Repeats are at least three per condition.
+- [x] Gate is changed from `<= 0.5x` raw tokens to equal-proof parity
   thresholds plus failed-command/step/retry budgets.
-- [ ] Round-5 report emits the recommendation decision rule.
+- [x] Round-5 report emits the recommendation decision rule.

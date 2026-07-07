@@ -14,7 +14,7 @@
       "type": "array",
       "items": {
         "type": "object",
-        "required": ["promptId", "threenativeMedianTokens", "vanillaMedianTokens", "withinHalfX"],
+        "required": ["promptId", "threenativeMedianTokens", "vanillaMedianTokens", "withinEqualProofTokenBudget", "withinRepeatBudget"],
         "additionalProperties": true,
         "properties": {
           "promptId": { "type": "string" },
@@ -22,7 +22,12 @@
           "vanillaMedianTokens": { "type": ["number", "null"] },
           "rawTokenRatio": { "type": ["number", "null"] },
           "costWeightedTokenRatio": { "type": ["number", "null"] },
-          "withinHalfX": { "type": ["boolean", "null"] }
+          "withinHalfX": { "type": ["boolean", "null"] },
+          "withinEqualProofTokenBudget": { "type": ["boolean", "null"] },
+          "withinRepeatBudget": { "type": "boolean" },
+          "promptClassification": { "enum": ["continuity", "beyond-one-shot", "unknown"] },
+          "repeatCount": { "type": "object" },
+          "proofBar": { "type": "object" }
         }
       }
     },
@@ -34,7 +39,7 @@
       "properties": {
         "status": { "enum": ["pass", "fail", "insufficient-data"] },
         "summary": { "type": "string" },
-        "threshold": { "const": "threenative-median-tokens <= 0.5x vanilla-median-tokens" }
+        "threshold": { "const": "equal-proof: continuity <=1.5x vanilla tokens; beyond-one-shot <=1.0x vanilla tokens; repeats >=3; failed commands ==0; retry chains <=1/0" }
       }
     }
   }

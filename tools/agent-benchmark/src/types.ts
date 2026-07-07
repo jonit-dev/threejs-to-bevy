@@ -1,6 +1,7 @@
 import { type IScreenshotCompositionMetrics } from "@threenative/cli/screenshotMetrics";
 
 export type BenchmarkCondition = "threenative" | "vanilla";
+export type BenchmarkPromptClass = "beyond-one-shot" | "continuity";
 export type BenchmarkStopReason = "claimed-playable" | "token-cap" | "operator-stopped" | "failed-setup";
 
 export interface IBenchmarkDiagnostic {
@@ -16,6 +17,7 @@ export interface IBenchmarkSession {
   costWeightedTokens?: number;
   finishedAt?: string;
   failedCommandCount?: number;
+  identicalAssertionRepeatCount?: number;
   humanRubric: {
     notes?: string;
     playability: number;
@@ -32,7 +34,26 @@ export interface IBenchmarkSession {
   toolStepCount?: number;
   toolOutputBytes?: number;
   uncachedInputTokens?: number;
+  maxConsecutiveSameDiagnostic?: number;
   version: 2;
+}
+
+export interface IBenchmarkProofAssertion {
+  description: string;
+  id: string;
+  required: boolean;
+}
+
+export interface IBenchmarkProofResult {
+  classification: BenchmarkPromptClass;
+  assertions: Array<{
+    details?: Record<string, unknown>;
+    id: string;
+    pass: boolean;
+  }>;
+  ok: boolean;
+  promptId: string;
+  requiredAssertionIds: string[];
 }
 
 export interface IBenchmarkRunReport {
@@ -54,6 +75,7 @@ export interface IBenchmarkRunReport {
     };
   };
   ok: boolean;
+  proof?: IBenchmarkProofResult;
   promptId: string;
   runId: string;
   schema: "threenative.agent-benchmark-run";
@@ -94,7 +116,17 @@ export interface IBenchmarkReport {
       standaloneVerifyCommandCount: number | null;
     };
     promptId: string;
+    promptClassification: BenchmarkPromptClass | "unknown";
+    proofBar: {
+      requiredAssertions: string[];
+      threenativePassed: boolean;
+      vanillaPassed: boolean;
+    };
     rawTokenRatio: number | null;
+    repeatCount: {
+      threenative: number;
+      vanilla: number;
+    };
     threenativeMedianCachedInputTokens: number | null;
     threenativeMedianCostWeightedTokens: number | null;
     threenativeMedianFailedCommandCount: number | null;
@@ -124,7 +156,11 @@ export interface IBenchmarkReport {
     vanillaMedianToolOutputBytes: number | null;
     vanillaMedianUncachedInputTokens: number | null;
     withinHalfX: boolean | null;
+    withinEqualProofTokenBudget: boolean | null;
+    withinFailedCommandBudget: boolean | null;
     withinInstructionAdoptionBudget: boolean | null;
+    withinRepeatBudget: boolean;
+    withinRetryChainBudget: boolean | null;
     withinStepBudget: boolean | null;
   }>;
   runCount: number;
@@ -134,6 +170,6 @@ export interface IBenchmarkReport {
   verdict: {
     status: "pass" | "fail" | "insufficient-data";
     summary: string;
-    threshold: "threenative-median-tokens <= 0.5x vanilla-median-tokens";
+    threshold: "equal-proof: continuity <=1.5x vanilla tokens; beyond-one-shot <=1.0x vanilla tokens; repeats >=3; failed commands ==0; retry chains <=1/0";
   };
 }

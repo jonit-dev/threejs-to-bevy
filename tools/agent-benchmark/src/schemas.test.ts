@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { validateRunReport, validateSession } from "./schemas.js";
+import { validateAggregateReport, validateRunReport, validateSession } from "./schemas.js";
 
 test("should accept valid run report when all fields present", () => {
   const session = validSession();
@@ -35,11 +35,33 @@ test("should accept version 2 session token breakdown", () => {
     cachedInputTokens: 2000,
     costWeightedTokens: 5800,
     failedCommandCount: 2,
+    identicalAssertionRepeatCount: 0,
     inputTokens: 10000,
+    maxConsecutiveSameDiagnostic: 1,
     outputTokens: 1000,
     toolOutputBytes: 16384,
     toolStepCount: 9,
     uncachedInputTokens: 8000,
+  });
+
+  assert.equal(result.ok, true);
+  assert.deepEqual(result.diagnostics, []);
+});
+
+test("should accept equal-proof aggregate threshold", () => {
+  const result = validateAggregateReport({
+    diagnostics: [],
+    dialectConfusionFailureCount: 0,
+    generatedAt: "2026-07-07T00:00:00.000Z",
+    promptSummaries: [],
+    runCount: 0,
+    schema: "threenative.agent-benchmark-report",
+    verdict: {
+      status: "insufficient-data",
+      summary: "No prompt has equal-proof successful run reports for both vanilla and ThreeNative.",
+      threshold: "equal-proof: continuity <=1.5x vanilla tokens; beyond-one-shot <=1.0x vanilla tokens; repeats >=3; failed commands ==0; retry chains <=1/0",
+    },
+    version: 2,
   });
 
   assert.equal(result.ok, true);

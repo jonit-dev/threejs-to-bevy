@@ -34,7 +34,7 @@ in scripts, examples, and historical docs during a staged cleanup. See
 | UI | Active | Retained structured UI is the portable path; overlays are bounded and separate. | [ui](status/capabilities/ui.md) |
 | Assets | Active | Bundle-local assets, GLB/glTF, generated meshes, materials, audio, and catalog sourcing are validated. | [assets](status/capabilities/assets.md) |
 | Native parity | Frozen for promotion | Bevy consumes emitted IR; the native playtest P0 is closed, and new native promotions require shipped-game evidence, native proof, and the native path decision. | [native parity](status/capabilities/native-parity.md) |
-| Game production | Active | Generated games target polished vertical slices with selectable L1 archetype scaffolds and compositional mechanic blocks; recipe-matched scaffold-first benchmarks pass, but the 2026-07-07 off-recipe authoring round fails the <=2x token gate. | [game production](status/capabilities/game-production.md) |
+| Game production | Active | Generated games target polished vertical slices with selectable L1 archetype scaffolds and compositional mechanic blocks; recipe-matched scaffold-first benchmarks pass, and the next off-recipe decision round now uses equal-proof prompt assertions. | [game production](status/capabilities/game-production.md) |
 | Editor | In progress | Editor and MCP surfaces must wrap authoring operations rather than owning a second source model. | [editor](status/capabilities/editor.md) |
 | Tooling/proof | Active | Verification tools own docs checks, agent IO/session-cost/retry-chain budgets, runtime resource/retry diagnostics, smoke/release gates, proof manifests, and aggregate artifacts. | [tooling/proof](status/capabilities/tooling-proof.md) |
 

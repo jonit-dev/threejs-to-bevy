@@ -17,6 +17,28 @@
     "session": { "$ref": "session.schema.json" },
     "diagnostics": { "type": "array" },
     "artifacts": { "type": "object" },
-    "metrics": { "type": "object" }
+    "metrics": { "type": "object" },
+    "proof": {
+      "type": "object",
+      "required": ["promptId", "classification", "requiredAssertionIds", "assertions", "ok"],
+      "properties": {
+        "promptId": { "type": "string", "minLength": 1 },
+        "classification": { "enum": ["continuity", "beyond-one-shot"] },
+        "requiredAssertionIds": { "type": "array", "items": { "type": "string" } },
+        "assertions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["id", "pass"],
+            "properties": {
+              "id": { "type": "string" },
+              "pass": { "type": "boolean" },
+              "details": { "type": "object" }
+            }
+          }
+        },
+        "ok": { "type": "boolean" }
+      }
+    }
   }
 }

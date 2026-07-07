@@ -38,6 +38,9 @@ Current support:
   physics-knockdown median 2,792,109 vs 1,390,836 vanilla (2.008x), with
   47-53 median ThreeNative tool steps. Evidence:
   `tools/verify/artifacts/agent-benchmark/off-recipe-2026-07-07/`.
+- Round-5 protocol replaces unequal raw-token comparison with committed
+  equal-proof assertions for vanilla and ThreeNative, at least three repeats
+  per condition, and continuity/beyond-one-shot token thresholds.
 
 Verification:
 
