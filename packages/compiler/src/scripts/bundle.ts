@@ -303,6 +303,7 @@ export function bundleSystemScripts(systems: ReadonlyArray<ISystemScriptSource>)
             exportName: system.script.sourceRef?.export,
             file: system.script.sourceRef?.module,
             queries: system.queries,
+            resourceReads: system.resourceReads,
             resourceWrites: system.resourceWrites,
             services: system.services,
             source: system.script.source,

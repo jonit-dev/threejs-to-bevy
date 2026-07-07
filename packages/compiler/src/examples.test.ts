@@ -346,6 +346,21 @@ test("should emit structured source system metadata", async () => {
   const projectPath = await mkdtemp(join(tmpdir(), "tn-structured-systems-"));
   try {
     await cp(structuredSourceStarterPath, projectPath, { recursive: true });
+    const playerScriptPath = join(projectPath, "src/scripts/player.ts");
+    const originalPlayerScript = await readFile(playerScriptPath, "utf8");
+    await writeFile(
+      playerScriptPath,
+      `${originalPlayerScript}
+
+export function movePlayerWithState(context: any): void {
+  const state = context.resources.get("GameState", { speed: 1 });
+  for (const entity of context.query()) {
+    const transform = entity.transform();
+    transform.position = [state.speed, 0, 0];
+  }
+}
+`,
+    );
     await writeFile(
       join(projectPath, "content/systems/arena.systems.json"),
       `${JSON.stringify({
@@ -354,16 +369,15 @@ test("should emit structured source system metadata", async () => {
         id: "arena-systems",
         systems: [
           {
-            id: "move-player-to-goal",
+            id: "state-metadata-regression",
             schedule: "update",
             script: {
               module: "src/scripts/player.ts",
-              export: "movePlayerToGoal",
+              export: "movePlayerWithState",
             },
             commands: [{ kind: "setComponent", entity: "player", component: "Transform" }],
             queries: [{ with: ["Transform"], changed: ["Transform"], orderBy: "id", limit: 4 }],
             reads: ["Transform"],
-            resourceReads: ["GameState"],
             services: ["scene.change"],
             writes: ["Transform"],
           },
@@ -373,14 +387,17 @@ test("should emit structured source system metadata", async () => {
 
     const { bundlePath } = await buildProject(projectPath);
     const report = await validateBundle(bundlePath);
-    const systems = JSON.parse(await readFile(resolve(bundlePath, "systems.ir.json"), "utf8"));
+    const systems = JSON.parse(await readFile(resolve(bundlePath, "systems.ir.json"), "utf8")) as {
+      systems: Array<{ commands?: Array<{ kind: string }>; name: string; queries?: unknown[]; resourceReads?: string[]; schedule: string; services?: string[] }>;
+    };
+    const system = systems.systems.find((item) => item.name === "state-metadata-regression");
 
     assert.equal(report.ok, true);
-    assert.deepEqual(systems.systems[0].commands, [{ component: "Transform", entity: "player", kind: "setComponent" }]);
-    assert.deepEqual(systems.systems[0].queries, [{ changed: ["Transform"], limit: 4, orderBy: "id", with: ["Transform"], without: [] }]);
-    assert.equal(systems.systems[0].schedule, "fixedUpdate");
-    assert.deepEqual(systems.systems[0].resourceReads, ["GameState"]);
-    assert.deepEqual(systems.systems[0].services, ["scene.change"]);
+    assert.deepEqual(system?.commands, [{ component: "Transform", entity: "player", kind: "setComponent" }]);
+    assert.deepEqual(system?.queries, [{ changed: ["Transform"], limit: 4, orderBy: "id", with: ["Transform"], without: [] }]);
+    assert.equal(system?.schedule, "update");
+    assert.deepEqual(system?.resourceReads, ["GameState"]);
+    assert.deepEqual(system?.services, ["scene.change"]);
   } finally {
     await rm(projectPath, { force: true, recursive: true });
   }
@@ -430,7 +447,6 @@ export function lateUpdateRally(_ctx: any): void {}
             commands: [{ kind: "setComponent", entity: "player", component: "Transform" }],
             queries: [{ with: ["Transform"], orderBy: "id" }],
             reads: ["Transform"],
-            resourceWrites: ["GameState"],
             writes: ["Transform"],
           },
         ],
@@ -459,9 +475,9 @@ export function lateUpdateRally(_ctx: any): void {}
     assert.equal(report.ok, true);
     assert.deepEqual(lifecycleSystems, [
       { commands: [{ component: "Transform", entity: "player", kind: "setComponent" }], name: "rally.awake", resourceWrites: ["GameState"], schedule: "startup", writes: ["Transform"] },
-      { commands: [{ component: "Transform", entity: "player", kind: "setComponent" }], name: "rally.fixedUpdate", resourceWrites: ["GameState"], schedule: "fixedUpdate", writes: ["Transform"] },
-      { commands: [{ component: "Transform", entity: "player", kind: "setComponent" }], name: "rally.lateUpdate", resourceWrites: ["GameState"], schedule: "postUpdate", writes: ["Transform"] },
-      { commands: [{ component: "Transform", entity: "player", kind: "setComponent" }], name: "rally.update", resourceWrites: ["GameState"], schedule: "update", writes: ["Transform"] },
+      { commands: [{ component: "Transform", entity: "player", kind: "setComponent" }], name: "rally.fixedUpdate", resourceWrites: [], schedule: "fixedUpdate", writes: ["Transform"] },
+      { commands: [{ component: "Transform", entity: "player", kind: "setComponent" }], name: "rally.lateUpdate", resourceWrites: [], schedule: "postUpdate", writes: ["Transform"] },
+      { commands: [{ component: "Transform", entity: "player", kind: "setComponent" }], name: "rally.update", resourceWrites: [], schedule: "update", writes: ["Transform"] },
     ]);
     assert.deepEqual(
       scriptsManifest.systems

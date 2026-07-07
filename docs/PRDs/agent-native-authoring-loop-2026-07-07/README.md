@@ -21,7 +21,7 @@ weight. These PRDs intentionally avoid broad new Bevy parity work.
 10. [PRD-010 Meta-Layer Compression](PRD-010-meta-layer-compression.md)
 11. [PRD-011 Native Path Decision And Parity Freeze](PRD-011-native-path-decision-parity-freeze.md)
 12. [PRD-012 Ship One Genuinely Good Game](PRD-012-ship-one-good-game.md)
-13. [PRD-013 Derived Resource Declarations](PRD-013-derived-resource-declarations.md)
+13. [PRD-013 Derived Resource Declarations](../done/agent-native-authoring-loop-2026-07-07/PRD-013-derived-resource-declarations.md) - done
 14. [PRD-014 Runtime Resource Parity Diagnostics](PRD-014-runtime-resource-parity-diagnostics.md)
 15. [PRD-015 Write-Time Validation And Retry Ratchet](PRD-015-write-time-validation-and-retry-ratchet.md)
 16. [PRD-016 Equal-Proof Benchmark Protocol](PRD-016-equal-proof-benchmark-protocol.md)

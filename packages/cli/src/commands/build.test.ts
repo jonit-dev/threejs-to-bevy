@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { cp, mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { cp, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import test from "node:test";
@@ -123,6 +123,57 @@ test("build should preserve emitted bundle schema fix", async () => {
     assert.match(payload.path, /systems\.ir\.json/);
     assert.match(payload.fix?.instruction ?? "", /move it to resourceReads\/resourceWrites/);
     assert.match(payload.fix?.snippet ?? "", /"GameState"/);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("build should not fail inferable resource writes during build", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-build-derived-resource-writes-"));
+  try {
+    await cp(structuredSourceStarterPath, root, { recursive: true });
+    const playerScriptPath = join(root, "src/scripts/player.ts");
+    const originalPlayerScript = await readFile(playerScriptPath, "utf8");
+    await writeFile(
+      playerScriptPath,
+      `${originalPlayerScript}
+
+export function writeGameState(ctx: any): void {
+  ctx.resources.set("GameState", { status: "Ready" });
+}
+`,
+    );
+    await writeFile(
+      join(root, "content/systems/arena.systems.json"),
+      `${JSON.stringify({
+        schema: "threenative.systems",
+        version: "0.1.0",
+        id: "arena-systems",
+        systems: [
+          {
+            id: "derived-resource-write",
+            schedule: "update",
+            script: { module: "src/scripts/player.ts", export: "writeGameState" },
+            commands: [],
+            queries: [],
+            reads: ["Transform"],
+            services: [],
+            writes: ["Transform"],
+          },
+        ],
+      }, null, 2)}\n`,
+    );
+
+    const result = await buildCommand(["--json"], root);
+    const payload = JSON.parse(result.stdout) as { bundlePath: string; code: string };
+    const systems = JSON.parse(await readFile(resolve(root, payload.bundlePath, "systems.ir.json"), "utf8")) as {
+      systems: Array<{ name: string; resourceWrites?: string[] }>;
+    };
+    const system = systems.systems.find((item) => item.name === "derived-resource-write");
+
+    assert.equal(result.exitCode, 0);
+    assert.equal(payload.code, "TN_BUILD_OK");
+    assert.deepEqual(system?.resourceWrites, ["GameState"]);
   } finally {
     await rm(root, { force: true, recursive: true });
   }

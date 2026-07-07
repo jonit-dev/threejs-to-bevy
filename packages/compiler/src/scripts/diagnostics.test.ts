@@ -85,7 +85,7 @@ test("should reject legacy script context idioms with fix snippets", () => {
 test("should validate resource writes against resourceWrites", () => {
   const missing = diagnosePortableSystem({
     resourceWrites: [],
-    source: "(ctx) => ctx.resources.set(GameState, { score: 1 })",
+    source: '(ctx) => ctx.resources.set("GameState", { score: 1 })',
     systemName: "badResourceWrite",
     writes: [],
   });
@@ -95,12 +95,42 @@ test("should validate resource writes against resourceWrites", () => {
 
   const valid = diagnosePortableSystem({
     resourceWrites: ["GameState"],
-    source: "(ctx) => ctx.resources.patch(GameState, { score: 1 })",
+    source: '(ctx) => ctx.resources.patch("GameState", { score: 1 })',
     systemName: "goodResourceWrite",
     writes: [],
   });
 
   assert.deepEqual(valid, []);
+});
+
+test("should validate resource reads against resourceReads", () => {
+  const missing = diagnosePortableSystem({
+    resourceReads: [],
+    source: '(ctx) => ctx.resources.get("GameState", { score: 0 })',
+    systemName: "badResourceRead",
+  });
+
+  assert.equal(missing[0]?.code, "TN_SCRIPT_RESOURCE_READ_UNDECLARED");
+  assert.equal(missing[0]?.path, "systems/badResourceRead/resourceReads/GameState");
+
+  const valid = diagnosePortableSystem({
+    resourceReads: ["GameState"],
+    source: '(ctx) => ctx.resources.get("GameState", { score: 0 })',
+    systemName: "goodResourceRead",
+  });
+
+  assert.deepEqual(valid, []);
+});
+
+test("should reject dynamic resource helper ids", () => {
+  const diagnostics = diagnosePortableSystem({
+    source: '(ctx) => { const id = "GameState"; ctx.resources.patch(id, { score: 1 }); }',
+    systemName: "dynamicResourceWrite",
+  });
+
+  assert.equal(diagnostics[0]?.code, "TN_SCRIPT_DYNAMIC_RESOURCE_ID_UNSUPPORTED");
+  assert.equal(diagnostics[0]?.path, "systems/dynamicResourceWrite/resourceWrites");
+  assert.match(diagnostics[0]?.fix?.snippet ?? "", /resources\.patch/);
 });
 
 test("should reject helper resource writes without declared access", () => {

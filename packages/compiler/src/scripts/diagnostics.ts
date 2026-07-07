@@ -2,6 +2,7 @@ import { prescriptiveFixForCode } from "@threenative/authoring";
 
 import type { ICompilerDiagnostic } from "../diagnostics.js";
 import { maskStringAndCommentText } from "./lexical.js";
+import { extractResourceAccess } from "./resourceAccess.js";
 
 export interface IPortableSystemSource {
   commands?: ReadonlyArray<string>;
@@ -9,6 +10,7 @@ export interface IPortableSystemSource {
   exportName?: string;
   file?: string;
   queries?: ReadonlyArray<{ with: ReadonlyArray<string>; without: ReadonlyArray<string> }>;
+  resourceReads?: ReadonlyArray<string>;
   resourceWrites?: ReadonlyArray<string>;
   services?: ReadonlyArray<string>;
   source: string;
@@ -163,6 +165,7 @@ function diagnoseLegacyIdioms(source: IPortableSystemSource, codeOnlySource: str
 function diagnoseDeclaredAccess(source: IPortableSystemSource): ICompilerDiagnostic[] {
   const diagnostics: ICompilerDiagnostic[] = [];
   const writes = new Set(source.writes ?? []);
+  const resourceReads = new Set(source.resourceReads ?? []);
   const resourceWrites = new Set(source.resourceWrites ?? []);
   const commands = new Set(source.commands ?? []);
   const eventWrites = new Set(source.eventWrites ?? []);
@@ -182,7 +185,27 @@ function diagnoseDeclaredAccess(source: IPortableSystemSource): ICompilerDiagnos
     }
   }
 
-  for (const resource of uniqueMatches(source.source, /\bresources\.(?:set|patch)\s*\(\s*([A-Z][A-Za-z0-9_]*)/g)) {
+  const extractedResourceAccess = extractResourceAccess(source.source, {
+    exportName: source.exportName,
+    file: source.file,
+    systemName: source.systemName,
+  });
+  diagnostics.push(...extractedResourceAccess.diagnostics);
+
+  for (const resource of extractedResourceAccess.resourceReads) {
+    if (!resourceReads.has(resource)) {
+      diagnostics.push({
+        code: "TN_SCRIPT_RESOURCE_READ_UNDECLARED",
+        file: source.file,
+        message: `System '${source.systemName}' reads resource '${resource}' without declaring it in resourceReads.`,
+        path: `systems/${source.systemName}/resourceReads/${resource}`,
+        severity: "error",
+        suggestion: `Add '${resource}' to the system resourceReads list or remove the resource read.`,
+      });
+    }
+  }
+
+  for (const resource of extractedResourceAccess.resourceWrites) {
     if (!resourceWrites.has(resource)) {
       diagnostics.push({
         code: "TN_SCRIPT_RESOURCE_WRITE_UNDECLARED",
@@ -191,19 +214,6 @@ function diagnoseDeclaredAccess(source: IPortableSystemSource): ICompilerDiagnos
         path: `systems/${source.systemName}/resourceWrites/${resource}`,
         severity: "error",
         suggestion: `Add '${resource}' to the system resourceWrites list or remove the mutation.`,
-      });
-    }
-  }
-
-  for (const resource of uniqueMatches(source.source, /\b(?:context|ctx)\.state\s*\(\s*["']([^"']+)["']/g)) {
-    if (!resourceWrites.has(resource)) {
-      diagnostics.push({
-        code: "TN_SCRIPT_RESOURCE_WRITE_UNDECLARED",
-        file: source.file,
-        message: `System '${source.systemName}' writes resource '${resource}' without declaring it in resourceWrites.`,
-        path: `systems/${source.systemName}/resourceWrites/${resource}`,
-        severity: "error",
-        suggestion: `Add '${resource}' to the system resourceWrites list or remove the state helper mutation.`,
       });
     }
   }

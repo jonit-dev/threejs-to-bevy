@@ -115,6 +115,32 @@ execution bundle.
   lane-runner game plans into playable, scenario-backed starter source before
   agent patching begins. Fresh scaffold-first benchmark evidence now proves the
   <=0.5x token-efficiency claim for collector and lane-runner prompts.
+- [Derived Resource Declarations](done/agent-native-authoring-loop-2026-07-07/PRD-013-derived-resource-declarations.md):
+  round-4 tactical fix to infer `resourceReads` and `resourceWrites` from
+  script resource access, apply deterministic declarations or exact fixes, and
+  make the top undeclared-resource failure class impossible for literal helper
+  calls.
+- [Runtime Resource Parity Diagnostics](agent-native-authoring-loop-2026-07-07/PRD-014-runtime-resource-parity-diagnostics.md):
+  closes the round-4 projectile-velocity black box by proving declared
+  resources reach runtime state, recording resource observations in playtest
+  artifacts, and emitting named diagnostics when schema-declared values are not
+  observed at runtime.
+- [Write-Time Validation And Retry Ratchet](agent-native-authoring-loop-2026-07-07/PRD-015-write-time-validation-and-retry-ratchet.md):
+  routes source-writing commands through validate-before-write and extends
+  benchmark metrics with same-diagnostic and identical-assertion retry-chain
+  gates.
+- [Equal-Proof Benchmark Protocol](agent-native-authoring-loop-2026-07-07/PRD-016-equal-proof-benchmark-protocol.md):
+  replaces the unequal `<=0.5x` raw-token gate with equal mechanic proof,
+  three repeats per condition, continuity plus beyond-one-shot prompts, and a
+  decision report for round 5.
+- [Typed TypeScript Game Spec](agent-native-authoring-loop-2026-07-07/PRD-017-typed-typescript-game-spec.md):
+  architectural bet to make TypeScript the authoring schema for scenes,
+  resources, systems, UI, and IDs while emitting canonical structured JSON and
+  existing IR bundles.
+- [Vanilla-Lift Pipeline Decision](agent-native-authoring-loop-2026-07-07/PRD-018-vanilla-lift-pipeline-decision.md):
+  decision-gated prototype for ingesting constrained vanilla Three.js/TypeScript
+  into ThreeNative IR if equal-proof round 5 shows direct authoring still above
+  the threshold after tactical fixes.
 - [Contract De-Sprawl Through Authoring Modules And Runtime Trace Contracts](proof-first-engine-loop-2026-07-05/PRD-003-contract-de-sprawl-authoring-runtime-traces.md):
   splits authoring operation implementation by source family, introduces
   focused runtime trace contracts, and shrinks native mapping hotspots behind

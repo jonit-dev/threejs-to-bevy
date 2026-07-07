@@ -5,6 +5,7 @@ import ts from "typescript";
 
 import { prescriptiveFixForCode } from "@threenative/authoring";
 import type { ICompilerDiagnostic } from "../diagnostics.js";
+import { extractResourceAccess } from "./resourceAccess.js";
 import { SUPPORTED_SCRIPT_HELPER_IMPORTS, type ISystemScriptSource, type SupportedScriptHelperImport } from "./bundle.js";
 
 const supportedScriptHelperBindings: Record<SupportedScriptHelperImport, ReadonlySet<string>> = {
@@ -79,8 +80,16 @@ export function resolveSystemScriptSources<T extends ISystemScriptSource>(
       if (resolved.source === undefined || resolved.hash === undefined) {
         return system;
       }
+      const resourceAccess = extractResourceAccess(resolved.source, {
+        exportName: script.sourceRef.export,
+        file: script.sourceRef.module,
+        systemName: system.name,
+      });
+      diagnostics.push(...resourceAccess.diagnostics);
       return {
         ...system,
+        resourceReads: mergeStringLists(system.resourceReads, resourceAccess.resourceReads),
+        resourceWrites: mergeStringLists(system.resourceWrites, resourceAccess.resourceWrites),
         script: {
           ...script,
           ...(resolved.helperImports === undefined || resolved.helperImports.length === 0 ? {} : { helperImports: resolved.helperImports }),
@@ -93,6 +102,11 @@ export function resolveSystemScriptSources<T extends ISystemScriptSource>(
       } as T;
     }),
   };
+}
+
+function mergeStringLists(left: ReadonlyArray<string> | undefined, right: ReadonlyArray<string>): string[] | undefined {
+  const merged = [...new Set([...(left ?? []), ...right])].sort();
+  return merged.length === 0 ? left === undefined ? undefined : [] : merged;
 }
 
 function resolveScriptModule(
