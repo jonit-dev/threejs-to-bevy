@@ -21,9 +21,7 @@ tn material set mat.cookbook --color blue --roughness 0.65 --metalness 0 --proje
 
 ## script
 ```ts
-import { Vec3 } from "@threenative/script-stdlib";
-
-type ScriptContext = any;
+import { Vec3, type ScriptContext } from "@threenative/script-stdlib";
 
 export function movePlayerToGoal(context: ScriptContext): void {
   for (const entity of context.query()) {

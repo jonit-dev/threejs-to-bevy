@@ -29,10 +29,17 @@ test("should expose fixed input trace", () => {
   assert.equal(context.input.action("MoveForward"), true);
   assert.equal(context.input.axis("MoveX"), 1);
   assert.equal(context.input.getAxis("MoveX"), 1);
+  assert.deepEqual(context.input.getAxis2("MoveX", "MoveZ", { normalize: true }), [1, 0]);
   assert.equal(context.input.axis1("MoveX", { negative: "Brake", positive: "MoveForward" }), 1);
+  assert.equal(context.input.getButton("MoveForward"), true);
+  assert.equal(context.input.getButtonDown("Jump"), true);
+  assert.equal(context.input.getButtonUp("Jump"), false);
   assert.equal(context.input.pressed("Jump"), true);
+  assert.equal(context.time.deltaTime, 0.016);
   assert.equal(context.time.fixedDt, 0.016);
   assert.equal(context.time.fixedDelta, 0.016);
+  assert.equal(context.time.fixedDeltaTime, 0.016);
+  assert.equal(context.time.time, 0);
 });
 
 test("should look up entities by id deterministically", () => {
@@ -76,6 +83,30 @@ test("should expose state and transform helper facades through existing effects"
       },
     },
   ]);
+});
+
+test("should merge defaults when reading entity components and resources", () => {
+  const world = makeWorld();
+  const playerSource = world.entities.find((entity) => entity.id === "player");
+  assert.ok(playerSource);
+  playerSource.components.Player = { hp: 3 };
+  world.resources = { GameState: { score: 2 } };
+  const { context } = createSystemContext(world, { delta: 0.016, fixedDelta: 0.016 });
+  const player = context.entity("player");
+  assert.ok(player);
+
+  assert.deepEqual(player.get("Player", { hp: 1, speed: 5 }), { hp: 3, speed: 5 });
+  assert.deepEqual(context.resources.get("GameState", { lives: 3, score: 0 }), { lives: 3, score: 2 });
+});
+
+test("should patch resources with shallow merge semantics", () => {
+  const world = makeWorld();
+  world.resources = { GameState: { lives: 3, score: 1 } };
+  const { context, resources } = createSystemContext(world, { delta: 0.016, fixedDelta: 0.016 });
+
+  context.resources.patch("GameState", { score: 2 });
+
+  assert.deepEqual(resources, [{ resource: "GameState", value: { lives: 3, score: 2 } }]);
 });
 
 test("should apply property write when transform position is assigned", () => {

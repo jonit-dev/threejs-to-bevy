@@ -39,3 +39,4 @@ export type {
 
 export { SCRIPT_STDLIB_BUNDLE_SOURCE } from "./bundle-source.js";
 export type { ColorTuple, ColorValue, QuatTuple, QuatValue, Vec2Tuple, Vec2Value, Vec3Tuple, Vec3Value } from "./helpers.js";
+export type { ScriptContext, ScriptEntity, ScriptQuatTuple, ScriptTransformFacade, ScriptVec3Tuple } from "./script-context.js";

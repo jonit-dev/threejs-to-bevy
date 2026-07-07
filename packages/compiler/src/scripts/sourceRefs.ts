@@ -156,6 +156,7 @@ function resolveScriptModule(
   diagnostics.push(...diagnoseMutableModuleState(system.name, sourceRef.module, sourceRef.export, sourceFile));
   diagnostics.push(...diagnoseModuleLocalReferences(system.name, sourceRef.module, sourceRef.export, sourceFile));
   const exported = extractNamedExport(sourceFile, sourceRef.export);
+  diagnostics.push(...diagnoseUntypedScriptContext(system.name, sourceRef.module, sourceRef.export, sourceFile));
   if (exported === undefined) {
     diagnostics.push({
       code: "TN_SCRIPT_EXPORT_NOT_FOUND",
@@ -172,7 +173,7 @@ function resolveScriptModule(
     diagnostics,
     helperImports: helperImports.imports,
     hash,
-    source: diagnostics.length === 0 ? exported : undefined,
+    source: diagnostics.some((diagnostic) => diagnostic.severity === "error") ? undefined : exported,
   };
 }
 
@@ -199,12 +200,14 @@ function resolveHelperImports(
     if (ts.isImportDeclaration(statement)) {
       const specifier = readLiteralSpecifier(statement.moduleSpecifier);
       if (isSupportedScriptHelperImport(specifier)) {
-        const imported = importedBindingNames(statement);
+        const imported = runtimeImportedBindingNames(statement);
         diagnostics.push(...diagnoseUnsupportedHelperImportBindings(systemName, module, exportName, specifier, statement, imported));
-        imports.push({
-          imported,
-          module: specifier,
-        });
+        if (imported.length > 0) {
+          imports.push({
+            imported,
+            module: specifier,
+          });
+        }
         continue;
       }
       diagnostics.push(unsupportedHelperImportDiagnostic(systemName, module, exportName, specifier));
@@ -242,15 +245,15 @@ function isSupportedScriptHelperImport(specifier: string | undefined): specifier
   return (SUPPORTED_SCRIPT_HELPER_IMPORTS as readonly string[]).includes(specifier ?? "");
 }
 
-function importedBindingNames(statement: ts.ImportDeclaration): string[] {
+function runtimeImportedBindingNames(statement: ts.ImportDeclaration): string[] {
   const clause = statement.importClause;
-  if (clause === undefined) {
+  if (clause === undefined || clause.isTypeOnly) {
     return [];
   }
   return [
     ...(clause.name === undefined ? [] : [clause.name.text]),
     ...(clause.namedBindings !== undefined && ts.isNamedImports(clause.namedBindings)
-      ? clause.namedBindings.elements.map((element) => element.name.text)
+      ? clause.namedBindings.elements.flatMap((element) => element.isTypeOnly ? [] : [element.name.text])
       : []),
   ].sort();
 }
@@ -272,7 +275,9 @@ function diagnoseUnsupportedHelperImportBindings(
     clause.name !== undefined ||
     (clause.namedBindings !== undefined && !ts.isNamedImports(clause.namedBindings)) ||
     imported.some((name) => !supportedBindings.has(name)) ||
-    (clause.namedBindings !== undefined && ts.isNamedImports(clause.namedBindings) && clause.namedBindings.elements.some((element) => element.propertyName !== undefined));
+    (clause.namedBindings !== undefined &&
+      ts.isNamedImports(clause.namedBindings) &&
+      clause.namedBindings.elements.some((element) => !element.isTypeOnly && element.propertyName !== undefined));
   return hasUnsupportedShape ? [unsupportedHelperImportDiagnostic(systemName, module, exportName, helperModule)] : [];
 }
 
@@ -329,6 +334,60 @@ function diagnoseModuleLocalReferences(systemName: string, module: string, expor
     suggestion: "Inline deterministic helpers and constants inside the exported system function, or use supported portable helper imports.",
     target: exportName,
   }));
+}
+
+function diagnoseUntypedScriptContext(systemName: string, module: string, exportName: string, sourceFile: ts.SourceFile): ICompilerDiagnostic[] {
+  const exportedNode = findNamedExportNode(sourceFile, exportName);
+  const parameter = firstParameter(exportedNode);
+  if (parameter?.type === undefined || !isUntypedContextAnnotation(parameter.type, sourceFile)) {
+    return [];
+  }
+  return [
+    {
+      code: "TN_SCRIPT_UNTYPED_CONTEXT",
+      file: module,
+      fix: {
+        docs: "docs/contracts/scripting-api.md",
+        instruction: "Import the portable ScriptContext type from @threenative/script-stdlib and annotate the system context parameter.",
+        snippet: `import type { ScriptContext } from "@threenative/script-stdlib";\nexport function ${exportName}(context: ScriptContext): void {\n  // ...\n}`,
+      },
+      message: `System '${systemName}' script parameter uses an untyped context.`,
+      path: `systems/${systemName}/script/sourceRef/context`,
+      severity: "info",
+      suggestion: "Use ScriptContext to get portable input, time, entity, resource, and query helpers while keeping the emitted script runtime-neutral.",
+      target: exportName,
+    },
+  ];
+}
+
+function firstParameter(node: ts.Node | undefined): ts.ParameterDeclaration | undefined {
+  if (node === undefined) {
+    return undefined;
+  }
+  if (ts.isFunctionDeclaration(node) || ts.isFunctionExpression(node) || ts.isArrowFunction(node)) {
+    return node.parameters[0];
+  }
+  return undefined;
+}
+
+function isUntypedContextAnnotation(type: ts.TypeNode, sourceFile: ts.SourceFile): boolean {
+  if (type.kind === ts.SyntaxKind.AnyKeyword) {
+    return true;
+  }
+  if (!ts.isTypeReferenceNode(type) || !ts.isIdentifier(type.typeName)) {
+    return false;
+  }
+  return typeAliasesToAny(sourceFile).has(type.typeName.text);
+}
+
+function typeAliasesToAny(sourceFile: ts.SourceFile): Set<string> {
+  const aliases = new Set<string>();
+  for (const statement of sourceFile.statements) {
+    if (ts.isTypeAliasDeclaration(statement) && statement.type.kind === ts.SyntaxKind.AnyKeyword) {
+      aliases.add(statement.name.text);
+    }
+  }
+  return aliases;
 }
 
 function moduleLocalValueNames(sourceFile: ts.SourceFile, exportName: string): Set<string> {

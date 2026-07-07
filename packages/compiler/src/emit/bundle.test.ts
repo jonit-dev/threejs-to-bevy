@@ -597,6 +597,38 @@ test("should emit resolved script module references and manifest provenance", as
   }
 });
 
+test("should emit script modules with info-only context diagnostics", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-emit-script-source-info-"));
+  try {
+    await mkdir(join(root, "src/scripts"), { recursive: true });
+    await writeFile(join(root, "src/scripts/kart.ts"), `type ScriptContext = any;\nexport function kartArcadePhysics(context: ScriptContext) {\n  return context;\n}\n`);
+    const world = new World().addSystem(
+      update("kartArcadePhysics", {
+        script: {
+          export: "kartArcadePhysics",
+          module: "src/scripts/kart.ts",
+        },
+      }),
+    );
+    const config = {
+      entry: "src/game.ts",
+      outDir: "dist/game.bundle",
+      projectPath: root,
+      schema: "threenative.project" as const,
+      version: "0.1.0" as const,
+    };
+
+    const bundlePath = await emitBundle(config, world);
+    const report = await validateBundle(bundlePath);
+    const scripts = await readFile(join(bundlePath, "scripts.bundle.js"), "utf8");
+
+    assert.equal(report.ok, true);
+    assert.match(scripts, /const system_kartArcadePhysics = function kartArcadePhysics\(context\)/);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
 test("emits overlay ir and manifest entry", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-emit-overlay-"));
   try {

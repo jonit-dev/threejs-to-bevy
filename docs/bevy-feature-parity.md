@@ -411,13 +411,17 @@ remaining gaps by usefulness for building and shipping ordinary 3D games:
   `packages/compiler/src/scripts/sourceRefs.test.ts`.
 - `P1` Core script context ergonomics now exist in SDK typings, web runtime
   context, and the Bevy QuickJS bridge for entity lookup, shallow resource
-  state, source-authored `getAxis`, readonly `fixedDelta`, and Transform
-  `position` property read/write helpers. Legacy `axis1`, `positionOr`, and
-  option-bag `fixedDelta(...)` user-script idioms are compiler diagnostics with
-  fix snippets. Focused compiler, web, and native tests prove helper-driven
-  resource writes and Transform patches use existing diagnostics and effect
-  validation paths; `pnpm verify:scripting-helpers-lifecycle` carries the
-  focused release evidence.
+  state, shallow default hydration, source-authored `getAxis`, `getAxis2`,
+  Unity-aligned `getButton*`/time aliases, readonly `fixedDelta`, and
+  Transform `position` property read/write helpers. Type-only
+  `ScriptContext` stdlib imports are allowed without adding runtime helper
+  manifest entries, and old untyped context aliases receive
+  `TN_SCRIPT_UNTYPED_CONTEXT` info diagnostics. Legacy `axis1`, `positionOr`,
+  and option-bag `fixedDelta(...)` user-script idioms are compiler diagnostics
+  with fix snippets. Focused compiler, web, and native tests prove
+  helper-driven resource writes and Transform patches use existing diagnostics
+  and effect validation paths; `pnpm verify:scripting-helpers-lifecycle`
+  carries the focused release evidence.
 - `P1` Script lifecycle authoring facade now lowers SDK
   `scriptLifecycle(...)` declarations and structured-source `scriptLifecycles`
   entries into existing portable schedules with source module/export refs.

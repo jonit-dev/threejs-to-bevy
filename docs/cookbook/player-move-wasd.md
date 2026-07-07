@@ -21,9 +21,7 @@ tn input add-axis arena MoveX --negative-keys KeyA,ArrowLeft --positive-keys Key
 
 ## script
 ```ts
-import { Vec3 } from "@threenative/script-stdlib";
-
-type ScriptContext = any;
+import { Vec3, type ScriptContext } from "@threenative/script-stdlib";
 
 export function movePlayerToGoal(context: ScriptContext): void {
   for (const entity of context.query()) {

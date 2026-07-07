@@ -301,6 +301,27 @@ export function createSystemContext(
         getAxis(name) {
           return options.input?.axis(name) ?? 0;
         },
+        getAxis2(xAxis, yAxis, axisOptions = {}) {
+          const value: [number, number] = [options.input?.axis(xAxis) ?? 0, options.input?.axis(yAxis) ?? 0];
+          const deadzone = Math.max(0, Number(axisOptions.deadzone ?? 0));
+          const length = Math.hypot(value[0], value[1]);
+          if (length <= deadzone) {
+            return [0, 0];
+          }
+          if (axisOptions.normalize === true && length > 1) {
+            return [value[0] / length, value[1] / length];
+          }
+          return value;
+        },
+        getButton(name) {
+          return options.input?.action(name) ?? false;
+        },
+        getButtonDown(name) {
+          return options.input?.pressed(name) ?? false;
+        },
+        getButtonUp(name) {
+          return options.input?.released(name) ?? false;
+        },
         pressed(name) {
           return options.input?.pressed(name) ?? false;
         },
@@ -422,8 +443,26 @@ export function createSystemContext(
       },
       timers: createTimerHelpers(options.elapsed ?? 0),
       resources: {
-        get(name) {
-          return cloneValue(world.resources?.[name]);
+        get<T = unknown>(name: string, defaults?: Record<string, unknown>): T {
+          const value = world.resources?.[name];
+          if (defaults !== undefined && isRecord(defaults)) {
+            return {
+              ...cloneValue(defaults) as Record<string, unknown>,
+              ...(isRecord(value) ? cloneValue(value) as Record<string, unknown> : {}),
+            } as T;
+          }
+          return cloneValue(value) as T;
+        },
+        patch(name, value) {
+          const key = normalizeHandleName(name);
+          const existing = world.resources?.[key];
+          resources.push({
+            resource: key,
+            value: {
+              ...(isRecord(existing) ? existing : {}),
+              ...cloneValue(value),
+            },
+          });
         },
         set(name, value) {
           resources.push({ resource: normalizeHandleName(name), value: cloneValue(value) });
@@ -538,11 +577,14 @@ export function createSystemContext(
       },
       time: {
         delta: options.delta,
+        deltaTime: options.delta,
         dt: options.delta,
         elapsed: options.elapsed ?? 0,
         fixedDelta: finiteNumber(options.fixedDelta, finiteNumber(options.delta, 0.016)),
+        fixedDeltaTime: finiteNumber(options.fixedDelta, finiteNumber(options.delta, 0.016)),
         fixedDt: options.fixedDelta,
         paused: options.paused ?? false,
+        time: options.elapsed ?? 0,
       },
     },
     events,
@@ -787,8 +829,15 @@ function createEntityView(entity: IWorldEntity, commands: IQueuedCommand[]): ISy
   };
   return {
     components,
-    get<T = unknown>(component: unknown): T {
-      return cloneValue(components[normalizeHandleName(component)]) as T;
+    get<T = unknown>(component: unknown, defaults?: Record<string, unknown>): T {
+      const value = components[normalizeHandleName(component)];
+      if (defaults !== undefined && isRecord(defaults)) {
+        return {
+          ...cloneValue(defaults) as Record<string, unknown>,
+          ...(isRecord(value) ? cloneValue(value) as Record<string, unknown> : {}),
+        } as T;
+      }
+      return cloneValue(value) as T;
     },
     has(component: unknown): boolean {
       return components[normalizeHandleName(component)] !== undefined;

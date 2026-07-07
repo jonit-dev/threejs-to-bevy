@@ -96,6 +96,7 @@ export interface ISystemDeclaration {
 export interface ISystemEntity {
   readonly id: string;
   get<T = unknown>(component: EcsFactory | IEcsSchema | string): T;
+  get<T extends Record<string, unknown>>(component: EcsFactory | IEcsSchema | string, defaults: T): T;
   has(component: EcsFactory | IEcsSchema | string): boolean;
   patch(component: EcsFactory | IEcsSchema | string, value: Record<string, unknown>): void;
   set(component: EcsFactory | IEcsSchema | string, value: unknown): void;
@@ -170,6 +171,12 @@ export interface ISystemContext {
     axis1(axis: string, buttons?: { negative?: string; positive?: string }): number;
     axis(name: string): number;
     getAxis(axis: string): number;
+    getAxis2(xAxis: string, yAxis: string, options?: { deadzone?: number; normalize?: boolean }): [number, number];
+    getButton(name: string): boolean;
+    getButtonDown(name: string): boolean;
+    getButtonUp(name: string): boolean;
+    pressed(name: string): boolean;
+    released(name: string): boolean;
   };
   entities: {
     byId<T extends Record<string, string>>(ids: T): { [K in keyof T]: ISystemEntity | undefined };
@@ -348,10 +355,21 @@ export interface ISystemContext {
     remaining(start: number, duration: number): number;
   };
   time: {
+    delta: number;
+    deltaTime: number;
     dt: number;
     elapsed: number;
     fixedDelta: number;
+    fixedDeltaTime: number;
     fixedDt: number;
+    paused: boolean;
+    time: number;
+  };
+  resources: {
+    get<T = unknown>(name: string): T;
+    get<T extends Record<string, unknown>>(name: string, defaults: T): T;
+    patch(name: string, value: Record<string, unknown>): void;
+    set(name: string, value: unknown): void;
   };
   state<T extends Record<string, unknown>>(key: string, defaults: T): T;
 }

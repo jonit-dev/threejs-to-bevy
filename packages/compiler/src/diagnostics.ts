@@ -1,4 +1,4 @@
-export type DiagnosticSeverity = "error" | "warning";
+export type DiagnosticSeverity = "error" | "warning" | "info";
 
 export interface ICompilerDiagnostic {
   code: string;

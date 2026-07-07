@@ -24,9 +24,7 @@ tn physics add-collider arena target.01 --kind box --size 0.5,0.5,0.5 --project 
 
 ## script
 ```ts
-import { Vec3 } from "@threenative/script-stdlib";
-
-type ScriptContext = any;
+import { Vec3, type ScriptContext } from "@threenative/script-stdlib";
 
 export function movePlayerToGoal(context: ScriptContext): void {
   for (const entity of context.query()) {

@@ -3,7 +3,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use threenative_loader::{InputAxisIr, InputBindingIr, InputIr, LoadedBundle, load_bundle};
+use threenative_loader::{InputActionIr, InputAxisIr, InputBindingIr, InputIr, LoadedBundle, load_bundle};
 use threenative_runtime::{
     input::{NativeInputState, map_keyboard_event},
     systems_context::{NativeSystemTimeSnapshot, build_system_context_snapshot},
@@ -113,7 +113,12 @@ fn systems_host_should_expose_context_ergonomics_helpers() {
     let input = InputIr {
         schema: "threenative.input".to_owned(),
         version: "0.1.0".to_owned(),
-        actions: Vec::new(),
+        actions: vec![InputActionIr {
+            id: "Boost".to_owned(),
+            bindings: vec![InputBindingIr::Keyboard {
+                code: "KeyB".to_owned(),
+            }],
+        }],
         axes: vec![InputAxisIr {
             id: "MoveX".to_owned(),
             negative: vec![InputBindingIr::Keyboard {
@@ -129,6 +134,7 @@ fn systems_host_should_expose_context_ergonomics_helpers() {
     };
     let mut state = NativeInputState::default();
     map_keyboard_event(&input, "KeyD", true, &mut state);
+    map_keyboard_event(&input, "KeyB", true, &mut state);
 
     run_native_systems_once_with_input(&mut bundle, time(), Some(&state))
         .expect("system should run");
@@ -136,11 +142,18 @@ fn systems_host_should_expose_context_ergonomics_helpers() {
     assert_eq!(
         bundle.world.resources.get("RallyState"),
         Some(&serde_json::json!({
+            "button": true,
             "camera": "camera.main",
+            "down": false,
             "dt": 0.016,
+            "energy": 5,
+            "hp": 1,
             "lap": 1,
             "missing": true,
-            "speed": 1
+            "move": [1, 0],
+            "speed": 1,
+            "time": 1,
+            "up": false
         }))
     );
     let transform = bundle.world.entities[0]
@@ -1806,6 +1819,7 @@ fn write_animation_control_service_bundle(name: &str) -> PathBuf {
     {
       "id": "player",
       "components": {
+        "PlayerState": { "hp": 3 },
         "Transform": { "position": [0, 0, 0], "rotation": [0, 0, 0, 1], "scale": [1, 1, 1] }
       }
     }
@@ -2571,7 +2585,7 @@ fn write_context_ergonomics_bundle(name: &str) -> PathBuf {
     {
       "name": "ergonomics",
       "schedule": "update",
-      "reads": ["Camera", "Transform"],
+      "reads": ["Camera", "PlayerState", "Transform"],
       "writes": ["Transform"],
       "queries": [{ "with": ["Transform"], "without": [] }],
       "commands": [],
@@ -2587,15 +2601,27 @@ fn write_context_ergonomics_bundle(name: &str) -> PathBuf {
     );
     fs::write(
         root.join("scripts.bundle.js"),
-        r#"const system_ergonomics = (ctx) => {
+r#"const system_ergonomics = (ctx) => {
   const player = ctx.entity("player");
   const ids = ctx.entities.byId({ camera: "camera.main", missing: "missing" });
-  const state = ctx.state("RallyState", { lap: 0, speed: 0, dt: 0, missing: false, camera: "" });
-  state.speed = ctx.input.getAxis("MoveX");
-  state.dt = ctx.time.fixedDelta;
-  state.camera = ids.camera.id;
-  state.missing = ids.missing === undefined;
-  player.transform().position = [player.transform().position[0] + state.speed, 0, 0];
+  const current = ctx.resources.get("RallyState", { lap: 0, speed: 0 });
+  const playerState = player.get("PlayerState", { hp: 1, energy: 5 });
+  const speed = ctx.input.getAxis("MoveX");
+  ctx.resources.patch("RallyState", {
+    button: ctx.input.getButton("Boost"),
+    camera: ids.camera.id,
+    down: ctx.input.getButtonDown("Boost"),
+    dt: ctx.time.fixedDeltaTime,
+    energy: playerState.energy,
+    hp: playerState.hp,
+    lap: current.lap,
+    missing: ids.missing === undefined,
+    move: ctx.input.getAxis2("MoveX", "MoveZ"),
+    speed,
+    time: ctx.time.time,
+    up: ctx.input.getButtonUp("Boost")
+  });
+  player.transform().position = [player.transform().position[0] + speed, 0, 0];
 };
 export const systemIds = Object.freeze({ "system_ergonomics": "ergonomics" });
 export const systems = Object.freeze({ "system_ergonomics": system_ergonomics });

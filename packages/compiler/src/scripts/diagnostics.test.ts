@@ -95,7 +95,7 @@ test("should validate resource writes against resourceWrites", () => {
 
   const valid = diagnosePortableSystem({
     resourceWrites: ["GameState"],
-    source: "(ctx) => ctx.resources.set(GameState, { score: 1 })",
+    source: "(ctx) => ctx.resources.patch(GameState, { score: 1 })",
     systemName: "goodResourceWrite",
     writes: [],
   });

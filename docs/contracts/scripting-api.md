@@ -55,7 +55,12 @@ unsupported.
   `ctx.entities.byId({ key: id })`; missing IDs return `undefined`.
 - [x] Stable entity identity through `entity.id`.
 - [x] Component reads through `entity.get(Component)`.
+- [x] Component reads with shallow default hydration through
+  `entity.get(Component, defaults)`. Defaults are copied first and stored
+  component fields override matching keys.
 - [x] Component patches through `entity.patch(Component, partial)`.
+  Patches are shallow merges over the live component value on both web and
+  Bevy hosts.
 - [x] Component replacement through `entity.set(Component, value)`.
 - [x] Transform facade reads/writes through `entity.transform()`, including
   `positionOr`, `yawOr`, `setPosition`, `setRotation`, and `setPose`.
@@ -71,16 +76,23 @@ unsupported.
 ### Time, Input, Randomness, and Timers
 
 - [x] Variable timestep reads through `ctx.time.dt`.
+- [x] Unity-aligned variable timestep aliases through `ctx.time.deltaTime`
+  and `ctx.time.time` for elapsed runtime seconds.
 - [x] Fixed timestep reads through `ctx.time.fixedDt`.
+- [x] Unity-aligned fixed timestep alias through `ctx.time.fixedDeltaTime`.
 - [x] Clamped fixed timestep helper through
   `ctx.time.fixedDelta({ fallback, min, max })`.
 - [x] Logical input axes through `ctx.input.axis(name)`.
+- [x] Unity-aligned axis reads through `ctx.input.getAxis(name)` and 2D reads
+  through `ctx.input.getAxis2(xAxis, yAxis, { deadzone?, normalize? })`.
 - [x] Normalized one-axis helper through
   `ctx.input.axis1(axis, { negative, positive })`.
 - [x] Logical input actions through `ctx.input.action(name)`.
 - [x] Logical input edge reads through `ctx.input.pressed(name)` and
   `ctx.input.released(name)` where the runtime host exposes captured input
   transitions.
+- [x] Unity-aligned button aliases through `ctx.input.getButton(name)`,
+  `ctx.input.getButtonDown(name)`, and `ctx.input.getButtonUp(name)`.
 - [x] Deterministic seeded random helpers through
   `ctx.random.float/range/int/bool/pick`.
 - [x] Deterministic timer/cooldown helpers through
@@ -111,7 +123,12 @@ imports.
 - [x] Typed event emission through `ctx.events.emit(Event, payload)`.
 - [x] Typed event reads through `ctx.events.read(Event)`.
 - [x] Resource reads through `ctx.resources.get(name)`.
+- [x] Resource reads with shallow default hydration through
+  `ctx.resources.get(name, defaults)`.
 - [x] Resource writes through `ctx.resources.set(name, value)`.
+- [x] Resource patches through `ctx.resources.patch(name, partial)`. Patches
+  are shallow merges over the live resource value and require the same
+  `resourceWrites` declaration as `set`.
 - [x] Shallow resource-state facade through `ctx.state(name, defaults)`.
   Assigning top-level fields queues a normal resource write, so existing
   `resourceWrites` validation still applies.
@@ -199,6 +216,10 @@ imports.
 
 - [x] Named imports from `@threenative/script-stdlib` are the supported way to
   share pure script helper code across `src/scripts/**/*.ts`.
+- [x] Type-only `ScriptContext`, `ScriptEntity`, `ScriptVec3Tuple`,
+  `ScriptQuatTuple`, and `ScriptTransformFacade` imports from
+  `@threenative/script-stdlib` are supported for scripts. Type-only imports do
+  not appear in `scripts.manifest.json` helper import metadata.
 - [x] `NumberEx.clamp(value, min, max)`,
   `NumberEx.finite(value, fallback)`, and
   `NumberEx.round(value, precision?)`.

@@ -12,7 +12,7 @@ import type { INavigationPathRequest, INavigationPathResult } from "../navigatio
 
 export interface ISystemEntityView {
   components: IWorldEntity["components"];
-  get<T = unknown>(component: unknown): T;
+  get<T = unknown>(component: unknown, defaults?: Record<string, unknown>): T;
   has(component: unknown): boolean;
   id: string;
   patch(component: unknown, value: Record<string, unknown>): void;
@@ -85,6 +85,10 @@ export interface ISystemContext {
     axis1(axis: string, buttons?: { negative?: string; positive?: string }): number;
     axis(name: string): number;
     getAxis(axis: string): number;
+    getAxis2(xAxis: string, yAxis: string, options?: { deadzone?: number; normalize?: boolean }): [number, number];
+    getButton(name: string): boolean;
+    getButtonDown(name: string): boolean;
+    getButtonUp(name: string): boolean;
     pressed(name: string): boolean;
     released(name: string): boolean;
   };
@@ -137,7 +141,8 @@ export interface ISystemContext {
     remaining(start: number, duration: number): number;
   };
   resources: {
-    get(name: string): unknown;
+    get<T = unknown>(name: string, defaults?: Record<string, unknown>): T;
+    patch(name: string, value: Record<string, unknown>): void;
     set(name: string, value: unknown): void;
   };
   settings: {
@@ -169,11 +174,14 @@ export interface ISystemContext {
   };
   time: {
     delta: number;
+    deltaTime: number;
     dt: number;
     elapsed: number;
     fixedDelta: number;
+    fixedDeltaTime: number;
     fixedDt: number;
     paused: boolean;
+    time: number;
   };
   state<T extends Record<string, unknown>>(key: string, defaults: T): T;
 }

@@ -20,9 +20,7 @@ tn ui set-layout hud countdown --top 32 --width 390 --project . --json
 
 ## script
 ```ts
-import { Vec3 } from "@threenative/script-stdlib";
-
-type ScriptContext = any;
+import { Vec3, type ScriptContext } from "@threenative/script-stdlib";
 
 export function movePlayerToGoal(context: ScriptContext): void {
   for (const entity of context.query()) {

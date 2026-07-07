@@ -42,7 +42,7 @@ test("should allow supported script stdlib imports", async () => {
     await mkdir(join(root, "src/scripts"), { recursive: true });
     await writeFile(
       join(root, "src/scripts/kart.ts"),
-      `import { NumberEx, Quat, Vec3 } from "@threenative/script-stdlib";\nexport const kartArcadePhysics = (context: unknown) => ({ context, next: Vec3.round(Vec3.add([1, 0, 0], [0.25, 0, 1])), yaw: Quat.yaw(Quat.fromYaw(NumberEx.clamp(1, 0, 2))) });\n`,
+      `import { NumberEx, Quat, type ScriptContext, Vec3 } from "@threenative/script-stdlib";\nexport const kartArcadePhysics = (context: ScriptContext) => ({ context, next: Vec3.round(Vec3.add([1, 0, 0], [0.25, 0, 1])), yaw: Quat.yaw(Quat.fromYaw(NumberEx.clamp(1, 0, 2))) });\n`,
     );
 
     const systems: ISystemScriptSource[] = [
@@ -68,6 +68,71 @@ test("should allow supported script stdlib imports", async () => {
       },
     ]);
     assert.match(result.systems[0]?.script?.source ?? "", /Vec3\.round/);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should ignore type-only script stdlib imports", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-script-source-ref-type-only-"));
+  try {
+    await mkdir(join(root, "src/scripts"), { recursive: true });
+    await writeFile(
+      join(root, "src/scripts/player.ts"),
+      `import type { ScriptContext } from "@threenative/script-stdlib";\nexport function updatePlayer(context: ScriptContext) {\n  return context.time.deltaTime;\n}\n`,
+    );
+
+    const systems: ISystemScriptSource[] = [
+      {
+        name: "updatePlayer",
+        script: {
+          exportName: "system_updatePlayer",
+          sourceRef: {
+            export: "updatePlayer",
+            module: "src/scripts/player.ts",
+            systemId: "updatePlayer",
+          },
+        },
+      },
+    ];
+    const result = resolveSystemScriptSources(systems, root);
+
+    assert.deepEqual(result.diagnostics, []);
+    assert.equal(result.systems[0]?.script?.helperImports, undefined);
+    assert.match(result.systems[0]?.script?.source ?? "", /context\.time\.deltaTime/);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should report untyped script context without blocking source emit", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-script-source-ref-untyped-context-"));
+  try {
+    await mkdir(join(root, "src/scripts"), { recursive: true });
+    await writeFile(
+      join(root, "src/scripts/player.ts"),
+      `type ScriptContext = any;\nexport const updatePlayer = (context: ScriptContext) => context.time.delta;\n`,
+    );
+
+    const systems: ISystemScriptSource[] = [
+      {
+        name: "updatePlayer",
+        script: {
+          exportName: "system_updatePlayer",
+          sourceRef: {
+            export: "updatePlayer",
+            module: "src/scripts/player.ts",
+            systemId: "updatePlayer",
+          },
+        },
+      },
+    ];
+    const result = resolveSystemScriptSources(systems, root);
+
+    assert.equal(result.diagnostics[0]?.code, "TN_SCRIPT_UNTYPED_CONTEXT");
+    assert.equal(result.diagnostics[0]?.severity, "info");
+    assert.match(result.diagnostics[0]?.fix?.snippet ?? "", /ScriptContext/);
+    assert.match(result.systems[0]?.script?.source ?? "", /context\.time\.delta/);
   } finally {
     await rm(root, { force: true, recursive: true });
   }

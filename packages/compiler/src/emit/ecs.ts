@@ -59,12 +59,12 @@ export function ecsToIr(world: IEcsWorldLike, options: IEcsEmitOptions = {}): IE
   const resolvedScripts = resolveSystemScriptSources(snapshot.systems, options.projectPath);
   const scriptBundle = bundleSystemScripts(resolvedScripts.systems);
   const scriptDiagnostics = [...resolvedScripts.diagnostics, ...scriptBundle.diagnostics];
-  if (scriptDiagnostics.length > 0) {
-    const diagnostic = scriptDiagnostics[0];
+  const scriptError = scriptDiagnostics.find((diagnostic) => diagnostic.severity === "error");
+  if (scriptError !== undefined) {
     throw new CompilerError(
-      diagnostic?.code ?? "TN_SCRIPT_INVALID",
-      diagnostic?.message ?? "Portable system script is invalid.",
-      diagnostic,
+      scriptError.code,
+      scriptError.message,
+      scriptError,
     );
   }
   return {

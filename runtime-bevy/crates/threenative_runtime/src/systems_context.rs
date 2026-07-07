@@ -157,13 +157,16 @@ impl Serialize for NativeSystemTimeSnapshot {
     where
         S: Serializer,
     {
-        let mut state = serializer.serialize_struct("NativeSystemTimeSnapshot", 6)?;
+        let mut state = serializer.serialize_struct("NativeSystemTimeSnapshot", 9)?;
         state.serialize_field("delta", &rounded_time(self.delta))?;
+        state.serialize_field("deltaTime", &rounded_time(self.delta))?;
         state.serialize_field("dt", &rounded_time(self.dt))?;
         state.serialize_field("elapsed", &rounded_time(self.elapsed))?;
         state.serialize_field("fixedDelta", &rounded_time(self.fixed_delta))?;
+        state.serialize_field("fixedDeltaTime", &rounded_time(self.fixed_delta))?;
         state.serialize_field("fixedDt", &rounded_time(self.fixed_dt))?;
         state.serialize_field("paused", &self.paused)?;
+        state.serialize_field("time", &rounded_time(self.elapsed))?;
         state.end()
     }
 }

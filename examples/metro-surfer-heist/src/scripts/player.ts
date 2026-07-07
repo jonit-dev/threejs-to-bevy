@@ -1,13 +1,10 @@
-import { NumberEx } from "@threenative/script-stdlib";
-
-type ScriptContext = any;
-type Vec3Tuple = [number, number, number];
+import { NumberEx, Vec3, type ScriptContext, type Vec3Tuple } from "@threenative/script-stdlib";
 
 export function metroSurferHeistSystem(context: ScriptContext): void {
   const delta = context.time.fixedDelta;
-  const elapsed = typeof context.time.elapsed === "number" ? context.time.elapsed : 0;
+  const elapsed = context.time.time;
   const entities = context.query();
-  const runner = entities.find((entity: any) => entity.id === "runner");
+  const runner = context.entity("runner");
   if (runner === undefined) return;
 
   const lanes = [-1.55, 0, 1.55];
@@ -16,24 +13,24 @@ export function metroSurferHeistSystem(context: ScriptContext): void {
   const farZ = -16.5;
   const isRecord = (value: unknown): value is Record<string, unknown> => typeof value === "object" && value !== null;
   const isVec3 = (value: unknown): value is Vec3Tuple => Array.isArray(value) && value.length === 3 && value.every((item) => typeof item === "number" && Number.isFinite(item));
-  const stateValue = context.resources?.get?.("GameState");
-  let state: Record<string, unknown> = isRecord(stateValue) ? stateValue : {};
-  const legacyState = context.resource?.("GameState");
+  let state: Record<string, unknown> = context.resources.get("GameState", {
+    coins: 0,
+    distance: 0,
+    objectiveCoins: 12,
+    objectiveDistance: 260,
+    phase: "playing",
+    score: 0,
+    speed: 6.2,
+  });
   const patchState = (patch: Record<string, unknown>): void => {
     state = { ...state, ...patch };
-    context.resources?.set?.("GameState", state);
-    legacyState?.patch?.(patch);
+    context.resources.patch("GameState", patch);
   };
-  const actionPressed = (id: string): boolean => context.input.pressed?.(id) === true || context.input.action?.(id) === true;
+  const actionPressed = (id: string): boolean => context.input.getButtonDown(id) || context.input.getButton(id);
   const laneX = (lane: number): number => lanes[NumberEx.clamp(Math.round(lane), 0, 2)];
-  const distance2d = (a: Vec3Tuple, b: Vec3Tuple): number => {
-    const dx = a[0] - b[0];
-    const dz = a[2] - b[2];
-    return Math.sqrt(dx * dx + dz * dz);
-  };
   const syncParts = (base: Vec3Tuple, ducking: boolean): void => {
     for (const entity of entities) {
-      const part = entity.get?.("RunnerPart");
+      const part = entity.get<Record<string, unknown>>("RunnerPart");
       if (part?.target !== "runner" || !isVec3(part.offset)) continue;
       const bob = Math.sin(elapsed * 12) * 0.025;
       const duckDrop = ducking ? 0.22 : 0;
@@ -43,25 +40,24 @@ export function metroSurferHeistSystem(context: ScriptContext): void {
   const resetGame = (): void => {
     const start: Vec3Tuple = [0, 0.55, runnerZ];
     runner.transform().setPosition(start);
-    runner.patch?.("RunnerPlayer", { lane: 1, targetLane: 1, jump: 0, duckTimer: 0, laneCooldown: 0 });
+    runner.patch("RunnerPlayer", { lane: 1, targetLane: 1, jump: 0, duckTimer: 0, laneCooldown: 0 });
     syncParts(start, false);
     let coinIndex = 0;
     let hazardIndex = 0;
     for (const entity of entities) {
-      const coin = entity.get?.("Coin");
-      if (coin !== undefined) {
+      if (entity.has("Coin")) {
         const lane = coinIndex % 3;
         const z = -1.2 - coinIndex * 1.25;
         entity.transform().setPosition([laneX(lane), 0.58, z]);
-        entity.patch?.("Coin", { ...coin, lane, z });
+        entity.patch("Coin", { lane, z });
         coinIndex += 1;
       }
-      const hazard = entity.get?.("RunnerHazard");
-      if (hazard !== undefined) {
+      const hazard = entity.get<Record<string, unknown>>("RunnerHazard");
+      if (isRecord(hazard)) {
         const lane = hazardIndex % 3;
         const z = -4.2 - hazardIndex * 3.7;
         entity.transform().setPosition([laneX(lane), hazard.kind === "gate" ? 1.05 : hazard.kind === "barrier" ? 0.37 : 0.92, z]);
-        entity.patch?.("RunnerHazard", { ...hazard, lane, z });
+        entity.patch("RunnerHazard", { lane, z });
         hazardIndex += 1;
       }
     }
@@ -79,7 +75,7 @@ export function metroSurferHeistSystem(context: ScriptContext): void {
   };
 
   const phase = typeof state.phase === "string" ? state.phase : "playing";
-  const stats = runner.get?.("RunnerPlayer") ?? { lane: 1, targetLane: 1, jump: 0, duckTimer: 0, laneCooldown: 0 };
+  const stats = runner.get("RunnerPlayer", { duckTimer: 0, jump: 0, lane: 1, laneCooldown: 0, targetLane: 1 });
   const current = runner.transform().position;
   if (phase !== "playing") {
     syncParts(current, false);
@@ -122,8 +118,8 @@ export function metroSurferHeistSystem(context: ScriptContext): void {
   let failReason = "";
 
   for (const entity of entities) {
-    const coin = entity.get?.("Coin");
-    if (coin === undefined) continue;
+    const coin = entity.get<Record<string, unknown>>("Coin");
+    if (!isRecord(coin)) continue;
     const currentCoin = entity.transform().position;
     const previousZ = currentCoin[2];
     let z = previousZ + speed * delta;
@@ -135,10 +131,10 @@ export function metroSurferHeistSystem(context: ScriptContext): void {
     const bob = Math.sin(elapsed * 5.5 + Number(coin.phase ?? 0)) * 0.06;
     const coinPosition: Vec3Tuple = [laneX(laneForCoin), 0.58 + bob, z];
     entity.transform().setPosition(coinPosition);
-    entity.patch?.("Coin", { ...coin, lane: laneForCoin, z });
+    entity.patch("Coin", { lane: laneForCoin, z });
     const sameLane = Math.abs(next[0] - coinPosition[0]) < 0.58;
     const crossedRunner = previousZ <= runnerZ && z >= runnerZ;
-    const closeToRunner = distance2d(next, coinPosition) < 0.62;
+    const closeToRunner = Vec3.distance2d(next, coinPosition) < 0.62;
     if (sameLane && Math.abs(next[1] - coinPosition[1]) < 0.75 && (crossedRunner || closeToRunner)) {
       coins += 1;
       score += 75;
@@ -146,7 +142,7 @@ export function metroSurferHeistSystem(context: ScriptContext): void {
       const newLane = (laneForCoin + 2) % 3;
       const newZ = farZ - 1.6 - (coins % 4) * 0.8;
       entity.transform().setPosition([laneX(newLane), 0.58, newZ]);
-      entity.patch?.("Coin", { ...coin, lane: newLane, z: newZ });
+      entity.patch("Coin", { lane: newLane, z: newZ });
     }
   }
 
@@ -162,7 +158,7 @@ export function metroSurferHeistSystem(context: ScriptContext): void {
     }
     const position: Vec3Tuple = [laneX(hazardLane), height, z];
     entity.transform().setPosition(position);
-    entity.patch?.("RunnerHazard", { ...hazard, lane: hazardLane, z });
+    entity.patch("RunnerHazard", { lane: hazardLane, z });
     const laneOverlap = Math.abs(next[0] - position[0]) < 0.66;
     const zOverlap = Math.abs(next[2] - position[2]) < (hazard.kind === "train" ? 0.95 : 0.58);
     if (!laneOverlap || !zOverlap) continue;
@@ -200,7 +196,7 @@ export function metroSurferHeistSystem(context: ScriptContext): void {
           ? "Vaulting the barrier"
           : "Switch lanes, jump red barriers, duck low gates";
   const phaseNext = complete ? "won" : "playing";
-  runner.patch?.("RunnerPlayer", { lane, targetLane: lane, jump, duckTimer, laneCooldown });
+  runner.patch("RunnerPlayer", { lane, targetLane: lane, jump, duckTimer, laneCooldown });
   patchState({
     phase: phaseNext,
     score: Math.floor(score),

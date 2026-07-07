@@ -15,6 +15,13 @@ conventions where behavior genuinely matches (per design rule 1 of the
 conventions contract), so AI agents can lean on existing training data when
 authoring scripts through the CLI.
 
+Implementation note: the first pass landed the high-impact contract hardening
+from sections A, C, D, E, and F: typed `ScriptContext` exports, type-only
+stdlib import handling, `TN_SCRIPT_UNTYPED_CONTEXT`, Unity-style input/time
+aliases, `entity.get` and `resources.get` defaults, `resources.patch`, and
+starter/cookbook adoption. Sections B, G, H, I, and typed schema handles remain
+follow-up design work.
+
 ## Summary Of Findings
 
 Every example script re-implements the same six kinds of scaffolding:

@@ -980,8 +980,12 @@ function __tnInvokeSystem(options) {
   const entities = data.entities.map((source) => ({
     id: source.id,
     components: clone(source.components),
-    get(component) {
-      return clone(source.components[normalize(component)]);
+    get(component, defaults) {
+      const value = source.components[normalize(component)];
+      if (defaults && typeof defaults === "object" && !Array.isArray(defaults)) {
+        return { ...clone(defaults), ...(value && typeof value === "object" && !Array.isArray(value) ? clone(value) : {}) };
+      }
+      return clone(value);
     },
     has(component) {
       return source.components[normalize(component)] !== undefined;
@@ -1000,7 +1004,10 @@ function __tnInvokeSystem(options) {
   const context = {
     time: {
       ...data.time,
-      fixedDelta: finiteNumber(data.time.fixedDt, finiteNumber(data.time.dt, 0.016))
+      deltaTime: finiteNumber(data.time.deltaTime, finiteNumber(data.time.delta, finiteNumber(data.time.dt, 0.016))),
+      fixedDelta: finiteNumber(data.time.fixedDelta, finiteNumber(data.time.fixedDt, finiteNumber(data.time.dt, 0.016))),
+      fixedDeltaTime: finiteNumber(data.time.fixedDeltaTime, finiteNumber(data.time.fixedDelta, finiteNumber(data.time.fixedDt, 0.016))),
+      time: finiteNumber(data.time.time, finiteNumber(data.time.elapsed, 0))
     },
     random: createRandom(randomSeed),
     timers: createTimers(data.time.elapsed),
@@ -1063,6 +1070,16 @@ function __tnInvokeSystem(options) {
       },
       axis(name) { return Number(data.input.axes[name] ?? 0); },
       getAxis(name) { return Number(data.input.axes[name] ?? 0); },
+      getAxis2(xAxis, yAxis, options = {}) {
+        const value = [Number(data.input.axes[xAxis] ?? 0), Number(data.input.axes[yAxis] ?? 0)];
+        const deadzone = Math.max(0, Number(options.deadzone ?? 0));
+        const length = Math.hypot(value[0], value[1]);
+        if (length <= deadzone) return [0, 0];
+        return options.normalize === true && length > 1 ? [value[0] / length, value[1] / length] : value;
+      },
+      getButton(name) { return !!data.input.actions[name]; },
+      getButtonDown() { return false; },
+      getButtonUp() { return false; },
       pressed() { return false; },
       released() { return false; }
     },
@@ -1124,7 +1141,19 @@ function __tnInvokeSystem(options) {
       }
     },
     resources: {
-      get(name) { return clone(data.resources[name]); },
+      get(name, defaults) {
+        const key = normalize(name);
+        const value = data.resources[key];
+        if (defaults && typeof defaults === "object" && !Array.isArray(defaults)) {
+          return { ...clone(defaults), ...(value && typeof value === "object" && !Array.isArray(value) ? clone(value) : {}) };
+        }
+        return clone(value);
+      },
+      patch(name, value) {
+        const key = normalize(name);
+        const existing = data.resources[key];
+        effects.resources.push({ resource: key, value: { ...(existing && typeof existing === "object" && !Array.isArray(existing) ? existing : {}), ...clone(value) } });
+      },
       set(name, value) {
         effects.resources.push({ resource: normalize(name), value: clone(value) });
       }

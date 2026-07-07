@@ -1,7 +1,4 @@
-import { Bounds2, CameraMath, NumberEx, Quat, TextEx, Vec3 } from "@threenative/script-stdlib";
-
-type ScriptContext = any;
-type Vec3Tuple = [number, number, number];
+import { Bounds2, CameraMath, NumberEx, Quat, TextEx, Vec3, type ScriptContext, type Vec3Tuple } from "@threenative/script-stdlib";
 
 export function updateRally(context: ScriptContext): void {
   const START: Vec3Tuple = [-0.65, 0.02, 10.5];
@@ -13,35 +10,31 @@ export function updateRally(context: ScriptContext): void {
     [-10.5, 0.02, 10.5],
   ];
 
-  const entities = context.query({ with: ["Transform"], without: [] });
-  const player = findEntity(entities, "player.car");
-  const rival = findEntity(entities, "rival.car");
-  const camera = findEntity(entities, "camera.main");
+  const { camera, player, rival } = context.entities.byId({ camera: "camera.main", player: "player.car", rival: "rival.car" });
   if (player === undefined) {
     return;
   }
 
-  const dt = NumberEx.clamp(context.time.fixedDt ?? context.time.dt ?? 0.016, 0.001, 0.05);
+  const dt = NumberEx.clamp(context.time.fixedDeltaTime, 0.001, 0.05);
   updatePlayer(player, dt);
   updateRival(rival, dt, context.time.elapsed ?? 0);
   updateCamera(camera, player);
 
-  function updatePlayer(playerEntity: any, delta: number): void {
-    const transform = playerEntity.get("Transform");
-    const state = context.resources.get("RallyState") ?? {};
+  function updatePlayer(playerEntity: NonNullable<typeof player>, delta: number): void {
+    const transform = playerEntity.get("Transform", { position: START, rotation: Quat.fromYaw(START_YAW) });
+    const state = context.resources.get("RallyState", { checkpoint: 0, lap: 0, speed: 0 });
     const position = Vec3.from(transform.position, START);
     let speed = NumberEx.finite(state.speed, 0);
     let checkpoint = NumberEx.finite(state.checkpoint, 0);
     let lap = NumberEx.finite(state.lap, 0);
     let yaw = Quat.yaw(transform.rotation, START_YAW);
 
-    if (context.input.action("reset-car")) {
+    if (context.input.getButton("reset-car")) {
       speed = 0;
       checkpoint = 0;
       yaw = START_YAW;
       playerEntity.patch("Transform", { position: START, rotation: Quat.fromYaw(yaw) });
-      context.resources.set("RallyState", {
-        ...state,
+      context.resources.patch("RallyState", {
         checkpoint,
         hud: hud(lap, checkpoint, speed),
         lap,
@@ -51,12 +44,12 @@ export function updateRally(context: ScriptContext): void {
       return;
     }
 
-    const throttle = context.input.action("throttle") ? 1 : 0;
-    const brake = context.input.action("brake") ? 1 : 0;
+    const throttle = context.input.getButton("throttle") ? 1 : 0;
+    const brake = context.input.getButton("brake") ? 1 : 0;
     const steer =
-      NumberEx.finite(context.input.axis("steer"), 0) +
-      (context.input.action("steer-right") ? 1 : 0) -
-      (context.input.action("steer-left") ? 1 : 0);
+      NumberEx.finite(context.input.getAxis("steer"), 0) +
+      (context.input.getButton("steer-right") ? 1 : 0) -
+      (context.input.getButton("steer-left") ? 1 : 0);
     const trackGrip = onTrack(position) ? 1 : 0.42;
 
     speed += (throttle * 22.0 - brake * 18.0) * delta;
@@ -79,8 +72,7 @@ export function updateRally(context: ScriptContext): void {
       message = `Lap ${lap} complete`;
     }
 
-    context.resources.set("RallyState", {
-      ...state,
+    context.resources.patch("RallyState", {
       checkpoint,
       hud: hud(lap, checkpoint, speed),
       lap,
@@ -89,12 +81,12 @@ export function updateRally(context: ScriptContext): void {
     });
   }
 
-  function updateRival(rivalEntity: any | undefined, delta: number, elapsed: number): void {
+  function updateRival(rivalEntity: typeof rival, delta: number, elapsed: number): void {
     if (rivalEntity === undefined) {
       return;
     }
-    const transform = rivalEntity.get("Transform");
-    const state = context.resources.get("RallyState") ?? {};
+    const transform = rivalEntity.get("Transform", { position: [-1.65, 0.02, 10.5] as Vec3Tuple });
+    const state = context.resources.get("RallyState", { rivalPhase: 0 });
     const position = Vec3.from(transform.position, [-1.65, 0.02, 10.5]);
     const phase = NumberEx.repeat(NumberEx.finite(state.rivalPhase, 0) + delta * 0.28 + elapsed * 0, 1);
     const target = ovalPoint(phase);
@@ -104,14 +96,14 @@ export function updateRally(context: ScriptContext): void {
       position: Vec3.withY(Vec3.lerp(position, target, follow), 0.02),
       rotation: Quat.fromYaw(yaw),
     });
-    context.resources.set("RallyState", { ...state, rivalPhase: NumberEx.round(phase, 6) });
+    context.resources.patch("RallyState", { rivalPhase: NumberEx.round(phase, 6) });
   }
 
-  function updateCamera(cameraEntity: any | undefined, playerEntity: any): void {
+  function updateCamera(cameraEntity: typeof camera, playerEntity: NonNullable<typeof player>): void {
     if (cameraEntity === undefined) {
       return;
     }
-    const transform = playerEntity.get("Transform");
+    const transform = playerEntity.get("Transform", { position: START, rotation: Quat.fromYaw(START_YAW) });
     const pose = CameraMath.followPose({
       offset: [0, 1.65, -4.8],
       target: Vec3.add(Vec3.from(transform.position, START), [0, 0.38, 0]),
@@ -121,10 +113,6 @@ export function updateRally(context: ScriptContext): void {
       position: pose.position,
       rotation: Quat.normalize(pose.rotation),
     });
-  }
-
-  function findEntity(items: readonly any[], id: string): any | undefined {
-    return items.find((entity) => entity.id === id);
   }
 
   function ovalPoint(phase: number): Vec3Tuple {

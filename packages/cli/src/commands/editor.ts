@@ -30,7 +30,7 @@ interface IEditorOptions {
 }
 
 type JsonRecord = Record<string, unknown>;
-type EditorDiagnostic = Omit<IIrDiagnostic, "value"> & { value?: unknown };
+type EditorDiagnostic = Omit<IIrDiagnostic, "severity" | "value"> & { severity?: "error" | "info" | "warning"; value?: unknown };
 
 interface IEditorLaunchProcess {
   pid?: number;

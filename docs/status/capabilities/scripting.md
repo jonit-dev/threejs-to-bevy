@@ -9,11 +9,18 @@ Current support:
 
 - Convention-first context idioms: `context.input.getAxis(...)`,
   `entity.transform().position`, and readonly `context.time.fixedDelta`.
+- Typed script context imports from `@threenative/script-stdlib`, including
+  `ScriptContext`, plus guaranteed input/time aliases for `getButton*`,
+  `getAxis2`, `deltaTime`, `fixedDeltaTime`, and `time`.
+- Shallow default hydration and patching through `entity.get(..., defaults)`,
+  `context.resources.get(..., defaults)`, and `context.resources.patch(...)`.
 - Supported named helper imports from `@threenative/script-stdlib` and promoted
   gameplay kits.
 - Compiler diagnostics reject unsupported imports, mutable module state,
   module-local helpers that cannot be emitted, legacy idioms, and undeclared
   access.
+- The non-blocking `TN_SCRIPT_UNTYPED_CONTEXT` info diagnostic points old
+  `type ScriptContext = any` scripts at the typed stdlib import.
 - Prescriptive `fix` snippets cover unsupported imports and module-local
   helper repairs.
 

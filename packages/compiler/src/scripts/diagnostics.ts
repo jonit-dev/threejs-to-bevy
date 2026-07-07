@@ -182,7 +182,7 @@ function diagnoseDeclaredAccess(source: IPortableSystemSource): ICompilerDiagnos
     }
   }
 
-  for (const resource of uniqueMatches(source.source, /\bresources\.set\s*\(\s*([A-Z][A-Za-z0-9_]*)/g)) {
+  for (const resource of uniqueMatches(source.source, /\bresources\.(?:set|patch)\s*\(\s*([A-Z][A-Za-z0-9_]*)/g)) {
     if (!resourceWrites.has(resource)) {
       diagnostics.push({
         code: "TN_SCRIPT_RESOURCE_WRITE_UNDECLARED",
