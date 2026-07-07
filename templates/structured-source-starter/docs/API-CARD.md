@@ -100,6 +100,9 @@ interface ScriptTransformFacade {
 - Mechanic blocks: `tn add spawner|timer|trigger-sequence|score|projectile|follow-camera --json`
   writes `content/mechanics/*.mechanic.json`, mutates supported scene source,
   and emits `playtests/block-*.playtest.json` proof hooks.
+- Material assignment: use
+  `tn prefab set-material <prefab-id> --material <material-id> --project . --json`
+  instead of hand-editing `content/prefabs/*.prefab.json`.
 - Inspect one scene record with
   `tn scene inspect arena --node <id> --project . --json` before reading a full
   `content/scenes/*.scene.json` file. It matches entities, compact instances,
@@ -124,6 +127,7 @@ interface ScriptTransformFacade {
 tn iterate --project . --json
 pnpm run playtest:archetype
 tn add spawner --pattern grid --prefab pickup.prefab --count 5 --project . --json
+tn prefab set-material prefab.player --material mat.player --project . --json
 tn scene inspect arena --node scaffold.player --project . --json
 tn playtest report --latest --scenario <name> --json
 tn cookbook show player-move-wasd --json

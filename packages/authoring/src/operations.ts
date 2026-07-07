@@ -646,6 +646,11 @@ export interface IAddPrefabComponentOptions extends IAuthoringOperationContext {
   value: Record<string, unknown>;
 }
 
+export interface ISetPrefabMaterialOptions extends IAuthoringOperationContext {
+  prefabId: string;
+  materialId: string;
+}
+
 export interface IAddInputActionOptions extends IAuthoringOperationContext {
   inputDocId: string;
   actionId: string;
@@ -2277,6 +2282,32 @@ export async function addPrefabComponent(options: IAddPrefabComponentOptions): P
     entity.components = {
       ...(isRecord(entity.components) ? entity.components : {}),
       [options.componentKind]: options.value,
+    };
+    return [];
+  });
+}
+
+export async function setPrefabMaterial(options: ISetPrefabMaterialOptions): Promise<IAuthoringOperationResult> {
+  return mutateSourceDocument(options, "prefab", options.prefabId, (data, file) => {
+    const entities = ensureArrayProperty(data, "entities");
+    const sameIdEntity = findSceneItem(entities, options.prefabId);
+    const fallbackEntity = entities.find(isRecord);
+    const entity = sameIdEntity ?? fallbackEntity;
+    if (entity === undefined) {
+      return [
+        authoringDiagnostic({
+          code: "TN_AUTHORING_REF_MISSING",
+          file,
+          message: `No root entity exists in prefab '${options.prefabId}'.`,
+          path: "/entities",
+          suggestion: "Add an entity to the prefab document before assigning a material.",
+          value: options.prefabId,
+        }),
+      ];
+    }
+    entity.components = {
+      ...(isRecord(entity.components) ? entity.components : {}),
+      MeshRenderer: { material: options.materialId },
     };
     return [];
   });

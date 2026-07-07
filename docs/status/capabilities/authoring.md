@@ -9,6 +9,10 @@ Current support:
   deterministic formatting, source discovery, and generated-artifact rejection.
 - CLI-first scene, material, UI, system, prefab, physics, recipe, cookbook, and
   iterate workflows exposed through `tn ... --json`.
+- Command-first mutation coverage includes scene transforms, scene
+  prefab/entity operations, UI binding, material editing, prefab material
+  assignment, and compositional mechanic blocks; direct `content/**` edits
+  remain a last resort.
 - Maintained starters include `docs/API-CARD.md`, a compact generated
   ScriptContext/source contract validated against `packages/script-stdlib`.
 - MCP and authoring-client adapters are thin wrappers over the same core
@@ -18,6 +22,9 @@ Current support:
 
 Verification:
 
+- `tools/agent-benchmark/MUTATION-SURFACE-AUDIT-2026-07-07.md`
+  maps observed raw `content/**` edit shapes to bounded commands or explicit
+  deferrals.
 - `pnpm --filter @threenative/authoring test`
 - `pnpm --filter @threenative/mcp-server test`
 - `pnpm verify:cookbook`

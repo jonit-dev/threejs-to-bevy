@@ -1,3 +1,6 @@
+import { readFile, readdir } from "node:fs/promises";
+import { resolve } from "node:path";
+
 import {
   addAnimationClip,
   addAnimationGraphState,
@@ -35,6 +38,7 @@ import {
   setEnvironmentTerrain,
   setEnvironmentWalkability,
   setInputBindingOverride,
+  setPrefabMaterial,
   setInputControls,
   addResourceDocumentEntry,
   authoringDiagnostic,
@@ -495,7 +499,44 @@ export async function prefabCommand(argv: readonly string[], options: ISourceCom
     return renderAuthoringResult("prefab", await addPrefabComponent({ projectPath, prefabId, componentKind, value: parsedValue.value }), json, `Component '${componentKind}' default set on prefab '${prefabId}'.`);
   }
 
-  return renderUsage(json, "TN_PREFAB_COMMAND_UNKNOWN", "Usage: tn prefab create|add-component|set-defaults ... [--json]");
+  if (subcommand === "set-material") {
+    const materialId = readFlag(normalizedArgv, "--material");
+    if (prefabId === undefined || materialId === undefined) {
+      return renderUsage(json, "TN_PREFAB_SET_MATERIAL_ARGS_MISSING", "Usage: tn prefab set-material <prefab-id> --material <material-id> [--project <path>] [--json]");
+    }
+    const materialIds = await collectMaterialIds(projectPath);
+    if (materialIds.length > 0 && !materialIds.includes(materialId)) {
+      return renderUsage(json, "TN_PREFAB_MATERIAL_UNKNOWN", `Unknown material '${materialId}'. Available material ids: ${materialIds.join(", ")}.`);
+    }
+    return renderAuthoringResult("prefab", await setPrefabMaterial({ projectPath, prefabId, materialId }), json, `Prefab '${prefabId}' material set to '${materialId}'.`);
+  }
+
+  return renderUsage(json, "TN_PREFAB_COMMAND_UNKNOWN", "Usage: tn prefab create|add-component|set-defaults|set-material ... [--json]");
+}
+
+async function collectMaterialIds(projectPath: string): Promise<string[]> {
+  const materialDir = resolve(projectPath, "content/materials");
+  let entries: string[];
+  try {
+    entries = await readdir(materialDir);
+  } catch {
+    return [];
+  }
+  const ids = new Set<string>();
+  for (const entry of entries.filter((name) => name.endsWith(".json")).sort()) {
+    try {
+      const parsed = JSON.parse(await readFile(resolve(materialDir, entry), "utf8")) as unknown;
+      const materials = isRecord(parsed) && Array.isArray(parsed.materials) ? parsed.materials.filter(isRecord) : [];
+      for (const material of materials) {
+        if (typeof material.id === "string") {
+          ids.add(material.id);
+        }
+      }
+    } catch {
+      continue;
+    }
+  }
+  return [...ids].sort();
 }
 
 export async function inputCommand(argv: readonly string[], options: ISourceCommandOptions = {}): Promise<ICommandResult> {

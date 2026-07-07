@@ -685,6 +685,8 @@ test("prefab input and mesh operations write deterministic structured docs", asy
     const prefabCreate = await prefabCommand(["create", "kart", "--project", root, "--json"]);
     const prefabComponent = await prefabCommand(["add-component", "kart", "VehiclePhysics", "--value", "{\"maxSpeed\":42}", "--project", root, "--json"]);
     const prefabDefaults = await prefabCommand(["set-defaults", "kart", "RigidBody", "--value", "{\"kind\":\"dynamic\",\"mass\":2}", "--project", root, "--json"]);
+    const materialCreate = await materialCommand(["create", "mat.kart", "--project", root, "--json"]);
+    const prefabMaterial = await prefabCommand(["set-material", "kart", "--material", "mat.kart", "--project", root, "--json"]);
     const input = await inputCommand(["add-action", "kart", "accelerate", "--keys", "W,ArrowUp", "--project", root, "--json"]);
     const inputAxis = await inputCommand(["add-axis", "kart", "MoveX", "--negative-keys", "A,ArrowLeft", "--positive-keys", "D,ArrowRight", "--value", "gamepad.leftStickX", "--project", root, "--json"]);
     const inputControls = await inputCommand(["set-controls", "kart", "--profile", "default", "--rows", "[{\"kind\":\"action\",\"actionOrAxisId\":\"accelerate\",\"defaultBindings\":[\"keyboard.KeyW\"],\"uiNodeId\":\"settings.accelerate\"},{\"kind\":\"axis\",\"actionOrAxisId\":\"MoveX\",\"axisSlot\":\"positive\",\"defaultBindings\":[\"keyboard.KeyD\"]}]", "--project", root, "--json"]);
@@ -714,6 +716,8 @@ test("prefab input and mesh operations write deterministic structured docs", asy
     assert.equal(prefabCreate.exitCode, 0);
     assert.equal(prefabComponent.exitCode, 0);
     assert.equal(prefabDefaults.exitCode, 0);
+    assert.equal(materialCreate.exitCode, 0);
+    assert.equal(prefabMaterial.exitCode, 0);
     assert.equal(input.exitCode, 0);
     assert.equal(inputAxis.exitCode, 0);
     assert.equal(inputControls.exitCode, 0);
@@ -721,7 +725,7 @@ test("prefab input and mesh operations write deterministic structured docs", asy
     assert.equal(mesh.exitCode, 0);
     assert.equal(torusMesh.exitCode, 0);
     assert.equal(customMesh.exitCode, 0);
-    assert.deepEqual(prefabDoc.entities, [{ components: { RigidBody: { kind: "dynamic", mass: 2 }, VehiclePhysics: { maxSpeed: 42 } }, id: "kart" }]);
+    assert.deepEqual(prefabDoc.entities, [{ components: { MeshRenderer: { material: "mat.kart" }, RigidBody: { kind: "dynamic", mass: 2 }, VehiclePhysics: { maxSpeed: 42 } }, id: "kart" }]);
     assert.deepEqual(inputDoc.actions, [{ bindings: ["keyboard.KeyW", "keyboard.ArrowUp"], id: "accelerate" }]);
     assert.deepEqual(inputDoc.axes, [{ id: "MoveX", negative: ["keyboard.KeyA", "keyboard.ArrowLeft"], positive: ["keyboard.KeyD", "keyboard.ArrowRight"], value: "gamepad.leftStickX" }]);
     assert.deepEqual(inputDoc.controlsSettings, {
@@ -742,6 +746,48 @@ test("prefab input and mesh operations write deterministic structured docs", asy
       primitive: "custom",
       storage: "binary",
     }]);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("prefab set-material rejects unknown material with exact fix", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-cli-prefab-material-"));
+  try {
+    await prefabCommand(["create", "kart", "--project", root, "--json"]);
+    await materialCommand(["create", "mat.kart", "--project", root, "--json"]);
+    const result = await prefabCommand(["set-material", "kart", "--material", "mat.missing", "--project", root, "--json"]);
+    const payload = JSON.parse(result.stdout) as { code: string; message: string };
+
+    assert.equal(result.exitCode, 2);
+    assert.equal(payload.code, "TN_PREFAB_MATERIAL_UNKNOWN");
+    assert.match(payload.message, /mat\.kart/);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("prefab set-material targets prefab document root entity", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-cli-prefab-document-material-"));
+  try {
+    await writeProjectFile(root, "content/materials/arena.materials.json", `${JSON.stringify({
+      schema: "threenative.materials",
+      version: "0.1.0",
+      id: "arena-materials",
+      materials: [{ id: "mat.alt" }],
+    }, null, 2)}\n`);
+    await writeProjectFile(root, "content/prefabs/player.prefab.json", `${JSON.stringify({
+      schema: "threenative.prefab",
+      version: "0.1.0",
+      id: "prefab.player",
+      entities: [{ id: "player", components: { MeshRenderer: { material: "mat.player" } } }],
+    }, null, 2)}\n`);
+
+    const result = await prefabCommand(["set-material", "prefab.player", "--material", "mat.alt", "--project", root, "--json"]);
+    const prefabDoc = JSON.parse(await readFile(join(root, "content", "prefabs", "player.prefab.json"), "utf8"));
+
+    assert.equal(result.exitCode, 0);
+    assert.deepEqual(prefabDoc.entities, [{ id: "player", components: { MeshRenderer: { material: "mat.alt" } } }]);
   } finally {
     await rm(root, { force: true, recursive: true });
   }

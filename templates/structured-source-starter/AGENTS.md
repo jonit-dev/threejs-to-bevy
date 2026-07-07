@@ -13,12 +13,15 @@ Rules for this generated ThreeNative project.
 ## Editing
 
 - Prefer deterministic CLI edits and diagnostics:
-  `tn scene ... --json`, `tn ui ... --json`, and
-  `tn material ... --json`.
+  `tn scene ... --json`, `tn ui ... --json`,
+  `tn prefab set-material ... --json`, `tn material ... --json`, and
+  `tn add <mechanic-block> ... --json`.
 - Before opening a full scene JSON file to inspect one object, use targeted
   scene inspection:
   `tn scene inspect arena --node <entity-or-resource-or-ui-id> --project . --json`.
-- Edit JSON directly only when no CLI operation covers the change.
+- Edit JSON directly only when no CLI operation covers the change. If you must
+  open a `content/**` file, first check `docs/API-CARD.md` for the matching
+  command shape.
 - Preserve schema/version fields and stable IDs unless asked to rename.
 - Add behavior in `src/scripts/**/*.ts`, then reference module/exports from
   structured source.

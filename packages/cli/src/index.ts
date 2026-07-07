@@ -225,7 +225,7 @@ const commands: Record<string, ICommandDefinition> = {
   prefab: {
     description: "Create and mutate structured prefab source documents.",
     implemented: true,
-    usage: "tn prefab create <prefab-id> [--project <path>] [--json]\n              tn prefab add-component <prefab-id> <component> --value <json-object> [--project <path>] [--json]\n              tn prefab set-defaults <prefab-id> <component> --value <json-object> [--project <path>] [--json]",
+    usage: "tn prefab create <prefab-id> [--project <path>] [--json]\n              tn prefab add-component <prefab-id> <component> --value <json-object> [--project <path>] [--json]\n              tn prefab set-defaults <prefab-id> <component> --value <json-object> [--project <path>] [--json]\n              tn prefab set-material <prefab-id> --material <material-id> [--project <path>] [--json]",
   },
   project: {
     description: "Create and mutate structured project metadata source documents.",
