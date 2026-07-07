@@ -12,6 +12,7 @@
   "costWeightedTokens": 910,
   "toolOutputBytes": 4096,
   "failedCommandCount": 0,
+  "toolStepCount": 4,
   "iterationCount": 1,
   "stopReason": "claimed-playable",
   "humanRubric": {

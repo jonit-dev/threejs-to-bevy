@@ -42,6 +42,7 @@
     "verify:runtime-gameplay-host": "pnpm build:verify-tools && node tools/verify/dist/cli/run.js verify:runtime-gameplay-host",
     "verify:runtime-prefabs-hierarchy": "pnpm build:verify-tools && node tools/verify/dist/cli/run.js verify:runtime-prefabs-hierarchy",
     "verify:runtime-query-diffing": "pnpm build:verify-tools && node tools/verify/dist/cli/run.js verify:runtime-query-diffing",
+    "verify:session-cost": "pnpm build:verify-tools && node tools/verify/dist/cli/run.js verify:session-cost",
     "verify:scripting-helpers-lifecycle": "pnpm build:verify-tools && node tools/verify/dist/cli/run.js verify:scripting-helpers-lifecycle",
     "verify:template-production": "pnpm build:verify-tools && node tools/verify/dist/cli/run.js verify:template-production",
     "verify:template-playability": "pnpm build:verify-tools && node tools/verify/dist/cli/run.js verify:template-playability",

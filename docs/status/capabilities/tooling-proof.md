@@ -8,6 +8,11 @@ Current support:
 - `tn iterate` for inner-loop validate/build/screenshot/playtest reports.
 - `pnpm verify:agent-io` for documented agent command stdout budgets; deep
   playtest logs remain in artifact files while stdout stays compact.
+- `pnpm verify:session-cost` replays scaffold-first paths in CI without LLM
+  agents and enforces tool steps <= 12, failed commands == 0, and compact
+  `tn iterate --json` output <= 2 KB. The current deterministic replay set
+  covers all archetype scaffolds plus the `top-down-collector` and
+  `lane-runner` `tn game plan --apply` paths that are supported today.
 - `pnpm verify:template-production` checks iterate-first starter guidance,
   compact-report guidance, and generated API-card parity.
 - Agent benchmark reports are version 2 token-cost artifacts with raw, cached,
@@ -25,6 +30,7 @@ Current support:
 Verification:
 
 - `pnpm verify:agent-io`
+- `pnpm verify:session-cost`
 - `pnpm check:docs`
 - `pnpm verify:smoke`
 - `pnpm verify:release`

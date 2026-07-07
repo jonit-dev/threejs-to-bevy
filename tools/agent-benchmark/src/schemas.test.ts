@@ -56,6 +56,7 @@ function validSession() {
     schema: "threenative.agent-benchmark-session",
     stopReason: "claimed-playable",
     tokenCount: 12000,
+    toolStepCount: 4,
     version: 2,
   };
 }

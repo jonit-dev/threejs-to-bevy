@@ -1,11 +1,16 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
+import { resolve } from "node:path";
 import test from "node:test";
+import { fileURLToPath } from "node:url";
 
 import { API_CARD_BUDGET_BYTES, renderScriptApiCardFromSource, scriptContextMembers, validateApiCard } from "./apiCard.js";
 
+const repoRoot = resolve(fileURLToPath(new URL("../../..", import.meta.url)));
+const scriptContextPath = resolve(repoRoot, "packages/script-stdlib/src/script-context.ts");
+
 test("should list every ScriptContext member in the generated API card", async () => {
-  const source = await readFile("packages/script-stdlib/src/script-context.ts", "utf8");
+  const source = await readFile(scriptContextPath, "utf8");
   const card = renderScriptApiCardFromSource(source);
   const validation = validateApiCard({ card, source });
 
@@ -30,7 +35,7 @@ test("should list every ScriptContext member in the generated API card", async (
 });
 
 test("should keep the API card below the context budget", async () => {
-  const source = await readFile("packages/script-stdlib/src/script-context.ts", "utf8");
+  const source = await readFile(scriptContextPath, "utf8");
   const card = renderScriptApiCardFromSource(source);
 
   assert.ok(Buffer.byteLength(card, "utf8") <= API_CARD_BUDGET_BYTES);

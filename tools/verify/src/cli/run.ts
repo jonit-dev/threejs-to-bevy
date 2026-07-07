@@ -62,6 +62,25 @@ export const FOCUSED_GATES: Record<string, FocusedGate> = {
       protects: "Agent token budget, compact playtest/iterate reports, and stable diagnostics for output bloat regressions.",
     },
   },
+  "verify:session-cost": {
+    commands: [
+      ["pnpm", "--filter", "@threenative/sdk", "build"],
+      ["pnpm", "--filter", "@threenative/ir", "build"],
+      ["pnpm", "--filter", "@threenative/authoring", "build"],
+      ["pnpm", "--filter", "@threenative/compiler", "build"],
+      ["pnpm", "--filter", "@threenative/runtime-web-three", "build"],
+      ["pnpm", "--filter", "@threenative/cli", "build"],
+      ["pnpm", "--filter", "@threenative/verify-tools", "build"],
+      ["node", "tools/verify/dist/sessionCostGate.js"],
+    ],
+    description: "Deterministic scaffold session-cost ratchet gate.",
+    metadata: {
+      owner: "tools/verify session cost gate",
+      profile: "focused",
+      reason: "Replays maintained scaffold-first paths without LLM agents and fails step, command-failure, or compact-output regressions before expensive benchmark rounds.",
+      protects: "Agent token budget, zero-repair scaffold paths, compact iterate summaries, and CI-visible session cost ratchets.",
+    },
+  },
   "verify:bundle-safety-hardening": {
     commands: [
       ["pnpm", "--filter", "@threenative/ir", "build"],

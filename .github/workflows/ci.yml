@@ -37,6 +37,9 @@ jobs:
       - name: Docs gate
         run: pnpm check:docs
 
+      - name: Session cost ratchet
+        run: pnpm verify:session-cost
+
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
 
