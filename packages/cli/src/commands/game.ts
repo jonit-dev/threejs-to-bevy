@@ -1,4 +1,4 @@
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, readFile, readdir, writeFile } from "node:fs/promises";
 import { isAbsolute, resolve } from "node:path";
 
 import {
@@ -296,7 +296,7 @@ async function applyGamePlanScaffold(options: { json: boolean; plan: IGamePlan; 
     );
   }
 
-  const recipeArgs = {
+  const recipeArgs: Record<string, unknown> = {
     ...step.recipeArgs,
     exportName: scaffold.exportName,
     modulePath: scaffold.modulePath,
@@ -334,9 +334,11 @@ async function applyGamePlanScaffold(options: { json: boolean; plan: IGamePlan; 
     };
   }
 
+  const sceneId = stringValue(recipeArgs.sceneId) ?? "arena";
+  const enrichmentFiles = await enrichScaffoldSource(options.projectPath, scaffold, sceneId, playerId, stringValue(recipeArgs.inputDocId));
   const scenarioPath = await writeScaffoldScenario(options.projectPath, scaffold, playerId);
   const scaffoldEvidencePath = await writeScaffoldEvidence(options.projectPath, {
-    filesWritten: [...new Set([...result.filesWritten, scriptPath, scenarioPath])].sort(),
+    filesWritten: [...new Set([...result.filesWritten, scriptPath, ...enrichmentFiles, scenarioPath])].sort(),
     planArtifactPath: options.planArtifactPath,
     recipeId: scaffold.recipeId,
     scenarioPath,
@@ -346,7 +348,7 @@ async function applyGamePlanScaffold(options: { json: boolean; plan: IGamePlan; 
   const payload = {
     applied: [{
       changed: result.changed,
-      filesWritten: [...new Set([...result.filesWritten, scriptPath, scenarioPath, scaffoldEvidencePath])].sort(),
+      filesWritten: [...new Set([...result.filesWritten, scriptPath, ...enrichmentFiles, scenarioPath, scaffoldEvidencePath])].sort(),
       ok: result.ok,
       recipe: scaffold.recipeId,
     }],
@@ -392,6 +394,139 @@ function selectGameScaffold(plan: IGamePlan): IGameScaffoldDefinition | undefine
   return undefined;
 }
 
+async function enrichScaffoldSource(projectPath: string, scaffold: IGameScaffoldDefinition, sceneId: string, playerId: string, inputDocId: string | undefined): Promise<string[]> {
+  const relativePath = `content/scenes/${sceneId}.scene.json`;
+  const absolutePath = resolve(projectPath, relativePath);
+  const scene = JSON.parse(await readFile(absolutePath, "utf8")) as Record<string, unknown>;
+  const entities = arrayOfRecords(scene.entities);
+  const prefabs = arrayOfRecords(scene.prefabs);
+  const resources = arrayOfRecords(scene.resources);
+  const systems = arrayOfRecords(scene.systems);
+  const ui = isRecord(scene.ui) ? scene.ui : {};
+  const uiNodes = arrayOfRecords(ui.nodes);
+  const uiBindings = arrayOfRecords(ui.bindings);
+
+  scene.entities = entities;
+  scene.prefabs = prefabs;
+  scene.resources = resources;
+  scene.systems = systems;
+  scene.ui = { ...ui, bindings: uiBindings, nodes: uiNodes };
+
+  const system = systems.find((candidate) => candidate.id === scaffold.recipeId);
+  if (system !== undefined) {
+    system.reads = ["Transform"];
+    system.resourceWrites = ["GameState"];
+    system.writes = ["Transform"];
+  }
+  upsertResource(resources, "GameState", scaffold.recipeId === "top-down-collector"
+    ? { countdown: "Ready", retryText: "Press R to retry", scoreText: "Score 0 / 5", statusText: "Collect all pickups" }
+    : { countdown: "Ready", distanceText: "Distance 0 / 60", retryText: "Press R to retry", statusText: "Run to the finish" });
+  addUiText(uiNodes, uiBindings, "hud.status", scaffold.recipeId === "top-down-collector" ? "Collect all pickups" : "Run to the finish", "GameState.statusText", 24);
+  addUiText(uiNodes, uiBindings, "hud.progress", scaffold.recipeId === "top-down-collector" ? "Score 0 / 5" : "Distance 0 / 60", scaffold.recipeId === "top-down-collector" ? "GameState.scoreText" : "GameState.distanceText", 64);
+  addUiText(uiNodes, uiBindings, "hud.retry", "Press R to retry", "GameState.retryText", 104);
+
+  if (scaffold.recipeId === "top-down-collector") {
+    addPrefab(prefabs, "scaffold.pickup.prefab", "sphere", "#ffd166");
+    for (const [index, position] of [[2, 0.6, -2], [-2, 0.6, -2], [2, 0.6, 2], [-2, 0.6, 2], [0, 0.6, -3]].entries()) {
+      addEntity(entities, `pickup.${index + 1}`, "scaffold.pickup.prefab", position as [number, number, number], [0.45, 0.45, 0.45]);
+    }
+  } else {
+    addPrefab(prefabs, "scaffold.lane.prefab", "box", "#475569");
+    addPrefab(prefabs, "scaffold.hazard.prefab", "box", "#ef4444");
+    addPrefab(prefabs, "scaffold.finish.prefab", "box", "#22c55e");
+    for (const [index, x] of [-2, 0, 2].entries()) {
+      addEntity(entities, `lane.${index + 1}`, "scaffold.lane.prefab", [x, 0.02, -18], [0.08, 0.04, 44]);
+    }
+    addEntity(entities, "hazard.left", "scaffold.hazard.prefab", [-2, 0.45, -10], [0.8, 0.7, 0.35]);
+    addEntity(entities, "hazard.center", "scaffold.hazard.prefab", [0, 0.45, -22], [0.8, 0.7, 0.35]);
+    addEntity(entities, "hazard.right", "scaffold.hazard.prefab", [2, 0.45, -34], [0.8, 0.7, 0.35]);
+    addEntity(entities, "finish.marker", "scaffold.finish.prefab", [0, 0.3, -60], [6, 0.6, 0.3]);
+  }
+
+  await writeFile(absolutePath, `${JSON.stringify(scene, null, 2)}\n`, "utf8");
+  const inputPath = await enrichScaffoldInput(projectPath, sceneId, inputDocId);
+  return inputPath === undefined ? [relativePath] : [relativePath, inputPath];
+}
+
+async function enrichScaffoldInput(projectPath: string, sceneId: string, inputDocId: string | undefined): Promise<string | undefined> {
+  const inputPath = await findInputDocumentPath(projectPath, sceneId, inputDocId);
+  if (inputPath === undefined) {
+    return undefined;
+  }
+  const absolutePath = resolve(projectPath, inputPath);
+  const input = JSON.parse(await readFile(absolutePath, "utf8")) as Record<string, unknown>;
+  const actions = arrayOfRecords(input.actions);
+  input.actions = actions;
+  if (!actions.some((action) => action.id === "retry")) {
+    actions.push({ bindings: ["keyboard.KeyR"], id: "retry" });
+  }
+  await writeFile(absolutePath, `${JSON.stringify(input, null, 2)}\n`, "utf8");
+  return inputPath;
+}
+
+async function findInputDocumentPath(projectPath: string, sceneId: string, inputDocId: string | undefined): Promise<string | undefined> {
+  const inputDir = resolve(projectPath, "content/input");
+  let entries: string[];
+  try {
+    entries = await readdir(inputDir);
+  } catch {
+    return undefined;
+  }
+  for (const name of entries.filter((entry) => entry.endsWith(".input.json")).sort()) {
+    const relativePath = `content/input/${name}`;
+    try {
+      const parsed = JSON.parse(await readFile(resolve(projectPath, relativePath), "utf8")) as unknown;
+      if (isRecord(parsed) && (parsed.id === inputDocId || parsed.id === `${sceneId}-input` || name === `${sceneId}.input.json`)) {
+        return relativePath;
+      }
+    } catch {
+      continue;
+    }
+  }
+  return undefined;
+}
+
+function arrayOfRecords(value: unknown): Record<string, unknown>[] {
+  return Array.isArray(value) ? value.filter(isRecord) : [];
+}
+
+function upsertResource(resources: Record<string, unknown>[], id: string, value: Record<string, unknown>): void {
+  const existing = resources.find((resource) => resource.id === id);
+  if (existing === undefined) {
+    resources.push({ id, value });
+  } else {
+    existing.value = { ...(isRecord(existing.value) ? existing.value : {}), ...value };
+  }
+}
+
+function addUiText(nodes: Record<string, unknown>[], bindings: Record<string, unknown>[], id: string, text: string, resource: string, top: number): void {
+  if (!nodes.some((node) => node.id === id)) {
+    nodes.push({ id, layout: { align: "start", justify: "start", left: 32, top, width: 420 }, text, type: "text" });
+  }
+  if (!bindings.some((binding) => binding.node === id && binding.resource === resource)) {
+    bindings.push({ node: id, resource });
+  }
+}
+
+function addPrefab(prefabs: Record<string, unknown>[], id: string, primitive: string, color: string): void {
+  if (!prefabs.some((prefab) => prefab.id === id)) {
+    prefabs.push({ color, id, primitive });
+  }
+}
+
+function addEntity(entities: Record<string, unknown>[], id: string, prefabId: string, position: [number, number, number], scale?: [number, number, number]): void {
+  if (!entities.some((entity) => entity.id === id)) {
+    entities.push({
+      id,
+      prefab: prefabId,
+      transform: {
+        position,
+        ...(scale === undefined ? {} : { scale }),
+      },
+    });
+  }
+}
+
 async function ensureScaffoldScript(projectPath: string, scaffold: IGameScaffoldDefinition, playerId: string): Promise<string> {
   const absolutePath = resolve(projectPath, scaffold.modulePath);
   await mkdir(resolve(absolutePath, ".."), { recursive: true });
@@ -420,7 +555,27 @@ function scaffoldScriptSource(scaffold: IGameScaffoldDefinition, playerId: strin
   const position = transform.position;
   const laneInput = (context.input.pressed("move-right") ? 1 : 0) - (context.input.pressed("move-left") ? 1 : 0);
   const dt = context.time.fixedDelta || 1 / 60;
-  transform.setPosition([position[0] + laneInput * dt * 6, position[1], position[2] - dt * 3]);
+  const game = context.state("GameState", { distanceText: "Distance 0 / 60", retryText: "Press R to retry", statusText: "Run to the finish", failed: false, finished: false });
+  if (context.input.pressed("retry")) {
+    game.failed = false;
+    game.finished = false;
+    transform.setPosition([0, position[1], 2.5]);
+    game.distanceText = "Distance 0 / 60";
+    game.statusText = "Run to the finish";
+    return;
+  }
+  if (game.failed || game.finished) {
+    return;
+  }
+  const nextPosition: [number, number, number] = [Math.max(-2, Math.min(2, position[0] + laneInput * dt * 6)), position[1], position[2] - dt * 3];
+  transform.setPosition(nextPosition);
+  const distance = Math.max(0, Math.min(60, Math.round(2.5 - nextPosition[2])));
+  game.distanceText = \`Distance \${distance} / 60\`;
+  game.failed = (Math.abs(nextPosition[0] + 2) < 0.7 && Math.abs(nextPosition[2] + 10) < 0.9)
+    || (Math.abs(nextPosition[0]) < 0.7 && Math.abs(nextPosition[2] + 22) < 0.9)
+    || (Math.abs(nextPosition[0] - 2) < 0.7 && Math.abs(nextPosition[2] + 34) < 0.9);
+  game.finished = nextPosition[2] <= -60;
+  game.statusText = game.failed ? "Crashed - press R to retry" : game.finished ? "Finish reached" : "Run to the finish";
 }`;
   }
   return `export function ${scaffold.exportName}(context: import("@threenative/script-stdlib").ScriptContext): void {
@@ -433,7 +588,30 @@ function scaffoldScriptSource(scaffold: IGameScaffoldDefinition, playerId: strin
   const moveX = context.input.getAxis("MoveX");
   const moveZ = context.input.getAxis("MoveZ");
   const dt = context.time.fixedDelta || 1 / 60;
-  transform.setPosition([position[0] + moveX * dt * 5, position[1], position[2] - moveZ * dt * 5]);
+  const game = context.state("GameState", { collected: "", retryText: "Press R to retry", scoreText: "Score 0 / 5", statusText: "Collect all pickups", won: false });
+  if (context.input.pressed("retry")) {
+    game.collected = "";
+    game.scoreText = "Score 0 / 5";
+    game.statusText = "Collect all pickups";
+    game.won = false;
+    transform.setPosition([0, position[1], 0]);
+    return;
+  }
+  if (!game.won) {
+    transform.setPosition([position[0] + moveX * dt * 5, position[1], position[2] - moveZ * dt * 5]);
+  }
+  const nextPosition = transform.position;
+  const collected = new Set(String(game.collected).split(",").filter(Boolean));
+  const pickups: Array<[string, number, number]> = [["1", 2, -2], ["2", -2, -2], ["3", 2, 2], ["4", -2, 2], ["5", 0, -3]];
+  for (const [id, x, z] of pickups) {
+    if (Math.abs(nextPosition[0] - x) < 0.8 && Math.abs(nextPosition[2] - z) < 0.8) {
+      collected.add(id);
+    }
+  }
+  game.collected = [...collected].sort().join(",");
+  game.scoreText = \`Score \${collected.size} / 5\`;
+  game.won = collected.size >= 5;
+  game.statusText = game.won ? "All pickups collected - press R to retry" : "Collect all pickups";
 }`;
 }
 
