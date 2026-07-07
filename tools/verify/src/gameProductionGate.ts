@@ -130,18 +130,24 @@ export async function runGameProductionGate(options: IGameProductionGateOptions 
   const ok = diagnostics.every((diagnostic) => diagnostic.severity !== "error");
   const visualQualityMetrics = await visualQualityMetricSummary(root, projects);
   const summary = {
+    buildOnlyProjectCount: options.generatedGames === true ? GENERATED_GAME_BUILD_ONLY_PROJECTS.length : 0,
+    buildOnlyProjectPaths: options.generatedGames === true ? [...GENERATED_GAME_BUILD_ONLY_PROJECTS] : [],
     failedProjectCount: projectResults.filter((result) => !result.ok).length,
     mode: options.generatedGames === true ? "generated-games" : options.projects !== undefined ? "custom" : "single-project",
     okProjectCount: projectResults.filter((result) => result.ok).length,
     projectCount: projects.length,
     projectPaths: projects.map((project) => project.projectPath),
+    representativeProjectCount: options.generatedGames === true ? projects.length : 0,
+    representativeProjectPaths: options.generatedGames === true ? projects.map((project) => project.projectPath) : [],
     requiredProofCounts: requiredProofCounts(projects),
     ...(visualQualityMetrics === undefined ? {} : { visualQualityMetrics }),
   };
   const payload = {
     artifacts: {
+      buildOnlyProjectPaths: options.generatedGames === true ? [...GENERATED_GAME_BUILD_ONLY_PROJECTS] : [],
       gameQualityReportPath: reportPath,
       projectPaths: projectResults.map((result) => result.projectPath),
+      representativeProjectPaths: options.generatedGames === true ? projects.map((project) => project.projectPath) : [],
     },
     code: ok ? "TN_VERIFY_GAME_PRODUCTION_OK" : "TN_VERIFY_GAME_PRODUCTION_FAILED",
     diagnostics,

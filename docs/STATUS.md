@@ -1,6 +1,6 @@
 # ThreeNative Status
 
-This file is the current implementation front door. Keep it under 250 lines and
+This file is the current implementation front door. Keep it under 200 lines and
 link to capability docs for detail. Historical evidence from the prior long
 status page is preserved in
 [docs/status/capabilities/full-status-archive.md](status/capabilities/full-status-archive.md).

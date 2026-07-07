@@ -50,7 +50,7 @@ test("should document canonical verify tool paths", async () => {
   assert.equal(result.ok, true, result.diagnostics.map((diagnostic) => diagnostic.message).join("\n"));
 });
 
-test("should fail with line count when STATUS budget is exceeded", async () => {
+test("should fail when STATUS exceeds 200 lines", async () => {
   const root = await makeDocsRepo();
   await writeFile(
     join(root, "docs/STATUS.md"),
@@ -61,7 +61,7 @@ test("should fail with line count when STATUS budget is exceeded", async () => {
       "`pnpm verify:release`",
       "`verify:scripting-helpers-lifecycle`",
       "[authoring](status/capabilities/authoring.md)",
-      ...Array.from({ length: 260 }, (_, index) => `filler ${index}`),
+      ...Array.from({ length: 210 }, (_, index) => `filler ${index}`),
     ].join("\n"),
   );
 
@@ -69,9 +69,17 @@ test("should fail with line count when STATUS budget is exceeded", async () => {
 
   assert.equal(result.ok, false);
   assert.equal(
-    result.diagnostics.some((diagnostic) => diagnostic.code === "TN_DOCS_STATUS_LINE_BUDGET_EXCEEDED" && diagnostic.message.includes("250")),
+    result.diagnostics.some((diagnostic) => diagnostic.code === "TN_DOCS_STATUS_LINE_BUDGET_EXCEEDED" && diagnostic.message.includes("200-line front-door budget")),
     true,
   );
+});
+
+test("should pass compact STATUS", async () => {
+  const root = await makeDocsRepo();
+
+  const result = await checkDocs(root);
+
+  assert.equal(result.diagnostics.some((diagnostic) => diagnostic.code === "TN_DOCS_STATUS_LINE_BUDGET_EXCEEDED"), false);
 });
 
 test("should fail when a capability doc is orphaned", async () => {

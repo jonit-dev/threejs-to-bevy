@@ -57,11 +57,15 @@ test("requires visual-quality proof for generated-game aggregate projects", asyn
       diagnostics: Array<{ code: string; path?: string }>;
       reports: Array<{ projectPath: string }>;
       summary: {
+        buildOnlyProjectCount: number;
+        buildOnlyProjectPaths: string[];
         failedProjectCount: number;
         mode: string;
         okProjectCount: number;
         projectCount: number;
         projectPaths: string[];
+        representativeProjectCount: number;
+        representativeProjectPaths: string[];
         requiredProofCounts: { visualQuality: number };
       };
       steps: Array<{ name: string }>;
@@ -71,11 +75,15 @@ test("requires visual-quality proof for generated-game aggregate projects", asyn
     assert.equal(report.diagnostics.some((diagnostic) => diagnostic.code === "TN_VERIFY_GAME_VISUAL_QUALITY_MISSING"), true);
     assert.equal(report.reports.length, 1);
     assert.deepEqual(report.summary, {
+      buildOnlyProjectCount: 0,
+      buildOnlyProjectPaths: [],
       failedProjectCount: 1,
       mode: "custom",
       okProjectCount: 0,
       projectCount: 1,
       projectPaths: ["."],
+      representativeProjectCount: 0,
+      representativeProjectPaths: [],
       requiredProofCounts: { visualQuality: 1 },
     });
     assert.equal(report.steps.some((step) => step.name.includes("game production report validation")), true);
@@ -159,6 +167,44 @@ test("accepts generated-game candidates listed as build-only examples", async ()
     });
 
     assert.equal(result.diagnostics.some((diagnostic) => diagnostic.code === "TN_VERIFY_GENERATED_GAME_INVENTORY_DRIFT"), false);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should gate only representative generated examples", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-generated-game-representative-inventory-"));
+  try {
+    await mkdir(join(root, "content/scenes"), { recursive: true });
+    await mkdir(join(root, "examples/stylized-nature-component/artifacts/game-production"), { recursive: true });
+    await writeFile(join(root, "content/scenes/arena.scene.json"), `${JSON.stringify({ schema: "threenative.scene", id: "arena" }, null, 2)}\n`);
+    await writeFile(join(root, "examples/stylized-nature-component/artifacts/game-production/plan.json"), `${JSON.stringify({ schema: "threenative.game-plan", mutate: false }, null, 2)}\n`);
+    const reportPath = join(root, "artifacts/game-production/verification-report.json");
+
+    await runGameProductionGate({
+      generatedGames: true,
+      projects: [{ projectPath: "." }],
+      reportPath,
+      root,
+    });
+    const report = JSON.parse(await readFile(reportPath, "utf8")) as {
+      artifacts: { buildOnlyProjectPaths: string[]; representativeProjectPaths: string[] };
+      reports: Array<{ projectPath: string }>;
+      summary: {
+        buildOnlyProjectCount: number;
+        buildOnlyProjectPaths: string[];
+        representativeProjectCount: number;
+        representativeProjectPaths: string[];
+      };
+    };
+
+    assert.deepEqual(report.summary.representativeProjectPaths, ["."]);
+    assert.equal(report.summary.representativeProjectCount, 1);
+    assert.deepEqual(report.summary.buildOnlyProjectPaths, ["examples/stylized-nature-component"]);
+    assert.equal(report.summary.buildOnlyProjectCount, 1);
+    assert.deepEqual(report.artifacts.representativeProjectPaths, ["."]);
+    assert.deepEqual(report.artifacts.buildOnlyProjectPaths, ["examples/stylized-nature-component"]);
+    assert.deepEqual(report.reports.map((entry) => entry.projectPath), [root]);
   } finally {
     await rm(root, { force: true, recursive: true });
   }

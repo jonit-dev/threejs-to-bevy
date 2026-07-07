@@ -8,7 +8,7 @@ export interface DocsCheckResult {
   ok: boolean;
 }
 
-const STATUS_LINE_BUDGET = 250;
+const STATUS_LINE_BUDGET = 200;
 
 export async function checkDocs(root: string): Promise<DocsCheckResult> {
   const diagnostics: VerificationDiagnostic[] = [];
@@ -131,7 +131,7 @@ async function checkStatusCapabilityIndex(root: string, status: string): Promise
   if (lineCount > STATUS_LINE_BUDGET) {
     diagnostics.push({
       code: "TN_DOCS_STATUS_LINE_BUDGET_EXCEEDED",
-      message: `docs/STATUS.md has ${lineCount} lines; keep it at or below ${STATUS_LINE_BUDGET} lines and move detail to docs/status/capabilities/*.md.`,
+      message: `docs/STATUS.md has ${lineCount} lines; keep it at or below the ${STATUS_LINE_BUDGET}-line front-door budget and move detail to docs/status/capabilities/*.md.`,
       path: "docs/STATUS.md",
       severity: "error",
     });

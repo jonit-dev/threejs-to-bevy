@@ -21,9 +21,11 @@ Current support:
 - `tn game plan --apply --json` explicitly applies scaffold-first collector
   and lane-runner baselines through bounded recipe operations, writes committed
   playtest scenarios, and records `artifacts/game-production/scaffold-first.json`.
-- `verify:generated-games` is being narrowed to representative release
-  evidence, while de-enrolled examples remain covered by a cheaper build-only
-  sweep.
+- `verify:generated-games` gates the representative release evidence set
+  (`examples/humanoid-physics-course`, `examples/metro-surfer-heist`) and
+  reports the build-only archived set (`examples/stylized-nature-component`);
+  `verify:example-build-sweep` keeps de-enrolled examples buildable without
+  requiring full QA/release evidence.
 - Finished examples must prove build, nonblank screenshots, visible motion,
   input playtests, visual quality, and source ownership.
 - Fresh scaffold-first token-cost evidence passes the <=0.5x raw-token target:
