@@ -104,16 +104,17 @@ execution bundle.
 - [Agent Benchmark Token Cost Metrics and Rerun](other/agent-benchmark-token-cost-rerun.md):
   extends benchmark artifacts with cached/uncached token, tool-output,
   failed-command, and cost-weighted fields, then reruns the unchanged pilot
-  protocol against the audit's <=0.5x raw-token target. V2 token-cost
+  protocol against the audit's <=0.5x raw-token target. Historical V2
   re-aggregation evidence is in
-  `tools/verify/artifacts/agent-benchmark/token-cost-version-2-2026-07-07/`; it is
-  not a fresh post-fix rerun and keeps scaffold-first active.
+  `tools/verify/artifacts/agent-benchmark/token-cost-version-2-2026-07-07/`;
+  fresh scaffold-first rerun evidence passes in
+  `tools/verify/artifacts/agent-benchmark/scaffold-first-token-rerun-2026-07-07b/`.
 - [Agent Token Efficiency Scaffold-First Game Plan Apply](other/agent-token-efficiency-scaffold-first.md):
   implemented structural lever after P0/P1 fixes missed the historical <=0.5x
   target: `tn game plan --apply --json` explicitly applies collector and
   lane-runner game plans into playable, scenario-backed starter source before
-  agent patching begins. A fresh scaffold-first benchmark rerun is still
-  required before promoting the token-efficiency claim.
+  agent patching begins. Fresh scaffold-first benchmark evidence now proves the
+  <=0.5x token-efficiency claim for collector and lane-runner prompts.
 - [Contract De-Sprawl Through Authoring Modules And Runtime Trace Contracts](proof-first-engine-loop-2026-07-05/PRD-003-contract-de-sprawl-authoring-runtime-traces.md):
   splits authoring operation implementation by source family, introduces
   focused runtime trace contracts, and shrinks native mapping hotspots behind

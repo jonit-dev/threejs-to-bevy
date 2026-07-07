@@ -15,10 +15,11 @@ Current support:
   sweep.
 - Finished examples must prove build, nonblank screenshots, visible motion,
   input playtests, visual quality, and source ownership.
-- V2 token-cost benchmark evidence still fails the <=0.5x raw-token target on
-  historical pilot data. Scaffold-first support is now implemented, but a fresh
-  scaffold-first benchmark rerun is still required before promoting the token
-  efficiency claim.
+- Fresh scaffold-first token-cost evidence passes the <=0.5x raw-token target:
+  collector median 98,244.5 vs 791,745 vanilla (0.124x), lane-runner median
+  84,250.5 vs 1,020,845 vanilla (0.083x), with 3.5 median tool steps and zero
+  failed-command median. Evidence:
+  `tools/verify/artifacts/agent-benchmark/scaffold-first-token-rerun-2026-07-07b/`.
 
 Verification:
 

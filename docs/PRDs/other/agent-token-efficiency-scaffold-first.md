@@ -267,14 +267,17 @@ sequenceDiagram
 
 ## 7. Acceptance Criteria
 
-- [ ] `tn game plan --apply --json` or equivalent explicit command creates a
+- [x] `tn game plan --apply --json` or equivalent explicit command creates a
   source-bounded playable scaffold for collector and lane-runner goals.
-- [ ] Plain `tn game plan --json` remains safe for non-mutating planning unless
+- [x] Plain `tn game plan --json` remains safe for non-mutating planning unless
   the user passes the explicit apply path.
-- [ ] Applied scaffolds include durable source, scripts, scenario proof, plan
+- [x] Applied scaffolds include durable source, scripts, scenario proof, plan
   evidence, and compact summary output.
-- [ ] Scratch collector and lane-runner starters pass `tn iterate --project .
+- [x] Scratch collector and lane-runner starters pass `tn iterate --project .
   --json` after scaffold application.
-- [ ] `pnpm verify:cookbook` passes if cookbook patterns change.
-- [ ] Benchmark evidence proves the scaffold-first path meets or fails the
+- [x] `pnpm verify:cookbook` passes if cookbook patterns change.
+- [x] Benchmark evidence proves the scaffold-first path meets or fails the
   <= 0.5x raw-token target with no ambiguity.
+
+Benchmark evidence:
+`tools/verify/artifacts/agent-benchmark/scaffold-first-token-rerun-2026-07-07b/`.
