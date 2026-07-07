@@ -12,6 +12,9 @@ Current support:
   sweep.
 - Finished examples must prove build, nonblank screenshots, visible motion,
   input playtests, visual quality, and source ownership.
+- V2 token-cost benchmark evidence still fails the <=0.5x raw-token target on
+  historical pilot data, so scaffold-first game planning remains active until a
+  fresh post-fix rerun proves otherwise.
 
 Verification:
 

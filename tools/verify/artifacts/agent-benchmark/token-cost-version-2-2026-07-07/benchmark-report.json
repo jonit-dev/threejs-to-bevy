@@ -1,0 +1,86 @@
+{
+  "diagnostics": [],
+  "generatedAt": "2026-07-07T02:19:04.669Z",
+  "promptSummaries": [
+    {
+      "costWeightedTokenRatio": 1.9295222704548378,
+      "failedCommandMedian": {
+        "threenative": 4,
+        "vanilla": 0.5
+      },
+      "iterationMedian": {
+        "threenative": 11.5,
+        "vanilla": 2
+      },
+      "promptId": "collector",
+      "rawTokenRatio": 2.505885101895181,
+      "threenativeMedianCachedInputTokens": 1823808,
+      "threenativeMedianCostWeightedTokens": 340527.30000000005,
+      "threenativeMedianFailedCommandCount": 4,
+      "threenativeMedianInputTokens": 1965645,
+      "threenativeMedianIterations": 11.5,
+      "threenativeMedianOutputTokens": 16309.5,
+      "threenativeMedianTokens": 1984022,
+      "threenativeMedianToolOutputBytes": 3800903.5,
+      "threenativeMedianUncachedInputTokens": 141837,
+      "toolOutputMedian": {
+        "threenative": 3800903.5,
+        "vanilla": 15344
+      },
+      "vanillaMedianCachedInputTokens": 682112,
+      "vanillaMedianCostWeightedTokens": 176482.7,
+      "vanillaMedianFailedCommandCount": 0.5,
+      "vanillaMedianInputTokens": 780780.5,
+      "vanillaMedianIterations": 2,
+      "vanillaMedianOutputTokens": 9603,
+      "vanillaMedianTokens": 791745,
+      "vanillaMedianToolOutputBytes": 15344,
+      "vanillaMedianUncachedInputTokens": 98668.5,
+      "withinHalfX": false
+    },
+    {
+      "costWeightedTokenRatio": 3.9683691652201025,
+      "failedCommandMedian": {
+        "threenative": 9,
+        "vanilla": 0
+      },
+      "iterationMedian": {
+        "threenative": 26,
+        "vanilla": 4
+      },
+      "promptId": "lane-runner",
+      "rawTokenRatio": 3.9310629919331532,
+      "threenativeMedianCachedInputTokens": 3613184,
+      "threenativeMedianCostWeightedTokens": 758524.4,
+      "threenativeMedianFailedCommandCount": 9,
+      "threenativeMedianInputTokens": 3990602,
+      "threenativeMedianIterations": 26,
+      "threenativeMedianOutputTokens": 19788,
+      "threenativeMedianTokens": 4013006,
+      "threenativeMedianToolOutputBytes": 5089753,
+      "threenativeMedianUncachedInputTokens": 377418,
+      "toolOutputMedian": {
+        "threenative": 5089753,
+        "vanilla": 16714
+      },
+      "vanillaMedianCachedInputTokens": 919296,
+      "vanillaMedianCostWeightedTokens": 191142.6,
+      "vanillaMedianFailedCommandCount": 0,
+      "vanillaMedianInputTokens": 1007182,
+      "vanillaMedianIterations": 4,
+      "vanillaMedianOutputTokens": 11327,
+      "vanillaMedianTokens": 1020845,
+      "vanillaMedianToolOutputBytes": 16714,
+      "vanillaMedianUncachedInputTokens": 87886,
+      "withinHalfX": false
+    }
+  ],
+  "runCount": 8,
+  "schema": "threenative.agent-benchmark-report",
+  "verdict": {
+    "status": "fail",
+    "summary": "ThreeNative raw median tokens exceed 0.5x vanilla for at least one comparable prompt.",
+    "threshold": "threenative-median-tokens <= 0.5x vanilla-median-tokens"
+  },
+  "version": 2
+}

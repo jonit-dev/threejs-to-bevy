@@ -63,3 +63,10 @@ PRD-002/003/004/005 have landed, so the next benchmark should be treated as
 the post-fix re-run; if it does not close the gap meaningfully, escalate to
 the kill/continue decision in `CHALLENGES.md` instead of continuing to add
 engine breadth.
+
+2026-07-07 token-cost update: version 2 re-aggregation evidence lives in
+`tools/verify/artifacts/agent-benchmark/token-cost-version-2-2026-07-07/`. It mines
+cached/uncached input, output tokens, tool-output bytes, failed commands, and
+cost-weighted tokens from the tracked pilot transcripts. This is not a fresh
+post-fix rerun; it fails the new <=0.5x raw-token target on both comparable
+prompts and activates scaffold-first work before more engine breadth.

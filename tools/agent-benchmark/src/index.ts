@@ -44,7 +44,7 @@ async function scoreCommand(argv: readonly string[]): Promise<number> {
     schema: "threenative.agent-benchmark-session" as const,
     stopReason: "failed-setup" as const,
     tokenCount: 0,
-    version: 1 as const,
+    version: 2 as const,
   };
   const capture = await captureCandidate({ candidate, outDir, url });
   const diagnostics = [...sessionResult.diagnostics, ...capture.diagnostics];
@@ -67,7 +67,7 @@ async function scoreCommand(argv: readonly string[]): Promise<number> {
     runId: session.runId,
     schema: "threenative.agent-benchmark-run",
     session,
-    version: 1,
+    version: 2,
   };
   await writeFile(outPath, `${JSON.stringify(report, null, 2)}\n`, "utf8");
   return writeResult({ code: report.ok ? "TN_BENCH_SCORE_OK" : "TN_BENCH_SCORE_FAILED", outPath, report }, json, report.ok ? 0 : 0);

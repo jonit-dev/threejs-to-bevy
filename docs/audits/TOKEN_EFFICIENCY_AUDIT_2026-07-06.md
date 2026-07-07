@@ -225,3 +225,15 @@ and every proposal attacks one of those two factors.
    (scaffold-to-playable) is the remaining structural lever; do it before
    any further engine-breadth work, per the decision gate in
    `docs/PRDs/done/agent-ergonomics-2026-07-05/README.md`.
+
+## 8. V2 Token-Cost Evidence
+
+`tools/verify/artifacts/agent-benchmark/token-cost-version-2-2026-07-07/` re-aggregates
+the tracked 8-session pilot with version 2 cached/uncached input, output-token,
+tool-output, failed-command, and cost-weighted fields mined from
+`codex-events.jsonl`.
+
+This is not a fresh post-fix rerun. It preserves the historical pilot decision
+under the stricter <=0.5x raw-token target: collector ratio 2.51x and
+lane-runner ratio 3.93x, both failing. Until a fresh post-P0/P1 rerun proves
+the target, scaffold-first remains the active next lever.

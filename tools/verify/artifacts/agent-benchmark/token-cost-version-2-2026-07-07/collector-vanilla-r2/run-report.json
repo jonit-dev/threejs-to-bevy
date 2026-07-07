@@ -1,0 +1,103 @@
+{
+  "artifacts": {
+    "afterScreenshot": "after.png",
+    "beforeScreenshot": "before.png"
+  },
+  "candidate": "/home/joao/projects/threejs-to-bevy/tools/verify/artifacts/agent-benchmark/pilot-2026-07/candidates/collector-vanilla-r2",
+  "condition": "vanilla",
+  "diagnostics": [
+    {
+      "code": "TN_BENCH_V2_REAGGREGATED_PILOT",
+      "message": "V2 token breakdown was mined from the tracked pilot Codex event log; this is not a fresh post-fix rerun session.",
+      "severity": "warning"
+    }
+  ],
+  "generatedAt": "2026-07-07T01:10:39.282Z",
+  "metrics": {
+    "after": {
+      "averageColor": {
+        "blue": 0.14693526603349671,
+        "green": 0.2104342320261438,
+        "red": 0.17198477498638345
+      },
+      "colorBucketCount": 77,
+      "colorBucketRatio": 0.00033420138888888887,
+      "height": 720,
+      "localContrastRatio": 0.02144844374891323,
+      "nonblank": {
+        "changedPixelRatio": 1,
+        "ok": true,
+        "threshold": 0.002
+      },
+      "projectedBounds": {
+        "height": 720,
+        "nonblankPixelRatio": 1,
+        "ok": true,
+        "width": 1280,
+        "x": 0,
+        "y": 0
+      },
+      "visibleBoundsAreaRatio": 1,
+      "width": 1280
+    },
+    "before": {
+      "averageColor": {
+        "blue": 0.1478353077342048,
+        "green": 0.21119868685321352,
+        "red": 0.17255570448665578
+      },
+      "colorBucketCount": 67,
+      "colorBucketRatio": 0.0002907986111111111,
+      "height": 720,
+      "localContrastRatio": 0.022448269866110242,
+      "nonblank": {
+        "changedPixelRatio": 1,
+        "ok": true,
+        "threshold": 0.002
+      },
+      "projectedBounds": {
+        "height": 720,
+        "nonblankPixelRatio": 1,
+        "ok": true,
+        "width": 1280,
+        "x": 0,
+        "y": 0
+      },
+      "visibleBoundsAreaRatio": 1,
+      "width": 1280
+    },
+    "movementDelta": {
+      "averageBrightnessDelta": 0.005058124262436398,
+      "changedPixelRatio": 0.018772786458333333,
+      "threshold": 0.001
+    }
+  },
+  "ok": true,
+  "promptId": "collector",
+  "runId": "collector-vanilla-r2",
+  "schema": "threenative.agent-benchmark-run",
+  "session": {
+    "schema": "threenative.agent-benchmark-session",
+    "version": 2,
+    "runId": "collector-vanilla-r2",
+    "promptId": "collector",
+    "condition": "vanilla",
+    "tokenCount": 941546,
+    "iterationCount": 3,
+    "stopReason": "claimed-playable",
+    "finishedAt": "2026-07-07T01:10:19.695Z",
+    "humanRubric": {
+      "playability": 2,
+      "visual": 2,
+      "notes": "Fresh codex exec session (r2). Token count is input+output+reasoning from final JSON usage ({\"input_tokens\":929089,\"cached_input_tokens\":822144,\"output_tokens\":10646,\"reasoning_output_tokens\":1811}). Iterations are transcript-derived: max(0,file_change_count-1)+failed_commands+failed_tool_calls = 3. Final response: Playable collector game is implemented in this candidate directory: - `index.html` - `styles.css` - `game.js` I verified it by serving it locally with `python3 -m http.server 4173` and using Playwright in the browser. The canvas renders, keyboard input moves the actor, all 8 gems can be collected, t"
+    },
+    "inputTokens": 929089,
+    "cachedInputTokens": 822144,
+    "uncachedInputTokens": 106945,
+    "outputTokens": 10646,
+    "toolOutputBytes": 15941,
+    "failedCommandCount": 0,
+    "costWeightedTokens": 199805.40000000002
+  },
+  "version": 2
+}

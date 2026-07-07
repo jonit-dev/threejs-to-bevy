@@ -104,7 +104,10 @@ execution bundle.
 - [Agent Benchmark Token Cost Metrics and Rerun](other/agent-benchmark-token-cost-rerun.md):
   extends benchmark artifacts with cached/uncached token, tool-output,
   failed-command, and cost-weighted fields, then reruns the unchanged pilot
-  protocol against the audit's <=0.5x raw-token target.
+  protocol against the audit's <=0.5x raw-token target. V2 token-cost
+  re-aggregation evidence is in
+  `tools/verify/artifacts/agent-benchmark/token-cost-version-2-2026-07-07/`; it is
+  not a fresh post-fix rerun and keeps scaffold-first active.
 - [Agent Token Efficiency Scaffold-First Game Plan Apply](other/agent-token-efficiency-scaffold-first.md):
   conditional structural lever if P0/P1 fixes miss the <=0.5x target:
   explicitly apply collector and lane-runner game plans into playable,

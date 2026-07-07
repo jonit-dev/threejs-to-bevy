@@ -1,0 +1,109 @@
+{
+  "artifacts": {
+    "afterScreenshot": "after.png",
+    "beforeScreenshot": "before.png"
+  },
+  "candidate": "/home/joao/projects/threejs-to-bevy/tools/verify/artifacts/agent-benchmark/pilot-2026-07/candidates/lane-runner-vanilla-r1",
+  "condition": "vanilla",
+  "diagnostics": [
+    {
+      "code": "TN_BENCH_NO_MOVEMENT",
+      "message": "Keyboard probe changed 0.000% of pixels, below 0.100%.",
+      "severity": "error",
+      "suggestedFix": "Wire keyboard input so a visible actor moves under WASD or arrow keys."
+    },
+    {
+      "code": "TN_BENCH_V2_REAGGREGATED_PILOT",
+      "message": "V2 token breakdown was mined from the tracked pilot Codex event log; this is not a fresh post-fix rerun session.",
+      "severity": "warning"
+    }
+  ],
+  "generatedAt": "2026-07-07T01:11:25.878Z",
+  "metrics": {
+    "after": {
+      "averageColor": {
+        "blue": 0.23466888361247276,
+        "green": 0.2023843911696623,
+        "red": 0.16766637305964052
+      },
+      "colorBucketCount": 44,
+      "colorBucketRatio": 0.00019097222222222223,
+      "height": 720,
+      "localContrastRatio": 0.023387237002260475,
+      "nonblank": {
+        "changedPixelRatio": 1,
+        "ok": true,
+        "threshold": 0.002
+      },
+      "projectedBounds": {
+        "height": 720,
+        "nonblankPixelRatio": 1,
+        "ok": true,
+        "width": 1280,
+        "x": 0,
+        "y": 0
+      },
+      "visibleBoundsAreaRatio": 1,
+      "width": 1280
+    },
+    "before": {
+      "averageColor": {
+        "blue": 0.23466888361247276,
+        "green": 0.2023843911696623,
+        "red": 0.16766637305964052
+      },
+      "colorBucketCount": 44,
+      "colorBucketRatio": 0.00019097222222222223,
+      "height": 720,
+      "localContrastRatio": 0.023387237002260475,
+      "nonblank": {
+        "changedPixelRatio": 1,
+        "ok": true,
+        "threshold": 0.002
+      },
+      "projectedBounds": {
+        "height": 720,
+        "nonblankPixelRatio": 1,
+        "ok": true,
+        "width": 1280,
+        "x": 0,
+        "y": 0
+      },
+      "visibleBoundsAreaRatio": 1,
+      "width": 1280
+    },
+    "movementDelta": {
+      "averageBrightnessDelta": 0,
+      "changedPixelRatio": 0,
+      "threshold": 0.001
+    }
+  },
+  "ok": false,
+  "promptId": "lane-runner",
+  "runId": "lane-runner-vanilla-r1",
+  "schema": "threenative.agent-benchmark-run",
+  "session": {
+    "schema": "threenative.agent-benchmark-session",
+    "version": 2,
+    "runId": "lane-runner-vanilla-r1",
+    "promptId": "lane-runner",
+    "condition": "vanilla",
+    "tokenCount": 646147,
+    "iterationCount": 1,
+    "stopReason": "claimed-playable",
+    "finishedAt": "2026-07-07T01:10:19.727Z",
+    "humanRubric": {
+      "playability": 2,
+      "visual": 2,
+      "notes": "Fresh codex exec session (r1). Token count is input+output+reasoning from final JSON usage ({\"input_tokens\":634722,\"cached_input_tokens\":555776,\"output_tokens\":9766,\"reasoning_output_tokens\":1659}). Iterations are transcript-derived: max(0,file_change_count-1)+failed_commands+failed_tool_calls = 1. Final response: Playable lane runner is implemented in [index.html](/home/joao/projects/threejs-to-bevy/tools/verify/artifacts/agent-benchmark/pilot-2026-07/candidates/lane-runner-vanilla-r1/index.html), [styles.css](/home/joao/projects/threejs-to-bevy/tools/verify/artifacts/agent-benchmark/pilot-2026-07/candidates"
+    },
+    "inputTokens": 634722,
+    "cachedInputTokens": 555776,
+    "uncachedInputTokens": 78946,
+    "outputTokens": 9766,
+    "toolOutputBytes": 35964,
+    "failedCommandCount": 0,
+    "costWeightedTokens": 144289.6
+  },
+  "version": 2
+}

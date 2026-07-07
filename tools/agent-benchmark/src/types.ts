@@ -11,20 +11,27 @@ export interface IBenchmarkDiagnostic {
 }
 
 export interface IBenchmarkSession {
+  cachedInputTokens?: number;
   condition: BenchmarkCondition;
+  costWeightedTokens?: number;
   finishedAt?: string;
+  failedCommandCount?: number;
   humanRubric: {
     notes?: string;
     playability: number;
     visual: number;
   };
+  inputTokens?: number;
   iterationCount: number;
+  outputTokens?: number;
   promptId: string;
   runId: string;
   schema: "threenative.agent-benchmark-session";
   stopReason: BenchmarkStopReason;
   tokenCount: number;
-  version: 1;
+  toolOutputBytes?: number;
+  uncachedInputTokens?: number;
+  version: 2;
 }
 
 export interface IBenchmarkRunReport {
@@ -50,24 +57,54 @@ export interface IBenchmarkRunReport {
   runId: string;
   schema: "threenative.agent-benchmark-run";
   session: IBenchmarkSession;
-  version: 1;
+  version: 2;
 }
 
 export interface IBenchmarkReport {
   diagnostics: IBenchmarkDiagnostic[];
   generatedAt: string;
   promptSummaries: Array<{
+    costWeightedTokenRatio: number | null;
+    failedCommandMedian: {
+      threenative: number | null;
+      vanilla: number | null;
+    };
+    iterationMedian: {
+      threenative: number | null;
+      vanilla: number | null;
+    };
     promptId: string;
+    rawTokenRatio: number | null;
+    threenativeMedianCachedInputTokens: number | null;
+    threenativeMedianCostWeightedTokens: number | null;
+    threenativeMedianFailedCommandCount: number | null;
+    threenativeMedianInputTokens: number | null;
+    threenativeMedianIterations: number | null;
+    threenativeMedianOutputTokens: number | null;
     threenativeMedianTokens: number | null;
+    threenativeMedianToolOutputBytes: number | null;
+    threenativeMedianUncachedInputTokens: number | null;
+    toolOutputMedian: {
+      threenative: number | null;
+      vanilla: number | null;
+    };
+    vanillaMedianCachedInputTokens: number | null;
+    vanillaMedianCostWeightedTokens: number | null;
+    vanillaMedianFailedCommandCount: number | null;
+    vanillaMedianInputTokens: number | null;
+    vanillaMedianIterations: number | null;
+    vanillaMedianOutputTokens: number | null;
     vanillaMedianTokens: number | null;
-    withinTwoX: boolean | null;
+    vanillaMedianToolOutputBytes: number | null;
+    vanillaMedianUncachedInputTokens: number | null;
+    withinHalfX: boolean | null;
   }>;
   runCount: number;
   schema: "threenative.agent-benchmark-report";
-  version: 1;
+  version: 2;
   verdict: {
     status: "pass" | "fail" | "insufficient-data";
     summary: string;
-    threshold: "threenative-median-tokens <= 2x vanilla-median-tokens";
+    threshold: "threenative-median-tokens <= 0.5x vanilla-median-tokens";
   };
 }

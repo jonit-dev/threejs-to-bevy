@@ -1,0 +1,114 @@
+{
+  "artifacts": {
+    "afterScreenshot": "after.png",
+    "beforeScreenshot": "before.png"
+  },
+  "candidate": "/home/joao/projects/threejs-to-bevy/tools/verify/artifacts/agent-benchmark/pilot-2026-07/candidates/lane-runner-threenative-r2",
+  "condition": "threenative",
+  "diagnostics": [
+    {
+      "code": "TN_BENCH_NO_MOVEMENT",
+      "message": "Keyboard probe changed 0.000% of pixels, below 0.100%.",
+      "severity": "error",
+      "suggestedFix": "Wire keyboard input so a visible actor moves under WASD or arrow keys."
+    },
+    {
+      "code": "TN_BENCH_BROWSER_LOGS",
+      "message": "Browser emitted 7 console log(s).",
+      "severity": "warning"
+    },
+    {
+      "code": "TN_BENCH_V2_REAGGREGATED_PILOT",
+      "message": "V2 token breakdown was mined from the tracked pilot Codex event log; this is not a fresh post-fix rerun session.",
+      "severity": "warning"
+    }
+  ],
+  "generatedAt": "2026-07-07T01:12:12.603Z",
+  "metrics": {
+    "after": {
+      "averageColor": {
+        "blue": 0.6948476477396515,
+        "green": 0.24296726068899782,
+        "red": 0.018735438793572985
+      },
+      "colorBucketCount": 28,
+      "colorBucketRatio": 0.00012152777777777777,
+      "height": 720,
+      "localContrastRatio": 0.019883498521996175,
+      "nonblank": {
+        "changedPixelRatio": 0.9094173177083333,
+        "ok": true,
+        "threshold": 0.002
+      },
+      "projectedBounds": {
+        "height": 720,
+        "nonblankPixelRatio": 0.9094173177083333,
+        "ok": true,
+        "width": 1280,
+        "x": 0,
+        "y": 0
+      },
+      "visibleBoundsAreaRatio": 1,
+      "width": 1280
+    },
+    "before": {
+      "averageColor": {
+        "blue": 0.6948476477396515,
+        "green": 0.24296726068899782,
+        "red": 0.018735438793572985
+      },
+      "colorBucketCount": 28,
+      "colorBucketRatio": 0.00012152777777777777,
+      "height": 720,
+      "localContrastRatio": 0.019883498521996175,
+      "nonblank": {
+        "changedPixelRatio": 0.9094173177083333,
+        "ok": true,
+        "threshold": 0.002
+      },
+      "projectedBounds": {
+        "height": 720,
+        "nonblankPixelRatio": 0.9094173177083333,
+        "ok": true,
+        "width": 1280,
+        "x": 0,
+        "y": 0
+      },
+      "visibleBoundsAreaRatio": 1,
+      "width": 1280
+    },
+    "movementDelta": {
+      "averageBrightnessDelta": 0,
+      "changedPixelRatio": 0,
+      "threshold": 0.001
+    }
+  },
+  "ok": false,
+  "promptId": "lane-runner",
+  "runId": "lane-runner-threenative-r2",
+  "schema": "threenative.agent-benchmark-run",
+  "session": {
+    "schema": "threenative.agent-benchmark-session",
+    "version": 2,
+    "runId": "lane-runner-threenative-r2",
+    "promptId": "lane-runner",
+    "condition": "threenative",
+    "tokenCount": 1624075,
+    "iterationCount": 13,
+    "stopReason": "claimed-playable",
+    "finishedAt": "2026-07-07T01:10:19.726Z",
+    "humanRubric": {
+      "playability": 2,
+      "visual": 2,
+      "notes": "Fresh codex exec session (r2). Token count is input+output+reasoning from final JSON usage ({\"input_tokens\":1606846,\"cached_input_tokens\":1509760,\"output_tokens\":16321,\"reasoning_output_tokens\":908}). Iterations are transcript-derived: max(0,file_change_count-1)+failed_commands+failed_tool_calls = 13. Final response: Playable: yes. Built a ThreeNative structured-source lane runner in the candidate directory with: - three visible lanes, player, hazards, rewards, and finish marker - A/D and arrow-key lane switching - score, reward count, distance HUD - hazard fail state with retry prompt via R or Space - browser c"
+    },
+    "inputTokens": 1606846,
+    "cachedInputTokens": 1509760,
+    "uncachedInputTokens": 97086,
+    "outputTokens": 16321,
+    "toolOutputBytes": 2267876,
+    "failedCommandCount": 8,
+    "costWeightedTokens": 264383
+  },
+  "version": 2
+}

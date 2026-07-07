@@ -1,16 +1,31 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "schema": "threenative.agent-benchmark-report",
-  "version": 1,
+  "version": 2,
   "type": "object",
   "additionalProperties": false,
   "required": ["schema", "version", "generatedAt", "runCount", "promptSummaries", "verdict", "diagnostics"],
   "properties": {
     "schema": { "const": "threenative.agent-benchmark-report" },
-    "version": { "const": 1 },
+    "version": { "const": 2 },
     "generatedAt": { "type": "string" },
     "runCount": { "type": "number", "minimum": 0 },
-    "promptSummaries": { "type": "array" },
+    "promptSummaries": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["promptId", "threenativeMedianTokens", "vanillaMedianTokens", "withinHalfX"],
+        "additionalProperties": true,
+        "properties": {
+          "promptId": { "type": "string" },
+          "threenativeMedianTokens": { "type": ["number", "null"] },
+          "vanillaMedianTokens": { "type": ["number", "null"] },
+          "rawTokenRatio": { "type": ["number", "null"] },
+          "costWeightedTokenRatio": { "type": ["number", "null"] },
+          "withinHalfX": { "type": ["boolean", "null"] }
+        }
+      }
+    },
     "diagnostics": { "type": "array" },
     "verdict": {
       "type": "object",
@@ -19,7 +34,7 @@
       "properties": {
         "status": { "enum": ["pass", "fail", "insufficient-data"] },
         "summary": { "type": "string" },
-        "threshold": { "const": "threenative-median-tokens <= 2x vanilla-median-tokens" }
+        "threshold": { "const": "threenative-median-tokens <= 0.5x vanilla-median-tokens" }
       }
     }
   }

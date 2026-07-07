@@ -17,6 +17,10 @@ takes to reach the same playable game prompt in two conditions:
    stops a run for setup failure.
 5. Record the final session token count and distinct repair iteration count in
    `session.json` at the candidate project root.
+6. For version 2 sessions, also capture transcript-derived `inputTokens`,
+   `cachedInputTokens`, `uncachedInputTokens`, `outputTokens`,
+   `toolOutputBytes`, and `failedCommandCount`. Keep `tokenCount` as the raw
+   headline total.
 
 ## Playable Definition
 
@@ -68,3 +72,14 @@ node tools/agent-benchmark/dist/index.js aggregate \
   --out tools/verify/artifacts/agent-benchmark/pilot-2026-07/benchmark-report.json \
   --json
 ```
+
+The continuation target is now stricter than the original pilot screen:
+ThreeNative median raw tokens must be `<= 0.5x` vanilla median raw tokens for
+each comparable prompt. Cost-weighted tokens, cached/uncached input tokens,
+tool-output bytes, failed-command count, and iteration count are supporting
+root-cause metrics, not substitutes for the raw-token gate.
+
+Post-fix reruns must keep the original prompts, model conditions, run count,
+and stop rules unchanged. Store fresh rerun artifacts under a new dated
+`tools/verify/artifacts/agent-benchmark/<rerun-id>/` directory and link the
+aggregate report from the PRD/status docs.

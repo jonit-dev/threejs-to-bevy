@@ -10,6 +10,9 @@ Current support:
   playtest logs remain in artifact files while stdout stays compact.
 - `pnpm verify:template-production` checks iterate-first starter guidance,
   compact-report guidance, and generated API-card parity.
+- Agent benchmark reports are version 2 token-cost artifacts with raw, cached,
+  uncached, output, cost-weighted, iteration, failed-command, and tool-output
+  medians.
 - `pnpm check:docs` for docs consistency and STATUS index budget.
 - `pnpm verify:smoke`, `pnpm verify:pre-push`, and `pnpm verify:release` for
   escalating proof levels.
@@ -22,6 +25,7 @@ Verification:
 - `pnpm check:docs`
 - `pnpm verify:smoke`
 - `pnpm verify:release`
+- `pnpm --filter @threenative/agent-benchmark test`
 
 Full prior evidence is preserved in
 [full-status-archive.md](full-status-archive.md).

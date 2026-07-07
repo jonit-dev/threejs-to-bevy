@@ -1,0 +1,8 @@
+tools/verify/artifacts/agent-benchmark/token-cost-version-2-2026-07-07/collector-vanilla-r1/run-report.json
+tools/verify/artifacts/agent-benchmark/token-cost-version-2-2026-07-07/collector-vanilla-r2/run-report.json
+tools/verify/artifacts/agent-benchmark/token-cost-version-2-2026-07-07/collector-threenative-r1/run-report.json
+tools/verify/artifacts/agent-benchmark/token-cost-version-2-2026-07-07/collector-threenative-r2/run-report.json
+tools/verify/artifacts/agent-benchmark/token-cost-version-2-2026-07-07/lane-runner-vanilla-r1/run-report.json
+tools/verify/artifacts/agent-benchmark/token-cost-version-2-2026-07-07/lane-runner-vanilla-r2/run-report.json
+tools/verify/artifacts/agent-benchmark/token-cost-version-2-2026-07-07/lane-runner-threenative-r1/run-report.json
+tools/verify/artifacts/agent-benchmark/token-cost-version-2-2026-07-07/lane-runner-threenative-r2/run-report.json

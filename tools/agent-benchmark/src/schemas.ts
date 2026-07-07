@@ -16,13 +16,20 @@ export function validateSession(value: unknown): ISchemaValidationResult {
     return { diagnostics: [{ code: "TN_BENCH_SCHEMA_OBJECT", message: "Session must be a JSON object.", severity: "error" }], ok: false };
   }
   requireLiteral(value, "schema", "threenative.agent-benchmark-session", diagnostics);
-  requireLiteral(value, "version", 1, diagnostics);
+  requireLiteral(value, "version", 2, diagnostics);
   requireString(value, "runId", diagnostics);
   requireString(value, "promptId", diagnostics);
   requireEnum(value, "condition", conditions, "TN_BENCH_SCHEMA_CONDITION", diagnostics);
   requireEnum(value, "stopReason", stopReasons, "TN_BENCH_SCHEMA_STOP_REASON", diagnostics);
   requireNonNegativeNumber(value, "tokenCount", diagnostics);
   requireNonNegativeNumber(value, "iterationCount", diagnostics);
+  requireOptionalNonNegativeNumber(value, "inputTokens", diagnostics);
+  requireOptionalNonNegativeNumber(value, "cachedInputTokens", diagnostics);
+  requireOptionalNonNegativeNumber(value, "uncachedInputTokens", diagnostics);
+  requireOptionalNonNegativeNumber(value, "outputTokens", diagnostics);
+  requireOptionalNonNegativeNumber(value, "costWeightedTokens", diagnostics);
+  requireOptionalNonNegativeNumber(value, "toolOutputBytes", diagnostics);
+  requireOptionalNonNegativeNumber(value, "failedCommandCount", diagnostics);
   if (!isRecord(value.humanRubric)) {
     diagnostics.push({ code: "TN_BENCH_SCHEMA_HUMAN_RUBRIC", message: "Session humanRubric must be an object.", severity: "error" });
   } else {
@@ -38,7 +45,7 @@ export function validateRunReport(value: unknown): ISchemaValidationResult {
     return { diagnostics: [{ code: "TN_BENCH_SCHEMA_OBJECT", message: "Run report must be a JSON object.", severity: "error" }], ok: false };
   }
   requireLiteral(value, "schema", "threenative.agent-benchmark-run", diagnostics);
-  requireLiteral(value, "version", 1, diagnostics);
+  requireLiteral(value, "version", 2, diagnostics);
   requireString(value, "runId", diagnostics);
   requireString(value, "promptId", diagnostics);
   requireString(value, "candidate", diagnostics);
@@ -56,10 +63,15 @@ export function validateAggregateReport(value: unknown): ISchemaValidationResult
     return { diagnostics: [{ code: "TN_BENCH_SCHEMA_OBJECT", message: "Aggregate report must be a JSON object.", severity: "error" }], ok: false };
   }
   requireLiteral(value, "schema", "threenative.agent-benchmark-report", diagnostics);
-  requireLiteral(value, "version", 1, diagnostics);
+  requireLiteral(value, "version", 2, diagnostics);
   requireNonNegativeNumber(value, "runCount", diagnostics);
+  if (!Array.isArray(value.promptSummaries)) {
+    diagnostics.push({ code: "TN_BENCH_SCHEMA_PROMPT_SUMMARIES", message: "Aggregate report promptSummaries must be an array.", severity: "error" });
+  }
   if (!isRecord(value.verdict)) {
     diagnostics.push({ code: "TN_BENCH_SCHEMA_VERDICT", message: "Aggregate report verdict must be an object.", severity: "error" });
+  } else if (value.verdict.threshold !== "threenative-median-tokens <= 0.5x vanilla-median-tokens") {
+    diagnostics.push({ code: "TN_BENCH_SCHEMA_THRESHOLD", message: "Aggregate report threshold must use the <=0.5x raw-token gate.", severity: "error" });
   }
   return { diagnostics, ok: diagnostics.length === 0 };
 }
@@ -104,6 +116,12 @@ function requireString(record: Record<string, unknown>, key: string, diagnostics
 function requireNonNegativeNumber(record: Record<string, unknown>, key: string, diagnostics: IBenchmarkDiagnostic[]): void {
   if (typeof record[key] !== "number" || !Number.isFinite(record[key]) || record[key] < 0) {
     diagnostics.push({ code: "TN_BENCH_SCHEMA_NUMBER", message: `${key} must be a non-negative number.`, severity: "error" });
+  }
+}
+
+function requireOptionalNonNegativeNumber(record: Record<string, unknown>, key: string, diagnostics: IBenchmarkDiagnostic[]): void {
+  if (record[key] !== undefined) {
+    requireNonNegativeNumber(record, key, diagnostics);
   }
 }
 
