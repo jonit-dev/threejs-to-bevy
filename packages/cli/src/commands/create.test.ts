@@ -326,6 +326,52 @@ test("should create structured-source starter template with editable content doc
   }
 });
 
+test("should create typed-spec authoring starter as opt-in mode", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-create-typed-spec-"));
+  try {
+    const result = await createProject(["typed", "--template", "structured-source-starter", "--authoring", "typed-spec", "--json"], { cwd: root });
+    const payload = JSON.parse(result.stdout) as { authoring: string; code: string; path: string; template: string };
+
+    assert.equal(result.exitCode, 0);
+    assert.equal(payload.code, "TN_CREATE_OK");
+    assert.equal(payload.authoring, "typed-spec");
+    assert.equal(payload.template, "structured-source-starter");
+
+    const specSource = await readFile(join(payload.path, "src/game.spec.ts"), "utf8");
+    assert.match(specSource, /defineTypedGameSpec/);
+
+    const config = JSON.parse(await readFile(join(payload.path, "threenative.config.json"), "utf8")) as {
+      outDir: string;
+      production?: {
+        agent?: { sourceShape?: { typedSpec?: string }; proofCommands?: string[] };
+        authoringMode?: string;
+        proofCommands?: string[];
+      };
+    };
+    assert.equal(config.outDir, "dist/typed-spec-starter.bundle");
+    assert.equal(config.production?.authoringMode, "typed-spec");
+    assert.equal(config.production?.agent?.sourceShape?.typedSpec, "src/game.spec.ts");
+    assert.equal(config.production?.proofCommands?.[0], "tn authoring compile-typed-spec --project . --json");
+
+    const packageJson = JSON.parse(await readFile(join(payload.path, "package.json"), "utf8")) as { scripts: Record<string, string> };
+    assert.equal(packageJson.scripts["authoring:compile"], "tn authoring compile-typed-spec --json");
+    assert.equal(packageJson.scripts.build, "tn authoring compile-typed-spec --json && tn build");
+    assert.equal(packageJson.scripts.validate, "tn authoring compile-typed-spec --json && tn validate");
+
+    await access(join(payload.path, "content/scenes/arena.scene.json"));
+    await access(join(payload.path, "content/input/arena.input.json"));
+    await access(join(payload.path, "content/materials/game-materials.materials.json"));
+
+    const compile = await authoringCommand(["compile-typed-spec", "--project", payload.path, "--json"], { cwd: root });
+    const compilePayload = JSON.parse(compile.stdout) as { code: string; documents: Array<{ path: string }> };
+    assert.equal(compile.exitCode, 0);
+    assert.equal(compilePayload.code, "TN_AUTHORING_TYPED_SPEC_COMPILED");
+    assert.equal(compilePayload.documents.some((document) => document.path === "content/scenes/arena.scene.json"), true);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
 test("should create racing kit rally starter with reusable race scene structure", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-create-racing-kit-"));
   try {

@@ -71,7 +71,7 @@ const commands: Record<string, ICommandDefinition> = {
   create: {
     description: "Scaffold a ThreeNative project from a maintained template.",
     implemented: true,
-    usage: "tn create <name> [--template <template>] [--json]",
+    usage: "tn create <name> [--template <template>] [--authoring structured-source|typed-spec] [--json]",
   },
   cookbook: {
     description: "List and show validated agent authoring cookbook examples.",

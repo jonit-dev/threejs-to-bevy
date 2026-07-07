@@ -1,4 +1,5 @@
 import { loadAuthoringProject, validateAuthoringProject } from "@threenative/authoring";
+import { compileTypedGameSpecFile } from "@threenative/compiler";
 import { resolve } from "node:path";
 
 import { type ICommandResult } from "../diagnostics.js";
@@ -42,6 +43,22 @@ export async function authoringCommand(argv: readonly string[], options: IAuthor
     return renderPayload(payload, json, payload.message, result.ok ? 0 : 1);
   }
 
+  if (subcommand === "compile-typed-spec") {
+    const entryFlagIndex = normalizedArgv.indexOf("--entry");
+    const result = await compileTypedGameSpecFile({
+      entry: entryFlagIndex === -1 ? undefined : normalizedArgv[entryFlagIndex + 1],
+      projectPath,
+    });
+    const payload = {
+      code: "TN_AUTHORING_TYPED_SPEC_COMPILED",
+      message: `Compiled typed game spec '${result.entry}'.`,
+      ...result,
+      next: "tn build --project . --json",
+      notice: "Typed spec emits canonical content JSON before the normal build path.",
+    };
+    return renderPayload(payload, json, payload.message);
+  }
+
   return renderUsage(json);
 }
 
@@ -58,7 +75,7 @@ function renderPayload(payload: unknown, json: boolean, message: string, exitCod
 function renderUsage(json: boolean): ICommandResult {
   const payload = {
     code: "TN_AUTHORING_COMMAND_UNKNOWN",
-    message: "Usage: tn authoring inspect|validate [--project <path>] [--json]",
+    message: "Usage: tn authoring inspect|validate|compile-typed-spec [--project <path>] [--entry <src/game.spec.ts>] [--json]",
     severity: "error",
   };
   return { exitCode: 2, stdout: json ? `${JSON.stringify(payload, null, 2)}\n` : `${payload.message}\n` };

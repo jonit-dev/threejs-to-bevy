@@ -1,6 +1,7 @@
 import { access, chmod, cp, mkdir, readFile, readdir, writeFile } from "node:fs/promises";
 import { isAbsolute, relative, resolve, sep } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
+import { compileTypedGameSpecFile } from "@threenative/compiler";
 
 import { diagnosticResult, type ICommandResult } from "../diagnostics.js";
 import { formatGameArchetypeUsage, getGameArchetype, type IGameArchetypeDescriptor } from "../archetypes/registry.js";
@@ -35,16 +36,18 @@ export async function createProject(argv: readonly string[], options: ICreateOpt
   const requestedArchetype = archetypeFlagIndex === -1 ? undefined : normalizedArgv[archetypeFlagIndex + 1];
   const renderProfileFlagIndex = normalizedArgv.indexOf("--render-profile");
   const renderProfile = renderProfileFlagIndex === -1 ? "balanced" : normalizedArgv[renderProfileFlagIndex + 1];
+  const authoringFlagIndex = normalizedArgv.indexOf("--authoring");
+  const authoringMode = authoringFlagIndex === -1 ? "structured-source" : normalizedArgv[authoringFlagIndex + 1];
   const destinationArg = normalizedArgv.find((arg, index) => {
     const previous = normalizedArgv[index - 1];
-    return !arg.startsWith("-") && previous !== "--archetype" && previous !== "--template" && previous !== "--render-profile";
+    return !arg.startsWith("-") && previous !== "--archetype" && previous !== "--authoring" && previous !== "--template" && previous !== "--render-profile";
   });
 
   if (destinationArg === undefined) {
     return diagnosticResult(
       {
         code: "TN_CREATE_DESTINATION_REQUIRED",
-        message: `Usage: tn ${commandName} <name> [${formatTemplateUsage()}] [--archetype ${formatGameArchetypeUsage()}] [--render-profile parity|balanced|cinematic|stylized] [--json]`,
+        message: `Usage: tn ${commandName} <name> [${formatTemplateUsage()}] [--archetype ${formatGameArchetypeUsage()}] [--render-profile parity|balanced|cinematic|stylized] [--authoring structured-source|typed-spec] [--json]`,
       },
       { exitCode: 1, json, stderr: true },
     );
@@ -78,6 +81,16 @@ export async function createProject(argv: readonly string[], options: ICreateOpt
         code: "TN_CREATE_RENDER_PROFILE_UNSUPPORTED",
         message: "Render profile must be one of parity, balanced, cinematic, or stylized.",
         profile: renderProfile,
+      },
+      { exitCode: 1, json, stderr: true },
+    );
+  }
+  if (!isAuthoringMode(authoringMode)) {
+    return diagnosticResult(
+      {
+        code: "TN_CREATE_AUTHORING_UNSUPPORTED",
+        message: "Authoring mode must be one of structured-source or typed-spec.",
+        mode: authoringMode,
       },
       { exitCode: 1, json, stderr: true },
     );
@@ -140,6 +153,9 @@ export async function createProject(argv: readonly string[], options: ICreateOpt
   await copySharedPlanningInstructions(sharedPlanPath, projectPath);
   await rewriteProjectTemplateMetadata(projectPath, definition.canonical);
   await rewriteRuntimeRenderProfile(projectPath, renderProfile);
+  if (authoringMode === "typed-spec") {
+    await applyTypedSpecAuthoring(projectPath);
+  }
   if (archetype !== undefined) {
     await applyArchetypeScaffold(projectPath, archetype);
   }
@@ -167,6 +183,7 @@ export async function createProject(argv: readonly string[], options: ICreateOpt
     ],
     renderProfile,
     template: definition.canonical,
+    authoring: authoringMode,
     ...(archetype === undefined ? {} : {
       archetype: archetype.id,
       archetypeProbe: archetype.probe.path,
@@ -188,6 +205,108 @@ export async function createProject(argv: readonly string[], options: ICreateOpt
 
 function isRenderProfile(value: string | undefined): value is "parity" | "balanced" | "cinematic" | "stylized" {
   return value === "parity" || value === "balanced" || value === "cinematic" || value === "stylized";
+}
+
+function isAuthoringMode(value: string | undefined): value is "structured-source" | "typed-spec" {
+  return value === "structured-source" || value === "typed-spec";
+}
+
+async function applyTypedSpecAuthoring(projectPath: string): Promise<void> {
+  await writeTypedSpecStarter(projectPath);
+  await compileTypedGameSpecFile({ projectPath });
+  await rewriteTypedSpecConfig(projectPath);
+  await rewriteTypedSpecPackageScripts(projectPath);
+}
+
+async function writeTypedSpecStarter(projectPath: string): Promise<void> {
+  const specPath = resolve(projectPath, "src/game.spec.ts");
+  await mkdir(resolve(specPath, ".."), { recursive: true });
+  await writeFile(specPath, `import { defineTypedGameSpec } from "@threenative/sdk";
+
+export default defineTypedGameSpec({
+  input: {
+    axes: [
+      { id: "move-x", negative: ["keyboard.KeyA", "keyboard.ArrowLeft"], positive: ["keyboard.KeyD", "keyboard.ArrowRight"] },
+      { id: "move-z", negative: ["keyboard.KeyS", "keyboard.ArrowDown"], positive: ["keyboard.KeyW", "keyboard.ArrowUp"] },
+    ],
+    id: "arena",
+  },
+  materials: [
+    { color: "#44aa88", id: "player-material", roughness: 0.7 },
+    { color: "#f2c14e", id: "goal-material", roughness: 0.55 },
+  ],
+  scenes: [{
+    entities: [
+      {
+        components: {
+          CharacterController: { blocking: false, grounding: "none", moveXAxis: "move-x", moveZAxis: "move-z", speed: 4 },
+          Collider: { height: 1, kind: "capsule", radius: 0.25 },
+          MeshRenderer: { material: "player-material" },
+          RigidBody: { kind: "kinematic" },
+        },
+        id: "player",
+        transform: { position: [0, 0.5, 0] },
+      },
+      {
+        components: {
+          MeshRenderer: { material: "goal-material" },
+        },
+        id: "goal",
+        transform: { position: [3, 0.25, 0], scale: [0.7, 0.2, 0.7] },
+      },
+    ],
+    id: "arena",
+    initial: true,
+    resources: [{ id: "score", value: 0 }],
+    systems: [{ id: "score-system", resourceReads: ["score"], writes: ["player"] }],
+    ui: {
+      bindings: [{ node: "score-label", resource: "score" }],
+      nodes: [{ id: "score-label", text: "Score", type: "text" }],
+    },
+  }],
+});
+`, "utf8");
+}
+
+async function rewriteTypedSpecConfig(projectPath: string): Promise<void> {
+  const configPath = resolve(projectPath, "threenative.config.json");
+  const config = JSON.parse(await readFile(configPath, "utf8")) as Record<string, unknown>;
+  const production = isRecord(config.production) ? config.production : {};
+  const agent = isRecord(production.agent) ? production.agent : {};
+  const sourceShape = isRecord(agent.sourceShape) ? agent.sourceShape : {};
+  const proofCommands = arrayOfStrings(production.proofCommands);
+  const agentProofCommands = arrayOfStrings(agent.proofCommands);
+  config.entry = "content/scenes/arena.scene.json";
+  config.outDir = "dist/typed-spec-starter.bundle";
+  config.production = {
+    ...production,
+    authoringMode: "typed-spec",
+    agent: {
+      ...agent,
+      authoringMode: "typed-spec",
+      sourceShape: {
+        ...sourceShape,
+        typedSpec: "src/game.spec.ts",
+      },
+      proofCommands: uniqueStrings(["tn authoring compile-typed-spec --project . --json", ...agentProofCommands]),
+    },
+    proofCommands: uniqueStrings(["tn authoring compile-typed-spec --project . --json", ...proofCommands]),
+  };
+  await writeFile(configPath, `${JSON.stringify(config, null, 2)}\n`, "utf8");
+}
+
+async function rewriteTypedSpecPackageScripts(projectPath: string): Promise<void> {
+  const packageJsonPath = resolve(projectPath, "package.json");
+  const packageJson = JSON.parse(await readFile(packageJsonPath, "utf8")) as Record<string, unknown>;
+  const scripts = isRecord(packageJson.scripts) ? packageJson.scripts : {};
+  packageJson.scripts = {
+    ...scripts,
+    "authoring:compile": "tn authoring compile-typed-spec --json",
+    build: "tn authoring compile-typed-spec --json && tn build",
+    validate: "tn authoring compile-typed-spec --json && tn validate",
+    "validate:authoring": "tn authoring compile-typed-spec --json && tn authoring validate --json",
+  };
+  await writeFile(packageJsonPath, `${JSON.stringify(packageJson, null, 2)}\n`, "utf8");
 }
 
 async function rewriteRuntimeRenderProfile(projectPath: string, renderProfile: "parity" | "balanced" | "cinematic" | "stylized"): Promise<void> {

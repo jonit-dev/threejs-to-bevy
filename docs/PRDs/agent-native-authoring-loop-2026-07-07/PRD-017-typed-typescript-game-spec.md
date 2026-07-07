@@ -219,10 +219,15 @@ point back to `src/game.spec.ts` instead of generated `content/**/*.json`.
 
 **Implementation:**
 
-- [ ] Add typed spec as an opt-in starter mode or experimental flag.
+- [x] Add typed spec as an opt-in starter mode or experimental flag.
 - [ ] Add cookbook entries for resource state, entity transforms, input IDs,
   and UI bindings.
 - [ ] Run cookbook verification.
+
+**Implementation Note:** `tn create --authoring typed-spec` now scaffolds
+`src/game.spec.ts`, runs the typed-spec compiler once to emit canonical
+`content/**/*.json`, and rewrites starter scripts so validate/build regenerate
+structured source before using the normal compiler path.
 
 **Tests Required:**
 

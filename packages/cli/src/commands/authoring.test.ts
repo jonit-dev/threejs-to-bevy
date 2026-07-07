@@ -92,3 +92,57 @@ test("authoring validate reports structured input binding diagnostics with sourc
     await rm(root, { force: true, recursive: true });
   }
 });
+
+test("authoring command compiles typed game spec into structured source", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-authoring-typed-spec-"));
+  try {
+    await mkdir(join(root, "src"), { recursive: true });
+    await writeFile(join(root, "src/specParts.ts"), `export const playerMaterial = { color: "#44aa88", id: "player-material" } as const;
+`);
+    await writeFile(join(root, "src/game.spec.ts"), `import { defineTypedGameSpec } from "@threenative/sdk";
+import { playerMaterial } from "./specParts";
+
+export default defineTypedGameSpec({
+  input: {
+    axes: [
+      { id: "move-x", negative: ["keyboard.KeyA"], positive: ["keyboard.KeyD"] },
+      { id: "move-z", negative: ["keyboard.KeyS"], positive: ["keyboard.KeyW"] },
+    ],
+    id: "arena",
+  },
+  materials: [playerMaterial],
+  scenes: [{
+    entities: [{
+      components: {
+        CharacterController: { blocking: false, grounding: "none", moveXAxis: "move-x", moveZAxis: "move-z", speed: 4 },
+        Collider: { height: 1, kind: "capsule", radius: 0.25 },
+        MeshRenderer: { material: "player-material" },
+        RigidBody: { kind: "kinematic" },
+      },
+      id: "player",
+    }],
+    id: "arena",
+    resources: [{ id: "score", value: 0 }],
+    ui: { nodes: [{ id: "score-label", text: "Score", type: "text" }] },
+  }],
+});
+`);
+
+    const compile = await authoringCommand(["compile-typed-spec", "--project", root, "--json"]);
+    const payload = JSON.parse(compile.stdout) as { code: string; documents: Array<{ kind: string; path: string }> };
+    assert.equal(compile.exitCode, 0);
+    assert.equal(payload.code, "TN_AUTHORING_TYPED_SPEC_COMPILED");
+    assert.deepEqual(payload.documents.map((document) => document.path).sort(), [
+      "content/input/arena.input.json",
+      "content/materials/game-materials.materials.json",
+      "content/scenes/arena.scene.json",
+    ]);
+
+    const validate = await authoringCommand(["validate", "--project", root, "--json"]);
+    const validatePayload = JSON.parse(validate.stdout) as { ok: boolean };
+    assert.equal(validate.exitCode, 0);
+    assert.equal(validatePayload.ok, true);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});

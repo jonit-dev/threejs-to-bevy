@@ -39,3 +39,8 @@ The four sections are required and must stay in this order: `commands`,
 `source-delta`, `script`, `proof`. Commands are copied into a fresh
 `structured-source-starter` project by `pnpm verify:cookbook`, then the script
 block is written to `scriptPath`, followed by authoring validation and build.
+
+Typed-spec cookbook entries should use `tn authoring compile-typed-spec --json`
+after `src/game.spec.ts` exists. The current gate does not create arbitrary
+setup files before commands run, so typed-spec entries need either a future
+setup-file section or a starter mode that already includes the spec file.
