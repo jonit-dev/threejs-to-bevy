@@ -120,7 +120,7 @@ execution bundle.
   script resource access, apply deterministic declarations or exact fixes, and
   make the top undeclared-resource failure class impossible for literal helper
   calls.
-- [Runtime Resource Parity Diagnostics](agent-native-authoring-loop-2026-07-07/PRD-014-runtime-resource-parity-diagnostics.md):
+- [Runtime Resource Parity Diagnostics](done/agent-native-authoring-loop-2026-07-07/PRD-014-runtime-resource-parity-diagnostics.md):
   closes the round-4 projectile-velocity black box by proving declared
   resources reach runtime state, recording resource observations in playtest
   artifacts, and emitting named diagnostics when schema-declared values are not

@@ -28,7 +28,7 @@ in scripts, examples, and historical docs during a staged cleanup. See
 | Area | Status | Current claim | Detail |
 | --- | --- | --- | --- |
 | Authoring | Active | Structured source, schema-aware CLI/MCP/client operations, cookbook, iterate, starter API cards, and prescriptive diagnostics are supported. | [authoring](status/capabilities/authoring.md) |
-| Scripting | Active | Portable TypeScript scripts use typed context APIs, convention-first helper aliases, supported helper imports, derived literal resource access declarations, and prescriptive compiler diagnostics. | [scripting](status/capabilities/scripting.md) |
+| Scripting | Active | Portable TypeScript scripts use typed context APIs, convention-first helper aliases, supported helper imports, derived literal resource access declarations, runtime resource observations, and prescriptive diagnostics. | [scripting](status/capabilities/scripting.md) |
 | Rendering | Active | Authored rendering IR maps to web and native through adapter-private implementations, parity gates, and web/native-proved scaffold look presets. | [rendering](status/capabilities/rendering.md) |
 | Physics | Active | Portable physics and character-control contracts exist for authored components and playtest-proved behavior. | [physics](status/capabilities/physics.md) |
 | UI | Active | Retained structured UI is the portable path; overlays are bounded and separate. | [ui](status/capabilities/ui.md) |
@@ -36,7 +36,7 @@ in scripts, examples, and historical docs during a staged cleanup. See
 | Native parity | Frozen for promotion | Bevy consumes emitted IR; the native playtest P0 is closed, and new native promotions require shipped-game evidence, native proof, and the native path decision. | [native parity](status/capabilities/native-parity.md) |
 | Game production | Active | Generated games target polished vertical slices with selectable L1 archetype scaffolds and compositional mechanic blocks; recipe-matched scaffold-first benchmarks pass, but the 2026-07-07 off-recipe authoring round fails the <=2x token gate. | [game production](status/capabilities/game-production.md) |
 | Editor | In progress | Editor and MCP surfaces must wrap authoring operations rather than owning a second source model. | [editor](status/capabilities/editor.md) |
-| Tooling/proof | Active | Verification tools own docs checks, agent IO/session-cost budgets, dialect-confusion metrics, smoke/release gates, proof manifests, and aggregate artifacts. | [tooling/proof](status/capabilities/tooling-proof.md) |
+| Tooling/proof | Active | Verification tools own docs checks, agent IO/session-cost budgets, runtime resource/retry diagnostics, smoke/release gates, proof manifests, and aggregate artifacts. | [tooling/proof](status/capabilities/tooling-proof.md) |
 
 ## Current PRDs
 

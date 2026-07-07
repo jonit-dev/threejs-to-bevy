@@ -21,7 +21,7 @@ use thiserror::Error;
 use threenative_components::ThreeNativeId;
 use threenative_loader::AssetsManifest;
 
-use crate::input::portable_key_code;
+use crate::{input::portable_key_code, systems_host::NativeResourceObservationState};
 
 const MIN_PROOF_SCREENSHOT_BYTES: u64 = 1024;
 const MIN_PROOF_SCREENSHOT_PEAK_LUMA: u8 = 16;
@@ -81,6 +81,8 @@ pub struct NativeProofHarnessReadiness {
     pub tick: u64,
     pub diagnostics: Vec<NativeProofHarnessDiagnostic>,
     pub performance: NativeProofHarnessPerformanceSample,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub resources: Option<NativeResourceObservationState>,
     pub transforms: Vec<NativeProofHarnessTransformSample>,
 }
 
@@ -254,6 +256,7 @@ pub fn apply_native_proof_harness_commands(
     mut ui_cameras: Query<(Entity, &mut Camera), With<IsDefaultUiCamera>>,
     scene_cameras: Query<(Entity, &Camera), Without<IsDefaultUiCamera>>,
     root_ui_nodes: Query<Entity, (With<Node>, Without<Parent>)>,
+    resource_observations: Option<Res<NativeResourceObservationState>>,
 ) {
     let tick = state.tick;
     let mut diagnostics = Vec::new();
@@ -265,6 +268,7 @@ pub fn apply_native_proof_harness_commands(
             diagnostics,
             performance,
             transforms.iter(),
+            resource_observations.as_deref().cloned(),
         );
         return;
     }
@@ -333,6 +337,7 @@ pub fn apply_native_proof_harness_commands(
         diagnostics,
         performance,
         transforms.iter(),
+        resource_observations.as_deref().cloned(),
     );
     if !hold_tick {
         state.tick += advance_ticks;
@@ -421,6 +426,7 @@ fn write_native_proof_harness_sample<'a>(
     diagnostics: Vec<NativeProofHarnessDiagnostic>,
     performance: NativeProofHarnessPerformanceSample,
     transforms: impl IntoIterator<Item = (&'a ThreeNativeId, &'a Transform)>,
+    resources: Option<NativeResourceObservationState>,
 ) {
     let ok = diagnostics
         .iter()
@@ -432,6 +438,7 @@ fn write_native_proof_harness_sample<'a>(
         tick,
         diagnostics,
         performance,
+        resources,
         transforms: native_proof_harness_transform_samples(transforms),
     };
     if let Err(error) = write_native_proof_harness_readiness(

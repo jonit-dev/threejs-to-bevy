@@ -7,6 +7,7 @@ use std::{
 };
 
 use quickjs_rusty::Context;
+use serde::Serialize;
 use serde_json::{Value, json};
 use thiserror::Error;
 use threenative_loader::{LoadedBundle, SystemIr, TransformComponent};
@@ -55,7 +56,37 @@ pub struct SystemsHostError {
 #[derive(Debug, Default)]
 pub struct NativeSystemsHostRun {
     pub logs: Vec<NativeSystemEffectLog>,
+    pub resource_observations: Vec<NativeResourceObservation>,
     pub transform_patches: BTreeSet<String>,
+}
+
+#[derive(bevy::prelude::Resource, Debug, Clone, Default, Serialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct NativeResourceObservationState {
+    pub declared: Vec<String>,
+    pub observations: Vec<NativeResourceObservation>,
+}
+
+#[derive(Debug, Clone, Serialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct NativeResourceObservation {
+    pub frame: u32,
+    pub kind: String,
+    pub resource: String,
+    pub schedule: String,
+    pub system: String,
+    pub tick: u32,
+}
+
+pub fn native_declared_system_resources(bundle: &LoadedBundle) -> Vec<String> {
+    let mut resources = BTreeSet::new();
+    if let Some(systems) = bundle.systems.as_ref() {
+        for system in &systems.systems {
+            resources.extend(system.resource_reads.iter().cloned());
+            resources.extend(system.resource_writes.iter().cloned());
+        }
+    }
+    resources.into_iter().collect()
 }
 
 #[derive(bevy::prelude::Resource, Debug, Clone, PartialEq)]
@@ -473,6 +504,7 @@ fn run_native_system_schedules(
             )
         })?;
     let mut logs = Vec::new();
+    let mut resource_observations = Vec::new();
     let mut transform_patches = BTreeSet::new();
     let mut diff_cache = ComponentDiffCache::default();
 
@@ -487,6 +519,7 @@ fn run_native_system_schedules(
                 .collect::<Vec<_>>();
             diff_cache.begin_schedule_stage(bundle, &tracked_components);
             for system in scheduled_systems {
+                let mut system_observations = declared_resource_load_observations(bundle, system);
                 let effects = call_system_export(
                     context,
                     bundle,
@@ -496,6 +529,7 @@ fn run_native_system_schedules(
                     input,
                     Some(&diff_cache),
                 )?;
+                system_observations.extend(native_resource_observations(system, &effects));
                 let applied = apply_system_effects_with_report(bundle, system, &effects, 1, 1)
                     .map_err(|diagnostics| {
                         let first = diagnostics
@@ -505,6 +539,7 @@ fn run_native_system_schedules(
                         host_error(first.code, first.message)
                     })?;
                 logs.push(applied.log);
+                resource_observations.extend(system_observations);
                 transform_patches.extend(applied.transform_patches);
             }
         }
@@ -517,8 +552,65 @@ fn run_native_system_schedules(
 
     Ok(NativeSystemsHostRun {
         logs,
+        resource_observations,
         transform_patches,
     })
+}
+
+fn declared_resource_load_observations(
+    bundle: &LoadedBundle,
+    system: &SystemIr,
+) -> Vec<NativeResourceObservation> {
+    system
+        .resource_reads
+        .iter()
+        .chain(system.resource_writes.iter())
+        .filter(|resource| bundle.world.resources.contains_key(*resource))
+        .cloned()
+        .collect::<BTreeSet<_>>()
+        .into_iter()
+        .map(|resource| NativeResourceObservation {
+            frame: 1,
+            kind: "load".to_owned(),
+            resource,
+            schedule: system.schedule.clone(),
+            system: system.name.clone(),
+            tick: 1,
+        })
+        .collect()
+}
+
+fn native_resource_observations(
+    system: &SystemIr,
+    effects: &NativeSystemEffects,
+) -> Vec<NativeResourceObservation> {
+    let mut observations = Vec::new();
+    for observation in &effects.observations {
+        observations.push(NativeResourceObservation {
+            frame: 1,
+            kind: observation.kind.clone(),
+            resource: observation.resource.clone(),
+            schedule: system.schedule.clone(),
+            system: system.name.clone(),
+            tick: 1,
+        });
+    }
+    for resource in &effects.resources {
+        let duplicate = observations.iter().any(|observation| {
+            observation.kind == "write" && observation.resource == resource.resource
+        });
+        if !duplicate {
+            observations.push(NativeResourceObservation {
+                frame: 1,
+                kind: "write".to_owned(),
+                resource: resource.resource.clone(),
+                schedule: system.schedule.clone(),
+                system: system.name.clone(),
+                tick: 1,
+            });
+        }
+    }
+    observations
 }
 
 fn with_script_host<T>(

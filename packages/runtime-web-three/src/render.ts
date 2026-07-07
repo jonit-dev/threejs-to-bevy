@@ -28,6 +28,7 @@ import { hasKinematicMovers, stepKinematicMovers } from "./kinematicMover.js";
 import { loadSystemModuleUrl } from "./systems/moduleLoaderUrl.js";
 import type { ISystemModule } from "./systems/runner.js";
 import { createSystemEffectLog, type ISystemEffectLog } from "./systems/log.js";
+import type { IResourceObservation } from "./systems/context.js";
 import { createUiDomOverlay } from "./ui/domOverlay.js";
 import { renderUi, type IRenderedUi, type IRenderedUiNode } from "./ui/renderUi.js";
 import { createWebAudioElementSink, createWebAudioRuntime } from "./audio.js";
@@ -101,6 +102,10 @@ export interface IWebRuntimeDiagnostics {
     renderedEntities: IWebRenderedEntityDiagnostics[];
   };
   recentRuntimeErrors: IRuntimeDiagnostic[];
+  resources: {
+    declared: string[];
+    observations: IResourceObservation[];
+  };
 }
 
 export interface IWebRenderedEntityDiagnostics {
@@ -198,6 +203,7 @@ export async function renderLoadedBundle(bundle: IWebBundle, container: HTMLElem
   const input = createInputState(bundle.input);
   const loopState = createGameLoopState(bundle.runtimeConfig);
   const effectLog = createSystemEffectLog();
+  const resourceObservations: IResourceObservation[] = [];
   const systemModule = await (options.systemModuleLoader ?? loadSystemModuleUrl)(source, bundle.manifest);
   const renderer = new THREE.WebGLRenderer(webRendererParameters(bundle.runtimeConfig));
   const renderLook = applyWebRenderLookProfile(bundle.runtimeConfig);
@@ -236,6 +242,7 @@ export async function renderLoadedBundle(bundle: IWebBundle, container: HTMLElem
       input,
       mapped,
       module: systemModule,
+      resourceObservations,
       runtimeConfig: bundle.runtimeConfig,
       state: loopState,
       systems: bundle.systems,
@@ -273,6 +280,7 @@ export async function renderLoadedBundle(bundle: IWebBundle, container: HTMLElem
             input,
             mapped,
             module: systemModule,
+            resourceObservations,
             runtimeConfig: bundle.runtimeConfig,
             state: loopState,
             systems: bundle.systems,
@@ -326,9 +334,9 @@ export async function renderLoadedBundle(bundle: IWebBundle, container: HTMLElem
     resourceSnapshot(id: string) {
       return cloneJsonValue(bundle.world.resources?.[id]);
     },
-    runtimeDiagnostics: collectWebRuntimeDiagnostics(mapped, bundle),
+    runtimeDiagnostics: collectWebRuntimeDiagnostics(mapped, bundle, resourceObservations),
     runtimeDiagnosticsSnapshot() {
-      return collectWebRuntimeDiagnostics(mapped, bundle);
+      return collectWebRuntimeDiagnostics(mapped, bundle, resourceObservations);
     },
     ...(ui === undefined ? {} : { ui }),
     uiNodeSnapshot(id: string) {
@@ -372,7 +380,7 @@ function webRuntimePerformanceSnapshot(renderer: THREE.WebGLRenderer, frameSampl
   };
 }
 
-export function collectWebRuntimeDiagnostics(mapped: IThreeWorld, bundle: IWebBundle): IWebRuntimeDiagnostics {
+export function collectWebRuntimeDiagnostics(mapped: IThreeWorld, bundle: IWebBundle, resourceObservations: readonly IResourceObservation[] = []): IWebRuntimeDiagnostics {
   const activeCameraId = cameraIdFor(mapped);
   const worldBounds = visibleWorldBounds(mapped.scene);
   const cameraPosition = new THREE.Vector3();
@@ -408,7 +416,26 @@ export function collectWebRuntimeDiagnostics(mapped: IThreeWorld, bundle: IWebBu
       ...(worldBounds === undefined ? {} : { worldBounds }),
     },
     recentRuntimeErrors: mapped.diagnostics.filter((diagnostic) => diagnostic.severity === "error").slice(-10),
+    resources: {
+      declared: declaredSystemResources(bundle.systems),
+      observations: compactResourceObservations(resourceObservations),
+    },
   };
+}
+
+function declaredSystemResources(systems: IWebBundle["systems"]): string[] {
+  return [...new Set((systems?.systems ?? []).flatMap((system) => [...system.resourceReads, ...system.resourceWrites]))].sort();
+}
+
+function compactResourceObservations(observations: readonly IResourceObservation[]): IResourceObservation[] {
+  return [
+    ...new Map(
+      observations.map((observation) => [
+        [observation.frame ?? "", observation.tick ?? "", observation.schedule ?? "", observation.system ?? "", observation.kind, observation.resource].join("\0"),
+        observation,
+      ]),
+    ).values(),
+  ].slice(-200);
 }
 
 interface IColliderDebugOverlay {

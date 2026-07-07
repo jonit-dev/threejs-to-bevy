@@ -95,6 +95,15 @@ export function createWebSystemRuntimeState(
   };
 }
 
+export interface IResourceObservation {
+  frame?: number;
+  kind: "load" | "read" | "write";
+  resource: string;
+  schedule?: string;
+  system?: string;
+  tick?: number;
+}
+
 const webSystemRuntimeStates = new WeakMap<IWorldIr, ReturnType<typeof createWebSystemRuntimeState>>();
 
 export function webSystemRuntimeStateFor(
@@ -113,7 +122,7 @@ export function webSystemRuntimeStateFor(
 
 export function createSystemContext(
   world: IWorldIr,
-  options: { assets?: IAssetsManifest; audio?: import("@threenative/ir").IAudioIr; componentDiff?: IComponentDiffCache; componentSchemas?: IIrSchemaFile; currentScene?: string | null; defaultQuery?: IIrSystemQuery; delta: number; elapsed?: number; fixedDelta: number; input?: IWebInputState; localData?: ILocalDataIr; paused?: boolean; persistence?: IWebPersistenceService; prefabs?: IPrefabsIr; runtimeState?: ReturnType<typeof createWebSystemRuntimeState>; systems?: ISystemsIr; ui?: IUiIr },
+  options: { assets?: IAssetsManifest; audio?: import("@threenative/ir").IAudioIr; componentDiff?: IComponentDiffCache; componentSchemas?: IIrSchemaFile; currentScene?: string | null; defaultQuery?: IIrSystemQuery; delta: number; elapsed?: number; fixedDelta: number; input?: IWebInputState; localData?: ILocalDataIr; paused?: boolean; persistence?: IWebPersistenceService; prefabs?: IPrefabsIr; resourceObserver?: (observation: Omit<IResourceObservation, "frame" | "schedule" | "system" | "tick">) => void; runtimeState?: ReturnType<typeof createWebSystemRuntimeState>; systems?: ISystemsIr; ui?: IUiIr },
 ): {
   commands: IQueuedCommand[];
   context: ISystemContext;
@@ -476,7 +485,9 @@ export function createSystemContext(
       timers: createTimerHelpers(options.elapsed ?? 0),
       resources: {
         get<T = unknown>(name: string, defaults?: Record<string, unknown>): T {
-          const value = world.resources?.[name];
+          const key = normalizeHandleName(name);
+          options.resourceObserver?.({ kind: "read", resource: key });
+          const value = world.resources?.[key];
           if (defaults !== undefined && isRecord(defaults)) {
             return {
               ...cloneValue(defaults) as Record<string, unknown>,
@@ -487,6 +498,7 @@ export function createSystemContext(
         },
         patch(name, value) {
           const key = normalizeHandleName(name);
+          options.resourceObserver?.({ kind: "write", resource: key });
           const existing = world.resources?.[key];
           resources.push({
             resource: key,
@@ -497,19 +509,24 @@ export function createSystemContext(
           });
         },
         set(name, value) {
-          resources.push({ resource: normalizeHandleName(name), value: cloneValue(value) });
+          const key = normalizeHandleName(name);
+          options.resourceObserver?.({ kind: "write", resource: key });
+          resources.push({ resource: key, value: cloneValue(value) });
         },
       },
       state(key, defaults) {
+        const resource = normalizeHandleName(key);
+        options.resourceObserver?.({ kind: "read", resource });
         const initial = {
           ...cloneValue(defaults) as Record<string, unknown>,
-          ...(isRecord(world.resources?.[key]) ? cloneValue(world.resources?.[key]) as Record<string, unknown> : {}),
+          ...(isRecord(world.resources?.[resource]) ? cloneValue(world.resources?.[resource]) as Record<string, unknown> : {}),
         };
         return new Proxy(initial, {
           set(target, property, value) {
             if (typeof property === "string") {
               target[property] = cloneValue(value);
-              resources.push({ resource: normalizeHandleName(key), value: cloneValue(target) });
+              options.resourceObserver?.({ kind: "write", resource });
+              resources.push({ resource, value: cloneValue(target) });
               return true;
             }
             return false;

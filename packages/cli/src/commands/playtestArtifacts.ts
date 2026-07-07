@@ -111,6 +111,7 @@ export async function writePlaytestArtifactBundle(options: {
     performance: options.report.performance ?? null,
   });
   const assertions = buildAssertions(options.report);
+  options.report.diagnostics.push(...repeatedAssertionDiagnostics(await readPreviousSummary(artifacts.summary), assertions));
   const summary: IPlaytestSummary = {
     ...(options.report.after === undefined ? {} : { after: options.report.after }),
     artifact: options.report.artifact ?? artifacts.afterScreenshot,
@@ -153,6 +154,49 @@ export async function writePlaytestArtifactBundle(options: {
     target: options.scenario.target,
   });
   return { artifacts, summary };
+}
+
+async function readPreviousSummary(path: string): Promise<IPlaytestSummary | undefined> {
+  try {
+    return JSON.parse(await readFile(path, "utf8")) as IPlaytestSummary;
+  } catch {
+    return undefined;
+  }
+}
+
+function repeatedAssertionDiagnostics(
+  previous: IPlaytestSummary | undefined,
+  assertions: readonly { id: string; pass: boolean; details?: Record<string, unknown> }[],
+): IPlaytestReport["diagnostics"] {
+  if (previous === undefined || previous.pass || previous.assertions.length === 0) {
+    return [];
+  }
+  return assertions.flatMap((assertion) => {
+    if (assertion.pass) {
+      return [];
+    }
+    const previousAssertion = previous.assertions.find((candidate) => candidate.id === assertion.id && !candidate.pass);
+    if (previousAssertion === undefined || stableJson(previousAssertion.details ?? {}) !== stableJson(assertion.details ?? {})) {
+      return [];
+    }
+    return [{
+      code: "TN_PLAYTEST_REPEATED_ASSERTION",
+      message: `Playtest assertion '${assertion.id}' failed with the same details as the previous run.`,
+      path: `artifacts/playtest/${previous.scenario}/latest/summary.json/assertions/${assertion.id}`,
+      severity: "warning" as const,
+      suggestion: "Use the newest runtime diagnostics and artifact paths before retrying the same playtest unchanged.",
+    }];
+  });
+}
+
+function stableJson(value: unknown): string {
+  if (Array.isArray(value)) {
+    return `[${value.map(stableJson).join(",")}]`;
+  }
+  if (isRecord(value)) {
+    return `{${Object.keys(value).sort().map((key) => `${JSON.stringify(key)}:${stableJson(value[key])}`).join(",")}}`;
+  }
+  return JSON.stringify(value);
 }
 
 function nextCommand(scenario: IPlaytestScenario, reportCommand: string): string {

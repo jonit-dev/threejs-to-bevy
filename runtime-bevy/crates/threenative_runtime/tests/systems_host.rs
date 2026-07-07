@@ -106,6 +106,25 @@ fn systems_host_should_apply_declared_resource_write() {
         run.logs[0].entries[0].value,
         Some(serde_json::json!({ "value": 3 }))
     );
+    let observations = run
+        .resource_observations
+        .iter()
+        .map(|observation| {
+            (
+                observation.kind.as_str(),
+                observation.resource.as_str(),
+                observation.system.as_str(),
+            )
+        })
+        .collect::<Vec<_>>();
+    assert_eq!(
+        observations,
+        vec![
+            ("load", "Score", "score"),
+            ("read", "Score", "score"),
+            ("write", "Score", "score"),
+        ]
+    );
 }
 
 #[test]

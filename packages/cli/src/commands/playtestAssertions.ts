@@ -6,8 +6,11 @@ type Vec3 = [number, number, number];
 export interface IPlaytestDiagnostic {
   code: string;
   message: string;
+  path?: string;
+  resourceId?: string;
   severity: "error" | "warning";
   suggestion?: string;
+  systemId?: string;
 }
 
 export interface IPlaytestAssertionResult {

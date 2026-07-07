@@ -6,7 +6,7 @@ import { dirname, join } from "node:path";
 import test from "node:test";
 import { tmpdir } from "node:os";
 
-import { evaluateMovementDiagnostics, parseAxisExpectation, playtestCommand } from "./playtest.js";
+import { evaluateMovementDiagnostics, parseAxisExpectation, playtestCommand, resourceObservationDiagnostics } from "./playtest.js";
 
 test("playtest command should pass when target transform changes after input", async () => {
   const root = await playtestTempRoot();
@@ -1227,6 +1227,42 @@ test("evaluateMovementDiagnostics should pass a healthy follower", () => {
   });
 
   assert.deepEqual(diagnostics, []);
+});
+
+test("resourceObservationDiagnostics should report declared resources not observed after movement failure", () => {
+  const diagnostics = resourceObservationDiagnostics(
+    [{ code: "TN_PLAYTEST_INPUT_NO_EFFECT", message: "No movement.", severity: "error" }],
+    {
+      resources: {
+        declared: ["ProjectileVelocity", "GameState"],
+        observations: [
+          { kind: "load", resource: "ProjectileVelocity", system: "projectile.move" },
+          { kind: "read", resource: "GameState", system: "hud.update" },
+        ],
+      },
+    },
+  );
+
+  assert.deepEqual(diagnostics.map((diagnostic) => ({ code: diagnostic.code, resourceId: diagnostic.resourceId, systemId: diagnostic.systemId })), [
+    { code: "TN_RESOURCE_DECLARED_NOT_OBSERVED", resourceId: "ProjectileVelocity", systemId: "projectile.move" },
+  ]);
+});
+
+test("resourceObservationDiagnostics should ignore observed resources and passing movement", () => {
+  assert.deepEqual(
+    resourceObservationDiagnostics(
+      [{ code: "TN_PLAYTEST_INPUT_NO_EFFECT", message: "No movement.", severity: "error" }],
+      { resources: { declared: ["GameState"], observations: [{ kind: "read", resource: "GameState" }] } },
+    ),
+    [],
+  );
+  assert.deepEqual(
+    resourceObservationDiagnostics(
+      [],
+      { resources: { declared: ["GameState"], observations: [{ kind: "load", resource: "GameState" }] } },
+    ),
+    [],
+  );
 });
 
 test("playtest command should require entity and keyboard input", async () => {

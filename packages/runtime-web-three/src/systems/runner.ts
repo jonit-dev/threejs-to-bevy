@@ -2,7 +2,7 @@ import type { IAssetsManifest, IAudioIr, IIrSchemaFile, IIrSystemDeclaration, IL
 import type { IWebInputState } from "../input.js";
 
 import { createComponentDiffCache } from "./componentDiff.js";
-import { createSystemContext, webSystemRuntimeStateFor } from "./context.js";
+import { createSystemContext, webSystemRuntimeStateFor, type IResourceObservation } from "./context.js";
 import { applySystemEffects } from "./effects.js";
 import { appendSystemEffectLog, type ISystemEffectLog, type ISystemEffectLogEntry } from "./log.js";
 import { createWebPersistenceService, type IWebPersistenceService } from "./services/persistence.js";
@@ -17,6 +17,7 @@ export interface ISystemModule {
 export interface ISystemRunResult {
   diagnostics: IRuntimeDiagnostic[];
   entries: ISystemEffectLogEntry[];
+  resourceObservations: IResourceObservation[];
 }
 
 export async function runSchedule(options: {
@@ -33,6 +34,7 @@ export async function runSchedule(options: {
   module: ISystemModule;
   paused?: boolean;
   prefabs?: IPrefabsIr;
+  resourceObservations?: IResourceObservation[];
   schedule: IrSystemSchedule;
   systems: ISystemsIr;
   tick?: number;
@@ -41,6 +43,7 @@ export async function runSchedule(options: {
 }): Promise<ISystemRunResult> {
   const diagnostics: IRuntimeDiagnostic[] = [];
   const entries: ISystemEffectLogEntry[] = [];
+  const resourceObservations: IResourceObservation[] = [];
   const scheduledSystems = orderedSystemsForSchedule(options.systems.systems, options.schedule);
   const componentDiff = createComponentDiffCache();
   const persistence = options.localData === undefined ? undefined : createWebPersistenceService(options.localData);
@@ -51,8 +54,12 @@ export async function runSchedule(options: {
     const result = await runSystem(system, { ...options, componentDiff, persistence, runtimeState });
     diagnostics.push(...result.diagnostics);
     entries.push(...result.entries);
+    resourceObservations.push(...result.resourceObservations);
   }
-  return { diagnostics, entries };
+  if (options.resourceObservations !== undefined) {
+    options.resourceObservations.push(...resourceObservations);
+  }
+  return { diagnostics, entries, resourceObservations };
 }
 
 async function runSystem(
@@ -73,6 +80,7 @@ async function runSystem(
     paused?: boolean;
     persistence?: IWebPersistenceService;
     prefabs?: IPrefabsIr;
+    resourceObservations?: IResourceObservation[];
     runtimeState?: ReturnType<typeof webSystemRuntimeStateFor>;
     systems: ISystemsIr;
     tick?: number;
@@ -81,9 +89,10 @@ async function runSystem(
   },
 ): Promise<ISystemRunResult> {
   if (system.script === undefined) {
-    return { diagnostics: [], entries: [] };
+    return { diagnostics: [], entries: [], resourceObservations: [] };
   }
   const fn = readSystemFunction(options.module, system.script.exportName);
+  const resourceObservations: IResourceObservation[] = declaredResourceObservations(system, options);
   const { commands, context, events, resources, services } = createSystemContext(options.world, {
     assets: options.assets,
     audio: options.audio,
@@ -98,16 +107,60 @@ async function runSystem(
     paused: options.paused ?? false,
     persistence: options.persistence,
     prefabs: options.prefabs,
+    resourceObserver(observation) {
+      resourceObservations.push({
+        ...observation,
+        frame: options.frame ?? 0,
+        schedule: system.schedule,
+        system: system.name,
+        tick: options.tick ?? 0,
+      });
+    },
     runtimeState: options.runtimeState,
     systems: options.systems,
     ui: options.ui,
   });
   await fn(context);
   const result = applySystemEffects(options.world, system, { commands, events, resources, services }, { frame: options.frame ?? 0, prefabs: options.prefabs, tick: options.tick ?? 0 });
+  for (const resource of resources) {
+    resourceObservations.push({
+      frame: options.frame ?? 0,
+      kind: "write",
+      resource: resource.resource,
+      schedule: system.schedule,
+      system: system.name,
+      tick: options.tick ?? 0,
+    });
+  }
   if (options.effectLog !== undefined) {
     appendSystemEffectLog(options.effectLog, result.entries);
   }
-  return { diagnostics: result.diagnostics, entries: result.entries };
+  return { diagnostics: result.diagnostics, entries: result.entries, resourceObservations: dedupeResourceObservations(resourceObservations) };
+}
+
+function declaredResourceObservations(system: IIrSystemDeclaration, options: { frame?: number; tick?: number; world: IWorldIr }): IResourceObservation[] {
+  const declared = [...new Set([...system.resourceReads, ...system.resourceWrites])].sort();
+  return declared
+    .filter((resource) => options.world.resources?.[resource] !== undefined)
+    .map((resource) => ({
+      frame: options.frame ?? 0,
+      kind: "load" as const,
+      resource,
+      schedule: system.schedule,
+      system: system.name,
+      tick: options.tick ?? 0,
+    }));
+}
+
+function dedupeResourceObservations(observations: readonly IResourceObservation[]): IResourceObservation[] {
+  return [
+    ...new Map(
+      observations.map((observation) => [
+        [observation.frame ?? "", observation.tick ?? "", observation.schedule ?? "", observation.system ?? "", observation.kind, observation.resource].join("\0"),
+        observation,
+      ]),
+    ).values(),
+  ];
 }
 
 function orderedSystemsForSchedule(systems: readonly IIrSystemDeclaration[], schedule: IrSystemSchedule): IIrSystemDeclaration[] {

@@ -272,6 +272,10 @@ pub fn app_from_bundle_with_options(
         ),
     );
     if has_scripts {
+        app.insert_resource(systems_host::NativeResourceObservationState {
+            declared: systems_host::native_declared_system_resources(&bundle),
+            observations: Vec::new(),
+        });
         app.insert_resource(ScriptedRuntimeBundle { bundle });
         app.insert_non_send_resource(ScriptedRuntimeMainThread);
         app.insert_resource(systems_host::NativeGameLoopState::new(initially_paused));
@@ -500,6 +504,7 @@ fn run_scripted_runtime_systems(
     )>,
     mut animation_queue: Option<ResMut<map_world::NativeAnimationServiceQueue>>,
     mut ui_action_queue: Option<ResMut<ui::NativeUiActionQueue>>,
+    mut resource_observations: Option<ResMut<systems_host::NativeResourceObservationState>>,
 ) {
     let Some(ref mut runtime) = scripted.runtime else {
         return;
@@ -557,6 +562,13 @@ fn run_scripted_runtime_systems(
         );
         match run {
             Ok(run) => {
+                if let Some(observations) = resource_observations.as_deref_mut() {
+                    observations.observations.extend(run.resource_observations);
+                    let overflow = observations.observations.len().saturating_sub(200);
+                    if overflow > 0 {
+                        observations.observations.drain(0..overflow);
+                    }
+                }
                 if let Some(queue) = animation_queue.as_deref_mut() {
                     map_world::queue_native_animation_service_effects(queue, &run.logs);
                 }

@@ -17,6 +17,8 @@ pub struct NativeSystemEffects {
     #[serde(default)]
     pub events: Vec<NativeSystemEventEffect>,
     #[serde(default)]
+    pub observations: Vec<NativeSystemResourceObservationEffect>,
+    #[serde(default)]
     pub patches: Vec<NativeSystemPatchEffect>,
     #[serde(default)]
     pub resources: Vec<NativeSystemResourceEffect>,
@@ -41,6 +43,12 @@ pub struct NativeSystemEventEffect {
 pub struct NativeSystemResourceEffect {
     pub resource: String,
     pub value: Value,
+}
+
+#[derive(Clone, Debug, Deserialize, PartialEq)]
+pub struct NativeSystemResourceObservationEffect {
+    pub kind: String,
+    pub resource: String,
 }
 
 #[derive(Clone, Debug, Default, Deserialize, PartialEq)]
@@ -892,6 +900,7 @@ mod tests {
                     event: "TimerElapsed".to_owned(),
                     payload: json!({ "tick": 1 }),
                 }],
+                observations: Vec::new(),
                 patches: vec![NativeSystemPatchEffect {
                     component: "Visibility".to_owned(),
                     entity: "player".to_owned(),
@@ -972,6 +981,7 @@ mod tests {
                     event: "Spawned".to_owned(),
                     payload: json!({ "entity": "runtime.enemy" }),
                 }],
+                observations: Vec::new(),
                 patches: vec![NativeSystemPatchEffect {
                     component: "Transform".to_owned(),
                     entity: "player".to_owned(),

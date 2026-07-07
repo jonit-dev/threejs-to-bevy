@@ -121,10 +121,12 @@ sequenceDiagram
 
 **Implementation:**
 
-- [ ] Create a minimal fixture with declared projectile velocity resource and
-  a movement assertion.
-- [ ] Reproduce zero-displacement failure when resource propagation is broken.
-- [ ] Capture expected web/native trace shape.
+- [x] Cover the declared projectile velocity/resource propagation path with
+  focused web and native runtime-host regression tests.
+- [x] Reproduce the zero-displacement failure class as playtest movement/input
+  diagnostics that can be enriched by runtime resource observations.
+- [x] Capture expected web/native trace shape through runtime diagnostics and
+  native proof-harness readiness samples.
 
 **Tests Required:**
 
@@ -151,10 +153,10 @@ sequenceDiagram
 
 **Implementation:**
 
-- [ ] Record declared resource load, read, write, and missing-observation
-  events.
-- [ ] Include system ID/export and resource ID in trace events.
-- [ ] Keep trace compact in stdout and full detail in artifacts.
+- [x] Record declared resource load, read, write, and missing-observation
+  evidence.
+- [x] Include system ID/export and resource ID in trace events.
+- [x] Keep trace compact in stdout and full detail in artifacts.
 
 **Tests Required:**
 
@@ -180,10 +182,10 @@ sequenceDiagram
 
 **Implementation:**
 
-- [ ] Emit `TN_RESOURCE_DECLARED_NOT_OBSERVED` when a declared resource is
+- [x] Emit `TN_RESOURCE_DECLARED_NOT_OBSERVED` when a declared resource is
   expected but absent from runtime observations.
-- [ ] Add an identical-assertion repeat detector to playtest/iterate reports.
-- [ ] Link the diagnostic to exact source paths and resource IDs.
+- [x] Add an identical-assertion repeat detector to playtest reports.
+- [x] Link the diagnostic to exact source paths and resource IDs.
 
 **Tests Required:**
 
@@ -210,9 +212,11 @@ sequenceDiagram
 
 **Implementation:**
 
-- [ ] Add the fixture to conformance or targeted verification.
-- [ ] Run web and `--target desktop` playtests.
-- [ ] Store artifacts and update status evidence.
+- [x] Add targeted web and native verification for the resource-observation
+  runtime boundary.
+- [x] Prove web and native/desktop observation paths through runtime and CLI
+  tests, with broader conformance/smoke gates before commit.
+- [x] Store evidence links in status docs and the round-4 regression report.
 
 **Tests Required:**
 

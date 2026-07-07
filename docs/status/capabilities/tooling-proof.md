@@ -25,6 +25,10 @@ Current support:
 - The 2026-07-07 off-recipe benchmark keeps raw transcripts, sessions, scorer
   output, aggregate report, and agent behavior learnings under
   `tools/verify/artifacts/agent-benchmark/off-recipe-2026-07-07/`.
+- Playtest reports attach compact web/native runtime resource observations and
+  emit `TN_RESOURCE_DECLARED_NOT_OBSERVED` or
+  `TN_PLAYTEST_REPEATED_ASSERTION` when failing assertions would otherwise
+  repeat without new diagnostic information.
 - `pnpm check:docs` for docs consistency and STATUS index budget.
 - `pnpm verify:smoke`, `pnpm verify:pre-push`, and `pnpm verify:release` for
   escalating proof levels.
@@ -40,6 +44,7 @@ Verification:
 - `pnpm verify:smoke`
 - `pnpm verify:release`
 - `pnpm --filter @threenative/agent-benchmark test`
+- `pnpm --filter @threenative/cli test`
 
 Full prior evidence is preserved in
 [full-status-archive.md](full-status-archive.md).

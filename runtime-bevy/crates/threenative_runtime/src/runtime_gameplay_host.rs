@@ -98,6 +98,7 @@ fn timer_effects() -> NativeSystemEffects {
             ..Default::default()
         }],
         events: Vec::new(),
+        observations: Vec::new(),
         patches: Vec::new(),
         resources: vec![NativeSystemResourceEffect {
             resource: "LocalCounter".to_owned(),
@@ -136,6 +137,7 @@ fn spawn_effects() -> NativeSystemEffects {
             },
         ],
         events: Vec::new(),
+        observations: Vec::new(),
         patches: Vec::new(),
         resources: vec![
             NativeSystemResourceEffect {
@@ -176,6 +178,7 @@ fn remove_effects() -> NativeSystemEffects {
             },
         ],
         events: Vec::new(),
+        observations: Vec::new(),
         patches: Vec::new(),
         resources: vec![NativeSystemResourceEffect {
             resource: "GameState".to_owned(),

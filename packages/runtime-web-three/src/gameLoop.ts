@@ -6,6 +6,7 @@ import { stepKinematicMovers } from "./kinematicMover.js";
 import { stepPhysics } from "./physics.js";
 import { runSchedule, type ISystemModule } from "./systems/runner.js";
 import type { ISystemEffectLog } from "./systems/log.js";
+import type { IResourceObservation } from "./systems/context.js";
 import { interpolateTransform, type ITransformSample } from "./transformInterpolation.js";
 
 export interface IGameLoopState {
@@ -53,6 +54,7 @@ export async function runGameFrame(options: {
   input?: IWebInputState;
   mapped: IThreeWorld;
   module: ISystemModule;
+  resourceObservations?: IResourceObservation[];
   runtimeConfig?: IRuntimeConfigIr;
   state?: IGameLoopState;
   systems: ISystemsIr;

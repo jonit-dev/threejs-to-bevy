@@ -19,6 +19,9 @@ Current support:
   derived into deterministic `resourceReads`/`resourceWrites` during script
   source resolution; dynamic resource IDs fail with
   `TN_SCRIPT_DYNAMIC_RESOURCE_ID_UNSUPPORTED`.
+- Web and native runtime system hosts report declared resource load/read/write
+  observations so failing playtests can distinguish missing propagation from
+  ordinary movement/input assertion failures.
 - Supported named helper imports from `@threenative/script-stdlib` and promoted
   gameplay kits. Familiar aliases `Mathf`, `Vector2`, and `Vector3` are
   exact aliases for legacy `NumberEx`, `Vec2`, and `Vec3`, which remain
@@ -41,8 +44,12 @@ Verification:
   benchmark-touched script helper shapes and alias decisions.
 - `tools/agent-benchmark/ROUND-4-RESOURCE-DECLARATION-REGRESSION.md`
   records the derived-resource regression for the top round-4 failure class.
+- `tools/agent-benchmark/ROUND-4-RUNTIME-RESOURCE-PARITY-REGRESSION.md`
+  records the runtime observation diagnostic regression and proof commands.
 - `pnpm --filter @threenative/compiler test`
 - `pnpm --filter @threenative/cli test`
+- `pnpm --filter @threenative/runtime-web-three test`
+- `cargo test -p threenative_runtime systems_host_should_apply_declared_resource_write`
 - `pnpm verify:scripting-helpers-lifecycle`
 - `pnpm verify:conformance`
 

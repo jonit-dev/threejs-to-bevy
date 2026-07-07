@@ -567,6 +567,8 @@ async function runNativePlaytest(options: IPlaytestRunOptions, bevyRunner: BevyR
       press: options.press,
     }),
   );
+  const runtimeDiagnostics = { nativeFrameSamples, readiness: readinessSamples, resources: nativeRuntimeResources(readinessSamples) };
+  diagnostics.push(...resourceObservationDiagnostics(diagnostics, runtimeDiagnostics));
   const hasErrors = diagnostics.some((diagnostic) => diagnostic.severity === "error");
   return {
     ...(after === undefined ? {} : { after }),
@@ -590,7 +592,7 @@ async function runNativePlaytest(options: IPlaytestRunOptions, bevyRunner: BevyR
       hud: {},
       network: [],
       resources: {},
-      runtimeDiagnostics: { nativeFrameSamples, readiness: readinessSamples },
+      runtimeDiagnostics,
     },
     pass: !hasErrors,
     ...(performance === undefined ? {} : { performance }),
@@ -598,6 +600,25 @@ async function runNativePlaytest(options: IPlaytestRunOptions, bevyRunner: BevyR
     scenario: options.scenario.name,
     target: options.scenario.target,
   };
+}
+
+function nativeRuntimeResources(readinessSamples: readonly Record<string, unknown>[]): { declared: string[]; observations: unknown[] } {
+  const declared = new Set<string>();
+  const observations: unknown[] = [];
+  for (const sample of readinessSamples) {
+    const resources = isRecord(sample.resources) ? sample.resources : undefined;
+    if (Array.isArray(resources?.declared)) {
+      for (const item of resources.declared) {
+        if (typeof item === "string") {
+          declared.add(item);
+        }
+      }
+    }
+    if (Array.isArray(resources?.observations)) {
+      observations.push(...resources.observations);
+    }
+  }
+  return { declared: [...declared].sort(), observations };
 }
 
 function nativeHarnessCommandStream(scenario: IPlaytestScenario, artifacts: { afterArtifact?: string; beforeArtifact?: string; recordingFrames?: readonly IPlaytestNativeRecordingFrame[] }): unknown {
@@ -1010,6 +1031,7 @@ async function probePreview(options: IPlaytestRunOptions & { url: string }): Pro
         press: options.press,
       }),
     );
+    diagnostics.push(...resourceObservationDiagnostics(diagnostics, runtimeDiagnostics));
     const hasErrors = diagnostics.some((diagnostic) => diagnostic.severity === "error");
     return {
       ...(after === undefined ? {} : { after }),
@@ -1039,6 +1061,46 @@ async function probePreview(options: IPlaytestRunOptions & { url: string }): Pro
   } finally {
     await browser.close();
   }
+}
+
+export function resourceObservationDiagnostics(diagnostics: readonly IPlaytestDiagnostic[], runtimeDiagnostics: unknown): IPlaytestDiagnostic[] {
+  if (!diagnostics.some((diagnostic) => diagnostic.code === "TN_PLAYTEST_INPUT_NO_EFFECT" || diagnostic.code === "TN_PLAYTEST_AXIS_NO_EFFECT")) {
+    return [];
+  }
+  const resources = runtimeResourceDiagnostics(runtimeDiagnostics);
+  if (resources.declared.length === 0) {
+    return [];
+  }
+  const observed = new Set(resources.observations.filter((observation) => observation.kind === "read" || observation.kind === "write").map((observation) => observation.resource));
+  return resources.declared
+    .filter((resource) => !observed.has(resource))
+    .map((resource) => {
+      const load = resources.observations.find((observation) => observation.resource === resource && observation.kind === "load");
+      return {
+        code: "TN_RESOURCE_DECLARED_NOT_OBSERVED",
+        message: `Declared resource '${resource}' was not read or written by the runtime during the failing playtest.`,
+        path: `systems.ir.json/resources/${resource}`,
+        resourceId: resource,
+        severity: "error" as const,
+        suggestion: "Check that the script export containing the resource helper ran for this scenario and that the resource id is literal and declared.",
+        ...(load?.system === undefined ? {} : { systemId: load.system }),
+      };
+    });
+}
+
+function runtimeResourceDiagnostics(value: unknown): { declared: string[]; observations: Array<{ kind: string; resource: string; system?: string }> } {
+  if (!isRecord(value) || !isRecord(value.resources)) {
+    return { declared: [], observations: [] };
+  }
+  return {
+    declared: Array.isArray(value.resources.declared) ? value.resources.declared.filter((item): item is string => typeof item === "string").sort() : [],
+    observations: Array.isArray(value.resources.observations)
+      ? value.resources.observations.flatMap((item): Array<{ kind: string; resource: string; system?: string }> =>
+          isRecord(item) && typeof item.kind === "string" && typeof item.resource === "string"
+            ? [{ kind: item.kind, resource: item.resource, ...(typeof item.system === "string" ? { system: item.system } : {}) }]
+            : [])
+      : [],
+  };
 }
 
 function primaryRunOptions(

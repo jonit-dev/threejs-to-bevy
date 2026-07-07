@@ -1,7 +1,8 @@
 function __tnInvokeSystem(options) {
-  const effects = { commands: [], events: [], patches: [], resources: [], services: [] };
+  const effects = { commands: [], events: [], observations: [], patches: [], resources: [], services: [] };
   const data = options.snapshot;
   const normalize = (handle) => typeof handle === "string" ? handle : (handle && typeof handle.name === "string" ? handle.name : String(handle));
+  const observeResource = (kind, name) => effects.observations.push({ kind, resource: normalize(name) });
   const clone = (value) => value === undefined ? undefined : JSON.parse(JSON.stringify(value));
   const readVec3 = (value, fallback) => Array.isArray(value) ? [Number(value[0] ?? fallback[0]), Number(value[1] ?? fallback[1]), Number(value[2] ?? fallback[2])] : fallback;
   const readQuat = (value, fallback) => Array.isArray(value) ? [Number(value[0] ?? fallback[0]), Number(value[1] ?? fallback[1]), Number(value[2] ?? fallback[2]), Number(value[3] ?? fallback[3])] : fallback;
@@ -1143,6 +1144,7 @@ function __tnInvokeSystem(options) {
     resources: {
       get(name, defaults) {
         const key = normalize(name);
+        observeResource("read", key);
         const value = data.resources[key];
         if (defaults && typeof defaults === "object" && !Array.isArray(defaults)) {
           return { ...clone(defaults), ...(value && typeof value === "object" && !Array.isArray(value) ? clone(value) : {}) };
@@ -1152,19 +1154,24 @@ function __tnInvokeSystem(options) {
       patch(name, value) {
         const key = normalize(name);
         const existing = data.resources[key];
+        observeResource("write", key);
         effects.resources.push({ resource: key, value: { ...(existing && typeof existing === "object" && !Array.isArray(existing) ? existing : {}), ...clone(value) } });
       },
       set(name, value) {
-        effects.resources.push({ resource: normalize(name), value: clone(value) });
+        const key = normalize(name);
+        observeResource("write", key);
+        effects.resources.push({ resource: key, value: clone(value) });
       }
     },
     state(name, defaults = {}) {
       const key = normalize(name);
+      observeResource("read", key);
       const target = { ...clone(defaults), ...(data.resources[key] && typeof data.resources[key] === "object" ? clone(data.resources[key]) : {}) };
       return new Proxy(target, {
         set(object, property, value) {
           if (typeof property !== "string") return false;
           object[property] = clone(value);
+          observeResource("write", key);
           effects.resources.push({ resource: key, value: clone(object) });
           return true;
         }

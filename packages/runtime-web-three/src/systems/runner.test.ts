@@ -208,6 +208,62 @@ test("should run systems expose resources events and input context", async () =>
   assert.deepEqual(world.events.DamageEvent, [{ amount: 2 }, { amount: 0 }]);
 });
 
+test("should pass declared resource values into script context", async () => {
+  const world = makeWorld();
+  world.resources = { ProjectileVelocity: { z: 3 } };
+  const systems = makeSystems("fixedUpdate", "moveProjectile");
+  systems.systems[0]!.resourceReads = ["ProjectileVelocity"];
+
+  await runSchedule({
+    fixedDelta: 1,
+    module: {
+      systems: {
+        moveProjectile(context: any) {
+          const velocity = context.resources.get("ProjectileVelocity", { z: 0 });
+          const entity = context.entity("player");
+          const transform = entity?.get("Transform", { position: [0, 0, 0] });
+          entity?.patch("Transform", { position: [0, 0, velocity.z] });
+        },
+      },
+    },
+    schedule: "fixedUpdate",
+    systems,
+    world,
+  });
+
+  assert.deepEqual(world.entities[0]?.components.Transform, { position: [0, 0, 3] });
+});
+
+test("should report resource read observations", async () => {
+  const world = makeWorld();
+  world.resources = { Score: { value: 1 } };
+  const systems = makeSystems("update", "observeScore");
+  systems.systems[0]!.resourceReads = ["Score"];
+  systems.systems[0]!.resourceWrites = ["Score"];
+
+  const result = await runSchedule({
+    frame: 2,
+    module: {
+      systems: {
+        observeScore(context: any) {
+          const score = context.resources.get("Score", { value: 0 });
+          context.resources.set("Score", { value: score.value + 1 });
+        },
+      },
+    },
+    schedule: "update",
+    systems,
+    tick: 4,
+    world,
+  });
+
+  assert.deepEqual(result.resourceObservations, [
+    { frame: 2, kind: "load", resource: "Score", schedule: "update", system: "observeScore", tick: 4 },
+    { frame: 2, kind: "read", resource: "Score", schedule: "update", system: "observeScore", tick: 4 },
+    { frame: 2, kind: "write", resource: "Score", schedule: "update", system: "observeScore", tick: 4 },
+  ]);
+});
+
 test("should preserve random cursor across systems in the same schedule", async () => {
   const world = makeWorld();
   world.resources = { Random: { seed: "runner-state" } };
