@@ -43,11 +43,12 @@ Rules for Racing Kit Rally starter projects.
   checkpoint, HUD, or retry changes. Run `tn playtest --discover --json` or
   `--suggest-scenario <name>` to find provable entities first. Use a committed
   `playtests/*.playtest.json` scenario with `--stable-artifacts` for multi-step
-  behavior (add `--watch --pass-once` while iterating); inspect the playtest
-  `summary.json`, diagnostics, screenshots, and effect log, fix the owning
-  source/script, and rerun before `tn game qa`. Before release claims, rerun
-  the scenario with `--target desktop` so the native runtime is proved, not
-  only web.
+  behavior (add `--watch --pass-once` while iterating); inspect the compact
+  stdout or `tn playtest report --latest --scenario <name> --json`, fix the
+  owning source/script, and rerun before `tn game qa`. Open deep logs such as
+  `effect-log.json`, `observations.json`, or `runtime-trace.json` only when a
+  compact diagnostic points to them. Before release claims, rerun the scenario
+  with `--target desktop` so the native runtime is proved, not only web.
 
 ## Verify
 

@@ -115,13 +115,13 @@ async function templateDiagnosticsFor(templateName: string, templatePath: string
       suggestedFix: "Change game:qa to 'tn game qa --project . --run-proof --json'.",
     });
   }
-  if (hasNonEmptyString(scripts["game:plan"]) && !scripts["game:plan"].includes("artifacts/game-production/plan.json")) {
+  if (hasNonEmptyString(scripts["game:plan"]) && (scripts["game:plan"].includes(">") || !scripts["game:plan"].includes("tn game plan") || !scripts["game:plan"].includes("--json"))) {
     diagnostics.push({
       code: "TN_TEMPLATE_PRODUCTION_PLAN_ARTIFACT_MISSING",
-      message: `${templateName}: package script 'game:plan' must persist artifacts/game-production/plan.json.`,
+      message: `${templateName}: package script 'game:plan' must let tn game plan persist artifacts/game-production/plan.json without redirecting compact stdout.`,
       path: packagePath,
       severity: "error",
-      suggestedFix: "Pipe tn game plan --json output to artifacts/game-production/plan.json.",
+      suggestedFix: "Run 'tn game plan --goal <goal> --project . --json'; the CLI writes artifacts/game-production/plan.json.",
     });
   }
   if (hasNonEmptyString(scripts["game:improve"]) && !scripts["game:improve"].includes("artifacts/game-production/plan.json")) {

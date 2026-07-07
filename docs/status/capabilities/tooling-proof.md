@@ -6,6 +6,8 @@ and aggregate artifacts.
 Current support:
 
 - `tn iterate` for inner-loop validate/build/screenshot/playtest reports.
+- `pnpm verify:agent-io` for documented agent command stdout budgets; deep
+  playtest logs remain in artifact files while stdout stays compact.
 - `pnpm check:docs` for docs consistency and STATUS index budget.
 - `pnpm verify:smoke`, `pnpm verify:pre-push`, and `pnpm verify:release` for
   escalating proof levels.
@@ -14,6 +16,7 @@ Current support:
 
 Verification:
 
+- `pnpm verify:agent-io`
 - `pnpm check:docs`
 - `pnpm verify:smoke`
 - `pnpm verify:release`

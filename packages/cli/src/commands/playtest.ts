@@ -13,7 +13,7 @@ import { runBevyRuntime, type BevyRuntimeRunner } from "../native/bevy.js";
 import { analyzeNonblank } from "../verify/imageAnalysis.js";
 import { readPngFrame } from "../verify/compareImages.js";
 import { evaluateRichPlaytestAssertions, type IPlaytestAssertionResult, type IPlaytestDiagnostic, type IPlaytestObservations } from "./playtestAssertions.js";
-import { defaultPlaytestArtifactDirectory, writePlaytestArtifactBundle, type IPlaytestArtifactBundle } from "./playtestArtifacts.js";
+import { defaultPlaytestArtifactDirectory, readPlaytestSummary, writePlaytestArtifactBundle, type IPlaytestArtifactBundle, type IPlaytestSummary } from "./playtestArtifacts.js";
 import { discoverPlaytestTargets, suggestPlaytestScenario, type IPlaytestDiscoveryReport } from "./playtestDiscovery.js";
 import { applyScenarioOverrides, loadPlaytestScenario, oneShotScenario, parsePlaytestTarget, parseViewport, PlaytestScenarioError, type IPlaytestScenario } from "./playtestScenario.js";
 import { createPlaytestTargetRunner } from "./playtestTargets.js";
@@ -172,7 +172,11 @@ export async function playtestCommand(
 ): Promise<ICommandResult> {
   const normalizedArgv = argv[0] === "--" ? argv.slice(1) : argv;
   const json = normalizedArgv.includes("--json");
+  const reportMode = normalizedArgv[0] === "report";
   const projectPath = resolvePath(cwd, readFlag(normalizedArgv, "--project") ?? ".");
+  if (reportMode) {
+    return playtestReportCommand(normalizedArgv.slice(1), projectPath, json);
+  }
   const scenarioPath = readFlag(normalizedArgv, "--scenario");
   const entityId = readFlag(normalizedArgv, "--entity");
   const press = readFlag(normalizedArgv, "--press") ?? readFlag(normalizedArgv, "--input");
@@ -194,6 +198,18 @@ export async function playtestCommand(
   const discover = normalizedArgv.includes("--discover");
   const suggestScenario = readFlag(normalizedArgv, "--suggest-scenario");
   const watchMode = normalizedArgv.includes("--watch");
+  const effectsMode = readFlag(normalizedArgv, "--effects");
+  const includeEffectsStdout = effectsMode === "stdout" || normalizedArgv.includes("--verbose-effects");
+  if (effectsMode !== undefined && !["artifact", "artifacts", "stdout"].includes(effectsMode)) {
+    return diagnosticResult(
+      {
+        code: "TN_PLAYTEST_EFFECTS_MODE_INVALID",
+        message: "--effects must be one of: artifact, artifacts, stdout.",
+        severity: "error",
+      },
+      { exitCode: 2, json, stderr: !json },
+    );
+  }
   if (watchMode) {
     return playtestWatchCommand({
       argv: normalizedArgv,
@@ -366,10 +382,11 @@ export async function playtestCommand(
       proofMetadata,
     };
     const bundle = await writePlaytestArtifactBundle({ durationMs: Date.now() - started, projectPath, proofMetadata, report: reportWithMetadata, runDirectory, scenario });
+    const stdoutPayload = includeEffectsStdout ? withVerboseEffects(bundle.summary, reportWithMetadata) : bundle.summary;
     return {
       exitCode: reportWithMetadata.pass ? 0 : 1,
       stdout: json
-        ? `${JSON.stringify(bundle.summary, null, 2)}\n`
+        ? `${JSON.stringify(stdoutPayload, null, 2)}\n`
         : `${reportWithMetadata.pass ? "Playtest passed" : "Playtest failed"}: ${report.entity} moved ${report.distance.toFixed(4)} units. Artifacts: ${bundle.artifacts.directory}\n`,
     };
   } catch (error) {
@@ -384,6 +401,67 @@ export async function playtestCommand(
       { exitCode: 1, json, stderr: !json },
     );
   }
+}
+
+async function playtestReportCommand(argv: readonly string[], projectPath: string, json: boolean): Promise<ICommandResult> {
+  const latest = argv.includes("--latest");
+  const summaryPath = readFlag(argv, "--summary");
+  const scenarioName = readFlag(argv, "--scenario");
+  if (!latest && summaryPath === undefined) {
+    return diagnosticResult(
+      {
+        code: "TN_PLAYTEST_REPORT_SOURCE_REQUIRED",
+        message: "Pass --latest with --scenario <name>, or pass --summary <artifacts/playtest/.../summary.json>.",
+        severity: "error",
+      },
+      { exitCode: 2, json, stderr: !json },
+    );
+  }
+  if (latest && scenarioName === undefined && summaryPath === undefined) {
+    return diagnosticResult(
+      {
+        code: "TN_PLAYTEST_REPORT_SCENARIO_REQUIRED",
+        message: "Pass --scenario <name> when reading the latest playtest report.",
+        severity: "error",
+      },
+      { exitCode: 2, json, stderr: !json },
+    );
+  }
+  const resolvedSummaryPath = summaryPath === undefined
+    ? resolvePath(projectPath, `artifacts/playtest/${safePlaytestPathPart(scenarioName ?? "")}/latest/summary.json`)
+    : resolvePath(projectPath, summaryPath);
+  try {
+    const summary = await readPlaytestSummary(resolvedSummaryPath);
+    return {
+      exitCode: summary.pass ? 0 : 1,
+      stdout: json
+        ? `${JSON.stringify(summary, null, 2)}\n`
+        : `${summary.pass ? "Playtest passed" : "Playtest failed"}: ${summary.scenario}. Summary: ${resolvedSummaryPath}\n`,
+    };
+  } catch (error) {
+    return diagnosticResult(
+      {
+        code: "TN_PLAYTEST_REPORT_NOT_FOUND",
+        message: error instanceof Error ? error.message : String(error),
+        path: resolvedSummaryPath,
+        severity: "error",
+        suggestion: "Run tn playtest --stable-artifacts --json first, or pass --summary to an existing summary.json.",
+      },
+      { exitCode: 1, json, stderr: !json },
+    );
+  }
+}
+
+function withVerboseEffects(summary: IPlaytestSummary, report: IPlaytestReport): IPlaytestSummary & Pick<IPlaytestReport, "effectLog" | "observations"> {
+  return {
+    ...summary,
+    effectLog: report.effectLog,
+    observations: report.observations,
+  };
+}
+
+function safePlaytestPathPart(value: string): string {
+  return value.replace(/[^A-Za-z0-9._-]+/g, "-");
 }
 
 function renderDiscoveryText(discovery: IPlaytestDiscoveryReport): string {

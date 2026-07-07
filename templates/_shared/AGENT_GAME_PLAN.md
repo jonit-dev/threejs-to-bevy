@@ -133,9 +133,12 @@ handles.
 
 Run the narrowest relevant proof first, then finish with the production loop.
 Use `tn playtest` as an edit loop, not only as a final gate: after each
-gameplay/input/script change, run the focused playtest, read `summary.json`
-plus diagnostics/artifacts, repair the owning `content/**/*.json` or
-`src/scripts/**/*.ts`, and rerun until the proof passes.
+gameplay/input/script change, run the focused playtest, inspect the compact
+stdout or `tn playtest report --latest --scenario <name> --json`, repair the
+owning `content/**/*.json` or `src/scripts/**/*.ts`, and rerun until the proof
+passes. Open deep machine logs such as `effect-log.json`, `observations.json`,
+`runtime-trace.json`, `console.json`, or `network.json` only when the compact
+report points to a specific diagnostic that requires them.
 
 Discover what is provable before writing a scenario:
 

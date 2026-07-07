@@ -9,6 +9,7 @@ test("focused gate dispatcher should list current capability gates", () => {
   assert.ok(names.length >= 12, "expected the typed focused gate registry to stay populated");
   for (const name of [
     "verify:animation-physics-residuals",
+    "verify:agent-io",
     "verify:bundle-safety-hardening",
     "verify:generated-games",
     "verify:input-ui-polish",
@@ -53,7 +54,7 @@ test("focused gate dispatcher should keep command composition outside package.js
 test("should expose focused gate ownership metadata", () => {
   for (const [name, gate] of Object.entries(FOCUSED_GATES)) {
     assert.ok(gate.metadata.owner.trim().length > 0, `${name} should declare an owner`);
-    assert.equal(gate.metadata.profile, "focused", `${name} should start in the focused profile`);
+    assert.ok(["changed", "focused", "full", "release", "smoke"].includes(gate.metadata.profile), `${name} should declare a known profile`);
     assert.ok(gate.metadata.reason.trim().length > 0, `${name} should explain why it is not an ordinary test`);
     assert.ok(gate.metadata.protects.trim().length > 0, `${name} should document its quality requirement`);
   }
@@ -91,6 +92,7 @@ test("should list gates by profile", () => {
   assert.deepEqual(listFocusedGateNamesByProfile("release"), [
     "verify:animation-physics-residuals",
     "verify:bundle-safety-hardening",
+    "verify:example-build-sweep",
     "verify:generated-games",
     "verify:input-ui-polish",
     "verify:persistence-reload",

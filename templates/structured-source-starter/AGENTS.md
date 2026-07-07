@@ -65,7 +65,11 @@ Rules for this generated ThreeNative project.
   visual changes. It runs authoring validation, build, screenshot capture, and
   the first committed playtest scenario in one report under
   `artifacts/iterate/latest/`. Inspect the report, diagnostics, screenshot,
-  and playtest artifacts, fix the owning durable source/script, and rerun.
+  and compact playtest reports, fix the owning durable source/script, and
+  rerun. Use `tn playtest report --latest --scenario <name> --json` for a
+  bounded playtest summary; open deep logs such as `effect-log.json`,
+  `observations.json`, or `runtime-trace.json` only after a compact diagnostic
+  identifies the need.
   Use `tn playtest --discover --json` or `--suggest-scenario <name>` when you
   need a new scenario, `tn playtest --watch --pass-once` for focused gameplay
   repairs, and before release claims rerun the scenario with `--target desktop`

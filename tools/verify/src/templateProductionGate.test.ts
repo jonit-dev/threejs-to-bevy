@@ -82,7 +82,7 @@ test("rejects maintained starters without catalog-first planning worksheet", asy
     await writeFile(join(templatePath, "package.json"), `${JSON.stringify({
       scripts: {
         "game:improve": "tn game improve --apply-plan artifacts/game-production/plan.json --project . --json",
-        "game:plan": "tn game plan --goal \"arena\" --project . --json > artifacts/game-production/plan.json",
+        "game:plan": "tn game plan --goal \"arena\" --project . --json",
         "game:qa": "tn game qa --project . --run-proof --json",
         "game:release": "tn game release --project . --json",
         "game:score": "tn game score --project . --json",
@@ -116,7 +116,7 @@ test("should require starter scenario proof commands", async () => {
     await writeFile(join(templatePath, "package.json"), `${JSON.stringify({
       scripts: {
         "game:improve": "tn game improve --apply-plan artifacts/game-production/plan.json --project . --json",
-        "game:plan": "tn game plan --goal \"rally\" --project . --json > artifacts/game-production/plan.json",
+        "game:plan": "tn game plan --goal \"rally\" --project . --json",
         "game:qa": "tn game qa --project . --run-proof --json",
         "game:release": "tn game release --project . --json",
         "game:score": "tn game score --project . --json",
@@ -145,7 +145,7 @@ test("accepts maintained starters with production scripts metadata and instructi
     await writeFile(join(templatePath, "package.json"), `${JSON.stringify({
       scripts: {
         "game:improve": "tn game improve --apply-plan artifacts/game-production/plan.json --project . --json",
-        "game:plan": "tn game plan --goal \"rally\" --project . --json > artifacts/game-production/plan.json",
+        "game:plan": "tn game plan --goal \"rally\" --project . --json",
         "game:qa": "tn game qa --project . --run-proof --json",
         "game:release": "tn game release --project . --json",
         "game:score": "tn game score --project . --json",

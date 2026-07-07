@@ -61,6 +61,184 @@ test("playtest command should pass when target transform changes after input", a
   assert.equal(JSON.parse(await readFile(payload.artifacts.summary, "utf8")).code, "TN_PLAYTEST_OK");
 });
 
+test("playtest command should omit effect log and observations from default json stdout", async () => {
+  const root = await playtestTempRoot();
+  const result = await playtestCommand(
+    ["--project", ".", "--entity", "player", "--press", "KeyW", "--frames", "60", "--expect-moved", "--json"],
+    root,
+    {
+      runner: async (options) => ({
+        after: { frame: 60, position: [1, 0, 0], tick: 60 },
+        before: { frame: 0, position: [0, 0, 0], tick: 0 },
+        debugColliders: options.debugColliders,
+        diagnostics: [],
+        distance: 1,
+        effectLog: [{ frame: 1, type: "input" }],
+        entity: options.entityId,
+        expectMoved: options.expectMoved,
+        frames: options.frames,
+        input: options.press,
+        movementThreshold: options.movementThreshold,
+        observations: {
+          console: [],
+          effectLog: [{ frame: 1, type: "input" }],
+          hud: {},
+          network: [],
+          resources: {},
+          runtimeDiagnostics: { frames: Array.from({ length: 100 }, (_, index) => ({ index })) },
+        },
+        pass: true,
+        runtime: "web",
+      }),
+    },
+  );
+  const payload = JSON.parse(result.stdout) as { artifacts: { effectLog: string; observations: string }; counts: { effectCount: number }; effectLog?: unknown; observations?: unknown; schema: string };
+
+  assert.equal(result.exitCode, 0);
+  assert.equal(payload.schema, "threenative.playtest-summary");
+  assert.equal("effectLog" in payload, false);
+  assert.equal("observations" in payload, false);
+  assert.equal(payload.counts.effectCount, 1);
+  assert.match(payload.artifacts.effectLog, /effect-log\.json$/);
+  assert.match(payload.artifacts.observations, /observations\.json$/);
+});
+
+test("playtest command should include effect log only when effects stdout is requested", async () => {
+  const root = await playtestTempRoot();
+  const result = await playtestCommand(
+    ["--project", ".", "--entity", "player", "--press", "KeyW", "--frames", "60", "--effects", "stdout", "--json"],
+    root,
+    {
+      runner: async (options) => ({
+        before: { frame: 0, position: [0, 0, 0], tick: 0 },
+        debugColliders: options.debugColliders,
+        diagnostics: [],
+        distance: 0,
+        effectLog: [{ frame: 1, type: "input" }],
+        entity: options.entityId,
+        expectMoved: options.expectMoved,
+        frames: options.frames,
+        input: options.press,
+        movementThreshold: options.movementThreshold,
+        observations: { console: [], effectLog: [{ frame: 1, type: "input" }], hud: {}, network: [], resources: {}, runtimeDiagnostics: {} },
+        pass: true,
+        runtime: "web",
+      }),
+    },
+  );
+  const payload = JSON.parse(result.stdout) as { effectLog?: unknown[]; observations?: unknown };
+
+  assert.equal(result.exitCode, 0);
+  assert.deepEqual(payload.effectLog, [{ frame: 1, type: "input" }]);
+  assert.ok(payload.observations);
+});
+
+test("playtest command should keep full playtest logs on disk", async () => {
+  const root = await playtestTempRoot();
+  const result = await playtestCommand(
+    ["--project", ".", "--entity", "player", "--press", "KeyW", "--frames", "60", "--json"],
+    root,
+    {
+      runner: async (options) => ({
+        before: { frame: 0, position: [0, 0, 0], tick: 0 },
+        debugColliders: options.debugColliders,
+        diagnostics: [],
+        distance: 0,
+        effectLog: [{ frame: 1, type: "input" }],
+        entity: options.entityId,
+        expectMoved: options.expectMoved,
+        frames: options.frames,
+        input: options.press,
+        movementThreshold: options.movementThreshold,
+        observations: { console: [], effectLog: [{ frame: 1, type: "input" }], hud: {}, network: [], resources: {}, runtimeDiagnostics: {} },
+        pass: true,
+        runtime: "web",
+      }),
+    },
+  );
+  const payload = JSON.parse(result.stdout) as { artifacts: { effectLog: string; observations: string; summary: string } };
+  const effectLog = JSON.parse(await readFile(payload.artifacts.effectLog, "utf8")) as unknown[];
+  const observations = JSON.parse(await readFile(payload.artifacts.observations, "utf8")) as { effectLog: unknown[] };
+  const summary = JSON.parse(await readFile(payload.artifacts.summary, "utf8")) as { effectLog?: unknown; observations?: unknown };
+
+  assert.deepEqual(effectLog, [{ frame: 1, type: "input" }]);
+  assert.deepEqual(observations.effectLog, [{ frame: 1, type: "input" }]);
+  assert.equal("effectLog" in summary, false);
+  assert.equal("observations" in summary, false);
+});
+
+test("playtest command should write bounded summary json with deep log pointers", async () => {
+  const root = await playtestTempRoot();
+  const result = await playtestCommand(
+    ["--project", ".", "--entity", "player", "--press", "KeyW", "--frames", "60", "--stable-artifacts", "--json"],
+    root,
+    {
+      runner: async (options) => ({
+        after: { frame: 60, position: [1, 0, 0], tick: 60 },
+        before: { frame: 0, position: [0, 0, 0], tick: 0 },
+        debugColliders: options.debugColliders,
+        diagnostics: [],
+        distance: 1,
+        effectLog: Array.from({ length: 250 }, (_, index) => ({ frame: index, type: "frame" })),
+        entity: options.entityId,
+        expectMoved: options.expectMoved,
+        frames: options.frames,
+        input: options.press,
+        movementThreshold: options.movementThreshold,
+        observations: { console: [], effectLog: [], hud: {}, network: [], resources: {}, runtimeDiagnostics: { frames: Array.from({ length: 250 }, (_, index) => ({ index })) } },
+        pass: true,
+        runtime: "web",
+      }),
+    },
+  );
+  const payload = JSON.parse(result.stdout) as { artifacts: { effectLog: string; observations: string; summary: string }; schema: string };
+  const summaryText = await readFile(payload.artifacts.summary, "utf8");
+  const summary = JSON.parse(summaryText) as { artifacts: { effectLog: string; observations: string }; effectLog?: unknown; finalPoses: unknown[]; observations?: unknown; schema: string };
+
+  assert.equal(payload.schema, "threenative.playtest-summary");
+  assert.equal(summary.schema, "threenative.playtest-summary");
+  assert.equal("effectLog" in summary, false);
+  assert.equal("observations" in summary, false);
+  assert.match(summary.artifacts.effectLog, /effect-log\.json$/);
+  assert.match(summary.artifacts.observations, /observations\.json$/);
+  assert.equal(summary.finalPoses.length, 1);
+  assert.ok(Buffer.byteLength(summaryText, "utf8") < 4096);
+});
+
+test("playtest command should report latest playtest summary without reading deep logs to stdout", async () => {
+  const root = await playtestTempRoot();
+  await playtestCommand(
+    ["--project", ".", "--entity", "player", "--press", "KeyW", "--frames", "60", "--stable-artifacts", "--json"],
+    root,
+    {
+      runner: async (options) => ({
+        before: { frame: 0, position: [0, 0, 0], tick: 0 },
+        debugColliders: options.debugColliders,
+        diagnostics: [],
+        distance: 0,
+        effectLog: Array.from({ length: 250 }, (_, index) => ({ frame: index, type: "frame" })),
+        entity: options.entityId,
+        expectMoved: options.expectMoved,
+        frames: options.frames,
+        input: options.press,
+        movementThreshold: options.movementThreshold,
+        observations: { console: [], effectLog: [], hud: {}, network: [], resources: {}, runtimeDiagnostics: { frames: Array.from({ length: 250 }, (_, index) => ({ index })) } },
+        pass: true,
+        runtime: "web",
+      }),
+    },
+  );
+  const report = await playtestCommand(["report", "--project", ".", "--latest", "--scenario", "player-KeyW", "--json"], root);
+  const payload = JSON.parse(report.stdout) as { artifacts: { effectLog: string }; effectLog?: unknown; observations?: unknown; scenario: string };
+
+  assert.equal(report.exitCode, 0);
+  assert.equal(payload.scenario, "player-KeyW");
+  assert.equal("effectLog" in payload, false);
+  assert.equal("observations" in payload, false);
+  assert.match(payload.artifacts.effectLog, /effect-log\.json$/);
+  assert.ok(Buffer.byteLength(report.stdout, "utf8") < 4096);
+});
+
 test("playtest command should fail when entity does not move after input", async () => {
   const root = await playtestTempRoot();
   const result = await playtestCommand(

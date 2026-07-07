@@ -31,7 +31,7 @@ in scripts, examples, and historical docs during a staged cleanup. See
 | Native parity | Active | Bevy consumes emitted IR and claims require native proof harness or desktop playtest evidence. | [native parity](status/capabilities/native-parity.md) |
 | Game production | Active | Generated games target polished vertical slices with plan, QA, release, and playtest evidence. | [game production](status/capabilities/game-production.md) |
 | Editor | In progress | Editor and MCP surfaces must wrap authoring operations rather than owning a second source model. | [editor](status/capabilities/editor.md) |
-| Tooling/proof | Active | Verification tools own docs checks, smoke/release gates, proof manifests, and aggregate artifacts. | [tooling/proof](status/capabilities/tooling-proof.md) |
+| Tooling/proof | Active | Verification tools own docs checks, agent IO budgets, smoke/release gates, proof manifests, and aggregate artifacts. | [tooling/proof](status/capabilities/tooling-proof.md) |
 
 ## Current PRDs
 
@@ -52,7 +52,7 @@ pnpm verify:generated-games
 pnpm verify:release
 ```
 
-Focused capability gates include `pnpm verify:cookbook`,
+Focused capability gates include `pnpm verify:agent-io`, `pnpm verify:cookbook`,
 `pnpm verify:template-production`, `pnpm verify:conformance`,
 `pnpm verify:scripting-helpers-lifecycle`, and `pnpm verify:parity:smoke`.
 

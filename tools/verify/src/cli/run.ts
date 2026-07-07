@@ -43,6 +43,25 @@ export const FOCUSED_GATES: Record<string, FocusedGate> = {
       protects: "Cross-runtime residual traces, unsupported-feature diagnostics, and durable release evidence.",
     },
   },
+  "verify:agent-io": {
+    commands: [
+      ["pnpm", "--filter", "@threenative/sdk", "build"],
+      ["pnpm", "--filter", "@threenative/ir", "build"],
+      ["pnpm", "--filter", "@threenative/authoring", "build"],
+      ["pnpm", "--filter", "@threenative/compiler", "build"],
+      ["pnpm", "--filter", "@threenative/runtime-web-three", "build"],
+      ["pnpm", "--filter", "@threenative/cli", "build"],
+      ["pnpm", "--filter", "@threenative/verify-tools", "build"],
+      ["node", "tools/verify/dist/agentIoBudget.js"],
+    ],
+    description: "Agent-facing CLI stdout budget gate.",
+    metadata: {
+      owner: "tools/verify agent IO budget gate",
+      profile: "focused",
+      reason: "Measures documented agent commands so normal JSON stdout stays bounded and deep logs remain artifact-only.",
+      protects: "Agent token budget, compact playtest/iterate reports, and stable diagnostics for output bloat regressions.",
+    },
+  },
   "verify:bundle-safety-hardening": {
     commands: [
       ["pnpm", "--filter", "@threenative/ir", "build"],

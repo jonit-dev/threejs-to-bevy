@@ -1,4 +1,4 @@
-import { mkdir, stat, writeFile } from "node:fs/promises";
+import { mkdir, readFile, stat, writeFile } from "node:fs/promises";
 import { relative, resolve } from "node:path";
 
 import type { IProofArtifactMetadata } from "../game/proofManifest.js";
@@ -22,14 +22,44 @@ export interface IPlaytestArtifactBundle {
   summary: string;
 }
 
-export interface IPlaytestSummary extends IPlaytestReport {
+export interface IPlaytestSummary {
+  after?: IPlaytestReport["after"];
+  artifact?: string;
   artifacts: IPlaytestArtifactBundle;
   assertions: Array<{ id: string; pass: boolean; details?: Record<string, unknown> }>;
   code: "TN_PLAYTEST_FAILED" | "TN_PLAYTEST_OK";
+  counts: {
+    assertionCount: number;
+    consoleErrorCount: number;
+    diagnosticCount: number;
+    effectCount: number;
+    networkErrorCount: number;
+    runtimeDiagnosticCount: number;
+  };
+  debugColliderCount?: number;
+  debugColliders: boolean;
+  diagnostics: IPlaytestReport["diagnostics"];
+  distance: number;
   durationMs: number;
+  entity: string;
+  expectAxis?: string;
+  expectMoved: boolean;
+  finalPoses: Array<{ entity: string; position: [number, number, number]; tick: number }>;
+  follow?: IPlaytestReport["follow"];
+  frames: number;
+  input: string;
+  movementDelta?: IPlaytestReport["movementDelta"];
+  movementThreshold: number;
+  nativeRecording?: IPlaytestReport["nativeRecording"];
+  pass: boolean;
+  performance?: IPlaytestReport["performance"];
+  proofMetadata?: IProofArtifactMetadata;
   reproduceCommand: string;
+  runtime: IPlaytestReport["runtime"];
+  schema: "threenative.playtest-summary";
   scenario: string;
   target: string;
+  version: "0.1.0";
 }
 
 export function defaultPlaytestArtifactDirectory(projectPath: string, scenarioName: string, stableArtifacts: boolean): string {
@@ -79,17 +109,38 @@ export async function writePlaytestArtifactBundle(options: {
     movementDelta: options.report.movementDelta ?? null,
     performance: options.report.performance ?? null,
   });
+  const assertions = buildAssertions(options.report);
   const summary: IPlaytestSummary = {
-    ...options.report,
+    ...(options.report.after === undefined ? {} : { after: options.report.after }),
     artifact: options.report.artifact ?? artifacts.afterScreenshot,
     artifacts,
-    assertions: buildAssertions(options.report),
+    assertions,
     code: options.report.pass ? "TN_PLAYTEST_OK" : "TN_PLAYTEST_FAILED",
+    counts: buildCounts(options.report, assertions),
+    ...(options.report.debugColliderCount === undefined ? {} : { debugColliderCount: options.report.debugColliderCount }),
+    debugColliders: options.report.debugColliders,
+    diagnostics: options.report.diagnostics,
+    distance: options.report.distance,
     durationMs: options.durationMs,
-    proofMetadata: options.proofMetadata,
+    entity: options.report.entity,
+    ...(options.report.expectAxis === undefined ? {} : { expectAxis: options.report.expectAxis }),
+    expectMoved: options.report.expectMoved,
+    finalPoses: buildFinalPoses(options.report),
+    ...(options.report.follow === undefined ? {} : { follow: options.report.follow }),
+    frames: options.report.frames,
+    input: options.report.input,
+    ...(options.report.movementDelta === undefined ? {} : { movementDelta: options.report.movementDelta }),
+    movementThreshold: options.report.movementThreshold,
+    ...(options.report.nativeRecording === undefined ? {} : { nativeRecording: options.report.nativeRecording }),
+    pass: options.report.pass,
+    ...(options.report.performance === undefined ? {} : { performance: options.report.performance }),
+    ...(options.proofMetadata === undefined ? {} : { proofMetadata: options.proofMetadata }),
     reproduceCommand: reproduceCommand(options.projectPath, options.scenario, options.runDirectory),
+    runtime: options.report.runtime,
+    schema: "threenative.playtest-summary",
     scenario: options.scenario.name,
     target: options.scenario.target,
+    version: "0.1.0",
   };
   await writeJson(artifacts.summary, summary);
   await writeJson(artifacts.manifest, {
@@ -100,6 +151,10 @@ export async function writePlaytestArtifactBundle(options: {
     target: options.scenario.target,
   });
   return { artifacts, summary };
+}
+
+export async function readPlaytestSummary(path: string): Promise<IPlaytestSummary> {
+  return JSON.parse(await readFile(path, "utf8")) as IPlaytestSummary;
 }
 
 function nativeFrameSamples(report: IPlaytestReport): unknown {
@@ -131,6 +186,64 @@ function buildAssertions(report: IPlaytestReport): Array<{ id: string; pass: boo
     });
   }
   return [...assertions, ...(report.assertionResults ?? [])];
+}
+
+function buildCounts(report: IPlaytestReport, assertions: readonly unknown[]): IPlaytestSummary["counts"] {
+  return {
+    assertionCount: assertions.length,
+    consoleErrorCount: countSeverityLike(report.observations?.console),
+    diagnosticCount: report.diagnostics.length,
+    effectCount: Array.isArray(report.effectLog) ? report.effectLog.length : objectKeyCount(report.effectLog),
+    networkErrorCount: countSeverityLike(report.observations?.network),
+    runtimeDiagnosticCount: runtimeDiagnosticCount(report.observations?.runtimeDiagnostics),
+  };
+}
+
+function buildFinalPoses(report: IPlaytestReport): IPlaytestSummary["finalPoses"] {
+  const poses: IPlaytestSummary["finalPoses"] = [];
+  if (report.after !== undefined) {
+    poses.push({ entity: report.entity, position: report.after.position, tick: report.after.tick });
+  }
+  if (report.follow?.after !== undefined) {
+    poses.push({ entity: report.follow.entity, position: report.follow.after.position, tick: report.follow.after.tick });
+  }
+  return poses;
+}
+
+function countSeverityLike(value: unknown): number {
+  if (!Array.isArray(value)) {
+    return 0;
+  }
+  return value.filter((entry) => {
+    if (!isRecord(entry)) {
+      return false;
+    }
+    const level = String(entry.level ?? entry.type ?? entry.severity ?? entry.status ?? "").toLowerCase();
+    return level.includes("error") || level.includes("fail");
+  }).length;
+}
+
+function objectKeyCount(value: unknown): number {
+  if (!isRecord(value)) {
+    return 0;
+  }
+  return Object.keys(value).length;
+}
+
+function runtimeDiagnosticCount(value: unknown): number {
+  if (Array.isArray(value)) {
+    return value.length;
+  }
+  if (!isRecord(value)) {
+    return 0;
+  }
+  if (Array.isArray(value.diagnostics)) {
+    return value.diagnostics.length;
+  }
+  if (Array.isArray(value.readiness)) {
+    return value.readiness.reduce((count, sample) => count + (isRecord(sample) && Array.isArray(sample.diagnostics) ? sample.diagnostics.length : 0), 0);
+  }
+  return objectKeyCount(value);
 }
 
 function reproduceCommand(projectPath: string, scenario: IPlaytestScenario, runDirectory: string): string {

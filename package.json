@@ -19,6 +19,7 @@
     "deploy": "node scripts/publish-distribution-release.mjs",
     "publish:distribution": "node scripts/publish-distribution-release.mjs",
     "verify": "pnpm build && pnpm typecheck && pnpm lint && pnpm test",
+    "verify:agent-io": "pnpm build:verify-tools && node tools/verify/dist/cli/run.js verify:agent-io",
     "verify:alias": "node scripts/legacy-script-alias.mjs",
     "verify:all": "pnpm verify && pnpm verify:conformance",
     "verify:changed": "pnpm verify",

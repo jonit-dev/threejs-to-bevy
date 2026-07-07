@@ -33,11 +33,11 @@ test("reports missing evidence without mutating source", async () => {
   }
 });
 
-test("plans a playable loop without writing files", async () => {
+test("plans a playable loop without mutating durable source", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-game-plan-"));
   try {
     const before = await listAll(root);
-    const result = await gameCommand(["plan", "--project", root, "--goal", "arcade collector", "--json"]);
+    const result = await gameCommand(["plan", "--project", root, "--goal", "arcade collector", "--json", "--full-json"]);
     const payload = JSON.parse(result.stdout) as {
       acceptanceCriteria: string[];
       assetPlan: Array<{ requiredEvidence: string[]; searchCommand?: string; surface: string }>;
@@ -83,7 +83,45 @@ test("plans a playable loop without writing files", async () => {
     assert.equal(payload.proofCommands.some((command) => command.startsWith("tn playtest")), true);
     assert.equal(payload.proofCommands.some((command) => command.includes("tn game qa") && command.includes("--run-proof")), true);
     assert.deepEqual(after.filter((entry) => entry !== "artifacts" && !entry.startsWith("artifacts/")), before);
+    assert.equal(after.includes("artifacts/game-production/plan.json"), true);
     assert.equal(after.includes("artifacts/game-production/task-graph.json"), true);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should write full game plan artifact and print compact summary by default", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-game-plan-compact-"));
+  try {
+    const result = await gameCommand(["plan", "--project", root, "--goal", "arcade collector", "--json"]);
+    const payload = JSON.parse(result.stdout) as {
+      assetPlan?: unknown;
+      fileMap: { scripts: unknown[]; source: unknown[] };
+      mutate: boolean;
+      planArtifactPath: string;
+      proofCommands: string[];
+      schema: string;
+      steps?: unknown;
+    };
+    const fullPlan = JSON.parse(await readFile(join(root, "artifacts/game-production/plan.json"), "utf8")) as {
+      mutate: boolean;
+      schema: string;
+      steps: unknown[];
+    };
+
+    assert.equal(result.exitCode, 0);
+    assert.equal(payload.schema, "threenative.game-plan-summary");
+    assert.equal(payload.mutate, false);
+    assert.equal(payload.planArtifactPath.endsWith("artifacts/game-production/plan.json"), true);
+    assert.equal(payload.assetPlan, undefined);
+    assert.equal(payload.steps, undefined);
+    assert.equal(payload.fileMap.scripts.length > 0, true);
+    assert.equal(payload.fileMap.source.length > 0, true);
+    assert.equal(payload.proofCommands.some((command) => command.includes("tn game qa")), true);
+    assert.equal(fullPlan.schema, "threenative.game-plan");
+    assert.equal(fullPlan.mutate, false);
+    assert.equal(fullPlan.steps.length > 0, true);
+    assert.ok(Buffer.byteLength(result.stdout, "utf8") < 8192);
   } finally {
     await rm(root, { force: true, recursive: true });
   }
@@ -168,7 +206,7 @@ test("should include project inventory in generated game plan", async () => {
     await writeFile(join(root, "content/materials/harbor.materials.json"), `${JSON.stringify({ id: "harbor-materials", materials: [{ color: "#336699", id: "boat" }], schema: "threenative.materials" }, null, 2)}\n`);
     await writeFile(join(root, "content/assets/harbor.assets.json"), `${JSON.stringify({ assets: [{ id: "boat-model", path: "assets/boat.glb", type: "model" }], id: "harbor-assets", schema: "threenative.assets" }, null, 2)}\n`);
 
-    const result = await gameCommand(["plan", "--project", root, "--goal", "top down rescue game", "--json"]);
+    const result = await gameCommand(["plan", "--project", root, "--goal", "top down rescue game", "--json", "--full-json"]);
     const payload = JSON.parse(result.stdout) as {
       inventory: { primarySceneId?: string; projectKind: string };
       gameplayBlocks: Array<{ id: string; recipeIds: string[] }>;
@@ -207,7 +245,7 @@ test("should map checkpoint racing goals to vehicle and checkpoint blocks", asyn
   const root = await mkdtemp(join(tmpdir(), "tn-game-plan-checkpoint-blocks-"));
   try {
     const before = await listAll(root);
-    const result = await gameCommand(["plan", "--project", root, "--goal", "checkpoint kart racing game", "--json"]);
+    const result = await gameCommand(["plan", "--project", root, "--goal", "checkpoint kart racing game", "--json", "--full-json"]);
     const payload = JSON.parse(result.stdout) as {
       gameplayBlocks: Array<{ id: string; recipeIds: string[] }>;
       mutate: boolean;
@@ -229,7 +267,7 @@ test("should map checkpoint racing goals to vehicle and checkpoint blocks", asyn
 test("should preserve non-mutating plan contract when inventory has gaps", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-game-plan-inventory-gaps-"));
   try {
-    const result = await gameCommand(["plan", "--project", root, "--goal", "minimal arena", "--json"]);
+    const result = await gameCommand(["plan", "--project", root, "--goal", "minimal arena", "--json", "--full-json"]);
     const payload = JSON.parse(result.stdout) as {
       diagnostics: Array<{ code: string; severity: string }>;
       inventory: { projectKind: string };
@@ -282,7 +320,7 @@ test("should persist game next task graph", async () => {
 test("improve persists the applied game plan as canonical production evidence", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-game-improve-plan-evidence-"));
   try {
-    const planResult = await gameCommand(["plan", "--project", root, "--goal", "clockwork garden heist", "--json"]);
+    const planResult = await gameCommand(["plan", "--project", root, "--goal", "clockwork garden heist", "--json", "--full-json"]);
     const plan = JSON.parse(planResult.stdout) as { steps: Array<{ apply?: boolean }> };
     await writeFile(join(root, "plan-input.json"), `${JSON.stringify({
       ...plan,
@@ -318,7 +356,7 @@ test("should apply a supported vertical slice recipe from a valid plan", async (
   const root = await mkdtemp(join(tmpdir(), "tn-game-improve-vertical-recipe-"));
   try {
     await writePassingGameProject(root);
-    const planResult = await gameCommand(["plan", "--project", root, "--goal", "coin collector", "--json"]);
+    const planResult = await gameCommand(["plan", "--project", root, "--goal", "coin collector", "--json", "--full-json"]);
     const plan = JSON.parse(planResult.stdout) as {
       steps: Array<Record<string, unknown>>;
     };
@@ -399,19 +437,19 @@ test("improve rejects incomplete game plans before writing production evidence",
 test("plans goals with matching asset categories", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-game-plan-categories-"));
   try {
-    const underwater = await gameCommand(["plan", "--project", root, "--goal", "sunken underwater salvage diver", "--json"]);
+    const underwater = await gameCommand(["plan", "--project", root, "--goal", "sunken underwater salvage diver", "--json", "--full-json"]);
     const underwaterPayload = JSON.parse(underwater.stdout) as {
       assetPlan: Array<{ searchCommand?: string; surface: string }>;
     };
-    const nature = await gameCommand(["plan", "--project", root, "--goal", "garden orchard collector", "--json"]);
+    const nature = await gameCommand(["plan", "--project", root, "--goal", "garden orchard collector", "--json", "--full-json"]);
     const naturePayload = JSON.parse(nature.stdout) as {
       assetPlan: Array<{ searchCommand?: string; surface: string }>;
     };
-    const naval = await gameCommand(["plan", "--project", root, "--goal", "harbor lantern ferry boat dock", "--json"]);
+    const naval = await gameCommand(["plan", "--project", root, "--goal", "harbor lantern ferry boat dock", "--json", "--full-json"]);
     const navalPayload = JSON.parse(naval.stdout) as {
       assetPlan: Array<{ searchCommand?: string; surface: string }>;
     };
-    const space = await gameCommand(["plan", "--project", root, "--goal", "asteroid spaceship courier", "--json"]);
+    const space = await gameCommand(["plan", "--project", root, "--goal", "asteroid spaceship courier", "--json", "--full-json"]);
     const spacePayload = JSON.parse(space.stdout) as {
       assetPlan: Array<{ searchCommand?: string; surface: string }>;
     };

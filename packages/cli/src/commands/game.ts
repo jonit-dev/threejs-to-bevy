@@ -169,6 +169,7 @@ async function gameScoreCommand(argv: readonly string[], mode: GameProductionMod
 async function gamePlanCommand(argv: readonly string[]): Promise<ICommandResult> {
   const normalizedArgv = argv[0] === "--" ? argv.slice(1) : argv;
   const json = normalizedArgv.includes("--json");
+  const fullJson = normalizedArgv.includes("--full-json") || normalizedArgv.includes("--stdout-plan");
   const goal = readFlag(normalizedArgv, "--goal");
   const projectPath = resolveProjectPath(normalizedArgv);
   if (goal === undefined || goal.trim() === "") {
@@ -241,11 +242,36 @@ async function gamePlanCommand(argv: readonly string[]): Promise<ICommandResult>
     sourcePlan: buildSourcePlan(inventory),
     steps: buildGamePlanSteps(defaults),
   };
+  const planArtifactPath = resolve(projectPath, "artifacts/game-production/plan.json");
+  await mkdir(resolve(planArtifactPath, ".."), { recursive: true });
+  await writeFile(planArtifactPath, `${JSON.stringify(plan, null, 2)}\n`, "utf8");
   await persistGameTaskGraph(projectPath);
+  const compactPlan = compactGamePlanForStdout(plan, planArtifactPath);
 
   return {
     exitCode: 0,
-    stdout: json ? `${JSON.stringify(plan, null, 2)}\n` : renderPlan(plan),
+    stdout: json ? `${JSON.stringify(fullJson ? plan : compactPlan, null, 2)}\n` : renderPlan(plan),
+  };
+}
+
+function compactGamePlanForStdout(plan: IGamePlan, planArtifactPath: string): Record<string, unknown> {
+  return {
+    code: plan.code,
+    diagnostics: plan.diagnostics,
+    fileMap: {
+      scripts: plan.scriptPlan.map((script) => ({ exportName: script.exportName, module: script.module, responsibility: script.responsibility })),
+      source: plan.sourcePlan.map((source) => ({ document: source.document, path: source.path })),
+    },
+    goal: plan.goal,
+    kitCandidates: plan.kitCandidates.slice(0, 3).map((kit) => ({ kitId: kit.kitId, recipeId: kit.recipeId, toolingOnly: kit.toolingOnly })),
+    message: "Full game plan written to artifacts/game-production/plan.json.",
+    milestones: plan.phases.map((phase) => ({ id: phase.id, order: phase.order, summary: phase.summary })),
+    mutate: plan.mutate,
+    planArtifactPath,
+    proofCommands: plan.proofCommands,
+    recipeIds: plan.recipeIds,
+    schema: "threenative.game-plan-summary",
+    version: "0.1.0",
   };
 }
 
@@ -634,7 +660,7 @@ function renderGameHelp(json: boolean, subcommand?: string): string {
   const payload = {
     commands: [
       "tn game inspect [--project <path>] [--json]",
-      "tn game plan --goal <text> [--project <path>] [--json]",
+      "tn game plan --goal <text> [--project <path>] [--json] [--full-json]",
       "tn game next [--project <path>] [--json]",
       "tn game improve --apply-plan <file> [--project <path>] [--json]",
       "tn game providers [--json]",
