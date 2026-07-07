@@ -343,6 +343,23 @@ and the event stream has no completed token usage record, so it is excluded
 from aggregate medians and does not count toward the three-repeat decision
 threshold.
 
+Ran a third fresh `typed-spec` repeat, `collector-typed-spec-r3`, after the
+latest authoring improvements. The run completed and emitted usage:
+
+- Raw tokens: `3180293`.
+- Tool steps: `56`.
+- Failed commands: `9`.
+- Max same-diagnostic chain: `2`.
+- Identical assertion repeats: `0`.
+
+`collector-typed-spec-r3` passed `TN_ITERATE_OK` and benchmark visual/movement
+scoring, but failed the collector equal-proof route. A harness collect-all
+scenario moved through the five pickup locations; movement passed, but
+`GameState.scoreText` stayed `Score 0 / 5` and `GameState.statusText` stayed
+`Collect all five pickups`. The aggregate now includes r3 as a scored
+failed-proof run, so the typed-spec trial remains `insufficient-data` with only
+one proof-passing typed-spec repeat.
+
 Friction found during the pilot:
 
 - The generated typed-spec package script still calls bare `tn`; isolated

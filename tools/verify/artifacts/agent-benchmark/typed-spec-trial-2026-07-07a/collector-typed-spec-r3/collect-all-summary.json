@@ -1,0 +1,180 @@
+{
+  "after": {
+    "frame": 632,
+    "position": [
+      5.35,
+      0.5,
+      -3.85
+    ],
+    "tick": 2917
+  },
+  "artifact": "/home/joao/projects/threejs-to-bevy/tools/verify/artifacts/agent-benchmark/typed-spec-trial-2026-07-07a/candidates/collector-typed-spec-r3/tools/verify/artifacts/agent-benchmark/typed-spec-trial-2026-07-07a/candidates/collector-typed-spec-r3/artifacts/collect-all-proof/after.png",
+  "artifacts": {
+    "afterScreenshot": "/home/joao/projects/threejs-to-bevy/tools/verify/artifacts/agent-benchmark/typed-spec-trial-2026-07-07a/candidates/collector-typed-spec-r3/tools/verify/artifacts/agent-benchmark/typed-spec-trial-2026-07-07a/candidates/collector-typed-spec-r3/artifacts/collect-all-proof/after.png",
+    "beforeScreenshot": "/home/joao/projects/threejs-to-bevy/tools/verify/artifacts/agent-benchmark/typed-spec-trial-2026-07-07a/candidates/collector-typed-spec-r3/tools/verify/artifacts/agent-benchmark/typed-spec-trial-2026-07-07a/candidates/collector-typed-spec-r3/artifacts/collect-all-proof/before.png",
+    "console": "/home/joao/projects/threejs-to-bevy/tools/verify/artifacts/agent-benchmark/typed-spec-trial-2026-07-07a/candidates/collector-typed-spec-r3/tools/verify/artifacts/agent-benchmark/typed-spec-trial-2026-07-07a/candidates/collector-typed-spec-r3/artifacts/collect-all-proof/console.json",
+    "contactSheet": "/home/joao/projects/threejs-to-bevy/tools/verify/artifacts/agent-benchmark/typed-spec-trial-2026-07-07a/candidates/collector-typed-spec-r3/tools/verify/artifacts/agent-benchmark/typed-spec-trial-2026-07-07a/candidates/collector-typed-spec-r3/artifacts/collect-all-proof/contact-sheet.png",
+    "directory": "/home/joao/projects/threejs-to-bevy/tools/verify/artifacts/agent-benchmark/typed-spec-trial-2026-07-07a/candidates/collector-typed-spec-r3/tools/verify/artifacts/agent-benchmark/typed-spec-trial-2026-07-07a/candidates/collector-typed-spec-r3/artifacts/collect-all-proof",
+    "effectLog": "/home/joao/projects/threejs-to-bevy/tools/verify/artifacts/agent-benchmark/typed-spec-trial-2026-07-07a/candidates/collector-typed-spec-r3/tools/verify/artifacts/agent-benchmark/typed-spec-trial-2026-07-07a/candidates/collector-typed-spec-r3/artifacts/collect-all-proof/effect-log.json",
+    "manifest": "/home/joao/projects/threejs-to-bevy/tools/verify/artifacts/agent-benchmark/typed-spec-trial-2026-07-07a/candidates/collector-typed-spec-r3/tools/verify/artifacts/agent-benchmark/typed-spec-trial-2026-07-07a/candidates/collector-typed-spec-r3/artifacts/collect-all-proof/manifest.json",
+    "network": "/home/joao/projects/threejs-to-bevy/tools/verify/artifacts/agent-benchmark/typed-spec-trial-2026-07-07a/candidates/collector-typed-spec-r3/tools/verify/artifacts/agent-benchmark/typed-spec-trial-2026-07-07a/candidates/collector-typed-spec-r3/artifacts/collect-all-proof/network.json",
+    "nativeFrameSamples": "/home/joao/projects/threejs-to-bevy/tools/verify/artifacts/agent-benchmark/typed-spec-trial-2026-07-07a/candidates/collector-typed-spec-r3/tools/verify/artifacts/agent-benchmark/typed-spec-trial-2026-07-07a/candidates/collector-typed-spec-r3/artifacts/collect-all-proof/native-frame-samples.json",
+    "nativeRecording": "/home/joao/projects/threejs-to-bevy/tools/verify/artifacts/agent-benchmark/typed-spec-trial-2026-07-07a/candidates/collector-typed-spec-r3/tools/verify/artifacts/agent-benchmark/typed-spec-trial-2026-07-07a/candidates/collector-typed-spec-r3/artifacts/collect-all-proof/native-recording.json",
+    "nativeRecordingDirectory": "/home/joao/projects/threejs-to-bevy/tools/verify/artifacts/agent-benchmark/typed-spec-trial-2026-07-07a/candidates/collector-typed-spec-r3/tools/verify/artifacts/agent-benchmark/typed-spec-trial-2026-07-07a/candidates/collector-typed-spec-r3/artifacts/collect-all-proof/native-recording",
+    "observations": "/home/joao/projects/threejs-to-bevy/tools/verify/artifacts/agent-benchmark/typed-spec-trial-2026-07-07a/candidates/collector-typed-spec-r3/tools/verify/artifacts/agent-benchmark/typed-spec-trial-2026-07-07a/candidates/collector-typed-spec-r3/artifacts/collect-all-proof/observations.json",
+    "runtimeTrace": "/home/joao/projects/threejs-to-bevy/tools/verify/artifacts/agent-benchmark/typed-spec-trial-2026-07-07a/candidates/collector-typed-spec-r3/tools/verify/artifacts/agent-benchmark/typed-spec-trial-2026-07-07a/candidates/collector-typed-spec-r3/artifacts/collect-all-proof/runtime-trace.json",
+    "summary": "/home/joao/projects/threejs-to-bevy/tools/verify/artifacts/agent-benchmark/typed-spec-trial-2026-07-07a/candidates/collector-typed-spec-r3/tools/verify/artifacts/agent-benchmark/typed-spec-trial-2026-07-07a/candidates/collector-typed-spec-r3/artifacts/collect-all-proof/summary.json"
+  },
+  "assertions": [
+    {
+      "details": {
+        "distance": 6.5912821211051185,
+        "threshold": 0.01
+      },
+      "id": "movement",
+      "pass": true
+    },
+    {
+      "details": {
+        "after": "Score 0 / 5",
+        "before": "Score 0 / 5",
+        "id": "GameState",
+        "path": "scoreText"
+      },
+      "id": "resource.GameState.scoreText",
+      "pass": false
+    },
+    {
+      "details": {
+        "after": "Collect all five pickups",
+        "before": "Collect all five pickups",
+        "id": "GameState",
+        "path": "statusText"
+      },
+      "id": "resource.GameState.statusText",
+      "pass": false
+    },
+    {
+      "details": {
+        "after": null,
+        "before": null,
+        "id": "score-label"
+      },
+      "id": "hud.score-label",
+      "pass": false
+    },
+    {
+      "details": {
+        "consoleErrors": 0,
+        "networkErrors": 0,
+        "runtimeDiagnostics": 0
+      },
+      "id": "diagnostics",
+      "pass": true
+    }
+  ],
+  "code": "TN_PLAYTEST_FAILED",
+  "counts": {
+    "assertionCount": 5,
+    "consoleErrorCount": 0,
+    "diagnosticCount": 3,
+    "effectCount": 3,
+    "networkErrorCount": 0,
+    "runtimeDiagnosticCount": 2
+  },
+  "debugColliderCount": 0,
+  "debugColliders": false,
+  "diagnostics": [
+    {
+      "code": "TN_PLAYTEST_RESOURCE_ASSERTION_FAILED",
+      "message": "Resource assertion failed for 'GameState' path 'scoreText'.",
+      "severity": "error",
+      "suggestion": "Check resource IDs, script writes, and assertion path spelling."
+    },
+    {
+      "code": "TN_PLAYTEST_RESOURCE_ASSERTION_FAILED",
+      "message": "Resource assertion failed for 'GameState' path 'statusText'.",
+      "severity": "error",
+      "suggestion": "Check resource IDs, script writes, and assertion path spelling."
+    },
+    {
+      "code": "TN_PLAYTEST_HUD_ASSERTION_FAILED",
+      "message": "HUD assertion failed for 'score-label'.",
+      "severity": "error",
+      "suggestion": "Check UI binding IDs and whether the backing resource changes during the scenario."
+    }
+  ],
+  "distance": 6.5912821211051185,
+  "durationMs": 52129,
+  "entity": "player",
+  "expectMoved": false,
+  "finalPoses": [
+    {
+      "entity": "player",
+      "position": [
+        5.35,
+        0.5,
+        -3.85
+      ],
+      "tick": 2917
+    }
+  ],
+  "frames": 48,
+  "input": "KeyS",
+  "movementDelta": [
+    5.35,
+    0,
+    -3.85
+  ],
+  "movementThreshold": 0.01,
+  "next": "tn playtest report --latest --scenario collect-all --json",
+  "pass": false,
+  "performance": {
+    "averageFrameMs": 77.69133333333333,
+    "averageFps": 12.871448552820134,
+    "budgetFrameMs": 16.666666666666668,
+    "framesOverBudget": 600,
+    "jankFramePercent": 100,
+    "measurement": "headless-browser-cadence",
+    "minFps": 6.002400960384206,
+    "p95FrameMs": 83.40000000000146,
+    "p95Fps": 11.990407673860702,
+    "sampleCount": 600,
+    "source": "web-runtime-headless",
+    "worstFrameMs": 166.59999999999854,
+    "renderer": {
+      "drawCalls": 1,
+      "geometries": 12,
+      "programs": 10,
+      "textures": 14,
+      "triangles": 1
+    }
+  },
+  "proofMetadata": {
+    "bundleHash": "e641bc58b44a1fec30e44f17ba8ce28714e5ade9ca55cb8652e45e19cf29307b",
+    "commandParameters": {
+      "command": "tn playtest",
+      "debugColliders": false,
+      "entity": "player",
+      "expectMoved": false,
+      "frames": 48,
+      "movementThreshold": 0.01,
+      "nativeRecording": false,
+      "nativeScreenshots": false,
+      "press": "KeyS",
+      "scenario": "playtests/collect-all.playtest.json",
+      "target": "web"
+    },
+    "fileCount": 31,
+    "generatedAt": "1970-01-01T00:00:00.000Z",
+    "schema": "threenative.proof-artifact-metadata",
+    "sourceHash": "fccb086c49a49ed7e1f33f4100e141abb9ebf87ee9c006d77ccea2666807217e",
+    "version": "0.1.0"
+  },
+  "reproduceCommand": "tn playtest --project . --scenario playtests/collect-all.playtest.json --out tools/verify/artifacts/agent-benchmark/typed-spec-trial-2026-07-07a/candidates/collector-typed-spec-r3/artifacts/collect-all-proof --json",
+  "runtime": "web",
+  "schema": "threenative.playtest-summary",
+  "scenario": "collect-all",
+  "target": "web",
+  "version": "0.1.0"
+}

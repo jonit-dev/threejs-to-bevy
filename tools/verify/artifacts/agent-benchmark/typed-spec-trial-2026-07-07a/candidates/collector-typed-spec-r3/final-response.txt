@@ -1,0 +1,14 @@
+Implemented the typed-spec collector game in this candidate project.
+
+Changed:
+- `src/game.spec.ts`: durable typed authoring source for player, camera, arena floor/bounds, five pickups, `GameState` HUD fields, retry input, and collector system.
+- `src/scripts/player.ts`: portable collector loop with WASD/arrow movement, pickup collection, score/progress updates, win state, and R/Enter retry.
+
+Verification passed:
+- `pnpm tn -- authoring compile-typed-spec --project . --json`
+- `pnpm tn -- iterate --project . --json` returned `TN_ITERATE_OK`
+
+Artifacts:
+- `artifacts/iterate/latest/report.json`
+- `artifacts/iterate/latest/screenshot.png`
+- `artifacts/iterate/latest/playtest/contact-sheet.png`

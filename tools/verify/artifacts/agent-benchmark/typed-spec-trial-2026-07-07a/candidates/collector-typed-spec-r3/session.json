@@ -1,0 +1,26 @@
+{
+  "schema": "threenative.agent-benchmark-session",
+  "version": 2,
+  "runId": "collector-typed-spec-r3",
+  "promptId": "collector",
+  "condition": "typed-spec",
+  "tokenCount": 3180293,
+  "inputTokens": 3162469,
+  "cachedInputTokens": 2963968,
+  "uncachedInputTokens": 198501,
+  "outputTokens": 17824,
+  "costWeightedTokens": 512722,
+  "toolOutputBytes": 510861,
+  "failedCommandCount": 9,
+  "toolStepCount": 56,
+  "identicalAssertionRepeatCount": 0,
+  "maxConsecutiveSameDiagnostic": 2,
+  "iterationCount": 56,
+  "stopReason": "claimed-playable",
+  "finishedAt": "2026-07-07T22:33:40.258Z",
+  "humanRubric": {
+    "playability": 3,
+    "visual": 2,
+    "notes": "Fresh typed-spec collector run. Final response: Implemented the typed-spec collector game in this candidate project.\n\nChanged:\n- `src/game.spec.ts`: durable typed authoring source for player, camera, arena floor/bounds, five pickups, `GameState` HUD fields, retry input, and collector system.\n- `src/scripts/player.ts`: portable collector loop with WASD/arrow movement, pickup collection, score/progress updates, win state, and R/Enter retry.\n\nVerification passed:\n- `pnpm tn -- authoring compile-typed-spec --project . --json`\n- `pnpm tn -- iterat"
+  }
+}

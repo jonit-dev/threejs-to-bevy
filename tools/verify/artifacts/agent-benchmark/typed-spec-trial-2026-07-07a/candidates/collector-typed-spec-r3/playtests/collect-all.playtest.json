@@ -1,0 +1,93 @@
+{
+  "schemaVersion": 1,
+  "name": "collect-all",
+  "target": "web",
+  "viewport": {
+    "width": 1280,
+    "height": 720
+  },
+  "subject": "player",
+  "warmupFrames": 5,
+  "steps": [
+    {
+      "label": "collect-bottom-center",
+      "press": "KeyS",
+      "holdFrames": 48,
+      "release": true
+    },
+    {
+      "label": "collect-bottom-left",
+      "press": "KeyA",
+      "holdFrames": 60,
+      "release": true
+    },
+    {
+      "label": "line-up-left",
+      "press": "KeyW",
+      "holdFrames": 10,
+      "release": true
+    },
+    {
+      "label": "move-to-left-top-x",
+      "press": "KeyD",
+      "holdFrames": 33,
+      "release": true
+    },
+    {
+      "label": "collect-left-top",
+      "press": "KeyW",
+      "holdFrames": 75,
+      "release": true
+    },
+    {
+      "label": "collect-right-top",
+      "press": "KeyD",
+      "holdFrames": 68,
+      "release": true
+    },
+    {
+      "label": "move-to-right-bottom-x",
+      "press": "KeyD",
+      "holdFrames": 26,
+      "release": true
+    },
+    {
+      "label": "collect-right-bottom",
+      "press": "KeyS",
+      "holdFrames": 59,
+      "release": true
+    }
+  ],
+  "assert": {
+    "resources": [
+      {
+        "id": "GameState",
+        "path": "scoreText",
+        "equals": "Score 5 / 5"
+      },
+      {
+        "id": "GameState",
+        "path": "statusText",
+        "equals": "You win! All pickups collected."
+      }
+    ],
+    "hud": [
+      {
+        "id": "score-label",
+        "textIncludes": "Score 5 / 5"
+      }
+    ],
+    "diagnostics": {
+      "runtimeReady": true,
+      "noConsoleErrors": true,
+      "noNetworkErrors": true,
+      "noRuntimeDiagnostics": true
+    }
+  },
+  "artifacts": {
+    "screenshots": "before-after",
+    "console": true,
+    "network": true,
+    "runtimeTrace": true
+  }
+}

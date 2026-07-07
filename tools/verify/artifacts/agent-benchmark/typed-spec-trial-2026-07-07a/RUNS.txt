@@ -20,3 +20,12 @@ INTERRUPTED collector-typed-spec-r2 2026-07-07T13:49:00-07:00
 - Operator stopped the run while it was in an extra focused browser check; the
   event stream has no completed usage record, so this run is excluded from the
   aggregate token medians.
+START collector-typed-spec-r3 2026-07-07T15:22:12-07:00
+- Candidate moved from repo-root create output into `tools/verify/artifacts/agent-benchmark/typed-spec-trial-2026-07-07a/candidates/collector-typed-spec-r3`.
+DONE collector-typed-spec-r3 2026-07-07T15:36:35-07:00
+- Reached `TN_ITERATE_OK` and benchmark scorer returned `TN_BENCH_SCORE_OK`.
+- Equal-proof collector route failed: `GameState.scoreText` stayed `Score 0 / 5`
+  and `GameState.statusText` stayed `Collect all five pickups`, so this run is
+  scored but not counted as a proof-passing typed-spec repeat.
+START collector-typed-spec-r3 2026-07-07T15:24:51-07:00
+- Candidate moved from repo-root create output into `tools/verify/artifacts/agent-benchmark/typed-spec-trial-2026-07-07a/candidates/collector-typed-spec-r3`.

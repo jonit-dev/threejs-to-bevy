@@ -1,6 +1,13 @@
 {
-  "diagnostics": [],
-  "generatedAt": "2026-07-07T20:35:01.033Z",
+  "diagnostics": [
+    {
+      "code": "TN_BENCH_PROOF_FAILED",
+      "message": "collector: equal-proof assertions failed or are incomplete: pickup-objective, win-state.",
+      "severity": "error",
+      "suggestedFix": "Use the prompt proof contract for both vanilla and ThreeNative runs before aggregating."
+    }
+  ],
+  "generatedAt": "2026-07-07T22:36:34.676Z",
   "promptSummaries": [
     {
       "behaviorMedian": {
@@ -95,7 +102,7 @@
       "withinStepBudget": null
     }
   ],
-  "runCount": 1,
+  "runCount": 2,
   "schema": "threenative.agent-benchmark-report",
   "dialectConfusionFailureCount": 0,
   "typedSpecVerdict": {

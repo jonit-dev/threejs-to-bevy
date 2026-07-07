@@ -16,8 +16,13 @@ Partial PRD-017 focused benchmark evidence for the `collector` prompt. This is o
   was operator-stopped during an extra browser check before Codex emitted a
   completed usage record. It is documented as partial evidence and excluded
   from aggregate medians.
+- Fresh follow-up: `collector-typed-spec-r3` reached `TN_ITERATE_OK` and
+  benchmark scoring passed, but the stricter collector equal-proof route failed
+  because score and win-state resources did not update.
 
 ## Metrics
+
+Counted proof-passing run:
 
 | Metric | Value |
 | --- | ---: |
@@ -33,6 +38,22 @@ Partial PRD-017 focused benchmark evidence for the `collector` prompt. This is o
 | Identical assertion repeats | 0 |
 | Tool output bytes | 311580 |
 
+Additional scored failed-proof run:
+
+| Metric | `collector-typed-spec-r3` |
+| --- | ---: |
+| Raw tokens | 3180293 |
+| Input tokens | 3162469 |
+| Cached input tokens | 2963968 |
+| Uncached input tokens | 198501 |
+| Output tokens | 17824 |
+| Cost-weighted tokens | 512722 |
+| Tool steps | 56 |
+| Failed commands | 9 |
+| Max same diagnostic chain | 2 |
+| Identical assertion repeats | 0 |
+| Tool output bytes | 510861 |
+
 ## Evidence
 
 - Transcript: `logs/collector-typed-spec-r1.events.jsonl`
@@ -46,6 +67,11 @@ Partial PRD-017 focused benchmark evidence for the `collector` prompt. This is o
   `collector-typed-spec-r2-interrupted/interruption-summary.json`
 - Interrupted r2 iterate proof:
   `collector-typed-spec-r2-interrupted/iterate-report.json`
+- R3 transcript: `logs/collector-typed-spec-r3.events.jsonl`
+- R3 session: `candidates/collector-typed-spec-r3/session.json`
+- R3 score report: `collector-typed-spec-r3/run-report.json`
+- R3 failed collect-all proof:
+  `collector-typed-spec-r3/collect-all-summary.json`
 
 ## Findings
 
@@ -54,6 +80,14 @@ The run reached `TN_ITERATE_OK` for `playtests/collect-all.playtest.json`, with 
 The interrupted r2 attempt confirms one additional typed-spec candidate could
 compile and pass the generated `tn iterate` loop, but it is not counted as a
 benchmark repeat because the run lacks a final token usage record.
+
+The r3 attempt completed with a lower raw token count than r1
+(`3180293` vs `4443576`) and passed `TN_ITERATE_OK`, but the prompt-level proof
+failed. A harness `collect-all` scenario moved the player through all pickup
+locations; movement passed, but `GameState.scoreText` remained `Score 0 / 5`
+and `GameState.statusText` remained `Collect all five pickups`. The aggregate
+therefore includes r3 as a scored failed-proof report while still counting only
+r1 as a proof-passing typed-spec repeat.
 
 Observed typed-spec friction in this run:
 
