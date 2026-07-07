@@ -39,6 +39,16 @@ node packages/cli/dist/index.js game qa --project examples/metro-surfer-heist --
 node packages/cli/dist/index.js game release --project examples/metro-surfer-heist --json
 ```
 
+From this example directory:
+
+```bash
+pnpm run validate:authoring
+pnpm run build
+pnpm run playtest
+pnpm run game:qa
+pnpm run game:release
+```
+
 ## Release Evidence
 
 - Production plan: `artifacts/game-production/plan.json`.

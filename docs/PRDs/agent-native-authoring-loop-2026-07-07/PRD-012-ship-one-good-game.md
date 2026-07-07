@@ -324,3 +324,18 @@ Known blockers before this PRD can move to done:
 
 - No successful external public hosting run or public URL is recorded yet.
 - No five-minute human playtest transcript is recorded.
+
+### 2026-07-07 package-script fallback
+
+Resolved one Metro production friction item: example-local package scripts now
+route through `pnpm run tn -- ...`, where `tn` resolves the repo CLI via
+`node ../../packages/cli/dist/index.js`. This keeps Metro usable from the
+example directory even when `node_modules/.bin/tn` is not installed there.
+
+Verified from the repo root:
+
+- `pnpm --dir examples/metro-surfer-heist run validate:authoring`
+- `pnpm --dir examples/metro-surfer-heist run build`
+- `pnpm --dir examples/metro-surfer-heist run playtest`
+- `pnpm --dir examples/metro-surfer-heist run game:qa`
+- `pnpm --dir examples/metro-surfer-heist run game:release`
