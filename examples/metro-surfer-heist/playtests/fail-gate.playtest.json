@@ -1,0 +1,55 @@
+{
+  "schemaVersion": 1,
+  "name": "fail-gate",
+  "target": "web",
+  "viewport": {
+    "width": 1280,
+    "height": 720
+  },
+  "subject": "runner",
+  "warmupFrames": 5,
+  "steps": [
+    {
+      "label": "miss-duck-gate",
+      "waitFrames": 105
+    }
+  ],
+  "assert": {
+    "resources": [
+      {
+        "id": "GameState",
+        "path": "phase",
+        "equals": "playing"
+      },
+      {
+        "id": "GameState",
+        "path": "lastFailReason",
+        "textIncludes": "Low gate"
+      },
+      {
+        "id": "GameState",
+        "path": "status",
+        "textIncludes": "Switch lanes"
+      }
+    ],
+    "hud": [
+      {
+        "id": "status",
+        "textIncludes": "Switch lanes"
+      }
+    ],
+    "diagnostics": {
+      "runtimeReady": true,
+      "noConsoleErrors": true,
+      "noNetworkErrors": true,
+      "noRuntimeDiagnostics": true
+    }
+  },
+  "artifacts": {
+    "screenshots": "before-after",
+    "console": true,
+    "network": true,
+    "runtimeTrace": true,
+    "effectLog": "focused"
+  }
+}

@@ -16,9 +16,12 @@ export function metroSurferHeistSystem(context: ScriptContext): void {
   let state: Record<string, unknown> = context.resources.get("GameState", {
     coins: 0,
     distance: 0,
+    lastFailReason: "",
     objectiveCoins: 12,
     objectiveDistance: 260,
     phase: "playing",
+    restartGrace: 0,
+    retryTimer: 0,
     score: 0,
     speed: 6.2,
   });
@@ -63,6 +66,8 @@ export function metroSurferHeistSystem(context: ScriptContext): void {
     }
     patchState({
       phase: "playing",
+      restartGrace: 0.65,
+      retryTimer: 0,
       score: 0,
       coins: 0,
       distance: 0,
@@ -79,7 +84,19 @@ export function metroSurferHeistSystem(context: ScriptContext): void {
   const current = runner.transform().position;
   if (phase !== "playing") {
     syncParts(current, false);
-    if (actionPressed("retry") || actionPressed("jump")) resetGame();
+    const retryTimer = Math.max(0, Number(state.retryTimer ?? 0) - delta);
+    if (actionPressed("retry") || actionPressed("jump") || retryTimer <= 0) {
+      resetGame();
+    } else {
+      patchState({ retryTimer });
+    }
+    return;
+  }
+
+  const restartGrace = Math.max(0, Number(state.restartGrace ?? 0) - delta);
+  if (restartGrace > 0) {
+    syncParts(current, false);
+    patchState({ restartGrace });
     return;
   }
 
@@ -173,6 +190,9 @@ export function metroSurferHeistSystem(context: ScriptContext): void {
   if (failReason.length > 0) {
     patchState({
       phase: "failed",
+      lastFailReason: failReason,
+      retryTimer: 0.75,
+      restartGrace: 0,
       score: Math.floor(score),
       coins,
       distance,
@@ -199,6 +219,8 @@ export function metroSurferHeistSystem(context: ScriptContext): void {
   runner.patch("RunnerPlayer", { lane, targetLane: lane, jump, duckTimer, laneCooldown });
   patchState({
     phase: phaseNext,
+    restartGrace: 0,
+    retryTimer: 0,
     score: Math.floor(score),
     coins,
     distance,

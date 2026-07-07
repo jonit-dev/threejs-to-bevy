@@ -1,0 +1,62 @@
+{
+  "schemaVersion": 1,
+  "name": "progression",
+  "target": "web",
+  "viewport": {
+    "width": 1280,
+    "height": 720
+  },
+  "subject": "runner",
+  "warmupFrames": 5,
+  "steps": [
+    {
+      "label": "early-forward-progress",
+      "waitFrames": 10
+    }
+  ],
+  "assert": {
+    "movement": {
+      "entity": "coin.01",
+      "axis": "z",
+      "minDistance": 0.5,
+      "minVelocity": 0.001
+    },
+    "resources": [
+      {
+        "id": "GameState",
+        "path": "distance",
+        "changed": true
+      },
+      {
+        "id": "GameState",
+        "path": "speed",
+        "gte": 6.2
+      },
+      {
+        "id": "GameState",
+        "path": "phase",
+        "equals": "playing"
+      }
+    ],
+    "hud": [
+      {
+        "id": "distance",
+        "textIncludes": "Metro",
+        "changed": true
+      }
+    ],
+    "diagnostics": {
+      "runtimeReady": true,
+      "noConsoleErrors": true,
+      "noNetworkErrors": true,
+      "noRuntimeDiagnostics": true
+    }
+  },
+  "artifacts": {
+    "screenshots": "before-after",
+    "console": true,
+    "network": true,
+    "runtimeTrace": true,
+    "effectLog": "focused"
+  }
+}

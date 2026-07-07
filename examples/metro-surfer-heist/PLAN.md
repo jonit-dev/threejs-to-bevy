@@ -44,6 +44,9 @@ kit. See `CREDITS.md` and `FRICTION.md`.
 - `node packages/cli/dist/index.js authoring validate --project examples/metro-surfer-heist --json`
 - `node packages/cli/dist/index.js build --project examples/metro-surfer-heist --json`
 - `node packages/cli/dist/index.js playtest --project examples/metro-surfer-heist --scenario playtests/smoke-movement.playtest.json --stable-artifacts --json`
+- `node packages/cli/dist/index.js playtest --project examples/metro-surfer-heist --scenario playtests/progression.playtest.json --stable-artifacts --json`
+- `node packages/cli/dist/index.js playtest --project examples/metro-surfer-heist --scenario playtests/fail-gate.playtest.json --stable-artifacts --json`
+- `node packages/cli/dist/index.js playtest --project examples/metro-surfer-heist --scenario playtests/fail-retry.playtest.json --stable-artifacts --json`
 - `node packages/cli/dist/index.js verify --project examples/metro-surfer-heist --frames 3 --expect-motion --json`
 - `node packages/cli/dist/index.js game qa --project examples/metro-surfer-heist --run-proof --entity runner --press KeyD --expect-axis x --json`
 - `node packages/cli/dist/index.js game release --project examples/metro-surfer-heist --json`

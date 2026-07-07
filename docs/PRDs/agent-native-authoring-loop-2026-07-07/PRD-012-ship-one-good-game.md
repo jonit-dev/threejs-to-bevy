@@ -287,6 +287,15 @@ Verified through the repo-root CLI:
 - `node packages/cli/dist/index.js playtest --project examples/metro-surfer-heist --scenario playtests/smoke-movement.playtest.json --stable-artifacts --json`
   passed with `TN_PLAYTEST_OK`; raw evidence is under
   `examples/metro-surfer-heist/artifacts/playtest/smoke-movement/latest/`.
+- `node packages/cli/dist/index.js playtest --project examples/metro-surfer-heist --scenario playtests/progression.playtest.json --stable-artifacts --json`
+  passed with `TN_PLAYTEST_OK`; raw evidence is under
+  `examples/metro-surfer-heist/artifacts/playtest/progression/latest/`.
+- `node packages/cli/dist/index.js playtest --project examples/metro-surfer-heist --scenario playtests/fail-gate.playtest.json --stable-artifacts --json`
+  passed with `TN_PLAYTEST_OK`; raw evidence is under
+  `examples/metro-surfer-heist/artifacts/playtest/fail-gate/latest/`.
+- `node packages/cli/dist/index.js playtest --project examples/metro-surfer-heist --scenario playtests/fail-retry.playtest.json --stable-artifacts --json`
+  passed with `TN_PLAYTEST_OK`; raw evidence is under
+  `examples/metro-surfer-heist/artifacts/playtest/fail-retry/latest/`.
 - `node packages/cli/dist/index.js game qa --project examples/metro-surfer-heist --run-proof --entity runner --press KeyD --expect-axis x --json`
   passed with zero blockers, zero diagnostics, and all seven phase ledgers
   passing; raw report is
@@ -299,5 +308,3 @@ Known blockers before this PRD can move to done:
 
 - No external public hosting URL or deploy workflow is configured for the game.
 - No five-minute human playtest transcript is recorded.
-- Existing committed playtest coverage proves movement and production gates;
-  explicit progression and fail/retry scenario files are still absent.

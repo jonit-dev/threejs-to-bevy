@@ -14,6 +14,13 @@ external static hosting target or credentials.
   diagnostics, zero release risks, all proof steps passing.
 - `artifacts/game-production/release-report.json`: `ok: true`, zero blockers,
   zero diagnostics, zero release risks.
+- `artifacts/playtest/progression/latest/summary.json`: `TN_PLAYTEST_OK`
+  proof for movement, distance/HUD state changes, speed, and playable phase.
+- `artifacts/playtest/fail-gate/latest/summary.json`: `TN_PLAYTEST_OK`
+  proof that the low-gate failure is recorded and the game recovers to play.
+- `artifacts/playtest/fail-retry/latest/summary.json`: `TN_PLAYTEST_OK`
+  proof that fail/retry returns to a clean playable state while preserving
+  `lastFailReason` evidence.
 - `artifacts/game-production/visual-quality.json`: `status: "pass"`,
   nonblank screenshot proof, visible projected bounds, color variety, and local
   contrast metrics.
@@ -31,6 +38,8 @@ From the repo root:
 ```bash
 node packages/cli/dist/index.js build --project examples/metro-surfer-heist --json
 node packages/cli/dist/index.js playtest --project examples/metro-surfer-heist --scenario playtests/smoke-movement.playtest.json --stable-artifacts --json
+node packages/cli/dist/index.js playtest --project examples/metro-surfer-heist --scenario playtests/progression.playtest.json --stable-artifacts --json
+node packages/cli/dist/index.js playtest --project examples/metro-surfer-heist --scenario playtests/fail-retry.playtest.json --stable-artifacts --json
 node packages/cli/dist/index.js game qa --project examples/metro-surfer-heist --run-proof --entity runner --press KeyD --expect-axis x --json
 node packages/cli/dist/index.js game release --project examples/metro-surfer-heist --json
 ```
