@@ -242,3 +242,26 @@ sequenceDiagram
 - [ ] Unsupported constructs fail loudly with actionable diagnostics.
 - [ ] At least one vanilla-authored game lifts into valid ThreeNative IR.
 - [ ] Trial report decides keep, pivot, or stop based on equal-proof cost.
+
+## 8. Progress Log
+
+### 2026-07-07 decision gate check
+
+Recorded the current vanilla-lift gate status in
+`tools/agent-benchmark/VANILLA-LIFT-DECISION-2026-07-07.md`.
+
+The reviewed evidence does not satisfy the PRD-018 trigger:
+
+- `tools/verify/artifacts/agent-benchmark/off-recipe-rerun-2026-07-07b/benchmark-report.json`
+  is useful round-4/off-recipe evidence, but it uses the older half-vanilla
+  threshold instead of the round-5 equal-proof threshold.
+- `tools/verify/artifacts/agent-benchmark/typed-spec-trial-2026-07-07a/benchmark-report.json`
+  remains `insufficient-data` with one counted typed-spec repeat and no
+  comparable direct ThreeNative repeat for the collector prompt.
+- `collector-typed-spec-r2` reached `TN_ITERATE_OK`, but it is excluded from
+  aggregate medians because the interrupted run has no completed token usage
+  record.
+
+Decision: do not start the vanilla-lift compiler prototype yet. The next valid
+step is to collect the equal-proof round-5 matrix, then re-check whether direct
+ThreeNative, typed-spec, or vanilla-lift should be the default investment path.
