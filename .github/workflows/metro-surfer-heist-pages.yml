@@ -52,7 +52,7 @@ jobs:
         run: pnpm --filter @threenative/cli exec playwright install --with-deps chromium
 
       - name: Build workspace packages
-        run: pnpm build
+        run: pnpm --filter @threenative/cli... build
 
       - name: Build Metro bundle
         run: node packages/cli/dist/index.js build --project examples/metro-surfer-heist --json
