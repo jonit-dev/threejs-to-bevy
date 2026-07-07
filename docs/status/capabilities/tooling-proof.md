@@ -13,6 +13,9 @@ Current support:
 - Agent benchmark reports are version 2 token-cost artifacts with raw, cached,
   uncached, output, cost-weighted, iteration, failed-command, and tool-output
   medians.
+- The 2026-07-07 off-recipe benchmark keeps raw transcripts, sessions, scorer
+  output, aggregate report, and agent behavior learnings under
+  `tools/verify/artifacts/agent-benchmark/off-recipe-2026-07-07/`.
 - `pnpm check:docs` for docs consistency and STATUS index budget.
 - `pnpm verify:smoke`, `pnpm verify:pre-push`, and `pnpm verify:release` for
   escalating proof levels.

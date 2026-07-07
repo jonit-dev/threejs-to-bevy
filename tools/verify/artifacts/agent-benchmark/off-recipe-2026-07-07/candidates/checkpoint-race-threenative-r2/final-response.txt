@@ -1,0 +1,12 @@
+Playable.
+
+Built a structured-source ThreeNative checkpoint race in the candidate directory using `content/**/*.json` and `src/scripts/player.ts`. It has WASD/arrow movement, visible vehicle, track boundaries, ordered checkpoint markers, timer/progress HUD, finish state, and `R` retry text.
+
+Verified with:
+
+- `node /home/joao/projects/threejs-to-bevy/packages/cli/dist/index.js authoring validate --project . --json`
+- `node /home/joao/projects/threejs-to-bevy/packages/cli/dist/index.js build --project . --json`
+- `node /home/joao/projects/threejs-to-bevy/packages/cli/dist/index.js playtest --project . --scenario playtests/smoke-movement.playtest.json --stable-artifacts --json`
+- `node /home/joao/projects/threejs-to-bevy/packages/cli/dist/index.js playtest --project . --scenario playtests/checkpoint-finish.playtest.json --stable-artifacts --json`
+
+The finish playtest reached `GameState.phase = "finished"`, `CP 3/3`, and HUD text `Finish reached. Press R to retry.`

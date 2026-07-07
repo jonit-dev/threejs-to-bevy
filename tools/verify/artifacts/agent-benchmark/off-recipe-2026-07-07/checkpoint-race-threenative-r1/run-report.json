@@ -1,0 +1,103 @@
+{
+  "artifacts": {
+    "afterScreenshot": "after.png",
+    "beforeScreenshot": "before.png"
+  },
+  "candidate": "/home/joao/projects/threejs-to-bevy/tools/verify/artifacts/agent-benchmark/off-recipe-2026-07-07/candidates/checkpoint-race-threenative-r1",
+  "condition": "threenative",
+  "diagnostics": [
+    {
+      "code": "TN_BENCH_BROWSER_LOGS",
+      "message": "Browser emitted 7 console log(s).",
+      "severity": "warning"
+    }
+  ],
+  "generatedAt": "2026-07-07T04:53:19.732Z",
+  "metrics": {
+    "after": {
+      "averageColor": {
+        "blue": 0.9406277488425926,
+        "green": 0.32808011642156865,
+        "red": 0.02601915679466231
+      },
+      "colorBucketCount": 17,
+      "colorBucketRatio": 0.00007378472222222222,
+      "height": 720,
+      "localContrastRatio": 0.008655016518866285,
+      "nonblank": {
+        "changedPixelRatio": 0.9946885850694445,
+        "ok": true,
+        "threshold": 0.002
+      },
+      "projectedBounds": {
+        "height": 720,
+        "nonblankPixelRatio": 0.9946885850694445,
+        "ok": true,
+        "width": 1280,
+        "x": 0,
+        "y": 0
+      },
+      "visibleBoundsAreaRatio": 1,
+      "width": 1280
+    },
+    "before": {
+      "averageColor": {
+        "blue": 0.9413661322167757,
+        "green": 0.3273145680147059,
+        "red": 0.02518027471405229
+      },
+      "colorBucketCount": 19,
+      "colorBucketRatio": 0.00008246527777777778,
+      "height": 720,
+      "localContrastRatio": 0.009828725439054078,
+      "nonblank": {
+        "changedPixelRatio": 0.9933224826388889,
+        "ok": true,
+        "threshold": 0.002
+      },
+      "projectedBounds": {
+        "height": 720,
+        "nonblankPixelRatio": 0.9933224826388889,
+        "ok": true,
+        "width": 1280,
+        "x": 0,
+        "y": 0
+      },
+      "visibleBoundsAreaRatio": 1,
+      "width": 1280
+    },
+    "movementDelta": {
+      "averageBrightnessDelta": 0.0012446356436092848,
+      "changedPixelRatio": 0.006432291666666667,
+      "threshold": 0.001
+    }
+  },
+  "ok": true,
+  "promptId": "checkpoint-race",
+  "runId": "checkpoint-race-threenative-r1",
+  "schema": "threenative.agent-benchmark-run",
+  "session": {
+    "schema": "threenative.agent-benchmark-session",
+    "version": 2,
+    "runId": "checkpoint-race-threenative-r1",
+    "promptId": "checkpoint-race",
+    "condition": "threenative",
+    "tokenCount": 1897575,
+    "inputTokens": 1878706,
+    "cachedInputTokens": 1788800,
+    "uncachedInputTokens": 89906,
+    "outputTokens": 16143,
+    "costWeightedTokens": 284929,
+    "toolOutputBytes": 197896,
+    "failedCommandCount": 8,
+    "toolStepCount": 52,
+    "iterationCount": 9,
+    "stopReason": "claimed-playable",
+    "humanRubric": {
+      "playability": 3,
+      "visual": 2,
+      "notes": "Derived from codex-events.jsonl. Agent claimed playable after authoring durable ThreeNative source; validate, build, smoke movement, and checkpoint-race finish playtests passed."
+    }
+  },
+  "version": 2
+}

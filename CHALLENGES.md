@@ -155,9 +155,18 @@ engine parity. Effort allocation does not currently match that answer.
    dialect-authoring path the pilot measured. What the pass does prove: when
    the loop is collapsed to few steps, per-step replay cost stops being fatal,
    and the collapsed-loop/diagnostic work generalizes off-recipe even though
-   the scaffold win does not. The decisive unmeasured number is now the
-   **off-recipe** ratio: same protocol, a prompt no recipe covers, agent must
-   author real deltas on top of (or without) a scaffold.
+   the scaffold win does not.
+   The decisive off-recipe round was then run on 2026-07-07. Evidence lives in
+   `tools/verify/artifacts/agent-benchmark/off-recipe-2026-07-07/`. The
+   verdict was fail against the ~2x gate: checkpoint-race measured 1,829,573.5
+   ThreeNative median raw tokens vs 506,211 vanilla (3.614x), and
+   physics-knockdown measured 2,792,109 vs 1,390,836 (2.008x). The agents did
+   reach playable results, but the route was still expensive: 47-53 median
+   ThreeNative tool steps, 5.5-8 failed-command median, and repeated proof,
+   schema, CLI, and source-discovery loops. The next move is not more
+   prompt-shaped recipes; it is making off-recipe deltas cheap through
+   composable mechanic blocks, command-card clarity, compact proof summaries,
+   and cookbook examples mined from the raw transcripts.
 2. **Cookbook over reference docs.** Models learn unseen DSLs from few-shot
    complete examples far better than from reference documentation. Distill
    the existing example games into 10-20 pattern-sized pairs ("goal:
@@ -202,10 +211,10 @@ webview shell for native.
 But "fixable" is not the right question. The right question is whether the
 fixed version wins its one decisive bet: **can an AI agent produce a
 playable, decent-looking game through this stack at a token cost within
-~2x of writing vanilla Three.js?** Everything else — IR, Bevy, editor,
-gates — is scaffolding around that bet, and as of this writing the answer
-has never been measured. Three weeks and ~190k lines were spent without
-measuring the one thing the thesis depends on.
+~2x of writing vanilla Three.js?** The 2026-07-07 off-recipe benchmark says
+not yet: one prompt missed badly at 3.614x, and one missed narrowly at
+2.008x. Everything else — IR, Bevy, editor, gates — is scaffolding around
+that bet.
 
 ## The Plan: Two Weeks, Timeboxed, Then a Kill/Continue Decision
 
@@ -237,14 +246,14 @@ Honest prior at time of writing: roughly 40% that the benchmark comes back
 2x vanilla median tokens on both comparable prompts. The post-fix rerun
 (2026-07-07) then passed at 0.08-0.12x — but on prompts the scaffold recipes
 were purpose-built for, so it validates the "collapse the loop" thesis, not
-the general authoring-cost thesis. Two questions remain open and are now the
-real gate: (1) the off-recipe token ratio, where the agent must author
-mechanics no recipe provides; (2) the visual-contract ceiling, which the
-passing runs make vivid — the winning screenshot is exactly the "colored
+the general authoring-cost thesis. The off-recipe round now answers the first
+remaining gate: it failed at 3.614x for checkpoint-race and 2.008x for
+physics-knockdown. The other gate remains the visual-contract ceiling, which
+the passing runs make vivid — the winning screenshot is exactly the "colored
 primitives under a directional light" look Challenge 3d predicts, and making
 IR-mediated scenes look as good as freestyle Three.js still risks dragging
-the project back onto the parity treadmill. The rational next step is an
-off-recipe benchmark condition, not more recipes for prompts the benchmark
+the project back onto the parity treadmill. The rational next step is
+off-recipe authoring compression, not more recipes for prompts the benchmark
 happens to contain.
 
 The one guaranteed-waste option is the middle path: continuing to build

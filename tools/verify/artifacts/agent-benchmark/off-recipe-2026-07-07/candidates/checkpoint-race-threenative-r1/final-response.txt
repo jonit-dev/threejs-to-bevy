@@ -1,0 +1,13 @@
+Playable checkpoint-race game is implemented in the candidate directory using durable ThreeNative source.
+
+What’s included:
+- Visible player vehicle, track boundary rails, ordered checkpoints, and finish marker.
+- WASD/arrow-key movement.
+- HUD with checkpoint count, timer, finish text, and `R` retry path.
+- Finish state reachable after checkpoint 4/4.
+
+Verified with:
+- `tn authoring validate --project . --json` passed.
+- `tn build --project . --json` passed.
+- `tn playtest --scenario playtests/smoke-movement.playtest.json` passed: player moved `6.92` units, no diagnostics.
+- `tn playtest --scenario playtests/checkpoint-race-finish.playtest.json` passed: `GameState.phase = finished`, checkpoint `4`, HUD contains `FINISH`, no diagnostics.

@@ -1,0 +1,9 @@
+Implemented the playable checkpoint-race game in:
+
+- `index.html`
+- `styles.css`
+- `game.js`
+
+It is playable: WASD/arrow keys drive the visible car, ordered checkpoints advance progress, the timer runs, finishing all checkpoints shows a finish state, and `R` or the start button retries.
+
+Verified by serving locally with `python3 -m http.server 4173` and using Playwright to confirm canvas load, clean console after reload, keyboard movement, checkpoint progression through `6 / 6`, finish overlay, and retry reset. The local server is stopped.

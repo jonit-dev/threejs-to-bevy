@@ -1,0 +1,103 @@
+{
+  "artifacts": {
+    "afterScreenshot": "after.png",
+    "beforeScreenshot": "before.png"
+  },
+  "candidate": "/home/joao/projects/threejs-to-bevy/tools/verify/artifacts/agent-benchmark/off-recipe-2026-07-07/candidates/physics-knockdown-threenative-r1",
+  "condition": "threenative",
+  "diagnostics": [
+    {
+      "code": "TN_BENCH_BROWSER_LOGS",
+      "message": "Browser emitted 7 console log(s).",
+      "severity": "warning"
+    }
+  ],
+  "generatedAt": "2026-07-07T05:08:03.489Z",
+  "metrics": {
+    "after": {
+      "averageColor": {
+        "blue": 0.6580509642224945,
+        "green": 0.22096736706835512,
+        "red": 0.007326614413126362
+      },
+      "colorBucketCount": 28,
+      "colorBucketRatio": 0.00012152777777777777,
+      "height": 720,
+      "localContrastRatio": 0.0113415058250739,
+      "nonblank": {
+        "changedPixelRatio": 0.6784450954861111,
+        "ok": true,
+        "threshold": 0.002
+      },
+      "projectedBounds": {
+        "height": 720,
+        "nonblankPixelRatio": 0.6784450954861111,
+        "ok": true,
+        "width": 1280,
+        "x": 0,
+        "y": 0
+      },
+      "visibleBoundsAreaRatio": 1,
+      "width": 1280
+    },
+    "before": {
+      "averageColor": {
+        "blue": 0.6579875238289761,
+        "green": 0.2209860770697168,
+        "red": 0.007364455678104575
+      },
+      "colorBucketCount": 26,
+      "colorBucketRatio": 0.00011284722222222222,
+      "height": 720,
+      "localContrastRatio": 0.01123282907320466,
+      "nonblank": {
+        "changedPixelRatio": 0.6778678385416667,
+        "ok": true,
+        "threshold": 0.002
+      },
+      "projectedBounds": {
+        "height": 720,
+        "nonblankPixelRatio": 0.6778678385416667,
+        "ok": true,
+        "width": 1280,
+        "x": 0,
+        "y": 0
+      },
+      "visibleBoundsAreaRatio": 1,
+      "width": 1280
+    },
+    "movementDelta": {
+      "averageBrightnessDelta": 0.003635134406771883,
+      "changedPixelRatio": 0.015570746527777778,
+      "threshold": 0.001
+    }
+  },
+  "ok": true,
+  "promptId": "physics-knockdown",
+  "runId": "physics-knockdown-threenative-r1",
+  "schema": "threenative.agent-benchmark-run",
+  "session": {
+    "schema": "threenative.agent-benchmark-session",
+    "version": 2,
+    "runId": "physics-knockdown-threenative-r1",
+    "promptId": "physics-knockdown",
+    "condition": "threenative",
+    "tokenCount": 2917799,
+    "inputTokens": 2896583,
+    "cachedInputTokens": 2625920,
+    "uncachedInputTokens": 270663,
+    "outputTokens": 19338,
+    "costWeightedTokens": 554471,
+    "toolOutputBytes": 171034,
+    "failedCommandCount": 13,
+    "toolStepCount": 60,
+    "iterationCount": 14,
+    "stopReason": "claimed-playable",
+    "humanRubric": {
+      "playability": 3,
+      "visual": 2,
+      "notes": "Derived from codex-events.jsonl. Playable. Built the ThreeNative structured-source game in the candidate directory using durable files under `content/**/*.json` and `src/scripts/player.ts`. It has a launcher/player, red puck projectile, six standing targets, floor/rails/aim line, score HUD, Space/Enter launch, A/D or arrows movement, and R/Enter retry. Verified with:"
+    }
+  },
+  "version": 2
+}

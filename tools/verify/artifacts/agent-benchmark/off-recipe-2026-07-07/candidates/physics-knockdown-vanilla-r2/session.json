@@ -1,0 +1,23 @@
+{
+  "schema": "threenative.agent-benchmark-session",
+  "version": 2,
+  "runId": "physics-knockdown-vanilla-r2",
+  "promptId": "physics-knockdown",
+  "condition": "vanilla",
+  "tokenCount": 567758,
+  "inputTokens": 558315,
+  "cachedInputTokens": 526336,
+  "uncachedInputTokens": 31979,
+  "outputTokens": 8283,
+  "costWeightedTokens": 94055.6,
+  "toolOutputBytes": 1364,
+  "failedCommandCount": 1,
+  "toolStepCount": 8,
+  "iterationCount": 2,
+  "stopReason": "claimed-playable",
+  "humanRubric": {
+    "playability": 3,
+    "visual": 2,
+    "notes": "Derived from codex-events.jsonl. Playable browser game is complete in this directory: - `index.html` - `styles.css`"
+  }
+}

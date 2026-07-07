@@ -1,0 +1,45 @@
+Off-recipe benchmark round
+Date: 2026-07-07
+Directive: tools/agent-benchmark/OFF-RECIPE-DIRECTIVE.md
+
+Stop rule:
+- Fresh session per run.
+- Stop when the agent claims playable, hits the token cap, or setup fails.
+- No new checkpoint-race or physics-knockdown recipe may be added during this
+  round.
+
+Recipe precondition:
+- No exact authoring recipe ID named checkpoint-race exists.
+- No exact authoring recipe ID named physics-knockdown exists.
+- Related recipe primitives already exist in the repo:
+  vehicle-checkpoint and physics-target. They are not new work in this round,
+  and the report must treat any use of them as recipe-delta authoring rather
+  than a bare-starter result.
+
+Required run matrix:
+
+| Prompt | Condition | Repeat | Run ID | Status |
+| --- | --- | ---: | --- | --- |
+| checkpoint-race | vanilla | 1 | checkpoint-race-vanilla-r1 | transcript captured; session derived |
+| checkpoint-race | vanilla | 2 | checkpoint-race-vanilla-r2 | transcript captured; session derived |
+| checkpoint-race | threenative | 1 | checkpoint-race-threenative-r1 | transcript captured; session derived |
+| checkpoint-race | threenative | 2 | checkpoint-race-threenative-r2 | transcript captured; session derived |
+| physics-knockdown | vanilla | 1 | physics-knockdown-vanilla-r1 | transcript captured; session derived |
+| physics-knockdown | vanilla | 2 | physics-knockdown-vanilla-r2 | transcript captured; session derived |
+| physics-knockdown | threenative | 1 | physics-knockdown-threenative-r1 | transcript captured; session derived |
+| physics-knockdown | threenative | 2 | physics-knockdown-threenative-r2 | transcript captured; session derived |
+
+Transcript sources:
+- candidates/checkpoint-race-vanilla-r1/codex-events.jsonl
+- candidates/checkpoint-race-vanilla-r2/codex-events.jsonl
+- candidates/checkpoint-race-threenative-r1/codex-events.jsonl
+- candidates/checkpoint-race-threenative-r2/codex-events.jsonl
+- candidates/physics-knockdown-vanilla-r1/codex-events.jsonl
+- candidates/physics-knockdown-vanilla-r2/codex-events.jsonl
+- candidates/physics-knockdown-threenative-r1/codex-events.jsonl
+- candidates/physics-knockdown-threenative-r2/codex-events.jsonl
+
+Closeout:
+- All eight sessions have session.json files.
+- All eight sessions have run-report.json and score-output.json files.
+- benchmark-report.json and REPORT.md record the final fail verdict.

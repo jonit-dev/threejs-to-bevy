@@ -1,0 +1,25 @@
+You are running a fresh Agent Authoring Benchmark session.
+
+Condition: threenative
+Prompt ID: checkpoint-race
+Candidate directory: current working directory
+
+Rules:
+- Build the game with the local ThreeNative structured-source starter. First copy the contents of /home/joao/projects/threejs-to-bevy/templates/structured-source-starter into this empty candidate directory.
+- Use durable ThreeNative source files: content/**/*.json and src/scripts/**/*.ts. Do not edit dist/** as source of truth.
+- Prefer tn ... --json commands and preserve structured-source schema/version fields.
+- Do not build a raw Three.js scene or raw Bevy/Rust gameplay; the browser preview must come from tn dev/build for this project.
+- Verify with at least tn authoring validate/build or tn playtest when practical.
+- Stop when the game is playable by the benchmark definition: keyboard input moves a visible actor, the actor can move toward visible objectives/rewards/progression, win/fail/retry or score/progression feedback is reachable, and the game renders to a browser canvas.
+- Do not edit files outside this candidate directory.
+
+Game prompt:
+Build a small browser checkpoint-race game where the player drives or moves a
+visible vehicle/avatar through checkpoints in order. Controls must use WASD or
+arrow keys. Include a timer or checkpoint counter, a finish state, and a retry
+path.
+
+Visual bar: player, track or route boundary, ordered checkpoints, timer or
+progress UI, and finish state must be readable without inspecting code.
+
+When finished, write a short final response stating whether it is playable and how you verified it.

@@ -1,0 +1,104 @@
+{
+  "artifacts": {
+    "afterScreenshot": "after.png",
+    "beforeScreenshot": "before.png"
+  },
+  "candidate": "/home/joao/projects/threejs-to-bevy/tools/verify/artifacts/agent-benchmark/off-recipe-2026-07-07/candidates/checkpoint-race-vanilla-r1",
+  "condition": "vanilla",
+  "diagnostics": [
+    {
+      "code": "TN_BENCH_NO_MOVEMENT",
+      "message": "Keyboard probe changed 0.000% of pixels, below 0.100%.",
+      "severity": "error",
+      "suggestedFix": "Wire keyboard input so a visible actor moves under WASD or arrow keys."
+    }
+  ],
+  "generatedAt": "2026-07-07T04:52:54.459Z",
+  "metrics": {
+    "after": {
+      "averageColor": {
+        "blue": 0.12001193150871459,
+        "green": 0.14029316448801743,
+        "red": 0.11895688231889978
+      },
+      "colorBucketCount": 46,
+      "colorBucketRatio": 0.0001996527777777778,
+      "height": 720,
+      "localContrastRatio": 0.03693270735524257,
+      "nonblank": {
+        "changedPixelRatio": 1,
+        "ok": true,
+        "threshold": 0.002
+      },
+      "projectedBounds": {
+        "height": 720,
+        "nonblankPixelRatio": 1,
+        "ok": true,
+        "width": 1280,
+        "x": 0,
+        "y": 0
+      },
+      "visibleBoundsAreaRatio": 1,
+      "width": 1280
+    },
+    "before": {
+      "averageColor": {
+        "blue": 0.12001193150871459,
+        "green": 0.14029316448801743,
+        "red": 0.11895688231889978
+      },
+      "colorBucketCount": 46,
+      "colorBucketRatio": 0.0001996527777777778,
+      "height": 720,
+      "localContrastRatio": 0.03693270735524257,
+      "nonblank": {
+        "changedPixelRatio": 1,
+        "ok": true,
+        "threshold": 0.002
+      },
+      "projectedBounds": {
+        "height": 720,
+        "nonblankPixelRatio": 1,
+        "ok": true,
+        "width": 1280,
+        "x": 0,
+        "y": 0
+      },
+      "visibleBoundsAreaRatio": 1,
+      "width": 1280
+    },
+    "movementDelta": {
+      "averageBrightnessDelta": 0,
+      "changedPixelRatio": 0,
+      "threshold": 0.001
+    }
+  },
+  "ok": false,
+  "promptId": "checkpoint-race",
+  "runId": "checkpoint-race-vanilla-r1",
+  "schema": "threenative.agent-benchmark-run",
+  "session": {
+    "schema": "threenative.agent-benchmark-session",
+    "version": 2,
+    "runId": "checkpoint-race-vanilla-r1",
+    "promptId": "checkpoint-race",
+    "condition": "vanilla",
+    "tokenCount": 1001374,
+    "inputTokens": 990079,
+    "cachedInputTokens": 911360,
+    "uncachedInputTokens": 78719,
+    "outputTokens": 9799,
+    "costWeightedTokens": 179654,
+    "toolOutputBytes": 29513,
+    "failedCommandCount": 0,
+    "toolStepCount": 13,
+    "iterationCount": 1,
+    "stopReason": "claimed-playable",
+    "humanRubric": {
+      "playability": 3,
+      "visual": 2,
+      "notes": "Derived from codex-events.jsonl. Agent claimed playable; Playwright verification covered canvas load, clean console, keyboard movement, checkpoint progression, finish overlay, and retry reset."
+    }
+  },
+  "version": 2
+}

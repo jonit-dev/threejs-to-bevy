@@ -1,0 +1,22 @@
+You are running a fresh Agent Authoring Benchmark session.
+
+Condition: vanilla
+Prompt ID: checkpoint-race
+Candidate directory: current working directory
+
+Rules:
+- Build a small playable browser game in this directory using plain Three.js or browser canvas JavaScript. Do not use ThreeNative APIs, tn commands, Bevy, or structured-source files.
+- Keep implementation self-contained. Provide an index.html and any local JS/CSS files needed. A package.json is optional if index.html can be served statically.
+- Stop when the game is playable by the benchmark definition: keyboard input moves a visible actor, the actor can move toward visible objectives/rewards/progression, win/fail/retry or score/progression feedback is reachable, and the game renders to a browser canvas.
+- Do not edit files outside this candidate directory.
+
+Game prompt:
+Build a small browser checkpoint-race game where the player drives or moves a
+visible vehicle/avatar through checkpoints in order. Controls must use WASD or
+arrow keys. Include a timer or checkpoint counter, a finish state, and a retry
+path.
+
+Visual bar: player, track or route boundary, ordered checkpoints, timer or
+progress UI, and finish state must be readable without inspecting code.
+
+When finished, write a short final response stating whether it is playable and how you verified it.

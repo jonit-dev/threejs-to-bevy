@@ -1,0 +1,97 @@
+{
+  "artifacts": {
+    "afterScreenshot": "after.png",
+    "beforeScreenshot": "before.png"
+  },
+  "candidate": "/home/joao/projects/threejs-to-bevy/tools/verify/artifacts/agent-benchmark/off-recipe-2026-07-07/candidates/physics-knockdown-vanilla-r2",
+  "condition": "vanilla",
+  "diagnostics": [],
+  "generatedAt": "2026-07-07T05:07:38.898Z",
+  "metrics": {
+    "after": {
+      "averageColor": {
+        "blue": 0.28016239021650324,
+        "green": 0.2833098447712418,
+        "red": 0.20592220690359478
+      },
+      "colorBucketCount": 47,
+      "colorBucketRatio": 0.00020399305555555557,
+      "height": 720,
+      "localContrastRatio": 0.02621283255086072,
+      "nonblank": {
+        "changedPixelRatio": 1,
+        "ok": true,
+        "threshold": 0.002
+      },
+      "projectedBounds": {
+        "height": 720,
+        "nonblankPixelRatio": 1,
+        "ok": true,
+        "width": 1280,
+        "x": 0,
+        "y": 0
+      },
+      "visibleBoundsAreaRatio": 1,
+      "width": 1280
+    },
+    "before": {
+      "averageColor": {
+        "blue": 0.28022711567265796,
+        "green": 0.28338302100354035,
+        "red": 0.20603430095996733
+      },
+      "colorBucketCount": 41,
+      "colorBucketRatio": 0.0001779513888888889,
+      "height": 720,
+      "localContrastRatio": 0.026338897583029038,
+      "nonblank": {
+        "changedPixelRatio": 1,
+        "ok": true,
+        "threshold": 0.002
+      },
+      "projectedBounds": {
+        "height": 720,
+        "nonblankPixelRatio": 1,
+        "ok": true,
+        "width": 1280,
+        "x": 0,
+        "y": 0
+      },
+      "visibleBoundsAreaRatio": 1,
+      "width": 1280
+    },
+    "movementDelta": {
+      "averageBrightnessDelta": 0.0017505602646150714,
+      "changedPixelRatio": 0.004182942708333333,
+      "threshold": 0.001
+    }
+  },
+  "ok": true,
+  "promptId": "physics-knockdown",
+  "runId": "physics-knockdown-vanilla-r2",
+  "schema": "threenative.agent-benchmark-run",
+  "session": {
+    "schema": "threenative.agent-benchmark-session",
+    "version": 2,
+    "runId": "physics-knockdown-vanilla-r2",
+    "promptId": "physics-knockdown",
+    "condition": "vanilla",
+    "tokenCount": 567758,
+    "inputTokens": 558315,
+    "cachedInputTokens": 526336,
+    "uncachedInputTokens": 31979,
+    "outputTokens": 8283,
+    "costWeightedTokens": 94055.6,
+    "toolOutputBytes": 1364,
+    "failedCommandCount": 1,
+    "toolStepCount": 8,
+    "iterationCount": 2,
+    "stopReason": "claimed-playable",
+    "humanRubric": {
+      "playability": 3,
+      "visual": 2,
+      "notes": "Derived from codex-events.jsonl. Playable browser game is complete in this directory: - `index.html` - `styles.css`"
+    }
+  },
+  "version": 2
+}

@@ -9,7 +9,7 @@ weight. These PRDs intentionally avoid broad new Bevy parity work.
 
 ## Ordered PRDs
 
-1. [PRD-001 Off-Recipe Benchmark Round](PRD-001-off-recipe-benchmark-round.md)
+1. [PRD-001 Off-Recipe Benchmark Round](../done/agent-native-authoring-loop-2026-07-07/PRD-001-off-recipe-benchmark-round.md) - done
 2. [PRD-002 Archetype Scaffolds](PRD-002-archetype-scaffolds.md)
 3. [PRD-003 Compositional Mechanic Blocks](PRD-003-compositional-mechanic-blocks.md)
 4. [PRD-004 Schema-Aware Mutation Surface](PRD-004-schema-aware-mutation-surface.md)
@@ -39,4 +39,3 @@ weight. These PRDs intentionally avoid broad new Bevy parity work.
 - `tools/agent-benchmark/OFF-RECIPE-DIRECTIVE.md`
 - `tools/agent-benchmark/TOKEN-COST-DIRECTION.md`
 - `tools/verify/artifacts/agent-benchmark/`
-

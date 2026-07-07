@@ -20,6 +20,11 @@ Current support:
   84,250.5 vs 1,020,845 vanilla (0.083x), with 3.5 median tool steps and zero
   failed-command median. Evidence:
   `tools/verify/artifacts/agent-benchmark/scaffold-first-token-rerun-2026-07-07b/`.
+- Fresh off-recipe evidence fails the <=2x raw-token authoring gate:
+  checkpoint-race median 1,829,573.5 vs 506,211 vanilla (3.614x), and
+  physics-knockdown median 2,792,109 vs 1,390,836 vanilla (2.008x), with
+  47-53 median ThreeNative tool steps. Evidence:
+  `tools/verify/artifacts/agent-benchmark/off-recipe-2026-07-07/`.
 
 Verification:
 

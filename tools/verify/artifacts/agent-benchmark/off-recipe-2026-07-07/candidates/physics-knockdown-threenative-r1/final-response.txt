@@ -1,0 +1,13 @@
+Playable.
+
+Built the ThreeNative structured-source game in the candidate directory using durable files under `content/**/*.json` and `src/scripts/player.ts`. It has a launcher/player, red puck projectile, six standing targets, floor/rails/aim line, score HUD, Space/Enter launch, A/D or arrows movement, and R/Enter retry.
+
+Verified with:
+
+```bash
+node /home/joao/projects/threejs-to-bevy/packages/cli/dist/index.js authoring validate --project . --json
+node /home/joao/projects/threejs-to-bevy/packages/cli/dist/index.js build --project . --json
+node /home/joao/projects/threejs-to-bevy/packages/cli/dist/index.js playtest --project . --scenario playtests/launch-knockdown.playtest.json --stable-artifacts --json
+```
+
+Results: authoring validation passed, build passed, and the browser playtest passed. The launch playtest pressed Space, moved the projectile `6.71` units on Z, had zero console/network/runtime diagnostic failures, and the effect log showed score/target progress updates.

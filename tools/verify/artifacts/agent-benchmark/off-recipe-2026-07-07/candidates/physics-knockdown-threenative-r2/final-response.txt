@@ -1,0 +1,12 @@
+Playable.
+
+Built the ThreeNative structured-source game in the candidate directory using durable files under `content/**` and `src/scripts/player.ts`. It includes a movable launcher, launchable puck, visible target rack, floor, score/status UI, Space/Enter launch, WASD/arrow movement, and `R` retry reset.
+
+Verified with:
+
+- `tn game plan --project . --json`
+- `tn authoring validate --project . --json` passed
+- `tn build --project . --json` passed
+- `tn playtest --project . --entity launcher --press KeyD --frames 30 --expect-moved --json` passed, launcher moved `3.2`
+- `tn playtest --project . --entity puck --press Space --frames 60 --expect-moved --json` passed, puck moved `7.10`
+- Screenshot artifacts show the browser canvas, visible target set, score UI, and knocked-down targets after launch.

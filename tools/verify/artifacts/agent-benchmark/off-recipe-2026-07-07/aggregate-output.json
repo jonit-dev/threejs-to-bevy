@@ -1,0 +1,104 @@
+{
+  "code": "TN_BENCH_AGGREGATE_OK",
+  "outPath": "/home/joao/projects/threejs-to-bevy/tools/verify/artifacts/agent-benchmark/off-recipe-2026-07-07/benchmark-report.json",
+  "report": {
+    "diagnostics": [],
+    "generatedAt": "2026-07-07T05:08:41.531Z",
+    "promptSummaries": [
+      {
+        "costWeightedTokenRatio": 2.650540320724799,
+        "failedCommandMedian": {
+          "threenative": 5.5,
+          "vanilla": 0
+        },
+        "iterationMedian": {
+          "threenative": 6.5,
+          "vanilla": 1
+        },
+        "promptId": "checkpoint-race",
+        "rawTokenRatio": 3.61425077684997,
+        "threenativeMedianCachedInputTokens": 1656192,
+        "threenativeMedianCostWeightedTokens": 336320.7,
+        "threenativeMedianFailedCommandCount": 5.5,
+        "threenativeMedianInputTokens": 1811020,
+        "threenativeMedianIterations": 6.5,
+        "threenativeMedianOutputTokens": 15873.5,
+        "threenativeMedianToolStepCount": 47,
+        "threenativeMedianTokens": 1829573.5,
+        "threenativeMedianToolOutputBytes": 156165,
+        "threenativeMedianUncachedInputTokens": 154828,
+        "toolOutputMedian": {
+          "threenative": 156165,
+          "vanilla": 2158
+        },
+        "toolStepMedian": {
+          "threenative": 47,
+          "vanilla": 10
+        },
+        "vanillaMedianCachedInputTokens": 420096,
+        "vanillaMedianCostWeightedTokens": 126887.6,
+        "vanillaMedianFailedCommandCount": 0,
+        "vanillaMedianInputTokens": 496310,
+        "vanillaMedianIterations": 1,
+        "vanillaMedianOutputTokens": 8664,
+        "vanillaMedianToolStepCount": 10,
+        "vanillaMedianTokens": 506211,
+        "vanillaMedianToolOutputBytes": 2158,
+        "vanillaMedianUncachedInputTokens": 76214,
+        "withinHalfX": false,
+        "withinStepBudget": false
+      },
+      {
+        "costWeightedTokenRatio": 2.5429989775601354,
+        "failedCommandMedian": {
+          "threenative": 8,
+          "vanilla": 1
+        },
+        "iterationMedian": {
+          "threenative": 9,
+          "vanilla": 2
+        },
+        "promptId": "physics-knockdown",
+        "rawTokenRatio": 2.0075041198243357,
+        "threenativeMedianCachedInputTokens": 2472256,
+        "threenativeMedianCostWeightedTokens": 567078.6,
+        "threenativeMedianFailedCommandCount": 8,
+        "threenativeMedianInputTokens": 2772138,
+        "threenativeMedianIterations": 9,
+        "threenativeMedianOutputTokens": 18352.5,
+        "threenativeMedianToolStepCount": 53,
+        "threenativeMedianTokens": 2792109,
+        "threenativeMedianToolOutputBytes": 166541.5,
+        "threenativeMedianUncachedInputTokens": 299882,
+        "toolOutputMedian": {
+          "threenative": 166541.5,
+          "vanilla": 7948.5
+        },
+        "toolStepMedian": {
+          "threenative": 53,
+          "vanilla": 18.5
+        },
+        "vanillaMedianCachedInputTokens": 1297600,
+        "vanillaMedianCostWeightedTokens": 222996,
+        "vanillaMedianFailedCommandCount": 1,
+        "vanillaMedianInputTokens": 1379086.5,
+        "vanillaMedianIterations": 2,
+        "vanillaMedianOutputTokens": 10267.5,
+        "vanillaMedianToolStepCount": 18.5,
+        "vanillaMedianTokens": 1390836,
+        "vanillaMedianToolOutputBytes": 7948.5,
+        "vanillaMedianUncachedInputTokens": 81486.5,
+        "withinHalfX": false,
+        "withinStepBudget": false
+      }
+    ],
+    "runCount": 8,
+    "schema": "threenative.agent-benchmark-report",
+    "verdict": {
+      "status": "fail",
+      "summary": "ThreeNative raw median tokens exceed 0.5x vanilla or present step-count medians exceed budget for at least one comparable prompt.",
+      "threshold": "threenative-median-tokens <= 0.5x vanilla-median-tokens"
+    },
+    "version": 2
+  }
+}

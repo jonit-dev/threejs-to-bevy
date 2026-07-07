@@ -1,0 +1,9 @@
+Implemented a self-contained playable checkpoint race in:
+
+- `index.html`
+- `styles.css`
+- `game.js`
+
+It is playable: WASD/arrow keys move a visible vehicle through ordered checkpoints, the HUD shows timer/progress/best time, finishing displays a finish overlay, and `R` or the Retry button restarts.
+
+Verified by serving with `python3 -m http.server 4173`, loading in Playwright, confirming the canvas rendered, completing all 7 checkpoints via keyboard events, and confirming `R` reset progress back to `1 / 7`.

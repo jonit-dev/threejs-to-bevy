@@ -1,0 +1,22 @@
+You are running a fresh Agent Authoring Benchmark session.
+
+Condition: vanilla
+Prompt ID: physics-knockdown
+Candidate directory: current working directory
+
+Rules:
+- Build a small playable browser game in this directory using plain Three.js or browser canvas JavaScript. Do not use ThreeNative APIs, tn commands, Bevy, or structured-source files.
+- Keep implementation self-contained. Provide an index.html and any local JS/CSS files needed. A package.json is optional if index.html can be served statically.
+- Stop when the game is playable by the benchmark definition: keyboard input moves a visible actor, the actor can move toward visible objectives/rewards/progression, win/fail/retry or score/progression feedback is reachable, and the game renders to a browser canvas.
+- Do not edit files outside this candidate directory.
+
+Game prompt:
+Build a small browser game where the player launches or pushes an object into a
+set of standing targets and scores by knocking them down or moving them out of
+place. Controls must use WASD, arrow keys, or space/enter. Include a score,
+retry path, and visible target set.
+
+Visual bar: launcher or player, projectile or push object, targets, floor, and
+score UI must be readable without inspecting code.
+
+When finished, write a short final response stating whether it is playable and how you verified it.

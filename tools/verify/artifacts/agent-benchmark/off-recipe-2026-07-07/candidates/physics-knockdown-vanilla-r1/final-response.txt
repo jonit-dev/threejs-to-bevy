@@ -1,0 +1,14 @@
+Playable browser game implemented in this directory:
+
+- `index.html`
+- `styles.css`
+- `game.js`
+- verification screenshot: `knockdown-verified.png`
+
+Verified with:
+- `node --check game.js`
+- local static server at `http://127.0.0.1:4273/index.html`
+- Playwright keyboard test: `Space` launched the ball, score reached `100`, targets reached `1 / 10`
+- Playwright keyboard test: `Enter` reset the HUD to `Score 0`, `Throws 0 / 5`, `Targets 0 / 10`
+
+The temporary verification server has been stopped.

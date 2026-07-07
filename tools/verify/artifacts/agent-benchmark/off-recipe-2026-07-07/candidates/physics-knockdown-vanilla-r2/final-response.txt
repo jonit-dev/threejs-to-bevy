@@ -1,0 +1,9 @@
+Playable browser game is complete in this directory:
+
+- `index.html`
+- `styles.css`
+- `game.js`
+
+It uses plain browser canvas JavaScript, no ThreeNative/tn/Bevy APIs. Controls: A/D or arrow keys move/aim, Space charges and launches, Enter/R retries.
+
+Verified by serving with `python3 -m http.server 4173` and using Playwright to confirm the canvas rendered, keyboard input moved/launched, a target was knocked down, score updated to `100`, shots decremented, and Enter reset the round.

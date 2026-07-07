@@ -1,0 +1,23 @@
+{
+  "schema": "threenative.agent-benchmark-session",
+  "version": 2,
+  "runId": "physics-knockdown-threenative-r2",
+  "promptId": "physics-knockdown",
+  "condition": "threenative",
+  "tokenCount": 2666419,
+  "inputTokens": 2647693,
+  "cachedInputTokens": 2318592,
+  "uncachedInputTokens": 329101,
+  "outputTokens": 17367,
+  "costWeightedTokens": 579686.2,
+  "toolOutputBytes": 162049,
+  "failedCommandCount": 3,
+  "toolStepCount": 46,
+  "iterationCount": 4,
+  "stopReason": "claimed-playable",
+  "humanRubric": {
+    "playability": 3,
+    "visual": 2,
+    "notes": "Derived from codex-events.jsonl. Playable. Built the ThreeNative structured-source game in the candidate directory using durable files under `content/**` and `src/scripts/player.ts`. It includes a movable launcher, launchable puck, visible target rack, floor, score/status UI, Space/Enter launch, WASD/arrow movement, and `R` retry reset. Verified with:"
+  }
+}

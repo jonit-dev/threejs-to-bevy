@@ -1,0 +1,23 @@
+{
+  "schema": "threenative.agent-benchmark-session",
+  "version": 2,
+  "runId": "checkpoint-race-threenative-r2",
+  "promptId": "checkpoint-race",
+  "condition": "threenative",
+  "tokenCount": 1761572,
+  "inputTokens": 1743334,
+  "cachedInputTokens": 1523584,
+  "uncachedInputTokens": 219750,
+  "outputTokens": 15604,
+  "costWeightedTokens": 387712.4,
+  "toolOutputBytes": 114434,
+  "failedCommandCount": 3,
+  "toolStepCount": 42,
+  "iterationCount": 4,
+  "stopReason": "claimed-playable",
+  "humanRubric": {
+    "playability": 3,
+    "visual": 2,
+    "notes": "Derived from codex-events.jsonl. Agent claimed playable after authoring structured-source checkpoint race; validate, build, smoke movement, and checkpoint finish playtests passed."
+  }
+}
