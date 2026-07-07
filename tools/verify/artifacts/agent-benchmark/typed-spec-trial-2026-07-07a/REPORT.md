@@ -12,6 +12,10 @@ Partial PRD-017 focused benchmark evidence for the `collector` prompt. This is o
 - Equal proof: passed `collector` required assertions.
 - Benchmark score: passed with 1 diagnostic(s).
 - Aggregate verdict: `insufficient-data`.
+- Interrupted follow-up: `collector-typed-spec-r2` reached `TN_ITERATE_OK`, but
+  was operator-stopped during an extra browser check before Codex emitted a
+  completed usage record. It is documented as partial evidence and excluded
+  from aggregate medians.
 
 ## Metrics
 
@@ -38,10 +42,18 @@ Partial PRD-017 focused benchmark evidence for the `collector` prompt. This is o
 - Aggregate report: `benchmark-report.json`
 - Final proof report: `candidates/collector-typed-spec-r1/artifacts/iterate/latest/report.json`
 - Final win screenshot: `candidates/collector-typed-spec-r1/artifacts/iterate/latest/playtest/after.png`
+- Interrupted r2 summary:
+  `collector-typed-spec-r2-interrupted/interruption-summary.json`
+- Interrupted r2 iterate proof:
+  `collector-typed-spec-r2-interrupted/iterate-report.json`
 
 ## Findings
 
 The run reached `TN_ITERATE_OK` for `playtests/collect-all.playtest.json`, with movement, score `5 / 5`, win-state HUD, and zero playtest diagnostics. The aggregate remains insufficient because the PRD-017 threshold requires three typed-spec repeats plus comparable direct ThreeNative runs for the focused prompt set.
+
+The interrupted r2 attempt confirms one additional typed-spec candidate could
+compile and pass the generated `tn iterate` loop, but it is not counted as a
+benchmark repeat because the run lacks a final token usage record.
 
 Observed typed-spec friction in this run:
 

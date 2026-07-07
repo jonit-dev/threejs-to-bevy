@@ -1,0 +1,46 @@
+{
+  "schema": "threenative.agent-benchmark-interrupted-run",
+  "version": 1,
+  "runId": "collector-typed-spec-r2",
+  "condition": "typed-spec",
+  "promptId": "collector",
+  "status": "operator-stopped",
+  "reason": "The candidate reached TN_ITERATE_OK, then hung during an extra focused browser check before the Codex turn completed and emitted usage metrics.",
+  "usableForAggregate": false,
+  "aggregateExclusionReason": "No completed turn usage record; including a synthetic tokenCount would distort benchmark median metrics.",
+  "eventLineCount": 135,
+  "commandCount": 38,
+  "failedCommandCount": 5,
+  "agentMessageCount": 16,
+  "hasCompletedUsageRecord": false,
+  "lastAgentMessage": "The screenshot now shows the arena, visible player, five pickups, and HUD. I'm doing one focused browser check for the benchmark-specific loop now: drive the player through the pickups, confirm the HUD reaches `5 / 5`, and press retry.",
+  "iterateCode": "TN_ITERATE_OK",
+  "iterateOk": true,
+  "iterateReport": "iterate-report.json",
+  "proofArtifacts": [
+    "proof-before.png",
+    "proof-after.png"
+  ],
+  "failedCommands": [
+    {
+      "command": "/usr/bin/zsh -lc 'pnpm run authoring:compile'",
+      "exitCode": 1
+    },
+    {
+      "command": "/usr/bin/zsh -lc 'pnpm tn -- iterate --project . --json'",
+      "exitCode": 1
+    },
+    {
+      "command": "/usr/bin/zsh -lc 'pnpm tn -- authoring compile-typed-spec --project . --json && pnpm tn -- iterate --project . --json'",
+      "exitCode": 1
+    },
+    {
+      "command": "/usr/bin/zsh -lc 'pnpm tn -- authoring compile-typed-spec --project . --json && pnpm tn -- iterate --project . --json'",
+      "exitCode": 1
+    },
+    {
+      "command": "/usr/bin/zsh -lc 'pnpm tn -- authoring compile-typed-spec --project . --json && pnpm tn -- iterate --project . --json'",
+      "exitCode": 1
+    }
+  ]
+}

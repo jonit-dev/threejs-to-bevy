@@ -334,6 +334,15 @@ fresh direct ThreeNative run in the same trial, while the default decision
 requires three proof-passing typed-spec repeats and comparable direct
 ThreeNative evidence across the focused prompt set.
 
+Started a second fresh `typed-spec` repeat,
+`collector-typed-spec-r2`, in the same trial directory. It reached typed-spec
+compilation and `TN_ITERATE_OK`, with compact proof preserved at
+`tools/verify/artifacts/agent-benchmark/typed-spec-trial-2026-07-07a/collector-typed-spec-r2-interrupted/`.
+The run was operator-stopped while performing an extra focused browser check
+and the event stream has no completed token usage record, so it is excluded
+from aggregate medians and does not count toward the three-repeat decision
+threshold.
+
 Friction found during the pilot:
 
 - The generated typed-spec package script still calls bare `tn`; isolated

@@ -13,3 +13,10 @@ Required full decision matrix remains: 3 proof-passing typed-spec repeats and co
 Runs:
 START collector-typed-spec-r1 2026-07-07T13:20:57-07:00
 - Candidate moved from repo-root create output into `tools/verify/artifacts/agent-benchmark/typed-spec-trial-2026-07-07a/candidates/collector-typed-spec-r1`.
+START collector-typed-spec-r2 2026-07-07T13:39:03-07:00
+- Candidate moved from repo-root create output into `tools/verify/artifacts/agent-benchmark/typed-spec-trial-2026-07-07a/candidates/collector-typed-spec-r2`.
+INTERRUPTED collector-typed-spec-r2 2026-07-07T13:49:00-07:00
+- Reached `TN_ITERATE_OK` after typed-spec compilation.
+- Operator stopped the run while it was in an extra focused browser check; the
+  event stream has no completed usage record, so this run is excluded from the
+  aggregate token medians.
