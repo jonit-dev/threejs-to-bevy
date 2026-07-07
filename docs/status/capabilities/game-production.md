@@ -7,6 +7,10 @@ Current support:
 
 - Planning, cookbook, recipe, iterate, playtest, QA, score, and release
   workflows exist for structured-source games.
+- `tn create --archetype <top-down|third-person|first-person|side-scroller|racing>`
+  emits an L1 archetype descriptor, controller stub, look profile, package
+  proof script, and movement probe; `tn game plan` selects and reports the same
+  archetypes from goal vocabulary in both compact output and `plan.json`.
 - `tn game plan --apply --json` explicitly applies scaffold-first collector
   and lane-runner baselines through bounded recipe operations, writes committed
   playtest scenarios, and records `artifacts/game-production/scaffold-first.json`.
@@ -28,6 +32,9 @@ Current support:
 
 Verification:
 
+- `node ../../scripts/run-package-tests.mjs dist/commands/create.test.js`
+  from `packages/cli` (324 CLI tests passed after a full workspace build,
+  including archetype create/game-plan coverage).
 - `pnpm verify:generated-games`
 - `pnpm verify:example-build-sweep`
 - `pnpm verify:smoke`

@@ -13,6 +13,7 @@ import {
   type GameProductionMode,
   type IGameWorkflowReport,
 } from "@threenative/authoring";
+import { selectGameArchetype, type GameArchetypeId } from "../archetypes/registry.js";
 import { diagnosticResult, type ICommandResult } from "../diagnostics.js";
 import { matchGameKitCandidates } from "../game/kits.js";
 import { buildGameTaskGraph } from "../game/taskGraph.js";
@@ -188,6 +189,7 @@ async function gamePlanCommand(argv: readonly string[]): Promise<ICommandResult>
   const inventory = await createGameAgentInventory({ projectPath });
   const defaults = inferPlanDefaults(inventory);
   const gameCategory = inferGameCategory(goal);
+  const archetype = selectGameArchetype(goal);
   const kitCandidates = matchGameKitCandidates(goal);
   const gameplayBlocks = buildGameplayBlocks(goal);
   const plan: IGamePlan = {
@@ -198,10 +200,18 @@ async function gamePlanCommand(argv: readonly string[]): Promise<ICommandResult>
       "The scene has authored materials, lighting, camera framing, environment context, and set dressing instead of a placeholder floor and loose primitives.",
       "Proof includes authoring validation, build, playtest motion, screenshot, game score, QA, and release checks.",
     ],
+    archetype: archetype.id,
+    archetypeDetails: {
+      controls: archetype.controls,
+      lookProfile: archetype.lookProfile,
+      probe: archetype.probe.path,
+      script: archetype.script,
+      summary: archetype.summary,
+    },
     assetPlan: buildAssetPlan(gameCategory),
     code: "TN_GAME_PLAN",
     design: {
-      controls: ["keyboard movement or equivalent primary input", "retry/pause input path", "touch-control fallback when mobile is in scope"],
+      controls: [...archetype.controls, "retry/pause input path", "touch-control fallback when mobile is in scope"],
       failRetry: "Define a loss, timeout, hazard, or reset condition and a retained UI retry state.",
       feedback: ["movement response", "objective progress cue", "success/fail cue", "camera or VFX emphasis for important actions"],
       loop: "Spawn, read the objective, act with real input, receive feedback, reach a win/fail state, and retry quickly.",
@@ -259,6 +269,7 @@ async function gamePlanCommand(argv: readonly string[]): Promise<ICommandResult>
 }
 
 interface IGameScaffoldDefinition {
+  archetype: GameArchetypeId;
   exportName: string;
   modulePath: string;
   proofCommand: string;
@@ -338,6 +349,7 @@ async function applyGamePlanScaffold(options: { json: boolean; plan: IGamePlan; 
   const enrichmentFiles = await enrichScaffoldSource(options.projectPath, scaffold, sceneId, playerId, stringValue(recipeArgs.inputDocId));
   const scenarioPath = await writeScaffoldScenario(options.projectPath, scaffold, playerId);
   const scaffoldEvidencePath = await writeScaffoldEvidence(options.projectPath, {
+    archetype: scaffold.archetype,
     filesWritten: [...new Set([...result.filesWritten, scriptPath, ...enrichmentFiles, scenarioPath])].sort(),
     planArtifactPath: options.planArtifactPath,
     recipeId: scaffold.recipeId,
@@ -360,6 +372,7 @@ async function applyGamePlanScaffold(options: { json: boolean; plan: IGamePlan; 
     planArtifactPath: options.planArtifactPath,
     plannedWrites: planned.operations.map((operation) => operation.name),
     projectPath: options.projectPath,
+    archetype: scaffold.archetype,
     proofCommand: scaffold.proofCommand,
     recipeId: scaffold.recipeId,
     scenarioPaths: [scenarioPath],
@@ -375,6 +388,7 @@ function selectGameScaffold(plan: IGamePlan): IGameScaffoldDefinition | undefine
   const candidate = plan.kitCandidates.find((kit) => kit.score > 0 && (kit.recipeId === "top-down-collector" || kit.recipeId === "lane-runner"));
   if (candidate?.recipeId === "top-down-collector") {
     return {
+      archetype: "top-down",
       exportName: "topDownCollectorSystem",
       modulePath: "src/scripts/player.ts",
       proofCommand: "tn playtest --project . --scenario playtests/top-down-collector.playtest.json --stable-artifacts --json",
@@ -384,6 +398,7 @@ function selectGameScaffold(plan: IGamePlan): IGameScaffoldDefinition | undefine
   }
   if (candidate?.recipeId === "lane-runner") {
     return {
+      archetype: "third-person",
       exportName: "laneRunnerSystem",
       modulePath: "src/scripts/player.ts",
       proofCommand: "tn playtest --project . --scenario playtests/lane-runner.playtest.json --stable-artifacts --json",
@@ -815,7 +830,7 @@ function stringValue(value: unknown): string | undefined {
   return typeof value === "string" && value.trim() !== "" ? value : undefined;
 }
 
-async function writeScaffoldEvidence(projectPath: string, evidence: { filesWritten: string[]; planArtifactPath: string; recipeId: string; scenarioPath: string }): Promise<string> {
+async function writeScaffoldEvidence(projectPath: string, evidence: { archetype: GameArchetypeId; filesWritten: string[]; planArtifactPath: string; recipeId: string; scenarioPath: string }): Promise<string> {
   const relativePath = "artifacts/game-production/scaffold-first.json";
   const absolutePath = resolve(projectPath, relativePath);
   await mkdir(resolve(absolutePath, ".."), { recursive: true });
@@ -823,6 +838,7 @@ async function writeScaffoldEvidence(projectPath: string, evidence: { filesWritt
     absolutePath,
     `${JSON.stringify(
       {
+        archetype: evidence.archetype,
         filesWritten: evidence.filesWritten,
         iterateCommand: `tn iterate --project . --scenario ${evidence.scenarioPath} --json`,
         planArtifactPath: evidence.planArtifactPath,
@@ -842,6 +858,7 @@ async function writeScaffoldEvidence(projectPath: string, evidence: { filesWritt
 
 function compactGamePlanForStdout(plan: IGamePlan, planArtifactPath: string): Record<string, unknown> {
   return {
+    archetype: plan.archetype,
     code: plan.code,
     diagnostics: plan.diagnostics,
     fileMap: {
@@ -1325,7 +1342,7 @@ function renderReport(report: IGameWorkflowReport & { reportPath?: string }): st
 }
 
 function renderPlan(plan: IGamePlan): string {
-  return `${plan.message}\n\nDesign:\n  ${plan.design.objective}\n  ${plan.design.loop}\n\nAssets:\n${plan.assetPlan.map((asset) => `  ${asset.surface}: ${asset.sourcePreference}`).join("\n")}\n\nSource:\n${plan.sourcePlan.map((source) => `  ${source.document} (${source.path}): ${source.supportedShape[0]}`).join("\n")}\n\nScripts:\n${plan.scriptPlan.map((script) => `  ${script.module}#${script.exportName}: ${script.responsibility}`).join("\n")}\n\nPolish:\n${plan.polishPlan.map((item) => `  ${item.category}: ${item.treatment}`).join("\n")}\n\nPhases:\n${plan.phases.map((phase) => `  ${phase.order}. ${phase.id}: ${phase.summary}`).join("\n")}\n\nProof:\n${plan.proofCommands.map((command) => `  ${command}`).join("\n")}\n`;
+  return `${plan.message}\n\nArchetype:\n  ${plan.archetype}: ${plan.archetypeDetails.summary}\n\nDesign:\n  ${plan.design.objective}\n  ${plan.design.loop}\n\nAssets:\n${plan.assetPlan.map((asset) => `  ${asset.surface}: ${asset.sourcePreference}`).join("\n")}\n\nSource:\n${plan.sourcePlan.map((source) => `  ${source.document} (${source.path}): ${source.supportedShape[0]}`).join("\n")}\n\nScripts:\n${plan.scriptPlan.map((script) => `  ${script.module}#${script.exportName}: ${script.responsibility}`).join("\n")}\n\nPolish:\n${plan.polishPlan.map((item) => `  ${item.category}: ${item.treatment}`).join("\n")}\n\nPhases:\n${plan.phases.map((phase) => `  ${phase.order}. ${phase.id}: ${phase.summary}`).join("\n")}\n\nProof:\n${plan.proofCommands.map((command) => `  ${command}`).join("\n")}\n`;
 }
 
 function phaseSummary(id: string): string {

@@ -94,6 +94,9 @@ interface ScriptTransformFacade {
 
 ## Structured Source Shapes
 
+- Archetypes: `content/archetypes/*.archetype.json` names the selected L1
+  perspective/control/look/probe layer. Supported IDs are `top-down`,
+  `third-person`, `first-person`, `side-scroller`, and `racing`.
 - Inspect one scene record with
   `tn scene inspect arena --node <id> --project . --json` before reading a full
   `content/scenes/*.scene.json` file. It matches entities, compact instances,
@@ -116,6 +119,7 @@ interface ScriptTransformFacade {
 
 ```bash
 tn iterate --project . --json
+pnpm run playtest:archetype
 tn scene inspect arena --node scaffold.player --project . --json
 tn playtest report --latest --scenario <name> --json
 tn cookbook show player-move-wasd --json

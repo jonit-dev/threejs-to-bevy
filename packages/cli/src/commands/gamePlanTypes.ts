@@ -30,6 +30,18 @@ export interface IGameplayBlockDescriptor {
 
 export interface IGamePlan {
   acceptanceCriteria: string[];
+  archetype: string;
+  archetypeDetails: {
+    controls: string[];
+    lookProfile: Record<string, unknown>;
+    probe: string;
+    script: {
+      exportName: string;
+      module: string;
+      responsibility: string;
+    };
+    summary: string;
+  };
   assetPlan: Array<{
     fallback: string;
     requiredEvidence: string[];

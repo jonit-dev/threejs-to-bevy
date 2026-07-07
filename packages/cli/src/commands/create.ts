@@ -3,6 +3,7 @@ import { isAbsolute, relative, resolve, sep } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
 import { diagnosticResult, type ICommandResult } from "../diagnostics.js";
+import { formatGameArchetypeUsage, getGameArchetype, type IGameArchetypeDescriptor } from "../archetypes/registry.js";
 import {
   formatTemplateUsage,
   resolveTemplate,
@@ -30,24 +31,37 @@ export async function createProject(argv: readonly string[], options: ICreateOpt
   const json = normalizedArgv.includes("--json");
   const templateFlagIndex = normalizedArgv.indexOf("--template");
   const requestedTemplate = templateFlagIndex === -1 ? undefined : normalizedArgv[templateFlagIndex + 1];
+  const archetypeFlagIndex = normalizedArgv.indexOf("--archetype");
+  const requestedArchetype = archetypeFlagIndex === -1 ? undefined : normalizedArgv[archetypeFlagIndex + 1];
   const renderProfileFlagIndex = normalizedArgv.indexOf("--render-profile");
   const renderProfile = renderProfileFlagIndex === -1 ? "balanced" : normalizedArgv[renderProfileFlagIndex + 1];
   const destinationArg = normalizedArgv.find((arg, index) => {
     const previous = normalizedArgv[index - 1];
-    return !arg.startsWith("-") && previous !== "--template" && previous !== "--render-profile";
+    return !arg.startsWith("-") && previous !== "--archetype" && previous !== "--template" && previous !== "--render-profile";
   });
 
   if (destinationArg === undefined) {
     return diagnosticResult(
       {
         code: "TN_CREATE_DESTINATION_REQUIRED",
-        message: `Usage: tn ${commandName} <name> [${formatTemplateUsage()}] [--render-profile parity|balanced|cinematic|stylized] [--json]`,
+        message: `Usage: tn ${commandName} <name> [${formatTemplateUsage()}] [--archetype ${formatGameArchetypeUsage()}] [--render-profile parity|balanced|cinematic|stylized] [--json]`,
       },
       { exitCode: 1, json, stderr: true },
     );
   }
 
   const resolvedTemplate = resolveTemplate(requestedTemplate);
+  const archetype = requestedArchetype === undefined ? undefined : getGameArchetype(requestedArchetype);
+  if (requestedArchetype !== undefined && archetype === undefined) {
+    return diagnosticResult(
+      {
+        archetype: requestedArchetype,
+        code: "TN_CREATE_ARCHETYPE_UNSUPPORTED",
+        message: `Archetype '${requestedArchetype}' is not supported. Canonical options: ${formatGameArchetypeUsage()}.`,
+      },
+      { exitCode: 1, json, stderr: true },
+    );
+  }
   if (!resolvedTemplate) {
     return diagnosticResult(
       {
@@ -126,6 +140,9 @@ export async function createProject(argv: readonly string[], options: ICreateOpt
   await copySharedPlanningInstructions(sharedPlanPath, projectPath);
   await rewriteProjectTemplateMetadata(projectPath, definition.canonical);
   await rewriteRuntimeRenderProfile(projectPath, renderProfile);
+  if (archetype !== undefined) {
+    await applyArchetypeScaffold(projectPath, archetype);
+  }
 
   if (sourceCheckout) {
     await rewriteLocalWorkspaceDependencies(projectPath);
@@ -150,6 +167,10 @@ export async function createProject(argv: readonly string[], options: ICreateOpt
     ],
     renderProfile,
     template: definition.canonical,
+    ...(archetype === undefined ? {} : {
+      archetype: archetype.id,
+      archetypeProbe: archetype.probe.path,
+    }),
   };
 
   if (json) {
@@ -183,6 +204,168 @@ async function rewriteRuntimeRenderProfile(projectPath: string, renderProfile: "
     await writeFile(runtimePath, `${JSON.stringify(runtime, null, 2)}\n`, "utf8");
   } catch {
     // Templates without runtime source keep their existing shape.
+  }
+}
+
+async function applyArchetypeScaffold(projectPath: string, archetype: IGameArchetypeDescriptor): Promise<void> {
+  await writeArchetypeContent(projectPath, archetype);
+  await writeArchetypeProbe(projectPath, archetype);
+  await writeArchetypeScript(projectPath, archetype);
+  await rewriteArchetypeConfig(projectPath, archetype);
+  await rewriteArchetypePackageScripts(projectPath, archetype);
+}
+
+async function writeArchetypeContent(projectPath: string, archetype: IGameArchetypeDescriptor): Promise<void> {
+  const relativePath = `content/archetypes/${archetype.id}.archetype.json`;
+  const absolutePath = resolve(projectPath, relativePath);
+  await mkdir(resolve(absolutePath, ".."), { recursive: true });
+  await writeFile(
+    absolutePath,
+    `${JSON.stringify(
+      {
+        controls: archetype.controls,
+        id: archetype.id,
+        kind: "game-archetype",
+        label: archetype.label,
+        lookProfile: archetype.lookProfile,
+        probe: archetype.probe,
+        schema: "threenative.archetype",
+        script: archetype.script,
+        summary: archetype.summary,
+        version: "0.1.0",
+      },
+      null,
+      2,
+    )}\n`,
+    "utf8",
+  );
+}
+
+async function writeArchetypeProbe(projectPath: string, archetype: IGameArchetypeDescriptor): Promise<void> {
+  const absolutePath = resolve(projectPath, archetype.probe.path);
+  await mkdir(resolve(absolutePath, ".."), { recursive: true });
+  await writeFile(
+    absolutePath,
+    `${JSON.stringify(
+      {
+        artifacts: {
+          console: true,
+          network: true,
+          runtimeTrace: true,
+          screenshots: "before-after",
+        },
+        assert: {
+          diagnostics: {
+            noConsoleErrors: true,
+            noNetworkErrors: true,
+            noRuntimeDiagnostics: true,
+            runtimeReady: true,
+          },
+          movement: {
+            axis: archetype.probe.axis,
+            entity: "player",
+            minDistance: 0.05,
+            minVelocity: 0.001,
+          },
+        },
+        name: archetype.probe.name,
+        schemaVersion: 1,
+        steps: [
+          {
+            holdFrames: 30,
+            label: `prove-${archetype.id}-input`,
+            press: archetype.probe.press,
+            release: true,
+          },
+        ],
+        subject: "player",
+        target: "web",
+        viewport: {
+          height: 720,
+          width: 1280,
+        },
+        warmupFrames: 5,
+      },
+      null,
+      2,
+    )}\n`,
+    "utf8",
+  );
+}
+
+async function writeArchetypeScript(projectPath: string, archetype: IGameArchetypeDescriptor): Promise<void> {
+  const absolutePath = resolve(projectPath, archetype.script.module);
+  await mkdir(resolve(absolutePath, ".."), { recursive: true });
+  const source = `import { Vec3, type ScriptContext } from "@threenative/script-stdlib";
+
+export function ${archetype.script.exportName}(context: ScriptContext): void {
+  const player = context.entity("player") ?? context.query({ limit: 1 })[0];
+  if (player === undefined) {
+    return;
+  }
+  const transform = player.transform();
+  const position = transform.position;
+  const direction = context.input.getAxis("MoveX");
+  const delta = context.time.fixedDelta;
+  transform.position = Vec3.add(position, [direction * delta * 2.4, 0, 0]);
+}
+`;
+  await writeFile(absolutePath, source, "utf8");
+}
+
+async function rewriteArchetypeConfig(projectPath: string, archetype: IGameArchetypeDescriptor): Promise<void> {
+  const configPath = resolve(projectPath, "threenative.config.json");
+  try {
+    const config = JSON.parse(await readFile(configPath, "utf8")) as Record<string, unknown>;
+    const production = isRecord(config.production) ? config.production : {};
+    const agent = isRecord(production.agent) ? production.agent : {};
+    const sourceShape = isRecord(agent.sourceShape) ? agent.sourceShape : {};
+    const proofCommands = arrayOfStrings(production.proofCommands);
+    const agentProofCommands = arrayOfStrings(agent.proofCommands);
+    const archetypeProof = `tn playtest --project . --scenario ${archetype.probe.path} --stable-artifacts --json`;
+
+    config.production = {
+      ...production,
+      archetype: archetype.id,
+      archetypeSource: `content/archetypes/${archetype.id}.archetype.json`,
+      controls: archetype.controls,
+      lookProfile: archetype.lookProfile,
+      proofCommands: uniqueStrings([...proofCommands, archetypeProof]),
+      agent: {
+        ...agent,
+        archetype: {
+          controls: archetype.controls,
+          id: archetype.id,
+          lookProfile: archetype.lookProfile,
+          probe: archetype.probe.path,
+          script: archetype.script,
+        },
+        proofCommands: uniqueStrings([...agentProofCommands, archetypeProof]),
+        sourceShape: {
+          ...sourceShape,
+          archetypes: [`content/archetypes/${archetype.id}.archetype.json`],
+          scripts: uniqueStrings([...arrayOfStrings(sourceShape.scripts), archetype.script.module]),
+        },
+      },
+    };
+    await writeFile(configPath, `${JSON.stringify(config, null, 2)}\n`, "utf8");
+  } catch {
+    // Templates without project config cannot receive archetype metadata.
+  }
+}
+
+async function rewriteArchetypePackageScripts(projectPath: string, archetype: IGameArchetypeDescriptor): Promise<void> {
+  const packageJsonPath = resolve(projectPath, "package.json");
+  try {
+    const packageJson = JSON.parse(await readFile(packageJsonPath, "utf8")) as Record<string, unknown>;
+    const scripts = isRecord(packageJson.scripts) ? packageJson.scripts : {};
+    packageJson.scripts = {
+      ...scripts,
+      "playtest:archetype": `tn playtest --scenario ${archetype.probe.path} --stable-artifacts --json`,
+    };
+    await writeFile(packageJsonPath, `${JSON.stringify(packageJson, null, 2)}\n`, "utf8");
+  } catch {
+    // Templates without package scripts cannot receive the convenience command.
   }
 }
 
@@ -312,6 +495,18 @@ function rewritePublishedDependency(
     ...dependencies,
     [name]: `^${publishedPackageVersion}`,
   };
+}
+
+function arrayOfStrings(value: unknown): string[] {
+  return Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : [];
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function uniqueStrings(values: readonly string[]): string[] {
+  return [...new Set(values)];
 }
 
 async function writeLocalCliWrapperPackage(projectPath: string): Promise<void> {

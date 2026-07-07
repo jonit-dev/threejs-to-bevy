@@ -29,7 +29,7 @@ in scripts, examples, and historical docs during a staged cleanup. See
 | UI | Active | Retained structured UI is the portable path; overlays are bounded and separate. | [ui](status/capabilities/ui.md) |
 | Assets | Active | Bundle-local assets, GLB/glTF, generated meshes, materials, audio, and catalog sourcing are validated. | [assets](status/capabilities/assets.md) |
 | Native parity | Active | Bevy consumes emitted IR and claims require native proof harness or desktop playtest evidence. | [native parity](status/capabilities/native-parity.md) |
-| Game production | Active | Generated games target polished vertical slices; recipe-matched scaffold-first benchmarks pass, but the 2026-07-07 off-recipe authoring round fails the <=2x token gate. | [game production](status/capabilities/game-production.md) |
+| Game production | Active | Generated games target polished vertical slices with selectable L1 archetype scaffolds; recipe-matched scaffold-first benchmarks pass, but the 2026-07-07 off-recipe authoring round fails the <=2x token gate. | [game production](status/capabilities/game-production.md) |
 | Editor | In progress | Editor and MCP surfaces must wrap authoring operations rather than owning a second source model. | [editor](status/capabilities/editor.md) |
 | Tooling/proof | Active | Verification tools own docs checks, agent IO budgets, smoke/release gates, proof manifests, and aggregate artifacts. | [tooling/proof](status/capabilities/tooling-proof.md) |
 

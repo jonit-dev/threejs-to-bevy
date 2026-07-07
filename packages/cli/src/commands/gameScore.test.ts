@@ -40,6 +40,8 @@ test("plans a playable loop without mutating durable source", async () => {
     const result = await gameCommand(["plan", "--project", root, "--goal", "arcade collector", "--json", "--full-json"]);
     const payload = JSON.parse(result.stdout) as {
       acceptanceCriteria: string[];
+      archetype: string;
+      archetypeDetails: { controls: string[]; probe: string; script: { exportName: string; module: string }; summary: string };
       assetPlan: Array<{ requiredEvidence: string[]; searchCommand?: string; surface: string }>;
       design: { objective: string; loop: string };
       gameplayBlocks: Array<{ helperImports: string[]; id: string; kind: string; proof: string[]; recipeIds: string[]; source: string }>;
@@ -56,6 +58,9 @@ test("plans a playable loop without mutating durable source", async () => {
 
     assert.equal(result.exitCode, 0, `${result.stdout}\n${result.stderr}`);
     assert.equal(payload.schema, "threenative.game-plan");
+    assert.equal(payload.archetype, "top-down");
+    assert.equal(payload.archetypeDetails.probe, "playtests/archetype-top-down.playtest.json");
+    assert.equal(payload.archetypeDetails.controls.includes("keyboard.KeyD"), true);
     assert.equal(payload.mutate, false);
     assert.equal(payload.design.objective.includes("arcade collector"), true);
     assert.equal(payload.design.loop.includes("real input"), true);
@@ -96,6 +101,7 @@ test("should write full game plan artifact and print compact summary by default"
     const result = await gameCommand(["plan", "--project", root, "--goal", "arcade collector", "--json"]);
     const payload = JSON.parse(result.stdout) as {
       assetPlan?: unknown;
+      archetype?: string;
       fileMap: { scripts: unknown[]; source: unknown[] };
       mutate: boolean;
       planArtifactPath: string;
@@ -107,10 +113,12 @@ test("should write full game plan artifact and print compact summary by default"
       mutate: boolean;
       schema: string;
       steps: unknown[];
+      archetype: string;
     };
 
     assert.equal(result.exitCode, 0);
     assert.equal(payload.schema, "threenative.game-plan-summary");
+    assert.equal(payload.archetype, "top-down");
     assert.equal(payload.mutate, false);
     assert.equal(payload.planArtifactPath.endsWith("artifacts/game-production/plan.json"), true);
     assert.equal(payload.assetPlan, undefined);
@@ -119,9 +127,35 @@ test("should write full game plan artifact and print compact summary by default"
     assert.equal(payload.fileMap.source.length > 0, true);
     assert.equal(payload.proofCommands.some((command) => command.includes("tn game qa")), true);
     assert.equal(fullPlan.schema, "threenative.game-plan");
+    assert.equal(fullPlan.archetype, "top-down");
     assert.equal(fullPlan.mutate, false);
     assert.equal(fullPlan.steps.length > 0, true);
     assert.ok(Buffer.byteLength(result.stdout, "utf8") < 8192);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should select archetypes from game goal vocabulary", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-game-plan-archetypes-"));
+  try {
+    const cases = [
+      ["coin collector", "top-down"],
+      ["third-person chase-camera adventure", "third-person"],
+      ["first-person dungeon crawler", "first-person"],
+      ["side-scroller platform jump game", "side-scroller"],
+      ["checkpoint racing kart game", "racing"],
+    ] as const;
+    for (const [goal, archetype] of cases) {
+      const result = await gameCommand(["plan", "--project", root, "--goal", goal, "--json"]);
+      const payload = JSON.parse(result.stdout) as { archetype?: string; schema: string };
+      const fullPlan = JSON.parse(await readFile(join(root, "artifacts/game-production/plan.json"), "utf8")) as { archetype?: string };
+
+      assert.equal(result.exitCode, 0, `${result.stdout}\n${result.stderr}`);
+      assert.equal(payload.schema, "threenative.game-plan-summary");
+      assert.equal(payload.archetype, archetype);
+      assert.equal(fullPlan.archetype, archetype);
+    }
   } finally {
     await rm(root, { force: true, recursive: true });
   }

@@ -4,8 +4,15 @@
   "entry": "content/scenes/arena.scene.json",
   "outDir": "dist/structured-source-starter.bundle",
   "production": {
+    "archetype": "top-down",
+    "archetypeSource": "content/archetypes/top-down.archetype.json",
     "playableLoop": "Move the player across the arena to reach the goal feedback.",
     "controls": ["keyboard.KeyA", "keyboard.ArrowLeft", "keyboard.KeyD", "keyboard.ArrowRight"],
+    "lookProfile": {
+      "camera": "orthographic top-down follow",
+      "movementPlane": "ground-xz",
+      "renderLook": "balanced"
+    },
     "objective": "Trigger visible and audio feedback by reaching the goal zone.",
     "progression": "The starter remains a single objective slice; expand it with score, timer, waves, or collectible count before claiming a complete generated game.",
     "failRetry": "Reset by rebuilding or reloading the preview; no persistent fail state is authored in this starter.",
@@ -33,6 +40,7 @@
     "agent": {
       "sourceShape": {
         "assets": ["content/assets/arena.assets.json"],
+        "archetypes": ["content/archetypes/top-down.archetype.json"],
         "input": ["content/input/arena.input.json"],
         "materials": ["content/materials/arena.materials.json"],
         "meshes": ["content/meshes/arena.meshes.json"],

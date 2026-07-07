@@ -74,6 +74,7 @@ test("should create starter template files", async () => {
     assert.equal(packageJson.scripts["dev:web"], "tn dev --target web");
     assert.equal(packageJson.scripts.iterate, "tn iterate --project . --json");
     assert.equal(packageJson.scripts.playtest, "tn playtest --scenario playtests/smoke-movement.playtest.json --stable-artifacts --json");
+    assert.equal(packageJson.scripts["playtest:archetype"], "tn playtest --scenario playtests/smoke-movement.playtest.json --stable-artifacts --json");
     assert.match(packageJson.scripts["game:plan"] ?? "", /tn game plan --goal/);
     assert.equal(packageJson.scripts["game:improve"], "tn game improve --apply-plan artifacts/game-production/plan.json --project . --json");
     assert.equal(packageJson.scripts["game:qa"], "tn game qa --project . --run-proof --json");
@@ -106,6 +107,63 @@ test("should scaffold parity render look when requested", async () => {
     assert.equal(payload.code, "TN_CREATE_OK");
     assert.equal(payload.renderProfile, "parity");
     assert.deepEqual(runtime.renderer?.renderLook, { version: 1, profile: "parity" });
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should create selectable game archetype scaffolds with probe metadata", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-create-archetype-"));
+  try {
+    const cases = [
+      ["top-down", "updateTopDownArchetype"],
+      ["third-person", "updateThirdPersonArchetype"],
+      ["first-person", "updateFirstPersonArchetype"],
+      ["side-scroller", "updateSideScrollerArchetype"],
+      ["racing", "updateRacingArchetype"],
+    ] as const;
+    for (const [archetype, exportName] of cases) {
+      const result = await createProject([`game-${archetype}`, "--archetype", archetype, "--json"], { cwd: root });
+      const payload = JSON.parse(result.stdout) as { archetype?: string; archetypeProbe?: string; code: string; path: string };
+      const config = JSON.parse(await readFile(join(payload.path, "threenative.config.json"), "utf8")) as {
+        production?: {
+          agent?: { archetype?: { id?: string; probe?: string; script?: { exportName?: string; module?: string } }; sourceShape?: Record<string, string[]> };
+          archetype?: string;
+          archetypeSource?: string;
+          lookProfile?: { camera?: string };
+          proofCommands?: string[];
+        };
+      };
+      const packageJson = JSON.parse(await readFile(join(payload.path, "package.json"), "utf8")) as { scripts: Record<string, string> };
+      const archetypeDoc = JSON.parse(await readFile(join(payload.path, "content", "archetypes", `${archetype}.archetype.json`), "utf8")) as {
+        id: string;
+        lookProfile?: { camera?: string };
+        probe?: { path?: string; press?: string };
+        script?: { exportName?: string; module?: string };
+      };
+      const probe = JSON.parse(await readFile(join(payload.path, payload.archetypeProbe ?? ""), "utf8")) as {
+        assert?: { movement?: { entity?: string } };
+        name: string;
+        steps: Array<{ press?: string }>;
+      };
+      const scriptSource = await readFile(join(payload.path, "src", "scripts", "archetype.ts"), "utf8");
+
+      assert.equal(result.exitCode, 0, `${result.stdout}\n${result.stderr}`);
+      assert.equal(payload.code, "TN_CREATE_OK");
+      assert.equal(payload.archetype, archetype);
+      assert.equal(config.production?.archetype, archetype);
+      assert.equal(config.production?.agent?.archetype?.id, archetype);
+      assert.equal(config.production?.agent?.sourceShape?.archetypes?.includes(`content/archetypes/${archetype}.archetype.json`), true);
+      assert.equal(config.production?.proofCommands?.some((command) => command.includes(payload.archetypeProbe ?? "")), true);
+      assert.equal(packageJson.scripts["playtest:archetype"], `tn playtest --scenario ${payload.archetypeProbe} --stable-artifacts --json`);
+      assert.equal(archetypeDoc.id, archetype);
+      assert.equal(archetypeDoc.script?.exportName, exportName);
+      assert.equal(archetypeDoc.probe?.path, payload.archetypeProbe);
+      assert.equal(typeof archetypeDoc.lookProfile?.camera, "string");
+      assert.equal(probe.assert?.movement?.entity, "player");
+      assert.equal(probe.steps[0]?.press, "KeyD");
+      assert.match(scriptSource, new RegExp(`export function ${exportName}`));
+    }
   } finally {
     await rm(root, { force: true, recursive: true });
   }
@@ -331,6 +389,21 @@ test("should reject unknown template with canonical options", async () => {
     assert.match(payload.message, /structured-source-starter/);
     assert.match(payload.message, /racing-kit-rally-starter/);
     assert.doesNotMatch(payload.message, /legacy aliases/i);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should reject unknown archetype with canonical options", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-create-unknown-archetype-"));
+  try {
+    const result = await createProject(["game", "--archetype", "isometric", "--json"], { cwd: root });
+    const payload = JSON.parse(result.stdout) as { code: string; message: string };
+
+    assert.equal(result.exitCode, 1);
+    assert.equal(payload.code, "TN_CREATE_ARCHETYPE_UNSUPPORTED");
+    assert.match(payload.message, /top-down/);
+    assert.match(payload.message, /racing/);
   } finally {
     await rm(root, { force: true, recursive: true });
   }
