@@ -110,9 +110,9 @@ sequenceDiagram
 
 **Implementation:**
 
-- [ ] Finish the current native playtest proof slice.
-- [ ] Record before/after screenshots or equivalent native artifacts.
-- [ ] Update Bevy parity docs with exact evidence and residuals.
+- [x] Finish the current native playtest proof slice.
+- [x] Record before/after screenshots or equivalent native artifacts.
+- [x] Update Bevy parity docs with exact evidence and residuals.
 
 **Tests Required:**
 
@@ -136,10 +136,10 @@ sequenceDiagram
 
 **Implementation:**
 
-- [ ] State the freeze: no new portable surface promoted to Bevy without a
+- [x] State the freeze: no new portable surface promoted to Bevy without a
       shipped game needing it.
-- [ ] Define what evidence qualifies as shipped-game need.
-- [ ] Link the policy from status docs.
+- [x] Define what evidence qualifies as shipped-game need.
+- [x] Link the policy from status docs.
 
 **Tests Required:**
 
@@ -164,9 +164,9 @@ sequenceDiagram
 
 **Implementation:**
 
-- [ ] Package one web-runtime example through the webview path.
-- [ ] Prove input, window creation, and save-path basics.
-- [ ] Measure startup time and package size.
+- [x] Package one web-runtime example through the webview path.
+- [x] Prove input, window creation, and save-path basics.
+- [x] Measure startup time and package size.
 
 **Tests Required:**
 
@@ -191,9 +191,9 @@ sequenceDiagram
 
 **Implementation:**
 
-- [ ] Record Bevy role and webview role.
-- [ ] Link measurements.
-- [ ] Define follow-up triggers for revisiting Bevy parity.
+- [x] Record Bevy role and webview role.
+- [x] Link measurements.
+- [x] Define follow-up triggers for revisiting Bevy parity.
 
 **Tests Required:**
 
@@ -231,6 +231,27 @@ sequenceDiagram
 - Remaining before moving this PRD to done: close the native proof P0 and do
   the manual packaged-app launch inspection called out in phases 1 and 3.
 
+2026-07-07 completion slice:
+
+- Rebuilt the Bevy runtime release binary before proof; the first native run
+  used a stale binary and failed the now-preferred `context.input.getAxis`
+  starter script path.
+- Closed the native P0 with:
+  `node packages/cli/dist/index.js playtest --project templates/structured-source-starter --target desktop --entity player --press KeyD --frames 30 --expect-moved --native-screenshots --out ../../runtime-bevy/artifacts/native-playtest-p0/structured-source-starter --json`.
+- Raw native evidence:
+  `runtime-bevy/artifacts/native-playtest-p0/structured-source-starter/summary.json`
+  reports `TN_PLAYTEST_OK`, no diagnostics, `runtime: "bevy"`,
+  `target: "desktop"`, `input: "KeyD"`, and movement distance `1.200024`.
+  The same directory contains `before.png`, `after.png`,
+  `native-frame-samples.json`, `manifest.json`, `observations.json`, and
+  `runtime-trace.json`.
+- Re-ran `pnpm verify:webview-package`; the latest report under
+  `tools/verify/artifacts/webview-package/verification-report.json` records
+  `startupMs: 111`, `packageBytes: 3081261`, `archiveBytes: 1067333`,
+  five input-facing services, two settings entries, one save slot, and the
+  local-static-server launcher startup check. The package inspection still
+  explicitly does not claim embedded Wry/Tauri behavior.
+
 ## 6. Verification Strategy
 
 - Native proof harness.
@@ -240,8 +261,8 @@ sequenceDiagram
 
 ## 7. Acceptance Criteria
 
-- [ ] Current native proof P0 is closed with artifacts.
-- [ ] Parity freeze policy is explicit in status/parity docs.
-- [ ] One webview-packaged example is measured for size/startup/input/save.
-- [ ] Native path decision is recorded and linked.
-- [ ] Future Bevy promotion requires shipped-game need evidence.
+- [x] Current native proof P0 is closed with artifacts.
+- [x] Parity freeze policy is explicit in status/parity docs.
+- [x] One webview-packaged example is measured for size/startup/input/save.
+- [x] Native path decision is recorded and linked.
+- [x] Future Bevy promotion requires shipped-game need evidence.

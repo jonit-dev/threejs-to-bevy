@@ -7,6 +7,12 @@ Current support:
 
 - Native proof harness readiness reports, desktop playtests, screenshots,
   frame samples, and conformance fixtures.
+- The 2026-07-07 native P0 closure proof runs the structured-source starter
+  through `tn playtest --target desktop` with native screenshots. Raw evidence:
+  `runtime-bevy/artifacts/native-playtest-p0/structured-source-starter/summary.json`
+  (`TN_PLAYTEST_OK`, `KeyD`, movement distance `1.200024`) plus
+  `before.png`, `after.png`, `native-frame-samples.json`, and `manifest.json`
+  in the same directory.
 - Closed parity rows are protected by focused gates; remaining gaps stay in
   runtime/proof-loop PRDs.
 
@@ -25,7 +31,7 @@ Verification:
 - `pnpm verify:conformance`
 - `pnpm verify:parity:smoke`
 - `pnpm verify:webview-package`
-- `tn playtest --target desktop ...`
+- `node packages/cli/dist/index.js playtest --project templates/structured-source-starter --target desktop --entity player --press KeyD --frames 30 --expect-moved --native-screenshots --out ../../runtime-bevy/artifacts/native-playtest-p0/structured-source-starter --json`
 
 Full prior evidence is preserved in
 [full-status-archive.md](full-status-archive.md).

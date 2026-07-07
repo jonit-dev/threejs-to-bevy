@@ -25,6 +25,16 @@ renderer promotion. The decision record is
 [runtime/native-path.md](runtime/native-path.md), and the desktop-web package
 measurement gate is `pnpm verify:webview-package`.
 
+Current closure evidence for the in-flight native proof P0 is the
+structured-source starter desktop playtest under
+`runtime-bevy/artifacts/native-playtest-p0/structured-source-starter/`: the
+summary reports `TN_PLAYTEST_OK`, `KeyD`, and movement distance `1.200024`,
+with native `before.png`/`after.png` screenshots and frame samples in the same
+directory. The desktop-web package measurement evidence remains
+`tools/verify/artifacts/webview-package/verification-report.json`; it proves the
+local-static-server launcher path and package metadata, not embedded Wry/Tauri
+behavior.
+
 ## Bevy Feature Checklist
 
 This checklist is a Bevy-derived backlog for the portable ThreeNative contract.
