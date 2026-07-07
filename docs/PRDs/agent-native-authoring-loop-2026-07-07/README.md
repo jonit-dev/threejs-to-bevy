@@ -11,7 +11,7 @@ weight. These PRDs intentionally avoid broad new Bevy parity work.
 
 1. [PRD-001 Off-Recipe Benchmark Round](../done/agent-native-authoring-loop-2026-07-07/PRD-001-off-recipe-benchmark-round.md) - done
 2. [PRD-002 Archetype Scaffolds](../done/agent-native-authoring-loop-2026-07-07/PRD-002-archetype-scaffolds.md) - done
-3. [PRD-003 Compositional Mechanic Blocks](PRD-003-compositional-mechanic-blocks.md)
+3. [PRD-003 Compositional Mechanic Blocks](../done/agent-native-authoring-loop-2026-07-07/PRD-003-compositional-mechanic-blocks.md) - done
 4. [PRD-004 Schema-Aware Mutation Surface](PRD-004-schema-aware-mutation-surface.md)
 5. [PRD-005 Prescriptive Diagnostics v2](PRD-005-prescriptive-diagnostics-v2.md)
 6. [PRD-006 Cookbook Few-Shot Pattern Pairs](PRD-006-cookbook-few-shot-pattern-pairs.md)

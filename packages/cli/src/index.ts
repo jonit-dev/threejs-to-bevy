@@ -3,6 +3,7 @@
 import { realpathSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
+import { addCommand } from "./commands/add.js";
 import { assetCommand } from "./commands/asset.js";
 import { authoringCommand } from "./commands/authoring.js";
 import { buildCommand } from "./commands/build.js";
@@ -36,6 +37,11 @@ interface ICommandDefinition {
 }
 
 const commands: Record<string, ICommandDefinition> = {
+  add: {
+    description: "Compose bounded gameplay mechanic blocks into structured source.",
+    implemented: true,
+    usage: "tn add <spawner|timer|trigger-sequence|score|projectile|follow-camera> [block flags] [--project <path>] [--json]",
+  },
   asset: {
     description: "Inspect GLB/glTF assets, query source catalog records, and mutate structured asset source documents.",
     implemented: true,
@@ -301,6 +307,9 @@ export async function dispatch(argv: readonly string[]): Promise<ICommandResult>
 
   if (commandName === "asset") {
     return assetCommand(normalizedArgv.slice(1));
+  }
+  if (commandName === "add") {
+    return addCommand(normalizedArgv.slice(1));
   }
 
   if (commandName === "audio") {

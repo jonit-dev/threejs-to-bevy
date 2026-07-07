@@ -97,6 +97,9 @@ interface ScriptTransformFacade {
 - Archetypes: `content/archetypes/*.archetype.json` names the selected L1
   perspective/control/look/probe layer. Supported IDs are `top-down`,
   `third-person`, `first-person`, `side-scroller`, and `racing`.
+- Mechanic blocks: `tn add spawner|timer|trigger-sequence|score|projectile|follow-camera --json`
+  writes `content/mechanics/*.mechanic.json`, mutates supported scene source,
+  and emits `playtests/block-*.playtest.json` proof hooks.
 - Inspect one scene record with
   `tn scene inspect arena --node <id> --project . --json` before reading a full
   `content/scenes/*.scene.json` file. It matches entities, compact instances,
@@ -120,6 +123,7 @@ interface ScriptTransformFacade {
 ```bash
 tn iterate --project . --json
 pnpm run playtest:archetype
+tn add spawner --pattern grid --prefab pickup.prefab --count 5 --project . --json
 tn scene inspect arena --node scaffold.player --project . --json
 tn playtest report --latest --scenario <name> --json
 tn cookbook show player-move-wasd --json

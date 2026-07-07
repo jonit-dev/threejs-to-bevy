@@ -11,6 +11,10 @@ Current support:
   emits an L1 archetype descriptor, controller stub, look profile, package
   proof script, and movement probe; `tn game plan` selects and reports the same
   archetypes from goal vocabulary in both compact output and `plan.json`.
+- `tn add <spawner|timer|trigger-sequence|score|projectile|follow-camera>`
+  composes L2 mechanic blocks into structured source, writes
+  `content/mechanics/*.mechanic.json`, emits block playtest scenarios, and
+  preserves authoring validation.
 - `tn game plan --apply --json` explicitly applies scaffold-first collector
   and lane-runner baselines through bounded recipe operations, writes committed
   playtest scenarios, and records `artifacts/game-production/scaffold-first.json`.
@@ -35,6 +39,8 @@ Verification:
 - `node ../../scripts/run-package-tests.mjs dist/commands/create.test.js`
   from `packages/cli` (324 CLI tests passed after a full workspace build,
   including archetype create/game-plan coverage).
+- `pnpm --filter @threenative/cli test` (327 CLI tests, including all six
+  mechanic block writers and authoring validation).
 - `pnpm verify:generated-games`
 - `pnpm verify:example-build-sweep`
 - `pnpm verify:smoke`
