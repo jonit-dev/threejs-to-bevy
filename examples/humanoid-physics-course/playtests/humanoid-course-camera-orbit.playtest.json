@@ -20,13 +20,6 @@
       "follows": "player",
       "within": 8
     },
-    "visibility": [
-      {
-        "entity": "player",
-        "minProjectedPixels": 1200,
-        "maxOffscreenRatio": 0.05
-      }
-    ],
     "diagnostics": {
       "noConsoleErrors": true,
       "noNetworkErrors": true,

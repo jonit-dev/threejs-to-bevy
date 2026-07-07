@@ -115,6 +115,11 @@
           "castShadow": true,
           "material": "mat.course.dark",
           "mesh": "mesh.backdrop"
+        },
+        "VisualProvenance": {
+          "catalogSearches": "tn asset source search --game-category rpg-adventure --format glb --direct-only --json",
+          "fallback": "Three.js Soldier.glb is the selected humanoid hero model; authored primitive course surfaces are retained for ramps, stairs, hazards, checkpoints, and HUD proof.",
+          "surfaces": "hero/player Soldier.glb, obstacle hazards, reward checkpoints, world floor/ramp/stairs, UI HUD, and audio feedback"
         }
       },
       "id": "sky.backdrop",

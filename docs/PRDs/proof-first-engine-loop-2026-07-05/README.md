@@ -23,6 +23,10 @@ ordered by dependency and importance.
 15. [PRD-015 Advanced Animation And Physics Depth](PRD-015-advanced-animation-physics-depth.md)
 16. [PRD-016 External Services, Media, And Non-Portable Boundaries](PRD-016-external-services-media-boundaries.md)
 17. [PRD-017 Signed Installers And Store Packaging](PRD-017-signed-installers-store-packaging.md)
+18. [PRD-018 Native Render Parity And Performance](PRD-018-native-render-parity-and-performance.md)
+19. [PRD-019 Humanoid Course Stair Traversal Proof](PRD-019-humanoid-course-stair-traversal-proof.md)
+20. [PRD-020 Humanoid Course Ramp Slope Proof](PRD-020-humanoid-course-ramp-slope-proof.md)
+21. [PRD-021 Humanoid Course Character-Pushed Ball](PRD-021-humanoid-course-character-pushed-ball.md)
 
 ## Boundary
 

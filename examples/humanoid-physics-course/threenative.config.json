@@ -138,9 +138,34 @@
           "expectation": "HUD can display objective status."
         },
         {
+          "id": "pause",
+          "sourcePath": "content/ui/hud.ui.json",
+          "expectation": "Pause state is represented in retained UI source."
+        },
+        {
+          "id": "settings",
+          "sourcePath": "content/ui/hud.ui.json",
+          "expectation": "Settings state is represented in retained UI source."
+        },
+        {
+          "id": "loading",
+          "sourcePath": "content/ui/hud.ui.json",
+          "expectation": "Loading state is represented in retained UI source."
+        },
+        {
           "id": "fail-retry",
-          "sourcePath": "threenative.config.json#/production/failRetry",
-          "expectation": "Starter records retry limitation before a full fail state is authored."
+          "sourcePath": "content/ui/hud.ui.json",
+          "expectation": "Retry state is represented in retained UI source."
+        },
+        {
+          "id": "win-milestone",
+          "sourcePath": "content/ui/hud.ui.json",
+          "expectation": "Win milestone state is represented in retained UI source."
+        },
+        {
+          "id": "touch-controls",
+          "sourcePath": "content/ui/hud.ui.json",
+          "expectation": "Touch mobile-control state is represented in retained UI source."
         }
       ],
       "assetSourcing": [

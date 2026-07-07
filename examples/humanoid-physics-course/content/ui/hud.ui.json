@@ -16,6 +16,42 @@
       "text": "CP 0/2  Hits 0  00.0",
       "style": { "color": "#76ffd8", "fontSize": 15, "fontWeight": "bold" },
       "layout": { "justify": "start", "align": "center", "left": 24, "top": 46, "width": 300 }
+    },
+    {
+      "id": "state.loading",
+      "type": "text",
+      "text": "Loading course",
+      "layout": { "justify": "center", "align": "center", "top": 1200, "width": 1280 }
+    },
+    {
+      "id": "state.pause",
+      "type": "text",
+      "text": "Paused",
+      "layout": { "justify": "center", "align": "center", "top": 1230, "width": 1280 }
+    },
+    {
+      "id": "state.settings",
+      "type": "text",
+      "text": "Settings",
+      "layout": { "justify": "center", "align": "center", "top": 1260, "width": 1280 }
+    },
+    {
+      "id": "state.fail-retry",
+      "type": "text",
+      "text": "Retry course",
+      "layout": { "justify": "center", "align": "center", "top": 1290, "width": 1280 }
+    },
+    {
+      "id": "state.win-milestone",
+      "type": "text",
+      "text": "Course clear",
+      "layout": { "justify": "center", "align": "center", "top": 1320, "width": 1280 }
+    },
+    {
+      "id": "state.touch-controls",
+      "type": "text",
+      "text": "Touch mobile-control",
+      "layout": { "justify": "center", "align": "center", "top": 1350, "width": 1280 }
     }
   ],
   "bindings": [

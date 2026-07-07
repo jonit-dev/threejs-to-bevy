@@ -55,6 +55,9 @@ Rules for this generated ThreeNative project.
 - Apply gameplay recipes only as bounded steps from a complete plan, for example
   `tn recipe apply top-down-collector --scene <scene> --player <entity> --camera <camera> --json`.
   Keep recipe output in `content/**/*.json` and `src/scripts/**/*.ts`.
+- In the ThreeNative repo, if this example changes a reusable authoring,
+  gameplay, physics, asset, proof, or CLI workflow, update the matching
+  cookbook entry or add one, then run `pnpm verify:cookbook`.
 - The first playable pass must already use recognizable custom/imported art for
   high-value surfaces. A local GLB made from plain boxes, capsules, spheres, or
   cylinders still counts as placeholder art unless it has a clearly authored,
