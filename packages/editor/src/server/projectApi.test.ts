@@ -94,6 +94,12 @@ test("should expose environment skybox and terrain rows", async () => {
       result.sceneObjects.map((object) => [object.id, object.primitive, object.color, object.position?.join(",")]),
       [
         ["arena.floor", "plane", "#34373d", "0,-0.05,0"],
+        ["arena.rail.north", "box", "#0f172a", "0,0.08,-2.45"],
+        ["arena.rail.south", "box", "#0f172a", "0,0.08,2.45"],
+        ["arena.rail.east", "box", "#0f172a", "2.45,0.08,0"],
+        ["arena.rail.west", "box", "#0f172a", "-2.45,0.08,0"],
+        ["arena.marker.start", "box", "#e2e8f0", "-1.35,0.04,1.15"],
+        ["arena.marker.goal", "box", "#e2e8f0", "1.35,0.04,-1.15"],
         ["player", "box", "#2f80ed", "0,0.35,0"],
         ["goal", "box", "#f2c94c", "1.8,0.3,-1.6"],
         ["camera.main", "camera", undefined, undefined],

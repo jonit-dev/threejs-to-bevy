@@ -236,14 +236,15 @@ test("contractDrift should reject unchecked support checklist drift when claimed
   const irTypes = await readFile(resolve(packageRoot, "src/types.ts"), "utf8");
   const webMetrics = await readFile(resolve(repoRoot, "packages/runtime-web-three/src/performanceMetrics.ts"), "utf8");
   const nativeConformance = await readFile(resolve(repoRoot, "runtime-bevy/crates/threenative_runtime/src/conformance.rs"), "utf8");
+  const claimedStatus = `${status}\nV9-06 target profiles`;
 
-  assert.equal(rejectSupportDrift({ irTypes, nativeConformance, parity, status, webMetrics }), undefined);
+  assert.equal(rejectSupportDrift({ irTypes, nativeConformance, parity, status: claimedStatus, webMetrics }), undefined);
   assert.equal(
     rejectSupportDrift({
       irTypes,
       nativeConformance,
       parity: parity.replace("- [x] `P1` Broader platform target profiles and repair hints", "- [ ] `P1` Broader platform target profiles and repair hints"),
-      status,
+      status: claimedStatus,
       webMetrics,
     })?.code,
     "TN_CONTRACT_DRIFT_V9_SUPPORT_CHECKLIST_UNCHECKED",

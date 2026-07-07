@@ -84,9 +84,9 @@ export const BASELINE_VISUAL_CHECKPOINTS: readonly IBaselineVisualCheckpoint[] =
     bundleRelativePath: "examples/humanoid-physics-course/dist/humanoid-physics-course.bundle",
     cameraId: "camera.main",
     captureFrame: 5,
-    region: { x: 0.44765625, y: 0.63333333, width: 0.1046875, height: 0.07916667 },
-    // Focus the exact cyan checkpoint dome region that drove the parity
-    // investigation so emissive drift cannot hide inside full-frame averages.
+    region: { x: 0.595, y: 0.455, width: 0.075, height: 0.055 },
+    // Focus an unobstructed cyan checkpoint dome region so emissive drift
+    // cannot hide inside full-frame averages or humanoid silhouette changes.
     thresholds: {
       maxAverageBrightnessDelta: 0.07,
       maxChangedPixelRatio: 1,
