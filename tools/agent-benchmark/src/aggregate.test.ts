@@ -51,6 +51,21 @@ test("should include failed command and tool output medians", async () => {
   assert.equal(summary?.toolOutputMedian.vanilla, 2048);
 });
 
+test("should fail present ThreeNative step budget above 12 steps", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-agent-benchmark-aggregate-"));
+  const vanilla = join(root, "vanilla.json");
+  const threenative = join(root, "threenative.json");
+  await writeFile(vanilla, JSON.stringify({ ...run("vanilla", 1000), session: { ...run("vanilla", 1000).session, toolStepCount: 4 } }, null, 2));
+  await writeFile(threenative, JSON.stringify({ ...run("threenative", 400), session: { ...run("threenative", 400).session, toolStepCount: 13 } }, null, 2));
+  const report = await aggregateRunReports([vanilla, threenative]);
+  const summary = report.promptSummaries[0];
+
+  assert.equal(report.verdict.status, "fail");
+  assert.equal(summary?.withinHalfX, true);
+  assert.equal(summary?.withinStepBudget, false);
+  assert.equal(summary?.toolStepMedian.threenative, 13);
+});
+
 function run(condition: "threenative" | "vanilla", tokenCount: number) {
   return {
     artifacts: {},

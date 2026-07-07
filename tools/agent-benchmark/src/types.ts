@@ -29,6 +29,7 @@ export interface IBenchmarkSession {
   schema: "threenative.agent-benchmark-session";
   stopReason: BenchmarkStopReason;
   tokenCount: number;
+  toolStepCount?: number;
   toolOutputBytes?: number;
   uncachedInputTokens?: number;
   version: 2;
@@ -81,10 +82,15 @@ export interface IBenchmarkReport {
     threenativeMedianInputTokens: number | null;
     threenativeMedianIterations: number | null;
     threenativeMedianOutputTokens: number | null;
+    threenativeMedianToolStepCount: number | null;
     threenativeMedianTokens: number | null;
     threenativeMedianToolOutputBytes: number | null;
     threenativeMedianUncachedInputTokens: number | null;
     toolOutputMedian: {
+      threenative: number | null;
+      vanilla: number | null;
+    };
+    toolStepMedian: {
       threenative: number | null;
       vanilla: number | null;
     };
@@ -94,10 +100,12 @@ export interface IBenchmarkReport {
     vanillaMedianInputTokens: number | null;
     vanillaMedianIterations: number | null;
     vanillaMedianOutputTokens: number | null;
+    vanillaMedianToolStepCount: number | null;
     vanillaMedianTokens: number | null;
     vanillaMedianToolOutputBytes: number | null;
     vanillaMedianUncachedInputTokens: number | null;
     withinHalfX: boolean | null;
+    withinStepBudget: boolean | null;
   }>;
   runCount: number;
   schema: "threenative.agent-benchmark-report";

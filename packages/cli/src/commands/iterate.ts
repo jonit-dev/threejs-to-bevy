@@ -23,6 +23,25 @@ interface IIterateStepResult {
   output?: unknown;
 }
 
+interface IIterateCompactSummary {
+  artifacts: {
+    directory: string;
+    report: string;
+    screenshot?: string;
+  };
+  code: IIterateReport["code"];
+  diagnostics: IIterateDiagnostic[];
+  durationMs: number;
+  ok: boolean;
+  projectPath: string;
+  steps: Array<{
+    artifactPaths?: string[];
+    diagnostic?: IIterateDiagnostic;
+    id: IIterateStepReport["id"];
+    status: IIterateStepReport["status"];
+  }>;
+}
+
 export async function iterateCommand(
   argv: readonly string[],
   cwd = process.env.INIT_CWD ?? process.cwd(),
@@ -152,8 +171,42 @@ export async function iterateCommand(
 
   return {
     exitCode: report.ok ? 0 : 1,
-    stdout: json ? `${JSON.stringify(report, null, 2)}\n` : renderText(report),
+    stdout: json ? `${JSON.stringify(compactSummary(report), null, 2)}\n` : renderText(report),
   };
+}
+
+function compactSummary(report: IIterateReport): IIterateCompactSummary {
+  return {
+    artifacts: {
+      directory: report.artifacts.directory,
+      report: report.artifacts.report,
+      ...(report.artifacts.screenshot === undefined ? {} : { screenshot: report.artifacts.screenshot }),
+    },
+    code: report.code,
+    diagnostics: report.diagnostics.filter((diagnostic) => diagnostic.severity === "error").slice(0, 1),
+    durationMs: report.durationMs,
+    ok: report.ok,
+    projectPath: report.projectPath,
+    steps: report.steps.map((step) => ({
+      artifactPaths: artifactPaths(step.artifacts).slice(0, 4),
+      diagnostic: step.diagnostics.find((diagnostic) => diagnostic.severity === "error"),
+      id: step.id,
+      status: step.status,
+    })),
+  };
+}
+
+function artifactPaths(value: unknown): string[] {
+  if (typeof value === "string") {
+    return [value];
+  }
+  if (Array.isArray(value)) {
+    return value.flatMap(artifactPaths);
+  }
+  if (isRecord(value)) {
+    return Object.values(value).flatMap(artifactPaths);
+  }
+  return [];
 }
 
 function commandStep(result: ICommandResult): IIterateStepResult {

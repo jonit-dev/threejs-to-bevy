@@ -38,6 +38,7 @@ test("should accept version 2 session token breakdown", () => {
     inputTokens: 10000,
     outputTokens: 1000,
     toolOutputBytes: 16384,
+    toolStepCount: 9,
     uncachedInputTokens: 8000,
   });
 

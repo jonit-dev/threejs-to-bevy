@@ -1,8 +1,8 @@
 # ThreeNative API Card
 
 Compact local contract for generated-project agents. Prefer this card,
-`tn cookbook show <id> --json`, and `pnpm run iterate` before reading repo
-package source.
+`tn cookbook show <id> --json`, and `tn iterate --project . --json` before
+reading repo package source.
 
 ## ScriptContext
 
@@ -76,12 +76,16 @@ interface ScriptTransformFacade {
 - Put durable behavior in `src/scripts/**/*.ts`; reference module/export from
   `content/**/*.json`.
 - Read movement with `context.input.getAxis("MoveX")` /
-  `context.input.getAxis("MoveZ")` or `context.input.getButton("<name>")`.
+  `context.input.getAxis("MoveZ")`; read actions with
+  `context.input.action("<name>")`.
 - Move entities through `entity.transform().position`,
   `setPosition([x, y, z])`, or `setPose(position, rotation)`.
-- Use `context.resources.get/set/patch` for game state and HUD bindings.
+- Use `context.state("GameState", defaults)` for score/status/retry fields
+  that update HUD bindings. Assign string fields directly, e.g.
+  `game.scoreText = "Score 1 / 5"`.
 - Use `context.time.fixedDelta` for deterministic fixed-step movement.
-- Supported helper imports: `NumberEx`, `Vec2`, `Vec3`, `Quat`,
+- Use `Math.max(min, Math.min(max, value))` for simple clamps. Supported helper
+  imports when needed: `NumberEx`, `Vec2`, `Vec3`, `Quat`,
   `TransformMath`, `Bounds2`, `Bounds3`, `Ease`, `RandomEx`,
   `ColorEx`, `TextEx`, `InputEx`, `MotionEx`, `TimerEx`,
   `ArrayEx`, and `CameraMath` from `@threenative/script-stdlib`.
@@ -97,14 +101,16 @@ interface ScriptTransformFacade {
 - Systems: `content/systems/*.systems.json` declares every script module,
   export, component read/write, and resource read/write.
 - UI: `content/ui/*.ui.json` binds HUD text to resource paths such as
-  `GameState.score`.
+  `GameState.scoreText`, `GameState.statusText`, `GameState.distanceText`, and
+  `GameState.retryText`. A text node needs `{ id, type: "text", text, layout }`
+  plus a binding `{ node: id, resource: "GameState.scoreText" }`.
 - Assets/materials/meshes stay in `content/assets`, `content/materials`,
   and `content/meshes`; preserve stable IDs and schema fields.
 
 ## Default Loop
 
 ```bash
-pnpm run iterate
+tn iterate --project . --json
 tn playtest report --latest --scenario <name> --json
 tn cookbook show player-move-wasd --json
 tn cookbook show follow-camera --json

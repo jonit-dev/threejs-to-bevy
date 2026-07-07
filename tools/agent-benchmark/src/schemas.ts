@@ -30,6 +30,7 @@ export function validateSession(value: unknown): ISchemaValidationResult {
   requireOptionalNonNegativeNumber(value, "costWeightedTokens", diagnostics);
   requireOptionalNonNegativeNumber(value, "toolOutputBytes", diagnostics);
   requireOptionalNonNegativeNumber(value, "failedCommandCount", diagnostics);
+  requireOptionalNonNegativeNumber(value, "toolStepCount", diagnostics);
   if (!isRecord(value.humanRubric)) {
     diagnostics.push({ code: "TN_BENCH_SCHEMA_HUMAN_RUBRIC", message: "Session humanRubric must be an object.", severity: "error" });
   } else {

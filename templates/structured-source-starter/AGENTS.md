@@ -13,8 +13,8 @@ Rules for this generated ThreeNative project.
 ## Editing
 
 - Prefer deterministic CLI edits and diagnostics:
-  `tn scene ... --json`, `tn ui ... --json`, `tn material ... --json`,
-  `tn authoring validate --json`.
+  `tn scene ... --json`, `tn ui ... --json`, and
+  `tn material ... --json`.
 - Edit JSON directly only when no CLI operation covers the change.
 - Preserve schema/version fields and stable IDs unless asked to rename.
 - Add behavior in `src/scripts/**/*.ts`, then reference module/exports from
@@ -64,20 +64,19 @@ Rules for this generated ThreeNative project.
   owned state, source-document references, silhouettes, materials, lighting,
   camera framing, set dressing, UI states, mobile fit, performance, screenshot
   proof, motion proof, and input playtest proof.
-- After gameplay, controls, script, source, or visual changes, run
-  `pnpm run iterate` as the default repair loop. It runs authoring validation,
-  build, screenshot capture, and
-  the first committed playtest scenario in one report under
-  `artifacts/iterate/latest/`. Inspect the report, diagnostics, screenshot,
-  and compact playtest reports, fix the owning durable source/script, and
-  rerun. Use `tn playtest report --latest --scenario <name> --json` for a
-  bounded playtest summary; open deep logs such as `effect-log.json`,
-  `observations.json`, or `runtime-trace.json` only after a compact diagnostic
-  identifies the need.
-  Use `tn playtest --discover --json` or `--suggest-scenario <name>` when you
-  need a new scenario, `tn playtest --watch --pass-once` for focused gameplay
-  repairs, and before release claims rerun the scenario with `--target desktop`
-  so the native runtime is proved, not only web.
+- After gameplay, controls, script, source, or visual changes, verify with
+  `tn iterate --project . --json` only. Do not run validate, build, screenshot,
+  or playtest separately unless the compact iterate diagnostic explicitly asks
+  for deeper proof. `tn iterate` already runs authoring validation, build,
+  screenshot capture, and the first committed playtest scenario, writes the
+  full report under `artifacts/iterate/latest/report.json`, and prints a compact
+  pass/fail summary for agents. Inspect the referenced screenshot/report, fix
+  the owning durable source/script, and rerun `tn iterate --project . --json`.
+  Use `tn playtest report --latest --scenario <name> --json` only after iterate
+  points at a playtest failure. Use `tn playtest --discover --json` or
+  `--suggest-scenario <name>` only when you need a new scenario. Before release
+  claims rerun the scenario with `--target desktop` so the native runtime is
+  proved, not only web.
 - Apply gameplay recipes only as bounded steps from a complete plan, for example
   `tn recipe apply top-down-collector --scene <scene> --player <entity> --camera <camera> --json`.
   Keep recipe output in `content/**/*.json` and `src/scripts/**/*.ts`.
@@ -167,25 +166,16 @@ proof, then the production gates. Do not skip from an edit straight to a
 release claim.
 
 ```bash
-# 1. Structural checks after any source edit
-pnpm run validate:authoring
-pnpm run build
-tn scene validate arena --json
-tn scene inspect arena --json
-
-# 2. Default inner loop after gameplay/input/script/source changes
-pnpm run iterate
+# 1. Default inner loop after gameplay/input/script/source changes
 tn iterate --project . --json
 
-# 3. Focused gameplay proof when authoring or repairing scenarios directly
-tn playtest --project . --discover --json
-tn playtest --project . --scenario playtests/<name>.playtest.json --stable-artifacts --json
-pnpm run playtest
+# 2. Focused follow-up only when iterate names a playtest/scenario issue
+tn playtest report --latest --scenario <name> --json
 
-# 4. Scene and runtime proof (add --native for the native runtime)
+# 3. Scene and runtime proof (add --native for the native runtime)
 tn scene proof arena --project . --json
 
-# 5. Production gates before calling work done
+# 4. Production gates before calling work done
 pnpm run game:plan
 pnpm run game:improve
 pnpm run verify

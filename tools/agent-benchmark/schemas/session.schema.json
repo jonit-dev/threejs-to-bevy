@@ -19,6 +19,7 @@
     "costWeightedTokens": { "type": "number", "minimum": 0 },
     "toolOutputBytes": { "type": "number", "minimum": 0 },
     "failedCommandCount": { "type": "number", "minimum": 0 },
+    "toolStepCount": { "type": "number", "minimum": 0 },
     "iterationCount": { "type": "number", "minimum": 0 },
     "stopReason": { "enum": ["claimed-playable", "token-cap", "operator-stopped", "failed-setup"] },
     "finishedAt": { "type": "string" },

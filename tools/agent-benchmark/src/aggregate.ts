@@ -4,6 +4,7 @@ import { isBenchmarkRunReport } from "./schemas.js";
 import { type IBenchmarkDiagnostic, type IBenchmarkReport, type IBenchmarkRunReport } from "./types.js";
 
 const CACHED_INPUT_TOKEN_WEIGHT = 0.1;
+const THREENATIVE_STEP_BUDGET = 12;
 
 export async function aggregateRunReports(paths: readonly string[]): Promise<IBenchmarkReport> {
   const diagnostics: IBenchmarkDiagnostic[] = [];
@@ -32,6 +33,8 @@ export async function aggregateRunReports(paths: readonly string[]): Promise<IBe
     const vanillaMedianTokens = metricMedian(vanillaRuns, (run) => run.session.tokenCount);
     const threenativeMedianCostWeightedTokens = metricMedian(threenativeRuns, costWeightedTokens);
     const vanillaMedianCostWeightedTokens = metricMedian(vanillaRuns, costWeightedTokens);
+    const threenativeMedianToolStepCount = metricMedian(threenativeRuns, (run) => run.session.toolStepCount);
+    const vanillaMedianToolStepCount = metricMedian(vanillaRuns, (run) => run.session.toolStepCount);
     return {
       costWeightedTokenRatio: ratio(threenativeMedianCostWeightedTokens, vanillaMedianCostWeightedTokens),
       failedCommandMedian: {
@@ -50,6 +53,7 @@ export async function aggregateRunReports(paths: readonly string[]): Promise<IBe
       threenativeMedianInputTokens: metricMedian(threenativeRuns, (run) => run.session.inputTokens),
       threenativeMedianIterations: metricMedian(threenativeRuns, (run) => run.session.iterationCount),
       threenativeMedianOutputTokens: metricMedian(threenativeRuns, (run) => run.session.outputTokens),
+      threenativeMedianToolStepCount,
       threenativeMedianTokens,
       threenativeMedianToolOutputBytes: metricMedian(threenativeRuns, (run) => run.session.toolOutputBytes),
       threenativeMedianUncachedInputTokens: metricMedian(threenativeRuns, (run) => run.session.uncachedInputTokens),
@@ -57,26 +61,32 @@ export async function aggregateRunReports(paths: readonly string[]): Promise<IBe
         threenative: metricMedian(threenativeRuns, (run) => run.session.toolOutputBytes),
         vanilla: metricMedian(vanillaRuns, (run) => run.session.toolOutputBytes),
       },
+      toolStepMedian: {
+        threenative: threenativeMedianToolStepCount,
+        vanilla: vanillaMedianToolStepCount,
+      },
       vanillaMedianCachedInputTokens: metricMedian(vanillaRuns, (run) => run.session.cachedInputTokens),
       vanillaMedianCostWeightedTokens,
       vanillaMedianFailedCommandCount: metricMedian(vanillaRuns, (run) => run.session.failedCommandCount),
       vanillaMedianInputTokens: metricMedian(vanillaRuns, (run) => run.session.inputTokens),
       vanillaMedianIterations: metricMedian(vanillaRuns, (run) => run.session.iterationCount),
       vanillaMedianOutputTokens: metricMedian(vanillaRuns, (run) => run.session.outputTokens),
+      vanillaMedianToolStepCount,
       vanillaMedianTokens,
       vanillaMedianToolOutputBytes: metricMedian(vanillaRuns, (run) => run.session.toolOutputBytes),
       vanillaMedianUncachedInputTokens: metricMedian(vanillaRuns, (run) => run.session.uncachedInputTokens),
       withinHalfX: threenativeMedianTokens === null || vanillaMedianTokens === null ? null : threenativeMedianTokens <= vanillaMedianTokens * 0.5,
+      withinStepBudget: threenativeMedianToolStepCount === null ? null : threenativeMedianToolStepCount <= THREENATIVE_STEP_BUDGET,
     };
   });
   const comparable = promptSummaries.filter((summary) => summary.withinHalfX !== null);
-  const failed = comparable.filter((summary) => summary.withinHalfX === false);
+  const failed = comparable.filter((summary) => summary.withinHalfX === false || summary.withinStepBudget === false);
   const status = comparable.length === 0 ? "insufficient-data" : failed.length === 0 ? "pass" : "fail";
   const summary = status === "insufficient-data"
     ? "No prompt has successful run reports for both vanilla and ThreeNative."
     : status === "pass"
-      ? "ThreeNative raw median tokens are <=0.5x vanilla for every comparable prompt."
-      : "ThreeNative raw median tokens exceed 0.5x vanilla for at least one comparable prompt.";
+      ? "ThreeNative raw median tokens are <=0.5x vanilla for every comparable prompt and present step-count medians are within budget."
+      : "ThreeNative raw median tokens exceed 0.5x vanilla or present step-count medians exceed budget for at least one comparable prompt.";
   return {
     diagnostics,
     generatedAt: new Date().toISOString(),

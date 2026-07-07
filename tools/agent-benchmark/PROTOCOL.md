@@ -20,7 +20,9 @@ takes to reach the same playable game prompt in two conditions:
 6. For version 2 sessions, also capture transcript-derived `inputTokens`,
    `cachedInputTokens`, `uncachedInputTokens`, `outputTokens`,
    `toolOutputBytes`, and `failedCommandCount`. Keep `tokenCount` as the raw
-   headline total.
+   headline total. Record `toolStepCount` as the number of completed command
+   tool executions in the agent session; scaffold-first ThreeNative reruns
+   should stay at or below 12 steps.
 
 ## Playable Definition
 

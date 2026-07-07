@@ -151,6 +151,20 @@ test("should apply collector scaffold to a fresh starter", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-game-scaffold-collector-"));
   try {
     await writePassingGameProject(root);
+    await mkdir(join(root, "content/systems"), { recursive: true });
+    await mkdir(join(root, "playtests"), { recursive: true });
+    await writeFile(join(root, "content/systems/arena.systems.json"), `${JSON.stringify({
+      id: "arena-systems",
+      schema: "threenative.systems",
+      systems: [{ id: "move-player-to-goal", script: { export: "movePlayerToGoal", module: "src/scripts/player.ts" } }],
+      version: "0.1.0",
+    }, null, 2)}\n`);
+    await writeFile(join(root, "playtests/smoke-movement.playtest.json"), `${JSON.stringify({
+      assert: { movement: { entity: "player" } },
+      name: "smoke-movement",
+      schemaVersion: 1,
+      subject: "player",
+    }, null, 2)}\n`);
 
     const result = await gameCommand(["plan", "--project", root, "--goal", "coin collector", "--apply", "--json"]);
     const payload = JSON.parse(result.stdout) as {
@@ -166,6 +180,17 @@ test("should apply collector scaffold to a fresh starter", async () => {
       assert?: { movement?: { entity?: string } };
       name: string;
       steps: Array<{ press?: string }>;
+    };
+    const smokeScenario = JSON.parse(await readFile(join(root, "playtests/smoke-movement.playtest.json"), "utf8")) as {
+      assert?: { movement?: { entity?: string } };
+      subject?: string;
+    };
+    const systemsDocument = JSON.parse(await readFile(join(root, "content/systems/arena.systems.json"), "utf8")) as {
+      systems: Array<{ id: string; resourceWrites?: string[]; script?: { export?: string } }>;
+    };
+    const uiDocument = JSON.parse(await readFile(join(root, "content/ui/hud.ui.json"), "utf8")) as {
+      bindings: Array<{ node?: string; resource?: string }>;
+      nodes: Array<{ id: string; text?: string }>;
     };
     const evidence = JSON.parse(await readFile(join(root, "artifacts/game-production/scaffold-first.json"), "utf8")) as {
       recipeId: string;
@@ -185,6 +210,13 @@ test("should apply collector scaffold to a fresh starter", async () => {
     assert.equal(scenario.name, "top-down-collector");
     assert.equal(scenario.steps[0]?.press, "KeyD");
     assert.equal(scenario.assert?.movement?.entity, "scaffold.player");
+    assert.equal(smokeScenario.subject, "scaffold.player");
+    assert.equal(smokeScenario.assert?.movement?.entity, "scaffold.player");
+    assert.equal(systemsDocument.systems.some((system) => system.id === "move-player-to-goal"), false);
+    assert.equal(systemsDocument.systems.some((system) => system.id === "top-down-collector" && system.script?.export === "topDownCollectorSystem" && system.resourceWrites?.includes("GameState") === true), true);
+    assert.equal(uiDocument.nodes.some((node) => node.id === "countdown"), false);
+    assert.equal(uiDocument.nodes.some((node) => node.id === "hud.progress" && node.text === "Score 0 / 5"), true);
+    assert.equal(uiDocument.bindings.some((binding) => binding.node === "hud.progress" && binding.resource === "GameState.scoreText"), true);
     assert.equal(evidence.schema, "threenative.game-scaffold-first");
     assert.equal(evidence.recipeId, "top-down-collector");
     assert.deepEqual(evidence.scenarioPaths, ["playtests/top-down-collector.playtest.json"]);
