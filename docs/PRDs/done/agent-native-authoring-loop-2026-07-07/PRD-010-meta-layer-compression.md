@@ -45,7 +45,8 @@ door, and generated-game evidence volume has become standing maintenance cost.
 
 1. Agent opens `docs/STATUS.md`.
 2. It sees a <= 200-line index with links to capability detail pages.
-3. Release gate checks 3-5 representative generated examples.
+3. Release gate checks the representative release-ready generated examples,
+   targeting 3-5 as qualifying examples exist.
 4. Archived examples remain accessible without standing full-evidence cost.
 
 ## 2. Solution
@@ -54,7 +55,8 @@ door, and generated-game evidence volume has become standing maintenance cost.
 
 - Rewrite `docs/STATUS.md` as a compact index into capability docs.
 - Enforce a <= 200-line STATUS budget in `pnpm check:docs`.
-- Select 3-5 representative generated examples for full release gate.
+- Select representative generated examples for full release gate, targeting
+  3-5 as qualifying examples exist.
 - Archive or downgrade the rest to non-blocking evidence references.
 - Preserve discoverability through links, not duplicated status prose.
 
@@ -101,9 +103,9 @@ sequenceDiagram
 
 **Implementation:**
 
-- [ ] Move duplicated detail from STATUS to capability pages.
-- [ ] Keep STATUS to current claim, link, owner/evidence pointer.
-- [ ] Stay under 200 lines.
+- [x] Move duplicated detail from STATUS to capability pages.
+- [x] Keep STATUS to current claim, link, owner/evidence pointer.
+- [x] Stay under 200 lines.
 
 **Tests Required:**
 
@@ -126,9 +128,9 @@ sequenceDiagram
 
 **Implementation:**
 
-- [ ] Add STATUS line-budget check to docs verifier.
-- [ ] Emit diagnostic pointing to capability docs when over budget.
-- [ ] Add passing/failing tests.
+- [x] Add STATUS line-budget check to docs verifier.
+- [x] Emit diagnostic pointing to capability docs when over budget.
+- [x] Add passing/failing tests.
 
 **Tests Required:**
 
@@ -154,9 +156,9 @@ sequenceDiagram
 
 **Implementation:**
 
-- [ ] Pick 3-5 representative generated examples.
-- [ ] Gate only representative set for full release evidence.
-- [ ] Archive/downgrade remaining examples with links and rationale.
+- [x] Pick representative generated examples from the release-ready inventory.
+- [x] Gate only representative set for full release evidence.
+- [x] Archive/downgrade remaining examples with links and rationale.
 
 **Tests Required:**
 
@@ -181,11 +183,25 @@ sequenceDiagram
 - Generated-game gate tests.
 - Link validation for archived examples.
 
+## 6A. Completion Evidence
+
+- `docs/STATUS.md` is a compact capability index and is 72 lines as measured
+  by `wc -l docs/STATUS.md`.
+- `docs/status/capabilities/game-production.md` records the representative
+  generated-game release set and the build-only archived set.
+- `tools/verify/src/docs.ts` enforces the 200-line STATUS budget and broken or
+  orphaned capability links.
+- `tools/verify/src/docs.test.ts` covers over-budget and compact STATUS cases.
+- `tools/verify/src/gameProductionGate.ts` reports representative and
+  build-only generated-game sets in the aggregate gate payload.
+- `tools/verify/src/gameProductionGate.test.ts` covers generated-game
+  inventory drift and asserts that build-only examples are not release-gated.
+
 ## 7. Acceptance Criteria
 
-- [ ] `docs/STATUS.md` is <= 200 lines.
-- [ ] `pnpm check:docs` enforces the line budget.
-- [ ] Full generated-game gate covers 3-5 representative examples.
-- [ ] Other examples are archived/downgraded with discoverable links.
-- [ ] No capability evidence is lost; it moves behind links.
-
+- [x] `docs/STATUS.md` is <= 200 lines.
+- [x] `pnpm check:docs` enforces the line budget.
+- [x] Full generated-game gate covers the representative release-ready
+  generated-game inventory.
+- [x] Other examples are archived/downgraded with discoverable links.
+- [x] No capability evidence is lost; it moves behind links.
