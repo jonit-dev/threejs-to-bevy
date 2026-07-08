@@ -7,6 +7,7 @@ export { checkDocs, formatDocsReport } from "./docs.js";
 export { loadRejectedBoundaryCatalog, verifyBoundaryDiagnosticsCatalog, REQUIRED_BOUNDARY_FIXTURES } from "./boundaryDiagnostics.js";
 export { editorAiChatArtifactPaths, runEditorAiChatGate, type IEditorAiChatArtifacts, type IEditorAiChatReport } from "./editorAiChat.js";
 export { runEditorRequiredOperationsSmoke, type IEditorRequiredOperationsReport } from "./editorRequiredOperations.js";
+export { runEfficientScaleGate, type EfficientScaleGateOptions, type EfficientScaleGateResult } from "./efficientScaleGate.js";
 export { resolveArtifactTargets, toRepoRelative, type ArtifactOwner, type ArtifactTargets } from "./artifacts.js";
 export { loadFixtureCatalog, resolveFixtureId, listCurrentFixtures } from "./conformance.js";
 export { runLegacyScriptAlias, resolveScriptAlias, formatDeprecationDiagnostic, listDeprecatedScriptAliases, isRegisteredGate, SCRIPT_ALIASES } from "./legacyAliases.js";

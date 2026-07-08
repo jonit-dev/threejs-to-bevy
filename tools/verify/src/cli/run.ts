@@ -196,6 +196,20 @@ export const FOCUSED_GATES: Record<string, FocusedGate> = {
       protects: "Render-look profile quality, parity profile isolation, cinematic default-look quality, and artifact-backed visual improvement thresholds.",
     },
   },
+  "verify:efficient-scale": {
+    commands: [
+      ["pnpm", "--filter", "@threenative/cli", "build"],
+      ["pnpm", "--filter", "@threenative/verify-tools", "build"],
+      ["node", "tools/verify/dist/efficientScaleGate.js"],
+    ],
+    description: "Dense-world efficient scale proof gate.",
+    metadata: {
+      owner: "tools/verify efficient-scale gate",
+      profile: "focused",
+      reason: "Builds the dense-world benchmark and validates runtime performance-proof budgets.",
+      protects: "Frame-time, draw-call, visible-instance, texture-byte, and entity-count budget evidence for dense scenes.",
+    },
+  },
   "verify:default-look": {
     commands: [
       ["pnpm", "--filter", "@threenative/verify-tools", "build"],

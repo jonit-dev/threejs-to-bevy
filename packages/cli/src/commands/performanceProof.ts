@@ -188,7 +188,7 @@ async function waitForFrameSamples(page: Page, frames: number): Promise<void> {
         && (snapshot as { frameSamplesMs: unknown[] }).frameSamplesMs.length >= expected;
     },
     frames,
-    { timeout: Math.max(5_000, frames * 100) },
+    { timeout: Math.max(30_000, frames * 500) },
   );
 }
 

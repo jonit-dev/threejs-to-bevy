@@ -28,8 +28,11 @@ Current support:
   `docs/contracts/performance-proof.md`, a verify-tools validator, and
   `tn performance proof` for web runtime frame-time percentiles, draw
   calls/groups, visible instances, active LOD bands, loaded texture bytes,
-  texture variant bytes, and entity counts. Native emitters and the focused
-  efficient-scale gate are still tracked by the active PRD.
+  texture variant bytes, and entity counts. `pnpm verify:efficient-scale`
+  builds `examples/dense-world-benchmark`, captures a web performance-proof
+  sidecar, validates target-profile budgets, and enforces dense-scene entity
+  and visible-instance floors. Native emitters are still tracked by the active
+  PRD.
 - `pnpm verify:template-production` checks iterate-first starter guidance,
   compact-report guidance, and generated API-card parity.
 - Rejected boundary fixtures under
@@ -88,6 +91,8 @@ Verification:
 - `pnpm --filter @threenative/verify-tools test`
 - `pnpm --filter @threenative/verify-tools test -- --run performance`
 - `pnpm --filter @threenative/cli test -- --run performance`
+- `pnpm --filter @threenative/verify-tools test -- --run "efficient scale"`
+- `pnpm verify:efficient-scale`
 - `pnpm verify:webview-package`
 - `pnpm --filter @threenative/verify-tools test -- --run boundary`
 - `pnpm check:docs`

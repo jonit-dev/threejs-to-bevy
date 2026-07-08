@@ -1,0 +1,24 @@
+{
+  "schema": "threenative.target-profile",
+  "version": "0.1.0",
+  "id": "dense-world-headless",
+  "targets": ["web", "desktop"],
+  "budgets": {
+    "maxBundleBytes": 10485760,
+    "supportedModelFormats": ["glb", "gltf"],
+    "supportedTextureFormats": ["png", "jpeg", "webp"]
+  },
+  "performance": {
+    "requiredTarget": "web",
+    "averageFrameMs": { "warn": 650, "max": 900 },
+    "drawCalls": { "max": 300 },
+    "instancedGroups": { "max": 120 },
+    "instances": { "max": 2000 },
+    "loadMs": { "max": 5000 },
+    "p95FrameMs": { "max": 900 },
+    "textureBytes": { "max": 134217728 },
+    "triangles": { "max": 500000 },
+    "uninstancedRepeatedProps": { "max": 230 },
+    "worstFrameMs": { "max": 1200 }
+  }
+}

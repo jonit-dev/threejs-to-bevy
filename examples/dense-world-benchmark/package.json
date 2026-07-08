@@ -1,0 +1,32 @@
+{
+  "name": "@threenative/example-dense-world-benchmark",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node ../../packages/cli/dist/index.js build --project examples/dense-world-benchmark",
+    "dev:web": "node ../../packages/cli/dist/index.js dev --target web --project examples/dense-world-benchmark",
+    "iterate": "tn iterate --project . --json",
+    "playtest": "tn playtest --scenario playtests/smoke-movement.playtest.json --stable-artifacts --json",
+    "playtest:archetype": "tn playtest --scenario playtests/smoke-movement.playtest.json --stable-artifacts --json",
+    "playtest:native": "tn playtest --scenario playtests/native-smoke-movement.playtest.json --stable-artifacts --json",
+    "performance:proof": "node ../../packages/cli/dist/index.js performance proof --project examples/dense-world-benchmark --frames 30 --out artifacts/performance-proof.json --json",
+    "game:plan": "tn game plan --goal \"dense world performance benchmark\" --project . --apply --json",
+    "game:improve": "tn game improve --apply-plan artifacts/game-production/plan.json --project . --json",
+    "game:score": "tn game score --project . --json",
+    "game:qa": "tn game qa --project . --run-proof --json",
+    "game:release": "tn game release --project . --json",
+    "recipe:controller": "tn recipe third-person-controller --scene arena --entity player --camera camera.main --dry-run --json",
+    "validate": "tn validate",
+    "validate:authoring": "tn authoring validate --json",
+    "verify": "tn verify --frames 2 --json"
+  },
+  "dependencies": {
+    "@threenative/script-stdlib": "workspace:*",
+    "@threenative/sdk": "workspace:*"
+  },
+  "devDependencies": {
+    "@threenative/cli": "workspace:*",
+    "@types/node": "^20.19.25",
+    "typescript": "^5.9.3"
+  }
+}

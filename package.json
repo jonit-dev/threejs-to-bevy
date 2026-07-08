@@ -28,6 +28,7 @@
     "verify:default-look": "pnpm verify:render-look",
     "verify:distribution": "node scripts/verify-distribution-release.mjs",
     "verify:editor-required-operations": "node scripts/verify-editor-required-operations.mjs",
+    "verify:efficient-scale": "pnpm build:verify-tools && node tools/verify/dist/cli/run.js verify:efficient-scale",
     "verify:focused": "pnpm build:verify-tools && node tools/verify/dist/cli/run.js",
     "verify:game-production": "pnpm build:verify-tools && node tools/verify/dist/cli/run.js verify:game-production",
     "verify:generated-games": "pnpm build:verify-tools && node tools/verify/dist/cli/run.js verify:generated-games",
