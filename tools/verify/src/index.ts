@@ -12,6 +12,21 @@ export { loadFixtureCatalog, resolveFixtureId, listCurrentFixtures } from "./con
 export { runLegacyScriptAlias, resolveScriptAlias, formatDeprecationDiagnostic, listDeprecatedScriptAliases, isRegisteredGate, SCRIPT_ALIASES } from "./legacyAliases.js";
 export { runGameProductionGate, type IGameProductionGateResult } from "./gameProductionGate.js";
 export { runExampleBuildSweep, type IExampleBuildSweepResult } from "./exampleBuildSweep.js";
+export {
+  PERFORMANCE_PROOF_SCHEMA,
+  PERFORMANCE_PROOF_VERSION,
+  isPerformanceProofSidecarPassing,
+  validatePerformanceProofSidecar,
+  type FrameTimePercentiles,
+  type PerformanceMetric,
+  type PerformanceMetricMeasured,
+  type PerformanceMetricName,
+  type PerformanceMetricUnsupported,
+  type PerformanceProofBudgets,
+  type PerformanceProofMetrics,
+  type PerformanceProofSidecar,
+  type TextureVariantMeasurement,
+} from "./performanceProof.js";
 export { runReleaseGate } from "./release.js";
 export { analyzeRenderLookMetrics, runRenderLookGate, type RenderLookGateResult, type RenderLookMetricInput, type RenderLookMetricSample } from "./renderLook.js";
 export { checkV9QualityGates, V9_FOCUSED_SCRIPT_NAMES, V9_SAMPLE_SCENES } from "./v9QualityGates.js";

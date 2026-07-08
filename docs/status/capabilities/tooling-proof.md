@@ -24,6 +24,12 @@ Current support:
   `ui-persistence-settings-facades` conformance bundle through the desktop-web
   path and records raw package, size, startup, input, settings, and save-slot
   evidence under `tools/verify/artifacts/webview-package/`.
+- Performance proof sidecars now have a versioned verifier contract at
+  `docs/contracts/performance-proof.md` and a verify-tools validator for
+  frame-time percentiles, draw calls/groups, visible instances, active LOD
+  bands, loaded texture bytes, texture variant bytes, and entity counts. This
+  is the contract layer for efficient-scale proof; runtime emitters and the
+  focused gate are still tracked by the active PRD.
 - `pnpm verify:template-production` checks iterate-first starter guidance,
   compact-report guidance, and generated API-card parity.
 - Rejected boundary fixtures under
@@ -80,6 +86,7 @@ Verification:
 - `pnpm verify:agent-io`
 - `pnpm verify:session-cost`
 - `pnpm --filter @threenative/verify-tools test`
+- `pnpm --filter @threenative/verify-tools test -- --run performance`
 - `pnpm verify:webview-package`
 - `pnpm --filter @threenative/verify-tools test -- --run boundary`
 - `pnpm check:docs`
