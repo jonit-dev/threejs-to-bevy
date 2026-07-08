@@ -44,10 +44,77 @@ function inferCollectorProof(summaries: ICandidatePlaytestSummary[]): IBenchmark
   const proofs = summaries
     .filter(hasCollectorResourceAssertions)
     .map((summary) => collectorProofFromSummary(summary));
+  const combinedProof = collectorProofFromSummaries(summaries);
+  if (combinedProof !== undefined) {
+    proofs.push(combinedProof);
+  }
   if (proofs.length === 0) {
     return undefined;
   }
   return chooseBestProof(proofs);
+}
+
+function collectorProofFromSummaries(summaries: ICandidatePlaytestSummary[]): IBenchmarkProofResult | undefined {
+  const contract = getProofContract("collector");
+  if (contract === undefined) {
+    return undefined;
+  }
+  const assertions = summaries.flatMap((summary) => Array.isArray(summary.value.assertions) ? summary.value.assertions.filter(isSummaryAssertion) : []);
+  if (assertions.length === 0) {
+    return undefined;
+  }
+  const movement = assertions.find((assertion) => assertion.id === "movement" && assertion.pass);
+  const pickup = assertions.find((assertion) => {
+    if (!assertion.pass) {
+      return false;
+    }
+    return assertion.id === "resource.GameState.scoreText"
+      || assertion.id === "resource.GameState"
+      || assertion.id === "hud.hud.progress"
+      || assertion.id === "resource.GameState.won";
+  });
+  const win = assertions.find((assertion) => {
+    if (!assertion.pass) {
+      return false;
+    }
+    return assertion.id === "resource.GameState.statusText"
+      || assertion.id === "resource.GameState.won"
+      || assertion.id === "hud.hud.status";
+  });
+  const retry = assertions.find((assertion) => assertion.pass && retryText(assertionText(assertion)));
+  if (movement === undefined && pickup === undefined && win === undefined && retry === undefined) {
+    return undefined;
+  }
+  const required = contract.assertions.filter((item) => item.required).map((item) => item.id);
+  const proofAssertions = [
+    {
+      details: { evidence: movement === undefined ? "No passing movement assertion was found" : "A generated collector movement assertion passed" },
+      id: "keyboard-movement",
+      pass: movement !== undefined,
+    },
+    {
+      details: { evidence: pickup === undefined ? "No passing pickup/progress assertion was found" : `Generated collector pickup/progress assertion passed: ${pickup.id}` },
+      id: "pickup-objective",
+      pass: pickup !== undefined,
+    },
+    {
+      details: { evidence: win === undefined ? "No passing win-state assertion was found" : `Generated collector win-state assertion passed: ${win.id}` },
+      id: "win-state",
+      pass: win !== undefined,
+    },
+    {
+      details: { evidence: retry === undefined ? "No retry text was observed" : `Generated collector retry text observed: ${assertionText(retry) ?? retry.id}` },
+      id: "retry-path",
+      pass: retry !== undefined,
+    },
+  ];
+  return {
+    assertions: proofAssertions,
+    classification: contract.classification,
+    ok: proofAssertions.every((assertion) => assertion.pass),
+    promptId: "collector",
+    requiredAssertionIds: required,
+  };
 }
 
 function collectorProofFromSummary(summary: ICandidatePlaytestSummary): IBenchmarkProofResult {
@@ -179,14 +246,41 @@ function assertionById(summary: ICandidatePlaytestSummary, id: string): { detail
   if (!Array.isArray(assertions)) {
     return undefined;
   }
-  return assertions.find((assertion): assertion is { details?: Record<string, unknown>; id: string; pass: boolean } => {
-    return isRecord(assertion) && assertion.id === id && typeof assertion.pass === "boolean";
-  });
+  return assertions.find((assertion): assertion is { details?: Record<string, unknown>; id: string; pass: boolean } => isSummaryAssertion(assertion) && assertion.id === id);
+}
+
+function isSummaryAssertion(value: unknown): value is { details?: Record<string, unknown>; id: string; pass: boolean } {
+  return isRecord(value) && typeof value.id === "string" && typeof value.pass === "boolean" && (value.details === undefined || isRecord(value.details));
 }
 
 function textDetail(assertion: { details?: Record<string, unknown> } | undefined, key: "after" | "before"): string | undefined {
   const value = assertion?.details?.[key];
   return typeof value === "string" ? value : undefined;
+}
+
+function assertionText(assertion: { details?: Record<string, unknown> }): string | undefined {
+  return textFromUnknown(assertion.details?.after) ?? textFromUnknown(assertion.details?.before);
+}
+
+function textFromUnknown(value: unknown): string | undefined {
+  if (typeof value === "string") {
+    return value;
+  }
+  if (isRecord(value)) {
+    if (typeof value.text === "string") {
+      return value.text;
+    }
+    if (typeof value.statusText === "string") {
+      return value.statusText;
+    }
+    if (typeof value.retryText === "string") {
+      return value.retryText;
+    }
+    if (value.won === true) {
+      return "All pickups collected - press R to retry";
+    }
+  }
+  return undefined;
 }
 
 function retryText(value: string | undefined): boolean {

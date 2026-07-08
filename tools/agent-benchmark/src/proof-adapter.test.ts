@@ -44,6 +44,37 @@ test("should choose passing collector proof when reset summary appears first", a
   assert.equal(result.proof?.assertions.find((item) => item.id === "retry-path")?.pass, true);
 });
 
+test("should combine generated scaffold collector proof across iterate summaries", async () => {
+  const root = await candidateWithSummaries([
+    [
+      assertion("movement", true, { distance: 4.2 }),
+      assertion("resource.GameState", true, {
+        after: { scoreText: "Score 1 / 5", statusText: "Collect all pickups", won: false },
+        before: { scoreText: "Score 0 / 5", statusText: "Collect all pickups", won: false },
+      }),
+      assertion("hud.hud.progress", true, { after: { text: "Score 1 / 5" }, before: { text: "Score 0 / 5" } }),
+    ],
+    [
+      assertion("movement", true, { distance: 4.2 }),
+      assertion("resource.GameState.won", true, { after: true, before: false }),
+      assertion("hud.hud.status", true, { after: { text: "All pickups collected - press R to retry" }, before: { text: "Collect all pickups" } }),
+    ],
+    [
+      assertion("resource.GameState.statusText", true, { after: "Collect all pickups", before: "Collect all pickups" }),
+      assertion("hud.hud.retry", true, { after: { text: "Press R to retry" }, before: { text: "Press R to retry" } }),
+    ],
+  ]);
+
+  const result = await inferBenchmarkProofFromArtifacts({ candidate: root, promptId: "collector" });
+
+  assert.equal(result.diagnostics.length, 0);
+  assert.equal(result.proof?.ok, true);
+  assert.equal(result.proof?.assertions.find((item) => item.id === "keyboard-movement")?.pass, true);
+  assert.equal(result.proof?.assertions.find((item) => item.id === "pickup-objective")?.pass, true);
+  assert.equal(result.proof?.assertions.find((item) => item.id === "win-state")?.pass, true);
+  assert.equal(result.proof?.assertions.find((item) => item.id === "retry-path")?.pass, true);
+});
+
 test("should infer passing collector proof from neutral browser artifact", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-agent-benchmark-neutral-proof-"));
   await mkdir(join(root, "artifacts", "proof"), { recursive: true });

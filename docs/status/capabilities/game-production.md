@@ -35,6 +35,13 @@ Current support:
   84,250.5 vs 1,020,845 vanilla (0.083x), with 3.5 median tool steps and zero
   failed-command median. Evidence:
   `tools/verify/artifacts/agent-benchmark/scaffold-first-token-rerun-2026-07-07b/`.
+- Fresh guided Round-5 collector evidence also passes the <=0.5x raw-token
+  target under equal-proof assertions and current vanilla controls: direct
+  ThreeNative median 20,950 vs 46,192 vanilla (0.454x), typed-spec median
+  20,000, with 9/9 proof-passing scored slots and green status/matrix/audit.
+  The aggregate verdict remains failed only on the non-token failed-command
+  budget. Evidence:
+  `tools/verify/artifacts/agent-benchmark/round-5-collector-guided-2026-07-08/`.
 - Fresh off-recipe evidence fails the <=2x raw-token authoring gate:
   checkpoint-race median 1,829,573.5 vs 506,211 vanilla (3.614x), and
   physics-knockdown median 2,792,109 vs 1,390,836 vanilla (2.008x), with

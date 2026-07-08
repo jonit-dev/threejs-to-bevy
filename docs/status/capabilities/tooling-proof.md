@@ -39,6 +39,15 @@ Current support:
   vanilla comparison gate. Aggregate reports also emit per-run churn budget
   diagnostics for engine-source searches, standalone verify commands, artifact
   forensics, missing iterate use, and missing discovery.
+- Guided Round-5 collector preparation tells ThreeNative agents to use the
+  scaffold-first `tn game plan --apply` plus `xvfb-run -a tn iterate` path and
+  stop after a passing iterate instead of running standalone proof loops. The
+  scorer imports generated `artifacts/iterate/latest/playtest/**/summary.json`
+  proof-family scenarios and combines movement, pickup/progress, win-state,
+  and retry assertions across summaries. Fresh equal-proof evidence under
+  `tools/verify/artifacts/agent-benchmark/round-5-collector-guided-2026-07-08/`
+  has status/matrix/audit green and proves collector token medians of 20,950
+  direct ThreeNative vs 46,192 vanilla (0.454x raw; `withinHalfX: true`).
 - Round-5B preparation generates the lane-runner, checkpoint-race, and
   physics-knockdown matrix only from a green next-steps audit; the addendum is
   `tools/agent-benchmark/ROUND-5B-PROTOCOL-2026-07-08.md`.

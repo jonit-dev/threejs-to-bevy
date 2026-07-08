@@ -34,9 +34,9 @@ in scripts, examples, and historical docs during a staged cleanup. See
 | UI | Active | Retained structured UI is the portable path; overlays are bounded and separate. | [ui](status/capabilities/ui.md) |
 | Assets | Active | Bundle-local assets, GLB/glTF, generated meshes, materials, audio, and catalog sourcing are validated. | [assets](status/capabilities/assets.md) |
 | Native parity | Frozen for promotion | Bevy consumes emitted IR; the native playtest P0 is closed, and new native promotions require shipped-game evidence, native proof, and the native path decision. | [native parity](status/capabilities/native-parity.md) |
-| Game production | Active | Generated games target polished vertical slices with selectable L1 archetype scaffolds, compositional mechanic blocks, proof-family plan-apply scenarios, and churn-gated equal-proof benchmark prep. | [game production](status/capabilities/game-production.md) |
+| Game production | Active | Generated games target polished vertical slices with selectable L1 archetype scaffolds, compositional mechanic blocks, proof-family plan-apply scenarios, and equal-proof collector token evidence below vanilla. | [game production](status/capabilities/game-production.md) |
 | Editor | In progress | Editor and MCP surfaces must wrap authoring operations rather than owning a second source model. | [editor](status/capabilities/editor.md) |
-| Tooling/proof | Active | Verification tools own docs checks, agent IO/session-cost/retry-chain/churn budgets, runtime resource/state-stagnation diagnostics, smoke/release gates, proof manifests, aggregate artifacts, and typed-spec benchmark condition reporting. | [tooling/proof](status/capabilities/tooling-proof.md) |
+| Tooling/proof | Active | Verification tools own docs checks, agent IO/session-cost/retry-chain/churn budgets, runtime resource/state-stagnation diagnostics, smoke/release gates, proof manifests, aggregate artifacts, and equal-proof benchmark token reporting. | [tooling/proof](status/capabilities/tooling-proof.md) |
 
 ## Current PRDs
 

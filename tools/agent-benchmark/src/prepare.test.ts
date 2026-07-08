@@ -38,6 +38,8 @@ test("should prepare round-5 candidate slots", async () => {
   assert.match(operator, /--authoring typed-spec/);
   assert.match(operator, new RegExp(`node ${escapeRegExp(join(process.cwd(), "packages/cli/dist/index.js"))} create ../collector-typed-spec-r1-starter-tmp`));
   assert.match(operator, /cp -R \.\.\/collector-typed-spec-r1-starter-tmp\/\. \./);
+  assert.match(operator, /xvfb-run -a .* iterate --project \. --json/);
+  assert.match(operator, /Do not run standalone build, validate, playtest, artifact inspection, or engine-source searches/);
   assert.match(operator, new RegExp(`--candidate ${escapeRegExp(join(outDir, "candidates", "collector-typed-spec-r1"))}`));
   assert.match(operator, new RegExp(`--out ${escapeRegExp(join(outDir, "collector-typed-spec-r1", "run-report.json"))}`));
   assert.match(operator, new RegExp(`status --manifest ${escapeRegExp(join(outDir, "round-5-prepare-manifest.json"))} --require-complete`));
