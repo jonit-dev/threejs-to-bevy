@@ -20,6 +20,7 @@ import { iterateCommand } from "./commands/iterate.js";
 import { lookCommand } from "./commands/look.js";
 import { modelTestCommand } from "./commands/modelTest.js";
 import { packageCommand } from "./commands/package.js";
+import { performanceProofCommand } from "./commands/performanceProof.js";
 import { playtestCommand } from "./commands/playtest.js";
 import { navCommand, physicsCommand } from "./commands/physicsNav.js";
 import { proofCommand, proveCommand } from "./commands/proof.js";
@@ -178,6 +179,11 @@ const commands: Record<string, ICommandDefinition> = {
     description: "Create a local desktop package artifact from a bundle.",
     implemented: true,
     usage: "tn package --target desktop --bundle <path> [--runtime bevy|webview] [--format portable|archive|installer] [--out <path>] [--json]",
+  },
+  performance: {
+    description: "Capture web runtime performance metrics and write a versioned proof sidecar.",
+    implemented: true,
+    usage: "tn performance proof [--project <path>] [--url <preview-url>] [--frames <n>] [--target-profile <id>] [--out <file>] [--json]",
   },
   playtest: {
     description: "Run, scaffold, or inspect playtest scenarios and assertion DSL.",
@@ -432,6 +438,10 @@ export async function dispatch(argv: readonly string[]): Promise<ICommandResult>
 
   if (commandName === "package") {
     return packageCommand(normalizedArgv.slice(1));
+  }
+
+  if (commandName === "performance") {
+    return performanceProofCommand(normalizedArgv.slice(1));
   }
 
   if (commandName === "playtest") {

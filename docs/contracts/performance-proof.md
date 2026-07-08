@@ -4,6 +4,15 @@ Performance proof sidecars are machine-checkable runtime budget evidence. They
 are emitted by proof commands and consumed by verification gates; they are not
 durable authoring source.
 
+Generate the web runtime proof with:
+
+```bash
+tn performance proof --project . --json
+```
+
+Use `--url <preview-url>` to measure an already-running web preview, `--frames`
+to set the frame sample count, and `--out <file>` to change the sidecar path.
+
 ## Sidecar
 
 The current sidecar schema is `threenative.performance-proof` version `0.1.0`.
@@ -90,6 +99,9 @@ the metric key with `status: "unsupported"` and a stable diagnostic:
 Unsupported metrics are not compared against numeric budgets. Missing metrics,
 malformed unsupported diagnostics, and malformed numeric values are verifier
 errors.
+
+The current web command emits measured values for all required fields. Native
+runtime emission is tracked separately and must use the same sidecar shape.
 
 ## Budget Semantics
 

@@ -118,12 +118,11 @@ implementation:
   asset-budget proof for already-built projects when that sidecar is missing.
   This improves generated-game release evidence and does not claim native/Bevy
   input injection parity.
-- Runtime performance proof now has a versioned sidecar contract and verifier
-  for frame-time percentiles, draw calls/groups, visible instances, active LOD
-  bands, loaded texture bytes, texture variant bytes, and entity counts. This
-  records the efficient-scale proof shape only; web/native runtime metric
-  emitters and native promotion evidence remain unclaimed until their focused
-  gates land.
+- Runtime performance proof now has a versioned sidecar contract, verifier,
+  and web emitter for frame-time percentiles, draw calls/groups, visible
+  instances, active LOD bands, loaded texture bytes, texture variant bytes, and
+  entity counts. Native runtime metric emission and native promotion evidence
+  remain unclaimed until their focused gates land.
 - Game-development velocity kits now provide source-backed kit candidates in
   `tn game plan`, read-only `tn game next` task graphs, `tn prove changed`
   proof manifests/diffs, artifact-local proof metadata on selected proof
