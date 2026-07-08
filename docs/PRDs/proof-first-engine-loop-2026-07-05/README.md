@@ -43,8 +43,8 @@ still proceed.
 17. [PRD-017 Signed Installers And Store Packaging](PRD-017-signed-installers-store-packaging.md)
 18. [PRD-018 Native Render Parity And Performance](PRD-018-native-render-parity-and-performance.md) - freeze-gated
 19. [PRD-019 Humanoid Course Stair Traversal Proof](PRD-019-humanoid-course-stair-traversal-proof.md) - web-first; native deferred
-20. [PRD-020 Humanoid Course Ramp Slope Proof](PRD-020-humanoid-course-ramp-slope-proof.md) - web-first; native deferred
-21. [PRD-021 Humanoid Course Character-Pushed Ball](PRD-021-humanoid-course-character-pushed-ball.md) - web-first; native deferred
+20. [PRD-020 Humanoid Course Ramp Slope Proof](../done/PRD-020-humanoid-course-ramp-slope-proof.md) - done
+21. [PRD-021 Humanoid Course Character-Pushed Ball](../done/PRD-021-humanoid-course-character-pushed-ball.md) - done
 
 ## Boundary
 
