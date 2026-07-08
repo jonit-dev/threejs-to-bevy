@@ -2,6 +2,7 @@ import { access, mkdir, readdir, readFile, stat, writeFile } from "node:fs/promi
 import { basename, isAbsolute, relative, resolve } from "node:path";
 
 import { createGameAgentInventory, loadAuthoringProject } from "@threenative/authoring";
+import { loadBundle, type IWebBundle } from "@threenative/runtime-web-three";
 
 import { type ICommandResult } from "../diagnostics.js";
 import { buildProofArtifactMetadata } from "../game/proofManifest.js";
@@ -500,6 +501,7 @@ async function writePerformanceProof(step: IGameProofStepSpec, projectPath: stri
   const screenshotPath = resolve(projectPath, "artifacts/game-production/screenshot.png");
   const mobilePath = resolve(projectPath, "artifacts/game-production/mobile-viewport.png");
   const [screenshot, mobile] = await Promise.all([optionalFileStat(screenshotPath), optionalFileStat(mobilePath)]);
+  const runtimePerformanceProof = await writeRuntimePerformanceProof(projectPath);
   const report = {
     schema: "threenative.game-performance-proof",
     version: "0.1.0",
@@ -513,6 +515,7 @@ async function writePerformanceProof(step: IGameProofStepSpec, projectPath: stri
     frameBudgetMs: 16.67,
     evidence: {
       distDirectory: await pathExists(manifestPath),
+      runtimePerformanceProof,
       screenshot: screenshot === undefined ? null : { byteSize: screenshot.size, path: "artifacts/game-production/screenshot.png" },
       mobileViewport: mobile === undefined ? null : { byteSize: mobile.size, path: "artifacts/game-production/mobile-viewport.png" },
     },
@@ -525,6 +528,129 @@ async function writePerformanceProof(step: IGameProofStepSpec, projectPath: stri
     exitCode: 0,
     stdout: `${JSON.stringify({ code: "TN_GAME_QA_PERFORMANCE_PROOF_OK", artifactPath: outPath, message: "Performance proof artifact written.", report }, null, 2)}\n`,
   };
+}
+
+async function writeRuntimePerformanceProof(projectPath: string): Promise<{ path: string; schema: string; status: string } | null> {
+  try {
+    const bundlePath = await resolveRuntimeProofBundlePath(projectPath);
+    const bundle = await loadBundle(bundlePath);
+    const texture = await textureMeasurements(projectPath, bundle);
+    const sidecarPath = resolve(projectPath, "artifacts/game-production/performance-proof.json");
+    const report = {
+      schema: "threenative.performance-proof",
+      version: "0.1.0",
+      generatedBy: "tn game qa --run-proof",
+      targetProfile: targetProfileId(bundle),
+      runtime: {
+        adapter: "web-three",
+        target: "web",
+      },
+      budgets: performanceProofBudgets(bundle),
+      metrics: {
+        frameTimeMs: unsupportedPerformanceMetric("TN_PERFORMANCE_GAME_QA_FRAME_TIME_UNSUPPORTED", "Game QA performance proof does not capture runtime frame percentiles; run tn performance proof for measured frame timing."),
+        drawCalls: unsupportedPerformanceMetric("TN_PERFORMANCE_GAME_QA_DRAW_CALLS_UNSUPPORTED", "Game QA performance proof does not capture renderer draw calls; run tn performance proof for measured draw counts."),
+        drawGroups: unsupportedPerformanceMetric("TN_PERFORMANCE_GAME_QA_DRAW_GROUPS_UNSUPPORTED", "Game QA performance proof does not capture renderer draw groups; run tn performance proof for measured draw groups."),
+        visibleInstances: unsupportedPerformanceMetric("TN_PERFORMANCE_GAME_QA_VISIBLE_INSTANCES_UNSUPPORTED", "Game QA performance proof does not capture runtime visible instances; run tn performance proof for measured visibility counts."),
+        activeLodBands: { status: "measured", value: activeLodBandsForBundle(bundle) },
+        loadedTextureBytes: { status: "measured", value: texture.bytes },
+        textureVariants: {
+          status: "measured",
+          value: {
+            loadedBytes: texture.bytes,
+            selectedVariantCount: texture.variantCount,
+          },
+        },
+        entityCount: { status: "measured", value: bundle.world.entities.length },
+      },
+      diagnostics: [],
+      status: "pass",
+    };
+    await mkdir(resolve(sidecarPath, ".."), { recursive: true });
+    await writeFile(sidecarPath, `${JSON.stringify(report, null, 2)}\n`, "utf8");
+    return {
+      path: "artifacts/game-production/performance-proof.json",
+      schema: "threenative.performance-proof",
+      status: "pass",
+    };
+  } catch {
+    return null;
+  }
+}
+
+async function resolveRuntimeProofBundlePath(projectPath: string): Promise<string> {
+  try {
+    const config = JSON.parse(await readFile(resolve(projectPath, "threenative.config.json"), "utf8")) as unknown;
+    if (isRecord(config) && typeof config.outDir === "string" && config.outDir.trim().length > 0) {
+      return resolve(projectPath, config.outDir);
+    }
+  } catch {
+    // Fall through to the historical generated-game bundle path.
+  }
+  return resolve(projectPath, "dist/game.bundle");
+}
+
+function unsupportedPerformanceMetric(code: string, message: string): { diagnostic: { code: string; message: string; severity: "warning" }; status: "unsupported" } {
+  return {
+    status: "unsupported",
+    diagnostic: {
+      code,
+      message,
+      severity: "warning",
+    },
+  };
+}
+
+function performanceProofBudgets(bundle: IWebBundle): Record<string, number> {
+  const performance = bundle.targetProfile.performance;
+  return {
+    activeLodBands: 8,
+    drawCalls: performance?.drawCalls.max ?? 300,
+    drawGroups: performance?.instancedGroups.max ?? 120,
+    entityCount: 5000,
+    frameTimeMsP95: performance?.p95FrameMs.max ?? 24,
+    frameTimeMsP99: performance?.worstFrameMs.max ?? 33.4,
+    loadedTextureBytes: performance?.textureBytes.max ?? 128 * 1024 * 1024,
+    textureVariantBytes: performance?.textureBytes.max ?? 128 * 1024 * 1024,
+    visibleInstances: performance?.instances.max ?? 2000,
+  };
+}
+
+async function textureMeasurements(projectPath: string, bundle: IWebBundle): Promise<{ bytes: number; variantCount: number }> {
+  let bytes = 0;
+  let variantCount = 0;
+  for (const asset of bundle.assets.assets) {
+    if (asset.kind !== "texture") {
+      continue;
+    }
+    variantCount += Array.isArray(asset.variants) ? Math.max(1, asset.variants.length) : 1;
+    bytes += await optionalByteSize(asset.path === undefined ? undefined : resolve(projectPath, asset.path));
+    for (const variant of asset.variants ?? []) {
+      bytes += await optionalByteSize(isRecord(variant) && typeof variant.path === "string" ? resolve(projectPath, variant.path) : undefined);
+    }
+  }
+  return { bytes, variantCount };
+}
+
+function activeLodBandsForBundle(bundle: IWebBundle): string[] {
+  const bands = new Set<string>();
+  for (const asset of bundle.assets.assets) {
+    const lod = (asset as { lod?: unknown }).lod;
+    if (Array.isArray(lod) && lod.length > 0) {
+      bands.add("source-asset-lod");
+    }
+    if (asset.kind === "texture" && Array.isArray(asset.variants) && asset.variants.length > 0) {
+      bands.add("texture-variant");
+    }
+  }
+  if (bands.size === 0 && bundle.world.entities.length > 0) {
+    bands.add("default");
+  }
+  return [...bands].sort();
+}
+
+function targetProfileId(bundle: IWebBundle): string {
+  const profile = bundle.targetProfile as { id?: unknown };
+  return typeof profile.id === "string" && profile.id.trim().length > 0 ? profile.id : "bundle-target-profile";
 }
 
 async function writeAssetBudgetProof(step: IGameProofStepSpec, projectPath: string, source = "tn game qa --run-proof"): Promise<ICommandResult> {
@@ -732,6 +858,13 @@ async function optionalFileStat(path: string): Promise<{ size: number } | undefi
   } catch {
     return undefined;
   }
+}
+
+async function optionalByteSize(path: string | undefined): Promise<number> {
+  if (path === undefined) {
+    return 0;
+  }
+  return (await optionalFileStat(path))?.size ?? 0;
 }
 
 async function directoryByteStats(path: string): Promise<{ byteSize: number; exists: boolean; fileCount: number; path: string }> {

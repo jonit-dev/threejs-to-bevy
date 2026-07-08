@@ -867,6 +867,33 @@ test("qa run-proof writes doctor proof sidecar", async () => {
   }
 });
 
+test("qa run-proof writes shared performance proof sidecar", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-game-qa-performance-proof-"));
+  try {
+    const created = await createProject(["qa-runtime", "--template", "structured-source-starter", "--json"], { cwd: root });
+    const projectPath = (JSON.parse(created.stdout) as { path: string }).path;
+    await mkdir(join(projectPath, "artifacts/game-production"), { recursive: true });
+    await writeFile(join(projectPath, "artifacts/game-production/screenshot.png"), "not-a-real-png");
+    await writeFile(join(projectPath, "artifacts/game-production/mobile-viewport.png"), "not-a-real-png");
+
+    const result = await gameCommand(["qa", "--project", projectPath, "--run-proof", "--json"]);
+    const proof = JSON.parse(await readFile(join(projectPath, "artifacts/game-production/performance-proof.json"), "utf8")) as {
+      metrics: { entityCount: { status: string; value: number }; frameTimeMs: { status: string } };
+      schema: string;
+      status: string;
+    };
+
+    assert.notEqual(result.exitCode, 0);
+    assert.equal(proof.schema, "threenative.performance-proof");
+    assert.equal(proof.status, "pass");
+    assert.equal(proof.metrics.frameTimeMs.status, "unsupported");
+    assert.equal(proof.metrics.entityCount.status, "measured");
+    assert.equal(typeof proof.metrics.entityCount.value, "number");
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
 test("fails qa command when run-proof fails even if game report is clean", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-game-qa-proof-fail-"));
   try {

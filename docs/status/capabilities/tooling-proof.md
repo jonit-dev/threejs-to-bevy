@@ -35,7 +35,10 @@ Current support:
   builds `examples/dense-world-benchmark`, captures a web performance-proof
   sidecar, validates target-profile budgets, and enforces dense-scene entity
   and visible-instance floors plus selected texture-variant package/load
-  bytes.
+  bytes. `tn game qa --run-proof` also writes
+  `artifacts/game-production/performance-proof.json` using the shared
+  performance-proof schema with measured bundle counters and explicit
+  unsupported diagnostics for runtime-only counters.
 - `pnpm verify:template-production` checks iterate-first starter guidance,
   compact-report guidance, and generated API-card parity.
 - Rejected boundary fixtures under

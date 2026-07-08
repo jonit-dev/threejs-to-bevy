@@ -15,6 +15,11 @@ to set the frame sample count, and `--out <file>` to change the sidecar path.
 Use `--target desktop` or `--target native` to emit the Bevy/native sidecar
 shape; counters that are not promoted by the native adapter are included as
 explicit unsupported diagnostics.
+`tn game qa --run-proof` writes the same schema at
+`artifacts/game-production/performance-proof.json` for generated-game QA. That
+QA sidecar is static and lightweight: bundle, entity, LOD, and texture counters
+are measured from the emitted bundle, while runtime-only frame/draw/visibility
+counters remain explicit unsupported diagnostics.
 
 ## Sidecar
 
