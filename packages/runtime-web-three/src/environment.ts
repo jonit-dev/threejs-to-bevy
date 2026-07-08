@@ -37,6 +37,13 @@ type EnvironmentTerrain = NonNullable<NonNullable<IWebBundle["environmentScene"]
 type EnvironmentScene = NonNullable<IWebBundle["environmentScene"]>;
 type EnvironmentSourceAsset = EnvironmentScene["sourceAssets"][number];
 type EnvironmentInstance = EnvironmentScene["instances"][number];
+type EnvironmentAsset = NonNullable<IWebBundle["assets"]>["assets"][number];
+
+interface IEnvironmentTerrainRuntime {
+  heightAt(x: number, z: number): number;
+  mesh: THREE.Mesh;
+  terrain: EnvironmentTerrain;
+}
 
 export function createEnvironmentRuntime(bundle: IWebBundle, options: { renderPlaceholders?: boolean } = {}): IEnvironmentRuntime | undefined {
   if (bundle.environmentScene === undefined) {
@@ -45,22 +52,23 @@ export function createEnvironmentRuntime(bundle: IWebBundle, options: { renderPl
   const renderPlaceholders = options.renderPlaceholders ?? true;
   const instancingPlan = buildInstancingPlan(bundle.environmentScene);
   const terrain = bundle.environmentScene.terrain;
+  const terrainRuntime = createTerrainRuntime(terrain, bundle.assets?.assets ?? []);
   const object = new THREE.Group();
   object.name = "tn-environment";
   const atmosphere = observeAtmosphereProfile(bundle.environmentScene.atmosphere);
 
-  if (terrain !== undefined) {
-    object.add(createTerrainMesh(terrain));
+  if (terrainRuntime !== undefined) {
+    object.add(terrainRuntime.mesh);
   }
 
-  const pathPoints = bundle.environmentScene.path.points.map((point) => new THREE.Vector3(point[0], terrainAdjustedY(point, terrain) + 0.08, point[2]));
+  const pathPoints = bundle.environmentScene.path.points.map((point) => new THREE.Vector3(point[0], terrainAdjustedY(point, terrainRuntime) + 0.08, point[2]));
   const path = new THREE.Line(
     new THREE.BufferGeometry().setFromPoints(pathPoints),
     new THREE.LineBasicMaterial({ color: "#8b7a55" }),
   );
   path.name = `path:${bundle.environmentScene.path.id}`;
   object.add(path);
-  object.add(createPathSurface(bundle.environmentScene.path.points, bundle.environmentScene.path.width, terrain));
+  object.add(createPathSurface(bundle.environmentScene.path.points, bundle.environmentScene.path.width, terrainRuntime));
 
   if (renderPlaceholders) {
     for (const group of instancingPlan.groups) {
@@ -75,7 +83,7 @@ export function createEnvironmentRuntime(bundle: IWebBundle, options: { renderPl
         if (instance === undefined) {
           return;
         }
-        mesh.setMatrixAt(index, matrixForInstance(adjustedTerrainPosition(instance.position, terrain), instance.scale, instance.rotation));
+        mesh.setMatrixAt(index, matrixForInstance(adjustedTerrainPosition(instance.position, terrainRuntime), instance.scale, instance.rotation));
       });
       mesh.instanceMatrix.needsUpdate = true;
       object.add(mesh);
@@ -91,7 +99,7 @@ export function createEnvironmentRuntime(bundle: IWebBundle, options: { renderPl
         new THREE.MeshBasicMaterial({ color: colorForSourceAsset(item.sourceAsset) }),
       );
       mesh.name = `environment:${instance.id}`;
-      mesh.position.fromArray([...adjustedTerrainPosition(instance.position, terrain)]);
+      mesh.position.fromArray([...adjustedTerrainPosition(instance.position, terrainRuntime)]);
       mesh.scale.fromArray([...(instance.scale ?? [1, 1, 1])]);
       object.add(mesh);
     }
@@ -108,6 +116,7 @@ export async function loadEnvironmentAssetInstances(bundle: IWebBundle, source: 
   const sourceAssets = new Map(scene.sourceAssets.map((asset) => [asset.id, asset]));
   const assets = new Map(bundle.assets.assets.map((asset) => [asset.id, asset]));
   const terrain = scene.terrain;
+  const terrainRuntime = createTerrainRuntime(terrain, bundle.assets.assets);
   const loader = new GLTFLoader();
   const models = new Map<string, THREE.Object3D>();
   const instancingPlan = buildInstancingPlan(scene);
@@ -141,7 +150,7 @@ export async function loadEnvironmentAssetInstances(bundle: IWebBundle, source: 
       continue;
     }
     const instances = instancedGroup.instanceIds.map((id) => instancesById.get(id)).filter((instance): instance is EnvironmentInstance => instance !== undefined);
-    const instancedObject = createInstancedModelGroup(model, instancedGroup.sourceAsset, instances, terrain);
+    const instancedObject = createInstancedModelGroup(model, instancedGroup.sourceAsset, instances, terrainRuntime);
     if (instancedObject === undefined) {
       continue;
     }
@@ -162,7 +171,7 @@ export async function loadEnvironmentAssetInstances(bundle: IWebBundle, source: 
     }
     const object = new THREE.Group();
     object.name = `environment:${instance.id}`;
-    object.position.fromArray([...adjustedTerrainPosition(instance.position, terrain)]);
+    object.position.fromArray([...adjustedTerrainPosition(instance.position, terrainRuntime)]);
     object.quaternion.fromArray([...(instance.rotation ?? [0, 0, 0, 1])]);
     object.scale.fromArray([...(instance.scale ?? [1, 1, 1])]);
     const normalizedModel = model.clone(true);
@@ -189,7 +198,7 @@ export function createInstancedModelGroup(
   model: THREE.Object3D,
   sourceAsset: string,
   instances: readonly EnvironmentInstance[],
-  terrain: EnvironmentTerrain | undefined,
+  terrain: EnvironmentTerrain | IEnvironmentTerrainRuntime | undefined,
 ): THREE.Group | undefined {
   const meshes: THREE.Mesh[] = [];
   model.updateMatrixWorld(true);
@@ -338,6 +347,51 @@ function matrixForInstance(
   );
 }
 
+function createTerrainRuntime(terrain: EnvironmentTerrain | undefined, assets: readonly EnvironmentAsset[]): IEnvironmentTerrainRuntime | undefined {
+  if (terrain === undefined) {
+    return undefined;
+  }
+  if (terrain.heightMode === "heightmap" && terrain.chunks !== undefined && terrain.chunks.length > 0) {
+    const runtime = createHeightmapTerrainRuntime(terrain, assets);
+    if (runtime !== undefined) {
+      return runtime;
+    }
+  }
+  const mesh = createTerrainMesh(terrain);
+  return { heightAt: (x, z) => terrainHeightAt(terrain, x, z), mesh, terrain };
+}
+
+function createHeightmapTerrainRuntime(terrain: EnvironmentTerrain, assets: readonly EnvironmentAsset[]): IEnvironmentTerrainRuntime | undefined {
+  const chunk = terrain.chunks?.[0];
+  const asset = chunk === undefined ? undefined : assets.find((candidate) => candidate.id === chunk.mesh);
+  if (asset?.kind !== "mesh" || asset.primitive !== "custom" || !Array.isArray(asset.attributes)) {
+    return undefined;
+  }
+  const position = asset.attributes.find((attribute) => attribute.name === "position" && attribute.itemSize === 3);
+  if (position === undefined) {
+    return undefined;
+  }
+  const geometry = customMeshGeometry(asset);
+  applyTerrainVertexColors(geometry);
+  geometry.computeVertexNormals();
+  const mesh = new THREE.Mesh(geometry, new THREE.MeshStandardMaterial({ roughness: 0.98, vertexColors: true }));
+  mesh.name = `terrain:${terrain.id}`;
+  mesh.receiveShadow = true;
+  const sampler = heightfieldSampler(terrain, position.values);
+  return { heightAt: sampler, mesh, terrain };
+}
+
+function customMeshGeometry(asset: Extract<EnvironmentAsset, { kind: "mesh" }>): THREE.BufferGeometry {
+  const geometry = new THREE.BufferGeometry();
+  for (const attribute of asset.attributes ?? []) {
+    geometry.setAttribute(attribute.name, new THREE.Float32BufferAttribute(attribute.values, attribute.itemSize));
+  }
+  if (Array.isArray(asset.indices)) {
+    geometry.setIndex(asset.indices);
+  }
+  return geometry;
+}
+
 function createTerrainMesh(terrain: EnvironmentTerrain): THREE.Mesh {
   const min = terrain.bounds.min;
   const max = terrain.bounds.max;
@@ -398,7 +452,7 @@ function applyTerrainVertexColors(geometry: THREE.BufferGeometry): void {
   geometry.setAttribute("color", new THREE.Float32BufferAttribute(colors, 3));
 }
 
-function createPathSurface(points: readonly (readonly [number, number, number])[], width: number, terrain: EnvironmentTerrain | undefined): THREE.Group {
+function createPathSurface(points: readonly (readonly [number, number, number])[], width: number, terrain: EnvironmentTerrain | IEnvironmentTerrainRuntime | undefined): THREE.Group {
   const group = new THREE.Group();
   group.name = "path-surface";
   if (points.length < 2) {
@@ -448,15 +502,18 @@ function pathPointNormal(points: readonly (readonly [number, number, number])[],
   return { x: dz / length, z: -dx / length };
 }
 
-function adjustedTerrainPosition(position: readonly [number, number, number], terrain: EnvironmentTerrain | undefined): readonly [number, number, number] {
+function adjustedTerrainPosition(position: readonly [number, number, number], terrain: EnvironmentTerrain | IEnvironmentTerrainRuntime | undefined): readonly [number, number, number] {
   return [position[0], terrainAdjustedY(position, terrain), position[2]];
 }
 
-function terrainAdjustedY(position: readonly [number, number, number], terrain: EnvironmentTerrain | undefined): number {
+function terrainAdjustedY(position: readonly [number, number, number], terrain: EnvironmentTerrain | IEnvironmentTerrainRuntime | undefined): number {
   return position[1] + terrainHeightAt(terrain, position[0], position[2]);
 }
 
-function terrainHeightAt(terrain: EnvironmentTerrain | undefined, x: number, z: number): number {
+function terrainHeightAt(terrain: EnvironmentTerrain | IEnvironmentTerrainRuntime | undefined, x: number, z: number): number {
+  if (isTerrainRuntime(terrain)) {
+    return terrain.heightAt(x, z);
+  }
   if (terrain === undefined || terrain.heightMode !== "controlPoints") {
     return terrain?.bounds.min[1] ?? 0;
   }
@@ -470,6 +527,41 @@ function terrainHeightAt(terrain: EnvironmentTerrain | undefined, x: number, z: 
   }
   const baseHeight = totalWeight > 0 ? weightedHeight / totalWeight : terrain.bounds.min[1];
   return baseHeight + terrainDetailHeight(terrain, x, z);
+}
+
+function heightfieldSampler(terrain: EnvironmentTerrain, positions: readonly number[]): (x: number, z: number) => number {
+  const collider = terrain.collider;
+  if (collider === undefined) {
+    return () => terrain.bounds.min[1];
+  }
+  const [width, depth] = collider.sampleCount;
+  return (x, z) => {
+    const localX = clamp((x - collider.origin[0]) / collider.cellSize, 0, width - 1);
+    const localZ = clamp((z - collider.origin[2]) / collider.cellSize, 0, depth - 1);
+    const x0 = Math.floor(localX);
+    const z0 = Math.floor(localZ);
+    const x1 = Math.min(width - 1, x0 + 1);
+    const z1 = Math.min(depth - 1, z0 + 1);
+    const tx = localX - x0;
+    const tz = localZ - z0;
+    const h00 = heightfieldVertexY(positions, width, x0, z0);
+    const h10 = heightfieldVertexY(positions, width, x1, z0);
+    const h01 = heightfieldVertexY(positions, width, x0, z1);
+    const h11 = heightfieldVertexY(positions, width, x1, z1);
+    return THREE.MathUtils.lerp(THREE.MathUtils.lerp(h00, h10, tx), THREE.MathUtils.lerp(h01, h11, tx), tz);
+  };
+}
+
+function heightfieldVertexY(positions: readonly number[], width: number, x: number, z: number): number {
+  return positions[(z * width + x) * 3 + 1] ?? 0;
+}
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.max(min, Math.min(max, value));
+}
+
+function isTerrainRuntime(value: EnvironmentTerrain | IEnvironmentTerrainRuntime | undefined): value is IEnvironmentTerrainRuntime {
+  return value !== undefined && "heightAt" in value;
 }
 
 function terrainDetailHeight(terrain: EnvironmentTerrain, x: number, z: number): number {

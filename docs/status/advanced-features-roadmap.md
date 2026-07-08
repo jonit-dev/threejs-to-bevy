@@ -104,7 +104,9 @@ the same IR-level contract or produce stable, actionable diagnostics.
   sampling mode, and optional CPU mirror. Initial structured JSON heightmap
   asset, terrain heightmap reference, splat-layer, target cell-budget
   validation, compiler terrain chunk mesh emission, and heightfield collider
-  descriptors are in place; runtime sampling is still open.
+  descriptors are in place; the web runtime consumes generated terrain chunks
+  for rendering and static terrain collision, while Bevy runtime sampling is
+  still open.
 - Add terrain tile/chunk metadata for LOD, skirts, morph bands, and far shells.
 - Add deterministic terrain generation metadata for seeds, noise parameters,
   erosion passes, hydrology, biome maps, and snow/rock/vegetation masks.

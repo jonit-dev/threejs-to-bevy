@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import type { IWorldIr } from "@threenative/ir";
+import type { IEnvironmentSceneIr, IWorldIr } from "@threenative/ir";
 
 import { stepPhysics, tracePhysicsJoints, traceRigidBodyPrimitive } from "./physics.js";
 
@@ -108,6 +108,17 @@ test("physics should trace dynamic box falling onto a static floor", () => {
       step: 4,
       velocity: [0, 0, 0],
     },
+  ]);
+});
+
+test("physics should trace dynamic body against environment terrain collider", () => {
+  const source = makeFallingBoxWorld();
+  const world = { ...source, entities: source.entities.filter((entity) => entity.id !== "floor") };
+
+  assert.deepEqual(traceRigidBodyPrimitive(world, { environmentScene: makeHeightfieldEnvironment(), fixedDelta: 0.25, steps: 3 }).map((item) => ({ contact: item.contact, entity: item.entity, position: item.position, step: item.step })), [
+    { contact: undefined, entity: "box", position: [0, 1.386875, 0], step: 1 },
+    { contact: "terrain.reference.heightfield", entity: "box", position: [0, 0.55, 0], step: 2 },
+    { contact: "terrain.reference.heightfield", entity: "box", position: [0, 0.55, 0], step: 3 },
   ]);
 });
 
@@ -307,6 +318,41 @@ function makeFallingBoxWorld(): IWorldIr {
         },
       },
     ],
+  };
+}
+
+function makeHeightfieldEnvironment(): IEnvironmentSceneIr {
+  return {
+    schema: "threenative.environment-scene",
+    version: "0.1.0",
+    sourceAssets: [],
+    terrain: {
+      bounds: { min: [-2, -0.05, -2], max: [2, 0.05, 2] },
+      chunks: [
+        {
+          bounds: { min: [-2, -0.05, -2], max: [2, 0.05, 2] },
+          heightRange: { min: 0, max: 0 },
+          id: "terrain.reference.chunk.0",
+          mesh: "mesh.terrain.reference.chunk.0",
+          sampleRange: { x: [0, 2], z: [0, 2] },
+        },
+      ],
+      collider: {
+        asset: "heightmap.reference",
+        cellSize: 1,
+        heightRange: { min: 0, max: 0 },
+        heightScale: 1,
+        kind: "heightfield",
+        mesh: "mesh.terrain.reference.chunk.0",
+        origin: [-2, 0, -2],
+        sampleCount: [3, 3],
+      },
+      heightmap: { asset: "heightmap.reference", cellSize: 1, heightScale: 1, origin: [-2, 0, -2] },
+      heightMode: "heightmap",
+      id: "terrain.reference",
+    },
+    instances: [],
+    path: { id: "path", points: [[0, 0, 0], [1, 0, 1]], width: 1 },
   };
 }
 

@@ -1,4 +1,4 @@
-import type { IAssetsManifest, IIrSchemaFile, IRuntimeConfigIr, ISystemsIr, IWorldIr } from "@threenative/ir";
+import type { IAssetsManifest, IEnvironmentSceneIr, IIrSchemaFile, IRuntimeConfigIr, ISystemsIr, IWorldIr } from "@threenative/ir";
 import type { IWebInputState } from "./input.js";
 import type { IThreeWorld } from "./mapWorld.js";
 import { applyAnimationServiceEffects, syncMeshRendererMaterials, syncTransforms } from "./mapWorld.js";
@@ -50,6 +50,7 @@ export async function runGameFrame(options: {
   delta: number;
   componentSchemas?: IIrSchemaFile;
   effectLog?: ISystemEffectLog;
+  environmentScene?: IEnvironmentSceneIr;
   fixedDelta?: number;
   input?: IWebInputState;
   mapped: IThreeWorld;
@@ -75,7 +76,7 @@ export async function runGameFrame(options: {
       while (state.accumulator >= fixedDelta) {
         const beforeFixed = snapshotWorldTransforms(options.world);
         stepKinematicMovers(options.world, state.elapsed);
-        stepPhysics(options.world, fixedDelta);
+        stepPhysics(options.world, fixedDelta, options.environmentScene);
         collectSystemResult(
           options.mapped,
           await runSchedule({ ...options, delta: fixedDelta, elapsed: state.elapsed, fixedDelta, frame: state.frame, paused: state.paused, schedule: "fixedUpdate", tick: state.tick }),
@@ -97,7 +98,7 @@ export async function runGameFrame(options: {
   } else {
     collectSystemResult(options.mapped, await runSchedule({ ...options, delta: 0, fixedDelta, frame: 0, schedule: "startup", tick: 0 }));
     stepKinematicMovers(options.world, fixedDelta);
-    stepPhysics(options.world, fixedDelta);
+    stepPhysics(options.world, fixedDelta, options.environmentScene);
     collectSystemResult(options.mapped, await runSchedule({ ...options, fixedDelta, frame: 0, schedule: "fixedUpdate", tick: 0 }));
     collectSystemResult(options.mapped, await runSchedule({ ...options, fixedDelta, frame: 0, schedule: "update", tick: 0 }));
     collectSystemResult(options.mapped, await runSchedule({ ...options, fixedDelta, frame: 0, schedule: "postUpdate", tick: 0 }));

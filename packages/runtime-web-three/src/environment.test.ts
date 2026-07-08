@@ -87,6 +87,91 @@ test("environment should render terrain control points as a non-flat mesh", () =
   assert.equal(heights.size > 1, true);
 });
 
+test("environment should render heightmap terrain chunks and sample path height", () => {
+  const runtime = createEnvironmentRuntime({
+    assets: {
+      schema: "threenative.assets",
+      version: "0.1.0",
+      assets: [
+        {
+          attributes: [
+            {
+              itemSize: 3,
+              name: "position",
+              values: [
+                0, 0, 0, 1, 0, 0, 2, 0, 0,
+                0, 0, 1, 1, 2, 1, 2, 0, 1,
+                0, 0, 2, 1, 0, 2, 2, 0, 2,
+              ],
+            },
+            {
+              itemSize: 3,
+              name: "normal",
+              values: [
+                0, 1, 0, 0, 1, 0, 0, 1, 0,
+                0, 1, 0, 0, 1, 0, 0, 1, 0,
+                0, 1, 0, 0, 1, 0, 0, 1, 0,
+              ],
+            },
+            {
+              itemSize: 2,
+              name: "uv",
+              values: [0, 0, 0.5, 0, 1, 0, 0, 0.5, 0.5, 0.5, 1, 0.5, 0, 1, 0.5, 1, 1, 1],
+            },
+          ],
+          format: "generated",
+          id: "mesh.terrain.reference.chunk.0",
+          indices: [0, 3, 1, 1, 3, 4, 1, 4, 2, 2, 4, 5, 3, 6, 4, 4, 6, 7, 4, 7, 5, 5, 7, 8],
+          kind: "mesh",
+          primitive: "custom",
+        },
+      ],
+    },
+    environmentScene: {
+      schema: "threenative.environment-scene",
+      version: "0.1.0",
+      sourceAssets: [],
+      terrain: {
+        bounds: { min: [0, 0, 0], max: [2, 2, 2] },
+        chunks: [
+          {
+            bounds: { min: [0, 0, 0], max: [2, 2, 2] },
+            heightRange: { min: 0, max: 2 },
+            id: "terrain.reference.chunk.0",
+            mesh: "mesh.terrain.reference.chunk.0",
+            sampleRange: { x: [0, 2], z: [0, 2] },
+          },
+        ],
+        collider: {
+          asset: "heightmap.reference",
+          cellSize: 1,
+          heightRange: { min: 0, max: 2 },
+          heightScale: 1,
+          kind: "heightfield",
+          mesh: "mesh.terrain.reference.chunk.0",
+          origin: [0, 0, 0],
+          sampleCount: [3, 3],
+        },
+        heightmap: { asset: "heightmap.reference", cellSize: 1, heightScale: 1, origin: [0, 0, 0] },
+        heightMode: "heightmap",
+        id: "terrain.reference",
+      },
+      instances: [],
+      path: { id: "path", points: [[1, 0, 1], [2, 0, 1]], width: 1 },
+    },
+  } as unknown as IWebBundle);
+  const terrain = runtime?.object.children.find((child) => child.name === "terrain:terrain.reference") as THREE.Mesh | undefined;
+  const path = runtime?.object.children.find((child) => child.name === "path:path") as THREE.Line | undefined;
+
+  assert.equal(terrain instanceof THREE.Mesh, true);
+  terrain?.updateMatrixWorld(true);
+  const hits = new THREE.Raycaster(new THREE.Vector3(1, 10, 1), new THREE.Vector3(0, -1, 0)).intersectObject(terrain!);
+
+  assert.equal(hits.length > 0, true);
+  assert.equal(Number(hits[0]!.point.y.toFixed(3)), 2);
+  assert.equal(Number((path?.geometry.getAttribute("position").getY(0) ?? 0).toFixed(3)), 2.08);
+});
+
 test("environment should instance loaded model geometry instead of cloning repeated glTF placements", () => {
   const model = new THREE.Group();
   const geometry = new THREE.BoxGeometry(1, 2, 3);

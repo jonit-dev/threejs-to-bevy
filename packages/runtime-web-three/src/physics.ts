@@ -1,6 +1,6 @@
 import RAPIER from "@dimforge/rapier3d-compat";
 
-import type { IColliderComponent, IWorldEntity, IWorldIr, Vec3 } from "@threenative/ir";
+import type { IColliderComponent, IEnvironmentSceneIr, IWorldEntity, IWorldIr, Vec3 } from "@threenative/ir";
 
 export interface IPhysicsEventPayload {
   a: string;
@@ -30,6 +30,7 @@ interface IDetectedPair {
 }
 
 export interface IRigidBodyTraceInput {
+  environmentScene?: IEnvironmentSceneIr;
   fixedDelta?: number;
   gravity?: Vec3;
   steps?: number;
@@ -71,16 +72,17 @@ export async function initializePhysicsRuntime(): Promise<void> {
   await rapierInitialization;
 }
 
-export function stepPhysics(world: IWorldIr, fixedDelta = 1 / 60): IPhysicsEventPayload[] {
+export function stepPhysics(world: IWorldIr, fixedDelta = 1 / 60, environmentScene?: IEnvironmentSceneIr): IPhysicsEventPayload[] {
   const scriptAuthoredTransforms = scriptAuthoredTransformsByWorld.get(world) ?? new Set<string>();
   scriptAuthoredTransformsByWorld.delete(world);
+  const physicsWorld = worldWithEnvironmentTerrain(world, environmentScene);
   if (rapierInitialized) {
-    stepRapierBodies(world, fixedDelta, [0, -9.81, 0], scriptAuthoredTransforms);
+    stepRapierBodies(physicsWorld, fixedDelta, [0, -9.81, 0], scriptAuthoredTransforms);
   } else {
-    stepPrimitiveBodies(world, fixedDelta, [0, -9.81, 0], scriptAuthoredTransforms);
+    stepPrimitiveBodies(physicsWorld, fixedDelta, [0, -9.81, 0], scriptAuthoredTransforms);
   }
 
-  const currentPairs = detectPairs(world.entities.flatMap((entity) => colliderBounds(entity)));
+  const currentPairs = detectPairs(physicsWorld.entities.flatMap((entity) => colliderBounds(entity)));
   const previousPairs = previousPairsByWorld.get(world) ?? new Map();
   const collisions = eventPayloads("CollisionEvent", currentPairs, previousPairs);
   const triggers = eventPayloads("TriggerEvent", currentPairs, previousPairs);
@@ -247,10 +249,11 @@ function colliderDescFor(collider: IColliderComponent): RAPIER.ColliderDesc | un
 export function traceRigidBodyPrimitive(world: IWorldIr, input: IRigidBodyTraceInput = {}): IRigidBodyTraceObservation[] {
   const fixedDelta = input.fixedDelta ?? 0.25;
   const gravity = input.gravity ?? [0, -9.81, 0];
+  const physicsWorld = worldWithEnvironmentTerrain(world, input.environmentScene);
   const observations: IRigidBodyTraceObservation[] = [];
   for (let step = 1; step <= (input.steps ?? 4); step += 1) {
-    const contacts = stepPrimitiveBodies(world, fixedDelta, gravity, new Set());
-    for (const entity of world.entities) {
+    const contacts = stepPrimitiveBodies(physicsWorld, fixedDelta, gravity, new Set());
+    for (const entity of physicsWorld.entities) {
       const body = entity.components.RigidBody;
       const collider = entity.components.Collider;
       const position = entity.components.Transform?.position;
@@ -274,6 +277,39 @@ export function traceRigidBodyPrimitive(world: IWorldIr, input: IRigidBodyTraceI
     }
   }
   return observations.sort((left, right) => left.step - right.step || left.entity.localeCompare(right.entity));
+}
+
+export function worldWithEnvironmentTerrain(world: IWorldIr, environmentScene: IEnvironmentSceneIr | undefined): IWorldIr {
+  const terrain = environmentScene?.terrain;
+  const chunk = terrain?.chunks?.[0];
+  const collider = terrain?.collider;
+  if (terrain === undefined || chunk === undefined || collider === undefined) {
+    return world;
+  }
+  const min = chunk.bounds.min;
+  const max = chunk.bounds.max;
+  const size: Vec3 = [max[0] - min[0], max[1] - min[1], max[2] - min[2]];
+  const center: Vec3 = [(min[0] + max[0]) / 2, (min[1] + max[1]) / 2, (min[2] + max[2]) / 2];
+  const terrainEntity: IWorldEntity = {
+    components: {
+      Collider: {
+        kind: "mesh",
+        layer: "world",
+        mesh: {
+          bounds: { center, size },
+          source: collider.mesh,
+          triangleCount: Math.max(0, (collider.sampleCount[0] - 1) * (collider.sampleCount[1] - 1) * 2),
+        },
+      },
+      RigidBody: { kind: "static" },
+      Transform: { position: [0, 0, 0] },
+    },
+    id: `${terrain.id}.heightfield`,
+  };
+  return {
+    ...world,
+    entities: [...world.entities.filter((entity) => entity.id !== terrainEntity.id), terrainEntity],
+  };
 }
 
 export function tracePhysicsJoints(world: IWorldIr): IPhysicsJointObservation[] {
