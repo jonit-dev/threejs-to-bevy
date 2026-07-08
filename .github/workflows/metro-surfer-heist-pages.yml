@@ -67,6 +67,9 @@ jobs:
             exit 1
           fi
 
+      - name: Install Playwright Chromium
+        run: pnpm --filter @threenative/cli exec playwright install --with-deps --only-shell chromium
+
       - name: Verify static Pages shape
         run: |
           rm -rf /tmp/metro-pages-preview-root
