@@ -56,7 +56,7 @@ execution bundle.
   makes committed scenario playtests the default generated-game proof unit,
   adds QA scenario coverage reporting, ratchets generated-game gates away from
   ephemeral one-shot movement proof, and polishes watch-mode repair events.
-- [Humanoid Course Stair Traversal Proof](proof-first-engine-loop-2026-07-05/PRD-002-humanoid-course-stair-traversal-proof.md):
+- [Humanoid Course Stair Traversal Proof](done/PRD-002-humanoid-course-stair-traversal-proof.md):
   closes the remaining web-first humanoid-course scenario proof after the ramp
   and pushed-ball PRDs; native/desktop proof stays deferred by the native path
   decision until a shipped-game need lifts the freeze.
