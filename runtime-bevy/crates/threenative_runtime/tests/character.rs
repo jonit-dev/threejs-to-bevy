@@ -495,6 +495,135 @@ fn character_trace_should_walk_humanoid_course_ramp_dimensions() {
     fs::remove_dir_all(root).expect("temporary bundle should be removed");
 }
 
+#[test]
+fn character_trace_should_push_light_dynamic_bodies_and_block_heavy_bodies() {
+    let root = write_character_bundle();
+    write(
+        &root,
+        "world.ir.json",
+        r#"{
+  "schema": "threenative.world",
+  "version": "0.1.0",
+  "entities": [
+    {
+      "id": "light-crate",
+      "components": {
+        "Collider": { "kind": "box", "layer": "pushable", "size": [1, 2, 1] },
+        "RigidBody": { "kind": "dynamic", "mass": 2 },
+        "Transform": { "position": [2, 1, 0] }
+      }
+    },
+    {
+      "id": "floor",
+      "components": {
+        "Collider": { "kind": "box", "size": [6, 0.1, 6] },
+        "RigidBody": { "kind": "static" },
+        "Transform": { "position": [0, 0, 0] }
+      }
+    },
+    {
+      "id": "player",
+      "components": {
+        "CharacterController": {
+          "blocking": true,
+          "grounding": "raycast",
+          "moveXAxis": "MoveX",
+          "moveZAxis": "MoveZ",
+          "pushPolicy": { "allowedLayers": ["pushable"], "blockedWhenTooHeavy": true, "enabled": true, "impulseScale": 1, "maxPushMass": 10, "minMoveSpeed": 0.1 },
+          "speed": 2
+        },
+        "Collider": { "kind": "box", "size": [1, 2, 1] },
+        "RigidBody": { "kind": "kinematic" },
+        "Transform": { "position": [0, 1, 0] }
+      }
+    }
+  ]
+}"#,
+    );
+    let bundle = load_bundle(&root).expect("character bundle should load");
+    let trace = trace_character_controllers(
+        &bundle,
+        &[CharacterTraceAxis {
+            id: "MoveX",
+            value: 1.0,
+        }],
+        1.0,
+    );
+
+    assert_eq!(trace.len(), 1);
+    assert_eq!(trace[0].blocked_by, None);
+    assert_eq!(trace[0].ground_entity, Some("floor".to_owned()));
+    assert_eq!(trace[0].resolved, [2.0, 1.05, 0.0]);
+    let pushed = trace[0]
+        .pushed
+        .as_ref()
+        .expect("light dynamic body should be pushed");
+    assert_eq!(pushed.entity, "light-crate");
+    assert_eq!(pushed.impulse, [2.0, 0.0, 0.0]);
+    assert_eq!(pushed.position, [4.0, 1.0, 0.0]);
+
+    write(
+        &root,
+        "world.ir.json",
+        r#"{
+  "schema": "threenative.world",
+  "version": "0.1.0",
+  "entities": [
+    {
+      "id": "heavy-crate",
+      "components": {
+        "Collider": { "kind": "box", "layer": "pushable", "size": [1, 2, 1] },
+        "RigidBody": { "kind": "dynamic", "mass": 50 },
+        "Transform": { "position": [2, 1, 0] }
+      }
+    },
+    {
+      "id": "floor",
+      "components": {
+        "Collider": { "kind": "box", "size": [6, 0.1, 6] },
+        "RigidBody": { "kind": "static" },
+        "Transform": { "position": [0, 0, 0] }
+      }
+    },
+    {
+      "id": "player",
+      "components": {
+        "CharacterController": {
+          "blocking": true,
+          "grounding": "raycast",
+          "moveXAxis": "MoveX",
+          "moveZAxis": "MoveZ",
+          "pushPolicy": { "allowedLayers": ["pushable"], "blockedWhenTooHeavy": true, "enabled": true, "maxPushMass": 10 },
+          "speed": 2
+        },
+        "Collider": { "kind": "box", "size": [1, 2, 1] },
+        "RigidBody": { "kind": "kinematic" },
+        "Transform": { "position": [0, 1, 0] }
+      }
+    }
+  ]
+}"#,
+    );
+    let bundle = load_bundle(&root).expect("character bundle should load");
+    let trace = trace_character_controllers(
+        &bundle,
+        &[CharacterTraceAxis {
+            id: "MoveX",
+            value: 1.0,
+        }],
+        1.0,
+    );
+
+    assert_eq!(trace.len(), 1);
+    assert_eq!(trace[0].blocked_by, Some("heavy-crate".to_owned()));
+    assert_eq!(trace[0].ground_entity, Some("floor".to_owned()));
+    assert_eq!(trace[0].pushed, None);
+    assert_eq!(trace[0].resolved, [0.0, 1.05, 0.0]);
+    assert_eq!(trace[0].too_heavy, Some("heavy-crate".to_owned()));
+
+    fs::remove_dir_all(root).expect("temporary bundle should be removed");
+}
+
 fn write_character_bundle() -> PathBuf {
     let root = std::env::temp_dir().join(format!(
         "tn-character-trace-{}",
