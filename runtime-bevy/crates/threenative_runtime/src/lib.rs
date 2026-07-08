@@ -33,6 +33,7 @@ pub mod navigation;
 pub mod overlay;
 pub mod overlay_host;
 pub mod path_sampling;
+pub mod performance_metrics;
 pub mod persistence;
 pub mod persistence_reload;
 pub mod physics;

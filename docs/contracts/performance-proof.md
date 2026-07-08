@@ -12,6 +12,9 @@ tn performance proof --project . --json
 
 Use `--url <preview-url>` to measure an already-running web preview, `--frames`
 to set the frame sample count, and `--out <file>` to change the sidecar path.
+Use `--target desktop` or `--target native` to emit the Bevy/native sidecar
+shape; counters that are not promoted by the native adapter are included as
+explicit unsupported diagnostics.
 
 ## Sidecar
 
@@ -100,8 +103,11 @@ Unsupported metrics are not compared against numeric budgets. Missing metrics,
 malformed unsupported diagnostics, and malformed numeric values are verifier
 errors.
 
-The current web command emits measured values for all required fields. Native
-runtime emission is tracked separately and must use the same sidecar shape.
+The current web command emits measured values for all required fields. The
+desktop/native command emits measured static bundle counters for active LOD
+bands, texture bytes, texture variants, and entity count, plus unsupported
+diagnostics for frame time, draw calls, draw groups, and visible instances
+until those Bevy runtime counters are promoted.
 
 ## Budget Semantics
 

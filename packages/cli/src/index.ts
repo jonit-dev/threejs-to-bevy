@@ -181,9 +181,9 @@ const commands: Record<string, ICommandDefinition> = {
     usage: "tn package --target desktop --bundle <path> [--runtime bevy|webview] [--format portable|archive|installer] [--out <path>] [--json]",
   },
   performance: {
-    description: "Capture web runtime performance metrics and write a versioned proof sidecar.",
+    description: "Capture runtime performance metrics or unsupported native counter diagnostics and write a versioned proof sidecar.",
     implemented: true,
-    usage: "tn performance proof [--project <path>] [--url <preview-url>] [--frames <n>] [--target-profile <id>] [--out <file>] [--json]",
+    usage: "tn performance proof [--project <path>] [--target web|desktop|native] [--url <preview-url>] [--frames <n>] [--target-profile <id>] [--out <file>] [--json]",
   },
   playtest: {
     description: "Run, scaffold, or inspect playtest scenarios and assertion DSL.",

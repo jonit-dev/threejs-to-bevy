@@ -21,6 +21,10 @@ interface IPerformanceProofBudgets {
   visibleInstances: number;
 }
 
+type PerformanceMetric =
+  | { status: "measured"; value: unknown }
+  | { diagnostic: { code: string; message: string; severity: "warning" }; status: "unsupported" };
+
 export interface IRuntimePerformanceSample {
   frameSamplesMs: number[];
   renderer?: {
@@ -40,13 +44,15 @@ export interface IRuntimePerformanceSample {
 
 export interface IPerformanceProofCollectorResult {
   bundle: IWebBundle;
+  runtimeAdapter?: "bevy" | "web-three";
   runtime: IRuntimePerformanceSample;
+  runtimeTarget?: "desktop" | "native" | "web";
   textureBytes: number;
   textureVariantCount: number;
 }
 
 export interface IPerformanceProofCommandOptions {
-  collector?: (options: { bundlePath: string; frames: number; projectPath: string; url?: string }) => Promise<IPerformanceProofCollectorResult>;
+  collector?: (options: { bundlePath: string; frames: number; projectPath: string; target: "desktop" | "native" | "web"; url?: string }) => Promise<IPerformanceProofCollectorResult>;
 }
 
 export async function performanceProofCommand(
@@ -61,14 +67,21 @@ export async function performanceProofCommand(
   if (subcommand !== "proof") {
     return diagnosticResult({
       code: "TN_PERFORMANCE_COMMAND_UNSUPPORTED",
-      message: "Usage: tn performance proof [--project <path>] [--url <preview-url>] [--frames <n>] [--target-profile <id>] [--out <file>] [--json]",
+      message: "Usage: tn performance proof [--project <path>] [--target web|desktop|native] [--url <preview-url>] [--frames <n>] [--target-profile <id>] [--out <file>] [--json]",
     }, { exitCode: 1, json, stderr: true });
   }
   const projectPath = resolve(cwd, readStringFlag(commandArgv, "--project") ?? ".");
   const outPath = resolve(projectPath, readStringFlag(commandArgv, "--out") ?? "artifacts/performance-proof.json");
   const frames = readNumberFlag(commandArgv, "--frames", 120);
   const url = readStringFlag(commandArgv, "--url");
+  const target = readPerformanceTarget(commandArgv);
   const targetProfileOverride = readStringFlag(commandArgv, "--target-profile");
+  if (target === undefined) {
+    return diagnosticResult({
+      code: "TN_PERFORMANCE_TARGET_UNSUPPORTED",
+      message: "Performance proof target must be one of web, desktop, or native.",
+    }, { exitCode: 1, json, stderr: true });
+  }
 
   try {
     const config = await loadProjectConfig(projectPath);
@@ -78,42 +91,17 @@ export async function performanceProofCommand(
     if (!validation.ok) {
       throw new Error(validation.diagnostics[0]?.message ?? "Bundle validation failed.");
     }
-    const collected = await (options.collector ?? collectWebPerformanceProof)({ bundlePath, frames, projectPath, url });
+    const collected = await (options.collector ?? collectorForTarget(target))({ bundlePath, frames, projectPath, target, url });
     const budgets = budgetsFromBundle(collected.bundle);
-    const frameSamples = collected.runtime.frameSamplesMs.length > 0
-      ? collected.runtime.frameSamplesMs
-      : fallbackFrameSamples(collected.runtime.summary);
-    const frameTime = summarizePercentiles(frameSamples);
-    const runtimeScene = runtimeSceneDiagnostics(collected.runtime.runtimeDiagnostics);
-    const entityCount = runtimeScene.entityCount ?? collected.bundle.world.entities.length;
-    const visibleInstances = runtimeScene.visibleMeshCount ?? entityCount;
-    const activeLodBands = activeLodBandsForBundle(collected.bundle);
-    const drawCalls = finiteNumber(collected.runtime.renderer?.drawCalls) ?? 0;
-    const drawGroups = finiteNumber(collected.runtime.renderer?.programs) ?? drawCalls;
-    const metrics: Record<string, { status: "measured"; value: unknown }> = {
-      frameTimeMs: { status: "measured", value: frameTime },
-      drawCalls: { status: "measured", value: drawCalls },
-      drawGroups: { status: "measured", value: drawGroups },
-      visibleInstances: { status: "measured", value: visibleInstances },
-      activeLodBands: { status: "measured", value: activeLodBands },
-      loadedTextureBytes: { status: "measured", value: collected.textureBytes },
-      textureVariants: {
-        status: "measured",
-        value: {
-          loadedBytes: collected.textureBytes,
-          selectedVariantCount: collected.textureVariantCount,
-        },
-      },
-      entityCount: { status: "measured", value: entityCount },
-    };
+    const metrics = metricsForCollectedProof(collected);
     const proof = {
       schema: PERFORMANCE_PROOF_SCHEMA,
       version: PERFORMANCE_PROOF_VERSION,
       generatedBy: "tn performance proof",
       targetProfile: targetProfileOverride ?? targetProfileId(collected.bundle),
       runtime: {
-        adapter: "web-three",
-        target: "web",
+        adapter: collected.runtimeAdapter ?? "web-three",
+        target: collected.runtimeTarget ?? target,
       },
       budgets,
       metrics,
@@ -143,7 +131,7 @@ export async function performanceProofCommand(
   }
 }
 
-async function collectWebPerformanceProof(options: { bundlePath: string; frames: number; projectPath: string; url?: string }): Promise<IPerformanceProofCollectorResult> {
+async function collectWebPerformanceProof(options: { bundlePath: string; frames: number; projectPath: string; target: "desktop" | "native" | "web"; url?: string }): Promise<IPerformanceProofCollectorResult> {
   let server: IWebPreviewServer | undefined;
   const browser = await chromium.launch();
   try {
@@ -164,7 +152,9 @@ async function collectWebPerformanceProof(options: { bundlePath: string; frames:
     const texture = await textureMeasurements(options.projectPath, bundle);
     return {
       bundle,
+      runtimeAdapter: "web-three",
       runtime: normalizeRuntimeSample(runtime),
+      runtimeTarget: "web",
       textureBytes: texture.bytes,
       textureVariantCount: texture.variantCount,
     };
@@ -172,6 +162,91 @@ async function collectWebPerformanceProof(options: { bundlePath: string; frames:
     await browser.close();
     await server?.close();
   }
+}
+
+async function collectNativePerformanceProof(options: { bundlePath: string; projectPath: string; target: "desktop" | "native" | "web"; url?: string }): Promise<IPerformanceProofCollectorResult> {
+  if (options.url !== undefined) {
+    throw new Error("--url is only supported for web performance proof targets.");
+  }
+  const bundle = await loadBundle(options.bundlePath);
+  const texture = await textureMeasurements(options.projectPath, bundle);
+  return {
+    bundle,
+    runtimeAdapter: "bevy",
+    runtime: {
+      frameSamplesMs: [],
+      runtimeDiagnostics: {
+        scene: {
+          entityCount: bundle.world.entities.length,
+        },
+      },
+    },
+    runtimeTarget: options.target === "native" ? "native" : "desktop",
+    textureBytes: texture.bytes,
+    textureVariantCount: texture.variantCount,
+  };
+}
+
+function collectorForTarget(target: "desktop" | "native" | "web"): NonNullable<IPerformanceProofCommandOptions["collector"]> {
+  return target === "web" ? collectWebPerformanceProof : collectNativePerformanceProof;
+}
+
+function metricsForCollectedProof(collected: IPerformanceProofCollectorResult): Record<string, PerformanceMetric> {
+  const runtimeScene = runtimeSceneDiagnostics(collected.runtime.runtimeDiagnostics);
+  const entityCount = runtimeScene.entityCount ?? collected.bundle.world.entities.length;
+  const activeLodBands = activeLodBandsForBundle(collected.bundle);
+  if (collected.runtimeAdapter === "bevy" || collected.runtimeTarget === "desktop" || collected.runtimeTarget === "native") {
+    return {
+      frameTimeMs: unsupportedMetric("TN_PERFORMANCE_NATIVE_FRAME_TIME_UNSUPPORTED", "Native frame-time percentile capture is not promoted for the Bevy adapter."),
+      drawCalls: unsupportedMetric("TN_PERFORMANCE_NATIVE_DRAW_CALLS_UNSUPPORTED", "Native draw-call counting is not promoted for the Bevy adapter."),
+      drawGroups: unsupportedMetric("TN_PERFORMANCE_NATIVE_DRAW_GROUPS_UNSUPPORTED", "Native draw-group counting is not promoted for the Bevy adapter."),
+      visibleInstances: unsupportedMetric("TN_PERFORMANCE_NATIVE_VISIBLE_INSTANCES_UNSUPPORTED", "Native visible-instance counting is not promoted for the Bevy adapter."),
+      activeLodBands: { status: "measured", value: activeLodBands },
+      loadedTextureBytes: { status: "measured", value: collected.textureBytes },
+      textureVariants: {
+        status: "measured",
+        value: {
+          loadedBytes: collected.textureBytes,
+          selectedVariantCount: collected.textureVariantCount,
+        },
+      },
+      entityCount: { status: "measured", value: entityCount },
+    };
+  }
+  const frameSamples = collected.runtime.frameSamplesMs.length > 0
+    ? collected.runtime.frameSamplesMs
+    : fallbackFrameSamples(collected.runtime.summary);
+  const frameTime = summarizePercentiles(frameSamples);
+  const visibleInstances = runtimeScene.visibleMeshCount ?? entityCount;
+  const drawCalls = finiteNumber(collected.runtime.renderer?.drawCalls) ?? 0;
+  const drawGroups = finiteNumber(collected.runtime.renderer?.programs) ?? drawCalls;
+  return {
+    frameTimeMs: { status: "measured", value: frameTime },
+    drawCalls: { status: "measured", value: drawCalls },
+    drawGroups: { status: "measured", value: drawGroups },
+    visibleInstances: { status: "measured", value: visibleInstances },
+    activeLodBands: { status: "measured", value: activeLodBands },
+    loadedTextureBytes: { status: "measured", value: collected.textureBytes },
+    textureVariants: {
+      status: "measured",
+      value: {
+        loadedBytes: collected.textureBytes,
+        selectedVariantCount: collected.textureVariantCount,
+      },
+    },
+    entityCount: { status: "measured", value: entityCount },
+  };
+}
+
+function unsupportedMetric(code: string, message: string): PerformanceMetric {
+  return {
+    status: "unsupported",
+    diagnostic: {
+      code,
+      message,
+      severity: "warning",
+    },
+  };
 }
 
 async function waitForRuntime(page: Page): Promise<void> {
@@ -261,19 +336,22 @@ function budgetsFromBundle(bundle: IWebBundle): IPerformanceProofBudgets {
   };
 }
 
-function performanceBudgetDiagnostics(metrics: Record<string, { status: "measured"; value: unknown }>, budgets: IPerformanceProofBudgets): Array<{ code: string; message: string; severity: "error"; suggestedFix: string }> {
+function performanceBudgetDiagnostics(metrics: Record<string, PerformanceMetric>, budgets: IPerformanceProofBudgets): Array<{ code: string; message: string; severity: "error"; suggestedFix: string }> {
   const diagnostics: Array<{ code: string; message: string; severity: "error"; suggestedFix: string }> = [];
-  const frame = isRecord(metrics.frameTimeMs?.value) ? metrics.frameTimeMs.value : {};
+  const frameTime = measuredMetricValue(metrics.frameTimeMs);
+  const frame = isRecord(frameTime) ? frameTime : {};
+  const activeLodBands = measuredMetricValue(metrics.activeLodBands);
+  const textureVariants = measuredMetricValue(metrics.textureVariants);
   const checks = [
     ["frame time p95", finiteNumber(frame.p95), budgets.frameTimeMsP95],
     ["frame time p99", finiteNumber(frame.p99), budgets.frameTimeMsP99],
-    ["draw calls", finiteNumber(metrics.drawCalls?.value), budgets.drawCalls],
-    ["draw groups", finiteNumber(metrics.drawGroups?.value), budgets.drawGroups],
-    ["visible instances", finiteNumber(metrics.visibleInstances?.value), budgets.visibleInstances],
-    ["active LOD bands", Array.isArray(metrics.activeLodBands?.value) ? metrics.activeLodBands.value.length : undefined, budgets.activeLodBands],
-    ["loaded texture bytes", finiteNumber(metrics.loadedTextureBytes?.value), budgets.loadedTextureBytes],
-    ["texture variant loaded bytes", isRecord(metrics.textureVariants?.value) ? finiteNumber(metrics.textureVariants.value.loadedBytes) : undefined, budgets.textureVariantBytes],
-    ["entity count", finiteNumber(metrics.entityCount?.value), budgets.entityCount],
+    ["draw calls", finiteNumber(measuredMetricValue(metrics.drawCalls)), budgets.drawCalls],
+    ["draw groups", finiteNumber(measuredMetricValue(metrics.drawGroups)), budgets.drawGroups],
+    ["visible instances", finiteNumber(measuredMetricValue(metrics.visibleInstances)), budgets.visibleInstances],
+    ["active LOD bands", Array.isArray(activeLodBands) ? activeLodBands.length : undefined, budgets.activeLodBands],
+    ["loaded texture bytes", finiteNumber(measuredMetricValue(metrics.loadedTextureBytes)), budgets.loadedTextureBytes],
+    ["texture variant loaded bytes", isRecord(textureVariants) ? finiteNumber(textureVariants.loadedBytes) : undefined, budgets.textureVariantBytes],
+    ["entity count", finiteNumber(measuredMetricValue(metrics.entityCount)), budgets.entityCount],
   ] as const;
   for (const [label, actual, budget] of checks) {
     if (actual !== undefined && actual > budget) {
@@ -286,6 +364,10 @@ function performanceBudgetDiagnostics(metrics: Record<string, { status: "measure
     }
   }
   return diagnostics;
+}
+
+function measuredMetricValue(metric: PerformanceMetric | undefined): unknown {
+  return metric?.status === "measured" ? metric.value : undefined;
 }
 
 function summarizePercentiles(samples: readonly number[]): { p50: number; p95: number; p99: number; sampleCount: number } {
@@ -356,6 +438,11 @@ function readNumberFlag(argv: readonly string[], name: string, fallback: number)
   }
   const parsed = Number.parseInt(raw, 10);
   return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+}
+
+function readPerformanceTarget(argv: readonly string[]): "desktop" | "native" | "web" | undefined {
+  const raw = readStringFlag(argv, "--target") ?? "web";
+  return raw === "web" || raw === "desktop" || raw === "native" ? raw : undefined;
 }
 
 function finiteNumber(value: unknown): number | undefined {

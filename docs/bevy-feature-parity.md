@@ -122,9 +122,11 @@ implementation:
   and web emitter for frame-time percentiles, draw calls/groups, visible
   instances, active LOD bands, loaded texture bytes, texture variant bytes, and
   entity counts. `pnpm verify:efficient-scale` now proves the dense-world web
-  benchmark sidecar against target-profile budgets and density floors. Native
-  runtime metric emission and native promotion evidence remain unclaimed until
-  their focused gates land.
+  benchmark sidecar against target-profile budgets and density floors.
+  `tn performance proof --target desktop` emits Bevy/native sidecars with
+  measured static bundle counters and stable unsupported diagnostics for
+  unpromoted native frame/draw/visibility counters; native metric promotion
+  evidence remains unclaimed until those counters are measured.
 - Game-development velocity kits now provide source-backed kit candidates in
   `tn game plan`, read-only `tn game next` task graphs, `tn prove changed`
   proof manifests/diffs, artifact-local proof metadata on selected proof

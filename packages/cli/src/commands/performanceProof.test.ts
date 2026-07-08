@@ -91,3 +91,36 @@ test("performance proof fails when measured frame time exceeds budget", async ()
     await rm(root, { force: true, recursive: true });
   }
 });
+
+test("performance proof writes desktop sidecar with unsupported native counters", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-performance-proof-desktop-"));
+  try {
+    await cp(structuredSourceStarterPath, root, { recursive: true });
+    const result = await performanceProofCommand(["proof", "--project", root, "--target", "desktop", "--json"], process.cwd());
+    const payload = JSON.parse(result.stdout) as {
+      code: string;
+      report: {
+        metrics: {
+          entityCount: { status: string; value: number };
+          frameTimeMs: { diagnostic: { code: string; severity: string }; status: string };
+        };
+        runtime: { adapter: string; target: string };
+        status: string;
+      };
+    };
+    const report = JSON.parse(await readFile(join(root, "artifacts/performance-proof.json"), "utf8")) as typeof payload.report;
+
+    assert.equal(result.exitCode, 0, `${result.stdout}\n${result.stderr}`);
+    assert.equal(payload.code, "TN_PERFORMANCE_PROOF_OK");
+    assert.equal(report.status, "pass");
+    assert.equal(report.runtime.adapter, "bevy");
+    assert.equal(report.runtime.target, "desktop");
+    assert.equal(report.metrics.frameTimeMs.status, "unsupported");
+    assert.equal(report.metrics.frameTimeMs.diagnostic.code, "TN_PERFORMANCE_NATIVE_FRAME_TIME_UNSUPPORTED");
+    assert.equal(report.metrics.frameTimeMs.diagnostic.severity, "warning");
+    assert.equal(report.metrics.entityCount.status, "measured");
+    assert.equal(typeof report.metrics.entityCount.value, "number");
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
