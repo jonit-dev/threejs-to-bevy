@@ -560,6 +560,7 @@ export function compareConformanceReports(left, right, options = {}) {
   compareValue(diagnostics, fixture, left.runtime, right.runtime, "$.sceneLifecycle", left.sceneLifecycle, right.sceneLifecycle, { artifactPaths, bundlePath });
   compareValue(diagnostics, fixture, left.runtime, right.runtime, "$.ui", left.ui, right.ui, { artifactPaths, bundlePath });
   compareValue(diagnostics, fixture, left.runtime, right.runtime, "$.diagnostics", left.diagnostics ?? [], right.diagnostics ?? [], { artifactPaths, bundlePath });
+  compareRuntimeTraces(diagnostics, fixture, left.runtime, right.runtime, left.traces, right.traces, { artifactPaths, bundlePath });
 
   return {
     artifactPaths,
@@ -567,6 +568,54 @@ export function compareConformanceReports(left, right, options = {}) {
     diagnostics,
     ok: diagnostics.length === 0,
   };
+}
+
+function compareRuntimeTraces(diagnostics, fixture, leftRuntime, rightRuntime, left, right, context) {
+  if (left === undefined || right === undefined) {
+    compareValue(diagnostics, fixture, leftRuntime, rightRuntime, "$.traces", left, right, context);
+    return;
+  }
+  compareValue(diagnostics, fixture, leftRuntime, rightRuntime, "$.traces.schema", left.schema, right.schema, context);
+  compareValue(diagnostics, fixture, leftRuntime, rightRuntime, "$.traces.version", left.version, right.version, context);
+  compareTraceTransforms(diagnostics, fixture, leftRuntime, rightRuntime, left.slices?.transformSnapshot, right.slices?.transformSnapshot, context);
+  compareValue(diagnostics, fixture, leftRuntime, rightRuntime, "$.traces.slices.physicsContacts", left.slices?.physicsContacts, right.slices?.physicsContacts, context);
+  compareValue(diagnostics, fixture, leftRuntime, rightRuntime, "$.traces.slices.uiTree", left.slices?.uiTree, right.slices?.uiTree, context);
+  compareValue(diagnostics, fixture, leftRuntime, rightRuntime, "$.traces.slices.animationState", left.slices?.animationState, right.slices?.animationState, context);
+  compareValue(diagnostics, fixture, leftRuntime, rightRuntime, "$.traces.slices.renderObservation", left.slices?.renderObservation, right.slices?.renderObservation, context);
+}
+
+function compareTraceTransforms(diagnostics, fixture, leftRuntime, rightRuntime, left, right, context) {
+  compareValue(diagnostics, fixture, leftRuntime, rightRuntime, "$.traces.slices.transformSnapshot.frame", left?.frame, right?.frame, context);
+  const rightById = new Map((right?.entities ?? []).map((entity) => [entity.entityId, entity]));
+  for (const leftEntity of left?.entities ?? []) {
+    const path = `$.traces.slices.transformSnapshot.entities[${JSON.stringify(leftEntity.entityId)}]`;
+    const rightEntity = rightById.get(leftEntity.entityId);
+    if (rightEntity === undefined) {
+      diagnostics.push(mismatch(fixture, path, leftRuntime, rightRuntime, "present", "missing", context));
+      continue;
+    }
+    compareValue(diagnostics, fixture, leftRuntime, rightRuntime, `${path}.components`, leftEntity.components, rightEntity.components, context);
+    compareValue(diagnostics, fixture, leftRuntime, rightRuntime, `${path}.parentId`, leftEntity.parentId, rightEntity.parentId, context);
+    compareNumericTuple(diagnostics, fixture, leftRuntime, rightRuntime, `${path}.position`, leftEntity.position, rightEntity.position, context);
+    compareNumericTuple(diagnostics, fixture, leftRuntime, rightRuntime, `${path}.rotation`, leftEntity.rotation, rightEntity.rotation, context);
+    compareNumericTuple(diagnostics, fixture, leftRuntime, rightRuntime, `${path}.scale`, leftEntity.scale, rightEntity.scale, context);
+    rightById.delete(leftEntity.entityId);
+  }
+  for (const rightEntity of rightById.values()) {
+    diagnostics.push(mismatch(fixture, `$.traces.slices.transformSnapshot.entities[${JSON.stringify(rightEntity.entityId)}]`, leftRuntime, rightRuntime, "missing", "present", context));
+  }
+}
+
+function compareNumericTuple(diagnostics, fixture, leftRuntime, rightRuntime, path, left, right, context, tolerance = 0.001) {
+  if (!Array.isArray(left) || !Array.isArray(right) || left.length !== right.length) {
+    compareValue(diagnostics, fixture, leftRuntime, rightRuntime, path, left, right, context);
+    return;
+  }
+  for (let index = 0; index < left.length; index += 1) {
+    if (Math.abs(left[index] - right[index]) > tolerance) {
+      diagnostics.push(mismatch(fixture, `${path}[${index}]`, leftRuntime, rightRuntime, left[index], right[index], context));
+    }
+  }
 }
 
 function compareCatalog(diagnostics, fixture, leftRuntime, rightRuntime, path, leftItems = [], rightItems = [], context) {

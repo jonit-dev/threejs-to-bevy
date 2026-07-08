@@ -3,6 +3,7 @@ import type { IRuntimeConfigIr } from "./runtimeConfig.js";
 import type { IAssetIr, IMaterialIr, Quat, Vec3 } from "./types.js";
 import type { IEnvironmentMapIr, ILightProbeIr, ISkyboxIr } from "./types.js";
 import type { IGltfSceneAssetIr } from "./gltfScene.js";
+import type { IRuntimeTraceBundle } from "./runtimeTraces.js";
 
 export interface IConformanceAssetReport {
   animations?: Extract<IAssetIr, { animations?: unknown }>["animations"];
@@ -286,5 +287,6 @@ export interface IConformanceReport {
   sceneLifecycle?: IConformanceSceneLifecycleReport;
   screenshotExports?: IConformanceScreenshotExportReport[];
   systems?: IConformanceSystemReport[];
+  traces?: IRuntimeTraceBundle;
   ui?: IConformanceUiReport;
 }

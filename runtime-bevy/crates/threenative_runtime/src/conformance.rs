@@ -53,8 +53,95 @@ pub struct ConformanceReport {
     pub screenshot_exports: Option<Vec<ConformanceScreenshotExportReport>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub systems: Option<Vec<ConformanceSystemReport>>,
+    pub traces: RuntimeTraceBundle,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub ui: Option<ConformanceUiReport>,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RuntimeTraceBundle {
+    pub schema: &'static str,
+    pub version: &'static str,
+    pub slices: RuntimeTraceSlices,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RuntimeTraceSlices {
+    pub animation_state: RuntimeAnimationStateTrace,
+    pub physics_contacts: RuntimePhysicsContactsTrace,
+    pub render_observation: RuntimeRenderObservationTrace,
+    pub transform_snapshot: RuntimeTransformSnapshotTrace,
+    pub ui_tree: RuntimeUiTreeTrace,
+}
+
+#[derive(Debug, Serialize)]
+pub struct RuntimeTransformSnapshotTrace {
+    pub frame: usize,
+    pub entities: Vec<RuntimeTransformTraceEntity>,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RuntimeTransformTraceEntity {
+    pub components: Vec<String>,
+    pub entity_id: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub parent_id: Option<String>,
+    pub position: [f32; 3],
+    pub rotation: [f32; 4],
+    pub scale: [f32; 3],
+}
+
+#[derive(Debug, Serialize)]
+pub struct RuntimePhysicsContactsTrace {
+    pub frame: usize,
+    pub contacts: Vec<RuntimePhysicsContactTrace>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct RuntimePhysicsContactTrace {
+    pub a: String,
+    pub b: String,
+    pub kind: String,
+}
+
+#[derive(Debug, Serialize)]
+pub struct RuntimeUiTreeTrace {
+    pub frame: usize,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub root: Option<ConformanceUiNodeReport>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct RuntimeAnimationStateTrace {
+    pub frame: usize,
+    pub clips: Vec<RuntimeAnimationClipTrace>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct RuntimeAnimationClipTrace {
+    pub asset_id: String,
+    pub clip: String,
+    pub state: String,
+    pub weight: f32,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RuntimeRenderObservationTrace {
+    pub active_camera: Option<String>,
+    pub camera_views: Vec<RuntimeCameraViewTrace>,
+    pub frame: usize,
+    pub visible_entities: Vec<String>,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RuntimeCameraViewTrace {
+    pub camera_id: String,
+    pub target_kind: String,
 }
 
 #[derive(Debug, Serialize)]
@@ -492,12 +579,12 @@ pub struct ConformanceResourceReport {
     pub value: serde_json::Value,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Clone, Debug, Serialize)]
 pub struct ConformanceUiReport {
     pub root: ConformanceUiNodeReport,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Clone, Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ConformanceUiNodeReport {
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -683,9 +770,17 @@ pub fn report_bevy_conformance(
 
     let audio_observation = audio::observe_audio(bundle);
     let ui_report = report_ui(bundle.ui.as_ref());
+    let active_camera = report_active_camera(world);
+    let camera_views = report_camera_views(bundle);
+    let traces = build_runtime_trace_bundle(
+        &entities,
+        ui_report.as_ref().and_then(|report| report.report.as_ref()),
+        active_camera.as_ref(),
+        &camera_views,
+    );
 
     ConformanceReport {
-        active_camera: report_active_camera(world),
+        active_camera,
         audio: report_audio(audio_observation.as_ref()),
         assets: bundle
             .assets
@@ -693,7 +788,7 @@ pub fn report_bevy_conformance(
             .iter()
             .map(report_asset)
             .collect::<Vec<_>>(),
-        camera_views: Some(report_camera_views(bundle)),
+        camera_views: Some(camera_views),
         diagnostics: report_diagnostics(audio_observation.as_ref(), ui_report.as_ref()),
         entities,
         environment: bundle.environment_scene.as_ref().map(report_environment),
@@ -723,8 +818,77 @@ pub fn report_bevy_conformance(
                 .collect(),
         ),
         systems: report_systems(bundle),
+        traces,
         ui: ui_report.and_then(|report| report.report),
     }
+}
+
+fn build_runtime_trace_bundle(
+    entities: &[ConformanceEntityReport],
+    ui: Option<&ConformanceUiReport>,
+    active_camera: Option<&String>,
+    camera_views: &[ConformanceCameraViewReport],
+) -> RuntimeTraceBundle {
+    RuntimeTraceBundle {
+        schema: "threenative.runtime-traces",
+        version: "0.1.0",
+        slices: RuntimeTraceSlices {
+            animation_state: RuntimeAnimationStateTrace {
+                frame: 0,
+                clips: Vec::new(),
+            },
+            physics_contacts: RuntimePhysicsContactsTrace {
+                frame: 0,
+                contacts: Vec::new(),
+            },
+            render_observation: RuntimeRenderObservationTrace {
+                active_camera: active_camera.cloned(),
+                camera_views: camera_views
+                    .iter()
+                    .map(|view| RuntimeCameraViewTrace {
+                        camera_id: view.camera_id.clone(),
+                        target_kind: view.target_kind.clone(),
+                    })
+                    .collect(),
+                frame: 0,
+                visible_entities: entities
+                    .iter()
+                    .filter(|entity| is_trace_visible(entity))
+                    .map(|entity| entity.id.clone())
+                    .collect(),
+            },
+            transform_snapshot: RuntimeTransformSnapshotTrace {
+                frame: 0,
+                entities: entities
+                    .iter()
+                    .filter_map(|entity| {
+                        let transform = entity.transform.as_ref()?;
+                        Some(RuntimeTransformTraceEntity {
+                            components: entity.components.clone(),
+                            entity_id: entity.id.clone(),
+                            parent_id: entity.parent.clone(),
+                            position: transform.position,
+                            rotation: transform.rotation,
+                            scale: transform.scale,
+                        })
+                    })
+                    .collect(),
+            },
+            ui_tree: RuntimeUiTreeTrace {
+                frame: 0,
+                root: ui.map(|report| report.root.clone()),
+            },
+        },
+    }
+}
+
+fn is_trace_visible(entity: &ConformanceEntityReport) -> bool {
+    let Some(visibility) = entity.visibility.as_ref() else {
+        return true;
+    };
+    visibility.visible != Some(false)
+        && visibility.mesh_renderer_visible != Some(false)
+        && visibility.runtime_visible != Some(false)
 }
 
 fn report_gltf_fidelity(bundle: &LoadedBundle) -> Option<ConformanceGltfFidelityReport> {

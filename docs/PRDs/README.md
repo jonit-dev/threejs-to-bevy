@@ -139,7 +139,7 @@ execution bundle.
   closed without starting a vanilla-lift prototype; guided round-5 evidence
   showed direct ThreeNative below vanilla at equal proof, so the trigger did not
   fire.
-- [Contract De-Sprawl Through Authoring Modules And Runtime Trace Contracts](proof-first-engine-loop-2026-07-05/PRD-004-contract-de-sprawl-authoring-runtime-traces.md):
+- [Contract De-Sprawl Through Authoring Modules And Runtime Trace Contracts](done/proof-first-engine-loop-2026-07-05/PRD-004-contract-de-sprawl-authoring-runtime-traces.md):
   splits authoring operation implementation by source family, introduces
   focused runtime trace contracts, and shrinks native mapping hotspots behind
   behavior-preserving conformance tests.

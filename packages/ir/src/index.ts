@@ -56,6 +56,22 @@ export {
   type RuntimeDiagnosticSeverity,
 } from "./runtimeDiagnostics.js";
 export {
+  buildRuntimeTraceBundleFromConformanceReport,
+  compareRuntimeTraceBundles,
+  validateRuntimeTraceBundle,
+  type IRuntimeAnimationStateTrace,
+  type IRuntimePhysicsContactsTrace,
+  type IRuntimePhysicsContactTrace,
+  type IRuntimeRenderObservationTrace,
+  type IRuntimeTraceBundle,
+  type IRuntimeTraceDiagnostic,
+  type IRuntimeTraceFrame,
+  type IRuntimeTraceValidationResult,
+  type IRuntimeTransformSnapshotTrace,
+  type IRuntimeTransformTraceEntity,
+  type IRuntimeUiTreeTrace,
+} from "./runtimeTraces.js";
+export {
   validateAssetReloadReport,
   type AssetReloadChangeKind,
   type AssetReloadClassification,

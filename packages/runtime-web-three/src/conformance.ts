@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { buildRuntimeTraceBundleFromConformanceReport } from "@threenative/ir";
 import type {
   IAssetIr,
   IAudioIr,
@@ -47,7 +48,7 @@ export function reportWebConformance(
     idsByObject.set(object, id);
   }
 
-  return {
+  const report: IConformanceReport = {
     activeCamera: activeCameraId(mapped),
     audio: bundle.audio === undefined ? undefined : reportAudio(bundle.audio, bundle.world.events ?? {}),
     assets: bundle.assets.assets.map(reportAsset).sort((left, right) => left.id.localeCompare(right.id)),
@@ -69,6 +70,10 @@ export function reportWebConformance(
     screenshotExports: reportScreenshotExports(bundle.world),
     systems: reportSystems(bundle),
     ui: bundle.ui === undefined ? undefined : reportUi(bundle.ui),
+  };
+  return {
+    ...report,
+    traces: buildRuntimeTraceBundleFromConformanceReport(report),
   };
 }
 
