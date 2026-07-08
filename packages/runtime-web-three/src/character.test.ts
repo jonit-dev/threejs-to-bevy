@@ -340,6 +340,40 @@ test("character trace should enter walkable slope contacts before the center is 
   ]);
 });
 
+test("character trace should walk the humanoid course ramp dimensions", () => {
+  const world = makeCharacterWorld();
+  world.entities = world.entities.filter((entity) => entity.id !== "floor");
+  const ramp = world.entities.find((entity) => entity.id === "wall");
+  const player = world.entities.find((entity) => entity.id === "player");
+  if (ramp !== undefined) {
+    ramp.id = "ramp.main";
+    ramp.components.Collider = { kind: "box", layer: "world", size: [2.5, 0.28, 2.4], slope: { axis: "z", direction: -1, rise: 0.48, run: 2.4 } };
+    ramp.components.Transform = { position: [2.15, 0.28, 2.6] };
+  }
+  if (player !== undefined) {
+    player.components.Collider = { center: [0, 0.9, 0], height: 1.8, kind: "capsule", layer: "player", radius: 0.34 };
+    player.components.Transform = { position: [2.15, 0, 3.95] };
+  }
+  if (player?.components.CharacterController !== undefined) {
+    player.components.CharacterController.speed = 2;
+    player.components.CharacterController.slopeLimit = 28;
+  }
+
+  const trace = traceCharacterControllers(world, {
+    direction: [0, -1],
+    fixedDelta: 1,
+    speed: 2,
+  });
+
+  assert.equal(trace.length, 1);
+  assert.equal(trace[0]?.entity, "player");
+  assert.equal(trace[0]?.blockedBy, undefined);
+  assert.equal(trace[0]?.groundEntity, "ramp.main");
+  assert.equal(trace[0]?.grounded, true);
+  assert.deepEqual(trace[0]?.start, [2.15, 0, 3.95]);
+  assert.ok((trace[0]?.resolved[1] ?? 0) > 0.4, `expected resolved Y to rise on ramp, got ${trace[0]?.resolved[1]}`);
+});
+
 test("character trace should push light dynamic bodies and block heavy bodies", () => {
   const light = makeCharacterWorld();
   const lightCrate = light.entities.find((entity) => entity.id === "wall");

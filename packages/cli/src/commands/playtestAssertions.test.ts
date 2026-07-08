@@ -173,6 +173,45 @@ test("movement axis delta assertions should fail when signed movement is below t
   assert.equal(result.diagnostics[0]?.code, "TN_PLAYTEST_AXIS_DELTA_ASSERTION_FAILED");
 });
 
+test("movement resolved axis delta assertions should read character move effect logs", () => {
+  const result = evaluateRichPlaytestAssertions({
+    report: {
+      ...reportWithRuntimeDiagnostics("web", {}),
+      before: { frame: 1, position: [2.15, 0, 3.95], tick: 10 },
+      effectLog: {
+        entries: [
+          { kind: "service", service: "character.move", payload: { result: { entity: "player", resolved: [2.15, 0.12, 2.4] } } },
+          { kind: "service", service: "character.move", payload: { result: { entity: "player", groundEntity: "ramp.main", resolved: [2.15, 0.42, 1.7] } } },
+        ],
+      },
+    },
+    scenario: movementResolvedAxisDeltaScenario("+y", 0.4),
+  });
+
+  const assertion = result.assertions.find((item) => item.id === "movement.resolvedAxisDelta");
+  assert.equal(assertion?.pass, true);
+  assert.equal(result.diagnostics.length, 0);
+});
+
+test("movement resolved axis delta assertions should fail without enough resolved movement", () => {
+  const result = evaluateRichPlaytestAssertions({
+    report: {
+      ...reportWithRuntimeDiagnostics("web", {}),
+      before: { frame: 1, position: [2.15, 0, 3.95], tick: 10 },
+      effectLog: {
+        entries: [
+          { kind: "service", service: "character.move", payload: { result: { entity: "player", resolved: [2.15, 0.05, 2.4] } } },
+        ],
+      },
+    },
+    scenario: movementResolvedAxisDeltaScenario("+y", 0.4),
+  });
+
+  const assertion = result.assertions.find((item) => item.id === "movement.resolvedAxisDelta");
+  assert.equal(assertion?.pass, false);
+  assert.equal(result.diagnostics[0]?.code, "TN_PLAYTEST_RESOLVED_AXIS_DELTA_ASSERTION_FAILED");
+});
+
 function visibilityScenario(target: "desktop" | "web"): IPlaytestScenario {
   return {
     assert: {
@@ -194,6 +233,21 @@ function movementAxisDeltaScenario(axis: string, min: number): IPlaytestScenario
       movement: { entity: "player", minAxisDelta: { axis, min } },
     },
     name: "movement-axis-delta",
+    schemaVersion: 1,
+    steps: [{ holdFrames: 1, release: false }],
+    subject: "player",
+    target: "web",
+    viewport: { height: 720, width: 1280 },
+    warmupFrames: 0,
+  };
+}
+
+function movementResolvedAxisDeltaScenario(axis: string, min: number): IPlaytestScenario {
+  return {
+    assert: {
+      movement: { entity: "player", minResolvedAxisDelta: { axis, min } },
+    },
+    name: "movement-resolved-axis-delta",
     schemaVersion: 1,
     steps: [{ holdFrames: 1, release: false }],
     subject: "player",

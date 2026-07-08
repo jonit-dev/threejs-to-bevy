@@ -438,6 +438,63 @@ fn character_trace_should_apply_slope_limits() {
     fs::remove_dir_all(root).expect("temporary bundle should be removed");
 }
 
+#[test]
+fn character_trace_should_walk_humanoid_course_ramp_dimensions() {
+    let root = write_character_bundle();
+    write(
+        &root,
+        "world.ir.json",
+        r#"{
+  "schema": "threenative.world",
+  "version": "0.1.0",
+  "entities": [
+    {
+      "id": "ramp.main",
+      "components": {
+        "Collider": { "kind": "box", "layer": "world", "size": [2.5, 0.28, 2.4], "slope": { "axis": "z", "direction": -1, "rise": 0.48, "run": 2.4 } },
+        "RigidBody": { "kind": "static" },
+        "Transform": { "position": [2.15, 0.28, 2.6] }
+      }
+    },
+    {
+      "id": "player",
+      "components": {
+        "CharacterController": {
+          "blocking": true,
+          "grounding": "raycast",
+          "moveXAxis": "MoveX",
+          "moveZAxis": "MoveZ",
+          "slopeLimit": 28,
+          "speed": 2
+        },
+        "Collider": { "center": [0, 0.9, 0], "height": 1.8, "kind": "capsule", "layer": "player", "radius": 0.34 },
+        "RigidBody": { "kind": "kinematic" },
+        "Transform": { "position": [2.15, 0, 3.95] }
+      }
+    }
+  ]
+}"#,
+    );
+    let bundle = load_bundle(&root).expect("character bundle should load");
+    let trace = trace_character_controllers(
+        &bundle,
+        &[CharacterTraceAxis {
+            id: "MoveZ",
+            value: -1.0,
+        }],
+        1.0,
+    );
+
+    assert_eq!(trace.len(), 1);
+    assert_eq!(trace[0].entity, "player");
+    assert_eq!(trace[0].blocked_by, None);
+    assert_eq!(trace[0].ground_entity, Some("ramp.main".to_owned()));
+    assert!(trace[0].resolved[1] > 1.3);
+    assert_approx_eq(trace[0].resolved[2], 1.95);
+
+    fs::remove_dir_all(root).expect("temporary bundle should be removed");
+}
+
 fn write_character_bundle() -> PathBuf {
     let root = std::env::temp_dir().join(format!(
         "tn-character-trace-{}",

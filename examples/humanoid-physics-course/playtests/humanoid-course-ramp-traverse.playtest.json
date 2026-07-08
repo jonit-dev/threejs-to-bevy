@@ -32,7 +32,11 @@
     "movement": {
       "entity": "player",
       "axis": "-z",
-      "minDistance": 1
+      "minDistance": 1,
+      "minResolvedAxisDelta": {
+        "axis": "+y",
+        "min": 0.4
+      }
     },
     "contacts": [
       {

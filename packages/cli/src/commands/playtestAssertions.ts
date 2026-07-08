@@ -25,6 +25,7 @@ export const PLAYTEST_ASSERTION_REGISTRY: readonly IPlaytestAssertionSchemaEntry
       { description: "Entity id to measure. Defaults to scenario subject.", name: "entity", type: "string" },
       { description: "Expected movement axis: x, y, or z.", name: "axis", type: "string" },
       { description: "Minimum signed movement on a specific axis, for example { axis: '+y', min: 0.2 }.", name: "minAxisDelta", type: "{ axis: string, min: number }" },
+      { description: "Minimum signed resolved character.move displacement on a specific axis, for example { axis: '+y', min: 0.2 }.", name: "minResolvedAxisDelta", type: "{ axis: string, min: number }" },
       { description: "Minimum distance moved over the scenario.", name: "minDistance", type: "number" },
       { description: "Minimum distance per frame.", name: "minVelocity", type: "number" },
       { description: "Require any observed rotation delta.", name: "rotationChanged", type: "boolean" },
@@ -218,6 +219,30 @@ export function evaluateRichPlaytestAssertions(input: {
         message: `Entity '${scenarioAssertions.movement.entity ?? input.report.entity}' did not move ${scenarioAssertions.movement.minAxisDelta.min} units on ${scenarioAssertions.movement.minAxisDelta.axis}.`,
         severity: "error",
         suggestion: "Check route setup, collision response, and whether the scenario ends on the expected vertical surface.",
+      });
+    }
+  }
+  if (scenarioAssertions.movement?.minResolvedAxisDelta !== undefined) {
+    const entity = scenarioAssertions.movement.entity ?? input.scenario.subject ?? input.report.entity;
+    const expectation = parseMovementAxisExpectation(scenarioAssertions.movement.minResolvedAxisDelta.axis);
+    const resolved = expectation === undefined ? undefined : maxResolvedAxisDelta(input.report.effectLog, entity, expectation, input.report.before?.position);
+    const pass = resolved !== undefined && resolved >= scenarioAssertions.movement.minResolvedAxisDelta.min;
+    assertions.push({
+      details: {
+        axis: scenarioAssertions.movement.minResolvedAxisDelta.axis,
+        entity,
+        min: scenarioAssertions.movement.minResolvedAxisDelta.min,
+        signedDelta: resolved ?? null,
+      },
+      id: "movement.resolvedAxisDelta",
+      pass,
+    });
+    if (!pass) {
+      diagnostics.push({
+        code: "TN_PLAYTEST_RESOLVED_AXIS_DELTA_ASSERTION_FAILED",
+        message: `Entity '${entity}' did not resolve ${scenarioAssertions.movement.minResolvedAxisDelta.min} units on ${scenarioAssertions.movement.minResolvedAxisDelta.axis}.`,
+        severity: "error",
+        suggestion: "Check character.move effect-log entries, route setup, collision response, and whether the scenario reaches the expected slope or step surface.",
       });
     }
   }
@@ -503,6 +528,33 @@ function rotationDelta(effectLog: unknown, entityId: string): number | undefined
   return first === undefined || last === undefined ? undefined : vectorDistance(first, last);
 }
 
+function maxResolvedAxisDelta(
+  effectLog: unknown,
+  entityId: string,
+  expectation: { axis: MovementAxis; sign?: 1 | -1 },
+  baseline: Vec3 | undefined,
+): number | undefined {
+  if (!isRecord(effectLog) || !Array.isArray(effectLog.entries)) {
+    return undefined;
+  }
+  const index = axisIndex(expectation.axis);
+  const resolvedValues = effectLog.entries
+    .filter((entry): entry is Record<string, unknown> => isRecord(entry))
+    .filter((entry) => entry.kind === "service" && entry.service === "character.move")
+    .map((entry) => {
+      const payload = isRecord(entry.payload) ? entry.payload : undefined;
+      const result = isRecord(payload?.result) ? payload.result : undefined;
+      return result?.entity === entityId ? readVec3(result.resolved) : undefined;
+    })
+    .filter((item): item is Vec3 => item !== undefined);
+  const first = baseline ?? resolvedValues[0];
+  if (first === undefined || resolvedValues.length === 0) {
+    return undefined;
+  }
+  const sign = expectation.sign ?? 1;
+  return Math.max(...resolvedValues.map((value) => (value[index] - first[index]) * sign));
+}
+
 function renderedEntity(runtimeDiagnosticsValue: unknown, entity: string): Record<string, unknown> | undefined {
   if (!renderedEntitiesAreReported(runtimeDiagnosticsValue)) {
     return undefined;
@@ -596,6 +648,14 @@ function readRotation(value: unknown): Vec3 | undefined {
   }
   const rotation = value.rotation.slice(0, 3).map((item) => typeof item === "number" && Number.isFinite(item) ? item : Number.NaN);
   return rotation.every(Number.isFinite) ? rotation as Vec3 : undefined;
+}
+
+function readVec3(value: unknown): Vec3 | undefined {
+  if (!Array.isArray(value) || value.length < 3) {
+    return undefined;
+  }
+  const vector = value.slice(0, 3).map((item) => typeof item === "number" && Number.isFinite(item) ? item : Number.NaN);
+  return vector.every(Number.isFinite) ? vector as Vec3 : undefined;
 }
 
 function vectorDistance(left: Vec3, right: Vec3): number {
