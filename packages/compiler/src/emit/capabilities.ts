@@ -803,6 +803,13 @@ function collectEnvironmentCapabilities(
   }
   if (environment.terrain !== undefined) {
     add("environment", "terrain");
+    if (environment.terrain.chunks !== undefined && environment.terrain.chunks.length > 0) {
+      add("environment", "terrain.heightfield");
+    }
+    if (environment.terrain.collider?.kind === "heightfield") {
+      add("physics", "collider.heightfield");
+      add("physics", "rigid-body.static");
+    }
   }
   if (environment.atmosphere !== undefined) {
     add("environment", "atmosphere");

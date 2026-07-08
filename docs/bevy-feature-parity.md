@@ -657,9 +657,10 @@ Practical order for game-polish work:
 - [x] `P2` Runtime mesh deformation diagnostic boundary
 - [x] `P2` Chunked/streamed mesh terrain and world geometry policy
   - [ ] PRD-006 has started with contract-only structured heightmap assets,
-        terrain heightmap references, splat-layer validation, and target
-        cell-budget diagnostics. Web/Bevy terrain chunk rendering and
-        heightfield collision are not promoted yet.
+        terrain heightmap references, splat-layer validation, target
+        cell-budget diagnostics, compiler terrain chunk mesh emission, and
+        heightfield collider descriptors. Web/Bevy terrain chunk rendering
+        and heightfield collision are not promoted yet.
 - [x] `P3` CSG and boolean mesh operations diagnostic boundary
 - [x] `P3` Storage-buffer/shader-driven procedural geometry diagnostic boundary
 

@@ -81,12 +81,15 @@ export async function emitBundle(config: IProjectConfig, root: unknown, options:
   const audio = bundleRoot.audio === undefined ? undefined : emitAudio(bundleRoot.audio);
   const localData = bundleRoot.persistence === undefined ? undefined : emitPersistence(bundleRoot.persistence);
   const animations = bundleRoot.animations === undefined ? undefined : emitAnimations(bundleRoot.animations);
-  const environment = bundleRoot.environment === undefined ? undefined : await emitEnvironment(config.projectPath, bundleRoot.environment);
-  const overlays = bundleRoot.overlay === undefined ? undefined : await emitOverlays(config.projectPath, bundleRoot.overlay);
-  const generatedMeshPayloads = prepareGeneratedMeshPayloads(mergeById([
+  const authoredAssets = mergeById([
     ...readBundleRootAssets(bundleRoot.assets),
     ...readStructuredAssets(options.authoringDocuments),
     ...readStructuredMeshes(options.authoringDocuments),
+  ]);
+  const environment = bundleRoot.environment === undefined ? undefined : await emitEnvironment(config.projectPath, bundleRoot.environment, { assets: authoredAssets });
+  const overlays = bundleRoot.overlay === undefined ? undefined : await emitOverlays(config.projectPath, bundleRoot.overlay);
+  const generatedMeshPayloads = prepareGeneratedMeshPayloads(mergeById([
+    ...authoredAssets,
     ...mergeEnvironmentAssets(mergeAudioAssets(emitted?.assets ?? [], bundleRoot.audio), environment?.assets ?? []),
   ]));
   const assets = generatedMeshPayloads.assets;

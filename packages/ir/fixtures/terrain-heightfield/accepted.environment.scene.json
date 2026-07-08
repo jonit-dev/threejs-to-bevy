@@ -1,0 +1,36 @@
+{
+  "schema": "threenative.environment-scene",
+  "version": "0.1.0",
+  "terrain": {
+    "bounds": { "max": [2, 2, 2], "min": [0, -2, 0] },
+    "chunks": [
+      {
+        "bounds": { "max": [2, 2, 2], "min": [0, -2, 0] },
+        "heightRange": { "max": 2, "min": -2 },
+        "id": "terrain.reference.chunk.0",
+        "mesh": "mesh.terrain.reference.chunk.0",
+        "sampleRange": { "x": [0, 2], "z": [0, 2] }
+      }
+    ],
+    "collider": {
+      "asset": "heightmap.reference",
+      "cellSize": 1,
+      "heightRange": { "max": 2, "min": -2 },
+      "heightScale": 2,
+      "kind": "heightfield",
+      "mesh": "mesh.terrain.reference.chunk.0",
+      "origin": [0, 0, 0],
+      "sampleCount": [3, 3]
+    },
+    "heightmap": { "asset": "heightmap.reference", "cellSize": 1, "heightScale": 2, "origin": [0, 0, 0] },
+    "heightMode": "heightmap",
+    "id": "terrain.reference",
+    "splatLayers": [
+      { "texture": "tex.ground.grass", "maxSlope": 18, "minSlope": 0, "weight": 0.75 },
+      { "texture": "tex.ground.rock", "maxSlope": 60, "minSlope": 18, "weight": 0.55 }
+    ]
+  },
+  "sourceAssets": [],
+  "instances": [],
+  "path": { "id": "path.reference", "points": [[0, 0, 0], [2, 0, 2]], "width": 1 }
+}

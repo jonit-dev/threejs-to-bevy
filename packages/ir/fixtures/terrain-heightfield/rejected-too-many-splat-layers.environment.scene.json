@@ -1,0 +1,20 @@
+{
+  "schema": "threenative.environment-scene",
+  "version": "0.1.0",
+  "terrain": {
+    "bounds": { "max": [2, 2, 2], "min": [0, -2, 0] },
+    "heightmap": { "asset": "heightmap.reference", "cellSize": 1, "heightScale": 2, "origin": [0, 0, 0] },
+    "heightMode": "heightmap",
+    "id": "terrain.reference",
+    "splatLayers": [
+      { "texture": "tex.ground.grass" },
+      { "texture": "tex.ground.dirt" },
+      { "texture": "tex.ground.rock" },
+      { "texture": "tex.ground.snow" },
+      { "texture": "tex.ground.moss" }
+    ]
+  },
+  "sourceAssets": [],
+  "instances": [],
+  "path": { "id": "path.reference", "points": [[0, 0, 0], [2, 0, 2]], "width": 1 }
+}

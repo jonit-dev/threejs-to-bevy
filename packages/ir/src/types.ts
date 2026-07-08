@@ -1107,6 +1107,35 @@ export interface IEnvironmentTerrainIr {
     max: Vec3;
     min: Vec3;
   };
+  chunks?: Array<{
+    bounds: {
+      max: Vec3;
+      min: Vec3;
+    };
+    heightRange: {
+      max: number;
+      min: number;
+    };
+    id: string;
+    mesh: string;
+    sampleRange: {
+      x: [number, number];
+      z: [number, number];
+    };
+  }>;
+  collider?: {
+    asset: string;
+    cellSize: number;
+    heightRange: {
+      max: number;
+      min: number;
+    };
+    heightScale: number;
+    kind: "heightfield";
+    mesh: string;
+    origin: Vec3;
+    sampleCount: [number, number];
+  };
   controlPoints?: Vec3[];
   heightmap?: {
     asset: string;

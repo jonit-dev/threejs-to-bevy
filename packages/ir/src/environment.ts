@@ -415,7 +415,7 @@ function validateTerrainAndPath(
   if (scene.terrain !== undefined) {
     validateUnsupportedFields(
       scene.terrain,
-      ["bounds", "controlPoints", "heightmap", "heightMode", "id", "material", "skirt", "splatLayers"],
+      ["bounds", "chunks", "collider", "controlPoints", "heightmap", "heightMode", "id", "material", "skirt", "splatLayers"],
       `${path}/terrain`,
       `Environment terrain '${scene.terrain.id}'`,
       diagnostics,
@@ -441,6 +441,8 @@ function validateTerrainAndPath(
       });
     }
     validateTerrainSplatLayers(scene.terrain, `${path}/terrain`, context, diagnostics);
+    validateTerrainChunks(scene.terrain, `${path}/terrain`, diagnostics);
+    validateTerrainCollider(scene.terrain, `${path}/terrain`, context, diagnostics);
   }
   if (scene.path.points.length < 2) {
     diagnostics.push({
@@ -582,6 +584,100 @@ function validateTerrainSplatLayers(
   });
 }
 
+function validateTerrainChunks(
+  terrain: NonNullable<IEnvironmentSceneIr["terrain"]>,
+  path: string,
+  diagnostics: IIrDiagnostic[],
+): void {
+  if (terrain.chunks === undefined) {
+    return;
+  }
+  terrain.chunks.forEach((chunk, index) => {
+    const chunkPath = `${path}/chunks/${index}`;
+    validateUnsupportedFields(
+      chunk,
+      ["bounds", "heightRange", "id", "mesh", "sampleRange"],
+      chunkPath,
+      `Environment terrain '${terrain.id}' chunk ${index}`,
+      diagnostics,
+    );
+    validateVec3(chunk.bounds.min, `${chunkPath}/bounds/min`, diagnostics);
+    validateVec3(chunk.bounds.max, `${chunkPath}/bounds/max`, diagnostics);
+    if (!boundsAreOrdered(chunk.bounds.min, chunk.bounds.max)) {
+      diagnostics.push({
+        code: "TN_IR_ENVIRONMENT_TERRAIN_CHUNK_BOUNDS_INVALID",
+        message: `Environment terrain '${terrain.id}' chunk '${chunk.id}' must use ordered min/max bounds.`,
+        path: `${chunkPath}/bounds`,
+        severity: "error",
+      });
+    }
+    if (typeof chunk.mesh !== "string" || chunk.mesh.trim() === "") {
+      diagnostics.push({
+        code: "TN_IR_ENVIRONMENT_TERRAIN_CHUNK_MESH_INVALID",
+        message: `Environment terrain '${terrain.id}' chunk '${chunk.id}' must reference a generated mesh asset.`,
+        path: `${chunkPath}/mesh`,
+        severity: "error",
+        suggestion: "Emit a generated terrain mesh asset and reference its id from terrain.chunks.",
+      });
+    }
+    validateOptionalFiniteRange(chunk.heightRange.min, chunk.heightRange.max, `${chunkPath}/heightRange`, "TN_IR_ENVIRONMENT_TERRAIN_CHUNK_HEIGHT_RANGE_INVALID", diagnostics);
+    validateIntegerRange(chunk.sampleRange.x, `${chunkPath}/sampleRange/x`, diagnostics);
+    validateIntegerRange(chunk.sampleRange.z, `${chunkPath}/sampleRange/z`, diagnostics);
+  });
+}
+
+function validateTerrainCollider(
+  terrain: NonNullable<IEnvironmentSceneIr["terrain"]>,
+  path: string,
+  context: {
+    heightmapAssets: ReadonlyMap<string, Extract<IAssetsManifest["assets"][number], { kind: "heightmap" }>>;
+  },
+  diagnostics: IIrDiagnostic[],
+): void {
+  if (terrain.collider === undefined) {
+    return;
+  }
+  validateUnsupportedFields(
+    terrain.collider,
+    ["asset", "cellSize", "heightRange", "heightScale", "kind", "mesh", "origin", "sampleCount"],
+    `${path}/collider`,
+    `Environment terrain '${terrain.id}' collider`,
+    diagnostics,
+  );
+  if (terrain.collider.kind !== "heightfield") {
+    diagnostics.push({
+      code: "TN_IR_ENVIRONMENT_TERRAIN_COLLIDER_KIND_INVALID",
+      message: `Environment terrain '${terrain.id}' collider must use heightfield kind.`,
+      path: `${path}/collider/kind`,
+      severity: "error",
+      suggestion: "Use kind: 'heightfield' for compiler-emitted terrain colliders.",
+    });
+  }
+  if (!context.heightmapAssets.has(terrain.collider.asset)) {
+    diagnostics.push({
+      code: "TN_IR_ENVIRONMENT_TERRAIN_COLLIDER_ASSET_MISSING",
+      message: `Environment terrain '${terrain.id}' collider references unknown heightmap asset '${terrain.collider.asset}'.`,
+      path: `${path}/collider/asset`,
+      severity: "error",
+      suggestion: "Reference the same bundle-local heightmap asset used by terrain.heightmap.",
+    });
+  }
+  if (typeof terrain.collider.mesh !== "string" || terrain.collider.mesh.trim() === "") {
+    diagnostics.push({
+      code: "TN_IR_ENVIRONMENT_TERRAIN_COLLIDER_MESH_INVALID",
+      message: `Environment terrain '${terrain.id}' collider must reference a generated terrain mesh asset.`,
+      path: `${path}/collider/mesh`,
+      severity: "error",
+      suggestion: "Emit a generated terrain mesh asset and reference its id from terrain.collider.mesh.",
+    });
+  }
+  validatePositiveFinite(terrain.collider.cellSize, `${path}/collider/cellSize`, "TN_IR_ENVIRONMENT_TERRAIN_HEIGHTMAP_CELL_SIZE_INVALID", diagnostics);
+  validatePositiveFinite(terrain.collider.heightScale, `${path}/collider/heightScale`, "TN_IR_ENVIRONMENT_TERRAIN_HEIGHTMAP_SCALE_INVALID", diagnostics);
+  validateVec3(terrain.collider.origin, `${path}/collider/origin`, diagnostics);
+  validateOptionalFiniteRange(terrain.collider.heightRange.min, terrain.collider.heightRange.max, `${path}/collider/heightRange`, "TN_IR_ENVIRONMENT_TERRAIN_COLLIDER_HEIGHT_RANGE_INVALID", diagnostics);
+  validateIntegerRange(terrain.collider.sampleCount, `${path}/collider/sampleCount`, diagnostics);
+}
+
 function validateOptionalFiniteRange(
   min: number | undefined,
   max: number | undefined,
@@ -599,6 +695,18 @@ function validateOptionalFiniteRange(
       path,
       severity: "error",
       suggestion: "Declare both min and max, with max greater than or equal to min.",
+    });
+  }
+}
+
+function validateIntegerRange(value: readonly number[], path: string, diagnostics: IIrDiagnostic[]): void {
+  if (!Array.isArray(value) || value.length !== 2 || !value.every((item) => Number.isInteger(item)) || value[0]! < 0 || value[1]! < value[0]!) {
+    diagnostics.push({
+      code: "TN_IR_ENVIRONMENT_TERRAIN_RANGE_INVALID",
+      message: "Terrain sample ranges must be non-negative integer [min, max] tuples in ascending order.",
+      path,
+      severity: "error",
+      suggestion: "Emit integer inclusive sample ranges with max greater than or equal to min.",
     });
   }
 }

@@ -102,8 +102,9 @@ the same IR-level contract or produce stable, actionable diagnostics.
 
 - Define a heightfield asset contract with resolution, world scale, bounds,
   sampling mode, and optional CPU mirror. Initial structured JSON heightmap
-  asset, terrain heightmap reference, splat-layer, and target cell-budget
-  validation is in place; chunk emission and runtime sampling are still open.
+  asset, terrain heightmap reference, splat-layer, target cell-budget
+  validation, compiler terrain chunk mesh emission, and heightfield collider
+  descriptors are in place; runtime sampling is still open.
 - Add terrain tile/chunk metadata for LOD, skirts, morph bands, and far shells.
 - Add deterministic terrain generation metadata for seeds, noise parameters,
   erosion passes, hydrology, biome maps, and snow/rock/vegetation masks.

@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
 import test from "node:test";
 
 import { validateEnvironmentSceneIr } from "./environment.js";
@@ -66,6 +67,22 @@ test("environment should error when grid exceeds target profile budget", () => {
 
   assert.equal(diagnostics[0]?.code, "TN_TERRAIN_BUDGET_EXCEEDED");
   assert.equal(diagnostics[0]?.path, "environment.scene.json/terrain/heightmap/asset");
+});
+
+test("environment should accept terrain heightfield fixture", async () => {
+  const scene = await readFixture("accepted.environment.scene.json");
+
+  const diagnostics = validateEnvironmentSceneIr(scene, makeAssets({ includeTerrain: true }), "accepted.environment.scene.json");
+
+  assert.deepEqual(diagnostics, []);
+});
+
+test("environment should reject terrain fixture with too many splat layers", async () => {
+  const scene = await readFixture("rejected-too-many-splat-layers.environment.scene.json");
+
+  const diagnostics = validateEnvironmentSceneIr(scene, makeAssets({ includeTerrain: true }), "rejected.environment.scene.json");
+
+  assert.equal(diagnostics[0]?.code, "TN_IR_ENVIRONMENT_TERRAIN_SPLAT_LAYER_LIMIT_EXCEEDED");
 });
 
 test("environment should reject scatter spec above count budget", () => {
@@ -342,6 +359,10 @@ function makeScene(overrides: Partial<IEnvironmentSceneIr> = {}): IEnvironmentSc
   };
 }
 
+async function readFixture(name: string): Promise<IEnvironmentSceneIr> {
+  return JSON.parse(await readFile(new URL(`../fixtures/terrain-heightfield/${name}`, import.meta.url), "utf8")) as IEnvironmentSceneIr;
+}
+
 function makeAssets(options: { includeLod?: boolean; includeTerrain?: boolean } = {}): IAssetsManifest {
   return {
     schema: "threenative.assets",
@@ -354,6 +375,7 @@ function makeAssets(options: { includeLod?: boolean; includeTerrain?: boolean } 
       ...(options.includeTerrain === true
         ? [
             { encoding: "u16-normalized" as const, format: "json" as const, height: 65, heightRange: { min: -1, max: 3 }, id: "heightmap.meadow", kind: "heightmap" as const, path: "assets/terrain/meadow.heightmap.json", width: 65 },
+            { encoding: "u16-normalized" as const, format: "json" as const, height: 3, heightRange: { min: -1, max: 1 }, id: "heightmap.reference", kind: "heightmap" as const, path: "assets/terrain/reference.heightmap.json", width: 3 },
             { format: "png" as const, id: "tex.ground.grass", kind: "texture" as const, path: "assets/terrain/grass.png" },
             { format: "png" as const, id: "tex.ground.dirt", kind: "texture" as const, path: "assets/terrain/dirt.png" },
             { format: "png" as const, id: "tex.ground.rock", kind: "texture" as const, path: "assets/terrain/rock.png" },

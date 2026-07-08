@@ -138,6 +138,92 @@ test("should reject density-derived scatter counts beyond the emission budget", 
   }
 });
 
+test("should emit deterministic chunk meshes for reference heightmap", async () => {
+  const root = await mkdtemp(join(process.cwd(), "tmp-env-terrain-heightmap-"));
+  try {
+    await mkdir(join(root, "assets-source/environment/glTF"), { recursive: true });
+    await mkdir(join(root, "assets/terrain"), { recursive: true });
+    await writeFile(join(root, "assets/terrain/reference.heightmap.json"), JSON.stringify({ samples: [0, 32768, 65535, 16384, 49152, 32768, 0, 32768, 65535] }));
+    const heightmap = {
+      encoding: "u16-normalized",
+      format: "json",
+      height: 3,
+      heightRange: { min: -1, max: 1 },
+      id: "heightmap.reference",
+      kind: "heightmap",
+      path: "assets/terrain/reference.heightmap.json",
+      width: 3,
+    } as const;
+    const source = {
+      assets: [heightmap],
+      world: new World(),
+      environment: {
+        sourceDir: "assets-source/environment/glTF",
+        assetNames: [],
+        path: { id: "path.main", points: [[0, 0, 0], [2, 0, 2]], width: 1 },
+        instances: [],
+        terrain: {
+          bounds: { min: [0, -2, 0], max: [2, 2, 2] },
+          heightmap: { asset: "heightmap.reference", cellSize: 1, heightScale: 2, origin: [0, 0, 0] },
+          heightMode: "heightmap",
+          id: "terrain.reference",
+        },
+      } satisfies IEnvironmentDeclaration,
+    };
+    const config = {
+      entry: "src/game.ts",
+      outDir: "dist/game.bundle",
+      projectPath: root,
+      schema: "threenative.project" as const,
+      version: "0.1.0" as const,
+    };
+
+    const firstBundle = await emitBundle(config, source);
+    const secondBundle = await emitBundle({ ...config, outDir: "dist/game-again.bundle" }, source);
+    const firstEnvironment = await readFile(join(firstBundle, "environment.scene.json"), "utf8");
+    const secondEnvironment = await readFile(join(secondBundle, "environment.scene.json"), "utf8");
+    const manifest = JSON.parse(await readFile(join(firstBundle, "manifest.json"), "utf8"));
+    const assets = JSON.parse(await readFile(join(firstBundle, "assets.manifest.json"), "utf8"));
+    const environment = JSON.parse(firstEnvironment);
+    const validation = await validateBundle(firstBundle);
+
+    assert.equal(validation.ok, true);
+    assert.equal(firstEnvironment, secondEnvironment);
+    assertCapability(manifest, "environment", "terrain.heightfield");
+    assertCapability(manifest, "physics", "collider.heightfield");
+    assert.deepEqual(environment.terrain.chunks, [
+      {
+        bounds: { max: [2, 2, 2], min: [0, -2, 0] },
+        heightRange: { max: 2, min: -2 },
+        id: "terrain.reference.chunk.0",
+        mesh: "mesh.terrain.reference.chunk.0",
+        sampleRange: { x: [0, 2], z: [0, 2] },
+      },
+    ]);
+    assert.deepEqual(environment.terrain.collider, {
+      asset: "heightmap.reference",
+      cellSize: 1,
+      heightRange: { max: 2, min: -2 },
+      heightScale: 2,
+      kind: "heightfield",
+      mesh: "mesh.terrain.reference.chunk.0",
+      origin: [0, 0, 0],
+      sampleCount: [3, 3],
+    });
+    const meshAsset = assets.assets.find((asset: { id: string }) => asset.id === "mesh.terrain.reference.chunk.0");
+    assert.equal(meshAsset?.kind, "mesh");
+    assert.deepEqual(meshAsset.binaryAttributes.map((attribute: { count: number; itemSize: number; name: string }) => [attribute.name, attribute.itemSize, attribute.count]), [
+      ["position", 3, 9],
+      ["normal", 3, 9],
+      ["uv", 2, 9],
+    ]);
+    assert.equal(meshAsset.binaryIndices.count, 24);
+    assert.equal(await readFile(join(firstBundle, "generated/meshes/mesh.terrain.reference.chunk.0.00.position.bin")).then((buffer) => buffer.byteLength), 108);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
 function assertCapability(manifest: { requiredCapabilities: Record<string, string[]> }, domain: string, capability: string): void {
   assert.ok(manifest.requiredCapabilities[domain]?.includes(capability), `${domain}:${capability}`);
 }

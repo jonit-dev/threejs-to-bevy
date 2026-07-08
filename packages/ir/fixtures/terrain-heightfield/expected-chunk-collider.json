@@ -1,0 +1,21 @@
+{
+  "chunks": [
+    {
+      "bounds": { "max": [2, 2, 2], "min": [0, -2, 0] },
+      "heightRange": { "max": 2, "min": -2 },
+      "id": "terrain.reference.chunk.0",
+      "mesh": "mesh.terrain.reference.chunk.0",
+      "sampleRange": { "x": [0, 2], "z": [0, 2] }
+    }
+  ],
+  "collider": {
+    "asset": "heightmap.reference",
+    "cellSize": 1,
+    "heightRange": { "max": 2, "min": -2 },
+    "heightScale": 2,
+    "kind": "heightfield",
+    "mesh": "mesh.terrain.reference.chunk.0",
+    "origin": [0, 0, 0],
+    "sampleCount": [3, 3]
+  }
+}

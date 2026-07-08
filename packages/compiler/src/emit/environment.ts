@@ -3,6 +3,7 @@ import { basename, resolve } from "node:path";
 import type { IEnvironmentSceneIr, ITargetProfile } from "@threenative/ir";
 
 import type { IAssetCopy, IInternalAsset } from "./asset-copy.js";
+import { emitTerrainHeightmap } from "./terrain.js";
 
 const MAX_SCATTER_INSTANCES = 10_000;
 const SCATTER_ATTEMPT_MULTIPLIER = 20;
@@ -28,6 +29,10 @@ export interface IEnvironmentDeclaration {
   walkability?: IEnvironmentSceneIr["walkability"];
 }
 
+export interface IEmitEnvironmentOptions {
+  assets?: readonly IInternalAsset[];
+}
+
 export interface IEmittedEnvironment {
   assets: IInternalAsset[];
   budgets?: ITargetProfile["budgets"];
@@ -36,7 +41,7 @@ export interface IEmittedEnvironment {
   scene: IEnvironmentSceneIr;
 }
 
-export async function emitEnvironment(projectPath: string, declaration: IEnvironmentDeclaration): Promise<IEmittedEnvironment> {
+export async function emitEnvironment(projectPath: string, declaration: IEnvironmentDeclaration, options: IEmitEnvironmentOptions = {}): Promise<IEmittedEnvironment> {
   const sourceDir = resolve(projectPath, declaration.sourceDir);
   const entries = await readdir(sourceDir, { withFileTypes: true });
   const available = new Set(entries.filter((entry) => entry.isFile()).map((entry) => entry.name));
@@ -110,6 +115,8 @@ export async function emitEnvironment(projectPath: string, declaration: IEnviron
     assets.push(previewAsset);
   }
   assets.push(...collectEnvironmentLightingAssets(declaration));
+  const emittedTerrain = await emitTerrainHeightmap(projectPath, declaration.terrain, [...(options.assets ?? []), ...assets]);
+  assets.push(...(emittedTerrain?.assets ?? []));
 
   return {
     assets,
@@ -133,7 +140,7 @@ export async function emitEnvironment(projectPath: string, declaration: IEnviron
       sourceAssets,
       instances: emitEnvironmentInstances(declaration),
       path: declaration.path,
-      ...(declaration.terrain === undefined ? {} : { terrain: declaration.terrain }),
+      ...(emittedTerrain?.terrain === undefined ? {} : { terrain: emittedTerrain.terrain }),
       ...(declaration.walkability === undefined ? {} : { walkability: declaration.walkability }),
     },
   };

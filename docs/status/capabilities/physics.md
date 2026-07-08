@@ -7,6 +7,9 @@ Current support:
 
 - RigidBody, Collider, physics materials, character controller, primitive body,
   trigger/sensor, kinematic mover, and bounded native proof paths.
+- Compiler-emitted heightfield collider descriptors exist for structured JSON
+  terrain heightmaps; Web/Bevy runtime heightfield collision is still a
+  PRD-006 follow-up before promotion.
 - Gameplay with physical contact must author physics metadata up front and then
   prove movement/contact behavior with playtests.
 - Humanoid course web and desktop playtests are the current high-signal
