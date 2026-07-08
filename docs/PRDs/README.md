@@ -109,12 +109,6 @@ execution bundle.
   `tools/verify/artifacts/agent-benchmark/token-cost-version-2-2026-07-07/`;
   fresh scaffold-first rerun evidence passes in
   `tools/verify/artifacts/agent-benchmark/scaffold-first-token-rerun-2026-07-07b/`.
-- [Agent Token Efficiency Scaffold-First Game Plan Apply](other/agent-token-efficiency-scaffold-first.md):
-  implemented structural lever after P0/P1 fixes missed the historical <=0.5x
-  target: `tn game plan --apply --json` explicitly applies collector and
-  lane-runner game plans into playable, scenario-backed starter source before
-  agent patching begins. Fresh scaffold-first benchmark evidence now proves the
-  <=0.5x token-efficiency claim for collector and lane-runner prompts.
 - [Derived Resource Declarations](done/agent-native-authoring-loop-2026-07-07/PRD-013-derived-resource-declarations.md):
   round-4 tactical fix to infer `resourceReads` and `resourceWrites` from
   script resource access, apply deterministic declarations or exact fixes, and
@@ -241,6 +235,7 @@ Useful completed reference groups:
   [GameBlocks-Informed Gameplay Accuracy](done/gameblocks-informed-gameplay-accuracy.md),
   [Game Development Velocity Kits](done/game-development-velocity-kits.md),
   [Agent Game Planning Template and Init Scaffold](done/agent-game-planning-template-and-init-scaffold.md),
+  [Agent Token Efficiency Scaffold-First Game Plan Apply](done/other/agent-token-efficiency-scaffold-first.md),
   [Agent-Friendly Project Scaffolding and Visual Debugging Workflows](done/agent-friendly-project-and-visual-debugging-workflows.md),
   [Agent-Friendly 3D Game Creation Contract](done/other/agent-friendly-3d-game-creation-contract.md),
   [Playable Game Authoring Loop Hardening](done/other/game-authoring-loop-hardening.md),

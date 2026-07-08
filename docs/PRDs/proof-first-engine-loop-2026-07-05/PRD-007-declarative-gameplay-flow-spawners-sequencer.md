@@ -35,7 +35,7 @@ IR out, zero script for the common 80%.
 - Delayed command scheduling
   (`proof-first-engine-loop-2026-07-05/PRD-010-portable-scripting-delayed-commands-scheduling.md`) is script-side;
   sequencer tracks are data-side. Coordinate tick semantics with it.
-- Scaffold-first planning (`docs/PRDs/other/agent-token-efficiency-scaffold-first.md`)
+- Scaffold-first planning (`docs/PRDs/done/other/agent-token-efficiency-scaffold-first.md`)
   now applies playable starter structure before agent patching. This PRD must
   extend that path with reusable `Spawner`, `GameFlow`, and `Sequence`
   abstractions rather than teaching agents to hand-roll timers, wave state, or
