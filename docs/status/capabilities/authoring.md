@@ -16,9 +16,10 @@ Current support:
 - Source document and scene mutation helpers validate candidate source before
   writing; generated-only scaffold writers are classified in the write-time
   validation audit.
-- Experimental typed game-spec APIs can type-check high-friction IDs and emit
-  canonical scene/input/material source documents, but starter defaults and
-  cookbook guidance remain gated on benchmark evidence.
+- Experimental typed game-spec APIs type-check high-friction IDs and component
+  write declarations, clear stale legacy systems on compile, scaffold an
+  explicit starter camera, and emit canonical scene/input/material source
+  documents; starter defaults remain gated on benchmark evidence.
 - Cookbook lookup supports both `tn cookbook show <id> --json` and the compact
   `tn cookbook <id> --json` shorthand for validated pattern pairs.
 - Maintained starters include `docs/API-CARD.md`, a compact generated
@@ -42,6 +43,11 @@ Verification:
   deferred.
 - `docs/architecture/typed-game-spec.md` documents the experimental
   TypeScript-spec boundary and remaining default-migration gates.
+- `pnpm --filter @threenative/sdk test -- dist/gameSpecTypes.test.js`,
+  `pnpm --filter @threenative/compiler test -- dist/scripts/diagnostics.test.js dist/gameSpec/compile.test.js`,
+  and `pnpm --filter @threenative/cli test -- dist/commands/playtestAssertions.test.js dist/commands/create.test.js dist/commands/authoring.test.js`
+  cover typed-spec writes, stale systems cleanup, starter camera/script
+  commands, and unchanged-state playtest diagnostics.
 - `tools/agent-benchmark/COOKBOOK-TOPIC-AUDIT-2026-07-07.md`
   maps benchmark needs to the existing validated cookbook entries.
 - `pnpm --filter @threenative/authoring test`

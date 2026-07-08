@@ -26,9 +26,11 @@ export function compileTypedGameSpec<TIds extends Partial<IGameSpecIds>>(spec: I
       ...(scene.kind === undefined ? {} : { kind: scene.kind }),
       ...(scene.entities === undefined ? {} : { entities: scene.entities.map((entity) => ({
         id: entity.id,
+        ...(entity.prefab === undefined ? {} : { prefab: entity.prefab }),
         ...(entity.transform === undefined ? {} : { transform: copyTransform(entity.transform) }),
         ...(entity.components === undefined ? {} : { components: entity.components }),
       })) }),
+      ...(scene.prefabs === undefined ? {} : { prefabs: scene.prefabs.map((prefab) => ({ ...prefab })) }),
       ...(scene.resources === undefined ? {} : { resources: scene.resources.map((resource) => ({ ...resource })) }),
       ...(scene.systems === undefined ? {} : { systems: scene.systems.map((system) => ({ ...system })) }),
       ...(scene.ui === undefined ? {} : { ui: {
@@ -99,6 +101,9 @@ function scenePointers<TIds extends Partial<IGameSpecIds>>(scene: ITypedGameSpec
     for (const componentKind of Object.keys(entity.components ?? {})) {
       pointers[`/entities/${entityIndex}/components/${escapePointer(componentKind)}`] = `/scenes/${sceneIndex}/entities/${entityIndex}/components/${escapePointer(componentKind)}`;
     }
+  }
+  for (const [prefabIndex] of (scene.prefabs ?? []).entries()) {
+    pointers[`/prefabs/${prefabIndex}`] = `/scenes/${sceneIndex}/prefabs/${prefabIndex}`;
   }
   for (const [systemIndex] of (scene.systems ?? []).entries()) {
     const base = `/scenes/${sceneIndex}/systems/${systemIndex}`;

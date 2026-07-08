@@ -9,12 +9,16 @@ import { deriveRetryChainMetrics, type CommandOutputForMetrics } from "./session
 
 export interface SessionCostReplayCase {
   archetype?: string;
+  authoring?: "structured-source" | "typed-spec";
   goal?: string;
   id: string;
   kind: "archetype" | "recipe";
+  playtest?: boolean;
+  scenario?: string;
 }
 
 export interface SessionCostMeasurement {
+  acceptance?: SessionCostAcceptanceProof;
   failedCommandCount: number;
   id: string;
   identicalAssertionRepeatCount: number;
@@ -24,6 +28,15 @@ export interface SessionCostMeasurement {
   maxConsecutiveSameDiagnostic: number;
   projectPath?: string;
   toolStepCount: number;
+}
+
+export interface SessionCostAcceptanceProof {
+  build: "pass" | "missing" | "skip";
+  gamePlanApply: "pass" | "missing" | "skip";
+  manualEdits: 0;
+  playtest: "pass" | "missing" | "skip";
+  scaffold: "pass" | "missing";
+  scenario?: string;
 }
 
 export interface SessionCostGateOptions {
@@ -66,6 +79,14 @@ const DEFAULT_CASES: readonly SessionCostReplayCase[] = [
   { archetype: "side-scroller", id: "archetype-side-scroller", kind: "archetype" },
   { archetype: "racing", id: "archetype-racing", kind: "archetype" },
   { goal: "top down coin collector", id: "recipe-top-down-collector", kind: "recipe" },
+  {
+    authoring: "typed-spec",
+    goal: "top down coin collector",
+    id: "typed-spec-recipe-top-down-collector",
+    kind: "recipe",
+    playtest: true,
+    scenario: "playtests/top-down-collector.playtest.json",
+  },
   { goal: "lane runner with coins", id: "recipe-lane-runner", kind: "recipe" },
 ];
 
@@ -135,11 +156,13 @@ async function runReplayCase(options: {
   let iterateOutputBytes = 0;
   let toolStepCount = 0;
   const commandOutputs: CommandOutputForMetrics[] = [];
+  const completedSteps = new Map<string, CommandResult>();
 
   const runStep = async (name: string, args: readonly string[]): Promise<CommandResult> => {
     toolStepCount += 1;
     const result = await options.run({ args, command: process.execPath, cwd: options.root, name, timeoutMs: 120_000 });
     options.steps.push({ ...summarize(result), name });
+    completedSteps.set(name, result);
     if (result.exitCode !== 0) {
       failedCommandCount += 1;
       options.diagnostics.push({
@@ -159,19 +182,21 @@ async function runReplayCase(options: {
 
   const createArgs = options.replayCase.kind === "archetype"
     ? cli(options.root, "create", options.projectPath, "--archetype", options.replayCase.archetype ?? "", "--json")
-    : cli(options.root, "create", options.projectPath, "--json");
+    : cli(options.root, "create", options.projectPath, ...authoringArgs(options.replayCase), "--json");
   const create = await runStep(`${options.replayCase.id}: create`, createArgs);
   if (create.exitCode === 0 && options.replayCase.kind === "recipe") {
     await runStep(`${options.replayCase.id}: game plan apply`, cli(options.root, "game", "plan", "--goal", options.replayCase.goal ?? "", "--project", options.projectPath, "--apply", "--json"));
   }
   if (failedCommandCount === 0) {
-    const iterate = await runStep(`${options.replayCase.id}: iterate`, cli(options.root, "iterate", "--project", options.projectPath, "--skip-playtest", "--json"));
+    const iterate = await runStep(`${options.replayCase.id}: iterate`, cli(options.root, "iterate", "--project", options.projectPath, ...iterateProofArgs(options.replayCase), "--json"));
     iterateOutputBytes = Buffer.byteLength(iterate.stdout, "utf8");
     validateIterateSummary(options.replayCase, iterate, options.diagnostics);
   }
 
   const retryChains = deriveRetryChainMetrics(commandOutputs);
+  const acceptance = buildAcceptanceProof(options.replayCase, completedSteps);
   const measurement: SessionCostMeasurement = {
+    ...(acceptance === undefined ? {} : { acceptance }),
     failedCommandCount,
     id: options.replayCase.id,
     identicalAssertionRepeatCount: retryChains.identicalAssertionRepeatCount,
@@ -183,7 +208,53 @@ async function runReplayCase(options: {
     toolStepCount,
   };
   validateThresholds(measurement, options.thresholds, options.diagnostics);
+  validateAcceptanceProof(measurement, options.diagnostics);
   return measurement;
+}
+
+function buildAcceptanceProof(replayCase: SessionCostReplayCase, completedSteps: Map<string, CommandResult>): SessionCostAcceptanceProof | undefined {
+  if (replayCase.authoring !== "typed-spec" || replayCase.kind !== "recipe" || replayCase.playtest !== true) {
+    return undefined;
+  }
+  const create = completedSteps.get(`${replayCase.id}: create`);
+  const apply = completedSteps.get(`${replayCase.id}: game plan apply`);
+  const iterate = completedSteps.get(`${replayCase.id}: iterate`);
+  const iterateJson = iterate === undefined ? undefined : parseJson(iterate.stdout);
+  return {
+    build: iterateJson?.code === "TN_ITERATE_OK" && iterateJson.ok === true ? "pass" : iterate === undefined ? "missing" : "skip",
+    gamePlanApply: apply?.exitCode === 0 ? "pass" : apply === undefined ? "missing" : "skip",
+    manualEdits: 0,
+    playtest: iterateJson?.code === "TN_ITERATE_OK" && iterateJson.ok === true ? "pass" : iterate === undefined ? "missing" : "skip",
+    scaffold: create?.exitCode === 0 ? "pass" : "missing",
+    ...(replayCase.scenario === undefined ? {} : { scenario: replayCase.scenario }),
+  };
+}
+
+function validateAcceptanceProof(measurement: SessionCostMeasurement, diagnostics: VerificationDiagnostic[]): void {
+  const proof = measurement.acceptance;
+  if (proof === undefined) {
+    return;
+  }
+  if (proof.scaffold !== "pass" || proof.gamePlanApply !== "pass" || proof.build !== "pass" || proof.playtest !== "pass" || proof.manualEdits !== 0) {
+    diagnostics.push({
+      code: "TN_VERIFY_SESSION_COST_ACCEPTANCE_FAILED",
+      message: `${measurement.id}: typed-spec scaffold/apply/build/playtest acceptance proof did not pass.`,
+      severity: "error",
+      step: measurement.id,
+      suggestedFix: "Fix the deterministic typed-spec recipe path before collecting fresh benchmark repeats.",
+    });
+  }
+}
+
+function authoringArgs(replayCase: SessionCostReplayCase): string[] {
+  return replayCase.authoring === undefined || replayCase.authoring === "structured-source" ? [] : ["--authoring", replayCase.authoring];
+}
+
+function iterateProofArgs(replayCase: SessionCostReplayCase): string[] {
+  if (replayCase.playtest === true) {
+    return replayCase.scenario === undefined ? [] : ["--scenario", replayCase.scenario];
+  }
+  return ["--skip-playtest"];
 }
 
 function validateThresholds(measurement: SessionCostMeasurement, thresholds: SessionCostThresholds, diagnostics: VerificationDiagnostic[]): void {

@@ -29,7 +29,7 @@ export default defineTypedGameSpec({
     entities: [{ id: "player", transform: { position: [0, 0.5, 0] } }],
     id: "arena",
     resources: [{ id: "score", value: 0 }],
-    systems: [{ id: "score-system", resourceReads: ["score"], writes: ["player"] }],
+    systems: [{ id: "score-system", resourceReads: ["score"], writes: ["Transform"] }],
   }],
 });
 ```

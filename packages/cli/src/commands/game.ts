@@ -13,6 +13,7 @@ import {
   type GameProductionMode,
   type IGameWorkflowReport,
 } from "@threenative/authoring";
+import { compileTypedGameSpecFile } from "@threenative/compiler";
 import { selectGameArchetype, type GameArchetypeId } from "../archetypes/registry.js";
 import { diagnosticResult, type ICommandResult } from "../diagnostics.js";
 import { matchGameKitCandidates } from "../game/kits.js";
@@ -348,10 +349,11 @@ async function applyGamePlanScaffold(options: { json: boolean; plan: IGamePlan; 
 
   const sceneId = stringValue(recipeArgs.sceneId) ?? "arena";
   const enrichmentFiles = await enrichScaffoldSource(options.projectPath, scaffold, sceneId, playerId, stringValue(recipeArgs.inputDocId));
+  const typedSpecFiles = await syncTypedSpecScaffoldSource(options.projectPath, sceneId, stringValue(recipeArgs.inputDocId));
   const scenarioPath = await writeScaffoldScenario(options.projectPath, scaffold, playerId);
   const scaffoldEvidencePath = await writeScaffoldEvidence(options.projectPath, {
     archetype: scaffold.archetype,
-    filesWritten: [...new Set([...result.filesWritten, scriptPath, ...enrichmentFiles, scenarioPath])].sort(),
+    filesWritten: [...new Set([...result.filesWritten, scriptPath, ...enrichmentFiles, ...typedSpecFiles, scenarioPath])].sort(),
     planArtifactPath: options.planArtifactPath,
     recipeId: scaffold.recipeId,
     scenarioPath,
@@ -361,7 +363,7 @@ async function applyGamePlanScaffold(options: { json: boolean; plan: IGamePlan; 
   const payload = {
     applied: [{
       changed: result.changed,
-      filesWritten: [...new Set([...result.filesWritten, scriptPath, ...enrichmentFiles, scenarioPath, scaffoldEvidencePath])].sort(),
+      filesWritten: [...new Set([...result.filesWritten, scriptPath, ...enrichmentFiles, ...typedSpecFiles, scenarioPath, scaffoldEvidencePath])].sort(),
       ok: result.ok,
       recipe: scaffold.recipeId,
     }],
@@ -475,6 +477,156 @@ async function enrichScaffoldSource(projectPath: string, scaffold: IGameScaffold
   written.push(...await enrichScaffoldUi(projectPath, scaffold));
   written.push(...await retargetStarterPlaytests(projectPath, playerId));
   return [...new Set(written)].sort();
+}
+
+async function syncTypedSpecScaffoldSource(projectPath: string, sceneId: string, inputDocId: string | undefined): Promise<string[]> {
+  if (!(await isTypedSpecProject(projectPath))) {
+    return [];
+  }
+  const scenePath = `content/scenes/${sceneId}.scene.json`;
+  const scene = await readJsonDocument(resolve(projectPath, scenePath));
+  const inputPath = await findInputDocumentPath(projectPath, sceneId, inputDocId);
+  const input = inputPath === undefined ? undefined : await readJsonDocument(resolve(projectPath, inputPath));
+  const materials = await readTypedSpecMaterials(projectPath);
+  const spec = {
+    ...(input === undefined ? {} : { input: typedInput(input) }),
+    ...(materials.length === 0 ? {} : { materials }),
+    scenes: [typedScene(scene)],
+  };
+  const specPath = resolve(projectPath, "src/game.spec.ts");
+  await mkdir(resolve(specPath, ".."), { recursive: true });
+  await writeFile(specPath, `import { defineTypedGameSpec } from "@threenative/sdk";
+
+export default defineTypedGameSpec(${JSON.stringify(spec, null, 2)});
+`, "utf8");
+  const compiled = await compileTypedGameSpecFile({ projectPath });
+  return [...new Set(["src/game.spec.ts", ...compiled.documents.map((document) => document.path)])].sort();
+}
+
+async function isTypedSpecProject(projectPath: string): Promise<boolean> {
+  try {
+    const config = await readJsonDocument(resolve(projectPath, "threenative.config.json"));
+    const production = isRecord(config.production) ? config.production : {};
+    return production.authoringMode === "typed-spec";
+  } catch {
+    return false;
+  }
+}
+
+async function readJsonDocument(path: string): Promise<Record<string, unknown>> {
+  const parsed = JSON.parse(await readFile(path, "utf8")) as unknown;
+  return isRecord(parsed) ? parsed : {};
+}
+
+async function readTypedSpecMaterials(projectPath: string): Promise<Record<string, unknown>[]> {
+  const materialsDir = resolve(projectPath, "content/materials");
+  let entries: string[];
+  try {
+    entries = await readdir(materialsDir);
+  } catch {
+    return [];
+  }
+  const materials: Record<string, unknown>[] = [];
+  for (const name of entries.filter((entry) => entry.endsWith(".materials.json")).sort()) {
+    try {
+      materials.push(...arrayOfRecords((await readJsonDocument(resolve(materialsDir, name))).materials));
+    } catch {
+      continue;
+    }
+  }
+  return dedupeById(materials).map((material) => stripDocumentMetadata(material));
+}
+
+function typedInput(input: Record<string, unknown>): Record<string, unknown> {
+  return stripUndefined({
+    actions: cloneRecords(input.actions),
+    axes: cloneRecords(input.axes),
+    id: input.id,
+  });
+}
+
+function typedScene(scene: Record<string, unknown>): Record<string, unknown> {
+  const ui = isRecord(scene.ui) ? typedUi(scene.ui) : undefined;
+  return stripUndefined({
+    entities: cloneRecords(scene.entities).map(typedEntity),
+    id: scene.id,
+    initial: scene.initial,
+    kind: scene.kind,
+    prefabs: cloneRecords(scene.prefabs),
+    resources: cloneRecords(scene.resources),
+    systems: cloneRecords(scene.systems).map(stripDocumentMetadata),
+    ui,
+  });
+}
+
+function typedEntity(entity: Record<string, unknown>): Record<string, unknown> {
+  return stripUndefined({
+    components: isRecord(entity.components) ? stripDocumentMetadata(entity.components) : undefined,
+    id: entity.id,
+    prefab: entity.prefab,
+    transform: isRecord(entity.transform) ? stripDocumentMetadata(entity.transform) : undefined,
+  });
+}
+
+function typedUi(ui: Record<string, unknown>): Record<string, unknown> {
+  const nodes = cloneRecords(ui.nodes).map(stripDocumentMetadata);
+  const bindings = cloneRecords(ui.bindings).map(typedUiBinding);
+  return stripUndefined({
+    bindings,
+    nodes,
+  });
+}
+
+function typedUiBinding(binding: Record<string, unknown>): Record<string, unknown> {
+  const resource = typeof binding.resource === "string" ? binding.resource : undefined;
+  if (resource !== undefined && resource.includes(".")) {
+    const [root, ...fields] = resource.split(".");
+    return stripUndefined({
+      ...stripDocumentMetadata(binding),
+      fields: fields.length === 0 ? undefined : fields,
+      resource: root,
+    });
+  }
+  return stripDocumentMetadata(binding);
+}
+
+function cloneRecords(value: unknown): Record<string, unknown>[] {
+  return arrayOfRecords(value).map((entry) => ({ ...entry }));
+}
+
+function dedupeById(values: Record<string, unknown>[]): Record<string, unknown>[] {
+  const seen = new Set<string>();
+  const next: Record<string, unknown>[] = [];
+  for (const value of values) {
+    const id = typeof value.id === "string" ? value.id : undefined;
+    if (id === undefined || seen.has(id)) {
+      continue;
+    }
+    seen.add(id);
+    next.push(value);
+  }
+  return next;
+}
+
+function stripDocumentMetadata(value: Record<string, unknown>): Record<string, unknown> {
+  const next: Record<string, unknown> = {};
+  for (const [key, entry] of Object.entries(value)) {
+    if (key === "schema" || key === "version" || key === "provenance") {
+      continue;
+    }
+    next[key] = entry;
+  }
+  return next;
+}
+
+function stripUndefined(value: Record<string, unknown>): Record<string, unknown> {
+  const next: Record<string, unknown> = {};
+  for (const [key, entry] of Object.entries(value)) {
+    if (entry !== undefined) {
+      next[key] = entry;
+    }
+  }
+  return next;
 }
 
 async function enrichScaffoldInput(projectPath: string, sceneId: string, inputDocId: string | undefined): Promise<string | undefined> {

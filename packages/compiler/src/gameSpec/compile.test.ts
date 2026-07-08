@@ -32,12 +32,14 @@ test("should emit valid structured source from typed spec", async () => {
           RigidBody: { kind: "kinematic" },
         },
         id: "player",
+        prefab: "player-prefab",
         transform: { position: [0, 0.5, 0] },
       }],
       id: "arena",
       initial: true,
+      prefabs: [{ color: "#44aa88", id: "player-prefab", primitive: "capsule" }],
       resources: [{ id: "score", value: 0 }],
-      systems: [{ id: "score-system", resourceReads: ["score"], writes: ["player"] }],
+      systems: [{ id: "score-system", resourceReads: ["score"], writes: ["Transform"] }],
       ui: {
         bindings: [{ node: "score-label", resource: "score" }],
         nodes: [{ id: "score-label", text: "Score", type: "text" }],
@@ -62,6 +64,9 @@ test("should emit valid structured source from typed spec", async () => {
 
   assert.equal(result.ok, true, result.diagnostics.map((diagnostic) => diagnostic.message).join("\n"));
   assert.equal(build.bundlePath.endsWith("dist/typed-spec-smoke.bundle"), true);
+  const sceneDocument = documents.find((document) => document.projectRelativePath === "content/scenes/arena.scene.json");
+  assert.deepEqual((sceneDocument?.data as { prefabs?: unknown[] }).prefabs, [{ color: "#44aa88", id: "player-prefab", primitive: "capsule" }]);
+  assert.equal((sceneDocument?.data as { entities?: Array<{ prefab?: string }> }).entities?.[0]?.prefab, "player-prefab");
   const provenance = buildAuthoringProvenanceDocument(authoringGraph(root), { documents, emitted: [] });
   const playerOwner = provenance.ownership.find((entry) => entry.emitted.artifactKind === "entity" && entry.emitted.id === "player");
   assert.equal(playerOwner?.source?.path, "src/game.spec.ts");

@@ -254,11 +254,18 @@ export default defineTypedGameSpec({
         id: "goal",
         transform: { position: [3, 0.25, 0], scale: [0.7, 0.2, 0.7] },
       },
+      {
+        components: {
+          camera: { mode: "perspective", fovY: 50, near: 0.05, far: 100 },
+        },
+        id: "camera.main",
+        transform: { position: [0, 5.5, 6.5], rotation: [-0.7, 0, 0] },
+      },
     ],
     id: "arena",
     initial: true,
     resources: [{ id: "score", value: 0 }],
-    systems: [{ id: "score-system", resourceReads: ["score"], writes: ["player"] }],
+    systems: [{ id: "score-system", resourceReads: ["score"], writes: ["Transform"] }],
     ui: {
       bindings: [{ node: "score-label", resource: "score" }],
       nodes: [{ id: "score-label", text: "Score", type: "text" }],
@@ -301,10 +308,10 @@ async function rewriteTypedSpecPackageScripts(projectPath: string): Promise<void
   const scripts = isRecord(packageJson.scripts) ? packageJson.scripts : {};
   packageJson.scripts = {
     ...scripts,
-    "authoring:compile": "tn authoring compile-typed-spec --json",
-    build: "tn authoring compile-typed-spec --json && tn build",
-    validate: "tn authoring compile-typed-spec --json && tn validate",
-    "validate:authoring": "tn authoring compile-typed-spec --json && tn authoring validate --json",
+    "authoring:compile": "pnpm tn -- authoring compile-typed-spec --json",
+    build: "pnpm tn -- authoring compile-typed-spec --json && pnpm tn -- build",
+    validate: "pnpm tn -- authoring compile-typed-spec --json && pnpm tn -- validate",
+    "validate:authoring": "pnpm tn -- authoring compile-typed-spec --json && pnpm tn -- authoring validate --json",
   };
   await writeFile(packageJsonPath, `${JSON.stringify(packageJson, null, 2)}\n`, "utf8");
 }

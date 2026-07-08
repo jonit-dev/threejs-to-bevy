@@ -43,5 +43,24 @@ The executable contract lives in
   default only after comparable typed-spec runs satisfy the separate typed-spec
   trial threshold across the focused prompt set.
 
+## Post-Friction Pre-Commitment
+
+For the post-friction collector rerun started after
+`NEXT-STEPS-2026-07-07.md`, do not move the goalposts after seeing the matrix:
+
+- If typed-spec meets the typed-spec trial threshold for the focused collector
+  slice (`>= 3` proof-passing typed-spec repeats, median raw tokens `<=`
+  direct ThreeNative, failed-command median `0`, retry-chain medians within
+  budget), close PRD-017 Phase 5 by flipping the starter default to
+  typed-spec and schedule `examples/humanoid-physics-course` as the first
+  real-world migration validation.
+- If direct ThreeNative and typed-spec both miss the equal-proof token gate
+  after failed-command median is demonstrably `0`, the PRD-018 vanilla-lift
+  trigger is met; start the vanilla-lift subset/prototype instead of further
+  authoring-surface churn.
+- If proof failures persist for engine-side or runtime-diagnosability reasons,
+  do not make an authoring-surface decision. Treat runtime diagnosability as
+  the blocker and write the next PRD there.
+
 Raw tokens, cached/uncached tokens, cost-weighted tokens, tool-output bytes,
 behavior counters, and dialect-confusion counts remain supporting diagnostics.

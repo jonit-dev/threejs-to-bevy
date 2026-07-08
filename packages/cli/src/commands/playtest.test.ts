@@ -1024,7 +1024,7 @@ test("playtest command should fail rich assertions with stable diagnostics", asy
 
   assert.equal(result.exitCode, 1);
   assert.equal(payload.code, "TN_PLAYTEST_FAILED");
-  assert.equal(codes.includes("TN_PLAYTEST_RESOURCE_ASSERTION_FAILED"), true);
+  assert.equal(codes.includes("TN_PLAYTEST_RESOURCE_STATE_STAGNATED"), true);
   assert.equal(codes.includes("TN_PLAYTEST_HUD_ASSERTION_FAILED"), true);
   assert.equal(codes.includes("TN_PLAYTEST_CONTACT_NOT_OBSERVED"), true);
   assert.equal(codes.includes("TN_PLAYTEST_ANIMATION_NOT_OBSERVED"), true);

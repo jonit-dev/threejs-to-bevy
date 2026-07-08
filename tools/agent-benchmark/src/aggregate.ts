@@ -3,6 +3,7 @@ import { dirname, resolve } from "node:path";
 
 import { getProofContract, requiredAssertionIds, validateProofResult } from "./proof-contract.js";
 import { isBenchmarkRunReport } from "./schemas.js";
+import { sessionMetricEvidenceDiagnostics } from "./session-evidence.js";
 import { type BenchmarkPromptClass, type IBenchmarkBehaviorCounters, type IBenchmarkDiagnostic, type IBenchmarkReport, type IBenchmarkRunReport } from "./types.js";
 
 const CACHED_INPUT_TOKEN_WEIGHT = 0.1;
@@ -44,10 +45,11 @@ export async function aggregateRunReports(paths: readonly string[]): Promise<IBe
     const promptRunsWithProofDiagnostics = runs.filter((run) => run.report.promptId === promptId);
     for (const run of promptRunsWithProofDiagnostics) {
       diagnostics.push(...validateProofResult(run.report.promptId, run.report.proof));
+      diagnostics.push(...sessionMetricDiagnostics(run.report));
     }
-    const threenativeRuns = runs.filter((run) => run.report.promptId === promptId && run.report.condition === "threenative" && run.report.ok && runProofOk(run.report));
-    const typedSpecRuns = runs.filter((run) => run.report.promptId === promptId && run.report.condition === "typed-spec" && run.report.ok && runProofOk(run.report));
-    const vanillaRuns = runs.filter((run) => run.report.promptId === promptId && run.report.condition === "vanilla" && run.report.ok && runProofOk(run.report));
+    const threenativeRuns = runs.filter((run) => run.report.promptId === promptId && run.report.condition === "threenative" && runAdmissible(run.report));
+    const typedSpecRuns = runs.filter((run) => run.report.promptId === promptId && run.report.condition === "typed-spec" && runAdmissible(run.report));
+    const vanillaRuns = runs.filter((run) => run.report.promptId === promptId && run.report.condition === "vanilla" && runAdmissible(run.report));
     const threenativeMedianTokens = metricMedian(threenativeRuns, (run) => run.session.tokenCount);
     const vanillaMedianTokens = metricMedian(vanillaRuns, (run) => run.session.tokenCount);
     const threenativeMedianCostWeightedTokens = metricMedian(threenativeRuns, costWeightedTokens);
@@ -86,7 +88,7 @@ export async function aggregateRunReports(paths: readonly string[]): Promise<IBe
       ? null
       : (threenativeMedianIdenticalAssertionRepeats ?? 0) <= IDENTICAL_ASSERTION_REPEAT_BUDGET
         && (threenativeMedianMaxSameDiagnostic ?? 0) <= MAX_CONSECUTIVE_SAME_DIAGNOSTIC_BUDGET;
-    return {
+    const summary = {
       behaviorMedian,
       costWeightedTokenRatio: ratio(threenativeMedianCostWeightedTokens, vanillaMedianCostWeightedTokens),
       dialectConfusionFailures: {
@@ -151,6 +153,8 @@ export async function aggregateRunReports(paths: readonly string[]): Promise<IBe
       withinRetryChainBudget,
       withinStepBudget: threenativeMedianToolStepCount === null ? null : threenativeMedianToolStepCount <= THREENATIVE_STEP_BUDGET,
     };
+    diagnostics.push(...matrixDiagnostics(summary));
+    return summary;
   });
   const comparable = promptSummaries.filter((summary) => summary.withinEqualProofTokenBudget !== null);
   const failed = comparable.filter((summary) =>
@@ -184,6 +188,35 @@ export async function aggregateRunReports(paths: readonly string[]): Promise<IBe
     },
     version: 2,
   };
+}
+
+function matrixDiagnostics(summary: IBenchmarkReport["promptSummaries"][number]): IBenchmarkDiagnostic[] {
+  const diagnostics: IBenchmarkDiagnostic[] = [];
+  if (summary.repeatCount.threenative < MIN_REPEATS_PER_CONDITION) {
+    diagnostics.push({
+      code: "TN_BENCH_MATRIX_THREENATIVE_REPEATS_MISSING",
+      message: `${summary.promptId}: direct ThreeNative has ${summary.repeatCount.threenative} proof-passing repeat(s); ${MIN_REPEATS_PER_CONDITION} required.`,
+      severity: "warning",
+      suggestedFix: "Run fresh direct ThreeNative agent sessions under the round-5 protocol and score each candidate.",
+    });
+  }
+  if (summary.repeatCount.vanilla < MIN_REPEATS_PER_CONDITION) {
+    diagnostics.push({
+      code: "TN_BENCH_MATRIX_VANILLA_REPEATS_MISSING",
+      message: `${summary.promptId}: vanilla has ${summary.repeatCount.vanilla} proof-passing repeat(s); ${MIN_REPEATS_PER_CONDITION} required.`,
+      severity: "warning",
+      suggestedFix: "Run fresh vanilla agent sessions under the round-5 equal-proof protocol and score each candidate.",
+    });
+  }
+  if (summary.proofBar.typedSpecPassed && summary.typedSpecTrial.repeatCount < MIN_REPEATS_PER_CONDITION) {
+    diagnostics.push({
+      code: "TN_BENCH_MATRIX_TYPED_SPEC_REPEATS_MISSING",
+      message: `${summary.promptId}: typed-spec has ${summary.typedSpecTrial.repeatCount} proof-passing repeat(s); ${MIN_REPEATS_PER_CONDITION} required for the typed-spec trial.`,
+      severity: "warning",
+      suggestedFix: "Run fresh typed-spec agent sessions under the same prompt/proof contract and score each candidate.",
+    });
+  }
+  return diagnostics;
 }
 
 function typedSpecTrialSummary(options: {
@@ -257,6 +290,14 @@ function typedSpecAggregateVerdict(promptSummaries: IBenchmarkReport["promptSumm
 
 function runProofOk(run: IBenchmarkRunReport): boolean {
   return validateProofResult(run.promptId, run.proof).length === 0;
+}
+
+function runAdmissible(run: IBenchmarkRunReport): boolean {
+  return run.ok && runProofOk(run) && sessionMetricDiagnostics(run).length === 0;
+}
+
+function sessionMetricDiagnostics(run: IBenchmarkRunReport): IBenchmarkDiagnostic[] {
+  return sessionMetricEvidenceDiagnostics(run.session, { context: "aggregate", runId: run.runId });
 }
 
 function dialectConfusionFailureCount(runs: readonly IBenchmarkRunReport[]): number {

@@ -1,11 +1,18 @@
 #!/usr/bin/env node
 
-import { mkdir, readdir, writeFile } from "node:fs/promises";
+import { mkdir, readFile, readdir, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 
 import { aggregateRunReports } from "./aggregate.js";
+import { auditNextSteps } from "./next-steps-audit.js";
 import { captureCandidate } from "./capture.js";
-import { readSession } from "./schemas.js";
+import { validateRound5Matrix } from "./matrix.js";
+import { collectCandidatePlaytestDiagnostics } from "./playtest-diagnostics.js";
+import { prepareRound } from "./prepare.js";
+import { inferBenchmarkProofFromArtifacts } from "./proof-adapter.js";
+import { isBenchmarkReport, readSession } from "./schemas.js";
+import { sessionMetricEvidenceDiagnostics } from "./session-evidence.js";
+import { inspectPreparedRound } from "./status.js";
 import { type BenchmarkCondition, type IBenchmarkRunReport } from "./types.js";
 
 export async function main(argv = process.argv.slice(2)): Promise<number> {
@@ -16,7 +23,22 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
   if (command === "aggregate") {
     return aggregateCommand(argv.slice(1));
   }
-  process.stderr.write("Usage: tn-agent-benchmark score --candidate <dir> --condition <vanilla|threenative|typed-spec> [--session <path>] [--out <path>] [--json]\n       tn-agent-benchmark aggregate --runs <dir-or-file> [--out <path>] [--json]\n");
+  if (command === "matrix") {
+    return matrixCommand(argv.slice(1));
+  }
+  if (command === "prepare") {
+    return prepareCommand(argv.slice(1));
+  }
+  if (command === "status") {
+    return statusCommand(argv.slice(1));
+  }
+  if (command === "next") {
+    return nextCommand(argv.slice(1));
+  }
+  if (command === "audit") {
+    return auditCommand(argv.slice(1));
+  }
+  process.stderr.write("Usage: tn-agent-benchmark score --candidate <dir> --condition <vanilla|threenative|typed-spec> [--session <path>] [--out <path>] [--json]\n       tn-agent-benchmark aggregate --runs <dir-or-file> [--out <path>] [--json]\n       tn-agent-benchmark matrix --report <benchmark-report.json> [--require-typed-spec] [--json]\n       tn-agent-benchmark prepare --out <round-dir> [--prompt collector] [--repeats 3] [--conditions typed-spec,threenative,vanilla] [--json]\n       tn-agent-benchmark status --manifest <round-5-prepare-manifest.json> [--condition <vanilla|threenative|typed-spec>] [--require-complete] [--json]\n       tn-agent-benchmark next --manifest <round-5-prepare-manifest.json> [--condition <vanilla|threenative|typed-spec>] [--json]\n       tn-agent-benchmark audit --matrix-report <benchmark-report.json> --session-cost <verification-report.json> [--round-manifest <round-5-prepare-manifest.json>] [--protocol ROUND-5-PROTOCOL.md] [--json]\n");
   return 1;
 }
 
@@ -47,7 +69,12 @@ async function scoreCommand(argv: readonly string[]): Promise<number> {
     version: 2 as const,
   };
   const capture = await captureCandidate({ candidate, outDir, url });
-  const diagnostics = [...sessionResult.diagnostics, ...capture.diagnostics];
+  const playtestDiagnostics = await collectCandidatePlaytestDiagnostics(candidate);
+  const proofResult = await inferBenchmarkProofFromArtifacts({ candidate, promptId: session.promptId });
+  const sessionEvidenceDiagnostics = sessionResult.session === undefined
+    ? []
+    : sessionMetricEvidenceDiagnostics(sessionResult.session, { context: "score", runId: sessionResult.session.runId });
+  const diagnostics = [...sessionResult.diagnostics, ...sessionEvidenceDiagnostics, ...capture.diagnostics, ...playtestDiagnostics, ...proofResult.diagnostics];
   if (session.condition !== condition) {
     diagnostics.push({
       code: "TN_BENCH_SESSION_CONDITION_MISMATCH",
@@ -63,6 +90,7 @@ async function scoreCommand(argv: readonly string[]): Promise<number> {
     generatedAt: new Date().toISOString(),
     metrics: capture.metrics,
     ok: diagnostics.every((diagnostic) => diagnostic.severity !== "error"),
+    proof: proofResult.proof,
     promptId: session.promptId,
     runId: session.runId,
     schema: "threenative.agent-benchmark-run",
@@ -86,6 +114,185 @@ async function aggregateCommand(argv: readonly string[]): Promise<number> {
   await mkdir(resolve(outPath, ".."), { recursive: true });
   await writeFile(outPath, `${JSON.stringify(report, null, 2)}\n`, "utf8");
   return writeResult({ code: report.verdict.status === "insufficient-data" ? "TN_BENCH_AGGREGATE_INSUFFICIENT_DATA" : "TN_BENCH_AGGREGATE_OK", outPath, report }, json, 0);
+}
+
+async function matrixCommand(argv: readonly string[]): Promise<number> {
+  const json = argv.includes("--json");
+  const reportArg = readFlag(argv, "--report");
+  if (reportArg === undefined) {
+    return writeResult({ code: "TN_BENCH_USAGE", message: "Usage: matrix --report <benchmark-report.json> [--require-typed-spec] [--json]" }, json, 1);
+  }
+  const reportPath = resolve(reportArg);
+  try {
+    const parsed = JSON.parse(await readFile(reportPath, "utf8")) as unknown;
+    if (!isBenchmarkReport(parsed)) {
+      return writeResult({
+        code: "TN_BENCH_MATRIX_INVALID_REPORT",
+        diagnostics: [{
+          code: "TN_BENCH_MATRIX_INVALID_REPORT",
+          message: "Benchmark matrix command requires a valid aggregate benchmark report.",
+          severity: "error",
+        }],
+        ok: false,
+        reportPath,
+      }, json, 1);
+    }
+    const report = parsed;
+    const result = validateRound5Matrix(report, { requireTypedSpec: argv.includes("--require-typed-spec") });
+    return writeResult({
+      code: result.ok ? "TN_BENCH_MATRIX_OK" : "TN_BENCH_MATRIX_INCOMPLETE",
+      diagnostics: result.diagnostics,
+      ok: result.ok,
+      reportPath,
+    }, json, result.ok ? 0 : 1);
+  } catch (error) {
+    return writeResult({
+      code: "TN_BENCH_MATRIX_READ_FAILED",
+      diagnostics: [{
+        code: "TN_BENCH_MATRIX_READ_FAILED",
+        message: `Unable to read benchmark report: ${error instanceof Error ? error.message : String(error)}.`,
+        severity: "error",
+      }],
+      ok: false,
+      reportPath,
+    }, json, 1);
+  }
+}
+
+async function prepareCommand(argv: readonly string[]): Promise<number> {
+  const json = argv.includes("--json");
+  const promptId = readFlag(argv, "--prompt") ?? "collector";
+  const outDir = readFlag(argv, "--out");
+  const repeatsValue = readFlag(argv, "--repeats");
+  const conditionsValue = readFlag(argv, "--conditions");
+  if (outDir === undefined) {
+    return writeResult({ code: "TN_BENCH_USAGE", message: "Usage: prepare --out <round-dir> [--prompt collector] [--repeats 3] [--conditions typed-spec,threenative,vanilla] [--json]" }, json, 1);
+  }
+  const repeats = repeatsValue === undefined ? 3 : Number(repeatsValue);
+  if (!Number.isInteger(repeats) || repeats <= 0) {
+    return writeResult({ code: "TN_BENCH_PREPARE_REPEATS_INVALID", message: "--repeats must be a positive integer." }, json, 1);
+  }
+  let conditions: BenchmarkCondition[] | undefined;
+  if (conditionsValue !== undefined) {
+    conditions = parseConditions(conditionsValue);
+    if (conditions.length === 0) {
+      return writeResult({ code: "TN_BENCH_PREPARE_CONDITIONS_INVALID", message: "--conditions must include vanilla, threenative, or typed-spec." }, json, 1);
+    }
+  }
+  try {
+    const result = await prepareRound({ conditions, outDir, promptId, repeats });
+    return writeResult({ code: "TN_BENCH_PREPARE_OK", ...result }, json, 0);
+  } catch (error) {
+    return writeResult({
+      code: "TN_BENCH_PREPARE_FAILED",
+      message: error instanceof Error ? error.message : String(error),
+      ok: false,
+    }, json, 1);
+  }
+}
+
+async function statusCommand(argv: readonly string[]): Promise<number> {
+  const json = argv.includes("--json");
+  const manifestArg = readFlag(argv, "--manifest");
+  const condition = readConditionFlag(argv);
+  const requireComplete = argv.includes("--require-complete");
+  if (manifestArg === undefined) {
+    return writeResult({ code: "TN_BENCH_USAGE", message: "Usage: status --manifest <round-5-prepare-manifest.json> [--condition <vanilla|threenative|typed-spec>] [--require-complete] [--json]" }, json, 1);
+  }
+  if (condition === "invalid") {
+    return writeResult({ code: "TN_BENCH_USAGE", message: "--condition must be vanilla, threenative, or typed-spec." }, json, 1);
+  }
+  const manifestPath = resolve(manifestArg);
+  try {
+    const result = await inspectPreparedRound(manifestPath, { condition });
+    const hasError = result.diagnostics.some((diagnostic) => diagnostic.severity === "error");
+    return writeResult({
+      code: result.ok ? "TN_BENCH_ROUND_STATUS_COMPLETE" : "TN_BENCH_ROUND_STATUS_INCOMPLETE",
+      condition,
+      ...result,
+    }, json, hasError || (requireComplete && !result.ok) ? 1 : 0);
+  } catch (error) {
+    return writeResult({
+      code: "TN_BENCH_ROUND_STATUS_READ_FAILED",
+      diagnostics: [{
+        code: "TN_BENCH_ROUND_STATUS_READ_FAILED",
+        message: `Unable to inspect prepared round: ${error instanceof Error ? error.message : String(error)}.`,
+        severity: "error",
+      }],
+      ok: false,
+      manifestPath,
+    }, json, 1);
+  }
+}
+
+async function nextCommand(argv: readonly string[]): Promise<number> {
+  const json = argv.includes("--json");
+  const manifestArg = readFlag(argv, "--manifest");
+  const condition = readConditionFlag(argv);
+  if (manifestArg === undefined) {
+    return writeResult({ code: "TN_BENCH_USAGE", message: "Usage: next --manifest <round-5-prepare-manifest.json> [--condition <vanilla|threenative|typed-spec>] [--json]" }, json, 1);
+  }
+  if (condition === "invalid") {
+    return writeResult({ code: "TN_BENCH_USAGE", message: "--condition must be vanilla, threenative, or typed-spec." }, json, 1);
+  }
+  const manifestPath = resolve(manifestArg);
+  try {
+    const result = await inspectPreparedRound(manifestPath, { condition });
+    const action = result.nextActions[0];
+    return writeResult({
+      action,
+      code: action === undefined ? "TN_BENCH_ROUND_NEXT_COMPLETE" : "TN_BENCH_ROUND_NEXT_ACTION",
+      condition,
+      manifestPath,
+      ok: action === undefined,
+      summary: result.summary,
+    }, json, 0);
+  } catch (error) {
+    return writeResult({
+      code: "TN_BENCH_ROUND_NEXT_READ_FAILED",
+      diagnostics: [{
+        code: "TN_BENCH_ROUND_NEXT_READ_FAILED",
+        message: `Unable to inspect prepared round: ${error instanceof Error ? error.message : String(error)}.`,
+        severity: "error",
+      }],
+      ok: false,
+      manifestPath,
+    }, json, 1);
+  }
+}
+
+async function auditCommand(argv: readonly string[]): Promise<number> {
+  const json = argv.includes("--json");
+  const matrixReportPath = readFlag(argv, "--matrix-report");
+  const sessionCostReportPath = readFlag(argv, "--session-cost");
+  const protocolPath = readFlag(argv, "--protocol") ?? "tools/agent-benchmark/ROUND-5-PROTOCOL.md";
+  const roundManifestPath = readFlag(argv, "--round-manifest");
+  if (matrixReportPath === undefined || sessionCostReportPath === undefined) {
+    return writeResult({
+      code: "TN_BENCH_USAGE",
+      message: "Usage: audit --matrix-report <benchmark-report.json> --session-cost <verification-report.json> [--round-manifest <round-5-prepare-manifest.json>] [--protocol ROUND-5-PROTOCOL.md] [--json]",
+    }, json, 1);
+  }
+  const result = await auditNextSteps({
+    matrixReportPath,
+    protocolPath,
+    roundManifestPath,
+    sessionCostReportPath,
+  });
+  return writeResult({
+    code: result.ok ? "TN_BENCH_NEXT_STEPS_AUDIT_OK" : "TN_BENCH_NEXT_STEPS_AUDIT_INCOMPLETE",
+    ...result,
+  }, json, result.ok ? 0 : 1);
+}
+
+function parseConditions(value: string): BenchmarkCondition[] {
+  const conditions: BenchmarkCondition[] = [];
+  for (const item of value.split(",").map((part) => part.trim()).filter(Boolean)) {
+    if (item === "vanilla" || item === "threenative" || item === "typed-spec") {
+      conditions.push(item);
+    }
+  }
+  return [...new Set(conditions)];
 }
 
 async function resolveRunReportPaths(path: string): Promise<string[]> {
@@ -112,6 +319,14 @@ function relativePath(from: string, to: string): string {
 function readFlag(argv: readonly string[], flag: string): string | undefined {
   const index = argv.indexOf(flag);
   return index < 0 ? undefined : argv[index + 1];
+}
+
+function readConditionFlag(argv: readonly string[]): BenchmarkCondition | "invalid" | undefined {
+  const value = readFlag(argv, "--condition");
+  if (value === undefined) {
+    return undefined;
+  }
+  return value === "vanilla" || value === "threenative" || value === "typed-spec" ? value : "invalid";
 }
 
 function writeResult(payload: unknown, json: boolean, exitCode: number): number {

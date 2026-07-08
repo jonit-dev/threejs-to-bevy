@@ -24,6 +24,8 @@ export async function compileTypedGameSpecFile(options: ICompileTypedGameSpecFil
   const spec = await loadTypedGameSpec(entryPath, options.projectPath);
   const documents = compileTypedGameSpec(spec, { projectPath: options.projectPath, sourcePath: normalizePath(relative(options.projectPath, entryPath)) });
 
+  await rm(resolve(options.projectPath, "content/systems"), { force: true, recursive: true });
+
   for (const document of documents) {
     await mkdir(dirname(document.file), { recursive: true });
     await writeFile(document.file, formatAuthoringDocument(document.data), "utf8");

@@ -63,6 +63,18 @@ test("should reject undeclared transform write", () => {
   assert.match(diagnostics[0]?.suggestion ?? "", /writes/);
 });
 
+test("should reject undeclared string component patch", () => {
+  const diagnostics = diagnosePortableSystem({
+    source: '(ctx) => ctx.entity("pickup")?.patch("MeshRenderer", { visible: false })',
+    systemName: "badStringWrite",
+    writes: ["Transform"],
+  });
+
+  assert.equal(diagnostics[0]?.code, "TN_SCRIPT_WRITE_UNDECLARED");
+  assert.equal(diagnostics[0]?.path, "systems/badStringWrite/writes/MeshRenderer");
+  assert.match(diagnostics[0]?.suggestion ?? "", /MeshRenderer/);
+});
+
 test("should reject legacy script context idioms with fix snippets", () => {
   const diagnostics = diagnosePortableSystem({
     exportName: "movePlayer",

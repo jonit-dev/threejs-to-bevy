@@ -174,7 +174,7 @@ async function launchJsonUrlScript(candidate: string, script: string): Promise<I
 
 async function launchThreeNativePreview(candidate: string): Promise<IPreviewHandle> {
   const workspaceRoot = await findWorkspaceRoot(candidate);
-  const child = spawn("pnpm", ["tn", "--", "dev", "--project", candidate, "--target", "web", "--json"], {
+  const child = spawn(process.execPath, [resolve(workspaceRoot, "packages/cli/dist/index.js"), "dev", "--project", candidate, "--target", "web", "--json"], {
     cwd: workspaceRoot,
     stdio: ["ignore", "pipe", "pipe"],
   });

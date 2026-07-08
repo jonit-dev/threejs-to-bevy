@@ -7,6 +7,7 @@ type SmokeIds = {
   entity: "player";
   input: "move-x" | "move-z";
   material: "player-material";
+  prefab: "player-prefab";
   resource: "score";
   scene: "arena";
   ui: "score-label";
@@ -24,11 +25,13 @@ test("should define a typed game spec", () => {
           RigidBody: { kind: "static" },
         },
         id: "player",
+        prefab: "player-prefab",
         transform: { position: [0, 0.5, 0] },
       }],
       id: "arena",
+      prefabs: [{ color: "#44aa88", id: "player-prefab", primitive: "capsule" }],
       resources: [{ id: "score", value: 0 }],
-      systems: [{ id: "score-system", resourceReads: ["score"], writes: ["player"] }],
+      systems: [{ id: "score-system", resourceReads: ["score"], writes: ["Transform"] }],
       ui: {
         bindings: [{ node: "score-label", resource: "score" }],
         nodes: [{ id: "score-label", text: "Score", type: "text" }],
@@ -69,5 +72,29 @@ const invalidRigidBodyKind: ITypedGameSpec<SmokeIds> = {
   }],
 };
 
+const invalidPrefabId: ITypedGameSpec<SmokeIds> = {
+  scenes: [{
+    entities: [{
+      id: "player",
+      // @ts-expect-error invalid prefab id fails at tsc time
+      prefab: "goal-prefab",
+    }],
+    id: "arena",
+  }],
+};
+
+const invalidSystemWrite: ITypedGameSpec<SmokeIds> = {
+  scenes: [{
+    id: "arena",
+    systems: [{
+      id: "score-system",
+      // @ts-expect-error writes declare component names, not entity ids
+      writes: ["player"],
+    }],
+  }],
+};
+
 void invalidInputId;
+void invalidPrefabId;
 void invalidRigidBodyKind;
+void invalidSystemWrite;

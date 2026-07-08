@@ -22,6 +22,7 @@ export function generateTypedGameSpecIdTypes(
     `  entity: ${literalUnion(ids.entity)};`,
     `  input: ${literalUnion(ids.input)};`,
     `  material: ${literalUnion(ids.material)};`,
+    `  prefab: ${literalUnion(ids.prefab)};`,
     `  resource: ${literalUnion(ids.resource)};`,
     `  scene: ${literalUnion(ids.scene)};`,
     `  ui: ${literalUnion(ids.ui)};`,
@@ -35,6 +36,7 @@ function collectIds(documents: readonly IAuthoringDocument[]): Record<keyof IGam
     entity: new Set(),
     input: new Set(),
     material: new Set(),
+    prefab: new Set(),
     resource: new Set(),
     scene: new Set(),
     ui: new Set(),
@@ -45,6 +47,9 @@ function collectIds(documents: readonly IAuthoringDocument[]): Record<keyof IGam
       ids.scene.add(scene.id);
       for (const entity of scene.entities ?? []) {
         ids.entity.add(entity.id);
+      }
+      for (const prefab of scene.prefabs ?? []) {
+        ids.prefab.add(prefab.id);
       }
       for (const resource of scene.resources ?? []) {
         ids.resource.add(resource.id);
@@ -76,6 +81,7 @@ interface IGameSpecIdsShape {
   entity: string;
   input: string;
   material: string;
+  prefab: string;
   resource: string;
   scene: string;
   ui: string;

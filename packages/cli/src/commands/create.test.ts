@@ -354,9 +354,9 @@ test("should create typed-spec authoring starter as opt-in mode", async () => {
     assert.equal(config.production?.proofCommands?.[0], "tn authoring compile-typed-spec --project . --json");
 
     const packageJson = JSON.parse(await readFile(join(payload.path, "package.json"), "utf8")) as { scripts: Record<string, string> };
-    assert.equal(packageJson.scripts["authoring:compile"], "tn authoring compile-typed-spec --json");
-    assert.equal(packageJson.scripts.build, "tn authoring compile-typed-spec --json && tn build");
-    assert.equal(packageJson.scripts.validate, "tn authoring compile-typed-spec --json && tn validate");
+    assert.equal(packageJson.scripts["authoring:compile"], "pnpm tn -- authoring compile-typed-spec --json");
+    assert.equal(packageJson.scripts.build, "pnpm tn -- authoring compile-typed-spec --json && pnpm tn -- build");
+    assert.equal(packageJson.scripts.validate, "pnpm tn -- authoring compile-typed-spec --json && pnpm tn -- validate");
 
     await access(join(payload.path, "content/scenes/arena.scene.json"));
     await access(join(payload.path, "content/input/arena.input.json"));

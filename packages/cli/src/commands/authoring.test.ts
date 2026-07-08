@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { access, mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
@@ -97,8 +97,18 @@ test("authoring command compiles typed game spec into structured source", async 
   const root = await mkdtemp(join(tmpdir(), "tn-authoring-typed-spec-"));
   try {
     await mkdir(join(root, "src"), { recursive: true });
+    await mkdir(join(root, "content/systems"), { recursive: true });
     await writeFile(join(root, "src/specParts.ts"), `export const playerMaterial = { color: "#44aa88", id: "player-material" } as const;
 `);
+    await writeFile(join(root, "content/systems/arena.systems.json"), `${JSON.stringify({
+      schema: "threenative.systems",
+      version: "0.1.0",
+      id: "arena-systems",
+      systems: [{
+        id: "stale-system",
+        script: { module: "src/scripts/player.ts", export: "removedExport" },
+      }],
+    }, null, 2)}\n`);
     await writeFile(join(root, "src/game.spec.ts"), `import { defineTypedGameSpec } from "@threenative/sdk";
 import { playerMaterial } from "./specParts";
 
@@ -137,6 +147,7 @@ export default defineTypedGameSpec({
       "content/materials/game-materials.materials.json",
       "content/scenes/arena.scene.json",
     ]);
+    await assert.rejects(access(join(root, "content/systems/arena.systems.json")), { code: "ENOENT" });
 
     const validate = await authoringCommand(["validate", "--project", root, "--json"]);
     const validatePayload = JSON.parse(validate.stdout) as { ok: boolean };

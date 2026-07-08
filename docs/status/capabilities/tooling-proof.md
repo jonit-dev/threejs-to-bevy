@@ -13,6 +13,8 @@ Current support:
   `tn iterate --json` output <= 2 KB. It also reports
   `maxConsecutiveSameDiagnostic` and `identicalAssertionRepeatCount`, failing
   when same-diagnostic retries exceed one or identical failed assertions repeat.
+  The typed-spec collector replay records an explicit scaffold/apply/build/
+  playtest acceptance proof with zero manual edits.
   The current deterministic replay set covers all archetype scaffolds plus the
   `top-down-collector` and `lane-runner` `tn game plan --apply` paths that are
   supported today.
@@ -28,16 +30,21 @@ Current support:
   only equal-proof runs with prompt assertions, three repeats per condition,
   continuity `<= 1.5x` tokens, beyond-one-shot `<= 1.0x` tokens, and
   failed-command/retry-chain budgets. The benchmark scorer also accepts a
-  `typed-spec` condition and emits a separate typed-spec verdict comparing
-  typed source against direct ThreeNative without changing the vanilla
-  comparison gate.
+  `typed-spec` condition, imports `TN_PLAYTEST_*` diagnostics from candidate
+  playtest `summary.json` artifacts, infers collector equal-proof assertions
+  from committed playtest summaries, and emits a separate typed-spec verdict
+  comparing typed source against direct ThreeNative without changing the
+  vanilla comparison gate.
 - The 2026-07-07 off-recipe benchmark keeps raw transcripts, sessions, scorer
   output, aggregate report, and agent behavior learnings under
   `tools/verify/artifacts/agent-benchmark/off-recipe-2026-07-07/`.
 - Playtest reports attach compact web/native runtime resource observations and
   emit `TN_RESOURCE_DECLARED_NOT_OBSERVED` or
   `TN_PLAYTEST_REPEATED_ASSERTION` when failing assertions would otherwise
-  repeat without new diagnostic information.
+  repeat without new diagnostic information. Rich resource assertions now emit
+  `TN_PLAYTEST_RESOURCE_STATE_STAGNATED` when a scenario moves the subject but
+  an asserted resource path stays unchanged, including owning-system evidence
+  from `effect-log.json` when available.
 - `pnpm check:docs` for docs consistency and STATUS index budget.
 - `pnpm verify:smoke`, `pnpm verify:pre-push`, and `pnpm verify:release` for
   escalating proof levels.

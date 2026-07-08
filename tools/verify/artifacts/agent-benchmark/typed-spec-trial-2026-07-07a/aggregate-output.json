@@ -8,9 +8,27 @@
         "message": "collector: equal-proof assertions failed or are incomplete: pickup-objective, win-state.",
         "severity": "error",
         "suggestedFix": "Use the prompt proof contract for both vanilla and ThreeNative runs before aggregating."
+      },
+      {
+        "code": "TN_BENCH_MATRIX_THREENATIVE_REPEATS_MISSING",
+        "message": "collector: direct ThreeNative has 0 proof-passing repeat(s); 3 required.",
+        "severity": "warning",
+        "suggestedFix": "Run fresh direct ThreeNative agent sessions under the round-5 protocol and score each candidate."
+      },
+      {
+        "code": "TN_BENCH_MATRIX_VANILLA_REPEATS_MISSING",
+        "message": "collector: vanilla has 0 proof-passing repeat(s); 3 required.",
+        "severity": "warning",
+        "suggestedFix": "Run fresh vanilla agent sessions under the round-5 equal-proof protocol and score each candidate."
+      },
+      {
+        "code": "TN_BENCH_MATRIX_TYPED_SPEC_REPEATS_MISSING",
+        "message": "collector: typed-spec has 1 proof-passing repeat(s); 3 required for the typed-spec trial.",
+        "severity": "warning",
+        "suggestedFix": "Run fresh typed-spec agent sessions under the same prompt/proof contract and score each candidate."
       }
     ],
-    "generatedAt": "2026-07-07T22:36:34.676Z",
+    "generatedAt": "2026-07-07T23:29:39.074Z",
     "promptSummaries": [
       {
         "behaviorMedian": {

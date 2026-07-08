@@ -66,6 +66,75 @@ test("should fail when deterministic replay has failed commands", async () => {
   assert.equal(result.diagnostics.some((diagnostic) => diagnostic.code === "TN_VERIFY_SESSION_COST_COMMAND_FAILED"), true);
 });
 
+test("should replay typed-spec recipe with playtest proof", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-session-cost-gate-"));
+  const cases: SessionCostReplayCase[] = [{
+    authoring: "typed-spec",
+    goal: "top down coin collector",
+    id: "typed-spec-recipe-top-down-collector",
+    kind: "recipe",
+    playtest: true,
+    scenario: "playtests/top-down-collector.playtest.json",
+  }];
+  const seenArgs: string[][] = [];
+  const result = await runSessionCostGate({
+    cases,
+    root,
+    run: async (command) => {
+      seenArgs.push([...command.args]);
+      return {
+        durationMs: 1,
+        exitCode: 0,
+        stderr: "",
+        stdout: JSON.stringify({ code: command.name?.endsWith(": iterate") === true ? "TN_ITERATE_OK" : "TN_CREATE_OK", ok: true }),
+      };
+    },
+  });
+
+  assert.equal(result.ok, true);
+  assert.equal(seenArgs[0]?.includes("--authoring"), true);
+  assert.equal(seenArgs[0]?.includes("typed-spec"), true);
+  assert.equal(seenArgs[2]?.includes("--skip-playtest"), false);
+  assert.deepEqual(seenArgs[2]?.slice(-3), ["--scenario", "playtests/top-down-collector.playtest.json", "--json"]);
+  assert.equal(result.measurements[0]?.toolStepCount, 3);
+  assert.deepEqual(result.measurements[0]?.acceptance, {
+    build: "pass",
+    gamePlanApply: "pass",
+    manualEdits: 0,
+    playtest: "pass",
+    scaffold: "pass",
+    scenario: "playtests/top-down-collector.playtest.json",
+  });
+  assert.equal(result.diagnostics.some((diagnostic) => diagnostic.code === "TN_VERIFY_SESSION_COST_ACCEPTANCE_FAILED"), false);
+});
+
+test("should fail typed-spec recipe acceptance proof when iterate does not pass", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-session-cost-gate-"));
+  const cases: SessionCostReplayCase[] = [{
+    authoring: "typed-spec",
+    goal: "top down coin collector",
+    id: "typed-spec-recipe-top-down-collector",
+    kind: "recipe",
+    playtest: true,
+    scenario: "playtests/top-down-collector.playtest.json",
+  }];
+  const result = await runSessionCostGate({
+    cases,
+    root,
+    run: async (command) => ({
+      durationMs: 1,
+      exitCode: 0,
+      stderr: "",
+      stdout: JSON.stringify({ code: command.name?.endsWith(": iterate") === true ? "TN_ITERATE_FAILED" : "TN_CREATE_OK", ok: command.name?.endsWith(": iterate") !== true }),
+    }),
+  });
+
+  assert.equal(result.ok, false);
+  assert.equal(result.measurements[0]?.acceptance?.build, "skip");
+  assert.equal(result.measurements[0]?.acceptance?.playtest, "skip");
+  assert.equal(result.diagnostics.some((diagnostic) => diagnostic.code === "TN_VERIFY_SESSION_COST_ACCEPTANCE_FAILED"), true);
+});
+
 test("should fail when identical failed assertions repeat", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-session-cost-gate-"));
   const cases: SessionCostReplayCase[] = [{ archetype: "top-down", id: "archetype-top-down", kind: "archetype" }];

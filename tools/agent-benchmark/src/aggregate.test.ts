@@ -75,6 +75,8 @@ test("should reject benchmark report with fewer than three repeats", async () =>
 
   assert.equal(report.verdict.status, "fail");
   assert.equal(report.promptSummaries[0]?.withinRepeatBudget, false);
+  assert.equal(report.diagnostics.some((diagnostic) => diagnostic.code === "TN_BENCH_MATRIX_THREENATIVE_REPEATS_MISSING"), true);
+  assert.equal(report.diagnostics.some((diagnostic) => diagnostic.code === "TN_BENCH_MATRIX_VANILLA_REPEATS_MISSING"), true);
 });
 
 test("should gate beyond-one-shot prompts at equal-proof parity", async () => {
@@ -105,6 +107,24 @@ test("should include failed command and retry-chain medians", async () => {
   assert.equal(summary?.toolOutputMedian.vanilla, 2048);
   assert.equal(summary?.withinFailedCommandBudget, false);
   assert.equal(summary?.withinRetryChainBudget, false);
+});
+
+test("should exclude run reports with placeholder or incomplete session metrics", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-agent-benchmark-aggregate-"));
+  const paths = await writeRepeatedRunReports(root, {
+    threenativeSession: { failedCommandCount: undefined, tokenCount: 0, toolStepCount: undefined },
+    threenativeTokens: 0,
+    vanillaTokens: 1000,
+  });
+  const report = await aggregateRunReports(paths);
+  const summary = report.promptSummaries[0];
+
+  assert.equal(report.verdict.status, "insufficient-data");
+  assert.equal(summary?.repeatCount.threenative, 0);
+  assert.equal(summary?.repeatCount.vanilla, 3);
+  assert.equal(report.diagnostics.some((diagnostic) => diagnostic.code === "TN_BENCH_AGGREGATE_SESSION_TOKEN_COUNT_PLACEHOLDER"), true);
+  assert.equal(report.diagnostics.some((diagnostic) => diagnostic.code === "TN_BENCH_AGGREGATE_SESSION_FAILED_COMMANDS_MISSING"), true);
+  assert.equal(report.diagnostics.some((diagnostic) => diagnostic.code === "TN_BENCH_AGGREGATE_SESSION_TOOL_STEPS_MISSING"), true);
 });
 
 test("should count dialect-confusion failures", async () => {

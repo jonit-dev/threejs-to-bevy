@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 
+import { createProject } from "./create.js";
 import { gameCommand } from "./game.js";
 
 test("reports missing evidence without mutating source", async () => {
@@ -260,6 +261,41 @@ test("should apply collector scaffold to a fresh starter", async () => {
     assert.equal(evidence.schema, "threenative.game-scaffold-first");
     assert.equal(evidence.recipeId, "top-down-collector");
     assert.deepEqual(evidence.scenarioPaths, ["playtests/top-down-collector.playtest.json"]);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should keep typed-spec source in sync when applying collector scaffold", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-game-scaffold-typed-collector-"));
+  try {
+    const create = await createProject([root, "--template", "structured-source-starter", "--authoring", "typed-spec", "--json"]);
+    assert.equal(create.exitCode, 0, `${create.stdout}\n${create.stderr}`);
+
+    const result = await gameCommand(["plan", "--project", root, "--goal", "coin collector", "--apply", "--json"]);
+    const payload = JSON.parse(result.stdout) as {
+      applied: Array<{ filesWritten: string[] }>;
+      code: string;
+      ok: boolean;
+    };
+    const spec = await readFile(join(root, "src/game.spec.ts"), "utf8");
+    const scene = JSON.parse(await readFile(join(root, "content/scenes/arena.scene.json"), "utf8")) as {
+      prefabs?: Array<{ id?: string }>;
+      systems?: Array<{ id?: string; writes?: string[] }>;
+      ui?: { bindings?: Array<{ fields?: string[]; node?: string; resource?: string }> };
+    };
+
+    assert.equal(result.exitCode, 0, `${result.stdout}\n${result.stderr}`);
+    assert.equal(payload.code, "TN_GAME_SCAFFOLD_APPLIED");
+    assert.equal(payload.ok, true);
+    assert.equal(payload.applied[0]?.filesWritten.includes("src/game.spec.ts"), true);
+    assert.match(spec, /defineTypedGameSpec/);
+    assert.match(spec, /scaffold\.pickup\.prefab/);
+    assert.match(spec, /topDownCollectorSystem/);
+    assert.equal(scene.prefabs?.some((prefab) => prefab.id === "scaffold.pickup.prefab"), true);
+    assert.equal(scene.systems?.some((system) => system.id === "top-down-collector" && system.writes?.includes("Transform") === true), true);
+    assert.equal(scene.ui?.bindings?.some((binding) => binding.node === "hud.progress" && binding.resource === "GameState" && binding.fields?.includes("scoreText") === true), true);
+    await assert.rejects(readFile(join(root, "content/systems/arena.systems.json"), "utf8"));
   } finally {
     await rm(root, { force: true, recursive: true });
   }

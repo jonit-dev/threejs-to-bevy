@@ -9,6 +9,7 @@ test("should generate id unions from project source", () => {
       data: {
         entities: [{ id: "player" }],
         id: "arena",
+        prefabs: [{ id: "player-prefab" }],
         resources: [{ id: "score" }],
         schema: "threenative.scene",
         ui: { nodes: [{ id: "score-label" }] },
@@ -43,6 +44,7 @@ test("should generate id unions from project source", () => {
   assert.match(output, /entity: "player";/);
   assert.match(output, /input: "move-x" \| "move-z";/);
   assert.match(output, /material: "player-material";/);
+  assert.match(output, /prefab: "player-prefab";/);
   assert.match(output, /resource: "score";/);
   assert.match(output, /scene: "arena";/);
   assert.match(output, /ui: "score-label";/);

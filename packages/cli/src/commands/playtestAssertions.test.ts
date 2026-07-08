@@ -51,6 +51,100 @@ test("rich visibility assertions should read wrapped web runtime diagnostics", (
   assert.equal(assertion?.pass, true);
 });
 
+test("resource assertions should explain moved scenario with unchanged resource state", () => {
+  const result = evaluateRichPlaytestAssertions({
+    report: {
+      ...reportWithRuntimeDiagnostics("web", {}),
+      distance: 6.5,
+      effectLog: {
+        entries: [
+          {
+            kind: "resource",
+            resource: "GameState",
+            system: "collector-system",
+            value: { scoreText: "Score 0 / 5" },
+          },
+          {
+            command: "setComponent",
+            component: "Transform",
+            entity: "player",
+            kind: "patch",
+            system: "collector-system",
+            value: { position: [5.35, 0.5, 3.85] },
+          },
+        ],
+      },
+      observations: {
+        console: [],
+        hud: {},
+        network: [],
+        resources: {
+          GameState: {
+            after: { scoreText: "Score 0 / 5" },
+            before: { scoreText: "Score 0 / 5" },
+          },
+        },
+        runtimeDiagnostics: {},
+      },
+    },
+    scenario: {
+      assert: {
+        resources: [{ equals: "Score 5 / 5", id: "GameState", path: "scoreText" }],
+      },
+      name: "collect-all",
+      schemaVersion: 1,
+      steps: [{ holdFrames: 1, release: false }],
+      subject: "player",
+      target: "web",
+      viewport: { height: 720, width: 1280 },
+      warmupFrames: 0,
+    },
+  });
+
+  assert.equal(result.diagnostics[0]?.code, "TN_PLAYTEST_RESOURCE_STATE_STAGNATED");
+  assert.match(result.diagnostics[0]?.message ?? "", /did not change after the scenario moved/);
+  assert.match(result.diagnostics[0]?.suggestion ?? "", /collector-system/);
+  assert.match(result.diagnostics[0]?.suggestion ?? "", /effect-log\.json/);
+  assert.match(result.diagnostics[0]?.suggestion ?? "", /pickup\/contact predicates/);
+  assert.match(result.diagnostics[0]?.suggestion ?? "", /stale duplicate systems/);
+});
+
+test("hud assertions should explain unchanged observed text", () => {
+  const result = evaluateRichPlaytestAssertions({
+    report: {
+      ...reportWithRuntimeDiagnostics("web", {}),
+      observations: {
+        console: [],
+        hud: {
+          "score-label": {
+            after: "Score 0 / 5",
+            before: "Score 0 / 5",
+          },
+        },
+        network: [],
+        resources: {},
+        runtimeDiagnostics: {},
+      },
+    },
+    scenario: {
+      assert: {
+        hud: [{ id: "score-label", textIncludes: "Score 5 / 5" }],
+      },
+      name: "collect-all",
+      schemaVersion: 1,
+      steps: [{ holdFrames: 1, release: false }],
+      subject: "player",
+      target: "web",
+      viewport: { height: 720, width: 1280 },
+      warmupFrames: 0,
+    },
+  });
+
+  assert.equal(result.diagnostics[0]?.code, "TN_PLAYTEST_HUD_ASSERTION_FAILED");
+  assert.match(result.diagnostics[0]?.suggestion ?? "", /Observed HUD value/);
+  assert.match(result.diagnostics[0]?.suggestion ?? "", /tn build/);
+});
+
 function visibilityScenario(target: "desktop" | "web"): IPlaytestScenario {
   return {
     assert: {

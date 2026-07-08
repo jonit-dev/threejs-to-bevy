@@ -43,17 +43,20 @@ export function evaluateRichPlaytestAssertions(input: {
     return { assertions, diagnostics };
   }
   for (const assertion of scenarioAssertions.resources ?? []) {
-    const result = evaluatePathAssertion("resource", assertion, input.report.observations?.resources[assertion.id]);
+    const result = evaluatePathAssertion("resource", assertion, input.report.observations?.resources[assertion.id], {
+      effectLog: input.report.effectLog ?? input.report.observations?.effectLog,
+      movedDistance: input.report.distance,
+    });
     assertions.push(result.assertion);
     if (result.diagnostic !== undefined) {
-      diagnostics.push({ ...result.diagnostic, code: "TN_PLAYTEST_RESOURCE_ASSERTION_FAILED" });
+      diagnostics.push({ ...result.diagnostic, code: result.diagnostic.code || "TN_PLAYTEST_RESOURCE_ASSERTION_FAILED" });
     }
   }
   for (const assertion of scenarioAssertions.hud ?? []) {
-    const result = evaluatePathAssertion("hud", assertion, input.report.observations?.hud[assertion.id]);
+    const result = evaluatePathAssertion("hud", assertion, input.report.observations?.hud[assertion.id], {});
     assertions.push(result.assertion);
     if (result.diagnostic !== undefined) {
-      diagnostics.push({ ...result.diagnostic, code: "TN_PLAYTEST_HUD_ASSERTION_FAILED" });
+      diagnostics.push({ ...result.diagnostic, code: result.diagnostic.code || "TN_PLAYTEST_HUD_ASSERTION_FAILED" });
     }
   }
   if (scenarioAssertions.diagnostics !== undefined) {
@@ -140,6 +143,7 @@ function evaluatePathAssertion(
   kind: "hud" | "resource",
   assertion: IPlaytestPathAssertion,
   observed: { after?: unknown; before?: unknown } | undefined,
+  context: { effectLog?: unknown; movedDistance?: number },
 ): { assertion: IPlaytestAssertionResult; diagnostic?: IPlaytestDiagnostic } {
   const before = readPath(observed?.before, assertion.path);
   const after = readPath(observed?.after, assertion.path);
@@ -166,13 +170,75 @@ function evaluatePathAssertion(
     ? { assertion: result }
     : {
         assertion: result,
-        diagnostic: {
-          code: "",
-          message: `${kind === "hud" ? "HUD" : "Resource"} assertion failed for '${assertion.id}'${assertion.path === undefined ? "" : ` path '${assertion.path}'`}.`,
-          severity: "error",
-          suggestion: kind === "hud" ? "Check UI binding IDs and whether the backing resource changes during the scenario." : "Check resource IDs, script writes, and assertion path spelling.",
-        },
+        diagnostic: pathAssertionDiagnostic(kind, assertion, before, after, context),
       };
+}
+
+function unchangedPathValue(before: unknown, after: unknown): boolean {
+  return before !== undefined && after !== undefined && jsonEqual(before, after);
+}
+
+function pathAssertionDiagnostic(
+  kind: "hud" | "resource",
+  assertion: IPlaytestPathAssertion,
+  before: unknown,
+  after: unknown,
+  context: { effectLog?: unknown; movedDistance?: number },
+): IPlaytestDiagnostic {
+  const unchanged = unchangedPathValue(before, after);
+  if (kind === "resource" && unchanged && (context.movedDistance ?? 0) > 0.01) {
+    const summary = summarizeResourceEffectLog(context.effectLog, assertion.id, assertion.path);
+    return {
+      code: "TN_PLAYTEST_RESOURCE_STATE_STAGNATED",
+      message: `Resource '${assertion.id}'${assertion.path === undefined ? "" : ` path '${assertion.path}'`} did not change after the scenario moved the subject ${formatNumber(context.movedDistance ?? 0)} units.`,
+      resourceId: assertion.id,
+      severity: "error",
+      suggestion: summary === undefined
+        ? "The scenario movement path executed but the asserted resource never changed. Capture effect-log.json, then check pickup/contact predicates, route coordinates, resource write declarations, and stale duplicate systems before rerunning."
+        : `The scenario movement path executed and effect-log.json shows ${summary.entryCount} '${assertion.id}' resource snapshot(s) from ${summary.systems}; observed values stayed ${summary.distinctValues}. Check pickup/contact predicates, route coordinates, resource write declarations, and stale duplicate systems in the listed system(s).`,
+    };
+  }
+  return {
+    code: "",
+    message: `${kind === "hud" ? "HUD" : "Resource"} assertion failed for '${assertion.id}'${assertion.path === undefined ? "" : ` path '${assertion.path}'`}.`,
+    severity: "error",
+    suggestion: unchanged
+      ? `${kind === "hud" ? "Observed HUD value" : "Observed resource value"} did not change during the scenario. Inspect effect-log.json for the owning system's resource writes, run tn build --project . --json for undeclared writes, and check whether duplicate/stale systems or route/collision setup prevented the state transition.`
+      : kind === "hud" ? "Check UI binding IDs and whether the backing resource changes during the scenario." : "Check resource IDs, script writes, and assertion path spelling.",
+  };
+}
+
+function summarizeResourceEffectLog(effectLog: unknown, resourceId: string, path: string | undefined): { distinctValues: string; entryCount: number; systems: string } | undefined {
+  if (!isRecord(effectLog) || !Array.isArray(effectLog.entries)) {
+    return undefined;
+  }
+  const entries = effectLog.entries
+    .filter((entry): entry is Record<string, unknown> => isRecord(entry))
+    .filter((entry) => entry.kind === "resource" && entry.resource === resourceId);
+  if (entries.length === 0) {
+    return undefined;
+  }
+  const systems = new Set<string>();
+  const values = new Set<string>();
+  for (const entry of entries) {
+    if (typeof entry.system === "string") {
+      systems.add(entry.system);
+    }
+    values.add(shortJson(readPath(entry.value, path)));
+  }
+  return {
+    distinctValues: Array.from(values).slice(0, 3).join(", "),
+    entryCount: entries.length,
+    systems: systems.size === 0 ? "unknown systems" : Array.from(systems).slice(0, 5).join(", "),
+  };
+}
+
+function shortJson(value: unknown): string {
+  const text = JSON.stringify(value);
+  if (text === undefined) {
+    return "undefined";
+  }
+  return text.length > 120 ? `${text.slice(0, 117)}...` : text;
 }
 
 function evaluateDiagnosticsPolicy(
@@ -374,6 +440,10 @@ function vectorDistance(left: Vec3, right: Vec3): number {
   const dy = right[1] - left[1];
   const dz = right[2] - left[2];
   return Math.sqrt(dx * dx + dy * dy + dz * dz);
+}
+
+function formatNumber(value: number): string {
+  return Number.isInteger(value) ? String(value) : value.toFixed(3);
 }
 
 function jsonEqual(left: unknown, right: unknown): boolean {

@@ -50,6 +50,9 @@ ${compactInterface("ScriptTransformFacade", transform)}
 - Move entities through \`entity.transform().position\`,
   \`setPosition([x, y, z])\`, or \`setPose(position, rotation)\`.
 - Use \`context.resources.get/set/patch\` for game state and HUD bindings.
+- If a script calls \`entity.patch("MeshRenderer", ...)\`, declare
+  \`writes: ["MeshRenderer"]\`; transform movement declares
+  \`writes: ["Transform"]\`. \`writes\` are component names, not entity IDs.
 - Use \`context.time.fixedDelta\` for deterministic fixed-step movement.
 - Supported helper imports: \`Mathf\`, \`Vector2\`, \`Vector3\`, \`Quat\`,
   \`TransformMath\`, \`Bounds2\`, \`Bounds3\`, \`Ease\`, \`RandomEx\`,
@@ -70,6 +73,9 @@ ${compactInterface("ScriptTransformFacade", transform)}
   export, component read/write, and resource read/write.
 - UI: \`content/ui/*.ui.json\` binds HUD text to resource paths such as
   \`GameState.score\`.
+- Typed spec: \`src/game.spec.ts\` is compiled by
+  \`tn authoring compile-typed-spec --json\`; HUD bindings use
+  \`{ node, resource: "GameState", fields: ["scoreText"] }\`.
 - Assets/materials/meshes stay in \`content/assets\`, \`content/materials\`,
   and \`content/meshes\`; preserve stable IDs and schema fields.
 

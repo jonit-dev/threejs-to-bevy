@@ -172,7 +172,10 @@ function diagnoseDeclaredAccess(source: IPortableSystemSource): ICompilerDiagnos
   const services = new Set(source.services ?? []);
   const declaredQueries = new Set((source.queries ?? []).map(queryKey));
 
-  for (const component of uniqueMatches(source.source, /(?<!resources\.)\b(?:patch|set|setComponent)\s*\(\s*([A-Z][A-Za-z0-9_]*)/g)) {
+  for (const component of [
+    ...uniqueMatches(source.source, /(?<!resources\.)\b(?:patch|set|setComponent)\s*\(\s*([A-Z][A-Za-z0-9_]*)/g),
+    ...uniqueMatches(source.source, /(?<!resources\.)\b(?:patch|set|setComponent)\s*\(\s*["']([A-Z][A-Za-z0-9_]*)["']/g),
+  ]) {
     if (!writes.has(component)) {
       diagnostics.push({
         code: "TN_SCRIPT_WRITE_UNDECLARED",

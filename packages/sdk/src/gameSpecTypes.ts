@@ -2,6 +2,7 @@ export interface IGameSpecIds {
   entity: string;
   input: string;
   material: string;
+  prefab: string;
   resource: string;
   scene: string;
   ui: string;
@@ -9,6 +10,15 @@ export interface IGameSpecIds {
 
 type IdOf<TIds extends Partial<IGameSpecIds>, TKind extends keyof IGameSpecIds> =
   TIds[TKind] extends string ? TIds[TKind] : string;
+
+export type ITypedComponentWrite =
+  | "Animation"
+  | "CharacterController"
+  | "Collider"
+  | "MeshRenderer"
+  | "RigidBody"
+  | "Transform"
+  | "Visibility";
 
 export interface ITypedGameSpec<TIds extends Partial<IGameSpecIds> = IGameSpecIds> {
   input?: ITypedInputSpec<TIds>;
@@ -43,6 +53,7 @@ export interface ITypedSceneSpec<TIds extends Partial<IGameSpecIds> = IGameSpecI
   id: IdOf<TIds, "scene">;
   initial?: boolean;
   kind?: "credits" | "cutscene" | "level" | "loading" | "menu" | "overlay" | "system";
+  prefabs?: ITypedPrefabSpec<TIds>[];
   resources?: ITypedResourceSpec<TIds>[];
   systems?: ITypedSystemSpec<TIds>[];
   ui?: ITypedUiSpec<TIds>;
@@ -51,10 +62,19 @@ export interface ITypedSceneSpec<TIds extends Partial<IGameSpecIds> = IGameSpecI
 export interface ITypedEntitySpec<TIds extends Partial<IGameSpecIds> = IGameSpecIds> {
   components?: ITypedEntityComponents<TIds> & Record<string, unknown>;
   id: IdOf<TIds, "entity">;
+  prefab?: IdOf<TIds, "prefab">;
   transform?: ITypedTransformSpec;
 }
 
 export interface ITypedEntityComponents<TIds extends Partial<IGameSpecIds> = IGameSpecIds> {
+  camera?: {
+    far?: number;
+    fovY?: number;
+    mode: "orthographic" | "perspective" | "third-person-follow";
+    near?: number;
+    size?: number;
+    target?: IdOf<TIds, "entity">;
+  };
   CharacterController?: {
     blocking?: boolean;
     grounding?: "none" | "raycast";
@@ -79,6 +99,13 @@ export interface ITypedEntityComponents<TIds extends Partial<IGameSpecIds> = IGa
   } & Record<string, unknown>;
 }
 
+export interface ITypedPrefabSpec<TIds extends Partial<IGameSpecIds> = IGameSpecIds> {
+  asset?: string;
+  color?: string;
+  id: IdOf<TIds, "prefab">;
+  primitive?: "box" | "capsule" | "cone" | "cylinder" | "plane" | "sphere" | "torus";
+}
+
 export interface ITypedTransformSpec {
   position?: readonly [number, number, number];
   rotation?: readonly [number, number, number];
@@ -97,23 +124,27 @@ export interface ITypedSystemSpec<TIds extends Partial<IGameSpecIds> = IGameSpec
     with?: IdOf<TIds, "entity">[];
     without?: IdOf<TIds, "entity">[];
   }>;
+  reads?: ITypedComponentWrite[];
   resourceReads?: IdOf<TIds, "resource">[];
   resourceWrites?: IdOf<TIds, "resource">[];
+  schedule?: string;
   script?: {
     export: string;
     module: string;
   };
-  writes?: IdOf<TIds, "entity">[];
+  writes?: ITypedComponentWrite[];
 }
 
 export interface ITypedUiSpec<TIds extends Partial<IGameSpecIds> = IGameSpecIds> {
   bindings?: Array<{
     fields?: string[];
+    format?: string;
     node: IdOf<TIds, "ui">;
     resource: IdOf<TIds, "resource">;
   }>;
   nodes?: Array<{
     id: IdOf<TIds, "ui">;
+    layout?: Record<string, unknown>;
     text?: string;
     type?: "bar" | "button" | "column" | "component" | "image" | "row" | "slider" | "stack" | "text" | "textInput";
   }>;

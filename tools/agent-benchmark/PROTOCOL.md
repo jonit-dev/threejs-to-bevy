@@ -91,6 +91,49 @@ node tools/agent-benchmark/dist/index.js score \
   --json
 ```
 
+Prepare round-5 fresh-session slots:
+
+```bash
+node tools/agent-benchmark/dist/index.js prepare \
+  --out tools/verify/artifacts/agent-benchmark/<round-id> \
+  --prompt collector \
+  --repeats 3 \
+  --conditions typed-spec,threenative,vanilla \
+  --json
+```
+
+Inspect collection progress before aggregating:
+
+```bash
+node tools/agent-benchmark/dist/index.js status \
+  --manifest tools/verify/artifacts/agent-benchmark/<round-id>/round-5-prepare-manifest.json \
+  --condition typed-spec \
+  --json
+
+node tools/agent-benchmark/dist/index.js status \
+  --manifest tools/verify/artifacts/agent-benchmark/<round-id>/round-5-prepare-manifest.json \
+  --require-complete \
+  --json
+
+node tools/agent-benchmark/dist/index.js next \
+  --manifest tools/verify/artifacts/agent-benchmark/<round-id>/round-5-prepare-manifest.json \
+  --condition vanilla \
+  --json
+```
+
+`status --require-complete` exits nonzero until every prepared slot has a
+valid, matching `session.json` plus a valid, matching, proof-passing
+`run-report.json`. Session evidence must include non-placeholder `tokenCount`
+plus `failedCommandCount` and `toolStepCount`, because those fields feed the
+round-5 matrix medians. The status payload includes `nextActions[]` with the
+next slot-level action and exact scoring command when a candidate is ready to
+score. Add `--condition <vanilla|threenative|typed-spec>` to inspect or dequeue
+one arm of the matrix at a time. `next` returns only the first pending action
+for queue-based operators.
+`score` writes the same session-metric diagnostics into `run-report.json`, and
+aggregate reports apply the same admissibility filter, so copied templates or
+incomplete session metadata do not count as proof-passing repeats.
+
 Aggregate reports:
 
 ```bash
@@ -98,7 +141,27 @@ node tools/agent-benchmark/dist/index.js aggregate \
   --runs tools/verify/artifacts/agent-benchmark/pilot-2026-07 \
   --out tools/verify/artifacts/agent-benchmark/pilot-2026-07/benchmark-report.json \
   --json
+
+node tools/agent-benchmark/dist/index.js matrix \
+  --report tools/verify/artifacts/agent-benchmark/pilot-2026-07/benchmark-report.json \
+  --require-typed-spec \
+  --json
 ```
+
+Audit the post-friction NEXT-STEPS checklist against the aggregate matrix,
+session-cost acceptance report, prepared round manifest, and protocol text:
+
+```bash
+node tools/agent-benchmark/dist/index.js audit \
+  --matrix-report tools/verify/artifacts/agent-benchmark/<round-id>/benchmark-report.json \
+  --session-cost tools/verify/artifacts/session-cost/verification-report.json \
+  --round-manifest tools/verify/artifacts/agent-benchmark/<round-id>/round-5-prepare-manifest.json \
+  --json
+```
+
+`audit` exits nonzero until every NEXT-STEPS requirement is complete. It is
+expected to remain incomplete while the fresh-session comparison matrix is
+missing required proof-passing repeats.
 
 The continuation target is now equal proof instead of the original unequal
 `<= 0.5x` raw-token screen:
@@ -116,6 +179,12 @@ The continuation target is now equal proof instead of the original unequal
 Cost-weighted tokens, cached/uncached input tokens, tool-output bytes, failed
 command count, retry chains, and iteration count remain root-cause metrics
 alongside the gate verdict.
+
+For `collector` candidates, the scorer infers equal-proof assertion results
+from committed playtest `summary.json` artifacts when they include movement,
+`resource.GameState.scoreText`, and `resource.GameState.statusText`
+assertions. Keep those summaries under the candidate artifact tree so
+`run-report.json` can carry machine-readable `proof` without manual editing.
 
 Post-fix reruns must keep the original prompts, model conditions, run count,
 and stop rules unchanged. Store fresh rerun artifacts under a new dated

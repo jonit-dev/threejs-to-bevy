@@ -24,11 +24,17 @@ artifact set.
   records a second typed-spec attempt that reached `TN_ITERATE_OK`, but it is
   excluded from aggregate medians because the interrupted Codex run has no
   completed usage record.
+- `tools/agent-benchmark/ROUND-5-MATRIX-STATUS-2026-07-07.md` records the
+  post-friction matrix boundary. The deterministic scaffold path is now green
+  under `pnpm verify:session-cost`, but the fresh equal-proof direct
+  ThreeNative, typed-spec, and vanilla collector sessions are still missing.
 
 ## Gate Result
 
 - Equal-proof round-5 direct ThreeNative evidence: missing.
 - Typed-spec default decision evidence: insufficient.
+- Post-friction deterministic failed-command gate: satisfied for the
+  scaffold/apply/iterate path, not a substitute for fresh agent repeats.
 - Vanilla-lift trigger: not met.
 
 ## Next Evidence Needed
