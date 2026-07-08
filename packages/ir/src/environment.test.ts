@@ -95,6 +95,31 @@ test("environment should reject scatter spec above count budget", () => {
   assert.equal(diagnostics[0]?.code, "TN_IR_ENVIRONMENT_SCATTER_COUNT_INVALID");
 });
 
+test("environment should validate terrain-aware scatter filter ranges", () => {
+  const [scatter] = makeScene().scatter!;
+  assert.ok(scatter);
+  const accepted = validateEnvironmentSceneIr(
+    makeScene({ scatter: [{ ...scatter, minHeight: -0.25, maxHeight: 1.5, minSlope: 2, maxSlope: 35 }] }),
+    makeAssets(),
+    "environment.scene.json",
+  );
+  const rejected = validateEnvironmentSceneIr(
+    makeScene({ scatter: [{ ...scatter, minHeight: 2, maxHeight: 1, minSlope: 95, maxSlope: 30 }] }),
+    makeAssets(),
+    "environment.scene.json",
+  );
+
+  assert.deepEqual(accepted, []);
+  assert.deepEqual(
+    rejected.map((diagnostic) => diagnostic.code),
+    [
+      "TN_IR_ENVIRONMENT_SCATTER_HEIGHT_RANGE_INVALID",
+      "TN_IR_ENVIRONMENT_SCATTER_SLOPE_RANGE_INVALID",
+      "TN_IR_ENVIRONMENT_SCATTER_SLOPE_RANGE_INVALID",
+    ],
+  );
+});
+
 test("environment should reject hero placement when asset is missing", () => {
   const scene = makeScene({
     instances: [{ id: "hero.missing", kind: "hero", sourceAsset: "env.Missing", position: [0, 0, 0] }],

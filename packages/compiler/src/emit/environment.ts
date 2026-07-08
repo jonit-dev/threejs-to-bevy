@@ -8,6 +8,10 @@ import { emitTerrainHeightmap } from "./terrain.js";
 const MAX_SCATTER_INSTANCES = 10_000;
 const SCATTER_ATTEMPT_MULTIPLIER = 20;
 
+type IGeneratedMeshAsset = IInternalAsset & {
+  attributes?: Array<{ itemSize: number; name: string; values: number[] }>;
+};
+
 export interface IEnvironmentDeclaration {
   assetNames: string[];
   atmosphere?: IEnvironmentSceneIr["atmosphere"];
@@ -138,7 +142,7 @@ export async function emitEnvironment(projectPath: string, declaration: IEnviron
       ...(declaration.scatter === undefined ? {} : { scatter: [...declaration.scatter].sort((left, right) => left.id.localeCompare(right.id)) }),
       ...(declaration.skybox === undefined ? {} : { skybox: toJsonValue(declaration.skybox) as IEnvironmentSceneIr["skybox"] }),
       sourceAssets,
-      instances: emitEnvironmentInstances(declaration),
+      instances: emitEnvironmentInstances(declaration, emittedTerrain?.terrain, emittedTerrain?.assets ?? []),
       path: declaration.path,
       ...(emittedTerrain?.terrain === undefined ? {} : { terrain: emittedTerrain.terrain }),
       ...(declaration.walkability === undefined ? {} : { walkability: declaration.walkability }),
@@ -224,8 +228,12 @@ function emitSourceAssetLod(
   };
 }
 
-function emitEnvironmentInstances(declaration: IEnvironmentDeclaration): IEnvironmentSceneIr["instances"] {
-  return [...declaration.instances.map((instance) => ({ kind: "hero" as const, ...instance })), ...expandScatterInstances(declaration)].sort(
+function emitEnvironmentInstances(
+  declaration: IEnvironmentDeclaration,
+  terrain: IEnvironmentSceneIr["terrain"] | undefined,
+  terrainAssets: readonly IInternalAsset[],
+): IEnvironmentSceneIr["instances"] {
+  return [...declaration.instances.map((instance) => ({ kind: "hero" as const, ...instance })), ...expandScatterInstances(declaration, terrain, terrainAssets)].sort(
     compareEnvironmentInstances,
   );
 }
@@ -236,9 +244,14 @@ function compareEnvironmentInstances(left: IEnvironmentSceneIr["instances"][numb
   return kindDelta === 0 ? left.id.localeCompare(right.id) : kindDelta;
 }
 
-function expandScatterInstances(declaration: IEnvironmentDeclaration): IEnvironmentSceneIr["instances"] {
+function expandScatterInstances(
+  declaration: IEnvironmentDeclaration,
+  terrain: IEnvironmentSceneIr["terrain"] | undefined,
+  terrainAssets: readonly IInternalAsset[],
+): IEnvironmentSceneIr["instances"] {
   const instances: IEnvironmentSceneIr["instances"] = [];
   const exclusionZones = declaration.exclusionZones ?? [];
+  const terrainSampler = terrain === undefined ? undefined : createTerrainSampler(terrain, terrainAssets);
   for (const scatter of [...(declaration.scatter ?? [])].sort((left, right) => left.id.localeCompare(right.id))) {
     const count = scatter.count ?? estimateScatterCount(scatter);
     assertScatterBudget(scatter.id, count);
@@ -261,13 +274,22 @@ function expandScatterInstances(declaration: IEnvironmentDeclaration): IEnvironm
       if (isExcluded(position, declaration.path, exclusionZones, scatter.exclusionZoneIds ?? [])) {
         continue;
       }
+      const placement = terrainSampler?.(position[0], position[2]) ?? { slope: 0, terrainHeight: position[1] };
+      if (!scatterAllowsPlacement(scatter, placement)) {
+        continue;
+      }
       const scale = lerp(scatter.minScale, scatter.maxScale, random());
       const yaw = lerp(scatter.rotation?.minYaw ?? 0, scatter.rotation?.maxYaw ?? Math.PI * 2, random());
       instances.push({
         collisionMode: scatter.collisionMode ?? "none",
         id: `${scatter.id}.${sourceAsset}.${String(emitted).padStart(3, "0")}`,
         kind: "scatter",
-        position,
+        placement: {
+          scatterAttempt: attempts,
+          slope: round(placement.slope),
+          terrainHeight: round(placement.terrainHeight),
+        },
+        position: [position[0], round(placement.terrainHeight), position[2]],
         rotation: [0, Math.sin(yaw / 2), 0, Math.cos(yaw / 2)],
         scale: [scale, scale, scale],
         scatterSource: scatter.id,
@@ -278,6 +300,142 @@ function expandScatterInstances(declaration: IEnvironmentDeclaration): IEnvironm
     }
   }
   return instances;
+}
+
+function scatterAllowsPlacement(
+  scatter: NonNullable<IEnvironmentDeclaration["scatter"]>[number],
+  placement: { slope: number; terrainHeight: number },
+): boolean {
+  if (scatter.minHeight !== undefined && placement.terrainHeight < scatter.minHeight) {
+    return false;
+  }
+  if (scatter.maxHeight !== undefined && placement.terrainHeight > scatter.maxHeight) {
+    return false;
+  }
+  if (scatter.minSlope !== undefined && placement.slope < scatter.minSlope) {
+    return false;
+  }
+  const maxSlope = scatter.maxSlope ?? scatter.slopeLimit;
+  if (maxSlope !== undefined && placement.slope > maxSlope) {
+    return false;
+  }
+  return true;
+}
+
+function createTerrainSampler(
+  terrain: IEnvironmentSceneIr["terrain"],
+  terrainAssets: readonly IInternalAsset[],
+): ((x: number, z: number) => { slope: number; terrainHeight: number } | undefined) | undefined {
+  const chunks = terrain?.chunks ?? [];
+  const assets = new Map(terrainAssets.map((asset) => [asset.id, asset as IGeneratedMeshAsset]));
+  const samplers = chunks
+    .map((chunk) => {
+      const asset = assets.get(chunk.mesh);
+      return asset === undefined ? undefined : createMeshSampler(chunk.bounds, asset);
+    })
+    .filter((sampler): sampler is (x: number, z: number) => { slope: number; terrainHeight: number } | undefined => sampler !== undefined);
+  if (samplers.length === 0) {
+    return undefined;
+  }
+  return (x, z) => {
+    for (const sampler of samplers) {
+      const sample = sampler(x, z);
+      if (sample !== undefined) {
+        return sample;
+      }
+    }
+    return undefined;
+  };
+}
+
+function createMeshSampler(
+  bounds: { max: readonly [number, number, number]; min: readonly [number, number, number] },
+  asset: IGeneratedMeshAsset,
+): ((x: number, z: number) => { slope: number; terrainHeight: number } | undefined) | undefined {
+  const positionAttribute = asset.attributes?.find((attribute) => attribute.name === "position" && attribute.itemSize === 3);
+  if (positionAttribute === undefined) {
+    return undefined;
+  }
+  const normalAttribute = asset.attributes?.find((attribute) => attribute.name === "normal" && attribute.itemSize === 3);
+  const samples = positionAttribute.values
+    .reduce<Array<{ normal?: [number, number, number]; x: number; y: number; z: number }>>((items, _value, index) => {
+      if (index % 3 !== 0) {
+        return items;
+      }
+      const vertexIndex = index / 3;
+      const normalOffset = vertexIndex * 3;
+      const normal = normalAttribute === undefined
+        ? undefined
+        : [
+            normalAttribute.values[normalOffset] ?? 0,
+            normalAttribute.values[normalOffset + 1] ?? 1,
+            normalAttribute.values[normalOffset + 2] ?? 0,
+          ] as [number, number, number];
+      items.push({
+        normal,
+        x: positionAttribute.values[index] ?? 0,
+        y: positionAttribute.values[index + 1] ?? 0,
+        z: positionAttribute.values[index + 2] ?? 0,
+      });
+      return items;
+    }, []);
+  const xs = uniqueSorted(samples.map((sample) => sample.x));
+  const zs = uniqueSorted(samples.map((sample) => sample.z));
+  return (x, z) => {
+    if (x < bounds.min[0] || x > bounds.max[0] || z < bounds.min[2] || z > bounds.max[2]) {
+      return undefined;
+    }
+    const leftX = lowerGridValue(xs, x);
+    const rightX = upperGridValue(xs, x);
+    const lowZ = lowerGridValue(zs, z);
+    const highZ = upperGridValue(zs, z);
+    if (leftX === undefined || rightX === undefined || lowZ === undefined || highZ === undefined) {
+      return undefined;
+    }
+    const h00 = sampleHeight(samples, leftX, lowZ);
+    const h10 = sampleHeight(samples, rightX, lowZ);
+    const h01 = sampleHeight(samples, leftX, highZ);
+    const h11 = sampleHeight(samples, rightX, highZ);
+    if (h00 === undefined || h10 === undefined || h01 === undefined || h11 === undefined) {
+      return undefined;
+    }
+    const tx = rightX === leftX ? 0 : (x - leftX) / (rightX - leftX);
+    const tz = highZ === lowZ ? 0 : (z - lowZ) / (highZ - lowZ);
+    const terrainHeight = lerp(lerp(h00, h10, tx), lerp(h01, h11, tx), tz);
+    const slope = slopeAt(samples, x, z);
+    return { slope, terrainHeight };
+  };
+}
+
+function uniqueSorted(values: readonly number[]): number[] {
+  return [...values]
+    .sort((left, right) => left - right)
+    .filter((value, index, sorted) => index === 0 || Math.abs(value - (sorted[index - 1] ?? value)) > 0.0001);
+}
+
+function lowerGridValue(values: readonly number[], target: number): number | undefined {
+  return [...values].reverse().find((value) => value <= target + 0.0001);
+}
+
+function upperGridValue(values: readonly number[], target: number): number | undefined {
+  return values.find((value) => value >= target - 0.0001);
+}
+
+function sampleHeight(samples: ReadonlyArray<{ x: number; y: number; z: number }>, x: number, z: number): number | undefined {
+  return samples.find((sample) => Math.abs(sample.x - x) <= 0.0001 && Math.abs(sample.z - z) <= 0.0001)?.y;
+}
+
+function slopeAt(samples: ReadonlyArray<{ normal?: [number, number, number]; x: number; z: number }>, x: number, z: number): number {
+  const nearest = samples.reduce<{ distance: number; normal?: [number, number, number] } | undefined>((best, sample) => {
+    const distance = Math.hypot(sample.x - x, sample.z - z);
+    return best === undefined || distance < best.distance ? { distance, normal: sample.normal } : best;
+  }, undefined);
+  const normalY = Math.max(-1, Math.min(1, nearest?.normal?.[1] ?? 1));
+  return (Math.acos(normalY) * 180) / Math.PI;
+}
+
+function round(value: number): number {
+  return Math.round(value * 1000) / 1000;
 }
 
 function estimateScatterCount(scatter: NonNullable<IEnvironmentDeclaration["scatter"]>[number]): number {

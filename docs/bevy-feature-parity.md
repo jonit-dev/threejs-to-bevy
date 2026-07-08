@@ -661,8 +661,10 @@ Practical order for game-polish work:
         cell-budget diagnostics, compiler terrain chunk mesh emission, and
         heightfield collider descriptors. Web and Bevy runtimes now render
         generated terrain chunk meshes; Bevy bundle physics maps generated
-        terrain mesh samples into synthetic Rapier heightfield colliders. PRD-006
-        remains open for remaining promotion evidence and manual visual proof.
+        terrain mesh samples into synthetic Rapier heightfield colliders.
+        Compiler scatter expansion now uses deterministic terrain height, slope,
+        path, and exclusion filters. PRD-006 remains open for remaining
+        promotion evidence and manual visual proof.
 - [x] `P3` CSG and boolean mesh operations diagnostic boundary
 - [x] `P3` Storage-buffer/shader-driven procedural geometry diagnostic boundary
 

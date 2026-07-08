@@ -224,6 +224,97 @@ test("should emit deterministic chunk meshes for reference heightmap", async () 
   }
 });
 
+test("should expand terrain-filtered scatter placements deterministically", async () => {
+  const root = await mkdtemp(join(process.cwd(), "tmp-env-terrain-scatter-"));
+  try {
+    await writeEnvironmentAsset(root);
+    await mkdir(join(root, "assets/terrain"), { recursive: true });
+    await writeFile(join(root, "assets/terrain/ridge.heightmap.json"), JSON.stringify({ samples: [0, 2, 4, 0, 2, 4, 0, 2, 4] }));
+    const heightmap = {
+      encoding: "float32",
+      format: "json",
+      height: 3,
+      heightRange: { min: 0, max: 4 },
+      id: "heightmap.ridge",
+      kind: "heightmap",
+      path: "assets/terrain/ridge.heightmap.json",
+      width: 3,
+    } as const;
+    const source = {
+      assets: [heightmap],
+      world: new World(),
+      environment: {
+        sourceDir: "assets-source/environment/glTF",
+        assetNames: ["Grass.gltf"],
+        path: { id: "path.main", points: [[0, 0, 0], [0, 0, 2]], width: 0.5 },
+        instances: [],
+        terrain: {
+          bounds: { min: [0, 0, 0], max: [2, 4, 2] },
+          heightmap: { asset: "heightmap.ridge", cellSize: 1, heightScale: 1, origin: [0, 0, 0] },
+          heightMode: "heightmap",
+          id: "terrain.ridge",
+        },
+        scatter: [
+          {
+            assetIds: ["env.Grass"],
+            bounds: { min: [1, 0, 1], max: [1, 0, 1] },
+            count: 1,
+            id: "scatter.ridge",
+            maxScale: 1,
+            maxSlope: 80,
+            minHeight: 1.5,
+            minScale: 1,
+            seed: 7,
+          },
+          {
+            assetIds: ["env.Grass"],
+            bounds: { min: [1, 0, 1], max: [1, 0, 1] },
+            count: 1,
+            id: "scatter.too-steep",
+            maxScale: 1,
+            maxSlope: 10,
+            minScale: 1,
+            seed: 7,
+          },
+          {
+            assetIds: ["env.Grass"],
+            bounds: { min: [0, 0, 1], max: [0, 0, 1] },
+            count: 1,
+            id: "scatter.path",
+            maxScale: 1,
+            minScale: 1,
+            seed: 7,
+          },
+        ],
+      } satisfies IEnvironmentDeclaration,
+    };
+    const config = {
+      entry: "src/game.ts",
+      outDir: "dist/game.bundle",
+      projectPath: root,
+      schema: "threenative.project" as const,
+      version: "0.1.0" as const,
+    };
+
+    const firstBundle = await emitBundle(config, source);
+    const secondBundle = await emitBundle({ ...config, outDir: "dist/game-again.bundle" }, source);
+    const firstEnvironment = await readFile(join(firstBundle, "environment.scene.json"), "utf8");
+    const secondEnvironment = await readFile(join(secondBundle, "environment.scene.json"), "utf8");
+    const environment = JSON.parse(firstEnvironment);
+    const scatter = environment.instances.filter((instance: { kind: string }) => instance.kind === "scatter");
+
+    assert.equal(firstEnvironment, secondEnvironment);
+    assert.equal(scatter.length, 1);
+    assert.equal(scatter[0].id, "scatter.ridge.env.Grass.000");
+    assert.deepEqual(scatter[0].position, [1, 2, 1]);
+    assert.equal(scatter[0].placement.terrainHeight, 2);
+    assert.ok(scatter[0].placement.slope > 10);
+    assert.ok(scatter.every((instance: { position: [number, number, number] }) => Math.abs(instance.position[0]) > 0.25));
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
 function assertCapability(manifest: { requiredCapabilities: Record<string, string[]> }, domain: string, capability: string): void {
   assert.ok(manifest.requiredCapabilities[domain]?.includes(capability), `${domain}:${capability}`);
 }

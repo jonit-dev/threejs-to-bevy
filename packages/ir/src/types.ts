@@ -1096,6 +1096,11 @@ export interface IEnvironmentInstanceIr {
   position: Vec3;
   rotation?: Quat;
   scale?: Vec3;
+  placement?: {
+    scatterAttempt: number;
+    slope?: number;
+    terrainHeight?: number;
+  };
   scatterExclusionRadius?: number;
   scatterSource?: string;
   tags?: string[];
@@ -1190,8 +1195,12 @@ export interface IEnvironmentScatterSpecIr {
   density?: number;
   exclusionZoneIds?: string[];
   id: string;
+  maxHeight?: number;
   maxScale: number;
+  maxSlope?: number;
+  minHeight?: number;
   minScale: number;
+  minSlope?: number;
   rotation?: {
     maxYaw: number;
     minYaw: number;

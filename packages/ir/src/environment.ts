@@ -82,7 +82,7 @@ export function validateEnvironmentSceneIr(
   scene.instances.forEach((instance, index) => {
     validateUnsupportedFields(
       instance,
-      ["collisionMode", "debug", "id", "kind", "position", "renderGroup", "rotation", "scale", "scatterExclusionRadius", "scatterSource", "sourceAsset", "tags", "visibility"],
+      ["collisionMode", "debug", "id", "kind", "placement", "position", "renderGroup", "rotation", "scale", "scatterExclusionRadius", "scatterSource", "sourceAsset", "tags", "visibility"],
       `${path}/instances/${index}`,
       `Environment instance '${instance.id}'`,
       diagnostics,
@@ -718,6 +718,13 @@ function validateScatter(
   diagnostics: IIrDiagnostic[],
 ): void {
   (scene.scatter ?? []).forEach((scatter, index) => {
+    validateUnsupportedFields(
+      scatter,
+      ["assetIds", "bounds", "collisionMode", "count", "density", "exclusionZoneIds", "id", "maxHeight", "maxScale", "maxSlope", "minHeight", "minScale", "minSlope", "rotation", "seed", "slopeLimit", "tags"],
+      `${path}/scatter/${index}`,
+      `Environment scatter '${scatter.id}'`,
+      diagnostics,
+    );
     if (!Number.isInteger(scatter.seed)) {
       diagnostics.push({
         code: "TN_IR_ENVIRONMENT_SCATTER_SEED_INVALID",
@@ -757,6 +764,23 @@ function validateScatter(
         path: `${path}/scatter/${index}/minScale`,
       });
     }
+    validateOptionalScatterRange(
+      scatter.minHeight,
+      scatter.maxHeight,
+      `${path}/scatter/${index}`,
+      "height",
+      "TN_IR_ENVIRONMENT_SCATTER_HEIGHT_RANGE_INVALID",
+      diagnostics,
+    );
+    validateOptionalScatterRange(
+      scatter.minSlope,
+      scatter.maxSlope ?? scatter.slopeLimit,
+      `${path}/scatter/${index}`,
+      "slope",
+      "TN_IR_ENVIRONMENT_SCATTER_SLOPE_RANGE_INVALID",
+      diagnostics,
+      { max: 90, min: 0 },
+    );
     scatter.assetIds.forEach((assetId, assetIndex) => {
       if (!sourceAssetIds.has(assetId)) {
         diagnostics.push({
@@ -767,6 +791,40 @@ function validateScatter(
       }
     });
   });
+}
+
+function validateOptionalScatterRange(
+  min: number | undefined,
+  max: number | undefined,
+  path: string,
+  label: string,
+  code: string,
+  diagnostics: IIrDiagnostic[],
+  bounds?: { max: number; min: number },
+): void {
+  const values = [
+    ["min", min],
+    ["max", max],
+  ] as const;
+  for (const [name, value] of values) {
+    if (value === undefined) {
+      continue;
+    }
+    if (!Number.isFinite(value) || (bounds !== undefined && (value < bounds.min || value > bounds.max))) {
+      diagnostics.push({
+        code,
+        message: `Environment scatter ${label} ${name} must be finite${bounds === undefined ? "" : ` and between ${bounds.min} and ${bounds.max}`}.`,
+        path: `${path}/${name}${label[0]?.toUpperCase() ?? ""}${label.slice(1)}`,
+      });
+    }
+  }
+  if (min !== undefined && max !== undefined && Number.isFinite(min) && Number.isFinite(max) && min > max) {
+    diagnostics.push({
+      code,
+      message: `Environment scatter ${label} min must be at or below ${label} max.`,
+      path: `${path}/min${label[0]?.toUpperCase() ?? ""}${label.slice(1)}`,
+    });
+  }
 }
 
 function validateUniqueIds(items: readonly { id: string }[], path: string, code: string, diagnostics: IIrDiagnostic[]): void {

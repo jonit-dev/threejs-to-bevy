@@ -189,6 +189,7 @@ import type {
   ISetEnvironmentWalkabilityOptions,
   ISetEnvironmentLightProbeOptions,
   ISetEnvironmentSourceAssetLodOptions,
+  IAddEnvironmentScatterLayerOptions,
   ICreateRuntimeConfigOptions,
   ISetRuntimeWindowOptions,
   ISetRuntimeRenderingOptions,
@@ -475,6 +476,33 @@ export async function setEnvironmentLightProbe(options: ISetEnvironmentLightProb
         });
         Object.assign(existing, probe);
       }
+    },
+  });
+}
+
+export async function addEnvironmentScatterLayer(options: IAddEnvironmentScatterLayerOptions): Promise<IAuthoringOperationResult> {
+  return upsertSourceDocument({
+    projectPath: options.projectPath,
+    kind: "environment",
+    id: options.environmentId,
+    file: `content/environment/${options.environmentId}.environment.json`,
+    emptyData: { schema: environmentDocumentSchema, version: "0.1.0", id: options.environmentId, instances: [], sourceAssets: [] },
+    apply: (data, file) => {
+      if (!isRecord(options.scatter) || typeof options.scatter.id !== "string") {
+        return [typeDiagnostic(file, "/scatter", "scatter must be an object with a string id.", options.scatter)];
+      }
+      const scatterLayers = ensureArrayProperty(data, "scatter");
+      const existing = findSceneItem(scatterLayers, options.scatter.id);
+      const scatter = cloneJson(options.scatter) as Record<string, unknown>;
+      if (existing === undefined) {
+        scatterLayers.push(scatter);
+      } else {
+        Object.keys(existing).forEach((key) => {
+          delete existing[key];
+        });
+        Object.assign(existing, scatter);
+      }
+      return [];
     },
   });
 }

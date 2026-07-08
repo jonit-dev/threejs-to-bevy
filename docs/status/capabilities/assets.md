@@ -11,6 +11,9 @@ Current support:
   dimension, encoding, height-range, splat-layer, target cell-budget
   validation, compiler-emitted generated terrain chunk mesh descriptors, and
   web and Bevy runtime rendering from hydrated generated mesh payloads.
+- Environment scatter layers can be authored through structured source/CLI and
+  lower deterministically against generated terrain samples with height, slope,
+  path, and exclusion-zone filters.
 - SQLite-backed asset-source catalog for generated games, with provenance and
   license metadata expected beside committed assets.
 - Asset inspection, model tests, bundle-local path validation, and production
@@ -20,6 +23,7 @@ Verification:
 
 - `tn asset source search --json`
 - `tn asset inspect --json`
+- `tn environment add-scatter-layer --json`
 - `tn model-test --json`
 - `pnpm verify:release`
 

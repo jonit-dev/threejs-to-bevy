@@ -582,6 +582,11 @@ export interface ISetEnvironmentLightProbeOptions extends IAuthoringOperationCon
   probeId: string;
 }
 
+export interface IAddEnvironmentScatterLayerOptions extends IAuthoringOperationContext {
+  environmentId: string;
+  scatter: unknown;
+}
+
 export interface ISetEnvironmentSourceAssetLodOptions extends IAuthoringOperationContext {
   environmentId: string;
   sourceAssetId: string;

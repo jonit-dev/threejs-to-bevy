@@ -5,6 +5,7 @@ import {
   addAnimationClip,
   addAnimationGraphState,
   addAudioSound,
+  addEnvironmentScatterLayer,
   addFlowState,
   addFlowTransition,
   addInputAction,
@@ -971,6 +972,17 @@ export async function environmentCommand(argv: readonly string[], options: ISour
     return renderAuthoringResult("environment", await setEnvironmentLightProbe({ environmentId, probe: probe.value, probeId, projectPath }), json, `Environment light probe '${probeId}' updated.`);
   }
 
+  if (subcommand === "add-scatter-layer") {
+    const scatter = parseJsonObjectFlag(normalizedArgv, "--scatter", "TN_ENVIRONMENT_ADD_SCATTER_LAYER_VALUE_INVALID");
+    if (scatter.diagnostic !== undefined) {
+      return renderUsage(json, scatter.diagnostic, "Environment --scatter must be a JSON object.");
+    }
+    if (environmentId === undefined || scatter.value === undefined) {
+      return renderUsage(json, "TN_ENVIRONMENT_ADD_SCATTER_LAYER_ARGS_MISSING", "Usage: tn environment add-scatter-layer <environment-id> --scatter '<json-object>' [--project <path>] [--json]");
+    }
+    return renderAuthoringResult("environment", await addEnvironmentScatterLayer({ environmentId, projectPath, scatter: scatter.value }), json, `Environment scatter layer '${String(scatter.value.id ?? environmentId)}' updated.`);
+  }
+
   if (subcommand === "set-source-asset-lod") {
     const sourceAssetId = readPositional(normalizedArgv, 2);
     const lod = parseJsonFlag(normalizedArgv, "--lod");
@@ -983,7 +995,7 @@ export async function environmentCommand(argv: readonly string[], options: ISour
     return renderAuthoringResult("environment", await setEnvironmentSourceAssetLod({ environmentId, lod: lod.value, projectPath, sourceAssetId }), json, `Environment source asset '${sourceAssetId}' LOD updated.`);
   }
 
-  return renderUsage(json, "TN_ENVIRONMENT_COMMAND_UNKNOWN", "Usage: tn environment create|set-skybox|set-map|set-terrain|set-path|set-walkability|set-light-probe|set-source-asset-lod ... [--json]");
+  return renderUsage(json, "TN_ENVIRONMENT_COMMAND_UNKNOWN", "Usage: tn environment create|set-skybox|set-map|set-terrain|set-path|set-walkability|set-light-probe|add-scatter-layer|set-source-asset-lod ... [--json]");
 }
 
 export async function runtimeCommand(argv: readonly string[], options: ISourceCommandOptions = {}): Promise<ICommandResult> {

@@ -419,11 +419,13 @@ test("environment command creates and updates promoted source fields", async () 
     const path = await environmentCommand(["set-path", "arena", "--path", "{\"id\":\"path.main\",\"points\":[[0,0,0],[1,0,1]]}", "--project", root, "--json"]);
     const walkability = await environmentCommand(["set-walkability", "arena", "--walkability", "{\"terrain\":{\"surface\":\"terrain.arena\",\"height\":0}}", "--project", root, "--json"]);
     const lightProbe = await environmentCommand(["set-light-probe", "arena", "probe.center", "--probe", "{\"bounds\":{\"min\":[-3,0,-3],\"max\":[3,4,3]},\"influenceRadius\":5,\"source\":{\"asset\":\"tex.env\",\"mode\":\"equirect\"}}", "--project", root, "--json"]);
+    const scatter = await environmentCommand(["add-scatter-layer", "arena", "--scatter", "{\"id\":\"scatter.grass\",\"assetIds\":[\"env.Tree\"],\"bounds\":{\"min\":[-2,0,-2],\"max\":[2,0,2]},\"count\":8,\"minScale\":0.8,\"maxScale\":1.2,\"seed\":42,\"maxSlope\":30}", "--project", root, "--json"]);
     const lod = await environmentCommand(["set-source-asset-lod", "arena", "env.Tree", "--lod", "[{\"asset\":\"env.Tree.low\",\"maxDistance\":60}]", "--project", root, "--json"]);
     const doc = JSON.parse(await readFile(join(root, "content", "environment", "arena.environment.json"), "utf8")) as {
       environmentMap?: Record<string, unknown>;
       lightProbes?: Array<Record<string, unknown>>;
       path?: unknown;
+      scatter?: Array<Record<string, unknown>>;
       skybox?: Record<string, unknown>;
       sourceAssets?: Array<{ id: string; lod?: unknown }>;
       terrain?: Record<string, unknown>;
@@ -437,6 +439,7 @@ test("environment command creates and updates promoted source fields", async () 
     assert.equal(path.exitCode, 0);
     assert.equal(walkability.exitCode, 0);
     assert.equal(lightProbe.exitCode, 0);
+    assert.equal(scatter.exitCode, 0);
     assert.equal(lod.exitCode, 0);
     assert.deepEqual(doc.skybox, { asset: "tex.sky", mode: "equirect" });
     assert.deepEqual(doc.environmentMap, { asset: "tex.env" });
@@ -444,6 +447,7 @@ test("environment command creates and updates promoted source fields", async () 
     assert.deepEqual(doc.path, { id: "path.main", points: [[0, 0, 0], [1, 0, 1]] });
     assert.deepEqual(doc.walkability, { terrain: { height: 0, surface: "terrain.arena" } });
     assert.deepEqual(doc.lightProbes, [{ bounds: { max: [3, 4, 3], min: [-3, 0, -3] }, id: "probe.center", influenceRadius: 5, source: { asset: "tex.env", mode: "equirect" } }]);
+    assert.deepEqual(doc.scatter, [{ assetIds: ["env.Tree"], bounds: { max: [2, 0, 2], min: [-2, 0, -2] }, count: 8, id: "scatter.grass", maxScale: 1.2, maxSlope: 30, minScale: 0.8, seed: 42 }]);
     assert.deepEqual(doc.sourceAssets?.find((asset) => asset.id === "env.Tree")?.lod, [{ asset: "env.Tree.low", maxDistance: 60 }]);
   } finally {
     await rm(root, { force: true, recursive: true });
