@@ -528,14 +528,14 @@ async function inspectGameProject(projectPath: string): Promise<IProjectEvidence
   const hasPlaytestProof = artifactEvidence.some((evidence) => includesAny(evidence, ["playtest", "input-driven"]));
   const hasMotionFeelProof = artifactEvidence.some((evidence) => includesAny(evidence, ["motion", "smooth", "frame-diff", "framediff", "changedpixelratio", "webm", "mp4", "record"]));
   const hasBuildProof = artifactEvidence.some((evidence) => includesAny(evidence, ["bundle", "build", "manifest.json", "world.ir.json"]));
-  const hasWorldProof = artifactEvidence.some((evidence) => includesAny(evidence, ["world-proof", "world proof"]));
+  const worldProofStatus = await readWorldProofStatus(projectPath);
   const hasDressedWorldSource = includesAnyText(sourceSearchText, ["heightmap", "scatter", "splatlayers", "terrain"]) && includesAnyText(sourceSearchText, ["environment", "world"]);
   const scriptHaystack = scriptFiles.join("\n").toLowerCase();
   return {
     artifactEvidence,
     authoring,
     hasBuildProof,
-    hasDressedWorldSource: hasDressedWorldSource || hasWorldProof,
+    hasDressedWorldSource: (hasDressedWorldSource || worldProofStatus === "pass") && worldProofStatus !== "fail",
     hasInputSource,
     hasMobileProof,
     hasMotionFeelProof,
@@ -553,6 +553,17 @@ async function inspectGameProject(projectPath: string): Promise<IProjectEvidence
   };
 }
 
+async function readWorldProofStatus(projectPath: string): Promise<"fail" | "missing" | "pass"> {
+  const proof = await readOptionalJson(resolve(projectPath, "artifacts/world/world-proof.json"));
+  if (proof === undefined) {
+    return "missing";
+  }
+  if (proof.code === "TN_WORLD_PROOF_OK" && proof.flatPlaneRisk === false) {
+    return "pass";
+  }
+  return "fail";
+}
+
 async function readProjectOutDir(projectPath: string): Promise<string | undefined> {
   try {
     const parsed = JSON.parse(await readFile(resolve(projectPath, "threenative.config.json"), "utf8")) as unknown;
@@ -563,6 +574,15 @@ async function readProjectOutDir(projectPath: string): Promise<string | undefine
     // Missing or invalid config is already handled by build/doctor diagnostics.
   }
   return undefined;
+}
+
+async function readOptionalJson(path: string): Promise<Record<string, unknown> | undefined> {
+  try {
+    const parsed = JSON.parse(await readFile(path, "utf8")) as unknown;
+    return isRecord(parsed) ? parsed : undefined;
+  } catch {
+    return undefined;
+  }
 }
 
 function normalizeRelativePathText(path: string): string {

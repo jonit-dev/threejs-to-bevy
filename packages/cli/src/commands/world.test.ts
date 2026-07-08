@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
@@ -65,7 +65,7 @@ test("should be idempotent when re-run with same seed", async () => {
 test("should write world proof artifact with terrain and scatter counts", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-world-proof-"));
   try {
-    const generated = await worldCommand(["generate", "--biome", "canyon", "--seed", "5", "--size", "9", "--project", root, "--json"]);
+    const generated = await worldCommand(["generate", "--biome", "canyon", "--seed", "5", "--size", "9", "--flatten-radius", "1", "--project", root, "--json"]);
     const proof = await worldCommand(["proof", "--project", root, "--json"]);
     const payload = JSON.parse(proof.stdout) as { code: string; flatPlaneRisk: boolean; scatterLayers: number };
     const artifact = JSON.parse(await readFile(join(root, "artifacts/world/world-proof.json"), "utf8")) as { code: string };
@@ -76,6 +76,24 @@ test("should write world proof artifact with terrain and scatter counts", async 
     assert.equal(payload.flatPlaneRisk, false);
     assert.equal(payload.scatterLayers > 0, true);
     assert.equal(artifact.code, "TN_WORLD_PROOF_OK");
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should fail world proof for flat generated heightmaps", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-world-proof-flat-"));
+  try {
+    const generated = await worldCommand(["generate", "--biome", "meadow", "--seed", "9", "--size", "9", "--flatten-radius", "1", "--project", root, "--json"]);
+    await writeFile(join(root, "assets/terrain/world-meadow.heightmap.json"), `${JSON.stringify({ samples: Array.from({ length: 81 }, () => 0) }, null, 2)}\n`);
+    const proof = await worldCommand(["proof", "--project", root, "--json"]);
+    const payload = JSON.parse(proof.stdout) as { code: string; diagnostics: Array<{ code: string }>; flatPlaneRisk: boolean };
+
+    assert.equal(generated.exitCode, 0);
+    assert.equal(proof.exitCode, 1);
+    assert.equal(payload.code, "TN_WORLD_PROOF_FAILED");
+    assert.equal(payload.flatPlaneRisk, true);
+    assert.equal(payload.diagnostics.some((diagnostic) => diagnostic.code === "TN_WORLD_PROOF_HEIGHTMAP_FLAT"), true);
   } finally {
     await rm(root, { force: true, recursive: true });
   }

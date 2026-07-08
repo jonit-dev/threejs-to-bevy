@@ -232,6 +232,34 @@ void addLighting;
   }
 });
 
+test("penalizes flat world proof even when terrain source exists", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-game-report-flat-world-"));
+  try {
+    await writeMinimalProject(root);
+    await mkdir(join(root, "content/environment"), { recursive: true });
+    await mkdir(join(root, "artifacts/world"), { recursive: true });
+    await writeFile(join(root, "content/environment/world.environment.json"), `${JSON.stringify({
+      schema: "threenative.environment-scene",
+      id: "world",
+      terrain: { id: "terrain.world", heightMode: "heightmap", heightmap: { asset: "heightmap.world" } },
+      scatter: [{ id: "scatter.world", assetIds: ["rock"], density: 0.01 }],
+    }, null, 2)}\n`);
+    await writeFile(join(root, "artifacts/world/world-proof.json"), `${JSON.stringify({
+      schema: "threenative.world-proof",
+      code: "TN_WORLD_PROOF_FAILED",
+      flatPlaneRisk: true,
+      diagnostics: [{ code: "TN_WORLD_PROOF_HEIGHTMAP_FLAT", severity: "error" }],
+      scatterLayers: 1,
+    }, null, 2)}\n`);
+
+    const report = await createGameQualityReport({ projectPath: root });
+
+    assert.equal(report.diagnostics.some((diagnostic) => diagnostic.code === "TN_GAME_WORLD_PROOF_MISSING"), true);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
 test("redacts provider credentials from provenance", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-game-provider-redact-"));
   try {

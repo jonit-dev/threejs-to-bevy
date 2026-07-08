@@ -28,7 +28,8 @@ Current support:
 - `tn world generate --biome <meadow|forest|desert|canyon|arctic> --seed <n>`
   creates deterministic heightmap terrain, terrain-aware scatter source, and
   catalog provenance; `tn world proof --json` records the terrain/scatter proof
-  artifact consumed by game scoring as world/environment evidence.
+  artifact consumed by game scoring as world/environment evidence, including
+  flat-heightmap rejection through `flatPlaneRisk`.
 - `tn game plan --apply --json` explicitly applies scaffold-first collector
   and lane-runner baselines through bounded recipe operations, writes committed
   playtest scenarios, and records `artifacts/game-production/scaffold-first.json`.

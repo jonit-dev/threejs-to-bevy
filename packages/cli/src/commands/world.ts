@@ -188,6 +188,9 @@ async function proofWorld(projectPath: string): Promise<IWorldProofResult> {
   const heightmapAsset = Array.isArray(assets?.assets)
     ? assets.assets.find((asset) => isRecord(asset) && asset.type === "heightmap")
     : undefined;
+  const heightmapStats = isRecord(heightmapAsset) && typeof heightmapAsset.path === "string"
+    ? await readHeightmapStats(resolve(projectPath, heightmapAsset.path))
+    : undefined;
   if (terrain === undefined) {
     diagnostics.push({ code: "TN_WORLD_PROOF_TERRAIN_MISSING", message: "World environment source is missing terrain.", severity: "error" });
   }
@@ -197,13 +200,18 @@ async function proofWorld(projectPath: string): Promise<IWorldProofResult> {
   if (scatter.length === 0) {
     diagnostics.push({ code: "TN_WORLD_PROOF_SCATTER_MISSING", message: "World environment source has no scatter layers.", severity: "error" });
   }
+  if (heightmapStats === undefined) {
+    diagnostics.push({ code: "TN_WORLD_PROOF_HEIGHTMAP_UNREADABLE", message: "World heightmap samples could not be read.", severity: "error" });
+  } else if (heightmapStats.variation < 0.05) {
+    diagnostics.push({ code: "TN_WORLD_PROOF_HEIGHTMAP_FLAT", message: "World heightmap is flat-plane-like; terrain needs visible elevation variation.", severity: "error" });
+  }
   const proof = {
     code: diagnostics.length === 0 ? "TN_WORLD_PROOF_OK" : "TN_WORLD_PROOF_FAILED",
     diagnostics,
     environmentPath: "content/environment/world.environment.json",
-    flatPlaneRisk: terrain === undefined || scatter.length === 0,
+    flatPlaneRisk: terrain === undefined || scatter.length === 0 || heightmapStats === undefined || heightmapStats.variation < 0.05,
     heightmap: isRecord(heightmapAsset)
-      ? { height: heightmapAsset.height, id: heightmapAsset.id, width: heightmapAsset.width }
+      ? { height: heightmapAsset.height, id: heightmapAsset.id, stats: heightmapStats, width: heightmapAsset.width }
       : undefined,
     message: diagnostics.length === 0 ? "World proof passed." : "World proof failed.",
     schema: "threenative.world-proof",
@@ -214,6 +222,24 @@ async function proofWorld(projectPath: string): Promise<IWorldProofResult> {
   await mkdir(resolve(projectPath, "artifacts/world"), { recursive: true });
   await writeStableJson(resolve(projectPath, "artifacts/world/world-proof.json"), proof);
   return proof;
+}
+
+async function readHeightmapStats(path: string): Promise<{ max: number; min: number; variation: number } | undefined> {
+  const parsed = await readJson(path);
+  if (!Array.isArray(parsed?.samples)) {
+    return undefined;
+  }
+  const samples = parsed.samples.filter((sample): sample is number => Number.isFinite(sample));
+  if (samples.length === 0) {
+    return undefined;
+  }
+  let min = samples[0] ?? 0;
+  let max = samples[0] ?? 0;
+  for (const sample of samples) {
+    min = Math.min(min, sample);
+    max = Math.max(max, sample);
+  }
+  return { max: round(max), min: round(min), variation: round(max - min) };
 }
 
 async function selectBiomeCatalogRecords(biome: IWorldBiomeDefinition): Promise<Array<{ purpose: string; record: IAssetSourceRecord }>> {
