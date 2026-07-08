@@ -217,6 +217,8 @@ function validateAssetMetadata(asset: IAssetsManifest["assets"][number], path: s
         ? ["center", "fallback", "format", "id", "kind", "magFilter", "minFilter", "offset", "path", "repeat", "rotation", "variants", "wrapS", "wrapT"]
         : asset.kind === "render-target"
           ? ["format", "height", "id", "kind", "sampleCount", "usage", "width"]
+          : asset.kind === "heightmap"
+            ? ["encoding", "format", "height", "heightRange", "id", "kind", "path", "width"]
           : asset.kind === "buffer"
             ? ["format", "id", "kind", "path"]
             : ["animationGraph", "animations", "bounds", "format", "id", "kind", "masks", "morphClips", "morphTargets", "particleEmitters", "path", "skeleton"],
@@ -264,6 +266,9 @@ function validateAssetMetadata(asset: IAssetsManifest["assets"][number], path: s
   }
   if (asset.kind === "render-target") {
     validateRenderTargetAsset(asset, path, diagnostics);
+  }
+  if (asset.kind === "heightmap") {
+    validateHeightmapAsset(asset, path, diagnostics);
   }
 }
 
@@ -445,6 +450,44 @@ function validateRenderTargetAsset(
       path: `${path}/sampleCount`,
       severity: "error",
       suggestion: "Omit sampleCount for single-sample targets or use a supported sample count.",
+    });
+  }
+}
+
+function validateHeightmapAsset(
+  asset: Extract<IAssetsManifest["assets"][number], { kind: "heightmap" }>,
+  path: string,
+  diagnostics: IIrDiagnostic[],
+): void {
+  if (asset.format !== "json") {
+    diagnostics.push({
+      code: "TN_IR_HEIGHTMAP_FORMAT_UNSUPPORTED",
+      message: `Heightmap asset '${asset.id}' must use json format for the promoted structured terrain contract.`,
+      path: `${path}/format`,
+      severity: "error",
+      suggestion: "Use a bundle-local JSON height grid until binary heightmap import is promoted.",
+      value: asset.format,
+    });
+  }
+  if (asset.encoding !== "float32" && asset.encoding !== "u16-normalized") {
+    diagnostics.push({
+      code: "TN_IR_HEIGHTMAP_ENCODING_UNSUPPORTED",
+      message: `Heightmap asset '${asset.id}' uses unsupported encoding '${String(asset.encoding)}'.`,
+      path: `${path}/encoding`,
+      severity: "error",
+      suggestion: "Use float32 or u16-normalized height samples.",
+      value: String(asset.encoding),
+    });
+  }
+  validatePositiveInteger(asset.width, `${path}/width`, "TN_IR_HEIGHTMAP_DIMENSIONS_INVALID", "Heightmap width", diagnostics);
+  validatePositiveInteger(asset.height, `${path}/height`, "TN_IR_HEIGHTMAP_DIMENSIONS_INVALID", "Heightmap height", diagnostics);
+  if (!isRecord(asset.heightRange) || typeof asset.heightRange.min !== "number" || typeof asset.heightRange.max !== "number" || !Number.isFinite(asset.heightRange.min) || !Number.isFinite(asset.heightRange.max) || asset.heightRange.max <= asset.heightRange.min) {
+    diagnostics.push({
+      code: "TN_IR_HEIGHTMAP_RANGE_INVALID",
+      message: `Heightmap asset '${asset.id}' must declare an ordered finite heightRange.`,
+      path: `${path}/heightRange`,
+      severity: "error",
+      suggestion: "Use heightRange: { min, max } with max greater than min.",
     });
   }
 }
@@ -1182,6 +1225,9 @@ function assetFormatMatches(kind: string, format: string, extension: string | un
   }
   if (kind === "buffer") {
     return format === "bin";
+  }
+  if (kind === "heightmap") {
+    return format === "json";
   }
   if (kind === "model") {
     return format === "glb" || format === "gltf";

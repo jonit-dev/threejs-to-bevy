@@ -21,6 +21,53 @@ test("environment should reject path point outside terrain bounds", () => {
   assert.match(diagnostics[0]?.message ?? "", /point 1/);
 });
 
+test("environment should accept 4-layer splat heightmap terrain", () => {
+  const scene = makeScene({
+    terrain: makeHeightmapTerrain({
+      splatLayers: [
+        { texture: "tex.ground.grass", minSlope: 0, maxSlope: 18, weight: 0.7 },
+        { texture: "tex.ground.dirt", minHeight: -0.2, maxHeight: 0.4, weight: 0.45 },
+        { texture: "tex.ground.rock", minSlope: 18, maxSlope: 55, weight: 0.6 },
+        { texture: "tex.ground.snow", minHeight: 0.5, maxHeight: 1.4, weight: 0.35 },
+      ],
+    }),
+  });
+
+  const diagnostics = validateEnvironmentSceneIr(scene, makeAssets({ includeTerrain: true }), "environment.scene.json");
+
+  assert.deepEqual(diagnostics, []);
+});
+
+test("environment should reject 5th splat terrain layer", () => {
+  const scene = makeScene({
+    terrain: makeHeightmapTerrain({
+      splatLayers: [
+        { texture: "tex.ground.grass" },
+        { texture: "tex.ground.dirt" },
+        { texture: "tex.ground.rock" },
+        { texture: "tex.ground.snow" },
+        { texture: "tex.ground.moss" },
+      ],
+    }),
+  });
+
+  const diagnostics = validateEnvironmentSceneIr(scene, makeAssets({ includeTerrain: true }), "environment.scene.json");
+
+  assert.equal(diagnostics[0]?.code, "TN_IR_ENVIRONMENT_TERRAIN_SPLAT_LAYER_LIMIT_EXCEEDED");
+  assert.equal(diagnostics[0]?.path, "environment.scene.json/terrain/splatLayers");
+});
+
+test("environment should error when grid exceeds target profile budget", () => {
+  const scene = makeScene({ terrain: makeHeightmapTerrain() });
+
+  const diagnostics = validateEnvironmentSceneIr(scene, makeAssets({ includeTerrain: true }), "environment.scene.json", undefined, {
+    budgets: { maxTerrainCells: 1024 },
+  });
+
+  assert.equal(diagnostics[0]?.code, "TN_TERRAIN_BUDGET_EXCEEDED");
+  assert.equal(diagnostics[0]?.path, "environment.scene.json/terrain/heightmap/asset");
+});
+
 test("environment should reject scatter spec above count budget", () => {
   const [scatter] = makeScene().scatter!;
   assert.ok(scatter);
@@ -295,7 +342,7 @@ function makeScene(overrides: Partial<IEnvironmentSceneIr> = {}): IEnvironmentSc
   };
 }
 
-function makeAssets(options: { includeLod?: boolean } = {}): IAssetsManifest {
+function makeAssets(options: { includeLod?: boolean; includeTerrain?: boolean } = {}): IAssetsManifest {
   return {
     schema: "threenative.assets",
     version: "0.1.0",
@@ -304,7 +351,28 @@ function makeAssets(options: { includeLod?: boolean } = {}): IAssetsManifest {
       ...(options.includeLod === true
         ? [{ format: "gltf" as const, id: "model.env.TreeLow", kind: "model" as const, path: "assets/environment/TreeLow.gltf" }]
         : []),
+      ...(options.includeTerrain === true
+        ? [
+            { encoding: "u16-normalized" as const, format: "json" as const, height: 65, heightRange: { min: -1, max: 3 }, id: "heightmap.meadow", kind: "heightmap" as const, path: "assets/terrain/meadow.heightmap.json", width: 65 },
+            { format: "png" as const, id: "tex.ground.grass", kind: "texture" as const, path: "assets/terrain/grass.png" },
+            { format: "png" as const, id: "tex.ground.dirt", kind: "texture" as const, path: "assets/terrain/dirt.png" },
+            { format: "png" as const, id: "tex.ground.rock", kind: "texture" as const, path: "assets/terrain/rock.png" },
+            { format: "png" as const, id: "tex.ground.snow", kind: "texture" as const, path: "assets/terrain/snow.png" },
+            { format: "png" as const, id: "tex.ground.moss", kind: "texture" as const, path: "assets/terrain/moss.png" },
+          ]
+        : []),
     ],
+  };
+}
+
+function makeHeightmapTerrain(overrides: Partial<NonNullable<IEnvironmentSceneIr["terrain"]>> = {}): NonNullable<IEnvironmentSceneIr["terrain"]> {
+  return {
+    bounds: { min: [-32, -1, -32], max: [32, 3, 32] },
+    heightmap: { asset: "heightmap.meadow", cellSize: 1, heightScale: 4, origin: [-32, 0, -32] },
+    heightMode: "heightmap",
+    id: "terrain.meadow",
+    splatLayers: [{ texture: "tex.ground.grass" }],
+    ...overrides,
   };
 }
 

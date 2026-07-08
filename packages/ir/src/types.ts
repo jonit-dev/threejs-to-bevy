@@ -759,6 +759,19 @@ export type IAssetIr =
       path?: string;
     } & IAssetSourceIr
   | {
+      encoding: "float32" | "u16-normalized";
+      format: "json";
+      height: number;
+      heightRange: {
+        max: number;
+        min: number;
+      };
+      id: string;
+      kind: "heightmap";
+      path?: string;
+      width: number;
+    } & IAssetSourceIr
+  | {
       animations?: Array<{
         id: string;
         loop?: boolean;
@@ -974,6 +987,8 @@ export interface ITargetProfile {
   budgets?: {
     maxAssetBytes?: number;
     maxBundleBytes?: number;
+    maxTerrainCells?: number;
+    maxTerrainSplatLayers?: number;
     supportedModelFormats?: Array<"glb" | "gltf">;
     supportedTextureFormats?: TextureDeliveryFormat[];
   };
@@ -1093,9 +1108,27 @@ export interface IEnvironmentTerrainIr {
     min: Vec3;
   };
   controlPoints?: Vec3[];
-  heightMode: "controlPoints" | "flat";
+  heightmap?: {
+    asset: string;
+    cellSize: number;
+    heightScale: number;
+    origin?: Vec3;
+  };
+  heightMode: "controlPoints" | "flat" | "heightmap";
   id: string;
   material?: string;
+  skirt?: {
+    depth: number;
+    enabled: boolean;
+  };
+  splatLayers?: Array<{
+    maxHeight?: number;
+    maxSlope?: number;
+    minHeight?: number;
+    minSlope?: number;
+    texture: string;
+    weight?: number;
+  }>;
 }
 
 export interface IEnvironmentPathIr {

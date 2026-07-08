@@ -929,6 +929,9 @@ function sourceFamilyForDocumentKind(kind: AuthoringDocumentKind): EditorInspect
     case "scene":
     case "ui":
       return kind;
+    case "flow":
+    case "sequence":
+      return "scene";
     case "systems":
       return "system";
     case "unknown":

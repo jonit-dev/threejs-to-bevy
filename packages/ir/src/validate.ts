@@ -156,7 +156,7 @@ export async function validateBundle(bundlePath: string): Promise<IBundleValidat
     await validateAssets(assets, targetProfile, bundlePath, manifest.files.assets, diagnostics);
   }
   if (environmentScene !== undefined) {
-    diagnostics.push(...validateEnvironmentSceneIr(environmentScene, assets, manifest.entry.environmentScene ?? IR_DOCUMENTS.environmentScene.fileName, input));
+    diagnostics.push(...validateEnvironmentSceneIr(environmentScene, assets, manifest.entry.environmentScene ?? IR_DOCUMENTS.environmentScene.fileName, input, { budgets: targetProfile?.budgets }));
   }
   if (audio !== undefined) {
     validateAudio(audio, assets, manifest.entry.audio ?? IR_DOCUMENTS.audio.fileName, diagnostics);

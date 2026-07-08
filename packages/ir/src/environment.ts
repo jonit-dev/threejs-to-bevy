@@ -1,4 +1,4 @@
-import type { IAssetsManifest, IEnvironmentSceneIr, Vec3 } from "./types.js";
+import type { IAssetsManifest, IEnvironmentSceneIr, ITargetProfile, Vec3 } from "./types.js";
 import type { IInputIr } from "./input.js";
 import type { IIrDiagnostic } from "./validate.js";
 import { validateAtmosphereProfile, validateEnvironmentLighting } from "./rendering.js";
@@ -8,6 +8,7 @@ export function validateEnvironmentSceneIr(
   assets: IAssetsManifest | undefined,
   path: string,
   input?: IInputIr,
+  options: { budgets?: ITargetProfile["budgets"] } = {},
 ): IIrDiagnostic[] {
   const diagnostics: IIrDiagnostic[] = [];
   validateUnsupportedFields(
@@ -49,6 +50,7 @@ export function validateEnvironmentSceneIr(
 
   const modelAssets = new Set((assets?.assets ?? []).filter((asset) => asset.kind === "model").map((asset) => asset.id));
   const textureAssets = new Set((assets?.assets ?? []).filter((asset) => asset.kind === "texture").map((asset) => asset.id));
+  const heightmapAssets = new Map((assets?.assets ?? []).filter((asset) => asset.kind === "heightmap").map((asset) => [asset.id, asset]));
   if (scene.referenceImage !== undefined && !textureAssets.has(scene.referenceImage)) {
     diagnostics.push({
       code: "TN_IR_ENVIRONMENT_REFERENCE_IMAGE_MISSING",
@@ -100,7 +102,7 @@ export function validateEnvironmentSceneIr(
     validateDebugGizmo(instance.debug, `${path}/instances/${index}/debug`, diagnostics);
   });
 
-  validateTerrainAndPath(scene, path, diagnostics);
+  validateTerrainAndPath(scene, path, { budgets: options.budgets, heightmapAssets, textureAssets }, diagnostics);
   diagnostics.push(...validateAtmosphereProfile(scene.atmosphere, `${path}/atmosphere`));
   diagnostics.push(...validateEnvironmentLighting(scene, assets, path));
   validateFirstPersonController(scene, input, path, diagnostics);
@@ -400,8 +402,24 @@ function validateFirstPersonController(
   }
 }
 
-function validateTerrainAndPath(scene: IEnvironmentSceneIr, path: string, diagnostics: IIrDiagnostic[]): void {
+function validateTerrainAndPath(
+  scene: IEnvironmentSceneIr,
+  path: string,
+  context: {
+    budgets?: ITargetProfile["budgets"];
+    heightmapAssets: ReadonlyMap<string, Extract<IAssetsManifest["assets"][number], { kind: "heightmap" }>>;
+    textureAssets: ReadonlySet<string>;
+  },
+  diagnostics: IIrDiagnostic[],
+): void {
   if (scene.terrain !== undefined) {
+    validateUnsupportedFields(
+      scene.terrain,
+      ["bounds", "controlPoints", "heightmap", "heightMode", "id", "material", "skirt", "splatLayers"],
+      `${path}/terrain`,
+      `Environment terrain '${scene.terrain.id}'`,
+      diagnostics,
+    );
     validateVec3(scene.terrain.bounds.min, `${path}/terrain/bounds/min`, diagnostics);
     validateVec3(scene.terrain.bounds.max, `${path}/terrain/bounds/max`, diagnostics);
     if (!boundsAreOrdered(scene.terrain.bounds.min, scene.terrain.bounds.max)) {
@@ -411,6 +429,18 @@ function validateTerrainAndPath(scene: IEnvironmentSceneIr, path: string, diagno
         path: `${path}/terrain/bounds`,
       });
     }
+    if (scene.terrain.heightMode === "heightmap") {
+      validateHeightmapTerrain(scene.terrain, `${path}/terrain`, context, diagnostics);
+    } else if (scene.terrain.heightmap !== undefined) {
+      diagnostics.push({
+        code: "TN_IR_ENVIRONMENT_TERRAIN_HEIGHTMAP_MODE_INVALID",
+        message: `Environment terrain '${scene.terrain.id}' declares a heightmap but heightMode is '${scene.terrain.heightMode}'.`,
+        path: `${path}/terrain/heightMode`,
+        severity: "error",
+        suggestion: "Set heightMode to 'heightmap' when referencing a heightmap asset.",
+      });
+    }
+    validateTerrainSplatLayers(scene.terrain, `${path}/terrain`, context, diagnostics);
   }
   if (scene.path.points.length < 2) {
     diagnostics.push({
@@ -436,6 +466,141 @@ function validateTerrainAndPath(scene: IEnvironmentSceneIr, path: string, diagno
       });
     }
   });
+}
+
+function validateHeightmapTerrain(
+  terrain: NonNullable<IEnvironmentSceneIr["terrain"]>,
+  path: string,
+  context: {
+    budgets?: ITargetProfile["budgets"];
+    heightmapAssets: ReadonlyMap<string, Extract<IAssetsManifest["assets"][number], { kind: "heightmap" }>>;
+  },
+  diagnostics: IIrDiagnostic[],
+): void {
+  if (terrain.heightmap === undefined) {
+    diagnostics.push({
+      code: "TN_IR_ENVIRONMENT_TERRAIN_HEIGHTMAP_MISSING",
+      message: `Environment terrain '${terrain.id}' uses heightmap mode but does not reference a heightmap asset.`,
+      path: `${path}/heightmap`,
+      severity: "error",
+      suggestion: "Add heightmap: { asset, cellSize, heightScale } referencing a heightmap asset.",
+    });
+    return;
+  }
+  validateUnsupportedFields(
+    terrain.heightmap,
+    ["asset", "cellSize", "heightScale", "origin"],
+    `${path}/heightmap`,
+    `Environment terrain '${terrain.id}' heightmap`,
+    diagnostics,
+  );
+  const heightmap = context.heightmapAssets.get(terrain.heightmap.asset);
+  if (heightmap === undefined) {
+    diagnostics.push({
+      code: "TN_IR_ENVIRONMENT_TERRAIN_HEIGHTMAP_ASSET_MISSING",
+      message: `Environment terrain '${terrain.id}' references unknown heightmap asset '${terrain.heightmap.asset}'.`,
+      path: `${path}/heightmap/asset`,
+      severity: "error",
+      suggestion: "Add a heightmap asset to assets.manifest.json or update terrain.heightmap.asset.",
+    });
+  } else {
+    const cells = heightmap.width * heightmap.height;
+    const maxCells = context.budgets?.maxTerrainCells;
+    if (maxCells !== undefined && cells > maxCells) {
+      diagnostics.push({
+        code: "TN_TERRAIN_BUDGET_EXCEEDED",
+        limit: maxCells,
+        message: `Environment terrain '${terrain.id}' heightmap has ${cells} cells, exceeding target profile budget ${maxCells}.`,
+        path: `${path}/heightmap/asset`,
+        severity: "error",
+        suggestion: "Reduce heightmap dimensions, chunk the terrain into a smaller fixture, or raise targetProfile.budgets.maxTerrainCells.",
+        value: cells,
+      });
+    }
+  }
+  validatePositiveFinite(terrain.heightmap.cellSize, `${path}/heightmap/cellSize`, "TN_IR_ENVIRONMENT_TERRAIN_HEIGHTMAP_CELL_SIZE_INVALID", diagnostics);
+  validatePositiveFinite(terrain.heightmap.heightScale, `${path}/heightmap/heightScale`, "TN_IR_ENVIRONMENT_TERRAIN_HEIGHTMAP_SCALE_INVALID", diagnostics);
+  if (terrain.heightmap.origin !== undefined) {
+    validateVec3(terrain.heightmap.origin, `${path}/heightmap/origin`, diagnostics);
+  }
+}
+
+function validateTerrainSplatLayers(
+  terrain: NonNullable<IEnvironmentSceneIr["terrain"]>,
+  path: string,
+  context: {
+    budgets?: ITargetProfile["budgets"];
+    textureAssets: ReadonlySet<string>;
+  },
+  diagnostics: IIrDiagnostic[],
+): void {
+  const layers = terrain.splatLayers;
+  if (layers === undefined) {
+    return;
+  }
+  const maxLayers = context.budgets?.maxTerrainSplatLayers ?? 4;
+  if (layers.length > maxLayers) {
+    diagnostics.push({
+      code: "TN_IR_ENVIRONMENT_TERRAIN_SPLAT_LAYER_LIMIT_EXCEEDED",
+      limit: maxLayers,
+      message: `Environment terrain '${terrain.id}' declares ${layers.length} splat layers, exceeding the supported limit ${maxLayers}.`,
+      path: `${path}/splatLayers`,
+      severity: "error",
+      suggestion: "Use at most four terrain splat layers for portable web/native rendering.",
+      value: layers.length,
+    });
+  }
+  layers.forEach((layer, index) => {
+    const layerPath = `${path}/splatLayers/${index}`;
+    validateUnsupportedFields(
+      layer,
+      ["maxHeight", "maxSlope", "minHeight", "minSlope", "texture", "weight"],
+      layerPath,
+      `Environment terrain '${terrain.id}' splat layer ${index}`,
+      diagnostics,
+    );
+    if (!context.textureAssets.has(layer.texture)) {
+      diagnostics.push({
+        code: "TN_IR_ENVIRONMENT_TERRAIN_SPLAT_TEXTURE_MISSING",
+        message: `Environment terrain '${terrain.id}' splat layer ${index} references unknown texture asset '${layer.texture}'.`,
+        path: `${layerPath}/texture`,
+        severity: "error",
+        suggestion: "Add the ground texture to assets.manifest.json or update the splat layer texture reference.",
+      });
+    }
+    validateOptionalFiniteRange(layer.minSlope, layer.maxSlope, `${layerPath}/slope`, "TN_IR_ENVIRONMENT_TERRAIN_SPLAT_SLOPE_RANGE_INVALID", diagnostics);
+    validateOptionalFiniteRange(layer.minHeight, layer.maxHeight, `${layerPath}/height`, "TN_IR_ENVIRONMENT_TERRAIN_SPLAT_HEIGHT_RANGE_INVALID", diagnostics);
+    if (layer.weight !== undefined && (!Number.isFinite(layer.weight) || layer.weight < 0 || layer.weight > 1)) {
+      diagnostics.push({
+        code: "TN_IR_ENVIRONMENT_TERRAIN_SPLAT_WEIGHT_INVALID",
+        message: `Environment terrain '${terrain.id}' splat layer ${index} weight must be in the range 0..1.`,
+        path: `${layerPath}/weight`,
+        severity: "error",
+        suggestion: "Use a normalized blend weight between 0 and 1.",
+      });
+    }
+  });
+}
+
+function validateOptionalFiniteRange(
+  min: number | undefined,
+  max: number | undefined,
+  path: string,
+  code: string,
+  diagnostics: IIrDiagnostic[],
+): void {
+  if (min === undefined && max === undefined) {
+    return;
+  }
+  if (typeof min !== "number" || typeof max !== "number" || !Number.isFinite(min) || !Number.isFinite(max) || max < min) {
+    diagnostics.push({
+      code,
+      message: "Terrain splat range must declare finite min and max values in ascending order.",
+      path,
+      severity: "error",
+      suggestion: "Declare both min and max, with max greater than or equal to min.",
+    });
+  }
 }
 
 function validateScatter(
