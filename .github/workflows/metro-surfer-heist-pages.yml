@@ -48,8 +48,8 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Build CLI
-        run: pnpm --filter @threenative/cli build
+      - name: Build CLI dependency closure
+        run: pnpm --filter @threenative/cli... build
 
       - name: Build Metro bundle
         run: node packages/cli/dist/index.js build --project examples/metro-surfer-heist --json
