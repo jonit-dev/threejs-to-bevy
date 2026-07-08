@@ -9,8 +9,8 @@ Current support:
   deterministic formatting, source discovery, and generated-artifact rejection.
 - CLI-first scene, material, UI, system, prefab, physics, recipe, cookbook, and
   iterate workflows exposed through `tn ... --json`.
-- `tn playtest schema --json` exposes the executable assertion/step DSL from
-  the assertion registry, and `tn playtest scaffold --assert
+- `tn playtest schema --json` exposes the executable assertion/step/setup DSL
+  from the assertion registry, and `tn playtest scaffold --assert
   <movement|pickup|win-state|retry> --json` writes loader-valid proof-bar
   scenarios without engine-source lookup.
 - Command-first mutation coverage includes scene transforms, scene

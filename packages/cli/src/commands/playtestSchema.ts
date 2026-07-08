@@ -12,6 +12,10 @@ export interface IPlaytestSchemaPayload {
   };
   message: string;
   schema: "threenative.playtest-schema";
+  setup: {
+    description: string;
+    fields: Array<{ description: string; name: string; type: string }>;
+  };
   steps: Array<{
     description: string;
     fields: Array<{ description: string; name: keyof IPlaytestScenario["steps"][number]; type: string }>;
@@ -42,6 +46,7 @@ export function playtestSchemaPayload(): IPlaytestSchemaPayload {
         },
         name: "retry-path",
         schemaVersion: 1,
+        setup: { entities: [{ entity: "player", position: [0, 0.02, 5] }] },
         steps: [
           { holdFrames: 1, label: "trigger retry", press: "KeyR", release: true },
           { release: true, waitFrames: 12 },
@@ -59,6 +64,15 @@ export function playtestSchemaPayload(): IPlaytestSchemaPayload {
     },
     message: "Machine-readable playtest scenario and assertion DSL schema.",
     schema: "threenative.playtest-schema",
+    setup: {
+      description: "Optional initial runtime Transform overrides applied before warmup and baseline sampling.",
+      fields: [
+        { description: "Entity id to reposition before the playtest baseline sample.", name: "setup.entities[].entity", type: "string" },
+        { description: "Initial Transform.position tuple.", name: "setup.entities[].position", type: "[number, number, number]" },
+        { description: "Initial Transform.rotation quaternion.", name: "setup.entities[].rotation", type: "[number, number, number, number]" },
+        { description: "Initial Transform.scale tuple.", name: "setup.entities[].scale", type: "[number, number, number]" },
+      ],
+    },
     steps: [
       {
         description: "A playtest step presses a KeyboardEvent.code for holdFrames or waits for waitFrames.",

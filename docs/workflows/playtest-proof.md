@@ -20,6 +20,26 @@ Prefer committed scenarios for generated games and maintained starters:
 tn playtest --project . --scenario playtests/smoke-movement.playtest.json --stable-artifacts --json
 ```
 
+Scenario files may include `setup.entities[]` Transform overrides. The web
+runner applies those overrides before warmup and before the baseline transform
+sample, so focused proofs can start near a stair, ramp, trigger, pickup, or
+other authored interaction without depending on a long navigation prelude.
+
+```json
+{
+  "schemaVersion": 1,
+  "name": "stair-proof",
+  "target": "web",
+  "subject": "player",
+  "setup": { "entities": [{ "entity": "player", "position": [-2.35, 0.02, 3.8] }] },
+  "steps": [{ "press": "KeyW", "holdFrames": 28, "release": true }],
+  "assert": {
+    "movement": { "entity": "player", "axis": "-z", "minDistance": 1 },
+    "contacts": [{ "entity": "player", "with": "stairs.step.03", "minCount": 1 }]
+  }
+}
+```
+
 When the intended input should move on a specific coordinate, include an axis
 assertion:
 

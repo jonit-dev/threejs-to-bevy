@@ -26,7 +26,7 @@ interface IRigContextLike {
     play(entity: string | ISystemEntityLike, clip: string, options?: Record<string, unknown>): unknown;
   };
   character?: {
-    move(entity: string | ISystemEntityLike, options?: { direction?: [number, number]; fixedDelta?: number; speed?: number }): { resolved?: Vec3Value; start?: Vec3Value } | null;
+    move(entity: string | ISystemEntityLike, options?: { direction?: [number, number]; fixedDelta?: number; speed?: number }): { pushed?: { entity?: string; position?: Vec3Value }; resolved?: Vec3Value; start?: Vec3Value } | null;
   };
   entity?(id: string): ISystemEntityLike | undefined;
   input?: {
@@ -89,6 +89,10 @@ export interface ICharacterRigClipOptions {
 export interface ICharacterRigResult {
   readonly moving: boolean;
   readonly position: Vec3Tuple;
+  readonly pushed?: {
+    readonly entity: string;
+    readonly position: Vec3Tuple;
+  };
   readonly speed: number;
   readonly sprinting: boolean;
   readonly yaw: number;
@@ -245,9 +249,10 @@ export const CharacterRig = Object.freeze({
     state.yaw = moveAngleToward(state.yaw, targetYaw, yawStep);
     const trace = moving ? context.character?.move(entityRef, { direction: [moveDirection[0], moveDirection[2]], fixedDelta: dt, speed: state.speed }) ?? null : null;
     const position = clampVec3(Vec3.from(trace?.resolved, start), options.bounds);
+    const pushed = applyCharacterPushTrace(context, trace?.pushed);
     transform?.setPose(position, Quat.fromYaw(state.yaw + meshYawOffset(options.forwardAxis ?? "+z")));
     playCharacterClip(context, entityRef, state.speed, sprinting, options.clips);
-    return { moving, position, speed: state.speed, sprinting, yaw: state.yaw };
+    return { moving, position, ...(pushed === undefined ? {} : { pushed }), speed: state.speed, sprinting, yaw: state.yaw };
   },
 });
 
@@ -430,6 +435,22 @@ function playCharacterClip(context: IRigContextLike, entity: string | ISystemEnt
     sourceClip,
     speed: referenceSpeed === undefined ? 1 : Math.max(0.01, speed / Math.max(0.01, NumberEx.finite(referenceSpeed, 1))),
   });
+}
+
+function applyCharacterPushTrace(context: IRigContextLike, pushed: { entity?: string; position?: Vec3Value } | undefined): ICharacterRigResult["pushed"] {
+  if (pushed?.entity === undefined || pushed.position === undefined) {
+    return undefined;
+  }
+  const target = context.entity?.(pushed.entity);
+  const position = Vec3.from(pushed.position);
+  const transform = target?.transform?.();
+  const rotation = readComponentRotation(target);
+  if (transform !== undefined) {
+    transform.setPose(position, rotation);
+  } else {
+    target?.patch?.("Transform", { position });
+  }
+  return { entity: pushed.entity, position };
 }
 
 function readFixedDelta(context: IRigContextLike): number {

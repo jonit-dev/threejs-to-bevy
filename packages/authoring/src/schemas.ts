@@ -120,8 +120,8 @@ export const supportedMeshPrimitives = new Set(["box", "cone", "cylinder", "plan
 
 export const supportedComponentKinds = new Set(["camera", "CharacterController", "Collider", "KinematicMover", "Light", "MeshRenderer", "RenderLayers", "RigidBody", "Visibility"]);
 export const cameraComponentKeys = new Set(["far", "fovY", "mode", "near", "size", "target"]);
-export const characterControllerComponentKeys = new Set(["blocking", "grounding", "interactAction", "moveXAxis", "moveZAxis", "slopeLimit", "speed", "stepOffset"]);
-export const colliderComponentKeys = new Set(["center", "friction", "height", "kind", "layer", "mask", "radius", "restitution", "sensor", "size", "trigger"]);
+export const characterControllerComponentKeys = new Set(["blocking", "grounding", "interactAction", "moveXAxis", "moveZAxis", "pushPolicy", "slopeLimit", "speed", "stepOffset"]);
+export const colliderComponentKeys = new Set(["center", "friction", "height", "kind", "layer", "mask", "radius", "restitution", "sensor", "size", "slope", "trigger"]);
 export const lightComponentKeys = new Set(["angle", "color", "intensity", "kind", "range", "shadowBias", "shadowNormalBias"]);
 export const kinematicMoverComponentKeys = new Set(["axis", "direction", "loop", "mode", "phase", "radius", "speed", "waypoints"]);
 export const meshRendererComponentKeys = new Set(["castShadow", "material", "mesh", "receiveShadow", "visible"]);

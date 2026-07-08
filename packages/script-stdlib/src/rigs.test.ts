@@ -57,7 +57,7 @@ interface IFakeContext {
   raycastCalls: Array<{ direction: Vec3Tuple; ignore?: readonly string[]; mask?: readonly string[]; maxDistance?: number; origin: Vec3Tuple }>;
   entity(id: string): IFakeEntity | undefined;
   input: { axis(name: string): number; action(name: string): boolean };
-  character: { move(entityRef: string | IFakeEntity, options: { direction?: [number, number]; fixedDelta?: number; speed?: number }): { resolved: Vec3Tuple } };
+  character: { move(entityRef: string | IFakeEntity, options: { direction?: [number, number]; fixedDelta?: number; speed?: number }): { pushed?: { entity: string; position: Vec3Tuple }; resolved: Vec3Tuple } };
   resources: { set(name: string, value: unknown): void };
   physics: { raycast(options: { direction: Vec3Tuple; ignore?: readonly string[]; mask?: readonly string[]; maxDistance?: number; origin: Vec3Tuple }): { distance?: number; hit?: boolean } | null };
   state<T extends object>(key: string, defaults: T): T;
@@ -175,6 +175,20 @@ test("CharacterRig.update: rig.yaw stays in the plain library convention regardl
   // plain-convention yaw, even though forwardAxis differs -- forwardAxis must
   // only affect the mesh quaternion, never the returned/stored yaw.
   assert.ok(Math.abs((plainResult?.yaw ?? 0) - (flippedResult?.yaw ?? 0)) < 1e-6, `yaw should match across forwardAxis: ${plainResult?.yaw} vs ${flippedResult?.yaw}`);
+});
+
+test("CharacterRig.update: applies character push trace to the pushed entity transform", () => {
+  const player = createEntity("player", [0, 0, 0]);
+  const ball = createEntity("ball.push.01", [1, 0.35, 0]);
+  const context = createContext([player, ball]);
+  context.axes.MoveX = 1;
+  context.character.move = () => ({ pushed: { entity: "ball.push.01", position: [1.4, 0.35, 0] }, resolved: [0.2, 0, 0] });
+
+  const result = CharacterRig.update(context as never, player, { maxTurnSpeed: 20, walkSpeed: 3 });
+
+  assert.deepEqual(ball.position, [1.4, 0.35, 0]);
+  assert.deepEqual(result.pushed, { entity: "ball.push.01", position: [1.4, 0.35, 0] });
+  assert.deepEqual(player.position, [0.2, 0, 0]);
 });
 
 test("CameraRig.thirdPerson: camera sits behind the target and looks at it, tracking target yaw", () => {

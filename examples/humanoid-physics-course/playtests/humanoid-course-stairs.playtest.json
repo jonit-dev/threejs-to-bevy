@@ -1,0 +1,58 @@
+{
+  "schemaVersion": 1,
+  "name": "humanoid-course-stairs",
+  "target": "web",
+  "viewport": {
+    "width": 1280,
+    "height": 720
+  },
+  "subject": "player",
+  "setup": {
+    "entities": [
+      {
+        "entity": "player",
+        "position": [
+          -2.35,
+          0,
+          3.95
+        ]
+      }
+    ]
+  },
+  "warmupFrames": 5,
+  "steps": [
+    {
+      "label": "climb-authored-steps",
+      "press": "KeyW",
+      "holdFrames": 24,
+      "release": true
+    }
+  ],
+  "assert": {
+    "movement": {
+      "entity": "player",
+      "axis": "-z",
+      "minDistance": 1
+    },
+    "contacts": [
+      {
+        "entity": "player",
+        "with": "stairs.step.03",
+        "minCount": 1
+      }
+    ],
+    "diagnostics": {
+      "runtimeReady": true,
+      "noConsoleErrors": true,
+      "noNetworkErrors": true,
+      "noRuntimeDiagnostics": true
+    }
+  },
+  "artifacts": {
+    "screenshots": "before-after",
+    "console": true,
+    "network": true,
+    "runtimeTrace": true,
+    "effectLog": "focused"
+  }
+}

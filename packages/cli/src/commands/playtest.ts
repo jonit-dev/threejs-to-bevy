@@ -35,6 +35,7 @@ declare global {
     resourceSnapshot?(id: string): unknown;
     resetPerformanceTrace?(): void;
     runtimeDiagnosticsSnapshot?(): unknown;
+    setEntityTransform?(id: string, transform: { position?: Vec3; rotation?: [number, number, number, number]; scale?: Vec3 }): boolean;
     uiNodeSnapshot?(id: string): unknown;
   } | undefined;
 }
@@ -963,6 +964,7 @@ async function probePreview(options: IPlaytestRunOptions & { url: string }): Pro
     }
     await page.waitForTimeout(120);
     await resetWebPerformanceTrace(page);
+    diagnostics.push(...await applyWebScenarioSetup(page, options.scenario));
     await waitForWebFrameSamples(page, options.scenario.warmupFrames, Math.max(1_000, options.scenario.warmupFrames * (1000 / 15)));
     await resetWebPerformanceTrace(page);
     const observationIds = scenarioObservationIds(options.scenario);
@@ -1070,6 +1072,32 @@ async function probePreview(options: IPlaytestRunOptions & { url: string }): Pro
   } finally {
     await browser.close();
   }
+}
+
+async function applyWebScenarioSetup(page: import("playwright").Page, scenario: IPlaytestScenario): Promise<IPlaytestDiagnostic[]> {
+  const entities = scenario.setup?.entities ?? [];
+  if (entities.length === 0) {
+    return [];
+  }
+  const results = await page.evaluate((setupEntities) => {
+    return setupEntities.map((setup) => ({
+      applied: globalThis.__THREENATIVE_RUNTIME__?.setEntityTransform?.(setup.entity, {
+        ...(setup.position === undefined ? {} : { position: setup.position }),
+        ...(setup.rotation === undefined ? {} : { rotation: setup.rotation }),
+        ...(setup.scale === undefined ? {} : { scale: setup.scale }),
+      }) === true,
+      entity: setup.entity,
+    }));
+  }, entities);
+  return results
+    .filter((result) => !result.applied)
+    .map((result) => ({
+      code: "TN_PLAYTEST_SETUP_ENTITY_NOT_FOUND",
+      message: `Playtest setup could not apply a Transform override for entity '${result.entity}'.`,
+      path: `playtests/${scenario.name}.playtest.json/setup/entities`,
+      severity: "error" as const,
+      suggestion: "Check that the setup entity id exists in the runtime bundle and has a render object.",
+    }));
 }
 
 export function resourceObservationDiagnostics(diagnostics: readonly IPlaytestDiagnostic[], runtimeDiagnostics: unknown): IPlaytestDiagnostic[] {

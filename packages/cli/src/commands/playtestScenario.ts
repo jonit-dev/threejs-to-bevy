@@ -87,11 +87,23 @@ export interface IPlaytestArtifactRequest {
   screenshots?: "before-after" | "after" | false;
 }
 
+export interface IPlaytestSetupEntityTransform {
+  entity: string;
+  position?: [number, number, number];
+  rotation?: [number, number, number, number];
+  scale?: [number, number, number];
+}
+
+export interface IPlaytestScenarioSetup {
+  entities?: IPlaytestSetupEntityTransform[];
+}
+
 export interface IPlaytestScenario {
   artifacts?: IPlaytestArtifactRequest;
   assert?: IPlaytestScenarioAssertions;
   name: string;
   schemaVersion: 1;
+  setup?: IPlaytestScenarioSetup;
   sourcePath?: string;
   steps: IPlaytestStep[];
   subject?: string;
@@ -228,12 +240,37 @@ function validatePlaytestScenario(value: unknown, scenarioPath: string, absolute
     ...(isRecord(value.assert) ? { assert: validateAssertions(value.assert) } : {}),
     name,
     schemaVersion: 1,
+    ...(isRecord(value.setup) ? { setup: validateSetup(value.setup, scenarioPath) } : {}),
     ...(absolutePath === undefined ? {} : { sourcePath: absolutePath }),
     steps,
     ...(typeof value.subject === "string" ? { subject: value.subject } : {}),
     target,
     viewport: validateViewport(value.viewport),
     warmupFrames: positiveInteger(value.warmupFrames) ?? 0,
+  };
+}
+
+function validateSetup(value: Record<string, unknown>, scenarioPath: string): IPlaytestScenarioSetup {
+  return {
+    ...(Array.isArray(value.entities) ? { entities: value.entities.map((entity, index) => validateSetupEntity(entity, scenarioPath, index)) } : {}),
+  };
+}
+
+function validateSetupEntity(value: unknown, scenarioPath: string, index: number): IPlaytestSetupEntityTransform {
+  if (!isRecord(value) || typeof value.entity !== "string" || value.entity.length === 0) {
+    throw invalidScenario(scenarioPath, `Scenario setup.entities[${index}] must name an entity.`);
+  }
+  const position = validateOptionalNumberTuple(value, "position", 3, scenarioPath, index);
+  const rotation = validateOptionalNumberTuple(value, "rotation", 4, scenarioPath, index);
+  const scale = validateOptionalNumberTuple(value, "scale", 3, scenarioPath, index);
+  if (position === undefined && rotation === undefined && scale === undefined) {
+    throw invalidScenario(scenarioPath, `Scenario setup.entities[${index}] must define position, rotation, or scale.`);
+  }
+  return {
+    entity: value.entity,
+    ...(position === undefined ? {} : { position }),
+    ...(rotation === undefined ? {} : { rotation }),
+    ...(scale === undefined ? {} : { scale }),
   };
 }
 
@@ -394,6 +431,34 @@ function invalidStep(scenarioPath: string, message: string): PlaytestScenarioErr
 
 function positiveInteger(value: unknown): number | undefined {
   return typeof value === "number" && Number.isInteger(value) && value > 0 ? value : undefined;
+}
+
+function validateOptionalNumberTuple(value: Record<string, unknown>, key: "position" | "scale", length: 3, scenarioPath: string, index: number): [number, number, number] | undefined;
+function validateOptionalNumberTuple(value: Record<string, unknown>, key: "rotation", length: 4, scenarioPath: string, index: number): [number, number, number, number] | undefined;
+function validateOptionalNumberTuple(
+  value: Record<string, unknown>,
+  key: "position" | "rotation" | "scale",
+  length: 3 | 4,
+  scenarioPath: string,
+  index: number,
+): [number, number, number] | [number, number, number, number] | undefined {
+  if (!hasKey(value, key)) {
+    return undefined;
+  }
+  const tuple = length === 3 ? validateNumberTuple(value[key], 3) : validateNumberTuple(value[key], 4);
+  if (tuple === undefined) {
+    throw invalidScenario(scenarioPath, `Scenario setup.entities[${index}].${key} must be a ${length}-number tuple.`);
+  }
+  return tuple;
+}
+
+function validateNumberTuple(value: unknown, length: 3): [number, number, number] | undefined;
+function validateNumberTuple(value: unknown, length: 4): [number, number, number, number] | undefined;
+function validateNumberTuple(value: unknown, length: 3 | 4): [number, number, number] | [number, number, number, number] | undefined {
+  if (!Array.isArray(value) || value.length !== length || !value.every((item) => typeof item === "number" && Number.isFinite(item))) {
+    return undefined;
+  }
+  return value as [number, number, number] | [number, number, number, number];
 }
 
 function safeFilePart(value: string): string {

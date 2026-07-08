@@ -48,9 +48,16 @@ export interface IRenderResult {
   resourceSnapshot(id: string): unknown;
   runtimeDiagnostics: IWebRuntimeDiagnostics;
   runtimeDiagnosticsSnapshot(): IWebRuntimeDiagnostics;
+  setEntityTransform(id: string, transform: IWebRuntimeTransformPatch): boolean;
   overlayHost?: IWebOverlayHost;
   ui?: IRenderedUi;
   uiNodeSnapshot(id: string): IRenderedUiNode | undefined;
+}
+
+export interface IWebRuntimeTransformPatch {
+  position?: [number, number, number];
+  rotation?: [number, number, number, number];
+  scale?: [number, number, number];
 }
 
 export interface IWebRuntimePerformanceSnapshot {
@@ -337,6 +344,22 @@ export async function renderLoadedBundle(bundle: IWebBundle, container: HTMLElem
     runtimeDiagnostics: collectWebRuntimeDiagnostics(mapped, bundle, resourceObservations),
     runtimeDiagnosticsSnapshot() {
       return collectWebRuntimeDiagnostics(mapped, bundle, resourceObservations);
+    },
+    setEntityTransform(id: string, transform: IWebRuntimeTransformPatch) {
+      const entity = bundle.world.entities.find((candidate) => candidate.id === id);
+      const object = mapped.objectsById.get(id);
+      if (entity === undefined || object === undefined) {
+        return false;
+      }
+      entity.components.Transform = {
+        ...(entity.components.Transform ?? {}),
+        ...(transform.position === undefined ? {} : { position: transform.position }),
+        ...(transform.rotation === undefined ? {} : { rotation: transform.rotation }),
+        ...(transform.scale === undefined ? {} : { scale: transform.scale }),
+      };
+      syncTransforms(bundle.world, mapped.objectsById);
+      pipeline.render();
+      return true;
     },
     ...(ui === undefined ? {} : { ui }),
     uiNodeSnapshot(id: string) {

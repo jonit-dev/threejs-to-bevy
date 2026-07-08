@@ -393,6 +393,7 @@ test("playtest command should load scenario steps and preserve order", async () 
       name: "smoke-movement",
       target: "web",
       subject: "player",
+      setup: { entities: [{ entity: "player", position: [0, 0.02, 5] }] },
       steps: [
         { label: "forward", press: "KeyW", holdFrames: 45, release: true, waitFrames: 5 },
         { label: "right", press: "KeyD", holdFrames: 20, release: true },
@@ -402,12 +403,14 @@ test("playtest command should load scenario steps and preserve order", async () 
     "utf8",
   );
   let receivedSteps: readonly unknown[] = [];
+  let receivedSetup: unknown;
   const result = await playtestCommand(
     ["--project", ".", "--scenario", "smoke.playtest.json", "--stable-artifacts", "--json"],
     root,
     {
       runner: async (options) => {
         receivedSteps = options.scenario.steps;
+        receivedSetup = options.scenario.setup;
         return {
           after: { frame: 65, position: [0, 0, -1], tick: 65 },
           before: { frame: 0, position: [0, 0, 0], tick: 0 },
@@ -438,6 +441,7 @@ test("playtest command should load scenario steps and preserve order", async () 
     { holdFrames: 45, label: "forward", press: "KeyW", release: true, waitFrames: 5 },
     { holdFrames: 20, label: "right", press: "KeyD", release: true },
   ]);
+  assert.deepEqual(receivedSetup, { entities: [{ entity: "player", position: [0, 0.02, 5] }] });
   const manifest = JSON.parse(await readFile(payload.artifacts.manifest, "utf8")) as { scenario: string };
   assert.equal(manifest.scenario, "smoke-movement");
 });

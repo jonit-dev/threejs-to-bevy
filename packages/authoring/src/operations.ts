@@ -4059,6 +4059,7 @@ function validateColliderComponent(diagnostics: IAuthoringDiagnostic[], file: st
   validateOptionalNumber(diagnostics, file, `${path}/friction`, value.friction, "collider friction must be a finite number.");
   validateOptionalNumber(diagnostics, file, `${path}/restitution`, value.restitution, "collider restitution must be a finite number.");
   validateOptionalBoolean(diagnostics, file, `${path}/trigger`, value.trigger, "collider trigger must be a boolean.");
+  validateColliderSlope(diagnostics, file, `${path}/slope`, value.slope);
 }
 
 function validateCharacterControllerComponent(diagnostics: IAuthoringDiagnostic[], file: string, path: string, value: Record<string, unknown>): void {
@@ -4071,6 +4072,41 @@ function validateCharacterControllerComponent(diagnostics: IAuthoringDiagnostic[
   validateOptionalNumber(diagnostics, file, `${path}/slopeLimit`, value.slopeLimit, "character controller slopeLimit must be a finite number.");
   validateOptionalNumber(diagnostics, file, `${path}/stepOffset`, value.stepOffset, "character controller stepOffset must be a finite number.");
   validateOptionalString(diagnostics, file, `${path}/interactAction`, value.interactAction, "character controller interactAction must be a non-empty input action id.");
+  validateCharacterPushPolicy(diagnostics, file, `${path}/pushPolicy`, value.pushPolicy);
+}
+
+function validateColliderSlope(diagnostics: IAuthoringDiagnostic[], file: string, path: string, value: unknown): void {
+  if (value === undefined) {
+    return;
+  }
+  if (!isRecord(value)) {
+    diagnostics.push(typeDiagnostic(file, path, "collider slope must be an object.", value));
+    return;
+  }
+  diagnostics.push(...unknownKeyDiagnostics(file, path, value, new Set(["axis", "direction", "rise", "run"])));
+  validateOptionalStringEnum(diagnostics, file, `${path}/axis`, value.axis, new Set(["x", "z"]), "collider slope axis must be 'x' or 'z'.");
+  if (value.direction !== -1 && value.direction !== 1) {
+    diagnostics.push(typeDiagnostic(file, `${path}/direction`, "collider slope direction must be -1 or 1.", value.direction));
+  }
+  validateRequiredPositiveNumber(diagnostics, file, `${path}/rise`, value.rise, "collider slope rise must be a positive finite number.");
+  validateRequiredPositiveNumber(diagnostics, file, `${path}/run`, value.run, "collider slope run must be a positive finite number.");
+}
+
+function validateCharacterPushPolicy(diagnostics: IAuthoringDiagnostic[], file: string, path: string, value: unknown): void {
+  if (value === undefined) {
+    return;
+  }
+  if (!isRecord(value)) {
+    diagnostics.push(typeDiagnostic(file, path, "character controller pushPolicy must be an object.", value));
+    return;
+  }
+  diagnostics.push(...unknownKeyDiagnostics(file, path, value, new Set(["allowedLayers", "blockedWhenTooHeavy", "enabled", "impulseScale", "maxPushMass", "minMoveSpeed"])));
+  validateOptionalStringArray(diagnostics, file, `${path}/allowedLayers`, value.allowedLayers, "character controller pushPolicy allowedLayers must be an array of non-empty layer strings.");
+  validateOptionalBoolean(diagnostics, file, `${path}/blockedWhenTooHeavy`, value.blockedWhenTooHeavy, "character controller pushPolicy blockedWhenTooHeavy must be a boolean.");
+  validateOptionalBoolean(diagnostics, file, `${path}/enabled`, value.enabled, "character controller pushPolicy enabled must be a boolean.");
+  validateOptionalNonNegativeNumber(diagnostics, file, `${path}/impulseScale`, value.impulseScale, "character controller pushPolicy impulseScale must be a finite non-negative number.");
+  validateOptionalNonNegativeNumber(diagnostics, file, `${path}/maxPushMass`, value.maxPushMass, "character controller pushPolicy maxPushMass must be a finite non-negative number.");
+  validateOptionalNonNegativeNumber(diagnostics, file, `${path}/minMoveSpeed`, value.minMoveSpeed, "character controller pushPolicy minMoveSpeed must be a finite non-negative number.");
 }
 
 function validateKinematicMoverComponent(diagnostics: IAuthoringDiagnostic[], file: string, path: string, value: Record<string, unknown>): void {
@@ -4209,6 +4245,12 @@ function validateOptionalNumber(diagnostics: IAuthoringDiagnostic[], file: strin
   }
 }
 
+function validateRequiredPositiveNumber(diagnostics: IAuthoringDiagnostic[], file: string, path: string, value: unknown, message: string): void {
+  if (typeof value !== "number" || !Number.isFinite(value) || value <= 0) {
+    diagnostics.push(typeDiagnostic(file, path, message, value));
+  }
+}
+
 function validateOptionalNonNegativeNumber(diagnostics: IAuthoringDiagnostic[], file: string, path: string, value: unknown, message: string): void {
   if (value !== undefined && (typeof value !== "number" || !Number.isFinite(value) || value < 0)) {
     diagnostics.push(typeDiagnostic(file, path, message, value));
@@ -4242,6 +4284,12 @@ function validateRequiredString(diagnostics: IAuthoringDiagnostic[], file: strin
 
 function validateOptionalString(diagnostics: IAuthoringDiagnostic[], file: string, path: string, value: unknown, message: string): void {
   if (value !== undefined && readString(value) === undefined) {
+    diagnostics.push(typeDiagnostic(file, path, message, value));
+  }
+}
+
+function validateOptionalStringArray(diagnostics: IAuthoringDiagnostic[], file: string, path: string, value: unknown, message: string): void {
+  if (value !== undefined && (!Array.isArray(value) || value.some((item) => readString(item) === undefined))) {
     diagnostics.push(typeDiagnostic(file, path, message, value));
   }
 }

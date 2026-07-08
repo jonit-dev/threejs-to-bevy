@@ -135,15 +135,15 @@ function resolveHorizontalContact(
     if (bounds === undefined || !penetrates(characterBounds, bounds) || !isSideBlocker(position, characterHalfExtents, bounds)) {
       continue;
     }
-    if (bounds.slope !== undefined && canWalkSlope(position, bounds, slopeLimit)) {
+    if (bounds.slope !== undefined && isWalkableSlope(bounds, slopeLimit)) {
       const top = surfaceTop(position, bounds);
-      position = [position[0], top + characterHalfExtents[1], position[2]];
+      position = coversXZ(position, bounds) ? [position[0], top + characterHalfExtents[1], position[2]] : position;
       characterBounds = { center: position, halfExtents: characterHalfExtents, id: characterId };
       continue;
     }
     if (canStepOnto(position, characterHalfExtents, bounds, stepOffset)) {
       const top = surfaceTop(position, bounds);
-      position = [position[0], top + characterHalfExtents[1], position[2]];
+      position = coversXZ(position, bounds) ? [position[0], top + characterHalfExtents[1], position[2]] : position;
       characterBounds = { center: position, halfExtents: characterHalfExtents, id: characterId };
       continue;
     }
@@ -291,11 +291,15 @@ function isSideBlocker(position: Vec3, characterHalfExtents: Vec3, bounds: IBoun
 function canStepOnto(position: Vec3, characterHalfExtents: Vec3, bounds: IBounds, stepOffset: number): boolean {
   const foot = position[1] - characterHalfExtents[1];
   const top = surfaceTop(position, bounds);
-  return stepOffset > 0 && top > foot + SUPPORT_TOLERANCE && top <= foot + stepOffset + SUPPORT_TOLERANCE && coversXZ(position, bounds);
+  return stepOffset > 0 && top > foot + SUPPORT_TOLERANCE && top <= foot + stepOffset + SUPPORT_TOLERANCE;
 }
 
 function canWalkSlope(position: Vec3, bounds: IBounds, slopeLimit: number): boolean {
-  return bounds.slope === undefined || (coversXZ(position, bounds) && bounds.slope.angle <= slopeLimit + 0.0001);
+  return bounds.slope === undefined || (coversXZ(position, bounds) && isWalkableSlope(bounds, slopeLimit));
+}
+
+function isWalkableSlope(bounds: IBounds, slopeLimit: number): boolean {
+  return bounds.slope !== undefined && bounds.slope.angle <= slopeLimit + 0.0001;
 }
 
 function surfaceTop(position: Vec3, bounds: IBounds): number {

@@ -144,6 +144,36 @@ test("character trace should step onto low blockers within step offset", () => {
   ]);
 });
 
+test("character trace should enter low step contacts before the center is over the tread", () => {
+  const world = makeCharacterWorld();
+  const wall = world.entities.find((entity) => entity.id === "wall");
+  const player = world.entities.find((entity) => entity.id === "player");
+  if (wall !== undefined) {
+    wall.id = "step";
+    wall.components.Collider = { kind: "box", size: [1, 0.4, 1] };
+    wall.components.Transform = { position: [1.2, 0.2, 0] };
+  }
+  if (player?.components.CharacterController !== undefined) {
+    player.components.CharacterController.stepOffset = 0.5;
+  }
+
+  const trace = traceCharacterControllers(world, {
+    axes: { MoveX: 1, MoveZ: 0 },
+    fixedDelta: 0.3,
+  });
+
+  assert.deepEqual(trace, [
+    {
+      desired: [0.6, 1, 0],
+      entity: "player",
+      groundEntity: "floor",
+      grounded: true,
+      resolved: [0.6, 1.05, 0],
+      start: [0, 1, 0],
+    },
+  ]);
+});
+
 test("character trace should report ungrounded past ledges", () => {
   const world = makeCharacterWorld();
   const wall = world.entities.find((entity) => entity.id === "wall");
@@ -240,6 +270,36 @@ test("character trace should walk shallow slopes and reject steep slopes", () =>
       groundEntity: "floor",
       grounded: true,
       resolved: [0, 1.05, 0],
+      start: [0, 1, 0],
+    },
+  ]);
+});
+
+test("character trace should enter walkable slope contacts before the center is on the ramp", () => {
+  const world = makeCharacterWorld();
+  const wall = world.entities.find((entity) => entity.id === "wall");
+  const player = world.entities.find((entity) => entity.id === "player");
+  if (wall !== undefined) {
+    wall.id = "ramp";
+    wall.components.Collider = { kind: "box", size: [1, 1, 1], slope: { axis: "x", direction: 1, rise: 0.25, run: 1 } };
+    wall.components.Transform = { position: [1.2, 0.5, 0] };
+  }
+  if (player?.components.CharacterController !== undefined) {
+    player.components.CharacterController.slopeLimit = 45;
+  }
+
+  const trace = traceCharacterControllers(world, {
+    axes: { MoveX: 1, MoveZ: 0 },
+    fixedDelta: 0.3,
+  });
+
+  assert.deepEqual(trace, [
+    {
+      desired: [0.6, 1, 0],
+      entity: "player",
+      groundEntity: "floor",
+      grounded: true,
+      resolved: [0.6, 1.05, 0],
       start: [0, 1, 0],
     },
   ]);

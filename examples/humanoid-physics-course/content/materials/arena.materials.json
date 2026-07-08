@@ -40,6 +40,14 @@
       "metallicRoughnessTexture": "tex.planks.crate.roughness"
     },
     {
+      "id": "mat.push.ball",
+      "color": "#f6c24a",
+      "roughness": 0.52,
+      "metalness": 0.08,
+      "emissive": "#3f2600",
+      "emissiveIntensity": 0.12
+    },
+    {
       "id": "mat.hazard",
       "color": "#b8352c",
       "roughness": 0.45,

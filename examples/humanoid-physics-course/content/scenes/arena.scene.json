@@ -179,6 +179,17 @@
           "grounding": "raycast",
           "moveXAxis": "MoveX",
           "moveZAxis": "MoveZ",
+          "pushPolicy": {
+            "allowedLayers": [
+              "pushable"
+            ],
+            "blockedWhenTooHeavy": true,
+            "enabled": true,
+            "impulseScale": 1,
+            "maxPushMass": 8,
+            "minMoveSpeed": 0.01
+          },
+          "slopeLimit": 28,
           "speed": 3.1,
           "stepOffset": 0.36
         },
@@ -428,7 +439,13 @@
             2.5,
             0.28,
             2.4
-          ]
+          ],
+          "slope": {
+            "axis": "z",
+            "direction": -1,
+            "rise": 0.48,
+            "run": 2.4
+          }
         },
         "MeshRenderer": {
           "material": "mat.course.surface",
@@ -604,6 +621,50 @@
           1.05,
           0.39,
           -3.05
+        ]
+      }
+    },
+    {
+      "components": {
+        "Collider": {
+          "kind": "sphere",
+          "layer": "pushable",
+          "mask": [
+            "world",
+            "player"
+          ],
+          "radius": 0.38
+        },
+        "MeshRenderer": {
+          "castShadow": true,
+          "material": "mat.push.ball",
+          "mesh": "mesh.push.ball",
+          "receiveShadow": true
+        },
+        "PushBall": {
+          "home": [
+            0,
+            0.38,
+            3.35
+          ]
+        },
+        "RigidBody": {
+          "damping": 0.18,
+          "kind": "dynamic",
+          "mass": 1.5,
+          "velocity": [
+            0,
+            0,
+            0
+          ]
+        }
+      },
+      "id": "ball.push.01",
+      "transform": {
+        "position": [
+          0,
+          0.38,
+          3.35
         ]
       }
     },

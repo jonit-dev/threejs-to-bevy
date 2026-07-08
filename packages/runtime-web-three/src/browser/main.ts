@@ -20,6 +20,7 @@ declare global {
       resourceSnapshot?(id: string): unknown;
       resetPerformanceTrace?(): void;
       runtimeDiagnosticsSnapshot?(): unknown;
+      setEntityTransform?(id: string, transform: { position?: [number, number, number]; rotation?: [number, number, number, number]; scale?: [number, number, number] }): boolean;
       uiNodeSnapshot?(id: string): unknown;
     };
   }
@@ -45,6 +46,7 @@ window.__THREENATIVE_RUNTIME__ = {
   resourceSnapshot: result.resourceSnapshot,
   resetPerformanceTrace: result.resetPerformanceTrace,
   runtimeDiagnosticsSnapshot: result.runtimeDiagnosticsSnapshot,
+  setEntityTransform: result.setEntityTransform,
   uiNodeSnapshot: result.uiNodeSnapshot,
 };
 
