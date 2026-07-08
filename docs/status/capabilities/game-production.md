@@ -25,6 +25,10 @@ Current support:
 - `tn look apply <arcade-neon|forest-dawn|sunset-racer|toybox-pop|noir-metal>`
   applies curated scaffold polish through runtime and material source
   operations without exposing renderer internals.
+- `tn world generate --biome <meadow|forest|desert|canyon|arctic> --seed <n>`
+  creates deterministic heightmap terrain, terrain-aware scatter source, and
+  catalog provenance; `tn world proof --json` records the terrain/scatter proof
+  artifact consumed by game scoring as world/environment evidence.
 - `tn game plan --apply --json` explicitly applies scaffold-first collector
   and lane-runner baselines through bounded recipe operations, writes committed
   playtest scenarios, and records `artifacts/game-production/scaffold-first.json`.
@@ -74,6 +78,8 @@ Verification:
 - `pnpm verify:example-build-sweep`
 - `pnpm verify:smoke`
 - `tn iterate --project . --json`
+- `tn world generate --biome meadow --seed 7 --json`
+- `tn world proof --json`
 
 Full prior evidence is preserved in
 [full-status-archive.md](full-status-archive.md).

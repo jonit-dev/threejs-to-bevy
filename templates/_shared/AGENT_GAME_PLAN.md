@@ -75,6 +75,14 @@ tn asset inspect assets --recursive --json
 tn model-test assets/<model>.glb --json
 ```
 
+For outdoor or arena games that need a dressed world, start from the generated
+biome source path before hand-placing environment props:
+
+```bash
+tn world generate --biome meadow --seed 7 --project . --json
+tn world proof --project . --json
+```
+
 Record selected catalog records next to committed assets.
 
 | Surface | Search command | asset-source-id | Source URL | Provenance URL | Origin | License evidence | Review status | Downloaded date | Conversion notes | Fallback |

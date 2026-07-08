@@ -371,6 +371,10 @@ export function validateAssetDeclaration(diagnostics: IAuthoringDiagnostic[], pa
     validateRenderTargetAssetDeclaration(diagnostics, file, path, item);
     return;
   }
+  if (type === "heightmap") {
+    validateHeightmapAssetDeclaration(diagnostics, file, path, item);
+    return;
+  }
   const sourcePath = readString(item.path);
   if (sourcePath === undefined) {
     diagnostics.push(typeDiagnostic(file, `${path}/path`, "asset path must be a non-empty source path.", item.path));
@@ -386,6 +390,26 @@ export function validateAssetDeclaration(diagnostics: IAuthoringDiagnostic[], pa
     validateOptionalStringEnum(diagnostics, file, `${path}/wrapT`, item.wrapT, new Set(["clampToEdge", "mirroredRepeat", "repeat"]), "texture wrapT must be clampToEdge, mirroredRepeat, or repeat.");
     validateOptionalStringEnum(diagnostics, file, `${path}/minFilter`, item.minFilter, new Set(["linear", "linearMipmapLinear", "linearMipmapNearest", "nearest", "nearestMipmapLinear", "nearestMipmapNearest"]), "texture minFilter must be a promoted texture filter.");
     validateOptionalStringEnum(diagnostics, file, `${path}/magFilter`, item.magFilter, new Set(["linear", "nearest"]), "texture magFilter must be linear or nearest.");
+  }
+}
+
+export function validateHeightmapAssetDeclaration(diagnostics: IAuthoringDiagnostic[], file: string, path: string, item: Record<string, unknown>): void {
+  const sourcePath = readString(item.path);
+  if (sourcePath === undefined) {
+    diagnostics.push(typeDiagnostic(file, `${path}/path`, "heightmap asset path must be a non-empty source path.", item.path));
+  } else {
+    validateGeneratedPathString(diagnostics, file, `${path}/path`, item.path, "heightmap asset path must be a non-empty source path.");
+  }
+  validatePositiveNumber(diagnostics, file, `${path}/width`, item.width, "heightmap width must be a positive finite number.");
+  validatePositiveNumber(diagnostics, file, `${path}/height`, item.height, "heightmap height must be a positive finite number.");
+  if (item.format !== "json") {
+    diagnostics.push(typeDiagnostic(file, `${path}/format`, "heightmap format must be 'json'.", item.format));
+  }
+  if (item.encoding !== "float32" && item.encoding !== "u16-normalized") {
+    diagnostics.push(typeDiagnostic(file, `${path}/encoding`, "heightmap encoding must be 'float32' or 'u16-normalized'.", item.encoding));
+  }
+  if (!isRecord(item.heightRange) || typeof item.heightRange.min !== "number" || typeof item.heightRange.max !== "number") {
+    diagnostics.push(typeDiagnostic(file, `${path}/heightRange`, "heightmap heightRange must define numeric min and max.", item.heightRange));
   }
 }
 

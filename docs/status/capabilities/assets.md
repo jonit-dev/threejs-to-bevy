@@ -14,6 +14,9 @@ Current support:
 - Environment scatter layers can be authored through structured source/CLI and
   lower deterministically against generated terrain samples with height, slope,
   path, and exclusion-zone filters.
+- `tn world generate --biome <name>` writes deterministic structured heightmap
+  source, terrain/scatter environment source, and catalog provenance for
+  meadow, forest, desert, canyon, and arctic starts.
 - SQLite-backed asset-source catalog for generated games, with provenance and
   license metadata expected beside committed assets.
 - Asset inspection, model tests, bundle-local path validation, and production
@@ -24,6 +27,8 @@ Verification:
 - `tn asset source search --json`
 - `tn asset inspect --json`
 - `tn environment add-scatter-layer --json`
+- `tn world generate --json`
+- `tn world proof --json`
 - `tn model-test --json`
 - `pnpm verify:release`
 

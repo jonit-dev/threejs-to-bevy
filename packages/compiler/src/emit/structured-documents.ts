@@ -206,6 +206,25 @@ function structuredAsset(item: unknown): IInternalAsset[] {
   if (format === undefined) {
     return [];
   }
+  if (kind === "heightmap") {
+    const width = readNumber(item.width);
+    const height = readNumber(item.height);
+    const heightRange = isRecord(item.heightRange) ? item.heightRange : undefined;
+    if (width === undefined || height === undefined || heightRange === undefined) {
+      return [];
+    }
+    return [{
+      encoding: readString(item.encoding) ?? "float32",
+      format,
+      height,
+      heightRange: cloneRecord(heightRange),
+      id,
+      kind,
+      path,
+      sourceMode: "bundle",
+      width,
+    }];
+  }
   return [{
     ...(kind === "model" && Array.isArray(item.animations) ? { animations: item.animations.map((entry) => cloneRecord(entry as Record<string, unknown>)) } : {}),
     ...(kind === "model" && isRecord(item.animationGraph) ? { animationGraph: cloneRecord(item.animationGraph) } : {}),
@@ -274,7 +293,7 @@ function renderTargetFormat(format: string | undefined, usage: "color" | "depth"
 }
 
 function assetKindFromSourceType(type: string | undefined): string | undefined {
-  if (type === "model" || type === "texture" || type === "audio" || type === "buffer") {
+  if (type === "model" || type === "texture" || type === "audio" || type === "buffer" || type === "heightmap") {
     return type;
   }
   return undefined;
@@ -292,6 +311,9 @@ function inferAssetFormat(kind: string, path: string): string | undefined {
     return extension;
   }
   if (kind === "buffer" && extension === "bin") {
+    return extension;
+  }
+  if (kind === "heightmap" && extension === "json") {
     return extension;
   }
   return undefined;

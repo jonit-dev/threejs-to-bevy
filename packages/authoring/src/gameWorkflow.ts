@@ -170,6 +170,7 @@ interface IProjectEvidenceSnapshot {
   hasScreenshotProof: boolean;
   hasScriptSource: boolean;
   hasSmoothScriptSource: boolean;
+  hasDressedWorldSource: boolean;
   invalidAudioFiles: string[];
   projectOutDir?: string;
   sourceEvidence: IGameWorkflowEvidence[];
@@ -273,6 +274,16 @@ export async function createGameQualityReport(options: ICreateGameQualityReportO
       path: "/phaseLedgers/visuals",
       phase: "visuals",
       suggestedFix: "Add custom meshes, imported model assets, textures, authored materials, or a coherent procedural asset kit before accepting the game.",
+    }));
+  }
+  if (!snapshot.hasDressedWorldSource) {
+    diagnostics.push(gameDiagnostic({
+      code: "TN_GAME_WORLD_PROOF_MISSING",
+      message: "World/environment proof is missing or flat-plane-like: generated games should provide terrain, scatter, and a world proof artifact.",
+      path: "/phaseLedgers/visuals",
+      phase: "visuals",
+      severity: "warning",
+      suggestedFix: "Run tn world generate --biome <name> --seed <n> --json, then tn world proof --json before final game scoring.",
     }));
   }
   const phaseLedgers = buildPhaseLedgers(snapshot, diagnostics, scorecard, uiStates, assetAudioLedger);
@@ -517,11 +528,14 @@ async function inspectGameProject(projectPath: string): Promise<IProjectEvidence
   const hasPlaytestProof = artifactEvidence.some((evidence) => includesAny(evidence, ["playtest", "input-driven"]));
   const hasMotionFeelProof = artifactEvidence.some((evidence) => includesAny(evidence, ["motion", "smooth", "frame-diff", "framediff", "changedpixelratio", "webm", "mp4", "record"]));
   const hasBuildProof = artifactEvidence.some((evidence) => includesAny(evidence, ["bundle", "build", "manifest.json", "world.ir.json"]));
+  const hasWorldProof = artifactEvidence.some((evidence) => includesAny(evidence, ["world-proof", "world proof"]));
+  const hasDressedWorldSource = includesAnyText(sourceSearchText, ["heightmap", "scatter", "splatlayers", "terrain"]) && includesAnyText(sourceSearchText, ["environment", "world"]);
   const scriptHaystack = scriptFiles.join("\n").toLowerCase();
   return {
     artifactEvidence,
     authoring,
     hasBuildProof,
+    hasDressedWorldSource: hasDressedWorldSource || hasWorldProof,
     hasInputSource,
     hasMobileProof,
     hasMotionFeelProof,
@@ -865,6 +879,7 @@ function evidenceDescription(path: string, content = ""): string {
     includesAnyText(text, ["nonblank", "screenshot"]) ? " nonblank" : "",
   ].join("");
   if (lower.includes("playtest")) return `playtest input-driven artifact${suffix}`;
+  if (lower.includes("world-proof")) return "world proof terrain scatter artifact";
   if (lower.includes("mobile")) return "mobile viewport artifact";
   if (lower.includes("screenshot") || lower.endsWith(".png")) return `screenshot visual artifact${suffix}`;
   if (lower.includes("motion") || lower.endsWith(".webm") || lower.endsWith(".mp4")) return `motion capture artifact${suffix}`;

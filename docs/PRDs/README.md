@@ -185,9 +185,8 @@ execution bundle.
   the default look against regression with committed reference evidence.
 - [Believable Worlds: Heightfield Terrain and Biome Dressing](proof-first-engine-loop-2026-07-05/PRD-006-believable-world-terrain-and-biome-dressing.md):
   rendered+collidable heightfield terrain on both runtimes,
-  compiler-expanded deterministic scatter layers, and a one-command
-  `tn world generate --biome <name>` dressed play space with catalog
-  provenance.
+  compiler-expanded deterministic scatter layers, and `tn world generate` /
+  `tn world proof` biome source/proof commands with catalog provenance.
 - [Portable Shader Material Parity](proof-first-engine-loop-2026-07-05/PRD-014-portable-shader-material-parity.md):
   constrained authored shader materials with explicit uniforms/textures,
   generated web GLSL and Bevy WGSL, stable diagnostics for raw/backend shader

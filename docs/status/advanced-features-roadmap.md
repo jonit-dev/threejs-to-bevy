@@ -105,8 +105,12 @@ the same IR-level contract or produce stable, actionable diagnostics.
   asset, terrain heightmap reference, splat-layer, target cell-budget
   validation, compiler terrain chunk mesh emission, and heightfield collider
   descriptors are in place; the web runtime consumes generated terrain chunks
-  for rendering and static terrain collision, while Bevy runtime sampling is
-  still open.
+  for rendering and static terrain collision, while Bevy renders generated
+  chunk meshes and maps generated samples into synthetic Rapier heightfield
+  colliders.
+- Seeded biome world generation now emits structured heightmap, environment
+  terrain/scatter, catalog provenance, and `world-proof` artifacts for meadow,
+  forest, desert, canyon, and arctic starts.
 - Add terrain tile/chunk metadata for LOD, skirts, morph bands, and far shells.
 - Add deterministic terrain generation metadata for seeds, noise parameters,
   erosion passes, hydrology, biome maps, and snow/rock/vegetation masks.

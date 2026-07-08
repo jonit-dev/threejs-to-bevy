@@ -29,6 +29,7 @@ import { animationCommand, audioCommand, environmentCommand, flowCommand, genera
 import { validateProject } from "./commands/validate.js";
 import { recordCommand, screenshotCommand } from "./commands/visualProof.js";
 import { verifyCommand } from "./commands/verify.js";
+import { worldCommand } from "./commands/world.js";
 import { type ICommandResult } from "./diagnostics.js";
 
 interface ICommandDefinition {
@@ -112,6 +113,11 @@ const commands: Record<string, ICommandDefinition> = {
     description: "Plan, score, QA, and release-check source-backed game production evidence.",
     implemented: true,
     usage: "tn game plan --goal <text> [--project <path>] [--json] [--full-json] [--apply]\n              tn game next [--project <path>] [--json]\n              tn game improve --apply-plan <file> [--project <path>] [--json]\n              tn game providers [--json]\n              tn game score [--project <path>] [--json]\n              tn game scale [--project <path>] [--url <preview-url>] [--out <file>] [--json]\n              tn game qa [--project <path>] [--run-proof] [--url <preview-url>] [--entity <id>] [--press <KeyboardEvent.code>] [--expect-axis x|y|z] [--record] [--out <file>] [--json]\n              tn game release [--project <path>] [--out <file>] [--json]",
+  },
+  world: {
+    description: "Generate and prove dressed biome world source documents.",
+    implemented: true,
+    usage: "tn world generate --biome <meadow|forest|desert|canyon|arctic> --seed <n> [--size <n>] [--flatten-radius <n>] [--project <path>] [--json]\n              tn world proof [--project <path>] [--json]",
   },
   "model-test": {
     description: "Generate a one-model proof project with scale, bounds, ruler, and camera hints.",
@@ -370,6 +376,10 @@ export async function dispatch(argv: readonly string[]): Promise<ICommandResult>
 
   if (commandName === "game") {
     return gameCommand(normalizedArgv.slice(1));
+  }
+
+  if (commandName === "world") {
+    return worldCommand(normalizedArgv.slice(1));
   }
 
   if (commandName === "model-test") {

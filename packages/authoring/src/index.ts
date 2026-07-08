@@ -8,6 +8,8 @@ export type {
 export { authoringDiagnostic, hasAuthoringErrors, sortAuthoringDiagnostics, unsupportedOperationDiagnostic } from "./diagnostics.js";
 export type { IPrescriptiveDiagnosticCode } from "./prescriptiveCodes.js";
 export { PRESCRIPTIVE_DIAGNOSTIC_CODES, prescriptiveFixForCode } from "./prescriptiveCodes.js";
+export type { IWorldBiomeDefinition, WorldBiomeId } from "./biomes.js";
+export { WORLD_BIOMES, WORLD_BIOME_IDS, isWorldBiomeId } from "./biomes.js";
 export type { AuthoringDocumentKind, IAuthoringDocument, IAuthoringDocumentSourceMap, IReadAuthoringDocumentResult } from "./documents.js";
 export {
   classifyAuthoringDocument,

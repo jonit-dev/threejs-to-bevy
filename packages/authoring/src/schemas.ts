@@ -116,7 +116,7 @@ export const materialKeys = new Set([
   "transmission",
   "transmissionTexture",
 ]);
-export const assetKeys = new Set(["animationGraph", "animations", "center", "fallback", "format", "height", "id", "magFilter", "minFilter", "offset", "particleEmitters", "path", "repeat", "rotation", "sampleCount", "type", "usage", "width", "wrapS", "wrapT"]);
+export const assetKeys = new Set(["animationGraph", "animations", "center", "encoding", "fallback", "format", "height", "heightRange", "id", "magFilter", "minFilter", "offset", "particleEmitters", "path", "repeat", "rotation", "sampleCount", "type", "usage", "width", "wrapS", "wrapT"]);
 export const inputActionKeys = new Set(["id", "bindings"]);
 export const inputAxisKeys = new Set(["id", "negative", "positive", "value"]);
 export const inputControlsSettingsKeys = new Set(["profileId", "rows"]);
