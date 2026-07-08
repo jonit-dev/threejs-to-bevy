@@ -74,7 +74,6 @@ test("should replay typed-spec recipe with playtest proof", async () => {
     id: "typed-spec-recipe-top-down-collector",
     kind: "recipe",
     playtest: true,
-    scenario: "playtests/top-down-collector.playtest.json",
   }];
   const seenArgs: string[][] = [];
   const result = await runSessionCostGate({
@@ -95,15 +94,16 @@ test("should replay typed-spec recipe with playtest proof", async () => {
   assert.equal(seenArgs[0]?.includes("--authoring"), true);
   assert.equal(seenArgs[0]?.includes("typed-spec"), true);
   assert.equal(seenArgs[2]?.includes("--skip-playtest"), false);
-  assert.deepEqual(seenArgs[2]?.slice(-3), ["--scenario", "playtests/top-down-collector.playtest.json", "--json"]);
+  assert.deepEqual(seenArgs[2]?.slice(-1), ["--json"]);
+  assert.equal(seenArgs[2]?.includes("--scenario"), false);
   assert.equal(result.measurements[0]?.toolStepCount, 3);
   assert.deepEqual(result.measurements[0]?.acceptance, {
+    authoredScenarios: 0,
     build: "pass",
     gamePlanApply: "pass",
     manualEdits: 0,
     playtest: "pass",
     scaffold: "pass",
-    scenario: "playtests/top-down-collector.playtest.json",
   });
   assert.equal(result.diagnostics.some((diagnostic) => diagnostic.code === "TN_VERIFY_SESSION_COST_ACCEPTANCE_FAILED"), false);
 });
@@ -116,7 +116,6 @@ test("should fail typed-spec recipe acceptance proof when iterate does not pass"
     id: "typed-spec-recipe-top-down-collector",
     kind: "recipe",
     playtest: true,
-    scenario: "playtests/top-down-collector.playtest.json",
   }];
   const result = await runSessionCostGate({
     cases,

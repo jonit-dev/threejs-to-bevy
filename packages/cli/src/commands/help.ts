@@ -117,6 +117,24 @@ export const HELP_TOPICS: Record<string, HelpTopic> = {
     summary: "Collect visual proof that the scene is actually visible, not just technically ready.",
     title: "Visual QA and proof",
   },
+  playtest: {
+    aliases: ["playtests", "assertions", "proof-bar"],
+    commands: [
+      "tn playtest schema --json",
+      "tn playtest scaffold --assert <movement|pickup|win-state|retry> --json",
+      "tn playtest --project <path> --scenario playtests/<name>.playtest.json --json",
+      "tn iterate --project . --json",
+    ],
+    docs: ["docs/workflows/playtesting.md", "docs/workflows/ai-workflows.md"],
+    examples: [
+      "tn playtest scaffold --assert pickup --json",
+      "Use tn playtest schema --json for step fields, holdFrames, textIncludes, resource assertions, and KeyR retry examples.",
+      "For the normal agent proof loop, run tn iterate --project . --json instead of standalone validate/build/playtest commands.",
+    ],
+    failureSymptoms: ["unknown playtest assertion field", "need KeyR retry syntax", "manual artifact jq after assertion failure"],
+    summary: "Discover assertion DSL fields and scaffold proof-bar playtests without reading engine sources.",
+    title: "Playtest scenarios and assertions",
+  },
   screenshot: {
     commands: ["tn screenshot [--project <path>] --url <preview-url> --out <file.png> [--wait-ready] [--viewport desktop|mobile|<width>x<height>] [--json]", "tn verify --frames 1 --json", "tn compare-images <first.png> <second.png> [--json]"],
     docs: ["docs/workflows/developer-workflow.md", "docs/runtime/README.md"],

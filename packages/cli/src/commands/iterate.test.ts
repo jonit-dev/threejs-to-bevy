@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
@@ -109,6 +109,93 @@ test("should emit TN_ITERATE_NO_SCENARIO info when project has no playtests", as
   }
 });
 
+test("should run all scenarios when no scenario flag given", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-iterate-all-scenarios-"));
+  try {
+    await writeFile(join(root, "a.playtest.json"), "{}");
+    await mkdir(join(root, "playtests"), { recursive: true });
+    await writeFile(join(root, "playtests/b.playtest.json"), "{}\n");
+    await writeFile(join(root, "playtests/a.playtest.json"), "{}\n");
+    const seen: string[] = [];
+    const result = await iterateCommand(["--project", root, "--json"], process.cwd(), {
+      ...passingIterateOptions(root),
+      playtest: async (args) => {
+        const scenario = args[args.indexOf("--scenario") + 1] ?? "";
+        seen.push(scenario);
+        return playtestSummaryResult(scenario.replace(/^playtests\//, "").replace(/\.playtest\.json$/, ""), true);
+      },
+    });
+    const payload = JSON.parse(result.stdout) as { steps: Array<{ id: string; scenarios?: Array<{ scenario: string }> }> };
+
+    assert.equal(result.exitCode, 0, result.stdout);
+    assert.deepEqual(seen, ["playtests/a.playtest.json", "playtests/b.playtest.json"]);
+    assert.deepEqual(payload.steps.find((step) => step.id === "playtest")?.scenarios?.map((scenario) => scenario.scenario), ["a", "b"]);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should include observed assertion values when a scenario fails", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-iterate-failed-values-"));
+  try {
+    await mkdir(join(root, "playtests"), { recursive: true });
+    await writeFile(join(root, "playtests/fail.playtest.json"), "{}\n");
+    const result = await iterateCommand(["--project", root, "--json"], process.cwd(), {
+      ...passingIterateOptions(root),
+      playtest: async () => playtestSummaryResult("fail", false, {
+        assertions: [
+          {
+            details: { after: "Score 0 / 3", expected: { textIncludes: "Score 3 / 3" }, id: "score-label" },
+            id: "hud.score-label",
+            pass: false,
+          },
+        ],
+        diagnostics: [{ code: "TN_PLAYTEST_HUD_ASSERTION_FAILED", message: "HUD assertion failed.", severity: "error", systemId: "hud-system" }],
+      }),
+    });
+    const payload = JSON.parse(result.stdout) as { steps: Array<{ id: string; scenarios?: Array<{ assertions: Array<{ expected?: unknown; observed?: unknown; owningSystem?: string }> }> }> };
+    const failed = payload.steps.find((step) => step.id === "playtest")?.scenarios?.[0]?.assertions[0];
+
+    assert.equal(result.exitCode, 1);
+    assert.deepEqual(failed?.expected, { textIncludes: "Score 3 / 3" });
+    assert.equal(failed?.observed, "Score 0 / 3");
+    assert.equal(failed?.owningSystem, "hud-system");
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should keep per-scenario summary within byte budget", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-iterate-budget-"));
+  try {
+    await mkdir(join(root, "playtests"), { recursive: true });
+    await writeFile(join(root, "playtests/verbose.playtest.json"), "{}\n");
+    const result = await iterateCommand(["--project", root, "--json"], process.cwd(), {
+      ...passingIterateOptions(root),
+      playtest: async () => playtestSummaryResult("verbose", false, {
+        assertions: Array.from({ length: 20 }, (_, index) => ({
+          details: { after: `observed-${index}`, expected: { textIncludes: `expected-${index}` } },
+          id: `hud.verbose-${index}`,
+          pass: false,
+        })),
+        diagnostics: Array.from({ length: 20 }, (_, index) => ({
+          code: "TN_PLAYTEST_HUD_ASSERTION_FAILED",
+          message: `HUD assertion ${index} failed. ${"x".repeat(400)}`,
+          severity: "error",
+        })),
+      }),
+    });
+    const payload = JSON.parse(result.stdout) as { steps: Array<{ id: string; scenarios?: unknown[] }> };
+    const scenario = payload.steps.find((step) => step.id === "playtest")?.scenarios?.[0];
+
+    assert.equal(result.exitCode, 1);
+    assert.ok(Buffer.byteLength(JSON.stringify(scenario), "utf8") <= 2048);
+    assert.equal((scenario as { truncated?: boolean }).truncated, true);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
 test("should copy latest artifacts to a timestamped directory when keep is set", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-iterate-keep-"));
   try {
@@ -146,3 +233,52 @@ test("should copy latest artifacts to a timestamped directory when keep is set",
     await rm(root, { force: true, recursive: true });
   }
 });
+
+function passingIterateOptions(root: string): Parameters<typeof iterateCommand>[2] {
+  return {
+    build: async () => ({
+      exitCode: 0,
+      stdout: `${JSON.stringify({ code: "TN_BUILD_OK", bundlePath: join(root, "dist", "game.bundle") })}\n`,
+    }),
+    capture: async ({ outPath, url }) => ({
+      byteSize: 42,
+      capturedAt: "2026-07-06T00:00:00.000Z",
+      checks: { canvas: { height: 720, ok: true, width: 1280 } },
+      diagnostics: [],
+      outPath,
+      runtimeReady: { ok: true },
+      url,
+      viewport: { height: 720, width: 1280 },
+    }),
+    startPreview: async () => ({ close: async () => undefined, url: "http://127.0.0.1:1" }),
+    validate: async () => ({
+      exitCode: 0,
+      stdout: `${JSON.stringify({ code: "TN_AUTHORING_VALIDATE_OK", diagnostics: [], ok: true })}\n`,
+    }),
+  };
+}
+
+function playtestSummaryResult(
+  scenario: string,
+  pass: boolean,
+  overrides: {
+    assertions?: Array<{ details?: Record<string, unknown>; id: string; pass: boolean }>;
+    diagnostics?: Array<{ code: string; message: string; severity: "error"; systemId?: string }>;
+  } = {},
+): { exitCode: number; stdout: string } {
+  return {
+    exitCode: pass ? 0 : 1,
+    stdout: `${JSON.stringify({
+      artifacts: {
+        directory: `artifacts/playtest/${scenario}`,
+        summary: `artifacts/playtest/${scenario}/summary.json`,
+      },
+      assertions: overrides.assertions ?? [{ details: { distance: 1, threshold: 0.01 }, id: "movement", pass: true }],
+      code: pass ? "TN_PLAYTEST_OK" : "TN_PLAYTEST_FAILED",
+      diagnostics: overrides.diagnostics ?? [],
+      pass,
+      scenario,
+      schema: "threenative.playtest-summary",
+    })}\n`,
+  };
+}

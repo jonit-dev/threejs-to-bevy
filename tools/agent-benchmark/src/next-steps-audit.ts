@@ -44,6 +44,7 @@ interface ISessionCostMeasurement {
     build?: string;
     gamePlanApply?: string;
     manualEdits?: number;
+    authoredScenarios?: number;
     playtest?: string;
     scaffold?: string;
     scenario?: string;
@@ -82,6 +83,7 @@ export async function auditNextSteps(options: INextStepsAuditOptions): Promise<I
 
   requirements.push(rootCauseRequirement(playtestAssertionsText, playtestAssertionsTestText));
   requirements.push(deterministicFrictionRequirement(typedSpecRecipe));
+  requirements.push(churnBudgetRequirement(matrixReport));
   requirements.push(matrixRequirement(matrixResult, roundStatus));
   requirements.push(stepLeverRequirement(typedSpecRecipe, apiCardText));
   requirements.push(decisionRuleRequirement(protocolText));
@@ -144,13 +146,29 @@ function deterministicFrictionRequirement(measurement: ISessionCostMeasurement |
     evidence.push(`typed-spec recipe failedCommandCount=${measurement.failedCommandCount ?? "unknown"}.`);
     evidence.push(`typed-spec recipe manualEditCount=${measurement.manualEditCount ?? "unknown"}.`);
     if (acceptance !== undefined) {
-      evidence.push(`CLI acceptance scaffold=${acceptance.scaffold ?? "unknown"}, apply=${acceptance.gamePlanApply ?? "unknown"}, build=${acceptance.build ?? "unknown"}, playtest=${acceptance.playtest ?? "unknown"}, manualEdits=${acceptance.manualEdits ?? "unknown"}.`);
+      evidence.push(`CLI acceptance scaffold=${acceptance.scaffold ?? "unknown"}, apply=${acceptance.gamePlanApply ?? "unknown"}, build=${acceptance.build ?? "unknown"}, playtest=${acceptance.playtest ?? "unknown"}, manualEdits=${acceptance.manualEdits ?? "unknown"}, authoredScenarios=${acceptance.authoredScenarios ?? "unknown"}.`);
     }
-    if (measurement.failedCommandCount !== 0 || measurement.manualEditCount !== 0 || acceptance?.manualEdits !== 0 || acceptance?.scaffold !== "pass" || acceptance?.gamePlanApply !== "pass" || acceptance?.build !== "pass" || acceptance?.playtest !== "pass") {
+    if (measurement.failedCommandCount !== 0 || measurement.manualEditCount !== 0 || acceptance?.manualEdits !== 0 || acceptance?.authoredScenarios !== 0 || acceptance?.scaffold !== "pass" || acceptance?.gamePlanApply !== "pass" || acceptance?.build !== "pass" || acceptance?.playtest !== "pass") {
       diagnostics.push(error("TN_BENCH_NEXT_STEPS_ACCEPTANCE_INCOMPLETE", "Typed-spec scaffold/apply/build/playtest acceptance is not all pass with zero manual edits."));
     }
   }
   return requirement("deterministic-frictions", "Five deterministic frictions have CLI acceptance proof", evidence, diagnostics);
+}
+
+function churnBudgetRequirement(matrixReport: IBenchmarkReport | undefined): INextStepsAuditRequirement {
+  const evidence: string[] = [];
+  const diagnostics: IBenchmarkDiagnostic[] = [];
+  if (matrixReport === undefined) {
+    diagnostics.push(error("TN_BENCH_NEXT_STEPS_CHURN_BUDGETS_MISSING", "Matrix report is required to inspect per-run churn budgets."));
+    return requirement("churn-budgets", "Per-run churn budgets are green before confirmation rerun", evidence, diagnostics);
+  }
+  const budgetRuns = matrixReport.promptSummaries.flatMap((summary) => summary.behaviorBudgetRuns ?? []);
+  evidence.push(`behavior budget runs=${budgetRuns.length}, failing=${budgetRuns.filter((run) => run.withinBudget === false).length}.`);
+  const failing = budgetRuns.filter((run) => run.withinBudget === false);
+  if (failing.length > 0) {
+    diagnostics.push(error("TN_BENCH_NEXT_STEPS_CHURN_BUDGETS_RED", `Per-run churn budgets are red for: ${failing.map((run) => run.runId).join(", ")}.`));
+  }
+  return requirement("churn-budgets", "Per-run churn budgets are green before confirmation rerun", evidence, diagnostics);
 }
 
 function matrixRequirement(matrixResult: { diagnostics: IBenchmarkDiagnostic[]; ok: boolean }, roundStatus: IPreparedRoundStatus | undefined): INextStepsAuditRequirement {

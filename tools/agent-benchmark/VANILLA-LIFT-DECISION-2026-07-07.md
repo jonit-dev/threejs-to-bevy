@@ -48,3 +48,31 @@ Before changing this decision, collect at least:
 
 Only start the lift subset/prototype if that matrix shows direct ThreeNative
 and typed-spec remain non-viable against the PRD-018 thresholds.
+
+## Addendum: round-5 collector matrix complete (2026-07-07, later)
+
+`tools/verify/artifacts/agent-benchmark/round-5-collector-prep-2026-07-07/benchmark-report.json`
+now contains 9/9 proof-passing scored runs (3 typed-spec, 3 direct
+ThreeNative, 3 vanilla) for the collector prompt. Results:
+
+- Direct ThreeNative: 1.45M median tokens (6.29x raw / 4.02x cost-weighted
+  vs vanilla), 35 median steps, 2 median failed commands. Fails the
+  equal-proof gate on tokens, steps, and failed commands.
+- Typed-spec: 1.63M median tokens (1.12x direct TN), 4 median failed
+  commands. Remains `experimental`; does not become default.
+- Vanilla: 231K median tokens, 13 steps, 0 failed commands, passes the
+  equal-proof assertion bar.
+
+Gate result: the strict PRD-018 trigger is still not met, because the
+trigger requires failed-command median 0 ("friction demonstrably dead")
+before the token comparison counts, and fresh-session medians are 2 and 4.
+But the residual gap is structural: friction removal alone cannot close
+6.3x to 1.5x when the median run spends ~16 of 35 steps on discovery and
+verification churn (6 artifact-forensics, 4 engine-source searches, 6
+standalone verifies, 0 `tn iterate` uses).
+
+Decision update: still do not start the lift compiler prototype. Next
+evidence: the same 3x3 matrix on lane-runner, checkpoint-race, and
+physics-knockdown, run after the measured step classes are engineered out.
+PRD-018 Phase 2 (supported-subset spec, paper-only) is cheap enough to
+draft in parallel without prejudging the decision.

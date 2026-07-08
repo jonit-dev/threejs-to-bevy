@@ -222,6 +222,15 @@ test("should apply collector scaffold to a fresh starter", async () => {
       name: string;
       steps: Array<{ press?: string }>;
     };
+    const pickupScenario = JSON.parse(await readFile(join(root, "playtests/top-down-collector-pickup.playtest.json"), "utf8")) as {
+      assert?: { contacts?: unknown[]; hud?: unknown[]; resources?: unknown[] };
+    };
+    const winScenario = JSON.parse(await readFile(join(root, "playtests/top-down-collector-win-state.playtest.json"), "utf8")) as {
+      assert?: { hud?: Array<{ textIncludes?: string }>; resources?: Array<{ path?: string }> };
+    };
+    const retryScenario = JSON.parse(await readFile(join(root, "playtests/top-down-collector-retry.playtest.json"), "utf8")) as {
+      steps: Array<{ press?: string }>;
+    };
     const smokeScenario = JSON.parse(await readFile(join(root, "playtests/smoke-movement.playtest.json"), "utf8")) as {
       assert?: { movement?: { entity?: string } };
       subject?: string;
@@ -245,12 +254,18 @@ test("should apply collector scaffold to a fresh starter", async () => {
     assert.equal(payload.applied[0]?.recipe, "top-down-collector");
     assert.equal(payload.applied[0]?.filesWritten.includes("src/scripts/player.ts"), true);
     assert.equal(payload.scenarioPaths.includes("playtests/top-down-collector.playtest.json"), true);
-    assert.equal(payload.proofCommand.includes("--scenario playtests/top-down-collector.playtest.json"), true);
+    assert.equal(payload.proofCommand, "tn iterate --project . --json");
     assert.equal(payload.plannedWrites.includes("input.add_axis"), true);
     assert.match(script, /export function topDownCollectorSystem/);
     assert.equal(scenario.name, "top-down-collector");
     assert.equal(scenario.steps[0]?.press, "KeyD");
     assert.equal(scenario.assert?.movement?.entity, "scaffold.player");
+    assert.equal(pickupScenario.assert?.contacts, undefined);
+    assert.equal(pickupScenario.assert?.resources?.length, 1);
+    assert.equal(pickupScenario.assert?.hud?.length, 1);
+    assert.equal(winScenario.assert?.resources?.[0]?.path, "won");
+    assert.equal(winScenario.assert?.hud?.[0]?.textIncludes, "All pickups collected");
+    assert.equal(retryScenario.steps.some((step) => step.press === "KeyR"), true);
     assert.equal(smokeScenario.subject, "scaffold.player");
     assert.equal(smokeScenario.assert?.movement?.entity, "scaffold.player");
     assert.equal(systemsDocument.systems.some((system) => system.id === "move-player-to-goal"), false);
@@ -260,7 +275,12 @@ test("should apply collector scaffold to a fresh starter", async () => {
     assert.equal(uiDocument.bindings.some((binding) => binding.node === "hud.progress" && binding.resource === "GameState.scoreText"), true);
     assert.equal(evidence.schema, "threenative.game-scaffold-first");
     assert.equal(evidence.recipeId, "top-down-collector");
-    assert.deepEqual(evidence.scenarioPaths, ["playtests/top-down-collector.playtest.json"]);
+    assert.deepEqual(evidence.scenarioPaths, [
+      "playtests/top-down-collector.playtest.json",
+      "playtests/top-down-collector-pickup.playtest.json",
+      "playtests/top-down-collector-win-state.playtest.json",
+      "playtests/top-down-collector-retry.playtest.json",
+    ]);
   } finally {
     await rm(root, { force: true, recursive: true });
   }
@@ -324,6 +344,8 @@ test("should apply lane-runner scaffold to a fresh starter", async () => {
     assert.equal(payload.ok, true);
     assert.equal(payload.applied[0]?.recipe, "lane-runner");
     assert.equal(payload.scenarioPaths.includes("playtests/lane-runner.playtest.json"), true);
+    assert.equal(payload.scenarioPaths.includes("playtests/lane-runner-win-state.playtest.json"), true);
+    assert.equal(payload.scenarioPaths.includes("playtests/lane-runner-retry.playtest.json"), true);
     assert.equal(payload.iterateArtifactPath, "artifacts/iterate/latest/report.json");
     assert.equal(payload.plannedWrites.includes("input.add_action"), true);
     assert.match(script, /export function laneRunnerSystem/);

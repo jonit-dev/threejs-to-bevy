@@ -4,7 +4,7 @@ import { dirname, resolve } from "node:path";
 import { getProofContract, requiredAssertionIds, validateProofResult } from "./proof-contract.js";
 import { isBenchmarkRunReport } from "./schemas.js";
 import { sessionMetricEvidenceDiagnostics } from "./session-evidence.js";
-import { type BenchmarkPromptClass, type IBenchmarkBehaviorCounters, type IBenchmarkDiagnostic, type IBenchmarkReport, type IBenchmarkRunReport } from "./types.js";
+import { type BenchmarkPromptClass, type IBenchmarkBehaviorBudgetRun, type IBenchmarkBehaviorCounters, type IBenchmarkDiagnostic, type IBenchmarkReport, type IBenchmarkRunReport } from "./types.js";
 
 const CACHED_INPUT_TOKEN_WEIGHT = 0.1;
 const EQUAL_PROOF_CONTINUITY_RATIO = 1.5;
@@ -16,7 +16,15 @@ const MAX_CONSECUTIVE_SAME_DIAGNOSTIC_BUDGET = 1;
 const THREENATIVE_STEP_BUDGET = 30;
 
 interface IRunWithBehavior {
-  behavior?: IBenchmarkBehaviorCounters;
+  behavior?: IBenchmarkBehaviorCounters & {
+    commands: {
+      artifactForensics: string[];
+      discovery: string[];
+      engineSourceSearch: string[];
+      iterate: string[];
+      standaloneVerify: string[];
+    };
+  };
   report: IBenchmarkRunReport;
 }
 
@@ -78,6 +86,7 @@ export async function aggregateRunReports(paths: readonly string[]): Promise<IBe
       iterateCommandCount: behaviorMedianMetric(threenativeRuns, (behavior) => behavior.iterateCommandCount),
       standaloneVerifyCommandCount: behaviorMedianMetric(threenativeRuns, (behavior) => behavior.standaloneVerifyCommandCount),
     };
+    const behaviorBudgetRuns = promptRunsWithProofDiagnostics.flatMap(behaviorBudgetRun);
     const withinInstructionAdoptionBudget = instructionAdoptionBudget(behaviorMedian);
     const rawTokenRatio = ratio(threenativeMedianTokens, vanillaMedianTokens);
     const promptClassification: BenchmarkPromptClass | "unknown" = promptContract?.classification ?? "unknown";
@@ -90,6 +99,7 @@ export async function aggregateRunReports(paths: readonly string[]): Promise<IBe
         && (threenativeMedianMaxSameDiagnostic ?? 0) <= MAX_CONSECUTIVE_SAME_DIAGNOSTIC_BUDGET;
     const summary = {
       behaviorMedian,
+      behaviorBudgetRuns,
       costWeightedTokenRatio: ratio(threenativeMedianCostWeightedTokens, vanillaMedianCostWeightedTokens),
       dialectConfusionFailures: {
         threenative: dialectConfusionFailureCount(promptRuns.filter((run) => run.condition === "threenative")),
@@ -154,6 +164,7 @@ export async function aggregateRunReports(paths: readonly string[]): Promise<IBe
       withinStepBudget: threenativeMedianToolStepCount === null ? null : threenativeMedianToolStepCount <= THREENATIVE_STEP_BUDGET,
     };
     diagnostics.push(...matrixDiagnostics(summary));
+    diagnostics.push(...behaviorBudgetRuns.flatMap((run) => run.diagnostics));
     return summary;
   });
   const comparable = promptSummaries.filter((summary) => summary.withinEqualProofTokenBudget !== null);
@@ -164,6 +175,7 @@ export async function aggregateRunReports(paths: readonly string[]): Promise<IBe
     || summary.withinFailedCommandBudget === false
     || summary.withinRetryChainBudget === false
     || summary.withinInstructionAdoptionBudget === false
+    || summary.behaviorBudgetRuns.some((run) => !run.withinBudget)
   );
   const hasErrorDiagnostics = diagnostics.some((diagnostic) => diagnostic.severity === "error");
   const status = comparable.length === 0 ? "insufficient-data" : failed.length === 0 && !hasErrorDiagnostics ? "pass" : "fail";
@@ -188,6 +200,10 @@ export async function aggregateRunReports(paths: readonly string[]): Promise<IBe
     },
     version: 2,
   };
+}
+
+export async function readBehaviorBudgetRun(runReportPath: string, report: IBenchmarkRunReport): Promise<IBenchmarkBehaviorBudgetRun | undefined> {
+  return behaviorBudgetRun({ behavior: await readBehaviorCounters(runReportPath), report })[0];
 }
 
 function matrixDiagnostics(summary: IBenchmarkReport["promptSummaries"][number]): IBenchmarkDiagnostic[] {
@@ -217,6 +233,63 @@ function matrixDiagnostics(summary: IBenchmarkReport["promptSummaries"][number])
     });
   }
   return diagnostics;
+}
+
+function behaviorBudgetRun(run: IRunWithBehavior): IBenchmarkBehaviorBudgetRun[] {
+  if (run.behavior === undefined || (run.report.condition !== "threenative" && run.report.condition !== "typed-spec")) {
+    return [];
+  }
+  const diagnostics: IBenchmarkDiagnostic[] = [];
+  const counters: IBenchmarkBehaviorCounters = {
+    artifactForensicsCommandCount: run.behavior.artifactForensicsCommandCount,
+    discoveryCommandCount: run.behavior.discoveryCommandCount,
+    engineSourceSearchCommandCount: run.behavior.engineSourceSearchCommandCount,
+    iterateCommandCount: run.behavior.iterateCommandCount,
+    standaloneVerifyCommandCount: run.behavior.standaloneVerifyCommandCount,
+  };
+  if (counters.engineSourceSearchCommandCount !== 0) {
+    diagnostics.push(churnDiagnostic("TN_BENCH_BEHAVIOR_ENGINE_SOURCE_SEARCH_EXCEEDED", run, counters.engineSourceSearchCommandCount, "engine source search", run.behavior.commands.engineSourceSearch));
+  }
+  if (counters.standaloneVerifyCommandCount !== 0) {
+    diagnostics.push(churnDiagnostic("TN_BENCH_BEHAVIOR_STANDALONE_VERIFY_EXCEEDED", run, counters.standaloneVerifyCommandCount, "standalone verify", run.behavior.commands.standaloneVerify));
+  }
+  if (counters.artifactForensicsCommandCount > 1) {
+    diagnostics.push(churnDiagnostic("TN_BENCH_BEHAVIOR_FORENSICS_EXCEEDED", run, counters.artifactForensicsCommandCount, "artifact forensics", run.behavior.commands.artifactForensics));
+  }
+  if (counters.iterateCommandCount < 1) {
+    diagnostics.push(churnDiagnostic("TN_BENCH_BEHAVIOR_ITERATE_MISSING", run, counters.iterateCommandCount, "iterate", []));
+  }
+  if (counters.discoveryCommandCount < 1) {
+    diagnostics.push(churnDiagnostic("TN_BENCH_BEHAVIOR_DISCOVERY_MISSING", run, counters.discoveryCommandCount, "discovery", []));
+  }
+  return [{
+    condition: run.report.condition,
+    counters,
+    diagnostics,
+    offendingCommands: {
+      artifactForensics: run.behavior.commands.artifactForensics,
+      engineSourceSearch: run.behavior.commands.engineSourceSearch,
+      standaloneVerify: run.behavior.commands.standaloneVerify,
+    },
+    runId: run.report.runId,
+    withinBudget: diagnostics.length === 0,
+  }];
+}
+
+function churnDiagnostic(
+  code: IBenchmarkDiagnostic["code"],
+  run: IRunWithBehavior,
+  count: number,
+  label: string,
+  commands: readonly string[],
+): IBenchmarkDiagnostic {
+  const commandText = commands.length === 0 ? "none" : commands.map((command) => `"${command}"`).join("; ");
+  return {
+    code,
+    message: `${run.report.runId}: ${label} budget exceeded with count ${count}. Offending commands: ${commandText}.`,
+    severity: "error",
+    suggestedFix: "Use tn game plan, tn playtest schema/scaffold, and tn iterate instead of engine-source searches, standalone proof commands, or artifact forensics.",
+  };
 }
 
 function typedSpecTrialSummary(options: {
@@ -314,8 +387,8 @@ function metricMedian(runs: readonly IRunWithBehavior[], read: (run: IBenchmarkR
   return median(runs.map((run) => read(run.report)).filter((value): value is number => typeof value === "number" && Number.isFinite(value)));
 }
 
-function behaviorMedianMetric(runs: readonly IRunWithBehavior[], read: (behavior: IBenchmarkBehaviorCounters) => number): number | null {
-  return median(runs.map((run) => run.behavior).filter((behavior): behavior is IBenchmarkBehaviorCounters => behavior !== undefined).map(read));
+function behaviorMedianMetric(runs: readonly IRunWithBehavior[], read: (behavior: NonNullable<IRunWithBehavior["behavior"]>) => number): number | null {
+  return median(runs.map((run) => run.behavior).filter((behavior): behavior is NonNullable<IRunWithBehavior["behavior"]> => behavior !== undefined).map(read));
 }
 
 function costWeightedTokens(run: IBenchmarkRunReport): number {
@@ -345,7 +418,7 @@ function instructionAdoptionBudget(behavior: {
     && (behavior.iterateCommandCount ?? 0) >= 1;
 }
 
-async function readBehaviorCounters(runReportPath: string): Promise<IBenchmarkBehaviorCounters | undefined> {
+async function readBehaviorCounters(runReportPath: string): Promise<IRunWithBehavior["behavior"] | undefined> {
   const eventsPath = await findEventsPath(runReportPath);
   if (eventsPath === undefined) {
     return undefined;
@@ -361,12 +434,24 @@ async function readBehaviorCounters(runReportPath: string): Promise<IBenchmarkBe
     .filter(Boolean)
     .map(commandFromEvent)
     .filter((command): command is string => command !== undefined);
+  const artifactForensics = commands.filter(isArtifactForensicsCommand);
+  const discovery = commands.filter(isDiscoveryCommand);
+  const engineSourceSearch = commands.filter(isEngineSourceSearchCommand);
+  const iterate = commands.filter((command) => /\btn\s+(?:--\s+)?iterate\b/.test(command));
+  const standaloneVerify = commands.filter(isStandaloneVerifyCommand);
   return {
-    artifactForensicsCommandCount: commands.filter(isArtifactForensicsCommand).length,
-    discoveryCommandCount: commands.filter(isDiscoveryCommand).length,
-    engineSourceSearchCommandCount: commands.filter(isEngineSourceSearchCommand).length,
-    iterateCommandCount: commands.filter((command) => /\btn\s+(?:--\s+)?iterate\b/.test(command)).length,
-    standaloneVerifyCommandCount: commands.filter(isStandaloneVerifyCommand).length,
+    artifactForensicsCommandCount: artifactForensics.length,
+    commands: {
+      artifactForensics,
+      discovery,
+      engineSourceSearch,
+      iterate,
+      standaloneVerify,
+    },
+    discoveryCommandCount: discovery.length,
+    engineSourceSearchCommandCount: engineSourceSearch.length,
+    iterateCommandCount: iterate.length,
+    standaloneVerifyCommandCount: standaloneVerify.length,
   };
 }
 

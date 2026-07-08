@@ -41,9 +41,25 @@ test("should pass next-steps audit when matrix and acceptance evidence are compl
   assert.equal(result.requirements.every((requirement) => requirement.status !== "incomplete"), true);
 });
 
+test("should block confirmation rerun when churn budgets are not green", async () => {
+  const fixture = await writeFixture({ threenativeRepeats: 3, typedSpecRepeats: 3, vanillaRepeats: 3 }, { churnBudgetFail: true, scored: true });
+
+  const result = await auditNextSteps({
+    matrixReportPath: fixture.matrixReportPath,
+    protocolPath: fixture.protocolPath,
+    root: fixture.root,
+    roundManifestPath: fixture.roundManifestPath,
+    sessionCostReportPath: fixture.sessionCostReportPath,
+  });
+
+  assert.equal(result.ok, false);
+  assert.equal(result.requirements.find((requirement) => requirement.id === "churn-budgets")?.status, "incomplete");
+  assert.equal(result.diagnostics.some((diagnostic) => diagnostic.code === "TN_BENCH_NEXT_STEPS_CHURN_BUDGETS_RED"), true);
+});
+
 async function writeFixture(
   repeats: { threenativeRepeats: number; typedSpecRepeats: number; vanillaRepeats: number },
-  options: { scored?: boolean } = {},
+  options: { churnBudgetFail?: boolean; scored?: boolean } = {},
 ): Promise<{
   matrixReportPath: string;
   protocolPath: string;
@@ -52,7 +68,7 @@ async function writeFixture(
   sessionCostReportPath: string;
 }> {
   const root = await mkdtemp(join(tmpdir(), "tn-next-steps-audit-"));
-  await writeFileJson(join(root, "matrix-report.json"), report(repeats));
+  await writeFileJson(join(root, "matrix-report.json"), report(repeats, options));
   await writeFileJson(join(root, "session-cost.json"), sessionCostReport());
   await writeText(join(root, "ROUND-5-PROTOCOL.md"), "## Post-Friction Pre-Commitment\nflip the starter default\nPRD-018 vanilla-lift trigger\nruntime diagnosability\nwrite the next PRD\n");
   await writeText(join(root, "packages/cli/src/commands/playtestAssertions.ts"), "TN_PLAYTEST_RESOURCE_STATE_STAGNATED effect-log.json observed values stayed\n");
@@ -102,6 +118,7 @@ function sessionCostReport(): unknown {
     artifacts: {
       measurements: [{
         acceptance: {
+          authoredScenarios: 0,
           build: "pass",
           gamePlanApply: "pass",
           manualEdits: 0,
@@ -119,7 +136,52 @@ function sessionCostReport(): unknown {
   };
 }
 
-function report(options: { threenativeRepeats: number; typedSpecRepeats: number; vanillaRepeats: number }): IBenchmarkReport {
+function behaviorBudgetRuns(fail: boolean): IBenchmarkReport["promptSummaries"][number]["behaviorBudgetRuns"] {
+  if (fail) {
+    return [{
+      condition: "threenative",
+      counters: {
+        artifactForensicsCommandCount: 0,
+        discoveryCommandCount: 1,
+        engineSourceSearchCommandCount: 1,
+        iterateCommandCount: 1,
+        standaloneVerifyCommandCount: 0,
+      },
+      diagnostics: [{
+        code: "TN_BENCH_BEHAVIOR_ENGINE_SOURCE_SEARCH_EXCEEDED",
+        message: "collector-threenative-r1: engine source search budget exceeded.",
+        severity: "error",
+      }],
+      offendingCommands: {
+        artifactForensics: [],
+        engineSourceSearch: ["rg playtest packages/cli/src"],
+        standaloneVerify: [],
+      },
+      runId: "collector-threenative-r1",
+      withinBudget: false,
+    }];
+  }
+  return [{
+    condition: "typed-spec",
+    counters: {
+      artifactForensicsCommandCount: 0,
+      discoveryCommandCount: 1,
+      engineSourceSearchCommandCount: 0,
+      iterateCommandCount: 1,
+      standaloneVerifyCommandCount: 0,
+    },
+    diagnostics: [],
+    offendingCommands: {
+      artifactForensics: [],
+      engineSourceSearch: [],
+      standaloneVerify: [],
+    },
+    runId: "typed-spec-recipe-top-down-collector",
+    withinBudget: true,
+  }];
+}
+
+function report(options: { threenativeRepeats: number; typedSpecRepeats: number; vanillaRepeats: number }, fixtureOptions: { churnBudgetFail?: boolean } = {}): IBenchmarkReport {
   return {
     diagnostics: [],
     dialectConfusionFailureCount: 0,
@@ -132,6 +194,7 @@ function report(options: { threenativeRepeats: number; typedSpecRepeats: number;
         iterateCommandCount: null,
         standaloneVerifyCommandCount: null,
       },
+      behaviorBudgetRuns: behaviorBudgetRuns(fixtureOptions.churnBudgetFail === true),
       costWeightedTokenRatio: null,
       dialectConfusionFailures: { threenative: 0, vanilla: 0 },
       failedCommandMedian: { threenative: null, vanilla: null },

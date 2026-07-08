@@ -169,6 +169,40 @@ test("should count instruction-adoption behavior from codex event sidecars", asy
   assert.equal(summary?.behaviorMedian.artifactForensicsCommandCount, 1);
   assert.equal(summary?.behaviorMedian.engineSourceSearchCommandCount, 1);
   assert.equal(summary?.withinInstructionAdoptionBudget, false);
+  assert.equal(summary?.behaviorBudgetRuns.length, 3);
+  assert.equal(report.diagnostics.some((diagnostic) => diagnostic.code === "TN_BENCH_BEHAVIOR_STANDALONE_VERIFY_EXCEEDED"), true);
+  assert.equal(report.diagnostics.some((diagnostic) => diagnostic.code === "TN_BENCH_BEHAVIOR_ENGINE_SOURCE_SEARCH_EXCEEDED"), true);
+});
+
+test("should emit engine-source-search diagnostic with offending command when budget exceeded", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-agent-benchmark-behavior-budget-"));
+  const paths = await writeRepeatedRunReports(root, { threenativeTokens: 1000, vanillaTokens: 1000 });
+  await writeFile(
+    join(root, "codex-events.jsonl"),
+    [
+      commandEvent("tn game plan --goal test --project . --json"),
+      commandEvent("tn iterate --project . --json"),
+      commandEvent("rg \"evaluateRichPlaytestAssertions\" packages/cli/src/commands/playtestAssertions.ts"),
+    ].join("\n"),
+  );
+
+  const report = await aggregateRunReports(paths);
+  const diagnostic = report.diagnostics.find((candidate) => candidate.code === "TN_BENCH_BEHAVIOR_ENGINE_SOURCE_SEARCH_EXCEEDED");
+
+  assert.equal(report.verdict.status, "fail");
+  assert.match(diagnostic?.message ?? "", /rg "evaluateRichPlaytestAssertions" packages\/cli\/src\/commands\/playtestAssertions\.ts/);
+  assert.equal(report.promptSummaries[0]?.behaviorBudgetRuns.every((run) => run.withinBudget === false), true);
+});
+
+test("should keep old reports admissible when behavior counters are absent", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-agent-benchmark-no-behavior-"));
+  const paths = await writeRepeatedRunReports(root, { threenativeTokens: 1000, vanillaTokens: 1000 });
+
+  const report = await aggregateRunReports(paths);
+
+  assert.equal(report.verdict.status, "pass");
+  assert.equal(report.promptSummaries[0]?.behaviorBudgetRuns.length, 0);
+  assert.equal(report.diagnostics.some((diagnostic) => diagnostic.code.startsWith("TN_BENCH_BEHAVIOR_")), false);
 });
 
 test("should read behavior sidecars from scorer candidate layout", async () => {

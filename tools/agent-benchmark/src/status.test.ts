@@ -66,6 +66,37 @@ test("should report scored slots when sessions and run reports exist", async () 
   assert.equal(status.slots[0]?.runReportPath, runReportPath);
 });
 
+test("should surface behavior budget results for scored slots", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-agent-benchmark-status-"));
+  const result = await prepareRound({
+    conditions: ["typed-spec"],
+    outDir: join(root, "round-5"),
+    promptId: "collector",
+    promptsDir: "prompts",
+    repeats: 1,
+    root: process.cwd(),
+  });
+  const candidate = requireCandidate(result.candidates[0]);
+  await writeFile(join(candidate.path, "session.json"), `${JSON.stringify(session(candidate), null, 2)}\n`, "utf8");
+  await writeFile(join(candidate.path, "codex-events.jsonl"), [
+    event("rg \"playtest\" packages/cli/src"),
+    event("tn iterate --project . --json"),
+    event("tn game plan --goal collector --json"),
+  ].join("\n"), "utf8");
+  const runReportPath = join(root, "round-5", candidate.runId, "run-report.json");
+  await mkdir(dirname(runReportPath), { recursive: true });
+  await writeFile(runReportPath, `${JSON.stringify(runReport(candidate, { proofOk: true }), null, 2)}\n`, "utf8");
+
+  const status = await inspectPreparedRound(result.manifestPath);
+  const behaviorBudget = status.slots[0]?.behaviorBudget;
+
+  assert.equal(status.slots[0]?.status, "scored");
+  assert.equal(behaviorBudget?.withinBudget, false);
+  assert.equal(behaviorBudget?.counters.engineSourceSearchCommandCount, 1);
+  assert.deepEqual(behaviorBudget?.offendingCommands.engineSourceSearch, ["rg \"playtest\" packages/cli/src"]);
+  assert.equal(behaviorBudget?.diagnostics.some((diagnostic) => diagnostic.code === "TN_BENCH_BEHAVIOR_ENGINE_SOURCE_SEARCH_EXCEEDED"), true);
+});
+
 test("should report run-report missing after session is filled", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-agent-benchmark-status-"));
   const result = await prepareRound({
@@ -267,6 +298,10 @@ function session(candidate: { condition: BenchmarkCondition; runId: string }): u
     toolStepCount: 1,
     version: 2,
   };
+}
+
+function event(command: string): string {
+  return JSON.stringify({ item: { command, type: "command_execution" } });
 }
 
 function runReport(candidate: { condition: BenchmarkCondition; path: string; runId: string }, options: { proofOk: boolean }): unknown {

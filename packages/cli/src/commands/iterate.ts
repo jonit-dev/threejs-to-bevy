@@ -8,6 +8,7 @@ import { buildCommand } from "./build.js";
 import { playtestCommand } from "./playtest.js";
 import { captureScreenshot, type IScreenshotProofReport } from "./visualProof.js";
 import { type IteratePreviewStarter, withIteratePreview } from "./iteratePreview.js";
+import { summarizePlaytestForIterate, type IPlaytestIterateSummary } from "./playtestArtifacts.js";
 
 interface IIterateCommandOptions {
   build?: (projectPath: string) => Promise<ICommandResult>;
@@ -38,9 +39,12 @@ interface IIterateCompactSummary {
     artifactPaths?: string[];
     diagnostic?: IIterateDiagnostic;
     id: IIterateStepReport["id"];
+    scenarios?: IIterateCompactScenario[];
     status: IIterateStepReport["status"];
   }>;
 }
+
+type IIterateCompactScenario = IPlaytestIterateSummary | { pass: true; scenario: string };
 
 export async function iterateCommand(
   argv: readonly string[],
@@ -121,19 +125,21 @@ export async function iterateCommand(
         diagnostics: [{ code: "TN_ITERATE_PLAYTEST_SKIPPED", message: "Playtest step skipped by --skip-playtest.", severity: "info" }],
       };
     }
-    const scenario = scenarioFlag ?? await firstScenario(projectPath);
-    if (scenario === undefined) {
+    const scenarios = scenarioFlag === undefined ? await allScenarios(projectPath) : [scenarioFlag];
+    if (scenarios.length === 0) {
       return {
         diagnostics: [{ code: "TN_ITERATE_NO_SCENARIO", message: "No playtests/*.playtest.json scenario found; playtest step skipped.", severity: "info" }],
       };
     }
     const playtestDir = resolve(latestDir, "playtest");
-    const result = await (options.playtest ?? defaultPlaytest)(["--project", projectPath, "--scenario", scenario, "--out", playtestDir, "--json"], projectPath);
-    const parsed = parseJsonPayload(result.stdout);
+    const results = await runPlaytestScenarios({ playtest: options.playtest ?? defaultPlaytest, playtestDir, projectPath, scenarios });
     return {
-      artifacts: isRecord(parsed) && isRecord(parsed.artifacts) ? parsed.artifacts : { directory: playtestDir },
-      diagnostics: result.exitCode === 0 ? normalizeDiagnostics(readDiagnostics(parsed)) : commandDiagnostics(result, parsed),
-      output: parsed,
+      artifacts: { directory: playtestDir, summaries: results.scenarioSummaries.map((summary) => summary.artifact).filter((item): item is string => item !== undefined) },
+      diagnostics: results.diagnostics,
+      output: {
+        scenarioCount: scenarios.length,
+        scenarios: results.scenarioSummaries,
+      },
     };
   });
 
@@ -188,12 +194,53 @@ function compactSummary(report: IIterateReport): IIterateCompactSummary {
     ok: report.ok,
     projectPath: report.projectPath,
     steps: report.steps.map((step) => ({
-      artifactPaths: artifactPaths(step.artifacts).slice(0, 4),
+      ...(step.id === "playtest" ? {} : { artifactPaths: artifactPaths(step.artifacts).slice(0, 2) }),
       diagnostic: step.diagnostics.find((diagnostic) => diagnostic.severity === "error"),
       id: step.id,
+      ...(step.id !== "playtest" || !isRecord(step.output) || !Array.isArray(step.output.scenarios) ? {} : { scenarios: compactScenarios(step.output.scenarios) }),
       status: step.status,
     })),
   };
+}
+
+function compactScenarios(values: readonly unknown[]): IIterateCompactScenario[] {
+  return values
+    .filter(isPlaytestIterateSummary)
+    .map((scenario) => scenario.pass ? { pass: true, scenario: scenario.scenario } : scenario);
+}
+
+async function runPlaytestScenarios(options: {
+  playtest: NonNullable<IIterateCommandOptions["playtest"]>;
+  playtestDir: string;
+  projectPath: string;
+  scenarios: readonly string[];
+}): Promise<{ diagnostics: IIterateDiagnostic[]; scenarioSummaries: IPlaytestIterateSummary[] }> {
+  const diagnostics: IIterateDiagnostic[] = [];
+  const scenarioSummaries: IPlaytestIterateSummary[] = [];
+  for (const scenario of options.scenarios) {
+    const scenarioOut = resolve(options.playtestDir, safeFilePart(scenario.replace(/\.playtest\.json$/, "")));
+    const result = await options.playtest(["--project", options.projectPath, "--scenario", scenario, "--out", scenarioOut, "--json"], options.projectPath);
+    const parsed = parseJsonPayload(result.stdout);
+    if (isPlaytestSummaryPayload(parsed)) {
+      const summary = summarizePlaytestForIterate(parsed);
+      scenarioSummaries.push(summary);
+      diagnostics.push(...normalizeDiagnostics(readDiagnostics(parsed)));
+      if (result.exitCode !== 0 && !diagnostics.some((diagnostic) => diagnostic.severity === "error")) {
+        diagnostics.push({ code: "TN_ITERATE_PLAYTEST_SCENARIO_FAILED", message: `Playtest scenario '${scenario}' failed.`, scenario, severity: "error" });
+      }
+    } else {
+      diagnostics.push(...commandDiagnostics(result, parsed).map((diagnostic) => ({ ...diagnostic, scenario })));
+      scenarioSummaries.push({
+        artifact: undefined,
+        assertions: [],
+        diagnostics: commandDiagnostics(result, parsed).map((diagnostic) => ({ code: diagnostic.code, message: diagnostic.message, severity: diagnostic.severity })),
+        pass: false,
+        scenario,
+        truncated: false,
+      });
+    }
+  }
+  return { diagnostics, scenarioSummaries };
 }
 
 function artifactPaths(value: unknown): string[] {
@@ -260,11 +307,13 @@ async function defaultPlaytest(args: readonly string[]): Promise<ICommandResult>
   return playtestCommand(args);
 }
 
-async function firstScenario(projectPath: string): Promise<string | undefined> {
+async function allScenarios(projectPath: string): Promise<string[]> {
   const playtestsPath = resolve(projectPath, "playtests");
   const entries = await readdir(playtestsPath).catch(() => []);
-  const first = entries.filter((entry) => entry.endsWith(".playtest.json")).sort((left, right) => left.localeCompare(right))[0];
-  return first === undefined ? undefined : relative(projectPath, resolve(playtestsPath, first));
+  return entries
+    .filter((entry) => entry.endsWith(".playtest.json"))
+    .sort((left, right) => left.localeCompare(right))
+    .map((entry) => relative(projectPath, resolve(playtestsPath, entry)));
 }
 
 function skippedStep(id: IIterateStepReport["id"]): IIterateStepReport {
@@ -291,6 +340,23 @@ function readFlag(argv: readonly string[], flag: string): string | undefined {
 
 function resolvePath(cwd: string, value: string): string {
   return resolve(cwd, value);
+}
+
+function isPlaytestSummaryPayload(value: unknown): value is Parameters<typeof summarizePlaytestForIterate>[0] {
+  return isRecord(value) && value.schema === "threenative.playtest-summary" && typeof value.scenario === "string" && typeof value.pass === "boolean" && Array.isArray(value.assertions) && isRecord(value.artifacts);
+}
+
+function isPlaytestIterateSummary(value: unknown): value is IPlaytestIterateSummary {
+  return isRecord(value)
+    && typeof value.scenario === "string"
+    && typeof value.pass === "boolean"
+    && Array.isArray(value.assertions)
+    && Array.isArray(value.diagnostics)
+    && typeof value.truncated === "boolean";
+}
+
+function safeFilePart(value: string): string {
+  return value.replace(/[^A-Za-z0-9._-]+/g, "-");
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

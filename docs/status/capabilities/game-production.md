@@ -21,6 +21,8 @@ Current support:
 - `tn game plan --apply --json` explicitly applies scaffold-first collector
   and lane-runner baselines through bounded recipe operations, writes committed
   playtest scenarios, and records `artifacts/game-production/scaffold-first.json`.
+  Collector apply now emits movement, pickup, win-state, and retry proof-family
+  scenarios and tells agents to verify with `tn iterate --project . --json`.
 - `verify:generated-games` gates the representative release evidence set
   (`examples/humanoid-physics-course`, `examples/metro-surfer-heist`) and
   reports the build-only archived set (`examples/stylized-nature-component`);
@@ -40,7 +42,9 @@ Current support:
   `tools/verify/artifacts/agent-benchmark/off-recipe-2026-07-07/`.
 - Round-5 protocol replaces unequal raw-token comparison with committed
   equal-proof assertions for vanilla and ThreeNative, at least three repeats
-  per condition, and continuity/beyond-one-shot token thresholds.
+  per condition, and continuity/beyond-one-shot token thresholds. Round-5B
+  preparation covers lane-runner, checkpoint-race, and physics-knockdown only
+  after the next-steps audit and churn budgets are green.
 
 Verification:
 
@@ -48,8 +52,10 @@ Verification:
   from `packages/cli` (324 CLI tests passed after a full workspace build,
   including archetype create/game-plan coverage).
 - `node --test packages/cli/dist/commands/look.test.js packages/cli/dist/verify/renderingQuality.test.js`
-- `pnpm --filter @threenative/cli test` (337 CLI tests, including all six
-  mechanic block writers and authoring validation).
+- `pnpm --filter @threenative/cli test` (354 CLI tests, including all six
+  mechanic block writers, proof-family game plan apply, and authoring
+  validation).
+- `pnpm --filter @threenative/agent-benchmark test`
 - `pnpm verify:generated-games`
 - `pnpm verify:example-build-sweep`
 - `pnpm verify:smoke`

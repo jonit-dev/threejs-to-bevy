@@ -9,6 +9,10 @@ Current support:
   deterministic formatting, source discovery, and generated-artifact rejection.
 - CLI-first scene, material, UI, system, prefab, physics, recipe, cookbook, and
   iterate workflows exposed through `tn ... --json`.
+- `tn playtest schema --json` exposes the executable assertion/step DSL from
+  the assertion registry, and `tn playtest scaffold --assert
+  <movement|pickup|win-state|retry> --json` writes loader-valid proof-bar
+  scenarios without engine-source lookup.
 - Command-first mutation coverage includes scene transforms, scene
   prefab/entity operations, UI binding, material editing, prefab material
   assignment, and compositional mechanic blocks; direct `content/**` edits
@@ -45,9 +49,10 @@ Verification:
   TypeScript-spec boundary and remaining default-migration gates.
 - `pnpm --filter @threenative/sdk test -- dist/gameSpecTypes.test.js`,
   `pnpm --filter @threenative/compiler test -- dist/scripts/diagnostics.test.js dist/gameSpec/compile.test.js`,
-  and `pnpm --filter @threenative/cli test -- dist/commands/playtestAssertions.test.js dist/commands/create.test.js dist/commands/authoring.test.js`
+  and `pnpm --filter @threenative/cli test -- dist/commands/playtestAssertions.test.js dist/commands/playtestSchema.test.js dist/commands/playtestScaffold.test.js dist/commands/create.test.js dist/commands/authoring.test.js`
   cover typed-spec writes, stale systems cleanup, starter camera/script
-  commands, and unchanged-state playtest diagnostics.
+  commands, playtest DSL discovery/scaffolding, and unchanged-state playtest
+  diagnostics.
 - `tools/agent-benchmark/COOKBOOK-TOPIC-AUDIT-2026-07-07.md`
   maps benchmark needs to the existing validated cookbook entries.
 - `pnpm --filter @threenative/authoring test`

@@ -22,6 +22,7 @@ import { gameProvidersCommand } from "./game/providers.js";
 import { ensureReleaseAssetBudgetProof, runGameQaProof, type IGameCommandOptions, type IGameProofRun } from "./gameQaProof.js";
 import { gameScaleCommand } from "./gameScale.js";
 import { hasNonEmptyString, hasStringArray, isPlayerLikeEntityId, isRecord, readFlag, resolveProjectPath } from "./gameShared.js";
+import { buildPlaytestScaffoldScenario, type PlaytestScaffoldMechanic } from "./playtestScaffold.js";
 
 import { type IGameplayBlockDescriptor, type IGamePlan, type IGamePlanStep } from "./gamePlanTypes.js";
 export async function gameCommand(argv: readonly string[], options: IGameCommandOptions = {}): Promise<ICommandResult> {
@@ -350,20 +351,20 @@ async function applyGamePlanScaffold(options: { json: boolean; plan: IGamePlan; 
   const sceneId = stringValue(recipeArgs.sceneId) ?? "arena";
   const enrichmentFiles = await enrichScaffoldSource(options.projectPath, scaffold, sceneId, playerId, stringValue(recipeArgs.inputDocId));
   const typedSpecFiles = await syncTypedSpecScaffoldSource(options.projectPath, sceneId, stringValue(recipeArgs.inputDocId));
-  const scenarioPath = await writeScaffoldScenario(options.projectPath, scaffold, playerId);
+  const scenarioPaths = await writeScaffoldScenarios(options.projectPath, scaffold, playerId);
   const scaffoldEvidencePath = await writeScaffoldEvidence(options.projectPath, {
     archetype: scaffold.archetype,
-    filesWritten: [...new Set([...result.filesWritten, scriptPath, ...enrichmentFiles, ...typedSpecFiles, scenarioPath])].sort(),
+    filesWritten: [...new Set([...result.filesWritten, scriptPath, ...enrichmentFiles, ...typedSpecFiles, ...scenarioPaths])].sort(),
     planArtifactPath: options.planArtifactPath,
     recipeId: scaffold.recipeId,
-    scenarioPath,
+    scenarioPaths,
   });
   await persistGameTaskGraph(options.projectPath);
 
   const payload = {
     applied: [{
       changed: result.changed,
-      filesWritten: [...new Set([...result.filesWritten, scriptPath, ...enrichmentFiles, ...typedSpecFiles, scenarioPath, scaffoldEvidencePath])].sort(),
+      filesWritten: [...new Set([...result.filesWritten, scriptPath, ...enrichmentFiles, ...typedSpecFiles, ...scenarioPaths, scaffoldEvidencePath])].sort(),
       ok: result.ok,
       recipe: scaffold.recipeId,
     }],
@@ -376,9 +377,9 @@ async function applyGamePlanScaffold(options: { json: boolean; plan: IGamePlan; 
     plannedWrites: planned.operations.map((operation) => operation.name),
     projectPath: options.projectPath,
     archetype: scaffold.archetype,
-    proofCommand: scaffold.proofCommand,
+    proofCommand: "tn iterate --project . --json",
     recipeId: scaffold.recipeId,
-    scenarioPaths: [scenarioPath],
+    scenarioPaths,
   };
 
   return {
@@ -394,7 +395,7 @@ function selectGameScaffold(plan: IGamePlan): IGameScaffoldDefinition | undefine
       archetype: "top-down",
       exportName: "topDownCollectorSystem",
       modulePath: "src/scripts/player.ts",
-      proofCommand: "tn playtest --project . --scenario playtests/top-down-collector.playtest.json --stable-artifacts --json",
+      proofCommand: "tn iterate --project . --json",
       recipeId: "top-down-collector",
       scenario: { axis: "x", name: "top-down-collector", path: "playtests/top-down-collector.playtest.json", press: "KeyD" },
     };
@@ -404,7 +405,7 @@ function selectGameScaffold(plan: IGamePlan): IGameScaffoldDefinition | undefine
       archetype: "third-person",
       exportName: "laneRunnerSystem",
       modulePath: "src/scripts/player.ts",
-      proofCommand: "tn playtest --project . --scenario playtests/lane-runner.playtest.json --stable-artifacts --json",
+      proofCommand: "tn iterate --project . --json",
       recipeId: "lane-runner",
       scenario: { axis: "x", name: "lane-runner", path: "playtests/lane-runner.playtest.json", press: "ArrowRight" },
     };
@@ -451,8 +452,16 @@ async function enrichScaffoldSource(projectPath: string, scaffold: IGameScaffold
     addEntity(entities, "arena.boundary.south", "arena.boundary.prefab", [0, 0.2, 4], [8, 0.4, 0.2]);
     addEntity(entities, "arena.boundary.east", "arena.boundary.prefab", [4, 0.2, 0], [0.2, 0.4, 8]);
     addEntity(entities, "arena.boundary.west", "arena.boundary.prefab", [-4, 0.2, 0], [0.2, 0.4, 8]);
-    for (const [index, position] of [[2, 0.6, -2], [-2, 0.6, -2], [2, 0.6, 2], [-2, 0.6, 2], [0, 0.6, 3]].entries()) {
-      addEntity(entities, `pickup.${index + 1}`, "scaffold.pickup.prefab", position as [number, number, number], [0.45, 0.45, 0.45]);
+    for (const [index, position] of [[3.2, 0.6, -3.2], [-3.2, 0.6, -3.2], [3.2, 0.6, 3.2], [-3.2, 0.6, 3.2], [0, 0.6, 3.2]].entries()) {
+      addEntity(entities, `pickup.${index + 1}`, "scaffold.pickup.prefab", position as [number, number, number], [0.45, 0.45, 0.45], {
+        Collider: {
+          kind: "sphere",
+          radius: 0.65,
+          sensor: { interactionKind: "pickup", occupantLimit: 4, phases: ["enter", "stay"], trackOccupants: true },
+          trigger: true,
+        },
+        RigidBody: { kind: "static" },
+      });
     }
   } else {
     addPrefab(prefabs, "scaffold.lane.prefab", "box", "#475569");
@@ -816,9 +825,18 @@ function addPrefab(prefabs: Record<string, unknown>[], id: string, primitive: st
   }
 }
 
-function addEntity(entities: Record<string, unknown>[], id: string, prefabId: string, position: [number, number, number], scale?: [number, number, number]): void {
-  if (!entities.some((entity) => entity.id === id)) {
+function addEntity(
+  entities: Record<string, unknown>[],
+  id: string,
+  prefabId: string,
+  position: [number, number, number],
+  scale?: [number, number, number],
+  components?: Record<string, unknown>,
+): void {
+  const existing = entities.find((entity) => entity.id === id);
+  if (existing === undefined) {
     entities.push({
+      ...(components === undefined ? {} : { components }),
       id,
       prefab: prefabId,
       transform: {
@@ -826,6 +844,8 @@ function addEntity(entities: Record<string, unknown>[], id: string, prefabId: st
         ...(scale === undefined ? {} : { scale }),
       },
     });
+  } else if (components !== undefined) {
+    existing.components = { ...(isRecord(existing.components) ? existing.components : {}), ...components };
   }
 }
 
@@ -891,7 +911,7 @@ function scaffoldScriptSource(scaffold: IGameScaffoldDefinition, playerId: strin
   const moveZ = context.input.getAxis("MoveZ");
   const dt = context.time.fixedDelta || 1 / 60;
   const game = context.state("GameState", { collected: "", retryText: "Press R to retry", scoreText: "Score 0 / 5", statusText: "Collect all pickups", won: false });
-  const pickups: Array<[string, number, number]> = [["1", 2, -2], ["2", -2, -2], ["3", 2, 2], ["4", -2, 2], ["5", 0, 3]];
+  const pickups: Array<[string, number, number]> = [["1", 3.2, -3.2], ["2", -3.2, -3.2], ["3", 3.2, 3.2], ["4", -3.2, 3.2], ["5", 0, 3.2]];
   if (context.input.action("retry")) {
     game.collected = "";
     game.scoreText = "Score 0 / 5";
@@ -933,57 +953,122 @@ function scaffoldScriptSource(scaffold: IGameScaffoldDefinition, playerId: strin
 }`;
 }
 
-async function writeScaffoldScenario(projectPath: string, scaffold: IGameScaffoldDefinition, playerId: string): Promise<string> {
-  const absolutePath = resolve(projectPath, scaffold.scenario.path);
-  await mkdir(resolve(absolutePath, ".."), { recursive: true });
+async function writeScaffoldScenarios(projectPath: string, scaffold: IGameScaffoldDefinition, playerId: string): Promise<string[]> {
+  const specs = scaffoldScenarioSpecs(scaffold);
+  const paths: string[] = [];
+  for (const spec of specs) {
+    const absolutePath = resolve(projectPath, spec.path);
+    await mkdir(resolve(absolutePath, ".."), { recursive: true });
+    const scenario = scaffoldScenarioForGame(scaffold, spec.mechanic, playerId, spec.name);
+    await writeFile(absolutePath, `${JSON.stringify(scenario, null, 2)}\n`, "utf8");
+    paths.push(spec.path);
+  }
+  await writeHudResourceScenario(projectPath, scaffold, playerId);
+  return paths;
+}
+
+function scaffoldScenarioSpecs(scaffold: IGameScaffoldDefinition): Array<{ mechanic: PlaytestScaffoldMechanic; name: string; path: string }> {
+  if (scaffold.recipeId === "top-down-collector") {
+    return [
+      { mechanic: "movement", name: "top-down-collector", path: "playtests/top-down-collector.playtest.json" },
+      { mechanic: "pickup", name: "top-down-collector-pickup", path: "playtests/top-down-collector-pickup.playtest.json" },
+      { mechanic: "win-state", name: "top-down-collector-win-state", path: "playtests/top-down-collector-win-state.playtest.json" },
+      { mechanic: "retry", name: "top-down-collector-retry", path: "playtests/top-down-collector-retry.playtest.json" },
+    ];
+  }
+  return [
+    { mechanic: "movement", name: "lane-runner", path: "playtests/lane-runner.playtest.json" },
+    { mechanic: "win-state", name: "lane-runner-win-state", path: "playtests/lane-runner-win-state.playtest.json" },
+    { mechanic: "retry", name: "lane-runner-retry", path: "playtests/lane-runner-retry.playtest.json" },
+  ];
+}
+
+function scaffoldScenarioForGame(scaffold: IGameScaffoldDefinition, mechanic: PlaytestScaffoldMechanic, playerId: string, name: string): ReturnType<typeof buildPlaytestScaffoldScenario> {
+  const scenario = buildPlaytestScaffoldScenario(mechanic, {
+    hudId: mechanic === "retry" ? "hud.retry" : mechanic === "win-state" ? "hud.status" : "hud.progress",
+    resourceId: "GameState",
+    subject: playerId,
+  });
+  scenario.name = name;
+  scenario.steps = scenario.steps.map((step) => step.press === "KeyD" ? { ...step, press: scaffold.scenario.press } : step);
+  if (scaffold.recipeId === "top-down-collector" && mechanic === "pickup") {
+    scenario.steps = [
+      { holdFrames: 7, label: "move to pickup x", press: "KeyD", release: true },
+      { holdFrames: 7, label: "move to pickup z", press: "KeyW", release: true },
+    ];
+    if (scenario.assert !== undefined) {
+      delete scenario.assert.contacts;
+    }
+  }
+  if (scaffold.recipeId === "top-down-collector" && mechanic === "win-state") {
+    scenario.steps = [
+      { holdFrames: 7, label: "pickup one x", press: "KeyD", release: true },
+      { holdFrames: 7, label: "pickup one z", press: "KeyW", release: true },
+      { holdFrames: 14, label: "pickup two x", press: "KeyA", release: true },
+      { holdFrames: 14, label: "pickup four z", press: "KeyS", release: true },
+      { holdFrames: 14, label: "pickup three x", press: "KeyD", release: true },
+      { holdFrames: 7, label: "center for final pickup", press: "KeyA", release: true },
+      { holdFrames: 4, label: "finish final pickup", press: "KeyS", release: true },
+    ];
+  }
+  scenario.assert = {
+    ...scenario.assert,
+    ...(mechanic === "movement"
+      ? {
+          movement: {
+            axis: scaffold.scenario.axis,
+            entity: playerId,
+            minDistance: 0.05,
+            minVelocity: 0.001,
+          },
+        }
+      : {}),
+    ...(mechanic === "win-state"
+      ? {
+          ...(scenario.assert ?? {}),
+          hud: [{ id: "hud.status", textIncludes: scaffold.recipeId === "top-down-collector" ? "All pickups collected" : "Finish reached" }],
+          resources: scaffold.recipeId === "top-down-collector"
+            ? [{ equals: true, id: "GameState", path: "won" }]
+            : [{ equals: true, id: "GameState", path: "finished" }],
+        }
+      : {}),
+    ...(mechanic === "retry"
+      ? {
+          ...(scenario.assert ?? {}),
+          hud: [{ id: "hud.retry", textIncludes: "Press R" }],
+          resources: [{ id: "GameState", path: "statusText", textIncludes: scaffold.recipeId === "top-down-collector" ? "Collect" : "Run" }],
+        }
+      : {}),
+  };
+  return scenario;
+}
+
+async function writeHudResourceScenario(projectPath: string, scaffold: IGameScaffoldDefinition, playerId: string): Promise<void> {
   const scenario = {
-    artifacts: {
-      console: true,
-      network: true,
-      runtimeTrace: true,
-      screenshots: "before-after",
-    },
+    artifacts: { effectLog: "focused", screenshots: "before-after" },
     assert: {
-      diagnostics: {
-        noConsoleErrors: true,
-        noNetworkErrors: true,
-        noRuntimeDiagnostics: true,
-        runtimeReady: true,
-      },
-      movement: {
-        axis: scaffold.scenario.axis,
-        entity: playerId,
-        minDistance: 0.05,
-        minVelocity: 0.001,
-      },
+      diagnostics: { noConsoleErrors: true, noNetworkErrors: true, runtimeReady: true },
+      hud: [{ id: "hud.status", textIncludes: scaffold.recipeId === "top-down-collector" ? "Collect all pickups" : "Run to the finish" }],
+      resources: [{ equals: scaffold.recipeId === "top-down-collector" ? "Collect all pickups" : "Run to the finish", id: "GameState", path: "statusText" }],
     },
-    name: scaffold.scenario.name,
+    name: "hud-resource",
     schemaVersion: 1,
-    steps: [
-      {
-        holdFrames: 30,
-        label: "prove-input-movement",
-        press: scaffold.scenario.press,
-        release: true,
-      },
-    ],
+    steps: [{ label: "sample-hud", waitFrames: 10 }],
     subject: playerId,
     target: "web",
-    viewport: {
-      height: 720,
-      width: 1280,
-    },
+    viewport: { height: 720, width: 1280 },
     warmupFrames: 5,
   };
+  const absolutePath = resolve(projectPath, "playtests/hud-resource.playtest.json");
+  await mkdir(resolve(absolutePath, ".."), { recursive: true });
   await writeFile(absolutePath, `${JSON.stringify(scenario, null, 2)}\n`, "utf8");
-  return scaffold.scenario.path;
 }
 
 function stringValue(value: unknown): string | undefined {
   return typeof value === "string" && value.trim() !== "" ? value : undefined;
 }
 
-async function writeScaffoldEvidence(projectPath: string, evidence: { archetype: GameArchetypeId; filesWritten: string[]; planArtifactPath: string; recipeId: string; scenarioPath: string }): Promise<string> {
+async function writeScaffoldEvidence(projectPath: string, evidence: { archetype: GameArchetypeId; filesWritten: string[]; planArtifactPath: string; recipeId: string; scenarioPaths: string[] }): Promise<string> {
   const relativePath = "artifacts/game-production/scaffold-first.json";
   const absolutePath = resolve(projectPath, relativePath);
   await mkdir(resolve(absolutePath, ".."), { recursive: true });
@@ -993,11 +1078,11 @@ async function writeScaffoldEvidence(projectPath: string, evidence: { archetype:
       {
         archetype: evidence.archetype,
         filesWritten: evidence.filesWritten,
-        iterateCommand: `tn iterate --project . --scenario ${evidence.scenarioPath} --json`,
+        iterateCommand: "tn iterate --project . --json",
         planArtifactPath: evidence.planArtifactPath,
-        proofCommand: `tn playtest --project . --scenario ${evidence.scenarioPath} --stable-artifacts --json`,
+        proofCommand: "tn iterate --project . --json",
         recipeId: evidence.recipeId,
-        scenarioPaths: [evidence.scenarioPath],
+        scenarioPaths: evidence.scenarioPaths,
         schema: "threenative.game-scaffold-first",
         version: "0.1.0",
       },

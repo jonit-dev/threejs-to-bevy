@@ -63,6 +63,24 @@ export interface IPlaytestSummary {
   version: "0.1.0";
 }
 
+export interface IPlaytestIterateAssertionSummary {
+  artifact?: string;
+  expected?: unknown;
+  id: string;
+  observed?: unknown;
+  owningSystem?: string;
+  pass: boolean;
+}
+
+export interface IPlaytestIterateSummary {
+  artifact?: string;
+  assertions: IPlaytestIterateAssertionSummary[];
+  diagnostics: Array<{ code: string; message: string; severity?: string; suggestion?: string }>;
+  pass: boolean;
+  scenario: string;
+  truncated: boolean;
+}
+
 export function defaultPlaytestArtifactDirectory(projectPath: string, scenarioName: string, stableArtifacts: boolean): string {
   return resolve(projectPath, "artifacts", "playtest", safeFilePart(scenarioName), stableArtifacts ? "latest" : runId());
 }
@@ -209,6 +227,101 @@ function summaryReportCommand(scenarioName: string): string {
 
 export async function readPlaytestSummary(path: string): Promise<IPlaytestSummary> {
   return JSON.parse(await readFile(path, "utf8")) as IPlaytestSummary;
+}
+
+export function summarizePlaytestForIterate(summary: IPlaytestSummary, byteBudget = 2048): IPlaytestIterateSummary {
+  const payload: IPlaytestIterateSummary = {
+    ...(summary.pass ? {} : { artifact: summary.artifacts.summary }),
+    assertions: summary.assertions
+      .filter((assertion) => !assertion.pass)
+      .map((assertion) => assertionSummary(assertion, summary))
+      .slice(0, 8),
+    diagnostics: summary.diagnostics
+      .filter((diagnostic) => diagnostic.severity === "error")
+      .map((diagnostic) => ({
+        code: diagnostic.code,
+        message: diagnostic.message,
+        severity: diagnostic.severity,
+        ...(diagnostic.suggestion === undefined ? {} : { suggestion: diagnostic.suggestion }),
+      }))
+      .slice(0, 4),
+    pass: summary.pass,
+    scenario: summary.scenario,
+    truncated: false,
+  };
+  return enforceIterateBudget(payload, byteBudget);
+}
+
+function assertionSummary(
+  assertion: IPlaytestSummary["assertions"][number],
+  summary: IPlaytestSummary,
+): IPlaytestIterateAssertionSummary {
+  const details = assertion.details ?? {};
+  const diagnostic = summary.diagnostics.find((candidate) => diagnosticMatchesAssertion(candidate, assertion.id));
+  return {
+    expected: expectedFromDetails(details),
+    id: assertion.id,
+    observed: observedFromDetails(details),
+    owningSystem: typeof diagnostic?.systemId === "string" ? diagnostic.systemId : undefined,
+    pass: assertion.pass,
+  };
+}
+
+function expectedFromDetails(details: Record<string, unknown>): unknown {
+  if (Object.hasOwn(details, "expected")) return details.expected;
+  if (Object.hasOwn(details, "threshold")) return { minDistance: details.threshold };
+  if (Object.hasOwn(details, "minVelocity")) return { minVelocity: details.minVelocity };
+  if (Object.hasOwn(details, "minCount")) return { minCount: details.minCount };
+  if (Object.hasOwn(details, "within")) return { within: details.within };
+  if (Object.hasOwn(details, "minProjectedPixels") || Object.hasOwn(details, "maxOffscreenRatio")) {
+    return {
+      ...(Object.hasOwn(details, "minProjectedPixels") ? { minProjectedPixels: details.minProjectedPixels } : {}),
+      ...(Object.hasOwn(details, "maxOffscreenRatio") ? { maxOffscreenRatio: details.maxOffscreenRatio } : {}),
+    };
+  }
+  return undefined;
+}
+
+function observedFromDetails(details: Record<string, unknown>): unknown {
+  if (Object.hasOwn(details, "after")) return details.after;
+  if (Object.hasOwn(details, "distance")) return { distance: details.distance };
+  if (Object.hasOwn(details, "velocity")) return { velocity: details.velocity };
+  if (Object.hasOwn(details, "count")) return { count: details.count };
+  if (Object.hasOwn(details, "separation")) return { separation: details.separation };
+  if (Object.hasOwn(details, "projectedPixels") || Object.hasOwn(details, "offscreenRatio")) {
+    return {
+      ...(Object.hasOwn(details, "projectedPixels") ? { projectedPixels: details.projectedPixels } : {}),
+      ...(Object.hasOwn(details, "offscreenRatio") ? { offscreenRatio: details.offscreenRatio } : {}),
+    };
+  }
+  return details;
+}
+
+function diagnosticMatchesAssertion(diagnostic: IPlaytestSummary["diagnostics"][number], assertionId: string): boolean {
+  const lower = assertionId.toLowerCase();
+  return diagnostic.code.toLowerCase().includes(lower.split(".")[0] ?? lower)
+    || diagnostic.message.toLowerCase().includes(lower);
+}
+
+function enforceIterateBudget(summary: IPlaytestIterateSummary, byteBudget: number): IPlaytestIterateSummary {
+  let candidate = summary;
+  while (Buffer.byteLength(JSON.stringify(candidate), "utf8") > byteBudget && candidate.diagnostics.length > 0) {
+    candidate = { ...candidate, diagnostics: candidate.diagnostics.slice(0, -1), truncated: true };
+  }
+  while (Buffer.byteLength(JSON.stringify(candidate), "utf8") > byteBudget && candidate.assertions.length > 1) {
+    candidate = { ...candidate, assertions: candidate.assertions.slice(0, -1), truncated: true };
+  }
+  if (Buffer.byteLength(JSON.stringify(candidate), "utf8") <= byteBudget) {
+    return candidate;
+  }
+  return {
+    artifact: candidate.artifact,
+    assertions: candidate.assertions.slice(0, 1).map((assertion) => ({ id: assertion.id, pass: assertion.pass })),
+    diagnostics: [],
+    pass: candidate.pass,
+    scenario: candidate.scenario,
+    truncated: true,
+  };
 }
 
 function nativeFrameSamples(report: IPlaytestReport): unknown {

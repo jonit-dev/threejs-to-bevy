@@ -15,7 +15,9 @@ import { readPngFrame } from "../verify/compareImages.js";
 import { evaluateRichPlaytestAssertions, type IPlaytestAssertionResult, type IPlaytestDiagnostic, type IPlaytestObservations } from "./playtestAssertions.js";
 import { defaultPlaytestArtifactDirectory, readPlaytestSummary, writePlaytestArtifactBundle, type IPlaytestArtifactBundle, type IPlaytestSummary } from "./playtestArtifacts.js";
 import { discoverPlaytestTargets, suggestPlaytestScenario, type IPlaytestDiscoveryReport } from "./playtestDiscovery.js";
+import { playtestScaffoldCommand } from "./playtestScaffold.js";
 import { applyScenarioOverrides, loadPlaytestScenario, oneShotScenario, parsePlaytestTarget, parseViewport, PlaytestScenarioError, type IPlaytestScenario } from "./playtestScenario.js";
+import { playtestSchemaCommand } from "./playtestSchema.js";
 import { createPlaytestTargetRunner } from "./playtestTargets.js";
 import { playtestWatchCommand, readPlaytestWatchMaxRuns, type IPlaytestWatchHooks } from "./playtestWatch.js";
 
@@ -176,8 +178,15 @@ export async function playtestCommand(
 ): Promise<ICommandResult> {
   const normalizedArgv = argv[0] === "--" ? argv.slice(1) : argv;
   const json = normalizedArgv.includes("--json");
-  const reportMode = normalizedArgv[0] === "report";
+  const subcommand = normalizedArgv[0];
+  const reportMode = subcommand === "report";
   const projectPath = resolvePath(cwd, readFlag(normalizedArgv, "--project") ?? ".");
+  if (subcommand === "schema") {
+    return playtestSchemaCommand(normalizedArgv.slice(1));
+  }
+  if (subcommand === "scaffold") {
+    return playtestScaffoldCommand(normalizedArgv.slice(1), cwd);
+  }
   if (reportMode) {
     return playtestReportCommand(normalizedArgv.slice(1), projectPath, json);
   }

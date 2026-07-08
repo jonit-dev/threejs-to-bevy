@@ -8,7 +8,7 @@ import { auditNextSteps } from "./next-steps-audit.js";
 import { captureCandidate } from "./capture.js";
 import { validateRound5Matrix } from "./matrix.js";
 import { collectCandidatePlaytestDiagnostics } from "./playtest-diagnostics.js";
-import { prepareRound } from "./prepare.js";
+import { prepareRound, prepareRound5b } from "./prepare.js";
 import { inferBenchmarkProofFromArtifacts } from "./proof-adapter.js";
 import { isBenchmarkReport, readSession } from "./schemas.js";
 import { sessionMetricEvidenceDiagnostics } from "./session-evidence.js";
@@ -38,7 +38,7 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
   if (command === "audit") {
     return auditCommand(argv.slice(1));
   }
-  process.stderr.write("Usage: tn-agent-benchmark score --candidate <dir> --condition <vanilla|threenative|typed-spec> [--session <path>] [--out <path>] [--json]\n       tn-agent-benchmark aggregate --runs <dir-or-file> [--out <path>] [--json]\n       tn-agent-benchmark matrix --report <benchmark-report.json> [--require-typed-spec] [--json]\n       tn-agent-benchmark prepare --out <round-dir> [--prompt collector] [--repeats 3] [--conditions typed-spec,threenative,vanilla] [--json]\n       tn-agent-benchmark status --manifest <round-5-prepare-manifest.json> [--condition <vanilla|threenative|typed-spec>] [--require-complete] [--json]\n       tn-agent-benchmark next --manifest <round-5-prepare-manifest.json> [--condition <vanilla|threenative|typed-spec>] [--json]\n       tn-agent-benchmark audit --matrix-report <benchmark-report.json> --session-cost <verification-report.json> [--round-manifest <round-5-prepare-manifest.json>] [--protocol ROUND-5-PROTOCOL.md] [--json]\n");
+  process.stderr.write("Usage: tn-agent-benchmark score --candidate <dir> --condition <vanilla|threenative|typed-spec> [--session <path>] [--out <path>] [--json]\n       tn-agent-benchmark aggregate --runs <dir-or-file> [--out <path>] [--json]\n       tn-agent-benchmark matrix --report <benchmark-report.json> [--require-typed-spec] [--json]\n       tn-agent-benchmark prepare --out <round-dir> [--prompt collector] [--repeats 3] [--conditions typed-spec,threenative,vanilla] [--round-5b --audit-report <audit.json>] [--json]\n       tn-agent-benchmark status --manifest <round-5-prepare-manifest.json> [--condition <vanilla|threenative|typed-spec>] [--require-complete] [--json]\n       tn-agent-benchmark next --manifest <round-5-prepare-manifest.json> [--condition <vanilla|threenative|typed-spec>] [--json]\n       tn-agent-benchmark audit --matrix-report <benchmark-report.json> --session-cost <verification-report.json> [--round-manifest <round-5-prepare-manifest.json>] [--protocol ROUND-5-PROTOCOL.md] [--json]\n");
   return 1;
 }
 
@@ -165,8 +165,9 @@ async function prepareCommand(argv: readonly string[]): Promise<number> {
   const outDir = readFlag(argv, "--out");
   const repeatsValue = readFlag(argv, "--repeats");
   const conditionsValue = readFlag(argv, "--conditions");
+  const auditReport = readFlag(argv, "--audit-report");
   if (outDir === undefined) {
-    return writeResult({ code: "TN_BENCH_USAGE", message: "Usage: prepare --out <round-dir> [--prompt collector] [--repeats 3] [--conditions typed-spec,threenative,vanilla] [--json]" }, json, 1);
+    return writeResult({ code: "TN_BENCH_USAGE", message: "Usage: prepare --out <round-dir> [--prompt collector] [--repeats 3] [--conditions typed-spec,threenative,vanilla] [--round-5b --audit-report <audit.json>] [--json]" }, json, 1);
   }
   const repeats = repeatsValue === undefined ? 3 : Number(repeatsValue);
   if (!Number.isInteger(repeats) || repeats <= 0) {
@@ -180,7 +181,14 @@ async function prepareCommand(argv: readonly string[]): Promise<number> {
     }
   }
   try {
-    const result = await prepareRound({ conditions, outDir, promptId, repeats });
+    const result = argv.includes("--round-5b")
+      ? auditReport === undefined
+        ? undefined
+        : await prepareRound5b({ auditReportPath: auditReport, conditions, outDir, repeats })
+      : await prepareRound({ conditions, outDir, promptId, repeats });
+    if (result === undefined) {
+      return writeResult({ code: "TN_BENCH_PREPARE_AUDIT_REQUIRED", message: "prepare --round-5b requires --audit-report <audit.json>." }, json, 1);
+    }
     return writeResult({ code: "TN_BENCH_PREPARE_OK", ...result }, json, 0);
   } catch (error) {
     return writeResult({

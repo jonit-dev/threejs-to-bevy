@@ -91,6 +91,19 @@ export interface IBenchmarkBehaviorCounters {
   standaloneVerifyCommandCount: number;
 }
 
+export interface IBenchmarkBehaviorBudgetRun {
+  condition: Extract<BenchmarkCondition, "threenative" | "typed-spec">;
+  counters: IBenchmarkBehaviorCounters;
+  diagnostics: IBenchmarkDiagnostic[];
+  offendingCommands: {
+    artifactForensics: string[];
+    engineSourceSearch: string[];
+    standaloneVerify: string[];
+  };
+  runId: string;
+  withinBudget: boolean;
+}
+
 export interface IBenchmarkReport {
   diagnostics: IBenchmarkDiagnostic[];
   generatedAt: string;
@@ -115,6 +128,7 @@ export interface IBenchmarkReport {
       iterateCommandCount: number | null;
       standaloneVerifyCommandCount: number | null;
     };
+    behaviorBudgetRuns: IBenchmarkBehaviorBudgetRun[];
     promptId: string;
     promptClassification: BenchmarkPromptClass | "unknown";
     proofBar: {

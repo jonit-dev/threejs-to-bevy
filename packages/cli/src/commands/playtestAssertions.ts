@@ -3,6 +3,115 @@ import type { IPlaytestPathAssertion, IPlaytestScenario } from "./playtestScenar
 
 type Vec3 = [number, number, number];
 
+export interface IPlaytestAssertionSchemaField {
+  description: string;
+  name: string;
+  required?: boolean;
+  type: string;
+}
+
+export interface IPlaytestAssertionSchemaEntry {
+  description: string;
+  example: unknown;
+  fields: IPlaytestAssertionSchemaField[];
+  kind: keyof NonNullable<IPlaytestScenario["assert"]>;
+}
+
+export const PLAYTEST_ASSERTION_REGISTRY: readonly IPlaytestAssertionSchemaEntry[] = [
+  {
+    description: "Proves the subject moved, reached a minimum velocity, or changed rotation during held input.",
+    example: { movement: { entity: "player", minDistance: 0.5, minVelocity: 0.01, rotationChanged: true } },
+    fields: [
+      { description: "Entity id to measure. Defaults to scenario subject.", name: "entity", type: "string" },
+      { description: "Expected movement axis: x, y, or z.", name: "axis", type: "string" },
+      { description: "Minimum distance moved over the scenario.", name: "minDistance", type: "number" },
+      { description: "Minimum distance per frame.", name: "minVelocity", type: "number" },
+      { description: "Require any observed rotation delta.", name: "rotationChanged", type: "boolean" },
+    ],
+    kind: "movement",
+  },
+  {
+    description: "Proves a camera follows an entity or keeps a target in view.",
+    example: { camera: { entity: "camera.main", follows: "player", within: 10, targetInViewport: true } },
+    fields: [
+      { description: "Camera entity id.", name: "entity", type: "string" },
+      { description: "Entity the camera should follow.", name: "follows", type: "string" },
+      { description: "Maximum allowed separation.", name: "within", type: "number" },
+      { description: "Require the target to be visible in the viewport.", name: "targetInViewport", type: "boolean" },
+    ],
+    kind: "camera",
+  },
+  {
+    description: "Proves resource state after the scenario through equals, gte, textIncludes, or changed checks.",
+    example: { resources: [{ id: "GameState", path: "score", gte: 1, changed: true }] },
+    fields: [
+      { description: "Resource id.", name: "id", required: true, type: "string" },
+      { description: "Optional dot path inside the resource snapshot.", name: "path", type: "string" },
+      { description: "Exact expected value.", name: "equals", type: "json" },
+      { description: "Minimum numeric value.", name: "gte", type: "number" },
+      { description: "Substring expected in the observed value.", name: "textIncludes", type: "string" },
+      { description: "Require before and after values to differ or remain equal.", name: "changed", type: "boolean" },
+    ],
+    kind: "resources",
+  },
+  {
+    description: "Proves retained UI/HUD text or values after the scenario.",
+    example: { hud: [{ id: "score-label", textIncludes: "Score" }] },
+    fields: [
+      { description: "UI node id.", name: "id", required: true, type: "string" },
+      { description: "Optional dot path inside the UI snapshot.", name: "path", type: "string" },
+      { description: "Exact expected value.", name: "equals", type: "json" },
+      { description: "Minimum numeric value.", name: "gte", type: "number" },
+      { description: "Substring expected in the observed value.", name: "textIncludes", type: "string" },
+      { description: "Require before and after values to differ or remain equal.", name: "changed", type: "boolean" },
+    ],
+    kind: "hud",
+  },
+  {
+    description: "Proves console, network, runtime, and readiness diagnostics stayed clean.",
+    example: { diagnostics: { noConsoleErrors: true, noNetworkErrors: true, noRuntimeDiagnostics: true, runtimeReady: true } },
+    fields: [
+      { description: "Fail on captured console errors.", name: "noConsoleErrors", type: "boolean" },
+      { description: "Fail on captured network errors.", name: "noNetworkErrors", type: "boolean" },
+      { description: "Fail on runtime diagnostics.", name: "noRuntimeDiagnostics", type: "boolean" },
+      { description: "Require runtime readiness.", name: "runtimeReady", type: "boolean" },
+    ],
+    kind: "diagnostics",
+  },
+  {
+    description: "Proves projected entity visibility in the viewport.",
+    example: { visibility: [{ entity: "player", minProjectedPixels: 1200, maxOffscreenRatio: 0.05 }] },
+    fields: [
+      { description: "Entity id. Defaults to scenario subject.", name: "entity", type: "string" },
+      { description: "Minimum projected pixel area.", name: "minProjectedPixels", type: "number" },
+      { description: "Maximum allowed offscreen ratio.", name: "maxOffscreenRatio", type: "number" },
+    ],
+    kind: "visibility",
+  },
+  {
+    description: "Proves contact or trigger evidence appeared in the effect log.",
+    example: { contacts: [{ entity: "player", with: "pickup", kind: "trigger", minCount: 1 }] },
+    fields: [
+      { description: "Entity id. Defaults to scenario subject.", name: "entity", type: "string" },
+      { description: "Other entity or tag token expected in the contact evidence.", name: "with", type: "string" },
+      { description: "Contact kind token, such as contact or trigger.", name: "kind", type: "string" },
+      { description: "Minimum number of matching observations.", name: "minCount", type: "number" },
+    ],
+    kind: "contacts",
+  },
+  {
+    description: "Proves animation evidence appeared in the effect log.",
+    example: { animation: [{ entity: "player", clip: "run", entered: true, advancedFrames: 5 }] },
+    fields: [
+      { description: "Entity id. Defaults to scenario subject.", name: "entity", type: "string" },
+      { description: "Animation clip id or name.", name: "clip", type: "string" },
+      { description: "Require entering the animation state.", name: "entered", type: "boolean" },
+      { description: "Require animation advancement evidence.", name: "advancedFrames", type: "number" },
+    ],
+    kind: "animation",
+  },
+] as const;
+
 export interface IPlaytestDiagnostic {
   code: string;
   message: string;
@@ -162,7 +271,7 @@ function evaluatePathAssertion(
   }
   const pass = checks.length > 0 && checks.every(Boolean);
   const result = {
-    details: { after, before, id: assertion.id, path: assertion.path },
+    details: { after, before, expected: expectedPathAssertion(assertion), id: assertion.id, path: assertion.path },
     id: `${kind}.${assertion.id}${assertion.path === undefined ? "" : `.${assertion.path}`}`,
     pass,
   };
@@ -172,6 +281,15 @@ function evaluatePathAssertion(
         assertion: result,
         diagnostic: pathAssertionDiagnostic(kind, assertion, before, after, context),
       };
+}
+
+function expectedPathAssertion(assertion: IPlaytestPathAssertion): Record<string, unknown> {
+  return {
+    ...(Object.hasOwn(assertion, "equals") ? { equals: assertion.equals } : {}),
+    ...(assertion.gte === undefined ? {} : { gte: assertion.gte }),
+    ...(assertion.textIncludes === undefined ? {} : { textIncludes: assertion.textIncludes }),
+    ...(assertion.changed === undefined ? {} : { changed: assertion.changed }),
+  };
 }
 
 function unchangedPathValue(before: unknown, after: unknown): boolean {

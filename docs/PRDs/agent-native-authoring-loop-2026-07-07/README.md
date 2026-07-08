@@ -27,6 +27,7 @@ weight. These PRDs intentionally avoid broad new Bevy parity work.
 16. [PRD-016 Equal-Proof Benchmark Protocol](../done/agent-native-authoring-loop-2026-07-07/PRD-016-equal-proof-benchmark-protocol.md) - done
 17. [PRD-017 Typed TypeScript Game Spec](PRD-017-typed-typescript-game-spec.md)
 18. [PRD-018 Vanilla-Lift Pipeline Decision](PRD-018-vanilla-lift-pipeline-decision.md)
+19. [PRD-019 Step-Class Elimination For The Authoring Loop](../done/agent-native-authoring-loop-2026-07-07/PRD-019-step-class-elimination.md) - done
 
 ## Dependency Shape
 
@@ -50,6 +51,11 @@ weight. These PRDs intentionally avoid broad new Bevy parity work.
 - PRD-018 is decision-gated. Start it only if PRD-016 evidence shows direct
   ThreeNative authoring remains above the equal-proof threshold after PRDs
   013-015 land.
+- PRD-019 is done. It responds to the round-5 collector matrix: eliminate the measured
+  churn step classes (engine-source greps, standalone verifies, artifact
+  forensics, missing iterate adoption) by construction and ratchet them per
+  run, so the cross-prompt confirmation rerun that feeds the PRD-017 Phase 5
+  and PRD-018 Phase 1 decisions is friction-free.
 
 ## Source Evidence
 

@@ -1,8 +1,9 @@
 import { access, readFile } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
 
+import { readBehaviorBudgetRun } from "./aggregate.js";
 import { isBenchmarkRunReport, readSession } from "./schemas.js";
-import { type BenchmarkCondition, type IBenchmarkDiagnostic, type IBenchmarkRunReport, type IBenchmarkSession } from "./types.js";
+import { type BenchmarkCondition, type IBenchmarkBehaviorBudgetRun, type IBenchmarkDiagnostic, type IBenchmarkRunReport, type IBenchmarkSession } from "./types.js";
 
 export interface IPreparedRoundManifest {
   candidates: IPreparedRoundCandidate[];
@@ -21,6 +22,7 @@ export interface IPreparedRoundCandidate {
 
 export interface IPreparedRoundSlotStatus {
   candidatePath: string;
+  behaviorBudget?: IBenchmarkBehaviorBudgetRun;
   condition: string;
   diagnostics: IBenchmarkDiagnostic[];
   hasRunReport: boolean;
@@ -103,7 +105,7 @@ export async function inspectPreparedRound(manifestPath: string, options: IInspe
       : { diagnostics: [], sessionOk: false };
     const runReportResult = hasRunReport
       ? await inspectRunReport(runReportPath, candidate)
-      : { diagnostics: [], proofPassed: false, runReportOk: false };
+      : { behaviorBudget: undefined, diagnostics: [], proofPassed: false, runReportOk: false };
     let status: IPreparedRoundSlotStatus["status"] = "scored";
     if (!hasSession) {
       status = "session-missing";
@@ -118,6 +120,7 @@ export async function inspectPreparedRound(manifestPath: string, options: IInspe
     }
     return {
       candidatePath,
+      behaviorBudget: runReportResult.behaviorBudget,
       condition: candidate.condition,
       diagnostics: [...sessionResult.diagnostics, ...runReportResult.diagnostics],
       hasRunReport,
@@ -294,6 +297,7 @@ async function inspectSession(sessionPath: string, candidate: IPreparedRoundCand
 }
 
 async function inspectRunReport(runReportPath: string, candidate: IPreparedRoundCandidate): Promise<{
+  behaviorBudget?: IBenchmarkBehaviorBudgetRun;
   diagnostics: IBenchmarkDiagnostic[];
   proofPassed: boolean;
   runReportOk: boolean;
@@ -309,6 +313,7 @@ async function inspectRunReport(runReportPath: string, candidate: IPreparedRound
         message: `Unable to read run report for ${candidate.runId}: ${error instanceof Error ? error.message : String(error)}.`,
         severity: "error",
       }],
+      behaviorBudget: undefined,
       proofPassed: false,
       runReportOk: false,
     };
@@ -320,6 +325,7 @@ async function inspectRunReport(runReportPath: string, candidate: IPreparedRound
         message: `${candidate.runId}: run-report.json does not match the benchmark run-report schema.`,
         severity: "error",
       }],
+      behaviorBudget: undefined,
       proofPassed: false,
       runReportOk: false,
     };
@@ -327,8 +333,9 @@ async function inspectRunReport(runReportPath: string, candidate: IPreparedRound
   const report = parsed;
   diagnostics.push(...matchingDiagnostics(report, candidate));
   if (diagnostics.length > 0) {
-    return { diagnostics, proofPassed: false, runReportOk: false };
+    return { behaviorBudget: undefined, diagnostics, proofPassed: false, runReportOk: false };
   }
+  const behaviorBudget = await readBehaviorBudgetRun(runReportPath, report);
   const proofPassed = report.proof?.ok === true;
   if (!proofPassed) {
     diagnostics.push({
@@ -337,7 +344,7 @@ async function inspectRunReport(runReportPath: string, candidate: IPreparedRound
       severity: "error",
     });
   }
-  return { diagnostics, proofPassed, runReportOk: true };
+  return { behaviorBudget, diagnostics, proofPassed, runReportOk: true };
 }
 
 function matchingDiagnostics(report: IBenchmarkRunReport, candidate: IPreparedRoundCandidate): IBenchmarkDiagnostic[] {

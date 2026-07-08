@@ -5,7 +5,9 @@ and aggregate artifacts.
 
 Current support:
 
-- `tn iterate` for inner-loop validate/build/screenshot/playtest reports.
+- `tn iterate` for inner-loop validate/build/screenshot/playtest reports. By
+  default it runs every `playtests/*.playtest.json` scenario in stable order
+  and prints compact per-scenario assertion observations.
 - `pnpm verify:agent-io` for documented agent command stdout budgets; deep
   playtest logs remain in artifact files while stdout stays compact.
 - `pnpm verify:session-cost` replays scaffold-first paths in CI without LLM
@@ -14,7 +16,7 @@ Current support:
   `maxConsecutiveSameDiagnostic` and `identicalAssertionRepeatCount`, failing
   when same-diagnostic retries exceed one or identical failed assertions repeat.
   The typed-spec collector replay records an explicit scaffold/apply/build/
-  playtest acceptance proof with zero manual edits.
+  playtest acceptance proof with zero manual edits and zero authored scenarios.
   The current deterministic replay set covers all archetype scaffolds plus the
   `top-down-collector` and `lane-runner` `tn game plan --apply` paths that are
   supported today.
@@ -34,7 +36,12 @@ Current support:
   playtest `summary.json` artifacts, infers collector equal-proof assertions
   from committed playtest summaries, and emits a separate typed-spec verdict
   comparing typed source against direct ThreeNative without changing the
-  vanilla comparison gate.
+  vanilla comparison gate. Aggregate reports also emit per-run churn budget
+  diagnostics for engine-source searches, standalone verify commands, artifact
+  forensics, missing iterate use, and missing discovery.
+- Round-5B preparation generates the lane-runner, checkpoint-race, and
+  physics-knockdown matrix only from a green next-steps audit; the addendum is
+  `tools/agent-benchmark/ROUND-5B-PROTOCOL-2026-07-08.md`.
 - The 2026-07-07 off-recipe benchmark keeps raw transcripts, sessions, scorer
   output, aggregate report, and agent behavior learnings under
   `tools/verify/artifacts/agent-benchmark/off-recipe-2026-07-07/`.
@@ -55,6 +62,7 @@ Verification:
 
 - `pnpm verify:agent-io`
 - `pnpm verify:session-cost`
+- `pnpm --filter @threenative/verify-tools test`
 - `pnpm verify:webview-package`
 - `pnpm check:docs`
 - `pnpm verify:smoke`

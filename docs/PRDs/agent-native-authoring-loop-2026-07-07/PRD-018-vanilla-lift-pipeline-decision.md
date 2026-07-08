@@ -265,3 +265,37 @@ The reviewed evidence does not satisfy the PRD-018 trigger:
 Decision: do not start the vanilla-lift compiler prototype yet. The next valid
 step is to collect the equal-proof round-5 matrix, then re-check whether direct
 ThreeNative, typed-spec, or vanilla-lift should be the default investment path.
+
+### 2026-07-07 round-5 collector matrix (9/9 proof-passing)
+
+`tools/verify/artifacts/agent-benchmark/round-5-collector-prep-2026-07-07/benchmark-report.json`
+now has 3 proof-passing repeats per arm on the collector prompt:
+
+- Direct ThreeNative: median 1.45M tokens (6.29x vanilla raw, 4.02x
+  cost-weighted), 35 tool steps (gate 30), 2 failed commands (gate 0).
+- Typed-spec: median 1.63M tokens (1.12x direct TN), 4 failed commands.
+  Verdict stays `experimental`; typed-spec did not reduce cost.
+- Vanilla: median 231K tokens, 13 steps, 0 failed commands, equal-proof
+  assertions pass.
+
+Gate reading against the pre-committed rule in `ROUND-5-PROTOCOL.md`:
+
+- The strict trigger ("both surfaces miss after failed-command median 0") is
+  NOT yet met: failed-command medians are 2 (direct TN) and 4 (typed-spec),
+  so friction is not demonstrably dead in fresh sessions.
+- However, the gap is structurally larger than friction can explain. At
+  ~41K tokens/step replay cost, hitting 1.5x vanilla (~347K) requires ~8-10
+  steps; removing 2 failed commands from a 35-step run cannot close 6.3x.
+  The median run spends ~16 of 35 steps on discovery/verify churn
+  (`behaviorMedian`: 6 artifact-forensics, 4 engine-source searches, 6
+  standalone verify commands, and 0 `tn iterate` uses despite iterate being
+  the intended single-step verifier).
+
+Status: Phase 1 remains open. Collector alone is a strong warning, not a
+cross-prompt confirmation. Recommended path: (a) run the same matrix on
+lane-runner, checkpoint-race, and physics-knockdown; (b) attack the measured
+step classes (engine-source searches -> 0, standalone verifies -> iterate,
+forensics -> diagnostics) so the confirmation round is friction-free; (c)
+Phase 2 (subset spec, paper-only) may start in parallel since it is cheap
+and informs the decision either way; Phase 3 (compiler prototype) stays
+gated on cross-prompt confirmation.

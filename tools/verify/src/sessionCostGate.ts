@@ -31,6 +31,7 @@ export interface SessionCostMeasurement {
 }
 
 export interface SessionCostAcceptanceProof {
+  authoredScenarios: 0;
   build: "pass" | "missing" | "skip";
   gamePlanApply: "pass" | "missing" | "skip";
   manualEdits: 0;
@@ -85,7 +86,6 @@ const DEFAULT_CASES: readonly SessionCostReplayCase[] = [
     id: "typed-spec-recipe-top-down-collector",
     kind: "recipe",
     playtest: true,
-    scenario: "playtests/top-down-collector.playtest.json",
   },
   { goal: "lane runner with coins", id: "recipe-lane-runner", kind: "recipe" },
 ];
@@ -221,6 +221,7 @@ function buildAcceptanceProof(replayCase: SessionCostReplayCase, completedSteps:
   const iterate = completedSteps.get(`${replayCase.id}: iterate`);
   const iterateJson = iterate === undefined ? undefined : parseJson(iterate.stdout);
   return {
+    authoredScenarios: 0,
     build: iterateJson?.code === "TN_ITERATE_OK" && iterateJson.ok === true ? "pass" : iterate === undefined ? "missing" : "skip",
     gamePlanApply: apply?.exitCode === 0 ? "pass" : apply === undefined ? "missing" : "skip",
     manualEdits: 0,
@@ -235,7 +236,7 @@ function validateAcceptanceProof(measurement: SessionCostMeasurement, diagnostic
   if (proof === undefined) {
     return;
   }
-  if (proof.scaffold !== "pass" || proof.gamePlanApply !== "pass" || proof.build !== "pass" || proof.playtest !== "pass" || proof.manualEdits !== 0) {
+  if (proof.scaffold !== "pass" || proof.gamePlanApply !== "pass" || proof.build !== "pass" || proof.playtest !== "pass" || proof.manualEdits !== 0 || proof.authoredScenarios !== 0) {
     diagnostics.push({
       code: "TN_VERIFY_SESSION_COST_ACCEPTANCE_FAILED",
       message: `${measurement.id}: typed-spec scaffold/apply/build/playtest acceptance proof did not pass.`,
@@ -252,7 +253,7 @@ function authoringArgs(replayCase: SessionCostReplayCase): string[] {
 
 function iterateProofArgs(replayCase: SessionCostReplayCase): string[] {
   if (replayCase.playtest === true) {
-    return replayCase.scenario === undefined ? [] : ["--scenario", replayCase.scenario];
+    return [];
   }
   return ["--skip-playtest"];
 }

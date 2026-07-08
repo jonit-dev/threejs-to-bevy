@@ -24,7 +24,17 @@ export interface IPrepareRoundResult {
   repeats: number;
 }
 
+export interface IPrepareRound5bOptions {
+  auditReportPath: string;
+  conditions?: BenchmarkCondition[];
+  outDir: string;
+  promptsDir?: string;
+  repeats?: number;
+  root?: string;
+}
+
 const defaultConditions: BenchmarkCondition[] = ["typed-spec", "threenative", "vanilla"];
+const round5bPromptIds = ["lane-runner", "checkpoint-race", "physics-knockdown"] as const;
 
 export async function prepareRound(options: IPrepareRoundOptions): Promise<IPrepareRoundResult> {
   const root = resolve(options.root ?? process.cwd());
@@ -66,6 +76,62 @@ export async function prepareRound(options: IPrepareRoundOptions): Promise<IPrep
   }, null, 2)}\n`, "utf8");
 
   return { candidates, manifestPath, ok: true, promptId: options.promptId, repeats };
+}
+
+export async function prepareRound5b(options: IPrepareRound5bOptions): Promise<IPrepareRoundResult> {
+  const audit = JSON.parse(await readFile(resolve(options.auditReportPath), "utf8")) as unknown;
+  if (!auditAllowsRound5b(audit)) {
+    throw new Error("Round-5b preparation requires a green next-steps audit with churn budgets complete.");
+  }
+  const root = resolve(options.root ?? process.cwd());
+  const promptsDir = resolve(root, options.promptsDir ?? "tools/agent-benchmark/prompts");
+  const outDir = resolve(options.outDir);
+  const repeats = options.repeats ?? 3;
+  const conditions = options.conditions ?? defaultConditions;
+  const candidates: IPrepareRoundResult["candidates"] = [];
+
+  for (const promptId of round5bPromptIds) {
+    const promptText = await readFile(resolve(promptsDir, `${promptId}.md`), "utf8");
+    for (const condition of conditions) {
+      for (let index = 1; index <= repeats; index += 1) {
+        const runId = `${promptId}-${condition}-r${index}`;
+        const candidateDir = resolve(outDir, "candidates", runId);
+        await mkdir(candidateDir, { recursive: true });
+        await writeFile(join(candidateDir, "benchmark-prompt.txt"), promptText, "utf8");
+        await writeFile(join(candidateDir, "OPERATOR.md"), operatorInstructions({
+          candidateDir,
+          condition,
+          outDir,
+          promptId,
+          root,
+          runId,
+        }), "utf8");
+        await writeFile(join(candidateDir, "session.template.json"), `${JSON.stringify(sessionTemplate({ condition, promptId, runId }), null, 2)}\n`, "utf8");
+        candidates.push({ condition, path: candidateDir, runId });
+      }
+    }
+  }
+
+  const manifestPath = resolve(outDir, "round-5b-prepare-manifest.json");
+  await mkdir(outDir, { recursive: true });
+  await writeFile(manifestPath, `${JSON.stringify({
+    candidates,
+    conditions,
+    promptId: "round-5b",
+    prompts: [...round5bPromptIds],
+    repeats,
+    schema: "threenative.agent-benchmark-round-prepare",
+    version: 1,
+  }, null, 2)}\n`, "utf8");
+
+  return { candidates, manifestPath, ok: true, promptId: "round-5b", repeats };
+}
+
+function auditAllowsRound5b(value: unknown): boolean {
+  if (!isRecord(value) || value.ok !== true || !Array.isArray(value.requirements)) {
+    return false;
+  }
+  return value.requirements.every((requirement) => isRecord(requirement) && requirement.status !== "incomplete");
 }
 
 function operatorInstructions(options: { candidateDir: string; condition: BenchmarkCondition; outDir: string; promptId: string; root: string; runId: string }): string {
@@ -180,4 +246,8 @@ function sessionTemplate(options: { condition: BenchmarkCondition; promptId: str
     uncachedInputTokens: 0,
     version: 2,
   };
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
