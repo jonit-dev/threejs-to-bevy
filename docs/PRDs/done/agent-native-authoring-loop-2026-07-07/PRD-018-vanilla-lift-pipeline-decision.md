@@ -8,10 +8,12 @@ integration, +2 complex subset diagnostics, +1 strategic decision impact.
 
 ## 1. Context
 
-**Problem:** If equal-proof round 5 still shows ThreeNative authoring above the
-decision threshold after tactical failure classes are fixed, agents should
+**Problem:** If equal-proof round 5 still showed ThreeNative authoring above
+the decision threshold after tactical failure classes were fixed, agents should
 author where training data is strongest and ThreeNative should ingest/lift that
-output into portable IR.
+output into portable IR. The guided round-5 collector evidence resolved that
+gate in the negative, so this decision PRD is closed and the vanilla-lift
+compiler prototype is not started.
 
 **Files Analyzed:**
 
@@ -30,8 +32,10 @@ output into portable IR.
 - Vanilla Three.js one-shots common tutorial-like prompts from model memory.
 - The IR, runtime, playtest, and scoring stack can still provide portable proof
   after ingestion if a constrained lift is feasible.
-- Round-4 decision rule says to prototype this only if round 5 fails at
-  equal-proof thresholds.
+- The round-4 decision rule said to prototype this only if round 5 failed at
+  equal-proof thresholds. The guided round-5 collector evidence shows direct
+  ThreeNative at `0.454x` vanilla raw tokens and `0.443x` cost-weighted at
+  equal proof, so the trigger did not fire.
 
 ## Pre-Planning Findings
 
@@ -118,10 +122,11 @@ sequenceDiagram
 
 **Implementation:**
 
-- [ ] Apply the round-4 decision rule to round-5 equal-proof evidence.
-- [ ] Record whether direct TN/typed-spec authoring remains viable.
-- [ ] Start the prototype only if TN stays above `~1.5x` at equal proof after
-  failure classes are engineered out.
+- [x] Apply the round-4 decision rule to round-5 equal-proof evidence.
+- [x] Record whether direct TN/typed-spec authoring remains viable.
+- [x] Start the prototype only if TN stays above `~1.5x` at equal proof after
+  failure classes are engineered out. Outcome: the trigger did not fire, so the
+  prototype remains unstarted.
 
 **Tests Required:**
 
@@ -136,6 +141,10 @@ sequenceDiagram
   prototype.
 
 #### Phase 2: Supported Subset Spec - The lift boundary is honest.
+
+**Closure Note:** Phases 2-4 are canceled for this decision PRD. If future
+evidence reopens vanilla-lift, create a new PRD with the then-current benchmark
+and native-path constraints instead of resuming this closed decision.
 
 **Files (max 5):**
 
@@ -237,11 +246,10 @@ sequenceDiagram
 
 ## 7. Acceptance Criteria
 
-- [ ] Work starts only after equal-proof round-5 evidence triggers the decision.
-- [ ] Supported vanilla subset is documented and test-enforced.
-- [ ] Unsupported constructs fail loudly with actionable diagnostics.
-- [ ] At least one vanilla-authored game lifts into valid ThreeNative IR.
-- [ ] Trial report decides keep, pivot, or stop based on equal-proof cost.
+- [x] Work starts only after equal-proof round-5 evidence triggers the decision.
+  Outcome: it did not trigger, so implementation work did not start.
+- [x] Decision report records the evidence-backed outcome.
+- [x] Vanilla-lift subset/prototype work remains unstarted.
 
 ## 8. Progress Log
 
@@ -262,9 +270,9 @@ The reviewed evidence does not satisfy the PRD-018 trigger:
   aggregate medians because the interrupted run has no completed token usage
   record.
 
-Decision: do not start the vanilla-lift compiler prototype yet. The next valid
-step is to collect the equal-proof round-5 matrix, then re-check whether direct
-ThreeNative, typed-spec, or vanilla-lift should be the default investment path.
+Decision at that checkpoint: do not start the vanilla-lift compiler prototype
+yet. This checkpoint was superseded by the 2026-07-08 guided round-5 closure
+below.
 
 ### 2026-07-07 round-5 collector matrix (9/9 proof-passing)
 
@@ -291,11 +299,23 @@ Gate reading against the pre-committed rule in `ROUND-5-PROTOCOL.md`:
   standalone verify commands, and 0 `tn iterate` uses despite iterate being
   the intended single-step verifier).
 
-Status: Phase 1 remains open. Collector alone is a strong warning, not a
-cross-prompt confirmation. Recommended path: (a) run the same matrix on
-lane-runner, checkpoint-race, and physics-knockdown; (b) attack the measured
-step classes (engine-source searches -> 0, standalone verifies -> iterate,
-forensics -> diagnostics) so the confirmation round is friction-free; (c)
-Phase 2 (subset spec, paper-only) may start in parallel since it is cheap
-and informs the decision either way; Phase 3 (compiler prototype) stays
-gated on cross-prompt confirmation.
+Status at that checkpoint: Phase 1 remained open. This was superseded by the
+2026-07-08 guided round-5 closure below, which closes the decision PRD without
+starting vanilla-lift.
+
+### 2026-07-08 guided round-5 decision closure
+
+`tools/verify/artifacts/agent-benchmark/round-5-collector-guided-2026-07-08/benchmark-report.json`
+resolved the decision gate for this PRD:
+
+- Direct ThreeNative median: `20,950` tokens.
+- Vanilla median: `46,192` tokens.
+- Ratio: `0.454x` raw and `0.443x` cost-weighted.
+- Equal-proof repeats: 3 per condition, with proof passing for all scored
+  slots.
+- Aggregate verdict still fails only because both direct ThreeNative and
+  vanilla have failed-command median `1` while the gate requires `0`.
+
+Decision: close PRD-018 without starting vanilla-lift. The trigger required
+direct ThreeNative to remain above the equal-proof threshold; the guided round
+shows the opposite.

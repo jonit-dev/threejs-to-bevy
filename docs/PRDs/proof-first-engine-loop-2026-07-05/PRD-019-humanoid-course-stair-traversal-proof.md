@@ -24,6 +24,10 @@ native.
 
 **Current Behavior:**
 
+- Native/desktop proof is deferred by the 2026-07-07 native parity freeze unless
+  a shipped-game need is documented. Keep this PRD web-first for now; native
+  trace/test work resumes only after the freeze conditions in
+  `docs/runtime/native-path.md` are met.
 - The player has `CharacterController.stepOffset: 0.36`.
 - The authored stair tops are approximately `0.22`, `0.44`, and `0.66`, so each
   riser should be climbable as a sequence.
@@ -69,7 +73,8 @@ native.
 - [ ] Create a scenario that steers from the start lane to the stair lane and
       advances up `stairs.step.01` through `stairs.step.03`.
 - [ ] Assert meaningful positive Y movement, not only X/Z displacement.
-- [ ] Capture stable artifacts for web and desktop runs.
+- [ ] Capture stable artifacts for web runs; capture desktop/native artifacts
+      only after a shipped-game need unfreezes the native path.
 
 **Tests Required:**
 
@@ -110,8 +115,9 @@ native.
 
 **User Verification:**
 
-- Action: Run web and desktop stair playtests.
-- Expected: Both targets pass and artifacts show stair-specific proof.
+- Action: Run the web stair playtest. Desktop/native playtests are deferred
+  under the native parity freeze.
+- Expected: Web artifacts show stair-specific proof.
 
 ## 4. Verification
 
@@ -119,15 +125,18 @@ native.
 pnpm --filter @threenative/runtime-web-three test -- character
 cargo test --manifest-path runtime-bevy/Cargo.toml -p threenative_runtime character
 tn playtest --project examples/humanoid-physics-course --scenario playtests/humanoid-course-stairs.playtest.json --stable-artifacts --json
-tn playtest --project examples/humanoid-physics-course --scenario playtests/humanoid-course-stairs.playtest.json --target desktop --stable-artifacts --json
 pnpm verify:conformance
 ```
+
+Desktop/native playtest proof is intentionally omitted while the native parity
+freeze is active.
 
 ## 5. Acceptance Criteria
 
 - [ ] A committed humanoid-course stair scenario proves the actual course
       geometry.
-- [ ] Web and desktop playtests pass with stable artifacts.
+- [ ] Web playtest passes with stable artifacts; desktop/native proof is deferred
+      by the native parity freeze.
 - [ ] Final player transform has meaningful positive Y movement.
 - [ ] Evidence identifies stair grounding, or an equivalent explicit vertical
       traversal assertion.

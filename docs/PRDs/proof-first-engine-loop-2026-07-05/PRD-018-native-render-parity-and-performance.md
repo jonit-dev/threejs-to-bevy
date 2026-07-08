@@ -47,6 +47,13 @@ anti-patterns.
 
 **Current Behavior (root causes, verified with file:line evidence):**
 
+**Freeze status:** This PRD is frozen by the 2026-07-07 native path decision
+(`docs/runtime/native-path.md`). The render/performance gaps remain useful
+diagnostics, but do not start new Bevy parity promotions from this PRD unless a
+shipped-game need documents web evidence, native proof evidence, and a focused
+gate. PRD-012 shipped-game evidence is the expected upstream source for any
+unfreeze.
+
 Visual — authored abstractions the Bevy adapter drops or misreads:
 
 - V1. Directional shadows are hardcoded off. The atmosphere sun sets
@@ -174,8 +181,9 @@ flowchart LR
       minimal fix.
 - [ ] Keep the QuickJS engine choice; persist `Context` + module in a
       `NonSend` resource (QuickJS is not `Send`).
-- [ ] `--release` for `tn ... --target desktop` launches, plus
-      `[profile.dev.package."*"] opt-level = 3` so dev iterating stays usable.
+- [ ] If the native freeze is lifted, `--release` for focused desktop/native
+      launches, plus `[profile.dev.package."*"] opt-level = 3` so dev iterating
+      stays usable.
 - [ ] Emissive: map `emissive * emissiveIntensity` into HDR luminance using
       one documented shared conversion (new contract note in
       `docs/contracts/`), so authored intensity >= threshold produces bloom on
@@ -243,16 +251,18 @@ proof gate.
 
 **Files (max 5):**
 
-- `packages/cli/src/native/bevy.ts` — add `--release` to `bevyRuntimeArgs`
-  (with an escape hatch env/flag for debug runs)
+- `packages/cli/src/native/bevy.ts` — if unfrozen, add `--release` to
+  `bevyRuntimeArgs` for the focused native need (with an escape hatch env/flag
+  for debug runs)
 - `runtime-bevy/Cargo.toml` — add `[profile.dev.package."*"] opt-level = 3`
 - `packages/cli/src/native/bevy.test.ts` (or nearest existing test file) —
   cover args
 
 **Implementation:**
 
-- [ ] `cargo run -p threenative_runtime --release ...` as the default launch;
-      honor an explicit debug opt-out (e.g. `TN_NATIVE_PROFILE=debug`).
+- [ ] If unfrozen, `cargo run -p threenative_runtime --release ...` as the
+      focused launch; honor an explicit debug opt-out (e.g.
+      `TN_NATIVE_PROFILE=debug`).
 - [ ] Dev-profile dependency optimization so debug launches remain usable.
 - [ ] Re-capture native frame-time after the change (same method as Phase 0).
 
@@ -264,8 +274,10 @@ proof gate.
 
 **User Verification:**
 
-- Action: `tn playtest --project examples/humanoid-physics-course --target desktop ...`
-- Expected: visibly smoother; frame-time artifact shows the improvement vs Phase 0 baseline.
+- Action: do not run desktop/native proof as a release claim while the native
+  parity freeze is active.
+- Expected: if a shipped-game need unfreezes this work, refresh this PRD and
+  then run the focused native proof command for that need.
 
 #### Phase 2: Directional shadows honor IR — player has a real drop shadow
 

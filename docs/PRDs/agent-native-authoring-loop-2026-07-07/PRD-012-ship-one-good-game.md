@@ -9,9 +9,10 @@ multi-package proof/publish path; +1 release/public evidence impact.
 
 ## 1. Context
 
-**Problem:** The stack has many proof slices but no shipped game that tests
-whether the agent-native authoring loop produces a game a stranger would
-actually play for five minutes.
+**Problem:** The stack has many proof slices and now has a release candidate,
+`examples/metro-surfer-heist`, with generated-game release evidence. What
+remains unproved is the public shipped-game bar: a hosted URL and a recorded
+five-minute stranger-playable pass.
 
 **Files Analyzed:**
 
@@ -24,9 +25,12 @@ actually play for five minutes.
 
 **Current Behavior:**
 
-- Examples and benchmarks prove individual loops but hide integration gaps.
-- Recipes can scaffold simple games, but quality ceiling remains uncertain.
-- The friction log from building a real game is not yet feeding the PRD loop.
+- `examples/metro-surfer-heist` exists as the PRD-012 release candidate with
+  real GLB hero, obstacle, reward, and environment assets.
+- Local build, scenario playtests, game QA, game release, Pages-shaped build,
+  and `tn verify --url` evidence are recorded in the progress log below.
+- The remaining gaps are external public hosting proof and a recorded
+  five-minute human playtest, not creating the first game from zero.
 
 ## Pre-Planning Findings
 
@@ -56,8 +60,8 @@ actually play for five minutes.
 
 **Approach:**
 
-- Pick one concept above benchmark complexity but still scoped for a short
-  production cycle.
+- Use `examples/metro-surfer-heist` as the scoped release candidate unless new
+  evidence disqualifies it.
 - Build agent-first using PRD-002 archetypes, PRD-003 blocks, PRD-006
   cookbook, and PRD-007 look profiles.
 - Source hero/environment/reward assets from the catalog or open-source packs.

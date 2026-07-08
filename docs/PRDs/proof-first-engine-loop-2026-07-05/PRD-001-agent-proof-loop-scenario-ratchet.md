@@ -102,10 +102,10 @@ flowchart LR
       internally treated as an ephemeral scenario.
 - [x] Committed scenario files are required for maintained starters and
       generated-game release proof.
-- [x] Native targets run proof-harness-backed keyboard movement scenarios once
-      the native parity PRD slice lands, including before/after screenshots and
-      short PNG-sequence recording artifacts; encoded native video export remains
-      follow-on polish.
+- [x] Native targets remain out of scope for this PRD under the 2026-07-07
+      native parity freeze. Webview packaging is the desktop fallback; native
+      proof-harness-backed scenarios require a separate shipped-game need before
+      new Bevy parity work resumes.
 - [x] Scenario artifact bundles must include `summary.json`, screenshots,
       effect log, manifest, diagnostics, and reproduction command.
 
@@ -211,7 +211,8 @@ sequenceDiagram
   proof, stale artifacts, and missing scenario files.
 - `tools/verify/src/gameProductionGateTestUtils.ts` - fixture helper update.
 - `docs/STATUS.md` - record promoted proof-loop ratchet.
-- `docs/bevy-feature-parity.md` - note web-only target until native PRD lands.
+- `docs/bevy-feature-parity.md` - note web-only target under the native parity
+  freeze and link the webview desktop fallback.
 
 **Implementation:**
 

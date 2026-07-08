@@ -36,5 +36,10 @@ node tools/agent-benchmark/dist/index.js prepare \
   --json
 ```
 
-Round 5B feeds PRD-017 Phase 5 and PRD-018 Phase 1. It does not itself choose
-typed-spec defaults or the vanilla-lift path.
+Original intent: Round 5B fed PRD-017 Phase 5 and PRD-018 Phase 1 without
+itself choosing typed-spec defaults or the vanilla-lift path.
+
+2026-07-08 update: the guided collector matrix closed those PRD decisions:
+typed-spec remains experimental and vanilla-lift does not start. Future 5B
+matrices are broader benchmark confidence evidence, not an automatic reopen of
+PRD-017 or PRD-018.

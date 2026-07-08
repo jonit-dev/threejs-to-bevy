@@ -24,6 +24,10 @@ moves.
 
 **Current Behavior:**
 
+- Native/desktop proof is deferred by the 2026-07-07 native parity freeze unless
+  a shipped-game need is documented. Keep this PRD web-first for now; native
+  trace/test work resumes only after the freeze conditions in
+  `docs/runtime/native-path.md` are met.
 - The player collider mask already includes `pushable`.
 - Existing crates are dynamic rigid bodies on the `pushable` layer.
 - The player `CharacterController` does not set `pushPolicy`.
@@ -42,7 +46,8 @@ moves.
 - Extend the shared script/runtime path so `CharacterRig.update` can apply or
   expose push trace effects without duplicating movement logic in the example.
 - Add a committed playtest where pressing into the ball moves the ball by a
-  measurable distance on web and desktop.
+  measurable distance on web. Desktop/native proof is deferred by the native
+  parity freeze.
 
 **Integration Points:**
 
@@ -121,7 +126,7 @@ push traces.
 - Action: Run the example and walk into the ball.
 - Expected: Ball visibly moves while the player remains controllable.
 
-#### Phase 3: Ball Push Playtest - Web and desktop prove the same interaction.
+#### Phase 3: Ball Push Playtest - Web proves the interaction first.
 
 **Files (max 5):**
 
@@ -134,7 +139,8 @@ push traces.
 
 - [ ] Add a scenario that positions/moves the player into `ball.push.01`.
 - [ ] Assert the ball moves at least `0.15m` along the intended axis.
-- [ ] Capture stable artifacts for web and desktop.
+- [ ] Capture stable artifacts for web. Capture desktop/native artifacts only
+      after a shipped-game need unfreezes the native path.
 
 **Tests Required:**
 
@@ -147,7 +153,7 @@ push traces.
 
 - Action: Run the ball push playtest and inspect screenshots/effect log.
 - Expected: The player contacts the ball and the ball moves a measurable
-  distance on both targets.
+  distance on web. Native target proof is deferred.
 
 ## 4. Verification
 
@@ -158,8 +164,10 @@ pnpm run build
 tn scene validate arena --json
 tn scene inspect arena --json
 tn playtest --project . --scenario playtests/humanoid-course-ball-push.playtest.json --stable-artifacts --json
-tn playtest --project . --scenario playtests/humanoid-course-ball-push.playtest.json --target desktop --stable-artifacts --json
 ```
+
+Desktop/native playtest proof is intentionally omitted while the native parity
+freeze is active.
 
 For shared runtime or stdlib changes:
 
@@ -178,7 +186,8 @@ pnpm verify:conformance
       `pushable`.
 - [ ] Pressing movement into the ball moves it at least `0.15m`.
 - [ ] Heavy/blocked behavior remains deterministic in focused tests.
-- [ ] Web and desktop playtests pass for the same committed scenario.
+- [ ] Web playtest passes for the committed scenario; desktop/native proof is
+      deferred by the native parity freeze.
 - [ ] No raw Three.js/Bevy gameplay code or emitted bundle edits are used.
 
 ## Risks And Unknowns

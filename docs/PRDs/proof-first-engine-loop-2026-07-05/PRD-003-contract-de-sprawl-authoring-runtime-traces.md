@@ -28,8 +28,10 @@ that every new capability must touch.
 
 **Current Behavior:**
 
-- `packages/authoring/src/operations.ts` is over 5k lines and owns too many
-  source-family mutations.
+- `packages/authoring/src/operations.ts` was previously cited as over 5k lines,
+  but the current tree already has an `operations/` module split. Re-measure
+  the current source-size warnings before using this as implementation
+  motivation.
 - Native mapping and loader files remain large enough to be hard to review
   and schema-drift-prone.
 - Some parity checks compare broad reports instead of small semantic trace

@@ -15,10 +15,17 @@ or duplicate script scaffolding. For future engine surfaces, prefer shared
 abstractions that do the heavy lifting and familiar Unity-like naming where the
 semantics genuinely match.
 
+Native parity freeze: `docs/runtime/native-path.md` freezes new Bevy/native
+parity promotions until a shipped-game need documents web evidence, native
+proof evidence, and a focused gate. PRD-002 and PRD-018 are therefore
+freeze-gated, and the native/desktop halves of PRD-019 through PRD-021 are
+deferred unless that shipped-game need is recorded. Web scenario evidence may
+still proceed.
+
 ## Ordered PRDs
 
 1. [PRD-001 Agent Proof Loop Scenario Ratchet](PRD-001-agent-proof-loop-scenario-ratchet.md)
-2. [PRD-002 Native Parity Closure And Proof Loop](PRD-002-native-parity-closure-and-proof-loop.md)
+2. [PRD-002 Native Parity Closure And Proof Loop](PRD-002-native-parity-closure-and-proof-loop.md) - freeze-gated
 3. [PRD-003 Contract De-Sprawl Through Authoring Modules And Runtime Trace Contracts](PRD-003-contract-de-sprawl-authoring-runtime-traces.md)
 4. [PRD-004 Cinematic Default Look](PRD-004-cinematic-default-look.md)
 5. [PRD-005 Believable Worlds: Heightfield Terrain And Biome Dressing](PRD-005-believable-world-terrain-and-biome-dressing.md)
@@ -34,10 +41,10 @@ semantics genuinely match.
 15. [PRD-015 Advanced Animation And Physics Depth](PRD-015-advanced-animation-physics-depth.md)
 16. [PRD-016 External Services, Media, And Non-Portable Boundaries](PRD-016-external-services-media-boundaries.md)
 17. [PRD-017 Signed Installers And Store Packaging](PRD-017-signed-installers-store-packaging.md)
-18. [PRD-018 Native Render Parity And Performance](PRD-018-native-render-parity-and-performance.md)
-19. [PRD-019 Humanoid Course Stair Traversal Proof](PRD-019-humanoid-course-stair-traversal-proof.md)
-20. [PRD-020 Humanoid Course Ramp Slope Proof](PRD-020-humanoid-course-ramp-slope-proof.md)
-21. [PRD-021 Humanoid Course Character-Pushed Ball](PRD-021-humanoid-course-character-pushed-ball.md)
+18. [PRD-018 Native Render Parity And Performance](PRD-018-native-render-parity-and-performance.md) - freeze-gated
+19. [PRD-019 Humanoid Course Stair Traversal Proof](PRD-019-humanoid-course-stair-traversal-proof.md) - web-first; native deferred
+20. [PRD-020 Humanoid Course Ramp Slope Proof](PRD-020-humanoid-course-ramp-slope-proof.md) - web-first; native deferred
+21. [PRD-021 Humanoid Course Character-Pushed Ball](PRD-021-humanoid-course-character-pushed-ball.md) - web-first; native deferred
 
 ## Boundary
 

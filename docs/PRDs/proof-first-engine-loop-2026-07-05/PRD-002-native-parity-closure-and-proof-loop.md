@@ -51,6 +51,12 @@ depend on.
 
 **Current Behavior:**
 
+- **Freeze status:** This PRD is frozen by the 2026-07-07 native path decision
+  (`docs/runtime/native-path.md`). Do not start the generalized
+  `--target desktop`, native proof harness, or `verify:parity:native` work
+  unless a shipped-game need records web evidence, native proof evidence, and a
+  focused gate. The existing native proof harness is limited to the P0 closure
+  slice; this PRD no longer describes actionable near-term work by default.
 - A kinematic entity posed by a script each tick double-integrates on Bevy
   (the exact footgun the web fixed), so rig-driven characters behave
   differently on native.
@@ -75,7 +81,8 @@ depend on.
    conformance per the existing fixture.
 3. **Port `character.move` overrides** — `direction`/`speed` options in the
    native character service (`systems_services.rs`), same resolution rules.
-4. **Native proof harness** — the piece that keeps parity closed forever:
+4. **Native proof harness** — frozen until a shipped-game need justifies it.
+   If the freeze is lifted, refresh this plan before implementing:
    - A `--proof-harness` mode on the native runtime: reads a JSON command
      stream (inject input at tick N, capture screenshot at tick M, dump
      readiness/diagnostics, exit at tick K) from a file or stdin —
@@ -83,9 +90,11 @@ depend on.
      offscreen if the platform allows).
    - Runtime writes the same readiness/diagnostics shape web exposes via
      `__THREENATIVE_READY__`, to a JSON file the CLI polls.
-   - `tn playtest|screenshot|record --target desktop` drive it; `tn game
-     qa --run-proof` gains a `--targets web,desktop` matrix.
-5. **Parity ratchet gate** — `verify:parity:native` runs the conformance
+   - Proposed command surface at the time of writing:
+     `tn playtest|screenshot|record --target desktop`; `tn game qa
+     --run-proof --targets web,desktop`.
+5. **Parity ratchet gate** — frozen until a shipped-game need justifies it:
+   `verify:parity:native` runs the conformance
    fixtures + a native playtest/screenshot smoke on one example and fails if
    any previously-closed parity row regresses; parity/STATUS rows flip from
    "gap" to "proven" only via this gate's evidence.
@@ -94,7 +103,7 @@ depend on.
 
 ```mermaid
 flowchart LR
-    CLI[tn playtest/screenshot/record --target desktop] --> H[proof-harness command stream JSON]
+    CLI[frozen proposed desktop proof commands] --> H[proof-harness command stream JSON]
     H --> B[runtime-bevy: inject input at tick,<br/>capture frame, dump readiness JSON]
     B --> CLI
     F[shared IR conformance fixtures] --> W[web runtime]
@@ -124,8 +133,10 @@ schemas (tooling contract, versioned in `docs/contracts/`).
 
 ## 3. Integration Points
 
-- Entry points: `tn playtest|screenshot|record --target desktop --json`;
-  `tn game qa --run-proof --targets web,desktop`; `pnpm verify:parity:native`.
+- Entry points are frozen proposals, not current implementation targets:
+  `tn playtest|screenshot|record --target desktop --json`,
+  `tn game qa --run-proof --targets web,desktop`, and
+  `pnpm verify:parity:native`.
 - Callers: `packages/cli/src/native/bevy.ts` (harness launch/flags),
   `packages/cli/src/commands/{playtest,visualProof,gameQaProof}.ts`
   (target dispatch), `runtime-bevy/crates/threenative_runtime` (harness
@@ -184,9 +195,9 @@ evidence instead of assumption.
 | conformance | `identical sine mover trajectory web vs bevy` | positions per tick within 1e-5 |
 | conformance | `identical displacement for move() with speed override` | trace match |
 
-**User Verification:** run `examples/humanoid-physics-course` on
-`tn dev --target desktop` — hazards sweep and the character walks with the
-same feel as web (manual checkpoint).
+**User Verification:** deferred under the native parity freeze. If a
+shipped-game need unfreezes this phase, refresh and then compare native feel
+against web for that focused case.
 
 #### Phase 3: Native proof harness — input injection + readiness
 
@@ -208,11 +219,11 @@ same feel as web (manual checkpoint).
 | bevy tests | `should apply injected action exactly at requested tick` | action active tick N only |
 | bevy tests | `should write readiness json matching schema` | schema-valid output |
 
-#### Phase 4: CLI native targets — playtest, screenshot, record
+#### Phase 4: CLI native targets — playtest, screenshot, record (frozen)
 
 **Files (max 5):**
 
-- `packages/cli/src/commands/playtest.ts` — `--target desktop` path
+- `packages/cli/src/commands/playtest.ts` — frozen proposed desktop target path
   (harness stream from the same `--press/--frames/--expect-moved` flags;
   identical JSON report shape as web).
 - `packages/cli/src/commands/visualProof.ts` — native screenshot/record via
@@ -227,9 +238,9 @@ same feel as web (manual checkpoint).
 | cli tests | `should produce web-shaped playtest report for desktop target` | same schema, `target: "desktop"` |
 | cli tests | `should exit 1 when native expect-moved fails` | exit code + diagnostic |
 
-**User Verification:** `tn playtest --target desktop --entity player --press
-KeyW --frames 30 --expect-moved --json` passes on the humanoid example;
-`tn screenshot --target desktop` produces a native frame.
+**User Verification:** deferred under the native parity freeze. If a
+shipped-game need unfreezes this phase, refresh and then run the focused native
+playtest/screenshot commands for that need.
 
 #### Phase 5: Parity ratchet gate + docs closure
 
@@ -244,25 +255,29 @@ KeyW --frames 30 --expect-moved --json` passes on the humanoid example;
   completion.
 - Example artifacts — committed native evidence for the enrolled example.
 
-**Verification Plan:** full `pnpm verify` + `pnpm verify:release` green;
-deliberately break the mover on a branch → gate fails (ratchet proof).
+**Verification Plan:** deferred under the native parity freeze. If unfrozen,
+refresh this section before wiring any new parity ratchet gate.
 
 ## 5. Checkpoint Protocol
+
+Do not execute checkpoints for new native work while this PRD is freeze-gated.
+If the freeze is lifted by shipped-game evidence, refresh this PRD first so its
+commands and acceptance criteria match the then-current native tooling.
 
 Spawn `prd-work-reviewer` after every phase. Manual checkpoints additionally
 for Phase 2 (native feel) and Phase 4 (native screenshot review).
 
 ## 6. Acceptance Criteria
 
-- [ ] Script kinematic authority, `KinematicMover`, and `character.move`
-      overrides behave identically on Bevy, proven by conformance fixtures.
-- [ ] `tn playtest`, `tn screenshot`, `tn record`, and `tn game qa
-      --run-proof` all support `--target desktop` with web-shaped reports.
-- [ ] The native proof harness is a documented, schema-validated contract.
-- [ ] `verify:parity:native` ratchet gate is green and wired into pre-push
-      verification; regression on a closed row fails it.
-- [ ] All previously-recorded gap rows in `docs/bevy-feature-parity.md`
-      flipped with evidence links; `docs/STATUS.md` updated.
+- [ ] A shipped-game need lifts the freeze with web evidence, native proof
+      evidence, and a focused gate.
+- [ ] This PRD is refreshed against current native tooling before implementation
+      resumes.
+- [ ] If unfrozen, script kinematic authority, `KinematicMover`, and
+      `character.move` overrides behave identically on Bevy, proven by
+      conformance fixtures.
+- [ ] If unfrozen, the native proof harness and parity ratchet are documented,
+      schema-validated, and linked from capability/status docs.
 
 ## 7. Success Metrics
 

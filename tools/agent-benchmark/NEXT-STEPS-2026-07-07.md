@@ -3,6 +3,12 @@
 Status note written after `collector-typed-spec-r3` completed and was
 committed (`c7efecea`). No code was changed for this note.
 
+2026-07-08 supersession: this note is historical. The guided collector matrix
+later closed the PRD-017/PRD-018 decisions: typed-spec remains experimental and
+vanilla-lift does not start. See the closed PRDs under
+`docs/PRDs/done/agent-native-authoring-loop-2026-07-07/` and
+`tools/verify/artifacts/agent-benchmark/round-5-collector-guided-2026-07-08/benchmark-report.json`.
+
 ## Where we actually are
 
 | Metric | Gate (round 5) | typed-spec r1 | typed-spec r3 |
@@ -14,9 +20,10 @@ committed (`c7efecea`). No code was changed for this note.
 
 Aggregate verdict: `insufficient-data` — one proof-passing typed-spec repeat
 out of the three required, and **zero** direct ThreeNative and **zero**
-vanilla equal-proof repeats in the trial directory. The matrix that every
-open decision depends on (PRD-017 default surface, PRD-018 vanilla-lift
-trigger) is mostly empty. See `VANILLA-LIFT-DECISION-2026-07-07.md`.
+vanilla equal-proof repeats in the trial directory. At the time, the matrix
+that every open decision depended on (PRD-017 default surface, PRD-018
+vanilla-lift trigger) was mostly empty. See
+`VANILLA-LIFT-DECISION-2026-07-07.md`.
 
 ## Is this unsolvable?
 
@@ -125,10 +132,11 @@ work alone.
 
 To prevent moving the goalposts again, record now:
 
-- If typed-spec (post-friction-fix) meets the typed-spec trial threshold
+- Historical rule, now evaluated by later guided evidence: if typed-spec
+  (post-friction-fix) meets the typed-spec trial threshold
   (>= 3 proof-passing repeats, median tokens <= direct TN, failed-command
   median 0, retry chains within budget): flip the starter default to
-  typed-spec (PRD-017 Phase 5 closes) and schedule
+  typed-spec (which would have closed PRD-017 Phase 5) and schedule
   `humanoid-physics-course` migration as the first real-world validation.
 - If direct TN and typed-spec both miss the equal-proof token gate after
   friction is demonstrably dead (failed-command median 0): the PRD-018

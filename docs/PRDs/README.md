@@ -57,18 +57,18 @@ execution bundle.
   adds QA scenario coverage reporting, ratchets generated-game gates away from
   ephemeral one-shot movement proof, and polishes watch-mode repair events.
 - [Native Render Parity and Performance](proof-first-engine-loop-2026-07-05/PRD-018-native-render-parity-and-performance.md):
-  fixes Bevy adapter contract gaps exposed by humanoid-physics-course
+  is freeze-gated by the native path decision; it documents Bevy adapter gaps
+  exposed by humanoid-physics-course
   (directional shadows hardcoded off, authored lights discarded under
   atmosphere, emissive below bloom threshold, missing tangents and texture
   color-space roles, static HUD bindings) and native performance
   anti-patterns (debug-build launch, per-frame QuickJS and Rapier rebuilds,
-  per-frame asset re-uploads), closed by a side-by-side parity and
-  frame-time proof gate.
+  per-frame asset re-uploads), but should not start without a documented
+  shipped-game need and focused native gate.
 - [Native Parity Closure and Proof Loop](proof-first-engine-loop-2026-07-05/PRD-002-native-parity-closure-and-proof-loop.md):
-  Bevy ports of script kinematic authority, `KinematicMover`, and
-  `character.move` overrides, plus a native proof harness so
-  `tn playtest/screenshot/record/game qa` work with `--target desktop` and a
-  parity ratchet gate keeps closed rows closed.
+  is freeze-gated by the native path decision; the proposed Bevy ports and
+  generalized native proof harness remain non-actionable until a shipped-game
+  need provides web evidence, native proof evidence, and a focused gate.
 - [Declarative Gameplay Flow: Spawners, Game-Flow State Machines, Sequencer](proof-first-engine-loop-2026-07-05/PRD-007-declarative-gameplay-flow-spawners-sequencer.md):
   data-first `Spawner` component, bounded `GameFlow` state machines, and a
   typed-track `Sequence` timeline so waves, macro game state, and cutscenes
@@ -133,14 +133,14 @@ execution bundle.
   replaces the unequal `<=0.5x` raw-token gate with equal mechanic proof,
   three repeats per condition, continuity plus beyond-one-shot prompts, and a
   decision report for round 5.
-- [Typed TypeScript Game Spec](agent-native-authoring-loop-2026-07-07/PRD-017-typed-typescript-game-spec.md):
-  architectural bet to make TypeScript the authoring schema for scenes,
-  resources, systems, UI, and IDs while emitting canonical structured JSON and
-  existing IR bundles.
-- [Vanilla-Lift Pipeline Decision](agent-native-authoring-loop-2026-07-07/PRD-018-vanilla-lift-pipeline-decision.md):
-  decision-gated prototype for ingesting constrained vanilla Three.js/TypeScript
-  into ThreeNative IR if equal-proof round 5 shows direct authoring still above
-  the threshold after tactical fixes.
+- [Typed TypeScript Game Spec](done/agent-native-authoring-loop-2026-07-07/PRD-017-typed-typescript-game-spec.md):
+  closed as an experimental opt-in authoring surface; guided round-5 evidence
+  showed about `0.95x` direct ThreeNative tokens and a missed failed-command
+  budget, so it does not become the default starter surface.
+- [Vanilla-Lift Pipeline Decision](done/agent-native-authoring-loop-2026-07-07/PRD-018-vanilla-lift-pipeline-decision.md):
+  closed without starting a vanilla-lift prototype; guided round-5 evidence
+  showed direct ThreeNative below vanilla at equal proof, so the trigger did not
+  fire.
 - [Contract De-Sprawl Through Authoring Modules And Runtime Trace Contracts](proof-first-engine-loop-2026-07-05/PRD-003-contract-de-sprawl-authoring-runtime-traces.md):
   splits authoring operation implementation by source family, introduces
   focused runtime trace contracts, and shrinks native mapping hotspots behind

@@ -53,6 +53,17 @@ components, and Blueprints; this PRD delivers the data-first equivalents.
   `entity.get`/`resources.get` defaults, `resources.patch`, compact API cards,
   and scaffold-first game plan apply have landed. Project-specific typegen,
   single-source system metadata, and actor archetypes remain open.
+- Agent-native PRD-002 has already landed L1 archetype scaffolds for
+  perspective/control/physics/proof setup. This PRD still targets the larger
+  re-appliable parameterized actor system (`tn actor add/update`) and must not
+  duplicate the L1 scaffold path.
+- Agent-native PRD-013 has already landed derived resource declarations, so
+  hand-maintained resource access lists are no longer the primary pain point for
+  literal resource helper calls. Phase 2 should focus on remaining access
+  metadata, service declarations, and behavior co-location.
+- Agent-native PRD-017 closed typed game-spec as experimental, not default.
+  Coordinate any project-specific typegen or `defineBehavior` surface with that
+  result before adding another broad typed authoring path.
 - Access lists drift from what the function body actually touches; the
   runtime validates effects against declarations only at play time.
 - Agents thread literal id strings (`"player"`, `"camera.main"`,

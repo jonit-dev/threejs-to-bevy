@@ -24,6 +24,10 @@ example does not prove ramp/slope support.
 
 **Current Behavior:**
 
+- Native/desktop proof is deferred by the 2026-07-07 native parity freeze unless
+  a shipped-game need is documented. Keep this PRD web-first for now; native
+  trace/test work resumes only after the freeze conditions in
+  `docs/runtime/native-path.md` are met.
 - The shared runtime supports promoted slope metadata on box colliders and
   `CharacterController.slopeLimit`.
 - `ramp.main` is rendered as a rotated box but lacks `Collider.slope`.
@@ -39,7 +43,7 @@ example does not prove ramp/slope support.
   the visible ramp.
 - Add an explicit player `slopeLimit` that accepts this ramp angle.
 - Add a focused playtest that proves the player traverses the ramp and gains
-  height on web and desktop.
+  height on web. Desktop/native proof is deferred by the native parity freeze.
 - If needed, add playtest assertion support for resolved Y or
   `groundEntity: "ramp.main"`.
 
@@ -81,7 +85,7 @@ explicit `CharacterController.slopeLimit`.
 - Expected: `ramp.main` has explicit slope data; no diagnostics report an
   unsupported collider shape or controller field.
 
-#### Phase 2: Course Ramp Scenario - Ramp traversal is proven on web and native.
+#### Phase 2: Course Ramp Scenario - Ramp traversal is proven on web first.
 
 **Files (max 5):**
 
@@ -93,7 +97,8 @@ explicit `CharacterController.slopeLimit`.
 
 - [ ] Add a scenario that moves the player onto and across `ramp.main`.
 - [ ] Assert positive Y movement and/or `groundEntity: "ramp.main"`.
-- [ ] Run with stable artifacts for web and desktop targets.
+- [ ] Run with stable artifacts for the web target; desktop/native artifacts are
+      deferred under the native parity freeze.
 
 **Tests Required:**
 
@@ -131,7 +136,8 @@ explicit `CharacterController.slopeLimit`.
 **User Verification:**
 
 - Action: Run focused runtime tests plus the playtest scenario.
-- Expected: Web/native runtime tests and scenario evidence agree.
+- Expected: Web runtime tests and scenario evidence agree. Native agreement is
+  deferred under the native parity freeze.
 
 ## 4. Verification
 
@@ -141,15 +147,18 @@ pnpm --filter @threenative/runtime-web-three test -- character
 cargo test --manifest-path runtime-bevy/Cargo.toml -p threenative_runtime character_trace_should_apply_slope_limits
 pnpm --filter @threenative/example-humanoid-physics-course build
 tn playtest --project examples/humanoid-physics-course --scenario playtests/humanoid-course-ramp-traverse.playtest.json --stable-artifacts --json
-tn playtest --project examples/humanoid-physics-course --scenario playtests/humanoid-course-ramp-traverse.playtest.json --target desktop --stable-artifacts --json
 pnpm verify:conformance
 ```
+
+Desktop/native playtest proof is intentionally omitted while the native parity
+freeze is active.
 
 ## 5. Acceptance Criteria
 
 - [ ] `ramp.main` uses explicit portable `Collider.slope` metadata.
 - [ ] Player controller has an explicit `slopeLimit` that accepts the ramp.
-- [ ] Web and desktop playtests prove traversal of the actual course ramp.
+- [ ] Web playtest proves traversal of the actual course ramp; desktop/native
+      proof is deferred by the native parity freeze.
 - [ ] Runtime tests still reject too-steep slopes.
 - [ ] No custom game-script Y correction or backend-specific physics code is
       added.

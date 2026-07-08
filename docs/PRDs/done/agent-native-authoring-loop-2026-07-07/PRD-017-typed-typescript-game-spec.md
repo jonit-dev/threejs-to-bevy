@@ -36,9 +36,10 @@ the remaining agent cost even after adoption fixes.
   collapsing the multi-file surface.
 
 **Implementation Note:** An experimental vertical slice now exists: SDK typed
-spec types, compiler ID-union generation from structured source, and typed
-spec-to-canonical-source emission. Starter/cookbook/default migration and the
-benchmark decision remain open before this PRD is complete.
+spec types, compiler ID-union generation from structured source,
+typed-spec-to-canonical-source emission, opt-in starter/cookbook support, and
+benchmark reporting. The benchmark decision is closed: typed-spec remains
+experimental and does not become the default authoring surface.
 
 ## Pre-Planning Findings
 
@@ -259,9 +260,9 @@ resource state, entity transforms, input IDs, and UI bindings.
 
 **Implementation:**
 
-- [ ] Run a focused benchmark trial against round-4 failure classes.
-- [ ] Compare steps, failed commands, and retry chains against JSON source.
-- [ ] Decide whether typed spec becomes the default starter surface.
+- [x] Run a focused benchmark trial against round-4 failure classes.
+- [x] Compare steps, failed commands, and retry chains against JSON source.
+- [x] Decide whether typed spec becomes the default starter surface.
 
 **Implementation Note:** The agent benchmark contract now accepts a
 `typed-spec` condition and aggregate reports emit a separate `typedSpecVerdict`
@@ -300,7 +301,8 @@ the existing vanilla-vs-ThreeNative round-5 verdict.
 - [x] Invalid entity/resource/input IDs fail at TypeScript compile time.
 - [x] Typed spec emits canonical structured source and existing IR bundles.
 - [x] Starter/cookbook guidance is verified.
-- [ ] Benchmark trial decides whether typed spec becomes default.
+- [x] Benchmark trial decides whether typed spec becomes default: it remains
+  experimental and opt-in, not the default starter surface.
 
 ## 8. Progress Log
 
@@ -373,3 +375,18 @@ Friction found during the pilot:
   readiness/canvas proof.
 - Runtime component patches such as `MeshRenderer.visible` require matching
   system write declarations before playtest diagnostics clear.
+
+### 2026-07-08 guided round-5 typed-spec verdict
+
+Round-5 guided collector evidence closed the default-surface decision:
+
+- Evidence:
+  `tools/verify/artifacts/agent-benchmark/round-5-collector-guided-2026-07-08/benchmark-report.json`.
+- Typed-spec median tokens: `20,000`, about `0.95x` direct ThreeNative
+  (`20,950`).
+- Typed-spec verdict: `experimental`.
+- Failed-command median: `1`, missing the required `0` budget.
+
+Decision: keep typed-spec as an experimental opt-in. It does not become the
+default starter surface because the observed saving is small and the
+failed-command budget is still missed.
