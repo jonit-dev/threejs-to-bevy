@@ -97,6 +97,11 @@ execution bundle.
 
 ### Authoring, Editor, And Plugins
 
+- [UI System Remediation](other/ui-system-remediation-2026-07-08/README.md):
+  slices the 2026-07-08 UI inspection into ordered work for web UI action
+  delivery, parity claim truthing, authoring type/API closure, rendering
+  semantics decisions, behavioral conformance probes, editor runtime UI
+  preview, and native runtime hygiene.
 - [Agent Token Efficiency IO Budget](other/agent-token-efficiency-io-budget.md):
   makes agent-facing CLI output compact by default, removes playtest
   `effectLog`/full `observations` from stdout, keeps deep logs as artifacts,

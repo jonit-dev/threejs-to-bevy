@@ -44,6 +44,10 @@ in scripts, examples, and historical docs during a staged cleanup. See
   execution bundle for measuring and improving agent game creation.
 - [Proof-First Engine Loop](PRDs/proof-first-engine-loop-2026-07-05/): active
   runtime, native parity, gameplay, and proof-loop capability work.
+- [UI System Remediation](PRDs/other/ui-system-remediation-2026-07-08/README.md):
+  active planning bundle from the 2026-07-08 UI inspection covering web action
+  delivery, parity truthing, authoring closure, behavioral conformance, editor
+  preview, and native hygiene.
 - [PRD index](PRDs/README.md): current and completed planning work.
 
 ## Current Gates
