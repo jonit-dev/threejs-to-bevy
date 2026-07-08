@@ -56,7 +56,36 @@ execution bundle.
   makes committed scenario playtests the default generated-game proof unit,
   adds QA scenario coverage reporting, ratchets generated-game gates away from
   ephemeral one-shot movement proof, and polishes watch-mode repair events.
-- [Native Render Parity and Performance](proof-first-engine-loop-2026-07-05/PRD-018-native-render-parity-and-performance.md):
+- [Humanoid Course Stair Traversal Proof](proof-first-engine-loop-2026-07-05/PRD-002-humanoid-course-stair-traversal-proof.md):
+  closes the remaining web-first humanoid-course scenario proof after the ramp
+  and pushed-ball PRDs; native/desktop proof stays deferred by the native path
+  decision until a shipped-game need lifts the freeze.
+- [Declarative Gameplay Flow: Spawners, Game-Flow State Machines, Sequencer](proof-first-engine-loop-2026-07-05/PRD-008-declarative-gameplay-flow-spawners-sequencer.md):
+  data-first `Spawner` component, bounded `GameFlow` state machines, and a
+  typed-track `Sequence` timeline so waves, macro game state, and cutscenes
+  need zero script, with web/Bevy conformance traces.
+- [Portable Scripting Character and Physics Contacts](proof-first-engine-loop-2026-07-05/PRD-013-portable-scripting-character-physics-contacts.md):
+  richer primitive contact filtering, character movement observations, slope
+  and push semantics, and stable diagnostics for unsupported physics breadth.
+- [Portable Scripting Delayed Commands and Bounded Scheduling](proof-first-engine-loop-2026-07-05/PRD-011-portable-scripting-delayed-commands-scheduling.md):
+  fixed-tick delayed command scheduling beyond timer helpers while keeping
+  promises, workers, wall-clock timers, and platform schedulers unsupported.
+- [Portable Scripting Particle Commands](proof-first-engine-loop-2026-07-05/PRD-012-portable-scripting-particle-commands.md):
+  bounded script particle commands over declared emitter data with web/Bevy
+  service logs and visual/runtime evidence.
+- [Portable Scripting Audio Facade](proof-first-engine-loop-2026-07-05/PRD-010-portable-scripting-audio-facade.md):
+  `ctx.audio` play/stop/query over declared audio IR with logical playback IDs,
+  private runtime handles, and stable unsupported streaming/platform
+  diagnostics.
+- [Runtime-Proven Efficient Scale](proof-first-engine-loop-2026-07-05/PRD-007-runtime-proven-efficient-scale.md):
+  measured dense-world performance proof, target-profile budget enforcement,
+  instancing/LOD benchmark gates, native/web metric sidecars, and texture
+  variant delivery budgets.
+- [Native Parity Closure and Proof Loop](proof-first-engine-loop-2026-07-05/PRD-018-native-parity-closure-and-proof-loop.md):
+  is freeze-gated by the native path decision; the proposed Bevy ports and
+  generalized native proof harness remain non-actionable until a shipped-game
+  need provides web evidence, native proof evidence, and a focused gate.
+- [Native Render Parity and Performance](proof-first-engine-loop-2026-07-05/PRD-019-native-render-parity-and-performance.md):
   is freeze-gated by the native path decision; it documents Bevy adapter gaps
   exposed by humanoid-physics-course
   (directional shadows hardcoded off, authored lights discarded under
@@ -65,31 +94,6 @@ execution bundle.
   anti-patterns (debug-build launch, per-frame QuickJS and Rapier rebuilds,
   per-frame asset re-uploads), but should not start without a documented
   shipped-game need and focused native gate.
-- [Native Parity Closure and Proof Loop](proof-first-engine-loop-2026-07-05/PRD-002-native-parity-closure-and-proof-loop.md):
-  is freeze-gated by the native path decision; the proposed Bevy ports and
-  generalized native proof harness remain non-actionable until a shipped-game
-  need provides web evidence, native proof evidence, and a focused gate.
-- [Declarative Gameplay Flow: Spawners, Game-Flow State Machines, Sequencer](proof-first-engine-loop-2026-07-05/PRD-007-declarative-gameplay-flow-spawners-sequencer.md):
-  data-first `Spawner` component, bounded `GameFlow` state machines, and a
-  typed-track `Sequence` timeline so waves, macro game state, and cutscenes
-  need zero script, with web/Bevy conformance traces.
-- [Portable Scripting Character and Physics Contacts](proof-first-engine-loop-2026-07-05/PRD-009-portable-scripting-character-physics-contacts.md):
-  richer primitive contact filtering, character movement observations, slope
-  and push semantics, and stable diagnostics for unsupported physics breadth.
-- [Portable Scripting Delayed Commands and Bounded Scheduling](proof-first-engine-loop-2026-07-05/PRD-010-portable-scripting-delayed-commands-scheduling.md):
-  fixed-tick delayed command scheduling beyond timer helpers while keeping
-  promises, workers, wall-clock timers, and platform schedulers unsupported.
-- [Portable Scripting Particle Commands](proof-first-engine-loop-2026-07-05/PRD-012-portable-scripting-particle-commands.md):
-  bounded script particle commands over declared emitter data with web/Bevy
-  service logs and visual/runtime evidence.
-- [Portable Scripting Audio Facade](proof-first-engine-loop-2026-07-05/PRD-011-portable-scripting-audio-facade.md):
-  `ctx.audio` play/stop/query over declared audio IR with logical playback IDs,
-  private runtime handles, and stable unsupported streaming/platform
-  diagnostics.
-- [Runtime-Proven Efficient Scale](proof-first-engine-loop-2026-07-05/PRD-006-runtime-proven-efficient-scale.md):
-  measured dense-world performance proof, target-profile budget enforcement,
-  instancing/LOD benchmark gates, native/web metric sidecars, and texture
-  variant delivery budgets.
 
 ### Authoring, Editor, And Plugins
 
@@ -135,11 +139,11 @@ execution bundle.
   closed without starting a vanilla-lift prototype; guided round-5 evidence
   showed direct ThreeNative below vanilla at equal proof, so the trigger did not
   fire.
-- [Contract De-Sprawl Through Authoring Modules And Runtime Trace Contracts](proof-first-engine-loop-2026-07-05/PRD-003-contract-de-sprawl-authoring-runtime-traces.md):
+- [Contract De-Sprawl Through Authoring Modules And Runtime Trace Contracts](proof-first-engine-loop-2026-07-05/PRD-004-contract-de-sprawl-authoring-runtime-traces.md):
   splits authoring operation implementation by source family, introduces
   focused runtime trace contracts, and shrinks native mapping hotspots behind
   behavior-preserving conformance tests.
-- [Actor Archetypes and Typed Scripting](proof-first-engine-loop-2026-07-05/PRD-008-actor-archetypes-and-typed-scripting.md):
+- [Actor Archetypes and Typed Scripting](proof-first-engine-loop-2026-07-05/PRD-009-actor-archetypes-and-typed-scripting.md):
   generated typed script context and id unions, `defineBehavior`
   single-source system declarations, and re-appliable parameterized actor
   archetypes (`tn actor add character --asset <glb>`) with provenance and
@@ -175,27 +179,27 @@ execution bundle.
 
 ### Advanced And Boundary Work
 
-- [Cinematic Default Look](proof-first-engine-loop-2026-07-05/PRD-004-cinematic-default-look.md):
+- [Cinematic Default Look](proof-first-engine-loop-2026-07-05/PRD-005-cinematic-default-look.md):
   promote `cinematic`/`stylized` render-look profiles with per-target quality
   ladders, make cinematic the zero-config default for new projects, and gate
   the default look against regression with committed reference evidence.
-- [Believable Worlds: Heightfield Terrain and Biome Dressing](proof-first-engine-loop-2026-07-05/PRD-005-believable-world-terrain-and-biome-dressing.md):
+- [Believable Worlds: Heightfield Terrain and Biome Dressing](proof-first-engine-loop-2026-07-05/PRD-006-believable-world-terrain-and-biome-dressing.md):
   rendered+collidable heightfield terrain on both runtimes,
   compiler-expanded deterministic scatter layers, and a one-command
   `tn world generate --biome <name>` dressed play space with catalog
   provenance.
-- [Portable Shader Material Parity](proof-first-engine-loop-2026-07-05/PRD-013-portable-shader-material-parity.md):
+- [Portable Shader Material Parity](proof-first-engine-loop-2026-07-05/PRD-014-portable-shader-material-parity.md):
   constrained authored shader materials with explicit uniforms/textures,
   generated web GLSL and Bevy WGSL, stable diagnostics for raw/backend shader
   escape hatches, and visual parity evidence across both engines.
-- [Portable Photoreal Rendering and Post-Processing](proof-first-engine-loop-2026-07-05/PRD-014-portable-photoreal-rendering-and-postprocessing.md):
+- [Portable Photoreal Rendering and Post-Processing](proof-first-engine-loop-2026-07-05/PRD-015-portable-photoreal-rendering-and-postprocessing.md):
   portable HDRI/environment lighting, AO, bloom, DOF, SSR, motion blur, and
   fallback diagnostics with Three.js implementations kept adapter-private and
   Bevy parity/reporting required before promoted claims.
-- [Advanced Animation and Physics Depth](proof-first-engine-loop-2026-07-05/PRD-015-advanced-animation-physics-depth.md):
+- [Advanced Animation and Physics Depth](proof-first-engine-loop-2026-07-05/PRD-016-advanced-animation-physics-depth.md):
   umbrella reference for retargeting, IK, arbitrary blend-tree, constraint,
   triangle narrow-phase, vehicle, soft-body, and ragdoll boundaries.
-- [External Services, Media, and Non-Portable Boundaries](proof-first-engine-loop-2026-07-05/PRD-016-external-services-media-boundaries.md):
+- [External Services, Media, and Non-Portable Boundaries](proof-first-engine-loop-2026-07-05/PRD-003-external-services-media-boundaries.md):
   cloud/account storage, custom decoders, streaming/network audio, online
   services, alternate authoring models, 2D workflows, and backend-only
   diagnostic boundaries.

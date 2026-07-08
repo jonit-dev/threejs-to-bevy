@@ -254,7 +254,7 @@ sequenceDiagram
 After each phase, spawn the `prd-work-reviewer` agent with:
 
 ```txt
-Review checkpoint for phase [N] of PRD at docs/PRDs/proof-first-engine-loop-2026-07-05/PRD-010-portable-scripting-delayed-commands-scheduling.md
+Review checkpoint for phase [N] of PRD at docs/PRDs/proof-first-engine-loop-2026-07-05/PRD-011-portable-scripting-delayed-commands-scheduling.md
 ```
 
 Continue only after PASS. Manual verification is required after Phase 4 to

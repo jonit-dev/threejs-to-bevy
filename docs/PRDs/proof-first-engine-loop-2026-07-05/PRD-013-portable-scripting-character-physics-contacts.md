@@ -19,7 +19,7 @@ rest of the promoted scripting host surface.
 **Files Analyzed:**
 
 - `docs/contracts/scripting-api.md`
-- `docs/PRDs/proof-first-engine-loop-2026-07-05/PRD-015-advanced-animation-physics-depth.md`
+- `docs/PRDs/proof-first-engine-loop-2026-07-05/PRD-016-advanced-animation-physics-depth.md`
 - `docs/PRDs/done/other/post-v10-animation-physics-navigation-residuals.md`
 - `packages/sdk/src/physics.ts`
 - `packages/sdk/src/character.ts`
@@ -262,7 +262,7 @@ sequenceDiagram
 After each phase, spawn the `prd-work-reviewer` agent with:
 
 ```txt
-Review checkpoint for phase [N] of PRD at docs/PRDs/proof-first-engine-loop-2026-07-05/PRD-009-portable-scripting-character-physics-contacts.md
+Review checkpoint for phase [N] of PRD at docs/PRDs/proof-first-engine-loop-2026-07-05/PRD-013-portable-scripting-character-physics-contacts.md
 ```
 
 Continue only after PASS. Manual verification is required after Phase 4 because

@@ -18,7 +18,7 @@ exact prompts and do not reduce authored deltas for off-recipe games.
 - `tools/agent-benchmark/OFF-RECIPE-DIRECTIVE.md`
 - `packages/cli/src/commands/game.ts`
 - `templates/structured-source-starter/`
-- `docs/PRDs/proof-first-engine-loop-2026-07-05/PRD-007-declarative-gameplay-flow-spawners-sequencer.md`
+- `docs/PRDs/proof-first-engine-loop-2026-07-05/PRD-008-declarative-gameplay-flow-spawners-sequencer.md`
 
 **Current Behavior:**
 

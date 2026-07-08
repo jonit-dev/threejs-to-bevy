@@ -51,30 +51,32 @@ infrastructure exists to verify it.**
 
 Use these implementation PRDs as the executable backlog for this roadmap:
 
-- **Phase 1 — Agent Proof Loop:**
+- **Track 1 — Agent Proof Loop:**
   `docs/PRDs/proof-first-engine-loop-2026-07-05/PRD-001-agent-proof-loop-scenario-ratchet.md`
-- **Phase 2 — Native Parity Closure:**
-  `docs/PRDs/proof-first-engine-loop-2026-07-05/PRD-002-native-parity-closure-and-proof-loop.md`
-- **Phase 3 — Nice Looks by Default:**
-  `docs/PRDs/proof-first-engine-loop-2026-07-05/PRD-004-cinematic-default-look.md` and
-  `docs/PRDs/proof-first-engine-loop-2026-07-05/PRD-005-believable-world-terrain-and-biome-dressing.md`
-- **Phase 4 — Efficient at Scale:**
-  `docs/PRDs/proof-first-engine-loop-2026-07-05/PRD-006-runtime-proven-efficient-scale.md`
-- **Phase 5 — Capability Depth:**
-  `docs/PRDs/proof-first-engine-loop-2026-07-05/PRD-007-declarative-gameplay-flow-spawners-sequencer.md`,
-  `docs/PRDs/proof-first-engine-loop-2026-07-05/PRD-008-actor-archetypes-and-typed-scripting.md`,
-  `docs/PRDs/proof-first-engine-loop-2026-07-05/PRD-011-portable-scripting-audio-facade.md`,
-  `docs/PRDs/proof-first-engine-loop-2026-07-05/PRD-010-portable-scripting-delayed-commands-scheduling.md`,
+- **Track 2 — Remaining Web-First Proof:**
+  `docs/PRDs/proof-first-engine-loop-2026-07-05/PRD-002-humanoid-course-stair-traversal-proof.md`
+- **Track 3 — Boundaries And Contract Hygiene:**
+  `docs/PRDs/proof-first-engine-loop-2026-07-05/PRD-003-external-services-media-boundaries.md` and
+  `docs/PRDs/proof-first-engine-loop-2026-07-05/PRD-004-contract-de-sprawl-authoring-runtime-traces.md`
+- **Track 4 — Nice Looks by Default:**
+  `docs/PRDs/proof-first-engine-loop-2026-07-05/PRD-005-cinematic-default-look.md` and
+  `docs/PRDs/proof-first-engine-loop-2026-07-05/PRD-006-believable-world-terrain-and-biome-dressing.md`
+- **Track 5 — Efficient at Scale:**
+  `docs/PRDs/proof-first-engine-loop-2026-07-05/PRD-007-runtime-proven-efficient-scale.md`
+- **Track 6 — Capability Depth:**
+  `docs/PRDs/proof-first-engine-loop-2026-07-05/PRD-008-declarative-gameplay-flow-spawners-sequencer.md`,
+  `docs/PRDs/proof-first-engine-loop-2026-07-05/PRD-009-actor-archetypes-and-typed-scripting.md`,
+  `docs/PRDs/proof-first-engine-loop-2026-07-05/PRD-010-portable-scripting-audio-facade.md`,
+  `docs/PRDs/proof-first-engine-loop-2026-07-05/PRD-011-portable-scripting-delayed-commands-scheduling.md`,
   `docs/PRDs/proof-first-engine-loop-2026-07-05/PRD-012-portable-scripting-particle-commands.md`,
-  `docs/PRDs/proof-first-engine-loop-2026-07-05/PRD-009-portable-scripting-character-physics-contacts.md`,
-  `docs/PRDs/proof-first-engine-loop-2026-07-05/PRD-013-portable-shader-material-parity.md`,
-  `docs/PRDs/proof-first-engine-loop-2026-07-05/PRD-014-portable-photoreal-rendering-and-postprocessing.md`,
-  `docs/PRDs/proof-first-engine-loop-2026-07-05/PRD-015-advanced-animation-physics-depth.md`, and
-  `docs/PRDs/proof-first-engine-loop-2026-07-05/PRD-016-external-services-media-boundaries.md`,
+  `docs/PRDs/proof-first-engine-loop-2026-07-05/PRD-013-portable-scripting-character-physics-contacts.md`,
+  `docs/PRDs/proof-first-engine-loop-2026-07-05/PRD-014-portable-shader-material-parity.md`,
+  `docs/PRDs/proof-first-engine-loop-2026-07-05/PRD-015-portable-photoreal-rendering-and-postprocessing.md`,
+  `docs/PRDs/proof-first-engine-loop-2026-07-05/PRD-016-advanced-animation-physics-depth.md`, and
   `docs/PRDs/proof-first-engine-loop-2026-07-05/PRD-017-signed-installers-store-packaging.md`
-- **Continuous Tracks:**
-  `docs/PRDs/proof-first-engine-loop-2026-07-05/PRD-003-contract-de-sprawl-authoring-runtime-traces.md` and
-  `docs/PRDs/other/docs-front-door-compaction.md`
+- **Frozen Native Tracks:**
+  `docs/PRDs/proof-first-engine-loop-2026-07-05/PRD-018-native-parity-closure-and-proof-loop.md` and
+  `docs/PRDs/proof-first-engine-loop-2026-07-05/PRD-019-native-render-parity-and-performance.md`
 
 ## Phase 1 — Agent Proof Loop (the foundation)
 

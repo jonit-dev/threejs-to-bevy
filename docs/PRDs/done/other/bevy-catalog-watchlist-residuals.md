@@ -20,7 +20,7 @@ contributors without clear promotion or diagnostic targets.
 - `docs/PRDs/README.md`
 - `docs/PRDs/done/other/ui-platform-desktop-residuals.md`
 - `docs/PRDs/done/advanced-visual-effects-lighting-material-depth.md`
-- `docs/PRDs/proof-first-engine-loop-2026-07-05/PRD-016-external-services-media-boundaries.md`
+- `docs/PRDs/proof-first-engine-loop-2026-07-05/PRD-003-external-services-media-boundaries.md`
 - `/home/joao/.claude/skills/prd-creator/SKILL.md`
 - Bevy examples catalog: https://bevy.org/examples/
 - Bevy 0.14 release notes: https://bevy.org/news/bevy-0-14/

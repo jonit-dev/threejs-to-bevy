@@ -331,5 +331,5 @@ for Phase 3 and 4 (feel/animation proof via `tn record` motion evidence).
   (per-entity component typing)? Default: yes if it falls out of the same
   schema walk; otherwise follow-up.
 - Vehicle archetype physics depth depends on
-  `docs/PRDs/proof-first-engine-loop-2026-07-05/PRD-015-advanced-animation-physics-depth.md` boundaries — start
+  `docs/PRDs/proof-first-engine-loop-2026-07-05/PRD-016-advanced-animation-physics-depth.md` boundaries — start
   with kinematic-or-joint-based arcade vehicles; document the boundary.

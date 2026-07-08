@@ -16,7 +16,7 @@ unsupported loader-specific behavior.
 
 - `docs/bevy-feature-parity.md`
 - `docs/PRDs/done/advanced-visual-effects-lighting-material-depth.md`
-- `docs/PRDs/proof-first-engine-loop-2026-07-05/PRD-015-advanced-animation-physics-depth.md`
+- `docs/PRDs/proof-first-engine-loop-2026-07-05/PRD-016-advanced-animation-physics-depth.md`
 
 **Current Behavior:**
 

@@ -18,7 +18,7 @@ cannot command particle playback beyond declared emitter behavior.
 **Files Analyzed:**
 
 - `docs/contracts/scripting-api.md`
-- `docs/PRDs/proof-first-engine-loop-2026-07-05/PRD-015-advanced-animation-physics-depth.md`
+- `docs/PRDs/proof-first-engine-loop-2026-07-05/PRD-016-advanced-animation-physics-depth.md`
 - `packages/sdk/src/animation.ts`
 - `packages/ir/src/animation-residuals.test.ts`
 - `packages/runtime-web-three/src/animation.ts`

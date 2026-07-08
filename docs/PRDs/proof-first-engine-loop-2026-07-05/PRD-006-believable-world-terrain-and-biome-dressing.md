@@ -254,7 +254,7 @@ correct collisions on slopes, splat texture blending visible.
 - `runtime-bevy/crates/threenative_runtime/src/rendering.rs` — chunk meshes
   + splat (Bevy 0.14 `StandardMaterial` layered approach or a bounded custom
   material — record the choice; coordinate with
-  `proof-first-engine-loop-2026-07-05/PRD-013-portable-shader-material-parity.md` if a custom shader is needed).
+  `proof-first-engine-loop-2026-07-05/PRD-014-portable-shader-material-parity.md` if a custom shader is needed).
 - `runtime-bevy/crates/threenative_runtime/src/physics.rs` — Rapier
   heightfield collider.
 - `packages/ir/fixtures/` — terrain conformance fixture (height samples +

@@ -23,7 +23,7 @@ helpers.
 - `docs/PRDs/done/other/script-stdlib-common-gameplay-helpers.md` already
   covers pure helpers such as `InputEx`, `MotionEx`, `CameraMath`, and
   `TimerEx`.
-- `docs/PRDs/proof-first-engine-loop-2026-07-05/PRD-008-actor-archetypes-and-typed-scripting.md` plans typed
+- `docs/PRDs/proof-first-engine-loop-2026-07-05/PRD-009-actor-archetypes-and-typed-scripting.md` plans typed
   behavior/archetype stamping on top of existing rigs.
 - This PRD does not duplicate those. It closes the remaining gap exposed by
   `humanoid-physics-course`: a polished third-person orbit controller that
@@ -481,7 +481,7 @@ the PRD evidence section.
   camera defaults.
 - `packages/authoring/src/recipes.test.ts` - recipe plan/output coverage.
 - `docs/workflows/developer-workflow.md` - document command shape if changed.
-- `docs/PRDs/proof-first-engine-loop-2026-07-05/PRD-008-actor-archetypes-and-typed-scripting.md` - add a note that
+- `docs/PRDs/proof-first-engine-loop-2026-07-05/PRD-009-actor-archetypes-and-typed-scripting.md` - add a note that
   the future `character` archetype can choose follow or orbit camera rig.
 - `templates/structured-source-starter/AGENTS.md` or template docs - mention
   orbit rig only if the starter actually uses it.
@@ -499,7 +499,7 @@ Recipe audit outcome: orbit mode is intentionally not added yet. The current
 represent helper imports, pointer-delta `LookX`/`LookY` axes, declared
 `physics.raycast`, and rig state resources without hidden runtime handles.
 `docs/workflows/developer-workflow.md` and
-`docs/PRDs/proof-first-engine-loop-2026-07-05/PRD-008-actor-archetypes-and-typed-scripting.md` now document the
+`docs/PRDs/proof-first-engine-loop-2026-07-05/PRD-009-actor-archetypes-and-typed-scripting.md` now document the
 explicit authoring path and future archetype requirement instead.
 
 **Tests Required:**

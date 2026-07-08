@@ -59,7 +59,7 @@ and ThreeNative proof commands.
 - `AGENTS.md`
 - `docs/PRDs/README.md`
 - `docs/PRDs/other/script-stdlib-common-gameplay-helpers.md`
-- `docs/PRDs/proof-first-engine-loop-2026-07-05/PRD-015-advanced-animation-physics-depth.md`
+- `docs/PRDs/proof-first-engine-loop-2026-07-05/PRD-016-advanced-animation-physics-depth.md`
 - `docs/STATUS.md`
 - `docs/bevy-feature-parity.md`
 - `/home/joao/.claude/skills/prd-creator/SKILL.md`
