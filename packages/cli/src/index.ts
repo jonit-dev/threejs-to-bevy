@@ -25,7 +25,7 @@ import { navCommand, physicsCommand } from "./commands/physicsNav.js";
 import { proofCommand, proveCommand } from "./commands/proof.js";
 import { recipeCommand } from "./commands/recipe.js";
 import { sceneCommand } from "./commands/scene.js";
-import { animationCommand, audioCommand, environmentCommand, generatorCommand, inputCommand, materialCommand, meshCommand, particleCommand, prefabCommand, projectCommand, resourcesCommand, runtimeCommand, schemaCommand, systemCommand, targetCommand, uiCommand } from "./commands/sourceDocuments.js";
+import { animationCommand, audioCommand, environmentCommand, flowCommand, generatorCommand, inputCommand, materialCommand, meshCommand, particleCommand, prefabCommand, projectCommand, resourcesCommand, runtimeCommand, schemaCommand, sequenceCommand, systemCommand, targetCommand, uiCommand } from "./commands/sourceDocuments.js";
 import { validateProject } from "./commands/validate.js";
 import { recordCommand, screenshotCommand } from "./commands/visualProof.js";
 import { verifyCommand } from "./commands/verify.js";
@@ -62,6 +62,11 @@ const commands: Record<string, ICommandDefinition> = {
     description: "Create and mutate structured environment source documents.",
     implemented: true,
     usage: "tn environment create <environment-id> [--project <path>] [--json]\n              tn environment set-skybox <environment-id> --asset <asset-id-or-path> [--mode equirect|cube|color] [--project <path>] [--json]\n              tn environment set-map <environment-id> --asset <asset-id-or-path> [--project <path>] [--json]\n              tn environment set-terrain <environment-id> [--id <terrain-id>] [--height-mode flat|heightmap] [--heightmap <asset-id-or-path>] [--project <path>] [--json]\n              tn environment set-path <environment-id> --path '<json>' [--project <path>] [--json]\n              tn environment set-walkability <environment-id> --walkability '<json>' [--project <path>] [--json]\n              tn environment set-source-asset-lod <environment-id> <source-asset-id> --lod '<json>' [--project <path>] [--json]",
+  },
+  flow: {
+    description: "Create and mutate declarative GameFlow source documents.",
+    implemented: true,
+    usage: "tn flow create <flow-id> [--initial <state-id>] [--scene <scene-id>] [--project <path>] [--json]\n              tn flow add-state <flow-id> <state-id> [--actions '<json-array>'] [--project <path>] [--json]\n              tn flow add-transition <flow-id> <transition-id> --from <state-id> --to <state-id> --trigger '<json-object>' [--actions '<json-array>'] [--project <path>] [--json]",
   },
   authoring: {
     description: "Inspect and validate structured authoring source documents.",
@@ -228,6 +233,11 @@ const commands: Record<string, ICommandDefinition> = {
     implemented: true,
     usage: "tn scene create <scene-id> [--file <path>] [--json]\n              tn scene import-world <scene-id> --world <path/to/world.ir.json> [--file <path>] [--replace] [--json]\n              tn scene validate [scene-id] [--project <path>] [--json]\n              tn scene inspect <scene-id> [--node <id>] [--project <path>] [--json]\n              tn scene add-prefab <scene-id> <prefab-id> [--primitive <primitive>] [--color <css-color>] [--json]\n              tn scene set-prefab <scene-id> <prefab-id> [--primitive <primitive>] [--color <css-color>] [--asset <path.glb>] [--json]\n              tn scene set-prefab-color <scene-id> <prefab-id> --color <css-color> [--json]\n              tn scene add-resource <scene-id> <resource-id> [--path <resource.path>] [--value <json>] [--json]\n              tn scene set-resource <scene-id> <resource-id> [--path <resource.path>] [--value <json>] [--json]\n              tn scene add-ui-node <scene-id> <ui-node-id> [--json]\n              tn scene add-entity <scene-id> <entity-id> [--prefab <prefab-id>] [--json]\n              tn scene add-prefab-instance <scene-id> <instance-id> --prefab <prefab-id> [--position x,y,z] [--components <json-object>] [--replace] [--json]\n              tn scene layout ten-pin <scene-id> --prefab <prefab-id> [--prefix pin] [--origin x,y,z] [--spacing n] [--replace] [--json]\n              tn scene add-tag <scene-id> <entity-id> <tag> [--json]\n              tn scene add-group <scene-id> <group-id> [--name <label>] [--position x,y,z] [--json]\n              tn scene add-component <scene-id> <entity-id> light|mesh-renderer|render-layers|visibility|rigid-body|collider|character-controller [typed flags] [--json]\n              tn scene set-component <scene-id> <entity-id> <component-kind> --value <json-object> [--json]\n              tn scene remove-component <scene-id> <entity-id> <component-kind> [--json]\n              tn scene set-transform <scene-id> <entity-id> [--position x,y,z] [--rotation x,y,z|--rotation-deg x,y,z] [--scale x,y,z] [--json]\n              tn scene set-camera <scene-id> <camera-id> --mode <mode> --target <entity-id> [--json]\n              tn scene attach-script <scene-id> <system-id> --module <path> --export <name> [--json]\n              tn scene bind-ui <scene-id> <ui-node-id> --resource <resource.path> [--json]\n              tn scene proof <scene-id> --project <path> --web-url <url> --out <dir> [--native] [--json]",
   },
+  sequence: {
+    description: "Create and mutate declarative sequence source documents.",
+    implemented: true,
+    usage: "tn sequence create <sequence-id> --duration <seconds> [--skippable true|false] [--project <path>] [--json]\n              tn sequence add-track <sequence-id> <track-id> --kind <cameraPose|transform|event|ui|audio|timeScale> [--entity <entity-id>] [--project <path>] [--json]\n              tn sequence add-key <sequence-id> <track-id> --time <seconds> [--value <json>] [--easing linear|step] [--project <path>] [--json]",
+  },
   prefab: {
     description: "Create and mutate structured prefab source documents.",
     implemented: true,
@@ -328,6 +338,10 @@ export async function dispatch(argv: readonly string[]): Promise<ICommandResult>
 
   if (commandName === "environment") {
     return environmentCommand(normalizedArgv.slice(1));
+  }
+
+  if (commandName === "flow") {
+    return flowCommand(normalizedArgv.slice(1));
   }
 
   if (commandName === "authoring") {
@@ -440,6 +454,10 @@ export async function dispatch(argv: readonly string[]): Promise<ICommandResult>
 
   if (commandName === "scene") {
     return sceneCommand(normalizedArgv.slice(1));
+  }
+
+  if (commandName === "sequence") {
+    return sequenceCommand(normalizedArgv.slice(1));
   }
 
   if (commandName === "prefab") {

@@ -19,6 +19,7 @@ import {
   setPrefabColor,
   setResource,
   setSceneLifecycle,
+  setSpawnerComponent,
   setTransform,
   validateScene,
 } from "@threenative/authoring";
@@ -458,6 +459,49 @@ export async function sceneCommand(argv: readonly string[], options: ISceneComma
     }
     const result = await setComponent({ projectPath, sceneId, entityId, componentKind, value: parsedValue.value });
     return renderSceneResult(result, json, result.ok ? `Component '${componentKind}' set on '${entityId}'.` : `Component '${componentKind}' was not set on '${entityId}'.`);
+  }
+
+  if (subcommand === "set-spawner") {
+    const sceneId = readPositional(normalizedArgv, 1);
+    const entityId = readPositional(normalizedArgv, 2);
+    const prefab = readFlag(normalizedArgv, "--prefab");
+    const area = parseJsonObjectFlag(normalizedArgv, "--area", "TN_SCENE_SET_SPAWNER_AREA_INVALID");
+    const despawnPolicy = parseJsonObjectFlag(normalizedArgv, "--despawn-policy", "TN_SCENE_SET_SPAWNER_DESPAWN_POLICY_INVALID");
+    if (sceneId === undefined || entityId === undefined || prefab === undefined) {
+      return renderUsage(json, "TN_SCENE_SET_SPAWNER_ARGS_MISSING", "Usage: tn scene set-spawner <scene-id> <entity-id> --prefab <prefab-id> [--mode once|interval|wave] [--interval <seconds>] [--wave-size <count>] [--max-alive <count>] [--max-total <count>] [--jitter-seed <number>] [--area <json-object>] [--despawn-policy <json-object>] [--enabled true|false] [--project <path>] [--json]");
+    }
+    if (area.diagnostic !== undefined || despawnPolicy.diagnostic !== undefined) {
+      return renderUsage(json, area.diagnostic ?? despawnPolicy.diagnostic ?? "TN_SCENE_SET_SPAWNER_JSON_INVALID", "Spawner --area and --despawn-policy must be valid JSON objects.");
+    }
+    const enabledRaw = readFlag(normalizedArgv, "--enabled");
+    if (enabledRaw !== undefined && enabledRaw !== "true" && enabledRaw !== "false") {
+      return renderUsage(json, "TN_SCENE_SET_SPAWNER_ENABLED_INVALID", "Spawner --enabled must be true or false.");
+    }
+    const interval = parseOptionalNumber(normalizedArgv, "--interval");
+    const waveSize = parseOptionalNumber(normalizedArgv, "--wave-size");
+    const maxAlive = parseOptionalNumber(normalizedArgv, "--max-alive");
+    const maxTotal = parseOptionalNumber(normalizedArgv, "--max-total");
+    const jitterSeed = parseOptionalNumber(normalizedArgv, "--jitter-seed");
+    const numberDiagnostic = interval.diagnostic ?? waveSize.diagnostic ?? maxAlive.diagnostic ?? maxTotal.diagnostic ?? jitterSeed.diagnostic;
+    if (numberDiagnostic !== undefined) {
+      return renderUsage(json, numberDiagnostic, "Spawner numeric flags must be finite numbers.");
+    }
+    const result = await setSpawnerComponent({
+      area: area.value,
+      despawnPolicy: despawnPolicy.value,
+      enabled: enabledRaw === undefined ? undefined : enabledRaw === "true",
+      entityId,
+      interval: interval.value,
+      jitterSeed: jitterSeed.value,
+      maxAlive: maxAlive.value,
+      maxTotal: maxTotal.value,
+      mode: readFlag(normalizedArgv, "--mode"),
+      prefab,
+      projectPath,
+      sceneId,
+      waveSize: waveSize.value,
+    });
+    return renderSceneResult(result, json, result.ok ? `Spawner set on '${entityId}'.` : `Spawner was not set on '${entityId}'.`);
   }
 
   if (subcommand === "remove-component") {

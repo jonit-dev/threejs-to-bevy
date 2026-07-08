@@ -29,6 +29,7 @@ export { traceCharacterControllers, type ICharacterTraceInput, type ICharacterTr
 export { queryNavigationPath, traceNavigationPaths, type INavigationPathRequest, type INavigationPathResult } from "./navigation.js";
 export { createFirstPersonState, updateFirstPersonController, type IFirstPersonControllerState } from "./firstPerson.js";
 export { hasKinematicMovers, stepKinematicMovers, type IKinematicMoverObservation } from "./kinematicMover.js";
+export { hasSpawners, stepSpawners, type ISpawnerObservation } from "./spawner.js";
 export { resolveWebAssets, traceAssetLoadSynchronization, type IAssetLoadTrace, type IAssetLoadTraceAsset, type IAssetLoadTraceGltfScene, type IResolvedWebAsset } from "./assets.js";
 export { advanceAnimationPlayback, mapWorld, syncMeshRendererMaterials, syncTransforms, traceEmissiveBloomContributions, type IRuntimeDiagnostic, type IThreeWorld, type IWebEmissiveBloomObservation } from "./mapWorld.js";
 export { aabbIntersectsAabb, meshAabb, meshBoundingSphere, sampleMeshPoints, sphereIntersectsSphere, type IAabb, type IBoundingSphere } from "./meshBounds.js";

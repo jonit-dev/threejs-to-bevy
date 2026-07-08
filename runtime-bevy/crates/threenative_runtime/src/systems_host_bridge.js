@@ -1052,6 +1052,26 @@ function __tnInvokeSystem(options) {
         return clone(result);
       }
     },
+    sequences: {
+      play(sequence, options = {}) {
+        const request = { sequence: normalize(sequence), options: clone(options) };
+        const result = { accepted: true, operation: "play", sequence: request.sequence };
+        effects.services.push({ service: "sequences.play", payload: { request, result: clone(result) } });
+        return clone(result);
+      },
+      query(sequence) {
+        const request = { sequence: sequence === undefined ? null : normalize(sequence) };
+        const result = { active: false, sequence: request.sequence };
+        effects.services.push({ service: "sequences.query", payload: { request, result: clone(result) } });
+        return clone(result);
+      },
+      stop(sequence) {
+        const request = { sequence: normalize(sequence) };
+        const result = { accepted: true, operation: "stop", sequence: request.sequence };
+        effects.services.push({ service: "sequences.stop", payload: { request, result: clone(result) } });
+        return clone(result);
+      }
+    },
     character: {
       move(entity, options = {}) {
         const entityId = typeof entity === "string" ? entity : entity.id;

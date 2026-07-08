@@ -5,7 +5,7 @@ import { dirname, join } from "node:path";
 import test from "node:test";
 
 import { assetCommand } from "./asset.js";
-import { animationCommand, audioCommand, environmentCommand, generatorCommand, inputCommand, materialCommand, meshCommand, particleCommand, prefabCommand, projectCommand, resourcesCommand, runtimeCommand, schemaCommand, systemCommand, targetCommand, uiCommand } from "./sourceDocuments.js";
+import { animationCommand, audioCommand, environmentCommand, flowCommand, generatorCommand, inputCommand, materialCommand, meshCommand, particleCommand, prefabCommand, projectCommand, resourcesCommand, runtimeCommand, schemaCommand, sequenceCommand, systemCommand, targetCommand, uiCommand } from "./sourceDocuments.js";
 
 test("countdown UI can be created centered and bound without manual JSON editing", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-cli-ui-doc-"));
@@ -841,6 +841,56 @@ test("invalid prefab component JSON emits diagnostic and does not partially writ
     assert.equal(result.exitCode, 2);
     assert.equal(payload.code, "TN_AUTHORING_JSON_VALUE_INVALID");
     await assert.rejects(readFile(join(root, "content", "prefabs", "kart.prefab.json"), "utf8"));
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("flow command creates states and transitions", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-cli-flow-doc-"));
+  try {
+    const create = await flowCommand(["create", "match", "--initial", "ready", "--scene", "arena", "--project", root, "--json"]);
+    const state = await flowCommand(["add-state", "match", "playing", "--project", root, "--json"]);
+    const transition = await flowCommand([
+      "add-transition",
+      "match",
+      "start",
+      "--from",
+      "ready",
+      "--to",
+      "playing",
+      "--trigger",
+      "{\"kind\":\"event\",\"event\":\"start\"}",
+      "--actions",
+      "[{\"kind\":\"emitEvent\",\"event\":\"match.started\"}]",
+      "--project",
+      root,
+      "--json",
+    ]);
+    const flow = JSON.parse(await readFile(join(root, "content", "flow", "match.flow.json"), "utf8"));
+
+    assert.equal(create.exitCode, 0);
+    assert.equal(state.exitCode, 0);
+    assert.equal(transition.exitCode, 0);
+    assert.deepEqual(flow.states, [{ id: "ready" }, { id: "playing" }]);
+    assert.deepEqual(flow.transitions, [{ id: "start", from: "ready", to: "playing", trigger: { kind: "event", event: "start" }, actions: [{ kind: "emitEvent", event: "match.started" }] }]);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("sequence command creates tracks and keyframes", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-cli-sequence-doc-"));
+  try {
+    const create = await sequenceCommand(["create", "intro", "--duration", "2", "--skippable", "true", "--project", root, "--json"]);
+    const track = await sequenceCommand(["add-track", "intro", "camera", "--kind", "cameraPose", "--entity", "camera.main", "--project", root, "--json"]);
+    const key = await sequenceCommand(["add-key", "intro", "camera", "--time", "0.5", "--value", "{\"position\":[0,2,4]}", "--easing", "linear", "--project", root, "--json"]);
+    const sequence = JSON.parse(await readFile(join(root, "content", "sequences", "intro.sequence.json"), "utf8"));
+
+    assert.equal(create.exitCode, 0);
+    assert.equal(track.exitCode, 0);
+    assert.equal(key.exitCode, 0);
+    assert.deepEqual(sequence.tracks, [{ id: "camera", kind: "cameraPose", entity: "camera.main", keyframes: [{ time: 0.5, value: { position: [0, 2, 4] }, easing: "linear" }] }]);
   } finally {
     await rm(root, { force: true, recursive: true });
   }

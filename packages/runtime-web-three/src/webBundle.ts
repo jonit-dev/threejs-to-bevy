@@ -4,6 +4,7 @@ import type {
   IAudioIr,
   IBundleManifest,
   IEnvironmentSceneIr,
+  IGameFlowIr,
   IInputIr,
   IIrSchemaFile,
   ILocalDataIr,
@@ -12,6 +13,7 @@ import type {
   IPrefabsIr,
   IRuntimeConfigIr,
   IScenesIr,
+  ISequencesIr,
   ISystemsIr,
   ITargetProfile,
   IUiIr,
@@ -25,6 +27,7 @@ export interface IWebBundle {
   audio?: IAudioIr;
   componentSchemas?: IIrSchemaFile;
   environmentScene?: IEnvironmentSceneIr;
+  gameFlow?: IGameFlowIr;
   gltfScene?: IGltfSceneMetadataIr;
   input?: IInputIr;
   localData?: ILocalDataIr;
@@ -32,6 +35,7 @@ export interface IWebBundle {
   materials: IMaterialsIr;
   runtimeConfig?: IRuntimeConfigIr;
   scenes?: IScenesIr;
+  sequences?: ISequencesIr;
   source?: string;
   systems?: ISystemsIr;
   targetProfile: ITargetProfile;

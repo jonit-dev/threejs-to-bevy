@@ -8,6 +8,7 @@ export const IR_SCHEMA_IDS = {
   componentSchemas: "threenative.component-schemas",
   environmentScene: "threenative.environment-scene",
   eventSchemas: "threenative.event-schemas",
+  gameFlow: "threenative.game-flow",
   gltfScene: "threenative.gltf-scene",
   input: "threenative.input",
   localData: "threenative.local-data",
@@ -17,6 +18,7 @@ export const IR_SCHEMA_IDS = {
   resourceSchemas: "threenative.resource-schemas",
   runtimeConfig: "threenative.runtime-config",
   scenes: "threenative.scenes",
+  sequences: "threenative.sequences",
   systems: "threenative.systems",
   targetProfile: "threenative.target-profile",
   ui: "threenative.ui",
@@ -62,6 +64,12 @@ export const IR_DOCUMENTS = {
     manifestKey: "environmentScene",
     manifestSection: "entry",
     schema: IR_SCHEMA_IDS.environmentScene,
+  },
+  gameFlow: {
+    fileName: "game-flow.ir.json",
+    manifestKey: "gameFlow",
+    manifestSection: "entry",
+    schema: IR_SCHEMA_IDS.gameFlow,
   },
   eventSchemas: {
     fileName: "schemas/events.schema.json",
@@ -132,6 +140,12 @@ export const IR_DOCUMENTS = {
     manifestSection: "entry",
     schema: IR_SCHEMA_IDS.scenes,
     schemaFile: "scenes.schema.json",
+  },
+  sequences: {
+    fileName: "sequences.ir.json",
+    manifestKey: "sequences",
+    manifestSection: "entry",
+    schema: IR_SCHEMA_IDS.sequences,
   },
   scripts: {
     fileName: "scripts.bundle.js",

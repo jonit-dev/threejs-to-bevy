@@ -4,6 +4,7 @@ import type {
   IAudioIr,
   IBundleManifest,
   IEnvironmentSceneIr,
+  IGameFlowIr,
   IInputIr,
   IIrSchemaFile,
   ILocalDataIr,
@@ -12,6 +13,7 @@ import type {
   IPrefabsIr,
   IRuntimeConfigIr,
   IScenesIr,
+  ISequencesIr,
   ISystemsIr,
   ITargetProfile,
   IUiIr,
@@ -51,6 +53,10 @@ export async function hydrateWebBundle(source: string, reader: IBundleFileReader
         ? undefined
         : await reader.readJson<ILocalDataIr>(manifest.files.localData)
       : await reader.readJson<ILocalDataIr>(manifest.entry.localData);
+  const gameFlow =
+    manifest.entry.gameFlow === undefined
+      ? undefined
+      : await reader.readJson<IGameFlowIr>(manifest.entry.gameFlow);
   const runtimeConfig =
     manifest.files.runtimeConfig === undefined
       ? undefined
@@ -70,6 +76,8 @@ export async function hydrateWebBundle(source: string, reader: IBundleFileReader
       : await reader.readJson<IPrefabsIr>(manifest.entry.prefabs);
   const scenes =
     manifest.entry.scenes === undefined ? undefined : await reader.readJson<IScenesIr>(manifest.entry.scenes);
+  const sequences =
+    manifest.entry.sequences === undefined ? undefined : await reader.readJson<ISequencesIr>(manifest.entry.sequences);
   const assets = await hydrateGeneratedMeshAssets(await reader.readJson<IAssetsManifest>(manifest.files.assets), reader);
   return {
     assets,
@@ -77,6 +85,7 @@ export async function hydrateWebBundle(source: string, reader: IBundleFileReader
     audio,
     componentSchemas,
     environmentScene,
+    gameFlow,
     gltfScene,
     input,
     localData,
@@ -86,6 +95,7 @@ export async function hydrateWebBundle(source: string, reader: IBundleFileReader
     overlays,
     prefabs,
     scenes,
+    sequences,
     source,
     systems,
     targetProfile: await reader.readJson<ITargetProfile>(manifest.files.targetProfile),

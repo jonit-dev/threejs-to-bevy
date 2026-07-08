@@ -49,6 +49,7 @@ pub mod runtime_prefabs_hierarchy;
 pub mod runtime_query_diffing;
 pub mod scene_manager;
 pub mod scripting_host_matrix;
+pub mod spawner;
 pub mod stylized_nature;
 pub mod systems_context;
 pub mod systems_effects;

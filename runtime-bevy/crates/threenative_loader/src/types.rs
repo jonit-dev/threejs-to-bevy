@@ -301,6 +301,7 @@ pub struct EntityComponents {
     pub physics_joint: Option<PhysicsJointComponent>,
     pub render_layers: Option<RenderLayersComponent>,
     pub rigid_body: Option<RigidBodyComponent>,
+    pub spawner: Option<SpawnerComponent>,
     pub transform: Option<TransformComponent>,
     pub visibility: Option<VisibilityComponent>,
     #[serde(flatten)]
@@ -326,6 +327,35 @@ pub struct KinematicMoverComponent {
     pub radius: Option<f32>,
     pub speed: f32,
     pub waypoints: Option<Vec<[f32; 3]>>,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SpawnerComponent {
+    pub area: Option<SpawnerAreaComponent>,
+    pub despawn_policy: Option<SpawnerDespawnPolicyComponent>,
+    pub enabled: bool,
+    pub interval: Option<f32>,
+    pub jitter_seed: Option<f32>,
+    pub max_alive: Option<u32>,
+    pub max_total: Option<u32>,
+    pub mode: String,
+    pub prefab: String,
+    pub wave_size: Option<u32>,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SpawnerAreaComponent {
+    pub shape: String,
+    pub size: Option<serde_json::Value>,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SpawnerDespawnPolicyComponent {
+    pub after_seconds: Option<f32>,
+    pub beyond_distance: Option<f32>,
 }
 
 #[derive(Clone, Debug, Deserialize)]

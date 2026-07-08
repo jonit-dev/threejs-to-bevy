@@ -7,11 +7,13 @@ import type {
   IAudioIr,
   IBundleManifest,
   IEnvironmentSceneIr,
+  IGameFlowIr,
   IIrSchemaFile,
   ILocalDataIr,
   IMaterialsIr,
   IPrefabsIr,
   IScenesIr,
+  ISequencesIr,
   ITargetProfile,
   IUiIr,
   IWorldIr,
@@ -29,6 +31,7 @@ export interface ILoadedBundleDocuments {
   componentSchemas?: IIrSchemaFile;
   environmentScene?: IEnvironmentSceneIr;
   eventSchemas?: IIrSchemaFile;
+  gameFlow?: IGameFlowIr;
   gltfScene?: IGltfSceneMetadataIr;
   input?: IInputIr;
   localData?: ILocalDataIr;
@@ -38,6 +41,7 @@ export interface ILoadedBundleDocuments {
   resourceSchemas?: IIrSchemaFile;
   runtimeConfig?: unknown;
   scenes?: IScenesIr;
+  sequences?: ISequencesIr;
   systems?: ISystemsIr;
   targetProfile?: ITargetProfile;
   ui?: IUiIr;
@@ -66,10 +70,18 @@ export async function readBundleDocuments(
     manifest.entry.localData === undefined
       ? undefined
       : await readJson<ILocalDataIr>(resolve(bundlePath, manifest.entry.localData), diagnostics);
+  const gameFlow =
+    manifest.entry.gameFlow === undefined
+      ? undefined
+      : await readJson<IGameFlowIr>(resolve(bundlePath, manifest.entry.gameFlow), diagnostics);
   const scenes =
     manifest.entry.scenes === undefined
       ? undefined
       : await readJson<IScenesIr>(resolve(bundlePath, manifest.entry.scenes), diagnostics);
+  const sequences =
+    manifest.entry.sequences === undefined
+      ? undefined
+      : await readJson<ISequencesIr>(resolve(bundlePath, manifest.entry.sequences), diagnostics);
   const materials = await readJson<IMaterialsIr>(resolve(bundlePath, manifest.files.materials), diagnostics);
   const assets = await readJson<IAssetsManifest>(resolve(bundlePath, manifest.files.assets), diagnostics);
   const targetProfile = await readJson<ITargetProfile>(resolve(bundlePath, manifest.files.targetProfile), diagnostics);
@@ -123,6 +135,7 @@ export async function readBundleDocuments(
     componentSchemas,
     environmentScene,
     eventSchemas,
+    gameFlow,
     gltfScene,
     input,
     localData,
@@ -132,6 +145,7 @@ export async function readBundleDocuments(
     resourceSchemas,
     runtimeConfig,
     scenes,
+    sequences,
     systems,
     targetProfile,
     ui,

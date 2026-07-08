@@ -40,11 +40,13 @@ import { stableJson } from "./stable-json.js";
 import {
   readBundleRootAssets,
   readStructuredAssets,
+  readStructuredGameFlow,
   readStructuredMaterials,
   readStructuredMeshes,
   readStructuredPrefabs,
   readStructuredRuntimeConfig,
   readStructuredSchemaFiles,
+  readStructuredSequences,
   readStructuredTargetProfile,
 } from "./structured-documents.js";
 import { emitUi } from "./ui.js";
@@ -112,6 +114,8 @@ export async function emitBundle(config: IProjectConfig, root: unknown, options:
   const componentSchemas = mergeOptionalSchemaFiles(ecs?.componentSchemas, structuredSchemas.componentSchemas);
   const resourceSchemas = mergeOptionalSchemaFiles(ecs?.resourceSchemas, structuredSchemas.resourceSchemas);
   const prefabs = readStructuredPrefabs(options.authoringDocuments);
+  const gameFlow = readStructuredGameFlow(options.authoringDocuments);
+  const sequences = readStructuredSequences(options.authoringDocuments);
   const structuredTargetProfile = readStructuredTargetProfile(options.authoringDocuments);
   const targetBudgets = structuredTargetProfile?.budgets ?? environment?.budgets;
   const targetPerformance = structuredTargetProfile?.performance ?? environment?.performance;
@@ -133,6 +137,7 @@ export async function emitBundle(config: IProjectConfig, root: unknown, options:
       componentSchemas,
       environment: environment?.scene,
       eventSchemas: ecs?.eventSchemas,
+      gameFlow,
       input,
       localData,
       materials,
@@ -140,6 +145,7 @@ export async function emitBundle(config: IProjectConfig, root: unknown, options:
       resourceSchemas,
       runtimeConfig,
       scenes: lifecycleScenes.scenes,
+      sequences,
       systems: ecs?.systems,
       ui,
       world,
@@ -148,9 +154,11 @@ export async function emitBundle(config: IProjectConfig, root: unknown, options:
       ...(audio === undefined ? {} : { audio: IR_DOCUMENTS.audio.fileName }),
       ...(animations === undefined ? {} : { animations: IR_DOCUMENTS.animations.fileName }),
       ...(environment === undefined ? {} : { environmentScene: IR_DOCUMENTS.environmentScene.fileName }),
+      ...(gameFlow === undefined ? {} : { gameFlow: IR_DOCUMENTS.gameFlow.fileName }),
       ...(localData === undefined ? {} : { localData: IR_DOCUMENTS.localData.fileName }),
       ...(prefabs === undefined ? {} : { prefabs: IR_DOCUMENTS.prefabs.fileName }),
       ...(lifecycleScenes.scenes === undefined ? {} : { scenes: IR_DOCUMENTS.scenes.fileName }),
+      ...(sequences === undefined ? {} : { sequences: IR_DOCUMENTS.sequences.fileName }),
       ...(ecs?.scriptBundle === undefined ? {} : { scripts: IR_DOCUMENTS.scripts.fileName }),
       ...(ecs === undefined ? {} : { systems: IR_DOCUMENTS.systems.fileName }),
       ...(overlays === undefined ? {} : { overlays: IR_DOCUMENTS.overlays.fileName }),
@@ -218,8 +226,14 @@ export async function emitBundle(config: IProjectConfig, root: unknown, options:
     if (localData !== undefined) {
       await writeFile(resolve(targetDir, IR_DOCUMENTS.localData.fileName), stableJson(localData));
     }
+    if (gameFlow !== undefined) {
+      await writeFile(resolve(targetDir, IR_DOCUMENTS.gameFlow.fileName), stableJson(gameFlow));
+    }
     if (lifecycleScenes.scenes !== undefined) {
       await writeFile(resolve(targetDir, IR_DOCUMENTS.scenes.fileName), stableJson(lifecycleScenes.scenes));
+    }
+    if (sequences !== undefined) {
+      await writeFile(resolve(targetDir, IR_DOCUMENTS.sequences.fileName), stableJson(sequences));
     }
     if (animations !== undefined) {
       await writeFile(resolve(targetDir, IR_DOCUMENTS.animations.fileName), stableJson(animations));

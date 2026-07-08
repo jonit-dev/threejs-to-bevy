@@ -482,6 +482,26 @@ export function createSystemContext(
           return queueSceneService(services, "unload", scene, sceneOptions);
         },
       },
+      sequences: {
+        play(sequence, sequenceOptions = {}) {
+          const request = { options: cloneValue(sequenceOptions) as Record<string, unknown>, sequence: normalizeHandleName(sequence) };
+          const result = { accepted: true, operation: "play" as const, sequence: request.sequence };
+          services.push({ payload: { request, result }, service: "sequences.play" });
+          return result;
+        },
+        query(sequence) {
+          const request = { sequence: sequence === undefined ? null : normalizeHandleName(sequence) };
+          const result = { active: false, sequence: request.sequence };
+          services.push({ payload: { request, result }, service: "sequences.query" });
+          return result;
+        },
+        stop(sequence) {
+          const request = { sequence: normalizeHandleName(sequence) };
+          const result = { accepted: true, operation: "stop" as const, sequence: request.sequence };
+          services.push({ payload: { request, result }, service: "sequences.stop" });
+          return result;
+        },
+      },
       timers: createTimerHelpers(options.elapsed ?? 0),
       resources: {
         get<T = unknown>(name: string, defaults?: Record<string, unknown>): T {

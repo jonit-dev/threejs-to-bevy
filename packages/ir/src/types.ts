@@ -5,7 +5,9 @@ export type MaterialsSchema = "threenative.materials";
 export type AssetsSchema = "threenative.assets";
 export type GltfSceneSchema = "threenative.gltf-scene";
 export type AudioSchema = "threenative.audio";
+export type GameFlowSchema = "threenative.game-flow";
 export type LocalDataSchema = "threenative.local-data";
+export type SequencesSchema = "threenative.sequences";
 export type TargetProfileSchema = "threenative.target-profile";
 export type RuntimeConfigSchema = "threenative.runtime-config";
 export type UiSchema = "threenative.ui";
@@ -28,9 +30,11 @@ export interface IBundleManifest {
     animations?: string;
     audio?: string;
     environmentScene?: string;
+    gameFlow?: string;
     localData?: string;
     scripts?: string;
     scenes?: string;
+    sequences?: string;
     systems?: string;
     overlays?: string;
     prefabs?: string;
@@ -51,6 +55,83 @@ export interface IBundleManifest {
     runtimeConfig?: "runtime.config.json";
     scripts?: "scripts.bundle.js";
   };
+}
+
+export type GameFlowTriggerKind = "allCollected" | "event" | "resourceEquals" | "timer";
+export type GameFlowActionKind = "activateUiScreen" | "emitEvent" | "playSequence" | "sceneChange" | "setResource" | "setTimeScale" | "spawnerEnable";
+
+export interface IGameFlowTriggerIr {
+  event?: string;
+  kind: GameFlowTriggerKind;
+  resource?: string;
+  seconds?: number;
+  target?: number | string | boolean;
+}
+
+export interface IGameFlowActionIr {
+  event?: string;
+  kind: GameFlowActionKind;
+  resource?: string;
+  scene?: string;
+  screen?: string;
+  sequence?: string;
+  spawner?: string;
+  timeScale?: number;
+  value?: unknown;
+}
+
+export interface IGameFlowStateIr {
+  actions?: readonly IGameFlowActionIr[];
+  id: string;
+}
+
+export interface IGameFlowTransitionIr {
+  actions?: readonly IGameFlowActionIr[];
+  from: string;
+  id: string;
+  to: string;
+  trigger: IGameFlowTriggerIr;
+}
+
+export interface IGameFlowIr {
+  flows: readonly {
+    id: string;
+    initial: string;
+    scene?: string;
+    states: readonly IGameFlowStateIr[];
+    transitions?: readonly IGameFlowTransitionIr[];
+  }[];
+  schema: GameFlowSchema;
+  version: SchemaVersion;
+}
+
+export type SequenceTrackKind = "audio" | "cameraPose" | "event" | "timeScale" | "transform" | "ui";
+export type SequenceEasing = "linear" | "step";
+
+export interface ISequenceKeyframeIr {
+  easing?: SequenceEasing;
+  time: number;
+  value?: unknown;
+}
+
+export interface ISequenceTrackIr {
+  entity?: string;
+  id: string;
+  kind: SequenceTrackKind;
+  keyframes: readonly ISequenceKeyframeIr[];
+}
+
+export interface ISequenceIr {
+  duration: number;
+  id: string;
+  skippable?: boolean;
+  tracks: readonly ISequenceTrackIr[];
+}
+
+export interface ISequencesIr {
+  schema: SequencesSchema;
+  sequences: readonly ISequenceIr[];
+  version: SchemaVersion;
 }
 
 export type SceneLifecycleKind = "credits" | "cutscene" | "level" | "loading" | "menu" | "overlay" | "system";
@@ -368,6 +449,32 @@ export interface IKinematicMoverComponent {
   waypoints?: readonly Vec3[];
 }
 
+export type SpawnerMode = "interval" | "once" | "wave";
+export type SpawnerAreaShape = "box" | "circle" | "point";
+
+export interface ISpawnerAreaComponent {
+  shape: SpawnerAreaShape;
+  size?: Vec3 | Vec2 | number;
+}
+
+export interface ISpawnerDespawnPolicyComponent {
+  afterSeconds?: number;
+  beyondDistance?: number;
+}
+
+export interface ISpawnerComponent {
+  area?: ISpawnerAreaComponent;
+  despawnPolicy?: ISpawnerDespawnPolicyComponent;
+  enabled: boolean;
+  interval?: number;
+  jitterSeed?: number;
+  maxAlive?: number;
+  maxTotal?: number;
+  mode: SpawnerMode;
+  prefab: string;
+  waveSize?: number;
+}
+
 export interface IColliderComponent {
   center?: Vec3;
   friction?: number;
@@ -445,6 +552,7 @@ export interface IWorldEntity {
     Collider?: IColliderComponent;
     RenderLayers?: IRenderLayersComponent;
     KinematicMover?: IKinematicMoverComponent;
+    Spawner?: ISpawnerComponent;
     PhysicsJoint?: IPhysicsJointComponent;
     RigidBody?: IRigidBodyComponent;
     Transform?: ITransformComponent;

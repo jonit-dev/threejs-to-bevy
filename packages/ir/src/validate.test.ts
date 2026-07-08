@@ -124,6 +124,79 @@ test("should reject schema missing entity reference", async () => {
   }
 });
 
+test("should reject game flow transition to undeclared state", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-ir-flow-invalid-"));
+  try {
+    await writeBundle(root, { current: 100, max: 100 });
+    await writeJson(root, "manifest.json", {
+      schema: "threenative.bundle",
+      version: "0.1.0",
+      name: "flow-test",
+      requiredCapabilities: {},
+      entry: { gameFlow: "game-flow.ir.json", world: "world.ir.json" },
+      files: {
+        assets: "assets.manifest.json",
+        componentSchemas: "schemas/components.schema.json",
+        materials: "materials.ir.json",
+        targetProfile: "target.profile.json",
+      },
+    });
+    await writeJson(root, "game-flow.ir.json", {
+      schema: "threenative.game-flow",
+      version: "0.1.0",
+      flows: [{
+        id: "match",
+        initial: "ready",
+        states: [{ id: "ready" }],
+        transitions: [{ id: "start", from: "ready", to: "playing", trigger: { kind: "event", event: "start" } }],
+      }],
+    });
+
+    const result = await validateBundle(root);
+
+    assert.equal(result.ok, false);
+    assert.equal(result.diagnostics.some((diagnostic) => diagnostic.code === "TN_GAMEFLOW_STATE_UNKNOWN"), true);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should reject non-monotonic sequence key times", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-ir-sequence-invalid-"));
+  try {
+    await writeBundle(root, { current: 100, max: 100 });
+    await writeJson(root, "manifest.json", {
+      schema: "threenative.bundle",
+      version: "0.1.0",
+      name: "sequence-test",
+      requiredCapabilities: {},
+      entry: { sequences: "sequences.ir.json", world: "world.ir.json" },
+      files: {
+        assets: "assets.manifest.json",
+        componentSchemas: "schemas/components.schema.json",
+        materials: "materials.ir.json",
+        targetProfile: "target.profile.json",
+      },
+    });
+    await writeJson(root, "sequences.ir.json", {
+      schema: "threenative.sequences",
+      version: "0.1.0",
+      sequences: [{
+        duration: 2,
+        id: "intro",
+        tracks: [{ id: "camera", kind: "cameraPose", keyframes: [{ time: 1, value: {} }, { time: 0.5, value: {} }] }],
+      }],
+    });
+
+    const result = await validateBundle(root);
+
+    assert.equal(result.ok, false);
+    assert.equal(result.diagnostics.some((diagnostic) => diagnostic.code === "TN_SEQUENCE_KEYFRAMES_NOT_MONOTONIC"), true);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
 test("should reject stale target profile schema literal", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-ir-target-profile-schema-"));
   try {
@@ -1601,6 +1674,92 @@ test("should reject invalid KinematicMover mode and fields", async () => {
         "TN_IR_KINEMATIC_MOVER_SPEED_INVALID",
         "TN_IR_KINEMATIC_MOVER_AXIS_INVALID",
         "TN_IR_KINEMATIC_MOVER_RADIUS_INVALID",
+      ],
+    );
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should accept wave Spawner component", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-ir-spawner-accept-"));
+  try {
+    await writeTestBundle(root, {
+      world: {
+        schema: "threenative.world",
+        version: "0.1.0",
+        entities: [
+          {
+            id: "drone-spawner",
+            components: {
+              Spawner: {
+                area: { shape: "box", size: [4, 0, 2] },
+                despawnPolicy: { afterSeconds: 12, beyondDistance: 30 },
+                enabled: true,
+                jitterSeed: 42,
+                maxAlive: 8,
+                maxTotal: 24,
+                mode: "wave",
+                prefab: "prefab.drone",
+                waveSize: 3,
+              },
+              Transform: { position: [0, 0, 0] },
+            },
+          },
+        ],
+      },
+    });
+
+    const result = await validateBundle(root);
+
+    assert.equal(result.ok, true);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should reject invalid Spawner mode and fields", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-ir-spawner-reject-"));
+  try {
+    await writeTestBundle(root, {
+      world: {
+        schema: "threenative.world",
+        version: "0.1.0",
+        entities: [
+          {
+            id: "drone-spawner",
+            components: {
+              Spawner: {
+                area: { shape: "sphere", size: "wide" },
+                enabled: "yes",
+                interval: -1,
+                maxAlive: 0,
+                mode: "burst",
+                prefab: "",
+                waveSize: 0,
+              },
+            } as unknown as Record<string, unknown>,
+          },
+        ],
+      },
+    });
+
+    const result = await validateBundle(root);
+
+    assert.equal(result.ok, false);
+    assert.deepEqual(
+      result.diagnostics
+        .filter((diagnostic) => diagnostic.path.startsWith("world.ir.json/entities/0/components/Spawner"))
+        .map((diagnostic) => diagnostic.code),
+      [
+        "TN_IR_SPAWNER_MODE_INVALID",
+        "TN_IR_SPAWNER_PREFAB_INVALID",
+        "TN_IR_SPAWNER_ENABLED_INVALID",
+        "TN_IR_SPAWNER_INTERVAL_INVALID",
+        "TN_IR_SPAWNER_WAVE_SIZE_INVALID",
+        "TN_IR_SPAWNER_MAX_ALIVE_INVALID",
+        "TN_IR_SPAWNER_AREA_SHAPE_INVALID",
+        "TN_IR_SPAWNER_AREA_SIZE_INVALID",
       ],
     );
   } finally {

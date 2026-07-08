@@ -15,6 +15,13 @@ Current support:
   composes L2 mechanic blocks into structured source, writes
   `content/mechanics/*.mechanic.json`, emits block playtest scenarios, and
   preserves authoring validation.
+- Declarative gameplay-flow contracts are emerging behind bounded operations:
+  `tn scene set-spawner` persists typed `Spawner` components with deterministic
+  web/native trace tests, while `tn flow create|add-state|add-transition` and
+  `tn sequence create|add-track|add-key` write validated structured source and
+  compiler-emitted `game-flow.ir.json` / `sequences.ir.json` bundle entries.
+  Full runtime GameFlow/Sequence evaluators remain future work; unsupported
+  trigger/action/track kinds fail closed in validation.
 - `tn look apply <arcade-neon|forest-dawn|sunset-racer|toybox-pop|noir-metal>`
   applies curated scaffold polish through runtime and material source
   operations without exposing renderer internals.

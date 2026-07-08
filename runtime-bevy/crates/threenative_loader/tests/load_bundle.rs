@@ -76,6 +76,52 @@ fn should_load_kinematic_mover_component() {
 }
 
 #[test]
+fn should_load_spawner_component() {
+    let root = temp_bundle_dir();
+    write_minimal_bundle(&root);
+    write_json(
+        &root,
+        "world.ir.json",
+        r#"{
+          "schema": "threenative.world",
+          "version": "0.1.0",
+          "entities": [
+            {
+              "id": "spawner",
+              "components": {
+                "Spawner": {
+                  "area": { "shape": "box", "size": [4, 0, 2] },
+                  "enabled": true,
+                  "jitterSeed": 7,
+                  "maxAlive": 4,
+                  "maxTotal": 8,
+                  "mode": "wave",
+                  "prefab": "prefab.enemy",
+                  "waveSize": 2
+                }
+              }
+            }
+          ]
+        }"#,
+    );
+
+    let bundle = load_bundle(&root).expect("spawner bundle should load");
+    let spawner = bundle.world.entities[0]
+        .components
+        .spawner
+        .as_ref()
+        .expect("spawner should deserialize");
+
+    assert_eq!(spawner.mode, "wave");
+    assert_eq!(spawner.prefab, "prefab.enemy");
+    assert_eq!(spawner.enabled, true);
+    assert_eq!(spawner.wave_size, Some(2));
+    assert_eq!(spawner.max_alive, Some(4));
+
+    fs::remove_dir_all(root).expect("temp bundle should be removed");
+}
+
+#[test]
 fn should_report_missing_bundle_path_with_source_path() {
     let root = std::env::temp_dir().join(format!(
         "tn-loader-missing-{}",

@@ -3,10 +3,12 @@ import { extname } from "node:path";
 import {
   IR_SCHEMA_IDS,
   IR_VERSION,
+  type IGameFlowIr,
   type IIrSchemaFile,
   type IMaterialIr,
   type IPrefabsIr,
   type IRuntimeConfigIr,
+  type ISequencesIr,
   type ITargetProfile,
 } from "@threenative/ir";
 import type { IAuthoringDocument } from "@threenative/authoring";
@@ -329,6 +331,65 @@ export function readStructuredPrefabs(documents: readonly IAuthoringDocument[] |
     version: IR_VERSION,
     prefabs,
   };
+}
+
+export function readStructuredGameFlow(documents: readonly IAuthoringDocument[] | undefined): IGameFlowIr | undefined {
+  const flows = (documents ?? [])
+    .filter((document) => document.kind === "flow" && isRecord(document.data))
+    .flatMap((document) => {
+      const data = document.data as Record<string, unknown>;
+      const id = readString(data.id);
+      const initial = readString(data.initial);
+      const states = readRecordList(data.states).map(cloneRecord) as unknown as IGameFlowIr["flows"][number]["states"];
+      if (id === undefined || initial === undefined || states.length === 0) {
+        return [];
+      }
+      const scene = readString(data.scene);
+      return [{
+        id,
+        initial,
+        ...(scene === undefined ? {} : { scene }),
+        states,
+        ...(Array.isArray(data.transitions) ? { transitions: readRecordList(data.transitions).map(cloneRecord) as unknown as IGameFlowIr["flows"][number]["transitions"] } : {}),
+      }];
+    })
+    .sort((left, right) => left.id.localeCompare(right.id));
+
+  return flows.length === 0
+    ? undefined
+    : {
+        schema: IR_SCHEMA_IDS.gameFlow,
+        version: IR_VERSION,
+        flows,
+      };
+}
+
+export function readStructuredSequences(documents: readonly IAuthoringDocument[] | undefined): ISequencesIr | undefined {
+  const sequences = (documents ?? [])
+    .filter((document) => document.kind === "sequence" && isRecord(document.data))
+    .flatMap((document) => {
+      const data = document.data as Record<string, unknown>;
+      const id = readString(data.id);
+      const duration = readNumber(data.duration);
+      if (id === undefined || duration === undefined) {
+        return [];
+      }
+      return [{
+        duration,
+        id,
+        ...(typeof data.skippable === "boolean" ? { skippable: data.skippable } : {}),
+        tracks: readRecordList(data.tracks).map(cloneRecord) as unknown as ISequencesIr["sequences"][number]["tracks"],
+      }];
+    })
+    .sort((left, right) => left.id.localeCompare(right.id));
+
+  return sequences.length === 0
+    ? undefined
+    : {
+        schema: IR_SCHEMA_IDS.sequences,
+        sequences,
+        version: IR_VERSION,
+      };
 }
 
 function readPrefabEntities(value: unknown): IPrefabsIr["prefabs"][number]["entities"] {

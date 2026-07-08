@@ -5,7 +5,7 @@ import { authoringDiagnostic, type IAuthoringDiagnostic } from "./diagnostics.js
 import { formatAuthoringDocument } from "./format.js";
 import { isGeneratedBundleArtifactFile } from "./sourceKinds.js";
 
-export type AuthoringDocumentKind = "asset" | "audio" | "environment" | "generator" | "input" | "material" | "mesh" | "prefab" | "project" | "resources" | "runtime" | "scene" | "schema" | "systems" | "target" | "ui" | "unknown";
+export type AuthoringDocumentKind = "asset" | "audio" | "environment" | "flow" | "generator" | "input" | "material" | "mesh" | "prefab" | "project" | "resources" | "runtime" | "scene" | "schema" | "sequence" | "systems" | "target" | "ui" | "unknown";
 
 export interface IAuthoringDocument {
   file: string;
@@ -97,6 +97,8 @@ export function classifyAuthoringDocument(projectRelativePath: string, data: unk
         return "audio";
       case "threenative.environment-scene":
         return "environment";
+      case "threenative.flow":
+        return "flow";
       case "threenative.generator-provenance":
         return "generator";
       case "threenative.input":
@@ -121,6 +123,8 @@ export function classifyAuthoringDocument(projectRelativePath: string, data: unk
         return "schema";
       case "threenative.scene":
         return "scene";
+      case "threenative.sequence":
+        return "sequence";
       case "threenative.systems":
         return "systems";
       case "threenative.ui":
@@ -145,6 +149,9 @@ export function classifyAuthoringDocumentPath(projectRelativePath: string): Auth
   }
   if (projectRelativePath.endsWith(".environment.json")) {
     return "environment";
+  }
+  if (projectRelativePath.endsWith(".flow.json")) {
+    return "flow";
   }
   if (projectRelativePath.endsWith(".generator.json")) {
     return "generator";
@@ -172,6 +179,9 @@ export function classifyAuthoringDocumentPath(projectRelativePath: string): Auth
   }
   if (projectRelativePath.endsWith(".scene.json")) {
     return "scene";
+  }
+  if (projectRelativePath.endsWith(".sequence.json")) {
+    return "sequence";
   }
   if (projectRelativePath.endsWith(".systems.json")) {
     return "systems";

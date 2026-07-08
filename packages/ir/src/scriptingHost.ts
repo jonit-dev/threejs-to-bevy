@@ -5,7 +5,7 @@ export type ScriptHostSupport = "implemented" | "unsupported";
 export interface IScriptHostServiceMatrixEntry {
   bevy: ScriptHostSupport;
   context: string;
-  domain: "animation" | "assets" | "audio" | "character" | "navigation" | "particles" | "persistence" | "physics" | "picking" | "scene" | "settings" | "ui";
+  domain: "animation" | "assets" | "audio" | "character" | "navigation" | "particles" | "persistence" | "physics" | "picking" | "scene" | "sequence" | "settings" | "ui";
   service: IrSystemService;
   web: ScriptHostSupport;
 }
@@ -40,6 +40,9 @@ export const SCRIPT_HOST_SERVICE_MATRIX = [
   { bevy: "implemented", context: "ctx.scenes.pop", domain: "scene", service: "scene.pop", web: "implemented" },
   { bevy: "implemented", context: "ctx.scenes.push", domain: "scene", service: "scene.push", web: "implemented" },
   { bevy: "implemented", context: "ctx.scenes.unload", domain: "scene", service: "scene.unload", web: "implemented" },
+  { bevy: "implemented", context: "ctx.sequences.play", domain: "sequence", service: "sequences.play", web: "implemented" },
+  { bevy: "implemented", context: "ctx.sequences.query", domain: "sequence", service: "sequences.query", web: "implemented" },
+  { bevy: "implemented", context: "ctx.sequences.stop", domain: "sequence", service: "sequences.stop", web: "implemented" },
   { bevy: "implemented", context: "ctx.settings.export", domain: "settings", service: "settings.export", web: "implemented" },
   { bevy: "implemented", context: "ctx.settings.get", domain: "settings", service: "settings.get", web: "implemented" },
   { bevy: "implemented", context: "ctx.settings.import", domain: "settings", service: "settings.import", web: "implemented" },

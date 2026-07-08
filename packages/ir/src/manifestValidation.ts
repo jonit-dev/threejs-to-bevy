@@ -48,8 +48,14 @@ export function validateManifest(manifest: unknown, path: string, diagnostics: I
   if (isRecord(entry) && entry.localData !== undefined) {
     validateManifestPath(entry.localData, `${path}/entry/localData`, IR_DOCUMENTS.localData.fileName, diagnostics);
   }
+  if (isRecord(entry) && entry.gameFlow !== undefined) {
+    validateManifestPath(entry.gameFlow, `${path}/entry/gameFlow`, IR_DOCUMENTS.gameFlow.fileName, diagnostics);
+  }
   if (isRecord(entry) && entry.scenes !== undefined) {
     validateManifestPath(entry.scenes, `${path}/entry/scenes`, IR_DOCUMENTS.scenes.fileName, diagnostics);
+  }
+  if (isRecord(entry) && entry.sequences !== undefined) {
+    validateManifestPath(entry.sequences, `${path}/entry/sequences`, IR_DOCUMENTS.sequences.fileName, diagnostics);
   }
   if (isRecord(entry) && entry.prefabs !== undefined) {
     validateManifestPath(entry.prefabs, `${path}/entry/prefabs`, IR_DOCUMENTS.prefabs.fileName, diagnostics);
@@ -86,8 +92,10 @@ export function validateManifest(manifest: unknown, path: string, diagnostics: I
     (entry.audio === undefined || typeof entry.audio === "string") &&
     (entry.animations === undefined || typeof entry.animations === "string") &&
     (entry.environmentScene === undefined || typeof entry.environmentScene === "string") &&
+    (entry.gameFlow === undefined || typeof entry.gameFlow === "string") &&
     (entry.localData === undefined || typeof entry.localData === "string") &&
     (entry.scenes === undefined || typeof entry.scenes === "string") &&
+    (entry.sequences === undefined || typeof entry.sequences === "string") &&
     (entry.systems === undefined || typeof entry.systems === "string") &&
     (entry.overlays === undefined || typeof entry.overlays === "string") &&
     (entry.prefabs === undefined || typeof entry.prefabs === "string") &&

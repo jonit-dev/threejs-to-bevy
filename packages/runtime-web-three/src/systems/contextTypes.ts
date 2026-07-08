@@ -133,6 +133,11 @@ export interface ISystemContext {
     push(scene: string, options?: Record<string, unknown>): ISceneServiceResult<"push">;
     unload(scene: string, options?: Record<string, unknown>): ISceneServiceResult<"unload">;
   };
+  sequences: {
+    play(sequence: string, options?: Record<string, unknown>): ISequenceServiceResult<"play">;
+    query(sequence?: string): ISequenceQueryResult;
+    stop(sequence: string): ISequenceServiceResult<"stop">;
+  };
   timers: {
     done(start: number, duration: number): boolean;
     elapsed(start: number): number;
@@ -204,6 +209,17 @@ export interface ITaskDeclarationView {
   schedule: "fixedUpdate" | "postUpdate" | "startup" | "update";
 }
 
+export interface ISequenceServiceResult<TOperation extends string> {
+  accepted: boolean;
+  operation: TOperation;
+  sequence: string;
+}
+
+export interface ISequenceQueryResult {
+  active: boolean;
+  sequence: string | null;
+}
+
 export interface IPluginDeclarationView {
   id: string;
   systems: string[];
@@ -249,7 +265,7 @@ export interface IQueuedResourceWrite {
 
 export interface IQueuedServiceCall {
   payload: unknown;
-  service: "animation.play" | "animation.query" | "animation.stop" | "audio.play" | "audio.query" | "audio.stop" | "assets.load" | "character.move" | "navigation.path" | "particles.burst" | "particles.reset" | "particles.start" | "particles.stop" | "physics.overlap" | "physics.raycast" | "physics.sensor" | "physics.shapeCast" | "picking.mesh" | "picking.pointerRay" | "persistence.delete" | "persistence.listSlots" | "persistence.load" | "persistence.save" | "scene.change" | "scene.current" | "scene.loadAdditive" | "scene.pop" | "scene.push" | "scene.unload" | "settings.export" | "settings.get" | "settings.import" | "settings.set" | "ui.activate" | "ui.focus" | "ui.read" | "ui.setDisabled" | "ui.setValue";
+  service: "animation.play" | "animation.query" | "animation.stop" | "audio.play" | "audio.query" | "audio.stop" | "assets.load" | "character.move" | "navigation.path" | "particles.burst" | "particles.reset" | "particles.start" | "particles.stop" | "physics.overlap" | "physics.raycast" | "physics.sensor" | "physics.shapeCast" | "picking.mesh" | "picking.pointerRay" | "persistence.delete" | "persistence.listSlots" | "persistence.load" | "persistence.save" | "scene.change" | "scene.current" | "scene.loadAdditive" | "scene.pop" | "scene.push" | "scene.unload" | "sequences.play" | "sequences.query" | "sequences.stop" | "settings.export" | "settings.get" | "settings.import" | "settings.set" | "ui.activate" | "ui.focus" | "ui.read" | "ui.setDisabled" | "ui.setValue";
 }
 
 export interface IParticleCommandOptions {

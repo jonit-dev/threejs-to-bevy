@@ -5,6 +5,8 @@ import {
   addAnimationClip,
   addAnimationGraphState,
   addAudioSound,
+  addFlowState,
+  addFlowTransition,
   addInputAction,
   addInputAxis,
   addParticleEmitter,
@@ -18,6 +20,7 @@ import {
   createAudioDocument,
   createGameAgentInventory,
   createEnvironmentDocument,
+  createFlowDocument,
   createMaterial,
   createMeshCustom,
   createMeshPrimitive,
@@ -25,6 +28,7 @@ import {
   createProjectMetadata,
   createResourcesDocument,
   createRuntimeConfig,
+  createSequenceDocument,
   createSystem,
   createSchemaDocument,
   createUiDocument,
@@ -42,6 +46,8 @@ import {
   setPrefabMaterial,
   setInputControls,
   addResourceDocumentEntry,
+  addSequenceKey,
+  addSequenceTrack,
   authoringDiagnostic,
   normalizeRelativePath,
   readAuthoringJsonDocument,
@@ -347,6 +353,100 @@ export async function projectCommand(argv: readonly string[], options: ISourceCo
   }
 
   return renderUsage(json, "TN_PROJECT_COMMAND_UNKNOWN", `${projectInitSourceUsage()}\n       tn project map [--project <path>] [--json]`);
+}
+
+export async function flowCommand(argv: readonly string[], options: ISourceCommandOptions = {}): Promise<ICommandResult> {
+  const normalizedArgv = normalizeArgv(argv);
+  const [subcommand] = normalizedArgv;
+  const json = normalizedArgv.includes("--json");
+  const projectPath = resolveProjectPath(normalizedArgv, options.cwd);
+  const flowId = readPositional(normalizedArgv, 1);
+
+  if (subcommand === "create") {
+    const initial = readFlag(normalizedArgv, "--initial") ?? "ready";
+    if (flowId === undefined) {
+      return renderUsage(json, "TN_FLOW_CREATE_ARGS_MISSING", "Usage: tn flow create <flow-id> [--initial <state-id>] [--scene <scene-id>] [--project <path>] [--json]");
+    }
+    return renderAuthoringResult("flow", await createFlowDocument({ flowId, initial, projectPath, scene: readFlag(normalizedArgv, "--scene") }), json, `Flow '${flowId}' created.`);
+  }
+
+  if (subcommand === "add-state") {
+    const stateId = readPositional(normalizedArgv, 2);
+    const actions = parseJsonArrayFlag(normalizedArgv, "--actions", "TN_FLOW_STATE_ACTIONS_INVALID");
+    if (actions.diagnostic !== undefined) {
+      return renderUsage(json, actions.diagnostic, "Flow state actions must be a JSON array of objects.");
+    }
+    if (flowId === undefined || stateId === undefined) {
+      return renderUsage(json, "TN_FLOW_ADD_STATE_ARGS_MISSING", "Usage: tn flow add-state <flow-id> <state-id> [--actions '<json-array>'] [--project <path>] [--json]");
+    }
+    return renderAuthoringResult("flow", await addFlowState({ actions: actions.value as Record<string, unknown>[] | undefined, flowId, projectPath, stateId }), json, `Flow state '${stateId}' added.`);
+  }
+
+  if (subcommand === "add-transition") {
+    const transitionId = readPositional(normalizedArgv, 2);
+    const from = readFlag(normalizedArgv, "--from");
+    const to = readFlag(normalizedArgv, "--to");
+    const trigger = parseJsonObjectFlag(normalizedArgv, "--trigger", "TN_FLOW_TRIGGER_INVALID");
+    const actions = parseJsonArrayFlag(normalizedArgv, "--actions", "TN_FLOW_TRANSITION_ACTIONS_INVALID");
+    const invalidJson = trigger.diagnostic ?? actions.diagnostic;
+    if (invalidJson !== undefined) {
+      return renderUsage(json, invalidJson, "Flow trigger must be a JSON object and actions must be a JSON array of objects.");
+    }
+    if (flowId === undefined || transitionId === undefined || from === undefined || to === undefined || trigger.value === undefined) {
+      return renderUsage(json, "TN_FLOW_ADD_TRANSITION_ARGS_MISSING", "Usage: tn flow add-transition <flow-id> <transition-id> --from <state-id> --to <state-id> --trigger '<json-object>' [--actions '<json-array>'] [--project <path>] [--json]");
+    }
+    return renderAuthoringResult("flow", await addFlowTransition({ actions: actions.value as Record<string, unknown>[] | undefined, flowId, from, projectPath, to, transitionId, trigger: trigger.value }), json, `Flow transition '${transitionId}' added.`);
+  }
+
+  return renderUsage(json, "TN_FLOW_COMMAND_UNKNOWN", "Usage: tn flow create|add-state|add-transition ... [--json]");
+}
+
+export async function sequenceCommand(argv: readonly string[], options: ISourceCommandOptions = {}): Promise<ICommandResult> {
+  const normalizedArgv = normalizeArgv(argv);
+  const [subcommand] = normalizedArgv;
+  const json = normalizedArgv.includes("--json");
+  const projectPath = resolveProjectPath(normalizedArgv, options.cwd);
+  const sequenceId = readPositional(normalizedArgv, 1);
+
+  if (subcommand === "create") {
+    const duration = parseOptionalNumber(normalizedArgv, "--duration");
+    const skippable = parseOptionalBoolean(normalizedArgv, "--skippable");
+    if (duration.diagnostic !== undefined) {
+      return renderUsage(json, duration.diagnostic, "Sequence --duration must be a finite number.");
+    }
+    if (skippable.diagnostic !== undefined) {
+      return renderUsage(json, skippable.diagnostic, "Sequence --skippable must be true or false.");
+    }
+    if (sequenceId === undefined || duration.value === undefined) {
+      return renderUsage(json, "TN_SEQUENCE_CREATE_ARGS_MISSING", "Usage: tn sequence create <sequence-id> --duration <seconds> [--skippable true|false] [--project <path>] [--json]");
+    }
+    return renderAuthoringResult("sequence", await createSequenceDocument({ duration: duration.value, projectPath, sequenceId, skippable: skippable.value }), json, `Sequence '${sequenceId}' created.`);
+  }
+
+  if (subcommand === "add-track") {
+    const trackId = readPositional(normalizedArgv, 2);
+    const kind = readFlag(normalizedArgv, "--kind");
+    if (sequenceId === undefined || trackId === undefined || kind === undefined) {
+      return renderUsage(json, "TN_SEQUENCE_ADD_TRACK_ARGS_MISSING", "Usage: tn sequence add-track <sequence-id> <track-id> --kind <cameraPose|transform|event|ui|audio|timeScale> [--entity <entity-id>] [--project <path>] [--json]");
+    }
+    return renderAuthoringResult("sequence", await addSequenceTrack({ entity: readFlag(normalizedArgv, "--entity"), kind, projectPath, sequenceId, trackId }), json, `Sequence track '${trackId}' added.`);
+  }
+
+  if (subcommand === "add-key") {
+    const trackId = readPositional(normalizedArgv, 2);
+    const time = parseOptionalNumber(normalizedArgv, "--time");
+    const value = parseJsonFlag(normalizedArgv, "--value");
+    const invalidJson = time.diagnostic ?? value.diagnostic;
+    if (invalidJson !== undefined) {
+      return renderUsage(json, invalidJson, "Sequence key time must be finite and --value must be valid JSON.");
+    }
+    if (sequenceId === undefined || trackId === undefined || time.value === undefined) {
+      return renderUsage(json, "TN_SEQUENCE_ADD_KEY_ARGS_MISSING", "Usage: tn sequence add-key <sequence-id> <track-id> --time <seconds> [--value <json>] [--easing linear|step] [--project <path>] [--json]");
+    }
+    return renderAuthoringResult("sequence", await addSequenceKey({ easing: readFlag(normalizedArgv, "--easing"), projectPath, sequenceId, time: time.value, trackId, value: value.value }), json, `Sequence key added to '${trackId}'.`);
+  }
+
+  return renderUsage(json, "TN_SEQUENCE_COMMAND_UNKNOWN", "Usage: tn sequence create|add-track|add-key ... [--json]");
 }
 
 function responsibilityForDocumentKind(kind: string): string {

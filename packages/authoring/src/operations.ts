@@ -21,6 +21,12 @@ import {
   audioSoundKeys,
   environmentDocumentKeys,
   environmentDocumentSchema,
+  flowActionKeys,
+  flowDocumentKeys,
+  flowDocumentSchema,
+  flowStateKeys,
+  flowTransitionKeys,
+  flowTriggerKeys,
   generatorDocumentKeys,
   generatorDocumentSchema,
   inputAxisKeys,
@@ -49,6 +55,9 @@ import {
   resourcesDocumentSchema,
   renderLayersComponentKeys,
   rigidBodyComponentKeys,
+  spawnerAreaKeys,
+  spawnerComponentKeys,
+  spawnerDespawnPolicyKeys,
   readArray,
   readString,
   resourceKeys,
@@ -59,6 +68,10 @@ import {
   schemaEntryKeys,
   sceneDocumentKeys,
   sceneDocumentSchema,
+  sequenceDocumentKeys,
+  sequenceDocumentSchema,
+  sequenceKeyframeKeys,
+  sequenceTrackKeys,
   scriptReferenceKeys,
   scriptLifecycleKeys,
   systemsDocumentKeys,
@@ -72,12 +85,16 @@ import {
   supportedColliderKinds,
   supportedComponentKinds,
   supportedGeneratorOverwritePolicies,
+  supportedFlowActionKinds,
+  supportedFlowTriggerKinds,
   supportedInputAxisSlots,
   supportedInputCaptureStates,
   supportedInputOverrideDevices,
   supportedInputRebindKinds,
   supportedKinematicMoverAxes,
   supportedKinematicMoverModes,
+  supportedSpawnerAreaShapes,
+  supportedSpawnerModes,
   supportedLightKinds,
   supportedRendererAntialiasModes,
   supportedRenderLookProfiles,
@@ -89,6 +106,8 @@ import {
   supportedSceneLifecycleKinds,
   supportedSchemaDocumentKinds,
   supportedSchemaFieldKinds,
+  supportedSequenceEasings,
+  supportedSequenceTrackKinds,
   supportedUiNodeTypes,
   supportedUiTextAlignments,
   supportedUiTextDecorations,
@@ -262,6 +281,48 @@ export interface ISetResourceDocumentEntryOptions extends IAuthoringOperationCon
   value?: unknown;
 }
 
+export interface ICreateFlowDocumentOptions extends IAuthoringOperationContext {
+  flowId: string;
+  initial: string;
+  scene?: string;
+}
+
+export interface IAddFlowStateOptions extends IAuthoringOperationContext {
+  flowId: string;
+  stateId: string;
+  actions?: Record<string, unknown>[];
+}
+
+export interface IAddFlowTransitionOptions extends IAuthoringOperationContext {
+  actions?: Record<string, unknown>[];
+  flowId: string;
+  from: string;
+  to: string;
+  transitionId: string;
+  trigger: Record<string, unknown>;
+}
+
+export interface ICreateSequenceDocumentOptions extends IAuthoringOperationContext {
+  duration: number;
+  sequenceId: string;
+  skippable?: boolean;
+}
+
+export interface IAddSequenceTrackOptions extends IAuthoringOperationContext {
+  entity?: string;
+  kind: string;
+  sequenceId: string;
+  trackId: string;
+}
+
+export interface IAddSequenceKeyOptions extends IAuthoringOperationContext {
+  easing?: string;
+  sequenceId: string;
+  time: number;
+  trackId: string;
+  value?: unknown;
+}
+
 export interface ICreateSchemaDocumentOptions extends IAuthoringOperationContext {
   schemaDocId: string;
   kind: string;
@@ -334,6 +395,21 @@ export interface ISetRigidBodyComponentOptions extends IAuthoringOperationContex
   mass?: number;
   damping?: number;
   gravityScale?: number;
+}
+
+export interface ISetSpawnerComponentOptions extends IAuthoringOperationContext {
+  sceneId: string;
+  entityId: string;
+  prefab: string;
+  mode?: string;
+  enabled?: boolean;
+  interval?: number;
+  waveSize?: number;
+  maxAlive?: number;
+  maxTotal?: number;
+  jitterSeed?: number;
+  area?: Record<string, unknown>;
+  despawnPolicy?: Record<string, unknown>;
 }
 
 export interface ISetColliderComponentOptions extends IAuthoringOperationContext {
@@ -1497,6 +1573,27 @@ export async function setRigidBodyComponent(options: ISetRigidBodyComponentOptio
   });
 }
 
+export async function setSpawnerComponent(options: ISetSpawnerComponentOptions): Promise<IAuthoringOperationResult> {
+  return setComponent({
+    projectPath: options.projectPath,
+    sceneId: options.sceneId,
+    entityId: options.entityId,
+    componentKind: "Spawner",
+    value: {
+      enabled: options.enabled ?? true,
+      mode: options.mode ?? "once",
+      prefab: options.prefab,
+      ...(options.interval === undefined ? {} : { interval: options.interval }),
+      ...(options.waveSize === undefined ? {} : { waveSize: options.waveSize }),
+      ...(options.maxAlive === undefined ? {} : { maxAlive: options.maxAlive }),
+      ...(options.maxTotal === undefined ? {} : { maxTotal: options.maxTotal }),
+      ...(options.jitterSeed === undefined ? {} : { jitterSeed: options.jitterSeed }),
+      ...(options.area === undefined ? {} : { area: options.area }),
+      ...(options.despawnPolicy === undefined ? {} : { despawnPolicy: options.despawnPolicy }),
+    },
+  });
+}
+
 export async function setColliderComponent(options: ISetColliderComponentOptions): Promise<IAuthoringOperationResult> {
   return setComponent({
     projectPath: options.projectPath,
@@ -1942,6 +2039,119 @@ export async function createResourcesDocument(options: ICreateResourcesDocumentO
     id: options.resourcesDocId,
     file: `content/resources/${options.resourcesDocId}.resources.json`,
     data: { schema: resourcesDocumentSchema, version: "0.1.0", id: options.resourcesDocId, resources: [] },
+  });
+}
+
+export async function createFlowDocument(options: ICreateFlowDocumentOptions): Promise<IAuthoringOperationResult> {
+  return createSourceDocument({
+    projectPath: options.projectPath,
+    kind: "flow",
+    id: options.flowId,
+    file: `content/flow/${options.flowId}.flow.json`,
+    data: {
+      schema: flowDocumentSchema,
+      version: "0.1.0",
+      id: options.flowId,
+      ...(options.scene === undefined ? {} : { scene: options.scene }),
+      initial: options.initial,
+      states: [{ id: options.initial }],
+      transitions: [],
+    },
+  });
+}
+
+export async function addFlowState(options: IAddFlowStateOptions): Promise<IAuthoringOperationResult> {
+  return mutateSourceDocument(options, "flow", options.flowId, (data, file) => {
+    const states = ensureArrayProperty(data, "states");
+    const existing = findSceneItem(states, options.stateId);
+    const next = {
+      id: options.stateId,
+      ...(options.actions === undefined ? {} : { actions: options.actions.map((action) => cloneJson(action)) }),
+    };
+    if (existing === undefined) {
+      states.push(next);
+    } else {
+      Object.assign(existing, next);
+    }
+    return validateFlowDocument(file, data);
+  });
+}
+
+export async function addFlowTransition(options: IAddFlowTransitionOptions): Promise<IAuthoringOperationResult> {
+  return mutateSourceDocument(options, "flow", options.flowId, (data, file) => {
+    const transitions = ensureArrayProperty(data, "transitions");
+    const existing = findSceneItem(transitions, options.transitionId);
+    const next = {
+      id: options.transitionId,
+      from: options.from,
+      to: options.to,
+      trigger: cloneJson(options.trigger),
+      ...(options.actions === undefined ? {} : { actions: options.actions.map((action) => cloneJson(action)) }),
+    };
+    if (existing === undefined) {
+      transitions.push(next);
+    } else {
+      Object.assign(existing, next);
+    }
+    return validateFlowDocument(file, data);
+  });
+}
+
+export async function createSequenceDocument(options: ICreateSequenceDocumentOptions): Promise<IAuthoringOperationResult> {
+  return createSourceDocument({
+    projectPath: options.projectPath,
+    kind: "sequence",
+    id: options.sequenceId,
+    file: `content/sequences/${options.sequenceId}.sequence.json`,
+    data: {
+      schema: sequenceDocumentSchema,
+      version: "0.1.0",
+      id: options.sequenceId,
+      duration: options.duration,
+      ...(options.skippable === undefined ? {} : { skippable: options.skippable }),
+      tracks: [],
+    },
+  });
+}
+
+export async function addSequenceTrack(options: IAddSequenceTrackOptions): Promise<IAuthoringOperationResult> {
+  return mutateSourceDocument(options, "sequence", options.sequenceId, (data, file) => {
+    const tracks = ensureArrayProperty(data, "tracks");
+    const existing = findSceneItem(tracks, options.trackId);
+    const next = {
+      id: options.trackId,
+      kind: options.kind,
+      ...(options.entity === undefined ? {} : { entity: options.entity }),
+      keyframes: isRecord(existing) && Array.isArray(existing.keyframes) ? existing.keyframes : [],
+    };
+    if (existing === undefined) {
+      tracks.push(next);
+    } else {
+      Object.assign(existing, next);
+    }
+    return validateSequenceDocument(file, data);
+  });
+}
+
+export async function addSequenceKey(options: IAddSequenceKeyOptions): Promise<IAuthoringOperationResult> {
+  return mutateSourceDocument(options, "sequence", options.sequenceId, (data, file) => {
+    const tracks = ensureArrayProperty(data, "tracks");
+    const track = findSceneItem(tracks, options.trackId);
+    if (track === undefined) {
+      return [missingReferenceDiagnostic(file, "/tracks", "sequence track", options.trackId, idsFromArray(tracks))];
+    }
+    const keyframes = ensureArrayProperty(track, "keyframes");
+    keyframes.push({
+      time: options.time,
+      ...(options.easing === undefined ? {} : { easing: options.easing }),
+      ...(options.value === undefined ? {} : { value: options.value }),
+    });
+    keyframes.sort((left, right) => {
+      const leftTime = isRecord(left) && typeof left.time === "number" ? left.time : 0;
+      const rightTime = isRecord(right) && typeof right.time === "number" ? right.time : 0;
+      return leftTime - rightTime;
+    });
+    return validateSequenceDocument(file, data);
   });
 }
 
@@ -2840,6 +3050,8 @@ function sourceExtensionForKind(kind: AuthoringDocumentKind): string {
       return ".audio.json";
     case "environment":
       return ".environment.json";
+    case "flow":
+      return ".flow.json";
     case "generator":
       return ".generator.json";
     case "input":
@@ -2858,6 +3070,8 @@ function sourceExtensionForKind(kind: AuthoringDocumentKind): string {
       return ".resources.json";
     case "schema":
       return ".schema.json";
+    case "sequence":
+      return ".sequence.json";
     case "systems":
       return ".systems.json";
     case "target":
@@ -3012,6 +3226,8 @@ async function validateAuthoringDocument(
       ];
     case "environment":
       return validateRootDocument(file, data, environmentDocumentSchema, "environment document", environmentDocumentKeys);
+    case "flow":
+      return validateFlowDocument(file, data);
     case "generator":
       return validateGeneratorDocument(file, data);
     case "material":
@@ -3088,6 +3304,8 @@ async function validateAuthoringDocument(
       });
     case "scene":
       return validateSceneDocument(projectPath, file, data, context);
+    case "sequence":
+      return validateSequenceDocument(file, data);
     case "systems":
       return validateSystemsDocument(projectPath, file, data);
     case "target":
@@ -3474,6 +3692,155 @@ function validateRootDocument(
   diagnostics.push(...unknownKeyDiagnostics(file, "", data, rootKeys));
   validateDocumentHeader(diagnostics, file, data, expectedSchema, idKind);
   return sortAuthoringDiagnostics(diagnostics);
+}
+
+function validateFlowDocument(file: string, data: unknown): IAuthoringDiagnostic[] {
+  const diagnostics: IAuthoringDiagnostic[] = [];
+  if (!isRecord(data)) {
+    return [authoringDiagnostic({ code: "TN_AUTHORING_DOCUMENT_SHAPE_INVALID", file, message: "Flow source document must be a JSON object.", path: "", value: data })];
+  }
+  diagnostics.push(...unknownKeyDiagnostics(file, "", data, flowDocumentKeys));
+  validateDocumentHeader(diagnostics, file, data, flowDocumentSchema, "flow document");
+  validateRequiredString(diagnostics, file, "/initial", data.initial, "flow initial state must be a non-empty string.");
+  const states = readArray(data.states);
+  if (states === undefined) {
+    diagnostics.push(typeDiagnostic(file, "/states", "flow states must be an array.", data.states));
+  } else {
+    collectIds(diagnostics, file, "/states", states, "flow state", flowStateKeys);
+    for (const [index, state] of states.entries()) {
+      if (!isRecord(state)) {
+        continue;
+      }
+      diagnostics.push(...unknownKeyDiagnostics(file, `/states/${index}`, state, flowStateKeys));
+      validateRequiredString(diagnostics, file, `/states/${index}/id`, state.id, "flow state id must be a non-empty string.");
+      validateFlowActions(diagnostics, file, `/states/${index}/actions`, state.actions);
+    }
+  }
+  const stateIds = new Set((states ?? []).filter(isRecord).map((state) => state.id).filter(isString));
+  if (isString(data.initial) && !stateIds.has(data.initial)) {
+    diagnostics.push(missingReferenceDiagnostic(file, "/initial", "flow state", data.initial, [...stateIds]));
+  }
+  if (data.transitions !== undefined && !Array.isArray(data.transitions)) {
+    diagnostics.push(typeDiagnostic(file, "/transitions", "flow transitions must be an array.", data.transitions));
+  }
+  const transitions = readArray(data.transitions) ?? [];
+  collectIds(diagnostics, file, "/transitions", transitions, "flow transition", flowTransitionKeys);
+  for (const [index, transition] of transitions.entries()) {
+    if (!isRecord(transition)) {
+      continue;
+    }
+    const path = `/transitions/${index}`;
+    diagnostics.push(...unknownKeyDiagnostics(file, path, transition, flowTransitionKeys));
+    validateRequiredString(diagnostics, file, `${path}/id`, transition.id, "flow transition id must be a non-empty string.");
+    validateFlowStateRef(diagnostics, file, `${path}/from`, transition.from, stateIds);
+    validateFlowStateRef(diagnostics, file, `${path}/to`, transition.to, stateIds);
+    validateFlowTrigger(diagnostics, file, `${path}/trigger`, transition.trigger);
+    validateFlowActions(diagnostics, file, `${path}/actions`, transition.actions);
+  }
+  return sortAuthoringDiagnostics(diagnostics);
+}
+
+function validateSequenceDocument(file: string, data: unknown): IAuthoringDiagnostic[] {
+  const diagnostics: IAuthoringDiagnostic[] = [];
+  if (!isRecord(data)) {
+    return [authoringDiagnostic({ code: "TN_AUTHORING_DOCUMENT_SHAPE_INVALID", file, message: "Sequence source document must be a JSON object.", path: "", value: data })];
+  }
+  diagnostics.push(...unknownKeyDiagnostics(file, "", data, sequenceDocumentKeys));
+  validateDocumentHeader(diagnostics, file, data, sequenceDocumentSchema, "sequence document");
+  validatePositiveNumber(diagnostics, file, "/duration", data.duration, "sequence duration must be a positive finite number.");
+  validateOptionalBoolean(diagnostics, file, "/skippable", data.skippable, "sequence skippable flag must be a boolean.");
+  const tracks = readArray(data.tracks);
+  if (tracks === undefined) {
+    diagnostics.push(typeDiagnostic(file, "/tracks", "sequence tracks must be an array.", data.tracks));
+    return sortAuthoringDiagnostics(diagnostics);
+  }
+  collectIds(diagnostics, file, "/tracks", tracks, "sequence track", sequenceTrackKeys);
+  for (const [trackIndex, track] of tracks.entries()) {
+    if (!isRecord(track)) {
+      continue;
+    }
+    const trackPath = `/tracks/${trackIndex}`;
+    diagnostics.push(...unknownKeyDiagnostics(file, trackPath, track, sequenceTrackKeys));
+    validateRequiredString(diagnostics, file, `${trackPath}/id`, track.id, "sequence track id must be a non-empty string.");
+    validateEnumString(diagnostics, file, `${trackPath}/kind`, track.kind, supportedSequenceTrackKinds, "sequence track kind", "Use cameraPose, transform, event, ui, audio, or timeScale.");
+    validateOptionalString(diagnostics, file, `${trackPath}/entity`, track.entity, "sequence track entity must be a non-empty string.");
+    const keyframes = readArray(track.keyframes);
+    if (keyframes === undefined) {
+      diagnostics.push(typeDiagnostic(file, `${trackPath}/keyframes`, "sequence track keyframes must be an array.", track.keyframes));
+      continue;
+    }
+    let previousTime = -Infinity;
+    for (const [keyIndex, keyframe] of keyframes.entries()) {
+      if (!isRecord(keyframe)) {
+        continue;
+      }
+      const keyPath = `${trackPath}/keyframes/${keyIndex}`;
+      diagnostics.push(...unknownKeyDiagnostics(file, keyPath, keyframe, sequenceKeyframeKeys));
+      validateOptionalStringEnum(diagnostics, file, `${keyPath}/easing`, keyframe.easing, supportedSequenceEasings, "sequence keyframe easing must be linear or step.");
+      if (typeof keyframe.time !== "number" || !Number.isFinite(keyframe.time) || keyframe.time < 0) {
+        diagnostics.push(typeDiagnostic(file, `${keyPath}/time`, "sequence keyframe time must be a non-negative finite number.", keyframe.time));
+        continue;
+      }
+      if (keyframe.time < previousTime) {
+        diagnostics.push(authoringDiagnostic({ code: "TN_AUTHORING_SEQUENCE_KEYFRAMES_NOT_MONOTONIC", file, message: "sequence keyframe times must be monotonic per track.", path: `${keyPath}/time`, value: keyframe.time, suggestion: "Sort keyframes by ascending time." }));
+      }
+      previousTime = keyframe.time;
+    }
+  }
+  return sortAuthoringDiagnostics(diagnostics);
+}
+
+function validateFlowStateRef(
+  diagnostics: IAuthoringDiagnostic[],
+  file: string,
+  path: string,
+  value: unknown,
+  stateIds: Set<string>,
+): void {
+  validateRequiredString(diagnostics, file, path, value, "flow transition state reference must be a non-empty string.");
+  if (isString(value) && !stateIds.has(value)) {
+    diagnostics.push(missingReferenceDiagnostic(file, path, "flow state", value, [...stateIds]));
+  }
+}
+
+function validateFlowTrigger(diagnostics: IAuthoringDiagnostic[], file: string, path: string, value: unknown): void {
+  if (!isRecord(value)) {
+    diagnostics.push(typeDiagnostic(file, path, "flow trigger must be an object.", value));
+    return;
+  }
+  diagnostics.push(...unknownKeyDiagnostics(file, path, value, flowTriggerKeys));
+  validateEnumString(diagnostics, file, `${path}/kind`, value.kind, supportedFlowTriggerKinds, "flow trigger kind", "Use event, timer, resourceEquals, or allCollected.");
+  if (value.kind === "timer") {
+    validateOptionalNonNegativeNumber(diagnostics, file, `${path}/seconds`, value.seconds, "timer trigger seconds must be a non-negative finite number.");
+  }
+  validateOptionalString(diagnostics, file, `${path}/event`, value.event, "flow trigger event must be a non-empty string.");
+  validateOptionalString(diagnostics, file, `${path}/resource`, value.resource, "flow trigger resource must be a non-empty string.");
+}
+
+function validateFlowActions(diagnostics: IAuthoringDiagnostic[], file: string, path: string, value: unknown): void {
+  if (value === undefined) {
+    return;
+  }
+  if (!Array.isArray(value)) {
+    diagnostics.push(typeDiagnostic(file, path, "flow actions must be an array.", value));
+    return;
+  }
+  for (const [index, action] of value.entries()) {
+    if (!isRecord(action)) {
+      diagnostics.push(typeDiagnostic(file, `${path}/${index}`, "flow action must be an object.", action));
+      continue;
+    }
+    const actionPath = `${path}/${index}`;
+    diagnostics.push(...unknownKeyDiagnostics(file, actionPath, action, flowActionKeys));
+    validateEnumString(diagnostics, file, `${actionPath}/kind`, action.kind, supportedFlowActionKinds, "flow action kind", "Use emitEvent, playSequence, setResource, sceneChange, activateUiScreen, setTimeScale, or spawnerEnable.");
+    validateOptionalString(diagnostics, file, `${actionPath}/event`, action.event, "flow action event must be a non-empty string.");
+    validateOptionalString(diagnostics, file, `${actionPath}/resource`, action.resource, "flow action resource must be a non-empty string.");
+    validateOptionalString(diagnostics, file, `${actionPath}/scene`, action.scene, "flow action scene must be a non-empty string.");
+    validateOptionalString(diagnostics, file, `${actionPath}/screen`, action.screen, "flow action screen must be a non-empty string.");
+    validateOptionalString(diagnostics, file, `${actionPath}/sequence`, action.sequence, "flow action sequence must be a non-empty string.");
+    validateOptionalString(diagnostics, file, `${actionPath}/spawner`, action.spawner, "flow action spawner must be a non-empty string.");
+    validateOptionalNumber(diagnostics, file, `${actionPath}/timeScale`, action.timeScale, "flow action timeScale must be a finite number.");
+  }
 }
 
 async function validateUiDocument(file: string, data: unknown): Promise<IAuthoringDiagnostic[]> {
@@ -3957,6 +4324,8 @@ function validateComponents(
       validateCharacterControllerComponent(diagnostics, file, `${path}/CharacterController`, component);
     } else if (kind === "KinematicMover") {
       validateKinematicMoverComponent(diagnostics, file, `${path}/KinematicMover`, component);
+    } else if (kind === "Spawner") {
+      validateSpawnerComponent(diagnostics, file, `${path}/Spawner`, component);
     } else if (kind === "Visibility") {
       validateVisibilityComponent(diagnostics, file, `${path}/Visibility`, component);
     }
@@ -4129,6 +4498,48 @@ function validateKinematicMoverComponent(diagnostics: IAuthoringDiagnostic[], fi
   }
 }
 
+function validateSpawnerComponent(diagnostics: IAuthoringDiagnostic[], file: string, path: string, value: Record<string, unknown>): void {
+  diagnostics.push(...unknownKeyDiagnostics(file, path, value, spawnerComponentKeys));
+  validateRequiredString(diagnostics, file, `${path}/prefab`, value.prefab, "spawner prefab must be a non-empty prefab id.");
+  validateEnumString(diagnostics, file, `${path}/mode`, value.mode, supportedSpawnerModes, "spawner mode", "Use 'once', 'interval', or 'wave'.");
+  validateOptionalBoolean(diagnostics, file, `${path}/enabled`, value.enabled, "spawner enabled must be a boolean.");
+  validateOptionalPositiveNumber(diagnostics, file, `${path}/interval`, value.interval, "spawner interval must be a positive finite number.");
+  validateOptionalPositiveInteger(diagnostics, file, `${path}/waveSize`, value.waveSize, "spawner waveSize must be a positive integer.");
+  validateOptionalPositiveInteger(diagnostics, file, `${path}/maxAlive`, value.maxAlive, "spawner maxAlive must be a positive integer.");
+  validateOptionalPositiveInteger(diagnostics, file, `${path}/maxTotal`, value.maxTotal, "spawner maxTotal must be a positive integer.");
+  validateOptionalNumber(diagnostics, file, `${path}/jitterSeed`, value.jitterSeed, "spawner jitterSeed must be a finite number.");
+  validateSpawnerArea(diagnostics, file, `${path}/area`, value.area);
+  validateSpawnerDespawnPolicy(diagnostics, file, `${path}/despawnPolicy`, value.despawnPolicy);
+}
+
+function validateSpawnerArea(diagnostics: IAuthoringDiagnostic[], file: string, path: string, value: unknown): void {
+  if (value === undefined) {
+    return;
+  }
+  if (!isRecord(value)) {
+    diagnostics.push(typeDiagnostic(file, path, "spawner area must be an object.", value));
+    return;
+  }
+  diagnostics.push(...unknownKeyDiagnostics(file, path, value, spawnerAreaKeys));
+  validateEnumString(diagnostics, file, `${path}/shape`, value.shape, supportedSpawnerAreaShapes, "spawner area shape", "Use 'point', 'box', or 'circle'.");
+  if (value.size !== undefined && (typeof value.size !== "number" || !Number.isFinite(value.size)) && !isVector2(value.size) && !isVector3(value.size)) {
+    diagnostics.push(typeDiagnostic(file, `${path}/size`, "spawner area size must be a finite number, vec2, or vec3.", value.size));
+  }
+}
+
+function validateSpawnerDespawnPolicy(diagnostics: IAuthoringDiagnostic[], file: string, path: string, value: unknown): void {
+  if (value === undefined) {
+    return;
+  }
+  if (!isRecord(value)) {
+    diagnostics.push(typeDiagnostic(file, path, "spawner despawnPolicy must be an object.", value));
+    return;
+  }
+  diagnostics.push(...unknownKeyDiagnostics(file, path, value, spawnerDespawnPolicyKeys));
+  validateOptionalPositiveNumber(diagnostics, file, `${path}/afterSeconds`, value.afterSeconds, "spawner despawnPolicy afterSeconds must be a positive finite number.");
+  validateOptionalPositiveNumber(diagnostics, file, `${path}/beyondDistance`, value.beyondDistance, "spawner despawnPolicy beyondDistance must be a positive finite number.");
+}
+
 function validateVisibilityComponent(diagnostics: IAuthoringDiagnostic[], file: string, path: string, value: Record<string, unknown>): void {
   diagnostics.push(...unknownKeyDiagnostics(file, path, value, visibilityComponentKeys));
   if (typeof value.visible !== "boolean") {
@@ -4251,6 +4662,12 @@ function validateRequiredPositiveNumber(diagnostics: IAuthoringDiagnostic[], fil
   }
 }
 
+function validateOptionalPositiveInteger(diagnostics: IAuthoringDiagnostic[], file: string, path: string, value: unknown, message: string): void {
+  if (value !== undefined && (!Number.isInteger(value) || Number(value) <= 0)) {
+    diagnostics.push(typeDiagnostic(file, path, message, value));
+  }
+}
+
 function validateOptionalNonNegativeNumber(diagnostics: IAuthoringDiagnostic[], file: string, path: string, value: unknown, message: string): void {
   if (value !== undefined && (typeof value !== "number" || !Number.isFinite(value) || value < 0)) {
     diagnostics.push(typeDiagnostic(file, path, message, value));
@@ -4267,6 +4684,10 @@ function validateOptionalVec2(diagnostics: IAuthoringDiagnostic[], file: string,
   if (value !== undefined && (!Array.isArray(value) || value.length !== 2 || value.some((item) => typeof item !== "number" || !Number.isFinite(item)))) {
     diagnostics.push(typeDiagnostic(file, path, message, value));
   }
+}
+
+function isVector2(value: unknown): value is [number, number] {
+  return Array.isArray(value) && value.length === 2 && value.every((item) => typeof item === "number" && Number.isFinite(item));
 }
 
 function validateOptionalStringEnum(diagnostics: IAuthoringDiagnostic[], file: string, path: string, value: unknown, allowed: ReadonlySet<string>, message: string): void {

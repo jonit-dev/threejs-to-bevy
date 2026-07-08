@@ -10,7 +10,11 @@ import {
   addPrefabComponent,
   addPrefabInstance,
   addResourceDocumentEntry,
+  addFlowState,
+  addFlowTransition,
   addResource,
+  addSequenceKey,
+  addSequenceTrack,
   addTag,
   addTenPinLayout,
   addUiComponentInstance,
@@ -24,6 +28,7 @@ import {
   bindUiDocument,
   createAudioDocument,
   createEnvironmentDocument,
+  createFlowDocument,
   createMaterial,
   createMeshCustom,
   createMeshPrimitive,
@@ -33,6 +38,7 @@ import {
   createResourcesDocument,
   createSchemaDocument,
   createScene,
+  createSequenceDocument,
   createSystem,
   createUiDocument,
   recordGeneratorProvenance,
@@ -64,6 +70,7 @@ import {
   setSchemaEntry,
   setRigidBodyComponent,
   setSceneLifecycle,
+  setSpawnerComponent,
   setSystemMetadata,
   setTargetProfile,
   setTransform,
@@ -96,7 +103,7 @@ const STYLIZED_NATURE_AUTHORED_DEFAULTS = {
 };
 
 export type AuthoringOperationPathPolicy = "source-document" | "source-script";
-export type AuthoringOperationSourceFamily = "asset" | "audio" | "environment" | "generator" | "input" | "material" | "mesh" | "prefab" | "project" | "resources" | "runtime" | "schema" | "scene" | "system" | "target" | "ui";
+export type AuthoringOperationSourceFamily = "asset" | "audio" | "environment" | "flow" | "generator" | "input" | "material" | "mesh" | "prefab" | "project" | "resources" | "runtime" | "schema" | "scene" | "sequence" | "system" | "target" | "ui";
 export type AuthoringOperationResultShape = "authoring-operation-result";
 
 export interface IAuthoringOperationArgumentDescriptor {
@@ -344,6 +351,48 @@ const operationEntries = [
     anyJsonArg("value", false),
   ]), async ({ args, projectPath }) =>
     setResourceDocumentEntry({ path: optionalString(args, "path"), projectPath, resourceId: requiredString(args, "resourceId"), resourcesDocId: requiredString(args, "resourcesDocId"), value: optionalJson(args, "value") })),
+  operation(descriptor("flow.create", "Create a declarative GameFlow source document.", "flow", "source-document", [
+    stringArg("flowId"),
+    stringArg("initial"),
+    stringArg("scene", false),
+  ]), async ({ args, projectPath }) =>
+    createFlowDocument({ flowId: requiredString(args, "flowId"), initial: requiredString(args, "initial"), projectPath, scene: optionalString(args, "scene") })),
+  operation(descriptor("flow.add_state", "Add or update a GameFlow state.", "flow", "source-document", [
+    stringArg("flowId"),
+    stringArg("stateId"),
+    objectArrayArg("actions", false),
+  ]), async ({ args, projectPath }) =>
+    addFlowState({ actions: optionalObjectArray(args, "actions"), flowId: requiredString(args, "flowId"), projectPath, stateId: requiredString(args, "stateId") })),
+  operation(descriptor("flow.add_transition", "Add or update a GameFlow transition.", "flow", "source-document", [
+    stringArg("flowId"),
+    stringArg("transitionId"),
+    stringArg("from"),
+    stringArg("to"),
+    objectArg("trigger"),
+    objectArrayArg("actions", false),
+  ]), async ({ args, projectPath }) =>
+    addFlowTransition({ actions: optionalObjectArray(args, "actions"), flowId: requiredString(args, "flowId"), from: requiredString(args, "from"), projectPath, to: requiredString(args, "to"), transitionId: requiredString(args, "transitionId"), trigger: requiredObject(args, "trigger") })),
+  operation(descriptor("sequence.create", "Create a declarative sequence source document.", "sequence", "source-document", [
+    stringArg("sequenceId"),
+    numberArg("duration"),
+    booleanArg("skippable", false),
+  ]), async ({ args, projectPath }) =>
+    createSequenceDocument({ duration: requiredNumber(args, "duration"), projectPath, sequenceId: requiredString(args, "sequenceId"), skippable: optionalBoolean(args, "skippable") })),
+  operation(descriptor("sequence.add_track", "Add or update a sequence track.", "sequence", "source-document", [
+    stringArg("sequenceId"),
+    stringArg("trackId"),
+    stringArg("kind"),
+    stringArg("entity", false),
+  ]), async ({ args, projectPath }) =>
+    addSequenceTrack({ entity: optionalString(args, "entity"), kind: requiredString(args, "kind"), projectPath, sequenceId: requiredString(args, "sequenceId"), trackId: requiredString(args, "trackId") })),
+  operation(descriptor("sequence.add_key", "Add a sequence keyframe.", "sequence", "source-document", [
+    stringArg("sequenceId"),
+    stringArg("trackId"),
+    numberArg("time"),
+    anyJsonArg("value", false),
+    stringArg("easing", false),
+  ]), async ({ args, projectPath }) =>
+    addSequenceKey({ easing: optionalString(args, "easing"), projectPath, sequenceId: requiredString(args, "sequenceId"), time: requiredNumber(args, "time"), trackId: requiredString(args, "trackId"), value: optionalJson(args, "value") })),
   operation(descriptor("schema.create", "Create a reusable component or resource schema source document.", "schema", "source-document", [
     stringArg("schemaDocId"),
     stringArg("kind"),
@@ -641,6 +690,21 @@ const operationEntries = [
     numberArg("gravityScale", false),
   ]), async ({ args, projectPath }) =>
     setRigidBodyComponent({ damping: optionalNumber(args, "damping"), entityId: requiredString(args, "entityId"), gravityScale: optionalNumber(args, "gravityScale"), kind: optionalString(args, "kind"), mass: optionalNumber(args, "mass"), projectPath, sceneId: requiredString(args, "sceneId") })),
+  operation(descriptor("scene.set_spawner", "Set a typed Spawner component for deterministic prefab spawning.", "scene", "source-document", [
+    stringArg("sceneId"),
+    stringArg("entityId"),
+    stringArg("prefab"),
+    stringArg("mode", false),
+    booleanArg("enabled", false),
+    numberArg("interval", false),
+    numberArg("waveSize", false),
+    numberArg("maxAlive", false),
+    numberArg("maxTotal", false),
+    numberArg("jitterSeed", false),
+    objectArg("area", false),
+    objectArg("despawnPolicy", false),
+  ]), async ({ args, projectPath }) =>
+    setSpawnerComponent({ area: optionalObject(args, "area"), despawnPolicy: optionalObject(args, "despawnPolicy"), enabled: optionalBoolean(args, "enabled"), entityId: requiredString(args, "entityId"), interval: optionalNumber(args, "interval"), jitterSeed: optionalNumber(args, "jitterSeed"), maxAlive: optionalNumber(args, "maxAlive"), maxTotal: optionalNumber(args, "maxTotal"), mode: optionalString(args, "mode"), prefab: requiredString(args, "prefab"), projectPath, sceneId: requiredString(args, "sceneId"), waveSize: optionalNumber(args, "waveSize") })),
   operation(descriptor("scene.set_collider", "Set a typed Collider component with defaults.", "scene", "source-document", [
     stringArg("sceneId"),
     stringArg("entityId"),
@@ -1049,6 +1113,14 @@ function requiredObjectArray(args: Record<string, unknown>, key: string): Record
 function requiredStringArray(args: Record<string, unknown>, key: string): string[] {
   const value = args[key];
   if (!isStringArray(value)) {
+    throw new Error(`Operation argument '${key}' was not validated.`);
+  }
+  return value;
+}
+
+function requiredNumber(args: Record<string, unknown>, key: string): number {
+  const value = args[key];
+  if (typeof value !== "number" || !Number.isFinite(value)) {
     throw new Error(`Operation argument '${key}' was not validated.`);
   }
   return value;

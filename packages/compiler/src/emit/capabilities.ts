@@ -4,11 +4,13 @@ import type {
   IAudioIr,
   IBundleManifest,
   IEnvironmentSceneIr,
+  IGameFlowIr,
   IIrSchemaFile,
   ILocalDataIr,
   IMaterialsIr,
   IOverlaysIr,
   IScenesIr,
+  ISequencesIr,
   IUiIr,
   IWorldIr,
 } from "@threenative/ir";
@@ -21,6 +23,7 @@ export interface ICapabilitySource {
   componentSchemas?: IIrSchemaFile;
   environment?: IEnvironmentSceneIr;
   eventSchemas?: IIrSchemaFile;
+  gameFlow?: IGameFlowIr;
   input?: IInputIr;
   localData?: ILocalDataIr;
   materials: IMaterialsIr;
@@ -28,6 +31,7 @@ export interface ICapabilitySource {
   resourceSchemas?: IIrSchemaFile;
   runtimeConfig?: IRuntimeConfigIr;
   scenes?: IScenesIr;
+  sequences?: ISequencesIr;
   systems?: ISystemsIr;
   ui?: IUiIr;
   world?: IWorldIr;
@@ -52,6 +56,8 @@ export function deriveRequiredCapabilities(source: ICapabilitySource): IBundleMa
   collectUiCapabilities(source.ui, add);
   collectOverlayCapabilities(source.overlays, add);
   collectSceneCapabilities(source.scenes, add);
+  collectGameFlowCapabilities(source.gameFlow, add);
+  collectSequenceCapabilities(source.sequences, add);
   collectEnvironmentCapabilities(source.environment, add);
 
   if (source.componentSchemas !== undefined && Object.keys(source.componentSchemas.schemas).length > 0) {
@@ -105,6 +111,20 @@ export function deriveRequiredCapabilities(source: ICapabilitySource): IBundleMa
       .sort(([left], [right]) => left.localeCompare(right))
       .map(([domain, domainCapabilities]) => [domain, [...domainCapabilities].sort((left, right) => left.localeCompare(right))]),
   );
+}
+
+function collectGameFlowCapabilities(gameFlow: IGameFlowIr | undefined, add: (domain: string, capability: string) => void): void {
+  if (gameFlow === undefined || gameFlow.flows.length === 0) {
+    return;
+  }
+  add("gameplay", "game-flow");
+}
+
+function collectSequenceCapabilities(sequences: ISequencesIr | undefined, add: (domain: string, capability: string) => void): void {
+  if (sequences === undefined || sequences.sequences.length === 0) {
+    return;
+  }
+  add("gameplay", "sequences");
 }
 
 function collectSceneCapabilities(scenes: IScenesIr | undefined, add: (domain: string, capability: string) => void): void {

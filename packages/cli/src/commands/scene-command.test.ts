@@ -1044,6 +1044,63 @@ test("scene-command adds typed ECS components without raw JSON", async () => {
   }
 });
 
+test("scene-command persists typed Spawner component", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-cli-scene-spawner-"));
+
+  try {
+    const create = await sceneCommand(["create", "scene.spawner", "--project", root, "--json"]);
+    const prefab = await sceneCommand(["add-prefab", "scene.spawner", "prefab.drone", "--primitive", "box", "--project", root, "--json"]);
+    const entity = await sceneCommand(["add-entity", "scene.spawner", "drone-spawner", "--project", root, "--json"]);
+    const spawner = await sceneCommand([
+      "set-spawner",
+      "scene.spawner",
+      "drone-spawner",
+      "--prefab",
+      "prefab.drone",
+      "--mode",
+      "wave",
+      "--wave-size",
+      "3",
+      "--max-alive",
+      "6",
+      "--max-total",
+      "12",
+      "--jitter-seed",
+      "99",
+      "--area",
+      "{\"shape\":\"box\",\"size\":[4,0,2]}",
+      "--despawn-policy",
+      "{\"afterSeconds\":8}",
+      "--project",
+      root,
+      "--json",
+    ]);
+    const validate = await sceneCommand(["validate", "scene.spawner", "--project", root, "--json"]);
+    const scene = JSON.parse(await readFile(join(root, "content", "scenes", "scene.spawner.scene.json"), "utf8")) as {
+      entities: Array<{ components?: Record<string, unknown>; id: string }>;
+    };
+
+    assert.equal(create.exitCode, 0);
+    assert.equal(prefab.exitCode, 0);
+    assert.equal(entity.exitCode, 0);
+    assert.equal(spawner.exitCode, 0);
+    assert.equal(validate.exitCode, 0);
+    assert.deepEqual(scene.entities.find((item) => item.id === "drone-spawner")?.components?.Spawner, {
+      area: { shape: "box", size: [4, 0, 2] },
+      despawnPolicy: { afterSeconds: 8 },
+      enabled: true,
+      jitterSeed: 99,
+      maxAlive: 6,
+      maxTotal: 12,
+      mode: "wave",
+      prefab: "prefab.drone",
+      waveSize: 3,
+    });
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
 test("scene-command smoke validates authored scene and preserves project build validation", async () => {
   const root = await createSceneProject({ minimal: true });
 

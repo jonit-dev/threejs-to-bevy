@@ -56,6 +56,9 @@ depend on `window`, `document`, workers, `fetch`, websockets, timers, `process`,
 | `scene.pop` | `ctx.scenes.pop` | implemented | implemented | Scene stack pop effect. |
 | `scene.push` | `ctx.scenes.push` | implemented | implemented | Scene stack push effect. |
 | `scene.unload` | `ctx.scenes.unload` | implemented | implemented | Scene unload effect. |
+| `sequences.play` | `ctx.sequences.play` | implemented | implemented | Bounded sequence playback command. |
+| `sequences.query` | `ctx.sequences.query` | implemented | implemented | Bounded sequence playback state query. |
+| `sequences.stop` | `ctx.sequences.stop` | implemented | implemented | Bounded sequence playback stop command. |
 | `settings.export` | `ctx.settings.export` | implemented | implemented | Structured settings export. |
 | `settings.get` | `ctx.settings.get` | implemented | implemented | Structured settings read. |
 | `settings.import` | `ctx.settings.import` | implemented | implemented | Structured settings import. |

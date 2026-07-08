@@ -28,8 +28,10 @@ import { validateMaterials, validateMaterialTextureRefs } from "./materialValida
 import { validateSystems, validateSystemAudioContract } from "./systemsValidation.js";
 import { validatePrefabs } from "./prefabValidation.js";
 import { validateLocalData } from "./localDataValidation.js";
+import { validateGameFlow } from "./gameFlowValidation.js";
 import { validateManifest, validateV10BoundaryCapabilities } from "./manifestValidation.js";
 import { validateScenes } from "./scenesValidation.js";
+import { validateSequences } from "./sequencesValidation.js";
 import { validateCharacterComponents, validatePhysicsComponents } from "./physicsValidation.js";
 import { validateRenderingLightBudget, validateRuntimeConfig } from "./runtimeConfigValidation.js";
 import { readBundleDocuments, readJson } from "./bundleDocuments.js";
@@ -41,6 +43,7 @@ import {
 } from "./schemaValidation.js";
 import {
   isRecord,
+  isNumberTuple,
   validateFiniteMinimum,
   validateFiniteNumber,
   validateFiniteRange,
@@ -109,6 +112,7 @@ export async function validateBundle(bundlePath: string): Promise<IBundleValidat
     componentSchemas,
     environmentScene,
     eventSchemas,
+    gameFlow,
     gltfScene,
     input,
     localData,
@@ -118,6 +122,7 @@ export async function validateBundle(bundlePath: string): Promise<IBundleValidat
     resourceSchemas,
     runtimeConfig,
     scenes,
+    sequences,
     systems,
     targetProfile,
     ui,
@@ -165,8 +170,14 @@ export async function validateBundle(bundlePath: string): Promise<IBundleValidat
   if (localData !== undefined) {
     validateLocalData(localData, manifest.entry.localData ?? IR_DOCUMENTS.localData.fileName, diagnostics);
   }
+  if (gameFlow !== undefined) {
+    validateGameFlow(gameFlow, manifest.entry.gameFlow ?? IR_DOCUMENTS.gameFlow.fileName, diagnostics);
+  }
   if (scenes !== undefined) {
     validateScenes(scenes, manifest.entry.scenes ?? IR_DOCUMENTS.scenes.fileName, world, assets, input, audio, ui, systems, diagnostics);
+  }
+  if (sequences !== undefined) {
+    validateSequences(sequences, manifest.entry.sequences ?? IR_DOCUMENTS.sequences.fileName, diagnostics);
   }
   if (targetProfile !== undefined) {
     validateTargetProfile(targetProfile, manifest.files.targetProfile, diagnostics);
@@ -743,6 +754,7 @@ function validateWorld(world: IWorldIr, path: string, diagnostics: IIrDiagnostic
   validateRenderingLightBudget(world.resources?.RenderingLightBudget, `${path}/resources/RenderingLightBudget`, diagnostics, world.entities);
   world.entities.forEach((entity, index) => validateTransformComponents(entity, `${path}/entities/${index}`, diagnostics));
   world.entities.forEach((entity, index) => validateKinematicMoverComponent(entity, `${path}/entities/${index}`, diagnostics));
+  world.entities.forEach((entity, index) => validateSpawnerComponent(entity, `${path}/entities/${index}`, diagnostics));
   world.entities.forEach((entity, index) => validateRenderComponents(entity, `${path}/entities/${index}`, diagnostics));
   const entityIds = new Set(world.entities.map((entity) => entity.id));
   world.entities.forEach((entity, index) => validatePhysicsComponents(entity, `${path}/entities/${index}`, entityIds, diagnostics));
@@ -808,6 +820,99 @@ function validateKinematicMoverComponent(entity: IWorldEntity, path: string, dia
     } else {
       mover.waypoints.forEach((waypoint, index) => validateFiniteVec3(waypoint, `${path}/components/KinematicMover/waypoints/${index}`, "TN_IR_KINEMATIC_MOVER_WAYPOINTS_INVALID", diagnostics));
     }
+  }
+}
+
+function validateSpawnerComponent(entity: IWorldEntity, path: string, diagnostics: IIrDiagnostic[]): void {
+  const spawner = entity.components.Spawner;
+  if (spawner === undefined) {
+    return;
+  }
+  if (!isRecord(spawner)) {
+    diagnostics.push({ code: "TN_IR_SPAWNER_INVALID", message: `Spawner '${entity.id}' must be an object.`, path: `${path}/components/Spawner`, severity: "error" });
+    return;
+  }
+  validateUnsupportedFields(diagnostics, spawner, ["area", "despawnPolicy", "enabled", "interval", "jitterSeed", "maxAlive", "maxTotal", "mode", "prefab", "waveSize"], (key) => ({
+    code: "TN_IR_SPAWNER_FIELD_UNSUPPORTED",
+    message: `Spawner '${entity.id}' uses unsupported field '${key}'.`,
+    path: `${path}/components/Spawner/${key}`,
+    severity: "error",
+  }));
+  if (spawner.mode !== "interval" && spawner.mode !== "once" && spawner.mode !== "wave") {
+    diagnostics.push({
+      code: "TN_IR_SPAWNER_MODE_INVALID",
+      message: "Spawner.mode must be interval, once, or wave.",
+      path: `${path}/components/Spawner/mode`,
+      severity: "error",
+      suggestion: "Use mode: 'once' for one-time population, 'interval' for streams, or 'wave' for bursts.",
+    });
+  }
+  if (typeof spawner.prefab !== "string" || spawner.prefab.length === 0) {
+    diagnostics.push({ code: "TN_IR_SPAWNER_PREFAB_INVALID", message: "Spawner.prefab must be a non-empty prefab id.", path: `${path}/components/Spawner/prefab`, severity: "error" });
+  }
+  if (typeof spawner.enabled !== "boolean") {
+    diagnostics.push({ code: "TN_IR_SPAWNER_ENABLED_INVALID", message: "Spawner.enabled must be boolean.", path: `${path}/components/Spawner/enabled`, severity: "error" });
+  }
+  validateOptionalPositiveFinite(spawner.interval, `${path}/components/Spawner/interval`, "TN_IR_SPAWNER_INTERVAL_INVALID", diagnostics);
+  validateOptionalIntegerMinimum(spawner.waveSize, 1, `${path}/components/Spawner/waveSize`, "TN_IR_SPAWNER_WAVE_SIZE_INVALID", diagnostics);
+  validateOptionalIntegerMinimum(spawner.maxAlive, 1, `${path}/components/Spawner/maxAlive`, "TN_IR_SPAWNER_MAX_ALIVE_INVALID", diagnostics);
+  validateOptionalIntegerMinimum(spawner.maxTotal, 1, `${path}/components/Spawner/maxTotal`, "TN_IR_SPAWNER_MAX_TOTAL_INVALID", diagnostics);
+  if (spawner.jitterSeed !== undefined) {
+    validateFiniteNumber(spawner.jitterSeed, `${path}/components/Spawner/jitterSeed`, "TN_IR_SPAWNER_JITTER_SEED_INVALID", diagnostics);
+  }
+  validateSpawnerArea(spawner.area, `${path}/components/Spawner/area`, diagnostics);
+  validateSpawnerDespawnPolicy(spawner.despawnPolicy, `${path}/components/Spawner/despawnPolicy`, diagnostics);
+}
+
+function validateSpawnerArea(value: unknown, path: string, diagnostics: IIrDiagnostic[]): void {
+  if (value === undefined) {
+    return;
+  }
+  if (!isRecord(value)) {
+    diagnostics.push({ code: "TN_IR_SPAWNER_AREA_INVALID", message: "Spawner.area must be an object.", path, severity: "error" });
+    return;
+  }
+  validateUnsupportedFields(diagnostics, value, ["shape", "size"], (key) => ({
+    code: "TN_IR_SPAWNER_AREA_FIELD_UNSUPPORTED",
+    message: `Spawner.area uses unsupported field '${key}'.`,
+    path: `${path}/${key}`,
+    severity: "error",
+  }));
+  if (value.shape !== "point" && value.shape !== "box" && value.shape !== "circle") {
+    diagnostics.push({ code: "TN_IR_SPAWNER_AREA_SHAPE_INVALID", message: "Spawner.area.shape must be point, box, or circle.", path: `${path}/shape`, severity: "error" });
+  }
+  if (value.size !== undefined && (typeof value.size !== "number" || !Number.isFinite(value.size)) && !isNumberTuple(value.size, 2) && !isNumberTuple(value.size, 3)) {
+    diagnostics.push({ code: "TN_IR_SPAWNER_AREA_SIZE_INVALID", message: "Spawner.area.size must be a finite number, vec2, or vec3.", path: `${path}/size`, severity: "error" });
+  }
+}
+
+function validateSpawnerDespawnPolicy(value: unknown, path: string, diagnostics: IIrDiagnostic[]): void {
+  if (value === undefined) {
+    return;
+  }
+  if (!isRecord(value)) {
+    diagnostics.push({ code: "TN_IR_SPAWNER_DESPAWN_POLICY_INVALID", message: "Spawner.despawnPolicy must be an object.", path, severity: "error" });
+    return;
+  }
+  validateUnsupportedFields(diagnostics, value, ["afterSeconds", "beyondDistance"], (key) => ({
+    code: "TN_IR_SPAWNER_DESPAWN_POLICY_FIELD_UNSUPPORTED",
+    message: `Spawner.despawnPolicy uses unsupported field '${key}'.`,
+    path: `${path}/${key}`,
+    severity: "error",
+  }));
+  validateOptionalPositiveFinite(value.afterSeconds, `${path}/afterSeconds`, "TN_IR_SPAWNER_DESPAWN_AFTER_INVALID", diagnostics);
+  validateOptionalPositiveFinite(value.beyondDistance, `${path}/beyondDistance`, "TN_IR_SPAWNER_DESPAWN_DISTANCE_INVALID", diagnostics);
+}
+
+function validateOptionalPositiveFinite(value: unknown, path: string, code: string, diagnostics: IIrDiagnostic[]): void {
+  if (value !== undefined && (typeof value !== "number" || !Number.isFinite(value) || value <= 0)) {
+    diagnostics.push({ code, message: "Expected a positive finite number.", path, severity: "error" });
+  }
+}
+
+function validateOptionalIntegerMinimum(value: unknown, minimum: number, path: string, code: string, diagnostics: IIrDiagnostic[]): void {
+  if (value !== undefined && (typeof value !== "number" || !Number.isInteger(value) || value < minimum)) {
+    diagnostics.push({ code, message: `Expected an integer greater than or equal to ${minimum}.`, path, severity: "error" });
   }
 }
 
