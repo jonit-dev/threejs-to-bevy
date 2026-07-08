@@ -2,6 +2,7 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 
 import { WORLD_BIOMES, WORLD_BIOME_IDS, isWorldBiomeId, type IWorldBiomeDefinition, type WorldBiomeId } from "@threenative/authoring";
+import { PNG } from "pngjs";
 
 import { searchAssetSources, type IAssetSourceRecord } from "../assetSourceCatalog/catalog.js";
 import { diagnosticResult, type ICommandResult } from "../diagnostics.js";
@@ -191,6 +192,9 @@ async function proofWorld(projectPath: string): Promise<IWorldProofResult> {
   const heightmapStats = isRecord(heightmapAsset) && typeof heightmapAsset.path === "string"
     ? await readHeightmapStats(resolve(projectPath, heightmapAsset.path))
     : undefined;
+  const previewImage = heightmapStats !== undefined && isRecord(heightmapAsset)
+    ? await writeWorldPreviewPng(projectPath, heightmapAsset, heightmapStats)
+    : undefined;
   if (terrain === undefined) {
     diagnostics.push({ code: "TN_WORLD_PROOF_TERRAIN_MISSING", message: "World environment source is missing terrain.", severity: "error" });
   }
@@ -214,6 +218,7 @@ async function proofWorld(projectPath: string): Promise<IWorldProofResult> {
       ? { height: heightmapAsset.height, id: heightmapAsset.id, stats: heightmapStats, width: heightmapAsset.width }
       : undefined,
     message: diagnostics.length === 0 ? "World proof passed." : "World proof failed.",
+    previewImage,
     schema: "threenative.world-proof",
     scatterLayers: scatter.length,
     terrain: terrain === undefined ? undefined : { id: terrain.id, heightMode: terrain.heightMode },
@@ -225,11 +230,10 @@ async function proofWorld(projectPath: string): Promise<IWorldProofResult> {
 }
 
 async function readHeightmapStats(path: string): Promise<{ max: number; min: number; variation: number } | undefined> {
-  const parsed = await readJson(path);
-  if (!Array.isArray(parsed?.samples)) {
+  const samples = await readHeightmapSamples(path);
+  if (samples === undefined) {
     return undefined;
   }
-  const samples = parsed.samples.filter((sample): sample is number => Number.isFinite(sample));
   if (samples.length === 0) {
     return undefined;
   }
@@ -240,6 +244,69 @@ async function readHeightmapStats(path: string): Promise<{ max: number; min: num
     max = Math.max(max, sample);
   }
   return { max: round(max), min: round(min), variation: round(max - min) };
+}
+
+async function readHeightmapSamples(path: string): Promise<number[] | undefined> {
+  const parsed = await readJson(path);
+  if (!Array.isArray(parsed?.samples)) {
+    return undefined;
+  }
+  return parsed.samples.filter((sample): sample is number => Number.isFinite(sample));
+}
+
+async function writeWorldPreviewPng(projectPath: string, heightmapAsset: Record<string, unknown>, stats: { max: number; min: number; variation: number }): Promise<string | undefined> {
+  if (typeof heightmapAsset.path !== "string") {
+    return undefined;
+  }
+  const samples = await readHeightmapSamples(resolve(projectPath, heightmapAsset.path));
+  const width = typeof heightmapAsset.width === "number" && Number.isInteger(heightmapAsset.width) ? heightmapAsset.width : 0;
+  const height = typeof heightmapAsset.height === "number" && Number.isInteger(heightmapAsset.height) ? heightmapAsset.height : 0;
+  if (samples === undefined || width <= 0 || height <= 0 || samples.length < width * height) {
+    return undefined;
+  }
+  const png = new PNG({ height, width });
+  const denominator = Math.max(0.001, stats.max - stats.min);
+  for (let y = 0; y < height; y += 1) {
+    for (let x = 0; x < width; x += 1) {
+      const sample = samples[y * width + x] ?? stats.min;
+      const normalized = Math.max(0, Math.min(1, (sample - stats.min) / denominator));
+      const shade = terrainShade(normalized);
+      const index = (y * width + x) * 4;
+      png.data[index] = shade.red;
+      png.data[index + 1] = shade.green;
+      png.data[index + 2] = shade.blue;
+      png.data[index + 3] = 255;
+    }
+  }
+  const previewImage = "artifacts/world/world-preview.png";
+  await mkdir(resolve(projectPath, "artifacts/world"), { recursive: true });
+  await writeFile(resolve(projectPath, previewImage), PNG.sync.write(png));
+  return previewImage;
+}
+
+function terrainShade(value: number): { blue: number; green: number; red: number } {
+  if (value < 0.35) {
+    const t = value / 0.35;
+    return {
+      blue: Math.round(92 + t * 46),
+      green: Math.round(110 + t * 64),
+      red: Math.round(74 + t * 42),
+    };
+  }
+  if (value < 0.72) {
+    const t = (value - 0.35) / 0.37;
+    return {
+      blue: Math.round(82 + t * 28),
+      green: Math.round(154 - t * 34),
+      red: Math.round(102 + t * 66),
+    };
+  }
+  const t = (value - 0.72) / 0.28;
+  return {
+    blue: Math.round(110 + t * 70),
+    green: Math.round(120 + t * 78),
+    red: Math.round(168 + t * 48),
+  };
 }
 
 async function selectBiomeCatalogRecords(biome: IWorldBiomeDefinition): Promise<Array<{ purpose: string; record: IAssetSourceRecord }>> {

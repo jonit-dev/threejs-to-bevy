@@ -4,6 +4,8 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 
+import { PNG } from "pngjs";
+
 import { authoringCommand } from "./authoring.js";
 import { worldCommand } from "./world.js";
 
@@ -67,13 +69,17 @@ test("should write world proof artifact with terrain and scatter counts", async 
   try {
     const generated = await worldCommand(["generate", "--biome", "canyon", "--seed", "5", "--size", "9", "--flatten-radius", "1", "--project", root, "--json"]);
     const proof = await worldCommand(["proof", "--project", root, "--json"]);
-    const payload = JSON.parse(proof.stdout) as { code: string; flatPlaneRisk: boolean; scatterLayers: number };
+    const payload = JSON.parse(proof.stdout) as { code: string; flatPlaneRisk: boolean; previewImage: string; scatterLayers: number };
     const artifact = JSON.parse(await readFile(join(root, "artifacts/world/world-proof.json"), "utf8")) as { code: string };
+    const preview = PNG.sync.read(await readFile(join(root, "artifacts/world/world-preview.png")));
 
     assert.equal(generated.exitCode, 0);
     assert.equal(proof.exitCode, 0);
     assert.equal(payload.code, "TN_WORLD_PROOF_OK");
     assert.equal(payload.flatPlaneRisk, false);
+    assert.equal(payload.previewImage, "artifacts/world/world-preview.png");
+    assert.equal(preview.width, 9);
+    assert.equal(preview.height, 9);
     assert.equal(payload.scatterLayers > 0, true);
     assert.equal(artifact.code, "TN_WORLD_PROOF_OK");
   } finally {
