@@ -4,13 +4,18 @@ use std::{
     time::{SystemTime, UNIX_EPOCH},
 };
 
-use bevy::{asset::AssetPlugin, prelude::*, scene::ScenePlugin};
+use bevy::{
+    asset::AssetPlugin, pbr::NotShadowReceiver, prelude::*, render::alpha::AlphaMode,
+    scene::ScenePlugin,
+};
 use serde_json::json;
 use threenative_components::ThreeNativeId;
 use threenative_loader::{WorldEntity, load_bundle};
 use threenative_runtime::map_world::{
-    STYLIZED_NATURE_RUNTIME_DEFAULTS, THREE_COMPAT_AMBIENT_BRIGHTNESS_PER_INTENSITY,
-    THREE_COMPAT_DIRECTIONAL_ILLUMINANCE_PER_INTENSITY, map_bundle_into_world,
+    NativeGrassWindMotion, NativeStylizedMotionTimeOverride, STYLIZED_NATURE_RUNTIME_DEFAULTS,
+    THREE_COMPAT_AMBIENT_BRIGHTNESS_PER_INTENSITY,
+    THREE_COMPAT_DIRECTIONAL_ILLUMINANCE_PER_INTENSITY, animate_native_stylized_motion,
+    map_bundle_into_world,
 };
 
 #[test]
@@ -267,6 +272,8 @@ fn stylized_nature_should_use_native_compatible_source_assets() {
         &root.join("assets/grass.glb"),
         r#"{"asset":{"version":"2.0"},"scene":0,"scenes":[{}],"meshes":[{"primitives":[{}]}]}"#,
     );
+    fs::write(root.join("assets/grass-normal.png"), [0u8]).expect("normal texture fixture");
+    fs::write(root.join("assets/grass-roughness.png"), [0u8]).expect("roughness texture fixture");
     let mut bundle =
         stylized_source_bundle(&root, "model.trunk", "model.leaves", "model.grass", 32);
     bundle.assets.assets.push(
@@ -277,6 +284,33 @@ fn stylized_nature_should_use_native_compatible_source_assets() {
             "path": "assets/sky.png"
         }))
         .expect("sky texture asset should deserialize"),
+    );
+    bundle.assets.assets.push(
+        serde_json::from_value(json!({
+            "id": "tex.leaves.alpha",
+            "kind": "texture",
+            "format": "png",
+            "path": "assets/leaves-alpha.png"
+        }))
+        .expect("leaf alpha texture asset should deserialize"),
+    );
+    bundle.assets.assets.push(
+        serde_json::from_value(json!({
+            "id": "tex.grass.normal",
+            "kind": "texture",
+            "format": "png",
+            "path": "assets/grass-normal.png"
+        }))
+        .expect("grass normal texture asset should deserialize"),
+    );
+    bundle.assets.assets.push(
+        serde_json::from_value(json!({
+            "id": "tex.grass.roughness",
+            "kind": "texture",
+            "format": "png",
+            "path": "assets/grass-roughness.png"
+        }))
+        .expect("grass roughness texture asset should deserialize"),
     );
     bundle.assets.assets.push(
         serde_json::from_value(json!({
@@ -323,14 +357,13 @@ fn stylized_nature_should_use_native_compatible_source_assets() {
     assert!(names.iter().any(|name| name.contains("source-trunk")));
     assert!(names.iter().any(|name| name.contains("source-leaves")));
     assert!(names.iter().any(|name| name.contains("source-grass")));
-    assert!(sky_material_has_texture(app.world_mut()));
     assert!(!names.iter().any(|name| name.ends_with(".tree-0.trunk")));
     assert!(!names.iter().any(|name| name.ends_with(".tree-0.leaf-0")));
     assert!(!names.iter().any(|name| name.contains("stylized-grass")));
     assert!(
         !names
             .iter()
-            .any(|name| name.contains("soft-gradient-sky-card"))
+            .any(|name| name.contains("stylized-soft-sky-gradient"))
     );
     assert!(
         !names
@@ -344,7 +377,84 @@ fn stylized_nature_should_use_native_compatible_source_assets() {
             .iter()
             .any(|name| name.contains("source-dirt-path-ribbon"))
     );
+
+    let source_grass_wind = source_grass_wind_motions(app.world_mut());
+    let source_grass_names = names
+        .iter()
+        .filter(|name| name.contains("source-grass"))
+        .count();
+    assert_eq!(source_grass_wind.len(), source_grass_names);
+    assert!(source_grass_wind.len() > 1);
+    assert!(
+        source_grass_wind
+            .iter()
+            .all(|motion| motion.base_euler.x == 0.0 && motion.base_euler.z == 0.0)
+    );
+
+    let source_grass_material = material_for_named_entity(app.world_mut(), "source-grass-0")
+        .expect("source grass material");
+    assert!(source_grass_material.double_sided);
+    assert_eq!(source_grass_material.cull_mode, None);
+    assert!((source_grass_material.perceptual_roughness - 0.85).abs() < 0.001);
+
+    let leaves_material = material_for_named_entity(app.world_mut(), "source-leaves-0")
+        .expect("source leaves material");
+    assert!(leaves_material.double_sided);
+    assert_eq!(leaves_material.cull_mode, None);
+    assert!(leaves_material.base_color_texture.is_some());
+    assert_eq!(leaves_material.alpha_mode, AlphaMode::Mask(0.01));
+    assert!((leaves_material.perceptual_roughness - 0.8).abs() < 0.001);
+    assert!(named_entity_has_not_shadow_receiver(
+        app.world_mut(),
+        "source-leaves-0"
+    ));
+
+    let ground_material =
+        material_for_named_entity(app.world_mut(), "stylized-rolling-grass-ground")
+            .expect("ground material");
+    assert!(ground_material.base_color_texture.is_none());
+    assert!(ground_material.normal_map_texture.is_some());
+    assert!(ground_material.metallic_roughness_texture.is_some());
+    assert_eq!(
+        ground_material.uv_transform.transform_point2(Vec2::ONE),
+        Vec2::splat(8.0)
+    );
+    let ground_vertex_count =
+        mesh_vertex_count_for_named_entity(app.world_mut(), "stylized-rolling-grass-ground")
+            .expect("ground mesh should be available");
+    assert_eq!(ground_vertex_count, 1025 * 1025);
 }
+
+#[test]
+fn stylized_motion_should_use_capture_time_override() {
+    let mut app = App::new();
+    app.add_plugins(MinimalPlugins)
+        .insert_resource(NativeStylizedMotionTimeOverride(0.5))
+        .add_systems(Update, animate_native_stylized_motion);
+    let entity = app
+        .world_mut()
+        .spawn((
+            Transform::IDENTITY,
+            NativeGrassWindMotion {
+                base: Transform::IDENTITY,
+                base_euler: Vec3::ZERO,
+                phase: 0.25,
+                strength: 0.5,
+            },
+        ))
+        .id();
+
+    app.update();
+
+    let transform = app.world().entity(entity).get::<Transform>().unwrap();
+    let gust = (0.5_f32 * 2.4 + 0.25).sin() * 0.16 + (0.5_f32 * 4.1 + 0.25 * 0.37).sin() * 0.055;
+    let expected = Quat::from_euler(EulerRot::XYZ, gust * 0.22, 0.0, gust * 0.5);
+    assert!(
+        transform.rotation.dot(expected).abs() > 0.9999,
+        "capture time override should drive deterministic stylized motion"
+    );
+}
+
 #[test]
 fn stylized_nature_should_keep_fallback_for_missing_or_unsupported_source_assets() {
     let root = temp_bundle_root("tn-stylized-source-unsupported");
@@ -427,6 +537,9 @@ fn stylized_source_bundle(
                 "treeTrunkModel": trunk_asset,
                 "treeLeavesModel": leaves_asset,
                 "grassModel": grass_asset,
+                "grassNormalMap": "tex.grass.normal",
+                "grassRoughnessMap": "tex.grass.roughness",
+                "leavesAlphaMap": "tex.leaves.alpha",
                 "treeCount": 1,
                 "grassCount": grass_count,
                 "size": 8
@@ -445,22 +558,46 @@ fn world_names(world: &mut World) -> Vec<String> {
         .collect()
 }
 
-fn sky_material_has_texture(world: &mut World) -> bool {
-    let sky_materials = {
+fn source_grass_wind_motions(world: &mut World) -> Vec<NativeGrassWindMotion> {
+    let mut query = world.query::<(&Name, &NativeGrassWindMotion)>();
+    query
+        .iter(world)
+        .filter(|(name, _)| name.as_str().contains("source-grass"))
+        .map(|(_, motion)| motion.clone())
+        .collect()
+}
+
+fn material_for_named_entity(world: &mut World, name_fragment: &str) -> Option<StandardMaterial> {
+    let handle = {
         let mut query = world.query::<(&Name, &Handle<StandardMaterial>)>();
-        query
-            .iter(world)
-            .filter(|(name, _)| name.as_str().contains("stylized-soft-sky-gradient"))
-            .map(|(_, handle)| handle.clone())
-            .collect::<Vec<_>>()
-    };
+        query.iter(world).find_map(|(name, handle)| {
+            name.as_str()
+                .contains(name_fragment)
+                .then(|| handle.clone())
+        })
+    }?;
     let materials = world.resource::<Assets<StandardMaterial>>();
-    sky_materials.iter().any(|handle| {
-        materials
-            .get(handle)
-            .and_then(|material| material.base_color_texture.as_ref())
-            .is_some()
-    })
+    materials.get(&handle).cloned()
+}
+
+fn mesh_vertex_count_for_named_entity(world: &mut World, name_fragment: &str) -> Option<usize> {
+    let handle = {
+        let mut query = world.query::<(&Name, &Handle<Mesh>)>();
+        query.iter(world).find_map(|(name, handle)| {
+            name.as_str()
+                .contains(name_fragment)
+                .then(|| handle.clone())
+        })
+    }?;
+    let meshes = world.resource::<Assets<Mesh>>();
+    meshes.get(&handle).map(Mesh::count_vertices)
+}
+
+fn named_entity_has_not_shadow_receiver(world: &mut World, name_fragment: &str) -> bool {
+    let mut query = world.query::<(&Name, Option<&NotShadowReceiver>)>();
+    query
+        .iter(world)
+        .any(|(name, receiver)| name.as_str().contains(name_fragment) && receiver.is_some())
 }
 
 fn temp_bundle_root(prefix: &str) -> PathBuf {

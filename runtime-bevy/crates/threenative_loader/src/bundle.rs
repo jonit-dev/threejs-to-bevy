@@ -3,10 +3,10 @@ use std::{fs, path::Path};
 use serde::Deserialize;
 
 use crate::{
-    AnimationsIr, AssetsManifest, AudioIr, BundleManifest, EnvironmentSceneIr, InputIr, LoadError,
-    GltfSceneMetadataIr, LoadedBundle, LocalDataIr, MaterialsIr, OverlaysIr, PrefabsIr,
-    RuntimeConfigIr, ScenesIr, SchemaFileIr, SystemsIr, TargetProfile, WorldIr,
-    generated_mesh, paths,
+    AnimationsIr, AssetsManifest, AudioIr, BundleManifest, EnvironmentSceneIr, GltfSceneMetadataIr,
+    InputIr, LoadError, LoadedBundle, LocalDataIr, MaterialsIr, OverlaysIr, PrefabsIr,
+    RuntimeConfigIr, ScenesIr, SchemaFileIr, SystemsIr, TargetProfile, WorldIr, generated_mesh,
+    paths,
 };
 
 pub fn load_bundle(bundle_path: impl AsRef<Path>) -> Result<LoadedBundle, LoadError> {

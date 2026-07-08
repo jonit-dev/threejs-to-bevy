@@ -12,12 +12,19 @@ use bevy::{
         ShadowFilteringMethod,
     },
     prelude::*,
-    render::{alpha::AlphaMode, camera::Exposure, render_resource::Face, view::ColorGrading},
+    render::{
+        alpha::AlphaMode, camera::Exposure, mesh::VertexAttributeValues, render_resource::Face,
+        view::ColorGrading,
+    },
 };
 use image::{ImageBuffer, Rgba};
+use threenative_components::ThreeNativeId;
 use threenative_loader::load_bundle;
 use threenative_runtime::{
-    map_world::{NativeEnvironmentSkyDome, NativeMaterialHandles, map_bundle_into_world},
+    map_world::{
+        NativeEnvironmentSkyDome, NativeEquirectSkyMaterial, NativeMaterialHandles,
+        map_bundle_into_world,
+    },
     rendering::{
         NativeEnvironmentMapHandles, apply_atmosphere_to_world,
         apply_environment_lighting_to_world, normalize_loaded_gltf_materials,
@@ -467,7 +474,7 @@ fn environment_lighting_should_prefer_environment_map_over_skybox_for_ambient() 
             .contains_resource::<NativeEnvironmentMapHandles>()
     );
     let native_map = app.world().resource::<NativeEnvironmentMapHandles>();
-    assert!((native_map.intensity - 0.375).abs() < 0.001);
+    assert!((native_map.intensity - 0.4125).abs() < 0.001);
 
     map_bundle_into_world(app.world_mut(), &bundle).expect("bundle should map into world");
     let mut camera_components = app.world_mut().query::<&Camera>();
@@ -477,7 +484,7 @@ fn environment_lighting_should_prefer_environment_map_over_skybox_for_ambient() 
         .query_filtered::<&EnvironmentMapLight, With<Camera>>();
     let camera_environment_maps = cameras.iter(app.world()).collect::<Vec<_>>();
     assert_eq!(camera_environment_maps.len(), 1);
-    assert!((camera_environment_maps[0].intensity - 0.375).abs() < 0.001);
+    assert!((camera_environment_maps[0].intensity - 0.4125).abs() < 0.001);
 
     fs::remove_dir_all(root).expect("temp bundle should be removed");
 }
@@ -583,7 +590,7 @@ fn cubemap_environment_map_should_spawn_native_environment_light() {
             .contains_resource::<NativeEnvironmentMapHandles>()
     );
     let native_map = app.world().resource::<NativeEnvironmentMapHandles>();
-    assert!((native_map.intensity - 0.4).abs() < 0.001);
+    assert!((native_map.intensity - 0.44).abs() < 0.001);
 
     map_bundle_into_world(app.world_mut(), &bundle).expect("bundle should map into world");
     let mut cameras = app
@@ -591,7 +598,7 @@ fn cubemap_environment_map_should_spawn_native_environment_light() {
         .query_filtered::<&EnvironmentMapLight, With<Camera>>();
     let camera_environment_maps = cameras.iter(app.world()).collect::<Vec<_>>();
     assert_eq!(camera_environment_maps.len(), 1);
-    assert!((camera_environment_maps[0].intensity - 0.4).abs() < 0.001);
+    assert!((camera_environment_maps[0].intensity - 0.44).abs() < 0.001);
 
     fs::remove_dir_all(root).expect("temp bundle should be removed");
 }
@@ -722,8 +729,19 @@ fn equirect_skybox_should_spawn_native_sky_dome() {
         r#"{
           "schema": "threenative.world",
           "version": "0.1.0",
+          "resources": { "ActiveCamera": { "entity": "camera.main" } },
           "entities": [
-            { "id": "camera.main", "components": { "Camera": { "kind": "perspective", "near": 0.1, "far": 100, "fovY": 60 } } }
+            {
+              "id": "camera.main",
+              "components": {
+                "Camera": { "kind": "perspective", "near": 0.1, "far": 100, "fovY": 60 },
+                "Transform": {
+                  "position": [2, 4, 22],
+                  "rotation": [0, 0, 0, 1],
+                  "scale": [1, 1, 1]
+                }
+              }
+            }
           ]
         }"#,
     );
@@ -765,7 +783,15 @@ fn equirect_skybox_should_spawn_native_sky_dome() {
     app.init_asset::<Image>();
     app.init_asset::<Mesh>();
     app.init_asset::<StandardMaterial>();
+    app.init_asset::<NativeEquirectSkyMaterial>();
     map_bundle_into_world(app.world_mut(), &bundle).expect("world should map");
+
+    let camera_translation = app
+        .world_mut()
+        .query::<(&ThreeNativeId, &Transform)>()
+        .iter(app.world())
+        .find_map(|(id, transform)| (id.0 == "camera.main").then_some(transform.translation));
+    assert_eq!(camera_translation, Some(Vec3::new(2.0, 4.0, 22.0)));
 
     let sky = app
         .world_mut()
@@ -782,20 +808,51 @@ fn equirect_skybox_should_spawn_native_sky_dome() {
     );
     let sky_materials = app
         .world_mut()
-        .query::<(&NativeEnvironmentSkyDome, &Handle<StandardMaterial>)>()
+        .query::<(
+            &NativeEnvironmentSkyDome,
+            &Handle<NativeEquirectSkyMaterial>,
+        )>()
         .iter(app.world())
         .map(|(_, handle)| handle.clone())
         .collect::<Vec<_>>();
-    let material_handles = app.world().resource::<Assets<StandardMaterial>>();
+    let material_handles = app.world().resource::<Assets<NativeEquirectSkyMaterial>>();
     let sky_material_count = sky_materials
         .iter()
-        .filter(|handle| {
-            material_handles
-                .get(*handle)
-                .is_some_and(|material| material.unlit && material.base_color_texture.is_some())
-        })
+        .filter(|handle| material_handles.get(*handle).is_some())
         .count();
     assert_eq!(sky_material_count, 1);
+    let sky_translation = app
+        .world_mut()
+        .query::<(&NativeEnvironmentSkyDome, &Transform)>()
+        .iter(app.world())
+        .map(|(_, transform)| transform.translation)
+        .collect::<Vec<_>>();
+    assert_eq!(sky_translation, vec![Vec3::new(2.0, 4.0, 22.0)]);
+    let sky_mesh_handles = app
+        .world_mut()
+        .query::<(&NativeEnvironmentSkyDome, &Handle<Mesh>)>()
+        .iter(app.world())
+        .map(|(_, handle)| handle.clone())
+        .collect::<Vec<_>>();
+    let meshes = app.world().resource::<Assets<Mesh>>();
+    let sky_mesh = meshes
+        .get(&sky_mesh_handles[0])
+        .expect("sky dome mesh should be stored");
+    let positions = match sky_mesh.attribute(Mesh::ATTRIBUTE_POSITION) {
+        Some(VertexAttributeValues::Float32x3(values)) => values,
+        _ => panic!("sky dome should store float3 positions"),
+    };
+    let uvs = match sky_mesh.attribute(Mesh::ATTRIBUTE_UV_0) {
+        Some(VertexAttributeValues::Float32x2(values)) => values,
+        _ => panic!("sky dome should store float2 UVs"),
+    };
+    let equator_start = 64 * 257;
+    let equator_end = equator_start + 256;
+    assert_eq!(uvs[equator_start][0], 0.0);
+    assert_eq!(uvs[equator_end][0], 1.0);
+    assert!((positions[equator_start][0] - positions[equator_end][0]).abs() < 0.001);
+    assert!(positions[equator_start][2].abs() < 0.001);
+    assert!(positions[equator_end][2].abs() < 0.001);
 
     fs::remove_dir_all(root).expect("temp bundle should be removed");
 }

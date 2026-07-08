@@ -1,6 +1,8 @@
-import { mkdir, writeFile } from "node:fs/promises";
-import { resolve } from "node:path";
+import { mkdir, readdir, stat, writeFile } from "node:fs/promises";
+import { join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
+
+import sharp from "sharp";
 
 import { resolveArtifactTargets } from "./artifact-paths.mjs";
 import { runCommand } from "./verify-conformance.mjs";
@@ -73,6 +75,18 @@ export async function verifyParitySmokeGate(options = {}) {
         return writeGateReport({ artifactDir, ok: false, reportPath, steps, visualReportPath: undefined });
       }
     }
+  } else {
+    const freshness = await checkBevyCaptureFreshness(root);
+    steps.push({
+      durationMs: 0,
+      exitCode: freshness.ok ? 0 : 1,
+      name: "check bevy capture freshness",
+      stderr: freshness.ok ? "" : freshness.message,
+      stdout: freshness.ok ? freshness.message : "",
+    });
+    if (!freshness.ok) {
+      return writeGateReport({ artifactDir, ok: false, reportPath, steps, visualReportPath: undefined });
+    }
   }
 
   const { PARITY_SMOKE_CHECKPOINT, verifyBaselineVisualCheckpoint } =
@@ -81,6 +95,17 @@ export async function verifyParitySmokeGate(options = {}) {
 
   const project = PARITY_SMOKE_CHECKPOINT.projectRelativePath;
   const projectLabel = project.split("/").at(-1) ?? project;
+  if (
+    project === "examples/stylized-nature-component" &&
+    !(await step(
+      "prepare stylized-nature native assets",
+      "pnpm",
+      ["assets:bevy-native"],
+      { cwd: resolve(root, project), timeoutMs: 120000 },
+    ))
+  ) {
+    return writeGateReport({ artifactDir, ok: false, reportPath, steps, visualReportPath: undefined });
+  }
   if (
     !(await step(
       `build ${projectLabel}`,
@@ -109,6 +134,10 @@ export async function verifyParitySmokeGate(options = {}) {
     repoRoot: root,
     screenshotCapturer: options.screenshotCapturer,
   });
+  const regionMetrics = await compareVisualRegions(visual.artifacts);
+  if (regionMetrics !== undefined) {
+    visual.regionMetrics = regionMetrics;
+  }
 
   steps.push({
     durationMs: 0,
@@ -127,6 +156,58 @@ export async function verifyParitySmokeGate(options = {}) {
     visualReportPath: resolve(artifactDir, "parity-smoke-report.json"),
     visual,
   });
+}
+
+async function checkBevyCaptureFreshness(root) {
+  const binaryPath = resolve(root, "runtime-bevy/target/debug/threenative_capture");
+  let binaryMtimeMs = 0;
+  try {
+    binaryMtimeMs = (await stat(binaryPath)).mtimeMs;
+  } catch {
+    return {
+      ok: false,
+      message: `Bevy capture binary is missing at '${binaryPath}'. Run without --no-setup to rebuild it.`,
+    };
+  }
+
+  const newestSource = await newestMtime([
+    resolve(root, "runtime-bevy/Cargo.toml"),
+    resolve(root, "runtime-bevy/crates/threenative_runtime/Cargo.toml"),
+    resolve(root, "runtime-bevy/crates/threenative_runtime/src"),
+  ]);
+  if (newestSource > binaryMtimeMs) {
+    return {
+      ok: false,
+      message: "Bevy capture binary is older than runtime source. Run without --no-setup to rebuild it.",
+    };
+  }
+  return { ok: true, message: "Bevy capture binary is fresh." };
+}
+
+async function newestMtime(paths) {
+  let newest = 0;
+  for (const path of paths) {
+    newest = Math.max(newest, await pathMtime(path));
+  }
+  return newest;
+}
+
+async function pathMtime(path) {
+  let entry;
+  try {
+    entry = await stat(path);
+  } catch {
+    return 0;
+  }
+  if (!entry.isDirectory()) {
+    return entry.mtimeMs;
+  }
+  const children = await readdir(path, { withFileTypes: true });
+  let newest = entry.mtimeMs;
+  for (const child of children) {
+    newest = Math.max(newest, await pathMtime(join(path, child.name)));
+  }
+  return newest;
 }
 
 async function writeGateReport({ artifactDir, ok, reportPath, steps, visualReportPath, visual }) {
@@ -149,6 +230,100 @@ async function writeGateReport({ artifactDir, ok, reportPath, steps, visualRepor
   };
   await writeFile(reportPath, `${JSON.stringify(report, null, 2)}\n`);
   return { ...report, ok, reportPath };
+}
+
+const PARITY_REGION_BOXES = [
+  { id: "cleanSkyCenter", label: "Clean sky center", x: 0.25, y: 0.0, width: 0.5, height: 0.22 },
+  { id: "upperSkyLeft", label: "Upper sky left", x: 0.0, y: 0.0, width: 0.25, height: 0.25 },
+  { id: "upperSkyRight", label: "Upper sky right", x: 0.75, y: 0.0, width: 0.25, height: 0.25 },
+  { id: "horizon", label: "Sky horizon", x: 0.0, y: 0.22, width: 1.0, height: 0.18 },
+  { id: "midGrass", label: "Middle grass", x: 0.2, y: 0.42, width: 0.6, height: 0.24 },
+  { id: "foregroundGrass", label: "Foreground grass", x: 0.0, y: 0.66, width: 1.0, height: 0.34 },
+  { id: "path", label: "Path", x: 0.36, y: 0.38, width: 0.28, height: 0.62 },
+];
+
+async function compareVisualRegions(artifacts) {
+  const webPath = artifacts?.webScreenshotPath;
+  const bevyPath = artifacts?.bevyScreenshotPath;
+  if (webPath === undefined || bevyPath === undefined) {
+    return undefined;
+  }
+  const [web, bevy] = await Promise.all([loadRgbImage(webPath), loadRgbImage(bevyPath)]);
+  if (web.width !== bevy.width || web.height !== bevy.height) {
+    return undefined;
+  }
+  return PARITY_REGION_BOXES.map((region) => compareRegion(web, bevy, region));
+}
+
+async function loadRgbImage(path) {
+  const image = sharp(path).removeAlpha();
+  const metadata = await image.metadata();
+  return {
+    data: await image.raw().toBuffer(),
+    height: metadata.height,
+    width: metadata.width,
+  };
+}
+
+function compareRegion(web, bevy, region) {
+  const x0 = Math.max(0, Math.floor(region.x * web.width));
+  const y0 = Math.max(0, Math.floor(region.y * web.height));
+  const x1 = Math.min(web.width, Math.ceil((region.x + region.width) * web.width));
+  const y1 = Math.min(web.height, Math.ceil((region.y + region.height) * web.height));
+  const channelDeltas = [];
+  let averageBrightnessDelta = 0;
+  let changedPixels = 0;
+  let red = 0;
+  let green = 0;
+  let blue = 0;
+  let signedRed = 0;
+  let signedGreen = 0;
+  let signedBlue = 0;
+  let pixels = 0;
+  for (let y = y0; y < y1; y += 1) {
+    for (let x = x0; x < x1; x += 1) {
+      const offset = (y * web.width + x) * 3;
+      const dr = (bevy.data[offset] - web.data[offset]) / 255;
+      const dg = (bevy.data[offset + 1] - web.data[offset + 1]) / 255;
+      const db = (bevy.data[offset + 2] - web.data[offset + 2]) / 255;
+      const absRed = Math.abs(dr);
+      const absGreen = Math.abs(dg);
+      const absBlue = Math.abs(db);
+      const brightnessDelta = (absRed + absGreen + absBlue) / 3;
+      averageBrightnessDelta += brightnessDelta;
+      red += absRed;
+      green += absGreen;
+      blue += absBlue;
+      signedRed += dr;
+      signedGreen += dg;
+      signedBlue += db;
+      channelDeltas.push(absRed, absGreen, absBlue);
+      if (brightnessDelta > 1 / 255) {
+        changedPixels += 1;
+      }
+      pixels += 1;
+    }
+  }
+  channelDeltas.sort((left, right) => left - right);
+  const p95Index = Math.min(channelDeltas.length - 1, Math.floor(channelDeltas.length * 0.95));
+  return {
+    averageBrightnessDelta: averageBrightnessDelta / pixels,
+    averageColorDelta: {
+      blue: blue / pixels,
+      green: green / pixels,
+      red: red / pixels,
+    },
+    bounds: { height: y1 - y0, width: x1 - x0, x: x0, y: y0 },
+    changedPixelRatio: changedPixels / pixels,
+    id: region.id,
+    label: region.label,
+    p95ChannelDelta: channelDeltas[p95Index],
+    signedAverageColorDelta: {
+      blue: signedBlue / pixels,
+      green: signedGreen / pixels,
+      red: signedRed / pixels,
+    },
+  };
 }
 
 async function main() {

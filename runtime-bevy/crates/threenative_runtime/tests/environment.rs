@@ -4,7 +4,10 @@ use std::{
     time::{SystemTime, UNIX_EPOCH},
 };
 
-use bevy::prelude::*;
+use bevy::{
+    pbr::{NotShadowCaster, NotShadowReceiver},
+    prelude::*,
+};
 use threenative_components::ThreeNativeId;
 use threenative_loader::load_bundle;
 use threenative_runtime::environment::{
@@ -133,6 +136,8 @@ fn environment_should_map_scene_to_terrain_path_and_instances() {
         "environment:rock.scatter.2",
         [-1.0, 0.375, 0.0],
     );
+    assert_environment_surface_is_non_shadowing(app.world_mut(), "terrain:terrain.forest");
+    assert_environment_surface_is_non_shadowing(app.world_mut(), "path:path.main:0");
     assert_native_instancing(app.world_mut());
 
     fs::remove_dir_all(root).expect("temp bundle should be removed");
@@ -171,6 +176,27 @@ fn environment_content_trace_should_report_v7_lod_and_instancing_evidence() {
         "model-asset-backed"
     );
     assert_eq!(observation.total_instance_count, 3);
+}
+
+fn assert_environment_surface_is_non_shadowing(world: &mut World, id: &str) {
+    let mut query = world.query::<(
+        &ThreeNativeId,
+        Option<&NotShadowCaster>,
+        Option<&NotShadowReceiver>,
+    )>();
+    let (_, not_shadow_caster, not_shadow_receiver) = query
+        .iter(world)
+        .find(|(stable_id, _, _)| stable_id.0 == id)
+        .expect("environment surface should be spawned");
+
+    assert!(
+        not_shadow_caster.is_some(),
+        "environment surface should not cast native shadows"
+    );
+    assert!(
+        not_shadow_receiver.is_some(),
+        "environment surface should not receive native shadows"
+    );
 }
 
 fn assert_instance_transform(world: &mut World, id: &str, expected_translation: [f32; 3]) {

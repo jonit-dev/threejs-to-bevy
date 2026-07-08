@@ -132,6 +132,75 @@ test("mapWorld should trace stylized nature runtime expansion defaults from the 
   });
 });
 
+test("loadWorldModelAssets should attach wind state to source-backed stylized grass", async () => {
+  const bundle = {
+    assets: {
+      schema: "threenative.assets",
+      version: "0.1.0",
+      assets: [
+        { id: "model.grass", kind: "model", format: "glb", path: "assets/grass.glb" },
+        { id: "model.trunk", kind: "model", format: "glb", path: "assets/trunk.glb" },
+        { id: "model.leaves", kind: "model", format: "glb", path: "assets/leaves.glb" },
+        { id: "tex.leaves.alpha", kind: "texture", format: "png", path: "assets/leaves-alpha-map.png" },
+      ],
+    },
+    manifest: {
+      schema: "threenative.bundle",
+      version: "0.1.0",
+      name: "stylized-source",
+      requiredCapabilities: {},
+      entry: { world: "world.ir.json" },
+      files: { assets: "assets.manifest.json", materials: "materials.ir.json", targetProfile: "target.profile.json" },
+    },
+    materials: { schema: "threenative.materials", version: "0.1.0", materials: [] },
+    targetProfile: { schema: "threenative.target-profile", version: "0.1.0", targets: ["web"] },
+    world: {
+      schema: "threenative.world",
+      version: "0.1.0",
+      entities: [
+        {
+          id: "nature",
+          components: {
+            StylizedNature: {
+              grassModel: "model.grass",
+              treeTrunkModel: "model.trunk",
+              treeLeavesModel: "model.leaves",
+              leavesAlphaMap: "tex.leaves.alpha",
+              grassCount: 12,
+              size: 8,
+              windStrength: 0.25,
+            },
+          },
+        },
+      ],
+    },
+  } satisfies IWebBundle;
+  const mapped = mapWorld(bundle);
+  const geometry = new THREE.PlaneGeometry(0.1, 0.5);
+  const loader = {
+    async loadAsync() {
+      return { scene: new THREE.Mesh(geometry, new THREE.MeshBasicMaterial()) };
+    },
+  };
+
+  await loadWorldModelAssets(mapped, bundle, "http://example.test/bundle", { loader });
+
+  const root = mapped.objectsById.get("nature");
+  const sourceGrass = root?.getObjectByName("source-grass-blades-up") as THREE.InstancedMesh | undefined;
+  const wind = sourceGrass?.userData.threeNativeGrassWind as
+    | { count: number; instances: unknown[]; windStrength: number }
+    | undefined;
+  assert.ok(sourceGrass);
+  assert.ok(wind);
+  assert.equal(wind.windStrength, 0.25);
+  assert.equal(wind.instances.length, wind.count);
+  assert.equal(wind.count > 0, true);
+  const sourceLeaves = root?.getObjectByName("source-tree-leaves") as THREE.InstancedMesh | undefined;
+  assert.ok(sourceLeaves);
+  assert.ok((sourceLeaves.material as THREE.MeshStandardMaterial).alphaMap);
+  assert.equal(hasAnimationPlayback(mapped), true);
+});
+
 test("mapWorld should warn when a lit scene has no camera or light", () => {
   const bundle = {
     assets: {

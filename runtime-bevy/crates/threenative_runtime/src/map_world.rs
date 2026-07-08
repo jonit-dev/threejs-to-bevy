@@ -2,6 +2,7 @@ use std::{collections::HashMap, path::Path};
 
 use bevy::{
     animation::graph::AnimationGraph,
+    asset::{Handle, load_internal_asset},
     core_pipeline::{
         bloom::{BloomPrefilterSettings, BloomSettings},
         experimental::taa::TemporalAntiAliasBundle,
@@ -10,19 +11,29 @@ use bevy::{
         tonemapping::Tonemapping,
     },
     gltf::{Gltf, GltfAssetLabel},
-    math::primitives::{
-        Annulus, Capsule3d, Circle as PrimitiveCircle, Cone, ConicalFrustum, Cuboid, Cylinder,
-        Extrusion, Rectangle, RegularPolygon, Sphere, Torus,
+    math::{
+        Affine2,
+        primitives::{
+            Annulus, Capsule3d, Circle as PrimitiveCircle, Cone, ConicalFrustum, Cuboid, Cylinder,
+            Extrusion, Rectangle, RegularPolygon, Sphere, Torus,
+        },
     },
-    pbr::{FogFalloff, FogSettings, NotShadowCaster, NotShadowReceiver, ShadowFilteringMethod},
+    pbr::{
+        FogFalloff, FogSettings, Material, MaterialMeshBundle, MaterialPlugin, NotShadowCaster,
+        NotShadowReceiver, ShadowFilteringMethod,
+    },
     prelude::*,
+    reflect::TypePath,
     render::{
         alpha::AlphaMode,
         camera::{ClearColorConfig, Exposure, RenderTarget, ScalingMode},
         extract_resource::ExtractResource,
         mesh::{Indices, MeshVertexAttribute, PrimitiveTopology, VertexAttributeValues},
         render_asset::RenderAssetUsages,
-        render_resource::{Extent3d, TextureDimension, TextureFormat, TextureUsages, VertexFormat},
+        render_resource::{
+            AsBindGroup, Extent3d, Face, Shader, ShaderRef, TextureDimension, TextureFormat,
+            TextureUsages, VertexFormat,
+        },
         view::{ColorGrading, visibility::RenderLayers},
     },
 };
@@ -52,13 +63,13 @@ use crate::world_mapping::attach_entity_hierarchy;
 // native adapter uses neutral camera exposure and keeps non-atmosphere
 // directional intensity close to Three's authored scalar.
 pub const THREE_COMPAT_DIRECTIONAL_ILLUMINANCE_PER_INTENSITY: f32 = 1.0;
-pub const THREE_COMPAT_AMBIENT_BRIGHTNESS_PER_INTENSITY: f32 = 0.25;
+pub const THREE_COMPAT_AMBIENT_BRIGHTNESS_PER_INTENSITY: f32 = 1.0;
 // Environment bundles duplicate authored lights in world.ir.json and atmosphere;
 // keep the world directional contribution low so it stacks with atmosphere sun.
 const THREE_COMPAT_ENVIRONMENT_DIRECTIONAL_ILLUMINANCE_PER_INTENSITY: f32 = 1.7;
 const THREE_COMPAT_POINT_LUMENS_PER_CANDELA: f32 = 1.0;
 const THREE_COMPAT_DEFAULT_RANGE: f32 = 1_000.0;
-const THREE_COMPAT_DEFAULT_CAMERA_EV100: f32 = -0.263_034_4;
+const THREE_COMPAT_DEFAULT_CAMERA_EV100: f32 = -0.45;
 const THREE_COMPAT_SKY_DOME_RADIUS: f32 = 72.0;
 const THREE_COMPAT_EMISSIVE_INTENSITY_SCALE: f32 = 4.0;
 const THREE_COMPAT_COLOR_GRADING_SATURATION_SCALE: f32 = 1.35;
@@ -67,6 +78,8 @@ const THREE_COMPAT_FOG_EXP2_DENSITY_SCALE: f32 = 0.65;
 const THREE_COMPAT_EMISSIVE_MASK_LAYER: usize = 63;
 const THREE_COMPAT_EMISSIVE_MASK_WIDTH: u32 = 1280;
 const THREE_COMPAT_EMISSIVE_MASK_HEIGHT: u32 = 720;
+const THREE_COMPAT_SOURCE_TERRAIN_BAKE_SEGMENTS: usize = 1024;
+const THREE_COMPAT_LEAF_ALPHA_CUTOFF: f32 = 0.01;
 
 pub struct StylizedNatureRuntimeDefaults {
     pub bark_color: &'static str,
@@ -123,6 +136,36 @@ pub struct NativeEmissiveMarkerMask {
 pub struct NativeEnvironmentSkyDome {
     pub asset: String,
     pub mode: String,
+}
+
+const NATIVE_EQUIRECT_SKY_SHADER_HANDLE: Handle<Shader> =
+    Handle::weak_from_u128(2311841668702425331);
+
+#[derive(Asset, TypePath, AsBindGroup, Debug, Clone)]
+pub struct NativeEquirectSkyMaterial {
+    #[texture(0)]
+    #[sampler(1)]
+    pub texture: Handle<Image>,
+}
+
+impl Material for NativeEquirectSkyMaterial {
+    fn fragment_shader() -> ShaderRef {
+        NATIVE_EQUIRECT_SKY_SHADER_HANDLE.into()
+    }
+}
+
+pub struct NativeEquirectSkyMaterialPlugin;
+
+impl Plugin for NativeEquirectSkyMaterialPlugin {
+    fn build(&self, app: &mut App) {
+        load_internal_asset!(
+            app,
+            NATIVE_EQUIRECT_SKY_SHADER_HANDLE,
+            "native_equirect_sky.wgsl",
+            Shader::from_wgsl
+        );
+        app.add_plugins(MaterialPlugin::<NativeEquirectSkyMaterial>::default());
+    }
 }
 
 #[derive(Clone, Component, Debug, PartialEq)]
@@ -276,9 +319,12 @@ pub fn map_bundle_into_world(world: &mut World, bundle: &LoadedBundle) -> Result
         ensure_emissive_marker_mask(world);
     }
     let mut material_handles = NativeMaterialHandles::default();
-    world.insert_resource(crate::assets::build_texture_controls_registry(
-        &bundle.assets,
-    ));
+    world.insert_resource(
+        crate::assets::build_texture_controls_registry_for_environment(
+            &bundle.assets,
+            bundle.environment_scene.as_ref(),
+        ),
+    );
 
     let mut entities_by_id = HashMap::new();
     for entity in &bundle.world.entities {
@@ -340,24 +386,16 @@ fn spawn_environment_sky_dome(
     let texture = load_texture_asset(&asset_server, path);
     let mesh = sky_dome_mesh(THREE_COMPAT_SKY_DOME_RADIUS);
     let mesh = world.resource_mut::<Assets<Mesh>>().add(mesh);
+    let transform =
+        Transform::from_translation(active_camera_translation(world, bundle).unwrap_or(Vec3::ZERO));
     let material = world
-        .resource_mut::<Assets<StandardMaterial>>()
-        .add(StandardMaterial {
-            alpha_mode: AlphaMode::Opaque,
-            base_color: Color::WHITE,
-            base_color_texture: Some(texture),
-            cull_mode: None,
-            double_sided: true,
-            perceptual_roughness: 1.0,
-            reflectance: 0.0,
-            unlit: true,
-            ..Default::default()
-        });
+        .resource_mut::<Assets<NativeEquirectSkyMaterial>>()
+        .add(NativeEquirectSkyMaterial { texture });
     world.spawn((
-        PbrBundle {
+        MaterialMeshBundle {
             mesh,
             material,
-            transform: Transform::IDENTITY,
+            transform,
             ..Default::default()
         },
         Name::new("threenative.environment.skybox.equirect"),
@@ -370,9 +408,20 @@ fn spawn_environment_sky_dome(
     ));
 }
 
+fn active_camera_translation(world: &mut World, bundle: &LoadedBundle) -> Option<Vec3> {
+    let active_camera_id = active_camera_id(bundle)?;
+    let mut query = world.query::<(&ThreeNativeId, &Transform)>();
+    query
+        .iter(world)
+        .find_map(|(id, transform)| (id.0 == active_camera_id).then_some(transform.translation))
+}
+
 fn sky_dome_mesh(radius: f32) -> Mesh {
-    let columns = 64usize;
-    let rows = 32usize;
+    // Three.js samples equirectangular backgrounds per pixel from the view
+    // direction. The native adapter uses a dome mesh, so keep the segments high
+    // enough that UV interpolation does not visibly warp cloud bands.
+    let columns = 256usize;
+    let rows = 128usize;
     let mut positions = Vec::with_capacity((columns + 1) * (rows + 1));
     let mut normals = Vec::with_capacity((columns + 1) * (rows + 1));
     let mut uvs = Vec::with_capacity((columns + 1) * (rows + 1));
@@ -382,13 +431,13 @@ fn sky_dome_mesh(radius: f32) -> Mesh {
         let y = theta.cos();
         let r = theta.sin();
         for column in 0..=columns {
-            let u = column as f32 / columns as f32;
-            let phi = u * std::f32::consts::TAU;
-            let x = r * phi.sin();
-            let z = r * phi.cos();
+            let equirect_u = column as f32 / columns as f32;
+            let longitude = (equirect_u - 0.5) * std::f32::consts::TAU;
+            let x = r * longitude.cos();
+            let z = r * longitude.sin();
             positions.push([x * radius, y * radius, z * radius]);
             normals.push([-x, -y, -z]);
-            uvs.push([1.0 - u, v]);
+            uvs.push([equirect_u, v]);
         }
     }
     let mut indices = Vec::with_capacity(columns * rows * 6);
@@ -618,24 +667,37 @@ pub struct NativeRippleWaterMotion {
 #[derive(Clone, Component, Debug, PartialEq)]
 pub struct NativeGrassWindMotion {
     pub base: Transform,
+    pub base_euler: Vec3,
     pub phase: f32,
     pub strength: f32,
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Resource)]
+pub struct NativeStylizedMotionTimeOverride(pub f32);
+
 pub fn animate_native_stylized_motion(
     time: Res<Time>,
+    time_override: Option<Res<NativeStylizedMotionTimeOverride>>,
     mut grass_query: Query<
         (&NativeGrassWindMotion, &mut Transform),
         Without<NativeRippleWaterMotion>,
     >,
     mut water_query: Query<(&NativeRippleWaterMotion, &mut Transform)>,
 ) {
-    let elapsed = time.elapsed_seconds();
+    let elapsed = time_override
+        .as_deref()
+        .map(|override_time| override_time.0)
+        .unwrap_or_else(|| time.elapsed_seconds());
     for (motion, mut transform) in &mut grass_query {
-        let gust = (elapsed * 2.4 + motion.phase).sin() * 0.12
-            + (elapsed * 4.1 + motion.phase * 0.37).sin() * 0.04;
+        let gust = (elapsed * 2.4 + motion.phase).sin() * 0.16
+            + (elapsed * 4.1 + motion.phase * 0.37).sin() * 0.055;
         let mut next = motion.base;
-        next.rotation = motion.base.rotation * Quat::from_rotation_z(gust * motion.strength);
+        next.rotation = Quat::from_euler(
+            EulerRot::XYZ,
+            motion.base_euler.x + gust * 0.22,
+            motion.base_euler.y,
+            motion.base_euler.z + gust * motion.strength,
+        );
         *transform = next;
     }
     for (motion, mut transform) in &mut water_query {
@@ -693,23 +755,47 @@ fn spawn_stylized_nature(
     );
 
     let asset_server = world.get_resource::<AssetServer>().cloned();
+    let source_assets =
+        resolve_source_assets(component, assets_by_id, asset_server.as_ref(), bundle_path);
+    let source_backed = source_assets.grass_mesh.is_some()
+        || source_assets.leaves_mesh.is_some()
+        || source_assets.trunk_scene.is_some();
+    let source_ground_maps =
+        StylizedSourceGroundMaps::load(component, assets_by_id, bundle_path, source_backed);
+    let grass_color_texture = stylized_texture_handle(
+        component,
+        "grassColorMap",
+        assets_by_id,
+        asset_server.as_ref(),
+        bundle_path,
+    );
+    let grass_normal_texture = stylized_texture_handle(
+        component,
+        "grassNormalMap",
+        assets_by_id,
+        asset_server.as_ref(),
+        bundle_path,
+    );
+    let grass_roughness_texture = stylized_texture_handle(
+        component,
+        "grassRoughnessMap",
+        assets_by_id,
+        asset_server.as_ref(),
+        bundle_path,
+    );
     let terrain_material = add_stylized_surface_material(
         world,
         Color::WHITE,
         0.88,
         false,
-        stylized_texture_handle(
-            component,
-            "grassColorMap",
-            assets_by_id,
-            asset_server.as_ref(),
-        ),
-        stylized_texture_handle(
-            component,
-            "grassNormalMap",
-            assets_by_id,
-            asset_server.as_ref(),
-        ),
+        if source_backed {
+            None
+        } else {
+            grass_color_texture
+        },
+        grass_normal_texture,
+        grass_roughness_texture,
+        8.0,
     );
     let path_crack_material =
         world
@@ -727,25 +813,41 @@ fn spawn_stylized_nature(
                 perceptual_roughness: 1.0,
                 ..Default::default()
             });
-
-    let source_assets =
-        resolve_source_assets(component, assets_by_id, asset_server.as_ref(), bundle_path);
-    let source_backed = source_assets.grass_mesh.is_some()
-        || source_assets.leaves_mesh.is_some()
-        || source_assets.trunk_scene.is_some();
     let grass_policy = grass_material_policy(component, &source_assets);
     let grass_material = world
         .resource_mut::<Assets<StandardMaterial>>()
         .add(StandardMaterial {
             base_color: grass_policy.base_color,
             base_color_texture: grass_policy.base_color_texture_field.and_then(|key| {
-                stylized_texture_handle(component, key, assets_by_id, asset_server.as_ref())
+                stylized_texture_handle(
+                    component,
+                    key,
+                    assets_by_id,
+                    asset_server.as_ref(),
+                    bundle_path,
+                )
             }),
             normal_map_texture: grass_policy.normal_map_texture_field.and_then(|key| {
-                stylized_texture_handle(component, key, assets_by_id, asset_server.as_ref())
+                stylized_texture_handle(
+                    component,
+                    key,
+                    assets_by_id,
+                    asset_server.as_ref(),
+                    bundle_path,
+                )
+            }),
+            metallic_roughness_texture: grass_policy.roughness_texture_field.and_then(|key| {
+                stylized_texture_handle(
+                    component,
+                    key,
+                    assets_by_id,
+                    asset_server.as_ref(),
+                    bundle_path,
+                )
             }),
             double_sided: true,
-            perceptual_roughness: 0.74,
+            cull_mode: None,
+            perceptual_roughness: grass_policy.roughness,
             ..Default::default()
         });
     let source_path_material = add_stylized_surface_material(
@@ -758,16 +860,44 @@ fn spawn_stylized_nature(
             "dirtColorMap",
             assets_by_id,
             asset_server.as_ref(),
+            bundle_path,
         ),
         stylized_texture_handle(
             component,
             "dirtNormalMap",
             assets_by_id,
             asset_server.as_ref(),
+            bundle_path,
         ),
+        stylized_texture_handle(
+            component,
+            "dirtRoughnessMap",
+            assets_by_id,
+            asset_server.as_ref(),
+            bundle_path,
+        ),
+        1.0,
     );
-    let bark_material = add_stylized_tree_material(world, bark_color, false);
-    let leaf_material = add_stylized_tree_material(world, leaf_color, true);
+    let bark_material = add_stylized_tree_material(world, bark_color, false, None, 0.95);
+    let source_leaves_backed = source_assets.leaves_mesh.is_some();
+    let leaf_material_color = if source_leaves_backed {
+        source_leaf_native_color(leaf_color)
+    } else {
+        leaf_color
+    };
+    let leaf_material = add_stylized_tree_material(
+        world,
+        leaf_material_color,
+        true,
+        stylized_texture_handle(
+            component,
+            "leavesAlphaMap",
+            assets_by_id,
+            asset_server.as_ref(),
+            bundle_path,
+        ),
+        if source_leaves_backed { 0.8 } else { 0.82 },
+    );
 
     let sky_mesh = world
         .resource_mut::<Assets<Mesh>>()
@@ -783,6 +913,7 @@ fn spawn_stylized_nature(
                 "tex.stylized-scene.sky",
                 assets_by_id,
                 asset_server.as_ref(),
+                bundle_path,
             ),
             unlit: true,
             double_sided: true,
@@ -816,7 +947,11 @@ fn spawn_stylized_nature(
     let terrain_mesh = add_source_masked_terrain_mesh(
         world,
         size,
-        128,
+        if source_backed {
+            THREE_COMPAT_SOURCE_TERRAIN_BAKE_SEGMENTS
+        } else {
+            256
+        },
         path_width,
         json_color(
             component,
@@ -824,6 +959,7 @@ fn spawn_stylized_nature(
             STYLIZED_NATURE_RUNTIME_DEFAULTS.native_ground_color,
         ),
         json_color(component, "pathColor", "#9b6543"),
+        source_ground_maps.as_ref(),
     );
     let source_path_mesh = add_source_path_ribbon_mesh(world, size, 120, path_width * 0.92);
     let grass_mesh = match source_assets.grass_mesh.clone() {
@@ -861,21 +997,23 @@ fn spawn_stylized_nature(
         .id();
     let mut children = Vec::new();
 
-    children.push(
-        world
-            .spawn(PbrBundle {
-                mesh: sky_mesh,
-                material: sky_material,
-                transform: Transform::from_xyz(0.0, size * 0.18, -size * 0.38),
-                ..Default::default()
-            })
-            .insert((
-                Name::new(format!("{entity_id}.stylized-soft-sky-gradient")),
-                NotShadowCaster,
-                NotShadowReceiver,
-            ))
-            .id(),
-    );
+    if !source_backed {
+        children.push(
+            world
+                .spawn(PbrBundle {
+                    mesh: sky_mesh,
+                    material: sky_material,
+                    transform: Transform::from_xyz(0.0, size * 0.18, -size * 0.38),
+                    ..Default::default()
+                })
+                .insert((
+                    Name::new(format!("{entity_id}.stylized-soft-sky-gradient")),
+                    NotShadowCaster,
+                    NotShadowReceiver,
+                ))
+                .id(),
+        );
+    }
 
     let cloud_groups = [
         (-8.5, size * 0.24, -size * 0.34, 0.82),
@@ -966,8 +1104,6 @@ fn spawn_stylized_nature(
                 .insert(Name::new(format!("{entity_id}.source-dirt-path-ribbon")))
                 .id(),
         );
-    }
-    if !source_backed {
         let mut path_random = Lcg::new(2401);
         for index in 0..96usize {
             let z = size / 2.0 - (index as f32 / 95.0) * size + (path_random.next() - 0.5) * 0.45;
@@ -1037,7 +1173,15 @@ fn spawn_stylized_nature(
                         transform: base_transform,
                         ..Default::default()
                     })
-                    .insert(Name::new(format!("{entity_id}.source-grass-{index}")))
+                    .insert((
+                        Name::new(format!("{entity_id}.source-grass-{index}")),
+                        NativeGrassWindMotion {
+                            base: base_transform,
+                            base_euler: Vec3::new(0.0, yaw, 0.0),
+                            phase: random.next() * std::f32::consts::TAU + x * 0.17 + z * 0.11,
+                            strength: wind_strength,
+                        },
+                    ))
                     .id(),
             );
             written += 1;
@@ -1055,9 +1199,9 @@ fn spawn_stylized_nature(
         let pitch = (random.next() - 0.5) * 0.12;
         let yaw = random.next() * std::f32::consts::TAU;
         let roll = (random.next() - 0.5) * wind_strength;
-        let foreground_boost = if z > 0.0 { 1.28 } else { 1.03 };
-        let blade_scale = foreground_boost * (0.72 + random.next() * 1.02);
-        let height_scale = blade_scale * (0.78 + random.next() * 0.62);
+        let foreground_boost = if z > 0.0 { 1.55 } else { 1.1 };
+        let blade_scale = foreground_boost * (0.85 + random.next() * 1.25);
+        let height_scale = blade_scale * (0.9 + random.next() * 0.8);
         let base_transform = Transform::from_xyz(x, y, z)
             .with_rotation(Quat::from_euler(EulerRot::XYZ, pitch, yaw, roll))
             .with_scale(Vec3::new(blade_scale, height_scale, blade_scale));
@@ -1074,6 +1218,7 @@ fn spawn_stylized_nature(
                     Name::new(format!("{entity_id}.stylized-grass-{index}")),
                     NativeGrassWindMotion {
                         base: base_transform,
+                        base_euler: Vec3::new(pitch, yaw, roll),
                         phase: random.next() * std::f32::consts::TAU + x * 0.17 + z * 0.11,
                         strength: wind_strength,
                     },
@@ -1154,6 +1299,7 @@ fn spawn_stylized_nature(
                         .insert(Name::new(format!(
                             "{entity_id}.tree-{index}.source-leaves-{leaf_index}"
                         )))
+                        .insert(NotShadowReceiver)
                         .id(),
                 );
             }
@@ -1210,6 +1356,8 @@ fn add_stylized_surface_material(
     double_sided: bool,
     base_color_texture: Option<Handle<Image>>,
     normal_map_texture: Option<Handle<Image>>,
+    metallic_roughness_texture: Option<Handle<Image>>,
+    uv_repeat: f32,
 ) -> Handle<StandardMaterial> {
     world
         .resource_mut::<Assets<StandardMaterial>>()
@@ -1217,7 +1365,10 @@ fn add_stylized_surface_material(
             base_color: color,
             base_color_texture,
             normal_map_texture,
+            metallic_roughness_texture,
+            uv_transform: Affine2::from_scale(Vec2::splat(uv_repeat)),
             double_sided,
+            cull_mode: if double_sided { None } else { Some(Face::Back) },
             perceptual_roughness: roughness,
             ..Default::default()
         })
@@ -1268,13 +1419,191 @@ fn add_source_path_ribbon_mesh(
     world.resource_mut::<Assets<Mesh>>().add(mesh)
 }
 
+struct StylizedSourceGroundMaps {
+    grass_color: Option<SampledImage>,
+    dirt_color: Option<SampledImage>,
+    dirt_ao: Option<SampledImage>,
+    dirt_height: Option<SampledImage>,
+    noise: Option<SampledImage>,
+    path_mask: Option<SampledImage>,
+}
+
+impl StylizedSourceGroundMaps {
+    fn load(
+        component: &Value,
+        assets_by_id: &HashMap<&str, &AssetIr>,
+        bundle_path: &Path,
+        source_backed: bool,
+    ) -> Option<Self> {
+        source_backed.then(|| Self {
+            grass_color: sampled_component_texture(
+                component,
+                "grassColorMap",
+                assets_by_id,
+                bundle_path,
+            ),
+            dirt_color: sampled_component_texture(
+                component,
+                "dirtColorMap",
+                assets_by_id,
+                bundle_path,
+            ),
+            dirt_ao: sampled_component_texture(component, "dirtAoMap", assets_by_id, bundle_path),
+            dirt_height: sampled_component_texture(
+                component,
+                "dirtHeightMap",
+                assets_by_id,
+                bundle_path,
+            ),
+            noise: sampled_component_texture(component, "noiseMap", assets_by_id, bundle_path),
+            path_mask: sampled_component_texture(
+                component,
+                "pathMaskMap",
+                assets_by_id,
+                bundle_path,
+            ),
+        })
+    }
+
+    fn path_mask(&self, u: f32, v: f32) -> f32 {
+        self.path_mask
+            .as_ref()
+            .map(|image| image.sample_luma_clamped(u, v))
+            .unwrap_or(0.0)
+    }
+
+    fn edge_noise(&self, u: f32, v: f32) -> f32 {
+        self.noise
+            .as_ref()
+            .map(|image| image.sample_luma_clamped(u * 2.0, v * 2.0))
+            .unwrap_or(0.5)
+    }
+
+    fn dirt_height(&self, u: f32, v: f32) -> f32 {
+        self.dirt_height
+            .as_ref()
+            .map(|image| image.sample_luma_repeat(u * 8.0, v * 8.0))
+            .unwrap_or(0.5)
+    }
+
+    fn grass_rgb(&self, u: f32, v: f32, fallback: [f32; 3]) -> [f32; 3] {
+        self.grass_color
+            .as_ref()
+            .map(|image| image.sample_rgb_repeat(u * 8.0, v * 8.0))
+            .unwrap_or(fallback)
+    }
+
+    fn dirt_rgb(&self, u: f32, v: f32, fallback: [f32; 3]) -> [f32; 3] {
+        self.dirt_color
+            .as_ref()
+            .map(|image| image.sample_rgb_repeat(u * 8.0, v * 8.0))
+            .unwrap_or(fallback)
+    }
+
+    fn dirt_ao(&self, u: f32, v: f32) -> f32 {
+        self.dirt_ao
+            .as_ref()
+            .map(|image| image.sample_luma_repeat(u * 8.0, v * 8.0))
+            .unwrap_or(1.0)
+    }
+}
+
+struct SampledImage {
+    rgba: image::RgbaImage,
+    width: u32,
+    height: u32,
+}
+
+impl SampledImage {
+    fn open(path: &Path) -> Option<Self> {
+        let rgba = image::open(path).ok()?.to_rgba8();
+        let (width, height) = rgba.dimensions();
+        Some(Self {
+            rgba,
+            width,
+            height,
+        })
+    }
+
+    fn sample_rgb_repeat(&self, u: f32, v: f32) -> [f32; 3] {
+        let [r, g, b, _] = self.sample_repeat(u, v);
+        [r, g, b]
+    }
+
+    fn sample_luma_repeat(&self, u: f32, v: f32) -> f32 {
+        let [r, g, b, _] = self.sample_repeat(u, v);
+        (r + g + b) / 3.0
+    }
+
+    fn sample_luma_clamped(&self, u: f32, v: f32) -> f32 {
+        let [r, g, b, _] = self.sample(u.clamp(0.0, 1.0), v.clamp(0.0, 1.0));
+        (r + g + b) / 3.0
+    }
+
+    fn sample_repeat(&self, u: f32, v: f32) -> [f32; 4] {
+        self.sample(u.rem_euclid(1.0), v.rem_euclid(1.0))
+    }
+
+    fn sample(&self, u: f32, v: f32) -> [f32; 4] {
+        let x = u * (self.width.saturating_sub(1)) as f32;
+        let y = (1.0 - v) * (self.height.saturating_sub(1)) as f32;
+        let x0 = x.floor() as u32;
+        let y0 = y.floor() as u32;
+        let x1 = (x0 + 1).min(self.width - 1);
+        let y1 = (y0 + 1).min(self.height - 1);
+        let tx = x - x0 as f32;
+        let ty = y - y0 as f32;
+        let top = lerp_rgba(self.pixel_rgba(x0, y0), self.pixel_rgba(x1, y0), tx);
+        let bottom = lerp_rgba(self.pixel_rgba(x0, y1), self.pixel_rgba(x1, y1), tx);
+        lerp_rgba(top, bottom, ty)
+    }
+
+    fn pixel_rgba(&self, x: u32, y: u32) -> [f32; 4] {
+        let pixel = self
+            .rgba
+            .get_pixel(x.min(self.width - 1), y.min(self.height - 1));
+        [
+            pixel[0] as f32 / 255.0,
+            pixel[1] as f32 / 255.0,
+            pixel[2] as f32 / 255.0,
+            pixel[3] as f32 / 255.0,
+        ]
+    }
+}
+
+fn lerp_rgba(a: [f32; 4], b: [f32; 4], t: f32) -> [f32; 4] {
+    [
+        a[0] + (b[0] - a[0]) * t,
+        a[1] + (b[1] - a[1]) * t,
+        a[2] + (b[2] - a[2]) * t,
+        a[3] + (b[3] - a[3]) * t,
+    ]
+}
+
+fn sampled_component_texture(
+    component: &Value,
+    key: &str,
+    assets_by_id: &HashMap<&str, &AssetIr>,
+    bundle_path: &Path,
+) -> Option<SampledImage> {
+    let asset_id = component.get(key)?.as_str()?;
+    let asset = assets_by_id.get(asset_id)?;
+    if asset.kind != "texture" {
+        return None;
+    }
+    let path = asset.path.as_ref()?;
+    let path = native_texture_sidecar_path(path, bundle_path).unwrap_or_else(|| path.clone());
+    SampledImage::open(&bundle_path.join(path))
+}
+
 fn add_source_masked_terrain_mesh(
     world: &mut World,
     size: f32,
     segments: usize,
     path_width: f32,
-    _grass_color: Color,
+    grass_color: Color,
     dirt_color: Color,
+    source_maps: Option<&StylizedSourceGroundMaps>,
 ) -> Handle<Mesh> {
     let mut positions: Vec<[f32; 3]> = Vec::new();
     let mut colors: Vec<[f32; 4]> = Vec::new();
@@ -1282,6 +1611,7 @@ fn add_source_masked_terrain_mesh(
     let mut uvs: Vec<[f32; 2]> = Vec::new();
     let mut indices: Vec<u32> = Vec::new();
 
+    let grass_fallback = color_to_rgb(grass_color);
     let dirt = color_to_rgb(dirt_color);
     let dark = [0.247, 0.545, 0.231];
     let mid = [0.369, 0.667, 0.271];
@@ -1292,35 +1622,87 @@ fn add_source_masked_terrain_mesh(
         let z = -size / 2.0 + (zi as f32 / segments as f32) * size;
         for xi in 0..=segments {
             let x = -size / 2.0 + (xi as f32 / segments as f32) * size;
-            let path_mask = stylized_source_path_mask(x, z, size, path_width);
-            let y = stylized_terrain_height(x, z) - path_mask * 0.25;
+            let u = x / size + 0.5;
+            let v = 1.0 - (z / size + 0.5);
+            let vertex_path_mask = stylized_source_path_mask(x, z, size, path_width);
+            let texture_path_mask = source_maps
+                .map(|maps| maps.path_mask(u, v))
+                .unwrap_or(vertex_path_mask);
+            let path_mask = source_maps
+                .map(|_| texture_path_mask.max(vertex_path_mask))
+                .unwrap_or(vertex_path_mask);
+            let dirt_height = source_maps
+                .map(|maps| maps.dirt_height(u, v))
+                .unwrap_or(0.5);
+            let y = if source_maps.is_some() {
+                stylized_terrain_height(x, z) - vertex_path_mask * 0.25
+            } else {
+                stylized_terrain_height(x, z) + (dirt_height - 0.5) * 0.15 * path_mask
+                    - path_mask * 0.25
+            };
             positions.push([x, y, z]);
-            normals.push([0.0, 1.0, 0.0]);
+            normals.push(stylized_terrain_normal(x, z, size, path_width));
             uvs.push([
                 xi as f32 / segments as f32,
                 1.0 - zi as f32 / segments as f32,
             ]);
 
-            let t = ((z + size / 2.0) / size).clamp(0.0, 1.0) * 0.55;
-            let mut c = lerp_rgb(light, mid, t);
-            let path_distance = (x - stylized_path_center(z)).abs();
-            if path_distance < path_width * 1.8 {
-                c = lerp_rgb(c, near_path_grass, 0.35);
-            }
-            c = lerp_rgb(c, dark, (-z / size).max(0.0) * 0.22);
+            let mut c = if let Some(maps) = source_maps {
+                let grass_rgb = maps.grass_rgb(u, v, [1.0, 1.0, 1.0]);
+                [
+                    grass_rgb[0] * grass_fallback[0],
+                    grass_rgb[1] * grass_fallback[1],
+                    grass_rgb[2] * grass_fallback[2],
+                ]
+            } else {
+                let t = ((z + size / 2.0) / size).clamp(0.0, 1.0) * 0.55;
+                let mut grass = lerp_rgb(light, mid, t);
+                let path_distance = (x - stylized_path_center(z)).abs();
+                if path_distance < path_width * 1.8 {
+                    grass = lerp_rgb(grass, near_path_grass, 0.35);
+                }
+                lerp_rgb(grass, dark, (-z / size).max(0.0) * 0.22)
+            };
 
-            let breakup = 0.5 + 0.5 * (x * 1.7 + z * 0.9).sin() * (x * 0.6 - z * 1.2).sin();
-            let adjusted_mask = (path_mask + (breakup - 0.5) * 0.18).clamp(0.0, 1.0);
+            let edge_noise = source_maps
+                .map(|maps| maps.edge_noise(u, v))
+                .unwrap_or_else(|| {
+                    0.5 + 0.5 * (x * 1.7 + z * 0.9).sin() * (x * 0.6 - z * 1.2).sin()
+                });
+            let height_bias = if source_maps.is_some() {
+                0.0
+            } else {
+                (dirt_height - 0.5) * 0.35
+            };
+            let noise_strength = if source_maps.is_some() { 0.18 } else { 0.25 };
+            let adjusted_mask =
+                (path_mask + (edge_noise - 0.5) * noise_strength + height_bias).clamp(0.0, 1.0);
             let dirt_weight = smoothstep(0.35, 0.55, adjusted_mask);
-            let speckle = 0.5 + 0.5 * (x * 5.7 + z * 2.4).sin() * (x * 1.9 - z * 6.8).sin();
-            let crack = smoothstep(0.76, 0.94, speckle) * smoothstep(0.2, 0.8, path_mask);
-            let dirt_shaded = [
-                dirt[0] * (0.86 - crack * 0.34),
-                dirt[1] * (0.82 - crack * 0.30),
-                dirt[2] * (0.78 - crack * 0.24),
-            ];
+            let dirt_shaded = if let Some(maps) = source_maps {
+                let ao = maps.dirt_ao(u, v);
+                let dirt_rgb = maps.dirt_rgb(u, v, dirt);
+                let ao_factor = 0.72 + (1.0 - 0.72) * ao;
+                [
+                    dirt_rgb[0] * ao_factor,
+                    dirt_rgb[1] * ao_factor,
+                    dirt_rgb[2] * ao_factor,
+                ]
+            } else {
+                let speckle = 0.5 + 0.5 * (x * 5.7 + z * 2.4).sin() * (x * 1.9 - z * 6.8).sin();
+                let stone = smoothstep(0.42, 0.78, speckle) * smoothstep(0.32, 0.9, path_mask);
+                let crack = smoothstep(0.82, 0.96, speckle) * smoothstep(0.2, 0.8, path_mask);
+                let path_dust = lerp_rgb(dirt, [0.79, 0.65, 0.5], 0.74);
+                let path_stone = [0.87, 0.73, 0.58];
+                let mut shaded = lerp_rgb(path_dust, path_stone, stone * 0.45);
+                shaded = [
+                    shaded[0] * (0.96 - crack * 0.28),
+                    shaded[1] * (0.94 - crack * 0.24),
+                    shaded[2] * (0.9 - crack * 0.18),
+                ];
+                shaded
+            };
             c = lerp_rgb(c, dirt_shaded, dirt_weight);
-            colors.push([c[0], c[1], c[2], 1.0]);
+            colors.push([c[0], c[1], c[2], path_mask]);
         }
     }
     for zi in 0..segments {
@@ -1374,6 +1756,17 @@ fn stylized_source_path_mask(x: f32, z: f32, size: f32, path_width: f32) -> f32 
     (mask + (breakup - 0.5) * 0.16).clamp(0.0, 1.0)
 }
 
+fn stylized_terrain_normal(x: f32, z: f32, size: f32, path_width: f32) -> [f32; 3] {
+    let height = |sample_x: f32, sample_z: f32| {
+        stylized_terrain_height(sample_x, sample_z)
+            - stylized_source_path_mask(sample_x, sample_z, size, path_width) * 0.25
+    };
+    let e = 0.05;
+    let dx = height(x + e, z) - height(x - e, z);
+    let dz = height(x, z + e) - height(x, z - e);
+    Vec3::new(-dx, 2.0 * e, -dz).normalize_or_zero().to_array()
+}
+
 fn smoothstep(edge0: f32, edge1: f32, value: f32) -> f32 {
     let x = ((value - edge0) / (edge1 - edge0)).clamp(0.0, 1.0);
     x * x * (3.0 - 2.0 * x)
@@ -1384,31 +1777,90 @@ fn color_to_rgb(color: Color) -> [f32; 3] {
     [color.red, color.green, color.blue]
 }
 
+fn source_leaf_native_color(color: Color) -> Color {
+    let color = color.to_srgba();
+    Color::srgb(
+        (color.red * 0.95).clamp(0.0, 1.0),
+        (color.green * 1.04).clamp(0.0, 1.0),
+        (color.blue * 1.08).clamp(0.0, 1.0),
+    )
+}
+
 fn stylized_texture_handle(
     component: &serde_json::Value,
     key: &str,
     assets_by_id: &HashMap<&str, &AssetIr>,
     asset_server: Option<&AssetServer>,
+    bundle_path: &Path,
 ) -> Option<Handle<Image>> {
     let asset_id = component.get(key)?.as_str()?;
-    texture_handle_by_id(asset_id, assets_by_id, asset_server)
+    texture_handle_by_id(asset_id, assets_by_id, asset_server, bundle_path)
 }
 
 fn texture_handle_by_id(
     asset_id: &str,
     assets_by_id: &HashMap<&str, &AssetIr>,
     asset_server: Option<&AssetServer>,
+    bundle_path: &Path,
 ) -> Option<Handle<Image>> {
     let asset = assets_by_id.get(asset_id)?;
     if asset.kind != "texture" {
         return None;
     }
     let path = asset.path.as_ref()?;
+    let path = native_texture_sidecar_path(path, bundle_path).unwrap_or_else(|| path.clone());
     Some(
         asset_server
-            .map(|server| load_texture_asset(server, path))
+            .map(|server| load_texture_asset(server, &path))
             .unwrap_or_default(),
     )
+}
+
+fn native_texture_sidecar_path(path: &str, bundle_path: &Path) -> Option<String> {
+    let source_path = Path::new(path);
+    let stem = source_path.file_stem()?.to_str()?;
+    let parent = source_path.parent()?.to_str()?.replace('\\', "/");
+    let native_path = format!("{parent}/native/{stem}.png");
+    bundle_path
+        .join(&native_path)
+        .exists()
+        .then_some(native_path)
+}
+
+#[cfg(test)]
+mod texture_sidecar_tests {
+    use super::native_texture_sidecar_path;
+    use std::{
+        fs,
+        path::PathBuf,
+        time::{SystemTime, UNIX_EPOCH},
+    };
+
+    #[test]
+    fn native_texture_sidecar_path_supports_png_sources() {
+        let root = temp_root("tn-native-texture-sidecar-png");
+        let sidecar = root.join("assets/native/leaves-alpha-map.png");
+        fs::create_dir_all(sidecar.parent().expect("sidecar parent")).expect("sidecar dir");
+        fs::write(&sidecar, b"png").expect("sidecar fixture");
+
+        assert_eq!(
+            native_texture_sidecar_path("assets/leaves-alpha-map.png", &root),
+            Some("assets/native/leaves-alpha-map.png".to_owned())
+        );
+    }
+
+    fn temp_root(prefix: &str) -> PathBuf {
+        let root = std::env::temp_dir().join(format!(
+            "{}-{}",
+            prefix,
+            SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .expect("system time should be after unix epoch")
+                .as_nanos()
+        ));
+        fs::create_dir_all(&root).expect("temp root");
+        root
+    }
 }
 
 fn lerp_rgb(a: [f32; 3], b: [f32; 3], t: f32) -> [f32; 3] {
@@ -1447,6 +1899,9 @@ fn add_grass_blade_mesh(world: &mut World, root_color: Color, tip_color: Color) 
         );
         let center = Vec2::new(angle.cos(), angle.sin()) * ring;
         let base = positions.len() as u32;
+        let normal = Vec3::new(-bend_dir.x, 0.35, -bend_dir.y)
+            .normalize_or_zero()
+            .to_array();
         positions.extend([
             [center.x - right.x, 0.0, center.y - right.y],
             [center.x + right.x, 0.0, center.y + right.y],
@@ -1461,7 +1916,7 @@ fn add_grass_blade_mesh(world: &mut World, root_color: Color, tip_color: Color) 
                 center.y + bend_dir.y * bend,
             ],
         ]);
-        normals.extend([[0.0, 0.35, 0.94]; 4]);
+        normals.extend([normal; 4]);
         colors.extend([root_rgb, root_rgb, tip_dark, tip_rgb]);
         indices.extend([base, base + 1, base + 2, base, base + 2, base + 3]);
         indices.extend([base + 2, base + 1, base, base + 3, base + 2, base]);
@@ -1484,25 +1939,29 @@ fn add_cuboid_mesh(world: &mut World, x: f32, y: f32, z: f32) -> Handle<Mesh> {
 }
 
 fn add_stylized_material(world: &mut World, color: Color) -> Handle<StandardMaterial> {
-    add_stylized_tree_material(world, color, false)
+    add_stylized_tree_material(world, color, false, None, 0.9)
 }
 
 fn add_stylized_tree_material(
     world: &mut World,
     color: Color,
     double_sided: bool,
+    base_color_texture: Option<Handle<Image>>,
+    roughness: f32,
 ) -> Handle<StandardMaterial> {
     world
         .resource_mut::<Assets<StandardMaterial>>()
         .add(StandardMaterial {
             base_color: color,
+            base_color_texture,
             double_sided,
+            cull_mode: if double_sided { None } else { Some(Face::Back) },
             alpha_mode: if double_sided {
-                AlphaMode::Mask(0.1)
+                AlphaMode::Mask(THREE_COMPAT_LEAF_ALPHA_CUTOFF)
             } else {
                 AlphaMode::Opaque
             },
-            perceptual_roughness: 0.9,
+            perceptual_roughness: roughness,
             ..Default::default()
         })
 }
@@ -1516,7 +1975,7 @@ impl Lcg {
 
     fn next(&mut self) -> f32 {
         self.0 = self.0.wrapping_mul(1_664_525).wrapping_add(1_013_904_223);
-        self.0 as f32 / u32::MAX as f32
+        self.0 as f32 / (u32::MAX as f32 + 1.0)
     }
 }
 
@@ -3317,4 +3776,68 @@ fn emissive_luminance(material: &StandardMaterial) -> f32 {
 
 fn round_trace_value(value: f32) -> f32 {
     (value * 1_000_000.0).round() / 1_000_000.0
+}
+
+#[cfg(test)]
+mod tests {
+    use image::{Rgba, RgbaImage};
+
+    use super::{Lcg, SampledImage, StylizedSourceGroundMaps};
+
+    #[test]
+    fn sampled_image_should_match_three_uv_vertical_orientation() {
+        let mut rgba = RgbaImage::new(2, 2);
+        rgba.put_pixel(0, 0, Rgba([255, 0, 0, 255]));
+        rgba.put_pixel(0, 1, Rgba([0, 0, 255, 255]));
+        let image = SampledImage {
+            rgba,
+            width: 2,
+            height: 2,
+        };
+
+        let bottom_left = image.sample_rgb_repeat(0.0, 0.0);
+        let top_left = image.sample_rgb_repeat(0.0, 0.999);
+
+        assert!(bottom_left[2] > 0.99);
+        assert!(top_left[0] > 0.99);
+    }
+
+    #[test]
+    fn source_ground_noise_should_clamp_like_three_shader() {
+        let mut rgba = RgbaImage::new(2, 2);
+        for y in 0..2 {
+            rgba.put_pixel(0, y, Rgba([0, 0, 0, 255]));
+            rgba.put_pixel(1, y, Rgba([255, 255, 255, 255]));
+        }
+        let maps = StylizedSourceGroundMaps {
+            grass_color: None,
+            dirt_color: None,
+            dirt_ao: None,
+            dirt_height: None,
+            noise: Some(SampledImage {
+                rgba,
+                width: 2,
+                height: 2,
+            }),
+            path_mask: None,
+        };
+
+        assert!(maps.edge_noise(0.75, 0.5) > 0.99);
+    }
+
+    #[test]
+    fn lcg_should_match_web_seeded_random_sequence() {
+        let mut random = Lcg::new(1337);
+        let expected = [
+            0.754_225_55,
+            0.549_500_94,
+            0.274_493_87,
+            0.158_748_12,
+            0.449_464,
+        ];
+
+        for value in expected {
+            assert!((random.next() - value).abs() < 0.000_001);
+        }
+    }
 }

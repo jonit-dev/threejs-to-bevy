@@ -4,8 +4,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "assets:bevy-native": "node scripts/convert-glbs-native.mjs",
-    "build": "tn build",
+    "assets:bevy-native": "node scripts/convert-glbs-native.mjs && node scripts/convert-textures-native.mjs",
+    "build": "pnpm assets:bevy-native && node ../../packages/cli/dist/index.js build --project examples/stylized-nature-component",
     "dev": "tn dev",
     "preview": "tn preview"
   },

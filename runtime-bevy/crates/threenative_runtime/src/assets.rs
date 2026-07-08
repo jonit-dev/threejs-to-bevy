@@ -113,7 +113,14 @@ pub fn resolve_asset_manifest(manifest: &AssetsManifest) -> HashMap<String, Nati
 }
 
 pub fn build_texture_controls_registry(manifest: &AssetsManifest) -> TextureAssetControlsRegistry {
-    let controls = manifest
+    build_texture_controls_registry_for_environment(manifest, None)
+}
+
+pub fn build_texture_controls_registry_for_environment(
+    manifest: &AssetsManifest,
+    environment: Option<&EnvironmentSceneIr>,
+) -> TextureAssetControlsRegistry {
+    let mut controls = manifest
         .assets
         .iter()
         .filter(|asset| asset.kind == "texture")
@@ -130,7 +137,19 @@ pub fn build_texture_controls_registry(manifest: &AssetsManifest) -> TextureAsse
                 },
             ))
         })
-        .collect();
+        .collect::<HashMap<_, _>>();
+
+    if let Some(skybox_asset) = environment
+        .and_then(|environment| environment.skybox.as_ref())
+        .filter(|skybox| skybox.mode == "equirect")
+        .and_then(|skybox| skybox.asset.as_deref())
+    {
+        if let Some(control) = controls.get_mut(skybox_asset) {
+            control.wrap_s = Some("clampToEdge".to_owned());
+            control.wrap_t = Some("clampToEdge".to_owned());
+        }
+    }
+
     TextureAssetControlsRegistry(controls)
 }
 

@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use bevy::{
     gltf::GltfAssetLabel,
     math::primitives::Cuboid,
+    pbr::{NotShadowCaster, NotShadowReceiver},
     prelude::*,
     render::{
         mesh::{Indices, PrimitiveTopology},
@@ -355,24 +356,30 @@ pub fn map_environment_into_world(world: &mut World, bundle: &LoadedBundle) {
 
     if let Some(terrain) = scene.terrain.as_ref() {
         let material = material(world, Color::WHITE);
-        spawn_pbr(
+        let terrain_entity = spawn_pbr(
             world,
             &format!("terrain:{}", terrain.id),
             terrain_mesh(bundle),
             material,
             Transform::default(),
         );
+        world
+            .entity_mut(terrain_entity)
+            .insert((NotShadowCaster, NotShadowReceiver));
     }
 
     if scene.path.points.len() >= 2 {
         let material = material(world, Color::srgb(0.561, 0.478, 0.333));
-        spawn_pbr(
+        let path_entity = spawn_pbr(
             world,
             &format!("path:{}:0", scene.path.id),
             path_surface_mesh(bundle, &scene.path.points, scene.path.width),
             material,
             Transform::default(),
         );
+        world
+            .entity_mut(path_entity)
+            .insert((NotShadowCaster, NotShadowReceiver));
     }
 
     for instance in &scene.instances {

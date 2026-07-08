@@ -196,7 +196,7 @@ export async function attachStylizedSourceAssets(
     const treeCount = Math.min(Math.max(0, Math.floor(finiteNonNegative(component.treeCount, 4))), treeAnchors.length);
     for (let index = 0; index < treeCount; index += 1) {
       const [x, z, yaw, treeScale] = treeAnchors[index]!;
-      const tree = createSourceTree(trunkGltf.scene, leavesGltf.scene, component);
+      const tree = createSourceTree(trunkGltf.scene, leavesGltf.scene, component, assetsById, diagnostics, source);
       tree.name = `source-stylized-tree-${index}`;
       tree.position.set(x, stylizedTerrainHeight(x, z), z);
       tree.rotation.y = yaw;
@@ -244,6 +244,7 @@ function createSourceGrass(geometry: THREE.BufferGeometry, component: IStylizedN
   const grassCount = Math.max(0, Math.floor(finiteNonNegative(component.grassCount, STYLIZED_NATURE_RUNTIME_DEFAULTS.sourceGrassCount)));
   const size = finitePositive(component.size, STYLIZED_NATURE_RUNTIME_DEFAULTS.sourceSize);
   const pathWidth = finitePositive(component.pathWidth, STYLIZED_NATURE_RUNTIME_DEFAULTS.pathWidth);
+  const windStrength = finiteNonNegative(component.windStrength, STYLIZED_NATURE_RUNTIME_DEFAULTS.windStrength);
   const material = new THREE.MeshStandardMaterial({ color: colorToThree(component.grassRootColor ?? STYLIZED_NATURE_RUNTIME_DEFAULTS.grassMaterialColor), roughness: 0.85, side: THREE.DoubleSide });
   const mesh = new THREE.InstancedMesh(geometry.clone(), material, grassCount);
   mesh.name = "source-grass-blades-up";
@@ -256,6 +257,7 @@ function createSourceGrass(geometry: THREE.BufferGeometry, component: IStylizedN
   const quaternion = new THREE.Quaternion();
   const euler = new THREE.Euler();
   const scale = new THREE.Vector3();
+  const windInstances: IGrassWindState["instances"] = [];
   let written = 0;
   for (let attempts = 0; written < grassCount && attempts < grassCount * 4; attempts += 1) {
     const x = (random() - 0.5) * size;
@@ -270,14 +272,23 @@ function createSourceGrass(geometry: THREE.BufferGeometry, component: IStylizedN
     scale.set(instanceScale, instanceScale, instanceScale);
     matrix.compose(position, quaternion, scale);
     mesh.setMatrixAt(written, matrix);
+    windInstances.push({ phase: random() * Math.PI * 2 + x * 0.17 + z * 0.11, position: position.clone(), rotation: euler.clone(), scale: scale.clone() });
     written += 1;
   }
   mesh.count = written;
+  mesh.userData.threeNativeGrassWind = { count: written, instances: windInstances, time: 0, windStrength } satisfies IGrassWindState;
   mesh.instanceMatrix.needsUpdate = true;
   return mesh;
 }
 
-function createSourceTree(trunkScene: THREE.Object3D, leavesScene: THREE.Object3D, component: IStylizedNatureComponent): THREE.Group {
+function createSourceTree(
+  trunkScene: THREE.Object3D,
+  leavesScene: THREE.Object3D,
+  component: IStylizedNatureComponent,
+  assetsById: Map<string, IAssetIr>,
+  diagnostics: IRuntimeDiagnostic[],
+  source: string,
+): THREE.Group {
   const tree = new THREE.Group();
   const trunk = trunkScene.clone(true);
   trunk.name = "source-tree-trunk";
@@ -291,9 +302,18 @@ function createSourceTree(trunkScene: THREE.Object3D, leavesScene: THREE.Object3
   tree.add(trunk);
   const leavesGeometry = firstMeshGeometry(leavesScene);
   if (leavesGeometry !== undefined) {
+    const leafMaterial = new THREE.MeshStandardMaterial({
+      color: colorToThree(component.leafColor ?? "#4a6b27"),
+      roughness: 0.8,
+      metalness: 0,
+      side: THREE.DoubleSide,
+      alphaTest: 0.1,
+    });
+    leafMaterial.alphaMap = stylizedTexture(component.leavesAlphaMap, assetsById, diagnostics, source, "leavesAlpha") ?? null;
+    leafMaterial.needsUpdate = true;
     const leaves = new THREE.InstancedMesh(
       leavesGeometry.clone(),
-      new THREE.MeshStandardMaterial({ color: colorToThree(component.leafColor ?? "#4a6b27"), roughness: 0.8, metalness: 0, side: THREE.DoubleSide, alphaTest: 0.1 }),
+      leafMaterial,
       3,
     );
     leaves.name = "source-tree-leaves";

@@ -592,6 +592,7 @@ fn assert_directional_light(world: &mut World, id: &str) {
     assert!((color.blue - 0x88 as f32 / 255.0).abs() < 0.01);
     assert!((light.shadow_depth_bias - 0.001).abs() < 0.0001);
     assert!((light.shadow_normal_bias - 0.03).abs() < 0.0001);
+    assert!(!light.shadows_enabled);
 }
 
 fn entity_for_id(world: &mut World, id: &str) -> Entity {
@@ -1340,7 +1341,7 @@ fn cameras_without_atmosphere_should_use_three_style_neutral_exposure() {
         .expect("color parity camera should be spawned");
     assert_eq!(*camera.1, Tonemapping::None);
     assert!((camera.2.global.exposure - 0.0).abs() < 0.001);
-    assert!((camera.3.ev100 - -0.2630344).abs() < 0.001);
+    assert!((camera.3.ev100 - -0.45).abs() < 0.001);
 
     fs::remove_dir_all(root).expect("temporary bundle should be removed");
 }

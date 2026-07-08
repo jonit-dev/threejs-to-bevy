@@ -207,6 +207,7 @@ export async function renderLoadedBundle(bundle: IWebBundle, container: HTMLElem
   if (options.bookmarkId !== undefined) {
     applyEnvironmentBookmark(bundle, mapped.camera, options.bookmarkId);
   }
+  exposeDebugSceneSnapshot(mapped.scene);
   const input = createInputState(bundle.input);
   const loopState = createGameLoopState(bundle.runtimeConfig);
   const effectLog = createSystemEffectLog();
@@ -368,6 +369,34 @@ export async function renderLoadedBundle(bundle: IWebBundle, container: HTMLElem
       }
       return cloneJsonValue(findRenderedUiNode(ui.root, id)) as IRenderedUiNode | undefined;
     },
+  };
+}
+
+function exposeDebugSceneSnapshot(scene: THREE.Scene): void {
+  const objectNames: string[] = [];
+  const stylizedNature = {
+    fallbackGrass: 0,
+    sourceGrass: 0,
+    sourceLeaves: 0,
+    sourceTrees: 0,
+  };
+  scene.traverse((object) => {
+    if (object.name.length > 0) {
+      objectNames.push(object.name);
+    }
+    if (object.name === "source-grass-blades-up") {
+      stylizedNature.sourceGrass += 1;
+    } else if (object.name === "lush-stylized-grass-clumps") {
+      stylizedNature.fallbackGrass += 1;
+    } else if (object.name === "source-tree-leaves") {
+      stylizedNature.sourceLeaves += 1;
+    } else if (object.name.startsWith("source-stylized-tree-")) {
+      stylizedNature.sourceTrees += 1;
+    }
+  });
+  (globalThis as { __THREENATIVE_DEBUG_SCENE__?: unknown }).__THREENATIVE_DEBUG_SCENE__ = {
+    objectNames,
+    stylizedNature,
   };
 }
 

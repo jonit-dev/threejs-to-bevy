@@ -176,7 +176,10 @@ pub fn app_from_bundle_with_options(
                     ..Default::default()
                 }),
         );
-    app.add_plugins(emissive_postprocess::NativeEmissivePostProcessPlugin);
+    app.add_plugins((
+        emissive_postprocess::NativeEmissivePostProcessPlugin,
+        map_world::NativeEquirectSkyMaterialPlugin,
+    ));
     rendering::apply_atmosphere_to_world(app.world_mut(), &bundle);
     let environment_lighting =
         rendering::apply_environment_lighting_to_world(app.world_mut(), &bundle);

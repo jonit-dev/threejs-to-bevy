@@ -1,13 +1,13 @@
 #!/usr/bin/env node
-import { mkdtemp, rm, rename, copyFile } from "node:fs/promises";
+import { copyFile, mkdir, mkdtemp, rm } from "node:fs/promises";
 import { existsSync, readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, basename, join, resolve } from "node:path";
 import { spawnSync } from "node:child_process";
-import { NodeIO } from "@gltf-transform/core";
 
 const scriptDir = dirname(fileURLToPath(import.meta.url));
 const exampleRoot = resolve(scriptDir, "..");
+const nativeAssetDir = "assets/native";
 const assets = [
   "assets/tree-tronk-transformed.glb",
   "assets/tree-leaves-mesh.glb",
@@ -76,46 +76,17 @@ function assertNativeCompatible(glbPath) {
   }
 }
 
-async function applyNativeMaterialFixes(glbPath, relativeAssetPath) {
-  if (relativeAssetPath !== "assets/tree-leaves-mesh.glb") {
-    return;
-  }
-
-  const io = new NodeIO();
-  const document = await io.read(glbPath);
-  const root = document.getRoot();
-  const material = document
-    .createMaterial("threenative-native-leaf-green")
-    .setBaseColorFactor([0.29, 0.42, 0.15, 1.0])
-    .setRoughnessFactor(0.82)
-    .setMetallicFactor(0.0)
-    .setDoubleSided(true);
-
-  let primitiveCount = 0;
-  for (const mesh of root.listMeshes()) {
-    for (const primitive of mesh.listPrimitives()) {
-      primitive.setMaterial(material);
-      primitiveCount += 1;
-    }
-  }
-
-  if (primitiveCount === 0) {
-    throw new Error(`${relativeAssetPath} has no mesh primitives to tint for native Bevy.`);
-  }
-
-  await io.write(glbPath, document);
-}
-
 for (const relativeAssetPath of assets) {
   const inputPath = resolve(exampleRoot, relativeAssetPath);
   if (!existsSync(inputPath)) {
     throw new Error(`Missing source asset: ${relativeAssetPath}`);
   }
 
+  const outputRelativePath = join(nativeAssetDir, basename(relativeAssetPath));
+  const outputPath = resolve(exampleRoot, outputRelativePath);
   const tempDir = await mkdtemp(join(dirname(inputPath), ".native-glb-"));
   const copiedPath = join(tempDir, `${basename(inputPath, ".glb")}.decoded.glb`);
   const nativePath = join(tempDir, `${basename(inputPath, ".glb")}.native.glb`);
-  const backupPath = join(tempDir, basename(inputPath));
 
   try {
     // gltf-transform copy decodes KHR_draco_mesh_compression while preserving other model data.
@@ -125,15 +96,13 @@ for (const relativeAssetPath of assets) {
     // embedded EXT_texture_webp images are transcoded to ordinary image/png textures.
     run("pnpm", ["exec", "gltf-transform", "png", copiedPath, nativePath, "--formats", "webp"]);
 
-    await applyNativeMaterialFixes(nativePath, relativeAssetPath);
-
     assertNativeCompatible(nativePath);
 
-    await copyFile(inputPath, backupPath);
-    await rename(nativePath, inputPath);
-    assertNativeCompatible(inputPath);
+    await mkdir(dirname(outputPath), { recursive: true });
+    await copyFile(nativePath, outputPath);
+    assertNativeCompatible(outputPath);
 
-    console.log(`converted ${relativeAssetPath}`);
+    console.log(`converted ${relativeAssetPath} -> ${outputRelativePath}`);
   } finally {
     await rm(tempDir, { recursive: true, force: true });
   }

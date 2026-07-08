@@ -20,6 +20,8 @@ use threenative_runtime::{
     app_from_bundle,
     assets::{TextureAssetControlsRegistry, load_texture_asset},
     environment::apply_environment_bookmark,
+    map_world::NativeStylizedMotionTimeOverride,
+    stylized_nature::native_compatible_model_scene_path,
 };
 
 const MIN_CAPTURE_FRAME: u32 = 2;
@@ -29,6 +31,7 @@ const MAX_CAPTURE_RETRIES: u32 = 5;
 const MIN_SCREENSHOT_BYTES: u64 = 1_024;
 const MIN_SCREENSHOT_PEAK_LUMA: u8 = 35;
 const ASSET_READINESS_GRACE: Duration = Duration::from_secs(3);
+const THREE_COMPAT_CAPTURE_STYLIZED_TIME: f32 = 1.0 / 60.0;
 
 #[derive(Resource)]
 struct CaptureConfig {
@@ -149,12 +152,19 @@ fn main() -> ExitCode {
     let required_model_assets = app
         .world()
         .get_resource::<AssetServer>()
-        .map(|asset_server| required_model_assets(asset_server, &bundle.assets))
+        .map(|asset_server| {
+            required_model_assets(asset_server, &bundle.assets, &bundle.bundle_path)
+        })
         .unwrap_or_default();
+    let stylized_motion_time = env::var("THREENATIVE_CAPTURE_STYLIZED_TIME")
+        .ok()
+        .and_then(|raw| raw.parse::<f32>().ok())
+        .unwrap_or(THREE_COMPAT_CAPTURE_STYLIZED_TIME);
     app.insert_resource(CaptureConfig {
         captures,
         max_frame,
     })
+    .insert_resource(NativeStylizedMotionTimeOverride(stylized_motion_time))
     .insert_resource(WinitSettings {
         focused_mode: UpdateMode::Continuous,
         unfocused_mode: UpdateMode::Continuous,
@@ -234,13 +244,14 @@ fn prepare_output_path(output_path: &PathBuf) -> Result<(), ExitCode> {
 fn required_model_assets(
     asset_server: &AssetServer,
     manifest: &AssetsManifest,
+    bundle_path: &Path,
 ) -> RequiredModelAssets {
     RequiredModelAssets(
         manifest
             .assets
             .iter()
             .filter(|asset| asset.kind == "model")
-            .filter_map(|asset| asset.path.clone())
+            .filter_map(|asset| native_compatible_model_scene_path(asset, bundle_path))
             .map(|path| asset_server.load(bevy::gltf::GltfAssetLabel::Scene(0).from_asset(path)))
             .collect(),
     )

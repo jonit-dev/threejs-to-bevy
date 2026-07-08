@@ -9,7 +9,8 @@ use threenative_loader::{
 };
 use threenative_runtime::assets::{
     TextureAssetControls, apply_default_texture_quality, apply_texture_sampler_controls,
-    resolve_asset_manifest, texture_asset_path, trace_asset_load_synchronization,
+    build_texture_controls_registry_for_environment, resolve_asset_manifest, texture_asset_path,
+    trace_asset_load_synchronization,
 };
 
 #[test]
@@ -171,6 +172,86 @@ fn texture_sampler_controls_should_generate_srgb_mipmaps_in_linear_light() {
 
     assert_eq!(image.texture_descriptor.mip_level_count, 2);
     assert_eq!(&image.data[16..20], &[188, 188, 188, 255]);
+}
+
+#[test]
+fn texture_controls_should_clamp_equirect_skybox_like_three_background() {
+    let assets = AssetsManifest {
+        schema: "threenative.assets".to_owned(),
+        version: "0.1.0".to_owned(),
+        assets: vec![AssetIr {
+            id: "tex.sky".to_owned(),
+            kind: "texture".to_owned(),
+            format: "png".to_owned(),
+            animation_graph: None,
+            animations: None,
+            attributes: None,
+            binary_attributes: None,
+            binary_indices: None,
+            bounds: None,
+            budget: None,
+            center: None,
+            fallback: None,
+            generation: None,
+            height: None,
+            indices: None,
+            mag_filter: None,
+            masks: None,
+            min_filter: None,
+            morph_clips: None,
+            morph_targets: None,
+            offset: None,
+            particle_emitters: None,
+            primitive: None,
+            path: Some("assets/sky.png".to_owned()),
+            repeat: None,
+            rotation: None,
+            sample_count: None,
+            skeleton: None,
+            size: None,
+            topology: None,
+            usage: None,
+            variants: None,
+            width: None,
+            wrap_s: None,
+            wrap_t: None,
+        }],
+    };
+    let environment = EnvironmentSceneIr {
+        schema: "threenative.environment-scene".to_owned(),
+        version: "0.1.0".to_owned(),
+        atmosphere: None,
+        controller: None,
+        environment_map: None,
+        light_probes: Vec::new(),
+        skybox: Some(threenative_loader::SkyboxIr {
+            asset: Some("tex.sky".to_owned()),
+            faces: None,
+            intensity: None,
+            mode: "equirect".to_owned(),
+            rotation_y: None,
+        }),
+        terrain: None,
+        path: EnvironmentPathIr {
+            id: "path.main".to_owned(),
+            points: vec![[0.0, 0.0, 0.0], [1.0, 0.0, 0.0]],
+            width: 1.0,
+            clearing_radius: None,
+        },
+        source_assets: Vec::new(),
+        instances: Vec::new(),
+        scatter: Vec::new(),
+        bookmarks: Vec::new(),
+    };
+
+    let registry = build_texture_controls_registry_for_environment(&assets, Some(&environment));
+    let sky = registry
+        .0
+        .get("tex.sky")
+        .expect("sky controls should exist");
+
+    assert_eq!(sky.wrap_s.as_deref(), Some("clampToEdge"));
+    assert_eq!(sky.wrap_t.as_deref(), Some("clampToEdge"));
 }
 
 #[test]
