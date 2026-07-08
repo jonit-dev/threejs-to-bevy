@@ -29,7 +29,7 @@ may still proceed.
 3. [PRD-003 External Services, Media, And Non-Portable Boundaries](../done/PRD-003-external-services-media-boundaries.md) - done
 4. [PRD-004 Contract De-Sprawl Through Authoring Modules And Runtime Trace Contracts](PRD-004-contract-de-sprawl-authoring-runtime-traces.md)
 5. [PRD-005 Cinematic Default Look](PRD-005-cinematic-default-look.md)
-6. [PRD-006 Believable Worlds: Heightfield Terrain And Biome Dressing](PRD-006-believable-world-terrain-and-biome-dressing.md)
+6. [PRD-006 Believable Worlds: Heightfield Terrain And Biome Dressing](../done/proof-first-engine-loop-2026-07-05/PRD-006-believable-world-terrain-and-biome-dressing.md) - done
 7. [PRD-007 Runtime-Proven Efficient Scale](PRD-007-runtime-proven-efficient-scale.md)
 8. [PRD-008 Declarative Gameplay Flow](PRD-008-declarative-gameplay-flow-spawners-sequencer.md)
 9. [PRD-009 Actor Archetypes And Typed Scripting](PRD-009-actor-archetypes-and-typed-scripting.md)

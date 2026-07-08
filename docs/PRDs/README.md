@@ -183,7 +183,7 @@ execution bundle.
   promote `cinematic`/`stylized` render-look profiles with per-target quality
   ladders, make cinematic the zero-config default for new projects, and gate
   the default look against regression with committed reference evidence.
-- [Believable Worlds: Heightfield Terrain and Biome Dressing](proof-first-engine-loop-2026-07-05/PRD-006-believable-world-terrain-and-biome-dressing.md):
+- [Believable Worlds: Heightfield Terrain and Biome Dressing](done/proof-first-engine-loop-2026-07-05/PRD-006-believable-world-terrain-and-biome-dressing.md):
   rendered+collidable heightfield terrain on both runtimes,
   compiler-expanded deterministic scatter layers, and `tn world generate` /
   `tn world proof` biome source/proof commands with catalog provenance.

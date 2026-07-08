@@ -656,16 +656,13 @@ Practical order for game-polish work:
 - [x] `P2` Gizmo geometry as debug/editor-only output
 - [x] `P2` Runtime mesh deformation diagnostic boundary
 - [x] `P2` Chunked/streamed mesh terrain and world geometry policy
-  - [ ] PRD-006 has started with contract-only structured heightmap assets,
-        terrain heightmap references, splat-layer validation, target
-        cell-budget diagnostics, compiler terrain chunk mesh emission, and
-        heightfield collider descriptors. Web and Bevy runtimes now render
-        generated terrain chunk meshes; Bevy bundle physics maps generated
-        terrain mesh samples into synthetic Rapier heightfield colliders.
-        Compiler scatter expansion now uses deterministic terrain height, slope,
-        path, and exclusion filters. `tn world generate`/`tn world proof` now
-        emit seeded biome terrain/scatter source and proof artifacts. PRD-006
-        remains open for remaining promotion evidence and manual visual proof.
+  - [x] PRD-006 closed with structured heightmap assets, terrain heightmap
+        references, splat-layer validation, target cell-budget diagnostics,
+        compiler terrain chunk mesh emission, heightfield collider descriptors,
+        web/Bevy generated terrain chunk rendering, Bevy heightfield collision,
+        deterministic terrain-aware scatter expansion, and seeded
+        `tn world generate`/`tn world proof` biome terrain/scatter source,
+        flat-heightmap rejection, and preview proof artifacts.
 - [x] `P3` CSG and boolean mesh operations diagnostic boundary
 - [x] `P3` Storage-buffer/shader-driven procedural geometry diagnostic boundary
 
