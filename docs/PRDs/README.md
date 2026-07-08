@@ -77,7 +77,7 @@ execution bundle.
   `ctx.audio` play/stop/query over declared audio IR with logical playback IDs,
   private runtime handles, and stable unsupported streaming/platform
   diagnostics.
-- [Runtime-Proven Efficient Scale](proof-first-engine-loop-2026-07-05/PRD-007-runtime-proven-efficient-scale.md):
+- [Runtime-Proven Efficient Scale](done/proof-first-engine-loop-2026-07-05/PRD-007-runtime-proven-efficient-scale.md) - done:
   measured dense-world performance proof, target-profile budget enforcement,
   instancing/LOD benchmark gates, native/web metric sidecars, and texture
   variant delivery budgets.
