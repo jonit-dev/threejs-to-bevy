@@ -159,6 +159,110 @@ fn character_trace_should_step_onto_low_blockers() {
 }
 
 #[test]
+fn character_trace_should_climb_sequential_risers() {
+    let root = write_character_bundle();
+    write(
+        &root,
+        "world.ir.json",
+        r#"{
+  "schema": "threenative.world",
+  "version": "0.1.0",
+  "entities": [
+    {
+      "id": "step.01",
+      "components": {
+        "Collider": { "kind": "box", "size": [1, 0.4, 1] },
+        "RigidBody": { "kind": "static" },
+        "Transform": { "position": [2, 0.2, 0] }
+      }
+    },
+    {
+      "id": "step.02",
+      "components": {
+        "Collider": { "kind": "box", "size": [1, 0.8, 1] },
+        "RigidBody": { "kind": "static" },
+        "Transform": { "position": [4, 0.4, 0] }
+      }
+    },
+    {
+      "id": "step.03",
+      "components": {
+        "Collider": { "kind": "box", "size": [1, 1.2, 1] },
+        "RigidBody": { "kind": "static" },
+        "Transform": { "position": [6, 0.6, 0] }
+      }
+    },
+    {
+      "id": "floor",
+      "components": {
+        "Collider": { "kind": "box", "size": [12, 0.1, 6] },
+        "RigidBody": { "kind": "static" },
+        "Transform": { "position": [0, 0, 0] }
+      }
+    },
+    {
+      "id": "player",
+      "components": {
+        "CharacterController": {
+          "blocking": true,
+          "grounding": "raycast",
+          "moveXAxis": "MoveX",
+          "moveZAxis": "MoveZ",
+          "speed": 2,
+          "stepOffset": 0.5
+        },
+        "Collider": { "kind": "box", "size": [1, 2, 1] },
+        "RigidBody": { "kind": "kinematic" },
+        "Transform": { "position": [0, 1, 0] }
+      }
+    }
+  ]
+}"#,
+    );
+    let mut bundle = load_bundle(&root).expect("character bundle should load");
+    let mut grounded_steps = Vec::new();
+    let mut resolved_y = Vec::new();
+
+    for _ in 0..3 {
+        let trace = trace_character_controllers(
+            &bundle,
+            &[CharacterTraceAxis {
+                id: "MoveX",
+                value: 1.0,
+            }],
+            1.0,
+        );
+        grounded_steps.push(trace[0].ground_entity.clone());
+        resolved_y.push(trace[0].resolved[1]);
+        let player = bundle
+            .world
+            .entities
+            .iter_mut()
+            .find(|entity| entity.id == "player")
+            .expect("player entity should exist");
+        player.components.transform = Some(threenative_loader::TransformComponent {
+            position: Some(trace[0].resolved),
+            rotation: None,
+            scale: None,
+        });
+    }
+
+    assert_eq!(
+        grounded_steps,
+        vec![
+            Some("step.01".to_owned()),
+            Some("step.02".to_owned()),
+            Some("step.03".to_owned())
+        ]
+    );
+    assert_approx_eq(resolved_y[0], 1.4);
+    assert_approx_eq(resolved_y[1], 1.8);
+    assert_approx_eq(resolved_y[2], 2.2);
+
+    fs::remove_dir_all(root).expect("temporary bundle should be removed");
+}
+
+#[test]
 fn character_trace_should_report_ledges_and_moving_platforms() {
     let root = write_character_bundle();
     write(
@@ -437,4 +541,11 @@ fn write_character_bundle() -> PathBuf {
 
 fn write(root: &PathBuf, file: &str, contents: &str) {
     fs::write(root.join(file), contents).expect("bundle file should be written");
+}
+
+fn assert_approx_eq(actual: f32, expected: f32) {
+    assert!(
+        (actual - expected).abs() < 0.0001,
+        "expected {actual} to be approximately {expected}"
+    );
 }

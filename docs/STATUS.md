@@ -36,7 +36,7 @@ in scripts, examples, and historical docs during a staged cleanup. See
 | Native parity | Frozen for promotion | Bevy consumes emitted IR; the native playtest P0 is closed, and new native promotions require shipped-game evidence, native proof, and the native path decision. | [native parity](status/capabilities/native-parity.md) |
 | Game production | Active | Generated games target polished vertical slices with selectable L1 archetype scaffolds, compositional mechanic blocks, proof-family plan-apply scenarios, and equal-proof collector token evidence below vanilla. | [game production](status/capabilities/game-production.md) |
 | Editor | In progress | Editor and MCP surfaces must wrap authoring operations rather than owning a second source model. | [editor](status/capabilities/editor.md) |
-| Tooling/proof | Active | Verification tools own docs checks, agent IO/session-cost/retry-chain/churn budgets, runtime resource/state-stagnation diagnostics, smoke/release gates, proof manifests, aggregate artifacts, and equal-proof benchmark token reporting. | [tooling/proof](status/capabilities/tooling-proof.md) |
+| Tooling/proof | Active | Verification tools own docs checks, agent IO/session-cost/retry-chain/churn budgets, runtime resource/state-stagnation diagnostics, secondary axis-delta playtest proof, smoke/release gates, proof manifests, aggregate artifacts, and equal-proof benchmark token reporting. | [tooling/proof](status/capabilities/tooling-proof.md) |
 
 ## Current PRDs
 

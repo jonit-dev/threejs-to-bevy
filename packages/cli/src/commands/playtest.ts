@@ -530,9 +530,10 @@ async function runNativePlaytest(options: IPlaytestRunOptions, bevyRunner: BevyR
     },
   });
   const readinessSamples = await collectNativeReadiness(process, readinessPath, nativeHarnessTimeoutMs(options.scenario));
-  const before = transformSampleNearTick(readinessSamples, options.entityId, captureTicks.beforeTick, "before");
+  const beforeMode = (options.scenario.setup?.entities?.length ?? 0) > 0 ? "after" : "before";
+  const before = transformSampleNearTick(readinessSamples, options.entityId, captureTicks.beforeTick, beforeMode);
   const after = transformSampleNearTick(readinessSamples, options.entityId, captureTicks.afterTick, "after");
-  const followBefore = options.follow === undefined ? undefined : transformSampleNearTick(readinessSamples, options.follow.entityId, captureTicks.beforeTick, "before");
+  const followBefore = options.follow === undefined ? undefined : transformSampleNearTick(readinessSamples, options.follow.entityId, captureTicks.beforeTick, beforeMode);
   const followAfter = options.follow === undefined ? undefined : transformSampleNearTick(readinessSamples, options.follow.entityId, captureTicks.afterTick, "after");
   const diagnostics: IPlaytestDiagnostic[] = readinessSamples
     .flatMap((sample) => Array.isArray(sample.diagnostics) ? sample.diagnostics : [])
@@ -635,6 +636,16 @@ function nativeHarnessCommandStream(scenario: IPlaytestScenario, artifacts: { af
   const commands: Array<Record<string, unknown>> = [];
   const captureTicks = nativeScenarioCaptureTicks(scenario);
   let tick = captureTicks.beforeTick + 1;
+  for (const setup of scenario.setup?.entities ?? []) {
+    commands.push({
+      entity: setup.entity,
+      ...(setup.position === undefined ? {} : { position: setup.position }),
+      ...(setup.rotation === undefined ? {} : { rotation: setup.rotation }),
+      ...(setup.scale === undefined ? {} : { scale: setup.scale }),
+      tick: captureTicks.beforeTick,
+      type: "setTransform",
+    });
+  }
   if (artifacts.beforeArtifact !== undefined) {
     commands.push({ path: artifacts.beforeArtifact, tick: captureTicks.beforeTick, type: "screenshot" });
   }

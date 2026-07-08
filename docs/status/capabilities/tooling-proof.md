@@ -60,7 +60,9 @@ Current support:
   repeat without new diagnostic information. Rich resource assertions now emit
   `TN_PLAYTEST_RESOURCE_STATE_STAGNATED` when a scenario moves the subject but
   an asserted resource path stays unchanged, including owning-system evidence
-  from `effect-log.json` when available.
+  from `effect-log.json` when available. Movement assertions also support
+  `minAxisDelta` for secondary signed-axis proof, such as requiring positive Y
+  gain while the primary route asserts forward motion.
 - `pnpm check:docs` for docs consistency and STATUS index budget.
 - `pnpm verify:smoke`, `pnpm verify:pre-push`, and `pnpm verify:release` for
   escalating proof levels.

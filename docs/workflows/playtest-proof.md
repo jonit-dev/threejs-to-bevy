@@ -34,14 +34,21 @@ other authored interaction without depending on a long navigation prelude.
   "setup": { "entities": [{ "entity": "player", "position": [-2.35, 0.02, 3.8] }] },
   "steps": [{ "press": "KeyW", "holdFrames": 28, "release": true }],
   "assert": {
-    "movement": { "entity": "player", "axis": "-z", "minDistance": 1 },
+    "movement": {
+      "entity": "player",
+      "axis": "-z",
+      "minAxisDelta": { "axis": "+y", "min": 0.2 },
+      "minDistance": 1
+    },
     "contacts": [{ "entity": "player", "with": "stairs.step.03", "minCount": 1 }]
   }
 }
 ```
 
 When the intended input should move on a specific coordinate, include an axis
-assertion:
+assertion. Use `movement.axis` for the primary signed direction and
+`movement.minAxisDelta` when the final transform must also prove a second axis,
+such as gaining height while climbing stairs.
 
 ```bash
 tn playtest --project examples/lantern-orchard --entity player --press KeyD --frames 45 --expect-moved --expect-axis x --json
@@ -57,6 +64,8 @@ Successful reports include:
 - `before` and `after` transform samples for the target entity
 - movement `distance`
 - `movementDelta` and optional `expectAxis` when an axis assertion is requested
+- rich assertion results such as `movement.axisDelta` when scenarios include
+  `movement.minAxisDelta`
 - the pressed input code and frame count
 - a screenshot artifact path
 - `runtime: "web"` to make the current proof target explicit

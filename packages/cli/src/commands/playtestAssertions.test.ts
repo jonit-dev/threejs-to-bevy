@@ -145,6 +145,34 @@ test("hud assertions should explain unchanged observed text", () => {
   assert.match(result.diagnostics[0]?.suggestion ?? "", /tn build/);
 });
 
+test("movement axis delta assertions should pass when signed movement reaches threshold", () => {
+  const result = evaluateRichPlaytestAssertions({
+    report: {
+      ...reportWithRuntimeDiagnostics("web", {}),
+      movementDelta: [0.1, 0.24, -1.3],
+    },
+    scenario: movementAxisDeltaScenario("+y", 0.2),
+  });
+
+  const assertion = result.assertions.find((item) => item.id === "movement.axisDelta");
+  assert.equal(assertion?.pass, true);
+  assert.equal(result.diagnostics.length, 0);
+});
+
+test("movement axis delta assertions should fail when signed movement is below threshold", () => {
+  const result = evaluateRichPlaytestAssertions({
+    report: {
+      ...reportWithRuntimeDiagnostics("web", {}),
+      movementDelta: [0.1, 0.04, -1.3],
+    },
+    scenario: movementAxisDeltaScenario("+y", 0.2),
+  });
+
+  const assertion = result.assertions.find((item) => item.id === "movement.axisDelta");
+  assert.equal(assertion?.pass, false);
+  assert.equal(result.diagnostics[0]?.code, "TN_PLAYTEST_AXIS_DELTA_ASSERTION_FAILED");
+});
+
 function visibilityScenario(target: "desktop" | "web"): IPlaytestScenario {
   return {
     assert: {
@@ -155,6 +183,21 @@ function visibilityScenario(target: "desktop" | "web"): IPlaytestScenario {
     steps: [{ holdFrames: 1, release: false }],
     subject: "player",
     target,
+    viewport: { height: 720, width: 1280 },
+    warmupFrames: 0,
+  };
+}
+
+function movementAxisDeltaScenario(axis: string, min: number): IPlaytestScenario {
+  return {
+    assert: {
+      movement: { entity: "player", minAxisDelta: { axis, min } },
+    },
+    name: "movement-axis-delta",
+    schemaVersion: 1,
+    steps: [{ holdFrames: 1, release: false }],
+    subject: "player",
+    target: "web",
     viewport: { height: 720, width: 1280 },
     warmupFrames: 0,
   };

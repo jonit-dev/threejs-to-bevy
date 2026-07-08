@@ -460,10 +460,22 @@ test("playtest command should reject invalid scenario files with stable diagnost
 test("playtest command should run desktop target through native proof harness", async () => {
   const root = await playtestTempRoot();
   await cp(join(import.meta.dirname, "../template-files/structured-source-starter"), root, { recursive: true });
+  await writeFile(
+    join(root, "desktop-setup.playtest.json"),
+    JSON.stringify({
+      schemaVersion: 1,
+      name: "desktop-setup",
+      subject: "player",
+      setup: { entities: [{ entity: "player", position: [0, 0.02, 5] }] },
+      steps: [{ press: "KeyW", holdFrames: 30, release: true }],
+      assert: { movement: { entity: "player", axis: "-z", minDistance: 1 } },
+    }),
+    "utf8",
+  );
   let commandStreamPath: string | undefined;
   let readinessOutPath: string | undefined;
   const result = await playtestCommand(
-    ["--project", ".", "--target", "desktop", "--entity", "player", "--press", "KeyW", "--frames", "30", "--expect-moved", "--json"],
+    ["--project", ".", "--target", "desktop", "--scenario", "desktop-setup.playtest.json", "--json"],
     root,
     {
       bevyRunner: (invocation) => {
@@ -488,6 +500,20 @@ test("playtest command should run desktop target through native proof harness", 
             })}\n`,
             "utf8",
           );
+          await new Promise((resolve) => setTimeout(resolve, 20));
+          await writeFile(
+            readinessOutPath,
+            `${JSON.stringify({
+              diagnostics: [],
+              ok: true,
+              performance: { elapsed_ms: 16.6667, fps: 60, frame_ms: 16.6667 },
+              schema: "threenative.native-proof-readiness",
+              tick: 6,
+              transforms: [{ entity: "player", position: [0, 0, 0] }],
+              version: "0.1.0",
+            })}\n`,
+            "utf8",
+          );
           await new Promise((resolve) => setTimeout(resolve, 35));
           await writeFile(join(dirname(readinessOutPath), "after.png"), "fake-native-after-png");
           await writeFile(
@@ -498,7 +524,7 @@ test("playtest command should run desktop target through native proof harness", 
               performance: { elapsed_ms: 33.3334, fps: 30, frame_ms: 33.3334 },
               schema: "threenative.native-proof-readiness",
               tick: 37,
-              transforms: [{ entity: "player", position: [0, 0, -1] }],
+              transforms: [{ entity: "player", position: [0, 0, -1.1] }],
               version: "0.1.0",
             })}\n`,
             "utf8",
@@ -511,7 +537,7 @@ test("playtest command should run desktop target through native proof harness", 
     },
   );
   const payload = JSON.parse(result.stdout) as { artifacts: { nativeFrameSamples: string; observations: string; summary: string }; code: string; distance: number; runtime: string; target: string };
-  const commandStream = JSON.parse(await readFile(commandStreamPath ?? "", "utf8")) as { commands: Array<{ code?: string; frames?: number; pressed?: boolean; tick: number; type: string }> };
+  const commandStream = JSON.parse(await readFile(commandStreamPath ?? "", "utf8")) as { commands: Array<{ code?: string; entity?: string; frames?: number; position?: number[]; pressed?: boolean; tick: number; type: string }> };
   const summary = JSON.parse(await readFile(payload.artifacts.summary, "utf8")) as { diagnostics: unknown[]; movementDelta: number[]; nativeRecording: { frames: Array<{ byteSize: number; tick: number }> }; performance: { framesOverBudget: number; measurement: string; note: string; sampleCount: number; scope: string; source: string; worstFrameMs: number }; runtime: string; target: string };
   const nativeFrameSamples = JSON.parse(await readFile(payload.artifacts.nativeFrameSamples, "utf8")) as { samples: Array<{ frameMs: number; tick: number }>; summaries: { all: { sampleCount: number; worstFrameMs: number }; dropFirst: { sampleCount: number; worstFrameMs: number } } };
   const observations = JSON.parse(await readFile(payload.artifacts.observations, "utf8")) as { runtimeDiagnostics: { readiness: Array<{ tick: number }> } };
@@ -520,8 +546,8 @@ test("playtest command should run desktop target through native proof harness", 
   assert.equal(payload.code, "TN_PLAYTEST_OK");
   assert.equal(payload.runtime, "bevy");
   assert.equal(payload.target, "desktop");
-  assert.equal(payload.distance, 1);
-  assert.deepEqual(summary.movementDelta, [0, 0, -1]);
+  assert.equal(payload.distance, 1.1);
+  assert.deepEqual(summary.movementDelta, [0, 0, -1.1]);
   assert.deepEqual(summary.diagnostics, []);
   assert.deepEqual(summary.nativeRecording.frames, []);
   assert.equal(summary.performance.source, "native-proof-harness");
@@ -532,7 +558,7 @@ test("playtest command should run desktop target through native proof harness", 
   assert.equal(summary.performance.framesOverBudget, 1);
   assert.equal(summary.performance.worstFrameMs, 33.3334);
   assert.deepEqual(nativeFrameSamples.samples.map((sample) => ({ frameMs: sample.frameMs, tick: sample.tick })), [
-    { frameMs: 16, tick: 0 },
+    { frameMs: 16.6667, tick: 6 },
     { frameMs: 33.3334, tick: 37 },
   ]);
   assert.equal(nativeFrameSamples.summaries.all.sampleCount, 2);
@@ -540,12 +566,13 @@ test("playtest command should run desktop target through native proof harness", 
   assert.equal(nativeFrameSamples.summaries.dropFirst.worstFrameMs, 33.3334);
   assert.equal(summary.runtime, "bevy");
   assert.equal(summary.target, "desktop");
-  assert.deepEqual(commandStream.commands.map((command) => ({ code: command.code, frames: command.frames, pressed: command.pressed, tick: command.tick, type: command.type })), [
-    { code: "KeyW", frames: undefined, pressed: true, tick: 6, type: "key" },
-    { code: "KeyW", frames: undefined, pressed: false, tick: 36, type: "key" },
-    { code: undefined, frames: undefined, pressed: undefined, tick: 38, type: "exit" },
+  assert.deepEqual(commandStream.commands.map((command) => ({ code: command.code, entity: command.entity, frames: command.frames, position: command.position, pressed: command.pressed, tick: command.tick, type: command.type })), [
+    { code: undefined, entity: "player", frames: undefined, position: [0, 0.02, 5], pressed: undefined, tick: 5, type: "setTransform" },
+    { code: "KeyW", entity: undefined, frames: undefined, position: undefined, pressed: true, tick: 6, type: "key" },
+    { code: "KeyW", entity: undefined, frames: undefined, position: undefined, pressed: false, tick: 36, type: "key" },
+    { code: undefined, entity: undefined, frames: undefined, position: undefined, pressed: undefined, tick: 38, type: "exit" },
   ]);
-  assert.deepEqual(observations.runtimeDiagnostics.readiness.map((sample) => sample.tick), [0, 37]);
+  assert.deepEqual(observations.runtimeDiagnostics.readiness.map((sample) => sample.tick), [6, 37]);
 });
 
 test("playtest command should ignore stale native readiness in reused artifact directories", async () => {

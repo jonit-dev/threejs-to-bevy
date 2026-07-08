@@ -113,6 +113,62 @@ fn should_apply_shift_modifier_with_movement_key() {
 }
 
 #[test]
+fn should_apply_transform_setup_commands() {
+    let root = temp_dir("transform-setup");
+    let readiness_path = root.join("readiness.json");
+    let mut app = App::new();
+    app.add_event::<AppExit>();
+    app.insert_resource(ButtonInput::<KeyCode>::default());
+    app.world_mut().spawn((
+        ThreeNativeId("player".to_owned()),
+        Transform::from_xyz(0.0, 0.0, 0.0),
+        GlobalTransform::default(),
+    ));
+    app.insert_resource(NativeProofHarnessState::from_stream(
+        NativeProofHarnessCommandStream {
+            schema: "threenative.native-proof-harness".to_owned(),
+            version: "0.1.0".to_owned(),
+            commands: vec![
+                serde_json::from_value::<NativeProofHarnessCommand>(serde_json::json!({
+                    "tick": 0,
+                    "type": "setTransform",
+                    "entity": "player",
+                    "position": [1.0, 2.0, 3.0],
+                    "rotation": [0.0, 0.0, 0.0, 1.0],
+                    "scale": [2.0, 2.0, 2.0]
+                }))
+                .expect("command should parse"),
+            ],
+        },
+        readiness_path.display().to_string(),
+    ));
+    app.add_systems(PreUpdate, apply_native_proof_harness_commands);
+    app.update();
+
+    let transform = {
+        let world = app.world_mut();
+        let mut query = world.query::<(&ThreeNativeId, &Transform)>();
+        query
+            .iter(world)
+            .find(|(id, _)| id.0 == "player")
+            .map(|(_, transform)| *transform)
+            .expect("player transform should exist")
+    };
+    assert_eq!(transform.translation, Vec3::new(1.0, 2.0, 3.0));
+    assert_eq!(transform.scale, Vec3::new(2.0, 2.0, 2.0));
+
+    let readiness = fs::read_to_string(&readiness_path).expect("readiness should be written");
+    let payload: serde_json::Value =
+        serde_json::from_str(&readiness).expect("readiness should be valid json");
+    assert_eq!(
+        payload["transforms"],
+        serde_json::json!([{ "entity": "player", "position": [1.0, 2.0, 3.0] }])
+    );
+
+    fs::remove_dir_all(root).expect("temp proof harness dir should be removed");
+}
+
+#[test]
 fn should_write_readiness_json_matching_schema() {
     let root = temp_dir("readiness");
     let stream_path = root.join("commands.json");

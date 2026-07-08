@@ -144,6 +144,41 @@ test("character trace should step onto low blockers within step offset", () => {
   ]);
 });
 
+test("character trace should climb sequential risers within step offset", () => {
+  const world = makeCharacterWorld();
+  world.entities = world.entities.filter((entity) => entity.id !== "wall");
+  const floor = world.entities.find((entity) => entity.id === "floor");
+  if (floor !== undefined) {
+    floor.components.Collider = { kind: "box", size: [12, 0.1, 6] };
+  }
+  world.entities.push(
+    stepEntity("step.01", [2, 0.2, 0], [1, 0.4, 1]),
+    stepEntity("step.02", [4, 0.4, 0], [1, 0.8, 1]),
+    stepEntity("step.03", [6, 0.6, 0], [1, 1.2, 1]),
+  );
+  const player = world.entities.find((entity) => entity.id === "player");
+  if (player?.components.CharacterController !== undefined) {
+    player.components.CharacterController.stepOffset = 0.5;
+  }
+
+  const groundedSteps: Array<string | undefined> = [];
+  const resolvedY: number[] = [];
+  for (let tick = 0; tick < 3; tick += 1) {
+    const trace = traceCharacterControllers(world, {
+      axes: { MoveX: 1, MoveZ: 0 },
+      fixedDelta: 1,
+    });
+    groundedSteps.push(trace[0]?.groundEntity);
+    resolvedY.push(trace[0]?.resolved[1] ?? 0);
+    if (player !== undefined && trace[0] !== undefined) {
+      player.components.Transform = { position: trace[0].resolved };
+    }
+  }
+
+  assert.deepEqual(groundedSteps, ["step.01", "step.02", "step.03"]);
+  assert.deepEqual(resolvedY.map((value) => Number(value.toFixed(4))), [1.4, 1.8, 2.2]);
+});
+
 test("character trace should enter low step contacts before the center is over the tread", () => {
   const world = makeCharacterWorld();
   const wall = world.entities.find((entity) => entity.id === "wall");
@@ -401,5 +436,16 @@ function makeCharacterWorld(): IWorldIr {
         },
       },
     ],
+  };
+}
+
+function stepEntity(id: string, position: [number, number, number], size: [number, number, number]): IWorldIr["entities"][number] {
+  return {
+    id,
+    components: {
+      Collider: { kind: "box", size },
+      RigidBody: { kind: "static" },
+      Transform: { position },
+    },
   };
 }

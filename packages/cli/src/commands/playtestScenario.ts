@@ -19,6 +19,10 @@ export interface IPlaytestStep {
 export interface IPlaytestMovementAssertion {
   axis?: string;
   entity?: string;
+  minAxisDelta?: {
+    axis: string;
+    min: number;
+  };
   minDistance?: number;
   minVelocity?: number;
   rotationChanged?: boolean;
@@ -333,6 +337,9 @@ function validateAssertions(value: Record<string, unknown>): IPlaytestScenarioAs
           movement: {
             ...(typeof movement.axis === "string" ? { axis: movement.axis } : {}),
             ...(typeof movement.entity === "string" ? { entity: movement.entity } : {}),
+            ...(isRecord(movement.minAxisDelta) && typeof movement.minAxisDelta.axis === "string" && typeof movement.minAxisDelta.min === "number" && Number.isFinite(movement.minAxisDelta.min)
+              ? { minAxisDelta: { axis: movement.minAxisDelta.axis, min: movement.minAxisDelta.min } }
+              : {}),
             ...(typeof movement.minDistance === "number" && Number.isFinite(movement.minDistance) ? { minDistance: movement.minDistance } : {}),
             ...(typeof movement.minVelocity === "number" && Number.isFinite(movement.minVelocity) ? { minVelocity: movement.minVelocity } : {}),
             ...(typeof movement.rotationChanged === "boolean" ? { rotationChanged: movement.rotationChanged } : {}),

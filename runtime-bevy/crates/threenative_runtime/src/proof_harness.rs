@@ -19,14 +19,14 @@ use image::GenericImageView;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use threenative_components::ThreeNativeId;
-use threenative_loader::AssetsManifest;
+use threenative_loader::{AssetsManifest, TransformComponent};
 
 use crate::{input::portable_key_code, systems_host::NativeResourceObservationState};
 
 const MIN_PROOF_SCREENSHOT_BYTES: u64 = 1024;
 const MIN_PROOF_SCREENSHOT_PEAK_LUMA: u8 = 16;
 
-#[derive(Clone, Debug, Deserialize, PartialEq, Eq)]
+#[derive(Clone, Debug, Deserialize, PartialEq)]
 pub struct NativeProofHarnessCommandStream {
     pub schema: String,
     pub version: String,
@@ -34,19 +34,35 @@ pub struct NativeProofHarnessCommandStream {
     pub commands: Vec<NativeProofHarnessCommand>,
 }
 
-#[derive(Clone, Debug, Deserialize, PartialEq, Eq)]
+#[derive(Clone, Debug, Deserialize, PartialEq)]
 pub struct NativeProofHarnessCommand {
     pub tick: u64,
     #[serde(flatten)]
     pub action: NativeProofHarnessAction,
 }
 
-#[derive(Clone, Debug, Deserialize, PartialEq, Eq)]
+#[derive(Clone, Debug, Deserialize, PartialEq)]
 #[serde(tag = "type", rename_all = "camelCase")]
 pub enum NativeProofHarnessAction {
-    Key { code: String, pressed: bool },
-    Advance { frames: u64 },
-    Screenshot { path: String },
+    Key {
+        code: String,
+        pressed: bool,
+    },
+    SetTransform {
+        entity: String,
+        #[serde(default)]
+        position: Option<[f32; 3]>,
+        #[serde(default)]
+        rotation: Option<[f32; 4]>,
+        #[serde(default)]
+        scale: Option<[f32; 3]>,
+    },
+    Advance {
+        frames: u64,
+    },
+    Screenshot {
+        path: String,
+    },
     Exit,
 }
 
@@ -250,9 +266,13 @@ pub fn apply_native_proof_harness_commands(
     mut exit: EventWriter<AppExit>,
     windows: Query<Entity, With<PrimaryWindow>>,
     mut screenshots: Option<ResMut<ScreenshotManager>>,
-    transforms: Query<(&ThreeNativeId, &Transform)>,
+    mut transforms: ParamSet<(
+        Query<(&ThreeNativeId, &mut Transform)>,
+        Query<(&ThreeNativeId, &Transform)>,
+    )>,
     asset_server: Option<Res<AssetServer>>,
     required_models: Option<Res<NativeProofHarnessRequiredModels>>,
+    mut runtime: Option<ResMut<crate::ScriptedRuntimeBundle>>,
     mut ui_cameras: Query<(Entity, &mut Camera), With<IsDefaultUiCamera>>,
     scene_cameras: Query<(Entity, &Camera), Without<IsDefaultUiCamera>>,
     root_ui_nodes: Query<Entity, (With<Node>, Without<Parent>)>,
@@ -267,7 +287,7 @@ pub fn apply_native_proof_harness_commands(
             tick,
             diagnostics,
             performance,
-            transforms.iter(),
+            transforms.p1().iter(),
             resource_observations.as_deref().cloned(),
         );
         return;
@@ -294,6 +314,47 @@ pub fn apply_native_proof_harness_commands(
                     diagnostics.push(NativeProofHarnessDiagnostic {
                         code: "TN_NATIVE_PROOF_INPUT_UNSUPPORTED".to_owned(),
                         message: format!("Keyboard code '{code}' is not portable."),
+                        severity: "error".to_owned(),
+                    });
+                }
+            }
+            NativeProofHarnessAction::SetTransform {
+                entity,
+                position,
+                rotation,
+                scale,
+            } => {
+                let mut applied = false;
+                for (id, mut transform) in transforms.p0().iter_mut() {
+                    if id.0 == entity {
+                        if let Some([x, y, z]) = position {
+                            transform.translation = Vec3::new(x, y, z);
+                        }
+                        if let Some([x, y, z, w]) = rotation {
+                            transform.rotation = Quat::from_xyzw(x, y, z, w);
+                        }
+                        if let Some([x, y, z]) = scale {
+                            transform.scale = Vec3::new(x, y, z);
+                        }
+                        applied = true;
+                        break;
+                    }
+                }
+                if let Some(runtime) = runtime.as_deref_mut() {
+                    applied = apply_bundle_transform_setup(
+                        &mut runtime.bundle,
+                        &entity,
+                        position,
+                        rotation,
+                        scale,
+                    ) || applied;
+                }
+                if !applied {
+                    diagnostics.push(NativeProofHarnessDiagnostic {
+                        code: "TN_NATIVE_PROOF_SETUP_ENTITY_NOT_FOUND".to_owned(),
+                        message: format!(
+                            "Native proof harness could not apply Transform override for entity '{entity}'."
+                        ),
                         severity: "error".to_owned(),
                     });
                 }
@@ -336,11 +397,50 @@ pub fn apply_native_proof_harness_commands(
         tick,
         diagnostics,
         performance,
-        transforms.iter(),
+        transforms.p1().iter(),
         resource_observations.as_deref().cloned(),
     );
     if !hold_tick {
         state.tick += advance_ticks;
+    }
+}
+
+fn apply_bundle_transform_setup(
+    bundle: &mut threenative_loader::LoadedBundle,
+    entity_id: &str,
+    position: Option<[f32; 3]>,
+    rotation: Option<[f32; 4]>,
+    scale: Option<[f32; 3]>,
+) -> bool {
+    let Some(entity) = bundle
+        .world
+        .entities
+        .iter_mut()
+        .find(|entity| entity.id == entity_id)
+    else {
+        return false;
+    };
+    let transform = entity
+        .components
+        .transform
+        .get_or_insert_with(default_bundle_transform);
+    if let Some(position) = position {
+        transform.position = Some(position);
+    }
+    if let Some(rotation) = rotation {
+        transform.rotation = Some(rotation);
+    }
+    if let Some(scale) = scale {
+        transform.scale = Some(scale);
+    }
+    true
+}
+
+fn default_bundle_transform() -> TransformComponent {
+    TransformComponent {
+        position: Some([0.0, 0.0, 0.0]),
+        rotation: Some([0.0, 0.0, 0.0, 1.0]),
+        scale: Some([1.0, 1.0, 1.0]),
     }
 }
 

@@ -436,6 +436,35 @@
           "kind": "box",
           "layer": "world",
           "size": [
+            2.2,
+            0.66,
+            1.0
+          ]
+        },
+        "MeshRenderer": {
+          "material": "mat.course.surface",
+          "mesh": "mesh.step.high",
+          "receiveShadow": true
+        },
+        "RigidBody": {
+          "kind": "static"
+        }
+      },
+      "id": "stairs.landing.upper",
+      "transform": {
+        "position": [
+          -2.35,
+          0.33,
+          1.02
+        ]
+      }
+    },
+    {
+      "components": {
+        "Collider": {
+          "kind": "box",
+          "layer": "world",
+          "size": [
             2.5,
             0.28,
             2.4

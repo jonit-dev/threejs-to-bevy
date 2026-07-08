@@ -14,7 +14,7 @@
         "position": [
           -2.35,
           0,
-          3.95
+          4.65
         ]
       }
     ]
@@ -24,7 +24,7 @@
     {
       "label": "climb-authored-steps",
       "press": "KeyW",
-      "holdFrames": 24,
+      "holdFrames": 12,
       "release": true
     }
   ],
@@ -32,6 +32,10 @@
     "movement": {
       "entity": "player",
       "axis": "-z",
+      "minAxisDelta": {
+        "axis": "+y",
+        "min": 0.2
+      },
       "minDistance": 1
     },
     "contacts": [

@@ -472,8 +472,8 @@ fn is_lit_material(materials: &MaterialsIr, material_id: &str) -> bool {
 }
 
 #[derive(Resource)]
-struct ScriptedRuntimeBundle {
-    bundle: LoadedBundle,
+pub struct ScriptedRuntimeBundle {
+    pub(crate) bundle: LoadedBundle,
 }
 
 struct ScriptedRuntimeMainThread;

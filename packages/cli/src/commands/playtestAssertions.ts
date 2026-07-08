@@ -24,6 +24,7 @@ export const PLAYTEST_ASSERTION_REGISTRY: readonly IPlaytestAssertionSchemaEntry
     fields: [
       { description: "Entity id to measure. Defaults to scenario subject.", name: "entity", type: "string" },
       { description: "Expected movement axis: x, y, or z.", name: "axis", type: "string" },
+      { description: "Minimum signed movement on a specific axis, for example { axis: '+y', min: 0.2 }.", name: "minAxisDelta", type: "{ axis: string, min: number }" },
       { description: "Minimum distance moved over the scenario.", name: "minDistance", type: "number" },
       { description: "Minimum distance per frame.", name: "minVelocity", type: "number" },
       { description: "Require any observed rotation delta.", name: "rotationChanged", type: "boolean" },
@@ -190,6 +191,33 @@ export function evaluateRichPlaytestAssertions(input: {
         message: `Entity '${input.report.entity}' velocity ${velocity.toFixed(6)} was below required ${scenarioAssertions.movement.minVelocity}.`,
         severity: "error",
         suggestion: "Check input force/speed tuning and whether the scenario holds input long enough.",
+      });
+    }
+  }
+  if (scenarioAssertions.movement?.minAxisDelta !== undefined) {
+    const expectation = parseMovementAxisExpectation(scenarioAssertions.movement.minAxisDelta.axis);
+    let rawDelta: number | undefined;
+    if (expectation !== undefined && input.report.movementDelta !== undefined) {
+      rawDelta = input.report.movementDelta[axisIndex(expectation.axis)];
+    }
+    const signedDelta = rawDelta === undefined || expectation === undefined ? undefined : rawDelta * (expectation.sign ?? 1);
+    const pass = signedDelta !== undefined && signedDelta >= scenarioAssertions.movement.minAxisDelta.min;
+    assertions.push({
+      details: {
+        axis: scenarioAssertions.movement.minAxisDelta.axis,
+        min: scenarioAssertions.movement.minAxisDelta.min,
+        rawDelta: rawDelta ?? null,
+        signedDelta: signedDelta ?? null,
+      },
+      id: "movement.axisDelta",
+      pass,
+    });
+    if (!pass) {
+      diagnostics.push({
+        code: "TN_PLAYTEST_AXIS_DELTA_ASSERTION_FAILED",
+        message: `Entity '${scenarioAssertions.movement.entity ?? input.report.entity}' did not move ${scenarioAssertions.movement.minAxisDelta.min} units on ${scenarioAssertions.movement.minAxisDelta.axis}.`,
+        severity: "error",
+        suggestion: "Check route setup, collision response, and whether the scenario ends on the expected vertical surface.",
       });
     }
   }
@@ -536,6 +564,23 @@ function readPath(value: unknown, path: string | undefined): unknown {
     }
     return current[part];
   }, value);
+}
+
+type MovementAxis = "x" | "y" | "z";
+
+function parseMovementAxisExpectation(value: string): { axis: MovementAxis; sign?: 1 | -1 } | undefined {
+  if (value === "x" || value === "y" || value === "z") {
+    return { axis: value };
+  }
+  const match = /^([+-])([xyz])$/.exec(value);
+  if (match === null) {
+    return undefined;
+  }
+  return { axis: match[2] as MovementAxis, sign: match[1] === "-" ? -1 : 1 };
+}
+
+function axisIndex(axis: MovementAxis): 0 | 1 | 2 {
+  return axis === "x" ? 0 : axis === "y" ? 1 : 2;
 }
 
 function textValue(value: unknown): unknown {
