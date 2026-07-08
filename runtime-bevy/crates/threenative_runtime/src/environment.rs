@@ -6,7 +6,7 @@ use bevy::{
     pbr::{NotShadowCaster, NotShadowReceiver},
     prelude::*,
     render::{
-        mesh::{Indices, PrimitiveTopology},
+        mesh::{Indices, PrimitiveTopology, VertexAttributeValues},
         render_asset::RenderAssetUsages,
     },
 };
@@ -356,16 +356,23 @@ pub fn map_environment_into_world(world: &mut World, bundle: &LoadedBundle) {
 
     if let Some(terrain) = scene.terrain.as_ref() {
         let material = material(world, Color::WHITE);
-        let terrain_entity = spawn_pbr(
-            world,
-            &format!("terrain:{}", terrain.id),
-            terrain_mesh(bundle),
-            material,
-            Transform::default(),
-        );
-        world
-            .entity_mut(terrain_entity)
-            .insert((NotShadowCaster, NotShadowReceiver));
+        for (index, (id, mesh)) in terrain_meshes(bundle).into_iter().enumerate() {
+            let entity_id = if index == 0 && id == terrain.id {
+                format!("terrain:{}", terrain.id)
+            } else {
+                format!("terrain:{}", id)
+            };
+            let terrain_entity = spawn_pbr(
+                world,
+                &entity_id,
+                mesh,
+                material.clone(),
+                Transform::default(),
+            );
+            world
+                .entity_mut(terrain_entity)
+                .insert((NotShadowCaster, NotShadowReceiver));
+        }
     }
 
     if scene.path.points.len() >= 2 {
@@ -650,6 +657,90 @@ fn terrain_mesh(bundle: &LoadedBundle) -> Mesh {
     mesh
 }
 
+fn terrain_meshes(bundle: &LoadedBundle) -> Vec<(String, Mesh)> {
+    let terrain = bundle
+        .environment_scene
+        .as_ref()
+        .and_then(|scene| scene.terrain.as_ref())
+        .expect("terrain mesh requires environment terrain");
+    let assets = bundle
+        .assets
+        .assets
+        .iter()
+        .map(|asset| (asset.id.as_str(), asset))
+        .collect::<HashMap<_, _>>();
+    let chunk_meshes = terrain
+        .chunks
+        .iter()
+        .filter_map(|chunk| {
+            assets
+                .get(chunk.mesh.as_str())
+                .map(|asset| (chunk.id.clone(), generated_mesh(asset)))
+        })
+        .collect::<Vec<_>>();
+    if chunk_meshes.is_empty() {
+        vec![(terrain.id.clone(), terrain_mesh(bundle))]
+    } else {
+        chunk_meshes
+    }
+}
+
+fn generated_mesh(asset: &AssetIr) -> Mesh {
+    let mut mesh = Mesh::new(
+        PrimitiveTopology::TriangleList,
+        RenderAssetUsages::RENDER_WORLD | RenderAssetUsages::MAIN_WORLD,
+    );
+    for attribute in asset.attributes.as_deref().unwrap_or(&[]) {
+        match attribute.name.as_str() {
+            "position" => mesh.insert_attribute(
+                Mesh::ATTRIBUTE_POSITION,
+                attribute_values(attribute.item_size, &attribute.values),
+            ),
+            "normal" => mesh.insert_attribute(
+                Mesh::ATTRIBUTE_NORMAL,
+                attribute_values(attribute.item_size, &attribute.values),
+            ),
+            "uv" => mesh.insert_attribute(
+                Mesh::ATTRIBUTE_UV_0,
+                attribute_values(attribute.item_size, &attribute.values),
+            ),
+            "color" => mesh.insert_attribute(
+                Mesh::ATTRIBUTE_COLOR,
+                attribute_values(attribute.item_size, &attribute.values),
+            ),
+            _ => {}
+        };
+    }
+    if let Some(indices) = asset.indices.as_ref() {
+        mesh.insert_indices(Indices::U32(indices.clone()));
+    }
+    mesh
+}
+
+fn attribute_values(item_size: usize, values: &[f32]) -> VertexAttributeValues {
+    match item_size {
+        1 => VertexAttributeValues::Float32(values.to_vec()),
+        2 => VertexAttributeValues::Float32x2(
+            values
+                .chunks_exact(2)
+                .map(|chunk| [chunk[0], chunk[1]])
+                .collect(),
+        ),
+        3 => VertexAttributeValues::Float32x3(
+            values
+                .chunks_exact(3)
+                .map(|chunk| [chunk[0], chunk[1], chunk[2]])
+                .collect(),
+        ),
+        _ => VertexAttributeValues::Float32x4(
+            values
+                .chunks_exact(4)
+                .map(|chunk| [chunk[0], chunk[1], chunk[2], chunk[3]])
+                .collect(),
+        ),
+    }
+}
+
 fn path_surface_mesh(bundle: &LoadedBundle, points: &[[f32; 3]], width: f32) -> Mesh {
     let half_width = width / 2.0;
     let mut positions = Vec::with_capacity(points.len() * 2);
@@ -770,6 +861,9 @@ fn terrain_height_at(bundle: &LoadedBundle, x: f32, z: f32) -> f32 {
     else {
         return 0.0;
     };
+    if terrain.height_mode == "heightmap" {
+        return terrain_heightmap_height_at(bundle, x, z).unwrap_or(terrain.bounds.min[1]);
+    }
     if terrain.height_mode != "controlPoints" {
         return terrain.bounds.min[1];
     }
@@ -786,6 +880,113 @@ fn terrain_height_at(bundle: &LoadedBundle, x: f32, z: f32) -> f32 {
     } else {
         terrain.bounds.min[1] + terrain_detail_height(terrain, x, z)
     }
+}
+
+fn terrain_heightmap_height_at(bundle: &LoadedBundle, x: f32, z: f32) -> Option<f32> {
+    let terrain = bundle
+        .environment_scene
+        .as_ref()
+        .and_then(|scene| scene.terrain.as_ref())?;
+    let assets = bundle
+        .assets
+        .assets
+        .iter()
+        .map(|asset| (asset.id.as_str(), asset))
+        .collect::<HashMap<_, _>>();
+    for chunk in &terrain.chunks {
+        if x < chunk.bounds.min[0]
+            || x > chunk.bounds.max[0]
+            || z < chunk.bounds.min[2]
+            || z > chunk.bounds.max[2]
+        {
+            continue;
+        }
+        let Some(asset) = assets.get(chunk.mesh.as_str()) else {
+            continue;
+        };
+        if let Some(height) = generated_mesh_height_at(asset, x, z) {
+            return Some(height);
+        }
+    }
+    None
+}
+
+fn generated_mesh_height_at(asset: &AssetIr, x: f32, z: f32) -> Option<f32> {
+    let positions = asset
+        .attributes
+        .as_deref()?
+        .iter()
+        .find(|attribute| attribute.name == "position" && attribute.item_size == 3)?;
+    let mut samples = positions
+        .values
+        .chunks_exact(3)
+        .map(|chunk| ([chunk[0], chunk[2]], chunk[1]))
+        .collect::<Vec<_>>();
+    samples.sort_by(|left, right| {
+        left.0[0]
+            .partial_cmp(&right.0[0])
+            .unwrap_or(std::cmp::Ordering::Equal)
+            .then(
+                left.0[1]
+                    .partial_cmp(&right.0[1])
+                    .unwrap_or(std::cmp::Ordering::Equal),
+            )
+    });
+    let mut xs = samples.iter().map(|sample| sample.0[0]).collect::<Vec<_>>();
+    xs.dedup_by(|left, right| (*left - *right).abs() <= 0.0001);
+    let mut zs = samples.iter().map(|sample| sample.0[1]).collect::<Vec<_>>();
+    zs.sort_by(|left, right| left.partial_cmp(right).unwrap_or(std::cmp::Ordering::Equal));
+    zs.dedup_by(|left, right| (*left - *right).abs() <= 0.0001);
+    let (&min_x, &max_x) = (xs.first()?, xs.last()?);
+    let (&min_z, &max_z) = (zs.first()?, zs.last()?);
+    if x < min_x || x > max_x || z < min_z || z > max_z {
+        return None;
+    }
+    let left_x = lower_grid_value(&xs, x)?;
+    let right_x = upper_grid_value(&xs, x)?;
+    let low_z = lower_grid_value(&zs, z)?;
+    let high_z = upper_grid_value(&zs, z)?;
+    let h00 = mesh_sample_height(&samples, left_x, low_z)?;
+    let h10 = mesh_sample_height(&samples, right_x, low_z)?;
+    let h01 = mesh_sample_height(&samples, left_x, high_z)?;
+    let h11 = mesh_sample_height(&samples, right_x, high_z)?;
+    let tx = if (right_x - left_x).abs() <= f32::EPSILON {
+        0.0
+    } else {
+        (x - left_x) / (right_x - left_x)
+    };
+    let tz = if (high_z - low_z).abs() <= f32::EPSILON {
+        0.0
+    } else {
+        (z - low_z) / (high_z - low_z)
+    };
+    Some(lerp_f32(lerp_f32(h00, h10, tx), lerp_f32(h01, h11, tx), tz))
+}
+
+fn lower_grid_value(values: &[f32], target: f32) -> Option<f32> {
+    values
+        .iter()
+        .rev()
+        .find(|value| **value <= target + 0.0001)
+        .copied()
+}
+
+fn upper_grid_value(values: &[f32], target: f32) -> Option<f32> {
+    values
+        .iter()
+        .find(|value| **value >= target - 0.0001)
+        .copied()
+}
+
+fn mesh_sample_height(samples: &[([f32; 2], f32)], x: f32, z: f32) -> Option<f32> {
+    samples
+        .iter()
+        .find(|sample| (sample.0[0] - x).abs() <= 0.0001 && (sample.0[1] - z).abs() <= 0.0001)
+        .map(|sample| sample.1)
+}
+
+fn lerp_f32(left: f32, right: f32, t: f32) -> f32 {
+    left + (right - left) * t.clamp(0.0, 1.0)
 }
 
 fn terrain_detail_height(

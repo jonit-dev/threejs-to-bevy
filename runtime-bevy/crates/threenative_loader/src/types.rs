@@ -1907,8 +1907,67 @@ pub struct EnvironmentTerrainIr {
     pub id: String,
     pub bounds: EnvironmentBoundsIr,
     pub height_mode: String,
+    pub heightmap: Option<EnvironmentTerrainHeightmapIr>,
+    #[serde(default)]
+    pub chunks: Vec<EnvironmentTerrainChunkIr>,
+    pub collider: Option<EnvironmentTerrainColliderIr>,
+    #[serde(default)]
+    pub splat_layers: Vec<EnvironmentTerrainSplatLayerIr>,
     #[serde(default)]
     pub control_points: Vec<[f32; 3]>,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct EnvironmentTerrainHeightmapIr {
+    pub asset: String,
+    pub cell_size: f32,
+    pub height_scale: f32,
+    pub origin: [f32; 3],
+}
+
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct EnvironmentTerrainChunkIr {
+    pub id: String,
+    pub mesh: String,
+    pub bounds: EnvironmentBoundsIr,
+    pub height_range: EnvironmentRangeIr,
+    pub sample_range: EnvironmentTerrainSampleRangeIr,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct EnvironmentTerrainColliderIr {
+    pub kind: String,
+    pub asset: String,
+    pub mesh: String,
+    pub cell_size: f32,
+    pub height_scale: f32,
+    pub origin: [f32; 3],
+    pub sample_count: [usize; 2],
+    pub height_range: EnvironmentRangeIr,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+pub struct EnvironmentRangeIr {
+    pub min: f32,
+    pub max: f32,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+pub struct EnvironmentTerrainSampleRangeIr {
+    pub x: [usize; 2],
+    pub z: [usize; 2],
+}
+
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct EnvironmentTerrainSplatLayerIr {
+    pub texture: String,
+    pub min_slope: f32,
+    pub max_slope: f32,
+    pub weight: f32,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]

@@ -4,7 +4,7 @@ use std::collections::BTreeSet;
 
 use rapier3d::prelude::*;
 use serde::Serialize;
-use threenative_loader::{ColliderComponent, LoadedBundle, WorldEntity};
+use threenative_loader::{AssetIr, ColliderComponent, LoadedBundle, WorldEntity};
 
 thread_local! {
     static RAPIER_CACHE: RefCell<Option<PersistentRapierWorld>> = const { RefCell::new(None) };
@@ -174,12 +174,7 @@ pub fn step_bundle_physics_with_script_poses(
     fixed_delta: f32,
     script_posed_entities: &BTreeSet<String>,
 ) {
-    let mut entities = bundle
-        .world
-        .entities
-        .iter()
-        .filter_map(simulated_entity)
-        .collect::<Vec<_>>();
+    let mut entities = simulated_rapier_entities(bundle);
     step_rapier_bodies(
         &mut entities,
         fixed_delta,
@@ -438,6 +433,7 @@ struct SimulatedEntity {
     friction: f32,
     gravity_scale: f32,
     height: Option<f32>,
+    heightfield: Option<HeightfieldCollider>,
     half_extents: [f32; 3],
     id: String,
     layer: Option<String>,
@@ -448,6 +444,144 @@ struct SimulatedEntity {
     solver_iterations: Option<u32>,
     trigger: bool,
     velocity: Option<[f32; 3]>,
+}
+
+#[derive(Clone)]
+struct HeightfieldCollider {
+    heights: Vec<f32>,
+    rows: usize,
+    cols: usize,
+    scale: [f32; 3],
+}
+
+fn simulated_rapier_entities(bundle: &LoadedBundle) -> Vec<SimulatedEntity> {
+    let mut entities = bundle
+        .world
+        .entities
+        .iter()
+        .filter_map(simulated_entity)
+        .collect::<Vec<_>>();
+    if let Some(terrain) = simulated_heightfield_terrain(bundle) {
+        entities.push(terrain);
+    }
+    entities
+}
+
+fn simulated_heightfield_terrain(bundle: &LoadedBundle) -> Option<SimulatedEntity> {
+    let terrain = bundle
+        .environment_scene
+        .as_ref()
+        .and_then(|scene| scene.terrain.as_ref())?;
+    let collider = terrain
+        .collider
+        .as_ref()
+        .filter(|collider| collider.kind == "heightfield")?;
+    let asset = bundle
+        .assets
+        .assets
+        .iter()
+        .find(|asset| asset.id == collider.mesh)?;
+    let heightfield = heightfield_from_mesh(asset, collider.sample_count)?;
+    let center = [
+        (terrain.bounds.min[0] + terrain.bounds.max[0]) / 2.0,
+        0.0,
+        (terrain.bounds.min[2] + terrain.bounds.max[2]) / 2.0,
+    ];
+    Some(SimulatedEntity {
+        body_kind: Some("static".to_owned()),
+        ccd: false,
+        center,
+        collider_center: [0.0, 0.0, 0.0],
+        collider_kind: "heightfield".to_owned(),
+        damping: 0.0,
+        enabled_rotations: None,
+        enabled_translations: None,
+        friction: 0.5,
+        gravity_scale: 0.0,
+        height: None,
+        heightfield: Some(heightfield),
+        half_extents: [
+            (terrain.bounds.max[0] - terrain.bounds.min[0]) / 2.0,
+            (terrain.bounds.max[1] - terrain.bounds.min[1]) / 2.0,
+            (terrain.bounds.max[2] - terrain.bounds.min[2]) / 2.0,
+        ],
+        id: format!("terrain:{}:collider", terrain.id),
+        layer: Some("world".to_owned()),
+        mask: Vec::new(),
+        mass: None,
+        radius: None,
+        restitution: 0.0,
+        solver_iterations: None,
+        trigger: false,
+        velocity: None,
+    })
+}
+
+fn heightfield_from_mesh(asset: &AssetIr, sample_count: [usize; 2]) -> Option<HeightfieldCollider> {
+    let cols = sample_count[0];
+    let rows = sample_count[1];
+    if cols < 2 || rows < 2 {
+        return None;
+    }
+    let positions = asset
+        .attributes
+        .as_deref()?
+        .iter()
+        .find(|attribute| attribute.name == "position" && attribute.item_size == 3)?;
+    let mut samples = positions
+        .values
+        .chunks_exact(3)
+        .map(|chunk| ([chunk[0], chunk[2]], chunk[1]))
+        .collect::<Vec<_>>();
+    if samples.len() != rows * cols {
+        return None;
+    }
+    samples.sort_by(|left, right| {
+        left.0[1]
+            .partial_cmp(&right.0[1])
+            .unwrap_or(std::cmp::Ordering::Equal)
+            .then(
+                left.0[0]
+                    .partial_cmp(&right.0[0])
+                    .unwrap_or(std::cmp::Ordering::Equal),
+            )
+    });
+    let min_x = samples
+        .iter()
+        .map(|sample| sample.0[0])
+        .fold(f32::INFINITY, f32::min);
+    let max_x = samples
+        .iter()
+        .map(|sample| sample.0[0])
+        .fold(f32::NEG_INFINITY, f32::max);
+    let min_z = samples
+        .iter()
+        .map(|sample| sample.0[1])
+        .fold(f32::INFINITY, f32::min);
+    let max_z = samples
+        .iter()
+        .map(|sample| sample.0[1])
+        .fold(f32::NEG_INFINITY, f32::max);
+    Some(HeightfieldCollider {
+        heights: heightfield_column_major_heights(&samples, rows, cols),
+        rows,
+        cols,
+        scale: [(max_x - min_x).max(0.001), 1.0, (max_z - min_z).max(0.001)],
+    })
+}
+
+fn heightfield_column_major_heights(
+    samples: &[([f32; 2], f32)],
+    rows: usize,
+    cols: usize,
+) -> Vec<f32> {
+    let mut heights = Vec::with_capacity(samples.len());
+    for col in 0..cols {
+        for row in 0..rows {
+            heights.push(samples[row * cols + col].1);
+        }
+    }
+    heights
 }
 
 fn step_rapier_bodies(
@@ -615,7 +749,7 @@ fn rapier_world_signature(entities: &[SimulatedEntity], gravity: [f32; 3]) -> Ve
         Some(format!(
             concat!(
                 "{}|body={}|ccd={}|collider={}|center={}/{}/{}|collider_center={}/{}/{}|",
-                "damping={}|enabled_t={:?}|enabled_r={:?}|friction={}|gravity={}|height={:?}|",
+                "damping={}|enabled_t={:?}|enabled_r={:?}|friction={}|gravity={}|height={:?}|heightfield={}|",
                 "half={}/{}/{}|layer={:?}|mask={:?}|mass={:?}|radius={:?}|restitution={}|solver={:?}|trigger={}|groups={:?}"
             ),
             entity.id,
@@ -634,6 +768,7 @@ fn rapier_world_signature(entities: &[SimulatedEntity], gravity: [f32; 3]) -> Ve
             entity.friction.to_bits(),
             entity.gravity_scale.to_bits(),
             entity.height.map(f32::to_bits),
+            heightfield_signature(entity.heightfield.as_ref()),
             entity.half_extents[0].to_bits(),
             entity.half_extents[1].to_bits(),
             entity.half_extents[2].to_bits(),
@@ -649,6 +784,26 @@ fn rapier_world_signature(entities: &[SimulatedEntity], gravity: [f32; 3]) -> Ve
     }));
     signature.sort();
     signature
+}
+
+fn heightfield_signature(heightfield: Option<&HeightfieldCollider>) -> String {
+    let Some(heightfield) = heightfield else {
+        return "none".to_owned();
+    };
+    let heights = heightfield
+        .heights
+        .iter()
+        .map(|height| height.to_bits().to_string())
+        .collect::<Vec<_>>()
+        .join(",");
+    format!(
+        "{}x{}:{}/{}/{}:{heights}",
+        heightfield.rows,
+        heightfield.cols,
+        heightfield.scale[0].to_bits(),
+        heightfield.scale[1].to_bits(),
+        heightfield.scale[2].to_bits()
+    )
 }
 
 fn physics_substeps(fixed_delta: f32) -> usize {
@@ -699,6 +854,28 @@ fn rapier_collision_groups(
 
 fn rapier_collider(entity: &SimulatedEntity) -> ColliderBuilder {
     match entity.collider_kind.as_str() {
+        "heightfield" => {
+            if let Some(heightfield) = entity.heightfield.as_ref() {
+                return ColliderBuilder::heightfield(
+                    rapier3d::parry::utils::Array2::new(
+                        heightfield.rows,
+                        heightfield.cols,
+                        heightfield.heights.clone(),
+                    ),
+                    vector![
+                        heightfield.scale[0],
+                        heightfield.scale[1],
+                        heightfield.scale[2]
+                    ]
+                    .into(),
+                );
+            }
+            ColliderBuilder::cuboid(
+                entity.half_extents[0],
+                entity.half_extents[1],
+                entity.half_extents[2],
+            )
+        }
         "sphere" => ColliderBuilder::ball(entity.radius.unwrap_or(entity.half_extents[0])),
         "capsule" => ColliderBuilder::capsule_y(
             entity.height.unwrap_or(entity.half_extents[1] * 2.0) / 2.0,
@@ -764,6 +941,7 @@ fn simulated_entity(entity: &WorldEntity) -> Option<SimulatedEntity> {
         friction: collider.friction.unwrap_or(0.0),
         gravity_scale: body.and_then(|body| body.gravity_scale).unwrap_or(1.0),
         height: collider.height,
+        heightfield: None,
         half_extents: half_extents(collider),
         id: entity.id.clone(),
         layer: collider.layer.clone(),

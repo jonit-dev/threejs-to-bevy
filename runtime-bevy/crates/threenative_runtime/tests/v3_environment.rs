@@ -10,6 +10,7 @@ use threenative_loader::load_bundle;
 use threenative_runtime::{
     environment::{apply_environment_bookmark, map_environment_into_world, observe_environment},
     map_world::map_bundle_into_world,
+    physics::step_bundle_physics,
 };
 
 #[test]
@@ -200,6 +201,80 @@ fn path_should_spawn_surface_ribbon_mesh() {
         (positions[0][1] - positions[1][1]).abs() < f32::EPSILON
             && (positions[2][1] - positions[3][1]).abs() < f32::EPSILON,
         "path ribbon vertices should share height across each path point"
+    );
+
+    fs::remove_dir_all(root).expect("temp bundle should be removed");
+}
+
+#[test]
+fn heightmap_terrain_should_use_generated_chunk_mesh_and_heightfield_physics() {
+    let root = temp_bundle_dir();
+    write_heightmap_terrain_bundle(&root);
+
+    let mut bundle = load_bundle(&root).expect("heightmap terrain bundle should load");
+    let mut app = App::new();
+    map_environment_into_world(app.world_mut(), &bundle);
+
+    let terrain_mesh_handle = app
+        .world_mut()
+        .query::<(&ThreeNativeId, &Handle<Mesh>)>()
+        .iter(app.world())
+        .find_map(|(id, handle)| {
+            (id.0 == "terrain:terrain.reference.chunk.0").then_some(handle.clone())
+        })
+        .expect("terrain chunk mesh handle should exist");
+    let terrain_mesh = app
+        .world()
+        .resource::<Assets<Mesh>>()
+        .get(&terrain_mesh_handle)
+        .expect("terrain chunk mesh asset should exist");
+    let positions = match terrain_mesh.attribute(Mesh::ATTRIBUTE_POSITION) {
+        Some(VertexAttributeValues::Float32x3(positions)) => positions,
+        other => panic!("expected terrain position attribute, got {other:?}"),
+    };
+    assert_eq!(positions.len(), 9);
+    assert!(
+        positions
+            .iter()
+            .any(|position| *position == [1.0, 2.0, 1.0])
+    );
+
+    let path_mesh_handle = app
+        .world_mut()
+        .query::<(&ThreeNativeId, &Handle<Mesh>)>()
+        .iter(app.world())
+        .find_map(|(id, handle)| (id.0 == "path:path.reference:0").then_some(handle.clone()))
+        .expect("path mesh handle should exist");
+    let path_mesh = app
+        .world()
+        .resource::<Assets<Mesh>>()
+        .get(&path_mesh_handle)
+        .expect("path mesh asset should exist");
+    let path_positions = match path_mesh.attribute(Mesh::ATTRIBUTE_POSITION) {
+        Some(VertexAttributeValues::Float32x3(positions)) => positions,
+        other => panic!("expected path position attribute, got {other:?}"),
+    };
+    assert!(
+        path_positions
+            .iter()
+            .any(|position| (position[1] - 2.08).abs() < 0.001),
+        "path ribbon should sample heightmap terrain, got {path_positions:?}",
+    );
+
+    for _ in 0..180 {
+        step_bundle_physics(&mut bundle, 1.0 / 60.0);
+    }
+    let player_position = bundle
+        .world
+        .entities
+        .iter()
+        .find(|entity| entity.id == "player")
+        .and_then(|entity| entity.components.transform.as_ref())
+        .and_then(|transform| transform.position)
+        .expect("player position should be updated by physics");
+    assert!(
+        (player_position[1] - 2.5).abs() < 0.1,
+        "dynamic body should settle on heightfield terrain, got {player_position:?}",
     );
 
     fs::remove_dir_all(root).expect("temp bundle should be removed");
@@ -404,6 +479,136 @@ fn write_v3_bundle_with_model_asset(root: &Path) {
     );
 }
 
+fn write_heightmap_terrain_bundle(root: &Path) {
+    write_json(
+        root,
+        "manifest.json",
+        r#"{
+          "schema": "threenative.bundle",
+          "version": "0.1.0",
+          "name": "heightmap-terrain",
+          "requiredCapabilities": { "environment": ["terrain.heightfield"], "physics": ["collider.heightfield"] },
+          "entry": { "world": "world.ir.json", "environmentScene": "environment.scene.json" },
+          "files": {
+            "assets": "assets.manifest.json",
+            "materials": "materials.ir.json",
+            "targetProfile": "target.profile.json"
+          }
+        }"#,
+    );
+    write_json(
+        root,
+        "world.ir.json",
+        r#"{
+          "schema": "threenative.world",
+          "version": "0.1.0",
+          "entities": [{
+            "id": "player",
+            "components": {
+              "Transform": { "position": [1, 5, 1], "rotation": [0, 0, 0, 1], "scale": [1, 1, 1] },
+              "RigidBody": { "kind": "dynamic", "velocity": [0, -4, 0] },
+              "Collider": { "kind": "box", "size": [1, 1, 1], "layer": "player", "mask": ["world"], "friction": 0.5, "restitution": 0 }
+            }
+          }]
+        }"#,
+    );
+    write_json(
+        root,
+        "assets.manifest.json",
+        r#"{
+          "schema": "threenative.assets",
+          "version": "0.1.0",
+          "assets": [{
+            "id": "mesh.terrain.reference.chunk.0",
+            "kind": "mesh",
+            "format": "procedural",
+            "primitive": "custom",
+            "binaryAttributes": [
+              { "name": "position", "count": 9, "format": "float32", "itemSize": 3, "path": "generated/meshes/terrain.position.bin" },
+              { "name": "normal", "count": 9, "format": "float32", "itemSize": 3, "path": "generated/meshes/terrain.normal.bin" },
+              { "name": "uv", "count": 9, "format": "float32", "itemSize": 2, "path": "generated/meshes/terrain.uv.bin" }
+            ],
+            "binaryIndices": { "count": 24, "format": "uint32", "path": "generated/meshes/terrain.index.bin" }
+          }]
+        }"#,
+    );
+    write_json(
+        root,
+        "materials.ir.json",
+        r#"{ "schema": "threenative.materials", "version": "0.1.0", "materials": [] }"#,
+    );
+    write_json(
+        root,
+        "target.profile.json",
+        r#"{ "schema": "threenative.target-profile", "version": "0.1.0", "targets": ["desktop"] }"#,
+    );
+    write_json(
+        root,
+        "environment.scene.json",
+        r#"{
+          "schema": "threenative.environment-scene",
+          "version": "0.1.0",
+          "terrain": {
+            "id": "terrain.reference",
+            "heightMode": "heightmap",
+            "bounds": { "min": [0, 0, 0], "max": [2, 2, 2] },
+            "heightmap": { "asset": "heightmap.reference", "cellSize": 1, "heightScale": 1, "origin": [0, 0, 0] },
+            "chunks": [{
+              "id": "terrain.reference.chunk.0",
+              "mesh": "mesh.terrain.reference.chunk.0",
+              "bounds": { "min": [0, 0, 0], "max": [2, 2, 2] },
+              "heightRange": { "min": 0, "max": 2 },
+              "sampleRange": { "x": [0, 2], "z": [0, 2] }
+            }],
+            "collider": {
+              "kind": "heightfield",
+              "asset": "heightmap.reference",
+              "mesh": "mesh.terrain.reference.chunk.0",
+              "cellSize": 1,
+              "heightScale": 1,
+              "origin": [0, 0, 0],
+              "sampleCount": [3, 3],
+              "heightRange": { "min": 0, "max": 2 }
+            },
+            "splatLayers": [{ "texture": "tex.ground.grass", "minSlope": 0, "maxSlope": 60, "weight": 1 }]
+          },
+          "path": { "id": "path.reference", "points": [[1, 0, 1], [2, 0, 2]], "width": 0.5 },
+          "sourceAssets": [],
+          "instances": [],
+          "bookmarks": []
+        }"#,
+    );
+    let mesh_dir = root.join("generated/meshes");
+    fs::create_dir_all(&mesh_dir).expect("generated mesh dir should be created");
+    write_f32_binary(
+        &mesh_dir.join("terrain.position.bin"),
+        &[
+            0.0, 0.0, 0.0, 1.0, 1.0, 0.0, 2.0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0, 2.0, 1.0, 2.0, 1.0,
+            1.0, 0.0, 0.0, 2.0, 1.0, 1.0, 2.0, 2.0, 0.0, 2.0,
+        ],
+    );
+    write_f32_binary(
+        &mesh_dir.join("terrain.normal.bin"),
+        &[
+            0.0, 1.0, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0,
+            0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 0.0,
+        ],
+    );
+    write_f32_binary(
+        &mesh_dir.join("terrain.uv.bin"),
+        &[
+            0.0, 0.0, 0.5, 0.0, 1.0, 0.0, 0.0, 0.5, 0.5, 0.5, 1.0, 0.5, 0.0, 1.0, 0.5, 1.0, 1.0,
+            1.0,
+        ],
+    );
+    write_u32_binary(
+        &mesh_dir.join("terrain.index.bin"),
+        &[
+            0, 3, 1, 1, 3, 4, 1, 4, 2, 2, 4, 5, 3, 6, 4, 4, 6, 7, 4, 7, 5, 5, 7, 8,
+        ],
+    );
+}
+
 fn write_v3_bundle_with_rock_and_pebble_assets(root: &Path) {
     write_json(
         root,
@@ -574,4 +779,20 @@ fn temp_bundle_dir() -> PathBuf {
 
 fn write_json(root: &Path, file: &str, contents: &str) {
     fs::write(root.join(file), contents).expect("bundle json should be written");
+}
+
+fn write_f32_binary(path: &Path, values: &[f32]) {
+    let mut bytes = Vec::with_capacity(values.len() * 4);
+    for value in values {
+        bytes.extend_from_slice(&value.to_le_bytes());
+    }
+    fs::write(path, bytes).expect("f32 binary payload should be written");
+}
+
+fn write_u32_binary(path: &Path, values: &[u32]) {
+    let mut bytes = Vec::with_capacity(values.len() * 4);
+    for value in values {
+        bytes.extend_from_slice(&value.to_le_bytes());
+    }
+    fs::write(path, bytes).expect("u32 binary payload should be written");
 }

@@ -659,9 +659,10 @@ Practical order for game-polish work:
   - [ ] PRD-006 has started with contract-only structured heightmap assets,
         terrain heightmap references, splat-layer validation, target
         cell-budget diagnostics, compiler terrain chunk mesh emission, and
-        heightfield collider descriptors. Web runtime terrain chunk rendering
-        and static terrain collision are in progress; Bevy terrain chunk
-        rendering and heightfield collision are not promoted yet.
+        heightfield collider descriptors. Web and Bevy runtimes now render
+        generated terrain chunk meshes; Bevy bundle physics maps generated
+        terrain mesh samples into synthetic Rapier heightfield colliders. PRD-006
+        remains open for remaining promotion evidence and manual visual proof.
 - [x] `P3` CSG and boolean mesh operations diagnostic boundary
 - [x] `P3` Storage-buffer/shader-driven procedural geometry diagnostic boundary
 

@@ -9,8 +9,8 @@ Current support:
   trigger/sensor, kinematic mover, and bounded native proof paths.
 - Compiler-emitted heightfield collider descriptors exist for structured JSON
   terrain heightmaps, and the web runtime feeds those descriptors into its
-  static terrain collision path; Bevy runtime heightfield collision remains a
-  PRD-006 follow-up before promotion.
+  static terrain collision path while the Bevy runtime maps generated chunk
+  meshes into synthetic Rapier heightfield colliders for native bundle physics.
 - Gameplay with physical contact must author physics metadata up front and then
   prove movement/contact behavior with playtests.
 - Humanoid course web and desktop playtests are the current high-signal
