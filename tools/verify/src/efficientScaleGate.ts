@@ -22,6 +22,7 @@ const PROJECT_PATH = "examples/dense-world-benchmark";
 const PROOF_PATH = "artifacts/efficient-scale/performance-proof.json";
 const MIN_ENTITY_COUNT = 180;
 const MIN_VISIBLE_INSTANCES = 120;
+const MAX_TEXTURE_VARIANT_BYTES = 96 * 1024 * 1024;
 
 export async function runEfficientScaleGate(options: EfficientScaleGateOptions = {}): Promise<EfficientScaleGateResult> {
   const root = resolve(options.root ?? process.cwd());
@@ -78,6 +79,7 @@ export async function runEfficientScaleGate(options: EfficientScaleGateOptions =
     status: ok ? "pass" : "fail",
     steps,
     thresholds: {
+      maxTextureVariantBytes: MAX_TEXTURE_VARIANT_BYTES,
       minEntityCount: MIN_ENTITY_COUNT,
       minVisibleInstances: MIN_VISIBLE_INSTANCES,
     },
@@ -147,6 +149,16 @@ function denseBenchmarkDiagnostics(sidecar: unknown, path: string): Verification
       suggestedFix: "Restore visible benchmark scenery or update the gate only with a replacement dense fixture.",
     });
   }
+  const textureVariantBytes = measuredTextureVariantBytes(sidecar.metrics.textureVariants);
+  if (textureVariantBytes !== undefined && textureVariantBytes > MAX_TEXTURE_VARIANT_BYTES) {
+    diagnostics.push({
+      code: "TN_VERIFY_EFFICIENT_SCALE_TEXTURE_VARIANT_BUDGET_EXCEEDED",
+      message: `Dense-world selected texture variants loaded ${textureVariantBytes} bytes, exceeding package/load budget ${MAX_TEXTURE_VARIANT_BYTES}.`,
+      path: `${path}/metrics/textureVariants`,
+      severity: "error",
+      suggestedFix: "Reduce selected texture variant bytes, add smaller target variants, or regenerate the proof with matching target-profile evidence.",
+    });
+  }
   return diagnostics;
 }
 
@@ -155,6 +167,13 @@ function measuredNumber(value: unknown): number | undefined {
     return undefined;
   }
   return value.value;
+}
+
+function measuredTextureVariantBytes(value: unknown): number | undefined {
+  if (!isRecord(value) || value.status !== "measured" || !isRecord(value.value) || typeof value.value.loadedBytes !== "number" || !Number.isFinite(value.value.loadedBytes)) {
+    return undefined;
+  }
+  return value.value.loadedBytes;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

@@ -166,6 +166,10 @@ the same IR-level contract or produce stable, actionable diagnostics.
 - Add visual verification scenes for each promoted slice.
 - Track CPU/GPU timing, draw counts, triangle counts, instance counts, texture
   memory, and package size.
+- Compressed texture delivery is source-accepted only with a supported
+  jpeg/png/webp baseline fallback, and `pnpm verify:efficient-scale` now fails
+  selected texture variants that exceed package/load byte budgets; native KTX2
+  or device-compressed promotion remains gated on runtime evidence.
 - Preserve fail-loud diagnostics for unsupported advanced features.
 
 ## Bevy Feasibility

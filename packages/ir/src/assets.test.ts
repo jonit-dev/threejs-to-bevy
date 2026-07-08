@@ -373,6 +373,45 @@ test("assets should reject unsupported target texture variants with fallback met
   }
 });
 
+test("assets should reject compressed texture variant without baseline fallback", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-assets-texture-variant-fallback-"));
+  try {
+    await writeTestBundle(root, {
+      createAssetsDir: true,
+      targetProfile: {
+        schema: "threenative.target-profile",
+        version: "0.1.0",
+        targets: ["desktop"],
+        budgets: { supportedTextureFormats: ["ktx2"] },
+      },
+    });
+    await writeFile(join(root, "assets", "leaf.ktx2"), "texture");
+    await writeJson(root, "assets.manifest.json", {
+      schema: "threenative.assets",
+      version: "0.1.0",
+      assets: [
+        {
+          id: "tex.leaf",
+          kind: "texture",
+          format: "ktx2",
+          path: "assets/leaf.ktx2",
+          fallback: "tex.leaf",
+          variants: [
+            { format: "ktx2", path: "assets/leaf.desktop.ktx2", targets: ["desktop"] },
+          ],
+        },
+      ],
+    });
+
+    const result = await validateBundle(root);
+
+    assert.equal(result.ok, false);
+    assert.equal(result.diagnostics.some((diagnostic) => diagnostic.code === "TN_IR_TEXTURE_VARIANT_FALLBACK_MISSING" && diagnostic.path === "assets.manifest.json/assets/0/fallback"), true);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
 test("assets should reject invalid generated mesh primitive dimensions", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-assets-generated-mesh-invalid-"));
   try {

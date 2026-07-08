@@ -14,13 +14,29 @@ test("efficient scale gate accepts dense performance proof sidecar", async () =>
       root,
       run: fakeRun(root, denseProof({ entityCount: 220, visibleInstances: 180 })),
     });
-    const report = JSON.parse(await readFile(result.reportPath, "utf8")) as { ok: boolean; thresholds: { minEntityCount: number; minVisibleInstances: number } };
+    const report = JSON.parse(await readFile(result.reportPath, "utf8")) as { ok: boolean; thresholds: { maxTextureVariantBytes: number; minEntityCount: number; minVisibleInstances: number } };
 
     assert.equal(result.ok, true);
     assert.deepEqual(result.diagnostics, []);
     assert.equal(report.ok, true);
+    assert.equal(report.thresholds.maxTextureVariantBytes, 96 * 1024 * 1024);
     assert.equal(report.thresholds.minEntityCount, 180);
     assert.equal(report.thresholds.minVisibleInstances, 120);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("efficient scale gate rejects selected texture variants over package budget", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-efficient-scale-texture-budget-"));
+  try {
+    const result = await runEfficientScaleGate({
+      root,
+      run: fakeRun(root, denseProof({ entityCount: 220, textureVariantBytes: 140 * 1024 * 1024, visibleInstances: 180 })),
+    });
+
+    assert.equal(result.ok, false);
+    assert.equal(result.diagnostics.some((diagnostic) => diagnostic.code === "TN_VERIFY_EFFICIENT_SCALE_TEXTURE_VARIANT_BUDGET_EXCEEDED"), true);
   } finally {
     await rm(root, { force: true, recursive: true });
   }
@@ -58,7 +74,8 @@ function fakeRun(root: string, proof: Record<string, unknown>): (options: Comman
   };
 }
 
-function denseProof(options: { entityCount: number; visibleInstances: number }): Record<string, unknown> {
+function denseProof(options: { entityCount: number; textureVariantBytes?: number; visibleInstances: number }): Record<string, unknown> {
+  const textureVariantBytes = options.textureVariantBytes ?? 0;
   return {
     schema: "threenative.performance-proof",
     version: "0.1.0",
@@ -77,7 +94,7 @@ function denseProof(options: { entityCount: number; visibleInstances: number }):
       frameTimeMsP95: 24,
       frameTimeMsP99: 33.4,
       loadedTextureBytes: 134217728,
-      textureVariantBytes: 134217728,
+      textureVariantBytes: Math.max(134217728, textureVariantBytes),
       visibleInstances: 2000,
     },
     metrics: {
@@ -87,7 +104,7 @@ function denseProof(options: { entityCount: number; visibleInstances: number }):
       entityCount: { status: "measured", value: options.entityCount },
       frameTimeMs: { status: "measured", value: { p50: 10, p95: 16, p99: 20, sampleCount: 90 } },
       loadedTextureBytes: { status: "measured", value: 0 },
-      textureVariants: { status: "measured", value: { loadedBytes: 0, selectedVariantCount: 0 } },
+      textureVariants: { status: "measured", value: { loadedBytes: textureVariantBytes, selectedVariantCount: textureVariantBytes > 0 ? 2 : 0 } },
       visibleInstances: { status: "measured", value: options.visibleInstances },
     },
   };
