@@ -6,13 +6,37 @@
       "id": "direct-bevy-authoring",
       "requiredCapabilities": { "native": ["bevy.system"] },
       "expectedDiagnostic": "TN_IR_NATIVE_AUTHORING_UNSUPPORTED",
-      "ownerPrd": "docs/PRDs/v10/V10-01-scope-triage-and-release-gate.md"
+      "ownerPrd": "docs/PRDs/done/PRD-003-external-services-media-boundaries.md"
     },
     {
       "id": "raw-three-source",
       "requiredCapabilities": { "renderer": ["raw-three.scene"] },
       "expectedDiagnostic": "TN_IR_RAW_THREE_SOURCE_UNSUPPORTED",
-      "ownerPrd": "docs/PRDs/v10/V10-01-scope-triage-and-release-gate.md"
+      "ownerPrd": "docs/PRDs/done/PRD-003-external-services-media-boundaries.md"
+    },
+    {
+      "id": "cloud-account-storage",
+      "requiredCapabilities": { "persistence": ["cloud-save.account-bound"] },
+      "expectedDiagnostic": "TN_IR_CLOUD_STORAGE_UNSUPPORTED",
+      "ownerPrd": "docs/PRDs/done/PRD-003-external-services-media-boundaries.md"
+    },
+    {
+      "id": "custom-audio-decoder",
+      "requiredCapabilities": { "audio": ["decoder.custom"] },
+      "expectedDiagnostic": "TN_IR_AUDIO_DECODER_PLUGIN_UNSUPPORTED",
+      "ownerPrd": "docs/PRDs/done/PRD-003-external-services-media-boundaries.md"
+    },
+    {
+      "id": "network-audio-stream",
+      "requiredCapabilities": { "audio": ["network-audio.webrtc"] },
+      "expectedDiagnostic": "TN_IR_AUDIO_NETWORK_UNSUPPORTED",
+      "ownerPrd": "docs/PRDs/done/PRD-003-external-services-media-boundaries.md"
+    },
+    {
+      "id": "streaming-audio",
+      "requiredCapabilities": { "audio": ["audio.stream.remote"] },
+      "expectedDiagnostic": "TN_IR_AUDIO_STREAMING_UNSUPPORTED",
+      "ownerPrd": "docs/PRDs/done/PRD-003-external-services-media-boundaries.md"
     },
     {
       "id": "renderer-plugin-escape",
@@ -24,25 +48,37 @@
       "id": "online-replication",
       "requiredCapabilities": { "networking": ["replication.websocket"] },
       "expectedDiagnostic": "TN_IR_NETWORKING_UNSUPPORTED",
-      "ownerPrd": "docs/PRDs/v10/V10-01-scope-triage-and-release-gate.md"
+      "ownerPrd": "docs/PRDs/done/PRD-003-external-services-media-boundaries.md"
+    },
+    {
+      "id": "online-service",
+      "requiredCapabilities": { "networking": ["online-service.leaderboard"] },
+      "expectedDiagnostic": "TN_IR_NETWORKING_UNSUPPORTED",
+      "ownerPrd": "docs/PRDs/done/PRD-003-external-services-media-boundaries.md"
     },
     {
       "id": "two-dimensional-workflow",
       "requiredCapabilities": { "workflow": ["tilemap.ldtk"] },
       "expectedDiagnostic": "TN_IR_2D_WORKFLOW_UNSUPPORTED",
-      "ownerPrd": "docs/PRDs/v10/V10-01-scope-triage-and-release-gate.md"
+      "ownerPrd": "docs/PRDs/done/PRD-003-external-services-media-boundaries.md"
+    },
+    {
+      "id": "sprite-workflow",
+      "requiredCapabilities": { "workflow": ["sprite.atlas-2d"] },
+      "expectedDiagnostic": "TN_IR_2D_WORKFLOW_UNSUPPORTED",
+      "ownerPrd": "docs/PRDs/done/PRD-003-external-services-media-boundaries.md"
     },
     {
       "id": "platform-api",
       "requiredCapabilities": { "platform-api": ["filesystem.worker.timer"] },
       "expectedDiagnostic": "TN_IR_PLATFORM_API_UNSUPPORTED",
-      "ownerPrd": "docs/PRDs/v10/V10-01-scope-triage-and-release-gate.md"
+      "ownerPrd": "docs/PRDs/done/PRD-003-external-services-media-boundaries.md"
     },
     {
       "id": "backend-only",
       "requiredCapabilities": { "backend-only": ["server-rendered-matchmaking"] },
-      "expectedDiagnostic": "TN_IR_PLATFORM_API_UNSUPPORTED",
-      "ownerPrd": "docs/PRDs/v10/V10-01-scope-triage-and-release-gate.md"
+      "expectedDiagnostic": "TN_IR_BACKEND_ONLY_UNSUPPORTED",
+      "ownerPrd": "docs/PRDs/done/PRD-003-external-services-media-boundaries.md"
     }
   ]
 }

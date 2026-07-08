@@ -476,7 +476,11 @@ export function collectWebRuntimeDiagnostics(mapped: IThreeWorld, bundle: IWebBu
 }
 
 function declaredSystemResources(systems: IWebBundle["systems"]): string[] {
-  return [...new Set((systems?.systems ?? []).flatMap((system) => [...system.resourceReads, ...system.resourceWrites]))].sort();
+  return [...new Set((systems?.systems ?? []).flatMap((system) => [...declaredResourceList(system.resourceReads), ...declaredResourceList(system.resourceWrites)]))].sort();
+}
+
+function declaredResourceList(values: unknown): string[] {
+  return Array.isArray(values) ? values.filter((value): value is string => typeof value === "string") : [];
 }
 
 function compactResourceObservations(observations: readonly IResourceObservation[]): IResourceObservation[] {

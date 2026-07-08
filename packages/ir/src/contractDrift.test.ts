@@ -55,6 +55,7 @@ test("contractDrift should list every registered IR document when checking contr
     "animations",
     "audio",
     "environmentScene",
+    "gameFlow",
     "localData",
     "gltfScene",
     "prefabs",
@@ -62,6 +63,7 @@ test("contractDrift should list every registered IR document when checking contr
     "resourceSchemas",
     "eventSchemas",
     "scripts",
+    "sequences",
   ];
   assert.deepEqual(Object.keys(IR_DOCUMENTS).sort(), expectedDocuments.sort());
 
@@ -69,10 +71,12 @@ test("contractDrift should list every registered IR document when checking contr
   assertManifestDocument("entry", "animations", "animations.ir.json");
   assertManifestDocument("entry", "audio", "audio.ir.json");
   assertManifestDocument("entry", "environmentScene", "environment.scene.json");
+  assertManifestDocument("entry", "gameFlow", "game-flow.ir.json");
   assertManifestDocument("entry", "localData", "local-data.ir.json");
   assertManifestDocument("entry", "overlays", "overlays.ir.json");
   assertManifestDocument("entry", "prefabs", "prefabs.ir.json");
   assertManifestDocument("entry", "scenes", "scenes.ir.json");
+  assertManifestDocument("entry", "sequences", "sequences.ir.json");
   assertManifestDocument("entry", "scripts", "scripts.bundle.js");
   assertManifestDocument("entry", "systems", "systems.ir.json");
   assertManifestDocument("entry", "ui", "ui.ir.json");

@@ -56,7 +56,7 @@ Use these implementation PRDs as the executable backlog for this roadmap:
 - **Track 2 — Completed Web-First Proof:**
   `docs/PRDs/done/PRD-002-humanoid-course-stair-traversal-proof.md`
 - **Track 3 — Boundaries And Contract Hygiene:**
-  `docs/PRDs/proof-first-engine-loop-2026-07-05/PRD-003-external-services-media-boundaries.md` and
+  `docs/PRDs/done/PRD-003-external-services-media-boundaries.md` and
   `docs/PRDs/proof-first-engine-loop-2026-07-05/PRD-004-contract-de-sprawl-authoring-runtime-traces.md`
 - **Track 4 — Nice Looks by Default:**
   `docs/PRDs/proof-first-engine-loop-2026-07-05/PRD-005-cinematic-default-look.md` and

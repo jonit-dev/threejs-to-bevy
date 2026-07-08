@@ -199,7 +199,7 @@ execution bundle.
 - [Advanced Animation and Physics Depth](proof-first-engine-loop-2026-07-05/PRD-016-advanced-animation-physics-depth.md):
   umbrella reference for retargeting, IK, arbitrary blend-tree, constraint,
   triangle narrow-phase, vehicle, soft-body, and ragdoll boundaries.
-- [External Services, Media, and Non-Portable Boundaries](proof-first-engine-loop-2026-07-05/PRD-003-external-services-media-boundaries.md):
+- [External Services, Media, and Non-Portable Boundaries](done/PRD-003-external-services-media-boundaries.md):
   cloud/account storage, custom decoders, streaming/network audio, online
   services, alternate authoring models, 2D workflows, and backend-only
   diagnostic boundaries.

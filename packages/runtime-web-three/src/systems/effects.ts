@@ -49,7 +49,7 @@ export function validateSystemEffects(system: IIrSystemDeclaration, effects: ISy
   const diagnostics: IRuntimeDiagnostic[] = [];
   const writableComponents = new Set(system.writes);
   const eventWrites = new Set(system.eventWrites);
-  const resourceWrites = new Set(system.resourceWrites);
+  const resourceWrites = new Set(declaredResourceList(system.resourceWrites));
   const services = new Set(system.services);
 
   for (const command of effects.commands) {
@@ -92,6 +92,10 @@ export function validateSystemEffects(system: IIrSystemDeclaration, effects: ISy
   }
 
   return diagnostics;
+}
+
+function declaredResourceList(values: unknown): string[] {
+  return Array.isArray(values) ? values.filter((value): value is string => typeof value === "string") : [];
 }
 
 export function systemEffectLogEntries(

@@ -137,6 +137,32 @@ V7 keeps the V5/V6 diagnostic shape and adds release-gate evidence ranges:
   `TN_IR_ENVIRONMENT_*`, and `TN_SCRIPT_*` for V7 promoted or rejected
   portable-contract validation failures.
 
+## Boundary Diagnostics
+
+Portable-boundary diagnostics reject intentionally non-portable feature claims
+before any runtime partially executes them. Current stable manifest-level
+boundary codes include:
+
+- `TN_IR_NATIVE_AUTHORING_UNSUPPORTED` for direct Bevy/native authoring.
+- `TN_IR_RAW_THREE_SOURCE_UNSUPPORTED` for raw Three.js as source of truth.
+- `TN_IR_CLOUD_STORAGE_UNSUPPORTED` for cloud save and account-bound storage.
+- `TN_IR_NETWORKING_UNSUPPORTED` for online services, networking,
+  replication, and collaboration.
+- `TN_IR_BACKEND_ONLY_UNSUPPORTED` for backend-only/runtime-external feature
+  claims.
+- `TN_IR_AUDIO_DECODER_PLUGIN_UNSUPPORTED`,
+  `TN_IR_AUDIO_STREAMING_UNSUPPORTED`, and
+  `TN_IR_AUDIO_NETWORK_UNSUPPORTED` for custom decoders, streaming audio, and
+  network audio.
+- `TN_IR_2D_WORKFLOW_UNSUPPORTED` for sprites, tilemaps, LDtk/Tiled, and
+  2D-specific workflows while ThreeNative remains scoped as 3D-first.
+- `TN_IR_PLATFORM_API_UNSUPPORTED` for arbitrary npm, filesystem, worker,
+  timer, platform, and Node API claims.
+
+The rejected fixture catalog at
+`packages/ir/fixtures/rejected/v10-boundaries/catalog.json` owns the negative
+fixture inventory for these codes.
+
 ## Guidance
 
 - Do not collapse asset, scene, and runtime failures into generic compiler

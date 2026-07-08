@@ -264,6 +264,32 @@ test("should report resource read observations", async () => {
   ]);
 });
 
+test("should tolerate legacy systems without resource declarations", async () => {
+  const world = makeWorld();
+  world.resources = { Score: { value: 1 } };
+  const systems = makeSystems("update", "readScore");
+  delete (systems.systems[0] as any).resourceReads;
+  delete (systems.systems[0] as any).resourceWrites;
+
+  const result = await runSchedule({
+    module: {
+      systems: {
+        readScore(context: any) {
+          assert.deepEqual(context.resources.get("Score", { value: 0 }), { value: 1 });
+        },
+      },
+    },
+    schedule: "update",
+    systems,
+    world,
+  });
+
+  assert.deepEqual(result.diagnostics, []);
+  assert.deepEqual(result.resourceObservations, [
+    { frame: 0, kind: "read", resource: "Score", schedule: "update", system: "readScore", tick: 0 },
+  ]);
+});
+
 test("should preserve random cursor across systems in the same schedule", async () => {
   const world = makeWorld();
   world.resources = { Random: { seed: "runner-state" } };

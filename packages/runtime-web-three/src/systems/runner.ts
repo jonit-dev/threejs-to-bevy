@@ -139,7 +139,7 @@ async function runSystem(
 }
 
 function declaredResourceObservations(system: IIrSystemDeclaration, options: { frame?: number; tick?: number; world: IWorldIr }): IResourceObservation[] {
-  const declared = [...new Set([...system.resourceReads, ...system.resourceWrites])].sort();
+  const declared = [...new Set([...declaredResourceList(system.resourceReads), ...declaredResourceList(system.resourceWrites)])].sort();
   return declared
     .filter((resource) => options.world.resources?.[resource] !== undefined)
     .map((resource) => ({
@@ -150,6 +150,10 @@ function declaredResourceObservations(system: IIrSystemDeclaration, options: { f
       system: system.name,
       tick: options.tick ?? 0,
     }));
+}
+
+function declaredResourceList(values: unknown): string[] {
+  return Array.isArray(values) ? values.filter((value): value is string => typeof value === "string") : [];
 }
 
 function dedupeResourceObservations(observations: readonly IResourceObservation[]): IResourceObservation[] {

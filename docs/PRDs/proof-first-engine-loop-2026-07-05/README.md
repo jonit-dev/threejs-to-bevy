@@ -26,7 +26,7 @@ may still proceed.
 
 1. [PRD-001 Agent Proof Loop Scenario Ratchet](../done/PRD-001-agent-proof-loop-scenario-ratchet.md) - done
 2. [PRD-002 Humanoid Course Stair Traversal Proof](../done/PRD-002-humanoid-course-stair-traversal-proof.md) - done; native proof deferred by freeze
-3. [PRD-003 External Services, Media, And Non-Portable Boundaries](PRD-003-external-services-media-boundaries.md)
+3. [PRD-003 External Services, Media, And Non-Portable Boundaries](../done/PRD-003-external-services-media-boundaries.md) - done
 4. [PRD-004 Contract De-Sprawl Through Authoring Modules And Runtime Trace Contracts](PRD-004-contract-de-sprawl-authoring-runtime-traces.md)
 5. [PRD-005 Cinematic Default Look](PRD-005-cinematic-default-look.md)
 6. [PRD-006 Believable Worlds: Heightfield Terrain And Biome Dressing](PRD-006-believable-world-terrain-and-biome-dressing.md)

@@ -131,6 +131,30 @@ const v10BoundaryCapabilities: Array<{
     suggestion: "Represent scene data through SDK objects, ECS declarations, and versioned IR consumed by both runtimes.",
   },
   {
+    code: "TN_IR_CLOUD_STORAGE_UNSUPPORTED",
+    match: /(?:cloud-save|cloud-storage|account-storage|account-bound|remote-save|user-account)/i,
+    message: "Cloud save and account-bound storage are outside the current offline-first persistence contract.",
+    suggestion: "Use declared local-data save slots and settings until a future PRD defines a portable account storage provider.",
+  },
+  {
+    code: "TN_IR_AUDIO_DECODER_PLUGIN_UNSUPPORTED",
+    match: /(?:audio-decoder|decoder-plugin|custom-decoder|decoder\.custom|codec\.custom)/i,
+    message: "Executable or custom audio decoders are outside the portable audio contract.",
+    suggestion: "Use bundle-local OGG or WAV audio assets and declared audio playback metadata.",
+  },
+  {
+    code: "TN_IR_AUDIO_STREAMING_UNSUPPORTED",
+    match: /(?:audio-stream|streaming-audio|audio\.stream|streaming-url)/i,
+    message: "Streaming audio is outside the current portable audio contract.",
+    suggestion: "Use bundle-local audio assets declared in audio.ir.json until a streaming audio PRD defines deterministic behavior.",
+  },
+  {
+    code: "TN_IR_AUDIO_NETWORK_UNSUPPORTED",
+    match: /(?:network-audio|audio-network|audio\.network|webrtc-audio)/i,
+    message: "Network audio is outside the current portable audio contract.",
+    suggestion: "Use bundle-local audio assets and deterministic audio events instead of network streams.",
+  },
+  {
     code: "TN_IR_RENDERER_PLUGIN_UNSUPPORTED",
     match: /(?:renderer-plugin|runtime-plugin|plugin-escape|render-phase|storage-buffer)/i,
     message: "Public renderer/runtime plugin escape hatches are not portable across web Three.js and native Bevy.",
@@ -143,6 +167,12 @@ const v10BoundaryCapabilities: Array<{
     suggestion: "Keep data local or model synchronization as deterministic resources/events until a networking PRD defines a portable contract.",
   },
   {
+    code: "TN_IR_BACKEND_ONLY_UNSUPPORTED",
+    match: /(?:backend-only|server-only|server-rendered|matchmaking-server|authoritative-server)/i,
+    message: "Backend-only features cannot be represented in a portable web/native runtime bundle.",
+    suggestion: "Keep game behavior in portable resources, events, systems, and local data until a backend service PRD defines the contract.",
+  },
+  {
     code: "TN_IR_2D_WORKFLOW_UNSUPPORTED",
     match: /(?:sprite|tilemap|ldtk|tiled|2d-collision)/i,
     message: "2D-only authoring workflows are outside the current ThreeNative 3D product scope.",
@@ -150,7 +180,7 @@ const v10BoundaryCapabilities: Array<{
   },
   {
     code: "TN_IR_PLATFORM_API_UNSUPPORTED",
-    match: /(?:npm|filesystem|worker|timer|platform-api|backend-only|node-api)/i,
+    match: /(?:npm|filesystem|worker|timer|platform-api|node-api)/i,
     message: "Arbitrary npm, filesystem, worker, timer, platform, and backend-only APIs cannot be represented in portable IR.",
     suggestion: "Use portable scripts with declared resources, events, services, target profiles, and bundle-local assets.",
   },

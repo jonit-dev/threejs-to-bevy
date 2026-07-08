@@ -28,6 +28,13 @@ pub enum LoadError {
     InvalidGeneratedMeshPayload { path: String, message: String },
     #[error("unsupported target profile target '{target}' at {path}")]
     UnsupportedTargetProfileTarget { path: String, target: String },
+    #[error("{code} at {path}: {message}")]
+    UnsupportedCapability {
+        path: String,
+        capability: String,
+        code: String,
+        message: String,
+    },
     #[error("unsupported {schema} version '{version}'")]
     UnsupportedVersion { schema: String, version: String },
 }

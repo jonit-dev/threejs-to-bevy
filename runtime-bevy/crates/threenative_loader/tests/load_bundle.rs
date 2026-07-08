@@ -219,6 +219,81 @@ fn should_reject_unsupported_target_profile_target() {
 }
 
 #[test]
+fn should_reject_cloud_account_storage_capability() {
+    let root = temp_bundle_dir();
+    write_minimal_bundle(&root);
+    write_manifest_with_required_capabilities(
+        &root,
+        r#"{ "storage": ["local-data", "account-storage"] }"#,
+    );
+
+    let error = load_bundle(&root).expect_err("cloud storage capability should fail");
+
+    match error {
+        LoadError::UnsupportedCapability {
+            path,
+            capability,
+            code,
+            ..
+        } => {
+            assert_eq!(path, "manifest.json/requiredCapabilities/storage");
+            assert_eq!(capability, "account-storage");
+            assert_eq!(code, "TN_IR_CLOUD_STORAGE_UNSUPPORTED");
+        }
+        other => panic!("expected unsupported cloud storage capability, got {other:?}"),
+    }
+    fs::remove_dir_all(root).expect("temp bundle should be removed");
+}
+
+#[test]
+fn should_reject_2d_tile_workflow_capability() {
+    let root = temp_bundle_dir();
+    write_minimal_bundle(&root);
+    write_manifest_with_required_capabilities(&root, r#"{ "authoring": ["tilemap"] }"#);
+
+    let error = load_bundle(&root).expect_err("2d workflow capability should fail");
+
+    match error {
+        LoadError::UnsupportedCapability {
+            path,
+            capability,
+            code,
+            ..
+        } => {
+            assert_eq!(path, "manifest.json/requiredCapabilities/authoring");
+            assert_eq!(capability, "tilemap");
+            assert_eq!(code, "TN_IR_2D_WORKFLOW_UNSUPPORTED");
+        }
+        other => panic!("expected unsupported 2d workflow capability, got {other:?}"),
+    }
+    fs::remove_dir_all(root).expect("temp bundle should be removed");
+}
+
+#[test]
+fn should_reject_direct_bevy_authoring_capability() {
+    let root = temp_bundle_dir();
+    write_minimal_bundle(&root);
+    write_manifest_with_required_capabilities(&root, r#"{ "authoring": ["runtime.bevy.system"] }"#);
+
+    let error = load_bundle(&root).expect_err("direct Bevy capability should fail");
+
+    match error {
+        LoadError::UnsupportedCapability {
+            path,
+            capability,
+            code,
+            ..
+        } => {
+            assert_eq!(path, "manifest.json/requiredCapabilities/authoring");
+            assert_eq!(capability, "runtime.bevy.system");
+            assert_eq!(code, "TN_IR_NATIVE_AUTHORING_UNSUPPORTED");
+        }
+        other => panic!("expected unsupported direct Bevy capability, got {other:?}"),
+    }
+    fs::remove_dir_all(root).expect("temp bundle should be removed");
+}
+
+#[test]
 fn should_load_prefab_template_mesh_renderer_without_mesh() {
     let root = temp_bundle_dir();
     write_minimal_bundle(&root);
@@ -521,6 +596,27 @@ fn write_minimal_bundle(root: &Path) {
         root,
         "target.profile.json",
         r#"{ "schema": "threenative.target-profile", "version": "0.1.0", "targets": ["desktop"] }"#,
+    );
+}
+
+fn write_manifest_with_required_capabilities(root: &Path, required_capabilities: &str) {
+    write_json(
+        root,
+        "manifest.json",
+        &format!(
+            r#"{{
+          "schema": "threenative.bundle",
+          "version": "0.1.0",
+          "name": "boundary-test",
+          "requiredCapabilities": {required_capabilities},
+          "entry": {{ "world": "world.ir.json" }},
+          "files": {{
+            "assets": "assets.manifest.json",
+            "materials": "materials.ir.json",
+            "targetProfile": "target.profile.json"
+          }}
+        }}"#
+        ),
     );
 }
 

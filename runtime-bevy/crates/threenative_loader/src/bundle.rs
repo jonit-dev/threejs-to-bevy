@@ -19,6 +19,7 @@ pub fn load_bundle(bundle_path: impl AsRef<Path>) -> Result<LoadedBundle, LoadEr
     let bundle_path = canonical_bundle_path.as_path();
     let manifest: BundleManifest = read_json(bundle_path, "manifest.json")?;
     ensure_supported(&manifest.schema, &manifest.version)?;
+    ensure_required_capabilities_supported(&manifest)?;
 
     let world: WorldIr = read_json(bundle_path, &manifest.entry.world)?;
     ensure_supported(&world.schema, &world.version)?;
@@ -195,6 +196,162 @@ fn ensure_supported(schema: &str, version: &str) -> Result<(), LoadError> {
         schema: schema.to_owned(),
         version: version.to_owned(),
     })
+}
+
+fn ensure_required_capabilities_supported(manifest: &BundleManifest) -> Result<(), LoadError> {
+    for (domain, values) in &manifest.required_capabilities {
+        let mut candidates =
+            std::iter::once(domain.as_str()).chain(values.iter().map(String::as_str));
+        if let Some((candidate, boundary)) = candidates.find_map(|candidate| {
+            unsupported_capability(candidate).map(|boundary| (candidate, boundary))
+        }) {
+            return Err(LoadError::UnsupportedCapability {
+                path: format!("manifest.json/requiredCapabilities/{domain}"),
+                capability: candidate.to_owned(),
+                code: boundary.code.to_owned(),
+                message: boundary.message.to_owned(),
+            });
+        }
+    }
+
+    Ok(())
+}
+
+struct UnsupportedCapabilityBoundary {
+    code: &'static str,
+    message: &'static str,
+}
+
+fn unsupported_capability(candidate: &str) -> Option<UnsupportedCapabilityBoundary> {
+    let candidate = candidate.to_ascii_lowercase();
+    let contains_any = |needles: &[&str]| needles.iter().any(|needle| candidate.contains(needle));
+
+    if has_capability_segment(&candidate, "bevy") || candidate.contains("native-authoring") {
+        return Some(UnsupportedCapabilityBoundary {
+            code: "TN_IR_NATIVE_AUTHORING_UNSUPPORTED",
+            message: "Direct Bevy/native authoring is outside the portable ThreeNative IR boundary.",
+        });
+    }
+    if has_capability_segment(&candidate, "three")
+        || candidate.contains("raw-three")
+        || has_capability_segment(&candidate, "threejs")
+    {
+        return Some(UnsupportedCapabilityBoundary {
+            code: "TN_IR_RAW_THREE_SOURCE_UNSUPPORTED",
+            message: "Raw Three.js authoring cannot be the source of truth for a portable bundle.",
+        });
+    }
+    if contains_any(&[
+        "cloud-save",
+        "cloud-storage",
+        "account-storage",
+        "account-bound",
+        "remote-save",
+        "user-account",
+    ]) {
+        return Some(UnsupportedCapabilityBoundary {
+            code: "TN_IR_CLOUD_STORAGE_UNSUPPORTED",
+            message: "Cloud save and account-bound storage are outside the current offline-first persistence contract.",
+        });
+    }
+    if contains_any(&[
+        "audio-decoder",
+        "decoder-plugin",
+        "custom-decoder",
+        "decoder.custom",
+        "codec.custom",
+    ]) {
+        return Some(UnsupportedCapabilityBoundary {
+            code: "TN_IR_AUDIO_DECODER_PLUGIN_UNSUPPORTED",
+            message: "Executable or custom audio decoders are outside the portable audio contract.",
+        });
+    }
+    if contains_any(&[
+        "audio-stream",
+        "streaming-audio",
+        "audio.stream",
+        "streaming-url",
+    ]) {
+        return Some(UnsupportedCapabilityBoundary {
+            code: "TN_IR_AUDIO_STREAMING_UNSUPPORTED",
+            message: "Streaming audio is outside the current portable audio contract.",
+        });
+    }
+    if contains_any(&[
+        "network-audio",
+        "audio-network",
+        "audio.network",
+        "webrtc-audio",
+    ]) {
+        return Some(UnsupportedCapabilityBoundary {
+            code: "TN_IR_AUDIO_NETWORK_UNSUPPORTED",
+            message: "Network audio is outside the current portable audio contract.",
+        });
+    }
+    if contains_any(&[
+        "renderer-plugin",
+        "runtime-plugin",
+        "plugin-escape",
+        "render-phase",
+        "storage-buffer",
+    ]) {
+        return Some(UnsupportedCapabilityBoundary {
+            code: "TN_IR_RENDERER_PLUGIN_UNSUPPORTED",
+            message: "Public renderer/runtime plugin escape hatches are not portable across web Three.js and native Bevy.",
+        });
+    }
+    if contains_any(&[
+        "network",
+        "websocket",
+        "replication",
+        "collaboration",
+        "online-service",
+        "cloud-save",
+    ]) {
+        return Some(UnsupportedCapabilityBoundary {
+            code: "TN_IR_NETWORKING_UNSUPPORTED",
+            message: "Online services, networking, replication, and collaboration are outside the current portable runtime contract.",
+        });
+    }
+    if contains_any(&[
+        "backend-only",
+        "server-only",
+        "server-rendered",
+        "matchmaking-server",
+        "authoritative-server",
+    ]) {
+        return Some(UnsupportedCapabilityBoundary {
+            code: "TN_IR_BACKEND_ONLY_UNSUPPORTED",
+            message: "Backend-only features cannot be represented in a portable web/native runtime bundle.",
+        });
+    }
+    if contains_any(&["sprite", "tilemap", "ldtk", "tiled", "2d-collision"]) {
+        return Some(UnsupportedCapabilityBoundary {
+            code: "TN_IR_2D_WORKFLOW_UNSUPPORTED",
+            message: "2D-only authoring workflows are outside the current ThreeNative 3D product scope.",
+        });
+    }
+    if contains_any(&[
+        "npm",
+        "filesystem",
+        "worker",
+        "timer",
+        "platform-api",
+        "node-api",
+    ]) {
+        return Some(UnsupportedCapabilityBoundary {
+            code: "TN_IR_PLATFORM_API_UNSUPPORTED",
+            message: "Arbitrary npm, filesystem, worker, timer, and platform APIs cannot be represented in portable IR.",
+        });
+    }
+
+    None
+}
+
+fn has_capability_segment(candidate: &str, segment: &str) -> bool {
+    candidate
+        .split(['.', ':', '/', '-'])
+        .any(|part| part == segment)
 }
 
 fn ensure_target_profile_supported(profile: &TargetProfile, path: &str) -> Result<(), LoadError> {

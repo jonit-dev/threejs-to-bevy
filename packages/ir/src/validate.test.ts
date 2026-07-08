@@ -577,6 +577,54 @@ test("should reject online replication declarations while networking is non-port
   }
 });
 
+test("should reject cloud account storage declarations without a portable provider", async () => {
+  const result = await validateBoundaryCapabilities({ persistence: ["cloud-save.account-bound"] });
+  const diagnostic = result.diagnostics.find((item) => item.code === "TN_IR_CLOUD_STORAGE_UNSUPPORTED");
+
+  assert.equal(result.ok, false);
+  assert.equal(diagnostic?.path, "manifest.json/requiredCapabilities/persistence");
+  assert.match(diagnostic?.suggestion ?? "", /local-data save slots/);
+});
+
+test("should reject direct Bevy authoring references in portable manifests", async () => {
+  const result = await validateBoundaryCapabilities({ native: ["bevy.system"] });
+  const diagnostic = result.diagnostics.find((item) => item.code === "TN_IR_NATIVE_AUTHORING_UNSUPPORTED");
+
+  assert.equal(result.ok, false);
+  assert.equal(diagnostic?.target, "portable-web-native");
+  assert.match(diagnostic?.suggestion ?? "", /TypeScript SDK/);
+});
+
+test("should reject raw Three.js source-of-truth declarations", async () => {
+  const result = await validateBoundaryCapabilities({ renderer: ["raw-three.scene"] });
+  const diagnostic = result.diagnostics.find((item) => item.code === "TN_IR_RAW_THREE_SOURCE_UNSUPPORTED");
+
+  assert.equal(result.ok, false);
+  assert.match(diagnostic?.suggestion ?? "", /SDK objects/);
+});
+
+test("should reject backend-only feature claims separately from platform APIs", async () => {
+  const result = await validateBoundaryCapabilities({ "backend-only": ["server-rendered-matchmaking"] });
+  const diagnostic = result.diagnostics.find((item) => item.code === "TN_IR_BACKEND_ONLY_UNSUPPORTED");
+
+  assert.equal(result.ok, false);
+  assert.equal(diagnostic?.path, "manifest.json/requiredCapabilities/backend-only");
+  assert.match(diagnostic?.suggestion ?? "", /backend service PRD/);
+});
+
+test("should reject custom decoder and network audio capability declarations", async () => {
+  const decoder = await validateBoundaryCapabilities({ audio: ["decoder.custom"] });
+  const streaming = await validateBoundaryCapabilities({ audio: ["audio.stream.remote"] });
+  const network = await validateBoundaryCapabilities({ audio: ["network-audio.webrtc"] });
+
+  assert.equal(decoder.ok, false);
+  assert.equal(decoder.diagnostics.some((item) => item.code === "TN_IR_AUDIO_DECODER_PLUGIN_UNSUPPORTED"), true);
+  assert.equal(streaming.ok, false);
+  assert.equal(streaming.diagnostics.some((item) => item.code === "TN_IR_AUDIO_STREAMING_UNSUPPORTED"), true);
+  assert.equal(network.ok, false);
+  assert.equal(network.diagnostics.some((item) => item.code === "TN_IR_AUDIO_NETWORK_UNSUPPORTED"), true);
+});
+
 test("should reject schema unknown resource fields", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-ir-schema-resource-extra-"));
   try {
@@ -624,6 +672,29 @@ test("should reject schema unknown resource fields", async () => {
     await rm(root, { force: true, recursive: true });
   }
 });
+
+async function validateBoundaryCapabilities(requiredCapabilities: Record<string, string[]>) {
+  const root = await mkdtemp(join(tmpdir(), "tn-ir-boundary-"));
+  try {
+    await writeBundle(root, { current: 100, max: 100 });
+    await writeJson(root, "manifest.json", {
+      schema: "threenative.bundle",
+      version: "0.1.0",
+      name: "boundary-test",
+      requiredCapabilities,
+      entry: { world: "world.ir.json" },
+      files: {
+        assets: "assets.manifest.json",
+        materials: "materials.ir.json",
+        targetProfile: "target.profile.json",
+        componentSchemas: "schemas/components.schema.json",
+      },
+    });
+    return await validateBundle(root);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+}
 
 test("should reject schema event references without declarations", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-ir-schema-events-"));

@@ -18,7 +18,7 @@ preflight evidence rather than real installer/signing/notarization flows.
 
 - `docs/status/ROADMAP.md`
 - `docs/PRDs/done/other/post-v10-production-audio-diagnostics-packaging.md`
-- `docs/PRDs/proof-first-engine-loop-2026-07-05/PRD-003-external-services-media-boundaries.md`
+- `docs/PRDs/done/PRD-003-external-services-media-boundaries.md`
 - `package.json`
 - `scripts/verify-distribution-release.mjs`
 - `scripts/publish-distribution-release.mjs`

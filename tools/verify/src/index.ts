@@ -4,6 +4,7 @@ export { verifyAdvancedUiArtifacts, type IAdvancedUiArtifactReport } from "./adv
 export { runAgentIoBudgetGate, type AgentIoBudgetCommand, type AgentIoBudgetMeasurement, type AgentIoBudgetResult } from "./agentIoBudget.js";
 export { API_CARD_BUDGET_BYTES, renderScriptApiCard, renderScriptApiCardFromSource, scriptContextMembers, validateApiCard, type ApiCardValidationResult } from "./apiCard.js";
 export { checkDocs, formatDocsReport } from "./docs.js";
+export { loadRejectedBoundaryCatalog, verifyBoundaryDiagnosticsCatalog, REQUIRED_BOUNDARY_FIXTURES } from "./boundaryDiagnostics.js";
 export { editorAiChatArtifactPaths, runEditorAiChatGate, type IEditorAiChatArtifacts, type IEditorAiChatReport } from "./editorAiChat.js";
 export { runEditorRequiredOperationsSmoke, type IEditorRequiredOperationsReport } from "./editorRequiredOperations.js";
 export { resolveArtifactTargets, toRepoRelative, type ArtifactOwner, type ArtifactTargets } from "./artifacts.js";

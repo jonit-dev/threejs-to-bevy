@@ -26,6 +26,12 @@ Current support:
   evidence under `tools/verify/artifacts/webview-package/`.
 - `pnpm verify:template-production` checks iterate-first starter guidance,
   compact-report guidance, and generated API-card parity.
+- Rejected boundary fixtures under
+  `packages/ir/fixtures/rejected/v10-boundaries/catalog.json` are audited by
+  verify-tools so cloud/account storage, raw Three.js, direct Bevy authoring,
+  online services, backend-only claims, custom audio decoders, streaming or
+  network audio, platform APIs, and 2D-only workflows stay explicit
+  diagnostic boundaries.
 - Agent benchmark reports are version 2 token-cost artifacts with raw, cached,
   uncached, output, cost-weighted, iteration, failed-command, and tool-output
   medians plus dialect-confusion failure counts. Round-5 aggregation now gates
@@ -75,6 +81,7 @@ Verification:
 - `pnpm verify:session-cost`
 - `pnpm --filter @threenative/verify-tools test`
 - `pnpm verify:webview-package`
+- `pnpm --filter @threenative/verify-tools test -- --run boundary`
 - `pnpm check:docs`
 - `pnpm verify:smoke`
 - `pnpm verify:release`
