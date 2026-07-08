@@ -224,8 +224,10 @@ export {
 } from "./sceneLifecycle.js";
 export {
   balancedRenderLook,
+  cinematicRenderLook,
   parityRenderLook,
   renderLookProfile,
+  stylizedRenderLook,
   type IRenderLookOverrides,
   type IRenderLookProfileDeclaration,
   type RenderLookProfileName,

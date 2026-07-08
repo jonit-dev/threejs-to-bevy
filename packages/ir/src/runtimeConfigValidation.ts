@@ -236,8 +236,7 @@ function rendererAdvancedSuggestion(boundary: RendererAdvancedBoundary): string 
   return `Remove the field or keep the visual intent in authored materials/camera data until promotion provides ${evidence}.`;
 }
 
-const PROMOTED_RENDER_LOOK_PROFILES = new Set(["parity", "balanced"]);
-const RESERVED_RENDER_LOOK_PROFILES = new Set(["cinematic", "stylized"]);
+const PROMOTED_RENDER_LOOK_PROFILES = new Set(["parity", "balanced", "cinematic", "stylized"]);
 const RENDER_LOOK_OVERRIDE_RANGES = {
   bloomIntensity: [0, 2],
   contrast: [-0.5, 0.5],
@@ -253,7 +252,7 @@ function validateRenderLook(value: unknown, path: string, diagnostics: IIrDiagno
       message: "Renderer renderLook must be a portable profile object.",
       path,
       severity: "error",
-      suggestion: "Use { version: 1, profile: 'parity' | 'balanced' }.",
+      suggestion: "Use { version: 1, profile: 'parity' | 'balanced' | 'cinematic' | 'stylized' }.",
     });
     return;
   }
@@ -269,25 +268,15 @@ function validateRenderLook(value: unknown, path: string, diagnostics: IIrDiagno
   }
 
   const profile = value.profile;
-  if (typeof profile !== "string" || (!PROMOTED_RENDER_LOOK_PROFILES.has(profile) && !RESERVED_RENDER_LOOK_PROFILES.has(profile))) {
+  if (typeof profile !== "string" || !PROMOTED_RENDER_LOOK_PROFILES.has(profile)) {
     diagnostics.push({
       code: "TN_RENDER_PROFILE_UNSUPPORTED",
-      limit: ["parity", "balanced"],
+      limit: ["parity", "balanced", "cinematic", "stylized"],
       message: "Renderer renderLook profile must be a promoted portable profile.",
       path: `${path}/profile`,
       severity: "error",
-      suggestion: "Use 'parity' for deterministic conformance or 'balanced' for new game defaults.",
+      suggestion: "Use 'parity' for deterministic conformance, 'balanced' for conservative polish, 'cinematic' for the default filmic look, or 'stylized' for saturated/toon-leaning scenes.",
       value: typeof profile === "string" ? profile : undefined,
-    });
-  } else if (RESERVED_RENDER_LOOK_PROFILES.has(profile)) {
-    diagnostics.push({
-      code: "TN_RENDER_PROFILE_UNSUPPORTED",
-      limit: ["parity", "balanced"],
-      message: `Renderer renderLook profile '${profile}' is reserved until web and Bevy screenshot proof exists.`,
-      path: `${path}/profile`,
-      severity: "error",
-      suggestion: "Use 'parity' or 'balanced' until this profile is promoted.",
-      value: profile,
     });
   }
 

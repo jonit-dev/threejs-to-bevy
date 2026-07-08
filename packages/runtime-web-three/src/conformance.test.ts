@@ -331,7 +331,7 @@ test("should report V9 environment lighting, light budgets, and renderer quality
   assert.deepEqual(report.runtimeConfig?.renderer?.postProcessing?.skipped, []);
 });
 
-test("should report render look fallbacks and applied web profile settings", async () => {
+test("should report promoted render look profile settings", async () => {
   const bundle = await loadBundle(resolve(process.cwd(), "../ir/fixtures/conformance/basic-scene/game.bundle"));
   bundle.runtimeConfig = {
     schema: "threenative.runtime-config",
@@ -351,10 +351,12 @@ test("should report render look fallbacks and applied web profile settings", asy
   const report = reportWebConformance(bundle, mapped, "basic-scene");
 
   assert.deepEqual(report.runtimeConfig?.renderer?.renderLook, {
-    appliedProfile: "parity",
-    fallbacks: [{ code: "TN_RENDER_PROFILE_FALLBACK_USED", feature: "profile.stylized", reason: "Web runtime only promotes parity and balanced render look profiles." }],
+    appliedProfile: "stylized",
+    fallbacks: [],
     overrides: { bloomIntensity: 0.4, exposure: 1.1, saturation: 1.15 },
     requestedProfile: "stylized",
   });
-  assert.deepEqual(report.runtimeConfig?.renderer?.postProcessing?.skipped, [{ feature: "profile.stylized", reason: "Web runtime only promotes parity and balanced render look profiles." }]);
+  assert.deepEqual(report.runtimeConfig?.renderer?.bloom, { enabled: true, intensity: 0.4, threshold: 0.85 });
+  assert.deepEqual(report.runtimeConfig?.renderer?.postProcessing?.applied, ["bloom", "colorGrading"]);
+  assert.deepEqual(report.runtimeConfig?.renderer?.postProcessing?.skipped, []);
 });

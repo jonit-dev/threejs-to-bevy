@@ -45,20 +45,22 @@ defaults:
 
 - `parity` is required for conformance, migration, regression, and visual
   calibration fixtures that need neutral deterministic output.
-- `balanced` is the maintained-starter default for new playable projects and is
-  allowed to apply supported tone mapping, exposure, bloom, antialiasing,
-  shadow, and environment-intensity semantics.
+- `cinematic` is the maintained-starter default for new playable projects and
+  is allowed to apply supported tone mapping, exposure, bloom, antialiasing,
+  shadow, and environment-intensity semantics. `balanced` remains selectable
+  for conservative polish.
 - Missing `renderer.renderLook` remains equivalent to `parity`, so existing
   projects do not silently inherit richer output.
 
-Do not tune adapter colors, lights, or materials to force `balanced` to match
-`parity`, and do not tune `parity` fixtures to look more polished. `balanced`
-quality proof is metric and artifact based; it must show a visibly richer
-result without creating pixel-perfect web/Bevy expectations.
+Do not tune adapter colors, lights, or materials to force `cinematic` or
+`balanced` to match `parity`, and do not tune `parity` fixtures to look more
+polished. Quality proof is metric and artifact based; it must show a visibly
+richer result without creating pixel-perfect web/Bevy expectations.
 
-Use `pnpm verify:render-look` for the focused render-look threshold check. The
-gate captures parity and balanced web plus Bevy screenshots by default and
-compares screenshot-derived web metrics. A passing report uses
+Use `pnpm verify:default-look` or `pnpm verify:render-look` for the focused
+render-look threshold check. The gate captures parity, balanced, and cinematic
+web plus Bevy screenshots by default and compares screenshot-derived web
+metrics. A passing report uses
 `evidenceMode: "captured-screenshots"` and writes the screenshot paths under
 `tools/verify/artifacts/render-look/screenshots/`. This remains a focused
 quality gate until promoted into the release profile.

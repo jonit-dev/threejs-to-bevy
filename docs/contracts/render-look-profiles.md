@@ -37,14 +37,18 @@ debugging, and fixtures that need stable visual comparisons. Existing runtime
 configs without `renderer.renderLook` behave as `parity` until an author or
 migration explicitly opts in.
 
-`balanced` is the promoted quality profile for new game defaults. It may map to
-portable sRGB color management, tone mapping, exposure, antialiasing, bloom
-intent, shadow quality, and environment intensity where a target supports those
-semantics.
+`balanced` is the conservative quality profile for portable scaffold polish.
+It may map to portable sRGB color management, tone mapping, exposure,
+antialiasing, bloom intent, shadow quality, and environment intensity where a
+target supports those semantics.
 
-`cinematic` and `stylized` are reserved profile names. They are rejected by IR
-validation until web and Bevy mappings plus screenshot evidence prove the
-semantics.
+`cinematic` is the default profile for fresh game projects. It resolves through
+the target quality ladder so desktop web can use the richer filmic stack while
+mobile web and native lower expensive settings deterministically.
+
+`stylized` is the promoted saturated/toon-leaning profile for arcade and
+illustrative scenes. It uses the same portable feature set as other profiles
+and remains overrideable through bounded semantic fields.
 
 ## Overrides
 
@@ -65,8 +69,8 @@ silently substituting renderer-specific behavior.
 
 ## Diagnostics
 
-`TN_RENDER_PROFILE_UNSUPPORTED` rejects unknown, reserved, malformed, or
-backend-specific profile payloads.
+`TN_RENDER_PROFILE_UNSUPPORTED` rejects unknown, malformed, or backend-specific
+profile payloads.
 
 `TN_RENDER_LOOK_OUT_OF_RANGE` rejects bounded overrides outside their portable
 range.

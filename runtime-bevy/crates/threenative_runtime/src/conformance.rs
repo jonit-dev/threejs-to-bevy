@@ -1096,13 +1096,15 @@ fn report_runtime_config(
         })
         .or_else(|| {
             renderer.render_look.as_ref().and_then(|render_look| {
-                (render_look.profile == "balanced").then(|| RuntimeBloomReport {
+                native_render_look_has_bloom(render_look.profile.as_str()).then(|| RuntimeBloomReport {
                     enabled: true,
                     intensity: render_look
                         .overrides
                         .as_ref()
                         .and_then(|overrides| overrides.bloom_intensity)
-                        .unwrap_or(0.25),
+                        .unwrap_or_else(|| {
+                            native_render_look_bloom_intensity(render_look.profile.as_str())
+                        }),
                     threshold: 0.85,
                 })
             })
@@ -1137,7 +1139,8 @@ fn report_runtime_config(
                         .as_ref()
                         .and_then(|bloom| bloom.enabled.then(|| "bloom".to_owned())),
                     renderer.render_look.as_ref().and_then(|render_look| {
-                        (renderer.bloom.is_none() && render_look.profile == "balanced")
+                        (renderer.bloom.is_none()
+                            && native_render_look_has_bloom(render_look.profile.as_str()))
                             .then(|| "bloom".to_owned())
                     }),
                     renderer
@@ -1178,21 +1181,11 @@ fn runtime_render_look_report(renderer: &RuntimeRendererConfig) -> Option<Runtim
         .as_ref()
         .map(|render_look| render_look.profile.clone())
         .unwrap_or_else(|| "parity".to_owned());
-    let applied_profile = if requested_profile == "balanced" {
-        "balanced"
-    } else {
-        "parity"
-    }
-    .to_owned();
-    let fallbacks = match requested_profile.as_str() {
-        "cinematic" | "stylized" => vec![RuntimeRenderLookFallbackReport {
-            code: "TN_RENDER_PROFILE_FALLBACK_USED".to_owned(),
-            feature: format!("profile.{requested_profile}"),
-            reason: "Bevy runtime only promotes parity and balanced render look profiles."
-                .to_owned(),
-        }],
-        _ => Vec::new(),
+    let applied_profile = match requested_profile.as_str() {
+        "balanced" | "cinematic" | "stylized" => requested_profile.clone(),
+        _ => "parity".to_owned(),
     };
+    let fallbacks = Vec::new();
     Some(RuntimeRenderLookReport {
         applied_profile,
         fallbacks,
@@ -1210,6 +1203,19 @@ fn runtime_render_look_report(renderer: &RuntimeRendererConfig) -> Option<Runtim
             }),
         requested_profile,
     })
+}
+
+fn native_render_look_has_bloom(profile: &str) -> bool {
+    matches!(profile, "balanced" | "cinematic" | "stylized")
+}
+
+fn native_render_look_bloom_intensity(profile: &str) -> f32 {
+    match profile {
+        "cinematic" => 0.45,
+        "stylized" => 0.3,
+        "balanced" => 0.25,
+        _ => 0.0,
+    }
 }
 
 fn post_antialias_feature(mode: &str) -> Option<String> {

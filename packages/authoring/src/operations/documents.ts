@@ -661,7 +661,7 @@ export async function setRuntimeRendering(options: ISetRuntimeRenderingOptions):
               renderLook: {
                 ...renderLook,
                 version: 1,
-                profile: options.renderProfile ?? renderLook.profile ?? "balanced",
+                profile: options.renderProfile ?? renderLook.profile ?? "cinematic",
                 ...(Object.keys(nextRenderLookOverrides).length === 0 ? {} : { overrides: nextRenderLookOverrides }),
               },
             }

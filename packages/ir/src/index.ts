@@ -126,8 +126,8 @@ export {
   type PickingPointerEvents,
   type PickingTargetKind,
 } from "./picking.js";
-export { RENDER_LOOK_PROFILE_PRESETS } from "./runtimeConfig.js";
-export type { IRenderLookProfileIr, IRenderLookProfilePreset, IRuntimeConfigIr, RendererAntialiasMode, RenderLookProfileName, RenderLookShadowQuality } from "./runtimeConfig.js";
+export { RENDER_LOOK_PROFILE_PRESETS, resolveRenderLookProfile } from "./runtimeConfig.js";
+export type { IRenderLookProfileIr, IRenderLookProfilePreset, IResolvedRenderLookProfile, IRuntimeConfigIr, RendererAntialiasMode, RenderLookProfileName, RenderLookShadowQuality, RenderLookTargetProfile } from "./runtimeConfig.js";
 export { auditUiAccessibility, type IUiAccessibilityDiagnostic, type IUiAccessibilityReport } from "./uiAccessibility.js";
 export {
   buildComponentReflectionRegistry,

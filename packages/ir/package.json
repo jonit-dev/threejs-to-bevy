@@ -20,6 +20,10 @@
       "types": "./dist/input.d.ts",
       "default": "./dist/input.js"
     },
+    "./runtimeConfig": {
+      "types": "./dist/runtimeConfig.d.ts",
+      "default": "./dist/runtimeConfig.js"
+    },
     "./reflection": {
       "types": "./dist/reflection.d.ts",
       "default": "./dist/reflection.js"

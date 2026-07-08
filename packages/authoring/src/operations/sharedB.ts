@@ -477,7 +477,7 @@ export function validateRuntimeRenderLook(diagnostics: IAuthoringDiagnostic[], f
   }
   const profile = readString(renderLook.profile);
   if (profile === undefined || (!supportedRenderLookProfiles.has(profile) && !supportedRenderLookReservedProfiles.has(profile))) {
-    diagnostics.push(typeDiagnostic(file, "/renderer/renderLook/profile", "runtime renderer renderLook profile must be 'parity' or 'balanced'.", renderLook.profile));
+    diagnostics.push(typeDiagnostic(file, "/renderer/renderLook/profile", "runtime renderer renderLook profile must be 'parity', 'balanced', 'cinematic', or 'stylized'.", renderLook.profile));
   } else if (supportedRenderLookReservedProfiles.has(profile)) {
     diagnostics.push(typeDiagnostic(file, "/renderer/renderLook/profile", "runtime renderer renderLook profile is reserved until runtime screenshot proof promotes it.", renderLook.profile));
   }

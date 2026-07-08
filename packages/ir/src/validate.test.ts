@@ -911,7 +911,7 @@ test("should accept promoted runtime renderer quality metadata", async () => {
   }
 });
 
-test("should accept parity and balanced render look profiles", async () => {
+test("should accept promoted render look profiles", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-ir-render-look-valid-"));
   try {
     await writeBundle(root, { current: 100, max: 100 });
@@ -921,6 +921,26 @@ test("should accept parity and balanced render look profiles", async () => {
     });
 
     let result = await validateBundle(root);
+
+    assert.equal(result.ok, true);
+    assert.deepEqual(result.diagnostics, []);
+
+    await writeRuntimeConfig(root, {
+      antialias: "msaa4",
+      renderLook: { version: 1, profile: "cinematic" },
+    });
+
+    result = await validateBundle(root);
+
+    assert.equal(result.ok, true);
+    assert.deepEqual(result.diagnostics, []);
+
+    await writeRuntimeConfig(root, {
+      antialias: "msaa4",
+      renderLook: { version: 1, profile: "stylized" },
+    });
+
+    result = await validateBundle(root);
 
     assert.equal(result.ok, true);
     assert.deepEqual(result.diagnostics, []);

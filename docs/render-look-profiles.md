@@ -10,7 +10,7 @@ Use `parity` for conformance fixtures, migration checks, regression debugging,
 and any proof where stable neutral output matters more than game feel. Runtime
 configs without `renderer.renderLook` continue to behave as `parity`.
 
-Use `balanced` for new playable projects. Maintained starters now write a
+Use `cinematic` for new playable projects. Maintained starters now write a
 durable runtime source document with:
 
 ```json
@@ -22,29 +22,22 @@ durable runtime source document with:
     "antialias": "msaa4",
     "renderLook": {
       "version": 1,
-      "profile": "balanced",
-      "overrides": {
-        "bloomIntensity": 0.65,
-        "contrast": 0.22,
-        "environmentIntensity": 1.35,
-        "exposure": 1.08,
-        "saturation": 1.35,
-        "shadowQuality": "medium"
-      }
+      "profile": "cinematic"
     }
   }
 }
 ```
 
-`cinematic` and `stylized` are reserved names. They are not promoted until both
-web and Bevy mappings have screenshot evidence and documented fallback behavior.
+Use `balanced` when a conservative polish profile is preferable, and use
+`stylized` for saturated/toon-leaning scenes. All promoted profiles report the
+requested/applied profile and any per-feature fallback diagnostics.
 
 ## CLI
 
-Create a new balanced project:
+Create a new cinematic project:
 
 ```bash
-tn create demo --render-profile balanced --json
+tn create demo --json
 ```
 
 Create a neutral parity project for fixtures:
@@ -68,8 +61,7 @@ tn look apply arcade-neon --project . --json
 
 The look preset command currently exposes `arcade-neon`, `forest-dawn`,
 `sunset-racer`, `toybox-pop`, and `noir-metal`. Presets combine bounded
-`renderer.renderLook.overrides` with starter material palette edits; they do
-not promote reserved `cinematic` or `stylized` render-look profiles.
+`renderer.renderLook.overrides` with starter material palette edits.
 
 Optional overrides stay bounded and semantic:
 

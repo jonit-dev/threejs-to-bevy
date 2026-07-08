@@ -297,16 +297,17 @@ pub fn app_from_bundle_with_options(
 }
 
 pub fn default_clear_color_for_bundle(bundle: &LoadedBundle) -> Color {
-    if bundle
+    match bundle
         .runtime_config
         .as_ref()
         .and_then(|config| config.renderer.as_ref())
         .and_then(|renderer| renderer.render_look.as_ref())
-        .is_some_and(|render_look| render_look.profile == "balanced")
+        .map(|render_look| render_look.profile.as_str())
     {
-        return Color::srgb(56.0 / 255.0, 189.0 / 255.0, 248.0 / 255.0);
+        Some("cinematic") => Color::srgb(143.0 / 255.0, 182.0 / 255.0, 216.0 / 255.0),
+        Some("balanced" | "stylized") => Color::srgb(56.0 / 255.0, 189.0 / 255.0, 248.0 / 255.0),
+        _ => Color::srgb(17.0 / 255.0, 19.0 / 255.0, 24.0 / 255.0),
     }
-    Color::srgb(17.0 / 255.0, 19.0 / 255.0, 24.0 / 255.0)
 }
 
 fn sync_default_camera_clear_color(world: &mut World) {

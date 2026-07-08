@@ -14,7 +14,7 @@
   "lookProfile": {
     "camera": "orthographic top-down follow",
     "movementPlane": "ground-xz",
-    "renderLook": "balanced"
+    "renderLook": "cinematic"
   },
   "probe": {
     "name": "smoke-movement",

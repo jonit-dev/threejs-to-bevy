@@ -56,15 +56,7 @@ test("should create starter template files", async () => {
     };
     assert.deepEqual(runtime.renderer?.renderLook, {
       version: 1,
-      profile: "balanced",
-      overrides: {
-        bloomIntensity: 0.65,
-        contrast: 0.22,
-        environmentIntensity: 1.35,
-        exposure: 1.08,
-        saturation: 1.35,
-        shadowQuality: "medium",
-      },
+      profile: "cinematic",
     });
 
     const agentInstructions = await readFile(join(payload.path, "AGENTS.md"), "utf8");

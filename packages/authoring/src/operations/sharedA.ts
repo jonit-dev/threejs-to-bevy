@@ -471,7 +471,7 @@ export const systemStringListMetadataKeys = [
   "writes",
 ] as const;
 
-export function defaultRuntimeConfigData(runtimeId: string, renderProfile = "balanced"): Record<string, unknown> {
+export function defaultRuntimeConfigData(runtimeId: string, renderProfile = "cinematic"): Record<string, unknown> {
   return {
     schema: runtimeDocumentSchema,
     version: "0.1.0",

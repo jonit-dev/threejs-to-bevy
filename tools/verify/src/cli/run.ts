@@ -192,8 +192,21 @@ export const FOCUSED_GATES: Record<string, FocusedGate> = {
     metadata: {
       owner: "tools/verify render-look gate",
       profile: "focused",
-      reason: "Compares parity and balanced render-look evidence so beautiful defaults cannot regress into flat screenshots.",
-      protects: "Render-look profile quality, parity profile isolation, and artifact-backed visual improvement thresholds.",
+      reason: "Compares parity, balanced, and cinematic render-look evidence so beautiful defaults cannot regress into flat screenshots.",
+      protects: "Render-look profile quality, parity profile isolation, cinematic default-look quality, and artifact-backed visual improvement thresholds.",
+    },
+  },
+  "verify:default-look": {
+    commands: [
+      ["pnpm", "--filter", "@threenative/verify-tools", "build"],
+      ["node", "tools/verify/dist/cli/renderLook.js"],
+    ],
+    description: "Cinematic default look quality gate.",
+    metadata: {
+      owner: "tools/verify render-look gate",
+      profile: "focused",
+      reason: "Captures and compares the promoted cinematic default look against parity/balanced baselines.",
+      protects: "Fresh-project cinematic defaults, cross-runtime render-look evidence, and profile fallback diagnostics.",
     },
   },
   "verify:runtime-gameplay-host": {

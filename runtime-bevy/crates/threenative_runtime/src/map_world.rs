@@ -524,19 +524,18 @@ fn bloom_settings_for_runtime(config: Option<&RuntimeConfigIr>) -> Option<BloomS
     let renderer = config.and_then(|config| config.renderer.as_ref())?;
     let (enabled, intensity, threshold) = if let Some(bloom) = renderer.bloom.as_ref() {
         (bloom.enabled, bloom.intensity, bloom.threshold)
-    } else if renderer
+    } else if let Some(render_look) = renderer
         .render_look
         .as_ref()
-        .is_some_and(|render_look| render_look.profile == "balanced")
+        .filter(|render_look| native_render_look_has_bloom(render_look.profile.as_str()))
     {
         (
             true,
-            renderer
-                .render_look
+            render_look
+                .overrides
                 .as_ref()
-                .and_then(|render_look| render_look.overrides.as_ref())
                 .and_then(|overrides| overrides.bloom_intensity)
-                .unwrap_or(0.25),
+                .unwrap_or_else(|| native_render_look_bloom_intensity(render_look.profile.as_str())),
             0.85,
         )
     } else {
@@ -553,6 +552,19 @@ fn bloom_settings_for_runtime(config: Option<&RuntimeConfigIr>) -> Option<BloomS
         },
         ..Default::default()
     })
+}
+
+fn native_render_look_has_bloom(profile: &str) -> bool {
+    matches!(profile, "balanced" | "cinematic" | "stylized")
+}
+
+fn native_render_look_bloom_intensity(profile: &str) -> f32 {
+    match profile {
+        "cinematic" => 0.45,
+        "stylized" => 0.3,
+        "balanced" => 0.25,
+        _ => 0.0,
+    }
 }
 
 fn active_camera_id(bundle: &LoadedBundle) -> Option<String> {

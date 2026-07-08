@@ -256,6 +256,32 @@ test("should map balanced render look defaults from the shared IR preset", () =>
   assert.equal(renderer.toneMappingExposure, preset.exposure);
 });
 
+test("should map cinematic render look defaults from the shared IR preset", () => {
+  const renderer = mockRenderer();
+  const preset = RENDER_LOOK_PROFILE_PRESETS.cinematic;
+  const config = runtimeConfig("msaa8", {
+    renderLook: {
+      version: 1,
+      profile: "cinematic",
+    },
+  });
+
+  applyRendererColorManagement(renderer, undefined, {
+    contrast: preset.contrast,
+    exposure: preset.exposure,
+    saturation: preset.saturation,
+    toneMapping: preset.toneMapping,
+  });
+
+  assert.deepEqual(webBloomSettings(config), {
+    enabled: true,
+    intensity: preset.bloomIntensity,
+    threshold: 0.85,
+  });
+  assert.equal(renderer.toneMapping, THREE.ACESFilmicToneMapping);
+  assert.equal(renderer.toneMappingExposure, preset.exposure);
+});
+
 test("should add balanced sky and fill lights when a scene has no authored lighting", () => {
   const scene = new THREE.Scene();
   scene.background = new THREE.Color("#111318");
@@ -266,6 +292,19 @@ test("should add balanced sky and fill lights when a scene has no authored light
   assert.deepEqual(scene.children.map((child) => child.name).sort(), [
     "renderLook.balanced.ambientFill",
     "renderLook.balanced.keyLight",
+  ]);
+});
+
+test("should add cinematic sky and fill lights when a scene has no authored lighting", () => {
+  const scene = new THREE.Scene();
+  scene.background = new THREE.Color("#111318");
+
+  applyRenderLookSceneDefaults(scene, { appliedProfile: "cinematic" });
+
+  assert.equal(scene.background.getHexString(), "8fb6d8");
+  assert.deepEqual(scene.children.map((child) => child.name).sort(), [
+    "renderLook.cinematic.ambientFill",
+    "renderLook.cinematic.keyLight",
   ]);
 });
 

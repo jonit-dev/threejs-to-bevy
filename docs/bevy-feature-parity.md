@@ -358,7 +358,8 @@ residual wording below are:
 
 - [Render Look, Shadow, and Bloom Polish Profiles](PRDs/done/other/render-look-shadow-bloom-polish.md):
   screenshot-backed `balanced` profile promotion, bounded shadow/bloom/exposure
-  polish controls, and reserved `cinematic`/`stylized` profile evidence.
+  polish controls, and the predecessor evidence for later `cinematic`/
+  `stylized` promotion.
 - [Animation, Morph, Mask, and Lightweight VFX Polish](PRDs/done/other/animation-morph-mask-vfx-polish.md):
   morph targets, animation masks, bounded blend residuals, and deterministic
   script-triggered VFX commands.
@@ -500,15 +501,15 @@ remaining gaps by usefulness for building and shipping ordinary 3D games:
   terrain asset-group policy, bounded instancing policy, specular texture proof,
   extended material preset proof, manifest streaming diagnostics, and advanced
   renderer boundary diagnostics.
-- `P2` Render look profile selection is partially promoted for `parity` and
-  `balanced` source/config/runtime semantics. Web and Bevy both load the same
-  `renderer.renderLook` profile, report requested/applied/fallback values, and
-  keep `cinematic`/`stylized` reserved until screenshot proof exists. New
-  maintained starters default to `balanced`; missing profiles remain `parity`
-  for existing projects and conformance fixtures. `pnpm verify:render-look` is
-  available as a focused threshold gate with captured web/Bevy screenshots and
-  screenshot-derived web metrics. It is intentionally not in the release profile
-  until the screenshot capture path is promoted for CI release runs.
+- `P2` Render look profile selection is promoted for `parity`, `balanced`,
+  `cinematic`, and `stylized` source/config/runtime semantics. Web and Bevy
+  both load the same `renderer.renderLook` profile, report requested/applied/
+  fallback values, and apply bounded tone, bloom, shadow, and fallback sky
+  policy. New maintained starters default to `cinematic`; missing profiles
+  remain `parity` for existing projects and conformance fixtures.
+  `pnpm verify:default-look`/`pnpm verify:render-look` capture parity,
+  balanced, and cinematic web/Bevy screenshots plus screenshot-derived web
+  metrics.
 - `P3` Advanced renderer and physics breadth. Custom shaders, bindless,
   volumetrics, SSR, deferred rendering, decals, auto exposure, DOF, motion blur,
   virtual geometry, full constraints, vehicles, ragdolls, soft bodies, arbitrary
@@ -569,7 +570,7 @@ Rows below are planning guidance, not implementation claims:
 | Feature family | Bevy 0.14 signal | Game-polish value | ThreeNative promotion bar |
 | -------------- | ---------------- | ----------------- | ------------------------- |
 | HDR emissive bloom | Bevy's 3D bloom example uses HDR cameras, bloom settings, and emissive materials; ThreeNative already has runtime bloom config and emissive material metadata. | Pickups, magic, signage, vehicle lamps, warning lights, and diegetic UI read immediately instead of looking like flat colored meshes. | Keep as `P1`: prove threshold/intensity/exposure interactions with web and Bevy screenshots, preserve invalid metadata diagnostics, and avoid per-adapter color tuning. |
-| Filmic look controls | Bevy 0.14 adds filmic color grading and existing tone mapping/exposure controls; ThreeNative render-look profiles already reserve `balanced`, `cinematic`, and `stylized`. | Cohesive mood, less washed-out lighting, better dusk/night/cave readability, and material response that feels authored. | Promote only bounded semantic controls first: tone map, exposure, saturation, contrast, bloom intensity, and shadow quality profile rows. `cinematic`/`stylized` stay reserved until web and Bevy screenshot proof exists. |
+| Filmic look controls | Bevy 0.14 adds filmic color grading and existing tone mapping/exposure controls; ThreeNative render-look profiles promote `balanced`, `cinematic`, and `stylized` as bounded semantic profile rows. | Cohesive mood, less washed-out lighting, better dusk/night/cave readability, and material response that feels authored. | Keep promotion bounded to tone map, exposure, saturation, contrast, bloom intensity, shadow quality, and deterministic fallback/default lighting policy before exposing high-end renderer internals. |
 | Auto exposure | Bevy 0.14 exposes camera auto-exposure, but it is histogram-driven and platform-sensitive. | Useful for tunnels, caves, explosions, day/night transitions, and bright outdoor-to-indoor cuts. | Keep `P3` diagnostic-only. `TN_IR_RENDERER_ADVANCED_FEATURE_UNSUPPORTED` now reports the web/Bevy target surface and the missing deterministic histogram, convergence, and mobile fallback evidence. |
 | Depth of field | Bevy 0.14 has focal-distance/aperture depth-of-field examples; ThreeNative currently records a runtime-config/report boundary. | Hero-object focus, scale cues, menu scenes, and cinematic moments. | Keep report-only until visual blur calibration, mobile/performance budget, camera ownership rules, and unsupported-platform fallback evidence are captured. |
 | Motion blur and motion vectors | Bevy 0.14 includes per-object motion blur and improved motion vectors/TAA for animated meshes. | Racing, projectiles, fast enemies, camera pans, and attacks feel smoother. | Keep diagnostic-only. Unsupported diagnostics now require shutter/sample semantics, motion-vector or authored approximation policy, and video/screenshot proof before promotion. |
@@ -586,8 +587,8 @@ Rows below are planning guidance, not implementation claims:
 
 Practical order for game-polish work:
 
-1. Promote and release-gate screenshot-backed `balanced` render look defaults
-   across web and Bevy.
+1. Maintain screenshot-backed `cinematic` default-look evidence across web and
+   Bevy while keeping `balanced` selectable for conservative polish.
 2. Add bounded polish presets for shadows, bloom, exposure, and material
    defaults before exposing high-end renderer internals.
 3. Improve imported-asset fidelity through glTF material-extension reports,

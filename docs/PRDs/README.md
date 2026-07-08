@@ -179,7 +179,7 @@ execution bundle.
 
 ### Advanced And Boundary Work
 
-- [Cinematic Default Look](proof-first-engine-loop-2026-07-05/PRD-005-cinematic-default-look.md):
+- [Cinematic Default Look](done/proof-first-engine-loop-2026-07-05/PRD-005-cinematic-default-look.md):
   promote `cinematic`/`stylized` render-look profiles with per-target quality
   ladders, make cinematic the zero-config default for new projects, and gate
   the default look against regression with committed reference evidence.

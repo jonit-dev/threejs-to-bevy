@@ -11,7 +11,7 @@
     "lookProfile": {
       "camera": "orthographic top-down follow",
       "movementPlane": "ground-xz",
-      "renderLook": "balanced"
+      "renderLook": "cinematic"
     },
     "objective": "Trigger visible and audio feedback by reaching the goal zone.",
     "progression": "The starter remains a single objective slice; expand it with score, timer, waves, or collectible count before claiming a complete generated game.",

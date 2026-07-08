@@ -15,9 +15,10 @@ Current support:
 - Visual-quality analysis now scores color bucket diversity and local contrast
   so flat one-color primitive captures are distinguishable from styled
   scaffold captures in focused tests.
-- The promoted `balanced` render-look default now maps a brighter fallback sky
-  color in both web and native runtimes when no authored atmosphere overrides
-  it.
+- The promoted `cinematic` render-look default now maps filmic tone/bloom,
+  shadow quality, and a richer fallback sky in web and native runtimes when no
+  authored atmosphere overrides it. `balanced` and `stylized` remain selectable
+  promoted profiles.
 - PRD-007 committed visual evidence is indexed at
   [prd-007-beautiful-scaffolds](../../pr-evidence/prd-007-beautiful-scaffolds/README.md),
   with raw generated report references under
@@ -30,6 +31,7 @@ Verification:
 - `node --test packages/cli/dist/commands/look.test.js packages/cli/dist/verify/renderingQuality.test.js`
 - `pnpm verify:parity:smoke`
 - `pnpm verify:conformance`
+- `pnpm verify:default-look`
 - `pnpm verify:release`
 
 Full prior evidence is preserved in

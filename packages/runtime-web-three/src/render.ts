@@ -3,7 +3,8 @@ import { EffectComposer } from "three/examples/jsm/postprocessing/EffectComposer
 import { RenderPass } from "three/examples/jsm/postprocessing/RenderPass.js";
 import { ShaderPass } from "three/examples/jsm/postprocessing/ShaderPass.js";
 import { UnrealBloomPass } from "three/examples/jsm/postprocessing/UnrealBloomPass.js";
-import type { IAssetsManifest, IAtmosphereProfileIr, ICameraClear, IMaterialsIr, IRuntimeConfigIr, IWorldIr } from "@threenative/ir";
+import type { IAssetsManifest, IAtmosphereProfileIr, ICameraClear, IMaterialsIr, IRuntimeConfigIr, IWorldIr, RenderLookProfileName } from "@threenative/ir";
+import { resolveRenderLookProfile } from "@threenative/ir/runtimeConfig";
 import type { IWebBundle } from "./webBundle.js";
 import {
   updateCameraHelpers,
@@ -1168,8 +1169,7 @@ export function applyRendererColorManagement(
 }
 
 export function applyRendererShadowSettings(renderer: THREE.WebGLRenderer, config?: IRuntimeConfigIr): void {
-  const quality = config?.renderer?.renderLook?.overrides?.shadowQuality
-    ?? (config?.renderer?.renderLook?.profile === "balanced" ? "high" : "medium");
+  const quality = resolveRenderLookProfile(config?.renderer?.renderLook, "desktop-web").shadowQuality;
   renderer.shadowMap.enabled = quality !== "off";
   if (quality === "high") {
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -1184,13 +1184,13 @@ export function applyRendererShadowSettings(renderer: THREE.WebGLRenderer, confi
 
 export function applyRenderLookSceneDefaults(
   scene: THREE.Scene,
-  renderLook: { appliedProfile: "parity" | "balanced" },
+  renderLook: { appliedProfile: RenderLookProfileName },
 ): void {
-  if (renderLook.appliedProfile !== "balanced") {
+  if (renderLook.appliedProfile === "parity") {
     return;
   }
   if (scene.background instanceof THREE.Color && scene.background.getHexString() === "111318") {
-    scene.background = new THREE.Color("#38bdf8");
+    scene.background = new THREE.Color(renderLook.appliedProfile === "cinematic" ? "#8fb6d8" : "#38bdf8");
   }
   let hasLight = false;
   scene.traverse((object) => {
@@ -1201,10 +1201,10 @@ export function applyRenderLookSceneDefaults(
   if (hasLight) {
     return;
   }
-  const ambient = new THREE.AmbientLight("#dce8ff", 0.65);
-  ambient.name = "renderLook.balanced.ambientFill";
-  const key = new THREE.DirectionalLight("#fff2d0", 1.1);
-  key.name = "renderLook.balanced.keyLight";
+  const ambient = new THREE.AmbientLight(renderLook.appliedProfile === "cinematic" ? "#c9ddff" : "#dce8ff", renderLook.appliedProfile === "stylized" ? 0.75 : 0.65);
+  ambient.name = `renderLook.${renderLook.appliedProfile}.ambientFill`;
+  const key = new THREE.DirectionalLight(renderLook.appliedProfile === "stylized" ? "#fff6a8" : "#fff2d0", renderLook.appliedProfile === "cinematic" ? 1.35 : 1.1);
+  key.name = `renderLook.${renderLook.appliedProfile}.keyLight`;
   key.position.set(-2.5, 4, 3);
   scene.add(ambient, key);
 }

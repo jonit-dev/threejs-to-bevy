@@ -249,7 +249,7 @@ fn should_report_v9_environment_lighting_budgets_and_renderer_quality() {
 }
 
 #[test]
-fn should_report_render_look_fallbacks() {
+fn should_report_promoted_render_look_profile() {
     let mut fixture = load_conformance_fixture("basic-scene");
     fixture.bundle.runtime_config = Some(RuntimeConfigIr {
         schema: "threenative.runtime-config".to_owned(),
@@ -290,25 +290,15 @@ fn should_report_render_look_fallbacks() {
     let report_json = serde_json::to_value(&report).expect("report should serialize");
 
     let render_look = &report_json["runtimeConfig"]["renderer"]["renderLook"];
-    assert_eq!(render_look["appliedProfile"], "parity");
+    assert_eq!(render_look["appliedProfile"], "stylized");
     assert_eq!(render_look["requestedProfile"], "stylized");
-    assert_eq!(
-        render_look["fallbacks"],
-        serde_json::json!([{
-            "code": "TN_RENDER_PROFILE_FALLBACK_USED",
-            "feature": "profile.stylized",
-            "reason": "Bevy runtime only promotes parity and balanced render look profiles."
-        }])
-    );
+    assert_eq!(render_look["fallbacks"], serde_json::json!([]));
     assert!((render_look["overrides"]["bloomIntensity"].as_f64().unwrap() - 0.4).abs() < 0.000001);
     assert!((render_look["overrides"]["exposure"].as_f64().unwrap() - 1.1).abs() < 0.000001);
     assert!((render_look["overrides"]["saturation"].as_f64().unwrap() - 1.15).abs() < 0.000001);
     assert_eq!(
         report_json["runtimeConfig"]["renderer"]["postProcessing"]["skipped"],
-        serde_json::json!([{
-            "feature": "profile.stylized",
-            "reason": "Bevy runtime only promotes parity and balanced render look profiles."
-        }])
+        serde_json::json!([])
     );
 }
 

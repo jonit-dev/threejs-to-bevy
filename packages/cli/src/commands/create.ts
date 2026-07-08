@@ -35,7 +35,7 @@ export async function createProject(argv: readonly string[], options: ICreateOpt
   const archetypeFlagIndex = normalizedArgv.indexOf("--archetype");
   const requestedArchetype = archetypeFlagIndex === -1 ? undefined : normalizedArgv[archetypeFlagIndex + 1];
   const renderProfileFlagIndex = normalizedArgv.indexOf("--render-profile");
-  const renderProfile = renderProfileFlagIndex === -1 ? "balanced" : normalizedArgv[renderProfileFlagIndex + 1];
+  const renderProfile = renderProfileFlagIndex === -1 ? "cinematic" : normalizedArgv[renderProfileFlagIndex + 1];
   const authoringFlagIndex = normalizedArgv.indexOf("--authoring");
   const authoringMode = authoringFlagIndex === -1 ? "structured-source" : normalizedArgv[authoringFlagIndex + 1];
   const destinationArg = normalizedArgv.find((arg, index) => {

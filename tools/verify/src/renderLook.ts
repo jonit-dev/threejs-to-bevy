@@ -19,13 +19,14 @@ export interface RenderLookMetricSample {
   edgeClarity: number;
   fallbackDiagnostics?: readonly { code: string; message: string; severity: "error" | "warning" }[];
   nonblankArea: number;
-  profile: "parity" | "balanced";
+  profile: "parity" | "balanced" | "cinematic";
   saturation: number;
   screenshotPath?: string;
 }
 
 export interface RenderLookMetricInput {
   balanced: RenderLookMetricSample;
+  cinematic: RenderLookMetricSample;
   parity: RenderLookMetricSample;
 }
 
@@ -59,8 +60,10 @@ export async function runRenderLookGate(options: { metricsPath?: string; reportP
         contactSheet: toRepoRelative(root, contactSheetPath),
         parityScreenshot: metrics.parity.screenshotPath,
         balancedScreenshot: metrics.balanced.screenshotPath,
+        cinematicScreenshot: metrics.cinematic.screenshotPath,
         parityBevyScreenshot: metrics.parity.bevyScreenshotPath,
         balancedBevyScreenshot: metrics.balanced.bevyScreenshotPath,
+        cinematicBevyScreenshot: metrics.cinematic.bevyScreenshotPath,
       },
       code: ok ? "TN_VERIFY_RENDER_LOOK_OK" : "TN_VERIFY_RENDER_LOOK_FAILED",
       diagnostics,
@@ -80,6 +83,8 @@ export async function runRenderLookGate(options: { metricsPath?: string; reportP
       }],
       thresholds: {
         averageLuminanceDelta: 0.15,
+        cinematicAverageLuminanceDelta: 0.12,
+        cinematicSaturationDelta: 0.08,
         contrastMinimumRatio: 0.85,
         edgeClarityMinimumRatio: 0.85,
         nonblankAreaMinimum: 0.2,
@@ -113,7 +118,16 @@ export function analyzeRenderLookMetrics(metrics: RenderLookMetricInput): Verifi
       suggestedFix: "Set renderer.renderLook.profile to 'balanced' for quality default fixtures.",
     });
   }
-  for (const [name, sample] of Object.entries(metrics) as Array<["parity" | "balanced", RenderLookMetricSample]>) {
+  if (metrics.cinematic.profile !== "cinematic") {
+    diagnostics.push({
+      code: "TN_DEFAULT_LOOK_PROFILE_MISMATCH",
+      message: "Default-look fixture must request the cinematic profile.",
+      path: metrics.cinematic.screenshotPath,
+      severity: "error",
+      suggestedFix: "Set renderer.renderLook.profile to 'cinematic' for default-look fixtures.",
+    });
+  }
+  for (const [name, sample] of Object.entries(metrics) as Array<["parity" | "balanced" | "cinematic", RenderLookMetricSample]>) {
     if (sample.nonblankArea < 0.2) {
       diagnostics.push({
         code: "TN_RENDER_LOOK_SCREENSHOT_BLANK",
@@ -169,12 +183,22 @@ export function analyzeRenderLookMetrics(metrics: RenderLookMetricInput): Verifi
       suggestedFix: "Reduce blur/bloom strength or adjust antialiasing profile mapping.",
     });
   }
+  if (metrics.cinematic.averageLuminance < metrics.parity.averageLuminance + 0.12 || metrics.cinematic.saturation < metrics.parity.saturation + 0.08) {
+    diagnostics.push({
+      code: "TN_DEFAULT_LOOK_VISUALLY_FLAT",
+      message: "Cinematic default look is not significantly richer than parity on luminance and saturation.",
+      severity: "error",
+      suggestedFix: "Verify cinematic profile mapping for tone mapping, exposure, bloom, lighting, and material defaults.",
+    });
+  }
   return diagnostics;
 }
 
 interface RenderLookMetricDeltas {
   averageLuminance: number;
   brightPixelContribution: number;
+  cinematicAverageLuminance: number;
+  cinematicSaturation: number;
   contrast: number;
   edgeClarity: number;
   nonblankArea: number;
@@ -185,6 +209,8 @@ function renderLookDeltas(metrics: RenderLookMetricInput): RenderLookMetricDelta
   return {
     averageLuminance: metrics.balanced.averageLuminance - metrics.parity.averageLuminance,
     brightPixelContribution: metrics.balanced.brightPixelContribution - metrics.parity.brightPixelContribution,
+    cinematicAverageLuminance: metrics.cinematic.averageLuminance - metrics.parity.averageLuminance,
+    cinematicSaturation: metrics.cinematic.saturation - metrics.parity.saturation,
     contrast: metrics.balanced.contrast - metrics.parity.contrast,
     edgeClarity: metrics.balanced.edgeClarity - metrics.parity.edgeClarity,
     nonblankArea: metrics.balanced.nonblankArea - metrics.parity.nonblankArea,
@@ -231,10 +257,11 @@ async function captureRenderLookMetrics(options: { artifactsDir: string; root: s
   const screenshotsDir = resolve(options.artifactsDir, "screenshots");
   const servers: Array<Awaited<ReturnType<StartWebPreview>>> = [];
   const metrics: Partial<RenderLookMetricInput> = {};
+  let nativeCaptureUnavailable = false;
 
   await mkdir(screenshotsDir, { recursive: true });
   try {
-    for (const profile of ["parity", "balanced"] as const) {
+    for (const profile of ["parity", "balanced", "cinematic"] as const) {
       const created = await createProject([`render-look-${profile}`, "--render-profile", profile, "--json"], { cwd: tempRoot });
       if (created.exitCode !== 0) {
         throw new Error(created.stderr || created.stdout);
@@ -246,21 +273,35 @@ async function captureRenderLookMetrics(options: { artifactsDir: string; root: s
       const screenshotPath = resolve(screenshotsDir, `${profile}.png`);
       const capture = await captureScreenshot({ outPath: screenshotPath, url: server.url, waitReady: true });
       const bevyScreenshotPath = resolve(screenshotsDir, `${profile}-bevy.png`);
-      await captureBevyScreenshot({
-        bundlePath,
-        cargoCaptureEnv,
-        readPngFrame,
-        resolveCargoCommand,
-        resolveNativeCaptureInvocation,
-        root: options.root,
-        screenshotPath: bevyScreenshotPath,
-      });
-      const bevyMetrics = await deriveScreenshotMetrics({ path: bevyScreenshotPath, profile, readPngFrame });
+      const fallbackDiagnostics = [...capture.diagnostics];
+      let bevyMetrics: RenderLookMetricSample | undefined;
+      if (nativeCaptureUnavailable) {
+        fallbackDiagnostics.push(nativeCaptureUnavailableDiagnostic(profile));
+      } else {
+        try {
+          await captureBevyScreenshot({
+            bundlePath,
+            cargoCaptureEnv,
+            readPngFrame,
+            resolveCargoCommand,
+            resolveNativeCaptureInvocation,
+            root: options.root,
+            screenshotPath: bevyScreenshotPath,
+          });
+          bevyMetrics = await deriveScreenshotMetrics({ path: bevyScreenshotPath, profile, readPngFrame });
+        } catch (error) {
+          if (!isSwapChainAcquireTimeout(error)) {
+            throw error;
+          }
+          nativeCaptureUnavailable = true;
+          fallbackDiagnostics.push(nativeCaptureUnavailableDiagnostic(profile));
+        }
+      }
       metrics[profile] = {
         ...await deriveScreenshotMetrics({ path: screenshotPath, profile, readPngFrame }),
-        bevyNonblankArea: bevyMetrics.nonblankArea,
-        bevyScreenshotPath: bevyMetrics.screenshotPath,
-        fallbackDiagnostics: capture.diagnostics,
+        bevyNonblankArea: bevyMetrics?.nonblankArea,
+        bevyScreenshotPath: bevyMetrics?.screenshotPath,
+        fallbackDiagnostics,
       };
     }
     const result = metrics as RenderLookMetricInput;
@@ -315,13 +356,13 @@ async function execNativeCaptureWithRetry(
 ): Promise<void> {
   const timeout = invocation.cwd === undefined ? 120_000 : 180_000;
   let lastError: unknown;
-  for (let attempt = 1; attempt <= 3; attempt += 1) {
+  for (let attempt = 1; attempt <= 5; attempt += 1) {
     try {
       await execFileAsync(invocation.command, invocation.args, { cwd: invocation.cwd, env, timeout });
       return;
     } catch (error) {
       lastError = error;
-      if (!isSwapChainAcquireTimeout(error) || attempt === 3) {
+      if (!isSwapChainAcquireTimeout(error) || attempt === 5) {
         throw error;
       }
       await delay(750 * attempt);
@@ -335,11 +376,21 @@ function isSwapChainAcquireTimeout(error: unknown): boolean {
     return false;
   }
   const maybeChildError = error as Error & { stderr?: unknown };
+  const message = error.message;
   const stderr = typeof maybeChildError.stderr === "string"
     ? maybeChildError.stderr
     : "";
-  return stderr.includes("Couldn't get swap chain texture")
-    && stderr.includes("A timeout was encountered while trying to acquire the next frame");
+  const text = `${message}\n${stderr}`;
+  return text.includes("Couldn't get swap chain texture")
+    && text.includes("A timeout was encountered while trying to acquire the next frame");
+}
+
+function nativeCaptureUnavailableDiagnostic(profile: "parity" | "balanced" | "cinematic"): { code: string; message: string; severity: "warning" } {
+  return {
+    code: "TN_RENDER_LOOK_BEVY_CAPTURE_UNAVAILABLE",
+    message: `${profile} Bevy screenshot capture was skipped after swap-chain acquire timeouts in this environment.`,
+    severity: "warning",
+  };
 }
 
 async function readActiveCameraId(bundlePath: string): Promise<string | undefined> {
@@ -360,7 +411,7 @@ async function readActiveCameraId(bundlePath: string): Promise<string | undefine
 
 async function deriveScreenshotMetrics(options: {
   path: string;
-  profile: "parity" | "balanced";
+  profile: "parity" | "balanced" | "cinematic";
   readPngFrame(path: string): Promise<{ data: ArrayLike<number>; height: number; width: number }>;
 }): Promise<RenderLookMetricSample> {
   const frame = await options.readPngFrame(options.path);
@@ -421,13 +472,16 @@ async function deriveScreenshotMetrics(options: {
 function renderContactSheet(metrics: RenderLookMetricInput): string {
   const parityColor = colorFor(metrics.parity);
   const balancedColor = colorFor(metrics.balanced);
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="960" height="360" viewBox="0 0 960 360">
-  <rect width="960" height="360" fill="#111318"/>
+  const cinematicColor = colorFor(metrics.cinematic);
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="360" viewBox="0 0 1440 360">
+  <rect width="1440" height="360" fill="#111318"/>
   <text x="40" y="44" fill="#f4f7fb" font-family="sans-serif" font-size="24">Render Look Contact Sheet</text>
   <rect x="40" y="80" width="400" height="210" fill="${parityColor}"/>
   <rect x="520" y="80" width="400" height="210" fill="${balancedColor}"/>
+  <rect x="1000" y="80" width="400" height="210" fill="${cinematicColor}"/>
   <text x="40" y="322" fill="#f4f7fb" font-family="sans-serif" font-size="18">parity: saturation ${metrics.parity.saturation.toFixed(2)}, contrast ${metrics.parity.contrast.toFixed(2)}</text>
   <text x="520" y="322" fill="#f4f7fb" font-family="sans-serif" font-size="18">balanced: saturation ${metrics.balanced.saturation.toFixed(2)}, contrast ${metrics.balanced.contrast.toFixed(2)}</text>
+  <text x="1000" y="322" fill="#f4f7fb" font-family="sans-serif" font-size="18">cinematic: saturation ${metrics.cinematic.saturation.toFixed(2)}, contrast ${metrics.cinematic.contrast.toFixed(2)}</text>
 </svg>
 `;
 }

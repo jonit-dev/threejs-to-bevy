@@ -26,3 +26,5 @@ export function renderLookProfile(profile: RenderLookProfileName, overrides?: IR
 
 export const parityRenderLook = (): IRenderLookProfileDeclaration => renderLookProfile("parity");
 export const balancedRenderLook = (overrides?: IRenderLookOverrides): IRenderLookProfileDeclaration => renderLookProfile("balanced", overrides);
+export const cinematicRenderLook = (overrides?: IRenderLookOverrides): IRenderLookProfileDeclaration => renderLookProfile("cinematic", overrides);
+export const stylizedRenderLook = (overrides?: IRenderLookOverrides): IRenderLookProfileDeclaration => renderLookProfile("stylized", overrides);
