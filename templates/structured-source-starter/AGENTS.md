@@ -58,7 +58,7 @@ Rules for this generated ThreeNative project.
   mutation surface, update the matching cookbook entry or add a new one, then
   run `pnpm verify:cookbook`.
 - Before creating or substantially changing the game, open
-  `AGENT_GAME_PLAN.md` when it exists, then run
+  `AGENT_GAME_PLAN.md` as the first game-creation action, then run
   `tn game plan --goal "<game idea>" --project . --apply --json` for supported
   collector/lane-runner scaffolds, or omit `--apply` to keep planning
   non-mutating. When the worksheet is absent, treat the generated
@@ -70,8 +70,9 @@ Rules for this generated ThreeNative project.
   owned state, source-document references, silhouettes, materials, lighting,
   camera framing, set dressing, UI states, mobile fit, performance, screenshot
   proof, motion proof, and input playtest proof.
-- After gameplay, controls, script, source, or visual changes, verify with
-  `tn iterate --project . --json` only. Do not run validate, build, screenshot,
+- After gameplay, controls, script, source, or visual changes, run
+  `pnpm run iterate` as the default repair loop. It delegates to
+  `tn iterate --project . --json`. Do not run validate, build, screenshot,
   or playtest separately unless the compact iterate diagnostic explicitly asks
   for deeper proof. `tn iterate` already runs authoring validation, build,
   screenshot capture, and the first committed playtest scenario, writes the
@@ -82,11 +83,14 @@ Rules for this generated ThreeNative project.
   and the prompt's playable loop is already represented by the scaffold
   outputs, stop and report the artifact paths instead of auditing source files
   or running `git status`/`git diff`.
-  Use `tn playtest report --latest --scenario <name> --json` only after iterate
-  points at a playtest failure. Use `tn playtest --discover --json` or
-  `--suggest-scenario <name>` only when you need a new scenario. Before release
-  claims rerun the scenario with `--target desktop` so the native runtime is
-  proved, not only web.
+  Use compact playtest stdout or
+  `tn playtest report --latest --scenario <name> --json` before opening deep
+  logs, and only after iterate points at a playtest failure. Use
+  `tn playtest --discover --json` or `--suggest-scenario <name>` only when you
+  need a new scenario. Open deep logs such as `effect-log.json`,
+  `observations.json`, or `runtime-trace.json` only when a compact diagnostic
+  points to them. Before release claims rerun the scenario with
+  `--target desktop` so the native runtime is proved, not only web.
 - Apply gameplay recipes only as bounded steps from a complete plan, for example
   `tn recipe apply top-down-collector --scene <scene> --player <entity> --camera <camera> --json`.
   Keep recipe output in `content/**/*.json` and `src/scripts/**/*.ts`.

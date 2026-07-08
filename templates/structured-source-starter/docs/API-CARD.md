@@ -1,8 +1,8 @@
 # ThreeNative API Card
 
 Compact local contract for generated-project agents. Prefer this card,
-`tn cookbook <id> --json`, and `tn iterate --project . --json` before
-reading repo package source.
+`tn cookbook <id> --json`, and `pnpm run iterate` before reading repo
+package source.
 
 ## ScriptContext
 
@@ -76,42 +76,25 @@ interface ScriptTransformFacade {
 - Put durable behavior in `src/scripts/**/*.ts`; reference module/export from
   `content/**/*.json`.
 - Read movement with `context.input.getAxis("MoveX")` /
-  `context.input.getAxis("MoveZ")`; read actions with
-  `context.input.action("<name>")`.
+  `context.input.getAxis("MoveZ")` or `context.input.getButton("<name>")`.
 - Move entities through `entity.transform().position`,
   `setPosition([x, y, z])`, or `setPose(position, rotation)`.
-- Use `context.state("GameState", defaults)` for score/status/retry fields
-  that update HUD bindings. Assign string fields directly, e.g.
-  `game.scoreText = "Score 1 / 5"`.
+- Use `context.resources.get/set/patch` for game state and HUD bindings.
+- If a script calls `entity.patch("MeshRenderer", ...)`, declare
+  `writes: ["MeshRenderer"]`; transform movement declares
+  `writes: ["Transform"]`. `writes` are component names, not entity IDs.
 - Use `context.time.fixedDelta` for deterministic fixed-step movement.
-- Use `Math.max(min, Math.min(max, value))` for simple clamps. Supported helper
-  imports when needed: `Mathf`, `Vector2`, `Vector3`, `Quat`,
+- Supported helper imports: `Mathf`, `Vector2`, `Vector3`, `Quat`,
   `TransformMath`, `Bounds2`, `Bounds3`, `Ease`, `RandomEx`,
   `ColorEx`, `TextEx`, `InputEx`, `MotionEx`, `TimerEx`,
   `ArrayEx`, and `CameraMath` from `@threenative/script-stdlib`.
-  Legacy aliases `NumberEx`, `Vec2`, and `Vec3` remain supported.
+  Legacy aliases `NumberEx`, `Vec2`, and `Vec3` remain supported for one
+  compatibility cycle.
 - Do not import DOM, Node, filesystem, timer, network, Three.js, or Bevy APIs
   from portable scripts.
 
 ## Structured Source Shapes
 
-- Archetypes: `content/archetypes/*.archetype.json` names the selected L1
-  perspective/control/look/probe layer. Supported IDs are `top-down`,
-  `third-person`, `first-person`, `side-scroller`, and `racing`.
-- Mechanic blocks: `tn add spawner|timer|trigger-sequence|score|projectile|follow-camera --json`
-  writes `content/mechanics/*.mechanic.json`, mutates supported scene source,
-  and emits `playtests/block-*.playtest.json` proof hooks.
-- Look profiles: `tn look list --json` shows curated portable presets.
-  `tn look apply arcade-neon --project . --json` writes bounded
-  `balanced` render-look overrides plus starter material colors.
-- Material assignment: use
-  `tn prefab set-material <prefab-id> --material <material-id> --project . --json`
-  instead of hand-editing `content/prefabs/*.prefab.json`.
-- Inspect one scene record with
-  `tn scene inspect arena --node <id> --project . --json` before reading a full
-  `content/scenes/*.scene.json` file. It matches entities, compact instances,
-  prefabs, resources, systems, UI nodes, and UI bindings that reference the
-  requested resource.
 - Scenes: `content/scenes/*.scene.json` own entities, transforms, components,
   cameras, resources, UI bindings, and script references.
 - Input: `content/input/*.input.json` uses actions with
@@ -119,21 +102,17 @@ interface ScriptTransformFacade {
 - Systems: `content/systems/*.systems.json` declares every script module,
   export, component read/write, and resource read/write.
 - UI: `content/ui/*.ui.json` binds HUD text to resource paths such as
-  `GameState.scoreText`, `GameState.statusText`, `GameState.distanceText`, and
-  `GameState.retryText`. A text node needs `{ id, type: "text", text, layout }`
-  plus a binding `{ node: id, resource: "GameState.scoreText" }`.
+  `GameState.score`.
+- Typed spec: `src/game.spec.ts` is compiled by
+  `tn authoring compile-typed-spec --json`; HUD bindings use
+  `{ node, resource: "GameState", fields: ["scoreText"] }`.
 - Assets/materials/meshes stay in `content/assets`, `content/materials`,
   and `content/meshes`; preserve stable IDs and schema fields.
 
 ## Default Loop
 
 ```bash
-tn iterate --project . --json
-pnpm run playtest:archetype
-tn add spawner --pattern grid --prefab pickup.prefab --count 5 --project . --json
-tn look apply arcade-neon --project . --json
-tn prefab set-material prefab.player --material mat.player --project . --json
-tn scene inspect arena --node scaffold.player --project . --json
+pnpm run iterate
 tn playtest report --latest --scenario <name> --json
 tn cookbook player-move-wasd --json
 tn cookbook follow-camera --json

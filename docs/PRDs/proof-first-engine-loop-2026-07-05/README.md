@@ -24,7 +24,7 @@ still proceed.
 
 ## Ordered PRDs
 
-1. [PRD-001 Agent Proof Loop Scenario Ratchet](PRD-001-agent-proof-loop-scenario-ratchet.md)
+1. [PRD-001 Agent Proof Loop Scenario Ratchet](../done/PRD-001-agent-proof-loop-scenario-ratchet.md) - done
 2. [PRD-002 Native Parity Closure And Proof Loop](PRD-002-native-parity-closure-and-proof-loop.md) - freeze-gated
 3. [PRD-003 Contract De-Sprawl Through Authoring Modules And Runtime Trace Contracts](PRD-003-contract-de-sprawl-authoring-runtime-traces.md)
 4. [PRD-004 Cinematic Default Look](PRD-004-cinematic-default-look.md)

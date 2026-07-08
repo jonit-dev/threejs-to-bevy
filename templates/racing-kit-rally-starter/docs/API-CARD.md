@@ -80,20 +80,21 @@ interface ScriptTransformFacade {
 - Move entities through `entity.transform().position`,
   `setPosition([x, y, z])`, or `setPose(position, rotation)`.
 - Use `context.resources.get/set/patch` for game state and HUD bindings.
+- If a script calls `entity.patch("MeshRenderer", ...)`, declare
+  `writes: ["MeshRenderer"]`; transform movement declares
+  `writes: ["Transform"]`. `writes` are component names, not entity IDs.
 - Use `context.time.fixedDelta` for deterministic fixed-step movement.
 - Supported helper imports: `Mathf`, `Vector2`, `Vector3`, `Quat`,
   `TransformMath`, `Bounds2`, `Bounds3`, `Ease`, `RandomEx`,
   `ColorEx`, `TextEx`, `InputEx`, `MotionEx`, `TimerEx`,
   `ArrayEx`, and `CameraMath` from `@threenative/script-stdlib`.
-  Legacy aliases `NumberEx`, `Vec2`, and `Vec3` remain supported.
+  Legacy aliases `NumberEx`, `Vec2`, and `Vec3` remain supported for one
+  compatibility cycle.
 - Do not import DOM, Node, filesystem, timer, network, Three.js, or Bevy APIs
   from portable scripts.
 
 ## Structured Source Shapes
 
-- Look profiles: `tn look list --json` shows curated portable presets.
-  `tn look apply sunset-racer --project . --json` writes bounded `balanced`
-  render-look overrides plus material colors where starter IDs exist.
 - Scenes: `content/scenes/*.scene.json` own entities, transforms, components,
   cameras, resources, UI bindings, and script references.
 - Input: `content/input/*.input.json` uses actions with
@@ -102,6 +103,9 @@ interface ScriptTransformFacade {
   export, component read/write, and resource read/write.
 - UI: `content/ui/*.ui.json` binds HUD text to resource paths such as
   `GameState.score`.
+- Typed spec: `src/game.spec.ts` is compiled by
+  `tn authoring compile-typed-spec --json`; HUD bindings use
+  `{ node, resource: "GameState", fields: ["scoreText"] }`.
 - Assets/materials/meshes stay in `content/assets`, `content/materials`,
   and `content/meshes`; preserve stable IDs and schema fields.
 
@@ -109,7 +113,6 @@ interface ScriptTransformFacade {
 
 ```bash
 pnpm run iterate
-tn look apply sunset-racer --project . --json
 tn playtest report --latest --scenario <name> --json
 tn cookbook player-move-wasd --json
 tn cookbook follow-camera --json

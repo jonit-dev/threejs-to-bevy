@@ -52,7 +52,7 @@ execution bundle.
 
 ### Runtime And Gameplay Parity
 
-- [Agent Proof Loop Scenario Ratchet](proof-first-engine-loop-2026-07-05/PRD-001-agent-proof-loop-scenario-ratchet.md):
+- [Agent Proof Loop Scenario Ratchet](done/PRD-001-agent-proof-loop-scenario-ratchet.md):
   makes committed scenario playtests the default generated-game proof unit,
   adds QA scenario coverage reporting, ratchets generated-game gates away from
   ephemeral one-shot movement proof, and polishes watch-mode repair events.
