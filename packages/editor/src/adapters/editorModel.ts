@@ -168,6 +168,7 @@ export interface IEditorShellModel {
   selectedRowId?: string;
   status: EditorShellStatus;
   statusItems: IEditorStatusItem[];
+  uiPreview: IEditorUiPreviewDocument[];
 }
 
 export interface IEditorAdapterInput {
@@ -184,6 +185,26 @@ export interface IEditorAdapterInput {
   selectedRowId?: string;
   status?: EditorShellStatus;
   statusItems?: readonly IEditorStatusItem[];
+  uiPreview?: readonly IEditorUiPreviewDocument[];
+}
+
+export interface IEditorUiPreviewDocument {
+  documentPath: string;
+  id: string;
+  nodes: IEditorUiPreviewNode[];
+  readOnlyReason: string;
+}
+
+export interface IEditorUiPreviewNode {
+  action?: string;
+  backgroundColor?: string;
+  color?: string;
+  fontSize?: number;
+  id: string;
+  kind: string;
+  label?: string;
+  text?: string;
+  value?: string;
 }
 
 export function createEditorShellModel(input: IEditorAdapterInput = {}): IEditorShellModel {
@@ -210,6 +231,7 @@ export function createEditorShellModel(input: IEditorAdapterInput = {}): IEditor
       { id: "diagnostics", label: "Diagnostics", value: String(diagnostics.length) },
       ...(input.statusItems ?? []),
     ],
+    uiPreview: [...(input.uiPreview ?? [])],
   };
 }
 

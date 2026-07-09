@@ -215,6 +215,10 @@ test("should attach operations to every editable inspector row", async () => {
 
     const result = await loadEditorProjectApi({ projectPath: root });
     assert.equal(result.ok, true);
+    assert.deepEqual(result.uiPreview.map((preview) => [preview.id, preview.documentPath]), [["hud", "content/ui/hud.ui.json"]]);
+    assert.deepEqual(result.uiPreview[0]?.nodes.map((node) => [node.id, node.kind, node.text, node.color, node.backgroundColor, node.fontSize]), [
+      ["score-label", "text", "{score}", "#ffffff", "#101820", 18],
+    ]);
     const rows = [
       ...result.sceneObjects.flatMap((object) => object.inspectorRows ?? []),
       ...result.documents.flatMap((group) => group.documents.flatMap((document) => document.inspectorRows ?? [])),

@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import type { IEditorGamepadViewerSnapshot } from "@threenative/ir";
 
-import { EDITOR_ADD_COMPONENT_DEFINITIONS, type IEditorAddComponentDefinition, type IEditorAssetRow, type IEditorDiagnosticView, type IEditorEnvironmentSummary, type IEditorLodStats, type IEditorModalActionDefinition, type IEditorPropertyRow, type IEditorSceneObject, type IEditorShellModel, type IEditorTreeRow } from "../adapters/editorModel.js";
+import { EDITOR_ADD_COMPONENT_DEFINITIONS, type IEditorAddComponentDefinition, type IEditorAssetRow, type IEditorDiagnosticView, type IEditorEnvironmentSummary, type IEditorLodStats, type IEditorModalActionDefinition, type IEditorPropertyRow, type IEditorSceneObject, type IEditorShellModel, type IEditorTreeRow, type IEditorUiPreviewDocument } from "../adapters/editorModel.js";
 import type { EditorViewportGizmoMode, IViewportTransform } from "../preview/EditorViewport3d.js";
 import type { IEditorLiveSceneUpdate } from "../preview/liveSceneUpdates.js";
 import type { IEditorChatApplyApiResult } from "../server/chatApi.js";
@@ -22,6 +22,7 @@ export interface IEditorProjectPayload {
   lod?: IEditorLodStats;
   sceneLifecycle?: ISceneLifecycleModel;
   sceneObjects?: IEditorSceneObject[];
+  uiPreview?: IEditorUiPreviewDocument[];
 }
 
 export interface IEditorProjectDocumentGroup {
@@ -627,6 +628,7 @@ function projectToEditorModel(
       { id: "sceneEntities", label: "Scene entities", value: String(sceneObjects.length) },
       { id: "mode", label: "Mode", value: "Source-backed editor" },
     ],
+    uiPreview: project.uiPreview ?? [],
   };
 }
 

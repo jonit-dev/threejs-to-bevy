@@ -9,6 +9,8 @@ export type {
   IEditorShellModel,
   IEditorStatusItem,
   IEditorTreeRow,
+  IEditorUiPreviewDocument,
+  IEditorUiPreviewNode,
 } from "./adapters/editorModel.js";
 export {
   assertNoForbiddenEditorImports,

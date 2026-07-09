@@ -7,7 +7,7 @@ import {
   type IAuthoringDiagnostic,
   type IAuthoringDocument,
 } from "@threenative/authoring";
-import type { EditorInspectorFieldKind, EditorInspectorSourceFamily, IEditorAssetRow, IEditorEnvironmentSummary, IEditorLodStats, IEditorPropertyRow, IEditorSceneObject, EditorScenePrimitive } from "../adapters/editorModel.js";
+import type { EditorInspectorFieldKind, EditorInspectorSourceFamily, IEditorAssetRow, IEditorEnvironmentSummary, IEditorLodStats, IEditorPropertyRow, IEditorSceneObject, EditorScenePrimitive, IEditorUiPreviewDocument, IEditorUiPreviewNode } from "../adapters/editorModel.js";
 import { buildCatalogModel } from "../workbench/catalogModel.js";
 import { buildSceneLifecycleModel, type ISceneLifecycleModel } from "../workbench/sceneModel.js";
 
@@ -32,6 +32,7 @@ export interface IEditorProjectApiResult {
   lod: IEditorLodStats;
   sceneLifecycle: ISceneLifecycleModel;
   sceneObjects: IEditorSceneObject[];
+  uiPreview: IEditorUiPreviewDocument[];
 }
 
 const systemStringListRowKeys = [
@@ -82,6 +83,7 @@ export async function loadEditorProjectApi(options: { projectPath: string; rootP
     projectRevision: projectRevision(project.documents),
     sceneLifecycle: buildSceneLifecycleModel(project.documents, { buildReady: !hasErrors && sceneObjects.length > 0, hasErrors }),
     sceneObjects,
+    uiPreview: buildUiPreview(project.documents),
   };
 }
 
@@ -139,7 +141,81 @@ function emptyProjectResult(projectPath: string, diagnostics: IAuthoringDiagnost
     projectRevision: "0:0",
     sceneLifecycle: { scenes: [], state: "diagnostic" },
     sceneObjects: [],
+    uiPreview: [],
   };
+}
+
+function buildUiPreview(documents: readonly IAuthoringDocument[]): IEditorUiPreviewDocument[] {
+  const resources = collectSceneResourceValues(documents);
+  return documents
+    .filter((document) => document.kind === "ui" && isRecord(document.data))
+    .map((document) => {
+      const data = document.data as Record<string, unknown>;
+      const uiDocId = readDocumentId(data) ?? document.projectRelativePath;
+      const bindingByNode = new Map(
+        readArray(data.bindings)
+          .filter(isRecord)
+          .map((binding) => [readString(binding.node) ?? "", readString(binding.resource) ?? ""] as const)
+          .filter(([nodeId, resource]) => nodeId.length > 0 && resource.length > 0),
+      );
+      return {
+        documentPath: document.projectRelativePath,
+        id: uiDocId,
+        nodes: readArray(data.nodes).filter(isRecord).map((node, index) => previewNode(node, index, bindingByNode, resources)),
+        readOnlyReason: "Editor UI preview is read-only; edits go through source-backed UI operations.",
+      };
+    })
+    .filter((preview) => preview.nodes.length > 0)
+    .sort((left, right) => left.documentPath.localeCompare(right.documentPath));
+}
+
+function previewNode(
+  node: Record<string, unknown>,
+  index: number,
+  bindingByNode: ReadonlyMap<string, string>,
+  resources: ReadonlyMap<string, unknown>,
+): IEditorUiPreviewNode {
+  const id = readString(node.id) ?? `node.${index}`;
+  const style = isRecord(node.style) ? node.style : {};
+  const resource = bindingByNode.get(id);
+  const value = resource === undefined ? undefined : formatPreviewResource(resources.get(resource), resource);
+  return {
+    ...(readString(node.action) === undefined ? {} : { action: readString(node.action) }),
+    ...(readString(style.backgroundColor) === undefined ? {} : { backgroundColor: readString(style.backgroundColor) }),
+    ...(readString(style.color) === undefined ? {} : { color: readString(style.color) }),
+    ...(readNumber(style.fontSize) === undefined ? {} : { fontSize: readNumber(style.fontSize) }),
+    id,
+    kind: readString(node.type) ?? "text",
+    ...(readString(node.label) === undefined ? {} : { label: readString(node.label) }),
+    ...(readString(node.text) === undefined && value === undefined ? {} : { text: value ?? readString(node.text) }),
+    ...(value === undefined ? {} : { value }),
+  };
+}
+
+function collectSceneResourceValues(documents: readonly IAuthoringDocument[]): Map<string, unknown> {
+  const resources = new Map<string, unknown>();
+  for (const document of documents) {
+    if (document.kind !== "scene" || !isRecord(document.data)) {
+      continue;
+    }
+    for (const resource of readArray(document.data.resources).filter(isRecord)) {
+      const id = readString(resource.id);
+      if (id !== undefined) {
+        resources.set(id, resource.value);
+      }
+    }
+  }
+  return resources;
+}
+
+function formatPreviewResource(value: unknown, resource: string): string {
+  if (value === undefined) {
+    return `{${resource}}`;
+  }
+  if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") {
+    return String(value);
+  }
+  return summarizeValue(value);
 }
 
 function buildProjectAssets(documents: readonly IAuthoringDocument[]): IEditorAssetRow[] {

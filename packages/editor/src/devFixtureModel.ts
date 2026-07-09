@@ -104,4 +104,15 @@ export const devFixtureModel: IEditorShellModel = {
     { id: "mode", label: "Mode", value: "Static fixture" },
     { id: "access", label: "Source policy", value: "Structured documents" },
   ],
+  uiPreview: [
+    {
+      documentPath: "content/ui/hud.ui.json",
+      id: "hud",
+      nodes: [
+        { backgroundColor: "#101820", color: "#ffffff", fontSize: 16, id: "hud.score", kind: "text", text: "Score 0" },
+        { action: "Pause", id: "hud.pause", kind: "button", label: "Pause", text: "Pause" },
+      ],
+      readOnlyReason: "Editor UI preview is read-only; edits go through source-backed UI operations.",
+    },
+  ],
 };

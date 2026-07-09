@@ -255,6 +255,58 @@ test("should refresh project and select the first source object", async () => {
   }
 });
 
+test("should refresh retained UI preview after source-backed UI edits", async () => {
+  useEditorStore.getState().reset({ project: { projectRevision: "rev:1" } });
+  const operations: Array<{ args: Record<string, unknown>; name: string; projectRevision?: string }> = [];
+  const restore = mockFetch(async (input, init) => {
+    if (String(input) === "/api/operation") {
+      const body = JSON.parse(String(init?.body)) as { args: Record<string, unknown>; name: string; projectRevision?: string };
+      operations.push(body);
+      return jsonResponse({ filesWritten: ["content/ui/hud.ui.json"], ok: true, projectRevision: "rev:2" });
+    }
+    assert.equal(String(input), "/api/project");
+    return jsonResponse({
+      ok: true,
+      projectPath: "/project",
+      projectRevision: "rev:2",
+      uiPreview: [
+        {
+          documentPath: "content/ui/hud.ui.json",
+          id: "hud",
+          nodes: [{ id: "score-label", kind: "text", text: "Score 9" }],
+          readOnlyReason: "Editor UI preview is read-only; edits go through source-backed UI operations.",
+        },
+      ],
+    });
+  });
+  try {
+    await useEditorStore.getState().editProperty(
+      {
+        access: "sourcePersistable",
+        id: "ui-node:0:label",
+        label: "score-label Label",
+        operation: { args: { nodeId: "score-label", type: "text", uiDocId: "hud" }, name: "ui.add_node", valueArg: "label" },
+        readOnly: false,
+        sourceFamily: "ui",
+        value: "Score 3",
+      },
+      "Score 9",
+    );
+
+    assert.deepEqual(operations, [
+      {
+        args: { label: "Score 9", nodeId: "score-label", type: "text", uiDocId: "hud" },
+        name: "ui.add_node",
+        projectRevision: "rev:1",
+      },
+    ]);
+    assert.equal(useEditorStore.getState().project?.uiPreview?.[0]?.nodes[0]?.text, "Score 9");
+    assert.equal(useEditorStore.getState().status, "Saved score-label Label");
+  } finally {
+    restore();
+  }
+});
+
 test("should add primitive through operation sequence", async () => {
   useEditorStore.getState().reset({ project: { projectRevision: "rev:1" } });
   const operations: Array<{ args: Record<string, unknown>; name: string; projectRevision?: string }> = [];

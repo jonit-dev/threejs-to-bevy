@@ -2,7 +2,7 @@ import { useEffect, useMemo, type ReactNode } from "react";
 import { Box, Camera, FileCode, FolderOpen, Gamepad2, Image, Lightbulb, MessageSquare, Mountain, PackagePlus, Pause, Play, Save, Settings, Square, Trash2 } from "lucide-react";
 import type { IEditorGamepadViewerSnapshot } from "@threenative/ir";
 
-import type { IEditorAdapterInput, IEditorAddComponentDefinition, IEditorAssetRow, IEditorModalActionDefinition, IEditorPropertyRow, IEditorShellModel } from "./adapters/editorModel.js";
+import type { IEditorAdapterInput, IEditorAddComponentDefinition, IEditorAssetRow, IEditorModalActionDefinition, IEditorPropertyRow, IEditorShellModel, IEditorUiPreviewDocument, IEditorUiPreviewNode } from "./adapters/editorModel.js";
 import { createEditorShellModel, EDITOR_MODAL_ACTION_DEFINITIONS } from "./adapters/editorModel.js";
 import { PanelShell } from "./components/layout/PanelShell.js";
 import { ChatPanel } from "./components/panels/ChatPanel.js";
@@ -153,6 +153,7 @@ export function EditorApp({ model: input, onAddComponent, onAddObject, onBuildPr
         </aside>
         <section className="tn-editor-preview" aria-label="Preview">
           <EditorViewport3d environment={model.environment} gizmoMode={gizmoMode} objects={model.sceneObjects} selectedRowId={model.selectedRowId} onSelectObject={onSelectRow} onTransformObject={onTransformObject} />
+          <EditorUiPreview documents={model.uiPreview} />
           <div className="tn-editor-viewport-label">
             <span />
             <strong>Viewport</strong>
@@ -273,6 +274,45 @@ export function EditorApp({ model: input, onAddComponent, onAddObject, onBuildPr
       />
     </main>
   );
+}
+
+function EditorUiPreview({ documents }: { documents: readonly IEditorUiPreviewDocument[] }) {
+  if (documents.length === 0) {
+    return null;
+  }
+  return (
+    <div className="tn-editor-ui-preview" aria-label="Read-only UI preview">
+      <div className="tn-editor-ui-preview__chrome">
+        <strong>UI Preview</strong>
+        <span>Read-only source preview</span>
+      </div>
+      {documents.map((document) => (
+        <div className="tn-editor-ui-preview__document" data-ui-document={document.id} key={document.documentPath} title={document.readOnlyReason}>
+          {document.nodes.map((node) => <EditorUiPreviewNode key={node.id} node={node} />)}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function EditorUiPreviewNode({ node }: { node: IEditorUiPreviewNode }) {
+  const style = {
+    ...(node.backgroundColor === undefined ? {} : { backgroundColor: node.backgroundColor }),
+    ...(node.color === undefined ? {} : { color: node.color }),
+    ...(node.fontSize === undefined ? {} : { fontSize: `${node.fontSize}px` }),
+  };
+  const text = node.text ?? node.label ?? node.value ?? node.id;
+  if (node.kind === "button" || node.kind === "touchControl") {
+    return <button className="tn-editor-ui-preview__node tn-editor-ui-preview__button" data-ui-node={node.id} disabled style={style} title="Preview interaction is read-only in the editor.">{text}</button>;
+  }
+  if (node.kind === "bar") {
+    return (
+      <div className="tn-editor-ui-preview__node tn-editor-ui-preview__bar" data-ui-node={node.id} style={style}>
+        <span>{text}</span>
+      </div>
+    );
+  }
+  return <div className="tn-editor-ui-preview__node" data-ui-node={node.id} style={style}>{text}</div>;
 }
 
 function GamepadViewerPanel({

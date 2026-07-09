@@ -123,7 +123,7 @@ test("should disable playback controls with a stable source-backed reason", () =
 
   assert.match(html, /aria-label="Playback controls"/);
   assert.equal((html.match(/Playback controls require a promoted preview runtime state operation before they are enabled\./g) ?? []).length, 3);
-  assert.equal((html.match(/disabled=""/g) ?? []).length, 3);
+  assert.match(html, /tn-editor-icon-button--play" disabled=""/);
 });
 
 test("should render disabled toolbar workflows with modal reasons", () => {
@@ -142,6 +142,27 @@ test("should render disabled toolbar workflows with modal reasons", () => {
   useEditorStore.getState().openModal("settings");
   const settingsHtml = renderToStaticMarkup(<EditorApp model={modelFixture()} />);
   assert.match(settingsHtml, new RegExp(escapeRegExp(settingsReason)));
+});
+
+test("should render read-only retained UI preview over the viewport", () => {
+  useEditorStore.getState().reset();
+
+  const html = renderToStaticMarkup(<EditorApp model={modelFixture()} />);
+
+  assert.match(html, /aria-label="Read-only UI preview"/);
+  assert.match(html, /UI Preview/);
+  assert.match(html, /Read-only source preview/);
+  assert.match(html, /data-ui-document="hud"/);
+  assert.match(html, /data-ui-node="score-label"[^>]*>Score 3/);
+  assert.match(html, /Preview interaction is read-only in the editor/);
+});
+
+test("should omit UI preview chrome when no retained UI source is loaded", () => {
+  useEditorStore.getState().reset();
+
+  const html = renderToStaticMarkup(<EditorApp model={{ ...modelFixture(), uiPreview: [] }} />);
+
+  assert.doesNotMatch(html, /Read-only UI preview/);
 });
 
 test("should render chat input and plan controls", () => {
@@ -253,5 +274,16 @@ function modelFixture(): IEditorShellModel {
     sceneObjects: [{ id: "player", kind: "entity", label: "player", primitive: "box", rowId: "entity:player" }],
     status: "ready",
     statusItems: [],
+    uiPreview: [
+      {
+        documentPath: "content/ui/hud.ui.json",
+        id: "hud",
+        nodes: [
+          { backgroundColor: "#101820", color: "#ffffff", fontSize: 18, id: "score-label", kind: "text", text: "Score 3" },
+          { action: "Pause", id: "pause", kind: "button", label: "Pause", text: "Pause" },
+        ],
+        readOnlyReason: "Editor UI preview is read-only; edits go through source-backed UI operations.",
+      },
+    ],
   };
 }

@@ -33,22 +33,22 @@ source.
 
 ## 3. Acceptance Criteria
 
-- [ ] Opening a project with retained UI shows the authored overlay in the
+- [x] Opening a project with retained UI shows the authored overlay in the
       editor preview.
-- [ ] UI edits made through existing source-backed operations update the preview
+- [x] UI edits made through existing source-backed operations update the preview
       without a full external run.
-- [ ] Binding placeholders or live binding values render deterministically in
+- [x] Binding placeholders or live binding values render deterministically in
       preview mode.
-- [ ] Preview interaction is either wired through the PRD-001 action path or
+- [x] Preview interaction is either wired through the PRD-001 action path or
       explicitly read-only with visible editor state and docs.
-- [ ] The editor does not create a second durable UI source format.
+- [x] The editor does not create a second durable UI source format.
 
 ## 4. Verification
 
-- [ ] Add editor tests for mounting preview UI from a fixture document.
-- [ ] Add a regression test that a source-backed UI edit refreshes the preview.
-- [ ] Run the editor test package.
-- [ ] Run `pnpm check:docs` if capability docs are updated.
+- [x] Add editor tests for mounting preview UI from a fixture document.
+- [x] Add a regression test that a source-backed UI edit refreshes the preview.
+- [x] Run the editor test package.
+- [x] Run `pnpm check:docs` if capability docs are updated.
 
 ## 5. Dependencies
 

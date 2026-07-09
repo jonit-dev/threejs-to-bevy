@@ -48,6 +48,10 @@ Current support:
   declarations.
 - UI source operations are available through CLI, MCP, and authoring-client
   wrappers.
+- Editor preview renders retained UI source documents as a read-only viewport
+  overlay. It is an authoring feedback surface; durable UI edits remain
+  source-backed operations and preview interaction is not promoted as runtime
+  play mode.
 
 Verification:
 
