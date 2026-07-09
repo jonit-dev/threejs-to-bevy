@@ -281,6 +281,7 @@ test("character trace should walk shallow slopes and reject steep slopes", () =>
       groundEntity: "ramp",
       grounded: true,
       resolved: [2, 1.5, 0],
+      slope: { angle: 26.565051, axis: "x", direction: 1, entity: "ramp", rise: 1, run: 2, walkable: true },
       start: [0, 1, 0],
     },
   ]);
@@ -394,6 +395,7 @@ test("character trace should push light dynamic bodies and block heavy bodies", 
       groundEntity: "floor",
       grounded: true,
       pushed: { entity: "light-crate", impulse: [2, 0, 0], position: [4, 1, 0] },
+      pushes: [{ entity: "light-crate", impulse: [2, 0, 0], position: [4, 1, 0] }],
       resolved: [2, 1.05, 0],
       start: [0, 1, 0],
     },
@@ -421,6 +423,59 @@ test("character trace should push light dynamic bodies and block heavy bodies", 
       resolved: [0, 1.05, 0],
       start: [0, 1, 0],
       tooHeavy: "heavy-crate",
+    },
+  ]);
+});
+
+test("character trace should report slope and push observations", () => {
+  const world = makeCharacterWorld();
+  world.entities = world.entities.filter((entity) => entity.id !== "wall");
+  const floor = world.entities.find((entity) => entity.id === "floor");
+  const player = world.entities.find((entity) => entity.id === "player");
+  if (floor !== undefined) {
+    floor.id = "ramp";
+    floor.components.Collider = {
+      contact: { phases: ["stay"] },
+      kind: "box",
+      layer: "world",
+      material: "stone",
+      size: [6, 1, 6],
+      slope: { axis: "x", direction: 1, rise: 1, run: 3 },
+    };
+    floor.components.Transform = { position: [0, 0.5, 0] };
+  }
+  world.entities.push({
+    id: "crate",
+    components: {
+      Collider: { contact: { phases: ["begin"] }, kind: "box", layer: "pushable", material: "wood", size: [1, 1, 1] },
+      RigidBody: { kind: "dynamic", mass: 1 },
+      Transform: { position: [2, 2.333333333333333, 0] },
+    },
+  });
+  if (player !== undefined) {
+    player.components.Collider = { contact: { phases: ["begin", "stay"] }, kind: "box", layer: "player", mask: ["pushable", "world"], size: [1, 2, 1] };
+    player.components.Transform = { position: [0, 2.333333333333333, 0] };
+  }
+  if (player?.components.CharacterController !== undefined) {
+    player.components.CharacterController.pushPolicy = { allowedLayers: ["pushable"], enabled: true, maxPushMass: 5 };
+    player.components.CharacterController.slopeLimit = 30;
+  }
+
+  assert.deepEqual(traceCharacterControllers(world, { axes: { MoveX: 1 }, fixedDelta: 1 }), [
+    {
+      contacts: [
+        { material: "wood", normal: [-1, 0, 0], other: "crate", phase: "begin", point: [2, 2.333333, 0], pointIndex: 0, self: "player" },
+        { material: "stone", normal: [0, 1, 0], other: "ramp", phase: "stay", point: [2, 0.833333, 0], pointIndex: 0, self: "player" },
+      ],
+      desired: [2, 2.333333333333333, 0],
+      entity: "player",
+      groundEntity: "ramp",
+      grounded: true,
+      pushed: { entity: "crate", impulse: [2, 0, 0], position: [4, 2.333333333333333, 0] },
+      pushes: [{ entity: "crate", impulse: [2, 0, 0], position: [4, 2.333333333333333, 0] }],
+      resolved: [2, 1.8333333333333335, 0],
+      slope: { angle: 18.434949, axis: "x", direction: 1, entity: "ramp", rise: 1, run: 3, walkable: true },
+      start: [0, 2.333333333333333, 0],
     },
   ]);
 });

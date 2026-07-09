@@ -9,6 +9,7 @@ export interface ICharacterTraceInput {
 
 export interface ICharacterTraceObservation {
   blockedBy?: string;
+  contacts?: ICharacterContactObservation[];
   desired: Vec3;
   entity: string;
   groundEntity?: string;
@@ -19,15 +20,41 @@ export interface ICharacterTraceObservation {
     impulse: Vec3;
     position: Vec3;
   };
+  pushes?: Array<NonNullable<ICharacterTraceObservation["pushed"]>>;
   resolved: Vec3;
+  slope?: ICharacterSlopeObservation;
   start: Vec3;
   tooHeavy?: string;
 }
 
+export interface ICharacterContactObservation {
+  material?: string;
+  normal?: Vec3;
+  other: string;
+  phase: "begin" | "end" | "stay";
+  point?: Vec3;
+  pointIndex: number;
+  self: string;
+}
+
+export interface ICharacterSlopeObservation {
+  angle: number;
+  axis: "x" | "z";
+  direction: -1 | 1;
+  entity: string;
+  rise: number;
+  run: number;
+  walkable: boolean;
+}
+
 interface IBounds {
   center: Vec3;
+  contactPhases?: readonly ("begin" | "end" | "stay")[];
   halfExtents: Vec3;
   id: string;
+  layer?: string;
+  mask?: readonly string[];
+  material?: string;
   slope?: {
     angle: number;
     axis: "x" | "z";
@@ -39,9 +66,11 @@ interface IBounds {
 }
 
 interface IGroundResolution {
+  contact?: ICharacterContactObservation;
   entity?: string;
   platformDelta?: Vec3;
   position: Vec3;
+  slope?: ICharacterSlopeObservation;
 }
 
 type CharacterPushPolicy = NonNullable<NonNullable<IWorldEntity["components"]["CharacterController"]>["pushPolicy"]>;
@@ -83,23 +112,28 @@ function traceCharacter(
   // Collision math runs in collider space (transform + collider center offset);
   // reported positions stay in transform space.
   const offset = colliderOffset(collider);
+  const characterBoundsInfo = entityBounds(entity);
   const characterHalfExtents = halfExtents(collider);
   const horizontal = controller.blocking === true
-    ? resolveHorizontalContact(entity.id, add(start, offset), add(desired, offset), characterHalfExtents, blockers, controller.stepOffset ?? 0, controller.slopeLimit ?? DEFAULT_SLOPE_LIMIT, controller.pushPolicy)
+    ? resolveHorizontalContact(entity.id, characterBoundsInfo, add(start, offset), add(desired, offset), characterHalfExtents, blockers, controller.stepOffset ?? 0, controller.slopeLimit ?? DEFAULT_SLOPE_LIMIT, controller.pushPolicy)
     : { position: add(desired, offset) };
   const ground = controller.grounding === "raycast"
-    ? groundPosition(entity.id, horizontal.position, characterHalfExtents, blockers, fixedDelta, controller.slopeLimit ?? DEFAULT_SLOPE_LIMIT)
+    ? groundPosition(entity.id, characterBoundsInfo, horizontal.position, characterHalfExtents, blockers, fixedDelta, controller.slopeLimit ?? DEFAULT_SLOPE_LIMIT)
     : { position: horizontal.position };
+  const contacts = sortContacts([...horizontal.contacts ?? [], ...(ground.contact === undefined ? [] : [ground.contact])]);
 
   return {
     ...(horizontal.blockedBy === undefined ? {} : { blockedBy: horizontal.blockedBy }),
+    ...(contacts.length === 0 ? {} : { contacts }),
     desired,
     entity: entity.id,
     ...(ground.entity === undefined ? {} : { groundEntity: ground.entity }),
     grounded: ground.entity !== undefined,
     ...(ground.platformDelta === undefined ? {} : { platformDelta: ground.platformDelta }),
     ...(horizontal.pushed === undefined ? {} : { pushed: horizontal.pushed }),
+    ...(horizontal.pushed === undefined ? {} : { pushes: [clonePush(horizontal.pushed)] }),
     resolved: subtract(ground.position, offset),
+    ...(ground.slope === undefined ? {} : { slope: ground.slope }),
     start,
     ...(horizontal.tooHeavy === undefined ? {} : { tooHeavy: horizontal.tooHeavy }),
   };
@@ -116,6 +150,7 @@ function movementDelta(axisX: number, axisZ: number, speed: number, fixedDelta: 
 
 function resolveHorizontalContact(
   characterId: string,
+  characterBoundsInfo: IBounds | undefined,
   start: Vec3,
   desired: Vec3,
   characterHalfExtents: Vec3,
@@ -123,10 +158,11 @@ function resolveHorizontalContact(
   stepOffset: number,
   slopeLimit: number,
   pushPolicy: CharacterPushPolicy | undefined,
-): { blockedBy?: string; position: Vec3; pushed?: ICharacterTraceObservation["pushed"]; tooHeavy?: string } {
+): { blockedBy?: string; contacts?: ICharacterContactObservation[]; position: Vec3; pushed?: ICharacterTraceObservation["pushed"]; tooHeavy?: string } {
   let position = desired;
   let characterBounds = { center: position, halfExtents: characterHalfExtents, id: characterId };
   const move = [desired[0] - start[0], desired[1] - start[1], desired[2] - start[2]] as Vec3;
+  const contacts: ICharacterContactObservation[] = [];
   for (const blocker of blockers) {
     if (blocker.id === characterId) {
       continue;
@@ -136,27 +172,30 @@ function resolveHorizontalContact(
       continue;
     }
     if (bounds.slope !== undefined && isWalkableSlope(bounds, slopeLimit)) {
+      addContact(contacts, characterBoundsInfo, bounds, "begin", position, contactNormal(move));
       const top = surfaceTop(position, bounds);
       position = coversXZ(position, bounds) ? [position[0], top + characterHalfExtents[1], position[2]] : position;
       characterBounds = { center: position, halfExtents: characterHalfExtents, id: characterId };
       continue;
     }
     if (canStepOnto(position, characterHalfExtents, bounds, stepOffset)) {
+      addContact(contacts, characterBoundsInfo, bounds, "begin", position, contactNormal(move));
       const top = surfaceTop(position, bounds);
       position = coversXZ(position, bounds) ? [position[0], top + characterHalfExtents[1], position[2]] : position;
       characterBounds = { center: position, halfExtents: characterHalfExtents, id: characterId };
       continue;
     }
+    addContact(contacts, characterBoundsInfo, bounds, "begin", position, contactNormal(move));
     const push = resolvePush(pushPolicy, blocker, move);
     if (push.kind === "pushed") {
-      return { position, pushed: push.pushed };
+      return { contacts, position, pushed: push.pushed };
     }
     if (push.kind === "too-heavy") {
-      return { blockedBy: blocker.id, position: start, tooHeavy: blocker.id };
+      return { blockedBy: blocker.id, contacts, position: start, tooHeavy: blocker.id };
     }
-    return { blockedBy: blocker.id, position: start };
+    return { blockedBy: blocker.id, contacts, position: start };
   }
-  return { position };
+  return { contacts, position };
 }
 
 function resolvePush(
@@ -193,8 +232,17 @@ function resolvePush(
   };
 }
 
+function clonePush(push: NonNullable<ICharacterTraceObservation["pushed"]>): NonNullable<ICharacterTraceObservation["pushed"]> {
+  return {
+    entity: push.entity,
+    impulse: [...push.impulse] as Vec3,
+    position: [...push.position] as Vec3,
+  };
+}
+
 function groundPosition(
   characterId: string,
+  characterBoundsInfo: IBounds | undefined,
   position: Vec3,
   characterHalfExtents: Vec3,
   blockers: readonly IWorldEntity[],
@@ -226,10 +274,13 @@ function groundPosition(
   }
   const grounded = [position[0], groundTop + characterHalfExtents[1], position[2]] as Vec3;
   const platformDelta = ground.velocity === undefined ? undefined : scale(ground.velocity, fixedDelta);
+  const contact = makeContact(characterBoundsInfo, ground, "stay", [position[0], groundTop, position[2]], [0, 1, 0]);
   return {
+    ...(contact === undefined ? {} : { contact }),
     entity: ground.id,
     ...(platformDelta === undefined ? {} : { platformDelta }),
     position: platformDelta === undefined ? grounded : add(grounded, platformDelta),
+    ...(ground.slope === undefined ? {} : { slope: slopeObservation(ground) }),
   };
 }
 
@@ -240,8 +291,12 @@ function entityBounds(entity: IWorldEntity): IBounds | undefined {
   }
   return {
     center: add(vector(entity.components.Transform?.position), colliderOffset(collider)),
+    contactPhases: collider.contact?.phases,
     halfExtents: halfExtents(collider),
     id: entity.id,
+    layer: collider.layer,
+    mask: collider.mask,
+    material: collider.material,
     slope: slope(collider),
     velocity: entity.components.RigidBody?.velocity,
   };
@@ -329,6 +384,86 @@ function slope(collider: IColliderComponent): IBounds["slope"] {
   };
 }
 
+function slopeObservation(bounds: IBounds): ICharacterSlopeObservation | undefined {
+  if (bounds.slope === undefined) {
+    return undefined;
+  }
+  return {
+    angle: round(bounds.slope.angle),
+    axis: bounds.slope.axis,
+    direction: bounds.slope.direction,
+    entity: bounds.id,
+    rise: round(bounds.slope.rise),
+    run: round(bounds.slope.run),
+    walkable: true,
+  };
+}
+
+function addContact(
+  contacts: ICharacterContactObservation[],
+  self: IBounds | undefined,
+  other: IBounds,
+  phase: ICharacterContactObservation["phase"],
+  point: Vec3,
+  normal: Vec3,
+): void {
+  const contact = makeContact(self, other, phase, point, normal);
+  if (contact !== undefined) {
+    contacts.push(contact);
+  }
+}
+
+function makeContact(
+  self: IBounds | undefined,
+  other: IBounds,
+  phase: ICharacterContactObservation["phase"],
+  point: Vec3,
+  normal: Vec3,
+): ICharacterContactObservation | undefined {
+  if (self === undefined || !contactAllowed(self, other, phase) || !contactAllowed(other, self, phase)) {
+    return undefined;
+  }
+  return {
+    ...(other.material === undefined ? {} : { material: other.material }),
+    normal: roundVec(normal),
+    other: other.id,
+    phase,
+    point: roundVec(point),
+    pointIndex: 0,
+    self: self.id,
+  };
+}
+
+function contactAllowed(self: IBounds, other: IBounds, phase: ICharacterContactObservation["phase"]): boolean {
+  if (self.contactPhases === undefined) {
+    return false;
+  }
+  if (!self.contactPhases.includes(phase)) {
+    return false;
+  }
+  return self.mask === undefined || (other.layer !== undefined && self.mask.includes(other.layer));
+}
+
+function sortContacts(contacts: ICharacterContactObservation[]): ICharacterContactObservation[] {
+  return contacts.sort((left, right) => (
+    contactPhaseOrder(left.phase) - contactPhaseOrder(right.phase)
+    || left.self.localeCompare(right.self)
+    || left.other.localeCompare(right.other)
+    || left.pointIndex - right.pointIndex
+  ));
+}
+
+function contactPhaseOrder(phase: ICharacterContactObservation["phase"]): number {
+  return phase === "begin" ? 0 : phase === "stay" ? 1 : 2;
+}
+
+function contactNormal(move: Vec3): Vec3 {
+  if (Math.abs(move[0]) >= Math.abs(move[2])) {
+    return [move[0] >= 0 ? -1 : 1, 0, 0];
+  }
+  return [0, 0, move[2] >= 0 ? -1 : 1];
+}
+
 const SUPPORT_TOLERANCE = 0.1;
 const DEFAULT_SLOPE_LIMIT = 45;
 
@@ -346,4 +481,12 @@ function scale(vector: Vec3, amount: number): Vec3 {
 
 function vector(value: readonly number[] | undefined): Vec3 {
   return [value?.[0] ?? 0, value?.[1] ?? 0, value?.[2] ?? 0];
+}
+
+function round(value: number): number {
+  return Math.round(value * 1_000_000) / 1_000_000;
+}
+
+function roundVec(value: Vec3): Vec3 {
+  return [round(value[0]), round(value[1]), round(value[2])];
 }

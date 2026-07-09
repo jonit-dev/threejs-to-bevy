@@ -185,9 +185,9 @@ sequenceDiagram
 
 **Implementation:**
 
-- [ ] Add slope/step/contact/push fields to the portable result.
-- [ ] Keep result deterministic by rounding and stable sorting.
-- [ ] Preserve existing fixed-trace fields for compatibility.
+- [x] Add slope/step/contact/push fields to the portable result.
+- [x] Keep result deterministic by rounding and stable sorting.
+- [x] Preserve existing fixed-trace fields for compatibility.
 
 **Tests Required:**
 

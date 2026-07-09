@@ -1,5 +1,6 @@
 import { assertPositiveNumber, SdkError } from "./errors.js";
 import { defineComponent, type IEcsDeclaration } from "./ecs/schema.js";
+import type { Vector3Tuple } from "./math/Vector3.js";
 
 export type CharacterGroundingMode = "none" | "raycast";
 
@@ -22,6 +23,48 @@ export interface ICharacterPushPolicy {
   impulseScale?: number;
   maxPushMass?: number;
   minMoveSpeed?: number;
+}
+
+export interface ICharacterMoveResult {
+  blockedBy?: string;
+  contacts?: ReadonlyArray<ICharacterContactObservation>;
+  desired: Vector3Tuple;
+  entity: string;
+  groundEntity?: string;
+  grounded: boolean;
+  platformDelta?: Vector3Tuple;
+  pushed?: ICharacterPushObservation;
+  pushes?: ReadonlyArray<ICharacterPushObservation>;
+  resolved: Vector3Tuple;
+  slope?: ICharacterSlopeObservation;
+  start: Vector3Tuple;
+  tooHeavy?: string;
+}
+
+export interface ICharacterContactObservation {
+  material?: string;
+  normal?: Vector3Tuple;
+  other: string;
+  phase: "begin" | "end" | "stay";
+  point?: Vector3Tuple;
+  pointIndex: number;
+  self: string;
+}
+
+export interface ICharacterPushObservation {
+  entity: string;
+  impulse: Vector3Tuple;
+  position: Vector3Tuple;
+}
+
+export interface ICharacterSlopeObservation {
+  angle: number;
+  axis: "x" | "z";
+  direction: -1 | 1;
+  entity: string;
+  rise: number;
+  run: number;
+  walkable: boolean;
 }
 
 export interface ICharacterControllerOptions {

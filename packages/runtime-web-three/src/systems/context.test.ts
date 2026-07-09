@@ -491,6 +491,70 @@ test("should expose character move speed and direction overrides", () => {
   });
 });
 
+test("should log extended character move service payload", () => {
+  const world = makeWorld();
+  world.entities = world.entities.filter((entity) => entity.id !== "crate");
+  const player = world.entities.find((entity) => entity.id === "player");
+  const floor = world.entities.find((entity) => entity.id === "floor");
+  assert.ok(player);
+  assert.ok(floor);
+  player.components.Collider = { contact: { phases: ["begin", "stay"] }, kind: "box", layer: "player", mask: ["pushable", "world"], size: [0.5, 1, 0.5] };
+  player.components.Transform = { position: [0, 1.1666666666666665, 0] };
+  player.components.CharacterController = {
+    blocking: true,
+    grounding: "raycast",
+    moveXAxis: "MoveX",
+    moveZAxis: "MoveZ",
+    pushPolicy: { allowedLayers: ["pushable"], enabled: true, maxPushMass: 10 },
+    slopeLimit: 25,
+    speed: 2,
+  };
+  floor.id = "ramp";
+  floor.components.Collider = {
+    contact: { phases: ["stay"] },
+    kind: "box",
+    layer: "world",
+    material: "stone",
+    size: [6, 1, 6],
+    slope: { axis: "x", direction: 1, rise: 1, run: 3 },
+  };
+  floor.components.Transform = { position: [0, 0.5, 0] };
+  world.entities.push({
+    id: "crate",
+    components: {
+      Collider: { contact: { phases: ["begin"] }, kind: "box", layer: "pushable", material: "wood", size: [1, 1, 1] },
+      RigidBody: { kind: "dynamic", mass: 1 },
+      Transform: { position: [1, 1.1666666666666665, 0] },
+    },
+  });
+  const { context, services } = createSystemContext(world, { delta: 0.016, fixedDelta: 0.5 });
+
+  const result = context.character.move("player", { axes: { MoveX: 1, MoveZ: 0 }, fixedDelta: 0.5 });
+
+  assert.deepEqual(result, {
+    contacts: [
+      { material: "wood", normal: [-1, 0, 0], other: "crate", phase: "begin", point: [1, 1.166667, 0], pointIndex: 0, self: "player" },
+      { material: "stone", normal: [0, 1, 0], other: "ramp", phase: "stay", point: [1, 0.666667, 0], pointIndex: 0, self: "player" },
+    ],
+    desired: [1, 1.1666666666666665, 0],
+    entity: "player",
+    groundEntity: "ramp",
+    grounded: true,
+    pushed: { entity: "crate", impulse: [1, 0, 0], position: [2, 1.1666666666666665, 0] },
+    pushes: [{ entity: "crate", impulse: [1, 0, 0], position: [2, 1.1666666666666665, 0] }],
+    resolved: [1, 1.1666666666666665, 0],
+    slope: { angle: 18.434949, axis: "x", direction: 1, entity: "ramp", rise: 1, run: 3, walkable: true },
+    start: [0, 1.1666666666666665, 0],
+  });
+  assert.deepEqual(services[0], {
+    payload: {
+      request: { entity: "player", options: { axes: { MoveX: 1, MoveZ: 0 }, fixedDelta: 0.5 } },
+      result,
+    },
+    service: "character.move",
+  });
+});
+
 test("should expose bundle asset metadata and log asset load service calls", () => {
   const { context, services } = createSystemContext(makeWorld(), { assets: makeAssets(), delta: 0.016, fixedDelta: 0.016 });
 
