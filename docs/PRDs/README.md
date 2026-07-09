@@ -112,6 +112,14 @@ execution bundle.
   anti-patterns (debug-build launch, per-frame QuickJS and Rapier rebuilds,
   per-frame asset re-uploads), but should not start without a documented
   shipped-game need and focused native gate.
+- [Runtime Parity Test Harness](done/proof-first-engine-loop-2026-07-05/PRD-022-gameplay-parity-test-harness.md) - done:
+  created the bounded `pnpm test:gameplay` and
+  `pnpm verify:gameplay-parity` harness over paired web/desktop playtests,
+  runtime probes, and scene coverage assertions.
+- [Gameplay Parity Evidence Ratchet](proof-first-engine-loop-2026-07-05/PRD-023-gameplay-parity-evidence-ratchet.md):
+  follows PRD-022 by broadening reliable proof through promotion states,
+  runtime observation sidecars, negative controls, full-profile humanoid
+  scenario promotion, coverage debt reporting, and timing calibration.
 
 ### Authoring, Editor, And Plugins
 - [Adapter Surface Remediation](other/adapter-surface-remediation-2026-07-08/README.md):
