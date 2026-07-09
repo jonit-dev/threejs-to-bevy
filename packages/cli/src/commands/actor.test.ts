@@ -48,7 +48,7 @@ test("should list actor archetypes from the CLI", async () => {
 
   assert.equal(result.exitCode, 0);
   assert.equal(payload.code, "TN_ACTOR_ARCHETYPES");
-  assert.deepEqual(payload.archetypes.map((entry) => entry.id), ["character"]);
+  assert.deepEqual(payload.archetypes.map((entry) => entry.id), ["camera-boom", "character", "pickup", "prop-static", "vehicle"]);
 });
 
 async function createActorProject(): Promise<string> {

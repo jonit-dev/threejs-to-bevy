@@ -210,6 +210,7 @@ async function gamePlanCommand(argv: readonly string[]): Promise<ICommandResult>
       script: archetype.script,
       summary: archetype.summary,
     },
+    archetypeSuggestions: buildActorArchetypeSuggestions(goal),
     assetPlan: buildAssetPlan(gameCategory),
     code: "TN_GAME_PLAN",
     design: {
@@ -1104,6 +1105,7 @@ function compactGamePlanForStdout(plan: IGamePlan, planArtifactPath: string): Re
       source: plan.sourcePlan.map((source) => ({ document: source.document, path: source.path })),
     },
     goal: plan.goal,
+    archetypeSuggestions: plan.archetypeSuggestions,
     kitCandidates: plan.kitCandidates.slice(0, 3).map((kit) => ({ kitId: kit.kitId, recipeId: kit.recipeId, toolingOnly: kit.toolingOnly })),
     mechanicDecomposition: plan.mechanicDecomposition,
     message: "Full game plan written to artifacts/game-production/plan.json.",
@@ -1315,6 +1317,54 @@ function buildGamePlanSteps(defaults: { cameraId: string; playerId: string; scen
     { apply: false, id: "asset-ledger", phase: "assets", command: "tn asset add ... --json", summary: "Record local, procedural, generated, hybrid, or blocked sourcing for player/world/reward/UI/audio surfaces." },
     { apply: false, id: "proof", phase: "qa", command: "tn game qa --project . --run-proof --json", summary: "Collect screenshot, mobile, playtest, performance, and release evidence before claiming done." },
   ];
+}
+
+function buildActorArchetypeSuggestions(goal: string): IGamePlan["archetypeSuggestions"] {
+  const lower = goal.toLowerCase();
+  const suggestions: IGamePlan["archetypeSuggestions"] = [];
+  if (/\b(car|kart|truck|racer|racing|drive|vehicle)\b/u.test(lower)) {
+    suggestions.push({
+      archetype: "vehicle",
+      command: "tn actor add vehicle --id player.vehicle --scene <scene-id> --json",
+      id: "player.vehicle",
+      reason: "Vehicle goals should start from the bounded arcade vehicle shell instead of raw physics JSON.",
+      surface: "vehicle",
+    });
+  } else {
+    suggestions.push({
+      archetype: "character",
+      command: "tn actor add character --id hero --scene <scene-id> --json",
+      id: "hero",
+      reason: "Most playable loops need a controller, collider, follow camera, input source, and script stub in one operation.",
+      surface: "hero",
+    });
+  }
+  if (/\b(collect|coin|pickup|reward|gem|item)\b/u.test(lower)) {
+    suggestions.push({
+      archetype: "pickup",
+      command: "tn actor add pickup --id pickup.01 --scene <scene-id> --json",
+      id: "pickup.01",
+      reason: "Reward surfaces should use trigger/counter/HUD source before bespoke scripting.",
+      surface: "pickup",
+    });
+  }
+  if (/\b(camera|third-person|first-person|follow|chase)\b/u.test(lower)) {
+    suggestions.push({
+      archetype: "camera-boom",
+      command: "tn actor add camera-boom --id camera.main --scene <scene-id> --json",
+      id: "camera.main",
+      reason: "Camera-heavy goals should start from explicit boom provenance and CameraRig script wiring.",
+      surface: "camera",
+    });
+  }
+  suggestions.push({
+    archetype: "prop-static",
+    command: "tn actor add prop-static --id prop.blockout.01 --scene <scene-id> --json",
+    id: "prop.blockout.01",
+    reason: "Dominant static set dressing should carry collider/body provenance instead of untracked primitives.",
+    surface: "prop",
+  });
+  return suggestions;
 }
 
 function recipeStep(step: IGamePlanStep & { recipe: string; recipeArgs: Record<string, unknown> }): IGamePlanStep {

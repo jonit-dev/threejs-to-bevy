@@ -42,6 +42,13 @@ export interface IGamePlan {
     };
     summary: string;
   };
+  archetypeSuggestions: Array<{
+    archetype: "camera-boom" | "character" | "pickup" | "prop-static" | "vehicle";
+    command: string;
+    id: string;
+    reason: string;
+    surface: "camera" | "hero" | "pickup" | "prop" | "vehicle";
+  }>;
   assetPlan: Array<{
     fallback: string;
     requiredEvidence: string[];

@@ -87,7 +87,34 @@ test("should update character actor archetype source parameters", async () => {
 });
 
 test("should list available actor archetypes", () => {
-  assert.deepEqual(listActorArchetypes().map((entry) => entry.id), ["character"]);
+  assert.deepEqual(listActorArchetypes().map((entry) => entry.id), ["camera-boom", "character", "pickup", "prop-static", "vehicle"]);
+});
+
+test("should apply non-character actor archetypes to structured source", async () => {
+  const root = await createActorProject();
+  try {
+    const results = [
+      await applyActorArchetype({ actorId: "kart", archetype: "vehicle", projectPath: root, sceneId: "arena" }),
+      await applyActorArchetype({ actorId: "coin", archetype: "pickup", projectPath: root, sceneId: "arena" }),
+      await applyActorArchetype({ actorId: "follow", archetype: "camera-boom", projectPath: root, sceneId: "arena" }),
+      await applyActorArchetype({ actorId: "crate", archetype: "prop-static", projectPath: root, sceneId: "arena" }),
+    ];
+    const scene = JSON.parse(await readFile(join(root, "content", "scenes", "arena.scene.json"), "utf8")) as {
+      entities: Array<{ archetype?: { id: string }; components?: Record<string, unknown>; id: string }>;
+      resources?: Array<{ id: string }>;
+      ui?: { bindings?: Array<{ node: string; resource: string }>; nodes?: Array<{ id: string }> };
+    };
+
+    assert.equal(results.every((result) => result.ok), true);
+    assert.equal(scene.entities.find((entity) => entity.id === "kart")?.archetype?.id, "vehicle");
+    assert.equal(scene.entities.find((entity) => entity.id === "coin")?.archetype?.id, "pickup");
+    assert.equal(scene.entities.find((entity) => entity.id === "follow")?.archetype?.id, "camera-boom");
+    assert.equal(scene.entities.find((entity) => entity.id === "crate")?.archetype?.id, "prop-static");
+    assert.equal(scene.resources?.some((resource) => resource.id === "PickupState"), true);
+    assert.equal(scene.ui?.nodes?.some((node) => node.id === "hud.pickups"), true);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
 });
 
 async function createActorProject(): Promise<string> {

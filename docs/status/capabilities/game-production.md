@@ -19,6 +19,10 @@ Current support:
   actor archetype: a kinematic third-person character with capsule collider,
   follow camera, input source, systems source, archetype provenance, and
   a generated `defineBehavior` script stub.
+- `tn actor add vehicle|pickup|camera-boom|prop-static --json` covers the next
+  reusable high-value surfaces with bounded component source, and
+  `tn game plan --json` now reports actor archetype suggestions for
+  hero/vehicle/pickup/camera/prop surfaces before lower-level JSON mutations.
 - Declarative gameplay-flow contracts are emerging behind bounded operations:
   `tn scene set-spawner` persists typed `Spawner` components with deterministic
   web/native conformance trace parity under

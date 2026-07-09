@@ -27,9 +27,10 @@ Current support:
 - `tn types generate --json` emits project-local script context and ID-union
   declarations under `.threenative/types/`, and `tn build` plus
   `tn dev --watch` refresh them before compiling.
-- `tn actor add character --id <actor-id> --json`, `tn actor update`, and
-  registry operations `archetype.apply|update|list` stamp reusable actor source:
-  scene provenance, input defaults, system documents, and generated
+- `tn actor add <character|vehicle|pickup|camera-boom|prop-static> --id
+  <actor-id> --json`, `tn actor update`, and registry operations
+  `archetype.apply|update|list` stamp reusable actor source: scene provenance,
+  supported physics/camera/input/UI defaults, system documents, and generated
   `defineBehavior` script stubs.
 - Cookbook lookup supports both `tn cookbook show <id> --json` and the compact
   `tn cookbook <id> --json` shorthand for validated pattern pairs.
