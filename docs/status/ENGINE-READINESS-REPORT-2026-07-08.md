@@ -64,7 +64,7 @@ recorded decision (`docs/runtime/native-path.md`), not an accident.
    surface, and editor source operations lack drift gates
    (`SYSTEMS_CODE_QUALITY_STATUS.md`, 7.2/10). Remediation PRDs 002–005 are
    planned but not started; until PRD-002 lands, surface refactors risk
-   silent divergence across CLI/MCP/editor.
+silent divergence across CLI/MCP/editor.
 4. **Visual ceiling in flight.** Cinematic default look (PRD-5) and photoreal
    rendering/post (PRD-15) are active; the default output still reads
    "stylized demo" per the roadmap's own assessment.
