@@ -52,6 +52,7 @@ export const systemKeys = new Set([
   "script",
   "services",
   "schedule",
+  "source",
   "writes",
 ]);
 export const systemQueryKeys = new Set(["changed", "limit", "offset", "orderBy", "with", "without"]);
@@ -257,6 +258,7 @@ export interface ISceneSystem {
   script?: IScriptReference;
   services?: string[];
   schedule?: string;
+  source?: "behavior-metadata";
   writes?: string[];
 }
 

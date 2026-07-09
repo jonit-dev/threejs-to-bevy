@@ -61,6 +61,45 @@ test("should accept v4 movement system metadata", async () => {
   }
 });
 
+test("should accept behavior metadata system source marker", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-ir-systems-behavior-source-"));
+  try {
+    await writeBundle(root, {
+      commands: [],
+      reads: ["Transform"],
+      source: "behavior-metadata",
+      writes: ["Transform"],
+    });
+
+    const result = await validateBundle(root);
+
+    assert.equal(result.ok, true);
+    assert.deepEqual(result.diagnostics, []);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should reject unsupported system source marker", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-ir-systems-behavior-source-invalid-"));
+  try {
+    await writeBundle(root, {
+      commands: [],
+      reads: ["Transform"],
+      source: "manual-json",
+      writes: ["Transform"],
+    });
+
+    const result = await validateBundle(root);
+
+    assert.equal(result.ok, false);
+    assert.equal(result.diagnostics[0]?.code, "TN_IR_SYSTEM_SOURCE_UNSUPPORTED");
+    assert.equal(result.diagnostics[0]?.path, "systems.ir.json/systems/0/source");
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
 test("should accept built-in transform system access without custom schema", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-ir-systems-builtin-transform-"));
   try {
@@ -787,6 +826,7 @@ async function writeBundle(
     queries?: unknown[];
     schedule?: unknown;
     services?: unknown[];
+    source?: unknown;
     systemsOverride?: unknown[];
     timer?: unknown;
     writes: string[];
@@ -845,6 +885,7 @@ async function writeBundle(
           resourceReads: system.resourceReads ?? [],
           resourceWrites: system.resourceWrites ?? [],
           services: system.services ?? [],
+          ...(system.source === undefined ? {} : { source: system.source }),
           schedule: system.schedule ?? "fixedUpdate",
           ...(system.timer === undefined ? {} : { timer: system.timer }),
           writes: system.writes,

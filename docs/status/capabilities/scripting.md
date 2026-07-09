@@ -16,6 +16,10 @@ Current support:
   `tn types generate` narrow entity, input, scene, resource, prefab, material,
   UI, component, and resource schema IDs for scripts without changing runtime
   imports.
+- `defineBehavior(metadata, fn)` in `@threenative/script-stdlib` lets scripts
+  own schedule/access metadata next to code; the compiler strips the wrapper
+  for runtime bundles, emits `source: "behavior-metadata"` in systems IR, and
+  rejects duplicate structured-source access lists.
 - Shallow default hydration and patching through `entity.get(..., defaults)`,
   `context.resources.get(..., defaults)`, and `context.resources.patch(...)`.
 - Literal `context.resources.get(...)`, `context.resources.set(...)`,

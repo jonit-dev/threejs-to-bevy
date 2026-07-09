@@ -14,6 +14,7 @@ interface ISystemLike {
   services: ISystemsIr["systems"][number]["services"];
   script?: unknown;
   schedule: ISystemsIr["systems"][number]["schedule"];
+  source?: ISystemsIr["systems"][number]["source"];
   writes: string[];
 }
 
@@ -64,6 +65,7 @@ export function systemsToIr(systems: ReadonlyArray<ISystemLike>): ISystemsIr {
         services: [...system.services].sort(),
         ...scriptIr(system.script),
         schedule: system.schedule,
+        ...(system.source === undefined ? {} : { source: system.source }),
         writes: [...system.writes].sort(),
       })),
   };

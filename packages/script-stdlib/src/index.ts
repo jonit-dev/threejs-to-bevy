@@ -25,6 +25,8 @@ export {
   Vec3,
 } from "./helpers.js";
 export { CameraRig, CharacterRig, KinematicMoverEx, RespawnEx, TriggerEx } from "./rigs.js";
+export { defineBehavior } from "./behavior.js";
+export type { BehaviorFunction, BehaviorSchedule, IBehaviorCommandMetadata, IBehaviorFunction, IBehaviorMetadata, IBehaviorQueryMetadata } from "./behavior.js";
 export type {
   ICameraRigOptions,
   ICameraRigResult,

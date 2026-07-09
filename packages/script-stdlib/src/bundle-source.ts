@@ -1,4 +1,5 @@
 export const SCRIPT_STDLIB_BUNDLE_SOURCE = String.raw`
+function defineBehavior(metadata, behavior) { Object.defineProperty(behavior, "__tnBehavior", { configurable: false, enumerable: false, value: Object.freeze(JSON.parse(JSON.stringify(metadata || {}))), writable: false }); return behavior; }
 const EPSILON = 1e-9;
 const NumberEx = Object.freeze({
   approximately(left, right, epsilon = 0.000001) { return Math.abs(NumberEx.finite(left, 0) - NumberEx.finite(right, 0)) <= Math.max(0, NumberEx.finite(epsilon, 0.000001)); },

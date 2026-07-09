@@ -14,6 +14,7 @@ import {
   ColorEx,
   CharacterRig,
   ControllerEx,
+  defineBehavior,
   Ease,
   InputEx,
   KinematicMoverEx,
@@ -35,6 +36,16 @@ import {
   Vec3,
 } from "./index.js";
 import type { QuatTuple, Vec3Tuple } from "./index.js";
+
+test("defineBehavior should attach frozen metadata and bundle equivalently", () => {
+  const behavior = defineBehavior({ reads: ["Transform"], schedule: "fixedUpdate", writes: ["Transform"] }, () => undefined);
+  assert.deepEqual(behavior.__tnBehavior, { reads: ["Transform"], schedule: "fixedUpdate", writes: ["Transform"] });
+  assert.equal(Object.isFrozen(behavior.__tnBehavior), true);
+
+  const context = vm.createContext({});
+  vm.runInContext(`${SCRIPT_STDLIB_BUNDLE_SOURCE}\nthis.behavior = defineBehavior({ services: ["physics.raycast"] }, function update() {});`, context);
+  assert.equal(JSON.stringify((context as { behavior?: { __tnBehavior?: unknown } }).behavior?.__tnBehavior), JSON.stringify({ services: ["physics.raycast"] }));
+});
 
 const sampleExpression = `({
   AngleEx: {

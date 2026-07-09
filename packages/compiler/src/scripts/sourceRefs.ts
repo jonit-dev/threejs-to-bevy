@@ -43,6 +43,7 @@ const supportedScriptHelperBindings: Record<SupportedScriptHelperImport, Readonl
     "TriggerEx",
     "Vec2",
     "Vec3",
+    "defineBehavior",
   ]),
 };
 
@@ -86,10 +87,13 @@ export function resolveSystemScriptSources<T extends ISystemScriptSource>(
         systemName: system.name,
       });
       diagnostics.push(...resourceAccess.diagnostics);
+      diagnostics.push(...diagnoseBehaviorMetadataDuplicates(system, resolved.behaviorMetadata));
       return {
         ...system,
-        resourceReads: mergeStringLists(system.resourceReads, resourceAccess.resourceReads),
-        resourceWrites: mergeStringLists(system.resourceWrites, resourceAccess.resourceWrites),
+        ...resolved.behaviorMetadata,
+        ...(resolved.behaviorMetadata === undefined ? {} : { source: "behavior-metadata" }),
+        resourceReads: mergeStringLists(resolved.behaviorMetadata?.resourceReads ?? system.resourceReads, resourceAccess.resourceReads),
+        resourceWrites: mergeStringLists(resolved.behaviorMetadata?.resourceWrites ?? system.resourceWrites, resourceAccess.resourceWrites),
         script: {
           ...script,
           ...(resolved.helperImports === undefined || resolved.helperImports.length === 0 ? {} : { helperImports: resolved.helperImports }),
@@ -112,7 +116,7 @@ function mergeStringLists(left: ReadonlyArray<string> | undefined, right: Readon
 function resolveScriptModule(
   system: ISystemScriptSource & { script: NonNullable<ISystemScriptSource["script"]> },
   projectPath: string,
-): { diagnostics: ICompilerDiagnostic[]; hash?: string; helperImports?: NonNullable<ISystemScriptSource["script"]>["helperImports"]; source?: string } {
+): { behaviorMetadata?: IBehaviorMetadata; diagnostics: ICompilerDiagnostic[]; hash?: string; helperImports?: NonNullable<ISystemScriptSource["script"]>["helperImports"]; source?: string } {
   const sourceRef = system.script.sourceRef;
   if (sourceRef === undefined) {
     return { diagnostics: [] };
@@ -173,6 +177,8 @@ function resolveScriptModule(
   diagnostics.push(...diagnoseMutableModuleState(system.name, sourceRef.module, sourceRef.export, sourceFile));
   diagnostics.push(...diagnoseModuleLocalReferences(system.name, sourceRef.module, sourceRef.export, sourceFile));
   const exported = extractNamedExport(sourceFile, sourceRef.export);
+  const behavior = extractBehaviorExport(sourceFile, sourceRef.export);
+  diagnostics.push(...behavior.diagnostics.map((diagnostic) => ({ ...diagnostic, file: sourceRef.module, target: sourceRef.export })));
   diagnostics.push(...diagnoseUntypedScriptContext(system.name, sourceRef.module, sourceRef.export, sourceFile));
   if (exported === undefined) {
     diagnostics.push({
@@ -188,10 +194,52 @@ function resolveScriptModule(
 
   return {
     diagnostics,
+    behaviorMetadata: behavior.metadata,
     helperImports: helperImports.imports,
     hash,
-    source: diagnostics.some((diagnostic) => diagnostic.severity === "error") ? undefined : exported,
+    source: diagnostics.some((diagnostic) => diagnostic.severity === "error") ? undefined : behavior.source ?? exported,
   };
+}
+
+interface IBehaviorMetadata {
+  after?: string[];
+  before?: string[];
+  commands?: Array<{ kind: string } & Record<string, unknown>>;
+  eventReads?: string[];
+  eventWrites?: string[];
+  queries?: Array<{ with?: string[]; without?: string[] } & Record<string, unknown>>;
+  reads?: string[];
+  resourceReads?: string[];
+  resourceWrites?: string[];
+  schedule?: string;
+  services?: string[];
+  writes?: string[];
+}
+
+function diagnoseBehaviorMetadataDuplicates(system: ISystemScriptSource, metadata: IBehaviorMetadata | undefined): ICompilerDiagnostic[] {
+  if (metadata === undefined) {
+    return [];
+  }
+  const keys = ["after", "before", "commands", "eventReads", "eventWrites", "queries", "reads", "resourceReads", "resourceWrites", "schedule", "services", "writes"] as const;
+  return keys.flatMap((key) => {
+    const behaviorValue = metadata[key];
+    const systemValue = system[key as keyof ISystemScriptSource];
+    const behaviorHasValue = Array.isArray(behaviorValue) ? behaviorValue.length > 0 : behaviorValue !== undefined;
+    const systemHasValue = Array.isArray(systemValue) ? systemValue.length > 0 : systemValue !== undefined;
+    return behaviorHasValue && systemHasValue
+      ? [
+          {
+            code: "TN_SCRIPT_BEHAVIOR_METADATA_DUPLICATE",
+            file: system.script?.sourceRef?.module,
+            message: `System '${system.name}' declares '${key}' in both defineBehavior metadata and structured source.`,
+            path: `systems/${system.name}/${key}`,
+            severity: "error" as const,
+            suggestion: "Keep access lists and schedule in defineBehavior metadata, or remove defineBehavior and own the metadata in structured source.",
+            target: system.script?.sourceRef?.export,
+          },
+        ]
+      : [];
+  });
 }
 
 function isInsideProject(projectPath: string, filePath: string): boolean {
@@ -485,6 +533,96 @@ function extractNamedExport(sourceFile: ts.SourceFile, exportName: string): stri
     }
   }
   return undefined;
+}
+
+function extractBehaviorExport(sourceFile: ts.SourceFile, exportName: string): { diagnostics: ICompilerDiagnostic[]; metadata?: IBehaviorMetadata; source?: string } {
+  const node = findNamedExportNode(sourceFile, exportName);
+  if (node === undefined || !ts.isCallExpression(node) || !isDefineBehaviorCall(node)) {
+    return { diagnostics: [] };
+  }
+  const [metadataNode, behaviorNode] = node.arguments;
+  const metadata = metadataNode === undefined ? undefined : literalValue(metadataNode);
+  if (!isBehaviorMetadata(metadata)) {
+    return {
+      diagnostics: [
+        {
+          code: "TN_SCRIPT_BEHAVIOR_METADATA_UNSUPPORTED",
+          message: `Behavior export '${exportName}' must pass a static object literal as defineBehavior metadata.`,
+          path: `systems/${exportName}/script/sourceRef/behavior`,
+          severity: "error",
+          suggestion: "Use string, number, boolean, array, and object literal values in defineBehavior metadata.",
+        },
+      ],
+    };
+  }
+  if (behaviorNode === undefined || (!ts.isFunctionExpression(behaviorNode) && !ts.isArrowFunction(behaviorNode))) {
+    return {
+      diagnostics: [
+        {
+          code: "TN_SCRIPT_BEHAVIOR_FUNCTION_UNSUPPORTED",
+          message: `Behavior export '${exportName}' must pass an inline function or arrow function to defineBehavior.`,
+          path: `systems/${exportName}/script/sourceRef/behavior`,
+          severity: "error",
+          suggestion: "Inline the portable system function as the second defineBehavior argument.",
+        },
+      ],
+    };
+  }
+  return {
+    diagnostics: [],
+    metadata,
+    source: transpilePortableSource(behaviorNode.getText(sourceFile)),
+  };
+}
+
+function isDefineBehaviorCall(node: ts.CallExpression): boolean {
+  return ts.isIdentifier(node.expression) && node.expression.text === "defineBehavior";
+}
+
+function literalValue(node: ts.Node): unknown {
+  if (ts.isStringLiteralLike(node)) {
+    return node.text;
+  }
+  if (ts.isNumericLiteral(node)) {
+    return Number(node.text);
+  }
+  if (node.kind === ts.SyntaxKind.TrueKeyword) {
+    return true;
+  }
+  if (node.kind === ts.SyntaxKind.FalseKeyword) {
+    return false;
+  }
+  if (ts.isArrayLiteralExpression(node)) {
+    const values = node.elements.map((element) => literalValue(element));
+    return values.some((value) => value === undefined) ? undefined : values;
+  }
+  if (ts.isObjectLiteralExpression(node)) {
+    const entries: Array<[string, unknown]> = [];
+    for (const property of node.properties) {
+      if (!ts.isPropertyAssignment(property)) {
+        return undefined;
+      }
+      const key = propertyName(property.name);
+      const value = literalValue(property.initializer);
+      if (key === undefined || value === undefined) {
+        return undefined;
+      }
+      entries.push([key, value]);
+    }
+    return Object.fromEntries(entries);
+  }
+  return undefined;
+}
+
+function propertyName(name: ts.PropertyName): string | undefined {
+  if (ts.isIdentifier(name) || ts.isStringLiteralLike(name) || ts.isNumericLiteral(name)) {
+    return name.text;
+  }
+  return undefined;
+}
+
+function isBehaviorMetadata(value: unknown): value is IBehaviorMetadata {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 function findNamedExportNode(sourceFile: ts.SourceFile, exportName: string): ts.Node | undefined {

@@ -105,6 +105,7 @@ export interface IIrSystemDeclaration {
     exportName: string;
   };
   schedule: IrSystemSchedule;
+  source?: "behavior-metadata";
   writes: string[];
 }
 

@@ -485,6 +485,9 @@ export async function validateSystems(
       await validateScriptReference(diagnostics, projectPath, file, `${path}/script`, system.script);
     }
     validateOptionalString(diagnostics, file, `${path}/schedule`, system.schedule, "system schedule must be a non-empty string.");
+    if (system.source !== undefined && system.source !== "behavior-metadata") {
+      diagnostics.push(typeDiagnostic(file, `${path}/source`, "system source must be 'behavior-metadata' when present.", system.source));
+    }
     for (const key of systemStringListMetadataKeys) {
       validateStringList(diagnostics, file, `${path}/${key}`, system[key], `system ${key} must be an array of non-empty strings.`);
     }

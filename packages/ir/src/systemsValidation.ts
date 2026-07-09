@@ -78,7 +78,7 @@ export function validateSystems(
   systems.systems.forEach((system, systemIndex) => {
     const rawSystem = system as unknown as Record<string, unknown>;
     for (const key of Object.keys(rawSystem)) {
-      if (!["after", "before", "commands", "eventReads", "eventWrites", "name", "queries", "reads", "resourceReads", "resourceWrites", "schedule", "script", "services", "writes"].includes(key)) {
+      if (!["after", "before", "commands", "eventReads", "eventWrites", "name", "queries", "reads", "resourceReads", "resourceWrites", "schedule", "script", "services", "source", "writes"].includes(key)) {
         diagnostics.push({
           code: "TN_IR_SYSTEM_FIELD_UNSUPPORTED",
           message: `System '${system.name}' uses unsupported field '${key}'.`,
@@ -95,6 +95,15 @@ export function validateSystems(
         code: "TN_IR_SYSTEM_STAGE_UNSUPPORTED",
         message: `System '${system.name}' uses unsupported schedule '${system.schedule}'.`,
         path: `${path}/systems/${systemIndex}/schedule`,
+      });
+    }
+    if (system.source !== undefined && system.source !== "behavior-metadata") {
+      diagnostics.push({
+        code: "TN_IR_SYSTEM_SOURCE_UNSUPPORTED",
+        message: `System '${system.name}' uses unsupported source '${system.source}'.`,
+        path: `${path}/systems/${systemIndex}/source`,
+        severity: "error",
+        suggestion: "Use 'behavior-metadata' only for compiler-synthesized defineBehavior system metadata.",
       });
     }
     system.reads.forEach((component, componentIndex) => {

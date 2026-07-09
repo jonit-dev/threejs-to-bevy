@@ -213,6 +213,8 @@ export const SUPPORTED_SCRIPT_HELPER_IMPORTS = ["@threenative/checkpoint-race-ki
 export type SupportedScriptHelperImport = (typeof SUPPORTED_SCRIPT_HELPER_IMPORTS)[number];
 
 export interface ISystemScriptSource {
+  after?: ReadonlyArray<string>;
+  before?: ReadonlyArray<string>;
   commands?: ReadonlyArray<{ kind: string }>;
   eventReads?: ReadonlyArray<string>;
   eventWrites?: ReadonlyArray<string>;
@@ -236,6 +238,8 @@ export interface ISystemScriptSource {
     };
   };
   services?: ReadonlyArray<string>;
+  source?: "behavior-metadata";
+  schedule?: string;
   writes?: ReadonlyArray<string>;
 }
 
