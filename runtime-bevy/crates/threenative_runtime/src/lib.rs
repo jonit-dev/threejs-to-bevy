@@ -1278,6 +1278,79 @@ export const systems = Object.freeze({ "system_removeMarker": system_removeMarke
         );
     }
 
+    #[test]
+    fn scripted_runtime_should_remove_despawned_collider_contact_sources() {
+        let root = write_live_reconciliation_bundle(
+            "bevy-live-despawn-collider",
+            r#"{
+  "schema": "threenative.world",
+  "version": "0.1.0",
+  "entities": [
+    {
+      "id": "runtime.collider",
+      "components": {
+        "Transform": { "position": [0, 0, 0] },
+        "Collider": { "kind": "box", "size": [1, 1, 1], "layer": "world" }
+      }
+    }
+  ],
+  "resources": { "DespawnState": { "done": false } }
+}"#,
+            r#"{
+  "schema": "threenative.systems",
+  "version": "0.1.0",
+  "systems": [
+    {
+      "name": "removeCollider",
+      "schedule": "update",
+      "reads": [],
+      "writes": [],
+      "queries": [],
+      "commands": [
+        { "kind": "despawn", "entity": "runtime.collider" }
+      ],
+      "eventReads": [],
+      "eventWrites": [],
+      "resourceReads": ["DespawnState"],
+      "resourceWrites": ["DespawnState"],
+      "services": [],
+      "script": { "bundle": "scripts.bundle.js", "exportName": "system_removeCollider" }
+    }
+  ]
+}"#,
+            r#"const system_removeCollider = (ctx) => {
+  const state = ctx.resources.get("DespawnState");
+  if (state.done) return;
+  ctx.commands.despawn("runtime.collider");
+  ctx.resources.set("DespawnState", { done: true });
+};
+export const systemIds = Object.freeze({ "system_removeCollider": "removeCollider" });
+export const systems = Object.freeze({ "system_removeCollider": system_removeCollider });
+"#,
+        );
+        let mut app = scripted_mapped_runtime_app(&root);
+
+        advance_app(&mut app, 0.1);
+        advance_app(&mut app, 0.1);
+
+        let mut query = app.world_mut().query::<&ThreeNativeId>();
+        assert!(
+            query
+                .iter(app.world())
+                .all(|id| id.0.as_str() != "runtime.collider")
+        );
+
+        let runtime = app.world().resource::<ScriptedRuntimeBundle>();
+        assert!(
+            runtime
+                .bundle
+                .world
+                .entities
+                .iter()
+                .all(|entity| entity.id != "runtime.collider")
+        );
+    }
+
     fn scripted_runtime_app(root: &Path) -> App {
         let bundle = load_bundle(root).expect("scripted test bundle should load");
         let mut app = App::new();
