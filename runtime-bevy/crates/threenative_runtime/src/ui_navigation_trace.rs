@@ -1,7 +1,8 @@
-use std::{env, fs, path::PathBuf, process};
+use std::{env, path::PathBuf, process};
 
 use serde::Serialize;
 use threenative_loader::load_bundle;
+use threenative_runtime::trace_report::write_pretty_json_report;
 use threenative_runtime::ui::{UiNavigationTrace, trace_ui_navigation};
 
 #[derive(Serialize)]
@@ -32,12 +33,5 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
         version: "0.1.0",
         trace: trace_ui_navigation(ui, &["tab", "activate"]),
     };
-    if let Some(parent) = output_path.parent() {
-        fs::create_dir_all(parent)?;
-    }
-    fs::write(
-        output_path,
-        format!("{}\n", serde_json::to_string_pretty(&report)?),
-    )?;
-    Ok(())
+    write_pretty_json_report(output_path, &report)
 }

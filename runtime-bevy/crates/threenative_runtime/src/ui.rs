@@ -17,11 +17,30 @@ use threenative_loader::{
     UiMinimapBoundsIr, UiMinimapMarkerIr, UiNodeIr, UiRichTextSpanIr, UiShadowIr, UiStyleIr,
 };
 
+#[cfg(target_os = "linux")]
 const DEFAULT_UI_FONT_PATHS: &[&str] = &[
     "/usr/share/fonts/Adwaita/AdwaitaMono-Bold.ttf",
     "/usr/share/fonts/TTF/DejaVuSansMono-Bold.ttf",
     "/usr/share/fonts/truetype/dejavu/DejaVuSansMono-Bold.ttf",
+    "/usr/share/fonts/truetype/liberation2/LiberationSans-Regular.ttf",
 ];
+
+#[cfg(target_os = "macos")]
+const DEFAULT_UI_FONT_PATHS: &[&str] = &[
+    "/System/Library/Fonts/Supplemental/Arial Unicode.ttf",
+    "/System/Library/Fonts/Supplemental/Arial.ttf",
+    "/System/Library/Fonts/Helvetica.ttc",
+];
+
+#[cfg(target_os = "windows")]
+const DEFAULT_UI_FONT_PATHS: &[&str] = &[
+    "C:/Windows/Fonts/segoeui.ttf",
+    "C:/Windows/Fonts/arial.ttf",
+    "C:/Windows/Fonts/calibri.ttf",
+];
+
+#[cfg(not(any(target_os = "linux", target_os = "macos", target_os = "windows")))]
+const DEFAULT_UI_FONT_PATHS: &[&str] = &[];
 
 #[derive(Clone, Component, Debug, Eq, PartialEq)]
 pub struct NativeUiKind(pub String);
@@ -46,6 +65,42 @@ pub struct NativeUiActionQueue {
 
 #[derive(Clone, Debug, Resource)]
 struct NativeUiFallbackFont(Handle<Font>);
+
+#[derive(Clone, Debug, PartialEq, Resource)]
+pub struct NativeUiFallbackFontStatus {
+    pub diagnostic: Option<UiDiagnostic>,
+    pub source_path: Option<String>,
+}
+
+#[derive(Clone, Debug, Default, Resource)]
+pub struct NativeUiBindingTargets {
+    bindings_by_node: HashMap<String, UiBindingIr>,
+    component_entities_by_node: HashMap<String, String>,
+}
+
+impl NativeUiBindingTargets {
+    pub fn binding_for(&self, node_id: &str) -> Option<&UiBindingIr> {
+        self.bindings_by_node.get(node_id)
+    }
+
+    pub fn component_entity_for(&self, node_id: &str) -> Option<&str> {
+        self.component_entities_by_node
+            .get(node_id)
+            .map(String::as_str)
+    }
+
+    pub fn len(&self) -> usize {
+        self.bindings_by_node.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.bindings_by_node.is_empty()
+    }
+
+    pub fn has_component_bindings(&self) -> bool {
+        !self.component_entities_by_node.is_empty()
+    }
+}
 
 #[derive(Clone, Component, Debug, PartialEq)]
 pub struct NativeUiBar {
@@ -487,6 +542,7 @@ pub fn map_ui_into_world(world: &mut World, ui: &UiIr) -> Result<(), UiDiagnosti
     build_native_ui(ui)?;
 
     install_native_ui_fallback_font(world);
+    world.insert_resource(build_native_ui_binding_targets(ui));
     let mut entities_by_id = HashMap::new();
     spawn_node(world, &ui.root, &ui.fonts, &mut entities_by_id, true);
     attach_children(world, &ui.root, &entities_by_id);
@@ -496,21 +552,93 @@ pub fn map_ui_into_world(world: &mut World, ui: &UiIr) -> Result<(), UiDiagnosti
 
 fn install_native_ui_fallback_font(world: &mut World) {
     if world.get_resource::<NativeUiFallbackFont>().is_some() {
+        if world.get_resource::<NativeUiFallbackFontStatus>().is_none() {
+            world.insert_resource(NativeUiFallbackFontStatus {
+                diagnostic: None,
+                source_path: None,
+            });
+        }
         return;
     }
-    let Some(mut fonts) = world.get_resource_mut::<Assets<Font>>() else {
-        return;
+    let status = load_native_ui_fallback_font(world, DEFAULT_UI_FONT_PATHS);
+    world.insert_resource(status);
+}
+
+fn load_native_ui_fallback_font(world: &mut World, paths: &[&str]) -> NativeUiFallbackFontStatus {
+    let loaded = {
+        let Some(mut fonts) = world.get_resource_mut::<Assets<Font>>() else {
+            return NativeUiFallbackFontStatus {
+                diagnostic: Some(missing_native_ui_font_diagnostic(paths)),
+                source_path: None,
+            };
+        };
+        paths.iter().find_map(|path| {
+            let bytes = fs::read(path).ok()?;
+            let font = Font::try_from_bytes(bytes).ok()?;
+            Some((fonts.add(font), (*path).to_owned()))
+        })
     };
-    for path in DEFAULT_UI_FONT_PATHS {
-        let Ok(bytes) = fs::read(path) else {
-            continue;
-        };
-        let Ok(font) = Font::try_from_bytes(bytes) else {
-            continue;
-        };
-        let handle = fonts.add(font);
+    if let Some((handle, source_path)) = loaded {
         world.insert_resource(NativeUiFallbackFont(handle));
-        return;
+        return NativeUiFallbackFontStatus {
+            diagnostic: None,
+            source_path: Some(source_path),
+        };
+    }
+    NativeUiFallbackFontStatus {
+        diagnostic: Some(missing_native_ui_font_diagnostic(paths)),
+        source_path: None,
+    }
+}
+
+fn missing_native_ui_font_diagnostic(paths: &[&str]) -> UiDiagnostic {
+    UiDiagnostic {
+        code: "TN_BEVY_UI_FONT_FALLBACK_MISSING".to_owned(),
+        message: format!(
+            "No usable native UI fallback font was found. Checked platform paths: {}.",
+            if paths.is_empty() {
+                "<none>".to_owned()
+            } else {
+                paths.join(", ")
+            }
+        ),
+        path: "ui.ir.json/fonts".to_owned(),
+    }
+}
+
+pub fn diagnose_native_ui_font_fallback(world: &World) -> Option<UiDiagnostic> {
+    world
+        .get_resource::<NativeUiFallbackFontStatus>()
+        .and_then(|status| status.diagnostic.clone())
+}
+
+pub fn diagnose_native_ui_scale_boundary(_ui: &UiIr) -> UiDiagnostic {
+    UiDiagnostic {
+        code: "TN_BEVY_UI_ABSOLUTE_PIXEL_SCALE_BOUNDARY".to_owned(),
+        message: "Native Bevy UI currently treats authored pixel values as absolute UI pixels; DPI-aware scaling is not promoted.".to_owned(),
+        path: "ui.ir.json/root".to_owned(),
+    }
+}
+
+pub fn build_native_ui_binding_targets(ui: &UiIr) -> NativeUiBindingTargets {
+    let mut targets = NativeUiBindingTargets::default();
+    collect_native_ui_binding_targets(&ui.root, &mut targets);
+    targets
+}
+
+fn collect_native_ui_binding_targets(node: &UiNodeIr, targets: &mut NativeUiBindingTargets) {
+    if let Some(binding) = node.binding.as_ref() {
+        targets
+            .bindings_by_node
+            .insert(node.id.clone(), binding.clone());
+        if let UiBindingIr::Component { entity, .. } = binding {
+            targets
+                .component_entities_by_node
+                .insert(node.id.clone(), entity.clone());
+        }
+    }
+    for child in &node.children {
+        collect_native_ui_binding_targets(child, targets);
     }
 }
 
@@ -846,3 +974,92 @@ fn sequential_target(order: &[String], current: &str, input: &str) -> Option<Str
 include!("ui/widgets.rs");
 
 include!("ui/interactions.rs");
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn native_ui_binding_targets_cache_bound_nodes() {
+        let ui: UiIr = serde_json::from_value(serde_json::json!({
+            "schema": "threenative.ui",
+            "version": "0.1.0",
+            "root": {
+                "id": "root",
+                "kind": "column",
+                "children": [
+                    {
+                        "id": "score",
+                        "kind": "text",
+                        "binding": {
+                            "kind": "resource",
+                            "name": "Game",
+                            "field": "score"
+                        }
+                    },
+                    {
+                        "id": "health",
+                        "kind": "text",
+                        "binding": {
+                            "kind": "component",
+                            "entity": "player",
+                            "component": "Health",
+                            "field": "value"
+                        }
+                    }
+                ]
+            }
+        }))
+        .expect("ui fixture should deserialize");
+
+        let targets = build_native_ui_binding_targets(&ui);
+
+        assert_eq!(targets.len(), 2);
+        assert!(targets.has_component_bindings());
+        assert!(matches!(
+            targets.binding_for("score"),
+            Some(UiBindingIr::Resource { name, field, .. })
+                if name == "Game" && field.as_deref() == Some("score")
+        ));
+        assert_eq!(targets.component_entity_for("health"), Some("player"));
+    }
+
+    #[test]
+    fn missing_native_ui_fallback_font_reports_stable_diagnostic() {
+        let mut world = World::new();
+        world.insert_resource(Assets::<Font>::default());
+
+        let status = load_native_ui_fallback_font(&mut world, &[]);
+
+        assert_eq!(status.source_path, None);
+        assert_eq!(
+            status
+                .diagnostic
+                .as_ref()
+                .map(|diagnostic| diagnostic.code.as_str()),
+            Some("TN_BEVY_UI_FONT_FALLBACK_MISSING")
+        );
+        assert_eq!(
+            status
+                .diagnostic
+                .as_ref()
+                .map(|diagnostic| diagnostic.path.as_str()),
+            Some("ui.ir.json/fonts")
+        );
+    }
+
+    #[test]
+    fn native_ui_scale_boundary_reports_absolute_pixel_diagnostic() {
+        let ui: UiIr = serde_json::from_value(serde_json::json!({
+            "schema": "threenative.ui",
+            "version": "0.1.0",
+            "root": { "id": "root", "kind": "column" }
+        }))
+        .expect("ui fixture should deserialize");
+
+        let diagnostic = diagnose_native_ui_scale_boundary(&ui);
+
+        assert_eq!(diagnostic.code, "TN_BEVY_UI_ABSOLUTE_PIXEL_SCALE_BOUNDARY");
+        assert_eq!(diagnostic.path, "ui.ir.json/root");
+    }
+}

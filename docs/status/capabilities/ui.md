@@ -27,6 +27,7 @@ Current support:
   | Safe area | Web overlay applies `safe-area-inset-*` padding for avoided edges. Native preserves safe-area metadata in navigation traces. |
   | Context menus | Web context menus clamp to the viewport. Native context-menu behavior remains metadata/trace-only. |
   | Focus navigation | Web and native navigation traces skip disabled nodes for sequential and explicit navigation. Geometric spatial fallback remains partial. |
+  | DPI/scale | Native UI currently treats authored pixel values as absolute Bevy UI pixels and reports `TN_BEVY_UI_ABSOLUTE_PIXEL_SCALE_BOUNDARY`. DPI-aware scaling is an unsupported boundary, not promoted parity. |
   | Text input | Web text input dispatches deterministic value actions. Native text input preserves metadata/value observations but does not promote caret, editing, virtual keyboard, or IME behavior. |
 
 - UI parity claims are truth-graded in
@@ -52,11 +53,16 @@ Current support:
   overlay. It is an authoring feedback surface; durable UI edits remain
   source-backed operations and preview interaction is not promoted as runtime
   play mode.
+- Native retained UI caches binding targets after spawn so scripted text sync
+  does not re-walk the retained tree per bound text node. Native fallback font
+  discovery is bounded to platform default font paths and reports
+  `TN_BEVY_UI_FONT_FALLBACK_MISSING` when none can be loaded.
 
 Verification:
 
 - `pnpm --filter @threenative/ir test -- --run ui`
 - `pnpm --filter @threenative/authoring test -- --run ui`
+- `cargo test --manifest-path runtime-bevy/Cargo.toml -p threenative_runtime native_ui`
 - `pnpm verify:conformance`
 
 Full prior evidence is preserved in

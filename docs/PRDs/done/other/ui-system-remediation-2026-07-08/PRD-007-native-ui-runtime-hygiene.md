@@ -33,26 +33,26 @@ changing report shapes.
 
 ## 3. Acceptance Criteria
 
-- [ ] Native bound text sync avoids O(bound nodes * tree size) lookup each
+- [x] Native bound text sync avoids O(bound nodes * tree size) lookup each
       frame for stable retained trees.
-- [ ] Missing native font fallback produces a stable diagnostic instead of
+- [x] Missing native font fallback produces a stable diagnostic instead of
       silently rendering no text.
-- [ ] Font discovery works on the supported native target set or is explicitly
+- [x] Font discovery works on the supported native target set or is explicitly
       bounded in docs.
-- [ ] DPI/scale behavior is implemented or documented as an unsupported/partial
+- [x] DPI/scale behavior is implemented or documented as an unsupported/partial
       boundary with diagnostics.
-- [ ] Shared trace/report helper reduces duplicate report boilerplate while
+- [x] Shared trace/report helper reduces duplicate report boilerplate while
       preserving existing artifact schemas or intentionally versioning them.
-- [ ] No new native parity promotion is made without PRD-005 behavioral proof.
+- [x] No new native parity promotion is made without PRD-005 behavioral proof.
 
 ## 4. Verification
 
-- [ ] Add or update native unit tests for binding cache construction and lookup.
-- [ ] Add a diagnostic test for missing font fallback.
-- [ ] Run `cargo test` for `threenative_runtime` or the narrow native crate
+- [x] Add or update native unit tests for binding cache construction and lookup.
+- [x] Add a diagnostic test for missing font fallback.
+- [x] Run `cargo test` for `threenative_runtime` or the narrow native crate
       tests that cover UI.
-- [ ] Run `pnpm verify:conformance` if report schemas or UI behavior change.
-- [ ] Run `pnpm check:docs` if capability boundaries are updated.
+- [x] Run `pnpm verify:conformance` if report schemas or UI behavior change.
+- [x] Run `pnpm check:docs` if capability boundaries are updated.
 
 ## 5. Dependencies
 

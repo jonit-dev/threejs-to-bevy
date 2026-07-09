@@ -5,7 +5,7 @@ use thiserror::Error;
 use threenative_components::ThreeNativeId;
 use threenative_loader::{
     EnvironmentSceneIr, LoadError, LoadedBundle, MaterialsIr, MeshRendererComponent,
-    TransformComponent, UiBindingIr, UiNodeIr, WorldIr, load_bundle,
+    TransformComponent, UiBindingIr, WorldEntity, WorldIr, load_bundle,
 };
 
 pub mod animation;
@@ -59,6 +59,7 @@ pub mod systems_effects;
 pub mod systems_host;
 mod systems_host_bridge;
 pub mod systems_services;
+pub mod trace_report;
 pub mod transform_interpolation;
 pub mod ui;
 pub mod ui_debug;
@@ -197,6 +198,17 @@ pub fn app_from_bundle_with_options(
     }
     if let Some(ui) = bundle.ui.as_ref() {
         ui::map_ui_into_world(app.world_mut(), ui)?;
+        if let Some(diagnostic) = ui::diagnose_native_ui_font_fallback(app.world()) {
+            warn!(
+                "{}: {} ({})",
+                diagnostic.code, diagnostic.message, diagnostic.path
+            );
+        }
+        let diagnostic = ui::diagnose_native_ui_scale_boundary(ui);
+        warn!(
+            "{}: {} ({})",
+            diagnostic.code, diagnostic.message, diagnostic.path
+        );
         if !ui::route_native_ui_to_active_scene_camera(app.world_mut()) {
             ui::install_native_ui_overlay_camera(app.world_mut());
         }
@@ -504,6 +516,7 @@ fn run_scripted_runtime_systems(
     mut transforms: Query<(&ThreeNativeId, &mut Transform)>,
     mut materials: Query<(&ThreeNativeId, &mut Handle<StandardMaterial>)>,
     mut text_nodes: Query<(&ThreeNativeId, &mut Text)>,
+    ui_binding_targets: Option<Res<ui::NativeUiBindingTargets>>,
     mut minimap_markers: Query<(
         &ui::NativeUiMinimapMarker,
         &mut Style,
@@ -598,7 +611,11 @@ fn run_scripted_runtime_systems(
         &mut transforms,
     );
     sync_scripted_materials(&runtime.bundle, material_handles.as_deref(), &mut materials);
-    sync_scripted_ui_text(&runtime.bundle, &mut text_nodes);
+    sync_scripted_ui_text(
+        &runtime.bundle,
+        ui_binding_targets.as_deref(),
+        &mut text_nodes,
+    );
     ui::sync_native_minimap_markers(&runtime.bundle, &mut minimap_markers);
 }
 
@@ -679,19 +696,25 @@ fn apply_mesh_renderer_component(
 
 fn sync_scripted_ui_text(
     bundle: &LoadedBundle,
+    targets: Option<&ui::NativeUiBindingTargets>,
     text_nodes: &mut Query<(&ThreeNativeId, &mut Text)>,
 ) {
-    let Some(ui) = bundle.ui.as_ref() else {
+    let Some(targets) = targets else {
         return;
     };
+    let component_entities = targets.has_component_bindings().then(|| {
+        bundle
+            .world
+            .entities
+            .iter()
+            .map(|entity| (entity.id.as_str(), entity))
+            .collect::<HashMap<_, _>>()
+    });
     for (stable_id, mut text) in text_nodes.iter_mut() {
-        let Some(node) = find_ui_node(&ui.root, &stable_id.0) else {
+        let Some(binding) = targets.binding_for(&stable_id.0) else {
             continue;
         };
-        let Some(binding) = node.binding.as_ref() else {
-            continue;
-        };
-        let Some(value) = resolve_ui_binding(bundle, binding) else {
+        let Some(value) = resolve_ui_binding(bundle, binding, component_entities.as_ref()) else {
             continue;
         };
         let rendered = value_to_ui_text(&value);
@@ -701,18 +724,10 @@ fn sync_scripted_ui_text(
     }
 }
 
-fn find_ui_node<'a>(node: &'a UiNodeIr, id: &str) -> Option<&'a UiNodeIr> {
-    if node.id == id {
-        return Some(node);
-    }
-    node.children
-        .iter()
-        .find_map(|child| find_ui_node(child, id))
-}
-
 fn resolve_ui_binding<'a>(
     bundle: &'a LoadedBundle,
     binding: &UiBindingIr,
+    component_entities: Option<&HashMap<&'a str, &'a WorldEntity>>,
 ) -> Option<serde_json::Value> {
     match binding {
         UiBindingIr::Resource {
@@ -738,11 +753,9 @@ fn resolve_ui_binding<'a>(
             fields,
             format,
         } => {
-            let entity = bundle
-                .world
-                .entities
-                .iter()
-                .find(|item| item.id == *entity)?;
+            let entity = component_entities
+                .and_then(|entities| entities.get(entity.as_str()).copied())
+                .or_else(|| bundle.world.entities.iter().find(|item| item.id == *entity))?;
             let value = systems_context::component_value(&entity.components, component)?;
             if let Some(format) = format {
                 return Some(serde_json::Value::String(format_ui_binding_value(
@@ -990,6 +1003,69 @@ mod tests {
                 .events
                 .is_empty()
         );
+    }
+
+    #[test]
+    fn scripted_runtime_should_sync_ui_text_from_cached_binding_targets() {
+        let root = write_scripted_runtime_bundle("bevy-ui-binding-cache", 0.1);
+        write_test_file(
+            &root,
+            "manifest.json",
+            r#"{
+  "schema": "threenative.bundle",
+  "version": "0.1.0",
+  "name": "scripted-runtime-test",
+  "requiredCapabilities": {},
+  "entry": { "world": "world.ir.json", "systems": "systems.ir.json", "scripts": "scripts.bundle.js", "ui": "ui.ir.json" },
+  "files": { "assets": "assets.manifest.json", "materials": "materials.ir.json", "runtimeConfig": "runtime.config.json", "targetProfile": "target.profile.json" }
+}"#,
+        );
+        write_test_file(
+            &root,
+            "ui.ir.json",
+            r#"{
+  "schema": "threenative.ui",
+  "version": "0.1.0",
+  "root": {
+    "id": "root",
+    "kind": "column",
+    "children": [
+      {
+        "id": "score",
+        "kind": "text",
+        "text": "Score 0",
+        "binding": { "kind": "resource", "name": "LoopCounts", "field": "update" }
+      }
+    ]
+  }
+}"#,
+        );
+        let mut app = scripted_runtime_app(&root);
+        let targets = {
+            let runtime = app.world().resource::<ScriptedRuntimeBundle>();
+            ui::build_native_ui_binding_targets(
+                runtime
+                    .bundle
+                    .ui
+                    .as_ref()
+                    .expect("test bundle should include UI"),
+            )
+        };
+        assert_eq!(targets.len(), 1);
+        app.insert_resource(targets);
+        app.world_mut().spawn((
+            ThreeNativeId("score".to_owned()),
+            Text::from_section("stale", TextStyle::default()),
+        ));
+
+        advance_app(&mut app, 0.1);
+
+        let mut query = app.world_mut().query::<(&ThreeNativeId, &Text)>();
+        let rendered = query
+            .iter(app.world())
+            .find_map(|(id, text)| (id.0 == "score").then(|| text.sections[0].value.clone()))
+            .expect("score text should exist");
+        assert_eq!(rendered, "1");
     }
 
     fn scripted_runtime_app(root: &Path) -> App {

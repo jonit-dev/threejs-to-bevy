@@ -1,8 +1,9 @@
-use std::{collections::HashMap, env, fs, path::Path};
+use std::{collections::HashMap, env, path::Path};
 
 use serde::Serialize;
 use threenative_loader::load_bundle;
 use threenative_runtime::game_flow::{NativeGameFlowTraceInput, trace_game_flow};
+use threenative_runtime::trace_report::write_pretty_json_report;
 
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -35,12 +36,5 @@ fn main() {
         ),
     };
 
-    fs::write(
-        &args[2],
-        format!(
-            "{}\n",
-            serde_json::to_string_pretty(&report).expect("serialize GameFlow trace report")
-        ),
-    )
-    .expect("write GameFlow trace report");
+    write_pretty_json_report(&args[2], &report).expect("write GameFlow trace report");
 }

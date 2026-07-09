@@ -23,6 +23,9 @@ Current support:
   safe-area metadata, effect presets, and editable text-input semantics remain
   trace/metadata boundaries unless a focused native pixel or behavior gate is
   named.
+- Native retained UI hygiene includes cached binding-target lookup and stable
+  fallback-font diagnostics, but absolute-pixel DPI handling remains a
+  documented unsupported boundary and does not promote native UI pixel parity.
 - UI conformance evidence is categorized in `pnpm verify:conformance` as
   structural, behavioral, and visual/style proof. The current visual/style UI
   proof is an aggregate contact sheet, not a native pixel-rendering promotion.
