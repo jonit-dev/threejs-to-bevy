@@ -21,6 +21,7 @@ pub struct NativeSystemContextSnapshot {
     pub declared_queries: Vec<Value>,
     pub component_types: NativeComponentReflectionRegistry,
     pub default_query: Value,
+    pub delayed_commands: Vec<NativeDelayedCommandDeclaration>,
     pub entities: Vec<NativeSystemEntitySnapshot>,
     pub events: BTreeMap<String, Vec<Value>>,
     pub input: NativeSystemInputSnapshot,
@@ -36,6 +37,13 @@ pub struct NativeSystemContextSnapshot {
     pub tasks: Vec<NativeTaskDeclaration>,
     pub time: NativeSystemTimeSnapshot,
     pub ui: Option<NativeUiSnapshot>,
+}
+
+#[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct NativeDelayedCommandDeclaration {
+    pub id: String,
+    pub max_delay_ticks: u32,
 }
 
 #[derive(Clone, Debug, Serialize)]
@@ -303,6 +311,14 @@ pub fn build_system_context_snapshot_with_events_input_and_diff(
             .first()
             .map(query_value)
             .unwrap_or_else(|| json!({ "with": [], "without": [] })),
+        delayed_commands: system
+            .delayed_commands
+            .iter()
+            .map(|command| NativeDelayedCommandDeclaration {
+                id: command.id.clone(),
+                max_delay_ticks: command.max_delay_ticks,
+            })
+            .collect(),
         entities,
         events: merged_event_queues(bundle, events),
         input: input.map_or_else(

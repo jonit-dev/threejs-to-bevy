@@ -1,5 +1,5 @@
 function __tnInvokeSystem(options) {
-  const effects = { commands: [], events: [], observations: [], patches: [], resources: [], services: [] };
+  const effects = { commands: [], events: [], observations: [], patches: [], resources: [], schedules: [], services: [] };
   const data = options.snapshot;
   const normalize = (handle) => typeof handle === "string" ? handle : (handle && typeof handle.name === "string" ? handle.name : String(handle));
   const observeResource = (kind, name) => effects.observations.push({ kind, resource: normalize(name) });
@@ -1058,6 +1058,18 @@ function __tnInvokeSystem(options) {
         const result = particleCommand("stop", asset, emitter);
         effects.services.push({ service: "particles.stop", payload: { request, result: clone(result) } });
         return clone(result);
+      }
+    },
+    schedule: {
+      afterTicks(options = {}) {
+        const id = normalize(options.id);
+        const delayTicks = Math.floor(Number(options.delayTicks));
+        const declaration = (data.delayedCommands || []).find((entry) => entry.id === id);
+        if (!declaration || !Number.isInteger(delayTicks) || delayTicks < 1 || delayTicks > Number(declaration.maxDelayTicks || 0)) {
+          return { accepted: false, delayTicks, id, status: "rejected" };
+        }
+        effects.schedules.push({ delayTicks, id });
+        return { accepted: true, delayTicks, id, status: "enqueued" };
       }
     },
     sequences: {

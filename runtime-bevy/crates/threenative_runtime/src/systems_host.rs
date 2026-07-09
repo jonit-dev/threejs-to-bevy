@@ -10,7 +10,7 @@ use quickjs_rusty::Context;
 use serde::Serialize;
 use serde_json::{Value, json};
 use thiserror::Error;
-use threenative_loader::{LoadedBundle, SystemIr, TransformComponent};
+use threenative_loader::{LoadedBundle, SystemCommandIr, SystemDelayedCommandIr, SystemIr, TransformComponent};
 
 use crate::{
     component_diff::ComponentDiffCache,
@@ -92,6 +92,8 @@ pub fn native_declared_system_resources(bundle: &LoadedBundle) -> Vec<String> {
 #[derive(bevy::prelude::Resource, Debug, Clone, PartialEq)]
 pub struct NativeGameLoopState {
     pub accumulator: f32,
+    pub delayed_commands: Vec<NativeDelayedCommand>,
+    pub delayed_command_observations: Vec<NativeDelayedCommandObservation>,
     pub elapsed: f32,
     pub fixed_transform_current: BTreeMap<String, TransformSample>,
     pub fixed_transform_entities: BTreeSet<String>,
@@ -108,6 +110,8 @@ impl NativeGameLoopState {
     pub fn new(paused: bool) -> Self {
         Self {
             accumulator: 0.0,
+            delayed_commands: Vec::new(),
+            delayed_command_observations: Vec::new(),
             elapsed: 0.0,
             fixed_transform_current: BTreeMap::new(),
             fixed_transform_entities: BTreeSet::new(),
@@ -120,6 +124,31 @@ impl NativeGameLoopState {
             tick: 0,
         }
     }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct NativeDelayedCommand {
+    pub cancel_policy: String,
+    pub command: SystemCommandIr,
+    pub delay_ticks: u32,
+    pub enqueued_tick: u64,
+    pub id: String,
+    pub ownership_id: String,
+    pub ownership_kind: String,
+    pub remaining_ticks: u32,
+    pub schedule: String,
+    pub system_name: String,
+}
+
+#[derive(Debug, Clone, Serialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct NativeDelayedCommandObservation {
+    pub delay_ticks: u32,
+    pub id: String,
+    pub remaining_ticks: u32,
+    pub status: String,
+    pub system: String,
+    pub tick: u64,
 }
 
 impl Default for NativeGameLoopState {
@@ -254,8 +283,18 @@ pub fn run_native_systems_frame_with_input(
 
         if !state.startup_complete {
             let time = loop_time_snapshot(0.0, state.elapsed, options.fixed_delta, state.paused);
-            let startup_run =
-                run_native_system_schedules(bundle, &["startup"], time, options.input)?;
+            let startup_run = run_native_system_schedules_with_state(
+                bundle,
+                &["startup"],
+                time,
+                options.input,
+                state.frame as u32,
+                state.tick,
+                Some((
+                    &mut state.delayed_commands,
+                    &mut state.delayed_command_observations,
+                )),
+            )?;
             state
                 .script_posed_entities
                 .extend(startup_run.transform_patches.iter().cloned());
@@ -285,8 +324,18 @@ pub fn run_native_systems_frame_with_input(
                 options.fixed_delta,
                 state.paused,
             );
-            let fixed_run =
-                run_native_system_schedules(bundle, &["fixedUpdate"], time, options.input)?;
+            let fixed_run = run_native_system_schedules_with_state(
+                bundle,
+                &["fixedUpdate"],
+                time,
+                options.input,
+                state.frame as u32,
+                state.tick,
+                Some((
+                    &mut state.delayed_commands,
+                    &mut state.delayed_command_observations,
+                )),
+            )?;
             state
                 .script_posed_entities
                 .extend(fixed_run.transform_patches.iter().cloned());
@@ -311,11 +360,17 @@ pub fn run_native_systems_frame_with_input(
             options.fixed_delta,
             state.paused,
         );
-        let variable_run = run_native_system_schedules(
+        let variable_run = run_native_system_schedules_with_state(
             bundle,
             &["update", "postUpdate"],
             variable_time,
             options.input,
+            state.frame as u32,
+            state.tick,
+            Some((
+                &mut state.delayed_commands,
+                &mut state.delayed_command_observations,
+            )),
         )?;
         state
             .script_posed_entities
@@ -476,6 +531,21 @@ fn run_native_system_schedules(
     time: NativeSystemTimeSnapshot,
     input: Option<&NativeInputState>,
 ) -> Result<NativeSystemsHostRun, SystemsHostError> {
+    run_native_system_schedules_with_state(bundle, schedules, time, input, 1, 1, None)
+}
+
+fn run_native_system_schedules_with_state(
+    bundle: &mut LoadedBundle,
+    schedules: &[&str],
+    time: NativeSystemTimeSnapshot,
+    input: Option<&NativeInputState>,
+    frame: u32,
+    tick: u64,
+    mut delayed_state: Option<(
+        &mut Vec<NativeDelayedCommand>,
+        &mut Vec<NativeDelayedCommandObservation>,
+    )>,
+) -> Result<NativeSystemsHostRun, SystemsHostError> {
     ensure_native_system_host_supported(bundle)?;
     if bundle.manifest.entry.scripts.is_none() {
         return Ok(NativeSystemsHostRun::default());
@@ -530,7 +600,10 @@ fn run_native_system_schedules(
                     Some(&diff_cache),
                 )?;
                 system_observations.extend(native_resource_observations(system, &effects));
-                let applied = apply_system_effects_with_report(bundle, system, &effects, 1, 1)
+                if let Some((pending, observations)) = delayed_state.as_mut() {
+                    enqueue_native_delayed_commands(pending, observations, system, &effects, tick);
+                }
+                let applied = apply_system_effects_with_report(bundle, system, &effects, frame, tick as u32)
                     .map_err(|diagnostics| {
                         let first = diagnostics
                             .into_iter()
@@ -541,6 +614,44 @@ fn run_native_system_schedules(
                 logs.push(applied.log);
                 resource_observations.extend(system_observations);
                 transform_patches.extend(applied.transform_patches);
+            }
+            if *schedule == "fixedUpdate"
+                && let Some((pending, observations)) = delayed_state.as_mut()
+            {
+                let ready = advance_native_delayed_commands(bundle, pending, observations, tick);
+                for command in ready {
+                    let Some(system) = systems
+                        .iter()
+                        .find(|candidate| candidate.name == command.system_name)
+                    else {
+                        continue;
+                    };
+                    let effects = NativeSystemEffects {
+                        commands: vec![native_command_effect(&command.command)],
+                        events: Vec::new(),
+                        observations: Vec::new(),
+                        patches: Vec::new(),
+                        resources: Vec::new(),
+                        schedules: Vec::new(),
+                        services: Vec::new(),
+                    };
+                    let applied = apply_system_effects_with_report(
+                        bundle,
+                        system,
+                        &effects,
+                        frame,
+                        tick as u32,
+                    )
+                    .map_err(|diagnostics| {
+                        let first = diagnostics
+                            .into_iter()
+                            .next()
+                            .expect("invalid delayed effects should include diagnostics");
+                        host_error(first.code, first.message)
+                    })?;
+                    logs.push(applied.log);
+                    transform_patches.extend(applied.transform_patches);
+                }
             }
         }
         Ok(())
@@ -555,6 +666,187 @@ fn run_native_system_schedules(
         resource_observations,
         transform_patches,
     })
+}
+
+fn enqueue_native_delayed_commands(
+    pending: &mut Vec<NativeDelayedCommand>,
+    observations: &mut Vec<NativeDelayedCommandObservation>,
+    system: &SystemIr,
+    effects: &NativeSystemEffects,
+    tick: u64,
+) {
+    for schedule in &effects.schedules {
+        let Some(declaration) = system
+            .delayed_commands
+            .iter()
+            .find(|declaration| declaration.id == schedule.id)
+        else {
+            continue;
+        };
+        if schedule.delay_ticks == 0 || schedule.delay_ticks > declaration.max_delay_ticks {
+            continue;
+        }
+        pending.push(native_delayed_command(system, declaration, schedule.delay_ticks, tick));
+        observations.push(NativeDelayedCommandObservation {
+            delay_ticks: schedule.delay_ticks,
+            id: schedule.id.clone(),
+            remaining_ticks: schedule.delay_ticks,
+            status: "enqueued".to_owned(),
+            system: system.name.clone(),
+            tick,
+        });
+    }
+}
+
+fn native_delayed_command(
+    system: &SystemIr,
+    declaration: &SystemDelayedCommandIr,
+    delay_ticks: u32,
+    tick: u64,
+) -> NativeDelayedCommand {
+    NativeDelayedCommand {
+        cancel_policy: declaration.cancel_policy.clone(),
+        command: declaration.command.clone(),
+        delay_ticks,
+        enqueued_tick: tick,
+        id: declaration.id.clone(),
+        ownership_id: declaration.ownership.id.clone(),
+        ownership_kind: declaration.ownership.kind.clone(),
+        remaining_ticks: delay_ticks,
+        schedule: system.schedule.clone(),
+        system_name: system.name.clone(),
+    }
+}
+
+fn advance_native_delayed_commands(
+    bundle: &LoadedBundle,
+    pending: &mut Vec<NativeDelayedCommand>,
+    observations: &mut Vec<NativeDelayedCommandObservation>,
+    tick: u64,
+) -> Vec<NativeDelayedCommand> {
+    let mut ready = Vec::new();
+    let mut still_pending = Vec::new();
+    for command in pending.drain(..) {
+        if command.enqueued_tick >= tick {
+            still_pending.push(command);
+            continue;
+        }
+        let mut next = command.clone();
+        next.remaining_ticks = next.remaining_ticks.saturating_sub(1);
+        if next.remaining_ticks > 0 {
+            observations.push(NativeDelayedCommandObservation {
+                delay_ticks: next.delay_ticks,
+                id: next.id.clone(),
+                remaining_ticks: next.remaining_ticks,
+                status: "pending".to_owned(),
+                system: next.system_name.clone(),
+                tick,
+            });
+            still_pending.push(next);
+            continue;
+        }
+        if next.cancel_policy == "drop" && !native_delayed_owner_active(bundle, &next) {
+            observations.push(NativeDelayedCommandObservation {
+                delay_ticks: next.delay_ticks,
+                id: next.id.clone(),
+                remaining_ticks: 0,
+                status: "dropped".to_owned(),
+                system: next.system_name.clone(),
+                tick,
+            });
+            continue;
+        }
+        observations.push(NativeDelayedCommandObservation {
+            delay_ticks: next.delay_ticks,
+            id: next.id.clone(),
+            remaining_ticks: 0,
+            status: "flushed".to_owned(),
+            system: next.system_name.clone(),
+            tick,
+        });
+        ready.push(next);
+    }
+    *pending = still_pending;
+    ready
+}
+
+fn native_delayed_owner_active(bundle: &LoadedBundle, command: &NativeDelayedCommand) -> bool {
+    if command.ownership_kind == "entity" {
+        return bundle
+            .world
+            .entities
+            .iter()
+            .any(|entity| entity.id == command.ownership_id);
+    }
+    true
+}
+
+fn native_command_effect(command: &SystemCommandIr) -> crate::systems_effects::NativeSystemCommandEffect {
+    match command {
+        SystemCommandIr::AddComponent { component, entity } => crate::systems_effects::NativeSystemCommandEffect {
+            command: "addComponent".to_owned(),
+            component: Some(component.clone()),
+            entity: Some(entity.clone()),
+            value: Some(json!({})),
+            ..Default::default()
+        },
+        SystemCommandIr::Despawn { entity } => crate::systems_effects::NativeSystemCommandEffect {
+            command: "despawn".to_owned(),
+            entity: Some(entity.clone()),
+            ..Default::default()
+        },
+        SystemCommandIr::EmitEvent { event } => crate::systems_effects::NativeSystemCommandEffect {
+            command: "emitEvent".to_owned(),
+            entity: Some(String::new()),
+            event: Some(event.clone()),
+            payload: Some(json!({})),
+            ..Default::default()
+        },
+        SystemCommandIr::Instantiate { prefab, prefix } => crate::systems_effects::NativeSystemCommandEffect {
+            command: "instantiate".to_owned(),
+            entity: Some(String::new()),
+            prefab: Some(prefab.clone()),
+            prefix: Some(prefix.clone()),
+            ..Default::default()
+        },
+        SystemCommandIr::RemoveComponent { component, entity } => crate::systems_effects::NativeSystemCommandEffect {
+            command: "removeComponent".to_owned(),
+            component: Some(component.clone()),
+            entity: Some(entity.clone()),
+            ..Default::default()
+        },
+        SystemCommandIr::SetParent { child, parent } => crate::systems_effects::NativeSystemCommandEffect {
+            child: Some(child.clone()),
+            command: "setParent".to_owned(),
+            entity: Some(child.clone()),
+            parent: Some(parent.clone()),
+            ..Default::default()
+        },
+        SystemCommandIr::ClearParent { child } => crate::systems_effects::NativeSystemCommandEffect {
+            child: Some(child.clone()),
+            command: "clearParent".to_owned(),
+            entity: Some(child.clone()),
+            ..Default::default()
+        },
+        SystemCommandIr::SetComponent { component, entity } => crate::systems_effects::NativeSystemCommandEffect {
+            command: "setComponent".to_owned(),
+            component: Some(component.clone()),
+            entity: Some(entity.clone()),
+            value: Some(json!({})),
+            ..Default::default()
+        },
+        SystemCommandIr::Spawn { components, entity } => crate::systems_effects::NativeSystemCommandEffect {
+            command: "spawn".to_owned(),
+            components: Some(Value::Object(
+                components
+                    .iter()
+                    .map(|component| (component.clone(), json!({})))
+                    .collect(),
+            )),
+            entity: Some(entity.clone()),
+            ..Default::default()
+        },
+    }
 }
 
 fn declared_resource_load_observations(

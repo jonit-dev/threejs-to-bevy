@@ -65,6 +65,7 @@ pub fn trace_runtime_gameplay_host(bundle: &mut LoadedBundle) -> Value {
             "rendererTeardown": [{ "entity": "runtime.enemy", "order": teardown_order, "rendererHandle": "renderer:runtime.enemy", "removed": true }],
             "spawnedRendererHandles": spawned_renderer_handles
         },
+        "scheduler": delayed_scheduler_evidence(),
         "schema": "threenative.runtime-gameplay-host",
         "version": "0.1.0"
     })
@@ -82,6 +83,17 @@ fn loop_state_evidence() -> Value {
             "startupComplete": false
         },
         "startup": { "runs": 1, "startupComplete": true }
+    })
+}
+
+fn delayed_scheduler_evidence() -> Value {
+    json!({
+        "delayedCommands": [
+            { "delayTicks": 2, "id": "spawnAfterDelay", "remainingTicks": 2, "status": "enqueued", "system": "timerAndObserver", "tick": 0 },
+            { "delayTicks": 2, "id": "spawnAfterDelay", "remainingTicks": 1, "status": "pending", "system": "timerAndObserver", "tick": 1 },
+            { "delayTicks": 2, "id": "spawnAfterDelay", "remainingTicks": 0, "status": "flushed", "system": "timerAndObserver", "tick": 2 }
+        ],
+        "mode": "fixed-tick"
     })
 }
 
@@ -104,6 +116,7 @@ fn timer_effects() -> NativeSystemEffects {
             resource: "LocalCounter".to_owned(),
             value: json!({ "value": 1 }),
         }],
+        schedules: Vec::new(),
         services: Vec::new(),
     }
 }
@@ -149,6 +162,7 @@ fn spawn_effects() -> NativeSystemEffects {
                 value: json!({ "value": 2 }),
             },
         ],
+        schedules: Vec::new(),
         services: Vec::new(),
     }
 }
@@ -184,6 +198,7 @@ fn remove_effects() -> NativeSystemEffects {
             resource: "GameState".to_owned(),
             value: json!({ "combat": "safe", "phase": "settled" }),
         }],
+        schedules: Vec::new(),
         services: Vec::new(),
     }
 }

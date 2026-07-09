@@ -620,6 +620,63 @@ fn systems_host_should_expose_timer_helpers() {
 }
 
 #[test]
+fn systems_host_should_flush_delayed_commands_after_fixed_ticks() {
+    let root = write_delayed_command_bundle("delayed-command-context");
+    let mut bundle = load_bundle(&root).expect("scripted bundle should load");
+    let mut state = NativeGameLoopState::default();
+
+    run_native_systems_frame_with_input(
+        &mut bundle,
+        &mut state,
+        loop_options(0.25, 0.25, false),
+        |_bundle, _fixed_delta, _script_posed_entities| {},
+    )
+    .expect("first fixed tick should enqueue delayed command");
+    assert!(!bundle.world.entities.iter().any(|entity| entity.id == "marker"));
+
+    run_native_systems_frame_with_input(
+        &mut bundle,
+        &mut state,
+        loop_options(0.25, 0.25, false),
+        |_bundle, _fixed_delta, _script_posed_entities| {},
+    )
+    .expect("second fixed tick should keep command pending");
+    assert!(!bundle.world.entities.iter().any(|entity| entity.id == "marker"));
+
+    let run = run_native_systems_frame_with_input(
+        &mut bundle,
+        &mut state,
+        loop_options(0.25, 0.25, false),
+        |_bundle, _fixed_delta, _script_posed_entities| {},
+    )
+    .expect("third fixed tick should flush delayed command");
+
+    let marker = bundle
+        .world
+        .entities
+        .iter()
+        .find(|entity| entity.id == "marker")
+        .expect("delayed command should spawn marker");
+    assert!(marker.components.transform.is_some());
+    assert!(run.logs.iter().any(|log| {
+        log.entries.iter().any(|entry| {
+            entry.kind == "command"
+                && entry.command.as_deref() == Some("spawn")
+                && entry.entity.as_deref() == Some("marker")
+                && entry.tick == 2
+        })
+    }));
+    assert_eq!(
+        state
+            .delayed_command_observations
+            .iter()
+            .map(|observation| observation.status.as_str())
+            .collect::<Vec<_>>(),
+        vec!["enqueued", "pending", "flushed"]
+    );
+}
+
+#[test]
 fn systems_host_should_apply_query_metadata() {
     let root = write_query_metadata_bundle("query-metadata-context");
     let mut bundle = load_bundle(&root).expect("scripted bundle should load");
@@ -2000,6 +2057,71 @@ fn write_timer_bundle(name: &str) -> PathBuf {
 };
 export const systemIds = Object.freeze({ "system_reportTimers": "reportTimers" });
 export const systems = Object.freeze({ "system_reportTimers": system_reportTimers });
+"#,
+    )
+    .expect("script bundle should be written");
+    root
+}
+
+fn write_delayed_command_bundle(name: &str) -> PathBuf {
+    let root = root(name);
+    write_base_bundle(&root, true);
+    write_json(
+        &root,
+        "world.ir.json",
+        r#"{
+  "schema": "threenative.world",
+  "version": "0.1.0",
+  "entities": [],
+  "resources": {
+    "Started": { "value": false }
+  }
+}"#,
+    );
+    write_json(
+        &root,
+        "systems.ir.json",
+        r#"{
+  "schema": "threenative.systems",
+  "version": "0.1.0",
+  "systems": [
+    {
+      "name": "queueMarker",
+      "schedule": "fixedUpdate",
+      "reads": [],
+      "writes": [],
+      "queries": [],
+      "commands": [],
+      "delayedCommands": [
+        {
+          "id": "spawnMarker",
+          "maxDelayTicks": 3,
+          "ownership": { "kind": "scene", "id": "arena" },
+          "cancelPolicy": "drop",
+          "command": { "kind": "spawn", "entity": "marker", "components": ["Transform"] }
+        }
+      ],
+      "eventReads": [],
+      "eventWrites": [],
+      "resourceReads": ["Started"],
+      "resourceWrites": ["Started"],
+      "services": [],
+      "script": { "bundle": "scripts.bundle.js", "exportName": "system_queueMarker" }
+    }
+  ]
+}"#,
+    );
+    fs::write(
+        root.join("scripts.bundle.js"),
+        r#"const system_queueMarker = (ctx) => {
+  const started = ctx.resources.get("Started", { value: false });
+  if (!started.value) {
+    ctx.schedule.afterTicks({ id: "spawnMarker", delayTicks: 2 });
+    ctx.resources.set("Started", { value: true });
+  }
+};
+export const systemIds = Object.freeze({ "system_queueMarker": "queueMarker" });
+export const systems = Object.freeze({ "system_queueMarker": system_queueMarker });
 "#,
     )
     .expect("script bundle should be written");

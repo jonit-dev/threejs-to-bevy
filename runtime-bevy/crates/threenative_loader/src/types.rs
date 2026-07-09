@@ -1183,6 +1183,8 @@ pub struct SystemIr {
     pub before: Vec<String>,
     #[serde(default)]
     pub commands: Vec<SystemCommandIr>,
+    #[serde(default, rename = "delayedCommands")]
+    pub delayed_commands: Vec<SystemDelayedCommandIr>,
     #[serde(default, rename = "eventReads")]
     pub event_reads: Vec<String>,
     #[serde(default, rename = "eventWrites")]
@@ -1204,7 +1206,23 @@ pub struct SystemIr {
     pub writes: Vec<String>,
 }
 
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct SystemDelayedCommandIr {
+    pub cancel_policy: String,
+    pub command: SystemCommandIr,
+    pub id: String,
+    pub max_delay_ticks: u32,
+    pub ownership: SystemDelayedCommandOwnershipIr,
+}
+
+#[derive(Clone, Debug, Deserialize, PartialEq)]
+pub struct SystemDelayedCommandOwnershipIr {
+    pub id: String,
+    pub kind: String,
+}
+
+#[derive(Clone, Debug, Deserialize, PartialEq)]
 #[serde(tag = "kind")]
 pub enum SystemCommandIr {
     #[serde(rename = "addComponent")]

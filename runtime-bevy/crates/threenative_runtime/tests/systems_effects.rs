@@ -353,6 +353,7 @@ fn systems_effects_should_apply_scene_change_effect() {
             after: Vec::new(),
             before: Vec::new(),
             commands: Vec::new(),
+            delayed_commands: Vec::new(),
             event_reads: Vec::new(),
             event_writes: Vec::new(),
             name: "menuActions".to_owned(),

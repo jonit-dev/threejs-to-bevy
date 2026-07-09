@@ -23,6 +23,8 @@ pub struct NativeSystemEffects {
     #[serde(default)]
     pub resources: Vec<NativeSystemResourceEffect>,
     #[serde(default)]
+    pub schedules: Vec<NativeSystemScheduleEffect>,
+    #[serde(default)]
     pub services: Vec<NativeSystemServiceEffect>,
 }
 
@@ -49,6 +51,13 @@ pub struct NativeSystemResourceEffect {
 pub struct NativeSystemResourceObservationEffect {
     pub kind: String,
     pub resource: String,
+}
+
+#[derive(Clone, Debug, Deserialize, PartialEq)]
+pub struct NativeSystemScheduleEffect {
+    #[serde(rename = "delayTicks")]
+    pub delay_ticks: u32,
+    pub id: String,
 }
 
 #[derive(Clone, Debug, Default, Deserialize, PartialEq)]
@@ -252,7 +261,16 @@ pub fn validate_system_effects(
 }
 
 fn declares_command(system: &SystemIr, command: &NativeSystemCommandEffect) -> bool {
-    system.commands.iter().any(|declared| match declared {
+    system
+        .commands
+        .iter()
+        .chain(
+            system
+                .delayed_commands
+                .iter()
+                .map(|declaration| &declaration.command),
+        )
+        .any(|declared| match declared {
         SystemCommandIr::AddComponent { component, entity } => {
             command.command == "addComponent"
                 && command.component.as_ref() == Some(component)
@@ -910,6 +928,7 @@ mod tests {
                     resource: "Score".to_owned(),
                     value: json!({ "value": 2 }),
                 }],
+                schedules: Vec::new(),
                 services: vec![NativeSystemServiceEffect {
                     payload: json!({ "request": {}, "result": { "hit": false } }),
                     service: "physics.raycast".to_owned(),
@@ -991,6 +1010,7 @@ mod tests {
                     resource: "GameState".to_owned(),
                     value: json!({ "combat": "engaged", "phase": "playing" }),
                 }],
+                schedules: Vec::new(),
                 services: Vec::new(),
             },
             3,

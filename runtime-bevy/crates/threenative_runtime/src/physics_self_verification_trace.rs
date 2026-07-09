@@ -175,6 +175,7 @@ fn query_system() -> SystemIr {
         after: vec![],
         before: vec![],
         commands: vec![],
+        delayed_commands: vec![],
         event_reads: vec![],
         event_writes: vec![],
         name: "physicsSelfVerificationQuery".to_owned(),
