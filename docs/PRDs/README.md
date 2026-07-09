@@ -60,7 +60,7 @@ execution bundle.
   closes the remaining web-first humanoid-course scenario proof after the ramp
   and pushed-ball PRDs; native/desktop proof stays deferred by the native path
   decision until a shipped-game need lifts the freeze.
-- [Declarative Gameplay Flow: Spawners, Game-Flow State Machines, Sequencer](proof-first-engine-loop-2026-07-05/PRD-008-declarative-gameplay-flow-spawners-sequencer.md):
+- [Declarative Gameplay Flow: Spawners, Game-Flow State Machines, Sequencer](done/proof-first-engine-loop-2026-07-05/PRD-008-declarative-gameplay-flow-spawners-sequencer.md):
   data-first `Spawner` component, bounded `GameFlow` state machines, and a
   typed-track `Sequence` timeline so waves, macro game state, and cutscenes
   need zero script, with web/Bevy conformance traces.

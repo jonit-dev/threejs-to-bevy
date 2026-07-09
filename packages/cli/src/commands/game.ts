@@ -1152,12 +1152,26 @@ function buildMechanicDecomposition(
       summary: "Track progress, scoring, win/fail state, and retry through source-owned resources and retained UI.",
     }),
     mechanicRow({
+      command: "tn flow create match --initial ready --scene <scene-id> --project . --json",
+      fallbackCookbookId: "fail-retry-reset",
+      mechanic: "macro-game-flow",
+      owner: "content/flow/match.flow.json",
+      summary: "Keep menu/play/win/fail/retry state in bounded GameFlow data before adding script-owned state flags.",
+    }),
+    mechanicRow({
       block: camera,
       command: "tn add follow-camera --project . --json",
       fallbackCookbookId: "follow-camera",
       mechanic: "camera-feedback",
       owner: sourceOwner,
       summary: "Keep the player, objective, and feedback moments framed without runtime adapter handles.",
+    }),
+    mechanicRow({
+      command: "tn sequence create intro --duration 2 --skippable true --project . --json",
+      fallbackCookbookId: "sound-cue",
+      mechanic: "feedback-sequence",
+      owner: "content/sequences/intro.sequence.json",
+      summary: "Author intro, win, fail, and milestone feedback beats as Sequence tracks before writing cutscene scripts.",
     }),
     mechanicRow({
       block: spawn,

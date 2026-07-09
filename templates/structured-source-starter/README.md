@@ -21,6 +21,10 @@ TypeScript stays thin.
   visual baseline, not primitive-only placeholders. Use custom meshes, imported
   assets, authored materials, lighting, landmarks, screenshot proof, motion
   proof, and playtest proof before treating a generated game as complete.
+- `content/flow/match.flow.json` and
+  `content/sequences/intro.sequence.json` are the starter's data-first macro
+  state and feedback beat. Extend those with `tn flow ... --json` and
+  `tn sequence ... --json` before adding script-owned timers or cutscene state.
 
 Useful commands:
 

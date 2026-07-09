@@ -14,11 +14,12 @@
       "renderLook": "cinematic"
     },
     "objective": "Trigger visible and audio feedback by reaching the goal zone.",
-    "progression": "The starter remains a single objective slice; expand it with score, timer, waves, or collectible count before claiming a complete generated game.",
-    "failRetry": "Reset by rebuilding or reloading the preview; no persistent fail state is authored in this starter.",
+    "progression": "The starter includes a data-first GameFlow ready -> playing -> win skeleton; expand it with score, timer, waves, or collectible count before claiming a complete generated game.",
+    "failRetry": "Reset by rebuilding or reloading the preview; extend content/flow/match.flow.json with a fail/retry branch before claiming persistent fail state.",
     "feedbackMoments": [
       "Player movement is visible in playtest proof.",
-      "Goal feedback changes scene state when the player reaches the objective.",
+      "Goal feedback changes GameFlow state when the player reaches the objective.",
+      "The intro Sequence gives agents a data-first feedback beat to extend before writing cutscene scripts.",
       "HUD text can be extended from GameState bindings."
     ],
     "assetPlan": {
@@ -41,11 +42,13 @@
       "sourceShape": {
         "assets": ["content/assets/arena.assets.json"],
         "archetypes": ["content/archetypes/top-down.archetype.json"],
+        "flow": ["content/flow/match.flow.json"],
         "input": ["content/input/arena.input.json"],
         "materials": ["content/materials/arena.materials.json"],
         "meshes": ["content/meshes/arena.meshes.json"],
         "runtime": ["content/runtime/default.runtime.json"],
         "scene": ["content/scenes/arena.scene.json"],
+        "sequences": ["content/sequences/intro.sequence.json"],
         "systems": ["content/systems/arena.systems.json"],
         "ui": ["content/ui/hud.ui.json"],
         "scripts": ["src/scripts/player.ts"]

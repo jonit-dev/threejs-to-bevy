@@ -11,6 +11,7 @@ CLI, and runtimes must honor.
 - [UI](ui.md)
 - [IR](ir.md)
 - [Environment Scene IR](environment-scene-ir.md)
+- [Declarative Gameplay Flow](declarative-gameplay-flow.md)
 - [Render Look Profiles](render-look-profiles.md)
 - [Performance Proof](performance-proof.md)
 - [Diagnostics](diagnostics.md)

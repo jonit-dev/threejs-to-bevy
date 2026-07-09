@@ -3,9 +3,12 @@
 Use `AGENTS.md` as the authoritative local instructions.
 
 In short: prefer `tn ... --json` for authoring, especially `tn scene`,
-`tn ui`, `tn prefab set-material`, and `tn add` mechanic-block commands. Edit
+`tn flow`, `tn sequence`, `tn ui`, `tn prefab set-material`, and `tn add`
+mechanic-block commands. Edit
 durable source under `content/**` and `src/scripts/**` only when no command
 covers the change, and do not repair generated bundle files.
+Use flow/sequence/spawner source for macro game state, waves, and cutscene or
+feedback beats before adding script-owned state flags or timers.
 Use `tn scene inspect arena --node <id> --project . --json` for one entity,
 resource, system, prefab, or UI node before opening the full scene JSON.
 For gameplay verification, run `tn iterate --project . --json` first; do not

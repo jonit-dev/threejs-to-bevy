@@ -132,6 +132,8 @@ test("should write full game plan artifact and print compact summary by default"
     assert.equal(payload.proofCommands.some((command) => command.includes("tn game qa")), true);
     assert.equal(payload.mechanicDecomposition.some((entry) => entry.mechanic === "movement" && typeof entry.command === "string"), true);
     assert.equal(payload.mechanicDecomposition.some((entry) => entry.mechanic === "objective-progression" && typeof entry.cookbookId === "string"), true);
+    assert.equal(payload.mechanicDecomposition.some((entry) => entry.mechanic === "macro-game-flow" && entry.command?.startsWith("tn flow create") === true), true);
+    assert.equal(payload.mechanicDecomposition.some((entry) => entry.mechanic === "feedback-sequence" && entry.command?.startsWith("tn sequence create") === true), true);
     assert.equal(fullPlan.schema, "threenative.game-plan");
     assert.equal(fullPlan.archetype, "top-down");
     assert.equal(fullPlan.mutate, false);

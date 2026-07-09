@@ -119,6 +119,14 @@ They are not runtime dependencies and do not expose Three.js, Rapier, Bevy,
 DOM, storage, filesystem, worker, timer, renderer, or native handles.
 Generated-game plan validation preserves these rows when present and reports
 `TN_VERIFY_GAME_PLAN_GAMEPLAY_BLOCKS_INVALID` for malformed block evidence.
+The mechanic decomposition must also surface data-first operations for common
+macro structure: `macro-game-flow` recommends `tn flow ... --json` for
+ready/play/win/fail/retry state, `feedback-sequence` recommends
+`tn sequence ... --json` for intro, milestone, win, and fail beats, and
+`hazards-or-rewards` recommends a bounded spawner operation where waves or
+spawned hazards fit the goal. These rows are planning guidance, but they keep
+agents from hand-rolling state flags, timers, and cutscene scripts before the
+bounded data contracts are tried.
 The plan's proof commands must cover the full local production loop:
 `tn authoring validate`, `tn build`, input-driven `tn playtest`,
 `tn screenshot`, `tn game score`, `tn game qa --run-proof`, and

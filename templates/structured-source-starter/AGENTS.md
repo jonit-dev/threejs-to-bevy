@@ -25,6 +25,10 @@ Rules for this generated ThreeNative project.
 - Preserve schema/version fields and stable IDs unless asked to rename.
 - Add behavior in `src/scripts/**/*.ts`, then reference module/exports from
   structured source.
+- Macro game state, waves/spawns, and cutscene or feedback beats are
+  data-first: use `tn flow ... --json`, `tn sequence ... --json`, and
+  `tn scene set-spawner ... --json` before adding script-owned state flags,
+  timers, or cutscene code.
 - For repeated portable helper code in `src/scripts/**/*.ts`, use named imports
   from `@threenative/script-stdlib`:
   `Mathf`, `Vector3`, `Quat`, and `TransformMath`.
