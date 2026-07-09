@@ -17,7 +17,7 @@ import { atmosphereColorManagementExposure } from "./rendering.js";
 import type { IRenderTargetRegistry } from "./renderTargets.js";
 import type { ISystemEffectLogEntry } from "./systems/log.js";
 import { bundleUrl, isLoadableModelFormat } from "./worldMapping/assets.js";
-import { colorToThree } from "./worldMapping/colors.js";
+import { colorToThree, type ThreeNativeColor } from "./worldMapping/colors.js";
 import { attachWorldHierarchy } from "./worldMapping/hierarchy.js";
 import {
   advanceStylizedNatureRuntime,
@@ -741,6 +741,21 @@ function mapMaterial(
   if (material.kind === "extended") {
     return mapExtendedMaterial(material, assetsById, diagnostics, source);
   }
+  if (material.kind === "shader") {
+    const mapped = new THREE.MeshStandardMaterial({
+      alphaTest: material.alphaMode === "mask" ? material.alphaCutoff ?? 0.5 : 0,
+      color: colorToThree(material.color ?? "#ffffff"),
+      emissive: material.emissive === undefined ? new THREE.Color("#000000") : colorToThree(material.emissive),
+      emissiveIntensity: material.emissiveIntensity ?? 1,
+      metalness: material.metalness ?? 0,
+      roughness: material.roughness ?? 1,
+    });
+    applyMaterialPolicy(mapped, material);
+    mapped.userData.threeNativeMaterialKind = "shader";
+    mapped.userData.threeNativeShaderLanguage = material.program.language;
+    mapped.needsUpdate = true;
+    return mapped;
+  }
   const aoMap = mapTextureSlot(material, "occlusionTexture", assetsById, diagnostics, source);
   const clearcoatMap = mapTextureSlot(material, "clearcoatTexture", assetsById, diagnostics, source);
   const clearcoatRoughnessMap = mapTextureSlot(material, "clearcoatRoughnessTexture", assetsById, diagnostics, source);
@@ -822,7 +837,7 @@ function mapMaterial(
 }
 
 function mapExtendedMaterial(
-  material: IMaterialIr,
+  material: Extract<IMaterialIr, { kind: "extended" }>,
   assetsById: Map<string, IAssetIr>,
   diagnostics: IRuntimeDiagnostic[],
   source?: string,
@@ -1048,7 +1063,7 @@ function emissiveBloomObservation(entityId: string, material: IMaterialIr): IWeb
   };
 }
 
-function colorLuminance(color: IMaterialIr["color"]): number {
+function colorLuminance(color: ThreeNativeColor): number {
   const three = colorToThree(color);
   return three.r * 0.2126 + three.g * 0.7152 + three.b * 0.0722;
 }

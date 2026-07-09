@@ -84,8 +84,8 @@ function structuredMaterial(item: Record<string, unknown>): IMaterialIr[] {
     ...copyOptionalMaterialBoolean(item, "depthTest"),
     ...copyOptionalMaterialBoolean(item, "depthWrite"),
     ...(readColor(item.emissive) === undefined ? {} : { emissive: readColor(item.emissive) }),
-    ...(isRecord(item.emissiveBloom) ? { emissiveBloom: cloneRecord(item.emissiveBloom) as unknown as IMaterialIr["emissiveBloom"] } : {}),
-    ...(isRecord(item.extension) ? { extension: cloneRecord(item.extension) as unknown as IMaterialIr["extension"] } : {}),
+    ...(isRecord(item.emissiveBloom) ? { emissiveBloom: cloneRecord(item.emissiveBloom) } : {}),
+    ...(isRecord(item.extension) ? { extension: cloneRecord(item.extension) } : {}),
   };
   return [material as unknown as IMaterialIr];
 }
@@ -100,17 +100,17 @@ function readColor(value: unknown): StructuredMaterialColor | undefined {
   return undefined;
 }
 
-function copyOptionalMaterialString(item: Record<string, unknown>, key: keyof IMaterialIr): Partial<IMaterialIr> {
+function copyOptionalMaterialString(item: Record<string, unknown>, key: string): Record<string, unknown> {
   const value = readString(item[key]);
   return value === undefined ? {} : { [key]: value };
 }
 
-function copyOptionalMaterialNumber(item: Record<string, unknown>, key: keyof IMaterialIr): Partial<IMaterialIr> {
+function copyOptionalMaterialNumber(item: Record<string, unknown>, key: string): Record<string, unknown> {
   const value = readNumber(item[key]);
   return value === undefined ? {} : { [key]: value };
 }
 
-function copyOptionalMaterialBoolean(item: Record<string, unknown>, key: keyof IMaterialIr): Partial<IMaterialIr> {
+function copyOptionalMaterialBoolean(item: Record<string, unknown>, key: string): Record<string, unknown> {
   const value = item[key];
   return typeof value === "boolean" ? { [key]: value } : {};
 }

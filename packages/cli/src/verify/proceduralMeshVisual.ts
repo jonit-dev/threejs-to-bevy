@@ -106,7 +106,7 @@ export async function verifyProceduralMeshVisual(options: {
       webScreenshotPath: capture.webScreenshotPath,
     },
     diagnostics,
-    materialColor: material.color,
+    materialColor: material.color ?? "#ffffff",
     mesh: {
       bounds: "bounds" in meshAsset ? meshAsset.bounds : undefined,
       id: meshAsset.id,
