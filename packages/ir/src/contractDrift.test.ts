@@ -42,6 +42,14 @@ const bevyRuntimeDocumentCases = [
   { document: "overlays", schema: "overlays.schema.json", structName: "OverlaysIr" },
   { document: "scenes", schema: "scenes.schema.json", structName: "ScenesIr" },
 ];
+const compilerEmitterDocumentCases = [
+  { document: "audio", source: "packages/compiler/src/emit/audio.ts" },
+  { document: "environmentScene", source: "packages/compiler/src/emit/environment.ts" },
+  { document: "input", source: "packages/compiler/src/emit/input.ts" },
+  { document: "localData", source: "packages/compiler/src/emit/persistence.ts" },
+  { document: "systems", source: "packages/compiler/src/emit/systems.ts" },
+  { document: "world", source: "packages/compiler/src/emit/scene-to-world.ts" },
+] as const;
 
 test("contractDrift should list every registered IR document when checking contract drift", async () => {
   const expectedDocuments = [
@@ -236,6 +244,27 @@ test("contractDrift should keep optional document fields aligned across schema T
         representation: "Bevy loader struct",
       }),
     );
+  }
+
+  assert.deepEqual(diagnostics, []);
+});
+
+test("contractDrift should keep compiler document schema and version literals aligned with registry", async () => {
+  const diagnostics: string[] = [];
+
+  for (const item of compilerEmitterDocumentCases) {
+    const metadata = IR_DOCUMENTS[item.document];
+    const source = await readFile(resolve(repoRoot, item.source), "utf8");
+    if (!("schema" in metadata)) {
+      diagnostics.push(`${item.document}: registry has no schema metadata for ${item.source}.`);
+      continue;
+    }
+    if (!source.includes(`schema: "${metadata.schema}"`)) {
+      diagnostics.push(`${item.document}: ${item.source} does not emit schema '${metadata.schema}'.`);
+    }
+    if (!source.includes(`version: "${IR_VERSION}"`)) {
+      diagnostics.push(`${item.document}: ${item.source} does not emit version '${IR_VERSION}'.`);
+    }
   }
 
   assert.deepEqual(diagnostics, []);
