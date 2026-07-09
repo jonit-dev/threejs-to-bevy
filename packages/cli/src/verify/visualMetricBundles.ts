@@ -29,24 +29,42 @@ export interface IVisualRegionMetric {
   };
 }
 
+export interface IGameQualityMetricSource {
+  colorBucketCount: number;
+  localContrastRatio: number;
+  nonblank: {
+    changedPixelRatio: number;
+  };
+  visibleBoundsAreaRatio: number;
+}
+
 export function gameQualityMetricBundle(frame: IPixelFrame): IVisualMetricBundle {
   const nonblank = analyzeNonblank(frame);
   const bounds = analyzeProjectedBounds(frame);
   const quality = analyzeVisualQuality(frame, { minColorBuckets: 12, minLocalContrast: 0.01 });
   const visibleBoundsAreaRatio = frame.width * frame.height <= 0 ? 0 : (bounds.width * bounds.height) / (frame.width * frame.height);
+  return gameQualityMetricBundleFromMetrics({
+    colorBucketCount: quality.colorBucketCount,
+    localContrastRatio: quality.localContrast,
+    nonblank,
+    visibleBoundsAreaRatio,
+  });
+}
+
+export function gameQualityMetricBundleFromMetrics(metrics: IGameQualityMetricSource): IVisualMetricBundle {
   return {
     id: "game-quality",
     metrics: {
-      colorBucketCount: quality.colorBucketCount,
-      localContrastRatio: quality.localContrast,
-      nonblankRatio: nonblank.changedPixelRatio,
-      visibleBoundsAreaRatio,
+      colorBucketCount: metrics.colorBucketCount,
+      localContrastRatio: metrics.localContrastRatio,
+      nonblankRatio: metrics.nonblank.changedPixelRatio,
+      visibleBoundsAreaRatio: metrics.visibleBoundsAreaRatio,
     },
     ok:
-      nonblank.changedPixelRatio >= 0.55
-      && visibleBoundsAreaRatio >= 0.08
-      && quality.colorBucketCount >= 12
-      && quality.localContrast >= 0.01,
+      metrics.nonblank.changedPixelRatio >= 0.55
+      && metrics.visibleBoundsAreaRatio >= 0.08
+      && metrics.colorBucketCount >= 12
+      && metrics.localContrastRatio >= 0.01,
     thresholds: {
       minColorBucketCount: 12,
       minLocalContrastRatio: 0.01,

@@ -3,7 +3,7 @@ import test from "node:test";
 
 import { analyzeRenderingQualityParity, analyzeV9RenderingLightsParity } from "./renderingQuality.js";
 import { analyzeVisualQuality, type IPixelFrame } from "./imageAnalysis.js";
-import { gameQualityMetricBundle, namedRegionMetricBundle } from "./visualMetricBundles.js";
+import { gameQualityMetricBundle, gameQualityMetricBundleFromMetrics, namedRegionMetricBundle } from "./visualMetricBundles.js";
 
 test("rendering quality parity accepts matching fog and sky regions", () => {
   const web = fixtureFrame();
@@ -109,6 +109,24 @@ test("visual metric bundle summarizes game quality thresholds", () => {
   assert.equal(bundle.ok, true);
   assert.equal(Number(bundle.metrics.colorBucketCount) >= Number(bundle.thresholds.minColorBucketCount), true);
   assert.equal(Number(bundle.metrics.localContrastRatio) >= Number(bundle.thresholds.minLocalContrastRatio), true);
+});
+
+test("visual metric bundle can reuse screenshot composition metrics", () => {
+  const bundle = gameQualityMetricBundleFromMetrics({
+    colorBucketCount: 56,
+    localContrastRatio: 0.011,
+    nonblank: { changedPixelRatio: 1 },
+    visibleBoundsAreaRatio: 0.4,
+  });
+
+  assert.equal(bundle.id, "game-quality");
+  assert.equal(bundle.ok, true);
+  assert.deepEqual(bundle.metrics, {
+    colorBucketCount: 56,
+    localContrastRatio: 0.011,
+    nonblankRatio: 1,
+    visibleBoundsAreaRatio: 0.4,
+  });
 });
 
 test("visual metric bundle reports named region drift", () => {
