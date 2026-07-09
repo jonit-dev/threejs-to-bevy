@@ -52,6 +52,7 @@ import {
   authoringDiagnostic,
   normalizeRelativePath,
   readAuthoringJsonDocument,
+  renderAuthoringOperationCliUsage,
   setRuntimeRendering,
   setRuntimeWindow,
   setSchemaEntry,
@@ -1180,7 +1181,7 @@ export async function systemCommand(argv: readonly string[], options: ISourceCom
 }
 
 function materialSetUsage(): string {
-  return "Usage: tn material set <material-id> [--color <css-color>] [--roughness <n>] [--metalness <n>] [--emissive <css-color>] [--emissive-intensity <n>] [--alpha-mode opaque|mask|blend] [--alpha-cutoff <n>] [--opacity <n>] [--base-color-texture <asset-id>] [--normal-texture <asset-id>] [--metallic-roughness-texture <asset-id>] [--emissive-texture <asset-id>] [--occlusion-texture <asset-id>] [--clearcoat <n>] [--clearcoat-roughness <n>] [--clearcoat-texture <asset-id>] [--clearcoat-roughness-texture <asset-id>] [--transmission <n>] [--transmission-texture <asset-id>] [--shader-json <json>] [--project <path>] [--json]";
+  return renderAuthoringOperationCliUsage("material.set") ?? "Usage: tn material set <material-id> [--color <css-color>] [--roughness <n>] [--metalness <n>] [--emissive <css-color>] [--emissive-intensity <n>] [--alpha-mode opaque|mask|blend] [--alpha-cutoff <n>] [--opacity <n>] [--base-color-texture <asset-id>] [--normal-texture <asset-id>] [--metallic-roughness-texture <asset-id>] [--emissive-texture <asset-id>] [--occlusion-texture <asset-id>] [--clearcoat <n>] [--clearcoat-roughness <n>] [--clearcoat-texture <asset-id>] [--clearcoat-roughness-texture <asset-id>] [--transmission <n>] [--transmission-texture <asset-id>] [--shader-json <json>] [--project <path>] [--json]";
 }
 
 function uiSetStyleUsage(): string {
@@ -1200,7 +1201,7 @@ function runtimeCreateUsage(): string {
 }
 
 function runtimeSetRenderingUsage(): string {
-  return "Usage: tn runtime set-rendering <runtime-id> [--antialias none|msaa2|msaa4|msaa8|fxaa|taa|smaa] [--render-profile parity|balanced|cinematic|stylized] [--render-look-exposure <n>] [--render-look-contrast <n>] [--render-look-saturation <n>] [--render-look-bloom-intensity <n>] [--render-look-shadow-quality off|low|medium|high] [--render-look-environment-intensity <n>] [--bloom true|false] [--bloom-intensity <n>] [--bloom-threshold <n>] [--render-path forward] [--project <path>] [--json]";
+  return renderAuthoringOperationCliUsage("runtime.set_rendering") ?? "Usage: tn runtime set-rendering <runtime-id> [--antialias none|msaa2|msaa4|msaa8|fxaa|taa|smaa] [--render-profile parity|balanced|cinematic|stylized] [--render-look-exposure <n>] [--render-look-contrast <n>] [--render-look-saturation <n>] [--render-look-bloom-intensity <n>] [--render-look-shadow-quality off|low|medium|high] [--render-look-environment-intensity <n>] [--bloom true|false] [--bloom-intensity <n>] [--bloom-threshold <n>] [--render-path forward] [--project <path>] [--json]";
 }
 
 function targetSetUsage(): string {

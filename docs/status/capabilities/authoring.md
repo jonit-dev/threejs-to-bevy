@@ -39,7 +39,9 @@ Current support:
   the cards now surface `tn actor`, `tn types generate`, and
   `defineBehavior` as the preferred path before lower-level JSON edits.
 - MCP and authoring-client adapters are thin wrappers over the same core
-  operations.
+  operations; migrated scene/material/runtime/UI hot spots now carry
+  descriptor-backed CLI adapter metadata for MCP argv construction and selected
+  CLI usage output.
 - Prescriptive diagnostics now attach optional structured `fix` payloads for
   high-friction rejection codes.
 - Rigid body kind diagnostics include the exact `fixed` to `static` repair for

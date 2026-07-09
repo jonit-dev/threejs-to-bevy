@@ -103,7 +103,10 @@ test("mcp wrapper runs scene mutations through CLI and returns changed files", a
 
     assert.equal(add.isError, false);
     assert.equal(transform.isError, false);
+    assert.deepEqual(transform.cli.argv.slice(0, 8), ["scene", "set-transform", "scene.arena", "rival-kart", "--position", "1,2,3", "--rotation", "0,0,0"]);
     assert.equal(camera.isError, false);
+    assert.equal(camera.cli.argv.includes("--mode"), true);
+    assert.equal(camera.cli.argv.includes("third-person-follow"), true);
     assert.equal(script.isError, false);
     assert.equal(binding.isError, false);
     assert.equal(validate.isError, false);
@@ -175,17 +178,38 @@ test("bundle import MCP wraps same authoring core behavior and keeps generated s
   }
 });
 
-test("material and system MCP tools delegate to CLI JSON operation groups", async () => {
+test("material, runtime, and system MCP tools delegate to CLI JSON operation groups", async () => {
   const root = await createMcpSourceGroupProject();
 
   try {
-    const material = await callMcp(root, "material.set", { color: "#ffcc00", materialId: "kart", roughness: 0.35 });
+    const material = await callMcp(root, "material.set", { alphaMode: "blend", color: "#ffcc00", materialId: "kart", roughness: 0.35 });
+    const runtime = await callMcp(root, "runtime.set_rendering", { bloomEnabled: true, renderLookExposure: 1.1, renderProfile: "balanced", runtimeId: "default" });
     const system = await callMcp(root, "system.attach_script", { exportName: "raceController", modulePath: "src/scripts/race.ts", systemId: "race" });
 
     assert.equal(material.isError, false);
+    assert.equal(runtime.isError, false);
     assert.equal(system.isError, false);
+    assert.deepEqual(material.cli.argv.slice(0, 9), ["material", "set", "kart", "--color", "#ffcc00", "--roughness", "0.35", "--alpha-mode", "blend"]);
+    assert.equal(runtime.cli.argv.includes("--bloom"), true);
+    assert.equal(runtime.cli.argv.includes("true"), true);
+    assert.equal(runtime.cli.argv.includes("--render-profile"), true);
     assert.deepEqual((material.content as IJsonPayload).filesWritten, ["content/materials/kart.materials.json"]);
+    assert.deepEqual((runtime.content as IJsonPayload).filesWritten, ["content/runtime/default.runtime.json"]);
     assert.deepEqual((system.content as IJsonPayload).filesWritten, ["content/systems/race.systems.json"]);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("registry MCP tools without adapter metadata fail closed", async () => {
+  const root = await createMcpSourceGroupProject();
+
+  try {
+    const result = await callMcp(root, "runtime.set_window", { runtimeId: "default", width: 1280 });
+
+    assert.equal(result.isError, true);
+    assert.equal((result.content as IJsonPayload).code, "TN_MCP_ARGUMENT_INVALID");
+    assert.match((result.content as { message?: string }).message ?? "", /missing CLI adapter metadata/);
   } finally {
     await rm(root, { force: true, recursive: true });
   }
@@ -377,12 +401,28 @@ async function createMcpBundleImportProject(): Promise<string> {
 async function createMcpSourceGroupProject(): Promise<string> {
   const root = await mkdtemp(join(tmpdir(), "tn-mcp-source-groups-"));
   await mkdir(join(root, "content", "materials"), { recursive: true });
+  await mkdir(join(root, "content", "runtime"), { recursive: true });
   await mkdir(join(root, "content", "systems"), { recursive: true });
   await mkdir(join(root, "src", "scripts"), { recursive: true });
   await writeFile(join(root, "src", "scripts", "race.ts"), "export function raceController() {}\n");
   await writeFile(
     join(root, "content", "materials", "kart.materials.json"),
     `${JSON.stringify({ schema: "threenative.materials", version: "0.1.0", id: "kart", materials: [{ id: "kart" }] }, null, 2)}\n`,
+  );
+  await writeFile(
+    join(root, "content", "runtime", "default.runtime.json"),
+    `${JSON.stringify(
+      {
+        id: "default",
+        renderer: { bloom: { enabled: false, intensity: 0.2, threshold: 0.8 } },
+        schema: "threenative.runtime-config",
+        time: { fixedDelta: 1 / 60, paused: false },
+        version: "0.1.0",
+        window: { height: 720, width: 1280 },
+      },
+      null,
+      2,
+    )}\n`,
   );
   await writeFile(
     join(root, "content", "systems", "race.systems.json"),

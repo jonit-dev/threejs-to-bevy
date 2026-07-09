@@ -54,6 +54,11 @@ Current support:
   registry for help, lookup, migrated dispatch handlers, and the explicit
   unmigrated compatibility list. Shared argv helpers cover migrated simple and
   subcommand-family paths while larger command families continue migrating.
+- Authoring operation descriptors now include executable CLI adapter metadata
+  for migrated scene/material/runtime/UI operations. MCP argv construction and
+  selected source-document CLI usage are derived from the descriptor, and
+  registry-backed MCP tools without adapter metadata fail closed instead of
+  guessing flags.
 - Rejected boundary fixtures under
   `packages/ir/fixtures/rejected/v10-boundaries/catalog.json` are audited by
   verify-tools so cloud/account storage, raw Three.js, direct Bevy authoring,

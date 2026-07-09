@@ -6,9 +6,11 @@ import test from "node:test";
 
 import {
   AUTHORING_OPERATION_NAMES,
+  buildAuthoringOperationCliArgv,
   dispatchAuthoringOperation,
   getAuthoringOperationDescriptor,
   listAuthoringOperationDescriptors,
+  renderAuthoringOperationCliUsage,
 } from "./operationRegistry.js";
 
 test("should dispatch promoted editor-safe operations", async () => {
@@ -323,7 +325,9 @@ test("should dispatch stylized nature defaults from the shared contract", async 
 test("should expose operation metadata and registry diagnostics", async () => {
   const descriptors = listAuthoringOperationDescriptors();
   const transform = getAuthoringOperationDescriptor("scene.set_transform");
+  const camera = getAuthoringOperationDescriptor("scene.set_camera");
   const missing = await dispatchAuthoringOperation({ args: { entityId: "player" }, name: "scene.set_transform", projectPath: "/project" });
+  const invalidEnum = await dispatchAuthoringOperation({ args: { cameraId: "camera", mode: "fisheye", sceneId: "scene", targetId: "player" }, name: "scene.set_camera", projectPath: "/project" });
   const unsupported = await dispatchAuthoringOperation({ args: {}, name: "scene.delete_entity", projectPath: "/project" });
 
   assert.deepEqual(AUTHORING_OPERATION_NAMES, [
@@ -415,6 +419,18 @@ test("should expose operation metadata and registry diagnostics", async () => {
   assert.equal(descriptors.length, AUTHORING_OPERATION_NAMES.length);
   assert.equal(transform?.pathPolicy, "source-document");
   assert.equal(transform?.sourceFamily, "scene");
+  assert.deepEqual(transform?.adapters?.cli?.path, ["scene", "set-transform"]);
+  assert.equal(camera?.arguments.find((argument) => argument.name === "mode")?.constraints?.enumValues?.includes("third-person-follow"), true);
+  assert.equal(renderAuthoringOperationCliUsage("material.set")?.includes("--shader-json <json>"), true);
+  assert.equal(renderAuthoringOperationCliUsage("runtime.set_rendering")?.includes("--bloom <true|false>"), true);
+  assert.deepEqual(
+    buildAuthoringOperationCliArgv("scene.set_transform", { entityId: "player", sceneId: "scene.arena", transform: { position: [1, 2, 3] } }, { projectPath: "/project" }),
+    ["scene", "set-transform", "scene.arena", "player", "--position", "1,2,3", "--project", "/project", "--json"],
+  );
+  assert.throws(
+    () => buildAuthoringOperationCliArgv("scene.add_entity", { entityId: "player", sceneId: "scene.arena" }, { projectPath: "/project" }),
+    /missing CLI adapter metadata/,
+  );
   assert.equal("dispatch" in (transform ?? {}), false);
   for (const descriptor of descriptors) {
     const namespace = descriptor.name.split(".")[0];
@@ -426,6 +442,9 @@ test("should expose operation metadata and registry diagnostics", async () => {
   assert.equal(missing.ok, false);
   assert.equal(missing.diagnostics[0]?.code, "TN_AUTHORING_OPERATION_ARG_MISSING");
   assert.equal(missing.diagnostics[0]?.path, "/sceneId");
+  assert.equal(invalidEnum.ok, false);
+  assert.equal(invalidEnum.diagnostics[0]?.code, "TN_AUTHORING_OPERATION_ARG_INVALID");
+  assert.equal(invalidEnum.diagnostics[0]?.path, "/mode");
   assert.equal(unsupported.diagnostics[0]?.code, "TN_AUTHORING_OPERATION_UNSUPPORTED");
 });
 

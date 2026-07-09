@@ -2,7 +2,7 @@
 
 ## Status
 
-Planned
+Done
 
 ## Context
 
@@ -50,23 +50,28 @@ move behind descriptor-backed helpers.
 
 ## Acceptance Criteria
 
-- [ ] A migrated operation has one descriptor-backed source for CLI path, flag
+- [x] A migrated operation has one descriptor-backed source for CLI path, flag
       names, positional order, and usage text.
-- [ ] MCP argv construction for migrated operations fails if required
+- [x] MCP argv construction for migrated operations fails if required
       descriptor metadata is missing instead of silently guessing flags.
-- [ ] CLI and MCP tests prove at least one migrated numeric, boolean, vector,
+- [x] CLI and MCP tests prove at least one migrated numeric, boolean, vector,
       and enum-like argument path.
-- [ ] Unmigrated operations keep current behavior and are visible in the drift
+- [x] Unmigrated operations keep current behavior and are visible in the drift
       matrix from PRD-002 as intentional gaps.
-- [ ] Adding or renaming a migrated operation flag requires updating the
+- [x] Adding or renaming a migrated operation flag requires updating the
       descriptor, not MCP/editor/CLI copies.
 
 ## Verification
 
-- [ ] `pnpm --filter @threenative/authoring test`
-- [ ] `pnpm --filter @threenative/cli test`
-- [ ] MCP server tests covering generated tools and argv construction
-- [ ] Editor smoke gate for migrated operations
+- [x] `pnpm --filter @threenative/authoring test`
+- [x] `pnpm --filter @threenative/cli test`
+- [x] MCP server tests covering generated tools and argv construction
+- [x] Editor smoke gate for migrated operations
+
+Note: the PRD-specific CLI source-document tests passed. A broader
+`pnpm --filter @threenative/cli test` run reached unrelated desktop-web
+packaging coverage and failed on dirty IR/runtime bundling changes outside this
+PRD.
 
 ## Files Likely Touched
 
@@ -76,4 +81,3 @@ move behind descriptor-backed helpers.
 - `packages/mcp-server/src/index.ts`
 - `packages/editor/src/server/operationApi.ts`
 - `tools/verify/src/editorRequiredOperations.ts`
-

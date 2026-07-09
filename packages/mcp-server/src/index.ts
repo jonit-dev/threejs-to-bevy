@@ -1,6 +1,6 @@
 import { resolve, sep } from "node:path";
 
-import { AUTHORING_OPERATION_NAMES, getAuthoringOperationDescriptor, type AuthoringOperationName } from "@threenative/authoring";
+import { AUTHORING_OPERATION_NAMES, buildAuthoringOperationCliArgv, getAuthoringOperationDescriptor, type AuthoringOperationName } from "@threenative/authoring";
 import { dispatch } from "@threenative/cli";
 
 export type AuthoringMcpToolName =
@@ -89,26 +89,13 @@ function toolToCliArgv(name: AuthoringMcpToolName, args: Record<string, unknown>
     const sceneId = optionalStringArg(args, "sceneId");
     return ["scene", "validate", ...(sceneId === undefined ? [] : [sceneId]), ...project, "--json"];
   }
+  const descriptor = getAuthoringOperationDescriptor(name);
+  if (descriptor?.adapters?.cli !== undefined) {
+    return buildAuthoringOperationCliArgv(name, args, { projectPath: projectRoot });
+  }
   if (name === "scene.add_entity") {
     const prefabId = optionalStringArg(args, "prefabId");
     return ["scene", "add-entity", stringArg(args, "sceneId"), stringArg(args, "entityId"), ...(prefabId === undefined ? [] : ["--prefab", prefabId]), ...project, "--json"];
-  }
-  if (name === "scene.set_transform") {
-    const transform = recordArg(args, "transform");
-    return [
-      "scene",
-      "set-transform",
-      stringArg(args, "sceneId"),
-      stringArg(args, "entityId"),
-      ...vectorFlag("--position", transform.position),
-      ...vectorFlag("--rotation", transform.rotation),
-      ...vectorFlag("--scale", transform.scale),
-      ...project,
-      "--json",
-    ];
-  }
-  if (name === "scene.set_camera") {
-    return ["scene", "set-camera", stringArg(args, "sceneId"), stringArg(args, "cameraId"), "--mode", stringArg(args, "mode"), "--target", stringArg(args, "targetId"), ...project, "--json"];
   }
   if (name === "scene.attach_script") {
     return ["scene", "attach-script", stringArg(args, "sceneId"), stringArg(args, "systemId"), "--module", stringArg(args, "modulePath"), "--export", stringArg(args, "exportName"), ...project, "--json"];
@@ -116,35 +103,17 @@ function toolToCliArgv(name: AuthoringMcpToolName, args: Record<string, unknown>
   if (name === "scene.bind_ui") {
     return ["scene", "bind-ui", stringArg(args, "sceneId"), stringArg(args, "uiNodeId"), "--resource", stringArg(args, "resourcePath"), ...project, "--json"];
   }
-  if (name === "ui.set_layout") {
-    const layout = recordArg(args, "layout");
-    return [
-      "ui",
-      "set-layout",
-      stringArg(args, "uiDocId"),
-      stringArg(args, "nodeId"),
-      ...optionalStringFlag("--justify", layout.justify),
-      ...optionalStringFlag("--align", layout.align),
-      ...optionalNumberFlag("--top", layout.top),
-      ...optionalNumberFlag("--height", layout.height),
-      ...optionalNumberFlag("--width", layout.width),
-      ...project,
-      "--json",
-    ];
-  }
   if (name === "ui.bind") {
     return ["ui", "bind", stringArg(args, "uiDocId"), stringArg(args, "nodeId"), "--resource", stringArg(args, "resourcePath"), ...project, "--json"];
   }
   if (name === "bundle.import") {
     return ["bundle", "import", stringArg(args, "bundleDir"), ...project, "--mode", "source", ...(args.dryRun === true ? ["--dry-run"] : []), "--json"];
   }
-  if (name === "material.set") {
-    const roughness = optionalNumberArg(args, "roughness");
-    const color = optionalStringArg(args, "color");
-    return ["material", "set", stringArg(args, "materialId"), ...(color === undefined ? [] : ["--color", color]), ...(roughness === undefined ? [] : ["--roughness", roughness.toString()]), ...project, "--json"];
-  }
   if (name === "system.attach_script") {
     return ["system", "attach-script", stringArg(args, "systemId"), "--module", stringArg(args, "modulePath"), "--export", stringArg(args, "exportName"), ...project, "--json"];
+  }
+  if (AUTHORING_OPERATION_NAMES.includes(name as AuthoringOperationName)) {
+    throw new Error(`Authoring operation '${name}' is missing CLI adapter metadata.`);
   }
   if (name === "project.build") {
     return ["build", ...project, "--json"];
@@ -241,42 +210,4 @@ function optionalStringArg(args: Record<string, unknown>, key: string): string |
 function optionalNumberArg(args: Record<string, unknown>, key: string): number | undefined {
   const value = args[key];
   return typeof value === "number" && Number.isFinite(value) ? value : undefined;
-}
-
-function optionalNumberFlag(flag: string, value: unknown): string[] {
-  if (value === undefined) {
-    return [];
-  }
-  if (typeof value !== "number" || !Number.isFinite(value)) {
-    throw new Error(`MCP argument '${flag}' must be a finite number.`);
-  }
-  return [flag, value.toString()];
-}
-
-function optionalStringFlag(flag: string, value: unknown): string[] {
-  if (value === undefined) {
-    return [];
-  }
-  if (typeof value !== "string" || value.trim() === "") {
-    throw new Error(`MCP argument '${flag}' must be a non-empty string.`);
-  }
-  return [flag, value];
-}
-
-function recordArg(args: Record<string, unknown>, key: string): Record<string, unknown> {
-  const value = args[key];
-  if (typeof value !== "object" || value === null || Array.isArray(value)) {
-    throw new Error(`MCP argument '${key}' must be an object.`);
-  }
-  return value as Record<string, unknown>;
-}
-
-function vectorFlag(flag: string, value: unknown): string[] {
-  if (value === undefined) {
-    return [];
-  }
-  if (!Array.isArray(value) || value.length !== 3 || !value.every((item) => typeof item === "number" && Number.isFinite(item))) {
-    throw new Error(`MCP transform '${flag}' must be a finite [x,y,z] tuple.`);
-  }
-  return [flag, value.join(",")];
 }

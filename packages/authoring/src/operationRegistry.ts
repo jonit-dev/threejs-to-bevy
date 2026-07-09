@@ -108,12 +108,34 @@ export type AuthoringOperationSourceFamily = "archetype" | "asset" | "audio" | "
 export type AuthoringOperationResultShape = "authoring-operation-result";
 
 export interface IAuthoringOperationArgumentDescriptor {
+  constraints?: {
+    enumValues?: string[];
+    max?: number;
+    min?: number;
+  };
+  help?: string;
   name: string;
   required: boolean;
   type: "boolean" | "json-object" | "json-object-array" | "json-value" | "number" | "number-array" | "string" | "string-array" | "vector3";
 }
 
+export interface IAuthoringOperationCliArgumentBinding {
+  argument: string;
+  flag?: string;
+  help?: string;
+  positional?: number;
+  sourcePath?: string[];
+}
+
+export interface IAuthoringOperationCliAdapterDescriptor {
+  arguments: IAuthoringOperationCliArgumentBinding[];
+  path: string[];
+}
+
 export interface IAuthoringOperationDescriptor<TName extends string = AuthoringOperationName> {
+  adapters?: {
+    cli?: IAuthoringOperationCliAdapterDescriptor;
+  };
   arguments: IAuthoringOperationArgumentDescriptor[];
   description: string;
   name: TName;
@@ -283,10 +305,10 @@ const operationEntries = [
     stringArg("materialId"),
   ]), async ({ args, projectPath }) =>
     createMaterial({ materialId: requiredString(args, "materialId"), projectPath })),
-  operation(descriptor("material.set", "Set material source fields.", "material", "source-document", [
+  operation(withCli(descriptor("material.set", "Set material source fields.", "material", "source-document", [
     stringArg("materialId"),
     numberArg("alphaCutoff", false),
-    stringArg("alphaMode", false),
+    stringArg("alphaMode", false, ["opaque", "mask", "blend"]),
     stringArg("baseColorTexture", false),
     numberArg("clearcoat", false),
     numberArg("clearcoatRoughness", false),
@@ -305,7 +327,32 @@ const operationEntries = [
     objectArg("shader", false),
     numberArg("transmission", false),
     stringArg("transmissionTexture", false),
-  ]), async ({ args, projectPath }) =>
+  ]), {
+    path: ["material", "set"],
+    arguments: [
+      { argument: "materialId", positional: 0 },
+      { argument: "color", flag: "--color" },
+      { argument: "roughness", flag: "--roughness" },
+      { argument: "metalness", flag: "--metalness" },
+      { argument: "baseColorTexture", flag: "--base-color-texture" },
+      { argument: "normalTexture", flag: "--normal-texture" },
+      { argument: "metallicRoughnessTexture", flag: "--metallic-roughness-texture" },
+      { argument: "emissive", flag: "--emissive" },
+      { argument: "emissiveIntensity", flag: "--emissive-intensity" },
+      { argument: "emissiveTexture", flag: "--emissive-texture" },
+      { argument: "occlusionTexture", flag: "--occlusion-texture" },
+      { argument: "alphaMode", flag: "--alpha-mode" },
+      { argument: "alphaCutoff", flag: "--alpha-cutoff" },
+      { argument: "opacity", flag: "--opacity" },
+      { argument: "clearcoat", flag: "--clearcoat" },
+      { argument: "clearcoatRoughness", flag: "--clearcoat-roughness" },
+      { argument: "clearcoatTexture", flag: "--clearcoat-texture" },
+      { argument: "clearcoatRoughnessTexture", flag: "--clearcoat-roughness-texture" },
+      { argument: "transmission", flag: "--transmission" },
+      { argument: "transmissionTexture", flag: "--transmission-texture" },
+      { argument: "shader", flag: "--shader-json" },
+    ],
+  }), async ({ args, projectPath }) =>
     setMaterial({
       alphaCutoff: optionalNumber(args, "alphaCutoff"),
       alphaMode: optionalString(args, "alphaMode"),
@@ -452,21 +499,38 @@ const operationEntries = [
     numberArg("width", false),
   ]), async ({ args, projectPath }) =>
     setRuntimeWindow({ height: optionalNumber(args, "height"), projectPath, runtimeId: requiredString(args, "runtimeId"), title: optionalString(args, "title"), width: optionalNumber(args, "width") })),
-  operation(descriptor("runtime.set_rendering", "Set promoted runtime renderer source fields.", "runtime", "source-document", [
+  operation(withCli(descriptor("runtime.set_rendering", "Set promoted runtime renderer source fields.", "runtime", "source-document", [
     stringArg("runtimeId"),
-    stringArg("antialias", false),
+    stringArg("antialias", false, ["none", "msaa2", "msaa4", "msaa8", "fxaa", "taa", "smaa"]),
     booleanArg("bloomEnabled", false),
     numberArg("bloomIntensity", false),
     numberArg("bloomThreshold", false),
-    stringArg("renderProfile", false),
+    stringArg("renderProfile", false, ["parity", "balanced", "cinematic", "stylized"]),
     numberArg("renderLookBloomIntensity", false),
     numberArg("renderLookContrast", false),
     numberArg("renderLookEnvironmentIntensity", false),
     numberArg("renderLookExposure", false),
     numberArg("renderLookSaturation", false),
-    stringArg("renderLookShadowQuality", false),
-    stringArg("renderPath", false),
-  ]), async ({ args, projectPath }) =>
+    stringArg("renderLookShadowQuality", false, ["off", "low", "medium", "high"]),
+    stringArg("renderPath", false, ["forward"]),
+  ]), {
+    path: ["runtime", "set-rendering"],
+    arguments: [
+      { argument: "runtimeId", positional: 0 },
+      { argument: "antialias", flag: "--antialias" },
+      { argument: "bloomEnabled", flag: "--bloom" },
+      { argument: "bloomIntensity", flag: "--bloom-intensity" },
+      { argument: "bloomThreshold", flag: "--bloom-threshold" },
+      { argument: "renderProfile", flag: "--render-profile" },
+      { argument: "renderLookBloomIntensity", flag: "--render-look-bloom-intensity" },
+      { argument: "renderLookContrast", flag: "--render-look-contrast" },
+      { argument: "renderLookEnvironmentIntensity", flag: "--render-look-environment-intensity" },
+      { argument: "renderLookExposure", flag: "--render-look-exposure" },
+      { argument: "renderLookSaturation", flag: "--render-look-saturation" },
+      { argument: "renderLookShadowQuality", flag: "--render-look-shadow-quality" },
+      { argument: "renderPath", flag: "--render-path" },
+    ],
+  }), async ({ args, projectPath }) =>
     setRuntimeRendering({
       antialias: optionalString(args, "antialias"),
       bloomEnabled: optionalBoolean(args, "bloomEnabled"),
@@ -565,24 +629,45 @@ const operationEntries = [
     stringArg("uiNodeId"),
   ]), async ({ args, projectPath }) =>
     addUiNode({ projectPath, sceneId: requiredString(args, "sceneId"), uiNodeId: requiredString(args, "uiNodeId") })),
-  operation(descriptor("scene.set_transform", "Set a scene entity transform through structured source.", "scene", "source-document", [
+  operation(withCli(descriptor("scene.set_transform", "Set a scene entity transform through structured source.", "scene", "source-document", [
     stringArg("sceneId"),
     stringArg("entityId"),
     vectorArg("position", false),
     vectorArg("rotation", false),
     vectorArg("scale", false),
-  ]), async ({ args, projectPath }) =>
+  ]), {
+    path: ["scene", "set-transform"],
+    arguments: [
+      { argument: "sceneId", positional: 0 },
+      { argument: "entityId", positional: 1 },
+      { argument: "position", flag: "--position", sourcePath: ["transform", "position"] },
+      { argument: "rotation", flag: "--rotation", sourcePath: ["transform", "rotation"] },
+      { argument: "scale", flag: "--scale", sourcePath: ["transform", "scale"] },
+    ],
+  }), async ({ args, projectPath }) =>
     setTransform({ entityId: requiredString(args, "entityId"), position: optionalVector3(args, "position"), projectPath, rotation: optionalVector3(args, "rotation"), scale: optionalVector3(args, "scale"), sceneId: requiredString(args, "sceneId") })),
-  operation(descriptor("scene.set_camera", "Set source camera metadata for a scene entity.", "scene", "source-document", [
+  operation(withCli(descriptor("scene.set_camera", "Set source camera metadata for a scene entity.", "scene", "source-document", [
     stringArg("sceneId"),
     stringArg("cameraId"),
-    stringArg("mode"),
+    stringArg("mode", true, ["third-person-follow", "perspective", "orthographic"]),
     stringArg("targetId"),
     numberArg("fovY", false),
     numberArg("near", false),
     numberArg("far", false),
     numberArg("size", false),
-  ]), async ({ args, projectPath }) =>
+  ]), {
+    path: ["scene", "set-camera"],
+    arguments: [
+      { argument: "sceneId", positional: 0 },
+      { argument: "cameraId", positional: 1 },
+      { argument: "mode", flag: "--mode" },
+      { argument: "targetId", flag: "--target" },
+      { argument: "fovY", flag: "--fov-y" },
+      { argument: "near", flag: "--near" },
+      { argument: "far", flag: "--far" },
+      { argument: "size", flag: "--size" },
+    ],
+  }), async ({ args, projectPath }) =>
     setCamera({ cameraId: requiredString(args, "cameraId"), far: optionalNumber(args, "far"), fovY: optionalNumber(args, "fovY"), mode: requiredString(args, "mode"), near: optionalNumber(args, "near"), projectPath, sceneId: requiredString(args, "sceneId"), size: optionalNumber(args, "size"), targetId: requiredString(args, "targetId") })),
   operation(descriptor("scene.set_component", "Set a scene entity component through structured source.", "scene", "source-document", [
     stringArg("sceneId"),
@@ -837,7 +922,7 @@ const operationEntries = [
     stringArg("nodeId"),
   ]), async ({ args, projectPath }) =>
     removeUiComponentInstance({ nodeId: requiredString(args, "nodeId"), projectPath, uiDocId: requiredString(args, "uiDocId") })),
-  operation(descriptor("ui.set_layout", "Set retained UI layout fields in a structured UI document.", "ui", "source-document", [
+  operation(withCli(descriptor("ui.set_layout", "Set retained UI layout fields in a structured UI document.", "ui", "source-document", [
     stringArg("uiDocId"),
     stringArg("nodeId"),
     stringArg("justify", false),
@@ -845,7 +930,18 @@ const operationEntries = [
     numberArg("top", false),
     numberArg("height", false),
     numberArg("width", false),
-  ]), async ({ args, projectPath }) =>
+  ]), {
+    path: ["ui", "set-layout"],
+    arguments: [
+      { argument: "uiDocId", positional: 0 },
+      { argument: "nodeId", positional: 1 },
+      { argument: "justify", flag: "--justify", sourcePath: ["layout", "justify"] },
+      { argument: "align", flag: "--align", sourcePath: ["layout", "align"] },
+      { argument: "top", flag: "--top", sourcePath: ["layout", "top"] },
+      { argument: "height", flag: "--height", sourcePath: ["layout", "height"] },
+      { argument: "width", flag: "--width", sourcePath: ["layout", "width"] },
+    ],
+  }), async ({ args, projectPath }) =>
     setUiLayout({ align: optionalString(args, "align"), height: optionalNumber(args, "height"), justify: optionalString(args, "justify"), nodeId: requiredString(args, "nodeId"), projectPath, top: optionalNumber(args, "top"), uiDocId: requiredString(args, "uiDocId"), width: optionalNumber(args, "width") })),
   operation(descriptor("ui.bind", "Bind a retained UI node to a resource path.", "ui", "source-document", [
     stringArg("uiDocId"),
@@ -932,7 +1028,48 @@ export function listAuthoringOperationDescriptors(): IAuthoringOperationDescript
 
 export function getAuthoringOperationDescriptor(name: string): IAuthoringOperationDescriptor | undefined {
   const operation = AUTHORING_OPERATION_REGISTRY.get(name as AuthoringOperationName);
-  return operation === undefined ? undefined : { ...operation, arguments: operation.arguments.map((argument) => ({ ...argument })) };
+  return operation === undefined ? undefined : operationDescriptor(operation);
+}
+
+export function renderAuthoringOperationCliUsage(name: string): string | undefined {
+  const operation = AUTHORING_OPERATION_ENTRIES.get(name as AuthoringOperationName);
+  const cli = operation?.adapters?.cli;
+  return operation === undefined || cli === undefined ? undefined : renderCliUsage(operation, cli);
+}
+
+export function buildAuthoringOperationCliArgv(name: string, args: Record<string, unknown>, options: { projectPath: string }): string[] {
+  const operation = AUTHORING_OPERATION_ENTRIES.get(name as AuthoringOperationName);
+  if (operation === undefined) {
+    throw new Error(`Authoring operation '${name}' is not registered.`);
+  }
+  const cli = operation.adapters?.cli;
+  if (cli === undefined) {
+    throw new Error(`Authoring operation '${name}' is missing CLI adapter metadata.`);
+  }
+  const argv = [...cli.path];
+  for (const binding of [...cli.arguments].sort((left, right) => (left.positional ?? Number.MAX_SAFE_INTEGER) - (right.positional ?? Number.MAX_SAFE_INTEGER))) {
+    const argument = operation.arguments.find((item) => item.name === binding.argument);
+    if (argument === undefined) {
+      throw new Error(`Authoring operation '${name}' CLI adapter references unknown argument '${binding.argument}'.`);
+    }
+    const value = readAdapterArgument(args, binding.sourcePath ?? [binding.argument]);
+    if (value === undefined) {
+      if (argument.required) {
+        throw new Error(`Authoring operation '${name}' requires argument '${binding.argument}'.`);
+      }
+      continue;
+    }
+    const rendered = renderAdapterArgumentValue(name, argument, value);
+    if (binding.positional !== undefined) {
+      argv.push(rendered);
+      continue;
+    }
+    if (binding.flag === undefined) {
+      throw new Error(`Authoring operation '${name}' CLI adapter argument '${binding.argument}' needs a flag or positional index.`);
+    }
+    argv.push(binding.flag, rendered);
+  }
+  return [...argv, "--project", options.projectPath, "--json"];
 }
 
 export async function dispatchAuthoringOperation(options: IDispatchAuthoringOperationOptions): Promise<IAuthoringOperationResult> {
@@ -971,13 +1108,131 @@ export async function dispatchAuthoringOperation(options: IDispatchAuthoringOper
 
 function operationDescriptor(operation: IAuthoringOperationDescriptor): IAuthoringOperationDescriptor {
   return {
-    arguments: operation.arguments.map((argument) => ({ ...argument })),
+    ...(operation.adapters === undefined
+      ? {}
+      : {
+          adapters: {
+            ...(operation.adapters.cli === undefined
+              ? {}
+              : {
+                  cli: {
+                    arguments: operation.adapters.cli.arguments.map((argument) => ({
+                      ...argument,
+                      ...(argument.sourcePath === undefined ? {} : { sourcePath: [...argument.sourcePath] }),
+                    })),
+                    path: [...operation.adapters.cli.path],
+                  },
+                }),
+          },
+        }),
+    arguments: operation.arguments.map((argument) => ({
+      ...argument,
+      ...(argument.constraints === undefined ? {} : { constraints: { ...argument.constraints, ...(argument.constraints.enumValues === undefined ? {} : { enumValues: [...argument.constraints.enumValues] }) } }),
+    })),
     description: operation.description,
     name: operation.name,
     pathPolicy: operation.pathPolicy,
     resultShape: operation.resultShape,
     sourceFamily: operation.sourceFamily,
   };
+}
+
+function renderCliUsage(operation: IAuthoringOperationDescriptor, cli: IAuthoringOperationCliAdapterDescriptor): string {
+  const ordered = [...cli.arguments].sort((left, right) => (left.positional ?? Number.MAX_SAFE_INTEGER) - (right.positional ?? Number.MAX_SAFE_INTEGER));
+  const parts = ["Usage: tn", ...cli.path];
+  for (const binding of ordered) {
+    const argument = operation.arguments.find((item) => item.name === binding.argument);
+    if (argument === undefined) {
+      continue;
+    }
+    const label = cliArgumentLabel(argument, binding);
+    parts.push(argument.required ? label : `[${label}]`);
+  }
+  parts.push("[--project <path>]", "[--json]");
+  return parts.join(" ");
+}
+
+function cliArgumentLabel(argument: IAuthoringOperationArgumentDescriptor, binding: IAuthoringOperationCliArgumentBinding): string {
+  const value = argument.constraints?.enumValues === undefined ? cliValuePlaceholder(argument) : argument.constraints.enumValues.join("|");
+  return binding.positional !== undefined ? `<${argument.name}>` : `${binding.flag ?? `--${argument.name}`} <${value}>`;
+}
+
+function cliValuePlaceholder(argument: IAuthoringOperationArgumentDescriptor): string {
+  if (argument.type === "number") {
+    return "n";
+  }
+  if (argument.type === "boolean") {
+    return "true|false";
+  }
+  if (argument.type === "vector3") {
+    return "x,y,z";
+  }
+  if (argument.type === "json-object" || argument.type === "json-object-array" || argument.type === "json-value") {
+    return "json";
+  }
+  return argument.name;
+}
+
+function readAdapterArgument(args: Record<string, unknown>, path: readonly string[]): unknown {
+  let value: unknown = args;
+  for (const segment of path) {
+    if (!isObject(value)) {
+      return undefined;
+    }
+    value = value[segment];
+  }
+  return value;
+}
+
+function renderAdapterArgumentValue(operationName: string, argument: IAuthoringOperationArgumentDescriptor, value: unknown): string {
+  if (argument.constraints?.enumValues !== undefined) {
+    if (typeof value !== "string" || !argument.constraints.enumValues.includes(value)) {
+      throw new Error(`Authoring operation '${operationName}' argument '${argument.name}' must be one of: ${argument.constraints.enumValues.join(", ")}.`);
+    }
+  }
+  if (argument.type === "string") {
+    if (typeof value !== "string" || value.trim() === "") {
+      throw new Error(`Authoring operation '${operationName}' argument '${argument.name}' must be a non-empty string.`);
+    }
+    return value;
+  }
+  if (argument.type === "number") {
+    if (typeof value !== "number" || !Number.isFinite(value)) {
+      throw new Error(`Authoring operation '${operationName}' argument '${argument.name}' must be a finite number.`);
+    }
+    if (argument.constraints?.min !== undefined && value < argument.constraints.min) {
+      throw new Error(`Authoring operation '${operationName}' argument '${argument.name}' must be >= ${argument.constraints.min}.`);
+    }
+    if (argument.constraints?.max !== undefined && value > argument.constraints.max) {
+      throw new Error(`Authoring operation '${operationName}' argument '${argument.name}' must be <= ${argument.constraints.max}.`);
+    }
+    return value.toString();
+  }
+  if (argument.type === "boolean") {
+    if (typeof value !== "boolean") {
+      throw new Error(`Authoring operation '${operationName}' argument '${argument.name}' must be a boolean.`);
+    }
+    return value ? "true" : "false";
+  }
+  if (argument.type === "vector3") {
+    if (!isVector3(value)) {
+      throw new Error(`Authoring operation '${operationName}' argument '${argument.name}' must be a finite [x,y,z] tuple.`);
+    }
+    return value.join(",");
+  }
+  if (argument.type === "number-array") {
+    if (!Array.isArray(value) || !value.every((entry) => typeof entry === "number" && Number.isFinite(entry))) {
+      throw new Error(`Authoring operation '${operationName}' argument '${argument.name}' must be an array of finite numbers.`);
+    }
+    return value.join(",");
+  }
+  if (argument.type === "string-array") {
+    if (!isStringArray(value)) {
+      throw new Error(`Authoring operation '${operationName}' argument '${argument.name}' must be an array of non-empty strings.`);
+    }
+    return value.join(",");
+  }
+  return typeof value === "string" ? value : JSON.stringify(value);
 }
 
 function validateRegistryArguments(operation: IAuthoringOperationDescriptor, args: Record<string, unknown>) {
@@ -997,6 +1252,9 @@ function validateRegistryArguments(operation: IAuthoringOperationDescriptor, arg
     }
     if (argument.type === "string" && (typeof value !== "string" || value.trim() === "")) {
       return [invalidArgumentDiagnostic(operation.name, argument.name, "a non-empty string")];
+    }
+    if (argument.constraints?.enumValues !== undefined && (typeof value !== "string" || !argument.constraints.enumValues.includes(value))) {
+      return [invalidArgumentDiagnostic(operation.name, argument.name, `one of: ${argument.constraints.enumValues.join(", ")}`)];
     }
     if (argument.type === "number" && (typeof value !== "number" || !Number.isFinite(value))) {
       return [invalidArgumentDiagnostic(operation.name, argument.name, "a finite number")];
@@ -1085,6 +1343,13 @@ function operation<const TName extends string>(
   return { ...descriptor, dispatch };
 }
 
+function withCli<const TName extends string>(
+  descriptor: IAuthoringOperationDescriptor<TName>,
+  cli: IAuthoringOperationCliAdapterDescriptor,
+): IAuthoringOperationDescriptor<TName> {
+  return { ...descriptor, adapters: { ...descriptor.adapters, cli } };
+}
+
 function anyJsonArg(name: string, required = true): IAuthoringOperationArgumentDescriptor {
   return { name, required, type: "json-value" };
 }
@@ -1109,8 +1374,8 @@ function objectArrayArg(name: string, required = true): IAuthoringOperationArgum
   return { name, required, type: "json-object-array" };
 }
 
-function stringArg(name: string, required = true): IAuthoringOperationArgumentDescriptor {
-  return { name, required, type: "string" };
+function stringArg(name: string, required = true, enumValues?: string[]): IAuthoringOperationArgumentDescriptor {
+  return { ...(enumValues === undefined ? {} : { constraints: { enumValues } }), name, required, type: "string" };
 }
 
 function stringArrayArg(name: string, required = true): IAuthoringOperationArgumentDescriptor {

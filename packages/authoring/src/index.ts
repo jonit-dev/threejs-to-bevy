@@ -362,13 +362,17 @@ export type {
   AuthoringOperationResultShape,
   AuthoringOperationSourceFamily,
   IAuthoringOperationArgumentDescriptor,
+  IAuthoringOperationCliAdapterDescriptor,
+  IAuthoringOperationCliArgumentBinding,
   IAuthoringOperationDescriptor,
   IDispatchAuthoringOperationOptions,
 } from "./operationRegistry.js";
 export {
   AUTHORING_OPERATION_NAMES,
   AUTHORING_OPERATION_REGISTRY,
+  buildAuthoringOperationCliArgv,
   dispatchAuthoringOperation,
   getAuthoringOperationDescriptor,
   listAuthoringOperationDescriptors,
+  renderAuthoringOperationCliUsage,
 } from "./operationRegistry.js";
