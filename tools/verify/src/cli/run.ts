@@ -474,6 +474,23 @@ export const FOCUSED_GATES: Record<string, FocusedGate> = {
       protects: "Promoted shadow profiles, specular material slots, billboard LOD calibration, and dense-scene texture budgets.",
     },
   },
+  "verify:feature-parity-ui-native": {
+    commands: [
+      ["pnpm", "--filter", "@threenative/ir", "build"],
+      ["pnpm", "--filter", "@threenative/runtime-web-three", "build"],
+      ["pnpm", "--filter", "@threenative/cli", "build"],
+      ["pnpm", "--filter", "@threenative/verify-tools", "build"],
+      ["node", "scripts/verify-feature-parity-ui-native.mjs"],
+      ["node", "tools/verify/dist/uiNative.js"],
+    ],
+    description: "Bounded native UI, text editing, accessibility, and attachment evidence gate.",
+    metadata: {
+      owner: "tools/verify feature-parity UI native gate",
+      profile: "focused",
+      reason: "Pairs real UI captures with cross-adapter effect, text/caret, accessibility, image, and world-attachment reports.",
+      protects: "Bounded retained UI pixel claims and target-scoped native text/accessibility boundaries.",
+    },
+  },
   "verify:v9:assets-gltf-scene-workflow": {
     commands: [
       ["pnpm", "--filter", "@threenative/cli", "build"],

@@ -9,6 +9,7 @@ export { editorAiChatArtifactPaths, runEditorAiChatGate, type IEditorAiChatArtif
 export { runEditorRequiredOperationsSmoke, type IEditorRequiredOperationsReport } from "./editorRequiredOperations.js";
 export { runEfficientScaleGate, type EfficientScaleGateOptions, type EfficientScaleGateResult } from "./efficientScaleGate.js";
 export { runVisualPolishGate, validateVisualPolishEvidence, type VisualPolishGateResult } from "./visualPolish.js";
+export { runUiNativeGate, validateUiNativeReport, type UiNativeGateResult } from "./uiNative.js";
 export { resolveArtifactTargets, toRepoRelative, type ArtifactOwner, type ArtifactTargets } from "./artifacts.js";
 export { loadFixtureCatalog, resolveFixtureId, listCurrentFixtures } from "./conformance.js";
 export { runLegacyScriptAlias, resolveScriptAlias, formatDeprecationDiagnostic, listDeprecatedScriptAliases, isRegisteredGate, SCRIPT_ALIASES } from "./legacyAliases.js";

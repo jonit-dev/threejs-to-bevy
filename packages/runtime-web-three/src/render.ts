@@ -264,7 +264,7 @@ export async function renderLoadedBundle(bundle: IWebBundle, container: HTMLElem
   const colliderDebugOverlay = options.debugColliders === true ? createColliderDebugOverlay(mapped, bundle.world) : undefined;
   const canvas = renderer.domElement;
   const ui = bundle.ui === undefined ? undefined : renderUi(bundle.ui, bundle.world);
-  const uiOverlay = ui === undefined ? undefined : createUiDomOverlay(ui);
+  const uiOverlay = ui === undefined ? undefined : createUiDomOverlay(ui, document, source);
   const overlayHost = bundle.overlays === undefined ? undefined : createWebOverlayHost(bundle.overlays, source);
   const audioSink = bundle.audio === undefined ? undefined : createWebAudioElementSink(source, bundle.assets);
   const audioRuntime = bundle.audio === undefined ? undefined : createWebAudioRuntime(bundle.audio, audioSink);

@@ -4,7 +4,38 @@
   "root": {
     "id": "advanced.ui",
     "kind": "column",
+    "accessibilityLabel": "Mission interface",
+    "layout": { "direction": "column", "width": 420, "height": 620, "padding": 18 },
+    "style": {
+      "backgroundColor": "#111827",
+      "gradient": { "kind": "linear", "from": "#172033", "to": "#0f172a", "angle": 90 },
+      "shadow": { "color": "#00000099", "offsetX": 4, "offsetY": 6, "blur": 12, "spread": 1 }
+    },
     "children": [
+      {
+        "id": "player.name",
+        "kind": "textInput",
+        "label": "Player name",
+        "accessibilityLabel": "Player name",
+        "action": "SetPlayerName",
+        "focusable": true,
+        "text": "Nova",
+        "layout": { "width": 260, "height": 44 },
+        "style": { "backgroundColor": "#263449", "borderColor": "#7dd3fc", "borderWidth": 2, "color": "#ffffff" }
+      },
+      {
+        "id": "quest.frame",
+        "kind": "image",
+        "src": "assets/ui-frame.png",
+        "accessibilityLabel": "Quest frame",
+        "layout": { "width": 160, "height": 64 },
+        "image": {
+          "atlas": { "x": 0, "y": 0, "width": 4, "height": 4 },
+          "nineSlice": { "top": 1, "right": 1, "bottom": 1, "left": 1 },
+          "scaleMode": "stretch",
+          "sourceSize": { "width": 4, "height": 4 }
+        }
+      },
       {
         "id": "selected.item",
         "kind": "button",

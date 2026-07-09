@@ -50,6 +50,55 @@ pub fn trace_ui_navigation(ui: &UiIr, inputs: &[&str]) -> UiNavigationTrace {
     }
 }
 
+pub fn trace_native_ui_text_edit(
+    initial: &str,
+    operations: &[NativeUiTextEditOperation],
+) -> NativeUiTextEditTrace {
+    let mut value = initial.chars().collect::<Vec<_>>();
+    let mut caret = value.len();
+    let mut frames = vec![NativeUiTextEditFrame {
+        caret,
+        operation: "initial".to_owned(),
+        value: value.iter().collect(),
+    }];
+    for operation in operations {
+        let name = match operation {
+            NativeUiTextEditOperation::Insert(text) => {
+                let inserted = text.chars().collect::<Vec<_>>();
+                let count = inserted.len();
+                value.splice(caret..caret, inserted);
+                caret += count;
+                "insert"
+            }
+            NativeUiTextEditOperation::Backspace => {
+                if caret > 0 {
+                    value.remove(caret - 1);
+                    caret -= 1;
+                }
+                "backspace"
+            }
+            NativeUiTextEditOperation::Move(offset) => {
+                caret = (caret as isize + offset).clamp(0, value.len() as isize) as usize;
+                "move"
+            }
+        };
+        frames.push(NativeUiTextEditFrame {
+            caret,
+            operation: name.to_owned(),
+            value: value.iter().collect(),
+        });
+    }
+    NativeUiTextEditTrace {
+        capability: NativeUiTextInputCapability {
+            caret: "promoted",
+            ime: "platform-diagnostic",
+            text_editing: "promoted",
+            virtual_keyboard: "platform-diagnostic",
+        },
+        frames,
+    }
+}
+
 pub fn trace_native_ui_screen_dispatch(
     ui: &UiIr,
     inputs: &[(&str, &str)],

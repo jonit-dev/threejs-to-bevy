@@ -43,6 +43,9 @@ export { resolveWalkableMovement, type IWalkabilityResolution } from "./walkabil
 export { renderUi, type IRenderedUi, type IRenderedUiNode } from "./ui/renderUi.js";
 export { createWebDragPickingRecognizer, resolveTopPickingTarget, type IWebDragPickingEvent, type IWebDragPickingFrame, type IWebDragPickingRecognizer, type IWebPickingDebugOverlayReport, type IWebPickingTarget, type IWebPickingVec2, type IWebPickingVec3 } from "./picking/drag.js";
 export { traceUiNavigation, type IUiNavigationTrace, type IUiNavigationTraceInput } from "./ui/navigation.js";
+export { traceUiAttachments, type IUiAttachmentProjectionTrace } from "./ui/attachments.js";
+export { traceUiEffects, type IUiEffectTrace } from "./ui/effects.js";
+export { traceWebUiTextEdit, type IUiTextEditFrame, type IUiTextEditTrace, type UiTextEditOperation } from "./ui/textInputTrace.js";
 export { createUiDomOverlay, type IUiDomOverlay } from "./ui/domOverlay.js";
 export { createRenderedParticleObjects, renderLoadedBundle, type IRenderResult, type IWebRuntimePerformanceSnapshot } from "./render.js";
 export { renderBundle } from "./renderBundle.js";

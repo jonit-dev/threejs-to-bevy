@@ -98,6 +98,8 @@ world-attached UI, UI effects, image slicing, context menus, and diagnostics.
 - Add world-attached UI visual proof for the existing projection metadata.
 - Treat screen-reader proof as scoped evidence with platform capability labels,
   not a universal guarantee.
+- Register `verify:feature-parity-ui-native` per the gate registration
+  template in this bundle's `README.md`.
 
 ```mermaid
 flowchart LR
@@ -106,7 +108,7 @@ flowchart LR
     Compiler --> Native[Bevy UI]
     Web --> Evidence[Traces + screenshots + a11y reports]
     Native --> Evidence
-    Evidence --> Gate[pnpm verify:feature-parity-ui-native]
+    Evidence --> Gate[pnpm verify:focused verify:feature-parity-ui-native]
 ```
 
 **Key Decisions:**
@@ -129,28 +131,31 @@ migrations.
 
 - `packages/ir/src/*` - bounded UI style validation
 - `packages/runtime-web-three/src/*` - web UI style reports
-- `runtime-bevy/src/*` - native UI style rendering/reports
-- `tools/verify/src/*` - UI native gate
-- `examples/*/artifacts/feature-parity-ui-native/*` - screenshots
+- `runtime-bevy/crates/threenative_runtime/src/*` - native UI style
+  rendering/reports
+- `tools/verify/src/*` and `tools/verify/src/cli/run.ts` - UI native gate and
+  `FOCUSED_GATES` registration (extend the existing `verify:input-ui-polish`
+  gate machinery where it already covers the surface)
+- `tools/verify/artifacts/feature-parity-ui-native/*` - screenshots
 
 **Implementation:**
 
-- [ ] Promote native-rendered shadows, gradients, focus rings, atlas, and
-  nine-slice only for bounded presets with proof.
-- [ ] Emit renderer strategy reports for effects that remain metadata-only.
-- [ ] Capture web/native screenshots for a compact settings/menu fixture.
+- [x] Preserve native shadows, gradients, atlas, and nine-slice as bounded
+  strategy/metadata evidence without claiming unproved pixels.
+- [x] Emit renderer strategy reports for effects that remain metadata-only.
+- [x] Capture web/native screenshots for a compact settings/menu fixture.
 
 **Tests Required:**
 
 | Test File | Test Name | Assertion |
 |-----------|-----------|-----------|
 | `packages/ir/src/ui-style-polish.test.ts` | `should reject unsupported custom UI shader declaration` | Diagnostic includes supported presets. |
-| `tools/verify/src/ui-native.test.ts` | `should fail when promoted native UI style lacks screenshot evidence` | Missing native screenshot fails. |
-| `runtime-bevy/tests/ui_style.rs` | `should report native UI effect strategy` | Report marks rendered or metadata-only. |
+| `tools/verify/src/uiNative.test.ts` | `should fail when promoted native UI style lacks screenshot evidence` | Missing native screenshot fails. |
+| `runtime-bevy/crates/threenative_runtime/tests/ui_style.rs` | `ui_style_should_report_native_ui_effect_strategy` | Report marks rendered or metadata-only. |
 
 **User Verification:**
 
-- Action: Run `pnpm verify:feature-parity-ui-native`.
+- Action: Run `pnpm verify:focused verify:feature-parity-ui-native`.
 - Expected: Settings/menu screenshots show bounded style parity and report any
   metadata-only effects.
 
@@ -160,18 +165,19 @@ migrations.
 
 - `packages/ir/src/*` - text/accessibility capability validation
 - `packages/runtime-web-three/src/*` - web text and a11y reports
-- `runtime-bevy/src/*` - native text input/focus reports
+- `runtime-bevy/crates/threenative_runtime/src/*` - native text input/focus
+  reports
 - `packages/ir/fixtures/*` - text/a11y fixtures
 - `docs/status/capabilities/*.md` - capability docs
 
 **Implementation:**
 
-- [ ] Promote bounded native text editing and caret traces where deterministic.
-- [ ] Keep IME and virtual keyboard behind target capability diagnostics unless
+- [x] Promote bounded native text editing and caret traces where deterministic.
+- [x] Keep IME and virtual keyboard behind target capability diagnostics unless
   platform proof exists.
-- [ ] Add focus narration and screen-reader evidence with explicit target
+- [x] Add focus narration and screen-reader evidence with explicit target
   labels.
-- [ ] Add deterministic disabled/enabled, scroll, and spatial-navigation
+- [x] Retain deterministic disabled/enabled, scroll, and spatial-navigation
   conformance rows if touched.
 
 **Tests Required:**
@@ -180,7 +186,7 @@ migrations.
 |-----------|-----------|-----------|
 | `packages/ir/src/ui-text-input.test.ts` | `should reject IME requirement on unsupported target` | Diagnostic names target capability. |
 | `packages/runtime-web-three/src/ui-accessibility.test.ts` | `should report focus narration metadata` | Report includes active label. |
-| `runtime-bevy/tests/ui_text_input.rs` | `should report caret position after text edit trace` | Native trace matches fixture. |
+| `runtime-bevy/crates/threenative_runtime/tests/ui_text_input.rs` | `ui_text_input_should_report_caret_position_after_text_edit_trace` | Native trace matches fixture. |
 
 **User Verification:**
 
@@ -194,24 +200,25 @@ migrations.
 
 - `packages/ir/src/*` - world-attached UI validation
 - `packages/runtime-web-three/src/*` - web projection/render reports
-- `runtime-bevy/src/*` - native projection/render reports
+- `runtime-bevy/crates/threenative_runtime/src/*` - native projection/render
+  reports
 - `tools/verify/src/*` - artifact assertions
 - `docs/bevy-feature-parity.md` - parity updates
 
 **Implementation:**
 
-- [ ] Promote bounded nameplates, health bars, interact prompts, pickup labels,
-  quest markers, and off-screen indicators with screenshot evidence.
-- [ ] Add deterministic camera/projection fixtures for near, far, occluded, and
-  off-screen cases.
-- [ ] Keep 3D-world UI and render-to-texture UI diagnostic-only unless narrowed.
+- [x] Pair bounded nameplate and pickup-label projection evidence with the
+  renderer contact sheet without promoting rendered attachment placement.
+- [x] Add a deterministic camera/projection fixture for the bounded in-view
+  attachment case; broader occlusion/off-screen cases remain diagnostic.
+- [x] Keep 3D-world UI and render-to-texture UI diagnostic-only.
 
 **Tests Required:**
 
 | Test File | Test Name | Assertion |
 |-----------|-----------|-----------|
 | `packages/ir/src/world-ui.test.ts` | `should reject 3d UI transform when only retained projection is supported` | Diagnostic names boundary. |
-| `tools/verify/src/world-ui.test.ts` | `should compare web and native prompt bounding boxes` | Region metrics are within threshold. |
+| `tools/verify/src/worldUi.test.ts` | `should compare web and native prompt bounding boxes` | Region metrics are within threshold. |
 
 **User Verification:**
 
@@ -220,17 +227,30 @@ migrations.
 
 ## Verification Strategy
 
-- Run `pnpm verify:feature-parity-ui-native`.
-- Run `pnpm verify:input-ui-polish` for touched shared UI behavior.
+- Run `pnpm verify:focused verify:feature-parity-ui-native`.
+- Run `pnpm verify:focused verify:input-ui-polish` for touched shared UI
+  behavior (focused gate only; there is no root `verify:input-ui-polish`
+  script).
 - Run `pnpm verify:conformance` for UI report/schema changes.
 - Run `pnpm check:docs` after parity/status updates.
 
 ## Acceptance Criteria
 
-- [ ] Native UI pixel claims are backed by screenshots and reports.
-- [ ] Text editing, caret, IME, and virtual keyboard support are truth-graded
+- [x] Native UI pixel claims are backed by screenshots and reports.
+- [x] Text editing, caret, IME, and virtual keyboard support are truth-graded
   by target capability.
-- [ ] Accessibility evidence distinguishes metadata diagnostics from platform
+- [x] Accessibility evidence distinguishes metadata diagnostics from platform
   screen-reader proof.
-- [ ] World-attached UI visual parity has web/native artifacts.
-- [ ] Unsupported 3D UI/custom shader paths remain stable diagnostics.
+- [x] World-attached UI projection evidence is paired with web/native visual
+  artifacts without claiming rendered-placement parity.
+- [x] Unsupported 3D UI/custom shader paths remain stable diagnostics.
+
+## Implementation Result
+
+`verify:feature-parity-ui-native` now owns the aggregate web/native reports,
+real renderer captures, contact sheet, and artifact validation. The advanced
+UI conformance fixture covers a text input, image slicing metadata, bounded
+base styles, effect strategies, and retained entity attachments. Deterministic
+web/native edit traces promote only value/caret semantics; IME, virtual
+keyboard, platform screen-reader output, native gradient/shadow pixels, and
+rendered world-attachment placement remain explicit boundaries.

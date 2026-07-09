@@ -1,5 +1,13 @@
 {
   "schema": "threenative.materials",
   "version": "0.1.0",
-  "materials": []
+  "materials": [
+    {
+      "id": "mat.ui-backdrop",
+      "kind": "standard",
+      "color": "#10141d",
+      "metalness": 0,
+      "roughness": 1
+    }
+  ]
 }

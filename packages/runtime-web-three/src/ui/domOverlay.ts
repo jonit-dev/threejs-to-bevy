@@ -10,7 +10,7 @@ interface IUiDomOverlayState {
   openMenuId?: string;
 }
 
-export function createUiDomOverlay(rendered: IRenderedUi, doc: Document = document): IUiDomOverlay {
+export function createUiDomOverlay(rendered: IRenderedUi, doc: Document = document, assetBase?: string): IUiDomOverlay {
   const nodes = new Map<string, HTMLElement>();
   const state: IUiDomOverlayState = {};
   const element = createNodeElement(rendered.root, rendered, nodes, doc, state);
@@ -23,7 +23,7 @@ export function createUiDomOverlay(rendered: IRenderedUi, doc: Document = docume
     position: "absolute",
   });
   applySafeAreaStyle(element, rendered.safeArea);
-  updateNodeElement(rendered.root, nodes);
+  updateNodeElement(rendered.root, nodes, assetBase);
   updateContextMenus(rendered.root, nodes, state);
   const handleDocumentClick = (event: Event) => {
     if (state.openMenuId === undefined) {
@@ -48,7 +48,7 @@ export function createUiDomOverlay(rendered: IRenderedUi, doc: Document = docume
     element,
     update() {
       rendered.update();
-      updateNodeElement(rendered.root, nodes);
+      updateNodeElement(rendered.root, nodes, assetBase);
       updateContextMenus(rendered.root, nodes, state);
     },
   };
@@ -260,7 +260,7 @@ function createElementForKind(node: IRenderedUiNode, doc: Document): HTMLElement
   return doc.createElement("div");
 }
 
-function updateNodeElement(node: IRenderedUiNode, nodes: Map<string, HTMLElement>): void {
+function updateNodeElement(node: IRenderedUiNode, nodes: Map<string, HTMLElement>, assetBase?: string): void {
   const element = nodes.get(node.id);
   if (element === undefined) {
     return;
@@ -325,7 +325,7 @@ function updateNodeElement(node: IRenderedUiNode, nodes: Map<string, HTMLElement
   if (node.kind === "image") {
     element.setAttribute("alt", accessibleName(node) ?? "");
     if (node.src !== undefined) {
-      element.setAttribute("src", node.src);
+      element.setAttribute("src", resolveUiAssetSource(node.src, assetBase));
     }
     applyImageMetadata(element, node);
   }
@@ -348,8 +348,15 @@ function updateNodeElement(node: IRenderedUiNode, nodes: Map<string, HTMLElement
   applyAccessibilityAttributes(element, node);
 
   for (const child of node.children) {
-    updateNodeElement(child, nodes);
+    updateNodeElement(child, nodes, assetBase);
   }
+}
+
+function resolveUiAssetSource(source: string, assetBase: string | undefined): string {
+  if (assetBase === undefined || source.startsWith("/") || /^[a-z][a-z0-9+.-]*:/i.test(source)) {
+    return source;
+  }
+  return `${assetBase.replace(/\/$/, "")}/${source.replace(/^\.\//, "")}`;
 }
 
 function applyAccessibilityAttributes(element: HTMLElement, node: IRenderedUiNode): void {

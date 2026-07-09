@@ -1,5 +1,19 @@
 {
   "schema": "threenative.assets",
   "version": "0.1.0",
-  "assets": []
+  "assets": [
+    {
+      "id": "mesh.ui-backdrop",
+      "kind": "mesh",
+      "format": "generated",
+      "primitive": "box",
+      "size": [10, 6, 0.1]
+    },
+    {
+      "id": "texture.ui-frame",
+      "kind": "texture",
+      "format": "png",
+      "path": "assets/ui-frame.png"
+    }
+  ]
 }

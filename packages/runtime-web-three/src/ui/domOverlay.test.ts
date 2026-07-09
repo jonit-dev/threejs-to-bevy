@@ -35,6 +35,13 @@ test("ui dom overlay should render minimap canvas nodes", () => {
   assert.equal(minimap?.style.height, "80px");
 });
 
+test("ui dom overlay should resolve image paths against the loaded bundle", () => {
+  const rendered = renderUi(makeUi(), makeWorld());
+  const overlay = createUiDomOverlay(rendered, new FakeDocument() as unknown as Document, "/bundle");
+
+  assert.equal(findByUiId(overlay.element, "portrait")?.getAttribute("src"), "/bundle/assets/hero.png");
+});
+
 test("ui dom overlay should dispatch button and touch control clicks to rendered actions", () => {
   const rendered = renderUi(makeUi(), makeWorld());
   const overlay = createUiDomOverlay(rendered, new FakeDocument() as unknown as Document);

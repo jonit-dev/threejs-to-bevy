@@ -50,7 +50,7 @@ adapters, shared SDK/IR/compiler contract, or an intentional product boundary.
 | ⚠️ | Animation and particles | Promoted playback, masks, morphs, and bounded particles have shared contract plus web/Bevy proof; raw backend graphs, IK/retargeting, and backend handles are product boundaries. | Clip metadata, playback, events, bounded graph data, masks, morph targets, and deterministic lightweight VFX. | `pnpm verify:focused verify:animation-physics-residuals`, conformance fixtures |
 | ⚠️ | Physics and character movement | Promoted behavior uses shared solver semantics with web/native trace diffs; deeper contacts, mesh terrain, nav, constraints, vehicles, and ragdolls are mostly Bevy/native proof depth plus shared boundaries. | Fixed-tick physics, primitive bodies/colliders, contacts, queries, character movement, mesh collider policy, joints, and nav diagnostics. | `pnpm verify:physics-self-verification`, `pnpm verify:character-physics-contacts` |
 | ✅ | Input, picking, and controls | No active web or Bevy gap for promoted input/picking; richer gestures, repair overlays, and navigation diagnostics are product-polish boundaries. | Keyboard, mouse, pointer lock, gamepad, touch, picking, UI action dispatch, rebinding, and device diagnostics. | `pnpm verify:focused verify:input-ui-polish`, conformance fixtures |
-| ⚠️ | UI, text, and accessibility | Mixed: Bevy/native for native UI pixels, text editing/caret/IME, and accessibility proof; both adapters for world-attached UI, effects, spatial nav, and visual parity; virtual keyboard/3D UI/custom UI shaders are boundaries. | Retained UI, layout/style/text/buttons, focus, navigation, recipes, accessibility diagnostics, and unsupported native/widget boundaries. | `pnpm verify:focused verify:input-ui-polish`, `pnpm verify:conformance` |
+| ⚠️ | UI, text, and accessibility | Mixed: bounded base menu pixels and deterministic value/caret edits are web/native-proved; native style effects, rendered world attachment, platform screen readers, IME, and virtual keyboards remain scoped gaps or boundaries. | Retained UI, layout/style/text/buttons, focus, navigation, recipes, accessibility diagnostics, and unsupported native/widget boundaries. | `pnpm verify:focused verify:feature-parity-ui-native`, `pnpm verify:focused verify:input-ui-polish`, `pnpm verify:conformance` |
 | ⚠️ | Window and platform runtime | Shared platform policy plus both adapters for resize/scale observations; custom cursors, power/background policy, clear-color updates, and multi-window are intentional boundaries. | Window metadata, target profiles, resize observations, cursor/power diagnostics, and single-window policy. | Runtime config tests, target-profile fixtures |
 | ✅ | Persistence and settings | No active adapter gap for declared save/settings behavior; shared persistence contract stays guarded, and cloud/account storage is deferred. | Save slots, local settings, migration metadata, checkpoint/autosave, durable Bevy backend, and cloud boundary diagnostics. | `pnpm verify:focused verify:persistence-reload` |
 | ⚠️ | Audio | Both adapters for promoted playback, spatial/listener, mixer, and music transitions; device routing, platform handles, custom decoders, streaming, and network audio are boundaries. | Local audio assets, playback commands, spatial/listener metadata, mixer/effect reports, routing diagnostics, and decoder/streaming boundaries. | `pnpm verify:focused verify:production-hardening`, conformance fixtures |
@@ -474,6 +474,9 @@ Current UI rows use these labels:
 - [x] `P1` UI min/max size constraints
 - [x] `P1` Basic vertical UI scrolling containers
 - [x] `P1` UI background/text color, borders, rounded corners, and opacity
+- [x] `P1` Promoted: bounded base retained-menu pixels have named web/native
+      screenshots and a contact sheet in
+      `pnpm verify:focused verify:feature-parity-ui-native`.
 - [x] `P1` Portable UI shadow/linear-gradient metadata and web DOM rendering
 - [x] `P1` Partial/diagnostic: native UI shadows and gradients are preserved as
       metadata/components and trace observations; they are not currently claimed
@@ -490,8 +493,9 @@ Current UI rows use these labels:
       full rendered effect parity.
 - [x] `P1` Partial/diagnostic: world-attached retained UI for nameplates,
       health bars, interact prompts, pickup labels, quest markers, and
-      off-screen indicators has web/Bevy projection traces; screenshot-level
-      visual parity remains required before promotion.
+      off-screen indicators has matching web/Bevy projection traces alongside
+      renderer captures; rendered placement/bounding-box parity remains
+      required before promotion.
 - [x] `P1` Basic UI text size, alignment, and wrapping
 - [x] `P1` Portable UI text weight/decoration metadata and web DOM rendering
 - [x] `P1` Rich text styling: font assets, inline spans, and native-rendered weight/decoration
@@ -503,9 +507,10 @@ Current UI rows use these labels:
       viewport clamping. Native context-menu behavior remains metadata/trace
       only.
 - [x] Structured source/CLI/editor mutation for retained UI node type, label, and promoted style fields
-- [x] `P1` Partial/diagnostic: editable text input widgets preserve metadata
-      and deterministic value/action event observations, but native editing,
-      caret, and IME behavior are not promoted.
+- [x] `P1` Promoted: bounded deterministic value/caret edit sequences match
+      across web and native in
+      `pnpm verify:focused verify:feature-parity-ui-native`; full OS text
+      editing services and IME behavior are not promoted.
 - [x] `P1` Unsupported boundary: IME composition diagnostics reject unsupported
       text input targets.
 - [x] `P1` Unsupported boundary: platform virtual keyboard behavior remains a
@@ -521,7 +526,8 @@ Current UI rows use these labels:
 - [x] `P1` Basic UI accessibility roles, labels, and missing-label diagnostics
 - [x] `P1` Partial/diagnostic: broader screen-reader diagnostics cover
       focusable names, progressbar names, and list/listitem structure; focus
-      narration is not verified against a platform screen reader.
+      narration and ARIA/AccessKit bridge scope are reported by the UI native
+      gate, but output is not verified against a platform screen reader.
 - [x] `P1` Static disabled UI metadata for focus/action suppression and ARIA/AccessKit state
 - [x] `P2` UI debug overlay/gizmos
 - [x] `P1` Partial/diagnostic: runtime disabled-to-enabled UI updates have

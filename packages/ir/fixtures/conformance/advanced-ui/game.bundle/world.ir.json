@@ -3,6 +3,27 @@
   "version": "0.1.0",
   "entities": [
     {
+      "id": "camera.main",
+      "components": {
+        "Camera": { "kind": "orthographic", "near": 0.1, "far": 100, "size": 12, "priority": 0 },
+        "Transform": { "position": [0, 0, 10], "rotation": [0, 0, 0, 1], "scale": [1, 1, 1] }
+      }
+    },
+    {
+      "id": "ui.backdrop",
+      "components": {
+        "MeshRenderer": { "material": "mat.ui-backdrop", "mesh": "mesh.ui-backdrop" },
+        "Transform": { "position": [0, 0, 0], "rotation": [0, 0, 0, 1], "scale": [1, 1, 1] }
+      }
+    },
+    {
+      "id": "light.ui",
+      "components": {
+        "Light": { "color": "#ffffff", "intensity": 1, "kind": "ambient" },
+        "Transform": { "position": [0, 0, 0], "rotation": [0, 0, 0, 1], "scale": [1, 1, 1] }
+      }
+    },
+    {
       "id": "enemy.1",
       "components": {
         "Transform": {
@@ -20,6 +41,7 @@
     }
   ],
   "resources": {
+    "ActiveCamera": { "entity": "camera.main" },
     "FormState": {
       "invalid": true
     },
@@ -28,7 +50,8 @@
     },
     "QuestState": {
       "targetActive": true
-    }
+    },
+    "Selection": { "current": "pickup.energy" }
   },
   "events": {},
   "prefabs": []

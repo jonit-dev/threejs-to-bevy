@@ -63,6 +63,37 @@ pub struct NativeUiActionQueue {
     pub events: Vec<NativeUiActionEvent>,
 }
 
+#[derive(Clone, Debug, Serialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct NativeUiTextEditTrace {
+    pub capability: NativeUiTextInputCapability,
+    pub frames: Vec<NativeUiTextEditFrame>,
+}
+
+#[derive(Clone, Debug, Serialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct NativeUiTextInputCapability {
+    pub caret: &'static str,
+    pub ime: &'static str,
+    pub text_editing: &'static str,
+    pub virtual_keyboard: &'static str,
+}
+
+#[derive(Clone, Debug, Serialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct NativeUiTextEditFrame {
+    pub caret: usize,
+    pub operation: String,
+    pub value: String,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub enum NativeUiTextEditOperation {
+    Backspace,
+    Insert(String),
+    Move(isize),
+}
+
 #[derive(Clone, Debug, Resource)]
 struct NativeUiFallbackFont(Handle<Font>);
 
@@ -1061,5 +1092,27 @@ mod tests {
 
         assert_eq!(diagnostic.code, "TN_BEVY_UI_ABSOLUTE_PIXEL_SCALE_BOUNDARY");
         assert_eq!(diagnostic.path, "ui.ir.json/root");
+    }
+
+    #[test]
+    fn native_text_input_should_report_caret_after_edit_trace() {
+        let trace = trace_native_ui_text_edit(
+            "Nova",
+            &[
+                NativeUiTextEditOperation::Move(-1),
+                NativeUiTextEditOperation::Insert("r".to_owned()),
+                NativeUiTextEditOperation::Backspace,
+            ],
+        );
+
+        assert_eq!(
+            trace
+                .frames
+                .iter()
+                .map(|frame| (frame.value.as_str(), frame.caret))
+                .collect::<Vec<_>>(),
+            vec![("Nova", 4), ("Nova", 3), ("Novra", 4), ("Nova", 3)]
+        );
+        assert_eq!(trace.capability.ime, "platform-diagnostic");
     }
 }

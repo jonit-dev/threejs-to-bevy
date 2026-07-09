@@ -28,14 +28,21 @@ Current support:
   | Context menus | Web context menus clamp to the viewport. Native context-menu behavior remains metadata/trace-only. |
   | Focus navigation | Web and native navigation traces skip disabled nodes for sequential and explicit navigation. Geometric spatial fallback remains partial. |
   | DPI/scale | Native UI currently treats authored pixel values as absolute Bevy UI pixels and reports `TN_BEVY_UI_ABSOLUTE_PIXEL_SCALE_BOUNDARY`. DPI-aware scaling is an unsupported boundary, not promoted parity. |
-  | Text input | Web text input dispatches deterministic value actions. Native text input preserves metadata/value observations but does not promote caret, editing, virtual keyboard, or IME behavior. |
+  | Text input | Web dispatches deterministic value actions. `verify:feature-parity-ui-native` promotes a bounded, adapter-matched value/caret edit trace; OS text services, IME composition, and virtual keyboards remain platform diagnostics. |
 
 - UI parity claims are truth-graded in
   [bevy-feature-parity.md](../../bevy-feature-parity.md): promoted rows name a
   proof gate or artifact, while trace-only native shadows/gradients, effect
-  presets, world-attached projection, editable text input, nested/axis scroll,
+  presets, world-attached rendered placement, nested/axis scroll,
   spatial fallback navigation, focus narration, and runtime disabled-state
   updates remain partial/diagnostic until behavior-level proof exists.
+- `pnpm verify:focused verify:feature-parity-ui-native` captures the same
+  compact retained menu in web and native renderers and compares attachment,
+  effect-strategy, and value/caret traces. It also records AccessKit/ARIA
+  metadata scope, native image slicing metadata, and screenshot paths. The
+  captures prove bounded base UI pixels; they do not promote native
+  gradient/shadow rendering, actual screen-reader output, or rendered
+  world-attachment placement.
 - `pnpm verify:conformance` now emits explicit UI evidence categories:
   structural retained-UI reports, behavioral runtime traces for focus/action
   delivery plus input/UI polish, and a visual/style contact sheet for the

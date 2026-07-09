@@ -9,6 +9,10 @@
       "effect.outline",
       "effect.pulse",
       "effect.tint",
+      "image.atlas",
+      "image.nine-slice",
+      "text-input",
+      "world-attachment",
       "runtime"
     ]
   },
