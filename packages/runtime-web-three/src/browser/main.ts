@@ -7,6 +7,7 @@ declare global {
   interface Window {
     __THREENATIVE_READY__?: {
       canvas: { height: number; width: number };
+      captureTransformTrace?: unknown;
       diagnostics: unknown[];
       ok: boolean;
       runtimeDiagnostics: unknown;
@@ -39,10 +40,12 @@ const debugColliders = ["1", "true", "on"].includes(params.get("debugColliders")
 const captureDrawingBuffer = ["1", "true", "on"].includes(params.get("capture") ?? "");
 const captureFramesRaw = params.get("captureFrames");
 const captureFrames = captureFramesRaw === null ? undefined : Number.parseInt(captureFramesRaw, 10);
+const captureTraceEntityId = params.get("captureTraceEntity") ?? undefined;
 const result = await renderLoadedBundle(await loadBundleUrl(resolvedBundleUrl), container, {
   bookmarkId: params.get("bookmark") ?? undefined,
   captureDrawingBuffer,
   captureFrames: captureFrames !== undefined && Number.isFinite(captureFrames) && captureFrames > 0 ? captureFrames : undefined,
+  captureTraceEntityId,
   debugColliders,
 });
 window.__THREENATIVE_RUNTIME__ = {
@@ -110,6 +113,7 @@ function updateReadyState(): void {
       width: result.canvas.width,
     },
     diagnostics: result.diagnostics,
+    ...(result.captureTransformTrace === undefined ? {} : { captureTransformTrace: result.captureTransformTrace }),
     ok: result.diagnostics.every((diagnostic) => diagnostic.severity !== "error"),
     runtimeDiagnostics,
   };

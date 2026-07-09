@@ -11,7 +11,6 @@ use bevy::{
         dof::{DepthOfFieldMode, DepthOfFieldSettings},
         experimental::taa::TemporalAntiAliasBundle,
         fxaa::Fxaa,
-        motion_blur::{MotionBlur, MotionBlurBundle},
         prepass::{DepthPrepass, NormalPrepass},
         smaa::SmaaSettings,
         tonemapping::Tonemapping,
@@ -59,6 +58,7 @@ use crate::cameras::{
     NativeRenderLayerMap, active_camera_ids, apply_camera_components, build_render_layer_map,
     camera_order, render_layers_for_names,
 };
+use crate::motion_blur_postprocess::NativeTemporalMotionBlur;
 use crate::render_targets::{
     NativeCustomProjection, NativeRenderTargetRegistry, allocate_render_targets,
     camera_render_target,
@@ -81,6 +81,7 @@ const THREE_COMPAT_DEFAULT_RANGE: f32 = 1_000.0;
 const THREE_COMPAT_DEFAULT_CAMERA_EV100: f32 = -0.45;
 const THREE_COMPAT_SKY_DOME_RADIUS: f32 = 72.0;
 const THREE_COMPAT_EMISSIVE_INTENSITY_SCALE: f32 = 1.0;
+const THREE_COMPAT_DEFAULT_IMPLICIT_DIELECTRIC_REFLECTANCE: f32 = 0.5;
 const THREE_COMPAT_COLOR_GRADING_SATURATION_SCALE: f32 = 1.0;
 const THREE_COMPAT_CAMERA_EXPOSURE_SCALE: f32 = 1.0;
 const THREE_COMPAT_FOG_EXP2_DENSITY_SCALE: f32 = 0.65;
@@ -845,6 +846,17 @@ fn ambient_occlusion_quality_level(quality: &str) -> ScreenSpaceAmbientOcclusion
     }
 }
 
+fn ambient_occlusion_intensity_approximation(config: Option<&RuntimeConfigIr>) -> f32 {
+    let Some(ambient_occlusion) = config
+        .and_then(|config| config.renderer.as_ref())
+        .and_then(|renderer| renderer.ambient_occlusion.as_ref())
+        .filter(|ambient_occlusion| ambient_occlusion.enabled)
+    else {
+        return 1.0;
+    };
+    (1.0 - (ambient_occlusion.intensity - 1.35) * 0.05).clamp(0.9, 1.05)
+}
+
 fn bloom_settings_for_runtime(config: Option<&RuntimeConfigIr>) -> Option<BloomSettings> {
     let renderer = config.and_then(|config| config.renderer.as_ref())?;
     let (enabled, intensity, threshold) = if let Some(bloom) = renderer.bloom.as_ref() {
@@ -1428,7 +1440,49 @@ include!("map_world/rendering.rs");
 mod tests {
     use image::{Rgba, RgbaImage};
 
-    use super::{Lcg, SampledImage, StylizedSourceGroundMaps};
+    use super::{
+        Lcg, RuntimeConfigIr, SampledImage, StylizedSourceGroundMaps,
+        ambient_occlusion_intensity_approximation,
+    };
+
+    #[test]
+    fn ambient_occlusion_intensity_should_approximate_native_strength_monotonically() {
+        let config = |intensity| {
+            serde_json::from_value::<RuntimeConfigIr>(serde_json::json!({
+                "schema": "threenative.runtime-config",
+                "version": "0.1.0",
+                "renderer": {
+                    "antialias": "none",
+                    "ambientOcclusion": {
+                        "enabled": true,
+                        "mode": "screen-space",
+                        "radius": 3,
+                        "intensity": intensity,
+                        "quality": "medium"
+                    }
+                },
+                "time": { "fixedDelta": 0.016666666666666666, "paused": false },
+                "window": { "height": 720, "width": 1280 }
+            }))
+            .expect("runtime config should deserialize")
+        };
+        let low = config(0.5);
+        let anchor = config(1.35);
+        let high = config(2.5);
+
+        assert!(
+            ambient_occlusion_intensity_approximation(Some(&low))
+                > ambient_occlusion_intensity_approximation(Some(&anchor))
+        );
+        assert_eq!(
+            ambient_occlusion_intensity_approximation(Some(&anchor)),
+            1.0
+        );
+        assert!(
+            ambient_occlusion_intensity_approximation(Some(&high))
+                < ambient_occlusion_intensity_approximation(Some(&anchor))
+        );
+    }
 
     #[test]
     fn sampled_image_should_match_three_uv_vertical_orientation() {

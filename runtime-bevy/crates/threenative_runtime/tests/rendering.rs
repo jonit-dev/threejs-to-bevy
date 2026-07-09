@@ -12,7 +12,6 @@ use bevy::{
         dof::{DepthOfFieldMode, DepthOfFieldSettings},
         experimental::taa::TemporalAntiAliasSettings,
         fxaa::Fxaa,
-        motion_blur::MotionBlur,
         prepass::{DeferredPrepass, DepthPrepass, MotionVectorPrepass, NormalPrepass},
         smaa::SmaaSettings,
         tonemapping::Tonemapping,
@@ -44,6 +43,7 @@ use threenative_runtime::map_world::{
     apply_native_animation_service_effects, bind_native_animation_players, map_bundle_into_world,
     trace_native_emissive_bloom,
 };
+use threenative_runtime::motion_blur_postprocess::NativeTemporalMotionBlur;
 use threenative_runtime::rendering::{
     NativeParticleMaterialPolicy, NativeRenderedParticle, apply_environment_lighting_to_world,
     observe_environment_lighting, observe_rendered_particles,
@@ -388,7 +388,7 @@ fn rendering_should_map_runtime_depth_of_field_to_native_camera() {
         .world()
         .get::<DepthOfFieldSettings>(camera)
         .expect("camera should have native depth-of-field settings");
-    assert_eq!(settings.mode, DepthOfFieldMode::Gaussian);
+    assert_eq!(settings.mode, DepthOfFieldMode::Bokeh);
     assert!((settings.focal_distance - 8.0).abs() < 0.001);
     assert!((settings.aperture_f_stops - 0.16).abs() < 0.001);
     assert!((settings.max_circle_of_confusion_diameter - 30.72).abs() < 0.01);
@@ -421,12 +421,44 @@ fn rendering_should_map_runtime_motion_blur_to_native_camera() {
     let camera = entity_for(app.world_mut(), "camera.ui");
     let motion_blur = app
         .world()
-        .get::<MotionBlur>(camera)
-        .expect("camera should have native motion blur settings");
-    assert!((motion_blur.shutter_angle - 0.5).abs() < 0.001);
-    assert_eq!(motion_blur.samples, 4);
-    assert!(app.world().get::<DepthPrepass>(camera).is_some());
-    assert!(app.world().get::<MotionVectorPrepass>(camera).is_some());
+        .get::<NativeTemporalMotionBlur>(camera)
+        .expect("camera should have native temporal motion blur settings");
+    assert!((motion_blur.previous_weight - 0.15).abs() < 0.001);
+    assert!(motion_blur.reset);
+    assert!(app.world().get::<DepthPrepass>(camera).is_none());
+    assert!(app.world().get::<MotionVectorPrepass>(camera).is_none());
+
+    fs::remove_dir_all(root).expect("temporary bundle should be removed");
+}
+
+#[test]
+fn rendering_should_clamp_native_temporal_motion_blur_history_weight() {
+    let root = write_rendering_bundle();
+    write(
+        &root,
+        "runtime.config.json",
+        r#"{
+  "schema": "threenative.runtime-config",
+  "version": "0.1.0",
+  "renderer": {
+    "antialias": "msaa4",
+    "motionBlur": { "enabled": true, "shutterAngle": 2.0 }
+  },
+  "time": { "fixedDelta": 0.016666666666666666, "paused": false },
+  "window": { "height": 720, "width": 1280 }
+}"#,
+    );
+    let bundle = load_bundle(&root).expect("rendering bundle should load");
+    let mut app = App::new();
+
+    map_bundle_into_world(app.world_mut(), &bundle).expect("bundle should map");
+
+    let camera = entity_for(app.world_mut(), "camera.ui");
+    let motion_blur = app
+        .world()
+        .get::<NativeTemporalMotionBlur>(camera)
+        .expect("camera should have native temporal motion blur settings");
+    assert!((motion_blur.previous_weight - 0.25).abs() < 0.001);
 
     fs::remove_dir_all(root).expect("temporary bundle should be removed");
 }
@@ -947,7 +979,7 @@ fn assert_material(world: &mut World, id: &str) {
     assert!((material.clearcoat_perceptual_roughness - 0.25).abs() < 0.01);
     assert!((material.metallic - 0.25).abs() < 0.01);
     assert!((material.perceptual_roughness - 0.42).abs() < 0.01);
-    assert!((material.reflectance - 0.7).abs() < 0.01);
+    assert!((material.reflectance - 0.5 * 0.7_f32.sqrt()).abs() < 0.01);
     assert!((material.specular_transmission - 0.45).abs() < 0.01);
 }
 

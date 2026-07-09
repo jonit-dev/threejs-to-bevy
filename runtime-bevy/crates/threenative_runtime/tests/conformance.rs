@@ -388,7 +388,7 @@ fn should_report_promoted_render_look_profile() {
     assert_eq!(
         report_json["runtimeConfig"]["renderer"]["featureReports"][2],
         serde_json::json!({
-            "appliedMode": "motion-vectors",
+            "appliedMode": "temporal-accumulation",
             "feature": "renderer.motionBlur",
             "requestedMode": "shutter",
             "status": "baseline"

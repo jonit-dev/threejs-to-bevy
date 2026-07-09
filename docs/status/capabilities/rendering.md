@@ -40,52 +40,73 @@ Current support:
   measured impostor texture-variant report under
   `tools/verify/artifacts/feature-parity-visual-polish/`. Custom GPU
   attributes, advanced blends beyond the promoted material contract,
-  volumetrics, SSR/GI, and custom render paths remain diagnostic-only.
+  volumetrics, SSGI, and arbitrary custom render paths remain diagnostic-only;
+  bounded SSR support is described below.
 - Runtime renderer config now accepts portable `ambientOcclusion`,
   `depthOfField`, `screenSpaceReflections`, `motionBlur`, and
   `screenSpaceGlobalIllumination` fields with bounded source/IR validation.
   Compiler manifests derive matching renderer capability requirements, and web
   and Bevy conformance reports preserve requested/applied feature state and emit
   `TN_RENDER_FEATURE_FALLBACK` rollout-gap diagnostics until each adapter has
-  real rendered proof; these fields are not release support claims yet.
+  real rendered proof. AO, depth of field, temporal motion blur, and the bounded
+  SSR subset below now have focused proof; SSGI remains a diagnostic request.
 - The web Three.js adapter applies portable `renderer.ambientOcclusion` through
-  the existing adapter-private SSAO composer path, and the Bevy adapter maps the
-  same field to Bevy `ScreenSpaceAmbientOcclusionSettings` plus depth/normal
-  prepass camera components. Both runtimes report AO as applied, but
-  cross-runtime AO screenshot proof is isolated to the
-  `photoreal-ao-corner-test` fixture before broader photoreal release claims.
+  the adapter-private GTAO composer path with a visible monotonic intensity
+  mapping. Bevy 0.14 exposes quality but no direct SSAO radius/intensity knobs,
+  so the native adapter maps quality directly and applies a bounded ambient
+  term approximation around the calibrated intensity anchor. The
+  `photoreal-ao-corner-test` plus low/high AO sweep fixtures gate cross-adapter
+  regions and require each adapter's contact corner to darken monotonically.
 - Portable `renderer.depthOfField` now maps to web Three.js `BokehPass` and
-  Bevy `DepthOfFieldSettings`, and both runtimes report the feature through the
-  shared requested/applied feature-report shape. Focused screenshot proof is
-  covered by the `photoreal-dof-depth-test` fixture before broader photoreal
-  release claims.
+  Bevy Bokeh-mode `DepthOfFieldSettings`, and both runtimes report the feature
+  through the shared requested/applied feature-report shape. Focused screenshot
+  proof includes the foreground highlight in `photoreal-dof-depth-test`.
 - Composer output now uses the same fitted ACES transform as Bevy, applies
   authored exposure and saturation one-to-one, and performs the final sRGB
-  transfer once. This removes the previous adapter-only saturation/exposure
-  multipliers and substantially tightens neutral, saturated, and bloom proof.
-- Portable `renderer.motionBlur` maps to web Three.js temporal accumulation and
-  Bevy's native `MotionBlurBundle` with depth and motion-vector prepasses. Both
-  runtimes report the feature as `baseline` when enabled, and the
+  transfer once. ACES- and exposure-only configurations also select this output
+  pass, so authored camera clear colors follow the same tonemapping path instead
+  of bypassing grading on direct-render configurations.
+- Web bloom uses a calibrated wide mip radius and soft threshold. When bloom is
+  enabled, adapter-private weak point-light proxies are derived from strong
+  `emissiveBloom` materials to approximate the local spill Bevy's bloom path
+  produces; callers can disable this fallback through render options. Pedestal
+  and wall-gradient regions bound that behavior in the bloom fixture.
+- Portable `renderer.motionBlur` maps to short-history temporal accumulation in
+  both adapters with the same `clamp(shutterAngle * 0.3, 0, 0.25)` previous-frame
+  weight. The native pass owns two persistent GPU history textures per active
+  view, swaps them once per rendered frame, resets on first use or resize, and
+  releases histories for inactive views. Both runtimes report the feature as
+  `baseline` with applied mode `temporal-accumulation`, and the
   `photoreal-motion-blur-moving-test` fixture captures a continuously moving,
   high-contrast patterned marker against a deterministic fixed-step native
-  capture clock. The pattern exposes Bevy's velocity-buffer smoothing instead
-  of relying on a solid silhouette that the native reconstruction filter does
-  not blur. The web fallback keeps only a short exposure history instead of an
-  accumulated multi-frame ghost trail; effect-specific regions bound the two
-  algorithms without claiming pixel-identical kernels.
+  capture clock. Durable web/native traces prove aligned frames 118-120 and a
+  nonzero frame-120 transform delta. Paired exterior strips require a visible
+  trailing-versus-leading luminance difference, so a sharp silhouette fails
+  even when broad cross-runtime regions still match.
 - Portable `renderer.screenSpaceReflections` now maps to Three.js's depth- and
   normal-aware `SSRPass`, with reflective-object selection derived from the
   authored roughness limit, while Bevy uses native screen-space reflections
-  with deferred opaque rendering. Both runtimes report the feature as
-  `baseline` when enabled, and the `photoreal-reflective-wet-floor` fixture
-  captures bounded web/Bevy reflection evidence before broader SSR/SSGI claims.
+  with deferred opaque rendering. Bevy 0.14 requires the global deferred
+  material fallback for SSR; a forward-path isolation capture showed that the
+  gross wet-scene luminance drift instead came from Bevy's implicit dielectric
+  ambient response rather than reflection opacity or the deferred path alone.
+  The isolation does not distinguish ambient diffuse from ambient specular; its
+  diagnostic captures and linear means are recorded
+  under `tools/verify/artifacts/rendering-photoreal/diagnostics/`. The native
+  material mapping keeps the standard 4% implicit dielectric F0, converts
+  explicit `specularIntensity` into Bevy's squared-reflectance parameter, and
+  suppresses the implicit term for SSR-enabled smooth dielectrics. The motion
+  fixture authors its wall response explicitly instead of changing unrelated
+  implicit materials. Web SSR opacity is calibrated against the cyan reflection
+  region. The fixture also gates cube-face and bare-floor luminance.
 - `pnpm verify:rendering-photoreal` captures the
-  `photoreal-lighting-units-probe`, `photoreal-ao-corner-test`, and
-  `photoreal-bloom-emissive-test`, `photoreal-dof-depth-test`, and
+  `photoreal-lighting-units-probe`, `photoreal-ao-corner-test`, low/high AO
+  sweep, `photoreal-bloom-emissive-test`, `photoreal-dof-depth-test`,
   `photoreal-motion-blur-moving-test`, and
   `photoreal-reflective-wet-floor` web and Bevy screenshots, runtime feature
-  reports, metrics, region comparisons, local effect-variation assertions, and contact sheet under
-  `tools/verify/artifacts/rendering-photoreal/`.
+  reports, metrics, region comparisons, AO monotonicity, aligned motion traces,
+  exterior-trail asymmetry, local effect-variation assertions, and a contact
+  sheet under `tools/verify/artifacts/rendering-photoreal/`.
 - `tn runtime set-rendering`, MCP registry metadata, and editor inspector rows
   can mutate those portable renderer feature fields without hand-editing
   generated bundles.

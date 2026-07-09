@@ -454,6 +454,46 @@
       ]
     },
     {
+      "canonicalId": "photoreal-ao-sweep-low",
+      "owner": "ir-contract",
+      "sourceExample": "photoreal-ao-corner-test",
+      "regenerateCommand": "pnpm verify:rendering-photoreal",
+      "canonicalArtifactGate": "rendering-photoreal",
+      "ownerDocs": "docs/PRDs/done/feature-parity-polishing/photoreal-parity-corrections.md",
+      "aggregateGate": "verify:rendering-photoreal",
+      "bundlePath": "packages/ir/fixtures/conformance/photoreal-ao-sweep-low/game.bundle",
+      "promotedCapabilities": [
+        "rendering:ambient-occlusion.screen-space",
+        "rendering:camera.perspective",
+        "rendering:mesh.primitive.box"
+      ],
+      "reportArtifacts": [
+        "tools/verify/artifacts/rendering-photoreal/verification-report.json",
+        "tools/verify/artifacts/rendering-photoreal/reports/photoreal-ao-sweep-low.web.report.json",
+        "tools/verify/artifacts/rendering-photoreal/reports/photoreal-ao-sweep-low.bevy.report.json"
+      ]
+    },
+    {
+      "canonicalId": "photoreal-ao-sweep-high",
+      "owner": "ir-contract",
+      "sourceExample": "photoreal-ao-corner-test",
+      "regenerateCommand": "pnpm verify:rendering-photoreal",
+      "canonicalArtifactGate": "rendering-photoreal",
+      "ownerDocs": "docs/PRDs/done/feature-parity-polishing/photoreal-parity-corrections.md",
+      "aggregateGate": "verify:rendering-photoreal",
+      "bundlePath": "packages/ir/fixtures/conformance/photoreal-ao-sweep-high/game.bundle",
+      "promotedCapabilities": [
+        "rendering:ambient-occlusion.screen-space",
+        "rendering:camera.perspective",
+        "rendering:mesh.primitive.box"
+      ],
+      "reportArtifacts": [
+        "tools/verify/artifacts/rendering-photoreal/verification-report.json",
+        "tools/verify/artifacts/rendering-photoreal/reports/photoreal-ao-sweep-high.web.report.json",
+        "tools/verify/artifacts/rendering-photoreal/reports/photoreal-ao-sweep-high.bevy.report.json"
+      ]
+    },
+    {
       "canonicalId": "photoreal-lighting-units-probe",
       "owner": "ir-contract",
       "sourceExample": "photoreal-lighting-units-probe",

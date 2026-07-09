@@ -77,7 +77,7 @@ Focused capability gates include `pnpm verify:agent-io`, `pnpm verify:session-co
 `pnpm verify:scripting-helpers-lifecycle`, `pnpm verify:particle-commands`,
 `pnpm verify:efficient-scale`, `pnpm verify:gameplay-parity`, and
 `pnpm verify:parity:smoke`.
-Photoreal rendering proof starts with `pnpm verify:rendering-photoreal`, which now captures lighting, AO, bloom/emissive, depth-of-field, motion-blur, and wet-floor SSR web+Bevy fixture evidence.
+Photoreal rendering proof starts with `pnpm verify:rendering-photoreal`, which captures lighting, monotonic AO sweeps, bloom spill, Bokeh depth-of-field, motion trails, and wet-floor SSR web+Bevy region evidence.
 
 ## Artifact Policy
 

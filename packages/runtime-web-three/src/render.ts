@@ -39,8 +39,10 @@ import { renderUi, type IRenderedUi, type IRenderedUiNode } from "./ui/renderUi.
 import { createWebAudioElementSink, createWebAudioRuntime } from "./audio.js";
 import { createWebOverlayHost, type IWebOverlayHost } from "./overlay/host.js";
 import { createFrameTimingTrace, summarizeFrameTimings, type IFrameTimingSummary } from "./performanceMetrics.js";
+import { colorToThree } from "./worldMapping/colors.js";
 
 export interface IRenderResult {
+  captureTransformTrace?: ICaptureTransformTrace;
   canvas: HTMLCanvasElement;
   debugColliderCount: number;
   diagnostics: IRuntimeDiagnostic[];
@@ -96,8 +98,40 @@ export interface IRenderOptions {
   bookmarkId?: string;
   captureDrawingBuffer?: boolean;
   captureFrames?: number;
+  captureTraceEntityId?: string;
   debugColliders?: boolean;
+  enableEmissiveProxyLights?: boolean;
   systemModuleLoader?: (source: string, manifest: IWebBundle["manifest"]) => Promise<ISystemModule>;
+}
+
+export interface ICaptureTransformTraceSample {
+  /** Native-only engine history when the selected render path provides it. */
+  enginePreviousWorldPosition?: [number, number, number] | null;
+  elapsedSeconds: number;
+  frame: number;
+  /** Prior rendered sample recorded by the deterministic capture harness. */
+  previousWorldPosition: [number, number, number];
+  sourcePosition: [number, number, number];
+  worldDelta: [number, number, number];
+  worldDeltaMagnitude: number;
+  worldPosition: [number, number, number];
+}
+
+export interface ICaptureTransformTrace {
+  captureRequest: {
+    assetsReady: boolean;
+    issuedHostFrame: number;
+    requestedFrame: number;
+    runtimeFrame: number;
+  };
+  entityId: string;
+  historySource: "capture-harness-prior-rendered-sample";
+  fixtureId?: string;
+  fixedDeltaSeconds: number;
+  runtime: "web" | "bevy";
+  samples: ICaptureTransformTraceSample[];
+  schema: "threenative.capture-transform-trace";
+  version: "0.1.0";
 }
 
 export interface IWebRuntimeDiagnostics {
@@ -163,7 +197,9 @@ export interface IWebRenderedEntityDiagnostics {
 export interface IWebBloomSettings {
   enabled: boolean;
   intensity: number;
+  radius: number;
   threshold: number;
+  thresholdSoftness: number;
 }
 
 export interface IWebAmbientOcclusionSettings {
@@ -194,10 +230,21 @@ export interface IWebScreenSpaceReflectionsSettings {
   roughnessLimit: number;
 }
 
+const WEB_BLOOM_RADIUS = 0.5;
+const WEB_BLOOM_THRESHOLD_SOFTNESS = 0.2;
+const WEB_AMBIENT_OCCLUSION_INTENSITY_SCALE = 0.45;
+const WEB_EMISSIVE_PROXY_INTENSITY_SCALE = 0.5;
+
 interface IRenderPipeline {
   dispose(): void;
   render(delta?: number): void;
   setSize(width: number, height: number): void;
+}
+
+export interface IWebEmissiveProxyLightController {
+  dispose(): void;
+  readonly lights: readonly THREE.PointLight[];
+  sync(): void;
 }
 
 export interface IWebRenderLifecycle {
@@ -262,7 +309,15 @@ export async function renderLoadedBundle(bundle: IWebBundle, container: HTMLElem
   applyRendererColorManagement(renderer, bundle.environmentScene?.atmosphere?.colorManagement, renderLook.colorGrading);
   applyRendererShadowSettings(renderer, bundle.runtimeConfig, mapped.scene);
   applyRenderLookSceneDefaults(mapped.scene, renderLook);
-  const pipeline = createRenderPipeline(renderer, mapped, bundle.world, bundle.runtimeConfig, bundle.assets, bundle.materials);
+  const pipeline = createRenderPipeline(
+    renderer,
+    mapped,
+    bundle.world,
+    bundle.runtimeConfig,
+    bundle.assets,
+    bundle.materials,
+    options.enableEmissiveProxyLights ?? true,
+  );
   const colliderDebugOverlay = options.debugColliders === true ? createColliderDebugOverlay(mapped, bundle.world) : undefined;
   const canvas = renderer.domElement;
   const ui = bundle.ui === undefined ? undefined : renderUi(bundle.ui, bundle.world);
@@ -295,6 +350,9 @@ export async function renderLoadedBundle(bundle: IWebBundle, container: HTMLElem
   const detachInputListeners = attachInputListeners(window, input);
   resizeRenderer(renderer, pipeline, mapped, container);
   const captureFrames = Math.max(1, Math.floor(options.captureFrames ?? 1));
+  const captureTransformTrace = options.captureTraceEntityId === undefined
+    ? undefined
+    : createWebCaptureTransformTrace(options.captureTraceEntityId, captureFrames, bundle.runtimeConfig?.time.fixedDelta ?? 1 / 60);
   for (let frame = 0; frame < captureFrames; frame += 1) {
     if (bundle.systems !== undefined) {
       await runGameFrame({
@@ -321,6 +379,9 @@ export async function renderLoadedBundle(bundle: IWebBundle, container: HTMLElem
     }
     mapped.reconcile?.(bundle.world);
     advanceAnimationPlayback(mapped, 1 / 60);
+    if (captureTransformTrace !== undefined) {
+      recordWebCaptureTransformSample(captureTransformTrace, bundle, mapped, loopState.frame, loopState.elapsed);
+    }
     uiOverlay?.update();
     colliderDebugOverlay?.update();
     pipeline.render(1 / 60);
@@ -391,6 +452,7 @@ export async function renderLoadedBundle(bundle: IWebBundle, container: HTMLElem
 
   return {
     canvas,
+    ...(captureTransformTrace === undefined ? {} : { captureTransformTrace }),
     diagnostics: mapped.diagnostics,
     dispose() {
       colliderDebugOverlay?.dispose();
@@ -452,6 +514,70 @@ export async function renderLoadedBundle(bundle: IWebBundle, container: HTMLElem
       return cloneJsonValue(findRenderedUiNode(ui.root, id)) as IRenderedUiNode | undefined;
     },
   };
+}
+
+export function createWebCaptureTransformTrace(entityId: string, requestedFrame: number, fixedDeltaSeconds: number): ICaptureTransformTrace {
+  return {
+    captureRequest: {
+      assetsReady: true,
+      issuedHostFrame: requestedFrame,
+      requestedFrame,
+      runtimeFrame: requestedFrame,
+    },
+    entityId,
+    historySource: "capture-harness-prior-rendered-sample",
+    fixedDeltaSeconds,
+    runtime: "web",
+    samples: [],
+    schema: "threenative.capture-transform-trace",
+    version: "0.1.0",
+  };
+}
+
+export function appendCaptureTransformSample(
+  trace: ICaptureTransformTrace,
+  sample: Omit<ICaptureTransformTraceSample, "worldDelta" | "worldDeltaMagnitude">,
+): void {
+  const worldDelta: [number, number, number] = [
+    sample.worldPosition[0] - sample.previousWorldPosition[0],
+    sample.worldPosition[1] - sample.previousWorldPosition[1],
+    sample.worldPosition[2] - sample.previousWorldPosition[2],
+  ];
+  trace.samples.push({
+    ...sample,
+    worldDelta,
+    worldDeltaMagnitude: Math.hypot(...worldDelta),
+  });
+  if (trace.samples.length > 3) {
+    trace.samples.splice(0, trace.samples.length - 3);
+  }
+}
+
+function recordWebCaptureTransformSample(
+  trace: ICaptureTransformTrace,
+  bundle: IWebBundle,
+  mapped: IThreeWorld,
+  frame: number,
+  elapsedSeconds: number,
+): void {
+  const object = mapped.objectsById.get(trace.entityId);
+  const entity = bundle.world.entities.find((candidate) => candidate.id === trace.entityId);
+  const source = entity?.components.Transform?.position;
+  if (object === undefined || source === undefined) {
+    return;
+  }
+  mapped.scene.updateMatrixWorld(true);
+  const current = new THREE.Vector3();
+  object.getWorldPosition(current);
+  const worldPosition = vectorToTuple(current);
+  const previousWorldPosition = trace.samples.at(-1)?.worldPosition ?? worldPosition;
+  appendCaptureTransformSample(trace, {
+    elapsedSeconds,
+    frame,
+    previousWorldPosition,
+    sourcePosition: [...source],
+    worldPosition,
+  });
 }
 
 export function collectWebRuntimeProbeObservations(bundle: IWebBundle): IWebRuntimeProbeObservations {
@@ -1029,7 +1155,9 @@ export function webBloomSettings(config?: IRuntimeConfigIr): IWebBloomSettings {
   return {
     enabled: bloom?.enabled ?? renderLook.bloom?.enabled ?? false,
     intensity: bloom?.intensity ?? renderLook.bloom?.intensity ?? 0.15,
+    radius: WEB_BLOOM_RADIUS,
     threshold: bloom?.threshold ?? renderLook.bloom?.threshold ?? 0,
+    thresholdSoftness: WEB_BLOOM_THRESHOLD_SOFTNESS,
   };
 }
 
@@ -1080,11 +1208,14 @@ function webColorGradingSettings(config?: IRuntimeConfigIr): NonNullable<NonNull
   return config?.renderer?.colorGrading ?? applyWebRenderLookProfile(config).colorGrading;
 }
 
-function needsColorGradingPass(colorGrading: NonNullable<NonNullable<IRuntimeConfigIr["renderer"]>["colorGrading"]> | undefined): boolean {
+export function needsColorManagedOutputPass(colorGrading: NonNullable<NonNullable<IRuntimeConfigIr["renderer"]>["colorGrading"]> | undefined): boolean {
   if (colorGrading === undefined) {
     return false;
   }
-  return (colorGrading.contrast ?? 0) !== 0 || (colorGrading.saturation ?? 1) !== 1;
+  return colorGrading.toneMapping === "aces"
+    || (colorGrading.exposure ?? 1) !== 1
+    || (colorGrading.contrast ?? 0) !== 0
+    || (colorGrading.saturation ?? 1) !== 1;
 }
 
 export interface IRenderPassRecord {
@@ -1220,6 +1351,7 @@ function createRenderPipeline(
   config?: IRuntimeConfigIr,
   assets?: IWebBundle["assets"],
   materials?: IMaterialsIr,
+  enableEmissiveProxyLights = true,
 ): IRenderPipeline {
   const renderTargets = assets === undefined ? undefined : createRenderTargetRegistry(assets, renderer);
   if (renderTargets !== undefined) {
@@ -1227,17 +1359,26 @@ function createRenderPipeline(
     bindRenderTargetTextures(mapped, renderTargets, materials?.materials ?? []);
   }
   const bloom = webBloomSettings(config);
+  const emissiveProxyLights = createEmissiveProxyLightController(
+    mapped,
+    materials?.materials ?? [],
+    bloom.enabled && enableEmissiveProxyLights,
+  );
   const ambientOcclusion = webAmbientOcclusionSettings(config);
   const depthOfField = webDepthOfFieldSettings(config);
   const motionBlur = webMotionBlurSettings(config);
   const screenSpaceReflections = webScreenSpaceReflectionsSettings(config);
   const colorGrading = webColorGradingSettings(config);
   const backbufferViews = mapped.cameraViews.filter((view) => view.targetKind === "backbuffer");
-  const useComposer = backbufferViews.length <= 1 && (bloom.enabled || ambientOcclusion.enabled || depthOfField.enabled || motionBlur.enabled || screenSpaceReflections.enabled || needsColorGradingPass(colorGrading));
+  const useComposer = backbufferViews.length <= 1 && (bloom.enabled || ambientOcclusion.enabled || depthOfField.enabled || motionBlur.enabled || screenSpaceReflections.enabled || needsColorManagedOutputPass(colorGrading));
   if (!useComposer) {
     return {
-      dispose: () => disposeRenderTargets(renderTargets),
+      dispose: () => {
+        emissiveProxyLights.dispose();
+        disposeRenderTargets(renderTargets);
+      },
       render: (delta = 0) => {
+        emissiveProxyLights.sync();
         renderCameraViews(renderer, mapped, world, delta, renderTargets);
       },
       setSize: () => undefined,
@@ -1257,12 +1398,13 @@ function createRenderPipeline(
     composer.addPass(createMotionBlurPass(motionBlur));
   }
   if (bloom.enabled) {
-    composer.addPass(new UnrealBloomPass(new THREE.Vector2(1, 1), webBloomPassStrength(bloom.intensity), 0, bloom.threshold));
+    composer.addPass(createBloomPass(bloom));
   }
   composer.addPass(colorManagedOutputPass(renderer, colorGrading));
   const composerClear = backbufferViews[0]?.clear;
   return {
     dispose: () => {
+      emissiveProxyLights.dispose();
       for (const pass of composer.passes) {
         pass.dispose?.();
       }
@@ -1272,6 +1414,7 @@ function createRenderPipeline(
     // The composer path bypasses renderCameraViews, so camera helpers
     // (follow/orbit/view-model/shake) and camera clear must still advance here.
     render: (delta = 0) => {
+      emissiveProxyLights.sync();
       updateCameraHelpers(world, mapped.objectsById, delta);
       const previousBackground = mapped.scene.background;
       if (composerClear?.mode === "color") {
@@ -1285,6 +1428,79 @@ function createRenderPipeline(
     },
     setSize: (width, height) => composer.setSize(width, height),
   };
+}
+
+export function createEmissiveProxyLightController(
+  mapped: IThreeWorld,
+  materials: readonly IMaterialsIr["materials"][number][],
+  enabled: boolean,
+): IWebEmissiveProxyLightController {
+  const materialsById = new Map(materials.map((material) => [material.id, material]));
+  const lightsByObject = new Map<THREE.Object3D, THREE.PointLight>();
+
+  const eligibleMaterial = (object: THREE.Object3D) => {
+    const materialId = object.userData.threeNativeMaterialId as string | undefined;
+    const material = materialId === undefined ? undefined : materialsById.get(materialId);
+    if (material?.emissiveBloom?.enabled !== true || material.emissive === undefined) {
+      return undefined;
+    }
+    const contribution = colorLuminance(material.emissive)
+      * (material.emissiveIntensity ?? 1)
+      * material.emissiveBloom.intensity;
+    return contribution >= material.emissiveBloom.threshold ? { contribution, material } : undefined;
+  };
+
+  const sync = () => {
+    const activeObjects = new Set(mapped.objectsById.values());
+    for (const [object, light] of lightsByObject) {
+      if (!activeObjects.has(object) || eligibleMaterial(object) === undefined) {
+        light.removeFromParent();
+        lightsByObject.delete(object);
+      }
+    }
+    if (!enabled) {
+      return;
+    }
+    for (const [entityId, object] of mapped.objectsById) {
+      if (lightsByObject.has(object)) {
+        continue;
+      }
+      const eligible = eligibleMaterial(object);
+      if (eligible === undefined) {
+        continue;
+      }
+      const light = new THREE.PointLight(
+        colorToThree(eligible.material.emissive),
+        Math.min(0.5, eligible.contribution * WEB_EMISSIVE_PROXY_INTENSITY_SCALE),
+        4,
+        2,
+      );
+      light.castShadow = false;
+      light.name = `ThreeNativeEmissiveProxy:${entityId}`;
+      light.userData.threeNativeEmissiveProxy = true;
+      object.add(light);
+      lightsByObject.set(object, light);
+    }
+  };
+
+  sync();
+  return {
+    dispose: () => {
+      for (const light of lightsByObject.values()) {
+        light.removeFromParent();
+      }
+      lightsByObject.clear();
+    },
+    get lights() {
+      return [...lightsByObject.values()];
+    },
+    sync,
+  };
+}
+
+function colorLuminance(color: NonNullable<IMaterialsIr["materials"][number]["emissive"]>): number {
+  const value = colorToThree(color);
+  return value.r * 0.2126 + value.g * 0.7152 + value.b * 0.0722;
 }
 
 function disposeRenderTargets(registry: IRenderTargetRegistry | undefined): void {
@@ -1404,7 +1620,7 @@ function webScreenSpaceReflectionOpacity(
   // roughnessLimit selects eligible surfaces; it is not a reflection-strength
   // multiplier. The planar fallback has no material G-buffer, so quality owns
   // the bounded composite strength while the limit remains reportable intent.
-  return quality === "high" ? 0.85 : quality === "low" ? 0.35 : 0.6;
+  return quality === "high" ? 1.1 : quality === "low" ? 0.4 : 0.7;
 }
 
 function createAmbientOcclusionPass(scene: THREE.Scene, camera: THREE.Camera, settings: IWebAmbientOcclusionSettings): GTAOPass {
@@ -1421,8 +1637,23 @@ function createAmbientOcclusionPass(scene: THREE.Scene, camera: THREE.Camera, se
   return pass;
 }
 
-function webAmbientOcclusionStrength(intensity: number): number {
-  return Math.max(0, Math.min(0.05, intensity * 0.008));
+export function webAmbientOcclusionStrength(intensity: number): number {
+  return Math.max(0, Math.min(1, intensity * WEB_AMBIENT_OCCLUSION_INTENSITY_SCALE));
+}
+
+export function createBloomPass(settings: IWebBloomSettings): UnrealBloomPass {
+  const pass = new UnrealBloomPass(
+    new THREE.Vector2(1, 1),
+    webBloomPassStrength(settings.intensity),
+    settings.radius,
+    settings.threshold,
+  );
+  const highPassUniforms = pass.highPassUniforms as Record<string, THREE.IUniform>;
+  const smoothWidth = highPassUniforms.smoothWidth;
+  if (smoothWidth !== undefined) {
+    smoothWidth.value = settings.thresholdSoftness;
+  }
+  return pass;
 }
 
 class TemporalMotionBlurPass extends Pass {

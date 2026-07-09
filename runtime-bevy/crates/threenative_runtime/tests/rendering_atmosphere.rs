@@ -179,8 +179,8 @@ fn rendering_should_map_atmosphere_profile_to_bevy_observation() {
     assert!((camera_color.1.global.post_saturation - 1.0).abs() < 0.001);
     let exposure = camera_color.2.exposure();
     assert!(
-        (exposure - 0.945).abs() < 0.001,
-        "expected calibrated atmosphere exposure 0.945, got {exposure}"
+        (exposure - 0.875).abs() < 0.001,
+        "expected calibrated atmosphere exposure 0.875, got {exposure}"
     );
     let fog_color = camera_color.3.color.to_srgba();
     assert!((fog_color.red - 0x9e as f32 / 255.0).abs() < 0.01);

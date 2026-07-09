@@ -6,7 +6,7 @@ import { RENDER_LOOK_PROFILE_PRESETS, type IRuntimeConfigIr } from "@threenative
 
 import type { IWebBundle } from "./loadBundle.js";
 import { mapWorld } from "./mapWorld.js";
-import { applyRendererColorManagement, applyRendererShadowSettings, applyRenderLookSceneDefaults, collectWebRuntimeDiagnostics, createRenderedParticleObjects, createWebRenderLifecycle, disposeThreeWorld, newAudioEvents, renderCameraViews, webAmbientOcclusionSettings, webBloomSettings, webDepthOfFieldSettings, webMotionBlurSettings, webRendererParameters, webScreenSpaceReflectionsSettings } from "./render.js";
+import { appendCaptureTransformSample, applyRendererColorManagement, applyRendererShadowSettings, applyRenderLookSceneDefaults, collectWebRuntimeDiagnostics, createBloomPass, createEmissiveProxyLightController, createRenderedParticleObjects, createWebCaptureTransformTrace, createWebRenderLifecycle, disposeThreeWorld, needsColorManagedOutputPass, newAudioEvents, renderCameraViews, webAmbientOcclusionSettings, webAmbientOcclusionStrength, webBloomSettings, webDepthOfFieldSettings, webMotionBlurSettings, webRendererParameters, webScreenSpaceReflectionsSettings } from "./render.js";
 
 function runtimeConfig(
   antialias: NonNullable<IRuntimeConfigIr["renderer"]>["antialias"],
@@ -20,6 +20,25 @@ function runtimeConfig(
     window: { height: 720, width: 1280 },
   };
 }
+
+test("should retain a three-frame capture transform trace with rendered deltas", () => {
+  const trace = createWebCaptureTransformTrace("motion.marker", 120, 1 / 60);
+  for (const frame of [117, 118, 119, 120]) {
+    const previousX = Math.sin(((frame - 1) / 60) * Math.PI) * 1.35;
+    const x = Math.sin((frame / 60) * Math.PI) * 1.35;
+    appendCaptureTransformSample(trace, {
+      elapsedSeconds: frame / 60,
+      frame,
+      previousWorldPosition: [previousX, 1.22, -1.92],
+      sourcePosition: [x, 1.22, -1.92],
+      worldPosition: [x, 1.22, -1.92],
+    });
+  }
+
+  assert.deepEqual(trace.samples.map((sample) => sample.frame), [118, 119, 120]);
+  assert.ok((trace.samples[2]?.worldDelta[0] ?? 0) > 0.07);
+  assert.ok((trace.samples[2]?.worldDeltaMagnitude ?? 0) > 0.07);
+});
 
 test("should disable tone mapping by default to match Bevy without atmosphere color management", () => {
   const renderer = mockRenderer();
@@ -60,6 +79,14 @@ test("should let runtime color grading drive renderer tone mapping and exposure"
   );
   assert.equal(renderer.toneMapping, THREE.ACESFilmicToneMapping);
   assert.equal(renderer.toneMappingExposure, 1.2);
+});
+
+test("should use the Bevy-fitted output pass for ACES and exposure-only clear colors", () => {
+  assert.equal(needsColorManagedOutputPass(undefined), false);
+  assert.equal(needsColorManagedOutputPass({ toneMapping: "none" }), false);
+  assert.equal(needsColorManagedOutputPass({ exposure: 1, toneMapping: "none" }), false);
+  assert.equal(needsColorManagedOutputPass({ exposure: 1, toneMapping: "aces" }), true);
+  assert.equal(needsColorManagedOutputPass({ exposure: 1.1, toneMapping: "none" }), true);
 });
 
 function mockRenderer(): THREE.WebGLRenderer {
@@ -232,13 +259,84 @@ test("should map runtime bloom settings to web post-processing settings", () => 
   assert.deepEqual(webBloomSettings(runtimeConfig("msaa4")), {
     enabled: false,
     intensity: 0.15,
+    radius: 0.5,
     threshold: 0,
+    thresholdSoftness: 0.2,
   });
   assert.deepEqual(webBloomSettings(runtimeConfig("msaa4", { bloom: { enabled: true, intensity: 0.35, threshold: 0.8 } })), {
     enabled: true,
     intensity: 0.35,
+    radius: 0.5,
     threshold: 0.8,
+    thresholdSoftness: 0.2,
   });
+});
+
+test("should apply calibrated bloom radius and soft threshold to the bloom pass", () => {
+  const settings = webBloomSettings(runtimeConfig("msaa4", {
+    bloom: { enabled: true, intensity: 0.85, threshold: 0.45 },
+  }));
+  const pass = createBloomPass(settings);
+  const highPassUniforms = pass.highPassUniforms as Record<string, THREE.IUniform>;
+
+  assert.equal(pass.radius, 0.5);
+  assert.equal(pass.threshold, 0.45);
+  assert.equal(highPassUniforms.smoothWidth?.value, 0.2);
+  pass.dispose();
+
+  const customizedPass = createBloomPass({ ...settings, radius: 0.7, thresholdSoftness: 0.3 });
+  const customizedUniforms = customizedPass.highPassUniforms as Record<string, THREE.IUniform>;
+  assert.equal(customizedPass.radius, 0.7);
+  assert.equal(customizedUniforms.smoothWidth?.value, 0.3);
+  customizedPass.dispose();
+});
+
+test("should derive and clean up weak proxy lights only for strong emissive bloom materials", () => {
+  const bundle: IWebBundle = {
+    assets: {
+      schema: "threenative.assets",
+      version: "0.1.0",
+      assets: [{ id: "mesh.bar", kind: "mesh", format: "generated", primitive: "box", size: [1, 1, 1] }],
+    },
+    manifest: { schema: "threenative.bundle", version: "0.1.0", name: "emissive-proxies", requiredCapabilities: {}, entry: { world: "world.ir.json" }, files: { assets: "assets.manifest.json", materials: "materials.ir.json", targetProfile: "target.profile.json" } },
+    materials: {
+      schema: "threenative.materials",
+      version: "0.1.0",
+      materials: [
+        { id: "mat.strong", kind: "standard", color: "#05070a", emissive: "#33ddff", emissiveBloom: { enabled: true, intensity: 1.2, threshold: 0.5 }, emissiveIntensity: 3.5 },
+        { id: "mat.weak", kind: "standard", color: "#050505", emissive: "#111111", emissiveBloom: { enabled: true, intensity: 0.1, threshold: 1 }, emissiveIntensity: 1 },
+      ],
+    },
+    targetProfile: { schema: "threenative.target-profile", version: "0.1.0", targets: ["web"] },
+    world: {
+      schema: "threenative.world",
+      version: "0.1.0",
+      entities: [
+        { id: "bar.strong", components: { MeshRenderer: { material: "mat.strong", mesh: "mesh.bar" } } },
+        { id: "bar.weak", components: { MeshRenderer: { material: "mat.weak", mesh: "mesh.bar" } } },
+      ],
+    },
+  };
+  const mapped = mapWorld(bundle);
+  const disabled = createEmissiveProxyLightController(mapped, bundle.materials.materials, false);
+  assert.equal(disabled.lights.length, 0);
+  disabled.dispose();
+
+  const controller = createEmissiveProxyLightController(mapped, bundle.materials.materials, true);
+  assert.equal(controller.lights.length, 1);
+  const light = controller.lights[0];
+  assert.ok(light instanceof THREE.PointLight);
+  assert.equal(light?.parent, mapped.objectsById.get("bar.strong"));
+  assert.equal(light?.distance, 4);
+  assert.equal(light?.decay, 2);
+  assert.equal(light?.castShadow, false);
+  assert.ok((light?.intensity ?? 1) > 0 && (light?.intensity ?? 1) <= 0.5);
+  assert.equal(mapped.objectsById.get("bar.weak")?.children.length, 0);
+
+  controller.dispose();
+  assert.equal(controller.lights.length, 0);
+  assert.equal(light?.parent, null);
+  disposeThreeWorld(mapped);
 });
 
 test("should map portable ambient occlusion settings to web SSAO settings", () => {
@@ -262,11 +360,22 @@ test("should map portable ambient occlusion settings to web SSAO settings", () =
   });
 });
 
+test("should map portable ambient occlusion intensity to a visible monotonic GTAO blend", () => {
+  assert.equal(webAmbientOcclusionStrength(-1), 0);
+  assert.equal(webAmbientOcclusionStrength(0), 0);
+  assert.equal(webAmbientOcclusionStrength(0.5), 0.225);
+  assert.equal(webAmbientOcclusionStrength(1), 0.45);
+  assert.equal(webAmbientOcclusionStrength(1.5), 0.675);
+  assert.equal(webAmbientOcclusionStrength(3), 1);
+});
+
 test("should preserve parity render look without artistic passes", () => {
   assert.deepEqual(webBloomSettings(runtimeConfig("msaa4", { renderLook: { version: 1, profile: "parity" } })), {
     enabled: false,
     intensity: 0.15,
+    radius: 0.5,
     threshold: 0,
+    thresholdSoftness: 0.2,
   });
   const renderer = mockRenderer();
   applyRendererColorManagement(renderer, undefined);
@@ -299,7 +408,9 @@ test("should map balanced render look to supported web renderer settings", () =>
   assert.deepEqual(webBloomSettings(config), {
     enabled: true,
     intensity: 0.4,
+    radius: 0.5,
     threshold: 0.85,
+    thresholdSoftness: 0.2,
   });
   assert.equal(renderer.toneMapping, THREE.ACESFilmicToneMapping);
   assert.equal(renderer.toneMappingExposure, 1.1);
@@ -325,7 +436,9 @@ test("should map balanced render look defaults from the shared IR preset", () =>
   assert.deepEqual(webBloomSettings(config), {
     enabled: true,
     intensity: preset.bloomIntensity,
+    radius: 0.5,
     threshold: 0.85,
+    thresholdSoftness: 0.2,
   });
   assert.equal(renderer.toneMapping, THREE.ACESFilmicToneMapping);
   assert.equal(renderer.toneMappingExposure, preset.exposure);
@@ -351,7 +464,9 @@ test("should map cinematic render look defaults from the shared IR preset", () =
   assert.deepEqual(webBloomSettings(config), {
     enabled: true,
     intensity: preset.bloomIntensity,
+    radius: 0.5,
     threshold: 0.85,
+    thresholdSoftness: 0.2,
   });
   assert.equal(renderer.toneMapping, THREE.ACESFilmicToneMapping);
   assert.equal(renderer.toneMappingExposure, preset.exposure);
@@ -412,13 +527,13 @@ test("should map runtime motion blur settings to web post-processing settings", 
 test("should map runtime screen-space reflection settings to web post-processing settings", () => {
   assert.deepEqual(webScreenSpaceReflectionsSettings(runtimeConfig("msaa4")), {
     enabled: false,
-    opacity: 0.6,
+    opacity: 0.7,
     quality: "medium",
     roughnessLimit: 0.45,
   });
   assert.deepEqual(webScreenSpaceReflectionsSettings(runtimeConfig("msaa4", { screenSpaceReflections: { enabled: true, quality: "high", roughnessLimit: 0.5 } })), {
     enabled: true,
-    opacity: 0.85,
+    opacity: 1.1,
     quality: "high",
     roughnessLimit: 0.5,
   });

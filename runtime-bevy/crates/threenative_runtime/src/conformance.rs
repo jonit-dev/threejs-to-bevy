@@ -1330,7 +1330,7 @@ fn runtime_renderer_feature_reports(
                 "renderer.motionBlur",
                 feature.enabled,
                 "shutter",
-                "motion-vectors",
+                "temporal-accumulation",
             )
         }),
         renderer

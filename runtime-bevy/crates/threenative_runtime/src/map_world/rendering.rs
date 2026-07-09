@@ -653,6 +653,7 @@ fn add_material(
     assets_by_id: &HashMap<&str, &AssetIr>,
     asset_server: Option<&AssetServer>,
     render_target_registry: &NativeRenderTargetRegistry,
+    suppress_implicit_smooth_dielectric_reflectance: bool,
 ) -> Handle<StandardMaterial> {
     let emissive_display_base = uses_emissive_display_base(material);
     let base_texture_asset = material
@@ -730,7 +731,10 @@ fn add_material(
             render_target_registry,
         ),
         perceptual_roughness: material.roughness.unwrap_or(1.0),
-        reflectance: reflectance_for_material(material),
+        reflectance: reflectance_for_material(
+            material,
+            suppress_implicit_smooth_dielectric_reflectance,
+        ),
         specular_transmission: material.transmission.unwrap_or(0.0),
         specular_transmission_texture: texture_handle(
             material.transmission_texture.as_deref(),
@@ -819,14 +823,23 @@ fn emissive_color(material: &MaterialIr) -> LinearRgba {
     linear * material.emissive_intensity.unwrap_or(1.0) * THREE_COMPAT_EMISSIVE_INTENSITY_SCALE
 }
 
-fn reflectance_for_material(material: &MaterialIr) -> f32 {
-    if material.emissive.is_some()
-        && material.specular_intensity.is_none()
-        && material.metalness.unwrap_or(0.0) <= 0.1
+fn reflectance_for_material(
+    material: &MaterialIr,
+    suppress_implicit_smooth_dielectric_reflectance: bool,
+) -> f32 {
+    if let Some(specular_intensity) = material.specular_intensity {
+        // Three.js applies specularIntensity linearly to the 4% dielectric F0.
+        // Bevy squares its reflectance parameter when deriving F0.
+        return 0.5 * specular_intensity.sqrt();
+    }
+    if material.metalness.unwrap_or(0.0) <= 0.1
+        && (material.emissive.is_some()
+            || (suppress_implicit_smooth_dielectric_reflectance
+                && material.roughness.unwrap_or(1.0) <= 0.35))
     {
         return 0.0;
     }
-    material.specular_intensity.unwrap_or(0.5)
+    THREE_COMPAT_DEFAULT_IMPLICIT_DIELECTRIC_REFLECTANCE
 }
 
 #[cfg(test)]
@@ -855,8 +868,43 @@ mod material_calibration_tests {
         }))
         .expect("explicit specular material should deserialize");
 
-        assert_eq!(reflectance_for_material(&implicit), 0.0);
-        assert!((reflectance_for_material(&explicit) - 0.7).abs() < f32::EPSILON);
+        assert_eq!(reflectance_for_material(&implicit, false), 0.0);
+        assert!((reflectance_for_material(&explicit, false) - 0.5 * 0.7_f32.sqrt()).abs() < f32::EPSILON);
+    }
+
+    #[test]
+    fn smooth_dielectrics_do_not_gain_bevy_ambient_specular() {
+        let smooth: MaterialIr = serde_json::from_value(serde_json::json!({
+            "id": "wet-floor",
+            "kind": "standard",
+            "color": "#111820",
+            "metalness": 0.0,
+            "roughness": 0.02
+        }))
+        .expect("smooth dielectric material should deserialize");
+        let explicit: MaterialIr = serde_json::from_value(serde_json::json!({
+            "id": "coated-floor",
+            "kind": "standard",
+            "color": "#111820",
+            "metalness": 0.0,
+            "roughness": 0.02,
+            "specularIntensity": 0.65
+        }))
+        .expect("explicit smooth dielectric material should deserialize");
+
+        assert_eq!(reflectance_for_material(&smooth, false), 0.5);
+        assert_eq!(reflectance_for_material(&smooth, true), 0.0);
+        assert!((reflectance_for_material(&explicit, true) - 0.5 * 0.65_f32.sqrt()).abs() < f32::EPSILON);
+    }
+
+    #[test]
+    fn explicit_specular_intensity_matches_three_dielectric_f0() {
+        for intensity in [0.0_f32, 0.1, 0.24, 0.5, 0.7, 1.0] {
+            let bevy_reflectance = 0.5 * intensity.sqrt();
+            let bevy_f0 = 0.16 * bevy_reflectance * bevy_reflectance;
+            let three_f0 = 0.04 * intensity;
+            assert!((bevy_f0 - three_f0).abs() < f32::EPSILON * 2.0);
+        }
     }
 }
 

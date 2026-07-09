@@ -45,7 +45,7 @@ adapters, shared SDK/IR/compiler contract, or an intentional product boundary.
 | ✅ | Cameras and views | No active adapter gap for promoted camera behavior; custom projections remain bounded diagnostics. | Perspective/orthographic cameras, active camera selection, split views, render targets, camera helpers, and screenshot/export workflows. | `tn scene proof-camera`, `tn playtest --follow`, conformance gates |
 | ⚠️ | Lights and shadows | No active adapter gap for bounded low/medium/high shadow profiles or calibrated promoted lights; shared contract remains for probes/environment maps, while spherical/area and baked/mixed lighting remain diagnostic boundaries. | Ambient/directional/point/spot lights, shadows, probes, environment maps, and bounded quality profiles. | `pnpm verify:focused verify:feature-parity-visual-polish`, `pnpm verify:render-look` |
 | ⚠️ | Materials, textures, and shaders | No active adapter gap for promoted specular/material slots covered by the visual-polish evidence; shared import policy remains for advanced PBR/glTF fields, while custom shaders, bindless, storage buffers, and raw render phases are diagnostic boundaries. | PBR fields, texture slots, alpha/emissive/specular controls, portable shader material v1, and advanced shader diagnostics. | `pnpm verify:focused verify:feature-parity-visual-polish`, `pnpm verify:portable-shader-material` |
-| ⚠️ | Rendering and post-processing | No active adapter gap for calibrated lighting/material/dense proof, fitted ACES output, patterned moving-detail motion proof, or the bounded depth-aware SSR subset; the web temporal and Bevy velocity-buffer blur kernels are intent-matched rather than pixel-identical. Shared semantics remain for atmosphere, volumetrics, SSGI, decals, arbitrary custom post, and GPU instance attributes. | Web/Bevy scene rendering, fog/sky/tone, bloom, AO, DOF, motion blur, SSR, anti-aliasing, LOD, instancing, render-look profiles, and advanced renderer boundaries. | `pnpm verify:focused verify:feature-parity-visual-polish`, `pnpm verify:rendering-photoreal` |
+| ⚠️ | Rendering and post-processing | No active adapter gap for calibrated lighting/material/dense proof, fitted ACES output, monotonic AO sweeps, bloom spill, Bokeh DOF highlights, aligned temporal motion trails, or the bounded depth-aware SSR reflection subset. Shared semantics remain for atmosphere, volumetrics, SSGI, decals, arbitrary custom post, and GPU instance attributes. | Web/Bevy scene rendering, fog/sky/tone, bloom, AO, DOF, motion blur, SSR, anti-aliasing, LOD, instancing, render-look profiles, and advanced renderer boundaries. | `pnpm verify:focused verify:feature-parity-visual-polish`, `pnpm verify:rendering-photoreal` |
 | ✅ | Assets, glTF, and scenes | No active adapter gap for promoted asset loading; custom loaders, runtime saving/export, arbitrary file/network access, and shader use of custom glTF attributes are shared boundaries. | Bundle-local assets, glTF dependency handling, asset catalogs, inspection, hot reload, streaming policy, and custom-loader diagnostics. | `tn asset inspect`, `pnpm verify:gltf-fidelity` |
 | ⚠️ | Animation and particles | Promoted playback, masks, morphs, and bounded particles have shared contract plus web/Bevy proof; raw backend graphs, IK/retargeting, and backend handles are product boundaries. | Clip metadata, playback, events, bounded graph data, masks, morph targets, and deterministic lightweight VFX. | `pnpm verify:focused verify:animation-physics-residuals`, conformance fixtures |
 | ⚠️ | Physics and character movement | Deep contact ordering, bounded mesh grounding, and bounded navigation residuals have aggregate web/native evidence; full constraints, vehicles, soft bodies, ragdolls, arbitrary triangle narrow phase, and backend handles remain boundaries. | Fixed-tick physics, primitive bodies/colliders, contacts, queries, character movement, mesh collider policy, joints, and nav diagnostics. | `pnpm verify:focused verify:feature-parity-physics-native`, `pnpm verify:physics-self-verification`, `pnpm verify:character-physics-contacts` |
@@ -268,16 +268,15 @@ web/Bevy evidence exist.
 - [x] `P3` Auto exposure diagnostic boundary until deterministic histogram,
       adaptation-speed, EV-range, capture, and web fallback behavior exist
       (V10-02, V10-03 calibration)
-- [x] `P2` Depth of field runtime-config/report boundary; visual blur
-      calibration, camera ownership rules, mobile fallback, and performance
-      budgets remain deferred
-- [x] `P3` Motion blur and motion vectors diagnostic boundary until shutter,
-      sample count, prepass, animated-mesh motion vectors, web fallback, and
-      video/screenshot proof exist (V10-02, V10-03 calibration)
-- [x] `P3` Screen-space reflections and mirrors diagnostic boundary; Bevy 0.14
-      SSR is deferred-path and platform constrained, so portable promotion must
-      define material/reflection intent and forward/web fallback first (V10-02,
-      V10-03 calibration)
+- [x] `P2` Bounded depth-of-field runtime mapping and foreground/background
+      screenshot calibration; camera ownership rules, mobile fallback, and
+      performance budgets remain deferred
+- [x] `P3` Bounded whole-frame temporal motion blur with aligned frame traces
+      and exterior-trail screenshot proof; animated/deforming-mesh motion
+      vectors, velocity prepasses, and performance budgets remain deferred
+- [x] `P3` Bounded screen-space reflection intent with web/native wet-floor
+      evidence; Bevy 0.14 remains deferred-path and platform constrained, while
+      mirrors, SSGI, and broader material/reflection semantics remain diagnostic
 - [x] `P2` Decals diagnostic boundary; surface-aligned decal quads are the first
       portable candidate, while projected/deferred decals remain unsupported
       until shared renderer semantics exist (V10-02, V10-03 calibration)

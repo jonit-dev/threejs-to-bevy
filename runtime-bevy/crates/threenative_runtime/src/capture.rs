@@ -7,13 +7,17 @@ use std::{
 
 use bevy::{
     app::AppExit,
+    pbr::PreviousGlobalTransform,
     prelude::*,
     render::view::screenshot::ScreenshotManager,
+    transform::TransformSystem,
     ui::IsDefaultUiCamera,
     window::{PrimaryWindow, RequestRedraw},
     winit::{UpdateMode, WinitSettings},
 };
 use image::GenericImageView;
+use serde::Serialize;
+use threenative_components::ThreeNativeId;
 use threenative_loader::{AssetsManifest, load_bundle};
 use threenative_runtime::{
     NativeDeterministicCaptureClock, app_from_bundle,
@@ -21,6 +25,8 @@ use threenative_runtime::{
     environment::apply_environment_bookmark,
     map_world::NativeStylizedMotionTimeOverride,
     stylized_nature::native_compatible_model_scene_path,
+    systems_host::NativeGameLoopState,
+    trace_report::write_pretty_json_report,
 };
 
 const MIN_CAPTURE_FRAME: u32 = 2;
@@ -40,11 +46,64 @@ struct CaptureConfig {
 
 #[derive(Clone)]
 struct CaptureTarget {
+    assets_ready_at_request: Option<bool>,
     output_path: PathBuf,
     request_frame: u32,
     requested_at_frame: Option<u32>,
     retry_count: u32,
     validated: bool,
+}
+
+struct CaptureTransformTraceOptions {
+    entity_id: String,
+    output_path: PathBuf,
+}
+
+#[derive(Resource)]
+struct CaptureTransformTraceState {
+    capture_request: Option<CaptureTransformTraceRequest>,
+    entity_id: String,
+    fixed_delta_seconds: f32,
+    last_world_position: Option<[f32; 3]>,
+    output_path: PathBuf,
+    samples: Vec<CaptureTransformTraceSample>,
+}
+
+#[derive(Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct CaptureTransformTraceRequest {
+    assets_ready: bool,
+    issued_host_frame: u32,
+    requested_frame: u32,
+    runtime_frame: u64,
+}
+
+#[derive(Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct CaptureTransformTraceSample {
+    elapsed_seconds: f32,
+    /// Engine-owned history is absent for the temporal-accumulation path.
+    engine_previous_world_position: Option<[f32; 3]>,
+    frame: u64,
+    /// Prior rendered transform sampled by this deterministic capture harness.
+    previous_world_position: Option<[f32; 3]>,
+    source_position: [f32; 3],
+    world_delta: Option<[f32; 3]>,
+    world_delta_magnitude: Option<f32>,
+    world_position: [f32; 3],
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct CaptureTransformTraceReport<'a> {
+    capture_request: Option<&'a CaptureTransformTraceRequest>,
+    entity_id: &'a str,
+    fixed_delta_seconds: f32,
+    history_source: &'static str,
+    runtime: &'static str,
+    samples: &'a [CaptureTransformTraceSample],
+    schema: &'static str,
+    version: &'static str,
 }
 
 #[derive(Resource)]
@@ -60,10 +119,14 @@ struct ModelAssetsReady(bool);
 struct RequiredModelAssets(Vec<Handle<Scene>>);
 
 fn main() -> ExitCode {
-    let args = env::args().collect::<Vec<_>>();
+    let mut args = env::args().collect::<Vec<_>>();
+    let trace_options = match take_transform_trace_options(&mut args) {
+        Ok(options) => options,
+        Err(code) => return code,
+    };
     if args.len() != 4 && args.len() != 5 && args.len() != 7 {
         eprintln!(
-            "Usage: threenative_capture <bundle-path> <bookmark-id> <output-png> [request-frame] [<output-png-2> <request-frame-2>]"
+            "Usage: threenative_capture <bundle-path> <bookmark-id> <output-png> [request-frame] [<output-png-2> <request-frame-2>] [--transform-trace <entity-id> <output-json>]"
         );
         return ExitCode::from(2);
     }
@@ -82,6 +145,7 @@ fn main() -> ExitCode {
         };
         vec![
             CaptureTarget {
+                assets_ready_at_request: None,
                 output_path: first_output,
                 request_frame: first_frame,
                 requested_at_frame: None,
@@ -89,6 +153,7 @@ fn main() -> ExitCode {
                 validated: false,
             },
             CaptureTarget {
+                assets_ready_at_request: None,
                 output_path: PathBuf::from(&args[5]),
                 request_frame: second_frame,
                 requested_at_frame: None,
@@ -98,6 +163,7 @@ fn main() -> ExitCode {
         ]
     } else {
         vec![CaptureTarget {
+            assets_ready_at_request: None,
             output_path: first_output,
             request_frame: first_frame,
             requested_at_frame: None,
@@ -119,6 +185,10 @@ fn main() -> ExitCode {
             return ExitCode::from(1);
         }
     };
+    let fixed_delta_seconds = bundle
+        .runtime_config
+        .as_ref()
+        .map_or(1.0 / 60.0, |config| config.time.fixed_delta);
     let mut app = match app_from_bundle(bundle_path) {
         Ok(app) => app,
         Err(error) => {
@@ -182,6 +252,20 @@ fn main() -> ExitCode {
             request_screenshot,
         ),
     );
+    if let Some(options) = trace_options {
+        app.insert_resource(CaptureTransformTraceState {
+            capture_request: None,
+            entity_id: options.entity_id,
+            fixed_delta_seconds,
+            last_world_position: None,
+            output_path: options.output_path,
+            samples: Vec::new(),
+        });
+        app.add_systems(
+            PostUpdate,
+            record_capture_transform_trace.after(TransformSystem::TransformPropagate),
+        );
+    }
     app.run();
     let missing = final_output_paths
         .iter()
@@ -194,6 +278,29 @@ fn main() -> ExitCode {
         eprintln!("screenshot(s) were not written: {}", missing.join(", "));
         ExitCode::from(1)
     }
+}
+
+fn take_transform_trace_options(
+    args: &mut Vec<String>,
+) -> Result<Option<CaptureTransformTraceOptions>, ExitCode> {
+    let Some(index) = args.iter().position(|arg| arg == "--transform-trace") else {
+        return Ok(None);
+    };
+    if index + 2 >= args.len() || args[index + 1].starts_with("--") {
+        eprintln!("--transform-trace requires <entity-id> <output-json>");
+        return Err(ExitCode::from(2));
+    }
+    let entity_id = args[index + 1].clone();
+    let output_path = PathBuf::from(&args[index + 2]);
+    args.drain(index..=index + 2);
+    if args.iter().any(|arg| arg == "--transform-trace") {
+        eprintln!("--transform-trace may only be provided once");
+        return Err(ExitCode::from(2));
+    }
+    Ok(Some(CaptureTransformTraceOptions {
+        entity_id,
+        output_path,
+    }))
 }
 
 fn parse_frame(value: Option<&String>, fallback: u32) -> Result<u32, ExitCode> {
@@ -327,6 +434,7 @@ fn request_screenshot(
     windows: Query<Entity, With<PrimaryWindow>>,
     mut screenshots: ResMut<ScreenshotManager>,
     mut exit: EventWriter<AppExit>,
+    trace: Option<Res<CaptureTransformTraceState>>,
 ) {
     *frame += 1;
     if let Ok(window) = windows.get_single() {
@@ -350,6 +458,7 @@ fn request_screenshot(
                     return;
                 }
                 capture.requested_at_frame = Some(*frame);
+                capture.assets_ready_at_request = Some(assets_ready);
             }
 
             if let Some(requested_at) = capture.requested_at_frame {
@@ -369,6 +478,13 @@ fn request_screenshot(
     }
 
     if config.captures.iter().all(|capture| capture.validated) {
+        if let Some(trace) = trace
+            && let Err(error) = write_capture_transform_trace(&trace)
+        {
+            error!("failed to write transform trace: {error}");
+            exit.send(AppExit::error());
+            return;
+        }
         exit.send(AppExit::Success);
     } else if *frame >= config.max_frame {
         let pending = config
@@ -383,6 +499,87 @@ fn request_screenshot(
             config.max_frame
         );
         exit.send(AppExit::error());
+    }
+}
+
+fn write_capture_transform_trace(
+    trace: &CaptureTransformTraceState,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let report = CaptureTransformTraceReport {
+        capture_request: trace.capture_request.as_ref(),
+        entity_id: &trace.entity_id,
+        fixed_delta_seconds: trace.fixed_delta_seconds,
+        history_source: "capture-harness-prior-rendered-sample",
+        runtime: "bevy",
+        samples: &trace.samples,
+        schema: "threenative.capture-transform-trace",
+        version: "0.1.0",
+    };
+    write_pretty_json_report(&trace.output_path, &report)
+}
+
+fn record_capture_transform_trace(
+    config: Res<CaptureConfig>,
+    loop_state: Option<Res<NativeGameLoopState>>,
+    mut trace: ResMut<CaptureTransformTraceState>,
+    transforms: Query<(
+        &ThreeNativeId,
+        &Transform,
+        &GlobalTransform,
+        Option<&PreviousGlobalTransform>,
+    )>,
+) {
+    if trace.capture_request.is_some() {
+        return;
+    }
+    let Some(loop_state) = loop_state else {
+        return;
+    };
+    let Some((_, source, current, previous)) = transforms
+        .iter()
+        .find(|(stable_id, _, _, _)| stable_id.0 == trace.entity_id)
+    else {
+        return;
+    };
+    let world_position = current.translation().to_array();
+    let engine_previous_world_position = previous.map(|value| value.0.translation.to_array());
+    let previous_world_position = trace.last_world_position;
+    let world_delta = previous_world_position.map(|previous| {
+        [
+            world_position[0] - previous[0],
+            world_position[1] - previous[1],
+            world_position[2] - previous[2],
+        ]
+    });
+    let world_delta_magnitude = world_delta
+        .map(|delta| (delta[0] * delta[0] + delta[1] * delta[1] + delta[2] * delta[2]).sqrt());
+    trace.samples.push(CaptureTransformTraceSample {
+        elapsed_seconds: loop_state.elapsed,
+        engine_previous_world_position,
+        frame: loop_state.frame,
+        previous_world_position,
+        source_position: source.translation.to_array(),
+        world_delta,
+        world_delta_magnitude,
+        world_position,
+    });
+    trace.last_world_position = Some(world_position);
+    if trace.samples.len() > 3 {
+        let excess = trace.samples.len() - 3;
+        trace.samples.drain(0..excess);
+    }
+    if trace.capture_request.is_none()
+        && let Some(capture) = config
+            .captures
+            .iter()
+            .find(|capture| capture.requested_at_frame.is_some())
+    {
+        trace.capture_request = Some(CaptureTransformTraceRequest {
+            assets_ready: capture.assets_ready_at_request.unwrap_or(false),
+            issued_host_frame: capture.requested_at_frame.unwrap_or_default(),
+            requested_frame: capture.request_frame,
+            runtime_frame: loop_state.frame,
+        });
     }
 }
 
@@ -410,4 +607,72 @@ fn screenshot_is_valid(path: &Path) -> bool {
         peak_luma = peak_luma.max(luma);
     }
     peak_luma >= MIN_SCREENSHOT_PEAK_LUMA
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn transform_trace_options_are_removed_from_positional_capture_args() {
+        let mut args = vec![
+            "threenative_capture".to_owned(),
+            "bundle".to_owned(),
+            "camera.main".to_owned(),
+            "frame.png".to_owned(),
+            "120".to_owned(),
+            "--transform-trace".to_owned(),
+            "motion.marker".to_owned(),
+            "trace.json".to_owned(),
+        ];
+
+        let trace = take_transform_trace_options(&mut args)
+            .expect("trace option should parse")
+            .expect("trace option should exist");
+
+        assert_eq!(args.len(), 5);
+        assert_eq!(trace.entity_id, "motion.marker");
+        assert_eq!(trace.output_path, PathBuf::from("trace.json"));
+    }
+
+    #[test]
+    fn transform_trace_report_uses_the_durable_camel_case_contract() {
+        let request = CaptureTransformTraceRequest {
+            assets_ready: true,
+            issued_host_frame: 120,
+            requested_frame: 120,
+            runtime_frame: 120,
+        };
+        let samples = vec![CaptureTransformTraceSample {
+            elapsed_seconds: 2.0,
+            engine_previous_world_position: Some([-0.07065, 1.22, -1.92]),
+            frame: 120,
+            previous_world_position: Some([-0.07065, 1.22, -1.92]),
+            source_position: [0.0, 1.22, -1.92],
+            world_delta: Some([0.07065, 0.0, 0.0]),
+            world_delta_magnitude: Some(0.07065),
+            world_position: [0.0, 1.22, -1.92],
+        }];
+        let report = CaptureTransformTraceReport {
+            capture_request: Some(&request),
+            entity_id: "motion.marker",
+            fixed_delta_seconds: 1.0 / 60.0,
+            history_source: "capture-harness-prior-rendered-sample",
+            runtime: "bevy",
+            samples: &samples,
+            schema: "threenative.capture-transform-trace",
+            version: "0.1.0",
+        };
+
+        let value = serde_json::to_value(report).expect("trace should serialize");
+        assert_eq!(value["captureRequest"]["runtimeFrame"], 120);
+        let previous_x = value["samples"][0]["previousWorldPosition"][0]
+            .as_f64()
+            .expect("previous x should be numeric");
+        let magnitude = value["samples"][0]["worldDeltaMagnitude"]
+            .as_f64()
+            .expect("magnitude should be numeric");
+        assert!((previous_x + 0.07065).abs() < 0.00001);
+        assert!((magnitude - 0.07065).abs() < 0.00001);
+    }
 }

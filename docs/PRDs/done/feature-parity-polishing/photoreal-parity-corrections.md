@@ -90,6 +90,20 @@ Secondary: the Bevy back wall is noticeably brighter than web in this fixture.
 5. Add a sample region over the trail area (just behind the block's direction
    of travel) so "no trail" fails the gate.
 
+**Resolution after implementation investigation:** Bevy 0.14's stock
+velocity-buffer motion blur intentionally reconstructs color only inside the
+current object silhouette; even valid motion vectors cannot create the exterior
+trail that defines this fixture's target. Steps 1-3 above were therefore used as
+diagnostic hypotheses, not retained as acceptance requirements. The shipped
+correction replaces the stock native bundle with the same bounded temporal
+accumulation model used by web. The native path intentionally has no
+`MotionVectorPrepass` or engine `PreviousGlobalTransform` dependency. Instead,
+durable capture-harness traces prove aligned rendered transforms at frames
+118-120 and nonzero positive displacement at frame 120, while paired exterior
+trailing/leading regions make the sharp no-history result fail. This explicitly
+supersedes motion-vector sample-count proof for this correction PRD; future
+animated/deforming-mesh velocity blur remains separate renderer work.
+
 ---
 
 ## 3. photoreal-dof-depth-test - tiny foreground-sphere mismatch

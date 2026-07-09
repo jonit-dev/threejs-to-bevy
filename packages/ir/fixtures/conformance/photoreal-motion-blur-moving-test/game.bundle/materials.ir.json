@@ -14,7 +14,8 @@
       "kind": "standard",
       "color": "#202b35",
       "metalness": 0,
-      "roughness": 0.72
+      "roughness": 0.72,
+      "specularIntensity": 0.24
     },
     {
       "id": "mat.lane",

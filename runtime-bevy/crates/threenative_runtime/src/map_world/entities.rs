@@ -158,6 +158,10 @@ fn spawn_entity(
             assets_by_id,
             asset_server.as_ref(),
             render_target_registry,
+            runtime_config
+                .and_then(|config| config.renderer.as_ref())
+                .and_then(|renderer| renderer.screen_space_reflections.as_ref())
+                .is_some_and(|reflections| reflections.enabled),
         );
         material_handles
             .0
@@ -393,7 +397,13 @@ fn spawn_entity(
         if light.kind == "ambient" {
             world.insert_resource(AmbientLight {
                 color: color_to_bevy(&light.color),
-                brightness: light.intensity * THREE_COMPAT_AMBIENT_BRIGHTNESS_PER_INTENSITY,
+                brightness: light.intensity
+                    * THREE_COMPAT_AMBIENT_BRIGHTNESS_PER_INTENSITY
+                    * if camera_atmosphere.is_some_and(|profile| profile.active) {
+                        1.0
+                    } else {
+                        ambient_occlusion_intensity_approximation(runtime_config)
+                    },
             });
         }
     }
@@ -702,7 +712,7 @@ fn insert_camera_depth_of_field(
         focal_distance: depth_of_field.focus_distance,
         max_circle_of_confusion_diameter: native_depth_of_field_max_blur(depth_of_field.max_blur),
         max_depth: f32::INFINITY,
-        mode: DepthOfFieldMode::Gaussian,
+        mode: DepthOfFieldMode::Bokeh,
         ..Default::default()
     });
 }
@@ -728,23 +738,9 @@ fn insert_camera_motion_blur(
     if !motion_blur.enabled {
         return;
     }
-    spawned.insert(MotionBlurBundle {
-        motion_blur: MotionBlur {
-            shutter_angle: motion_blur.shutter_angle,
-            samples: native_motion_blur_samples(motion_blur.shutter_angle),
-        },
-        ..Default::default()
-    });
-}
-
-fn native_motion_blur_samples(shutter_angle: f32) -> u32 {
-    if shutter_angle >= 0.75 {
-        8
-    } else if shutter_angle >= 0.35 {
-        4
-    } else {
-        2
-    }
+    spawned.insert(NativeTemporalMotionBlur::from_shutter_angle(
+        motion_blur.shutter_angle,
+    ));
 }
 
 fn insert_camera_screen_space_reflections(

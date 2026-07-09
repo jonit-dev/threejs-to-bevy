@@ -33,6 +33,7 @@ pub mod input_ui_polish;
 pub mod kinematic_mover;
 pub mod map_world;
 pub mod mesh_bounds;
+pub mod motion_blur_postprocess;
 pub mod navigation;
 pub mod overlay;
 pub mod overlay_host;
@@ -185,6 +186,7 @@ pub fn app_from_bundle_with_options(
         );
     app.add_plugins((
         emissive_postprocess::NativeEmissivePostProcessPlugin,
+        motion_blur_postprocess::NativeTemporalMotionBlurPlugin,
         map_world::NativeEquirectSkyMaterialPlugin,
         map_world::NativePortableShaderMaterialPlugin,
     ));
