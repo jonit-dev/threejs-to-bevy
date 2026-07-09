@@ -14,6 +14,7 @@
     "triangles": { "max": 900000, "warn": 700000 },
     "uninstancedRepeatedProps": { "max": 0 },
     "worstFrameMs": { "max": 40, "warn": 32 },
+    "updatedAt": "2026-07-09",
     "support": {
       "requirements": [
         {

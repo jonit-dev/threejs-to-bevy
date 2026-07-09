@@ -59,6 +59,27 @@ function structuredMaterial(item: Record<string, unknown>): IMaterialIr[] {
   if (id === undefined) {
     return [];
   }
+  if (readString(item.kind) === "shader" && isRecord(item.program)) {
+    const shaderMaterial: Record<string, unknown> = {
+      id,
+      kind: "shader",
+      ...(readColor(item.color) === undefined ? {} : { color: readColor(item.color) }),
+      ...copyOptionalMaterialString(item, "alphaMode"),
+      ...copyOptionalMaterialString(item, "blendMode"),
+      ...copyOptionalMaterialNumber(item, "alphaCutoff"),
+      ...copyOptionalMaterialNumber(item, "emissiveIntensity"),
+      ...copyOptionalMaterialNumber(item, "renderOrder"),
+      ...copyOptionalMaterialBoolean(item, "depthTest"),
+      ...copyOptionalMaterialBoolean(item, "depthWrite"),
+      ...(readColor(item.emissive) === undefined ? {} : { emissive: readColor(item.emissive) }),
+      ...(Array.isArray(item.inputs) ? { inputs: [...item.inputs] } : {}),
+      ...(Array.isArray(item.outputs) ? { outputs: [...item.outputs] } : {}),
+      program: cloneRecord(item.program),
+      ...(Array.isArray(item.textures) ? { textures: item.textures.map((texture) => (isRecord(texture) ? cloneRecord(texture) : texture)) } : {}),
+      ...(Array.isArray(item.uniforms) ? { uniforms: item.uniforms.map((uniform) => (isRecord(uniform) ? cloneRecord(uniform) : uniform)) } : {}),
+    };
+    return [shaderMaterial as unknown as IMaterialIr];
+  }
   const material: Record<string, unknown> = {
     id,
     kind: readString(item.kind) === "extended" ? "extended" : "standard",

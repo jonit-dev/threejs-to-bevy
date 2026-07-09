@@ -10,6 +10,10 @@ export interface ISystemEffectLogEntry {
   frame: number;
   kind: SystemEffectKind;
   payload?: unknown;
+  reconciliation?: {
+    code: "TN_BEVY_LIVE_RECONCILIATION_REQUIRED";
+    status: "required";
+  };
   resource?: string;
   schedule: IrSystemSchedule;
   service?: string;

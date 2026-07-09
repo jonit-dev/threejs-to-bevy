@@ -111,6 +111,7 @@ export function systemEffectLogEntries(
       frame: options.frame,
       kind: command.source === "entity" ? "patch" as const : "command" as const,
       payload: command.payload,
+      reconciliation: liveReconciliationForCommand(command),
       schedule: system.schedule,
       system: system.name,
       tick: options.tick,
@@ -144,6 +145,12 @@ export function systemEffectLogEntries(
       tick: options.tick,
     })),
   ].sort((left, right) => effectLogKey(left).localeCompare(effectLogKey(right)));
+}
+
+function liveReconciliationForCommand(command: IQueuedCommand): ISystemEffectLogEntry["reconciliation"] {
+  return command.source === "command" && (command.kind === "spawn" || command.kind === "despawn" || command.kind === "instantiate")
+    ? { code: "TN_BEVY_LIVE_RECONCILIATION_REQUIRED", status: "required" }
+    : undefined;
 }
 
 function declaresCommand(system: IIrSystemDeclaration, command: IQueuedCommand): boolean {
