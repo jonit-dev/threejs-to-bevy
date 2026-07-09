@@ -52,6 +52,7 @@ import { Bar, Button, Column, Image, Text, Ui } from "@threenative/ui";
 
 import { AUTHORING_PROVENANCE_FILE } from "../authoring/provenance.js";
 import { emitBundle, planBundle } from "./bundle.js";
+import { writeBundlePlan } from "./bundle-writer.js";
 
 test("should emit deterministic cube bundle", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-emit-"));
@@ -97,6 +98,30 @@ test("should plan bundle documents before writing files", async () => {
     assert.equal(plan.generatedMeshPayloads.length, 0);
     assert.equal(JSON.stringify(plan).includes(".tn-emit-"), false);
     await assert.rejects(() => readFile(join(root, "dist/game.bundle/manifest.json"), "utf8"));
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should write a planned bundle through the writer", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-write-plan-"));
+  try {
+    const config = {
+      entry: "src/game.ts",
+      outDir: "dist/game.bundle",
+      projectPath: root,
+      schema: "threenative.project" as const,
+      version: "0.1.0" as const,
+    };
+
+    const plan = await planBundle(config, makeScene());
+    const bundlePath = await writeBundlePlan(plan, config.projectPath, join(root, config.outDir));
+
+    assert.deepEqual(JSON.parse(await readFile(join(bundlePath, IR_DOCUMENTS.manifest.fileName), "utf8")), plan.manifest);
+    assert.deepEqual(JSON.parse(await readFile(join(bundlePath, IR_DOCUMENTS.world.fileName), "utf8")), plan.documents.world);
+    assert.deepEqual(JSON.parse(await readFile(join(bundlePath, IR_DOCUMENTS.assets.fileName), "utf8")), plan.documents.assetsManifest);
+    const validation = await validateBundle(bundlePath);
+    assert.equal(validation.ok, true, JSON.stringify(validation.diagnostics, null, 2));
   } finally {
     await rm(root, { force: true, recursive: true });
   }
