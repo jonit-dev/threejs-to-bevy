@@ -10,6 +10,16 @@ front door and `docs/status/capabilities/*.md` for detailed capability status.
 - Do not refactor, reformat, delete, revert, or overwrite unrelated work.
 - Use structured parsing/serialization for IR and bundle artifacts.
 - Keep source ASCII unless the file already has a reason not to.
+- Do not add a second hand-maintained adapter list when a descriptor, registry,
+  manifest, or config can own the truth. CLI commands, MCP tools, editor
+  operations, generated-game proof enrollment, smoke lists, and release gates
+  must be derived from the owning source or guarded by a drift test with an
+  explicit allowlist.
+- When adding a command, operation, example enrollment, or release requirement,
+  update the owning registry/config first, then derive help, dispatch, adapter
+  argv, editor payloads, and verification coverage from it. If derivation is
+  not practical yet, add the smallest consistency test that fails when one
+  surface is missed.
 - Capability/release-gate changes must update the relevant
   `docs/status/capabilities/*.md` file plus the one-line index entry in
   `docs/STATUS.md`; update `docs/bevy-feature-parity.md` when Bevy parity

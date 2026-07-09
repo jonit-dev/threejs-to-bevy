@@ -48,6 +48,10 @@ in scripts, examples, and historical docs during a staged cleanup. See
   done execution bundle from the 2026-07-08 UI inspection covering web action
   delivery, parity truthing, authoring closure, behavioral conformance, editor
   preview, and native hygiene.
+- [Adapter Surface Remediation](PRDs/other/adapter-surface-remediation-2026-07-08/README.md):
+  active execution bundle from the 2026-07-08 adapter-surface diagnostic
+  covering generated-game proof enrollment, adapter drift gates, CLI registry
+  substrate, executable authoring descriptors, and editor operation recipes.
 - [PRD index](PRDs/README.md): current and completed planning work.
 
 ## Current Gates

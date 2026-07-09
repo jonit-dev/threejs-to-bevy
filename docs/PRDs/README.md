@@ -114,6 +114,11 @@ execution bundle.
   shipped-game need and focused native gate.
 
 ### Authoring, Editor, And Plugins
+- [Adapter Surface Remediation](other/adapter-surface-remediation-2026-07-08/README.md):
+  slices the current four urgent adapter-surface rows from the 2026-07-08
+  diagnostic into generated-game proof enrollment, shared adapter drift gates,
+  CLI command registry and arg plumbing, executable authoring operation
+  descriptors, and editor operation metadata plus composite recipes.
 - [Agent Token Efficiency IO Budget](other/agent-token-efficiency-io-budget.md):
   makes agent-facing CLI output compact by default, removes playtest
   `effectLog`/full `observations` from stdout, keeps deep logs as artifacts,

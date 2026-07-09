@@ -55,6 +55,7 @@ fn assets_should_load_asset_manifest_entries() {
             wrap_s: None,
             wrap_t: None,
         }],
+        groups: None,
     };
 
     let resolved = resolve_asset_manifest(&assets);
@@ -216,6 +217,7 @@ fn texture_controls_should_clamp_equirect_skybox_like_three_background() {
             wrap_s: None,
             wrap_t: None,
         }],
+        groups: None,
     };
     let environment = EnvironmentSceneIr {
         schema: "threenative.environment-scene".to_owned(),
@@ -264,6 +266,7 @@ fn asset_load_trace_should_sort_assets_and_model_scene_refs_deterministically() 
             make_asset("model.tree.low", "model", "gltf", "assets/tree-low.gltf"),
             make_asset("model.tree", "model", "gltf", "assets/tree.gltf"),
         ],
+        groups: None,
     };
     let environment = EnvironmentSceneIr {
         schema: "threenative.environment-scene".to_owned(),
