@@ -151,7 +151,7 @@ function particleSvg(observations, label) {
 function verificationReport(report) {
   return {
     generatedBy: "scripts/verify-particle-commands.mjs",
-    prd: "docs/PRDs/proof-first-engine-loop-2026-07-05/PRD-012-portable-scripting-particle-commands.md",
+    prd: "docs/PRDs/done/PRD-012-portable-scripting-particle-commands.md",
     schema: "threenative.particle-commands-verification",
     ...report,
   };

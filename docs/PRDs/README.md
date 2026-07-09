@@ -88,7 +88,7 @@ planner/writer separation.
 - [Portable Scripting Delayed Commands and Bounded Scheduling](done/PRD-011-portable-scripting-delayed-commands-scheduling.md):
   fixed-tick delayed command scheduling beyond timer helpers while keeping
   promises, workers, wall-clock timers, and platform schedulers unsupported.
-- [Portable Scripting Particle Commands](proof-first-engine-loop-2026-07-05/PRD-012-portable-scripting-particle-commands.md):
+- [Portable Scripting Particle Commands](done/PRD-012-portable-scripting-particle-commands.md):
   bounded script particle commands over declared emitter data with web/Bevy
   service logs and visual/runtime evidence.
 - [Portable Scripting Audio Facade](done/proof-first-engine-loop-2026-07-05/PRD-010-portable-scripting-audio-facade.md):
