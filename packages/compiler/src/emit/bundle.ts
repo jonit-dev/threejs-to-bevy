@@ -907,7 +907,7 @@ function mergeOptionalSchemaFiles<T extends { schema: string; version: string; s
   return mergeSchemaFiles(left, right);
 }
 
-function mergeInputs(left: IEcsEmitResult["input"], right: IEcsEmitResult["input"]): IEcsEmitResult["input"] {
+export function mergeInputs(left: IEcsEmitResult["input"], right: IEcsEmitResult["input"]): IEcsEmitResult["input"] {
   if (left === undefined) {
     return right;
   }
@@ -924,7 +924,7 @@ function mergeInputs(left: IEcsEmitResult["input"], right: IEcsEmitResult["input
   };
 }
 
-function mergeUis(left: IUiIr | undefined, right: IUiIr | undefined): IUiIr | undefined {
+export function mergeUis(left: IUiIr | undefined, right: IUiIr | undefined): IUiIr | undefined {
   if (left === undefined) {
     return right;
   }
@@ -1029,7 +1029,7 @@ function mergeByName<T extends { name: string }>(items: T[]): T[] {
   return [...new Map(items.map((item) => [item.name, item])).values()].sort((left, right) => left.name.localeCompare(right.name));
 }
 
-function mergeWorlds(scene: IWorldIr | undefined, ecs: IWorldIr | undefined): IWorldIr | undefined {
+export function mergeWorlds(scene: IWorldIr | undefined, ecs: IWorldIr | undefined): IWorldIr | undefined {
   if (scene === undefined) {
     return ecs;
   }
