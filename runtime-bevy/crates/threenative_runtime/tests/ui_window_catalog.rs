@@ -9,7 +9,7 @@ fn should_report_window_resize_and_scale_factor_changes() {
     assert_eq!(report["resize"]["height"], 900);
     assert_eq!(report["resize"]["scaleFactor"], 1.5);
     assert_eq!(
-        report["diagnostics"][0]["code"],
+        report["diagnostics"][3]["code"],
         "TN_CATALOG_WINDOW_MULTI_WINDOW_UNSUPPORTED"
     );
 }

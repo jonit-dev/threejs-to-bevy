@@ -1,7 +1,10 @@
 use serde_json::{Value, json};
 use threenative_loader::{AudioIr, LoadedBundle};
 
-use crate::audio::{trace_audio_lifecycle, trace_audio_support};
+use crate::{
+    audio::{trace_audio_lifecycle, trace_audio_support},
+    bevy_catalog_residuals::report_window_resize_and_scale_factor,
+};
 
 pub fn trace_production_hardening(bundle: &LoadedBundle) -> Value {
     let audio = bundle.audio.as_ref().expect("bundle contains audio");
@@ -45,6 +48,7 @@ pub fn trace_production_hardening(bundle: &LoadedBundle) -> Value {
                 "state": "unavailable"
             }
         },
+        "platform": report_window_resize_and_scale_factor(1280, 720, 2.0),
         "schema": "threenative.production-hardening",
         "version": "0.1.0"
     })

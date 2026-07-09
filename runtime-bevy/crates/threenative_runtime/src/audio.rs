@@ -138,6 +138,10 @@ pub struct NativeAudioCommandReport {
     pub id: String,
     pub kind: String,
     #[serde(skip_serializing_if = "Option::is_none")]
+    pub pitch: Option<f32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub tone: Option<NativeAudioToneCommand>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub volume: Option<f32>,
 }
 
@@ -347,6 +351,21 @@ pub fn trace_audio_lifecycle(
     let mut paused_loops = Vec::new();
 
     commands.extend(handle_audio_events(audio, events));
+    commands.extend(audio.tones.iter().map(|tone| NativeAudioCommand {
+        asset: format!("generated:{}", tone.id),
+        bus: tone.bus.clone(),
+        emitter: None,
+        event: None,
+        id: tone.id.clone(),
+        kind: NativeAudioCommandKind::Tone,
+        pitch: tone.pitch,
+        tone: Some(NativeAudioToneCommand {
+            duration: tone.duration,
+            frequency: tone.frequency,
+            waveform: tone.waveform.clone(),
+        }),
+        volume: tone.volume,
+    }));
     for id in stop_loops {
         if let Some(index) = active_loops.iter().position(|active| active == id) {
             active_loops.remove(index);
@@ -455,6 +474,8 @@ fn audio_command_report(command: &NativeAudioCommand) -> NativeAudioCommandRepor
             NativeAudioCommandKind::Tone => "tone",
         }
         .to_owned(),
+        pitch: command.pitch,
+        tone: command.tone.clone(),
         volume: command.volume,
     }
 }

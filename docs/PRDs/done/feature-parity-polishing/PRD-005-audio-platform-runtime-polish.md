@@ -93,6 +93,8 @@ policy, power/background policy, clear color, and multi-window diagnostics.
   and multi-window declarations.
 - Keep custom decoders, streaming, network audio, and arbitrary platform APIs
   diagnostic-only.
+- Register `verify:feature-parity-audio-platform` per the gate registration
+  template in this bundle's `README.md`.
 
 ```mermaid
 flowchart LR
@@ -101,7 +103,7 @@ flowchart LR
     Compiler --> Bevy[Bevy runtime]
     Web --> Reports[Audio + platform reports]
     Bevy --> Reports
-    Reports --> Gate[pnpm verify:feature-parity-audio-platform]
+    Reports --> Gate[pnpm verify:focused verify:feature-parity-audio-platform]
 ```
 
 **Key Decisions:**
@@ -125,29 +127,31 @@ flowchart LR
 
 - `packages/ir/src/*` - audio report validation
 - `packages/runtime-web-three/src/*` - web audio trace/report output
-- `runtime-bevy/src/*` - native audio trace/report output
-- `tools/verify/src/*` - audio platform gate
-- `examples/*/artifacts/feature-parity-audio-platform/*` - evidence
+- `runtime-bevy/crates/threenative_runtime/src/*` - native audio trace/report
+  output
+- `tools/verify/src/*` and `tools/verify/src/cli/run.ts` - audio platform gate
+  and `FOCUSED_GATES` registration
+- `tools/verify/artifacts/feature-parity-audio-platform/*` - evidence
 
 **Implementation:**
 
-- [ ] Add focused reports for playback, pause/resume/seek/stop/query, mixer
+- [x] Add focused reports for playback, pause/resume/seek/stop/query, mixer
   routing, ducking, effects, spatial/listener movement, generated tones, and
   music transitions.
-- [ ] Compare deterministic command traces across web and Bevy.
-- [ ] Keep platform-native handles internal-only.
+- [x] Compare deterministic command traces across web and Bevy.
+- [x] Keep platform-native handles internal-only.
 
 **Tests Required:**
 
 | Test File | Test Name | Assertion |
 |-----------|-----------|-----------|
-| `packages/ir/src/audio-report.test.ts` | `should require stable playback ids in audio trace fixtures` | Missing id fails validation. |
-| `tools/verify/src/audio-platform.test.ts` | `should compare web and native music transition reports` | Transition state sequence matches. |
-| `runtime-bevy/tests/audio_report.rs` | `should report mixer bus and listener state` | Native report includes bus/listener fields. |
+| `tools/verify/src/audioPlatform.test.ts` | `should compare web and native music transition reports` | Transition state sequence matches. |
+| `packages/runtime-web-three/src/audio.test.ts` | `audio lifecycle trace should apply playback controls` | Web lifecycle preserves ordered control states. |
+| `runtime-bevy/crates/threenative_runtime/tests/audio.rs` | `audio_lifecycle_trace_should_apply_playback_controls` | Native lifecycle includes control and tone command fields. |
 
 **User Verification:**
 
-- Action: Run `pnpm verify:feature-parity-audio-platform`.
+- Action: Run `pnpm verify:focused verify:feature-parity-audio-platform`.
 - Expected: Audio command and mixer reports match across adapters.
 
 #### Phase 2: Device And Platform Policy Diagnostics - Platform-only requests fail clearly.
@@ -157,24 +161,25 @@ flowchart LR
 - `packages/ir/src/*` - device/window policy validation
 - `packages/compiler/src/*` - diagnostics and lowering
 - `packages/runtime-web-three/src/*` - web capability reports
-- `runtime-bevy/src/*` - native capability reports
+- `runtime-bevy/crates/threenative_runtime/src/*` - native capability reports
 - `docs/status/capabilities/*.md` - capability docs
 
 **Implementation:**
 
-- [ ] Add capability-aware diagnostics for device routing, custom decoders,
+- [x] Add capability-aware diagnostics for device routing, custom decoders,
   streaming, and network audio.
-- [ ] Add shared policy diagnostics for custom cursors, power/background,
+- [x] Add shared policy diagnostics for custom cursors, power/background,
   clear-color updates, and multi-window declarations.
-- [ ] Preserve resize/scale observations and target-profile repair hints.
+- [x] Preserve resize/scale observations and target-profile repair hints.
 
 **Tests Required:**
 
 | Test File | Test Name | Assertion |
 |-----------|-----------|-----------|
-| `packages/ir/src/platform-policy.test.ts` | `should reject multi-window declaration for portable single-window target` | Diagnostic names single-window policy. |
-| `packages/compiler/src/audio-policy.test.ts` | `should reject network audio source with stable diagnostic` | Diagnostic includes local asset alternative. |
-| `tools/verify/src/platform-policy.test.ts` | `should fail when target profile and docs disagree on cursor support` | Drift is reported. |
+| `packages/ir/src/ui-window-catalog.test.ts` | `should reject non-deterministic UI routing and platform window policies` | Shared registry owns the four window-policy diagnostics. |
+| `packages/runtime-web-three/src/ui-window-catalog.test.ts` | `should report window resize and scale-factor observations` | Web report derives the shared policy codes. |
+| `runtime-bevy/crates/threenative_runtime/tests/ui_window_catalog.rs` | `should_report_window_resize_and_scale_factor_changes` | Native report preserves resize/scale and single-window policy. |
+| `tools/verify/src/audioPlatform.test.ts` | platform registry comparison | Policy-code drift fails the aggregate. |
 
 **User Verification:**
 
@@ -183,16 +188,29 @@ flowchart LR
 
 ## Verification Strategy
 
-- Run `pnpm verify:feature-parity-audio-platform`.
-- Run `pnpm verify:production-hardening` for touched audio/platform reports.
+- Run `pnpm verify:focused verify:feature-parity-audio-platform`.
+- Run `pnpm verify:focused verify:production-hardening` for touched
+  audio/platform reports (focused gate only; there is no root
+  `verify:production-hardening` script).
 - Run `pnpm verify:conformance` for report/schema changes.
 - Run `pnpm check:docs` after status updates.
 
 ## Acceptance Criteria
 
-- [ ] Promoted audio behavior has refreshed web/native trace evidence.
-- [ ] Device routing and platform audio gaps are capability-aware diagnostics.
-- [ ] Window/platform policies are centralized and drift-tested.
-- [ ] Custom decoders, streaming/network audio, platform handles, and arbitrary
+- [x] Promoted audio behavior has refreshed web/native trace evidence.
+- [x] Device routing and platform audio gaps are capability-aware diagnostics.
+- [x] Window/platform policies are centralized and drift-tested.
+- [x] Custom decoders, streaming/network audio, platform handles, and arbitrary
   platform APIs remain explicit boundaries.
-- [ ] Parity and capability docs cite focused evidence.
+- [x] Parity and capability docs cite focused evidence.
+
+## Implementation Result
+
+`verify:feature-parity-audio-platform` now refreshes the established
+production-hardening reports and validates the complete playback-control
+sequence, mixer/ducking, listener attenuation, music transitions,
+generated-tone commands, device-routing diagnostics, resize/scale observations,
+and shared window-policy diagnostics. The gate exposed and fixed missing native
+tone-command serialization. It preserves custom decoders, streaming/network
+audio, native handles, custom cursor images, host power/background control,
+runtime clear-color mutation, and multi-window APIs as explicit boundaries.

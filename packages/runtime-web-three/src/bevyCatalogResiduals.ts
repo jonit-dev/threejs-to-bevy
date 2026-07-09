@@ -1,4 +1,4 @@
-import { targetProfileOutputDiagnostic, type BevyCatalogTargetProfileOutput, type IIrDiagnostic, type IRuntimeDiagnostic, type IWorldEntity, type IWorldIr } from "@threenative/ir";
+import { diagnoseBevyCatalogResidualDeclarations, targetProfileOutputDiagnostic, type BevyCatalogTargetProfileOutput, type IIrDiagnostic, type IRuntimeDiagnostic, type IWorldEntity, type IWorldIr } from "@threenative/ir";
 
 export interface IWebQueryCombinationObservation {
   a: string;
@@ -28,6 +28,8 @@ export interface IWebWindowPolicyReport {
     scaleFactor: number;
     width: number;
   };
+  schema: "threenative.bevy-catalog.window";
+  version: "0.1.0";
 }
 
 export interface IWebGeneratedAssetPolicyReport {
@@ -82,17 +84,21 @@ export function traceWebTextInputEvents(values: readonly string[]): IWebTextInpu
 }
 
 export function reportWebWindowCatalogPolicy(width: number, height: number, scaleFactor: number): IWebWindowPolicyReport {
-  return {
-    diagnostics: [
-      {
-        code: "TN_CATALOG_WINDOW_MULTI_WINDOW_UNSUPPORTED",
-        message: "Portable runtime bundles are single-window; per-window targets remain diagnostic-only.",
-        path: "runtime.config.json/window/multiWindow",
-        severity: "error",
-        suggestion: "Use one declared primary window and route additional surfaces through portable UI or overlays.",
+  const diagnostics = diagnoseBevyCatalogResidualDeclarations({
+    uiWindow: {
+      windowPolicy: {
+        clearColorRuntimeUpdate: true,
+        cursorImage: "assets/cursor.png",
+        lowPowerPresentMode: true,
+        multiWindow: true,
       },
-    ],
+    },
+  }).map((diagnostic) => ({ ...diagnostic, severity: diagnostic.severity ?? "error" } as IRuntimeDiagnostic));
+  return {
+    diagnostics,
     resize: { height, scaleFactor, width },
+    schema: "threenative.bevy-catalog.window",
+    version: "0.1.0",
   };
 }
 

@@ -329,7 +329,15 @@ fn audio_lifecycle_trace_should_apply_playback_controls() {
         }],
         music_transitions: vec![],
         one_shots: vec![],
-        tones: vec![],
+        tones: vec![AudioToneIr {
+            bus: Some("bus.sfx".to_owned()),
+            duration: 0.2,
+            frequency: Some(880.0),
+            id: "tone.confirm".to_owned(),
+            pitch: Some(1.0),
+            volume: Some(0.5),
+            waveform: "sine".to_owned(),
+        }],
     };
 
     let trace = trace_audio_lifecycle(&audio, &[], &[]);
@@ -344,6 +352,17 @@ fn audio_lifecycle_trace_should_apply_playback_controls() {
     assert_eq!(trace.lifecycle[4].kind, "resume");
     assert_eq!(trace.lifecycle[5].kind, "stop");
     assert_eq!(trace.lifecycle[6].state.as_deref(), Some("stopped"));
+    let tone = trace
+        .commands
+        .iter()
+        .find(|command| command.kind == "tone")
+        .expect("generated tone command should be traced");
+    assert_eq!(tone.asset, "generated:tone.confirm");
+    assert_eq!(tone.pitch, Some(1.0));
+    assert_eq!(
+        tone.tone.as_ref().map(|tone| tone.waveform.as_str()),
+        Some("sine")
+    );
 }
 
 #[test]

@@ -83,7 +83,7 @@ if (!validation.ok) {
 
 export function compareReports(web, native) {
   const mismatches = [];
-  for (const key of ["audio", "boundaries", "debug", "diagnostics", "profiler"]) {
+  for (const key of ["audio", "boundaries", "debug", "diagnostics", "platform", "profiler"]) {
     const left = normalize(web[key]);
     const right = normalize(native[key]);
     if (JSON.stringify(left) !== JSON.stringify(right)) {

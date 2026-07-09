@@ -507,6 +507,23 @@ export const FOCUSED_GATES: Record<string, FocusedGate> = {
       protects: "Promoted contact ordering, material/stack response, bounded mesh grounding, navigation residuals, and backend boundaries.",
     },
   },
+  "verify:feature-parity-audio-platform": {
+    commands: [
+      ["pnpm", "--filter", "@threenative/ir", "build"],
+      ["pnpm", "--filter", "@threenative/runtime-web-three", "build"],
+      ["pnpm", "--filter", "@threenative/cli", "build"],
+      ["pnpm", "--filter", "@threenative/verify-tools", "build"],
+      ["node", "scripts/verify-production-hardening.mjs"],
+      ["node", "tools/verify/dist/audioPlatform.js"],
+    ],
+    description: "Cross-adapter audio lifecycle and shared window/platform policy evidence gate.",
+    metadata: {
+      owner: "tools/verify feature-parity audio-platform gate",
+      profile: "focused",
+      reason: "Refreshes deterministic audio traces and drift-checks shared platform policy diagnostics against both adapters.",
+      protects: "Playback controls, mixer/spatial/music reports, device diagnostics, resize observations, and platform boundaries.",
+    },
+  },
   "verify:v9:assets-gltf-scene-workflow": {
     commands: [
       ["pnpm", "--filter", "@threenative/cli", "build"],

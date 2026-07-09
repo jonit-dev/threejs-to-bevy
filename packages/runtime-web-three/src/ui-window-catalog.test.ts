@@ -15,7 +15,12 @@ test("should report window resize and scale-factor observations", () => {
   const report = reportWebWindowCatalogPolicy(1280, 720, 2);
 
   assert.deepEqual(report.resize, { height: 720, scaleFactor: 2, width: 1280 });
-  assert.equal(report.diagnostics[0]?.code, "TN_CATALOG_WINDOW_MULTI_WINDOW_UNSUPPORTED");
+  assert.deepEqual(report.diagnostics.map((diagnostic) => diagnostic.code), [
+    "TN_CATALOG_WINDOW_CURSOR_UNSUPPORTED",
+    "TN_CATALOG_WINDOW_POWER_POLICY_UNSUPPORTED",
+    "TN_CATALOG_WINDOW_CLEAR_COLOR_RUNTIME_UNSUPPORTED",
+    "TN_CATALOG_WINDOW_MULTI_WINDOW_UNSUPPORTED",
+  ]);
 });
 
 test("should report generated assets as bundle artifacts", () => {

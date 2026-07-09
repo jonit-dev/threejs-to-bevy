@@ -37,11 +37,32 @@ pub fn report_window_resize_and_scale_factor(width: u32, height: u32, scale_fact
     json!({
         "diagnostics": [
             {
+                "code": "TN_CATALOG_WINDOW_CURSOR_UNSUPPORTED",
+                "message": "Custom cursor images and cursor animation are diagnostic-only until a portable cursor policy exists.",
+                "path": "bevy-catalog-residuals.json/uiWindow/windowPolicy/cursorImage",
+                "severity": "error",
+                "suggestion": "Use the portable primary-window runtime configuration or a target-specific adapter."
+            },
+            {
+                "code": "TN_CATALOG_WINDOW_POWER_POLICY_UNSUPPORTED",
+                "message": "Low-power present mode and background throttling are host policies outside the portable runtime contract.",
+                "path": "bevy-catalog-residuals.json/uiWindow/windowPolicy/lowPowerPresentMode",
+                "severity": "error",
+                "suggestion": "Use the portable primary-window runtime configuration or a target-specific adapter."
+            },
+            {
+                "code": "TN_CATALOG_WINDOW_CLEAR_COLOR_RUNTIME_UNSUPPORTED",
+                "message": "Runtime clear-color/window background mutation is not promoted without shared web/native observation evidence.",
+                "path": "bevy-catalog-residuals.json/uiWindow/windowPolicy/clearColorRuntimeUpdate",
+                "severity": "error",
+                "suggestion": "Use the portable primary-window runtime configuration or a target-specific adapter."
+            },
+            {
                 "code": "TN_CATALOG_WINDOW_MULTI_WINDOW_UNSUPPORTED",
                 "message": "Portable runtime bundles are single-window; per-window targets remain diagnostic-only.",
-                "path": "runtime.config.json/window/multiWindow",
+                "path": "bevy-catalog-residuals.json/uiWindow/windowPolicy/multiWindow",
                 "severity": "error",
-                "suggestion": "Use one declared primary window and route additional surfaces through portable UI or overlays."
+                "suggestion": "Use the portable primary-window runtime configuration or a target-specific adapter."
             }
         ],
         "resize": {

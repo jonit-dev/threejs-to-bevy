@@ -2,6 +2,7 @@ import type { IAudioIr, IRuntimeDiagnostic, ITargetProfile } from "@threenative/
 
 import { traceWebAudioLifecycle, traceWebAudioSupport } from "./audio.js";
 import { renderDebugOverlay } from "./debugOverlay.js";
+import { reportWebWindowCatalogPolicy } from "./bevyCatalogResiduals.js";
 
 export interface IProductionHardeningReport {
   audio: {
@@ -30,6 +31,7 @@ export interface IProductionHardeningReport {
       state: "captured" | "failure" | "unavailable" | "warning";
     };
   };
+  platform: ReturnType<typeof reportWebWindowCatalogPolicy>;
   schema: "threenative.production-hardening";
   version: "0.1.0";
 }
@@ -90,6 +92,7 @@ export function traceProductionHardening(audio: IAudioIr, targetProfile: ITarget
         state: profiler?.gpuTimingUnavailable === true ? "unavailable" : "captured",
       },
     },
+    platform: reportWebWindowCatalogPolicy(1280, 720, 2),
     schema: "threenative.production-hardening",
     version: "0.1.0",
   };

@@ -26,6 +26,14 @@
       "attenuation": { "curve": "linear", "minDistance": 1, "maxDistance": 8, "rolloffFactor": 1 }
     }
   ],
+  "controls": [
+    { "id": "music.pause", "kind": "pause", "target": "music.menu" },
+    { "id": "music.queryPaused", "kind": "query", "target": "music.menu" },
+    { "id": "music.seek", "kind": "seek", "target": "music.menu", "at": 6.5 },
+    { "id": "music.resume", "kind": "resume", "target": "music.menu" },
+    { "id": "music.stop", "kind": "stop", "target": "music.menu" },
+    { "id": "music.queryStopped", "kind": "query", "target": "music.menu" }
+  ],
   "music": [
     { "id": "music.menu", "asset": "music.menu", "loop": true, "autoplay": true, "bus": "bus.music", "volume": 0.5 }
   ],
@@ -34,5 +42,8 @@
   ],
   "musicTransitions": [
     { "id": "transition.menu", "kind": "crossfade", "playbackId": "music.menu", "state": "menu", "to": "music.menu", "duration": 0.2 }
+  ],
+  "tones": [
+    { "id": "tone.confirm", "bus": "bus.sfx", "duration": 0.2, "frequency": 880, "pitch": 1, "volume": 0.5, "waveform": "sine" }
   ]
 }
