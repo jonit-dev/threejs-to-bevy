@@ -5,8 +5,10 @@ export {
   IR_SCHEMA_IDS,
   IR_VERSION,
   schemaBackedDocuments,
+  unschemedDocuments,
   type IrDocumentName,
   type SchemaBackedIrDocumentName,
+  type UnschemedIrDocumentName,
 } from "./documents.js";
 export type {
   IConformanceAssetReport,

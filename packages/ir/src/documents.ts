@@ -25,8 +25,40 @@ export const IR_SCHEMA_IDS = {
   world: "threenative.world",
 } as const;
 
+export type IrManifestSection = "entry" | "files";
+
+export interface IrManifestLocation {
+  key: string;
+  section: IrManifestSection;
+}
+
+export interface IrDocumentDriftMetadata {
+  rust?: {
+    structName: string;
+  };
+  typescript?: {
+    interfaceName: string;
+    source: string;
+  };
+}
+
+export interface IrDocumentMetadata {
+  drift?: IrDocumentDriftMetadata;
+  fileName: string;
+  manifestKey?: string;
+  manifestLocations?: readonly IrManifestLocation[];
+  manifestSection?: IrManifestSection;
+  required?: boolean;
+  schema?: (typeof IR_SCHEMA_IDS)[keyof typeof IR_SCHEMA_IDS];
+  schemaFile?: string | null;
+}
+
 export const IR_DOCUMENTS = {
   manifest: {
+    drift: {
+      rust: { structName: "BundleManifest" },
+      typescript: { interfaceName: "IBundleManifest", source: "src/types.ts" },
+    },
     fileName: "manifest.json",
     schema: IR_SCHEMA_IDS.bundle,
     schemaFile: "manifest.schema.json",
@@ -38,8 +70,13 @@ export const IR_DOCUMENTS = {
       { key: "animations", section: "files" },
     ],
     schema: IR_SCHEMA_IDS.animations,
+    schemaFile: null,
   },
   assets: {
+    drift: {
+      rust: { structName: "AssetsManifest" },
+      typescript: { interfaceName: "IAssetsManifest", source: "src/types.ts" },
+    },
     fileName: "assets.manifest.json",
     manifestKey: "assets",
     manifestSection: "files",
@@ -52,38 +89,48 @@ export const IR_DOCUMENTS = {
     manifestKey: "audio",
     manifestSection: "entry",
     schema: IR_SCHEMA_IDS.audio,
+    schemaFile: null,
   },
   componentSchemas: {
     fileName: "schemas/components.schema.json",
     manifestKey: "componentSchemas",
     manifestSection: "files",
     schema: IR_SCHEMA_IDS.componentSchemas,
+    schemaFile: null,
   },
   environmentScene: {
     fileName: "environment.scene.json",
     manifestKey: "environmentScene",
     manifestSection: "entry",
     schema: IR_SCHEMA_IDS.environmentScene,
+    schemaFile: null,
   },
   gameFlow: {
     fileName: "game-flow.ir.json",
     manifestKey: "gameFlow",
     manifestSection: "entry",
     schema: IR_SCHEMA_IDS.gameFlow,
+    schemaFile: null,
   },
   eventSchemas: {
     fileName: "schemas/events.schema.json",
     manifestKey: "eventSchemas",
     manifestSection: "files",
     schema: IR_SCHEMA_IDS.eventSchemas,
+    schemaFile: null,
   },
   gltfScene: {
     fileName: "gltf.scene.json",
     manifestKey: "gltfScene",
     manifestSection: "files",
     schema: IR_SCHEMA_IDS.gltfScene,
+    schemaFile: null,
   },
   input: {
+    drift: {
+      rust: { structName: "InputIr" },
+      typescript: { interfaceName: "IInputIr", source: "src/input.ts" },
+    },
     fileName: "input.ir.json",
     manifestKey: "input",
     manifestSection: "files",
@@ -97,8 +144,13 @@ export const IR_DOCUMENTS = {
       { key: "localData", section: "files" },
     ],
     schema: IR_SCHEMA_IDS.localData,
+    schemaFile: null,
   },
   materials: {
+    drift: {
+      rust: { structName: "MaterialsIr" },
+      typescript: { interfaceName: "IMaterialsIr", source: "src/types.ts" },
+    },
     fileName: "materials.ir.json",
     manifestKey: "materials",
     manifestSection: "files",
@@ -107,6 +159,10 @@ export const IR_DOCUMENTS = {
     schemaFile: "materials.schema.json",
   },
   overlays: {
+    drift: {
+      rust: { structName: "OverlaysIr" },
+      typescript: { interfaceName: "IOverlaysIr", source: "src/overlays.ts" },
+    },
     fileName: "overlays.ir.json",
     manifestKey: "overlays",
     manifestSection: "entry",
@@ -120,14 +176,20 @@ export const IR_DOCUMENTS = {
       { key: "prefabs", section: "files" },
     ],
     schema: IR_SCHEMA_IDS.prefabs,
+    schemaFile: null,
   },
   resourceSchemas: {
     fileName: "schemas/resources.schema.json",
     manifestKey: "resourceSchemas",
     manifestSection: "files",
     schema: IR_SCHEMA_IDS.resourceSchemas,
+    schemaFile: null,
   },
   runtimeConfig: {
+    drift: {
+      rust: { structName: "RuntimeConfigIr" },
+      typescript: { interfaceName: "IRuntimeConfigIr", source: "src/runtimeConfig.ts" },
+    },
     fileName: "runtime.config.json",
     manifestKey: "runtimeConfig",
     manifestSection: "files",
@@ -135,6 +197,10 @@ export const IR_DOCUMENTS = {
     schemaFile: "runtime-config.schema.json",
   },
   scenes: {
+    drift: {
+      rust: { structName: "ScenesIr" },
+      typescript: { interfaceName: "IScenesIr", source: "src/types.ts" },
+    },
     fileName: "scenes.ir.json",
     manifestKey: "scenes",
     manifestSection: "entry",
@@ -146,6 +212,7 @@ export const IR_DOCUMENTS = {
     manifestKey: "sequences",
     manifestSection: "entry",
     schema: IR_SCHEMA_IDS.sequences,
+    schemaFile: null,
   },
   scripts: {
     fileName: "scripts.bundle.js",
@@ -153,14 +220,20 @@ export const IR_DOCUMENTS = {
       { key: "scripts", section: "entry" },
       { key: "scripts", section: "files" },
     ],
+    schemaFile: null,
   },
   systems: {
     fileName: "systems.ir.json",
     manifestKey: "systems",
     manifestSection: "entry",
     schema: IR_SCHEMA_IDS.systems,
+    schemaFile: null,
   },
   targetProfile: {
+    drift: {
+      rust: { structName: "TargetProfile" },
+      typescript: { interfaceName: "ITargetProfile", source: "src/types.ts" },
+    },
     fileName: "target.profile.json",
     manifestKey: "targetProfile",
     manifestSection: "files",
@@ -173,8 +246,13 @@ export const IR_DOCUMENTS = {
     manifestKey: "ui",
     manifestSection: "entry",
     schema: IR_SCHEMA_IDS.ui,
+    schemaFile: null,
   },
   world: {
+    drift: {
+      rust: { structName: "WorldIr" },
+      typescript: { interfaceName: "IWorldIr", source: "src/types.ts" },
+    },
     fileName: "world.ir.json",
     manifestKey: "world",
     manifestSection: "entry",
@@ -182,15 +260,24 @@ export const IR_DOCUMENTS = {
     schema: IR_SCHEMA_IDS.world,
     schemaFile: "world.schema.json",
   },
-} as const;
+} as const satisfies Record<string, IrDocumentMetadata>;
 
 export type IrDocumentName = keyof typeof IR_DOCUMENTS;
 export type SchemaBackedIrDocumentName = {
   [Name in IrDocumentName]: (typeof IR_DOCUMENTS)[Name] extends { schemaFile: string } ? Name : never;
 }[IrDocumentName];
+export type UnschemedIrDocumentName = {
+  [Name in IrDocumentName]: (typeof IR_DOCUMENTS)[Name] extends { schemaFile: null } ? Name : never;
+}[IrDocumentName];
 
 export function schemaBackedDocuments(): Array<[SchemaBackedIrDocumentName, (typeof IR_DOCUMENTS)[SchemaBackedIrDocumentName]]> {
   return Object.entries(IR_DOCUMENTS).filter((entry): entry is [SchemaBackedIrDocumentName, (typeof IR_DOCUMENTS)[SchemaBackedIrDocumentName]] => {
-    return "schemaFile" in entry[1];
+    return typeof entry[1].schemaFile === "string";
+  });
+}
+
+export function unschemedDocuments(): Array<[UnschemedIrDocumentName, (typeof IR_DOCUMENTS)[UnschemedIrDocumentName]]> {
+  return Object.entries(IR_DOCUMENTS).filter((entry): entry is [UnschemedIrDocumentName, (typeof IR_DOCUMENTS)[UnschemedIrDocumentName]] => {
+    return entry[1].schemaFile === null;
   });
 }

@@ -20,28 +20,17 @@ import { schemaUrls } from "./schemas.js";
 const packageRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const repoRoot = resolve(packageRoot, "../..");
 const loaderTypesPath = resolve(repoRoot, "runtime-bevy/crates/threenative_loader/src/types.rs");
-const schemaBackedTypeScriptCases = [
-  { document: "manifest", interfaceName: "IBundleManifest", schema: "manifest.schema.json", source: "src/types.ts" },
-  { document: "world", interfaceName: "IWorldIr", schema: "world.schema.json", source: "src/types.ts" },
-  { document: "materials", interfaceName: "IMaterialsIr", schema: "materials.schema.json", source: "src/types.ts" },
-  { document: "assets", interfaceName: "IAssetsManifest", schema: "assets.schema.json", source: "src/types.ts" },
-  { document: "targetProfile", interfaceName: "ITargetProfile", schema: "target-profile.schema.json", source: "src/types.ts" },
-  { document: "input", interfaceName: "IInputIr", schema: "input.schema.json", source: "src/input.ts" },
-  { document: "runtimeConfig", interfaceName: "IRuntimeConfigIr", schema: "runtime-config.schema.json", source: "src/runtimeConfig.ts" },
-  { document: "overlays", interfaceName: "IOverlaysIr", schema: "overlays.schema.json", source: "src/overlays.ts" },
-  { document: "scenes", interfaceName: "IScenesIr", schema: "scenes.schema.json", source: "src/types.ts" },
-];
-const bevyRuntimeDocumentCases = [
-  { document: "manifest", schema: "manifest.schema.json", structName: "BundleManifest" },
-  { document: "world", schema: "world.schema.json", structName: "WorldIr" },
-  { document: "materials", schema: "materials.schema.json", structName: "MaterialsIr" },
-  { document: "assets", schema: "assets.schema.json", structName: "AssetsManifest" },
-  { document: "targetProfile", schema: "target-profile.schema.json", structName: "TargetProfile" },
-  { document: "input", schema: "input.schema.json", structName: "InputIr" },
-  { document: "runtimeConfig", schema: "runtime-config.schema.json", structName: "RuntimeConfigIr" },
-  { document: "overlays", schema: "overlays.schema.json", structName: "OverlaysIr" },
-  { document: "scenes", schema: "scenes.schema.json", structName: "ScenesIr" },
-];
+const schemaBackedTypeScriptCases = schemaBackedDocuments().flatMap(([document, metadata]) => metadata.drift?.typescript === undefined ? [] : [{
+  document,
+  interfaceName: metadata.drift.typescript.interfaceName,
+  schema: metadata.schemaFile,
+  source: metadata.drift.typescript.source,
+}]);
+const bevyRuntimeDocumentCases = schemaBackedDocuments().flatMap(([document, metadata]) => metadata.drift?.rust === undefined ? [] : [{
+  document,
+  schema: metadata.schemaFile,
+  structName: metadata.drift.rust.structName,
+}]);
 const compilerEmitterDocumentCases = [
   { document: "audio", source: "packages/compiler/src/emit/audio.ts" },
   { document: "environmentScene", source: "packages/compiler/src/emit/environment.ts" },
