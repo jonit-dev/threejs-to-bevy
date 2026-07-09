@@ -340,6 +340,25 @@ export {
 } from "./input.js";
 export { MeshExtendedMaterial, type ExtendedMaterialPreset, type IMeshExtendedMaterialOptions } from "./materials/MeshExtendedMaterial.js";
 export { MeshStandardMaterial, type ColorValue, type IMaterialEmissiveBloomOptions, type MaterialAlphaMode, type MaterialBlendMode, type TextureSlotReference } from "./materials/MeshStandardMaterial.js";
+export {
+  ShaderMaterial,
+  shaderBuiltin,
+  shaderLiteral,
+  shaderTexture,
+  shaderTextureSample,
+  shaderUniform,
+  shaderUniformRef,
+  type IShaderExpression,
+  type IShaderMaterialOptions,
+  type IShaderProgramOptions,
+  type IShaderTextureOptions,
+  type IShaderUniformOptions,
+  type ShaderBuiltinInput,
+  type ShaderExpressionKind,
+  type ShaderLiteralValue,
+  type ShaderOutput,
+  type ShaderUniformType,
+} from "./materials/ShaderMaterial.js";
 export { Vector3, type Vector3Tuple } from "./math/Vector3.js";
 export {
   staticNavigation,

@@ -517,6 +517,10 @@ export async function materialCommand(argv: readonly string[], options: ISourceC
     if (numbers.diagnostic !== undefined) {
       return renderUsage(json, numbers.diagnostic, "Material numeric flags must be finite numbers.");
     }
+    const shader = parseJsonObjectFlag(normalizedArgv, "--shader-json", "TN_MATERIAL_SHADER_JSON_INVALID");
+    if (shader.diagnostic !== undefined) {
+      return renderUsage(json, shader.diagnostic, "Material --shader-json must be a JSON object.");
+    }
     return renderAuthoringResult(
       "material",
       await setMaterial({
@@ -539,6 +543,7 @@ export async function materialCommand(argv: readonly string[], options: ISourceC
         opacity: numbers.values["--opacity"],
         projectPath,
         roughness: numbers.values["--roughness"],
+        shader: shader.value,
         transmission: numbers.values["--transmission"],
         transmissionTexture: readFlag(normalizedArgv, "--transmission-texture"),
       }),
@@ -1175,7 +1180,7 @@ export async function systemCommand(argv: readonly string[], options: ISourceCom
 }
 
 function materialSetUsage(): string {
-  return "Usage: tn material set <material-id> [--color <css-color>] [--roughness <n>] [--metalness <n>] [--emissive <css-color>] [--emissive-intensity <n>] [--alpha-mode opaque|mask|blend] [--alpha-cutoff <n>] [--opacity <n>] [--base-color-texture <asset-id>] [--normal-texture <asset-id>] [--metallic-roughness-texture <asset-id>] [--emissive-texture <asset-id>] [--occlusion-texture <asset-id>] [--clearcoat <n>] [--clearcoat-roughness <n>] [--clearcoat-texture <asset-id>] [--clearcoat-roughness-texture <asset-id>] [--transmission <n>] [--transmission-texture <asset-id>] [--project <path>] [--json]";
+  return "Usage: tn material set <material-id> [--color <css-color>] [--roughness <n>] [--metalness <n>] [--emissive <css-color>] [--emissive-intensity <n>] [--alpha-mode opaque|mask|blend] [--alpha-cutoff <n>] [--opacity <n>] [--base-color-texture <asset-id>] [--normal-texture <asset-id>] [--metallic-roughness-texture <asset-id>] [--emissive-texture <asset-id>] [--occlusion-texture <asset-id>] [--clearcoat <n>] [--clearcoat-roughness <n>] [--clearcoat-texture <asset-id>] [--clearcoat-roughness-texture <asset-id>] [--transmission <n>] [--transmission-texture <asset-id>] [--shader-json <json>] [--project <path>] [--json]";
 }
 
 function uiSetStyleUsage(): string {

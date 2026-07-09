@@ -533,6 +533,7 @@ Supported:
 
 - `MeshStandardMaterial`
 - `MeshBasicMaterial`
+- `ShaderMaterial`
 - PBR parameters: `color`, `metalness`, `roughness`, `emissive`,
   `emissiveIntensity`, `alphaMode`, `alphaCutoff`, `opacity`,
   `specularIntensity`, `clearcoat`, `clearcoatRoughness`, and `transmission`.
@@ -557,6 +558,10 @@ Rules:
 - Shader material bindings must be declared before use. Raw GLSL/WGSL strings,
   node graphs, backend macros, storage buffers, bindless resources, render
   phases, and renderer handles remain validation errors.
+- SDK shader helpers include `shaderUniform`, `shaderTexture`,
+  `shaderLiteral`, `shaderUniformRef`, `shaderTextureSample`, and
+  `shaderBuiltin`. These helpers produce portable structured shader
+  expressions; they do not expose Three.js or Bevy shader handles.
 - Unsupported material fields are validation errors, not silent no-ops.
 
 Deferred:

@@ -108,14 +108,20 @@ export const materialKeys = new Set([
   "emissive",
   "emissiveIntensity",
   "emissiveTexture",
+  "inputs",
+  "kind",
   "metallicRoughnessTexture",
   "metalness",
   "normalTexture",
   "occlusionTexture",
   "opacity",
+  "outputs",
+  "program",
   "roughness",
+  "textures",
   "transmission",
   "transmissionTexture",
+  "uniforms",
 ]);
 export const assetKeys = new Set(["animationGraph", "animations", "center", "encoding", "fallback", "format", "height", "heightRange", "id", "magFilter", "minFilter", "offset", "particleEmitters", "path", "repeat", "rotation", "sampleCount", "type", "usage", "width", "wrapS", "wrapT"]);
 export const inputActionKeys = new Set(["id", "bindings"]);
@@ -404,14 +410,20 @@ export interface IMaterialDeclaration {
   emissive?: string;
   emissiveIntensity?: number;
   emissiveTexture?: string;
+  inputs?: string[];
+  kind?: "extended" | "shader" | "standard";
   metallicRoughnessTexture?: string;
   metalness?: number;
   normalTexture?: string;
   occlusionTexture?: string;
   opacity?: number;
+  outputs?: string[];
+  program?: unknown;
   roughness?: number;
+  textures?: unknown[];
   transmission?: number;
   transmissionTexture?: string;
+  uniforms?: unknown[];
 }
 
 export interface IAssetDocument {

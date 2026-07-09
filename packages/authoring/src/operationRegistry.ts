@@ -302,6 +302,7 @@ const operationEntries = [
     stringArg("occlusionTexture", false),
     numberArg("opacity", false),
     numberArg("roughness", false),
+    objectArg("shader", false),
     numberArg("transmission", false),
     stringArg("transmissionTexture", false),
   ]), async ({ args, projectPath }) =>
@@ -325,6 +326,7 @@ const operationEntries = [
       opacity: optionalNumber(args, "opacity"),
       projectPath,
       roughness: optionalNumber(args, "roughness"),
+      shader: optionalObject(args, "shader"),
       transmission: optionalNumber(args, "transmission"),
       transmissionTexture: optionalString(args, "transmissionTexture"),
     })),

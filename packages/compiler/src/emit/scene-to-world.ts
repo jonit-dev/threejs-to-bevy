@@ -22,7 +22,7 @@ interface IObjectLike {
     clearcoatRoughness?: number;
     clearcoatRoughnessTexture?: string | IAssetReference;
     clearcoatTexture?: string | IAssetReference;
-    color: unknown;
+    color?: unknown;
     depthTest?: boolean;
     depthWrite?: boolean;
     doubleSided?: boolean;
@@ -37,12 +37,17 @@ interface IObjectLike {
     occlusionTexture?: string | IAssetReference;
     opacity?: number;
     preset?: string;
+    program?: Record<string, unknown>;
     renderOrder?: number;
     roughness?: number;
     specularIntensity?: number;
     specularTexture?: string | IAssetReference;
+    textures?: readonly { asset: string | IAssetReference; name: string }[];
     transmission?: number;
     transmissionTexture?: string | IAssetReference;
+    uniforms?: readonly Record<string, unknown>[];
+    inputs?: readonly string[];
+    outputs?: readonly string[];
   };
   geometry?: {
     attributes?: readonly { itemSize: number; name: string; values: readonly number[] }[];
@@ -211,36 +216,7 @@ function visitChildren(
           ...(child.geometry.kind === "custom" ? {} : { size: geometrySize(child.geometry) }),
         });
       }
-      output.materials.push({
-        id: materialId,
-        kind: child.material.kind === "extended" || child.material.preset !== undefined ? "extended" : "standard",
-        ...(child.material.alphaCutoff === undefined ? {} : { alphaCutoff: child.material.alphaCutoff }),
-        ...(child.material.alphaMode === undefined || child.material.alphaMode === "opaque" ? {} : { alphaMode: child.material.alphaMode }),
-        ...(child.material.blendMode === undefined ? {} : { blendMode: child.material.blendMode }),
-        ...(child.material.clearcoat === undefined || child.material.clearcoat === 0 ? {} : { clearcoat: child.material.clearcoat }),
-        ...(child.material.clearcoatRoughness === undefined || child.material.clearcoatRoughness === 0 ? {} : { clearcoatRoughness: child.material.clearcoatRoughness }),
-        color: child.material.color,
-        ...(child.material.depthTest === undefined ? {} : { depthTest: child.material.depthTest }),
-        ...(child.material.depthWrite === undefined ? {} : { depthWrite: child.material.depthWrite }),
-        ...(child.material.emissive === undefined ? {} : { emissive: child.material.emissive }),
-        ...(child.material.emissiveBloom === undefined ? {} : { emissiveBloom: child.material.emissiveBloom }),
-        ...(child.material.emissiveIntensity === undefined || child.material.emissiveIntensity === 1 ? {} : { emissiveIntensity: child.material.emissiveIntensity }),
-        ...(child.material.preset === undefined
-          ? {}
-          : {
-              extension: {
-                preset: child.material.preset,
-                ...(child.material.doubleSided === undefined ? {} : { doubleSided: child.material.doubleSided }),
-              },
-            }),
-        metalness: child.material.metalness ?? 0,
-        ...(child.material.opacity === undefined || child.material.opacity === 1 ? {} : { opacity: child.material.opacity }),
-        ...(child.material.renderOrder === undefined ? {} : { renderOrder: child.material.renderOrder }),
-        roughness: child.material.roughness ?? 1,
-        ...(child.material.specularIntensity === undefined || child.material.specularIntensity === 0.5 ? {} : { specularIntensity: child.material.specularIntensity }),
-        ...(child.material.transmission === undefined || child.material.transmission === 0 ? {} : { transmission: child.material.transmission }),
-        ...emitTextureSlots(child.material, output.assets),
-      });
+      output.materials.push(emitMaterial(materialId, child.material, output.assets));
       if (child.layers !== undefined && child.layers.length > 0) {
         components.RenderLayers = { layers: [...child.layers].sort((left, right) => left.localeCompare(right)) };
       }
@@ -405,6 +381,82 @@ function emitLightMetadata(light: IObjectLike): Record<string, unknown> {
     ...(light.shadowFilter === undefined ? {} : { shadowFilter: light.shadowFilter }),
     ...(light.shadowNormalBias === undefined ? {} : { shadowNormalBias: light.shadowNormalBias }),
   };
+}
+
+function emitMaterial(
+  materialId: string,
+  material: NonNullable<IObjectLike["material"]>,
+  assets: ISceneEmitResult["assets"],
+): Record<string, unknown> & { id: string } {
+  if (material.kind === "shader") {
+    return {
+      id: materialId,
+      kind: "shader",
+      ...(material.alphaCutoff === undefined ? {} : { alphaCutoff: material.alphaCutoff }),
+      ...(material.alphaMode === undefined || material.alphaMode === "opaque" ? {} : { alphaMode: material.alphaMode }),
+      ...(material.blendMode === undefined ? {} : { blendMode: material.blendMode }),
+      ...(material.color === undefined ? {} : { color: material.color }),
+      ...(material.depthTest === undefined ? {} : { depthTest: material.depthTest }),
+      ...(material.depthWrite === undefined ? {} : { depthWrite: material.depthWrite }),
+      ...(material.emissive === undefined ? {} : { emissive: material.emissive }),
+      ...(material.emissiveIntensity === undefined || material.emissiveIntensity === 1 ? {} : { emissiveIntensity: material.emissiveIntensity }),
+      ...(material.inputs === undefined ? {} : { inputs: [...material.inputs] }),
+      ...(material.outputs === undefined ? {} : { outputs: [...material.outputs] }),
+      program: material.program,
+      ...(material.renderOrder === undefined ? {} : { renderOrder: material.renderOrder }),
+      ...(material.textures === undefined ? {} : { textures: emitShaderTextures(material.textures, assets) }),
+      ...(material.uniforms === undefined ? {} : { uniforms: material.uniforms.map((uniform) => ({ ...uniform })) }),
+    };
+  }
+  return {
+    id: materialId,
+    kind: material.kind === "extended" || material.preset !== undefined ? "extended" : "standard",
+    ...(material.alphaCutoff === undefined ? {} : { alphaCutoff: material.alphaCutoff }),
+    ...(material.alphaMode === undefined || material.alphaMode === "opaque" ? {} : { alphaMode: material.alphaMode }),
+    ...(material.blendMode === undefined ? {} : { blendMode: material.blendMode }),
+    ...(material.clearcoat === undefined || material.clearcoat === 0 ? {} : { clearcoat: material.clearcoat }),
+    ...(material.clearcoatRoughness === undefined || material.clearcoatRoughness === 0 ? {} : { clearcoatRoughness: material.clearcoatRoughness }),
+    color: material.color,
+    ...(material.depthTest === undefined ? {} : { depthTest: material.depthTest }),
+    ...(material.depthWrite === undefined ? {} : { depthWrite: material.depthWrite }),
+    ...(material.emissive === undefined ? {} : { emissive: material.emissive }),
+    ...(material.emissiveBloom === undefined ? {} : { emissiveBloom: material.emissiveBloom }),
+    ...(material.emissiveIntensity === undefined || material.emissiveIntensity === 1 ? {} : { emissiveIntensity: material.emissiveIntensity }),
+    ...(material.preset === undefined
+      ? {}
+      : {
+          extension: {
+            preset: material.preset,
+            ...(material.doubleSided === undefined ? {} : { doubleSided: material.doubleSided }),
+          },
+        }),
+    metalness: material.metalness ?? 0,
+    ...(material.opacity === undefined || material.opacity === 1 ? {} : { opacity: material.opacity }),
+    ...(material.renderOrder === undefined ? {} : { renderOrder: material.renderOrder }),
+    roughness: material.roughness ?? 1,
+    ...(material.specularIntensity === undefined || material.specularIntensity === 0.5 ? {} : { specularIntensity: material.specularIntensity }),
+    ...(material.transmission === undefined || material.transmission === 0 ? {} : { transmission: material.transmission }),
+    ...emitTextureSlots(material, assets),
+  };
+}
+
+function emitShaderTextures(
+  textures: readonly { asset: string | IAssetReference; name: string }[],
+  assets: ISceneEmitResult["assets"],
+): Array<{ asset: string; name: string }> {
+  return textures.map((texture) => {
+    if (typeof texture.asset === "string") {
+      return { asset: texture.asset, name: texture.name };
+    }
+    assets.push({
+      format: texture.asset.format,
+      id: texture.asset.id,
+      kind: texture.asset.kind,
+      path: texture.asset.path,
+      sourceMode: texture.asset.sourceMode ?? "bundle",
+    });
+    return { asset: texture.asset.id, name: texture.name };
+  });
 }
 
 function emitTextureSlots(

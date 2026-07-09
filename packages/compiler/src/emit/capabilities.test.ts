@@ -30,6 +30,38 @@ test("should derive transparent material capabilities", () => {
   ]);
 });
 
+test("should derive shader material capabilities", () => {
+  const capabilities = deriveRequiredCapabilities({
+    assets: assetsManifest([]),
+    materials: materialsIr([
+      {
+        id: "mat.shader",
+        kind: "shader",
+        program: {
+          fragment: { outputs: { baseColor: { kind: "uniform", uniform: "tint" } } },
+          language: "threenative-shader-v1",
+          vertex: { displacement: { amount: { kind: "uniform", uniform: "waveAmount" }, axis: "normal" } },
+        },
+        textures: [{ name: "ramp", asset: "tex.ramp" }],
+        uniforms: [
+          { name: "tint", type: "color", default: "#33ccff" },
+          { name: "waveAmount", type: "float", default: 0.1 },
+        ],
+      },
+    ]),
+    world: worldIr({ entities: [] }),
+  });
+
+  assert.deepEqual(capabilities.rendering, [
+    "material.shader",
+    "material.shader.v1",
+    "shader.texture2d",
+    "shader.uniform.color",
+    "shader.uniform.float",
+    "shader.vertex-displacement",
+  ]);
+});
+
 test("should derive sorted rendering and physics capabilities from world, materials, and assets", () => {
   const capabilities = deriveRequiredCapabilities({
     assets: assetsManifest([

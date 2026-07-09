@@ -250,16 +250,16 @@ sequenceDiagram
 
 **Implementation:**
 
-- [ ] Add SDK helpers for uniforms, textures, shader expressions, and material
+- [x] Add SDK helpers for uniforms, textures, shader expressions, and material
   policy without exposing renderer handles.
-- [ ] Add compiler emission for shader materials from SDK and structured
+- [x] Add compiler emission for shader materials from SDK and structured
   source.
-- [ ] Derive capability tags such as `material.shader.v1`,
+- [x] Derive capability tags such as `material.shader.v1`,
   `shader.uniform.float`, `shader.texture2d`, and `shader.vertex-displacement`
   only when used.
-- [ ] Add CLI/editor-safe material operations for creating/updating shader
+- [x] Add CLI/editor-safe material operations for creating/updating shader
   material source documents.
-- [ ] Preserve source provenance and stable IDs.
+- [x] Preserve source provenance and stable IDs.
 
 **Tests Required:**
 
@@ -432,8 +432,8 @@ sequenceDiagram
 
 ## 7. Acceptance Criteria
 
-- [ ] `kind: "shader"` material is documented in SDK and IR contracts.
-- [ ] Authors can create shader materials through SDK and structured source.
+- [x] `kind: "shader"` material is documented in SDK and IR contracts.
+- [x] Authors can create shader materials through SDK and structured source.
 - [ ] Raw GLSL/WGSL/backend shader fields remain rejected unless wrapped by the
   portable shader contract.
 - [ ] Web Three.js and native Bevy both render the same portable shader material
@@ -459,6 +459,12 @@ sequenceDiagram
 
 ## 9. Verification Evidence
 
-Implementation has not started. Add phase-by-phase command output, artifact
-paths, screenshots/contact sheets, and checkpoint review results here as the PRD
-is executed.
+- Phase 1 contract and diagnostics are implemented in IR schema/types,
+  validation, and SDK/IR contracts.
+- Phase 2 SDK, structured source, compiler emit, capability tags, and CLI
+  `--shader-json` authoring are implemented. Focused verification passed:
+  `pnpm --filter @threenative/sdk test -- --run "bounded shader material|non-portable shader"`,
+  `pnpm --filter @threenative/compiler test -- --run "shader materials from|shader material capabilities"`,
+  `pnpm --filter @threenative/cli test -- --run "shader material source"`,
+  `pnpm --filter @threenative/authoring build`, and
+  `pnpm --filter @threenative/authoring test -- --run material`.

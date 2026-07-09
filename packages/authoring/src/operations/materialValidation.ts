@@ -40,6 +40,8 @@ const materialNormalizedNumberKeys = [
   "transmission",
 ] as const;
 
+const materialKinds = new Set(["extended", "shader", "standard"]);
+
 interface IDeclarationDocumentValidationOptions {
   declarationKeys: ReadonlySet<string>;
   duplicateKind: string;
@@ -80,6 +82,13 @@ function validateMaterialDeclaration(
   item: Record<string, unknown>,
 ): void {
   validateGeneratedPathString(diagnostics, file, `${path}/asset`, item.asset, "material asset must be a non-empty source path.");
+  const kind = readString(item.kind);
+  if (item.kind !== undefined && (kind === undefined || !materialKinds.has(kind))) {
+    diagnostics.push(typeDiagnostic(file, `${path}/kind`, "material kind must be 'standard', 'extended', or 'shader'.", item.kind));
+  }
+  if (kind === "shader" && item.program === undefined) {
+    diagnostics.push(typeDiagnostic(file, `${path}/program`, "shader material must declare a portable program.", item.program));
+  }
   if (item.color !== undefined && readString(item.color) === undefined) {
     diagnostics.push(typeDiagnostic(file, `${path}/color`, "material color must be a non-empty string.", item.color));
   }
@@ -108,5 +117,13 @@ function validateMaterialDeclaration(
   }
   if (typeof item.emissiveIntensity === "number" && Number.isFinite(item.emissiveIntensity) && item.emissiveIntensity < 0) {
     diagnostics.push(typeDiagnostic(file, `${path}/emissiveIntensity`, "material emissiveIntensity must be non-negative.", item.emissiveIntensity));
+  }
+  for (const key of ["inputs", "outputs", "textures", "uniforms"] as const) {
+    if (item[key] !== undefined && !Array.isArray(item[key])) {
+      diagnostics.push(typeDiagnostic(file, `${path}/${key}`, `material ${key} must be an array.`, item[key]));
+    }
+  }
+  if (item.program !== undefined && (typeof item.program !== "object" || item.program === null || Array.isArray(item.program))) {
+    diagnostics.push(typeDiagnostic(file, `${path}/program`, "material program must be an object.", item.program));
   }
 }

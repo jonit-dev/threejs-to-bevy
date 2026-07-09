@@ -1,9 +1,10 @@
 import { Object3D, type IObject3DOptions } from "./Object3D.js";
 import { type MeshExtendedMaterial } from "../materials/MeshExtendedMaterial.js";
 import { type MeshStandardMaterial } from "../materials/MeshStandardMaterial.js";
+import { type ShaderMaterial } from "../materials/ShaderMaterial.js";
 import { type SupportedGeometry } from "../geometry/primitives.js";
 
-export type MeshMaterial = MeshExtendedMaterial | MeshStandardMaterial;
+export type MeshMaterial = MeshExtendedMaterial | MeshStandardMaterial | ShaderMaterial;
 
 export interface IMeshOptions extends IObject3DOptions {
   castShadow?: boolean;

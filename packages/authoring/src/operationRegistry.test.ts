@@ -96,6 +96,26 @@ test("should dispatch existing structured source operations through the registry
         name: "material.set",
         projectPath: root,
       }),
+      await dispatchAuthoringOperation({ args: { materialId: "mat.shader" }, name: "material.create", projectPath: root }),
+      await dispatchAuthoringOperation({
+        args: {
+          materialId: "mat.shader",
+          shader: {
+            inputs: ["uv0"],
+            outputs: ["baseColor"],
+            program: {
+              fragment: {
+                outputs: {
+                  baseColor: { kind: "uniform", uniform: "tint" },
+                },
+              },
+            },
+            uniforms: [{ default: "#00ffaa", name: "tint", type: "color" }],
+          },
+        },
+        name: "material.set",
+        projectPath: root,
+      }),
       await dispatchAuthoringOperation({ args: { uiDocId: "hud" }, name: "ui.create", projectPath: root }),
       await dispatchAuthoringOperation({ args: { text: "Score", nodeId: "score", uiDocId: "hud" }, name: "ui.add_text", projectPath: root }),
       await dispatchAuthoringOperation({ args: { action: "pause", label: "Pause", nodeId: "pause", type: "button", uiDocId: "hud" }, name: "ui.add_node", projectPath: root }),
@@ -123,6 +143,9 @@ test("should dispatch existing structured source operations through the registry
       await dispatchAuthoringOperation({ args: { activation: "exclusive", initial: true, kind: "level", sceneId: "scene.arena" }, name: "scene.set_lifecycle", projectPath: root }),
     ];
     const material = JSON.parse(await readFile(join(root, "content", "materials", "mat.player.materials.json"), "utf8")) as {
+      materials: Array<Record<string, unknown>>;
+    };
+    const shaderMaterial = JSON.parse(await readFile(join(root, "content", "materials", "mat.shader.materials.json"), "utf8")) as {
       materials: Array<Record<string, unknown>>;
     };
     const asset = JSON.parse(await readFile(join(root, "content", "assets", "model.player.assets.json"), "utf8")) as {
@@ -184,6 +207,16 @@ test("should dispatch existing structured source operations through the registry
     assert.deepEqual(environment.lightProbes, [{ bounds: { max: [3, 4, 3], min: [-3, 0, -3] }, id: "probe.center", influenceRadius: 5, source: { asset: "tex.env", mode: "equirect" } }]);
     assert.deepEqual(generator, { export: "generateArena", id: "arena.layout", inputHash: "sha256:inputs", module: "src/generators/arena.ts", outputHash: "sha256:outputs", outputs: ["content/scenes/arena.scene.json"], overwritePolicy: "manual", schema: "threenative.generator-provenance", version: "0.1.0" });
     assert.deepEqual(material.materials, [{ alphaMode: "mask", baseColorTexture: "tex.player.albedo", color: "#fff", emissive: "#33ccff", id: "mat.player", metalness: 0.2, normalTexture: "tex.player.normal", roughness: 0.4 }]);
+    assert.deepEqual(shaderMaterial.materials, [
+      {
+        id: "mat.shader",
+        inputs: ["uv0"],
+        kind: "shader",
+        outputs: ["baseColor"],
+        program: { fragment: { outputs: { baseColor: { kind: "uniform", uniform: "tint" } } } },
+        uniforms: [{ default: "#00ffaa", name: "tint", type: "color" }],
+      },
+    ]);
     assert.deepEqual(ui.nodes, [
       { id: "score", text: "Score", type: "text" },
       { action: "pause", id: "pause", label: "Pause", style: { backgroundColor: "#101820", color: "#ffffff", fontSize: 18, wrap: true }, type: "button" },

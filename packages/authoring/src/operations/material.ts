@@ -415,6 +415,14 @@ export async function setMaterial(options: ISetMaterialOptions): Promise<IAuthor
     setOptionalNumber(material, "opacity", options.opacity);
     setOptionalNumber(material, "roughness", options.roughness);
     setOptionalNumber(material, "transmission", options.transmission);
+    if (options.shader !== undefined) {
+      material.kind = "shader";
+      for (const key of ["inputs", "outputs", "program", "textures", "uniforms"] as const) {
+        if (options.shader[key] !== undefined) {
+          material[key] = cloneJson(options.shader[key]);
+        }
+      }
+    }
     return [];
   };
 

@@ -265,6 +265,43 @@ test("material command creates and updates source doc", async () => {
   }
 });
 
+test("material command creates shader material source through JSON operation", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-cli-material-shader-"));
+  try {
+    await materialCommand(["create", "mat.shader", "--project", root, "--json"]);
+    const shader = {
+      inputs: ["normal", "uv0", "elapsedTime"],
+      outputs: ["baseColor", "alpha"],
+      program: {
+        language: "threenative-shader-v1",
+        fragment: {
+          outputs: {
+            alpha: { kind: "literal", value: 0.85 },
+            baseColor: { kind: "uniform", uniform: "tint" },
+          },
+        },
+      },
+      textures: [{ name: "ramp", asset: "tex.ramp" }],
+      uniforms: [{ name: "tint", type: "color", default: "#33ccff" }],
+    };
+    const set = await materialCommand(["set", "mat.shader", "--shader-json", JSON.stringify(shader), "--project", root, "--json"]);
+    const doc = JSON.parse(await readFile(join(root, "content", "materials", "mat.shader.materials.json"), "utf8")) as {
+      materials: Array<Record<string, unknown>>;
+    };
+
+    assert.equal(set.exitCode, 0);
+    assert.deepEqual(doc.materials, [
+      {
+        id: "mat.shader",
+        kind: "shader",
+        ...shader,
+      },
+    ]);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
 test("material command sets a material inside a grouped material document", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-cli-material-grouped-"));
   try {

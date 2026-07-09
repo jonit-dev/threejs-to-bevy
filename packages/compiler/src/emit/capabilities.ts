@@ -347,6 +347,18 @@ function collectMaterialCapabilities(materials: IMaterialsIr, add: (domain: stri
     if (material.extension !== undefined) {
       add("rendering", `material.extended.${material.extension.preset}`);
     }
+    if (material.kind === "shader") {
+      add("rendering", "material.shader.v1");
+      for (const uniform of material.uniforms ?? []) {
+        add("rendering", `shader.uniform.${uniform.type}`);
+      }
+      if ((material.textures?.length ?? 0) > 0) {
+        add("rendering", "shader.texture2d");
+      }
+      if (material.program.vertex?.displacement !== undefined) {
+        add("rendering", "shader.vertex-displacement");
+      }
+    }
     if (material.alphaMode !== undefined && material.alphaMode !== "opaque") {
       add("rendering", `material.alpha.${material.alphaMode}`);
     }

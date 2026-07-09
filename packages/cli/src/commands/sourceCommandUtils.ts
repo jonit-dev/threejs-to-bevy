@@ -210,6 +210,7 @@ const flagsWithValues = new Set([
   "--roughness",
   "--schedule",
   "--shape",
+  "--shader-json",
   "--scene",
   "--set",
   "--size",

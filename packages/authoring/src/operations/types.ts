@@ -661,6 +661,7 @@ export interface ISetMaterialOptions extends IAuthoringOperationContext {
   occlusionTexture?: string;
   opacity?: number;
   roughness?: number;
+  shader?: Record<string, unknown>;
   transmission?: number;
   transmissionTexture?: string;
 }

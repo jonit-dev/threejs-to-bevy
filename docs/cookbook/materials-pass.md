@@ -12,11 +12,13 @@ surfaces:
 ```bash
 tn material create mat.cookbook --project . --json
 tn material set mat.cookbook --color blue --roughness 0.65 --metalness 0 --project . --json
+tn material create mat.shader.cookbook --project . --json
+tn material set mat.shader.cookbook --shader-json '{"inputs":["uv0"],"outputs":["baseColor"],"uniforms":[{"name":"tint","type":"color","default":"#2f80ed"}],"program":{"language":"threenative-shader-v1","fragment":{"outputs":{"baseColor":{"kind":"uniform","uniform":"tint"}}}}}' --project . --json
 ```
 
 ## source-delta
 ```json
-{"content/materials/*.json":"mat.cookbook declares base color and roughness in durable material source."}
+{"content/materials/*.json":"mat.cookbook declares base color and roughness in durable material source; mat.shader.cookbook declares a portable shader material through shader JSON."}
 ```
 
 ## script

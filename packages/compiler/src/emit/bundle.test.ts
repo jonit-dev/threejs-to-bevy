@@ -14,6 +14,7 @@ import {
   PlaneGeometry,
   PointLight,
   Scene,
+  ShaderMaterial,
   SpotLight,
   World,
   action,
@@ -45,6 +46,9 @@ import {
   touchControl,
   transformAnimationClip,
   sceneTransition,
+  shaderLiteral,
+  shaderUniform,
+  shaderUniformRef,
   update,
 } from "@threenative/sdk";
 import { IR_DOCUMENTS, validateBundle } from "@threenative/ir";
@@ -1011,6 +1015,124 @@ test("should emit structured material documents", async () => {
       emissiveIntensity: 0.7,
       id: "mat.lamp",
       kind: "standard",
+    });
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should emit shader materials from structured source documents", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-emit-source-shader-materials-"));
+  try {
+    const config = {
+      entry: "src/game.ts",
+      outDir: "dist/game.bundle",
+      projectPath: root,
+      schema: "threenative.project" as const,
+      version: "0.1.0" as const,
+    };
+
+    const bundlePath = await emitBundle(config, makeScene(), {
+      authoringDocuments: [{
+        data: {
+          schema: "threenative.materials",
+          version: "0.1.0",
+          id: "shader-materials",
+          materials: [
+            {
+              id: "mat.shader",
+              inputs: ["normal", "uv0"],
+              kind: "shader",
+              outputs: ["baseColor"],
+              program: {
+                language: "threenative-shader-v1",
+                fragment: {
+                  outputs: {
+                    baseColor: { kind: "uniform", uniform: "tint" },
+                  },
+                },
+              },
+              uniforms: [{ name: "tint", type: "color", default: "#33ccff" }],
+            },
+          ],
+        },
+        file: join(root, "content", "materials", "shader.materials.json"),
+        kind: "material",
+        projectRelativePath: "content/materials/shader.materials.json",
+      }],
+    });
+
+    const materials = JSON.parse(await readFile(join(bundlePath, "materials.ir.json"), "utf8"));
+    const validation = await validateBundle(bundlePath);
+
+    assert.equal(validation.ok, true);
+    assert.deepEqual(materials.materials.find((item: { id: string }) => item.id === "mat.shader"), {
+      id: "mat.shader",
+      inputs: ["normal", "uv0"],
+      kind: "shader",
+      outputs: ["baseColor"],
+      program: {
+        fragment: {
+          outputs: {
+            baseColor: { kind: "uniform", uniform: "tint" },
+          },
+        },
+        language: "threenative-shader-v1",
+      },
+      uniforms: [{ default: "#33ccff", name: "tint", type: "color" }],
+    });
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should emit shader materials from SDK declarations", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-emit-sdk-shader-materials-"));
+  try {
+    const config = {
+      entry: "src/game.ts",
+      outDir: "dist/game.bundle",
+      projectPath: root,
+      schema: "threenative.project" as const,
+      version: "0.1.0" as const,
+    };
+    const scene = new Scene();
+    scene.add(
+      new Mesh({
+        geometry: new BoxGeometry({ size: [1, 1, 1] }),
+        id: "shader-cube",
+        material: new ShaderMaterial({
+          program: {
+            fragment: {
+              outputs: {
+                alpha: shaderLiteral(0.9),
+                baseColor: shaderUniformRef("tint"),
+              },
+            },
+          },
+          uniforms: [shaderUniform("tint", "color", "#33ccff")],
+        }),
+      }),
+    );
+
+    const bundlePath = await emitBundle(config, scene);
+    const materials = JSON.parse(await readFile(join(bundlePath, "materials.ir.json"), "utf8"));
+    const validation = await validateBundle(bundlePath);
+
+    assert.equal(validation.ok, true);
+    assert.deepEqual(materials.materials.find((item: { id: string }) => item.id === "mat.shader-cube"), {
+      id: "mat.shader-cube",
+      kind: "shader",
+      program: {
+        fragment: {
+          outputs: {
+            alpha: { kind: "literal", value: 0.9 },
+            baseColor: { kind: "uniform", uniform: "tint" },
+          },
+        },
+        language: "threenative-shader-v1",
+      },
+      uniforms: [{ default: "#33ccff", name: "tint", type: "color" }],
     });
   } finally {
     await rm(root, { force: true, recursive: true });
