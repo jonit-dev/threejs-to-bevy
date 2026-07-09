@@ -213,9 +213,9 @@ sequenceDiagram
 
 **Implementation:**
 
-- [ ] Mirror web primitive filtering and character observation fields.
-- [ ] Sort contacts and pushed bodies using the shared order.
-- [ ] Add diagnostics for unsupported mesh/dynamic cases.
+- [x] Mirror web primitive filtering and character observation fields.
+- [x] Sort contacts and pushed bodies using the shared order.
+- [x] Add diagnostics for unsupported mesh/dynamic cases.
 
 **Tests Required:**
 

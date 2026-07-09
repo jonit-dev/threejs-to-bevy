@@ -6,6 +6,8 @@ use threenative_loader::{ColliderComponent, ColliderSlopeComponent, LoadedBundle
 pub struct CharacterTraceObservation {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub blocked_by: Option<String>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub contacts: Vec<CharacterContactObservation>,
     pub desired: [f32; 3],
     pub entity: String,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -15,18 +17,50 @@ pub struct CharacterTraceObservation {
     pub platform_delta: Option<[f32; 3]>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub pushed: Option<CharacterPushObservation>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub pushes: Vec<CharacterPushObservation>,
     pub resolved: [f32; 3],
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub slope: Option<CharacterSlopeObservation>,
     pub start: [f32; 3],
     #[serde(skip_serializing_if = "Option::is_none")]
     pub too_heavy: Option<String>,
 }
 
-#[derive(Debug, PartialEq, Serialize)]
+#[derive(Clone, Debug, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CharacterPushObservation {
     pub entity: String,
     pub impulse: [f32; 3],
     pub position: [f32; 3],
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CharacterContactObservation {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub material: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub normal: Option<[f32; 3]>,
+    pub other: String,
+    pub phase: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub point: Option<[f32; 3]>,
+    pub point_index: u32,
+    #[serde(rename = "self")]
+    pub self_entity: String,
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CharacterSlopeObservation {
+    pub angle: f32,
+    pub axis: String,
+    pub direction: i8,
+    pub entity: String,
+    pub rise: f32,
+    pub run: f32,
+    pub walkable: bool,
 }
 
 #[derive(Clone, Copy)]
@@ -48,8 +82,12 @@ const DEFAULT_SLOPE_LIMIT: f32 = 45.0;
 
 struct Bounds {
     center: [f32; 3],
+    contact_phases: Vec<String>,
     half_extents: [f32; 3],
     id: String,
+    layer: Option<String>,
+    mask: Vec<String>,
+    material: Option<String>,
     slope: Option<SlopeBounds>,
     velocity: Option<[f32; 3]>,
 }
@@ -59,16 +97,20 @@ struct SlopeBounds {
     axis: String,
     direction: i8,
     rise: f32,
+    run: f32,
 }
 
 struct GroundResolution {
+    contact: Option<CharacterContactObservation>,
     entity: Option<String>,
     platform_delta: Option<[f32; 3]>,
     position: [f32; 3],
+    slope: Option<CharacterSlopeObservation>,
 }
 
 struct HorizontalResolution {
     blocked_by: Option<String>,
+    contacts: Vec<CharacterContactObservation>,
     position: [f32; 3],
     pushed: Option<CharacterPushObservation>,
     too_heavy: Option<String>,
@@ -167,10 +209,12 @@ fn trace_character(
             input.fixed_delta,
         ),
     );
+    let character_bounds_info = entity_bounds(entity);
     let character_half_extents = half_extents(collider);
     let horizontal = if controller.blocking {
         resolve_horizontal_contact(
             &entity.id,
+            character_bounds_info.as_ref(),
             start,
             desired,
             character_half_extents,
@@ -182,6 +226,7 @@ fn trace_character(
     } else {
         HorizontalResolution {
             blocked_by: None,
+            contacts: Vec::new(),
             position: desired,
             pushed: None,
             too_heavy: None,
@@ -190,6 +235,7 @@ fn trace_character(
     let ground = if controller.grounding == "raycast" {
         ground_position(
             &entity.id,
+            character_bounds_info.as_ref(),
             horizontal.position,
             character_half_extents,
             blockers,
@@ -198,21 +244,36 @@ fn trace_character(
         )
     } else {
         GroundResolution {
+            contact: None,
             entity: None,
             platform_delta: None,
             position: horizontal.position,
+            slope: None,
         }
     };
+    let mut contacts = horizontal.contacts;
+    if let Some(contact) = ground.contact {
+        contacts.push(contact);
+    }
+    sort_contacts(&mut contacts);
+    let pushes = horizontal
+        .pushed
+        .as_ref()
+        .map(|pushed| vec![pushed.clone()])
+        .unwrap_or_default();
 
     Some(CharacterTraceObservation {
         blocked_by: horizontal.blocked_by,
+        contacts,
         desired,
         entity: entity.id.clone(),
         ground_entity: ground.entity.clone(),
         grounded: ground.entity.is_some(),
         platform_delta: ground.platform_delta,
         pushed: horizontal.pushed,
+        pushes,
         resolved: ground.position,
+        slope: ground.slope,
         start,
         too_heavy: horizontal.too_heavy,
     })
@@ -237,6 +298,7 @@ fn movement_delta(axis_x: f32, axis_z: f32, speed: f32, fixed_delta: f32) -> [f3
 
 fn resolve_horizontal_contact(
     character_id: &str,
+    character_bounds_info: Option<&Bounds>,
     start: [f32; 3],
     desired: [f32; 3],
     character_half_extents: [f32; 3],
@@ -248,12 +310,17 @@ fn resolve_horizontal_contact(
     let mut position = desired;
     let mut character_bounds = Bounds {
         center: position,
+        contact_phases: Vec::new(),
         half_extents: character_half_extents,
         id: character_id.to_owned(),
+        layer: None,
+        mask: Vec::new(),
+        material: None,
         slope: None,
         velocity: None,
     };
     let movement = [desired[0] - start[0], 0.0, desired[2] - start[2]];
+    let mut contacts = Vec::new();
     for blocker in blockers {
         if blocker.id == character_id {
             continue;
@@ -267,21 +334,46 @@ fn resolve_horizontal_contact(
             continue;
         }
         if bounds.slope.is_some() && can_walk_slope(position, &bounds, slope_limit) {
+            add_contact(
+                &mut contacts,
+                character_bounds_info,
+                &bounds,
+                "begin",
+                position,
+                contact_normal(movement),
+            );
             let top = surface_top(position, &bounds);
             position = [position[0], top + character_half_extents[1], position[2]];
             character_bounds.center = position;
             continue;
         }
         if can_step_onto(position, character_half_extents, &bounds, step_offset) {
+            add_contact(
+                &mut contacts,
+                character_bounds_info,
+                &bounds,
+                "begin",
+                position,
+                contact_normal(movement),
+            );
             let top = surface_top(position, &bounds);
             position = [position[0], top + character_half_extents[1], position[2]];
             character_bounds.center = position;
             continue;
         }
+        add_contact(
+            &mut contacts,
+            character_bounds_info,
+            &bounds,
+            "begin",
+            position,
+            contact_normal(movement),
+        );
         match resolve_push(push_policy, blocker, movement) {
             PushResolution::Pushed(pushed) => {
                 return HorizontalResolution {
                     blocked_by: None,
+                    contacts,
                     position,
                     pushed: Some(pushed),
                     too_heavy: None,
@@ -290,6 +382,7 @@ fn resolve_horizontal_contact(
             PushResolution::TooHeavy => {
                 return HorizontalResolution {
                     blocked_by: Some(blocker.id.clone()),
+                    contacts,
                     position: start,
                     pushed: None,
                     too_heavy: Some(blocker.id.clone()),
@@ -299,6 +392,7 @@ fn resolve_horizontal_contact(
         }
         return HorizontalResolution {
             blocked_by: Some(blocker.id.clone()),
+            contacts,
             position: start,
             pushed: None,
             too_heavy: None,
@@ -306,6 +400,7 @@ fn resolve_horizontal_contact(
     }
     HorizontalResolution {
         blocked_by: None,
+        contacts,
         position,
         pushed: None,
         too_heavy: None,
@@ -369,6 +464,7 @@ fn resolve_push(
 
 fn ground_position(
     character_id: &str,
+    character_bounds_info: Option<&Bounds>,
     position: [f32; 3],
     character_half_extents: [f32; 3],
     blockers: &[&WorldEntity],
@@ -399,9 +495,11 @@ fn ground_position(
     }
     let (Some(ground), Some(ground_top)) = (ground, ground_top) else {
         return GroundResolution {
+            contact: None,
             entity: None,
             platform_delta: None,
             position,
+            slope: None,
         };
     };
     let grounded = [
@@ -409,19 +507,31 @@ fn ground_position(
         ground_top + character_half_extents[1],
         position[2],
     ];
+    let contact = make_contact(
+        character_bounds_info,
+        &ground,
+        "stay",
+        [position[0], ground_top, position[2]],
+        [0.0, 1.0, 0.0],
+    );
+    let slope = slope_observation(&ground);
     match ground.velocity {
         Some(velocity) => {
             let platform_delta = scale(velocity, fixed_delta);
             GroundResolution {
+                contact,
                 entity: Some(ground.id),
                 platform_delta: Some(platform_delta),
                 position: add(grounded, platform_delta),
+                slope,
             }
         }
         None => GroundResolution {
+            contact,
             entity: Some(ground.id),
             platform_delta: None,
             position: grounded,
+            slope,
         },
     }
 }
@@ -430,8 +540,16 @@ fn entity_bounds(entity: &WorldEntity) -> Option<Bounds> {
     let collider = entity.components.collider.as_ref()?;
     Some(Bounds {
         center: position(entity),
+        contact_phases: collider
+            .contact
+            .as_ref()
+            .and_then(|contact| contact.phases.clone())
+            .unwrap_or_default(),
         half_extents: half_extents(collider),
         id: entity.id.clone(),
+        layer: collider.layer.clone(),
+        mask: collider.mask.clone().unwrap_or_default(),
+        material: collider.material.clone(),
         slope: slope(collider),
         velocity: entity
             .components
@@ -529,7 +647,96 @@ fn slope(collider: &ColliderComponent) -> Option<SlopeBounds> {
         axis: axis.clone(),
         direction: *direction,
         rise: *rise,
+        run: *run,
     })
+}
+
+fn slope_observation(bounds: &Bounds) -> Option<CharacterSlopeObservation> {
+    bounds
+        .slope
+        .as_ref()
+        .map(|slope| CharacterSlopeObservation {
+            angle: round(slope.angle),
+            axis: slope.axis.clone(),
+            direction: slope.direction,
+            entity: bounds.id.clone(),
+            rise: round(slope.rise),
+            run: round(slope.run),
+            walkable: true,
+        })
+}
+
+fn add_contact(
+    contacts: &mut Vec<CharacterContactObservation>,
+    self_bounds: Option<&Bounds>,
+    other: &Bounds,
+    phase: &str,
+    point: [f32; 3],
+    normal: [f32; 3],
+) {
+    if let Some(contact) = make_contact(self_bounds, other, phase, point, normal) {
+        contacts.push(contact);
+    }
+}
+
+fn make_contact(
+    self_bounds: Option<&Bounds>,
+    other: &Bounds,
+    phase: &str,
+    point: [f32; 3],
+    normal: [f32; 3],
+) -> Option<CharacterContactObservation> {
+    let self_bounds = self_bounds?;
+    if !contact_allowed(self_bounds, other, phase) || !contact_allowed(other, self_bounds, phase) {
+        return None;
+    }
+    Some(CharacterContactObservation {
+        material: other.material.clone(),
+        normal: Some(round_vec3(normal)),
+        other: other.id.clone(),
+        phase: phase.to_owned(),
+        point: Some(round_vec3(point)),
+        point_index: 0,
+        self_entity: self_bounds.id.clone(),
+    })
+}
+
+fn contact_allowed(self_bounds: &Bounds, other: &Bounds, phase: &str) -> bool {
+    self_bounds
+        .contact_phases
+        .iter()
+        .any(|candidate| candidate == phase)
+        && (self_bounds.mask.is_empty()
+            || other
+                .layer
+                .as_ref()
+                .is_some_and(|layer| self_bounds.mask.iter().any(|candidate| candidate == layer)))
+}
+
+fn sort_contacts(contacts: &mut [CharacterContactObservation]) {
+    contacts.sort_by(|left, right| {
+        contact_phase_order(&left.phase)
+            .cmp(&contact_phase_order(&right.phase))
+            .then_with(|| left.self_entity.cmp(&right.self_entity))
+            .then_with(|| left.other.cmp(&right.other))
+            .then_with(|| left.point_index.cmp(&right.point_index))
+    });
+}
+
+fn contact_phase_order(phase: &str) -> u8 {
+    match phase {
+        "begin" => 0,
+        "stay" => 1,
+        _ => 2,
+    }
+}
+
+fn contact_normal(movement: [f32; 3]) -> [f32; 3] {
+    if movement[0].abs() >= movement[2].abs() {
+        [if movement[0] >= 0.0 { -1.0 } else { 1.0 }, 0.0, 0.0]
+    } else {
+        [0.0, 0.0, if movement[2] >= 0.0 { -1.0 } else { 1.0 }]
+    }
 }
 
 fn axis_value(axes: &[CharacterTraceAxis<'_>], id: &str) -> f32 {
@@ -544,6 +751,14 @@ fn add(left: [f32; 3], right: [f32; 3]) -> [f32; 3] {
 
 fn scale(vector: [f32; 3], amount: f32) -> [f32; 3] {
     [vector[0] * amount, vector[1] * amount, vector[2] * amount]
+}
+
+fn round_vec3(value: [f32; 3]) -> [f32; 3] {
+    [round(value[0]), round(value[1]), round(value[2])]
+}
+
+fn round(value: f32) -> f32 {
+    (value * 1_000_000.0).round() / 1_000_000.0
 }
 
 fn position(entity: &WorldEntity) -> [f32; 3] {

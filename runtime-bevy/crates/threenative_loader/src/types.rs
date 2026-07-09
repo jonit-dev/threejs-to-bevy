@@ -654,11 +654,13 @@ pub struct CcdComponent {
 #[derive(Clone, Debug, Deserialize)]
 pub struct ColliderComponent {
     pub center: Option<[f32; 3]>,
+    pub contact: Option<ColliderContactComponent>,
     pub friction: Option<f32>,
     pub kind: String,
     pub height: Option<f32>,
     pub layer: Option<String>,
     pub mask: Option<Vec<String>>,
+    pub material: Option<String>,
     pub mesh: Option<MeshColliderComponent>,
     pub radius: Option<f32>,
     pub restitution: Option<f32>,
@@ -666,6 +668,11 @@ pub struct ColliderComponent {
     pub slope: Option<ColliderSlopeComponent>,
     pub sensor: Option<serde_json::Value>,
     pub trigger: Option<bool>,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+pub struct ColliderContactComponent {
+    pub phases: Option<Vec<String>>,
 }
 
 #[derive(Clone, Debug, Deserialize)]

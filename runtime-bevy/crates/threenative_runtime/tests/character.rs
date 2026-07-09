@@ -5,7 +5,7 @@ use std::{
 };
 
 use threenative_loader::load_bundle;
-use threenative_runtime::character::{CharacterTraceAxis, trace_character_controllers};
+use threenative_runtime::character::{trace_character_controllers, CharacterTraceAxis};
 
 mod support;
 use support::load_conformance_fixture;
@@ -14,11 +14,9 @@ use support::load_conformance_fixture;
 fn character_trace_should_match_v7_conformance_fixture() {
     let fixture = load_conformance_fixture("advanced-physics-character");
     assert_eq!(fixture.name, "advanced-physics-character");
-    assert!(
-        fixture
-            .bundle_path
-            .ends_with("advanced-physics-character/game.bundle")
-    );
+    assert!(fixture
+        .bundle_path
+        .ends_with("advanced-physics-character/game.bundle"));
     let trace = trace_character_controllers(
         &fixture.bundle,
         &[
@@ -378,6 +376,17 @@ fn character_trace_should_apply_slope_limits() {
     assert_eq!(trace[0].blocked_by, None);
     assert_eq!(trace[0].ground_entity, Some("ramp".to_owned()));
     assert_eq!(trace[0].resolved, [2.0, 1.5, 0.0]);
+    let slope = trace[0]
+        .slope
+        .as_ref()
+        .expect("ramp slope should be reported");
+    assert_eq!(slope.entity, "ramp");
+    assert_eq!(slope.angle, 26.56505);
+    assert_eq!(slope.axis, "x");
+    assert_eq!(slope.direction, 1);
+    assert_eq!(slope.rise, 1.0);
+    assert_eq!(slope.run, 2.0);
+    assert!(slope.walkable);
 
     write(
         &root,
@@ -561,6 +570,8 @@ fn character_trace_should_push_light_dynamic_bodies_and_block_heavy_bodies() {
     assert_eq!(pushed.entity, "light-crate");
     assert_eq!(pushed.impulse, [2.0, 0.0, 0.0]);
     assert_eq!(pushed.position, [4.0, 1.0, 0.0]);
+    assert_eq!(trace[0].pushes.len(), 1);
+    assert_eq!(trace[0].pushes[0].entity, "light-crate");
 
     write(
         &root,
@@ -620,6 +631,90 @@ fn character_trace_should_push_light_dynamic_bodies_and_block_heavy_bodies() {
     assert_eq!(trace[0].pushed, None);
     assert_eq!(trace[0].resolved, [0.0, 1.05, 0.0]);
     assert_eq!(trace[0].too_heavy, Some("heavy-crate".to_owned()));
+
+    fs::remove_dir_all(root).expect("temporary bundle should be removed");
+}
+
+#[test]
+fn character_trace_should_filter_contacts_by_layer_and_phase() {
+    let root = write_character_bundle();
+    write(
+        &root,
+        "world.ir.json",
+        r#"{
+  "schema": "threenative.world",
+  "version": "0.1.0",
+  "entities": [
+    {
+      "id": "ramp",
+      "components": {
+        "Collider": { "contact": { "phases": ["stay"] }, "kind": "box", "layer": "world", "material": "stone", "size": [6, 1, 6], "slope": { "axis": "x", "direction": 1, "rise": 1, "run": 3 } },
+        "RigidBody": { "kind": "static" },
+        "Transform": { "position": [0, 0.5, 0] }
+      }
+    },
+    {
+      "id": "crate",
+      "components": {
+        "Collider": { "contact": { "phases": ["begin"] }, "kind": "box", "layer": "pushable", "material": "wood", "size": [1, 1, 1] },
+        "RigidBody": { "kind": "dynamic", "mass": 1 },
+        "Transform": { "position": [2, 2.3333333, 0] }
+      }
+    },
+    {
+      "id": "ignored",
+      "components": {
+        "Collider": { "contact": { "phases": ["begin", "stay"] }, "kind": "box", "layer": "ignored", "material": "glass", "size": [1, 1, 1] },
+        "RigidBody": { "kind": "static" },
+        "Transform": { "position": [2, 2.3333333, 1.2] }
+      }
+    },
+    {
+      "id": "player",
+      "components": {
+        "CharacterController": {
+          "blocking": true,
+          "grounding": "raycast",
+          "moveXAxis": "MoveX",
+          "moveZAxis": "MoveZ",
+          "pushPolicy": { "allowedLayers": ["pushable"], "enabled": true, "maxPushMass": 5 },
+          "slopeLimit": 30,
+          "speed": 2
+        },
+        "Collider": { "contact": { "phases": ["begin", "stay"] }, "kind": "box", "layer": "player", "mask": ["pushable", "world"], "size": [1, 2, 1] },
+        "RigidBody": { "kind": "kinematic" },
+        "Transform": { "position": [0, 2.3333333, 0] }
+      }
+    }
+  ]
+}"#,
+    );
+    let bundle = load_bundle(&root).expect("character bundle should load");
+    let trace = trace_character_controllers(
+        &bundle,
+        &[CharacterTraceAxis {
+            id: "MoveX",
+            value: 1.0,
+        }],
+        1.0,
+    );
+
+    assert_eq!(trace.len(), 1);
+    assert_eq!(trace[0].contacts.len(), 2);
+    assert_eq!(trace[0].contacts[0].phase, "begin");
+    assert_eq!(trace[0].contacts[0].self_entity, "player");
+    assert_eq!(trace[0].contacts[0].other, "crate");
+    assert_eq!(trace[0].contacts[0].material, Some("wood".to_owned()));
+    assert_eq!(trace[0].contacts[0].normal, Some([-1.0, 0.0, 0.0]));
+    assert_eq!(trace[0].contacts[0].point, Some([2.0, 2.333333, 0.0]));
+    assert_eq!(trace[0].contacts[1].phase, "stay");
+    assert_eq!(trace[0].contacts[1].self_entity, "player");
+    assert_eq!(trace[0].contacts[1].other, "ramp");
+    assert_eq!(trace[0].contacts[1].material, Some("stone".to_owned()));
+    assert_eq!(trace[0].contacts[1].point, Some([2.0, 0.833333, 0.0]));
+    assert_eq!(trace[0].ground_entity, Some("ramp".to_owned()));
+    assert_eq!(trace[0].pushes.len(), 1);
+    assert_eq!(trace[0].pushes[0].entity, "crate");
 
     fs::remove_dir_all(root).expect("temporary bundle should be removed");
 }

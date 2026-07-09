@@ -951,6 +951,9 @@ diagnostics until portable promotion criteria and web/Bevy evidence exist.
   - [x] Portable hinge, slider, and suspension joint metadata observations
 - [x] `P1` Broad sensors beyond current trigger/overlap scope
 - [x] Step offsets, ledge ungrounding, moving-platform carry, and richer ground contact trace
+- [x] Native character move observations include stable slope, contact, and
+      push payloads matching the web trace shape for portable collider
+      layer/mask/material/contact phase metadata
 - [x] `P0` Slope limits and sloped-surface walkability for promoted ramp colliders
 - [x] `P1` Character interaction volumes and object pushing
 - [x] Fixture-backed physics self-verification gate for gravity/collision,
