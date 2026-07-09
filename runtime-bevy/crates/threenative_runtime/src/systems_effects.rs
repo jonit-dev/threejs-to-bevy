@@ -116,6 +116,8 @@ pub struct NativeSystemEffectLogEntry {
     pub kind: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub payload: Option<Value>,
+    #[serde(rename = "reconciliation", skip_serializing_if = "Option::is_none")]
+    pub reconciliation: Option<NativeSystemEffectReconciliation>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub resource: Option<String>,
     pub schedule: String,
@@ -125,6 +127,12 @@ pub struct NativeSystemEffectLogEntry {
     pub tick: u32,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub value: Option<Value>,
+}
+
+#[derive(Clone, Debug, Serialize, PartialEq, Eq)]
+pub struct NativeSystemEffectReconciliation {
+    pub code: &'static str,
+    pub status: &'static str,
 }
 
 pub fn apply_system_effects(
@@ -271,55 +279,55 @@ fn declares_command(system: &SystemIr, command: &NativeSystemCommandEffect) -> b
                 .map(|declaration| &declaration.command),
         )
         .any(|declared| match declared {
-        SystemCommandIr::AddComponent { component, entity } => {
-            command.command == "addComponent"
-                && command.component.as_ref() == Some(component)
-                && command.entity.as_ref() == Some(entity)
-        }
-        SystemCommandIr::Despawn { entity } => {
-            command.command == "despawn" && command.entity.as_ref() == Some(entity)
-        }
-        SystemCommandIr::EmitEvent { event } => {
-            command.command == "emitEvent" && command.event.as_ref() == Some(event)
-        }
-        SystemCommandIr::Instantiate { prefab, prefix } => {
-            command.command == "instantiate"
-                && command.prefab.as_ref() == Some(prefab)
-                && command.prefix.as_ref() == Some(prefix)
-        }
-        SystemCommandIr::RemoveComponent { component, entity } => {
-            command.command == "removeComponent"
-                && command.component.as_ref() == Some(component)
-                && command.entity.as_ref() == Some(entity)
-        }
-        SystemCommandIr::SetParent { child, parent } => {
-            command.command == "setParent"
-                && command.child.as_ref() == Some(child)
-                && command.parent.as_ref() == Some(parent)
-        }
-        SystemCommandIr::ClearParent { child } => {
-            command.command == "clearParent" && command.child.as_ref() == Some(child)
-        }
-        SystemCommandIr::SetComponent { component, entity } => {
-            command.command == "setComponent"
-                && command.component.as_ref() == Some(component)
-                && command.entity.as_ref() == Some(entity)
-        }
-        SystemCommandIr::Spawn { components, entity } => {
-            command.command == "spawn"
-                && command.entity.as_ref() == Some(entity)
-                && command
-                    .components
-                    .as_ref()
-                    .and_then(Value::as_object)
-                    .map(|values| {
-                        values
-                            .keys()
-                            .all(|component| components.contains(component))
-                    })
-                    .unwrap_or(true)
-        }
-    })
+            SystemCommandIr::AddComponent { component, entity } => {
+                command.command == "addComponent"
+                    && command.component.as_ref() == Some(component)
+                    && command.entity.as_ref() == Some(entity)
+            }
+            SystemCommandIr::Despawn { entity } => {
+                command.command == "despawn" && command.entity.as_ref() == Some(entity)
+            }
+            SystemCommandIr::EmitEvent { event } => {
+                command.command == "emitEvent" && command.event.as_ref() == Some(event)
+            }
+            SystemCommandIr::Instantiate { prefab, prefix } => {
+                command.command == "instantiate"
+                    && command.prefab.as_ref() == Some(prefab)
+                    && command.prefix.as_ref() == Some(prefix)
+            }
+            SystemCommandIr::RemoveComponent { component, entity } => {
+                command.command == "removeComponent"
+                    && command.component.as_ref() == Some(component)
+                    && command.entity.as_ref() == Some(entity)
+            }
+            SystemCommandIr::SetParent { child, parent } => {
+                command.command == "setParent"
+                    && command.child.as_ref() == Some(child)
+                    && command.parent.as_ref() == Some(parent)
+            }
+            SystemCommandIr::ClearParent { child } => {
+                command.command == "clearParent" && command.child.as_ref() == Some(child)
+            }
+            SystemCommandIr::SetComponent { component, entity } => {
+                command.command == "setComponent"
+                    && command.component.as_ref() == Some(component)
+                    && command.entity.as_ref() == Some(entity)
+            }
+            SystemCommandIr::Spawn { components, entity } => {
+                command.command == "spawn"
+                    && command.entity.as_ref() == Some(entity)
+                    && command
+                        .components
+                        .as_ref()
+                        .and_then(Value::as_object)
+                        .map(|values| {
+                            values
+                                .keys()
+                                .all(|component| components.contains(component))
+                        })
+                        .unwrap_or(true)
+            }
+        })
 }
 
 fn transform_patches_for_effects(effects: &NativeSystemEffects) -> BTreeSet<String> {
@@ -356,6 +364,7 @@ pub fn native_effect_log(
             frame,
             kind: "event".to_owned(),
             payload: Some(event.payload.clone()),
+            reconciliation: None,
             resource: None,
             schedule: system.schedule.clone(),
             service: None,
@@ -373,6 +382,7 @@ pub fn native_effect_log(
             frame,
             kind: "patch".to_owned(),
             payload: None,
+            reconciliation: None,
             resource: None,
             schedule: system.schedule.clone(),
             service: None,
@@ -390,6 +400,7 @@ pub fn native_effect_log(
             frame,
             kind: "command".to_owned(),
             payload: command.payload.clone(),
+            reconciliation: live_reconciliation_for_command(command),
             resource: None,
             schedule: system.schedule.clone(),
             service: None,
@@ -407,6 +418,7 @@ pub fn native_effect_log(
             frame,
             kind: "resource".to_owned(),
             payload: None,
+            reconciliation: None,
             resource: Some(resource.resource.clone()),
             schedule: system.schedule.clone(),
             service: None,
@@ -424,6 +436,7 @@ pub fn native_effect_log(
             frame,
             kind: "service".to_owned(),
             payload: Some(service.payload.clone()),
+            reconciliation: None,
             resource: None,
             schedule: system.schedule.clone(),
             service: Some(service.service.clone()),
@@ -438,6 +451,19 @@ pub fn native_effect_log(
         schema: "threenative.web-system-effects",
         version: 1,
     }
+}
+
+fn live_reconciliation_for_command(
+    command: &NativeSystemCommandEffect,
+) -> Option<NativeSystemEffectReconciliation> {
+    matches!(
+        command.command.as_str(),
+        "spawn" | "despawn" | "instantiate"
+    )
+    .then_some(NativeSystemEffectReconciliation {
+        code: "TN_BEVY_LIVE_RECONCILIATION_REQUIRED",
+        status: "required",
+    })
 }
 
 fn apply_patch(bundle: &mut LoadedBundle, patch: &NativeSystemPatchEffect) {

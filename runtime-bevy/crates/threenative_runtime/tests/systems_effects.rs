@@ -495,6 +495,84 @@ fn systems_effects_should_apply_declared_command() {
 }
 
 #[test]
+fn systems_effects_should_mark_spawn_command_as_requiring_live_reconciliation() {
+    let root = write_bundle("spawn-live-reconciliation-required");
+    let mut bundle = load_bundle(&root).expect("bundle should load");
+    let mut system = bundle
+        .systems
+        .as_ref()
+        .expect("systems should load")
+        .systems[0]
+        .clone();
+    system.commands = vec![SystemCommandIr::Spawn {
+        entity: "runtime.spawned".to_owned(),
+        components: vec!["Transform".to_owned()],
+    }];
+    let effects = NativeSystemEffects {
+        commands: vec![NativeSystemCommandEffect {
+            command: "spawn".to_owned(),
+            components: Some(json!({
+                "Transform": { "position": [1, 2, 3] }
+            })),
+            entity: Some("runtime.spawned".to_owned()),
+            ..Default::default()
+        }],
+        ..Default::default()
+    };
+
+    let applied = apply_system_effects_with_report(&mut bundle, &system, &effects, 1, 1)
+        .expect("declared spawn command should apply to IR");
+
+    assert!(
+        bundle
+            .world
+            .entities
+            .iter()
+            .any(|entity| entity.id == "runtime.spawned")
+    );
+    let reconciliation = applied.log.entries[0]
+        .reconciliation
+        .as_ref()
+        .expect("spawn should require live reconciliation");
+    assert_eq!(reconciliation.status, "required");
+    assert_eq!(reconciliation.code, "TN_BEVY_LIVE_RECONCILIATION_REQUIRED");
+}
+
+#[test]
+fn systems_effects_should_mark_despawn_command_as_requiring_live_reconciliation() {
+    let root = write_bundle("despawn-live-reconciliation-required");
+    let mut bundle = load_bundle(&root).expect("bundle should load");
+    let mut system = bundle
+        .systems
+        .as_ref()
+        .expect("systems should load")
+        .systems[0]
+        .clone();
+    system.commands = vec![SystemCommandIr::Despawn {
+        entity: "player".to_owned(),
+    }];
+    let effects = NativeSystemEffects {
+        commands: vec![NativeSystemCommandEffect {
+            command: "despawn".to_owned(),
+            entity: Some("player".to_owned()),
+            ..Default::default()
+        }],
+        ..Default::default()
+    };
+
+    let applied = apply_system_effects_with_report(&mut bundle, &system, &effects, 1, 1)
+        .expect("declared despawn command should apply to IR");
+
+    assert!(bundle.world.entities.is_empty());
+    let reconciliation = applied.log.entries[0]
+        .reconciliation
+        .as_ref()
+        .expect("despawn should require live reconciliation");
+    assert_eq!(reconciliation.status, "required");
+    assert_eq!(reconciliation.code, "TN_BEVY_LIVE_RECONCILIATION_REQUIRED");
+}
+
+#[test]
 fn systems_effects_should_instantiate_prefab_hierarchy_at_command_flush() {
     let root = write_prefab_bundle("prefab-hierarchy");
     let mut bundle = load_bundle(&root).expect("bundle should load");
