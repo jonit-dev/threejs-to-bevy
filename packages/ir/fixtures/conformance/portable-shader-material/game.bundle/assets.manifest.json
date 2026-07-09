@@ -1,0 +1,23 @@
+{
+  "schema": "threenative.assets",
+  "version": "0.1.0",
+  "assets": [
+    {
+      "id": "mesh.shader-swatch",
+      "kind": "mesh",
+      "format": "generated",
+      "primitive": "box",
+      "size": [1, 1, 0.08]
+    },
+    {
+      "id": "tex.shader-checker",
+      "kind": "texture",
+      "format": "png",
+      "path": "assets/shader-checker.png",
+      "wrapS": "repeat",
+      "wrapT": "repeat",
+      "minFilter": "nearest",
+      "magFilter": "nearest"
+    }
+  ]
+}

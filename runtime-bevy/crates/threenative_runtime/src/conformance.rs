@@ -477,10 +477,33 @@ pub struct ConformanceMaterialReport {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub roughness: Option<f32>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    pub shader: Option<ConformanceShaderMaterialReport>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub specular_intensity: Option<f32>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub transmission: Option<f32>,
     pub textures: MaterialTexturesReport,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ConformanceShaderMaterialReport {
+    pub binding_layout: Vec<ConformanceShaderBindingReport>,
+    pub fragment_outputs: Vec<String>,
+    pub language: String,
+    pub targets: serde_json::Value,
+    pub textures: Vec<String>,
+    pub uniforms: Vec<String>,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ConformanceShaderBindingReport {
+    pub binding: usize,
+    pub kind: String,
+    pub name: String,
+    #[serde(rename = "type")]
+    pub type_: String,
 }
 
 #[derive(Debug, Serialize)]
@@ -1790,6 +1813,7 @@ fn report_material(material: &MaterialIr) -> ConformanceMaterialReport {
         opacity: material.opacity,
         render_order: material.render_order,
         roughness: material.roughness,
+        shader: report_shader_material(material),
         specular_intensity: material.specular_intensity,
         transmission: material.transmission,
         textures: MaterialTexturesReport {
@@ -1804,6 +1828,76 @@ fn report_material(material: &MaterialIr) -> ConformanceMaterialReport {
             transmission: material.transmission_texture.clone(),
         },
     }
+}
+
+fn report_shader_material(material: &MaterialIr) -> Option<ConformanceShaderMaterialReport> {
+    if material.kind != "shader" {
+        return None;
+    }
+    let mut uniforms = material
+        .uniforms
+        .as_ref()
+        .map(|values| {
+            values
+                .iter()
+                .map(|uniform| (uniform.name.clone(), uniform.type_.clone()))
+                .collect::<Vec<_>>()
+        })
+        .unwrap_or_default();
+    uniforms.sort_by(|left, right| left.0.cmp(&right.0));
+    let mut textures = material
+        .textures
+        .as_ref()
+        .map(|values| {
+            values
+                .iter()
+                .map(|texture| texture.name.clone())
+                .collect::<Vec<_>>()
+        })
+        .unwrap_or_default();
+    textures.sort();
+    let mut binding_layout = Vec::new();
+    for (index, (name, type_)) in uniforms.iter().enumerate() {
+        binding_layout.push(ConformanceShaderBindingReport {
+            binding: index,
+            kind: "uniform".to_owned(),
+            name: name.clone(),
+            type_: type_.clone(),
+        });
+    }
+    for (index, name) in textures.iter().enumerate() {
+        binding_layout.push(ConformanceShaderBindingReport {
+            binding: uniforms.len() + index,
+            kind: "sampler2d".to_owned(),
+            name: name.clone(),
+            type_: "texture2d".to_owned(),
+        });
+    }
+    let mut fragment_outputs = material.outputs.clone().unwrap_or_default();
+    if fragment_outputs.is_empty() {
+        fragment_outputs = material
+            .program
+            .as_ref()
+            .and_then(|program| program.fragment.get("outputs"))
+            .and_then(|outputs| outputs.as_object())
+            .map(|outputs| outputs.keys().cloned().collect())
+            .unwrap_or_default();
+    }
+    fragment_outputs.sort();
+    Some(ConformanceShaderMaterialReport {
+        binding_layout,
+        fragment_outputs,
+        language: material
+            .program
+            .as_ref()
+            .map(|program| program.language.clone())
+            .unwrap_or_else(|| "threenative-shader-v1".to_owned()),
+        targets: serde_json::json!({
+            "wgsl": { "language": "wgsl", "entryPoints": ["vertex_main", "fragment_main"] }
+        }),
+        textures,
+        uniforms: uniforms.into_iter().map(|(name, _)| name).collect(),
+    })
 }
 
 fn report_entity(

@@ -32,6 +32,18 @@ export { runReleaseGate } from "./release.js";
 export { analyzeRenderLookMetrics, runRenderLookGate, type RenderLookGateResult, type RenderLookMetricInput, type RenderLookMetricSample } from "./renderLook.js";
 export { checkV9QualityGates, V9_FOCUSED_SCRIPT_NAMES, V9_SAMPLE_SCENES } from "./v9QualityGates.js";
 export {
+  collectPortableShaderMaterialReport,
+  runPortableShaderMaterialGate,
+  validatePortableShaderArtifactSet,
+  validatePortableShaderSampleRegions,
+  type PortableShaderMaterialGateResult,
+  type PortableShaderMaterialObservation,
+  type PortableShaderMaterialReport,
+  type PortableShaderSampleDocument,
+  type PortableShaderSampleRegion,
+} from "./portableShaderMaterial.js";
+
+export {
   runCommand,
   runStep,
   stepFailureDiagnostic,

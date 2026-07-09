@@ -10,6 +10,12 @@ export {
   type SchemaBackedIrDocumentName,
   type UnschemedIrDocumentName,
 } from "./documents.js";
+export {
+  generatePortableShaderMaterial,
+  type IGeneratedPortableShader,
+  type IGeneratedShaderTarget,
+  type IShaderBindingLayoutEntry,
+} from "./shaderCodegen.js";
 export type {
   IConformanceAssetReport,
   IConformanceAudioCommandReport,
@@ -237,6 +243,13 @@ export type {
   IrSchemaFieldKind,
   ILightComponent,
   IMaterialIr,
+  IShaderExpressionIr,
+  IShaderFragmentProgramIr,
+  IShaderMaterialIr,
+  IShaderProgramIr,
+  IShaderTextureIr,
+  IShaderUniformIr,
+  IShaderVertexProgramIr,
   IMaterialsIr,
   IMeshRendererComponent,
   IRigidBodyComponent,

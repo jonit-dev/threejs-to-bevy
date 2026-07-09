@@ -298,14 +298,14 @@ sequenceDiagram
 
 **Implementation:**
 
-- [ ] Generate deterministic GLSL for the web adapter from the portable shader
+- [x] Generate deterministic GLSL for the web adapter from the portable shader
   IR.
-- [ ] Generate deterministic WGSL for the Bevy adapter from the same shader IR.
-- [ ] Register adapter-private shader material implementations without exposing
+- [x] Generate deterministic WGSL for the Bevy adapter from the same shader IR.
+- [x] Register adapter-private shader material implementations without exposing
   raw Three.js or Bevy handles to authors.
 - [ ] Bind uniforms, textures, time, matrices, vertex attributes, and material
   policy consistently.
-- [ ] Report generated shader metadata, binding layout, and unsupported runtime
+- [x] Report generated shader metadata, binding layout, and unsupported runtime
   states in conformance output.
 
 **Tests Required:**
@@ -314,7 +314,7 @@ sequenceDiagram
 | --- | --- | --- |
 | `packages/ir/src/shaderCodegen.test.ts` | `should generate stable GLSL and WGSL from portable shader IR` | Snapshots contain expected entry points and binding names. |
 | `packages/runtime-web-three/src/mapWorld.test.ts` | `should map portable shader materials to Three shader materials` | Web material has declared uniforms/textures and material policy. |
-| `runtime-bevy/crates/threenative_runtime/tests/rendering.rs` | `should map portable shader materials to native shader materials` | Native material registry contains matching binding metadata. |
+| `runtime-bevy/crates/threenative_runtime/tests/rendering.rs` | `should map portable shader materials to native shader materials` | Native material registry, mesh entity instance metadata, and `NativePortableShaderMaterial` asset contain matching binding/material data. |
 
 **Verification Plan:**
 
@@ -343,12 +343,13 @@ sequenceDiagram
 
 **Implementation:**
 
-- [ ] Add fixtures for color-ramp, texture-sample, alpha-mask, time-uniform, and
+- [x] Add fixtures for color-ramp, texture-sample, alpha-mask, time-uniform, and
   bounded vertex-displacement shader materials.
-- [ ] Capture web/native screenshots and conformance reports.
+- [ ] Capture runtime web/native screenshots and conformance reports.
 - [ ] Compare targeted image regions with documented thresholds for color,
   alpha, UV sampling, and displacement silhouette.
-- [ ] Emit contact sheets and machine-readable artifact summaries.
+- [x] Emit deterministic preview contact sheets and machine-readable artifact
+  summaries.
 - [ ] Fail the gate when either engine silently falls back to standard material.
 
 **Tests Required:**
@@ -438,10 +439,15 @@ sequenceDiagram
   portable shader contract.
 - [ ] Web Three.js and native Bevy both render the same portable shader material
   fixture from the same IR.
-- [ ] Conformance reports include matching shader material metadata for both
+- [x] Conformance reports include matching shader material metadata for both
   engines.
+- [x] Structural sample metadata includes color, texture, alpha, time, and
+  displacement regions across both engines.
+- [x] Deterministic preview artifacts include web/bevy PNG frames, a diff image,
+  contact sheet, and region metrics for color, texture, alpha, time, and
+  displacement samples.
 - [ ] Visual evidence includes color, texture, alpha, time, and displacement
-  samples across both engines.
+  samples from runtime web and Bevy screenshots.
 - [ ] `docs/STATUS.md` and `docs/bevy-feature-parity.md` document the promoted
   v1 scope and explicit deferrals.
 - [ ] `pnpm verify:portable-shader-material`, `pnpm verify:conformance`,
@@ -468,3 +474,31 @@ sequenceDiagram
   `pnpm --filter @threenative/cli test -- --run "shader material source"`,
   `pnpm --filter @threenative/authoring build`, and
   `pnpm --filter @threenative/authoring test -- --run material`.
+- Phase 3 now has shared deterministic GLSL/WGSL generation in
+  `packages/ir/src/shaderCodegen.ts`, web `THREE.ShaderMaterial` mapping with
+  generated metadata, bounded native `NativePortableShaderMaterial` Bevy asset
+  mapping for mesh entities that reference shader materials, including texture
+  handles, alpha mode/cutoff, alpha uniform defaults, and vertex-displacement
+  uniform mapping through the native material vertex shader,
+  `NativeShaderMaterialRegistry` binding metadata retention, entity-level native
+  shader material instance metadata, and web/native conformance metadata
+  surfaces.
+  Focused verification passed:
+  `pnpm --filter @threenative/ir test -- --run "generate stable GLSL"`,
+  `pnpm --filter @threenative/runtime-web-three test -- --run "portable shader|shader material"`,
+  and
+  `cargo test -p threenative_runtime should_map_portable_shader_materials_to_native_shader_registry --test rendering`.
+  Remaining Phase 3 work: full generated-WGSL Bevy material specialization,
+  runtime elapsed-time/matrix/attribute parity beyond the bounded material
+  uniform path, and broader conformance fixture coverage.
+- Phase 4 now has a cataloged `portable-shader-material` conformance fixture
+  and focused structural/preview gate. `pnpm verify:portable-shader-material -- --json`
+  passed and wrote
+  `tools/verify/artifacts/portable-shader-material/verification-report.json`,
+  web/native shader metadata reports, `web.png`, `bevy.png`, `diff.png`,
+  `contact-sheet.svg`, `region-metrics.json`, and the sample-region contract.
+  These images are deterministic portable-shader preview artifacts generated
+  from shared IR and adapter target metadata, not runtime Bevy material
+  screenshots. Remaining Phase 4 work: real web/Bevy screenshot capture and
+  runtime pixel/region visual comparison against the color, texture, alpha,
+  time, and displacement regions.

@@ -18,6 +18,7 @@ test("focused gate dispatcher should list current capability gates", () => {
     "verify:persistence-reload",
     "verify:particle-commands",
     "verify:physics-self-verification",
+    "verify:portable-shader-material",
     "verify:production-hardening",
     "verify:render-look",
     "verify:rendering-residuals",

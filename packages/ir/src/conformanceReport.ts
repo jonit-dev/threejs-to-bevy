@@ -1,6 +1,7 @@
 import type { IRuntimeDiagnostic } from "./runtimeDiagnostics.js";
 import type { IRuntimeConfigIr } from "./runtimeConfig.js";
-import type { IAssetIr, IMaterialIr, Quat, Vec3 } from "./types.js";
+import type { IAssetIr, IMaterialIr, IShaderMaterialIr, Quat, Vec3 } from "./types.js";
+import type { IShaderBindingLayoutEntry } from "./shaderCodegen.js";
 import type { IEnvironmentMapIr, ILightProbeIr, ISkyboxIr } from "./types.js";
 import type { IGltfSceneAssetIr } from "./gltfScene.js";
 import type { IRuntimeTraceBundle } from "./runtimeTraces.js";
@@ -52,6 +53,17 @@ export interface IConformanceMaterialReport {
   opacity?: number;
   renderOrder?: number;
   roughness?: number;
+  shader?: {
+    bindingLayout: readonly IShaderBindingLayoutEntry[];
+    fragmentOutputs: readonly string[];
+    language: IShaderMaterialIr["program"]["language"];
+    targets?: {
+      glsl?: { entryPoints: readonly string[]; language: string };
+      wgsl?: { entryPoints: readonly string[]; language: string };
+    };
+    textures: readonly string[];
+    uniforms: readonly string[];
+  };
   specularIntensity?: number;
   transmission?: number;
   textures: {

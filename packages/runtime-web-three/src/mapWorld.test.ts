@@ -738,6 +738,77 @@ test("mapWorld should apply supported material texture slots", () => {
   assert.equal(mapped.diagnostics.filter((diagnostic) => diagnostic.severity === "error").length, 0);
 });
 
+test("mapWorld should map portable shader materials to Three shader materials", () => {
+  const mapped = mapWorld({
+    assets: {
+      schema: "threenative.assets",
+      version: "0.1.0",
+      assets: [
+        { id: "mesh.cube", kind: "mesh", format: "generated", primitive: "box", size: [1, 1, 1] },
+        { id: "tex.albedo", kind: "texture", format: "png", path: "assets/albedo.png" },
+      ],
+    },
+    manifest: {
+      schema: "threenative.bundle",
+      version: "0.1.0",
+      name: "portable-shader",
+      requiredCapabilities: {},
+      entry: { world: "world.ir.json" },
+      files: { assets: "assets.manifest.json", materials: "materials.ir.json", targetProfile: "target.profile.json" },
+    },
+    materials: {
+      schema: "threenative.materials",
+      version: "0.1.0",
+      materials: [
+        {
+          alphaCutoff: 0.25,
+          alphaMode: "mask",
+          color: "#ffffff",
+          id: "mat.shader",
+          kind: "shader",
+          program: {
+            fragment: {
+              outputs: {
+                alpha: { kind: "uniform", uniform: "cutoff" },
+                baseColor: { kind: "sampleTexture", texture: "albedo" },
+              },
+            },
+            language: "threenative-shader-v1",
+            vertex: { displacement: { amount: { kind: "uniform", uniform: "waveHeight" }, axis: "normal" } },
+          },
+          textures: [{ asset: "tex.albedo", name: "albedo" }],
+          uniforms: [
+            { default: 0.5, name: "cutoff", type: "float" },
+            { default: 0.2, name: "waveHeight", type: "float" },
+          ],
+        },
+      ],
+    },
+    source: "http://example.test/bundle",
+    targetProfile: { schema: "threenative.target-profile", version: "0.1.0", targets: ["web"] },
+    world: {
+      schema: "threenative.world",
+      version: "0.1.0",
+      entities: [
+        { id: "cube.shader", components: { MeshRenderer: { mesh: "mesh.cube", material: "mat.shader" } } },
+      ],
+    },
+  });
+
+  const cube = mapped.objectsById.get("cube.shader");
+  assert.ok(cube instanceof THREE.Mesh);
+  assert.ok(cube.material instanceof THREE.ShaderMaterial);
+  assert.equal(cube.material.alphaTest, 0.25);
+  assert.equal(cube.material.uniforms.cutoff?.value, 0.5);
+  assert.equal(cube.material.uniforms.waveHeight?.value, 0.2);
+  assert.equal(cube.material.uniforms.albedo?.value.userData.threenativeAssetId, "tex.albedo");
+  assert.equal(cube.material.userData.threeNativeMaterialKind, "shader");
+  assert.equal(cube.material.userData.threeNativeShaderGenerated.glsl.language, "glsl100");
+  assert.deepEqual(cube.material.userData.threeNativeShaderGenerated.bindingLayout.map((entry: { name: string }) => entry.name), ["cutoff", "waveHeight", "albedo"]);
+  assert.match(cube.material.fragmentShader, /texture2D\(albedo, vUv0\)/);
+  assert.match(cube.material.vertexShader, /position \+ \(normal \* \(waveHeight\)\)/);
+});
+
 test("mapWorld should reject material texture slots that do not reference texture assets", () => {
   const mapped = mapWorld({
     assets: {

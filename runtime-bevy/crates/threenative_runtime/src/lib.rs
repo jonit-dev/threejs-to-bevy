@@ -186,6 +186,7 @@ pub fn app_from_bundle_with_options(
     app.add_plugins((
         emissive_postprocess::NativeEmissivePostProcessPlugin,
         map_world::NativeEquirectSkyMaterialPlugin,
+        map_world::NativePortableShaderMaterialPlugin,
     ));
     rendering::apply_atmosphere_to_world(app.world_mut(), &bundle);
     let environment_lighting =
@@ -665,6 +666,9 @@ fn reconcile_live_world_entities(
     let mut material_handles = world
         .remove_resource::<map_world::NativeMaterialHandles>()
         .unwrap_or_default();
+    let mut shader_material_handles = world
+        .remove_resource::<map_world::NativeShaderMaterialHandles>()
+        .unwrap_or_default();
     {
         let spawn_context = map_world::prepare_world_entity_spawn_context(world, bundle);
         for entity in &bundle.world.entities {
@@ -676,12 +680,14 @@ fn reconcile_live_world_entities(
                 entity,
                 &spawn_context,
                 &mut material_handles,
+                &mut shader_material_handles,
                 bundle,
             )?;
             live_by_id.insert(entity.id.clone(), bevy_entity);
         }
     }
     world.insert_resource(material_handles);
+    world.insert_resource(shader_material_handles);
 
     let live_by_id = live_world_entities_by_id(world);
     let hierarchy_entities = desired_ids

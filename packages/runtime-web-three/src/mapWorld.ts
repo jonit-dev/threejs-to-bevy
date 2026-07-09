@@ -1,7 +1,8 @@
 import * as THREE from "three";
 import { DRACOLoader } from "three/examples/jsm/loaders/DRACOLoader.js";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
-import type { IAssetIr, IMaterialIr, IRuntimeDiagnostic, IWorldEntity, IWorldIr } from "@threenative/ir";
+import { generatePortableShaderMaterial } from "@threenative/ir";
+import type { IAssetIr, IMaterialIr, IRuntimeDiagnostic, IShaderMaterialIr, IWorldEntity, IWorldIr } from "@threenative/ir";
 import { advanceAnimationPlaybackState, animationPlaybackState, type IAnimationPlaybackState } from "./animation.js";
 import {
   applyCameraRenderLayers,
@@ -742,17 +743,18 @@ function mapMaterial(
     return mapExtendedMaterial(material, assetsById, diagnostics, source);
   }
   if (material.kind === "shader") {
-    const mapped = new THREE.MeshStandardMaterial({
+    const generated = generatePortableShaderMaterial(material);
+    const mapped = new THREE.ShaderMaterial({
       alphaTest: material.alphaMode === "mask" ? material.alphaCutoff ?? 0.5 : 0,
-      color: colorToThree(material.color ?? "#ffffff"),
-      emissive: material.emissive === undefined ? new THREE.Color("#000000") : colorToThree(material.emissive),
-      emissiveIntensity: material.emissiveIntensity ?? 1,
-      metalness: material.metalness ?? 0,
-      roughness: material.roughness ?? 1,
+      fragmentShader: webShaderFragmentSource(material),
+      transparent: material.alphaMode === "blend" || (material.opacity !== undefined && material.opacity < 1),
+      uniforms: shaderUniforms(material, assetsById, diagnostics, source),
+      vertexShader: webShaderVertexSource(material),
     });
     applyMaterialPolicy(mapped, material);
     mapped.userData.threeNativeMaterialKind = "shader";
     mapped.userData.threeNativeShaderLanguage = material.program.language;
+    mapped.userData.threeNativeShaderGenerated = generated;
     mapped.needsUpdate = true;
     return mapped;
   }
@@ -834,6 +836,200 @@ function mapMaterial(
   mapped.userData.threeNativeAlphaMode = material.alphaMode ?? "opaque";
   mapped.needsUpdate = true;
   return mapped;
+}
+
+function shaderUniforms(
+  material: IShaderMaterialIr,
+  assetsById: Map<string, IAssetIr>,
+  diagnostics: IRuntimeDiagnostic[],
+  source?: string,
+): Record<string, THREE.IUniform> {
+  const uniforms: Record<string, THREE.IUniform> = {
+    elapsedTime: { value: 0 },
+  };
+  for (const uniform of material.uniforms ?? []) {
+    uniforms[uniform.name] = { value: shaderUniformDefaultValue(uniform.default) };
+  }
+  for (const texture of material.textures ?? []) {
+    uniforms[texture.name] = { value: mapShaderTexture(material, texture, assetsById, diagnostics, source) ?? new THREE.Texture() };
+  }
+  return uniforms;
+}
+
+function shaderUniformDefaultValue(value: unknown): unknown {
+  if (Array.isArray(value)) {
+    if (value.length === 2) {
+      return new THREE.Vector2(value[0], value[1]);
+    }
+    if (value.length === 3) {
+      return new THREE.Vector3(value[0], value[1], value[2]);
+    }
+    if (value.length === 4) {
+      return new THREE.Vector4(value[0], value[1], value[2], value[3]);
+    }
+  }
+  if (typeof value === "string" && /^#?[0-9a-f]{6}([0-9a-f]{2})?$/i.test(value)) {
+    return new THREE.Color(value);
+  }
+  return value;
+}
+
+function mapShaderTexture(
+  material: IShaderMaterialIr,
+  texture: NonNullable<IShaderMaterialIr["textures"]>[number],
+  assetsById: Map<string, IAssetIr>,
+  diagnostics: IRuntimeDiagnostic[],
+  source?: string,
+): THREE.Texture | undefined {
+  const asset = assetsById.get(texture.asset);
+  if (asset?.kind !== "texture" || asset.path === undefined) {
+    diagnostics.push({
+      code: "TN-WEB-SHADER-TEXTURE-REFERENCE-INVALID",
+      message: `Shader material '${material.id}' texture '${texture.name}' references missing or non-texture asset '${texture.asset}'.`,
+      path: `materials.ir.json/materials/${material.id}/textures/${texture.name}/asset`,
+      severity: "error",
+    });
+    return undefined;
+  }
+  const url = source === undefined ? asset.path : `${source.replace(/\/$/, "")}/${asset.path}`;
+  const mapped = new THREE.Texture();
+  mapped.name = asset.id;
+  mapped.colorSpace = THREE.SRGBColorSpace;
+  mapped.userData = {
+    ...mapped.userData,
+    threenativeAssetId: asset.id,
+    threenativeShaderBinding: texture.name,
+    threenativeUrl: url,
+  };
+  applyTextureControls(mapped, asset);
+  if (canLoadImageInRuntime()) {
+    enqueuePendingTextureLoad(
+      new THREE.TextureLoader()
+        .loadAsync(url)
+        .then((loaded) => {
+          mapped.image = loaded.image;
+          mapped.colorSpace = THREE.SRGBColorSpace;
+          mapped.needsUpdate = true;
+        })
+        .catch(() => undefined),
+    );
+  }
+  return mapped;
+}
+
+function webShaderVertexSource(material: IShaderMaterialIr): string {
+  const displacement = material.program.vertex?.displacement;
+  const displacementAmount = displacement === undefined ? "0.0" : webShaderExpression(displacement.amount, "vertex");
+  const displacementAxis = displacement === undefined ? "vec3(0.0)" : webDisplacementAxis(displacement.axis);
+  return `
+precision highp float;
+uniform float elapsedTime;
+varying vec3 vNormal;
+varying vec2 vUv0;
+varying vec2 vUv1;
+varying vec4 vVertexColor;
+varying vec3 vWorldPosition;
+${(material.uniforms ?? []).map((uniform) => `uniform ${uniform.type === "color" ? "vec4" : uniform.type} ${uniform.name};`).join("\n")}
+void main() {
+  vec3 transformed = position + (${displacementAxis} * (${displacementAmount}));
+  vNormal = normal;
+  vUv0 = uv;
+  vUv1 = uv1;
+  vVertexColor = color;
+  vec4 worldPosition = modelMatrix * vec4(transformed, 1.0);
+  vWorldPosition = worldPosition.xyz;
+  gl_Position = projectionMatrix * modelViewMatrix * vec4(transformed, 1.0);
+}
+`;
+}
+
+function webShaderFragmentSource(material: IShaderMaterialIr): string {
+  const outputs = material.program.fragment.outputs;
+  return `
+precision highp float;
+uniform float elapsedTime;
+varying vec3 vNormal;
+varying vec2 vUv0;
+varying vec2 vUv1;
+varying vec4 vVertexColor;
+varying vec3 vWorldPosition;
+${(material.uniforms ?? []).map((uniform) => `uniform ${uniform.type === "color" ? "vec4" : uniform.type} ${uniform.name};`).join("\n")}
+${(material.textures ?? []).map((texture) => `uniform sampler2D ${texture.name};`).join("\n")}
+void main() {
+  ${outputs.discard === undefined ? "" : `if (${webShaderExpression(outputs.discard, "fragment")} > 0.5) discard;`}
+  vec4 outColor = ${webShaderOutputColor(outputs.baseColor)};
+  ${outputs.alpha === undefined ? "" : `outColor.a = ${webShaderExpression(outputs.alpha, "fragment")};`}
+  ${outputs.emissive === undefined ? "" : `outColor.rgb += ${webShaderExpression(outputs.emissive, "fragment")}.rgb;`}
+  gl_FragColor = outColor;
+}
+`;
+}
+
+function webShaderExpression(expression: IShaderMaterialIr["program"]["fragment"]["outputs"][keyof IShaderMaterialIr["program"]["fragment"]["outputs"]], stage: "fragment" | "vertex"): string {
+  if (expression === undefined) {
+    return "vec4(1.0)";
+  }
+  if (expression.kind === "uniform") {
+    return expression.uniform ?? "0.0";
+  }
+  if (expression.kind === "sampleTexture") {
+    return `texture2D(${expression.texture}, vUv0)`;
+  }
+  if (expression.kind === "builtin") {
+    if (expression.builtin === "normal") {
+      return "vNormal";
+    }
+    if (expression.builtin === "uv0") {
+      return "vec4(vUv0, 0.0, 1.0)";
+    }
+    if (expression.builtin === "vertexColor") {
+      return "vVertexColor";
+    }
+    if (expression.builtin === "worldPosition") {
+      return "vWorldPosition";
+    }
+    if (expression.builtin === "position" && stage === "vertex") {
+      return "position";
+    }
+    if (expression.builtin === "elapsedTime") {
+      return "elapsedTime";
+    }
+  }
+  if (expression.kind === "literal") {
+    return webShaderLiteral(expression.value);
+  }
+  return "0.0";
+}
+
+function webShaderOutputColor(expression: IShaderMaterialIr["program"]["fragment"]["outputs"][keyof IShaderMaterialIr["program"]["fragment"]["outputs"]]): string {
+  const value = webShaderExpression(expression, "fragment");
+  return expression?.kind === "literal" && Array.isArray(expression.value) && expression.value.length === 3
+    ? `vec4(${value}, 1.0)`
+    : value;
+}
+
+function webShaderLiteral(value: NonNullable<IShaderMaterialIr["program"]["fragment"]["outputs"][keyof IShaderMaterialIr["program"]["fragment"]["outputs"]]>["value"]): string {
+  if (typeof value === "number") {
+    return Number.isInteger(value) ? `${value}.0` : Number(value.toFixed(6)).toString();
+  }
+  if (typeof value === "boolean") {
+    return value ? "1.0" : "0.0";
+  }
+  if (Array.isArray(value)) {
+    return `vec${value.length}(${value.map((entry) => Number.isInteger(entry) ? `${entry}.0` : Number(entry.toFixed(6)).toString()).join(", ")})`;
+  }
+  if (typeof value === "string") {
+    const color = colorToThree(value);
+    return `vec4(${Number(color.r.toFixed(6))}, ${Number(color.g.toFixed(6))}, ${Number(color.b.toFixed(6))}, 1.0)`;
+  }
+  return "0.0";
+}
+
+function webDisplacementAxis(axis: "normal" | "x" | "y" | "z"): string {
+  if (axis === "normal") {
+    return "normal";
+  }
+  return axis === "x" ? "vec3(1.0, 0.0, 0.0)" : axis === "y" ? "vec3(0.0, 1.0, 0.0)" : "vec3(0.0, 0.0, 1.0)";
 }
 
 function mapExtendedMaterial(

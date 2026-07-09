@@ -1,0 +1,101 @@
+{
+  "schema": "threenative.materials",
+  "version": "0.1.0",
+  "materials": [
+    {
+      "id": "mat.shader.color-ramp",
+      "kind": "shader",
+      "color": "#ffffff",
+      "outputs": ["baseColor"],
+      "program": {
+        "language": "threenative-shader-v1",
+        "fragment": {
+          "outputs": {
+            "baseColor": { "kind": "literal", "value": [0.18, 0.62, 0.95, 1] }
+          }
+        }
+      }
+    },
+    {
+      "id": "mat.shader.texture-sample",
+      "kind": "shader",
+      "color": "#ffffff",
+      "inputs": ["uv0"],
+      "outputs": ["baseColor"],
+      "program": {
+        "language": "threenative-shader-v1",
+        "fragment": {
+          "outputs": {
+            "baseColor": { "kind": "sampleTexture", "texture": "checker" }
+          }
+        }
+      },
+      "textures": [
+        { "name": "checker", "asset": "tex.shader-checker" }
+      ]
+    },
+    {
+      "id": "mat.shader.alpha-mask",
+      "kind": "shader",
+      "alphaMode": "mask",
+      "alphaCutoff": 0.45,
+      "color": "#ffffff",
+      "outputs": ["baseColor", "alpha"],
+      "program": {
+        "language": "threenative-shader-v1",
+        "fragment": {
+          "outputs": {
+            "baseColor": { "kind": "literal", "value": [0.9, 0.72, 0.18, 1] },
+            "alpha": { "kind": "uniform", "uniform": "maskAlpha" }
+          }
+        }
+      },
+      "uniforms": [
+        { "name": "maskAlpha", "type": "float", "default": 0.72 }
+      ]
+    },
+    {
+      "id": "mat.shader.time-uniform",
+      "kind": "shader",
+      "color": "#ffffff",
+      "inputs": ["elapsedTime"],
+      "outputs": ["baseColor", "emissive"],
+      "program": {
+        "language": "threenative-shader-v1",
+        "fragment": {
+          "outputs": {
+            "baseColor": { "kind": "literal", "value": [0.14, 0.18, 0.25, 1] },
+            "emissive": { "kind": "uniform", "uniform": "pulseColor" }
+          }
+        }
+      },
+      "uniforms": [
+        { "name": "pulseColor", "type": "color", "default": "#55ddff" }
+      ]
+    },
+    {
+      "id": "mat.shader.vertex-displacement",
+      "kind": "shader",
+      "color": "#ffffff",
+      "inputs": ["normal"],
+      "outputs": ["baseColor"],
+      "program": {
+        "language": "threenative-shader-v1",
+        "fragment": {
+          "outputs": {
+            "baseColor": { "kind": "literal", "value": [0.72, 0.38, 0.9, 1] }
+          }
+        },
+        "vertex": {
+          "displacement": {
+            "axis": "normal",
+            "amount": { "kind": "uniform", "uniform": "waveHeight" }
+          }
+        }
+      },
+      "uniforms": [
+        { "name": "waveHeight", "type": "float", "default": 0.18 }
+      ]
+    }
+  ]
+}

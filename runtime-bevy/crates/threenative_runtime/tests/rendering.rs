@@ -8,8 +8,11 @@ use bevy::{
     animation::{AnimationPlugin, RepeatAnimation, graph::AnimationGraph},
     asset::AssetPlugin,
     core_pipeline::{
-        bloom::BloomSettings, experimental::taa::TemporalAntiAliasSettings, fxaa::Fxaa,
-        smaa::SmaaSettings, tonemapping::Tonemapping,
+        bloom::BloomSettings,
+        experimental::taa::TemporalAntiAliasSettings,
+        fxaa::Fxaa,
+        smaa::SmaaSettings,
+        tonemapping::Tonemapping,
     },
     gltf::GltfPlugin,
     pbr::{NotShadowCaster, NotShadowReceiver},
@@ -28,9 +31,11 @@ use threenative_loader::load_bundle;
 use threenative_runtime::default_clear_color_for_bundle;
 use threenative_runtime::map_world::{
     NativeAnimationPlayback, NativeAnimationServiceCommand, NativeAnimationServiceQueue,
-    NativeEmissiveMarkerMask, THREE_COMPAT_DIRECTIONAL_ILLUMINANCE_PER_INTENSITY,
-    advance_native_animation_playback, apply_native_animation_service_effects,
-    bind_native_animation_players, map_bundle_into_world, trace_native_emissive_bloom,
+    NativeEmissiveMarkerMask, NativePortableShaderMaterial, NativeShaderMaterialHandles,
+    NativeShaderMaterialInstance, NativeShaderMaterialRegistry,
+    THREE_COMPAT_DIRECTIONAL_ILLUMINANCE_PER_INTENSITY, advance_native_animation_playback,
+    apply_native_animation_service_effects, bind_native_animation_players, map_bundle_into_world,
+    trace_native_emissive_bloom,
 };
 use threenative_runtime::rendering::{
     NativeParticleMaterialPolicy, NativeRenderedParticle, apply_environment_lighting_to_world,
@@ -172,6 +177,84 @@ fn rendering_should_load_material_textures_through_asset_server() {
         material.specular_transmission_texture,
         Some(Handle::<Image>::default())
     );
+
+    fs::remove_dir_all(root).expect("temporary bundle should be removed");
+}
+
+#[test]
+fn should_map_portable_shader_materials_to_native_shader_registry() {
+    let root = write_shader_material_bundle();
+    let bundle = load_bundle(&root).expect("shader material bundle should load");
+    let mut app = App::new();
+
+    map_bundle_into_world(app.world_mut(), &bundle).expect("bundle should map");
+
+    let registry = app.world().resource::<NativeShaderMaterialRegistry>();
+    let metadata = registry
+        .0
+        .get("mat.shader")
+        .expect("shader material metadata should be registered");
+    assert_eq!(metadata.language, "threenative-shader-v1");
+    assert_eq!(metadata.fragment_outputs, vec!["alpha", "baseColor"]);
+    assert_eq!(metadata.uniforms, vec!["cutoff", "waveHeight"]);
+    assert_eq!(metadata.textures, vec!["albedo"]);
+    assert_eq!(
+        metadata
+            .binding_layout
+            .iter()
+            .map(|binding| binding.name.as_str())
+            .collect::<Vec<_>>(),
+        vec!["cutoff", "waveHeight", "albedo"]
+    );
+    assert_eq!(
+        metadata.wgsl_entry_points,
+        vec!["vertex_main", "fragment_main"]
+    );
+    let metadata_fragment_outputs = metadata.fragment_outputs.clone();
+    let metadata_uniforms = metadata.uniforms.clone();
+    let metadata_textures = metadata.textures.clone();
+
+    let shader_handles = app.world().resource::<NativeShaderMaterialHandles>();
+    assert!(shader_handles.0.contains_key("mat.shader"));
+
+    let mut query = app.world_mut().query::<(
+        &ThreeNativeId,
+        &NativeShaderMaterialInstance,
+        &Handle<NativePortableShaderMaterial>,
+    )>();
+    let (_, instance, shader_handle) = query
+        .iter(app.world())
+        .find(|(id, _, _)| id.0 == "cube.shader")
+        .expect("native shader material should be attached to rendered entity");
+    assert_eq!(instance.material_id, "mat.shader");
+    assert_eq!(instance.render_path, "native-portable-shader-material");
+    assert_eq!(instance.fragment_outputs, metadata_fragment_outputs);
+    assert_eq!(instance.uniforms, metadata_uniforms);
+    assert_eq!(instance.textures, metadata_textures);
+    assert_eq!(
+        instance
+            .binding_layout
+            .iter()
+            .map(|binding| binding.name.as_str())
+            .collect::<Vec<_>>(),
+        vec!["cutoff", "waveHeight", "albedo"]
+    );
+    let shader_materials = app
+        .world()
+        .resource::<Assets<NativePortableShaderMaterial>>();
+    let shader_material = shader_materials
+        .get(shader_handle)
+        .expect("native shader material asset should be registered");
+    assert_eq!(shader_material.material_id, "mat.shader");
+    assert!(shader_material.base_color_texture.is_some());
+    assert_eq!(shader_material.alpha_mode, AlphaMode::Mask(0.25));
+    assert_eq!(shader_material.alpha_cutoff, Some(0.25));
+    assert!(shader_material.uses_vertex_displacement);
+    assert!((shader_material.displacement_amount - 0.2).abs() < 0.001);
+    assert!((shader_material.base_color.alpha - 0.5).abs() < 0.001);
+    let native_shader_source = include_str!("../src/native_portable_shader_material.wgsl");
+    assert!(native_shader_source.contains("@vertex"));
+    assert!(native_shader_source.contains("vertex.normal * displacement_amount"));
 
     fs::remove_dir_all(root).expect("temporary bundle should be removed");
 }
@@ -913,6 +996,101 @@ fn entity_for(world: &mut World, id: &str) -> Entity {
         .iter(world)
         .find_map(|(entity, stable_id)| (stable_id.0 == id).then_some(entity))
         .expect("entity should exist")
+}
+
+fn write_shader_material_bundle() -> PathBuf {
+    let root = std::env::temp_dir().join(format!(
+        "tn-shader-material-{}",
+        SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("system time should be after unix epoch")
+            .as_nanos()
+    ));
+    fs::create_dir_all(&root).expect("temporary bundle directory should be created");
+    write(
+        &root,
+        "manifest.json",
+        r#"{
+  "schema": "threenative.bundle",
+  "version": "0.1.0",
+  "name": "portable-shader",
+  "requiredCapabilities": {},
+  "entry": { "world": "world.ir.json" },
+  "files": { "assets": "assets.manifest.json", "materials": "materials.ir.json", "targetProfile": "target.profile.json" }
+}"#,
+    );
+    write(
+        &root,
+        "target.profile.json",
+        r#"{
+  "schema": "threenative.target-profile",
+  "version": "0.1.0",
+  "targets": ["desktop"]
+}"#,
+    );
+    write(
+        &root,
+        "world.ir.json",
+        r#"{
+  "schema": "threenative.world",
+  "version": "0.1.0",
+  "entities": [{
+    "id": "cube.shader",
+    "components": {
+      "MeshRenderer": { "mesh": "mesh.cube", "material": "mat.shader" }
+    }
+  }]
+}"#,
+    );
+    write(
+        &root,
+        "assets.manifest.json",
+        r#"{
+  "schema": "threenative.assets",
+  "version": "0.1.0",
+  "assets": [
+    { "id": "mesh.cube", "kind": "mesh", "format": "generated", "primitive": "box", "size": [1, 1, 1] },
+    { "id": "tex.albedo", "kind": "texture", "format": "png", "path": "assets/albedo.png" }
+  ]
+}"#,
+    );
+    write(
+        &root,
+        "materials.ir.json",
+        r##"{
+  "schema": "threenative.materials",
+  "version": "0.1.0",
+  "materials": [{
+    "id": "mat.shader",
+    "kind": "shader",
+    "alphaMode": "mask",
+    "alphaCutoff": 0.25,
+    "color": "#ffffff",
+    "outputs": ["baseColor", "alpha"],
+    "program": {
+      "language": "threenative-shader-v1",
+      "fragment": {
+        "outputs": {
+          "baseColor": { "kind": "sampleTexture", "texture": "albedo" },
+          "alpha": { "kind": "uniform", "uniform": "cutoff" }
+        }
+      },
+      "vertex": {
+        "displacement": {
+          "axis": "normal",
+          "amount": { "kind": "uniform", "uniform": "waveHeight" }
+        }
+      }
+    },
+    "textures": [{ "name": "albedo", "asset": "tex.albedo" }],
+    "uniforms": [
+      { "name": "cutoff", "type": "float", "default": 0.5 },
+      { "name": "waveHeight", "type": "float", "default": 0.2 }
+    ]
+  }]
+}"##,
+    );
+    root
 }
 
 fn write_rendering_bundle() -> PathBuf {

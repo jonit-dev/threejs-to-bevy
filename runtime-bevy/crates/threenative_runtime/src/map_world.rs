@@ -127,6 +127,89 @@ pub struct NativeMaterialPolicy {
 #[derive(Resource, Default)]
 pub struct NativeMaterialHandles(pub HashMap<String, Handle<StandardMaterial>>);
 
+#[derive(Resource, Default)]
+pub struct NativeShaderMaterialHandles(pub HashMap<String, Handle<NativePortableShaderMaterial>>);
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct NativeShaderBindingMetadata {
+    pub binding: usize,
+    pub kind: String,
+    pub name: String,
+    pub type_: String,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct NativeShaderMaterialMetadata {
+    pub fragment_outputs: Vec<String>,
+    pub language: String,
+    pub material_id: String,
+    pub textures: Vec<String>,
+    pub uniforms: Vec<String>,
+    pub wgsl_entry_points: Vec<String>,
+    pub binding_layout: Vec<NativeShaderBindingMetadata>,
+}
+
+#[derive(Resource, Default)]
+pub struct NativeShaderMaterialRegistry(pub HashMap<String, NativeShaderMaterialMetadata>);
+
+#[derive(Clone, Component, Debug, PartialEq)]
+pub struct NativeShaderMaterialInstance {
+    pub binding_layout: Vec<NativeShaderBindingMetadata>,
+    pub fragment_outputs: Vec<String>,
+    pub language: String,
+    pub material_id: String,
+    pub render_path: String,
+    pub textures: Vec<String>,
+    pub uniforms: Vec<String>,
+    pub wgsl_entry_points: Vec<String>,
+}
+
+const NATIVE_PORTABLE_SHADER_MATERIAL_HANDLE: Handle<Shader> =
+    Handle::weak_from_u128(3159543545182177583);
+
+#[derive(Asset, TypePath, AsBindGroup, Debug, Clone)]
+pub struct NativePortableShaderMaterial {
+    #[uniform(0)]
+    pub base_color: LinearRgba,
+    #[texture(1)]
+    #[sampler(2)]
+    pub base_color_texture: Option<Handle<Image>>,
+    #[uniform(3)]
+    pub displacement_amount: f32,
+    pub alpha_mode: AlphaMode,
+    pub alpha_cutoff: Option<f32>,
+    pub uses_vertex_displacement: bool,
+    pub material_id: String,
+}
+
+impl Material for NativePortableShaderMaterial {
+    fn vertex_shader() -> ShaderRef {
+        NATIVE_PORTABLE_SHADER_MATERIAL_HANDLE.into()
+    }
+
+    fn fragment_shader() -> ShaderRef {
+        NATIVE_PORTABLE_SHADER_MATERIAL_HANDLE.into()
+    }
+
+    fn alpha_mode(&self) -> AlphaMode {
+        self.alpha_mode
+    }
+}
+
+pub struct NativePortableShaderMaterialPlugin;
+
+impl Plugin for NativePortableShaderMaterialPlugin {
+    fn build(&self, app: &mut App) {
+        load_internal_asset!(
+            app,
+            NATIVE_PORTABLE_SHADER_MATERIAL_HANDLE,
+            "native_portable_shader_material.wgsl",
+            Shader::from_wgsl
+        );
+        app.add_plugins(MaterialPlugin::<NativePortableShaderMaterial>::default());
+    }
+}
+
 #[derive(Default, Resource)]
 pub struct NativeMappedWorldEntityIds(pub BTreeSet<String>);
 
@@ -295,14 +378,23 @@ impl MapError {
 pub fn map_bundle_into_world(world: &mut World, bundle: &LoadedBundle) -> Result<(), MapError> {
     let spawn_context = prepare_world_entity_spawn_context(world, bundle);
     let mut material_handles = NativeMaterialHandles::default();
+    let mut shader_material_handles = NativeShaderMaterialHandles::default();
 
     let mut entities_by_id = HashMap::new();
     for entity in &bundle.world.entities {
-        let bevy_entity =
-            spawn_world_entity(world, entity, &spawn_context, &mut material_handles, bundle)?;
+        let bevy_entity = spawn_world_entity(
+            world,
+            entity,
+            &spawn_context,
+            &mut material_handles,
+            &mut shader_material_handles,
+            bundle,
+        )?;
         entities_by_id.insert(entity.id.as_str(), bevy_entity);
     }
     world.insert_resource(material_handles);
+    world.insert_resource(shader_material_handles);
+    world.insert_resource(shader_material_registry(bundle));
 
     spawn_environment_sky_dome(world, bundle, &spawn_context.assets_by_id);
 
@@ -318,6 +410,84 @@ pub fn map_bundle_into_world(world: &mut World, bundle: &LoadedBundle) -> Result
     ));
 
     Ok(())
+}
+
+fn shader_material_registry(bundle: &LoadedBundle) -> NativeShaderMaterialRegistry {
+    let mut registry = HashMap::new();
+    for material in &bundle.materials.materials {
+        if material.kind != "shader" {
+            continue;
+        }
+        let uniforms = material
+            .uniforms
+            .as_ref()
+            .map(|values| {
+                let mut values = values
+                    .iter()
+                    .map(|uniform| (uniform.name.clone(), uniform.type_.clone()))
+                    .collect::<Vec<_>>();
+                values.sort_by(|left, right| left.0.cmp(&right.0));
+                values
+            })
+            .unwrap_or_default();
+        let textures = material
+            .textures
+            .as_ref()
+            .map(|values| {
+                let mut values = values
+                    .iter()
+                    .map(|texture| texture.name.clone())
+                    .collect::<Vec<_>>();
+                values.sort();
+                values
+            })
+            .unwrap_or_default();
+        let mut binding_layout = Vec::new();
+        for (index, (name, type_)) in uniforms.iter().enumerate() {
+            binding_layout.push(NativeShaderBindingMetadata {
+                binding: index,
+                kind: "uniform".to_owned(),
+                name: name.clone(),
+                type_: type_.clone(),
+            });
+        }
+        for (index, name) in textures.iter().enumerate() {
+            binding_layout.push(NativeShaderBindingMetadata {
+                binding: uniforms.len() + index,
+                kind: "sampler2d".to_owned(),
+                name: name.clone(),
+                type_: "texture2d".to_owned(),
+            });
+        }
+        let mut fragment_outputs = material.outputs.clone().unwrap_or_default();
+        if fragment_outputs.is_empty() {
+            fragment_outputs = material
+                .program
+                .as_ref()
+                .and_then(|program| program.fragment.get("outputs"))
+                .and_then(|outputs| outputs.as_object())
+                .map(|outputs| outputs.keys().cloned().collect())
+                .unwrap_or_default();
+        }
+        fragment_outputs.sort();
+        registry.insert(
+            material.id.clone(),
+            NativeShaderMaterialMetadata {
+                binding_layout,
+                fragment_outputs,
+                language: material
+                    .program
+                    .as_ref()
+                    .map(|program| program.language.clone())
+                    .unwrap_or_else(|| "threenative-shader-v1".to_owned()),
+                material_id: material.id.clone(),
+                textures,
+                uniforms: uniforms.into_iter().map(|(name, _)| name).collect(),
+                wgsl_entry_points: vec!["vertex_main".to_owned(), "fragment_main".to_owned()],
+            },
+        );
+    }
+    NativeShaderMaterialRegistry(registry)
 }
 
 pub fn prepare_world_entity_spawn_context<'a>(
@@ -383,6 +553,7 @@ pub fn spawn_world_entity(
     entity: &WorldEntity,
     context: &NativeWorldEntitySpawnContext<'_>,
     material_handles: &mut NativeMaterialHandles,
+    shader_material_handles: &mut NativeShaderMaterialHandles,
     bundle: &LoadedBundle,
 ) -> Result<Entity, MapError> {
     spawn_entity(
@@ -401,6 +572,7 @@ pub fn spawn_world_entity(
         context.runtime_config,
         &context.render_target_registry,
         material_handles,
+        shader_material_handles,
         &bundle.bundle_path,
     )
 }
@@ -683,6 +855,9 @@ fn ensure_asset_resources(world: &mut World) {
     }
     if !world.contains_resource::<Assets<StandardMaterial>>() {
         world.init_resource::<Assets<StandardMaterial>>();
+    }
+    if !world.contains_resource::<Assets<NativePortableShaderMaterial>>() {
+        world.init_resource::<Assets<NativePortableShaderMaterial>>();
     }
     if !world.contains_resource::<Assets<AnimationGraph>>() {
         world.init_resource::<Assets<AnimationGraph>>();

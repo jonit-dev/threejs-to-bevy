@@ -752,6 +752,30 @@ pub struct MaterialEmissiveBloomIr {
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
+pub struct ShaderUniformIr {
+    pub default: serde_json::Value,
+    pub name: String,
+    #[serde(rename = "type")]
+    pub type_: String,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ShaderTextureIr {
+    pub asset: String,
+    pub name: String,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ShaderProgramIr {
+    pub fragment: serde_json::Value,
+    pub language: String,
+    pub vertex: Option<serde_json::Value>,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct MaterialIr {
     pub alpha_cutoff: Option<f32>,
     pub alpha_mode: Option<String>,
@@ -782,6 +806,11 @@ pub struct MaterialIr {
     pub specular_texture: Option<String>,
     pub transmission: Option<f32>,
     pub transmission_texture: Option<String>,
+    pub inputs: Option<Vec<String>>,
+    pub outputs: Option<Vec<String>>,
+    pub program: Option<ShaderProgramIr>,
+    pub textures: Option<Vec<ShaderTextureIr>>,
+    pub uniforms: Option<Vec<ShaderUniformIr>>,
 }
 
 #[derive(Debug, Deserialize)]

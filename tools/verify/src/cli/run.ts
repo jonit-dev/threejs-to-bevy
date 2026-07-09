@@ -168,6 +168,21 @@ export const FOCUSED_GATES: Record<string, FocusedGate> = {
       protects: "Canonical particle command service names, bounded emitter metadata, fixture registration, count observations, and nonblank visual evidence.",
     },
   },
+  "verify:portable-shader-material": {
+    commands: [
+      ["pnpm", "--filter", "@threenative/ir", "build"],
+      ["pnpm", "--filter", "@threenative/runtime-web-three", "build"],
+      ["pnpm", "--filter", "@threenative/verify-tools", "build"],
+      ["node", "scripts/verify-portable-shader-material.mjs"],
+    ],
+    description: "Portable shader material parity proof gate.",
+    metadata: {
+      owner: "tools/verify portable shader material gate",
+      profile: "focused",
+      reason: "Validates the shared portable shader fixture, web/native shader metadata, binding layout parity, and sample-region proof contract before shader material support can be promoted.",
+      protects: "Portable shader material fixture coverage, web/native shader binding metadata, and release evidence wiring.",
+    },
+  },
   "verify:production-hardening": {
     commands: [
       ["pnpm", "--filter", "@threenative/ir", "build"],

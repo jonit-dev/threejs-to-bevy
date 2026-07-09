@@ -187,6 +187,26 @@
       ]
     },
     {
+      "canonicalId": "portable-shader-material",
+      "owner": "ir-contract",
+      "sourceExample": "portable-shader-material",
+      "regenerateCommand": "pnpm verify:portable-shader-material",
+      "canonicalArtifactGate": "portable-shader-material",
+      "ownerDocs": "docs/PRDs/proof-first-engine-loop-2026-07-05/PRD-014-portable-shader-material-parity.md",
+      "aggregateGate": "verify:portable-shader-material",
+      "bundlePath": "packages/ir/fixtures/conformance/portable-shader-material/game.bundle",
+      "promotedCapabilities": [
+        "material:shader-v1-fixture",
+        "shader:binding-metadata",
+        "shader:sample-region-contract"
+      ],
+      "reportArtifacts": [
+        "tools/verify/artifacts/portable-shader-material/verification-report.json",
+        "tools/verify/artifacts/portable-shader-material/web-shader-materials.json",
+        "tools/verify/artifacts/portable-shader-material/native-shader-materials.json"
+      ]
+    },
+    {
       "canonicalId": "runtime-gameplay-host",
       "owner": "ir-contract",
       "sourceExample": "runtime-gameplay-host",

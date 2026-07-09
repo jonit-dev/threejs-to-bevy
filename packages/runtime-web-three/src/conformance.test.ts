@@ -4,6 +4,7 @@ import test from "node:test";
 
 import { reportWebConformance } from "./conformance.js";
 import { loadBundle } from "./loadBundle.js";
+import type { IWebBundle } from "./loadBundle.js";
 import { mapWorld } from "./mapWorld.js";
 
 test("should report basic scene conformance semantics", async () => {
@@ -89,6 +90,58 @@ test("should report promoted glTF material metadata", async () => {
   assert.equal(report.gltfFidelity?.assets[0]?.assetId, "model.hero");
   assert.equal(report.gltfFidelity?.assets[0]?.materials[0]?.extensions[0]?.extension, "KHR_materials_clearcoat");
   assert.equal(report.gltfFidelity?.assets[0]?.morphTargets[0]?.target, "Smile");
+});
+
+test("should report portable shader material observations", () => {
+  const bundle: IWebBundle = {
+    assets: {
+      schema: "threenative.assets",
+      version: "0.1.0",
+      assets: [
+        { id: "mesh.cube", kind: "mesh", format: "generated", primitive: "box", size: [1, 1, 1] },
+        { id: "tex.albedo", kind: "texture", format: "png", path: "assets/albedo.png" },
+      ],
+    },
+    manifest: {
+      schema: "threenative.bundle",
+      version: "0.1.0",
+      name: "portable-shader",
+      requiredCapabilities: {},
+      entry: { world: "world.ir.json" },
+      files: { assets: "assets.manifest.json", materials: "materials.ir.json", targetProfile: "target.profile.json" },
+    },
+    materials: {
+      schema: "threenative.materials",
+      version: "0.1.0",
+      materials: [{
+        color: "#ffffff",
+        id: "mat.shader",
+        kind: "shader",
+        program: {
+          fragment: { outputs: { baseColor: { kind: "sampleTexture", texture: "albedo" } } },
+          language: "threenative-shader-v1",
+        },
+        textures: [{ asset: "tex.albedo", name: "albedo" }],
+        uniforms: [{ default: 0.2, name: "waveHeight", type: "float" }],
+      }],
+    },
+    targetProfile: { schema: "threenative.target-profile", version: "0.1.0", targets: ["web"] },
+    world: {
+      schema: "threenative.world",
+      version: "0.1.0",
+      entities: [{ id: "cube.shader", components: { MeshRenderer: { mesh: "mesh.cube", material: "mat.shader" } } }],
+    },
+  };
+  const mapped = mapWorld(bundle);
+  const report = reportWebConformance(bundle, mapped, "portable-shader");
+  const material = report.materials.find((candidate) => candidate.id === "mat.shader");
+
+  assert.equal(material?.kind, "shader");
+  assert.equal(material?.shader?.language, "threenative-shader-v1");
+  assert.deepEqual(material?.shader?.uniforms, ["waveHeight"]);
+  assert.deepEqual(material?.shader?.textures, ["albedo"]);
+  assert.equal(material?.shader?.targets?.glsl?.language, "glsl100");
+  assert.equal(material?.shader?.targets?.wgsl?.language, "wgsl");
 });
 
 test("should report promoted generated primitive mapping semantics", async () => {

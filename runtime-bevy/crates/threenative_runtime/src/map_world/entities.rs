@@ -14,6 +14,7 @@ fn spawn_entity(
     runtime_config: Option<&RuntimeConfigIr>,
     render_target_registry: &NativeRenderTargetRegistry,
     material_handles: &mut NativeMaterialHandles,
+    shader_material_handles: &mut NativeShaderMaterialHandles,
     bundle_path: &Path,
 ) -> Result<Entity, MapError> {
     let transform = map_transform(entity);
@@ -117,6 +118,40 @@ fn spawn_entity(
         }
         let mesh = add_mesh(world, asset);
         let policy = material_policy(material);
+        if material.kind == "shader" {
+            let material_handle = add_portable_shader_material(
+                world,
+                material,
+                assets_by_id,
+                asset_server.as_ref(),
+                render_target_registry,
+            );
+            shader_material_handles
+                .0
+                .entry(material.id.clone())
+                .or_insert_with(|| material_handle.clone());
+            let mut spawned = world.spawn(MaterialMeshBundle {
+                mesh: mesh.clone(),
+                material: material_handle,
+                transform,
+                visibility: map_visibility(entity),
+                ..Default::default()
+            });
+            let spawned_id = spawned.id();
+            spawned.insert((stable_id, name));
+            spawned.insert(policy);
+            if let Some(instance) = shader_material_instance(material) {
+                spawned.insert(instance);
+            }
+            insert_shadow_markers(&mut spawned, renderer);
+            if let Some(layers) = entity.components.render_layers.as_ref() {
+                spawned.insert(render_layers_for_names(layer_map, &layers.layers));
+            }
+            if let Some(playback) = animation_playback(asset) {
+                spawned.insert(playback);
+            }
+            return Ok(spawned_id);
+        }
         let material_handle = add_material(
             world,
             material,
@@ -138,6 +173,9 @@ fn spawn_entity(
         let spawned_id = spawned.id();
         spawned.insert((stable_id, name));
         spawned.insert(policy);
+        if let Some(instance) = shader_material_instance(material) {
+            spawned.insert(instance);
+        }
         if let Some(policy) = emissive_bloom_policy(material) {
             spawned.insert(policy);
         }
@@ -363,6 +401,209 @@ fn spawn_entity(
         })
         .insert((stable_id, name))
         .id())
+}
+
+fn shader_material_instance(material: &MaterialIr) -> Option<NativeShaderMaterialInstance> {
+    if material.kind != "shader" {
+        return None;
+    }
+    let uniforms = material
+        .uniforms
+        .as_ref()
+        .map(|values| {
+            let mut values = values
+                .iter()
+                .map(|uniform| (uniform.name.clone(), uniform.type_.clone()))
+                .collect::<Vec<_>>();
+            values.sort_by(|left, right| left.0.cmp(&right.0));
+            values
+        })
+        .unwrap_or_default();
+    let textures = material
+        .textures
+        .as_ref()
+        .map(|values| {
+            let mut values = values
+                .iter()
+                .map(|texture| texture.name.clone())
+                .collect::<Vec<_>>();
+            values.sort();
+            values
+        })
+        .unwrap_or_default();
+    let mut binding_layout = Vec::new();
+    for (index, (name, type_)) in uniforms.iter().enumerate() {
+        binding_layout.push(NativeShaderBindingMetadata {
+            binding: index,
+            kind: "uniform".to_owned(),
+            name: name.clone(),
+            type_: type_.clone(),
+        });
+    }
+    for (index, name) in textures.iter().enumerate() {
+        binding_layout.push(NativeShaderBindingMetadata {
+            binding: uniforms.len() + index,
+            kind: "sampler2d".to_owned(),
+            name: name.clone(),
+            type_: "texture2d".to_owned(),
+        });
+    }
+    let mut fragment_outputs = material.outputs.clone().unwrap_or_default();
+    if fragment_outputs.is_empty() {
+        fragment_outputs = material
+            .program
+            .as_ref()
+            .and_then(|program| program.fragment.get("outputs"))
+            .and_then(|outputs| outputs.as_object())
+            .map(|outputs| outputs.keys().cloned().collect())
+            .unwrap_or_default();
+    }
+    fragment_outputs.sort();
+    Some(NativeShaderMaterialInstance {
+        binding_layout,
+        fragment_outputs,
+        language: material
+            .program
+            .as_ref()
+            .map(|program| program.language.clone())
+            .unwrap_or_else(|| "threenative-shader-v1".to_owned()),
+        material_id: material.id.clone(),
+        render_path: "native-portable-shader-material".to_owned(),
+        textures,
+        uniforms: uniforms.into_iter().map(|(name, _)| name).collect(),
+        wgsl_entry_points: vec!["vertex_main".to_owned(), "fragment_main".to_owned()],
+    })
+}
+
+fn add_portable_shader_material(
+    world: &mut World,
+    material: &MaterialIr,
+    assets_by_id: &HashMap<&str, &AssetIr>,
+    asset_server: Option<&AssetServer>,
+    render_target_registry: &NativeRenderTargetRegistry,
+) -> Handle<NativePortableShaderMaterial> {
+    let (base_color, texture_asset) = portable_shader_base_color(material);
+    let base_color_texture = texture_asset
+        .and_then(|asset| {
+            texture_handle(
+                Some(asset.as_str()),
+                assets_by_id,
+                asset_server,
+                render_target_registry,
+            )
+        })
+        .unwrap_or_else(|| add_portable_shader_fallback_texture(world));
+    world
+        .resource_mut::<Assets<NativePortableShaderMaterial>>()
+        .add(NativePortableShaderMaterial {
+            alpha_mode: alpha_mode(material),
+            alpha_cutoff: material.alpha_cutoff,
+            base_color: base_color.into(),
+            base_color_texture: Some(base_color_texture),
+            displacement_amount: shader_displacement_amount(material).unwrap_or(0.0),
+            material_id: material.id.clone(),
+            uses_vertex_displacement: material
+                .program
+                .as_ref()
+                .and_then(|program| program.vertex.as_ref())
+                .and_then(|vertex| vertex.get("displacement"))
+                .is_some(),
+        })
+}
+
+fn add_portable_shader_fallback_texture(world: &mut World) -> Handle<Image> {
+    let image = Image::new_fill(
+        Extent3d {
+            width: 1,
+            height: 1,
+            depth_or_array_layers: 1,
+        },
+        TextureDimension::D2,
+        &[255, 255, 255, 255],
+        TextureFormat::Rgba8UnormSrgb,
+        RenderAssetUsages::default(),
+    );
+    world.resource_mut::<Assets<Image>>().add(image)
+}
+
+fn portable_shader_base_color(material: &MaterialIr) -> (Color, Option<String>) {
+    let outputs = material
+        .program
+        .as_ref()
+        .and_then(|program| program.fragment.get("outputs"))
+        .and_then(|outputs| outputs.as_object());
+    let base_color = outputs.and_then(|outputs| outputs.get("baseColor"));
+    if let Some(texture_name) = base_color
+        .and_then(|value| value.get("texture"))
+        .and_then(|value| value.as_str())
+    {
+        let texture_asset = material.textures.as_ref().and_then(|textures| {
+            textures
+                .iter()
+                .find(|texture| texture.name == texture_name)
+                .map(|texture| texture.asset.clone())
+        });
+        return (
+            Color::srgba(1.0, 1.0, 1.0, shader_alpha(material, outputs).unwrap_or(1.0)),
+            texture_asset,
+        );
+    }
+    if let Some(values) = base_color
+        .and_then(|value| value.get("value"))
+        .and_then(|value| value.as_array())
+    {
+        let r = json_array_f32(values, 0, 1.0);
+        let g = json_array_f32(values, 1, r);
+        let b = json_array_f32(values, 2, g);
+        let alpha = shader_alpha(material, outputs).unwrap_or_else(|| json_array_f32(values, 3, 1.0));
+        return (Color::srgba(r, g, b, alpha), None);
+    }
+    (color_with_opacity(&material.color, shader_alpha(material, outputs).unwrap_or(1.0)), None)
+}
+
+fn shader_alpha(
+    material: &MaterialIr,
+    outputs: Option<&serde_json::Map<String, serde_json::Value>>,
+) -> Option<f32> {
+    let alpha = outputs?.get("alpha")?;
+    if let Some(value) = alpha.get("value").and_then(|value| value.as_f64()) {
+        return Some((value as f32).clamp(0.0, 1.0));
+    }
+    let uniform_name = alpha.get("uniform").and_then(|value| value.as_str())?;
+    material.uniforms.as_ref()?.iter().find_map(|uniform| {
+        (uniform.name == uniform_name).then(|| {
+            uniform
+                .default
+                .as_f64()
+                .map(|value| (value as f32).clamp(0.0, 1.0))
+        })?
+    })
+}
+
+fn shader_displacement_amount(material: &MaterialIr) -> Option<f32> {
+    let amount = material
+        .program
+        .as_ref()?
+        .vertex
+        .as_ref()?
+        .get("displacement")?
+        .get("amount")?;
+    if let Some(value) = amount.get("value").and_then(|value| value.as_f64()) {
+        return Some(value as f32);
+    }
+    let uniform_name = amount.get("uniform").and_then(|value| value.as_str())?;
+    material.uniforms.as_ref()?.iter().find_map(|uniform| {
+        (uniform.name == uniform_name).then(|| uniform.default.as_f64().map(|value| value as f32))?
+    })
+}
+
+fn json_array_f32(values: &[serde_json::Value], index: usize, fallback: f32) -> f32 {
+    values
+        .get(index)
+        .and_then(|value| value.as_f64())
+        .map(|value| value as f32)
+        .filter(|value| value.is_finite())
+        .unwrap_or(fallback)
 }
 
 fn insert_shadow_markers(

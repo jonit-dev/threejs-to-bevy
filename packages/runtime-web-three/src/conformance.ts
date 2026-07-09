@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { buildRuntimeTraceBundleFromConformanceReport } from "@threenative/ir";
+import { buildRuntimeTraceBundleFromConformanceReport, generatePortableShaderMaterial } from "@threenative/ir";
 import type {
   IAssetIr,
   IAudioIr,
@@ -21,6 +21,7 @@ import type {
   IConformanceUiReport,
   IEnvironmentSceneIr,
   IMaterialIr,
+  IShaderMaterialIr,
   IRuntimeConfigIr,
   IUiIr,
   IWorldEntity,
@@ -398,6 +399,7 @@ function reportMaterial(material: IMaterialIr): IConformanceMaterialReport {
     opacity: material.opacity,
     renderOrder: material.renderOrder,
     roughness: material.roughness,
+    shader: material.kind === "shader" ? reportShaderMaterial(material) : undefined,
     specularIntensity: material.specularIntensity,
     transmission: material.transmission,
     textures: {
@@ -411,6 +413,21 @@ function reportMaterial(material: IMaterialIr): IConformanceMaterialReport {
       specular: material.specularTexture,
       transmission: material.transmissionTexture,
     },
+  };
+}
+
+function reportShaderMaterial(material: IShaderMaterialIr): NonNullable<IConformanceMaterialReport["shader"]> {
+  const generatedShader = generatePortableShaderMaterial(material);
+  return {
+    bindingLayout: generatedShader.bindingLayout,
+    fragmentOutputs: generatedShader.fragmentOutputs,
+    language: material.program.language,
+    targets: {
+      glsl: { entryPoints: generatedShader.glsl.entryPoints, language: generatedShader.glsl.language },
+      wgsl: { entryPoints: generatedShader.wgsl.entryPoints, language: generatedShader.wgsl.language },
+    },
+    textures: (material.textures ?? []).map((texture) => texture.name).sort(),
+    uniforms: (material.uniforms ?? []).map((uniform) => uniform.name).sort(),
   };
 }
 

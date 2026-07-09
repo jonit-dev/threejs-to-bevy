@@ -1,0 +1,51 @@
+{
+  "schema": "threenative.world",
+  "version": "0.1.0",
+  "entities": [
+    {
+      "id": "shader.color-ramp",
+      "components": {
+        "Transform": { "position": [-2.4, 0.6, 0], "rotation": [0, 0, 0, 1], "scale": [1, 1, 1] },
+        "MeshRenderer": { "mesh": "mesh.shader-swatch", "material": "mat.shader.color-ramp" }
+      }
+    },
+    {
+      "id": "shader.texture-sample",
+      "components": {
+        "Transform": { "position": [-1.2, 0.6, 0], "rotation": [0, 0, 0, 1], "scale": [1, 1, 1] },
+        "MeshRenderer": { "mesh": "mesh.shader-swatch", "material": "mat.shader.texture-sample" }
+      }
+    },
+    {
+      "id": "shader.alpha-mask",
+      "components": {
+        "Transform": { "position": [0, 0.6, 0], "rotation": [0, 0, 0, 1], "scale": [1, 1, 1] },
+        "MeshRenderer": { "mesh": "mesh.shader-swatch", "material": "mat.shader.alpha-mask" }
+      }
+    },
+    {
+      "id": "shader.time-uniform",
+      "components": {
+        "Transform": { "position": [1.2, 0.6, 0], "rotation": [0, 0, 0, 1], "scale": [1, 1, 1] },
+        "MeshRenderer": { "mesh": "mesh.shader-swatch", "material": "mat.shader.time-uniform" }
+      }
+    },
+    {
+      "id": "shader.vertex-displacement",
+      "components": {
+        "Transform": { "position": [2.4, 0.6, 0], "rotation": [0, 0, 0, 1], "scale": [1, 1, 1] },
+        "MeshRenderer": { "mesh": "mesh.shader-swatch", "material": "mat.shader.vertex-displacement" }
+      }
+    },
+    {
+      "id": "camera.main",
+      "components": {
+        "Transform": { "position": [0, 1.1, 5.2], "rotation": [0, 0, 0, 1], "scale": [1, 1, 1] },
+        "Camera": { "kind": "perspective", "fovY": 50, "near": 0.1, "far": 100, "priority": 0 }
+      }
+    }
+  ],
+  "resources": {
+    "ActiveCamera": { "entity": "camera.main" }
+  }
+}

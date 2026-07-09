@@ -19,6 +19,14 @@ Current support:
   shadow quality, and a richer fallback sky in web and native runtimes when no
   authored atmosphere overrides it. `balanced` and `stylized` remain selectable
   promoted profiles.
+- `pnpm verify:portable-shader-material` records the portable shader fixture,
+  web/native binding metadata, native `NativePortableShaderMaterial` assets
+  for shader-material mesh entities, deterministic preview PNGs, a contact
+  sheet, sample-region metrics, and bundle-local shader texture file checks.
+  This is bounded native material mapping plus IR-derived preview evidence;
+  full runtime web/Bevy shader screenshots and pixel-region parity remain
+  unpromoted.
+
 - PRD-007 committed visual evidence is indexed at
   [prd-007-beautiful-scaffolds](../../pr-evidence/prd-007-beautiful-scaffolds/README.md),
   with raw generated report references under
@@ -33,6 +41,7 @@ Verification:
 - `pnpm verify:conformance`
 - `pnpm verify:default-look`
 - `pnpm verify:release`
+- `pnpm verify:portable-shader-material`
 
 Full prior evidence is preserved in
 [full-status-archive.md](full-status-archive.md).
