@@ -147,11 +147,11 @@ sequenceDiagram
 
 **Implementation:**
 
-- [ ] Define canonical `particles.play/stop/emit/clear` service names and
+- [x] Define canonical `particles.play/stop/emit/clear` service names and
       payloads, with `start`/`burst`/`reset` compatibility aliases only if
       needed by existing authored content.
-- [ ] Require bounded emitter declarations and max live counts.
-- [ ] Reject backend particle handles and unbounded emitters.
+- [x] Require bounded emitter declarations and max live counts.
+- [x] Reject backend particle handles and unbounded emitters.
 
 **Tests Required:**
 
