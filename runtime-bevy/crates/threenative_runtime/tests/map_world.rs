@@ -12,10 +12,10 @@ use serde_json::json;
 use threenative_components::ThreeNativeId;
 use threenative_loader::{WorldEntity, load_bundle};
 use threenative_runtime::map_world::{
-    NativeGrassWindMotion, NativeStylizedMotionTimeOverride, STYLIZED_NATURE_RUNTIME_DEFAULTS,
-    THREE_COMPAT_AMBIENT_BRIGHTNESS_PER_INTENSITY,
+    NativeGrassWindMotion, NativeMaterialHandles, NativeStylizedMotionTimeOverride,
+    STYLIZED_NATURE_RUNTIME_DEFAULTS, THREE_COMPAT_AMBIENT_BRIGHTNESS_PER_INTENSITY,
     THREE_COMPAT_DIRECTIONAL_ILLUMINANCE_PER_INTENSITY, animate_native_stylized_motion,
-    map_bundle_into_world,
+    map_bundle_into_world, prepare_world_entity_spawn_context, spawn_world_entity,
 };
 
 #[test]
@@ -35,6 +35,42 @@ fn should_spawn_stable_ids_for_cube_fixture() {
     assert!(ids.contains(&"cube.main"));
     assert!(ids.contains(&"camera.main"));
     assert!(ids.contains(&"light.key"));
+}
+
+#[test]
+fn should_map_single_runtime_spawned_entity_with_render_handles() {
+    let bundle = load_bundle(cube_fixture()).expect("cube fixture should load");
+    let mut app = App::new();
+    let context = prepare_world_entity_spawn_context(app.world_mut(), &bundle);
+    let mut material_handles = NativeMaterialHandles::default();
+    let cube = bundle
+        .world
+        .entities
+        .iter()
+        .find(|entity| entity.id == "cube.main")
+        .expect("cube fixture should include cube");
+
+    let bevy_entity = spawn_world_entity(
+        app.world_mut(),
+        cube,
+        &context,
+        &mut material_handles,
+        &bundle,
+    )
+    .expect("single entity should map");
+
+    let entity = app.world().entity(bevy_entity);
+    assert_eq!(
+        entity
+            .get::<ThreeNativeId>()
+            .expect("stable ID should be mapped")
+            .0,
+        "cube.main"
+    );
+    assert!(entity.get::<Transform>().is_some());
+    assert!(entity.get::<Handle<Mesh>>().is_some());
+    assert!(entity.get::<Handle<StandardMaterial>>().is_some());
+    assert!(material_handles.0.contains_key("mat.cube"));
 }
 
 #[test]

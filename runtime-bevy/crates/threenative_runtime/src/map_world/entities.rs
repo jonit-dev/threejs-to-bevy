@@ -4,7 +4,7 @@ fn spawn_entity(
     assets_by_id: &HashMap<&str, &AssetIr>,
     materials_by_id: &HashMap<&str, &MaterialIr>,
     layer_map: &NativeRenderLayerMap,
-    active_cameras: &std::collections::HashSet<&str>,
+    active_cameras: &std::collections::HashSet<String>,
     fallback_active_camera: Option<&str>,
     camera_color_management: Option<&threenative_loader::AtmosphereColorManagementIr>,
     runtime_color_grading: Option<&threenative_loader::RuntimeRendererColorGradingConfig>,
@@ -631,4 +631,3 @@ fn ancestor_animation_target<'a>(
         current = parent.get();
     }
 }
-

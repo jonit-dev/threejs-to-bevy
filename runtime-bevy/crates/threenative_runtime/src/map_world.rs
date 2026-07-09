@@ -1,4 +1,7 @@
-use std::{collections::HashMap, path::Path};
+use std::{
+    collections::{HashMap, HashSet},
+    path::Path,
+};
 
 use bevy::{
     animation::graph::AnimationGraph,
@@ -123,6 +126,21 @@ pub struct NativeMaterialPolicy {
 
 #[derive(Resource, Default)]
 pub struct NativeMaterialHandles(pub HashMap<String, Handle<StandardMaterial>>);
+
+pub struct NativeWorldEntitySpawnContext<'a> {
+    active_cameras: HashSet<String>,
+    assets_by_id: HashMap<&'a str, &'a AssetIr>,
+    bloom_settings: Option<BloomSettings>,
+    camera_atmosphere: Option<&'a AtmosphereProfileIr>,
+    camera_color_management: Option<&'a threenative_loader::AtmosphereColorManagementIr>,
+    default_camera_clear_color: Option<Color>,
+    fallback_active_camera: Option<String>,
+    layer_map: NativeRenderLayerMap,
+    materials_by_id: HashMap<&'a str, &'a MaterialIr>,
+    render_target_registry: NativeRenderTargetRegistry,
+    runtime_color_grading: Option<&'a threenative_loader::RuntimeRendererColorGradingConfig>,
+    runtime_config: Option<&'a RuntimeConfigIr>,
+}
 
 #[derive(Clone, Debug, ExtractResource, Resource)]
 pub struct NativeEmissiveMarkerMask {
@@ -272,6 +290,29 @@ impl MapError {
 }
 
 pub fn map_bundle_into_world(world: &mut World, bundle: &LoadedBundle) -> Result<(), MapError> {
+    let spawn_context = prepare_world_entity_spawn_context(world, bundle);
+    let mut material_handles = NativeMaterialHandles::default();
+
+    let mut entities_by_id = HashMap::new();
+    for entity in &bundle.world.entities {
+        let bevy_entity =
+            spawn_world_entity(world, entity, &spawn_context, &mut material_handles, bundle)?;
+        entities_by_id.insert(entity.id.as_str(), bevy_entity);
+    }
+    world.insert_resource(material_handles);
+
+    spawn_environment_sky_dome(world, bundle, &spawn_context.assets_by_id);
+
+    attach_entity_hierarchy(world, bundle, &entities_by_id);
+    spawn_rendered_particles(world, bundle, 1.0);
+
+    Ok(())
+}
+
+pub fn prepare_world_entity_spawn_context<'a>(
+    world: &mut World,
+    bundle: &'a LoadedBundle,
+) -> NativeWorldEntitySpawnContext<'a> {
     ensure_asset_resources(world);
     apply_runtime_config(world, bundle.runtime_config.as_ref());
     let camera_atmosphere = bundle
@@ -280,36 +321,8 @@ pub fn map_bundle_into_world(world: &mut World, bundle: &LoadedBundle) -> Result
         .and_then(|scene| scene.atmosphere.as_ref())
         .filter(|profile| profile.active);
     ensure_ambient_light_contract(world, bundle, camera_atmosphere);
-    let camera_color_management = camera_atmosphere.map(|profile| &profile.color_management);
-    let runtime_color_grading = bundle
-        .runtime_config
-        .as_ref()
-        .and_then(|config| config.renderer.as_ref())
-        .and_then(|renderer| renderer.color_grading.as_ref());
-    let bloom_settings = bloom_settings_for_runtime(bundle.runtime_config.as_ref());
-    let default_camera_clear_color = world.get_resource::<ClearColor>().map(|clear| clear.0);
     let layer_map = build_render_layer_map(bundle);
     world.insert_resource(layer_map.clone());
-    let render_target_registry = allocate_render_targets(world, bundle);
-    let active_cameras = active_camera_ids(bundle);
-    let active_camera_set = active_cameras
-        .iter()
-        .map(String::as_str)
-        .collect::<std::collections::HashSet<_>>();
-    let fallback_active = active_camera_id(bundle);
-
-    let assets_by_id = bundle
-        .assets
-        .assets
-        .iter()
-        .map(|asset| (asset.id.as_str(), asset))
-        .collect::<HashMap<_, _>>();
-    let materials_by_id = bundle
-        .materials
-        .materials
-        .iter()
-        .map(|material| (material.id.as_str(), material))
-        .collect::<HashMap<_, _>>();
     if bundle
         .materials
         .materials
@@ -318,44 +331,67 @@ pub fn map_bundle_into_world(world: &mut World, bundle: &LoadedBundle) -> Result
     {
         ensure_emissive_marker_mask(world);
     }
-    let mut material_handles = NativeMaterialHandles::default();
     world.insert_resource(
         crate::assets::build_texture_controls_registry_for_environment(
             &bundle.assets,
             bundle.environment_scene.as_ref(),
         ),
     );
-
-    let mut entities_by_id = HashMap::new();
-    for entity in &bundle.world.entities {
-        let bevy_entity = spawn_entity(
-            world,
-            entity,
-            &assets_by_id,
-            &materials_by_id,
-            &layer_map,
-            &active_camera_set,
-            fallback_active.as_deref(),
-            camera_color_management,
-            runtime_color_grading,
-            camera_atmosphere,
-            bloom_settings.as_ref(),
-            default_camera_clear_color,
-            bundle.runtime_config.as_ref(),
-            &render_target_registry,
-            &mut material_handles,
-            &bundle.bundle_path,
-        )?;
-        entities_by_id.insert(entity.id.as_str(), bevy_entity);
+    NativeWorldEntitySpawnContext {
+        active_cameras: active_camera_ids(bundle).into_iter().collect(),
+        assets_by_id: bundle
+            .assets
+            .assets
+            .iter()
+            .map(|asset| (asset.id.as_str(), asset))
+            .collect(),
+        bloom_settings: bloom_settings_for_runtime(bundle.runtime_config.as_ref()),
+        camera_atmosphere,
+        camera_color_management: camera_atmosphere.map(|profile| &profile.color_management),
+        default_camera_clear_color: world.get_resource::<ClearColor>().map(|clear| clear.0),
+        fallback_active_camera: active_camera_id(bundle),
+        layer_map,
+        materials_by_id: bundle
+            .materials
+            .materials
+            .iter()
+            .map(|material| (material.id.as_str(), material))
+            .collect(),
+        render_target_registry: allocate_render_targets(world, bundle),
+        runtime_color_grading: bundle
+            .runtime_config
+            .as_ref()
+            .and_then(|config| config.renderer.as_ref())
+            .and_then(|renderer| renderer.color_grading.as_ref()),
+        runtime_config: bundle.runtime_config.as_ref(),
     }
-    world.insert_resource(material_handles);
+}
 
-    spawn_environment_sky_dome(world, bundle, &assets_by_id);
-
-    attach_entity_hierarchy(world, bundle, &entities_by_id);
-    spawn_rendered_particles(world, bundle, 1.0);
-
-    Ok(())
+pub fn spawn_world_entity(
+    world: &mut World,
+    entity: &WorldEntity,
+    context: &NativeWorldEntitySpawnContext<'_>,
+    material_handles: &mut NativeMaterialHandles,
+    bundle: &LoadedBundle,
+) -> Result<Entity, MapError> {
+    spawn_entity(
+        world,
+        entity,
+        &context.assets_by_id,
+        &context.materials_by_id,
+        &context.layer_map,
+        &context.active_cameras,
+        context.fallback_active_camera.as_deref(),
+        context.camera_color_management,
+        context.runtime_color_grading,
+        context.camera_atmosphere,
+        context.bloom_settings.as_ref(),
+        context.default_camera_clear_color,
+        context.runtime_config,
+        &context.render_target_registry,
+        material_handles,
+        &bundle.bundle_path,
+    )
 }
 
 fn spawn_environment_sky_dome(
@@ -535,7 +571,9 @@ fn bloom_settings_for_runtime(config: Option<&RuntimeConfigIr>) -> Option<BloomS
                 .overrides
                 .as_ref()
                 .and_then(|overrides| overrides.bloom_intensity)
-                .unwrap_or_else(|| native_render_look_bloom_intensity(render_look.profile.as_str())),
+                .unwrap_or_else(|| {
+                    native_render_look_bloom_intensity(render_look.profile.as_str())
+                }),
             0.85,
         )
     } else {
