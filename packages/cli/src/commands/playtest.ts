@@ -34,6 +34,7 @@ declare global {
     performanceSnapshot?(): unknown;
     resourceSnapshot?(id: string): unknown;
     resetPerformanceTrace?(): void;
+    runtimeObservationSnapshot?(): unknown;
     runtimeDiagnosticsSnapshot?(): unknown;
     setEntityTransform?(id: string, transform: { position?: Vec3; rotation?: [number, number, number, number]; scale?: Vec3 }): boolean;
     uiNodeSnapshot?(id: string): unknown;
@@ -1026,6 +1027,7 @@ async function probePreview(options: IPlaytestRunOptions & { url: string }): Pro
     const debugColliderCount = await page.evaluate(() => globalThis.__THREENATIVE_RUNTIME__?.debugColliderCount);
     const effectLog = await readEffectLog(page);
     const runtimeDiagnostics = await readRuntimeDiagnostics(page);
+    const runtimeObservations = await readWebRuntimeObservations(page);
     const performanceSnapshot = await readWebPerformanceSnapshot(page);
     const performance = webPerformanceReport(performanceSnapshot);
     const observations: IPlaytestObservations = {
@@ -1035,6 +1037,7 @@ async function probePreview(options: IPlaytestRunOptions & { url: string }): Pro
       hud: mergeSnapshots(beforeHud, await readHudSnapshots(page, observationIds.hud)),
       network: networkEntries,
       resources: mergeSnapshots(beforeResources, await readResourceSnapshots(page, observationIds.resources)),
+      runtimeObservations,
       runtimeDiagnostics: { diagnostics: runtimeDiagnostics, performance: performanceSnapshot },
     };
     await page.screenshot({ path: artifact });
@@ -1340,6 +1343,10 @@ async function readEffectLog(page: { evaluate<T>(fn: () => T): Promise<T> }): Pr
 
 async function readRuntimeDiagnostics(page: { evaluate<T>(fn: () => T): Promise<T> }): Promise<unknown> {
   return page.evaluate(() => globalThis.__THREENATIVE_RUNTIME__?.runtimeDiagnosticsSnapshot?.() ?? globalThis.__THREENATIVE_READY__?.runtimeDiagnostics ?? null);
+}
+
+async function readWebRuntimeObservations(page: { evaluate<T>(fn: () => T): Promise<T> }): Promise<unknown> {
+  return page.evaluate(() => globalThis.__THREENATIVE_RUNTIME__?.runtimeObservationSnapshot?.() ?? null);
 }
 
 async function readWebPerformanceSnapshot(page: { evaluate<T>(fn: () => T): Promise<T> }): Promise<unknown> {

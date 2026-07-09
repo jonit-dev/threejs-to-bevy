@@ -48,6 +48,25 @@ test("should fail when texture repeat differs across targets", () => {
   assert.equal(result.diagnostics.some((diagnostic) => diagnostic.code === "TN_RUNTIME_PARITY_TEXTURE_DRIFT"), true);
 });
 
+test("should fail when desktop texture repeat differs from web observation", () => {
+  const result = compareTextureProbe({
+    assert: { textures: [{ id: "tex.grid.floor", loaded: true, repeat: [8, 12] }] },
+    id: "floor-texture",
+    kind: "textureProbe",
+    targets: ["web", "desktop"],
+  }, {
+    desktop: { textures: { "tex.grid.floor": { loaded: true, repeat: [1, 1] } } },
+    web: { textures: { "tex.grid.floor": { loaded: true, repeat: [8, 12] } } },
+  }, {
+    desktop: "runtime-observation",
+    web: "runtime-observation",
+  });
+
+  assert.equal(result.pass, false);
+  assert.equal(result.assertionResults.every((assertion) => assertion.source === "runtime-observation"), true);
+  assert.equal(result.diagnostics.some((diagnostic) => diagnostic.code === "TN_RUNTIME_PARITY_TEXTURE_DRIFT"), true);
+});
+
 test("should fail when material texture binding differs across targets", () => {
   const result = compareMaterialProbe({
     assert: { materials: [{ baseColorTexture: "tex.surface.ue-grid", id: "mat.floor.ue-grid" }] },

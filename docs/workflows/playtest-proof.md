@@ -143,3 +143,46 @@ material, resource, UI node, collider, trigger, or animation clip, needs a
 pass/fail assertion row. Surfaces that are not enforceable yet must be listed
 as `reportOnly` or `unsupported` with a stable reason; otherwise the gameplay
 parity gate fails with `TN_RUNTIME_PARITY_COVERAGE_GAP`.
+
+Gameplay parity entries use an explicit promotion ladder:
+
+- `enforced`: contributes to pass/fail claims.
+- `calibrating`: runs in reports, requires `promotionCriteria`, and does not
+  contribute to pass claims.
+- `quarantined`: runs for visibility, requires `reason`, and stays
+  non-passing until the blocker is removed.
+- `report-only`: runs for visibility, requires `reason`, and downgrades drift
+  diagnostics to warnings.
+
+Runtime probe assertion rows include a proof source. The gate prefers paired
+runtime observation sidecars when a manifest supplies them and labels those
+assertions as `runtime-observation`; otherwise source-backed fallback rows are
+kept visible as `source-manifest` and must not be used to claim broad native
+runtime resource parity.
+
+`tn playtest` writes `runtime-observations.json` beside `summary.json` when a
+target can expose cheap runtime facts for assets, textures, and materials. Web
+playtests read those facts from the browser runtime snapshot; native playtests
+read them from proof-harness readiness samples. `tn parity playtest` preserves
+the per-target sidecars, and the gameplay parity probe gate auto-discovers
+matching sidecars from the same aggregate run before falling back to source
+manifests.
+
+Negative controls live in verify-tools synthetic fixtures. They intentionally
+exercise movement, axis, resource, contact, animation, asset, texture,
+material, and coverage drift diagnostics. These fixtures are harness proof
+only; they must not be copied into example artifacts or release evidence.
+
+Coverage reports separate enforced smoke/full coverage from source inventory
+debt. `sourceInventoryCoveragePercent` is a debt signal, not a pass claim, and
+missing enforced required surfaces still fail with
+`TN_RUNTIME_PARITY_COVERAGE_GAP`.
+
+The smoke gameplay parity budget is 60 seconds. Enforced smoke entries that
+exceed it emit `TN_GAMEPLAY_PARITY_SMOKE_BUDGET_EXCEEDED`; move heavy scenarios
+to the full profile unless timing evidence justifies promotion.
+
+Humanoid test-instrument features use `featureSurfaces` in the gameplay parity
+manifest. A feature row must name `whyThisFeature`, required surfaces,
+promotion criteria, tolerance rationale, and artifact links before it can move
+beyond `calibrating`; otherwise the manifest emits a stable feature diagnostic.

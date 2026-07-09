@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdtemp, readFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
@@ -75,7 +75,16 @@ test("should include duration budget fields in the gameplay parity report", asyn
 
   assert.equal(report.duration.budgetMs, 60_000);
   assert.ok(Number.isFinite(report.duration.totalMs));
-  assert.deepEqual(report.duration.perCase, [{ durationMs: 25, id: "soldier-glb", kind: "assetProbe", mode: "enforced", status: "pass" }]);
+  assert.deepEqual(report.duration.perCase, [{
+    durationMs: 25,
+    id: "soldier-glb",
+    kind: "assetProbe",
+    lastTimingSampleMs: 25,
+    mode: "enforced",
+    profile: "smoke",
+    state: "enforced",
+    status: "pass",
+  }]);
 });
 
 test("should support non-action probe enrollment", async () => {
@@ -133,6 +142,24 @@ test("should support non-action probe enrollment", async () => {
 
 test("should link per-target probe observation artifacts", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-gameplay-parity-probe-links-"));
+  const project = join(root, "example");
+  await mkdir(join(project, "content/assets"), { recursive: true });
+  await mkdir(join(project, "content/materials"), { recursive: true });
+  await mkdir(join(project, "artifacts/runtime-observations"), { recursive: true });
+  await writeFile(join(project, "content/assets/arena.assets.json"), JSON.stringify({
+    assets: [{ animations: ["Idle"], id: "model.soldier", path: "soldier.glb", type: "gltf" }],
+  }), "utf8");
+  await writeFile(join(project, "content/materials/arena.materials.json"), JSON.stringify({ materials: [] }), "utf8");
+  for (const target of ["web", "desktop"]) {
+    await writeFile(join(project, `artifacts/runtime-observations/${target}.json`), JSON.stringify({
+      observations: {
+        assets: {
+          "model.soldier": { animations: ["Idle"], loaded: true },
+        },
+      },
+    }), "utf8");
+  }
+
   const report = await runGameplayParityGate({
     manifest: {
       schemaVersion: 1,
@@ -141,18 +168,106 @@ test("should link per-target probe observation artifacts", async () => {
           assert: { assets: [{ animations: ["Idle"], id: "model.soldier", loaded: true, type: "gltf" }] },
           id: "asset-probe",
           kind: "assetProbe",
-          project: "examples/humanoid-physics-course",
+          observationSidecars: {
+            desktop: "artifacts/runtime-observations/desktop.json",
+            web: "artifacts/runtime-observations/web.json",
+          },
+          project: "example",
           targets: ["web", "desktop"],
         },
       ],
     },
-    root: process.cwd(),
+    root,
     reportPath: join(root, "verification-report.json"),
   });
 
   assert.equal(report.status, "pass");
-  assert.match(report.artifacts.targetReports["asset-probe.web"] ?? "", /probes\/asset-probe\/web\.json$/);
-  assert.match(report.artifacts.targetReports["asset-probe.desktop"] ?? "", /probes\/asset-probe\/desktop\.json$/);
+  assert.equal(report.artifacts.targetReports["asset-probe.web"], "artifacts/runtime-observations/web.json");
+  assert.equal(report.artifacts.targetReports["asset-probe.desktop"], "artifacts/runtime-observations/desktop.json");
+});
+
+test("should prefer runtime observation sidecars over source-backed probes", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-gameplay-parity-runtime-sidecars-"));
+  const project = join(root, "example");
+  await mkdir(join(project, "content/assets"), { recursive: true });
+  await mkdir(join(project, "content/materials"), { recursive: true });
+  await mkdir(join(project, "artifacts/runtime-observations"), { recursive: true });
+  await writeFile(join(project, "content/assets/arena.assets.json"), JSON.stringify({
+    assets: [{ id: "tex.grid.floor", path: "textures/fallback.png", repeat: [1, 1], type: "texture" }],
+  }), "utf8");
+  await writeFile(join(project, "content/materials/arena.materials.json"), JSON.stringify({ materials: [] }), "utf8");
+  for (const target of ["web", "desktop"]) {
+    await writeFile(join(project, `artifacts/runtime-observations/${target}.json`), JSON.stringify({
+      observations: {
+        textures: {
+          "tex.grid.floor": { loaded: true, repeat: [8, 12] },
+        },
+      },
+    }), "utf8");
+  }
+
+  const report = await runGameplayParityGate({
+    manifest: {
+      schemaVersion: 1,
+      entries: [
+        {
+          assert: { textures: [{ id: "tex.grid.floor", loaded: true, repeat: [8, 12] }] },
+          id: "floor-texture",
+          kind: "textureProbe",
+          observationSidecars: {
+            desktop: "artifacts/runtime-observations/desktop.json",
+            web: "artifacts/runtime-observations/web.json",
+          },
+          project: "example",
+          targets: ["web", "desktop"],
+        },
+      ],
+    },
+    root,
+  });
+
+  assert.equal(report.status, "pass");
+  assert.equal(report.assertionResults.every((assertion) => assertion.source === "runtime-observation"), true);
+});
+
+test("should discover runtime observation sidecars from paired playtest artifacts", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-gameplay-parity-discovered-sidecars-"));
+  const project = join(root, "example");
+  const artifactDir = join(root, "tools/verify/artifacts/gameplay-parity/playtests/forward/web");
+  await mkdir(join(project, "content/assets"), { recursive: true });
+  await mkdir(join(project, "content/materials"), { recursive: true });
+  await mkdir(artifactDir, { recursive: true });
+  await writeFile(join(project, "content/assets/arena.assets.json"), JSON.stringify({
+    assets: [{ id: "tex.grid.floor", path: "textures/fallback.png", repeat: [1, 1], type: "texture" }],
+  }), "utf8");
+  await writeFile(join(project, "content/materials/arena.materials.json"), JSON.stringify({ materials: [] }), "utf8");
+  await writeFile(join(artifactDir, "runtime-observations.json"), JSON.stringify({
+    observations: {
+      textures: {
+        "tex.grid.floor": { loaded: true, repeat: [8, 12] },
+      },
+    },
+  }), "utf8");
+
+  const report = await runGameplayParityGate({
+    manifest: {
+      schemaVersion: 1,
+      entries: [
+        {
+          assert: { textures: [{ id: "tex.grid.floor", loaded: true, repeat: [8, 12] }] },
+          id: "floor-texture",
+          kind: "textureProbe",
+          project: "example",
+          targets: ["web"],
+        },
+      ],
+    },
+    root,
+  });
+
+  assert.equal(report.status, "pass");
+  assert.equal(report.assertionResults.every((assertion) => assertion.source === "runtime-observation"), true);
+  assert.equal(report.artifacts.targetReports["floor-texture.web"]?.endsWith("runtime-observations.json"), true);
 });
 
 test("should include humanoid forward movement in enforced smoke set", () => {
@@ -176,6 +291,7 @@ test("should preserve report-only scenarios without failing the gate", async () 
           mode: "report-only",
           profile: "full",
           project: "examples/humanoid-physics-course",
+          reason: "Native contact tolerance still needs desktop timing samples.",
           scenario: "playtests/humanoid-course-stairs.playtest.json",
           targets: ["web", "desktop"],
         },
@@ -206,7 +322,16 @@ test("should preserve report-only scenarios without failing the gate", async () 
   assert.equal(report.status, "pass");
   assert.equal(report.diagnostics[0]?.severity, "warning");
   assert.equal(report.assertionResults[0]?.diagnostic?.severity, "warning");
-  assert.deepEqual(report.duration.perCase, [{ durationMs: 1, id: "report-only-failure", kind: "playtestScenario", mode: "report-only", status: "warning" }]);
+  assert.deepEqual(report.duration.perCase, [{
+    durationMs: 1,
+    id: "report-only-failure",
+    kind: "playtestScenario",
+    lastTimingSampleMs: 1,
+    mode: "report-only",
+    profile: "full",
+    state: "report-only",
+    status: "warning",
+  }]);
 });
 
 test("should downgrade report-only assertion failures without diagnostics", async () => {
@@ -221,6 +346,7 @@ test("should downgrade report-only assertion failures without diagnostics", asyn
           mode: "report-only",
           profile: "full",
           project: "examples/humanoid-physics-course",
+          reason: "Native ramp tolerance still needs desktop timing samples.",
           scenario: "playtests/humanoid-course-ramp-traverse.playtest.json",
           targets: ["web", "desktop"],
         },
@@ -248,8 +374,150 @@ test("should downgrade report-only assertion failures without diagnostics", asyn
   });
 
   assert.equal(report.status, "pass");
-  assert.equal(report.assertionResults[0]?.diagnostic?.code, "TN_GAMEPLAY_PARITY_REPORT_ONLY_FAILED");
+  assert.equal(report.assertionResults[0]?.diagnostic?.code, "TN_GAMEPLAY_PARITY_NON_PASSING_STATE_FAILED");
   assert.equal(report.duration.perCase[0]?.status, "warning");
+});
+
+test("should require reasons for non-passing parity states", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-gameplay-parity-state-reason-"));
+  const report = await runGameplayParityGate({
+    manifest: {
+      schemaVersion: 1,
+      entries: [
+        {
+          id: "report-only-without-reason",
+          kind: "playtestScenario",
+          project: "examples/humanoid-physics-course",
+          scenario: "playtests/humanoid-course-stairs.playtest.json",
+          state: "report-only",
+          targets: ["web", "desktop"],
+        },
+        {
+          id: "calibrating-without-criteria",
+          kind: "playtestScenario",
+          project: "examples/humanoid-physics-course",
+          scenario: "playtests/humanoid-course-ramp-traverse.playtest.json",
+          state: "calibrating",
+          targets: ["web", "desktop"],
+        },
+      ],
+    },
+    profile: "full",
+    root,
+    runner: {
+      async run(entry) {
+        return { assertionResults: [], diagnostics: [], durationMs: 1, entryId: entry.id, status: "pass" };
+      },
+    },
+  });
+
+  assert.equal(report.status, "fail");
+  assert.equal(report.diagnostics.some((diagnostic) => diagnostic.code === "TN_GAMEPLAY_PARITY_STATE_REASON_MISSING"), true);
+  assert.equal(report.diagnostics.some((diagnostic) => diagnostic.code === "TN_GAMEPLAY_PARITY_PROMOTION_CRITERIA_MISSING"), true);
+});
+
+test("should exclude calibrating cases from pass claims", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-gameplay-parity-calibrating-"));
+  const report = await runGameplayParityGate({
+    manifest: {
+      schemaVersion: 1,
+      entries: [
+        {
+          id: "calibrating-failure",
+          kind: "playtestScenario",
+          profile: "full",
+          project: "examples/humanoid-physics-course",
+          promotionCriteria: "Promote after three paired desktop/web samples pass within contact tolerance.",
+          scenario: "playtests/humanoid-course-ball-push.playtest.json",
+          state: "calibrating",
+          targets: ["web", "desktop"],
+        },
+      ],
+    },
+    profile: "full",
+    root,
+    runner: {
+      async run(entry) {
+        return {
+          assertionResults: [{
+            diagnostic: { code: "TN_GAMEPLAY_PARITY_TARGET_FAILED", message: "failed", severity: "error" },
+            id: `${entry.id}.paired-targets`,
+            kind: "playtestScenario",
+            pass: false,
+            surface: `playtestScenario:${entry.id}`,
+            target: "all",
+          }],
+          diagnostics: [{ code: "TN_GAMEPLAY_PARITY_TARGET_FAILED", message: "failed", severity: "error" }],
+          durationMs: 2,
+          entryId: entry.id,
+          status: "fail",
+        };
+      },
+    },
+  });
+
+  assert.equal(report.status, "pass");
+  assert.equal(report.manifest.stateCounts.calibrating, 1);
+  assert.equal(report.assertionResults[0]?.diagnostic?.severity, "warning");
+  assert.equal(report.duration.perCase[0]?.state, "calibrating");
+});
+
+test("should flag smoke entries that exceed the timing budget", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-gameplay-parity-smoke-budget-"));
+  const report = await runGameplayParityGate({
+    manifest: {
+      schemaVersion: 1,
+      entries: [
+        {
+          id: "slow-smoke",
+          kind: "playtestScenario",
+          profile: "smoke",
+          project: "examples/humanoid-physics-course",
+          scenario: "playtests/humanoid-course-forward-movement.playtest.json",
+          state: "enforced",
+          targets: ["web", "desktop"],
+        },
+      ],
+    },
+    root,
+    runner: {
+      async run(entry) {
+        return { assertionResults: [], diagnostics: [], durationMs: 60_001, entryId: entry.id, status: "pass" };
+      },
+    },
+  });
+
+  assert.equal(report.status, "fail");
+  assert.equal(report.diagnostics.some((diagnostic) => diagnostic.code === "TN_GAMEPLAY_PARITY_SMOKE_BUDGET_EXCEEDED"), true);
+});
+
+test("should include timing samples in the aggregate report", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-gameplay-parity-timing-samples-"));
+  const report = await runGameplayParityGate({
+    manifest: {
+      schemaVersion: 1,
+      entries: [
+        {
+          id: "timed-smoke",
+          kind: "playtestScenario",
+          profile: "smoke",
+          project: "examples/humanoid-physics-course",
+          scenario: "playtests/humanoid-course-forward-movement.playtest.json",
+          targets: ["web", "desktop"],
+        },
+      ],
+    },
+    root,
+    runner: {
+      async run(entry) {
+        return { assertionResults: [], diagnostics: [], durationMs: 42, entryId: entry.id, status: "pass" };
+      },
+    },
+  });
+
+  assert.equal(report.duration.perCase[0]?.durationMs, 42);
+  assert.equal(report.duration.perCase[0]?.lastTimingSampleMs, 42);
+  assert.equal(report.duration.perCase[0]?.profile, "smoke");
 });
 
 test("should keep slow scenarios out of smoke profile", () => {
@@ -257,6 +525,76 @@ test("should keep slow scenarios out of smoke profile", () => {
   const smokeEntries = manifest.entries.filter((entry) => entry.profile === "smoke" || entry.profile === undefined);
   assert.equal(smokeEntries.some((entry) => entry.id.includes("stairs")), false);
   assert.equal(smokeEntries.some((entry) => entry.id.includes("hazard-hit")), false);
+});
+
+test("should include promoted humanoid scenarios in the full profile", () => {
+  const manifest = defaultGameplayParityManifest();
+  const fullEntries = manifest.entries.filter((entry) => entry.profile === "full");
+  const push = fullEntries.find((entry) => entry.id === "humanoid-course-ball-push-enforced");
+
+  assert.equal(push?.state, "enforced");
+  assert.equal(push?.timingSamplesMs?.[0], 1448);
+});
+
+test("should keep unpromoted humanoid scenarios non-passing", () => {
+  const manifest = defaultGameplayParityManifest();
+  const ramp = manifest.entries.find((entry) => entry.id === "humanoid-course-ramp-traverse-quarantined");
+  const stairs = manifest.entries.find((entry) => entry.id === "humanoid-course-stairs-calibrating");
+  const hazard = manifest.entries.find((entry) => entry.id === "humanoid-course-hazard-hit-quarantined");
+
+  assert.equal(ramp?.state, "quarantined");
+  assert.equal(ramp?.mode, "report-only");
+  assert.match(ramp?.reason ?? "", /desktop paired target/);
+  assert.equal(ramp?.artifactLinks?.latestSummary, "examples/humanoid-physics-course/artifacts/playtest/humanoid-course-ramp-traverse/latest/summary.json");
+  assert.equal(stairs?.state, "calibrating");
+  assert.equal(stairs?.mode, "report-only");
+  assert.equal(typeof stairs?.promotionCriteria, "string");
+  assert.equal(hazard?.state, "quarantined");
+  assert.equal(hazard?.mode, "report-only");
+  assert.equal(typeof hazard?.reason, "string");
+});
+
+test("should enroll humanoid test-instrument features only in the full profile by default", () => {
+  const manifest = defaultGameplayParityManifest();
+  const featureEntries = manifest.entries.filter((entry) => entry.featureSurfaces !== undefined);
+
+  assert.equal(featureEntries.length, 1);
+  assert.equal(featureEntries.every((entry) => entry.profile === "full"), true);
+  assert.equal(featureEntries.every((entry) => entry.state !== "enforced"), true);
+});
+
+test("should require a risk rationale before promoting a humanoid feature", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-gameplay-parity-feature-rationale-"));
+  const report = await runGameplayParityGate({
+    manifest: {
+      schemaVersion: 1,
+      entries: [
+        {
+          artifactLinks: { summary: "artifacts/summary.json" },
+          featureSurfaces: { triggers: ["checkpoint.trigger"] },
+          id: "feature-without-rationale",
+          kind: "playtestScenario",
+          profile: "full",
+          promotionCriteria: "Promote after paired trigger sidecars match.",
+          project: "examples/humanoid-physics-course",
+          scenario: "playtests/humanoid-course-hazard-hit.playtest.json",
+          state: "enforced",
+          targets: ["web", "desktop"],
+          toleranceRationale: "Trigger counts must match exactly.",
+        },
+      ],
+    },
+    profile: "full",
+    root,
+    runner: {
+      async run(entry) {
+        return { assertionResults: [], diagnostics: [], durationMs: 1, entryId: entry.id, status: "pass" };
+      },
+    },
+  });
+
+  assert.equal(report.status, "fail");
+  assert.equal(report.diagnostics.some((diagnostic) => diagnostic.code === "TN_GAMEPLAY_PARITY_FEATURE_RATIONALE_MISSING"), true);
 });
 
 test("should include cheap asset probe in smoke profile", () => {
@@ -319,7 +657,10 @@ test("should invoke the paired playtest command for playtest scenario entries", 
   assert.equal(calls[0]?.command, process.execPath);
   assert.deepEqual(calls[0]?.args.slice(1, 6), ["parity", "playtest", "--project", join(root, "examples/humanoid-physics-course"), "--scenario"]);
   assert.equal(calls[0]?.args.includes("--stable-artifacts"), true);
-  assert.deepEqual(report.artifacts.targetReports, { desktop: "desktop/summary.json", web: "web/summary.json" });
+  assert.deepEqual(report.artifacts.targetReports, {
+    "forward-smoke.desktop": "desktop/summary.json",
+    "forward-smoke.web": "web/summary.json",
+  });
 });
 
 test("should fail when a required scene surface has no assertion", async () => {

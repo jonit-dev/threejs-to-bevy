@@ -21,7 +21,11 @@ use thiserror::Error;
 use threenative_components::ThreeNativeId;
 use threenative_loader::{AssetsManifest, LoadedBundle, TransformComponent};
 
-use crate::{input::portable_key_code, systems_host::NativeResourceObservationState};
+use crate::{
+    assets::{NativeRuntimeProbeObservations, native_runtime_probe_observations},
+    input::portable_key_code,
+    systems_host::NativeResourceObservationState,
+};
 
 const MIN_PROOF_SCREENSHOT_BYTES: u64 = 1024;
 const MIN_PROOF_SCREENSHOT_PEAK_LUMA: u8 = 16;
@@ -104,6 +108,8 @@ pub struct NativeProofHarnessReadiness {
         skip_serializing_if = "BTreeMap::is_empty"
     )]
     pub resource_snapshots: BTreeMap<String, serde_json::Value>,
+    #[serde(rename = "runtimeObservations", skip_serializing_if = "Option::is_none")]
+    pub runtime_observations: Option<NativeRuntimeProbeObservations>,
     pub transforms: Vec<NativeProofHarnessTransformSample>,
 }
 
@@ -302,6 +308,9 @@ pub fn apply_native_proof_harness_commands(
                 .as_deref()
                 .map(|runtime| native_resource_snapshots(&runtime.bundle))
                 .unwrap_or_default(),
+            runtime.as_deref().map(|runtime| {
+                native_runtime_probe_observations(&runtime.bundle.assets, &runtime.bundle.materials)
+            }),
         );
         return;
     }
@@ -416,6 +425,9 @@ pub fn apply_native_proof_harness_commands(
             .as_deref()
             .map(|runtime| native_resource_snapshots(&runtime.bundle))
             .unwrap_or_default(),
+        runtime
+            .as_deref()
+            .map(|runtime| native_runtime_probe_observations(&runtime.bundle.assets, &runtime.bundle.materials)),
     );
     if !hold_tick {
         state.tick += advance_ticks;
@@ -491,6 +503,7 @@ fn write_native_proof_harness_post_runtime_sample(
             .as_deref()
             .map(|runtime| native_resource_snapshots(&runtime.bundle))
             .unwrap_or_default(),
+        None,
     );
 }
 
@@ -578,6 +591,7 @@ fn write_native_proof_harness_sample<'a>(
     transforms: impl IntoIterator<Item = (&'a ThreeNativeId, &'a Transform)>,
     resources: Option<NativeResourceObservationState>,
     resource_snapshots: BTreeMap<String, serde_json::Value>,
+    runtime_observations: Option<NativeRuntimeProbeObservations>,
 ) {
     let ok = diagnostics
         .iter()
@@ -591,6 +605,7 @@ fn write_native_proof_harness_sample<'a>(
         performance,
         resources,
         resource_snapshots,
+        runtime_observations,
         transforms: native_proof_harness_transform_samples(transforms),
     };
     if let Err(error) = write_native_proof_harness_readiness(
@@ -631,6 +646,10 @@ fn write_native_proof_harness_bundle_sample(
         performance,
         resources,
         resource_snapshots: native_resource_snapshots(bundle),
+        runtime_observations: Some(native_runtime_probe_observations(
+            &bundle.assets,
+            &bundle.materials,
+        )),
         transforms: native_proof_harness_bundle_transform_samples(bundle),
     };
     if let Err(error) = write_native_proof_harness_readiness(

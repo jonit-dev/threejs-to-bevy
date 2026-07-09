@@ -1,5 +1,5 @@
 use std::{
-    collections::{HashMap, HashSet},
+    collections::{BTreeMap, HashMap, HashSet},
     path::Path,
 };
 
@@ -14,7 +14,7 @@ use bevy::{
 };
 use image::{ImageBuffer, Rgba, Rgba32FImage, RgbaImage, imageops::FilterType};
 use serde::Serialize;
-use threenative_loader::{AssetIr, AssetsManifest, EnvironmentSceneIr};
+use threenative_loader::{AssetIr, AssetsManifest, EnvironmentSceneIr, MaterialsIr};
 
 #[derive(Debug, PartialEq)]
 pub struct NativeAssetRef {
@@ -74,7 +74,7 @@ pub struct NativeGltfSceneTrace {
     pub source_asset: String,
 }
 
-#[derive(Debug, PartialEq, Serialize)]
+#[derive(Clone, Debug, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct NativeLodImpostorTrace {
     pub asset: String,
@@ -82,7 +82,7 @@ pub struct NativeLodImpostorTrace {
     pub mode: String,
 }
 
-#[derive(Debug, PartialEq, Serialize)]
+#[derive(Clone, Debug, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct NativeTextureDeliveryTrace {
     pub fallback: String,
@@ -92,7 +92,7 @@ pub struct NativeTextureDeliveryTrace {
     pub variants: Vec<NativeTextureVariantTrace>,
 }
 
-#[derive(Debug, PartialEq, Serialize)]
+#[derive(Clone, Debug, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct NativeTextureVariantTrace {
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -101,6 +101,91 @@ pub struct NativeTextureVariantTrace {
     pub path: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub targets: Option<Vec<String>>,
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct NativeRuntimeProbeObservations {
+    pub assets: BTreeMap<String, NativeRuntimeAssetObservation>,
+    pub materials: BTreeMap<String, NativeRuntimeMaterialObservation>,
+    pub textures: BTreeMap<String, NativeRuntimeTextureObservation>,
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct NativeRuntimeAssetObservation {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub animations: Option<Vec<String>>,
+    pub loaded: bool,
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct NativeRuntimeMaterialObservation {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub base_color_texture: Option<String>,
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct NativeRuntimeTextureObservation {
+    pub loaded: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub repeat: Option<[f32; 2]>,
+}
+
+pub fn native_runtime_probe_observations(
+    assets: &AssetsManifest,
+    materials: &MaterialsIr,
+) -> NativeRuntimeProbeObservations {
+    NativeRuntimeProbeObservations {
+        assets: assets
+            .assets
+            .iter()
+            .map(|asset| {
+                (
+                    asset.id.clone(),
+                    NativeRuntimeAssetObservation {
+                        animations: asset.animations.as_ref().map(|animations| {
+                            let mut clips = animations
+                                .iter()
+                                .filter_map(|animation| animation.source_clip.clone())
+                                .collect::<Vec<_>>();
+                            clips.sort();
+                            clips
+                        }),
+                        loaded: asset.path.as_ref().is_some_and(|path| !path.is_empty()),
+                    },
+                )
+            })
+            .collect(),
+        materials: materials
+            .materials
+            .iter()
+            .map(|material| {
+                (
+                    material.id.clone(),
+                    NativeRuntimeMaterialObservation {
+                        base_color_texture: material.base_color_texture.clone(),
+                    },
+                )
+            })
+            .collect(),
+        textures: assets
+            .assets
+            .iter()
+            .filter(|asset| asset.kind == "texture")
+            .map(|asset| {
+                (
+                    asset.id.clone(),
+                    NativeRuntimeTextureObservation {
+                        loaded: asset.path.as_ref().is_some_and(|path| !path.is_empty()),
+                        repeat: asset.repeat,
+                    },
+                )
+            })
+            .collect(),
+    }
 }
 
 pub fn resolve_asset_manifest(manifest: &AssetsManifest) -> HashMap<String, NativeAssetRef> {

@@ -3,6 +3,7 @@ import {
   type GameplayParityAssetProbeEntry,
   type GameplayParityDiagnostic,
   type GameplayParityMaterialProbeEntry,
+  type GameplayParityObservationSource,
   type GameplayParityTarget,
   type GameplayParityTextureProbeEntry,
 } from "./gameplayParityManifest.js";
@@ -32,6 +33,7 @@ export interface GameplayParityProbeComparison {
 export function compareAssetProbe(
   entry: GameplayParityAssetProbeEntry,
   observations: Partial<Record<GameplayParityTarget, GameplayParityProbeObservations>>,
+  sources: Partial<Record<GameplayParityTarget, GameplayParityObservationSource>> = {},
 ): GameplayParityProbeComparison {
   const assertionResults: GameplayParityAssertionResult[] = [];
   const diagnostics: GameplayParityDiagnostic[] = [];
@@ -46,6 +48,7 @@ export function compareAssetProbe(
         kind: "assetLoaded",
         observed: { loaded: observed?.loaded ?? false },
         pass: loadedPass,
+        source: sources[target] ?? "source-manifest",
         surface: `assets:${asset.id}`,
         target,
       }, diagnostics));
@@ -58,6 +61,7 @@ export function compareAssetProbe(
           kind: "assetAnimation",
           observed: { animations: observed?.animations ?? [] },
           pass: clipPass,
+          source: sources[target] ?? "source-manifest",
           surface: `assets:${asset.id}`,
           target,
         }, diagnostics));
@@ -70,6 +74,7 @@ export function compareAssetProbe(
 export function compareTextureProbe(
   entry: GameplayParityTextureProbeEntry,
   observations: Partial<Record<GameplayParityTarget, GameplayParityProbeObservations>>,
+  sources: Partial<Record<GameplayParityTarget, GameplayParityObservationSource>> = {},
 ): GameplayParityProbeComparison {
   const assertionResults: GameplayParityAssertionResult[] = [];
   const diagnostics: GameplayParityDiagnostic[] = [];
@@ -83,6 +88,7 @@ export function compareTextureProbe(
         kind: "textureLoaded",
         observed: { loaded: observed?.loaded ?? false },
         pass: observed?.loaded === texture.loaded,
+        source: sources[target] ?? "source-manifest",
         surface: `textures:${texture.id}`,
         target,
       }, diagnostics));
@@ -94,6 +100,7 @@ export function compareTextureProbe(
           kind: "textureRepeat",
           observed: { repeat: observed?.repeat ?? null },
           pass: tupleEqual(observed?.repeat, texture.repeat),
+          source: sources[target] ?? "source-manifest",
           surface: `textures:${texture.id}`,
           target,
         }, diagnostics));
@@ -106,6 +113,7 @@ export function compareTextureProbe(
 export function compareMaterialProbe(
   entry: GameplayParityMaterialProbeEntry,
   observations: Partial<Record<GameplayParityTarget, GameplayParityProbeObservations>>,
+  sources: Partial<Record<GameplayParityTarget, GameplayParityObservationSource>> = {},
 ): GameplayParityProbeComparison {
   const assertionResults: GameplayParityAssertionResult[] = [];
   const diagnostics: GameplayParityDiagnostic[] = [];
@@ -120,6 +128,7 @@ export function compareMaterialProbe(
           kind: "materialTextureBinding",
           observed: { baseColorTexture: observed?.baseColorTexture ?? null },
           pass: observed?.baseColorTexture === material.baseColorTexture,
+          source: sources[target] ?? "source-manifest",
           surface: `materials:${material.id}`,
           target,
         }, diagnostics));
@@ -137,6 +146,7 @@ function assertion(
     kind: string;
     observed: unknown;
     pass: boolean;
+    source: GameplayParityObservationSource;
     surface: string;
     target: GameplayParityTarget;
   },
@@ -157,6 +167,7 @@ function assertion(
     kind: input.kind,
     observed: input.observed,
     pass: input.pass,
+    source: input.source,
     surface: input.surface,
     target: input.target,
   };

@@ -18,9 +18,15 @@ Current support:
 - Gameplay parity now has a bounded focused gate: `pnpm test:gameplay` runs
   the humanoid course forward-movement playtest against web and desktop targets
   and writes paired target summaries under
-  `tools/verify/artifacts/gameplay-parity/`. Its current resource probes are
-  source-backed checks for enrolled assets/materials/textures, so they do not
-  promote broad native runtime resource parity.
+  `tools/verify/artifacts/gameplay-parity/`. The full
+  `pnpm verify:gameplay-parity` profile additionally promotes humanoid
+  ball-push behavior as a bounded full-profile gameplay row with timing samples
+  and artifact links, while ramp, stairs, and hazard/resource mutation stay
+  calibrating/quarantined. Native playtests write
+  `runtime-observations.json` from proof-harness readiness samples; resource
+  probes label runtime observation sidecars when present and source-manifest
+  fallback otherwise, so source-backed probes do not promote broad native
+  runtime resource parity.
 - UI rows with only native metadata components, trace observations, structural
   conformance, or diagnostics are not native promotions. Current UI promotion
   wording is bounded in [ui.md](ui.md) and

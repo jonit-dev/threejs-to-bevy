@@ -111,9 +111,20 @@ Current support:
   model/animation, texture-repeat, and material-texture resource probes for
   both targets, and requires scene coverage for player, camera, soldier
   animation clips, floor texture/material, gameplay state, update system, HUD,
-  and colliders. The full `pnpm verify:gameplay-parity` profile is enrolled in
-  `pnpm verify:release`; heavier ramp/stairs/hazard/push scenarios remain
-  report-only until their tolerances and runtime observations are promoted.
+  and colliders. Gameplay parity reports classify each entry as `enforced`,
+  `calibrating`, `quarantined`, or `report-only`, record per-case timing
+  samples, fail over-budget enforced smoke entries with
+  `TN_GAMEPLAY_PARITY_SMOKE_BUDGET_EXCEEDED`, and keep non-enforced entries
+  out of pass claims. `tn playtest` writes per-target
+  `runtime-observations.json` sidecars for cheap asset/texture/material facts
+  when the runtime exposes them, and runtime probe rows label
+  `runtime-observation` sidecars before falling back to `source-manifest`.
+  Coverage summaries distinguish enforced smoke/full coverage from
+  source-inventory debt. The
+  full `pnpm verify:gameplay-parity` profile is enrolled in
+  `pnpm verify:release`; ball-push is a promoted full-profile row backed by
+  latest humanoid-course summary artifacts, while ramp, stairs, and hazard
+  remain non-passing with explicit promotion/blocker metadata.
 - `pnpm check:docs` for docs consistency and STATUS index budget.
 - `pnpm verify:smoke`, `pnpm verify:pre-push`, and `pnpm verify:release` for
   escalating proof levels.

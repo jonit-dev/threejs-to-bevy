@@ -51,6 +51,7 @@ export interface IRenderResult {
   resetPerformanceTrace(): void;
   renderer: THREE.WebGLRenderer;
   resourceSnapshot(id: string): unknown;
+  runtimeObservationSnapshot(): IWebRuntimeProbeObservations;
   runtimeDiagnostics: IWebRuntimeDiagnostics;
   runtimeDiagnosticsSnapshot(): IWebRuntimeDiagnostics;
   setEntityTransform(id: string, transform: IWebRuntimeTransformPatch): boolean;
@@ -75,6 +76,20 @@ export interface IWebRuntimePerformanceSnapshot {
     triangles: number;
   };
   summary: IFrameTimingSummary;
+}
+
+export interface IWebRuntimeProbeObservations {
+  assets: Record<string, {
+    animations?: string[];
+    loaded: boolean;
+  }>;
+  materials: Record<string, {
+    baseColorTexture?: string;
+  }>;
+  textures: Record<string, {
+    loaded: boolean;
+    repeat?: [number, number];
+  }>;
 }
 
 export interface IRenderOptions {
@@ -374,6 +389,9 @@ export async function renderLoadedBundle(bundle: IWebBundle, container: HTMLElem
     resourceSnapshot(id: string) {
       return cloneJsonValue(bundle.world.resources?.[id]);
     },
+    runtimeObservationSnapshot() {
+      return collectWebRuntimeProbeObservations(bundle);
+    },
     runtimeDiagnostics: collectWebRuntimeDiagnostics(mapped, bundle, resourceObservations),
     runtimeDiagnosticsSnapshot() {
       return collectWebRuntimeDiagnostics(mapped, bundle, resourceObservations);
@@ -402,6 +420,48 @@ export async function renderLoadedBundle(bundle: IWebBundle, container: HTMLElem
       return cloneJsonValue(findRenderedUiNode(ui.root, id)) as IRenderedUiNode | undefined;
     },
   };
+}
+
+export function collectWebRuntimeProbeObservations(bundle: IWebBundle): IWebRuntimeProbeObservations {
+  return {
+    assets: Object.fromEntries(bundle.assets.assets.flatMap((asset) => {
+      if (typeof asset.id !== "string") {
+        return [];
+      }
+      const animations = "animations" in asset && Array.isArray(asset.animations)
+        ? asset.animations.flatMap((animation: unknown) => isRecord(animation) && typeof animation.sourceClip === "string" ? [animation.sourceClip] : [])
+        : undefined;
+      const path = "path" in asset && typeof asset.path === "string" ? asset.path : undefined;
+      return [[asset.id, {
+        animations,
+        loaded: path !== undefined && path.length > 0,
+      }]];
+    })),
+    materials: Object.fromEntries(bundle.materials.materials.flatMap((material) => {
+      if (typeof material.id !== "string") {
+        return [];
+      }
+      return [[material.id, {
+        ...(typeof material.baseColorTexture === "string" ? { baseColorTexture: material.baseColorTexture } : {}),
+      }]];
+    })),
+    textures: Object.fromEntries(bundle.assets.assets.flatMap((asset) => {
+      if (asset.kind !== "texture" || typeof asset.id !== "string") {
+        return [];
+      }
+      const repeat = Array.isArray(asset.repeat) && asset.repeat.length === 2 && asset.repeat.every((value) => typeof value === "number")
+        ? [asset.repeat[0], asset.repeat[1]] as [number, number]
+        : undefined;
+      return [[asset.id, {
+        loaded: typeof asset.path === "string" && asset.path.length > 0,
+        ...(repeat === undefined ? {} : { repeat }),
+      }]];
+    })),
+  };
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 function drainUiActionsIntoInput(ui: IRenderedUi | undefined, input: ReturnType<typeof createInputState>): void {

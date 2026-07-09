@@ -18,6 +18,7 @@ export interface IPlaytestArtifactBundle {
   nativeRecording: string;
   nativeRecordingDirectory: string;
   observations: string;
+  runtimeObservations: string;
   runtimeTrace: string;
   summary: string;
 }
@@ -107,6 +108,7 @@ export async function writePlaytestArtifactBundle(options: {
     nativeRecording: resolve(options.runDirectory, "native-recording.json"),
     nativeRecordingDirectory: resolve(options.runDirectory, "native-recording"),
     observations: resolve(options.runDirectory, "observations.json"),
+    runtimeObservations: resolve(options.runDirectory, "runtime-observations.json"),
     runtimeTrace: resolve(options.runDirectory, "runtime-trace.json"),
     summary: resolve(options.runDirectory, "summary.json"),
   };
@@ -128,6 +130,7 @@ export async function writePlaytestArtifactBundle(options: {
     movementDelta: options.report.movementDelta ?? null,
     performance: options.report.performance ?? null,
   });
+  await writeJson(artifacts.runtimeObservations, runtimeObservationSidecar(options.report));
   const assertions = buildAssertions(options.report);
   options.report.diagnostics.push(...repeatedAssertionDiagnostics(await readPreviousSummary(artifacts.summary), assertions));
   const summary: IPlaytestSummary = {
@@ -330,6 +333,32 @@ function nativeFrameSamples(report: IPlaytestReport): unknown {
     return undefined;
   }
   return runtimeDiagnostics.nativeFrameSamples;
+}
+
+function runtimeObservationSidecar(report: IPlaytestReport): unknown {
+  return {
+    generatedBy: "tn playtest",
+    observations: readRuntimeProbeObservations(report.observations),
+    runtime: report.runtime,
+    schema: "threenative.runtime-observations",
+    source: "runtime-observation",
+    target: report.target ?? report.runtime,
+    version: "0.1.0",
+  };
+}
+
+function readRuntimeProbeObservations(observations: IPlaytestReport["observations"]): unknown {
+  if (isRecord(observations?.runtimeObservations)) {
+    return observations.runtimeObservations;
+  }
+  const runtimeDiagnostics = observations?.runtimeDiagnostics;
+  if (isRecord(runtimeDiagnostics) && Array.isArray(runtimeDiagnostics.readiness)) {
+    const latest = [...runtimeDiagnostics.readiness].reverse().find(isRecord);
+    if (isRecord(latest?.runtimeObservations)) {
+      return latest.runtimeObservations;
+    }
+  }
+  return { assets: {}, materials: {}, textures: {} };
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

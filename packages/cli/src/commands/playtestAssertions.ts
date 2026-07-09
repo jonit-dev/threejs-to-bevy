@@ -139,6 +139,7 @@ export interface IPlaytestObservations {
   hud: Record<string, { after?: unknown; before?: unknown }>;
   network: Array<{ method: string; url: string }>;
   resources: Record<string, { after?: unknown; before?: unknown }>;
+  runtimeObservations?: unknown;
   runtimeDiagnostics?: unknown;
   visibility?: Record<string, unknown>;
 }

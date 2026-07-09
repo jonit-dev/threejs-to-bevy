@@ -79,3 +79,49 @@ test("should reject unsupported surfaces without reasons", () => {
   assert.equal(result.coverageStatus, "fail");
   assert.equal(result.diagnostics.some((diagnostic) => diagnostic.code === "TN_RUNTIME_PARITY_COVERAGE_REASON_MISSING"), true);
 });
+
+test("should report source inventory coverage debt without passing it as proof", () => {
+  const result = auditGameplayParityCoverage({
+    assertions: [{ kind: "entityVisible", surface: { id: "player", type: "entities" } }],
+    coverage: {
+      sourceInventory: {
+        entities: ["player"],
+        materials: ["mat.course.surface"],
+      },
+    },
+    id: "coverage",
+    kind: "sceneCoverage",
+    requiredSurfaces: {
+      entities: ["player"],
+    },
+    scene: "arena",
+    targets: ["web", "desktop"],
+  });
+
+  assert.equal(result.coverageStatus, "pass");
+  assert.equal(result.coveragePercent, 100);
+  assert.equal(result.sourceInventoryCoveragePercent, 50);
+  assert.deepEqual(result.sourceInventoryDebtSurfaces, ["materials:mat.course.surface"]);
+  assert.equal(result.diagnostics.some((diagnostic) => diagnostic.code === "TN_RUNTIME_PARITY_SOURCE_COVERAGE_DEBT"), true);
+});
+
+test("should fail missing enforced required surfaces", () => {
+  const result = auditGameplayParityCoverage({
+    assertions: [],
+    coverage: {
+      sourceInventory: {
+        entities: ["player"],
+      },
+    },
+    id: "coverage",
+    kind: "sceneCoverage",
+    requiredSurfaces: {
+      entities: ["player"],
+    },
+    scene: "arena",
+    targets: ["web", "desktop"],
+  });
+
+  assert.equal(result.coverageStatus, "fail");
+  assert.equal(result.diagnostics.some((diagnostic) => diagnostic.code === "TN_RUNTIME_PARITY_COVERAGE_GAP"), true);
+});

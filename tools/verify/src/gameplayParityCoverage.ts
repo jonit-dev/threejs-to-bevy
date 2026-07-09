@@ -12,8 +12,13 @@ export interface GameplayParityCoverageSummary {
   coveragePercent: number;
   coverageStatus: "pass" | "fail";
   diagnostics: GameplayParityDiagnostic[];
+  fullCoveragePercent: number;
   reportOnlySurfaces: number;
   requiredSurfaces: number;
+  smokeCoveragePercent: number;
+  sourceInventoryCoveragePercent: number;
+  sourceInventoryDebtSurfaces: string[];
+  sourceInventorySurfaces: number;
   unsupportedSurfaces: number;
   uncoveredSurfaces: string[];
 }
@@ -28,10 +33,13 @@ export function auditGameplayParityCoverage(
     ...assertionResults.map((assertion) => assertion.surface),
   ]);
   const reportOnly = normalizeExclusions(entry.coverage?.reportOnly ?? [], `${entry.id}.coverage.reportOnly`);
+  const sourceInventoryReportOnly = normalizeExclusions(entry.coverage?.sourceInventoryReportOnly ?? [], `${entry.id}.coverage.sourceInventoryReportOnly`);
   const unsupported = normalizeExclusions(entry.coverage?.unsupported ?? [], `${entry.id}.coverage.unsupported`);
-  const excluded = new Set([...reportOnly.keys(), ...unsupported.keys()]);
-  const diagnostics: GameplayParityDiagnostic[] = [...reportOnly.diagnostics, ...unsupported.diagnostics];
+  const excluded = new Set([...reportOnly.keys(), ...sourceInventoryReportOnly.keys(), ...unsupported.keys()]);
+  const diagnostics: GameplayParityDiagnostic[] = [...reportOnly.diagnostics, ...sourceInventoryReportOnly.diagnostics, ...unsupported.diagnostics];
   const uncoveredSurfaces = required.filter((surface) => !asserted.has(surface) && !excluded.has(surface));
+  const sourceInventory = flattenRequiredSurfaces(entry.coverage?.sourceInventory ?? {});
+  const sourceInventoryDebtSurfaces = sourceInventory.filter((surface) => !asserted.has(surface) && !excluded.has(surface));
 
   for (const surface of uncoveredSurfaces) {
     diagnostics.push({
@@ -44,14 +52,30 @@ export function auditGameplayParityCoverage(
 
   const coveredCount = required.filter((surface) => asserted.has(surface)).length;
   const coveragePercent = required.length === 0 ? 100 : Number(((coveredCount / required.length) * 100).toFixed(2));
+  const sourceInventoryCoveredCount = sourceInventory.filter((surface) => asserted.has(surface)).length;
+  const sourceInventoryCoveragePercent = sourceInventory.length === 0 ? 100 : Number(((sourceInventoryCoveredCount / sourceInventory.length) * 100).toFixed(2));
+
+  for (const surface of sourceInventoryDebtSurfaces) {
+    diagnostics.push({
+      code: "TN_RUNTIME_PARITY_SOURCE_COVERAGE_DEBT",
+      message: `High-value source inventory surface '${surface}' is not covered by enforced parity proof.`,
+      severity: "warning",
+      suggestedFix: "Add a pass/fail assertion for this surface, or list it under sourceInventoryReportOnly/unsupported with a stable reason.",
+    });
+  }
 
   return {
     assertedSurfaces: coveredCount,
     coveragePercent,
     coverageStatus: diagnostics.some((diagnostic) => diagnostic.severity === "error") ? "fail" : "pass",
     diagnostics,
+    fullCoveragePercent: entry.profile === "full" ? coveragePercent : sourceInventoryCoveragePercent,
     reportOnlySurfaces: reportOnly.keys().length,
     requiredSurfaces: required.length,
+    smokeCoveragePercent: entry.profile === "full" ? 0 : coveragePercent,
+    sourceInventoryCoveragePercent,
+    sourceInventoryDebtSurfaces,
+    sourceInventorySurfaces: sourceInventory.length,
     uncoveredSurfaces,
     unsupportedSurfaces: unsupported.keys().length,
   };

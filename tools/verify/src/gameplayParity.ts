@@ -1,4 +1,4 @@
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, readFile, readdir, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -6,14 +6,19 @@ import { resolveArtifactTargets } from "./artifacts.js";
 import { auditGameplayParityCoverage, type GameplayParityCoverageSummary } from "./gameplayParityCoverage.js";
 import {
   emptyGameplayParityManifest,
+  gameplayParityEntryState,
+  isGameplayParityPassingState,
   isRuntimeProbeEntry,
+  validateGameplayParityManifest,
   type GameplayParityAssetProbeEntry,
   type GameplayParityAssertionResult,
   type GameplayParityDiagnostic,
   type GameplayParityManifest,
   type GameplayParityManifestEntry,
   type GameplayParityMaterialProbeEntry,
+  type GameplayParityObservationSource,
   type GameplayParityProfile,
+  type GameplayParityTarget,
   type GameplayParityTextureProbeEntry,
 } from "./gameplayParityManifest.js";
 import {
@@ -55,13 +60,23 @@ export interface GameplayParityReport {
   diagnostics: GameplayParityDiagnostic[];
   duration: {
     budgetMs: number;
-    perCase: Array<{ durationMs: number; id: string; kind: GameplayParityManifestEntry["kind"]; mode: "enforced" | "report-only"; status: GameplayParityCaseResult["status"] }>;
+    perCase: Array<{
+      durationMs: number;
+      id: string;
+      kind: GameplayParityManifestEntry["kind"];
+      lastTimingSampleMs: number;
+      mode: "enforced" | "report-only";
+      profile: GameplayParityProfile;
+      state: ReturnType<typeof gameplayParityEntryState>;
+      status: GameplayParityCaseResult["status"];
+    }>;
     totalMs: number;
   };
   generatedBy: "tools/verify gameplay parity";
   manifest: {
     entries: number;
     profile: GameplayParityProfile;
+    stateCounts: Record<ReturnType<typeof gameplayParityEntryState>, number>;
   };
   ok: boolean;
   schema: "threenative.gameplay-parity.verification-report";
@@ -88,6 +103,7 @@ export async function runGameplayParityGate(options: RunGameplayParityGateOption
   const reportPath = options.reportPath ?? artifactTargets.reportPath;
   const manifest = options.manifest ?? defaultGameplayParityManifest();
   const entries = manifest.entries.filter((entry) => entry.profile === undefined || entry.profile === profile || profile === "full");
+  const budgetMs = profile === "smoke" ? 60_000 : 180_000;
   const startedAt = new Date().toISOString();
   const startedMs = Date.now();
   const diagnostics: GameplayParityDiagnostic[] = [];
@@ -95,6 +111,7 @@ export async function runGameplayParityGate(options: RunGameplayParityGateOption
   const coverage: Record<string, GameplayParityCoverageSummary> = {};
   const targetReports: Record<string, string> = {};
   const perCase: GameplayParityReport["duration"]["perCase"] = [];
+  diagnostics.push(...validateGameplayParityManifest({ ...manifest, entries }));
 
   for (const entry of entries) {
     if (entry.kind === "sceneCoverage") {
@@ -105,7 +122,10 @@ export async function runGameplayParityGate(options: RunGameplayParityGateOption
         durationMs: 0,
         id: entry.id,
         kind: entry.kind,
+        lastTimingSampleMs: 0,
         mode: entry.mode ?? "enforced",
+        profile: entry.profile ?? "smoke",
+        state: gameplayParityEntryState(entry),
         status: summary.coverageStatus === "pass" ? "pass" : "fail",
       });
       continue;
@@ -120,9 +140,20 @@ export async function runGameplayParityGate(options: RunGameplayParityGateOption
       durationMs: result.durationMs,
       id: entry.id,
       kind: entry.kind,
+      lastTimingSampleMs: result.durationMs,
       mode: entry.mode ?? "enforced",
+      profile: entry.profile ?? "smoke",
+      state: gameplayParityEntryState(entry),
       status: result.status,
     });
+    if (profile === "smoke" && isGameplayParityPassingState(entry) && result.durationMs > budgetMs) {
+      diagnostics.push({
+        code: "TN_GAMEPLAY_PARITY_SMOKE_BUDGET_EXCEEDED",
+        message: `Smoke gameplay parity entry '${entry.id}' took ${result.durationMs}ms, exceeding the ${budgetMs}ms budget.`,
+        severity: "error",
+        suggestedFix: "Move this entry to the full profile or document timing evidence before promoting it back into smoke.",
+      });
+    }
   }
 
   const totalMs = Date.now() - startedMs;
@@ -139,7 +170,7 @@ export async function runGameplayParityGate(options: RunGameplayParityGateOption
     coverage,
     diagnostics,
     duration: {
-      budgetMs: profile === "smoke" ? 60_000 : 180_000,
+      budgetMs,
       perCase,
       totalMs,
     },
@@ -147,6 +178,7 @@ export async function runGameplayParityGate(options: RunGameplayParityGateOption
     manifest: {
       entries: entries.length,
       profile,
+      stateCounts: countStates(entries),
     },
     ok,
     schema: "threenative.gameplay-parity.verification-report",
@@ -217,6 +249,18 @@ export function defaultGameplayParityManifest(): GameplayParityManifest {
           { kind: "playtestScenario", surface: "colliders:player" },
           { kind: "playtestScenario", surface: "colliders:course.floor" },
         ],
+        coverage: {
+          reportOnly: [
+            {
+              reason: "Hazard trigger parity is quarantined until paired runtime observation sidecars prove trigger/resource mutation semantics.",
+              surface: "triggers:hazard.sweeper.01",
+            },
+            {
+              reason: "Hazard trigger parity is quarantined until paired runtime observation sidecars prove trigger/resource mutation semantics.",
+              surface: "triggers:hazard.sweeper.02",
+            },
+          ],
+        },
         id: "humanoid-course-scene-coverage",
         kind: "sceneCoverage",
         mode: "enforced",
@@ -232,6 +276,7 @@ export function defaultGameplayParityManifest(): GameplayParityManifest {
           resources: ["GameState"],
           scripts: ["updateHumanoidCourse"],
           textures: ["tex.grid.floor"],
+          triggers: ["hazard.sweeper.01", "hazard.sweeper.02"],
           ui: ["hud.status", "hud.progress"],
         },
         scene: "arena",
@@ -243,9 +288,10 @@ export function defaultGameplayParityManifest(): GameplayParityManifest {
 }
 
 function normalizeReportOnlyCase(entry: GameplayParityManifestEntry, result: GameplayParityCaseResult): GameplayParityCaseResult {
-  if (entry.mode !== "report-only") {
+  if (isGameplayParityPassingState(entry)) {
     return result;
   }
+  const state = gameplayParityEntryState(entry);
   return {
     ...result,
     assertionResults: result.assertionResults.map((assertion) => ({
@@ -254,8 +300,8 @@ function normalizeReportOnlyCase(entry: GameplayParityManifestEntry, result: Gam
         ? assertion.pass
           ? undefined
           : {
-            code: "TN_GAMEPLAY_PARITY_REPORT_ONLY_FAILED",
-            message: `Report-only gameplay parity assertion '${assertion.id}' failed.`,
+            code: "TN_GAMEPLAY_PARITY_NON_PASSING_STATE_FAILED",
+            message: `${state} gameplay parity assertion '${assertion.id}' failed.`,
             severity: "warning" as const,
           }
         : { ...assertion.diagnostic, severity: "warning" as const },
@@ -266,6 +312,19 @@ function normalizeReportOnlyCase(entry: GameplayParityManifestEntry, result: Gam
     })),
     status: result.status === "fail" ? "warning" : result.status,
   };
+}
+
+function countStates(entries: readonly GameplayParityManifestEntry[]): GameplayParityReport["manifest"]["stateCounts"] {
+  const counts: GameplayParityReport["manifest"]["stateCounts"] = {
+    calibrating: 0,
+    enforced: 0,
+    quarantined: 0,
+    "report-only": 0,
+  };
+  for (const entry of entries) {
+    counts[gameplayParityEntryState(entry)] += 1;
+  }
+  return counts;
 }
 
 class DefaultGameplayParityRunner implements GameplayParityRunner {
@@ -302,7 +361,7 @@ class DefaultGameplayParityRunner implements GameplayParityRunner {
     const payload = parseJsonObject(result.stdout);
     const diagnostics = normalizeDiagnostics(payload?.diagnostics);
     const targetReports = isRecord(payload?.artifacts) && isRecord(payload.artifacts.targets)
-      ? Object.fromEntries(Object.entries(payload.artifacts.targets).filter((entry): entry is [string, string] => typeof entry[1] === "string"))
+      ? Object.fromEntries(Object.entries(payload.artifacts.targets).flatMap(([target, path]) => typeof path === "string" ? [[`${entry.id}.${target}`, path]] : []))
       : {};
     if (result.exitCode !== 0 && diagnostics.length === 0) {
       diagnostics.push({
@@ -333,21 +392,77 @@ class DefaultGameplayParityRunner implements GameplayParityRunner {
 }
 
 function fullProfileHumanoidReportOnlyEntries(): GameplayParityManifest["entries"] {
-  const scenarios = [
-    "humanoid-course-ramp-traverse",
-    "humanoid-course-stairs",
-    "humanoid-course-hazard-hit",
-    "humanoid-course-ball-push",
+  return [
+    {
+      artifactLinks: {
+        latestSummary: "examples/humanoid-physics-course/artifacts/playtest/humanoid-course-ramp-traverse/latest/summary.json",
+      },
+      id: "humanoid-course-ramp-traverse-quarantined",
+      kind: "playtestScenario",
+      mode: "report-only",
+      profile: "full",
+      project: "examples/humanoid-physics-course",
+      reason: "Full-profile evidence on 2026-07-09 failed the desktop paired target with TN_GAMEPLAY_PARITY_TARGET_FAILED; keep visible until desktop ramp contact/axis parity is fixed.",
+      scenario: "playtests/humanoid-course-ramp-traverse.playtest.json",
+      state: "quarantined",
+      targets: ["web", "desktop"],
+      timingSamplesMs: [17672, 16222],
+      toleranceRationale: "Ramp traversal asserts forward motion, +Y resolved movement, and ramp contact with bounded movement-axis tolerance.",
+    },
+    {
+      artifactLinks: {
+        latestSummary: "examples/humanoid-physics-course/artifacts/playtest/humanoid-course-ball-push/latest/summary.json",
+      },
+      id: "humanoid-course-ball-push-enforced",
+      kind: "playtestScenario",
+      mode: "enforced",
+      profile: "full",
+      project: "examples/humanoid-physics-course",
+      scenario: "playtests/humanoid-course-ball-push.playtest.json",
+      state: "enforced",
+      targets: ["web", "desktop"],
+      timingSamplesMs: [1448],
+      toleranceRationale: "Ball-push proves impulse/contact movement on the pushable body with a 0.15 unit minimum displacement assertion.",
+    },
+    {
+      artifactLinks: {
+        latestSummary: "examples/humanoid-physics-course/artifacts/playtest/humanoid-course-stairs/latest/summary.json",
+      },
+      id: "humanoid-course-stairs-calibrating",
+      kind: "playtestScenario",
+      mode: "report-only",
+      profile: "full",
+      project: "examples/humanoid-physics-course",
+      promotionCriteria: "Promote after paired web/desktop runs prove stable step traversal without increasing smoke duration.",
+      scenario: "playtests/humanoid-course-stairs.playtest.json",
+      state: "calibrating",
+      targets: ["web", "desktop"],
+      timingSamplesMs: [2471],
+      toleranceRationale: "Stair traversal is kept non-passing until vertical contact jitter has paired target samples.",
+    },
+    {
+      artifactLinks: {
+        latestSummary: "examples/humanoid-physics-course/artifacts/playtest/humanoid-course-hazard-hit/latest/summary.json",
+      },
+      featureSurfaces: {
+        resources: ["GameState"],
+        triggers: ["hazard.sweeper.01", "hazard.sweeper.02"],
+      },
+      id: "humanoid-course-hazard-hit-quarantined",
+      kind: "playtestScenario",
+      mode: "report-only",
+      profile: "full",
+      project: "examples/humanoid-physics-course",
+      promotionCriteria: "Promote after paired web/desktop runtime observation sidecars prove trigger enter/stay and GameState.hits mutation parity with stable resource assertions.",
+      reason: "Hazard/resource proof is visible, but trigger/resource mutation parity needs paired observation sidecars before enforcement.",
+      scenario: "playtests/humanoid-course-hazard-hit.playtest.json",
+      state: "quarantined",
+      targets: ["web", "desktop"],
+      timingSamplesMs: [1485],
+      toleranceRationale: "Hazard hit asserts resource mutation and diagnostics; enforcement waits for paired runtime observation comparison.",
+      whyThisFeature: "Trigger-volume checkpoint/hazard behavior proves sensor enter/stay, resource mutation, and HUD/resource observation parity risk.",
+    },
   ];
-  return scenarios.map((name) => ({
-    id: `${name}-report-only`,
-    kind: "playtestScenario" as const,
-    mode: "report-only" as const,
-    profile: "full" as const,
-    project: "examples/humanoid-physics-course",
-    scenario: `playtests/${name}.playtest.json`,
-    targets: ["web", "desktop"] as const,
-  }));
 }
 
 async function runSourceBackedProbe(
@@ -355,27 +470,41 @@ async function runSourceBackedProbe(
   context: GameplayParityRunnerContext,
 ): Promise<GameplayParityCaseResult> {
   const started = Date.now();
-  const observations = await collectSourceProbeObservations(resolve(context.root, entry.project ?? "."));
-  const perTarget = Object.fromEntries(entry.targets.map((target) => [target, observations]));
+  const sourceObservations = await collectSourceProbeObservations(resolve(context.root, entry.project ?? "."));
+  const perTarget: Partial<Record<(typeof entry.targets)[number], GameplayParityProbeObservations>> = {};
+  const sources: Partial<Record<(typeof entry.targets)[number], GameplayParityObservationSource>> = {};
   const artifactLinks: Record<string, string> = {};
   for (const target of entry.targets) {
-    const artifactPath = resolve(context.artifactDir, "probes", entry.id, `${target}.json`);
-    await mkdir(dirname(artifactPath), { recursive: true });
-    await writeFile(artifactPath, `${JSON.stringify({
-      generatedBy: "tools/verify gameplay parity source-backed probe",
-      id: entry.id,
-      kind: entry.kind,
-      observations,
-      source: "structured-source",
-      target,
-    }, null, 2)}\n`, "utf8");
-    artifactLinks[`${entry.id}.${target}`] = artifactPath;
+    const sidecarPath = entry.observationSidecars?.[target];
+    const discoveredSidecarPath = sidecarPath ?? await findRuntimeObservationSidecar(context.artifactDir, target, entry);
+    const sidecar = discoveredSidecarPath === undefined
+      ? undefined
+      : await readProbeObservationSidecar(resolve(context.root, entry.project ?? "."), discoveredSidecarPath);
+    if (sidecar !== undefined && discoveredSidecarPath !== undefined) {
+      perTarget[target] = sidecar;
+      sources[target] = "runtime-observation";
+      artifactLinks[`${entry.id}.${target}`] = discoveredSidecarPath;
+    } else {
+      perTarget[target] = sourceObservations;
+      sources[target] = "source-manifest";
+      const artifactPath = resolve(context.artifactDir, "probes", entry.id, `${target}.json`);
+      await mkdir(dirname(artifactPath), { recursive: true });
+      await writeFile(artifactPath, `${JSON.stringify({
+        generatedBy: "tools/verify gameplay parity source-backed probe",
+        id: entry.id,
+        kind: entry.kind,
+        observations: sourceObservations,
+        source: "source-manifest",
+        target,
+      }, null, 2)}\n`, "utf8");
+      artifactLinks[`${entry.id}.${target}`] = artifactPath;
+    }
   }
   const comparison = entry.kind === "assetProbe"
-    ? compareAssetProbe(entry, perTarget)
+    ? compareAssetProbe(entry, perTarget, sources)
     : entry.kind === "textureProbe"
-      ? compareTextureProbe(entry, perTarget)
-      : compareMaterialProbe(entry, perTarget);
+      ? compareTextureProbe(entry, perTarget, sources)
+      : compareMaterialProbe(entry, perTarget, sources);
   return {
     assertionResults: comparison.assertionResults,
     artifactLinks,
@@ -384,6 +513,91 @@ async function runSourceBackedProbe(
     entryId: entry.id,
     status: comparison.pass ? "pass" : "fail",
   };
+}
+
+async function findRuntimeObservationSidecar(
+  directory: string,
+  target: GameplayParityTarget,
+  entry: GameplayParityAssetProbeEntry | GameplayParityTextureProbeEntry | GameplayParityMaterialProbeEntry,
+): Promise<string | undefined> {
+  for (const path of await findFiles(directory, "runtime-observations.json")) {
+    if (!path.includes(`/${target}/`)) {
+      continue;
+    }
+    const sidecar = await readProbeObservationSidecar("/", path);
+    if (sidecar !== undefined && sidecarCoversProbe(entry, sidecar)) {
+      return path;
+    }
+  }
+  return undefined;
+}
+
+async function findFiles(directory: string, fileName: string): Promise<string[]> {
+  let entries;
+  try {
+    entries = await readdir(directory, { withFileTypes: true });
+  } catch {
+    return [];
+  }
+  const files: string[] = [];
+  for (const entry of entries) {
+    const path = resolve(directory, entry.name);
+    if (entry.isDirectory()) {
+      files.push(...await findFiles(path, fileName));
+      continue;
+    }
+    if (entry.isFile() && entry.name === fileName) {
+      files.push(path);
+    }
+  }
+  return files.sort();
+}
+
+function sidecarCoversProbe(
+  entry: GameplayParityAssetProbeEntry | GameplayParityTextureProbeEntry | GameplayParityMaterialProbeEntry,
+  observations: GameplayParityProbeObservations,
+): boolean {
+  if (entry.kind === "assetProbe") {
+    return entry.assert.assets.every((asset) => observations.assets?.[asset.id] !== undefined);
+  }
+  if (entry.kind === "textureProbe") {
+    return entry.assert.textures.every((texture) => observations.textures?.[texture.id] !== undefined);
+  }
+  return entry.assert.materials.every((material) => observations.materials?.[material.id] !== undefined);
+}
+
+async function readProbeObservationSidecar(projectPath: string, sidecarPath: string): Promise<GameplayParityProbeObservations | undefined> {
+  try {
+    const sidecar = readJsonObject(await readFile(resolve(projectPath, sidecarPath), "utf8"));
+    const observations = isRecord(sidecar.observations) ? sidecar.observations : sidecar;
+    return {
+      assets: readProbeObservationMap(observations.assets, (value) => ({
+        animations: readArray(value.animations).filter((item): item is string => typeof item === "string"),
+        bounds: readNumberTriple(value.bounds),
+        loaded: typeof value.loaded === "boolean" ? value.loaded : undefined,
+      })),
+      materials: readProbeObservationMap(observations.materials, (value) => ({
+        baseColorTexture: typeof value.baseColorTexture === "string" ? value.baseColorTexture : undefined,
+      })),
+      textures: readProbeObservationMap(observations.textures, (value) => ({
+        loaded: typeof value.loaded === "boolean" ? value.loaded : undefined,
+        repeat: readNumberTuple(value.repeat, 2),
+        role: typeof value.role === "string" ? value.role : undefined,
+      })),
+    };
+  } catch {
+    return undefined;
+  }
+}
+
+function readProbeObservationMap<T>(
+  value: unknown,
+  read: (value: Record<string, unknown>) => T,
+): Record<string, T> | undefined {
+  if (!isRecord(value)) {
+    return undefined;
+  }
+  return Object.fromEntries(Object.entries(value).flatMap(([id, observed]) => isRecord(observed) ? [[id, read(observed)]] : []));
 }
 
 async function collectSourceProbeObservations(projectPath: string): Promise<GameplayParityProbeObservations> {
@@ -475,6 +689,13 @@ function readNumberTuple(value: unknown, length: number): [number, number] | und
     return undefined;
   }
   return [value[0] as number, value[1] as number];
+}
+
+function readNumberTriple(value: unknown): [number, number, number] | undefined {
+  if (!Array.isArray(value) || value.length !== 3 || value.some((item) => typeof item !== "number" || !Number.isFinite(item))) {
+    return undefined;
+  }
+  return [value[0] as number, value[1] as number, value[2] as number];
 }
 
 function normalizeDiagnostics(value: unknown): GameplayParityDiagnostic[] {
