@@ -27,7 +27,7 @@ import { type IUiElement } from "@threenative/ui";
 import { type IProjectConfig } from "../config.js";
 import type { IAuthoringGraph } from "../authoring/graph.js";
 import { AUTHORING_PROVENANCE_FILE, authoringProvenanceDocument, buildAuthoringProvenanceDocument, type IAuthoringEmittedDocument } from "../authoring/provenance.js";
-import { copyAssetFiles, copyExtraAssetFiles, type IInternalAsset } from "./asset-copy.js";
+import { copyAssetFiles, copyExtraAssetFiles, type IAssetCopy, type IInternalAsset } from "./asset-copy.js";
 import { emitAudio } from "./audio.js";
 import { deriveRequiredCapabilities } from "./capabilities.js";
 import { ecsToIr, type IEcsEmitResult } from "./ecs.js";
@@ -61,6 +61,56 @@ export interface IEmitBundleOptions {
 
 export async function emitBundle(config: IProjectConfig, root: unknown, options: IEmitBundleOptions = {}): Promise<string> {
   const outDir = resolve(config.projectPath, config.outDir);
+  const plan = await planBundle(config, root, options);
+
+  const stagingDir = await createEmitStagingDir(outDir);
+  try {
+    await writeBundleOutput(config.projectPath, stagingDir, plan);
+    await replaceOutputDirectory(stagingDir, outDir);
+  } catch (error) {
+    await rm(stagingDir, { force: true, recursive: true });
+    throw error;
+  }
+
+  return outDir;
+}
+
+export interface IBundlePlan {
+  assets: readonly IInternalAsset[];
+  documents: IBundlePlanDocuments;
+  extraAssetFiles: readonly IAssetCopy[];
+  generatedMeshPayloads: readonly IGeneratedMeshPayload[];
+  manifest: IBundleManifest;
+}
+
+export interface IBundlePlanDocuments {
+  assetsManifest: IAssetsManifest;
+  audio?: ReturnType<typeof emitAudio>;
+  animations?: IAnimationsIr;
+  authoringProvenance?: ReturnType<typeof authoringProvenanceDocument>;
+  componentSchemas?: IEcsEmitResult["componentSchemas"];
+  environmentScene?: Awaited<ReturnType<typeof emitEnvironment>>["scene"];
+  eventSchemas?: IEcsEmitResult["eventSchemas"];
+  gameFlow?: ReturnType<typeof readStructuredGameFlow>;
+  gltfScene?: IGltfSceneMetadataIr;
+  input?: IInputIr;
+  localData?: ILocalDataIr;
+  materials: IMaterialsIr;
+  overlays?: Awaited<ReturnType<typeof emitOverlays>>["overlays"];
+  prefabs?: ReturnType<typeof readStructuredPrefabs>;
+  resourceSchemas?: IEcsEmitResult["resourceSchemas"];
+  runtimeConfig?: ReturnType<typeof readStructuredRuntimeConfig>;
+  scenes?: IScenesIr;
+  scriptBundle?: string;
+  scriptManifest?: IEcsEmitResult["scriptManifest"];
+  sequences?: ReturnType<typeof readStructuredSequences>;
+  systems?: IEcsEmitResult["systems"];
+  targetProfile: ITargetProfile;
+  ui?: IUiIr;
+  world?: IWorldIr;
+}
+
+export async function planBundle(config: IProjectConfig, root: unknown, options: IEmitBundleOptions = {}): Promise<IBundlePlan> {
   const bundleRoot = normalizeBundleRoot(root);
   const isWorld =
     typeof bundleRoot.scene === "object" && bundleRoot.scene !== null && bundleRoot.scene.constructor.name === "World";
@@ -189,89 +239,44 @@ export async function emitBundle(config: IProjectConfig, root: unknown, options:
     },
   };
 
-  const stagingDir = await createEmitStagingDir(outDir);
-  try {
-    await writeBundleOutput(stagingDir);
-    await replaceOutputDirectory(stagingDir, outDir);
-  } catch (error) {
-    await rm(stagingDir, { force: true, recursive: true });
-    throw error;
-  }
+  const documents: IBundlePlanDocuments = {
+    assetsManifest,
+    ...(audio === undefined ? {} : { audio }),
+    ...(animations === undefined ? {} : { animations }),
+    ...(componentSchemas === undefined ? {} : { componentSchemas }),
+    ...(environment === undefined ? {} : { environmentScene: environment.scene }),
+    ...(ecs === undefined ? {} : { eventSchemas: ecs.eventSchemas, systems: ecs.systems }),
+    ...(gameFlow === undefined ? {} : { gameFlow }),
+    ...(gltfScene === undefined ? {} : { gltfScene }),
+    ...(input === undefined ? {} : { input }),
+    ...(localData === undefined ? {} : { localData }),
+    materials,
+    ...(overlays === undefined ? {} : { overlays: overlays.overlays }),
+    ...(prefabs === undefined ? {} : { prefabs }),
+    ...(resourceSchemas === undefined ? {} : { resourceSchemas }),
+    ...(runtimeConfig === undefined ? {} : { runtimeConfig }),
+    ...(lifecycleScenes.scenes === undefined ? {} : { scenes: lifecycleScenes.scenes }),
+    ...(ecs?.scriptBundle === undefined ? {} : { scriptBundle: ecs.scriptBundle }),
+    ...(ecs?.scriptManifest === undefined ? {} : { scriptManifest: ecs.scriptManifest }),
+    ...(sequences === undefined ? {} : { sequences }),
+    targetProfile,
+    ...(ui === undefined ? {} : { ui }),
+    ...(world === undefined ? {} : { world }),
+  };
+  const authoringProvenance = options.authoringGraph === undefined ? undefined : authoringProvenanceForEmit(documents);
 
-  return outDir;
+  return {
+    assets,
+    documents: {
+      ...documents,
+      ...(authoringProvenance === undefined ? {} : { authoringProvenance }),
+    },
+    extraAssetFiles: [...(environment?.extraFiles ?? []), ...(overlays?.extraFiles ?? [])],
+    generatedMeshPayloads: generatedMeshPayloads.payloads,
+    manifest,
+  };
 
-  async function writeBundleOutput(targetDir: string): Promise<void> {
-    await mkdir(targetDir, { recursive: true });
-    await mkdir(resolve(targetDir, "schemas"), { recursive: true });
-    await writeGeneratedMeshPayloads(targetDir, generatedMeshPayloads.payloads);
-    await writeFile(resolve(targetDir, IR_DOCUMENTS.manifest.fileName), stableJson(manifest));
-    await copyAssetFiles(config.projectPath, targetDir, assets);
-    await copyExtraAssetFiles(config.projectPath, targetDir, [...(environment?.extraFiles ?? []), ...(overlays?.extraFiles ?? [])]);
-    await writeFile(resolve(targetDir, IR_DOCUMENTS.world.fileName), stableJson(world));
-    await writeFile(resolve(targetDir, IR_DOCUMENTS.materials.fileName), stableJson(materials));
-    await writeFile(resolve(targetDir, IR_DOCUMENTS.assets.fileName), stableJson(assetsManifest));
-    await writeFile(resolve(targetDir, IR_DOCUMENTS.targetProfile.fileName), stableJson(targetProfile));
-    if (options.authoringGraph !== undefined) {
-      await writeFile(resolve(targetDir, AUTHORING_PROVENANCE_FILE), stableJson(authoringProvenanceForEmit()));
-    }
-    if (environment !== undefined) {
-      await writeFile(resolve(targetDir, IR_DOCUMENTS.environmentScene.fileName), stableJson(environment.scene));
-    }
-    if (ui !== undefined) {
-      await writeFile(resolve(targetDir, IR_DOCUMENTS.ui.fileName), stableJson(ui));
-    }
-    if (overlays !== undefined) {
-      await writeFile(resolve(targetDir, IR_DOCUMENTS.overlays.fileName), stableJson(overlays.overlays));
-    }
-    if (audio !== undefined) {
-      await writeFile(resolve(targetDir, IR_DOCUMENTS.audio.fileName), stableJson(audio));
-    }
-    if (localData !== undefined) {
-      await writeFile(resolve(targetDir, IR_DOCUMENTS.localData.fileName), stableJson(localData));
-    }
-    if (gameFlow !== undefined) {
-      await writeFile(resolve(targetDir, IR_DOCUMENTS.gameFlow.fileName), stableJson(gameFlow));
-    }
-    if (lifecycleScenes.scenes !== undefined) {
-      await writeFile(resolve(targetDir, IR_DOCUMENTS.scenes.fileName), stableJson(lifecycleScenes.scenes));
-    }
-    if (sequences !== undefined) {
-      await writeFile(resolve(targetDir, IR_DOCUMENTS.sequences.fileName), stableJson(sequences));
-    }
-    if (animations !== undefined) {
-      await writeFile(resolve(targetDir, IR_DOCUMENTS.animations.fileName), stableJson(animations));
-    }
-    if (gltfScene !== undefined) {
-      await writeFile(resolve(targetDir, IR_DOCUMENTS.gltfScene.fileName), stableJson(gltfScene));
-    }
-    if (input !== undefined) {
-      await writeFile(resolve(targetDir, IR_DOCUMENTS.input.fileName), stableJson(input));
-    }
-    if (componentSchemas !== undefined) {
-      await writeFile(resolve(targetDir, IR_DOCUMENTS.componentSchemas.fileName), stableJson(componentSchemas));
-    }
-    if (resourceSchemas !== undefined) {
-      await writeFile(resolve(targetDir, IR_DOCUMENTS.resourceSchemas.fileName), stableJson(resourceSchemas));
-    }
-    if (ecs !== undefined) {
-      await writeFile(resolve(targetDir, IR_DOCUMENTS.eventSchemas.fileName), stableJson(ecs.eventSchemas));
-      await writeFile(resolve(targetDir, IR_DOCUMENTS.systems.fileName), stableJson(ecs.systems));
-      if (ecs.scriptBundle !== undefined) {
-        await writeFile(resolve(targetDir, IR_DOCUMENTS.scripts.fileName), ecs.scriptBundle);
-      }
-      if (ecs.scriptManifest !== undefined) {
-        await writeFile(resolve(targetDir, SCRIPTS_MANIFEST_FILE), stableJson(ecs.scriptManifest));
-      }
-    }
-    if (runtimeConfig !== undefined) {
-      await writeFile(resolve(targetDir, IR_DOCUMENTS.runtimeConfig.fileName), stableJson(runtimeConfig));
-    }
-    if (prefabs !== undefined) {
-      await writeFile(resolve(targetDir, IR_DOCUMENTS.prefabs.fileName), stableJson(prefabs));
-    }
-  }
-
-  function authoringProvenanceForEmit(): ReturnType<typeof authoringProvenanceDocument> {
+  function authoringProvenanceForEmit(documentsForEmit: IBundlePlanDocuments): ReturnType<typeof authoringProvenanceDocument> {
     if (options.authoringGraph === undefined) {
       throw new Error("authoringGraph is required to emit authoring provenance.");
     }
@@ -280,23 +285,97 @@ export async function emitBundle(config: IProjectConfig, root: unknown, options:
     }
     return buildAuthoringProvenanceDocument(options.authoringGraph, {
       documents: options.authoringDocuments,
-      emitted: emittedDocumentsForProvenance(),
+      emitted: emittedDocumentsForProvenance(documentsForEmit),
     });
   }
 
-  function emittedDocumentsForProvenance(): IAuthoringEmittedDocument[] {
+  function emittedDocumentsForProvenance(documentsForEmit: IBundlePlanDocuments): IAuthoringEmittedDocument[] {
     return [
       { data: manifest, kind: "unknown", path: IR_DOCUMENTS.manifest.fileName },
-      { data: world, kind: "entity", path: IR_DOCUMENTS.world.fileName },
-      { data: materials, kind: "material", path: IR_DOCUMENTS.materials.fileName },
-      { data: assetsManifest, kind: "assets", path: IR_DOCUMENTS.assets.fileName },
-      ...(ui === undefined ? [] : [{ data: ui, kind: "ui" as const, path: IR_DOCUMENTS.ui.fileName }]),
-      ...(input === undefined ? [] : [{ data: input, kind: "input" as const, path: IR_DOCUMENTS.input.fileName }]),
-      ...(prefabs === undefined ? [] : [{ data: prefabs, kind: "prefab" as const, path: IR_DOCUMENTS.prefabs.fileName }]),
-      ...(runtimeConfig === undefined ? [] : [{ data: runtimeConfig, kind: "unknown" as const, path: IR_DOCUMENTS.runtimeConfig.fileName }]),
-      ...(ecs?.systems === undefined ? [] : [{ data: ecs.systems, kind: "system" as const, path: IR_DOCUMENTS.systems.fileName }]),
-      ...(ecs?.scriptBundle === undefined ? [] : [{ data: ecs.scriptBundle, kind: "generated-script" as const, path: IR_DOCUMENTS.scripts.fileName }]),
+      { data: documentsForEmit.world, kind: "entity", path: IR_DOCUMENTS.world.fileName },
+      { data: documentsForEmit.materials, kind: "material", path: IR_DOCUMENTS.materials.fileName },
+      { data: documentsForEmit.assetsManifest, kind: "assets", path: IR_DOCUMENTS.assets.fileName },
+      ...(documentsForEmit.ui === undefined ? [] : [{ data: documentsForEmit.ui, kind: "ui" as const, path: IR_DOCUMENTS.ui.fileName }]),
+      ...(documentsForEmit.input === undefined ? [] : [{ data: documentsForEmit.input, kind: "input" as const, path: IR_DOCUMENTS.input.fileName }]),
+      ...(documentsForEmit.prefabs === undefined ? [] : [{ data: documentsForEmit.prefabs, kind: "prefab" as const, path: IR_DOCUMENTS.prefabs.fileName }]),
+      ...(documentsForEmit.runtimeConfig === undefined ? [] : [{ data: documentsForEmit.runtimeConfig, kind: "unknown" as const, path: IR_DOCUMENTS.runtimeConfig.fileName }]),
+      ...(documentsForEmit.systems === undefined ? [] : [{ data: documentsForEmit.systems, kind: "system" as const, path: IR_DOCUMENTS.systems.fileName }]),
+      ...(documentsForEmit.scriptBundle === undefined ? [] : [{ data: documentsForEmit.scriptBundle, kind: "generated-script" as const, path: IR_DOCUMENTS.scripts.fileName }]),
     ];
+  }
+}
+
+async function writeBundleOutput(projectPath: string, targetDir: string, plan: IBundlePlan): Promise<void> {
+  const documents = plan.documents;
+  await mkdir(targetDir, { recursive: true });
+  await mkdir(resolve(targetDir, "schemas"), { recursive: true });
+  await writeGeneratedMeshPayloads(targetDir, plan.generatedMeshPayloads);
+  await writeFile(resolve(targetDir, IR_DOCUMENTS.manifest.fileName), stableJson(plan.manifest));
+  await copyAssetFiles(projectPath, targetDir, plan.assets);
+  await copyExtraAssetFiles(projectPath, targetDir, plan.extraAssetFiles);
+  await writeFile(resolve(targetDir, IR_DOCUMENTS.world.fileName), stableJson(documents.world));
+  await writeFile(resolve(targetDir, IR_DOCUMENTS.materials.fileName), stableJson(documents.materials));
+  await writeFile(resolve(targetDir, IR_DOCUMENTS.assets.fileName), stableJson(documents.assetsManifest));
+  await writeFile(resolve(targetDir, IR_DOCUMENTS.targetProfile.fileName), stableJson(documents.targetProfile));
+  if (documents.authoringProvenance !== undefined) {
+    await writeFile(resolve(targetDir, AUTHORING_PROVENANCE_FILE), stableJson(documents.authoringProvenance));
+  }
+  if (documents.environmentScene !== undefined) {
+    await writeFile(resolve(targetDir, IR_DOCUMENTS.environmentScene.fileName), stableJson(documents.environmentScene));
+  }
+  if (documents.ui !== undefined) {
+    await writeFile(resolve(targetDir, IR_DOCUMENTS.ui.fileName), stableJson(documents.ui));
+  }
+  if (documents.overlays !== undefined) {
+    await writeFile(resolve(targetDir, IR_DOCUMENTS.overlays.fileName), stableJson(documents.overlays));
+  }
+  if (documents.audio !== undefined) {
+    await writeFile(resolve(targetDir, IR_DOCUMENTS.audio.fileName), stableJson(documents.audio));
+  }
+  if (documents.localData !== undefined) {
+    await writeFile(resolve(targetDir, IR_DOCUMENTS.localData.fileName), stableJson(documents.localData));
+  }
+  if (documents.gameFlow !== undefined) {
+    await writeFile(resolve(targetDir, IR_DOCUMENTS.gameFlow.fileName), stableJson(documents.gameFlow));
+  }
+  if (documents.scenes !== undefined) {
+    await writeFile(resolve(targetDir, IR_DOCUMENTS.scenes.fileName), stableJson(documents.scenes));
+  }
+  if (documents.sequences !== undefined) {
+    await writeFile(resolve(targetDir, IR_DOCUMENTS.sequences.fileName), stableJson(documents.sequences));
+  }
+  if (documents.animations !== undefined) {
+    await writeFile(resolve(targetDir, IR_DOCUMENTS.animations.fileName), stableJson(documents.animations));
+  }
+  if (documents.gltfScene !== undefined) {
+    await writeFile(resolve(targetDir, IR_DOCUMENTS.gltfScene.fileName), stableJson(documents.gltfScene));
+  }
+  if (documents.input !== undefined) {
+    await writeFile(resolve(targetDir, IR_DOCUMENTS.input.fileName), stableJson(documents.input));
+  }
+  if (documents.componentSchemas !== undefined) {
+    await writeFile(resolve(targetDir, IR_DOCUMENTS.componentSchemas.fileName), stableJson(documents.componentSchemas));
+  }
+  if (documents.resourceSchemas !== undefined) {
+    await writeFile(resolve(targetDir, IR_DOCUMENTS.resourceSchemas.fileName), stableJson(documents.resourceSchemas));
+  }
+  if (documents.eventSchemas !== undefined) {
+    await writeFile(resolve(targetDir, IR_DOCUMENTS.eventSchemas.fileName), stableJson(documents.eventSchemas));
+  }
+  if (documents.systems !== undefined) {
+    await writeFile(resolve(targetDir, IR_DOCUMENTS.systems.fileName), stableJson(documents.systems));
+  }
+  if (documents.scriptBundle !== undefined) {
+    await writeFile(resolve(targetDir, IR_DOCUMENTS.scripts.fileName), documents.scriptBundle);
+  }
+  if (documents.scriptManifest !== undefined) {
+    await writeFile(resolve(targetDir, SCRIPTS_MANIFEST_FILE), stableJson(documents.scriptManifest));
+  }
+  if (documents.runtimeConfig !== undefined) {
+    await writeFile(resolve(targetDir, IR_DOCUMENTS.runtimeConfig.fileName), stableJson(documents.runtimeConfig));
+  }
+  if (documents.prefabs !== undefined) {
+    await writeFile(resolve(targetDir, IR_DOCUMENTS.prefabs.fileName), stableJson(documents.prefabs));
   }
 }
 

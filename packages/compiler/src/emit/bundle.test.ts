@@ -51,7 +51,7 @@ import { IR_DOCUMENTS, validateBundle } from "@threenative/ir";
 import { Bar, Button, Column, Image, Text, Ui } from "@threenative/ui";
 
 import { AUTHORING_PROVENANCE_FILE } from "../authoring/provenance.js";
-import { emitBundle } from "./bundle.js";
+import { emitBundle, planBundle } from "./bundle.js";
 
 test("should emit deterministic cube bundle", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-emit-"));
@@ -71,6 +71,32 @@ test("should emit deterministic cube bundle", async () => {
     const secondWorld = await readFile(join(second, "world.ir.json"), "utf8");
 
     assert.equal(firstWorld, secondWorld);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should plan bundle documents before writing files", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-plan-bundle-"));
+  try {
+    const config = {
+      entry: "src/game.ts",
+      outDir: "dist/game.bundle",
+      projectPath: root,
+      schema: "threenative.project" as const,
+      version: "0.1.0" as const,
+    };
+
+    const plan = await planBundle(config, makeScene());
+
+    assert.equal(plan.manifest.entry.world, IR_DOCUMENTS.world.fileName);
+    assert.equal(plan.manifest.files.assets, IR_DOCUMENTS.assets.fileName);
+    assert.deepEqual(Object.keys(plan.documents).sort(), ["assetsManifest", "materials", "targetProfile", "world"]);
+    assert.equal(plan.documents.assetsManifest.assets.length, plan.assets.length);
+    assert.equal(plan.extraAssetFiles.length, 0);
+    assert.equal(plan.generatedMeshPayloads.length, 0);
+    assert.equal(JSON.stringify(plan).includes(".tn-emit-"), false);
+    await assert.rejects(() => readFile(join(root, "dist/game.bundle/manifest.json"), "utf8"));
   } finally {
     await rm(root, { force: true, recursive: true });
   }
