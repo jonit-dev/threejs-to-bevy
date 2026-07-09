@@ -200,6 +200,15 @@ small explicit contract:
 - `postUpdate`: apply late commands, camera follow, cleanup, and derived state.
 - adapter-owned render extraction/render systems remain internal.
 
+Stateful runtime loops must apply the shared loop contract proved by
+`packages/ir/fixtures/conformance/loop-scheduling/expectations.json`: a frame
+can execute at most five fixed ticks, paused frames advance frame accounting
+without running gameplay schedules or startup, `startup` runs once before
+gameplay schedules, fixed-step interpolation is visible to `update` reads, and
+`postUpdate` observes writes made by `update` in the same frame. Web and native
+tests consume the same fixture so clamp, pause, startup, interpolation, and
+variable-schedule ordering drift fails close to the runtime adapter.
+
 Script systems should declare their read/write component access in the IR. The
 Bevy adapter can use that metadata for validation, diagnostics, and later
 parallel scheduling. Structural script commands should be buffered and applied

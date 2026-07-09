@@ -1,5 +1,8 @@
 import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
+import { dirname, resolve } from "node:path";
 import test from "node:test";
+import { fileURLToPath } from "node:url";
 import type { ISystemsIr, IUiIr, IWorldIr } from "@threenative/ir";
 import * as THREE from "three";
 
@@ -7,6 +10,88 @@ import { createGameLoopState, runGameFrame } from "./gameLoop.js";
 import { createInputState } from "./input.js";
 import type { IThreeWorld } from "./mapWorld.js";
 import { renderUi } from "./ui/renderUi.js";
+
+const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "../../..");
+const loopExpectationsPath = resolve(repoRoot, "packages/ir/fixtures/conformance/loop-scheduling/expectations.json");
+
+interface ILoopSchedulingExpectations {
+  interpolation: {
+    expectedCameraX: number;
+    expectedRenderedMoverX: number;
+    expectedWorldMoverX: number;
+    firstDelta: number;
+    fixedDelta: number;
+    partialDelta: number;
+  };
+  ordering: {
+    postUpdateSeesUpdateWrites: boolean;
+    schedules: string[];
+  };
+  scenarios: Array<{
+    delta: number;
+    expected: {
+      accumulator: number;
+      fixed: number;
+      frame: number;
+      postUpdate: number;
+      startup: number;
+      tick: number;
+      update: number;
+    };
+    fixedDelta: number;
+    id: string;
+    paused: boolean;
+  }>;
+}
+
+test("gameLoop should satisfy shared loop fixture expectations", async () => {
+  const fixture = await readLoopExpectations();
+
+  for (const scenario of fixture.scenarios) {
+    const state = createGameLoopState({
+      schema: "threenative.runtime-config",
+      version: "0.1.0",
+      time: { fixedDelta: scenario.fixedDelta, paused: scenario.paused },
+      window: { height: 720, width: 1280 },
+    });
+    const counts = { fixed: 0, postUpdate: 0, startup: 0, update: 0 };
+
+    await runGameFrame({
+      delta: scenario.delta,
+      fixedDelta: scenario.fixedDelta,
+      mapped: makeMapped(),
+      module: {
+        systems: {
+          boot: () => counts.startup += 1,
+          post: () => counts.postUpdate += 1,
+          tick: () => counts.fixed += 1,
+          update: () => counts.update += 1,
+        },
+      },
+      state,
+      systems: makeSystems([
+        system("boot", "startup"),
+        system("tick", "fixedUpdate"),
+        system("update", "update"),
+        system("post", "postUpdate"),
+      ]),
+      world: makeWorld(),
+    });
+
+    assert.deepEqual(counts, {
+      fixed: scenario.expected.fixed,
+      postUpdate: scenario.expected.postUpdate,
+      startup: scenario.expected.startup,
+      update: scenario.expected.update,
+    }, scenario.id);
+    assert.equal(state.frame, scenario.expected.frame, scenario.id);
+    assert.equal(state.tick, scenario.expected.tick, scenario.id);
+    assert.ok(Math.abs(state.accumulator - scenario.expected.accumulator) < 1e-10, scenario.id);
+  }
+
+  assert.deepEqual(fixture.ordering.schedules, ["update", "postUpdate"]);
+  assert.equal(fixture.ordering.postUpdateSeesUpdateWrites, true);
+});
 
 test("gameLoop should run fixed update at configured timestep", async () => {
   const state = createGameLoopState({
@@ -290,6 +375,89 @@ test("gameLoop should expose interpolated fixed transforms to variable-update re
   assert.equal(camera.position.x, 5);
 });
 
+test("gameLoop should apply shared interpolation and variable ordering expectations", async () => {
+  const fixture = await readLoopExpectations();
+  const state = createGameLoopState({
+    schema: "threenative.runtime-config",
+    version: "0.1.0",
+    time: { fixedDelta: fixture.interpolation.fixedDelta, paused: false },
+    window: { height: 720, width: 1280 },
+  });
+  const world = makeWorld([
+    { id: "mover", position: [0, 0, 0] },
+    { id: "camera", position: [0, 0, 0] },
+  ]);
+  const mover = new THREE.Object3D();
+  const camera = new THREE.Object3D();
+  const mapped = makeMapped(new Map([
+    ["mover", mover],
+    ["camera", camera],
+  ]));
+
+  await runGameFrame({
+    delta: fixture.interpolation.firstDelta,
+    fixedDelta: fixture.interpolation.fixedDelta,
+    mapped,
+    module: {
+      systems: {
+        tick: moveMoverBy(10),
+        update: copyMoverXToCamera(),
+      },
+    },
+    state,
+    systems: makeSystems([
+      system("tick", "fixedUpdate", ["Transform"]),
+      system("update", "update", ["Transform"]),
+    ]),
+    world,
+  });
+  await runGameFrame({
+    delta: fixture.interpolation.partialDelta,
+    fixedDelta: fixture.interpolation.fixedDelta,
+    mapped,
+    module: {
+      systems: {
+        tick: moveMoverBy(10),
+        update: copyMoverXToCamera(),
+      },
+    },
+    state,
+    systems: makeSystems([
+      system("tick", "fixedUpdate", ["Transform"]),
+      system("update", "update", ["Transform"]),
+    ]),
+    world,
+  });
+
+  assert.equal(world.entities[0]?.components.Transform?.position?.[0], fixture.interpolation.expectedWorldMoverX);
+  assert.equal(world.entities[1]?.components.Transform?.position?.[0], fixture.interpolation.expectedCameraX);
+  assert.equal(mover.position.x, fixture.interpolation.expectedRenderedMoverX);
+
+  const orderedWorld = makeWorld([
+    { id: "mover", position: [0, 0, 0] },
+    { id: "camera", position: [0, 0, 0] },
+  ]);
+  await runGameFrame({
+    delta: fixture.interpolation.fixedDelta,
+    fixedDelta: fixture.interpolation.fixedDelta,
+    mapped: makeMapped(),
+    module: {
+      systems: {
+        post: copyMoverXToCamera(),
+        update: setMoverPosition([20, 0, 0]),
+      },
+    },
+    state: createGameLoopState(),
+    systems: makeSystems([
+      system("update", "update", ["Transform"]),
+      system("post", "postUpdate", ["Transform"]),
+    ]),
+    world: orderedWorld,
+  });
+
+  assert.equal(orderedWorld.entities[1]?.components.Transform?.position?.[0], 20);
+});
+
 test("gameLoop should expose drained UI actions and values to scripts for one frame", async () => {
   const state = createGameLoopState();
   const input = createInputState();
@@ -443,4 +611,8 @@ function copyMoverXToCamera(): (context: any) => void {
     const position = context.entity("mover")?.transform().positionOr([0, 0, 0]) ?? [0, 0, 0];
     context.entity("camera")?.transform().setPosition([position[0], 0, 0]);
   };
+}
+
+async function readLoopExpectations(): Promise<ILoopSchedulingExpectations> {
+  return JSON.parse(await readFile(loopExpectationsPath, "utf8")) as ILoopSchedulingExpectations;
 }

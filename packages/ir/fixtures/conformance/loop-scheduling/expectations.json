@@ -1,0 +1,64 @@
+{
+  "schema": "threenative.loop-scheduling-expectations",
+  "version": "0.1.0",
+  "maxFixedStepsPerFrame": 5,
+  "scenarios": [
+    {
+      "id": "accumulation-remainder",
+      "delta": 0.24,
+      "fixedDelta": 0.1,
+      "paused": false,
+      "expected": {
+        "accumulator": 0.04,
+        "fixed": 2,
+        "frame": 1,
+        "postUpdate": 1,
+        "startup": 1,
+        "tick": 2,
+        "update": 1
+      }
+    },
+    {
+      "id": "long-frame-clamp",
+      "delta": 0.25,
+      "fixedDelta": 0.016666666666666666,
+      "paused": false,
+      "expected": {
+        "accumulator": 0,
+        "fixed": 5,
+        "frame": 1,
+        "postUpdate": 1,
+        "startup": 1,
+        "tick": 5,
+        "update": 1
+      }
+    },
+    {
+      "id": "paused-frame",
+      "delta": 1,
+      "fixedDelta": 0.25,
+      "paused": true,
+      "expected": {
+        "accumulator": 0,
+        "fixed": 0,
+        "frame": 1,
+        "postUpdate": 0,
+        "startup": 0,
+        "tick": 0,
+        "update": 0
+      }
+    }
+  ],
+  "interpolation": {
+    "fixedDelta": 0.25,
+    "firstDelta": 0.25,
+    "partialDelta": 0.125,
+    "expectedCameraX": 5,
+    "expectedRenderedMoverX": 5,
+    "expectedWorldMoverX": 10
+  },
+  "ordering": {
+    "postUpdateSeesUpdateWrites": true,
+    "schedules": ["update", "postUpdate"]
+  }
+}
