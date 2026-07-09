@@ -180,11 +180,9 @@ export async function applyEnvironmentLighting(
     return observation;
   }
   const resolved = resolveWebAssets(source, assets);
-  const loader = new THREE.TextureLoader();
-
   if (environment.skybox !== undefined) {
-    const url = firstTextureUrl(environment.skybox, resolved);
-    if (url === undefined) {
+    const urls = environmentTextureUrls(environment.skybox, resolved);
+    if (urls === undefined) {
       observation.diagnostics.push({
         code: "TN_WEB_ENVIRONMENT_SKYBOX_TEXTURE_MISSING",
         message: "Skybox texture asset could not be resolved for web rendering.",
@@ -192,7 +190,9 @@ export async function applyEnvironmentLighting(
       });
     } else {
       try {
-        const texture = await loader.loadAsync(url);
+        const texture = environment.skybox.mode === "cubemap"
+          ? await new THREE.CubeTextureLoader().loadAsync(urls)
+          : await new THREE.TextureLoader().loadAsync(urls[0]!);
         texture.colorSpace = THREE.SRGBColorSpace;
         if (environment.skybox.mode === "equirect") {
           texture.mapping = THREE.EquirectangularReflectionMapping;
@@ -202,7 +202,7 @@ export async function applyEnvironmentLighting(
       } catch (error) {
         observation.diagnostics.push({
           code: "TN_WEB_ENVIRONMENT_SKYBOX_TEXTURE_LOAD_FAILED",
-          message: `Skybox texture '${url}' failed to load: ${error instanceof Error ? error.message : String(error)}.`,
+          message: `Skybox texture '${urls.join("', '")}' failed to load: ${error instanceof Error ? error.message : String(error)}.`,
           severity: "warning",
         });
       }
@@ -210,18 +210,28 @@ export async function applyEnvironmentLighting(
   }
 
   if (environment.environmentMap !== undefined) {
-    const url = firstTextureUrl(environment.environmentMap, resolved);
-    if (url !== undefined) {
+    const urls = environmentTextureUrls(environment.environmentMap, resolved);
+    if (urls === undefined) {
+      observation.diagnostics.push({
+        code: "TN_WEB_ENVIRONMENT_MAP_TEXTURE_MISSING",
+        message: "Environment-map texture assets could not all be resolved for web rendering.",
+        severity: "warning",
+      });
+    } else {
       try {
-        const texture = await loader.loadAsync(url);
+        const texture = environment.environmentMap.mode === "cubemap"
+          ? await new THREE.CubeTextureLoader().loadAsync(urls)
+          : await new THREE.TextureLoader().loadAsync(urls[0]!);
         texture.colorSpace = THREE.SRGBColorSpace;
-        texture.mapping = THREE.EquirectangularReflectionMapping;
+        if (environment.environmentMap.mode === "equirect") {
+          texture.mapping = THREE.EquirectangularReflectionMapping;
+        }
         scene.environment = texture;
         observation.environmentMap = { ...observation.environmentMap!, applied: true };
       } catch (error) {
         observation.diagnostics.push({
           code: "TN_WEB_ENVIRONMENT_MAP_TEXTURE_LOAD_FAILED",
-          message: `Environment map texture '${url}' failed to load: ${error instanceof Error ? error.message : String(error)}.`,
+          message: `Environment map texture '${urls.join("', '")}' failed to load: ${error instanceof Error ? error.message : String(error)}.`,
           severity: "warning",
         });
       }
@@ -260,10 +270,12 @@ export function observeEnvironmentLighting(environment: IEnvironmentSceneIr | un
   };
 }
 
-function firstTextureUrl(source: IEnvironmentTextureSourceIr, resolved: ReadonlyMap<string, { url: string }>): string | undefined {
-  return textureAssetIds(source)
-    .map((assetId) => resolved.get(assetId)?.url)
-    .find((url): url is string => url !== undefined);
+export function environmentTextureUrls(
+  source: IEnvironmentTextureSourceIr,
+  resolved: ReadonlyMap<string, { url: string }>,
+): string[] | undefined {
+  const urls = textureAssetIds(source).map((assetId) => resolved.get(assetId)?.url);
+  return urls.every((url): url is string => url !== undefined) ? urls : undefined;
 }
 
 function textureAssetIds(source: IEnvironmentTextureSourceIr): string[] {

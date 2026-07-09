@@ -59,6 +59,8 @@ export interface IPhysicsJointObservation {
 
 const previousPairsByWorld = new WeakMap<IWorldIr, Map<string, IDetectedPair>>();
 const scriptAuthoredTransformsByWorld = new WeakMap<IWorldIr, Set<string>>();
+const rapierWorlds = new WeakMap<IWorldIr, IRapierRuntime>();
+const rapierRebuilds = new WeakMap<IWorldIr, number>();
 let rapierInitialized = false;
 let rapierInitialization: Promise<void> | undefined;
 
@@ -77,7 +79,7 @@ export function stepPhysics(world: IWorldIr, fixedDelta = 1 / 60, environmentSce
   scriptAuthoredTransformsByWorld.delete(world);
   const physicsWorld = worldWithEnvironmentTerrain(world, environmentScene);
   if (rapierInitialized) {
-    stepRapierBodies(physicsWorld, fixedDelta, [0, -9.81, 0], scriptAuthoredTransforms);
+    stepRapierBodies(world, physicsWorld, fixedDelta, [0, -9.81, 0], scriptAuthoredTransforms);
   } else {
     stepPrimitiveBodies(physicsWorld, fixedDelta, [0, -9.81, 0], scriptAuthoredTransforms);
   }
@@ -98,13 +100,88 @@ export function markScriptAuthoredTransform(world: IWorldIr, entity: string): vo
   scriptAuthoredTransformsByWorld.set(world, authored);
 }
 
-function stepRapierBodies(world: IWorldIr, fixedDelta: number, gravity: Vec3, scriptAuthoredTransforms: ReadonlySet<string>): void {
-  const rapierWorld = new RAPIER.World({ x: gravity[0], y: gravity[1], z: gravity[2] });
+interface IRapierRuntime {
+  bodies: Map<string, RAPIER.RigidBody>;
+  signature: string;
+  world: RAPIER.World;
+}
+
+export function disposePhysicsRuntime(world: IWorldIr): void {
+  rapierWorlds.get(world)?.world.free();
+  rapierWorlds.delete(world);
+  rapierRebuilds.delete(world);
+  previousPairsByWorld.delete(world);
+  scriptAuthoredTransformsByWorld.delete(world);
+}
+
+export function physicsRuntimeStats(world: IWorldIr): { rebuilds: number } {
+  return { rebuilds: rapierRebuilds.get(world) ?? 0 };
+}
+
+function stepRapierBodies(cacheKey: IWorldIr, world: IWorldIr, fixedDelta: number, gravity: Vec3, scriptAuthoredTransforms: ReadonlySet<string>): void {
+  const signature = rapierTopologySignature(world, gravity);
+  let runtime = rapierWorlds.get(cacheKey);
+  if (runtime === undefined || runtime.signature !== signature) {
+    runtime?.world.free();
+    runtime = createRapierRuntime(world, gravity, signature);
+    rapierWorlds.set(cacheKey, runtime);
+    rapierRebuilds.set(cacheKey, (rapierRebuilds.get(cacheKey) ?? 0) + 1);
+  }
+  const rapierWorld = runtime.world;
   const substeps = physicsSubsteps(fixedDelta);
   rapierWorld.integrationParameters.dt = fixedDelta / substeps;
   rapierWorld.integrationParameters.numSolverIterations = 12;
   rapierWorld.integrationParameters.numAdditionalFrictionIterations = 8;
-  const bodies = new Map<string, ReturnType<typeof rapierWorld.createRigidBody>>();
+  const bodies = runtime.bodies;
+
+  for (const entity of world.entities) {
+    const body = bodies.get(entity.id);
+    const transform = entity.components.Transform;
+    const source = entity.components.RigidBody;
+    if (body === undefined || transform?.position === undefined || source === undefined) {
+      continue;
+    }
+    const rotation = transform.rotation ?? [0, 0, 0, 1];
+    const velocity = source.velocity ?? [0, 0, 0];
+    const angularVelocity = source.angularVelocity ?? [0, 0, 0];
+    body.setTranslation({ x: transform.position[0], y: transform.position[1], z: transform.position[2] }, false);
+    body.setRotation({ x: rotation[0], y: rotation[1], z: rotation[2], w: rotation[3] }, false);
+    body.setLinvel({ x: velocity[0], y: velocity[1], z: velocity[2] }, false);
+    body.setAngvel({ x: angularVelocity[0], y: angularVelocity[1], z: angularVelocity[2] }, false);
+  }
+
+  for (let step = 0; step < substeps; step += 1) {
+    rapierWorld.step();
+  }
+
+  for (const entity of world.entities) {
+    const body = bodies.get(entity.id);
+    if (body === undefined || entity.components.Transform?.position === undefined || entity.components.RigidBody === undefined) {
+      continue;
+    }
+    if (scriptAuthoredTransforms.has(entity.id) && entity.components.RigidBody.kind === "kinematic") {
+      continue;
+    }
+    const translation = body.translation();
+    const rotation = body.rotation();
+    const linvel = body.linvel();
+    const angvel = body.angvel();
+    entity.components.Transform = {
+      ...entity.components.Transform,
+      position: [translation.x, translation.y, translation.z],
+      rotation: [rotation.x, rotation.y, rotation.z, rotation.w],
+    };
+    entity.components.RigidBody = {
+      ...entity.components.RigidBody,
+      angularVelocity: [angvel.x, angvel.y, angvel.z],
+      velocity: [linvel.x, linvel.y, linvel.z],
+    };
+  }
+}
+
+function createRapierRuntime(world: IWorldIr, gravity: Vec3, signature: string): IRapierRuntime {
+  const rapierWorld = new RAPIER.World({ x: gravity[0], y: gravity[1], z: gravity[2] });
+  const bodies = new Map<string, RAPIER.RigidBody>();
   const layerBits = layerBitsForWorld(world);
 
   for (const entity of world.entities) {
@@ -158,35 +235,22 @@ function stepRapierBodies(world: IWorldIr, fixedDelta: number, gravity: Vec3, sc
     }
   }
 
-  for (let step = 0; step < substeps; step += 1) {
-    rapierWorld.step();
-  }
+  return { bodies, signature, world: rapierWorld };
+}
 
-  for (const entity of world.entities) {
-    const body = bodies.get(entity.id);
-    if (body === undefined || entity.components.Transform?.position === undefined || entity.components.RigidBody === undefined) {
-      continue;
-    }
-    if (scriptAuthoredTransforms.has(entity.id) && entity.components.RigidBody.kind === "kinematic") {
-      continue;
-    }
-    const translation = body.translation();
-    const rotation = body.rotation();
-    const linvel = body.linvel();
-    const angvel = body.angvel();
-    entity.components.Transform = {
-      ...entity.components.Transform,
-      position: [translation.x, translation.y, translation.z],
-      rotation: [rotation.x, rotation.y, rotation.z, rotation.w],
-    };
-    entity.components.RigidBody = {
-      ...entity.components.RigidBody,
-      angularVelocity: [angvel.x, angvel.y, angvel.z],
-      velocity: [linvel.x, linvel.y, linvel.z],
-    };
-  }
-
-  rapierWorld.free();
+function rapierTopologySignature(world: IWorldIr, gravity: Vec3): string {
+  return JSON.stringify({
+    gravity,
+    entities: world.entities.map((entity) => ({
+      Collider: entity.components.Collider,
+      RigidBody: entity.components.RigidBody === undefined ? undefined : {
+        ...entity.components.RigidBody,
+        angularVelocity: undefined,
+        velocity: undefined,
+      },
+      id: entity.id,
+    })),
+  });
 }
 
 function physicsSubsteps(fixedDelta: number): number {
@@ -482,7 +546,7 @@ function colliderBounds(entity: IWorldEntity): IBounds[] {
       id: entity.id,
       layer: collider.layer,
       mask: [...(collider.mask ?? [])],
-      trigger: collider.trigger === true,
+      trigger: collider.trigger === true || collider.sensor !== undefined,
     },
   ];
 }

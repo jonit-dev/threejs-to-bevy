@@ -382,7 +382,7 @@ pub fn native_effect_log(
             frame,
             kind: "patch".to_owned(),
             payload: None,
-            reconciliation: None,
+            reconciliation: live_reconciliation_for_component(&patch.component),
             resource: None,
             schedule: system.schedule.clone(),
             service: None,
@@ -458,7 +458,32 @@ fn live_reconciliation_for_command(
 ) -> Option<NativeSystemEffectReconciliation> {
     matches!(
         command.command.as_str(),
-        "spawn" | "despawn" | "instantiate"
+        "spawn"
+            | "despawn"
+            | "instantiate"
+            | "setParent"
+            | "clearParent"
+            | "addComponent"
+            | "setComponent"
+            | "removeComponent"
+    )
+    .then_some(NativeSystemEffectReconciliation {
+        code: "TN_BEVY_LIVE_RECONCILIATION_REQUIRED",
+        status: "required",
+    })
+}
+
+fn live_reconciliation_for_component(component: &str) -> Option<NativeSystemEffectReconciliation> {
+    matches!(
+        component,
+        "Camera"
+            | "Collider"
+            | "Hierarchy"
+            | "Light"
+            | "MeshRenderer"
+            | "RenderLayers"
+            | "RigidBody"
+            | "Visibility"
     )
     .then_some(NativeSystemEffectReconciliation {
         code: "TN_BEVY_LIVE_RECONCILIATION_REQUIRED",

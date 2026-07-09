@@ -295,6 +295,7 @@ fn spawn_entity(
         }
         insert_camera_antialias(&mut spawned, runtime_config);
         insert_camera_ambient_occlusion(&mut spawned, runtime_config);
+        insert_camera_shadow_profile(&mut spawned, runtime_config);
         insert_camera_depth_of_field(&mut spawned, runtime_config);
         insert_camera_motion_blur(&mut spawned, runtime_config);
         insert_camera_screen_space_reflections(&mut spawned, runtime_config);

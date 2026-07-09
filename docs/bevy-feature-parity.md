@@ -58,6 +58,14 @@ adapters, shared SDK/IR/compiler contract, or an intentional product boundary.
 | ⚠️ | Editor and developer tools | Shared source-operation/CLI/browser editor contract is promoted; native desktop visual editor shell is a deferred product boundary, not a Bevy runtime gap. | Source-backed editor operations, inspector mappings, preview/build proof, gizmos/debug tools, hot reload, and native editor boundary. | `pnpm verify:focused verify:editor-package`, editor operation tests |
 | ⏭️ | Deferred or non-portable | Product boundary only: raw backend authoring/handles, networking/collaboration, 2D workflows, arbitrary platform APIs, and non-IR backend features are outside the portable contract. | Raw Bevy/Three.js authoring, backend handles, networking, 2D workflows, arbitrary platform APIs, and non-IR backend features. | Stable unsupported diagnostics |
 
+The 2026-07-09 engine remediation closed the audited adapter gaps for live
+renderable/component reconciliation, native rigid-body rotation/angular
+velocity and sensor semantics, six-face web cubemaps, bidirectional
+visibility, shadow-filter ownership, portable 32-layer capacity, absolute
+pointer retention, and web runtime resource ownership. Focused evidence lives
+in the web/native runtime tests, while shared contract coverage is retained by
+`pnpm verify:conformance`.
+
 ## Detailed Parity Rows
 
 Priority labels: `P0` blocks a simple game, `P1` is high-value small-game

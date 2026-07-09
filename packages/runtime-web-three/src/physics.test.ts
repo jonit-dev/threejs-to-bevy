@@ -3,7 +3,7 @@ import test from "node:test";
 
 import type { IEnvironmentSceneIr, IWorldIr } from "@threenative/ir";
 
-import { stepPhysics, tracePhysicsJoints, traceRigidBodyPrimitive } from "./physics.js";
+import { disposePhysicsRuntime, initializePhysicsRuntime, physicsRuntimeStats, stepPhysics, tracePhysicsJoints, traceRigidBodyPrimitive } from "./physics.js";
 
 test("physics should detect trigger overlap", () => {
   const world = makePhysicsWorld();
@@ -195,6 +195,27 @@ test("physics should report portable suspension joint metadata", () => {
   });
 
   assert.deepEqual(tracePhysicsJoints(world), [{ axis: [0, 1, 0], connectedEntity: "car", entity: "wheel.fl", kind: "suspension" }]);
+});
+
+test("physics should reuse the Rapier world while topology is unchanged", async () => {
+  await initializePhysicsRuntime();
+  const world = makeFallingBoxWorld();
+
+  stepPhysics(world, 1 / 60);
+  stepPhysics(world, 1 / 60);
+
+  assert.deepEqual(physicsRuntimeStats(world), { rebuilds: 1 });
+  world.entities.push({
+    id: "new-static",
+    components: {
+      Collider: { kind: "box", size: [1, 1, 1] },
+      RigidBody: { kind: "static" },
+      Transform: { position: [4, 0, 0] },
+    },
+  });
+  stepPhysics(world, 1 / 60);
+  assert.deepEqual(physicsRuntimeStats(world), { rebuilds: 2 });
+  disposePhysicsRuntime(world);
 });
 
 function makePhysicsWorld(): IWorldIr {

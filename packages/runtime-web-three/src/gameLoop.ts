@@ -109,7 +109,11 @@ export async function runGameFrame(options: {
     collectSystemResult(options.mapped, await runSchedule({ ...options, fixedDelta, frame: 0, schedule: "update", tick: 0 }));
     collectSystemResult(options.mapped, await runSchedule({ ...options, fixedDelta, frame: 0, schedule: "postUpdate", tick: 0 }));
   }
-  syncTransforms(options.world, options.mapped.objectsById);
+  if (options.mapped.reconcile !== undefined) {
+    options.mapped.reconcile(options.world);
+  } else {
+    syncTransforms(options.world, options.mapped.objectsById);
+  }
   if (state !== undefined) {
     applyFixedTransformInterpolation(options.mapped, state, fixedDelta);
   }

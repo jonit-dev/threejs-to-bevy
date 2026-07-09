@@ -27,7 +27,7 @@ import { applyEnvironmentBookmark, createEnvironmentRuntime, loadEnvironmentAsse
 import { applyAtmosphereProfile, applyEnvironmentLighting, applyThreeCompatFogDistance } from "./rendering.js";
 import { applyWebRenderLookProfile } from "./rendering/applyRenderLookProfile.js";
 import { createGameLoopState, runGameFrame } from "./gameLoop.js";
-import { initializePhysicsRuntime } from "./physics.js";
+import { disposePhysicsRuntime, initializePhysicsRuntime } from "./physics.js";
 import { attachInputListeners, createInputState } from "./input.js";
 import { hasKinematicMovers, stepKinematicMovers } from "./kinematicMover.js";
 import { loadSystemModuleUrl } from "./systems/moduleLoaderUrl.js";
@@ -94,6 +94,7 @@ export interface IWebRuntimeProbeObservations {
 
 export interface IRenderOptions {
   bookmarkId?: string;
+  captureDrawingBuffer?: boolean;
   debugColliders?: boolean;
   systemModuleLoader?: (source: string, manifest: IWebBundle["manifest"]) => Promise<ISystemModule>;
 }
@@ -192,6 +193,7 @@ export interface IWebScreenSpaceReflectionsSettings {
 }
 
 interface IRenderPipeline {
+  dispose(): void;
   render(delta?: number): void;
   setSize(width: number, height: number): void;
 }
@@ -253,7 +255,7 @@ export async function renderLoadedBundle(bundle: IWebBundle, container: HTMLElem
   const effectLog = createSystemEffectLog();
   const resourceObservations: IResourceObservation[] = [];
   const systemModule = await (options.systemModuleLoader ?? loadSystemModuleUrl)(source, bundle.manifest);
-  const renderer = new THREE.WebGLRenderer(webRendererParameters(bundle.runtimeConfig));
+  const renderer = new THREE.WebGLRenderer(webRendererParameters(bundle.runtimeConfig, options.captureDrawingBuffer));
   const renderLook = applyWebRenderLookProfile(bundle.runtimeConfig);
   applyRendererColorManagement(renderer, bundle.environmentScene?.atmosphere?.colorManagement, renderLook.colorGrading);
   applyRendererShadowSettings(renderer, bundle.runtimeConfig);
@@ -264,12 +266,21 @@ export async function renderLoadedBundle(bundle: IWebBundle, container: HTMLElem
   const ui = bundle.ui === undefined ? undefined : renderUi(bundle.ui, bundle.world);
   const uiOverlay = ui === undefined ? undefined : createUiDomOverlay(ui);
   const overlayHost = bundle.overlays === undefined ? undefined : createWebOverlayHost(bundle.overlays, source);
-  if (bundle.audio !== undefined) {
-    const audioSink = createWebAudioElementSink(source, bundle.assets);
-    const audioRuntime = createWebAudioRuntime(bundle.audio, audioSink);
+  const audioSink = bundle.audio === undefined ? undefined : createWebAudioElementSink(source, bundle.assets);
+  const audioRuntime = bundle.audio === undefined ? undefined : createWebAudioRuntime(bundle.audio, audioSink);
+  const audioEventCursors = new Map<string, unknown[]>();
+  let audioDiagnosticCursor = 0;
+  const consumeAudioEvents = () => {
+    if (audioRuntime === undefined || audioSink === undefined) {
+      return;
+    }
+    audioRuntime.handleEvents(newAudioEvents(bundle.world.events ?? {}, audioEventCursors));
+    mapped.diagnostics.push(...audioSink.diagnostics.slice(audioDiagnosticCursor));
+    audioDiagnosticCursor = audioSink.diagnostics.length;
+  };
+  if (audioRuntime !== undefined) {
     audioRuntime.start();
-    audioRuntime.handleEvents(audioEvents(bundle.world.events ?? {}));
-    mapped.diagnostics.push(...audioSink.diagnostics);
+    consumeAudioEvents();
   }
 
   let performanceTrace: number[] = [];
@@ -299,10 +310,11 @@ export async function renderLoadedBundle(bundle: IWebBundle, container: HTMLElem
       uiState: ui,
       world: bundle.world,
     });
+    consumeAudioEvents();
     uiOverlay?.update();
   } else if (hasKinematicMovers(bundle.world)) {
     stepKinematicMovers(bundle.world, 1 / 60);
-    syncTransforms(bundle.world, mapped.objectsById);
+    mapped.reconcile?.(bundle.world);
     uiOverlay?.update();
   }
   advanceAnimationPlayback(mapped, 1 / 60);
@@ -310,14 +322,28 @@ export async function renderLoadedBundle(bundle: IWebBundle, container: HTMLElem
   pipeline.render();
   logStartupDiagnostics(mapped.diagnostics);
   let lifecycle: IWebRenderLifecycle | undefined;
+  let resourcesDisposed = false;
+  const disposeRuntimeResources = () => {
+    if (resourcesDisposed) {
+      return;
+    }
+    resourcesDisposed = true;
+    detachInputListeners();
+    audioSink?.dispose();
+    uiOverlay?.dispose();
+    overlayHost?.dispose();
+    disposePhysicsRuntime(bundle.world);
+    pipeline.dispose();
+    disposeThreeWorld(mapped);
+    renderer.dispose();
+  };
   if (bundle.systems !== undefined || hasAnimationPlayback(mapped) || hasKinematicMovers(bundle.world)) {
     const frameTimings = createFrameTimingTrace();
     resetPerformanceTrace = () => frameTimings.reset();
     lifecycle = createWebRenderLifecycle({
       diagnostics: mapped.diagnostics,
       onDispose: () => {
-        detachInputListeners();
-        renderer.dispose();
+        disposeRuntimeResources();
       },
       async frame(time: number) {
         const timing = frameTimings.record(time);
@@ -341,11 +367,13 @@ export async function renderLoadedBundle(bundle: IWebBundle, container: HTMLElem
             uiState: ui,
             world: bundle.world,
           });
+          consumeAudioEvents();
         } else if (hasKinematicMovers(bundle.world)) {
           stepKinematicMovers(bundle.world, loopState.elapsed + delta);
           loopState.elapsed += delta;
-          syncTransforms(bundle.world, mapped.objectsById);
+          mapped.reconcile?.(bundle.world);
         }
+        mapped.reconcile?.(bundle.world);
         advanceAnimationPlayback(mapped, delta);
         uiOverlay?.update();
         colliderDebugOverlay?.update();
@@ -360,11 +388,10 @@ export async function renderLoadedBundle(bundle: IWebBundle, container: HTMLElem
     canvas,
     diagnostics: mapped.diagnostics,
     dispose() {
-      lifecycle?.dispose();
       colliderDebugOverlay?.dispose();
+      lifecycle?.dispose();
       if (lifecycle === undefined) {
-        detachInputListeners();
-        renderer.dispose();
+        disposeRuntimeResources();
       }
     },
     debugColliderCount: colliderDebugOverlay?.count ?? 0,
@@ -625,10 +652,15 @@ function createColliderDebugOverlay(mapped: IThreeWorld, world: IWorldIr): IColl
     return [{ collider, mesh, object }];
   });
   mapped.scene.add(root);
+  let disposed = false;
 
   return {
     count: items.length,
     dispose() {
+      if (disposed) {
+        return;
+      }
+      disposed = true;
       mapped.scene.remove(root);
       root.traverse((object) => {
         if (object instanceof THREE.Mesh) {
@@ -960,19 +992,29 @@ function assertSceneReady(diagnostics: readonly IRuntimeDiagnostic[]): void {
   }
 }
 
-function audioEvents(events: Record<string, unknown>): Array<{ event: string; payload: unknown }> {
-  return Object.entries(events).flatMap(([event, payloads]) =>
-    Array.isArray(payloads)
-      ? payloads.map((payload) => ({ event, payload }))
-      : [{ event, payload: payloads }],
-  );
+export function newAudioEvents(
+  events: Record<string, unknown>,
+  cursors: Map<string, unknown[]>,
+): Array<{ event: string; payload: unknown }> {
+  const fresh: Array<{ event: string; payload: unknown }> = [];
+  for (const [event, payloads] of Object.entries(events)) {
+    const values = Array.isArray(payloads) ? payloads : [payloads];
+    const previous = cursors.get(event) ?? [];
+    const preservesPrefix = previous.length <= values.length
+      && previous.every((payload, index) => Object.is(payload, values[index]));
+    for (const payload of values.slice(preservesPrefix ? previous.length : 0)) {
+      fresh.push({ event, payload });
+    }
+    cursors.set(event, [...values]);
+  }
+  return fresh;
 }
 
-export function webRendererParameters(config?: IRuntimeConfigIr): THREE.WebGLRendererParameters {
+export function webRendererParameters(config?: IRuntimeConfigIr, captureDrawingBuffer = false): THREE.WebGLRendererParameters {
   const antialias = config?.renderer?.antialias;
   return {
     antialias: antialias === undefined || antialias === "msaa2" || antialias === "msaa4" || antialias === "msaa8",
-    preserveDrawingBuffer: true,
+    preserveDrawingBuffer: captureDrawingBuffer,
   };
 }
 
@@ -1188,6 +1230,7 @@ function createRenderPipeline(
   const useComposer = backbufferViews.length <= 1 && (bloom.enabled || ambientOcclusion.enabled || depthOfField.enabled || motionBlur.enabled || screenSpaceReflections.enabled || needsColorGradingPass(colorGrading));
   if (!useComposer) {
     return {
+      dispose: () => disposeRenderTargets(renderTargets),
       render: (delta = 0) => {
         renderCameraViews(renderer, mapped, world, delta, renderTargets);
       },
@@ -1217,6 +1260,13 @@ function createRenderPipeline(
   composer.addPass(new OutputPass());
   const composerClear = backbufferViews[0]?.clear;
   return {
+    dispose: () => {
+      for (const pass of composer.passes) {
+        pass.dispose?.();
+      }
+      composer.dispose();
+      disposeRenderTargets(renderTargets);
+    },
     // The composer path bypasses renderCameraViews, so camera helpers
     // (follow/orbit/view-model/shake) and camera clear must still advance here.
     render: (delta = 0) => {
@@ -1233,6 +1283,53 @@ function createRenderPipeline(
     },
     setSize: (width, height) => composer.setSize(width, height),
   };
+}
+
+function disposeRenderTargets(registry: IRenderTargetRegistry | undefined): void {
+  for (const entry of registry?.entries.values() ?? []) {
+    entry.target.dispose();
+  }
+  registry?.entries.clear();
+}
+
+export function disposeThreeWorld(mapped: IThreeWorld): void {
+  const geometries = new Set<THREE.BufferGeometry>();
+  const materials = new Set<THREE.Material>();
+  const textures = new Set<THREE.Texture>();
+  mapped.scene.traverse((object) => {
+    if (object instanceof THREE.Mesh) {
+      geometries.add(object.geometry);
+      for (const material of Array.isArray(object.material) ? object.material : [object.material]) {
+        materials.add(material);
+      }
+    }
+    if (object instanceof THREE.SkinnedMesh) {
+      object.skeleton.dispose();
+    }
+  });
+  for (const material of materials) {
+    for (const value of Object.values(material)) {
+      if (value instanceof THREE.Texture) {
+        textures.add(value);
+      }
+    }
+    material.dispose();
+  }
+  if (mapped.scene.background instanceof THREE.Texture) {
+    textures.add(mapped.scene.background);
+  }
+  if (mapped.scene.environment instanceof THREE.Texture) {
+    textures.add(mapped.scene.environment);
+  }
+  for (const geometry of geometries) {
+    geometry.dispose();
+  }
+  for (const texture of textures) {
+    texture.dispose();
+  }
+  mapped.scene.clear();
+  mapped.objectsById.clear();
+  mapped.cameras.clear();
 }
 
 function webBloomPassStrength(intensity: number): number {

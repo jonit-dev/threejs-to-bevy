@@ -1,7 +1,9 @@
 use std::cell::RefCell;
 use std::collections::BTreeMap;
 use std::collections::BTreeSet;
+use std::hash::{DefaultHasher, Hash, Hasher};
 
+use rapier3d::glamx::{Quat as RapierQuat, Vec3 as RapierVec3};
 use rapier3d::prelude::*;
 use serde::Serialize;
 use threenative_loader::{AssetIr, ColliderComponent, LoadedBundle, WorldEntity};
@@ -181,20 +183,25 @@ pub fn step_bundle_physics_with_script_poses(
         [0.0, -9.81, 0.0],
         script_posed_entities,
     );
+    let entity_indexes = bundle
+        .world
+        .entities
+        .iter()
+        .enumerate()
+        .map(|(index, entity)| (entity.id.clone(), index))
+        .collect::<BTreeMap<_, _>>();
     for simulated in entities {
-        let Some(entity) = bundle
-            .world
-            .entities
-            .iter_mut()
-            .find(|entity| entity.id == simulated.id)
-        else {
+        let Some(index) = entity_indexes.get(&simulated.id).copied() else {
             continue;
         };
+        let entity = &mut bundle.world.entities[index];
         if let Some(transform) = entity.components.transform.as_mut() {
             transform.position = Some(simulated.center);
+            transform.rotation = Some(simulated.rotation);
         }
         if let Some(body) = entity.components.rigid_body.as_mut() {
             body.velocity = simulated.velocity;
+            body.angular_velocity = simulated.angular_velocity;
         }
     }
 }
@@ -422,6 +429,7 @@ fn entity_bottom(entity: &SimulatedEntity) -> f32 {
 
 #[derive(Clone)]
 struct SimulatedEntity {
+    angular_velocity: Option<[f32; 3]>,
     body_kind: Option<String>,
     ccd: bool,
     center: [f32; 3],
@@ -441,6 +449,7 @@ struct SimulatedEntity {
     mass: Option<f32>,
     radius: Option<f32>,
     restitution: f32,
+    rotation: [f32; 4],
     solver_iterations: Option<u32>,
     trigger: bool,
     velocity: Option<[f32; 3]>,
@@ -488,6 +497,7 @@ fn simulated_heightfield_terrain(bundle: &LoadedBundle) -> Option<SimulatedEntit
         (terrain.bounds.min[2] + terrain.bounds.max[2]) / 2.0,
     ];
     Some(SimulatedEntity {
+        angular_velocity: None,
         body_kind: Some("static".to_owned()),
         ccd: false,
         center,
@@ -511,6 +521,7 @@ fn simulated_heightfield_terrain(bundle: &LoadedBundle) -> Option<SimulatedEntit
         mass: None,
         radius: None,
         restitution: 0.0,
+        rotation: [0.0, 0.0, 0.0, 1.0],
         solver_iterations: None,
         trigger: false,
         velocity: None,
@@ -589,7 +600,7 @@ fn step_rapier_bodies(
     fixed_delta: f32,
     gravity: [f32; 3],
     script_posed_entities: &BTreeSet<String>,
-) -> BTreeMap<String, Vec<String>> {
+) {
     RAPIER_CACHE.with(|cache| {
         let mut cache = cache.borrow_mut();
         let signature = rapier_world_signature(entities, gravity);
@@ -608,12 +619,12 @@ fn step_rapier_bodies(
 
 struct PersistentRapierWorld {
     handles: BTreeMap<String, RigidBodyHandle>,
-    signature: Vec<String>,
+    signature: u64,
     world: PhysicsWorld,
 }
 
 impl PersistentRapierWorld {
-    fn new(entities: &[SimulatedEntity], gravity: [f32; 3], signature: Vec<String>) -> Self {
+    fn new(entities: &[SimulatedEntity], gravity: [f32; 3], signature: u64) -> Self {
         let mut world = PhysicsWorld::new();
         world.gravity = vector![gravity[0], gravity[1], gravity[2]].into();
         world.integration_parameters.num_solver_iterations = 12;
@@ -623,12 +634,20 @@ impl PersistentRapierWorld {
             let Some(body_kind) = entity.body_kind.as_deref() else {
                 continue;
             };
+            let rotation = RapierQuat::from_xyzw(
+                entity.rotation[0],
+                entity.rotation[1],
+                entity.rotation[2],
+                entity.rotation[3],
+            )
+            .normalize();
             let mut body = match body_kind {
                 "dynamic" => RigidBodyBuilder::dynamic(),
                 "kinematic" => RigidBodyBuilder::kinematic_velocity_based(),
                 _ => RigidBodyBuilder::fixed(),
             }
             .translation(vector![entity.center[0], entity.center[1], entity.center[2]].into())
+            .rotation(rotation.to_scaled_axis())
             .linvel(vector![0.0, 0.0, 0.0].into())
             .gravity_scale(if body_kind == "dynamic" {
                 entity.gravity_scale
@@ -643,6 +662,13 @@ impl PersistentRapierWorld {
             }
             if let Some(enabled) = entity.enabled_rotations {
                 body = body.enabled_rotations(enabled[0], enabled[1], enabled[2]);
+            }
+            if let Some(angular_velocity) = constrained_angular_velocity(entity) {
+                body = body.angvel(RapierVec3::new(
+                    angular_velocity[0],
+                    angular_velocity[1],
+                    angular_velocity[2],
+                ));
             }
             if let Some(mass) = entity.mass {
                 if body_kind == "dynamic" {
@@ -683,7 +709,7 @@ impl PersistentRapierWorld {
         entities: &mut [SimulatedEntity],
         fixed_delta: f32,
         script_posed_entities: &BTreeSet<String>,
-    ) -> BTreeMap<String, Vec<String>> {
+    ) {
         let substeps = physics_substeps(fixed_delta);
         self.world.integration_parameters.dt = fixed_delta / substeps as f32;
 
@@ -706,7 +732,24 @@ impl PersistentRapierWorld {
                 vector![entity.center[0], entity.center[1], entity.center[2]].into(),
                 false,
             );
+            let rotation = RapierQuat::from_xyzw(
+                entity.rotation[0],
+                entity.rotation[1],
+                entity.rotation[2],
+                entity.rotation[3],
+            )
+            .normalize();
+            body.set_rotation(rotation, false);
             body.set_linvel(vector![velocity[0], velocity[1], velocity[2]].into(), false);
+            let angular_velocity = constrained_angular_velocity(entity).unwrap_or([0.0, 0.0, 0.0]);
+            body.set_angvel(
+                RapierVec3::new(
+                    angular_velocity[0],
+                    angular_velocity[1],
+                    angular_velocity[2],
+                ),
+                false,
+            );
         }
 
         for _ in 0..substeps {
@@ -720,90 +763,75 @@ impl PersistentRapierWorld {
             let source_velocity = entity.velocity.unwrap_or([0.0, 0.0, 0.0]);
             let body = &self.world.bodies[*handle];
             let translation = body.translation();
+            let rotation = body.rotation();
             let velocity = body.linvel();
+            let angular_velocity = body.angvel();
             if entity.body_kind.as_deref() == Some("kinematic")
                 && script_posed_entities.contains(&entity.id)
             {
                 entity.velocity = Some(source_velocity);
             } else {
                 entity.center = [translation.x, translation.y, translation.z];
+                entity.rotation = [rotation.x, rotation.y, rotation.z, rotation.w];
                 entity.velocity = Some([velocity.x, velocity.y, velocity.z]);
+                entity.angular_velocity =
+                    Some([angular_velocity.x, angular_velocity.y, angular_velocity.z]);
             }
         }
-
-        contacts_from_overlaps(entities)
     }
 }
 
-fn rapier_world_signature(entities: &[SimulatedEntity], gravity: [f32; 3]) -> Vec<String> {
-    let layer_bits = layer_bits_for_entities(entities);
-    let mut signature = vec![format!(
-        "gravity:{}/{}/{}",
-        gravity[0].to_bits(),
-        gravity[1].to_bits(),
-        gravity[2].to_bits()
-    )];
-    signature.extend(entities.iter().filter_map(|entity| {
-        let body_kind = entity.body_kind.as_deref()?;
-        let groups = rapier_collision_groups(entity, &layer_bits);
-        Some(format!(
-            concat!(
-                "{}|body={}|ccd={}|collider={}|center={}/{}/{}|collider_center={}/{}/{}|",
-                "damping={}|enabled_t={:?}|enabled_r={:?}|friction={}|gravity={}|height={:?}|heightfield={}|",
-                "half={}/{}/{}|layer={:?}|mask={:?}|mass={:?}|radius={:?}|restitution={}|solver={:?}|trigger={}|groups={:?}"
-            ),
-            entity.id,
-            body_kind,
-            entity.ccd,
-            entity.collider_kind,
-            0,
-            0,
-            0,
-            entity.collider_center[0].to_bits(),
-            entity.collider_center[1].to_bits(),
-            entity.collider_center[2].to_bits(),
-            entity.damping.to_bits(),
-            entity.enabled_translations,
-            entity.enabled_rotations,
-            entity.friction.to_bits(),
-            entity.gravity_scale.to_bits(),
-            entity.height.map(f32::to_bits),
-            heightfield_signature(entity.heightfield.as_ref()),
-            entity.half_extents[0].to_bits(),
-            entity.half_extents[1].to_bits(),
-            entity.half_extents[2].to_bits(),
-            entity.layer,
-            entity.mask,
-            entity.mass.map(f32::to_bits),
-            entity.radius.map(f32::to_bits),
-            entity.restitution.to_bits(),
-            entity.solver_iterations,
-            entity.trigger,
-            groups
-        ))
-    }));
-    signature.sort();
-    signature
+fn constrained_angular_velocity(entity: &SimulatedEntity) -> Option<[f32; 3]> {
+    let mut angular_velocity = entity.angular_velocity?;
+    if let Some(enabled) = entity.enabled_rotations {
+        for axis in 0..3 {
+            if !enabled[axis] {
+                angular_velocity[axis] = 0.0;
+            }
+        }
+    }
+    Some(angular_velocity)
 }
 
-fn heightfield_signature(heightfield: Option<&HeightfieldCollider>) -> String {
-    let Some(heightfield) = heightfield else {
-        return "none".to_owned();
-    };
-    let heights = heightfield
-        .heights
-        .iter()
-        .map(|height| height.to_bits().to_string())
-        .collect::<Vec<_>>()
-        .join(",");
-    format!(
-        "{}x{}:{}/{}/{}:{heights}",
-        heightfield.rows,
-        heightfield.cols,
-        heightfield.scale[0].to_bits(),
-        heightfield.scale[1].to_bits(),
-        heightfield.scale[2].to_bits()
-    )
+fn rapier_world_signature(entities: &[SimulatedEntity], gravity: [f32; 3]) -> u64 {
+    let mut signature = DefaultHasher::new();
+    gravity.map(f32::to_bits).hash(&mut signature);
+    for entity in entities {
+        let Some(body_kind) = entity.body_kind.as_deref() else {
+            continue;
+        };
+        entity.id.hash(&mut signature);
+        body_kind.hash(&mut signature);
+        entity.ccd.hash(&mut signature);
+        entity.collider_kind.hash(&mut signature);
+        entity
+            .collider_center
+            .map(f32::to_bits)
+            .hash(&mut signature);
+        entity.damping.to_bits().hash(&mut signature);
+        entity.enabled_translations.hash(&mut signature);
+        entity.enabled_rotations.hash(&mut signature);
+        entity.friction.to_bits().hash(&mut signature);
+        entity.gravity_scale.to_bits().hash(&mut signature);
+        entity.height.map(f32::to_bits).hash(&mut signature);
+        if let Some(heightfield) = entity.heightfield.as_ref() {
+            heightfield.rows.hash(&mut signature);
+            heightfield.cols.hash(&mut signature);
+            heightfield.scale.map(f32::to_bits).hash(&mut signature);
+            for height in &heightfield.heights {
+                height.to_bits().hash(&mut signature);
+            }
+        }
+        entity.half_extents.map(f32::to_bits).hash(&mut signature);
+        entity.layer.hash(&mut signature);
+        entity.mask.hash(&mut signature);
+        entity.mass.map(f32::to_bits).hash(&mut signature);
+        entity.radius.map(f32::to_bits).hash(&mut signature);
+        entity.restitution.to_bits().hash(&mut signature);
+        entity.solver_iterations.hash(&mut signature);
+        entity.trigger.hash(&mut signature);
+    }
+    signature.finish()
 }
 
 fn physics_substeps(fixed_delta: f32) -> usize {
@@ -893,35 +921,11 @@ fn rapier_collider(entity: &SimulatedEntity) -> ColliderBuilder {
     }
 }
 
-fn contacts_from_overlaps(entities: &[SimulatedEntity]) -> BTreeMap<String, Vec<String>> {
-    let mut contacts: BTreeMap<String, Vec<String>> = BTreeMap::new();
-    for pair in detect_pairs(
-        entities
-            .iter()
-            .map(simulated_entity_bounds)
-            .collect::<Vec<_>>(),
-    )
-    .values()
-    {
-        contacts
-            .entry(pair.a.clone())
-            .or_default()
-            .push(pair.b.clone());
-        contacts
-            .entry(pair.b.clone())
-            .or_default()
-            .push(pair.a.clone());
-    }
-    for values in contacts.values_mut() {
-        values.sort();
-    }
-    contacts
-}
-
 fn simulated_entity(entity: &WorldEntity) -> Option<SimulatedEntity> {
     let collider = entity.components.collider.as_ref()?;
     let body = entity.components.rigid_body.as_ref();
     Some(SimulatedEntity {
+        angular_velocity: body.and_then(|body| body.angular_velocity),
         body_kind: body.map(|body| body.kind.clone()),
         ccd: body
             .and_then(|body| body.ccd.as_ref())
@@ -949,8 +953,14 @@ fn simulated_entity(entity: &WorldEntity) -> Option<SimulatedEntity> {
         mass: body.and_then(|body| body.mass),
         radius: collider.radius,
         restitution: collider.restitution.unwrap_or(0.0),
+        rotation: entity
+            .components
+            .transform
+            .as_ref()
+            .and_then(|transform| transform.rotation)
+            .unwrap_or([0.0, 0.0, 0.0, 1.0]),
         solver_iterations: body.and_then(|body| body.solver_iterations),
-        trigger: collider.trigger.unwrap_or(false),
+        trigger: collider.trigger.unwrap_or(false) || collider.sensor.is_some(),
         velocity: body.and_then(|body| body.velocity),
     })
 }
@@ -1039,7 +1049,7 @@ fn entity_bounds(entity: &WorldEntity) -> Option<Bounds<'_>> {
         id: &entity.id,
         layer: collider.layer.as_deref(),
         mask: collider.mask.as_deref().unwrap_or(&[]),
-        trigger: collider.trigger.unwrap_or(false),
+        trigger: collider.trigger.unwrap_or(false) || collider.sensor.is_some(),
     })
 }
 

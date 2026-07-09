@@ -1,6 +1,7 @@
 import type { IRenderedUi, IRenderedUiNode } from "./renderUi.js";
 
 export interface IUiDomOverlay {
+  dispose(): void;
   element: HTMLElement;
   update(): void;
 }
@@ -24,7 +25,7 @@ export function createUiDomOverlay(rendered: IRenderedUi, doc: Document = docume
   applySafeAreaStyle(element, rendered.safeArea);
   updateNodeElement(rendered.root, nodes);
   updateContextMenus(rendered.root, nodes, state);
-  doc.addEventListener?.("click", (event) => {
+  const handleDocumentClick = (event: Event) => {
     if (state.openMenuId === undefined) {
       return;
     }
@@ -36,9 +37,14 @@ export function createUiDomOverlay(rendered: IRenderedUi, doc: Document = docume
       return;
     }
     closeContextMenu(rendered.root, nodes, state);
-  });
+  };
+  doc.addEventListener?.("click", handleDocumentClick);
 
   return {
+    dispose() {
+      doc.removeEventListener?.("click", handleDocumentClick);
+      element.remove();
+    },
     element,
     update() {
       rendered.update();

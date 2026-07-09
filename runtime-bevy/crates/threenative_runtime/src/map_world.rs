@@ -25,10 +25,11 @@ use bevy::{
         },
     },
     pbr::{
-        DefaultOpaqueRendererMethod, FogFalloff, FogSettings, Material, MaterialMeshBundle,
-        MaterialPlugin, NotShadowCaster, NotShadowReceiver, ScreenSpaceAmbientOcclusionBundle,
-        ScreenSpaceAmbientOcclusionQualityLevel, ScreenSpaceAmbientOcclusionSettings,
-        ScreenSpaceReflectionsBundle, ScreenSpaceReflectionsSettings, ShadowFilteringMethod,
+        DefaultOpaqueRendererMethod, DirectionalLightShadowMap, FogFalloff, FogSettings, Material,
+        MaterialMeshBundle, MaterialPlugin, NotShadowCaster, NotShadowReceiver,
+        ScreenSpaceAmbientOcclusionBundle, ScreenSpaceAmbientOcclusionQualityLevel,
+        ScreenSpaceAmbientOcclusionSettings, ScreenSpaceReflectionsBundle,
+        ScreenSpaceReflectionsSettings, ShadowFilteringMethod,
     },
     prelude::*,
     reflect::TypePath,
@@ -217,6 +218,23 @@ impl Plugin for NativePortableShaderMaterialPlugin {
 
 #[derive(Default, Resource)]
 pub struct NativeMappedWorldEntityIds(pub BTreeSet<String>);
+
+#[derive(Default, Resource)]
+pub struct NativeMappedWorldEntitySignatures(pub HashMap<String, String>);
+
+pub fn native_engine_component_signature(entity: &WorldEntity) -> String {
+    format!(
+        "camera={:?}|collider={:?}|hierarchy={:?}|light={:?}|mesh={:?}|layers={:?}|body={:?}|visibility={:?}",
+        entity.components.camera,
+        entity.components.collider,
+        entity.components.hierarchy,
+        entity.components.light,
+        entity.components.mesh_renderer,
+        entity.components.render_layers,
+        entity.components.rigid_body,
+        entity.components.visibility,
+    )
+}
 
 pub struct NativeWorldEntitySpawnContext<'a> {
     active_cameras: HashSet<String>,
@@ -411,6 +429,14 @@ pub fn map_bundle_into_world(world: &mut World, bundle: &LoadedBundle) -> Result
             .entities
             .iter()
             .map(|entity| entity.id.clone())
+            .collect(),
+    ));
+    world.insert_resource(NativeMappedWorldEntitySignatures(
+        bundle
+            .world
+            .entities
+            .iter()
+            .map(|entity| (entity.id.clone(), native_engine_component_signature(entity)))
             .collect(),
     ));
 
@@ -698,6 +724,10 @@ fn apply_runtime_config(world: &mut World, config: Option<&RuntimeConfigIr>) {
         _ => Msaa::Sample4,
     };
     world.insert_resource(msaa);
+    let shadow_quality = native_render_look_shadow_quality(config);
+    world.insert_resource(DirectionalLightShadowMap {
+        size: native_shadow_map_size(shadow_quality) as usize,
+    });
     if config
         .and_then(|config| config.renderer.as_ref())
         .and_then(|renderer| renderer.screen_space_reflections.as_ref())
@@ -705,6 +735,44 @@ fn apply_runtime_config(world: &mut World, config: Option<&RuntimeConfigIr>) {
     {
         world.insert_resource(DefaultOpaqueRendererMethod::deferred());
     }
+}
+
+fn native_render_look_shadow_quality(config: Option<&RuntimeConfigIr>) -> Option<&str> {
+    let Some(render_look) = config
+        .and_then(|config| config.renderer.as_ref())
+        .and_then(|renderer| renderer.render_look.as_ref())
+    else {
+        return None;
+    };
+    Some(
+        render_look
+            .overrides
+            .as_ref()
+            .and_then(|overrides| overrides.shadow_quality.as_deref())
+            .unwrap_or(match render_look.profile.as_str() {
+                "balanced" | "cinematic" => "high",
+                "stylized" | "parity" => "medium",
+                _ => "medium",
+            }),
+    )
+}
+
+fn native_shadow_map_size(quality: Option<&str>) -> u32 {
+    match quality {
+        Some("high") => 2048,
+        Some("medium") | None => 1024,
+        _ => 512,
+    }
+}
+
+fn insert_camera_shadow_profile(spawned: &mut EntityWorldMut, config: Option<&RuntimeConfigIr>) {
+    let Some(quality) = native_render_look_shadow_quality(config) else {
+        return;
+    };
+    spawned.insert(match quality {
+        "high" => ShadowFilteringMethod::Gaussian,
+        _ => ShadowFilteringMethod::Hardware2x2,
+    });
 }
 
 fn ensure_ambient_light_contract(

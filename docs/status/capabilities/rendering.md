@@ -83,6 +83,11 @@ Current support:
   `tools/verify/artifacts/render-look/`.
 - Web Three.js is the primary runtime adapter; Bevy native parity is tracked
   separately.
+- Runtime renderable spawn/despawn and engine-facing component changes now
+  reconcile into both live adapters. Web cubemaps resolve all six ordered
+  faces, runtime visibility restores in both directions, render layers share a
+  validated 32-layer portable limit, and web teardown owns audio, overlays,
+  post-processing, render targets, and scene GPU resources.
 
 Verification:
 

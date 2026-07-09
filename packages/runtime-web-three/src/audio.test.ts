@@ -170,6 +170,10 @@ test("audio element sink should play bundle local one shots and loops", () => {
   assert.equal(elements[1]?.volume, 0.75);
   assert.equal(elements[1]?.plays, 1);
   assert.deepEqual(sink.diagnostics, []);
+
+  sink.dispose();
+  assert.deepEqual(elements.map((element) => element.pauses), [1, 1]);
+  assert.deepEqual(elements.map((element) => element.currentTime), [0, 0]);
 });
 
 test("audio element sink should diagnose missing audio assets", () => {
@@ -224,10 +228,15 @@ class FakeAudioElement implements IWebAudioElement {
   currentTime = 0;
   loop = false;
   plays = 0;
+  pauses = 0;
   src = "";
   volume = 1;
 
   play(): void {
     this.plays += 1;
+  }
+
+  pause(): void {
+    this.pauses += 1;
   }
 }

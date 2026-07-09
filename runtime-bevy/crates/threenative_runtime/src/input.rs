@@ -22,6 +22,7 @@ pub struct NativeInputMap(pub InputIr);
 pub struct NativeInputState {
     actions: HashSet<String>,
     axes: HashMap<String, f32>,
+    pointer_position: Option<Vec2>,
 }
 
 pub fn apply_native_pointer_delta_cursor_policy(
@@ -210,6 +211,7 @@ impl NativeInputState {
         Self {
             actions: actions.into_iter().map(str::to_owned).collect(),
             axes: HashMap::new(),
+            pointer_position: None,
         }
     }
 
@@ -895,7 +897,10 @@ pub fn capture_native_input(
     let pointer_delta = mouse_motion
         .read()
         .fold(Vec2::ZERO, |total, event| total + event.delta);
-    let pointer_position = cursor_moved.read().last().map(|event| event.position);
+    if let Some(position) = cursor_moved.read().last().map(|event| event.position) {
+        state.pointer_position = Some(position);
+    }
+    let pointer_position = state.pointer_position;
     let window_size = windows
         .get_single()
         .ok()

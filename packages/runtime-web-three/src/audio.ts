@@ -24,10 +24,12 @@ export interface IWebAudioElement {
   currentTime: number;
   volume: number;
   play(): Promise<void> | void;
+  pause(): void;
 }
 
 export interface IWebAudioElementSink extends IWebAudioSink {
   diagnostics: IRuntimeDiagnostic[];
+  dispose(): void;
 }
 
 export interface IWebAudioRuntime {
@@ -195,9 +197,18 @@ export function createWebAudioElementSink(
   const resolvedAssets = resolveWebAssets(source, assets);
   const diagnostics: IRuntimeDiagnostic[] = [];
   const loops = new Map<string, IWebAudioElement>();
+  const elements = new Set<IWebAudioElement>();
 
   return {
     diagnostics,
+    dispose() {
+      for (const element of elements) {
+        element.pause();
+        element.currentTime = 0;
+      }
+      elements.clear();
+      loops.clear();
+    },
     queue(command) {
       const asset = resolvedAssets.get(command.asset);
       if (asset?.asset.kind !== "audio") {
@@ -211,6 +222,7 @@ export function createWebAudioElementSink(
       }
 
       const element = command.kind === "loop" ? loops.get(command.id) ?? createElement() : createElement();
+      elements.add(element);
       element.src = asset.url;
       element.loop = command.kind === "loop";
       element.currentTime = 0;

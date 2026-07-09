@@ -291,7 +291,6 @@ pub fn app_from_bundle_with_options(
             assets::apply_loaded_texture_controls,
             map_world::bind_native_animation_players,
             map_world::animate_native_stylized_motion,
-            cameras::update_native_camera_helpers,
         ),
     );
     if has_scripts {
@@ -300,6 +299,7 @@ pub fn app_from_bundle_with_options(
             observations: Vec::new(),
         });
         app.insert_resource(ScriptedRuntimeBundle { bundle });
+        app.init_resource::<NativeRuntimeDirtyState>();
         app.insert_non_send_resource(ScriptedRuntimeMainThread);
         app.insert_resource(systems_host::NativeGameLoopState::new(initially_paused));
         app.init_resource::<map_world::NativeAnimationServiceQueue>();
@@ -309,9 +309,12 @@ pub fn app_from_bundle_with_options(
                 run_scripted_runtime_systems,
                 reconcile_scripted_runtime_world,
                 map_world::apply_native_animation_service_effects,
+                cameras::update_native_camera_helpers,
             )
                 .chain(),
         );
+    } else {
+        app.add_systems(Update, cameras::update_native_camera_helpers);
     }
     Ok(app)
 }
@@ -503,10 +506,16 @@ pub struct ScriptedRuntimeBundle {
 
 struct ScriptedRuntimeMainThread;
 
+#[derive(Default, Resource)]
+struct NativeRuntimeDirtyState {
+    live_reconciliation: bool,
+}
+
 #[derive(SystemParam)]
 struct ScriptedRuntimeParams<'w> {
     runtime: Option<ResMut<'w, ScriptedRuntimeBundle>>,
     loop_state: Option<ResMut<'w, systems_host::NativeGameLoopState>>,
+    dirty_state: Option<ResMut<'w, NativeRuntimeDirtyState>>,
 }
 
 fn run_scripted_runtime_systems(
@@ -572,6 +581,7 @@ fn run_scripted_runtime_systems(
         ))
     };
 
+    let mut requires_live_reconciliation = false;
     for _ in 0..frame_count {
         let options = systems_host::NativeGameLoopRunOptions {
             delta,
@@ -588,6 +598,11 @@ fn run_scripted_runtime_systems(
         );
         match run {
             Ok(run) => {
+                requires_live_reconciliation |= run.logs.iter().any(|log| {
+                    log.entries
+                        .iter()
+                        .any(|entry| entry.reconciliation.is_some())
+                });
                 if let Some(observations) = resource_observations.as_deref_mut() {
                     observations.observations.extend(run.resource_observations);
                     let overflow = observations.observations.len().saturating_sub(200);
@@ -605,6 +620,9 @@ fn run_scripted_runtime_systems(
             }
         }
     }
+    if let Some(dirty_state) = scripted.dirty_state.as_deref_mut() {
+        dirty_state.live_reconciliation |= requires_live_reconciliation;
+    }
     if fast_forward.is_some_and(|advance| advance.0 > 0) {
         commands.insert_resource(proof_harness::NativeProofHarnessFastForward::default());
     }
@@ -614,15 +632,23 @@ fn run_scripted_runtime_systems(
     } else {
         Some(&**loop_state)
     };
+    let entities_by_id = runtime
+        .bundle
+        .world
+        .entities
+        .iter()
+        .map(|entity| (entity.id.as_str(), entity))
+        .collect::<HashMap<_, _>>();
     sync_scripted_transforms(
-        &runtime.bundle,
+        &entities_by_id,
         sync_loop_state,
         fixed_delta,
         &mut transforms,
     );
-    sync_scripted_materials(&runtime.bundle, material_handles.as_deref(), &mut materials);
+    sync_scripted_materials(&entities_by_id, material_handles.as_deref(), &mut materials);
     sync_scripted_ui_text(
         &runtime.bundle,
+        &entities_by_id,
         ui_binding_targets.as_deref(),
         &mut text_nodes,
     );
@@ -633,9 +659,18 @@ fn reconcile_scripted_runtime_world(world: &mut World) {
     let Some(_) = world.get_resource::<ScriptedRuntimeBundle>() else {
         return;
     };
+    let should_reconcile = world
+        .get_resource::<NativeRuntimeDirtyState>()
+        .is_none_or(|dirty| dirty.live_reconciliation);
+    if !should_reconcile {
+        return;
+    }
     let result = world.resource_scope(|world, runtime: Mut<ScriptedRuntimeBundle>| {
         reconcile_live_world_entities(world, &runtime.bundle)
     });
+    if let Some(mut dirty) = world.get_resource_mut::<NativeRuntimeDirtyState>() {
+        dirty.live_reconciliation = false;
+    }
     if let Err(error) = result {
         error!("TN_BEVY_LIVE_RECONCILIATION_FAILED: {error}");
     }
@@ -655,10 +690,33 @@ fn reconcile_live_world_entities(
         .get_resource::<map_world::NativeMappedWorldEntityIds>()
         .map(|ids| ids.0.clone())
         .unwrap_or_default();
+    let previous_signatures = world
+        .get_resource::<map_world::NativeMappedWorldEntitySignatures>()
+        .map(|signatures| signatures.0.clone())
+        .unwrap_or_default();
+    let desired_signatures = bundle
+        .world
+        .entities
+        .iter()
+        .map(|entity| {
+            (
+                entity.id.clone(),
+                map_world::native_engine_component_signature(entity),
+            )
+        })
+        .collect::<HashMap<_, _>>();
     let mut live_by_id = live_world_entities_by_id(world);
 
     for removed_id in previous_ids.difference(&desired_ids) {
         if let Some(entity) = live_by_id.remove(removed_id.as_str()) {
+            world.entity_mut(entity).despawn_recursive();
+        }
+    }
+    for changed_id in previous_ids.intersection(&desired_ids) {
+        if previous_signatures.get(changed_id) == desired_signatures.get(changed_id) {
+            continue;
+        }
+        if let Some(entity) = live_by_id.remove(changed_id.as_str()) {
             world.entity_mut(entity).despawn_recursive();
         }
     }
@@ -696,6 +754,9 @@ fn reconcile_live_world_entities(
         .collect::<HashMap<_, _>>();
     world_mapping::attach_entity_hierarchy(world, bundle, &hierarchy_entities);
     world.insert_resource(map_world::NativeMappedWorldEntityIds(desired_ids));
+    world.insert_resource(map_world::NativeMappedWorldEntitySignatures(
+        desired_signatures,
+    ));
     Ok(())
 }
 
@@ -708,7 +769,7 @@ fn live_world_entities_by_id(world: &mut World) -> HashMap<String, Entity> {
 }
 
 fn sync_scripted_transforms(
-    bundle: &LoadedBundle,
+    entities_by_id: &HashMap<&str, &WorldEntity>,
     loop_state: Option<&systems_host::NativeGameLoopState>,
     fixed_delta: f32,
     transforms: &mut Query<(&ThreeNativeId, &mut Transform)>,
@@ -718,12 +779,6 @@ fn sync_scripted_transforms(
     } else {
         None
     };
-    let entities_by_id = bundle
-        .world
-        .entities
-        .iter()
-        .map(|entity| (entity.id.as_str(), entity))
-        .collect::<HashMap<_, _>>();
     for (stable_id, mut target) in transforms.iter_mut() {
         let Some(source) = entities_by_id
             .get(stable_id.0.as_str())
@@ -740,27 +795,29 @@ fn sync_scripted_transforms(
         {
             let interpolated =
                 transform_interpolation::interpolate_transform(*previous, *current, alpha);
-            apply_transform_sample(&mut target, interpolated);
+            let mut next = (*target).clone();
+            apply_transform_sample(&mut next, interpolated);
+            if *target != next {
+                *target = next;
+            }
         } else {
-            apply_transform_component(&mut target, source);
+            let mut next = (*target).clone();
+            apply_transform_component(&mut next, source);
+            if *target != next {
+                *target = next;
+            }
         }
     }
 }
 
 fn sync_scripted_materials(
-    bundle: &LoadedBundle,
+    entities_by_id: &HashMap<&str, &WorldEntity>,
     material_handles: Option<&map_world::NativeMaterialHandles>,
     materials: &mut Query<(&ThreeNativeId, &mut Handle<StandardMaterial>)>,
 ) {
     let Some(material_handles) = material_handles else {
         return;
     };
-    let entities_by_id = bundle
-        .world
-        .entities
-        .iter()
-        .map(|entity| (entity.id.as_str(), entity))
-        .collect::<HashMap<_, _>>();
     for (stable_id, mut target) in materials.iter_mut() {
         let Some(source) = entities_by_id
             .get(stable_id.0.as_str())
@@ -778,36 +835,34 @@ fn apply_mesh_renderer_component(
     material_handles: &map_world::NativeMaterialHandles,
 ) {
     if let Some(material) = material_handles.0.get(&source.material) {
-        *target = material.clone();
+        if *target != *material {
+            *target = material.clone();
+        }
     }
 }
 
 fn sync_scripted_ui_text(
     bundle: &LoadedBundle,
+    entities_by_id: &HashMap<&str, &WorldEntity>,
     targets: Option<&ui::NativeUiBindingTargets>,
     text_nodes: &mut Query<(&ThreeNativeId, &mut Text)>,
 ) {
     let Some(targets) = targets else {
         return;
     };
-    let component_entities = targets.has_component_bindings().then(|| {
-        bundle
-            .world
-            .entities
-            .iter()
-            .map(|entity| (entity.id.as_str(), entity))
-            .collect::<HashMap<_, _>>()
-    });
+    let component_entities = targets.has_component_bindings().then_some(entities_by_id);
     for (stable_id, mut text) in text_nodes.iter_mut() {
         let Some(binding) = targets.binding_for(&stable_id.0) else {
             continue;
         };
-        let Some(value) = resolve_ui_binding(bundle, binding, component_entities.as_ref()) else {
+        let Some(value) = resolve_ui_binding(bundle, binding, component_entities) else {
             continue;
         };
         let rendered = value_to_ui_text(&value);
         if let Some(section) = text.sections.first_mut() {
-            section.value = rendered;
+            if section.value != rendered {
+                section.value = rendered;
+            }
         }
     }
 }
@@ -1367,6 +1422,7 @@ export const systems = Object.freeze({ "system_removeCollider": system_removeCol
         let mut app = App::new();
         app.insert_resource(Time::<()>::default());
         app.insert_resource(ScriptedRuntimeBundle { bundle });
+        app.init_resource::<NativeRuntimeDirtyState>();
         app.insert_non_send_resource(ScriptedRuntimeMainThread);
         app.insert_resource(systems_host::NativeGameLoopState::default());
         app.add_systems(
@@ -1387,6 +1443,7 @@ export const systems = Object.freeze({ "system_removeCollider": system_removeCol
         map_world::map_bundle_into_world(app.world_mut(), &bundle)
             .expect("test bundle should map into the live world");
         app.insert_resource(ScriptedRuntimeBundle { bundle });
+        app.init_resource::<NativeRuntimeDirtyState>();
         app.insert_non_send_resource(ScriptedRuntimeMainThread);
         app.insert_resource(systems_host::NativeGameLoopState::default());
         app.add_systems(

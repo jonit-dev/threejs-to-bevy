@@ -6,7 +6,7 @@ import * as THREE from "three";
 
 import { loadBundle } from "./loadBundle.js";
 import type { IWebBundle } from "./loadBundle.js";
-import { advanceAnimationPlayback, applyAnimationServiceEffects, hasAnimationPlayback, loadWorldModelAssets, mapWorld, sceneStartupDiagnostics, traceEmissiveBloomContributions } from "./mapWorld.js";
+import { advanceAnimationPlayback, applyAnimationServiceEffects, hasAnimationPlayback, loadWorldModelAssets, mapWorld, sceneStartupDiagnostics, syncTransforms, traceEmissiveBloomContributions } from "./mapWorld.js";
 
 test("mapWorld should map cube fixture to three scene", async () => {
   const bundle = await loadBundle(resolve(process.cwd(), "../ir/fixtures/cube-scene/game.bundle"));
@@ -17,6 +17,73 @@ test("mapWorld should map cube fixture to three scene", async () => {
   assert.equal(objects.some((object) => object instanceof THREE.PerspectiveCamera), true);
   assert.equal(objects.some((object) => object instanceof THREE.DirectionalLight), true);
   assert.equal(mapped.diagnostics.filter((diagnostic) => diagnostic.severity === "error").length, 0);
+});
+
+test("syncTransforms should restore visibility after a runtime mutation", () => {
+  const object = new THREE.Object3D();
+  object.visible = false;
+  const objectsById = new Map([["pooled", object]]);
+  syncTransforms({
+    schema: "threenative.world",
+    version: "0.1.0",
+    entities: [{ id: "pooled", components: { Visibility: { visible: true } } }],
+  }, objectsById);
+  assert.equal(object.visible, true);
+});
+
+test("mapped world should reconcile runtime-spawned hierarchies and dispose despawned renderables", () => {
+  const bundle: IWebBundle = {
+    assets: {
+      schema: "threenative.assets",
+      version: "0.1.0",
+      assets: [{ id: "mesh.box", kind: "mesh", format: "generated", primitive: "box", size: [1, 1, 1] }],
+    },
+    manifest: {
+      schema: "threenative.bundle",
+      version: "0.1.0",
+      name: "live-reconcile",
+      requiredCapabilities: {},
+      entry: { world: "world.ir.json" },
+      files: { assets: "assets.manifest.json", materials: "materials.ir.json", targetProfile: "target.profile.json" },
+    },
+    materials: {
+      schema: "threenative.materials",
+      version: "0.1.0",
+      materials: [{ id: "mat.box", kind: "standard", color: "#ffffff" }],
+    },
+    source: "/game.bundle",
+    targetProfile: { schema: "threenative.target-profile", version: "0.1.0", targets: ["web"] },
+    world: { schema: "threenative.world", version: "0.1.0", entities: [] },
+  };
+  const mapped = mapWorld(bundle);
+  bundle.world.entities.push(
+    { id: "spawn.parent", components: { Transform: { position: [1, 0, 0] } } },
+    {
+      id: "spawn.child",
+      components: {
+        Hierarchy: { parent: "spawn.parent" },
+        MeshRenderer: { material: "mat.box", mesh: "mesh.box" },
+        Transform: { position: [0, 2, 0] },
+      },
+    },
+  );
+
+  mapped.reconcile?.(bundle.world);
+
+  const child = mapped.objectsById.get("spawn.child");
+  assert.ok(child instanceof THREE.Mesh);
+  assert.equal(child.parent, mapped.objectsById.get("spawn.parent"));
+  let geometryDisposals = 0;
+  let materialDisposals = 0;
+  child.geometry.dispose = () => { geometryDisposals += 1; };
+  (child.material as THREE.Material).dispose = () => { materialDisposals += 1; };
+  bundle.world.entities = bundle.world.entities.filter((entity) => entity.id !== "spawn.child");
+
+  mapped.reconcile?.(bundle.world);
+
+  assert.equal(mapped.objectsById.has("spawn.child"), false);
+  assert.equal(geometryDisposals, 1);
+  assert.equal(materialDisposals, 1);
 });
 
 test("mapWorld should map v2 render fixture", () => {

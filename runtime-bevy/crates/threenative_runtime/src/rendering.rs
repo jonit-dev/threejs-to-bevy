@@ -1,4 +1,5 @@
 use bevy::{
+    ecs::event::ManualEventReader,
     pbr::{CascadeShadowConfigBuilder, DirectionalLightShadowMap},
     prelude::*,
     render::{
@@ -11,7 +12,10 @@ use bevy::{
     },
 };
 use image::ImageReader;
-use std::f32::consts::{FRAC_PI_2, PI, TAU};
+use std::{
+    collections::HashSet,
+    f32::consts::{FRAC_PI_2, PI, TAU},
+};
 use threenative_components::ThreeNativeId;
 use threenative_loader::{ColorIr, EnvironmentTextureSourceIr, LoadedBundle};
 
@@ -714,30 +718,43 @@ fn blend_ambient_colors(authored: Color, environment: Color) -> Color {
 
 pub fn normalize_loaded_gltf_materials(
     authored_materials: Option<Res<NativeMaterialHandles>>,
+    mut initialized: Local<bool>,
+    events: Option<Res<Events<AssetEvent<StandardMaterial>>>>,
+    mut event_reader: Local<ManualEventReader<AssetEvent<StandardMaterial>>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
-    let candidates = materials
-        .iter()
-        .filter_map(|(id, material)| {
-            if authored_materials
-                .as_ref()
-                .is_some_and(|handles| handles.0.values().any(|handle| handle.id() == id))
-            {
-                return None;
-            }
-            textured_material_needs_normalization(material).then_some(id)
-        })
-        .collect::<Vec<_>>();
+    let authored_ids = authored_materials
+        .as_ref()
+        .map(|handles| handles.0.values().map(Handle::id).collect::<HashSet<_>>())
+        .unwrap_or_default();
+    let candidates = if *initialized {
+        if let Some(events) = events.as_deref() {
+            event_reader
+                .read(events)
+                .filter_map(|event| match event {
+                    AssetEvent::Added { id }
+                    | AssetEvent::Modified { id }
+                    | AssetEvent::LoadedWithDependencies { id } => Some(*id),
+                    AssetEvent::Removed { .. } | AssetEvent::Unused { .. } => None,
+                })
+                .collect::<Vec<_>>()
+        } else {
+            Vec::new()
+        }
+    } else {
+        *initialized = true;
+        if let Some(events) = events.as_deref() {
+            event_reader.clear(events);
+        }
+        materials.iter().map(|(id, _)| id).collect::<Vec<_>>()
+    };
     for id in candidates {
+        if authored_ids.contains(&id) {
+            continue;
+        }
         let Some(material) = materials.get_mut(id) else {
             continue;
         };
-        if authored_materials
-            .as_ref()
-            .is_some_and(|handles| handles.0.values().any(|handle| handle.id() == id))
-        {
-            continue;
-        }
         normalize_textured_material(material);
     }
 }

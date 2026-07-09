@@ -99,6 +99,99 @@ fn physics_should_skip_script_posed_kinematic_velocity_once() {
 }
 
 #[test]
+fn physics_should_preserve_rotation_and_constrained_angular_velocity() {
+    let root = write_falling_box_bundle();
+    let mut bundle = load_bundle(&root).expect("physics bundle should load");
+    let body = bundle
+        .world
+        .entities
+        .iter_mut()
+        .find(|entity| entity.id == "box")
+        .and_then(|entity| entity.components.rigid_body.as_mut())
+        .expect("box rigid body should exist");
+    body.gravity_scale = Some(0.0);
+    body.angular_velocity = Some([1.0, 2.0, 3.0]);
+    body.enabled_rotations = Some([false, true, false]);
+
+    step_bundle_physics_with_script_poses(&mut bundle, 0.1, &BTreeSet::new());
+
+    let box_entity = bundle
+        .world
+        .entities
+        .iter()
+        .find(|entity| entity.id == "box")
+        .expect("box should exist");
+    let rotation = box_entity
+        .components
+        .transform
+        .as_ref()
+        .and_then(|transform| transform.rotation)
+        .expect("physics should write rotation back");
+    let angular_velocity = box_entity
+        .components
+        .rigid_body
+        .as_ref()
+        .and_then(|body| body.angular_velocity)
+        .expect("physics should write angular velocity back");
+    assert!(rotation[1].abs() > 0.01);
+    assert!(rotation[0].abs() < 0.0001);
+    assert!(rotation[2].abs() < 0.0001);
+    assert!(angular_velocity[1].abs() > 1.0);
+
+    fs::remove_dir_all(root).expect("temporary bundle should be removed");
+}
+
+#[test]
+fn physics_should_treat_sensor_metadata_as_nonblocking_trigger() {
+    let root = write_falling_box_bundle();
+    let mut bundle = load_bundle(&root).expect("physics bundle should load");
+    let collider = bundle
+        .world
+        .entities
+        .iter_mut()
+        .find(|entity| entity.id == "floor")
+        .and_then(|entity| entity.components.collider.as_mut())
+        .expect("floor collider should exist");
+    collider.sensor = Some(serde_json::json!({ "kind": "overlap" }));
+
+    bundle
+        .world
+        .entities
+        .iter_mut()
+        .find(|entity| entity.id == "box")
+        .and_then(|entity| entity.components.transform.as_mut())
+        .expect("box transform should exist")
+        .position = Some([0.0, 0.0, 0.0]);
+    let events = detect_physics_events(&bundle);
+    assert_eq!(events.len(), 1);
+    assert_eq!(events[0].event, "TriggerEvent");
+    bundle
+        .world
+        .entities
+        .iter_mut()
+        .find(|entity| entity.id == "box")
+        .and_then(|entity| entity.components.transform.as_mut())
+        .expect("box transform should exist")
+        .position = Some([0.0, 2.0, 0.0]);
+    step_bundle_physics_with_script_poses(&mut bundle, 1.0, &BTreeSet::new());
+
+    let box_y = bundle
+        .world
+        .entities
+        .iter()
+        .find(|entity| entity.id == "box")
+        .and_then(|entity| entity.components.transform.as_ref())
+        .and_then(|transform| transform.position)
+        .expect("box position should exist")[1];
+    assert!(
+        box_y < 0.0,
+        "sensor-only floor must not block the falling body"
+    );
+
+    fs::remove_dir_all(root).expect("temporary bundle should be removed");
+}
+
+#[test]
 fn physics_should_apply_portable_contact_filters() {
     let root = write_filtered_physics_bundle();
     let bundle = load_bundle(&root).expect("physics bundle should load");

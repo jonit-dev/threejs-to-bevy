@@ -185,6 +185,10 @@ fn should_map_render_layer_names_consistently() {
     assert_eq!(entity_layers, camera_layers);
     assert!(layer_map.allocation.get("minimap").is_some());
     assert_eq!(layer_map.allocation.get("default"), Some(&0));
+    assert_eq!(
+        render_layers_for_names(&layer_map, &["unknown".to_owned()]),
+        render_layers_for_names(&layer_map, &["default".to_owned()])
+    );
 }
 
 #[test]

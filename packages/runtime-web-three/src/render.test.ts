@@ -6,7 +6,7 @@ import { RENDER_LOOK_PROFILE_PRESETS, type IRuntimeConfigIr } from "@threenative
 
 import type { IWebBundle } from "./loadBundle.js";
 import { mapWorld } from "./mapWorld.js";
-import { applyRendererColorManagement, applyRendererShadowSettings, applyRenderLookSceneDefaults, collectWebRuntimeDiagnostics, createRenderedParticleObjects, createWebRenderLifecycle, renderCameraViews, webAmbientOcclusionSettings, webBloomSettings, webDepthOfFieldSettings, webMotionBlurSettings, webRendererParameters, webScreenSpaceReflectionsSettings } from "./render.js";
+import { applyRendererColorManagement, applyRendererShadowSettings, applyRenderLookSceneDefaults, collectWebRuntimeDiagnostics, createRenderedParticleObjects, createWebRenderLifecycle, disposeThreeWorld, newAudioEvents, renderCameraViews, webAmbientOcclusionSettings, webBloomSettings, webDepthOfFieldSettings, webMotionBlurSettings, webRendererParameters, webScreenSpaceReflectionsSettings } from "./render.js";
 
 function runtimeConfig(
   antialias: NonNullable<IRuntimeConfigIr["renderer"]>["antialias"],
@@ -85,24 +85,24 @@ test("should enable renderer shadow maps from render look quality", () => {
 test("should map runtime antialias modes to WebGL renderer parameters", () => {
   assert.deepEqual(webRendererParameters(runtimeConfig("none")), {
     antialias: false,
-    preserveDrawingBuffer: true,
+    preserveDrawingBuffer: false,
   });
   assert.deepEqual(webRendererParameters(runtimeConfig("msaa2")), {
     antialias: true,
-    preserveDrawingBuffer: true,
+    preserveDrawingBuffer: false,
   });
   assert.deepEqual(webRendererParameters(runtimeConfig("msaa4")), {
     antialias: true,
-    preserveDrawingBuffer: true,
+    preserveDrawingBuffer: false,
   });
   assert.deepEqual(webRendererParameters(runtimeConfig("msaa8")), {
     antialias: true,
-    preserveDrawingBuffer: true,
+    preserveDrawingBuffer: false,
   });
   for (const mode of ["fxaa", "taa", "smaa"] as const) {
     assert.deepEqual(webRendererParameters(runtimeConfig(mode)), {
       antialias: false,
-      preserveDrawingBuffer: true,
+      preserveDrawingBuffer: false,
     });
   }
 });
@@ -120,6 +120,49 @@ test("should cancel pending animation frame on render lifecycle dispose", () => 
   lifecycle.dispose();
 
   assert.deepEqual(cancelled, [42]);
+});
+
+test("should consume appended and replaced audio event queues exactly once", () => {
+  const cursors = new Map<string, unknown[]>();
+  const first = { amount: 1 };
+  const second = { amount: 2 };
+  assert.deepEqual(newAudioEvents({ DamageEvent: [first] }, cursors), [
+    { event: "DamageEvent", payload: first },
+  ]);
+  assert.deepEqual(newAudioEvents({ DamageEvent: [first, second] }, cursors), [
+    { event: "DamageEvent", payload: second },
+  ]);
+  assert.deepEqual(newAudioEvents({ DamageEvent: [second] }, cursors), [
+    { event: "DamageEvent", payload: second },
+  ]);
+  assert.deepEqual(newAudioEvents({ DamageEvent: [second] }, cursors), []);
+});
+
+test("should dispose owned scene geometry, materials, and textures once", () => {
+  const scene = new THREE.Scene();
+  const geometry = new THREE.BoxGeometry();
+  const texture = new THREE.Texture();
+  const material = new THREE.MeshBasicMaterial({ map: texture });
+  scene.add(new THREE.Mesh(geometry, material));
+  let geometryDisposals = 0;
+  let materialDisposals = 0;
+  let textureDisposals = 0;
+  geometry.dispose = () => { geometryDisposals += 1; };
+  material.dispose = () => { materialDisposals += 1; };
+  texture.dispose = () => { textureDisposals += 1; };
+  const mapped = {
+    cameras: new Map(),
+    objectsById: new Map([["mesh", scene.children[0]!]]),
+    scene,
+  } as unknown as ReturnType<typeof mapWorld>;
+
+  disposeThreeWorld(mapped);
+
+  assert.equal(geometryDisposals, 1);
+  assert.equal(materialDisposals, 1);
+  assert.equal(textureDisposals, 1);
+  assert.equal(scene.children.length, 0);
+  assert.equal(mapped.objectsById.size, 0);
 });
 
 test("should detach render resources once on lifecycle dispose", () => {
@@ -170,8 +213,13 @@ test("should report rejected render frames as diagnostics", async () => {
 test("should keep antialiasing enabled when runtime config is absent", () => {
   assert.deepEqual(webRendererParameters(), {
     antialias: true,
-    preserveDrawingBuffer: true,
+    preserveDrawingBuffer: false,
   });
+});
+
+test("should preserve the drawing buffer only for explicit capture", () => {
+  assert.equal(webRendererParameters(undefined, true).preserveDrawingBuffer, true);
+  assert.equal(webRendererParameters(undefined, false).preserveDrawingBuffer, false);
 });
 
 test("should map runtime bloom settings to web post-processing settings", () => {

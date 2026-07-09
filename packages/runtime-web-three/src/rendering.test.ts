@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import * as THREE from "three";
 
-import { applyAtmosphereProfile, observeEnvironmentLighting } from "./rendering.js";
+import { applyAtmosphereProfile, environmentTextureUrls, observeEnvironmentLighting } from "./rendering.js";
 
 test("rendering should map atmosphere profile to three scene settings", () => {
   const scene = new THREE.Scene();
@@ -87,4 +87,31 @@ test("should map skybox and environment map refs to renderer observations", () =
     mode: "equirect",
   });
   assert.deepEqual(observation.lightProbes, [{ applied: false, assetIds: ["tex.env"], id: "probe.center", intent: "irradiance" }]);
+});
+
+test("should resolve all cubemap faces in Three.js axis order", () => {
+  const source = {
+    faces: {
+      negativeX: "tex.nx",
+      negativeY: "tex.ny",
+      negativeZ: "tex.nz",
+      positiveX: "tex.px",
+      positiveY: "tex.py",
+      positiveZ: "tex.pz",
+    },
+    mode: "cubemap" as const,
+  };
+  const resolved = new Map(Object.entries({
+    "tex.px": { url: "px.png" },
+    "tex.nx": { url: "nx.png" },
+    "tex.py": { url: "py.png" },
+    "tex.ny": { url: "ny.png" },
+    "tex.pz": { url: "pz.png" },
+    "tex.nz": { url: "nz.png" },
+  }));
+  assert.deepEqual(environmentTextureUrls(source, resolved), [
+    "px.png", "nx.png", "py.png", "ny.png", "pz.png", "nz.png",
+  ]);
+  resolved.delete("tex.nz");
+  assert.equal(environmentTextureUrls(source, resolved), undefined);
 });

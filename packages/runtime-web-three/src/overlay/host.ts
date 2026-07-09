@@ -4,6 +4,7 @@ import { createOverlayBridge, type IOverlayBridge } from "./bridge.js";
 
 export interface IWebOverlayHost {
   bridge: IOverlayBridge;
+  dispose(): void;
   element: HTMLElement;
   frames: HTMLIFrameElement[];
 }
@@ -23,7 +24,17 @@ export function createWebOverlayHost(overlays: IOverlaysIr, source: string, docu
     .sort((left, right) => left.zIndex - right.zIndex)
     .map((overlay) => mountOverlayFrame(overlay, bridge, source, documentRef));
   root.append(...frames);
-  return { bridge, element: root, frames };
+  return {
+    bridge,
+    dispose() {
+      for (const frame of frames) {
+        frame.removeAttribute("src");
+      }
+      root.remove();
+    },
+    element: root,
+    frames,
+  };
 }
 
 export function overlayPointerEvents(input: OverlayInputMode): "auto" | "none" {

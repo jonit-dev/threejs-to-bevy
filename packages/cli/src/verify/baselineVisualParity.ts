@@ -430,7 +430,7 @@ async function captureThreeJsScreenshot(
   const browser = await chromium.launch({ headless: true });
   try {
     const page = await browser.newPage({ viewport: { height: 720, width: 1280 } });
-    await page.goto(`${server.url}?bundle=/bundle&bookmark=${encodeURIComponent(cameraId)}`, {
+    await page.goto(`${server.url}?bundle=/bundle&bookmark=${encodeURIComponent(cameraId)}&capture=1`, {
       waitUntil: "domcontentloaded",
     });
     try {

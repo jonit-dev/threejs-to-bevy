@@ -1419,6 +1419,31 @@ test("should reject invalid mesh renderer shadow flags", async () => {
   }
 });
 
+test("should reject render layers beyond the shared 32-layer capacity", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-ir-render-layer-capacity-"));
+  try {
+    await writeBundle(root, { current: 100, max: 100 });
+    await writeJson(root, "world.ir.json", {
+      schema: "threenative.world",
+      version: "0.1.0",
+      entities: Array.from({ length: 32 }, (_, index) => ({
+        id: `layer-${index}`,
+        components: { RenderLayers: { layers: [`layer-${index}`] } },
+      })),
+      resources: {},
+      events: {},
+      prefabs: [],
+    });
+
+    const result = await validateBundle(root);
+
+    assert.equal(result.ok, false);
+    assert.equal(result.diagnostics.some((diagnostic) => diagnostic.code === "TN_IR_RENDER_LAYER_CAPACITY_EXCEEDED"), true);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
 test("should reject invalid light shadow bias values", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-ir-light-shadow-bias-invalid-"));
   try {

@@ -36,8 +36,10 @@ const params = new URLSearchParams(window.location.search);
 const bundleUrl = params.get("bundle") ?? "/bundle";
 const resolvedBundleUrl = new URL(bundleUrl, window.location.href).href;
 const debugColliders = ["1", "true", "on"].includes(params.get("debugColliders") ?? "");
+const captureDrawingBuffer = ["1", "true", "on"].includes(params.get("capture") ?? "");
 const result = await renderLoadedBundle(await loadBundleUrl(resolvedBundleUrl), container, {
   bookmarkId: params.get("bookmark") ?? undefined,
+  captureDrawingBuffer,
   debugColliders,
 });
 window.__THREENATIVE_RUNTIME__ = {

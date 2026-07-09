@@ -273,6 +273,59 @@ fn should_capture_bevy_keyboard_and_pointer_input() {
 }
 
 #[test]
+fn should_retain_absolute_pointer_axes_without_new_cursor_events() {
+    let mut app = App::new();
+    app.add_event::<MouseMotion>();
+    app.add_event::<CursorMoved>();
+    app.insert_resource(ButtonInput::<KeyCode>::default());
+    app.insert_resource(ButtonInput::<MouseButton>::default());
+    app.insert_resource(NativeInputMap(InputIr {
+        schema: "threenative.input".to_owned(),
+        version: "0.1.0".to_owned(),
+        actions: vec![],
+        axes: vec![InputAxisIr {
+            id: "PointerX".to_owned(),
+            negative: vec![],
+            positive: vec![],
+            value: Some(InputBindingIr::Pointer {
+                button: None,
+                axis: Some("x".to_owned()),
+            }),
+        }],
+        controls_settings: None,
+        persisted_binding_overrides: vec![],
+    }));
+    app.init_resource::<NativeInputState>();
+    let window = app
+        .world_mut()
+        .spawn((
+            Window {
+                resolution: (200.0, 100.0).into(),
+                ..Default::default()
+            },
+            PrimaryWindow,
+        ))
+        .id();
+    app.add_systems(PreUpdate, capture_native_input);
+    app.world_mut().send_event(CursorMoved {
+        window,
+        position: Vec2::new(50.0, 25.0),
+        delta: None,
+    });
+
+    app.update();
+    assert_eq!(
+        app.world().resource::<NativeInputState>().axis("PointerX"),
+        0.25
+    );
+    app.update();
+    assert_eq!(
+        app.world().resource::<NativeInputState>().axis("PointerX"),
+        0.25
+    );
+}
+
+#[test]
 fn should_detect_pointer_delta_axes_for_native_mouse_look() {
     let input = InputIr {
         schema: "threenative.input".to_owned(),

@@ -756,9 +756,37 @@ function validateWorld(world: IWorldIr, path: string, diagnostics: IIrDiagnostic
   world.entities.forEach((entity, index) => validateKinematicMoverComponent(entity, `${path}/entities/${index}`, diagnostics));
   world.entities.forEach((entity, index) => validateSpawnerComponent(entity, `${path}/entities/${index}`, diagnostics));
   world.entities.forEach((entity, index) => validateRenderComponents(entity, `${path}/entities/${index}`, diagnostics));
+  validatePortableRenderLayerCapacity(world, path, diagnostics);
   const entityIds = new Set(world.entities.map((entity) => entity.id));
   world.entities.forEach((entity, index) => validatePhysicsComponents(entity, `${path}/entities/${index}`, entityIds, diagnostics));
   world.entities.forEach((entity, index) => validateCharacterComponents(entity, `${path}/entities/${index}`, input, diagnostics));
+}
+
+const PORTABLE_RENDER_LAYER_CAPACITY = 32;
+
+function validatePortableRenderLayerCapacity(world: IWorldIr, path: string, diagnostics: IIrDiagnostic[]): void {
+  const names = new Set<string>(["default"]);
+  for (const entity of world.entities) {
+    for (const name of entity.components.RenderLayers?.layers ?? []) {
+      if (typeof name === "string") {
+        names.add(name);
+      }
+    }
+    for (const name of entity.components.Camera?.layers ?? []) {
+      if (typeof name === "string") {
+        names.add(name);
+      }
+    }
+  }
+  if (names.size > PORTABLE_RENDER_LAYER_CAPACITY) {
+    diagnostics.push({
+      code: "TN_IR_RENDER_LAYER_CAPACITY_EXCEEDED",
+      message: `World declares ${names.size} render layers, exceeding the portable limit of ${PORTABLE_RENDER_LAYER_CAPACITY}.`,
+      path: `${path}/entities`,
+      severity: "error",
+      suggestion: `Use at most ${PORTABLE_RENDER_LAYER_CAPACITY} unique render layer names including 'default'.`,
+    });
+  }
 }
 
 function validateKinematicMoverComponent(entity: IWorldEntity, path: string, diagnostics: IIrDiagnostic[]): void {

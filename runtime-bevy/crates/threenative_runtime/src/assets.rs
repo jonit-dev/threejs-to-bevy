@@ -5,6 +5,7 @@ use std::{
 
 use bevy::{
     asset::{AssetId, AssetPath},
+    ecs::event::ManualEventReader,
     math::{Affine2, Vec2},
     prelude::*,
     render::{
@@ -242,12 +243,30 @@ pub fn apply_loaded_texture_controls(
     asset_server: Res<AssetServer>,
     controls: Res<TextureAssetControlsRegistry>,
     mut applied: Local<HashSet<AssetId<Image>>>,
+    mut initialized: Local<bool>,
+    events: Option<Res<Events<AssetEvent<Image>>>>,
+    mut event_reader: Local<ManualEventReader<AssetEvent<Image>>>,
     mut images: ResMut<Assets<Image>>,
 ) {
+    let mut changed = HashSet::new();
+    if let Some(events) = events.as_deref() {
+        for event in event_reader.read(events) {
+            match event {
+                AssetEvent::Added { id }
+                | AssetEvent::Modified { id }
+                | AssetEvent::LoadedWithDependencies { id } => {
+                    changed.insert(*id);
+                }
+                AssetEvent::Removed { id } | AssetEvent::Unused { id } => {
+                    applied.remove(id);
+                }
+            }
+        }
+    }
     for controls in controls.0.values() {
         let handle = load_texture_asset(&asset_server, &controls.path);
         let id = handle.id();
-        if applied.contains(&id) {
+        if applied.contains(&id) && !changed.contains(&id) {
             continue;
         }
         let Some(image) = images.get_mut(&handle) else {
@@ -256,22 +275,27 @@ pub fn apply_loaded_texture_controls(
         apply_texture_sampler_controls(image, controls);
         applied.insert(id);
     }
-    let pending_defaults = images
-        .iter()
-        .filter_map(|(id, image)| {
-            (!applied.contains(&id)
-                && matches!(image.sampler, ImageSampler::Default)
-                && !image
-                    .texture_descriptor
-                    .usage
-                    .contains(TextureUsages::RENDER_ATTACHMENT))
-            .then_some(id)
-        })
-        .collect::<Vec<_>>();
+    let pending_defaults = if *initialized {
+        changed.into_iter().collect::<Vec<_>>()
+    } else {
+        *initialized = true;
+        images.iter().map(|(id, _)| id).collect::<Vec<_>>()
+    };
     for id in pending_defaults {
+        if applied.contains(&id) {
+            continue;
+        }
         let Some(image) = images.get_mut(id) else {
             continue;
         };
+        if !matches!(image.sampler, ImageSampler::Default)
+            || image
+                .texture_descriptor
+                .usage
+                .contains(TextureUsages::RENDER_ATTACHMENT)
+        {
+            continue;
+        }
         apply_default_texture_quality(image);
         applied.insert(id);
     }

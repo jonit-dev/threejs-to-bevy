@@ -16,6 +16,10 @@ Current support:
   prove movement/contact behavior with playtests.
 - Humanoid course web and desktop playtests are the current high-signal
   character/control proof.
+- Native Rapier now preserves authored quaternion/angular-velocity state,
+  rotation-axis constraints, and sensor-only collider semantics. The web
+  adapter retains its Rapier world across unchanged fixed steps and explicitly
+  frees it with the runtime lifecycle; focused coverage guards topology reuse.
 
 Verification:
 

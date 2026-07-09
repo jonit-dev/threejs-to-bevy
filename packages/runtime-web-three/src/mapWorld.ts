@@ -49,6 +49,7 @@ export interface IThreeWorld {
   diagnostics: IRuntimeDiagnostic[];
   layerAllocation: Map<string, number>;
   objectsById: Map<string, THREE.Object3D>;
+  reconcile?(world: IWorldIr): void;
   renderTargets?: IRenderTargetRegistry;
   scene: THREE.Scene;
 }
@@ -73,6 +74,8 @@ interface IShadowSettings {
   castShadow?: boolean;
   receiveShadow?: boolean;
 }
+
+const cameraPlanSignatures = new WeakMap<IThreeWorld, string>();
 
 export interface IWorldModelLoader {
   loadAsync(url: string): Promise<IGltfModel>;
@@ -110,6 +113,7 @@ export function mapWorld(bundle: IWebBundle): IThreeWorld {
     applyTransform(object, entity);
     applyVisibility(object, entity);
     applyEntityRenderLayers(object, entity, layerAllocation);
+    object.userData.threeNativeEngineSignature = engineComponentSignature(entity);
     objectsById.set(entity.id, object);
   }
 
@@ -175,7 +179,7 @@ export function mapWorld(bundle: IWebBundle): IThreeWorld {
 
   diagnostics.push(...sceneStartupDiagnostics(bundle));
 
-  return {
+  const mapped: IThreeWorld = {
     camera: selectedCamera,
     cameras,
     cameraViews,
@@ -184,6 +188,184 @@ export function mapWorld(bundle: IWebBundle): IThreeWorld {
     objectsById,
     scene,
   };
+  mapped.reconcile = (world) => reconcileMappedWorld(
+    mapped,
+    world,
+    assetsById,
+    materialsById,
+    bundle.source,
+    atmosphereProvidesWorldLighting,
+    atmosphereExposure,
+  );
+  cameraPlanSignatures.set(mapped, cameraPlanSignature(bundle.world));
+  return mapped;
+}
+
+function reconcileMappedWorld(
+  mapped: IThreeWorld,
+  world: IWorldIr,
+  assetsById: Map<string, IAssetIr>,
+  materialsById: Map<string, IMaterialIr>,
+  source: string | undefined,
+  atmosphereProvidesWorldLighting: boolean,
+  atmosphereExposure: number | undefined,
+): void {
+  const entities = [...world.entities].sort((left, right) => left.id.localeCompare(right.id));
+  const entityIds = new Set(entities.map((entity) => entity.id));
+  let structureChanged = false;
+  const nextCameraPlanSignature = cameraPlanSignature(world);
+  const cameraPlanChanged = cameraPlanSignatures.get(mapped) !== nextCameraPlanSignature;
+  cameraPlanSignatures.set(mapped, nextCameraPlanSignature);
+  for (const [id, object] of mapped.objectsById) {
+    if (!entityIds.has(id)) {
+      object.removeFromParent();
+      disposeObjectResources(object);
+      mapped.objectsById.delete(id);
+      mapped.cameras.delete(id);
+      structureChanged = true;
+    }
+  }
+  for (const entity of entities) {
+    const signature = engineComponentSignature(entity);
+    let object = mapped.objectsById.get(entity.id);
+    if (object === undefined || object.userData.threeNativeEngineSignature !== signature) {
+      if (object !== undefined) {
+        object.removeFromParent();
+        disposeObjectResources(object);
+      }
+      object = mapEntity(
+        entity,
+        assetsById,
+        materialsById,
+        mapped.diagnostics,
+        source,
+        atmosphereProvidesWorldLighting,
+        atmosphereExposure,
+      );
+      object.userData.threeNativeEngineSignature = signature;
+      mapped.objectsById.set(entity.id, object);
+      const stylizedNature = readStylizedNature(entity);
+      if (stylizedNature !== undefined && object instanceof THREE.Group) {
+        void attachStylizedSourceAssets(
+          object,
+          stylizedNature,
+          assetsById,
+          source ?? "",
+          createGltfLoader(),
+          mapped.diagnostics,
+        ).catch((error: unknown) => {
+          mapped.diagnostics.push({
+            code: "TN-WEB-MODEL-LOAD-FAILED",
+            message: `Failed to load runtime-spawned stylized source assets: ${error instanceof Error ? error.message : String(error)}.`,
+            path: `world.ir.json/entities/${entity.id}/components/StylizedNature`,
+            severity: "warning",
+          });
+        });
+      }
+      const renderer = entity.components.MeshRenderer;
+      const asset = renderer === undefined ? undefined : assetsById.get(renderer.mesh);
+      if (renderer !== undefined && asset?.kind === "model" && asset.path !== undefined && isLoadableModelFormat(asset)) {
+        void attachRuntimeModelAsset(mapped, entity.id, object, asset, renderer, source ?? "");
+      }
+      structureChanged = true;
+    }
+    applyTransform(object, entity);
+    applyVisibility(object, entity);
+  }
+  if (!structureChanged && !cameraPlanChanged) {
+    return;
+  }
+  const nextLayers = allocateRenderLayers(collectLayerNames(world), mapped.diagnostics);
+  mapped.layerAllocation.clear();
+  for (const [name, layer] of nextLayers) {
+    mapped.layerAllocation.set(name, layer);
+  }
+  for (const entity of entities) {
+    const object = mapped.objectsById.get(entity.id);
+    if (object !== undefined) {
+      applyEntityRenderLayers(object, entity, mapped.layerAllocation);
+    }
+  }
+  attachWorldHierarchy(mapped.scene, entities, mapped.objectsById);
+  mapped.cameras.clear();
+  for (const entity of entities) {
+    const object = mapped.objectsById.get(entity.id);
+    if (object instanceof THREE.Camera) {
+      mapped.cameras.set(entity.id, object);
+      object.userData.threeNativeCamera = entity.components.Camera;
+      applyCameraRenderLayers(object, entity.components.Camera?.layers ?? ["default"], mapped.layerAllocation);
+    }
+  }
+  mapped.cameraViews.splice(0, mapped.cameraViews.length, ...planCameraViews(world, mapped.objectsById));
+  const primaryCameraId = resolvePrimaryCameraId(mapped.cameraViews);
+  const selected = primaryCameraId === undefined ? undefined : mapped.cameras.get(primaryCameraId);
+  mapped.camera = selected ?? mapped.cameras.values().next().value ?? mapped.camera;
+}
+
+async function attachRuntimeModelAsset(
+  mapped: IThreeWorld,
+  entityId: string,
+  object: THREE.Object3D,
+  asset: Extract<IAssetIr, { kind: "model" }>,
+  renderer: NonNullable<IWorldEntity["components"]["MeshRenderer"]>,
+  source: string,
+): Promise<void> {
+  object.userData.threeNativeModelLoadPending = asset.id;
+  try {
+    const gltf = await createGltfLoader().loadAsync(bundleUrl(source, asset.path!));
+    if (mapped.objectsById.get(entityId) === object) {
+      attachLoadedModel(object, asset, gltf, renderer);
+      object.userData.threeNativeModelAssetLoaded = asset.id;
+    }
+  } catch (error) {
+    mapped.diagnostics.push({
+      code: "TN-WEB-MODEL-LOAD-FAILED",
+      message: `Failed to load runtime-spawned model asset '${asset.id}'.${error instanceof Error ? ` ${error.message}` : ""}`,
+      path: `assets.manifest.json/assets/${asset.id}/path`,
+      severity: "warning",
+    });
+  } finally {
+    delete object.userData.threeNativeModelLoadPending;
+  }
+}
+
+function cameraPlanSignature(world: IWorldIr): string {
+  return JSON.stringify({
+    ActiveCamera: world.resources?.ActiveCamera,
+    ActiveCameras: world.resources?.ActiveCameras,
+  });
+}
+
+function engineComponentSignature(entity: IWorldEntity): string {
+  return JSON.stringify({
+    Camera: entity.components.Camera,
+    Hierarchy: entity.components.Hierarchy,
+    Light: entity.components.Light,
+    MeshRenderer: entity.components.MeshRenderer,
+    RippleWater: entity.components.RippleWater,
+    StylizedNature: entity.components.StylizedNature,
+    StylizedSparkles: entity.components.StylizedSparkles,
+  });
+}
+
+function disposeObjectResources(root: THREE.Object3D): void {
+  root.traverse((object) => {
+    if (!(object instanceof THREE.Mesh)) {
+      return;
+    }
+    object.geometry.dispose();
+    for (const material of Array.isArray(object.material) ? object.material : [object.material]) {
+      for (const value of Object.values(material)) {
+        if (value instanceof THREE.Texture) {
+          value.dispose();
+        }
+      }
+      material.dispose();
+    }
+    if (object instanceof THREE.SkinnedMesh) {
+      object.skeleton.dispose();
+    }
+  });
 }
 
 export function sceneStartupDiagnostics(bundle: IWebBundle): IRuntimeDiagnostic[] {
@@ -1198,9 +1380,7 @@ function applyEntityRenderLayers(
 function applyVisibility(object: THREE.Object3D, entity: IWorldEntity): void {
   const visibility = entity.components.Visibility;
   const renderer = entity.components.MeshRenderer;
-  if (visibility?.visible === false || renderer?.visible === false) {
-    object.visible = false;
-  }
+  object.visible = visibility?.visible !== false && renderer?.visible !== false;
 }
 
 export function syncTransforms(world: IWorldIr, objectsById: Map<string, THREE.Object3D>): void {

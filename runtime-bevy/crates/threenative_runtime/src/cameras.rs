@@ -12,7 +12,7 @@ use threenative_loader::{
     LoadedBundle,
 };
 
-const MAX_RENDER_LAYERS: usize = 64;
+const MAX_RENDER_LAYERS: usize = 32;
 
 #[derive(Clone, Debug, Resource)]
 pub struct NativeRenderLayerMap {
@@ -81,10 +81,18 @@ pub fn render_layers_for_names(
     } else {
         layer_names.to_vec()
     };
-    names
+    let layers = names
         .iter()
         .filter_map(|name| layer_map.allocation.get(name))
-        .fold(RenderLayers::none(), |layers, layer| layers.with(*layer))
+        .fold(RenderLayers::none(), |layers, layer| layers.with(*layer));
+    if names
+        .iter()
+        .any(|name| layer_map.allocation.contains_key(name))
+    {
+        layers
+    } else {
+        RenderLayers::layer(*layer_map.allocation.get("default").unwrap_or(&0))
+    }
 }
 
 pub fn camera_order(camera: &CameraComponent) -> i32 {
@@ -215,6 +223,9 @@ pub fn update_native_camera_helpers(
         Query<(&ThreeNativeId, &Transform), Without<Camera>>,
     )>,
 ) {
+    if queries.p0().is_empty() {
+        return;
+    }
     let target_positions = queries
         .p1()
         .iter()
