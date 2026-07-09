@@ -37,6 +37,6 @@ bundle emission so future contract work is easier to prove.
 `pnpm verify:conformance` was attempted on 2026-07-09 after moving the loop
 scheduling expectation fixture out of the scanned conformance bundle directory.
 The IR conformance fixture step passes, but the aggregate gate is currently
-blocked in this dirty checkout by unrelated shader-material work that makes
+blocked by shader-material work that makes
 `packages/runtime-web-three/src/worldMapping/colors.ts` fail with TS18048 on
 optional material colors.
