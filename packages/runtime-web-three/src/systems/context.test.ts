@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import type { ISystemsIr, IUiIr, IWorldIr } from "@threenative/ir";
 
-import { channelEvent, componentHookObservations, createSystemContext, evaluateStates, plugin, pluginGroup, propagateObserverEvent, taskChannel } from "./context.js";
+import { channelEvent, componentHookObservations, createSystemContext, createWebSystemRuntimeState, evaluateStates, plugin, pluginGroup, propagateObserverEvent, taskChannel } from "./context.js";
 
 test("should expose fixed input trace", () => {
   const { context } = createSystemContext(makeWorld(), {
@@ -818,6 +818,42 @@ test("should expose fixed-trace task metadata and event-backed channels", () => 
   context.channels.send("missing", { ignored: true });
 
   assert.deepEqual(events, [{ event: "LifecycleEvent", payload: { phase: "updated" } }]);
+});
+
+test("should reject undeclared delayed command scheduling", () => {
+  const world = makeWorld();
+  const runtimeState = createWebSystemRuntimeState(world, {});
+  const { context } = createSystemContext(world, {
+    delayedCommands: [
+      {
+        cancelPolicy: "drop",
+        command: { components: ["Transform"], entity: "marker", kind: "spawn" },
+        id: "spawnMarker",
+        maxDelayTicks: 2,
+        ownership: { id: "arena", kind: "scene" },
+      },
+    ],
+    delta: 0.016,
+    fixedDelta: 0.016,
+    runtimeState,
+    schedule: "fixedUpdate",
+    systemName: "spawner",
+    tick: 3,
+  });
+
+  assert.deepEqual(context.schedule.afterTicks({ delayTicks: 1, id: "missing" }), {
+    accepted: false,
+    delayTicks: 1,
+    id: "missing",
+    status: "rejected",
+  });
+  assert.deepEqual(context.schedule.afterTicks({ delayTicks: 3, id: "spawnMarker" }), {
+    accepted: false,
+    delayTicks: 3,
+    id: "spawnMarker",
+    status: "rejected",
+  });
+  assert.deepEqual(runtimeState.delayedCommands, []);
 });
 
 test("should expose portable plugin composition metadata", () => {

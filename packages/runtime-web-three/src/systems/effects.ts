@@ -147,7 +147,7 @@ export function systemEffectLogEntries(
 }
 
 function declaresCommand(system: IIrSystemDeclaration, command: IQueuedCommand): boolean {
-  return system.commands.some((declared) => {
+  return [...system.commands, ...(system.delayedCommands ?? []).map((declaration) => declaration.command)].some((declared) => {
     if (declared.kind !== command.kind) {
       return false;
     }

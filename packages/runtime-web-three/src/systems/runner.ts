@@ -3,7 +3,7 @@ import type { IWebInputState } from "../input.js";
 import type { IRenderedUi } from "../ui/renderUi.js";
 
 import { createComponentDiffCache } from "./componentDiff.js";
-import { createSystemContext, webSystemRuntimeStateFor, type IResourceObservation } from "./context.js";
+import { advanceWebDelayedCommands, createSystemContext, webSystemRuntimeStateFor, type IResourceObservation } from "./context.js";
 import { applySystemEffects } from "./effects.js";
 import { appendSystemEffectLog, type ISystemEffectLog, type ISystemEffectLogEntry } from "./log.js";
 import { createWebPersistenceService, type IWebPersistenceService } from "./services/persistence.js";
@@ -32,6 +32,7 @@ export async function runSchedule(options: {
   elapsed?: number;
   localData?: ILocalDataIr;
   componentSchemas?: IIrSchemaFile;
+  currentScene?: string | null;
   module: ISystemModule;
   paused?: boolean;
   prefabs?: IPrefabsIr;
@@ -58,6 +59,23 @@ export async function runSchedule(options: {
     entries.push(...result.entries);
     resourceObservations.push(...result.resourceObservations);
   }
+  const delayed = advanceWebDelayedCommands(options.world, runtimeState, {
+    currentScene: options.currentScene,
+    schedule: options.schedule,
+    tick: options.tick ?? 0,
+  });
+  for (const command of delayed) {
+    const system = options.systems.systems.find((candidate) => candidate.name === command.systemName);
+    if (system === undefined) {
+      continue;
+    }
+    const result = applySystemEffects(options.world, system, { commands: [command.command], events: [], resources: [], services: [] }, { frame: options.frame ?? 0, prefabs: options.prefabs, tick: options.tick ?? 0 });
+    diagnostics.push(...result.diagnostics);
+    entries.push(...result.entries);
+    if (options.effectLog !== undefined) {
+      appendSystemEffectLog(options.effectLog, result.entries);
+    }
+  }
   if (options.resourceObservations !== undefined) {
     options.resourceObservations.push(...resourceObservations);
   }
@@ -73,6 +91,7 @@ async function runSystem(
     delta?: number;
     elapsed?: number;
     componentSchemas?: IIrSchemaFile;
+    currentScene?: string | null;
     effectLog?: ISystemEffectLog;
     frame?: number;
     fixedDelta?: number;
@@ -101,7 +120,9 @@ async function runSystem(
     audio: options.audio,
     componentDiff: options.componentDiff,
     defaultQuery: system.queries[0],
+    delayedCommands: system.delayedCommands,
     componentSchemas: options.componentSchemas,
+    currentScene: options.currentScene,
     delta: options.delta ?? 0,
     elapsed: options.elapsed ?? 0,
     fixedDelta: options.fixedDelta ?? 1 / 60,
@@ -120,7 +141,10 @@ async function runSystem(
       });
     },
     runtimeState: options.runtimeState,
+    schedule: system.schedule,
+    systemName: system.name,
     systems: options.systems,
+    tick: options.tick ?? 0,
     ui: options.ui,
     uiState: options.uiState,
   });

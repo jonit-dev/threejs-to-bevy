@@ -135,6 +135,9 @@ export interface ISystemContext {
     push(scene: string, options?: Record<string, unknown>): ISceneServiceResult<"push">;
     unload(scene: string, options?: Record<string, unknown>): ISceneServiceResult<"unload">;
   };
+  schedule: {
+    afterTicks(options: IScheduleAfterTicksOptions): IScheduleAfterTicksResult;
+  };
   sequences: {
     play(sequence: string, options?: Record<string, unknown>): ISequenceServiceResult<"play">;
     query(sequence?: string): ISequenceQueryResult;
@@ -191,6 +194,18 @@ export interface ISystemContext {
     time: number;
   };
   state<T extends Record<string, unknown>>(key: string, defaults: T): T;
+}
+
+export interface IScheduleAfterTicksOptions {
+  delayTicks: number;
+  id: string;
+}
+
+export interface IScheduleAfterTicksResult {
+  accepted: boolean;
+  delayTicks: number;
+  id: string;
+  status: "enqueued" | "rejected";
 }
 
 export interface IObserverPropagationStep {

@@ -1,5 +1,5 @@
 import { buildComponentReflectionRegistry, type IComponentReflectionRegistry, type IComponentReflectionType } from "@threenative/ir/reflection";
-import type { IAssetsManifest, IIrSchemaFile, IIrStateSource, IIrSystemQuery, ILocalDataIr, IPrefabsIr, ISystemsIr, IUiIr, IUiNodeIr, IWorldEntity, IWorldIr } from "@threenative/ir";
+import type { IAssetsManifest, IIrDelayedCommandDeclaration, IIrSchemaFile, IIrStateSource, IIrSystemDeclaration, IIrSystemQuery, ILocalDataIr, IPrefabsIr, ISystemsIr, IUiIr, IUiNodeIr, IWorldEntity, IWorldIr } from "@threenative/ir";
 import { AnimationRuntimeController } from "../animation.js";
 import { ScriptAudioRuntimeController, type IScriptAudioPlayOptions } from "../audio.js";
 import { traceCharacterControllers, type ICharacterTraceObservation } from "../character.js";
@@ -89,6 +89,7 @@ export function createWebSystemRuntimeState(
     animations: new AnimationRuntimeController(),
     assets: options.assets,
     audio: options.audio,
+    delayedCommands: [] as IWebDelayedCommand[],
     particles: createParticleCommandService(options.assets),
     random: createDeterministicRandom(seed),
     randomSeedKey: runtimeSeedKey(seed),
@@ -103,6 +104,21 @@ export interface IResourceObservation {
   schedule?: string;
   system?: string;
   tick?: number;
+}
+
+export interface IWebDelayedCommand {
+  cancelPolicy: "drop" | "flush";
+  command: IQueuedCommand;
+  delayTicks: number;
+  enqueuedTick: number;
+  id: string;
+  ownership: {
+    id: string;
+    kind: "entity" | "scene";
+  };
+  remainingTicks: number;
+  schedule: IIrSystemDeclaration["schedule"];
+  systemName: string;
 }
 
 const webSystemRuntimeStates = new WeakMap<IWorldIr, ReturnType<typeof createWebSystemRuntimeState>>();
@@ -123,7 +139,7 @@ export function webSystemRuntimeStateFor(
 
 export function createSystemContext(
   world: IWorldIr,
-  options: { assets?: IAssetsManifest; audio?: import("@threenative/ir").IAudioIr; componentDiff?: IComponentDiffCache; componentSchemas?: IIrSchemaFile; currentScene?: string | null; defaultQuery?: IIrSystemQuery; delta: number; elapsed?: number; fixedDelta: number; input?: IWebInputState; localData?: ILocalDataIr; paused?: boolean; persistence?: IWebPersistenceService; prefabs?: IPrefabsIr; resourceObserver?: (observation: Omit<IResourceObservation, "frame" | "schedule" | "system" | "tick">) => void; runtimeState?: ReturnType<typeof createWebSystemRuntimeState>; systems?: ISystemsIr; ui?: IUiIr; uiState?: IRenderedUi },
+  options: { assets?: IAssetsManifest; audio?: import("@threenative/ir").IAudioIr; componentDiff?: IComponentDiffCache; componentSchemas?: IIrSchemaFile; currentScene?: string | null; defaultQuery?: IIrSystemQuery; delayedCommands?: IIrSystemDeclaration["delayedCommands"]; delta: number; elapsed?: number; fixedDelta: number; input?: IWebInputState; localData?: ILocalDataIr; paused?: boolean; persistence?: IWebPersistenceService; prefabs?: IPrefabsIr; resourceObserver?: (observation: Omit<IResourceObservation, "frame" | "schedule" | "system" | "tick">) => void; runtimeState?: ReturnType<typeof createWebSystemRuntimeState>; schedule?: IIrSystemDeclaration["schedule"]; systemName?: string; systems?: ISystemsIr; tick?: number; ui?: IUiIr; uiState?: IRenderedUi },
 ): {
   commands: IQueuedCommand[];
   context: ISystemContext;
@@ -143,6 +159,12 @@ export function createSystemContext(
   const particles = options.runtimeState?.particles ?? createParticleCommandService(options.assets);
   const persistence = options.persistence ?? createWebPersistenceService(options.localData ?? emptyLocalData());
   const ui = options.uiState ?? createScriptUiState(options.ui);
+  const delayedScheduler = createDelayedScheduler(options.delayedCommands ?? [], {
+    runtimeState: options.runtimeState,
+    schedule: options.schedule ?? "update",
+    systemName: options.systemName ?? "",
+    tick: options.tick ?? 0,
+  });
   const findEntity = (id: string): ISystemEntityView | undefined => {
     const entity = world.entities.find((candidate) => candidate.id === id);
     return entity === undefined ? undefined : createEntityView(entity, commands);
@@ -487,6 +509,11 @@ export function createSystemContext(
         },
         unload(scene, sceneOptions = {}) {
           return queueSceneService(services, "unload", scene, sceneOptions);
+        },
+      },
+      schedule: {
+        afterTicks(scheduleOptions) {
+          return delayedScheduler.afterTicks(scheduleOptions);
         },
       },
       sequences: {
@@ -1018,6 +1045,124 @@ function normalizeHandleName(value: unknown): string {
 
 function normalizeEntityRef(entity: string | ISystemEntityView): string {
   return typeof entity === "string" ? entity : entity.id;
+}
+
+function createDelayedScheduler(
+  declarations: readonly IIrDelayedCommandDeclaration[],
+  options: {
+    runtimeState?: ReturnType<typeof createWebSystemRuntimeState>;
+    schedule: IIrSystemDeclaration["schedule"];
+    systemName: string;
+    tick: number;
+  },
+): ISystemContext["schedule"] {
+  const byId = new Map(declarations.map((declaration) => [declaration.id, declaration] as const));
+  return {
+    afterTicks(scheduleOptions) {
+      const declaration = byId.get(scheduleOptions.id);
+      if (
+        declaration === undefined ||
+        options.runtimeState === undefined ||
+        !Number.isInteger(scheduleOptions.delayTicks) ||
+        scheduleOptions.delayTicks < 1 ||
+        scheduleOptions.delayTicks > declaration.maxDelayTicks
+      ) {
+        return {
+          accepted: false,
+          delayTicks: scheduleOptions.delayTicks,
+          id: scheduleOptions.id,
+          status: "rejected",
+        };
+      }
+      options.runtimeState.delayedCommands.push({
+        cancelPolicy: declaration.cancelPolicy,
+        command: queuedCommandFromDelayedDeclaration(declaration),
+        delayTicks: scheduleOptions.delayTicks,
+        enqueuedTick: options.tick,
+        id: declaration.id,
+        ownership: { ...declaration.ownership },
+        remainingTicks: scheduleOptions.delayTicks,
+        schedule: options.schedule,
+        systemName: options.systemName,
+      });
+      return {
+        accepted: true,
+        delayTicks: scheduleOptions.delayTicks,
+        id: scheduleOptions.id,
+        status: "enqueued",
+      };
+    },
+  };
+}
+
+function queuedCommandFromDelayedDeclaration(declaration: IIrDelayedCommandDeclaration): IQueuedCommand {
+  const command = declaration.command;
+  if (command.kind === "spawn") {
+    return {
+      components: Object.fromEntries(command.components.map((component) => [component, {}])),
+      entity: command.entity,
+      kind: "spawn",
+      source: "command",
+    };
+  }
+  if (command.kind === "emitEvent") {
+    return { entity: "", event: command.event, kind: "emitEvent", payload: {}, source: "command" };
+  }
+  if (command.kind === "despawn") {
+    return { entity: command.entity, kind: "despawn", source: "command" };
+  }
+  if (command.kind === "instantiate") {
+    return { entity: "", kind: "instantiate", prefab: command.prefab, prefix: command.prefix, source: "command" };
+  }
+  if (command.kind === "setParent") {
+    return { child: command.child, entity: command.child, kind: "setParent", parent: command.parent, source: "command" };
+  }
+  if (command.kind === "clearParent") {
+    return { child: command.child, entity: command.child, kind: "clearParent", source: "command" };
+  }
+  return {
+    component: command.component,
+    entity: command.entity,
+    kind: command.kind,
+    source: "command",
+    value: {},
+  };
+}
+
+export function advanceWebDelayedCommands(
+  world: IWorldIr,
+  runtimeState: ReturnType<typeof createWebSystemRuntimeState>,
+  options: { currentScene?: string | null; schedule: IIrSystemDeclaration["schedule"]; tick: number },
+): IWebDelayedCommand[] {
+  if (options.schedule !== "fixedUpdate") {
+    return [];
+  }
+  const ready: IWebDelayedCommand[] = [];
+  const pending: IWebDelayedCommand[] = [];
+  for (const command of runtimeState.delayedCommands) {
+    if (command.enqueuedTick >= options.tick) {
+      pending.push(command);
+      continue;
+    }
+    const next = { ...command, remainingTicks: command.remainingTicks - 1 };
+    if (next.remainingTicks > 0) {
+      pending.push(next);
+      continue;
+    }
+    if (next.cancelPolicy === "drop" && !delayedCommandOwnerActive(world, next, options.currentScene)) {
+      continue;
+    }
+    ready.push(next);
+  }
+  runtimeState.delayedCommands = pending;
+  return ready;
+}
+
+function delayedCommandOwnerActive(world: IWorldIr, command: IWebDelayedCommand, currentScene: string | null | undefined): boolean {
+  if (command.ownership.kind === "entity") {
+    return world.entities.some((entity) => entity.id === command.ownership.id);
+  }
+  return currentScene === undefined || currentScene === null || currentScene === command.ownership.id;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

@@ -180,6 +180,41 @@ test("should run systems apply despawn command after schedule", async () => {
   assert.deepEqual(world.entities, []);
 });
 
+test("should flush delayed command after fixed ticks", async () => {
+  const world = makeWorld();
+  const systems = makeSystems("fixedUpdate", "queueSpawn");
+  systems.systems[0]!.delayedCommands = [
+    {
+      cancelPolicy: "drop",
+      command: { components: ["Transform"], entity: "marker", kind: "spawn" },
+      id: "spawnMarker",
+      maxDelayTicks: 3,
+      ownership: { id: "arena", kind: "scene" },
+    },
+  ];
+  const module = {
+    systems: {
+      queueSpawn(context: any) {
+        if (context.time.time === 0) {
+          context.schedule.afterTicks({ delayTicks: 2, id: "spawnMarker" });
+        }
+      },
+    },
+  };
+
+  await runSchedule({ elapsed: 0, module, schedule: "fixedUpdate", systems, tick: 0, world });
+  assert.equal(world.entities.some((entity) => entity.id === "marker"), false);
+
+  await runSchedule({ elapsed: 1, module, schedule: "fixedUpdate", systems, tick: 1, world });
+  assert.equal(world.entities.some((entity) => entity.id === "marker"), false);
+
+  const result = await runSchedule({ elapsed: 2, module, schedule: "fixedUpdate", systems, tick: 2, world });
+
+  assert.deepEqual(result.diagnostics, []);
+  assert.deepEqual(world.entities.find((entity) => entity.id === "marker")?.components, { Transform: {} });
+  assert.equal(result.entries.some((entry) => entry.kind === "command" && entry.command === "spawn" && entry.entity === "marker" && entry.tick === 2), true);
+});
+
 test("should run systems expose resources events and input context", async () => {
   const world = makeWorld();
   world.resources = { Score: { value: 1 } };
