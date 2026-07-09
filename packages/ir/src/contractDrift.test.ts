@@ -5,16 +5,21 @@ import test from "node:test";
 import { fileURLToPath } from "node:url";
 
 import {
+  compareEnumValues,
   compareOptionalFields,
   compareRequiredFields,
+  enumValuesFromJsonSchema,
+  enumValuesFromTypeScriptTypeAlias,
   optionalFieldsFromJsonSchema,
   optionalFieldsFromRustStruct,
   optionalFieldsFromTypeScriptInterface,
+  rejectUnmarkedRustStringEnum,
   requiredFieldsFromJsonSchema,
   requiredFieldsFromRustStruct,
   requiredFieldsFromTypeScriptInterface,
+  rustFieldTypeFromStruct,
 } from "./contractDrift.js";
-import { IR_DOCUMENTS, IR_SCHEMA_IDS, IR_VERSION, schemaBackedDocuments } from "./documents.js";
+import { IR_DOCUMENTS, IR_SCHEMA_IDS, IR_VERSION, schemaBackedDocuments, type IrEnumDriftMetadata } from "./documents.js";
 import { schemaUrls } from "./schemas.js";
 
 const packageRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
@@ -31,6 +36,15 @@ const bevyRuntimeDocumentCases = schemaBackedDocuments().flatMap(([document, met
   schema: metadata.schemaFile,
   structName: metadata.drift.rust.structName,
 }] : []);
+const enumDriftCases = schemaBackedDocuments().flatMap(([document, metadata]) => {
+  const enums: readonly IrEnumDriftMetadata[] = metadata.drift !== undefined && "enums" in metadata.drift ? metadata.drift.enums : [];
+  return enums.map((enumMetadata) => ({
+    document,
+    enumMetadata,
+    schema: metadata.schemaFile,
+    typescriptSource: metadata.drift?.typescript?.source,
+  }));
+});
 const compilerEmitterDocumentCases = [
   { document: "audio", source: "packages/compiler/src/emit/audio.ts" },
   { document: "environmentScene", source: "packages/compiler/src/emit/environment.ts" },
@@ -238,6 +252,49 @@ test("contractDrift should keep optional document fields aligned across schema T
   assert.deepEqual(diagnostics, []);
 });
 
+test("contractDrift should keep enum-valued fields aligned across contract layers", async () => {
+  const loaderTypes = await readFile(loaderTypesPath, "utf8");
+  const diagnostics = [];
+
+  for (const item of enumDriftCases) {
+    const field = item.enumMetadata.path.join(".");
+    const schema = enumValuesFromJsonSchema(await readJson(resolve(packageRoot, "schemas", item.schema)), item.enumMetadata.path, item.schema);
+    if (item.enumMetadata.typescript !== undefined) {
+      assert.ok(item.typescriptSource, `${item.document}.${field} must have TypeScript source metadata.`);
+      diagnostics.push(
+        ...compareEnumValues({
+          actual: enumValuesFromTypeScriptTypeAlias(
+            await readFile(resolve(packageRoot, item.typescriptSource), "utf8"),
+            item.enumMetadata.typescript.typeName,
+            item.typescriptSource,
+          ),
+          document: item.document,
+          expected: schema,
+          field,
+          representation: "TypeScript enum alias",
+        }),
+      );
+    }
+    if (item.enumMetadata.rust !== undefined) {
+      diagnostics.push(
+        rejectUnmarkedRustStringEnum({
+          allowStringCatchAll: item.enumMetadata.rust.allowStringCatchAll,
+          document: item.document,
+          field,
+          rustField: rustFieldTypeFromStruct(
+            loaderTypes,
+            item.enumMetadata.rust.structName,
+            item.enumMetadata.rust.fieldName,
+            "runtime-bevy/crates/threenative_loader/src/types.rs",
+          ),
+        }),
+      );
+    }
+  }
+
+  assert.deepEqual(diagnostics.filter((diagnostic) => diagnostic !== undefined), []);
+});
+
 test("contractDrift should keep compiler document schema and version literals aligned with registry", async () => {
   const diagnostics: string[] = [];
 
@@ -285,6 +342,34 @@ test("contractDrift should fail with a document path when an inspected surface a
   assert.equal(diagnostics[0]?.field, "runtimeOnly");
   assert.equal(diagnostics[0]?.representation, "TypeScript interface");
   assert.match(diagnostics[0]?.message ?? "", /fixtureDoc.*requires field 'runtimeOnly'.*fixture\.schema\.json/);
+});
+
+test("contractDrift should fail with a document path when enum values drift", () => {
+  const diagnostics = compareEnumValues({
+    actual: { source: "fixture/types.ts", values: new Set(["desktop", "web", "native"]) },
+    document: "fixtureDoc",
+    expected: { source: "fixture.schema.json", values: new Set(["desktop", "web"]) },
+    field: "targets.items",
+    representation: "TypeScript enum alias",
+  });
+
+  assert.equal(diagnostics[0]?.document, "fixtureDoc");
+  assert.equal(diagnostics[0]?.field, "targets.items");
+  assert.equal(diagnostics[0]?.representation, "TypeScript enum alias");
+  assert.match(diagnostics[0]?.message ?? "", /fixtureDoc.*native.*fixture\.schema\.json/);
+});
+
+test("contractDrift should fail when a Rust String catch-all is not explicitly marked", () => {
+  const diagnostic = rejectUnmarkedRustStringEnum({
+    document: "fixtureDoc",
+    field: "renderer.antialias",
+    rustField: { source: "fixture/types.rs", type: "String" },
+  });
+
+  assert.equal(diagnostic?.document, "fixtureDoc");
+  assert.equal(diagnostic?.field, "renderer.antialias");
+  assert.equal(diagnostic?.representation, "Bevy loader struct");
+  assert.match(diagnostic?.message ?? "", /String.*closed enum.*without an explicit registry/);
 });
 
 test("contractDrift should reject unchecked support checklist drift when claimed in status", async () => {

@@ -33,12 +33,25 @@ export interface IrManifestLocation {
 }
 
 export interface IrDocumentDriftMetadata {
+  enums?: readonly IrEnumDriftMetadata[];
   rust?: {
     structName: string;
   };
   typescript?: {
     interfaceName: string;
     source: string;
+  };
+}
+
+export interface IrEnumDriftMetadata {
+  path: readonly string[];
+  rust?: {
+    allowStringCatchAll?: string;
+    fieldName: string;
+    structName: string;
+  };
+  typescript?: {
+    typeName: string;
   };
 }
 
@@ -193,6 +206,35 @@ export const IR_DOCUMENTS = {
   },
   runtimeConfig: {
     drift: {
+      enums: [
+        {
+          path: ["renderer", "antialias"],
+          rust: {
+            allowStringCatchAll: "The native loader keeps runtime renderer values open while IR validation owns the closed portable enum.",
+            fieldName: "antialias",
+            structName: "RuntimeRendererConfig",
+          },
+          typescript: { typeName: "RendererAntialiasMode" },
+        },
+        {
+          path: ["renderer", "renderLook", "profile"],
+          rust: {
+            allowStringCatchAll: "The native loader keeps render look values open while IR validation owns the closed portable enum.",
+            fieldName: "profile",
+            structName: "RuntimeRenderLookProfileConfig",
+          },
+          typescript: { typeName: "RenderLookProfileName" },
+        },
+        {
+          path: ["renderer", "renderLook", "overrides", "shadowQuality"],
+          rust: {
+            allowStringCatchAll: "The native loader keeps render look override values open while IR validation owns the closed portable enum.",
+            fieldName: "shadow_quality",
+            structName: "RuntimeRenderLookOverridesConfig",
+          },
+          typescript: { typeName: "RenderLookShadowQuality" },
+        },
+      ],
       rust: { structName: "RuntimeConfigIr" },
       typescript: { interfaceName: "IRuntimeConfigIr", source: "src/runtimeConfig.ts" },
     },

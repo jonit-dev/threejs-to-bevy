@@ -5,6 +5,16 @@ export interface IContractSurface {
   source: string;
 }
 
+export interface IEnumContractSurface {
+  source: string;
+  values: ReadonlySet<string>;
+}
+
+export interface IRustFieldType {
+  source: string;
+  type: string;
+}
+
 export interface IContractDriftDiagnostic {
   document: string;
   field: string;
@@ -25,6 +35,36 @@ export function optionalFieldsFromJsonSchema(schema: unknown, source: string): I
   const required = requiredFieldsFromJsonSchema(schema, source).fields;
   const fields = new Set(Object.keys(schema.properties).filter((field) => !required.has(field)));
   return { fields, source };
+}
+
+export function enumValuesFromJsonSchema(schema: unknown, path: readonly string[], source: string): IEnumContractSurface {
+  let node: unknown = schema;
+  for (const segment of path) {
+    if (segment === "items") {
+      node = isRecord(node) ? node.items : undefined;
+      continue;
+    }
+    node = isRecord(node) && isRecord(node.properties) ? node.properties[segment] : undefined;
+  }
+  const values = isRecord(node) && Array.isArray(node.enum) ? node.enum.filter((value): value is string => typeof value === "string") : [];
+  return { source, values: new Set(values) };
+}
+
+export function enumValuesFromTypeScriptTypeAlias(sourceText: string, typeName: string, source: string): IEnumContractSurface {
+  const sourceFile = ts.createSourceFile(source, sourceText, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
+  let found: ts.TypeAliasDeclaration | undefined;
+  const visit = (node: ts.Node): void => {
+    if (ts.isTypeAliasDeclaration(node) && node.name.text === typeName) {
+      found = node;
+      return;
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(sourceFile);
+  if (found === undefined) {
+    throw new Error(`Could not find TypeScript type alias ${typeName} in ${source}.`);
+  }
+  return { source, values: new Set(stringLiteralsFromTypeNode(found.type)) };
 }
 
 export function requiredFieldsFromTypeScriptInterface(sourceText: string, interfaceName: string, source: string): IContractSurface {
@@ -119,6 +159,18 @@ export function optionalFieldsFromRustStruct(sourceText: string, structName: str
   return { fields, source };
 }
 
+export function rustFieldTypeFromStruct(sourceText: string, structName: string, fieldName: string, source: string): IRustFieldType {
+  const body = rustStructBody(sourceText, structName, source);
+  for (const rawLine of body.split("\n")) {
+    const line = rawLine.trim();
+    const field = line.match(/^pub\s+([A-Za-z_][A-Za-z0-9_]*):\s*([^,]+),/);
+    if (field?.[1] === fieldName && field[2] !== undefined) {
+      return { source, type: field[2].trim() };
+    }
+  }
+  throw new Error(`Could not find Rust field ${structName}.${fieldName} in ${source}.`);
+}
+
 export function compareRequiredFields(input: {
   document: string;
   expected: IContractSurface;
@@ -183,6 +235,57 @@ export function compareOptionalFields(input: {
   return diagnostics;
 }
 
+export function compareEnumValues(input: {
+  actual: IEnumContractSurface;
+  document: string;
+  expected: IEnumContractSurface;
+  field: string;
+  representation: string;
+}): IContractDriftDiagnostic[] {
+  const diagnostics: IContractDriftDiagnostic[] = [];
+  for (const value of [...input.expected.values].sort()) {
+    if (!input.actual.values.has(value)) {
+      diagnostics.push({
+        document: input.document,
+        field: input.field,
+        message: `${input.document}: ${input.representation} is missing enum value '${value}' for '${input.field}' from ${input.expected.source}.`,
+        representation: input.representation,
+        source: input.actual.source,
+      });
+    }
+  }
+  for (const value of [...input.actual.values].sort()) {
+    if (!input.expected.values.has(value)) {
+      diagnostics.push({
+        document: input.document,
+        field: input.field,
+        message: `${input.document}: ${input.representation} has enum value '${value}' for '${input.field}' but ${input.expected.source} does not.`,
+        representation: input.representation,
+        source: input.actual.source,
+      });
+    }
+  }
+  return diagnostics;
+}
+
+export function rejectUnmarkedRustStringEnum(input: {
+  allowStringCatchAll?: string;
+  document: string;
+  field: string;
+  rustField: IRustFieldType;
+}): IContractDriftDiagnostic | undefined {
+  if (input.rustField.type !== "String" || input.allowStringCatchAll !== undefined) {
+    return undefined;
+  }
+  return {
+    document: input.document,
+    field: input.field,
+    message: `${input.document}: Bevy loader uses String for closed enum '${input.field}' without an explicit registry catch-all exception.`,
+    representation: "Bevy loader struct",
+    source: input.rustField.source,
+  };
+}
+
 function findInterface(sourceFile: ts.SourceFile, interfaceName: string): ts.InterfaceDeclaration | undefined {
   let found: ts.InterfaceDeclaration | undefined;
   const visit = (node: ts.Node): void => {
@@ -194,6 +297,16 @@ function findInterface(sourceFile: ts.SourceFile, interfaceName: string): ts.Int
   };
   visit(sourceFile);
   return found;
+}
+
+function stringLiteralsFromTypeNode(node: ts.TypeNode): string[] {
+  if (ts.isUnionTypeNode(node)) {
+    return node.types.flatMap((child) => stringLiteralsFromTypeNode(child));
+  }
+  if (ts.isLiteralTypeNode(node) && ts.isStringLiteral(node.literal)) {
+    return [node.literal.text];
+  }
+  return [];
 }
 
 function propertyNameText(name: ts.PropertyName): string | undefined {
