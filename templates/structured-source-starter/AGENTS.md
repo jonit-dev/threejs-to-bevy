@@ -25,6 +25,11 @@ Rules for this generated ThreeNative project.
 - Preserve schema/version fields and stable IDs unless asked to rename.
 - Add behavior in `src/scripts/**/*.ts`, then reference module/exports from
   structured source.
+- Use the generated `ProjectContext` type from
+  `.threenative/types/project-context.d.ts` for script entrypoints. Regenerate
+  it with `tn types generate --project . --json` after adding scenes, input,
+  resources, schemas, UI, or prefabs; `tn build` and `tn dev --watch` do this
+  automatically.
 - Macro game state, waves/spawns, and cutscene or feedback beats are
   data-first: use `tn flow ... --json`, `tn sequence ... --json`, and
   `tn scene set-spawner ... --json` before adding script-owned state flags,

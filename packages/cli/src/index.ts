@@ -30,6 +30,7 @@ import { animationCommand, audioCommand, environmentCommand, flowCommand, genera
 import { validateProject } from "./commands/validate.js";
 import { recordCommand, screenshotCommand } from "./commands/visualProof.js";
 import { verifyCommand } from "./commands/verify.js";
+import { typesCommand } from "./commands/types.js";
 import { worldCommand } from "./commands/world.js";
 import { type ICommandResult } from "./diagnostics.js";
 
@@ -229,6 +230,11 @@ const commands: Record<string, ICommandDefinition> = {
     description: "Create and mutate structured target profile source documents.",
     implemented: true,
     usage: "tn target set <target-profile-id> --targets web,desktop [--budgets '<json-object>'] [--performance '<json-object>'] [--project <path>] [--json]",
+  },
+  types: {
+    description: "Generate project-specific TypeScript context and id-union types for scripts.",
+    implemented: true,
+    usage: "tn types generate [--project <path>] [--out <path>] [--json]",
   },
   resources: {
     description: "Create and mutate reusable resource source documents.",
@@ -506,6 +512,10 @@ export async function dispatch(argv: readonly string[]): Promise<ICommandResult>
 
   if (commandName === "target") {
     return targetCommand(normalizedArgv.slice(1));
+  }
+
+  if (commandName === "types") {
+    return typesCommand(normalizedArgv.slice(1));
   }
 
   if (commandName === "ui") {

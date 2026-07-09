@@ -116,7 +116,7 @@ test("should ignore type-only script stdlib imports", async () => {
     await mkdir(join(root, "src/scripts"), { recursive: true });
     await writeFile(
       join(root, "src/scripts/player.ts"),
-      `import type { ScriptContext } from "@threenative/script-stdlib";\nexport function updatePlayer(context: ScriptContext) {\n  return context.time.deltaTime;\n}\n`,
+      `import type { ScriptContext } from "@threenative/script-stdlib";\nimport type { ProjectContext } from "../../.threenative/types/project-context";\nexport function updatePlayer(context: ScriptContext | ProjectContext) {\n  return context.time.deltaTime;\n}\n`,
     );
 
     const systems: ISystemScriptSource[] = [

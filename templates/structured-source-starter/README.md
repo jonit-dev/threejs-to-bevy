@@ -6,6 +6,9 @@ TypeScript stays thin.
 - Edit scene, UI, material, asset, input, system, and prefab data in
   `content/**/*.json`.
 - Edit behavior in `src/scripts/**/*.ts`.
+- Run `pnpm run types` after source-shape changes to refresh
+  `.threenative/types/project-context.d.ts`; `tn build` and
+  `tn dev --watch` refresh it automatically.
 - Use `tn ... --json`, recipes, or `@threenative/authoring-client` scripts as
   source-mutation clients; they should write structured source, not generated
   bundle files.
@@ -30,6 +33,8 @@ Useful commands:
 
 ```bash
 pnpm run validate:authoring
+pnpm run types
+pnpm run typecheck
 pnpm run build
 pnpm run iterate
 pnpm run game:plan

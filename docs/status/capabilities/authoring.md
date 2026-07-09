@@ -24,6 +24,9 @@ Current support:
   write declarations, clear stale legacy systems on compile, scaffold an
   explicit starter camera, and emit canonical scene/input/material source
   documents; starter defaults remain gated on benchmark evidence.
+- `tn types generate --json` emits project-local script context and ID-union
+  declarations under `.threenative/types/`, and `tn build` plus
+  `tn dev --watch` refresh them before compiling.
 - Cookbook lookup supports both `tn cookbook show <id> --json` and the compact
   `tn cookbook <id> --json` shorthand for validated pattern pairs.
 - Maintained starters include `docs/API-CARD.md`, a compact generated

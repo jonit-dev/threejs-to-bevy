@@ -1,6 +1,7 @@
-import { Vector3, type ScriptContext } from "@threenative/script-stdlib";
+import { Vector3 } from "@threenative/script-stdlib";
+import type { ProjectContext } from "../../.threenative/types/project-context";
 
-export function movePlayerToGoal(context: ScriptContext): void {
+export function movePlayerToGoal(context: ProjectContext): void {
   for (const entity of context.query()) {
     const transform = entity.transform();
     const position = transform.position;

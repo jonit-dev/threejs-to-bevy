@@ -16,6 +16,7 @@ export { normalizeAuthoringGraph } from "./authoring/normalize.js";
 export { compileTypedGameSpec, type ICompileTypedGameSpecOptions } from "./gameSpec/compile.js";
 export { compileTypedGameSpecFile, type ICompileTypedGameSpecFileOptions, type ICompileTypedGameSpecFileResult } from "./gameSpec/file.js";
 export { generateTypedGameSpecIdTypes, type IGenerateTypedGameSpecTypesOptions } from "./gameSpec/typegen.js";
+export { generateProjectContextTypes, generateProjectTypes, type IGenerateProjectTypesOptions, type IGenerateProjectTypesResult } from "./typegen.js";
 export type {
   AuthoringDeclarationKind,
   AuthoringEmittedArtifactKind,

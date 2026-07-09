@@ -1,6 +1,6 @@
 import { access, watch, type FSWatcher } from "node:fs";
 import { resolve } from "node:path";
-import { buildProject, CompilerError, loadProjectConfig, validateBundle, type ICompilerDiagnostic } from "@threenative/compiler";
+import { buildProject, CompilerError, generateProjectTypes, loadProjectConfig, validateBundle, type ICompilerDiagnostic } from "@threenative/compiler";
 
 export interface IWatchDiagnostic {
   code: string;
@@ -106,6 +106,7 @@ function markStaleBuild(report: IWatchReport, lastGoodBundlePath: string | undef
 async function rebuildProject(projectPath: string): Promise<IWatchReport> {
   try {
     const config = await loadProjectConfig(projectPath);
+    await generateProjectTypes({ projectPath });
     const build = await buildProject(projectPath);
     const validation = await validateBundle(build.bundlePath);
 

@@ -16,6 +16,8 @@
     "game:qa": "tn game qa --project . --run-proof --json",
     "game:release": "tn game release --project . --json",
     "recipe:controller": "tn recipe third-person-controller --scene arena --entity player --camera camera.main --dry-run --json",
+    "types": "tn types generate --project . --json",
+    "typecheck": "tn types generate --project . --json && tsc -p tsconfig.json --noEmit",
     "validate": "tn validate",
     "validate:authoring": "tn authoring validate --json",
     "verify": "tn verify --frames 2 --json"

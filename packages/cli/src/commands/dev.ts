@@ -1,7 +1,7 @@
 import { readFile, stat } from "node:fs/promises";
 import { createHash } from "node:crypto";
 import { resolve } from "node:path";
-import { buildProject, loadProjectConfig, validateBundle } from "@threenative/compiler";
+import { buildProject, generateProjectTypes, loadProjectConfig, validateBundle } from "@threenative/compiler";
 import type { IAssetReloadReportIr, IGltfSceneMetadataIr } from "@threenative/ir";
 import { startWebPreview, type IWebPreviewServer } from "@threenative/runtime-web-three";
 import { diagnosticResult, type ICommandResult } from "../diagnostics.js";
@@ -52,6 +52,7 @@ export async function devCommand(
   const projectPath = projectFlagIndex === -1 ? cwd : resolve(cwd, normalizedArgv[projectFlagIndex + 1] ?? ".");
 
   try {
+    await generateProjectTypes({ projectPath });
     if (watchMode) {
       const watcher = await startDevWatch(projectPath);
       const bundlePath = watcher.initialReport.bundlePath;

@@ -215,6 +215,9 @@ function resolveHelperImports(
   }> = [];
   for (const statement of sourceFile.statements) {
     if (ts.isImportDeclaration(statement)) {
+      if (statement.importClause?.isTypeOnly === true) {
+        continue;
+      }
       const specifier = readLiteralSpecifier(statement.moduleSpecifier);
       if (isSupportedScriptHelperImport(specifier)) {
         const imported = runtimeImportedBindingNames(statement);

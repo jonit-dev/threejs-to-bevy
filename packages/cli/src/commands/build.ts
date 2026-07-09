@@ -1,5 +1,5 @@
 import { resolve } from "node:path";
-import { buildProject, CompilerError } from "@threenative/compiler";
+import { buildProject, CompilerError, generateProjectTypes } from "@threenative/compiler";
 import { diagnosticResult, type ICommandResult } from "../diagnostics.js";
 
 const ITERATE_NOTICE = "Standalone build is subsumed by tn iterate --project . --json for the normal agent verify loop.";
@@ -13,6 +13,7 @@ export async function buildCommand(argv: readonly string[], cwd = process.env.IN
     projectFlagIndex === -1 ? cwd : resolve(cwd, normalizedArgv[projectFlagIndex + 1] ?? ".");
 
   try {
+    await generateProjectTypes({ projectPath });
     const result = await buildProject(projectPath);
     const payload = {
       code: "TN_BUILD_OK",

@@ -9,6 +9,8 @@ durable source under `content/**` and `src/scripts/**` only when no command
 covers the change, and do not repair generated bundle files.
 Use flow/sequence/spawner source for macro game state, waves, and cutscene or
 feedback beats before adding script-owned state flags or timers.
+Use generated `ProjectContext` types in script entrypoints; refresh them with
+`tn types generate --project . --json` after structured source shape changes.
 Use `tn scene inspect arena --node <id> --project . --json` for one entity,
 resource, system, prefab, or UI node before opening the full scene JSON.
 For gameplay verification, run `tn iterate --project . --json` first; do not
