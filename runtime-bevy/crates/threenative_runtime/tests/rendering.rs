@@ -1744,11 +1744,11 @@ fn cameras_should_map_runtime_color_grading_to_native_sections() {
         .expect("runtime color grading camera should be spawned");
     assert_eq!(*camera.1, Tonemapping::AcesFitted);
     assert!((camera.2.global.exposure - 0.0).abs() < 0.001);
-    assert!((camera.2.global.post_saturation - 1.107).abs() < 0.001);
+    assert!((camera.2.global.post_saturation - 0.82).abs() < 0.001);
     for section in camera.2.all_sections() {
         assert!((section.contrast - 1.14).abs() < 0.001);
     }
-    assert!((camera.3.exposure() - 1.062).abs() < 0.001);
+    assert!((camera.3.exposure() - 0.983).abs() < 0.001);
 
     fs::remove_dir_all(root).expect("temporary bundle should be removed");
 }

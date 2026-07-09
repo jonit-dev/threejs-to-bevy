@@ -59,23 +59,32 @@ Current support:
   shared requested/applied feature-report shape. Focused screenshot proof is
   covered by the `photoreal-dof-depth-test` fixture before broader photoreal
   release claims.
+- Composer output now uses the same fitted ACES transform as Bevy, applies
+  authored exposure and saturation one-to-one, and performs the final sRGB
+  transfer once. This removes the previous adapter-only saturation/exposure
+  multipliers and substantially tightens neutral, saturated, and bloom proof.
 - Portable `renderer.motionBlur` maps to web Three.js temporal accumulation and
   Bevy's native `MotionBlurBundle` with depth and motion-vector prepasses. Both
   runtimes report the feature as `baseline` when enabled, and the
-  `photoreal-motion-blur-moving-test` fixture captures a scripted moving marker
-  with bounded web/Bevy screenshot regions before broader release claims.
-- Portable `renderer.screenSpaceReflections` now maps to a web planar
-  screen-space baseline pass and Bevy native screen-space reflections with
-  deferred opaque rendering. Both runtimes report the feature as `baseline`
-  when enabled, and the `photoreal-reflective-wet-floor` fixture captures a
-  wet-floor reflection scene with bounded web/Bevy screenshot regions before
-  broader SSR/SSGI release claims.
+  `photoreal-motion-blur-moving-test` fixture captures a continuously moving,
+  high-contrast patterned marker against a deterministic fixed-step native
+  capture clock. The pattern exposes Bevy's velocity-buffer smoothing instead
+  of relying on a solid silhouette that the native reconstruction filter does
+  not blur. The web fallback keeps only a short exposure history instead of an
+  accumulated multi-frame ghost trail; effect-specific regions bound the two
+  algorithms without claiming pixel-identical kernels.
+- Portable `renderer.screenSpaceReflections` now maps to Three.js's depth- and
+  normal-aware `SSRPass`, with reflective-object selection derived from the
+  authored roughness limit, while Bevy uses native screen-space reflections
+  with deferred opaque rendering. Both runtimes report the feature as
+  `baseline` when enabled, and the `photoreal-reflective-wet-floor` fixture
+  captures bounded web/Bevy reflection evidence before broader SSR/SSGI claims.
 - `pnpm verify:rendering-photoreal` captures the
   `photoreal-lighting-units-probe`, `photoreal-ao-corner-test`, and
   `photoreal-bloom-emissive-test`, `photoreal-dof-depth-test`, and
   `photoreal-motion-blur-moving-test`, and
   `photoreal-reflective-wet-floor` web and Bevy screenshots, runtime feature
-  reports, metrics, region comparisons, and contact sheet under
+  reports, metrics, region comparisons, local effect-variation assertions, and contact sheet under
   `tools/verify/artifacts/rendering-photoreal/`.
 - `tn runtime set-rendering`, MCP registry metadata, and editor inspector rows
   can mutate those portable renderer feature fields without hand-editing

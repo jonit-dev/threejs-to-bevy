@@ -12,6 +12,7 @@ type RuntimeName = "bevy" | "web";
 
 interface PhotorealFixtureDefinition {
   bundlePath: string;
+  captureFrames?: number;
   captureSettleMs?: number;
   expectedPostProcessing?: string;
   id: string;
@@ -25,9 +26,9 @@ const fixtures: PhotorealFixtureDefinition[] = [
     id: "photoreal-lighting-units-probe",
     reportAssertions: "none",
     sampleRegions: [
-      photorealRegion("center-surfaces", 0.42, 0.36, 0.16, 0.18, 0.075),
-      photorealRegion("left-wall", 0.16, 0.22, 0.12, 0.2, 0.055),
-      photorealRegion("floor", 0.42, 0.72, 0.16, 0.08, 0.06),
+      photorealRegion("center-surfaces", 0.42, 0.36, 0.16, 0.18, 0.02),
+      photorealRegion("left-wall", 0.16, 0.22, 0.12, 0.2, 0.02),
+      photorealRegion("floor", 0.42, 0.72, 0.16, 0.08, 0.02),
     ],
   },
   {
@@ -36,9 +37,9 @@ const fixtures: PhotorealFixtureDefinition[] = [
     id: "photoreal-ao-corner-test",
     reportAssertions: "ambient-occlusion",
     sampleRegions: [
-      photorealRegion("left-wall", 0.16, 0.22, 0.12, 0.2, 0.09),
-      photorealRegion("floor", 0.42, 0.72, 0.16, 0.08, 0.09),
-      photorealRegion("contact-corner", 0.3, 0.45, 0.14, 0.16, 0.09),
+      photorealRegion("left-wall", 0.16, 0.22, 0.12, 0.2, 0.03),
+      photorealRegion("floor", 0.42, 0.72, 0.16, 0.08, 0.03),
+      photorealRegion("contact-corner", 0.3, 0.45, 0.14, 0.16, 0.03),
     ],
   },
   {
@@ -47,11 +48,11 @@ const fixtures: PhotorealFixtureDefinition[] = [
     id: "photoreal-bloom-emissive-test",
     reportAssertions: "bloom",
     sampleRegions: [
-      photorealRegion("emissive-center", 0.42, 0.36, 0.16, 0.18, 0.09),
-      photorealRegion("left-blue-background", 0.03, 0.2, 0.12, 0.22, 0.12),
-      photorealRegion("right-blue-background", 0.85, 0.2, 0.12, 0.22, 0.12),
-      photorealRegion("bottom-blue-background", 0.42, 0.89, 0.16, 0.08, 0.12),
-      photorealRegion("floor-glow", 0.42, 0.72, 0.16, 0.08, 0.045),
+      photorealRegion("emissive-center", 0.42, 0.36, 0.16, 0.18, 0.04, 0.02),
+      photorealRegion("left-blue-background", 0.03, 0.2, 0.12, 0.22, 0.03),
+      photorealRegion("right-blue-background", 0.85, 0.2, 0.12, 0.22, 0.03),
+      photorealRegion("bottom-blue-background", 0.42, 0.89, 0.16, 0.08, 0.03),
+      photorealRegion("floor-glow", 0.42, 0.72, 0.16, 0.08, 0.03),
     ],
   },
   {
@@ -60,22 +61,22 @@ const fixtures: PhotorealFixtureDefinition[] = [
     id: "photoreal-dof-depth-test",
     reportAssertions: "depth-of-field",
     sampleRegions: [
-      photorealRegion("near-marker", 0.23, 0.45, 0.12, 0.16, 0.12),
-      photorealRegion("focus-marker", 0.44, 0.42, 0.12, 0.16, 0.1),
-      photorealRegion("far-marker", 0.64, 0.35, 0.13, 0.18, 0.12),
-      photorealRegion("background-stripes", 0.36, 0.18, 0.28, 0.2, 0.14),
+      photorealRegion("near-marker", 0.23, 0.45, 0.12, 0.16, 0.03),
+      photorealRegion("focus-marker", 0.44, 0.42, 0.12, 0.16, 0.03),
+      photorealRegion("far-marker", 0.64, 0.35, 0.13, 0.18, 0.03),
+      photorealRegion("background-stripes", 0.36, 0.18, 0.28, 0.2, 0.03),
     ],
   },
   {
     bundlePath: "packages/ir/fixtures/conformance/photoreal-motion-blur-moving-test/game.bundle",
-    captureSettleMs: 2000,
+    captureFrames: 120,
     expectedPostProcessing: "motionBlur",
     id: "photoreal-motion-blur-moving-test",
     reportAssertions: "motion-blur",
     sampleRegions: [
-      photorealRegion("motion-lane", 0.32, 0.4, 0.36, 0.16, 0.16),
-      photorealRegion("moving-core", 0.48, 0.38, 0.16, 0.2, 0.18),
-      photorealRegion("floor", 0.42, 0.72, 0.16, 0.08, 0.1),
+      photorealRegion("motion-lane", 0.32, 0.27, 0.36, 0.16, 0.07, 0.01),
+      photorealRegion("moving-core", 0.46, 0.28, 0.12, 0.14, 0.075),
+      photorealRegion("floor", 0.42, 0.72, 0.16, 0.08, 0.02),
     ],
   },
   {
@@ -84,17 +85,17 @@ const fixtures: PhotorealFixtureDefinition[] = [
     id: "photoreal-reflective-wet-floor",
     reportAssertions: "screen-space-reflections",
     sampleRegions: [
-      photorealRegion("source-strips", 0.36, 0.08, 0.28, 0.18, 0.12),
-      photorealRegion("floor-reflection", 0.36, 0.58, 0.28, 0.18, 0.2),
-      photorealRegion("wet-floor", 0.42, 0.75, 0.18, 0.08, 0.12),
+      photorealRegion("source-strips", 0.36, 0.08, 0.28, 0.18, 0.04),
+      photorealRegion("floor-reflection", 0.36, 0.58, 0.28, 0.18, 0.07, 0.01),
+      photorealRegion("wet-floor", 0.42, 0.75, 0.18, 0.08, 0.02),
     ],
   },
 ];
 
-interface PhotorealSampleRegion {
+export interface PhotorealSampleRegion {
   id: string;
   region: { height: number; width: number; x: number; y: number };
-  threshold: { maxAverageChannelDelta: number };
+  threshold: { maxAverageChannelDelta: number; minRuntimeLuminanceStdDev?: number };
 }
 
 export interface PhotorealRegionMetric {
@@ -102,16 +103,20 @@ export interface PhotorealRegionMetric {
   fixtureId: string;
   id: string;
   maxChannelDelta: number;
+  bevyLuminanceStdDev: number;
+  effectOk: boolean;
   ok: boolean;
+  parityOk: boolean;
   region: { height: number; width: number; x: number; y: number };
-  threshold: { maxAverageChannelDelta: number };
+  threshold: { maxAverageChannelDelta: number; minRuntimeLuminanceStdDev?: number };
+  webLuminanceStdDev: number;
 }
 
-function photorealRegion(id: string, x: number, y: number, width: number, height: number, maxAverageChannelDelta: number): PhotorealSampleRegion {
+function photorealRegion(id: string, x: number, y: number, width: number, height: number, maxAverageChannelDelta: number, minRuntimeLuminanceStdDev?: number): PhotorealSampleRegion {
   return {
     id,
     region: { height, width, x, y },
-    threshold: { maxAverageChannelDelta },
+    threshold: { maxAverageChannelDelta, ...(minRuntimeLuminanceStdDev === undefined ? {} : { minRuntimeLuminanceStdDev }) },
   };
 }
 
@@ -271,7 +276,11 @@ async function capturePhotorealEvidence(options: {
     const server = await startWebPreview({ bundlePath, silent: true });
     let webCaptureDiagnostics: VerificationDiagnostic[] = [];
     try {
-      const capture = await captureScreenshot({ outPath: webScreenshotPath, settleMs: fixture.captureSettleMs, url: server.url, waitReady: true });
+      const captureUrl = new URL(server.url);
+      if (fixture.captureFrames !== undefined) {
+        captureUrl.searchParams.set("captureFrames", fixture.captureFrames.toString());
+      }
+      const capture = await captureScreenshot({ outPath: webScreenshotPath, settleMs: fixture.captureSettleMs, url: captureUrl.href, waitReady: true });
       webCaptureDiagnostics = (capture.diagnostics ?? []).map((diagnostic) => ({
         code: diagnostic.code ?? "TN_RENDERING_PHOTOREAL_WEB_CAPTURE_DIAGNOSTIC",
         message: diagnostic.message ?? "Web screenshot capture reported a diagnostic.",
@@ -428,13 +437,22 @@ async function analyzePhotorealEvidence(options: {
         });
       }
     }
-    for (const regionMetric of options.regionMetrics.filter((entry) => entry.fixtureId === fixture.id && !entry.ok)) {
+    for (const regionMetric of options.regionMetrics.filter((entry) => entry.fixtureId === fixture.id && !entry.parityOk)) {
       diagnostics.push({
         code: "TN_RENDERING_PHOTOREAL_REGION_DRIFT",
         message: `${fixture.id} sample region '${regionMetric.id}' exceeded the web/native average-channel threshold: ${regionMetric.averageChannelDelta} > ${regionMetric.threshold.maxAverageChannelDelta}.`,
         path: toRepoRelative(options.root, resolve(options.reportsDir, "..", "region-metrics.json")),
         severity: "error",
         suggestedFix: "Fix renderer mapping, color space, lighting, or post-processing until the bounded region matches across web Three.js and native Bevy.",
+      });
+    }
+    for (const regionMetric of options.regionMetrics.filter((entry) => entry.fixtureId === fixture.id && !entry.effectOk)) {
+      diagnostics.push({
+        code: "TN_RENDERING_PHOTOREAL_EFFECT_WEAK",
+        message: `${fixture.id} sample region '${regionMetric.id}' lacks required effect variation: web ${regionMetric.webLuminanceStdDev}, Bevy ${regionMetric.bevyLuminanceStdDev}, minimum ${regionMetric.threshold.minRuntimeLuminanceStdDev}.`,
+        path: toRepoRelative(options.root, resolve(options.reportsDir, "..", "region-metrics.json")),
+        severity: "error",
+        suggestedFix: "Fix the owning post-processing implementation until both runtimes render measurable local effect variation.",
       });
     }
     diagnostics.push(...(metric.webCaptureDiagnostics ?? []));
@@ -475,7 +493,7 @@ async function derivePhotorealRegionMetrics(options: {
   return regionMetrics;
 }
 
-interface Frame {
+export interface Frame {
   data: Uint8Array;
   height: number;
   width: number;
@@ -489,10 +507,15 @@ function normalizeFrame(frame: { data: ArrayLike<number>; height: number; width:
   };
 }
 
-function comparePhotorealRegion(fixtureId: string, webFrame: Frame, bevyFrame: Frame, sample: PhotorealSampleRegion): PhotorealRegionMetric {
+export function comparePhotorealRegion(fixtureId: string, webFrame: Frame, bevyFrame: Frame, sample: PhotorealSampleRegion): PhotorealRegionMetric {
   let total = 0;
   let max = 0;
   let count = 0;
+  let pixelCount = 0;
+  let webLumaSum = 0;
+  let webLumaSquaredSum = 0;
+  let bevyLumaSum = 0;
+  let bevyLumaSquaredSum = 0;
   const left = regionBounds(webFrame, sample.region);
   const right = regionBounds(bevyFrame, sample.region);
   const width = Math.min(left.width, right.width);
@@ -501,6 +524,13 @@ function comparePhotorealRegion(fixtureId: string, webFrame: Frame, bevyFrame: F
     for (let column = 0; column < width; column += 1) {
       const webOffset = ((left.y + row) * webFrame.width + left.x + column) * 4;
       const bevyOffset = ((right.y + row) * bevyFrame.width + right.x + column) * 4;
+      const webLuma = (0.2126 * (webFrame.data[webOffset] ?? 0) + 0.7152 * (webFrame.data[webOffset + 1] ?? 0) + 0.0722 * (webFrame.data[webOffset + 2] ?? 0)) / 255;
+      const bevyLuma = (0.2126 * (bevyFrame.data[bevyOffset] ?? 0) + 0.7152 * (bevyFrame.data[bevyOffset + 1] ?? 0) + 0.0722 * (bevyFrame.data[bevyOffset + 2] ?? 0)) / 255;
+      webLumaSum += webLuma;
+      webLumaSquaredSum += webLuma * webLuma;
+      bevyLumaSum += bevyLuma;
+      bevyLumaSquaredSum += bevyLuma * bevyLuma;
+      pixelCount += 1;
       for (let channel = 0; channel < 3; channel += 1) {
         const delta = Math.abs((webFrame.data[webOffset + channel] ?? 0) - (bevyFrame.data[bevyOffset + channel] ?? 0)) / 255;
         total += delta;
@@ -510,15 +540,32 @@ function comparePhotorealRegion(fixtureId: string, webFrame: Frame, bevyFrame: F
     }
   }
   const average = count === 0 ? 0 : total / count;
+  const webLuminanceStdDev = regionStdDev(webLumaSum, webLumaSquaredSum, pixelCount);
+  const bevyLuminanceStdDev = regionStdDev(bevyLumaSum, bevyLumaSquaredSum, pixelCount);
+  const parityOk = average <= sample.threshold.maxAverageChannelDelta;
+  const effectMinimum = sample.threshold.minRuntimeLuminanceStdDev;
+  const effectOk = effectMinimum === undefined || (webLuminanceStdDev >= effectMinimum && bevyLuminanceStdDev >= effectMinimum);
   return {
     averageChannelDelta: Number(average.toFixed(6)),
+    bevyLuminanceStdDev: Number(bevyLuminanceStdDev.toFixed(6)),
+    effectOk,
     fixtureId,
     id: sample.id,
     maxChannelDelta: Number(max.toFixed(6)),
-    ok: average <= sample.threshold.maxAverageChannelDelta,
+    ok: parityOk && effectOk,
+    parityOk,
     region: sample.region,
     threshold: sample.threshold,
+    webLuminanceStdDev: Number(webLuminanceStdDev.toFixed(6)),
   };
+}
+
+function regionStdDev(sum: number, squaredSum: number, count: number): number {
+  if (count === 0) {
+    return 0;
+  }
+  const average = sum / count;
+  return Math.sqrt(Math.max(0, squaredSum / count - average * average));
 }
 
 function regionBounds(frame: Frame, region: PhotorealSampleRegion["region"]): { height: number; width: number; x: number; y: number } {

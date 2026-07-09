@@ -4,7 +4,10 @@ const system_moveMotionMarker = (ctx) => {
     return;
   }
   const transform = marker.get("Transform");
-  const x = Math.min(1.35, -2.4 + ctx.time.elapsed * 1.45);
+  // Keep the marker moving through every capture window. The previous linear
+  // path clamped at the right edge, so host timing could capture a stationary
+  // object and falsely "prove" motion blur with no motion to blur.
+  const x = Math.sin(ctx.time.elapsed * Math.PI) * 1.35;
   marker.patch("Transform", { ...transform, position: [x, 1.22, -1.92] });
 };
 

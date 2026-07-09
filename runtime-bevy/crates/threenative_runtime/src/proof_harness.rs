@@ -108,7 +108,10 @@ pub struct NativeProofHarnessReadiness {
         skip_serializing_if = "BTreeMap::is_empty"
     )]
     pub resource_snapshots: BTreeMap<String, serde_json::Value>,
-    #[serde(rename = "runtimeObservations", skip_serializing_if = "Option::is_none")]
+    #[serde(
+        rename = "runtimeObservations",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub runtime_observations: Option<NativeRuntimeProbeObservations>,
     pub transforms: Vec<NativeProofHarnessTransformSample>,
 }
@@ -425,9 +428,9 @@ pub fn apply_native_proof_harness_commands(
             .as_deref()
             .map(|runtime| native_resource_snapshots(&runtime.bundle))
             .unwrap_or_default(),
-        runtime
-            .as_deref()
-            .map(|runtime| native_runtime_probe_observations(&runtime.bundle.assets, &runtime.bundle.materials)),
+        runtime.as_deref().map(|runtime| {
+            native_runtime_probe_observations(&runtime.bundle.assets, &runtime.bundle.materials)
+        }),
     );
     if !hold_tick {
         state.tick += advance_ticks;

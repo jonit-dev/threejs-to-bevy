@@ -4,7 +4,29 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 
-import { runPhotorealRenderingGate, type PhotorealRenderingMetrics } from "./renderingPhotoreal.js";
+import { comparePhotorealRegion, runPhotorealRenderingGate, type PhotorealRenderingMetrics } from "./renderingPhotoreal.js";
+
+test("should reject matching regions when the requested effect has no local variation", () => {
+  const frame = {
+    data: Uint8Array.from([
+      20, 20, 20, 255,
+      20, 20, 20, 255,
+      20, 20, 20, 255,
+      20, 20, 20, 255,
+    ]),
+    height: 2,
+    width: 2,
+  };
+  const metric = comparePhotorealRegion("effect", frame, frame, {
+    id: "effect-region",
+    region: { height: 1, width: 1, x: 0, y: 0 },
+    threshold: { maxAverageChannelDelta: 0.01, minRuntimeLuminanceStdDev: 0.01 },
+  });
+
+  assert.equal(metric.parityOk, true);
+  assert.equal(metric.effectOk, false);
+  assert.equal(metric.ok, false);
+});
 
 const passingMetrics: PhotorealRenderingMetrics = {
   fixtures: [

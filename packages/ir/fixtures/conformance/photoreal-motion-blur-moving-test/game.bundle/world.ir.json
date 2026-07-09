@@ -124,6 +124,51 @@
       }
     },
     {
+      "id": "motion.marker.stripe-left",
+      "components": {
+        "Hierarchy": { "parent": "motion.marker" },
+        "MeshRenderer": {
+          "material": "mat.motionStripe",
+          "mesh": "mesh.motionStripe"
+        },
+        "Transform": {
+          "position": [-0.1, 0, 0.05],
+          "rotation": [0, 0, 0, 1],
+          "scale": [1, 1, 1]
+        }
+      }
+    },
+    {
+      "id": "motion.marker.stripe-center",
+      "components": {
+        "Hierarchy": { "parent": "motion.marker" },
+        "MeshRenderer": {
+          "material": "mat.motionStripe",
+          "mesh": "mesh.motionStripe"
+        },
+        "Transform": {
+          "position": [0, 0, 0.05],
+          "rotation": [0, 0, 0, 1],
+          "scale": [1, 1, 1]
+        }
+      }
+    },
+    {
+      "id": "motion.marker.stripe-right",
+      "components": {
+        "Hierarchy": { "parent": "motion.marker" },
+        "MeshRenderer": {
+          "material": "mat.motionStripe",
+          "mesh": "mesh.motionStripe"
+        },
+        "Transform": {
+          "position": [0.1, 0, 0.05],
+          "rotation": [0, 0, 0, 1],
+          "scale": [1, 1, 1]
+        }
+      }
+    },
+    {
       "id": "light.key",
       "components": {
         "Light": {

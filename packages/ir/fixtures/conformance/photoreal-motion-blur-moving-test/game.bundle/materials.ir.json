@@ -43,6 +43,15 @@
       "emissiveIntensity": 2.2,
       "metalness": 0,
       "roughness": 0.25
+    },
+    {
+      "id": "mat.motionStripe",
+      "kind": "standard",
+      "color": "#090109",
+      "emissive": "#160217",
+      "emissiveIntensity": 0.35,
+      "metalness": 0,
+      "roughness": 0.4
     }
   ]
 }

@@ -24,6 +24,13 @@
       "size": [0.42, 0.42, 0.08]
     },
     {
+      "id": "mesh.motionStripe",
+      "kind": "mesh",
+      "format": "generated",
+      "primitive": "box",
+      "size": [0.035, 0.42, 0.01]
+    },
+    {
       "id": "mesh.lane",
       "kind": "mesh",
       "format": "generated",

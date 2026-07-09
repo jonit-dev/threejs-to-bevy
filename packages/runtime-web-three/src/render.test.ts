@@ -412,12 +412,14 @@ test("should map runtime motion blur settings to web post-processing settings", 
 test("should map runtime screen-space reflection settings to web post-processing settings", () => {
   assert.deepEqual(webScreenSpaceReflectionsSettings(runtimeConfig("msaa4")), {
     enabled: false,
-    opacity: 0.27,
+    opacity: 0.6,
+    quality: "medium",
     roughnessLimit: 0.45,
   });
   assert.deepEqual(webScreenSpaceReflectionsSettings(runtimeConfig("msaa4", { screenSpaceReflections: { enabled: true, quality: "high", roughnessLimit: 0.5 } })), {
     enabled: true,
-    opacity: 0.55,
+    opacity: 0.85,
+    quality: "high",
     roughnessLimit: 0.5,
   });
 });

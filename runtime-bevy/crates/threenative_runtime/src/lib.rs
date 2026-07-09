@@ -511,11 +511,19 @@ struct NativeRuntimeDirtyState {
     live_reconciliation: bool,
 }
 
+/// Forces scripted capture runs to advance by the authored fixed delta rather
+/// than host wall-clock time. Native screenshot capture can otherwise run
+/// faster or slower than browser capture and compare different animation
+/// poses, invalidating motion-effect evidence.
+#[derive(Default, Resource)]
+pub struct NativeDeterministicCaptureClock;
+
 #[derive(SystemParam)]
 struct ScriptedRuntimeParams<'w> {
     runtime: Option<ResMut<'w, ScriptedRuntimeBundle>>,
     loop_state: Option<ResMut<'w, systems_host::NativeGameLoopState>>,
     dirty_state: Option<ResMut<'w, NativeRuntimeDirtyState>>,
+    deterministic_capture: Option<Res<'w, NativeDeterministicCaptureClock>>,
 }
 
 fn run_scripted_runtime_systems(
@@ -552,7 +560,7 @@ fn run_scripted_runtime_systems(
         .runtime_config
         .as_ref()
         .map_or(1.0 / 60.0, |config| config.time.fixed_delta);
-    let delta = if proof_harness.is_some() {
+    let delta = if proof_harness.is_some() || scripted.deterministic_capture.is_some() {
         fixed_delta
     } else {
         time.delta_seconds()

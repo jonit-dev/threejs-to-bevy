@@ -3,9 +3,9 @@ import { EffectComposer } from "three/examples/jsm/postprocessing/EffectComposer
 import { BokehPass } from "three/examples/jsm/postprocessing/BokehPass.js";
 import { RenderPass } from "three/examples/jsm/postprocessing/RenderPass.js";
 import { GTAOPass } from "three/examples/jsm/postprocessing/GTAOPass.js";
-import { OutputPass } from "three/examples/jsm/postprocessing/OutputPass.js";
 import { FullScreenQuad, Pass } from "three/examples/jsm/postprocessing/Pass.js";
 import { ShaderPass } from "three/examples/jsm/postprocessing/ShaderPass.js";
+import { SSRPass } from "three/examples/jsm/postprocessing/SSRPass.js";
 import { UnrealBloomPass } from "three/examples/jsm/postprocessing/UnrealBloomPass.js";
 import type { IAssetsManifest, IAtmosphereProfileIr, ICameraClear, IMaterialsIr, IRuntimeConfigIr, IWorldIr, RenderLookProfileName } from "@threenative/ir";
 import { resolveRenderLookProfile, resolveRenderLookShadowProfile } from "@threenative/ir/runtimeConfig";
@@ -95,6 +95,7 @@ export interface IWebRuntimeProbeObservations {
 export interface IRenderOptions {
   bookmarkId?: string;
   captureDrawingBuffer?: boolean;
+  captureFrames?: number;
   debugColliders?: boolean;
   systemModuleLoader?: (source: string, manifest: IWebBundle["manifest"]) => Promise<ISystemModule>;
 }
@@ -189,6 +190,7 @@ export interface IWebMotionBlurSettings {
 export interface IWebScreenSpaceReflectionsSettings {
   enabled: boolean;
   opacity: number;
+  quality: NonNullable<NonNullable<IRuntimeConfigIr["renderer"]>["screenSpaceReflections"]>["quality"];
   roughnessLimit: number;
 }
 
@@ -292,34 +294,37 @@ export async function renderLoadedBundle(bundle: IWebBundle, container: HTMLElem
   container.replaceChildren(...([canvas, uiOverlay?.element, overlayHost?.element].filter((child) => child !== undefined) as Node[]));
   const detachInputListeners = attachInputListeners(window, input);
   resizeRenderer(renderer, pipeline, mapped, container);
-  if (bundle.systems !== undefined) {
-    await runGameFrame({
-      assets: bundle.assets,
-      componentSchemas: bundle.componentSchemas,
-      delta: 1 / 60,
-      effectLog,
-      environmentScene: bundle.environmentScene,
-      input,
-      mapped,
-      module: systemModule,
-      resourceObservations,
-      runtimeConfig: bundle.runtimeConfig,
-      state: loopState,
-      systems: bundle.systems,
-      ui: bundle.ui,
-      uiState: ui,
-      world: bundle.world,
-    });
-    consumeAudioEvents();
-    uiOverlay?.update();
-  } else if (hasKinematicMovers(bundle.world)) {
-    stepKinematicMovers(bundle.world, 1 / 60);
+  const captureFrames = Math.max(1, Math.floor(options.captureFrames ?? 1));
+  for (let frame = 0; frame < captureFrames; frame += 1) {
+    if (bundle.systems !== undefined) {
+      await runGameFrame({
+        assets: bundle.assets,
+        componentSchemas: bundle.componentSchemas,
+        delta: 1 / 60,
+        effectLog,
+        environmentScene: bundle.environmentScene,
+        input,
+        mapped,
+        module: systemModule,
+        resourceObservations,
+        runtimeConfig: bundle.runtimeConfig,
+        state: loopState,
+        systems: bundle.systems,
+        ui: bundle.ui,
+        uiState: ui,
+        world: bundle.world,
+      });
+      consumeAudioEvents();
+    } else if (hasKinematicMovers(bundle.world)) {
+      stepKinematicMovers(bundle.world, loopState.elapsed + 1 / 60);
+      loopState.elapsed += 1 / 60;
+    }
     mapped.reconcile?.(bundle.world);
+    advanceAnimationPlayback(mapped, 1 / 60);
     uiOverlay?.update();
+    colliderDebugOverlay?.update();
+    pipeline.render(1 / 60);
   }
-  advanceAnimationPlayback(mapped, 1 / 60);
-  colliderDebugOverlay?.update();
-  pipeline.render();
   logStartupDiagnostics(mapped.diagnostics);
   let lifecycle: IWebRenderLifecycle | undefined;
   let resourcesDisposed = false;
@@ -337,7 +342,7 @@ export async function renderLoadedBundle(bundle: IWebBundle, container: HTMLElem
     disposeThreeWorld(mapped);
     renderer.dispose();
   };
-  if (bundle.systems !== undefined || hasAnimationPlayback(mapped) || hasKinematicMovers(bundle.world)) {
+  if (options.captureFrames === undefined && (bundle.systems !== undefined || hasAnimationPlayback(mapped) || hasKinematicMovers(bundle.world))) {
     const frameTimings = createFrameTimingTrace();
     resetPerformanceTrace = () => frameTimings.reset();
     lifecycle = createWebRenderLifecycle({
@@ -1052,6 +1057,7 @@ export function webScreenSpaceReflectionsSettings(config?: IRuntimeConfigIr): IW
   return {
     enabled: reflections?.enabled ?? false,
     opacity: webScreenSpaceReflectionOpacity(reflections?.quality, roughnessLimit),
+    quality: reflections?.quality ?? "medium",
     roughnessLimit,
   };
 }
@@ -1238,7 +1244,9 @@ function createRenderPipeline(
     };
   }
   const composer = new EffectComposer(renderer);
-  composer.addPass(new RenderPass(mapped.scene, mapped.camera));
+  composer.addPass(screenSpaceReflections.enabled
+    ? createScreenSpaceReflectionsPass(renderer, mapped, materials?.materials ?? [], screenSpaceReflections)
+    : new RenderPass(mapped.scene, mapped.camera));
   if (ambientOcclusion.enabled) {
     composer.addPass(createAmbientOcclusionPass(mapped.scene, mapped.camera, ambientOcclusion));
   }
@@ -1248,16 +1256,10 @@ function createRenderPipeline(
   if (motionBlur.enabled) {
     composer.addPass(createMotionBlurPass(motionBlur));
   }
-  if (screenSpaceReflections.enabled) {
-    composer.addPass(createScreenSpaceReflectionsPass(screenSpaceReflections));
-  }
   if (bloom.enabled) {
     composer.addPass(new UnrealBloomPass(new THREE.Vector2(1, 1), webBloomPassStrength(bloom.intensity), 0, bloom.threshold));
   }
-  if (colorGrading !== undefined && needsColorGradingPass(colorGrading)) {
-    composer.addPass(colorGradingPass(colorGrading));
-  }
-  composer.addPass(new OutputPass());
+  composer.addPass(colorManagedOutputPass(renderer, colorGrading));
   const composerClear = backbufferViews[0]?.clear;
   return {
     dispose: () => {
@@ -1333,7 +1335,7 @@ export function disposeThreeWorld(mapped: IThreeWorld): void {
 }
 
 function webBloomPassStrength(intensity: number): number {
-  return intensity * 0.35;
+  return intensity * 0.2;
 }
 
 function createDepthOfFieldPass(scene: THREE.Scene, camera: THREE.Camera, settings: IWebDepthOfFieldSettings): BokehPass {
@@ -1349,41 +1351,60 @@ function createMotionBlurPass(settings: IWebMotionBlurSettings): TemporalMotionB
 }
 
 function webMotionBlurBlend(shutterAngle: number): number {
-  return Math.max(0, Math.min(0.85, shutterAngle * 0.45));
+  // Temporal accumulation is only a fallback for velocity-buffer motion blur.
+  // Keep enough history to soften high-contrast moving detail while bounding
+  // the fallback so it does not become a long, stepped after-image.
+  return Math.max(0, Math.min(0.25, shutterAngle * 0.3));
 }
 
-function createScreenSpaceReflectionsPass(settings: IWebScreenSpaceReflectionsSettings): ShaderPass {
-  return new ShaderPass({
-    uniforms: {
-      opacity: { value: settings.opacity },
-      roughnessLimit: { value: settings.roughnessLimit },
-      tDiffuse: { value: null },
-    },
-    vertexShader: fullscreenVertexShader(),
-    fragmentShader: `
-      uniform float opacity;
-      uniform float roughnessLimit;
-      uniform sampler2D tDiffuse;
-      varying vec2 vUv;
-
-      void main() {
-        vec4 color = texture2D(tDiffuse, vUv);
-        float floorMask = smoothstep(0.42, 0.54, vUv.y) * (1.0 - smoothstep(0.72, 0.9, vUv.y));
-        vec2 reflectedUv = vec2(vUv.x, clamp(vUv.y - 0.45, 0.0, 1.0));
-        vec4 reflected = texture2D(tDiffuse, reflectedUv);
-        float fade = floorMask * smoothstep(0.0, 0.6, roughnessLimit);
-        gl_FragColor = mix(color, reflected, opacity * fade);
+function createScreenSpaceReflectionsPass(
+  renderer: THREE.WebGLRenderer,
+  mapped: IThreeWorld,
+  materials: readonly IMaterialsIr["materials"][number][],
+  settings: IWebScreenSpaceReflectionsSettings,
+): SSRPass {
+  const materialsById = new Map(materials.map((material) => [material.id, material]));
+  const selects: THREE.Mesh[] = [];
+  for (const object of mapped.objectsById.values()) {
+    const materialId = object.userData.threeNativeMaterialId as string | undefined;
+    const material = materialId === undefined ? undefined : materialsById.get(materialId);
+    if (material === undefined || (material.roughness ?? 1) > settings.roughnessLimit) {
+      continue;
+    }
+    object.traverse((child) => {
+      if (child instanceof THREE.Mesh) {
+        selects.push(child);
       }
-    `,
+    });
+  }
+  const pass = new SSRPass({
+    camera: mapped.camera,
+    groundReflector: null,
+    height: 1,
+    renderer,
+    scene: mapped.scene,
+    selects,
+    width: 1,
   });
+  pass.blur = true;
+  pass.distanceAttenuation = true;
+  pass.fresnel = true;
+  pass.infiniteThick = false;
+  pass.maxDistance = 10;
+  pass.opacity = settings.opacity;
+  pass.resolutionScale = settings.quality === "high" ? 1 : settings.quality === "low" ? 0.5 : 0.75;
+  pass.thickness = 0.25;
+  return pass;
 }
 
 function webScreenSpaceReflectionOpacity(
   quality: NonNullable<NonNullable<IRuntimeConfigIr["renderer"]>["screenSpaceReflections"]>["quality"] | undefined,
-  roughnessLimit: number,
+  _roughnessLimit: number,
 ): number {
-  const qualityScale = quality === "high" ? 1.1 : quality === "low" ? 0.32 : 0.6;
-  return Math.max(0, Math.min(0.65, qualityScale * Math.max(0, Math.min(1, roughnessLimit))));
+  // roughnessLimit selects eligible surfaces; it is not a reflection-strength
+  // multiplier. The planar fallback has no material G-buffer, so quality owns
+  // the bounded composite strength while the limit remains reportable intent.
+  return quality === "high" ? 0.85 : quality === "low" ? 0.35 : 0.6;
 }
 
 function createAmbientOcclusionPass(scene: THREE.Scene, camera: THREE.Camera, settings: IWebAmbientOcclusionSettings): GTAOPass {
@@ -1526,12 +1547,17 @@ function ambientOcclusionKernelSize(quality: NonNullable<NonNullable<IRuntimeCon
   return 32;
 }
 
-function colorGradingPass(colorGrading: NonNullable<NonNullable<IRuntimeConfigIr["renderer"]>["colorGrading"]>): ShaderPass {
+function colorManagedOutputPass(
+  renderer: THREE.WebGLRenderer,
+  colorGrading: NonNullable<NonNullable<IRuntimeConfigIr["renderer"]>["colorGrading"]> | undefined,
+): ShaderPass {
   const pass = new ShaderPass({
     uniforms: {
-      contrast: { value: colorGrading.contrast ?? 0 },
-      saturation: { value: colorGrading.saturation ?? 1 },
+      contrast: { value: 1 + (colorGrading?.contrast ?? 0) },
+      exposure: { value: renderer.toneMappingExposure },
+      saturation: { value: colorGrading?.saturation ?? 1 },
       tDiffuse: { value: null },
+      useAces: { value: renderer.toneMapping === THREE.ACESFilmicToneMapping },
     },
     vertexShader: `
       varying vec2 vUv;
@@ -1543,15 +1569,51 @@ function colorGradingPass(colorGrading: NonNullable<NonNullable<IRuntimeConfigIr
     fragmentShader: `
       uniform sampler2D tDiffuse;
       uniform float contrast;
+      uniform float exposure;
       uniform float saturation;
+      uniform bool useAces;
       varying vec2 vUv;
+
+      vec3 rrtAndOdtFit(vec3 value) {
+        vec3 a = value * (value + 0.0245786) - 0.000090537;
+        vec3 b = value * (0.983729 * value + 0.4329510) + 0.238081;
+        return a / b;
+      }
+
+      vec3 bevyAcesFitted(vec3 color) {
+        mat3 rgbToRrt = mat3(
+          vec3(0.59719, 0.35458, 0.04823),
+          vec3(0.07600, 0.90834, 0.01566),
+          vec3(0.02840, 0.13383, 0.83777)
+        );
+        mat3 odtToRgb = mat3(
+          vec3(1.60475, -0.53108, -0.07367),
+          vec3(-0.10208, 1.10813, -0.00605),
+          vec3(-0.00327, -0.07276, 1.07602)
+        );
+        color = color * rgbToRrt;
+        color = rrtAndOdtFit(color);
+        return clamp(color * odtToRgb, 0.0, 1.0);
+      }
+
+      vec3 linearToSrgb(vec3 color) {
+        bvec3 cutoff = lessThanEqual(color, vec3(0.0031308));
+        vec3 lower = color * 12.92;
+        vec3 higher = 1.055 * pow(max(color, vec3(0.0)), vec3(1.0 / 2.4)) - 0.055;
+        return mix(higher, lower, vec3(cutoff));
+      }
 
       void main() {
         vec4 color = texture2D(tDiffuse, vUv);
+        float acesInputScale = useAces ? 1.2 : 1.0;
+        color.rgb = max(color.rgb * exposure * acesInputScale, vec3(0.0));
+        color.rgb = 0.5 + (color.rgb - 0.5) * contrast;
+        if (useAces) {
+          color.rgb = bevyAcesFitted(color.rgb);
+        }
         float luminance = dot(color.rgb, vec3(0.2126, 0.7152, 0.0722));
         color.rgb = mix(vec3(luminance), color.rgb, saturation);
-        color.rgb = (color.rgb - 0.5) * (1.0 + contrast) + 0.5;
-        gl_FragColor = vec4(clamp(color.rgb, 0.0, 1.0), color.a);
+        gl_FragColor = vec4(linearToSrgb(clamp(color.rgb, 0.0, 1.0)), color.a);
       }
     `,
   });

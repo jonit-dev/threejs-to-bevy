@@ -739,9 +739,11 @@ fn insert_camera_motion_blur(
 
 fn native_motion_blur_samples(shutter_angle: f32) -> u32 {
     if shutter_angle >= 0.75 {
-        2
+        8
+    } else if shutter_angle >= 0.35 {
+        4
     } else {
-        1
+        2
     }
 }
 

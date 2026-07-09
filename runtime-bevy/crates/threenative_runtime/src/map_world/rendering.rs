@@ -730,7 +730,7 @@ fn add_material(
             render_target_registry,
         ),
         perceptual_roughness: material.roughness.unwrap_or(1.0),
-        reflectance: material.specular_intensity.unwrap_or(0.5),
+        reflectance: reflectance_for_material(material),
         specular_transmission: material.transmission.unwrap_or(0.0),
         specular_transmission_texture: texture_handle(
             material.transmission_texture.as_deref(),
@@ -817,6 +817,47 @@ fn emissive_color(material: &MaterialIr) -> LinearRgba {
     };
     let linear = color_to_bevy(color).to_linear();
     linear * material.emissive_intensity.unwrap_or(1.0) * THREE_COMPAT_EMISSIVE_INTENSITY_SCALE
+}
+
+fn reflectance_for_material(material: &MaterialIr) -> f32 {
+    if material.emissive.is_some()
+        && material.specular_intensity.is_none()
+        && material.metalness.unwrap_or(0.0) <= 0.1
+    {
+        return 0.0;
+    }
+    material.specular_intensity.unwrap_or(0.5)
+}
+
+#[cfg(test)]
+mod material_calibration_tests {
+    use super::*;
+
+    #[test]
+    fn emissive_dominant_materials_do_not_gain_implicit_white_specular() {
+        let implicit: MaterialIr = serde_json::from_value(serde_json::json!({
+            "id": "neon",
+            "kind": "standard",
+            "color": "#130509",
+            "emissive": "#ff3bd4",
+            "emissiveIntensity": 2.2,
+            "metalness": 0.0,
+            "roughness": 0.25
+        }))
+        .expect("emissive material should deserialize");
+        let explicit: MaterialIr = serde_json::from_value(serde_json::json!({
+            "id": "neon-explicit",
+            "kind": "standard",
+            "color": "#130509",
+            "emissive": "#ff3bd4",
+            "emissiveIntensity": 2.2,
+            "specularIntensity": 0.7
+        }))
+        .expect("explicit specular material should deserialize");
+
+        assert_eq!(reflectance_for_material(&implicit), 0.0);
+        assert!((reflectance_for_material(&explicit) - 0.7).abs() < f32::EPSILON);
+    }
 }
 
 fn emissive_display_base_color(material: &MaterialIr) -> Color {

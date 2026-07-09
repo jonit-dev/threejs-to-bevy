@@ -16,7 +16,7 @@ use bevy::{
 use image::GenericImageView;
 use threenative_loader::{AssetsManifest, load_bundle};
 use threenative_runtime::{
-    app_from_bundle,
+    NativeDeterministicCaptureClock, app_from_bundle,
     assets::{TextureAssetControlsRegistry, load_texture_asset},
     environment::apply_environment_bookmark,
     map_world::NativeStylizedMotionTimeOverride,
@@ -162,6 +162,7 @@ fn main() -> ExitCode {
         captures,
         max_frame,
     })
+    .insert_resource(NativeDeterministicCaptureClock)
     .insert_resource(NativeStylizedMotionTimeOverride(stylized_motion_time))
     .insert_resource(WinitSettings {
         focused_mode: UpdateMode::Continuous,
