@@ -3,10 +3,10 @@ use std::{fs, path::Path};
 use serde::Deserialize;
 
 use crate::{
-    AnimationsIr, AssetsManifest, AudioIr, BundleManifest, EnvironmentSceneIr, GltfSceneMetadataIr,
-    GameFlowIr, InputIr, LoadError, LoadedBundle, LocalDataIr, MaterialsIr, OverlaysIr, PrefabsIr,
-    RuntimeConfigIr, ScenesIr, SchemaFileIr, SystemsIr, TargetProfile, WorldIr, generated_mesh,
-    paths,
+    AnimationsIr, AssetsManifest, AudioIr, BundleManifest, EnvironmentSceneIr, GameFlowIr,
+    GltfSceneMetadataIr, InputIr, LoadError, LoadedBundle, LocalDataIr, MaterialsIr, OverlaysIr,
+    PrefabsIr, RuntimeConfigIr, ScenesIr, SchemaFileIr, SequencesIr, SystemsIr, TargetProfile,
+    WorldIr, generated_mesh, paths,
 };
 
 pub fn load_bundle(bundle_path: impl AsRef<Path>) -> Result<LoadedBundle, LoadError> {
@@ -152,6 +152,14 @@ pub fn load_bundle(bundle_path: impl AsRef<Path>) -> Result<LoadedBundle, LoadEr
         }
         None => None,
     };
+    let sequences = match manifest.entry.sequences.as_ref() {
+        Some(file) => {
+            let sequences: SequencesIr = read_json(bundle_path, file)?;
+            ensure_supported(&sequences.schema, &sequences.version)?;
+            Some(sequences)
+        }
+        None => None,
+    };
 
     Ok(LoadedBundle {
         animations,
@@ -170,6 +178,7 @@ pub fn load_bundle(bundle_path: impl AsRef<Path>) -> Result<LoadedBundle, LoadEr
         prefabs,
         runtime_config,
         scenes,
+        sequences,
         systems,
         target_profile,
         ui,

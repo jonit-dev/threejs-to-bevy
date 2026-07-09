@@ -22,11 +22,11 @@ Current support:
   `tn flow create|add-state|add-transition` and
   `tn sequence create|add-track|add-key` write validated structured source and
   compiler-emitted `game-flow.ir.json` / `sequences.ir.json` bundle entries.
-  GameFlow event/timer/resource predicates plus entry/transition actions have
-  deterministic web/native trace parity under
-  `packages/ir/artifacts/conformance/game-flow/`. Full Sequence runtime
-  evaluation remains future work; unsupported trigger/action/track kinds fail
-  closed in validation.
+  GameFlow event/timer/resource predicates plus entry/transition actions and
+  Sequence camera/event/timeScale sampling have deterministic web/native trace
+  parity under `packages/ir/artifacts/conformance/game-flow/` and
+  `packages/ir/artifacts/conformance/sequence/`. Unsupported trigger/action
+  and track kinds fail closed in validation.
 - `tn look apply <arcade-neon|forest-dawn|sunset-racer|toybox-pop|noir-metal>`
   applies curated scaffold polish through runtime and material source
   operations without exposing renderer internals.

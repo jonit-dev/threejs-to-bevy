@@ -29,6 +29,7 @@ export { traceCharacterControllers, type ICharacterTraceInput, type ICharacterTr
 export { queryNavigationPath, traceNavigationPaths, type INavigationPathRequest, type INavigationPathResult } from "./navigation.js";
 export { createFirstPersonState, updateFirstPersonController, type IFirstPersonControllerState } from "./firstPerson.js";
 export { traceGameFlow, type IGameFlowTraceAction, type IGameFlowTraceFrame, type IGameFlowTraceInput } from "./gameFlow.js";
+export { traceSequences, type ISequenceTraceFrame, type ISequenceTraceInput, type ISequenceTraceObservation } from "./sequences.js";
 export { hasKinematicMovers, stepKinematicMovers, type IKinematicMoverObservation } from "./kinematicMover.js";
 export { hasSpawners, stepSpawners, type ISpawnerObservation } from "./spawner.js";
 export { resolveWebAssets, traceAssetLoadSynchronization, type IAssetLoadTrace, type IAssetLoadTraceAsset, type IAssetLoadTraceGltfScene, type IResolvedWebAsset } from "./assets.js";

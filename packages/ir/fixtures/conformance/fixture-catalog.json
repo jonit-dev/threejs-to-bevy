@@ -22,6 +22,25 @@
       ]
     },
     {
+      "canonicalId": "sequence",
+      "owner": "ir-contract",
+      "sourceExample": "sequence",
+      "regenerateCommand": "pnpm verify:conformance",
+      "canonicalArtifactGate": "conformance",
+      "ownerDocs": "docs/PRDs/proof-first-engine-loop-2026-07-05/PRD-008-declarative-gameplay-flow-spawners-sequencer.md",
+      "aggregateGate": "verify:conformance",
+      "bundlePath": "packages/ir/fixtures/conformance/sequence/game.bundle",
+      "promotedCapabilities": [
+        "gameplay:sequences"
+      ],
+      "reportArtifacts": [
+        "packages/ir/artifacts/conformance/sequence/verification-report.json",
+        "packages/ir/artifacts/conformance/sequence/sequence-diff.json",
+        "packages/ir/artifacts/conformance/sequence/web-sequence.json",
+        "packages/ir/artifacts/conformance/sequence/native-sequence.json"
+      ]
+    },
+    {
       "canonicalId": "gameplay-spawner",
       "owner": "ir-contract",
       "sourceExample": "gameplay-spawner",

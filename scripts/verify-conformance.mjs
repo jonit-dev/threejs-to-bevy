@@ -154,6 +154,11 @@ export async function verifyConformance(options = {}) {
   const gameFlowNativeTracePath = options.gameFlowNativeTracePath ?? resolve(artifactDir, "game-flow/native-game-flow.json");
   const gameFlowReportPath = options.gameFlowReportPath ?? resolve(artifactDir, "game-flow/verification-report.json");
   const gameFlowWebTracePath = options.gameFlowWebTracePath ?? resolve(artifactDir, "game-flow/web-game-flow.json");
+  const sequenceBundlePath = resolveFixtureBundlePath(fixtureCatalog, "sequence", root).bundlePath;
+  const sequenceDiffPath = options.sequenceDiffPath ?? resolve(artifactDir, "sequence/sequence-diff.json");
+  const sequenceNativeTracePath = options.sequenceNativeTracePath ?? resolve(artifactDir, "sequence/native-sequence.json");
+  const sequenceReportPath = options.sequenceReportPath ?? resolve(artifactDir, "sequence/verification-report.json");
+  const sequenceWebTracePath = options.sequenceWebTracePath ?? resolve(artifactDir, "sequence/web-sequence.json");
   const sceneLifecycleDiffPath = options.sceneLifecycleDiffPath ?? resolve(artifactDir, "scene-lifecycle/scene-lifecycle-diff.json");
   const sceneLifecycleNativeTracePath = options.sceneLifecycleNativeTracePath ?? resolve(artifactDir, "scene-lifecycle/native-scene-lifecycle.json");
   const sceneLifecycleWebTracePath = options.sceneLifecycleWebTracePath ?? resolve(artifactDir, "scene-lifecycle/web-scene-lifecycle.json");
@@ -221,6 +226,10 @@ export async function verifyConformance(options = {}) {
     gameFlowNativeTracePath,
     gameFlowReportPath,
     gameFlowWebTracePath,
+    sequenceDiffPath,
+    sequenceNativeTracePath,
+    sequenceReportPath,
+    sequenceWebTracePath,
     sceneLifecycleDiffPath,
     sceneLifecycleNativeTracePath,
     sceneLifecycleWebTracePath,
@@ -509,6 +518,16 @@ export async function verifyConformance(options = {}) {
         resolve(root, "scripts/verify-game-flow.mjs"),
         gameFlowBundlePath,
         resolve(artifactDir, "game-flow"),
+      ],
+      { timeoutMs: 120000 },
+    ],
+    [
+      "sequence runtime trace parity",
+      process.execPath,
+      [
+        resolve(root, "scripts/verify-sequence.mjs"),
+        sequenceBundlePath,
+        resolve(artifactDir, "sequence"),
       ],
       { timeoutMs: 120000 },
     ],
@@ -867,6 +886,9 @@ function fixtureForStep(stepName) {
   if (stepName.includes("game flow")) {
     return "game-flow";
   }
+  if (stepName.includes("sequence")) {
+    return "sequence";
+  }
   if (stepName.includes("V9 assets glTF")) {
     return "v9-assets-gltf-scene-workflow";
   }
@@ -949,6 +971,9 @@ function artifactPathForStep(stepName, artifacts) {
   if (stepName.includes("game flow")) {
     return artifacts.gameFlowReportPath;
   }
+  if (stepName.includes("sequence")) {
+    return artifacts.sequenceReportPath;
+  }
   if (stepName.includes("V9 assets glTF")) {
     return artifacts.v9AssetsGltfReportPath;
   }
@@ -1024,6 +1049,9 @@ function bundlePathForStep(stepName) {
   }
   if (stepName.includes("game flow")) {
     return "packages/ir/fixtures/conformance/game-flow/game.bundle";
+  }
+  if (stepName.includes("sequence")) {
+    return "packages/ir/fixtures/conformance/sequence/game.bundle";
   }
   if (stepName.includes("V9 rendering lights")) {
     return "packages/ir/fixtures/conformance/rendering-lights/game.bundle";

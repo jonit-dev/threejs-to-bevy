@@ -27,6 +27,7 @@ pub struct BundleEntry {
     pub overlays: Option<String>,
     pub prefabs: Option<String>,
     pub scenes: Option<String>,
+    pub sequences: Option<String>,
     pub scripts: Option<String>,
     pub systems: Option<String>,
     pub ui: Option<String>,
@@ -66,6 +67,7 @@ pub struct LoadedBundle {
     pub prefabs: Option<PrefabsIr>,
     pub runtime_config: Option<RuntimeConfigIr>,
     pub scenes: Option<ScenesIr>,
+    pub sequences: Option<SequencesIr>,
     pub systems: Option<SystemsIr>,
     pub target_profile: TargetProfile,
     pub ui: Option<UiIr>,
@@ -216,6 +218,40 @@ pub struct GameFlowActionIr {
     #[serde(rename = "timeScale")]
     pub time_scale: Option<f32>,
     pub value: Option<serde_json::Value>,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+pub struct SequencesIr {
+    pub schema: String,
+    pub version: String,
+    #[serde(default)]
+    pub sequences: Vec<SequenceIr>,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SequenceIr {
+    pub id: String,
+    pub duration: f32,
+    pub skippable: Option<bool>,
+    #[serde(default)]
+    pub tracks: Vec<SequenceTrackIr>,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+pub struct SequenceTrackIr {
+    pub id: String,
+    pub kind: String,
+    pub entity: Option<String>,
+    #[serde(default)]
+    pub keyframes: Vec<SequenceKeyframeIr>,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+pub struct SequenceKeyframeIr {
+    pub time: f32,
+    pub value: Option<serde_json::Value>,
+    pub easing: Option<String>,
 }
 
 #[derive(Clone, Debug, Deserialize)]

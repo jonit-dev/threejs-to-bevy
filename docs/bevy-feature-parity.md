@@ -212,6 +212,11 @@ implementation:
   `setTimeScale`, `spawnerEnable`, `activateUiScreen`, `playSequence`, and
   `sceneChange`). Focused evidence: `pnpm verify:conformance` and
   `packages/ir/artifacts/conformance/game-flow/verification-report.json`.
+- Declarative `Sequence` documents now have a shared fixed-tick trace proof for
+  camera pose interpolation, event beats, timeScale samples, and camera
+  authority restoration when playback completes. Focused evidence:
+  `pnpm verify:conformance` and
+  `packages/ir/artifacts/conformance/sequence/verification-report.json`.
 - The authoring-abstractions Phase 5 paper-cut slice improves structured
   authoring commands and recipes: third-person recipes now stamp safe capsule
   centers, material editing works inside grouped material documents, and scene
