@@ -54,7 +54,9 @@ test("should block confirmation rerun when churn budgets are not green", async (
 
   assert.equal(result.ok, false);
   assert.equal(result.requirements.find((requirement) => requirement.id === "churn-budgets")?.status, "incomplete");
-  assert.equal(result.diagnostics.some((diagnostic) => diagnostic.code === "TN_BENCH_NEXT_STEPS_CHURN_BUDGETS_RED"), true);
+  const diagnostic = result.diagnostics.find((candidate) => candidate.code === "TN_BENCH_NEXT_STEPS_CHURN_BUDGETS_RED");
+  assert.notEqual(diagnostic, undefined);
+  assert.match(diagnostic?.suggestedFix ?? "", /removes engine-source search/);
 });
 
 async function writeFixture(
@@ -147,14 +149,26 @@ function behaviorBudgetRuns(fail: boolean): IBenchmarkReport["promptSummaries"][
         iterateCommandCount: 1,
         standaloneVerifyCommandCount: 0,
       },
+      churnCounters: {
+        artifactForensics: 0,
+        engineSourceSearch: 1,
+        failedCommand: 0,
+        missingDiscovery: 0,
+        missingIterate: 0,
+        repeatedAssertion: 0,
+        repeatedDiagnostic: 0,
+        repeatedFileRead: 0,
+        standaloneVerify: 0,
+      },
       diagnostics: [{
-        code: "TN_BENCH_BEHAVIOR_ENGINE_SOURCE_SEARCH_EXCEEDED",
+        code: "TN_BENCH_CHURN_ENGINE_SOURCE_SEARCH_EXCEEDED",
         message: "collector-threenative-r1: engine source search budget exceeded.",
         severity: "error",
       }],
       offendingCommands: {
         artifactForensics: [],
         engineSourceSearch: ["rg playtest packages/cli/src"],
+        repeatedFileRead: [],
         standaloneVerify: [],
       },
       runId: "collector-threenative-r1",
@@ -170,10 +184,22 @@ function behaviorBudgetRuns(fail: boolean): IBenchmarkReport["promptSummaries"][
       iterateCommandCount: 1,
       standaloneVerifyCommandCount: 0,
     },
+    churnCounters: {
+      artifactForensics: 0,
+      engineSourceSearch: 0,
+      failedCommand: 0,
+      missingDiscovery: 0,
+      missingIterate: 0,
+      repeatedAssertion: 0,
+      repeatedDiagnostic: 0,
+      repeatedFileRead: 0,
+      standaloneVerify: 0,
+    },
     diagnostics: [],
     offendingCommands: {
       artifactForensics: [],
       engineSourceSearch: [],
+      repeatedFileRead: [],
       standaloneVerify: [],
     },
     runId: "typed-spec-recipe-top-down-collector",
@@ -195,6 +221,20 @@ function report(options: { threenativeRepeats: number; typedSpecRepeats: number;
         standaloneVerifyCommandCount: null,
       },
       behaviorBudgetRuns: behaviorBudgetRuns(fixtureOptions.churnBudgetFail === true),
+      churnByCondition: [{
+        condition: fixtureOptions.churnBudgetFail === true ? "threenative" : "typed-spec",
+        median: {
+          artifactForensics: 0,
+          engineSourceSearch: fixtureOptions.churnBudgetFail === true ? 1 : 0,
+          failedCommand: 0,
+          missingDiscovery: 0,
+          missingIterate: 0,
+          repeatedAssertion: 0,
+          repeatedDiagnostic: 0,
+          repeatedFileRead: 0,
+          standaloneVerify: 0,
+        },
+      }],
       costWeightedTokenRatio: null,
       dialectConfusionFailures: { threenative: 0, vanilla: 0 },
       failedCommandMedian: { threenative: null, vanilla: null },

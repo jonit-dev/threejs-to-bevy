@@ -1027,7 +1027,12 @@ test("playtest command should fail rich assertions with stable diagnostics", asy
         diagnostics: [],
         distance: 0.1,
         entity: options.entityId,
-        effectLog: { entries: [] },
+        effectLog: {
+          entries: [
+            { frame: 1, kind: "resource", resource: "score", schedule: "update", system: "collector-system", tick: 1, value: { value: 0 } },
+            { frame: 2, kind: "service", payload: { entity: "player", with: "pickup.zone" }, schedule: "update", service: "physics.overlap", system: "contact-system", tick: 2 },
+          ],
+        },
         expectMoved: options.expectMoved,
         frames: options.frames,
         input: options.press,
@@ -1050,8 +1055,10 @@ test("playtest command should fail rich assertions with stable diagnostics", asy
       }),
     },
   );
-  const payload = JSON.parse(result.stdout) as { code: string; diagnostics: Array<{ code: string }> };
+  const payload = JSON.parse(result.stdout) as { code: string; diagnostics: Array<{ artifactPath?: string; code: string; observedRuntimePath?: string; path?: string; sourcePath?: string; systemId?: string }> };
   const codes = payload.diagnostics.map((diagnostic) => diagnostic.code);
+  const resourceDiagnostic = payload.diagnostics.find((diagnostic) => diagnostic.code === "TN_PLAYTEST_RESOURCE_STATE_STAGNATED");
+  const contactDiagnostic = payload.diagnostics.find((diagnostic) => diagnostic.code === "TN_PLAYTEST_CONTACT_NOT_OBSERVED");
 
   assert.equal(result.exitCode, 1);
   assert.equal(payload.code, "TN_PLAYTEST_FAILED");
@@ -1065,6 +1072,13 @@ test("playtest command should fail rich assertions with stable diagnostics", asy
   assert.equal(codes.includes("TN_PLAYTEST_RUNTIME_DIAGNOSTIC"), true);
   assert.equal(codes.includes("TN_PLAYTEST_VELOCITY_ASSERTION_FAILED"), true);
   assert.equal(codes.includes("TN_PLAYTEST_ROTATION_ASSERTION_FAILED"), true);
+  assert.equal(resourceDiagnostic?.systemId, "collector-system");
+  assert.equal(resourceDiagnostic?.sourcePath, "content/systems/collector-system.systems.json");
+  assert.match(resourceDiagnostic?.observedRuntimePath ?? "", /effect-log\.json\/entries/);
+  assert.match(resourceDiagnostic?.artifactPath ?? "", /effect-log\.json$/);
+  assert.equal(contactDiagnostic?.systemId, "contact-system");
+  assert.equal(contactDiagnostic?.sourcePath, "content/systems/contact-system.systems.json");
+  assert.match(contactDiagnostic?.artifactPath ?? "", /effect-log\.json$/);
 });
 
 test("playtest watch should emit stable JSON events and debounce changes", async () => {
@@ -1274,8 +1288,8 @@ test("resourceObservationDiagnostics should report declared resources not observ
     },
   );
 
-  assert.deepEqual(diagnostics.map((diagnostic) => ({ code: diagnostic.code, resourceId: diagnostic.resourceId, systemId: diagnostic.systemId })), [
-    { code: "TN_RESOURCE_DECLARED_NOT_OBSERVED", resourceId: "ProjectileVelocity", systemId: "projectile.move" },
+  assert.deepEqual(diagnostics.map((diagnostic) => ({ code: diagnostic.code, observedRuntimePath: diagnostic.observedRuntimePath, resourceId: diagnostic.resourceId, sourcePath: diagnostic.sourcePath, systemId: diagnostic.systemId })), [
+    { code: "TN_RESOURCE_DECLARED_NOT_OBSERVED", observedRuntimePath: "runtime-trace.json/resources/observations[resource=ProjectileVelocity]", resourceId: "ProjectileVelocity", sourcePath: "content/systems/projectile.move.systems.json", systemId: "projectile.move" },
   ]);
 });
 

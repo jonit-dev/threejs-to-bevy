@@ -1155,13 +1155,19 @@ export function resourceObservationDiagnostics(diagnostics: readonly IPlaytestDi
       return {
         code: "TN_RESOURCE_DECLARED_NOT_OBSERVED",
         message: `Declared resource '${resource}' was not read or written by the runtime during the failing playtest.`,
-        path: `systems.ir.json/resources/${resource}`,
+        artifactPath: "runtime-trace.json",
+        observedRuntimePath: `runtime-trace.json/resources/observations[resource=${resource}]`,
+        path: `runtime-trace.json/resources/declared/${resource}`,
         resourceId: resource,
         severity: "error" as const,
         suggestion: "Check that the script export containing the resource helper ran for this scenario and that the resource id is literal and declared.",
-        ...(load?.system === undefined ? {} : { systemId: load.system }),
+        ...(load?.system === undefined ? {} : { sourcePath: sourcePathForSystem(load.system), systemId: load.system }),
       };
     });
+}
+
+function sourcePathForSystem(systemId: string): string {
+  return `content/systems/${systemId}.systems.json`;
 }
 
 function runtimeResourceDiagnostics(value: unknown): { declared: string[]; observations: Array<{ kind: string; resource: string; system?: string }> } {

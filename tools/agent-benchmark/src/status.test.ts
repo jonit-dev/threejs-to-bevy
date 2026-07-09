@@ -93,8 +93,9 @@ test("should surface behavior budget results for scored slots", async () => {
   assert.equal(status.slots[0]?.status, "scored");
   assert.equal(behaviorBudget?.withinBudget, false);
   assert.equal(behaviorBudget?.counters.engineSourceSearchCommandCount, 1);
+  assert.equal(behaviorBudget?.churnCounters.engineSourceSearch, 1);
   assert.deepEqual(behaviorBudget?.offendingCommands.engineSourceSearch, ["rg \"playtest\" packages/cli/src"]);
-  assert.equal(behaviorBudget?.diagnostics.some((diagnostic) => diagnostic.code === "TN_BENCH_BEHAVIOR_ENGINE_SOURCE_SEARCH_EXCEEDED"), true);
+  assert.equal(behaviorBudget?.diagnostics.some((diagnostic) => diagnostic.code === "TN_BENCH_CHURN_ENGINE_SOURCE_SEARCH_EXCEEDED"), true);
 });
 
 test("should report run-report missing after session is filled", async () => {

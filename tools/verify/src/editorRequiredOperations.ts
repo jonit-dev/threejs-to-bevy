@@ -3,6 +3,8 @@ import { cp, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 
+import { listAuthoringOperationDescriptors } from "@threenative/authoring";
+
 export interface IEditorRequiredOperationsReport {
   bundlePath: string;
   changedFiles: string[];
@@ -55,6 +57,26 @@ interface ISystemsDocument {
 interface IEnvironmentDocument {
   terrain?: { heightMode?: string; id?: string };
   walkability?: { terrain?: { surface?: string } };
+}
+
+interface IRuntimeDocument {
+  renderer?: {
+    antialias?: string;
+    renderLook?: { profile?: string };
+  };
+  window?: { title?: string };
+}
+
+export function derivedRequiredEditorSmokeOperations(sourceFamily: string): Array<{ args: Record<string, unknown>; name: string }> {
+  return listAuthoringOperationDescriptors()
+    .filter((descriptor) => descriptor.sourceFamily === sourceFamily)
+    .map((descriptor) => {
+      const smoke = descriptor.adapters?.editor?.smoke;
+      if (smoke === undefined) {
+        throw new Error(`Descriptor-owned editor smoke is missing for migrated ${sourceFamily} operation '${descriptor.name}'.`);
+      }
+      return { args: { ...smoke.args }, name: descriptor.name };
+    });
 }
 
 export async function runEditorRequiredOperationsSmoke(options: IRunEditorRequiredOperationsOptions = {}): Promise<IEditorRequiredOperationsReport> {
@@ -166,6 +188,9 @@ export async function runEditorRequiredOperationsSmoke(options: IRunEditorRequir
       modulePath: "src/scripts/editor-spin.ts",
       systemId: "editor-spin",
     });
+    for (const operation of derivedRequiredEditorSmokeOperations("runtime")) {
+      await apply(operation.name, operation.args);
+    }
 
     const finalBuild = await buildProject(projectPath);
     const validation = await validateBundle(finalBuild.bundlePath);
@@ -176,6 +201,7 @@ export async function runEditorRequiredOperationsSmoke(options: IRunEditorRequir
     const scene = await readJson<ISceneDocument>(join(projectPath, "content", "scenes", "arena.scene.json"));
     const createdScene = await readJson<ISceneDocument>(join(projectPath, "content", "scenes", "editor-created.scene.json"));
     const environment = await readJson<IEnvironmentDocument>(join(projectPath, "content", "environment", "arena-environment.environment.json"));
+    const runtime = await readJson<IRuntimeDocument>(join(projectPath, "content", "runtime", "runtime.editor-smoke.runtime.json"));
     const systems = await readJson<ISystemsDocument>(join(projectPath, "content", "systems", "editor-spin.systems.json"));
     const finalWorld = await readJson<IWorldDocument>(join(finalBuild.bundlePath, "world.ir.json"));
 
@@ -196,6 +222,9 @@ export async function runEditorRequiredOperationsSmoke(options: IRunEditorRequir
       systems.systems?.some((system) => system.id === "editor-spin" && system.script?.module === "src/scripts/editor-spin.ts" && system.script?.export === "editorSpin"),
       "system script reference was not attached",
     );
+    assert(runtime.window?.title === "Editor Smoke", "descriptor-derived runtime smoke did not persist window title");
+    assert(runtime.renderer?.renderLook?.profile === "balanced", "descriptor-derived runtime smoke did not persist rendering profile");
+    assert(runtime.renderer?.antialias === "msaa4", "descriptor-derived runtime smoke did not persist antialias setting");
 
     const initialEntityIds = new Set((initialWorld.entities ?? []).map((entity) => entity.id));
     const finalEntity = (finalWorld.entities ?? []).find((entity) => entity.id === "editor.sphere.0");
@@ -220,6 +249,7 @@ export async function runEditorRequiredOperationsSmoke(options: IRunEditorRequir
         "content/scenes/editor-created.scene.json",
         "content/environment/arena-environment.environment.json",
         "content/meshes/mesh.editor_sphere.meshes.json",
+        "content/runtime/runtime.editor-smoke.runtime.json",
         "content/systems/editor-spin.systems.json",
         "src/scripts/editor-spin.ts",
       ],

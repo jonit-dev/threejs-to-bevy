@@ -9,6 +9,7 @@ import { PNG } from "pngjs";
 
 import { readPngFrame } from "./compareImages.js";
 import { analyzeNonblank, compareFrames, type IFrameComparison, type IPixelFrame } from "./imageAnalysis.js";
+import { namedRegionMetricBundle } from "./visualMetricBundles.js";
 
 const execFileAsync = promisify(execFile);
 
@@ -239,11 +240,22 @@ export function analyzeRenderingQualityParity(
   bevy: IPixelFrame,
 ): Pick<IRenderingQualityVisualReport, "fogEvidence" | "regions"> {
   const fogColor = { red: 201 / 255, green: 214 / 255, blue: 199 / 255 };
-  const regions = [
-    regionMetric("sky", web, bevy, { x: 0.18, y: 0.03, width: 0.64, height: 0.16 }, { averageBrightnessDelta: 0.08, averageColorDelta: 0.08, changedPixelRatio: 0.35 }),
-    regionMetric("foreground", web, bevy, { x: 0.24, y: 0.43, width: 0.2, height: 0.24 }, { averageBrightnessDelta: 0.16, averageColorDelta: 0.16, changedPixelRatio: 0.92 }),
-    regionMetric("fog-depth", web, bevy, { x: 0.58, y: 0.42, width: 0.24, height: 0.24 }, { averageBrightnessDelta: 0.18, averageColorDelta: 0.18, changedPixelRatio: 0.85 }),
-  ];
+  const bundle = namedRegionMetricBundle("rendering-quality", web, bevy, [
+    { name: "sky", region: { x: 0.18, y: 0.03, width: 0.64, height: 0.16 }, thresholds: { maxAverageBrightnessDelta: 0.08, maxAverageColorDelta: 0.08, maxChangedPixelRatio: 0.35 } },
+    { name: "foreground", region: { x: 0.24, y: 0.43, width: 0.2, height: 0.24 }, thresholds: { maxAverageBrightnessDelta: 0.16, maxAverageColorDelta: 0.16, maxChangedPixelRatio: 0.92 } },
+    { name: "fog-depth", region: { x: 0.58, y: 0.42, width: 0.24, height: 0.24 }, thresholds: { maxAverageBrightnessDelta: 0.18, maxAverageColorDelta: 0.18, maxChangedPixelRatio: 0.85 } },
+  ]);
+  const regions = (bundle.regions ?? []).map((region): IRenderingQualityRegionMetric => ({
+    averageColor: averageColor(cropFrame(web, absoluteRegion(web, regionRegion(region.name)))),
+    comparison: region.comparison,
+    name: region.name,
+    ok: region.ok,
+    thresholds: {
+      averageBrightnessDelta: region.thresholds.maxAverageBrightnessDelta,
+      averageColorDelta: region.thresholds.maxAverageColorDelta,
+      ...(region.thresholds.maxChangedPixelRatio === undefined ? {} : { changedPixelRatio: region.thresholds.maxChangedPixelRatio }),
+    },
+  }));
   return {
     fogEvidence: {
       bevy: fogEvidence(bevy, fogColor),
@@ -254,15 +266,40 @@ export function analyzeRenderingQualityParity(
 }
 
 export function analyzeV9RenderingLightsParity(web: IPixelFrame, bevy: IPixelFrame): Pick<IV9RenderingLightsVisualReport, "regions"> {
+  const bundle = namedRegionMetricBundle("rendering-lights", web, bevy, [
+    { name: "skybox", region: { x: 0.18, y: 0.03, width: 0.64, height: 0.18 }, thresholds: { maxAverageBrightnessDelta: 0.24, maxAverageColorDelta: 0.24, maxChangedPixelRatio: 0.96 } },
+    { name: "reflection-probe", region: { x: 0.4, y: 0.36, width: 0.2, height: 0.24 }, thresholds: { maxAverageBrightnessDelta: 0.34, maxAverageColorDelta: 0.34, maxChangedPixelRatio: 1 } },
+    { name: "point-shadow-pcf", region: { x: 0.33, y: 0.58, width: 0.34, height: 0.18 }, thresholds: { maxAverageBrightnessDelta: 0.42, maxAverageColorDelta: 0.42, maxChangedPixelRatio: 1 } },
+    { name: "dense-hlod", region: { x: 0.08, y: 0.36, width: 0.22, height: 0.32 }, thresholds: { maxAverageBrightnessDelta: 0.45, maxAverageColorDelta: 0.45, maxChangedPixelRatio: 1 } },
+    { name: "debug-gizmo", region: { x: 0.7, y: 0.2, width: 0.22, height: 0.32 }, thresholds: { maxAverageBrightnessDelta: 0.5, maxAverageColorDelta: 0.5, maxChangedPixelRatio: 1 } },
+  ]);
   return {
-    regions: [
-      regionMetric("skybox", web, bevy, { x: 0.18, y: 0.03, width: 0.64, height: 0.18 }, { averageBrightnessDelta: 0.24, averageColorDelta: 0.24, changedPixelRatio: 0.96 }),
-      regionMetric("reflection-probe", web, bevy, { x: 0.4, y: 0.36, width: 0.2, height: 0.24 }, { averageBrightnessDelta: 0.34, averageColorDelta: 0.34, changedPixelRatio: 1 }),
-      regionMetric("point-shadow-pcf", web, bevy, { x: 0.33, y: 0.58, width: 0.34, height: 0.18 }, { averageBrightnessDelta: 0.42, averageColorDelta: 0.42, changedPixelRatio: 1 }),
-      regionMetric("dense-hlod", web, bevy, { x: 0.08, y: 0.36, width: 0.22, height: 0.32 }, { averageBrightnessDelta: 0.45, averageColorDelta: 0.45, changedPixelRatio: 1 }),
-      regionMetric("debug-gizmo", web, bevy, { x: 0.7, y: 0.2, width: 0.22, height: 0.32 }, { averageBrightnessDelta: 0.5, averageColorDelta: 0.5, changedPixelRatio: 1 }),
-    ],
+    regions: (bundle.regions ?? []).map((region): IRenderingQualityRegionMetric => ({
+      averageColor: averageColor(cropFrame(web, absoluteRegion(web, regionRegion(region.name)))),
+      comparison: region.comparison,
+      name: region.name,
+      ok: region.ok,
+      thresholds: {
+        averageBrightnessDelta: region.thresholds.maxAverageBrightnessDelta,
+        averageColorDelta: region.thresholds.maxAverageColorDelta,
+        ...(region.thresholds.maxChangedPixelRatio === undefined ? {} : { changedPixelRatio: region.thresholds.maxChangedPixelRatio }),
+      },
+    })),
   };
+}
+
+function regionRegion(name: string): { height: number; width: number; x: number; y: number } {
+  const regions: Record<string, { height: number; width: number; x: number; y: number }> = {
+    "debug-gizmo": { x: 0.7, y: 0.2, width: 0.22, height: 0.32 },
+    "dense-hlod": { x: 0.08, y: 0.36, width: 0.22, height: 0.32 },
+    "fog-depth": { x: 0.58, y: 0.42, width: 0.24, height: 0.24 },
+    foreground: { x: 0.24, y: 0.43, width: 0.2, height: 0.24 },
+    "point-shadow-pcf": { x: 0.33, y: 0.58, width: 0.34, height: 0.18 },
+    "reflection-probe": { x: 0.4, y: 0.36, width: 0.2, height: 0.24 },
+    sky: { x: 0.18, y: 0.03, width: 0.64, height: 0.16 },
+    skybox: { x: 0.18, y: 0.03, width: 0.64, height: 0.18 },
+  };
+  return regions[name] ?? { x: 0, y: 0, width: 1, height: 1 };
 }
 
 function regionMetric(

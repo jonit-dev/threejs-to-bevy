@@ -1,0 +1,10 @@
+node_modules/
+dist/
+artifacts/
+!artifacts/
+artifacts/*
+!artifacts/game-production/
+artifacts/game-production/*
+!artifacts/game-production/plan.json
+!artifacts/game-production/task-graph.json
+.threenative/

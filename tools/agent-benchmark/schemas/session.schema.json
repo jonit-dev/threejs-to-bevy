@@ -17,6 +17,32 @@
     "uncachedInputTokens": { "type": "number", "minimum": 0 },
     "outputTokens": { "type": "number", "minimum": 0 },
     "costWeightedTokens": { "type": "number", "minimum": 0 },
+    "churnCounters": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "artifactForensics",
+        "engineSourceSearch",
+        "failedCommand",
+        "missingDiscovery",
+        "missingIterate",
+        "repeatedAssertion",
+        "repeatedDiagnostic",
+        "repeatedFileRead",
+        "standaloneVerify"
+      ],
+      "properties": {
+        "artifactForensics": { "type": "number", "minimum": 0 },
+        "engineSourceSearch": { "type": "number", "minimum": 0 },
+        "failedCommand": { "type": "number", "minimum": 0 },
+        "missingDiscovery": { "type": "number", "minimum": 0 },
+        "missingIterate": { "type": "number", "minimum": 0 },
+        "repeatedAssertion": { "type": "number", "minimum": 0 },
+        "repeatedDiagnostic": { "type": "number", "minimum": 0 },
+        "repeatedFileRead": { "type": "number", "minimum": 0 },
+        "standaloneVerify": { "type": "number", "minimum": 0 }
+      }
+    },
     "toolOutputBytes": { "type": "number", "minimum": 0 },
     "failedCommandCount": { "type": "number", "minimum": 0 },
     "identicalAssertionRepeatCount": { "type": "number", "minimum": 0 },

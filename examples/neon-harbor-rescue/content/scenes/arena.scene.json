@@ -1,0 +1,134 @@
+{
+  "schema": "threenative.scene",
+  "version": "0.1.0",
+  "id": "arena",
+  "entities": [
+    {
+      "id": "harbor.dock.floor",
+      "prefab": "prefab.harbor.floor",
+      "transform": { "position": [0, -0.05, 0], "rotation": [-1.570796, 0, 0], "scale": [7, 5, 7] }
+    },
+    {
+      "id": "harbor.water.north",
+      "prefab": "prefab.water",
+      "transform": { "position": [0, -0.06, -3.2], "rotation": [-1.570796, 0, 0], "scale": [7, 1.4, 1] }
+    },
+    {
+      "id": "harbor.rooftop.pad",
+      "prefab": "prefab.rooftop",
+      "transform": { "position": [2.35, 0.18, -1.65], "scale": [1.2, 0.22, 1.2] }
+    },
+    {
+      "id": "harbor.menu.beacon",
+      "prefab": "prefab.beacon",
+      "transform": { "position": [-2.35, 0.25, 1.65], "scale": [0.55, 0.55, 0.55] }
+    },
+    {
+      "id": "battery.dock",
+      "prefab": "prefab.battery",
+      "transform": { "position": [-0.8, 0.18, 0.9], "scale": [0.3, 0.3, 0.3] }
+    },
+    {
+      "id": "battery.rooftop",
+      "prefab": "prefab.battery",
+      "transform": { "position": [1.2, 0.42, -1.3], "scale": [0.3, 0.3, 0.3] }
+    },
+    {
+      "id": "hazard.surge",
+      "prefab": "prefab.hazard",
+      "transform": { "position": [0.4, 0.15, -0.15], "scale": [0.9, 0.18, 0.22] }
+    },
+    {
+      "id": "rescue.beacon",
+      "prefab": "prefab.goal",
+      "transform": { "position": [2.35, 0.55, -1.65], "scale": [0.45, 0.45, 0.45] }
+    },
+    {
+      "id": "player",
+      "prefab": "prefab.player",
+      "transform": { "position": [-1.8, 0.35, 1.35], "scale": [0.55, 0.55, 0.55] }
+    },
+    {
+      "id": "camera.main",
+      "components": {
+        "camera": { "mode": "perspective" }
+      }
+    }
+  ],
+  "prefabs": [
+    { "id": "prefab.harbor.floor", "primitive": "plane", "color": "#213547" },
+    { "id": "prefab.water", "primitive": "plane", "color": "#0f766e" },
+    { "id": "prefab.rooftop", "primitive": "box", "color": "#475569" },
+    { "id": "prefab.beacon", "primitive": "box", "color": "#38bdf8" },
+    { "id": "prefab.battery", "primitive": "box", "color": "#facc15" },
+    { "id": "prefab.hazard", "primitive": "box", "color": "#ef4444" },
+    { "id": "prefab.player", "primitive": "box", "color": "#22c55e" },
+    { "id": "prefab.goal", "primitive": "box", "color": "#e879f9" }
+  ],
+  "resources": [
+    {
+      "id": "GameState",
+      "value": {
+        "audioCue": "silent",
+        "batteries": 0,
+        "batteryText": "Battery 0/2",
+        "elapsed": 0,
+        "lastFailReason": "",
+        "menu": "Harbor Rescue - press movement to launch",
+        "objective": "Reach the rooftop beacon",
+        "phase": "menu",
+        "phaseLabel": "Menu",
+        "progress": 0,
+        "savedProgress": "slot.main: dock",
+        "settingsMode": "standard",
+        "settingsOpen": false,
+        "status": "Menu: choose rescue route"
+      }
+    }
+  ],
+  "systems": [
+    {
+      "id": "neon-harbor-loop",
+      "source": "behavior-metadata",
+      "schedule": "fixedUpdate",
+      "script": {
+        "module": "src/scripts/player.ts",
+        "export": "updateHarborRescue"
+      }
+    }
+  ],
+  "ui": {
+    "nodes": [
+      {
+        "id": "status",
+        "type": "text",
+        "text": "Menu: choose rescue route",
+        "layout": { "justify": "center", "align": "center", "top": 40, "width": 1280 }
+      },
+      {
+        "id": "phase",
+        "type": "text",
+        "text": "Menu",
+        "layout": { "justify": "center", "align": "center", "top": 88, "width": 1280 }
+      },
+      {
+        "id": "battery",
+        "type": "text",
+        "text": "Battery 0/2",
+        "layout": { "justify": "start", "align": "center", "left": 48, "top": 48, "width": 360 }
+      },
+      {
+        "id": "saved",
+        "type": "text",
+        "text": "slot.main: dock",
+        "layout": { "justify": "end", "align": "center", "left": 872, "top": 48, "width": 360 }
+      }
+    ],
+    "bindings": [
+      { "node": "status", "resource": "GameState.status" },
+      { "node": "phase", "resource": "GameState.phaseLabel" },
+      { "node": "battery", "resource": "GameState.batteryText" },
+      { "node": "saved", "resource": "GameState.savedProgress" }
+    ]
+  }
+}

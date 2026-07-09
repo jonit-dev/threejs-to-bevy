@@ -1,0 +1,46 @@
+{
+  "schemaVersion": 1,
+  "name": "fail-retry",
+  "target": "web",
+  "viewport": { "width": 1280, "height": 720 },
+  "subject": "player",
+  "warmupFrames": 5,
+  "steps": [
+    {
+      "label": "reach-active-run",
+      "waitFrames": 80
+    },
+    {
+      "label": "retry",
+      "press": "KeyR",
+      "holdFrames": 2,
+      "release": true
+    },
+    {
+      "label": "settle-after-retry",
+      "waitFrames": 10
+    }
+  ],
+  "assert": {
+    "resources": [
+      { "id": "GameState", "path": "lastFailReason", "textIncludes": "Recovered with retry" },
+      { "id": "GameState", "path": "savedProgress", "textIncludes": "slot.main" }
+    ],
+    "hud": [
+      { "id": "saved", "textIncludes": "slot.main" }
+    ],
+    "diagnostics": {
+      "runtimeReady": true,
+      "noConsoleErrors": true,
+      "noNetworkErrors": true,
+      "noRuntimeDiagnostics": true
+    }
+  },
+  "artifacts": {
+    "screenshots": "before-after",
+    "console": true,
+    "network": true,
+    "runtimeTrace": true,
+    "effectLog": "focused"
+  }
+}

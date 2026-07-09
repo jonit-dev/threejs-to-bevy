@@ -1,0 +1,40 @@
+{
+  "schemaVersion": 1,
+  "name": "smoke-movement",
+  "target": "web",
+  "viewport": { "width": 1280, "height": 720 },
+  "subject": "player",
+  "warmupFrames": 5,
+  "steps": [
+    {
+      "label": "move-right",
+      "press": "KeyD",
+      "holdFrames": 30,
+      "release": true
+    }
+  ],
+  "assert": {
+    "movement": {
+      "entity": "player",
+      "axis": "x",
+      "minDistance": 0.05,
+      "minVelocity": 0.001
+    },
+    "resources": [
+      { "id": "GameState", "path": "savedProgress", "textIncludes": "slot.main" }
+    ],
+    "diagnostics": {
+      "runtimeReady": true,
+      "noConsoleErrors": true,
+      "noNetworkErrors": true,
+      "noRuntimeDiagnostics": true
+    }
+  },
+  "artifacts": {
+    "screenshots": "before-after",
+    "console": true,
+    "network": true,
+    "runtimeTrace": true,
+    "effectLog": "focused"
+  }
+}

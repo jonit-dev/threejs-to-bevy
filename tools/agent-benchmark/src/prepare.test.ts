@@ -106,6 +106,54 @@ test("should refuse manifest generation when audit is incomplete", async () => {
   );
 });
 
+test("should refuse round-5b preparation when green audit lacks churn-budget proof", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-agent-benchmark-prepare-5b-"));
+  const auditReportPath = join(root, "audit.json");
+  await writeFile(auditReportPath, `${JSON.stringify({
+    ok: true,
+    requirements: [{ id: "deterministic-frictions", status: "complete" }],
+  })}\n`, "utf8");
+
+  await assert.rejects(
+    prepareRound5b({
+      auditReportPath,
+      outDir: join(root, "round-5b"),
+      promptsDir: "prompts",
+      root: process.cwd(),
+    }),
+    /requires a green next-steps audit/,
+  );
+});
+
+test("should include zeroed churn counters in prepared session template", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-agent-benchmark-prepare-"));
+  const outDir = join(root, "round-5");
+  await prepareRound({
+    conditions: ["threenative"],
+    outDir,
+    promptId: "collector",
+    promptsDir: "prompts",
+    repeats: 1,
+    root: process.cwd(),
+  });
+
+  const session = JSON.parse(await readFile(join(outDir, "candidates", "collector-threenative-r1", "session.template.json"), "utf8")) as {
+    churnCounters?: Record<string, number>;
+  };
+
+  assert.deepEqual(session.churnCounters, {
+    artifactForensics: 0,
+    engineSourceSearch: 0,
+    failedCommand: 0,
+    missingDiscovery: 0,
+    missingIterate: 0,
+    repeatedAssertion: 0,
+    repeatedDiagnostic: 0,
+    repeatedFileRead: 0,
+    standaloneVerify: 0,
+  });
+});
+
 function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }

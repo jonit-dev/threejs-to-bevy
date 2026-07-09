@@ -206,6 +206,7 @@ test("accepts maintained starters with production scripts metadata and instructi
   try {
     const templatePath = join(root, "templates/racing-kit-rally-starter");
     await mkdir(templatePath, { recursive: true });
+    await writeTemplateManifest(templatePath, "racing-kit-rally-starter");
     await writeFile(join(templatePath, "package.json"), `${JSON.stringify({
       scripts: {
         "game:improve": "tn game improve --apply-plan artifacts/game-production/plan.json --project . --json",
@@ -227,6 +228,37 @@ test("accepts maintained starters with production scripts metadata and instructi
 
     assert.equal(result.ok, true);
     assert.deepEqual(result.diagnostics, []);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("rejects maintained starters when template manifest expectations drift", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-template-production-manifest-drift-"));
+  try {
+    const templatePath = join(root, "templates/racing-kit-rally-starter");
+    await mkdir(templatePath, { recursive: true });
+    await writeTemplateManifest(templatePath, "wrong-name", {
+      generatedFiles: ["missing-generated-file.md"],
+      packageScripts: ["iterate"],
+      proofCommandIds: ["build", "made-up-proof"],
+    });
+    await writeFile(join(templatePath, "package.json"), `${JSON.stringify({
+      scripts: {
+        iterate: "tn iterate --project . --json",
+      },
+    }, null, 2)}\n`);
+    await writeFile(join(templatePath, "threenative.config.json"), `${JSON.stringify({ production: { proofCommands: ["tn build --project . --json"] } }, null, 2)}\n`);
+    await writeFile(join(templatePath, "README.md"), "No production loop yet.\n");
+    await writeFile(join(templatePath, "AGENTS.md"), "No production loop yet.\n");
+
+    const result = await runTemplateProductionGate({ root, templates: ["racing-kit-rally-starter"] });
+
+    assert.equal(result.ok, false);
+    assert.equal(result.diagnostics.some((diagnostic) => diagnostic.code === "TN_TEMPLATE_MANIFEST_NAME_DRIFT"), true);
+    assert.equal(result.diagnostics.some((diagnostic) => diagnostic.code === "TN_TEMPLATE_MANIFEST_GENERATED_FILE_MISSING"), true);
+    assert.equal(result.diagnostics.some((diagnostic) => diagnostic.code === "TN_TEMPLATE_MANIFEST_PROOF_UNKNOWN"), true);
+    assert.equal(result.diagnostics.some((diagnostic) => diagnostic.code === "TN_TEMPLATE_MANIFEST_SCRIPT_MISSING"), true);
   } finally {
     await rm(root, { force: true, recursive: true });
   }
@@ -273,4 +305,52 @@ function completeProductionConfig(template: string): Record<string, unknown> {
     schema: "threenative.project",
     template,
   };
+}
+
+async function writeTemplateManifest(
+  templatePath: string,
+  name: string,
+  overrides: Partial<{
+    generatedFiles: string[];
+    packageScripts: string[];
+    proofCommandIds: string[];
+  }> = {},
+): Promise<void> {
+  await writeFile(join(templatePath, "threenative.template.json"), `${JSON.stringify({
+    generatedFiles: overrides.generatedFiles ?? [
+      "AGENTS.md",
+      "README.md",
+      "AGENT_GAME_PLAN.md",
+      "docs/API-CARD.md",
+      "package.json",
+      "threenative.config.json",
+    ],
+    instructionFiles: [
+      "README.md",
+      "AGENTS.md",
+      "AGENT_GAME_PLAN.md",
+      "docs/API-CARD.md",
+    ],
+    maintained: true,
+    name,
+    packageScripts: overrides.packageScripts ?? [
+      "iterate",
+      "game:plan",
+      "game:improve",
+      "game:score",
+      "game:qa",
+      "game:release",
+    ],
+    proofCommandIds: overrides.proofCommandIds ?? [
+      "authoring validate",
+      "build",
+      "playtest scenario",
+      "screenshot",
+      "score",
+      "qa --run-proof",
+      "release",
+    ],
+    schema: "threenative.template.manifest",
+    version: "0.1.0",
+  }, null, 2)}\n`);
 }

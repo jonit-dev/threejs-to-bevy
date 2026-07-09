@@ -33,6 +33,7 @@ test("should accept version 2 session token breakdown", () => {
   const result = validateSession({
     ...validSession(),
     cachedInputTokens: 2000,
+    churnCounters: validChurnCounters(),
     costWeightedTokens: 5800,
     failedCommandCount: 2,
     identicalAssertionRepeatCount: 0,
@@ -46,6 +47,19 @@ test("should accept version 2 session token breakdown", () => {
 
   assert.equal(result.ok, true);
   assert.deepEqual(result.diagnostics, []);
+});
+
+test("should reject incomplete churn counters", () => {
+  const result = validateSession({
+    ...validSession(),
+    churnCounters: {
+      ...validChurnCounters(),
+      repeatedDiagnostic: undefined,
+    },
+  });
+
+  assert.equal(result.ok, false);
+  assert.equal(result.diagnostics.some((diagnostic) => diagnostic.code === "TN_BENCH_SCHEMA_NUMBER"), true);
 });
 
 test("should accept typed spec benchmark condition", () => {
@@ -95,5 +109,19 @@ function validSession() {
     tokenCount: 12000,
     toolStepCount: 4,
     version: 2,
+  };
+}
+
+function validChurnCounters() {
+  return {
+    artifactForensics: 0,
+    engineSourceSearch: 0,
+    failedCommand: 0,
+    missingDiscovery: 0,
+    missingIterate: 0,
+    repeatedAssertion: 0,
+    repeatedDiagnostic: 0,
+    repeatedFileRead: 0,
+    standaloneVerify: 0,
   };
 }

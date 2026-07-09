@@ -164,11 +164,63 @@ function churnBudgetRequirement(matrixReport: IBenchmarkReport | undefined): INe
   }
   const budgetRuns = matrixReport.promptSummaries.flatMap((summary) => summary.behaviorBudgetRuns ?? []);
   evidence.push(`behavior budget runs=${budgetRuns.length}, failing=${budgetRuns.filter((run) => run.withinBudget === false).length}.`);
+  for (const summary of matrixReport.promptSummaries) {
+    for (const conditionSummary of summary.churnByCondition ?? []) {
+      evidence.push(`${summary.promptId}/${conditionSummary.condition} churn medians=${JSON.stringify(conditionSummary.median)}.`);
+    }
+  }
+  if (budgetRuns.length === 0) {
+    diagnostics.push(error(
+      "TN_BENCH_NEXT_STEPS_CHURN_BUDGETS_MISSING",
+      "Matrix report does not include per-run churn budget evidence.",
+      "Aggregate run reports with codex-events.jsonl sidecars or session.churnCounters before preparing Round 5B.",
+    ));
+  }
   const failing = budgetRuns.filter((run) => run.withinBudget === false);
   if (failing.length > 0) {
-    diagnostics.push(error("TN_BENCH_NEXT_STEPS_CHURN_BUDGETS_RED", `Per-run churn budgets are red for: ${failing.map((run) => run.runId).join(", ")}.`));
+    diagnostics.push(error(
+      "TN_BENCH_NEXT_STEPS_CHURN_BUDGETS_RED",
+      `Per-run churn budgets are red for: ${failing.map((run) => run.runId).join(", ")}.`,
+      failing.flatMap((run) => churnNextActions(run)).join(" "),
+    ));
   }
   return requirement("churn-budgets", "Per-run churn budgets are green before confirmation rerun", evidence, diagnostics);
+}
+
+function churnNextActions(run: IBenchmarkReport["promptSummaries"][number]["behaviorBudgetRuns"][number]): string[] {
+  const counters = run.churnCounters;
+  if (counters === undefined) {
+    return run.diagnostics.map((diagnostic) => diagnostic.suggestedFix).filter((fix): fix is string => fix !== undefined);
+  }
+  const actions: string[] = [];
+  if (counters.engineSourceSearch > 0) {
+    actions.push(`${run.runId}: add or improve a command/API card/diagnostic that removes engine-source search.`);
+  }
+  if (counters.standaloneVerify > 0) {
+    actions.push(`${run.runId}: route standalone validate/build/playtest proof through tn iterate.`);
+  }
+  if (counters.artifactForensics > 0) {
+    actions.push(`${run.runId}: summarize needed artifact evidence in tn iterate output or playtest diagnostics.`);
+  }
+  if (counters.missingIterate > 0) {
+    actions.push(`${run.runId}: require the scaffold-first tn iterate step or add missing iterate coverage.`);
+  }
+  if (counters.missingDiscovery > 0) {
+    actions.push(`${run.runId}: start authoring with tn game plan, cookbook, project map, scene inspect, or playtest discovery.`);
+  }
+  if (counters.repeatedFileRead > 0) {
+    actions.push(`${run.runId}: add a compact reference/API card so the same file is not reread.`);
+  }
+  if (counters.failedCommand > 0) {
+    actions.push(`${run.runId}: fix the first failed command or make its diagnostic prescriptive.`);
+  }
+  if (counters.repeatedAssertion > 0) {
+    actions.push(`${run.runId}: repair the scenario/diagnostic before rerunning identical failed assertions.`);
+  }
+  if (counters.repeatedDiagnostic > 0) {
+    actions.push(`${run.runId}: make the repeated diagnostic's suggested fix exact enough to stop retry chains.`);
+  }
+  return actions;
 }
 
 function matrixRequirement(matrixResult: { diagnostics: IBenchmarkDiagnostic[]; ok: boolean }, roundStatus: IPreparedRoundStatus | undefined): INextStepsAuditRequirement {
@@ -280,11 +332,12 @@ function requirement(id: string, title: string, evidence: string[], diagnostics:
   };
 }
 
-function error(code: string, message: string): IBenchmarkDiagnostic {
+function error(code: string, message: string, suggestedFix?: string): IBenchmarkDiagnostic {
   return {
     code,
     message,
     severity: "error",
+    ...(suggestedFix === undefined || suggestedFix === "" ? {} : { suggestedFix }),
   };
 }
 

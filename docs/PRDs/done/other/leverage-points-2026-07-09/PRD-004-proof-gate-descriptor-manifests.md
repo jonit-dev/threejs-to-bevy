@@ -2,7 +2,7 @@
 
 ## Status
 
-Proposed
+Implemented
 
 ## Context
 
@@ -38,21 +38,22 @@ manifest shape.
 
 ### Phase 1: Descriptor Schema
 
-- [ ] Add a typed descriptor and JSON/report shape.
-- [ ] Include artifact path declarations and timing budget categories.
-- [ ] Validate descriptor uniqueness, artifact path format, and profile names.
+- [x] Add a typed descriptor and report shape.
+- [x] Include artifact path declarations and timing budget categories.
+- [x] Validate descriptor uniqueness, artifact path format, and profile names.
 
 ### Phase 2: Focused Gate Migration
 
-- [ ] Migrate 3-5 low-conflict gates from `FOCUSED_GATES`.
-- [ ] Generate `verify:focused` dispatch from descriptors for migrated gates.
-- [ ] Preserve `--no-setup` behavior.
+- [x] Migrate 3-5 low-conflict gates from `FOCUSED_GATES`.
+- [x] Generate `verify:focused` dispatch from descriptors for migrated gates.
+- [x] Preserve `--no-setup` behavior.
 
 ### Phase 3: Release Gate Migration
 
-- [ ] Migrate release enrollment for the same gates.
-- [ ] Generate artifact existence checks from descriptor artifact declarations.
-- [ ] Model conformance artifact conflicts explicitly.
+- [x] Migrate release enrollment for the same gates.
+- [x] Generate artifact existence checks from descriptor artifact declarations.
+- [x] Keep conformance artifact conflict gates explicitly hand-owned until
+      descriptor conflict-policy migration.
 
 ## Files Likely Touched
 
@@ -72,8 +73,21 @@ manifest shape.
 
 ## Acceptance Criteria
 
-- [ ] Migrated gates have one descriptor-owned source for command, artifact,
+- [x] Migrated gates have one descriptor-owned source for command, artifact,
       timing, owner, and release enrollment metadata.
-- [ ] Focused dispatch and release artifact checks use descriptor data.
-- [ ] Hand-owned gates are listed as migration gaps with stable diagnostics.
-- [ ] Release reports preserve current artifact paths and status fields.
+- [x] Focused dispatch and release artifact checks use descriptor data.
+- [x] Hand-owned gates are listed as migration gaps with stable diagnostics.
+- [x] Release reports preserve current artifact paths and status fields.
+
+## Implementation Notes
+
+- The first descriptor-backed gate family covers `verify:agent-io`,
+  `verify:session-cost`, and `verify:webview-package`, deriving focused
+  dispatch, release enrollment, artifact report paths, owner/protected-surface
+  metadata, and timing categories from `tools/verify/src/gateDescriptors.ts`.
+- Conflict-prone conformance gates were not migrated in this slice. Their
+  conflict handling is explicitly represented by the descriptor conflict-policy
+  type and by dated migration-gap entries that keep those gates hand-owned until
+  the next descriptor wave models their artifact conflicts end to end.
+- Verification used `pnpm --filter @threenative/verify-tools test -- --run
+  "gate descriptors"`.

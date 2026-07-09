@@ -189,3 +189,89 @@ test("rejects generated-game visual-quality proof with stale screenshot dimensio
     await rm(root, { force: true, recursive: true });
   }
 });
+
+test("requires generated-game visual-quality metric bundle", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-generated-game-visual-bundle-gate-"));
+  try {
+    await mkdir(join(root, "content/scenes"), { recursive: true });
+    await mkdir(join(root, "artifacts/game-production"), { recursive: true });
+    await writeFile(join(root, "content/scenes/arena.scene.json"), `${JSON.stringify({ schema: "threenative.scene", id: "arena" }, null, 2)}\n`);
+    await writeFile(join(root, "artifacts/game-production/screenshot.png"), minimalPngHeader(1280, 720));
+    await writeFile(join(root, "artifacts/game-production/visual-quality.json"), `${JSON.stringify({
+      schema: "threenative.game-visual-quality-proof",
+      status: "pass",
+      screenshot: "artifacts/game-production/screenshot.png",
+      metrics: {
+        colorBucketCount: 64,
+        height: 720,
+        localContrastRatio: 0.02,
+        nonblank: { changedPixelRatio: 1 },
+        visibleBoundsAreaRatio: 1,
+        width: 1280,
+      },
+    }, null, 2)}\n`);
+    const reportPath = join(root, "artifacts/game-production/verification-report.json");
+
+    const result = await runGameProductionGate({
+      projects: [{ projectPath: ".", requireVisualQuality: true }],
+      reportPath,
+      root,
+    });
+
+    assert.equal(result.ok, false);
+    assert.equal(result.diagnostics.some((diagnostic) => diagnostic.code === "TN_VERIFY_GAME_VISUAL_QUALITY_BUNDLE_MISSING"), true);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("rejects generated-game visual-quality metric bundle drift", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-generated-game-visual-bundle-drift-gate-"));
+  try {
+    await mkdir(join(root, "content/scenes"), { recursive: true });
+    await mkdir(join(root, "artifacts/game-production"), { recursive: true });
+    await writeFile(join(root, "content/scenes/arena.scene.json"), `${JSON.stringify({ schema: "threenative.scene", id: "arena" }, null, 2)}\n`);
+    await writeFile(join(root, "artifacts/game-production/screenshot.png"), minimalPngHeader(1280, 720));
+    await writeFile(join(root, "artifacts/game-production/visual-quality.json"), `${JSON.stringify({
+      schema: "threenative.game-visual-quality-proof",
+      status: "pass",
+      screenshot: "artifacts/game-production/screenshot.png",
+      metrics: {
+        colorBucketCount: 64,
+        height: 720,
+        localContrastRatio: 0.02,
+        nonblank: { changedPixelRatio: 1 },
+        visibleBoundsAreaRatio: 1,
+        width: 1280,
+      },
+      metricBundles: [{
+        id: "game-quality",
+        metrics: {
+          colorBucketCount: 12,
+          localContrastRatio: 0.02,
+          nonblankRatio: 1,
+          visibleBoundsAreaRatio: 1,
+        },
+        ok: true,
+        thresholds: {
+          minColorBucketCount: 12,
+          minLocalContrastRatio: 0.01,
+          minNonblankRatio: 0.55,
+          minVisibleBoundsAreaRatio: 0.08,
+        },
+      }],
+    }, null, 2)}\n`);
+    const reportPath = join(root, "artifacts/game-production/verification-report.json");
+
+    const result = await runGameProductionGate({
+      projects: [{ projectPath: ".", requireVisualQuality: true }],
+      reportPath,
+      root,
+    });
+
+    assert.equal(result.ok, false);
+    assert.equal(result.diagnostics.some((diagnostic) => diagnostic.code === "TN_VERIFY_GAME_VISUAL_QUALITY_BUNDLE_STALE"), true);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});

@@ -1,0 +1,51 @@
+{
+  "schema": "threenative.ui",
+  "version": "0.1.0",
+  "id": "hud",
+  "nodes": [
+    {
+      "id": "status",
+      "type": "text",
+      "text": "Menu: choose rescue route",
+      "layout": { "justify": "center", "align": "center", "top": 40, "width": 1280 }
+    },
+    {
+      "id": "phase",
+      "type": "text",
+      "text": "Menu",
+      "layout": { "justify": "center", "align": "center", "top": 88, "width": 1280 }
+    },
+    {
+      "id": "battery",
+      "type": "text",
+      "text": "Battery 0/2",
+      "layout": { "justify": "start", "align": "center", "left": 48, "top": 48, "width": 360 }
+    },
+    {
+      "id": "saved",
+      "type": "text",
+      "text": "slot.main: dock",
+      "layout": { "justify": "end", "align": "center", "left": 872, "top": 48, "width": 360 }
+    }
+  ],
+  "bindings": [
+    { "node": "status", "resource": "GameState.status" },
+    { "node": "phase", "resource": "GameState.phaseLabel" },
+    { "node": "battery", "resource": "GameState.batteryText" },
+    { "node": "saved", "resource": "GameState.savedProgress" }
+  ],
+  "recipes": [
+    {
+      "id": "hud.status",
+      "kind": "hud-status-cluster",
+      "props": {}
+    }
+  ],
+  "provenance": {
+    "recipes/hud.status": {
+      "kind": "hud-status-cluster",
+      "source": "example.neon-harbor-rescue",
+      "version": 1
+    }
+  }
+}

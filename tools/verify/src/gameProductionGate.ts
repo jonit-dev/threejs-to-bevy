@@ -4,6 +4,7 @@ import { resolve } from "node:path";
 import { createGameAgentInventory, createGameQualityReport, validateGameQualityReport } from "@threenative/authoring";
 
 import { resolveArtifactTargets } from "./artifacts.js";
+import { exampleManifestDiagnostics, examplePathsByClassification, readExampleManifest } from "./exampleManifest.js";
 import {
   qaProofDiagnostics,
   releaseReportDiagnostics,
@@ -60,19 +61,6 @@ interface IGameProductionGateOptions {
   root?: string;
 }
 
-// Representative generated-game release evidence set.
-// Current repo inventory has two generated games with production plan artifacts:
-// humanoid-physics-course covers native scenario/character physics proof, and
-// metro-surfer-heist covers runner/collector/trigger UI production evidence.
-export const GENERATED_GAME_PROJECTS = [
-  "examples/humanoid-physics-course",
-  "examples/metro-surfer-heist",
-] as const;
-
-export const GENERATED_GAME_BUILD_ONLY_PROJECTS = [
-  "examples/stylized-nature-component",
-] as const;
-
 const RELEASE_PROOF_REQUIREMENT_KEYS = [
   "agentInventory",
   "cleanRelease",
@@ -93,18 +81,6 @@ const RELEASE_PROOF_CONFIG_KEYS = new Set<string>([
   ...RELEASE_PROOF_REQUIREMENT_KEYS,
 ]);
 
-const DEFAULT_GENERATED_GAME_REQUIREMENTS: Record<Exclude<ReleaseProofRequirementKey, "agentInventory">, true> = {
-  cleanRelease: true,
-  gameplaySource: true,
-  materialSource: true,
-  planArtifact: true,
-  qaProof: true,
-  releaseReport: true,
-  uiSource: true,
-  visualProvenance: true,
-  visualQuality: true,
-};
-
 export async function runGameProductionGate(options: IGameProductionGateOptions = {}): Promise<IGameProductionGateResult> {
   const root = resolve(options.root ?? process.cwd());
   const releaseProofPolicy = options.generatedGames === true
@@ -118,7 +94,7 @@ export async function runGameProductionGate(options: IGameProductionGateOptions 
   const steps: StepSummary[] = [];
   if (options.generatedGames === true) {
     diagnostics.push(...(releaseProofPolicy?.diagnostics ?? []));
-    diagnostics.push(...await generatedGameInventoryDiagnostics(root, projects, releaseProofPolicy?.buildOnlyProjectPaths ?? [...GENERATED_GAME_BUILD_ONLY_PROJECTS]));
+    diagnostics.push(...await generatedGameInventoryDiagnostics(root, projects, releaseProofPolicy?.buildOnlyProjectPaths ?? []));
     diagnostics.push(...await generatedGameReadmeScriptDiagnostics(root, projects));
   }
   for (const project of projects) {
@@ -184,7 +160,7 @@ export async function runGameProductionGate(options: IGameProductionGateOptions 
   const ok = diagnostics.every((diagnostic) => diagnostic.severity !== "error");
   const visualQualityMetrics = await visualQualityMetricSummary(root, projects);
   const buildOnlyProjectPaths = options.generatedGames === true
-    ? releaseProofPolicy?.buildOnlyProjectPaths ?? [...GENERATED_GAME_BUILD_ONLY_PROJECTS]
+    ? releaseProofPolicy?.buildOnlyProjectPaths ?? []
     : [];
   const summary = {
     buildOnlyProjectCount: buildOnlyProjectPaths.length,
@@ -234,23 +210,57 @@ async function generatedGameReleaseProofPolicy(root: string, explicitProjects?: 
   const diagnostics: VerificationDiagnostic[] = [];
   const configured = await discoverGeneratedGameReleaseProofConfigs(root);
   diagnostics.push(...configured.flatMap((entry) => entry.diagnostics));
-  diagnostics.push(...generatedGameFallbackDriftDiagnostics(configured));
+  if (await readExampleManifest(root) !== undefined) {
+    diagnostics.push(...await exampleManifestDiagnostics(root));
+  }
+  diagnostics.push(...await generatedGameManifestDriftDiagnostics(root, configured));
   diagnostics.push(...generatedGameReleaseProofExemptionDiagnostics(configured));
 
   const projects = explicitProjects !== undefined && explicitProjects.length > 0
     ? explicitProjects
     : configured.filter((entry) => entry.enrolled).map((entry) => entry.project);
-  const buildOnlyProjectPaths = configured.filter((entry) => entry.buildOnly).map((entry) => entry.projectPath);
-  const fallbackBuildOnly = buildOnlyProjectPaths.length > 0 ? buildOnlyProjectPaths : [...GENERATED_GAME_BUILD_ONLY_PROJECTS];
-  const fallbackProjects = explicitProjects === undefined && projects.length === 0
-    ? GENERATED_GAME_PROJECTS.map(fallbackGeneratedGameProject)
-    : projects;
+  const manifestBuildOnly = await examplePathsByClassification(root, "build-only");
+  const configuredBuildOnly = configured.filter((entry) => entry.buildOnly).map((entry) => entry.projectPath);
+  const buildOnlyProjectPaths = manifestBuildOnly.length > 0 ? manifestBuildOnly : configuredBuildOnly;
 
   return {
-    buildOnlyProjectPaths: fallbackBuildOnly,
+    buildOnlyProjectPaths,
     diagnostics,
-    projects: fallbackProjects,
+    projects,
   };
+}
+
+async function generatedGameManifestDriftDiagnostics(
+  root: string,
+  configured: readonly IGeneratedGameReleaseProofConfigEntry[],
+): Promise<VerificationDiagnostic[]> {
+  const diagnostics: VerificationDiagnostic[] = [];
+  const releaseManifest = new Set(await examplePathsByClassification(root, "release-enrolled"));
+  const buildOnlyManifest = new Set(await examplePathsByClassification(root, "build-only"));
+  if (releaseManifest.size === 0 && buildOnlyManifest.size === 0) {
+    return diagnostics;
+  }
+  for (const entry of configured) {
+    if (entry.enrolled !== releaseManifest.has(entry.projectPath)) {
+      diagnostics.push({
+        code: "TN_VERIFY_GENERATED_GAME_EXAMPLE_MANIFEST_DRIFT",
+        message: `${entry.projectPath}: production.releaseProof.enrolled=${entry.enrolled} disagrees with examples/manifest.json classification.`,
+        path: `${entry.projectPath}/threenative.config.json#/production/releaseProof/enrolled`,
+        severity: "error",
+        suggestedFix: `Update examples/manifest.json or set production.releaseProof.enrolled=${releaseManifest.has(entry.projectPath)}.`,
+      });
+    }
+    if (entry.buildOnly !== buildOnlyManifest.has(entry.projectPath)) {
+      diagnostics.push({
+        code: "TN_VERIFY_GENERATED_GAME_EXAMPLE_MANIFEST_DRIFT",
+        message: `${entry.projectPath}: production.releaseProof.buildOnly=${entry.buildOnly} disagrees with examples/manifest.json classification.`,
+        path: `${entry.projectPath}/threenative.config.json#/production/releaseProof/buildOnly`,
+        severity: "error",
+        suggestedFix: `Update examples/manifest.json or set production.releaseProof.buildOnly=${buildOnlyManifest.has(entry.projectPath)}.`,
+      });
+    }
+  }
+  return diagnostics;
 }
 
 interface IGeneratedGameReleaseProofConfigEntry {
@@ -315,33 +325,6 @@ async function readGeneratedGameReleaseProofConfig(root: string, projectPath: st
   return { buildOnly, diagnostics, enrolled, exemptions, project, projectPath };
 }
 
-function generatedGameFallbackDriftDiagnostics(configured: readonly IGeneratedGameReleaseProofConfigEntry[]): VerificationDiagnostic[] {
-  const diagnostics: VerificationDiagnostic[] = [];
-  const releaseFallback = new Set<string>(GENERATED_GAME_PROJECTS);
-  const buildOnlyFallback = new Set<string>(GENERATED_GAME_BUILD_ONLY_PROJECTS);
-  for (const entry of configured) {
-    if (entry.enrolled !== releaseFallback.has(entry.projectPath)) {
-      diagnostics.push({
-        code: "TN_VERIFY_GENERATED_GAME_RELEASE_PROOF_FALLBACK_DRIFT",
-        message: `${entry.projectPath}: production.releaseProof.enrolled=${entry.enrolled} disagrees with the temporary generated-game fallback constants.`,
-        path: `${entry.projectPath}/threenative.config.json#/production/releaseProof/enrolled`,
-        severity: "error",
-        suggestedFix: "Keep releaseProof enrollment aligned with GENERATED_GAME_PROJECTS until the temporary fallback constants are retired.",
-      });
-    }
-    if (entry.buildOnly !== buildOnlyFallback.has(entry.projectPath)) {
-      diagnostics.push({
-        code: "TN_VERIFY_GENERATED_GAME_RELEASE_PROOF_FALLBACK_DRIFT",
-        message: `${entry.projectPath}: production.releaseProof.buildOnly=${entry.buildOnly} disagrees with the temporary generated-game fallback constants.`,
-        path: `${entry.projectPath}/threenative.config.json#/production/releaseProof/buildOnly`,
-        severity: "error",
-        suggestedFix: "Keep releaseProof build-only enrollment aligned with GENERATED_GAME_BUILD_ONLY_PROJECTS until the temporary fallback constants are retired.",
-      });
-    }
-  }
-  return diagnostics;
-}
-
 function generatedGameReleaseProofExemptionDiagnostics(configured: readonly IGeneratedGameReleaseProofConfigEntry[]): VerificationDiagnostic[] {
   const diagnostics: VerificationDiagnostic[] = [];
   for (const entry of configured.filter((entry) => entry.enrolled)) {
@@ -360,14 +343,6 @@ function generatedGameReleaseProofExemptionDiagnostics(configured: readonly IGen
     }
   }
   return diagnostics;
-}
-
-function fallbackGeneratedGameProject(projectPath: string): IGameProductionGateProject {
-  return {
-    projectPath,
-    requireAgentInventory: projectPath === "examples/metro-surfer-heist",
-    ...DEFAULT_GENERATED_GAME_REQUIREMENTS,
-  };
 }
 
 async function generatedGameInventoryDiagnostics(root: string, projects: IGameProductionGateProject[], buildOnlyProjectPaths: readonly string[]): Promise<VerificationDiagnostic[]> {

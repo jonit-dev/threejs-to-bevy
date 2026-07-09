@@ -3,6 +3,7 @@ import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { SCRIPT_ONLY_GATES } from "../scriptGates.js";
+import { descriptorFocusedGates } from "../gateDescriptors.js";
 
 type CommandSpec = readonly [command: string, ...args: string[]];
 export type GateProfile = "smoke" | "changed" | "focused" | "release" | "full";
@@ -29,6 +30,7 @@ export interface FocusedGateRunOptions extends FocusedGateCommandOptions {
 
 export const FOCUSED_GATES: Record<string, FocusedGate> = {
   ...SCRIPT_ONLY_GATES,
+  ...descriptorFocusedGates(),
   "test:gameplay": {
     commands: [
       ["pnpm", "--filter", "@threenative/cli", "build"],
@@ -67,59 +69,6 @@ export const FOCUSED_GATES: Record<string, FocusedGate> = {
       profile: "focused",
       reason: "Compares emitted bundle/runtime evidence for promoted animation, physics, and navigation residual behavior across verifier artifacts.",
       protects: "Cross-runtime residual traces, unsupported-feature diagnostics, and durable release evidence.",
-    },
-  },
-  "verify:agent-io": {
-    commands: [
-      ["pnpm", "--filter", "@threenative/sdk", "build"],
-      ["pnpm", "--filter", "@threenative/ir", "build"],
-      ["pnpm", "--filter", "@threenative/authoring", "build"],
-      ["pnpm", "--filter", "@threenative/compiler", "build"],
-      ["pnpm", "--filter", "@threenative/runtime-web-three", "build"],
-      ["pnpm", "--filter", "@threenative/cli", "build"],
-      ["pnpm", "--filter", "@threenative/verify-tools", "build"],
-      ["node", "tools/verify/dist/agentIoBudget.js"],
-    ],
-    description: "Agent-facing CLI stdout budget gate.",
-    metadata: {
-      owner: "tools/verify agent IO budget gate",
-      profile: "focused",
-      reason: "Measures documented agent commands so normal JSON stdout stays bounded and deep logs remain artifact-only.",
-      protects: "Agent token budget, compact playtest/iterate reports, and stable diagnostics for output bloat regressions.",
-    },
-  },
-  "verify:session-cost": {
-    commands: [
-      ["pnpm", "--filter", "@threenative/sdk", "build"],
-      ["pnpm", "--filter", "@threenative/ir", "build"],
-      ["pnpm", "--filter", "@threenative/authoring", "build"],
-      ["pnpm", "--filter", "@threenative/compiler", "build"],
-      ["pnpm", "--filter", "@threenative/runtime-web-three", "build"],
-      ["pnpm", "--filter", "@threenative/cli", "build"],
-      ["pnpm", "--filter", "@threenative/verify-tools", "build"],
-      ["node", "tools/verify/dist/sessionCostGate.js"],
-    ],
-    description: "Deterministic scaffold session-cost ratchet gate.",
-    metadata: {
-      owner: "tools/verify session cost gate",
-      profile: "focused",
-      reason: "Replays maintained scaffold-first paths without LLM agents and fails step, command-failure, or compact-output regressions before expensive benchmark rounds.",
-      protects: "Agent token budget, zero-repair scaffold paths, compact iterate summaries, and CI-visible session cost ratchets.",
-    },
-  },
-  "verify:webview-package": {
-    commands: [
-      ["pnpm", "--filter", "@threenative/runtime-web-three", "build"],
-      ["pnpm", "--filter", "@threenative/cli", "build"],
-      ["pnpm", "--filter", "@threenative/verify-tools", "build"],
-      ["node", "tools/verify/dist/webviewPackageGate.js"],
-    ],
-    description: "Desktop-web package measurement gate.",
-    metadata: {
-      owner: "tools/verify webview package gate",
-      profile: "focused",
-      reason: "Packages a real web/desktop conformance bundle through the desktop-web runtime and records size, startup, input, settings, and save-slot evidence.",
-      protects: "Native path decision evidence, webview fallback package artifact quality, and the parity-freeze boundary around Bevy promotion claims.",
     },
   },
   "verify:bundle-safety-hardening": {

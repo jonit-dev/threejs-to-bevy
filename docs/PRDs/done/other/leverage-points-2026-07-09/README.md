@@ -37,14 +37,22 @@ game.
 
 ## Bundle Acceptance
 
-- [ ] Adapter drift allowlists shrink and remaining entries are explicit
+- [x] Adapter drift allowlists shrink and remaining entries are explicit
       product exclusions or named migration gaps.
-- [ ] Off-recipe churn classes are measured and gated before Round 5B reruns.
-- [ ] Silent runtime failures produce source-linked diagnostics rather than
+- [x] Off-recipe churn classes are measured and gated before Round 5B reruns.
+- [x] Silent runtime failures produce source-linked diagnostics rather than
       repeated artifact forensics.
-- [ ] Focused/release gates and examples/templates are descriptor or
+- [x] Focused/release gates and examples/templates are descriptor or
       manifest-owned.
-- [ ] A mid-sized web-first game exercises menus, progression, UI, audio,
+- [x] A mid-sized web-first game exercises menus, progression, UI, audio,
       persistence, content volume, proof, and release metadata.
-- [ ] Visual metrics expand through fixture-backed, compact artifacts instead
+- [x] Visual metrics expand through fixture-backed, compact artifacts instead
       of broad screenshot dumps.
+
+## Completion Notes
+
+Implemented on 2026-07-09. `examples/neon-harbor-rescue` is intentionally
+build-only until its art/persistence/release-proof blockers are resolved, and
+conflict-prone conformance gates remain explicit descriptor migration gaps
+until the next descriptor wave models their artifact conflict policy end to
+end.

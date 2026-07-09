@@ -60,6 +60,15 @@ spawn/despawn live reconciliation, native/web loop scheduling contract
 fixtures, IR document contract truth hardening, and compiler bundle
 planner/writer separation.
 
+### Leverage Points (2026-07-09)
+
+The [leverage-points bundle](done/other/leverage-points-2026-07-09/README.md)
+closed the 2026-07-09 system leverage report with descriptor-owned adapter and
+proof surfaces, off-recipe churn ratchets, source-linked runtime observation
+diagnostics, manifest-owned examples/templates, the build-only
+`examples/neon-harbor-rescue` forcing-function game, and reusable visual metric
+bundles for rendering and generated-game proof.
+
 ## Current Initiatives
 
 Open PRDs usually live under `docs/PRDs/other/`. The near-term proof

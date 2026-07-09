@@ -1,0 +1,150 @@
+{
+  "schema": "threenative.project",
+  "version": "0.1.0",
+  "entry": "content/scenes/arena.scene.json",
+  "outDir": "dist/neon-harbor-rescue.bundle",
+  "production": {
+    "archetype": "top-down",
+    "archetypeSource": "content/archetypes/top-down.archetype.json",
+    "playableLoop": "Launch from the harbor menu, pilot the rescuer through dock and rooftop phases, collect two batteries, avoid the surge hazard timer, and retry with KeyR after failure.",
+    "controls": [
+      "keyboard.KeyA",
+      "keyboard.KeyD",
+      "keyboard.KeyW",
+      "keyboard.KeyS",
+      "keyboard.ArrowLeft",
+      "keyboard.ArrowRight",
+      "keyboard.ArrowUp",
+      "keyboard.ArrowDown",
+      "keyboard.KeyM",
+      "keyboard.KeyR"
+    ],
+    "lookProfile": {
+      "camera": "orthographic top-down harbor rescue board",
+      "movementPlane": "ground-xz",
+      "renderLook": "cinematic"
+    },
+    "objective": "Collect dock and rooftop batteries before the rescue timer expires.",
+    "progression": "Menu -> Phase 1 Dock -> Phase 2 Rooftop -> failed/retry. GameState records progress, batteries, savedProgress, settingsMode, and audioCue for proof.",
+    "failRetry": "If the rescue timer expires, GameState enters failed status with lastFailReason='Rescue timer expired'. Press KeyR to reset progress and return to the dock phase.",
+    "feedbackMoments": [
+      "HUD status changes from menu to dock and rooftop objectives.",
+      "Battery count increments during the two progression phases.",
+      "Audio cue metadata switches to goal-ping when a battery is collected and alarm on fail.",
+      "Saved progress text records slot.main phase and battery count.",
+      "Settings mode toggles to high-contrast with KeyM."
+    ],
+    "assetPlan": {
+      "playerHero": "Source-owned authored green rescuer box in content/scenes/arena.scene.json.",
+      "obstacleEnemy": "Source-owned red surge hazard in content/scenes/arena.scene.json.",
+      "rewardInteractable": "Source-owned yellow dock and rooftop battery entities.",
+      "worldEnvironment": "Source-owned harbor floor, water band, rooftop pad, and beacon landmarks.",
+      "uiHud": "Retained UI source in content/ui/hud.ui.json binds status, phase, battery, and saved progress.",
+      "audioFeedback": "Local goal-ping audio asset plus GameState audioCue metadata for pickup/fail feedback."
+    },
+    "scriptModules": [
+      {
+        "module": "src/scripts/player.ts",
+        "export": "updateHarborRescue",
+        "ownsState": ["Transform", "GameState"],
+        "referencedBy": ["content/systems/arena.systems.json", "content/scenes/arena.scene.json"]
+      }
+    ],
+    "agent": {
+      "sourceShape": {
+        "assets": ["content/assets/arena.assets.json"],
+        "archetypes": ["content/archetypes/top-down.archetype.json"],
+        "flow": ["content/flow/match.flow.json"],
+        "input": ["content/input/arena.input.json"],
+        "materials": ["content/materials/arena.materials.json"],
+        "meshes": ["content/meshes/arena.meshes.json"],
+        "runtime": ["content/runtime/default.runtime.json"],
+        "scene": ["content/scenes/arena.scene.json"],
+        "sequences": ["content/sequences/intro.sequence.json"],
+        "systems": ["content/systems/arena.systems.json"],
+        "ui": ["content/ui/hud.ui.json"],
+        "scripts": ["src/scripts/player.ts"]
+      },
+      "highValueSurfaces": [
+        {
+          "id": "playerHero",
+          "sourcePath": "content/scenes/arena.scene.json#/entities/player",
+          "provenanceStatus": "source",
+          "summary": "Playable rescuer hero with source-owned transform and authored color."
+        },
+        {
+          "id": "obstacleEnemy",
+          "sourcePath": "content/scenes/arena.scene.json#/entities/hazard.surge",
+          "provenanceStatus": "source",
+          "summary": "Timer surge hazard and fail-state driver."
+        },
+        {
+          "id": "rewardInteractable",
+          "sourcePath": "content/scenes/arena.scene.json#/entities/battery.dock",
+          "provenanceStatus": "source",
+          "summary": "Dock and rooftop battery rewards."
+        },
+        {
+          "id": "worldEnvironment",
+          "sourcePath": "content/scenes/arena.scene.json",
+          "provenanceStatus": "source",
+          "summary": "Harbor floor, water, rooftop pad, and rescue beacon layout."
+        },
+        {
+          "id": "uiHud",
+          "sourcePath": "content/ui/hud.ui.json",
+          "provenanceStatus": "source",
+          "summary": "HUD status, phase, battery, and save-slot text."
+        },
+        {
+          "id": "audioFeedback",
+          "sourcePath": "content/assets/arena.assets.json",
+          "provenanceStatus": "local-file",
+          "summary": "Local goal-ping audio asset with script-owned audioCue state metadata."
+        }
+      ],
+      "scriptModules": [
+        {
+          "module": "src/scripts/player.ts",
+          "export": "updateHarborRescue",
+          "ownsState": ["Transform", "GameState"],
+          "referencedBy": ["content/systems/arena.systems.json", "content/scenes/arena.scene.json"]
+        }
+      ],
+      "uiStates": [
+        { "id": "menu", "sourcePath": "content/ui/hud.ui.json", "expectation": "Status announces the menu/pre-game route." },
+        { "id": "gameplay", "sourcePath": "content/ui/hud.ui.json", "expectation": "Status and phase text reflect dock and rooftop progression." },
+        { "id": "settings", "sourcePath": "content/ui/hud.ui.json", "expectation": "Settings mode is visible after KeyM." },
+        { "id": "fail-retry", "sourcePath": "src/scripts/player.ts", "expectation": "KeyR clears failed state and returns to dock phase." }
+      ],
+      "assetSourcing": [
+        "Catalog search was deferred for this first forcing-function slice; high-value surfaces are local authored primitives and must be upgraded before release enrollment."
+      ],
+      "proofCommands": [
+        "pnpm run iterate",
+        "pnpm run playtest",
+        "pnpm run playtest:progression",
+        "pnpm run playtest:retry",
+        "pnpm run game:qa",
+        "pnpm run game:release"
+      ],
+      "knownBlockers": [
+        "First slice is build-only until visual assets, human playtest notes, and stable QA/release artifacts are captured.",
+        "Saved state is currently represented as GameState.savedProgress metadata; full local-data persistence wiring remains a follow-up."
+      ]
+    },
+    "proofCommands": [
+      "tn authoring validate --project . --json",
+      "tn build --project . --json",
+      "tn playtest --project . --scenario playtests/smoke-movement.playtest.json --stable-artifacts --json",
+      "tn playtest --project . --scenario playtests/progression.playtest.json --stable-artifacts --json",
+      "tn playtest --project . --scenario playtests/fail-retry.playtest.json --stable-artifacts --json",
+      "tn playtest --project . --scenario playtests/settings.playtest.json --stable-artifacts --json",
+      "tn screenshot --project . --url <preview-url> --out artifacts/game-production/screenshot.png --wait-ready --json",
+      "tn game score --project . --json",
+      "tn game qa --project . --run-proof --json",
+      "tn game release --project . --json"
+    ]
+  },
+  "template": "structured-source-starter"
+}

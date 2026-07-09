@@ -13,6 +13,7 @@ export interface IBenchmarkDiagnostic {
 
 export interface IBenchmarkSession {
   cachedInputTokens?: number;
+  churnCounters?: IBenchmarkChurnCounters;
   condition: BenchmarkCondition;
   costWeightedTokens?: number;
   finishedAt?: string;
@@ -91,13 +92,27 @@ export interface IBenchmarkBehaviorCounters {
   standaloneVerifyCommandCount: number;
 }
 
+export interface IBenchmarkChurnCounters {
+  artifactForensics: number;
+  engineSourceSearch: number;
+  failedCommand: number;
+  missingDiscovery: number;
+  missingIterate: number;
+  repeatedAssertion: number;
+  repeatedDiagnostic: number;
+  repeatedFileRead: number;
+  standaloneVerify: number;
+}
+
 export interface IBenchmarkBehaviorBudgetRun {
   condition: Extract<BenchmarkCondition, "threenative" | "typed-spec">;
   counters: IBenchmarkBehaviorCounters;
+  churnCounters: IBenchmarkChurnCounters;
   diagnostics: IBenchmarkDiagnostic[];
   offendingCommands: {
     artifactForensics: string[];
     engineSourceSearch: string[];
+    repeatedFileRead: string[];
     standaloneVerify: string[];
   };
   runId: string;
@@ -129,6 +144,10 @@ export interface IBenchmarkReport {
       standaloneVerifyCommandCount: number | null;
     };
     behaviorBudgetRuns: IBenchmarkBehaviorBudgetRun[];
+    churnByCondition: Array<{
+      condition: Extract<BenchmarkCondition, "threenative" | "typed-spec">;
+      median: { [K in keyof IBenchmarkChurnCounters]: number | null };
+    }>;
     promptId: string;
     promptClassification: BenchmarkPromptClass | "unknown";
     proofBar: {

@@ -1,0 +1,33 @@
+{
+  "name": "threenative-neon-harbor-rescue",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "tn": "node ../../packages/cli/dist/index.js",
+    "build": "pnpm run tn -- build --project .",
+    "dev:web": "pnpm run tn -- dev --target web --project .",
+    "iterate": "pnpm run tn -- iterate --project . --json",
+    "playtest": "pnpm run tn -- playtest --project . --scenario playtests/smoke-movement.playtest.json --stable-artifacts --json",
+    "playtest:progression": "pnpm run tn -- playtest --project . --scenario playtests/progression.playtest.json --stable-artifacts --json",
+    "playtest:retry": "pnpm run tn -- playtest --project . --scenario playtests/fail-retry.playtest.json --stable-artifacts --json",
+    "game:plan": "pnpm run tn -- game plan --goal \"web-first neon harbor rescue with menu flow, settings toggles, two-phase dock and rooftop rescue, battery pickups, hazards, saved progress, audio feedback, HUD objectives, fail retry, and release proof\" --project . --json",
+    "game:improve": "pnpm run tn -- game improve --apply-plan artifacts/game-production/plan.json --project . --json",
+    "game:score": "pnpm run tn -- game score --project . --json",
+    "game:qa": "pnpm run tn -- game qa --project . --run-proof --json",
+    "game:release": "pnpm run tn -- game release --project . --json",
+    "types": "pnpm run tn -- types generate --project . --json",
+    "typecheck": "pnpm run types && tsc -p tsconfig.json --noEmit",
+    "validate": "pnpm run tn -- validate --project .",
+    "validate:authoring": "pnpm run tn -- authoring validate --project . --json",
+    "verify": "pnpm run tn -- verify --project . --frames 3 --expect-motion --json"
+  },
+  "dependencies": {
+    "@threenative/script-stdlib": "file:/home/joao/projects/threejs-to-bevy/packages/script-stdlib",
+    "@threenative/sdk": "file:/home/joao/projects/threejs-to-bevy/packages/sdk"
+  },
+  "devDependencies": {
+    "@threenative/cli": "file:.threenative/cli",
+    "@types/node": "^20.19.25",
+    "typescript": "^5.9.3"
+  }
+}

@@ -54,13 +54,30 @@ Current support:
   scenarios and tells agents to verify with `tn iterate --project . --json`.
 - `verify:generated-games` discovers representative release enrollment and
   per-project proof requirements from `production.releaseProof` in generated
-  game `threenative.config.json` files. The current config-enrolled set is
+  game `threenative.config.json` files. `examples/manifest.json` classifies
+  every example as release-enrolled, build-only, benchmark-only, fixture-only,
+  archived, or experimental and drift-checks those classifications against
+  generated-game config. The current config/manifest-enrolled set is
   `examples/humanoid-physics-course` and `examples/metro-surfer-heist`, while
-  `examples/stylized-nature-component` is config-marked build-only;
-  `verify:example-build-sweep` keeps de-enrolled examples buildable without
-  requiring full QA/release evidence.
+  `examples/stylized-nature-component` is marked build-only and
+  `examples/dense-world-benchmark` is benchmark-only; `verify:example-build-sweep`
+  keeps build-only examples buildable without requiring full QA/release evidence.
+- `examples/neon-harbor-rescue` is the first mid-size web-first
+  forcing-function slice. It is manifest-classified as build-only and proves a
+  menu/settings/saved-progress metadata surface, dock-to-rooftop progression,
+  HUD bindings, audio cue metadata, fail/retry recovery, and seven web iterate
+  scenarios while recording release blockers in `FRICTION.md`.
+- Maintained starters declare generated files, instruction surfaces, package
+  scripts, and proof command expectations in `threenative.template.json`.
+  `verify:template-production` derives starter script, instruction, API-card,
+  and proof-command drift checks from those manifests.
 - Finished examples must prove build, nonblank screenshots, visible motion,
   input playtests, visual quality, and source ownership.
+- Generated-game visual-quality proof now includes a reusable compact
+  `game-quality` metric bundle in `artifacts/game-production/visual-quality.json`.
+  `verify:generated-games` requires that bundle for release-enrolled projects,
+  checks that it passed, and rejects stale bundle values that drift from the
+  top-level screenshot metrics.
 - Fresh scaffold-first token-cost evidence passes the <=0.5x raw-token target:
   collector median 98,244.5 vs 791,745 vanilla (0.124x), lane-runner median
   84,250.5 vs 1,020,845 vanilla (0.083x), with 3.5 median tool steps and zero
@@ -97,8 +114,12 @@ Verification:
 - `pnpm --filter @threenative/cli test -- --run "actor"`
 - `pnpm --filter @threenative/agent-benchmark test`
 - `node --test tools/verify/dist/gameProductionGate.test.js`
+- `node --test tools/verify/dist/exampleManifest.test.js`
+- `node --test tools/verify/dist/templateProductionGate.test.js`
 - `pnpm verify:generated-games`
 - `pnpm verify:example-build-sweep`
+- `pnpm verify:template-production`
+- `pnpm run iterate` from `examples/neon-harbor-rescue`
 - `pnpm verify:smoke`
 - `tn iterate --project . --json`
 - `tn world generate --biome meadow --seed 7 --json`

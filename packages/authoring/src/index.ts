@@ -365,6 +365,8 @@ export type {
   IAuthoringOperationCliAdapterDescriptor,
   IAuthoringOperationCliArgumentBinding,
   IAuthoringOperationDescriptor,
+  IAuthoringOperationEditorAdapterDescriptor,
+  IAuthoringOperationEditorSmokeDescriptor,
   IDispatchAuthoringOperationOptions,
 } from "./operationRegistry.js";
 export {

@@ -4,6 +4,7 @@ import { fileURLToPath } from "node:url";
 
 import { resolveArtifactTargets } from "./artifacts.js";
 import { FOCUSED_GATES } from "./cli/run.js";
+import { descriptorReleaseFocusedGates } from "./gateDescriptors.js";
 import { runCommand, summarize, type CommandResult, type StepSummary, type VerificationDiagnostic } from "./runner.js";
 
 const repoRoot = resolve(fileURLToPath(new URL("../../..", import.meta.url)));
@@ -33,6 +34,7 @@ const CONFORMANCE_ARTIFACT_CONFLICT_GATES = new Set([
 ]);
 
 export const RELEASE_FOCUSED_GATES: readonly FocusedGate[] = [
+  ...descriptorReleaseFocusedGates(),
   { name: "verify v9 animation state", reportPath: "tools/verify/artifacts/animation-state/state-diff.json", script: "verify:v9:animation-state" },
   { name: "verify v9 animation blending", reportPath: "tools/verify/artifacts/animation-blending/blend-report.json", script: "verify:v9:animation-blending" },
   { name: "verify v9 animation particles", reportPath: "tools/verify/artifacts/animation-particles/verification-report.json", script: "verify:v9:animation-particles" },

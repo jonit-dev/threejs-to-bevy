@@ -2,7 +2,7 @@
 
 ## Status
 
-Proposed
+Implemented
 
 ## Context
 
@@ -39,27 +39,27 @@ another expensive live-agent benchmark matrix.
 
 ### Phase 1: Churn Classifier
 
-- [ ] Extend benchmark event/session analysis with normalized churn counters:
+- [x] Extend benchmark event/session analysis with normalized churn counters:
       engine-source search, standalone verify, artifact forensics, missing
       iterate, missing discovery, repeated file read, failed command, repeated
       assertion, and repeated diagnostic.
-- [ ] Add fixtures from existing off-recipe artifacts.
-- [ ] Report churn by prompt and condition.
+- [x] Add fixtures from existing off-recipe artifacts.
+- [x] Report churn by prompt and condition.
 
 ### Phase 2: Preparation Audit Gate
 
-- [ ] Add or extend `tn-agent-benchmark audit` so Round 5B preparation requires
+- [x] Add or extend `tn-agent-benchmark audit` so Round 5B preparation requires
       churn budgets to be green.
-- [ ] Keep deterministic `verify:session-cost` as a prerequisite, not a
+- [x] Keep deterministic `verify:session-cost` as a prerequisite, not a
       substitute for off-recipe confidence.
-- [ ] Emit exact next actions for each failing churn class.
+- [x] Emit exact next actions for each failing churn class.
 
 ### Phase 3: Repair Ratchet
 
-- [ ] For each top churn class, add the smallest product change: command,
+- [x] For each top churn class, add the smallest product change: command,
       compact docs/API-card line, prescriptive diagnostic, or playtest summary.
-- [ ] Rerun only the audit after each repair.
-- [ ] Launch live Round 5B only after the audit passes.
+- [x] Rerun only the audit after each repair.
+- [x] Launch live Round 5B only after the audit passes.
 
 ## Files Likely Touched
 
@@ -79,8 +79,20 @@ another expensive live-agent benchmark matrix.
 
 ## Acceptance Criteria
 
-- [ ] Benchmark reports include per-run and aggregate churn counters.
-- [ ] Round 5B preparation fails when churn budgets are not green.
-- [ ] Each failing churn class has a stable diagnostic and suggested repair
+- [x] Benchmark reports include per-run and aggregate churn counters.
+- [x] Round 5B preparation fails when churn budgets are not green.
+- [x] Each failing churn class has a stable diagnostic and suggested repair
       surface.
-- [ ] Live-agent reruns are blocked until deterministic gates pass.
+- [x] Live-agent reruns are blocked until deterministic gates pass.
+
+## Implementation Notes
+
+- Agent benchmark artifacts and schemas now include per-run churn counters for
+  engine-source searches, standalone verifies, artifact forensics, missing
+  iterate/discovery, repeated reads, failed commands, repeated assertions, and
+  repeated diagnostics.
+- Round-5B preparation is gated by the next-steps audit and emits concrete
+  repair diagnostics before live-agent reruns.
+- Verification used `pnpm --filter @threenative/agent-benchmark test` and the
+  focused verify-tools slices that cover session-cost and benchmark audit
+  behavior.

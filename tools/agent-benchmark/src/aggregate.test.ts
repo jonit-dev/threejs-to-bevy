@@ -168,10 +168,12 @@ test("should count instruction-adoption behavior from codex event sidecars", asy
   assert.equal(summary?.behaviorMedian.standaloneVerifyCommandCount, 1);
   assert.equal(summary?.behaviorMedian.artifactForensicsCommandCount, 1);
   assert.equal(summary?.behaviorMedian.engineSourceSearchCommandCount, 1);
+  assert.equal(summary?.churnByCondition.find((entry) => entry.condition === "threenative")?.median.engineSourceSearch, 1);
+  assert.equal(summary?.churnByCondition.find((entry) => entry.condition === "threenative")?.median.standaloneVerify, 1);
   assert.equal(summary?.withinInstructionAdoptionBudget, false);
   assert.equal(summary?.behaviorBudgetRuns.length, 3);
-  assert.equal(report.diagnostics.some((diagnostic) => diagnostic.code === "TN_BENCH_BEHAVIOR_STANDALONE_VERIFY_EXCEEDED"), true);
-  assert.equal(report.diagnostics.some((diagnostic) => diagnostic.code === "TN_BENCH_BEHAVIOR_ENGINE_SOURCE_SEARCH_EXCEEDED"), true);
+  assert.equal(report.diagnostics.some((diagnostic) => diagnostic.code === "TN_BENCH_CHURN_STANDALONE_VERIFY_EXCEEDED"), true);
+  assert.equal(report.diagnostics.some((diagnostic) => diagnostic.code === "TN_BENCH_CHURN_ENGINE_SOURCE_SEARCH_EXCEEDED"), true);
 });
 
 test("should emit engine-source-search diagnostic with offending command when budget exceeded", async () => {
@@ -187,11 +189,54 @@ test("should emit engine-source-search diagnostic with offending command when bu
   );
 
   const report = await aggregateRunReports(paths);
-  const diagnostic = report.diagnostics.find((candidate) => candidate.code === "TN_BENCH_BEHAVIOR_ENGINE_SOURCE_SEARCH_EXCEEDED");
+  const diagnostic = report.diagnostics.find((candidate) => candidate.code === "TN_BENCH_CHURN_ENGINE_SOURCE_SEARCH_EXCEEDED");
 
   assert.equal(report.verdict.status, "fail");
   assert.match(diagnostic?.message ?? "", /rg "evaluateRichPlaytestAssertions" packages\/cli\/src\/commands\/playtestAssertions\.ts/);
   assert.equal(report.promptSummaries[0]?.behaviorBudgetRuns.every((run) => run.withinBudget === false), true);
+});
+
+test("should normalize all churn classes from event sidecars and session metrics", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-agent-benchmark-churn-"));
+  const paths = await writeRepeatedRunReports(root, {
+    threenativeSession: {
+      failedCommandCount: 1,
+      identicalAssertionRepeatCount: 2,
+      maxConsecutiveSameDiagnostic: 3,
+    },
+    threenativeTokens: 1000,
+    vanillaTokens: 1000,
+  });
+  await writeFile(
+    join(root, "codex-events.jsonl"),
+    [
+      commandEvent("cat tools/agent-benchmark/prompts/checkpoint-race.md"),
+      commandEvent("cat tools/agent-benchmark/prompts/checkpoint-race.md"),
+      commandEvent("tn authoring validate --project . --json"),
+      commandEvent("jq '.events' artifacts/playtest/smoke/latest/runtime-trace.json"),
+      commandEvent("jq '.events' artifacts/playtest/smoke/latest/runtime-trace.json"),
+      commandEvent("rg \"RigidBody\" packages/sdk/src runtime-bevy/src"),
+    ].join("\n"),
+  );
+
+  const report = await aggregateRunReports(paths);
+  const churn = report.promptSummaries[0]?.behaviorBudgetRuns[0]?.churnCounters;
+
+  assert.deepEqual(churn, {
+    artifactForensics: 1,
+    engineSourceSearch: 1,
+    failedCommand: 1,
+    missingDiscovery: 1,
+    missingIterate: 1,
+    repeatedAssertion: 2,
+    repeatedDiagnostic: 2,
+    repeatedFileRead: 1,
+    standaloneVerify: 1,
+  });
+  assert.equal(report.diagnostics.some((diagnostic) => diagnostic.code === "TN_BENCH_CHURN_REPEATED_FILE_READ_EXCEEDED"), true);
+  assert.equal(report.diagnostics.some((diagnostic) => diagnostic.code === "TN_BENCH_CHURN_FAILED_COMMAND_EXCEEDED"), true);
+  assert.equal(report.diagnostics.some((diagnostic) => diagnostic.code === "TN_BENCH_CHURN_REPEATED_ASSERTION_EXCEEDED"), true);
+  assert.equal(report.diagnostics.some((diagnostic) => diagnostic.code === "TN_BENCH_CHURN_REPEATED_DIAGNOSTIC_EXCEEDED"), true);
 });
 
 test("should keep old reports admissible when behavior counters are absent", async () => {

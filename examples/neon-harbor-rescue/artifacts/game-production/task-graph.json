@@ -1,0 +1,34 @@
+{
+  "code": "TN_GAME_TASK_GRAPH",
+  "diagnostics": [],
+  "generatedAt": "1970-01-01T00:00:00.000Z",
+  "ok": true,
+  "projectPath": "/home/joao/projects/threejs-to-bevy/examples/neon-harbor-rescue",
+  "recommendations": [
+    {
+      "blockingDiagnostics": [],
+      "command": "tn screenshot --project . --url <preview-url> --out artifacts/game-production/screenshot.png --wait-ready --json",
+      "expectedProof": "artifacts/game-production/screenshot.png",
+      "id": "capture-screenshot-proof",
+      "operationId": "proof.screenshot",
+      "phase": "qa",
+      "priority": 30,
+      "sourceOwner": "artifacts/game-production/screenshot.png",
+      "summary": "Capture a nonblank runtime screenshot after gameplay/source blockers are resolved."
+    },
+    {
+      "blockingDiagnostics": [],
+      "command": "tn game scale --project . --out artifacts/game-production/scale-analysis.json --json",
+      "expectedProof": "artifacts/game-production/scale-analysis.json",
+      "id": "prove-relative-scale",
+      "operationId": "game.scale",
+      "phase": "visuals",
+      "priority": 25,
+      "sourceOwner": "artifacts/game-production/scale-analysis.json",
+      "summary": "Prove relative scale for hero, vehicles, obstacles, rewards, and landmarks."
+    }
+  ],
+  "schema": "threenative.game-task-graph",
+  "sourceHash": "d2a23f4be1daa643745e6bcce663455af3bf47b2867826e69933313434af1547",
+  "version": "0.1.0"
+}

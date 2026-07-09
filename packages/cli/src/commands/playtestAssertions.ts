@@ -115,11 +115,16 @@ export const PLAYTEST_ASSERTION_REGISTRY: readonly IPlaytestAssertionSchemaEntry
 ] as const;
 
 export interface IPlaytestDiagnostic {
+  artifactPath?: string;
   code: string;
+  exportName?: string;
   message: string;
+  modulePath?: string;
+  observedRuntimePath?: string;
   path?: string;
   resourceId?: string;
   severity: "error" | "warning";
+  sourcePath?: string;
   suggestion?: string;
   systemId?: string;
 }
@@ -158,6 +163,7 @@ export function evaluateRichPlaytestAssertions(input: {
     const result = evaluatePathAssertion("resource", assertion, input.report.observations?.resources[assertion.id], {
       effectLog: input.report.effectLog ?? input.report.observations?.effectLog,
       movedDistance: input.report.distance,
+      scenarioSourcePath: input.scenario.sourcePath,
     });
     assertions.push(result.assertion);
     if (result.diagnostic !== undefined) {
@@ -270,16 +276,25 @@ export function evaluateRichPlaytestAssertions(input: {
   }
   for (const assertion of scenarioAssertions.contacts ?? []) {
     const entity = assertion.entity ?? input.scenario.subject ?? input.report.entity;
-    const count = countMatchingEntries(input.report.effectLog, [entity, assertion.with, assertion.kind].filter((item): item is string => item !== undefined));
+    const tokens = [entity, assertion.with, assertion.kind].filter((item): item is string => item !== undefined);
+    const count = countMatchingEntries(input.report.effectLog, tokens);
     const minCount = assertion.minCount ?? 1;
     const pass = count >= minCount;
     assertions.push({ details: { count, entity, kind: assertion.kind, minCount, with: assertion.with }, id: `contact.${entity}`, pass });
     if (!pass) {
+      const partial = summarizeMatchingEntries(input.report.effectLog, [entity, assertion.with].filter((item): item is string => item !== undefined));
       diagnostics.push({
+        artifactPath: "effect-log.json",
         code: "TN_PLAYTEST_CONTACT_NOT_OBSERVED",
         message: `Expected contact/trigger for '${entity}' was not observed ${minCount} time(s).`,
+        observedRuntimePath: `effect-log.json/entries[kind=service|event,entity=${entity}]`,
+        path: `${input.scenario.sourcePath ?? "playtest"}/assert/contacts/${entity}`,
         severity: "error",
-        suggestion: "Check collider/trigger metadata, contact filters, and whether the scenario reaches the target.",
+        ...(input.scenario.sourcePath === undefined ? {} : { sourcePath: input.scenario.sourcePath }),
+        ...(partial?.systemId === undefined ? {} : { systemId: partial.systemId, sourcePath: partial.sourcePath }),
+        suggestion: partial === undefined
+          ? "Check collider/trigger metadata, contact filters, and whether the scenario reaches the target. Inspect effect-log.json for physics service calls and contact events."
+          : `effect-log.json contains ${partial.entryCount} related runtime entr${partial.entryCount === 1 ? "y" : "ies"} from ${partial.systems}, but none satisfied the contact assertion. Check collider/trigger metadata, contact filters, and route timing in the listed system(s).`,
       });
     }
   }
@@ -306,7 +321,7 @@ function evaluatePathAssertion(
   kind: "hud" | "resource",
   assertion: IPlaytestPathAssertion,
   observed: { after?: unknown; before?: unknown } | undefined,
-  context: { effectLog?: unknown; movedDistance?: number },
+  context: { effectLog?: unknown; movedDistance?: number; scenarioSourcePath?: string },
 ): { assertion: IPlaytestAssertionResult; diagnostic?: IPlaytestDiagnostic } {
   const before = readPath(observed?.before, assertion.path);
   const after = readPath(observed?.after, assertion.path);
@@ -355,7 +370,7 @@ function pathAssertionDiagnostic(
   assertion: IPlaytestPathAssertion,
   before: unknown,
   after: unknown,
-  context: { effectLog?: unknown; movedDistance?: number },
+  context: { effectLog?: unknown; movedDistance?: number; scenarioSourcePath?: string },
 ): IPlaytestDiagnostic {
   const unchanged = unchangedPathValue(before, after);
   if (kind === "resource" && unchanged && (context.movedDistance ?? 0) > 0.01) {
@@ -363,8 +378,13 @@ function pathAssertionDiagnostic(
     return {
       code: "TN_PLAYTEST_RESOURCE_STATE_STAGNATED",
       message: `Resource '${assertion.id}'${assertion.path === undefined ? "" : ` path '${assertion.path}'`} did not change after the scenario moved the subject ${formatNumber(context.movedDistance ?? 0)} units.`,
+      artifactPath: "effect-log.json",
+      observedRuntimePath: `effect-log.json/entries[kind=resource,resource=${assertion.id}]`,
+      path: assertion.path === undefined ? `${context.scenarioSourcePath ?? "playtest"}/assert/resources/${assertion.id}` : `${context.scenarioSourcePath ?? "playtest"}/assert/resources/${assertion.id}/${assertion.path}`,
       resourceId: assertion.id,
       severity: "error",
+      ...(context.scenarioSourcePath === undefined ? {} : { sourcePath: context.scenarioSourcePath }),
+      ...(summary?.systemId === undefined ? {} : { systemId: summary.systemId, sourcePath: summary.sourcePath }),
       suggestion: summary === undefined
         ? "The scenario movement path executed but the asserted resource never changed. Capture effect-log.json, then check pickup/contact predicates, route coordinates, resource write declarations, and stale duplicate systems before rerunning."
         : `The scenario movement path executed and effect-log.json shows ${summary.entryCount} '${assertion.id}' resource snapshot(s) from ${summary.systems}; observed values stayed ${summary.distinctValues}. Check pickup/contact predicates, route coordinates, resource write declarations, and stale duplicate systems in the listed system(s).`,
@@ -380,7 +400,7 @@ function pathAssertionDiagnostic(
   };
 }
 
-function summarizeResourceEffectLog(effectLog: unknown, resourceId: string, path: string | undefined): { distinctValues: string; entryCount: number; systems: string } | undefined {
+function summarizeResourceEffectLog(effectLog: unknown, resourceId: string, path: string | undefined): { distinctValues: string; entryCount: number; sourcePath?: string; systemId?: string; systems: string } | undefined {
   if (!isRecord(effectLog) || !Array.isArray(effectLog.entries)) {
     return undefined;
   }
@@ -401,8 +421,13 @@ function summarizeResourceEffectLog(effectLog: unknown, resourceId: string, path
   return {
     distinctValues: Array.from(values).slice(0, 3).join(", "),
     entryCount: entries.length,
+    ...([...(systems)].at(0) === undefined ? {} : { sourcePath: sourcePathForSystem([...(systems)][0] as string), systemId: [...(systems)][0] as string }),
     systems: systems.size === 0 ? "unknown systems" : Array.from(systems).slice(0, 5).join(", "),
   };
+}
+
+function sourcePathForSystem(systemId: string): string {
+  return `content/systems/${systemId}.systems.json`;
 }
 
 function shortJson(value: unknown): string {
@@ -513,6 +538,28 @@ function countMatchingEntries(effectLog: unknown, tokens: readonly string[]): nu
     const text = JSON.stringify(entry);
     return tokens.every((token) => text.includes(token));
   }).length;
+}
+
+function summarizeMatchingEntries(effectLog: unknown, tokens: readonly string[]): { entryCount: number; sourcePath?: string; systemId?: string; systems: string } | undefined {
+  if (tokens.length === 0 || !isRecord(effectLog) || !Array.isArray(effectLog.entries)) {
+    return undefined;
+  }
+  const entries = effectLog.entries
+    .filter((entry): entry is Record<string, unknown> => isRecord(entry))
+    .filter((entry) => {
+      const text = JSON.stringify(entry);
+      return tokens.every((token) => text.includes(token));
+    });
+  if (entries.length === 0) {
+    return undefined;
+  }
+  const systems = new Set(entries.map((entry) => typeof entry.system === "string" ? entry.system : undefined).filter((item): item is string => item !== undefined));
+  const firstSystem = [...systems][0];
+  return {
+    entryCount: entries.length,
+    ...(firstSystem === undefined ? {} : { sourcePath: sourcePathForSystem(firstSystem), systemId: firstSystem }),
+    systems: systems.size === 0 ? "unknown systems" : [...systems].slice(0, 5).join(", "),
+  };
 }
 
 function rotationDelta(effectLog: unknown, entityId: string): number | undefined {

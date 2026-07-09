@@ -42,6 +42,7 @@ function report(options: { threenativeRepeats: number; typedSpecRepeats: number;
         standaloneVerifyCommandCount: null,
       },
       behaviorBudgetRuns: [],
+      churnByCondition: [],
       costWeightedTokenRatio: null,
       dialectConfusionFailures: { threenative: 0, vanilla: 0 },
       failedCommandMedian: { threenative: null, vanilla: null },

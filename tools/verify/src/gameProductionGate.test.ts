@@ -156,6 +156,9 @@ test("accepts generated-game candidates listed as build-only examples", async ()
     await mkdir(join(root, "content/scenes"), { recursive: true });
     await mkdir(join(root, "examples/stylized-nature-component/artifacts/game-production"), { recursive: true });
     await writeFile(join(root, "content/scenes/arena.scene.json"), `${JSON.stringify({ schema: "threenative.scene", id: "arena" }, null, 2)}\n`);
+    await writeExampleManifest(root, [
+      { classification: "build-only", path: "examples/stylized-nature-component", reason: "Build-only generated-game fixture." },
+    ]);
     await writeFile(join(root, "examples/stylized-nature-component/artifacts/game-production/plan.json"), `${JSON.stringify({ schema: "threenative.game-plan", mutate: false }, null, 2)}\n`);
     const reportPath = join(root, "artifacts/game-production/verification-report.json");
 
@@ -178,6 +181,9 @@ test("should gate only representative generated examples", async () => {
     await mkdir(join(root, "content/scenes"), { recursive: true });
     await mkdir(join(root, "examples/stylized-nature-component/artifacts/game-production"), { recursive: true });
     await writeFile(join(root, "content/scenes/arena.scene.json"), `${JSON.stringify({ schema: "threenative.scene", id: "arena" }, null, 2)}\n`);
+    await writeExampleManifest(root, [
+      { classification: "build-only", path: "examples/stylized-nature-component", reason: "Build-only generated-game fixture." },
+    ]);
     await writeFile(join(root, "examples/stylized-nature-component/artifacts/game-production/plan.json"), `${JSON.stringify({ schema: "threenative.game-plan", mutate: false }, null, 2)}\n`);
     const reportPath = join(root, "artifacts/game-production/verification-report.json");
 
@@ -280,10 +286,21 @@ test("requires plan marker artifacts for config-enrolled generated games", async
   }
 });
 
-test("rejects generated-game release proof config drift from migration fallback constants", async () => {
+test("rejects generated-game release proof config drift from examples manifest", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-generated-game-config-drift-"));
   try {
     await mkdir(join(root, "examples/metro-surfer-heist"), { recursive: true });
+    await writeFile(join(root, "examples/manifest.json"), `${JSON.stringify({
+      schema: "threenative.examples.manifest",
+      version: "0.1.0",
+      examples: [
+        {
+          classification: "release-enrolled",
+          path: "examples/metro-surfer-heist",
+          reason: "Representative generated-game release evidence.",
+        },
+      ],
+    }, null, 2)}\n`);
     await writeFile(join(root, "examples/metro-surfer-heist/threenative.config.json"), `${JSON.stringify({
       production: { releaseProof: { enrolled: false } },
     }, null, 2)}\n`);
@@ -292,7 +309,11 @@ test("rejects generated-game release proof config drift from migration fallback 
     const result = await runGameProductionGate({ generatedGames: true, reportPath, root });
 
     assert.equal(result.ok, false);
-    assert.equal(result.diagnostics.some((diagnostic) => diagnostic.code === "TN_VERIFY_GENERATED_GAME_RELEASE_PROOF_FALLBACK_DRIFT" && diagnostic.message.includes("metro-surfer-heist")), true);
+    assert.equal(result.diagnostics.some((diagnostic) =>
+      diagnostic.code === "TN_VERIFY_GENERATED_GAME_EXAMPLE_MANIFEST_DRIFT"
+      && diagnostic.message.includes("metro-surfer-heist")
+      && diagnostic.path?.includes("production/releaseProof/enrolled")
+    ), true);
   } finally {
     await rm(root, { force: true, recursive: true });
   }
@@ -2038,3 +2059,14 @@ test("rejects generated-game QA sidecars with stale artifact byte sizes", async 
     await rm(root, { force: true, recursive: true });
   }
 });
+
+async function writeExampleManifest(
+  root: string,
+  examples: Array<{ classification: string; path: string; reason: string }>,
+): Promise<void> {
+  await writeFile(join(root, "examples/manifest.json"), `${JSON.stringify({
+    examples,
+    schema: "threenative.examples.manifest",
+    version: "0.1.0",
+  }, null, 2)}\n`);
+}

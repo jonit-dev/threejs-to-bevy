@@ -131,6 +131,7 @@ export async function writePlaytestArtifactBundle(options: {
     performance: options.report.performance ?? null,
   });
   await writeJson(artifacts.runtimeObservations, runtimeObservationSidecar(options.report));
+  options.report.diagnostics = withDiagnosticArtifactPaths(options.report.diagnostics, artifacts);
   const assertions = buildAssertions(options.report);
   options.report.diagnostics.push(...repeatedAssertionDiagnostics(await readPreviousSummary(artifacts.summary), assertions));
   const summary: IPlaytestSummary = {
@@ -208,6 +209,54 @@ function repeatedAssertionDiagnostics(
       suggestion: "Use the newest runtime diagnostics and artifact paths before retrying the same playtest unchanged.",
     }];
   });
+}
+
+function withDiagnosticArtifactPaths(
+  diagnostics: IPlaytestReport["diagnostics"],
+  artifacts: IPlaytestArtifactBundle,
+): IPlaytestReport["diagnostics"] {
+  return diagnostics.map((diagnostic) => {
+    const explicitPath = resolveDiagnosticArtifactPath(diagnostic.artifactPath, artifacts);
+    if (explicitPath !== undefined) {
+      return { ...diagnostic, artifactPath: explicitPath };
+    }
+    if (diagnostic.artifactPath !== undefined) {
+      return diagnostic;
+    }
+    const artifactPath = defaultDiagnosticArtifactPath(diagnostic.code, artifacts);
+    if (artifactPath === undefined) {
+      return diagnostic;
+    }
+    return { ...diagnostic, artifactPath };
+  });
+}
+
+function resolveDiagnosticArtifactPath(path: string | undefined, artifacts: IPlaytestArtifactBundle): string | undefined {
+  switch (path) {
+    case "effect-log.json":
+      return artifacts.effectLog;
+    case "observations.json":
+      return artifacts.observations;
+    case "runtime-observations.json":
+      return artifacts.runtimeObservations;
+    case "runtime-trace.json":
+      return artifacts.runtimeTrace;
+    default:
+      return undefined;
+  }
+}
+
+function defaultDiagnosticArtifactPath(code: string, artifacts: IPlaytestArtifactBundle): string | undefined {
+  if (code.includes("RESOURCE") || code.includes("CONTACT") || code.includes("ANIMATION") || code.includes("ROTATION") || code.includes("AXIS")) {
+    return artifacts.effectLog;
+  }
+  if (code.includes("RUNTIME") || code.includes("VISIBILITY")) {
+    return artifacts.runtimeTrace;
+  }
+  if (code.includes("HUD")) {
+    return artifacts.observations;
+  }
+  return undefined;
 }
 
 function stableJson(value: unknown): string {

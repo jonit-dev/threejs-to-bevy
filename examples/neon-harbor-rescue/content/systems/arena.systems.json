@@ -1,0 +1,15 @@
+{
+  "schema": "threenative.systems",
+  "version": "0.1.0",
+  "id": "arena-systems",
+  "systems": [
+    {
+      "id": "neon-harbor-loop",
+      "source": "behavior-metadata",
+      "script": {
+        "module": "src/scripts/player.ts",
+        "export": "updateHarborRescue"
+      }
+    }
+  ]
+}

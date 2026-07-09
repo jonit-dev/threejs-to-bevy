@@ -107,7 +107,7 @@ test("should keep registry handlers and legacy compatibility path explicit", asy
   assert.deepEqual(registryNames, Object.keys(CLI_COMMAND_DEFINITIONS).sort(), "CLI command definitions must be registry-backed.");
   assert.equal(findCommand(CLI_COMMAND_REGISTRY, "build")?.handler, CLI_COMMAND_REGISTRY.build.handler, "Registry lookup must return the migrated command definition.");
   assert.equal(findCommand(CLI_COMMAND_REGISTRY, "missing"), undefined, "Registry lookup must fail closed for unknown commands.");
-  assert.deepEqual(migratedNames, ["actor", "build", "proof"], "Registry-migrated command list changed without test review.");
+  assert.deepEqual(migratedNames, ["actor", "build", "parity", "proof"], "Registry-migrated command list changed without test review.");
   assert.deepEqual(uniqueLegacyNames, UNMIGRATED_COMMAND_FAMILIES, `Legacy compatibility path drift. Legacy=${uniqueLegacyNames.join(", ")} Unmigrated=${UNMIGRATED_COMMAND_FAMILIES.join(", ")}`);
   for (const name of migratedNames) {
     assert.equal(typeof registryByName[name]?.handler, "function", `Migrated command '${name}' must have a registry handler.`);

@@ -4,7 +4,7 @@ import { dirname, resolve } from "node:path";
 import { getProofContract, requiredAssertionIds, validateProofResult } from "./proof-contract.js";
 import { isBenchmarkRunReport } from "./schemas.js";
 import { sessionMetricEvidenceDiagnostics } from "./session-evidence.js";
-import { type BenchmarkPromptClass, type IBenchmarkBehaviorBudgetRun, type IBenchmarkBehaviorCounters, type IBenchmarkDiagnostic, type IBenchmarkReport, type IBenchmarkRunReport } from "./types.js";
+import { type BenchmarkCondition, type BenchmarkPromptClass, type IBenchmarkBehaviorBudgetRun, type IBenchmarkBehaviorCounters, type IBenchmarkChurnCounters, type IBenchmarkDiagnostic, type IBenchmarkReport, type IBenchmarkRunReport } from "./types.js";
 
 const CACHED_INPUT_TOKEN_WEIGHT = 0.1;
 const EQUAL_PROOF_CONTINUITY_RATIO = 1.5;
@@ -22,6 +22,7 @@ interface IRunWithBehavior {
       discovery: string[];
       engineSourceSearch: string[];
       iterate: string[];
+      repeatedFileRead: string[];
       standaloneVerify: string[];
     };
   };
@@ -87,6 +88,7 @@ export async function aggregateRunReports(paths: readonly string[]): Promise<IBe
       standaloneVerifyCommandCount: behaviorMedianMetric(threenativeRuns, (behavior) => behavior.standaloneVerifyCommandCount),
     };
     const behaviorBudgetRuns = promptRunsWithProofDiagnostics.flatMap(behaviorBudgetRun);
+    const churnByCondition = churnConditionSummaries(promptRunsWithProofDiagnostics);
     const withinInstructionAdoptionBudget = instructionAdoptionBudget(behaviorMedian);
     const rawTokenRatio = ratio(threenativeMedianTokens, vanillaMedianTokens);
     const promptClassification: BenchmarkPromptClass | "unknown" = promptContract?.classification ?? "unknown";
@@ -100,6 +102,7 @@ export async function aggregateRunReports(paths: readonly string[]): Promise<IBe
     const summary = {
       behaviorMedian,
       behaviorBudgetRuns,
+      churnByCondition,
       costWeightedTokenRatio: ratio(threenativeMedianCostWeightedTokens, vanillaMedianCostWeightedTokens),
       dialectConfusionFailures: {
         threenative: dialectConfusionFailureCount(promptRuns.filter((run) => run.condition === "threenative")),
@@ -236,44 +239,79 @@ function matrixDiagnostics(summary: IBenchmarkReport["promptSummaries"][number])
 }
 
 function behaviorBudgetRun(run: IRunWithBehavior): IBenchmarkBehaviorBudgetRun[] {
-  if (run.behavior === undefined || (run.report.condition !== "threenative" && run.report.condition !== "typed-spec")) {
+  if (run.report.condition !== "threenative" && run.report.condition !== "typed-spec") {
+    return [];
+  }
+  if (run.behavior === undefined && run.report.session.churnCounters === undefined) {
     return [];
   }
   const diagnostics: IBenchmarkDiagnostic[] = [];
   const counters: IBenchmarkBehaviorCounters = {
-    artifactForensicsCommandCount: run.behavior.artifactForensicsCommandCount,
-    discoveryCommandCount: run.behavior.discoveryCommandCount,
-    engineSourceSearchCommandCount: run.behavior.engineSourceSearchCommandCount,
-    iterateCommandCount: run.behavior.iterateCommandCount,
-    standaloneVerifyCommandCount: run.behavior.standaloneVerifyCommandCount,
+    artifactForensicsCommandCount: run.behavior?.artifactForensicsCommandCount ?? 0,
+    discoveryCommandCount: run.behavior?.discoveryCommandCount ?? 0,
+    engineSourceSearchCommandCount: run.behavior?.engineSourceSearchCommandCount ?? 0,
+    iterateCommandCount: run.behavior?.iterateCommandCount ?? 0,
+    standaloneVerifyCommandCount: run.behavior?.standaloneVerifyCommandCount ?? 0,
   };
-  if (counters.engineSourceSearchCommandCount !== 0) {
-    diagnostics.push(churnDiagnostic("TN_BENCH_BEHAVIOR_ENGINE_SOURCE_SEARCH_EXCEEDED", run, counters.engineSourceSearchCommandCount, "engine source search", run.behavior.commands.engineSourceSearch));
+  const churnCounters = normalizedChurnCounters(run, counters);
+  if (churnCounters.engineSourceSearch !== 0) {
+    diagnostics.push(churnDiagnostic("TN_BENCH_CHURN_ENGINE_SOURCE_SEARCH_EXCEEDED", run, churnCounters.engineSourceSearch, "engine-source search", run.behavior?.commands.engineSourceSearch ?? [], "Add or improve a command/API card/diagnostic so agents do not need to inspect engine source."));
   }
-  if (counters.standaloneVerifyCommandCount !== 0) {
-    diagnostics.push(churnDiagnostic("TN_BENCH_BEHAVIOR_STANDALONE_VERIFY_EXCEEDED", run, counters.standaloneVerifyCommandCount, "standalone verify", run.behavior.commands.standaloneVerify));
+  if (churnCounters.standaloneVerify !== 0) {
+    diagnostics.push(churnDiagnostic("TN_BENCH_CHURN_STANDALONE_VERIFY_EXCEEDED", run, churnCounters.standaloneVerify, "standalone verify", run.behavior?.commands.standaloneVerify ?? [], "Route validation/build/playtest proof through one tn iterate command or extend iterate to cover the missing proof."));
   }
-  if (counters.artifactForensicsCommandCount > 1) {
-    diagnostics.push(churnDiagnostic("TN_BENCH_BEHAVIOR_FORENSICS_EXCEEDED", run, counters.artifactForensicsCommandCount, "artifact forensics", run.behavior.commands.artifactForensics));
+  if (churnCounters.artifactForensics !== 0) {
+    diagnostics.push(churnDiagnostic("TN_BENCH_CHURN_FORENSICS_EXCEEDED", run, churnCounters.artifactForensics, "artifact forensics", run.behavior?.commands.artifactForensics ?? [], "Move the needed artifact summary into tn iterate output or a playtest diagnostic instead of requiring manual artifact inspection."));
   }
-  if (counters.iterateCommandCount < 1) {
-    diagnostics.push(churnDiagnostic("TN_BENCH_BEHAVIOR_ITERATE_MISSING", run, counters.iterateCommandCount, "iterate", []));
+  if (churnCounters.missingIterate !== 0) {
+    diagnostics.push(churnDiagnostic("TN_BENCH_CHURN_ITERATE_MISSING", run, churnCounters.missingIterate, "missing iterate", [], "Run the scaffold-first path with tn iterate; if impossible, add the missing iterate scenario or command coverage."));
   }
-  if (counters.discoveryCommandCount < 1) {
-    diagnostics.push(churnDiagnostic("TN_BENCH_BEHAVIOR_DISCOVERY_MISSING", run, counters.discoveryCommandCount, "discovery", []));
+  if (churnCounters.missingDiscovery !== 0) {
+    diagnostics.push(churnDiagnostic("TN_BENCH_CHURN_DISCOVERY_MISSING", run, churnCounters.missingDiscovery, "missing discovery", [], "Start from tn game plan, cookbook, project map, scene inspect, or playtest discovery before authoring."));
+  }
+  if (churnCounters.repeatedFileRead !== 0) {
+    diagnostics.push(churnDiagnostic("TN_BENCH_CHURN_REPEATED_FILE_READ_EXCEEDED", run, churnCounters.repeatedFileRead, "repeated file read", run.behavior?.commands.repeatedFileRead ?? [], "Add a compact command/API card/diagnostic so the agent does not reread the same file repeatedly."));
+  }
+  if (churnCounters.failedCommand !== 0) {
+    diagnostics.push(churnDiagnostic("TN_BENCH_CHURN_FAILED_COMMAND_EXCEEDED", run, churnCounters.failedCommand, "failed command", [], "Fix the first failing command or make the command diagnostic prescriptive enough to avoid retry churn."));
+  }
+  if (churnCounters.repeatedAssertion !== 0) {
+    diagnostics.push(churnDiagnostic("TN_BENCH_CHURN_REPEATED_ASSERTION_EXCEEDED", run, churnCounters.repeatedAssertion, "repeated assertion", [], "Change the scenario, command, or diagnostic so identical failing assertions are repaired before rerun."));
+  }
+  if (churnCounters.repeatedDiagnostic !== 0) {
+    diagnostics.push(churnDiagnostic("TN_BENCH_CHURN_REPEATED_DIAGNOSTIC_EXCEEDED", run, churnCounters.repeatedDiagnostic, "repeated diagnostic", [], "Make the diagnostic's suggested fix exact enough that agents do not rerun the same failure chain."));
   }
   return [{
     condition: run.report.condition,
     counters,
+    churnCounters,
     diagnostics,
     offendingCommands: {
-      artifactForensics: run.behavior.commands.artifactForensics,
-      engineSourceSearch: run.behavior.commands.engineSourceSearch,
-      standaloneVerify: run.behavior.commands.standaloneVerify,
+      artifactForensics: run.behavior?.commands.artifactForensics ?? [],
+      engineSourceSearch: run.behavior?.commands.engineSourceSearch ?? [],
+      repeatedFileRead: run.behavior?.commands.repeatedFileRead ?? [],
+      standaloneVerify: run.behavior?.commands.standaloneVerify ?? [],
     },
     runId: run.report.runId,
     withinBudget: diagnostics.length === 0,
   }];
+}
+
+function normalizedChurnCounters(run: IRunWithBehavior, counters: IBenchmarkBehaviorCounters): IBenchmarkChurnCounters {
+  if (run.report.session.churnCounters !== undefined) {
+    return run.report.session.churnCounters;
+  }
+  return {
+    artifactForensics: Math.max(0, counters.artifactForensicsCommandCount - 1),
+    engineSourceSearch: counters.engineSourceSearchCommandCount,
+    failedCommand: run.report.session.failedCommandCount ?? 0,
+    missingDiscovery: counters.discoveryCommandCount < 1 ? 1 : 0,
+    missingIterate: counters.iterateCommandCount < 1 ? 1 : 0,
+    repeatedAssertion: run.report.session.identicalAssertionRepeatCount ?? 0,
+    repeatedDiagnostic: Math.max(0, (run.report.session.maxConsecutiveSameDiagnostic ?? 0) - MAX_CONSECUTIVE_SAME_DIAGNOSTIC_BUDGET),
+    repeatedFileRead: run.behavior?.commands.repeatedFileRead.length ?? 0,
+    standaloneVerify: counters.standaloneVerifyCommandCount,
+  };
 }
 
 function churnDiagnostic(
@@ -282,14 +320,47 @@ function churnDiagnostic(
   count: number,
   label: string,
   commands: readonly string[],
+  suggestedFix: string,
 ): IBenchmarkDiagnostic {
   const commandText = commands.length === 0 ? "none" : commands.map((command) => `"${command}"`).join("; ");
   return {
     code,
     message: `${run.report.runId}: ${label} budget exceeded with count ${count}. Offending commands: ${commandText}.`,
     severity: "error",
-    suggestedFix: "Use tn game plan, tn playtest schema/scaffold, and tn iterate instead of engine-source searches, standalone proof commands, or artifact forensics.",
+    suggestedFix,
   };
+}
+
+function churnConditionSummaries(runs: readonly IRunWithBehavior[]): IBenchmarkReport["promptSummaries"][number]["churnByCondition"] {
+  const conditions: Array<Extract<BenchmarkCondition, "threenative" | "typed-spec">> = ["threenative", "typed-spec"];
+  return conditions.flatMap((condition) => {
+    const churnRuns = runs
+      .filter((run) => run.report.condition === condition && (run.behavior !== undefined || run.report.session.churnCounters !== undefined))
+      .map((run) => normalizedChurnCounters(run, {
+        artifactForensicsCommandCount: run.behavior?.artifactForensicsCommandCount ?? 0,
+        discoveryCommandCount: run.behavior?.discoveryCommandCount ?? 0,
+        engineSourceSearchCommandCount: run.behavior?.engineSourceSearchCommandCount ?? 0,
+        iterateCommandCount: run.behavior?.iterateCommandCount ?? 0,
+        standaloneVerifyCommandCount: run.behavior?.standaloneVerifyCommandCount ?? 0,
+      }));
+    if (churnRuns.length === 0) {
+      return [];
+    }
+    return [{
+      condition,
+      median: {
+        artifactForensics: median(churnRuns.map((counters) => counters.artifactForensics)),
+        engineSourceSearch: median(churnRuns.map((counters) => counters.engineSourceSearch)),
+        failedCommand: median(churnRuns.map((counters) => counters.failedCommand)),
+        missingDiscovery: median(churnRuns.map((counters) => counters.missingDiscovery)),
+        missingIterate: median(churnRuns.map((counters) => counters.missingIterate)),
+        repeatedAssertion: median(churnRuns.map((counters) => counters.repeatedAssertion)),
+        repeatedDiagnostic: median(churnRuns.map((counters) => counters.repeatedDiagnostic)),
+        repeatedFileRead: median(churnRuns.map((counters) => counters.repeatedFileRead)),
+        standaloneVerify: median(churnRuns.map((counters) => counters.standaloneVerify)),
+      },
+    }];
+  });
 }
 
 function typedSpecTrialSummary(options: {
@@ -438,6 +509,7 @@ async function readBehaviorCounters(runReportPath: string): Promise<IRunWithBeha
   const discovery = commands.filter(isDiscoveryCommand);
   const engineSourceSearch = commands.filter(isEngineSourceSearchCommand);
   const iterate = commands.filter((command) => /\btn\s+(?:--\s+)?iterate\b/.test(command));
+  const repeatedFileRead = repeatedFileReadCommands(commands);
   const standaloneVerify = commands.filter(isStandaloneVerifyCommand);
   return {
     artifactForensicsCommandCount: artifactForensics.length,
@@ -446,6 +518,7 @@ async function readBehaviorCounters(runReportPath: string): Promise<IRunWithBeha
       discovery,
       engineSourceSearch,
       iterate,
+      repeatedFileRead,
       standaloneVerify,
     },
     discoveryCommandCount: discovery.length,
@@ -511,6 +584,45 @@ function isEngineSourceSearchCommand(command: string): boolean {
 
 function isArtifactForensicsCommand(command: string): boolean {
   return /\b(?:jq|sed|cat|rg)\b/.test(command) && /\bartifacts\//.test(command);
+}
+
+function repeatedFileReadCommands(commands: readonly string[]): string[] {
+  const seen = new Set<string>();
+  const repeated: string[] = [];
+  for (const command of commands) {
+    const target = fileReadTarget(command);
+    if (target === undefined) {
+      continue;
+    }
+    if (seen.has(target)) {
+      repeated.push(command);
+    } else {
+      seen.add(target);
+    }
+  }
+  return repeated;
+}
+
+function fileReadTarget(command: string): string | undefined {
+  const tokens = shellLikeTokens(command);
+  const readCommandIndex = tokens.findIndex((token) => token === "cat" || token === "sed" || token === "nl");
+  if (readCommandIndex >= 0) {
+    return tokens.slice(readCommandIndex + 1).find((token) => looksLikeProjectFile(token));
+  }
+  const rgIndex = tokens.findIndex((token) => token === "rg");
+  if (rgIndex < 0) {
+    return undefined;
+  }
+  return tokens.slice(rgIndex + 1).find((token) => looksLikeProjectFile(token));
+}
+
+function looksLikeProjectFile(token: string): boolean {
+  return /^(?:content|docs|examples|packages|runtime-bevy|src|tools)\//.test(token)
+    || /^[\w.-]+\.(?:json|md|ts|tsx|js|mjs|rs|toml|yaml|yml)$/.test(token);
+}
+
+function shellLikeTokens(command: string): string[] {
+  return command.match(/"[^"]+"|'[^']+'|\S+/g)?.map((token) => token.replace(/^["']|["']$/g, "")) ?? [];
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

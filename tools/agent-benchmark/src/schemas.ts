@@ -33,6 +33,7 @@ export function validateSession(value: unknown): ISchemaValidationResult {
   requireOptionalNonNegativeNumber(value, "identicalAssertionRepeatCount", diagnostics);
   requireOptionalNonNegativeNumber(value, "maxConsecutiveSameDiagnostic", diagnostics);
   requireOptionalNonNegativeNumber(value, "toolStepCount", diagnostics);
+  validateOptionalChurnCounters(value.churnCounters, diagnostics);
   if (!isRecord(value.humanRubric)) {
     diagnostics.push({ code: "TN_BENCH_SCHEMA_HUMAN_RUBRIC", message: "Session humanRubric must be an object.", severity: "error" });
   } else {
@@ -102,6 +103,19 @@ export function isBenchmarkRunReport(value: unknown): value is IBenchmarkRunRepo
 
 export function isBenchmarkReport(value: unknown): value is IBenchmarkReport {
   return validateAggregateReport(value).ok;
+}
+
+function validateOptionalChurnCounters(value: unknown, diagnostics: IBenchmarkDiagnostic[]): void {
+  if (value === undefined) {
+    return;
+  }
+  if (!isRecord(value)) {
+    diagnostics.push({ code: "TN_BENCH_SCHEMA_CHURN_COUNTERS", message: "Session churnCounters must be an object.", severity: "error" });
+    return;
+  }
+  for (const key of ["artifactForensics", "engineSourceSearch", "failedCommand", "missingDiscovery", "missingIterate", "repeatedAssertion", "repeatedDiagnostic", "repeatedFileRead", "standaloneVerify"]) {
+    requireNonNegativeNumber(value, key, diagnostics);
+  }
 }
 
 function requireLiteral(record: Record<string, unknown>, key: string, expected: unknown, diagnostics: IBenchmarkDiagnostic[]): void {

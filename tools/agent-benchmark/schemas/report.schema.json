@@ -28,6 +28,41 @@
           "promptClassification": { "enum": ["continuity", "beyond-one-shot", "unknown"] },
           "repeatCount": { "type": "object" },
           "proofBar": { "type": "object" },
+          "churnByCondition": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["condition", "median"],
+              "properties": {
+                "condition": { "enum": ["threenative", "typed-spec"] },
+                "median": {
+                  "type": "object",
+                  "required": [
+                    "artifactForensics",
+                    "engineSourceSearch",
+                    "failedCommand",
+                    "missingDiscovery",
+                    "missingIterate",
+                    "repeatedAssertion",
+                    "repeatedDiagnostic",
+                    "repeatedFileRead",
+                    "standaloneVerify"
+                  ],
+                  "properties": {
+                    "artifactForensics": { "type": ["number", "null"] },
+                    "engineSourceSearch": { "type": ["number", "null"] },
+                    "failedCommand": { "type": ["number", "null"] },
+                    "missingDiscovery": { "type": ["number", "null"] },
+                    "missingIterate": { "type": ["number", "null"] },
+                    "repeatedAssertion": { "type": ["number", "null"] },
+                    "repeatedDiagnostic": { "type": ["number", "null"] },
+                    "repeatedFileRead": { "type": ["number", "null"] },
+                    "standaloneVerify": { "type": ["number", "null"] }
+                  }
+                }
+              }
+            }
+          },
           "typedSpecTrial": { "type": "object" }
         }
       }

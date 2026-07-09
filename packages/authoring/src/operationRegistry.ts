@@ -132,9 +132,19 @@ export interface IAuthoringOperationCliAdapterDescriptor {
   path: string[];
 }
 
+export interface IAuthoringOperationEditorSmokeDescriptor {
+  args: Record<string, unknown>;
+}
+
+export interface IAuthoringOperationEditorAdapterDescriptor {
+  smoke?: IAuthoringOperationEditorSmokeDescriptor;
+  surface: "api";
+}
+
 export interface IAuthoringOperationDescriptor<TName extends string = AuthoringOperationName> {
   adapters?: {
     cli?: IAuthoringOperationCliAdapterDescriptor;
+    editor?: IAuthoringOperationEditorAdapterDescriptor;
   };
   arguments: IAuthoringOperationArgumentDescriptor[];
   description: string;
@@ -488,19 +498,39 @@ const operationEntries = [
     objectArg("fields"),
   ]), async ({ args, projectPath }) =>
     setSchemaEntry({ fields: requiredObject(args, "fields"), kind: requiredString(args, "kind"), projectPath, schemaDocId: requiredString(args, "schemaDocId"), schemaId: requiredString(args, "schemaId") })),
-  operation(descriptor("runtime.create", "Create a structured runtime config source document.", "runtime", "source-document", [
+  operation(withEditor(withCli(descriptor("runtime.create", "Create a structured runtime config source document.", "runtime", "source-document", [
     stringArg("runtimeId"),
     stringArg("renderProfile", false),
-  ]), async ({ args, projectPath }) =>
+  ]), {
+    path: ["runtime", "create"],
+    arguments: [
+      { argument: "runtimeId", positional: 0 },
+      { argument: "renderProfile", flag: "--render-profile" },
+    ],
+  }), {
+    smoke: { args: { renderProfile: "balanced", runtimeId: "runtime.editor-smoke" } },
+    surface: "api",
+  }), async ({ args, projectPath }) =>
     createRuntimeConfig({ projectPath, renderProfile: optionalString(args, "renderProfile"), runtimeId: requiredString(args, "runtimeId") })),
-  operation(descriptor("runtime.set_window", "Set primary runtime window source fields.", "runtime", "source-document", [
+  operation(withEditor(withCli(descriptor("runtime.set_window", "Set primary runtime window source fields.", "runtime", "source-document", [
     stringArg("runtimeId"),
     numberArg("height", false),
     stringArg("title", false),
     numberArg("width", false),
-  ]), async ({ args, projectPath }) =>
+  ]), {
+    path: ["runtime", "set-window"],
+    arguments: [
+      { argument: "runtimeId", positional: 0 },
+      { argument: "height", flag: "--height" },
+      { argument: "title", flag: "--title" },
+      { argument: "width", flag: "--width" },
+    ],
+  }), {
+    smoke: { args: { height: 720, runtimeId: "runtime.editor-smoke", title: "Editor Smoke", width: 1280 } },
+    surface: "api",
+  }), async ({ args, projectPath }) =>
     setRuntimeWindow({ height: optionalNumber(args, "height"), projectPath, runtimeId: requiredString(args, "runtimeId"), title: optionalString(args, "title"), width: optionalNumber(args, "width") })),
-  operation(withCli(descriptor("runtime.set_rendering", "Set promoted runtime renderer source fields.", "runtime", "source-document", [
+  operation(withEditor(withCli(descriptor("runtime.set_rendering", "Set promoted runtime renderer source fields.", "runtime", "source-document", [
     stringArg("runtimeId"),
     booleanArg("ambientOcclusionEnabled", false),
     numberArg("ambientOcclusionIntensity", false),
@@ -555,6 +585,19 @@ const operationEntries = [
       { argument: "screenSpaceReflectionsQuality", flag: "--screen-space-reflections-quality" },
       { argument: "screenSpaceReflectionsRoughnessLimit", flag: "--screen-space-reflections-roughness-limit" },
     ],
+  }), {
+    smoke: {
+      args: {
+        antialias: "msaa4",
+        bloomEnabled: true,
+        bloomIntensity: 0.18,
+        bloomThreshold: 0.85,
+        renderLookExposure: 1.05,
+        renderProfile: "balanced",
+        runtimeId: "runtime.editor-smoke",
+      },
+    },
+    surface: "api",
   }), async ({ args, projectPath }) =>
     setRuntimeRendering({
       ambientOcclusionEnabled: optionalBoolean(args, "ambientOcclusionEnabled"),
@@ -1160,6 +1203,20 @@ function operationDescriptor(operation: IAuthoringOperationDescriptor): IAuthori
                     path: [...operation.adapters.cli.path],
                   },
                 }),
+            ...(operation.adapters.editor === undefined
+              ? {}
+              : {
+                  editor: {
+                    ...(operation.adapters.editor.smoke === undefined
+                      ? {}
+                      : {
+                          smoke: {
+                            args: cloneJsonObject(operation.adapters.editor.smoke.args),
+                          },
+                        }),
+                    surface: operation.adapters.editor.surface,
+                  },
+                }),
           },
         }),
     arguments: operation.arguments.map((argument) => ({
@@ -1385,6 +1442,17 @@ function withCli<const TName extends string>(
   cli: IAuthoringOperationCliAdapterDescriptor,
 ): IAuthoringOperationDescriptor<TName> {
   return { ...descriptor, adapters: { ...descriptor.adapters, cli } };
+}
+
+function withEditor<const TName extends string>(
+  descriptor: IAuthoringOperationDescriptor<TName>,
+  editor: IAuthoringOperationEditorAdapterDescriptor,
+): IAuthoringOperationDescriptor<TName> {
+  return { ...descriptor, adapters: { ...descriptor.adapters, editor } };
+}
+
+function cloneJsonObject(value: Record<string, unknown>): Record<string, unknown> {
+  return JSON.parse(JSON.stringify(value)) as Record<string, unknown>;
 }
 
 function anyJsonArg(name: string, required = true): IAuthoringOperationArgumentDescriptor {

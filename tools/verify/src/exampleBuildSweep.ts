@@ -2,7 +2,7 @@ import { mkdir, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 
 import { resolveArtifactTargets } from "./artifacts.js";
-import { GENERATED_GAME_BUILD_ONLY_PROJECTS } from "./gameProductionGate.js";
+import { exampleManifestDiagnostics, examplePathsByClassification, readExampleManifest } from "./exampleManifest.js";
 import { runStep, type StepSummary, type VerificationDiagnostic } from "./runner.js";
 
 export interface IExampleBuildSweepResult {
@@ -20,10 +20,12 @@ export async function runExampleBuildSweep(options: {
   usePackageScript?: boolean;
 } = {}): Promise<IExampleBuildSweepResult> {
   const root = resolve(options.root ?? process.cwd());
-  const projects = [...(options.projects ?? GENERATED_GAME_BUILD_ONLY_PROJECTS)];
+  const manifest = await readExampleManifest(root);
+  const manifestBuildOnlyProjects = manifest === undefined ? [] : await examplePathsByClassification(root, "build-only");
+  const projects = [...(options.projects ?? manifestBuildOnlyProjects)];
   const targets = resolveArtifactTargets({ gate: "example-build-sweep", owner: { kind: "aggregate", name: "example-build-sweep" }, root });
   const reportPath = options.reportPath ?? targets.reportPath;
-  const diagnostics: VerificationDiagnostic[] = [];
+  const diagnostics: VerificationDiagnostic[] = manifest === undefined ? [] : await exampleManifestDiagnostics(root);
   const steps: StepSummary[] = [];
 
   for (const project of projects) {

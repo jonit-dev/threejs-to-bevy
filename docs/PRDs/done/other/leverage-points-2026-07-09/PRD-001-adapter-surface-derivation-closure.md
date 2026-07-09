@@ -2,7 +2,7 @@
 
 ## Status
 
-Proposed
+Implemented
 
 ## Context
 
@@ -40,24 +40,24 @@ adapter metadata and required smoke coverage for migrated operations.
 
 ### Phase 1: Gap Inventory
 
-- [ ] Generate a machine-readable report of current CLI, MCP, editor, and
+- [x] Generate a machine-readable report of current CLI, MCP, editor, and
       editor-smoke gaps from `listAuthoringOperationDescriptors()`.
-- [ ] Split gap reasons into durable categories instead of one generic reason
+- [x] Split gap reasons into durable categories instead of one generic reason
       string.
-- [ ] Add tests that stale gap reasons fail when too broad or missing an owner.
+- [x] Add tests that stale gap reasons fail when too broad or missing an owner.
 
 ### Phase 2: One Family End-To-End
 
-- [ ] Pick the highest-value source family with existing descriptor metadata.
-- [ ] Derive CLI usage, MCP argv, editor metadata, and smoke coverage from the
+- [x] Pick the highest-value source family with existing descriptor metadata.
+- [x] Derive CLI usage, MCP argv, editor metadata, and smoke coverage from the
       descriptor.
-- [ ] Remove that family from explicit gap lists.
+- [x] Remove that family from explicit gap lists.
 
 ### Phase 3: Ratchet
 
-- [ ] Add a threshold that fails when gap counts increase without an explicit
+- [x] Add a threshold that fails when gap counts increase without an explicit
       dated reason.
-- [ ] Document the migration rule in the adapter-surface remediation bundle or
+- [x] Document the migration rule in the adapter-surface remediation bundle or
       this PRD bundle.
 
 ## Files Likely Touched
@@ -79,9 +79,20 @@ adapter metadata and required smoke coverage for migrated operations.
 
 ## Acceptance Criteria
 
-- [ ] At least one operation family is descriptor-derived across CLI, MCP,
+- [x] At least one operation family is descriptor-derived across CLI, MCP,
       editor metadata, and smoke coverage.
-- [ ] Adapter gap allowlists shrink and each remaining entry has a specific
+- [x] Adapter gap allowlists shrink and each remaining entry has a specific
       owner/category.
-- [ ] New migrated operations fail if descriptor adapter metadata is missing.
-- [ ] Drift diagnostics name the missing surface and the owning descriptor.
+- [x] New migrated operations fail if descriptor adapter metadata is missing.
+- [x] Drift diagnostics name the missing surface and the owning descriptor.
+
+## Implementation Notes
+
+- Authoring operation descriptors now carry executable CLI adapter metadata for
+  migrated scene/material/runtime/UI operations, and selected CLI/MCP/source
+  document surfaces derive argv/usage from those descriptors.
+- Editor metadata and required-operation smoke coverage use descriptor-backed
+  operation metadata for the migrated family while remaining gaps keep explicit
+  owner/category entries and stale-gap tests.
+- Verification used the authoring/CLI/editor focused tests and
+  `pnpm verify:editor-required-operations`.

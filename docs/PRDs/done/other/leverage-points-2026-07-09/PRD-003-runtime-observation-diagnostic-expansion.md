@@ -2,7 +2,7 @@
 
 ## Status
 
-Proposed
+Implemented
 
 ## Context
 
@@ -37,27 +37,27 @@ failures produce actionable diagnostics instead of artifact forensics.
 
 ### Phase 1: Observation Inventory
 
-- [ ] Inventory script-visible service APIs: resources, input, physics,
+- [x] Inventory script-visible service APIs: resources, input, physics,
       contacts, UI actions, audio, particles, persistence, picking, and
       lifecycle.
-- [ ] Map each service to current web/Bevy observation paths and missing
+- [x] Map each service to current web/Bevy observation paths and missing
       diagnostics.
-- [ ] Pick two high-friction services for the first slice.
+- [x] Pick two high-friction services for the first slice.
 
 ### Phase 2: Source-Linked Diagnostics
 
-- [ ] Include owning source document path, system ID, module/export, and
+- [x] Include owning source document path, system ID, module/export, and
       observed runtime path in diagnostics where available.
-- [ ] Add tests for missing observation, stale observation, and unsupported
+- [x] Add tests for missing observation, stale observation, and unsupported
       observation cases.
-- [ ] Preserve compact stdout; deep traces stay in artifacts.
+- [x] Preserve compact stdout; deep traces stay in artifacts.
 
 ### Phase 3: Cross-Runtime Fixture
 
-- [ ] Add one conformance or gameplay fixture per selected service.
-- [ ] Compare web/native observation shape only where native parity is already
+- [x] Add one conformance or gameplay fixture per selected service.
+- [x] Compare web/native observation shape only where native parity is already
       claimed or explicitly under calibration.
-- [ ] Update capability docs only for changed claims or new diagnostics.
+- [x] Update capability docs only for changed claims or new diagnostics.
 
 ## Files Likely Touched
 
@@ -78,9 +78,21 @@ failures produce actionable diagnostics instead of artifact forensics.
 
 ## Acceptance Criteria
 
-- [ ] At least two high-friction runtime services have source-linked
+- [x] At least two high-friction runtime services have source-linked
       observation diagnostics.
-- [ ] Repeated stale-state failures collapse to one actionable diagnostic.
-- [ ] Playtest compact reports identify the owning source and artifact paths.
-- [ ] Web/native observation differences are classified as enforced,
+- [x] Repeated stale-state failures collapse to one actionable diagnostic.
+- [x] Playtest compact reports identify the owning source and artifact paths.
+- [x] Web/native observation differences are classified as enforced,
       calibrating, quarantined, or report-only.
+
+## Implementation Notes
+
+- Playtest/runtime observation reports now attach compact web/native resource
+  observations, runtime observation sidecars, owning system evidence, and
+  `TN_RESOURCE_DECLARED_NOT_OBSERVED`, `TN_PLAYTEST_RESOURCE_STATE_STAGNATED`,
+  and `TN_PLAYTEST_REPEATED_ASSERTION` diagnostics for missing or stagnant
+  runtime state.
+- Gameplay parity summaries classify enforced, calibrating, quarantined, and
+  report-only rows while keeping deep runtime traces in artifacts.
+- Verification used focused CLI/playtest tests and gameplay parity verify-tools
+  slices.

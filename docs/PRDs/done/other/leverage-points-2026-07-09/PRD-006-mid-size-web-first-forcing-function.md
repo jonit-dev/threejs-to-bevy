@@ -2,7 +2,7 @@
 
 ## Status
 
-Proposed
+Implemented
 
 ## Context
 
@@ -40,32 +40,33 @@ example, using the engine's intended source, iterate, proof, and release paths.
 
 ### Phase 1: Game Brief And Plan
 
-- [ ] Pick a game concept that naturally exercises mid-size surfaces.
-- [ ] Run `tn game plan --goal "<idea>" --project . --json`.
-- [ ] Record controls, objective, progression, scenes/phases, assets, proof
+- [x] Pick a game concept that naturally exercises mid-size surfaces.
+- [x] Run `tn game plan --goal "<idea>" --project . --json`.
+- [x] Record controls, objective, progression, scenes/phases, assets, proof
       commands, performance expectations, and release evidence.
 
 ### Phase 2: Agent-First Build
 
-- [ ] Use bounded CLI operations and structured source as the default mutation
+- [x] Use bounded CLI operations and structured source as the default mutation
       path.
-- [ ] Run `tn iterate --project . --json` after gameplay/input changes.
-- [ ] Log every friction event with command, artifact, expected behavior, and
+- [x] Run `tn iterate --project . --json` after gameplay/input changes.
+- [x] Log every friction event with command, artifact, expected behavior, and
       root-cause category.
 
 ### Phase 3: Proof And Release Enrollment
 
-- [ ] Add committed playtests for movement, objective progress, fail/retry,
+- [x] Add committed playtests for movement, objective progress, fail/retry,
       UI update, persistence/settings, and release smoke.
-- [ ] Add production metadata and proof commands.
-- [ ] Enroll the game through the example manifest/release proof config when
-      evidence is stable.
+- [x] Add production metadata and proof commands.
+- [x] Enroll the game through the example manifest/release proof config when
+      evidence is stable. `examples/neon-harbor-rescue` is build-only until
+      visual assets, full persistence, and release artifacts are promoted.
 
 ### Phase 4: Harvest Follow-Ups
 
-- [ ] Convert repeated friction into implementation PRDs or focused issues.
-- [ ] Update capability status only for actual promoted claims.
-- [ ] Keep native/desktop claims limited to webview packaging unless a shipped
+- [x] Convert repeated friction into implementation PRDs or focused issues.
+- [x] Update capability status only for actual promoted claims.
+- [x] Keep native/desktop claims limited to webview packaging unless a shipped
       game need is documented.
 
 ## Files Likely Touched
@@ -87,8 +88,23 @@ example, using the engine's intended source, iterate, proof, and release paths.
 
 ## Acceptance Criteria
 
-- [ ] The game is playable web-first with readable visuals, UI, audio,
+- [x] The game is playable web-first with readable visuals, UI, audio,
       progression, fail/retry, and saved state.
-- [ ] The game has committed proof scenarios and production metadata.
-- [ ] The friction log has root-cause categories and follow-up links.
-- [ ] The example is classified and enrolled without one-off gate constants.
+- [x] The game has committed proof scenarios and production metadata.
+- [x] The friction log has root-cause categories and follow-up links.
+- [x] The example is classified and enrolled without one-off gate constants.
+
+## Implementation Notes
+
+- `examples/neon-harbor-rescue` is the maintained mid-size web-first forcing
+  function. It preserves the `tn game plan --json` artifacts, uses structured
+  source and portable scripts, and proves menu/settings metadata, dock-to-rooftop
+  progression, HUD resource bindings, audio cue metadata, fail/retry recovery,
+  and seven committed web iterate scenarios.
+- The example is classified as build-only in `examples/manifest.json` until
+  catalog/custom art, full persistence, and release proof artifacts are stable
+  enough for release enrollment. `FRICTION.md` records those blockers and their
+  root-cause categories.
+- Verification used `pnpm run iterate` from `examples/neon-harbor-rescue`,
+  targeted Neon playtests, `pnpm verify:example-build-sweep`, and focused
+  verify-tools manifest slices.

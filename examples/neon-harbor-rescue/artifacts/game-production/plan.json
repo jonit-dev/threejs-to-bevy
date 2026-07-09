@@ -1,0 +1,1392 @@
+{
+  "acceptanceCriteria": [
+    "A player can understand the objective from the first screen and complete or fail the loop with real input.",
+    "Every high-value visual surface has an asset, authored mesh, or documented fallback with provenance.",
+    "Gameplay behavior lives in src/scripts/**/*.ts and every exported system is referenced from structured source.",
+    "The scene has authored materials, lighting, camera framing, environment context, and set dressing instead of a placeholder floor and loose primitives.",
+    "Proof includes authoring validation, build, playtest motion, screenshot, game score, QA, and release checks."
+  ],
+  "archetype": "third-person",
+  "archetypeDetails": {
+    "controls": [
+      "keyboard.KeyW",
+      "keyboard.KeyA",
+      "keyboard.KeyS",
+      "keyboard.KeyD",
+      "mouse.look"
+    ],
+    "lookProfile": {
+      "camera": "perspective chase camera",
+      "movementPlane": "ground-xz",
+      "renderLook": "cinematic"
+    },
+    "probe": "playtests/archetype-third-person.playtest.json",
+    "script": {
+      "exportName": "updateThirdPersonArchetype",
+      "module": "src/scripts/archetype.ts",
+      "responsibility": "character movement with chase-camera ownership notes"
+    },
+    "summary": "Character games with a follow camera and world-relative movement."
+  },
+  "archetypeSuggestions": [
+    {
+      "archetype": "character",
+      "command": "tn actor add character --id hero --scene <scene-id> --json",
+      "id": "hero",
+      "reason": "Most playable loops need a controller, collider, follow camera, input source, and script stub in one operation.",
+      "surface": "hero"
+    },
+    {
+      "archetype": "prop-static",
+      "command": "tn actor add prop-static --id prop.blockout.01 --scene <scene-id> --json",
+      "id": "prop.blockout.01",
+      "reason": "Dominant static set dressing should carry collider/body provenance instead of untracked primitives.",
+      "surface": "prop"
+    }
+  ],
+  "assetPlan": [
+    {
+      "fallback": "Author a custom hero mesh with distinct silhouette, material zones, and scale cues.",
+      "requiredEvidence": [
+        "SQLite catalog/source id",
+        "source URL and provenance URL",
+        "license evidence",
+        "downloaded date or fallback note",
+        "tn asset inspect or model-test result"
+      ],
+      "searchCommand": "tn asset source search --game-category naval --format glb --direct-only --json",
+      "sourcePreference": "Use a direct GLB/glTF returned by the SQLite-backed asset source library before open web research or primitives.",
+      "surface": "player-hero"
+    },
+    {
+      "fallback": "Author modular hazards or opponents with readable shapes and collision affordances.",
+      "requiredEvidence": [
+        "SQLite catalog/source id",
+        "source URL and provenance URL",
+        "license evidence",
+        "downloaded date or fallback note"
+      ],
+      "searchCommand": "tn asset source search --game-category naval --format glb --direct-only --json",
+      "sourcePreference": "Use the same SQLite catalog kit/style family as the player when possible.",
+      "surface": "obstacle-enemy"
+    },
+    {
+      "fallback": "Create authored collectible/goal meshes with emissive or animated affordance.",
+      "requiredEvidence": [
+        "SQLite catalog/source id",
+        "source URL and provenance URL",
+        "license evidence",
+        "downloaded date or fallback note"
+      ],
+      "searchCommand": "tn asset source search --game-category naval --format glb --direct-only --json",
+      "sourcePreference": "Pick reward/interactable GLB records from the SQLite catalog that read clearly at gameplay camera distance.",
+      "surface": "reward-interactable"
+    },
+    {
+      "fallback": "Build a coherent environment from authored meshes, terrain, barriers, landmarks, and sky/background treatment.",
+      "requiredEvidence": [
+        "SQLite catalog/source id",
+        "source URL and provenance URL",
+        "license evidence",
+        "downloaded date or fallback note"
+      ],
+      "searchCommand": "tn asset source search --game-category naval --format glb --direct-only --json",
+      "sourcePreference": "Prefer a consistent SQLite catalog environment pack, not unrelated one-off assets.",
+      "surface": "world-environment"
+    },
+    {
+      "fallback": "Use retained UI source with authored typography, contrast, spacing, and state-specific labels.",
+      "requiredEvidence": [
+        "UI state inventory",
+        "text-fit/mobile proof",
+        "source document path"
+      ],
+      "sourcePreference": "Use structured UI documents for HUD, pause, fail/retry, win/milestone, loading, settings, and touch controls.",
+      "surface": "ui-hud"
+    },
+    {
+      "fallback": "Use generated or procedural sounds only through local tooling with provenance and fallback notes.",
+      "requiredEvidence": [
+        "source/provenance",
+        "license or generation settings",
+        "runtime trigger proof"
+      ],
+      "sourcePreference": "Plan feedback sounds for input, collect/hit, win/fail, and ambient loop when supported.",
+      "surface": "audio-feedback"
+    }
+  ],
+  "code": "TN_GAME_PLAN",
+  "design": {
+    "controls": [
+      "keyboard.KeyW",
+      "keyboard.KeyA",
+      "keyboard.KeyS",
+      "keyboard.KeyD",
+      "mouse.look",
+      "retry/pause input path",
+      "touch-control fallback when mobile is in scope"
+    ],
+    "failRetry": "Define a loss, timeout, hazard, or reset condition and a retained UI retry state.",
+    "feedback": [
+      "movement response",
+      "objective progress cue",
+      "success/fail cue",
+      "camera or VFX emphasis for important actions"
+    ],
+    "loop": "Spawn, read the objective, act with real input, receive feedback, reach a win/fail state, and retry quickly.",
+    "objective": "Turn 'web-first neon harbor rescue with menu flow, settings toggles, two-phase dock and rooftop rescue, battery pickups, hazards, saved progress, audio feedback, HUD objectives, fail retry, and release proof' into one concrete verb, one target, and one measurable success condition.",
+    "progression": "Add at least one escalation such as score, lap, wave, timer, obstacle density, or collectible count."
+  },
+  "diagnostics": [],
+  "goal": "web-first neon harbor rescue with menu flow, settings toggles, two-phase dock and rooftop rescue, battery pickups, hazards, saved progress, audio feedback, HUD objectives, fail retry, and release proof",
+  "inventory": {
+    "diagnostics": [],
+    "primarySceneId": "arena",
+    "projectKind": "generated-game",
+    "recommendedOperations": [
+      "Run tn game plan --goal <game idea> --project . --json for the next bounded slice."
+    ],
+    "sourceFamilies": [
+      {
+        "count": 1,
+        "files": [
+          "content/assets/arena.assets.json"
+        ],
+        "kind": "asset"
+      },
+      {
+        "count": 0,
+        "files": [],
+        "kind": "audio"
+      },
+      {
+        "count": 0,
+        "files": [],
+        "kind": "environment"
+      },
+      {
+        "count": 0,
+        "files": [],
+        "kind": "generator"
+      },
+      {
+        "count": 1,
+        "files": [
+          "content/input/arena.input.json"
+        ],
+        "kind": "input"
+      },
+      {
+        "count": 1,
+        "files": [
+          "content/materials/arena.materials.json"
+        ],
+        "kind": "material"
+      },
+      {
+        "count": 1,
+        "files": [
+          "content/meshes/arena.meshes.json"
+        ],
+        "kind": "mesh"
+      },
+      {
+        "count": 1,
+        "files": [
+          "content/prefabs/player.prefab.json"
+        ],
+        "kind": "prefab"
+      },
+      {
+        "count": 0,
+        "files": [],
+        "kind": "project"
+      },
+      {
+        "count": 0,
+        "files": [],
+        "kind": "resources"
+      },
+      {
+        "count": 1,
+        "files": [
+          "content/runtime/default.runtime.json"
+        ],
+        "kind": "runtime"
+      },
+      {
+        "count": 1,
+        "files": [
+          "content/scenes/arena.scene.json"
+        ],
+        "kind": "scene"
+      },
+      {
+        "count": 0,
+        "files": [],
+        "kind": "schema"
+      },
+      {
+        "count": 1,
+        "files": [
+          "content/systems/arena.systems.json"
+        ],
+        "kind": "systems"
+      },
+      {
+        "count": 0,
+        "files": [],
+        "kind": "target"
+      },
+      {
+        "count": 1,
+        "files": [
+          "content/ui/hud.ui.json"
+        ],
+        "kind": "ui"
+      }
+    ]
+  },
+  "gameplayBlocks": [
+    {
+      "appliesWhen": [
+        "all generated 3D games"
+      ],
+      "cautions": [
+        "Use this descriptor as the only source of truth for right/up/forward signs before authoring movement math."
+      ],
+      "helperImports": [
+        "BasisEx"
+      ],
+      "id": "basis.y-up-z-forward",
+      "kind": "basis",
+      "proof": [
+        "pnpm --filter @threenative/script-stdlib test"
+      ],
+      "recipeIds": [
+        "lane-runner",
+        "third-person-controller",
+        "top-down-collector",
+        "vehicle-checkpoint"
+      ],
+      "scriptResponsibilities": [
+        "convert planar input through BasisEx before writing Transform or velocity state"
+      ],
+      "source": "gameblocks-inspired"
+    },
+    {
+      "appliesWhen": [
+        "camera follows player, vehicle, runner, or top-down pawn"
+      ],
+      "cautions": [
+        "Camera target and offset must be authored source data or pure CameraMath output, not adapter handles."
+      ],
+      "helperImports": [
+        "CameraMath"
+      ],
+      "id": "camera.position-follow",
+      "kind": "camera",
+      "proof": [
+        "tn screenshot --project . --url <preview-url> --out artifacts/game-production/screenshot.png --wait-ready --json"
+      ],
+      "recipeIds": [
+        "lane-runner",
+        "third-person-controller",
+        "top-down-collector",
+        "vehicle-checkpoint"
+      ],
+      "scriptResponsibilities": [
+        "keeps target framing and follow offset consistent with authored camera source"
+      ],
+      "source": "gameblocks-inspired"
+    },
+    {
+      "appliesWhen": [
+        "lane runner and obstacle dodging goals"
+      ],
+      "cautions": [
+        "Lane state must be plain resource data with deterministic fail/retry events."
+      ],
+      "helperImports": [
+        "BasisEx",
+        "LaneRunnerKit"
+      ],
+      "id": "controller.lane-runner",
+      "kind": "controller",
+      "proof": [
+        "tn playtest --project . --entity <player-id> --press ArrowLeft --frames 30 --expect-moved --json"
+      ],
+      "recipeIds": [
+        "lane-runner",
+        "obstacle-avoider"
+      ],
+      "scriptResponsibilities": [
+        "owns lane index",
+        "owns forward progression",
+        "owns hazard fail state"
+      ],
+      "source": "gameblocks-inspired"
+    },
+    {
+      "appliesWhen": [
+        "top-down collectors and compact arena pickups"
+      ],
+      "cautions": [
+        "Forward/right signs come from BasisEx; avoid hand-authored axis swaps in scripts."
+      ],
+      "helperImports": [
+        "BasisEx",
+        "ControllerEx"
+      ],
+      "id": "controller.top-down-cardinal",
+      "kind": "controller",
+      "proof": [
+        "tn playtest --project . --entity <player-id> --press KeyW --frames 30 --expect-moved --json"
+      ],
+      "recipeIds": [
+        "top-down-collector"
+      ],
+      "scriptResponsibilities": [
+        "owns top-down movement intent"
+      ],
+      "source": "gameblocks-inspired"
+    },
+    {
+      "appliesWhen": [
+        "third-person",
+        "top-down",
+        "obstacle",
+        "generic character goals"
+      ],
+      "cautions": [
+        "Do not read runtime camera or renderer objects; pass input, dt, pose, and velocity as plain data."
+      ],
+      "helperImports": [
+        "BasisEx",
+        "ControllerEx"
+      ],
+      "id": "controller.world-cardinal-character",
+      "kind": "controller",
+      "proof": [
+        "tn playtest --project . --entity <player-id> --press KeyD --frames 30 --expect-moved --json"
+      ],
+      "recipeIds": [
+        "kinematic-character",
+        "obstacle-avoider",
+        "third-person-controller"
+      ],
+      "scriptResponsibilities": [
+        "owns movement intent",
+        "owns yaw/velocity resource writes"
+      ],
+      "source": "gameblocks-inspired"
+    },
+    {
+      "appliesWhen": [
+        "collector and rescue goals"
+      ],
+      "cautions": [
+        "Trigger collection must update declared resources and retained UI instead of DOM HUD state."
+      ],
+      "helperImports": [
+        "BasisEx",
+        "CollectorKit",
+        "ControllerEx"
+      ],
+      "id": "objective.collectible",
+      "kind": "objective",
+      "proof": [
+        "tn game qa --project . --run-proof --json"
+      ],
+      "recipeIds": [
+        "collectible",
+        "top-down-collector"
+      ],
+      "scriptResponsibilities": [
+        "owns collectible progress",
+        "owns score resource and HUD text"
+      ],
+      "source": "threenative"
+    },
+    {
+      "appliesWhen": [
+        "hazard, obstacle, timing, and dodge loops"
+      ],
+      "cautions": [
+        "Do not infer collisions from screenshots; preserve trigger/contact evidence."
+      ],
+      "helperImports": [
+        "LaneRunnerKit"
+      ],
+      "id": "objective.obstacle-avoid",
+      "kind": "objective",
+      "proof": [
+        "tn game qa --project . --run-proof --json"
+      ],
+      "recipeIds": [
+        "lane-runner",
+        "obstacle-avoider"
+      ],
+      "scriptResponsibilities": [
+        "owns fail/retry state",
+        "owns obstacle trigger events"
+      ],
+      "source": "threenative"
+    }
+  ],
+  "kitCandidates": [
+    {
+      "acceptanceCriteria": [
+        "Player moves in a bounded top-down play space using declared input.",
+        "Collecting all rewards updates retained UI state and reaches a win state.",
+        "Hazards or fail triggers produce a retry path."
+      ],
+      "assetRoles": [
+        "obstacle-enemy",
+        "player-hero",
+        "reward-interactable",
+        "ui-hud",
+        "world-environment"
+      ],
+      "blocks": [
+        {
+          "id": "controller.top-down",
+          "proofCommands": [
+            "tn authoring validate --project . --json",
+            "tn playtest --project . --entity <player-id> --press KeyW --frames 30 --expect-moved --json",
+            "tn screenshot --project . --url <preview-url> --wait-ready --json"
+          ],
+          "sourceOwners": {
+            "input": [
+              "content/input/**/*.json"
+            ],
+            "scene": [
+              "content/scenes/**/*.json"
+            ],
+            "scripts": [
+              "src/scripts/player.ts",
+              "src/scripts/collectibles.ts"
+            ],
+            "ui": [
+              "content/ui/**/*.json"
+            ]
+          },
+          "summary": "Move a hero, collect rewards, avoid hazards, update score/lives, and win when all rewards are collected."
+        }
+      ],
+      "diagnostics": [],
+      "kitId": "top-down-collector",
+      "mutate": false,
+      "recipeId": "top-down-collector",
+      "score": 1,
+      "summary": "Compact top-down collection loop with score, hazards, win, and retry states.",
+      "toolingOnly": true,
+      "version": 1
+    },
+    {
+      "acceptanceCriteria": [
+        "Player reaches checkpoints in order and receives feedback for missed or out-of-order gates.",
+        "HUD shows checkpoint/lap/time progress.",
+        "Scale and camera proof show the vehicle and route are readable."
+      ],
+      "assetRoles": [
+        "checkpoint-goal",
+        "obstacle-enemy",
+        "player-hero",
+        "ui-hud",
+        "world-environment"
+      ],
+      "blocks": [
+        {
+          "id": "objective.checkpoint-race",
+          "proofCommands": [
+            "tn scene proof-camera <scene-id> --camera <camera-id> --target <vehicle-id> --json",
+            "tn game scale --project . --json",
+            "tn playtest --project . --entity <vehicle-id> --press KeyW --frames 60 --expect-moved --json"
+          ],
+          "sourceOwners": {
+            "scene": [
+              "content/scenes/**/*.json"
+            ],
+            "scripts": [
+              "src/scripts/checkpointRace.ts"
+            ],
+            "ui": [
+              "content/ui/**/*.json"
+            ]
+          },
+          "summary": "Drive or pilot through ordered checkpoints with lap/time progress and missed-checkpoint feedback."
+        }
+      ],
+      "diagnostics": [],
+      "kitId": "checkpoint-race",
+      "mutate": false,
+      "recipeId": "vehicle-checkpoint",
+      "score": 0,
+      "summary": "Checkpoint race loop with ordered goals, readable vehicle scale, camera proof, and HUD progress.",
+      "toolingOnly": true,
+      "version": 1
+    },
+    {
+      "acceptanceCriteria": [
+        "Player changes lanes through declared input and lane bounds clamp illegal movement.",
+        "Forward speed or obstacle density escalates over time.",
+        "Obstacle contact or missed timing reaches a fail/retry state."
+      ],
+      "assetRoles": [
+        "obstacle-enemy",
+        "player-hero",
+        "reward-interactable",
+        "ui-hud",
+        "world-environment"
+      ],
+      "blocks": [
+        {
+          "id": "controller.lane-runner",
+          "proofCommands": [
+            "tn authoring validate --project . --json",
+            "tn playtest --project . --entity <player-id> --press ArrowRight --frames 20 --expect-moved --json",
+            "tn game qa --project . --run-proof --json"
+          ],
+          "sourceOwners": {
+            "input": [
+              "content/input/**/*.json"
+            ],
+            "scene": [
+              "content/scenes/**/*.json"
+            ],
+            "scripts": [
+              "src/scripts/laneRunner.ts"
+            ],
+            "ui": [
+              "content/ui/**/*.json"
+            ]
+          },
+          "summary": "Steer between lanes, dodge obstacles, collect bonuses, and track distance/score."
+        }
+      ],
+      "diagnostics": [],
+      "kitId": "lane-runner",
+      "mutate": false,
+      "recipeId": "lane-runner",
+      "score": 0,
+      "summary": "Lane-based runner loop with hazards, bonuses, escalation, and fail/retry.",
+      "toolingOnly": true,
+      "version": 1
+    }
+  ],
+  "mechanicDecomposition": [
+    {
+      "command": "tn recipe apply lane-runner --scene <scene-id> --entity <player-id> --camera <camera-id> --project . --json",
+      "cookbookId": "controller.lane-runner",
+      "mechanic": "movement",
+      "owner": "src/scripts/player.ts",
+      "proof": "tn playtest --project . --entity <player-id> --press ArrowLeft --frames 30 --expect-moved --json",
+      "summary": "Author continuous input response through portable script state and declared Transform/resource writes."
+    },
+    {
+      "command": "tn recipe apply collectible --scene <scene-id> --entity <target-id> --project . --json",
+      "cookbookId": "objective.collectible",
+      "mechanic": "objective-progression",
+      "owner": "content/scenes/arena.scene.json",
+      "proof": "tn game qa --project . --run-proof --json",
+      "summary": "Track progress, scoring, win/fail state, and retry through source-owned resources and retained UI."
+    },
+    {
+      "command": "tn flow create match --initial ready --scene <scene-id> --project . --json",
+      "cookbookId": "fail-retry-reset",
+      "mechanic": "macro-game-flow",
+      "owner": "content/flow/match.flow.json",
+      "proof": "tn iterate --project . --json",
+      "summary": "Keep menu/play/win/fail/retry state in bounded GameFlow data before adding script-owned state flags."
+    },
+    {
+      "command": "tn add follow-camera --project . --json",
+      "cookbookId": "camera.position-follow",
+      "mechanic": "camera-feedback",
+      "owner": "content/scenes/arena.scene.json",
+      "proof": "tn screenshot --project . --url <preview-url> --out artifacts/game-production/screenshot.png --wait-ready --json",
+      "summary": "Keep the player, objective, and feedback moments framed without runtime adapter handles."
+    },
+    {
+      "command": "tn sequence create intro --duration 2 --skippable true --project . --json",
+      "cookbookId": "sound-cue",
+      "mechanic": "feedback-sequence",
+      "owner": "content/sequences/intro.sequence.json",
+      "proof": "tn iterate --project . --json",
+      "summary": "Author intro, win, fail, and milestone feedback beats as Sequence tracks before writing cutscene scripts."
+    },
+    {
+      "command": "tn add spawner --project . --json",
+      "cookbookId": "kinematic-hazard",
+      "mechanic": "hazards-or-rewards",
+      "owner": "content/scenes/arena.scene.json",
+      "proof": "tn iterate --project . --json",
+      "summary": "Place hazards, rewards, checkpoints, or targets from data so playtests can discover stable IDs."
+    }
+  ],
+  "message": "Deterministic game-production plan generated without mutating source.",
+  "mutate": false,
+  "phases": [
+    {
+      "id": "gameplay",
+      "order": 1,
+      "summary": "Prove real input changes game state through a playable loop."
+    },
+    {
+      "id": "assets",
+      "order": 2,
+      "summary": "Record local/procedural/generated/blocked asset and audio provenance."
+    },
+    {
+      "id": "visuals",
+      "order": 3,
+      "summary": "Score art direction, player/world/reward surfaces, materials, lighting, VFX, UI, and performance."
+    },
+    {
+      "id": "ui",
+      "order": 4,
+      "summary": "Cover HUD, pause, settings, loading, fail/retry, win/milestone, and touch controls."
+    },
+    {
+      "id": "debug",
+      "order": 5,
+      "summary": "Inspect authoring, runtime, browser, and asset diagnostics."
+    },
+    {
+      "id": "qa",
+      "order": 6,
+      "summary": "Collect screenshot, mobile, interaction, and performance evidence."
+    },
+    {
+      "id": "release",
+      "order": 7,
+      "summary": "Check build artifacts, bundle budgets, debug helper risks, and residual release blockers."
+    }
+  ],
+  "polishPlan": [
+    {
+      "acceptance": "Screenshot shows the player, objective, bounds, and at least one landmark without empty-horizon composition.",
+      "category": "composition",
+      "sourceSurface": "content/scenes/**/*.json",
+      "treatment": "Frame the play space with camera placement, landmarks, readable objective placement, and environment boundaries."
+    },
+    {
+      "acceptance": "Primary surfaces do not read as flat random colors on bare boxes.",
+      "category": "materials",
+      "sourceSurface": "content/materials/**/*.json and asset metadata",
+      "treatment": "Author material intent with color, roughness/metalness, texture/normal detail where available, and emissive accents only where useful."
+    },
+    {
+      "acceptance": "Gameplay silhouettes remain readable at normal camera distance and motion direction is clear.",
+      "category": "silhouette",
+      "sourceSurface": "prefabs, meshes, and scene transforms",
+      "treatment": "Shape player, hazards, goals, and interactables with distinct proportions, scale, and marker treatment."
+    },
+    {
+      "acceptance": "Scene proof does not show missing shadows, bland floors, or invisible objective cues.",
+      "category": "lighting-environment",
+      "sourceSurface": "scene lights, environment, sky/background, and terrain documents",
+      "treatment": "Use purposeful key/fill/ambient balance, shadows where supported, ground detail, sky/background treatment, and set dressing."
+    },
+    {
+      "acceptance": "Input playtest and recording show smooth response and visible state changes.",
+      "category": "motion-feedback",
+      "sourceSurface": "src/scripts/**/*.ts plus retained UI/audio/VFX source",
+      "treatment": "Add eased movement, progress feedback, hit/collect/win/fail cues, and camera/VFX emphasis through portable contracts."
+    }
+  ],
+  "proofCommands": [
+    "tn iterate --project . --json",
+    "tn playtest report --latest --scenario <name> --json",
+    "tn playtest --project . --suggest-scenario smoke-movement --json",
+    "tn screenshot --project . --url <preview-url> --out artifacts/game-production/screenshot.png --wait-ready --json",
+    "tn game score --project . --json",
+    "tn game qa --project . --run-proof --json",
+    "tn game release --project . --json"
+  ],
+  "recipeIds": [
+    "third-person-controller",
+    "collectible",
+    "trigger-zone",
+    "kinematic-character",
+    "health-bar",
+    "top-down-collector",
+    "lane-runner",
+    "vehicle-checkpoint",
+    "obstacle-avoider",
+    "physics-target",
+    "dressed-environment-kit"
+  ],
+  "schema": "threenative.game-plan",
+  "scriptPlan": [
+    {
+      "exportName": "movePlayerToGoal",
+      "module": "src/scripts/player.ts",
+      "proof": "tn playtest --project . --entity <player-id> --press KeyboardEvent.code --frames 30 --expect-moved --json",
+      "responsibility": "Continue the existing structured-source gameplay system and keep component/resource ownership declared.",
+      "state": [
+        "declared gameplay state from structured source"
+      ]
+    },
+    {
+      "exportName": "updatePlayer",
+      "module": "src/scripts/player.ts",
+      "proof": "tn playtest --project . --entity <player-id> --press KeyboardEvent.code --frames 30 --expect-moved --json",
+      "responsibility": "Continue the existing structured-source gameplay system and keep component/resource ownership declared.",
+      "state": [
+        "declared gameplay state from structured source"
+      ]
+    }
+  ],
+  "sourcePlan": [
+    {
+      "document": "scene",
+      "path": "content/scenes/arena.scene.json",
+      "supportedShape": [
+        "Use scene entities, scene-local prefabs, resources, camera, light, MeshRenderer-compatible components, and authored transforms.",
+        "Scene-local prefab primitives are limited to box, capsule, cone, cylinder, plane, sphere, torus.",
+        "Put gameplay-owned custom component state on entities and reference scripts through content/systems/*.systems.json."
+      ],
+      "avoid": [
+        "Unsupported primitive names such as octahedron unless validation proves support.",
+        "Raw Three.js scenes, DOM APIs, filesystem access, workers, timers, or runtime handles.",
+        "Generated dist/** files as durable source."
+      ],
+      "operations": [
+        "tn scene validate arena --json",
+        "tn scene inspect arena --json",
+        "tn scene add-entity ... --json",
+        "tn scene add-prefab-instance ... --json"
+      ]
+    },
+    {
+      "document": "input",
+      "path": "content/input/arena.input.json",
+      "supportedShape": [
+        "Declare actions with string bindings such as keyboard.KeyW, keyboard.ArrowLeft, and keyboard.Space.",
+        "Use stable action ids that scripts read through context.input.axis1 or context.input.action/pressed."
+      ],
+      "avoid": [
+        "Object-shaped bindings like { device, code }; validation expects non-empty binding strings.",
+        "Non-canonical keyboard codes or display labels in place of KeyboardEvent.code names."
+      ],
+      "operations": [
+        "tn input add-action ... --json",
+        "tn authoring validate --project . --json"
+      ]
+    },
+    {
+      "document": "systems",
+      "path": "content/systems/arena.systems.json",
+      "supportedShape": [
+        "Reference src/scripts/**/*.ts module/export pairs from fixedUpdate for input-driven gameplay loops.",
+        "Declare every component/resource read and write, including Transform, custom gameplay components, and GameState."
+      ],
+      "avoid": [
+        "Leaving reads/writes implicit; effect validation and playtest readiness depend on declared access.",
+        "Using update for fixed-time movement unless the game intentionally does not need fixedDelta-driven proof."
+      ],
+      "operations": [
+        "tn system create ... --json",
+        "tn authoring validate --project . --json",
+        "tn build --project . --json"
+      ]
+    },
+    {
+      "document": "ui",
+      "path": "content/ui/hud.ui.json",
+      "supportedShape": [
+        "Use retained UI nodes with type, text, style, layout, and a bindings array that maps node ids to GameState fields.",
+        "Represent gameplay, pause, settings, loading, fail-retry, win-milestone, and touch-controls states."
+      ],
+      "avoid": [
+        "roots/children/kind trees when the project uses the current retained UI document shape.",
+        "Visible instructional paragraphs; prefer concise HUD state text that fits mobile proof."
+      ],
+      "operations": [
+        "tn ui create ... --json",
+        "tn ui add-text ... --json",
+        "tn ui bind ... --json"
+      ]
+    },
+    {
+      "document": "materials",
+      "path": "content/materials/arena.materials.json",
+      "supportedShape": [
+        "Use material rows with id, color, roughness, metalness, emissive, and supported texture-slot fields.",
+        "Preserve authored color/material intent in source; fix mapping or runtime setup if screenshots differ."
+      ],
+      "avoid": [
+        "baseColor in structured material source; use color for this document family.",
+        "Adapter-only color/material tweaks to chase screenshots."
+      ],
+      "operations": [
+        "tn material create ... --json",
+        "tn material set-color ... --json"
+      ]
+    },
+    {
+      "document": "assets",
+      "path": "content/assets/arena.assets.json",
+      "supportedShape": [
+        "Record asset rows with id, path, and type for source/model/audio/texture/document evidence.",
+        "Preserve SQLite catalog ids, source URLs, provenance URLs, license evidence, and fallback notes next to committed assets."
+      ],
+      "avoid": [
+        "uri/kind/provenance fields in the asset row shape; put provenance in a source document or notes file.",
+        "Web-sourced assets before querying the shipped SQLite asset source catalog."
+      ],
+      "operations": [
+        "tn asset source search --game-category <category> --format glb --direct-only --json",
+        "tn asset source get <asset-source-id> --json",
+        "tn asset add ... --json"
+      ]
+    }
+  ],
+  "steps": [
+    {
+      "apply": true,
+      "id": "playable-loop",
+      "phase": "gameplay",
+      "recipe": "third-person-controller",
+      "recipeArgs": {
+        "cameraId": "camera.main",
+        "entityId": "player",
+        "sceneId": "arena"
+      },
+      "summary": "Create or verify a player verb, objective, input path, camera, and feedback loop.",
+      "recipeGameplayBlocks": [
+        "basis.y-up-z-forward",
+        "controller.world-cardinal-character",
+        "camera.position-follow",
+        "proof.playtest-motion"
+      ],
+      "recipeGeneratedIds": {
+        "entityId": [
+          "camera.main",
+          "player"
+        ],
+        "sceneId": [
+          "arena"
+        ],
+        "targetId": [
+          "player"
+        ]
+      },
+      "recipeProofCommands": [
+        "tn authoring validate --project . --json",
+        "tn build --project . --json",
+        "tn scene inspect arena --node player --json",
+        "tn playtest --project . --entity player --press KeyD --frames 30 --expect-moved --json"
+      ],
+      "recipeProofHints": [
+        "Validate source, build, inspect scene wiring, and run a movement or trigger proof tied to the recipe."
+      ],
+      "recipeScriptResponsibilities": [
+        "owns movement intent",
+        "owns camera target assumptions"
+      ],
+      "recipeSourceOwners": {
+        "scene": [
+          "scene.add_entity",
+          "scene.set_camera_component",
+          "scene.set_character_controller",
+          "scene.set_collider",
+          "scene.set_rigid_body"
+        ]
+      }
+    },
+    {
+      "apply": true,
+      "id": "collectible-or-goal",
+      "phase": "gameplay",
+      "recipe": "collectible",
+      "recipeArgs": {
+        "entityId": "goal",
+        "sceneId": "arena"
+      },
+      "summary": "Add a concrete objective or reward target that changes state.",
+      "recipeGameplayBlocks": [
+        "objective.collectible",
+        "state.resource-score",
+        "proof.ui-binding"
+      ],
+      "recipeGeneratedIds": {
+        "entityId": [
+          "goal"
+        ],
+        "prefabId": [
+          "goal.prefab"
+        ],
+        "resourceId": [
+          "goal.collected"
+        ],
+        "sceneId": [
+          "arena"
+        ],
+        "systemId": [
+          "goal.collect"
+        ],
+        "uiNodeId": [
+          "goal.prompt"
+        ]
+      },
+      "recipeProofCommands": [
+        "tn authoring validate --project . --json",
+        "tn build --project . --json",
+        "tn scene inspect arena --node goal --json",
+        "tn playtest --project . --entity goal --press KeyD --frames 30 --expect-moved --json"
+      ],
+      "recipeProofHints": [
+        "Validate source, build, inspect scene wiring, and run a movement or trigger proof tied to the recipe."
+      ],
+      "recipeScriptResponsibilities": [
+        "owns collectible trigger state",
+        "owns HUD/resource update"
+      ],
+      "recipeSourceOwners": {
+        "scene": [
+          "scene.add_entity",
+          "scene.add_prefab",
+          "scene.add_resource",
+          "scene.add_ui_node",
+          "scene.attach_script",
+          "scene.bind_ui",
+          "scene.set_collider",
+          "scene.set_transform"
+        ]
+      }
+    },
+    {
+      "apply": false,
+      "id": "top-down-collector-slice",
+      "phase": "gameplay",
+      "recipe": "top-down-collector",
+      "recipeArgs": {
+        "cameraId": "camera.main",
+        "inputDocId": "arena-input",
+        "playerId": "player",
+        "sceneId": "arena"
+      },
+      "summary": "Use when the requested game is a compact top-down collectible loop with score feedback.",
+      "recipeGameplayBlocks": [
+        "basis.y-up-z-forward",
+        "controller.top-down-cardinal",
+        "camera.position-follow",
+        "objective.collectible",
+        "state.resource-score",
+        "proof.ui-binding"
+      ],
+      "recipeGeneratedIds": {
+        "axisId": [
+          "MoveX",
+          "MoveZ"
+        ],
+        "entityId": [
+          "camera.main",
+          "coin.01",
+          "player"
+        ],
+        "inputDocId": [
+          "arena-input"
+        ],
+        "prefabId": [
+          "coin.01.prefab",
+          "player.prefab"
+        ],
+        "resourceId": [
+          "GameState.scoreText"
+        ],
+        "sceneId": [
+          "arena"
+        ],
+        "systemId": [
+          "top-down-collector"
+        ],
+        "targetId": [
+          "player"
+        ],
+        "uiNodeId": [
+          "hud.score"
+        ]
+      },
+      "recipeProofCommands": [
+        "tn authoring validate --project . --json",
+        "tn build --project . --json",
+        "tn scene inspect arena --node player --json",
+        "tn playtest --project . --entity player --press KeyD --frames 30 --expect-moved --json"
+      ],
+      "recipeProofHints": [
+        "Playtest MoveX/MoveZ axes and verify HUD score text updates after collection."
+      ],
+      "recipeScriptResponsibilities": [
+        "owns top-down movement intent",
+        "owns collectible progress",
+        "owns HUD text"
+      ],
+      "recipeSourceOwners": {
+        "input": [
+          "input.add_axis"
+        ],
+        "scene": [
+          "scene.add_entity",
+          "scene.add_prefab",
+          "scene.add_resource",
+          "scene.add_ui_node",
+          "scene.attach_script",
+          "scene.bind_ui",
+          "scene.set_camera_component",
+          "scene.set_character_controller",
+          "scene.set_collider",
+          "scene.set_rigid_body",
+          "scene.set_transform"
+        ]
+      }
+    },
+    {
+      "apply": false,
+      "id": "lane-runner-slice",
+      "phase": "gameplay",
+      "recipe": "lane-runner",
+      "recipeArgs": {
+        "cameraId": "camera.main",
+        "playerId": "player",
+        "sceneId": "arena"
+      },
+      "summary": "Use when the requested game is a lane runner with hazards, jumps, and forward motion.",
+      "recipeGameplayBlocks": [
+        "basis.y-up-z-forward",
+        "controller.lane-runner",
+        "camera.position-follow",
+        "objective.obstacle-avoid",
+        "state.fail-retry",
+        "proof.playtest-motion"
+      ],
+      "recipeGeneratedIds": {
+        "actionId": [
+          "jump",
+          "move-left",
+          "move-right"
+        ],
+        "entityId": [
+          "camera.main",
+          "hazard.barrier.01",
+          "player"
+        ],
+        "inputDocId": [
+          "arena-input"
+        ],
+        "prefabId": [
+          "hazard.barrier.01.prefab",
+          "player.prefab"
+        ],
+        "sceneId": [
+          "arena"
+        ],
+        "systemId": [
+          "lane-runner"
+        ],
+        "targetId": [
+          "player"
+        ]
+      },
+      "recipeProofCommands": [
+        "tn authoring validate --project . --json",
+        "tn build --project . --json",
+        "tn scene inspect arena --node player --json",
+        "tn playtest --project . --entity player --press KeyD --frames 30 --expect-moved --json"
+      ],
+      "recipeProofHints": [
+        "Playtest lateral lane input and jump input; verify fail/retry state changes on hazard trigger."
+      ],
+      "recipeScriptResponsibilities": [
+        "owns lane movement intent",
+        "owns hazard collision fail/retry state",
+        "owns score/distance resource"
+      ],
+      "recipeSourceOwners": {
+        "input": [
+          "input.add_action"
+        ],
+        "scene": [
+          "scene.add_entity",
+          "scene.add_prefab",
+          "scene.attach_script",
+          "scene.set_camera_component",
+          "scene.set_collider",
+          "scene.set_rigid_body",
+          "scene.set_transform"
+        ]
+      }
+    },
+    {
+      "apply": false,
+      "id": "vehicle-checkpoint-slice",
+      "phase": "gameplay",
+      "recipe": "vehicle-checkpoint",
+      "recipeArgs": {
+        "cameraId": "camera.main",
+        "sceneId": "arena",
+        "vehicleId": "player"
+      },
+      "summary": "Use when the requested game centers on a vehicle reaching checkpoint triggers.",
+      "recipeGameplayBlocks": [
+        "basis.y-up-z-forward",
+        "controller.vehicle-cardinal",
+        "camera.position-follow",
+        "objective.checkpoint-lap",
+        "spawn.region-sampler",
+        "proof.playtest-motion"
+      ],
+      "recipeGeneratedIds": {
+        "axisId": [
+          "Steer",
+          "Throttle"
+        ],
+        "entityId": [
+          "camera.main",
+          "checkpoint.01",
+          "player"
+        ],
+        "inputDocId": [
+          "arena-input"
+        ],
+        "prefabId": [
+          "checkpoint.01.prefab",
+          "player.prefab"
+        ],
+        "sceneId": [
+          "arena"
+        ],
+        "systemId": [
+          "vehicle-checkpoint"
+        ],
+        "targetId": [
+          "player"
+        ]
+      },
+      "recipeProofCommands": [
+        "tn authoring validate --project . --json",
+        "tn build --project . --json",
+        "tn scene inspect arena --node player --json",
+        "tn playtest --project . --entity player --press KeyD --frames 30 --expect-moved --json"
+      ],
+      "recipeProofHints": [
+        "Playtest throttle/steer axes and verify checkpoint trigger progress or lap state."
+      ],
+      "recipeScriptResponsibilities": [
+        "owns vehicle movement intent",
+        "owns checkpoint progress",
+        "owns lap/fail-retry state"
+      ],
+      "recipeSourceOwners": {
+        "input": [
+          "input.add_axis"
+        ],
+        "scene": [
+          "scene.add_entity",
+          "scene.add_prefab",
+          "scene.attach_script",
+          "scene.set_camera_component",
+          "scene.set_collider",
+          "scene.set_rigid_body",
+          "scene.set_transform"
+        ]
+      }
+    },
+    {
+      "apply": false,
+      "id": "obstacle-avoider-slice",
+      "phase": "gameplay",
+      "recipe": "obstacle-avoider",
+      "recipeArgs": {
+        "playerId": "player",
+        "sceneId": "arena"
+      },
+      "summary": "Use when the requested game focuses on dodging or timing around clear hazards.",
+      "recipeGameplayBlocks": [
+        "basis.y-up-z-forward",
+        "controller.world-cardinal-character",
+        "objective.obstacle-avoid",
+        "state.fail-retry",
+        "proof.trigger-event"
+      ],
+      "recipeGeneratedIds": {
+        "entityId": [
+          "obstacle.01",
+          "player"
+        ],
+        "prefabId": [
+          "obstacle.01.prefab"
+        ],
+        "sceneId": [
+          "arena"
+        ],
+        "systemId": [
+          "obstacle-avoider"
+        ]
+      },
+      "recipeProofCommands": [
+        "tn authoring validate --project . --json",
+        "tn build --project . --json",
+        "tn scene inspect arena --node player --json",
+        "tn playtest --project . --entity player --press KeyD --frames 30 --expect-moved --json"
+      ],
+      "recipeProofHints": [
+        "Validate source, build, inspect scene wiring, and run a movement or trigger proof tied to the recipe."
+      ],
+      "recipeScriptResponsibilities": [
+        "owns movement intent",
+        "owns hazard trigger fail state"
+      ],
+      "recipeSourceOwners": {
+        "scene": [
+          "scene.add_entity",
+          "scene.add_prefab",
+          "scene.attach_script",
+          "scene.set_collider",
+          "scene.set_rigid_body",
+          "scene.set_transform"
+        ]
+      }
+    },
+    {
+      "apply": false,
+      "id": "physics-target-slice",
+      "phase": "gameplay",
+      "recipe": "physics-target",
+      "recipeArgs": {
+        "sceneId": "arena",
+        "targetId": "target.01"
+      },
+      "summary": "Use when physical impact, projectile contact, or target knocking is central to the loop.",
+      "recipeGameplayBlocks": [
+        "basis.y-up-z-forward",
+        "objective.physics-target",
+        "spawn.region-sampler",
+        "proof.physics-contact"
+      ],
+      "recipeGeneratedIds": {
+        "entityId": [
+          "projectile.01",
+          "target.01"
+        ],
+        "prefabId": [
+          "projectile.01.prefab",
+          "target.01.prefab"
+        ],
+        "sceneId": [
+          "arena"
+        ],
+        "systemId": [
+          "physics-target"
+        ]
+      },
+      "recipeProofCommands": [
+        "tn authoring validate --project . --json",
+        "tn build --project . --json",
+        "tn scene inspect arena --node target.01 --json",
+        "tn playtest --project . --entity target.01 --press KeyD --frames 30 --expect-moved --json"
+      ],
+      "recipeProofHints": [
+        "Record contact or impulse evidence for the target and projectile before claiming physics behavior."
+      ],
+      "recipeScriptResponsibilities": [
+        "owns projectile/target scoring state",
+        "owns contact proof resource"
+      ],
+      "recipeSourceOwners": {
+        "scene": [
+          "scene.add_entity",
+          "scene.add_prefab",
+          "scene.attach_script",
+          "scene.set_collider",
+          "scene.set_rigid_body",
+          "scene.set_transform"
+        ]
+      }
+    },
+    {
+      "apply": false,
+      "id": "dressed-environment-kit",
+      "phase": "visuals",
+      "recipe": "dressed-environment-kit",
+      "recipeArgs": {
+        "sceneId": "arena"
+      },
+      "summary": "Use to add a bounded first pass of ground, landmark, lighting, and material context.",
+      "recipeGameplayBlocks": [
+        "world.dressed-play-space",
+        "proof.screenshot-scale"
+      ],
+      "recipeGeneratedIds": {
+        "entityId": [
+          "ground",
+          "landmark.01",
+          "light.key"
+        ],
+        "groupId": [
+          "environment.dressing"
+        ],
+        "materialId": [
+          "mat.ground",
+          "mat.landmark"
+        ],
+        "prefabId": [
+          "prefab.ground",
+          "prefab.landmark"
+        ],
+        "sceneId": [
+          "arena"
+        ]
+      },
+      "recipeProofCommands": [
+        "tn authoring validate --project . --json",
+        "tn build --project . --json",
+        "tn scene inspect arena --node <player-id> --json",
+        "tn playtest --project . --entity <player-id> --press KeyD --frames 30 --expect-moved --json"
+      ],
+      "recipeProofHints": [
+        "Capture screenshot proof with visible ground, landmark, lighting, and scale cues."
+      ],
+      "recipeScriptResponsibilities": [
+        "owns declared source mutations and proof evidence for the recipe"
+      ],
+      "recipeSourceOwners": {
+        "material": [
+          "material.create",
+          "material.set"
+        ],
+        "scene": [
+          "scene.add_entity",
+          "scene.add_group",
+          "scene.add_prefab",
+          "scene.set_light",
+          "scene.set_transform"
+        ]
+      }
+    },
+    {
+      "apply": false,
+      "id": "ui-states",
+      "phase": "ui",
+      "command": "tn ui ... --json",
+      "summary": "Represent gameplay, pause, settings, loading, fail/retry, win/milestone, and touch-control states in retained UI source."
+    },
+    {
+      "apply": false,
+      "id": "asset-ledger",
+      "phase": "assets",
+      "command": "tn asset add ... --json",
+      "summary": "Record local, procedural, generated, hybrid, or blocked sourcing for player/world/reward/UI/audio surfaces."
+    },
+    {
+      "apply": false,
+      "id": "proof",
+      "phase": "qa",
+      "command": "tn game qa --project . --run-proof --json",
+      "summary": "Collect screenshot, mobile, playtest, performance, and release evidence before claiming done."
+    }
+  ]
+}

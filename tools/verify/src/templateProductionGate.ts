@@ -1,4 +1,5 @@
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { existsSync } from "node:fs";
+import { mkdir, readdir, readFile, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -19,7 +20,6 @@ export interface TemplateProductionGateResult {
   steps: StepSummary[];
 }
 
-const DEFAULT_TEMPLATE_NAMES = ["structured-source-starter", "racing-kit-rally-starter"] as const;
 const REQUIRED_GAME_SCRIPTS = ["iterate", "game:plan", "game:improve", "game:score", "game:qa", "game:release"] as const;
 
 const REQUIRED_PROOF_COMMANDS = [
@@ -32,18 +32,31 @@ const REQUIRED_PROOF_COMMANDS = [
   { id: "release", matches: (command: string) => command.includes("tn game release") },
 ] as const;
 
+interface TemplateManifest {
+  directoryName: string;
+  generatedFiles: string[];
+  instructionFiles: string[];
+  maintained: boolean;
+  name: string;
+  packageScripts: string[];
+  path: string;
+  proofCommandIds: string[];
+}
+
 export async function runTemplateProductionGate(options: TemplateProductionGateOptions = {}): Promise<TemplateProductionGateResult> {
   const root = resolve(options.root ?? process.cwd());
   const targets = resolveArtifactTargets({ gate: "template-production", owner: { kind: "aggregate", name: "template-production" }, root });
   const reportPath = options.reportPath ?? targets.reportPath;
-  const templateNames = options.templates ?? DEFAULT_TEMPLATE_NAMES;
+  const discoveredManifests = await discoverTemplateManifests(root);
+  const templateNames = options.templates ?? discoveredManifests.filter((manifest) => manifest.maintained).map((manifest) => manifest.directoryName);
+  const manifestsByTemplate = new Map(discoveredManifests.map((manifest) => [manifest.directoryName, manifest]));
   const diagnostics: VerificationDiagnostic[] = [];
   const steps: StepSummary[] = [];
 
   for (const templateName of templateNames) {
     const startedAtMs = Date.now();
     const templatePath = resolve(root, "templates", templateName);
-    const templateDiagnostics = await templateDiagnosticsFor(templateName, templatePath);
+    const templateDiagnostics = await templateDiagnosticsFor(templateName, templatePath, manifestsByTemplate.get(templateName));
     diagnostics.push(...templateDiagnostics);
     const ok = templateDiagnostics.every((diagnostic) => diagnostic.severity !== "error");
     steps.push({
@@ -85,7 +98,11 @@ export async function runTemplateProductionGate(options: TemplateProductionGateO
   };
 }
 
-async function templateDiagnosticsFor(templateName: string, templatePath: string): Promise<VerificationDiagnostic[]> {
+async function templateDiagnosticsFor(
+  templateName: string,
+  templatePath: string,
+  manifest: TemplateManifest | undefined,
+): Promise<VerificationDiagnostic[]> {
   const diagnostics: VerificationDiagnostic[] = [];
   const packagePath = resolve(templatePath, "package.json");
   const configPath = resolve(templatePath, "threenative.config.json");
@@ -95,9 +112,22 @@ async function templateDiagnosticsFor(templateName: string, templatePath: string
   const templatePlanPath = resolve(templatePath, "AGENT_GAME_PLAN.md");
   const sharedPlanPath = resolve(templatePath, "..", "_shared", "AGENT_GAME_PLAN.md");
 
+  if (manifest === undefined) {
+    diagnostics.push({
+      code: "TN_TEMPLATE_MANIFEST_MISSING",
+      message: `${templateName}: maintained templates must define threenative.template.json.`,
+      path: resolve(templatePath, "threenative.template.json"),
+      severity: "error",
+      suggestedFix: "Add a template manifest with generatedFiles, packageScripts, proofCommandIds, and instructionFiles.",
+    });
+  } else {
+    diagnostics.push(...templateManifestDiagnostics(templateName, templatePath, manifest));
+  }
+
   const packageJson = await readJson(packagePath);
   const scripts = isRecord(packageJson?.scripts) ? packageJson.scripts : {};
-  for (const script of REQUIRED_GAME_SCRIPTS) {
+  const requiredGameScripts = manifest?.packageScripts ?? [...REQUIRED_GAME_SCRIPTS];
+  for (const script of requiredGameScripts) {
     if (!hasNonEmptyString(scripts[script])) {
       diagnostics.push({
         code: "TN_TEMPLATE_PRODUCTION_SCRIPT_MISSING",
@@ -140,7 +170,8 @@ async function templateDiagnosticsFor(templateName: string, templatePath: string
   const production = isRecord(config?.production) ? config.production : undefined;
   const agent = isRecord(production?.agent) ? production.agent : undefined;
   const proofCommands = hasStringArray(production?.proofCommands) ? production.proofCommands : [];
-  const missingProofCommands = REQUIRED_PROOF_COMMANDS.filter((proof) => !proofCommands.some(proof.matches)).map((proof) => proof.id);
+  const requiredProofCommands = REQUIRED_PROOF_COMMANDS.filter((proof) => manifest?.proofCommandIds.includes(proof.id) ?? true);
+  const missingProofCommands = requiredProofCommands.filter((proof) => !proofCommands.some(proof.matches)).map((proof) => proof.id);
   if (!isRecord(production)
     || !hasNonEmptyString(production.playableLoop)
     || !hasStringArray(production.controls)
@@ -298,6 +329,104 @@ async function templateDiagnosticsFor(templateName: string, templatePath: string
   return diagnostics;
 }
 
+async function discoverTemplateManifests(root: string): Promise<TemplateManifest[]> {
+  let entries: { isDirectory(): boolean; name: string }[];
+  try {
+    entries = await readdir(resolve(root, "templates"), { withFileTypes: true });
+  } catch {
+    return [];
+  }
+  const manifests = await Promise.all(entries
+    .filter((entry) => entry.isDirectory() && !entry.name.startsWith("_"))
+    .map((entry) => readTemplateManifest(entry.name, resolve(root, "templates", entry.name, "threenative.template.json"))));
+  return manifests.filter((manifest): manifest is TemplateManifest => manifest !== undefined).sort((a, b) => a.directoryName.localeCompare(b.directoryName));
+}
+
+async function readTemplateManifest(directoryName: string, path: string): Promise<TemplateManifest | undefined> {
+  const parsed = await readJson(path);
+  if (parsed === undefined || parsed.schema !== "threenative.template.manifest") {
+    return undefined;
+  }
+  const name = hasNonEmptyString(parsed.name) ? parsed.name : undefined;
+  if (name === undefined) {
+    return undefined;
+  }
+  return {
+    directoryName,
+    generatedFiles: stringArrayOrEmpty(parsed.generatedFiles),
+    instructionFiles: stringArrayOrEmpty(parsed.instructionFiles),
+    maintained: parsed.maintained === true,
+    name,
+    packageScripts: stringArrayOrEmpty(parsed.packageScripts),
+    path,
+    proofCommandIds: stringArrayOrEmpty(parsed.proofCommandIds),
+  };
+}
+
+function templateManifestDiagnostics(templateName: string, templatePath: string, manifest: TemplateManifest): VerificationDiagnostic[] {
+  const diagnostics: VerificationDiagnostic[] = [];
+  if (manifest.name !== templateName) {
+    diagnostics.push({
+      code: "TN_TEMPLATE_MANIFEST_NAME_DRIFT",
+      message: `${templateName}: threenative.template.json name must match the template directory.`,
+      path: `${manifest.path}#/name`,
+      severity: "error",
+      suggestedFix: `Set name to '${templateName}'.`,
+    });
+  }
+  for (const [field, values] of [
+    ["generatedFiles", manifest.generatedFiles],
+    ["instructionFiles", manifest.instructionFiles],
+    ["packageScripts", manifest.packageScripts],
+    ["proofCommandIds", manifest.proofCommandIds],
+  ] as const) {
+    if (values.length === 0) {
+      diagnostics.push({
+        code: "TN_TEMPLATE_MANIFEST_FIELD_MISSING",
+        message: `${templateName}: threenative.template.json must define ${field}.`,
+        path: `${manifest.path}#/${field}`,
+        severity: "error",
+        suggestedFix: `Add ${field} entries to the template manifest.`,
+      });
+    }
+  }
+  const knownProofIds = new Set<string>(REQUIRED_PROOF_COMMANDS.map((proof) => proof.id));
+  for (const proofId of manifest.proofCommandIds) {
+    if (!knownProofIds.has(proofId)) {
+      diagnostics.push({
+        code: "TN_TEMPLATE_MANIFEST_PROOF_UNKNOWN",
+        message: `${templateName}: threenative.template.json declares unknown proof command id '${proofId}'.`,
+        path: `${manifest.path}#/proofCommandIds`,
+        severity: "error",
+        suggestedFix: `Use one of: ${[...knownProofIds].join(", ")}.`,
+      });
+    }
+  }
+  for (const script of REQUIRED_GAME_SCRIPTS) {
+    if (!manifest.packageScripts.includes(script)) {
+      diagnostics.push({
+        code: "TN_TEMPLATE_MANIFEST_SCRIPT_MISSING",
+        message: `${templateName}: threenative.template.json packageScripts must include '${script}'.`,
+        path: `${manifest.path}#/packageScripts`,
+        severity: "error",
+        suggestedFix: "Keep required starter package scripts owned by threenative.template.json.",
+      });
+    }
+  }
+  for (const generatedFile of manifest.generatedFiles) {
+    if (!fileExistsSyncSafe(resolve(templatePath, generatedFile)) && !fileExistsSyncSafe(resolve(templatePath, "..", "_shared", generatedFile))) {
+      diagnostics.push({
+        code: "TN_TEMPLATE_MANIFEST_GENERATED_FILE_MISSING",
+        message: `${templateName}: manifest generated file '${generatedFile}' does not exist in the template.`,
+        path: `${manifest.path}#/generatedFiles`,
+        severity: "error",
+        suggestedFix: "Restore the generated template file or remove stale manifest metadata.",
+      });
+    }
+  }
+  return diagnostics;
+}
+
 async function readJson(path: string): Promise<Record<string, unknown> | undefined> {
   try {
     const parsed = JSON.parse(await readFile(path, "utf8")) as unknown;
@@ -313,6 +442,14 @@ async function readText(path: string): Promise<string> {
   } catch {
     return "";
   }
+}
+
+function stringArrayOrEmpty(value: unknown): string[] {
+  return Array.isArray(value) ? value.filter(hasNonEmptyString) : [];
+}
+
+function fileExistsSyncSafe(path: string): boolean {
+  return existsSync(path);
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

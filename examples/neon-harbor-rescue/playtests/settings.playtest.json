@@ -1,0 +1,37 @@
+{
+  "schemaVersion": 1,
+  "name": "settings",
+  "target": "web",
+  "viewport": { "width": 1280, "height": 720 },
+  "subject": "player",
+  "warmupFrames": 5,
+  "steps": [
+    {
+      "label": "sample-settings-state",
+      "waitFrames": 20
+    }
+  ],
+  "assert": {
+    "resources": [
+      { "id": "GameState", "path": "settingsOpen", "equals": false },
+      { "id": "GameState", "path": "settingsMode", "equals": "standard" },
+      { "id": "GameState", "path": "savedProgress", "textIncludes": "slot.main" }
+    ],
+    "hud": [
+      { "id": "saved", "textIncludes": "slot.main" }
+    ],
+    "diagnostics": {
+      "runtimeReady": true,
+      "noConsoleErrors": true,
+      "noNetworkErrors": true,
+      "noRuntimeDiagnostics": true
+    }
+  },
+  "artifacts": {
+    "screenshots": "before-after",
+    "console": true,
+    "network": true,
+    "runtimeTrace": true,
+    "effectLog": "focused"
+  }
+}

@@ -256,6 +256,10 @@ export async function visualQualityDiagnostics(projectPath: string, label: strin
         suggestedFix: "Rerun tn game qa --project <path> --run-proof --json so screenshot metrics are regenerated from the referenced PNG.",
       }];
     }
+    const bundleDiagnostics = visualMetricBundleDiagnostics(parsed, metrics, label, path);
+    if (bundleDiagnostics.length > 0) {
+      return bundleDiagnostics;
+    }
     return [];
   } catch (error) {
     return [{
@@ -266,6 +270,62 @@ export async function visualQualityDiagnostics(projectPath: string, label: strin
       suggestedFix: "Run tn game qa --project <path> --run-proof --json after capturing screenshot evidence.",
     }];
   }
+}
+
+function visualMetricBundleDiagnostics(proof: Record<string, unknown>, metrics: Record<string, unknown>, label: string, path: string): VerificationDiagnostic[] {
+  const bundles = Array.isArray(proof.metricBundles) ? proof.metricBundles.filter(isRecord) : [];
+  const bundle = bundles.find((candidate) => candidate.id === "game-quality");
+  if (bundle === undefined) {
+    return [{
+      code: "TN_VERIFY_GAME_VISUAL_QUALITY_BUNDLE_MISSING",
+      message: `${label}: visual-quality proof must include a reusable 'game-quality' metric bundle.`,
+      path: `${path}/metricBundles`,
+      severity: "error",
+      suggestedFix: "Rerun tn game qa --project <path> --run-proof --json with the current CLI so compact visual metric bundles are recorded.",
+    }];
+  }
+  if (bundle.ok !== true || !isRecord(bundle.metrics) || !isRecord(bundle.thresholds)) {
+    return [{
+      code: "TN_VERIFY_GAME_VISUAL_QUALITY_BUNDLE_INVALID",
+      message: `${label}: visual-quality proof 'game-quality' metric bundle must pass and include metrics plus thresholds.`,
+      path: `${path}/metricBundles/game-quality`,
+      severity: "error",
+      suggestedFix: "Rerun tn game qa --project <path> --run-proof --json and inspect the game-quality metric bundle thresholds.",
+    }];
+  }
+  const bundleMetrics = bundle.metrics;
+  const nonblank = isRecord(metrics.nonblank) && typeof metrics.nonblank.changedPixelRatio === "number" ? metrics.nonblank.changedPixelRatio : undefined;
+  const expected = {
+    colorBucketCount: typeof metrics.colorBucketCount === "number" ? metrics.colorBucketCount : undefined,
+    localContrastRatio: typeof metrics.localContrastRatio === "number" ? metrics.localContrastRatio : undefined,
+    nonblankRatio: nonblank,
+    visibleBoundsAreaRatio: typeof metrics.visibleBoundsAreaRatio === "number" ? metrics.visibleBoundsAreaRatio : undefined,
+  };
+  for (const [key, expectedValue] of Object.entries(expected)) {
+    const actualValue = bundleMetrics[key];
+    if (expectedValue === undefined || typeof actualValue !== "number" || Math.abs(actualValue - expectedValue) > 0.000001) {
+      return [{
+        code: "TN_VERIFY_GAME_VISUAL_QUALITY_BUNDLE_STALE",
+        message: `${label}: visual-quality proof 'game-quality' metric bundle ${key} does not match top-level screenshot metrics.`,
+        path: `${path}/metricBundles/game-quality/metrics/${key}`,
+        severity: "error",
+        suggestedFix: "Rerun tn game qa --project <path> --run-proof --json so visual metric bundles are regenerated from the same screenshot metrics.",
+      }];
+    }
+  }
+  const thresholds = bundle.thresholds;
+  for (const key of ["minColorBucketCount", "minLocalContrastRatio", "minNonblankRatio", "minVisibleBoundsAreaRatio"]) {
+    if (typeof thresholds[key] !== "number") {
+      return [{
+        code: "TN_VERIFY_GAME_VISUAL_QUALITY_BUNDLE_INVALID",
+        message: `${label}: visual-quality proof 'game-quality' metric bundle is missing numeric threshold ${key}.`,
+        path: `${path}/metricBundles/game-quality/thresholds/${key}`,
+        severity: "error",
+        suggestedFix: "Rerun tn game qa --project <path> --run-proof --json with the current CLI.",
+      }];
+    }
+  }
+  return [];
 }
 
 function visualMetricDiagnostics(metrics: Record<string, unknown>, label: string, path: string): VerificationDiagnostic[] {

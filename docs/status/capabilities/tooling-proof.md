@@ -24,6 +24,12 @@ Current support:
   `ui-persistence-settings-facades` conformance bundle through the desktop-web
   path and records raw package, size, startup, input, settings, and save-slot
   evidence under `tools/verify/artifacts/webview-package/`.
+- `tools/verify/src/gateDescriptors.ts` owns the first descriptor-backed proof
+  gate slice for `pnpm verify:agent-io`, `pnpm verify:session-cost`, and
+  `pnpm verify:webview-package`. Focused dispatch, release artifact enrollment,
+  owner/protected-surface metadata, timing categories, and artifact paths derive
+  from those descriptors, while still-inline focused gates are listed as
+  reviewed migration gaps with drift tests.
 - Performance proof sidecars now have a versioned verifier contract at
   `docs/contracts/performance-proof.md`, a verify-tools validator, and
   `tn performance proof` for web runtime frame-time percentiles, draw
@@ -39,12 +45,19 @@ Current support:
   `artifacts/game-production/performance-proof.json` using the shared
   performance-proof schema with measured bundle counters and explicit
   unsupported diagnostics for runtime-only counters.
-- `pnpm verify:template-production` checks iterate-first starter guidance,
-  compact-report guidance, and generated API-card parity.
+- `pnpm verify:template-production` derives maintained starter checks from
+  `templates/*/threenative.template.json`, including generated files,
+  package scripts, proof command ids, iterate-first guidance, compact-report
+  guidance, and generated API-card parity.
 - `pnpm verify:generated-games` reads generated-game release enrollment and
-  proof requirements from project-local `production.releaseProof` config,
-  reports explicit proof exemptions, fails unknown requirement keys, and keeps
-  migration fallback constants under drift diagnostics until they are retired.
+  proof requirements from project-local `production.releaseProof` config plus
+  lifecycle classification from `examples/manifest.json`, reports explicit
+  proof exemptions, fails unknown requirement keys, and drift-checks release
+  enrollment/build-only policy against the owning manifest fields.
+- Generated-game visual-quality proof validation now requires the compact
+  `game-quality` metric bundle emitted by `tn game qa --run-proof`, validates
+  bundle pass/threshold shape, and reports stale bundle values separately from
+  screenshot metric threshold failures.
 - `tools/verify/src/adapterSurfaceDrift.test.ts` compares authoring operation
   registry names against CLI, MCP, editor, and editor-smoke surfaces with
   explicit gap allowlists that fail when the owning registry entry disappears.
@@ -147,6 +160,8 @@ Verification:
 - `pnpm verify:webview-package`
 - `pnpm test:gameplay`
 - `pnpm verify:gameplay-parity`
+- descriptor-backed gate metadata and migration gap coverage in
+  `pnpm --filter @threenative/verify-tools test`
 - `pnpm --filter @threenative/verify-tools test -- --run boundary`
 - `pnpm check:docs`
 - `pnpm verify:smoke`

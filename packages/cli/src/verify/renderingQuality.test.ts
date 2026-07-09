@@ -3,6 +3,7 @@ import test from "node:test";
 
 import { analyzeRenderingQualityParity, analyzeV9RenderingLightsParity } from "./renderingQuality.js";
 import { analyzeVisualQuality, type IPixelFrame } from "./imageAnalysis.js";
+import { gameQualityMetricBundle, namedRegionMetricBundle } from "./visualMetricBundles.js";
 
 test("rendering quality parity accepts matching fog and sky regions", () => {
   const web = fixtureFrame();
@@ -80,6 +81,48 @@ test("visual quality accepts styled scaffold color and contrast", () => {
   assert.equal(result.ok, true);
   assert.equal(result.colorBucketCount >= result.thresholds.minColorBuckets, true);
   assert.equal(result.localContrast >= result.thresholds.minLocalContrast, true);
+});
+
+test("visual metric bundle summarizes game quality thresholds", () => {
+  const styled = v9FixtureFrame({
+    dense: [36, 140, 88],
+    gizmo: [248, 196, 40],
+    reflection: [210, 232, 255],
+    shadow: [38, 44, 58],
+    skybox: [64, 128, 196],
+  });
+  for (let index = 0; index < 12; index += 1) {
+    fillRect(
+      styled.data as Uint8ClampedArray,
+      styled.width,
+      (index % 6) * 12,
+      78 + Math.floor(index / 6) * 8,
+      8,
+      6,
+      [24 + index * 17, 80 + index * 9, 180 - index * 8],
+    );
+  }
+
+  const bundle = gameQualityMetricBundle(styled);
+
+  assert.equal(bundle.id, "game-quality");
+  assert.equal(bundle.ok, true);
+  assert.equal(Number(bundle.metrics.colorBucketCount) >= Number(bundle.thresholds.minColorBucketCount), true);
+  assert.equal(Number(bundle.metrics.localContrastRatio) >= Number(bundle.thresholds.minLocalContrastRatio), true);
+});
+
+test("visual metric bundle reports named region drift", () => {
+  const web = fixtureFrame();
+  const bevy = fixtureFrame({ sky: [20, 20, 40] });
+
+  const bundle = namedRegionMetricBundle("rendering-quality", web, bevy, [
+    { name: "sky", region: { x: 0.18, y: 0.03, width: 0.64, height: 0.16 }, thresholds: { maxAverageBrightnessDelta: 0.08, maxAverageColorDelta: 0.08, maxChangedPixelRatio: 0.35 } },
+  ]);
+
+  assert.equal(bundle.id, "rendering-quality");
+  assert.equal(bundle.ok, false);
+  assert.equal(bundle.regions?.[0]?.name, "sky");
+  assert.equal(bundle.regions?.[0]?.ok, false);
 });
 
 function fixtureFrame(overrides: Partial<Record<"fog" | "foreground" | "sky", [number, number, number]>> = {}): IPixelFrame {

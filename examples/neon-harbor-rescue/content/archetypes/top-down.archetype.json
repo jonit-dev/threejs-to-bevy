@@ -1,0 +1,30 @@
+{
+  "controls": [
+    "keyboard.KeyA",
+    "keyboard.KeyD",
+    "keyboard.ArrowLeft",
+    "keyboard.ArrowRight"
+  ],
+  "id": "top-down",
+  "kind": "game-archetype",
+  "label": "Top-down",
+  "lookProfile": {
+    "camera": "orthographic top-down follow",
+    "movementPlane": "ground-xz",
+    "renderLook": "balanced"
+  },
+  "probe": {
+    "axis": "x",
+    "name": "archetype-top-down",
+    "path": "playtests/archetype-top-down.playtest.json",
+    "press": "KeyD"
+  },
+  "schema": "threenative.archetype",
+  "script": {
+    "exportName": "updateTopDownArchetype",
+    "module": "src/scripts/archetype.ts",
+    "responsibility": "cardinal player movement and arena camera framing"
+  },
+  "summary": "Compact arena or collector games with cardinal movement.",
+  "version": "0.1.0"
+}

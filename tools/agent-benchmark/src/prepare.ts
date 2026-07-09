@@ -131,7 +131,10 @@ function auditAllowsRound5b(value: unknown): boolean {
   if (!isRecord(value) || value.ok !== true || !Array.isArray(value.requirements)) {
     return false;
   }
-  return value.requirements.every((requirement) => isRecord(requirement) && requirement.status !== "incomplete");
+  const requirements = value.requirements.filter(isRecord);
+  return requirements.length === value.requirements.length
+    && requirements.some((requirement) => requirement.id === "churn-budgets" && requirement.status === "complete")
+    && requirements.every((requirement) => requirement.status !== "incomplete");
 }
 
 function operatorInstructions(options: { candidateDir: string; condition: BenchmarkCondition; outDir: string; promptId: string; root: string; runId: string }): string {
@@ -225,6 +228,17 @@ function sessionTemplate(options: { condition: BenchmarkCondition; promptId: str
     condition: options.condition,
     cachedInputTokens: 0,
     costWeightedTokens: 0,
+    churnCounters: {
+      artifactForensics: 0,
+      engineSourceSearch: 0,
+      failedCommand: 0,
+      missingDiscovery: 0,
+      missingIterate: 0,
+      repeatedAssertion: 0,
+      repeatedDiagnostic: 0,
+      repeatedFileRead: 0,
+      standaloneVerify: 0,
+    },
     failedCommandCount: 0,
     humanRubric: {
       notes: "Fill after the fresh session.",

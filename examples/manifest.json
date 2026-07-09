@@ -1,0 +1,31 @@
+{
+  "schema": "threenative.examples.manifest",
+  "version": "0.1.0",
+  "examples": [
+    {
+      "classification": "benchmark-only",
+      "path": "examples/dense-world-benchmark",
+      "reason": "Maintained efficient-scale fixture for dense-scene and performance-proof gates."
+    },
+    {
+      "classification": "release-enrolled",
+      "path": "examples/humanoid-physics-course",
+      "reason": "Representative generated-game release evidence for humanoid, native scenario, and character physics proof."
+    },
+    {
+      "classification": "release-enrolled",
+      "path": "examples/metro-surfer-heist",
+      "reason": "Representative generated-game release evidence for runner, collector, trigger, and UI production proof."
+    },
+    {
+      "classification": "build-only",
+      "path": "examples/neon-harbor-rescue",
+      "reason": "Mid-size web-first forcing-function slice for menu, settings, phase progression, saved-progress metadata, audio metadata, HUD, and fail/retry proof; build-only until release evidence is stable."
+    },
+    {
+      "classification": "build-only",
+      "path": "examples/stylized-nature-component",
+      "reason": "Maintained generated-game source fixture kept buildable outside the release evidence set."
+    }
+  ]
+}

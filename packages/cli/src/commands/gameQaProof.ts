@@ -14,6 +14,7 @@ import { isPlayerLikeEntityId, isRecord, readFlag } from "./gameShared.js";
 import { playtestCommand } from "./playtest.js";
 import { analyzeScreenshotComposition, type IScreenshotCompositionMetrics } from "./screenshotMetrics.js";
 import { recordCommand, screenshotCommand } from "./visualProof.js";
+import { gameQualityMetricBundle } from "../verify/visualMetricBundles.js";
 
 export interface IGameProofStepSpec {
   args: readonly string[];
@@ -702,6 +703,7 @@ async function writeVisualQualityProof(step: IGameProofStepSpec, projectPath: st
   try {
     const frame = await readPngFrame(screenshotPath);
     const metrics = analyzeScreenshotComposition(frame);
+    const metricBundles = [gameQualityMetricBundle(frame)];
     const diagnostics = visualQualityDiagnostics(metrics);
     const hasError = diagnostics.some((diagnostic) => diagnostic.severity === "error");
     const report = {
@@ -715,6 +717,7 @@ async function writeVisualQualityProof(step: IGameProofStepSpec, projectPath: st
       source: "tn game qa --run-proof",
       screenshot: "artifacts/game-production/screenshot.png",
       metrics,
+      metricBundles,
       diagnostics,
       status: hasError ? "blocked" : diagnostics.length > 0 ? "warning" : "pass",
       notes: "This objective screenshot proof catches blank, tiny, flat, or low-contrast captures. It is supporting evidence for human visual review, not an art-quality oracle.",

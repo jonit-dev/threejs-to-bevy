@@ -15,6 +15,10 @@ Current support:
 - Visual-quality analysis now scores color bucket diversity and local contrast
   so flat one-color primitive captures are distinguishable from styled
   scaffold captures in focused tests.
+- Reusable visual metric bundles now back the rendering-quality and
+  rendering-lights fixture region checks. The focused reports still write
+  compact metrics, diffs, and contact sheets, while region thresholds remain
+  fixture-specific parity evidence rather than pixel-perfect release policy.
 - The promoted `cinematic` render-look default now maps filmic tone/bloom,
   shadow quality, and a richer fallback sky in web and native runtimes when no
   authored atmosphere overrides it. `balanced` and `stylized` remain selectable
