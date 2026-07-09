@@ -1,5 +1,5 @@
 use std::{
-    collections::{HashMap, HashSet},
+    collections::{BTreeSet, HashMap, HashSet},
     path::Path,
 };
 
@@ -126,6 +126,9 @@ pub struct NativeMaterialPolicy {
 
 #[derive(Resource, Default)]
 pub struct NativeMaterialHandles(pub HashMap<String, Handle<StandardMaterial>>);
+
+#[derive(Default, Resource)]
+pub struct NativeMappedWorldEntityIds(pub BTreeSet<String>);
 
 pub struct NativeWorldEntitySpawnContext<'a> {
     active_cameras: HashSet<String>,
@@ -305,6 +308,14 @@ pub fn map_bundle_into_world(world: &mut World, bundle: &LoadedBundle) -> Result
 
     attach_entity_hierarchy(world, bundle, &entities_by_id);
     spawn_rendered_particles(world, bundle, 1.0);
+    world.insert_resource(NativeMappedWorldEntityIds(
+        bundle
+            .world
+            .entities
+            .iter()
+            .map(|entity| entity.id.clone())
+            .collect(),
+    ));
 
     Ok(())
 }

@@ -1,4 +1,7 @@
-use std::{collections::HashMap, path::Path};
+use std::{
+    collections::{BTreeSet, HashMap},
+    path::Path,
+};
 
 use bevy::{ecs::system::SystemParam, prelude::*, render::camera::ClearColorConfig};
 use thiserror::Error;
@@ -303,6 +306,7 @@ pub fn app_from_bundle_with_options(
             Update,
             (
                 run_scripted_runtime_systems,
+                reconcile_scripted_runtime_world,
                 map_world::apply_native_animation_service_effects,
             )
                 .chain(),
@@ -617,6 +621,79 @@ fn run_scripted_runtime_systems(
         &mut text_nodes,
     );
     ui::sync_native_minimap_markers(&runtime.bundle, &mut minimap_markers);
+}
+
+fn reconcile_scripted_runtime_world(world: &mut World) {
+    let Some(_) = world.get_resource::<ScriptedRuntimeBundle>() else {
+        return;
+    };
+    let result = world.resource_scope(|world, runtime: Mut<ScriptedRuntimeBundle>| {
+        reconcile_live_world_entities(world, &runtime.bundle)
+    });
+    if let Err(error) = result {
+        error!("TN_BEVY_LIVE_RECONCILIATION_FAILED: {error}");
+    }
+}
+
+fn reconcile_live_world_entities(
+    world: &mut World,
+    bundle: &LoadedBundle,
+) -> Result<(), map_world::MapError> {
+    let desired_ids = bundle
+        .world
+        .entities
+        .iter()
+        .map(|entity| entity.id.clone())
+        .collect::<BTreeSet<_>>();
+    let previous_ids = world
+        .get_resource::<map_world::NativeMappedWorldEntityIds>()
+        .map(|ids| ids.0.clone())
+        .unwrap_or_default();
+    let mut live_by_id = live_world_entities_by_id(world);
+
+    for removed_id in previous_ids.difference(&desired_ids) {
+        if let Some(entity) = live_by_id.remove(removed_id.as_str()) {
+            world.entity_mut(entity).despawn_recursive();
+        }
+    }
+
+    let mut material_handles = world
+        .remove_resource::<map_world::NativeMaterialHandles>()
+        .unwrap_or_default();
+    {
+        let spawn_context = map_world::prepare_world_entity_spawn_context(world, bundle);
+        for entity in &bundle.world.entities {
+            if live_by_id.contains_key(entity.id.as_str()) {
+                continue;
+            }
+            let bevy_entity = map_world::spawn_world_entity(
+                world,
+                entity,
+                &spawn_context,
+                &mut material_handles,
+                bundle,
+            )?;
+            live_by_id.insert(entity.id.clone(), bevy_entity);
+        }
+    }
+    world.insert_resource(material_handles);
+
+    let live_by_id = live_world_entities_by_id(world);
+    let hierarchy_entities = desired_ids
+        .iter()
+        .filter_map(|id| live_by_id.get(id).map(|entity| (id.as_str(), *entity)))
+        .collect::<HashMap<_, _>>();
+    world_mapping::attach_entity_hierarchy(world, bundle, &hierarchy_entities);
+    world.insert_resource(map_world::NativeMappedWorldEntityIds(desired_ids));
+    Ok(())
+}
+
+fn live_world_entities_by_id(world: &mut World) -> HashMap<String, Entity> {
+    let mut query = world.query::<(Entity, &ThreeNativeId)>();
+    query
+        .iter(world)
+        .map(|(entity, stable_id)| (stable_id.0.clone(), entity))
+        .collect()
 }
 
 fn sync_scripted_transforms(
@@ -1068,6 +1145,139 @@ mod tests {
         assert_eq!(rendered, "1");
     }
 
+    #[test]
+    fn scripted_runtime_should_reconcile_spawned_world_entities_and_hierarchy() {
+        let root = write_live_reconciliation_bundle(
+            "bevy-live-spawn-hierarchy",
+            r#"{
+  "schema": "threenative.world",
+  "version": "0.1.0",
+  "entities": [],
+  "resources": { "SpawnState": { "done": false } }
+}"#,
+            r#"{
+  "schema": "threenative.systems",
+  "version": "0.1.0",
+  "systems": [
+    {
+      "name": "spawnPair",
+      "schedule": "update",
+      "reads": [],
+      "writes": [],
+      "queries": [],
+      "commands": [
+        { "kind": "spawn", "entity": "runtime.parent", "components": ["Transform"] },
+        { "kind": "spawn", "entity": "runtime.child", "components": ["Transform", "Hierarchy"] }
+      ],
+      "eventReads": [],
+      "eventWrites": [],
+      "resourceReads": ["SpawnState"],
+      "resourceWrites": ["SpawnState"],
+      "services": [],
+      "script": { "bundle": "scripts.bundle.js", "exportName": "system_spawnPair" }
+    }
+  ]
+}"#,
+            r#"const system_spawnPair = (ctx) => {
+  const state = ctx.resources.get("SpawnState");
+  if (state.done) return;
+  ctx.commands.spawn("runtime.parent", { Transform: { position: [1, 2, 3] } });
+  ctx.commands.spawn("runtime.child", {
+    Transform: { position: [4, 5, 6] },
+    Hierarchy: { parent: "runtime.parent" }
+  });
+  ctx.resources.set("SpawnState", { done: true });
+};
+export const systemIds = Object.freeze({ "system_spawnPair": "spawnPair" });
+export const systems = Object.freeze({ "system_spawnPair": system_spawnPair });
+"#,
+        );
+        let mut app = scripted_runtime_app(&root);
+
+        advance_app(&mut app, 0.1);
+        advance_app(&mut app, 0.1);
+
+        let mut query = app
+            .world_mut()
+            .query::<(Entity, &ThreeNativeId, &Transform, Option<&Parent>)>();
+        let entities = query
+            .iter(app.world())
+            .map(|(entity, id, transform, parent)| {
+                (
+                    id.0.clone(),
+                    (entity, transform.translation, parent.map(Parent::get)),
+                )
+            })
+            .collect::<HashMap<_, _>>();
+        let parent = entities
+            .get("runtime.parent")
+            .expect("parent should be reconciled into the live world");
+        let child = entities
+            .get("runtime.child")
+            .expect("child should be reconciled into the live world");
+        assert_eq!(parent.1, Vec3::new(1.0, 2.0, 3.0));
+        assert_eq!(child.1, Vec3::new(4.0, 5.0, 6.0));
+        assert_eq!(child.2, Some(parent.0));
+        assert_eq!(entities.len(), 2);
+    }
+
+    #[test]
+    fn scripted_runtime_should_reconcile_despawned_world_entities() {
+        let root = write_live_reconciliation_bundle(
+            "bevy-live-despawn",
+            r#"{
+  "schema": "threenative.world",
+  "version": "0.1.0",
+  "entities": [
+    { "id": "runtime.marker", "components": { "Transform": { "position": [0, 0, 0] } } }
+  ],
+  "resources": { "DespawnState": { "done": false } }
+}"#,
+            r#"{
+  "schema": "threenative.systems",
+  "version": "0.1.0",
+  "systems": [
+    {
+      "name": "removeMarker",
+      "schedule": "update",
+      "reads": [],
+      "writes": [],
+      "queries": [],
+      "commands": [
+        { "kind": "despawn", "entity": "runtime.marker" }
+      ],
+      "eventReads": [],
+      "eventWrites": [],
+      "resourceReads": ["DespawnState"],
+      "resourceWrites": ["DespawnState"],
+      "services": [],
+      "script": { "bundle": "scripts.bundle.js", "exportName": "system_removeMarker" }
+    }
+  ]
+}"#,
+            r#"const system_removeMarker = (ctx) => {
+  const state = ctx.resources.get("DespawnState");
+  if (state.done) return;
+  ctx.commands.despawn("runtime.marker");
+  ctx.resources.set("DespawnState", { done: true });
+};
+export const systemIds = Object.freeze({ "system_removeMarker": "removeMarker" });
+export const systems = Object.freeze({ "system_removeMarker": system_removeMarker });
+"#,
+        );
+        let mut app = scripted_mapped_runtime_app(&root);
+
+        advance_app(&mut app, 0.1);
+        advance_app(&mut app, 0.1);
+
+        let mut query = app.world_mut().query::<&ThreeNativeId>();
+        assert!(
+            query
+                .iter(app.world())
+                .all(|id| id.0.as_str() != "runtime.marker")
+        );
+    }
+
     fn scripted_runtime_app(root: &Path) -> App {
         let bundle = load_bundle(root).expect("scripted test bundle should load");
         let mut app = App::new();
@@ -1075,7 +1285,34 @@ mod tests {
         app.insert_resource(ScriptedRuntimeBundle { bundle });
         app.insert_non_send_resource(ScriptedRuntimeMainThread);
         app.insert_resource(systems_host::NativeGameLoopState::default());
-        app.add_systems(Update, run_scripted_runtime_systems);
+        app.add_systems(
+            Update,
+            (
+                run_scripted_runtime_systems,
+                reconcile_scripted_runtime_world,
+            )
+                .chain(),
+        );
+        app
+    }
+
+    fn scripted_mapped_runtime_app(root: &Path) -> App {
+        let bundle = load_bundle(root).expect("scripted test bundle should load");
+        let mut app = App::new();
+        app.insert_resource(Time::<()>::default());
+        map_world::map_bundle_into_world(app.world_mut(), &bundle)
+            .expect("test bundle should map into the live world");
+        app.insert_resource(ScriptedRuntimeBundle { bundle });
+        app.insert_non_send_resource(ScriptedRuntimeMainThread);
+        app.insert_resource(systems_host::NativeGameLoopState::default());
+        app.add_systems(
+            Update,
+            (
+                run_scripted_runtime_systems,
+                reconcile_scripted_runtime_world,
+            )
+                .chain(),
+        );
         app
     }
 
@@ -1090,7 +1327,14 @@ mod tests {
             ThreeNativeId("mover".to_owned()),
             Transform::from_xyz(0.0, 0.0, 0.0),
         ));
-        app.add_systems(Update, run_scripted_runtime_systems);
+        app.add_systems(
+            Update,
+            (
+                run_scripted_runtime_systems,
+                reconcile_scripted_runtime_world,
+            )
+                .chain(),
+        );
         app
     }
 
@@ -1291,6 +1535,61 @@ export const systems = Object.freeze({{ "system_tick": system_tick, "system_upda
 "#
             ),
         );
+        write_test_file(
+            &root,
+            "assets.manifest.json",
+            r#"{"schema":"threenative.assets","version":"0.1.0","assets":[]}"#,
+        );
+        write_test_file(
+            &root,
+            "materials.ir.json",
+            r#"{"schema":"threenative.materials","version":"0.1.0","materials":[]}"#,
+        );
+        write_test_file(
+            &root,
+            "target.profile.json",
+            r#"{"schema":"threenative.target-profile","version":"0.1.0","targets":["desktop"]}"#,
+        );
+        root
+    }
+
+    fn write_live_reconciliation_bundle(
+        name: &str,
+        world: &str,
+        systems: &str,
+        scripts: &str,
+    ) -> std::path::PathBuf {
+        let root =
+            std::env::temp_dir().join(format!("tn-scripted-runtime-{name}-{}", std::process::id()));
+        if root.exists() {
+            fs::remove_dir_all(&root).expect("old temp bundle should be removed");
+        }
+        fs::create_dir_all(&root).expect("temp bundle should be created");
+        write_test_file(
+            &root,
+            "manifest.json",
+            r#"{
+  "schema": "threenative.bundle",
+  "version": "0.1.0",
+  "name": "scripted-live-reconciliation-test",
+  "requiredCapabilities": {},
+  "entry": { "world": "world.ir.json", "systems": "systems.ir.json", "scripts": "scripts.bundle.js" },
+  "files": { "assets": "assets.manifest.json", "materials": "materials.ir.json", "runtimeConfig": "runtime.config.json", "targetProfile": "target.profile.json" }
+}"#,
+        );
+        write_test_file(
+            &root,
+            "runtime.config.json",
+            r#"{
+  "schema": "threenative.runtime-config",
+  "version": "0.1.0",
+  "time": { "fixedDelta": 0.1, "paused": false },
+  "window": { "width": 1280, "height": 720 }
+}"#,
+        );
+        write_test_file(&root, "world.ir.json", world);
+        write_test_file(&root, "systems.ir.json", systems);
+        write_test_file(&root, "scripts.bundle.js", scripts);
         write_test_file(
             &root,
             "assets.manifest.json",
