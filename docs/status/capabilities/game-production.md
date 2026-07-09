@@ -52,9 +52,11 @@ Current support:
   playtest scenarios, and records `artifacts/game-production/scaffold-first.json`.
   Collector apply now emits movement, pickup, win-state, and retry proof-family
   scenarios and tells agents to verify with `tn iterate --project . --json`.
-- `verify:generated-games` gates the representative release evidence set
-  (`examples/humanoid-physics-course`, `examples/metro-surfer-heist`) and
-  reports the build-only archived set (`examples/stylized-nature-component`);
+- `verify:generated-games` discovers representative release enrollment and
+  per-project proof requirements from `production.releaseProof` in generated
+  game `threenative.config.json` files. The current config-enrolled set is
+  `examples/humanoid-physics-course` and `examples/metro-surfer-heist`, while
+  `examples/stylized-nature-component` is config-marked build-only;
   `verify:example-build-sweep` keeps de-enrolled examples buildable without
   requiring full QA/release evidence.
 - Finished examples must prove build, nonblank screenshots, visible motion,
@@ -94,6 +96,7 @@ Verification:
 - `pnpm --filter @threenative/authoring test -- --run "archetype|actor"`
 - `pnpm --filter @threenative/cli test -- --run "actor"`
 - `pnpm --filter @threenative/agent-benchmark test`
+- `node --test tools/verify/dist/gameProductionGate.test.js`
 - `pnpm verify:generated-games`
 - `pnpm verify:example-build-sweep`
 - `pnpm verify:smoke`

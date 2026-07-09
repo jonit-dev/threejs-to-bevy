@@ -190,7 +190,23 @@
       "tn game score --project . --json",
       "tn game qa --project . --run-proof --json",
       "tn game release --project . --json"
-    ]
+    ],
+    "releaseProof": {
+      "enrolled": true,
+      "agentInventory": false,
+      "cleanRelease": true,
+      "gameplaySource": true,
+      "materialSource": true,
+      "planArtifact": true,
+      "qaProof": true,
+      "releaseReport": true,
+      "uiSource": true,
+      "visualProvenance": true,
+      "visualQuality": true,
+      "exemptions": {
+        "agentInventory": "Humanoid-course agent metadata still marks starter placeholder and not-authored surfaces; keep this explicit until those surfaces are promoted to source-owned production assets."
+      }
+    }
   },
   "template": "structured-source-starter"
 }

@@ -41,6 +41,10 @@ Current support:
   unsupported diagnostics for runtime-only counters.
 - `pnpm verify:template-production` checks iterate-first starter guidance,
   compact-report guidance, and generated API-card parity.
+- `pnpm verify:generated-games` reads generated-game release enrollment and
+  proof requirements from project-local `production.releaseProof` config,
+  reports explicit proof exemptions, fails unknown requirement keys, and keeps
+  migration fallback constants under drift diagnostics until they are retired.
 - Rejected boundary fixtures under
   `packages/ir/fixtures/rejected/v10-boundaries/catalog.json` are audited by
   verify-tools so cloud/account storage, raw Three.js, direct Bevy authoring,
@@ -96,6 +100,7 @@ Verification:
 - `pnpm verify:session-cost`
 - `pnpm --filter @threenative/verify-tools test`
 - `pnpm --filter @threenative/verify-tools test -- --run performance`
+- `node --test tools/verify/dist/gameProductionGate.test.js`
 - `pnpm --filter @threenative/cli test -- --run performance`
 - `pnpm --filter @threenative/verify-tools test -- --run "efficient scale"`
 - `pnpm verify:efficient-scale`

@@ -136,6 +136,19 @@
         "tn asset source search --game-category urban --format glb --direct-only --json -> TN_ASSET_SOURCE_CATALOG_FAILED: packages/cli/data/asset-sources.sqlite unable to open"
       ],
       "fallback": "The player, obstacles, rewards, metro rails, platforms, and signage are backed by a cohesive local custom GLB kit generated with @gltf-transform. Primitive geometry remains only as explicit runtime fallback because the required catalog database is unavailable."
+    },
+    "releaseProof": {
+      "enrolled": true,
+      "agentInventory": true,
+      "cleanRelease": true,
+      "gameplaySource": true,
+      "materialSource": true,
+      "planArtifact": true,
+      "qaProof": true,
+      "releaseReport": true,
+      "uiSource": true,
+      "visualProvenance": true,
+      "visualQuality": true
     }
   },
   "template": "structured-source-starter"

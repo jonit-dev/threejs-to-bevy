@@ -210,6 +210,94 @@ test("should gate only representative generated examples", async () => {
   }
 });
 
+test("discovers generated-game release enrollment from project config", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-generated-game-config-enrollment-"));
+  try {
+    await mkdir(join(root, "examples/humanoid-physics-course"), { recursive: true });
+    await mkdir(join(root, "examples/metro-surfer-heist"), { recursive: true });
+    await mkdir(join(root, "examples/stylized-nature-component"), { recursive: true });
+    await writeFile(join(root, "examples/humanoid-physics-course/threenative.config.json"), `${JSON.stringify({
+      production: { releaseProof: { enrolled: true } },
+    }, null, 2)}\n`);
+    await writeFile(join(root, "examples/metro-surfer-heist/threenative.config.json"), `${JSON.stringify({
+      production: { releaseProof: { enrolled: true, agentInventory: true } },
+    }, null, 2)}\n`);
+    await writeFile(join(root, "examples/stylized-nature-component/threenative.config.json"), `${JSON.stringify({
+      production: { releaseProof: { buildOnly: true } },
+    }, null, 2)}\n`);
+    const reportPath = join(root, "artifacts/game-production/verification-report.json");
+
+    await runGameProductionGate({ generatedGames: true, reportPath, root });
+    const report = JSON.parse(await readFile(reportPath, "utf8")) as {
+      summary: {
+        buildOnlyProjectPaths: string[];
+        projectPaths: string[];
+        requiredProofCounts: { agentInventory?: number };
+      };
+    };
+
+    assert.deepEqual(report.summary.projectPaths, ["examples/humanoid-physics-course", "examples/metro-surfer-heist"]);
+    assert.deepEqual(report.summary.buildOnlyProjectPaths, ["examples/stylized-nature-component"]);
+    assert.equal(report.summary.requiredProofCounts.agentInventory, 1);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("rejects unknown generated-game release proof requirement keys", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-generated-game-release-proof-key-"));
+  try {
+    await mkdir(join(root, "examples/humanoid-physics-course"), { recursive: true });
+    await writeFile(join(root, "examples/humanoid-physics-course/threenative.config.json"), `${JSON.stringify({
+      production: { releaseProof: { enrolled: true, madeUpRequirement: true } },
+    }, null, 2)}\n`);
+    const reportPath = join(root, "artifacts/game-production/verification-report.json");
+
+    const result = await runGameProductionGate({ generatedGames: true, reportPath, root });
+
+    assert.equal(result.ok, false);
+    assert.equal(result.diagnostics.some((diagnostic) => diagnostic.code === "TN_VERIFY_GENERATED_GAME_RELEASE_PROOF_KEY_UNKNOWN" && diagnostic.message.includes("madeUpRequirement")), true);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("requires plan marker artifacts for config-enrolled generated games", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-generated-game-config-plan-marker-"));
+  try {
+    await mkdir(join(root, "examples/humanoid-physics-course"), { recursive: true });
+    await writeFile(join(root, "examples/humanoid-physics-course/threenative.config.json"), `${JSON.stringify({
+      production: { releaseProof: { enrolled: true, planArtifact: true } },
+    }, null, 2)}\n`);
+    const reportPath = join(root, "artifacts/game-production/verification-report.json");
+
+    const result = await runGameProductionGate({ generatedGames: true, reportPath, root });
+
+    assert.equal(result.ok, false);
+    assert.equal(result.diagnostics.some((diagnostic) => diagnostic.code === "TN_VERIFY_GAME_PLAN_MISSING" && diagnostic.message.includes("examples/humanoid-physics-course")), true);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("rejects generated-game release proof config drift from migration fallback constants", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-generated-game-config-drift-"));
+  try {
+    await mkdir(join(root, "examples/metro-surfer-heist"), { recursive: true });
+    await writeFile(join(root, "examples/metro-surfer-heist/threenative.config.json"), `${JSON.stringify({
+      production: { releaseProof: { enrolled: false } },
+    }, null, 2)}\n`);
+    const reportPath = join(root, "artifacts/game-production/verification-report.json");
+
+    const result = await runGameProductionGate({ generatedGames: true, reportPath, root });
+
+    assert.equal(result.ok, false);
+    assert.equal(result.diagnostics.some((diagnostic) => diagnostic.code === "TN_VERIFY_GENERATED_GAME_RELEASE_PROOF_FALLBACK_DRIFT" && diagnostic.message.includes("metro-surfer-heist")), true);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
 test("rejects generated-game README references to missing package scripts", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-generated-game-readme-script-gate-"));
   try {

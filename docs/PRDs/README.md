@@ -44,7 +44,7 @@ the baseline, and PRD-002 through PRD-005 landed the ergonomics fixes.
 
 ### UI System Remediation (2026-07-08)
 
-The [UI System Remediation bundle](other/ui-system-remediation-2026-07-08/README.md)
+The [UI System Remediation bundle](done/other/ui-system-remediation-2026-07-08/README.md)
 closed the 2026-07-08 UI inspection: web retained-UI actions are
 script-observable, UI/native parity claims are truth-graded, TSX authoring and
 typed UI APIs cover text input/components, presentation semantics are bounded,

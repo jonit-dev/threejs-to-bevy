@@ -14,7 +14,7 @@ surface.
 
 ## Ordered PRDs
 
-1. [PRD-001 Generated-Game Proof Enrollment From Config](PRD-001-generated-game-proof-enrollment-from-config.md)
+1. [PRD-001 Generated-Game Proof Enrollment From Config](../../done/other/adapter-surface-remediation-2026-07-08/PRD-001-generated-game-proof-enrollment-from-config.md)
 2. [PRD-002 Adapter Surface Drift Gates](PRD-002-adapter-surface-drift-gates.md)
 3. [PRD-003 CLI Command Registry and Shared Arg Plumbing](PRD-003-cli-command-registry-and-shared-arg-plumbing.md)
 4. [PRD-004 Executable Authoring Operation Descriptors](PRD-004-executable-authoring-operation-descriptors.md)
@@ -77,4 +77,3 @@ surface.
 - [ ] Capability or release-gate claims changed by implementation are reflected
       in `docs/status/capabilities/*.md`, `docs/STATUS.md`, and
       `docs/bevy-feature-parity.md` where applicable.
-
