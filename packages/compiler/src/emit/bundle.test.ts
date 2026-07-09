@@ -1143,6 +1143,51 @@ test("should emit structured model animation and particle source metadata", asyn
   }
 });
 
+test("should include glb texture dependencies in planned asset copy list", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-plan-glb-deps-"));
+  try {
+    await mkdir(join(root, "assets/Textures"), { recursive: true });
+    await writeFile(join(root, "assets/hero.glb"), minimalBundleGlbWithImages(["Textures/hero.png"]));
+    await writeFile(join(root, "assets/Textures/hero.png"), "png-bytes");
+    const scene = new Scene({ id: "scene" });
+    const config = {
+      entry: "src/game.ts",
+      outDir: "dist/game.bundle",
+      projectPath: root,
+      schema: "threenative.project" as const,
+      version: "0.1.0" as const,
+    };
+
+    const plan = await planBundle(config, { scene }, {
+      authoringDocuments: [{
+        data: {
+          schema: "threenative.assets",
+          version: "0.1.0",
+          id: "model.hero",
+          assets: [{
+            id: "model.hero",
+            path: "assets/hero.glb",
+            type: "model",
+          }],
+        },
+        file: join(root, "content/assets/model.hero.assets.json"),
+        kind: "asset",
+        projectRelativePath: "content/assets/model.hero.assets.json",
+      }],
+    });
+
+    assert.deepEqual(
+      plan.assetFiles.filter((file) => file.path.startsWith("assets/hero") || file.path.includes("Textures/hero")),
+      [
+        { path: "assets/hero.glb", sourcePath: "assets/hero.glb" },
+        { path: "assets/Textures/hero.png", sourcePath: "assets/Textures/hero.png" },
+      ],
+    );
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
 test("should emit structured render target asset source documents", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-emit-source-render-target-"));
   try {
@@ -1709,6 +1754,30 @@ async function writeEnvironmentAsset(root: string, name: string): Promise<void> 
     }),
   );
   await writeFile(join(root, `assets-source/environment/glTF/${name.replace(/\.gltf$/, ".bin")}`), "asset");
+}
+
+function minimalBundleGlbWithImages(uris: string[]): Buffer {
+  const json = JSON.stringify({
+    asset: { version: "2.0" },
+    buffers: [{ byteLength: 0 }],
+    images: uris.map((uri) => ({ uri })),
+  });
+  const jsonChunk = paddedBundleBuffer(Buffer.from(json, "utf8"), 0x20);
+  const totalLength = 12 + 8 + jsonChunk.length;
+  const glb = Buffer.alloc(totalLength);
+  glb.write("glTF", 0, "ascii");
+  glb.writeUInt32LE(2, 4);
+  glb.writeUInt32LE(totalLength, 8);
+  glb.writeUInt32LE(jsonChunk.length, 12);
+  glb.writeUInt32LE(0x4e4f534a, 16);
+  jsonChunk.copy(glb, 20);
+  return glb;
+}
+
+function paddedBundleBuffer(buffer: Buffer, padByte: number): Buffer {
+  const padding = (4 - (buffer.length % 4)) % 4;
+  if (padding === 0) return buffer;
+  return Buffer.concat([buffer, Buffer.alloc(padding, padByte)]);
 }
 
 function makeEnvironmentDeclaration(overrides: Record<string, unknown> = {}): Record<string, unknown> {

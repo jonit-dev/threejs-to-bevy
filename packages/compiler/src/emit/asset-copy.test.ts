@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 
-import { copyAssetFiles, resolveBundlePath } from "./asset-copy.js";
+import { copyAssetFiles, planAssetCopies, resolveBundlePath } from "./asset-copy.js";
 
 test("resolveBundlePath should reject unsafe bundle asset paths", () => {
   assert.throws(() => resolveBundlePath("/tmp/bundle", "/tmp/escape.png"), /must be relative/);
@@ -41,6 +41,27 @@ test("copyAssetFiles should copy external image dependencies referenced by GLB m
 
     assert.deepEqual(await readFile(join(root, "bundle/assets/model.glb")), await readFile(join(root, "assets/model.glb")));
     assert.equal(await readFile(join(root, "bundle/assets/Textures/colormap.png"), "utf8"), "png-bytes");
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("planAssetCopies should discover glb dependencies without copying files", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-glb-plan-"));
+  try {
+    await mkdir(join(root, "assets/Textures"), { recursive: true });
+    await writeFile(join(root, "assets/model.glb"), minimalGlbWithImages(["Textures/colormap.png"]));
+    await writeFile(join(root, "assets/Textures/colormap.png"), "png-bytes");
+
+    const copies = await planAssetCopies(root, [
+      { id: "model.car", kind: "model", path: "bundle/model.glb", sourcePath: "assets/model.glb", sourceMode: "bundle" },
+    ]);
+
+    assert.deepEqual(copies, [
+      { path: "bundle/model.glb", sourcePath: "assets/model.glb" },
+      { path: "bundle/Textures/colormap.png", sourcePath: "assets/Textures/colormap.png" },
+    ]);
+    await assert.rejects(() => readFile(join(root, "bundle/Textures/colormap.png"), "utf8"));
   } finally {
     await rm(root, { force: true, recursive: true });
   }

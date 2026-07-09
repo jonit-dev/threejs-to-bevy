@@ -26,7 +26,7 @@ import { type IUiElement } from "@threenative/ui";
 import { type IProjectConfig } from "../config.js";
 import type { IAuthoringGraph } from "../authoring/graph.js";
 import { authoringProvenanceDocument, buildAuthoringProvenanceDocument, type IAuthoringEmittedDocument } from "../authoring/provenance.js";
-import { type IAssetCopy, type IInternalAsset } from "./asset-copy.js";
+import { planAssetCopies, type IAssetCopy, type IInternalAsset } from "./asset-copy.js";
 import { emitAudio } from "./audio.js";
 import { writeBundlePlan } from "./bundle-writer.js";
 import { deriveRequiredCapabilities } from "./capabilities.js";
@@ -64,6 +64,7 @@ export async function emitBundle(config: IProjectConfig, root: unknown, options:
 }
 
 export interface IBundlePlan {
+  assetFiles: readonly IAssetCopy[];
   assets: readonly IInternalAsset[];
   documents: IBundlePlanDocuments;
   extraAssetFiles: readonly IAssetCopy[];
@@ -254,6 +255,7 @@ export async function planBundle(config: IProjectConfig, root: unknown, options:
   const authoringProvenance = options.authoringGraph === undefined ? undefined : authoringProvenanceForEmit(documents);
 
   return {
+    assetFiles: await planAssetCopies(config.projectPath, assets),
     assets,
     documents: {
       ...documents,

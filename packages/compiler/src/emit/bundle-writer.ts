@@ -3,7 +3,7 @@ import { dirname, resolve } from "node:path";
 import { IR_DOCUMENTS } from "@threenative/ir";
 
 import { AUTHORING_PROVENANCE_FILE } from "../authoring/provenance.js";
-import { copyAssetFiles, copyExtraAssetFiles } from "./asset-copy.js";
+import { copyExtraAssetFiles } from "./asset-copy.js";
 import type { IBundlePlan } from "./bundle.js";
 import { stableJson } from "./stable-json.js";
 
@@ -28,8 +28,7 @@ async function writeBundleOutput(projectPath: string, targetDir: string, plan: I
   await mkdir(resolve(targetDir, "schemas"), { recursive: true });
   await writeGeneratedMeshPayloads(targetDir, plan.generatedMeshPayloads);
   await writeFile(resolve(targetDir, IR_DOCUMENTS.manifest.fileName), stableJson(plan.manifest));
-  await copyAssetFiles(projectPath, targetDir, plan.assets);
-  await copyExtraAssetFiles(projectPath, targetDir, plan.extraAssetFiles);
+  await copyExtraAssetFiles(projectPath, targetDir, [...plan.assetFiles, ...plan.extraAssetFiles]);
   await writeFile(resolve(targetDir, IR_DOCUMENTS.world.fileName), stableJson(documents.world));
   await writeFile(resolve(targetDir, IR_DOCUMENTS.materials.fileName), stableJson(documents.materials));
   await writeFile(resolve(targetDir, IR_DOCUMENTS.assets.fileName), stableJson(documents.assetsManifest));

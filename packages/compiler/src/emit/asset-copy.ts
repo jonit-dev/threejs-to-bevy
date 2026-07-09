@@ -17,6 +17,14 @@ export async function copyAssetFiles(
   outDir: string,
   assets: ReadonlyArray<IInternalAsset>,
 ): Promise<void> {
+  await copyExtraAssetFiles(projectPath, outDir, await planAssetCopies(projectPath, assets));
+}
+
+export async function planAssetCopies(
+  projectPath: string,
+  assets: ReadonlyArray<IInternalAsset>,
+): Promise<IAssetCopy[]> {
+  const copies: IAssetCopy[] = [];
   for (const asset of assets) {
     if (asset.sourceMode !== undefined && asset.sourceMode !== "bundle") {
       continue;
@@ -24,12 +32,11 @@ export async function copyAssetFiles(
     if (typeof asset.path !== "string") {
       continue;
     }
-    const from = resolve(projectPath, asset.sourcePath ?? asset.path);
-    const to = resolveBundlePath(outDir, asset.path);
-    await mkdir(dirname(to), { recursive: true });
-    await cp(from, to);
-    await copyExternalGltfImageDependencies(projectPath, outDir, asset.path, asset.sourcePath ?? asset.path);
+    const sourcePath = asset.sourcePath ?? asset.path;
+    copies.push({ path: asset.path, sourcePath });
+    copies.push(...await discoverExternalGltfImageDependencies(projectPath, asset.path, sourcePath));
   }
+  return copies;
 }
 
 export async function copyExtraAssetFiles(projectPath: string, outDir: string, files: readonly IAssetCopy[]): Promise<void> {
@@ -53,10 +60,10 @@ export function resolveBundlePath(outDir: string, bundlePath: string): string {
   return resolved;
 }
 
-async function copyExternalGltfImageDependencies(projectPath: string, outDir: string, bundleAssetPath: string, sourceAssetPath: string): Promise<void> {
+export async function discoverExternalGltfImageDependencies(projectPath: string, bundleAssetPath: string, sourceAssetPath: string): Promise<IAssetCopy[]> {
   const extension = extname(sourceAssetPath).toLowerCase();
   if (extension !== ".glb" && extension !== ".gltf") {
-    return;
+    return [];
   }
 
   const sourceBuffer = await readFile(resolve(projectPath, sourceAssetPath));
@@ -64,22 +71,21 @@ async function copyExternalGltfImageDependencies(projectPath: string, outDir: st
     ? tryParseGlbJson(sourceBuffer)
     : JSON.parse(sourceBuffer.toString("utf8")) as IGltfLikeDocument;
   if (document === undefined) {
-    return;
+    return [];
   }
 
   const sourceBase = dirname(sourceAssetPath);
   const bundleBase = dirname(bundleAssetPath);
+  const copies: IAssetCopy[] = [];
   for (const uri of document.images?.flatMap((image) => image.uri === undefined ? [] : [image.uri]) ?? []) {
     if (!isCopyableExternalGltfUri(uri)) {
       continue;
     }
     const sourceDependencyPath = resolveRelativeAssetPath(sourceBase, uri, "GLTF image source");
     const bundleDependencyPath = resolveRelativeAssetPath(bundleBase, uri, "GLTF image bundle");
-    const from = resolve(projectPath, sourceDependencyPath);
-    const to = resolveBundlePath(outDir, bundleDependencyPath);
-    await mkdir(dirname(to), { recursive: true });
-    await cp(from, to);
+    copies.push({ path: bundleDependencyPath, sourcePath: sourceDependencyPath });
   }
+  return copies;
 }
 
 function tryParseGlbJson(buffer: Buffer): IGltfLikeDocument | undefined {
