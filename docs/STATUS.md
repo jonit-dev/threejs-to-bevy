@@ -20,7 +20,9 @@ focused gate. The current native path decision is recorded in
 [docs/runtime/native-path.md](runtime/native-path.md).
 
 Version labels such as `V7`, `V8`, and `V9` are legacy milestone names retained
-in scripts, examples, and historical docs during a staged cleanup. See
+in scripts, examples, and historical docs during a staged cleanup. The legacy
+`verify:v8:color-parity` entry remains documented as a compatibility pointer
+while color parity proof moves behind current focused gates. See
 [PRDs/archive/cleanup-versioned-debt.md](PRDs/archive/cleanup-versioned-debt.md).
 
 ## Capability Index
