@@ -2,7 +2,7 @@
 
 ## Status
 
-Planned
+Done
 
 ## Context
 
@@ -44,22 +44,22 @@ argv plumbing that later authoring-operation descriptors can reuse.
 
 ## Acceptance Criteria
 
-- [ ] Top-level help and dispatch for migrated commands are derived from a
+- [x] Top-level help and dispatch for migrated commands are derived from a
       single registry entry.
-- [ ] Registry integrity tests cover unique names, command lookup, help output,
+- [x] Registry integrity tests cover unique names, command lookup, help output,
       and handler presence.
-- [ ] Migrated commands keep existing JSON output and diagnostics unless a
+- [x] Migrated commands keep existing JSON output and diagnostics unless a
       behavior change is explicitly tested.
-- [ ] Shared argv helpers are used by at least one migrated simple command and
+- [x] Shared argv helpers are used by at least one migrated simple command and
       one migrated subcommand family.
-- [ ] The migration leaves a clear list of unmigrated command families and an
+- [x] The migration leaves a clear list of unmigrated command families and an
       explicit compatibility path.
 
 ## Verification
 
-- [ ] `pnpm --filter @threenative/cli test`
-- [ ] `pnpm check:docs` for docs that embed CLI usage
-- [ ] Focused manual smoke for representative migrated commands, using
+- [x] `pnpm --filter @threenative/cli test`
+- [x] `pnpm check:docs` for docs that embed CLI usage
+- [x] Focused manual smoke for representative migrated commands, using
       `--json` where supported
 
 ## Files Likely Touched
@@ -71,4 +71,3 @@ argv plumbing that later authoring-operation descriptors can reuse.
 - `packages/cli/src/index.test.ts`
 - `docs/workflows/*`
 - `docs/cookbook/*`
-

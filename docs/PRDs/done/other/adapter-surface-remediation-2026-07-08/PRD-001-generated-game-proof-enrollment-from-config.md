@@ -2,7 +2,7 @@
 
 ## Status
 
-Planned
+Done
 
 ## Context
 
@@ -51,21 +51,21 @@ project that owns the evidence.
 
 ## Acceptance Criteria
 
-- [ ] `verify:generated-games` discovers generated-game release enrollment from
+- [x] `verify:generated-games` discovers generated-game release enrollment from
       project config.
-- [ ] `humanoid-physics-course` either requires `agentInventory` or records an
+- [x] `humanoid-physics-course` either requires `agentInventory` or records an
       explicit config-level exemption that the gate reports.
-- [ ] Unknown release-proof requirement keys fail with an actionable diagnostic.
-- [ ] A hard-coded or config-enrolled project without the plan marker artifact
+- [x] Unknown release-proof requirement keys fail with an actionable diagnostic.
+- [x] A hard-coded or config-enrolled project without the plan marker artifact
       fails with an actionable diagnostic.
-- [ ] `tools/verify/src/release.ts` consumes the config-derived project set
+- [x] `tools/verify/src/release.ts` consumes the config-derived project set
       instead of owning a separate release enrollment list.
 
 ## Verification
 
-- [ ] `pnpm --filter @threenative/verify-tools test -- --run gameProductionGate`
-- [ ] `pnpm verify:generated-games`
-- [ ] `pnpm verify:smoke` remains unaffected or any affected output is
+- [x] `pnpm --filter @threenative/verify-tools test -- --run gameProductionGate`
+- [x] `pnpm verify:generated-games`
+- [x] `pnpm verify:smoke` remains unaffected or any affected output is
       documented.
 
 ## Files Likely Touched

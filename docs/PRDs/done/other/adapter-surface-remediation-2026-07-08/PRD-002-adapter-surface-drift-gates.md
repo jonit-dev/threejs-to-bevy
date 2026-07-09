@@ -2,7 +2,7 @@
 
 ## Status
 
-Planned
+Done
 
 ## Context
 
@@ -49,23 +49,23 @@ incremental and mechanically checked.
 
 ## Acceptance Criteria
 
-- [ ] Adding a new authoring operation without documenting CLI/MCP/editor/smoke
+- [x] Adding a new authoring operation without documenting CLI/MCP/editor/smoke
       coverage or an explicit gap fails a focused test.
-- [ ] Adding an editor action for a non-existent operation fails a focused
+- [x] Adding an editor action for a non-existent operation fails a focused
       editor test.
-- [ ] Adding a payload builder that emits unknown registry argument keys fails a
+- [x] Adding a payload builder that emits unknown registry argument keys fails a
       focused editor test.
-- [ ] Adding a CLI command metadata entry without dispatch/help coverage, or
+- [x] Adding a CLI command metadata entry without dispatch/help coverage, or
       dispatch without metadata, fails a focused CLI test.
-- [ ] Failure messages name the missing operation or command and the surface
+- [x] Failure messages name the missing operation or command and the surface
       that is missing it.
 
 ## Verification
 
-- [ ] `pnpm --filter @threenative/authoring test`
-- [ ] `pnpm --filter @threenative/editor test`
-- [ ] `pnpm --filter @threenative/cli test`
-- [ ] Relevant editor smoke gate from `tools/verify`
+- [x] `pnpm --filter @threenative/authoring test`
+- [x] `pnpm --filter @threenative/editor test`
+- [x] `pnpm --filter @threenative/cli test`
+- [x] Relevant editor smoke gate from `tools/verify`
 
 ## Files Likely Touched
 
@@ -76,4 +76,3 @@ incremental and mechanically checked.
 - `packages/editor/src/server/operationApi.test.ts`
 - `tools/verify/src/editorRequiredOperations.ts`
 - `tools/verify/src/*test.ts`
-

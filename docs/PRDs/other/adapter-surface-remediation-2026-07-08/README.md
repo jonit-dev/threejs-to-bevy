@@ -68,12 +68,12 @@ surface.
 
 ## Bundle Acceptance
 
-- [ ] The four matching red rows in `docs/status/SYSTEMS_CODE_QUALITY_STATUS.md`
+- [x] The four matching red rows in `docs/status/SYSTEMS_CODE_QUALITY_STATUS.md`
       are downgraded only after implementation evidence is linked.
-- [ ] New command, operation, editor, MCP, and generated-game policy surfaces
+- [x] New command, operation, editor, MCP, and generated-game policy surfaces
       are descriptor-backed or covered by explicit drift diagnostics.
-- [ ] Per-PRD verification commands pass, including focused package tests and
+- [x] Per-PRD verification commands pass, including focused package tests and
       relevant verify gates.
-- [ ] Capability or release-gate claims changed by implementation are reflected
+- [x] Capability or release-gate claims changed by implementation are reflected
       in `docs/status/capabilities/*.md`, `docs/STATUS.md`, and
       `docs/bevy-feature-parity.md` where applicable.
