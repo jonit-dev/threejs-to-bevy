@@ -85,7 +85,7 @@ planner/writer separation.
 - [Portable Scripting Character and Physics Contacts](proof-first-engine-loop-2026-07-05/PRD-013-portable-scripting-character-physics-contacts.md):
   richer primitive contact filtering, character movement observations, slope
   and push semantics, and stable diagnostics for unsupported physics breadth.
-- [Portable Scripting Delayed Commands and Bounded Scheduling](proof-first-engine-loop-2026-07-05/PRD-011-portable-scripting-delayed-commands-scheduling.md):
+- [Portable Scripting Delayed Commands and Bounded Scheduling](done/PRD-011-portable-scripting-delayed-commands-scheduling.md):
   fixed-tick delayed command scheduling beyond timer helpers while keeping
   promises, workers, wall-clock timers, and platform schedulers unsupported.
 - [Portable Scripting Particle Commands](proof-first-engine-loop-2026-07-05/PRD-012-portable-scripting-particle-commands.md):
