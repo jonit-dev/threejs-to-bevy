@@ -43,6 +43,7 @@ export const RELEASE_FOCUSED_GATES: readonly FocusedGate[] = [
   { name: "verify generated games", reportPath: "tools/verify/artifacts/game-production/verification-report.json", script: "verify:generated-games" },
   { name: "verify input ui polish", reportPath: "tools/verify/artifacts/input-ui-polish/verification-report.json", script: "verify:input-ui-polish" },
   { name: "verify persistence reload", reportPath: "tools/verify/artifacts/persistence-reload/verification-report.json", script: "verify:persistence-reload" },
+  { name: "verify portable shader material", reportPath: "tools/verify/artifacts/portable-shader-material/verification-report.json", script: "verify:portable-shader-material" },
   { name: "verify production hardening", reportPath: "tools/verify/artifacts/production-hardening/verification-report.json", script: "verify:production-hardening" },
   { name: "verify rendering residuals", reportPath: "tools/verify/artifacts/rendering-residuals/verification-report.json", script: "verify:rendering-residuals" },
   { name: "verify runtime gameplay host", reportPath: "tools/verify/artifacts/runtime-gameplay-host/verification-report.json", script: "verify:runtime-gameplay-host" },

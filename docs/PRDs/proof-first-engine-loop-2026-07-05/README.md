@@ -37,7 +37,7 @@ may still proceed.
 11. [PRD-011 Portable Scripting Delayed Commands And Bounded Scheduling](../done/PRD-011-portable-scripting-delayed-commands-scheduling.md) - done
 12. [PRD-012 Portable Scripting Particle Commands](../done/PRD-012-portable-scripting-particle-commands.md) - done
 13. [PRD-013 Portable Scripting Character And Physics Contacts](../done/PRD-013-portable-scripting-character-physics-contacts.md) - done
-14. [PRD-014 Portable Shader Material Parity](PRD-014-portable-shader-material-parity.md)
+14. [PRD-014 Portable Shader Material Parity](../done/proof-first-engine-loop-2026-07-05/PRD-014-portable-shader-material-parity.md) - done
 15. [PRD-015 Portable Photoreal Rendering And Post-Processing](PRD-015-portable-photoreal-rendering-and-postprocessing.md)
 16. [PRD-016 Advanced Animation And Physics Depth](PRD-016-advanced-animation-physics-depth.md)
 17. [PRD-017 Signed Installers And Store Packaging](PRD-017-signed-installers-store-packaging.md)

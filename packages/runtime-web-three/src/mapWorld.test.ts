@@ -802,11 +802,16 @@ test("mapWorld should map portable shader materials to Three shader materials", 
   assert.equal(cube.material.uniforms.cutoff?.value, 0.5);
   assert.equal(cube.material.uniforms.waveHeight?.value, 0.2);
   assert.equal(cube.material.uniforms.albedo?.value.userData.threenativeAssetId, "tex.albedo");
+  assert.equal(cube.material.uniforms.albedo?.value.colorSpace, THREE.NoColorSpace);
   assert.equal(cube.material.userData.threeNativeMaterialKind, "shader");
   assert.equal(cube.material.userData.threeNativeShaderGenerated.glsl.language, "glsl100");
   assert.deepEqual(cube.material.userData.threeNativeShaderGenerated.bindingLayout.map((entry: { name: string }) => entry.name), ["cutoff", "waveHeight", "albedo"]);
   assert.match(cube.material.fragmentShader, /texture2D\(albedo, vUv0\)/);
   assert.match(cube.material.vertexShader, /position \+ \(normal \* \(waveHeight\)\)/);
+  assert.match(cube.material.vertexShader, /vUv1 = vec2\(0\.0\)/);
+  assert.match(cube.material.vertexShader, /vVertexColor = vec4\(1\.0\)/);
+  assert.doesNotMatch(cube.material.vertexShader, /= uv1;/);
+  assert.doesNotMatch(cube.material.vertexShader, /= color;/);
 });
 
 test("mapWorld should reject material texture slots that do not reference texture assets", () => {

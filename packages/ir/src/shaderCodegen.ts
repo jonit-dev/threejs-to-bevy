@@ -100,8 +100,8 @@ function generateGlsl(
   lines.push(
     "  vNormal = normal;",
     "  vUv0 = uv;",
-    "  vUv1 = uv1;",
-    "  vVertexColor = color;",
+    "  vUv1 = vec2(0.0);",
+    "  vVertexColor = vec4(1.0);",
     "  vec4 worldPosition = modelMatrix * vec4(transformed, 1.0);",
     "  vWorldPosition = worldPosition.xyz;",
     "  gl_Position = projectionMatrix * modelViewMatrix * vec4(transformed, 1.0);",

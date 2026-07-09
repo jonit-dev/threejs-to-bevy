@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import { DRACOLoader } from "three/examples/jsm/loaders/DRACOLoader.js";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
-import { generatePortableShaderMaterial } from "@threenative/ir";
+import { generatePortableShaderMaterial } from "@threenative/ir/shaderCodegen";
 import type { IAssetIr, IMaterialIr, IRuntimeDiagnostic, IShaderMaterialIr, IWorldEntity, IWorldIr } from "@threenative/ir";
 import { advanceAnimationPlaybackState, animationPlaybackState, type IAnimationPlaybackState } from "./animation.js";
 import {
@@ -869,7 +869,10 @@ function shaderUniformDefaultValue(value: unknown): unknown {
     }
   }
   if (typeof value === "string" && /^#?[0-9a-f]{6}([0-9a-f]{2})?$/i.test(value)) {
-    return new THREE.Color(value);
+    const color = colorToThree(value);
+    const hex = value.replace(/^#/, "");
+    const alpha = hex.length === 8 ? Number.parseInt(hex.slice(6, 8), 16) / 255 : 1;
+    return new THREE.Vector4(color.r, color.g, color.b, alpha);
   }
   return value;
 }
@@ -894,7 +897,7 @@ function mapShaderTexture(
   const url = source === undefined ? asset.path : `${source.replace(/\/$/, "")}/${asset.path}`;
   const mapped = new THREE.Texture();
   mapped.name = asset.id;
-  mapped.colorSpace = THREE.SRGBColorSpace;
+  mapped.colorSpace = THREE.NoColorSpace;
   mapped.userData = {
     ...mapped.userData,
     threenativeAssetId: asset.id,
@@ -908,7 +911,7 @@ function mapShaderTexture(
         .loadAsync(url)
         .then((loaded) => {
           mapped.image = loaded.image;
-          mapped.colorSpace = THREE.SRGBColorSpace;
+          mapped.colorSpace = THREE.NoColorSpace;
           mapped.needsUpdate = true;
         })
         .catch(() => undefined),
@@ -934,8 +937,8 @@ void main() {
   vec3 transformed = position + (${displacementAxis} * (${displacementAmount}));
   vNormal = normal;
   vUv0 = uv;
-  vUv1 = uv1;
-  vVertexColor = color;
+  vUv1 = vec2(0.0);
+  vVertexColor = vec4(1.0);
   vec4 worldPosition = modelMatrix * vec4(transformed, 1.0);
   vWorldPosition = worldPosition.xyz;
   gl_Position = projectionMatrix * modelViewMatrix * vec4(transformed, 1.0);

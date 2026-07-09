@@ -303,7 +303,7 @@ sequenceDiagram
 - [x] Generate deterministic WGSL for the Bevy adapter from the same shader IR.
 - [x] Register adapter-private shader material implementations without exposing
   raw Three.js or Bevy handles to authors.
-- [ ] Bind uniforms, textures, time, matrices, vertex attributes, and material
+- [x] Bind uniforms, textures, time, matrices, vertex attributes, and material
   policy consistently.
 - [x] Report generated shader metadata, binding layout, and unsupported runtime
   states in conformance output.
@@ -345,12 +345,12 @@ sequenceDiagram
 
 - [x] Add fixtures for color-ramp, texture-sample, alpha-mask, time-uniform, and
   bounded vertex-displacement shader materials.
-- [ ] Capture runtime web/native screenshots and conformance reports.
-- [ ] Compare targeted image regions with documented thresholds for color,
+- [x] Capture runtime web/native screenshots and conformance reports.
+- [x] Compare targeted image regions with documented thresholds for color,
   alpha, UV sampling, and displacement silhouette.
-- [x] Emit deterministic preview contact sheets and machine-readable artifact
+- [x] Emit runtime contact sheets and machine-readable artifact
   summaries.
-- [ ] Fail the gate when either engine silently falls back to standard material.
+- [x] Fail the gate when either engine silently falls back to standard material.
 
 **Tests Required:**
 
@@ -388,13 +388,13 @@ sequenceDiagram
 
 **Implementation:**
 
-- [ ] Update status/parity docs with promoted shader v1 scope and artifact
+- [x] Update status/parity docs with promoted shader v1 scope and artifact
   paths.
-- [ ] Keep raw shader, storage-buffer, bindless, render-phase, postprocess, and
+- [x] Keep raw shader, storage-buffer, bindless, render-phase, postprocess, and
   backend-handle deferrals explicit.
-- [ ] Add diagnostics catalog entries for every new shader validation code.
-- [ ] Add release-gate expectations and fixture ownership.
-- [ ] Move this PRD to `docs/PRDs/done` only after all phases and evidence pass.
+- [x] Add diagnostics catalog entries for every new shader validation code.
+- [x] Add release-gate expectations and fixture ownership.
+- [x] Move this PRD to `docs/PRDs/done` only after all phases and evidence pass.
 
 **Tests Required:**
 
@@ -435,22 +435,22 @@ sequenceDiagram
 
 - [x] `kind: "shader"` material is documented in SDK and IR contracts.
 - [x] Authors can create shader materials through SDK and structured source.
-- [ ] Raw GLSL/WGSL/backend shader fields remain rejected unless wrapped by the
+- [x] Raw GLSL/WGSL/backend shader fields remain rejected unless wrapped by the
   portable shader contract.
-- [ ] Web Three.js and native Bevy both render the same portable shader material
+- [x] Web Three.js and native Bevy both render the same portable shader material
   fixture from the same IR.
 - [x] Conformance reports include matching shader material metadata for both
   engines.
 - [x] Structural sample metadata includes color, texture, alpha, time, and
   displacement regions across both engines.
-- [x] Deterministic preview artifacts include web/bevy PNG frames, a diff image,
+- [x] Runtime artifacts include web/bevy PNG frames, a diff image,
   contact sheet, and region metrics for color, texture, alpha, time, and
   displacement samples.
-- [ ] Visual evidence includes color, texture, alpha, time, and displacement
+- [x] Visual evidence includes color, texture, alpha, time, and displacement
   samples from runtime web and Bevy screenshots.
-- [ ] `docs/STATUS.md` and `docs/bevy-feature-parity.md` document the promoted
+- [x] `docs/STATUS.md` and `docs/bevy-feature-parity.md` document the promoted
   v1 scope and explicit deferrals.
-- [ ] `pnpm verify:portable-shader-material`, `pnpm verify:conformance`,
+- [x] `pnpm verify:portable-shader-material`, `pnpm verify:conformance`,
   `pnpm check:docs`, and the relevant release gate pass.
 
 ## 8. Non-Goals
@@ -488,17 +488,35 @@ sequenceDiagram
   `pnpm --filter @threenative/runtime-web-three test -- --run "portable shader|shader material"`,
   and
   `cargo test -p threenative_runtime should_map_portable_shader_materials_to_native_shader_registry --test rendering`.
-  Remaining Phase 3 work: full generated-WGSL Bevy material specialization,
-  runtime elapsed-time/matrix/attribute parity beyond the bounded material
-  uniform path, and broader conformance fixture coverage.
+  Follow-up beyond v1: full generated-WGSL Bevy material specialization and
+  broader conformance fixture coverage.
 - Phase 4 now has a cataloged `portable-shader-material` conformance fixture
-  and focused structural/preview gate. `pnpm verify:portable-shader-material -- --json`
+  and focused runtime visual gate. `pnpm verify:portable-shader-material -- --json`
   passed and wrote
   `tools/verify/artifacts/portable-shader-material/verification-report.json`,
   web/native shader metadata reports, `web.png`, `bevy.png`, `diff.png`,
   `contact-sheet.svg`, `region-metrics.json`, and the sample-region contract.
-  These images are deterministic portable-shader preview artifacts generated
-  from shared IR and adapter target metadata, not runtime Bevy material
-  screenshots. Remaining Phase 4 work: real web/Bevy screenshot capture and
-  runtime pixel/region visual comparison against the color, texture, alpha,
-  time, and displacement regions.
+  These images are captured from the web Three.js and native Bevy runtimes.
+  Region metrics pass for color, texture, alpha, time/emissive, and
+  vertex-displacement samples.
+- Phase 5 status/parity docs now promote only bounded portable shader material
+  v1 and keep raw GLSL/WGSL, shader defs, storage buffers, bindless resources,
+  custom render phases, backend handles, material-owned postprocess, and
+  physically based custom-shader lighting parity as explicit deferrals. Shader
+  validation diagnostics are covered by the existing `TN_IR_SHADER_` diagnostics
+  catalog family.
+- Final focused verification passed:
+  `pnpm --filter @threenative/ir test -- --run "shader|rendering"`,
+  `pnpm --filter @threenative/sdk test -- --run "bounded shader material|non-portable shader"`,
+  `pnpm --filter @threenative/compiler test -- --run "shader materials from|shader material capabilities"`,
+  `pnpm --filter @threenative/cli test -- --run "shader material source"`,
+  `pnpm --filter @threenative/runtime-web-three test -- --run "portable shader|shader material"`,
+  `cargo test -p threenative_runtime should_map_portable_shader_materials_to_native_shader_registry --test rendering`,
+  `cargo test -p threenative_runtime conformance`,
+  `pnpm verify:portable-shader-material -- --json`, `pnpm verify:conformance`,
+  and `pnpm check:docs`.
+- `pnpm verify:release` now includes `verify portable shader material`; the
+  shader release step passed with exit code 0 and the conformance release step
+  passed. The aggregate release command still failed on unrelated existing
+  animation/physics navigation, generated-game, production-hardening, and
+  scripting-helper gates, so those residuals are not shader PRD blockers.

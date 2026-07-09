@@ -43,6 +43,6 @@ fn vertex(vertex: Vertex) -> VertexOutput {
 
 @fragment
 fn fragment(in: VertexOutput) -> @location(0) vec4<f32> {
-    let sampled = textureSample(base_color_texture, base_color_texture_sampler, in.uv);
+    let sampled = textureSample(base_color_texture, base_color_texture_sampler, vec2<f32>(in.uv.x, 1.0 - in.uv.y));
     return sampled * base_color;
 }

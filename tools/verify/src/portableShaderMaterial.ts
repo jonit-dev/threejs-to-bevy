@@ -1,13 +1,16 @@
 import { deflateSync } from "node:zlib";
+import { execFile } from "node:child_process";
 import { access, mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { promisify } from "node:util";
 
 import type { VerificationDiagnostic } from "./runner.js";
 
 const repoRoot = resolve(fileURLToPath(new URL("../../..", import.meta.url)));
 const fixtureRelativePath = "packages/ir/fixtures/conformance/portable-shader-material";
 const requiredSampleKinds = ["alpha", "color", "displacement", "texture", "time"] as const;
+const execFileAsync = promisify(execFile);
 
 type ShaderSampleKind = typeof requiredSampleKinds[number];
 
@@ -325,7 +328,6 @@ export async function runPortableShaderMaterialGate(options: {
   const samples = JSON.parse(await readFile(sampleRegionsPath, "utf8")) as PortableShaderSampleDocument;
   const web = collectPortableShaderMaterialReport(materials.materials, "web-three");
   const native = collectPortableShaderMaterialReport(materials.materials, "bevy");
-  const visual = renderPortableShaderVisualEvidence(materials.materials, samples);
   const requiredMaterialIds = [
     "mat.shader.alpha-mask",
     "mat.shader.color-ramp",
@@ -333,6 +335,15 @@ export async function runPortableShaderMaterialGate(options: {
     "mat.shader.time-uniform",
     "mat.shader.vertex-displacement",
   ];
+
+  await mkdir(artifactDir, { recursive: true });
+  const visual = await captureRuntimeShaderVisualEvidence({
+    bundlePath,
+    nativeScreenshotPath,
+    repoRoot: root,
+    samples,
+    webScreenshotPath,
+  });
   const diagnostics = [
     ...validatePortableShaderArtifactSet({ native, requiredMaterialIds, samples, web }),
     ...(await validatePortableShaderTextureAssets({ bundlePath, materials: materials.materials })),
@@ -340,17 +351,14 @@ export async function runPortableShaderMaterialGate(options: {
   ];
   const ok = diagnostics.filter((diagnostic) => diagnostic.severity === "error").length === 0;
 
-  await mkdir(artifactDir, { recursive: true });
   await writeFile(webReportPath, `${JSON.stringify(web, null, 2)}\n`);
   await writeFile(nativeReportPath, `${JSON.stringify(native, null, 2)}\n`);
   await writeFile(resolve(artifactDir, "sample-regions.json"), `${JSON.stringify(samples, null, 2)}\n`);
-  await writeFile(webScreenshotPath, encodePng(visual.webFrame));
-  await writeFile(nativeScreenshotPath, encodePng(visual.nativeFrame));
   await writeFile(diffScreenshotPath, encodePng(visual.diffFrame));
   await writeFile(contactSheetPath, renderContactSheetSvg({ diffScreenshotPath, nativeScreenshotPath, regionMetrics: visual.regionMetrics, webScreenshotPath }));
   await writeFile(regionMetricsPath, `${JSON.stringify({
-    evidenceMode: "deterministic-portable-shader-preview",
-    note: "Frames are generated from the portable shader IR and adapter target metadata; runtime Bevy material screenshots remain required before promotion.",
+    evidenceMode: "captured-runtime-screenshots",
+    note: "Frames are captured from the web Three.js and native Bevy runtimes using the shared portable shader material fixture.",
     regions: visual.regionMetrics,
     schema: "threenative.verify.portable-shader-material.regions",
     status: visual.diagnostics.some((diagnostic) => diagnostic.severity === "error") ? "fail" : "pass",
@@ -372,7 +380,7 @@ export async function runPortableShaderMaterialGate(options: {
     },
     code: ok ? "TN_PORTABLE_SHADER_MATERIAL_OK" : "TN_PORTABLE_SHADER_MATERIAL_FAILED",
     diagnostics,
-    evidenceMode: "deterministic-portable-shader-preview",
+    evidenceMode: "captured-runtime-screenshots",
     generatedBy: "tools/verify/src/portableShaderMaterial.ts",
     ok,
     schema: "threenative.verify.portable-shader-material",
@@ -400,6 +408,163 @@ export async function runPortableShaderMaterialGate(options: {
     diagnostics,
     ok,
     status: ok ? "pass" : "fail",
+  };
+}
+
+async function captureRuntimeShaderVisualEvidence(options: {
+  bundlePath: string;
+  nativeScreenshotPath: string;
+  repoRoot: string;
+  samples: PortableShaderSampleDocument;
+  webScreenshotPath: string;
+}): Promise<{
+  diagnostics: VerificationDiagnostic[];
+  diffFrame: Frame;
+  nativeFrame: Frame;
+  regionMetrics: PortableShaderRegionMetric[];
+  webFrame: Frame;
+}> {
+  const diagnostics: VerificationDiagnostic[] = [];
+  const [{ startWebPreview }, { captureScreenshot }, { readPngFrame }] = await Promise.all([
+    import("../../../packages/runtime-web-three/dist/index.js") as Promise<{
+      startWebPreview(options: { bundlePath: string; silent?: boolean }): Promise<{ close(): Promise<void> | void; url: string }>;
+    }>,
+    import("../../../packages/cli/dist/commands/visualProof.js") as Promise<{
+      captureScreenshot(options: { outPath: string; url: string; waitReady: boolean }): Promise<{
+        diagnostics?: readonly { code: string; message: string; severity: "error" | "warning" }[];
+        page?: { browserLogs?: readonly string[] };
+      }>;
+    }>,
+    import("../../../packages/cli/dist/verify/compareImages.js") as Promise<{
+      readPngFrame(path: string): Promise<{ data: ArrayLike<number>; height: number; width: number }>;
+    }>,
+  ]);
+
+  const server = await startWebPreview({ bundlePath: options.bundlePath, silent: true });
+  try {
+    const capture = await captureScreenshot({
+      outPath: options.webScreenshotPath,
+      url: `${server.url}?bundle=/bundle&bookmark=camera.main`,
+      waitReady: true,
+    });
+    for (const diagnostic of capture.diagnostics ?? []) {
+      diagnostics.push({
+        code: `TN_PORTABLE_SHADER_WEB_${diagnostic.code}`,
+        message: diagnostic.message,
+        path: "tools/verify/artifacts/portable-shader-material/web.png",
+        severity: diagnostic.severity,
+        suggestedFix: "Fix the web runtime shader material capture before promoting portable shader parity.",
+      });
+    }
+    for (const log of capture.page?.browserLogs ?? []) {
+      if (/Shader Error|no valid shader program/i.test(log)) {
+        diagnostics.push({
+          code: "TN_PORTABLE_SHADER_WEB_SHADER_COMPILE_FAILED",
+          message: "Web runtime reported a shader compile or draw failure during portable shader capture.",
+          path: "tools/verify/artifacts/portable-shader-material/web.png",
+          severity: "error",
+          suggestedFix: "Fix generated GLSL, material uniforms, texture bindings, or mesh attributes before accepting web shader evidence.",
+        });
+        break;
+      }
+    }
+  } finally {
+    await server.close();
+  }
+
+  await captureNativeShaderScreenshot({
+    bundlePath: options.bundlePath,
+    outPath: options.nativeScreenshotPath,
+    repoRoot: options.repoRoot,
+  });
+
+  const webFrame = normalizeFrame(await readPngFrame(options.webScreenshotPath));
+  const nativeFrame = normalizeFrame(await readPngFrame(options.nativeScreenshotPath));
+  const diffFrame = diffFrames(webFrame, nativeFrame);
+  const regionMetrics = options.samples.samples.map((sample) => compareSampleRegion(webFrame, nativeFrame, sample));
+  diagnostics.push(...regionMetrics.filter((metric) => !metric.ok).map((metric): VerificationDiagnostic => ({
+    code: "TN_PORTABLE_SHADER_VISUAL_DRIFT",
+    message: `Portable shader material sample '${metric.id}' exceeded runtime visual threshold.`,
+    path: `${fixtureRelativePath}/sample-regions.json/samples/${metric.id}`,
+    severity: "error",
+    suggestedFix: "Fix shader codegen, runtime binding, color space, texture sampling, alpha policy, or displacement mapping before promoting shader visual parity.",
+  })));
+  if (nonblankRatio(webFrame) < 0.005) {
+    diagnostics.push(blankFrameDiagnostic("web-three", "web.png"));
+  }
+  if (nonblankRatio(nativeFrame) < 0.005) {
+    diagnostics.push(blankFrameDiagnostic("bevy", "bevy.png"));
+  }
+  return { diagnostics, diffFrame, nativeFrame, regionMetrics, webFrame };
+}
+
+async function captureNativeShaderScreenshot(options: {
+  bundlePath: string;
+  outPath: string;
+  repoRoot: string;
+}): Promise<void> {
+  const [{ cargoCaptureEnv, resolveCargoCommand }, { resolveCaptureBinaryPath }, { resolveNativeCaptureInvocation }] = await Promise.all([
+    import("../../../packages/cli/dist/verify/captureCargo.js") as Promise<{
+      cargoCaptureEnv(): NodeJS.ProcessEnv;
+      resolveCargoCommand(): string;
+    }>,
+    import("../../../packages/cli/dist/verify/captureCargo.js") as Promise<{
+      resolveCaptureBinaryPath(repoRoot: string): string | undefined;
+    }>,
+    import("../../../packages/cli/dist/commands/sceneProof.js") as Promise<{
+      resolveNativeCaptureInvocation(options: {
+        bundlePath: string;
+        cameraId: string;
+        captureBinaryPath?: string;
+        cargoCommand: string;
+        env: NodeJS.ProcessEnv;
+        frame: number;
+        outPath: string;
+        repoRoot: string;
+      }): { args: string[]; command: string; cwd?: string };
+    }>,
+  ]);
+  const env = cargoCaptureEnv();
+  delete env.DISPLAY;
+  delete env.WAYLAND_DISPLAY;
+  delete env.WAYLAND_SOCKET;
+  const invocation = resolveNativeCaptureInvocation({
+    bundlePath: options.bundlePath,
+    cameraId: "camera.main",
+    captureBinaryPath: resolveCaptureBinaryPath(options.repoRoot),
+    cargoCommand: resolveCargoCommand(),
+    env,
+    frame: 120,
+    outPath: options.outPath,
+    repoRoot: options.repoRoot,
+  });
+  try {
+    await execFileAsync(invocation.command, invocation.args, { cwd: invocation.cwd, env, timeout: 180_000 });
+  } catch (error) {
+    if (!await pngExists(options.outPath)) {
+      throw error;
+    }
+  }
+}
+
+async function pngExists(path: string): Promise<boolean> {
+  try {
+    const bytes = await readFile(path);
+    return bytes.length > 8
+      && bytes[0] === 137
+      && bytes[1] === 80
+      && bytes[2] === 78
+      && bytes[3] === 71;
+  } catch {
+    return false;
+  }
+}
+
+function normalizeFrame(frame: { data: ArrayLike<number>; height: number; width: number }): Frame {
+  return {
+    data: frame.data instanceof Uint8Array ? frame.data : Uint8Array.from(frame.data),
+    height: frame.height,
+    width: frame.width,
   };
 }
 
@@ -670,8 +835,17 @@ function forEachPixelInRegion(frame: Frame, region: PortableShaderSampleRegion["
 
 function nonblankRatio(frame: Frame): number {
   let changed = 0;
+  const background: [number, number, number] = [
+    frame.data[0] ?? 0,
+    frame.data[1] ?? 0,
+    frame.data[2] ?? 0,
+  ];
   for (let index = 0; index < frame.data.length; index += 4) {
-    if ((frame.data[index] ?? 0) !== 18 || (frame.data[index + 1] ?? 0) !== 24 || (frame.data[index + 2] ?? 0) !== 32) {
+    if (
+      Math.abs((frame.data[index] ?? 0) - background[0]) > 4
+      || Math.abs((frame.data[index + 1] ?? 0) - background[1]) > 4
+      || Math.abs((frame.data[index + 2] ?? 0) - background[2]) > 4
+    ) {
       changed += 1;
     }
   }
@@ -701,7 +875,7 @@ function renderContactSheetSvg(input: {
   return `<svg xmlns="http://www.w3.org/2000/svg" width="1040" height="${900 + input.regionMetrics.length * 24}" viewBox="0 0 1040 ${900 + input.regionMetrics.length * 24}">
   <rect width="1040" height="100%" fill="#f8fafc"/>
   <text x="32" y="42" font-family="sans-serif" font-size="24" font-weight="700" fill="#0f172a">Portable Shader Material Contact Sheet</text>
-  <text x="32" y="72" font-family="sans-serif" font-size="14" fill="#475569">Deterministic web/native preview frames generated from shared portable shader IR.</text>
+  <text x="32" y="72" font-family="sans-serif" font-size="14" fill="#475569">Runtime web Three.js and native Bevy captures generated from the shared portable shader fixture.</text>
   <text x="32" y="116" font-family="sans-serif" font-size="18" font-weight="700" fill="#0f172a">Web</text>
   <image x="32" y="132" width="480" height="270" href="${escapeXml(input.webScreenshotPath)}"/>
   <text x="528" y="116" font-family="sans-serif" font-size="18" font-weight="700" fill="#0f172a">Bevy</text>

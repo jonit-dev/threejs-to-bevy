@@ -111,7 +111,7 @@ test("should write portable shader material gate artifacts", async () => {
     evidenceMode: string;
     regions: Array<{ id: string; ok: boolean }>;
   };
-  assert.equal(metrics.evidenceMode, "deterministic-portable-shader-preview");
+  assert.equal(metrics.evidenceMode, "captured-runtime-screenshots");
   assert.deepEqual(metrics.regions.map((region) => [region.id, region.ok]), [
     ["color-ramp", true],
     ["texture-sample", true],

@@ -12,8 +12,9 @@ use serde_json::json;
 use threenative_components::ThreeNativeId;
 use threenative_loader::{WorldEntity, load_bundle};
 use threenative_runtime::map_world::{
-    NativeGrassWindMotion, NativeMaterialHandles, NativeStylizedMotionTimeOverride,
-    STYLIZED_NATURE_RUNTIME_DEFAULTS, THREE_COMPAT_AMBIENT_BRIGHTNESS_PER_INTENSITY,
+    NativeGrassWindMotion, NativeMaterialHandles, NativeShaderMaterialHandles,
+    NativeStylizedMotionTimeOverride, STYLIZED_NATURE_RUNTIME_DEFAULTS,
+    THREE_COMPAT_AMBIENT_BRIGHTNESS_PER_INTENSITY,
     THREE_COMPAT_DIRECTIONAL_ILLUMINANCE_PER_INTENSITY, animate_native_stylized_motion,
     map_bundle_into_world, prepare_world_entity_spawn_context, spawn_world_entity,
 };
@@ -43,6 +44,7 @@ fn should_map_single_runtime_spawned_entity_with_render_handles() {
     let mut app = App::new();
     let context = prepare_world_entity_spawn_context(app.world_mut(), &bundle);
     let mut material_handles = NativeMaterialHandles::default();
+    let mut shader_material_handles = NativeShaderMaterialHandles::default();
     let cube = bundle
         .world
         .entities
@@ -55,6 +57,7 @@ fn should_map_single_runtime_spawned_entity_with_render_handles() {
         cube,
         &context,
         &mut material_handles,
+        &mut shader_material_handles,
         &bundle,
     )
     .expect("single entity should map");

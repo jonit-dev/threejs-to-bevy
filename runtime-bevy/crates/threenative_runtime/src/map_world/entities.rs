@@ -533,6 +533,7 @@ fn portable_shader_base_color(material: &MaterialIr) -> (Color, Option<String>) 
         .and_then(|program| program.fragment.get("outputs"))
         .and_then(|outputs| outputs.as_object());
     let base_color = outputs.and_then(|outputs| outputs.get("baseColor"));
+    let emissive = outputs.and_then(|outputs| outputs.get("emissive"));
     if let Some(texture_name) = base_color
         .and_then(|value| value.get("texture"))
         .and_then(|value| value.as_str())
@@ -543,8 +544,13 @@ fn portable_shader_base_color(material: &MaterialIr) -> (Color, Option<String>) 
                 .find(|texture| texture.name == texture_name)
                 .map(|texture| texture.asset.clone())
         });
+        let color = add_shader_emissive(
+            [1.0, 1.0, 1.0, shader_alpha(material, outputs).unwrap_or(1.0)],
+            material,
+            emissive,
+        );
         return (
-            Color::srgba(1.0, 1.0, 1.0, shader_alpha(material, outputs).unwrap_or(1.0)),
+            Color::srgba(color[0], color[1], color[2], color[3]),
             texture_asset,
         );
     }
@@ -556,9 +562,64 @@ fn portable_shader_base_color(material: &MaterialIr) -> (Color, Option<String>) 
         let g = json_array_f32(values, 1, r);
         let b = json_array_f32(values, 2, g);
         let alpha = shader_alpha(material, outputs).unwrap_or_else(|| json_array_f32(values, 3, 1.0));
-        return (Color::srgba(r, g, b, alpha), None);
+        let color = add_shader_emissive([r, g, b, alpha], material, emissive);
+        return (Color::srgba(color[0], color[1], color[2], color[3]), None);
     }
-    (color_with_opacity(&material.color, shader_alpha(material, outputs).unwrap_or(1.0)), None)
+    let fallback = color_with_opacity(&material.color, shader_alpha(material, outputs).unwrap_or(1.0)).to_srgba();
+    let color = add_shader_emissive(
+        [fallback.red, fallback.green, fallback.blue, fallback.alpha],
+        material,
+        emissive,
+    );
+    (Color::srgba(color[0], color[1], color[2], color[3]), None)
+}
+
+fn add_shader_emissive(
+    mut base: [f32; 4],
+    material: &MaterialIr,
+    emissive: Option<&serde_json::Value>,
+) -> [f32; 4] {
+    let Some(emissive) = emissive else {
+        return base;
+    };
+    let color = shader_expression_color(material, emissive).unwrap_or([0.0, 0.0, 0.0, 1.0]);
+    base[0] = (base[0] + color[0]).clamp(0.0, 1.0);
+    base[1] = (base[1] + color[1]).clamp(0.0, 1.0);
+    base[2] = (base[2] + color[2]).clamp(0.0, 1.0);
+    base
+}
+
+fn shader_expression_color(
+    material: &MaterialIr,
+    expression: &serde_json::Value,
+) -> Option<[f32; 4]> {
+    if let Some(values) = expression.get("value").and_then(|value| value.as_array()) {
+        let r = json_array_f32(values, 0, 1.0);
+        let g = json_array_f32(values, 1, r);
+        let b = json_array_f32(values, 2, g);
+        let a = json_array_f32(values, 3, 1.0);
+        return Some([r, g, b, a]);
+    }
+    if let Some(value) = expression.get("value").and_then(|value| value.as_str()) {
+        let color = color_to_bevy(&ColorIr::Hex(value.to_owned())).to_srgba();
+        return Some([color.red, color.green, color.blue, color.alpha]);
+    }
+    let uniform_name = expression.get("uniform").and_then(|value| value.as_str())?;
+    let uniform = material
+        .uniforms
+        .as_ref()?
+        .iter()
+        .find(|uniform| uniform.name == uniform_name)?;
+    if let Some(value) = uniform.default.as_str() {
+        let color = color_to_bevy(&ColorIr::Hex(value.to_owned())).to_srgba();
+        return Some([color.red, color.green, color.blue, color.alpha]);
+    }
+    uniform.default.as_array().map(|values| [
+        json_array_f32(values, 0, 1.0),
+        json_array_f32(values, 1, 1.0),
+        json_array_f32(values, 2, 1.0),
+        json_array_f32(values, 3, 1.0),
+    ])
 }
 
 fn shader_alpha(

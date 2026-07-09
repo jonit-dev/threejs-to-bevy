@@ -210,7 +210,7 @@ execution bundle.
   rendered+collidable heightfield terrain on both runtimes,
   compiler-expanded deterministic scatter layers, and `tn world generate` /
   `tn world proof` biome source/proof commands with catalog provenance.
-- [Portable Shader Material Parity](proof-first-engine-loop-2026-07-05/PRD-014-portable-shader-material-parity.md):
+- [Portable Shader Material Parity](done/proof-first-engine-loop-2026-07-05/PRD-014-portable-shader-material-parity.md):
   constrained authored shader materials with explicit uniforms/textures,
   generated web GLSL and Bevy WGSL, stable diagnostics for raw/backend shader
   escape hatches, and visual parity evidence across both engines.

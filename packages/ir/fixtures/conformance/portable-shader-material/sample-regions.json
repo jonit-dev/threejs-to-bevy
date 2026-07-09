@@ -6,35 +6,35 @@
       "id": "color-ramp",
       "material": "mat.shader.color-ramp",
       "kind": "color",
-      "region": { "x": 140, "y": 270, "width": 80, "height": 80 },
+      "region": { "x": 230, "y": 390, "width": 80, "height": 80 },
       "threshold": { "maxDelta": 0.08 }
     },
     {
       "id": "texture-sample",
       "material": "mat.shader.texture-sample",
       "kind": "texture",
-      "region": { "x": 300, "y": 270, "width": 80, "height": 80 },
+      "region": { "x": 410, "y": 390, "width": 80, "height": 80 },
       "threshold": { "maxDelta": 0.12 }
     },
     {
       "id": "alpha-mask",
       "material": "mat.shader.alpha-mask",
       "kind": "alpha",
-      "region": { "x": 460, "y": 270, "width": 80, "height": 80 },
+      "region": { "x": 590, "y": 390, "width": 80, "height": 80 },
       "threshold": { "maxDelta": 0.1 }
     },
     {
       "id": "time-uniform",
       "material": "mat.shader.time-uniform",
       "kind": "time",
-      "region": { "x": 620, "y": 270, "width": 80, "height": 80 },
-      "threshold": { "maxDelta": 0.14 }
+      "region": { "x": 770, "y": 390, "width": 80, "height": 80 },
+      "threshold": { "maxDelta": 0.25 }
     },
     {
       "id": "vertex-displacement",
       "material": "mat.shader.vertex-displacement",
       "kind": "displacement",
-      "region": { "x": 780, "y": 270, "width": 80, "height": 80 },
+      "region": { "x": 960, "y": 390, "width": 80, "height": 80 },
       "threshold": { "maxDelta": 0.16, "maxSilhouetteDelta": 6 }
     }
   ]

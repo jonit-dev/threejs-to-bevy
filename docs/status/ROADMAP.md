@@ -70,7 +70,7 @@ Use these implementation PRDs as the executable backlog for this roadmap:
   `docs/PRDs/proof-first-engine-loop-2026-07-05/PRD-011-portable-scripting-delayed-commands-scheduling.md`,
   `docs/PRDs/proof-first-engine-loop-2026-07-05/PRD-012-portable-scripting-particle-commands.md`,
   `docs/PRDs/done/PRD-013-portable-scripting-character-physics-contacts.md`,
-  `docs/PRDs/proof-first-engine-loop-2026-07-05/PRD-014-portable-shader-material-parity.md`,
+  `docs/PRDs/done/proof-first-engine-loop-2026-07-05/PRD-014-portable-shader-material-parity.md`,
   `docs/PRDs/proof-first-engine-loop-2026-07-05/PRD-015-portable-photoreal-rendering-and-postprocessing.md`,
   `docs/PRDs/proof-first-engine-loop-2026-07-05/PRD-016-advanced-animation-physics-depth.md`, and
   `docs/PRDs/proof-first-engine-loop-2026-07-05/PRD-017-signed-installers-store-packaging.md`

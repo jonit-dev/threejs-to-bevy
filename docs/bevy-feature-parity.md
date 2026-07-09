@@ -775,6 +775,11 @@ Practical order for game-polish work:
 - [x] `P2` Generated-mesh vertex colors
 - [x] `P2` Constrained extended material presets (`unlitMasked`, `foliage`)
 - [x] `P2` Explicit portable shader promotion criteria and unsupported-feature diagnostics
+- [x] `P2` Bounded portable shader material v1 runtime parity for color,
+      texture, alpha, time/emissive, and vertex-displacement fixture samples,
+      proved by `pnpm verify:portable-shader-material` web/Bevy screenshots,
+      diff, contact sheet, and region metrics under
+      `tools/verify/artifacts/portable-shader-material/`
 - [x] `P2` Advanced blend parity diagnostics on Bevy beyond normal alpha/mask/blend policy
 - [x] `P2` Native specular texture rendering proof
 - [x] `P2` Broader extended-material catalog policy beyond current constrained presets
