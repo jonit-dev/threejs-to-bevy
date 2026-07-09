@@ -33,6 +33,10 @@ Current support:
 - Web and native runtime system hosts report declared resource load/read/write
   observations so failing playtests can distinguish missing propagation from
   ordinary movement/input assertion failures.
+- `ctx.audio.play`, `ctx.audio.stop`, and `ctx.audio.query` operate on
+  declared audio IR and return logical playback IDs/status without exposing web
+  or native handles; streaming, network audio, custom decoders, and platform
+  handles remain diagnostic-only boundaries.
 - Retained UI actions are script-visible through `context.input` action state
   and `context.ui.actions()` for the latest drained frame, including web
   button and slider value events without exposing DOM handles.
@@ -66,8 +70,9 @@ Verification:
 - `pnpm --filter @threenative/cli test`
 - `pnpm --filter @threenative/runtime-web-three test`
 - `cargo test -p threenative_runtime systems_host_should_apply_declared_resource_write`
+- `cargo test -p threenative_runtime systems_host_should_expose_audio_facade`
+- `pnpm verify:conformance` covers the `script-audio-facade` fixture.
 - `pnpm verify:scripting-helpers-lifecycle`
-- `pnpm verify:conformance`
 
 Full prior evidence is preserved in
 [full-status-archive.md](full-status-archive.md).

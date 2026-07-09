@@ -33,7 +33,7 @@ may still proceed.
 7. [PRD-007 Runtime-Proven Efficient Scale](../done/proof-first-engine-loop-2026-07-05/PRD-007-runtime-proven-efficient-scale.md) - done
 8. [PRD-008 Declarative Gameplay Flow](PRD-008-declarative-gameplay-flow-spawners-sequencer.md)
 9. [PRD-009 Actor Archetypes And Typed Scripting](../done/proof-first-engine-loop-2026-07-05/PRD-009-actor-archetypes-and-typed-scripting.md) - done
-10. [PRD-010 Portable Scripting Audio Facade](PRD-010-portable-scripting-audio-facade.md)
+10. [PRD-010 Portable Scripting Audio Facade](../done/proof-first-engine-loop-2026-07-05/PRD-010-portable-scripting-audio-facade.md) - done
 11. [PRD-011 Portable Scripting Delayed Commands And Bounded Scheduling](PRD-011-portable-scripting-delayed-commands-scheduling.md)
 12. [PRD-012 Portable Scripting Particle Commands](PRD-012-portable-scripting-particle-commands.md)
 13. [PRD-013 Portable Scripting Character And Physics Contacts](PRD-013-portable-scripting-character-physics-contacts.md)

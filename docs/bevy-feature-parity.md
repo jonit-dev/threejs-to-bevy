@@ -222,6 +222,10 @@ implementation:
   scripts and high-value actors. They do not promote new Bevy runtime behavior:
   native parity remains tied to the emitted IR and existing focused
   conformance gates.
+- Script audio facade calls (`ctx.audio.play/query/stop`) now resolve declared
+  audio IR to logical playback IDs and status on web and Bevy without exposing
+  backend handles. Focused evidence: `pnpm verify:conformance` and the
+  `packages/ir/fixtures/conformance/script-audio-facade/` fixture.
 - The authoring-abstractions Phase 5 paper-cut slice improves structured
   authoring commands and recipes: third-person recipes now stamp safe capsule
   centers, material editing works inside grouped material documents, and scene

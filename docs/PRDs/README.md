@@ -83,10 +83,10 @@ execution bundle.
 - [Portable Scripting Particle Commands](proof-first-engine-loop-2026-07-05/PRD-012-portable-scripting-particle-commands.md):
   bounded script particle commands over declared emitter data with web/Bevy
   service logs and visual/runtime evidence.
-- [Portable Scripting Audio Facade](proof-first-engine-loop-2026-07-05/PRD-010-portable-scripting-audio-facade.md):
+- [Portable Scripting Audio Facade](done/proof-first-engine-loop-2026-07-05/PRD-010-portable-scripting-audio-facade.md):
   `ctx.audio` play/stop/query over declared audio IR with logical playback IDs,
   private runtime handles, and stable unsupported streaming/platform
-  diagnostics.
+  diagnostics, backed by the `script-audio-facade` conformance fixture.
 - [Runtime-Proven Efficient Scale](done/proof-first-engine-loop-2026-07-05/PRD-007-runtime-proven-efficient-scale.md) - done:
   measured dense-world performance proof, target-profile budget enforcement,
   instancing/LOD benchmark gates, native/web metric sidecars, and texture
