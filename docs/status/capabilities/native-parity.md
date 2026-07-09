@@ -23,6 +23,9 @@ Current support:
   safe-area metadata, effect presets, and editable text-input semantics remain
   trace/metadata boundaries unless a focused native pixel or behavior gate is
   named.
+- UI conformance evidence is categorized in `pnpm verify:conformance` as
+  structural, behavioral, and visual/style proof. The current visual/style UI
+  proof is an aggregate contact sheet, not a native pixel-rendering promotion.
 
 Promotion policy:
 

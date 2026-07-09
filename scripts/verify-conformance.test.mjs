@@ -156,7 +156,7 @@ test("should pass matching gate commands and save report path", async () => {
     });
 
     assert.equal(result.ok, true);
-    assert.equal(result.steps.length, 28);
+    assert.equal(result.steps.length, 32);
     assert.equal(result.reportPath.endsWith("packages/ir/artifacts/conformance/verification-report.json"), true);
     assert.equal(result.artifacts.nativeBasicSceneReportPath.endsWith("packages/ir/artifacts/conformance/basic-scene/bevy.report.json"), true);
     assert.equal(
@@ -274,10 +274,20 @@ test("should pass matching gate commands and save report path", async () => {
     assert.equal(result.artifacts.sceneLifecycleWebTracePath.endsWith("packages/ir/artifacts/conformance/scene-lifecycle/web-scene-lifecycle.json"), true);
     assert.equal(result.artifacts.v9AssetsGltfReportPath.endsWith("tools/verify/artifacts/assets-gltf-scene-workflow/diff.json"), true);
     assert.equal(result.artifacts.v9RenderingLightsReportPath.endsWith("tools/verify/artifacts/rendering-lights/verification-report.json"), true);
+    assert.equal(result.artifacts.inputUiPolishContactSheetPath.endsWith("tools/verify/artifacts/input-ui-polish/contact-sheet.png"), true);
+    assert.equal(result.artifacts.inputUiPolishDiffPath.endsWith("tools/verify/artifacts/input-ui-polish/diff.json"), true);
+    assert.equal(result.artifacts.inputUiPolishNativeReportPath.endsWith("tools/verify/artifacts/input-ui-polish/native-report.json"), true);
+    assert.equal(result.artifacts.inputUiPolishReportPath.endsWith("tools/verify/artifacts/input-ui-polish/verification-report.json"), true);
+    assert.equal(result.artifacts.inputUiPolishWebReportPath.endsWith("tools/verify/artifacts/input-ui-polish/web-report.json"), true);
     assert.equal(result.artifacts.nativeV9SupportStressReportPath.endsWith("packages/ir/artifacts/conformance/support-stress/bevy.report.json"), true);
+    assert.equal(result.evidence.ui.structural[0]?.kind, "runtime-report");
+    assert.equal(result.evidence.ui.behavioral.length, 2);
+    assert.equal(result.evidence.ui.behavioral[0]?.fixture, "rich-ui-navigation");
+    assert.equal(result.evidence.ui.behavioral[1]?.fixture, "input-ui-polish");
+    assert.equal(result.evidence.ui.visualStyle[0]?.artifactPaths[0].endsWith("tools/verify/artifacts/input-ui-polish/contact-sheet.png"), true);
     const report = JSON.parse(await readFile(result.reportPath, "utf8"));
     assert.equal(report.status, "pass");
-    assert.equal(report.steps.length, 28);
+    assert.equal(report.steps.length, 32);
     assert.equal(report.artifacts.nativeBasicSceneReportPath.endsWith("packages/ir/artifacts/conformance/basic-scene/bevy.report.json"), true);
     assert.equal(
       report.artifacts.nativePrimitiveMappingReportPath.endsWith("packages/ir/artifacts/conformance/primitive-mapping/bevy.report.json"),
@@ -391,6 +401,11 @@ test("should pass matching gate commands and save report path", async () => {
     assert.equal(report.artifacts.sceneLifecycleWebTracePath.endsWith("packages/ir/artifacts/conformance/scene-lifecycle/web-scene-lifecycle.json"), true);
     assert.equal(report.artifacts.v9AssetsGltfReportPath.endsWith("tools/verify/artifacts/assets-gltf-scene-workflow/diff.json"), true);
     assert.equal(report.artifacts.v9RenderingLightsReportPath.endsWith("tools/verify/artifacts/rendering-lights/verification-report.json"), true);
+    assert.equal(report.artifacts.inputUiPolishContactSheetPath.endsWith("tools/verify/artifacts/input-ui-polish/contact-sheet.png"), true);
+    assert.equal(report.artifacts.inputUiPolishReportPath.endsWith("tools/verify/artifacts/input-ui-polish/verification-report.json"), true);
+    assert.deepEqual(report.evidence.ui.behavioral.map((item) => item.fixture), ["rich-ui-navigation", "input-ui-polish"]);
+    assert.equal(report.evidence.ui.structural[0]?.fixture, "retained-ui");
+    assert.equal(report.evidence.ui.visualStyle[0]?.kind, "visual-contact-sheet");
   } finally {
     await rm(root, { force: true, recursive: true });
   }
@@ -415,6 +430,32 @@ test("should map V9 physics failures to the V9 physics fixture", async () => {
     assert.equal(result.ok, false);
     assert.equal(report.diagnostics[0]?.fixture, "physics-character");
     assert.match(report.diagnostics[0]?.artifactPath ?? "", /physics-character\/verification-report\.json/);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should map input/UI polish failures to behavioral and visual evidence artifacts", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-conformance-ui-evidence-"));
+  try {
+    const reportPath = join(root, "packages/ir/artifacts/conformance/verification-report.json");
+    const result = await verifyConformance({
+      artifactDir: join(root, "packages/ir/artifacts/conformance"),
+      repoRoot: root,
+      reportPath,
+      run: async ({ name }) => ({
+        durationMs: 1,
+        exitCode: name === "input/UI polish behavioral and visual evidence" ? 1 : 0,
+        stderr: name === "input/UI polish behavioral and visual evidence" ? "ui evidence failed" : "",
+        stdout: "",
+      }),
+    });
+    const report = JSON.parse(await readFile(reportPath, "utf8"));
+    assert.equal(result.ok, false);
+    assert.equal(report.diagnostics[0]?.fixture, "input-ui-polish");
+    assert.match(report.diagnostics[0]?.artifactPath ?? "", /input-ui-polish\/verification-report\.json/);
+    assert.equal(report.evidence.ui.behavioral[1]?.fixture, "input-ui-polish");
+    assert.match(report.evidence.ui.visualStyle[0]?.artifactPaths[0], /input-ui-polish\/contact-sheet\.png/);
   } finally {
     await rm(root, { force: true, recursive: true });
   }

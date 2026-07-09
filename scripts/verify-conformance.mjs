@@ -31,6 +31,11 @@ export async function verifyConformance(options = {}) {
     owner: { kind: "aggregate", name: "rendering-lights" },
     root,
   });
+  const inputUiPolishTargets = resolveArtifactTargets({
+    gate: "input-ui-polish",
+    owner: { kind: "aggregate", name: "input-ui-polish" },
+    root,
+  });
   const reportPath = options.reportPath ?? targets.reportPath;
   const artifactDir = options.artifactDir ?? resolve(reportPath, "..");
   let fixtureCatalog = options.fixtureCatalog;
@@ -164,6 +169,11 @@ export async function verifyConformance(options = {}) {
   const sceneLifecycleWebTracePath = options.sceneLifecycleWebTracePath ?? resolve(artifactDir, "scene-lifecycle/web-scene-lifecycle.json");
   const v9AssetsGltfReportPath = options.v9AssetsGltfReportPath ?? resolve(v9AssetsGltfTargets.absoluteDir, "diff.json");
   const v9RenderingLightsReportPath = options.v9RenderingLightsReportPath ?? v9RenderingLightsTargets.reportPath;
+  const inputUiPolishReportPath = options.inputUiPolishReportPath ?? inputUiPolishTargets.reportPath;
+  const inputUiPolishContactSheetPath = options.inputUiPolishContactSheetPath ?? resolve(inputUiPolishTargets.absoluteDir, "contact-sheet.png");
+  const inputUiPolishDiffPath = options.inputUiPolishDiffPath ?? resolve(inputUiPolishTargets.absoluteDir, "diff.json");
+  const inputUiPolishNativeReportPath = options.inputUiPolishNativeReportPath ?? resolve(inputUiPolishTargets.absoluteDir, "native-report.json");
+  const inputUiPolishWebReportPath = options.inputUiPolishWebReportPath ?? resolve(inputUiPolishTargets.absoluteDir, "web-report.json");
   const nativeV9SupportStressReportPath = options.nativeV9SupportStressReportPath ?? resolve(artifactDir, "support-stress/bevy.report.json");
   const artifacts = {
     ...targets.metadata,
@@ -234,8 +244,14 @@ export async function verifyConformance(options = {}) {
     sceneLifecycleNativeTracePath,
     sceneLifecycleWebTracePath,
     v9RenderingLightsReportPath,
+    inputUiPolishContactSheetPath,
+    inputUiPolishDiffPath,
+    inputUiPolishNativeReportPath,
+    inputUiPolishReportPath,
+    inputUiPolishWebReportPath,
     nativeV9SupportStressReportPath,
   };
+  const evidence = buildEvidence({ artifacts });
   const steps = [];
 
   async function step(name, command, args, commandOptions = {}) {
@@ -554,6 +570,12 @@ export async function verifyConformance(options = {}) {
       { timeoutMs: 300000 },
     ],
     [
+      "input/UI polish behavioral and visual evidence",
+      process.execPath,
+      [resolve(root, "scripts/verify-input-ui-polish.mjs")],
+      { timeoutMs: 180000 },
+    ],
+    [
       "bevy native V9 support stress observation report",
       "cargo",
       [
@@ -577,13 +599,59 @@ export async function verifyConformance(options = {}) {
 
   for (const [name, command, args, commandOptions] of commands) {
     if (!(await step(name, command, args, commandOptions))) {
-      await writeGateReport(reportPath, false, steps, artifacts);
-      return { artifacts, ok: false, reportPath, steps };
+      await writeGateReport(reportPath, false, steps, artifacts, evidence);
+      return { artifacts, evidence, ok: false, reportPath, steps };
     }
   }
 
-  await writeGateReport(reportPath, true, steps, artifacts);
-  return { artifacts, ok: true, reportPath, steps };
+  await writeGateReport(reportPath, true, steps, artifacts, evidence);
+  return { artifacts, evidence, ok: true, reportPath, steps };
+}
+
+function buildEvidence({ artifacts }) {
+  return {
+    ui: {
+      behavioral: [
+        {
+          artifactPaths: [
+            artifacts.v7UiNavigationWebTracePath,
+            artifacts.v7UiNavigationNativeTracePath,
+            artifacts.v7UiNavigationDiffPath,
+          ],
+          feature: "focus navigation and action activation",
+          fixture: "rich-ui-navigation",
+          kind: "runtime-trace",
+        },
+        {
+          artifactPaths: [
+            artifacts.inputUiPolishWebReportPath,
+            artifacts.inputUiPolishNativeReportPath,
+            artifacts.inputUiPolishDiffPath,
+            artifacts.inputUiPolishReportPath,
+          ],
+          feature: "disabled-state mutation, nested scroll, spatial navigation, and focus narration",
+          fixture: "input-ui-polish",
+          kind: "behavioral-probe",
+        },
+      ],
+      structural: [
+        {
+          artifactPaths: [artifacts.nativeV6RetainedUiReportPath],
+          feature: "retained UI tree observation",
+          fixture: "retained-ui",
+          kind: "runtime-report",
+        },
+      ],
+      visualStyle: [
+        {
+          artifactPaths: [artifacts.inputUiPolishContactSheetPath],
+          feature: "input/UI polish contact sheet",
+          fixture: "input-ui-polish",
+          kind: "visual-contact-sheet",
+        },
+      ],
+    },
+  };
 }
 
 export function compareConformanceReports(left, right, options = {}) {
@@ -785,7 +853,7 @@ function mismatch(fixture, path, leftRuntime, rightRuntime, left, right, context
   };
 }
 
-async function writeGateReport(reportPath, ok, steps, artifacts = {}) {
+async function writeGateReport(reportPath, ok, steps, artifacts = {}, evidence = {}) {
   await mkdir(resolve(reportPath, ".."), { recursive: true });
   const failedStep = steps.find((step) => step.exitCode !== 0);
   await writeFile(
@@ -814,6 +882,7 @@ async function writeGateReport(reportPath, ok, steps, artifacts = {}) {
                 },
               ],
         status: ok ? "pass" : "fail",
+        evidence,
         steps,
       },
       null,
@@ -894,6 +963,9 @@ function fixtureForStep(stepName) {
   }
   if (stepName.includes("V9 rendering lights")) {
     return "rendering-lights";
+  }
+  if (stepName.includes("input/UI polish")) {
+    return "input-ui-polish";
   }
   if (stepName.includes("V9 support stress")) {
     return "support-stress";
@@ -980,6 +1052,9 @@ function artifactPathForStep(stepName, artifacts) {
   if (stepName.includes("V9 rendering lights")) {
     return artifacts.v9RenderingLightsReportPath;
   }
+  if (stepName.includes("input/UI polish")) {
+    return artifacts.inputUiPolishReportPath;
+  }
   if (stepName.includes("V9 support stress")) {
     return artifacts.nativeV9SupportStressReportPath;
   }
@@ -1055,6 +1130,9 @@ function bundlePathForStep(stepName) {
   }
   if (stepName.includes("V9 rendering lights")) {
     return "packages/ir/fixtures/conformance/rendering-lights/game.bundle";
+  }
+  if (stepName.includes("input/UI polish")) {
+    return "packages/ir/fixtures/conformance/input-ui-polish/game.bundle";
   }
   if (stepName.includes("V9 support stress")) {
     return "packages/ir/fixtures/conformance/support-stress/game.bundle";

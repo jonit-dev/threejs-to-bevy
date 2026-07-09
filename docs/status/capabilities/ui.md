@@ -35,6 +35,13 @@ Current support:
   presets, world-attached projection, editable text input, nested/axis scroll,
   spatial fallback navigation, focus narration, and runtime disabled-state
   updates remain partial/diagnostic until behavior-level proof exists.
+- `pnpm verify:conformance` now emits explicit UI evidence categories:
+  structural retained-UI reports, behavioral runtime traces for focus/action
+  delivery plus input/UI polish, and a visual/style contact sheet for the
+  input-UI polish fixture. The input/UI polish probe covers disabled-state
+  reconciliation, nested and axis-specific scroll reports, spatial navigation
+  traces, and focus narration as deterministic evidence rather than parity
+  promotion.
 - Unsupported UI boundaries remain explicit for virtual keyboard behavior,
   arbitrary grid named areas/dense packing, render-to-texture/world transforms,
   UI viewport nodes, drag/drop UI nodes, and custom UI material/shader

@@ -39,25 +39,25 @@ target-specific evidence. Keep probes small and deterministic:
 
 ## 3. Acceptance Criteria
 
-- [ ] Conformance output distinguishes structural, behavioral, and visual/style
+- [x] Conformance output distinguishes structural, behavioral, and visual/style
       evidence.
-- [ ] Web and native interaction probes pass for the supported UI action path.
-- [ ] Disabled-state mutation is either behaviorally proved on each claimed
+- [x] Web and native interaction probes pass for the supported UI action path.
+- [x] Disabled-state mutation is either behaviorally proved on each claimed
       target or downgraded to partial/diagnostic in docs.
-- [ ] Focus navigation claims are backed by deterministic probes for declared
+- [x] Focus navigation claims are backed by deterministic probes for declared
       links and any claimed spatial fallback.
-- [ ] Nested/axis scroll claims are backed by probes or downgraded.
-- [ ] Visual/style probes cover at least one fixture for any feature promoted
+- [x] Nested/axis scroll claims are backed by probes or downgraded.
+- [x] Visual/style probes cover at least one fixture for any feature promoted
       from metadata-only to rendered behavior in PRD-004.
-- [ ] Failing probes produce stable, actionable diagnostics.
+- [x] Failing probes produce stable, actionable diagnostics.
 
 ## 4. Verification
 
-- [ ] Run `pnpm verify:conformance`.
-- [ ] Run focused web runtime conformance tests.
-- [ ] Run focused native conformance tests or `pnpm verify:parity:smoke` if the
+- [x] Run `pnpm verify:conformance`.
+- [x] Run focused web runtime conformance tests.
+- [x] Run focused native conformance tests or `pnpm verify:parity:smoke` if the
       native harness owns the probe.
-- [ ] Confirm generated conformance artifacts include behavior evidence paths.
+- [x] Confirm generated conformance artifacts include behavior evidence paths.
 
 ## 5. Dependencies
 

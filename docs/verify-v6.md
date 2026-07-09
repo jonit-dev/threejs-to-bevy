@@ -14,7 +14,9 @@ Current V6 evidence:
 
 - `verify:v6` emits a deprecation diagnostic and runs `verify:release`.
 - `pnpm verify:conformance` runs the `resources-events` and
-  `animation-clips` fixed traces.
+  `animation-clips` fixed traces, plus the current aggregate UI evidence
+  categories for structural reports, behavioral probes, and visual/style
+  contact-sheet proof.
 - V6-era runnable `src/game.ts` examples have been removed in favor of
   conformance fixtures and structured-source examples.
 
