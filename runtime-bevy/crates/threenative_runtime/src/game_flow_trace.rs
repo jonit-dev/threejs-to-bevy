@@ -21,7 +21,10 @@ fn main() {
     }
 
     let bundle = load_bundle(Path::new(&args[1])).expect("load GameFlow bundle");
-    let game_flow = bundle.game_flow.as_ref().expect("GameFlow fixture should include game_flow");
+    let game_flow = bundle
+        .game_flow
+        .as_ref()
+        .expect("GameFlow fixture should include game_flow");
     let report = GameFlowTraceReport {
         fixture: bundle.manifest.name,
         runtime: "bevy",

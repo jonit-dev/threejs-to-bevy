@@ -605,8 +605,12 @@ export interface IIrSchemaFile {
 }
 
 export type MaterialBlendMode = "additive" | "multiply" | "normal" | "premultipliedAlpha";
-export type MaterialKind = "extended" | "standard";
+export type MaterialKind = "extended" | "shader" | "standard";
 export type ExtendedMaterialPreset = "foliage" | "unlitMasked";
+export type ShaderBuiltinInput = "cameraPosition" | "elapsedTime" | "modelMatrix" | "normal" | "position" | "projectionMatrix" | "uv0" | "uv1" | "vertexColor" | "viewMatrix" | "worldPosition";
+export type ShaderOutput = "alpha" | "baseColor" | "discard" | "emissive";
+export type ShaderUniformType = "bool" | "color" | "float" | "int" | "vec2" | "vec3" | "vec4";
+export type ShaderExpressionKind = "builtin" | "literal" | "sampleTexture" | "uniform";
 
 export interface IMaterialExtensionIr {
   doubleSided?: boolean;
@@ -619,7 +623,43 @@ export interface IMaterialEmissiveBloomIr {
   threshold: number;
 }
 
-export interface IMaterialIr {
+export interface IShaderUniformIr {
+  default: boolean | number | string | readonly number[];
+  name: string;
+  type: ShaderUniformType;
+}
+
+export interface IShaderTextureIr {
+  asset: string;
+  name: string;
+}
+
+export interface IShaderExpressionIr {
+  builtin?: ShaderBuiltinInput;
+  kind: ShaderExpressionKind;
+  texture?: string;
+  uniform?: string;
+  value?: boolean | number | string | readonly number[];
+}
+
+export interface IShaderFragmentProgramIr {
+  outputs: Partial<Record<ShaderOutput, IShaderExpressionIr>>;
+}
+
+export interface IShaderVertexProgramIr {
+  displacement?: {
+    amount: IShaderExpressionIr;
+    axis: "normal" | "x" | "y" | "z";
+  };
+}
+
+export interface IShaderProgramIr {
+  fragment: IShaderFragmentProgramIr;
+  language: "threenative-shader-v1";
+  vertex?: IShaderVertexProgramIr;
+}
+
+export interface IBaseMaterialIr {
   alphaCutoff?: number;
   alphaMode?: "blend" | "mask" | "opaque";
   baseColorTexture?: string;
@@ -628,7 +668,7 @@ export interface IMaterialIr {
   clearcoatRoughness?: number;
   clearcoatRoughnessTexture?: string;
   clearcoatTexture?: string;
-  color: string | readonly [number, number, number] | readonly [number, number, number, number];
+  color?: string | readonly [number, number, number] | readonly [number, number, number, number];
   depthTest?: boolean;
   depthWrite?: boolean;
   emissive?: string | readonly [number, number, number] | readonly [number, number, number, number];
@@ -650,6 +690,28 @@ export interface IMaterialIr {
   transmission?: number;
   transmissionTexture?: string;
 }
+
+export interface IStandardMaterialIr extends IBaseMaterialIr {
+  color: string | readonly [number, number, number] | readonly [number, number, number, number];
+  kind: "standard";
+}
+
+export interface IExtendedMaterialIr extends IBaseMaterialIr {
+  color: string | readonly [number, number, number] | readonly [number, number, number, number];
+  extension: IMaterialExtensionIr;
+  kind: "extended";
+}
+
+export interface IShaderMaterialIr extends IBaseMaterialIr {
+  inputs?: readonly ShaderBuiltinInput[];
+  kind: "shader";
+  outputs?: readonly ShaderOutput[];
+  program: IShaderProgramIr;
+  textures?: readonly IShaderTextureIr[];
+  uniforms?: readonly IShaderUniformIr[];
+}
+
+export type IMaterialIr = IExtendedMaterialIr | IShaderMaterialIr | IStandardMaterialIr;
 
 export interface IMaterialsIr {
   schema: MaterialsSchema;

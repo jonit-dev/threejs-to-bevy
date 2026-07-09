@@ -11,11 +11,18 @@
       "type": "array",
       "items": {
         "type": "object",
-        "required": ["id", "kind", "color"],
+        "required": ["id", "kind"],
         "additionalProperties": false,
+        "allOf": [
+          {
+            "if": { "properties": { "kind": { "const": "shader" } }, "required": ["kind"] },
+            "then": { "required": ["program"] },
+            "else": { "required": ["color"] }
+          }
+        ],
         "properties": {
           "id": { "type": "string", "minLength": 1 },
-          "kind": { "enum": ["standard", "extended"] },
+          "kind": { "enum": ["standard", "extended", "shader"] },
           "alphaMode": { "enum": ["opaque", "mask", "blend"] },
           "blendMode": { "enum": ["normal", "additive", "multiply", "premultipliedAlpha"] },
           "depthTest": { "type": "boolean" },
@@ -69,7 +76,113 @@
           "emissiveTexture": { "type": "string", "minLength": 1 },
           "occlusionTexture": { "type": "string", "minLength": 1 },
           "transmissionTexture": { "type": "string", "minLength": 1 },
-          "specularTexture": { "type": "string", "minLength": 1 }
+          "specularTexture": { "type": "string", "minLength": 1 },
+          "inputs": {
+            "type": "array",
+            "items": {
+              "enum": ["cameraPosition", "elapsedTime", "modelMatrix", "normal", "position", "projectionMatrix", "uv0", "uv1", "vertexColor", "viewMatrix", "worldPosition"]
+            },
+            "uniqueItems": true
+          },
+          "outputs": {
+            "type": "array",
+            "items": { "enum": ["alpha", "baseColor", "discard", "emissive"] },
+            "uniqueItems": true
+          },
+          "uniforms": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["name", "type", "default"],
+              "additionalProperties": false,
+              "properties": {
+                "name": { "type": "string", "pattern": "^[A-Za-z_][A-Za-z0-9_]*$" },
+                "type": { "enum": ["bool", "color", "float", "int", "vec2", "vec3", "vec4"] },
+                "default": {
+                  "oneOf": [
+                    { "type": "boolean" },
+                    { "type": "number" },
+                    { "type": "string" },
+                    { "type": "array", "minItems": 1, "maxItems": 16, "items": { "type": "number" } }
+                  ]
+                }
+              }
+            }
+          },
+          "textures": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["name", "asset"],
+              "additionalProperties": false,
+              "properties": {
+                "name": { "type": "string", "pattern": "^[A-Za-z_][A-Za-z0-9_]*$" },
+                "asset": { "type": "string", "minLength": 1 }
+              }
+            }
+          },
+          "program": {
+            "type": "object",
+            "required": ["language", "fragment"],
+            "additionalProperties": false,
+            "properties": {
+              "language": { "const": "threenative-shader-v1" },
+              "fragment": {
+                "type": "object",
+                "required": ["outputs"],
+                "additionalProperties": false,
+                "properties": {
+                  "outputs": {
+                    "type": "object",
+                    "minProperties": 1,
+                    "additionalProperties": false,
+                    "properties": {
+                      "alpha": { "$ref": "#/$defs/shaderExpression" },
+                      "baseColor": { "$ref": "#/$defs/shaderExpression" },
+                      "discard": { "$ref": "#/$defs/shaderExpression" },
+                      "emissive": { "$ref": "#/$defs/shaderExpression" }
+                    }
+                  }
+                }
+              },
+              "vertex": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "displacement": {
+                    "type": "object",
+                    "required": ["axis", "amount"],
+                    "additionalProperties": false,
+                    "properties": {
+                      "axis": { "enum": ["normal", "x", "y", "z"] },
+                      "amount": { "$ref": "#/$defs/shaderExpression" }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "shaderExpression": {
+      "type": "object",
+      "required": ["kind"],
+      "additionalProperties": false,
+      "properties": {
+        "kind": { "enum": ["builtin", "literal", "sampleTexture", "uniform"] },
+        "builtin": { "enum": ["cameraPosition", "elapsedTime", "modelMatrix", "normal", "position", "projectionMatrix", "uv0", "uv1", "vertexColor", "viewMatrix", "worldPosition"] },
+        "texture": { "type": "string", "minLength": 1 },
+        "uniform": { "type": "string", "minLength": 1 },
+        "value": {
+          "oneOf": [
+            { "type": "boolean" },
+            { "type": "number" },
+            { "type": "string" },
+            { "type": "array", "minItems": 1, "maxItems": 16, "items": { "type": "number" } }
+          ]
         }
       }
     }

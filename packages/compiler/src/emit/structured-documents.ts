@@ -16,6 +16,8 @@ import type { IAssetModuleDeclaration, IAssetReference } from "@threenative/sdk"
 
 import type { IInternalAsset } from "./asset-copy.js";
 
+type StructuredMaterialColor = string | readonly [number, number, number] | readonly [number, number, number, number];
+
 export function readStructuredRuntimeConfig(documents: readonly IAuthoringDocument[] | undefined): IRuntimeConfigIr | undefined {
   const data = documents?.find((document) => document.kind === "runtime" && isRecord(document.data))?.data;
   if (!isRecord(data) || !isRecord(data.time) || !isRecord(data.window)) {
@@ -57,7 +59,7 @@ function structuredMaterial(item: Record<string, unknown>): IMaterialIr[] {
   if (id === undefined) {
     return [];
   }
-  return [{
+  const material: Record<string, unknown> = {
     id,
     kind: readString(item.kind) === "extended" ? "extended" : "standard",
     color,
@@ -84,15 +86,16 @@ function structuredMaterial(item: Record<string, unknown>): IMaterialIr[] {
     ...(readColor(item.emissive) === undefined ? {} : { emissive: readColor(item.emissive) }),
     ...(isRecord(item.emissiveBloom) ? { emissiveBloom: cloneRecord(item.emissiveBloom) as unknown as IMaterialIr["emissiveBloom"] } : {}),
     ...(isRecord(item.extension) ? { extension: cloneRecord(item.extension) as unknown as IMaterialIr["extension"] } : {}),
-  }];
+  };
+  return [material as unknown as IMaterialIr];
 }
 
-function readColor(value: unknown): IMaterialIr["color"] | undefined {
+function readColor(value: unknown): StructuredMaterialColor | undefined {
   if (typeof value === "string" && value.trim() !== "") {
     return value;
   }
   if (Array.isArray(value) && (value.length === 3 || value.length === 4) && value.every((item) => typeof item === "number" && Number.isFinite(item))) {
-    return value as unknown as IMaterialIr["color"];
+    return value as unknown as StructuredMaterialColor;
   }
   return undefined;
 }

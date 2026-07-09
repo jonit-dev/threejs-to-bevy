@@ -349,13 +349,26 @@ Rules:
 - Texture fields reference texture asset IDs. Promoted physical texture fields
   are `clearcoatTexture`, `clearcoatRoughnessTexture`, and
   `transmissionTexture`.
-- Unsupported shader features are rejected during validation.
+- `kind: "shader"` declares a portable shader material, not a raw backend
+  shader. It must use `program.language: "threenative-shader-v1"` with declared
+  uniforms, texture bindings, promoted inputs, and fragment outputs.
+- Shader uniforms support `bool`, `color`, `float`, `int`, `vec2`, `vec3`, and
+  `vec4` defaults. Shader textures reference texture asset IDs through
+  `textures[].asset`.
+- Shader program expressions are limited to literal values, declared uniforms,
+  declared texture samples, and promoted builtins. Fragment outputs are
+  `baseColor`, `emissive`, `alpha`, and `discard`; optional vertex displacement
+  is bounded to axis `normal`, `x`, `y`, or `z`.
+- Raw GLSL, raw WGSL, shader definitions/macros, node graphs, storage buffers,
+  bindless resources, custom render phases, material-owned postprocess, and
+  renderer handles are rejected during validation.
 
 V1 material types:
 
 - `standard`
 - `basic`
 - `unlit`
+- `shader` with `program.language: "threenative-shader-v1"`
 
 ## Animation IR
 

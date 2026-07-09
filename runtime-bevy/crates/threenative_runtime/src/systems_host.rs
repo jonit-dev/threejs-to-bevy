@@ -10,7 +10,9 @@ use quickjs_rusty::Context;
 use serde::Serialize;
 use serde_json::{Value, json};
 use thiserror::Error;
-use threenative_loader::{LoadedBundle, SystemCommandIr, SystemDelayedCommandIr, SystemIr, TransformComponent};
+use threenative_loader::{
+    LoadedBundle, SystemCommandIr, SystemDelayedCommandIr, SystemIr, TransformComponent,
+};
 
 use crate::{
     component_diff::ComponentDiffCache,
@@ -603,14 +605,15 @@ fn run_native_system_schedules_with_state(
                 if let Some((pending, observations)) = delayed_state.as_mut() {
                     enqueue_native_delayed_commands(pending, observations, system, &effects, tick);
                 }
-                let applied = apply_system_effects_with_report(bundle, system, &effects, frame, tick as u32)
-                    .map_err(|diagnostics| {
-                        let first = diagnostics
-                            .into_iter()
-                            .next()
-                            .expect("invalid effects should include diagnostics");
-                        host_error(first.code, first.message)
-                    })?;
+                let applied =
+                    apply_system_effects_with_report(bundle, system, &effects, frame, tick as u32)
+                        .map_err(|diagnostics| {
+                            let first = diagnostics
+                                .into_iter()
+                                .next()
+                                .expect("invalid effects should include diagnostics");
+                            host_error(first.code, first.message)
+                        })?;
                 logs.push(applied.log);
                 resource_observations.extend(system_observations);
                 transform_patches.extend(applied.transform_patches);
@@ -686,7 +689,12 @@ fn enqueue_native_delayed_commands(
         if schedule.delay_ticks == 0 || schedule.delay_ticks > declaration.max_delay_ticks {
             continue;
         }
-        pending.push(native_delayed_command(system, declaration, schedule.delay_ticks, tick));
+        pending.push(native_delayed_command(
+            system,
+            declaration,
+            schedule.delay_ticks,
+            tick,
+        ));
         observations.push(NativeDelayedCommandObservation {
             delay_ticks: schedule.delay_ticks,
             id: schedule.id.clone(),
@@ -781,15 +789,19 @@ fn native_delayed_owner_active(bundle: &LoadedBundle, command: &NativeDelayedCom
     true
 }
 
-fn native_command_effect(command: &SystemCommandIr) -> crate::systems_effects::NativeSystemCommandEffect {
+fn native_command_effect(
+    command: &SystemCommandIr,
+) -> crate::systems_effects::NativeSystemCommandEffect {
     match command {
-        SystemCommandIr::AddComponent { component, entity } => crate::systems_effects::NativeSystemCommandEffect {
-            command: "addComponent".to_owned(),
-            component: Some(component.clone()),
-            entity: Some(entity.clone()),
-            value: Some(json!({})),
-            ..Default::default()
-        },
+        SystemCommandIr::AddComponent { component, entity } => {
+            crate::systems_effects::NativeSystemCommandEffect {
+                command: "addComponent".to_owned(),
+                component: Some(component.clone()),
+                entity: Some(entity.clone()),
+                value: Some(json!({})),
+                ..Default::default()
+            }
+        }
         SystemCommandIr::Despawn { entity } => crate::systems_effects::NativeSystemCommandEffect {
             command: "despawn".to_owned(),
             entity: Some(entity.clone()),
@@ -802,50 +814,62 @@ fn native_command_effect(command: &SystemCommandIr) -> crate::systems_effects::N
             payload: Some(json!({})),
             ..Default::default()
         },
-        SystemCommandIr::Instantiate { prefab, prefix } => crate::systems_effects::NativeSystemCommandEffect {
-            command: "instantiate".to_owned(),
-            entity: Some(String::new()),
-            prefab: Some(prefab.clone()),
-            prefix: Some(prefix.clone()),
-            ..Default::default()
-        },
-        SystemCommandIr::RemoveComponent { component, entity } => crate::systems_effects::NativeSystemCommandEffect {
-            command: "removeComponent".to_owned(),
-            component: Some(component.clone()),
-            entity: Some(entity.clone()),
-            ..Default::default()
-        },
-        SystemCommandIr::SetParent { child, parent } => crate::systems_effects::NativeSystemCommandEffect {
-            child: Some(child.clone()),
-            command: "setParent".to_owned(),
-            entity: Some(child.clone()),
-            parent: Some(parent.clone()),
-            ..Default::default()
-        },
-        SystemCommandIr::ClearParent { child } => crate::systems_effects::NativeSystemCommandEffect {
-            child: Some(child.clone()),
-            command: "clearParent".to_owned(),
-            entity: Some(child.clone()),
-            ..Default::default()
-        },
-        SystemCommandIr::SetComponent { component, entity } => crate::systems_effects::NativeSystemCommandEffect {
-            command: "setComponent".to_owned(),
-            component: Some(component.clone()),
-            entity: Some(entity.clone()),
-            value: Some(json!({})),
-            ..Default::default()
-        },
-        SystemCommandIr::Spawn { components, entity } => crate::systems_effects::NativeSystemCommandEffect {
-            command: "spawn".to_owned(),
-            components: Some(Value::Object(
-                components
-                    .iter()
-                    .map(|component| (component.clone(), json!({})))
-                    .collect(),
-            )),
-            entity: Some(entity.clone()),
-            ..Default::default()
-        },
+        SystemCommandIr::Instantiate { prefab, prefix } => {
+            crate::systems_effects::NativeSystemCommandEffect {
+                command: "instantiate".to_owned(),
+                entity: Some(String::new()),
+                prefab: Some(prefab.clone()),
+                prefix: Some(prefix.clone()),
+                ..Default::default()
+            }
+        }
+        SystemCommandIr::RemoveComponent { component, entity } => {
+            crate::systems_effects::NativeSystemCommandEffect {
+                command: "removeComponent".to_owned(),
+                component: Some(component.clone()),
+                entity: Some(entity.clone()),
+                ..Default::default()
+            }
+        }
+        SystemCommandIr::SetParent { child, parent } => {
+            crate::systems_effects::NativeSystemCommandEffect {
+                child: Some(child.clone()),
+                command: "setParent".to_owned(),
+                entity: Some(child.clone()),
+                parent: Some(parent.clone()),
+                ..Default::default()
+            }
+        }
+        SystemCommandIr::ClearParent { child } => {
+            crate::systems_effects::NativeSystemCommandEffect {
+                child: Some(child.clone()),
+                command: "clearParent".to_owned(),
+                entity: Some(child.clone()),
+                ..Default::default()
+            }
+        }
+        SystemCommandIr::SetComponent { component, entity } => {
+            crate::systems_effects::NativeSystemCommandEffect {
+                command: "setComponent".to_owned(),
+                component: Some(component.clone()),
+                entity: Some(entity.clone()),
+                value: Some(json!({})),
+                ..Default::default()
+            }
+        }
+        SystemCommandIr::Spawn { components, entity } => {
+            crate::systems_effects::NativeSystemCommandEffect {
+                command: "spawn".to_owned(),
+                components: Some(Value::Object(
+                    components
+                        .iter()
+                        .map(|component| (component.clone(), json!({})))
+                        .collect(),
+                )),
+                entity: Some(entity.clone()),
+                ..Default::default()
+            }
+        }
     }
 }
 

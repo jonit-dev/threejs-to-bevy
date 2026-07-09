@@ -640,7 +640,13 @@ fn systems_host_should_flush_delayed_commands_after_fixed_ticks() {
         |_bundle, _fixed_delta, _script_posed_entities| {},
     )
     .expect("first fixed tick should enqueue delayed command");
-    assert!(!bundle.world.entities.iter().any(|entity| entity.id == "marker"));
+    assert!(
+        !bundle
+            .world
+            .entities
+            .iter()
+            .any(|entity| entity.id == "marker")
+    );
 
     run_native_systems_frame_with_input(
         &mut bundle,
@@ -649,7 +655,13 @@ fn systems_host_should_flush_delayed_commands_after_fixed_ticks() {
         |_bundle, _fixed_delta, _script_posed_entities| {},
     )
     .expect("second fixed tick should keep command pending");
-    assert!(!bundle.world.entities.iter().any(|entity| entity.id == "marker"));
+    assert!(
+        !bundle
+            .world
+            .entities
+            .iter()
+            .any(|entity| entity.id == "marker")
+    );
 
     let run = run_native_systems_frame_with_input(
         &mut bundle,

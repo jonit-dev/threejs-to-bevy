@@ -537,6 +537,10 @@ Supported:
   `emissiveIntensity`, `alphaMode`, `alphaCutoff`, `opacity`,
   `specularIntensity`, `clearcoat`, `clearcoatRoughness`, and `transmission`.
 - Texture slots: `baseColorTexture`, `normalTexture`, `metallicRoughnessTexture`, `emissiveTexture`, `occlusionTexture`, `clearcoatTexture`, `clearcoatRoughnessTexture`, `transmissionTexture`.
+- Portable shader material declarations using the `threenative-shader-v1`
+  contract: declared uniforms, declared 2D texture bindings, promoted mesh and
+  frame inputs, `baseColor`/`emissive`/`alpha`/`discard` fragment outputs, and
+  optional bounded vertex displacement.
 
 Rules:
 
@@ -550,11 +554,14 @@ Rules:
 - Texture references must resolve through the asset manifest. `textureAsset`
   may carry portable `wrapS`, `wrapT`, `minFilter`, `magFilter`, `repeat`,
   `offset`, `center`, and `rotation` controls.
+- Shader material bindings must be declared before use. Raw GLSL/WGSL strings,
+  node graphs, backend macros, storage buffers, bindless resources, render
+  phases, and renderer handles remain validation errors.
 - Unsupported material fields are validation errors, not silent no-ops.
 
 Deferred:
 
-- Raw shader materials.
+- Raw shader materials and backend shader snippets.
 - Node materials.
 - Arbitrary postprocessing chains.
 - Renderer-specific material extensions.

@@ -1096,16 +1096,18 @@ fn report_runtime_config(
         })
         .or_else(|| {
             renderer.render_look.as_ref().and_then(|render_look| {
-                native_render_look_has_bloom(render_look.profile.as_str()).then(|| RuntimeBloomReport {
-                    enabled: true,
-                    intensity: render_look
-                        .overrides
-                        .as_ref()
-                        .and_then(|overrides| overrides.bloom_intensity)
-                        .unwrap_or_else(|| {
-                            native_render_look_bloom_intensity(render_look.profile.as_str())
-                        }),
-                    threshold: 0.85,
+                native_render_look_has_bloom(render_look.profile.as_str()).then(|| {
+                    RuntimeBloomReport {
+                        enabled: true,
+                        intensity: render_look
+                            .overrides
+                            .as_ref()
+                            .and_then(|overrides| overrides.bloom_intensity)
+                            .unwrap_or_else(|| {
+                                native_render_look_bloom_intensity(render_look.profile.as_str())
+                            }),
+                        threshold: 0.85,
+                    }
                 })
             })
         });
@@ -1141,7 +1143,7 @@ fn report_runtime_config(
                     renderer.render_look.as_ref().and_then(|render_look| {
                         (renderer.bloom.is_none()
                             && native_render_look_has_bloom(render_look.profile.as_str()))
-                            .then(|| "bloom".to_owned())
+                        .then(|| "bloom".to_owned())
                     }),
                     renderer
                         .color_grading

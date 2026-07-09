@@ -54,11 +54,13 @@ pub fn trace_game_flow(
     let mut trace = Vec::new();
     for tick in 0..input.ticks {
         for flow in &game_flow.flows {
-            let runtime = states.entry(flow.id.clone()).or_insert_with(|| FlowRuntime {
-                entered_tick: tick,
-                initialized: false,
-                state: flow.initial.clone(),
-            });
+            let runtime = states
+                .entry(flow.id.clone())
+                .or_insert_with(|| FlowRuntime {
+                    entered_tick: tick,
+                    initialized: false,
+                    state: flow.initial.clone(),
+                });
             let mut actions = Vec::new();
             if !runtime.initialized {
                 runtime.initialized = true;
@@ -125,17 +127,26 @@ fn trigger_matches(
             .as_ref()
             .is_some_and(|event| events.iter().any(|candidate| candidate == event)),
         "timer" => ((tick - entered_tick) as f32 * fixed_delta) >= trigger.seconds.unwrap_or(0.0),
-        "resourceEquals" => trigger
-            .resource
-            .as_ref()
-            .and_then(|resource| resources.get(resource))
-            == trigger.target.as_ref(),
+        "resourceEquals" => {
+            trigger
+                .resource
+                .as_ref()
+                .and_then(|resource| resources.get(resource))
+                == trigger.target.as_ref()
+        }
         "allCollected" => trigger
             .resource
             .as_ref()
             .and_then(|resource| resources.get(resource))
             .and_then(serde_json::Value::as_f64)
-            .is_some_and(|value| value >= trigger.target.as_ref().and_then(serde_json::Value::as_f64).unwrap_or(0.0)),
+            .is_some_and(|value| {
+                value
+                    >= trigger
+                        .target
+                        .as_ref()
+                        .and_then(serde_json::Value::as_f64)
+                        .unwrap_or(0.0)
+            }),
         _ => false,
     }
 }
@@ -165,7 +176,10 @@ fn apply_actions(
         .map(|action| {
             if action.kind == "setResource" {
                 if let Some(resource) = &action.resource {
-                    resources.insert(resource.clone(), action.value.clone().unwrap_or(serde_json::Value::Null));
+                    resources.insert(
+                        resource.clone(),
+                        action.value.clone().unwrap_or(serde_json::Value::Null),
+                    );
                 }
             }
             NativeGameFlowTraceAction {
@@ -180,7 +194,10 @@ fn apply_actions(
                     .or(action.screen.clone())
                     .or(action.sequence.clone())
                     .or(action.spawner.clone()),
-                value: action.value.clone().or_else(|| action.time_scale.map(serde_json::Value::from)),
+                value: action
+                    .value
+                    .clone()
+                    .or_else(|| action.time_scale.map(serde_json::Value::from)),
             }
         })
         .collect()

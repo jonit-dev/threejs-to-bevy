@@ -205,15 +205,15 @@ sequenceDiagram
 
 **Implementation:**
 
-- [ ] Define `ShaderMaterial`/`Material.shader(...)` authoring shape and
+- [x] Define `ShaderMaterial`/`Material.shader(...)` authoring shape and
   structured-source JSON shape.
-- [ ] Add `kind: "shader"` with typed `program`, `uniforms`, `textures`,
+- [x] Add `kind: "shader"` with typed `program`, `uniforms`, `textures`,
   `inputs`, `outputs`, and material policy fields.
-- [ ] Keep legacy raw fields rejected with existing `TN_IR_SHADER_*` codes.
-- [ ] Add new diagnostics for unsupported DSL nodes, undeclared uniforms,
+- [x] Keep legacy raw fields rejected with existing `TN_IR_SHADER_*` codes.
+- [x] Add new diagnostics for unsupported DSL nodes, undeclared uniforms,
   undeclared textures, unsupported builtins, unsafe loops, and unsupported
   resource access.
-- [ ] Document exact v1 scope and deferrals.
+- [x] Document exact v1 scope and deferrals.
 
 **Tests Required:**
 

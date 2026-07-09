@@ -139,6 +139,160 @@ test("rendering should reject broad shader fields until promoted", async () => {
   }
 });
 
+test("should accept portable shader material declarations", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-material-portable-shader-"));
+  try {
+    await writeJson(root, "manifest.json", {
+      schema: "threenative.bundle",
+      version: "0.1.0",
+      name: "portable-shader-material",
+      requiredCapabilities: {},
+      entry: { world: "world.ir.json" },
+      files: { assets: "assets.manifest.json", materials: "materials.ir.json", targetProfile: "target.profile.json" },
+    });
+    await writeJson(root, "target.profile.json", { schema: "threenative.target-profile", version: "0.1.0", targets: ["web"] });
+    await writeJson(root, "world.ir.json", { schema: "threenative.world", version: "0.1.0", entities: [] });
+    await mkdir(join(root, "assets"), { recursive: true });
+    await writeFile(join(root, "assets/ramp.png"), "");
+    await writeJson(root, "assets.manifest.json", {
+      schema: "threenative.assets",
+      version: "0.1.0",
+      assets: [{ id: "tex.ramp", kind: "texture", format: "png", path: "assets/ramp.png" }],
+    });
+    await writeJson(root, "materials.ir.json", {
+      schema: "threenative.materials",
+      version: "0.1.0",
+      materials: [
+        {
+          id: "mat.shader",
+          kind: "shader",
+          alphaMode: "blend",
+          inputs: ["normal", "uv0", "elapsedTime"],
+          outputs: ["baseColor", "alpha"],
+          program: {
+            language: "threenative-shader-v1",
+            fragment: {
+              outputs: {
+                alpha: { kind: "literal", value: 0.9 },
+                baseColor: { kind: "uniform", uniform: "tint" },
+                emissive: { kind: "sampleTexture", texture: "ramp" },
+              },
+            },
+            vertex: {
+              displacement: {
+                amount: { kind: "uniform", uniform: "waveAmount" },
+                axis: "normal",
+              },
+            },
+          },
+          textures: [{ name: "ramp", asset: "tex.ramp" }],
+          uniforms: [
+            { name: "tint", type: "color", default: "#33ccff" },
+            { name: "waveAmount", type: "float", default: 0.1 },
+          ],
+        },
+      ],
+    });
+
+    const result = await validateBundle(root);
+
+    assert.equal(result.ok, true);
+    assert.deepEqual(result.diagnostics, []);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should reject raw backend shader payloads on shader materials", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-material-portable-shader-raw-"));
+  try {
+    await writeJson(root, "manifest.json", {
+      schema: "threenative.bundle",
+      version: "0.1.0",
+      name: "portable-shader-raw",
+      requiredCapabilities: {},
+      entry: { world: "world.ir.json" },
+      files: { assets: "assets.manifest.json", materials: "materials.ir.json", targetProfile: "target.profile.json" },
+    });
+    await writeJson(root, "target.profile.json", { schema: "threenative.target-profile", version: "0.1.0", targets: ["web"] });
+    await writeJson(root, "world.ir.json", { schema: "threenative.world", version: "0.1.0", entities: [] });
+    await writeJson(root, "assets.manifest.json", { schema: "threenative.assets", version: "0.1.0", assets: [] });
+    await writeJson(root, "materials.ir.json", {
+      schema: "threenative.materials",
+      version: "0.1.0",
+      materials: [
+        {
+          id: "mat.shader",
+          kind: "shader",
+          fragmentShader: "void main() {}",
+          program: {
+            language: "threenative-shader-v1",
+            fragment: { outputs: { baseColor: { kind: "literal", value: "#ffffff" } } },
+          },
+        },
+      ],
+    });
+
+    const result = await validateBundle(root);
+
+    assert.equal(result.ok, false);
+    assert.ok(result.diagnostics.some((diagnostic) => diagnostic.code === "TN_IR_SHADER_CUSTOM_UNSUPPORTED"));
+    assert.ok(result.diagnostics.some((diagnostic) => diagnostic.path.endsWith("/fragmentShader")));
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should reject undeclared shader bindings", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-material-portable-shader-binding-"));
+  try {
+    await writeJson(root, "manifest.json", {
+      schema: "threenative.bundle",
+      version: "0.1.0",
+      name: "portable-shader-binding",
+      requiredCapabilities: {},
+      entry: { world: "world.ir.json" },
+      files: { assets: "assets.manifest.json", materials: "materials.ir.json", targetProfile: "target.profile.json" },
+    });
+    await writeJson(root, "target.profile.json", { schema: "threenative.target-profile", version: "0.1.0", targets: ["web"] });
+    await writeJson(root, "world.ir.json", { schema: "threenative.world", version: "0.1.0", entities: [] });
+    await writeJson(root, "assets.manifest.json", { schema: "threenative.assets", version: "0.1.0", assets: [] });
+    await writeJson(root, "materials.ir.json", {
+      schema: "threenative.materials",
+      version: "0.1.0",
+      materials: [
+        {
+          id: "mat.shader",
+          kind: "shader",
+          program: {
+            language: "threenative-shader-v1",
+            fragment: {
+              outputs: {
+                baseColor: { kind: "uniform", uniform: "missingTint" },
+                emissive: { kind: "sampleTexture", texture: "missingTexture" },
+              },
+            },
+          },
+          uniforms: [{ name: "declaredTint", type: "color", default: "#ffffff" }],
+        },
+      ],
+    });
+
+    const result = await validateBundle(root);
+
+    assert.equal(result.ok, false);
+    assert.deepEqual(
+      result.diagnostics.filter((diagnostic) => diagnostic.code === "TN_IR_SHADER_BINDING_UNDECLARED").map((diagnostic) => diagnostic.path),
+      [
+        "materials.ir.json/materials/0/program/fragment/outputs/baseColor/uniform",
+        "materials.ir.json/materials/0/program/fragment/outputs/emissive/texture",
+      ],
+    );
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
 test("rendering should validate sun ambient fog sky and color management profile", () => {
   assert.deepEqual(validateAtmosphereProfile(makeProfile(), "environment.scene.json/atmosphere"), []);
 });
