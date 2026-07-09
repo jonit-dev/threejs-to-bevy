@@ -383,6 +383,7 @@ pub struct WorldIr {
     pub entities: Vec<WorldEntity>,
     #[serde(default)]
     pub events: HashMap<String, serde_json::Value>,
+    pub prefabs: Option<Vec<serde_json::Value>>,
     #[serde(default)]
     pub resources: HashMap<String, serde_json::Value>,
 }
@@ -781,6 +782,17 @@ pub struct AssetsManifest {
     pub schema: String,
     pub version: String,
     pub assets: Vec<AssetIr>,
+    pub groups: Option<Vec<AssetGroupIr>>,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AssetGroupIr {
+    pub failure_policy: Option<String>,
+    pub id: String,
+    pub optional: Option<Vec<String>>,
+    pub required: Vec<String>,
+    pub timeout_ms: Option<f32>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -998,6 +1010,33 @@ pub struct TargetProfile {
     pub schema: String,
     pub version: String,
     pub targets: Vec<String>,
+    pub budgets: Option<TargetProfileBudgets>,
+    pub performance: Option<TargetProfilePerformance>,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TargetProfileBudgets {
+    pub max_asset_bytes: Option<u64>,
+    pub max_bundle_bytes: Option<u64>,
+    pub max_terrain_cells: Option<u64>,
+    pub max_terrain_splat_layers: Option<u64>,
+    pub supported_model_formats: Option<Vec<String>>,
+    pub supported_texture_formats: Option<Vec<String>>,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TargetProfilePerformance {
+    pub average_frame_ms: TargetProfilePerformanceThreshold,
+    pub draw_calls: TargetProfilePerformanceThreshold,
+    pub updated_at: String,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct TargetProfilePerformanceThreshold {
+    pub max: f32,
+    pub warn: Option<f32>,
 }
 
 #[derive(Clone, Debug, Deserialize)]

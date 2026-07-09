@@ -10,9 +10,31 @@
     "assets": {
       "type": "array",
       "items": { "$ref": "#/$defs/asset" }
+    },
+    "groups": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/assetGroup" }
     }
   },
   "$defs": {
+    "assetGroup": {
+      "type": "object",
+      "required": ["id", "required"],
+      "additionalProperties": false,
+      "properties": {
+        "failurePolicy": { "enum": ["fail", "warn"] },
+        "id": { "type": "string", "minLength": 1 },
+        "optional": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "required": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "timeoutMs": { "type": "number", "minimum": 0 }
+      }
+    },
     "asset": {
       "oneOf": [
         {

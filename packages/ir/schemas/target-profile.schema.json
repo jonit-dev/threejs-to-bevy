@@ -11,6 +11,45 @@
       "type": "array",
       "minItems": 1,
       "items": { "enum": ["web", "desktop"] }
+    },
+    "budgets": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "maxAssetBytes": { "type": "integer", "minimum": 0 },
+        "maxBundleBytes": { "type": "integer", "minimum": 0 },
+        "maxTerrainCells": { "type": "integer", "minimum": 0 },
+        "maxTerrainSplatLayers": { "type": "integer", "minimum": 0 },
+        "supportedModelFormats": {
+          "type": "array",
+          "items": { "enum": ["glb", "gltf"] }
+        },
+        "supportedTextureFormats": {
+          "type": "array",
+          "items": { "enum": ["basis", "bc", "dds", "etc2", "astc", "jpeg", "ktx2", "png", "webp"] }
+        }
+      }
+    },
+    "performance": {
+      "type": "object",
+      "required": ["averageFrameMs", "drawCalls", "updatedAt"],
+      "additionalProperties": false,
+      "properties": {
+        "averageFrameMs": { "$ref": "#/$defs/performanceThreshold" },
+        "drawCalls": { "$ref": "#/$defs/performanceThreshold" },
+        "updatedAt": { "type": "string", "minLength": 1 }
+      }
+    }
+  },
+  "$defs": {
+    "performanceThreshold": {
+      "type": "object",
+      "required": ["max"],
+      "additionalProperties": false,
+      "properties": {
+        "max": { "type": "number", "minimum": 0 },
+        "warn": { "type": "number", "minimum": 0 }
+      }
     }
   }
 }

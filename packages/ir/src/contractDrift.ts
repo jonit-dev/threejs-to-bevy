@@ -18,6 +18,15 @@ export function requiredFieldsFromJsonSchema(schema: unknown, source: string): I
   return { fields: new Set(required), source };
 }
 
+export function optionalFieldsFromJsonSchema(schema: unknown, source: string): IContractSurface {
+  if (!isRecord(schema) || !isRecord(schema.properties)) {
+    return { fields: new Set(), source };
+  }
+  const required = requiredFieldsFromJsonSchema(schema, source).fields;
+  const fields = new Set(Object.keys(schema.properties).filter((field) => !required.has(field)));
+  return { fields, source };
+}
+
 export function requiredFieldsFromTypeScriptInterface(sourceText: string, interfaceName: string, source: string): IContractSurface {
   const sourceFile = ts.createSourceFile(source, sourceText, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
   const declaration = findInterface(sourceFile, interfaceName);
@@ -27,6 +36,25 @@ export function requiredFieldsFromTypeScriptInterface(sourceText: string, interf
   const fields = new Set<string>();
   for (const member of declaration.members) {
     if (!ts.isPropertySignature(member) || member.questionToken !== undefined) {
+      continue;
+    }
+    const name = propertyNameText(member.name);
+    if (name !== undefined) {
+      fields.add(name);
+    }
+  }
+  return { fields, source };
+}
+
+export function optionalFieldsFromTypeScriptInterface(sourceText: string, interfaceName: string, source: string): IContractSurface {
+  const sourceFile = ts.createSourceFile(source, sourceText, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
+  const declaration = findInterface(sourceFile, interfaceName);
+  if (declaration === undefined) {
+    throw new Error(`Could not find TypeScript interface ${interfaceName} in ${source}.`);
+  }
+  const fields = new Set<string>();
+  for (const member of declaration.members) {
+    if (!ts.isPropertySignature(member) || member.questionToken === undefined) {
       continue;
     }
     const name = propertyNameText(member.name);
@@ -64,6 +92,33 @@ export function requiredFieldsFromRustStruct(sourceText: string, structName: str
   return { fields, source };
 }
 
+export function optionalFieldsFromRustStruct(sourceText: string, structName: string, source: string): IContractSurface {
+  const body = rustStructBody(sourceText, structName, source);
+  const fields = new Set<string>();
+  let pendingDefault = false;
+  let pendingRename: string | undefined;
+  for (const rawLine of body.split("\n")) {
+    const line = rawLine.trim();
+    if (line.startsWith("#[serde(") && /\bdefault\b/.test(line)) {
+      pendingDefault = true;
+    }
+    const rename = line.match(/#\[serde\([^)]*rename\s*=\s*"([^"]+)"/);
+    if (rename?.[1] !== undefined) {
+      pendingRename = rename[1];
+    }
+    const field = line.match(/^pub\s+([A-Za-z_][A-Za-z0-9_]*):\s*([^,]+),/);
+    if (field?.[1] === undefined || field[2] === undefined) {
+      continue;
+    }
+    if (field[2].includes("Option<") || pendingDefault) {
+      fields.add(pendingRename ?? snakeToCamel(field[1]));
+    }
+    pendingDefault = false;
+    pendingRename = undefined;
+  }
+  return { fields, source };
+}
+
 export function compareRequiredFields(input: {
   document: string;
   expected: IContractSurface;
@@ -88,6 +143,38 @@ export function compareRequiredFields(input: {
         document: input.document,
         field,
         message: `${input.document}: ${input.representation} requires field '${field}' but ${input.expected.source} does not.`,
+        representation: input.representation,
+        source: input.actual.source,
+      });
+    }
+  }
+  return diagnostics;
+}
+
+export function compareOptionalFields(input: {
+  document: string;
+  expected: IContractSurface;
+  representation: string;
+  actual: IContractSurface;
+}): IContractDriftDiagnostic[] {
+  const diagnostics: IContractDriftDiagnostic[] = [];
+  for (const field of [...input.expected.fields].sort()) {
+    if (!input.actual.fields.has(field)) {
+      diagnostics.push({
+        document: input.document,
+        field,
+        message: `${input.document}: ${input.representation} is missing optional field '${field}' from ${input.expected.source}.`,
+        representation: input.representation,
+        source: input.actual.source,
+      });
+    }
+  }
+  for (const field of [...input.actual.fields].sort()) {
+    if (!input.expected.fields.has(field)) {
+      diagnostics.push({
+        document: input.document,
+        field,
+        message: `${input.document}: ${input.representation} has optional field '${field}' but ${input.expected.source} does not.`,
         representation: input.representation,
         source: input.actual.source,
       });

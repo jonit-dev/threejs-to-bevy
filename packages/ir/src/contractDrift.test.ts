@@ -5,7 +5,11 @@ import test from "node:test";
 import { fileURLToPath } from "node:url";
 
 import {
+  compareOptionalFields,
   compareRequiredFields,
+  optionalFieldsFromJsonSchema,
+  optionalFieldsFromRustStruct,
+  optionalFieldsFromTypeScriptInterface,
   requiredFieldsFromJsonSchema,
   requiredFieldsFromRustStruct,
   requiredFieldsFromTypeScriptInterface,
@@ -198,6 +202,37 @@ test("contractDrift should keep Bevy loader required fields aligned for runtime 
         actual: requiredFieldsFromRustStruct(loaderTypes, item.structName, "runtime-bevy/crates/threenative_loader/src/types.rs"),
         document: item.document,
         expected: requiredFieldsFromJsonSchema(await readJson(resolve(packageRoot, "schemas", item.schema)), item.schema),
+        representation: "Bevy loader struct",
+      }),
+    );
+  }
+
+  assert.deepEqual(diagnostics, []);
+});
+
+test("contractDrift should keep optional document fields aligned across schema TypeScript and Rust", async () => {
+  const loaderTypes = await readFile(loaderTypesPath, "utf8");
+  const diagnostics = [];
+
+  for (const item of schemaBackedTypeScriptCases) {
+    const schema = optionalFieldsFromJsonSchema(await readJson(resolve(packageRoot, "schemas", item.schema)), item.schema);
+    diagnostics.push(
+      ...compareOptionalFields({
+        actual: optionalFieldsFromTypeScriptInterface(await readFile(resolve(packageRoot, item.source), "utf8"), item.interfaceName, item.source),
+        document: item.document,
+        expected: schema,
+        representation: "TypeScript interface",
+      }),
+    );
+  }
+
+  for (const item of bevyRuntimeDocumentCases) {
+    const schema = optionalFieldsFromJsonSchema(await readJson(resolve(packageRoot, "schemas", item.schema)), item.schema);
+    diagnostics.push(
+      ...compareOptionalFields({
+        actual: optionalFieldsFromRustStruct(loaderTypes, item.structName, "runtime-bevy/crates/threenative_loader/src/types.rs"),
+        document: item.document,
+        expected: schema,
         representation: "Bevy loader struct",
       }),
     );

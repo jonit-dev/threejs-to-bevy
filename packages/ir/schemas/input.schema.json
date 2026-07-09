@@ -41,9 +41,60 @@
           "value": { "$ref": "#/$defs/binding" }
         }
       }
+    },
+    "controlsSettings": {
+      "type": "object",
+      "required": ["profileId", "rows"],
+      "additionalProperties": false,
+      "properties": {
+        "profileId": { "type": "string", "minLength": 1 },
+        "rows": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/controlsSettingsRow" }
+        }
+      }
+    },
+    "persistedBindingOverrides": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/persistedBindingOverride" }
     }
   },
   "$defs": {
+    "controlsSettingsRow": {
+      "type": "object",
+      "required": ["actionOrAxisId", "defaultBindings", "kind"],
+      "additionalProperties": false,
+      "properties": {
+        "actionOrAxisId": { "type": "string", "minLength": 1 },
+        "axisSlot": { "enum": ["negative", "positive", "value"] },
+        "captureState": { "enum": ["applied", "conflict-confirmation", "idle", "rejected", "reset-to-default", "waiting-for-input"] },
+        "defaultBindings": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/binding" }
+        },
+        "kind": { "enum": ["action", "axis"] },
+        "uiNodeId": { "type": "string", "minLength": 1 }
+      }
+    },
+    "persistedBindingOverride": {
+      "type": "object",
+      "required": ["actionOrAxisId", "control", "device", "profileId", "updatedAt"],
+      "additionalProperties": false,
+      "properties": {
+        "actionOrAxisId": { "type": "string", "minLength": 1 },
+        "axisSlot": { "enum": ["negative", "positive", "value"] },
+        "control": { "type": "string", "minLength": 1 },
+        "deadzone": { "type": "number", "minimum": 0 },
+        "device": { "enum": ["keyboard", "pointer", "touch", "gamepad"] },
+        "modifiers": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "profileId": { "type": "string", "minLength": 1 },
+        "scale": { "type": "number" },
+        "updatedAt": { "type": "string", "minLength": 1 }
+      }
+    },
     "binding": {
       "oneOf": [
         {
