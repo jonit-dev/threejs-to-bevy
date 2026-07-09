@@ -85,7 +85,7 @@ function normalize(value) {
 async function writeReport(report) {
   await writeJson(targets.reportPath, {
     generatedBy: "scripts/verify-character-physics-contacts.mjs",
-    prd: "docs/PRDs/proof-first-engine-loop-2026-07-05/PRD-013-portable-scripting-character-physics-contacts.md",
+    prd: "docs/PRDs/done/PRD-013-portable-scripting-character-physics-contacts.md",
     schema: "threenative.character-physics-contacts-verification",
     ...report,
   });

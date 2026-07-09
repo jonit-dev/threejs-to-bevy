@@ -82,7 +82,7 @@ planner/writer separation.
   data-first `Spawner` component, bounded `GameFlow` state machines, and a
   typed-track `Sequence` timeline so waves, macro game state, and cutscenes
   need zero script, with web/Bevy conformance traces.
-- [Portable Scripting Character and Physics Contacts](proof-first-engine-loop-2026-07-05/PRD-013-portable-scripting-character-physics-contacts.md):
+- [Portable Scripting Character and Physics Contacts](done/PRD-013-portable-scripting-character-physics-contacts.md):
   richer primitive contact filtering, character movement observations, slope
   and push semantics, and stable diagnostics for unsupported physics breadth.
 - [Portable Scripting Delayed Commands and Bounded Scheduling](done/PRD-011-portable-scripting-delayed-commands-scheduling.md):

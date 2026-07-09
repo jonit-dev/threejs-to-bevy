@@ -43,7 +43,7 @@ camera, objective, spawn, and state-machine patterns instead of agent-invented
 - `docs/PRDs/done/other/agent-friendly-3d-game-creation-contract.md`
 - `docs/PRDs/done/other/script-stdlib-common-gameplay-helpers.md`
 - `docs/PRDs/other/agent-game-planning-template-and-init-scaffold.md`
-- `docs/PRDs/proof-first-engine-loop-2026-07-05/PRD-013-portable-scripting-character-physics-contacts.md`
+- `docs/PRDs/done/PRD-013-portable-scripting-character-physics-contacts.md`
 - `docs/contracts/game-production-workflow.md`
 - `docs/contracts/scripting.md`
 - `docs/workflows/agent-game-creation.md`
