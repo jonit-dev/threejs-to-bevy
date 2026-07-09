@@ -60,6 +60,14 @@ infrastructure bundle lives under
 refactor, and packaging work stays in `other/` until pulled into an active
 execution bundle.
 
+### Systems Code Quality Remediation (2026-07-08)
+
+The [systems code quality remediation bundle](other/system-code-quality-remediation-2026-07-08/README.md)
+slices the four urgent rows from the deep diagnostic into ordered PRDs:
+native scripted spawn/despawn live reconciliation, native/web loop scheduling
+contract fixtures, IR document contract truth hardening, and compiler bundle
+planner/writer separation.
+
 ### Runtime And Gameplay Parity
 
 - [Agent Proof Loop Scenario Ratchet](done/PRD-001-agent-proof-loop-scenario-ratchet.md):

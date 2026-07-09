@@ -14,6 +14,8 @@ Repo-wide instructions for AI coding agents working on ThreeNative.
   `docs/status/capabilities/*.md` file plus the one-line index entry in
   `docs/STATUS.md`; update `docs/bevy-feature-parity.md` when Bevy parity
   claims or evidence links change.
+- Update `docs/status/SYSTEMS_CODE_QUALITY_STATUS.md` when adding a new system
+  or when you find systemic code-quality, architecture, or technical-debt risk.
 - Update `docs/cookbook` and rerun `pnpm verify:cookbook` when reusable
   authoring patterns or CLI mutations change.
 - Finished PRDs must be moved from active planning folders to
