@@ -230,7 +230,7 @@ export const CLI_COMMAND_REGISTRY = defineCommandRegistry({
   runtime: {
     description: "Create and mutate structured runtime config source documents.",
     implemented: true,
-    usage: "tn runtime create <runtime-id> [--render-profile parity|balanced|cinematic|stylized] [--project <path>] [--json]\n              tn runtime set-window <runtime-id> [--width <n>] [--height <n>] [--title <title>] [--project <path>] [--json]\n              tn runtime set-rendering <runtime-id> [--antialias none|msaa2|msaa4|msaa8|fxaa|taa|smaa] [--render-profile parity|balanced|cinematic|stylized] [--bloom true|false] [--bloom-intensity <n>] [--bloom-threshold <n>] [--render-path forward] [--project <path>] [--json]",
+    usage: "tn runtime create <runtime-id> [--render-profile parity|balanced|cinematic|stylized] [--project <path>] [--json]\n              tn runtime set-window <runtime-id> [--width <n>] [--height <n>] [--title <title>] [--project <path>] [--json]\n              tn runtime set-rendering <runtime-id> [--antialias none|msaa2|msaa4|msaa8|fxaa|taa|smaa] [--render-profile parity|balanced|cinematic|stylized] [--bloom true|false] [--ambient-occlusion true|false] [--screen-space-reflections true|false] [--motion-blur true|false] [--screen-space-global-illumination true|false] [--render-path forward] [--project <path>] [--json]",
   },
   target: {
     description: "Create and mutate structured target profile source documents.",

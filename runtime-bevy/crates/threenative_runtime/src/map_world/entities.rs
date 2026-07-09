@@ -294,6 +294,10 @@ fn spawn_entity(
             }
         }
         insert_camera_antialias(&mut spawned, runtime_config);
+        insert_camera_ambient_occlusion(&mut spawned, runtime_config);
+        insert_camera_depth_of_field(&mut spawned, runtime_config);
+        insert_camera_motion_blur(&mut spawned, runtime_config);
+        insert_camera_screen_space_reflections(&mut spawned, runtime_config);
         let camera_id = spawned.id();
         drop(spawned);
         if is_active {
@@ -676,6 +680,100 @@ fn insert_shadow_markers(
     }
     if renderer.receive_shadow != Some(true) {
         spawned.insert(NotShadowReceiver);
+    }
+}
+
+fn insert_camera_depth_of_field(
+    spawned: &mut EntityWorldMut<'_>,
+    runtime_config: Option<&RuntimeConfigIr>,
+) {
+    let Some(depth_of_field) = runtime_config
+        .and_then(|config| config.renderer.as_ref())
+        .and_then(|renderer| renderer.depth_of_field.as_ref())
+    else {
+        return;
+    };
+    if !depth_of_field.enabled {
+        return;
+    }
+    spawned.insert(DepthOfFieldSettings {
+        aperture_f_stops: native_depth_of_field_aperture(depth_of_field.aperture),
+        focal_distance: depth_of_field.focus_distance,
+        max_circle_of_confusion_diameter: native_depth_of_field_max_blur(depth_of_field.max_blur),
+        max_depth: f32::INFINITY,
+        mode: DepthOfFieldMode::Gaussian,
+        ..Default::default()
+    });
+}
+
+fn native_depth_of_field_aperture(aperture: f32) -> f32 {
+    (1.0 / (aperture.max(0.001) * 250.0)).clamp(0.08, 16.0)
+}
+
+fn native_depth_of_field_max_blur(max_blur: f32) -> f32 {
+    (max_blur * 2560.0).clamp(1.0, 64.0)
+}
+
+fn insert_camera_motion_blur(
+    spawned: &mut EntityWorldMut<'_>,
+    runtime_config: Option<&RuntimeConfigIr>,
+) {
+    let Some(motion_blur) = runtime_config
+        .and_then(|config| config.renderer.as_ref())
+        .and_then(|renderer| renderer.motion_blur.as_ref())
+    else {
+        return;
+    };
+    if !motion_blur.enabled {
+        return;
+    }
+    spawned.insert(MotionBlurBundle {
+        motion_blur: MotionBlur {
+            shutter_angle: motion_blur.shutter_angle,
+            samples: native_motion_blur_samples(motion_blur.shutter_angle),
+        },
+        ..Default::default()
+    });
+}
+
+fn native_motion_blur_samples(shutter_angle: f32) -> u32 {
+    if shutter_angle >= 0.75 {
+        2
+    } else {
+        1
+    }
+}
+
+fn insert_camera_screen_space_reflections(
+    spawned: &mut EntityWorldMut<'_>,
+    runtime_config: Option<&RuntimeConfigIr>,
+) {
+    let Some(screen_space_reflections) = runtime_config
+        .and_then(|config| config.renderer.as_ref())
+        .and_then(|renderer| renderer.screen_space_reflections.as_ref())
+    else {
+        return;
+    };
+    if !screen_space_reflections.enabled {
+        return;
+    }
+    spawned.insert(ScreenSpaceReflectionsBundle {
+        settings: ScreenSpaceReflectionsSettings {
+            perceptual_roughness_threshold: screen_space_reflections.roughness_limit,
+            linear_steps: native_screen_space_reflections_steps(
+                screen_space_reflections.quality.as_str(),
+            ),
+            ..Default::default()
+        },
+        ..Default::default()
+    });
+}
+
+fn native_screen_space_reflections_steps(quality: &str) -> u32 {
+    match quality {
+        "low" => 8,
+        "high" => 32,
+        _ => 16,
     }
 }
 

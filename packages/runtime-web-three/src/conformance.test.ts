@@ -366,6 +366,12 @@ test("should report audio playback conformance observations", async () => {
 
 test("should report V9 environment lighting, light budgets, and renderer quality observations", async () => {
   const bundle = await loadBundle(resolve(process.cwd(), "../ir/fixtures/conformance/rendering-lights/game.bundle"));
+  if (bundle.runtimeConfig?.renderer !== undefined) {
+    bundle.runtimeConfig.renderer.ambientOcclusion = { enabled: true, intensity: 1.2, mode: "screen-space", quality: "medium", radius: 3 };
+    bundle.runtimeConfig.renderer.motionBlur = { enabled: true, shutterAngle: 0.5 };
+    bundle.runtimeConfig.renderer.screenSpaceGlobalIllumination = { enabled: false, quality: "low" };
+    bundle.runtimeConfig.renderer.screenSpaceReflections = { enabled: true, quality: "medium", roughnessLimit: 0.45 };
+  }
   const mapped = mapWorld(bundle);
   const report = reportWebConformance(bundle, mapped, "rendering-lights");
 
@@ -390,8 +396,24 @@ test("should report V9 environment lighting, light budgets, and renderer quality
   assert.equal(report.runtimeConfig?.renderer?.renderPath, "forward");
   assert.deepEqual(report.runtimeConfig?.renderer?.colorGrading, { contrast: 0.1, exposure: 1.1, saturation: 0.9, toneMapping: "aces" });
   assert.deepEqual(report.runtimeConfig?.renderer?.depthOfField, { aperture: 0.025, enabled: true, focusDistance: 8, maxBlur: 0.012 });
-  assert.deepEqual(report.runtimeConfig?.renderer?.postProcessing?.applied, ["colorGrading", "depthOfField"]);
-  assert.deepEqual(report.runtimeConfig?.renderer?.postProcessing?.skipped, []);
+  assert.deepEqual(report.runtimeConfig?.renderer?.ambientOcclusion, { enabled: true, intensity: 1.2, mode: "screen-space", quality: "medium", radius: 3 });
+  assert.deepEqual(report.runtimeConfig?.renderer?.featureReports?.map((feature) => [feature.feature, feature.status, feature.diagnostic?.code]), [
+    ["renderer.ambientOcclusion", "baseline", undefined],
+    ["renderer.depthOfField", "baseline", undefined],
+    ["renderer.screenSpaceReflections", "baseline", undefined],
+    ["renderer.motionBlur", "baseline", undefined],
+    ["renderer.screenSpaceGlobalIllumination", "baseline", undefined],
+  ]);
+  assert.deepEqual(
+    report.runtimeConfig?.renderer?.featureReports?.find((feature) => feature.feature === "renderer.screenSpaceReflections"),
+    { appliedMode: "screen-space-planar", feature: "renderer.screenSpaceReflections", requestedMode: "screen-space", status: "baseline" },
+  );
+  assert.deepEqual(
+    report.runtimeConfig?.renderer?.featureReports?.find((feature) => feature.feature === "renderer.motionBlur"),
+    { appliedMode: "temporal-accumulation", feature: "renderer.motionBlur", requestedMode: "shutter", status: "baseline" },
+  );
+  assert.deepEqual(report.runtimeConfig?.renderer?.postProcessing?.applied, ["colorGrading", "ambientOcclusion", "depthOfField", "screenSpaceReflections", "motionBlur"]);
+  assert.deepEqual(report.runtimeConfig?.renderer?.postProcessing?.skipped?.map((entry) => entry.feature), []);
 });
 
 test("should report promoted render look profile settings", async () => {

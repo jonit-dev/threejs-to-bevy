@@ -1,0 +1,41 @@
+{
+  "schema": "threenative.assets",
+  "version": "0.1.0",
+  "assets": [
+    {
+      "id": "mesh.floor",
+      "kind": "mesh",
+      "format": "generated",
+      "primitive": "box",
+      "size": [5.6, 0.08, 5.4]
+    },
+    {
+      "id": "mesh.backWall",
+      "kind": "mesh",
+      "format": "generated",
+      "primitive": "box",
+      "size": [5.6, 2.8, 0.08]
+    },
+    {
+      "id": "mesh.strip.horizontal",
+      "kind": "mesh",
+      "format": "generated",
+      "primitive": "box",
+      "size": [1.45, 0.16, 0.06]
+    },
+    {
+      "id": "mesh.strip.vertical",
+      "kind": "mesh",
+      "format": "generated",
+      "primitive": "box",
+      "size": [0.16, 0.9, 0.06]
+    },
+    {
+      "id": "mesh.plinth",
+      "kind": "mesh",
+      "format": "generated",
+      "primitive": "box",
+      "size": [0.72, 0.48, 0.72]
+    }
+  ]
+}

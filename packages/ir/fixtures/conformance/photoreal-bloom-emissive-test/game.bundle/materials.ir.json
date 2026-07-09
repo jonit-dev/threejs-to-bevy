@@ -1,0 +1,71 @@
+{
+  "schema": "threenative.materials",
+  "version": "0.1.0",
+  "materials": [
+    {
+      "id": "mat.room",
+      "kind": "standard",
+      "color": "#465766",
+      "metalness": 0,
+      "roughness": 0.78
+    },
+    {
+      "id": "mat.plinth",
+      "kind": "standard",
+      "color": "#3d4652",
+      "metalness": 0.1,
+      "roughness": 0.5
+    },
+    {
+      "id": "mat.background.blue",
+      "kind": "extended",
+      "color": "#008df6",
+      "extension": {
+        "doubleSided": true,
+        "preset": "unlitMasked"
+      }
+    },
+    {
+      "id": "mat.neon.cyan",
+      "kind": "standard",
+      "color": "#05070a",
+      "emissive": "#33ddff",
+      "emissiveBloom": {
+        "enabled": true,
+        "intensity": 1.2,
+        "threshold": 0.5
+      },
+      "emissiveIntensity": 3.5,
+      "metalness": 0,
+      "roughness": 0.3
+    },
+    {
+      "id": "mat.neon.magenta",
+      "kind": "standard",
+      "color": "#08050a",
+      "emissive": "#ff3bd4",
+      "emissiveBloom": {
+        "enabled": true,
+        "intensity": 1,
+        "threshold": 0.45
+      },
+      "emissiveIntensity": 3,
+      "metalness": 0,
+      "roughness": 0.28
+    },
+    {
+      "id": "mat.neon.warm",
+      "kind": "standard",
+      "color": "#0a0804",
+      "emissive": "#ffd15a",
+      "emissiveBloom": {
+        "enabled": true,
+        "intensity": 0.9,
+        "threshold": 0.4
+      },
+      "emissiveIntensity": 2.6,
+      "metalness": 0,
+      "roughness": 0.32
+    }
+  ]
+}

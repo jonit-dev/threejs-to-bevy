@@ -183,7 +183,24 @@ test("material, runtime, and system MCP tools delegate to CLI JSON operation gro
 
   try {
     const material = await callMcp(root, "material.set", { alphaMode: "blend", color: "#ffcc00", materialId: "kart", roughness: 0.35 });
-    const runtime = await callMcp(root, "runtime.set_rendering", { bloomEnabled: true, renderLookExposure: 1.1, renderProfile: "balanced", runtimeId: "default" });
+    const runtime = await callMcp(root, "runtime.set_rendering", {
+      ambientOcclusionEnabled: true,
+      ambientOcclusionIntensity: 1.2,
+      ambientOcclusionMode: "screen-space",
+      ambientOcclusionQuality: "medium",
+      ambientOcclusionRadius: 3,
+      bloomEnabled: true,
+      motionBlurEnabled: true,
+      motionBlurShutterAngle: 0.5,
+      renderLookExposure: 1.1,
+      renderProfile: "balanced",
+      runtimeId: "default",
+      screenSpaceGlobalIlluminationEnabled: false,
+      screenSpaceGlobalIlluminationQuality: "low",
+      screenSpaceReflectionsEnabled: true,
+      screenSpaceReflectionsQuality: "medium",
+      screenSpaceReflectionsRoughnessLimit: 0.45,
+    });
     const system = await callMcp(root, "system.attach_script", { exportName: "raceController", modulePath: "src/scripts/race.ts", systemId: "race" });
 
     assert.equal(material.isError, false);
@@ -192,6 +209,9 @@ test("material, runtime, and system MCP tools delegate to CLI JSON operation gro
     assert.deepEqual(material.cli.argv.slice(0, 9), ["material", "set", "kart", "--color", "#ffcc00", "--roughness", "0.35", "--alpha-mode", "blend"]);
     assert.equal(runtime.cli.argv.includes("--bloom"), true);
     assert.equal(runtime.cli.argv.includes("true"), true);
+    assert.equal(runtime.cli.argv.includes("--ambient-occlusion"), true);
+    assert.equal(runtime.cli.argv.includes("--screen-space-reflections-roughness-limit"), true);
+    assert.equal(runtime.cli.argv.includes("--motion-blur-shutter-angle"), true);
     assert.equal(runtime.cli.argv.includes("--render-profile"), true);
     assert.deepEqual((material.content as IJsonPayload).filesWritten, ["content/materials/kart.materials.json"]);
     assert.deepEqual((runtime.content as IJsonPayload).filesWritten, ["content/runtime/default.runtime.json"]);

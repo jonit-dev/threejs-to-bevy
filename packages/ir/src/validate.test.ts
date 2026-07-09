@@ -897,9 +897,13 @@ test("should accept promoted runtime renderer quality metadata", async () => {
     await writeBundle(root, { current: 100, max: 100 });
     await writeRuntimeConfig(root, {
       antialias: "msaa4",
+      ambientOcclusion: { enabled: true, intensity: 1.2, mode: "screen-space", quality: "medium", radius: 3 },
       colorGrading: { contrast: 0.15, exposure: 1.1, saturation: 0.9, toneMapping: "aces" },
       depthOfField: { aperture: 0.03, enabled: true, focusDistance: 12, maxBlur: 0.02 },
+      motionBlur: { enabled: true, shutterAngle: 0.5 },
       renderPath: "forward",
+      screenSpaceGlobalIllumination: { enabled: false, quality: "low" },
+      screenSpaceReflections: { enabled: true, quality: "medium", roughnessLimit: 0.45 },
     });
 
     const result = await validateBundle(root);
@@ -1054,10 +1058,8 @@ test("should reject unsupported advanced renderer requests with stable diagnosti
       decals: true,
       deferred: true,
       mirrors: true,
-      motionBlur: true,
       motionVectors: true,
       renderPath: "deferred",
-      screenSpaceReflections: true,
       ssr: true,
       virtualGeometry: true,
       volumetricFog: true,
@@ -1076,9 +1078,7 @@ test("should reject unsupported advanced renderer requests with stable diagnosti
         ["TN_IR_RENDERER_ADVANCED_FEATURE_UNSUPPORTED", "runtime.config.json/renderer/decals"],
         ["TN_IR_RENDERER_ADVANCED_FEATURE_UNSUPPORTED", "runtime.config.json/renderer/deferred"],
         ["TN_IR_RENDERER_ADVANCED_FEATURE_UNSUPPORTED", "runtime.config.json/renderer/mirrors"],
-        ["TN_IR_RENDERER_ADVANCED_FEATURE_UNSUPPORTED", "runtime.config.json/renderer/motionBlur"],
         ["TN_IR_RENDERER_ADVANCED_FEATURE_UNSUPPORTED", "runtime.config.json/renderer/motionVectors"],
-        ["TN_IR_RENDERER_ADVANCED_FEATURE_UNSUPPORTED", "runtime.config.json/renderer/screenSpaceReflections"],
         ["TN_IR_RENDERER_ADVANCED_FEATURE_UNSUPPORTED", "runtime.config.json/renderer/ssr"],
         ["TN_IR_RENDERER_ADVANCED_FEATURE_UNSUPPORTED", "runtime.config.json/renderer/virtualGeometry"],
         ["TN_IR_RENDERER_ADVANCED_FEATURE_UNSUPPORTED", "runtime.config.json/renderer/volumetricFog"],
@@ -1092,16 +1092,45 @@ test("should reject unsupported advanced renderer requests with stable diagnosti
       ["deterministic histogram policy", "web/native exposure convergence report", "mobile fallback budget"],
     );
     assert.deepEqual(
-      result.diagnostics.find((diagnostic) => diagnostic.path === "runtime.config.json/renderer/motionBlur")?.limit,
-      ["shutter/sample semantics", "motion-vector or authored approximation policy", "video/screenshot proof"],
-    );
-    assert.deepEqual(
       result.diagnostics.find((diagnostic) => diagnostic.path === "runtime.config.json/renderer/mirrors")?.limit,
       ["material/reflection intent contract", "non-SSR fallback tier", "web/native screenshot evidence"],
     );
     assert.equal(
       result.diagnostics.find((diagnostic) => diagnostic.path === "runtime.config.json/renderer/renderPath")?.suggestion?.includes("target-profile render-path policy"),
       true,
+    );
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should reject invalid portable renderer feature settings", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-ir-runtime-renderer-features-invalid-"));
+  try {
+    await writeBundle(root, { current: 100, max: 100 });
+    await writeRuntimeConfig(root, {
+      antialias: "msaa4",
+      ambientOcclusion: { enabled: "yes", intensity: 5, mode: "raytraced", quality: "ultra", radius: -1 },
+      motionBlur: { enabled: true, shutterAngle: 2 },
+      screenSpaceGlobalIllumination: { enabled: true, quality: "high" },
+      screenSpaceReflections: { enabled: true, quality: "medium", roughnessLimit: 1.5 },
+    });
+
+    const result = await validateBundle(root);
+
+    assert.equal(result.ok, false);
+    assert.deepEqual(
+      result.diagnostics.map((diagnostic) => [diagnostic.code, diagnostic.path]),
+      [
+        ["TN_RENDER_FEATURE_UNSUPPORTED", "runtime.config.json/renderer/ambientOcclusion/enabled"],
+        ["TN_RENDER_FEATURE_UNSUPPORTED", "runtime.config.json/renderer/ambientOcclusion/mode"],
+        ["TN_RENDER_FEATURE_UNSUPPORTED", "runtime.config.json/renderer/ambientOcclusion/radius"],
+        ["TN_RENDER_FEATURE_UNSUPPORTED", "runtime.config.json/renderer/ambientOcclusion/intensity"],
+        ["TN_RENDER_FEATURE_UNSUPPORTED", "runtime.config.json/renderer/ambientOcclusion/quality"],
+        ["TN_RENDER_FEATURE_UNSUPPORTED", "runtime.config.json/renderer/screenSpaceReflections/roughnessLimit"],
+        ["TN_RENDER_FEATURE_UNSUPPORTED", "runtime.config.json/renderer/motionBlur/shutterAngle"],
+        ["TN_RENDER_FEATURE_UNSUPPORTED", "runtime.config.json/renderer/screenSpaceGlobalIllumination/quality"],
+      ],
     );
   } finally {
     await rm(root, { force: true, recursive: true });

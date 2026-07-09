@@ -1,6 +1,10 @@
 import * as THREE from "three";
 import { EffectComposer } from "three/examples/jsm/postprocessing/EffectComposer.js";
+import { BokehPass } from "three/examples/jsm/postprocessing/BokehPass.js";
 import { RenderPass } from "three/examples/jsm/postprocessing/RenderPass.js";
+import { GTAOPass } from "three/examples/jsm/postprocessing/GTAOPass.js";
+import { OutputPass } from "three/examples/jsm/postprocessing/OutputPass.js";
+import { FullScreenQuad, Pass } from "three/examples/jsm/postprocessing/Pass.js";
 import { ShaderPass } from "three/examples/jsm/postprocessing/ShaderPass.js";
 import { UnrealBloomPass } from "three/examples/jsm/postprocessing/UnrealBloomPass.js";
 import type { IAssetsManifest, IAtmosphereProfileIr, ICameraClear, IMaterialsIr, IRuntimeConfigIr, IWorldIr, RenderLookProfileName } from "@threenative/ir";
@@ -145,11 +149,31 @@ export interface IWebBloomSettings {
   threshold: number;
 }
 
+export interface IWebAmbientOcclusionSettings {
+  enabled: boolean;
+  intensity: number;
+  kernelSize: number;
+  maxDistance: number;
+  minDistance: number;
+  radius: number;
+}
+
 export interface IWebDepthOfFieldSettings {
   aperture: number;
   enabled: boolean;
   focusDistance: number;
   maxBlur: number;
+}
+
+export interface IWebMotionBlurSettings {
+  enabled: boolean;
+  shutterAngle: number;
+}
+
+export interface IWebScreenSpaceReflectionsSettings {
+  enabled: boolean;
+  opacity: number;
+  roughnessLimit: number;
 }
 
 interface IRenderPipeline {
@@ -912,6 +936,38 @@ export function webDepthOfFieldSettings(config?: IRuntimeConfigIr): IWebDepthOfF
   };
 }
 
+export function webMotionBlurSettings(config?: IRuntimeConfigIr): IWebMotionBlurSettings {
+  const motionBlur = config?.renderer?.motionBlur;
+  return {
+    enabled: motionBlur?.enabled ?? false,
+    shutterAngle: motionBlur?.shutterAngle ?? 0.5,
+  };
+}
+
+export function webScreenSpaceReflectionsSettings(config?: IRuntimeConfigIr): IWebScreenSpaceReflectionsSettings {
+  const reflections = config?.renderer?.screenSpaceReflections;
+  const roughnessLimit = reflections?.roughnessLimit ?? 0.45;
+  return {
+    enabled: reflections?.enabled ?? false,
+    opacity: webScreenSpaceReflectionOpacity(reflections?.quality, roughnessLimit),
+    roughnessLimit,
+  };
+}
+
+export function webAmbientOcclusionSettings(config?: IRuntimeConfigIr): IWebAmbientOcclusionSettings {
+  const ambientOcclusion = config?.renderer?.ambientOcclusion;
+  const radius = ambientOcclusion?.radius ?? 3;
+  const intensity = ambientOcclusion?.intensity ?? 1;
+  return {
+    enabled: ambientOcclusion?.enabled ?? false,
+    intensity,
+    kernelSize: ambientOcclusionKernelSize(ambientOcclusion?.quality),
+    maxDistance: Number(Math.max(0.02, Math.min(1.6, radius * 0.1 * intensity)).toFixed(6)),
+    minDistance: 0.005,
+    radius,
+  };
+}
+
 function webColorGradingSettings(config?: IRuntimeConfigIr): NonNullable<NonNullable<IRuntimeConfigIr["renderer"]>["colorGrading"]> | undefined {
   return config?.renderer?.colorGrading ?? applyWebRenderLookProfile(config).colorGrading;
 }
@@ -1063,9 +1119,13 @@ function createRenderPipeline(
     bindRenderTargetTextures(mapped, renderTargets, materials?.materials ?? []);
   }
   const bloom = webBloomSettings(config);
+  const ambientOcclusion = webAmbientOcclusionSettings(config);
+  const depthOfField = webDepthOfFieldSettings(config);
+  const motionBlur = webMotionBlurSettings(config);
+  const screenSpaceReflections = webScreenSpaceReflectionsSettings(config);
   const colorGrading = webColorGradingSettings(config);
   const backbufferViews = mapped.cameraViews.filter((view) => view.targetKind === "backbuffer");
-  const useComposer = backbufferViews.length <= 1 && (bloom.enabled || needsColorGradingPass(colorGrading));
+  const useComposer = backbufferViews.length <= 1 && (bloom.enabled || ambientOcclusion.enabled || depthOfField.enabled || motionBlur.enabled || screenSpaceReflections.enabled || needsColorGradingPass(colorGrading));
   if (!useComposer) {
     return {
       render: (delta = 0) => {
@@ -1076,21 +1136,237 @@ function createRenderPipeline(
   }
   const composer = new EffectComposer(renderer);
   composer.addPass(new RenderPass(mapped.scene, mapped.camera));
+  if (ambientOcclusion.enabled) {
+    composer.addPass(createAmbientOcclusionPass(mapped.scene, mapped.camera, ambientOcclusion));
+  }
+  if (depthOfField.enabled) {
+    composer.addPass(createDepthOfFieldPass(mapped.scene, mapped.camera, depthOfField));
+  }
+  if (motionBlur.enabled) {
+    composer.addPass(createMotionBlurPass(motionBlur));
+  }
+  if (screenSpaceReflections.enabled) {
+    composer.addPass(createScreenSpaceReflectionsPass(screenSpaceReflections));
+  }
   if (bloom.enabled) {
-    composer.addPass(new UnrealBloomPass(new THREE.Vector2(1, 1), bloom.intensity, 0, bloom.threshold));
+    composer.addPass(new UnrealBloomPass(new THREE.Vector2(1, 1), webBloomPassStrength(bloom.intensity), 0, bloom.threshold));
   }
   if (colorGrading !== undefined && needsColorGradingPass(colorGrading)) {
     composer.addPass(colorGradingPass(colorGrading));
   }
+  composer.addPass(new OutputPass());
+  const composerClear = backbufferViews[0]?.clear;
   return {
     // The composer path bypasses renderCameraViews, so camera helpers
-    // (follow/orbit/view-model/shake) must still advance here.
+    // (follow/orbit/view-model/shake) and camera clear must still advance here.
     render: (delta = 0) => {
       updateCameraHelpers(world, mapped.objectsById, delta);
-      composer.render();
+      const previousBackground = mapped.scene.background;
+      if (composerClear?.mode === "color") {
+        mapped.scene.background = clearColorForMode(composerClear, new THREE.Color("#111318"));
+      }
+      try {
+        composer.render();
+      } finally {
+        mapped.scene.background = previousBackground;
+      }
     },
     setSize: (width, height) => composer.setSize(width, height),
   };
+}
+
+function webBloomPassStrength(intensity: number): number {
+  return intensity * 0.35;
+}
+
+function createDepthOfFieldPass(scene: THREE.Scene, camera: THREE.Camera, settings: IWebDepthOfFieldSettings): BokehPass {
+  return new BokehPass(scene, camera, {
+    aperture: settings.aperture,
+    focus: settings.focusDistance,
+    maxblur: settings.maxBlur,
+  });
+}
+
+function createMotionBlurPass(settings: IWebMotionBlurSettings): TemporalMotionBlurPass {
+  return new TemporalMotionBlurPass(webMotionBlurBlend(settings.shutterAngle));
+}
+
+function webMotionBlurBlend(shutterAngle: number): number {
+  return Math.max(0, Math.min(0.85, shutterAngle * 0.45));
+}
+
+function createScreenSpaceReflectionsPass(settings: IWebScreenSpaceReflectionsSettings): ShaderPass {
+  return new ShaderPass({
+    uniforms: {
+      opacity: { value: settings.opacity },
+      roughnessLimit: { value: settings.roughnessLimit },
+      tDiffuse: { value: null },
+    },
+    vertexShader: fullscreenVertexShader(),
+    fragmentShader: `
+      uniform float opacity;
+      uniform float roughnessLimit;
+      uniform sampler2D tDiffuse;
+      varying vec2 vUv;
+
+      void main() {
+        vec4 color = texture2D(tDiffuse, vUv);
+        float floorMask = smoothstep(0.42, 0.54, vUv.y) * (1.0 - smoothstep(0.72, 0.9, vUv.y));
+        vec2 reflectedUv = vec2(vUv.x, clamp(vUv.y - 0.45, 0.0, 1.0));
+        vec4 reflected = texture2D(tDiffuse, reflectedUv);
+        float fade = floorMask * smoothstep(0.0, 0.6, roughnessLimit);
+        gl_FragColor = mix(color, reflected, opacity * fade);
+      }
+    `,
+  });
+}
+
+function webScreenSpaceReflectionOpacity(
+  quality: NonNullable<NonNullable<IRuntimeConfigIr["renderer"]>["screenSpaceReflections"]>["quality"] | undefined,
+  roughnessLimit: number,
+): number {
+  const qualityScale = quality === "high" ? 1.1 : quality === "low" ? 0.32 : 0.6;
+  return Math.max(0, Math.min(0.65, qualityScale * Math.max(0, Math.min(1, roughnessLimit))));
+}
+
+function createAmbientOcclusionPass(scene: THREE.Scene, camera: THREE.Camera, settings: IWebAmbientOcclusionSettings): GTAOPass {
+  const pass = new GTAOPass(scene, camera, 1, 1);
+  pass.blendIntensity = webAmbientOcclusionStrength(settings.intensity);
+  pass.updateGtaoMaterial({
+    radius: webAmbientOcclusionRadius(settings.radius),
+    samples: Math.max(4, Math.floor(settings.kernelSize / 4)),
+  });
+  pass.updatePdMaterial({
+    radius: Math.max(1, Math.round(settings.radius * 2)),
+  });
+  pass.output = GTAOPass.OUTPUT.Default;
+  return pass;
+}
+
+function webAmbientOcclusionStrength(intensity: number): number {
+  return Math.max(0, Math.min(0.05, intensity * 0.008));
+}
+
+class TemporalMotionBlurPass extends Pass {
+  private readonly copyMaterial: THREE.ShaderMaterial;
+  private hasPrevious = false;
+  private readonly blendMaterial: THREE.ShaderMaterial;
+  private previousTarget: THREE.WebGLRenderTarget;
+  private readonly quad: FullScreenQuad;
+  private readonly uniforms: {
+    previousWeight: { value: number };
+    tCurrent: { value: THREE.Texture | null };
+    tPrevious: { value: THREE.Texture | null };
+  };
+
+  public constructor(private readonly previousWeight: number) {
+    super();
+    this.uniforms = {
+      previousWeight: { value: previousWeight },
+      tCurrent: { value: null },
+      tPrevious: { value: null },
+    };
+    this.blendMaterial = new THREE.ShaderMaterial({
+      name: "ThreeNativeTemporalMotionBlur",
+      uniforms: this.uniforms,
+      vertexShader: fullscreenVertexShader(),
+      fragmentShader: `
+        uniform sampler2D tCurrent;
+        uniform sampler2D tPrevious;
+        uniform float previousWeight;
+        varying vec2 vUv;
+
+        void main() {
+          vec4 currentColor = texture2D(tCurrent, vUv);
+          vec4 previousColor = texture2D(tPrevious, vUv);
+          gl_FragColor = mix(currentColor, previousColor, previousWeight);
+        }
+      `,
+    });
+    this.copyMaterial = new THREE.ShaderMaterial({
+      name: "ThreeNativeTemporalMotionBlurCopy",
+      uniforms: { tDiffuse: { value: null as THREE.Texture | null } },
+      vertexShader: fullscreenVertexShader(),
+      fragmentShader: `
+        uniform sampler2D tDiffuse;
+        varying vec2 vUv;
+
+        void main() {
+          gl_FragColor = texture2D(tDiffuse, vUv);
+        }
+      `,
+    });
+    this.previousTarget = createMotionBlurRenderTarget(1, 1);
+    this.quad = new FullScreenQuad(this.blendMaterial);
+  }
+
+  public override setSize(width: number, height: number): void {
+    this.previousTarget.setSize(width, height);
+    this.hasPrevious = false;
+  }
+
+  public override render(renderer: THREE.WebGLRenderer, writeBuffer: THREE.WebGLRenderTarget, readBuffer: THREE.WebGLRenderTarget): void {
+    this.uniforms.tCurrent.value = readBuffer.texture;
+    this.uniforms.tPrevious.value = this.previousTarget.texture;
+    this.uniforms.previousWeight.value = this.hasPrevious ? this.previousWeight : 0;
+    this.quad.material = this.blendMaterial;
+    renderer.setRenderTarget(this.renderToScreen ? null : writeBuffer);
+    if (this.clear) {
+      renderer.clear(renderer.autoClearColor, renderer.autoClearDepth, renderer.autoClearStencil);
+    }
+    this.quad.render(renderer);
+
+    const copyUniforms = this.copyMaterial.uniforms as { tDiffuse: { value: THREE.Texture | null } };
+    copyUniforms.tDiffuse.value = (this.renderToScreen ? readBuffer : writeBuffer).texture;
+    this.quad.material = this.copyMaterial;
+    renderer.setRenderTarget(this.previousTarget);
+    this.quad.render(renderer);
+    this.quad.material = this.blendMaterial;
+    this.hasPrevious = true;
+  }
+
+  public override dispose(): void {
+    this.previousTarget.dispose();
+    this.blendMaterial.dispose();
+    this.copyMaterial.dispose();
+    this.quad.dispose();
+  }
+}
+
+function createMotionBlurRenderTarget(width: number, height: number): THREE.WebGLRenderTarget {
+  const target = new THREE.WebGLRenderTarget(width, height, {
+    depthBuffer: false,
+    magFilter: THREE.LinearFilter,
+    minFilter: THREE.LinearFilter,
+    stencilBuffer: false,
+  });
+  target.texture.name = "ThreeNativeTemporalMotionBlur.previous";
+  return target;
+}
+
+function fullscreenVertexShader(): string {
+  return `
+    varying vec2 vUv;
+
+    void main() {
+      vUv = uv;
+      gl_Position = vec4(position.xy, 0.0, 1.0);
+    }
+  `;
+}
+
+function webAmbientOcclusionRadius(radius: number): number {
+  return Math.max(0.05, Math.min(0.6, radius * 0.08));
+}
+
+function ambientOcclusionKernelSize(quality: NonNullable<NonNullable<IRuntimeConfigIr["renderer"]>["ambientOcclusion"]>["quality"] | undefined): number {
+  if (quality === "high") {
+    return 64;
+  }
+  if (quality === "low") {
+    return 16;
+  }
+  return 32;
 }
 
 function colorGradingPass(colorGrading: NonNullable<NonNullable<IRuntimeConfigIr["renderer"]>["colorGrading"]>): ShaderPass {

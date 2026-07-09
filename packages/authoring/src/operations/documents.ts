@@ -634,9 +634,13 @@ export async function setRuntimeRendering(options: ISetRuntimeRenderingOptions):
     emptyData: defaultRuntimeConfigData(options.runtimeId),
     apply: (data) => {
       const renderer = isRecord(data.renderer) ? data.renderer : {};
+      const ambientOcclusion = isRecord(renderer.ambientOcclusion) ? renderer.ambientOcclusion : {};
       const bloom = isRecord(renderer.bloom) ? renderer.bloom : {};
+      const motionBlur = isRecord(renderer.motionBlur) ? renderer.motionBlur : {};
       const renderLook = isRecord(renderer.renderLook) ? renderer.renderLook : {};
       const renderLookOverrides = isRecord(renderLook.overrides) ? renderLook.overrides : {};
+      const screenSpaceGlobalIllumination = isRecord(renderer.screenSpaceGlobalIllumination) ? renderer.screenSpaceGlobalIllumination : {};
+      const screenSpaceReflections = isRecord(renderer.screenSpaceReflections) ? renderer.screenSpaceReflections : {};
       const nextRenderLookOverrides = {
         ...renderLookOverrides,
         ...(options.renderLookBloomIntensity === undefined ? {} : { bloomIntensity: options.renderLookBloomIntensity }),
@@ -667,6 +671,22 @@ export async function setRuntimeRendering(options: ISetRuntimeRenderingOptions):
             }
           : {}),
         ...(options.renderPath === undefined ? {} : { renderPath: options.renderPath }),
+        ...(options.ambientOcclusionEnabled === undefined
+          && options.ambientOcclusionMode === undefined
+          && options.ambientOcclusionRadius === undefined
+          && options.ambientOcclusionIntensity === undefined
+          && options.ambientOcclusionQuality === undefined
+          ? {}
+          : {
+              ambientOcclusion: {
+                ...ambientOcclusion,
+                ...(options.ambientOcclusionEnabled === undefined ? {} : { enabled: options.ambientOcclusionEnabled }),
+                ...(options.ambientOcclusionMode === undefined ? {} : { mode: options.ambientOcclusionMode }),
+                ...(options.ambientOcclusionRadius === undefined ? {} : { radius: options.ambientOcclusionRadius }),
+                ...(options.ambientOcclusionIntensity === undefined ? {} : { intensity: options.ambientOcclusionIntensity }),
+                ...(options.ambientOcclusionQuality === undefined ? {} : { quality: options.ambientOcclusionQuality }),
+              },
+            }),
         ...(options.bloomEnabled === undefined && options.bloomIntensity === undefined && options.bloomThreshold === undefined
           ? {}
           : {
@@ -675,6 +695,36 @@ export async function setRuntimeRendering(options: ISetRuntimeRenderingOptions):
                 ...(options.bloomEnabled === undefined ? {} : { enabled: options.bloomEnabled }),
                 ...(options.bloomIntensity === undefined ? {} : { intensity: options.bloomIntensity }),
                 ...(options.bloomThreshold === undefined ? {} : { threshold: options.bloomThreshold }),
+              },
+            }),
+        ...(options.screenSpaceReflectionsEnabled === undefined
+          && options.screenSpaceReflectionsQuality === undefined
+          && options.screenSpaceReflectionsRoughnessLimit === undefined
+          ? {}
+          : {
+              screenSpaceReflections: {
+                ...screenSpaceReflections,
+                ...(options.screenSpaceReflectionsEnabled === undefined ? {} : { enabled: options.screenSpaceReflectionsEnabled }),
+                ...(options.screenSpaceReflectionsQuality === undefined ? {} : { quality: options.screenSpaceReflectionsQuality }),
+                ...(options.screenSpaceReflectionsRoughnessLimit === undefined ? {} : { roughnessLimit: options.screenSpaceReflectionsRoughnessLimit }),
+              },
+            }),
+        ...(options.motionBlurEnabled === undefined && options.motionBlurShutterAngle === undefined
+          ? {}
+          : {
+              motionBlur: {
+                ...motionBlur,
+                ...(options.motionBlurEnabled === undefined ? {} : { enabled: options.motionBlurEnabled }),
+                ...(options.motionBlurShutterAngle === undefined ? {} : { shutterAngle: options.motionBlurShutterAngle }),
+              },
+            }),
+        ...(options.screenSpaceGlobalIlluminationEnabled === undefined && options.screenSpaceGlobalIlluminationQuality === undefined
+          ? {}
+          : {
+              screenSpaceGlobalIllumination: {
+                ...screenSpaceGlobalIllumination,
+                ...(options.screenSpaceGlobalIlluminationEnabled === undefined ? {} : { enabled: options.screenSpaceGlobalIlluminationEnabled }),
+                ...(options.screenSpaceGlobalIlluminationQuality === undefined ? {} : { quality: options.screenSpaceGlobalIlluminationQuality }),
               },
             }),
       };

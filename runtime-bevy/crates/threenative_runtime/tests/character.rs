@@ -5,7 +5,7 @@ use std::{
 };
 
 use threenative_loader::load_bundle;
-use threenative_runtime::character::{trace_character_controllers, CharacterTraceAxis};
+use threenative_runtime::character::{CharacterTraceAxis, trace_character_controllers};
 
 mod support;
 use support::load_conformance_fixture;
@@ -14,9 +14,11 @@ use support::load_conformance_fixture;
 fn character_trace_should_match_v7_conformance_fixture() {
     let fixture = load_conformance_fixture("advanced-physics-character");
     assert_eq!(fixture.name, "advanced-physics-character");
-    assert!(fixture
-        .bundle_path
-        .ends_with("advanced-physics-character/game.bundle"));
+    assert!(
+        fixture
+            .bundle_path
+            .ends_with("advanced-physics-character/game.bundle")
+    );
     let trace = trace_character_controllers(
         &fixture.bundle,
         &[

@@ -1045,13 +1045,17 @@ export async function runtimeCommand(argv: readonly string[], options: ISourceCo
       return renderUsage(json, "TN_RUNTIME_SET_RENDERING_ARGS_MISSING", runtimeSetRenderingUsage());
     }
     const numbers = parseNumberFlags(normalizedArgv, [
+      "--ambient-occlusion-intensity",
+      "--ambient-occlusion-radius",
       "--bloom-intensity",
       "--bloom-threshold",
+      "--motion-blur-shutter-angle",
       "--render-look-bloom-intensity",
       "--render-look-contrast",
       "--render-look-environment-intensity",
       "--render-look-exposure",
       "--render-look-saturation",
+      "--screen-space-reflections-roughness-limit",
     ]);
     if (numbers.diagnostic !== undefined) {
       return renderUsage(json, numbers.diagnostic, "Runtime rendering numeric flags must be finite numbers.");
@@ -1060,13 +1064,36 @@ export async function runtimeCommand(argv: readonly string[], options: ISourceCo
     if (bloom.diagnostic !== undefined) {
       return renderUsage(json, bloom.diagnostic, "Runtime --bloom must be true or false.");
     }
+    const ambientOcclusion = parseOptionalBoolean(normalizedArgv, "--ambient-occlusion");
+    if (ambientOcclusion.diagnostic !== undefined) {
+      return renderUsage(json, ambientOcclusion.diagnostic, "Runtime --ambient-occlusion must be true or false.");
+    }
+    const screenSpaceReflections = parseOptionalBoolean(normalizedArgv, "--screen-space-reflections");
+    if (screenSpaceReflections.diagnostic !== undefined) {
+      return renderUsage(json, screenSpaceReflections.diagnostic, "Runtime --screen-space-reflections must be true or false.");
+    }
+    const motionBlur = parseOptionalBoolean(normalizedArgv, "--motion-blur");
+    if (motionBlur.diagnostic !== undefined) {
+      return renderUsage(json, motionBlur.diagnostic, "Runtime --motion-blur must be true or false.");
+    }
+    const screenSpaceGlobalIllumination = parseOptionalBoolean(normalizedArgv, "--screen-space-global-illumination");
+    if (screenSpaceGlobalIllumination.diagnostic !== undefined) {
+      return renderUsage(json, screenSpaceGlobalIllumination.diagnostic, "Runtime --screen-space-global-illumination must be true or false.");
+    }
     return renderAuthoringResult(
       "runtime",
       await setRuntimeRendering({
+        ambientOcclusionEnabled: ambientOcclusion.value,
+        ambientOcclusionIntensity: numbers.values["--ambient-occlusion-intensity"],
+        ambientOcclusionMode: readFlag(normalizedArgv, "--ambient-occlusion-mode"),
+        ambientOcclusionQuality: readFlag(normalizedArgv, "--ambient-occlusion-quality"),
+        ambientOcclusionRadius: numbers.values["--ambient-occlusion-radius"],
         antialias: readFlag(normalizedArgv, "--antialias"),
         bloomEnabled: bloom.value,
         bloomIntensity: numbers.values["--bloom-intensity"],
         bloomThreshold: numbers.values["--bloom-threshold"],
+        motionBlurEnabled: motionBlur.value,
+        motionBlurShutterAngle: numbers.values["--motion-blur-shutter-angle"],
         projectPath,
         renderLookBloomIntensity: numbers.values["--render-look-bloom-intensity"],
         renderLookContrast: numbers.values["--render-look-contrast"],
@@ -1077,6 +1104,11 @@ export async function runtimeCommand(argv: readonly string[], options: ISourceCo
         renderPath: readFlag(normalizedArgv, "--render-path"),
         renderProfile: readFlag(normalizedArgv, "--render-profile"),
         runtimeId,
+        screenSpaceGlobalIlluminationEnabled: screenSpaceGlobalIllumination.value,
+        screenSpaceGlobalIlluminationQuality: readFlag(normalizedArgv, "--screen-space-global-illumination-quality"),
+        screenSpaceReflectionsEnabled: screenSpaceReflections.value,
+        screenSpaceReflectionsQuality: readFlag(normalizedArgv, "--screen-space-reflections-quality"),
+        screenSpaceReflectionsRoughnessLimit: numbers.values["--screen-space-reflections-roughness-limit"],
       }),
       json,
       `Runtime rendering '${runtimeId}' updated.`,

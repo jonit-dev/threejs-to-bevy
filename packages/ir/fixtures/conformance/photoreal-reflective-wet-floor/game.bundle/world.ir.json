@@ -1,0 +1,146 @@
+{
+  "schema": "threenative.world",
+  "version": "0.1.0",
+  "entities": [
+    {
+      "id": "camera.main",
+      "components": {
+        "Camera": {
+          "clear": {
+            "color": "#111318",
+            "mode": "color"
+          },
+          "far": 100,
+          "fovY": 48,
+          "kind": "perspective",
+          "near": 0.1
+        },
+        "Transform": {
+          "position": [0, 1.15, 5.3],
+          "rotation": [-0.156434, 0, 0, 0.987688],
+          "scale": [1, 1, 1]
+        }
+      }
+    },
+    {
+      "id": "surface.floor",
+      "components": {
+        "MeshRenderer": {
+          "material": "mat.wet.floor",
+          "mesh": "mesh.floor",
+          "receiveShadow": true
+        },
+        "Transform": {
+          "position": [0, -0.04, 0.15],
+          "rotation": [0, 0, 0, 1],
+          "scale": [1, 1, 1]
+        }
+      }
+    },
+    {
+      "id": "surface.back-wall",
+      "components": {
+        "MeshRenderer": {
+          "material": "mat.wall",
+          "mesh": "mesh.backWall",
+          "receiveShadow": true
+        },
+        "Transform": {
+          "position": [0, 1.32, -2.35],
+          "rotation": [0, 0, 0, 1],
+          "scale": [1, 1, 1]
+        }
+      }
+    },
+    {
+      "id": "prop.plinth",
+      "components": {
+        "MeshRenderer": {
+          "castShadow": true,
+          "material": "mat.plinth",
+          "mesh": "mesh.plinth",
+          "receiveShadow": true
+        },
+        "Transform": {
+          "position": [0.82, 0.24, -0.82],
+          "rotation": [0, 0, 0, 1],
+          "scale": [1, 1, 1]
+        }
+      }
+    },
+    {
+      "id": "strip.cyan",
+      "components": {
+        "MeshRenderer": {
+          "material": "mat.neon.cyan",
+          "mesh": "mesh.strip.horizontal"
+        },
+        "Transform": {
+          "position": [-0.8, 1.45, -2.3],
+          "rotation": [0, 0, 0, 1],
+          "scale": [1, 1, 1]
+        }
+      }
+    },
+    {
+      "id": "strip.magenta",
+      "components": {
+        "MeshRenderer": {
+          "material": "mat.neon.magenta",
+          "mesh": "mesh.strip.horizontal"
+        },
+        "Transform": {
+          "position": [0.82, 1.0, -2.3],
+          "rotation": [0, 0, 0, 1],
+          "scale": [1, 1, 1]
+        }
+      }
+    },
+    {
+      "id": "strip.vertical",
+      "components": {
+        "MeshRenderer": {
+          "material": "mat.neon.cyan",
+          "mesh": "mesh.strip.vertical"
+        },
+        "Transform": {
+          "position": [0.05, 1.2, -2.29],
+          "rotation": [0, 0, 0, 1],
+          "scale": [1, 1, 1]
+        }
+      }
+    },
+    {
+      "id": "light.key",
+      "components": {
+        "Light": {
+          "color": "#ffffff",
+          "intensity": 0.85,
+          "kind": "directional"
+        },
+        "Transform": {
+          "position": [2.6, 4.2, 3.2],
+          "rotation": [0, 0, 0, 1],
+          "scale": [1, 1, 1]
+        }
+      }
+    },
+    {
+      "id": "light.ambient",
+      "components": {
+        "Light": {
+          "color": "#dce8ff",
+          "intensity": 0.26,
+          "kind": "ambient"
+        }
+      }
+    }
+  ],
+  "resources": {
+    "ActiveCamera": {
+      "entity": "camera.main"
+    }
+  },
+  "events": {},
+  "prefabs": []
+}

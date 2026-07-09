@@ -7,9 +7,12 @@ use bevy::{
     animation::graph::AnimationGraph,
     asset::{Handle, load_internal_asset},
     core_pipeline::{
-        bloom::{BloomPrefilterSettings, BloomSettings},
+        bloom::{BloomCompositeMode, BloomPrefilterSettings, BloomSettings},
+        dof::{DepthOfFieldMode, DepthOfFieldSettings},
         experimental::taa::TemporalAntiAliasBundle,
         fxaa::Fxaa,
+        motion_blur::{MotionBlur, MotionBlurBundle},
+        prepass::{DepthPrepass, NormalPrepass},
         smaa::SmaaSettings,
         tonemapping::Tonemapping,
     },
@@ -22,8 +25,10 @@ use bevy::{
         },
     },
     pbr::{
-        FogFalloff, FogSettings, Material, MaterialMeshBundle, MaterialPlugin, NotShadowCaster,
-        NotShadowReceiver, ShadowFilteringMethod,
+        DefaultOpaqueRendererMethod, FogFalloff, FogSettings, Material, MaterialMeshBundle,
+        MaterialPlugin, NotShadowCaster, NotShadowReceiver, ScreenSpaceAmbientOcclusionBundle,
+        ScreenSpaceAmbientOcclusionQualityLevel, ScreenSpaceAmbientOcclusionSettings,
+        ScreenSpaceReflectionsBundle, ScreenSpaceReflectionsSettings, ShadowFilteringMethod,
     },
     prelude::*,
     reflect::TypePath,
@@ -693,6 +698,13 @@ fn apply_runtime_config(world: &mut World, config: Option<&RuntimeConfigIr>) {
         _ => Msaa::Sample4,
     };
     world.insert_resource(msaa);
+    if config
+        .and_then(|config| config.renderer.as_ref())
+        .and_then(|renderer| renderer.screen_space_reflections.as_ref())
+        .is_some_and(|ssr| ssr.enabled)
+    {
+        world.insert_resource(DefaultOpaqueRendererMethod::deferred());
+    }
 }
 
 fn ensure_ambient_light_contract(
@@ -739,6 +751,32 @@ fn insert_camera_antialias(spawned: &mut EntityWorldMut, config: Option<&Runtime
     }
 }
 
+fn insert_camera_ambient_occlusion(spawned: &mut EntityWorldMut, config: Option<&RuntimeConfigIr>) {
+    let Some(ambient_occlusion) = config
+        .and_then(|config| config.renderer.as_ref())
+        .and_then(|renderer| renderer.ambient_occlusion.as_ref())
+        .filter(|ambient_occlusion| ambient_occlusion.enabled)
+    else {
+        return;
+    };
+    spawned.insert(ScreenSpaceAmbientOcclusionBundle {
+        settings: ScreenSpaceAmbientOcclusionSettings {
+            quality_level: ambient_occlusion_quality_level(ambient_occlusion.quality.as_str()),
+        },
+        depth_prepass: DepthPrepass,
+        normal_prepass: NormalPrepass,
+    });
+}
+
+fn ambient_occlusion_quality_level(quality: &str) -> ScreenSpaceAmbientOcclusionQualityLevel {
+    match quality {
+        "low" => ScreenSpaceAmbientOcclusionQualityLevel::Low,
+        "medium" => ScreenSpaceAmbientOcclusionQualityLevel::Medium,
+        "high" => ScreenSpaceAmbientOcclusionQualityLevel::High,
+        _ => ScreenSpaceAmbientOcclusionQualityLevel::Medium,
+    }
+}
+
 fn bloom_settings_for_runtime(config: Option<&RuntimeConfigIr>) -> Option<BloomSettings> {
     let renderer = config.and_then(|config| config.renderer.as_ref())?;
     let (enabled, intensity, threshold) = if let Some(bloom) = renderer.bloom.as_ref() {
@@ -762,17 +800,23 @@ fn bloom_settings_for_runtime(config: Option<&RuntimeConfigIr>) -> Option<BloomS
     } else {
         return None;
     };
-    if !enabled {
+    if !enabled || intensity <= 0.0 {
         return None;
     }
     Some(BloomSettings {
-        intensity,
+        composite_mode: BloomCompositeMode::Additive,
+        intensity: native_bloom_intensity(intensity),
         prefilter_settings: BloomPrefilterSettings {
             threshold,
+            threshold_softness: 0.2,
             ..Default::default()
         },
         ..Default::default()
     })
+}
+
+fn native_bloom_intensity(intensity: f32) -> f32 {
+    intensity * 0.2
 }
 
 fn native_render_look_has_bloom(profile: &str) -> bool {

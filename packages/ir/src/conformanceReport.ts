@@ -1,5 +1,5 @@
 import type { IRuntimeDiagnostic } from "./runtimeDiagnostics.js";
-import type { IRuntimeConfigIr } from "./runtimeConfig.js";
+import type { IRendererFeatureReport, IRuntimeConfigIr } from "./runtimeConfig.js";
 import type { IAssetIr, IMaterialIr, IShaderMaterialIr, Quat, Vec3 } from "./types.js";
 import type { IShaderBindingLayoutEntry } from "./shaderCodegen.js";
 import type { IEnvironmentMapIr, ILightProbeIr, ISkyboxIr } from "./types.js";
@@ -155,9 +155,12 @@ export interface IConformanceLightBudgetReport {
 export interface IConformanceRuntimeConfigReport {
   renderer?: {
     antialias?: NonNullable<IRuntimeConfigIr["renderer"]>["antialias"];
+    ambientOcclusion?: NonNullable<NonNullable<IRuntimeConfigIr["renderer"]>["ambientOcclusion"]>;
     bloom?: NonNullable<NonNullable<IRuntimeConfigIr["renderer"]>["bloom"]>;
     colorGrading?: NonNullable<NonNullable<IRuntimeConfigIr["renderer"]>["colorGrading"]>;
     depthOfField?: NonNullable<NonNullable<IRuntimeConfigIr["renderer"]>["depthOfField"]>;
+    featureReports?: IRendererFeatureReport[];
+    motionBlur?: NonNullable<NonNullable<IRuntimeConfigIr["renderer"]>["motionBlur"]>;
     postProcessing?: {
       applied: string[];
       skipped: Array<{ feature: string; reason: string }>;
@@ -169,6 +172,8 @@ export interface IConformanceRuntimeConfigReport {
       requestedProfile: NonNullable<NonNullable<IRuntimeConfigIr["renderer"]>["renderLook"]>["profile"] | "parity";
     };
     renderPath?: NonNullable<IRuntimeConfigIr["renderer"]>["renderPath"];
+    screenSpaceGlobalIllumination?: NonNullable<NonNullable<IRuntimeConfigIr["renderer"]>["screenSpaceGlobalIllumination"]>;
+    screenSpaceReflections?: NonNullable<NonNullable<IRuntimeConfigIr["renderer"]>["screenSpaceReflections"]>;
   };
 }
 

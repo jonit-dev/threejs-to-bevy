@@ -1,0 +1,26 @@
+{
+  "schema": "threenative.bundle",
+  "version": "0.1.0",
+  "name": "photoreal-dof-depth-test",
+  "requiredCapabilities": {
+    "rendering": [
+      "camera.perspective",
+      "light.ambient",
+      "light.directional",
+      "material.standard",
+      "mesh-renderer",
+      "mesh.primitive.box",
+      "mesh.primitive.sphere",
+      "postprocess.depth-of-field"
+    ]
+  },
+  "entry": {
+    "world": "world.ir.json"
+  },
+  "files": {
+    "assets": "assets.manifest.json",
+    "materials": "materials.ir.json",
+    "runtimeConfig": "runtime.config.json",
+    "targetProfile": "target.profile.json"
+  }
+}

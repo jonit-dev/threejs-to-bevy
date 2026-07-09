@@ -75,9 +75,24 @@ fn native_game_loop_should_satisfy_shared_loop_fixture_expectations() {
         )
         .expect("shared loop scenario should run");
 
-        assert_eq!(count(&bundle, "startup"), scenario.expected.startup, "{}", scenario.id);
-        assert_eq!(count(&bundle, "fixed"), scenario.expected.fixed, "{}", scenario.id);
-        assert_eq!(count(&bundle, "update"), scenario.expected.update, "{}", scenario.id);
+        assert_eq!(
+            count(&bundle, "startup"),
+            scenario.expected.startup,
+            "{}",
+            scenario.id
+        );
+        assert_eq!(
+            count(&bundle, "fixed"),
+            scenario.expected.fixed,
+            "{}",
+            scenario.id
+        );
+        assert_eq!(
+            count(&bundle, "update"),
+            scenario.expected.update,
+            "{}",
+            scenario.id
+        );
         assert_eq!(
             count(&bundle, "post"),
             scenario.expected.post_update,
@@ -148,7 +163,11 @@ fn native_game_loop_should_apply_shared_interpolation_and_ordering_expectations(
     run_native_systems_frame_with_input(
         &mut bundle,
         &mut NativeGameLoopState::default(),
-        loop_options(fixture.interpolation.fixed_delta, fixture.interpolation.fixed_delta, false),
+        loop_options(
+            fixture.interpolation.fixed_delta,
+            fixture.interpolation.fixed_delta,
+            false,
+        ),
         |_bundle, _fixed_delta, _script_posed_entities| {},
     )
     .expect("ordering frame should run");
@@ -389,7 +408,10 @@ fn write_base_bundle(root: &Path) {
 }
 
 fn root(name: &str) -> PathBuf {
-    let root = std::env::temp_dir().join(format!("tn-game-loop-contract-{name}-{}", std::process::id()));
+    let root = std::env::temp_dir().join(format!(
+        "tn-game-loop-contract-{name}-{}",
+        std::process::id()
+    ));
     if root.exists() {
         fs::remove_dir_all(&root).expect("old temp bundle should be removed");
     }

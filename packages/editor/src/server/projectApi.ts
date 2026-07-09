@@ -785,15 +785,50 @@ function documentInspectorRows(document: IAuthoringDocument): IEditorPropertyRow
       const runtimeId = readDocumentId(document.data) ?? "";
       const window = isRecord(document.data.window) ? document.data.window : {};
       const renderer = isRecord(document.data.renderer) ? document.data.renderer : {};
+      const ambientOcclusion = isRecord(renderer.ambientOcclusion) ? renderer.ambientOcclusion : {};
       const bloom = isRecord(renderer.bloom) ? renderer.bloom : {};
+      const motionBlur = isRecord(renderer.motionBlur) ? renderer.motionBlur : {};
+      const screenSpaceGlobalIllumination = isRecord(renderer.screenSpaceGlobalIllumination) ? renderer.screenSpaceGlobalIllumination : {};
+      const screenSpaceReflections = isRecord(renderer.screenSpaceReflections) ? renderer.screenSpaceReflections : {};
+      const renderingArgs = {
+        ambientOcclusionEnabled: readBoolean(ambientOcclusion.enabled),
+        ambientOcclusionIntensity: readNumber(ambientOcclusion.intensity),
+        ambientOcclusionMode: readString(ambientOcclusion.mode),
+        ambientOcclusionQuality: readString(ambientOcclusion.quality),
+        ambientOcclusionRadius: readNumber(ambientOcclusion.radius),
+        antialias: readString(renderer.antialias),
+        bloomEnabled: readBoolean(bloom.enabled),
+        bloomIntensity: readNumber(bloom.intensity),
+        bloomThreshold: readNumber(bloom.threshold),
+        motionBlurEnabled: readBoolean(motionBlur.enabled),
+        motionBlurShutterAngle: readNumber(motionBlur.shutterAngle),
+        renderPath: readString(renderer.renderPath),
+        runtimeId,
+        screenSpaceGlobalIlluminationEnabled: readBoolean(screenSpaceGlobalIllumination.enabled),
+        screenSpaceGlobalIlluminationQuality: readString(screenSpaceGlobalIllumination.quality),
+        screenSpaceReflectionsEnabled: readBoolean(screenSpaceReflections.enabled),
+        screenSpaceReflectionsQuality: readString(screenSpaceReflections.quality),
+        screenSpaceReflectionsRoughnessLimit: readNumber(screenSpaceReflections.roughnessLimit),
+      };
       rows.push(documentRow(document, "runtime:window-width", "Window Width", formatScalar(window.width, ""), "number", false, "/window/width", "runtime", "runtime.set_window", "width", { height: readNumber(window.height), runtimeId, title: readString(window.title) }));
       rows.push(documentRow(document, "runtime:window-height", "Window Height", formatScalar(window.height, ""), "number", false, "/window/height", "runtime", "runtime.set_window", "height", { runtimeId, title: readString(window.title), width: readNumber(window.width) }));
       rows.push(documentRow(document, "runtime:window-title", "Window Title", readString(window.title) ?? "", "string", false, "/window/title", "runtime", "runtime.set_window", "title", { height: readNumber(window.height), runtimeId, width: readNumber(window.width) }));
-      rows.push(documentRow(document, "runtime:renderer-antialias", "Renderer Antialias", readString(renderer.antialias) ?? "", "enum", false, "/renderer/antialias", "runtime", "runtime.set_rendering", "antialias", { bloomEnabled: readBoolean(bloom.enabled), bloomIntensity: readNumber(bloom.intensity), bloomThreshold: readNumber(bloom.threshold), renderPath: readString(renderer.renderPath), runtimeId }));
-      rows.push(documentRow(document, "runtime:renderer-bloom", "Bloom", formatBoolean(bloom.enabled), "boolean", false, "/renderer/bloom/enabled", "runtime", "runtime.set_rendering", "bloomEnabled", { antialias: readString(renderer.antialias), bloomIntensity: readNumber(bloom.intensity), bloomThreshold: readNumber(bloom.threshold), renderPath: readString(renderer.renderPath), runtimeId }));
-      rows.push(documentRow(document, "runtime:renderer-bloom-intensity", "Bloom Intensity", formatScalar(bloom.intensity, ""), "number", false, "/renderer/bloom/intensity", "runtime", "runtime.set_rendering", "bloomIntensity", { antialias: readString(renderer.antialias), bloomEnabled: readBoolean(bloom.enabled), bloomThreshold: readNumber(bloom.threshold), renderPath: readString(renderer.renderPath), runtimeId }));
-      rows.push(documentRow(document, "runtime:renderer-bloom-threshold", "Bloom Threshold", formatScalar(bloom.threshold, ""), "number", false, "/renderer/bloom/threshold", "runtime", "runtime.set_rendering", "bloomThreshold", { antialias: readString(renderer.antialias), bloomEnabled: readBoolean(bloom.enabled), bloomIntensity: readNumber(bloom.intensity), renderPath: readString(renderer.renderPath), runtimeId }));
-      rows.push(documentRow(document, "runtime:renderer-render-path", "Render Path", readString(renderer.renderPath) ?? "", "enum", false, "/renderer/renderPath", "runtime", "runtime.set_rendering", "renderPath", { antialias: readString(renderer.antialias), bloomEnabled: readBoolean(bloom.enabled), bloomIntensity: readNumber(bloom.intensity), bloomThreshold: readNumber(bloom.threshold), runtimeId }));
+      rows.push(documentRow(document, "runtime:renderer-antialias", "Renderer Antialias", readString(renderer.antialias) ?? "", "enum", false, "/renderer/antialias", "runtime", "runtime.set_rendering", "antialias", renderingArgs));
+      rows.push(documentRow(document, "runtime:renderer-bloom", "Bloom", formatBoolean(bloom.enabled), "boolean", false, "/renderer/bloom/enabled", "runtime", "runtime.set_rendering", "bloomEnabled", renderingArgs));
+      rows.push(documentRow(document, "runtime:renderer-bloom-intensity", "Bloom Intensity", formatScalar(bloom.intensity, ""), "number", false, "/renderer/bloom/intensity", "runtime", "runtime.set_rendering", "bloomIntensity", renderingArgs));
+      rows.push(documentRow(document, "runtime:renderer-bloom-threshold", "Bloom Threshold", formatScalar(bloom.threshold, ""), "number", false, "/renderer/bloom/threshold", "runtime", "runtime.set_rendering", "bloomThreshold", renderingArgs));
+      rows.push(documentRow(document, "runtime:renderer-ao", "Ambient Occlusion", formatBoolean(ambientOcclusion.enabled), "boolean", false, "/renderer/ambientOcclusion/enabled", "runtime", "runtime.set_rendering", "ambientOcclusionEnabled", renderingArgs));
+      rows.push(documentRow(document, "runtime:renderer-ao-radius", "AO Radius", formatScalar(ambientOcclusion.radius, ""), "number", false, "/renderer/ambientOcclusion/radius", "runtime", "runtime.set_rendering", "ambientOcclusionRadius", renderingArgs));
+      rows.push(documentRow(document, "runtime:renderer-ao-intensity", "AO Intensity", formatScalar(ambientOcclusion.intensity, ""), "number", false, "/renderer/ambientOcclusion/intensity", "runtime", "runtime.set_rendering", "ambientOcclusionIntensity", renderingArgs));
+      rows.push(documentRow(document, "runtime:renderer-ao-quality", "AO Quality", readString(ambientOcclusion.quality) ?? "", "enum", false, "/renderer/ambientOcclusion/quality", "runtime", "runtime.set_rendering", "ambientOcclusionQuality", renderingArgs));
+      rows.push(documentRow(document, "runtime:renderer-ssr", "Screen Space Reflections", formatBoolean(screenSpaceReflections.enabled), "boolean", false, "/renderer/screenSpaceReflections/enabled", "runtime", "runtime.set_rendering", "screenSpaceReflectionsEnabled", renderingArgs));
+      rows.push(documentRow(document, "runtime:renderer-ssr-quality", "SSR Quality", readString(screenSpaceReflections.quality) ?? "", "enum", false, "/renderer/screenSpaceReflections/quality", "runtime", "runtime.set_rendering", "screenSpaceReflectionsQuality", renderingArgs));
+      rows.push(documentRow(document, "runtime:renderer-ssr-roughness-limit", "SSR Roughness Limit", formatScalar(screenSpaceReflections.roughnessLimit, ""), "number", false, "/renderer/screenSpaceReflections/roughnessLimit", "runtime", "runtime.set_rendering", "screenSpaceReflectionsRoughnessLimit", renderingArgs));
+      rows.push(documentRow(document, "runtime:renderer-motion-blur", "Motion Blur", formatBoolean(motionBlur.enabled), "boolean", false, "/renderer/motionBlur/enabled", "runtime", "runtime.set_rendering", "motionBlurEnabled", renderingArgs));
+      rows.push(documentRow(document, "runtime:renderer-motion-blur-shutter", "Motion Blur Shutter", formatScalar(motionBlur.shutterAngle, ""), "number", false, "/renderer/motionBlur/shutterAngle", "runtime", "runtime.set_rendering", "motionBlurShutterAngle", renderingArgs));
+      rows.push(documentRow(document, "runtime:renderer-ssgi", "Screen Space GI", formatBoolean(screenSpaceGlobalIllumination.enabled), "boolean", false, "/renderer/screenSpaceGlobalIllumination/enabled", "runtime", "runtime.set_rendering", "screenSpaceGlobalIlluminationEnabled", renderingArgs));
+      rows.push(documentRow(document, "runtime:renderer-ssgi-quality", "SSGI Quality", readString(screenSpaceGlobalIllumination.quality) ?? "", "enum", false, "/renderer/screenSpaceGlobalIllumination/quality", "runtime", "runtime.set_rendering", "screenSpaceGlobalIlluminationQuality", renderingArgs));
+      rows.push(documentRow(document, "runtime:renderer-render-path", "Render Path", readString(renderer.renderPath) ?? "", "enum", false, "/renderer/renderPath", "runtime", "runtime.set_rendering", "renderPath", renderingArgs));
       break;
     }
     case "target": {

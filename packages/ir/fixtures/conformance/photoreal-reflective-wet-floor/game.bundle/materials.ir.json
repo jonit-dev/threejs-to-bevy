@@ -1,0 +1,55 @@
+{
+  "schema": "threenative.materials",
+  "version": "0.1.0",
+  "materials": [
+    {
+      "id": "mat.wet.floor",
+      "kind": "standard",
+      "color": "#111820",
+      "metalness": 0,
+      "roughness": 0.02
+    },
+    {
+      "id": "mat.wall",
+      "kind": "standard",
+      "color": "#26323d",
+      "metalness": 0,
+      "roughness": 0.72
+    },
+    {
+      "id": "mat.plinth",
+      "kind": "standard",
+      "color": "#394653",
+      "metalness": 0.05,
+      "roughness": 0.28
+    },
+    {
+      "id": "mat.neon.cyan",
+      "kind": "standard",
+      "color": "#061012",
+      "emissive": "#27d9ff",
+      "emissiveBloom": {
+        "enabled": true,
+        "intensity": 0.55,
+        "threshold": 0.35
+      },
+      "emissiveIntensity": 2.4,
+      "metalness": 0,
+      "roughness": 0.18
+    },
+    {
+      "id": "mat.neon.magenta",
+      "kind": "standard",
+      "color": "#120611",
+      "emissive": "#ff3bd4",
+      "emissiveBloom": {
+        "enabled": true,
+        "intensity": 0.55,
+        "threshold": 0.35
+      },
+      "emissiveIntensity": 2.2,
+      "metalness": 0,
+      "roughness": 0.18
+    }
+  ]
+}

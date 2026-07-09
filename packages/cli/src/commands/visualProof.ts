@@ -154,7 +154,7 @@ export async function recordCommand(argv: readonly string[], cwd = process.env.I
   }
 }
 
-export async function captureScreenshot(options: { command?: readonly string[]; outPath: string; url: string; viewport?: VisualViewport; waitReady?: boolean }): Promise<IScreenshotProofReport> {
+export async function captureScreenshot(options: { command?: readonly string[]; outPath: string; settleMs?: number; url: string; viewport?: VisualViewport; waitReady?: boolean }): Promise<IScreenshotProofReport> {
   await mkdir(dirname(options.outPath), { recursive: true });
   const browser = await chromium.launch({ headless: true });
   const viewport = options.viewport ?? defaultViewport;
@@ -191,6 +191,9 @@ export async function captureScreenshot(options: { command?: readonly string[]; 
       diagnostics.push({ code: "TN_SCREENSHOT_CANVAS_MISSING", message: "No canvas element was found in the preview page.", severity: "error" });
     } else if (canvasInfo.width <= 0 || canvasInfo.height <= 0) {
       diagnostics.push({ code: "TN_SCREENSHOT_CANVAS_EMPTY", message: `Canvas has non-renderable size ${canvasInfo.width}x${canvasInfo.height}.`, severity: "error" });
+    }
+    if (options.settleMs !== undefined && options.settleMs > 0) {
+      await page.waitForTimeout(options.settleMs);
     }
     await page.screenshot({ fullPage: false, path: options.outPath });
   } finally {

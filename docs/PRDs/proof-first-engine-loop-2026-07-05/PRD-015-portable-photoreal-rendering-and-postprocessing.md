@@ -2,20 +2,20 @@
 
 Complexity: 11 -> HIGH mode
 
-Score basis: +2 expands renderer/source/IR contracts, +2 spans SDK/IR/compiler/web/Bevy/CLI/editor/docs, +2 requires cross-runtime visual parity proof, +2 introduces optional web adapter dependencies, +1 capability/fallback diagnostics, +1 asset/material fixture coverage, +1 release-gate evidence.
+Score basis: +2 expands renderer/source/IR contracts, +2 spans SDK/IR/compiler/web/Bevy/CLI/editor/docs, +2 requires cross-runtime visual parity proof, +2 introduces adapter-private rendering dependencies, +1 capability diagnostics, +1 asset/material fixture coverage, +1 release-gate evidence.
 
 ## 1. Context
 
-**Problem:** Three.js has strong ecosystem packages for expensive-looking rendering (`postprocessing`, `n8ao`, `realism-effects`, `threepipe`), but ThreeNative must not expose Three.js-only concepts as authored game APIs. João's requirement is explicit: if a visual capability is useful for the Three.js runtime, the same authored feature should be supported in Bevy too, or should produce an honest unsupported/fallback diagnostic.
+**Problem:** Three.js has strong ecosystem packages for expensive-looking rendering (`postprocessing`, `n8ao`, `realism-effects`, `threepipe`), but ThreeNative must not expose Three.js-only concepts as authored game APIs. João's requirement is explicit: photoreal rendering and post-processing are baseline engine features, so the same authored feature must be implemented in both the Three.js runtime and the Bevy runtime.
 
-**Goal:** Add a portable rendering/post-processing capability layer for photoreal-ish scenes: HDRI/environment lighting, tone mapping/exposure, ambient occlusion, bloom, depth of field, screen-space reflections, motion blur, and diagnostics for higher-risk effects such as SSGI. Web may use Three.js ecosystem libraries internally; authored source and IR remain engine-neutral.
+**Goal:** Add a portable rendering/post-processing baseline for photoreal-ish scenes: HDRI/environment lighting, tone mapping/exposure, ambient occlusion, bloom, depth of field, screen-space reflections, motion blur, and a defined path for SSGI. Web may use Three.js ecosystem libraries internally; Bevy may use native Bevy renderer facilities or adapter-private Rust implementations; authored source and IR remain engine-neutral.
 
 **Non-goals:**
 
 - Do not expose `threepipe`, `n8ao`, `realism-effects`, `postprocessing`, R3F, or drei concepts in SDK/source/IR.
 - Do not make ThreeNative's web runtime a `threepipe` app or viewer framework.
 - Do not claim Bevy parity for features that only render in Three.js.
-- Do not block basic rendering on optional heavyweight post-processing packages.
+- Do not make basic scene rendering depend on heavyweight post-processing packages when no authored feature needs them.
 - Do not vendor third-party asset binaries as part of this PRD.
 - Do not implement arbitrary custom post-processing shaders here; see `portable-shader-material-parity.md` and advanced visual boundary PRDs.
 
@@ -54,16 +54,16 @@ The safe architecture is a portable capability contract:
 structured source / SDK renderer declarations
   -> validated IR renderer feature contract
   -> compiler capability requirements
-  -> web Three.js adapter implementation or diagnostic
-  -> Bevy adapter implementation or diagnostic
+  -> web Three.js adapter implementation
+  -> Bevy adapter implementation
   -> visual proof gate comparing authored intent, reports, and screenshots
 ```
 
 Useful ecosystem roles:
 
-- `postprocessing`: candidate web-only implementation detail for composer/effects plumbing.
-- `n8ao`: candidate web ambient occlusion implementation detail, because AO is a high-value/low-complexity realism win.
-- `realism-effects`: experimental web-only candidate for SSR, motion blur, TRAA, and SSGI. Must stay feature-flagged until stable and parity-mapped.
+- `postprocessing`: adapter-private Three.js implementation detail for composer/effects plumbing.
+- `n8ao`: adapter-private Three.js ambient occlusion implementation detail, because AO is a high-value/low-complexity realism win.
+- `realism-effects` ([0beqz/realism-effects](https://github.com/0beqz/realism-effects)): NOT a dependency. Source-porting reference only: borrow applicable pass/shader code (SSR, motion blur, TRAA, SSGI) into the web adapter where useful, preserving license attribution. Ported effects must be wired through the same public renderer feature contract, and any adopted behavior must be ported or honestly diagnosed in Rust/Bevy too.
 - `threepipe`: reference for render-look profiles/plugin ergonomics only. Do not adopt it as the core runtime base.
 - `drei`/R3F helpers: mostly not core-engine dependencies; mine portable ideas only.
 
@@ -82,10 +82,10 @@ Useful ecosystem roles:
   - verify tooling and docs.
 - [x] Registration/wiring needed:
   - Add renderer feature fields and validation.
-  - Add capability diagnostics and target-profile metadata.
-  - Add optional web dependencies only after a minimal proof spike.
-  - Add Bevy implementation/fallback reports.
-  - Add web+Bevy visual fixtures and release evidence when promoted.
+  - Add capability diagnostics and runtime budget metadata.
+  - Add web dependencies only after a minimal proof spike.
+  - Add Bevy implementation reports.
+  - Add web+Bevy visual fixtures and release evidence for baseline support.
 
 **Is this user-facing?**
 
@@ -96,17 +96,17 @@ Useful ecosystem roles:
 
 1. Author creates or edits a runtime/rendering source document.
 2. Author enables a portable feature such as ambient occlusion, HDRI environment lighting, bloom, DOF, SSR, or motion blur.
-3. `tn build` validates the feature against supported schema and target profile.
-4. Web runtime renders the feature through Three.js/post-processing internals or emits a stable diagnostic.
-5. Bevy runtime renders the equivalent feature or emits a stable diagnostic with the same authored feature ID.
+3. `tn build` validates the feature against supported schema and runtime capability reports.
+4. Web runtime renders the feature through Three.js/post-processing internals and reports the applied feature.
+5. Bevy runtime renders the equivalent feature and reports the applied feature.
 6. Verification captures web and Bevy screenshots, runtime reports, diagnostics, and a contact sheet.
-7. Release docs state whether the feature is `promoted`, `fallback`, `experimental`, or `unsupported` per runtime.
+7. Release docs state baseline support and evidence for each feature per runtime.
 
 ## 2. Solution
 
 **Approach:**
 
-Promote photoreal rendering in layers. Start with capabilities that are useful, bounded, and likely implementable in both runtimes. Keep unstable Three.js-only effects behind diagnostics or experimental flags until Bevy has an equivalent story.
+Implement photoreal rendering in layers, but treat the layer list as baseline engine work rather than optional polish. Do not hide capabilities behind separate gates; if a feature is present in the authored renderer contract, both adapters must implement it and report it. Stable diagnostics are for invalid assets, invalid values, runtime budget violations, and temporary rollout gaps during development, not for shipping a Three.js-only feature.
 
 ### Portable renderer feature shape
 
@@ -155,29 +155,28 @@ Add or extend renderer config with engine-neutral fields:
     },
     "screenSpaceGlobalIllumination": {
       "enabled": false,
-      "quality": "low",
-      "experimental": true
+      "quality": "low"
     }
   }
 }
 ```
 
-### Feature promotion tiers
+### Baseline Feature Matrix
 
-| Feature | Initial status | Web implementation target | Bevy implementation target | Promotion bar |
+| Feature | Engine status | Web implementation target | Bevy implementation target | Required proof |
 |---|---|---|---|---|
-| Tone mapping / exposure | promoted | existing Three.js renderer config | Bevy tonemapping/exposure | existing color/lighting gate remains stable |
-| HDRI/environment lighting | candidate | PMREM/environment texture | Bevy environment-map/IBL path or diagnostic | reflective-object side-by-side proof |
-| Bloom | promoted-ish | existing/postprocessing bloom | Bevy bloom | emissive fixture side-by-side proof |
-| Ambient occlusion | P0 candidate | `n8ao` or `postprocessing` SSAO | Bevy SSAO/equivalent | corner/contact-shadow fixture proof |
-| Depth of field | P1 candidate | `postprocessing` DOF | Bevy DOF/equivalent | foreground/background focus fixture proof |
-| SSR | P2 experimental | `realism-effects`/custom SSR | Bevy SSR or diagnostic | wet-floor/metal fixture proof or honest unsupported |
-| Motion blur | P2 experimental | `realism-effects` motion blur | Bevy motion blur or diagnostic | moving-object contact sheet proof |
-| SSGI | diagnostic-first | `realism-effects` experimental | unsupported diagnostic until proven | no promotion without Bevy parity story |
+| Tone mapping / exposure | baseline | existing Three.js renderer config | Bevy tonemapping/exposure | existing color/lighting gate remains stable |
+| HDRI/environment lighting | baseline | PMREM/environment texture | Bevy environment-map/IBL path | reflective-object side-by-side proof |
+| Bloom | baseline | existing/postprocessing bloom | Bevy bloom | emissive fixture side-by-side proof |
+| Ambient occlusion | baseline | `n8ao` or `postprocessing` SSAO | Bevy SSAO/equivalent | corner/contact-shadow fixture proof |
+| Depth of field | baseline | `postprocessing` DOF | Bevy DOF/equivalent | foreground/background focus fixture proof |
+| SSR | baseline | custom SSR (port from `realism-effects` where applicable) | Bevy SSR/equivalent | wet-floor/metal fixture proof in both runtimes |
+| Motion blur | baseline | custom motion blur (port from `realism-effects` where applicable) | Bevy motion blur/equivalent | moving-object contact sheet proof in both runtimes |
+| SSGI | baseline stretch | ported `realism-effects` code where applicable | Bevy GI/equivalent | no support claim until both runtimes render and report it |
 
 ### Diagnostics
 
-Every unsupported or downgraded feature must produce stable machine-readable diagnostics:
+Every invalid, budget-blocked, or not-yet-landed feature must produce stable machine-readable diagnostics during development and verification:
 
 ```txt
 TN-RENDER-FEATURE-FALLBACK
@@ -185,15 +184,14 @@ feature: renderer.ambientOcclusion
 runtime: bevy
 requestedMode: screen-space
 appliedMode: disabled
-reason: Bevy adapter has no promoted SSAO implementation for this target profile.
-suggestion: Disable ambientOcclusion or choose a target profile that supports it.
+reason: Bevy adapter has not landed the baseline SSAO implementation yet.
+suggestion: Finish the Bevy SSAO baseline task or keep the feature out of release claims.
 ```
 
 Required diagnostic families:
 
 - `TN-RENDER-FEATURE-FALLBACK`
 - `TN-RENDER-FEATURE-UNSUPPORTED`
-- `TN-RENDER-FEATURE-EXPERIMENTAL`
 - `TN-RENDER-FEATURE-TARGET-BUDGET`
 - `TN-RENDER-FEATURE-ASSET-MISSING`
 
@@ -202,19 +200,22 @@ Required diagnostic families:
 - Add web adapter dependencies only behind a small spike and focused proof.
 - Dependencies must remain runtime-web-three implementation details.
 - Authored source, IR, CLI, and editor must not mention package names.
-- If a package is too unstable, keep its feature diagnostic-only and document why.
+- If a package is too unstable, replace it with adapter-owned code or another library; do not turn a baseline renderer feature into a permanent Three.js-only diagnostic.
 
 Recommended order:
 
 1. Add `postprocessing` plumbing only if existing internal pass structure is insufficient.
 2. Add `n8ao` first for AO.
-3. Evaluate `realism-effects` for SSR/motion blur/SSGI under an experimental target profile.
+3. For SSR/motion blur/SSGI, port the applicable parts of `realism-effects`
+   source into the web adapter (with attribution) as normal adapter-private
+   implementations of the public renderer contract; do not add it as a
+   package dependency.
 4. Do not adopt `threepipe` as runtime base; use it only as reference material.
 
 **Key Decisions:**
 
-- [x] Library/framework choices: portable source/IR contract first; web libraries are adapter-private; Bevy equivalent/fallback is mandatory.
-- [x] Error-handling strategy: unsupported capabilities produce stable diagnostics, not silent visual drift.
+- [x] Library/framework choices: portable source/IR contract first; web libraries are adapter-private; Bevy equivalent implementation is mandatory.
+- [x] Error-handling strategy: invalid or not-yet-landed capabilities produce stable diagnostics, not silent visual drift.
 - [x] Reused utilities: existing screenshot/video proof, visual parity gates, render-look reports, asset-source catalog, material/environment source docs.
 
 **Data Changes:**
@@ -244,7 +245,7 @@ sequenceDiagram
         Build->>Web: Emit renderer feature config
         Build->>Bevy: Emit renderer feature config
         Web-->>Verify: Render/report applied features
-        Bevy-->>Verify: Render/report applied features or fallback diagnostics
+        Bevy-->>Verify: Render/report applied features
         Verify-->>Author: screenshots + reports + parity status
     end
 ```
@@ -255,9 +256,9 @@ sequenceDiagram
 
 - [ ] Inventory existing renderer/runtime config fields and source operations.
 - [ ] Define renderer feature schema for `environmentLighting`, `ambientOcclusion`, `depthOfField`, `screenSpaceReflections`, `motionBlur`, and `screenSpaceGlobalIllumination`.
-- [ ] Add capability status enum: `promoted`, `experimental`, `fallback`, `unsupported`.
-- [ ] Add IR validation for bounded numeric ranges and incompatible combinations.
-- [ ] Add compiler/runtime report types for requested/applied feature status.
+- [x] Add capability status enum: `baseline`, `rollout-gap`, `budget-blocked`, `invalid`.
+- [x] Add IR validation for bounded numeric ranges and incompatible combinations.
+- [x] Add compiler/runtime report types for requested/applied feature status.
 
 ### Phase 2 — HDRI/PBR fixture path
 
@@ -268,10 +269,10 @@ sequenceDiagram
 
 ### Phase 3 — Ambient occlusion first pass
 
-- [ ] Add portable `renderer.ambientOcclusion` source/IR fields.
-- [ ] Implement web AO through the simplest stable path (`n8ao` preferred if spike passes; otherwise existing/postprocessing SSAO).
-- [ ] Implement Bevy AO or a stable fallback diagnostic if Bevy support cannot be promoted yet.
-- [ ] Add AO fixture with corners/contact surfaces and side-by-side screenshot report.
+- [x] Add portable `renderer.ambientOcclusion` source/IR fields.
+- [x] Implement web AO through the simplest stable path (`n8ao` preferred if spike passes; otherwise existing/postprocessing SSAO).
+- [x] Implement Bevy AO through SSAO/equivalent baseline support.
+- [x] Add AO fixture with corners/contact surfaces and side-by-side screenshot report.
 
 ### Phase 4 — Bloom/HDRI/render-look consolidation
 
@@ -280,51 +281,52 @@ sequenceDiagram
 - [ ] Add reflective PBR/HDRI showroom fixture.
 - [ ] Update docs and parity tables.
 
-### Phase 5 — DOF/SSR/motion blur experimental lanes
+### Phase 5 — DOF/SSR/motion blur baseline lanes
 
-- [ ] Add source/IR fields with explicit `experimental` gating where needed.
-- [ ] Add web implementation spikes for DOF and motion blur.
-- [ ] Add Bevy implementation or fallback diagnostics.
-- [ ] Keep SSR and SSGI diagnostic-first unless both runtimes have a credible proof path.
+- [ ] Add source/IR fields as normal baseline renderer contract fields, without separate gates.
+- [x] Add web implementation spikes for DOF and motion blur.
+- [x] Add Bevy implementations for DOF and motion blur.
+- [x] Implement SSR in both runtimes before claiming support; keep SSGI out of release claims until both runtimes render it.
 
 ### Phase 6 — CLI/editor operations
 
-- [ ] Add `tn runtime set-rendering` flags or registry operations for promoted fields.
-- [ ] Add editor inspector controls for promoted fields only.
-- [ ] Hide experimental fields unless target profile explicitly opts in.
+- [x] Add `tn runtime set-rendering` flags or registry operations for baseline fields.
+- [x] Add editor inspector controls for renderer fields that are in the public source contract.
+- [ ] Show rollout-gap, invalid, and budget-blocked diagnostics inline instead of hiding fields.
 - [ ] Ensure operation payloads preserve source ownership/provenance.
 
 ### Phase 7 — Verification and release evidence
 
-- [ ] Add focused visual gate: `pnpm verify:rendering-photoreal` or integrate into existing render-look gate.
-- [ ] Capture web+Bevy screenshots, reports, diagnostics, and contact sheets.
+- [x] Add focused visual gate: `pnpm verify:rendering-photoreal` or integrate into existing render-look gate.
+- [x] Capture web+Bevy screenshots, reports, diagnostics, and contact sheets.
 - [ ] Add fixtures:
   - `photoreal-hdri-showroom`
-  - `photoreal-ao-corner-test`
-  - `photoreal-bloom-emissive-test`
-  - `photoreal-dof-depth-test`
-  - `photoreal-reflective-wet-floor` if SSR becomes real
-- [ ] Update `docs/STATUS.md`, `docs/bevy-feature-parity.md`, and PRD index.
+  - [x] `photoreal-ao-corner-test`
+  - [x] `photoreal-bloom-emissive-test`
+  - [x] `photoreal-dof-depth-test`
+  - [x] `photoreal-motion-blur-moving-test`
+  - [x] `photoreal-reflective-wet-floor`
+- [x] Update `docs/STATUS.md`, `docs/bevy-feature-parity.md`, and PRD index for AO, bloom/emissive, DOF, motion-blur, and SSR proof scope.
 
 ## 5. Acceptance Criteria
 
 - [ ] Authored renderer features are source/IR-level and do not expose Three.js package names.
 - [ ] Web and Bevy runtimes both report requested/applied feature state.
-- [ ] Unsupported Bevy/Web features emit stable diagnostics rather than silently dropping visual intent.
-- [ ] AO has a real cross-runtime fixture or is explicitly documented as fallback per runtime.
+- [ ] Any temporary rollout gap emits stable diagnostics rather than silently dropping visual intent.
+- [ ] AO has a real cross-runtime fixture.
 - [ ] HDRI/environment lighting uses catalog-selected assets and proves reflective PBR output.
 - [ ] Visual proof includes side-by-side web+Bevy screenshots and machine-readable reports.
-- [ ] CLI/editor operations can mutate promoted fields without hand-editing generated bundles.
-- [ ] Docs state which features are promoted, experimental, fallback, or unsupported.
+- [ ] CLI/editor operations can mutate baseline fields without hand-editing generated bundles.
+- [ ] Docs state baseline support and evidence for each feature.
 - [ ] Release/focused verification catches accidental Three.js-only feature claims.
 
 ## 6. Risks and Pushback
 
 - **Three.js library trap:** adopting `threepipe` or exposing `n8ao` concepts directly would make Bevy parity harder. Keep all library details adapter-private.
 - **Visual parity overclaim:** AO/SSR/DOF will not pixel-match exactly across engines. Gate on authored intent, feature reports, and bounded visual regions, not full-frame identical screenshots.
-- **Performance regression:** post-processing can be expensive. Target profiles need quality/budget metadata and default-off behavior for heavy effects.
+- **Performance regression:** post-processing can be expensive. Runtime budgets need quality metadata and default-off behavior for heavy effects.
 - **Asset runtime leakage:** Poly Haven/ambientCG URLs are catalog/provenance sources, not runtime CDN dependencies. Imported fixtures should be bundle-local.
-- **SSGI risk:** SSGI is attractive but likely too backend-specific. Treat it as experimental/diagnostic until a Bevy equivalent exists.
+- **SSGI risk:** SSGI is attractive but likely too backend-specific. Keep it out of release claims until both runtimes have a real implementation and proof.
 
 ## 7. Verification Commands
 
@@ -349,7 +351,84 @@ pnpm verify:pre-push
 
 ## 8. Open Questions
 
-- Which Bevy version/API path should be treated as the first promoted SSAO/AO target?
-- Should SSR remain entirely diagnostic until Bevy parity is available, or should it be allowed under an explicit web-only experimental target profile?
+- Which Bevy version/API path should be treated as the first baseline SSAO/AO target?
+- Which minimal Bevy SSR/equivalent path is credible enough to pair with the
+  Three.js SSR spike before any portable support claim?
 - Should `cinematic`/`stylized` render-look profiles become real profiles in this PRD or stay separate art-direction work?
-- What target-profile performance budgets should gate AO/DOF/motion blur on mobile/webview?
+- What runtime performance budgets should gate AO/DOF/motion blur on mobile/webview?
+
+## 9. Review Insights (2026-07-08)
+
+Findings from a review against `docs/status/ENGINE-READINESS-REPORT-2026-07-08.md`,
+`docs/runtime/native-path.md`, and the current web adapter code. These adjust
+scope interpretation; they do not change the portable-contract architecture.
+
+### 9.1 Cross-runtime rendering support is in scope
+
+`docs/runtime/native-path.md` records a conservative policy for casual
+Bevy-native promotions, but this PRD is not a web-only escape hatch. The
+product requirement for photoreal rendering remains: authored rendering
+features in this PRD are baseline engine features for both the Three.js adapter
+and the Bevy adapter, with adapter-private implementations and proof per
+runtime. A stable diagnostic is acceptable for rollout gaps, invalid inputs, or
+budget-blocked runs; it is not the promotion bar for a feature we claim as
+portable.
+
+- Phase 3's "Implement Bevy AO" remains real implementation work. Ambient
+  occlusion cannot graduate to baseline support on web proof alone.
+- Phase 5's DOF, SSR, and motion-blur lanes carry Bevy implementation tasks
+  beside the Three.js implementation spikes. If Bevy cannot implement a lane
+  yet, that lane is a rollout gap and docs must say so.
+- SSGI remains out of release claims until both adapters can prove it.
+- The native-promotion evidence required by the freeze policy is satisfied by
+  this PRD's shipped-game visual need, web proof, Bevy screenshot/report proof,
+  and a focused rendering gate that can fail in CI.
+- `TN-RENDER-FEATURE-FALLBACK`/`UNSUPPORTED` diagnostics are still required,
+  but they are guardrails for rollout gaps, invalid requests, and regression
+  reporting, not a substitute for implementing Bevy support for baseline
+  features.
+
+### 9.2 Diagnostic naming must reconcile with existing code
+
+The web adapter already emits `TN_RENDER_PROFILE_FALLBACK_USED`
+(`packages/runtime-web-three/src/rendering/applyRenderLookProfile.ts`), while
+this PRD proposes a hyphenated `TN-RENDER-FEATURE-*` family. Phase 1 should
+pick one convention and either migrate the existing code or fold the new
+diagnostics into the existing style — two spellings of the same family is
+exactly the silent-drift class the diagnostics are meant to prevent. The
+existing shape is a good base to extend rather than replace:
+
+```ts
+export interface IWebRenderFeatureReport {
+  feature: string;                  // "renderer.ambientOcclusion"
+  requestedMode: string;
+  appliedMode: string;              // "disabled" on fallback
+  status: "baseline" | "rollout-gap" | "budget-blocked" | "invalid";
+  diagnostic?: {
+    code: "TN_RENDER_FEATURE_FALLBACK" | "TN_RENDER_FEATURE_UNSUPPORTED"
+      | "TN_RENDER_FEATURE_TARGET_BUDGET"
+      | "TN_RENDER_FEATURE_ASSET_MISSING";
+    reason: string;
+    suggestion: string;
+  };
+}
+```
+
+### 9.3 The baseline table needs an owner, not maintenance
+
+Per the repo drift rules, the Section 2 feature/status table is a second
+hand-maintained adapter list waiting to rot. Phase 1's capability status enum
+should live in a registry (IR or compiler capability descriptors) that both
+runtimes' reports and `docs/bevy-feature-parity.md` derive from, with a drift
+test that fails when a feature is added to source/IR schema without a
+registry entry. Note the readiness report sequences adapter-surface drift
+gates (remediation PRD-002) ahead of new surface work — the same pattern
+applies here even though renderer features are a different surface.
+
+### 9.4 Sequencing note
+
+The readiness report ranks this PRD (with cinematic-look PRD-5) as a
+mid-size enabler behind closing PRD-012 and landing drift gates. Phases 1-4
+(contract slice, HDRI fixtures, AO, render-look consolidation) are the value
+core; Phases 5-6 (baseline lanes, editor controls) can trail without
+blocking the "default output reads stylized-demo" fix that motivates the PRD.

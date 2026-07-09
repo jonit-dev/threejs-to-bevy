@@ -199,6 +199,7 @@
   "systems": [
     {
       "id": "move-player-to-goal",
+      "source": "behavior-metadata",
       "schedule": "fixedUpdate",
       "script": {
         "module": "src/scripts/player.ts",

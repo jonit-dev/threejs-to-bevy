@@ -233,16 +233,36 @@ pub struct RuntimeRendererReport {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub antialias: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    pub ambient_occlusion: Option<RuntimeAmbientOcclusionReport>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub bloom: Option<RuntimeBloomReport>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub color_grading: Option<RuntimeColorGradingReport>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub depth_of_field: Option<RuntimeDepthOfFieldReport>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub feature_reports: Vec<RuntimeRenderFeatureReport>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub motion_blur: Option<RuntimeMotionBlurReport>,
     pub post_processing: RuntimePostProcessingReport,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub render_look: Option<RuntimeRenderLookReport>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub render_path: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub screen_space_global_illumination: Option<RuntimeScreenSpaceGlobalIlluminationReport>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub screen_space_reflections: Option<RuntimeScreenSpaceReflectionsReport>,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RuntimeAmbientOcclusionReport {
+    pub enabled: bool,
+    pub intensity: f32,
+    pub mode: String,
+    pub quality: String,
+    pub radius: f32,
 }
 
 #[derive(Debug, Serialize)]
@@ -260,6 +280,46 @@ pub struct RuntimeDepthOfFieldReport {
     pub enabled: bool,
     pub focus_distance: f32,
     pub max_blur: f32,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RuntimeMotionBlurReport {
+    pub enabled: bool,
+    pub shutter_angle: f32,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RuntimeScreenSpaceGlobalIlluminationReport {
+    pub enabled: bool,
+    pub quality: String,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RuntimeScreenSpaceReflectionsReport {
+    pub enabled: bool,
+    pub quality: String,
+    pub roughness_limit: f32,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RuntimeRenderFeatureReport {
+    pub applied_mode: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub diagnostic: Option<RuntimeRenderFeatureDiagnosticReport>,
+    pub feature: String,
+    pub requested_mode: String,
+    pub status: String,
+}
+
+#[derive(Debug, Serialize)]
+pub struct RuntimeRenderFeatureDiagnosticReport {
+    pub code: String,
+    pub reason: String,
+    pub suggestion: String,
 }
 
 #[derive(Debug, Serialize)]
@@ -1109,34 +1169,29 @@ fn report_runtime_config(
 ) -> Option<ConformanceRuntimeConfigReport> {
     let renderer = config.and_then(|config| config.renderer.as_ref())?;
     let render_look = runtime_render_look_report(renderer);
-    let bloom_report = renderer
-        .bloom
+    let feature_reports = runtime_renderer_feature_reports(renderer);
+    let bloom_report = runtime_bloom_report(renderer);
+    let bloom_applied = bloom_report
         .as_ref()
-        .map(|bloom| RuntimeBloomReport {
-            enabled: bloom.enabled,
-            intensity: bloom.intensity,
-            threshold: bloom.threshold,
-        })
-        .or_else(|| {
-            renderer.render_look.as_ref().and_then(|render_look| {
-                native_render_look_has_bloom(render_look.profile.as_str()).then(|| {
-                    RuntimeBloomReport {
-                        enabled: true,
-                        intensity: render_look
-                            .overrides
-                            .as_ref()
-                            .and_then(|overrides| overrides.bloom_intensity)
-                            .unwrap_or_else(|| {
-                                native_render_look_bloom_intensity(render_look.profile.as_str())
-                            }),
-                        threshold: 0.85,
-                    }
-                })
-            })
-        });
+        .is_some_and(|bloom| bloom.enabled && bloom.intensity > 0.0);
+    let applied_feature_names = feature_reports
+        .iter()
+        .filter(|feature| feature.status == "baseline" && feature.requested_mode != "disabled")
+        .map(|feature| feature.feature.replace("renderer.", ""))
+        .collect::<Vec<_>>();
     Some(ConformanceRuntimeConfigReport {
         renderer: Some(RuntimeRendererReport {
             antialias: Some(renderer.antialias.clone()),
+            ambient_occlusion: renderer
+                .ambient_occlusion
+                .as_ref()
+                .map(|ambient_occlusion| RuntimeAmbientOcclusionReport {
+                    enabled: ambient_occlusion.enabled,
+                    intensity: ambient_occlusion.intensity,
+                    mode: ambient_occlusion.mode.clone(),
+                    quality: ambient_occlusion.quality.clone(),
+                    radius: ambient_occlusion.radius,
+                }),
             bloom: bloom_report,
             color_grading: renderer.color_grading.as_ref().map(|color_grading| {
                 RuntimeColorGradingReport {
@@ -1157,28 +1212,31 @@ fn report_runtime_config(
                     max_blur: depth_of_field.max_blur,
                 }
             }),
+            feature_reports,
+            motion_blur: renderer
+                .motion_blur
+                .as_ref()
+                .map(|motion_blur| RuntimeMotionBlurReport {
+                    enabled: motion_blur.enabled,
+                    shutter_angle: motion_blur.shutter_angle,
+                }),
             post_processing: RuntimePostProcessingReport {
                 applied: [
-                    renderer
-                        .bloom
-                        .as_ref()
-                        .and_then(|bloom| bloom.enabled.then(|| "bloom".to_owned())),
-                    renderer.render_look.as_ref().and_then(|render_look| {
-                        (renderer.bloom.is_none()
-                            && native_render_look_has_bloom(render_look.profile.as_str()))
-                        .then(|| "bloom".to_owned())
+                    renderer.bloom.as_ref().and_then(|bloom| {
+                        (bloom.enabled && bloom.intensity > 0.0).then(|| "bloom".to_owned())
+                    }),
+                    renderer.render_look.as_ref().and_then(|_| {
+                        (renderer.bloom.is_none() && bloom_applied).then(|| "bloom".to_owned())
                     }),
                     renderer
                         .color_grading
                         .as_ref()
                         .map(|_| "colorGrading".to_owned()),
-                    renderer.depth_of_field.as_ref().and_then(|depth_of_field| {
-                        depth_of_field.enabled.then(|| "depthOfField".to_owned())
-                    }),
-                    post_antialias_feature(renderer.antialias.as_str()),
                 ]
                 .into_iter()
                 .flatten()
+                .chain(applied_feature_names)
+                .chain(post_antialias_feature(renderer.antialias.as_str()))
                 .collect(),
                 skipped: render_look
                     .as_ref()
@@ -1190,14 +1248,136 @@ fn report_runtime_config(
                                 feature: fallback.feature.clone(),
                                 reason: fallback.reason.clone(),
                             })
-                            .collect()
+                            .collect::<Vec<_>>()
                     })
-                    .unwrap_or_default(),
+                    .unwrap_or_default()
+                    .into_iter()
+                    .chain(
+                        runtime_renderer_feature_reports(renderer)
+                            .into_iter()
+                            .filter_map(|feature| {
+                                feature.diagnostic.map(|diagnostic| {
+                                    RuntimePostProcessingSkipReport {
+                                        feature: feature.feature,
+                                        reason: diagnostic.reason,
+                                    }
+                                })
+                            }),
+                    )
+                    .collect(),
             },
             render_look,
             render_path: renderer.render_path.clone(),
+            screen_space_global_illumination: renderer
+                .screen_space_global_illumination
+                .as_ref()
+                .map(|ssgi| RuntimeScreenSpaceGlobalIlluminationReport {
+                    enabled: ssgi.enabled,
+                    quality: ssgi.quality.clone(),
+                }),
+            screen_space_reflections: renderer.screen_space_reflections.as_ref().map(|ssr| {
+                RuntimeScreenSpaceReflectionsReport {
+                    enabled: ssr.enabled,
+                    quality: ssr.quality.clone(),
+                    roughness_limit: ssr.roughness_limit,
+                }
+            }),
         }),
     })
+}
+
+fn runtime_renderer_feature_reports(
+    renderer: &RuntimeRendererConfig,
+) -> Vec<RuntimeRenderFeatureReport> {
+    [
+        renderer.ambient_occlusion.as_ref().map(|feature| {
+            runtime_renderer_feature_report(
+                "renderer.ambientOcclusion",
+                feature.enabled,
+                feature.mode.as_str(),
+                "screen-space",
+            )
+        }),
+        renderer.depth_of_field.as_ref().map(|feature| {
+            runtime_renderer_feature_report(
+                "renderer.depthOfField",
+                feature.enabled,
+                "lens",
+                "gaussian",
+            )
+        }),
+        renderer.screen_space_reflections.as_ref().map(|feature| {
+            runtime_renderer_feature_report(
+                "renderer.screenSpaceReflections",
+                feature.enabled,
+                "screen-space",
+                "screen-space",
+            )
+        }),
+        renderer.motion_blur.as_ref().map(|feature| {
+            runtime_renderer_feature_report(
+                "renderer.motionBlur",
+                feature.enabled,
+                "shutter",
+                "motion-vectors",
+            )
+        }),
+        renderer
+            .screen_space_global_illumination
+            .as_ref()
+            .map(|feature| {
+                runtime_renderer_feature_report(
+                    "renderer.screenSpaceGlobalIllumination",
+                    feature.enabled,
+                    "screen-space",
+                    "disabled",
+                )
+            }),
+    ]
+    .into_iter()
+    .flatten()
+    .collect()
+}
+
+fn runtime_renderer_feature_report(
+    feature: &str,
+    enabled: bool,
+    requested_mode: &str,
+    applied_mode: &str,
+) -> RuntimeRenderFeatureReport {
+    if !enabled {
+        return RuntimeRenderFeatureReport {
+            applied_mode: "disabled".to_owned(),
+            diagnostic: None,
+            feature: feature.to_owned(),
+            requested_mode: "disabled".to_owned(),
+            status: "baseline".to_owned(),
+        };
+    }
+    if applied_mode != "disabled" {
+        return RuntimeRenderFeatureReport {
+            applied_mode: applied_mode.to_owned(),
+            diagnostic: None,
+            feature: feature.to_owned(),
+            requested_mode: requested_mode.to_owned(),
+            status: "baseline".to_owned(),
+        };
+    }
+    RuntimeRenderFeatureReport {
+        applied_mode: applied_mode.to_owned(),
+        diagnostic: Some(RuntimeRenderFeatureDiagnosticReport {
+            code: "TN_RENDER_FEATURE_FALLBACK".to_owned(),
+            reason: format!(
+                "bevy adapter has not landed the baseline {feature} implementation yet."
+            ),
+            suggestion: format!(
+                "Finish the bevy {feature} baseline lane before making release support claims."
+            ),
+        }),
+        feature: feature.to_owned(),
+        requested_mode: requested_mode.to_owned(),
+        status: "rollout-gap".to_owned(),
+    }
 }
 
 fn runtime_render_look_report(renderer: &RuntimeRendererConfig) -> Option<RuntimeRenderLookReport> {
@@ -1227,6 +1407,32 @@ fn runtime_render_look_report(renderer: &RuntimeRendererConfig) -> Option<Runtim
                 shadow_quality: overrides.shadow_quality.clone(),
             }),
         requested_profile,
+    })
+}
+
+fn runtime_bloom_report(renderer: &RuntimeRendererConfig) -> Option<RuntimeBloomReport> {
+    if let Some(bloom) = renderer.bloom.as_ref() {
+        return Some(RuntimeBloomReport {
+            enabled: bloom.enabled && bloom.intensity > 0.0,
+            intensity: bloom.intensity,
+            threshold: bloom.threshold,
+        });
+    }
+    renderer.render_look.as_ref().and_then(|render_look| {
+        native_render_look_has_bloom(render_look.profile.as_str()).then(|| {
+            let intensity = render_look
+                .overrides
+                .as_ref()
+                .and_then(|overrides| overrides.bloom_intensity)
+                .unwrap_or_else(|| {
+                    native_render_look_bloom_intensity(render_look.profile.as_str())
+                });
+            RuntimeBloomReport {
+                enabled: intensity > 0.0,
+                intensity,
+                threshold: 0.85,
+            }
+        })
     })
 }
 
@@ -1550,7 +1756,7 @@ fn runtime_light(
         return Some(RuntimeLightReport {
             angle: None,
             color: Some(color_report_from_bevy(light.color)),
-            intensity: Some(light.illuminance / 2_000.0),
+            intensity: Some(light.illuminance),
             kind: "directional".to_owned(),
             range: None,
             shadow_filter: None,

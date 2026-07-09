@@ -1,0 +1,15 @@
+{
+  "schema": "threenative.target-profile",
+  "version": "0.1.0",
+  "targets": ["web", "desktop"],
+  "budgets": {
+    "maxDrawCalls": 0,
+    "maxTextureBytes": 0,
+    "maxTriangleCount": 0
+  },
+  "features": {
+    "audio": false,
+    "physics": false,
+    "scripting": false
+  }
+}

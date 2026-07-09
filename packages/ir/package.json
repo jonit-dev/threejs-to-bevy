@@ -32,6 +32,10 @@
       "types": "./dist/runtimeDiagnostics.d.ts",
       "default": "./dist/runtimeDiagnostics.js"
     },
+    "./shaderCodegen": {
+      "types": "./dist/shaderCodegen.d.ts",
+      "default": "./dist/shaderCodegen.js"
+    },
     "./capabilities/*": "./capabilities/*",
     "./diagnostics/*": "./diagnostics/*",
     "./schemas/*": "./schemas/*"

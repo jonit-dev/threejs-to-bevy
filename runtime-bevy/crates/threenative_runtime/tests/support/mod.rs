@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use threenative_loader::{load_bundle, LoadedBundle};
+use threenative_loader::{LoadedBundle, load_bundle};
 
 pub struct SharedFixture {
     pub bundle: LoadedBundle,

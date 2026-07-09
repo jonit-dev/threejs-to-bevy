@@ -546,6 +546,18 @@ remaining gaps by usefulness for building and shipping ordinary 3D games:
   `pnpm verify:default-look`/`pnpm verify:render-look` capture parity,
   balanced, and cinematic web/Bevy screenshots plus screenshot-derived web
   metrics.
+- `P2` Portable ambient occlusion and bloom/emissive proof have source/IR/config
+  and runtime report semantics plus focused web/Bevy screenshot evidence through
+  the PRD-015 `photoreal-ao-corner-test` and
+  `photoreal-bloom-emissive-test` gate fixtures. Portable depth-of-field now
+  has web `BokehPass` and Bevy `DepthOfFieldSettings` mapping/report proof plus
+  the PRD-015 `photoreal-dof-depth-test` screenshot fixture. Portable motion
+  blur now has web temporal-accumulation and Bevy native motion-vector
+  mapping/report proof plus the PRD-015 `photoreal-motion-blur-moving-test`
+  scripted moving-object screenshot fixture. Portable screen-space reflections
+  now have web planar baseline and Bevy native SSR mapping/report proof plus
+  the PRD-015 `photoreal-reflective-wet-floor` screenshot fixture. Broader
+  HDRI/SSGI photoreal lanes and target/performance policy remain in progress.
 - `P3` Advanced renderer and physics breadth. Custom shaders, bindless,
   volumetrics, SSR, deferred rendering, decals, auto exposure, DOF, motion blur,
   virtual geometry, full constraints, vehicles, ragdolls, soft bodies, arbitrary
@@ -609,7 +621,7 @@ Rows below are planning guidance, not implementation claims:
 | Filmic look controls | Bevy 0.14 adds filmic color grading and existing tone mapping/exposure controls; ThreeNative render-look profiles promote `balanced`, `cinematic`, and `stylized` as bounded semantic profile rows. | Cohesive mood, less washed-out lighting, better dusk/night/cave readability, and material response that feels authored. | Keep promotion bounded to tone map, exposure, saturation, contrast, bloom intensity, shadow quality, and deterministic fallback/default lighting policy before exposing high-end renderer internals. |
 | Auto exposure | Bevy 0.14 exposes camera auto-exposure, but it is histogram-driven and platform-sensitive. | Useful for tunnels, caves, explosions, day/night transitions, and bright outdoor-to-indoor cuts. | Keep `P3` diagnostic-only. `TN_IR_RENDERER_ADVANCED_FEATURE_UNSUPPORTED` now reports the web/Bevy target surface and the missing deterministic histogram, convergence, and mobile fallback evidence. |
 | Depth of field | Bevy 0.14 has focal-distance/aperture depth-of-field examples; ThreeNative currently records a runtime-config/report boundary. | Hero-object focus, scale cues, menu scenes, and cinematic moments. | Keep report-only until visual blur calibration, mobile/performance budget, camera ownership rules, and unsupported-platform fallback evidence are captured. |
-| Motion blur and motion vectors | Bevy 0.14 includes per-object motion blur and improved motion vectors/TAA for animated meshes. | Racing, projectiles, fast enemies, camera pans, and attacks feel smoother. | Keep diagnostic-only. Unsupported diagnostics now require shutter/sample semantics, motion-vector or authored approximation policy, and video/screenshot proof before promotion. |
+| Motion blur and motion vectors | Bevy 0.14 includes per-object motion blur and improved motion vectors/TAA for animated meshes. | Racing, projectiles, fast enemies, camera pans, and attacks feel smoother. | Web temporal-accumulation and Bevy native motion-vector mapping/report proof exists for portable `motionBlur`, with moving-object screenshot proof in `photoreal-motion-blur-moving-test`; keep broader release support pending target/performance policy and any required video evidence. |
 | Screen-space reflections and deferred rendering | Bevy 0.14 SSR is deferred-only, has WebGL limitations, and is constrained to smooth surfaces. | Wet floors, water, glossy metal, mirrors, and polished interiors. | Do not expose Bevy SSR directly. `SSR`, mirrors, and deferred path remain stable diagnostics with material/reflection intent, forward fallback, target-profile policy, and web/native screenshot evidence as the promotion bar. |
 | Volumetric fog and light shafts | Bevy 0.14 adds volumetric fog/light shafts with camera settings and directional shadowed light participation. | Forest shafts, caves, arenas, magic beams, underwater haze, and atmospheric screenshots. | Keep `P3` diagnostic-only unless a shared profile can define density/scattering, participating light kinds, shadow dependency, light-count limits, performance budgets, and web/Bevy screenshot proof. |
 | Advanced PBR and glTF extensions | Bevy 0.14 release notes and glTF loader cover texture transforms, clearcoat, transmission, emissive strength, anisotropy, extras, and morph-related metadata. | Imported assets retain authored glass, varnish, brushed metal, trim sheets, emissive signage, and material identity. | Preserve/report supported metadata, promote only fields with web/Bevy visual or report parity, and diagnose unsupported extensions, shader transforms, and Bevy feature-flag gaps. |

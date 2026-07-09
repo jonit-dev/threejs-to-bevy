@@ -6,7 +6,7 @@ import { RENDER_LOOK_PROFILE_PRESETS, type IRuntimeConfigIr } from "@threenative
 
 import type { IWebBundle } from "./loadBundle.js";
 import { mapWorld } from "./mapWorld.js";
-import { applyRendererColorManagement, applyRendererShadowSettings, applyRenderLookSceneDefaults, collectWebRuntimeDiagnostics, createRenderedParticleObjects, createWebRenderLifecycle, renderCameraViews, webBloomSettings, webDepthOfFieldSettings, webRendererParameters } from "./render.js";
+import { applyRendererColorManagement, applyRendererShadowSettings, applyRenderLookSceneDefaults, collectWebRuntimeDiagnostics, createRenderedParticleObjects, createWebRenderLifecycle, renderCameraViews, webAmbientOcclusionSettings, webBloomSettings, webDepthOfFieldSettings, webMotionBlurSettings, webRendererParameters, webScreenSpaceReflectionsSettings } from "./render.js";
 
 function runtimeConfig(
   antialias: NonNullable<IRuntimeConfigIr["renderer"]>["antialias"],
@@ -187,6 +187,27 @@ test("should map runtime bloom settings to web post-processing settings", () => 
   });
 });
 
+test("should map portable ambient occlusion settings to web SSAO settings", () => {
+  assert.deepEqual(webAmbientOcclusionSettings(runtimeConfig("msaa4")), {
+    enabled: false,
+    intensity: 1,
+    kernelSize: 32,
+    maxDistance: 0.3,
+    minDistance: 0.005,
+    radius: 3,
+  });
+  assert.deepEqual(webAmbientOcclusionSettings(runtimeConfig("msaa4", {
+    ambientOcclusion: { enabled: true, intensity: 1.5, mode: "screen-space", quality: "high", radius: 4 },
+  })), {
+    enabled: true,
+    intensity: 1.5,
+    kernelSize: 64,
+    maxDistance: 0.6,
+    minDistance: 0.005,
+    radius: 4,
+  });
+});
+
 test("should preserve parity render look without artistic passes", () => {
   assert.deepEqual(webBloomSettings(runtimeConfig("msaa4", { renderLook: { version: 1, profile: "parity" } })), {
     enabled: false,
@@ -320,6 +341,30 @@ test("should map runtime depth of field settings to web post-processing settings
     enabled: true,
     focusDistance: 12,
     maxBlur: 0.02,
+  });
+});
+
+test("should map runtime motion blur settings to web post-processing settings", () => {
+  assert.deepEqual(webMotionBlurSettings(runtimeConfig("msaa4")), {
+    enabled: false,
+    shutterAngle: 0.5,
+  });
+  assert.deepEqual(webMotionBlurSettings(runtimeConfig("msaa4", { motionBlur: { enabled: true, shutterAngle: 0.4 } })), {
+    enabled: true,
+    shutterAngle: 0.4,
+  });
+});
+
+test("should map runtime screen-space reflection settings to web post-processing settings", () => {
+  assert.deepEqual(webScreenSpaceReflectionsSettings(runtimeConfig("msaa4")), {
+    enabled: false,
+    opacity: 0.27,
+    roughnessLimit: 0.45,
+  });
+  assert.deepEqual(webScreenSpaceReflectionsSettings(runtimeConfig("msaa4", { screenSpaceReflections: { enabled: true, quality: "high", roughnessLimit: 0.5 } })), {
+    enabled: true,
+    opacity: 0.55,
+    roughnessLimit: 0.5,
   });
 });
 

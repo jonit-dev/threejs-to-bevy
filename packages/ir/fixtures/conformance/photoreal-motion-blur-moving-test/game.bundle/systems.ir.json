@@ -1,0 +1,23 @@
+{
+  "schema": "threenative.systems",
+  "version": "0.1.0",
+  "systems": [
+    {
+      "name": "moveMotionMarker",
+      "schedule": "update",
+      "reads": ["Transform"],
+      "writes": ["Transform"],
+      "queries": [{ "with": ["Transform"], "without": ["Camera", "Light"] }],
+      "commands": [],
+      "eventReads": [],
+      "eventWrites": [],
+      "resourceReads": [],
+      "resourceWrites": [],
+      "services": [],
+      "script": {
+        "bundle": "scripts.bundle.js",
+        "exportName": "system_moveMotionMarker"
+      }
+    }
+  ]
+}

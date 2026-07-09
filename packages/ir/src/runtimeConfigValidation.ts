@@ -96,6 +96,10 @@ export function validateRuntimeConfig(config: unknown, path: string, diagnostics
       }
     }
   }
+  const ambientOcclusion = isRecord(renderer) ? renderer.ambientOcclusion : undefined;
+  if (ambientOcclusion !== undefined) {
+    validateAmbientOcclusion(ambientOcclusion, `${path}/renderer/ambientOcclusion`, diagnostics);
+  }
   const renderPath = isRecord(renderer) ? renderer.renderPath : undefined;
   if (renderPath !== undefined && renderPath !== "forward") {
     diagnostics.push({
@@ -120,6 +124,18 @@ export function validateRuntimeConfig(config: unknown, path: string, diagnostics
   const depthOfField = isRecord(renderer) ? renderer.depthOfField : undefined;
   if (depthOfField !== undefined) {
     validateDepthOfField(depthOfField, `${path}/renderer/depthOfField`, diagnostics);
+  }
+  const screenSpaceReflections = isRecord(renderer) ? renderer.screenSpaceReflections : undefined;
+  if (screenSpaceReflections !== undefined) {
+    validateScreenSpaceReflections(screenSpaceReflections, `${path}/renderer/screenSpaceReflections`, diagnostics);
+  }
+  const motionBlur = isRecord(renderer) ? renderer.motionBlur : undefined;
+  if (motionBlur !== undefined) {
+    validateMotionBlur(motionBlur, `${path}/renderer/motionBlur`, diagnostics);
+  }
+  const screenSpaceGlobalIllumination = isRecord(renderer) ? renderer.screenSpaceGlobalIllumination : undefined;
+  if (screenSpaceGlobalIllumination !== undefined) {
+    validateScreenSpaceGlobalIllumination(screenSpaceGlobalIllumination, `${path}/renderer/screenSpaceGlobalIllumination`, diagnostics);
   }
 
   const window = config.window;
@@ -155,7 +171,18 @@ export function validateRuntimeConfig(config: unknown, path: string, diagnostics
 }
 
 function validateUnsupportedRendererFields(renderer: Record<string, unknown>, path: string, diagnostics: IIrDiagnostic[]): void {
-  const supported = new Set(["antialias", "bloom", "colorGrading", "depthOfField", "renderLook", "renderPath"]);
+  const supported = new Set([
+    "ambientOcclusion",
+    "antialias",
+    "bloom",
+    "colorGrading",
+    "depthOfField",
+    "motionBlur",
+    "renderLook",
+    "renderPath",
+    "screenSpaceGlobalIllumination",
+    "screenSpaceReflections",
+  ]);
   const advanced = new Map<string, string>([
     ["autoExposure", "Auto exposure is explicitly deferred in V9."],
     ["customPasses", "Custom post-processing passes are explicitly deferred in V9."],
@@ -164,9 +191,7 @@ function validateUnsupportedRendererFields(renderer: Record<string, unknown>, pa
     ["deferred", "Deferred rendering is explicitly deferred in V9; use renderPath: 'forward'."],
     ["mirror", "Screen-space reflections and mirrors are explicitly deferred in V9."],
     ["mirrors", "Screen-space reflections and mirrors are explicitly deferred in V9."],
-    ["motionBlur", "Motion blur and motion vectors are explicitly deferred in V9."],
     ["motionVectors", "Motion blur and motion vectors are explicitly deferred in V9."],
-    ["screenSpaceReflections", "Screen-space reflections and mirrors are explicitly deferred in V9."],
     ["ssr", "Screen-space reflections and mirrors are explicitly deferred in V9."],
     ["virtualGeometry", "Virtual geometry and meshlets are explicitly deferred in V9."],
     ["volumetricFog", "Volumetric fog and lighting are explicitly deferred in V9."],
@@ -186,6 +211,137 @@ function validateUnsupportedRendererFields(renderer: Record<string, unknown>, pa
         ? rendererAdvancedSuggestion(rendererAdvancedBoundary(key))
         : "Remove the field or wait for a PRD that promotes it with cross-runtime evidence.",
       ...(advanced.has(key) ? { target: "web,bevy" } : {}),
+    });
+  }
+}
+
+function validateAmbientOcclusion(value: unknown, path: string, diagnostics: IIrDiagnostic[]): void {
+  if (!isRecord(value)) {
+    diagnostics.push({
+      code: "TN_RENDER_FEATURE_UNSUPPORTED",
+      message: "Renderer ambientOcclusion config must be an object.",
+      path,
+      severity: "error",
+      suggestion: "Use ambientOcclusion with enabled, mode: 'screen-space', radius, intensity, and quality.",
+    });
+    return;
+  }
+  validateEnabled(value.enabled, `${path}/enabled`, "ambientOcclusion", diagnostics);
+  if (value.mode !== "screen-space") {
+    diagnostics.push({
+      code: "TN_RENDER_FEATURE_UNSUPPORTED",
+      limit: ["screen-space"],
+      message: "Renderer ambientOcclusion mode must be 'screen-space'.",
+      path: `${path}/mode`,
+      severity: "error",
+      suggestion: "Use the portable screen-space ambient occlusion mode.",
+      value: typeof value.mode === "string" ? value.mode : undefined,
+    });
+  }
+  validateNumberRange(value.radius, `${path}/radius`, "ambientOcclusion radius", 0, 16, diagnostics);
+  validateNumberRange(value.intensity, `${path}/intensity`, "ambientOcclusion intensity", 0, 4, diagnostics);
+  validateQuality(value.quality, `${path}/quality`, diagnostics);
+}
+
+function validateScreenSpaceReflections(value: unknown, path: string, diagnostics: IIrDiagnostic[]): void {
+  if (!isRecord(value)) {
+    diagnostics.push({
+      code: "TN_RENDER_FEATURE_UNSUPPORTED",
+      message: "Renderer screenSpaceReflections config must be an object.",
+      path,
+      severity: "error",
+      suggestion: "Use screenSpaceReflections with enabled, quality, and roughnessLimit.",
+    });
+    return;
+  }
+  validateEnabled(value.enabled, `${path}/enabled`, "screenSpaceReflections", diagnostics);
+  validateQuality(value.quality, `${path}/quality`, diagnostics);
+  validateNumberRange(value.roughnessLimit, `${path}/roughnessLimit`, "screenSpaceReflections roughnessLimit", 0, 1, diagnostics);
+}
+
+function validateMotionBlur(value: unknown, path: string, diagnostics: IIrDiagnostic[]): void {
+  if (!isRecord(value)) {
+    diagnostics.push({
+      code: "TN_RENDER_FEATURE_UNSUPPORTED",
+      message: "Renderer motionBlur config must be an object.",
+      path,
+      severity: "error",
+      suggestion: "Use motionBlur with enabled and shutterAngle.",
+    });
+    return;
+  }
+  validateEnabled(value.enabled, `${path}/enabled`, "motionBlur", diagnostics);
+  validateNumberRange(value.shutterAngle, `${path}/shutterAngle`, "motionBlur shutterAngle", 0, 1, diagnostics);
+}
+
+function validateScreenSpaceGlobalIllumination(value: unknown, path: string, diagnostics: IIrDiagnostic[]): void {
+  if (!isRecord(value)) {
+    diagnostics.push({
+      code: "TN_RENDER_FEATURE_UNSUPPORTED",
+      message: "Renderer screenSpaceGlobalIllumination config must be an object.",
+      path,
+      severity: "error",
+      suggestion: "Use screenSpaceGlobalIllumination with enabled and quality.",
+    });
+    return;
+  }
+  validateEnabled(value.enabled, `${path}/enabled`, "screenSpaceGlobalIllumination", diagnostics);
+  if (value.quality !== "low" && value.quality !== "medium") {
+    diagnostics.push({
+      code: "TN_RENDER_FEATURE_UNSUPPORTED",
+      limit: ["low", "medium"],
+      message: "Renderer screenSpaceGlobalIllumination quality must be low or medium.",
+      path: `${path}/quality`,
+      severity: "error",
+      suggestion: "Use low or medium until high-quality SSGI has cross-runtime proof.",
+      value: typeof value.quality === "string" ? value.quality : undefined,
+    });
+  }
+}
+
+function validateEnabled(value: unknown, path: string, feature: string, diagnostics: IIrDiagnostic[]): void {
+  if (typeof value !== "boolean") {
+    diagnostics.push({
+      code: "TN_RENDER_FEATURE_UNSUPPORTED",
+      message: `Renderer ${feature} enabled must be a boolean.`,
+      path,
+      severity: "error",
+      suggestion: `Set ${feature}.enabled to true or false.`,
+    });
+  }
+}
+
+function validateQuality(value: unknown, path: string, diagnostics: IIrDiagnostic[]): void {
+  if (value !== "low" && value !== "medium" && value !== "high") {
+    diagnostics.push({
+      code: "TN_RENDER_FEATURE_UNSUPPORTED",
+      limit: ["low", "medium", "high"],
+      message: "Renderer feature quality must be low, medium, or high.",
+      path,
+      severity: "error",
+      suggestion: "Use a promoted portable quality value.",
+      value: typeof value === "string" ? value : undefined,
+    });
+  }
+}
+
+function validateNumberRange(
+  value: unknown,
+  path: string,
+  label: string,
+  minimum: number,
+  maximum: number,
+  diagnostics: IIrDiagnostic[],
+): void {
+  if (typeof value !== "number" || !Number.isFinite(value) || value < minimum || value > maximum) {
+    diagnostics.push({
+      code: "TN_RENDER_FEATURE_UNSUPPORTED",
+      limit: maximum,
+      message: `Renderer ${label} must be a finite number from ${minimum} to ${maximum}.`,
+      path,
+      severity: "error",
+      suggestion: `Use ${label} in the supported range ${minimum}..${maximum}.`,
+      value: typeof value === "number" ? value : undefined,
     });
   }
 }

@@ -1,0 +1,41 @@
+{
+  "schema": "threenative.assets",
+  "version": "0.1.0",
+  "assets": [
+    {
+      "id": "mesh.floor",
+      "kind": "mesh",
+      "format": "generated",
+      "primitive": "box",
+      "size": [5.4, 0.08, 4.6]
+    },
+    {
+      "id": "mesh.backWall",
+      "kind": "mesh",
+      "format": "generated",
+      "primitive": "box",
+      "size": [5.4, 2.7, 0.08]
+    },
+    {
+      "id": "mesh.motionMarker",
+      "kind": "mesh",
+      "format": "generated",
+      "primitive": "box",
+      "size": [0.42, 0.42, 0.08]
+    },
+    {
+      "id": "mesh.lane",
+      "kind": "mesh",
+      "format": "generated",
+      "primitive": "box",
+      "size": [3.4, 0.08, 0.04]
+    },
+    {
+      "id": "mesh.referenceTick",
+      "kind": "mesh",
+      "format": "generated",
+      "primitive": "box",
+      "size": [0.04, 0.34, 0.04]
+    }
+  ]
+}

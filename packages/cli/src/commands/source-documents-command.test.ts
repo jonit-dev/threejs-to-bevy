@@ -499,6 +499,16 @@ test("runtime command creates and updates promoted source fields", async () => {
     const rendering = await runtimeCommand([
       "set-rendering",
       "desktop",
+      "--ambient-occlusion",
+      "true",
+      "--ambient-occlusion-mode",
+      "screen-space",
+      "--ambient-occlusion-radius",
+      "3",
+      "--ambient-occlusion-intensity",
+      "1.2",
+      "--ambient-occlusion-quality",
+      "medium",
       "--antialias",
       "msaa8",
       "--render-profile",
@@ -521,6 +531,20 @@ test("runtime command creates and updates promoted source fields", async () => {
       "0.4",
       "--bloom-threshold",
       "0.85",
+      "--screen-space-reflections",
+      "true",
+      "--screen-space-reflections-quality",
+      "medium",
+      "--screen-space-reflections-roughness-limit",
+      "0.45",
+      "--motion-blur",
+      "true",
+      "--motion-blur-shutter-angle",
+      "0.5",
+      "--screen-space-global-illumination",
+      "false",
+      "--screen-space-global-illumination-quality",
+      "low",
       "--render-path",
       "forward",
       "--project",
@@ -528,7 +552,7 @@ test("runtime command creates and updates promoted source fields", async () => {
       "--json",
     ]);
     const doc = JSON.parse(await readFile(join(root, "content", "runtime", "desktop.runtime.json"), "utf8")) as {
-      renderer?: { antialias?: string; bloom?: Record<string, unknown>; renderLook?: Record<string, unknown>; renderPath?: string };
+      renderer?: Record<string, unknown>;
       time?: Record<string, unknown>;
       window?: Record<string, unknown>;
     };
@@ -539,14 +563,18 @@ test("runtime command creates and updates promoted source fields", async () => {
     assert.deepEqual(doc.window, { height: 1080, title: "Arena", width: 1920 });
     assert.deepEqual(doc.time, { fixedDelta: 1 / 60, paused: false });
     assert.deepEqual(doc.renderer, {
+      ambientOcclusion: { enabled: true, intensity: 1.2, mode: "screen-space", quality: "medium", radius: 3 },
       antialias: "msaa8",
       bloom: { enabled: true, intensity: 0.4, threshold: 0.85 },
+      motionBlur: { enabled: true, shutterAngle: 0.5 },
       renderLook: {
         version: 1,
         profile: "balanced",
         overrides: { bloomIntensity: 0.4, contrast: 0.1, environmentIntensity: 1.2, exposure: 1.1, saturation: 1.15, shadowQuality: "high" },
       },
       renderPath: "forward",
+      screenSpaceGlobalIllumination: { enabled: false, quality: "low" },
+      screenSpaceReflections: { enabled: true, quality: "medium", roughnessLimit: 0.45 },
     });
   } finally {
     await rm(root, { force: true, recursive: true });

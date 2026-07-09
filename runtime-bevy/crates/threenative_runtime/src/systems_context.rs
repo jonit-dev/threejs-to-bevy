@@ -4,7 +4,7 @@ use serde::{Serialize, Serializer, ser::SerializeStruct};
 use serde_json::{Value, json};
 use threenative_loader::{
     EntityComponents, LoadedBundle, LocalDataIr, SystemIr, SystemQueryIr, SystemStateSourceIr,
-    UiIr, UiNodeIr,
+    UiIr, UiNodeIr, WorldEntity,
 };
 
 use crate::component_diff::ComponentDiffCache;
@@ -284,6 +284,7 @@ pub fn build_system_context_snapshot_with_events_input_and_diff(
         .world
         .entities
         .iter()
+        .filter(|entity| system_entity_matches_declared_queries(entity, system))
         .map(|entity| NativeSystemEntitySnapshot {
             id: entity.id.clone(),
             components: readable_components
@@ -899,6 +900,38 @@ pub fn transform_value(transform: &threenative_loader::TransformComponent) -> Va
         "rotation": transform.rotation,
         "scale": transform.scale,
     })
+}
+
+fn system_entity_matches_declared_queries(entity: &WorldEntity, system: &SystemIr) -> bool {
+    if system.queries.is_empty() {
+        return true;
+    }
+    system
+        .queries
+        .iter()
+        .any(|query| entity_matches_system_query(entity, query))
+        || system
+            .services
+            .iter()
+            .flat_map(|service| service_readable_components(service))
+            .filter(|component| component != "Transform")
+            .any(|component| entity_has_component(entity, component.as_str()))
+}
+
+fn entity_matches_system_query(entity: &WorldEntity, query: &SystemQueryIr) -> bool {
+    query
+        .with
+        .iter()
+        .chain(query.changed.iter())
+        .all(|component| entity_has_component(entity, component))
+        && query
+            .without
+            .iter()
+            .all(|component| !entity_has_component(entity, component))
+}
+
+fn entity_has_component(entity: &WorldEntity, component: &str) -> bool {
+    component_value(&entity.components, component).is_some()
 }
 
 fn readable_components(system: &SystemIr) -> Vec<String> {

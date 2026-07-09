@@ -84,6 +84,18 @@ export function deriveRequiredCapabilities(source: ICapabilitySource): IBundleMa
     if (source.runtimeConfig.renderer?.depthOfField !== undefined) {
       add("rendering", "depth-of-field");
     }
+    if (source.runtimeConfig.renderer?.ambientOcclusion !== undefined) {
+      add("rendering", "ambient-occlusion.screen-space");
+    }
+    if (source.runtimeConfig.renderer?.screenSpaceReflections !== undefined) {
+      add("rendering", "screen-space-reflections");
+    }
+    if (source.runtimeConfig.renderer?.motionBlur !== undefined) {
+      add("rendering", "motion-blur");
+    }
+    if (source.runtimeConfig.renderer?.screenSpaceGlobalIllumination !== undefined) {
+      add("rendering", "screen-space-global-illumination");
+    }
     const antialias = source.runtimeConfig.renderer?.antialias;
     if (antialias !== undefined) {
       add("rendering", `antialias.${antialias}`);

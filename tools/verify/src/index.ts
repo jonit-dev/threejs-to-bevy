@@ -28,9 +28,6 @@ export {
   type PerformanceProofSidecar,
   type TextureVariantMeasurement,
 } from "./performanceProof.js";
-export { runReleaseGate } from "./release.js";
-export { analyzeRenderLookMetrics, runRenderLookGate, type RenderLookGateResult, type RenderLookMetricInput, type RenderLookMetricSample } from "./renderLook.js";
-export { checkV9QualityGates, V9_FOCUSED_SCRIPT_NAMES, V9_SAMPLE_SCENES } from "./v9QualityGates.js";
 export {
   collectPortableShaderMaterialReport,
   runPortableShaderMaterialGate,
@@ -42,7 +39,10 @@ export {
   type PortableShaderSampleDocument,
   type PortableShaderSampleRegion,
 } from "./portableShaderMaterial.js";
-
+export { runReleaseGate } from "./release.js";
+export { analyzeRenderLookMetrics, runRenderLookGate, type RenderLookGateResult, type RenderLookMetricInput, type RenderLookMetricSample } from "./renderLook.js";
+export { runPhotorealRenderingGate, type PhotorealRenderingGateResult, type PhotorealRenderingMetrics } from "./renderingPhotoreal.js";
+export { checkV9QualityGates, V9_FOCUSED_SCRIPT_NAMES, V9_SAMPLE_SCENES } from "./v9QualityGates.js";
 export {
   runCommand,
   runStep,

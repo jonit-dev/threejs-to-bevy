@@ -1,0 +1,33 @@
+{
+  "schema": "threenative.bundle",
+  "version": "0.1.0",
+  "name": "photoreal-motion-blur-moving-test",
+  "requiredCapabilities": {
+    "rendering": [
+      "camera.perspective",
+      "light.ambient",
+      "light.directional",
+      "material.emissive",
+      "material.standard",
+      "mesh-renderer",
+      "mesh.primitive.box",
+      "postprocess.motion-blur"
+    ],
+    "scripting": [
+      "schedule.update",
+      "script-bundle",
+      "systems"
+    ]
+  },
+  "entry": {
+    "scripts": "scripts.bundle.js",
+    "systems": "systems.ir.json",
+    "world": "world.ir.json"
+  },
+  "files": {
+    "assets": "assets.manifest.json",
+    "materials": "materials.ir.json",
+    "runtimeConfig": "runtime.config.json",
+    "targetProfile": "target.profile.json"
+  }
+}

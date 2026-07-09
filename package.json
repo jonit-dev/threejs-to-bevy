@@ -43,6 +43,7 @@
     "verify:portable-shader-material": "pnpm --filter @threenative/runtime-web-three build && pnpm --filter @threenative/cli build && pnpm build:verify-tools && node scripts/verify-portable-shader-material.mjs",
     "verify:physics-self-verification": "pnpm build:verify-tools && node tools/verify/dist/cli/run.js verify:physics-self-verification",
     "verify:release": "pnpm build:verify-tools && node tools/verify/dist/cli/release.js",
+    "verify:rendering-photoreal": "pnpm --filter @threenative/runtime-web-three build && pnpm --filter @threenative/cli build && pnpm build:verify-tools && node tools/verify/dist/cli/renderingPhotoreal.js",
     "verify:render-look": "pnpm --filter @threenative/compiler build && pnpm --filter @threenative/runtime-web-three build && pnpm --filter @threenative/cli build && pnpm build:verify-tools && node tools/verify/dist/cli/renderLook.js",
     "verify:runtime-gameplay-host": "pnpm build:verify-tools && node tools/verify/dist/cli/run.js verify:runtime-gameplay-host",
     "verify:runtime-prefabs-hierarchy": "pnpm build:verify-tools && node tools/verify/dist/cli/run.js verify:runtime-prefabs-hierarchy",

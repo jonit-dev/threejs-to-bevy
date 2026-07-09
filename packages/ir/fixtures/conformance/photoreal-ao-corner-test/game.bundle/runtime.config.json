@@ -1,0 +1,35 @@
+{
+  "schema": "threenative.runtime-config",
+  "version": "0.1.0",
+  "renderer": {
+    "antialias": "none",
+    "ambientOcclusion": {
+      "enabled": true,
+      "mode": "screen-space",
+      "radius": 3,
+      "intensity": 1.35,
+      "quality": "medium"
+    },
+    "colorGrading": {
+      "contrast": 0,
+      "exposure": 1,
+      "saturation": 1,
+      "toneMapping": "none"
+    },
+    "renderLook": {
+      "version": 1,
+      "profile": "parity",
+      "overrides": {
+        "bloomIntensity": 0
+      }
+    }
+  },
+  "time": {
+    "fixedDelta": 0.016666666666666666,
+    "paused": false
+  },
+  "window": {
+    "height": 720,
+    "width": 1280
+  }
+}

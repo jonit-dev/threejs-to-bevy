@@ -1,6 +1,13 @@
 import type { SchemaVersion } from "./types.js";
 
 export type RendererAntialiasMode = "none" | "msaa2" | "msaa4" | "msaa8" | "fxaa" | "taa" | "smaa";
+export type RendererFeatureQuality = "low" | "medium" | "high";
+export type RendererFeatureStatus = "baseline" | "rollout-gap" | "budget-blocked" | "invalid";
+export type RendererFeatureDiagnosticCode =
+  | "TN_RENDER_FEATURE_FALLBACK"
+  | "TN_RENDER_FEATURE_UNSUPPORTED"
+  | "TN_RENDER_FEATURE_TARGET_BUDGET"
+  | "TN_RENDER_FEATURE_ASSET_MISSING";
 export type RenderLookProfileName = "parity" | "balanced" | "cinematic" | "stylized";
 export type RenderLookShadowQuality = "off" | "low" | "medium" | "high";
 export type RenderLookTargetProfile = "desktop-web" | "mobile-web" | "native";
@@ -32,6 +39,42 @@ export interface IRenderLookProfilePreset {
 export interface IResolvedRenderLookProfile extends IRenderLookProfilePreset {
   profile: RenderLookProfileName;
   targetProfile: RenderLookTargetProfile;
+}
+
+export interface IRendererAmbientOcclusionIr {
+  enabled: boolean;
+  intensity: number;
+  mode: "screen-space";
+  quality: RendererFeatureQuality;
+  radius: number;
+}
+
+export interface IRendererScreenSpaceReflectionsIr {
+  enabled: boolean;
+  quality: RendererFeatureQuality;
+  roughnessLimit: number;
+}
+
+export interface IRendererMotionBlurIr {
+  enabled: boolean;
+  shutterAngle: number;
+}
+
+export interface IRendererScreenSpaceGlobalIlluminationIr {
+  enabled: boolean;
+  quality: "low" | "medium";
+}
+
+export interface IRendererFeatureReport {
+  appliedMode: string;
+  diagnostic?: {
+    code: RendererFeatureDiagnosticCode;
+    reason: string;
+    suggestion: string;
+  };
+  feature: string;
+  requestedMode: string;
+  status: RendererFeatureStatus;
 }
 
 const renderLookTargetOverride = <T extends Partial<IRenderLookProfilePreset>>(preset: T): T => preset;
@@ -125,6 +168,7 @@ export interface IRuntimeConfigIr {
       intensity: number;
       threshold: number;
     };
+    ambientOcclusion?: IRendererAmbientOcclusionIr;
     colorGrading?: {
       contrast?: number;
       exposure?: number;
@@ -140,8 +184,11 @@ export interface IRuntimeConfigIr {
       focusDistance: number;
       maxBlur: number;
     };
+    motionBlur?: IRendererMotionBlurIr;
     renderLook?: IRenderLookProfileIr;
     renderPath?: "forward";
+    screenSpaceGlobalIllumination?: IRendererScreenSpaceGlobalIlluminationIr;
+    screenSpaceReflections?: IRendererScreenSpaceReflectionsIr;
   };
   time: {
     fixedDelta: number;

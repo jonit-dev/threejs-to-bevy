@@ -167,6 +167,10 @@ test("should expose environment skybox and terrain rows", async () => {
     const runtimeRows = result.documents.flatMap((group) => group.documents).find((document) => document.kind === "runtime")?.inspectorRows ?? [];
     assert.equal(runtimeRows.some((row) => row.label === "Window Width" && row.operation?.name === "runtime.set_window" && row.operation.valueArg === "width"), true);
     assert.equal(runtimeRows.some((row) => row.label === "Renderer Antialias" && row.operation?.name === "runtime.set_rendering" && row.operation.valueArg === "antialias"), true);
+    assert.equal(runtimeRows.some((row) => row.label === "Ambient Occlusion" && row.operation?.name === "runtime.set_rendering" && row.operation.valueArg === "ambientOcclusionEnabled"), true);
+    assert.equal(runtimeRows.some((row) => row.label === "SSR Roughness Limit" && row.operation?.name === "runtime.set_rendering" && row.operation.valueArg === "screenSpaceReflectionsRoughnessLimit"), true);
+    assert.equal(runtimeRows.some((row) => row.label === "Motion Blur" && row.operation?.name === "runtime.set_rendering" && row.operation.valueArg === "motionBlurEnabled"), true);
+    assert.equal(runtimeRows.some((row) => row.label === "SSGI Quality" && row.operation?.name === "runtime.set_rendering" && row.operation.valueArg === "screenSpaceGlobalIlluminationQuality"), true);
     const targetRows = result.documents.flatMap((group) => group.documents).find((document) => document.kind === "target")?.inspectorRows ?? [];
     assert.equal(targetRows.some((row) => row.label === "Targets" && row.sourceFamily === "target" && row.operation?.name === "target.set_profile" && row.operation.valueArg === "targets"), true);
     assert.equal(targetRows.some((row) => row.label === "Budgets" && row.fieldKind === "json" && row.operation?.name === "target.set_profile" && row.operation.valueArg === "budgets"), true);

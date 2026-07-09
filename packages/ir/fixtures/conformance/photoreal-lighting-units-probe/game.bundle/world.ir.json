@@ -1,0 +1,120 @@
+{
+  "schema": "threenative.world",
+  "version": "0.1.0",
+  "entities": [
+    {
+      "id": "camera.main",
+      "components": {
+        "Camera": {
+          "clear": {
+            "color": "#111318",
+            "mode": "color"
+          },
+          "far": 100,
+          "fovY": 46,
+          "kind": "perspective",
+          "near": 0.1
+        },
+        "Transform": {
+          "position": [0, 1.35, 4.8],
+          "rotation": [-0.104528, 0, 0, 0.994522],
+          "scale": [1, 1, 1]
+        }
+      }
+    },
+    {
+      "id": "surface.floor",
+      "components": {
+        "MeshRenderer": {
+          "material": "mat.gray.50",
+          "mesh": "mesh.floor",
+          "receiveShadow": true
+        },
+        "Transform": {
+          "position": [0, -0.05, 0],
+          "rotation": [0, 0, 0, 1],
+          "scale": [1, 1, 1]
+        }
+      }
+    },
+    {
+      "id": "surface.back-wall",
+      "components": {
+        "MeshRenderer": {
+          "material": "mat.gray.50",
+          "mesh": "mesh.backWall",
+          "receiveShadow": true
+        },
+        "Transform": {
+          "position": [0, 1.15, -1.45],
+          "rotation": [0, 0, 0, 1],
+          "scale": [1, 1, 1]
+        }
+      }
+    },
+    {
+      "id": "prop.left",
+      "components": {
+        "MeshRenderer": {
+          "castShadow": true,
+          "material": "mat.gray.30",
+          "mesh": "mesh.block",
+          "receiveShadow": true
+        },
+        "Transform": {
+          "position": [-0.8, 0.4, -0.45],
+          "rotation": [0, 0, 0, 1],
+          "scale": [1, 1, 1]
+        }
+      }
+    },
+    {
+      "id": "prop.right",
+      "components": {
+        "MeshRenderer": {
+          "castShadow": true,
+          "material": "mat.gray.70",
+          "mesh": "mesh.block",
+          "receiveShadow": true
+        },
+        "Transform": {
+          "position": [0.8, 0.4, -0.45],
+          "rotation": [0, 0, 0, 1],
+          "scale": [1, 1, 1]
+        }
+      }
+    },
+    {
+      "id": "light.key",
+      "components": {
+        "Light": {
+          "color": "#ffffff",
+          "intensity": 1.4,
+          "kind": "directional"
+        },
+        "Transform": {
+          "position": [3, 5, 3],
+          "rotation": [0, 0, 0, 1],
+          "scale": [1, 1, 1]
+        }
+      }
+    },
+    {
+      "id": "light.fill",
+      "components": {
+        "Light": {
+          "color": "#ffffff",
+          "intensity": 0.25,
+          "kind": "ambient"
+        }
+      }
+    }
+  ],
+  "resources": {
+    "ActiveCamera": {
+      "entity": "camera.main"
+    }
+  },
+  "events": {},
+  "prefabs": []
+}

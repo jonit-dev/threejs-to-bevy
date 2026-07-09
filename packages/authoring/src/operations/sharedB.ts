@@ -414,13 +414,39 @@ export async function validateRuntimeDocument(file: string, data: unknown): Prom
     diagnostics.push(typeDiagnostic(file, "/renderer", "Runtime renderer config must be a JSON object.", data.renderer));
   }
   if (renderer !== undefined) {
-    diagnostics.push(...unknownKeyDiagnostics(file, "/renderer", renderer, new Set(["antialias", "bloom", "colorGrading", "renderLook", "renderPath"])));
+    diagnostics.push(...unknownKeyDiagnostics(file, "/renderer", renderer, new Set([
+      "ambientOcclusion",
+      "antialias",
+      "bloom",
+      "colorGrading",
+      "motionBlur",
+      "renderLook",
+      "renderPath",
+      "screenSpaceGlobalIllumination",
+      "screenSpaceReflections",
+    ])));
     const antialias = readString(renderer.antialias);
     if (renderer.antialias !== undefined && (antialias === undefined || !supportedRendererAntialiasModes.has(antialias))) {
       diagnostics.push(typeDiagnostic(file, "/renderer/antialias", "runtime renderer antialias must be one of none, msaa2, msaa4, msaa8, fxaa, taa, or smaa.", renderer.antialias));
     }
     if (renderer.renderPath !== undefined && renderer.renderPath !== "forward") {
       diagnostics.push(typeDiagnostic(file, "/renderer/renderPath", "runtime renderer renderPath must be 'forward'.", renderer.renderPath));
+    }
+    const ambientOcclusion = isRecord(renderer.ambientOcclusion) ? renderer.ambientOcclusion : undefined;
+    if (renderer.ambientOcclusion !== undefined && ambientOcclusion === undefined) {
+      diagnostics.push(typeDiagnostic(file, "/renderer/ambientOcclusion", "runtime renderer ambientOcclusion must be a JSON object.", renderer.ambientOcclusion));
+    }
+    if (ambientOcclusion !== undefined) {
+      diagnostics.push(...unknownKeyDiagnostics(file, "/renderer/ambientOcclusion", ambientOcclusion, new Set(["enabled", "mode", "radius", "intensity", "quality"])));
+      if (typeof ambientOcclusion.enabled !== "boolean") {
+        diagnostics.push(typeDiagnostic(file, "/renderer/ambientOcclusion/enabled", "runtime renderer ambientOcclusion enabled must be a boolean.", ambientOcclusion.enabled));
+      }
+      if (ambientOcclusion.mode !== "screen-space") {
+        diagnostics.push(typeDiagnostic(file, "/renderer/ambientOcclusion/mode", "runtime renderer ambientOcclusion mode must be 'screen-space'.", ambientOcclusion.mode));
+      }
+      validateRuntimeRendererNumber(diagnostics, file, ambientOcclusion, "radius", "/renderer/ambientOcclusion/radius", 0, 16);
+      validateRuntimeRendererNumber(diagnostics, file, ambientOcclusion, "intensity", "/renderer/ambientOcclusion/intensity", 0, 4);
+      validateRuntimeRendererQuality(diagnostics, file, ambientOcclusion.quality, "/renderer/ambientOcclusion/quality", ["low", "medium", "high"]);
     }
     const bloom = isRecord(renderer.bloom) ? renderer.bloom : undefined;
     if (renderer.bloom !== undefined && bloom === undefined) {
@@ -460,9 +486,72 @@ export async function validateRuntimeDocument(file: string, data: unknown): Prom
     if (renderer.renderLook !== undefined) {
       validateRuntimeRenderLook(diagnostics, file, renderer.renderLook);
     }
+    const screenSpaceReflections = isRecord(renderer.screenSpaceReflections) ? renderer.screenSpaceReflections : undefined;
+    if (renderer.screenSpaceReflections !== undefined && screenSpaceReflections === undefined) {
+      diagnostics.push(typeDiagnostic(file, "/renderer/screenSpaceReflections", "runtime renderer screenSpaceReflections must be a JSON object.", renderer.screenSpaceReflections));
+    }
+    if (screenSpaceReflections !== undefined) {
+      diagnostics.push(...unknownKeyDiagnostics(file, "/renderer/screenSpaceReflections", screenSpaceReflections, new Set(["enabled", "quality", "roughnessLimit"])));
+      if (typeof screenSpaceReflections.enabled !== "boolean") {
+        diagnostics.push(typeDiagnostic(file, "/renderer/screenSpaceReflections/enabled", "runtime renderer screenSpaceReflections enabled must be a boolean.", screenSpaceReflections.enabled));
+      }
+      validateRuntimeRendererQuality(diagnostics, file, screenSpaceReflections.quality, "/renderer/screenSpaceReflections/quality", ["low", "medium", "high"]);
+      validateRuntimeRendererNumber(diagnostics, file, screenSpaceReflections, "roughnessLimit", "/renderer/screenSpaceReflections/roughnessLimit", 0, 1);
+    }
+    const motionBlur = isRecord(renderer.motionBlur) ? renderer.motionBlur : undefined;
+    if (renderer.motionBlur !== undefined && motionBlur === undefined) {
+      diagnostics.push(typeDiagnostic(file, "/renderer/motionBlur", "runtime renderer motionBlur must be a JSON object.", renderer.motionBlur));
+    }
+    if (motionBlur !== undefined) {
+      diagnostics.push(...unknownKeyDiagnostics(file, "/renderer/motionBlur", motionBlur, new Set(["enabled", "shutterAngle"])));
+      if (typeof motionBlur.enabled !== "boolean") {
+        diagnostics.push(typeDiagnostic(file, "/renderer/motionBlur/enabled", "runtime renderer motionBlur enabled must be a boolean.", motionBlur.enabled));
+      }
+      validateRuntimeRendererNumber(diagnostics, file, motionBlur, "shutterAngle", "/renderer/motionBlur/shutterAngle", 0, 1);
+    }
+    const screenSpaceGlobalIllumination = isRecord(renderer.screenSpaceGlobalIllumination) ? renderer.screenSpaceGlobalIllumination : undefined;
+    if (renderer.screenSpaceGlobalIllumination !== undefined && screenSpaceGlobalIllumination === undefined) {
+      diagnostics.push(typeDiagnostic(file, "/renderer/screenSpaceGlobalIllumination", "runtime renderer screenSpaceGlobalIllumination must be a JSON object.", renderer.screenSpaceGlobalIllumination));
+    }
+    if (screenSpaceGlobalIllumination !== undefined) {
+      diagnostics.push(...unknownKeyDiagnostics(file, "/renderer/screenSpaceGlobalIllumination", screenSpaceGlobalIllumination, new Set(["enabled", "quality"])));
+      if (typeof screenSpaceGlobalIllumination.enabled !== "boolean") {
+        diagnostics.push(typeDiagnostic(file, "/renderer/screenSpaceGlobalIllumination/enabled", "runtime renderer screenSpaceGlobalIllumination enabled must be a boolean.", screenSpaceGlobalIllumination.enabled));
+      }
+      validateRuntimeRendererQuality(diagnostics, file, screenSpaceGlobalIllumination.quality, "/renderer/screenSpaceGlobalIllumination/quality", ["low", "medium"]);
+    }
   }
 
   return diagnostics;
+}
+
+function validateRuntimeRendererNumber(
+  diagnostics: IAuthoringDiagnostic[],
+  file: string,
+  value: Record<string, unknown>,
+  key: string,
+  path: string,
+  minimum: number,
+  maximum: number,
+): void {
+  const fieldValue = value[key];
+  validateRequiredNumber(diagnostics, file, path, fieldValue, `runtime renderer ${key} must be a finite number.`);
+  if (typeof fieldValue === "number" && Number.isFinite(fieldValue) && (fieldValue < minimum || fieldValue > maximum)) {
+    diagnostics.push(typeDiagnostic(file, path, `runtime renderer ${key} must be between ${minimum} and ${maximum}.`, fieldValue));
+  }
+}
+
+function validateRuntimeRendererQuality(
+  diagnostics: IAuthoringDiagnostic[],
+  file: string,
+  value: unknown,
+  path: string,
+  allowed: readonly string[],
+): void {
+  const quality = readString(value);
+  if (quality === undefined || !allowed.includes(quality)) {
+    diagnostics.push(typeDiagnostic(file, path, `runtime renderer quality must be one of ${allowed.join(", ")}.`, value));
+  }
 }
 
 export function validateRuntimeRenderLook(diagnostics: IAuthoringDiagnostic[], file: string, value: unknown): void {

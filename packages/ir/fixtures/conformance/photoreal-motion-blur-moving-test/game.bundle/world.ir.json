@@ -1,0 +1,159 @@
+{
+  "schema": "threenative.world",
+  "version": "0.1.0",
+  "entities": [
+    {
+      "id": "camera.main",
+      "components": {
+        "Camera": {
+          "clear": {
+            "color": "#111318",
+            "mode": "color"
+          },
+          "far": 100,
+          "fovY": 46,
+          "kind": "perspective",
+          "near": 0.1
+        },
+        "Transform": {
+          "position": [0, 1.32, 5.1],
+          "rotation": [-0.087156, 0, 0, 0.996195],
+          "scale": [1, 1, 1]
+        }
+      }
+    },
+    {
+      "id": "surface.floor",
+      "components": {
+        "MeshRenderer": {
+          "material": "mat.floor",
+          "mesh": "mesh.floor",
+          "receiveShadow": true
+        },
+        "Transform": {
+          "position": [0, -0.04, 0],
+          "rotation": [0, 0, 0, 1],
+          "scale": [1, 1, 1]
+        }
+      }
+    },
+    {
+      "id": "surface.back-wall",
+      "components": {
+        "MeshRenderer": {
+          "material": "mat.wall",
+          "mesh": "mesh.backWall",
+          "receiveShadow": true
+        },
+        "Transform": {
+          "position": [0, 1.35, -2],
+          "rotation": [0, 0, 0, 1],
+          "scale": [1, 1, 1]
+        }
+      }
+    },
+    {
+      "id": "motion.lane",
+      "components": {
+        "MeshRenderer": {
+          "material": "mat.lane",
+          "mesh": "mesh.lane"
+        },
+        "Transform": {
+          "position": [0, 1.22, -1.94],
+          "rotation": [0, 0, 0, 1],
+          "scale": [1, 1, 1]
+        }
+      }
+    },
+    {
+      "id": "motion.tick.left",
+      "components": {
+        "MeshRenderer": {
+          "material": "mat.tick",
+          "mesh": "mesh.referenceTick"
+        },
+        "Transform": {
+          "position": [-1.35, 1.22, -1.93],
+          "rotation": [0, 0, 0, 1],
+          "scale": [1, 1, 1]
+        }
+      }
+    },
+    {
+      "id": "motion.tick.center",
+      "components": {
+        "MeshRenderer": {
+          "material": "mat.tick",
+          "mesh": "mesh.referenceTick"
+        },
+        "Transform": {
+          "position": [0, 1.22, -1.93],
+          "rotation": [0, 0, 0, 1],
+          "scale": [1, 1, 1]
+        }
+      }
+    },
+    {
+      "id": "motion.tick.right",
+      "components": {
+        "MeshRenderer": {
+          "material": "mat.tick",
+          "mesh": "mesh.referenceTick"
+        },
+        "Transform": {
+          "position": [1.35, 1.22, -1.93],
+          "rotation": [0, 0, 0, 1],
+          "scale": [1, 1, 1]
+        }
+      }
+    },
+    {
+      "id": "motion.marker",
+      "components": {
+        "MeshRenderer": {
+          "castShadow": true,
+          "material": "mat.motion",
+          "mesh": "mesh.motionMarker"
+        },
+        "Transform": {
+          "position": [-1.35, 1.22, -1.92],
+          "rotation": [0, 0, 0, 1],
+          "scale": [1, 1, 1]
+        }
+      }
+    },
+    {
+      "id": "light.key",
+      "components": {
+        "Light": {
+          "color": "#ffffff",
+          "intensity": 0.9,
+          "kind": "directional"
+        },
+        "Transform": {
+          "position": [2.4, 4.1, 3.2],
+          "rotation": [0, 0, 0, 1],
+          "scale": [1, 1, 1]
+        }
+      }
+    },
+    {
+      "id": "light.ambient",
+      "components": {
+        "Light": {
+          "color": "#d7e5f2",
+          "intensity": 0.35,
+          "kind": "ambient"
+        }
+      }
+    }
+  ],
+  "resources": {
+    "ActiveCamera": {
+      "entity": "camera.main"
+    }
+  },
+  "events": {},
+  "prefabs": []
+}

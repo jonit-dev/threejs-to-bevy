@@ -10,12 +10,6 @@ export {
   type SchemaBackedIrDocumentName,
   type UnschemedIrDocumentName,
 } from "./documents.js";
-export {
-  generatePortableShaderMaterial,
-  type IGeneratedPortableShader,
-  type IGeneratedShaderTarget,
-  type IShaderBindingLayoutEntry,
-} from "./shaderCodegen.js";
 export type {
   IConformanceAssetReport,
   IConformanceAudioCommandReport,
@@ -135,7 +129,30 @@ export {
   type PickingTargetKind,
 } from "./picking.js";
 export { RENDER_LOOK_PROFILE_PRESETS, resolveRenderLookProfile } from "./runtimeConfig.js";
-export type { IRenderLookProfileIr, IRenderLookProfilePreset, IResolvedRenderLookProfile, IRuntimeConfigIr, RendererAntialiasMode, RenderLookProfileName, RenderLookShadowQuality, RenderLookTargetProfile } from "./runtimeConfig.js";
+export type {
+  IRenderLookProfileIr,
+  IRenderLookProfilePreset,
+  IRendererAmbientOcclusionIr,
+  IRendererFeatureReport,
+  IRendererMotionBlurIr,
+  IRendererScreenSpaceGlobalIlluminationIr,
+  IRendererScreenSpaceReflectionsIr,
+  IResolvedRenderLookProfile,
+  IRuntimeConfigIr,
+  RendererAntialiasMode,
+  RendererFeatureDiagnosticCode,
+  RendererFeatureQuality,
+  RendererFeatureStatus,
+  RenderLookProfileName,
+  RenderLookShadowQuality,
+  RenderLookTargetProfile,
+} from "./runtimeConfig.js";
+export {
+  generatePortableShaderMaterial,
+  type IGeneratedPortableShader,
+  type IGeneratedShaderTarget,
+  type IShaderBindingLayoutEntry,
+} from "./shaderCodegen.js";
 export { auditUiAccessibility, type IUiAccessibilityDiagnostic, type IUiAccessibilityReport } from "./uiAccessibility.js";
 export {
   buildComponentReflectionRegistry,

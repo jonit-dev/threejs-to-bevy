@@ -1,0 +1,55 @@
+{
+  "schema": "threenative.materials",
+  "version": "0.1.0",
+  "materials": [
+    {
+      "id": "mat.floor",
+      "kind": "standard",
+      "color": "#6d747b",
+      "metalness": 0,
+      "roughness": 0.72
+    },
+    {
+      "id": "mat.wall",
+      "kind": "standard",
+      "color": "#3d4650",
+      "metalness": 0,
+      "roughness": 0.78
+    },
+    {
+      "id": "mat.near",
+      "kind": "standard",
+      "color": "#f25d5d",
+      "metalness": 0,
+      "roughness": 0.48
+    },
+    {
+      "id": "mat.focus",
+      "kind": "standard",
+      "color": "#f4d35e",
+      "metalness": 0,
+      "roughness": 0.42
+    },
+    {
+      "id": "mat.far",
+      "kind": "standard",
+      "color": "#4cc9f0",
+      "metalness": 0,
+      "roughness": 0.5
+    },
+    {
+      "id": "mat.stripe.dark",
+      "kind": "standard",
+      "color": "#10161c",
+      "metalness": 0,
+      "roughness": 0.8
+    },
+    {
+      "id": "mat.stripe.light",
+      "kind": "standard",
+      "color": "#d8e2ea",
+      "metalness": 0,
+      "roughness": 0.8
+    }
+  ]
+}

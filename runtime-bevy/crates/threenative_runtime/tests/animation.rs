@@ -4,8 +4,7 @@ use serde_json::Value;
 use threenative_loader::load_bundle;
 use threenative_runtime::animation::{
     AnimationRuntimeController, AnimationRuntimePlayOptions, AnimationTraceInput,
-    ParticleRuntimeController,
-    trace_animation_graphs,
+    ParticleRuntimeController, trace_animation_graphs,
 };
 
 mod support;
@@ -148,13 +147,7 @@ fn should_execute_bounded_particle_burst_command() {
     let fixture = load_conformance_fixture("animation-graphs-particles");
     let mut particles = ParticleRuntimeController::from_bundle(&fixture.bundle);
 
-    let emitted = particles.execute(
-        "emit",
-        "model.hero",
-        "dust",
-        Some(99),
-        Some("impact"),
-    );
+    let emitted = particles.execute("emit", "model.hero", "dust", Some(99), Some("impact"));
 
     assert_eq!(emitted.accepted, true);
     assert_eq!(emitted.active, true);

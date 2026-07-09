@@ -1,0 +1,178 @@
+{
+  "schema": "threenative.world",
+  "version": "0.1.0",
+  "entities": [
+    {
+      "id": "camera.main",
+      "components": {
+        "Camera": {
+          "clear": {
+            "color": "#111318",
+            "mode": "color"
+          },
+          "far": 100,
+          "fovY": 43,
+          "kind": "perspective",
+          "near": 0.1
+        },
+        "Transform": {
+          "position": [0, 1.2, 4.85],
+          "rotation": [-0.069756, 0, 0, 0.997564],
+          "scale": [1, 1, 1]
+        }
+      }
+    },
+    {
+      "id": "surface.floor",
+      "components": {
+        "MeshRenderer": {
+          "material": "mat.floor",
+          "mesh": "mesh.floor",
+          "receiveShadow": true
+        },
+        "Transform": {
+          "position": [0, -0.04, -0.2],
+          "rotation": [0, 0, 0, 1],
+          "scale": [1, 1, 1]
+        }
+      }
+    },
+    {
+      "id": "surface.back-wall",
+      "components": {
+        "MeshRenderer": {
+          "material": "mat.wall",
+          "mesh": "mesh.backWall",
+          "receiveShadow": true
+        },
+        "Transform": {
+          "position": [0, 1.25, -3.25],
+          "rotation": [0, 0, 0, 1],
+          "scale": [1, 1, 1]
+        }
+      }
+    },
+    {
+      "id": "stripe.left",
+      "components": {
+        "MeshRenderer": {
+          "material": "mat.stripe.light",
+          "mesh": "mesh.wallStripe"
+        },
+        "Transform": {
+          "position": [-0.9, 1.25, -3.19],
+          "rotation": [0, 0, 0, 1],
+          "scale": [1, 1, 1]
+        }
+      }
+    },
+    {
+      "id": "stripe.center",
+      "components": {
+        "MeshRenderer": {
+          "material": "mat.stripe.dark",
+          "mesh": "mesh.wallStripe"
+        },
+        "Transform": {
+          "position": [0, 1.25, -3.18],
+          "rotation": [0, 0, 0, 1],
+          "scale": [1, 1, 1]
+        }
+      }
+    },
+    {
+      "id": "stripe.right",
+      "components": {
+        "MeshRenderer": {
+          "material": "mat.stripe.light",
+          "mesh": "mesh.wallStripe"
+        },
+        "Transform": {
+          "position": [0.9, 1.25, -3.19],
+          "rotation": [0, 0, 0, 1],
+          "scale": [1, 1, 1]
+        }
+      }
+    },
+    {
+      "id": "marker.near",
+      "components": {
+        "MeshRenderer": {
+          "castShadow": true,
+          "material": "mat.near",
+          "mesh": "mesh.marker",
+          "receiveShadow": true
+        },
+        "Transform": {
+          "position": [-0.95, 0.48, 2.05],
+          "rotation": [0, 0, 0, 1],
+          "scale": [1, 1, 1]
+        }
+      }
+    },
+    {
+      "id": "marker.focus",
+      "components": {
+        "MeshRenderer": {
+          "castShadow": true,
+          "material": "mat.focus",
+          "mesh": "mesh.focusCard",
+          "receiveShadow": true
+        },
+        "Transform": {
+          "position": [0, 0.55, 0.75],
+          "rotation": [0, 0, 0, 1],
+          "scale": [1, 1, 1]
+        }
+      }
+    },
+    {
+      "id": "marker.far",
+      "components": {
+        "MeshRenderer": {
+          "castShadow": true,
+          "material": "mat.far",
+          "mesh": "mesh.marker",
+          "receiveShadow": true
+        },
+        "Transform": {
+          "position": [0.95, 0.48, -1.85],
+          "rotation": [0, 0, 0, 1],
+          "scale": [1, 1, 1]
+        }
+      }
+    },
+    {
+      "id": "light.key",
+      "components": {
+        "Light": {
+          "color": "#ffffff",
+          "intensity": 1.15,
+          "kind": "directional"
+        },
+        "Transform": {
+          "position": [2.5, 4.5, 3.5],
+          "rotation": [0, 0, 0, 1],
+          "scale": [1, 1, 1]
+        }
+      }
+    },
+    {
+      "id": "light.fill",
+      "components": {
+        "Light": {
+          "color": "#dce8ff",
+          "intensity": 0.32,
+          "kind": "ambient"
+        }
+      }
+    }
+  ],
+  "resources": {
+    "ActiveCamera": {
+      "entity": "camera.main"
+    }
+  },
+  "events": {},
+  "prefabs": []
+}

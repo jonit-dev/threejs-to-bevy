@@ -45,6 +45,7 @@ may still proceed.
 19. [PRD-019 Native Render Parity And Performance](PRD-019-native-render-parity-and-performance.md) - freeze-gated
 20. [PRD-020 Humanoid Course Ramp Slope Proof](../done/PRD-020-humanoid-course-ramp-slope-proof.md) - done
 21. [PRD-021 Humanoid Course Character-Pushed Ball](../done/PRD-021-humanoid-course-character-pushed-ball.md) - done
+22. [PRD-022 Gameplay Parity Test Harness](PRD-022-gameplay-parity-test-harness.md)
 
 ## Boundary
 

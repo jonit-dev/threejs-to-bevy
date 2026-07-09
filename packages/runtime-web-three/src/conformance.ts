@@ -23,6 +23,7 @@ import type {
   IMaterialIr,
   IShaderMaterialIr,
   IRuntimeConfigIr,
+  IRendererFeatureReport,
   IUiIr,
   IWorldEntity,
   Quat,
@@ -174,20 +175,31 @@ function reportRuntimeConfig(config: IRuntimeConfigIr | undefined): IConformance
   const renderLook = applyWebRenderLookProfile(config);
   const bloom = config.renderer.bloom ?? renderLook.bloom;
   const colorGrading = config.renderer.colorGrading ?? renderLook.colorGrading;
+  const featureReports = reportRendererFeatures(config.renderer, "web-three");
   return {
     renderer: {
       antialias: config.renderer.antialias,
+      ...(config.renderer.ambientOcclusion === undefined ? {} : { ambientOcclusion: config.renderer.ambientOcclusion }),
       ...(bloom === undefined ? {} : { bloom }),
       ...(colorGrading === undefined ? {} : { colorGrading }),
       ...(config.renderer.depthOfField === undefined ? {} : { depthOfField: config.renderer.depthOfField }),
+      ...(featureReports.length === 0 ? {} : { featureReports }),
+      ...(config.renderer.motionBlur === undefined ? {} : { motionBlur: config.renderer.motionBlur }),
       postProcessing: {
         applied: [
           ...(bloom?.enabled === true ? ["bloom"] : []),
           ...(colorGrading === undefined ? [] : ["colorGrading"]),
-          ...(config.renderer.depthOfField?.enabled === true ? ["depthOfField"] : []),
+          ...featureReports
+            .filter((feature) => feature.status === "baseline" && feature.requestedMode !== "disabled")
+            .map((feature) => feature.feature.replace(/^renderer\./, "")),
           ...postAntialiasFeatures(config.renderer.antialias),
         ],
-        skipped: renderLook.fallbacks.map((fallback) => ({ feature: fallback.feature, reason: fallback.reason })),
+        skipped: [
+          ...renderLook.fallbacks.map((fallback) => ({ feature: fallback.feature, reason: fallback.reason })),
+          ...featureReports
+            .filter((feature) => feature.status !== "baseline" && feature.diagnostic !== undefined)
+            .map((feature) => ({ feature: feature.feature, reason: feature.diagnostic?.reason ?? "Feature was not applied." })),
+        ],
       },
       renderLook: {
         appliedProfile: renderLook.appliedProfile,
@@ -196,7 +208,58 @@ function reportRuntimeConfig(config: IRuntimeConfigIr | undefined): IConformance
         requestedProfile: renderLook.requestedProfile,
       },
       ...(config.renderer.renderPath === undefined ? {} : { renderPath: config.renderer.renderPath }),
+      ...(config.renderer.screenSpaceGlobalIllumination === undefined ? {} : { screenSpaceGlobalIllumination: config.renderer.screenSpaceGlobalIllumination }),
+      ...(config.renderer.screenSpaceReflections === undefined ? {} : { screenSpaceReflections: config.renderer.screenSpaceReflections }),
     },
+  };
+}
+
+function reportRendererFeatures(
+  renderer: NonNullable<IRuntimeConfigIr["renderer"]>,
+  runtime: "web-three" | "bevy",
+): IRendererFeatureReport[] {
+  return [
+    renderer.ambientOcclusion === undefined
+      ? undefined
+      : rendererFeatureReport("renderer.ambientOcclusion", renderer.ambientOcclusion.enabled, renderer.ambientOcclusion.mode, "screen-space", runtime),
+    renderer.depthOfField === undefined
+      ? undefined
+      : rendererFeatureReport("renderer.depthOfField", renderer.depthOfField.enabled, "lens", "bokeh", runtime),
+    renderer.screenSpaceReflections === undefined
+      ? undefined
+      : rendererFeatureReport("renderer.screenSpaceReflections", renderer.screenSpaceReflections.enabled, "screen-space", "screen-space-planar", runtime),
+    renderer.motionBlur === undefined
+      ? undefined
+      : rendererFeatureReport("renderer.motionBlur", renderer.motionBlur.enabled, "shutter", "temporal-accumulation", runtime),
+    renderer.screenSpaceGlobalIllumination === undefined
+      ? undefined
+      : rendererFeatureReport("renderer.screenSpaceGlobalIllumination", renderer.screenSpaceGlobalIllumination.enabled, "screen-space", "disabled", runtime),
+  ].filter((feature): feature is IRendererFeatureReport => feature !== undefined);
+}
+
+function rendererFeatureReport(
+  feature: string,
+  enabled: boolean,
+  requestedMode: string,
+  appliedMode: string,
+  runtime: "web-three" | "bevy",
+): IRendererFeatureReport {
+  if (!enabled) {
+    return { appliedMode: "disabled", feature, requestedMode: "disabled", status: "baseline" };
+  }
+  if (appliedMode !== "disabled") {
+    return { appliedMode, feature, requestedMode, status: "baseline" };
+  }
+  return {
+    appliedMode,
+    diagnostic: {
+      code: "TN_RENDER_FEATURE_FALLBACK",
+      reason: `${runtime} adapter has not landed the baseline ${feature} implementation yet.`,
+      suggestion: `Finish the ${runtime} ${feature} baseline lane before making release support claims.`,
+    },
+    feature,
+    requestedMode,
+    status: "rollout-gap",
   };
 }
 

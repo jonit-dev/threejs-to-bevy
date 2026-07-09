@@ -434,6 +434,136 @@
       "reportArtifacts": []
     },
     {
+      "canonicalId": "photoreal-ao-corner-test",
+      "owner": "ir-contract",
+      "sourceExample": "photoreal-ao-corner-test",
+      "regenerateCommand": "pnpm verify:rendering-photoreal",
+      "canonicalArtifactGate": "rendering-photoreal",
+      "ownerDocs": "docs/PRDs/proof-first-engine-loop-2026-07-05/PRD-015-portable-photoreal-rendering-and-postprocessing.md",
+      "aggregateGate": "verify:rendering-photoreal",
+      "bundlePath": "packages/ir/fixtures/conformance/photoreal-ao-corner-test/game.bundle",
+      "promotedCapabilities": [
+        "rendering:ambient-occlusion.screen-space",
+        "rendering:camera.perspective",
+        "rendering:mesh.primitive.box"
+      ],
+      "reportArtifacts": [
+        "tools/verify/artifacts/rendering-photoreal/verification-report.json",
+        "tools/verify/artifacts/rendering-photoreal/reports/photoreal-ao-corner-test.web.report.json",
+        "tools/verify/artifacts/rendering-photoreal/reports/photoreal-ao-corner-test.bevy.report.json"
+      ]
+    },
+    {
+      "canonicalId": "photoreal-lighting-units-probe",
+      "owner": "ir-contract",
+      "sourceExample": "photoreal-lighting-units-probe",
+      "regenerateCommand": "pnpm verify:rendering-photoreal",
+      "canonicalArtifactGate": "rendering-photoreal",
+      "ownerDocs": "docs/PRDs/proof-first-engine-loop-2026-07-05/PRD-015-parity-diagnosis-and-recommendations.md",
+      "aggregateGate": "verify:rendering-photoreal",
+      "bundlePath": "packages/ir/fixtures/conformance/photoreal-lighting-units-probe/game.bundle",
+      "promotedCapabilities": [
+        "rendering:camera.perspective",
+        "rendering:light.ambient",
+        "rendering:light.directional",
+        "rendering:material.standard",
+        "rendering:mesh.primitive.box"
+      ],
+      "reportArtifacts": [
+        "tools/verify/artifacts/rendering-photoreal/verification-report.json",
+        "tools/verify/artifacts/rendering-photoreal/reports/photoreal-lighting-units-probe.web.report.json",
+        "tools/verify/artifacts/rendering-photoreal/reports/photoreal-lighting-units-probe.bevy.report.json"
+      ]
+    },
+    {
+      "canonicalId": "photoreal-bloom-emissive-test",
+      "owner": "ir-contract",
+      "sourceExample": "photoreal-bloom-emissive-test",
+      "regenerateCommand": "pnpm verify:rendering-photoreal",
+      "canonicalArtifactGate": "rendering-photoreal",
+      "ownerDocs": "docs/PRDs/proof-first-engine-loop-2026-07-05/PRD-015-portable-photoreal-rendering-and-postprocessing.md",
+      "aggregateGate": "verify:rendering-photoreal",
+      "bundlePath": "packages/ir/fixtures/conformance/photoreal-bloom-emissive-test/game.bundle",
+      "promotedCapabilities": [
+        "rendering:camera.perspective",
+        "rendering:material.emissive",
+        "rendering:material.emissive-bloom",
+        "rendering:material.extended.unlitMasked",
+        "rendering:mesh.primitive.box",
+        "rendering:postprocess.bloom"
+      ],
+      "reportArtifacts": [
+        "tools/verify/artifacts/rendering-photoreal/verification-report.json",
+        "tools/verify/artifacts/rendering-photoreal/reports/photoreal-bloom-emissive-test.web.report.json",
+        "tools/verify/artifacts/rendering-photoreal/reports/photoreal-bloom-emissive-test.bevy.report.json"
+      ]
+    },
+    {
+      "canonicalId": "photoreal-dof-depth-test",
+      "owner": "ir-contract",
+      "sourceExample": "photoreal-dof-depth-test",
+      "regenerateCommand": "pnpm verify:rendering-photoreal",
+      "canonicalArtifactGate": "rendering-photoreal",
+      "ownerDocs": "docs/PRDs/proof-first-engine-loop-2026-07-05/PRD-015-portable-photoreal-rendering-and-postprocessing.md",
+      "aggregateGate": "verify:rendering-photoreal",
+      "bundlePath": "packages/ir/fixtures/conformance/photoreal-dof-depth-test/game.bundle",
+      "promotedCapabilities": [
+        "rendering:camera.perspective",
+        "rendering:depth-of-field",
+        "rendering:mesh.primitive.box",
+        "rendering:mesh.primitive.sphere"
+      ],
+      "reportArtifacts": [
+        "tools/verify/artifacts/rendering-photoreal/verification-report.json",
+        "tools/verify/artifacts/rendering-photoreal/reports/photoreal-dof-depth-test.web.report.json",
+        "tools/verify/artifacts/rendering-photoreal/reports/photoreal-dof-depth-test.bevy.report.json"
+      ]
+    },
+    {
+      "canonicalId": "photoreal-motion-blur-moving-test",
+      "owner": "ir-contract",
+      "sourceExample": "photoreal-motion-blur-moving-test",
+      "regenerateCommand": "pnpm verify:rendering-photoreal",
+      "canonicalArtifactGate": "rendering-photoreal",
+      "ownerDocs": "docs/PRDs/proof-first-engine-loop-2026-07-05/PRD-015-portable-photoreal-rendering-and-postprocessing.md",
+      "aggregateGate": "verify:rendering-photoreal",
+      "bundlePath": "packages/ir/fixtures/conformance/photoreal-motion-blur-moving-test/game.bundle",
+      "promotedCapabilities": [
+        "rendering:camera.perspective",
+        "rendering:material.emissive",
+        "rendering:mesh.primitive.box",
+        "rendering:postprocess.motion-blur",
+        "scripting:schedule.update",
+        "scripting:script-bundle"
+      ],
+      "reportArtifacts": [
+        "tools/verify/artifacts/rendering-photoreal/verification-report.json",
+        "tools/verify/artifacts/rendering-photoreal/reports/photoreal-motion-blur-moving-test.web.report.json",
+        "tools/verify/artifacts/rendering-photoreal/reports/photoreal-motion-blur-moving-test.bevy.report.json"
+      ]
+    },
+    {
+      "canonicalId": "photoreal-reflective-wet-floor",
+      "owner": "ir-contract",
+      "sourceExample": "photoreal-reflective-wet-floor",
+      "regenerateCommand": "pnpm verify:rendering-photoreal",
+      "canonicalArtifactGate": "rendering-photoreal",
+      "ownerDocs": "docs/PRDs/proof-first-engine-loop-2026-07-05/PRD-015-portable-photoreal-rendering-and-postprocessing.md",
+      "aggregateGate": "verify:rendering-photoreal",
+      "bundlePath": "packages/ir/fixtures/conformance/photoreal-reflective-wet-floor/game.bundle",
+      "promotedCapabilities": [
+        "rendering:camera.perspective",
+        "rendering:material.emissive",
+        "rendering:mesh.primitive.box",
+        "rendering:postprocess.screen-space-reflections"
+      ],
+      "reportArtifacts": [
+        "tools/verify/artifacts/rendering-photoreal/verification-report.json",
+        "tools/verify/artifacts/rendering-photoreal/reports/photoreal-reflective-wet-floor.web.report.json",
+        "tools/verify/artifacts/rendering-photoreal/reports/photoreal-reflective-wet-floor.bevy.report.json"
+      ]
+    },
+    {
       "canonicalId": "rendering-lights",
       "owner": "ir-contract",
       "sourceExample": "rendering-lights",

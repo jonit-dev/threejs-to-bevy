@@ -1066,7 +1066,7 @@ pub struct TargetProfileBudgets {
 pub struct TargetProfilePerformance {
     pub average_frame_ms: TargetProfilePerformanceThreshold,
     pub draw_calls: TargetProfilePerformanceThreshold,
-    pub updated_at: String,
+    pub updated_at: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -1439,15 +1439,34 @@ pub struct RuntimeConfigIr {
 #[serde(rename_all = "camelCase")]
 pub struct RuntimeRendererConfig {
     pub antialias: String,
+    #[serde(rename = "ambientOcclusion")]
+    pub ambient_occlusion: Option<RuntimeRendererAmbientOcclusionConfig>,
     pub bloom: Option<RuntimeRendererBloomConfig>,
     #[serde(rename = "colorGrading")]
     pub color_grading: Option<RuntimeRendererColorGradingConfig>,
     #[serde(rename = "depthOfField")]
     pub depth_of_field: Option<RuntimeRendererDepthOfFieldConfig>,
+    #[serde(rename = "motionBlur")]
+    pub motion_blur: Option<RuntimeRendererMotionBlurConfig>,
     #[serde(rename = "renderLook")]
     pub render_look: Option<RuntimeRenderLookProfileConfig>,
     #[serde(rename = "renderPath")]
     pub render_path: Option<String>,
+    #[serde(rename = "screenSpaceGlobalIllumination")]
+    pub screen_space_global_illumination:
+        Option<RuntimeRendererScreenSpaceGlobalIlluminationConfig>,
+    #[serde(rename = "screenSpaceReflections")]
+    pub screen_space_reflections: Option<RuntimeRendererScreenSpaceReflectionsConfig>,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RuntimeRendererAmbientOcclusionConfig {
+    pub enabled: bool,
+    pub mode: String,
+    pub radius: f32,
+    pub intensity: f32,
+    pub quality: String,
 }
 
 #[derive(Debug, Deserialize)]
@@ -1484,6 +1503,28 @@ pub struct RuntimeRendererDepthOfFieldConfig {
     pub enabled: bool,
     pub focus_distance: f32,
     pub max_blur: f32,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RuntimeRendererMotionBlurConfig {
+    pub enabled: bool,
+    pub shutter_angle: f32,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RuntimeRendererScreenSpaceGlobalIlluminationConfig {
+    pub enabled: bool,
+    pub quality: String,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RuntimeRendererScreenSpaceReflectionsConfig {
+    pub enabled: bool,
+    pub quality: String,
+    pub roughness_limit: f32,
 }
 
 #[derive(Debug, Deserialize)]

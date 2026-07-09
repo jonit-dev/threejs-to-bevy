@@ -23,6 +23,18 @@
             "threshold": { "type": "number", "minimum": 0 }
           }
         },
+        "ambientOcclusion": {
+          "type": "object",
+          "required": ["enabled", "mode", "radius", "intensity", "quality"],
+          "additionalProperties": false,
+          "properties": {
+            "enabled": { "type": "boolean" },
+            "mode": { "const": "screen-space" },
+            "radius": { "type": "number", "minimum": 0, "maximum": 16 },
+            "intensity": { "type": "number", "minimum": 0, "maximum": 4 },
+            "quality": { "enum": ["low", "medium", "high"] }
+          }
+        },
         "colorGrading": {
           "type": "object",
           "additionalProperties": false,
@@ -47,6 +59,15 @@
             "maxBlur": { "type": "number", "minimum": 0 }
           }
         },
+        "motionBlur": {
+          "type": "object",
+          "required": ["enabled", "shutterAngle"],
+          "additionalProperties": false,
+          "properties": {
+            "enabled": { "type": "boolean" },
+            "shutterAngle": { "type": "number", "minimum": 0, "maximum": 1 }
+          }
+        },
         "renderLook": {
           "type": "object",
           "required": ["version", "profile"],
@@ -68,7 +89,26 @@
             }
           }
         },
-        "renderPath": { "const": "forward" }
+        "renderPath": { "const": "forward" },
+        "screenSpaceGlobalIllumination": {
+          "type": "object",
+          "required": ["enabled", "quality"],
+          "additionalProperties": false,
+          "properties": {
+            "enabled": { "type": "boolean" },
+            "quality": { "enum": ["low", "medium"] }
+          }
+        },
+        "screenSpaceReflections": {
+          "type": "object",
+          "required": ["enabled", "quality", "roughnessLimit"],
+          "additionalProperties": false,
+          "properties": {
+            "enabled": { "type": "boolean" },
+            "quality": { "enum": ["low", "medium", "high"] },
+            "roughnessLimit": { "type": "number", "minimum": 0, "maximum": 1 }
+          }
+        }
       }
     },
     "time": {

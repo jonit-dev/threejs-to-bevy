@@ -1,7 +1,9 @@
 use bevy::prelude::*;
 use threenative_loader::{
     GltfSceneAssetIr, GltfSceneMetadataIr, RuntimeConfigIr, RuntimeRenderLookOverridesConfig,
-    RuntimeRenderLookProfileConfig, RuntimeRendererConfig, RuntimeTimeConfig, RuntimeWindowConfig,
+    RuntimeRenderLookProfileConfig, RuntimeRendererAmbientOcclusionConfig, RuntimeRendererConfig,
+    RuntimeRendererMotionBlurConfig, RuntimeRendererScreenSpaceGlobalIlluminationConfig,
+    RuntimeRendererScreenSpaceReflectionsConfig, RuntimeTimeConfig, RuntimeWindowConfig,
 };
 use threenative_runtime::{conformance::report_bevy_conformance, map_world::map_bundle_into_world};
 
@@ -239,6 +241,17 @@ fn should_report_v9_environment_lighting_budgets_and_renderer_quality() {
     assert!((depth_of_field["aperture"].as_f64().unwrap() - 0.025).abs() < 0.000001);
     assert!((depth_of_field["maxBlur"].as_f64().unwrap() - 0.012).abs() < 0.000001);
     assert_eq!(
+        report_json["runtimeConfig"]["renderer"]["featureReports"],
+        serde_json::json!([
+            {
+                "appliedMode": "gaussian",
+                "feature": "renderer.depthOfField",
+                "requestedMode": "lens",
+                "status": "baseline"
+            }
+        ])
+    );
+    assert_eq!(
         report_json["runtimeConfig"]["renderer"]["postProcessing"]["applied"],
         serde_json::json!(["colorGrading", "depthOfField"])
     );
@@ -256,9 +269,20 @@ fn should_report_promoted_render_look_profile() {
         version: "0.1.0".to_owned(),
         renderer: Some(RuntimeRendererConfig {
             antialias: "msaa4".to_owned(),
+            ambient_occlusion: Some(RuntimeRendererAmbientOcclusionConfig {
+                enabled: true,
+                intensity: 1.2,
+                mode: "screen-space".to_owned(),
+                quality: "medium".to_owned(),
+                radius: 3.0,
+            }),
             bloom: None,
             color_grading: None,
             depth_of_field: None,
+            motion_blur: Some(RuntimeRendererMotionBlurConfig {
+                enabled: true,
+                shutter_angle: 0.5,
+            }),
             render_look: Some(RuntimeRenderLookProfileConfig {
                 version: 1,
                 profile: "stylized".to_owned(),
@@ -272,6 +296,17 @@ fn should_report_promoted_render_look_profile() {
                 }),
             }),
             render_path: None,
+            screen_space_global_illumination: Some(
+                RuntimeRendererScreenSpaceGlobalIlluminationConfig {
+                    enabled: false,
+                    quality: "low".to_owned(),
+                },
+            ),
+            screen_space_reflections: Some(RuntimeRendererScreenSpaceReflectionsConfig {
+                enabled: true,
+                quality: "medium".to_owned(),
+                roughness_limit: 0.45,
+            }),
         }),
         time: RuntimeTimeConfig {
             fixed_delta: 1.0 / 60.0,
@@ -297,8 +332,44 @@ fn should_report_promoted_render_look_profile() {
     assert!((render_look["overrides"]["exposure"].as_f64().unwrap() - 1.1).abs() < 0.000001);
     assert!((render_look["overrides"]["saturation"].as_f64().unwrap() - 1.15).abs() < 0.000001);
     assert_eq!(
+        report_json["runtimeConfig"]["renderer"]["postProcessing"]["applied"],
+        serde_json::json!([
+            "bloom",
+            "ambientOcclusion",
+            "screenSpaceReflections",
+            "motionBlur"
+        ])
+    );
+    assert_eq!(
         report_json["runtimeConfig"]["renderer"]["postProcessing"]["skipped"],
         serde_json::json!([])
+    );
+    assert_eq!(
+        report_json["runtimeConfig"]["renderer"]["featureReports"][0],
+        serde_json::json!({
+            "appliedMode": "screen-space",
+            "feature": "renderer.ambientOcclusion",
+            "requestedMode": "screen-space",
+            "status": "baseline"
+        })
+    );
+    assert_eq!(
+        report_json["runtimeConfig"]["renderer"]["featureReports"][1],
+        serde_json::json!({
+            "appliedMode": "screen-space",
+            "feature": "renderer.screenSpaceReflections",
+            "requestedMode": "screen-space",
+            "status": "baseline"
+        })
+    );
+    assert_eq!(
+        report_json["runtimeConfig"]["renderer"]["featureReports"][2],
+        serde_json::json!({
+            "appliedMode": "motion-vectors",
+            "feature": "renderer.motionBlur",
+            "requestedMode": "shutter",
+            "status": "baseline"
+        })
     );
 }
 

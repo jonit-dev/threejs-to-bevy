@@ -1,0 +1,41 @@
+{
+  "schema": "threenative.assets",
+  "version": "0.1.0",
+  "assets": [
+    {
+      "id": "mesh.floor",
+      "kind": "mesh",
+      "format": "generated",
+      "primitive": "box",
+      "size": [5.2, 0.08, 8.4]
+    },
+    {
+      "id": "mesh.backWall",
+      "kind": "mesh",
+      "format": "generated",
+      "primitive": "box",
+      "size": [5.2, 2.6, 0.08]
+    },
+    {
+      "id": "mesh.marker",
+      "kind": "mesh",
+      "format": "generated",
+      "primitive": "sphere",
+      "size": [0.42]
+    },
+    {
+      "id": "mesh.focusCard",
+      "kind": "mesh",
+      "format": "generated",
+      "primitive": "box",
+      "size": [0.7, 0.7, 0.08]
+    },
+    {
+      "id": "mesh.wallStripe",
+      "kind": "mesh",
+      "format": "generated",
+      "primitive": "box",
+      "size": [0.16, 1.8, 0.04]
+    }
+  ]
+}

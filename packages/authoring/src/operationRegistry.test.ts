@@ -81,7 +81,29 @@ test("should dispatch existing structured source operations through the registry
       await dispatchAuthoringOperation({ args: { environmentId: "arena", probe: { bounds: { max: [3, 4, 3], min: [-3, 0, -3] }, influenceRadius: 5, source: { asset: "tex.env", mode: "equirect" } }, probeId: "probe.center" }, name: "environment.set_light_probe", projectPath: root }),
       await dispatchAuthoringOperation({ args: { exportName: "generateArena", generatorId: "arena.layout", inputHash: "sha256:inputs", modulePath: "src/generators/arena.ts", outputHash: "sha256:outputs", outputs: ["content/scenes/arena.scene.json"], overwritePolicy: "manual" }, name: "generator.record", projectPath: root }),
       await dispatchAuthoringOperation({ args: { renderProfile: "parity", runtimeId: "desktop" }, name: "runtime.create", projectPath: root }),
-      await dispatchAuthoringOperation({ args: { renderLookContrast: 0.1, renderLookExposure: 1.1, renderLookShadowQuality: "high", renderProfile: "balanced", runtimeId: "desktop" }, name: "runtime.set_rendering", projectPath: root }),
+      await dispatchAuthoringOperation({
+        args: {
+          ambientOcclusionEnabled: true,
+          ambientOcclusionIntensity: 1.2,
+          ambientOcclusionMode: "screen-space",
+          ambientOcclusionQuality: "medium",
+          ambientOcclusionRadius: 3,
+          motionBlurEnabled: true,
+          motionBlurShutterAngle: 0.5,
+          renderLookContrast: 0.1,
+          renderLookExposure: 1.1,
+          renderLookShadowQuality: "high",
+          renderProfile: "balanced",
+          runtimeId: "desktop",
+          screenSpaceGlobalIlluminationEnabled: false,
+          screenSpaceGlobalIlluminationQuality: "low",
+          screenSpaceReflectionsEnabled: true,
+          screenSpaceReflectionsQuality: "medium",
+          screenSpaceReflectionsRoughnessLimit: 0.45,
+        },
+        name: "runtime.set_rendering",
+        projectPath: root,
+      }),
       await dispatchAuthoringOperation({ args: { sceneId: "scene.generated" }, name: "scene.create", projectPath: root }),
       await dispatchAuthoringOperation({ args: { materialId: "mat.player" }, name: "material.create", projectPath: root }),
       await dispatchAuthoringOperation({
@@ -186,7 +208,7 @@ test("should dispatch existing structured source operations through the registry
       targets: string[];
     };
     const runtime = JSON.parse(await readFile(join(root, "content", "runtime", "desktop.runtime.json"), "utf8")) as {
-      renderer?: { renderLook?: Record<string, unknown> };
+      renderer?: Record<string, unknown>;
     };
     const scene = JSON.parse(await readFile(join(root, "content", "scenes", "arena.scene.json"), "utf8")) as {
       activation?: string;
@@ -230,6 +252,10 @@ test("should dispatch existing structured source operations through the registry
     assert.deepEqual(target.targets, ["desktop"]);
     assert.deepEqual(target.budgets, { maxBundleBytes: 1048576, supportedTextureFormats: ["png"] });
     assert.deepEqual(runtime.renderer?.renderLook, { version: 1, profile: "balanced", overrides: { contrast: 0.1, exposure: 1.1, shadowQuality: "high" } });
+    assert.deepEqual(runtime.renderer?.ambientOcclusion, { enabled: true, intensity: 1.2, mode: "screen-space", quality: "medium", radius: 3 });
+    assert.deepEqual(runtime.renderer?.screenSpaceReflections, { enabled: true, quality: "medium", roughnessLimit: 0.45 });
+    assert.deepEqual(runtime.renderer?.motionBlur, { enabled: true, shutterAngle: 0.5 });
+    assert.deepEqual(runtime.renderer?.screenSpaceGlobalIllumination, { enabled: false, quality: "low" });
     assert.deepEqual(scene.prefabs, [{ asset: "assets/player.glb", color: "#00ffaa", id: "prefab.player", primitive: "sphere" }]);
     assert.deepEqual(scene.instances?.map((instance) => instance.id), ["prefab-player.01", "rack.01", "rack.02", "rack.03", "rack.04", "rack.05", "rack.06", "rack.07", "rack.08", "rack.09", "rack.10"]);
     assert.deepEqual(scene.instances?.find((instance) => instance.id === "prefab-player.01")?.transform?.position, [1, 0, 2]);
@@ -423,6 +449,8 @@ test("should expose operation metadata and registry diagnostics", async () => {
   assert.equal(camera?.arguments.find((argument) => argument.name === "mode")?.constraints?.enumValues?.includes("third-person-follow"), true);
   assert.equal(renderAuthoringOperationCliUsage("material.set")?.includes("--shader-json <json>"), true);
   assert.equal(renderAuthoringOperationCliUsage("runtime.set_rendering")?.includes("--bloom <true|false>"), true);
+  assert.equal(renderAuthoringOperationCliUsage("runtime.set_rendering")?.includes("--ambient-occlusion <true|false>"), true);
+  assert.equal(renderAuthoringOperationCliUsage("runtime.set_rendering")?.includes("--screen-space-reflections-roughness-limit <n>"), true);
   assert.deepEqual(
     buildAuthoringOperationCliArgv("scene.set_transform", { entityId: "player", sceneId: "scene.arena", transform: { position: [1, 2, 3] } }, { projectPath: "/project" }),
     ["scene", "set-transform", "scene.arena", "player", "--position", "1,2,3", "--project", "/project", "--json"],

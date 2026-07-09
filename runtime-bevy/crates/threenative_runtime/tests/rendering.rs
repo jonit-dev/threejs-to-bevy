@@ -8,14 +8,21 @@ use bevy::{
     animation::{AnimationPlugin, RepeatAnimation, graph::AnimationGraph},
     asset::AssetPlugin,
     core_pipeline::{
-        bloom::BloomSettings,
+        bloom::{BloomCompositeMode, BloomSettings},
+        dof::{DepthOfFieldMode, DepthOfFieldSettings},
         experimental::taa::TemporalAntiAliasSettings,
         fxaa::Fxaa,
+        motion_blur::MotionBlur,
+        prepass::{DeferredPrepass, DepthPrepass, MotionVectorPrepass, NormalPrepass},
         smaa::SmaaSettings,
         tonemapping::Tonemapping,
     },
     gltf::GltfPlugin,
-    pbr::{NotShadowCaster, NotShadowReceiver},
+    pbr::{
+        DefaultOpaqueRendererMethod, NotShadowCaster, NotShadowReceiver,
+        ScreenSpaceAmbientOcclusionQualityLevel, ScreenSpaceAmbientOcclusionSettings,
+        ScreenSpaceReflectionsSettings,
+    },
     prelude::*,
     render::{
         alpha::AlphaMode,
@@ -309,8 +316,157 @@ fn rendering_should_map_runtime_bloom_to_camera() {
 
     let mut query = app.world_mut().query::<&BloomSettings>();
     let bloom = query.single(app.world());
-    assert!((bloom.intensity - 0.35).abs() < 0.01);
+    assert!((bloom.intensity - (0.35 * 0.2)).abs() < 0.01);
+    assert_eq!(bloom.composite_mode, BloomCompositeMode::Additive);
     assert!((bloom.prefilter_settings.threshold - 0.8).abs() < 0.01);
+    assert!((bloom.prefilter_settings.threshold_softness - 0.2).abs() < 0.01);
+
+    fs::remove_dir_all(root).expect("temporary bundle should be removed");
+}
+
+#[test]
+fn rendering_should_map_runtime_ambient_occlusion_to_native_camera() {
+    let root = write_rendering_bundle();
+    write(
+        &root,
+        "runtime.config.json",
+        r#"{
+  "schema": "threenative.runtime-config",
+  "version": "0.1.0",
+  "renderer": {
+    "antialias": "msaa4",
+    "ambientOcclusion": { "enabled": true, "mode": "screen-space", "radius": 3, "intensity": 1.2, "quality": "medium" }
+  },
+  "time": { "fixedDelta": 0.016666666666666666, "paused": false },
+  "window": { "height": 720, "width": 1280 }
+}"#,
+    );
+    let bundle = load_bundle(&root).expect("rendering bundle should load");
+    let mut app = App::new();
+
+    map_bundle_into_world(app.world_mut(), &bundle).expect("bundle should map");
+
+    let camera = entity_for(app.world_mut(), "camera.ui");
+    let settings = app
+        .world()
+        .get::<ScreenSpaceAmbientOcclusionSettings>(camera)
+        .expect("camera should have native SSAO settings");
+    assert_eq!(
+        settings.quality_level,
+        ScreenSpaceAmbientOcclusionQualityLevel::Medium
+    );
+    assert!(app.world().get::<DepthPrepass>(camera).is_some());
+    assert!(app.world().get::<NormalPrepass>(camera).is_some());
+
+    fs::remove_dir_all(root).expect("temporary bundle should be removed");
+}
+
+#[test]
+fn rendering_should_map_runtime_depth_of_field_to_native_camera() {
+    let root = write_rendering_bundle();
+    write(
+        &root,
+        "runtime.config.json",
+        r#"{
+  "schema": "threenative.runtime-config",
+  "version": "0.1.0",
+  "renderer": {
+    "antialias": "msaa4",
+    "depthOfField": { "enabled": true, "focusDistance": 8, "aperture": 0.025, "maxBlur": 0.012 }
+  },
+  "time": { "fixedDelta": 0.016666666666666666, "paused": false },
+  "window": { "height": 720, "width": 1280 }
+}"#,
+    );
+    let bundle = load_bundle(&root).expect("rendering bundle should load");
+    let mut app = App::new();
+
+    map_bundle_into_world(app.world_mut(), &bundle).expect("bundle should map");
+
+    let camera = entity_for(app.world_mut(), "camera.ui");
+    let settings = app
+        .world()
+        .get::<DepthOfFieldSettings>(camera)
+        .expect("camera should have native depth-of-field settings");
+    assert_eq!(settings.mode, DepthOfFieldMode::Gaussian);
+    assert!((settings.focal_distance - 8.0).abs() < 0.001);
+    assert!((settings.aperture_f_stops - 0.16).abs() < 0.001);
+    assert!((settings.max_circle_of_confusion_diameter - 30.72).abs() < 0.01);
+
+    fs::remove_dir_all(root).expect("temporary bundle should be removed");
+}
+
+#[test]
+fn rendering_should_map_runtime_motion_blur_to_native_camera() {
+    let root = write_rendering_bundle();
+    write(
+        &root,
+        "runtime.config.json",
+        r#"{
+  "schema": "threenative.runtime-config",
+  "version": "0.1.0",
+  "renderer": {
+    "antialias": "msaa4",
+    "motionBlur": { "enabled": true, "shutterAngle": 0.5 }
+  },
+  "time": { "fixedDelta": 0.016666666666666666, "paused": false },
+  "window": { "height": 720, "width": 1280 }
+}"#,
+    );
+    let bundle = load_bundle(&root).expect("rendering bundle should load");
+    let mut app = App::new();
+
+    map_bundle_into_world(app.world_mut(), &bundle).expect("bundle should map");
+
+    let camera = entity_for(app.world_mut(), "camera.ui");
+    let motion_blur = app
+        .world()
+        .get::<MotionBlur>(camera)
+        .expect("camera should have native motion blur settings");
+    assert!((motion_blur.shutter_angle - 0.5).abs() < 0.001);
+    assert_eq!(motion_blur.samples, 1);
+    assert!(app.world().get::<DepthPrepass>(camera).is_some());
+    assert!(app.world().get::<MotionVectorPrepass>(camera).is_some());
+
+    fs::remove_dir_all(root).expect("temporary bundle should be removed");
+}
+
+#[test]
+fn rendering_should_map_runtime_screen_space_reflections_to_native_camera() {
+    let root = write_rendering_bundle();
+    write(
+        &root,
+        "runtime.config.json",
+        r#"{
+  "schema": "threenative.runtime-config",
+  "version": "0.1.0",
+  "renderer": {
+    "antialias": "msaa4",
+    "screenSpaceReflections": { "enabled": true, "quality": "high", "roughnessLimit": 0.45 }
+  },
+  "time": { "fixedDelta": 0.016666666666666666, "paused": false },
+  "window": { "height": 720, "width": 1280 }
+}"#,
+    );
+    let bundle = load_bundle(&root).expect("rendering bundle should load");
+    let mut app = App::new();
+
+    map_bundle_into_world(app.world_mut(), &bundle).expect("bundle should map");
+
+    let camera = entity_for(app.world_mut(), "camera.ui");
+    let settings = app
+        .world()
+        .get::<ScreenSpaceReflectionsSettings>(camera)
+        .expect("camera should have native screen-space reflection settings");
+    assert!((settings.perceptual_roughness_threshold - 0.45).abs() < 0.001);
+    assert_eq!(settings.linear_steps, 32);
+    assert!(app.world().get::<DepthPrepass>(camera).is_some());
+    assert!(app.world().get::<DeferredPrepass>(camera).is_some());
+    let default_render_method = app
+        .world()
+        .get_resource::<DefaultOpaqueRendererMethod>()
+        .expect("SSR should configure deferred opaque rendering");
+    assert!(format!("{default_render_method:?}").contains("Deferred"));
 
     fs::remove_dir_all(root).expect("temporary bundle should be removed");
 }
@@ -336,8 +492,10 @@ fn rendering_should_map_balanced_render_look_to_native_bloom() {
 
     let mut query = app.world_mut().query::<&BloomSettings>();
     let bloom = query.single(app.world());
-    assert!((bloom.intensity - 0.45).abs() < 0.01);
+    assert!((bloom.intensity - (0.45 * 0.2)).abs() < 0.01);
+    assert_eq!(bloom.composite_mode, BloomCompositeMode::Additive);
     assert!((bloom.prefilter_settings.threshold - 0.85).abs() < 0.01);
+    assert!((bloom.prefilter_settings.threshold_softness - 0.2).abs() < 0.01);
 
     fs::remove_dir_all(root).expect("temporary bundle should be removed");
 }
@@ -363,8 +521,10 @@ fn rendering_should_map_cinematic_render_look_to_native_bloom() {
 
     let mut query = app.world_mut().query::<&BloomSettings>();
     let bloom = query.single(app.world());
-    assert!((bloom.intensity - 0.45).abs() < 0.01);
+    assert!((bloom.intensity - (0.45 * 0.2)).abs() < 0.01);
+    assert_eq!(bloom.composite_mode, BloomCompositeMode::Additive);
     assert!((bloom.prefilter_settings.threshold - 0.85).abs() < 0.01);
+    assert!((bloom.prefilter_settings.threshold_softness - 0.2).abs() < 0.01);
 
     fs::remove_dir_all(root).expect("temporary bundle should be removed");
 }
