@@ -1,5 +1,16 @@
 {
   "schema": "threenative.materials",
   "version": "0.1.0",
-  "materials": []
+  "materials": [
+    {
+      "alphaMode": "mask",
+      "alphaCutoff": 0.35,
+      "color": "#7da66f",
+      "doubleSided": true,
+      "id": "mat.impostor",
+      "kind": "standard",
+      "roughness": 0.9,
+      "baseColorTexture": "texture.impostor"
+    }
+  ]
 }

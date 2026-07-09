@@ -1,5 +1,5 @@
 import type { IRuntimeConfigIr, IRenderLookProfileIr, RenderLookProfileName } from "@threenative/ir";
-import { resolveRenderLookProfile } from "@threenative/ir/runtimeConfig";
+import { resolveRenderLookProfile, resolveRenderLookShadowProfile } from "@threenative/ir/runtimeConfig";
 
 type RuntimeRendererConfig = NonNullable<IRuntimeConfigIr["renderer"]>;
 type RuntimeBloomConfig = NonNullable<RuntimeRendererConfig["bloom"]>;
@@ -24,6 +24,7 @@ export interface IWebRenderLookApplication {
   colorGrading?: RuntimeColorGradingConfig;
   fallbacks: IWebRenderLookFallback[];
   requestedProfile: IRenderLookProfileIr["profile"] | "parity";
+  shadowProfile: ReturnType<typeof resolveRenderLookShadowProfile>;
 }
 
 export function applyWebRenderLookProfile(config?: IRuntimeConfigIr): IWebRenderLookApplication {
@@ -37,6 +38,7 @@ export function applyWebRenderLookProfile(config?: IRuntimeConfigIr): IWebRender
   return {
     requestedProfile,
     appliedProfile: resolved.profile,
+    shadowProfile: resolveRenderLookShadowProfile(resolved.shadowQuality),
     fallbacks: [],
     bloom: config?.renderer?.bloom ?? (artisticProfile
       ? { enabled: bloomIntensity > 0, intensity: bloomIntensity, threshold: 0.85 }

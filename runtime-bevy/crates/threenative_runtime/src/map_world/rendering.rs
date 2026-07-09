@@ -655,7 +655,6 @@ fn add_material(
     render_target_registry: &NativeRenderTargetRegistry,
 ) -> Handle<StandardMaterial> {
     let emissive_display_base = uses_emissive_display_base(material);
-    let emissive_black_base = uses_emissive_black_base(material);
     let base_texture_asset = material
         .base_color_texture
         .as_deref()
@@ -666,9 +665,7 @@ fn add_material(
     let extended = material.kind == "extended";
     let mut standard = StandardMaterial {
         alpha_mode: alpha_mode(material),
-        base_color: if emissive_black_base {
-            Color::BLACK
-        } else if emissive_display_base {
+        base_color: if emissive_display_base {
             emissive_display_base_color(material)
         } else {
             color_with_opacity(&material.color, opacity_for_material(material))
@@ -853,7 +850,7 @@ fn uses_emissive_display_base(material: &MaterialIr) -> bool {
         && material.base_color_texture.is_none()
 }
 
-fn uses_emissive_black_base(material: &MaterialIr) -> bool {
+fn uses_emissive_marker_mask(material: &MaterialIr) -> bool {
     material.kind == "standard"
         && material.emissive.is_some()
         && material.emissive_bloom.is_none()

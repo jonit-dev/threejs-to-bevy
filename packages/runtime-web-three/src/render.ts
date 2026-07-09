@@ -8,7 +8,7 @@ import { FullScreenQuad, Pass } from "three/examples/jsm/postprocessing/Pass.js"
 import { ShaderPass } from "three/examples/jsm/postprocessing/ShaderPass.js";
 import { UnrealBloomPass } from "three/examples/jsm/postprocessing/UnrealBloomPass.js";
 import type { IAssetsManifest, IAtmosphereProfileIr, ICameraClear, IMaterialsIr, IRuntimeConfigIr, IWorldIr, RenderLookProfileName } from "@threenative/ir";
-import { resolveRenderLookProfile } from "@threenative/ir/runtimeConfig";
+import { resolveRenderLookProfile, resolveRenderLookShadowProfile } from "@threenative/ir/runtimeConfig";
 import type { IWebBundle } from "./webBundle.js";
 import {
   updateCameraHelpers,
@@ -258,7 +258,7 @@ export async function renderLoadedBundle(bundle: IWebBundle, container: HTMLElem
   const renderer = new THREE.WebGLRenderer(webRendererParameters(bundle.runtimeConfig, options.captureDrawingBuffer));
   const renderLook = applyWebRenderLookProfile(bundle.runtimeConfig);
   applyRendererColorManagement(renderer, bundle.environmentScene?.atmosphere?.colorManagement, renderLook.colorGrading);
-  applyRendererShadowSettings(renderer, bundle.runtimeConfig);
+  applyRendererShadowSettings(renderer, bundle.runtimeConfig, mapped.scene);
   applyRenderLookSceneDefaults(mapped.scene, renderLook);
   const pipeline = createRenderPipeline(renderer, mapped, bundle.world, bundle.runtimeConfig, bundle.assets, bundle.materials);
   const colliderDebugOverlay = options.debugColliders === true ? createColliderDebugOverlay(mapped, bundle.world) : undefined;
@@ -1614,18 +1614,23 @@ export function applyRendererColorManagement(
   renderer.toneMappingExposure = exposure ?? 1;
 }
 
-export function applyRendererShadowSettings(renderer: THREE.WebGLRenderer, config?: IRuntimeConfigIr): void {
-  const quality = resolveRenderLookProfile(config?.renderer?.renderLook, "desktop-web").shadowQuality;
-  renderer.shadowMap.enabled = quality !== "off";
-  if (quality === "high") {
+export function applyRendererShadowSettings(renderer: THREE.WebGLRenderer, config?: IRuntimeConfigIr, scene?: THREE.Scene): void {
+  const profile = resolveRenderLookShadowProfile(resolveRenderLookProfile(config?.renderer?.renderLook, "desktop-web").shadowQuality);
+  renderer.shadowMap.enabled = profile.enabled;
+  if (profile.filter === "pcf-soft") {
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-    return;
-  }
-  if (quality === "medium") {
+  } else if (profile.filter === "pcf") {
     renderer.shadowMap.type = THREE.PCFShadowMap;
-    return;
+  } else {
+    renderer.shadowMap.type = THREE.BasicShadowMap;
   }
-  renderer.shadowMap.type = THREE.BasicShadowMap;
+  scene?.traverse((object) => {
+    if (object instanceof THREE.DirectionalLight || object instanceof THREE.PointLight || object instanceof THREE.SpotLight) {
+      object.castShadow = object.castShadow && profile.enabled;
+      object.shadow.mapSize.set(profile.mapSize, profile.mapSize);
+      object.shadow.needsUpdate = true;
+    }
+  });
 }
 
 export function applyRenderLookSceneDefaults(

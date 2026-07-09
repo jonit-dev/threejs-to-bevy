@@ -73,13 +73,19 @@ function mockRenderer(): THREE.WebGLRenderer {
 
 test("should enable renderer shadow maps from render look quality", () => {
   const renderer = mockRenderer();
-  applyRendererShadowSettings(renderer, runtimeConfig("msaa4", { renderLook: { version: 1, profile: "balanced", overrides: { shadowQuality: "high" } } }));
+  const scene = new THREE.Scene();
+  const light = new THREE.DirectionalLight();
+  light.castShadow = true;
+  scene.add(light);
+  applyRendererShadowSettings(renderer, runtimeConfig("msaa4", { renderLook: { version: 1, profile: "balanced", overrides: { shadowQuality: "high" } } }), scene);
   assert.equal(renderer.shadowMap.enabled, true);
   assert.equal(renderer.shadowMap.type, THREE.PCFSoftShadowMap);
+  assert.deepEqual(light.shadow.mapSize.toArray(), [2048, 2048]);
 
-  applyRendererShadowSettings(renderer, runtimeConfig("none", { renderLook: { version: 1, profile: "parity", overrides: { shadowQuality: "off" } } }));
+  applyRendererShadowSettings(renderer, runtimeConfig("none", { renderLook: { version: 1, profile: "parity", overrides: { shadowQuality: "off" } } }), scene);
   assert.equal(renderer.shadowMap.enabled, false);
   assert.equal(renderer.shadowMap.type, THREE.BasicShadowMap);
+  assert.equal(light.castShadow, false);
 });
 
 test("should map runtime antialias modes to WebGL renderer parameters", () => {

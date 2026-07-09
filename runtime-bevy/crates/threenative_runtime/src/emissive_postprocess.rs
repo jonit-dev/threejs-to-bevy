@@ -81,6 +81,9 @@ impl ViewNode for NativeEmissivePostProcessNode {
         (view_target, camera): QueryItem<Self::ViewQuery>,
         world: &World,
     ) -> Result<(), NodeRunError> {
+        if !supports_emissive_postprocess(view_target.main_texture_format()) {
+            return Ok(());
+        }
         let pipeline = world.resource::<NativeEmissivePostProcessPipeline>();
         let pipeline_cache = world.resource::<PipelineCache>();
         let Some(render_pipeline) = pipeline_cache.get_render_pipeline(pipeline.pipeline_id) else {
@@ -128,6 +131,24 @@ impl ViewNode for NativeEmissivePostProcessNode {
         render_pass.draw(0..3, 0..1);
 
         Ok(())
+    }
+}
+
+fn supports_emissive_postprocess(format: bevy::render::render_resource::TextureFormat) -> bool {
+    format == ViewTarget::TEXTURE_FORMAT_HDR
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use bevy::render::render_resource::TextureFormat;
+
+    #[test]
+    fn emissive_postprocess_pipeline_only_targets_hdr_views() {
+        assert!(supports_emissive_postprocess(TextureFormat::Rgba16Float));
+        assert!(!supports_emissive_postprocess(
+            TextureFormat::Rgba8UnormSrgb
+        ));
     }
 }
 

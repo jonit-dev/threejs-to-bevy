@@ -80,7 +80,7 @@ const THREE_COMPAT_POINT_LUMENS_PER_CANDELA: f32 = 1.0;
 const THREE_COMPAT_DEFAULT_RANGE: f32 = 1_000.0;
 const THREE_COMPAT_DEFAULT_CAMERA_EV100: f32 = -0.45;
 const THREE_COMPAT_SKY_DOME_RADIUS: f32 = 72.0;
-const THREE_COMPAT_EMISSIVE_INTENSITY_SCALE: f32 = 4.0;
+const THREE_COMPAT_EMISSIVE_INTENSITY_SCALE: f32 = 1.0;
 const THREE_COMPAT_COLOR_GRADING_SATURATION_SCALE: f32 = 1.35;
 const THREE_COMPAT_CAMERA_EXPOSURE_SCALE: f32 = 1.08;
 const THREE_COMPAT_FOG_EXP2_DENSITY_SCALE: f32 = 0.65;
@@ -539,7 +539,7 @@ pub fn prepare_world_entity_spawn_context<'a>(
         .materials
         .materials
         .iter()
-        .any(uses_emissive_black_base)
+        .any(uses_emissive_marker_mask)
     {
         ensure_emissive_marker_mask(world);
     }

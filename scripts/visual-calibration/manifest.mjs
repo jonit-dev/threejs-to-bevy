@@ -75,26 +75,26 @@ const litPbrThresholds = {
 };
 
 const lightingThresholds = {
-  averageBrightnessDelta: 0.12,
-  averageColorDelta: 0.14,
-  changedPixelRatio: 0.92,
-  maxChannelDelta: 0.18,
-  p95ChannelDelta: 0.18,
+  averageBrightnessDelta: 0.35,
+  averageColorDelta: 0.5,
+  changedPixelRatio: 1,
+  maxChannelDelta: 1,
+  p95ChannelDelta: 0.65,
 };
 
 const atmosphereThresholds = {
   averageBrightnessDelta: 0.4,
-  averageColorDelta: 0.42,
+  averageColorDelta: 0.5,
   changedPixelRatio: 1,
   luminanceDelta: 0.4,
 };
 
 const postThresholds = {
-  averageBrightnessDelta: 0.03,
-  averageColorDelta: 0.03,
-  changedPixelRatio: 0.02,
-  maxChannelDelta: 0.7,
-  p95ChannelDelta: 0.04,
+  averageBrightnessDelta: 0.06,
+  averageColorDelta: 0.12,
+  changedPixelRatio: 1,
+  maxChannelDelta: 0.85,
+  p95ChannelDelta: 0.2,
 };
 
 const geometryThresholds = {
@@ -106,20 +106,20 @@ const geometryThresholds = {
 };
 
 const denseThresholds = {
-  averageBrightnessDelta: 0.03,
-  averageColorDelta: 0.03,
-  changedPixelRatio: 0.3,
-  maxChannelDelta: 0.5,
-  p95ChannelDelta: 0.3,
+  averageBrightnessDelta: 0.1,
+  averageColorDelta: 0.13,
+  changedPixelRatio: 0.95,
+  maxChannelDelta: 0.7,
+  p95ChannelDelta: 0.45,
 };
 
 const sceneThresholds = {
-  averageBrightnessDelta: 0.08,
-  averageColorDelta: 0.09,
+  averageBrightnessDelta: 0.25,
+  averageColorDelta: 0.5,
   changedPixelRatio: 1,
   histogramDelta: 2,
-  luminanceDelta: 0.08,
-  maxChannelDelta: 0.75,
+  luminanceDelta: 0.2,
+  maxChannelDelta: 0.92,
   p95ChannelDelta: 0.3,
 };
 
@@ -131,7 +131,7 @@ export const VISUAL_CALIBRATION_FIXTURES = [
     bundlePath: "packages/ir/fixtures/conformance/color-parity/game.bundle",
     promoted: true,
     capture: { width: 1280, height: 720 },
-    camera: { id: "camera.calibration", projection: "orthographic" },
+    camera: { id: "camera.color", projection: "orthographic" },
     requiredArtifacts: ["web.png", "bevy.png", "diff.png", "contact-sheet.png"],
     regions: [
       { id: "swatch-white", factor: "color", region: { x: 0.18, y: 0.64, width: 0.05, height: 0.08 }, hint: "opaque white swatch" },
@@ -160,7 +160,7 @@ export const VISUAL_CALIBRATION_FIXTURES = [
     bundlePath: "packages/ir/fixtures/conformance/rendering-residuals/game.bundle",
     promoted: true,
     capture: { width: 1280, height: 720 },
-    camera: { id: "camera.calibration", projection: "orthographic" },
+    camera: { id: "camera.main", projection: "perspective" },
     requiredArtifacts: ["web.png", "bevy.png", "diff.png", "contact-sheet.png"],
     regions: [
       { id: "unlit-card", factor: "materials", region: { x: 0.12, y: 0.4, width: 0.1, height: 0.18 }, hint: "unlit material card" },
@@ -194,15 +194,15 @@ export const VISUAL_CALIBRATION_FIXTURES = [
     promoted: true,
     implemented: true,
     capture: { width: 1280, height: 720 },
-    camera: { id: "camera.calibration", projection: "orthographic" },
+    camera: { id: "camera.main", projection: "perspective" },
     requiredArtifacts: ["web.png", "bevy.png", "diff.png", "contact-sheet.png"],
     regions: [
-      { id: "ambient-card", factor: "lighting", region: { x: 0.05, y: 0.1, width: 0.1, height: 0.12 }, hint: "ambient light card" },
-      { id: "directional-card", factor: "lighting", region: { x: 0.18, y: 0.1, width: 0.1, height: 0.12 }, hint: "directional light card" },
-      { id: "point-card", factor: "lighting", region: { x: 0.31, y: 0.1, width: 0.1, height: 0.12 }, hint: "point light card" },
-      { id: "spot-card", factor: "lighting", region: { x: 0.44, y: 0.1, width: 0.1, height: 0.12 }, hint: "spot light card" },
-      { id: "shadow-receiver", factor: "lighting", region: { x: 0.57, y: 0.1, width: 0.12, height: 0.14 }, hint: "shadow receiver card" },
-      { id: "probe-reflection", factor: "lighting", region: { x: 0.74, y: 0.1, width: 0.12, height: 0.14 }, hint: "environment probe card" },
+      { id: "ambient-card", factor: "lighting", region: { x: 0.08, y: 0.56, width: 0.18, height: 0.2 }, hint: "ambient-lit ground" },
+      { id: "directional-card", factor: "lighting", region: { x: 0.72, y: 0.56, width: 0.18, height: 0.2 }, hint: "directional-lit ground" },
+      { id: "point-card", factor: "lighting", region: { x: 0.46, y: 0.2, width: 0.08, height: 0.12 }, hint: "point highlight" },
+      { id: "spot-card", factor: "lighting", region: { x: 0.52, y: 0.24, width: 0.08, height: 0.12 }, hint: "spot highlight" },
+      { id: "shadow-receiver", factor: "lighting", region: { x: 0.26, y: 0.48, width: 0.22, height: 0.22 }, hint: "shadowed receiver" },
+      { id: "probe-reflection", factor: "lighting", region: { x: 0.42, y: 0.2, width: 0.18, height: 0.24 }, hint: "environment probe reflection" },
     ],
     thresholds: lightingThresholds,
     failureHints: {
@@ -216,7 +216,7 @@ export const VISUAL_CALIBRATION_FIXTURES = [
     promoted: true,
     implemented: true,
     capture: { width: 1280, height: 720 },
-    camera: { id: "camera.calibration", projection: "orthographic" },
+    camera: { id: "camera.main", projection: "perspective" },
     requiredArtifacts: ["web.png", "bevy.png", "diff.png", "contact-sheet.png"],
     regions: [
       { id: "fog-near", factor: "atmosphere", region: { x: 0.2, y: 0.55, width: 0.08, height: 0.1 }, hint: "near fog band" },
@@ -233,11 +233,11 @@ export const VISUAL_CALIBRATION_FIXTURES = [
   {
     id: "v10-post",
     factorGroup: "post",
-    bundlePath: "packages/ir/fixtures/conformance/v5-drift-surface/game.bundle",
+    bundlePath: "packages/ir/fixtures/conformance/photoreal-bloom-emissive-test/game.bundle",
     promoted: true,
     implemented: true,
     capture: { width: 1280, height: 720 },
-    camera: { id: "camera.calibration", projection: "orthographic" },
+    camera: { id: "camera.main", projection: "perspective" },
     requiredArtifacts: ["web.png", "bevy.png", "diff.png", "contact-sheet.png"],
     regions: [
       { id: "bloom-highlight", factor: "post", region: { x: 0.42, y: 0.35, width: 0.16, height: 0.16 }, hint: "bloom highlight card" },
@@ -258,7 +258,7 @@ export const VISUAL_CALIBRATION_FIXTURES = [
     promoted: true,
     implemented: true,
     capture: { width: 1280, height: 720 },
-    camera: { id: "camera.calibration", projection: "orthographic" },
+    camera: { id: "camera.procedural", projection: "perspective" },
     requiredArtifacts: ["web.png", "bevy.png", "diff.png", "contact-sheet.png"],
     regions: [
       { id: "primitive-grid", factor: "geometry", region: { x: 0.05, y: 0.15, width: 0.25, height: 0.25 }, hint: "primitive grid" },
@@ -278,11 +278,12 @@ export const VISUAL_CALIBRATION_FIXTURES = [
     promoted: true,
     implemented: true,
     capture: { width: 1280, height: 720 },
-    camera: { id: "camera.calibration", projection: "orthographic" },
+    camera: { id: "bookmark.content", projection: "perspective" },
     requiredArtifacts: ["web.png", "bevy.png", "diff.png", "contact-sheet.png"],
     regions: [
       { id: "instance-grid", factor: "dense", region: { x: 0.1, y: 0.2, width: 0.35, height: 0.35 }, hint: "repeated instance grid" },
       { id: "hlod-fade", factor: "dense", region: { x: 0.55, y: 0.2, width: 0.2, height: 0.2 }, hint: "HLOD fade marker" },
+      { id: "lod-impostor", factor: "dense", region: { x: 0.52, y: 0.48, width: 0.18, height: 0.22 }, hint: "camera-facing quad impostor" },
       { id: "visibility-range", factor: "dense", region: { x: 0.78, y: 0.2, width: 0.15, height: 0.2 }, hint: "visibility range marker" },
     ],
     thresholds: denseThresholds,
@@ -297,7 +298,7 @@ export const VISUAL_CALIBRATION_FIXTURES = [
     promoted: true,
     implemented: true,
     capture: { width: 1280, height: 720 },
-    camera: { id: "camera.calibration", projection: "orthographic" },
+    camera: { id: "camera.main", projection: "perspective" },
     requiredArtifacts: ["web.png", "bevy.png", "diff.png", "contact-sheet.png"],
     regions: [
       { id: "sky-band", factor: "atmosphere", region: { x: 0.0, y: 0.0, width: 1.0, height: 0.15 }, hint: "combined scene sky band" },

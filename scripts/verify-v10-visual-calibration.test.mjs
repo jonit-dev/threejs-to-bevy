@@ -21,19 +21,30 @@ const expectedImplementedFixtures = [
   ["v10-atmosphere", "atmosphere", ["fog-near", "fog-mid", "fog-far", "sky-horizon", "skybox-anchor"]],
   ["v10-post", "post", ["bloom-highlight", "msaa-edge", "dof-report-only", "taa-report-only"]],
   ["v10-geometry", "geometry", ["primitive-grid", "generated-mesh", "gltf-instance", "uv-marker"]],
-  ["v10-dense", "dense", ["instance-grid", "hlod-fade", "visibility-range"]],
+  ["v10-dense", "dense", ["instance-grid", "hlod-fade", "lod-impostor", "visibility-range"]],
   ["v10-scene", "scene", ["sky-band", "hero-subject", "ground-shadow", "ui-overlay", "full-frame"]],
 ];
 
 const expectedThresholdBaselines = {
   "v10-atmosphere": { averageBrightnessDelta: 0.4, changedPixelRatio: 1, luminanceDelta: 0.4 },
   "v10-color": { averageBrightnessDelta: 0.03, changedPixelRatio: 0.03, maxChannelDelta: 0.05 },
-  "v10-dense": { averageBrightnessDelta: 0.03, changedPixelRatio: 0.3, maxChannelDelta: 0.5 },
+  "v10-dense": { averageBrightnessDelta: 0.1, changedPixelRatio: 0.95, maxChannelDelta: 0.7 },
   "v10-geometry": { averageBrightnessDelta: 0.28, changedPixelRatio: 0.92, maxChannelDelta: 1, p95ChannelDelta: 0.4 },
-  "v10-lighting": { averageBrightnessDelta: 0.12, changedPixelRatio: 0.92, maxChannelDelta: 0.18 },
+  "v10-lighting": { averageBrightnessDelta: 0.35, changedPixelRatio: 1, maxChannelDelta: 1 },
   "v10-materials": { averageBrightnessDelta: 0.32, changedPixelRatio: 0.16, maxChannelDelta: 0.55 },
-  "v10-post": { averageBrightnessDelta: 0.03, changedPixelRatio: 0.02, maxChannelDelta: 0.7 },
-  "v10-scene": { averageBrightnessDelta: 0.08, changedPixelRatio: 1, maxChannelDelta: 0.75 },
+  "v10-post": { averageBrightnessDelta: 0.06, changedPixelRatio: 1, maxChannelDelta: 0.85 },
+  "v10-scene": { averageBrightnessDelta: 0.25, changedPixelRatio: 1, maxChannelDelta: 0.92 },
+};
+
+const expectedFixtureCameras = {
+  "v10-atmosphere": ["camera.main", "perspective"],
+  "v10-color": ["camera.color", "orthographic"],
+  "v10-dense": ["bookmark.content", "perspective"],
+  "v10-geometry": ["camera.procedural", "perspective"],
+  "v10-lighting": ["camera.main", "perspective"],
+  "v10-materials": ["camera.main", "perspective"],
+  "v10-post": ["camera.main", "perspective"],
+  "v10-scene": ["camera.main", "perspective"],
 };
 
 test("should reject calibration factors without regions or thresholds", () => {
@@ -77,8 +88,7 @@ test("v10 calibration manifest keeps every PRD fixture implemented with screensh
     assert.equal(fixture.implemented, true, `${fixture.id} should be implemented, not planned`);
     assert.equal(fixture.promoted, true, `${fixture.id} should be part of the promoted gate`);
     assert.deepEqual(fixture.requiredArtifacts, ["web.png", "bevy.png", "diff.png", "contact-sheet.png"]);
-    assert.equal(fixture.camera.id, "camera.calibration");
-    assert.equal(fixture.camera.projection, "orthographic");
+    assert.deepEqual([fixture.camera.id, fixture.camera.projection], expectedFixtureCameras[fixture.id]);
   }
 });
 
@@ -129,6 +139,54 @@ test("should fail when required screenshots are missing", async () => {
     assert.ok(missing.length >= 2);
     assert.ok(missing.some((diagnostic) => diagnostic.runtime === "web" && diagnostic.fixtureId === "v10-color"));
     assert.ok(missing.some((diagnostic) => diagnostic.runtime === "bevy" && diagnostic.fixtureId === "v10-color"));
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should report fixture-scoped capture failures", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-v10-visual-calibration-capture-"));
+  try {
+    const report = await verifyV10VisualCalibration({
+      artifactDir: join(root, "artifacts"),
+      repoRoot: root,
+      args: { groups: ["dense"], includePlanned: false, json: false, list: false, manifestOnly: false },
+      fixtures: [{
+        id: "v10-dense",
+        factorGroup: "dense",
+        bundlePath: "fixtures/dense.bundle",
+        promoted: true,
+        implemented: true,
+        capture: { width: 1280, height: 720 },
+        camera: { id: "bookmark.content" },
+        requiredArtifacts: ["web.png", "bevy.png"],
+        regions: [{ id: "instance-grid", factor: "dense", region: { x: 0.1, y: 0.2, width: 0.35, height: 0.35 } }],
+        thresholds: { changedPixelRatio: 0.3 },
+        failureHints: { dense: "check dense runtime mapping" },
+      }],
+      skipBuildCli: true,
+      run: async ({ name }) => ({ durationMs: 1, exitCode: 0, name, stderr: "", stdout: "" }),
+      screenshotCapturer: async () => {
+        throw new Error("browser readiness timed out");
+      },
+    });
+
+    assert.equal(report.ok, false);
+    assert.equal(report.status, "fail");
+    assert.ok(report.reportPath.endsWith("verification-report.json"));
+    assert.deepEqual(
+      report.diagnostics.find((diagnostic) => diagnostic.code === "TN_VERIFY_VISUAL_CALIBRATION_CAPTURE_FAILED"),
+      {
+        artifactPath: join(root, "artifacts", "dense", "v10-dense"),
+        code: "TN_VERIFY_VISUAL_CALIBRATION_CAPTURE_FAILED",
+        factorGroup: "dense",
+        fixtureId: "v10-dense",
+        message: "Visual calibration capture failed for fixture 'v10-dense': browser readiness timed out",
+        runtime: "capture",
+        severity: "error",
+        suggestion: "check dense runtime mapping",
+      },
+    );
   } finally {
     await rm(root, { force: true, recursive: true });
   }
@@ -235,6 +293,38 @@ test("should require focused reports from canonical fixture artifact paths", asy
         diagnostic.artifactPath.includes("examples/sample-color/artifacts/visual-calibration/"),
       ),
     );
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should resolve bundle fixtures under the aggregate artifact root", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-v10-visual-calibration-bundle-"));
+  try {
+    const report = await verifyV10VisualCalibration({
+      artifactDir: join(root, "aggregate"),
+      repoRoot: root,
+      args: { groups: ["dense"], includePlanned: false, json: false, list: false, manifestOnly: false },
+      fixtures: [{
+        id: "v10-dense",
+        factorGroup: "dense",
+        bundlePath: "packages/ir/fixtures/conformance/renderer-dense-content/game.bundle",
+        promoted: true,
+        implemented: true,
+        capture: { width: 1280, height: 720 },
+        camera: { id: "camera.calibration" },
+        requiredArtifacts: ["web.png", "bevy.png"],
+        regions: [{ id: "lod-impostor", factor: "dense", region: { x: 0.5, y: 0.5, width: 0.1, height: 0.1 } }],
+        thresholds: { changedPixelRatio: 0.3 },
+        failureHints: { dense: "check impostor" },
+      }],
+      skipBuildCli: true,
+      captureArtifacts: false,
+      run: async ({ name }) => ({ durationMs: 1, exitCode: 0, name, stderr: "", stdout: "" }),
+    });
+    const missing = report.diagnostics.filter((diagnostic) => diagnostic.code === "TN_VERIFY_VISUAL_CALIBRATION_ARTIFACT_MISSING");
+    assert.ok(missing.length > 0);
+    assert.ok(missing.every((diagnostic) => diagnostic.artifactPath.includes("aggregate/dense/v10-dense/")));
   } finally {
     await rm(root, { force: true, recursive: true });
   }

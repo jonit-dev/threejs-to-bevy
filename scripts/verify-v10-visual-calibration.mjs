@@ -146,16 +146,25 @@ export async function runCalibrationFixture(options) {
     if (!(await step(`validate ${fixture.id}`, process.execPath, validateArgs, { timeoutMs: 120000 }))) {
       return { diagnostics: stepFailureDiagnostic(fixture, steps), fixtureId: fixture.id, ok: false, steps };
     }
-    if (options.screenshotCapturer) {
-      await options.screenshotCapturer({ artifactDir, bundlePath, cameraId: fixture.camera.id, capture: fixture.capture, repoRoot: root });
-    } else {
-      await captureCalibrationArtifacts({
-        artifactDir,
-        bundlePath,
-        cameraId: fixture.camera.id,
-        capture: fixture.capture,
-        repoRoot: root,
-      });
+    try {
+      if (options.screenshotCapturer) {
+        await options.screenshotCapturer({ artifactDir, bundlePath, cameraId: fixture.camera.id, capture: fixture.capture, repoRoot: root });
+      } else {
+        await captureCalibrationArtifacts({
+          artifactDir,
+          bundlePath,
+          cameraId: fixture.camera.id,
+          capture: fixture.capture,
+          repoRoot: root,
+        });
+      }
+    } catch (error) {
+      return {
+        diagnostics: [captureFailureDiagnostic(fixture, artifactDir, error)],
+        fixtureId: fixture.id,
+        ok: false,
+        steps,
+      };
     }
   }
 
@@ -223,6 +232,19 @@ function stepFailureDiagnostic(fixture, steps) {
       step: failed?.name,
     },
   ];
+}
+
+function captureFailureDiagnostic(fixture, artifactDir, error) {
+  return {
+    artifactPath: artifactDir,
+    code: "TN_VERIFY_VISUAL_CALIBRATION_CAPTURE_FAILED",
+    factorGroup: fixture.factorGroup,
+    fixtureId: fixture.id,
+    message: `Visual calibration capture failed for fixture '${fixture.id}': ${error instanceof Error ? error.message : String(error)}`,
+    runtime: "capture",
+    severity: "error",
+    suggestion: fixture.failureHints?.[fixture.factorGroup] ?? "Inspect the web and native capture logs for this fixture.",
+  };
 }
 
 /**
@@ -419,7 +441,7 @@ export async function verifyV10VisualCalibration(options = {}) {
 }
 
 function resolveCalibrationFixtureArtifactDir(root, artifactRoot, fixture, options) {
-  if (options.artifactDir) {
+  if (options.artifactDir || fixture.example === undefined) {
     return resolve(artifactRoot, fixture.factorGroup, fixture.id);
   }
   return resolveArtifactTargets({

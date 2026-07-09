@@ -170,6 +170,7 @@ export interface IConformanceRuntimeConfigReport {
       fallbacks: Array<{ code: string; feature: string; reason: string }>;
       overrides?: NonNullable<NonNullable<NonNullable<IRuntimeConfigIr["renderer"]>["renderLook"]>["overrides"]>;
       requestedProfile: NonNullable<NonNullable<IRuntimeConfigIr["renderer"]>["renderLook"]>["profile"] | "parity";
+      shadowProfile: import("./runtimeConfig.js").IResolvedRenderLookShadowProfile;
     };
     renderPath?: NonNullable<IRuntimeConfigIr["renderer"]>["renderPath"];
     screenSpaceGlobalIllumination?: NonNullable<NonNullable<IRuntimeConfigIr["renderer"]>["screenSpaceGlobalIllumination"]>;

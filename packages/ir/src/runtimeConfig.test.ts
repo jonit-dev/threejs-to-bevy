@@ -1,6 +1,6 @@
 import { strict as assert } from "node:assert";
 import test from "node:test";
-import { RENDER_LOOK_PROFILE_PRESETS, resolveRenderLookProfile } from "./runtimeConfig.js";
+import { RENDER_LOOK_PROFILE_PRESETS, resolveRenderLookProfile, resolveRenderLookShadowProfile } from "./runtimeConfig.js";
 
 test("should resolve cinematic profile per target profile", () => {
   const desktop = resolveRenderLookProfile("cinematic", "desktop-web");
@@ -17,6 +17,18 @@ test("should resolve cinematic profile per target profile", () => {
   assert.equal(native.targetProfile, "native");
   assert.equal(native.antialias, "msaa4");
   assert.equal(native.bloomIntensity < desktop.bloomIntensity, true);
+});
+
+test("runtime config should resolve bounded shadow quality profiles", () => {
+  assert.deepEqual(resolveRenderLookShadowProfile("low"), {
+    cascadeCount: 1, enabled: true, filter: "basic", mapSize: 512, quality: "low",
+  });
+  assert.deepEqual(resolveRenderLookShadowProfile("medium"), {
+    cascadeCount: 2, enabled: true, filter: "pcf", mapSize: 1024, quality: "medium",
+  });
+  assert.deepEqual(resolveRenderLookShadowProfile("high"), {
+    cascadeCount: 4, enabled: true, filter: "pcf-soft", mapSize: 2048, quality: "high",
+  });
 });
 
 test("should preserve authored render look overrides over profile values", () => {

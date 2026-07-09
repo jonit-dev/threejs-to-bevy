@@ -440,6 +440,7 @@ test("should report promoted render look profile settings", async () => {
     fallbacks: [],
     overrides: { bloomIntensity: 0.4, exposure: 1.1, saturation: 1.15 },
     requestedProfile: "stylized",
+    shadowProfile: { cascadeCount: 2, enabled: true, filter: "pcf", mapSize: 1024, quality: "medium" },
   });
   assert.deepEqual(report.runtimeConfig?.renderer?.bloom, { enabled: true, intensity: 0.4, threshold: 0.85 });
   assert.deepEqual(report.runtimeConfig?.renderer?.postProcessing?.applied, ["bloom", "colorGrading"]);

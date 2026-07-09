@@ -29,6 +29,18 @@ Current support:
   shadow quality, and a richer fallback sky in web and native runtimes when no
   authored atmosphere overrides it. `balanced` and `stylized` remain selectable
   promoted profiles.
+- Portable shadow quality now resolves to the same bounded profile report in
+  both adapters: low uses a 512 map/basic filter/one cascade, medium uses
+  1024/PCF/two cascades, and high uses 2048/soft PCF/four cascades. Web applies
+  the filter/map settings to shadow-casting lights, while Bevy applies the map
+  resource and camera filtering method.
+- `pnpm verify:focused verify:feature-parity-visual-polish` composes calibrated
+  lighting, material, and dense-content web/Bevy screenshots with paired
+  shadow and promoted specular-material conformance reports. It also writes a
+  measured impostor texture-variant report under
+  `tools/verify/artifacts/feature-parity-visual-polish/`. Custom GPU
+  attributes, advanced blends beyond the promoted material contract,
+  volumetrics, SSR/GI, and custom render paths remain diagnostic-only.
 - Runtime renderer config now accepts portable `ambientOcclusion`,
   `depthOfField`, `screenSpaceReflections`, `motionBlur`, and
   `screenSpaceGlobalIllumination` fields with bounded source/IR validation.
@@ -98,6 +110,7 @@ Verification:
 - `pnpm verify:portable-shader-material`
 - `pnpm verify:rendering-photoreal`
 - `pnpm verify:focused verify:rendering-residuals`
+- `pnpm verify:focused verify:feature-parity-visual-polish`
 - `pnpm verify:release`
 
 Full prior evidence is preserved in

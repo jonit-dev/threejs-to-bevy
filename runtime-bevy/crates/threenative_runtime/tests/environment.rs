@@ -151,6 +151,21 @@ fn environment_content_trace_should_report_v7_lod_and_instancing_evidence() {
 
     assert_eq!(observation.bookmark_ids, vec!["bookmark.content"]);
     assert_eq!(observation.hero_placement_ids, vec!["tree.hero"]);
+    let impostor = fixture
+        .bundle
+        .environment_scene
+        .as_ref()
+        .and_then(|scene| {
+            scene
+                .source_assets
+                .iter()
+                .find(|asset| asset.id == "env.Rock")
+        })
+        .and_then(|asset| asset.lod.first())
+        .and_then(|level| level.impostor.as_ref())
+        .expect("dense fixture should declare an LOD impostor");
+    assert_eq!(impostor.material, "mat.impostor");
+    assert_eq!(impostor.mode, "cameraFacingQuad");
     assert_eq!(
         observation
             .lod_selections

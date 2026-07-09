@@ -457,6 +457,23 @@ export const FOCUSED_GATES: Record<string, FocusedGate> = {
       protects: "Cross-runtime screenshot calibration, material/light/post parity, and indexed visual evidence.",
     },
   },
+  "verify:feature-parity-visual-polish": {
+    commands: [
+      ["pnpm", "--filter", "@threenative/ir", "build"],
+      ["pnpm", "--filter", "@threenative/runtime-web-three", "build"],
+      ["pnpm", "--filter", "@threenative/cli", "build"],
+      ["pnpm", "--filter", "@threenative/verify-tools", "build"],
+      ["node", "scripts/verify-v10-visual-calibration.mjs", "--group=lighting,materials,dense"],
+      ["node", "tools/verify/dist/visualPolish.js"],
+    ],
+    description: "Cross-adapter visual polish evidence gate.",
+    metadata: {
+      owner: "tools/verify feature-parity visual-polish gate",
+      profile: "focused",
+      reason: "Aggregates calibrated screenshots with paired shadow/material reports and measured dense texture-variant evidence.",
+      protects: "Promoted shadow profiles, specular material slots, billboard LOD calibration, and dense-scene texture budgets.",
+    },
+  },
   "verify:v9:assets-gltf-scene-workflow": {
     commands: [
       ["pnpm", "--filter", "@threenative/cli", "build"],

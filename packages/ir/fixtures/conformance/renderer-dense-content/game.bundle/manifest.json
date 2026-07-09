@@ -28,6 +28,7 @@
     ],
     "rendering": [
       "instancing-observation",
+      "lod-impostor",
       "runtime-lod"
     ]
   }

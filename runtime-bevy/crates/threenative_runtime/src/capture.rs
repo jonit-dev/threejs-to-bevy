@@ -1,8 +1,7 @@
 use std::{
     env, fs,
     path::{Path, PathBuf},
-    process::{self, ExitCode},
-    thread,
+    process::ExitCode,
     time::{Duration, Instant},
 };
 
@@ -26,7 +25,7 @@ use threenative_runtime::{
 
 const MIN_CAPTURE_FRAME: u32 = 2;
 const SCREENSHOT_VALIDATION_DELAY_FRAMES: u32 = 4;
-const SCREENSHOT_ATTEMPT_TIMEOUT_FRAMES: u32 = 30;
+const SCREENSHOT_ATTEMPT_TIMEOUT_FRAMES: u32 = 300;
 const MAX_CAPTURE_RETRIES: u32 = 5;
 const MIN_SCREENSHOT_BYTES: u64 = 1_024;
 const MIN_SCREENSHOT_PEAK_LUMA: u8 = 35;
@@ -111,7 +110,7 @@ fn main() -> ExitCode {
         .map(|capture| capture.request_frame.max(MIN_CAPTURE_FRAME))
         .max()
         .unwrap_or(first_frame.max(MIN_CAPTURE_FRAME))
-        .saturating_add(180);
+        .saturating_add(600);
 
     let bundle = match load_bundle(bundle_path) {
         Ok(bundle) => bundle,
@@ -148,7 +147,6 @@ fn main() -> ExitCode {
         .iter()
         .map(|capture| capture.output_path.clone())
         .collect::<Vec<_>>();
-    spawn_capture_completion_exit(final_output_paths.clone());
     let required_model_assets = app
         .world()
         .get_resource::<AssetServer>()
@@ -206,17 +204,6 @@ fn parse_frame(value: Option<&String>, fallback: u32) -> Result<u32, ExitCode> {
         }
         None => Ok(fallback),
     }
-}
-
-fn spawn_capture_completion_exit(paths: Vec<PathBuf>) {
-    thread::spawn(move || {
-        loop {
-            if paths.iter().all(|path| screenshot_is_valid(path)) {
-                process::exit(0);
-            }
-            thread::sleep(Duration::from_millis(25));
-        }
-    });
 }
 
 fn prepare_output_path(output_path: &PathBuf) -> Result<(), ExitCode> {

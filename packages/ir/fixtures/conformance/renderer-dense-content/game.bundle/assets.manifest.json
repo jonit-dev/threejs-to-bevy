@@ -19,6 +19,20 @@
       "kind": "model",
       "format": "gltf",
       "path": "assets/environment/Tree.gltf"
+    },
+    {
+      "id": "texture.impostor",
+      "kind": "texture",
+      "format": "png",
+      "path": "assets/impostor.png",
+      "fallback": "texture.impostor",
+      "variants": [
+        {
+          "format": "png",
+          "path": "assets/impostor.web.png",
+          "targets": ["web"]
+        }
+      ]
     }
   ]
 }

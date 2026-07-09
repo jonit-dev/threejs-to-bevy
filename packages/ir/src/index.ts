@@ -130,7 +130,7 @@ export {
   type PickingPointerEvents,
   type PickingTargetKind,
 } from "./picking.js";
-export { RENDER_LOOK_PROFILE_PRESETS, resolveRenderLookProfile } from "./runtimeConfig.js";
+export { RENDER_LOOK_PROFILE_PRESETS, resolveRenderLookProfile, resolveRenderLookShadowProfile } from "./runtimeConfig.js";
 export type {
   IRenderLookProfileIr,
   IRenderLookProfilePreset,
@@ -140,6 +140,7 @@ export type {
   IRendererScreenSpaceGlobalIlluminationIr,
   IRendererScreenSpaceReflectionsIr,
   IResolvedRenderLookProfile,
+  IResolvedRenderLookShadowProfile,
   IRuntimeConfigIr,
   RendererAntialiasMode,
   RendererFeatureDiagnosticCode,

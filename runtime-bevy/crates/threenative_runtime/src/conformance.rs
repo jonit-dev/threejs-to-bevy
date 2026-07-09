@@ -362,6 +362,17 @@ pub struct RuntimeRenderLookReport {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub overrides: Option<RuntimeRenderLookOverridesReport>,
     pub requested_profile: String,
+    pub shadow_profile: RuntimeShadowProfileReport,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RuntimeShadowProfileReport {
+    pub cascade_count: usize,
+    pub enabled: bool,
+    pub filter: String,
+    pub map_size: usize,
+    pub quality: String,
 }
 
 #[derive(Debug, Serialize)]
@@ -1407,7 +1418,51 @@ fn runtime_render_look_report(renderer: &RuntimeRendererConfig) -> Option<Runtim
                 shadow_quality: overrides.shadow_quality.clone(),
             }),
         requested_profile,
+        shadow_profile: runtime_shadow_profile(renderer),
     })
+}
+
+fn runtime_shadow_profile(renderer: &RuntimeRendererConfig) -> RuntimeShadowProfileReport {
+    let render_look = renderer.render_look.as_ref();
+    let quality = render_look
+        .and_then(|render_look| render_look.overrides.as_ref())
+        .and_then(|overrides| overrides.shadow_quality.as_deref())
+        .unwrap_or_else(
+            || match render_look.map(|render_look| render_look.profile.as_str()) {
+                Some("balanced" | "cinematic") => "high",
+                _ => "medium",
+            },
+        );
+    match quality {
+        "off" => RuntimeShadowProfileReport {
+            cascade_count: 1,
+            enabled: false,
+            filter: "basic".to_owned(),
+            map_size: 512,
+            quality: quality.to_owned(),
+        },
+        "low" => RuntimeShadowProfileReport {
+            cascade_count: 1,
+            enabled: true,
+            filter: "basic".to_owned(),
+            map_size: 512,
+            quality: quality.to_owned(),
+        },
+        "high" => RuntimeShadowProfileReport {
+            cascade_count: 4,
+            enabled: true,
+            filter: "pcf-soft".to_owned(),
+            map_size: 2048,
+            quality: quality.to_owned(),
+        },
+        _ => RuntimeShadowProfileReport {
+            cascade_count: 2,
+            enabled: true,
+            filter: "pcf".to_owned(),
+            map_size: 1024,
+            quality: "medium".to_owned(),
+        },
+    }
 }
 
 fn runtime_bloom_report(renderer: &RuntimeRendererConfig) -> Option<RuntimeBloomReport> {

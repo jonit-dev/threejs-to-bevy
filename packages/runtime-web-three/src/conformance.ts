@@ -206,6 +206,7 @@ function reportRuntimeConfig(config: IRuntimeConfigIr | undefined): IConformance
         fallbacks: renderLook.fallbacks,
         ...(config.renderer.renderLook?.overrides === undefined ? {} : { overrides: config.renderer.renderLook.overrides }),
         requestedProfile: renderLook.requestedProfile,
+        shadowProfile: renderLook.shadowProfile,
       },
       ...(config.renderer.renderPath === undefined ? {} : { renderPath: config.renderer.renderPath }),
       ...(config.renderer.screenSpaceGlobalIllumination === undefined ? {} : { screenSpaceGlobalIllumination: config.renderer.screenSpaceGlobalIllumination }),

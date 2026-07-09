@@ -41,6 +41,27 @@ export interface IResolvedRenderLookProfile extends IRenderLookProfilePreset {
   targetProfile: RenderLookTargetProfile;
 }
 
+export interface IResolvedRenderLookShadowProfile {
+  cascadeCount: 1 | 2 | 4;
+  enabled: boolean;
+  filter: "basic" | "pcf" | "pcf-soft";
+  mapSize: 512 | 1024 | 2048;
+  quality: RenderLookShadowQuality;
+}
+
+export function resolveRenderLookShadowProfile(quality: RenderLookShadowQuality): IResolvedRenderLookShadowProfile {
+  switch (quality) {
+    case "off":
+      return { cascadeCount: 1, enabled: false, filter: "basic", mapSize: 512, quality };
+    case "low":
+      return { cascadeCount: 1, enabled: true, filter: "basic", mapSize: 512, quality };
+    case "medium":
+      return { cascadeCount: 2, enabled: true, filter: "pcf", mapSize: 1024, quality };
+    case "high":
+      return { cascadeCount: 4, enabled: true, filter: "pcf-soft", mapSize: 2048, quality };
+  }
+}
+
 export interface IRendererAmbientOcclusionIr {
   enabled: boolean;
   intensity: number;

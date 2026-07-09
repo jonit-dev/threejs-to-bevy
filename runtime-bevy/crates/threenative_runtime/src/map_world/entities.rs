@@ -187,7 +187,7 @@ fn spawn_entity(
             spawned.insert(playback);
         }
         drop(spawned);
-        if uses_emissive_black_base(material)
+        if uses_emissive_marker_mask(material)
             && world.contains_resource::<NativeEmissiveMarkerMask>()
         {
             let mask_material = add_emissive_mask_material(world);

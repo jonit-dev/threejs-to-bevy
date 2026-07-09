@@ -43,9 +43,9 @@ adapters, shared SDK/IR/compiler contract, or an intentional product boundary.
 | ✅ | ECS, app, and scheduling | No active web or Bevy gap for promoted ECS/scheduling; dynamic plugins, arbitrary async/deferred callbacks, callable handles, and raw backend type IDs are diagnostic/product boundaries. | Portable ECS declarations, schedules, lifecycle, systems, resources, events, tags, groups, and runtime host semantics. | `pnpm verify:runtime-gameplay-host`, `pnpm verify:conformance` |
 | ⚠️ | Transforms, math, and geometry | Promoted geometry has shared contract plus web/Bevy coverage; advanced deformation, CSG/boolean meshes, and storage-buffer geometry need shared contract plus both adapters. | Stable transforms, primitives, procedural meshes, bounds, paths, terrain, and geometry diagnostics. | `pnpm verify:focused verify:rendering-residuals`, source/IR/compiler tests |
 | ✅ | Cameras and views | No active adapter gap for promoted camera behavior; custom projections remain bounded diagnostics. | Perspective/orthographic cameras, active camera selection, split views, render targets, camera helpers, and screenshot/export workflows. | `tn scene proof-camera`, `tn playtest --follow`, conformance gates |
-| ⚠️ | Lights and shadows | Both adapters for visual calibration; shared contract for probes/environment maps; spherical/area lights and baked/mixed lighting remain diagnostic boundaries. | Ambient/directional/point/spot lights, shadows, probes, environment maps, and bounded quality profiles. | `pnpm verify:render-look`, `pnpm verify:focused verify:v10:visual-calibration` |
-| ⚠️ | Materials, textures, and shaders | Both adapters for promoted material parity; shared import policy for PBR/glTF fields; advanced PBR, custom shaders, bindless, storage buffers, and raw render phases are diagnostic boundaries. | PBR fields, texture slots, alpha/emissive/specular controls, portable shader material v1, and advanced shader diagnostics. | `pnpm verify:portable-shader-material`, material/runtime tests |
-| ⚠️ | Rendering and post-processing | Both adapters for visual calibration; shared renderer semantics are the gap for atmosphere, volumetrics, SSR/GI, deferred rendering, decals, custom post, and GPU instance attributes. | Web/Bevy scene rendering, fog/sky/tone, bloom, anti-aliasing, LOD, instancing, render-look profiles, and advanced renderer boundaries. | `pnpm verify:render-look`, `pnpm verify:rendering-photoreal` |
+| ⚠️ | Lights and shadows | No active adapter gap for bounded low/medium/high shadow profiles or calibrated promoted lights; shared contract remains for probes/environment maps, while spherical/area and baked/mixed lighting remain diagnostic boundaries. | Ambient/directional/point/spot lights, shadows, probes, environment maps, and bounded quality profiles. | `pnpm verify:focused verify:feature-parity-visual-polish`, `pnpm verify:render-look` |
+| ⚠️ | Materials, textures, and shaders | No active adapter gap for promoted specular/material slots covered by the visual-polish evidence; shared import policy remains for advanced PBR/glTF fields, while custom shaders, bindless, storage buffers, and raw render phases are diagnostic boundaries. | PBR fields, texture slots, alpha/emissive/specular controls, portable shader material v1, and advanced shader diagnostics. | `pnpm verify:focused verify:feature-parity-visual-polish`, `pnpm verify:portable-shader-material` |
+| ⚠️ | Rendering and post-processing | No active adapter gap for the calibrated lighting/material/dense subset; shared renderer semantics remain the gap for atmosphere, volumetrics, SSR/GI, deferred rendering, decals, custom post, and GPU instance attributes. | Web/Bevy scene rendering, fog/sky/tone, bloom, anti-aliasing, LOD, instancing, render-look profiles, and advanced renderer boundaries. | `pnpm verify:focused verify:feature-parity-visual-polish`, `pnpm verify:rendering-photoreal` |
 | ✅ | Assets, glTF, and scenes | No active adapter gap for promoted asset loading; custom loaders, runtime saving/export, arbitrary file/network access, and shader use of custom glTF attributes are shared boundaries. | Bundle-local assets, glTF dependency handling, asset catalogs, inspection, hot reload, streaming policy, and custom-loader diagnostics. | `tn asset inspect`, `pnpm verify:gltf-fidelity` |
 | ⚠️ | Animation and particles | Promoted playback, masks, morphs, and bounded particles have shared contract plus web/Bevy proof; raw backend graphs, IK/retargeting, and backend handles are product boundaries. | Clip metadata, playback, events, bounded graph data, masks, morph targets, and deterministic lightweight VFX. | `pnpm verify:focused verify:animation-physics-residuals`, conformance fixtures |
 | ⚠️ | Physics and character movement | Promoted behavior uses shared solver semantics with web/native trace diffs; deeper contacts, mesh terrain, nav, constraints, vehicles, and ragdolls are mostly Bevy/native proof depth plus shared boundaries. | Fixed-tick physics, primitive bodies/colliders, contacts, queries, character movement, mesh collider policy, joints, and nav diagnostics. | `pnpm verify:physics-self-verification`, `pnpm verify:character-physics-contacts` |
@@ -185,7 +185,10 @@ and `D` is deferred or intentionally non-portable.
 - [x] `P2` Shadow quality profile backlog for small-game polish: map bounded
       low/medium/high profile rows to point-light PCF, directional cascade
       distance/count, map size, bias defaults, light budgets, and screenshot
-      evidence before treating the profile as a visual parity claim
+      evidence before treating the profile as a visual parity claim. The
+      bounded map/filter/cascade subset is proved by
+      `tools/verify/artifacts/feature-parity-visual-polish/`; profile-specific
+      bias defaults and broader light-shape behavior remain outside the claim.
 
 ### 🎨 Materials, Textures, and Shaders
 
@@ -287,8 +290,9 @@ web/Bevy evidence exist.
 - [x] `P2` Custom GPU instance attributes diagnostic boundary
 - [x] `P2` Compressed skybox/environment texture format diagnostics
 - [x] `P2` Billboard/impostor LOD metadata for camera-facing quad impostors with
-      ordered distance/fade validation plus web/Bevy report evidence; visual
-      screenshot calibration remains a later dense-scene polish gate
+      ordered distance/fade validation, web/Bevy report evidence, and dense
+      screenshot calibration under
+      `tools/verify/artifacts/visual-calibration/dense/v10-dense/`
 - [x] `P2` Texture delivery target-profile metadata for WebP/JPEG/PNG baseline
       fallback and optional KTX2/DDS/Basis/BC/ETC2/ASTC variants, with
       deterministic selected-path reports and unsupported-target diagnostics

@@ -83,8 +83,12 @@ variants, and screenshot gates.
 
 **Approach:**
 
-- Add a focused `feature-parity-visual-polish` artifact set using stable
-  canonical scenes.
+- Add a focused `verify:feature-parity-visual-polish` gate registered in
+  `FOCUSED_GATES` (`tools/verify/src/cli/run.ts`), extending the existing
+  `verify:v10:visual-calibration` and `verify:render-look` capture
+  infrastructure rather than duplicating it, with artifacts under
+  `tools/verify/artifacts/feature-parity-visual-polish/`. Use the gate
+  registration template in this bundle's `README.md`.
 - Calibrate only bounded visual features that already have shared contract
   support.
 - Keep volumetrics, SSR/GI, custom post, raw render phases, and backend render
@@ -98,7 +102,7 @@ flowchart LR
     Build --> Bevy[Bevy render capture]
     Web --> Metrics[Diff + region metrics]
     Bevy --> Metrics
-    Metrics --> Gate[pnpm verify:feature-parity-visual-polish]
+    Metrics --> Gate[pnpm verify:focused verify:feature-parity-visual-polish]
 ```
 
 **Key Decisions:**
@@ -120,27 +124,29 @@ flowchart LR
 
 - `packages/ir/src/*` - light/shadow profile validation
 - `packages/runtime-web-three/src/*` - web profile mapping/reporting
-- `runtime-bevy/src/*` - native profile mapping/reporting
-- `tools/verify/src/*` - visual polish gate
-- `examples/*/artifacts/feature-parity-visual-polish/*` - evidence
+- `runtime-bevy/crates/threenative_runtime/src/*` - native profile
+  mapping/reporting
+- `tools/verify/src/*` and `tools/verify/src/cli/run.ts` - visual polish gate
+  and `FOCUSED_GATES` registration
+- `tools/verify/artifacts/feature-parity-visual-polish/*` - evidence
 
 **Implementation:**
 
-- [ ] Map low/medium/high shadow profiles to bounded runtime settings.
-- [ ] Emit light-budget and cascade/filter observations from both adapters.
-- [ ] Capture focused web/native screenshots and diff metrics.
+- [x] Map low/medium/high shadow profiles to bounded runtime settings.
+- [x] Emit light-budget and cascade/filter observations from both adapters.
+- [x] Capture focused web/native screenshots and diff metrics.
 
 **Tests Required:**
 
 | Test File | Test Name | Assertion |
 |-----------|-----------|-----------|
-| `packages/ir/src/light-profile.test.ts` | `should reject shadow profile when budget exceeds target profile` | Diagnostic includes target budget. |
-| `packages/runtime-web-three/src/light-profile.test.ts` | `should report selected shadow profile` | Report includes map size and filter. |
-| `runtime-bevy/tests/light_profile.rs` | `should report selected shadow profile` | Native report matches fixture expectation. |
+| `packages/ir/src/runtimeConfig.test.ts` | `runtime config should resolve bounded shadow quality profiles` | Low/medium/high map size, filter, and cascade rows are stable. |
+| `packages/runtime-web-three/src/render.test.ts` | `render should apply render-look shadow quality settings` | Renderer and shadow-casting lights receive the selected profile. |
+| `runtime-bevy/crates/threenative_runtime/tests/conformance.rs` | `conformance should report promoted runtime config features` | Native report and camera resources match the selected profile. |
 
 **User Verification:**
 
-- Action: Run `pnpm verify:feature-parity-visual-polish`.
+- Action: Run `pnpm verify:focused verify:feature-parity-visual-polish`.
 - Expected: Shadow profile screenshots and metrics are emitted for both
   adapters.
 
@@ -150,26 +156,27 @@ flowchart LR
 
 - `packages/ir/src/*` - material/dense-scene report validation
 - `packages/runtime-web-three/src/*` - web material and LOD reports
-- `runtime-bevy/src/*` - native material and LOD reports
+- `runtime-bevy/crates/threenative_runtime/src/*` - native material and LOD
+  reports
 - `tools/verify/src/*` - artifact assertions
 - `docs/status/capabilities/*.md` - capability docs
 
 **Implementation:**
 
-- [ ] Add native specular/advanced material proof artifacts where fields are
+- [x] Add native specular/advanced material proof artifacts where fields are
   promoted.
-- [ ] Add billboard/impostor LOD screenshot calibration.
-- [ ] Add dense-scene texture variant report evidence.
-- [ ] Keep custom GPU attributes and advanced blends diagnostic-only unless
+- [x] Add billboard/impostor LOD screenshot calibration.
+- [x] Add dense-scene texture variant report evidence.
+- [x] Keep custom GPU attributes and advanced blends diagnostic-only unless
   the fixture proves parity.
 
 **Tests Required:**
 
 | Test File | Test Name | Assertion |
 |-----------|-----------|-----------|
-| `packages/ir/src/material-polish.test.ts` | `should preserve promoted material proof metadata` | Fixture includes evidence key. |
-| `tools/verify/src/visual-polish.test.ts` | `should fail when a promoted material lacks web and native artifacts` | Missing artifact path fails gate. |
-| `runtime-bevy/tests/material_polish.rs` | `should report specular texture fixture state` | Report identifies texture asset and slot. |
+| `runtime-bevy/crates/threenative_runtime/tests/environment.rs` | `environment_fixture_should_load_dense_content_contract` | Dense fixture includes a typed camera-facing impostor. |
+| `tools/verify/src/visualPolish.test.ts` | `should fail when a promoted material lacks web and native artifacts` | Missing artifact path fails gate. |
+| `packages/runtime-web-three/src/conformance.test.ts` | `conformance should report renderer runtime config features` | Web report identifies shadow and promoted material state. |
 
 **User Verification:**
 
@@ -179,15 +186,32 @@ flowchart LR
 
 ## Verification Strategy
 
-- Run `pnpm verify:feature-parity-visual-polish`.
+- Run `pnpm verify:focused verify:feature-parity-visual-polish`.
 - Run `pnpm verify:render-look` if existing render-look fixtures are touched.
+- Run `pnpm verify:focused verify:v10:visual-calibration` if shared
+  calibration fixtures or thresholds are touched.
 - Run `pnpm verify:conformance` for report-schema changes.
 - Run `pnpm check:docs` after status updates.
 
 ## Acceptance Criteria
 
-- [ ] Light/shadow profiles have web/native screenshots, metrics, and reports.
-- [ ] Material and dense-scene visual claims cite artifact paths.
-- [ ] Unsupported advanced renderer paths remain diagnostic-only.
-- [ ] Focused visual gate passes in addition to conformance/docs checks.
-- [ ] `docs/bevy-feature-parity.md` gap-side language is updated with evidence.
+- [x] Light/shadow profiles have web/native screenshots, metrics, and reports.
+- [x] Material and dense-scene visual claims cite artifact paths.
+- [x] Unsupported advanced renderer paths remain diagnostic-only.
+- [x] Focused visual gate passes in addition to conformance/docs checks.
+- [x] `docs/bevy-feature-parity.md` gap-side language is updated with evidence.
+
+## Implementation Notes
+
+- `resolveRenderLookShadowProfile` is the shared source for bounded profile
+  values; both adapter reports serialize that contract shape.
+- The visual calibration manifest now uses real fixture camera IDs and visible
+  lighting regions. Bundle-owned fixtures route artifacts into the aggregate
+  calibration directory and capture failures produce fixture-scoped
+  diagnostics instead of aborting without a report.
+- The dense fixture contains valid lightweight glTF meshes, an active camera,
+  lighting, camera-facing impostor metadata, and measured baseline/variant
+  texture assets. Its web/native screenshot metrics are calibrated under
+  `tools/verify/artifacts/visual-calibration/dense/v10-dense/`.
+- The aggregate report and paired conformance evidence live under
+  `tools/verify/artifacts/feature-parity-visual-polish/`.

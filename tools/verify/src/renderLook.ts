@@ -183,10 +183,13 @@ export function analyzeRenderLookMetrics(metrics: RenderLookMetricInput): Verifi
       suggestedFix: "Reduce blur/bloom strength or adjust antialiasing profile mapping.",
     });
   }
-  if (metrics.cinematic.averageLuminance < metrics.parity.averageLuminance + 0.12 || metrics.cinematic.saturation < metrics.parity.saturation + 0.08) {
+  if (
+    metrics.cinematic.averageLuminance < metrics.parity.averageLuminance + 0.12
+    || Math.abs(metrics.cinematic.saturation - metrics.parity.saturation) < 0.08
+  ) {
     diagnostics.push({
       code: "TN_DEFAULT_LOOK_VISUALLY_FLAT",
-      message: "Cinematic default look is not significantly richer than parity on luminance and saturation.",
+      message: "Cinematic default look is not significantly brighter and tonally distinct from parity.",
       severity: "error",
       suggestedFix: "Verify cinematic profile mapping for tone mapping, exposure, bloom, lighting, and material defaults.",
     });

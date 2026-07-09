@@ -40,6 +40,15 @@ test("should fail when cinematic default look is visually flat", () => {
   assert.equal(diagnostics.some((diagnostic) => diagnostic.code === "TN_DEFAULT_LOOK_VISUALLY_FLAT"), true);
 });
 
+test("should accept intentionally desaturated cinematic tone", () => {
+  const diagnostics = analyzeRenderLookMetrics({
+    ...passingMetrics,
+    cinematic: { ...passingMetrics.cinematic, saturation: 0.19 },
+  });
+
+  assert.equal(diagnostics.some((diagnostic) => diagnostic.code === "TN_DEFAULT_LOOK_VISUALLY_FLAT"), false);
+});
+
 test("should fail when captured Bevy render look screenshot is blank", () => {
   const diagnostics = analyzeRenderLookMetrics({
     ...passingMetrics,

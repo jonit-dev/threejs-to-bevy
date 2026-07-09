@@ -42,7 +42,11 @@
         {
           "asset": "model.env.RockLow",
           "minDistance": 20,
-          "maxDistance": 80
+          "maxDistance": 80,
+          "impostor": {
+            "material": "mat.impostor",
+            "mode": "cameraFacingQuad"
+          }
         }
       ]
     },

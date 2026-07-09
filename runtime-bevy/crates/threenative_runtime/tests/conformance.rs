@@ -1,4 +1,7 @@
-use bevy::prelude::*;
+use bevy::{
+    pbr::{DirectionalLightShadowMap, ShadowFilteringMethod},
+    prelude::*,
+};
 use threenative_loader::{
     GltfSceneAssetIr, GltfSceneMetadataIr, RuntimeConfigIr, RuntimeRenderLookOverridesConfig,
     RuntimeRenderLookProfileConfig, RuntimeRendererAmbientOcclusionConfig, RuntimeRendererConfig,
@@ -292,7 +295,7 @@ fn should_report_promoted_render_look_profile() {
                     environment_intensity: None,
                     exposure: Some(1.1),
                     saturation: Some(1.15),
-                    shadow_quality: None,
+                    shadow_quality: Some("high".to_owned()),
                 }),
             }),
             render_path: None,
@@ -331,6 +334,26 @@ fn should_report_promoted_render_look_profile() {
     assert!((render_look["overrides"]["bloomIntensity"].as_f64().unwrap() - 0.4).abs() < 0.000001);
     assert!((render_look["overrides"]["exposure"].as_f64().unwrap() - 1.1).abs() < 0.000001);
     assert!((render_look["overrides"]["saturation"].as_f64().unwrap() - 1.15).abs() < 0.000001);
+    assert_eq!(
+        render_look["shadowProfile"],
+        serde_json::json!({
+            "cascadeCount": 4,
+            "enabled": true,
+            "filter": "pcf-soft",
+            "mapSize": 2048,
+            "quality": "high"
+        })
+    );
+    assert_eq!(
+        app.world().resource::<DirectionalLightShadowMap>().size,
+        2048
+    );
+    let mut cameras = app.world_mut().query::<(&Camera, &ShadowFilteringMethod)>();
+    assert!(
+        cameras
+            .iter(app.world())
+            .all(|(_, method)| *method == ShadowFilteringMethod::Gaussian)
+    );
     assert_eq!(
         report_json["runtimeConfig"]["renderer"]["postProcessing"]["applied"],
         serde_json::json!([

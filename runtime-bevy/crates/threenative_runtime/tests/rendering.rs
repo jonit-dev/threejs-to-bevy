@@ -424,7 +424,7 @@ fn rendering_should_map_runtime_motion_blur_to_native_camera() {
         .get::<MotionBlur>(camera)
         .expect("camera should have native motion blur settings");
     assert!((motion_blur.shutter_angle - 0.5).abs() < 0.001);
-    assert_eq!(motion_blur.samples, 1);
+    assert_eq!(motion_blur.samples, 4);
     assert!(app.world().get::<DepthPrepass>(camera).is_some());
     assert!(app.world().get::<MotionVectorPrepass>(camera).is_some());
 
@@ -937,7 +937,7 @@ fn assert_material(world: &mut World, id: &str) {
     assert!((color.blue - 0x99 as f32 / 255.0).abs() < 0.01);
     assert!((color.alpha - 0.65).abs() < 0.01);
     assert_eq!(material.alpha_mode, AlphaMode::Mask(0.35));
-    assert!((material.emissive.blue - 10.0).abs() < 0.01);
+    assert!((material.emissive.blue - 2.5).abs() < 0.01);
     assert!(material.base_color_texture.is_some());
     assert!(material.emissive_texture.is_some());
     assert!(material.metallic_roughness_texture.is_some());
@@ -962,7 +962,7 @@ fn assert_emissive_bloom_trace(world: &mut World) {
     assert!(observation.enabled);
     assert!((observation.material_intensity - 0.8).abs() < 0.01);
     assert!((observation.threshold - 0.1).abs() < 0.01);
-    assert!((observation.contribution - 0.576).abs() < 0.01);
+    assert!((observation.contribution - 0.144).abs() < 0.01);
     assert!(observation.exceeds_threshold);
 }
 
@@ -1652,9 +1652,9 @@ fn emissive_color_cards_should_preserve_standard_base_color() {
     assert!(material.emissive.red > material.emissive.green);
     assert!(material.emissive.red > material.emissive.blue);
     let color = material.base_color.to_srgba();
-    assert!(color.red < 0.01);
-    assert!(color.green < 0.01);
-    assert!(color.blue < 0.01);
+    assert!((color.red - 230.0 / 255.0).abs() < 0.01);
+    assert!((color.green - 25.0 / 255.0).abs() < 0.01);
+    assert!((color.blue - 75.0 / 255.0).abs() < 0.01);
 }
 
 #[test]
