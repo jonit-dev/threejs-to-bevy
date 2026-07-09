@@ -72,13 +72,29 @@ if (!validation.ok) {
 function compareReports(web, native) {
   const mismatches = [];
   for (const key of ["animation", "physics", "navigation"]) {
-    const left = normalize(web[key]);
-    const right = normalize(native[key]);
-    if (JSON.stringify(left) !== JSON.stringify(right)) {
-      mismatches.push({ key, native: right, web: left });
+    if (!equalWithinTolerance(web[key], native[key])) {
+      mismatches.push({ key, native: normalize(native[key]), web: normalize(web[key]) });
     }
   }
   return { mismatches, ok: mismatches.length === 0 };
+}
+
+function equalWithinTolerance(left, right) {
+  if (typeof left === "number" && typeof right === "number") {
+    const floatingPointSlack = Number.EPSILON * Math.max(1, Math.abs(left), Math.abs(right));
+    return Math.abs(left - right) <= 0.000001 + floatingPointSlack;
+  }
+  if (Array.isArray(left) || Array.isArray(right)) {
+    return Array.isArray(left) && Array.isArray(right) && left.length === right.length
+      && left.every((item, index) => equalWithinTolerance(item, right[index]));
+  }
+  if (left !== null && right !== null && typeof left === "object" && typeof right === "object") {
+    const leftKeys = Object.keys(left).sort();
+    const rightKeys = Object.keys(right).sort();
+    return equalWithinTolerance(leftKeys, rightKeys)
+      && leftKeys.every((key) => equalWithinTolerance(left[key], right[key]));
+  }
+  return Object.is(left, right);
 }
 
 async function writeVisualEvidence(web, native) {

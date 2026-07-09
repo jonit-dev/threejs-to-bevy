@@ -273,8 +273,17 @@ async function traceNativeScene(scene: SceneDefinition, bundleDir: string, outpu
 }
 
 async function writeVisualEvidence(scene: SceneDefinition, webTrace: any, nativeTrace: any, exampleDir: string) {
+  const traceSidecar = resolve(exampleDir, "contact-sidecar.json");
+  await writeJson(traceSidecar, {
+    native: contactSummary(nativeTrace),
+    ordering: "stable entity/contact ids and phase order",
+    scene: scene.id,
+    schema: "threenative.physics-contact-sidecar",
+    tolerance,
+    web: contactSummary(webTrace),
+  });
   if (scene.id !== "physics-mesh-ccd-track" && scene.id !== "physics-joint-metadata") {
-    return {};
+    return { traceSidecar: repoRelative(traceSidecar) };
   }
   const framesDir = resolve(exampleDir, "frames");
   await mkdir(framesDir, { recursive: true });
@@ -289,9 +298,37 @@ async function writeVisualEvidence(scene: SceneDefinition, webTrace: any, native
   return {
     contactSheet: repoRelative(contactSheet),
     nativeFrame: repoRelative(nativeFrame),
+    traceSidecar: repoRelative(traceSidecar),
     visualDiff: repoRelative(diffFrame),
     webFrame: repoRelative(webFrame),
   };
+}
+
+function contactSummary(trace: any) {
+  if (Array.isArray(trace.rigidBodies)) {
+    return trace.rigidBodies
+      .filter((row: any) => typeof row.contact === "string")
+      .map((row: any) => ({ contact: row.contact, entity: row.entity, position: row.position, step: row.step, velocity: row.velocity }));
+  }
+  if (Array.isArray(trace.character)) {
+    return trace.character.flatMap((row: any) => (row.contacts ?? []).map((contact: any) => ({
+      entity: row.entity,
+      material: contact.material,
+      normal: contact.normal,
+      other: contact.other,
+      phase: contact.phase,
+      point: contact.point,
+      pointIndex: contact.pointIndex,
+      self: contact.self,
+    })));
+  }
+  if (trace.overlap !== undefined || trace.raycast !== undefined || trace.shapeCast !== undefined) {
+    return { overlap: trace.overlap, raycast: trace.raycast, shapeCast: trace.shapeCast, triggerEvents: trace.triggerEvents ?? [] };
+  }
+  if (Array.isArray(trace.joints)) {
+    return trace.joints;
+  }
+  return [];
 }
 
 async function writePng(path: string, svg: string) {
@@ -425,7 +462,7 @@ async function runExistingGateSmoke() {
     ["node", "tools/verify/dist/cli/conformance.js"],
   ];
   return commands.map((script) => {
-    const result = spawnSync(script[0] ?? "pnpm", script.slice(1), { cwd: root, encoding: "utf8", timeout: 180_000 });
+    const result = spawnSync(script[0] ?? "pnpm", script.slice(1), { cwd: root, encoding: "utf8", timeout: 300_000 });
     return { command: script.join(" "), ok: result.status === 0, status: result.status, stderr: tail(result.stderr), stdout: tail(result.stdout) };
   });
 }

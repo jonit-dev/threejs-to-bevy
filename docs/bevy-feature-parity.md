@@ -48,7 +48,7 @@ adapters, shared SDK/IR/compiler contract, or an intentional product boundary.
 | ⚠️ | Rendering and post-processing | No active adapter gap for the calibrated lighting/material/dense subset; shared renderer semantics remain the gap for atmosphere, volumetrics, SSR/GI, deferred rendering, decals, custom post, and GPU instance attributes. | Web/Bevy scene rendering, fog/sky/tone, bloom, anti-aliasing, LOD, instancing, render-look profiles, and advanced renderer boundaries. | `pnpm verify:focused verify:feature-parity-visual-polish`, `pnpm verify:rendering-photoreal` |
 | ✅ | Assets, glTF, and scenes | No active adapter gap for promoted asset loading; custom loaders, runtime saving/export, arbitrary file/network access, and shader use of custom glTF attributes are shared boundaries. | Bundle-local assets, glTF dependency handling, asset catalogs, inspection, hot reload, streaming policy, and custom-loader diagnostics. | `tn asset inspect`, `pnpm verify:gltf-fidelity` |
 | ⚠️ | Animation and particles | Promoted playback, masks, morphs, and bounded particles have shared contract plus web/Bevy proof; raw backend graphs, IK/retargeting, and backend handles are product boundaries. | Clip metadata, playback, events, bounded graph data, masks, morph targets, and deterministic lightweight VFX. | `pnpm verify:focused verify:animation-physics-residuals`, conformance fixtures |
-| ⚠️ | Physics and character movement | Promoted behavior uses shared solver semantics with web/native trace diffs; deeper contacts, mesh terrain, nav, constraints, vehicles, and ragdolls are mostly Bevy/native proof depth plus shared boundaries. | Fixed-tick physics, primitive bodies/colliders, contacts, queries, character movement, mesh collider policy, joints, and nav diagnostics. | `pnpm verify:physics-self-verification`, `pnpm verify:character-physics-contacts` |
+| ⚠️ | Physics and character movement | Deep contact ordering, bounded mesh grounding, and bounded navigation residuals have aggregate web/native evidence; full constraints, vehicles, soft bodies, ragdolls, arbitrary triangle narrow phase, and backend handles remain boundaries. | Fixed-tick physics, primitive bodies/colliders, contacts, queries, character movement, mesh collider policy, joints, and nav diagnostics. | `pnpm verify:focused verify:feature-parity-physics-native`, `pnpm verify:physics-self-verification`, `pnpm verify:character-physics-contacts` |
 | ✅ | Input, picking, and controls | No active web or Bevy gap for promoted input/picking; richer gestures, repair overlays, and navigation diagnostics are product-polish boundaries. | Keyboard, mouse, pointer lock, gamepad, touch, picking, UI action dispatch, rebinding, and device diagnostics. | `pnpm verify:focused verify:input-ui-polish`, conformance fixtures |
 | ⚠️ | UI, text, and accessibility | Mixed: bounded base menu pixels and deterministic value/caret edits are web/native-proved; native style effects, rendered world attachment, platform screen readers, IME, and virtual keyboards remain scoped gaps or boundaries. | Retained UI, layout/style/text/buttons, focus, navigation, recipes, accessibility diagnostics, and unsupported native/widget boundaries. | `pnpm verify:focused verify:feature-parity-ui-native`, `pnpm verify:focused verify:input-ui-polish`, `pnpm verify:conformance` |
 | ⚠️ | Window and platform runtime | Shared platform policy plus both adapters for resize/scale observations; custom cursors, power/background policy, clear-color updates, and multi-window are intentional boundaries. | Window metadata, target profiles, resize observations, cursor/power diagnostics, and single-window policy. | Runtime config tests, target-profile fixtures |
@@ -403,6 +403,10 @@ diagnostics until portable promotion criteria and web/Bevy evidence exist.
 - [x] Focused `verify:character-physics-contacts` gate compares web/native
       character contact traces for slopes, pushed primitives, and filtered
       contact payload ordering
+- [x] `P1` Promoted: `pnpm verify:focused
+      verify:feature-parity-physics-native` aggregates matching material,
+      stacking, character-contact, query, and bounded mesh traces with compact
+      stable-order sidecars.
 - [x] `P0` Slope limits and sloped-surface walkability for promoted ramp colliders
 - [x] `P1` Character interaction volumes and object pushing
 - [x] Fixture-backed physics self-verification gate for gravity/collision,
@@ -421,6 +425,10 @@ diagnostics until portable promotion criteria and web/Bevy evidence exist.
 - [x] `P2` Arbitrary triangle narrow phase for mesh colliders as a bounded-mesh-collider diagnostic boundary
 - [x] `P2` Dynamic navmesh rebakes
 - [x] `P2` Crowd steering and off-mesh links
+  - [x] Bounded policies, stable authored IDs, fixed budgets, and matching
+        web/native residual traces are enforced by
+        `verify:feature-parity-physics-native`; arbitrary runtime rebakes and
+        large crowds are not promoted.
 - [x] `P2` Vehicle drivetrain and tire/friction models as deferred residuals
 - [x] `P3` Soft bodies and ragdolls as deferred residuals
 - [x] `D` Public backend physics/navmesh handles in portable APIs

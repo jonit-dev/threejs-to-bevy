@@ -10,4 +10,5 @@ test("animation physics residual verifier is wired to focused fixture and native
   assert.match(source, /tools\/verify\/artifacts\/animation-physics-residuals\/verification-report\.json/);
   assert.match(source, /animation masks/);
   assert.match(source, /crowd steering/);
+  assert.match(source, /0\.000001 \+ floatingPointSlack/);
 });

@@ -12,7 +12,7 @@ diagnostic boundaries unless a PRD explicitly narrows a promotable subset.
 | [PRD-001 Shared Contract Residuals](../done/feature-parity-polishing/PRD-001-shared-contract-residuals.md) (done) | Shared SDK/IR/compiler contract | Geometry, materials, rendering, window/platform policy |
 | [PRD-002 Cross-Adapter Visual Calibration](../done/feature-parity-polishing/PRD-002-cross-adapter-visual-calibration.md) (done) | Both adapters | Lights/shadows, material rendering, post-processing, dense-scene visual proof |
 | [PRD-003 Native UI Text Accessibility](../done/feature-parity-polishing/PRD-003-native-ui-text-accessibility.md) (done) | Bevy/native plus both adapters for world-attached/effect parity | UI, text, accessibility |
-| [PRD-004 Physics Navigation Native Depth](PRD-004-physics-navigation-native-depth.md) | Bevy/native proof depth plus shared boundaries | Physics, character movement, navigation |
+| [PRD-004 Physics Navigation Native Depth](../done/feature-parity-polishing/PRD-004-physics-navigation-native-depth.md) (done) | Bevy/native proof depth plus shared boundaries | Physics, character movement, navigation |
 | [PRD-005 Audio Platform Runtime Polish](PRD-005-audio-platform-runtime-polish.md) | Both adapters plus shared platform policy | Audio, window/platform runtime |
 
 ## Shared Conventions

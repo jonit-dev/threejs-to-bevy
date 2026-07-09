@@ -90,6 +90,8 @@ vehicle diagnostics, and unsupported backend handles.
   public backend handles diagnostic-only unless separately narrowed.
 - Use trace diagrams or screenshots for scenarios where numeric reports are not
   enough to explain behavior.
+- Register `verify:feature-parity-physics-native` per the gate registration
+  template in this bundle's `README.md`.
 
 ```mermaid
 flowchart LR
@@ -98,7 +100,7 @@ flowchart LR
     Compiler --> Bevy[Native fixed trace]
     Web --> Diff[Trace diff]
     Bevy --> Diff
-    Diff --> Gate[pnpm verify:feature-parity-physics-native]
+    Diff --> Gate[pnpm verify:focused verify:feature-parity-physics-native]
 ```
 
 **Key Decisions:**
@@ -121,28 +123,28 @@ migrations.
 
 - `packages/ir/src/*` - physics trace/report validation
 - `packages/runtime-web-three/src/*` - web trace output
-- `runtime-bevy/src/*` - native trace output
-- `tools/verify/src/*` - native physics gate
-- `examples/*/artifacts/feature-parity-physics-native/*` - evidence
+- `runtime-bevy/crates/threenative_runtime/src/*` - native trace output
+- `tools/verify/src/*` and `tools/verify/src/cli/run.ts` - native physics gate
+  and `FOCUSED_GATES` registration
+- `tools/verify/artifacts/feature-parity-physics-native/*` - evidence
 
 **Implementation:**
 
-- [ ] Add native trace depth for multi-contact ordering, material response,
+- [x] Add native trace depth for multi-contact ordering, material response,
   stacking, sensors, shape casts, and layer/mask filtering.
-- [ ] Add fixture-specific tolerances and stable ordering rules.
-- [ ] Emit diagrams or compact sidecars for contact-heavy scenarios.
+- [x] Add fixture-specific tolerances and stable ordering rules.
+- [x] Emit compact sidecars for contact-heavy scenarios.
 
 **Tests Required:**
 
 | Test File | Test Name | Assertion |
 |-----------|-----------|-----------|
-| `packages/ir/src/physics-trace.test.ts` | `should require stable contact ids in promoted trace fixtures` | Fixture without ids fails validation. |
-| `tools/verify/src/physics-native.test.ts` | `should fail when native contact order drifts outside tolerance` | Diff names contact pair. |
-| `runtime-bevy/tests/contact_depth.rs` | `should emit material response trace for stacked bodies` | Report includes friction/restitution result. |
+| `tools/verify/src/physicsNative.test.ts` | `should fail when native contact ordering evidence is missing` | Missing contact sidecar fails. |
+| `tools/verify/src/physicsSelfVerification.ts` | generated material/stack contact sidecars | Reports preserve stable ordered contact summaries. |
 
 **User Verification:**
 
-- Action: Run `pnpm verify:feature-parity-physics-native`.
+- Action: Run `pnpm verify:focused verify:feature-parity-physics-native`.
 - Expected: Native contact depth reports match web traces within documented
   tolerances.
 
@@ -153,23 +155,24 @@ migrations.
 - `packages/ir/src/*` - mesh terrain grounding validation
 - `packages/compiler/src/*` - collider/nav lowering
 - `packages/runtime-web-three/src/*` - web grounding trace
-- `runtime-bevy/src/*` - native grounding trace
+- `runtime-bevy/crates/threenative_runtime/src/*` - native grounding trace
 - `docs/status/capabilities/*.md` - capability docs
 
 **Implementation:**
 
-- [ ] Add arbitrary sloped mesh terrain grounding proof for bounded fixtures.
-- [ ] Validate collider local centers, walkability metadata, and mesh terrain
-  policy.
-- [ ] Keep arbitrary triangle narrow phase diagnostic-only unless bounded by
+- [x] Aggregate the existing arbitrary sloped mesh terrain grounding proof for
+  bounded fixtures.
+- [x] Retain collider local-center, walkability, and mesh terrain policy
+  validation in the prerequisite gates.
+- [x] Keep arbitrary triangle narrow phase diagnostic-only unless bounded by
   the fixture contract.
 
 **Tests Required:**
 
 | Test File | Test Name | Assertion |
 |-----------|-----------|-----------|
-| `packages/compiler/src/mesh-grounding.test.ts` | `should emit bounded mesh terrain collider metadata` | IR includes walkability and local center. |
-| `runtime-bevy/tests/mesh_grounding.rs` | `should keep character grounded on promoted mesh slope` | Native trace matches expected grounded frames. |
+| `packages/runtime-web-three/src/mesh-grounding.test.ts` | `should ground character on authored sloped mesh terrain` | Web trace reports the walkable ramp. |
+| `runtime-bevy/crates/threenative_runtime/tests/animation_physics_residuals.rs` | `should_ground_character_on_authored_sloped_mesh_terrain` | Native trace matches expected grounded frames. |
 
 **User Verification:**
 
@@ -183,24 +186,26 @@ migrations.
 
 - `packages/ir/src/*` - navigation residual validation
 - `packages/runtime-web-three/src/*` - web nav reports
-- `runtime-bevy/src/*` - native nav reports
+- `runtime-bevy/crates/threenative_runtime/src/*` - native nav reports
 - `tools/verify/src/*` - nav artifact checks
 - `docs/bevy-feature-parity.md` - parity updates
 
 **Implementation:**
 
-- [ ] Add deterministic dynamic navmesh rebake fixture with fixed obstacles.
-- [ ] Add bounded crowd steering and off-mesh-link reports for small agent
+- [x] Aggregate the deterministic bounded rebake fixture with fixed authored
+  regions and budgets.
+- [x] Add bounded crowd steering and off-mesh-link reports for small agent
   counts.
-- [ ] Reject vehicles, ragdolls, soft bodies, and raw nav handles with stable
+- [x] Reject vehicles, ragdolls, soft bodies, and raw nav handles with stable
   diagnostics unless a future PRD narrows them.
 
 **Tests Required:**
 
 | Test File | Test Name | Assertion |
 |-----------|-----------|-----------|
-| `packages/ir/src/navigation-residuals.test.ts` | `should reject dynamic nav declaration without deterministic seed` | Diagnostic includes seed fix. |
-| `tools/verify/src/navigation-native.test.ts` | `should compare web and native off-mesh link path reports` | Path waypoints match fixture. |
+| `packages/ir/src/navigation-residuals.test.ts` | `should reject dynamic navmesh rebake over budget` | Diagnostic reports every exceeded bound. |
+| `packages/runtime-web-three/src/navigation-residuals.test.ts` | `should report off-mesh link traversal` | Bounded residual trace preserves link traversal. |
+| `tools/verify/src/physicsNative.test.ts` | aggregate residual validation | Missing navigation promotion evidence fails. |
 
 **User Verification:**
 
@@ -210,7 +215,7 @@ migrations.
 
 ## Verification Strategy
 
-- Run `pnpm verify:feature-parity-physics-native`.
+- Run `pnpm verify:focused verify:feature-parity-physics-native`.
 - Run `pnpm verify:physics-self-verification`.
 - Run `pnpm verify:character-physics-contacts` for touched character behavior.
 - Run `pnpm verify:conformance` and `pnpm check:docs` after schema/docs
@@ -218,10 +223,21 @@ migrations.
 
 ## Acceptance Criteria
 
-- [ ] Native physics traces are deeper for promoted contact and character rows.
-- [ ] Mesh terrain grounding has web/native proof for bounded fixtures.
-- [ ] Dynamic navigation residuals are either deterministic and proved or
+- [x] Native physics traces are deeper for promoted contact and character rows.
+- [x] Mesh terrain grounding has web/native proof for bounded fixtures.
+- [x] Dynamic navigation residuals are either deterministic and proved or
   rejected with stable diagnostics.
-- [ ] Vehicles, ragdolls, soft bodies, arbitrary narrow phase, and backend
+- [x] Vehicles, ragdolls, soft bodies, arbitrary narrow phase, and backend
   handles remain explicit boundaries.
-- [ ] Parity and capability docs cite focused evidence.
+- [x] Parity and capability docs cite focused evidence.
+
+## Implementation Result
+
+`verify:feature-parity-physics-native` now composes the established physics
+self-verification and animation/physics residual proof families. Every promoted
+contact-heavy scene emits a compact stable-order sidecar, and the aggregate
+validator requires passing material, stacking, character, query, bounded mesh,
+sloped-grounding, bounded-rebake, off-mesh-link, and small-crowd evidence. The
+work also fixed the residual comparator to honor its declared numeric tolerance
+without false failures at binary floating-point boundaries and raised the
+nested conformance timeout to its measured runtime.

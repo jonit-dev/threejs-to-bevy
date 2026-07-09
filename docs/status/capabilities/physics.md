@@ -20,11 +20,19 @@ Current support:
   rotation-axis constraints, and sensor-only collider semantics. The web
   adapter retains its Rapier world across unchanged fixed steps and explicitly
   frees it with the runtime lifecycle; focused coverage guards topology reuse.
+- `pnpm verify:focused verify:feature-parity-physics-native` aggregates the
+  existing physics self-verification and animation/physics residual gates. It
+  requires matching web/native material, stack, character-contact, query, and
+  bounded mesh traces with compact stable-order sidecars, plus sloped grounding,
+  bounded rebake, off-mesh-link, and small-crowd evidence. Full constraint
+  solving, vehicles, tire/drivetrain models, soft bodies, ragdolls, arbitrary
+  triangle narrow phase, and public backend handles remain explicit boundaries.
 
 Verification:
 
 - `pnpm verify:conformance`
 - `pnpm verify:physics-self-verification`
+- `pnpm verify:focused verify:feature-parity-physics-native`
 - `tn playtest --target desktop ...`
 
 Full prior evidence is preserved in

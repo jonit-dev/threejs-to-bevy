@@ -491,6 +491,22 @@ export const FOCUSED_GATES: Record<string, FocusedGate> = {
       protects: "Bounded retained UI pixel claims and target-scoped native text/accessibility boundaries.",
     },
   },
+  "verify:feature-parity-physics-native": {
+    commands: [
+      ["pnpm", "--filter", "@threenative/ir", "build"],
+      ["pnpm", "--filter", "@threenative/runtime-web-three", "build"],
+      ["pnpm", "--filter", "@threenative/verify-tools", "build"],
+      ["node", "tools/verify/dist/physicsSelfVerification.js"],
+      ["node", "tools/verify/dist/physicsNative.js"],
+    ],
+    description: "Native contact, mesh grounding, navigation residual, and physics boundary evidence gate.",
+    metadata: {
+      owner: "tools/verify feature-parity physics native gate",
+      profile: "focused",
+      reason: "Aggregates deep fixed-step contact sidecars with existing mesh-grounding and bounded navigation residual traces.",
+      protects: "Promoted contact ordering, material/stack response, bounded mesh grounding, navigation residuals, and backend boundaries.",
+    },
+  },
   "verify:v9:assets-gltf-scene-workflow": {
     commands: [
       ["pnpm", "--filter", "@threenative/cli", "build"],
