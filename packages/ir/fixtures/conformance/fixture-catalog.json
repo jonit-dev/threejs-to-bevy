@@ -3,6 +3,25 @@
   "version": "0.1.0",
   "fixtures": [
     {
+      "canonicalId": "gameplay-spawner",
+      "owner": "ir-contract",
+      "sourceExample": "gameplay-spawner",
+      "regenerateCommand": "pnpm verify:conformance",
+      "canonicalArtifactGate": "conformance",
+      "ownerDocs": "docs/PRDs/proof-first-engine-loop-2026-07-05/PRD-008-declarative-gameplay-flow-spawners-sequencer.md",
+      "aggregateGate": "verify:conformance",
+      "bundlePath": "packages/ir/fixtures/conformance/gameplay-spawner/game.bundle",
+      "promotedCapabilities": [
+        "gameplay:spawner"
+      ],
+      "reportArtifacts": [
+        "packages/ir/artifacts/conformance/gameplay-spawner/verification-report.json",
+        "packages/ir/artifacts/conformance/gameplay-spawner/spawner-diff.json",
+        "packages/ir/artifacts/conformance/gameplay-spawner/web-spawner.json",
+        "packages/ir/artifacts/conformance/gameplay-spawner/native-spawner.json"
+      ]
+    },
+    {
       "canonicalId": "gameplay-blocks",
       "owner": "ir-contract",
       "sourceExample": "gameplay-blocks",

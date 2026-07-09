@@ -199,6 +199,13 @@ implementation:
   `cargo test --manifest-path runtime-bevy/Cargo.toml -p threenative_runtime kinematic_mover_should`,
   and `pnpm verify:conformance`. Waypoint mover runtime behavior remains
   unsupported until a shared web/Bevy conformance fixture is added for it.
+- Declarative `Spawner` components now have a shared web/native runtime proof:
+  the `gameplay-spawner` conformance fixture drives a seeded wave spawner
+  against the same prefab bundle, and `pnpm verify:conformance` compares the
+  generated tick/root/spawned-entity trace from web and Bevy. Focused evidence:
+  `pnpm --filter @threenative/runtime-web-three test -- --run spawner`,
+  `cargo test -p threenative_runtime spawner`, and
+  `packages/ir/artifacts/conformance/gameplay-spawner/verification-report.json`.
 - The authoring-abstractions Phase 5 paper-cut slice improves structured
   authoring commands and recipes: third-person recipes now stamp safe capsule
   centers, material editing works inside grouped material documents, and scene

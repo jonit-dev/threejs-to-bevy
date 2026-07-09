@@ -17,7 +17,9 @@ Current support:
   preserves authoring validation.
 - Declarative gameplay-flow contracts are emerging behind bounded operations:
   `tn scene set-spawner` persists typed `Spawner` components with deterministic
-  web/native trace tests, while `tn flow create|add-state|add-transition` and
+  web/native conformance trace parity under
+  `packages/ir/artifacts/conformance/gameplay-spawner/`, while
+  `tn flow create|add-state|add-transition` and
   `tn sequence create|add-track|add-key` write validated structured source and
   compiler-emitted `game-flow.ir.json` / `sequences.ir.json` bundle entries.
   Full runtime GameFlow/Sequence evaluators remain future work; unsupported

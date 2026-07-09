@@ -144,6 +144,11 @@ export async function verifyConformance(options = {}) {
   const v9PhysicsCharacterNativeTracePath = options.v9PhysicsCharacterNativeTracePath ?? resolve(artifactDir, "physics-character/native-physics-character.json");
   const v9PhysicsCharacterReportPath = options.v9PhysicsCharacterReportPath ?? resolve(artifactDir, "physics-character/verification-report.json");
   const v9PhysicsCharacterWebTracePath = options.v9PhysicsCharacterWebTracePath ?? resolve(artifactDir, "physics-character/web-physics-character.json");
+  const gameplaySpawnerBundlePath = resolveFixtureBundlePath(fixtureCatalog, "gameplay-spawner", root).bundlePath;
+  const gameplaySpawnerDiffPath = options.gameplaySpawnerDiffPath ?? resolve(artifactDir, "gameplay-spawner/spawner-diff.json");
+  const gameplaySpawnerNativeTracePath = options.gameplaySpawnerNativeTracePath ?? resolve(artifactDir, "gameplay-spawner/native-spawner.json");
+  const gameplaySpawnerReportPath = options.gameplaySpawnerReportPath ?? resolve(artifactDir, "gameplay-spawner/verification-report.json");
+  const gameplaySpawnerWebTracePath = options.gameplaySpawnerWebTracePath ?? resolve(artifactDir, "gameplay-spawner/web-spawner.json");
   const sceneLifecycleDiffPath = options.sceneLifecycleDiffPath ?? resolve(artifactDir, "scene-lifecycle/scene-lifecycle-diff.json");
   const sceneLifecycleNativeTracePath = options.sceneLifecycleNativeTracePath ?? resolve(artifactDir, "scene-lifecycle/native-scene-lifecycle.json");
   const sceneLifecycleWebTracePath = options.sceneLifecycleWebTracePath ?? resolve(artifactDir, "scene-lifecycle/web-scene-lifecycle.json");
@@ -203,6 +208,10 @@ export async function verifyConformance(options = {}) {
     v9PhysicsCharacterNativeTracePath,
     v9PhysicsCharacterReportPath,
     v9PhysicsCharacterWebTracePath,
+    gameplaySpawnerDiffPath,
+    gameplaySpawnerNativeTracePath,
+    gameplaySpawnerReportPath,
+    gameplaySpawnerWebTracePath,
     sceneLifecycleDiffPath,
     sceneLifecycleNativeTracePath,
     sceneLifecycleWebTracePath,
@@ -473,6 +482,16 @@ export async function verifyConformance(options = {}) {
       process.execPath,
       [resolve(root, "scripts/verify-v9-physics-character.mjs")],
       { timeoutMs: 180000 },
+    ],
+    [
+      "gameplay spawner runtime trace parity",
+      process.execPath,
+      [
+        resolve(root, "scripts/verify-gameplay-spawner.mjs"),
+        gameplaySpawnerBundlePath,
+        resolve(artifactDir, "gameplay-spawner"),
+      ],
+      { timeoutMs: 120000 },
     ],
     [
       "scene lifecycle runtime trace parity",
@@ -823,6 +842,9 @@ function fixtureForStep(stepName) {
   if (stepName.includes("V9 physics character")) {
     return "physics-character";
   }
+  if (stepName.includes("gameplay spawner")) {
+    return "gameplay-spawner";
+  }
   if (stepName.includes("V9 assets glTF")) {
     return "v9-assets-gltf-scene-workflow";
   }
@@ -899,6 +921,9 @@ function artifactPathForStep(stepName, artifacts) {
   if (stepName.includes("V9 physics character")) {
     return artifacts.v9PhysicsCharacterReportPath;
   }
+  if (stepName.includes("gameplay spawner")) {
+    return artifacts.gameplaySpawnerReportPath;
+  }
   if (stepName.includes("V9 assets glTF")) {
     return artifacts.v9AssetsGltfReportPath;
   }
@@ -968,6 +993,9 @@ function bundlePathForStep(stepName) {
   }
   if (stepName.includes("V9 physics character")) {
     return "packages/ir/fixtures/conformance/physics-character/game.bundle";
+  }
+  if (stepName.includes("gameplay spawner")) {
+    return "packages/ir/fixtures/conformance/gameplay-spawner/game.bundle";
   }
   if (stepName.includes("V9 rendering lights")) {
     return "packages/ir/fixtures/conformance/rendering-lights/game.bundle";

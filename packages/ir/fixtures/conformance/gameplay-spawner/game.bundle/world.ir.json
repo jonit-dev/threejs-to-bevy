@@ -1,0 +1,30 @@
+{
+  "schema": "threenative.world",
+  "version": "0.1.0",
+  "entities": [
+    {
+      "id": "spawner",
+      "components": {
+        "Transform": {
+          "position": [0, 0, 0],
+          "rotation": [0, 0, 0, 1],
+          "scale": [1, 1, 1]
+        },
+        "Spawner": {
+          "prefab": "prefab.enemy",
+          "mode": "wave",
+          "waveSize": 2,
+          "maxAlive": 4,
+          "maxTotal": 4,
+          "area": {
+            "shape": "box",
+            "size": [4, 0, 4]
+          },
+          "jitterSeed": 42,
+          "enabled": true
+        }
+      }
+    }
+  ],
+  "resources": {}
+}

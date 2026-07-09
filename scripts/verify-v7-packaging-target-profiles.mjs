@@ -1,5 +1,5 @@
 import { execFile } from "node:child_process";
-import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { cp, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -14,7 +14,13 @@ export async function verifyV7PackagingTargetProfiles(options = {}) {
   const artifactDir = options.artifactDir ?? resolve(root, "packages/ir/artifacts/conformance/packaging-target-profiles");
   await execFileAsync("pnpm", ["--filter", "@threenative/cli", "build"], { cwd: root });
   const cli = await import(new URL("../packages/cli/dist/commands/package.js", import.meta.url));
-  const result = await cli.packageCommand(["--bundle", bundlePath, "--out", artifactDir, "--json"], root);
+  const runtimeBinary = await buildRepoRuntime(root);
+  const result = await cli.packageCommand(["--bundle", bundlePath, "--out", artifactDir, "--json"], root, {
+    async runtimeBuilder({ outputPath }) {
+      await cp(runtimeBinary, outputPath, { force: true });
+      return outputPath;
+    },
+  });
   if (result.exitCode !== 0) {
     throw new Error(result.stderr ?? "V7 packaging command failed.");
   }
@@ -50,6 +56,24 @@ export async function verifyV7PackagingTargetProfiles(options = {}) {
     artifacts: { comparisonReportPath, packageReportPath, smokeReportPath },
     ok: comparison.status === "pass",
   };
+}
+
+async function buildRepoRuntime(root) {
+  await execFileAsync(
+    "cargo",
+    [
+      "build",
+      "--manifest-path",
+      resolve(root, "runtime-bevy/Cargo.toml"),
+      "-p",
+      "threenative_runtime",
+      "--bin",
+      "threenative_runtime",
+      "--release",
+    ],
+    { cwd: root },
+  );
+  return resolve(root, "runtime-bevy/target/release", process.platform === "win32" ? "threenative_runtime.exe" : "threenative_runtime");
 }
 
 async function runRejectedTargetCheck(root, packageCommand) {
