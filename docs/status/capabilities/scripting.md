@@ -22,6 +22,9 @@ Current support:
 - Web and native runtime system hosts report declared resource load/read/write
   observations so failing playtests can distinguish missing propagation from
   ordinary movement/input assertion failures.
+- Retained UI actions are script-visible through `context.input` action state
+  and `context.ui.actions()` for the latest drained frame, including web
+  button and slider value events without exposing DOM handles.
 - Supported named helper imports from `@threenative/script-stdlib` and promoted
   gameplay kits. Familiar aliases `Mathf`, `Vector2`, and `Vector3` are
   exact aliases for legacy `NumberEx`, `Vec2`, and `Vec3`, which remain

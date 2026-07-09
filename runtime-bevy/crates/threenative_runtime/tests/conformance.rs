@@ -634,7 +634,7 @@ fn should_report_retained_ui_conformance_observations() {
             .iter()
             .map(|node| node.kind.as_str())
             .collect::<Vec<_>>(),
-        vec!["text", "bar", "button"]
+        vec!["text", "bar", "button", "slider"]
     );
     assert_eq!(ui.root.children[0].children[1].value, Some(7.0));
     assert_eq!(ui.root.children[0].children[1].max, Some(10.0));
@@ -643,6 +643,13 @@ fn should_report_retained_ui_conformance_observations() {
         Some("Pause")
     );
     assert_eq!(ui.root.children[0].children[2].focusable, Some(true));
+    assert_eq!(
+        ui.root.children[0].children[3].action.as_deref(),
+        Some("SetVolume")
+    );
+    assert_eq!(ui.root.children[0].children[3].focusable, Some(true));
+    assert_eq!(ui.root.children[0].children[3].value, Some(0.5));
+    assert_eq!(ui.root.children[0].children[3].max, Some(1.0));
 }
 
 #[test]
