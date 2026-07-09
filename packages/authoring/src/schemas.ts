@@ -35,7 +35,7 @@ export const prefabDocumentKeys = new Set(["schema", "version", "id", "entities"
 export const audioDocumentKeys = new Set(["schema", "version", "id", "sounds", "provenance"]);
 export const meshDocumentKeys = new Set(["schema", "version", "id", "meshes", "provenance"]);
 export const generatorDocumentKeys = new Set(["schema", "version", "id", "module", "export", "outputs", "overwritePolicy", "inputHash", "outputHash", "lastRun", "provenance"]);
-export const entityKeys = new Set(["id", "prefab", "transform", "components"]);
+export const entityKeys = new Set(["archetype", "id", "prefab", "transform", "components"]);
 export const instanceKeys = new Set(["id", "prefab", "transform", "components"]);
 export const transformKeys = new Set(["position", "rotation", "scale"]);
 export const systemKeys = new Set([
@@ -193,10 +193,17 @@ export interface ISceneDocument {
 }
 
 export interface ISceneEntity {
+  archetype?: ISceneEntityArchetype;
   id: string;
   prefab?: string;
   transform?: ISceneTransform;
   components?: Record<string, unknown>;
+}
+
+export interface ISceneEntityArchetype {
+  id: string;
+  params?: Record<string, unknown>;
+  version?: number;
 }
 
 export interface IScenePrefabInstance {

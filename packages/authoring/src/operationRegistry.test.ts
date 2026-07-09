@@ -36,6 +36,32 @@ test("should dispatch promoted editor-safe operations", async () => {
   }
 });
 
+test("should dispatch actor archetype operations through the registry", async () => {
+  const root = await createRegistryProject();
+  try {
+    const result = await dispatchAuthoringOperation({
+      args: {
+        actorId: "hero",
+        archetype: "character",
+        sceneId: "scene.arena",
+        speed: 5,
+      },
+      name: "archetype.apply",
+      projectPath: root,
+    });
+    const scene = JSON.parse(await readFile(join(root, "content", "scenes", "arena.scene.json"), "utf8")) as {
+      entities: Array<{ archetype?: { id: string }; components?: Record<string, unknown>; id: string }>;
+    };
+    const descriptor = getAuthoringOperationDescriptor("archetype.apply");
+
+    assert.equal(result.ok, true);
+    assert.equal(descriptor?.sourceFamily, "archetype");
+    assert.equal(scene.entities.find((entity) => entity.id === "hero")?.archetype?.id, "character");
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
 test("should dispatch existing structured source operations through the registry", async () => {
   const root = await createRegistryProject();
   try {

@@ -98,6 +98,13 @@ export {
   planAuthoringRecipe,
 } from "./recipes.js";
 export type {
+  ActorArchetypeId,
+  IActorArchetypeDescriptor,
+  IApplyActorArchetypeOptions,
+  IUpdateActorArchetypeOptions,
+} from "./archetypes.js";
+export { applyActorArchetype, listActorArchetypes, updateActorArchetype } from "./archetypes.js";
+export type {
   GameAssetAudioSourcingStatus,
   GameAssetAudioSurfaceId,
   GameEvidenceKind,

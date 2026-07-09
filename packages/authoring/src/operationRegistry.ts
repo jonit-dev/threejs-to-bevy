@@ -1,4 +1,5 @@
 import { authoringDiagnostic } from "./diagnostics.js";
+import { applyActorArchetype, listActorArchetypes, updateActorArchetype } from "./archetypes.js";
 import {
   addEntity,
   addAsset,
@@ -103,7 +104,7 @@ const STYLIZED_NATURE_AUTHORED_DEFAULTS = {
 };
 
 export type AuthoringOperationPathPolicy = "source-document" | "source-script";
-export type AuthoringOperationSourceFamily = "asset" | "audio" | "environment" | "flow" | "generator" | "input" | "material" | "mesh" | "prefab" | "project" | "resources" | "runtime" | "schema" | "scene" | "sequence" | "system" | "target" | "ui";
+export type AuthoringOperationSourceFamily = "archetype" | "asset" | "audio" | "environment" | "flow" | "generator" | "input" | "material" | "mesh" | "prefab" | "project" | "resources" | "runtime" | "schema" | "scene" | "sequence" | "system" | "target" | "ui";
 export type AuthoringOperationResultShape = "authoring-operation-result";
 
 export interface IAuthoringOperationArgumentDescriptor {
@@ -132,6 +133,38 @@ type OperationRegistryEntry<TName extends string = AuthoringOperationName> = IAu
 };
 
 const operationEntries = [
+  operation(descriptor("archetype.apply", "Apply an actor archetype to structured source.", "archetype", "source-document", [
+    stringArg("archetype"),
+    stringArg("actorId"),
+    stringArg("asset", false),
+    stringArg("sceneId", false),
+    numberArg("speed", false),
+    numberArg("sprintSpeed", false),
+  ]), async ({ args, projectPath }) => applyActorArchetype({
+    actorId: requiredString(args, "actorId"),
+    archetype: requiredString(args, "archetype"),
+    asset: optionalString(args, "asset"),
+    projectPath,
+    sceneId: optionalString(args, "sceneId"),
+    speed: optionalNumber(args, "speed"),
+    sprintSpeed: optionalNumber(args, "sprintSpeed"),
+  })),
+  operation(descriptor("archetype.update", "Update authored actor archetype parameters in structured source.", "archetype", "source-document", [
+    stringArg("actorId"),
+    objectArg("set", false),
+  ]), async ({ args, projectPath }) => updateActorArchetype({
+    actorId: requiredString(args, "actorId"),
+    projectPath,
+    set: optionalObject(args, "set"),
+  })),
+  operation(descriptor("archetype.list", "List available actor archetypes.", "archetype", "source-document", []), async ({ projectPath }) => ({
+    changed: false,
+    diagnostics: [],
+    filesWritten: [],
+    ok: true,
+    projectPath,
+    archetypes: listActorArchetypes(),
+  }) as IAuthoringOperationResult),
   operation(descriptor("asset.add", "Add or replace an asset declaration in a structured asset document.", "asset", "source-document", [
     stringArg("assetId"),
     stringArg("type"),

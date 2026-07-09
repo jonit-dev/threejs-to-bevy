@@ -15,6 +15,10 @@ Current support:
   composes L2 mechanic blocks into structured source, writes
   `content/mechanics/*.mechanic.json`, emits block playtest scenarios, and
   preserves authoring validation.
+- `tn actor add character --id <actor-id> --json` applies the first reusable L2
+  actor archetype: a kinematic third-person character with capsule collider,
+  follow camera, input source, systems source, archetype provenance, and
+  a generated `defineBehavior` script stub.
 - Declarative gameplay-flow contracts are emerging behind bounded operations:
   `tn scene set-spawner` persists typed `Spawner` components with deterministic
   web/native conformance trace parity under
@@ -80,6 +84,8 @@ Verification:
 - `pnpm --filter @threenative/cli test` (354 CLI tests, including all six
   mechanic block writers, proof-family game plan apply, and authoring
   validation).
+- `pnpm --filter @threenative/authoring test -- --run "archetype|actor"`
+- `pnpm --filter @threenative/cli test -- --run "actor"`
 - `pnpm --filter @threenative/agent-benchmark test`
 - `pnpm verify:generated-games`
 - `pnpm verify:example-build-sweep`

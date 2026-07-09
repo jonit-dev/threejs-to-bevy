@@ -4,6 +4,7 @@ import { realpathSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
 import { addCommand } from "./commands/add.js";
+import { actorCommand } from "./commands/actor.js";
 import { assetCommand } from "./commands/asset.js";
 import { authoringCommand } from "./commands/authoring.js";
 import { buildCommand } from "./commands/build.js";
@@ -50,6 +51,11 @@ const commands: Record<string, ICommandDefinition> = {
     description: "Inspect GLB/glTF assets, query source catalog records, and mutate structured asset source documents.",
     implemented: true,
     usage: "tn asset inspect <path-or-directory> [--recursive] [--json]\n              tn asset source search [--query <text>] [--game-category <category>] [--file-role <role>] [--format glb] [--direct-only] [--json]\n              tn asset source get <asset-source-id> [--json]\n              tn asset add <asset-id> --type <model|texture|audio|mesh> --path <source-path> [--project <path>] [--json]\n              tn asset add <asset-id> --type render-target --width <n> --height <n> [--usage color|depth] [--format rgba8|rgba16f|depth24plus] [--sample-count <n>] [--project <path>] [--json]",
+  },
+  actor: {
+    description: "Apply reusable actor archetypes to structured source.",
+    implemented: true,
+    usage: "tn actor list [--json]\n              tn actor add character --id <actor-id> [--asset <asset-id-or-path>] [--scene <scene-id>] [--speed <n>] [--sprint-speed <n>] [--project <path>] [--json]\n              tn actor update <actor-id> --set speed=4 [--set sprintSpeed=6] [--project <path>] [--json]",
   },
   audio: {
     description: "Create and mutate structured audio source documents.",
@@ -341,6 +347,9 @@ export async function dispatch(argv: readonly string[]): Promise<ICommandResult>
 
   if (commandName === "asset") {
     return assetCommand(normalizedArgv.slice(1));
+  }
+  if (commandName === "actor") {
+    return actorCommand(normalizedArgv.slice(1));
   }
   if (commandName === "add") {
     return addCommand(normalizedArgv.slice(1));
