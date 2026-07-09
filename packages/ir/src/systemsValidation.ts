@@ -1,5 +1,5 @@
 import type { IAudioIr, IIrNamedSchema, IPrefabsIr } from "./types.js";
-import type { IrSystemService, ISystemsIr } from "./systems.js";
+import type { IrSystemCommand, IrSystemService, ISystemsIr } from "./systems.js";
 import type { IIrDiagnostic } from "./validate.js";
 import { PROMOTED_SCRIPT_SERVICES } from "./scriptingHost.js";
 import { isBuiltInComponent, isBuiltInResource } from "./schemaValidation.js";
@@ -78,7 +78,7 @@ export function validateSystems(
   systems.systems.forEach((system, systemIndex) => {
     const rawSystem = system as unknown as Record<string, unknown>;
     for (const key of Object.keys(rawSystem)) {
-      if (!["after", "before", "commands", "eventReads", "eventWrites", "name", "queries", "reads", "resourceReads", "resourceWrites", "schedule", "script", "services", "source", "writes"].includes(key)) {
+      if (!["after", "before", "commands", "delayedCommands", "eventReads", "eventWrites", "name", "queries", "reads", "resourceReads", "resourceWrites", "schedule", "script", "services", "source", "writes"].includes(key)) {
         diagnostics.push({
           code: "TN_IR_SYSTEM_FIELD_UNSUPPORTED",
           message: `System '${system.name}' uses unsupported field '${key}'.`,
@@ -233,85 +233,288 @@ export function validateSystems(
       }
     });
     system.commands.forEach((command, commandIndex) => {
-      if (command.kind === "addComponent" || command.kind === "removeComponent" || command.kind === "setComponent") {
-        if (!isBuiltInComponent(command.component) && componentSchemas[command.component] === undefined) {
-          diagnostics.push({
-            code: "TN_IR_SYSTEM_COMPONENT_SCHEMA_MISSING",
-            fix: componentSchemaFix(command.component),
-            message: `System '${system.name}' command references component '${command.component}' without a schema.`,
-            path: `${path}/systems/${systemIndex}/commands/${commandIndex}/component`,
-          });
-        }
-        if (!writes.has(command.component)) {
-          diagnostics.push({
-            code: "TN_IR_SYSTEM_WRITE_UNDECLARED",
-            message: `System '${system.name}' command writes component '${command.component}' without declaring write access.`,
-            path: `${path}/systems/${systemIndex}/commands/${commandIndex}/component`,
-          });
-        }
-      }
-      if (command.kind === "spawn") {
-        command.components.forEach((component, componentIndex) => {
-          if (!isBuiltInComponent(component) && componentSchemas[component] === undefined) {
-            diagnostics.push({
-              code: "TN_IR_SYSTEM_COMPONENT_SCHEMA_MISSING",
-              fix: componentSchemaFix(component),
-              message: `System '${system.name}' command spawns component '${component}' without a schema.`,
-              path: `${path}/systems/${systemIndex}/commands/${commandIndex}/components/${componentIndex}`,
-            });
-          }
-          if (!writes.has(component)) {
-            diagnostics.push({
-              code: "TN_IR_SYSTEM_WRITE_UNDECLARED",
-              message: `System '${system.name}' command spawns component '${component}' without declaring write access.`,
-              path: `${path}/systems/${systemIndex}/commands/${commandIndex}/components`,
-            });
-          }
+      validateSystemCommand(command, `${path}/systems/${systemIndex}/commands/${commandIndex}`, system.name, writes, eventWrites, componentSchemas, eventSchemas, prefabs, diagnostics);
+    });
+    validateDelayedCommands(system.delayedCommands, `${path}/systems/${systemIndex}/delayedCommands`, system.name, writes, eventWrites, componentSchemas, eventSchemas, prefabs, diagnostics);
+  });
+}
+
+function validateDelayedCommands(
+  delayedCommands: ISystemsIr["systems"][number]["delayedCommands"],
+  path: string,
+  systemName: string,
+  writes: ReadonlySet<string>,
+  eventWrites: ReadonlySet<string>,
+  componentSchemas: Record<string, IIrNamedSchema>,
+  eventSchemas: Record<string, IIrNamedSchema>,
+  prefabs: IPrefabsIr | undefined,
+  diagnostics: IIrDiagnostic[],
+): void {
+  if (delayedCommands === undefined) {
+    return;
+  }
+  if (!Array.isArray(delayedCommands)) {
+    diagnostics.push({
+      code: "TN_IR_SYSTEM_DELAYED_COMMANDS_INVALID",
+      message: `System '${systemName}' delayedCommands metadata must be an array.`,
+      path,
+      severity: "error",
+    });
+    return;
+  }
+  const ids = new Set<string>();
+  delayedCommands.forEach((declaration, index) => {
+    const declarationPath = `${path}/${index}`;
+    const raw = declaration as unknown as Record<string, unknown>;
+    if (!isRecord(raw)) {
+      diagnostics.push({
+        code: "TN_IR_SYSTEM_DELAYED_COMMAND_INVALID",
+        message: `System '${systemName}' delayed command metadata must be an object.`,
+        path: declarationPath,
+        severity: "error",
+      });
+      return;
+    }
+    for (const key of Object.keys(raw)) {
+      if (!["cancelPolicy", "command", "id", "maxDelayTicks", "ownership"].includes(key)) {
+        diagnostics.push({
+          code: "TN_IR_SYSTEM_DELAYED_COMMAND_FIELD_UNSUPPORTED",
+          message: `System '${systemName}' delayed command '${declaration.id}' uses unsupported field '${key}'.`,
+          path: `${declarationPath}/${key}`,
+          severity: "error",
+          suggestion: "Declare only id, maxDelayTicks, ownership, cancelPolicy, and one supported command.",
         });
       }
-      if (command.kind === "emitEvent") {
-        if (eventSchemas[command.event] === undefined) {
-          diagnostics.push({
-            code: "TN_IR_SYSTEM_EVENT_SCHEMA_MISSING",
-            message: `System '${system.name}' command emits event '${command.event}' without a schema.`,
-            path: `${path}/systems/${systemIndex}/commands/${commandIndex}/event`,
-          });
-        }
-        if (!eventWrites.has(command.event)) {
-          diagnostics.push({
-            code: "TN_IR_SYSTEM_EVENT_WRITE_UNDECLARED",
-            message: `System '${system.name}' emits event '${command.event}' without declaring event write access.`,
-            path: `${path}/systems/${systemIndex}/commands/${commandIndex}/event`,
-          });
-        }
+    }
+    if (typeof declaration.id !== "string" || declaration.id.trim() === "") {
+      diagnostics.push({
+        code: "TN_IR_SYSTEM_DELAYED_COMMAND_ID_INVALID",
+        message: `System '${systemName}' delayed command id must be a non-empty string.`,
+        path: `${declarationPath}/id`,
+        severity: "error",
+      });
+    } else if (ids.has(declaration.id)) {
+      diagnostics.push({
+        code: "TN_IR_SYSTEM_DELAYED_COMMAND_DUPLICATE",
+        message: `System '${systemName}' declares duplicate delayed command '${declaration.id}'.`,
+        path: `${declarationPath}/id`,
+        severity: "error",
+      });
+    } else {
+      ids.add(declaration.id);
+    }
+    if (!Number.isInteger(declaration.maxDelayTicks) || declaration.maxDelayTicks < 1) {
+      diagnostics.push({
+        code: "TN_IR_SYSTEM_DELAYED_COMMAND_MAX_TICKS_INVALID",
+        message: `System '${systemName}' delayed command '${declaration.id}' must declare a positive integer maxDelayTicks bound.`,
+        path: `${declarationPath}/maxDelayTicks`,
+        severity: "error",
+        suggestion: "Use fixed-tick delays with an explicit finite upper bound; wall-clock timers are not portable.",
+      });
+    }
+    validateDelayedCommandOwnership(declaration.ownership, `${declarationPath}/ownership`, systemName, declaration.id, diagnostics);
+    if (!["drop", "flush"].includes(declaration.cancelPolicy)) {
+      diagnostics.push({
+        code: "TN_IR_SYSTEM_DELAYED_COMMAND_CANCEL_UNSUPPORTED",
+        message: `System '${systemName}' delayed command '${declaration.id}' uses unsupported cancelPolicy '${declaration.cancelPolicy}'.`,
+        path: `${declarationPath}/cancelPolicy`,
+        severity: "error",
+        suggestion: "Use 'drop' for missing owners or 'flush' when the command remains valid after owner removal.",
+      });
+    }
+    validateSystemCommand(declaration.command, `${declarationPath}/command`, systemName, writes, eventWrites, componentSchemas, eventSchemas, prefabs, diagnostics);
+  });
+}
+
+function validateDelayedCommandOwnership(
+  ownership: NonNullable<ISystemsIr["systems"][number]["delayedCommands"]>[number]["ownership"],
+  path: string,
+  systemName: string,
+  commandId: string,
+  diagnostics: IIrDiagnostic[],
+): void {
+  const raw = ownership as unknown as Record<string, unknown>;
+  if (!isRecord(raw)) {
+    diagnostics.push({
+      code: "TN_IR_SYSTEM_DELAYED_COMMAND_OWNERSHIP_INVALID",
+      message: `System '${systemName}' delayed command '${commandId}' must declare scene or entity ownership.`,
+      path,
+      severity: "error",
+    });
+    return;
+  }
+  for (const key of Object.keys(raw)) {
+    if (!["id", "kind"].includes(key)) {
+      diagnostics.push({
+        code: "TN_IR_SYSTEM_DELAYED_COMMAND_OWNERSHIP_FIELD_UNSUPPORTED",
+        message: `System '${systemName}' delayed command '${commandId}' ownership uses unsupported field '${key}'.`,
+        path: `${path}/${key}`,
+        severity: "error",
+      });
+    }
+  }
+  if (!["entity", "scene"].includes(ownership.kind)) {
+    diagnostics.push({
+      code: "TN_IR_SYSTEM_DELAYED_COMMAND_OWNERSHIP_KIND_UNSUPPORTED",
+      message: `System '${systemName}' delayed command '${commandId}' ownership kind must be 'entity' or 'scene'.`,
+      path: `${path}/kind`,
+      severity: "error",
+    });
+  }
+  if (typeof ownership.id !== "string" || ownership.id.trim() === "") {
+    diagnostics.push({
+      code: "TN_IR_SYSTEM_DELAYED_COMMAND_OWNERSHIP_ID_INVALID",
+      message: `System '${systemName}' delayed command '${commandId}' ownership id must be a non-empty string.`,
+      path: `${path}/id`,
+      severity: "error",
+    });
+  }
+}
+
+function validateSystemCommand(
+  command: IrSystemCommand,
+  path: string,
+  systemName: string,
+  writes: ReadonlySet<string>,
+  eventWrites: ReadonlySet<string>,
+  componentSchemas: Record<string, IIrNamedSchema>,
+  eventSchemas: Record<string, IIrNamedSchema>,
+  prefabs: IPrefabsIr | undefined,
+  diagnostics: IIrDiagnostic[],
+): void {
+  const raw = command as unknown as Record<string, unknown>;
+  if (!isRecord(raw)) {
+    diagnostics.push({
+      code: "TN_IR_SYSTEM_COMMAND_INVALID",
+      message: `System '${systemName}' command metadata must be an object.`,
+      path,
+      severity: "error",
+    });
+    return;
+  }
+  if (!["addComponent", "clearParent", "despawn", "emitEvent", "instantiate", "removeComponent", "setComponent", "setParent", "spawn"].includes(command.kind)) {
+    diagnostics.push({
+      code: "TN_IR_SYSTEM_COMMAND_KIND_UNSUPPORTED",
+      message: `System '${systemName}' command uses unsupported kind '${String(command.kind)}'.`,
+      path: `${path}/kind`,
+      severity: "error",
+      suggestion: "Use a promoted command kind and declare the matching component write or event write access.",
+    });
+    return;
+  }
+  if (command.kind === "addComponent" || command.kind === "removeComponent" || command.kind === "setComponent") {
+    if (typeof command.component !== "string" || command.component.trim() === "") {
+      diagnostics.push({
+        code: "TN_IR_SYSTEM_COMMAND_INVALID",
+        message: `System '${systemName}' component command must reference a non-empty component name.`,
+        path: `${path}/component`,
+        severity: "error",
+      });
+      return;
+    }
+    if (!isBuiltInComponent(command.component) && componentSchemas[command.component] === undefined) {
+      diagnostics.push({
+        code: "TN_IR_SYSTEM_COMPONENT_SCHEMA_MISSING",
+        fix: componentSchemaFix(command.component),
+        message: `System '${systemName}' command references component '${command.component}' without a schema.`,
+        path: `${path}/component`,
+      });
+    }
+    if (!writes.has(command.component)) {
+      diagnostics.push({
+        code: "TN_IR_SYSTEM_WRITE_UNDECLARED",
+        message: `System '${systemName}' command writes component '${command.component}' without declaring write access.`,
+        path: `${path}/component`,
+      });
+    }
+  }
+  if (command.kind === "spawn") {
+    if (!Array.isArray(command.components)) {
+      diagnostics.push({
+        code: "TN_IR_SYSTEM_COMMAND_INVALID",
+        message: `System '${systemName}' spawn command must declare a components array.`,
+        path: `${path}/components`,
+        severity: "error",
+      });
+      return;
+    }
+    command.components.forEach((component, componentIndex) => {
+      if (typeof component !== "string" || component.trim() === "") {
+        diagnostics.push({
+          code: "TN_IR_SYSTEM_COMMAND_INVALID",
+          message: `System '${systemName}' spawn command component names must be non-empty strings.`,
+          path: `${path}/components/${componentIndex}`,
+          severity: "error",
+        });
+        return;
       }
-      if (command.kind === "instantiate") {
-        if (typeof command.prefab !== "string" || command.prefab.trim() === "") {
-          diagnostics.push({ code: "TN_IR_SYSTEM_PREFAB_COMMAND_INVALID", message: "Instantiate command must reference a non-empty prefab id.", path: `${path}/systems/${systemIndex}/commands/${commandIndex}/prefab` });
-        } else if (prefabs === undefined || !prefabs.prefabs.some((prefab) => prefab.id === command.prefab)) {
-          diagnostics.push({ code: "TN_IR_SYSTEM_PREFAB_MISSING", message: `System '${system.name}' instantiate command references unknown prefab '${command.prefab}'.`, path: `${path}/systems/${systemIndex}/commands/${commandIndex}/prefab` });
-        }
-        if (typeof command.prefix !== "string" || command.prefix.trim() === "") {
-          diagnostics.push({ code: "TN_IR_SYSTEM_PREFAB_PREFIX_INVALID", message: "Instantiate command must declare a non-empty deterministic instance prefix.", path: `${path}/systems/${systemIndex}/commands/${commandIndex}/prefix` });
-        }
+      if (!isBuiltInComponent(component) && componentSchemas[component] === undefined) {
+        diagnostics.push({
+          code: "TN_IR_SYSTEM_COMPONENT_SCHEMA_MISSING",
+          fix: componentSchemaFix(component),
+          message: `System '${systemName}' command spawns component '${component}' without a schema.`,
+          path: `${path}/components/${componentIndex}`,
+        });
       }
-      if (command.kind === "setParent" || command.kind === "clearParent") {
-        if (!writes.has("Hierarchy")) {
-          diagnostics.push({
-            code: "TN_IR_SYSTEM_WRITE_UNDECLARED",
-            message: `System '${system.name}' hierarchy command requires declaring write access to Hierarchy.`,
-            path: `${path}/systems/${systemIndex}/commands/${commandIndex}/kind`,
-          });
-        }
-        if (typeof command.child !== "string" || command.child.trim() === "") {
-          diagnostics.push({ code: "TN_IR_SYSTEM_HIERARCHY_CHILD_INVALID", message: "Hierarchy command child must be a non-empty entity id.", path: `${path}/systems/${systemIndex}/commands/${commandIndex}/child` });
-        }
-        if (command.kind === "setParent" && (typeof command.parent !== "string" || command.parent.trim() === "")) {
-          diagnostics.push({ code: "TN_IR_SYSTEM_HIERARCHY_PARENT_INVALID", message: "setParent command parent must be a non-empty entity id.", path: `${path}/systems/${systemIndex}/commands/${commandIndex}/parent` });
-        }
+      if (!writes.has(component)) {
+        diagnostics.push({
+          code: "TN_IR_SYSTEM_WRITE_UNDECLARED",
+          message: `System '${systemName}' command spawns component '${component}' without declaring write access.`,
+          path: `${path}/components`,
+        });
       }
     });
-  });
+  }
+  if (command.kind === "emitEvent") {
+    if (typeof command.event !== "string" || command.event.trim() === "") {
+      diagnostics.push({
+        code: "TN_IR_SYSTEM_COMMAND_INVALID",
+        message: `System '${systemName}' emitEvent command must reference a non-empty event name.`,
+        path: `${path}/event`,
+        severity: "error",
+      });
+      return;
+    }
+    if (eventSchemas[command.event] === undefined) {
+      diagnostics.push({
+        code: "TN_IR_SYSTEM_EVENT_SCHEMA_MISSING",
+        message: `System '${systemName}' command emits event '${command.event}' without a schema.`,
+        path: `${path}/event`,
+      });
+    }
+    if (!eventWrites.has(command.event)) {
+      diagnostics.push({
+        code: "TN_IR_SYSTEM_EVENT_WRITE_UNDECLARED",
+        message: `System '${systemName}' emits event '${command.event}' without declaring event write access.`,
+        path: `${path}/event`,
+      });
+    }
+  }
+  if (command.kind === "instantiate") {
+    if (typeof command.prefab !== "string" || command.prefab.trim() === "") {
+      diagnostics.push({ code: "TN_IR_SYSTEM_PREFAB_COMMAND_INVALID", message: "Instantiate command must reference a non-empty prefab id.", path: `${path}/prefab` });
+    } else if (prefabs === undefined || !prefabs.prefabs.some((prefab) => prefab.id === command.prefab)) {
+      diagnostics.push({ code: "TN_IR_SYSTEM_PREFAB_MISSING", message: `System '${systemName}' instantiate command references unknown prefab '${command.prefab}'.`, path: `${path}/prefab` });
+    }
+    if (typeof command.prefix !== "string" || command.prefix.trim() === "") {
+      diagnostics.push({ code: "TN_IR_SYSTEM_PREFAB_PREFIX_INVALID", message: "Instantiate command must declare a non-empty deterministic instance prefix.", path: `${path}/prefix` });
+    }
+  }
+  if (command.kind === "setParent" || command.kind === "clearParent") {
+    if (!writes.has("Hierarchy")) {
+      diagnostics.push({
+        code: "TN_IR_SYSTEM_WRITE_UNDECLARED",
+        message: `System '${systemName}' hierarchy command requires declaring write access to Hierarchy.`,
+        path: `${path}/kind`,
+      });
+    }
+    if (typeof command.child !== "string" || command.child.trim() === "") {
+      diagnostics.push({ code: "TN_IR_SYSTEM_HIERARCHY_CHILD_INVALID", message: "Hierarchy command child must be a non-empty entity id.", path: `${path}/child` });
+    }
+    if (command.kind === "setParent" && (typeof command.parent !== "string" || command.parent.trim() === "")) {
+      diagnostics.push({ code: "TN_IR_SYSTEM_HIERARCHY_PARENT_INVALID", message: "setParent command parent must be a non-empty entity id.", path: `${path}/parent` });
+    }
+  }
 }
 
 function validateSystemOrdering(systems: ISystemsIr["systems"], path: string, diagnostics: IIrDiagnostic[]): void {

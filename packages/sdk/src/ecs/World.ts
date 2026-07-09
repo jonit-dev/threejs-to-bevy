@@ -4,7 +4,7 @@ import type { IRuntimeConfigDeclaration } from "../time.js";
 import type { CommandDeclaration } from "./commands.js";
 import type { IQueryDeclaration } from "./query.js";
 import type { EcsFactory, IEcsDeclaration, IEcsSchema } from "./schema.js";
-import type { ISystemDeclaration, ISystemScriptSourceReference, SystemSchedule, SystemService } from "./system.js";
+import type { ISystemDeclaration, ISystemDelayedCommandDeclaration, ISystemScriptSourceReference, SystemSchedule, SystemService } from "./system.js";
 
 export interface IWorldEntityDeclaration {
   components: Record<string, Record<string, unknown>>;
@@ -49,6 +49,7 @@ export interface IWorldSystemDeclaration {
   after?: string[];
   before?: string[];
   commands: IWorldCommandDeclaration[];
+  delayedCommands?: IWorldDelayedCommandDeclaration[];
   eventReads: string[];
   eventWrites: string[];
   name: string;
@@ -60,6 +61,17 @@ export interface IWorldSystemDeclaration {
   script?: IWorldSystemScriptDeclaration;
   schedule: SystemSchedule;
   writes: string[];
+}
+
+export interface IWorldDelayedCommandDeclaration {
+  cancelPolicy: "drop" | "flush";
+  command: IWorldCommandDeclaration;
+  id: string;
+  maxDelayTicks: number;
+  ownership: {
+    id: string;
+    kind: "entity" | "scene";
+  };
 }
 
 export interface IWorldSystemScriptDeclaration {
@@ -225,6 +237,7 @@ function serializeSystem(system: ISystemDeclaration): IWorldSystemDeclaration {
     ...(system.after.length === 0 ? {} : { after: [...system.after] }),
     ...(system.before.length === 0 ? {} : { before: [...system.before] }),
     commands: system.commands.map(serializeCommand),
+    ...(system.delayedCommands.length === 0 ? {} : { delayedCommands: system.delayedCommands.map(serializeDelayedCommand) }),
     eventReads: [...system.eventReads],
     eventWrites: [...system.eventWrites],
     name: system.name,
@@ -236,6 +249,16 @@ function serializeSystem(system: ISystemDeclaration): IWorldSystemDeclaration {
     script: serializeSystemScript(system),
     schedule: system.schedule,
     writes: [...system.writes],
+  };
+}
+
+function serializeDelayedCommand(declaration: ISystemDelayedCommandDeclaration): IWorldDelayedCommandDeclaration {
+  return {
+    cancelPolicy: declaration.cancelPolicy,
+    command: serializeCommand(declaration.command),
+    id: declaration.id,
+    maxDelayTicks: declaration.maxDelayTicks,
+    ownership: { ...declaration.ownership },
   };
 }
 

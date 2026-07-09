@@ -79,6 +79,21 @@ export type IrSystemCommand =
       kind: "emitEvent";
     };
 
+export type IrDelayedCommandCancelPolicy = "drop" | "flush";
+
+export interface IIrDelayedCommandOwnership {
+  id: string;
+  kind: "entity" | "scene";
+}
+
+export interface IIrDelayedCommandDeclaration {
+  cancelPolicy: IrDelayedCommandCancelPolicy;
+  command: IrSystemCommand;
+  id: string;
+  maxDelayTicks: number;
+  ownership: IIrDelayedCommandOwnership;
+}
+
 export interface IIrSystemQuery {
   changed?: string[];
   limit?: number;
@@ -92,6 +107,7 @@ export interface IIrSystemDeclaration {
   after?: string[];
   before?: string[];
   commands: IrSystemCommand[];
+  delayedCommands?: IIrDelayedCommandDeclaration[];
   eventReads: string[];
   eventWrites: string[];
   name: string;

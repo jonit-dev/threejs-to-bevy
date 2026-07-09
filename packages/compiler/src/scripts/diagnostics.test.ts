@@ -309,6 +309,17 @@ test("should reject timer and worker APIs", () => {
   );
 });
 
+test("should suggest bounded scheduling for platform timers", () => {
+  const diagnostics = diagnosePortableSystem({
+    source: "() => setInterval(() => undefined, 100)",
+    systemName: "badTimer",
+  });
+
+  assert.equal(diagnostics[0]?.code, "TN_SCRIPT_TIMER_API_UNSUPPORTED");
+  assert.match(diagnostics[0]?.suggestion ?? "", /ctx\.schedule\.afterTicks/);
+  assert.match(diagnostics[0]?.suggestion ?? "", /declared delayedCommands/);
+});
+
 test("should reject async and dynamic script code", () => {
   const diagnostics = diagnosePortableSystem({
     source: "async (ctx) => { await Promise.resolve(); return eval('ctx'); }",

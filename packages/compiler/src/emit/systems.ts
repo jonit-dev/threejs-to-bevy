@@ -4,6 +4,7 @@ interface ISystemLike {
   after?: string[];
   before?: string[];
   commands: ISystemsIr["systems"][number]["commands"];
+  delayedCommands?: ISystemsIr["systems"][number]["delayedCommands"];
   eventReads: string[];
   eventWrites: string[];
   name: string;
@@ -27,27 +28,8 @@ export function systemsToIr(systems: ReadonlyArray<ISystemLike>): ISystemsIr {
       .map((system) => ({
         ...((system.after ?? []).length === 0 ? {} : { after: [...(system.after ?? [])].sort() }),
         ...((system.before ?? []).length === 0 ? {} : { before: [...(system.before ?? [])].sort() }),
-        commands: system.commands.map((command) => {
-          if (command.kind === "spawn") {
-            return { components: [...command.components].sort(), entity: command.entity, kind: command.kind };
-          }
-          if (command.kind === "emitEvent") {
-            return { event: command.event, kind: command.kind };
-          }
-          if (command.kind === "despawn") {
-            return { entity: command.entity, kind: command.kind };
-          }
-          if (command.kind === "instantiate") {
-            return { kind: command.kind, prefab: command.prefab, prefix: command.prefix };
-          }
-          if (command.kind === "setParent") {
-            return { child: command.child, kind: command.kind, parent: command.parent };
-          }
-          if (command.kind === "clearParent") {
-            return { child: command.child, kind: command.kind };
-          }
-          return { component: command.component, entity: command.entity, kind: command.kind };
-        }),
+        commands: system.commands.map(serializeCommand),
+        ...delayedCommandsIr(system.delayedCommands),
         eventReads: [...system.eventReads].sort(),
         eventWrites: [...system.eventWrites].sort(),
         name: system.name,
@@ -69,6 +51,45 @@ export function systemsToIr(systems: ReadonlyArray<ISystemLike>): ISystemsIr {
         writes: [...system.writes].sort(),
       })),
   };
+}
+
+function delayedCommandsIr(delayedCommands: ISystemLike["delayedCommands"]): Partial<Pick<ISystemsIr["systems"][number], "delayedCommands">> {
+  if (delayedCommands === undefined || delayedCommands.length === 0) {
+    return {};
+  }
+  return {
+    delayedCommands: delayedCommands
+      .map((declaration) => ({
+        cancelPolicy: declaration.cancelPolicy,
+        command: serializeCommand(declaration.command),
+        id: declaration.id,
+        maxDelayTicks: declaration.maxDelayTicks,
+        ownership: { ...declaration.ownership },
+      }))
+      .sort((left, right) => left.id.localeCompare(right.id)),
+  };
+}
+
+function serializeCommand(command: ISystemsIr["systems"][number]["commands"][number]): ISystemsIr["systems"][number]["commands"][number] {
+  if (command.kind === "spawn") {
+    return { components: [...command.components].sort(), entity: command.entity, kind: command.kind };
+  }
+  if (command.kind === "emitEvent") {
+    return { event: command.event, kind: command.kind };
+  }
+  if (command.kind === "despawn") {
+    return { entity: command.entity, kind: command.kind };
+  }
+  if (command.kind === "instantiate") {
+    return { kind: command.kind, prefab: command.prefab, prefix: command.prefix };
+  }
+  if (command.kind === "setParent") {
+    return { child: command.child, kind: command.kind, parent: command.parent };
+  }
+  if (command.kind === "clearParent") {
+    return { child: command.child, kind: command.kind };
+  }
+  return { component: command.component, entity: command.entity, kind: command.kind };
 }
 
 function scriptIr(script: unknown): Pick<ISystemsIr["systems"][number], "script"> {

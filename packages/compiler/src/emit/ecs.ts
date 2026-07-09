@@ -21,6 +21,7 @@ interface IEcsWorldLike {
 
 interface IEcsSystemSnapshot {
   commands: IrSystemCommand[];
+  delayedCommands?: ISystemsIr["systems"][number]["delayedCommands"];
   eventReads: string[];
   eventWrites: string[];
   name: string;

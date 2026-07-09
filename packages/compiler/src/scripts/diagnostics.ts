@@ -66,7 +66,7 @@ const unsupportedPatterns: Array<{
     code: "TN_SCRIPT_TIMER_API_UNSUPPORTED",
     label: "timer or scheduler APIs",
     pattern: /\b(?:cancelAnimationFrame|clearInterval|clearTimeout|queueMicrotask|requestAnimationFrame|setInterval|setTimeout)\b/,
-    suggestion: "Use ctx.time and the portable schedule instead of timers or browser schedulers.",
+    suggestion: "Use ctx.schedule.afterTicks with declared delayedCommands metadata, or ctx.time/timers helpers for pure elapsed-time checks, instead of platform timers or browser schedulers.",
   },
   {
     code: "TN_SCRIPT_RUNTIME_IMPORT_UNSUPPORTED",

@@ -89,6 +89,34 @@ test("should emit prefab and hierarchy command declarations", () => {
   ]);
 });
 
+test("should emit bounded delayed command declarations", () => {
+  const Health = defineComponent("Health", {
+    current: "number",
+  });
+  const system = fixedUpdate("spawnDelayed", {
+    delayedCommands: [
+      {
+        cancelPolicy: "drop",
+        command: commands.spawn("marker", [Health]),
+        id: "spawnMarker",
+        maxDelayTicks: 6,
+        ownership: { id: "arena", kind: "scene" },
+      },
+    ],
+    writes: [Health],
+  });
+
+  assert.deepEqual(systemsToIr([system]).systems[0]?.delayedCommands, [
+    {
+      cancelPolicy: "drop",
+      command: { components: ["Health"], entity: "marker", kind: "spawn" },
+      id: "spawnMarker",
+      maxDelayTicks: 6,
+      ownership: { id: "arena", kind: "scene" },
+    },
+  ]);
+});
+
 test("should emit scene service declaration", () => {
   const system = update("menuActions", { services: ["scene.change", "scene.push", "scene.pop"] });
 

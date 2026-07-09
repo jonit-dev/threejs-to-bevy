@@ -138,9 +138,12 @@ export {
 export type {
   IIrSystemDeclaration,
   IIrSystemQuery,
+  IIrDelayedCommandDeclaration,
+  IIrDelayedCommandOwnership,
   IIrStateSource,
   IIrComponentHookDeclaration,
   IIrObserverDeclaration,
+  IrDelayedCommandCancelPolicy,
   IrComponentHookKind,
   IrSystemCommand,
   IrObserverPhase,

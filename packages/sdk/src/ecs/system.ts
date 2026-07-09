@@ -49,6 +49,35 @@ export type SystemService =
   | "ui.setValue";
 export type PortableSystem<TContext = ISystemContext> = (context: TContext) => unknown;
 
+export type SystemDelayedCommandCancelPolicy = "drop" | "flush";
+
+export interface ISystemDelayedCommandOwnership {
+  id: string;
+  kind: "entity" | "scene";
+}
+
+export interface ISystemDelayedCommandDeclaration {
+  cancelPolicy: SystemDelayedCommandCancelPolicy;
+  command: CommandDeclaration;
+  id: string;
+  maxDelayTicks: number;
+  ownership: ISystemDelayedCommandOwnership;
+}
+
+export interface IScheduleAfterTicksOptions {
+  command: CommandDeclaration | string;
+  delayTicks: number;
+  id: string;
+  owner?: ISystemDelayedCommandOwnership;
+}
+
+export interface IScheduleAfterTicksResult {
+  accepted: boolean;
+  delayTicks: number;
+  id: string;
+  status: "enqueued" | "rejected";
+}
+
 export interface ISystemScriptSourceReference {
   export: string;
   hash?: string;
@@ -59,6 +88,7 @@ export interface ISystemOptions {
   after?: ReadonlyArray<string>;
   before?: ReadonlyArray<string>;
   commands?: ReadonlyArray<CommandDeclaration>;
+  delayedCommands?: ReadonlyArray<ISystemDelayedCommandDeclaration>;
   eventReads?: ReadonlyArray<EcsFactory | IEcsSchema | string>;
   eventWrites?: ReadonlyArray<EcsFactory | IEcsSchema | string>;
   queries?: ReadonlyArray<IQueryDeclaration>;
@@ -80,6 +110,7 @@ export interface ISystemDeclaration {
   after: string[];
   before: string[];
   commands: CommandDeclaration[];
+  delayedCommands: ISystemDelayedCommandDeclaration[];
   eventReads: string[];
   eventSchemas: IEcsSchema[];
   eventWrites: string[];
@@ -346,6 +377,9 @@ export interface ISystemContext {
     push(scene: string, options?: Record<string, unknown>): { accepted: true; operation: "push"; scene: string };
     unload(scene: string, options?: Record<string, unknown>): { accepted: true; operation: "unload"; scene: string };
   };
+  schedule: {
+    afterTicks(options: IScheduleAfterTicksOptions): IScheduleAfterTicksResult;
+  };
   settings: {
     export(): Record<string, boolean | number | string>;
     get(key: string): boolean | number | string | undefined;
@@ -423,11 +457,12 @@ function createSystem(schedule: SystemSchedule, name: string, options: ISystemOp
   }
 
   const commands = [...(options.commands ?? [])];
+  const delayedCommands = [...(options.delayedCommands ?? [])];
   const componentSchemaSources = [
     ...(options.reads ?? []),
     ...(options.writes ?? []),
     ...(options.queries ?? []).flatMap((query) => query.schemas),
-    ...commands.flatMap((command) => {
+    ...[...commands, ...delayedCommands.map((declaration) => declaration.command)].flatMap((command) => {
       if (command.kind === "spawn") {
         return command.schemas;
       }
@@ -440,7 +475,9 @@ function createSystem(schedule: SystemSchedule, name: string, options: ISystemOp
   const eventSchemaSources = [
     ...(options.eventReads ?? []),
     ...(options.eventWrites ?? []),
-    ...commands.flatMap((command) => ("schema" in command && command.schema !== undefined && command.schema.kind === "event" ? [command.schema] : [])),
+    ...[...commands, ...delayedCommands.map((declaration) => declaration.command)].flatMap((command) =>
+      "schema" in command && command.schema !== undefined && command.schema.kind === "event" ? [command.schema] : [],
+    ),
   ];
   const resourceSchemaSources = [...(options.resourceReads ?? []), ...(options.resourceWrites ?? [])];
 
@@ -448,6 +485,7 @@ function createSystem(schedule: SystemSchedule, name: string, options: ISystemOp
     after: normalizeSystemRefs(options.after ?? []),
     before: normalizeSystemRefs(options.before ?? []),
     commands,
+    delayedCommands,
     eventReads: normalizeNames(options.eventReads ?? []),
     eventSchemas: normalizeSchemas(eventSchemaSources, "event"),
     eventWrites: normalizeNames(options.eventWrites ?? []),

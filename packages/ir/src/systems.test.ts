@@ -654,6 +654,79 @@ test("should reject unsupported scripting lifecycle assumptions", async () => {
   }
 });
 
+test("should accept bounded delayed command metadata", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-ir-systems-delayed-command-"));
+  try {
+    await writeBundle(root, {
+      commands: [],
+      delayedCommands: [
+        {
+          cancelPolicy: "drop",
+          command: { components: ["Health"], entity: "marker", kind: "spawn" },
+          id: "spawnMarker",
+          maxDelayTicks: 8,
+          ownership: { id: "arena", kind: "scene" },
+        },
+        {
+          cancelPolicy: "flush",
+          command: { event: "LifecycleEvent", kind: "emitEvent" },
+          id: "emitReady",
+          maxDelayTicks: 2,
+          ownership: { id: "player", kind: "entity" },
+        },
+      ],
+      eventWrites: ["LifecycleEvent"],
+      reads: ["Health"],
+      schedule: "fixedUpdate",
+      writes: ["Health"],
+    });
+
+    const result = await validateBundle(root);
+
+    assert.equal(result.ok, true);
+    assert.deepEqual(result.diagnostics, []);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should reject unbounded delayed command metadata", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-ir-systems-delayed-command-invalid-"));
+  try {
+    await writeBundle(root, {
+      commands: [],
+      delayedCommands: [
+        {
+          cancelPolicy: "wallClock",
+          command: { component: "Health", entity: "target", kind: "setComponent" },
+          id: "badDelay",
+          maxDelayTicks: 0,
+          ownership: { id: "", kind: "timer" },
+          timer: "setTimeout",
+        },
+      ],
+      reads: ["Health"],
+      schedule: "fixedUpdate",
+      writes: [],
+    });
+
+    const result = await validateBundle(root);
+
+    assert.equal(result.ok, false);
+    assert.deepEqual(result.diagnostics.map((diagnostic) => diagnostic.code), [
+      "TN_IR_SYSTEM_DELAYED_COMMAND_FIELD_UNSUPPORTED",
+      "TN_IR_SYSTEM_DELAYED_COMMAND_MAX_TICKS_INVALID",
+      "TN_IR_SYSTEM_DELAYED_COMMAND_OWNERSHIP_KIND_UNSUPPORTED",
+      "TN_IR_SYSTEM_DELAYED_COMMAND_OWNERSHIP_ID_INVALID",
+      "TN_IR_SYSTEM_DELAYED_COMMAND_CANCEL_UNSUPPORTED",
+      "TN_IR_SYSTEM_WRITE_UNDECLARED",
+    ]);
+    assert.deepEqual(result.diagnostics.at(-1)?.path, "systems.ir.json/systems/0/delayedCommands/0/command/component");
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
 test("should reject invalid component lifecycle hook metadata", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-ir-systems-component-hooks-invalid-"));
   try {
@@ -815,6 +888,8 @@ async function writeBundle(
     async?: unknown;
     commands: unknown[];
     componentHooks?: unknown;
+    delayedCommands?: unknown;
+    eventWrites?: string[];
     lifecycle?: unknown;
     omitTransformSchema?: boolean;
     reads: string[];
@@ -877,8 +952,9 @@ async function writeBundle(
         {
           ...(system.async === undefined ? {} : { async: system.async }),
           commands: system.commands,
+          ...(system.delayedCommands === undefined ? {} : { delayedCommands: system.delayedCommands }),
           eventReads: [],
-          eventWrites: [],
+          eventWrites: system.eventWrites ?? [],
           name: "badDamage",
           queries: system.queries ?? [],
           reads: system.reads,

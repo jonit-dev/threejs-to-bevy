@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { SdkError } from "../errors.js";
+import * as commands from "./commands.js";
 import { World } from "./World.js";
 import { defineQuery } from "./query.js";
 import { defineSystem, startup, update } from "./system.js";
@@ -181,6 +182,34 @@ test("should serialize system ordering constraints", () => {
     schedule: "update",
     writes: [],
   });
+});
+
+test("should serialize bounded delayed command declarations", () => {
+  const Health = defineComponent("Health", { current: "number" });
+  const world = new World();
+
+  world.addSystem(update("spawnMarker", {
+    delayedCommands: [
+      {
+        cancelPolicy: "drop",
+        command: commands.spawn("marker", [Health]),
+        id: "spawnMarkerLater",
+        maxDelayTicks: 4,
+        ownership: { id: "arena", kind: "scene" },
+      },
+    ],
+    writes: [Health],
+  }));
+
+  assert.deepEqual(world.toJSON().systems[0]?.delayedCommands, [
+    {
+      cancelPolicy: "drop",
+      command: { components: ["Health"], entity: "marker", kind: "spawn" },
+      id: "spawnMarkerLater",
+      maxDelayTicks: 4,
+      ownership: { id: "arena", kind: "scene" },
+    },
+  ]);
 });
 
 test("should serialize query ordering pagination and changed filters", () => {
