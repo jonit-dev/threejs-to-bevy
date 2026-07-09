@@ -47,6 +47,7 @@ export const RELEASE_FOCUSED_GATES: readonly FocusedGate[] = [
   { name: "verify rendering residuals", reportPath: "tools/verify/artifacts/rendering-residuals/verification-report.json", script: "verify:rendering-residuals" },
   { name: "verify runtime gameplay host", reportPath: "tools/verify/artifacts/runtime-gameplay-host/verification-report.json", script: "verify:runtime-gameplay-host" },
   { name: "verify runtime query diffing", reportPath: "tools/verify/artifacts/runtime-query-diffing/verification-report.json", script: "verify:runtime-query-diffing" },
+  { name: "verify particle commands", reportPath: "tools/verify/artifacts/particle-commands/verification-report.json", script: "verify:particle-commands" },
   { name: "verify scripting helpers lifecycle", reportPath: "tools/verify/artifacts/scripting-helpers-lifecycle/verification-report.json", script: "verify:scripting-helpers-lifecycle" },
   { name: "verify template production", reportPath: "tools/verify/artifacts/template-production/verification-report.json", script: "verify:template-production" },
   { name: "verify ui persistence settings facades", reportPath: "tools/verify/artifacts/ui-persistence-settings-facades/verification-report.json", script: "verify:ui-persistence-settings-facades" },

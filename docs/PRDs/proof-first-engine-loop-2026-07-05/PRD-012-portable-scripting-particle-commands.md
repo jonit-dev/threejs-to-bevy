@@ -233,9 +233,9 @@ sequenceDiagram
 
 **Implementation:**
 
-- [ ] Update scripting API checklist and missing inventory.
-- [ ] Add evidence paths and remaining unsupported particle boundaries.
-- [ ] Wire focused gate into release if appropriate.
+- [x] Update scripting API checklist and missing inventory.
+- [x] Add evidence paths and remaining unsupported particle boundaries.
+- [x] Wire focused gate into release if appropriate.
 
 **Tests Required:**
 

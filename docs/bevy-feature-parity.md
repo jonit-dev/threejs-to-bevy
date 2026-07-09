@@ -918,12 +918,13 @@ diagnostics until portable promotion criteria and web/Bevy evidence exist.
       topology, IK, retargeting, and backend animation handles remain outside
       the portable source contract
 - [x] `P1` Script-triggered lightweight VFX through a ThreeNative-owned bounded
-      command contract: `particles.start`, `particles.stop`, `particles.burst`,
-      and `particles.reset` run only over declared emitters with deterministic
+      command contract: `particles.play`, `particles.emit`, `particles.clear`,
+      and `particles.stop` run only over declared emitters with deterministic
       seed/count/status observations, max count/rate/lifetime caps, simple mesh
       or billboard representation, alpha material constraints, and web/Bevy
-      visible-region proof. This is not Bevy-native particle-system parity and
-      does not expose backend particle handles.
+      visible-region proof. `particles.start`, `particles.burst`, and
+      `particles.reset` remain compatibility aliases. This is not Bevy-native
+      particle-system parity and does not expose backend particle handles.
 
 ### 🧱 Physics, Collision, and Character Movement
 
