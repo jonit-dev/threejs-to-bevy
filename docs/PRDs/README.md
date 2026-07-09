@@ -152,11 +152,12 @@ execution bundle.
   splits authoring operation implementation by source family, introduces
   focused runtime trace contracts, and shrinks native mapping hotspots behind
   behavior-preserving conformance tests.
-- [Actor Archetypes and Typed Scripting](proof-first-engine-loop-2026-07-05/PRD-009-actor-archetypes-and-typed-scripting.md):
+- [Actor Archetypes and Typed Scripting](done/proof-first-engine-loop-2026-07-05/PRD-009-actor-archetypes-and-typed-scripting.md):
   generated typed script context and id unions, `defineBehavior`
-  single-source system declarations, and re-appliable parameterized actor
-  archetypes (`tn actor add character --asset <glb>`) with provenance and
-  automatic animation-clip wiring.
+  source-owned system metadata, and reusable actor archetypes
+  (`character`, `vehicle`, `pickup`, `camera-boom`, `prop-static`) with
+  provenance, CLI/registry operations, starter guidance, and compact API-card
+  examples.
 - [Complete Structured Authoring Parity](done/complete-structured-authoring-parity.md):
   full structured source coverage for map/editor-owned data, CLI/MCP/editor
   operation parity with TypeScript-era authoring, bundle import, provenance, and

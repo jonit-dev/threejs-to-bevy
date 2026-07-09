@@ -75,13 +75,20 @@ interface ScriptTransformFacade {
 
 - Put durable behavior in `src/scripts/**/*.ts`; reference module/export from
   `content/**/*.json`.
+- Refresh project types with `tn types generate --project . --json`; `tn build`
+  and `tn dev --watch` do this automatically.
+- Type entrypoints with generated `ProjectContext` from
+  `.threenative/types/project-context`.
+- Prefer `defineBehavior(metadata, fn)` for new systems. Put schedule,
+  access, services, and query metadata in code; keep systems JSON as
+  module/export attachments.
 - Read movement with `context.input.getAxis("MoveX")` /
   `context.input.getAxis("MoveZ")` or `context.input.getButton("<name>")`.
 - Move entities through `entity.transform().position`,
   `setPosition([x, y, z])`, or `setPose(position, rotation)`.
 - Use `context.resources.get/set/patch` for game state and HUD bindings.
 - If a script calls `entity.patch("MeshRenderer", ...)`, declare
-  `writes: ["MeshRenderer"]`; transform movement declares
+  `writes: ["MeshRenderer"]` in `defineBehavior`; transform movement declares
   `writes: ["Transform"]`. `writes` are component names, not entity IDs.
 - Use `context.time.fixedDelta` for deterministic fixed-step movement.
 - Supported helper imports: `Mathf`, `Vector2`, `Vector3`, `Quat`,
@@ -99,8 +106,8 @@ interface ScriptTransformFacade {
   cameras, resources, UI bindings, and script references.
 - Input: `content/input/*.input.json` uses actions with
   `keyboard.KeyW`-style bindings and axes named `MoveX` / `MoveZ`.
-- Systems: `content/systems/*.systems.json` declares every script module,
-  export, component read/write, and resource read/write.
+- Systems: `content/systems/*.systems.json` attaches script module/export
+  entries. New access metadata should live in `defineBehavior`.
 - UI: `content/ui/*.ui.json` binds HUD text to resource paths such as
   `GameState.score`.
 - Typed spec: `src/game.spec.ts` is compiled by
@@ -108,6 +115,16 @@ interface ScriptTransformFacade {
   `{ node, resource: "GameState", fields: ["scoreText"] }`.
 - Assets/materials/meshes stay in `content/assets`, `content/materials`,
   and `content/meshes`; preserve stable IDs and schema fields.
+
+## Actor Shortcuts
+
+```bash
+tn actor list --project . --json
+tn actor add character --id hero --scene <scene> --project . --json
+tn actor add vehicle --id player.vehicle --scene <scene> --project . --json
+tn actor add pickup --id pickup.01 --scene <scene> --project . --json
+tn actor update hero --set speed=5 --project . --json
+```
 
 ## Default Loop
 

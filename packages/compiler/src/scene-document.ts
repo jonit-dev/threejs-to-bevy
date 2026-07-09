@@ -143,8 +143,8 @@ function lowerSceneDocument(
         commands: systemCommands(system.commands),
         eventReads: system.eventReads,
         eventWrites: system.eventWrites,
-        queries: systemQueries(system.queries),
-        reads: system.reads ?? [PrefabTransform],
+        queries: systemQueries(system.queries, system.source === "behavior-metadata"),
+        reads: system.reads ?? (system.source === "behavior-metadata" ? undefined : [PrefabTransform]),
         resourceReads: system.resourceReads,
         resourceWrites: system.resourceWrites,
         script: {
@@ -152,7 +152,7 @@ function lowerSceneDocument(
           module: system.script.module,
         },
         services: system.services as SystemService[] | undefined,
-        writes: system.writes ?? [PrefabTransform],
+        writes: system.writes ?? (system.source === "behavior-metadata" ? undefined : [PrefabTransform]),
       }),
     );
   }
@@ -210,8 +210,8 @@ function systemDeclaration(schedule: string | undefined, id: string, options: Pa
 type SourceSystem = NonNullable<ISceneDocument["systems"]>[number] & { scene?: string };
 type SourceScriptLifecycle = NonNullable<ISceneDocument["scriptLifecycles"]>[number];
 
-function systemQueries(queries: SourceSystem["queries"]): IQueryDeclaration[] {
-  const sourceQueries: NonNullable<SourceSystem["queries"]> = queries ?? [{ with: ["Transform"] }];
+function systemQueries(queries: SourceSystem["queries"], behaviorMetadataSource = false): IQueryDeclaration[] {
+  const sourceQueries: NonNullable<SourceSystem["queries"]> = queries ?? (behaviorMetadataSource ? [] : [{ with: ["Transform"] }]);
   return sourceQueries.map((query) => defineQuery({
     changed: query.changed,
     limit: query.limit,

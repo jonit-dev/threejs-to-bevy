@@ -35,7 +35,9 @@ Current support:
 - Cookbook lookup supports both `tn cookbook show <id> --json` and the compact
   `tn cookbook <id> --json` shorthand for validated pattern pairs.
 - Maintained starters include `docs/API-CARD.md`, a compact generated
-  ScriptContext/source contract validated against `packages/script-stdlib`.
+  ScriptContext/source contract validated against `packages/script-stdlib`;
+  the cards now surface `tn actor`, `tn types generate`, and
+  `defineBehavior` as the preferred path before lower-level JSON edits.
 - MCP and authoring-client adapters are thin wrappers over the same core
   operations.
 - Prescriptive diagnostics now attach optional structured `fix` payloads for
@@ -69,6 +71,8 @@ Verification:
 - `pnpm --filter @threenative/mcp-server test`
 - `pnpm verify:cookbook`
 - `pnpm verify:template-production`
+- Structured-source starter smoke with `defineBehavior`-owned access metadata
+  and systems JSON reduced to script attachments.
 
 Full prior evidence is preserved in
 [full-status-archive.md](full-status-archive.md).

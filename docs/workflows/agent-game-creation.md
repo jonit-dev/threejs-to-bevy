@@ -49,6 +49,30 @@ block IDs include:
 | `objective.checkpoint-lap` | Ordered checkpoint, lap, finish, and retry state through `CheckpointRaceEx`. |
 | `spawn.region-sampler` | Deterministic spawn points through `SpawnEx` and `RandomEx`. |
 
+## Prefer Actor Archetypes
+
+For high-value game surfaces, use actor archetypes before editing scene,
+physics, input, camera, UI, or systems JSON directly:
+
+```bash
+tn actor list --project . --json
+tn actor add character --id hero --scene <scene-id> --project . --json
+tn actor add vehicle --id player.vehicle --scene <scene-id> --project . --json
+tn actor add pickup --id pickup.01 --scene <scene-id> --project . --json
+tn actor add camera-boom --id follow.camera --scene <scene-id> --project . --json
+tn actor add prop-static --id barrier.01 --scene <scene-id> --project . --json
+tn actor update hero --set speed=5 --project . --json
+```
+
+Archetypes stamp provenance, bounded component source, script attachments, and
+typed `defineBehavior` stubs for the supported surface. After an archetype or
+other source-shape change, run `tn types generate --project . --json` before
+editing scripts; `tn build` and `tn dev --watch` also refresh
+`.threenative/types/`. For new script systems, put schedule/access metadata in
+`defineBehavior(metadata, fn)` next to the code and leave
+`content/systems/*.systems.json` as module/export attachments. Hand-write
+access lists only for legacy plain-function systems or unsupported metadata.
+
 ## Apply Bounded Recipes
 
 `tn game improve --apply-plan <file> --json` applies only complete plan steps

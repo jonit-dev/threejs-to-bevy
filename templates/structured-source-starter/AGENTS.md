@@ -13,9 +13,14 @@ Rules for this generated ThreeNative project.
 ## Editing
 
 - Prefer deterministic CLI edits and diagnostics:
-  `tn scene ... --json`, `tn ui ... --json`,
+  `tn actor ... --json`, `tn scene ... --json`, `tn ui ... --json`,
   `tn prefab set-material ... --json`, `tn material ... --json`, and
   `tn add <mechanic-block> ... --json`.
+- Use actor archetypes before hand-editing entity, collider, camera, input, UI,
+  or system JSON for high-value surfaces:
+  `tn actor list --project . --json`,
+  `tn actor add <character|vehicle|pickup|camera-boom|prop-static> --id <id> --project . --json`,
+  and `tn actor update <id> --set key=value --project . --json`.
 - Before opening a full scene JSON file to inspect one object, use targeted
   scene inspection:
   `tn scene inspect arena --node <entity-or-resource-or-ui-id> --project . --json`.
@@ -25,6 +30,11 @@ Rules for this generated ThreeNative project.
 - Preserve schema/version fields and stable IDs unless asked to rename.
 - Add behavior in `src/scripts/**/*.ts`, then reference module/exports from
   structured source.
+- For new script systems, prefer `defineBehavior(metadata, fn)` from
+  `@threenative/script-stdlib` so schedule/access metadata lives next to the
+  behavior. Keep `content/systems/*.systems.json` as script attachments unless
+  plain-function compatibility is required; do not hand-write access lists when
+  `defineBehavior` can own them.
 - Use the generated `ProjectContext` type from
   `.threenative/types/project-context.d.ts` for script entrypoints. Regenerate
   it with `tn types generate --project . --json` after adding scenes, input,

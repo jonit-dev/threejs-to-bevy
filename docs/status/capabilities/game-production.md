@@ -23,6 +23,9 @@ Current support:
   reusable high-value surfaces with bounded component source, and
   `tn game plan --json` now reports actor archetype suggestions for
   hero/vehicle/pickup/camera/prop surfaces before lower-level JSON mutations.
+- Generated project instructions and API cards route agents through
+  archetypes, project type generation, and `defineBehavior` before direct
+  entity/system JSON edits.
 - Declarative gameplay-flow contracts are emerging behind bounded operations:
   `tn scene set-spawner` persists typed `Spawner` components with deterministic
   web/native conformance trace parity under

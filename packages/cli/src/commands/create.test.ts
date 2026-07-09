@@ -283,9 +283,12 @@ test("should create structured-source starter template with editable content doc
     assert.match(sceneDoc, /"schema": "threenative.scene"/);
     assert.match(sceneDoc, /"prefab": "prefab.player"/);
     assert.match(systemDoc, /"module": "src\/scripts\/player.ts"/);
-    assert.match(systemDoc, /"writes": \[\s*"Transform"\s*\]/);
+    assert.match(systemDoc, /"source": "behavior-metadata"/);
+    assert.doesNotMatch(systemDoc, /"writes": \[\s*"Transform"\s*\]/);
     assert.match(scriptSource, /movePlayerToGoal/);
     assert.match(scriptSource, /@threenative\/script-stdlib/);
+    assert.match(scriptSource, /defineBehavior/);
+    assert.match(scriptSource, /writes: \["Transform"\]/);
     assert.match(scriptSource, /context\.time\.fixedDelta/);
     assert.match(scriptSource, /entity\.transform\(\)/);
     assert.match(readme, /content\/\*\*\/\*\.json/);

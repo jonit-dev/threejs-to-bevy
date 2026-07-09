@@ -225,7 +225,10 @@ function diagnoseBehaviorMetadataDuplicates(system: ISystemScriptSource, metadat
     const behaviorValue = metadata[key];
     const systemValue = system[key as keyof ISystemScriptSource];
     const behaviorHasValue = Array.isArray(behaviorValue) ? behaviorValue.length > 0 : behaviorValue !== undefined;
-    const systemHasValue = Array.isArray(systemValue) ? systemValue.length > 0 : systemValue !== undefined;
+    const systemHasValue =
+      key === "schedule" && systemValue === "fixedUpdate"
+        ? false
+        : Array.isArray(systemValue) ? systemValue.length > 0 : systemValue !== undefined;
     return behaviorHasValue && systemHasValue
       ? [
           {

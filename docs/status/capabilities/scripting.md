@@ -20,6 +20,9 @@ Current support:
   own schedule/access metadata next to code; the compiler strips the wrapper
   for runtime bundles, emits `source: "behavior-metadata"` in systems IR, and
   rejects duplicate structured-source access lists.
+- Generated starter scripts use `defineBehavior` with project-generated
+  `ProjectContext` so new systems can avoid hand-maintained access lists in
+  systems JSON.
 - Shallow default hydration and patching through `entity.get(..., defaults)`,
   `context.resources.get(..., defaults)`, and `context.resources.patch(...)`.
 - Literal `context.resources.get(...)`, `context.resources.set(...)`,

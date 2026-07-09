@@ -228,6 +228,49 @@ test("should reject duplicate defineBehavior and structured source metadata", as
   }
 });
 
+test("should allow defineBehavior schedule to replace the implicit fixedUpdate default", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-script-source-ref-behavior-default-schedule-"));
+  try {
+    await mkdir(join(root, "src/scripts"), { recursive: true });
+    await writeFile(
+      join(root, "src/scripts/player.ts"),
+      `import { defineBehavior, type ScriptContext } from "@threenative/script-stdlib";\nexport const updatePlayer = defineBehavior({ schedule: "update", writes: ["Transform"] }, (context: ScriptContext) => context.time.deltaTime);\n`,
+    );
+
+    const systems: ISystemScriptSource[] = [
+      {
+        commands: [],
+        eventReads: [],
+        eventWrites: [],
+        name: "updatePlayer",
+        queries: [],
+        reads: [],
+        resourceReads: [],
+        resourceWrites: [],
+        schedule: "fixedUpdate",
+        services: [],
+        script: {
+          exportName: "system_updatePlayer",
+          sourceRef: {
+            export: "updatePlayer",
+            module: "src/scripts/player.ts",
+            systemId: "updatePlayer",
+          },
+        },
+        writes: [],
+      },
+    ];
+    const result = resolveSystemScriptSources(systems, root);
+
+    assert.deepEqual(result.diagnostics, []);
+    assert.equal(result.systems[0]?.schedule, "update");
+    assert.equal(result.systems[0]?.source, "behavior-metadata");
+    assert.deepEqual(result.systems[0]?.writes, ["Transform"]);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
 test("should report untyped script context without blocking source emit", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-script-source-ref-untyped-context-"));
   try {

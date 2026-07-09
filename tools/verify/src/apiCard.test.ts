@@ -49,3 +49,12 @@ test("should prefer in-distribution helper aliases in the generated API card", a
   assert.match(card, /Legacy aliases `NumberEx`, `Vec2`, and `Vec3` remain supported/);
   assert.equal(card.indexOf("`Mathf`") < card.indexOf("`NumberEx`"), true);
 });
+
+test("should include typegen behavior and actor shortcuts in the generated API card", async () => {
+  const source = await readFile(scriptContextPath, "utf8");
+  const card = renderScriptApiCardFromSource(source);
+
+  assert.match(card, /tn types generate --project \. --json/);
+  assert.match(card, /defineBehavior\(metadata, fn\)/);
+  assert.match(card, /tn actor add character/);
+});
