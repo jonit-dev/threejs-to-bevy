@@ -954,6 +954,9 @@ diagnostics until portable promotion criteria and web/Bevy evidence exist.
 - [x] Native character move observations include stable slope, contact, and
       push payloads matching the web trace shape for portable collider
       layer/mask/material/contact phase metadata
+- [x] Focused `verify:character-physics-contacts` gate compares web/native
+      character contact traces for slopes, pushed primitives, and filtered
+      contact payload ordering
 - [x] `P0` Slope limits and sloped-surface walkability for promoted ramp colliders
 - [x] `P1` Character interaction volumes and object pushing
 - [x] Fixture-backed physics self-verification gate for gravity/collision,

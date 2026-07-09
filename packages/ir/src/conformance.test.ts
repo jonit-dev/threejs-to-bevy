@@ -33,6 +33,16 @@ test("should validate particle command fixture", async () => {
   assert.deepEqual(result.diagnostics, []);
 });
 
+test("should validate character physics contacts fixture", async () => {
+  const fixture = (await listConformanceFixtures()).find((candidate) => candidate.name === "character-physics-contacts");
+  assert.ok(fixture, "character-physics-contacts fixture should be registered");
+
+  const result = await validateBundle(fixture.bundlePath);
+
+  assert.equal(result.ok, true);
+  assert.deepEqual(result.diagnostics, []);
+});
+
 test("should keep conformance target profiles canonical", async () => {
   const fixtures = await listConformanceFixtures();
   const supportedTargets = new Set(["desktop", "web"]);
@@ -219,6 +229,13 @@ test("should include capability tags for each conformance fixture", async () => 
     "scripting:service.physics.overlap",
     "scripting:service.physics.shapeCast",
     "scripting:systems",
+  ]);
+  assertFixtureCapabilities(byName, "character-physics-contacts", [
+    "character:contact-observations",
+    "character:push-observations",
+    "character:slope-observations",
+    "physics:contact-filtering",
+    "physics:contact-materials",
   ]);
   assertFixtureCapabilities(byName, "animation-graphs-particles", [
     "animation:clip-metadata",

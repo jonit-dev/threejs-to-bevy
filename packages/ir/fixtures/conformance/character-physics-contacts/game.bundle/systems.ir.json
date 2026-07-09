@@ -1,0 +1,28 @@
+{
+  "schema": "threenative.systems",
+  "version": "0.1.0",
+  "systems": [
+    {
+      "name": "characterContactProbe",
+      "schedule": "fixedUpdate",
+      "commands": [],
+      "eventReads": [],
+      "eventWrites": [],
+      "queries": [
+        {
+          "with": ["Transform", "Collider", "CharacterController"],
+          "without": []
+        }
+      ],
+      "reads": ["Transform", "Collider", "CharacterController"],
+      "resourceReads": [],
+      "resourceWrites": [],
+      "services": ["character.move"],
+      "script": {
+        "bundle": "scripts.bundle.js",
+        "exportName": "system_characterContactProbe"
+      },
+      "writes": []
+    }
+  ]
+}

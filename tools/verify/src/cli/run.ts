@@ -112,6 +112,20 @@ export const FOCUSED_GATES: Record<string, FocusedGate> = {
       protects: "Path safety, staged bundle writes, generated-mesh payload diagnostics, and release artifact quality.",
     },
   },
+  "verify:character-physics-contacts": {
+    commands: [
+      ["pnpm", "--filter", "@threenative/ir", "build"],
+      ["pnpm", "--filter", "@threenative/runtime-web-three", "build"],
+      ["node", "scripts/verify-character-physics-contacts.mjs"],
+    ],
+    description: "Character physics contacts parity gate.",
+    metadata: {
+      owner: "tools/verify character-physics-contacts gate",
+      profile: "focused",
+      reason: "Compares web and native character movement observations for portable contact filters, slope reports, and pushed bodies.",
+      protects: "Character contact payload ordering, web/native observation parity, and release evidence for contact filtering.",
+    },
+  },
   "verify:input-ui-polish": {
     commands: [
       ["pnpm", "--filter", "@threenative/ir", "build"],

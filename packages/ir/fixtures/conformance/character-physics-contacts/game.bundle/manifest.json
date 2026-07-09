@@ -1,0 +1,39 @@
+{
+  "schema": "threenative.bundle",
+  "version": "0.1.0",
+  "name": "conformance-character-physics-contacts",
+  "requiredCapabilities": {
+    "character": [
+      "blocking",
+      "contact-observations",
+      "controller",
+      "grounding",
+      "push-observations",
+      "push-policy",
+      "slope-observations"
+    ],
+    "input": ["axes"],
+    "physics": [
+      "collider.box",
+      "collider.slope",
+      "contact-filtering",
+      "contact-materials",
+      "rigid-body.dynamic",
+      "rigid-body.kinematic",
+      "rigid-body.static"
+    ],
+    "scripting": ["schedule.fixedUpdate", "script-bundle", "service.character.move", "systems"]
+  },
+  "entry": {
+    "world": "world.ir.json",
+    "systems": "systems.ir.json",
+    "scripts": "scripts.bundle.js"
+  },
+  "files": {
+    "assets": "assets.manifest.json",
+    "componentSchemas": "schemas/components.schema.json",
+    "input": "input.ir.json",
+    "materials": "materials.ir.json",
+    "targetProfile": "target.profile.json"
+  }
+}

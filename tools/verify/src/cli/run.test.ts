@@ -11,6 +11,7 @@ test("focused gate dispatcher should list current capability gates", () => {
     "verify:animation-physics-residuals",
     "verify:agent-io",
     "verify:bundle-safety-hardening",
+    "verify:character-physics-contacts",
     "verify:default-look",
     "verify:generated-games",
     "verify:input-ui-polish",
@@ -78,6 +79,17 @@ test("should run setup for standalone focused gate", () => {
       ["pnpm", "--filter", "@threenative/ir", "build"],
       ["pnpm", "--filter", "@threenative/runtime-web-three", "build"],
       ["node", "scripts/verify-input-ui-polish.mjs"],
+    ],
+  );
+});
+
+test("should run character physics contacts gate", () => {
+  assert.deepEqual(
+    getFocusedGateCommands("verify:character-physics-contacts"),
+    [
+      ["pnpm", "--filter", "@threenative/ir", "build"],
+      ["pnpm", "--filter", "@threenative/runtime-web-three", "build"],
+      ["node", "scripts/verify-character-physics-contacts.mjs"],
     ],
   );
 });

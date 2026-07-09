@@ -241,9 +241,9 @@ sequenceDiagram
 
 **Implementation:**
 
-- [ ] Add a fixture with slopes, pushable primitives, and filtered contacts.
-- [ ] Compare web/native service logs and contact event observations.
-- [ ] Wire focused gate into release evidence.
+- [x] Add a fixture with slopes, pushable primitives, and filtered contacts.
+- [x] Compare web/native service logs and contact event observations.
+- [x] Wire focused gate into release evidence.
 
 **Tests Required:**
 

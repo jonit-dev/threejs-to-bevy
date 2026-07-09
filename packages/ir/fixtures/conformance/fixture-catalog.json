@@ -227,6 +227,29 @@
       ]
     },
     {
+      "canonicalId": "character-physics-contacts",
+      "owner": "ir-contract",
+      "sourceExample": "character-physics-contacts",
+      "regenerateCommand": "pnpm verify:character-physics-contacts",
+      "canonicalArtifactGate": "character-physics-contacts",
+      "ownerDocs": "docs/PRDs/proof-first-engine-loop-2026-07-05/PRD-013-portable-scripting-character-physics-contacts.md",
+      "aggregateGate": "verify:conformance",
+      "bundlePath": "packages/ir/fixtures/conformance/character-physics-contacts/game.bundle",
+      "promotedCapabilities": [
+        "character:contact-observations",
+        "character:push-observations",
+        "character:slope-observations",
+        "physics:contact-filtering",
+        "physics:contact-materials"
+      ],
+      "reportArtifacts": [
+        "tools/verify/artifacts/character-physics-contacts/verification-report.json",
+        "tools/verify/artifacts/character-physics-contacts/diff.json",
+        "tools/verify/artifacts/character-physics-contacts/web-character.json",
+        "tools/verify/artifacts/character-physics-contacts/native-character.json"
+      ]
+    },
+    {
       "canonicalId": "particle-commands",
       "owner": "ir-contract",
       "sourceExample": "particle-commands",

@@ -1,0 +1,72 @@
+{
+  "schema": "threenative.world",
+  "version": "0.1.0",
+  "entities": [
+    {
+      "id": "ramp",
+      "components": {
+        "Collider": {
+          "contact": { "phases": ["stay"] },
+          "kind": "box",
+          "layer": "world",
+          "material": "stone",
+          "size": [6, 1, 6],
+          "slope": { "axis": "x", "direction": 1, "rise": 1, "run": 3 }
+        },
+        "RigidBody": { "kind": "static" },
+        "Transform": { "position": [0, 0.5, 0], "rotation": [0, 0, 0, 1], "scale": [1, 1, 1] }
+      }
+    },
+    {
+      "id": "crate",
+      "components": {
+        "Collider": {
+          "contact": { "phases": ["begin"] },
+          "kind": "box",
+          "layer": "pushable",
+          "material": "wood",
+          "size": [1, 1, 1]
+        },
+        "RigidBody": { "kind": "dynamic", "mass": 1 },
+        "Transform": { "position": [2, 2.333333333333333, 0], "rotation": [0, 0, 0, 1], "scale": [1, 1, 1] }
+      }
+    },
+    {
+      "id": "ignored",
+      "components": {
+        "Collider": {
+          "contact": { "phases": ["begin", "stay"] },
+          "kind": "box",
+          "layer": "ignored",
+          "material": "glass",
+          "size": [1, 1, 1]
+        },
+        "RigidBody": { "kind": "static" },
+        "Transform": { "position": [2, 2.333333333333333, 1.2], "rotation": [0, 0, 0, 1], "scale": [1, 1, 1] }
+      }
+    },
+    {
+      "id": "player",
+      "components": {
+        "CharacterController": {
+          "blocking": true,
+          "grounding": "raycast",
+          "moveXAxis": "MoveX",
+          "moveZAxis": "MoveZ",
+          "pushPolicy": { "allowedLayers": ["pushable"], "enabled": true, "maxPushMass": 5 },
+          "slopeLimit": 30,
+          "speed": 2
+        },
+        "Collider": {
+          "contact": { "phases": ["begin", "stay"] },
+          "kind": "box",
+          "layer": "player",
+          "mask": ["pushable", "world"],
+          "size": [1, 2, 1]
+        },
+        "RigidBody": { "kind": "kinematic" },
+        "Transform": { "position": [0, 2.333333333333333, 0], "rotation": [0, 0, 0, 1], "scale": [1, 1, 1] }
+      }
+    }
+  ]
+}

@@ -1,0 +1,30 @@
+{
+  "schema": "threenative.component-schemas",
+  "version": "0.1.0",
+  "schemas": {
+    "Collider": {
+      "fields": {
+        "contact": { "kind": "object", "required": false },
+        "kind": { "kind": "string", "required": true },
+        "layer": { "kind": "string", "required": false },
+        "mask": { "kind": "array", "required": false },
+        "material": { "kind": "string", "required": false },
+        "size": { "kind": "vec3", "required": false },
+        "slope": { "kind": "object", "required": false }
+      }
+    },
+    "RigidBody": {
+      "fields": {
+        "kind": { "kind": "string", "required": true },
+        "mass": { "kind": "number", "required": false }
+      }
+    },
+    "Transform": {
+      "fields": {
+        "position": { "kind": "vec3", "required": false },
+        "rotation": { "kind": "quat", "required": false },
+        "scale": { "kind": "vec3", "required": false }
+      }
+    }
+  }
+}
