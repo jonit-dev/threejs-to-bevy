@@ -4,6 +4,7 @@ export interface IWebInputState {
   action(name: string): boolean;
   axis(name: string): number;
   beginFrame(): void;
+  enqueueUiAction(action: string): void;
   handleGamepadButton(control: string, pressed: boolean): void;
   handleGamepadAxis(control: string, value: number): void;
   handleKeyDown(event: { code: string }): void;
@@ -164,6 +165,9 @@ export function createInputState(input?: IInputIr, options: IWebInputStateOption
   const gamepadAxes = new Map<string, number>();
   const touchControls = new Set<string>();
   const touchAxes = new Map<string, number>();
+  const currentUiActions = new Set<string>();
+  const pendingUiActions = new Set<string>();
+  const frameUiActions = new Set<string>();
 
   function readAction(id: string): boolean {
     const action = input?.actions.find((item) => item.id === id);
@@ -227,6 +231,9 @@ export function createInputState(input?: IInputIr, options: IWebInputStateOption
         currentActions.add(action.id);
       }
     }
+    for (const action of currentUiActions) {
+      currentActions.add(action);
+    }
     for (const action of currentActions) {
       if (!previous.has(action)) {
         pendingPressedActions.add(action);
@@ -248,6 +255,15 @@ export function createInputState(input?: IInputIr, options: IWebInputStateOption
     },
     axis: readAxis,
     beginFrame() {
+      currentUiActions.clear();
+      for (const action of pendingUiActions) {
+        currentUiActions.add(action);
+      }
+      frameUiActions.clear();
+      for (const action of pendingUiActions) {
+        frameUiActions.add(action);
+      }
+      pendingUiActions.clear();
       refreshActions();
       framePressedActions.clear();
       for (const action of pendingPressedActions) {
@@ -263,6 +279,11 @@ export function createInputState(input?: IInputIr, options: IWebInputStateOption
       pointerAxes.set("deltaY", pendingPointerAxes.get("deltaY") ?? 0);
       pendingPointerAxes.set("deltaX", 0);
       pendingPointerAxes.set("deltaY", 0);
+    },
+    enqueueUiAction(action) {
+      pendingUiActions.add(action);
+      pendingPressedActions.add(action);
+      pendingReleasedActions.delete(action);
     },
     handleGamepadButton(control, pressed) {
       if (pressed) {
@@ -322,7 +343,7 @@ export function createInputState(input?: IInputIr, options: IWebInputStateOption
     },
     pressed(name) {
       refreshActions();
-      return framePressedActions.has(name) || pendingPressedActions.has(name);
+      return frameUiActions.has(name) || framePressedActions.has(name) || pendingPressedActions.has(name);
     },
     released(name) {
       refreshActions();

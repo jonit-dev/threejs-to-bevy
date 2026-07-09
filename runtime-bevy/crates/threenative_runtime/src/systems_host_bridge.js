@@ -875,6 +875,14 @@ function __tnInvokeSystem(options) {
       effects.services.push({ service: "settings.import", payload: { request, result } });
       return result;
     };
+    const uiActions = () => {
+      const request = {};
+      const result = Object.entries((data.input && data.input.actions) || {})
+        .filter((entry) => entry[1] === true)
+        .map((entry) => ({ action: entry[0], node: entry[0] }));
+      effects.services.push({ service: "ui.actions", payload: { request, result: clone(result) } });
+      return clone(result);
+    };
     const ensureUiState = () => {
       const ui = data.ui || { nodes: [], focusOrder: undefined };
       const nodeIds = ui.nodes.map((node) => node.id).join("|");
@@ -1117,6 +1125,7 @@ function __tnInvokeSystem(options) {
       }
     },
     ui: {
+      actions() { return uiActions(); },
       activate(nodeId) { return uiActivate(String(nodeId)); },
       focus(nodeId) { return uiFocus(String(nodeId)); },
       read(nodeId) { return uiRead(String(nodeId)); },

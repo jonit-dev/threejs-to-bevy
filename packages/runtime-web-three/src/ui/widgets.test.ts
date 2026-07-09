@@ -208,6 +208,10 @@ class FakeElement {
     return matches;
   }
 
+  removeAttribute(name: string): void {
+    this.attributes.delete(name);
+  }
+
   setAttribute(name: string, value: string): void {
     this.attributes.set(name, value);
   }

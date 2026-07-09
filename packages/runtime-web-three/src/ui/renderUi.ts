@@ -2,6 +2,7 @@ import type { IUiIr, IUiNodeIr, IWorldIr } from "@threenative/ir";
 
 import { resolveUiBinding } from "./bindings.js";
 import { dispatchUiAction, type IUiActionEvent } from "./inputBridge.js";
+import type { IUiActivateResult, IUiDisabledResult, IUiFocusResult, IUiReadResult, IUiValueResult } from "../systems/contextTypes.js";
 
 export interface IRenderedUiNode {
   action?: string;
@@ -32,30 +33,130 @@ export interface IRenderedUiNode {
 
 export interface IRenderedUi {
   actions: IUiActionEvent[];
+  activate(nodeId: string): IUiActivateResult;
+  drainActions(): IUiActionEvent[];
   focusOrder?: string[];
+  focus(nodeId: string): IUiFocusResult;
+  read(nodeId: string): IUiReadResult;
+  recentActions(): IUiActionEvent[];
   root: IRenderedUiNode;
+  setDisabled(nodeId: string, disabled: boolean): IUiDisabledResult;
+  setValue(nodeId: string, value: boolean | number | string): IUiValueResult;
   trigger(nodeId: string, value?: number | string): void;
   update(): void;
 }
 
 export function renderUi(ui: IUiIr, world: IWorldIr): IRenderedUi {
   const actions: IUiActionEvent[] = [];
+  let recentActions: IUiActionEvent[] = [];
+  const disabled = new Map<string, boolean>();
+  const values = new Map<string, boolean | number | string>();
+  const nodes = new Map<string, IUiNodeIr>();
+  collectNodes(ui.root, nodes);
+  const focusable = new Set((ui.focusOrder ?? [...nodes.values()].filter(isFocusable).map((node) => node.id)).filter((id) => {
+    const node = nodes.get(id);
+    return node !== undefined && isFocusable(node);
+  }));
+  let currentFocus = [...focusable].sort()[0] ?? null;
   let root = renderNode(ui.root, world);
+  root = applyState(root, disabled, values);
   return {
     actions,
+    activate(nodeId) {
+      const node = nodes.get(nodeId);
+      if (node === undefined) {
+        return { accepted: false, node: nodeId, status: "missing" };
+      }
+      if (disabled.get(nodeId) ?? node.disabled === true) {
+        return { accepted: false, node: nodeId, status: "disabled" };
+      }
+      if (typeof node.action !== "string" || node.action.trim() === "") {
+        return { accepted: false, node: nodeId, status: "no-action" };
+      }
+      dispatchUiAction({ ...node, disabled: false }, (event) => actions.push(event));
+      return { accepted: true, action: node.action, node: nodeId, status: "activated" };
+    },
+    drainActions() {
+      recentActions = actions.splice(0, actions.length);
+      return recentActions.map((action) => ({ ...action }));
+    },
     ...(ui.focusOrder === undefined ? {} : { focusOrder: ui.focusOrder }),
+    focus(nodeId) {
+      const previous = currentFocus;
+      const node = nodes.get(nodeId);
+      if (node === undefined) {
+        return { accepted: false, current: currentFocus, previous, status: "missing" };
+      }
+      if (!focusable.has(nodeId) || (disabled.get(nodeId) ?? node.disabled) === true) {
+        return { accepted: false, current: currentFocus, previous, status: "not-focusable" };
+      }
+      currentFocus = nodeId;
+      return { accepted: true, current: currentFocus, previous, status: "focused" };
+    },
+    read(nodeId) {
+      const node = nodes.get(nodeId);
+      if (node === undefined) {
+        return { disabled: false, focusable: false, focused: false, node: nodeId, status: "missing" };
+      }
+      const rendered = findRenderedNode(root, nodeId);
+      const value = values.get(nodeId) ?? rendered?.value ?? rendered?.text ?? node.value ?? node.text ?? node.label;
+      return {
+        ...(node.action === undefined ? {} : { action: node.action }),
+        disabled: disabled.get(nodeId) ?? node.disabled === true,
+        focusable: focusable.has(nodeId),
+        focused: currentFocus === nodeId,
+        kind: node.kind,
+        node: nodeId,
+        status: "found",
+        ...(value === undefined ? {} : { value }),
+      };
+    },
+    recentActions() {
+      return recentActions.map((action) => ({ ...action }));
+    },
     get root() {
       return root;
     },
+    setDisabled(nodeId, nextDisabled) {
+      if (!nodes.has(nodeId)) {
+        return { accepted: false, disabled: nextDisabled, node: nodeId, status: "missing" };
+      }
+      disabled.set(nodeId, nextDisabled);
+      if (nextDisabled && currentFocus === nodeId) {
+        currentFocus = null;
+      }
+      root = applyState(root, disabled, values);
+      return { accepted: true, disabled: nextDisabled, node: nodeId, status: "updated" };
+    },
+    setValue(nodeId, value) {
+      if (!nodes.has(nodeId)) {
+        return { accepted: false, node: nodeId, status: "missing", value };
+      }
+      values.set(nodeId, value);
+      root = applyState(root, disabled, values);
+      return { accepted: true, node: nodeId, status: "updated", value };
+    },
     trigger(nodeId, value) {
       const node = findNode(ui.root, nodeId);
-      if (node !== undefined) {
-        dispatchUiAction(node, (event) => actions.push(event), value);
+      if (node !== undefined && (disabled.get(nodeId) ?? node.disabled) !== true) {
+        dispatchUiAction({ ...node, disabled: false }, (event) => actions.push(event), value);
       }
     },
     update() {
       root = renderNode(ui.root, world);
+      root = applyState(root, disabled, values);
     },
+  };
+}
+
+function applyState(node: IRenderedUiNode, disabled: ReadonlyMap<string, boolean>, values: ReadonlyMap<string, boolean | number | string>): IRenderedUiNode {
+  const value = values.get(node.id);
+  return {
+    ...node,
+    children: node.children.map((child) => applyState(child, disabled, values)),
+    ...(disabled.has(node.id) ? { disabled: disabled.get(node.id) } : {}),
+    ...(typeof value === "number" ? { value } : {}),
+    ...(typeof value === "string" ? (node.kind === "textInput" || node.kind === "text" || node.kind === "button" || node.kind === "touchControl" ? { text: value } : { valueText: value }) : {}),
   };
 }
 
@@ -124,4 +225,28 @@ function findNode(node: IUiNodeIr, nodeId: string): IUiNodeIr | undefined {
     }
   }
   return undefined;
+}
+
+function findRenderedNode(node: IRenderedUiNode, nodeId: string): IRenderedUiNode | undefined {
+  if (node.id === nodeId) {
+    return node;
+  }
+  for (const child of node.children) {
+    const found = findRenderedNode(child, nodeId);
+    if (found !== undefined) {
+      return found;
+    }
+  }
+  return undefined;
+}
+
+function collectNodes(node: IUiNodeIr, nodes: Map<string, IUiNodeIr>): void {
+  nodes.set(node.id, node);
+  for (const child of node.children ?? []) {
+    collectNodes(child, nodes);
+  }
+}
+
+function isFocusable(node: IUiNodeIr): boolean {
+  return node.focusable === true || node.kind === "button" || node.kind === "textInput" || node.kind === "touchControl" || node.kind === "slider" || node.kind === "scrollbar";
 }

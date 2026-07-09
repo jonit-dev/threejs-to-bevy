@@ -6,6 +6,7 @@ import { traceCharacterControllers, type ICharacterTraceObservation } from "../c
 import type { IWebInputState } from "../input.js";
 import { queryNavigationPath, type INavigationPathRequest, type INavigationPathResult } from "../navigation.js";
 import { tracePhysicsSensors, type IPhysicsSensorEvent } from "../sensors.js";
+import type { IRenderedUi } from "../ui/renderUi.js";
 import { animationPlayPayload, animationQueryPayload, animationStopPayload } from "./services/animation.js";
 import { audioPlayPayload, audioQueryPayload, audioStopPayload } from "./services/audio.js";
 import { createWebPersistenceService, type IWebPersistenceService } from "./services/persistence.js";
@@ -122,7 +123,7 @@ export function webSystemRuntimeStateFor(
 
 export function createSystemContext(
   world: IWorldIr,
-  options: { assets?: IAssetsManifest; audio?: import("@threenative/ir").IAudioIr; componentDiff?: IComponentDiffCache; componentSchemas?: IIrSchemaFile; currentScene?: string | null; defaultQuery?: IIrSystemQuery; delta: number; elapsed?: number; fixedDelta: number; input?: IWebInputState; localData?: ILocalDataIr; paused?: boolean; persistence?: IWebPersistenceService; prefabs?: IPrefabsIr; resourceObserver?: (observation: Omit<IResourceObservation, "frame" | "schedule" | "system" | "tick">) => void; runtimeState?: ReturnType<typeof createWebSystemRuntimeState>; systems?: ISystemsIr; ui?: IUiIr },
+  options: { assets?: IAssetsManifest; audio?: import("@threenative/ir").IAudioIr; componentDiff?: IComponentDiffCache; componentSchemas?: IIrSchemaFile; currentScene?: string | null; defaultQuery?: IIrSystemQuery; delta: number; elapsed?: number; fixedDelta: number; input?: IWebInputState; localData?: ILocalDataIr; paused?: boolean; persistence?: IWebPersistenceService; prefabs?: IPrefabsIr; resourceObserver?: (observation: Omit<IResourceObservation, "frame" | "schedule" | "system" | "tick">) => void; runtimeState?: ReturnType<typeof createWebSystemRuntimeState>; systems?: ISystemsIr; ui?: IUiIr; uiState?: IRenderedUi },
 ): {
   commands: IQueuedCommand[];
   context: ISystemContext;
@@ -141,7 +142,7 @@ export function createSystemContext(
   const scriptAudio = options.runtimeState?.scriptAudio ?? new ScriptAudioRuntimeController(options.audio);
   const particles = options.runtimeState?.particles ?? createParticleCommandService(options.assets);
   const persistence = options.persistence ?? createWebPersistenceService(options.localData ?? emptyLocalData());
-  const ui = createScriptUiState(options.ui);
+  const ui = options.uiState ?? createScriptUiState(options.ui);
   const findEntity = (id: string): ISystemEntityView | undefined => {
     const entity = world.entities.find((candidate) => candidate.id === id);
     return entity === undefined ? undefined : createEntityView(entity, commands);
@@ -384,6 +385,12 @@ export function createSystemContext(
           const result = ui.activate(nodeId);
           services.push({ payload: { request, result }, service: "ui.activate" });
           return cloneValue(result) as IUiActivateResult;
+        },
+        actions() {
+          const request = {};
+          const result = ui.recentActions();
+          services.push({ payload: { request, result }, service: "ui.actions" });
+          return cloneValue(result);
         },
         focus(nodeId) {
           const request = { node: nodeId };

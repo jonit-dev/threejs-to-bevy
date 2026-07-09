@@ -47,6 +47,7 @@ export const SCRIPT_HOST_SERVICE_MATRIX = [
   { bevy: "implemented", context: "ctx.settings.get", domain: "settings", service: "settings.get", web: "implemented" },
   { bevy: "implemented", context: "ctx.settings.import", domain: "settings", service: "settings.import", web: "implemented" },
   { bevy: "implemented", context: "ctx.settings.set", domain: "settings", service: "settings.set", web: "implemented" },
+  { bevy: "implemented", context: "ctx.ui.actions", domain: "ui", service: "ui.actions", web: "implemented" },
   { bevy: "implemented", context: "ctx.ui.activate", domain: "ui", service: "ui.activate", web: "implemented" },
   { bevy: "implemented", context: "ctx.ui.focus", domain: "ui", service: "ui.focus", web: "implemented" },
   { bevy: "implemented", context: "ctx.ui.read", domain: "ui", service: "ui.read", web: "implemented" },

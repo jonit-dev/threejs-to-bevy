@@ -1,10 +1,13 @@
 import type { IUiIr, IUiNodeIr } from "@threenative/ir";
+import type { IUiActionEvent } from "../ui/inputBridge.js";
 import type { IUiActivateResult, IUiDisabledResult, IUiFocusResult, IUiReadResult, IUiValueResult } from "./contextTypes.js";
 
 export function createScriptUiState(ui: IUiIr | undefined): {
   activate(nodeId: string): IUiActivateResult;
+  actions(): IUiActionEvent[];
   focus(nodeId: string): IUiFocusResult;
   read(nodeId: string): IUiReadResult;
+  recentActions(): IUiActionEvent[];
   setDisabled(nodeId: string, disabled: boolean): IUiDisabledResult;
   setValue(nodeId: string, value: boolean | number | string): IUiValueResult;
 } {
@@ -30,6 +33,12 @@ export function createScriptUiState(ui: IUiIr | undefined): {
         return { accepted: false, node: nodeId, status: "no-action" };
       }
       return { accepted: true, action: node.action, node: nodeId, status: "activated" };
+    },
+    actions() {
+      return [];
+    },
+    recentActions() {
+      return [];
     },
     focus(nodeId) {
       const previous = currentFocus;

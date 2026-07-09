@@ -38,6 +38,7 @@ export type IrSystemService =
   | "settings.get"
   | "settings.import"
   | "settings.set"
+  | "ui.actions"
   | "ui.activate"
   | "ui.focus"
   | "ui.read"

@@ -53,6 +53,56 @@ test("ui should dispatch pause action from button", () => {
   assert.deepEqual(rendered.actions, [{ action: "Pause", node: "pause" }]);
 });
 
+test("ui should drain action events and keep latest frame events script-readable", () => {
+  const rendered = renderUi(makeUi(), makeWorld());
+
+  rendered.trigger("pause");
+  rendered.trigger("volume", 0.75);
+
+  assert.deepEqual(rendered.drainActions(), [
+    { action: "Pause", node: "pause" },
+    { action: "SetVolume", node: "volume", value: 0.75 },
+  ]);
+  assert.deepEqual(rendered.actions, []);
+  assert.deepEqual(rendered.recentActions(), [
+    { action: "Pause", node: "pause" },
+    { action: "SetVolume", node: "volume", value: 0.75 },
+  ]);
+  assert.deepEqual(rendered.drainActions(), []);
+  assert.deepEqual(rendered.recentActions(), []);
+});
+
+test("ui should mutate rendered state through script facade methods", () => {
+  const rendered = renderUi(makeUi(), makeWorld());
+
+  assert.deepEqual(rendered.setDisabled("pause", true), {
+    accepted: true,
+    disabled: true,
+    node: "pause",
+    status: "updated",
+  });
+  assert.equal(rendered.root.children[1]?.disabled, true);
+  assert.equal(rendered.activate("pause").status, "disabled");
+
+  assert.deepEqual(rendered.setDisabled("pause", false), {
+    accepted: true,
+    disabled: false,
+    node: "pause",
+    status: "updated",
+  });
+  assert.equal(rendered.root.children[1]?.disabled, false);
+  assert.equal(rendered.activate("pause").status, "activated");
+
+  assert.deepEqual(rendered.setValue("volume", 0.5), {
+    accepted: true,
+    node: "volume",
+    status: "updated",
+    value: 0.5,
+  });
+  assert.equal(rendered.root.children[6]?.value, 0.5);
+  assert.equal(rendered.read("volume").value, 0.5);
+});
+
 test("ui should update minimap markers from resource binding", () => {
   const world = makeWorld();
   world.resources = { ...world.resources, Minimap: { state: JSON.stringify({ markers: [{ x: 1, z: 2, color: "#f97316", label: "P" }] }) } };
@@ -89,6 +139,7 @@ function makeUi(): IUiIr {
         { id: "score", kind: "text", text: "Score 0", binding: { kind: "resource", name: "Score", field: "text" } },
         { id: "checkpoint", kind: "text", text: "CP 0/0", binding: { kind: "resource", name: "Race", fields: ["checkpoint", "total"], format: "CP {checkpoint}/{total}" } },
         { id: "timer", kind: "text", text: "Time 0.0", binding: { kind: "resource", name: "Race", field: "seconds", format: "Time {seconds:fixed1}" } },
+        { id: "volume", kind: "slider", action: "SetVolume", min: 0, max: 1, value: 0.25 },
       ],
     },
   };

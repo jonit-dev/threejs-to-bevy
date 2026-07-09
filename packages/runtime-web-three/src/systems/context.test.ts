@@ -12,6 +12,7 @@ test("should expose fixed input trace", () => {
       action: (name) => name === "MoveForward",
       axis: (name) => (name === "MoveX" ? 1 : 0),
       beginFrame: () => undefined,
+      enqueueUiAction: () => undefined,
       handleGamepadAxis: () => undefined,
       handleGamepadButton: () => undefined,
       handleKeyDown: () => undefined,

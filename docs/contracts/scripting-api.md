@@ -183,7 +183,7 @@ imports.
 - [x] Script audio play/stop/query through `ctx.audio.play`, `ctx.audio.stop`,
   and `ctx.audio.query` against declared audio IR.
 - [ ] Missing arbitrary particle commands beyond bounded portable emitter data.
-- [x] UI command/focus/value/disabled/read script APIs through `ctx.ui.*`.
+- [x] UI action/focus/value/disabled/read script APIs through `ctx.ui.*`.
 - [x] Persistence save/load/list/delete script APIs through
   `ctx.persistence.*`.
 - [x] Settings get/set/export/import script APIs through `ctx.settings.*`.
@@ -535,8 +535,8 @@ show the feature.
   persistence/reload evidence path without exposing filesystem, cloud-save, or
   platform storage handles to scripts.
 - [x] Script UI, persistence, and settings facades. Systems may declare
-  `ui.activate`, `ui.focus`, `ui.read`, `ui.setDisabled`, `ui.setValue`,
-  `persistence.save`, `persistence.load`, `persistence.listSlots`,
+  `ui.actions`, `ui.activate`, `ui.focus`, `ui.read`, `ui.setDisabled`,
+  `ui.setValue`, `persistence.save`, `persistence.load`, `persistence.listSlots`,
   `persistence.delete`, `settings.get`, `settings.set`, `settings.export`, and
   `settings.import` services and receive plain-data results without raw DOM,
   filesystem, cloud-save, or platform handles.
@@ -898,8 +898,9 @@ Runtime host metadata is deliberately narrow and deterministic:
   state-preserving reload are promoted through structured IR, script facades,
   and runtime evidence, but scripts do not receive filesystem, cloud-save, or
   platform storage handles.
-- UI services (`ctx.ui.focus/activate/read/setDisabled/setValue`) operate on
-  declared retained-UI node IDs and return deterministic plain-data statuses.
+- UI services (`ctx.ui.actions/focus/activate/read/setDisabled/setValue`)
+  operate on declared retained-UI node IDs and return deterministic plain-data
+  statuses.
 
 ## Resources
 

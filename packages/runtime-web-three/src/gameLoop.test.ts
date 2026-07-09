@@ -1,10 +1,12 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import type { ISystemsIr, IWorldIr } from "@threenative/ir";
+import type { ISystemsIr, IUiIr, IWorldIr } from "@threenative/ir";
 import * as THREE from "three";
 
 import { createGameLoopState, runGameFrame } from "./gameLoop.js";
+import { createInputState } from "./input.js";
 import type { IThreeWorld } from "./mapWorld.js";
+import { renderUi } from "./ui/renderUi.js";
 
 test("gameLoop should run fixed update at configured timestep", async () => {
   const state = createGameLoopState({
@@ -264,6 +266,77 @@ test("gameLoop should expose interpolated fixed transforms to variable-update re
   assert.equal(camera.position.x, 5);
 });
 
+test("gameLoop should expose drained UI actions and values to scripts for one frame", async () => {
+  const state = createGameLoopState();
+  const input = createInputState();
+  const ui = makeUi();
+  const rendered = renderUi(ui, makeWorld());
+  const observations: unknown[] = [];
+  rendered.trigger("start");
+  rendered.trigger("volume", 0.75);
+  for (const action of rendered.drainActions()) {
+    input.enqueueUiAction(action.action);
+  }
+
+  await runGameFrame({
+    delta: 1 / 60,
+    input,
+    mapped: makeMapped(),
+    module: {
+      systems: {
+        update: (context: any) => {
+          observations.push({
+            actions: context.ui.actions(),
+            pressedStart: context.input.pressed("StartGame"),
+            pressedVolume: context.input.pressed("SetVolume"),
+          });
+        },
+      },
+    },
+    state,
+    systems: makeSystems([system("update", "update")]),
+    ui,
+    uiState: rendered,
+    world: makeWorld(),
+  });
+  for (const action of rendered.drainActions()) {
+    input.enqueueUiAction(action.action);
+  }
+  await runGameFrame({
+    delta: 1 / 60,
+    input,
+    mapped: makeMapped(),
+    module: {
+      systems: {
+        update: (context: any) => {
+          observations.push({
+            actions: context.ui.actions(),
+            pressedStart: context.input.pressed("StartGame"),
+            pressedVolume: context.input.pressed("SetVolume"),
+          });
+        },
+      },
+    },
+    state,
+    systems: makeSystems([system("update", "update")]),
+    ui,
+    uiState: rendered,
+    world: makeWorld(),
+  });
+
+  assert.deepEqual(observations, [
+    {
+      actions: [
+        { action: "StartGame", node: "start" },
+        { action: "SetVolume", node: "volume", value: 0.75 },
+      ],
+      pressedStart: true,
+      pressedVolume: true,
+    },
+    { actions: [], pressedStart: false, pressedVolume: false },
+  ]);
+});
+
 function makeWorld(entities: Array<{ id: string; position: [number, number, number] }> = []): IWorldIr {
   return {
     schema: "threenative.world",
@@ -272,6 +345,21 @@ function makeWorld(entities: Array<{ id: string; position: [number, number, numb
       id: entity.id,
       components: { Transform: { position: entity.position } },
     })),
+  };
+}
+
+function makeUi(): IUiIr {
+  return {
+    schema: "threenative.ui",
+    version: "0.1.0",
+    root: {
+      id: "hud",
+      kind: "column",
+      children: [
+        { id: "start", kind: "button", label: "Start", action: "StartGame" },
+        { id: "volume", kind: "slider", label: "Volume", action: "SetVolume", min: 0, max: 1, value: 0.25 },
+      ],
+    },
   };
 }
 

@@ -189,6 +189,7 @@ function fixedInputState(): IWebInputState {
       return name === "MoveX" ? 1 : 0;
     },
     beginFrame() {},
+    enqueueUiAction() {},
     handleGamepadAxis() {},
     handleGamepadButton() {},
     handleKeyDown() {},

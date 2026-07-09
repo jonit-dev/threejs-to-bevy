@@ -41,6 +41,7 @@ export type SystemService =
   | "settings.get"
   | "settings.import"
   | "settings.set"
+  | "ui.actions"
   | "ui.activate"
   | "ui.focus"
   | "ui.read"
@@ -186,6 +187,7 @@ export interface ISystemContext {
   };
   entity(id: string): ISystemEntity | undefined;
   ui: {
+    actions(): Array<{ action: string; node: string; value?: boolean | number | string }>;
     activate(nodeId: string): { accepted: boolean; action?: string; node: string; status: "activated" | "disabled" | "missing" | "no-action" };
     focus(nodeId: string): { accepted: boolean; current: string | null; previous: string | null; status: "focused" | "missing" | "not-focusable" };
     read(nodeId: string): {

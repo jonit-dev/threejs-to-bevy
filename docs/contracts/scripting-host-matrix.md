@@ -63,6 +63,7 @@ depend on `window`, `document`, workers, `fetch`, websockets, timers, `process`,
 | `settings.get` | `ctx.settings.get` | implemented | implemented | Structured settings read. |
 | `settings.import` | `ctx.settings.import` | implemented | implemented | Structured settings import. |
 | `settings.set` | `ctx.settings.set` | implemented | implemented | Structured settings write. |
+| `ui.actions` | `ctx.ui.actions` | implemented | implemented | Retained UI action events from the latest drained frame. |
 | `ui.activate` | `ctx.ui.activate` | implemented | implemented | Retained UI activation. |
 | `ui.focus` | `ctx.ui.focus` | implemented | implemented | Retained UI focus. |
 | `ui.read` | `ctx.ui.read` | implemented | implemented | Retained UI state read. |

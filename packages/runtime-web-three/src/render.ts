@@ -256,6 +256,8 @@ export async function renderLoadedBundle(bundle: IWebBundle, container: HTMLElem
       runtimeConfig: bundle.runtimeConfig,
       state: loopState,
       systems: bundle.systems,
+      ui: bundle.ui,
+      uiState: ui,
       world: bundle.world,
     });
     uiOverlay?.update();
@@ -282,6 +284,7 @@ export async function renderLoadedBundle(bundle: IWebBundle, container: HTMLElem
         const timing = frameTimings.record(time);
         const delta = timing.deltaMs / 1000;
         if (bundle.systems !== undefined) {
+          drainUiActionsIntoInput(ui, input);
           await runGameFrame({
             assets: bundle.assets,
             componentSchemas: bundle.componentSchemas,
@@ -295,6 +298,8 @@ export async function renderLoadedBundle(bundle: IWebBundle, container: HTMLElem
             runtimeConfig: bundle.runtimeConfig,
             state: loopState,
             systems: bundle.systems,
+            ui: bundle.ui,
+            uiState: ui,
             world: bundle.world,
           });
         } else if (hasKinematicMovers(bundle.world)) {
@@ -373,6 +378,12 @@ export async function renderLoadedBundle(bundle: IWebBundle, container: HTMLElem
       return cloneJsonValue(findRenderedUiNode(ui.root, id)) as IRenderedUiNode | undefined;
     },
   };
+}
+
+function drainUiActionsIntoInput(ui: IRenderedUi | undefined, input: ReturnType<typeof createInputState>): void {
+  for (const action of ui?.drainActions() ?? []) {
+    input.enqueueUiAction(action.action);
+  }
 }
 
 function exposeDebugSceneSnapshot(scene: THREE.Scene): void {

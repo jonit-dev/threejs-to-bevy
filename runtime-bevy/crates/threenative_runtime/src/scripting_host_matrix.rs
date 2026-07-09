@@ -35,6 +35,7 @@ pub const PROMOTED_SCRIPT_SERVICES: &[&str] = &[
     "settings.get",
     "settings.import",
     "settings.set",
+    "ui.actions",
     "ui.activate",
     "ui.focus",
     "ui.read",

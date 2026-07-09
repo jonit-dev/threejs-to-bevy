@@ -10,6 +10,7 @@
       "node.bar",
       "node.button",
       "node.column",
+      "node.slider",
       "node.stack",
       "node.text",
       "runtime"

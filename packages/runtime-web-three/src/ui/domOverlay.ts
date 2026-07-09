@@ -320,6 +320,12 @@ function updateNodeElement(node: IRenderedUiNode, nodes: Map<string, HTMLElement
     element.setAttribute("aria-disabled", "true");
     (element as HTMLButtonElement | HTMLInputElement).disabled = true;
     element.tabIndex = -1;
+  } else {
+    if (typeof element.removeAttribute === "function") {
+      element.removeAttribute("aria-disabled");
+    }
+    (element as HTMLButtonElement | HTMLInputElement).disabled = false;
+    element.tabIndex = node.focusable ? 0 : -1;
   }
   applyAccessibilityAttributes(element, node);
 

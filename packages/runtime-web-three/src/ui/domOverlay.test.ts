@@ -67,6 +67,28 @@ test("ui dom overlay should dispatch text input values in order", () => {
   ]);
 });
 
+test("ui dom overlay should reflect script-driven disabled and value state", () => {
+  const rendered = renderUi(makeUi(), makeWorld());
+  const overlay = createUiDomOverlay(rendered, new FakeDocument() as unknown as Document);
+  const pause = findByUiId(overlay.element, "pause");
+  const volume = findByUiId(overlay.element, "volume");
+
+  rendered.setDisabled("pause", true);
+  rendered.setValue("volume", 0.75);
+  overlay.update();
+
+  assert.equal(pause?.disabled, true);
+  assert.equal(pause?.getAttribute("aria-disabled"), "true");
+  assert.equal(volume?.value, "0.75");
+  assert.equal(volume?.getAttribute("aria-valuenow"), "0.75");
+
+  rendered.setDisabled("pause", false);
+  overlay.update();
+
+  assert.equal(pause?.disabled, false);
+  assert.equal(pause?.getAttribute("aria-disabled"), null);
+});
+
 test("ui dom overlay should navigate focus with tab keys and activate focused controls", () => {
   const rendered = renderUi(makeUi(), makeWorld());
   const overlay = createUiDomOverlay(rendered, new FakeDocument() as unknown as Document);
@@ -181,6 +203,7 @@ function makeUi(): IUiIr {
             { id: "spacer", kind: "row", accessibilityLabel: "Decorative spacer", role: "none" },
             { id: "jump", kind: "touchControl", label: "Jump", action: "Jump", navigation: { left: "pause" } },
             { id: "player-name", kind: "textInput", label: "Player name", action: "SetPlayerName", text: "Hero" },
+            { id: "volume", kind: "slider", label: "Volume", action: "SetVolume", min: 0, max: 1, value: 0.25, step: 0.05 },
           ],
         },
         {
@@ -243,6 +266,7 @@ class FakeElement {
   };
   readonly classNames: string[] = [];
   readonly dataset: Record<string, string> = {};
+  disabled = false;
   focused = false;
   readonly listeners = new Map<string, Array<(event?: FakeKeyboardEvent) => void>>();
   readonly style: Record<string, string> = {};
@@ -314,6 +338,10 @@ class FakeElement {
       return null;
     }
     return find(this, (element) => element.dataset.threenativeUiBarFill !== undefined) ?? null;
+  }
+
+  removeAttribute(name: string): void {
+    this.attributes.delete(name);
   }
 
   setAttribute(name: string, value: string): void {

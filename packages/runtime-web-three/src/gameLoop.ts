@@ -7,6 +7,7 @@ import { stepPhysics } from "./physics.js";
 import { runSchedule, type ISystemModule } from "./systems/runner.js";
 import type { ISystemEffectLog } from "./systems/log.js";
 import type { IResourceObservation } from "./systems/context.js";
+import type { IRenderedUi } from "./ui/renderUi.js";
 import { interpolateTransform, type ITransformSample } from "./transformInterpolation.js";
 
 export interface IGameLoopState {
@@ -59,6 +60,8 @@ export async function runGameFrame(options: {
   runtimeConfig?: IRuntimeConfigIr;
   state?: IGameLoopState;
   systems: ISystemsIr;
+  ui?: import("@threenative/ir").IUiIr;
+  uiState?: IRenderedUi;
   world: IWorldIr;
 }): Promise<void> {
   const fixedDelta = options.fixedDelta ?? options.runtimeConfig?.time.fixedDelta ?? 1 / 60;

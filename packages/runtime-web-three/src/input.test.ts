@@ -113,6 +113,24 @@ test("input should map touch controls to actions and axes", () => {
   assert.equal(input.axis("TouchMoveX"), 1);
 });
 
+test("input should expose queued UI actions for one frame", () => {
+  const input = createInputState(makeInput());
+
+  input.enqueueUiAction("OpenMenu");
+
+  assert.equal(input.action("OpenMenu"), false);
+  assert.equal(input.pressed("OpenMenu"), true);
+
+  input.beginFrame();
+  assert.equal(input.action("OpenMenu"), true);
+  assert.equal(input.pressed("OpenMenu"), true);
+
+  input.beginFrame();
+  assert.equal(input.action("OpenMenu"), false);
+  assert.equal(input.pressed("OpenMenu"), false);
+  assert.equal(input.released("OpenMenu"), true);
+});
+
 test("input should recognize tap swipe and pinch gestures", () => {
   const recognizer = createTouchGestureRecognizer();
 

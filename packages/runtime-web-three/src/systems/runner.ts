@@ -1,5 +1,6 @@
 import type { IAssetsManifest, IAudioIr, IIrSchemaFile, IIrSystemDeclaration, ILocalDataIr, IPrefabsIr, IRuntimeDiagnostic, IUiIr, IrSystemSchedule, ISystemsIr, IWorldIr } from "@threenative/ir";
 import type { IWebInputState } from "../input.js";
+import type { IRenderedUi } from "../ui/renderUi.js";
 
 import { createComponentDiffCache } from "./componentDiff.js";
 import { createSystemContext, webSystemRuntimeStateFor, type IResourceObservation } from "./context.js";
@@ -39,6 +40,7 @@ export async function runSchedule(options: {
   systems: ISystemsIr;
   tick?: number;
   ui?: IUiIr;
+  uiState?: IRenderedUi;
   world: IWorldIr;
 }): Promise<ISystemRunResult> {
   const diagnostics: IRuntimeDiagnostic[] = [];
@@ -85,6 +87,7 @@ async function runSystem(
     systems: ISystemsIr;
     tick?: number;
     ui?: IUiIr;
+    uiState?: IRenderedUi;
     world: IWorldIr;
   },
 ): Promise<ISystemRunResult> {
@@ -119,6 +122,7 @@ async function runSystem(
     runtimeState: options.runtimeState,
     systems: options.systems,
     ui: options.ui,
+    uiState: options.uiState,
   });
   await fn(context);
   const result = applySystemEffects(options.world, system, { commands, events, resources, services }, { frame: options.frame ?? 0, prefabs: options.prefabs, tick: options.tick ?? 0 });
