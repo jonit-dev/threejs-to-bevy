@@ -150,9 +150,9 @@ sequenceDiagram
 
 **Implementation:**
 
-- [ ] Define `afterTicks`/bounded schedule API shape.
-- [ ] Require max delay, declared command type, and ownership/cancel policy.
-- [ ] Reject wall-clock, promises, workers, and unbounded queues.
+- [x] Define `afterTicks`/bounded schedule API shape.
+- [x] Require max delay, declared command type, and ownership/cancel policy.
+- [x] Reject wall-clock, promises, workers, and unbounded queues.
 
 **Tests Required:**
 
@@ -178,9 +178,9 @@ sequenceDiagram
 
 **Implementation:**
 
-- [ ] Store pending delayed commands in runtime host state.
-- [ ] Advance queue only on fixed ticks.
-- [ ] Flush ready commands through existing validation and effect logs.
+- [x] Store pending delayed commands in runtime host state.
+- [x] Advance queue only on fixed ticks.
+- [x] Flush ready commands through existing validation and effect logs.
 
 **Tests Required:**
 
@@ -206,9 +206,9 @@ sequenceDiagram
 
 **Implementation:**
 
-- [ ] Mirror the fixed-tick queue and flush semantics in native host state.
-- [ ] Emit matching queue observations and diagnostics.
-- [ ] Validate cancellation when owning scene/entity is removed.
+- [x] Mirror the fixed-tick queue and flush semantics in native host state.
+- [x] Emit matching queue observations and diagnostics.
+- [x] Validate cancellation when owning scene/entity is removed.
 
 **Tests Required:**
 
@@ -234,9 +234,9 @@ sequenceDiagram
 
 **Implementation:**
 
-- [ ] Add a fixture that schedules event and spawn commands across fixed ticks.
-- [ ] Compare web/native command logs by tick.
-- [ ] Update docs and status evidence.
+- [x] Add a fixture that schedules event and spawn commands across fixed ticks.
+- [x] Compare web/native command logs by tick.
+- [x] Update docs and status evidence.
 
 **Tests Required:**
 
