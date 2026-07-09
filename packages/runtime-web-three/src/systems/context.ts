@@ -220,6 +220,24 @@ export function createSystemContext(
           services.push({ payload: { request, result: cloneValue(result) }, service: "particles.burst" });
           return cloneValue(result);
         },
+        clear(asset, emitter, particleOptions = {}) {
+          const request = { asset, emitter, options: cloneValue(particleOptions) };
+          const result = particles.execute("clear", asset, emitter, particleOptions);
+          services.push({ payload: { request, result: cloneValue(result) }, service: "particles.clear" });
+          return cloneValue(result);
+        },
+        emit(asset, emitter, particleOptions = {}) {
+          const request = { asset, emitter, options: cloneValue(particleOptions) };
+          const result = particles.execute("emit", asset, emitter, particleOptions);
+          services.push({ payload: { request, result: cloneValue(result) }, service: "particles.emit" });
+          return cloneValue(result);
+        },
+        play(asset, emitter, particleOptions = {}) {
+          const request = { asset, emitter, options: cloneValue(particleOptions) };
+          const result = particles.execute("play", asset, emitter, particleOptions);
+          services.push({ payload: { request, result: cloneValue(result) }, service: "particles.play" });
+          return cloneValue(result);
+        },
         reset(asset, emitter, particleOptions = {}) {
           const request = { asset, emitter, options: cloneValue(particleOptions) };
           const result = particles.execute("reset", asset, emitter, particleOptions);
@@ -1395,13 +1413,13 @@ function createParticleCommandService(assets: IAssetsManifest | undefined): {
           status: "missing-emitter",
         };
       }
-      const requestedCount = command === "stop" || command === "reset"
+      const requestedCount = command === "stop" || command === "reset" || command === "clear"
         ? 0
         : options.count ?? Math.max(1, Math.floor(emitter.ratePerSecond * emitter.lifetimeSeconds));
       const count = Math.min(emitter.maxParticles, Math.max(0, Math.floor(Number.isFinite(requestedCount) ? requestedCount : 0)));
       const result: IParticleCommandResult = {
         accepted: true,
-        active: command === "start" || command === "burst",
+        active: command === "start" || command === "play" || command === "burst" || command === "emit",
         asset: assetId,
         command,
         count,
@@ -1410,7 +1428,7 @@ function createParticleCommandService(assets: IAssetsManifest | undefined): {
         seed,
         status: particleCommandStatus(command),
       };
-      if (command === "stop" || command === "reset") {
+      if (command === "stop" || command === "reset" || command === "clear") {
         active.delete(key);
       } else {
         active.set(key, result);
@@ -1424,6 +1442,12 @@ function particleCommandStatus(command: IParticleCommandResult["command"]): IPar
   switch (command) {
     case "burst":
       return "burst";
+    case "clear":
+      return "cleared";
+    case "emit":
+      return "emitted";
+    case "play":
+      return "played";
     case "reset":
       return "reset";
     case "start":

@@ -37,6 +37,11 @@ Current support:
   declared audio IR and return logical playback IDs/status without exposing web
   or native handles; streaming, network audio, custom decoders, and platform
   handles remain diagnostic-only boundaries.
+- `ctx.particles.play`, `ctx.particles.emit`, `ctx.particles.clear`, and
+  `ctx.particles.stop` operate only on declared bounded particle emitters with
+  finite lifetimes, rates, and max live counts. `start`, `burst`, and `reset`
+  remain compatibility aliases; backend handles, GPU simulations, trails,
+  collisions, and unbounded emitters remain diagnostic-only boundaries.
 - `ctx.schedule.afterTicks({ id, delayTicks })` queues declared
   `delayedCommands` on fixed ticks only. Delayed commands require bounded max
   delay, scene/entity ownership, and a drop/flush cancellation policy; web and
@@ -75,6 +80,7 @@ Verification:
 - `pnpm --filter @threenative/runtime-web-three test`
 - `cargo test -p threenative_runtime systems_host_should_apply_declared_resource_write`
 - `cargo test -p threenative_runtime systems_host_should_expose_audio_facade`
+- `cargo test -p threenative_runtime systems_host_should_expose_bounded_particle_command_services`
 - `cargo test -p threenative_runtime systems_host_should_flush_delayed_commands_after_fixed_ticks`
 - `pnpm verify:conformance` covers the `script-audio-facade` fixture.
 - `pnpm --filter @threenative/runtime-web-three test -- --run runtime gameplay`

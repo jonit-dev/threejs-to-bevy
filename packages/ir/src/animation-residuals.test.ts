@@ -5,7 +5,7 @@ import { join } from "node:path";
 import test from "node:test";
 
 import { validateBundle } from "./validate.js";
-import { writeTestBundle } from "./testFixtures.js";
+import { writeJson, writeTestBundle } from "./testFixtures.js";
 
 test("should reject mask paths not present in model skeleton", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-animation-mask-missing-"));
@@ -71,6 +71,117 @@ test("should accept bounded animation masks and morph target clips", async () =>
 
     assert.equal(result.ok, true);
     assert.deepEqual(result.diagnostics, []);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should accept bounded particle command services", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-particle-command-services-"));
+  try {
+    await writeTestBundle(root, {
+      createAssetsDir: true,
+      manifest: { entry: { systems: "systems.ir.json" } },
+      assets: {
+        schema: "threenative.assets",
+        version: "0.1.0",
+        assets: [
+          {
+            format: "glb",
+            id: "model.hero",
+            kind: "model",
+            particleEmitters: [{ id: "dust", lifetimeSeconds: 0.5, maxParticles: 8, ratePerSecond: 8, shape: "point" }],
+            path: "assets/hero.glb",
+          },
+        ],
+      } as any,
+    });
+    await writeFile(join(root, "assets/hero.glb"), "model");
+    await writeJson(root, "systems.ir.json", {
+      schema: "threenative.systems",
+      version: "0.1.0",
+      systems: [
+        {
+          commands: [],
+          eventReads: [],
+          eventWrites: [],
+          name: "particleCommands",
+          queries: [],
+          reads: [],
+          resourceReads: [],
+          resourceWrites: [],
+          schedule: "update",
+          services: ["particles.play", "particles.emit", "particles.clear", "particles.stop", "particles.start", "particles.burst", "particles.reset"],
+          writes: [],
+        },
+      ],
+    });
+
+    const result = await validateBundle(root);
+
+    assert.equal(result.ok, true);
+    assert.deepEqual(result.diagnostics, []);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should reject unbounded particle commands", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-particle-command-unbounded-"));
+  try {
+    await writeTestBundle(root, {
+      createAssetsDir: true,
+      manifest: { entry: { systems: "systems.ir.json" } },
+      assets: {
+        schema: "threenative.assets",
+        version: "0.1.0",
+        assets: [
+          {
+            format: "glb",
+            id: "model.hero",
+            kind: "model",
+            particleEmitters: [
+              { id: "dust", lifetimeSeconds: 0, maxParticles: 0, ratePerSecond: Number.POSITIVE_INFINITY, shape: "gpu", handle: "renderer-particle-system" },
+            ],
+            path: "assets/hero.glb",
+          },
+        ],
+      } as any,
+    });
+    await writeFile(join(root, "assets/hero.glb"), "model");
+    await writeJson(root, "systems.ir.json", {
+      schema: "threenative.systems",
+      version: "0.1.0",
+      systems: [
+        {
+          commands: [],
+          eventReads: [],
+          eventWrites: [],
+          name: "particleCommands",
+          queries: [],
+          reads: [],
+          resourceReads: [],
+          resourceWrites: [],
+          schedule: "update",
+          services: ["particles.emit"],
+          writes: [],
+        },
+      ],
+    });
+
+    const result = await validateBundle(root);
+
+    assert.equal(result.ok, false);
+    assert.deepEqual(
+      result.diagnostics.map((diagnostic) => [diagnostic.code, diagnostic.path]),
+      [
+        ["TN_IR_PARTICLE_FIELD_UNSUPPORTED", "assets.manifest.json/assets/0/particleEmitters/0/handle"],
+        ["TN_IR_PARTICLE_MAX_INVALID", "assets.manifest.json/assets/0/particleEmitters/0/maxParticles"],
+        ["TN_IR_PARTICLE_RATE_INVALID", "assets.manifest.json/assets/0/particleEmitters/0/ratePerSecond"],
+        ["TN_IR_PARTICLE_LIFETIME_INVALID", "assets.manifest.json/assets/0/particleEmitters/0/lifetimeSeconds"],
+        ["TN_IR_PARTICLE_SHAPE_UNSUPPORTED", "assets.manifest.json/assets/0/particleEmitters/0/shape"],
+      ],
+    );
   } finally {
     await rm(root, { force: true, recursive: true });
   }

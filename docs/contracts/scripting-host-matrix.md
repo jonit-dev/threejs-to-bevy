@@ -37,6 +37,9 @@ depend on `window`, `document`, workers, `fetch`, websockets, timers, `process`,
 | `character.move` | `ctx.character.move` | implemented | implemented | Bounded character movement observation. |
 | `navigation.path` | `ctx.navigation.path` | implemented | implemented | Static navigation path query. |
 | `particles.burst` | `ctx.particles.burst` | implemented | implemented | Deterministic one-shot bounded emitter command. |
+| `particles.clear` | `ctx.particles.clear` | implemented | implemented | Canonical reset of declared emitter runtime state. |
+| `particles.emit` | `ctx.particles.emit` | implemented | implemented | Canonical one-shot bounded emitter command. |
+| `particles.play` | `ctx.particles.play` | implemented | implemented | Canonical start of declared bounded emitter state. |
 | `particles.reset` | `ctx.particles.reset` | implemented | implemented | Reset declared emitter runtime state. |
 | `particles.start` | `ctx.particles.start` | implemented | implemented | Start declared bounded emitter state. |
 | `particles.stop` | `ctx.particles.stop` | implemented | implemented | Stop declared bounded emitter state. |

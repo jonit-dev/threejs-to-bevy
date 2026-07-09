@@ -185,7 +185,9 @@ imports.
   through promoted animation fixtures and runtime observations.
 - [x] Script audio play/stop/query through `ctx.audio.play`, `ctx.audio.stop`,
   and `ctx.audio.query` against declared audio IR.
-- [ ] Missing arbitrary particle commands beyond bounded portable emitter data.
+- [x] Bounded particle commands through canonical
+  `ctx.particles.play/emit/clear/stop`; `start/burst/reset` remain
+  compatibility aliases for existing authored scripts.
 - [x] UI action/focus/value/disabled/read script APIs through `ctx.ui.*`.
 - [x] Persistence save/load/list/delete script APIs through
   `ctx.persistence.*`.
@@ -559,7 +561,9 @@ show the feature.
 
 ### Missing
 
-- [ ] Arbitrary particle commands beyond bounded portable emitter data.
+- [x] Bounded particle commands against declared portable emitters.
+- [ ] Arbitrary backend particle handles, GPU simulation shaders, trails,
+  collisions, and unbounded particle behavior.
   Promote only when the command surface has deterministic web/native behavior
   and visual verification artifacts.
 - [x] Runtime prefab instantiation. Bundle-local `prefabs.ir.json` catalogs
@@ -857,6 +861,11 @@ Runtime effects:
   data.
 - `ctx.animation.play`, `ctx.animation.query`, and `ctx.animation.stop` are
   declared service calls with canonical web/native effect logs.
+- `ctx.particles.play`, `ctx.particles.emit`, `ctx.particles.clear`, and
+  `ctx.particles.stop` are declared service calls against bounded model asset
+  emitters with finite lifetime, rate, and max live counts. Existing
+  `ctx.particles.start`, `ctx.particles.burst`, and `ctx.particles.reset`
+  calls are compatibility aliases for the same bounded contract.
 - Scripts see only stable IDs, booleans, numbers, arrays, and plain data.
 - IK, retargeting, backend animation controllers, arbitrary blend trees, and
   unbounded particle behavior must fail with stable diagnostics rather than

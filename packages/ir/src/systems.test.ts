@@ -125,7 +125,7 @@ test("should accept v7 physics, picking, character, particles, and animation con
     await writeBundle(root, {
       commands: [],
       reads: ["Transform"],
-      services: ["animation.play", "animation.query", "animation.stop", "character.move", "particles.burst", "particles.reset", "particles.start", "particles.stop", "physics.overlap", "physics.raycast", "physics.shapeCast", "picking.mesh", "picking.pointerRay"],
+      services: ["animation.play", "animation.query", "animation.stop", "character.move", "particles.burst", "particles.clear", "particles.emit", "particles.play", "particles.reset", "particles.start", "particles.stop", "physics.overlap", "physics.raycast", "physics.shapeCast", "picking.mesh", "picking.pointerRay"],
       writes: ["Transform"],
     });
 

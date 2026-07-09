@@ -343,11 +343,37 @@ test("should log script audio service calls", () => {
 test("should execute bounded particle command services", () => {
   const { context, services } = createSystemContext(makeWorld(), { assets: makeAssets(), delta: 0.016, fixedDelta: 0.016 });
 
+  const played = context.particles.play("model.hero", "dust", { seed: 7 });
+  const emitted = context.particles.emit("model.hero", "dust", { count: 99, seed: "impact" });
+  const cleared = context.particles.clear("model.hero", "dust");
   const started = context.particles.start("model.hero", "dust", { seed: 7 });
   const burst = context.particles.burst("model.hero", "dust", { count: 99, seed: "impact" });
   const stopped = context.particles.stop("model.hero", "dust");
   const reset = context.particles.reset("model.hero", "dust");
 
+  assert.deepEqual(played, {
+    accepted: true,
+    active: true,
+    asset: "model.hero",
+    command: "play",
+    count: 4,
+    emitter: "dust",
+    maxParticles: 8,
+    seed: 7,
+    status: "played",
+  });
+  assert.deepEqual(emitted, {
+    accepted: true,
+    active: true,
+    asset: "model.hero",
+    command: "emit",
+    count: 8,
+    emitter: "dust",
+    maxParticles: 8,
+    seed: 510767767,
+    status: "emitted",
+  });
+  assert.equal(cleared.status, "cleared");
   assert.deepEqual(started, {
     accepted: true,
     active: true,
@@ -372,10 +398,10 @@ test("should execute bounded particle command services", () => {
   });
   assert.equal(stopped.status, "stopped");
   assert.equal(reset.status, "reset");
-  assert.deepEqual(services.map((service) => service.service), ["particles.start", "particles.burst", "particles.stop", "particles.reset"]);
+  assert.deepEqual(services.map((service) => service.service), ["particles.play", "particles.emit", "particles.clear", "particles.start", "particles.burst", "particles.stop", "particles.reset"]);
   assert.deepEqual(services[1]?.payload, {
     request: { asset: "model.hero", emitter: "dust", options: { count: 99, seed: "impact" } },
-    result: burst,
+    result: emitted,
   });
 });
 

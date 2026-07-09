@@ -519,6 +519,11 @@ fn systems_host_should_expose_bounded_particle_command_services() {
         Some(&serde_json::json!({
             "burstCount": 8,
             "burstStatus": "burst",
+            "clearStatus": "cleared",
+            "emitCount": 8,
+            "emitStatus": "emitted",
+            "playCount": 4,
+            "playStatus": "played",
             "resetStatus": "reset",
             "startCount": 4,
             "startStatus": "started",
@@ -534,6 +539,9 @@ fn systems_host_should_expose_bounded_particle_command_services() {
         service_names,
         vec![
             "particles.burst",
+            "particles.clear",
+            "particles.emit",
+            "particles.play",
             "particles.reset",
             "particles.start",
             "particles.stop"
@@ -2815,7 +2823,7 @@ fn write_particle_service_bundle(name: &str) -> PathBuf {
       "eventWrites": [],
       "resourceReads": ["ParticleReport"],
       "resourceWrites": ["ParticleReport"],
-      "services": ["particles.start", "particles.burst", "particles.stop", "particles.reset"],
+      "services": ["particles.play", "particles.emit", "particles.clear", "particles.start", "particles.burst", "particles.stop", "particles.reset"],
       "script": { "bundle": "scripts.bundle.js", "exportName": "system_particleCommands" }
     }
   ]
@@ -2824,6 +2832,9 @@ fn write_particle_service_bundle(name: &str) -> PathBuf {
     fs::write(
         root.join("scripts.bundle.js"),
         r#"const system_particleCommands = (ctx) => {
+  const played = ctx.particles.play("model.hero", "dust", { seed: 7 });
+  const emitted = ctx.particles.emit("model.hero", "dust", { count: 99, seed: "impact" });
+  const cleared = ctx.particles.clear("model.hero", "dust");
   const started = ctx.particles.start("model.hero", "dust", { seed: 7 });
   const burst = ctx.particles.burst("model.hero", "dust", { count: 99, seed: "impact" });
   const stopped = ctx.particles.stop("model.hero", "dust");
@@ -2831,6 +2842,11 @@ fn write_particle_service_bundle(name: &str) -> PathBuf {
   ctx.resources.set("ParticleReport", {
     burstCount: burst.count,
     burstStatus: burst.status,
+    clearStatus: cleared.status,
+    emitCount: emitted.count,
+    emitStatus: emitted.status,
+    playCount: played.count,
+    playStatus: played.status,
     resetStatus: reset.status,
     startCount: started.count,
     startStatus: started.status,

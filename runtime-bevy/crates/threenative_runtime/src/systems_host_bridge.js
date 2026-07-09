@@ -113,7 +113,14 @@ function __tnInvokeSystem(options) {
     }
     return hash >>> 0;
   };
-  const particleStatus = (command) => command === "start" ? "started" : (command === "stop" ? "stopped" : command);
+  const particleStatus = (command) => {
+    if (command === "clear") return "cleared";
+    if (command === "emit") return "emitted";
+    if (command === "play") return "played";
+    if (command === "start") return "started";
+    if (command === "stop") return "stopped";
+    return command;
+  };
   const particleCommand = (command, asset, emitter, options = {}) => {
     const key = `${asset}/${emitter}`;
     const declaration = particleEmitters.get(key);
@@ -121,13 +128,13 @@ function __tnInvokeSystem(options) {
     if (!declaration) {
       return { accepted: false, active: false, asset, command, count: 0, emitter, maxParticles: 0, seed, status: "missing-emitter" };
     }
-    const requested = command === "stop" || command === "reset"
+    const requested = command === "stop" || command === "reset" || command === "clear"
       ? 0
       : (options.count ?? Math.max(1, Math.floor(declaration.ratePerSecond * declaration.lifetimeSeconds)));
     const numericCount = Number.isFinite(Number(requested)) ? Number(requested) : 0;
     const result = {
       accepted: true,
-      active: command === "start" || command === "burst",
+      active: command === "start" || command === "play" || command === "burst" || command === "emit",
       asset,
       command,
       count: Math.min(declaration.maxParticles, Math.max(0, Math.floor(numericCount))),
@@ -136,7 +143,7 @@ function __tnInvokeSystem(options) {
       seed,
       status: particleStatus(command)
     };
-    if (command === "stop" || command === "reset") delete particleStates[key];
+    if (command === "stop" || command === "reset" || command === "clear") delete particleStates[key];
     else particleStates[key] = clone(result);
     return clone(result);
   };
@@ -1039,6 +1046,24 @@ function __tnInvokeSystem(options) {
         const request = { asset, emitter, options: clone(options) };
         const result = particleCommand("burst", asset, emitter, options);
         effects.services.push({ service: "particles.burst", payload: { request, result: clone(result) } });
+        return clone(result);
+      },
+      clear(asset, emitter, options = {}) {
+        const request = { asset, emitter, options: clone(options) };
+        const result = particleCommand("clear", asset, emitter, options);
+        effects.services.push({ service: "particles.clear", payload: { request, result: clone(result) } });
+        return clone(result);
+      },
+      emit(asset, emitter, options = {}) {
+        const request = { asset, emitter, options: clone(options) };
+        const result = particleCommand("emit", asset, emitter, options);
+        effects.services.push({ service: "particles.emit", payload: { request, result: clone(result) } });
+        return clone(result);
+      },
+      play(asset, emitter, options = {}) {
+        const request = { asset, emitter, options: clone(options) };
+        const result = particleCommand("play", asset, emitter, options);
+        effects.services.push({ service: "particles.play", payload: { request, result: clone(result) } });
         return clone(result);
       },
       reset(asset, emitter, options = {}) {

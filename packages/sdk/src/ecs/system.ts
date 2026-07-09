@@ -1,4 +1,5 @@
 import { SdkError } from "../errors.js";
+import type { IParticleCommandOptions, IParticleCommandResult } from "../animation.js";
 import type { CommandDeclaration } from "./commands.js";
 import type { IQueryDeclaration, IQueryOptions } from "./query.js";
 import type { EcsFactory, IEcsSchema } from "./schema.js";
@@ -15,6 +16,9 @@ export type SystemService =
   | "character.move"
   | "navigation.path"
   | "particles.burst"
+  | "particles.clear"
+  | "particles.emit"
+  | "particles.play"
   | "particles.reset"
   | "particles.start"
   | "particles.stop"
@@ -154,9 +158,12 @@ export interface ISystemContext {
     stop(entity: ISystemEntity | string, clip?: string): { accepted: true; stopped: true };
   };
   particles: {
-    burst(asset: string, emitter: string, options?: { count?: number; seed?: number | string }): IParticleCommandResult;
-    reset(asset: string, emitter: string, options?: { seed?: number | string }): IParticleCommandResult;
-    start(asset: string, emitter: string, options?: { count?: number; seed?: number | string }): IParticleCommandResult;
+    burst(asset: string, emitter: string, options?: IParticleCommandOptions): IParticleCommandResult;
+    clear(asset: string, emitter: string, options?: Pick<IParticleCommandOptions, "seed">): IParticleCommandResult;
+    emit(asset: string, emitter: string, options?: IParticleCommandOptions): IParticleCommandResult;
+    play(asset: string, emitter: string, options?: IParticleCommandOptions): IParticleCommandResult;
+    reset(asset: string, emitter: string, options?: Pick<IParticleCommandOptions, "seed">): IParticleCommandResult;
+    start(asset: string, emitter: string, options?: IParticleCommandOptions): IParticleCommandResult;
     stop(asset: string, emitter: string): IParticleCommandResult;
   };
   audio: {
@@ -411,18 +418,6 @@ export interface ISystemContext {
     set(name: string, value: unknown): void;
   };
   state<T extends Record<string, unknown>>(key: string, defaults: T): T;
-}
-
-export interface IParticleCommandResult {
-  accepted: boolean;
-  active: boolean;
-  asset: string;
-  command: "burst" | "reset" | "start" | "stop";
-  count: number;
-  emitter: string;
-  maxParticles: number;
-  seed: number;
-  status: "burst" | "missing-emitter" | "reset" | "started" | "stopped";
 }
 
 export function defineSystem(config: IV4SystemConfig, run?: PortableSystem): ISystemDeclaration {

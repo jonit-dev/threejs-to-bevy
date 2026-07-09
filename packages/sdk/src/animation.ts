@@ -3,6 +3,26 @@ import { SdkError } from "./errors.js";
 export type TransformAnimationChannel = "position" | "rotation" | "scale";
 export type TransformAnimationEasing = "linear" | "step";
 export type TransformAnimationLoop = "none" | "repeat";
+export type ParticleCommandName = "clear" | "emit" | "play" | "stop";
+export type ParticleCommandAliasName = "burst" | "reset" | "start";
+export type ParticleCommandServiceName = `particles.${ParticleCommandName | ParticleCommandAliasName}`;
+
+export interface IParticleCommandOptions {
+  count?: number;
+  seed?: number | string;
+}
+
+export interface IParticleCommandResult {
+  accepted: boolean;
+  active: boolean;
+  asset: string;
+  command: ParticleCommandName | ParticleCommandAliasName;
+  count: number;
+  emitter: string;
+  maxParticles: number;
+  seed: number;
+  status: "burst" | "cleared" | "emitted" | "missing-emitter" | "played" | "reset" | "started" | "stopped";
+}
 
 export interface ITransformAnimationKeyframe {
   timeSeconds: number;

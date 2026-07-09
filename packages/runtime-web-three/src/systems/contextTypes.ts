@@ -55,6 +55,9 @@ export interface ISystemContext {
   };
   particles: {
     burst(asset: string, emitter: string, options?: IParticleCommandOptions): IParticleCommandResult;
+    clear(asset: string, emitter: string, options?: Pick<IParticleCommandOptions, "seed">): IParticleCommandResult;
+    emit(asset: string, emitter: string, options?: IParticleCommandOptions): IParticleCommandResult;
+    play(asset: string, emitter: string, options?: IParticleCommandOptions): IParticleCommandResult;
     reset(asset: string, emitter: string, options?: Pick<IParticleCommandOptions, "seed">): IParticleCommandResult;
     start(asset: string, emitter: string, options?: IParticleCommandOptions): IParticleCommandResult;
     stop(asset: string, emitter: string): IParticleCommandResult;
@@ -282,7 +285,7 @@ export interface IQueuedResourceWrite {
 
 export interface IQueuedServiceCall {
   payload: unknown;
-  service: "animation.play" | "animation.query" | "animation.stop" | "audio.play" | "audio.query" | "audio.stop" | "assets.load" | "character.move" | "navigation.path" | "particles.burst" | "particles.reset" | "particles.start" | "particles.stop" | "physics.overlap" | "physics.raycast" | "physics.sensor" | "physics.shapeCast" | "picking.mesh" | "picking.pointerRay" | "persistence.delete" | "persistence.listSlots" | "persistence.load" | "persistence.save" | "scene.change" | "scene.current" | "scene.loadAdditive" | "scene.pop" | "scene.push" | "scene.unload" | "sequences.play" | "sequences.query" | "sequences.stop" | "settings.export" | "settings.get" | "settings.import" | "settings.set" | "ui.actions" | "ui.activate" | "ui.focus" | "ui.read" | "ui.setDisabled" | "ui.setValue";
+  service: "animation.play" | "animation.query" | "animation.stop" | "audio.play" | "audio.query" | "audio.stop" | "assets.load" | "character.move" | "navigation.path" | "particles.burst" | "particles.clear" | "particles.emit" | "particles.play" | "particles.reset" | "particles.start" | "particles.stop" | "physics.overlap" | "physics.raycast" | "physics.sensor" | "physics.shapeCast" | "picking.mesh" | "picking.pointerRay" | "persistence.delete" | "persistence.listSlots" | "persistence.load" | "persistence.save" | "scene.change" | "scene.current" | "scene.loadAdditive" | "scene.pop" | "scene.push" | "scene.unload" | "sequences.play" | "sequences.query" | "sequences.stop" | "settings.export" | "settings.get" | "settings.import" | "settings.set" | "ui.actions" | "ui.activate" | "ui.focus" | "ui.read" | "ui.setDisabled" | "ui.setValue";
 }
 
 export interface IParticleCommandOptions {
@@ -294,12 +297,12 @@ export interface IParticleCommandResult {
   accepted: boolean;
   active: boolean;
   asset: string;
-  command: "burst" | "reset" | "start" | "stop";
+  command: "burst" | "clear" | "emit" | "play" | "reset" | "start" | "stop";
   count: number;
   emitter: string;
   maxParticles: number;
   seed: number;
-  status: "burst" | "missing-emitter" | "reset" | "started" | "stopped";
+  status: "burst" | "cleared" | "emitted" | "missing-emitter" | "played" | "reset" | "started" | "stopped";
 }
 
 export interface IUiFocusResult {
