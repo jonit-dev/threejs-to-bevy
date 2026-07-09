@@ -11,6 +11,12 @@ Current support:
   actions drain into portable script-observable UI/input state; script
   `setDisabled`, `setValue`, and `activate` calls update the live rendered
   overlay state.
+- The `@threenative/ui` TSX authoring surface exposes typed wrappers for
+  text input and reusable component instances. Button-like and value-changing
+  widgets require portable `action` props where TypeScript can enforce them,
+  and range/text input widgets expose kind-specific value fields.
+- UI component cycles and theme token alias cycles report stable diagnostics
+  with the detected cycle path and suggested fixes.
 - UI parity claims are truth-graded in
   [bevy-feature-parity.md](../../bevy-feature-parity.md): promoted rows name a
   proof gate or artifact, while trace-only native shadows/gradients, effect

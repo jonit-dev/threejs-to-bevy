@@ -1,15 +1,31 @@
-export type UiElementType = "bar" | "button" | "column" | "contextMenu" | "image" | "minimap" | "row" | "scrollbar" | "slider" | "stack" | "text" | "touchControl" | "ui";
+export type UiElementType =
+  | "bar"
+  | "button"
+  | "column"
+  | "component"
+  | "contextMenu"
+  | "image"
+  | "minimap"
+  | "row"
+  | "scrollbar"
+  | "slider"
+  | "stack"
+  | "text"
+  | "textInput"
+  | "touchControl"
+  | "ui";
 export type UiAccessibilityRole = "button" | "group" | "image" | "list" | "listitem" | "none" | "progressbar" | "text";
 export type UiBinding =
   | { kind: "resource"; name: string; field?: string }
   | { component: string; entity: string; field?: string; kind: "component" };
 
-export interface IUiNodeProps {
+export interface IUiCommonProps {
   action?: string;
   accessibilityLabel?: string;
   anchorId?: string;
   binding?: UiBinding;
   children?: UiChild | UiChild[];
+  component?: IUiComponentInstance;
   disabled?: boolean;
   focusable?: boolean;
   focusOrder?: string[];
@@ -23,6 +39,8 @@ export interface IUiNodeProps {
   };
   image?: UiImageMetadata;
   label?: string;
+  max?: number;
+  min?: number;
   minimap?: UiMinimapMetadata;
   layout?: {
     align?: "center" | "end" | "start" | "stretch";
@@ -53,8 +71,6 @@ export interface IUiNodeProps {
     width?: number;
     zIndex?: number;
   };
-  max?: number;
-  min?: number;
   navigation?: {
     down?: string;
     left?: string;
@@ -63,11 +79,13 @@ export interface IUiNodeProps {
   };
   orientation?: "horizontal" | "vertical";
   role?: UiAccessibilityRole;
-  spans?: UiRichTextSpan[];
   safeArea?: {
     edges?: Array<"bottom" | "left" | "right" | "top">;
     mode: "avoid" | "none";
   };
+  spans?: UiRichTextSpan[];
+  src?: string;
+  step?: number;
   style?: {
     backgroundColor?: string;
     borderColor?: string;
@@ -95,12 +113,83 @@ export interface IUiNodeProps {
     textAlign?: "center" | "left" | "right";
     wrap?: "character" | "none" | "word";
   };
-  src?: string;
-  step?: number;
   text?: string;
   value?: number;
   valueText?: string;
 }
+
+export interface IUiContainerProps extends IUiCommonProps {}
+
+export interface IUiTextProps extends IUiCommonProps {
+  spans?: UiRichTextSpan[];
+  text?: string;
+}
+
+export interface IUiActionProps extends IUiCommonProps {
+  action: string;
+}
+
+export interface IUiRangeProps extends IUiActionProps {
+  max?: number;
+  min?: number;
+  orientation?: "horizontal" | "vertical";
+  step?: number;
+  value?: number;
+  valueText?: string;
+}
+
+export interface IUiScrollbarProps extends IUiCommonProps {
+  action?: string;
+  max?: number;
+  min?: number;
+  orientation?: "horizontal" | "vertical";
+  step?: number;
+  value?: number;
+  valueText?: string;
+}
+
+export interface IUiTextInputProps extends IUiActionProps {
+  text?: string;
+  valueText?: string;
+}
+
+export interface IUiBarProps extends IUiCommonProps {
+  max?: number;
+  value?: number;
+  valueText?: string;
+}
+
+export interface IUiImageProps extends IUiCommonProps {
+  image?: UiImageMetadata;
+  src?: string;
+}
+
+export interface IUiMinimapProps extends IUiCommonProps {
+  minimap: UiMinimapMetadata;
+}
+
+export interface IUiComponentInstance {
+  props?: Record<string, string | number | boolean>;
+  ref: string;
+  slots?: Record<string, IUiElement[]>;
+}
+
+export interface IUiComponentProps extends IUiCommonProps {
+  component: IUiComponentInstance;
+}
+
+export type IUiNodeProps =
+  | IUiActionProps
+  | IUiBarProps
+  | IUiCommonProps
+  | IUiComponentProps
+  | IUiContainerProps
+  | IUiImageProps
+  | IUiMinimapProps
+  | IUiRangeProps
+  | IUiScrollbarProps
+  | IUiTextInputProps
+  | IUiTextProps;
 
 export type UiChild = IUiElement | false | null | undefined;
 
@@ -142,12 +231,12 @@ export interface UiImageMetadata {
   tint?: string;
 }
 
-export interface IUiElement {
-  props: IUiNodeProps;
+export interface IUiElement<TProps extends IUiNodeProps = IUiNodeProps> {
+  props: TProps;
   type: UiElementType;
 }
 
-export function jsx(type: UiElementType | ((props: IUiNodeProps) => IUiElement), props: IUiNodeProps): IUiElement {
+export function jsx<TProps extends IUiNodeProps>(type: UiElementType | ((props: TProps) => IUiElement), props: TProps): IUiElement {
   if (typeof type === "function") {
     return type(props);
   }
@@ -161,18 +250,20 @@ export namespace JSX {
   export type Element = IUiElement;
 
   export interface IntrinsicElements {
-    bar: IUiNodeProps;
-    button: IUiNodeProps;
-    column: IUiNodeProps;
-    contextMenu: IUiNodeProps;
-    image: IUiNodeProps;
-    minimap: IUiNodeProps;
-    row: IUiNodeProps;
-    scrollbar: IUiNodeProps;
-    slider: IUiNodeProps;
-    stack: IUiNodeProps;
-    text: IUiNodeProps;
-    touchControl: IUiNodeProps;
-    ui: IUiNodeProps;
+    bar: IUiBarProps;
+    button: IUiActionProps;
+    column: IUiContainerProps;
+    component: IUiComponentProps;
+    contextMenu: IUiContainerProps;
+    image: IUiImageProps;
+    minimap: IUiMinimapProps;
+    row: IUiContainerProps;
+    scrollbar: IUiScrollbarProps;
+    slider: IUiRangeProps;
+    stack: IUiContainerProps;
+    text: IUiTextProps;
+    textInput: IUiTextInputProps;
+    touchControl: IUiActionProps;
+    ui: IUiContainerProps;
   }
 }

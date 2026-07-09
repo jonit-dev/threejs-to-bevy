@@ -311,7 +311,10 @@ test("ui should reject circular UI token aliases", async () => {
     const result = await validateBundle(root);
 
     assert.equal(result.ok, false);
-    assert.equal(result.diagnostics.some((diagnostic) => diagnostic.code === "TN_IR_UI_THEME_TOKEN_ALIAS_CYCLE"), true);
+    const diagnostic = result.diagnostics.find((item) => item.code === "TN_IR_UI_THEME_TOKEN_ALIAS_CYCLE");
+    assert.equal(diagnostic?.path, "ui.ir.json/theme/tokens/space.a/value/alias");
+    assert.match(diagnostic?.message ?? "", /space\.a -> space\.b -> space\.a/);
+    assert.match(diagnostic?.suggestion ?? "", /concrete token value/);
   } finally {
     await rm(root, { force: true, recursive: true });
   }
@@ -407,6 +410,41 @@ test("ui should reject component instances that generate duplicate node IDs", as
 
     assert.equal(result.ok, false);
     assert.equal(result.diagnostics.some((diagnostic) => diagnostic.code === "TN_IR_UI_COMPONENT_GENERATED_ID_DUPLICATE"), true);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("ui should reject component cycles with the cycle path", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-ui-component-cycle-"));
+  try {
+    await writeTestBundle(root, { manifest: { entry: { ui: "ui.ir.json" } } });
+    await writeJson(root, "ui.ir.json", {
+      schema: "threenative.ui",
+      version: "0.1.0",
+      components: [
+        {
+          id: "panel",
+          root: { id: "root", kind: "component", component: { ref: "row" } },
+        },
+        {
+          id: "row",
+          root: { id: "root", kind: "component", component: { ref: "panel" } },
+        },
+      ],
+      root: {
+        id: "inventory",
+        kind: "row",
+        children: [{ id: "panel.instance", kind: "component", component: { ref: "panel" } }],
+      },
+    });
+
+    const result = await validateBundle(root);
+    const diagnostic = result.diagnostics.find((item) => item.code === "TN_IR_UI_COMPONENT_CYCLE");
+
+    assert.equal(result.ok, false);
+    assert.match(diagnostic?.message ?? "", /panel -> row -> panel/);
+    assert.match(diagnostic?.suggestion ?? "", /recursive component reference/);
   } finally {
     await rm(root, { force: true, recursive: true });
   }

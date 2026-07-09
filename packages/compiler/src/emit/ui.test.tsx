@@ -1,12 +1,17 @@
 /** @jsxImportSource @threenative/ui */
 import assert from "node:assert/strict";
+import { mkdir, mkdtemp, readFile, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import test from "node:test";
 
-import type { IAssetsManifest, IMaterialsIr, IUiIr } from "@threenative/ir";
-import { Bar, Button, Column, Image, Slider, Text, Ui } from "@threenative/ui";
+import { validateBundle, type IAssetsManifest, type IMaterialsIr, type IUiIr } from "@threenative/ir";
+import { PerspectiveCamera, Scene } from "@threenative/sdk";
+import { Bar, Button, Column, Component, Image, Slider, Text, TextInput, Ui, captureUi } from "@threenative/ui";
 
 import { emitUi, expandUiComponents, resolveUiThemeTokens } from "./ui.js";
 import { deriveRequiredCapabilities } from "./capabilities.js";
+import { emitBundle } from "./bundle.js";
 
 test("ui should emit hud and pause ui ir", () => {
   const emitted = emitUi(
@@ -26,6 +31,65 @@ test("ui should emit hud and pause ui ir", () => {
     ["text", "bar", "button"],
   );
   assert.equal(emitted.root.children?.[0]?.children?.[2]?.action, "Pause");
+});
+
+test("ui should carry TSX textInput and component instances through capture, emit, bundle, and validation", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-ui-authoring-e2e-"));
+  try {
+    await mkdir(join(root, "dist"), { recursive: true });
+    const ui = (
+      <Ui id="settings">
+        <TextInput id="player-name" label="Player name" action="SetPlayerName" text="Hero" accessibilityLabel="Player name" />
+        <Slider id="volume" accessibilityLabel="Volume" action="SetVolume" min={0} max={1} value={0.5} step={0.05} />
+      </Ui>
+    );
+    const uiWithComponent = (
+      <Ui id="inventory">
+        <Component id="slot.potion" component={{ ref: "inventorySlot", props: { label: "Potion" } }} />
+      </Ui>
+    );
+    const scene = new Scene({ id: "scene" });
+    const camera = new PerspectiveCamera({ id: "camera.main", fovY: 60, near: 0.1, far: 100 });
+    scene.add(camera);
+    scene.setActiveCamera(camera);
+
+    const captured = captureUi(ui);
+    assert.deepEqual(captured.root.children?.map((node) => node.kind), ["textInput", "slider"]);
+
+    const emitted = emitUi(ui);
+    assert.equal(emitted.root.children?.[0]?.kind, "textInput");
+    const capturedComponent = captureUi(uiWithComponent) as IUiIr;
+    const expandedComponent = expandUiComponents({
+      ...capturedComponent,
+      components: [
+        {
+          id: "inventorySlot",
+          props: [{ id: "label", required: true }],
+          root: { id: "root", kind: "button", label: "$props.label", action: "InspectItem" },
+        },
+      ],
+    });
+    assert.equal(expandedComponent.root.children?.[0]?.id, "slot.potion.root");
+    assert.equal(expandedComponent.root.children?.[0]?.label, "Potion");
+
+    const bundlePath = await emitBundle(
+      {
+        entry: "src/game.ts",
+        outDir: "dist/ui-authoring.bundle",
+        projectPath: root,
+        schema: "threenative.project",
+        version: "0.1.0",
+      },
+      { scene, ui },
+    );
+    const validation = await validateBundle(bundlePath);
+    const bundledUi = JSON.parse(await readFile(join(bundlePath, "ui.ir.json"), "utf8")) as IUiIr;
+
+    assert.equal(validation.ok, true);
+    assert.equal(bundledUi.root.children?.some((node) => node.kind === "textInput"), true);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
 });
 
 test("should lower theme tokens to retained styles", () => {

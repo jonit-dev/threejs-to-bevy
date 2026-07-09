@@ -441,7 +441,14 @@ function validateUiComponents(
 
   function validateUiComponentCycles(component: IUiComponentDefinitionIr, all: Map<string, IUiComponentDefinitionIr>, stack: string[], componentPath: string): void {
     if (stack.includes(component.id)) {
-      diagnostics.push({ code: "TN_IR_UI_COMPONENT_CYCLE", message: `UI component cycle includes '${component.id}'.`, path: componentPath });
+      const cycle = [...stack.slice(stack.indexOf(component.id)), component.id];
+      diagnostics.push({
+        code: "TN_IR_UI_COMPONENT_CYCLE",
+        message: `UI component cycle detected: ${cycle.join(" -> ")}.`,
+        path: componentPath,
+        severity: "error",
+        suggestion: "Remove the recursive component reference or replace one edge with a slot filled by the caller.",
+      });
       return;
     }
     for (const ref of collectComponentRefs(component.root)) {

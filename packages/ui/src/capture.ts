@@ -28,11 +28,16 @@ export interface IUiNodeIr {
   anchorId?: string;
   binding?: IUiBinding;
   children?: IUiNodeIr[];
+  component?: {
+    props?: Record<string, string | number | boolean>;
+    ref: string;
+    slots?: Record<string, IUiNodeIr[]>;
+  };
   disabled?: boolean;
   focusable?: boolean;
   id: string;
   image?: IUiImageMetadataIr;
-  kind: "bar" | "button" | "column" | "contextMenu" | "image" | "minimap" | "row" | "scrollbar" | "slider" | "stack" | "text" | "touchControl";
+  kind: "bar" | "button" | "column" | "component" | "contextMenu" | "image" | "minimap" | "row" | "scrollbar" | "slider" | "stack" | "text" | "textInput" | "touchControl";
   minimap?: IUiMinimapMetadataIr;
   label?: string;
   layout?: IUiLayoutIr;
@@ -176,7 +181,7 @@ function captureNode(element: IUiElement, fallback: string): IUiNodeIr {
       ...(element.props.role === undefined ? {} : { role: element.props.role }),
     };
   }
-  if (!["bar", "button", "column", "contextMenu", "image", "minimap", "row", "scrollbar", "slider", "stack", "text", "touchControl"].includes(element.type)) {
+  if (!["bar", "button", "column", "component", "contextMenu", "image", "minimap", "row", "scrollbar", "slider", "stack", "text", "textInput", "touchControl"].includes(element.type)) {
     throw new Error(`Unsupported portable UI node '${element.type}'.`);
   }
   return {
@@ -184,6 +189,7 @@ function captureNode(element: IUiElement, fallback: string): IUiNodeIr {
     ...(element.props.accessibilityLabel === undefined ? {} : { accessibilityLabel: element.props.accessibilityLabel }),
     ...(element.props.anchorId === undefined ? {} : { anchorId: element.props.anchorId }),
     ...(element.props.binding === undefined ? {} : { binding: element.props.binding }),
+    ...(element.props.component === undefined ? {} : { component: captureComponentInstance(element.props.component) }),
     ...(element.props.disabled === undefined ? {} : { disabled: element.props.disabled }),
     ...(element.props.focusable === undefined ? {} : { focusable: element.props.focusable }),
     ...(element.props.image === undefined ? {} : { image: element.props.image }),
@@ -205,6 +211,21 @@ function captureNode(element: IUiElement, fallback: string): IUiNodeIr {
     children: childrenOf(element).map((child, index) => captureNode(child, `${fallback}.${child.type}.${index}`)),
     id: element.props.id ?? fallback,
     kind: element.type,
+  };
+}
+
+function captureComponentInstance(component: NonNullable<IUiElement["props"]["component"]>): NonNullable<IUiNodeIr["component"]> {
+  return {
+    ref: component.ref,
+    ...(component.props === undefined ? {} : { props: component.props }),
+    ...(component.slots === undefined ? {} : {
+      slots: Object.fromEntries(
+        Object.entries(component.slots).map(([slot, children]) => [
+          slot,
+          children.map((child, index) => captureNode(child, `component.${slot}.${index}`)),
+        ]),
+      ),
+    }),
   };
 }
 

@@ -38,27 +38,27 @@ cycles should fail explicitly instead of falling through to `undefined`.
 
 ## 3. Acceptance Criteria
 
-- [ ] `TextInput` has an intentional authoring story: TSX wrapper plus tests,
+- [x] `TextInput` has an intentional authoring story: TSX wrapper plus tests,
       or an explicit documented diagnostic boundary.
-- [ ] Component instances have an intentional TSX authoring story: wrapper plus
+- [x] Component instances have an intentional TSX authoring story: wrapper plus
       tests, or an explicit documented diagnostic boundary.
-- [ ] Button-like widgets require `action` at typecheck where TypeScript can
+- [x] Button-like widgets require `action` at typecheck where TypeScript can
       enforce it.
-- [ ] Value-bearing widgets expose kind-specific value/change props instead of
+- [x] Value-bearing widgets expose kind-specific value/change props instead of
       relying only on a loose shared prop bag.
-- [ ] At least one end-to-end test covers TSX authoring through `captureUi`,
+- [x] At least one end-to-end test covers TSX authoring through `captureUi`,
       IR validation, compiler UI emit, and bundle output.
-- [ ] Component cycle diagnostics include the cycle path.
-- [ ] Theme alias cycles produce stable diagnostics with code, path, message,
+- [x] Component cycle diagnostics include the cycle path.
+- [x] Theme alias cycles produce stable diagnostics with code, path, message,
       and suggested fix.
 
 ## 4. Verification
 
-- [ ] Run `pnpm --filter @threenative/ui test`.
-- [ ] Run `pnpm --filter @threenative/ir test -- --run ui`.
-- [ ] Run the relevant compiler emit tests.
-- [ ] Run `pnpm typecheck` if exported UI prop types change.
-- [ ] Run `pnpm check:docs` if capability docs are updated.
+- [x] Run `pnpm --filter @threenative/ui test`.
+- [x] Run `pnpm --filter @threenative/ir test -- --run ui`.
+- [x] Run the relevant compiler emit tests.
+- [x] Run `pnpm typecheck` if exported UI prop types change.
+- [x] Run `pnpm check:docs` if capability docs are updated.
 
 ## 5. Dependencies
 

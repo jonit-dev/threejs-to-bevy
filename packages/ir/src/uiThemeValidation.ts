@@ -101,7 +101,14 @@ function validateUiThemeTokenAlias(token: IUiThemeTokenIr, path: string, diagnos
     diagnostics.push({ code: "TN_IR_UI_THEME_TOKEN_ALIAS_KIND_INVALID", message: `UI theme token '${token.id}' aliases '${target.id}' with a different token kind.`, path: `${path}/${token.id}/value/alias` });
   }
   if (stack.includes(token.id)) {
-    diagnostics.push({ code: "TN_IR_UI_THEME_TOKEN_ALIAS_CYCLE", message: `UI theme token alias cycle includes '${token.id}'.`, path: `${path}/${token.id}/value/alias` });
+    const cycle = [...stack.slice(stack.indexOf(token.id)), token.id];
+    diagnostics.push({
+      code: "TN_IR_UI_THEME_TOKEN_ALIAS_CYCLE",
+      message: `UI theme token alias cycle detected: ${cycle.join(" -> ")}.`,
+      path: `${path}/${token.id}/value/alias`,
+      severity: "error",
+      suggestion: "Replace one alias with a concrete token value or point it at a token outside the cycle.",
+    });
     return;
   }
   validateUiThemeTokenAlias(target, path, diagnostics, tokens, [...stack, token.id]);
