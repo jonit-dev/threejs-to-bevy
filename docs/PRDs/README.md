@@ -52,6 +52,14 @@ conformance reports structural/behavioral/visual UI evidence, the editor has a
 read-only retained UI preview, and native UI hygiene has binding-cache plus
 diagnostic coverage.
 
+### Systems Code Quality Remediation (2026-07-08)
+
+The [systems code quality remediation bundle](done/other/system-code-quality-remediation-2026-07-08/README.md)
+closed the four urgent rows from the deep diagnostic: native scripted
+spawn/despawn live reconciliation, native/web loop scheduling contract
+fixtures, IR document contract truth hardening, and compiler bundle
+planner/writer separation.
+
 ## Current Initiatives
 
 Open PRDs usually live under `docs/PRDs/other/`. The near-term proof
@@ -59,14 +67,6 @@ infrastructure bundle lives under
 `docs/PRDs/proof-first-engine-loop-2026-07-05/`; broader capability, docs,
 refactor, and packaging work stays in `other/` until pulled into an active
 execution bundle.
-
-### Systems Code Quality Remediation (2026-07-08)
-
-The [systems code quality remediation bundle](other/system-code-quality-remediation-2026-07-08/README.md)
-slices the four urgent rows from the deep diagnostic into ordered PRDs:
-native scripted spawn/despawn live reconciliation, native/web loop scheduling
-contract fixtures, IR document contract truth hardening, and compiler bundle
-planner/writer separation.
 
 ### Runtime And Gameplay Parity
 

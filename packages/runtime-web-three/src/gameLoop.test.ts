@@ -12,7 +12,7 @@ import type { IThreeWorld } from "./mapWorld.js";
 import { renderUi } from "./ui/renderUi.js";
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "../../..");
-const loopExpectationsPath = resolve(repoRoot, "packages/ir/fixtures/conformance/loop-scheduling/expectations.json");
+const loopExpectationsPath = resolve(repoRoot, "packages/ir/fixtures/contracts/loop-scheduling/expectations.json");
 
 interface ILoopSchedulingExpectations {
   interpolation: {

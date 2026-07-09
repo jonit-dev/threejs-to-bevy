@@ -201,7 +201,7 @@ small explicit contract:
 - adapter-owned render extraction/render systems remain internal.
 
 Stateful runtime loops must apply the shared loop contract proved by
-`packages/ir/fixtures/conformance/loop-scheduling/expectations.json`: a frame
+`packages/ir/fixtures/contracts/loop-scheduling/expectations.json`: a frame
 can execute at most five fixed ticks, paused frames advance frame accounting
 without running gameplay schedules or startup, `startup` runs once before
 gameplay schedules, fixed-step interpolation is visible to `update` reads, and

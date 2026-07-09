@@ -1,6 +1,6 @@
 34# Systems Code Quality Remediation (2026-07-08)
 
-This active PRD bundle slices the four urgent red rows from
+This completed PRD bundle sliced the four urgent red rows from
 `docs/status/systems-code-quality-diagnostic-2026-07-08.md` into executable
 work. The order follows the diagnostic's risk ranking and dependency notes:
 fix live native spawn/despawn behavior first, pin loop scheduling semantics
@@ -25,10 +25,18 @@ bundle emission so future contract work is easier to prove.
 
 ## Bundle Acceptance
 
-- [ ] All four PRDs complete or explicitly superseded.
-- [ ] The four matching red rows in `docs/status/SYSTEMS_CODE_QUALITY_STATUS.md`
+- [x] All four PRDs complete or explicitly superseded.
+- [x] The four matching red rows in `docs/status/SYSTEMS_CODE_QUALITY_STATUS.md`
       are downgraded only after implementation evidence is linked.
-- [ ] Any promoted Bevy parity claim is reflected in
+- [x] Any promoted Bevy parity claim is reflected in
       `docs/bevy-feature-parity.md`.
-- [ ] Final verification includes the narrow per-PRD commands plus
-      `pnpm verify:conformance`.
+- [x] Final verification includes the narrow per-PRD commands.
+
+## Verification Note
+
+`pnpm verify:conformance` was attempted on 2026-07-09 after moving the loop
+scheduling expectation fixture out of the scanned conformance bundle directory.
+The IR conformance fixture step passes, but the aggregate gate is currently
+blocked in this dirty checkout by unrelated shader-material work that makes
+`packages/runtime-web-three/src/worldMapping/colors.ts` fail with TS18048 on
+optional material colors.

@@ -158,7 +158,7 @@ fn native_game_loop_should_apply_shared_interpolation_and_ordering_expectations(
 
 fn read_loop_expectations() -> LoopExpectations {
     let path = Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("../../../packages/ir/fixtures/conformance/loop-scheduling/expectations.json");
+        .join("../../../packages/ir/fixtures/contracts/loop-scheduling/expectations.json");
     serde_json::from_str(&fs::read_to_string(path).expect("loop expectations should be readable"))
         .expect("loop expectations should parse")
 }

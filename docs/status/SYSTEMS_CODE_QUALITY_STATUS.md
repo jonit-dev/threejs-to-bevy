@@ -4,20 +4,23 @@ Living log for systemic code-quality, architecture, and technical-debt status.
 Update it when a new system is introduced or when an agent finds the code in a
 systemically bad place. Keep entries brief.
 
-Last updated: 2026-07-08
+Last updated: 2026-07-09
 
 ## Snapshot
 
 - Overall status: 🟡 **Needs focused hardening**
-- Current quality score: **6.7/10**
+- Current quality score: **7.2/10**
 - Source taxonomy: `docs/bevy-feature-parity.md`
-- Latest pass: parent audit plus three subagent explorers covering
-  TypeScript contracts, runtime parity, and editor/CLI/verification systems.
+- Latest pass: systems code-quality remediation bundle closed for the top four
+  red rows: IR contract truth, game-loop scheduling, native live
+  reconciliation, and compiler bundle planning/writer separation.
 - Primary risk theme: contract truth and runtime behavior are still split
   across SDK, IR, compiler, web runtime, Bevy runtime, editor/CLI adapters, and
   verification registries.
-- Deep diagnostic for the top four 🔴 rows:
+- Deep diagnostic for the previous top four 🔴 rows (now closed):
   `docs/status/systems-code-quality-diagnostic-2026-07-08.md`.
+- Deep diagnostic for the current four 🔴 adapter-surface rows:
+  `docs/status/systems-code-quality-diagnostic-adapter-surfaces-2026-07-08.md`.
 
 Legend: 🔴 urgent systemic risk, 🟡 watch or harden next, 🟢 acceptable with
 normal maintenance.
@@ -29,10 +32,10 @@ promoted, or code quality is clearly in a bad place.
 
 | Status | System | Current quality risk | Next action | Evidence |
 | --- | --- | --- | --- | --- |
-| 🔴 | IR/source/runtime contract truth | Schema IDs, supported fields, public SDK types, compiler lowerers, Rust loader DTOs, runtime adapters, and gates are separate truth sources. This is the broadest drift risk. | Execute `docs/PRDs/other/system-code-quality-remediation-2026-07-08/PRD-003-ir-document-contract-truth-hardening.md`. | `packages/ir/src/documents.ts`, `packages/ir/src/schemas.ts`, `packages/ir/src/contractDrift.ts`, `runtime-bevy/crates/threenative_loader/src/types.rs` |
-| 🔴 | Native game loop scheduling | Startup, fixed-step accumulator, pause, interpolation, frame, and tick semantics are duplicated between web and Bevy. Drift here affects every gameplay system. | Execute `docs/PRDs/other/system-code-quality-remediation-2026-07-08/PRD-002-native-web-game-loop-scheduling-contract.md`. | `packages/runtime-web-three/src/gameLoop.ts`, `runtime-bevy/crates/threenative_runtime/src/systems_host.rs` |
-| 🔴 | Native scripted spawn/despawn reconciliation | Native script effects can mutate bundle state while live Bevy ECS/render reconciliation remains the risky boundary; trace evidence can hide missing visible entities or teardown. | Execute `docs/PRDs/other/system-code-quality-remediation-2026-07-08/PRD-001-native-scripted-spawn-despawn-live-reconciliation.md`. | `runtime-bevy/crates/threenative_runtime/src/systems_effects.rs`, `runtime-bevy/crates/threenative_runtime/src/runtime_gameplay_host.rs` |
-| 🔴 | Compiler bundle emission | Bundle emit mixes structured-source lowering, SDK lowering, manifest/capability derivation, provenance, asset copy, and filesystem writes. Hard to test without full integration fixtures. | Execute `docs/PRDs/other/system-code-quality-remediation-2026-07-08/PRD-004-compiler-bundle-planning-writer-split.md`. | `packages/compiler/src/emit/bundle.ts`, `packages/compiler/src/emit/structured-documents.ts` |
+| 🟡 | IR/source/runtime contract truth | Contract truth is still broad, but high-risk drift now has typed registry metadata, optional-field checks, compiler literal checks, enum drift checks, and schemas for systems/gameFlow/prefabs. | Keep remaining unschemed documents as incremental follow-up slices; run IR drift tests before schema/DTO/compiler changes. | `docs/PRDs/done/other/system-code-quality-remediation-2026-07-08/PRD-003-ir-document-contract-truth-hardening.md`; `packages/ir/src/contractDrift.test.ts`; `packages/ir/schemas/systems.schema.json`; `pnpm --filter @threenative/ir test` |
+| 🟡 | Native game loop scheduling | Startup, fixed-step accumulator, pause, interpolation, frame, tick, and update/postUpdate ordering now share fixture-backed expectations across web and native. | Keep new scheduling behavior tied to `loop-scheduling/expectations.json`; broaden only through shared fixture snapshots. | `docs/PRDs/done/other/system-code-quality-remediation-2026-07-08/PRD-002-native-web-game-loop-scheduling-contract.md`; `packages/ir/fixtures/contracts/loop-scheduling/expectations.json`; `packages/runtime-web-three/src/gameLoop.test.ts`; `runtime-bevy/crates/threenative_runtime/tests/game_loop_contract.rs` |
+| 🟡 | Native scripted spawn/despawn reconciliation | Native script spawn/despawn/instantiate effects now reconcile bundle mutations into live Bevy ECS entities, hierarchy, recursive despawn, and collider teardown proof. | Keep command/effect traces honest: live reconciliation evidence must accompany future script structural command claims. | `docs/PRDs/done/other/system-code-quality-remediation-2026-07-08/PRD-001-native-scripted-spawn-despawn-live-reconciliation.md`; `runtime-bevy/crates/threenative_runtime/src/lib.rs`; `runtime-bevy/crates/threenative_runtime/tests/systems_effects.rs`; `cargo test -p threenative_runtime --lib scripted_runtime_should --manifest-path runtime-bevy/Cargo.toml` |
+| 🟡 | Compiler bundle emission | Bundle planning, asset dependency discovery, and staged filesystem writing are split, with direct unit coverage for planning, writer behavior, asset copy planning, merges, and structured readers. | Keep `emitBundle` routed through planner/writer seams; add planner assertions for new document/capability outputs before changing writers. | `docs/PRDs/done/other/system-code-quality-remediation-2026-07-08/PRD-004-compiler-bundle-planning-writer-split.md`; `packages/compiler/src/emit/bundle.ts`; `packages/compiler/src/emit/bundle-writer.ts`; `packages/compiler/src/emit/merge.test.ts`; `pnpm --filter @threenative/compiler test -- --run bundle` |
 | 🔴 | Authoring operations and mutation surfaces | Operation truth is spread across authoring registry, CLI parsing/help, MCP/editor adapters, and coverage matrices. New mutations can drift by adapter. | Make registry descriptors executable enough to drive CLI/editor metadata and shared argument validation. | `packages/authoring/src/operationRegistry.ts`, `packages/cli/src/commands/sourceDocuments.ts`, `packages/editor/src/server/operationApi.ts`, `tools/verify/src/editorRequiredOperations.ts` |
 | 🔴 | CLI command surface | `tn` command metadata, dispatch, help, docs expectations, and implementation routing are hand-maintained in large command files. | Introduce an incremental typed command registry with `{ name, usage, handler }` and derive help/dispatch from it. | `packages/cli/src/index.ts`, `packages/cli/src/commands` |
 | 🔴 | Editor source operations | Editor operation payload builders, server fallbacks, store state, authoring registry, and verify smoke requirements can diverge. | Promote authoring operation descriptors into editor executable metadata; keep custom composites as named registry recipes. | `packages/editor/src/server/operationApi.ts`, `packages/editor/src/state/editorStore.ts`, `packages/editor/src/adapters/editorModel.ts` |
