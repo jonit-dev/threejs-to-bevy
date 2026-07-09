@@ -477,11 +477,15 @@ export interface ISpawnerComponent {
 
 export interface IColliderComponent {
   center?: Vec3;
+  contact?: {
+    phases?: readonly ("begin" | "end" | "stay")[];
+  };
   friction?: number;
   height?: number;
   kind: "box" | "capsule" | "cylinder" | "mesh" | "sphere";
   layer?: string;
   mask?: readonly string[];
+  material?: string;
   mesh?: {
     bounds: {
       center?: Vec3;

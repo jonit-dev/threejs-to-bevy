@@ -6,7 +6,8 @@ runtime-specific gameplay source.
 Current support:
 
 - RigidBody, Collider, physics materials, character controller, primitive body,
-  trigger/sensor, kinematic mover, and bounded native proof paths.
+  trigger/sensor, kinematic mover, portable contact layer/mask/material filters,
+  contact phase metadata, and bounded native proof paths.
 - Compiler-emitted heightfield collider descriptors exist for structured JSON
   terrain heightmaps, and the web runtime feeds those descriptors into its
   static terrain collision path while the Bevy runtime maps generated chunk

@@ -232,6 +232,80 @@ test("physics should accept portable v7 collider filters and box slopes", async 
   }
 });
 
+test("physics should accept primitive contact filters", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-physics-contact-filters-"));
+  try {
+    await writeTestBundle(root, { createAssetsDir: true });
+    await writeJson(
+      root,
+      "world.ir.json",
+      physicsWorld([
+        {
+          Collider: {
+            contact: { phases: ["begin", "stay", "end"] },
+            kind: "box",
+            layer: "player",
+            mask: ["world", "pushable"],
+            material: "boots",
+            size: [1, 1, 1],
+          },
+          RigidBody: { kind: "kinematic" },
+        },
+        {
+          Collider: { contact: { phases: ["begin"] }, kind: "sphere", layer: "pushable", mask: ["player"], material: "crate", radius: 0.5 },
+          RigidBody: { kind: "dynamic", mass: 1 },
+        },
+      ]),
+    );
+
+    const result = await validateBundle(root);
+
+    assert.equal(result.ok, true);
+    assert.deepEqual(result.diagnostics, []);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("physics should reject backend contact callbacks", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-physics-contact-callbacks-"));
+  try {
+    await writeTestBundle(root, { createAssetsDir: true });
+    await writeJson(
+      root,
+      "world.ir.json",
+      physicsWorld([
+        {
+          Collider: {
+            contact: { callback: "onHit", phases: ["impact"] },
+            contactCallback: "onContact",
+            kind: "box",
+            layer: "player",
+            maskBits: 255,
+            size: [1, 1, 1],
+          },
+          RigidBody: { kind: "kinematic" },
+        },
+      ]),
+    );
+
+    const result = await validateBundle(root);
+
+    assert.equal(result.ok, false);
+    assert.deepEqual(
+      result.diagnostics.map((diagnostic) => ({ code: diagnostic.code, path: diagnostic.path })),
+      [
+        { code: "TN_IR_PHYSICS_CONTACT_FIELD_UNSUPPORTED", path: "world.ir.json/entities/0/components/Collider/contactCallback" },
+        { code: "TN_IR_PHYSICS_CONTACT_FIELD_UNSUPPORTED", path: "world.ir.json/entities/0/components/Collider/maskBits" },
+        { code: "TN_IR_PHYSICS_CONTACT_FIELD_UNSUPPORTED", path: "world.ir.json/entities/0/components/Collider/contact/callback" },
+        { code: "TN_IR_PHYSICS_CONTACT_PHASES_INVALID", path: "world.ir.json/entities/0/components/Collider/contact/phases" },
+      ],
+    );
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
 test("physics should reject invalid body fields and backend-specific collider options", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-physics-invalid-body-"));
   try {

@@ -157,9 +157,9 @@ sequenceDiagram
 
 **Implementation:**
 
-- [ ] Define portable layer/mask/material/contact phase fields.
-- [ ] Reject backend bitsets, handles, callbacks, and unconstrained filters.
-- [ ] Specify event sort order and payload shape.
+- [x] Define portable layer/mask/material/contact phase fields.
+- [x] Reject backend bitsets, handles, callbacks, and unconstrained filters.
+- [x] Specify event sort order and payload shape.
 
 **Tests Required:**
 

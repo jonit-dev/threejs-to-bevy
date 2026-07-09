@@ -6,8 +6,27 @@ export type PhysicsColliderKind = "box" | "capsule" | "mesh" | "sphere";
 export type Boolean3Tuple = readonly [boolean, boolean, boolean];
 
 export interface IPhysicsFilterOptions {
+  contact?: IContactFilterDeclaration;
   layer?: string;
   mask?: ReadonlyArray<string>;
+  material?: string;
+}
+
+export type ContactPhase = "begin" | "end" | "stay";
+export type ContactSortKey = "phase" | "self" | "other" | "point";
+
+export interface IContactFilterDeclaration {
+  phases?: ReadonlyArray<ContactPhase>;
+}
+
+export interface IPhysicsContactEventPayload {
+  material?: string;
+  normal?: Vector3Tuple;
+  other: string;
+  phase: ContactPhase;
+  point?: Vector3Tuple;
+  pointIndex: number;
+  self: string;
 }
 
 export interface IColliderSlopeDeclaration {
@@ -59,11 +78,13 @@ export interface IMeshColliderDeclaration {
 
 export interface IColliderDeclaration {
   center?: Vector3Tuple;
+  contact?: IContactFilterDeclaration;
   friction?: number;
   height?: number;
   kind: PhysicsColliderKind;
   layer?: string;
   mask?: string[];
+  material?: string;
   mesh?: IMeshColliderDeclaration;
   radius?: number;
   restitution?: number;
@@ -268,17 +289,34 @@ function normalizeColliderCenter(options: ColliderCenterOptions): Pick<ICollider
   return options.center === undefined ? {} : { center: [...options.center] as Vector3Tuple };
 }
 
-function normalizeFilter(options: IPhysicsFilterOptions): Pick<IColliderDeclaration, "layer" | "mask"> {
-  if (options.layer !== undefined && options.layer.trim() === "") {
+function normalizeFilter(options: IPhysicsFilterOptions): Pick<IColliderDeclaration, "contact" | "layer" | "mask" | "material"> {
+  if (options.layer !== undefined && !isPortableFilterName(options.layer)) {
     throw new SdkError("TN_SDK_PHYSICS_FILTER_INVALID", "Collider.layer must be a non-empty portable filter layer string.");
   }
-  if (options.mask?.some((entry) => entry.trim() === "")) {
+  if (options.mask?.some((entry) => !isPortableFilterName(entry))) {
     throw new SdkError("TN_SDK_PHYSICS_FILTER_INVALID", "Collider.mask entries must be non-empty portable filter layer strings.");
   }
+  if (options.material !== undefined && !isPortableFilterName(options.material)) {
+    throw new SdkError("TN_SDK_PHYSICS_FILTER_INVALID", "Collider.material must be a non-empty portable contact material string.");
+  }
   return {
+    ...(options.contact === undefined ? {} : { contact: normalizeContactFilter(options.contact) }),
     ...(options.layer === undefined ? {} : { layer: options.layer }),
     ...(options.mask === undefined ? {} : { mask: [...options.mask] }),
+    ...(options.material === undefined ? {} : { material: options.material }),
   };
+}
+
+function normalizeContactFilter(value: IContactFilterDeclaration): IContactFilterDeclaration {
+  const phases = value.phases === undefined ? undefined : [...value.phases];
+  if (phases?.some((phase) => phase !== "begin" && phase !== "stay" && phase !== "end")) {
+    throw new SdkError("TN_SDK_PHYSICS_FILTER_INVALID", "Collider.contact.phases may include begin, stay, and end only.");
+  }
+  return phases === undefined ? {} : { phases };
+}
+
+function isPortableFilterName(value: string): boolean {
+  return /^[A-Za-z][A-Za-z0-9_.:-]{0,63}$/.test(value);
 }
 
 export interface IPhysicsMaterialOptions {

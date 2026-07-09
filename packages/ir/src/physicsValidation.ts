@@ -19,9 +19,11 @@ const V9_MAX_PHYSICS_SLEEP_THRESHOLD = 100;
 const V9_MAX_PHYSICS_SOLVER_ITERATIONS = 64;
 const V9_MAX_PHYSICS_SPEED = 10_000;
 const V9_MAX_PHYSICS_FRICTION = 10;
+const V9_MAX_PHYSICS_FILTER_ENTRIES = 32;
 const V9_MAX_SENSOR_OCCUPANTS = 128;
 const V9_MAX_CHARACTER_PUSH_MASS = 1_000_000;
 const V9_MAX_CHARACTER_PUSH_IMPULSE = 1000;
+const PORTABLE_FILTER_NAME = /^[A-Za-z][A-Za-z0-9_.:-]{0,63}$/;
 
 export function validatePhysicsComponents(entity: IWorldIr["entities"][number], path: string, entityIds: Set<string>, diagnostics: IIrDiagnostic[]): void {
   const collider = entity.components.Collider as unknown;
@@ -74,7 +76,9 @@ export function validatePhysicsComponents(entity: IWorldIr["entities"][number], 
         suggestion: "Use portable Collider.layer and Collider.mask filter metadata instead of Rapier, Bevy, or native physics handles.",
       });
     }
+    validateUnsupportedColliderContactFields(colliderRecord, `${path}/components/Collider`, diagnostics);
     validatePhysicsFilter(colliderRecord, `${path}/components/Collider`, diagnostics);
+    validatePhysicsContact(colliderRecord.contact, `${path}/components/Collider/contact`, diagnostics);
     if (colliderRecord.center !== undefined) {
       validateFiniteVec3(colliderRecord.center, `${path}/components/Collider/center`, "TN_IR_PHYSICS_COLLIDER_CENTER_INVALID", diagnostics);
     }
@@ -444,21 +448,87 @@ function hasEnginePhysicsHandle(value: Record<string, unknown>): boolean {
 }
 
 function validatePhysicsFilter(value: Record<string, unknown>, path: string, diagnostics: IIrDiagnostic[]): void {
-  if (value.layer !== undefined && (typeof value.layer !== "string" || value.layer.trim() === "")) {
+  if (value.layer !== undefined && (typeof value.layer !== "string" || !PORTABLE_FILTER_NAME.test(value.layer))) {
     diagnostics.push({
       code: "TN_IR_PHYSICS_FILTER_INVALID",
-      message: "Collider.layer must be a non-empty portable filter layer string.",
+      message: "Collider.layer must be a portable filter layer string.",
       path: `${path}/layer`,
       suggestion: "Use a stable gameplay layer name such as 'world', 'player', or 'sensor'.",
     });
   }
   if (value.mask !== undefined) {
-    if (!Array.isArray(value.mask) || value.mask.some((entry) => typeof entry !== "string" || entry.trim() === "")) {
+    if (!Array.isArray(value.mask) || value.mask.length > V9_MAX_PHYSICS_FILTER_ENTRIES || value.mask.some((entry) => typeof entry !== "string" || !PORTABLE_FILTER_NAME.test(entry))) {
       diagnostics.push({
         code: "TN_IR_PHYSICS_FILTER_INVALID",
-        message: "Collider.mask must be an array of non-empty portable filter layer strings.",
+        message: "Collider.mask must be an array of portable filter layer strings.",
         path: `${path}/mask`,
         suggestion: "Use stable gameplay layer names and keep backend bitmasks adapter-private.",
+      });
+    }
+  }
+  if (value.material !== undefined && (typeof value.material !== "string" || !PORTABLE_FILTER_NAME.test(value.material))) {
+    diagnostics.push({
+      code: "TN_IR_PHYSICS_FILTER_INVALID",
+      message: "Collider.material must be a portable contact material string.",
+      path: `${path}/material`,
+      suggestion: "Use stable gameplay material names such as 'stone', 'ice', or 'bounce'.",
+    });
+  }
+}
+
+function validatePhysicsContact(value: unknown, path: string, diagnostics: IIrDiagnostic[]): void {
+  if (value === undefined) {
+    return;
+  }
+  if (!isRecord(value)) {
+    diagnostics.push({ code: "TN_IR_PHYSICS_CONTACT_INVALID", message: "Collider.contact must be an object.", path, severity: "error" });
+    return;
+  }
+  for (const key of Object.keys(value)) {
+    if (!["phases"].includes(key)) {
+      diagnostics.push({
+        code: "TN_IR_PHYSICS_CONTACT_FIELD_UNSUPPORTED",
+        message: `Collider.contact uses unsupported field '${key}'.`,
+        path: `${path}/${key}`,
+        severity: "error",
+        suggestion: "Use Collider.contact.phases only; contact payload order and shape are fixed by the portable contract.",
+      });
+    }
+  }
+  if (value.phases !== undefined && (!Array.isArray(value.phases) || value.phases.length === 0 || value.phases.some((phase) => !["begin", "stay", "end"].includes(phase as string)))) {
+    diagnostics.push({
+      code: "TN_IR_PHYSICS_CONTACT_PHASES_INVALID",
+      message: "Collider.contact.phases must be a non-empty array containing begin, stay, or end.",
+      path: `${path}/phases`,
+      severity: "error",
+    });
+  }
+}
+
+function validateUnsupportedColliderContactFields(value: Record<string, unknown>, path: string, diagnostics: IIrDiagnostic[]): void {
+  for (const key of [
+    "backendCallback",
+    "bevyCollisionGroups",
+    "collisionGroup",
+    "collisionGroups",
+    "collisionMask",
+    "contactCallback",
+    "contactGroups",
+    "filterCallback",
+    "groupBits",
+    "maskBits",
+    "onCollision",
+    "onContact",
+    "onTrigger",
+    "rapierCollisionGroups",
+  ] as const) {
+    if (value[key] !== undefined) {
+      diagnostics.push({
+        code: "TN_IR_PHYSICS_CONTACT_FIELD_UNSUPPORTED",
+        message: `Collider uses unsupported contact/filter field '${key}'.`,
+        path: `${path}/${key}`,
+        severity: "error",
+        suggestion: "Use portable Collider.layer, Collider.mask, Collider.material, and Collider.contact.phases. Backend bitsets and callbacks remain adapter-private.",
       });
     }
   }

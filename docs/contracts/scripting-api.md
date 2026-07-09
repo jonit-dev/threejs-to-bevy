@@ -172,6 +172,10 @@ imports.
 - [x] Primitive shape-cast query service through
   `ctx.physics.shapeCast(options)`.
 - [x] Primitive sensor snapshots through `ctx.physics.sensor(options)`.
+- [x] Primitive contact filtering through stable `Collider.layer`,
+  `Collider.mask`, `Collider.material`, and `Collider.contact.phases`
+  metadata. Contact event payloads are plain data sorted by phase, self entity,
+  other entity, and contact point index.
 - [x] Narrow fixed-trace character movement through
   `ctx.character.move(entity, options)`.
 - [x] Static navigation path queries through `ctx.navigation.path(options)`.
@@ -867,6 +871,9 @@ Runtime effects:
   `ctx.particles.start`, `ctx.particles.burst`, and `ctx.particles.reset`
   calls are compatibility aliases for the same bounded contract.
 - Scripts see only stable IDs, booleans, numbers, arrays, and plain data.
+- Primitive contact events use the stable payload shape
+  `{ phase, self, other, pointIndex, point?, normal?, material? }` and are
+  sorted by phase, self entity id, other entity id, then contact point index.
 - IK, retargeting, backend animation controllers, arbitrary blend trees, and
   unbounded particle behavior must fail with stable diagnostics rather than
   being ignored.
