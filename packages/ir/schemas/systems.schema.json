@@ -1,0 +1,133 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.threenative.local/v1/systems.schema.json",
+  "type": "object",
+  "required": ["schema", "version", "systems"],
+  "additionalProperties": false,
+  "properties": {
+    "schema": { "const": "threenative.systems" },
+    "version": { "const": "0.1.0" },
+    "channels": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/objectWithId" }
+    },
+    "componentHooks": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/objectWithComponent" }
+    },
+    "lifecycle": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "appStates": { "type": "array", "items": { "$ref": "#/$defs/objectWithId" } },
+        "computedStates": { "type": "array", "items": { "$ref": "#/$defs/objectWithId" } },
+        "hotReload": { "const": "invalidate" },
+        "replay": { "const": "fixed-trace" },
+        "state": { "const": "system-local-disallowed" },
+        "substates": { "type": "array", "items": { "$ref": "#/$defs/objectWithId" } }
+      }
+    },
+    "observers": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/objectWithEvent" }
+    },
+    "pluginGroups": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/objectWithId" }
+    },
+    "plugins": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/objectWithId" }
+    },
+    "scriptAudio": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/objectWithId" }
+    },
+    "tasks": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/objectWithId" }
+    },
+    "systems": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/system" }
+    }
+  },
+  "$defs": {
+    "stringList": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "objectWithId": {
+      "type": "object",
+      "required": ["id"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 }
+      }
+    },
+    "objectWithComponent": {
+      "type": "object",
+      "required": ["component"],
+      "properties": {
+        "component": { "type": "string", "minLength": 1 }
+      }
+    },
+    "objectWithEvent": {
+      "type": "object",
+      "required": ["event"],
+      "properties": {
+        "event": { "type": "string", "minLength": 1 }
+      }
+    },
+    "script": {
+      "type": "object",
+      "required": ["bundle", "exportName"],
+      "additionalProperties": false,
+      "properties": {
+        "bundle": { "const": "scripts.bundle.js" },
+        "exportName": { "type": "string", "minLength": 1 }
+      }
+    },
+    "query": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "command": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "delayedCommand": {
+      "type": "object",
+      "required": ["command", "delay"],
+      "additionalProperties": false,
+      "properties": {
+        "command": { "$ref": "#/$defs/command" },
+        "delay": { "type": "object", "additionalProperties": true },
+        "id": { "type": "string", "minLength": 1 },
+        "ownership": { "type": "object", "additionalProperties": true }
+      }
+    },
+    "system": {
+      "type": "object",
+      "required": ["name", "schedule", "reads", "writes", "queries", "commands", "eventReads", "eventWrites", "resourceReads", "resourceWrites", "services"],
+      "additionalProperties": false,
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "schedule": { "enum": ["fixedUpdate", "postUpdate", "startup", "update"] },
+        "after": { "$ref": "#/$defs/stringList" },
+        "before": { "$ref": "#/$defs/stringList" },
+        "commands": { "type": "array", "items": { "$ref": "#/$defs/command" } },
+        "delayedCommands": { "type": "array", "items": { "$ref": "#/$defs/delayedCommand" } },
+        "eventReads": { "$ref": "#/$defs/stringList" },
+        "eventWrites": { "$ref": "#/$defs/stringList" },
+        "queries": { "type": "array", "items": { "$ref": "#/$defs/query" } },
+        "reads": { "$ref": "#/$defs/stringList" },
+        "resourceReads": { "$ref": "#/$defs/stringList" },
+        "resourceWrites": { "$ref": "#/$defs/stringList" },
+        "script": { "$ref": "#/$defs/script" },
+        "services": { "$ref": "#/$defs/stringList" },
+        "source": { "const": "behavior-metadata" },
+        "writes": { "$ref": "#/$defs/stringList" }
+      }
+    }
+  }
+}

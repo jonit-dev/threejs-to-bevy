@@ -27,7 +27,7 @@ test("documents should classify schema-backed and unschemed documents explicitly
     schemaBackedDocuments().flatMap(([name, document]) => document.drift === undefined ? [name] : []),
     [],
   );
-  assert.ok(unschemedDocuments().some(([name]) => name === "systems"));
+  assert.ok(unschemedDocuments().some(([name]) => name === "audio"));
   assert.ok(unschemedDocuments().some(([name]) => name === "scripts"));
 });
 

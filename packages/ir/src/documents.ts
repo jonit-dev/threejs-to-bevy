@@ -106,11 +106,14 @@ export const IR_DOCUMENTS = {
     schemaFile: null,
   },
   gameFlow: {
+    drift: {
+      typescript: { interfaceName: "IGameFlowIr", source: "src/types.ts" },
+    },
     fileName: "game-flow.ir.json",
     manifestKey: "gameFlow",
     manifestSection: "entry",
     schema: IR_SCHEMA_IDS.gameFlow,
-    schemaFile: null,
+    schemaFile: "game-flow.schema.json",
   },
   eventSchemas: {
     fileName: "schemas/events.schema.json",
@@ -170,13 +173,16 @@ export const IR_DOCUMENTS = {
     schemaFile: "overlays.schema.json",
   },
   prefabs: {
+    drift: {
+      typescript: { interfaceName: "IPrefabsIr", source: "src/prefabTypes.ts" },
+    },
     fileName: "prefabs.ir.json",
     manifestLocations: [
       { key: "prefabs", section: "entry" },
       { key: "prefabs", section: "files" },
     ],
     schema: IR_SCHEMA_IDS.prefabs,
-    schemaFile: null,
+    schemaFile: "prefabs.schema.json",
   },
   resourceSchemas: {
     fileName: "schemas/resources.schema.json",
@@ -223,11 +229,14 @@ export const IR_DOCUMENTS = {
     schemaFile: null,
   },
   systems: {
+    drift: {
+      typescript: { interfaceName: "ISystemsIr", source: "src/systems.ts" },
+    },
     fileName: "systems.ir.json",
     manifestKey: "systems",
     manifestSection: "entry",
     schema: IR_SCHEMA_IDS.systems,
-    schemaFile: null,
+    schemaFile: "systems.schema.json",
   },
   targetProfile: {
     drift: {

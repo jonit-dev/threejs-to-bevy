@@ -1,0 +1,90 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.threenative.local/v1/game-flow.schema.json",
+  "type": "object",
+  "required": ["schema", "version", "flows"],
+  "additionalProperties": false,
+  "properties": {
+    "schema": { "const": "threenative.game-flow" },
+    "version": { "const": "0.1.0" },
+    "flows": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/flow" }
+    }
+  },
+  "$defs": {
+    "flow": {
+      "type": "object",
+      "required": ["id", "initial", "states"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "initial": { "type": "string", "minLength": 1 },
+        "scene": { "type": "string", "minLength": 1 },
+        "states": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/state" }
+        },
+        "transitions": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/transition" }
+        }
+      }
+    },
+    "state": {
+      "type": "object",
+      "required": ["id"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "actions": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/action" }
+        }
+      }
+    },
+    "transition": {
+      "type": "object",
+      "required": ["id", "from", "to", "trigger"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "from": { "type": "string", "minLength": 1 },
+        "to": { "type": "string", "minLength": 1 },
+        "trigger": { "$ref": "#/$defs/trigger" },
+        "actions": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/action" }
+        }
+      }
+    },
+    "trigger": {
+      "type": "object",
+      "required": ["kind"],
+      "additionalProperties": false,
+      "properties": {
+        "kind": { "enum": ["allCollected", "event", "resourceEquals", "timer"] },
+        "event": { "type": "string", "minLength": 1 },
+        "resource": { "type": "string", "minLength": 1 },
+        "seconds": { "type": "number", "minimum": 0 },
+        "target": {}
+      }
+    },
+    "action": {
+      "type": "object",
+      "required": ["kind"],
+      "additionalProperties": false,
+      "properties": {
+        "kind": { "enum": ["activateUiScreen", "emitEvent", "playSequence", "sceneChange", "setResource", "setTimeScale", "spawnerEnable"] },
+        "event": { "type": "string", "minLength": 1 },
+        "resource": { "type": "string", "minLength": 1 },
+        "scene": { "type": "string", "minLength": 1 },
+        "screen": { "type": "string", "minLength": 1 },
+        "sequence": { "type": "string", "minLength": 1 },
+        "spawner": { "type": "string", "minLength": 1 },
+        "timeScale": { "type": "number" },
+        "value": {}
+      }
+    }
+  }
+}

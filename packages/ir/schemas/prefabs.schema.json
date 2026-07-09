@@ -1,0 +1,39 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.threenative.local/v1/prefabs.schema.json",
+  "type": "object",
+  "required": ["schema", "version", "prefabs"],
+  "additionalProperties": false,
+  "properties": {
+    "schema": { "const": "threenative.prefabs" },
+    "version": { "const": "0.1.0" },
+    "prefabs": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/prefab" }
+    }
+  },
+  "$defs": {
+    "prefab": {
+      "type": "object",
+      "required": ["id", "root", "entities"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "root": { "type": "string", "minLength": 1 },
+        "entities": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/entity" }
+        }
+      }
+    },
+    "entity": {
+      "type": "object",
+      "required": ["id", "components"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "components": { "type": "object" }
+      }
+    }
+  }
+}

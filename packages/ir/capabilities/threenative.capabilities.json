@@ -55,6 +55,13 @@
       "$id": "https://schemas.threenative.local/v1/assets.schema.json"
     },
     {
+      "name": "game-flow",
+      "packagePath": "schemas/game-flow.schema.json",
+      "schema": "threenative.game-flow",
+      "version": "0.1.0",
+      "$id": "https://schemas.threenative.local/v1/game-flow.schema.json"
+    },
+    {
       "name": "input",
       "packagePath": "schemas/input.schema.json",
       "schema": "threenative.input",
@@ -83,6 +90,13 @@
       "$id": "https://schemas.threenative.local/v1/overlays.schema.json"
     },
     {
+      "name": "prefabs",
+      "packagePath": "schemas/prefabs.schema.json",
+      "schema": "threenative.prefabs",
+      "version": "0.1.0",
+      "$id": "https://schemas.threenative.local/v1/prefabs.schema.json"
+    },
+    {
       "name": "runtime-config",
       "packagePath": "schemas/runtime-config.schema.json",
       "schema": "threenative.runtime-config",
@@ -95,6 +109,13 @@
       "schema": "threenative.scenes",
       "version": "0.1.0",
       "$id": "https://schemas.threenative.local/v1/scenes.schema.json"
+    },
+    {
+      "name": "systems",
+      "packagePath": "schemas/systems.schema.json",
+      "schema": "threenative.systems",
+      "version": "0.1.0",
+      "$id": "https://schemas.threenative.local/v1/systems.schema.json"
     },
     {
       "name": "target-profile",

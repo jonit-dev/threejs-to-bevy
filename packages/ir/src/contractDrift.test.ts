@@ -26,11 +26,11 @@ const schemaBackedTypeScriptCases = schemaBackedDocuments().flatMap(([document, 
   schema: metadata.schemaFile,
   source: metadata.drift.typescript.source,
 }]);
-const bevyRuntimeDocumentCases = schemaBackedDocuments().flatMap(([document, metadata]) => metadata.drift?.rust === undefined ? [] : [{
+const bevyRuntimeDocumentCases = schemaBackedDocuments().flatMap(([document, metadata]) => metadata.drift !== undefined && "rust" in metadata.drift ? [{
   document,
   schema: metadata.schemaFile,
   structName: metadata.drift.rust.structName,
-}]);
+}] : []);
 const compilerEmitterDocumentCases = [
   { document: "audio", source: "packages/compiler/src/emit/audio.ts" },
   { document: "environmentScene", source: "packages/compiler/src/emit/environment.ts" },
