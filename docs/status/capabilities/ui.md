@@ -11,6 +11,16 @@ Current support:
   actions drain into portable script-observable UI/input state; script
   `setDisabled`, `setValue`, and `activate` calls update the live rendered
   overlay state.
+- UI parity claims are truth-graded in
+  [bevy-feature-parity.md](../../bevy-feature-parity.md): promoted rows name a
+  proof gate or artifact, while trace-only native shadows/gradients, effect
+  presets, world-attached projection, editable text input, nested/axis scroll,
+  spatial fallback navigation, focus narration, and runtime disabled-state
+  updates remain partial/diagnostic until behavior-level proof exists.
+- Unsupported UI boundaries remain explicit for virtual keyboard behavior,
+  arbitrary grid named areas/dense packing, render-to-texture/world transforms,
+  UI viewport nodes, drag/drop UI nodes, and custom UI material/shader
+  declarations.
 - UI source operations are available through CLI, MCP, and authoring-client
   wrappers.
 

@@ -15,6 +15,10 @@ Current support:
   in the same directory.
 - Closed parity rows are protected by focused gates; remaining gaps stay in
   runtime/proof-loop PRDs.
+- UI rows with only native metadata components, trace observations, structural
+  conformance, or diagnostics are not native promotions. Current UI promotion
+  wording is bounded in [ui.md](ui.md) and
+  [bevy-feature-parity.md](../../bevy-feature-parity.md).
 
 Promotion policy:
 

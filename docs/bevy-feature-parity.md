@@ -972,6 +972,14 @@ diagnostics until portable promotion criteria and web/Bevy evidence exist.
 
 ### 🧭 UI, Text, and Accessibility
 
+Current UI rows use these labels:
+
+- `Promoted`: behavior has a named web/native proof gate or artifact.
+- `Partial/diagnostic`: structure, metadata, traces, or diagnostics exist, but
+  runtime behavior is not fully implemented or not behaviorally proved.
+- `Unsupported boundary`: the portable contract rejects or defers the feature
+  with stable diagnostics.
+
 - [x] Retained UI IR and validation
 - [x] Web DOM overlay and Bevy UI entity spawning
 - [x] Text, resource-bound bars, and focusable buttons
@@ -987,15 +995,23 @@ diagnostics until portable promotion criteria and web/Bevy evidence exist.
 - [x] `P1` Basic vertical UI scrolling containers
 - [x] `P1` UI background/text color, borders, rounded corners, and opacity
 - [x] `P1` Portable UI shadow/linear-gradient metadata and web DOM rendering
-- [x] `P1` Native-rendered UI shadows and gradients
+- [x] `P1` Partial/diagnostic: native UI shadows and gradients are preserved as
+      metadata/components and trace observations; they are not currently claimed
+      as native-rendered pixels.
 - [x] `P1` Build-time UI theme tokens and token refs lower to concrete retained layout/style/image fields before web or Bevy runtime mapping
 - [x] `P1` Source-level reusable UI component instances expand to ordinary retained UI nodes with deterministic IDs and generated-node provenance before runtime mapping
 - [x] `P1` UI screen stack, modal/dialog roles, focus scopes, restore policy, and input-capture metadata validate in IR with deterministic web focus-restoration and Bevy modal input-capture dispatch trace proof
 - [x] `P1` Bounded game UI recipes generate ordinary editable source nodes, bindings, screens, focus order, and provenance with required screenshot/accessibility proof artifacts
 - [x] `P1` Responsive target-class UI recipe metadata, bounded virtual range metadata for large retained lists, deterministic web/Bevy visible-range traces, and desktop/mobile UI-fit artifact checks
 - [x] `P1` Common UI affordance metadata for input glyph prompts, tooltips, localization fallback/cases, progress/cooldown presentation, toast queues, and logical feedback hooks with web/native observation traces
-- [x] `P1` Bounded retained UI effect presets for glow, outline, pulse, tint, and focus rings with renderer escape-hatch diagnostics, advanced UI fixture states, and web/native strategy traces
-- [x] `P1` World-attached retained UI for nameplates, health bars, interact prompts, pickup labels, quest markers, and off-screen indicators with web/Bevy projection traces and asserted visual parity reports
+- [x] `P1` Partial/diagnostic: bounded retained UI effect presets for glow,
+      outline, pulse, tint, and focus rings have renderer escape-hatch
+      diagnostics plus web/native strategy traces; they are not claimed as
+      full rendered effect parity.
+- [x] `P1` Partial/diagnostic: world-attached retained UI for nameplates,
+      health bars, interact prompts, pickup labels, quest markers, and
+      off-screen indicators has web/Bevy projection traces; screenshot-level
+      visual parity remains required before promotion.
 - [x] `P1` Basic UI text size, alignment, and wrapping
 - [x] `P1` Portable UI text weight/decoration metadata and web DOM rendering
 - [x] `P1` Rich text styling: font assets, inline spans, and native-rendered weight/decoration
@@ -1003,27 +1019,47 @@ diagnostics until portable promotion criteria and web/Bevy evidence exist.
 - [x] `P1` UI texture atlases, 9-slice scaling, flipping, and tiling
 - [x] `P2` Standard widgets: sliders, scrollbars, and context menus
 - [x] Structured source/CLI/editor mutation for retained UI node type, label, and promoted style fields
-- [x] `P1` Editable text input widgets with deterministic value/action events
-- [x] `P1` IME composition diagnostics for unsupported text input targets
-- [x] `P1` Platform virtual keyboard behavior as a diagnostic boundary (V10-04)
-- [x] `P1` Basic automatic tab/sequential directional navigation parity
-- [x] `P2` UI transforms and render-to-texture/3D-world UI as diagnostic boundaries (V10-04)
+- [x] `P1` Partial/diagnostic: editable text input widgets preserve metadata
+      and deterministic value/action event observations, but native editing,
+      caret, and IME behavior are not promoted.
+- [x] `P1` Unsupported boundary: IME composition diagnostics reject unsupported
+      text input targets.
+- [x] `P1` Unsupported boundary: platform virtual keyboard behavior remains a
+      diagnostic boundary.
+- [x] `P1` Promoted: basic automatic tab/sequential focus navigation and
+      explicit directional navigation links are covered by the
+      `rich-ui-navigation` web/native trace diff in `pnpm verify:conformance`;
+      geometric spatial-navigation fallback remains partial.
+- [x] `P2` Unsupported boundary: UI transforms, render-to-texture, and
+      3D-world UI are diagnostic boundaries.
 - [x] `P2` UI viewport nodes with picking/input routing as a diagnostic-only boundary
 - [x] `P1` Basic UI accessibility roles, labels, and missing-label diagnostics
-- [x] `P1` Broader screen-reader diagnostics for focusable names, progressbar names, and list/listitem structure
+- [x] `P1` Partial/diagnostic: broader screen-reader diagnostics cover
+      focusable names, progressbar names, and list/listitem structure; focus
+      narration is not verified against a platform screen reader.
 - [x] `P1` Static disabled UI metadata for focus/action suppression and ARIA/AccessKit state
 - [x] `P2` UI debug overlay/gizmos
-- [x] `P1` Runtime disabled-to-enabled UI updates
-- [x] `P1` Nested and axis-specific scroll behavior
-- [x] `P1` Spatial navigation heuristics
-- [x] `P1` Focus narration
+- [x] `P1` Partial/diagnostic: runtime disabled-to-enabled UI updates have
+      script facade and trace coverage, but native behavior is not yet promoted
+      by a deterministic conformance proof.
+- [x] `P1` Partial/diagnostic: nested and axis-specific scroll behavior has
+      vertical-scroll support and metadata/traces; nested and horizontal-axis
+      behavior remain unpromoted.
+- [x] `P1` Partial/diagnostic: spatial navigation heuristics are implemented
+      for web geometric lookup and explicit native links; cross-runtime
+      heuristic fallback parity is not promoted.
+- [x] `P1` Partial/diagnostic: focus narration is trace/accessibility metadata,
+      not a screen-reader-verified runtime claim.
 - [x] `P2` Native-rendered italic rich text as a diagnostic-only boundary until native font-style rendering is promoted
 - [x] `P2` Letter spacing, generic/system font families, and OpenType font variation policy as a diagnostic-only boundary
-- [x] `P2` Arbitrary grid placement, named areas, and dense packing as a diagnostic-only boundary
+- [x] `P2` Unsupported boundary: arbitrary grid placement, named areas, and
+      dense packing remain diagnostic-only.
 - [x] `P2` UI drag-and-drop node interactions distinct from world picking drag events as a diagnostic-only boundary
 - [x] `P2` Custom UI material/shader declarations as diagnostic-only until bounded presets exist
 - [x] `P2` Broad gamepad/touch UI coverage through focused interaction fixture evidence
-- [x] `P2` Desktop-web packaging artifact measured by `pnpm verify:webview-package`
+- [x] `P2` Promoted packaging fallback: desktop-web packaging artifacts are
+      measured by `pnpm verify:webview-package`; this does not claim native
+      Bevy-rendered overlay parity.
 
 ### 🪟 Window and Platform Runtime
 
