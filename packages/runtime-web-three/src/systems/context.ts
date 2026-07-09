@@ -1,6 +1,6 @@
 import { buildComponentReflectionRegistry, type IComponentReflectionRegistry, type IComponentReflectionType } from "@threenative/ir/reflection";
 import type { IAssetsManifest, IIrDelayedCommandDeclaration, IIrSchemaFile, IIrStateSource, IIrSystemDeclaration, IIrSystemQuery, ILocalDataIr, IPrefabsIr, ISystemsIr, IUiIr, IUiNodeIr, IWorldEntity, IWorldIr } from "@threenative/ir";
-import { AnimationRuntimeController } from "../animation.js";
+import { AnimationRuntimeController, ParticleRuntimeController } from "../animation.js";
 import { ScriptAudioRuntimeController, type IScriptAudioPlayOptions } from "../audio.js";
 import { traceCharacterControllers, type ICharacterTraceObservation } from "../character.js";
 import type { IWebInputState } from "../input.js";
@@ -30,8 +30,6 @@ import type {
   IComponentHookObservation,
   IInstantiateResult,
   IObserverPropagationStep,
-  IParticleCommandOptions,
-  IParticleCommandResult,
   IPhysicsSensorRequest,
   IPhysicsSensorResult,
   IPluginDeclarationView,
@@ -90,7 +88,7 @@ export function createWebSystemRuntimeState(
     assets: options.assets,
     audio: options.audio,
     delayedCommands: [] as IWebDelayedCommand[],
-    particles: createParticleCommandService(options.assets),
+    particles: new ParticleRuntimeController(options.assets),
     random: createDeterministicRandom(seed),
     randomSeedKey: runtimeSeedKey(seed),
     scriptAudio: new ScriptAudioRuntimeController(options.audio),
@@ -156,7 +154,7 @@ export function createSystemContext(
   const random = options.runtimeState?.random ?? createDeterministicRandom(randomSeed(world));
   const animations = options.runtimeState?.animations ?? new AnimationRuntimeController();
   const scriptAudio = options.runtimeState?.scriptAudio ?? new ScriptAudioRuntimeController(options.audio);
-  const particles = options.runtimeState?.particles ?? createParticleCommandService(options.assets);
+  const particles = options.runtimeState?.particles ?? new ParticleRuntimeController(options.assets);
   const persistence = options.persistence ?? createWebPersistenceService(options.localData ?? emptyLocalData());
   const ui = options.uiState ?? createScriptUiState(options.ui);
   const delayedScheduler = createDelayedScheduler(options.delayedCommands ?? [], {
@@ -1375,98 +1373,6 @@ function emptyLocalData(): ILocalDataIr {
     settings: [],
     version: "0.1.0",
   };
-}
-
-function createParticleCommandService(assets: IAssetsManifest | undefined): {
-  execute(command: IParticleCommandResult["command"], assetId: string, emitterId: string, options?: IParticleCommandOptions): IParticleCommandResult;
-} {
-  const active = new Map<string, IParticleCommandResult>();
-  const emitters = new Map<string, { lifetimeSeconds: number; maxParticles: number; ratePerSecond: number }>();
-  for (const asset of assets?.assets ?? []) {
-    if (asset.kind !== "model") {
-      continue;
-    }
-    for (const emitter of asset.particleEmitters ?? []) {
-      emitters.set(`${asset.id}/${emitter.id}`, {
-        lifetimeSeconds: emitter.lifetimeSeconds,
-        maxParticles: emitter.maxParticles,
-        ratePerSecond: emitter.ratePerSecond,
-      });
-    }
-  }
-
-  return {
-    execute(command, assetId, emitterId, options = {}) {
-      const key = `${assetId}/${emitterId}`;
-      const emitter = emitters.get(key);
-      const seed = stableParticleSeed(options.seed ?? `${key}/${command}`);
-      if (emitter === undefined) {
-        return {
-          accepted: false,
-          active: false,
-          asset: assetId,
-          command,
-          count: 0,
-          emitter: emitterId,
-          maxParticles: 0,
-          seed,
-          status: "missing-emitter",
-        };
-      }
-      const requestedCount = command === "stop" || command === "reset" || command === "clear"
-        ? 0
-        : options.count ?? Math.max(1, Math.floor(emitter.ratePerSecond * emitter.lifetimeSeconds));
-      const count = Math.min(emitter.maxParticles, Math.max(0, Math.floor(Number.isFinite(requestedCount) ? requestedCount : 0)));
-      const result: IParticleCommandResult = {
-        accepted: true,
-        active: command === "start" || command === "play" || command === "burst" || command === "emit",
-        asset: assetId,
-        command,
-        count,
-        emitter: emitterId,
-        maxParticles: emitter.maxParticles,
-        seed,
-        status: particleCommandStatus(command),
-      };
-      if (command === "stop" || command === "reset" || command === "clear") {
-        active.delete(key);
-      } else {
-        active.set(key, result);
-      }
-      return cloneValue(result);
-    },
-  };
-}
-
-function particleCommandStatus(command: IParticleCommandResult["command"]): IParticleCommandResult["status"] {
-  switch (command) {
-    case "burst":
-      return "burst";
-    case "clear":
-      return "cleared";
-    case "emit":
-      return "emitted";
-    case "play":
-      return "played";
-    case "reset":
-      return "reset";
-    case "start":
-      return "started";
-    case "stop":
-      return "stopped";
-  }
-}
-
-function stableParticleSeed(value: number | string): number {
-  if (typeof value === "number" && Number.isFinite(value)) {
-    return Math.abs(Math.floor(value)) >>> 0;
-  }
-  let hash = 2166136261;
-  for (const char of String(value)) {
-    hash ^= char.charCodeAt(0);
-    hash = Math.imul(hash, 16777619);
-  }
-  return hash >>> 0;
 }
 
 function deepFreeze<T>(value: T): T {

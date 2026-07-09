@@ -177,9 +177,9 @@ sequenceDiagram
 
 **Implementation:**
 
-- [ ] Implement start/stop/burst/reset with fixed tick advancement.
-- [ ] Serialize count, seed, emitter, and command results.
-- [ ] Keep command outcomes identical across runtimes.
+- [x] Implement start/stop/burst/reset with fixed tick advancement.
+- [x] Serialize count, seed, emitter, and command results.
+- [x] Keep command outcomes identical across runtimes.
 
 **Tests Required:**
 

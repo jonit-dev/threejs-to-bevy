@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { resolve } from "node:path";
 import test from "node:test";
 
-import { AnimationRuntimeController, animationPlaybackState, sampleTransformAnimations, traceAnimationGraphs } from "./animation.js";
+import { AnimationRuntimeController, ParticleRuntimeController, animationPlaybackState, sampleTransformAnimations, traceAnimationGraphs } from "./animation.js";
 import { loadBundle } from "./loadBundle.js";
 
 test("animation trace should match V7 graph and particle fixture", async () => {
@@ -119,6 +119,67 @@ test("should report blend weights during graph transition", () => {
     toClip: "run",
     toWeight: 0.5,
   });
+});
+
+test("should execute bounded particle burst command", () => {
+  const particles = new ParticleRuntimeController({
+    schema: "threenative.assets",
+    version: "0.1.0",
+    assets: [
+      {
+        format: "glb",
+        id: "model.hero",
+        kind: "model",
+        particleEmitters: [{ id: "dust", lifetimeSeconds: 0.5, maxParticles: 8, ratePerSecond: 8, shape: "point" }],
+        path: "assets/hero.glb",
+      },
+    ],
+  });
+
+  const emitted = particles.execute("emit", "model.hero", "dust", { count: 99, seed: "impact" });
+
+  assert.deepEqual(emitted, {
+    accepted: true,
+    active: true,
+    asset: "model.hero",
+    command: "emit",
+    count: 8,
+    emitter: "dust",
+    maxParticles: 8,
+    seed: 510767767,
+    status: "emitted",
+  });
+  assert.deepEqual(particles.advanceFixedTicks(30, 1 / 60), [{
+    ...emitted,
+    active: false,
+    count: 0,
+  }]);
+  const playing = particles.execute("play", "model.hero", "dust", { seed: 7 });
+  assert.deepEqual(playing, {
+    accepted: true,
+    active: true,
+    asset: "model.hero",
+    command: "play",
+    count: 4,
+    emitter: "dust",
+    maxParticles: 8,
+    seed: 7,
+    status: "played",
+  });
+
+  assert.deepEqual(particles.advanceFixedTicks(30, 1 / 60), [playing]);
+  assert.deepEqual(particles.execute("clear", "model.hero", "dust"), {
+    accepted: true,
+    active: false,
+    asset: "model.hero",
+    command: "clear",
+    count: 0,
+    emitter: "dust",
+    maxParticles: 8,
+    seed: 3788948739,
+    status: "cleared",
+  });
+  assert.deepEqual(particles.snapshot(), []);
 });
 
 test("transform animation sampler should interpolate and loop deterministically", () => {

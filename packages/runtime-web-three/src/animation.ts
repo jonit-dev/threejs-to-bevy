@@ -87,6 +87,25 @@ export interface IAnimationRuntimePlayOptions {
   speed?: unknown;
 }
 
+export type ParticleRuntimeCommand = "burst" | "clear" | "emit" | "play" | "reset" | "start" | "stop";
+
+export interface IParticleRuntimeCommandOptions {
+  count?: number;
+  seed?: number | string;
+}
+
+export interface IParticleRuntimeCommandResult {
+  accepted: boolean;
+  active: boolean;
+  asset: string;
+  command: ParticleRuntimeCommand;
+  count: number;
+  emitter: string;
+  maxParticles: number;
+  seed: number;
+  status: "burst" | "cleared" | "emitted" | "missing-emitter" | "played" | "reset" | "started" | "stopped";
+}
+
 export interface ITransformAnimationSample {
   channel: "position" | "rotation" | "scale";
   clip: string;
@@ -205,6 +224,100 @@ export class AnimationRuntimeController {
   }
 }
 
+export class ParticleRuntimeController {
+  readonly #active = new Map<string, ParticleRuntimeStateRecord>();
+  readonly #emitters = new Map<string, ParticleRuntimeEmitterRecord>();
+
+  constructor(assets: IAssetsManifest | undefined) {
+    for (const asset of assets?.assets ?? []) {
+      if (asset.kind !== "model") {
+        continue;
+      }
+      for (const emitter of asset.particleEmitters ?? []) {
+        this.#emitters.set(`${asset.id}/${emitter.id}`, {
+          lifetimeSeconds: emitter.lifetimeSeconds,
+          maxParticles: emitter.maxParticles,
+          ratePerSecond: emitter.ratePerSecond,
+        });
+      }
+    }
+  }
+
+  execute(command: ParticleRuntimeCommand, assetId: string, emitterId: string, options: IParticleRuntimeCommandOptions = {}): IParticleRuntimeCommandResult {
+    const key = `${assetId}/${emitterId}`;
+    const emitter = this.#emitters.get(key);
+    const seed = stableParticleSeed(options.seed ?? `${key}/${command}`);
+    if (emitter === undefined) {
+      return {
+        accepted: false,
+        active: false,
+        asset: assetId,
+        command,
+        count: 0,
+        emitter: emitterId,
+        maxParticles: 0,
+        seed,
+        status: "missing-emitter",
+      };
+    }
+    const requestedCount = particleCommandClears(command)
+      ? 0
+      : options.count ?? Math.max(1, Math.floor(emitter.ratePerSecond * emitter.lifetimeSeconds));
+    const count = Math.min(emitter.maxParticles, Math.max(0, Math.floor(Number.isFinite(requestedCount) ? requestedCount : 0)));
+    const result: IParticleRuntimeCommandResult = {
+      accepted: true,
+      active: particleCommandActivates(command),
+      asset: assetId,
+      command,
+      count,
+      emitter: emitterId,
+      maxParticles: emitter.maxParticles,
+      seed,
+      status: particleCommandStatus(command),
+    };
+    if (particleCommandClears(command)) {
+      this.#active.delete(key);
+    } else {
+      this.#active.set(key, {
+        ageSeconds: 0,
+        emitter,
+        expires: command === "burst" || command === "emit",
+        result,
+      });
+    }
+    return cloneParticleResult(result);
+  }
+
+  advanceFixedTicks(ticks: number, fixedDelta: number): IParticleRuntimeCommandResult[] {
+    if (!Number.isInteger(ticks) || ticks <= 0 || !Number.isFinite(fixedDelta) || fixedDelta <= 0) {
+      return this.snapshot();
+    }
+    for (const [key, state] of this.#active) {
+      const ageSeconds = state.ageSeconds + ticks * fixedDelta;
+      if (state.expires && ageSeconds >= state.emitter.lifetimeSeconds) {
+        this.#active.set(key, {
+          ...state,
+          ageSeconds,
+          result: {
+            ...state.result,
+            active: false,
+            count: 0,
+          },
+        });
+      } else {
+        this.#active.set(key, { ...state, ageSeconds });
+      }
+    }
+    return this.snapshot();
+  }
+
+  snapshot(): IParticleRuntimeCommandResult[] {
+    return [...this.#active.values()]
+      .map((state) => cloneParticleResult(state.result))
+      .sort((left, right) => left.asset.localeCompare(right.asset) || left.emitter.localeCompare(right.emitter) || left.command.localeCompare(right.command));
+  }
+}
+
 export function sampleTransformAnimations(
   animations: IAnimationsIr | undefined,
   input: { timeSeconds?: number } = {},
@@ -257,6 +370,19 @@ function round(value: number): number {
 
 type AnimationRuntimeStateRecord = Omit<IAnimationRuntimeState, "normalizedTime"> & { durationSeconds: number };
 
+interface ParticleRuntimeEmitterRecord {
+  lifetimeSeconds: number;
+  maxParticles: number;
+  ratePerSecond: number;
+}
+
+interface ParticleRuntimeStateRecord {
+  ageSeconds: number;
+  emitter: ParticleRuntimeEmitterRecord;
+  expires: boolean;
+  result: IParticleRuntimeCommandResult;
+}
+
 function serializeAnimationRuntimeState(state: AnimationRuntimeStateRecord): IAnimationRuntimeState {
   return {
     active: state.active,
@@ -272,6 +398,49 @@ function serializeAnimationRuntimeState(state: AnimationRuntimeStateRecord): IAn
     ...(state.stopReason === undefined ? {} : { stopReason: state.stopReason }),
     timeSeconds: round(state.timeSeconds),
   };
+}
+
+function particleCommandActivates(command: ParticleRuntimeCommand): boolean {
+  return command === "start" || command === "play" || command === "burst" || command === "emit";
+}
+
+function particleCommandClears(command: ParticleRuntimeCommand): boolean {
+  return command === "stop" || command === "reset" || command === "clear";
+}
+
+function particleCommandStatus(command: ParticleRuntimeCommand): IParticleRuntimeCommandResult["status"] {
+  switch (command) {
+    case "burst":
+      return "burst";
+    case "clear":
+      return "cleared";
+    case "emit":
+      return "emitted";
+    case "play":
+      return "played";
+    case "reset":
+      return "reset";
+    case "start":
+      return "started";
+    case "stop":
+      return "stopped";
+  }
+}
+
+function stableParticleSeed(value: number | string): number {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return Math.abs(Math.floor(value)) >>> 0;
+  }
+  let hash = 2166136261;
+  for (const char of String(value)) {
+    hash ^= char.charCodeAt(0);
+    hash = Math.imul(hash, 16777619);
+  }
+  return hash >>> 0;
+}
+
+function cloneParticleResult(result: IParticleRuntimeCommandResult): IParticleRuntimeCommandResult {
+  return { ...result };
 }
 
 function createBlendState(fromClip: string, toClip: string, durationSeconds: number, elapsedSeconds: number): IAnimationRuntimeBlendState {

@@ -4,6 +4,7 @@ use serde_json::Value;
 use threenative_loader::load_bundle;
 use threenative_runtime::animation::{
     AnimationRuntimeController, AnimationRuntimePlayOptions, AnimationTraceInput,
+    ParticleRuntimeController,
     trace_animation_graphs,
 };
 
@@ -140,6 +141,48 @@ fn should_report_blend_weights_during_graph_transition() {
     assert_eq!(blend.from_weight, 0.5);
     assert_eq!(blend.to_weight, 0.5);
     assert!(!blend.complete);
+}
+
+#[test]
+fn should_execute_bounded_particle_burst_command() {
+    let fixture = load_conformance_fixture("animation-graphs-particles");
+    let mut particles = ParticleRuntimeController::from_bundle(&fixture.bundle);
+
+    let emitted = particles.execute(
+        "emit",
+        "model.hero",
+        "dust",
+        Some(99),
+        Some("impact"),
+    );
+
+    assert_eq!(emitted.accepted, true);
+    assert_eq!(emitted.active, true);
+    assert_eq!(emitted.asset, "model.hero");
+    assert_eq!(emitted.command, "emit");
+    assert_eq!(emitted.count, 64);
+    assert_eq!(emitted.emitter, "dust");
+    assert_eq!(emitted.max_particles, 64);
+    assert_eq!(emitted.seed, 510767767);
+    assert_eq!(emitted.status, "emitted");
+    let expired = particles.advance_fixed_ticks(30, 1.0 / 60.0);
+    assert_eq!(expired.len(), 1);
+    assert_eq!(expired[0].active, false);
+    assert_eq!(expired[0].count, 0);
+
+    let playing = particles.execute("play", "model.hero", "dust", None, Some("7"));
+    assert_eq!(playing.active, true);
+    assert_eq!(playing.command, "play");
+    assert_eq!(playing.count, 6);
+    assert_eq!(playing.seed, 7);
+    assert_eq!(playing.status, "played");
+    assert_eq!(particles.advance_fixed_ticks(30, 1.0 / 60.0), vec![playing]);
+
+    let cleared = particles.execute("clear", "model.hero", "dust", None, None);
+    assert_eq!(cleared.active, false);
+    assert_eq!(cleared.count, 0);
+    assert_eq!(cleared.status, "cleared");
+    assert!(particles.snapshot().is_empty());
 }
 
 fn write_animation_bundle() -> PathBuf {

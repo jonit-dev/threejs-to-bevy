@@ -144,6 +144,41 @@ pub struct AnimationRuntimeController {
     states: BTreeMap<String, AnimationRuntimeStateRecord>,
 }
 
+#[derive(Clone, Debug, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ParticleRuntimeCommandResult {
+    pub accepted: bool,
+    pub active: bool,
+    pub asset: String,
+    pub command: String,
+    pub count: u32,
+    pub emitter: String,
+    pub max_particles: u32,
+    pub seed: u32,
+    pub status: String,
+}
+
+#[derive(Clone, Debug)]
+struct ParticleRuntimeEmitterRecord {
+    lifetime_seconds: f32,
+    max_particles: u32,
+    rate_per_second: f32,
+}
+
+#[derive(Clone, Debug)]
+struct ParticleRuntimeStateRecord {
+    age_seconds: f32,
+    emitter: ParticleRuntimeEmitterRecord,
+    expires: bool,
+    result: ParticleRuntimeCommandResult,
+}
+
+#[derive(Clone, Debug, Default)]
+pub struct ParticleRuntimeController {
+    active: BTreeMap<String, ParticleRuntimeStateRecord>,
+    emitters: BTreeMap<String, ParticleRuntimeEmitterRecord>,
+}
+
 impl AnimationRuntimeController {
     pub fn play(
         &mut self,
@@ -236,6 +271,145 @@ impl AnimationRuntimeController {
             }
         }
     }
+}
+
+impl ParticleRuntimeController {
+    pub fn from_bundle(bundle: &LoadedBundle) -> Self {
+        let mut emitters = BTreeMap::new();
+        for asset in &bundle.assets.assets {
+            for emitter in asset.particle_emitters.as_deref().unwrap_or(&[]) {
+                emitters.insert(
+                    format!("{}/{}", asset.id, emitter.id),
+                    ParticleRuntimeEmitterRecord {
+                        lifetime_seconds: emitter.lifetime_seconds,
+                        max_particles: emitter.max_particles,
+                        rate_per_second: emitter.rate_per_second,
+                    },
+                );
+            }
+        }
+        Self {
+            active: BTreeMap::new(),
+            emitters,
+        }
+    }
+
+    pub fn execute(
+        &mut self,
+        command: &str,
+        asset: &str,
+        emitter: &str,
+        count: Option<u32>,
+        seed: Option<&str>,
+    ) -> ParticleRuntimeCommandResult {
+        let key = format!("{asset}/{emitter}");
+        let seed = particle_seed(seed.unwrap_or(&format!("{key}/{command}")));
+        let Some(declaration) = self.emitters.get(&key).cloned() else {
+            return ParticleRuntimeCommandResult {
+                accepted: false,
+                active: false,
+                asset: asset.to_owned(),
+                command: command.to_owned(),
+                count: 0,
+                emitter: emitter.to_owned(),
+                max_particles: 0,
+                seed,
+                status: "missing-emitter".to_owned(),
+            };
+        };
+        let requested = if particle_command_clears(command) {
+            0
+        } else {
+            count.unwrap_or_else(|| {
+                (declaration.rate_per_second * declaration.lifetime_seconds)
+                    .floor()
+                    .max(1.0) as u32
+            })
+        };
+        let result = ParticleRuntimeCommandResult {
+            accepted: true,
+            active: particle_command_activates(command),
+            asset: asset.to_owned(),
+            command: command.to_owned(),
+            count: requested.min(declaration.max_particles),
+            emitter: emitter.to_owned(),
+            max_particles: declaration.max_particles,
+            seed,
+            status: particle_command_status(command).to_owned(),
+        };
+        if particle_command_clears(command) {
+            self.active.remove(&key);
+        } else {
+            self.active.insert(
+                key,
+                ParticleRuntimeStateRecord {
+                    age_seconds: 0.0,
+                    emitter: declaration,
+                    expires: command == "burst" || command == "emit",
+                    result: result.clone(),
+                },
+            );
+        }
+        result
+    }
+
+    pub fn advance_fixed_ticks(
+        &mut self,
+        ticks: u32,
+        fixed_delta: f32,
+    ) -> Vec<ParticleRuntimeCommandResult> {
+        if ticks == 0 || !fixed_delta.is_finite() || fixed_delta <= 0.0 {
+            return self.snapshot();
+        }
+        for state in self.active.values_mut() {
+            state.age_seconds += ticks as f32 * fixed_delta;
+            if state.expires && state.age_seconds >= state.emitter.lifetime_seconds {
+                state.result.active = false;
+                state.result.count = 0;
+            }
+        }
+        self.snapshot()
+    }
+
+    pub fn snapshot(&self) -> Vec<ParticleRuntimeCommandResult> {
+        self.active
+            .values()
+            .map(|state| state.result.clone())
+            .collect()
+    }
+}
+
+fn particle_command_activates(command: &str) -> bool {
+    matches!(command, "start" | "play" | "burst" | "emit")
+}
+
+fn particle_command_clears(command: &str) -> bool {
+    matches!(command, "stop" | "reset" | "clear")
+}
+
+fn particle_command_status(command: &str) -> &str {
+    match command {
+        "clear" => "cleared",
+        "emit" => "emitted",
+        "play" => "played",
+        "start" => "started",
+        "stop" => "stopped",
+        other => other,
+    }
+}
+
+fn particle_seed(value: &str) -> u32 {
+    if let Ok(number) = value.parse::<f64>() {
+        if number.is_finite() {
+            return number.abs().floor() as u32;
+        }
+    }
+    let mut hash = 2166136261_u32;
+    for byte in value.as_bytes() {
+        hash ^= u32::from(*byte);
+        hash = hash.wrapping_mul(16777619);
+    }
+    hash
 }
 
 pub fn trace_animation_graphs(
