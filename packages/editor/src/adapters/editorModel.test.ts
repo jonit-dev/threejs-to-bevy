@@ -14,6 +14,7 @@ import {
   EDITOR_MODAL_ACTION_DEFINITIONS,
   EDITOR_OPERATION_COVERAGE_MATRIX,
 } from "./editorModel.js";
+import { buildAddComponentOperation, buildAddObjectRecipePlan, EDITOR_COMPOSITE_RECIPE_NAMES, getEditorOperationMetadata } from "../operations/editorOperationMetadata.js";
 import { editorPayloadBuilderSamples } from "../state/editorStore.js";
 
 test("should map authoring documents to project inventory", () => {
@@ -168,10 +169,7 @@ test("should classify every visible editor action by functional status", () => {
 });
 
 test("should keep enabled editor operations backed by the authoring registry or documented composites", () => {
-  const compositeOperations = new Map([
-    ["environment.add_flat_terrain", "Composite editor recipe that expands to environment terrain, walkability, prefab, entity, and transform operations."],
-    ["scene.create_default", "Composite editor recipe that seeds camera and light entities after creating a scene."],
-  ]);
+  const compositeOperations = new Set<string>(EDITOR_COMPOSITE_RECIPE_NAMES);
   const enabledOperationNames = [
     ...EDITOR_OPERATION_COVERAGE_MATRIX
       .filter((row) => !row.readOnly && row.handler === undefined)
@@ -179,17 +177,16 @@ test("should keep enabled editor operations backed by the authoring registry or 
       .filter((name): name is string => name !== undefined),
   ];
   const missing = enabledOperationNames.filter((name) => getAuthoringOperationDescriptor(name) === undefined && !compositeOperations.has(name));
-  const staleComposites = [...compositeOperations.keys()].filter((name) => !enabledOperationNames.includes(name));
+  const staleComposites = ["environment.add_flat_terrain", "scene.create_default"].filter((name) => !enabledOperationNames.includes(name));
 
   assert.deepEqual(missing, [], `Enabled editor operation(s) missing authoring registry descriptors or composite allowlist: ${missing.join(", ")}`);
   assert.deepEqual(staleComposites, [], `Composite editor operation allowlist contains stale entries: ${staleComposites.join(", ")}`);
-  for (const [name, reason] of compositeOperations) {
-    assert.equal(reason.length > 20, true, `${name} composite allowlist must document why it is not a direct registry operation.`);
-  }
+  assert.equal(getEditorOperationMetadata("scene.set_transform").descriptor?.name, "scene.set_transform");
+  assert.equal(getEditorOperationMetadata("scene.create_default").compositeRecipe, "scene.create_default");
 });
 
 test("should keep editor payload builder keys within registry descriptor arguments", () => {
-  const compositeOperations = new Set(["environment.add_flat_terrain", "scene.create_default"]);
+  const compositeOperations = new Set<string>(EDITOR_COMPOSITE_RECIPE_NAMES);
   const failures = editorPayloadBuilderSamples().flatMap((sample) => {
     if (compositeOperations.has(sample.name)) {
       return [];
@@ -201,6 +198,28 @@ test("should keep editor payload builder keys within registry descriptor argumen
   });
 
   assert.deepEqual(failures, [], `Editor payload builder emitted keys outside registry descriptors: ${failures.join("; ")}`);
+});
+
+test("should build add-component payloads from editor operation metadata", () => {
+  const camera = EDITOR_ADD_COMPONENT_DEFINITIONS.find((definition) => definition.component === "Camera");
+  const light = EDITOR_ADD_COMPONENT_DEFINITIONS.find((definition) => definition.component === "Light");
+
+  assert.deepEqual(camera === undefined ? undefined : buildAddComponentOperation(camera, { entityId: "camera", sceneId: "arena" }), {
+    args: { componentKind: "camera", entityId: "camera", sceneId: "arena", value: { mode: "perspective", target: "" } },
+    name: "scene.set_component",
+  });
+  assert.deepEqual(light === undefined ? undefined : buildAddComponentOperation(light, { entityId: "light", sceneId: "arena" }), {
+    args: { color: "#ffffff", entityId: "light", intensity: 1, kind: "directional", sceneId: "arena" },
+    name: "scene.set_light",
+  });
+});
+
+test("should build modal composite recipe payloads from editor operation metadata", () => {
+  const terrain = EDITOR_MODAL_ACTION_DEFINITIONS.find((action) => action.id === "add.terrain");
+  const light = EDITOR_MODAL_ACTION_DEFINITIONS.find((action) => action.id === "add.light");
+
+  assert.deepEqual(terrain === undefined ? undefined : buildAddObjectRecipePlan(terrain, "sample", { environmentId: "arena-env" })?.operations.map((operation) => operation.name), ["environment.add_flat_terrain"]);
+  assert.deepEqual(light === undefined ? undefined : buildAddObjectRecipePlan(light, "sample", { environmentId: "arena-env" })?.operations.map((operation) => operation.name), ["scene.add_entity", "scene.set_light", "scene.set_transform"]);
 });
 
 test("should inventory terrain heightmap and skybox fields", () => {

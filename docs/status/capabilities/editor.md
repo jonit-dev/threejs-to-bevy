@@ -11,6 +11,11 @@ Current support:
   operation registry, and representative editor payload builders are tested so
   emitted argument keys stay within registry descriptor arguments except for
   documented composite recipes.
+- Editor operation metadata now owns add-component payload builders and named
+  composite recipes such as default scene creation, terrain creation, light
+  placement, and primitive placement. Store plans and server execution consume
+  the same recipe steps, and the required-operations smoke gate executes both
+  default-scene and terrain composites end to end.
 - The editor viewport includes a read-only retained UI preview derived from
   source UI documents. Binding values resolve deterministically from authored
   scene resources when present and otherwise render stable `{resource}`

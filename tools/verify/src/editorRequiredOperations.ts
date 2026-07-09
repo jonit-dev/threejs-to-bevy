@@ -52,6 +52,11 @@ interface ISystemsDocument {
   }>;
 }
 
+interface IEnvironmentDocument {
+  terrain?: { heightMode?: string; id?: string };
+  walkability?: { terrain?: { surface?: string } };
+}
+
 export async function runEditorRequiredOperationsSmoke(options: IRunEditorRequiredOperationsOptions = {}): Promise<IEditorRequiredOperationsReport> {
   const root = options.root ?? process.cwd();
   const keep = options.keep ?? false;
@@ -144,6 +149,14 @@ export async function runEditorRequiredOperationsSmoke(options: IRunEditorRequir
       sceneId: "arena",
       size: [1, 1, 1],
     });
+    await apply("environment.add_flat_terrain", {
+      color: "#284f32",
+      entityId: "editor.terrain.0",
+      environmentId: "arena-environment",
+      prefabId: "prefab.editor_terrain",
+      sceneId: "arena",
+      terrainId: "terrain.editor_smoke",
+    });
     await apply("system.create", {
       schedule: "update",
       systemId: "editor-spin",
@@ -162,6 +175,7 @@ export async function runEditorRequiredOperationsSmoke(options: IRunEditorRequir
 
     const scene = await readJson<ISceneDocument>(join(projectPath, "content", "scenes", "arena.scene.json"));
     const createdScene = await readJson<ISceneDocument>(join(projectPath, "content", "scenes", "editor-created.scene.json"));
+    const environment = await readJson<IEnvironmentDocument>(join(projectPath, "content", "environment", "arena-environment.environment.json"));
     const systems = await readJson<ISystemsDocument>(join(projectPath, "content", "systems", "editor-spin.systems.json"));
     const finalWorld = await readJson<IWorldDocument>(join(finalBuild.bundlePath, "world.ir.json"));
 
@@ -174,6 +188,9 @@ export async function runEditorRequiredOperationsSmoke(options: IRunEditorRequir
     assert(sourceEntity?.components?.EditorSmoke?.label === "editor-operation-smoke", "source scene did not persist the attached custom component");
     assert(sourceEntity?.components?.RigidBody?.kind === "dynamic", "source scene did not persist the editor-authored rigid body");
     assert(sourceEntity?.components?.Collider?.kind === "box", "source scene did not persist the editor-authored collider");
+    assert(scene.entities?.some((entity) => entity.id === "editor.terrain.0" && entity.prefab === "prefab.editor_terrain"), "terrain composite did not add a scene entity");
+    assert(environment.terrain?.id === "terrain.editor_smoke" && environment.terrain.heightMode === "flat", "terrain composite did not persist flat terrain metadata");
+    assert(environment.walkability?.terrain?.surface === "terrain.editor_smoke", "terrain composite did not persist walkability terrain metadata");
     assert(createdScene.entities?.some((entity) => entity.id === "main-camera"), "default scene creation did not seed a main camera");
     assert(
       systems.systems?.some((system) => system.id === "editor-spin" && system.script?.module === "src/scripts/editor-spin.ts" && system.script?.export === "editorSpin"),
@@ -201,6 +218,7 @@ export async function runEditorRequiredOperationsSmoke(options: IRunEditorRequir
       changedFiles: [
         "content/scenes/arena.scene.json",
         "content/scenes/editor-created.scene.json",
+        "content/environment/arena-environment.environment.json",
         "content/meshes/mesh.editor_sphere.meshes.json",
         "content/systems/editor-spin.systems.json",
         "src/scripts/editor-spin.ts",

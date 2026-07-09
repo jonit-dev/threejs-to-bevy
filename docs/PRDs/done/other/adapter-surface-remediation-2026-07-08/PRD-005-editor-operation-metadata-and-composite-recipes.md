@@ -2,7 +2,7 @@
 
 ## Status
 
-Planned
+Done
 
 ## Context
 
@@ -52,22 +52,22 @@ named composite recipes.
 
 ## Acceptance Criteria
 
-- [ ] Editor operation names and payload builder keys are validated against
+- [x] Editor operation names and payload builder keys are validated against
       authoring descriptors by tests from PRD-002.
-- [ ] Store plans and server execution use the same composite recipe definition
+- [x] Store plans and server execution use the same composite recipe definition
       for migrated editor composites.
-- [ ] Camera, terrain, light, and primitive placement defaults have one editor
+- [x] Camera, terrain, light, and primitive placement defaults have one editor
       metadata owner or are read from the authoring descriptor.
-- [ ] Dead fallback paths are either made reachable and covered or removed.
-- [ ] Composite recipes run through focused editor tests and the relevant smoke
+- [x] Dead fallback paths are either made reachable and covered or removed.
+- [x] Composite recipes run through focused editor tests and the relevant smoke
       gate.
 
 ## Verification
 
-- [ ] `pnpm --filter @threenative/editor test`
-- [ ] `pnpm --filter @threenative/authoring test`
-- [ ] Editor required-operations smoke gate from `tools/verify`
-- [ ] `pnpm verify:smoke` if smoke enrollment changes
+- [x] `pnpm --filter @threenative/editor test`
+- [x] `pnpm --filter @threenative/authoring test`
+- [x] Editor required-operations smoke gate from `tools/verify`
+- [x] `pnpm verify:smoke` if smoke enrollment changes
 
 ## Files Likely Touched
 
@@ -77,4 +77,3 @@ named composite recipes.
 - `packages/editor/src/*test.ts`
 - `packages/authoring/src/operationRegistry.ts`
 - `tools/verify/src/editorRequiredOperations.ts`
-

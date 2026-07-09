@@ -560,6 +560,7 @@ export interface ISetEnvironmentMapOptions extends IAuthoringOperationContext {
 }
 
 export interface ISetEnvironmentTerrainOptions extends IAuthoringOperationContext {
+  bounds?: Record<string, unknown>;
   environmentId: string;
   terrainId?: string;
   heightMode?: string;
@@ -607,10 +608,17 @@ export interface ISetRuntimeWindowOptions extends IAuthoringOperationContext {
 
 export interface ISetRuntimeRenderingOptions extends IAuthoringOperationContext {
   runtimeId: string;
+  ambientOcclusionEnabled?: boolean;
+  ambientOcclusionIntensity?: number;
+  ambientOcclusionMode?: string;
+  ambientOcclusionQuality?: string;
+  ambientOcclusionRadius?: number;
   antialias?: string;
   bloomEnabled?: boolean;
   bloomIntensity?: number;
   bloomThreshold?: number;
+  motionBlurEnabled?: boolean;
+  motionBlurShutterAngle?: number;
   renderProfile?: string;
   renderLookBloomIntensity?: number;
   renderLookContrast?: number;
@@ -619,6 +627,11 @@ export interface ISetRuntimeRenderingOptions extends IAuthoringOperationContext 
   renderLookSaturation?: number;
   renderLookShadowQuality?: string;
   renderPath?: string;
+  screenSpaceGlobalIlluminationEnabled?: boolean;
+  screenSpaceGlobalIlluminationQuality?: string;
+  screenSpaceReflectionsEnabled?: boolean;
+  screenSpaceReflectionsQuality?: string;
+  screenSpaceReflectionsRoughnessLimit?: number;
 }
 
 export interface ISetTargetProfileOptions extends IAuthoringOperationContext {

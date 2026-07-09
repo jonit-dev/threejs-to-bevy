@@ -423,6 +423,7 @@ export async function setEnvironmentTerrain(options: ISetEnvironmentTerrainOptio
       const terrain = isRecord(data.terrain) ? data.terrain : {};
       data.terrain = {
         ...terrain,
+        ...(options.bounds === undefined ? {} : { bounds: options.bounds }),
         ...(options.heightmap === undefined ? {} : { heightmap: options.heightmap }),
         ...(options.heightMode === undefined ? {} : { heightMode: options.heightMode }),
         ...(options.terrainId === undefined ? {} : { id: options.terrainId }),

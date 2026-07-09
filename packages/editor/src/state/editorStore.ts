@@ -7,6 +7,7 @@ import type { IEditorLiveSceneUpdate } from "../preview/liveSceneUpdates.js";
 import type { IEditorChatApplyApiResult } from "../server/chatApi.js";
 import type { IEditorChatPlan } from "../server/chatPlan.js";
 import { devFixtureModel } from "../devFixtureModel.js";
+import { buildAddComponentOperation, buildAddObjectRecipePlan, type IPlannedEditorOperation } from "../operations/editorOperationMetadata.js";
 import type { ISceneLifecycleModel } from "../workbench/sceneModel.js";
 
 export type EditorModal = "addComponent" | "addObject" | "build" | "chat" | "delete" | "newScene" | "save" | "script" | "settings" | undefined;
@@ -137,113 +138,12 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
       return;
     }
     try {
-      if (definition.component === "Transform") {
-        await postOperation(
-          "scene.set_transform",
-          {
-            entityId: object.id,
-            position: vectorDefault(definition.defaults.position, [0, 0, 0]),
-            rotation: vectorDefault(definition.defaults.rotation, [0, 0, 0]),
-            scale: vectorDefault(definition.defaults.scale, [1, 1, 1]),
-            sceneId: sceneIdFromDocumentPath(object.documentPath),
-          },
-          state.project?.projectRevision,
-        );
-      } else if (definition.component === "Camera") {
-        await postOperation(
-          "scene.set_component",
-          { componentKind: "camera", entityId: object.id, sceneId: sceneIdFromDocumentPath(object.documentPath), value: definition.defaults },
-          state.project?.projectRevision,
-        );
-      } else if (definition.component === "Light") {
-        await postOperation(
-          "scene.set_light",
-          {
-            color: stringDefault(definition.defaults.color, "#ffffff"),
-            entityId: object.id,
-            intensity: numberDefault(definition.defaults.intensity, 1),
-            kind: stringDefault(definition.defaults.kind, "directional"),
-            sceneId: sceneIdFromDocumentPath(object.documentPath),
-          },
-          state.project?.projectRevision,
-        );
-      } else if (definition.component === "MeshRenderer") {
-        await postOperation(
-          "scene.set_mesh_renderer",
-          {
-            castShadow: booleanDefault(definition.defaults.castShadow, true),
-            entityId: object.id,
-            material: stringDefault(definition.defaults.material, "mat.player"),
-            mesh: stringDefault(definition.defaults.mesh, "mesh.player"),
-            receiveShadow: booleanDefault(definition.defaults.receiveShadow, true),
-            sceneId: sceneIdFromDocumentPath(object.documentPath),
-            visible: booleanDefault(definition.defaults.visible, true),
-          },
-          state.project?.projectRevision,
-        );
-      } else if (definition.component === "RenderLayers") {
-        await postOperation(
-          "scene.set_render_layers",
-          {
-            entityId: object.id,
-            layers: stringArrayDefault(definition.defaults.layers, ["default"]),
-            sceneId: sceneIdFromDocumentPath(object.documentPath),
-          },
-          state.project?.projectRevision,
-        );
-      } else if (definition.component === "Visibility") {
-        await postOperation(
-          "scene.set_visibility",
-          {
-            entityId: object.id,
-            sceneId: sceneIdFromDocumentPath(object.documentPath),
-            visible: booleanDefault(definition.defaults.visible, true),
-          },
-          state.project?.projectRevision,
-        );
-      } else if (definition.component === "RigidBody") {
-        await postOperation(
-          "scene.set_rigid_body",
-          {
-            damping: numberDefault(definition.defaults.damping, 0.05),
-            entityId: object.id,
-            gravityScale: numberDefault(definition.defaults.gravityScale, 1),
-            kind: stringDefault(definition.defaults.kind, "dynamic"),
-            mass: numberDefault(definition.defaults.mass, 1),
-            sceneId: sceneIdFromDocumentPath(object.documentPath),
-          },
-          state.project?.projectRevision,
-        );
-      } else if (definition.component === "Collider") {
-        await postOperation(
-          "scene.set_collider",
-          {
-            entityId: object.id,
-            kind: stringDefault(definition.defaults.kind, "box"),
-            sceneId: sceneIdFromDocumentPath(object.documentPath),
-            size: vectorDefault(definition.defaults.size, [1, 1, 1]),
-            trigger: booleanDefault(definition.defaults.trigger, false),
-          },
-          state.project?.projectRevision,
-        );
-      } else if (definition.component === "CharacterController") {
-        await postOperation(
-          "scene.set_character_controller",
-          {
-            blocking: booleanDefault(definition.defaults.blocking, true),
-            entityId: object.id,
-            grounding: stringDefault(definition.defaults.grounding, "raycast"),
-            moveXAxis: stringDefault(definition.defaults.moveXAxis, "MoveX"),
-            moveZAxis: stringDefault(definition.defaults.moveZAxis, "MoveZ"),
-            sceneId: sceneIdFromDocumentPath(object.documentPath),
-            speed: numberDefault(definition.defaults.speed, 4),
-          },
-          state.project?.projectRevision,
-        );
-      } else {
+      const operation = buildAddComponentOperation(definition, { entityId: object.id, sceneId: sceneIdFromDocumentPath(object.documentPath) });
+      if (operation === undefined) {
         set({ status: definition.readOnlyReason ?? `${definition.component} does not have a promoted add operation yet` });
         return;
       }
+      await postOperation(operation.name, operation.args, state.project?.projectRevision);
       await get().refreshProject();
       set({ status: `Added ${definition.component} to ${object.label}` });
     } catch (error) {
@@ -255,7 +155,7 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
     const sceneId = sceneIdFromDocumentPath(get().activeScenePath ?? get().project?.sceneLifecycle?.activeScene?.documentPath);
     try {
       let revision = get().project?.projectRevision;
-      const result = addObjectOperationPlan(action, suffix, { environmentId: environmentIdFromProject(get().project, sceneId) });
+      const result = buildAddObjectRecipePlan(action, suffix, { environmentId: environmentIdFromProject(get().project, sceneId) });
       if (result === undefined) {
         set({ status: action.readOnlyReason ?? `${action.label} does not have a promoted add operation yet` });
         return;
@@ -835,33 +735,6 @@ function buildOperationArgs(row: IEditorPropertyRow, value: unknown): Record<str
   return args;
 }
 
-function vectorDefault(value: unknown, fallback: [number, number, number]): [number, number, number] {
-  if (!Array.isArray(value) || value.length !== 3 || value.some((item) => typeof item !== "number" || !Number.isFinite(item))) {
-    return fallback;
-  }
-  return [value[0], value[1], value[2]];
-}
-
-function booleanDefault(value: unknown, fallback: boolean): boolean {
-  return typeof value === "boolean" ? value : fallback;
-}
-
-function numberDefault(value: unknown, fallback: number): number {
-  return typeof value === "number" && Number.isFinite(value) ? value : fallback;
-}
-
-function stringDefault(value: unknown, fallback: string): string {
-  return typeof value === "string" && value.length > 0 ? value : fallback;
-}
-
-function stringArrayDefault(value: unknown, fallback: string[]): string[] {
-  if (!Array.isArray(value)) {
-    return fallback;
-  }
-  const strings = value.filter((item): item is string => typeof item === "string" && item.length > 0);
-  return strings.length > 0 ? strings : fallback;
-}
-
 function sceneIdFromDocumentPath(documentPath: string | undefined): string {
   const fileName = documentPath?.split("/").pop() ?? "arena.scene.json";
   return fileName.endsWith(".scene.json") ? fileName.slice(0, -".scene.json".length) : fileName;
@@ -905,11 +778,6 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-export interface IPlannedEditorOperation {
-  args: Record<string, unknown>;
-  name: string;
-}
-
 function environmentIdFromProject(project: IEditorProjectPayload | undefined, fallbackSceneId: string): string {
   const environment = project?.documents
     ?.find((group) => group.kind === "environment")
@@ -927,90 +795,6 @@ export function editorPayloadBuilderSamples(): IPlannedEditorOperation[] {
   ];
   const modalSamples = EDITOR_MODAL_ACTION_DEFINITIONS
     .filter((action) => action.operationName !== undefined)
-    .flatMap((action) => addObjectOperationPlan(action, "sample", { environmentId: "arena" })?.operations ?? [{ args: { sceneId: "editor-sample" }, name: action.operationName as string }]);
+    .flatMap((action) => buildAddObjectRecipePlan(action, "sample", { environmentId: "arena" })?.operations ?? [{ args: { sceneId: "editor-sample" }, name: action.operationName as string }]);
   return [...inspectorSamples, ...modalSamples];
-}
-
-function addObjectOperationPlan(action: IEditorModalActionDefinition, suffix: string, context: { environmentId: string }): { entityId: string; operations: IPlannedEditorOperation[]; statusLabel: string } | undefined {
-  switch (action.id) {
-    case "add.primitive_sphere": {
-      const prefabId = `prefab.editor-box-${suffix}`;
-      const entityId = `editor-box-${suffix}`;
-      return {
-        entityId,
-        operations: [
-          { args: { color: "#9b59b6", prefabId, primitive: "sphere" }, name: "scene.add_prefab" },
-          { args: { entityId, prefabId }, name: "scene.add_entity" },
-          { args: { entityId, position: [12, 0.5, 5] }, name: "scene.set_transform" },
-        ],
-        statusLabel: "primitive sphere",
-      };
-    }
-    case "add.empty_entity": {
-      const entityId = `editor-entity-${suffix}`;
-      return {
-        entityId,
-        operations: [{ args: { entityId }, name: "scene.add_entity" }],
-        statusLabel: "empty entity",
-      };
-    }
-    case "add.camera": {
-      const entityId = `editor-camera-${suffix}`;
-      return {
-        entityId,
-        operations: [
-          { args: { entityId }, name: "scene.add_entity" },
-          { args: { componentKind: "camera", entityId, value: { mode: "perspective" } }, name: "scene.set_component" },
-          { args: { entityId, position: [0, 1.8, 6], rotation: [-0.25, 0, 0] }, name: "scene.set_transform" },
-        ],
-        statusLabel: "camera",
-      };
-    }
-    case "add.light": {
-      const entityId = `editor-light-${suffix}`;
-      return {
-        entityId,
-        operations: [
-          { args: { entityId }, name: "scene.add_entity" },
-          { args: { entityId, intensity: 1, kind: "directional" }, name: "scene.set_light" },
-          { args: { entityId, position: [2, 4, 3] }, name: "scene.set_transform" },
-        ],
-        statusLabel: "light",
-      };
-    }
-    case "add.custom_glb": {
-      if (action.assetPath === undefined) {
-        return undefined;
-      }
-      const prefabId = `prefab.editor-model-${suffix}`;
-      const entityId = `editor-model-${suffix}`;
-      return {
-        entityId,
-        operations: [
-          { args: { asset: action.assetPath, prefabId }, name: "scene.add_prefab" },
-          { args: { entityId, prefabId }, name: "scene.add_entity" },
-          { args: { entityId, position: [0, 0, 0], scale: [1, 1, 1] }, name: "scene.set_transform" },
-        ],
-        statusLabel: `model ${action.assetPath}`,
-      };
-    }
-    case "add.terrain": {
-      const terrainId = `terrain.editor-${suffix}`;
-      const prefabId = `prefab.editor-terrain-${suffix}`;
-      const entityId = `editor-terrain-${suffix}`;
-      return {
-        entityId,
-        operations: [
-          { args: { color: "#284f32", entityId, environmentId: context.environmentId, prefabId, terrainId }, name: "environment.add_flat_terrain" },
-        ],
-        statusLabel: "flat terrain",
-      };
-    }
-    case "build.preview":
-    case "delete.selection":
-    case "scene.create_default":
-    case "scene.save":
-    case "settings.editor":
-      return undefined;
-  }
 }
