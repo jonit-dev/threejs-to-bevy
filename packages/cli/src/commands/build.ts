@@ -1,16 +1,15 @@
 import { resolve } from "node:path";
 import { buildProject, CompilerError, generateProjectTypes } from "@threenative/compiler";
 import { diagnosticResult, type ICommandResult } from "../diagnostics.js";
+import { normalizeArgv, readFlag } from "./sourceCommandUtils.js";
 
 const ITERATE_NOTICE = "Standalone build is subsumed by tn iterate --project . --json for the normal agent verify loop.";
 const ITERATE_NEXT = "tn iterate --project . --json";
 
 export async function buildCommand(argv: readonly string[], cwd = process.env.INIT_CWD ?? process.cwd()): Promise<ICommandResult> {
-  const normalizedArgv = argv[0] === "--" ? argv.slice(1) : argv;
+  const normalizedArgv = normalizeArgv(argv);
   const json = normalizedArgv.includes("--json");
-  const projectFlagIndex = normalizedArgv.indexOf("--project");
-  const projectPath =
-    projectFlagIndex === -1 ? cwd : resolve(cwd, normalizedArgv[projectFlagIndex + 1] ?? ".");
+  const projectPath = resolve(cwd, readFlag(normalizedArgv, "--project") ?? ".");
 
   try {
     await generateProjectTypes({ projectPath });

@@ -5,7 +5,8 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import test from "node:test";
 
-import { CLI_COMMAND_DEFINITIONS, dispatch, renderHelp } from "./index.js";
+import { CLI_COMMAND_DEFINITIONS, CLI_COMMAND_REGISTRY, UNMIGRATED_COMMAND_FAMILIES, dispatch, renderHelp } from "./index.js";
+import { findCommand } from "./commands/registry.js";
 
 test("should print help when requested", async () => {
   const result = await dispatch(["--help"]);
@@ -95,13 +96,22 @@ test("should keep CLI command metadata unique and help-covered", () => {
   }
 });
 
-test("should keep CLI command dispatch branches aligned with metadata", async () => {
+test("should keep registry handlers and legacy compatibility path explicit", async () => {
   const source = await readFile(fileURLToPath(new URL("../src/index.ts", import.meta.url)), "utf8");
-  const dispatchNames = [...source.matchAll(/commandName === "([^"]+)"/g)].map((match) => match[1]).filter((name): name is string => name !== undefined);
-  const uniqueDispatchNames = [...new Set(dispatchNames)].sort();
-  const metadataNames = Object.keys(CLI_COMMAND_DEFINITIONS).sort();
+  const legacyNames = [...source.matchAll(/commandName === "([^"]+)"/g)].map((match) => match[1]).filter((name): name is string => name !== undefined);
+  const uniqueLegacyNames = [...new Set(legacyNames)].sort();
+  const registryByName = CLI_COMMAND_REGISTRY as Record<string, (typeof CLI_COMMAND_REGISTRY)[keyof typeof CLI_COMMAND_REGISTRY] | undefined>;
+  const registryNames = Object.keys(CLI_COMMAND_REGISTRY).sort();
+  const migratedNames = Object.values(CLI_COMMAND_REGISTRY).filter((command) => command.handler !== undefined).map((command) => command.name).sort();
 
-  assert.deepEqual(uniqueDispatchNames, metadataNames, `CLI dispatch/metadata drift. Dispatch=${uniqueDispatchNames.join(", ")} Metadata=${metadataNames.join(", ")}`);
+  assert.deepEqual(registryNames, Object.keys(CLI_COMMAND_DEFINITIONS).sort(), "CLI command definitions must be registry-backed.");
+  assert.equal(findCommand(CLI_COMMAND_REGISTRY, "build")?.handler, CLI_COMMAND_REGISTRY.build.handler, "Registry lookup must return the migrated command definition.");
+  assert.equal(findCommand(CLI_COMMAND_REGISTRY, "missing"), undefined, "Registry lookup must fail closed for unknown commands.");
+  assert.deepEqual(migratedNames, ["actor", "build", "proof"], "Registry-migrated command list changed without test review.");
+  assert.deepEqual(uniqueLegacyNames, UNMIGRATED_COMMAND_FAMILIES, `Legacy compatibility path drift. Legacy=${uniqueLegacyNames.join(", ")} Unmigrated=${UNMIGRATED_COMMAND_FAMILIES.join(", ")}`);
+  for (const name of migratedNames) {
+    assert.equal(typeof registryByName[name]?.handler, "function", `Migrated command '${name}' must have a registry handler.`);
+  }
 });
 
 test("dispatch registers physics and nav typed source commands", async () => {

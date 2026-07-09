@@ -34,14 +34,9 @@ import { verifyCommand } from "./commands/verify.js";
 import { typesCommand } from "./commands/types.js";
 import { worldCommand } from "./commands/world.js";
 import { type ICommandResult } from "./diagnostics.js";
+import { defineCommandRegistry, findCommand, renderCommandHelp, unmigratedCommandNames, type ICommandDefinition } from "./commands/registry.js";
 
-export interface ICommandDefinition {
-  description: string;
-  implemented: boolean;
-  usage: string;
-}
-
-export const CLI_COMMAND_DEFINITIONS: Record<string, ICommandDefinition> = {
+export const CLI_COMMAND_REGISTRY = defineCommandRegistry({
   add: {
     description: "Compose bounded gameplay mechanic blocks into structured source.",
     implemented: true,
@@ -54,7 +49,9 @@ export const CLI_COMMAND_DEFINITIONS: Record<string, ICommandDefinition> = {
   },
   actor: {
     description: "Apply reusable actor archetypes to structured source.",
+    handler: actorCommand,
     implemented: true,
+    subcommands: ["list", "add", "update"],
     usage: "tn actor list [--json]\n              tn actor add character --id <actor-id> [--asset <asset-id-or-path>] [--scene <scene-id>] [--speed <n>] [--sprint-speed <n>] [--project <path>] [--json]\n              tn actor update <actor-id> --set speed=4 [--set sprintSpeed=6] [--project <path>] [--json]",
   },
   audio: {
@@ -144,6 +141,7 @@ export const CLI_COMMAND_DEFINITIONS: Record<string, ICommandDefinition> = {
   },
   build: {
     description: "Compile supported TypeScript source into game.bundle.",
+    handler: buildCommand,
     implemented: true,
     usage: "tn build [--project <path>] [--json]",
   },
@@ -204,7 +202,9 @@ export const CLI_COMMAND_DEFINITIONS: Record<string, ICommandDefinition> = {
   },
   proof: {
     description: "Inspect and compare proof manifest artifacts.",
+    handler: proofCommand,
     implemented: true,
+    subcommands: ["diff"],
     usage: "tn proof diff --from <manifest> --to <manifest> [--json]",
   },
   recipe: {
@@ -297,29 +297,17 @@ export const CLI_COMMAND_DEFINITIONS: Record<string, ICommandDefinition> = {
     implemented: true,
     usage: "tn verify [--project <path>] [--url <preview-url>] [--frames <count>] [--expect-motion] [--json]",
   },
-};
+});
 
-const commands = CLI_COMMAND_DEFINITIONS;
+export const CLI_COMMAND_DEFINITIONS: Record<string, ICommandDefinition> = CLI_COMMAND_REGISTRY;
+export const UNMIGRATED_COMMAND_FAMILIES = unmigratedCommandNames(CLI_COMMAND_REGISTRY);
+
+const commands = CLI_COMMAND_REGISTRY;
 
 const helpFlags = new Set(["--help", "-h"]);
 
 export function renderHelp(): string {
-  const commandRows = Object.entries(commands)
-    .map(([name, command]) => `  ${name.padEnd(10)} ${command.description}\n              ${command.usage}`)
-    .join("\n");
-
-  return `ThreeNative CLI
-
-Usage:
-  tn <command> [options]
-
-Commands:
-${commandRows}
-
-Global options:
-  --help, -h    Print this help.
-  --json        Print machine-readable diagnostics where supported.
-`;
+  return renderCommandHelp(commands);
 }
 
 export async function dispatch(argv: readonly string[]): Promise<ICommandResult> {
@@ -333,7 +321,7 @@ export async function dispatch(argv: readonly string[]): Promise<ICommandResult>
     };
   }
 
-  const command = commands[commandName];
+  const command = findCommand(commands, commandName);
 
   if (command === undefined) {
     return {
@@ -343,206 +331,204 @@ export async function dispatch(argv: readonly string[]): Promise<ICommandResult>
     };
   }
 
+  const commandArgv = normalizedArgv.slice(1);
+  if (command.handler !== undefined) {
+    return command.handler(commandArgv);
+  }
+
+  return legacyDispatch(commandName, commandArgv, command, normalizedArgv);
+}
+
+async function legacyDispatch(commandName: string, commandArgv: readonly string[], command: ICommandDefinition, normalizedArgv: readonly string[]): Promise<ICommandResult> {
   if (commandName === "create") {
-    return createProject(normalizedArgv.slice(1));
+    return createProject(commandArgv);
   }
 
   if (commandName === "asset") {
-    return assetCommand(normalizedArgv.slice(1));
-  }
-  if (commandName === "actor") {
-    return actorCommand(normalizedArgv.slice(1));
+    return assetCommand(commandArgv);
   }
   if (commandName === "add") {
-    return addCommand(normalizedArgv.slice(1));
+    return addCommand(commandArgv);
   }
 
   if (commandName === "audio") {
-    return audioCommand(normalizedArgv.slice(1));
+    return audioCommand(commandArgv);
   }
 
   if (commandName === "animation") {
-    return animationCommand(normalizedArgv.slice(1));
+    return animationCommand(commandArgv);
   }
 
   if (commandName === "environment") {
-    return environmentCommand(normalizedArgv.slice(1));
+    return environmentCommand(commandArgv);
   }
 
   if (commandName === "flow") {
-    return flowCommand(normalizedArgv.slice(1));
+    return flowCommand(commandArgv);
   }
 
   if (commandName === "authoring") {
-    return authoringCommand(normalizedArgv.slice(1));
+    return authoringCommand(commandArgv);
   }
 
   if (commandName === "init") {
-    return initProject(normalizedArgv.slice(1));
+    return initProject(commandArgv);
   }
 
   if (commandName === "iterate") {
-    return iterateCommand(normalizedArgv.slice(1));
+    return iterateCommand(commandArgv);
   }
 
   if (commandName === "look") {
-    return lookCommand(normalizedArgv.slice(1));
+    return lookCommand(commandArgv);
   }
 
   if (commandName === "help") {
-    return helpCommand(normalizedArgv.slice(1));
+    return helpCommand(commandArgv);
   }
 
   if (commandName === "generator") {
-    return generatorCommand(normalizedArgv.slice(1));
+    return generatorCommand(commandArgv);
   }
 
   if (commandName === "game") {
-    return gameCommand(normalizedArgv.slice(1));
+    return gameCommand(commandArgv);
   }
 
   if (commandName === "world") {
-    return worldCommand(normalizedArgv.slice(1));
+    return worldCommand(commandArgv);
   }
 
   if (commandName === "model-test") {
-    return modelTestCommand(normalizedArgv.slice(1));
+    return modelTestCommand(commandArgv);
   }
 
   if (commandName === "doctor") {
-    return doctorCommand(normalizedArgv.slice(1));
+    return doctorCommand(commandArgv);
   }
 
   if (commandName === "validate") {
-    return validateProject(normalizedArgv.slice(1));
-  }
-
-  if (commandName === "build") {
-    return buildCommand(normalizedArgv.slice(1));
+    return validateProject(commandArgv);
   }
 
   if (commandName === "bundle") {
-    return bundleCommand(normalizedArgv.slice(1));
+    return bundleCommand(commandArgv);
   }
 
   if (commandName === "cookbook") {
-    return cookbookCommand(normalizedArgv.slice(1));
+    return cookbookCommand(commandArgv);
   }
 
   if (commandName === "input") {
-    return inputCommand(normalizedArgv.slice(1));
+    return inputCommand(commandArgv);
   }
 
   if (commandName === "material") {
-    return materialCommand(normalizedArgv.slice(1));
+    return materialCommand(commandArgv);
   }
 
   if (commandName === "mesh") {
-    return meshCommand(normalizedArgv.slice(1));
+    return meshCommand(commandArgv);
   }
 
   if (commandName === "compare-images") {
-    return compareImagesCommand(normalizedArgv.slice(1));
+    return compareImagesCommand(commandArgv);
   }
 
   if (commandName === "dev") {
-    return devCommand(normalizedArgv.slice(1));
+    return devCommand(commandArgv);
   }
 
   if (commandName === "editor") {
-    return editorCommand(normalizedArgv.slice(1));
+    return editorCommand(commandArgv);
   }
 
   if (commandName === "package") {
-    return packageCommand(normalizedArgv.slice(1));
+    return packageCommand(commandArgv);
   }
 
   if (commandName === "performance") {
-    return performanceProofCommand(normalizedArgv.slice(1));
+    return performanceProofCommand(commandArgv);
   }
 
   if (commandName === "playtest") {
-    return playtestCommand(normalizedArgv.slice(1));
+    return playtestCommand(commandArgv);
   }
 
   if (commandName === "prove") {
-    return proveCommand(normalizedArgv.slice(1));
-  }
-
-  if (commandName === "proof") {
-    return proofCommand(normalizedArgv.slice(1));
+    return proveCommand(commandArgv);
   }
 
   if (commandName === "recipe") {
-    return recipeCommand(normalizedArgv.slice(1));
+    return recipeCommand(commandArgv);
   }
 
   if (commandName === "particle") {
-    return particleCommand(normalizedArgv.slice(1));
+    return particleCommand(commandArgv);
   }
 
   if (commandName === "physics") {
-    return physicsCommand(normalizedArgv.slice(1));
+    return physicsCommand(commandArgv);
   }
 
   if (commandName === "nav") {
-    return navCommand(normalizedArgv.slice(1));
+    return navCommand(commandArgv);
   }
 
   if (commandName === "scene") {
-    return sceneCommand(normalizedArgv.slice(1));
+    return sceneCommand(commandArgv);
   }
 
   if (commandName === "sequence") {
-    return sequenceCommand(normalizedArgv.slice(1));
+    return sequenceCommand(commandArgv);
   }
 
   if (commandName === "prefab") {
-    return prefabCommand(normalizedArgv.slice(1));
+    return prefabCommand(commandArgv);
   }
 
   if (commandName === "project") {
-    return projectCommand(normalizedArgv.slice(1));
+    return projectCommand(commandArgv);
   }
 
   if (commandName === "runtime") {
-    return runtimeCommand(normalizedArgv.slice(1));
+    return runtimeCommand(commandArgv);
   }
 
   if (commandName === "resources") {
-    return resourcesCommand(normalizedArgv.slice(1));
+    return resourcesCommand(commandArgv);
   }
 
   if (commandName === "schema") {
-    return schemaCommand(normalizedArgv.slice(1));
+    return schemaCommand(commandArgv);
   }
 
   if (commandName === "system") {
-    return systemCommand(normalizedArgv.slice(1));
+    return systemCommand(commandArgv);
   }
 
   if (commandName === "target") {
-    return targetCommand(normalizedArgv.slice(1));
+    return targetCommand(commandArgv);
   }
 
   if (commandName === "types") {
-    return typesCommand(normalizedArgv.slice(1));
+    return typesCommand(commandArgv);
   }
 
   if (commandName === "ui") {
-    return uiCommand(normalizedArgv.slice(1));
+    return uiCommand(commandArgv);
   }
 
   if (commandName === "screenshot") {
-    return screenshotCommand(normalizedArgv.slice(1));
+    return screenshotCommand(commandArgv);
   }
 
   if (commandName === "record") {
-    return recordCommand(normalizedArgv.slice(1));
+    return recordCommand(commandArgv);
   }
 
   if (commandName === "verify") {
-    return verifyCommand(normalizedArgv.slice(1));
+    return verifyCommand(commandArgv);
   }
 
   const json = normalizedArgv.includes("--json");

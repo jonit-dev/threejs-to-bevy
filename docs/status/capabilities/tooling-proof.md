@@ -50,6 +50,10 @@ Current support:
   explicit gap allowlists that fail when the owning registry entry disappears.
   `pnpm verify:editor-required-operations` remains the executable smoke gate
   for the required editor operation path.
+- The top-level `tn` command surface now has an incremental typed command
+  registry for help, lookup, migrated dispatch handlers, and the explicit
+  unmigrated compatibility list. Shared argv helpers cover migrated simple and
+  subcommand-family paths while larger command families continue migrating.
 - Rejected boundary fixtures under
   `packages/ir/fixtures/rejected/v10-boundaries/catalog.json` are audited by
   verify-tools so cloud/account storage, raw Three.js, direct Bevy authoring,
@@ -109,6 +113,7 @@ Verification:
 - `node --test tools/verify/dist/adapterSurfaceDrift.test.js`
 - `pnpm verify:editor-required-operations`
 - `pnpm --filter @threenative/cli test -- --run performance`
+- `pnpm --filter @threenative/cli test`
 - `pnpm --filter @threenative/verify-tools test -- --run "efficient scale"`
 - `pnpm verify:efficient-scale`
 - `pnpm verify:webview-package`
@@ -117,7 +122,6 @@ Verification:
 - `pnpm verify:smoke`
 - `pnpm verify:release`
 - `pnpm --filter @threenative/agent-benchmark test`
-- `pnpm --filter @threenative/cli test`
 
 Full prior evidence is preserved in
 [full-status-archive.md](full-status-archive.md).

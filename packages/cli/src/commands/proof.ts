@@ -5,6 +5,7 @@ import { diagnosticResult, type ICommandResult } from "../diagnostics.js";
 import { buildProofManifest, diffProofManifests, evaluateProofFreshness, type IProofRecommendation } from "../game/proofManifest.js";
 import { authoringCommand } from "./authoring.js";
 import { buildCommand } from "./build.js";
+import { normalizeArgv, readFlag } from "./sourceCommandUtils.js";
 
 interface IProofRunStep {
   code: string;
@@ -17,7 +18,7 @@ interface IProofRunStep {
 }
 
 export async function proveCommand(argv: readonly string[], cwd = process.env.INIT_CWD ?? process.cwd()): Promise<ICommandResult> {
-  const normalizedArgv = argv[0] === "--" ? argv.slice(1) : argv;
+  const normalizedArgv = normalizeArgv(argv);
   const [subcommand] = normalizedArgv;
   const json = normalizedArgv.includes("--json");
   if (subcommand !== "changed") {
@@ -120,7 +121,7 @@ function shellWords(command: string): string[] {
 }
 
 export async function proofCommand(argv: readonly string[], cwd = process.env.INIT_CWD ?? process.cwd()): Promise<ICommandResult> {
-  const normalizedArgv = argv[0] === "--" ? argv.slice(1) : argv;
+  const normalizedArgv = normalizeArgv(argv);
   const [subcommand] = normalizedArgv;
   const json = normalizedArgv.includes("--json");
   if (subcommand !== "diff") {
@@ -154,11 +155,6 @@ function renderProveChanged(report: Awaited<ReturnType<typeof evaluateProofFresh
   const rows = report.recommendations.map((recommendation) => `  ${recommendation.id}: ${recommendation.command}`).join("\n");
   const runRows = report.runSteps.length === 0 ? "" : `\nRun steps:\n${report.runSteps.map((step) => `  ${step.id}: ${step.code}`).join("\n")}\n`;
   return `Proof freshness: ${report.fresh ? "fresh" : "stale-or-unrecorded"}\nManifest: ${report.manifestPath}${report.mutate ? " (written or proof-run)" : ""}\nDiagnostics: ${report.diagnostics.length}\nRecommendations:\n${rows}\n${runRows}`;
-}
-
-function readFlag(argv: readonly string[], flag: string): string | undefined {
-  const index = argv.indexOf(flag);
-  return index === -1 ? undefined : argv[index + 1];
 }
 
 function resolvePath(cwd: string, value: string): string {
