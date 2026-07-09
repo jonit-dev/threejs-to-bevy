@@ -1,5 +1,6 @@
 import type { IWorldIr } from "./types.js";
 import type { IIrDiagnostic } from "./validate.js";
+import { residualDiagnosticCode } from "./bevyCatalogResiduals.js";
 import { isRecord } from "./validationPrimitives.js";
 
 export function validateRuntimeConfig(config: unknown, path: string, diagnostics: IIrDiagnostic[]): void {
@@ -103,7 +104,7 @@ export function validateRuntimeConfig(config: unknown, path: string, diagnostics
   const renderPath = isRecord(renderer) ? renderer.renderPath : undefined;
   if (renderPath !== undefined && renderPath !== "forward") {
     diagnostics.push({
-      code: "TN_IR_RENDERER_ADVANCED_FEATURE_UNSUPPORTED",
+      code: residualDiagnosticCode("rendering.advanced-features"),
       limit: RENDERER_ADVANCED_PROMOTION_EVIDENCE.deferred,
       message: "Runtime renderer renderPath only supports 'forward' in V9; deferred rendering is explicitly unsupported.",
       path: `${path}/renderer/renderPath`,
@@ -202,7 +203,9 @@ function validateUnsupportedRendererFields(renderer: Record<string, unknown>, pa
       continue;
     }
     diagnostics.push({
-      code: advanced.has(key) ? "TN_IR_RENDERER_ADVANCED_FEATURE_UNSUPPORTED" : "TN_IR_RENDERER_POST_EFFECT_UNSUPPORTED",
+      code: advanced.has(key)
+        ? residualDiagnosticCode("rendering.advanced-features")
+        : residualDiagnosticCode("rendering.custom-post"),
       ...(advanced.has(key) ? { limit: RENDERER_ADVANCED_PROMOTION_EVIDENCE[rendererAdvancedBoundary(key)] } : {}),
       message: advanced.get(key) ?? `Runtime renderer field '${key}' is not promoted in V9.`,
       path: `${path}/${key}`,

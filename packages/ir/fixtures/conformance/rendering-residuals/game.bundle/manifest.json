@@ -13,7 +13,8 @@
       "manifest-streaming-policy"
     ],
     "diagnostics": [
-      "advanced-renderer-boundaries"
+      "advanced-renderer-boundaries",
+      "shared-residual-contract"
     ]
   },
   "entry": {

@@ -50,6 +50,38 @@ test("should document canonical verify tool paths", async () => {
   assert.equal(result.ok, true, result.diagnostics.map((diagnostic) => diagnostic.message).join("\n"));
 });
 
+test("should fail when a parity doc cites an unregistered verify command", async () => {
+  const root = await makeDocsRepo();
+  await writeFile(
+    join(root, "docs/bevy-feature-parity.md"),
+    "# Parity\n\nRun `pnpm verify:not-a-real-gate`.\n",
+  );
+
+  const result = await checkDocs(root);
+
+  assert.equal(result.ok, false);
+  assert.equal(
+    result.diagnostics.some((diagnostic) =>
+      diagnostic.code === "TN_DOCS_VERIFY_COMMAND_DRIFT"
+      && diagnostic.path === "docs/bevy-feature-parity.md"
+      && diagnostic.message.includes("verify:not-a-real-gate")
+    ),
+    true,
+  );
+});
+
+test("should accept a registered focused gate citation", async () => {
+  const root = await makeDocsRepo();
+  await writeFile(
+    join(root, "docs/bevy-feature-parity.md"),
+    "# Parity\n\nRun `pnpm verify:focused verify:rendering-residuals`.\n",
+  );
+
+  const result = await checkDocs(root);
+
+  assert.equal(result.ok, true, result.diagnostics.map((diagnostic) => diagnostic.message).join("\n"));
+});
+
 test("should fail when STATUS exceeds 200 lines", async () => {
   const root = await makeDocsRepo();
   await writeFile(

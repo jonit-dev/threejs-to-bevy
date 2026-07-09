@@ -19,6 +19,12 @@ Current support:
   rendering-lights fixture region checks. The focused reports still write
   compact metrics, diffs, and contact sheets, while region thresholds remain
   fixture-specific parity evidence rather than pixel-perfect release policy.
+- `SHARED_RESIDUAL_CONTRACT_ROWS` owns promoted, diagnostic-only, and watchlist
+  classifications for geometry, materials, rendering, and primary-window
+  policy. Material and renderer validators resolve stable unsupported codes
+  through that registry, and
+  `pnpm verify:focused verify:rendering-residuals` records the classified rows
+  with web/native residual evidence.
 - The promoted `cinematic` render-look default now maps filmic tone/bloom,
   shadow quality, and a richer fallback sky in web and native runtimes when no
   authored atmosphere overrides it. `balanced` and `stylized` remain selectable
@@ -86,6 +92,7 @@ Verification:
 - `pnpm verify:default-look`
 - `pnpm verify:portable-shader-material`
 - `pnpm verify:rendering-photoreal`
+- `pnpm verify:focused verify:rendering-residuals`
 - `pnpm verify:release`
 
 Full prior evidence is preserved in

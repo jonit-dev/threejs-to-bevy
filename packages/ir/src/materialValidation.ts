@@ -1,5 +1,6 @@
 import type { IAssetsManifest, IMaterialsIr } from "./types.js";
 import type { IIrDiagnostic } from "./validate.js";
+import { residualDiagnosticCode } from "./bevyCatalogResiduals.js";
 
 export function validateMaterialTextureRefs(materials: IMaterialsIr, assets: IAssetsManifest | undefined, path: string, diagnostics: IIrDiagnostic[]): void {
   const textureAssets = new Set((assets?.assets ?? []).filter((asset) => asset.kind === "texture").map((asset) => asset.id));
@@ -486,82 +487,82 @@ function isShaderLiteralValue(value: unknown): boolean {
 function diagnoseUnsupportedAdvancedMaterialFields(raw: Record<string, unknown>, path: string, diagnostics: IIrDiagnostic[]): void {
   const unsupportedFields = new Map<string, { code: string; message: string; suggestion: string }>([
     ["lightMap", {
-      code: "TN_IR_MATERIAL_LIGHTMAP_UNSUPPORTED",
+      code: residualDiagnosticCode("materials.lightmaps"),
       message: "Material lightmaps and mixed baked/dynamic lighting are not part of the portable material contract.",
       suggestion: "Use promoted environment maps/light probes or wait for static lightmap metadata with web/native report evidence.",
     }],
     ["lightmapIntensity", {
-      code: "TN_IR_MATERIAL_LIGHTMAP_UNSUPPORTED",
+      code: residualDiagnosticCode("materials.lightmaps"),
       message: "Material lightmap intensity is not portable without promoted lightmap metadata.",
       suggestion: "Use promoted environment maps/light probes or wait for static lightmap metadata with web/native report evidence.",
     }],
     ["lightmapTexture", {
-      code: "TN_IR_MATERIAL_LIGHTMAP_UNSUPPORTED",
+      code: residualDiagnosticCode("materials.lightmaps"),
       message: "Material lightmap textures are not part of the portable material contract.",
       suggestion: "Use promoted environment maps/light probes or wait for static lightmap metadata with web/native report evidence.",
     }],
     ["depthMap", {
-      code: "TN_IR_MATERIAL_PARALLAX_UNSUPPORTED",
+      code: residualDiagnosticCode("materials.parallax"),
       message: "Parallax/depth material maps are not part of the portable material contract.",
       suggestion: "Bake the depth detail into normal/occlusion textures or wait for a promoted parallax mapping contract.",
     }],
     ["depthTexture", {
-      code: "TN_IR_MATERIAL_PARALLAX_UNSUPPORTED",
+      code: residualDiagnosticCode("materials.parallax"),
       message: "Parallax/depth material textures are not part of the portable material contract.",
       suggestion: "Bake the depth detail into normal/occlusion textures or wait for a promoted parallax mapping contract.",
     }],
     ["heightMap", {
-      code: "TN_IR_MATERIAL_PARALLAX_UNSUPPORTED",
+      code: residualDiagnosticCode("materials.parallax"),
       message: "Height maps for parallax material rendering are not part of the portable material contract.",
       suggestion: "Bake the height detail into normal/occlusion textures or wait for a promoted parallax mapping contract.",
     }],
     ["heightScale", {
-      code: "TN_IR_MATERIAL_PARALLAX_UNSUPPORTED",
+      code: residualDiagnosticCode("materials.parallax"),
       message: "Height/parallax scale is not portable without promoted parallax mapping.",
       suggestion: "Bake the depth detail into normal/occlusion textures or wait for a promoted parallax mapping contract.",
     }],
     ["parallaxScale", {
-      code: "TN_IR_MATERIAL_PARALLAX_UNSUPPORTED",
+      code: residualDiagnosticCode("materials.parallax"),
       message: "Parallax scale is not portable without promoted parallax mapping.",
       suggestion: "Bake the depth detail into normal/occlusion textures or wait for a promoted parallax mapping contract.",
     }],
     ["parallaxTexture", {
-      code: "TN_IR_MATERIAL_PARALLAX_UNSUPPORTED",
+      code: residualDiagnosticCode("materials.parallax"),
       message: "Parallax textures are not part of the portable material contract.",
       suggestion: "Bake the depth detail into normal/occlusion textures or wait for a promoted parallax mapping contract.",
     }],
     ["anisotropy", {
-      code: "TN_IR_MATERIAL_ADVANCED_PBR_UNSUPPORTED",
+      code: residualDiagnosticCode("materials.advanced-pbr"),
       message: "Anisotropy is not part of the portable material contract.",
       suggestion: "Use promoted clearcoat, transmission, specular intensity, and texture slots until advanced PBR fields are promoted.",
     }],
     ["anisotropyRotation", {
-      code: "TN_IR_MATERIAL_ADVANCED_PBR_UNSUPPORTED",
+      code: residualDiagnosticCode("materials.advanced-pbr"),
       message: "Anisotropy rotation is not part of the portable material contract.",
       suggestion: "Use promoted clearcoat, transmission, specular intensity, and texture slots until advanced PBR fields are promoted.",
     }],
     ["anisotropyTexture", {
-      code: "TN_IR_MATERIAL_ADVANCED_PBR_UNSUPPORTED",
+      code: residualDiagnosticCode("materials.advanced-pbr"),
       message: "Anisotropy textures are not part of the portable material contract.",
       suggestion: "Use promoted clearcoat, transmission, specular intensity, and texture slots until advanced PBR fields are promoted.",
     }],
     ["iridescence", {
-      code: "TN_IR_MATERIAL_ADVANCED_PBR_UNSUPPORTED",
+      code: residualDiagnosticCode("materials.advanced-pbr"),
       message: "Iridescence is not part of the portable material contract.",
       suggestion: "Use promoted clearcoat, transmission, specular intensity, and texture slots until advanced PBR fields are promoted.",
     }],
     ["sheen", {
-      code: "TN_IR_MATERIAL_ADVANCED_PBR_UNSUPPORTED",
+      code: residualDiagnosticCode("materials.advanced-pbr"),
       message: "Sheen is not part of the portable material contract.",
       suggestion: "Use promoted clearcoat, transmission, specular intensity, and texture slots until advanced PBR fields are promoted.",
     }],
     ["specularColor", {
-      code: "TN_IR_MATERIAL_ADVANCED_PBR_UNSUPPORTED",
+      code: residualDiagnosticCode("materials.advanced-pbr"),
       message: "Specular tint/color is not part of the portable material contract.",
       suggestion: "Use promoted specularIntensity and specularTexture until advanced PBR fields are promoted.",
     }],
     ["specularTint", {
-      code: "TN_IR_MATERIAL_ADVANCED_PBR_UNSUPPORTED",
+      code: residualDiagnosticCode("materials.advanced-pbr"),
       message: "Specular tint is not part of the portable material contract.",
       suggestion: "Use promoted specularIntensity and specularTexture until advanced PBR fields are promoted.",
     }],

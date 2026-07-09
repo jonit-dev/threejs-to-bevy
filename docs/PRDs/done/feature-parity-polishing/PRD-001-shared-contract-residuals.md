@@ -1,5 +1,9 @@
 # Shared Contract Residuals
 
+## Status
+
+Implemented
+
 Complexity: 9 -> HIGH mode
 
 ## Complexity Assessment
@@ -117,10 +121,10 @@ flowchart LR
 
 **Implementation:**
 
-- [ ] Define registry rows for advanced geometry, material, renderer, and
+- [x] Define registry rows for advanced geometry, material, renderer, and
   platform residuals.
-- [ ] Wire validators and compiler diagnostics to the registry.
-- [ ] Add explicit fixes for portable alternatives where a fallback exists.
+- [x] Wire validators and compiler diagnostics to the registry.
+- [x] Add explicit fixes for portable alternatives where a fallback exists.
 
 **Tests Required:**
 
@@ -147,16 +151,28 @@ flowchart LR
 
 **Implementation:**
 
-- [ ] Add conformance fixtures for promoted, diagnostic-only, and unsupported
+- [x] Add conformance fixtures for promoted, diagnostic-only, and unsupported
   residual declarations.
-- [ ] Add a focused verification target or extend the nearest existing gate.
-- [ ] Update parity and capability docs with evidence links.
+- [x] Extend the nearest existing focused gate
+  (`verify:rendering-residuals` in `tools/verify/src/cli/run.ts`) before
+  adding a new one; if a new gate is needed, register it in `FOCUSED_GATES`
+  and run it via `pnpm verify:focused`.
+- [x] Extend `tools/verify/src/docs.ts` so every `pnpm verify:*` command cited
+  in `docs/bevy-feature-parity.md` and `docs/STATUS.md` must resolve to a root
+  `package.json` script or a registered `FOCUSED_GATES` entry (bugfix: today
+  the parity doc cites six focused gates as root commands that fail as
+  written; see the `checkCitedVerifyCommands` snippet in this bundle's
+  `README.md` Bugfix Backlog).
+- [x] Rewrite the stale parity-doc commands as
+  `pnpm verify:focused verify:<gate>` while adding that check.
+- [x] Update parity and capability docs with evidence links.
 
 **Tests Required:**
 
 | Test File | Test Name | Assertion |
 |-----------|-----------|-----------|
-| `tools/verify/src/residual-contract.test.ts` | `should include residual fixtures in conformance gate` | Gate report lists all registry rows. |
+| `tools/verify/src/residualContract.test.ts` | `should include residual fixtures in conformance gate` | Gate report lists all registry rows. |
+| `tools/verify/src/docs.test.ts` | `should fail when a doc cites an unregistered verify command` | Stale `pnpm verify:*` reference is reported with the doc path. |
 | `packages/ir/src/conformance.test.ts` | `should preserve diagnostic residual metadata` | Report contains capability state. |
 
 **User Verification:**
@@ -172,9 +188,33 @@ flowchart LR
 
 ## Acceptance Criteria
 
-- [ ] Residual feature registry owns promoted/diagnostic/unsupported status.
-- [ ] SDK, IR, compiler, CLI, fixtures, and docs do not duplicate unmanaged
+- [x] Residual feature registry owns promoted/diagnostic/unsupported status.
+- [x] SDK, IR, compiler, CLI, fixtures, and docs do not duplicate unmanaged
   allowlists.
-- [ ] Stable diagnostics exist for every diagnostic-only or unsupported row.
-- [ ] `pnpm verify:conformance` and `pnpm check:docs` pass.
-- [ ] Parity and capability docs cite the new evidence.
+- [x] Stable diagnostics exist for every diagnostic-only or unsupported row.
+- [x] Every `pnpm verify:*` command cited in parity/status docs resolves to a
+  root script or registered focused gate, enforced by the docs gate.
+- [x] `pnpm verify:conformance` and `pnpm check:docs` pass.
+- [x] Parity and capability docs cite the new evidence.
+
+## Implementation Notes
+
+- `SHARED_RESIDUAL_CONTRACT_ROWS` extends the existing Bevy catalog registry
+  without adding a second hand-maintained classification list. Material and
+  runtime-renderer validators resolve their unsupported diagnostic codes from
+  the owning rows; compiler validation preserves those IR diagnostics.
+- The existing `rendering-residuals` conformance fixture declares the shared
+  residual contract capability, and the focused web/native gate serializes the
+  relevant registry rows into its verification report.
+- The docs gate parses root package scripts and registered focused gates, then
+  rejects invalid `pnpm verify:*` citations in `docs/STATUS.md` and
+  `docs/bevy-feature-parity.md`.
+
+Verification completed 2026-07-09:
+
+- `pnpm --filter @threenative/ir test -- --run "catalog residual|advanced material|advanced renderer|unsupported renderer"`
+- `pnpm --filter @threenative/compiler test -- --run "registry-owned residual|shared IR diagnostics"`
+- `pnpm --filter @threenative/verify-tools test -- --run "docs|verify command"`
+- `pnpm verify:focused verify:rendering-residuals`
+- `pnpm verify:conformance`
+- `pnpm check:docs`

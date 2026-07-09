@@ -5,6 +5,7 @@ import { fileURLToPath } from "node:url";
 
 import { PNG } from "../packages/cli/node_modules/pngjs/lib/png.js";
 import { validateBundle } from "../packages/ir/dist/validate.js";
+import { SHARED_RESIDUAL_CONTRACT_ROWS } from "../packages/ir/dist/bevyCatalogResiduals.js";
 import { loadBundle, traceRenderingResiduals } from "../packages/runtime-web-three/dist/index.js";
 import { resolveArtifactTargets } from "./artifact-paths.mjs";
 
@@ -59,6 +60,7 @@ if (!validation.ok) {
       deferred: ["runtime vertex mutation", "custom shaders", "bindless resources", "CSG", "storage-buffer geometry", "custom asset loaders", "arbitrary file/network streaming"],
       ok: diff.ok,
       promoted: ["runtime LOD selection report", "chunked terrain streaming policy", "bounded instancing policy", "specular texture proof", "extended material preset proof", "manifest asset streaming diagnostics", "advanced renderer boundary diagnostics"],
+      residualContract: SHARED_RESIDUAL_CONTRACT_ROWS.filter((row) => ["geometry", "materials", "rendering", "ui-window"].includes(row.area)),
       status: diff.ok ? "passed" : "failed",
       tolerance: { ordering: "stable ids" },
     });

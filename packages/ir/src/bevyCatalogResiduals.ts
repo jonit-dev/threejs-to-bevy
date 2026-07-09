@@ -1,6 +1,6 @@
 import type { IIrDiagnostic } from "./validate.js";
 
-export type BevyCatalogResidualArea = "assets" | "ecs" | "ui-window";
+export type BevyCatalogResidualArea = "assets" | "ecs" | "geometry" | "materials" | "rendering" | "ui-window";
 export type BevyCatalogResidualStatus = "diagnostic-only" | "promoted" | "watchlist";
 export type BevyCatalogTargetProfileOutput = "offline" | "package" | "web" | "native";
 
@@ -84,7 +84,7 @@ export interface IBevyCatalogResidualDeclarations {
   };
 }
 
-export const BEVY_CATALOG_RESIDUAL_ROWS: readonly IBevyCatalogResidualRow[] = [
+export const SHARED_RESIDUAL_CONTRACT_ROWS: readonly IBevyCatalogResidualRow[] = [
   row("ecs.callback-components", "ecs", "diagnostic-only", [
     "callbacks are named instead of closure-valued",
     "component access permissions are declared",
@@ -131,6 +131,28 @@ export const BEVY_CATALOG_RESIDUAL_ROWS: readonly IBevyCatalogResidualRow[] = [
     "TN_CATALOG_WINDOW_MULTI_WINDOW_UNSUPPORTED",
     "TN_CATALOG_WINDOW_POWER_POLICY_UNSUPPORTED",
   ]),
+  row("geometry.advanced-deformation-csg", "geometry", "diagnostic-only", [
+    "deformation and boolean operations use a bounded shared geometry declaration",
+    "web and native adapters report matching generated topology and bounds",
+  ], ["TN_IR_RENDERER_PLUGIN_UNSUPPORTED"]),
+  row("geometry.storage-buffer", "geometry", "diagnostic-only", [
+    "storage layout and mutation timing are portable across web and native runtimes",
+  ], ["TN_IR_RENDERER_PLUGIN_UNSUPPORTED"]),
+  row("materials.lightmaps", "materials", "diagnostic-only", [
+    "static lightmap metadata and mixed-lighting policy have matching adapter evidence",
+  ], ["TN_IR_MATERIAL_LIGHTMAP_UNSUPPORTED"]),
+  row("materials.parallax", "materials", "diagnostic-only", [
+    "height/depth texture semantics and tangent requirements are shared and bounded",
+  ], ["TN_IR_MATERIAL_PARALLAX_UNSUPPORTED"]),
+  row("materials.advanced-pbr", "materials", "diagnostic-only", [
+    "the promoted PBR subset maps to both adapters with material probe evidence",
+  ], ["TN_IR_MATERIAL_ADVANCED_PBR_UNSUPPORTED"]),
+  row("rendering.advanced-features", "rendering", "diagnostic-only", [
+    "the feature has a bounded renderer intent and matching web/native observations",
+  ], ["TN_IR_RENDERER_ADVANCED_FEATURE_UNSUPPORTED"]),
+  row("rendering.custom-post", "rendering", "diagnostic-only", [
+    "post effects use a shared preset with matching cross-adapter evidence",
+  ], ["TN_IR_RENDERER_POST_EFFECT_UNSUPPORTED"]),
   row("assets.runtime-export", "assets", "diagnostic-only", [
     "exports stay under declared bundle artifact roots",
     "arbitrary filesystem writes are rejected",
@@ -149,6 +171,9 @@ export const BEVY_CATALOG_RESIDUAL_ROWS: readonly IBevyCatalogResidualRow[] = [
     "diagnostics preserve output target and profile path",
   ], ["TN_CATALOG_TARGET_PROFILE_OUTPUT_UNSUPPORTED"], ["ir.target-profile-output-diagnostics", "web.target-profile-output-diagnostics", "bevy.target-profile-output-diagnostics", "cli.package-target-profile-diagnostics"]),
 ];
+
+// Compatibility name for the original upstream-catalog audit surface.
+export const BEVY_CATALOG_RESIDUAL_ROWS = SHARED_RESIDUAL_CONTRACT_ROWS;
 
 export function diagnoseBevyCatalogResidualDeclarations(
   declarations: IBevyCatalogResidualDeclarations,
@@ -288,6 +313,17 @@ export function targetProfileOutputDiagnostic(
     target: output,
     value: targets.join(","),
   };
+}
+
+export function residualDiagnosticCode(rowId: string): string {
+  const row = SHARED_RESIDUAL_CONTRACT_ROWS.find((candidate) => candidate.id === rowId);
+  if (row === undefined) {
+    throw new Error(`Unknown residual contract row '${rowId}'.`);
+  }
+  if (row.diagnosticCodes.length !== 1 || row.diagnosticCodes[0] === undefined) {
+    throw new Error(`Residual contract row '${rowId}' must own exactly one diagnostic code.`);
+  }
+  return row.diagnosticCodes[0];
 }
 
 function requiredTargetForOutput(output: BevyCatalogTargetProfileOutput): "desktop" | "web" {

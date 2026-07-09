@@ -33,7 +33,9 @@ export type {
 } from "./conformanceReport.js";
 export {
   BEVY_CATALOG_RESIDUAL_ROWS,
+  SHARED_RESIDUAL_CONTRACT_ROWS,
   diagnoseBevyCatalogResidualDeclarations,
+  residualDiagnosticCode,
   targetProfileOutputDiagnostic,
   type BevyCatalogResidualArea,
   type BevyCatalogResidualStatus,

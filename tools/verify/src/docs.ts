@@ -1,6 +1,7 @@
 import { readdir, readFile, stat } from "node:fs/promises";
 import { resolve } from "node:path";
 
+import { FOCUSED_GATES } from "./cli/run.js";
 import type { VerificationDiagnostic } from "./runner.js";
 
 export interface DocsCheckResult {
@@ -19,6 +20,8 @@ export async function checkDocs(root: string): Promise<DocsCheckResult> {
   let status = "";
   let readme = "";
   let packageJson = "";
+  const parityPath = resolve(root, "docs/bevy-feature-parity.md");
+  const parity = await readOptional(parityPath);
 
   try {
     status = await readFile(statusPath, "utf8");
@@ -101,6 +104,14 @@ export async function checkDocs(root: string): Promise<DocsCheckResult> {
     });
   }
 
+  if (packageJson) {
+    const scripts = parsePackageScripts(packageJson, diagnostics);
+    if (scripts !== undefined) {
+      checkCitedVerifyCommands("docs/STATUS.md", status, scripts, diagnostics);
+      checkCitedVerifyCommands("docs/bevy-feature-parity.md", parity, scripts, diagnostics);
+    }
+  }
+
   diagnostics.push(...(await checkScriptingHelperDocs(root, status, packageJson)));
   diagnostics.push(...(await checkDocsLayout(root, readme, status)));
   diagnostics.push(...(await checkStatusCapabilityIndex(root, status)));
@@ -124,6 +135,54 @@ export async function checkDocs(root: string): Promise<DocsCheckResult> {
   }
 
   return { diagnostics, ok: diagnostics.length === 0 };
+}
+
+function parsePackageScripts(
+  packageJson: string,
+  diagnostics: VerificationDiagnostic[],
+): Record<string, string> | undefined {
+  try {
+    const parsed = JSON.parse(packageJson) as { scripts?: unknown };
+    if (parsed.scripts !== null && typeof parsed.scripts === "object" && !Array.isArray(parsed.scripts)) {
+      return parsed.scripts as Record<string, string>;
+    }
+  } catch {
+    diagnostics.push({
+      code: "TN_DOCS_PACKAGE_JSON_INVALID",
+      message: "package.json must contain valid JSON before docs command citations can be checked.",
+      path: "package.json",
+      severity: "error",
+    });
+    return undefined;
+  }
+  return {};
+}
+
+function checkCitedVerifyCommands(
+  path: string,
+  content: string,
+  rootScripts: Record<string, string>,
+  diagnostics: VerificationDiagnostic[],
+): void {
+  const focusedInvocation = /pnpm verify:focused (verify:[a-z0-9:-]+)/g;
+  const focusedTargets = new Set(
+    [...content.matchAll(focusedInvocation)].map((match) => match[1]).filter((target): target is string => target !== undefined),
+  );
+  for (const match of content.matchAll(/pnpm (verify:[a-z0-9:-]+)/g)) {
+    const script = match[1];
+    if (script === undefined || script === "verify:focused" || rootScripts[script] !== undefined) {
+      continue;
+    }
+    if (focusedTargets.has(script) && FOCUSED_GATES[script] !== undefined) {
+      continue;
+    }
+    diagnostics.push({
+      code: "TN_DOCS_VERIFY_COMMAND_DRIFT",
+      message: `${path} cites 'pnpm ${script}', but package.json has no such script. Use 'pnpm verify:focused ${script}' for a registered focused gate or add a root script.`,
+      path,
+      severity: "error",
+    });
+  }
 }
 
 const AGENT_WORKFLOW_SURFACES = [

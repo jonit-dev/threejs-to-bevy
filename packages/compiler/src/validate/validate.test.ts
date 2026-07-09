@@ -9,6 +9,7 @@ import { copyFixtureBundle } from "../testFixtures.js";
 const cubeFixture = resolve(process.cwd(), "../ir/fixtures/cube-scene/game.bundle");
 const audioFixture = resolve(process.cwd(), "../ir/fixtures/conformance/audio-playback/game.bundle");
 const resourcesFixture = resolve(process.cwd(), "../ir/fixtures/conformance/resources-events/game.bundle");
+const renderingResidualsFixture = resolve(process.cwd(), "../ir/fixtures/conformance/rendering-residuals/game.bundle");
 
 test("validate should return TN-IR-2104 when material is missing", async () => {
   const bundle = await copyCubeFixture();
@@ -117,6 +118,32 @@ test("validate should preserve IR diagnostic fixes", async () => {
     assert.equal(report.ok, false);
     assert.match(diagnostic?.fix?.instruction ?? "", /Declare resource 'Score'/);
     assert.match(diagnostic?.fix?.snippet ?? "", /"Score"/);
+  } finally {
+    await rm(bundle, { force: true, recursive: true });
+  }
+});
+
+test("validate should preserve registry-owned residual diagnostics", async () => {
+  const bundle = await copyFixtureBundle(renderingResidualsFixture, "tn-validate-rendering-residual-");
+  try {
+    const materialsPath = join(bundle, "materials.ir.json");
+    const materials = JSON.parse(await readFile(materialsPath, "utf8")) as {
+      materials: Array<Record<string, unknown>>;
+    };
+    const material = materials.materials[0];
+    if (material === undefined) {
+      throw new Error("Rendering residual fixture must contain a material.");
+    }
+    material.anisotropy = 0.75;
+    await writeFile(materialsPath, `${JSON.stringify(materials, null, 2)}\n`);
+
+    const report = await validateBundle(bundle);
+    const diagnostic = report.diagnostics.find((item) => item.code === "TN_IR_MATERIAL_ADVANCED_PBR_UNSUPPORTED");
+
+    assert.equal(report.ok, false);
+    assert.equal(diagnostic?.file, "materials.ir.json");
+    assert.equal(diagnostic?.path, "materials.ir.json/materials/0/anisotropy");
+    assert.match(diagnostic?.suggestion ?? "", /promoted clearcoat/);
   } finally {
     await rm(bundle, { force: true, recursive: true });
   }
