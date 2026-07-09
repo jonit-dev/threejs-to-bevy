@@ -197,6 +197,7 @@
       "bundlePath": "packages/ir/fixtures/conformance/runtime-gameplay-host/game.bundle",
       "promotedCapabilities": [
         "scripting:bounded-async",
+        "scripting:delayed-commands",
         "scripting:event-windowing",
         "scripting:live-rendered-entity-reconciliation",
         "scripting:observer-stop-propagation",
@@ -204,6 +205,22 @@
         "scripting:runtime-plugin-diagnostics",
         "scripting:state-handoff",
         "scripting:system-local-state"
+      ],
+      "reportArtifacts": [
+        "tools/verify/artifacts/runtime-gameplay-host/verification-report.json"
+      ]
+    },
+    {
+      "canonicalId": "delayed-commands",
+      "owner": "ir-contract",
+      "sourceExample": "delayed-commands",
+      "regenerateCommand": "pnpm verify:runtime-gameplay-host",
+      "canonicalArtifactGate": "runtime-gameplay-host",
+      "ownerDocs": "docs/PRDs/proof-first-engine-loop-2026-07-05/PRD-011-portable-scripting-delayed-commands-scheduling.md",
+      "aggregateGate": "verify:release",
+      "bundlePath": "packages/ir/fixtures/conformance/delayed-commands/game.bundle",
+      "promotedCapabilities": [
+        "scripting:delayed-commands"
       ],
       "reportArtifacts": [
         "tools/verify/artifacts/runtime-gameplay-host/verification-report.json"

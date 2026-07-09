@@ -1,0 +1,52 @@
+{
+  "schema": "threenative.systems",
+  "version": "0.1.0",
+  "systems": [
+    {
+      "name": "queueDelayedSpawn",
+      "schedule": "fixedUpdate",
+      "commands": [],
+      "delayedCommands": [
+        {
+          "id": "spawnMarker",
+          "maxDelayTicks": 3,
+          "ownership": {
+            "kind": "scene",
+            "id": "arena"
+          },
+          "cancelPolicy": "drop",
+          "command": {
+            "kind": "spawn",
+            "entity": "delayed.marker",
+            "components": ["Transform"]
+          }
+        },
+        {
+          "id": "emitDelayedSpawned",
+          "maxDelayTicks": 3,
+          "ownership": {
+            "kind": "scene",
+            "id": "arena"
+          },
+          "cancelPolicy": "drop",
+          "command": {
+            "kind": "emitEvent",
+            "event": "DelayedSpawned"
+          }
+        }
+      ],
+      "eventReads": [],
+      "eventWrites": ["DelayedSpawned"],
+      "queries": [],
+      "reads": [],
+      "resourceReads": ["SchedulerState"],
+      "resourceWrites": ["SchedulerState"],
+      "services": [],
+      "script": {
+        "bundle": "scripts.bundle.js",
+        "exportName": "system_queueDelayedSpawn"
+      },
+      "writes": ["Transform"]
+    }
+  ]
+}

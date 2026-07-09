@@ -19,4 +19,9 @@ test("should reconcile spawned rendered entities when command buffer flushes", a
   assert.equal(report.reconciliation.finalRendererHandles.includes("renderer:runtime.enemy"), false);
   assert.deepEqual(report.eventWindows.find((entry) => entry.event === "Spawned")?.framesVisible, [2, 3]);
   assert.equal(report.diagnostics.some((diagnostic) => diagnostic.code === "TN_UNSUPPORTED_FEATURE_RAW_RUNTIME_HANDLE"), true);
+  assert.deepEqual(report.scheduler.delayedCommands.map((entry) => [entry.id, entry.status, entry.tick]), [
+    ["spawnAfterDelay", "enqueued", 0],
+    ["spawnAfterDelay", "pending", 1],
+    ["spawnAfterDelay", "flushed", 2],
+  ]);
 });

@@ -37,6 +37,10 @@ Current support:
   declared audio IR and return logical playback IDs/status without exposing web
   or native handles; streaming, network audio, custom decoders, and platform
   handles remain diagnostic-only boundaries.
+- `ctx.schedule.afterTicks({ id, delayTicks })` queues declared
+  `delayedCommands` on fixed ticks only. Delayed commands require bounded max
+  delay, scene/entity ownership, and a drop/flush cancellation policy; web and
+  native hosts flush through the same command-buffer validation and effect logs.
 - Retained UI actions are script-visible through `context.input` action state
   and `context.ui.actions()` for the latest drained frame, including web
   button and slider value events without exposing DOM handles.
@@ -71,7 +75,10 @@ Verification:
 - `pnpm --filter @threenative/runtime-web-three test`
 - `cargo test -p threenative_runtime systems_host_should_apply_declared_resource_write`
 - `cargo test -p threenative_runtime systems_host_should_expose_audio_facade`
+- `cargo test -p threenative_runtime systems_host_should_flush_delayed_commands_after_fixed_ticks`
 - `pnpm verify:conformance` covers the `script-audio-facade` fixture.
+- `pnpm --filter @threenative/runtime-web-three test -- --run runtime gameplay`
+- `cargo test -p threenative_runtime should_report_bounded_scheduler_observations`
 - `pnpm verify:scripting-helpers-lifecycle`
 
 Full prior evidence is preserved in

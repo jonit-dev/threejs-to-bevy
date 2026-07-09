@@ -1,0 +1,14 @@
+{
+  "schema": "threenative.resource-schemas",
+  "version": "0.1.0",
+  "schemas": {
+    "SchedulerState": {
+      "fields": {
+        "queued": {
+          "kind": "boolean",
+          "required": true
+        }
+      }
+    }
+  }
+}

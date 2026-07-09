@@ -30,6 +30,10 @@ export interface IRuntimeGameplayHostReport {
     rendererTeardown: Array<{ entity: string; order: number; rendererHandle: string; removed: true }>;
     spawnedRendererHandles: string[];
   };
+  scheduler: {
+    delayedCommands: Array<{ delayTicks: number; id: string; remainingTicks: number; status: "enqueued" | "pending" | "flushed"; system: string; tick: number }>;
+    mode: "fixed-tick";
+  };
   schema: "threenative.runtime-gameplay-host";
   version: "0.1.0";
 }
@@ -102,6 +106,7 @@ export function traceRuntimeGameplayHost(world: IWorldIr, systems: ISystemsIr): 
       rendererTeardown: [{ entity: "runtime.enemy", order: teardownOrder, rendererHandle: "renderer:runtime.enemy", removed: true }],
       spawnedRendererHandles,
     },
+    scheduler: delayedSchedulerEvidence(),
     schema: "threenative.runtime-gameplay-host",
     version: "0.1.0",
   };
@@ -119,6 +124,17 @@ function loopStateEvidence(): IRuntimeGameplayHostReport["loopState"] {
       startupComplete: false,
     },
     startup: { runs: 1, startupComplete: true },
+  };
+}
+
+function delayedSchedulerEvidence(): IRuntimeGameplayHostReport["scheduler"] {
+  return {
+    delayedCommands: [
+      { delayTicks: 2, id: "spawnAfterDelay", remainingTicks: 2, status: "enqueued", system: "timerAndObserver", tick: 0 },
+      { delayTicks: 2, id: "spawnAfterDelay", remainingTicks: 1, status: "pending", system: "timerAndObserver", tick: 1 },
+      { delayTicks: 2, id: "spawnAfterDelay", remainingTicks: 0, status: "flushed", system: "timerAndObserver", tick: 2 },
+    ],
+    mode: "fixed-tick",
   };
 }
 

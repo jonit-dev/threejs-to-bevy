@@ -97,6 +97,9 @@ unsupported.
   `ctx.random.float/range/int/bool/pick`.
 - [x] Deterministic timer/cooldown helpers through
   `ctx.timers.elapsed/remaining/progress/done/ready`.
+- [x] Bounded fixed-tick delayed command scheduling through
+  `ctx.schedule.afterTicks({ id, delayTicks })` and declared
+  `delayedCommands` metadata.
 - [ ] Unsupported wall-clock timer scheduling inside portable systems.
 - [ ] Unsupported platform RNG access inside portable systems.
 
@@ -565,7 +568,9 @@ show the feature.
 - [x] Child hierarchy commands. `setParent` and `clearParent` mutate the
   portable `Hierarchy` component with cycle checks and matching web/native
   command application.
-- [ ] Delayed command scheduling beyond bounded timer/channel services.
+- [x] Delayed command scheduling beyond bounded timer/channel services when it
+  uses fixed ticks, declared command metadata, bounded max delay, ownership,
+  and cancellation policy.
 
 ### Design Only
 
@@ -644,6 +649,7 @@ validated against `systems.ir.json`.
 | `ctx.query()` | Iterates matching entities. | Returns stable entity IDs and declared component snapshots only; supports `with`, `without`, `changed`, `orderBy: "id"`, `offset`, and `limit`. |
 | `ctx.time` | Fixed and variable timestep data. | Runtime-provided resource with `dt`/`delta`, `fixedDt`/`fixedDelta`, `elapsed`, and paused state where available; no wall-clock access from scripts. |
 | `ctx.timers` | Deterministic timer and cooldown calculations. | Pure helpers over `ctx.time.elapsed`; no async scheduling, wall-clock access, or hidden timer state. |
+| `ctx.schedule` | Bounded fixed-tick delayed command scheduling. | `afterTicks({ id, delayTicks })` can enqueue only declared `delayedCommands`; each declaration has a max delay, scene/entity ownership, and cancellation policy. Commands flush through the normal command buffer after fixed ticks. |
 | `ctx.input` | Logical actions, axes, and edge states. | Reads `input.ir.json` mappings and current input state; promoted host contexts expose `action`, `axis`, `pressed`, and `released`. |
 | `ctx.random` | Deterministic seeded random values. | Per-context PRNG seeded from a world resource; exposes `float`, `range`, `int`, `bool`, and `pick` without platform RNG access. |
 | `ctx.resources` | Reads and writes declared singleton world state. | Reads are cloned snapshots; writes are queued effects and apply only after `resourceWrites` validation. |

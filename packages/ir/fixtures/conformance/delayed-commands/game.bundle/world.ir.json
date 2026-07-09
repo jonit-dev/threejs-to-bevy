@@ -1,0 +1,23 @@
+{
+  "schema": "threenative.world",
+  "version": "0.1.0",
+  "entities": [
+    {
+      "id": "arena",
+      "components": {
+        "Transform": {
+          "position": [0, 0, 0]
+        }
+      }
+    }
+  ],
+  "resources": {
+    "SchedulerState": {
+      "queued": false
+    }
+  },
+  "events": {
+    "DelayedSpawned": []
+  },
+  "prefabs": []
+}

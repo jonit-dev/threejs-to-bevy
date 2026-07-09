@@ -95,6 +95,22 @@
           "event": "TimerElapsed"
         }
       ],
+      "delayedCommands": [
+        {
+          "id": "spawnAfterDelay",
+          "maxDelayTicks": 4,
+          "ownership": {
+            "kind": "scene",
+            "id": "arena"
+          },
+          "cancelPolicy": "drop",
+          "command": {
+            "kind": "spawn",
+            "entity": "runtime.delayed",
+            "components": ["Transform"]
+          }
+        }
+      ],
       "eventReads": ["DamageEvent"],
       "eventWrites": ["TimerElapsed"],
       "queries": [],
@@ -106,7 +122,7 @@
         "bundle": "scripts.bundle.js",
         "exportName": "system_timerAndObserver"
       },
-      "writes": []
+      "writes": ["Transform"]
     },
     {
       "name": "removeRenderable",
