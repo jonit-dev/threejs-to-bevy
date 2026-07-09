@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import type { IEditorGamepadViewerSnapshot } from "@threenative/ir";
 
-import { EDITOR_ADD_COMPONENT_DEFINITIONS, type IEditorAddComponentDefinition, type IEditorAssetRow, type IEditorDiagnosticView, type IEditorEnvironmentSummary, type IEditorLodStats, type IEditorModalActionDefinition, type IEditorPropertyRow, type IEditorSceneObject, type IEditorShellModel, type IEditorTreeRow, type IEditorUiPreviewDocument } from "../adapters/editorModel.js";
+import { EDITOR_ADD_COMPONENT_DEFINITIONS, EDITOR_MODAL_ACTION_DEFINITIONS, type IEditorAddComponentDefinition, type IEditorAssetRow, type IEditorDiagnosticView, type IEditorEnvironmentSummary, type IEditorLodStats, type IEditorModalActionDefinition, type IEditorPropertyRow, type IEditorSceneObject, type IEditorShellModel, type IEditorTreeRow, type IEditorUiPreviewDocument } from "../adapters/editorModel.js";
 import type { EditorViewportGizmoMode, IViewportTransform } from "../preview/EditorViewport3d.js";
 import type { IEditorLiveSceneUpdate } from "../preview/liveSceneUpdates.js";
 import type { IEditorChatApplyApiResult } from "../server/chatApi.js";
@@ -905,7 +905,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-interface IPlannedEditorOperation {
+export interface IPlannedEditorOperation {
   args: Record<string, unknown>;
   name: string;
 }
@@ -915,6 +915,20 @@ function environmentIdFromProject(project: IEditorProjectPayload | undefined, fa
     ?.find((group) => group.kind === "environment")
     ?.documents.find((document) => document.id.length > 0);
   return environment?.id ?? fallbackSceneId;
+}
+
+export function editorPayloadBuilderSamples(): IPlannedEditorOperation[] {
+  const inspectorSamples: IPlannedEditorOperation[] = [
+    { args: buildOperationArgs({ access: "sourcePersistable", id: "transform", label: "Position", operation: { args: { entityId: "player", sceneId: "arena" }, name: "scene.set_transform", valueArg: "position" }, readOnly: false }, [1, 2, 3]), name: "scene.set_transform" },
+    { args: buildOperationArgs({ access: "sourcePersistable", id: "input-action", label: "Bindings", operation: { args: { actionId: "jump", inputDocId: "arena" }, name: "input.add_action", valueArg: "keys" }, readOnly: false }, ["keyboard.Space"]), name: "input.add_action" },
+    { args: buildOperationArgs({ access: "sourcePersistable", id: "input-axis", label: "Positive", operation: { args: { axisId: "MoveX", inputDocId: "arena", negativeKeys: ["KeyA"] }, name: "input.add_axis", valueArg: "positiveKeys" }, readOnly: false }, ["keyboard.KeyD"]), name: "input.add_axis" },
+    { args: buildOperationArgs({ access: "sourcePersistable", id: "script", label: "Script", operation: { args: { systemId: "spin" }, name: "system.attach_script" }, readOnly: false }, { exportName: "spin", modulePath: "src/scripts/spin.ts" }), name: "system.attach_script" },
+    { args: buildOperationArgs({ access: "sourcePersistable", id: "material", label: "Color", operation: { args: { materialId: "mat.player" }, name: "material.set", valueArg: "color" }, readOnly: false }, "#ffffff"), name: "material.set" },
+  ];
+  const modalSamples = EDITOR_MODAL_ACTION_DEFINITIONS
+    .filter((action) => action.operationName !== undefined)
+    .flatMap((action) => addObjectOperationPlan(action, "sample", { environmentId: "arena" })?.operations ?? [{ args: { sceneId: "editor-sample" }, name: action.operationName as string }]);
+  return [...inspectorSamples, ...modalSamples];
 }
 
 function addObjectOperationPlan(action: IEditorModalActionDefinition, suffix: string, context: { environmentId: string }): { entityId: string; operations: IPlannedEditorOperation[]; statusLabel: string } | undefined {

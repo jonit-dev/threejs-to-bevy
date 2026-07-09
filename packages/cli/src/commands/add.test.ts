@@ -79,18 +79,7 @@ test("should add all compositional mechanic blocks with proof scenarios", async 
     assert.equal(scene.prefabs.some((prefab) => prefab.id === "ball.prefab"), true);
     assert.equal(scene.resources.some((resource) => resource.id === "ProjectilePhysics" && resource.value?.rigidBody !== undefined), true);
     assert.equal(scene.entities.find((entity) => entity.id === "camera.main")?.components?.camera?.target, "player");
-    assert.deepEqual(runtime.renderer?.renderLook, {
-      version: 1,
-      profile: "balanced",
-      overrides: {
-        bloomIntensity: 0.65,
-        contrast: 0.22,
-        environmentIntensity: 1.35,
-        exposure: 1.08,
-        saturation: 1.35,
-        shadowQuality: "medium",
-      },
-    });
+    assert.deepEqual(runtime.renderer?.renderLook, { version: 1, profile: "cinematic" });
     assert.match(script, /export function updateScoreBlock/);
     assert.match(script, /export function updateProjectileBlock/);
 

@@ -45,6 +45,11 @@ Current support:
   proof requirements from project-local `production.releaseProof` config,
   reports explicit proof exemptions, fails unknown requirement keys, and keeps
   migration fallback constants under drift diagnostics until they are retired.
+- `tools/verify/src/adapterSurfaceDrift.test.ts` compares authoring operation
+  registry names against CLI, MCP, editor, and editor-smoke surfaces with
+  explicit gap allowlists that fail when the owning registry entry disappears.
+  `pnpm verify:editor-required-operations` remains the executable smoke gate
+  for the required editor operation path.
 - Rejected boundary fixtures under
   `packages/ir/fixtures/rejected/v10-boundaries/catalog.json` are audited by
   verify-tools so cloud/account storage, raw Three.js, direct Bevy authoring,
@@ -101,6 +106,8 @@ Verification:
 - `pnpm --filter @threenative/verify-tools test`
 - `pnpm --filter @threenative/verify-tools test -- --run performance`
 - `node --test tools/verify/dist/gameProductionGate.test.js`
+- `node --test tools/verify/dist/adapterSurfaceDrift.test.js`
+- `pnpm verify:editor-required-operations`
 - `pnpm --filter @threenative/cli test -- --run performance`
 - `pnpm --filter @threenative/verify-tools test -- --run "efficient scale"`
 - `pnpm verify:efficient-scale`

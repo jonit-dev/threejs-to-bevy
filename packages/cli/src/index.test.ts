@@ -2,9 +2,10 @@ import assert from "node:assert/strict";
 import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 import test from "node:test";
 
-import { dispatch, renderHelp } from "./index.js";
+import { CLI_COMMAND_DEFINITIONS, dispatch, renderHelp } from "./index.js";
 
 test("should print help when requested", async () => {
   const result = await dispatch(["--help"]);
@@ -81,6 +82,26 @@ test("should keep rendered help stable for the package bin", () => {
   assert.match(renderHelp(), /tn init <name>/);
   assert.match(renderHelp(), /tn help \[topic\]/);
   assert.doesNotMatch(renderHelp(), /V1 commands:/);
+});
+
+test("should keep CLI command metadata unique and help-covered", () => {
+  const commandNames = Object.keys(CLI_COMMAND_DEFINITIONS);
+  const help = renderHelp();
+
+  assert.deepEqual(commandNames, [...new Set(commandNames)], "CLI command metadata contains duplicate command names.");
+  for (const name of commandNames) {
+    assert.match(help, new RegExp(`\\b${escapeRegExp(name)}\\b`), `CLI command '${name}' is missing from rendered help.`);
+    assert.equal(CLI_COMMAND_DEFINITIONS[name]?.implemented, true, `CLI command '${name}' metadata is not marked implemented.`);
+  }
+});
+
+test("should keep CLI command dispatch branches aligned with metadata", async () => {
+  const source = await readFile(fileURLToPath(new URL("../src/index.ts", import.meta.url)), "utf8");
+  const dispatchNames = [...source.matchAll(/commandName === "([^"]+)"/g)].map((match) => match[1]).filter((name): name is string => name !== undefined);
+  const uniqueDispatchNames = [...new Set(dispatchNames)].sort();
+  const metadataNames = Object.keys(CLI_COMMAND_DEFINITIONS).sort();
+
+  assert.deepEqual(uniqueDispatchNames, metadataNames, `CLI dispatch/metadata drift. Dispatch=${uniqueDispatchNames.join(", ")} Metadata=${metadataNames.join(", ")}`);
 });
 
 test("dispatch registers physics and nav typed source commands", async () => {
@@ -242,4 +263,8 @@ async function writeBundle(bundle: string): Promise<void> {
   await writeFile(join(bundle, "assets.manifest.json"), `${JSON.stringify({ schema: "threenative.assets", version: "0.1.0", assets: [] }, null, 2)}\n`);
   await writeFile(join(bundle, "materials.ir.json"), `${JSON.stringify({ schema: "threenative.materials", version: "0.1.0", materials: [] }, null, 2)}\n`);
   await writeFile(join(bundle, "target.profile.json"), `${JSON.stringify({ schema: "threenative.target-profile", version: "0.1.0", targets: ["web"] }, null, 2)}\n`);
+}
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }

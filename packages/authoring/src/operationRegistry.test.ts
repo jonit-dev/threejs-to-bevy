@@ -327,6 +327,9 @@ test("should expose operation metadata and registry diagnostics", async () => {
   const unsupported = await dispatchAuthoringOperation({ args: {}, name: "scene.delete_entity", projectPath: "/project" });
 
   assert.deepEqual(AUTHORING_OPERATION_NAMES, [
+    "archetype.apply",
+    "archetype.update",
+    "archetype.list",
     "asset.add",
     "audio.create",
     "audio.add_sound",

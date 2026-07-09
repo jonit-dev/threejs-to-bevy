@@ -90,6 +90,15 @@ test("build should preserve emitted bundle schema fix", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-build-schema-fix-"));
   try {
     await cp(structuredSourceStarterPath, root, { recursive: true });
+    await clearStarterSceneSystems(root);
+    await writeFile(
+      join(root, "src/scripts/schema-fix.ts"),
+      [
+        "export function badGameStateWrite(_ctx: any): void {",
+        "}",
+        "",
+      ].join("\n"),
+    );
     await writeFile(
       join(root, "content/systems/arena.systems.json"),
       `${JSON.stringify({
@@ -100,7 +109,7 @@ test("build should preserve emitted bundle schema fix", async () => {
           {
             id: "bad-game-state-write",
             schedule: "update",
-            script: { module: "src/scripts/player.ts", export: "movePlayerToGoal" },
+            script: { module: "src/scripts/schema-fix.ts", export: "badGameStateWrite" },
             commands: [],
             queries: [],
             reads: ["Transform"],
@@ -132,12 +141,10 @@ test("build should not fail inferable resource writes during build", async () =>
   const root = await mkdtemp(join(tmpdir(), "tn-build-derived-resource-writes-"));
   try {
     await cp(structuredSourceStarterPath, root, { recursive: true });
-    const playerScriptPath = join(root, "src/scripts/player.ts");
-    const originalPlayerScript = await readFile(playerScriptPath, "utf8");
+    await clearStarterSceneSystems(root);
     await writeFile(
-      playerScriptPath,
-      `${originalPlayerScript}
-
+      join(root, "src/scripts/resource-write.ts"),
+      `
 export function writeGameState(ctx: any): void {
   ctx.resources.set("GameState", { status: "Ready" });
 }
@@ -153,7 +160,7 @@ export function writeGameState(ctx: any): void {
           {
             id: "derived-resource-write",
             schedule: "update",
-            script: { module: "src/scripts/player.ts", export: "writeGameState" },
+            script: { module: "src/scripts/resource-write.ts", export: "writeGameState" },
             commands: [],
             queries: [],
             reads: ["Transform"],
@@ -178,3 +185,10 @@ export function writeGameState(ctx: any): void {
     await rm(root, { force: true, recursive: true });
   }
 });
+
+async function clearStarterSceneSystems(root: string): Promise<void> {
+  const scenePath = join(root, "content/scenes/arena.scene.json");
+  const scene = JSON.parse(await readFile(scenePath, "utf8")) as { systems?: unknown[] };
+  scene.systems = [];
+  await writeFile(scenePath, `${JSON.stringify(scene, null, 2)}\n`);
+}

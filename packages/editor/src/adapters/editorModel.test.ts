@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import type { IAuthoringProject } from "@threenative/authoring";
+import { getAuthoringOperationDescriptor } from "@threenative/authoring";
 import type { IEditorVisualPanelSnapshot } from "@threenative/ir";
 
 import {
@@ -13,6 +14,7 @@ import {
   EDITOR_MODAL_ACTION_DEFINITIONS,
   EDITOR_OPERATION_COVERAGE_MATRIX,
 } from "./editorModel.js";
+import { editorPayloadBuilderSamples } from "../state/editorStore.js";
 
 test("should map authoring documents to project inventory", () => {
   const model = editorModelFromAuthoringProject({
@@ -163,6 +165,42 @@ test("should classify every visible editor action by functional status", () => {
       assert.equal("readOnlyReason" in definition && definition.readOnlyReason.length > 0, true, `${definition.component} lacks disabled reason`);
     }
   }
+});
+
+test("should keep enabled editor operations backed by the authoring registry or documented composites", () => {
+  const compositeOperations = new Map([
+    ["environment.add_flat_terrain", "Composite editor recipe that expands to environment terrain, walkability, prefab, entity, and transform operations."],
+    ["scene.create_default", "Composite editor recipe that seeds camera and light entities after creating a scene."],
+  ]);
+  const enabledOperationNames = [
+    ...EDITOR_OPERATION_COVERAGE_MATRIX
+      .filter((row) => !row.readOnly && row.handler === undefined)
+      .map((row) => row.operationName)
+      .filter((name): name is string => name !== undefined),
+  ];
+  const missing = enabledOperationNames.filter((name) => getAuthoringOperationDescriptor(name) === undefined && !compositeOperations.has(name));
+  const staleComposites = [...compositeOperations.keys()].filter((name) => !enabledOperationNames.includes(name));
+
+  assert.deepEqual(missing, [], `Enabled editor operation(s) missing authoring registry descriptors or composite allowlist: ${missing.join(", ")}`);
+  assert.deepEqual(staleComposites, [], `Composite editor operation allowlist contains stale entries: ${staleComposites.join(", ")}`);
+  for (const [name, reason] of compositeOperations) {
+    assert.equal(reason.length > 20, true, `${name} composite allowlist must document why it is not a direct registry operation.`);
+  }
+});
+
+test("should keep editor payload builder keys within registry descriptor arguments", () => {
+  const compositeOperations = new Set(["environment.add_flat_terrain", "scene.create_default"]);
+  const failures = editorPayloadBuilderSamples().flatMap((sample) => {
+    if (compositeOperations.has(sample.name)) {
+      return [];
+    }
+    const descriptor = getAuthoringOperationDescriptor(sample.name);
+    const allowed = new Set(descriptor?.arguments.map((argument) => argument.name) ?? []);
+    const unknown = Object.keys(sample.args).filter((key) => !allowed.has(key));
+    return unknown.length === 0 ? [] : [`${sample.name}: ${unknown.join(", ")}`];
+  });
+
+  assert.deepEqual(failures, [], `Editor payload builder emitted keys outside registry descriptors: ${failures.join("; ")}`);
 });
 
 test("should inventory terrain heightmap and skybox fields", () => {

@@ -35,13 +35,13 @@ import { typesCommand } from "./commands/types.js";
 import { worldCommand } from "./commands/world.js";
 import { type ICommandResult } from "./diagnostics.js";
 
-interface ICommandDefinition {
+export interface ICommandDefinition {
   description: string;
   implemented: boolean;
   usage: string;
 }
 
-const commands: Record<string, ICommandDefinition> = {
+export const CLI_COMMAND_DEFINITIONS: Record<string, ICommandDefinition> = {
   add: {
     description: "Compose bounded gameplay mechanic blocks into structured source.",
     implemented: true,
@@ -298,6 +298,8 @@ const commands: Record<string, ICommandDefinition> = {
     usage: "tn verify [--project <path>] [--url <preview-url>] [--frames <count>] [--expect-motion] [--json]",
   },
 };
+
+const commands = CLI_COMMAND_DEFINITIONS;
 
 const helpFlags = new Set(["--help", "-h"]);
 
