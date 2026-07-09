@@ -140,6 +140,20 @@ export const FOCUSED_GATES: Record<string, FocusedGate> = {
       protects: "Durable persistence evidence, reload policy traces, migration diagnostics, and web/Bevy parity.",
     },
   },
+  "verify:particle-commands": {
+    commands: [
+      ["pnpm", "--filter", "@threenative/ir", "build"],
+      ["pnpm", "--filter", "@threenative/ir", "test", "--", "--run", "particle command fixture"],
+      ["node", "scripts/verify-particle-commands.mjs"],
+    ],
+    description: "Bounded particle command fixture gate.",
+    metadata: {
+      owner: "tools/verify particle command gate",
+      profile: "focused",
+      reason: "Validates the portable particle command fixture and writes bounded count plus visual artifacts before particle command claims are promoted.",
+      protects: "Canonical particle command service names, bounded emitter metadata, fixture registration, count observations, and nonblank visual evidence.",
+    },
+  },
   "verify:production-hardening": {
     commands: [
       ["pnpm", "--filter", "@threenative/ir", "build"],

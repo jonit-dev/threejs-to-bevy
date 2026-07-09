@@ -205,9 +205,9 @@ sequenceDiagram
 
 **Implementation:**
 
-- [ ] Add a simple scene with command-triggered bounded particle bursts.
-- [ ] Capture web/native count observations and rendered frames.
-- [ ] Register focused gate and artifacts.
+- [x] Add a simple scene with command-triggered bounded particle bursts.
+- [x] Capture web/native count observations and rendered frames.
+- [x] Register focused gate and artifacts.
 
 **Tests Required:**
 

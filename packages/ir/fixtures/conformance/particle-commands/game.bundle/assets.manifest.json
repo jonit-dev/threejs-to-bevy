@@ -1,0 +1,21 @@
+{
+  "schema": "threenative.assets",
+  "version": "0.1.0",
+  "assets": [
+    {
+      "id": "model.hero",
+      "kind": "model",
+      "format": "glb",
+      "path": "assets/hero.glb",
+      "particleEmitters": [
+        {
+          "id": "dust",
+          "lifetimeSeconds": 0.5,
+          "maxParticles": 8,
+          "ratePerSecond": 8,
+          "shape": "point"
+        }
+      ]
+    }
+  ]
+}

@@ -83,6 +83,7 @@ Verification:
 - `cargo test -p threenative_runtime systems_host_should_expose_bounded_particle_command_services`
 - `cargo test -p threenative_runtime systems_host_should_flush_delayed_commands_after_fixed_ticks`
 - `pnpm verify:conformance` covers the `script-audio-facade` fixture.
+- `pnpm verify:particle-commands` covers the bounded particle command conformance fixture.
 - `pnpm --filter @threenative/runtime-web-three test -- --run runtime gameplay`
 - `cargo test -p threenative_runtime should_report_bounded_scheduler_observations`
 - `pnpm verify:scripting-helpers-lifecycle`

@@ -15,6 +15,7 @@ test("focused gate dispatcher should list current capability gates", () => {
     "verify:generated-games",
     "verify:input-ui-polish",
     "verify:persistence-reload",
+    "verify:particle-commands",
     "verify:physics-self-verification",
     "verify:production-hardening",
     "verify:render-look",

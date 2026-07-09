@@ -23,6 +23,16 @@ test("should validate every conformance fixture", async () => {
   }
 });
 
+test("should validate particle command fixture", async () => {
+  const fixture = (await listConformanceFixtures()).find((candidate) => candidate.name === "particle-commands");
+  assert.ok(fixture, "particle-commands fixture should be registered");
+
+  const result = await validateBundle(fixture.bundlePath);
+
+  assert.equal(result.ok, true);
+  assert.deepEqual(result.diagnostics, []);
+});
+
 test("should keep conformance target profiles canonical", async () => {
   const fixtures = await listConformanceFixtures();
   const supportedTargets = new Set(["desktop", "web"]);
@@ -347,6 +357,13 @@ test("should include capability tags for each conformance fixture", async () => 
     "scripting:service.audio.query",
     "scripting:service.audio.stop",
     "scripting:systems",
+  ]);
+  assertFixtureCapabilities(byName, "particle-commands", [
+    "particles:bounded-commands",
+    "scripting:service.particles.clear",
+    "scripting:service.particles.emit",
+    "scripting:service.particles.play",
+    "scripting:service.particles.stop",
   ]);
   assertFixtureCapabilities(byName, "runtime-query-diffing", [
     "scripting:queries.changed.runtime-diff",

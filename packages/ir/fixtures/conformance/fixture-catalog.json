@@ -227,6 +227,27 @@
       ]
     },
     {
+      "canonicalId": "particle-commands",
+      "owner": "ir-contract",
+      "sourceExample": "particle-commands",
+      "regenerateCommand": "pnpm verify:particle-commands",
+      "canonicalArtifactGate": "particle-commands",
+      "ownerDocs": "docs/PRDs/proof-first-engine-loop-2026-07-05/PRD-012-portable-scripting-particle-commands.md",
+      "aggregateGate": "verify:conformance",
+      "bundlePath": "packages/ir/fixtures/conformance/particle-commands/game.bundle",
+      "promotedCapabilities": [
+        "particles:bounded-commands",
+        "scripting:service.particles.clear",
+        "scripting:service.particles.emit",
+        "scripting:service.particles.play",
+        "scripting:service.particles.stop"
+      ],
+      "reportArtifacts": [
+        "packages/ir/artifacts/conformance/particle-commands/conformance-report.json",
+        "tools/verify/artifacts/particle-commands/conformance-report.json"
+      ]
+    },
+    {
       "canonicalId": "runtime-query-diffing",
       "owner": "ir-contract",
       "sourceExample": "runtime-query-diffing",

@@ -1,0 +1,39 @@
+{
+  "schema": "threenative.bundle",
+  "version": "0.1.0",
+  "name": "particle-commands",
+  "requiredCapabilities": {
+    "assets": [
+      "model.glb",
+      "particles"
+    ],
+    "particles": [
+      "bounded-commands"
+    ],
+    "ecs": [
+      "resource-schemas",
+      "resources"
+    ],
+    "scripting": [
+      "resource-writes",
+      "schedule.update",
+      "script-bundle",
+      "service.particles.clear",
+      "service.particles.emit",
+      "service.particles.play",
+      "service.particles.stop",
+      "systems"
+    ]
+  },
+  "entry": {
+    "world": "world.ir.json",
+    "systems": "systems.ir.json",
+    "scripts": "scripts.bundle.js"
+  },
+  "files": {
+    "assets": "assets.manifest.json",
+    "materials": "materials.ir.json",
+    "targetProfile": "target.profile.json",
+    "resourceSchemas": "schemas/resources.schema.json"
+  }
+}

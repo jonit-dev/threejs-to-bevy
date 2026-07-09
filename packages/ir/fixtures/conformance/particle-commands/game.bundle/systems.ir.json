@@ -1,0 +1,23 @@
+{
+  "schema": "threenative.systems",
+  "version": "0.1.0",
+  "systems": [
+    {
+      "name": "particleCommands",
+      "schedule": "update",
+      "commands": [],
+      "eventReads": [],
+      "eventWrites": [],
+      "queries": [],
+      "reads": [],
+      "resourceReads": ["ParticleReport"],
+      "resourceWrites": ["ParticleReport"],
+      "services": ["particles.play", "particles.emit", "particles.clear", "particles.stop"],
+      "script": {
+        "bundle": "scripts.bundle.js",
+        "exportName": "system_particleCommands"
+      },
+      "writes": []
+    }
+  ]
+}

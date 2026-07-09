@@ -63,7 +63,8 @@ pnpm verify:release
 
 Focused capability gates include `pnpm verify:agent-io`, `pnpm verify:session-cost`, `pnpm verify:webview-package`, `pnpm verify:cookbook`,
 `pnpm verify:template-production`, `pnpm verify:conformance`,
-`pnpm verify:scripting-helpers-lifecycle`, `pnpm verify:efficient-scale`, and
+`pnpm verify:scripting-helpers-lifecycle`, `pnpm verify:particle-commands`,
+`pnpm verify:efficient-scale`, and
 `pnpm verify:parity:smoke`.
 
 ## Artifact Policy
