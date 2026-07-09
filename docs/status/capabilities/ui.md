@@ -17,6 +17,18 @@ Current support:
   and range/text input widgets expose kind-specific value fields.
 - UI component cycles and theme token alias cycles report stable diagnostics
   with the detected cycle path and suggested fixes.
+- Portable UI rendering semantics are intentionally bounded:
+
+  | Feature | Contract state |
+  | --- | --- |
+  | Gradients and shadows | Web DOM overlay renders CSS gradients/shadows. Native preserves metadata/components and exposes visual traces only; native pixel rendering is not promoted. |
+  | Effect presets | Metadata/diagnostic boundary with web/native strategy traces; not promoted as rendered effect parity. |
+  | Atlas and nine-slice image metadata | Web exposes atlas/nine-slice metadata for overlay/debug proof and applies scale/flip/tile CSS where possible. Native preserves image metadata and traces it; native atlas/nine-slice pixel rendering is not promoted. |
+  | Safe area | Web overlay applies `safe-area-inset-*` padding for avoided edges. Native preserves safe-area metadata in navigation traces. |
+  | Context menus | Web context menus clamp to the viewport. Native context-menu behavior remains metadata/trace-only. |
+  | Focus navigation | Web and native navigation traces skip disabled nodes for sequential and explicit navigation. Geometric spatial fallback remains partial. |
+  | Text input | Web text input dispatches deterministic value actions. Native text input preserves metadata/value observations but does not promote caret, editing, virtual keyboard, or IME behavior. |
+
 - UI parity claims are truth-graded in
   [bevy-feature-parity.md](../../bevy-feature-parity.md): promoted rows name a
   proof gate or artifact, while trace-only native shadows/gradients, effect

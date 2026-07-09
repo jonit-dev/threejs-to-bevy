@@ -19,6 +19,10 @@ Current support:
   conformance, or diagnostics are not native promotions. Current UI promotion
   wording is bounded in [ui.md](ui.md) and
   [bevy-feature-parity.md](../../bevy-feature-parity.md).
+- Native UI gradients, shadows, atlas/nine-slice metadata, context menus,
+  safe-area metadata, effect presets, and editable text-input semantics remain
+  trace/metadata boundaries unless a focused native pixel or behavior gate is
+  named.
 
 Promotion policy:
 

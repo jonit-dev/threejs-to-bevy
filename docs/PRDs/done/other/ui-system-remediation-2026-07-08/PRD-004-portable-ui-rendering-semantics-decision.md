@@ -43,24 +43,24 @@ semantics.
 
 ## 3. Acceptance Criteria
 
-- [ ] Each listed presentation feature has a documented contract state.
-- [ ] Runtime behavior matches that state on web and native.
-- [ ] Metadata-only features are not described as pixels or editing behavior.
-- [ ] Unsupported or target-limited features emit stable diagnostics where
+- [x] Each listed presentation feature has a documented contract state.
+- [x] Runtime behavior matches that state on web and native.
+- [x] Metadata-only features are not described as pixels or editing behavior.
+- [x] Unsupported or target-limited features emit stable diagnostics where
       authors can act on them.
-- [ ] Web context menus clamp to the viewport if context menus remain a
+- [x] Web context menus clamp to the viewport if context menus remain a
       supported web behavior.
-- [ ] Sequential focus skips disabled nodes deterministically if sequential
+- [x] Sequential focus skips disabled nodes deterministically if sequential
       focus remains supported.
-- [ ] Capability docs and parity docs are updated for any changed claims.
+- [x] Capability docs and parity docs are updated for any changed claims.
 
 ## 4. Verification
 
-- [ ] Add focused runtime tests for every feature kept as supported behavior.
-- [ ] Add validation/diagnostic tests for every feature made unsupported or
+- [x] Add focused runtime tests for every feature kept as supported behavior.
+- [x] Add validation/diagnostic tests for every feature made unsupported or
       target-limited.
-- [ ] Run `pnpm verify:conformance` if IR/runtime behavior changes.
-- [ ] Run `pnpm check:docs`.
+- [x] Run `pnpm verify:conformance` if IR/runtime behavior changes.
+- [x] Run `pnpm check:docs`.
 
 ## 5. Dependencies
 

@@ -7,7 +7,9 @@ pub fn trace_ui_navigation(ui: &UiIr, inputs: &[&str]) -> UiNavigationTrace {
             .filter(|node| is_focusable(node))
             .map(|node| node.id.clone())
             .collect()
-    });
+    }).into_iter()
+    .filter(|id| find_node(&nodes, id).is_some_and(is_focusable))
+    .collect::<Vec<_>>();
     let mut focus = focus_order.first().cloned();
     let mut events = Vec::new();
     for input in inputs {
@@ -23,8 +25,9 @@ pub fn trace_ui_navigation(ui: &UiIr, inputs: &[&str]) -> UiNavigationTrace {
             });
             continue;
         }
-        let next = find_node(&nodes, &current)
-            .and_then(|node| navigation_target(node, input))
+        let explicit_target = find_node(&nodes, &current).and_then(|node| navigation_target(node, input));
+        let next = explicit_target
+            .filter(|target| find_node(&nodes, target).is_some_and(is_focusable))
             .or_else(|| sequential_target(&focus_order, &current, input));
         if let Some(next) = next {
             if next != current {
@@ -383,4 +386,3 @@ pub fn trace_native_ui_image_rendering(world: &mut World) -> NativeUiImageRender
     images.sort_by(|left, right| left.node.cmp(&right.node));
     NativeUiImageRenderTrace { images }
 }
-

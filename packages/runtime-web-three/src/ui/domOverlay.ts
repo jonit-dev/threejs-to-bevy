@@ -21,6 +21,7 @@ export function createUiDomOverlay(rendered: IRenderedUi, doc: Document = docume
     pointerEvents: "none",
     position: "absolute",
   });
+  applySafeAreaStyle(element, rendered.safeArea);
   updateNodeElement(rendered.root, nodes);
   updateContextMenus(rendered.root, nodes, state);
   doc.addEventListener?.("click", (event) => {
@@ -142,7 +143,10 @@ function handleKeyboardNavigation(
   }
   const renderedNodes = renderedNodesById(rendered.root);
   const order = focusOrder(rendered, renderedNodes, state);
-  const targetId = navigationTarget(renderedNodes.get(currentId), input) ?? sequentialTarget(order, currentId, input);
+  const explicitTarget = navigationTarget(renderedNodes.get(currentId), input);
+  const targetId = isNavigableTarget(renderedNodes, explicitTarget)
+    ? explicitTarget
+    : sequentialTarget(order, currentId, input);
   if (targetId !== undefined && targetId !== currentId) {
     nodes.get(targetId)?.focus();
   }
@@ -215,6 +219,14 @@ function sequentialTarget(order: readonly string[], current: string, input: stri
     return order[(index - 1 + order.length) % order.length];
   }
   return undefined;
+}
+
+function isNavigableTarget(nodes: ReadonlyMap<string, IRenderedUiNode>, targetId: string | undefined): targetId is string {
+  if (targetId === undefined) {
+    return false;
+  }
+  const target = nodes.get(targetId);
+  return target?.focusable === true && target.disabled !== true;
 }
 
 function createElementForKind(node: IRenderedUiNode, doc: Document): HTMLElement {
@@ -443,11 +455,38 @@ function updateContextMenus(root: IRenderedUiNode, nodes: Map<string, HTMLElemen
       const anchor = nodes.get(node.anchorId);
       const rect = anchor?.getBoundingClientRect();
       if (rect !== undefined) {
-        element.style.left = `${rect.left}px`;
-        element.style.top = `${rect.bottom}px`;
+        const viewport = viewportSize(element);
+        const menuRect = element.getBoundingClientRect();
+        const menuWidth = menuRect.width || element.offsetWidth || 0;
+        const menuHeight = menuRect.height || element.offsetHeight || 0;
+        element.style.left = `${clamp(rect.left, 0, Math.max(0, viewport.width - menuWidth))}px`;
+        element.style.top = `${clamp(rect.bottom, 0, Math.max(0, viewport.height - menuHeight))}px`;
       }
     }
   });
+}
+
+function applySafeAreaStyle(element: HTMLElement, safeArea: IRenderedUi["safeArea"]): void {
+  if (safeArea?.mode !== "avoid") {
+    return;
+  }
+  const edges = new Set(safeArea.edges ?? ["top", "right", "bottom", "left"]);
+  if (edges.has("top")) element.style.paddingTop = "env(safe-area-inset-top)";
+  if (edges.has("right")) element.style.paddingRight = "env(safe-area-inset-right)";
+  if (edges.has("bottom")) element.style.paddingBottom = "env(safe-area-inset-bottom)";
+  if (edges.has("left")) element.style.paddingLeft = "env(safe-area-inset-left)";
+}
+
+function viewportSize(element: HTMLElement): { height: number; width: number } {
+  const doc = element.ownerDocument;
+  return {
+    height: doc?.documentElement?.clientHeight || doc?.defaultView?.innerHeight || globalThis.innerHeight || 0,
+    width: doc?.documentElement?.clientWidth || doc?.defaultView?.innerWidth || globalThis.innerWidth || 0,
+  };
+}
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.min(max, Math.max(min, value));
 }
 
 function contextMenuForAnchor(root: IRenderedUiNode, anchorId: string): string | undefined {

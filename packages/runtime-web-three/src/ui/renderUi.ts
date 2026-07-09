@@ -40,6 +40,7 @@ export interface IRenderedUi {
   read(nodeId: string): IUiReadResult;
   recentActions(): IUiActionEvent[];
   root: IRenderedUiNode;
+  safeArea?: IUiIr["safeArea"];
   setDisabled(nodeId: string, disabled: boolean): IUiDisabledResult;
   setValue(nodeId: string, value: boolean | number | string): IUiValueResult;
   trigger(nodeId: string, value?: number | string): void;
@@ -81,6 +82,7 @@ export function renderUi(ui: IUiIr, world: IWorldIr): IRenderedUi {
       return recentActions.map((action) => ({ ...action }));
     },
     ...(ui.focusOrder === undefined ? {} : { focusOrder: ui.focusOrder }),
+    ...(ui.safeArea === undefined ? {} : { safeArea: ui.safeArea }),
     focus(nodeId) {
       const previous = currentFocus;
       const node = nodes.get(nodeId);

@@ -795,6 +795,32 @@ fn ui_navigation_trace_should_support_reverse_tab() {
 }
 
 #[test]
+fn ui_navigation_trace_should_skip_disabled_nodes() {
+    let ui: UiIr = serde_json::from_value(serde_json::json!({
+        "schema": "threenative.ui",
+        "version": "0.1.0",
+        "focusOrder": ["play", "settings", "credits"],
+        "root": {
+            "id": "hud",
+            "kind": "column",
+            "children": [
+                { "id": "play", "kind": "button", "action": "Play", "label": "Play", "navigation": { "right": "settings" } },
+                { "id": "settings", "kind": "button", "action": "Settings", "label": "Settings", "disabled": true },
+                { "id": "credits", "kind": "button", "action": "Credits", "label": "Credits" }
+            ]
+        }
+    }))
+    .expect("ui navigation fixture should deserialize");
+
+    let trace = trace_ui_navigation(&ui, &["right", "activate"]);
+
+    assert_eq!(trace.focus_order, vec!["play", "credits"]);
+    assert_eq!(trace.events[0].focus, "credits");
+    assert_eq!(trace.events[0].input, "right");
+    assert_eq!(trace.events[1].action.as_deref(), Some("Credits"));
+}
+
+#[test]
 fn should_apply_screen_stack_input_capture() {
     let ui: UiIr = serde_json::from_value(serde_json::json!({
         "schema": "threenative.ui",

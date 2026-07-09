@@ -28,7 +28,11 @@ export function traceUiNavigation(ui: IUiIr, input: IUiNavigationTraceInput = {}
       events.push({ ...(action === undefined ? {} : { action }), focus, input: event, kind: "activate" });
       continue;
     }
-    const next = navigationTarget(nodes.get(focus), event) ?? sequentialTarget(focusOrder, focus, event);
+    const explicitTarget = navigationTarget(nodes.get(focus), event);
+    const next =
+      explicitTarget !== undefined && isFocusable(nodes.get(explicitTarget))
+        ? explicitTarget
+        : sequentialTarget(focusOrder, focus, event);
     if (next !== undefined && next !== focus) {
       focus = next;
       events.push({ focus, input: event, kind: "focus" });
@@ -58,7 +62,7 @@ function visit(node: IUiNodeIr, callback: (node: IUiNodeIr) => void): void {
 }
 
 function isFocusable(node: IUiNodeIr | undefined): boolean {
-  return node !== undefined && (node.focusable === true || node.kind === "button" || node.kind === "textInput" || node.kind === "touchControl");
+  return node !== undefined && node.disabled !== true && (node.focusable === true || node.kind === "button" || node.kind === "textInput" || node.kind === "touchControl");
 }
 
 function navigationTarget(node: IUiNodeIr | undefined, input: string): string | undefined {

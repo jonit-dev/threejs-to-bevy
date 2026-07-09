@@ -818,8 +818,9 @@ fn contains_node_id(node: &UiNodeIr, target_id: &str) -> bool {
 }
 
 fn is_focusable(node: &UiNodeIr) -> bool {
-    node.focusable == Some(true)
-        || matches!(node.kind.as_str(), "button" | "textInput" | "touchControl")
+    node.disabled != Some(true)
+        && (node.focusable == Some(true)
+            || matches!(node.kind.as_str(), "button" | "textInput" | "touchControl"))
 }
 
 fn navigation_target(node: &UiNodeIr, input: &str) -> Option<String> {

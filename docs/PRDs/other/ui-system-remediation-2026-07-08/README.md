@@ -15,7 +15,7 @@ behavior level where support is claimed.
 1. [PRD-001 Web UI Action Delivery and Live State](../../done/other/ui-system-remediation-2026-07-08/PRD-001-web-ui-action-delivery-live-state.md) - done
 2. [PRD-002 UI Parity Claim Truthing](../../done/other/ui-system-remediation-2026-07-08/PRD-002-ui-parity-claim-truthing.md) - done
 3. [PRD-003 UI Authoring API and Type Closure](../../done/other/ui-system-remediation-2026-07-08/PRD-003-ui-authoring-api-type-closure.md) - done
-4. [PRD-004 Portable UI Rendering Semantics Decision](PRD-004-portable-ui-rendering-semantics-decision.md)
+4. [PRD-004 Portable UI Rendering Semantics Decision](../../done/other/ui-system-remediation-2026-07-08/PRD-004-portable-ui-rendering-semantics-decision.md) - done
 5. [PRD-005 Behavioral UI Conformance Probes](PRD-005-behavioral-ui-conformance-probes.md)
 6. [PRD-006 Editor Runtime UI Preview](PRD-006-editor-runtime-ui-preview.md)
 7. [PRD-007 Native UI Runtime Hygiene](PRD-007-native-ui-runtime-hygiene.md)

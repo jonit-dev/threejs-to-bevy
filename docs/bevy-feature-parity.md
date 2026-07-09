@@ -1034,8 +1034,12 @@ Current UI rows use these labels:
 - [x] `P1` Portable UI text weight/decoration metadata and web DOM rendering
 - [x] `P1` Rich text styling: font assets, inline spans, and native-rendered weight/decoration
 - [x] `P1` Basic UI image nodes
-- [x] `P1` UI texture atlases, 9-slice scaling, flipping, and tiling
-- [x] `P2` Standard widgets: sliders, scrollbars, and context menus
+- [x] `P1` Partial/diagnostic: UI image atlas/nine-slice metadata is preserved
+      for web overlay/debug metadata and native traces; native atlas/nine-slice
+      pixel rendering is not promoted.
+- [x] `P2` Standard widgets: sliders, scrollbars, and web context menus with
+      viewport clamping. Native context-menu behavior remains metadata/trace
+      only.
 - [x] Structured source/CLI/editor mutation for retained UI node type, label, and promoted style fields
 - [x] `P1` Partial/diagnostic: editable text input widgets preserve metadata
       and deterministic value/action event observations, but native editing,
@@ -1047,6 +1051,7 @@ Current UI rows use these labels:
 - [x] `P1` Promoted: basic automatic tab/sequential focus navigation and
       explicit directional navigation links are covered by the
       `rich-ui-navigation` web/native trace diff in `pnpm verify:conformance`;
+      disabled nodes are skipped for sequential and explicit navigation;
       geometric spatial-navigation fallback remains partial.
 - [x] `P2` Unsupported boundary: UI transforms, render-to-texture, and
       3D-world UI are diagnostic boundaries.

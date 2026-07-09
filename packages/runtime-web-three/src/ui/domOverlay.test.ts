@@ -105,6 +105,23 @@ test("ui dom overlay should navigate focus with tab keys and activate focused co
   assert.deepEqual(rendered.actions, [{ action: "Jump", node: "jump" }]);
 });
 
+test("ui dom overlay should skip disabled explicit navigation targets", () => {
+  const ui = makeUi();
+  const controls = ui.root.children?.find((node) => node.id === "controls");
+  const pause = controls?.children?.find((node) => node.id === "pause");
+  const jump = controls?.children?.find((node) => node.id === "jump");
+  if (pause !== undefined) pause.navigation = { right: "jump" };
+  if (jump !== undefined) jump.disabled = true;
+  const rendered = renderUi(ui, makeWorld());
+  const overlay = createUiDomOverlay(rendered, new FakeDocument() as unknown as Document);
+  const pauseElement = findByUiId(overlay.element, "pause");
+  const nameInput = findByUiId(overlay.element, "player-name");
+
+  pauseElement?.dispatchKeyDown({ key: "ArrowRight" });
+
+  assert.equal(nameInput?.focused, true);
+});
+
 test("ui dom overlay should follow explicit directional navigation links", () => {
   const rendered = renderUi(makeUi(), makeWorld());
   const overlay = createUiDomOverlay(rendered, new FakeDocument() as unknown as Document);
@@ -114,6 +131,37 @@ test("ui dom overlay should follow explicit directional navigation links", () =>
   jump?.dispatchKeyDown({ key: "ArrowLeft" });
 
   assert.equal(pause?.focused, true);
+});
+
+test("ui dom overlay should apply safe-area avoidance and clamp context menus to the viewport", () => {
+  const ui = makeUi();
+  ui.safeArea = { edges: ["top", "right", "bottom", "left"], mode: "avoid" };
+  ui.root.children?.push(
+    { id: "menu-anchor", kind: "button", action: "OpenMenu", label: "Menu" },
+    {
+      id: "slot-menu",
+      kind: "contextMenu",
+      anchorId: "menu-anchor",
+      children: [{ id: "menu-action", kind: "button", action: "Inspect", label: "Inspect" }],
+    },
+  );
+  const document = new FakeDocument();
+  const rendered = renderUi(ui, makeWorld());
+  const overlay = createUiDomOverlay(rendered, document as unknown as Document);
+  const slot = findByUiId(overlay.element, "menu-anchor");
+  const menu = findByUiId(overlay.element, "slot-menu");
+
+  assert.equal(overlay.element.style.paddingTop, "env(safe-area-inset-top)");
+  assert.equal(overlay.element.style.paddingRight, "env(safe-area-inset-right)");
+  assert.equal(overlay.element.style.paddingBottom, "env(safe-area-inset-bottom)");
+  assert.equal(overlay.element.style.paddingLeft, "env(safe-area-inset-left)");
+
+  menu!.rect = { bottom: 0, height: 120, left: 0, top: 0, width: 160 };
+  slot!.rect = { bottom: 590, height: 24, left: 790, top: 566, width: 80 };
+  slot!.click();
+
+  assert.equal(menu?.style.left, "640px");
+  assert.equal(menu?.style.top, "480px");
 });
 
 test("ui dom overlay should apply explicit flex layout metadata", () => {
@@ -250,9 +298,21 @@ function find(element: FakeElement, predicate: (element: FakeElement) => boolean
   return undefined;
 }
 
+function findAll(element: FakeElement, predicate: (element: FakeElement) => boolean, matches: FakeElement[]): void {
+  if (predicate(element)) {
+    matches.push(element);
+  }
+  for (const child of element.children) {
+    findAll(child, predicate, matches);
+  }
+}
+
 class FakeDocument {
+  readonly defaultView = { innerHeight: 600, innerWidth: 800 };
+  readonly documentElement = { clientHeight: 600, clientWidth: 800 };
+
   createElement(tagName: string): HTMLElement {
-    return new FakeElement(tagName) as unknown as HTMLElement;
+    return new FakeElement(tagName, this) as unknown as HTMLElement;
   }
 }
 
@@ -274,8 +334,9 @@ class FakeElement {
   textContent = "";
   type = "";
   value = "";
+  rect: Pick<DOMRect, "bottom" | "height" | "left" | "top" | "width"> = { bottom: 0, height: 0, left: 0, top: 0, width: 0 };
 
-  constructor(readonly tagName: string) {}
+  constructor(readonly tagName: string, readonly ownerDocument: FakeDocument) {}
 
   get width(): number {
     return Number(this.attributes.get("width") ?? 0);
@@ -295,6 +356,14 @@ class FakeElement {
 
   getContext(): FakeCanvasContext | null {
     return this.tagName === "canvas" ? new FakeCanvasContext() : null;
+  }
+
+  get offsetHeight(): number {
+    return this.rect.height;
+  }
+
+  get offsetWidth(): number {
+    return this.rect.width;
   }
 
   addEventListener(type: string, listener: (event?: FakeKeyboardEvent) => void): void {
@@ -329,6 +398,10 @@ class FakeElement {
     this.focused = true;
   }
 
+  getBoundingClientRect(): Pick<DOMRect, "bottom" | "height" | "left" | "top" | "width"> {
+    return this.rect;
+  }
+
   getAttribute(name: string): string | null {
     return this.attributes.get(name) ?? null;
   }
@@ -338,6 +411,15 @@ class FakeElement {
       return null;
     }
     return find(this, (element) => element.dataset.threenativeUiBarFill !== undefined) ?? null;
+  }
+
+  querySelectorAll(selector: string): FakeElement[] {
+    if (selector !== "[tabindex=\"0\"]") {
+      return [];
+    }
+    const matches: FakeElement[] = [];
+    findAll(this, (element) => element.tabIndex === 0, matches);
+    return matches;
   }
 
   removeAttribute(name: string): void {
