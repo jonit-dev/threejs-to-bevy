@@ -206,6 +206,12 @@ implementation:
   `pnpm --filter @threenative/runtime-web-three test -- --run spawner`,
   `cargo test -p threenative_runtime spawner`, and
   `packages/ir/artifacts/conformance/gameplay-spawner/verification-report.json`.
+- Declarative `GameFlow` documents now have a shared fixed-tick trace proof for
+  initial state entry, `event`/`timer`/`resourceEquals`/`allCollected`
+  triggers, and bounded entry/transition actions (`emitEvent`, `setResource`,
+  `setTimeScale`, `spawnerEnable`, `activateUiScreen`, `playSequence`, and
+  `sceneChange`). Focused evidence: `pnpm verify:conformance` and
+  `packages/ir/artifacts/conformance/game-flow/verification-report.json`.
 - The authoring-abstractions Phase 5 paper-cut slice improves structured
   authoring commands and recipes: third-person recipes now stamp safe capsule
   centers, material editing works inside grouped material documents, and scene

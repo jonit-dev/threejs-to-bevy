@@ -1,0 +1,54 @@
+{
+  "schema": "threenative.game-flow",
+  "version": "0.1.0",
+  "flows": [
+    {
+      "id": "match",
+      "initial": "ready",
+      "scene": "arena",
+      "states": [
+        {
+          "id": "ready",
+          "actions": [
+            { "kind": "setResource", "resource": "phase", "value": "ready" }
+          ]
+        },
+        {
+          "id": "playing",
+          "actions": [
+            { "kind": "setTimeScale", "timeScale": 1 },
+            { "kind": "spawnerEnable", "spawner": "drone-spawner", "value": true }
+          ]
+        },
+        {
+          "id": "win",
+          "actions": [
+            { "kind": "emitEvent", "event": "match.won" },
+            { "kind": "activateUiScreen", "screen": "win" }
+          ]
+        }
+      ],
+      "transitions": [
+        {
+          "id": "start",
+          "from": "ready",
+          "to": "playing",
+          "trigger": { "kind": "event", "event": "start" },
+          "actions": [
+            { "kind": "emitEvent", "event": "match.started" },
+            { "kind": "setResource", "resource": "coins", "value": 3 }
+          ]
+        },
+        {
+          "id": "win-after-delay",
+          "from": "playing",
+          "to": "win",
+          "trigger": { "kind": "timer", "seconds": 1 },
+          "actions": [
+            { "kind": "setResource", "resource": "phase", "value": "win" }
+          ]
+        }
+      ]
+    }
+  ]
+}

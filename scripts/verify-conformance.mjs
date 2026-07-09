@@ -149,6 +149,11 @@ export async function verifyConformance(options = {}) {
   const gameplaySpawnerNativeTracePath = options.gameplaySpawnerNativeTracePath ?? resolve(artifactDir, "gameplay-spawner/native-spawner.json");
   const gameplaySpawnerReportPath = options.gameplaySpawnerReportPath ?? resolve(artifactDir, "gameplay-spawner/verification-report.json");
   const gameplaySpawnerWebTracePath = options.gameplaySpawnerWebTracePath ?? resolve(artifactDir, "gameplay-spawner/web-spawner.json");
+  const gameFlowBundlePath = resolveFixtureBundlePath(fixtureCatalog, "game-flow", root).bundlePath;
+  const gameFlowDiffPath = options.gameFlowDiffPath ?? resolve(artifactDir, "game-flow/game-flow-diff.json");
+  const gameFlowNativeTracePath = options.gameFlowNativeTracePath ?? resolve(artifactDir, "game-flow/native-game-flow.json");
+  const gameFlowReportPath = options.gameFlowReportPath ?? resolve(artifactDir, "game-flow/verification-report.json");
+  const gameFlowWebTracePath = options.gameFlowWebTracePath ?? resolve(artifactDir, "game-flow/web-game-flow.json");
   const sceneLifecycleDiffPath = options.sceneLifecycleDiffPath ?? resolve(artifactDir, "scene-lifecycle/scene-lifecycle-diff.json");
   const sceneLifecycleNativeTracePath = options.sceneLifecycleNativeTracePath ?? resolve(artifactDir, "scene-lifecycle/native-scene-lifecycle.json");
   const sceneLifecycleWebTracePath = options.sceneLifecycleWebTracePath ?? resolve(artifactDir, "scene-lifecycle/web-scene-lifecycle.json");
@@ -212,6 +217,10 @@ export async function verifyConformance(options = {}) {
     gameplaySpawnerNativeTracePath,
     gameplaySpawnerReportPath,
     gameplaySpawnerWebTracePath,
+    gameFlowDiffPath,
+    gameFlowNativeTracePath,
+    gameFlowReportPath,
+    gameFlowWebTracePath,
     sceneLifecycleDiffPath,
     sceneLifecycleNativeTracePath,
     sceneLifecycleWebTracePath,
@@ -490,6 +499,16 @@ export async function verifyConformance(options = {}) {
         resolve(root, "scripts/verify-gameplay-spawner.mjs"),
         gameplaySpawnerBundlePath,
         resolve(artifactDir, "gameplay-spawner"),
+      ],
+      { timeoutMs: 120000 },
+    ],
+    [
+      "game flow runtime trace parity",
+      process.execPath,
+      [
+        resolve(root, "scripts/verify-game-flow.mjs"),
+        gameFlowBundlePath,
+        resolve(artifactDir, "game-flow"),
       ],
       { timeoutMs: 120000 },
     ],
@@ -845,6 +864,9 @@ function fixtureForStep(stepName) {
   if (stepName.includes("gameplay spawner")) {
     return "gameplay-spawner";
   }
+  if (stepName.includes("game flow")) {
+    return "game-flow";
+  }
   if (stepName.includes("V9 assets glTF")) {
     return "v9-assets-gltf-scene-workflow";
   }
@@ -924,6 +946,9 @@ function artifactPathForStep(stepName, artifacts) {
   if (stepName.includes("gameplay spawner")) {
     return artifacts.gameplaySpawnerReportPath;
   }
+  if (stepName.includes("game flow")) {
+    return artifacts.gameFlowReportPath;
+  }
   if (stepName.includes("V9 assets glTF")) {
     return artifacts.v9AssetsGltfReportPath;
   }
@@ -996,6 +1021,9 @@ function bundlePathForStep(stepName) {
   }
   if (stepName.includes("gameplay spawner")) {
     return "packages/ir/fixtures/conformance/gameplay-spawner/game.bundle";
+  }
+  if (stepName.includes("game flow")) {
+    return "packages/ir/fixtures/conformance/game-flow/game.bundle";
   }
   if (stepName.includes("V9 rendering lights")) {
     return "packages/ir/fixtures/conformance/rendering-lights/game.bundle";

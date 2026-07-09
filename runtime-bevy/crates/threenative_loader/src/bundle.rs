@@ -4,7 +4,7 @@ use serde::Deserialize;
 
 use crate::{
     AnimationsIr, AssetsManifest, AudioIr, BundleManifest, EnvironmentSceneIr, GltfSceneMetadataIr,
-    InputIr, LoadError, LoadedBundle, LocalDataIr, MaterialsIr, OverlaysIr, PrefabsIr,
+    GameFlowIr, InputIr, LoadError, LoadedBundle, LocalDataIr, MaterialsIr, OverlaysIr, PrefabsIr,
     RuntimeConfigIr, ScenesIr, SchemaFileIr, SystemsIr, TargetProfile, WorldIr, generated_mesh,
     paths,
 };
@@ -115,6 +115,14 @@ pub fn load_bundle(bundle_path: impl AsRef<Path>) -> Result<LoadedBundle, LoadEr
         }
         None => None,
     };
+    let game_flow = match manifest.entry.game_flow.as_ref() {
+        Some(file) => {
+            let flow: GameFlowIr = read_json(bundle_path, file)?;
+            ensure_supported(&flow.schema, &flow.version)?;
+            Some(flow)
+        }
+        None => None,
+    };
     let overlays = match manifest.entry.overlays.as_ref() {
         Some(file) => {
             let overlays: OverlaysIr = read_json(bundle_path, file)?;
@@ -152,6 +160,7 @@ pub fn load_bundle(bundle_path: impl AsRef<Path>) -> Result<LoadedBundle, LoadEr
         audio,
         component_schemas,
         environment_scene,
+        game_flow,
         gltf_scene,
         input,
         local_data,

@@ -20,6 +20,8 @@ pub struct BundleEntry {
     pub audio: Option<String>,
     #[serde(rename = "environmentScene")]
     pub environment_scene: Option<String>,
+    #[serde(rename = "gameFlow")]
+    pub game_flow: Option<String>,
     #[serde(rename = "localData")]
     pub local_data: Option<String>,
     pub overlays: Option<String>,
@@ -54,6 +56,7 @@ pub struct LoadedBundle {
     pub audio: Option<AudioIr>,
     pub component_schemas: Option<SchemaFileIr>,
     pub environment_scene: Option<EnvironmentSceneIr>,
+    pub game_flow: Option<GameFlowIr>,
     pub gltf_scene: Option<GltfSceneMetadataIr>,
     pub input: Option<InputIr>,
     pub local_data: Option<LocalDataIr>,
@@ -148,6 +151,71 @@ pub struct PrefabDeclarationIr {
 pub struct PrefabEntityTemplateIr {
     pub id: String,
     pub components: EntityComponents,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct GameFlowIr {
+    pub schema: String,
+    pub version: String,
+    #[serde(default)]
+    pub flows: Vec<GameFlowDeclarationIr>,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct GameFlowDeclarationIr {
+    pub id: String,
+    pub initial: String,
+    pub scene: Option<String>,
+    #[serde(default)]
+    pub states: Vec<GameFlowStateIr>,
+    #[serde(default)]
+    pub transitions: Vec<GameFlowTransitionIr>,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct GameFlowStateIr {
+    pub id: String,
+    #[serde(default)]
+    pub actions: Vec<GameFlowActionIr>,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct GameFlowTransitionIr {
+    pub id: String,
+    pub from: String,
+    pub to: String,
+    pub trigger: GameFlowTriggerIr,
+    #[serde(default)]
+    pub actions: Vec<GameFlowActionIr>,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct GameFlowTriggerIr {
+    pub kind: String,
+    pub event: Option<String>,
+    pub resource: Option<String>,
+    pub seconds: Option<f32>,
+    pub target: Option<serde_json::Value>,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct GameFlowActionIr {
+    pub kind: String,
+    pub event: Option<String>,
+    pub resource: Option<String>,
+    pub scene: Option<String>,
+    pub screen: Option<String>,
+    pub sequence: Option<String>,
+    pub spawner: Option<String>,
+    #[serde(rename = "timeScale")]
+    pub time_scale: Option<f32>,
+    pub value: Option<serde_json::Value>,
 }
 
 #[derive(Clone, Debug, Deserialize)]

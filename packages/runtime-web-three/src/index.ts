@@ -28,6 +28,7 @@ export { applyPersistedBindingOverrides, attachInputListeners, createInputState,
 export { traceCharacterControllers, type ICharacterTraceInput, type ICharacterTraceObservation } from "./character.js";
 export { queryNavigationPath, traceNavigationPaths, type INavigationPathRequest, type INavigationPathResult } from "./navigation.js";
 export { createFirstPersonState, updateFirstPersonController, type IFirstPersonControllerState } from "./firstPerson.js";
+export { traceGameFlow, type IGameFlowTraceAction, type IGameFlowTraceFrame, type IGameFlowTraceInput } from "./gameFlow.js";
 export { hasKinematicMovers, stepKinematicMovers, type IKinematicMoverObservation } from "./kinematicMover.js";
 export { hasSpawners, stepSpawners, type ISpawnerObservation } from "./spawner.js";
 export { resolveWebAssets, traceAssetLoadSynchronization, type IAssetLoadTrace, type IAssetLoadTraceAsset, type IAssetLoadTraceGltfScene, type IResolvedWebAsset } from "./assets.js";

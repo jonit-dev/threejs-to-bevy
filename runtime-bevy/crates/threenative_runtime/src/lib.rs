@@ -22,6 +22,7 @@ pub mod debug_overlay;
 pub mod emissive_postprocess;
 pub mod environment;
 pub mod first_person;
+pub mod game_flow;
 pub mod gizmo_geometry;
 pub mod gltf_scene_handles;
 pub mod input;
