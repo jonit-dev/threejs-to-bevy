@@ -117,3 +117,29 @@ Generated examples can carry the same target-specific fixture; for example:
 ```bash
 tn playtest --project examples/lantern-orchard --scenario playtests/native-smoke-movement.playtest.json --stable-artifacts --json
 ```
+
+Use `tn parity playtest` when the same scenario must be proved as one paired
+web/desktop contract. The command delegates to `tn playtest` once per target,
+writes per-target summary bundles, and emits one aggregate report with
+`TN_GAMEPLAY_PARITY_TARGET_FAILED` when either target fails before semantic
+comparison.
+
+```bash
+tn parity playtest \
+  --project examples/humanoid-physics-course \
+  --scenario playtests/humanoid-course-forward-movement.playtest.json \
+  --targets web,desktop \
+  --stable-artifacts \
+  --json
+```
+
+The default smoke path does not request native recording or native screenshot
+sequences. Add those heavier artifacts only for focused debugging or release
+evidence that explicitly needs them.
+
+Gameplay parity manifests must keep enrolled scene coverage explicit. Every
+required surface named by a parity entry, such as an entity, asset, texture,
+material, resource, UI node, collider, trigger, or animation clip, needs a
+pass/fail assertion row. Surfaces that are not enforceable yet must be listed
+as `reportOnly` or `unsupported` with a stable reason; otherwise the gameplay
+parity gate fails with `TN_RUNTIME_PARITY_COVERAGE_GAP`.

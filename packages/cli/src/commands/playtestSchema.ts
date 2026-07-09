@@ -11,6 +11,10 @@ export interface IPlaytestSchemaPayload {
     stepSequence: IPlaytestScenario["steps"];
   };
   message: string;
+  parity: {
+    description: string;
+    fields: Array<{ description: string; name: string; type: string }>;
+  };
   schema: "threenative.playtest-schema";
   setup: {
     description: string;
@@ -63,6 +67,17 @@ export function playtestSchemaPayload(): IPlaytestSchemaPayload {
       ],
     },
     message: "Machine-readable playtest scenario and assertion DSL schema.",
+    parity: {
+      description: "Optional web/desktop parity comparison tolerances consumed by paired gameplay parity gates.",
+      fields: [
+        { description: "Targets to run from the same scenario, usually web and desktop.", name: "parity.targets", type: "Array<web|desktop|bevy>" },
+        { description: "Maximum movement distance delta between targets.", name: "parity.compare.movementDistance.maxDelta", type: "number" },
+        { description: "Maximum signed movement delta per axis.", name: "parity.compare.axisDelta.x|y|z", type: "number" },
+        { description: "Resource dot paths that must match across targets.", name: "parity.compare.resources[]", type: "string" },
+        { description: "Minimum shared contact assertion count.", name: "parity.compare.contacts.minSharedCount", type: "number" },
+        { description: "Animation evidence required on selected targets.", name: "parity.compare.animation[]", type: "{ entity: string, clip?: string, requiredOn?: string[] }" },
+      ],
+    },
     schema: "threenative.playtest-schema",
     setup: {
       description: "Optional initial runtime Transform overrides applied before warmup and baseline sampling.",
@@ -90,5 +105,5 @@ export function playtestSchemaPayload(): IPlaytestSchemaPayload {
 
 function renderHumanSchema(payload: IPlaytestSchemaPayload): string {
   const assertions = payload.assertions.map((entry) => `  ${entry.kind}: ${entry.description}`).join("\n");
-  return `${payload.message}\n\nAssertions:\n${assertions}\n\nUse --json for field definitions and examples.\n`;
+  return `${payload.message}\n\nAssertions:\n${assertions}\n\nParity:\n  ${payload.parity.description}\n\nUse --json for field definitions and examples.\n`;
 }

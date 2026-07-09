@@ -24,7 +24,9 @@ export async function verifyPrePushGate(options = {}) {
   const artifactDir = options.artifactDir ?? targets.absoluteDir;
   const reportPath = options.reportPath ?? resolve(artifactDir, "verification-report.json");
   const steps = [];
-  const linkedReports = {};
+  const linkedReports = {
+    gameplayParityReportPath: resolve(root, "tools/verify/artifacts/gameplay-parity/verification-report.json"),
+  };
 
   async function runParallel(tasks) {
     const results = await Promise.all(
@@ -92,6 +94,12 @@ export async function verifyPrePushGate(options = {}) {
   }
 
   const failedTests = await runPhase("tests", [
+    {
+      args: ["test:gameplay", "--", "--json"],
+      command: "pnpm",
+      name: "gameplay parity smoke",
+      timeoutMs: 120000,
+    },
     {
       args: ["-r", "--if-present", "test"],
       command: "pnpm",

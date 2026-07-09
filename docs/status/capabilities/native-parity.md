@@ -15,6 +15,12 @@ Current support:
   in the same directory.
 - Closed parity rows are protected by focused gates; remaining gaps stay in
   runtime/proof-loop PRDs.
+- Gameplay parity now has a bounded focused gate: `pnpm test:gameplay` runs
+  the humanoid course forward-movement playtest against web and desktop targets
+  and writes paired target summaries under
+  `tools/verify/artifacts/gameplay-parity/`. Its current resource probes are
+  source-backed checks for enrolled assets/materials/textures, so they do not
+  promote broad native runtime resource parity.
 - UI rows with only native metadata components, trace observations, structural
   conformance, or diagnostics are not native promotions. Current UI promotion
   wording is bounded in [ui.md](ui.md) and
@@ -43,6 +49,8 @@ Promotion policy:
 Verification:
 
 - `pnpm verify:conformance`
+- `pnpm test:gameplay`
+- `pnpm verify:gameplay-parity`
 - `pnpm verify:parity:smoke`
 - `pnpm verify:webview-package`
 - `node packages/cli/dist/index.js playtest --project templates/structured-source-starter --target desktop --entity player --press KeyD --frames 30 --expect-moved --native-screenshots --out ../../runtime-bevy/artifacts/native-playtest-p0/structured-source-starter --json`

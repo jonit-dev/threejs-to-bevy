@@ -12,6 +12,8 @@ export { resolveArtifactTargets, toRepoRelative, type ArtifactOwner, type Artifa
 export { loadFixtureCatalog, resolveFixtureId, listCurrentFixtures } from "./conformance.js";
 export { runLegacyScriptAlias, resolveScriptAlias, formatDeprecationDiagnostic, listDeprecatedScriptAliases, isRegisteredGate, SCRIPT_ALIASES } from "./legacyAliases.js";
 export { runGameProductionGate, type IGameProductionGateResult } from "./gameProductionGate.js";
+export { runGameplayParityGate, type GameplayParityReport } from "./gameplayParity.js";
+export { compareAssetProbe, compareMaterialProbe, compareTextureProbe, type GameplayParityProbeObservations } from "./gameplayParityProbes.js";
 export { runExampleBuildSweep, type IExampleBuildSweepResult } from "./exampleBuildSweep.js";
 export {
   PERFORMANCE_PROOF_SCHEMA,

@@ -21,6 +21,7 @@ import { iterateCommand } from "./commands/iterate.js";
 import { lookCommand } from "./commands/look.js";
 import { modelTestCommand } from "./commands/modelTest.js";
 import { packageCommand } from "./commands/package.js";
+import { parityPlaytestCommand } from "./commands/parityPlaytest.js";
 import { performanceProofCommand } from "./commands/performanceProof.js";
 import { playtestCommand } from "./commands/playtest.js";
 import { navCommand, physicsCommand } from "./commands/physicsNav.js";
@@ -184,6 +185,13 @@ export const CLI_COMMAND_REGISTRY = defineCommandRegistry({
     description: "Create a local desktop package artifact from a bundle.",
     implemented: true,
     usage: "tn package --target desktop --bundle <path> [--runtime bevy|webview] [--format portable|archive|installer] [--out <path>] [--json]",
+  },
+  parity: {
+    description: "Run paired runtime parity proof helpers.",
+    handler: parityPlaytestCommand,
+    implemented: true,
+    subcommands: ["playtest"],
+    usage: "tn parity playtest --project <path> --scenario <playtest.json> [--targets web,desktop] [--stable-artifacts] [--json]",
   },
   performance: {
     description: "Capture runtime performance metrics or unsupported native counter diagnostics and write a versioned proof sidecar.",

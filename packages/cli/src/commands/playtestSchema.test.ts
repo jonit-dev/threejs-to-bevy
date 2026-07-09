@@ -21,3 +21,11 @@ test("should list every executable assertion kind when schema is requested", asy
   assert.equal(payload.assertions.some((entry) => entry.kind === "resources"), true);
   assert.equal(payload.assertions.some((entry) => entry.kind === "hud"), true);
 });
+
+test("gameplay parity schema should describe optional parity comparison fields", async () => {
+  const result = await playtestSchemaCommand(["--json"]);
+  const payload = JSON.parse(result.stdout) as { parity: { fields: Array<{ name: string }> } };
+
+  assert.equal(payload.parity.fields.some((field) => field.name === "parity.compare.movementDistance.maxDelta"), true);
+  assert.equal(payload.parity.fields.some((field) => field.name === "parity.compare.resources[]"), true);
+});

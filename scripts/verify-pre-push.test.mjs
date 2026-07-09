@@ -44,9 +44,11 @@ test("verify pre-push runs workspace, conformance, and parity phases", async () 
     assert.equal(commands.includes("build verify tools"), false);
     assert.ok(commands.includes("typecheck"));
     assert.equal(commands.includes("lint"), false);
+    assert.ok(commands.includes("gameplay parity smoke"));
     assert.ok(commands.includes("package tests"));
     assert.ok(commands.includes("rust tests"));
     assert.equal(commands.includes("script tests"), false);
+    assert.match(String(report.artifacts.gameplayParityReportPath), /gameplay-parity\/verification-report\.json$/);
     assert.ok(report.steps.some((step) => step.name === "conformance: ir conformance fixtures"));
     assert.ok(report.steps.some((step) => step.name === "parity: verify baseline visual parity checkpoints"));
   } finally {

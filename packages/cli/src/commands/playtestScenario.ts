@@ -86,6 +86,15 @@ export interface IPlaytestScenarioAssertions {
   visibility?: IPlaytestVisibilityAssertion[];
 }
 
+export interface IPlaytestParityConfig {
+  animation?: Array<{ clip?: string; entity: string; requiredOn?: PlaytestTarget[] }>;
+  axisDelta?: Partial<Record<"x" | "y" | "z", number>>;
+  contacts?: { minSharedCount?: number };
+  movementDistance?: { maxDelta: number };
+  resources?: string[];
+  targets?: PlaytestTarget[];
+}
+
 export interface IPlaytestArtifactRequest {
   console?: boolean;
   contactSheet?: boolean;
@@ -110,6 +119,7 @@ export interface IPlaytestScenario {
   artifacts?: IPlaytestArtifactRequest;
   assert?: IPlaytestScenarioAssertions;
   name: string;
+  parity?: IPlaytestParityConfig;
   schemaVersion: 1;
   setup?: IPlaytestScenarioSetup;
   sourcePath?: string;
@@ -247,6 +257,7 @@ function validatePlaytestScenario(value: unknown, scenarioPath: string, absolute
     ...(isRecord(value.artifacts) ? { artifacts: value.artifacts as IPlaytestArtifactRequest } : {}),
     ...(isRecord(value.assert) ? { assert: validateAssertions(value.assert) } : {}),
     name,
+    ...(isRecord(value.parity) ? { parity: validateParityConfig(value.parity) } : {}),
     schemaVersion: 1,
     ...(isRecord(value.setup) ? { setup: validateSetup(value.setup, scenarioPath) } : {}),
     ...(absolutePath === undefined ? {} : { sourcePath: absolutePath }),
@@ -255,6 +266,47 @@ function validatePlaytestScenario(value: unknown, scenarioPath: string, absolute
     target,
     viewport: validateViewport(value.viewport),
     warmupFrames: positiveInteger(value.warmupFrames) ?? 0,
+  };
+}
+
+function validateParityConfig(value: Record<string, unknown>): IPlaytestParityConfig {
+  return {
+    ...(Array.isArray(value.animation) ? { animation: value.animation.map(validateParityAnimation).filter((item): item is NonNullable<IPlaytestParityConfig["animation"]>[number] => item !== undefined) } : {}),
+    ...(isRecord(value.compare) ? validateParityCompare(value.compare) : validateParityCompare(value)),
+    ...(Array.isArray(value.resources) ? { resources: value.resources.filter((item): item is string => typeof item === "string") } : {}),
+    ...(Array.isArray(value.targets) ? { targets: value.targets.filter((item): item is PlaytestTarget => item === "web" || item === "desktop" || item === "bevy") } : {}),
+  };
+}
+
+function validateParityCompare(value: Record<string, unknown>): Omit<IPlaytestParityConfig, "targets"> {
+  const movementDistance = isRecord(value.movementDistance) && typeof value.movementDistance.maxDelta === "number" && Number.isFinite(value.movementDistance.maxDelta)
+    ? { maxDelta: value.movementDistance.maxDelta }
+    : undefined;
+  const axisDelta = isRecord(value.axisDelta)
+    ? Object.fromEntries(Object.entries(value.axisDelta).filter((entry): entry is ["x" | "y" | "z", number] =>
+        (entry[0] === "x" || entry[0] === "y" || entry[0] === "z") && typeof entry[1] === "number" && Number.isFinite(entry[1]),
+      ))
+    : undefined;
+  const contacts = isRecord(value.contacts) && typeof value.contacts.minSharedCount === "number" && Number.isFinite(value.contacts.minSharedCount)
+    ? { minSharedCount: value.contacts.minSharedCount }
+    : undefined;
+  return {
+    ...(axisDelta !== undefined && Object.keys(axisDelta).length > 0 ? { axisDelta } : {}),
+    ...(Array.isArray(value.animation) ? { animation: value.animation.map(validateParityAnimation).filter((item): item is NonNullable<IPlaytestParityConfig["animation"]>[number] => item !== undefined) } : {}),
+    ...(contacts === undefined ? {} : { contacts }),
+    ...(movementDistance === undefined ? {} : { movementDistance }),
+    ...(Array.isArray(value.resources) ? { resources: value.resources.filter((item): item is string => typeof item === "string") } : {}),
+  };
+}
+
+function validateParityAnimation(value: unknown): NonNullable<IPlaytestParityConfig["animation"]>[number] | undefined {
+  if (!isRecord(value) || typeof value.entity !== "string") {
+    return undefined;
+  }
+  return {
+    ...(typeof value.clip === "string" ? { clip: value.clip } : {}),
+    entity: value.entity,
+    ...(Array.isArray(value.requiredOn) ? { requiredOn: value.requiredOn.filter((item): item is PlaytestTarget => item === "web" || item === "desktop" || item === "bevy") } : {}),
   };
 }
 

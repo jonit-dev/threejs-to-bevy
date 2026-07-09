@@ -11,9 +11,9 @@ packages; +2 compares runtime state/artifacts across adapters.
 
 **Problem:** ThreeNative has target-specific playtests, conformance fixtures,
 and visual parity gates, but no first-class fast parity harness that runs the
-same scenario/probe through Three.js and Bevy and fails on gameplay, asset
-loading, material/texture, or runtime-observation drift before regressions
-ship.
+same scene/scenario/probe through Three.js and Bevy and fails on explicit
+pass/fail assertions for gameplay, asset loading, material/texture, or
+runtime-observation drift before regressions ship.
 
 **Files Analyzed:**
 
@@ -56,6 +56,10 @@ ship.
   tolerance, but that gate does not compare gameplay state or effect evidence.
 - Humanoid course scenarios are high-signal parity seeds, but today they are
   independent web/desktop proofs rather than paired regression contracts.
+- No gate currently audits scene coverage and reports which entities, assets,
+  textures, materials, cameras, lights, resources, UI nodes, scripts, colliders,
+  triggers, and interaction surfaces have assertions versus which are explicitly
+  report-only or unsupported.
 
 ## 2. Solution
 
@@ -80,6 +84,9 @@ ship.
 - Add non-action parity probes for GLB loading, texture loading, material
   controls, animation metadata, and asset diagnostics so runtime adapter
   regressions are caught even when no gameplay input is involved.
+- Add a scene coverage contract: every enrolled scene surface must be covered
+  by at least one pass/fail assertion or explicitly listed as unsupported,
+  deferred, or report-only with a stable reason.
 
 **Architecture Diagram:**
 
@@ -126,10 +133,13 @@ flowchart LR
       creates a regression harness for already-proved or explicitly
       report-only slices; docs must not claim new native support merely because
       a scenario was added.
+- [ ] Assertions are first-class results. The final report must not hide
+      uncovered scene surfaces behind an overall pass; uncovered required
+      surfaces fail with `TN_RUNTIME_PARITY_COVERAGE_GAP`.
 
 **Data Changes:** Extend playtest scenario schema with optional `parity`, and
-add a runtime parity manifest for non-action probes. No IR schema or game
-bundle changes.
+add a runtime parity manifest for scene coverage and non-action probes. No IR
+schema or game bundle changes.
 
 Example scenario extension:
 
@@ -144,6 +154,36 @@ Example scenario extension:
       "contacts": { "minSharedCount": 1 },
       "animation": [{ "entity": "player", "clip": "walk", "requiredOn": ["web", "desktop"] }]
     }
+  }
+}
+```
+
+Example scene-wide coverage manifest entry:
+
+```json
+{
+  "id": "humanoid-course-scene-coverage",
+  "project": "examples/humanoid-physics-course",
+  "scene": "arena",
+  "kind": "sceneCoverage",
+  "targets": ["web", "desktop"],
+  "requiredSurfaces": {
+    "entities": ["player", "camera.main", "ramp.main", "ball.push.01"],
+    "assets": ["model.soldier"],
+    "textures": ["tex.surface.ue-grid"],
+    "materials": ["mat.floor.ue-grid"],
+    "resources": ["GameState"],
+    "ui": ["hud.status", "hud.checkpoints"]
+  },
+  "assertions": [
+    { "kind": "entityVisible", "entity": "player", "minProjectedPixels": 1200 },
+    { "kind": "assetLoaded", "asset": "model.soldier" },
+    { "kind": "textureBound", "material": "mat.floor.ue-grid", "texture": "tex.surface.ue-grid" },
+    { "kind": "resourcePath", "resource": "GameState", "path": "checkpointTotal", "equals": 2 }
+  ],
+  "coverage": {
+    "reportOnly": [],
+    "unsupported": []
   }
 }
 ```
@@ -212,8 +252,8 @@ Example non-action runtime parity manifest entry:
    for enrolled scenarios, and compares reports.
 4. Developer sees compact pass/fail output and opens
    `tools/verify/artifacts/gameplay-parity/verification-report.json` for
-   per-target summaries, runtime probe observations, comparator diagnostics,
-   and artifact links.
+   per-target summaries, assertion results, coverage gaps, runtime probe
+   observations, comparator diagnostics, and artifact links.
 
 **Required root scripts:**
 
@@ -248,6 +288,8 @@ Example non-action runtime parity manifest entry:
 - Full matrix: explicit `pnpm verify:gameplay-parity -- --profile full`.
 - Report must include per-scenario/per-probe and per-target duration so slow
   cases are visible and can be moved out of the smoke profile.
+- Coverage auditing must run before expensive full-profile checks so missing
+  assertion coverage fails fast.
 
 ## 4. Execution Phases
 
@@ -262,7 +304,7 @@ Example non-action runtime parity manifest entry:
   planning and report shape.
 - `tools/verify/src/gameplayParityManifest.ts` - manifest types for scenario
   and probe enrollment.
-- `tools/verify/src/index.ts` - export the gate helper.
+- `tools/verify/src/gameplayParityCoverage.ts` - scene surface coverage audit.
 
 **Implementation:**
 
@@ -274,7 +316,11 @@ Example non-action runtime parity manifest entry:
 - [ ] Add duration accounting to the report schema from the first phase so
       later scenario/probe enrollments cannot hide slowdowns.
 - [ ] Define manifest entries for `playtestScenario`, `assetProbe`,
-      `textureProbe`, and `materialProbe`.
+      `textureProbe`, `materialProbe`, and `sceneCoverage`.
+- [ ] Define a common assertion result shape:
+      `{ id, kind, target, surface, pass, expected, observed, diagnostic? }`.
+- [ ] Coverage audit fails when a required surface is neither asserted nor
+      explicitly listed as unsupported/report-only.
 - [ ] Gate initially runs no expensive playtests in unit tests; inject a fake
       runner to prove aggregation and diagnostics.
 
@@ -285,6 +331,7 @@ Example non-action runtime parity manifest entry:
 | `tools/verify/src/gameplayParity.test.ts` | `should write a passing gameplay parity report when all enrolled cases pass` | report status is `pass` and artifact paths exist |
 | `tools/verify/src/gameplayParity.test.ts` | `should include duration budget fields in the gameplay parity report` | report contains total and per-case durations |
 | `tools/verify/src/gameplayParity.test.ts` | `should support non-action probe enrollment` | manifest accepts asset, texture, and material probes |
+| `tools/verify/src/gameplayParity.test.ts` | `should fail when a required scene surface has no assertion` | emits `TN_RUNTIME_PARITY_COVERAGE_GAP` |
 | `tools/verify/src/cli/run.test.ts` | `should register gameplay parity focused gates` | `test:gameplay` and `verify:gameplay-parity` are available with metadata |
 
 **User Verification:**
@@ -389,12 +436,11 @@ Example non-action runtime parity manifest entry:
 - `tools/verify/src/gameplayParityProbes.test.ts` - probe normalization tests.
 - `tools/verify/src/gameplayParity.ts` - include probe results in aggregate
   comparison.
-- `packages/runtime-web-three/src/conformance.ts` or existing runtime
-  diagnostics surface - expose missing asset/texture/material observation
-  fields if they are not already available.
-- `runtime-bevy/crates/threenative_runtime/src/conformance.rs` or existing
-  readiness diagnostics surface - expose matching native observation fields if
-  they are not already available.
+- `tools/verify/src/gameplayParityCoverage.ts` - map probe assertions to scene
+  surfaces.
+- Runtime observation surfaces - expose missing asset/texture/material
+  observation fields through the existing web/native conformance or readiness
+  diagnostics paths if they are not already available.
 
 **Implementation:**
 
@@ -413,6 +459,9 @@ Example non-action runtime parity manifest entry:
       `TN_RUNTIME_PARITY_TEXTURE_DRIFT`, and
       `TN_RUNTIME_PARITY_MATERIAL_DRIFT` diagnostics with target values and
       artifact paths.
+- [ ] Every probe produces assertion results, not only observations. A loaded
+      GLB, missing texture, texture repeat mismatch, material binding mismatch,
+      and asset diagnostic are all pass/fail rows in the aggregate report.
 
 **Tests Required:**
 
@@ -422,6 +471,7 @@ Example non-action runtime parity manifest entry:
 | `tools/verify/src/gameplayParityProbes.test.ts` | `should fail when a named animation clip is missing on one target` | emits `TN_RUNTIME_PARITY_ASSET_DRIFT` |
 | `tools/verify/src/gameplayParityProbes.test.ts` | `should fail when texture repeat differs across targets` | emits `TN_RUNTIME_PARITY_TEXTURE_DRIFT` |
 | `tools/verify/src/gameplayParityProbes.test.ts` | `should fail when material texture binding differs across targets` | emits `TN_RUNTIME_PARITY_MATERIAL_DRIFT` |
+| `tools/verify/src/gameplayParityProbes.test.ts` | `should return assertion rows for every requested probe surface` | assertion count matches requested surfaces |
 
 **User Verification:**
 
@@ -429,16 +479,59 @@ Example non-action runtime parity manifest entry:
 - Expected: the smoke report includes at least one non-action runtime probe
   alongside the gameplay scenario, without exceeding the warm-run budget.
 
-#### Phase 5: Humanoid Course Enrollment - High-signal parity scenarios and probes protect the regressions we care about
+#### Phase 5: Scene Coverage Assertions - Every enrolled scene surface is testable
 
 **Files (max 5):**
 
-- `examples/humanoid-physics-course/playtests/humanoid-course-forward-movement.playtest.json` - add parity block.
-- `examples/humanoid-physics-course/playtests/humanoid-course-ramp-traverse.playtest.json` - add parity block or report-only enrollment if native behavior is not yet stable.
-- `examples/humanoid-physics-course/playtests/humanoid-course-stairs.playtest.json` - add parity block or report-only enrollment.
-- `examples/humanoid-physics-course/playtests/humanoid-course-hazard-hit.playtest.json` - add parity block or report-only enrollment.
+- `tools/verify/src/gameplayParityCoverage.ts` - implement required surface
+  inventory and assertion coverage checks.
+- `tools/verify/src/gameplayParityCoverage.test.ts` - coverage pass/fail tests.
+- `tools/verify/src/gameplayParityManifest.ts` - add scene coverage manifest
+  support.
+- `packages/cli/src/commands/playtestAssertions.ts` - reuse assertion result
+  shape or expose compatible types.
+- `docs/workflows/playtest-proof.md` - document coverage requirements.
+
+**Implementation:**
+
+- [ ] Build or load a scene surface inventory from emitted bundle/source:
+      entities, cameras, lights, assets, textures, materials, resources, UI
+      nodes, scripts/systems, physics colliders, triggers/sensors, and
+      animation clips.
+- [ ] Require every manifest-listed required surface to have at least one
+      assertion row.
+- [ ] Fail uncovered required surfaces with
+      `TN_RUNTIME_PARITY_COVERAGE_GAP`.
+- [ ] Permit `reportOnly` and `unsupported` entries only when they include a
+      stable reason and do not contribute to pass claims.
+- [ ] Add summary counts:
+      `requiredSurfaces`, `assertedSurfaces`, `reportOnlySurfaces`,
+      `unsupportedSurfaces`, `coveragePercent`, and `coverageStatus`.
+
+**Tests Required:**
+
+| Test File | Test Name | Assertion |
+|-----------|-----------|-----------|
+| `tools/verify/src/gameplayParityCoverage.test.ts` | `should pass when every required scene surface has an assertion` | coverage status is `pass` |
+| `tools/verify/src/gameplayParityCoverage.test.ts` | `should fail when an entity lacks any assertion` | emits `TN_RUNTIME_PARITY_COVERAGE_GAP` |
+| `tools/verify/src/gameplayParityCoverage.test.ts` | `should keep report-only surfaces visible without passing them` | report-only count increments and pass claim excludes them |
+| `tools/verify/src/gameplayParityCoverage.test.ts` | `should reject unsupported surfaces without reasons` | emits manifest diagnostic |
+
+**User Verification:**
+
+- Action: remove one required humanoid surface assertion and run
+  `pnpm test:gameplay`.
+- Expected: gate fails before claiming parity and names the uncovered surface.
+
+#### Phase 6: Humanoid Course Enrollment - High-signal parity scenarios and probes protect the regressions we care about
+
+**Files (max 5):**
+
+- `examples/humanoid-physics-course/playtests/*.playtest.json` - add parity
+  blocks or report-only enrollment for the selected humanoid scenarios.
 - `tools/verify/src/gameplayParity.ts` - default enrollment manifest for
   humanoid scenarios and probes.
+- `tools/verify/src/gameplayParityManifest.ts` - humanoid scene coverage entry.
 
 **Implementation:**
 
@@ -453,6 +546,11 @@ Example non-action runtime parity manifest entry:
       additional cases fit the budget.
 - [ ] Enroll `Soldier.glb` loading, named animation clips, floor texture repeat,
       and floor material texture binding as the first non-action probes.
+- [ ] Add a humanoid scene coverage manifest that names the required surfaces
+      in the course and maps each to assertions or explicit report-only
+      reasons.
+- [ ] Require all high-value surfaces in `threenative.config.json` production
+      metadata to be represented in coverage.
 - [ ] No status/native capability claim changes until a scenario is enforced
       and linked from the focused gate evidence.
 
@@ -464,15 +562,16 @@ Example non-action runtime parity manifest entry:
 | `tools/verify/src/gameplayParity.test.ts` | `should preserve report-only scenarios without failing the gate` | report-only failures become warnings with artifact links |
 | `tools/verify/src/gameplayParity.test.ts` | `should keep slow scenarios out of smoke profile` | full-profile cases are not run by `test:gameplay` |
 | `tools/verify/src/gameplayParity.test.ts` | `should include cheap asset probe in smoke profile` | smoke profile includes Soldier GLB probe |
+| `tools/verify/src/gameplayParityCoverage.test.ts` | `should require high-value humanoid surfaces to be asserted` | missing player/GLB/texture/resource/UI coverage fails |
 
 **User Verification:**
 
 - Action: `pnpm test:gameplay`
-- Expected: humanoid forward movement and one cheap runtime probe are enforced;
-  report-only humanoid scenarios/probes write target artifacts and warnings
-  without claiming parity.
+- Expected: humanoid forward movement, scene coverage, and one cheap runtime
+  probe are enforced; report-only humanoid scenarios/probes write target
+  artifacts and warnings without claiming parity.
 
-#### Phase 6: CI Ratchet And Docs - Runtime parity becomes part of the normal harness
+#### Phase 7: CI Ratchet And Docs - Runtime parity becomes part of the normal harness
 
 **Files (max 5):**
 
@@ -494,9 +593,11 @@ Example non-action runtime parity manifest entry:
       meets the warm-run budget. If it does not, keep the gate explicit and
       record the blocker in tooling-proof status.
 - [ ] Ensure aggregate reports link target summaries and comparator
--      diagnostics for gameplay scenarios and runtime probes.
+      diagnostics for gameplay scenarios and runtime probes.
 - [ ] Update docs to state that behavioral parity is asserted only for
-      enforced enrolled scenarios/probes.
+      enforced enrolled scenarios/probes with explicit assertion rows.
+- [ ] Document that every enrolled scene must provide coverage or explicit
+      non-passing exclusions.
 - [ ] Keep visual parity docs separate and continue using calibrated screenshot
       gates for rendering drift.
 
@@ -523,7 +624,9 @@ After each phase:
    - Phase 2-3:
      `pnpm --filter @threenative/cli test -- --run gameplay parity`
    - Phase 4: `pnpm test:gameplay`
-   - Phase 5: `pnpm verify:gameplay-parity -- --json`
+   - Phase 5: `pnpm test:gameplay`
+   - Phase 6: `pnpm test:gameplay`
+   - Phase 7: `pnpm verify:gameplay-parity -- --json`
 3. Run `pnpm check:docs` after docs/status changes.
 4. Use the PRD work reviewer checkpoint process if implementation is being
    executed under the PRD workflow.
@@ -538,6 +641,7 @@ After each phase:
 - Command registration and metadata.
 - Runtime budget accounting and profile selection.
 - Asset, texture, and material probe normalization.
+- Scene surface coverage auditing.
 
 **Integration Tests:**
 
@@ -547,6 +651,8 @@ After each phase:
 - Smoke profile avoids heavy artifacts and excludes full-profile scenarios.
 - Runtime probes use existing observation/verification utilities and do not
   require gameplay input.
+- Every required scene surface produces a pass/fail assertion row or a
+  non-passing exclusion.
 
 **Real Command Proof:**
 
@@ -566,8 +672,10 @@ pnpm tn -- parity playtest \
 - `tools/verify/artifacts/gameplay-parity/verification-report.json`
 - Per-target playtest summaries for every enrolled scenario.
 - Per-target runtime probe observations for every enrolled probe.
+- Scene coverage report with required/asserted/report-only/unsupported counts.
 - Comparator diagnostics include metric, threshold, observed values, and
   artifact paths.
+- Assertion results for every required surface.
 - Per-target and total duration measurements, with smoke/full profile labels.
 - Enforced scenario failures exit nonzero.
 - Report-only scenario failures are visible but do not promote capability
@@ -590,6 +698,9 @@ pnpm tn -- parity playtest \
       outside scenario tolerances.
 - [ ] Runtime probe comparator fails on GLB/texture/material loading drift
       outside probe tolerances.
+- [ ] Every required scene surface has an assertion pass/fail row or an
+      explicit non-passing exclusion with a reason.
+- [ ] Missing assertion coverage fails with `TN_RUNTIME_PARITY_COVERAGE_GAP`.
 - [ ] Aggregate report links both target playtest artifacts.
 - [ ] At least one humanoid scenario is enforced; additional unstable native
       scenarios are report-only with explicit reasons.

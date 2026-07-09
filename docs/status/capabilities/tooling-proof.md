@@ -105,6 +105,15 @@ Current support:
   from `effect-log.json` when available. Movement assertions also support
   `minAxisDelta` for secondary signed-axis proof, such as requiring positive Y
   gain while the primary route asserts forward motion.
+- `pnpm test:gameplay` runs the focused gameplay parity smoke profile through
+  verify-tools. The current enforced manifest pairs web and desktop playtests
+  for the humanoid course forward-movement scenario, checks source-backed
+  model/animation, texture-repeat, and material-texture resource probes for
+  both targets, and requires scene coverage for player, camera, soldier
+  animation clips, floor texture/material, gameplay state, update system, HUD,
+  and colliders. The full `pnpm verify:gameplay-parity` profile is enrolled in
+  `pnpm verify:release`; heavier ramp/stairs/hazard/push scenarios remain
+  report-only until their tolerances and runtime observations are promoted.
 - `pnpm check:docs` for docs consistency and STATUS index budget.
 - `pnpm verify:smoke`, `pnpm verify:pre-push`, and `pnpm verify:release` for
   escalating proof levels.
@@ -125,6 +134,8 @@ Verification:
 - `pnpm --filter @threenative/verify-tools test -- --run "efficient scale"`
 - `pnpm verify:efficient-scale`
 - `pnpm verify:webview-package`
+- `pnpm test:gameplay`
+- `pnpm verify:gameplay-parity`
 - `pnpm --filter @threenative/verify-tools test -- --run boundary`
 - `pnpm check:docs`
 - `pnpm verify:smoke`

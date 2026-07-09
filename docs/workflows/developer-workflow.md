@@ -569,16 +569,19 @@ After `pnpm install`, Husky installs local git hooks:
 | Hook | Command | Purpose |
 |------|---------|---------|
 | `pre-commit` | `pnpm verify:smoke` | Fast naming/docs drift check |
-| `pre-push` | `pnpm verify:pre-push` | Orchestrated workspace verify + conformance + structured-source visual parity (~2–3 min target). |
+| `pre-push` | `pnpm verify:pre-push` | Orchestrated workspace verify + gameplay parity smoke + conformance + structured-source visual parity (~2–3 min target). |
 
 Run `pnpm verify:parity:smoke` explicitly when you need the one-scene web↔Bevy
 screenshot proof before pushing. The smoke checkpoint builds
 `examples/stylized-nature-component` from structured source so the parity smoke
 path no longer depends on a standalone `src/game.ts` example.
+Run `pnpm test:gameplay` explicitly when you need the bounded humanoid
+web/desktop behavioral smoke proof before pushing.
 
 Evidence:
 
 - smoke: `tools/verify/artifacts/parity-smoke/verification-report.json`
+- gameplay: `tools/verify/artifacts/gameplay-parity/verification-report.json`
 - push: `tools/verify/artifacts/baseline-visual-parity/verification-report.json`
 
 Use `git commit --no-verify` or `git push --no-verify` to bypass hooks when

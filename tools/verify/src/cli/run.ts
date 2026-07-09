@@ -29,6 +29,32 @@ export interface FocusedGateRunOptions extends FocusedGateCommandOptions {
 
 export const FOCUSED_GATES: Record<string, FocusedGate> = {
   ...SCRIPT_ONLY_GATES,
+  "test:gameplay": {
+    commands: [
+      ["pnpm", "--filter", "@threenative/cli", "build"],
+      ["node", "tools/verify/dist/gameplayParity.js", "--profile", "smoke"],
+    ],
+    description: "Gameplay parity smoke gate.",
+    metadata: {
+      owner: "tools/verify gameplay parity gate",
+      profile: "smoke",
+      reason: "Runs the bounded gameplay parity smoke harness through the focused gate dispatcher for local regression checks.",
+      protects: "Paired runtime playtest/probe aggregation, scene coverage accounting, and behavioral parity report shape.",
+    },
+  },
+  "verify:gameplay-parity": {
+    commands: [
+      ["pnpm", "--filter", "@threenative/cli", "build"],
+      ["node", "tools/verify/dist/gameplayParity.js", "--profile", "full"],
+    ],
+    description: "Gameplay parity verification gate.",
+    metadata: {
+      owner: "tools/verify gameplay parity gate",
+      profile: "focused",
+      reason: "Runs the CI-oriented gameplay parity harness with full-profile enrollment and artifact-backed diagnostics.",
+      protects: "Web/Bevy gameplay parity assertions, runtime probe comparisons, and explicit scene surface coverage.",
+    },
+  },
   "verify:animation-physics-residuals": {
     commands: [
       ["pnpm", "--filter", "@threenative/ir", "build"],

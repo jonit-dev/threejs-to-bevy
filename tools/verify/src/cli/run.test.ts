@@ -14,6 +14,8 @@ test("focused gate dispatcher should list current capability gates", () => {
     "verify:character-physics-contacts",
     "verify:default-look",
     "verify:generated-games",
+    "test:gameplay",
+    "verify:gameplay-parity",
     "verify:input-ui-polish",
     "verify:persistence-reload",
     "verify:particle-commands",
@@ -93,6 +95,25 @@ test("should run character physics contacts gate", () => {
       ["node", "scripts/verify-character-physics-contacts.mjs"],
     ],
   );
+});
+
+test("should register gameplay parity focused gates", () => {
+  assert.deepEqual(
+    getFocusedGateCommands("test:gameplay"),
+    [
+      ["pnpm", "--filter", "@threenative/cli", "build"],
+      ["node", "tools/verify/dist/gameplayParity.js", "--profile", "smoke"],
+    ],
+  );
+  assert.deepEqual(
+    getFocusedGateCommands("verify:gameplay-parity", { forwardedArgs: ["--json"] }),
+    [
+      ["pnpm", "--filter", "@threenative/cli", "build"],
+      ["node", "tools/verify/dist/gameplayParity.js", "--profile", "full", "--json"],
+    ],
+  );
+  assert.equal(FOCUSED_GATES["test:gameplay"]?.metadata.profile, "smoke");
+  assert.equal(FOCUSED_GATES["verify:gameplay-parity"]?.metadata.owner, "tools/verify gameplay parity gate");
 });
 
 test("should skip setup when requested by release", () => {

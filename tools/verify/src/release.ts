@@ -41,6 +41,7 @@ export const RELEASE_FOCUSED_GATES: readonly FocusedGate[] = [
   { name: "verify v9 rendering lights", reportPath: "tools/verify/artifacts/rendering-lights/verification-report.json", script: "verify:v9:rendering-lights" },
   { name: "verify animation physics navigation residuals", reportPath: "tools/verify/artifacts/animation-physics-residuals/verification-report.json", script: "verify:animation-physics-residuals" },
   { name: "verify generated games", reportPath: "tools/verify/artifacts/game-production/verification-report.json", script: "verify:generated-games" },
+  { name: "verify gameplay parity", reportPath: "tools/verify/artifacts/gameplay-parity/verification-report.json", script: "verify:gameplay-parity" },
   { name: "verify input ui polish", reportPath: "tools/verify/artifacts/input-ui-polish/verification-report.json", script: "verify:input-ui-polish" },
   { name: "verify persistence reload", reportPath: "tools/verify/artifacts/persistence-reload/verification-report.json", script: "verify:persistence-reload" },
   { name: "verify portable shader material", reportPath: "tools/verify/artifacts/portable-shader-material/verification-report.json", script: "verify:portable-shader-material" },
