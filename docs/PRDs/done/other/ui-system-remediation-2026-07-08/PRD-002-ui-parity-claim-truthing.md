@@ -37,24 +37,24 @@ and render-to-texture/world transforms.
 
 ## 3. Acceptance Criteria
 
-- [ ] Every UI row named in the inspection has wording that matches current
+- [x] Every UI row named in the inspection has wording that matches current
       implementation and proof evidence.
-- [ ] Rows with only trace metadata are not described as rendered or
+- [x] Rows with only trace metadata are not described as rendered or
       behaviorally supported.
-- [ ] Rows with only structural conformance are not described as full parity.
-- [ ] `docs/status/capabilities/ui.md` links or summarizes the corrected UI
+- [x] Rows with only structural conformance are not described as full parity.
+- [x] `docs/status/capabilities/ui.md` links or summarizes the corrected UI
       support boundaries.
-- [ ] `docs/status/capabilities/native-parity.md` keeps the native promotion
+- [x] `docs/status/capabilities/native-parity.md` keeps the native promotion
       freeze explicit for UI work.
-- [ ] The one-line UI and native parity entries in `docs/STATUS.md` remain
+- [x] The one-line UI and native parity entries in `docs/STATUS.md` remain
       accurate after capability wording changes.
 
 ## 4. Verification
 
-- [ ] Run `pnpm check:docs`.
-- [ ] For each promoted UI/native claim, identify the proof command or artifact
+- [x] Run `pnpm check:docs`.
+- [x] For each promoted UI/native claim, identify the proof command or artifact
       path in the docs.
-- [ ] Confirm no inspection-named unproved row still uses promoted/P1 wording
+- [x] Confirm no inspection-named unproved row still uses promoted/P1 wording
       without evidence.
 
 ## 5. Dependencies

@@ -33,25 +33,25 @@ and values, not DOM events, elements, or browser handles.
 
 ## 3. Acceptance Criteria
 
-- [ ] A DOM button click on web produces one script-observable UI action with
+- [x] A DOM button click on web produces one script-observable UI action with
       the authored node ID/action ID and deterministic value payload.
-- [ ] Slider/range changes on web produce script-observable value actions
+- [x] Slider/range changes on web produce script-observable value actions
       without duplicate delivery across frames.
-- [ ] `ctx.ui.setDisabled`, `ctx.ui.setValue`, and `ctx.ui.activate` either
+- [x] `ctx.ui.setDisabled`, `ctx.ui.setValue`, and `ctx.ui.activate` either
       mutate the live overlay state or produce an explicit unsupported
       diagnostic; no silent detached state remains.
-- [ ] Native Bevy UI action delivery behavior remains unchanged.
-- [ ] Unsupported raw DOM access remains unavailable to scripts.
+- [x] Native Bevy UI action delivery behavior remains unchanged.
+- [x] Unsupported raw DOM access remains unavailable to scripts.
 
 ## 4. Verification
 
-- [ ] Add a web runtime test that renders a UI button, dispatches a click, ticks
+- [x] Add a web runtime test that renders a UI button, dispatches a click, ticks
       the game loop, and asserts the script receives the action.
-- [ ] Add a slider/value test covering value payload shape and de-duplication.
-- [ ] Add or update a fixture that can later run under PRD-005 behavioral
+- [x] Add a slider/value test covering value payload shape and de-duplication.
+- [x] Add or update a fixture that can later run under PRD-005 behavioral
       conformance.
-- [ ] Run the narrow web runtime test package.
-- [ ] Run `pnpm verify:conformance` if shared UI/input contracts change.
+- [x] Run the narrow web runtime test package.
+- [x] Run `pnpm verify:conformance` if shared UI/input contracts change.
 
 ## 5. Dependencies
 
