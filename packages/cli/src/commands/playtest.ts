@@ -514,6 +514,7 @@ async function runNativePlaytest(options: IPlaytestRunOptions, bevyRunner: BevyR
   const afterArtifact = resolve(options.artifactDirectory, "after.png");
   const recordingPlan = nativeRecordingPlan(options.artifactDirectory, options.scenario);
   const captureTicks = nativeScenarioCaptureTicks(options.scenario);
+  const observationIds = scenarioObservationIds(options.scenario);
   const recordingFrames = options.nativeRecording ? recordingPlan.frames : [];
   const screenshotArtifacts = options.nativeScreenshots
     ? { afterArtifact, beforeArtifact, recordingFrames }
@@ -535,6 +536,8 @@ async function runNativePlaytest(options: IPlaytestRunOptions, bevyRunner: BevyR
   const after = transformSampleNearTick(readinessSamples, options.entityId, captureTicks.afterTick, "after");
   const followBefore = options.follow === undefined ? undefined : transformSampleNearTick(readinessSamples, options.follow.entityId, captureTicks.beforeTick, beforeMode);
   const followAfter = options.follow === undefined ? undefined : transformSampleNearTick(readinessSamples, options.follow.entityId, captureTicks.afterTick, "after");
+  const beforeResources = nativeResourceSnapshotsNearTick(readinessSamples, observationIds.resources, captureTicks.beforeTick, beforeMode);
+  const afterResources = nativeResourceSnapshotsNearTick(readinessSamples, observationIds.resources, captureTicks.afterTick, "after");
   const diagnostics: IPlaytestDiagnostic[] = readinessSamples
     .flatMap((sample) => Array.isArray(sample.diagnostics) ? sample.diagnostics : [])
     .filter((diagnostic): diagnostic is IPlaytestDiagnostic => isRecord(diagnostic) && typeof diagnostic.code === "string" && typeof diagnostic.message === "string")
@@ -602,7 +605,7 @@ async function runNativePlaytest(options: IPlaytestRunOptions, bevyRunner: BevyR
       effectLog: {},
       hud: {},
       network: [],
-      resources: {},
+      resources: mergeSnapshots(beforeResources, afterResources),
       runtimeDiagnostics,
     },
     pass: !hasErrors,
@@ -630,6 +633,28 @@ function nativeRuntimeResources(readinessSamples: readonly Record<string, unknow
     }
   }
   return { declared: [...declared].sort(), observations };
+}
+
+function nativeResourceSnapshotsNearTick(samples: readonly Record<string, unknown>[], ids: readonly string[], tick: number, mode: "after" | "before"): Record<string, unknown> {
+  const sample = readinessSampleNearTick(samples, tick, mode);
+  const snapshots = isRecord(sample?.resourceSnapshots)
+    ? sample.resourceSnapshots
+    : isRecord(sample?.resource_snapshots)
+      ? sample.resource_snapshots
+      : {};
+  const result: Record<string, unknown> = {};
+  for (const id of ids) {
+    result[id] = Object.hasOwn(snapshots, id) ? snapshots[id] : null;
+  }
+  return result;
+}
+
+function readinessSampleNearTick(samples: readonly Record<string, unknown>[], tick: number, mode: "after" | "before"): Record<string, unknown> | undefined {
+  const candidates = samples.filter((sample) => typeof sample.tick === "number");
+  if (mode === "before") {
+    return candidates.filter((sample) => (sample.tick as number) <= tick).at(-1) ?? candidates[0];
+  }
+  return candidates.find((sample) => (sample.tick as number) >= tick);
 }
 
 function nativeHarnessCommandStream(scenario: IPlaytestScenario, artifacts: { afterArtifact?: string; beforeArtifact?: string; recordingFrames?: readonly IPlaytestNativeRecordingFrame[] }): unknown {

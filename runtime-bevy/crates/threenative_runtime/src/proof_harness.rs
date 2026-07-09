@@ -1,5 +1,5 @@
 use std::{
-    collections::BTreeSet,
+    collections::{BTreeMap, BTreeSet},
     fs,
     path::Path,
     time::{Duration, Instant},
@@ -19,7 +19,7 @@ use image::GenericImageView;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use threenative_components::ThreeNativeId;
-use threenative_loader::{AssetsManifest, TransformComponent};
+use threenative_loader::{AssetsManifest, LoadedBundle, TransformComponent};
 
 use crate::{input::portable_key_code, systems_host::NativeResourceObservationState};
 
@@ -99,6 +99,11 @@ pub struct NativeProofHarnessReadiness {
     pub performance: NativeProofHarnessPerformanceSample,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub resources: Option<NativeResourceObservationState>,
+    #[serde(
+        rename = "resourceSnapshots",
+        skip_serializing_if = "BTreeMap::is_empty"
+    )]
+    pub resource_snapshots: BTreeMap<String, serde_json::Value>,
     pub transforms: Vec<NativeProofHarnessTransformSample>,
 }
 
@@ -229,6 +234,10 @@ pub fn install_native_proof_harness(
         PreUpdate,
         apply_native_proof_harness_commands.before(crate::input::capture_native_input),
     );
+    app.add_systems(
+        Update,
+        write_native_proof_harness_post_runtime_sample.after(crate::run_scripted_runtime_systems),
+    );
     if waits_for_render_assets {
         app.add_systems(Update, request_native_proof_redraw);
     }
@@ -289,6 +298,10 @@ pub fn apply_native_proof_harness_commands(
             performance,
             transforms.p1().iter(),
             resource_observations.as_deref().cloned(),
+            runtime
+                .as_deref()
+                .map(|runtime| native_resource_snapshots(&runtime.bundle))
+                .unwrap_or_default(),
         );
         return;
     }
@@ -399,6 +412,10 @@ pub fn apply_native_proof_harness_commands(
         performance,
         transforms.p1().iter(),
         resource_observations.as_deref().cloned(),
+        runtime
+            .as_deref()
+            .map(|runtime| native_resource_snapshots(&runtime.bundle))
+            .unwrap_or_default(),
     );
     if !hold_tick {
         state.tick += advance_ticks;
@@ -442,6 +459,39 @@ fn default_bundle_transform() -> TransformComponent {
         rotation: Some([0.0, 0.0, 0.0, 1.0]),
         scale: Some([1.0, 1.0, 1.0]),
     }
+}
+
+fn write_native_proof_harness_post_runtime_sample(
+    mut state: ResMut<NativeProofHarnessState>,
+    transforms: Query<(&ThreeNativeId, &Transform)>,
+    runtime: Option<Res<crate::ScriptedRuntimeBundle>>,
+    resource_observations: Option<Res<NativeResourceObservationState>>,
+) {
+    let tick = state.tick;
+    let performance = state.performance_sample();
+    if let Some(runtime) = runtime.as_deref() {
+        write_native_proof_harness_bundle_sample(
+            &mut state,
+            tick,
+            Vec::new(),
+            performance,
+            resource_observations.as_deref().cloned(),
+            &runtime.bundle,
+        );
+        return;
+    }
+    write_native_proof_harness_sample(
+        &mut state,
+        tick,
+        Vec::new(),
+        performance,
+        transforms.iter(),
+        resource_observations.as_deref().cloned(),
+        runtime
+            .as_deref()
+            .map(|runtime| native_resource_snapshots(&runtime.bundle))
+            .unwrap_or_default(),
+    );
 }
 
 fn native_proof_screenshots_ready(commands: &[NativeProofHarnessCommand], tick: u64) -> bool {
@@ -527,6 +577,7 @@ fn write_native_proof_harness_sample<'a>(
     performance: NativeProofHarnessPerformanceSample,
     transforms: impl IntoIterator<Item = (&'a ThreeNativeId, &'a Transform)>,
     resources: Option<NativeResourceObservationState>,
+    resource_snapshots: BTreeMap<String, serde_json::Value>,
 ) {
     let ok = diagnostics
         .iter()
@@ -539,7 +590,48 @@ fn write_native_proof_harness_sample<'a>(
         diagnostics,
         performance,
         resources,
+        resource_snapshots,
         transforms: native_proof_harness_transform_samples(transforms),
+    };
+    if let Err(error) = write_native_proof_harness_readiness(
+        &state.readiness_out_path,
+        &readiness,
+        &mut state.readiness_directory_created,
+    ) {
+        error!("{error}");
+    }
+}
+
+fn native_resource_snapshots(bundle: &LoadedBundle) -> BTreeMap<String, serde_json::Value> {
+    bundle
+        .world
+        .resources
+        .iter()
+        .map(|(id, value)| (id.clone(), value.clone()))
+        .collect()
+}
+
+fn write_native_proof_harness_bundle_sample(
+    state: &mut NativeProofHarnessState,
+    tick: u64,
+    diagnostics: Vec<NativeProofHarnessDiagnostic>,
+    performance: NativeProofHarnessPerformanceSample,
+    resources: Option<NativeResourceObservationState>,
+    bundle: &LoadedBundle,
+) {
+    let ok = diagnostics
+        .iter()
+        .all(|diagnostic| diagnostic.severity != "error");
+    let readiness = NativeProofHarnessReadiness {
+        schema: "threenative.native-proof-readiness",
+        version: "0.1.0",
+        ok,
+        tick,
+        diagnostics,
+        performance,
+        resources,
+        resource_snapshots: native_resource_snapshots(bundle),
+        transforms: native_proof_harness_bundle_transform_samples(bundle),
     };
     if let Err(error) = write_native_proof_harness_readiness(
         &state.readiness_out_path,
@@ -614,6 +706,28 @@ pub fn native_proof_harness_transform_samples<'a>(
                 round_transform_sample(transform.translation.y),
                 round_transform_sample(transform.translation.z),
             ],
+        })
+        .collect()
+}
+
+fn native_proof_harness_bundle_transform_samples(
+    bundle: &LoadedBundle,
+) -> Vec<NativeProofHarnessTransformSample> {
+    bundle
+        .world
+        .entities
+        .iter()
+        .filter_map(|entity| {
+            let transform = entity.components.transform.as_ref()?;
+            let position = transform.position?;
+            Some(NativeProofHarnessTransformSample {
+                entity: entity.id.clone(),
+                position: [
+                    round_transform_sample(position[0]),
+                    round_transform_sample(position[1]),
+                    round_transform_sample(position[2]),
+                ],
+            })
         })
         .collect()
 }

@@ -608,9 +608,14 @@ fn run_scripted_runtime_systems(
         commands.insert_resource(proof_harness::NativeProofHarnessFastForward::default());
     }
 
+    let sync_loop_state = if proof_harness.is_some() {
+        None
+    } else {
+        Some(&**loop_state)
+    };
     sync_scripted_transforms(
         &runtime.bundle,
-        Some(&**loop_state),
+        sync_loop_state,
         fixed_delta,
         &mut transforms,
     );

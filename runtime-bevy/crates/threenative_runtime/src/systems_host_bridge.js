@@ -396,9 +396,33 @@ function __tnInvokeSystem(options) {
       return stepOffset > 0 && top > foot + 0.02 && top <= foot + stepOffset + 0.02 && coversXZ(position, bounds);
     };
     const isSideBlocker = (position, characterHalfExtents, bounds) => surfaceTop(position, bounds) > position[1] - characterHalfExtents[1] + 0.02;
-    const resolveHorizontalContact = (characterId, start, desired, characterHalfExtents, blockers, stepOffset, slopeLimit) => {
+    const resolvePush = (pushPolicy, blocker, move) => {
+      const body = blocker.components.RigidBody;
+      if (!pushPolicy || pushPolicy.enabled !== true || !body || body.kind !== "dynamic") return { kind: "none" };
+      const layer = blocker.components.Collider && blocker.components.Collider.layer;
+      if (Array.isArray(pushPolicy.allowedLayers) && (typeof layer !== "string" || !pushPolicy.allowedLayers.includes(layer))) return { kind: "none" };
+      const mass = body.mass ?? (body.inverseMass === undefined || body.inverseMass === 0 ? 1 : 1 / body.inverseMass);
+      if (mass > (pushPolicy.maxPushMass ?? Number.POSITIVE_INFINITY)) {
+        return pushPolicy.blockedWhenTooHeavy === false ? { kind: "none" } : { kind: "too-heavy" };
+      }
+      const speed = Math.hypot(move[0], move[2]);
+      if (speed < (pushPolicy.minMoveSpeed ?? 0)) return { kind: "none" };
+      const impulseScale = pushPolicy.impulseScale ?? 1;
+      const impulse = [move[0] * impulseScale, 0, move[2] * impulseScale];
+      const start = readVec3(blocker.components.Transform && blocker.components.Transform.position, [0, 0, 0]);
+      return {
+        kind: "pushed",
+        pushed: {
+          entity: blocker.id,
+          impulse,
+          position: addVec3(start, impulse)
+        }
+      };
+    };
+    const resolveHorizontalContact = (characterId, start, desired, characterHalfExtents, blockers, stepOffset, slopeLimit, pushPolicy) => {
       let position = desired;
       let characterBounds = { center: position, halfExtents: characterHalfExtents, id: characterId };
+      const movement = [desired[0] - start[0], 0, desired[2] - start[2]];
       for (const blocker of blockers) {
         if (blocker.id === characterId) continue;
         const bounds = entityBounds(blocker);
@@ -412,6 +436,13 @@ function __tnInvokeSystem(options) {
           position = [position[0], surfaceTop(position, bounds) + characterHalfExtents[1], position[2]];
           characterBounds = { center: position, halfExtents: characterHalfExtents, id: characterId };
           continue;
+        }
+        const push = resolvePush(pushPolicy, blocker, movement);
+        if (push.kind === "pushed") {
+          return { position, pushed: push.pushed };
+        }
+        if (push.kind === "too-heavy") {
+          return { blockedBy: blocker.id, position: start, tooHeavy: blocker.id };
         }
         return { blockedBy: blocker.id, position: start };
       }
@@ -460,7 +491,7 @@ function __tnInvokeSystem(options) {
       const halfExtents = readColliderHalfExtents(collider);
       const slopeLimit = Number(controller.slopeLimit ?? 45);
       const horizontal = controller.blocking === true
-        ? resolveHorizontalContact(entity.id, addVec3(start, offset), addVec3(desired, offset), halfExtents, blockers, Number(controller.stepOffset ?? 0), slopeLimit)
+        ? resolveHorizontalContact(entity.id, addVec3(start, offset), addVec3(desired, offset), halfExtents, blockers, Number(controller.stepOffset ?? 0), slopeLimit, controller.pushPolicy)
         : { position: addVec3(desired, offset) };
       const ground = controller.grounding === "raycast"
         ? groundPosition(entity.id, horizontal.position, halfExtents, blockers, fixedDelta, slopeLimit)
@@ -472,12 +503,14 @@ function __tnInvokeSystem(options) {
         ...(ground.entity === undefined ? {} : { groundEntity: ground.entity }),
         grounded: ground.entity !== undefined,
         ...(ground.platformDelta === undefined ? {} : { platformDelta: ground.platformDelta }),
+        ...(horizontal.pushed === undefined ? {} : { pushed: horizontal.pushed, pushes: [horizontal.pushed] }),
         resolved: [
           ground.position[0] - offset[0],
           ground.position[1] - offset[1],
           ground.position[2] - offset[2]
         ],
-        start
+        start,
+        ...(horizontal.tooHeavy === undefined ? {} : { tooHeavy: horizontal.tooHeavy })
       };
     };
     const sensorSnapshot = (payload = {}) => {

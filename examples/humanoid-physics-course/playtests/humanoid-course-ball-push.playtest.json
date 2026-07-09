@@ -7,6 +7,18 @@
     "height": 720
   },
   "subject": "player",
+  "setup": {
+    "entities": [
+      {
+        "entity": "player",
+        "position": [
+          4.55,
+          0.02,
+          4.55
+        ]
+      }
+    ]
+  },
   "warmupFrames": 5,
   "steps": [
     {

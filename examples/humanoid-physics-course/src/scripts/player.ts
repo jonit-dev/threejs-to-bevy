@@ -11,8 +11,8 @@ export function updateHumanoidCourse(context: ScriptContext): void {
   const TURN_SPEED = 10;
   const HIT_COOLDOWN = 0.8;
   const START_POSITION: Vec3Tuple = [0, 0.02, 5.0];
-  const BOUNDS_MIN: Vec3Tuple = [-4.8, Number.NEGATIVE_INFINITY, -6.5];
-  const BOUNDS_MAX: Vec3Tuple = [4.8, Number.POSITIVE_INFINITY, 6.4];
+  const BOUNDS_MIN: Vec3Tuple = [-5.8, Number.NEGATIVE_INFINITY, -6.5];
+  const BOUNDS_MAX: Vec3Tuple = [5.8, Number.POSITIVE_INFINITY, 6.4];
   const GAME_STATE_START = { checkpoint: 0, checkpointTotal: 2, elapsed: 0, hits: 0, status: "Course" };
   const entities = context.query();
   const player = entities.find((entity: any) => entity.id === "player");

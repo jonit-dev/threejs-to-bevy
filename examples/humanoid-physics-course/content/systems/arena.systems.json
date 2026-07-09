@@ -8,6 +8,7 @@
       "schedule": "fixedUpdate",
       "reads": [
         "Checkpoint",
+        "CoursePlayer",
         "FinishZone",
         "KinematicMover"
       ],
@@ -29,6 +30,7 @@
       ],
       "resourceWrites": [
         "GameState",
+        "tn.cameraOrbitRig.camera.main",
         "tn.characterRig.player",
         "tn.triggerCooldown.hazard.sweeper.01",
         "tn.triggerCooldown.hazard.sweeper.02",

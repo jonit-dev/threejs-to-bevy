@@ -305,6 +305,27 @@ fn systems_host_should_expose_character_move_service() {
 }
 
 #[test]
+fn systems_host_should_patch_character_pushed_entity_outside_default_query() {
+    let root = write_character_push_service_bundle("character-push-context");
+    let mut bundle = load_bundle(&root).expect("scripted bundle should load");
+
+    run_native_systems_once(&mut bundle, time()).expect("system should run");
+
+    assert_eq!(
+        bundle.world.resources.get("PushReport"),
+        Some(&serde_json::json!({
+            "ballPosition": [2, 1, 0],
+            "pushed": "light-crate",
+            "queryIds": ["player"]
+        }))
+    );
+    assert_eq!(
+        entity_position(&bundle, "light-crate"),
+        Some([4.0, 1.0, 0.0])
+    );
+}
+
+#[test]
 fn systems_host_should_translate_humanoid_course_player_from_keyboard_forward() {
     let root = Path::new(env!("CARGO_MANIFEST_DIR"))
         .join("../../../examples/humanoid-physics-course/dist/humanoid-physics-course.bundle");
@@ -375,6 +396,23 @@ fn systems_host_should_expose_physics_raycast_service() {
             .as_ref()
             .and_then(|payload| payload.get("request")),
         Some(&expected_request)
+    );
+}
+
+#[test]
+fn systems_host_should_expose_physics_sensor_service() {
+    let root = write_physics_sensor_service_bundle("physics-sensor-context");
+    let mut bundle = load_bundle(&root).expect("scripted bundle should load");
+
+    run_native_systems_once(&mut bundle, time()).expect("system should run");
+
+    assert_eq!(
+        bundle.world.resources.get("SensorReport"),
+        Some(&serde_json::json!({
+            "occupants": ["player"],
+            "phase": "enter",
+            "sensor": "hazard"
+        }))
     );
 }
 
@@ -1651,7 +1689,7 @@ fn write_character_service_bundle(name: &str) -> PathBuf {
     {
       "id": "player",
       "components": {
-        "Transform": { "position": [0, 0, 0], "rotation": [0, 0, 0, 1], "scale": [1, 1, 1] },
+        "Transform": { "position": [0, -0.1, 0], "rotation": [0, 0, 0, 1], "scale": [1, 1, 1] },
         "Collider": { "center": [0, 0.9, 0], "height": 1.8, "kind": "capsule", "layer": "player", "mask": ["world"], "radius": 0.25 },
         "RigidBody": { "kind": "kinematic" },
         "CharacterController": {
@@ -1708,6 +1746,102 @@ fn write_character_service_bundle(name: &str) -> PathBuf {
 };
 export const systemIds = Object.freeze({ "system_moveCharacter": "moveCharacter" });
 export const systems = Object.freeze({ "system_moveCharacter": system_moveCharacter });
+"#,
+    )
+    .expect("script bundle should be written");
+    root
+}
+
+fn write_character_push_service_bundle(name: &str) -> PathBuf {
+    let root = root(name);
+    write_base_bundle(&root, true);
+    write_json(
+        &root,
+        "world.ir.json",
+        r#"{
+  "schema": "threenative.world",
+  "version": "0.1.0",
+  "entities": [
+    {
+      "id": "floor",
+      "components": {
+        "Transform": { "position": [0, -0.1, 0], "rotation": [0, 0, 0, 1], "scale": [1, 1, 1] },
+        "Collider": { "kind": "box", "size": [8, 0.1, 8], "layer": "world", "mask": ["player"] },
+        "RigidBody": { "kind": "static" }
+      }
+    },
+    {
+      "id": "light-crate",
+      "components": {
+        "Transform": { "position": [2, 1, 0], "rotation": [0, 0, 0, 1], "scale": [1, 1, 1] },
+        "Collider": { "kind": "box", "layer": "pushable", "size": [1, 2, 1] },
+        "RigidBody": { "kind": "dynamic", "mass": 2 }
+      }
+    },
+    {
+      "id": "player",
+      "components": {
+        "Transform": { "position": [0, 1, 0], "rotation": [0, 0, 0, 1], "scale": [1, 1, 1] },
+        "Collider": { "kind": "box", "layer": "player", "mask": ["world", "pushable"], "size": [1, 2, 1] },
+        "RigidBody": { "kind": "kinematic" },
+        "CharacterController": {
+          "blocking": true,
+          "grounding": "raycast",
+          "moveXAxis": "MoveX",
+          "moveZAxis": "MoveZ",
+          "pushPolicy": { "allowedLayers": ["pushable"], "blockedWhenTooHeavy": true, "enabled": true, "impulseScale": 1, "maxPushMass": 10, "minMoveSpeed": 0.1 },
+          "speed": 2
+        },
+        "CoursePlayer": { "enabled": true }
+      }
+    }
+  ],
+  "resources": {
+    "PushReport": {}
+  }
+}"#,
+    );
+    write_json(
+        &root,
+        "systems.ir.json",
+        r#"{
+  "schema": "threenative.systems",
+  "version": "0.1.0",
+  "systems": [
+    {
+      "name": "pushCharacter",
+      "schedule": "update",
+      "reads": ["CoursePlayer"],
+      "writes": ["Transform"],
+      "queries": [{ "with": ["CoursePlayer"], "without": [] }],
+      "commands": [],
+      "eventReads": [],
+      "eventWrites": [],
+      "resourceReads": ["PushReport"],
+      "resourceWrites": ["PushReport"],
+      "services": ["character.move"],
+      "script": { "bundle": "scripts.bundle.js", "exportName": "system_pushCharacter" }
+    }
+  ]
+}"#,
+    );
+    fs::write(
+        root.join("scripts.bundle.js"),
+        r#"const system_pushCharacter = (ctx) => {
+  const queryIds = ctx.query().map((entity) => entity.id);
+  const result = ctx.character.move("player", { direction: [1, 0], fixedDelta: 1, speed: 2 });
+  const target = result.pushed && ctx.entity(result.pushed.entity);
+  if (target) {
+    target.transform().setPose(result.pushed.position, [0, 0, 0, 1]);
+  }
+  ctx.resources.set("PushReport", {
+    ballPosition: ctx.entity("light-crate").get("Transform").position,
+    pushed: result.pushed ? result.pushed.entity : null,
+    queryIds
+  });
+};
+export const systemIds = Object.freeze({ "system_pushCharacter": "pushCharacter" });
+export const systems = Object.freeze({ "system_pushCharacter": system_pushCharacter });
 "#,
     )
     .expect("script bundle should be written");
@@ -1788,6 +1922,82 @@ fn write_physics_raycast_service_bundle(name: &str) -> PathBuf {
 };
 export const systemIds = Object.freeze({ "system_raycastPhysics": "raycastPhysics" });
 export const systems = Object.freeze({ "system_raycastPhysics": system_raycastPhysics });
+"#,
+    )
+    .expect("script bundle should be written");
+    root
+}
+
+fn write_physics_sensor_service_bundle(name: &str) -> PathBuf {
+    let root = root(name);
+    write_base_bundle(&root, true);
+    write_json(
+        &root,
+        "world.ir.json",
+        r#"{
+  "schema": "threenative.world",
+  "version": "0.1.0",
+  "entities": [
+    {
+      "id": "hazard",
+      "components": {
+        "Transform": { "position": [0.5, 0.72, 4.15], "rotation": [0, 0, 0, 1], "scale": [1, 1, 1] },
+        "Collider": { "kind": "box", "layer": "hazard", "mask": ["player"], "sensor": { "interactionKind": "hazard", "phases": ["enter", "stay"], "trackOccupants": true }, "size": [1.55, 0.2, 0.28], "trigger": true },
+        "RigidBody": { "kind": "kinematic" },
+        "KinematicMover": { "axis": "x", "mode": "sine", "radius": 1, "speed": 1 }
+      }
+    },
+    {
+      "id": "player",
+      "components": {
+        "Transform": { "position": [0.5, 0.02, 4.15], "rotation": [0, 0, 0, 1], "scale": [1, 1, 1] },
+        "Collider": { "center": [0, 0.9, 0], "height": 1.8, "kind": "capsule", "layer": "player", "mask": ["hazard"], "radius": 0.32 },
+        "CoursePlayer": { "hits": 0 }
+      }
+    }
+  ],
+  "resources": {
+    "SensorReport": {}
+  }
+}"#,
+    );
+    write_json(
+        &root,
+        "systems.ir.json",
+        r#"{
+  "schema": "threenative.systems",
+  "version": "0.1.0",
+  "systems": [
+    {
+      "name": "sensorPhysics",
+      "schedule": "update",
+      "reads": ["CoursePlayer", "KinematicMover"],
+      "writes": [],
+      "queries": [{ "with": ["Transform"], "without": [] }],
+      "commands": [],
+      "eventReads": [],
+      "eventWrites": [],
+      "resourceReads": ["SensorReport"],
+      "resourceWrites": ["SensorReport"],
+      "services": ["physics.sensor"],
+      "script": { "bundle": "scripts.bundle.js", "exportName": "system_sensorPhysics" }
+    }
+  ]
+}"#,
+    );
+    fs::write(
+        root.join("scripts.bundle.js"),
+        r#"const system_sensorPhysics = (ctx) => {
+  const result = ctx.physics.sensor({ sensor: "hazard", phases: ["enter", "stay"] });
+  const event = result.events[0] || {};
+  ctx.resources.set("SensorReport", {
+    occupants: event.occupants || [],
+    phase: event.phase || "",
+    sensor: event.sensor || ""
+  });
+};
+export const systemIds = Object.freeze({ "system_sensorPhysics": "sensorPhysics" });
+export const systems = Object.freeze({ "system_sensorPhysics": system_sensorPhysics });
 "#,
     )
     .expect("script bundle should be written");

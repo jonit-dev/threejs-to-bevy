@@ -7,7 +7,7 @@ use threenative_loader::{
     UiIr, UiNodeIr,
 };
 
-use crate::component_diff::{ComponentDiffCache, changed_components as resolve_changed_components};
+use crate::component_diff::ComponentDiffCache;
 use crate::input::NativeInputState;
 use crate::mesh_bounds::mesh_aabb;
 
@@ -284,9 +284,6 @@ pub fn build_system_context_snapshot_with_events_input_and_diff(
         .world
         .entities
         .iter()
-        .filter(|entity| {
-            matches_declared_queries(bundle, &entity.id, &entity.components, system, diff_cache)
-        })
         .map(|entity| NativeSystemEntitySnapshot {
             id: entity.id.clone(),
             components: readable_components
@@ -843,6 +840,7 @@ pub fn component_value(components: &EntityComponents, component: &str) -> Option
                 "layer": collider.layer,
                 "mask": collider.mask,
                 "radius": collider.radius,
+                "sensor": collider.sensor,
                 "size": collider.size,
                 "trigger": collider.trigger,
             })
@@ -851,6 +849,18 @@ pub fn component_value(components: &EntityComponents, component: &str) -> Option
             .hierarchy
             .as_ref()
             .map(|hierarchy| json!({ "parent": hierarchy.parent })),
+        "KinematicMover" => components.kinematic_mover.as_ref().map(|mover| {
+            json!({
+                "axis": mover.axis,
+                "direction": mover.direction,
+                "loop": mover.loop_enabled,
+                "mode": mover.mode,
+                "phase": mover.phase,
+                "radius": mover.radius,
+                "speed": mover.speed,
+                "waypoints": mover.waypoints,
+            })
+        }),
         "Light" => components.light.as_ref().map(|light| {
             json!({
                 "kind": light.kind,
@@ -920,41 +930,6 @@ fn service_readable_components(service: &str) -> Vec<String> {
         ],
         _ => Vec::new(),
     }
-}
-
-fn matches_declared_queries(
-    bundle: &LoadedBundle,
-    entity_id: &str,
-    components: &EntityComponents,
-    system: &SystemIr,
-    diff_cache: Option<&ComponentDiffCache>,
-) -> bool {
-    system.queries.is_empty()
-        || system
-            .queries
-            .iter()
-            .any(|query| matches_query(bundle, entity_id, components, query, diff_cache))
-}
-
-fn matches_query(
-    bundle: &LoadedBundle,
-    entity_id: &str,
-    components: &EntityComponents,
-    query: &SystemQueryIr,
-    diff_cache: Option<&ComponentDiffCache>,
-) -> bool {
-    query
-        .with
-        .iter()
-        .all(|component| component_value(components, component).is_some())
-        && query
-            .without
-            .iter()
-            .all(|component| component_value(components, component).is_none())
-        && query.changed.iter().all(|component| {
-            resolve_changed_components(bundle, entity_id, components, diff_cache)
-                .contains(component)
-        })
 }
 
 pub fn canonical_component_value(value: &Value) -> String {

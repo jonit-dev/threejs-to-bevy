@@ -121,14 +121,17 @@ export function runBevyRuntime(invocation: IBevyRuntimeInvocation): BevyRuntimeP
   const bundledManifestPath = resolve(fileURLToPath(new URL("../runtime-bevy/Cargo.toml", import.meta.url)));
   const runtime = resolveBevyRuntime(repoRoot, process.env, bundledManifestPath);
   const binaryPath = resolveBevyRuntimeBinaryPath(repoRoot, process.env);
+  const env = { ...process.env };
   if (binaryPath !== undefined) {
     return spawn(binaryPath, bevyRuntimeBinaryArgs(invocation), {
       cwd: runtime.cwd,
+      env,
       stdio: "inherit",
     });
   }
   return spawn("cargo", bevyRuntimeArgs(repoRoot, invocation, process.env, bundledManifestPath), {
     cwd: runtime.cwd,
+    env,
     stdio: "inherit",
   });
 }

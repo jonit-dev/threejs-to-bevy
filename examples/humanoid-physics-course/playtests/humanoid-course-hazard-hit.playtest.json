@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "name": "humanoid-course-stairs",
+  "name": "humanoid-course-hazard-hit",
   "target": "desktop",
   "viewport": {
     "width": 1280,
@@ -12,9 +12,9 @@
       {
         "entity": "player",
         "position": [
-          -2.35,
-          0,
-          4.65
+          0.5,
+          0.02,
+          4.15
         ]
       }
     ]
@@ -22,18 +22,18 @@
   "warmupFrames": 5,
   "steps": [
     {
-      "label": "climb-authored-steps",
-      "press": "KeyW",
-      "holdFrames": 240,
-      "release": true
+      "label": "wait-inside-hazard-sweeper",
+      "waitFrames": 18
     }
   ],
   "assert": {
-    "movement": {
-      "entity": "player",
-      "axis": "-z",
-      "minDistance": 0.5
-    },
+    "resources": [
+      {
+        "id": "GameState",
+        "path": "hits",
+        "gte": 1
+      }
+    ],
     "diagnostics": {
       "runtimeReady": true,
       "noConsoleErrors": true,
