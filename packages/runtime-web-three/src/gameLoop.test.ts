@@ -90,6 +90,30 @@ test("gameLoop should clamp suspended-frame deltas", async () => {
   assert.ok(Math.abs(state.accumulator - 0.05) < 1e-10);
 });
 
+test("gameLoop should cap fixed updates per long frame", async () => {
+  const state = createGameLoopState({
+    schema: "threenative.runtime-config",
+    version: "0.1.0",
+    time: { fixedDelta: 1 / 60, paused: false },
+    window: { height: 720, width: 1280 },
+  });
+  let ticks = 0;
+
+  await runGameFrame({
+    delta: 0.25,
+    fixedDelta: 1 / 60,
+    mapped: makeMapped(),
+    module: { systems: { tick: () => ticks++ } },
+    state,
+    systems: makeSystems(),
+    world: makeWorld(),
+  });
+
+  assert.equal(ticks, 5);
+  assert.equal(state.tick, 5);
+  assert.ok(Math.abs(state.accumulator) < 1e-10);
+});
+
 test("gameLoop should run startup once before gameplay schedules", async () => {
   const state = createGameLoopState({
     schema: "threenative.runtime-config",

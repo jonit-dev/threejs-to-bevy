@@ -10,6 +10,8 @@ import type { IResourceObservation } from "./systems/context.js";
 import type { IRenderedUi } from "./ui/renderUi.js";
 import { interpolateTransform, type ITransformSample } from "./transformInterpolation.js";
 
+const MAX_FIXED_STEPS_PER_FRAME = 5;
+
 export interface IGameLoopState {
   accumulator: number;
   elapsed: number;
@@ -72,6 +74,7 @@ export async function runGameFrame(options: {
     state.elapsed += frameDelta;
     if (!state.paused) {
       state.accumulator += frameDelta;
+      state.accumulator = Math.min(state.accumulator, fixedDelta * MAX_FIXED_STEPS_PER_FRAME);
       if (!state.startupComplete) {
         collectSystemResult(options.mapped, await runSchedule({ ...options, delta: 0, elapsed: state.elapsed, fixedDelta, frame: state.frame, paused: state.paused, schedule: "startup", tick: state.tick }));
         state.startupComplete = true;
