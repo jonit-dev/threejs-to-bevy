@@ -305,6 +305,23 @@ fn systems_host_should_expose_character_move_service() {
 }
 
 #[test]
+fn systems_host_should_enter_low_step_contact_before_center_reaches_tread() {
+    let root = write_character_step_service_bundle("character-step-leading-edge");
+    let mut bundle = load_bundle(&root).expect("scripted bundle should load");
+
+    run_native_systems_once(&mut bundle, time()).expect("system should run");
+
+    assert_eq!(
+        bundle.world.resources.get("CharacterReport"),
+        Some(&serde_json::json!({
+            "blockedBy": null,
+            "ground": "floor",
+            "resolved": [0.6, 0, 0]
+        }))
+    );
+}
+
+#[test]
 fn systems_host_should_patch_character_pushed_entity_outside_default_query() {
     let root = write_character_push_service_bundle("character-push-context");
     let mut bundle = load_bundle(&root).expect("scripted bundle should load");
@@ -1742,6 +1759,71 @@ fn write_character_service_bundle(name: &str) -> PathBuf {
     grounded: result.grounded,
     ground: result.groundEntity,
     resolved: rounded
+  });
+};
+export const systemIds = Object.freeze({ "system_moveCharacter": "moveCharacter" });
+export const systems = Object.freeze({ "system_moveCharacter": system_moveCharacter });
+"#,
+    )
+    .expect("script bundle should be written");
+    root
+}
+
+fn write_character_step_service_bundle(name: &str) -> PathBuf {
+    let root = write_character_service_bundle(name);
+    write_json(
+        &root,
+        "world.ir.json",
+        r#"{
+  "schema": "threenative.world",
+  "version": "0.1.0",
+  "entities": [
+    {
+      "id": "floor",
+      "components": {
+        "Transform": { "position": [0, -0.05, 0], "rotation": [0, 0, 0, 1], "scale": [1, 1, 1] },
+        "Collider": { "kind": "box", "size": [6, 0.1, 6], "layer": "world", "mask": ["player"] },
+        "RigidBody": { "kind": "static" }
+      }
+    },
+    {
+      "id": "step",
+      "components": {
+        "Transform": { "position": [1.2, 0.2, 0], "rotation": [0, 0, 0, 1], "scale": [1, 1, 1] },
+        "Collider": { "kind": "box", "size": [1, 0.4, 1], "layer": "world", "mask": ["player"] },
+        "RigidBody": { "kind": "static" }
+      }
+    },
+    {
+      "id": "player",
+      "components": {
+        "Transform": { "position": [0, 0, 0], "rotation": [0, 0, 0, 1], "scale": [1, 1, 1] },
+        "Collider": { "center": [0, 1, 0], "kind": "box", "size": [1, 2, 1], "layer": "player", "mask": ["world"] },
+        "RigidBody": { "kind": "kinematic" },
+        "CharacterController": {
+          "blocking": true,
+          "grounding": "raycast",
+          "moveXAxis": "MoveX",
+          "moveZAxis": "MoveZ",
+          "speed": 2,
+          "stepOffset": 0.5
+        }
+      }
+    }
+  ],
+  "resources": {
+    "CharacterReport": {}
+  }
+}"#,
+    );
+    fs::write(
+        root.join("scripts.bundle.js"),
+        r#"const system_moveCharacter = (ctx) => {
+  const result = ctx.character.move("player", { direction: [1, 0], fixedDelta: 0.3, speed: 2 });
+  ctx.resources.set("CharacterReport", {
+    blockedBy: result.blockedBy ?? null,
+    ground: result.groundEntity,
+    resolved: result.resolved.map((value) => Number(value.toFixed(6)))
   });
 };
 export const systemIds = Object.freeze({ "system_moveCharacter": "moveCharacter" });

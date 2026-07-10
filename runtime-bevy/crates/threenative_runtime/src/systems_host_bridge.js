@@ -393,7 +393,7 @@ function __tnInvokeSystem(options) {
     const canStepOnto = (position, characterHalfExtents, bounds, stepOffset) => {
       const foot = position[1] - characterHalfExtents[1];
       const top = surfaceTop(position, bounds);
-      return stepOffset > 0 && top > foot + 0.02 && top <= foot + stepOffset + 0.02 && coversXZ(position, bounds);
+      return stepOffset > 0 && top > foot + 0.02 && top <= foot + stepOffset + 0.02;
     };
     const isSideBlocker = (position, characterHalfExtents, bounds) => surfaceTop(position, bounds) > position[1] - characterHalfExtents[1] + 0.02;
     const resolvePush = (pushPolicy, blocker, move) => {

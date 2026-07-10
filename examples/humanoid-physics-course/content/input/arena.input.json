@@ -1,19 +1,90 @@
 {
-  "schema": "threenative.input",
-  "version": "0.1.0",
-  "id": "arena-input",
   "actions": [
-    { "id": "move-left", "bindings": ["keyboard.KeyA", "keyboard.ArrowLeft"] },
-    { "id": "move-right", "bindings": ["keyboard.KeyD", "keyboard.ArrowRight"] },
-    { "id": "move-forward", "bindings": ["keyboard.KeyW", "keyboard.ArrowUp"] },
-    { "id": "move-back", "bindings": ["keyboard.KeyS", "keyboard.ArrowDown"] },
-    { "id": "sprint", "bindings": ["keyboard.ShiftLeft", "keyboard.ShiftRight"] },
-    { "id": "retry", "bindings": ["keyboard.KeyR"] }
+    {
+      "bindings": [
+        "keyboard.KeyA",
+        "keyboard.ArrowLeft"
+      ],
+      "id": "move-left"
+    },
+    {
+      "bindings": [
+        "keyboard.KeyD",
+        "keyboard.ArrowRight"
+      ],
+      "id": "move-right"
+    },
+    {
+      "bindings": [
+        "keyboard.KeyW",
+        "keyboard.ArrowUp"
+      ],
+      "id": "move-forward"
+    },
+    {
+      "bindings": [
+        "keyboard.KeyS",
+        "keyboard.ArrowDown"
+      ],
+      "id": "move-back"
+    },
+    {
+      "bindings": [
+        "keyboard.ShiftLeft",
+        "keyboard.ShiftRight"
+      ],
+      "id": "sprint"
+    },
+    {
+      "bindings": [
+        "keyboard.KeyR"
+      ],
+      "id": "retry"
+    },
+    {
+      "bindings": [
+        "keyboard.Space"
+      ],
+      "id": "jump"
+    }
   ],
   "axes": [
-    { "id": "MoveX", "negative": ["keyboard.KeyA", "keyboard.ArrowLeft"], "positive": ["keyboard.KeyD", "keyboard.ArrowRight"] },
-    { "id": "MoveZ", "negative": ["keyboard.KeyW", "keyboard.ArrowUp"], "positive": ["keyboard.KeyS", "keyboard.ArrowDown"] },
-    { "id": "LookX", "negative": [], "positive": [], "value": "pointer.deltaX" },
-    { "id": "LookY", "negative": [], "positive": [], "value": "pointer.deltaY" }
-  ]
+    {
+      "id": "MoveX",
+      "negative": [
+        "keyboard.KeyA",
+        "keyboard.ArrowLeft"
+      ],
+      "positive": [
+        "keyboard.KeyD",
+        "keyboard.ArrowRight"
+      ]
+    },
+    {
+      "id": "MoveZ",
+      "negative": [
+        "keyboard.KeyW",
+        "keyboard.ArrowUp"
+      ],
+      "positive": [
+        "keyboard.KeyS",
+        "keyboard.ArrowDown"
+      ]
+    },
+    {
+      "id": "LookX",
+      "negative": [],
+      "positive": [],
+      "value": "pointer.deltaX"
+    },
+    {
+      "id": "LookY",
+      "negative": [],
+      "positive": [],
+      "value": "pointer.deltaY"
+    }
+  ],
+  "id": "arena-input",
+  "schema": "threenative.input",
+  "version": "0.1.0"
 }

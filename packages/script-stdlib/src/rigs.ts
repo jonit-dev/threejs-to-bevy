@@ -26,7 +26,7 @@ interface IRigContextLike {
     play(entity: string | ISystemEntityLike, clip: string, options?: Record<string, unknown>): unknown;
   };
   character?: {
-    move(entity: string | ISystemEntityLike, options?: { direction?: [number, number]; fixedDelta?: number; speed?: number }): { pushed?: { entity?: string; position?: Vec3Value }; resolved?: Vec3Value; start?: Vec3Value } | null;
+    move(entity: string | ISystemEntityLike, options?: { direction?: [number, number]; fixedDelta?: number; speed?: number }): { grounded?: boolean; pushed?: { entity?: string; impulse?: Vec3Value; position?: Vec3Value }; resolved?: Vec3Value; start?: Vec3Value } | null;
   };
   entity?(id: string): ISystemEntityLike | undefined;
   input?: {
@@ -61,6 +61,7 @@ interface IPhysicsSensorEventLike {
 
 export interface ICharacterRigOptions {
   readonly acceleration?: number;
+  readonly applyPushVelocity?: boolean;
   readonly bounds?: { readonly max: Vec3Value; readonly min: Vec3Value };
   readonly cameraYaw?: number;
   readonly clips?: {
@@ -71,6 +72,9 @@ export interface ICharacterRigOptions {
   readonly deceleration?: number;
   readonly fixedDelta?: number;
   readonly forwardAxis?: ForwardAxis;
+  readonly gravity?: number;
+  readonly jumpAction?: string;
+  readonly jumpSpeed?: number;
   readonly maxTurnSpeed?: number;
   readonly moveXAxis?: string;
   readonly moveZAxis?: string;
@@ -87,14 +91,18 @@ export interface ICharacterRigClipOptions {
 }
 
 export interface ICharacterRigResult {
+  readonly grounded: boolean;
+  readonly jumping: boolean;
   readonly moving: boolean;
   readonly position: Vec3Tuple;
   readonly pushed?: {
     readonly entity: string;
     readonly position: Vec3Tuple;
+    readonly velocity?: Vec3Tuple;
   };
   readonly speed: number;
   readonly sprinting: boolean;
+  readonly verticalSpeed: number;
   readonly yaw: number;
 }
 
@@ -192,7 +200,11 @@ export interface IRespawnExResult {
 interface ICharacterRigState extends Record<string, unknown> {
   dirX: number;
   dirZ: number;
+  groundY: number;
+  jumpHeld: boolean;
+  jumpOffset: number;
   speed: number;
+  verticalSpeed: number;
   yaw: number;
 }
 
@@ -223,7 +235,7 @@ export const CharacterRig = Object.freeze({
     const transform = entity?.transform?.();
     const start = transform?.positionOr([0, 0, 0]) ?? readComponentPosition(entity, [0, 0, 0]);
     const dt = Math.max(0, NumberEx.finite(options.fixedDelta, readFixedDelta(context)));
-    const state = context.state<ICharacterRigState>(`tn.characterRig.${entityId}`, { dirX: 0, dirZ: 1, speed: 0, yaw: transform?.yawOr(0) ?? TransformMath.yaw(readComponentRotation(entity), 0) });
+    const state = context.state<ICharacterRigState>(`tn.characterRig.${entityId}`, { dirX: 0, dirZ: 1, groundY: start[1], jumpHeld: false, jumpOffset: 0, speed: 0, verticalSpeed: 0, yaw: transform?.yawOr(0) ?? TransformMath.yaw(readComponentRotation(entity), 0) });
     const input = InputEx.axis2([context.input?.axis(options.moveXAxis ?? "MoveX") ?? 0, context.input?.axis(options.moveZAxis ?? "MoveZ") ?? 0], { normalize: true });
     const hasInput = Vec2.length(input) > EPSILON;
     const sprinting = options.sprintAction === undefined ? false : context.input?.action(options.sprintAction) === true;
@@ -247,12 +259,35 @@ export const CharacterRig = Object.freeze({
     const smoothing = Math.max(0, NumberEx.finite(options.turnSmoothing, 1));
     const yawStep = smoothing <= EPSILON ? maxTurn : maxTurn * Math.min(1, smoothing);
     state.yaw = moveAngleToward(state.yaw, targetYaw, yawStep);
-    const trace = moving ? context.character?.move(entityRef, { direction: [moveDirection[0], moveDirection[2]], fixedDelta: dt, speed: state.speed }) ?? null : null;
-    const position = clampVec3(Vec3.from(trace?.resolved, start), options.bounds);
-    const pushed = applyCharacterPushTrace(context, trace?.pushed);
+    const jumpEnabled = options.jumpAction !== undefined;
+    const trace = moving || jumpEnabled ? context.character?.move(entityRef, { direction: [moveDirection[0], moveDirection[2]], fixedDelta: dt, speed: state.speed }) ?? null : null;
+    const resolved = Vec3.from(trace?.resolved, start);
+    state.groundY = NumberEx.finite(state.groundY, resolved[1]);
+    state.jumpOffset = Math.max(0, NumberEx.finite(state.jumpOffset, 0));
+    state.verticalSpeed = NumberEx.finite(state.verticalSpeed, 0);
+    if (state.jumpOffset <= EPSILON && trace?.grounded === true) {
+      state.groundY = resolved[1];
+    }
+    const jumpPressed = jumpEnabled && context.input?.action(options.jumpAction ?? "Jump") === true;
+    const groundedBeforeJump = trace?.grounded === true && state.jumpOffset <= EPSILON;
+    if (jumpPressed && !state.jumpHeld && groundedBeforeJump) {
+      state.verticalSpeed = Math.max(0, NumberEx.finite(options.jumpSpeed, 5.2));
+    }
+    state.jumpHeld = jumpPressed;
+    if (jumpEnabled && (state.verticalSpeed > EPSILON || state.jumpOffset > EPSILON)) {
+      state.verticalSpeed -= Math.max(0, NumberEx.finite(options.gravity, 14)) * dt;
+      state.jumpOffset = Math.max(0, state.jumpOffset + state.verticalSpeed * dt);
+      if (state.jumpOffset <= EPSILON && state.verticalSpeed < 0) {
+        state.jumpOffset = 0;
+        state.verticalSpeed = 0;
+      }
+    }
+    const jumping = state.jumpOffset > EPSILON;
+    const position = clampVec3([resolved[0], (jumping ? state.groundY : resolved[1]) + state.jumpOffset, resolved[2]], options.bounds);
+    const pushed = applyCharacterPushTrace(context, trace?.pushed, options.applyPushVelocity === true ? dt : undefined);
     transform?.setPose(position, Quat.fromYaw(state.yaw + meshYawOffset(options.forwardAxis ?? "+z")));
     playCharacterClip(context, entityRef, state.speed, sprinting, options.clips);
-    return { moving, position, ...(pushed === undefined ? {} : { pushed }), speed: state.speed, sprinting, yaw: state.yaw };
+    return { grounded: !jumping && trace?.grounded === true, jumping, moving, position, ...(pushed === undefined ? {} : { pushed }), speed: state.speed, sprinting, verticalSpeed: state.verticalSpeed, yaw: state.yaw };
   },
 });
 
@@ -437,7 +472,7 @@ function playCharacterClip(context: IRigContextLike, entity: string | ISystemEnt
   });
 }
 
-function applyCharacterPushTrace(context: IRigContextLike, pushed: { entity?: string; position?: Vec3Value } | undefined): ICharacterRigResult["pushed"] {
+function applyCharacterPushTrace(context: IRigContextLike, pushed: { entity?: string; impulse?: Vec3Value; position?: Vec3Value } | undefined, fixedDelta: number | undefined): ICharacterRigResult["pushed"] {
   if (pushed?.entity === undefined || pushed.position === undefined) {
     return undefined;
   }
@@ -450,7 +485,12 @@ function applyCharacterPushTrace(context: IRigContextLike, pushed: { entity?: st
   } else {
     target?.patch?.("Transform", { position });
   }
-  return { entity: pushed.entity, position };
+  if (fixedDelta === undefined || fixedDelta <= EPSILON || pushed.impulse === undefined) {
+    return { entity: pushed.entity, position };
+  }
+  const velocity = Vec3.scale(Vec3.from(pushed.impulse), 1 / fixedDelta);
+  target?.patch?.("RigidBody", { velocity });
+  return { entity: pushed.entity, position, velocity };
 }
 
 function readFixedDelta(context: IRigContextLike): number {

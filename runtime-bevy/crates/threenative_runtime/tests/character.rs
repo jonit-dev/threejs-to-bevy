@@ -159,6 +159,70 @@ fn character_trace_should_step_onto_low_blockers() {
 }
 
 #[test]
+fn character_trace_should_enter_low_step_contacts_before_center_reaches_tread() {
+    let root = write_character_bundle();
+    write(
+        &root,
+        "world.ir.json",
+        r#"{
+  "schema": "threenative.world",
+  "version": "0.1.0",
+  "entities": [
+    {
+      "id": "step",
+      "components": {
+        "Collider": { "kind": "box", "size": [1, 0.4, 1] },
+        "RigidBody": { "kind": "static" },
+        "Transform": { "position": [1.2, 0.2, 0] }
+      }
+    },
+    {
+      "id": "floor",
+      "components": {
+        "Collider": { "kind": "box", "size": [6, 0.1, 6] },
+        "RigidBody": { "kind": "static" },
+        "Transform": { "position": [0, -0.05, 0] }
+      }
+    },
+    {
+      "id": "player",
+      "components": {
+        "CharacterController": {
+          "blocking": true,
+          "grounding": "raycast",
+          "moveXAxis": "MoveX",
+          "moveZAxis": "MoveZ",
+          "speed": 2,
+          "stepOffset": 0.5
+        },
+        "Collider": { "center": [0, 1, 0], "kind": "box", "size": [1, 2, 1] },
+        "RigidBody": { "kind": "kinematic" },
+        "Transform": { "position": [0, 0, 0] }
+      }
+    }
+  ]
+}"#,
+    );
+    let bundle = load_bundle(&root).expect("character bundle should load");
+
+    let trace = trace_character_controllers(
+        &bundle,
+        &[CharacterTraceAxis {
+            id: "MoveX",
+            value: 1.0,
+        }],
+        0.3,
+    );
+
+    assert_eq!(trace.len(), 1);
+    assert_eq!(trace[0].blocked_by, None);
+    assert_eq!(trace[0].ground_entity, Some("floor".to_owned()));
+    assert_eq!(trace[0].resolved, [0.6, 0.0, 0.0]);
+
+    fs::remove_dir_all(root).expect("temporary bundle should be removed");
+}
+
+#[test]
 fn character_trace_should_climb_sequential_risers() {
     let root = write_character_bundle();
     write(
@@ -500,7 +564,11 @@ fn character_trace_should_walk_humanoid_course_ramp_dimensions() {
     assert_eq!(trace[0].entity, "player");
     assert_eq!(trace[0].blocked_by, None);
     assert_eq!(trace[0].ground_entity, Some("ramp.main".to_owned()));
-    assert!(trace[0].resolved[1] > 1.3);
+    assert!(
+        trace[0].resolved[1] > 0.4,
+        "expected feet-origin resolved Y to rise on ramp, got {}",
+        trace[0].resolved[1]
+    );
     assert_approx_eq(trace[0].resolved[2], 1.95);
 
     fs::remove_dir_all(root).expect("temporary bundle should be removed");

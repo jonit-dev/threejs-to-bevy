@@ -656,13 +656,15 @@
     {
       "components": {
         "Collider": {
+          "friction": 0.32,
           "kind": "sphere",
           "layer": "pushable",
           "mask": [
             "world",
             "player"
           ],
-          "radius": 0.38
+          "radius": 0.38,
+          "restitution": 0.58
         },
         "MeshRenderer": {
           "castShadow": true,
@@ -678,7 +680,7 @@
           ]
         },
         "RigidBody": {
-          "damping": 0.18,
+          "damping": 0.08,
           "kind": "dynamic",
           "mass": 1.5,
           "velocity": [

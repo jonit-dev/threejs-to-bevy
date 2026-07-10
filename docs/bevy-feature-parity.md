@@ -395,7 +395,12 @@ diagnostics until portable promotion criteria and web/Bevy evidence exist.
   - [x] Portable rigid-body translation and rotation axis locks
   - [x] Portable hinge, slider, and suspension joint metadata observations
 - [x] `P1` Broad sensors beyond current trigger/overlap scope
-- [x] Step offsets, ledge ungrounding, moving-platform carry, and richer ground contact trace
+- [x] Step offsets, including leading-edge stair entry parity through the Bevy
+      script host, ledge ungrounding, moving-platform carry, and richer ground
+      contact trace
+- [x] Opt-in `CharacterRig` grounded jump with action-edge debouncing, authored
+      takeoff speed, portable gravity, stdlib bundle equivalence, and desktop
+      transform output
 - [x] Native character move observations include stable slope, contact, and
       push payloads matching the web trace shape for portable collider
       layer/mask/material/contact phase metadata
@@ -407,7 +412,9 @@ diagnostics until portable promotion criteria and web/Bevy evidence exist.
       stacking, character-contact, query, and bounded mesh traces with compact
       stable-order sidecars.
 - [x] `P0` Slope limits and sloped-surface walkability for promoted ramp colliders
-- [x] `P1` Character interaction volumes and object pushing
+- [x] `P1` Character interaction volumes and object pushing, including an
+      opt-in `CharacterRig` handoff from deterministic push traces to dynamic
+      body velocity
 - [x] Fixture-backed physics self-verification gate for gravity/collision,
       material response, mass/stacking, character obstacles, query services,
       bounded mesh CCD, joint metadata, and unsupported-boundary diagnostics;

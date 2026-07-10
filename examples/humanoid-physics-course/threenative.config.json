@@ -16,13 +16,14 @@
       "keyboard.ArrowRight",
       "keyboard.ShiftLeft",
       "keyboard.ShiftRight",
+      "keyboard.Space",
       "keyboard.KeyR"
     ],
     "objective": "Clear both checkpoint pads and reach the glowing finish pad.",
     "progression": "The route escalates from flat movement to stairs, a ramp, a ledge platform, pushable crates, sweep hazards, and a finish gate.",
     "failRetry": "Hazard hits are counted in HUD state; press R to reset the course.",
     "feedbackMoments": [
-      "Soldier movement switches between idle, walk, and Shift-held run animation clips.",
+      "Soldier movement switches between idle, walk, and Shift-held run animation clips; Space applies a grounded ballistic jump.",
       "Checkpoint, hit, timer, and finish state update retained HUD bindings.",
       "Moving sweepers and pushable crates provide physics-course feedback."
     ],
@@ -186,6 +187,7 @@
       "tn authoring validate --project . --json",
       "tn build --project . --json",
       "tn playtest --project . --scenario playtests/humanoid-course-forward-movement.playtest.json --stable-artifacts --json",
+      "tn playtest --project . --scenario playtests/humanoid-course-jump.playtest.json --stable-artifacts --json",
       "tn screenshot --project . --url <preview-url> --out artifacts/game-production/screenshot.png --wait-ready --json",
       "tn game score --project . --json",
       "tn game qa --project . --run-proof --json",

@@ -1,42 +1,28 @@
 {
   "schemaVersion": 1,
-  "name": "humanoid-course-stairs",
+  "name": "humanoid-course-jump",
   "target": "desktop",
   "viewport": {
     "width": 1280,
     "height": 720
   },
   "subject": "player",
-  "setup": {
-    "entities": [
-      {
-        "entity": "player",
-        "position": [
-          -2.35,
-          0,
-          4.65
-        ]
-      }
-    ]
-  },
   "warmupFrames": 5,
   "steps": [
     {
-      "label": "climb-authored-steps",
-      "press": "KeyW",
-      "holdFrames": 120,
+      "label": "grounded-jump",
+      "press": "Space",
+      "holdFrames": 12,
       "release": true
     }
   ],
   "assert": {
     "movement": {
       "entity": "player",
-      "axis": "-z",
       "minAxisDelta": {
         "axis": "+y",
-        "min": 0.5
-      },
-      "minDistance": 2.5
+        "min": 0.3
+      }
     },
     "diagnostics": {
       "runtimeReady": true,

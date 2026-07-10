@@ -15,7 +15,15 @@ Current support:
 - Gameplay with physical contact must author physics metadata up front and then
   prove movement/contact behavior with playtests.
 - Humanoid course web and desktop playtests are the current high-signal
-  character/control proof.
+  character/control proof. The desktop stair scenario now rejects first-riser
+  stalls through forward-distance and resolved vertical-displacement checks;
+  Bevy's direct and script-host character solvers share leading-edge step
+  semantics with web.
+- `CharacterRig.update` can opt into transferring a permitted push trace to a
+  dynamic body's velocity while retaining the deterministic pose handoff.
+- `CharacterRig.update` supports an opt-in grounded kinematic jump with an
+  action binding, authored takeoff speed, portable gravity, held-input
+  debouncing, stdlib bundle-equivalence coverage, and desktop transform proof.
 - Native Rapier now preserves authored quaternion/angular-velocity state,
   rotation-axis constraints, and sensor-only collider semantics. The web
   adapter retains its Rapier world across unchanged fixed steps and explicitly

@@ -8,28 +8,48 @@ Last updated: 2026-07-09
 
 ## Snapshot
 
-- Overall status: 🟡 **Needs focused hardening**
-- Current quality score: **7.2/10**
+- Overall status: ⚠️ **Needs focused hardening**
+- ⚠️ Baseline quality score: **7.2/10** (2026-07-08). A fresh numeric rerating
+  is pending after the July 9 remediation and parity gates accumulate
+  cross-hardware history.
 - Source taxonomy: `docs/bevy-feature-parity.md`
-- Latest pass: systems code-quality remediation bundle closed for the top four
-  red rows: IR contract truth, game-loop scheduling, native live
-  reconciliation, and compiler bundle planning/writer separation.
-- Primary risk theme: contract truth and runtime behavior are still split
+- ✅ Systems code-quality remediation closed the previous top four red rows:
+  IR contract truth, game-loop scheduling, native live reconciliation, and
+  compiler bundle planning/writer separation.
+- ✅ Adapter-surface remediation closed all five planned slices: config-owned
+  generated-game enrollment, drift gates, typed CLI registry plumbing,
+  executable authoring descriptors, and editor metadata/composite recipes.
+- ✅ The leverage-point bundle closed all seven slices: adapter derivation,
+  churn ratchets, runtime diagnostics, gate descriptors, manifest ownership,
+  the build-only mid-size forcing function, and bundle-backed visual metrics.
+- ✅ The feature-parity-polishing bundle closed shared residuals, calibrated
+  visual proof, native UI/text/accessibility, physics/navigation depth, and
+  audio/platform runtime policy with focused gates.
+- ✅ Gameplay parity now has state/timing probes, coverage-debt checks,
+  negative controls, web/desktop comparison reports, and release enrollment.
+- ⚠️ Primary risk theme: contract truth and runtime behavior are still split
   across SDK, IR, compiler, web runtime, Bevy runtime, editor/CLI adapters, and
   verification registries.
 - Deep diagnostic for the previous top four 🔴 rows (now closed):
   `docs/status/systems-code-quality-diagnostic-2026-07-08.md`.
-- Deep diagnostic for the adapter-surface rows currently being remediated:
+- Deep diagnostic for the adapter-surface rows closed on 2026-07-08:
   `docs/status/systems-code-quality-diagnostic-adapter-surfaces-2026-07-08.md`.
-- The 2026-07-09 engine bug/performance audit closed all 16 confirmed
+- ✅ The 2026-07-09 engine bug/performance audit closed all 16 confirmed
   correctness, parity, lifecycle, and algorithmic findings. The remaining
   watch item is cross-hardware dense-physics and browser GPU-memory history
   before setting tighter release budgets.
-- Active PRD bundle for the adapter-surface remediation:
+- ✅ Completed adapter-surface remediation bundle:
   `docs/PRDs/other/adapter-surface-remediation-2026-07-08/README.md`.
+- ❌ Current measured product failure: off-recipe checkpoint-race remains
+  3.614x vanilla raw tokens and physics-knockdown remains 2.008x against the
+  <=2x gate; fresh Round 5B reruns have not yet cleared that claim.
+- ⚠️ `examples/neon-harbor-rescue` is a valuable mid-size forcing function but
+  remains build-only pending production art, durable persistence, interactive
+  settings proof, and visual/release evidence.
 
-Legend: 🔴 urgent systemic risk, 🟡 watch or harden next, 🟢 acceptable with
-normal maintenance.
+Legend: ✅ completed accomplishment, ⚠️ current warning, ❌ measured failure;
+table status uses 🔴 urgent systemic risk, 🟡 watch or harden next, and 🟢
+acceptable with normal maintenance.
 
 ## System Map
 
@@ -38,7 +58,7 @@ promoted, or code quality is clearly in a bad place.
 
 | Status | System | Current quality risk | Next action | Evidence |
 | --- | --- | --- | --- | --- |
-| 🟡 | Physics, collision, and character movement | The audited correctness gaps are closed: native rotation/angular velocity and sensor semantics are retained, web Rapier state persists, and native copyback/overlap/signature churn is reduced. Dense-world budgets still need long-running hardware history. | Keep the 100/1,000-body web benchmark and native focused physics suite green; add 5,000-body hardware samples before tightening release budgets. | `packages/runtime-web-three/src/physics.test.ts`; `runtime-bevy/crates/threenative_runtime/tests/physics.rs` |
+| 🟡 | Physics, collision, and character movement | The audited correctness gaps are closed: native rotation/angular velocity and sensor semantics are retained, web Rapier state persists, and native copyback/overlap/signature churn is reduced. A 2026-07-09 stair regression exposed duplicated character-step logic across web, native trace, and the native script bridge; focused leading-edge tests now guard the repaired semantics, but the three implementations remain a drift risk. Script stdlib runtime and bundle-source implementations are another guarded duplication point for push behavior. Dense-world budgets still need long-running hardware history. | Keep the leading-edge, sequential-riser, and stdlib bundle-equivalence tests green; converge character contact math behind shared fixtures before expanding it, retain the 100/1,000-body web benchmark and native focused suite, and add 5,000-body hardware samples before tightening release budgets. | `packages/runtime-web-three/src/character.test.ts`; `packages/script-stdlib/src/index.test.ts`; `runtime-bevy/crates/threenative_runtime/tests/character.rs`; `runtime-bevy/crates/threenative_runtime/tests/systems_host.rs`; `packages/runtime-web-three/src/physics.test.ts`; `runtime-bevy/crates/threenative_runtime/tests/physics.rs` |
 | 🟡 | Rendering, materials, lights, cameras, and post-processing | Live reconciliation, cubemaps, visibility, shadows, layers, and teardown are implemented. Web and native share fitted ACES/exposure/saturation semantics, temporal frame accumulation, and depth-aware SSR intent. Pinned Bevy still requires a global deferred material fallback for SSR; explicit dielectric specular intensity is converted to Bevy's squared-reflectance parameter and SSR-enabled smooth surfaces suppress the implicit term, while exact deferred/forward reflection response remains backend-dependent. Persistent temporal history also adds render-resource lifecycle risk that is bounded by per-view cleanup and first-use/resize reset tests. | Keep specular-F0 conversion, parity, AO monotonicity, aligned transform traces, exterior-trail asymmetry, and render-resource lifecycle tests green; add a dedicated tone ramp before expanding color-management modes. | `packages/runtime-web-three/src/render.test.ts`; `tools/verify/src/renderingPhotoreal.ts`; `runtime-bevy/crates/threenative_runtime/src/motion_blur_postprocess.rs`; `runtime-bevy/crates/threenative_runtime/src/capture.rs`; `runtime-bevy/crates/threenative_runtime/tests/rendering_atmosphere.rs` |
 | 🟡 | IR/source/runtime contract truth | Contract truth is still broad, but high-risk drift now has typed registry metadata, optional-field checks, compiler literal checks, enum drift checks, and schemas for systems/gameFlow/prefabs. | Keep remaining unschemed documents as incremental follow-up slices; run IR drift tests before schema/DTO/compiler changes. | `docs/PRDs/done/other/system-code-quality-remediation-2026-07-08/PRD-003-ir-document-contract-truth-hardening.md`; `packages/ir/src/contractDrift.test.ts`; `packages/ir/schemas/systems.schema.json`; `pnpm --filter @threenative/ir test` |
 | 🟡 | Native game loop scheduling | Startup, fixed-step accumulator, pause, interpolation, frame, tick, and update/postUpdate ordering now share fixture-backed expectations across web and native. | Keep new scheduling behavior tied to `loop-scheduling/expectations.json`; broaden only through shared fixture snapshots. | `docs/PRDs/done/other/system-code-quality-remediation-2026-07-08/PRD-002-native-web-game-loop-scheduling-contract.md`; `packages/ir/fixtures/contracts/loop-scheduling/expectations.json`; `packages/runtime-web-three/src/gameLoop.test.ts`; `runtime-bevy/crates/threenative_runtime/tests/game_loop_contract.rs` |

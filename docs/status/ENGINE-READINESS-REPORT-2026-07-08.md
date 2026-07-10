@@ -1,109 +1,128 @@
-# Engine Readiness Report — Small/Mid-Sized Games
+# Engine Readiness Report - Small/Mid-Sized Games
 
-Date: 2026-07-08. Sources: `docs/STATUS.md`, `docs/status/capabilities/*.md`,
-`docs/status/ROADMAP.md`, `docs/status/SYSTEMS_CODE_QUALITY_STATUS.md`, active
-PRD bundles, and benchmark evidence under
+Original report: 2026-07-08. Updated through: 2026-07-09.
+
+Sources: `docs/STATUS.md`, `docs/status/capabilities/*.md`,
+`docs/status/SYSTEMS_CODE_QUALITY_STATUS.md`, completed PRDs, focused-gate
+implementations, and committed benchmark evidence under
 `tools/verify/artifacts/agent-benchmark/`.
 
 ## Verdict
 
-**Small games (web-first): yes — ready today, with one honest caveat.**
-The engine can produce a small polished vertical slice end-to-end, proven by
-`examples/metro-surfer-heist` (playable 3-lane runner with collect/fail/retry
-loop, release-ready locally). The caveat: readiness is strongest *on the
-scaffold rails*. Off-recipe authoring works but costs 2–6x the tokens of the
-scaffold-first path and still fails its own benchmark gate.
+- ✅ **Small web-first games: ready today.** ThreeNative has an end-to-end
+  structured authoring, runtime, playtest, visual-proof, QA, and release-gate
+  path. `examples/metro-surfer-heist` remains the release-enrolled vertical
+  slice.
+- ⚠️ **Mid-sized web-first games: build-proven, not release-proven.**
+  `examples/neon-harbor-rescue` now exercises menus, settings, two gameplay
+  phases, HUD bindings, audio metadata, saved-progress metadata, fail/retry,
+  and seven passing web iterate scenarios. It is intentionally build-only
+  until production art, real local-data persistence, interactive settings
+  proof, and visual/release evidence land.
+- ⚠️ **Native Bevy: bounded and evidence-gated.** Bevy consumes emitted IR and
+  now has focused gameplay, rendering, UI, physics, and audio/platform proof.
+  The native promotion freeze still applies to new claims: shipped-game need,
+  web evidence, native evidence, and a focused gate are required.
+- ❌ **Broad "mid-sized games are release-ready" is not yet supportable.** One
+  forcing-function project builds and iterates, but no mid-sized title is
+  release-enrolled or shipped, and the off-recipe authoring-cost gate remains
+  red.
 
-**Mid-sized games: not yet — the pieces exist but are unproven at that scale.**
-Nothing has exercised multi-scene flow, content volume, or sustained
-production beyond a single vertical slice. GameFlow/Sequence contracts (the
-mid-size enablers) are still an active PRD, contract sprawl makes the
-authoring surface expensive to hold in context, and four adapter-surface
-areas are red in the code-quality status, making refactors risky until drift
-gates land.
+## Latest accomplishments
 
-**Native (Bevy) targets: deliberately frozen.** Treat the engine as web-first
-with webview desktop packaging as the sanctioned native path. This is a
-recorded decision (`docs/runtime/native-path.md`), not an accident.
+- ✅ **Mid-size enabling contracts landed.** GameFlow, Sequence, Spawner,
+  actor archetypes, typed scripting, delayed commands, particle commands,
+  script audio, character/physics contacts, terrain/biomes, and efficient-scale
+  proof are implemented with focused evidence. Contract de-sprawl split
+  authoring operations and introduced shared runtime traces.
+- ✅ **The adapter-surface remediation bundle is complete.** Generated-game
+  proof enrollment is config-owned; migrated authoring operations expose
+  executable adapter metadata; CLI commands have a typed registry substrate;
+  editor operations/composites use shared metadata; and drift gates guard the
+  remaining explicit gaps.
+- ✅ **The system-quality remediation bundle is complete.** High-risk IR
+  contract drift, web/native loop scheduling, native live spawn/despawn
+  reconciliation, and compiler bundle planning/writer separation now have
+  focused tests and shared fixtures.
+- ✅ **Runtime correctness and performance audit findings closed.** The July 9
+  audit reports all 16 confirmed correctness, parity, lifecycle, and
+  algorithmic findings fixed. Long-running cross-hardware dense-physics and
+  browser GPU-memory history remain monitoring items.
+- ✅ **Gameplay parity became executable release evidence.** `tn parity
+  playtest`, comparison reports, coverage-debt checks, negative controls,
+  timing/state probes, and the `verify:gameplay-parity` gate now bound web and
+  desktop claims.
+- ✅ **Portable rendering depth expanded substantially.** Shader material
+  authoring/parity, fitted cross-adapter render-look calibration, AO monotonic
+  sweeps, bloom, depth of field, motion trails, and wet-floor SSR have focused
+  web+Bevy fixtures and `verify:rendering-photoreal` evidence.
+- ✅ **Feature-parity polishing closed five focused slices.** Shared residual
+  contracts, visual calibration, native UI/text/accessibility, native
+  physics/navigation depth, and audio/platform runtime policy each gained an
+  aggregate focused gate.
+- ✅ **Proof ownership and diagnostics improved.** Gate descriptors now own
+  migrated focused/release surfaces; examples and templates have manifest
+  ownership; game-quality metrics are bundle-backed; and stagnant or repeated
+  playtest failures produce source-linked diagnostics.
+- ✅ **Scaffold-first efficiency remains strong.** Committed evidence reports
+  collector at 0.124x and lane-runner at 0.083x vanilla raw tokens. Guided
+  Round 5 collector reaches 0.454x under equal-proof assertions.
 
-## What is ready (evidence-backed)
+## Remaining warnings and failures
 
-- **Full authoring-to-proof loop.** `tn game plan` → archetype scaffolds
-  (5 L1 archetypes) → mechanic blocks (6 L2 `tn add` blocks) → actor
-  archetypes (character/vehicle/pickup/camera-boom/prop) → `tn iterate` /
-  `tn playtest` proof → QA/score/release gates. All Active in
-  `docs/status/capabilities/game-production.md`.
-- **Scaffold-first token cost passes hard gates.** Collector 0.124x and
-  lane-runner 0.083x vs vanilla raw tokens
-  (`scaffold-first-token-rerun-2026-07-07b`); guided Round-5 collector 0.454x
-  under equal-proof assertions (`round-5-collector-guided-2026-07-08`).
-- **Core runtime capabilities are Active with gates:** portable scripting
-  (typed contexts, `defineBehavior`, audio, particles, delayed commands),
-  physics + character control with contact observations, retained UI with
-  behavioral conformance, GLB/generated assets, deterministic biome world
-  generation with terrain proof, efficient-scale budgets
-  (`dense-world-benchmark`), shader material authoring (just landed,
-  commit `8c9a854f`).
-- **PRD throughput is real:** agent-native authoring loop bundle is 19/19
-  done (PRD-012 capstone pending only human playtest + hosting);
-  proof-first engine loop is 13/21 done.
-- **`pnpm check:docs` passes** as of this report.
+- ❌ **Off-recipe authoring cost still fails the product gate.** Checkpoint
+  race is 3.614x vanilla raw tokens and physics knockdown is 2.008x against a
+  <=2x target, with 47-53 median ThreeNative tool steps. Round 5B still needs
+  fresh measured reruns after the new churn and diagnostic ratchets.
+- ❌ **The guided Round 5 aggregate is not wholly green.** Token efficiency
+  passes, but the committed aggregate still fails its non-token failed-command
+  budget.
+- ⚠️ **Neon Harbor Rescue is not a release proof.** Placeholder primitives,
+  metadata-only saved progress, incomplete interactive settings input proof,
+  and missing visual-quality/release artifacts are recorded in
+  `examples/neon-harbor-rescue/FRICTION.md`.
+- ⚠️ **Contract truth is improved, not centralized.** SDK, IR, compiler, web,
+  Bevy, CLI/editor/MCP, and verification registries still span multiple
+  ownership layers. Remaining descriptor allowlists and unschemed documents
+  must keep shrinking.
+- ⚠️ **Photoreal parity remains backend-bounded.** Bevy 0.14 deferred/forward
+  reflection response differs from web, and persistent temporal history adds
+  render-resource lifecycle risk. Existing cleanup/reset/parity tests must
+  remain green.
+- ⚠️ **Several product boundaries remain explicit.** IME/virtual keyboards,
+  platform screen readers, broad native UI effects, advanced navigation,
+  vehicles/soft bodies/ragdolls, multi-window platform behavior, and signed
+  installers/store packaging are not broad portable promotions.
+- ⚠️ **Cross-hardware budgets need history.** Dense physics at 5,000 bodies and
+  browser GPU-memory behavior need sustained hardware samples before tighter
+  release budgets are justified.
 
-## What blocks "mid-sized"
+## Recommended next steps
 
-1. **Off-recipe authoring cost (the core product risk).** Latest off-recipe
-   evidence: checkpoint-race 3.614x, physics-knockdown 2.008x vs a 2.0x gate
-   (`off-recipe-2026-07-07`). Round-5 diagnosis: ~16 of 35 median steps are
-   churn (artifact forensics, engine-source greps, standalone verifies, zero
-   `tn iterate` use), and recurring friction in resource read/write schema
-   declarations. A mid-sized game is mostly off-recipe by definition.
-2. **Unproven mid-size systems.** GameFlow/Sequence (declarative gameplay
-   flow, PRD-8) and contract de-sprawl (PRD-4) are active, not done. No
-   example exercises menus → gameplay → win/lose → progression across scenes.
-3. **Adapter-surface debt (4 red rows).** Authoring operations, CLI command
-   surface, and editor source operations lack drift gates
-   (`SYSTEMS_CODE_QUALITY_STATUS.md`, 7.2/10). Remediation PRDs 002–005 are
-   planned but not started; until PRD-002 lands, surface refactors risk
-silent divergence across CLI/MCP/editor.
-4. **Visual ceiling in flight.** Cinematic default look (PRD-5) and photoreal
-   rendering/post (PRD-15) are active; the default output still reads
-   "stylized demo" per the roadmap's own assessment.
-5. **Known runtime rough edges** (from engine-quirks log): `update`-schedule
-   scripts read raw fixed-tick poses instead of interpolated ones
-   (camera-vs-character sawtooth); native input axis clamp crushes pointer
-   deltas; one unresolved runtime black box (projectile velocity not
-   propagating to `context.state` in physics-knockdown, 9 identical playtest
-   failures with zero diagnostic progress — engine bug or diagnostic gap).
+1. ✅ Treat the adapter, leverage-point, feature-parity-polishing, systems
+   remediation, and gameplay-parity bundles as completed foundations; do not
+   reopen duplicate registries or one-off proof lists.
+2. ⚠️ Promote `neon-harbor-rescue` from build-only only after replacing hero
+   placeholders, wiring durable persistence, proving interactive settings,
+   and adding screenshot/contact-sheet plus release-proof artifacts.
+3. ❌ Rerun Round 5B for lane runner, checkpoint race, and physics knockdown;
+   do not claim off-recipe efficiency until both token and failed-command
+   budgets pass.
+4. ⚠️ Continue descriptor/schema migration where explicit gaps remain, with
+   drift tests for every non-derived surface.
+5. ⚠️ Accumulate cross-hardware physics/GPU history, then rerate the systems
+   quality score and tighten budgets only from measured data.
+6. ⚠️ Finish the remaining active product work, especially advanced
+   animation/physics depth and signed installer/store packaging, without
+   bypassing the native-promotion policy.
 
-## Recommended next steps (in order)
+## Current operating guidance
 
-1. **Close PRD-012: ship metro-surfer-heist publicly.** Record the human
-   playtest, deploy via the existing GitHub Pages workflow, and harvest the
-   friction log. This is the cheapest remaining step to a defensible "small
-   games: shipped" claim and seeds the next planning round.
-2. **Land adapter-surface PRD-002 (drift gates) next, before any further
-   CLI/editor surface work.** It unblocks PRDs 003–005 and de-risks the four
-   red rows. It is also the prerequisite the code-quality doc names for
-   clean refactoring.
-3. **Attack the off-recipe token sinks directly:**
-   - Auto-derive `resourceReads`/`resourceWrites` + schema entries (named in
-     all 4 benchmark sessions).
-   - Root-cause the physics-knockdown velocity black box — a silent runtime
-     failure with no diagnostic is the worst possible agent experience.
-   - Kill the measured churn step classes (per Round-5 agreement), then rerun
-     the matrix on lane-runner/checkpoint-race/physics-knockdown.
-4. **Finish the mid-size enabler PRDs:** gameplay flow (PRD-8), contract
-   de-sprawl (PRD-4), cinematic look (PRD-5/15). These, not new surface
-   area, are what separate "vertical slice" from "mid-sized game".
-5. **Then run the forcing function: build one genuinely mid-sized game**
-   (a step above metro-surfer-heist — menus, sound, difficulty curve,
-   multi-scene flow) agent-first, logging every friction as an issue. Keep
-   the native parity freeze until this game documents a shipped need.
-
-## What NOT to do now
-
-- No new Bevy parity surfaces (freeze is correct; webview packaging covers
-  desktop distribution).
-- No new whole-game recipes (re-rigs the benchmark; factor L1/L2 instead).
-- No typed game-spec promotion to default (Round-5 showed it performs worse
-  than direct authoring: 1.12x tokens, more failed commands).
+- ✅ Use structured source, registry-backed `tn` operations, `tn iterate`, and
+  focused proof gates as the supported production path.
+- ✅ Use web as the primary runtime and webview packaging where it satisfies
+  the shipped-game requirement.
+- ⚠️ Treat every native promotion and every new proof requirement as
+  evidence-owned, descriptor-backed work.
+- ❌ Do not call build-only examples, trace-only native rows, or passing token
+  ratios release readiness by themselves.

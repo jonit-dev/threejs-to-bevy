@@ -49,6 +49,7 @@ export function updateHumanoidCourse(context: ScriptContext): void {
   const cameraYaw = isRecord(cameraState) && typeof cameraState.yaw === "number" ? cameraState.yaw : 0;
   CharacterRig.update(context, player, {
     acceleration: ACCELERATION,
+    applyPushVelocity: true,
     bounds: { max: BOUNDS_MAX, min: BOUNDS_MIN },
     cameraYaw,
     clips: {
@@ -58,6 +59,9 @@ export function updateHumanoidCourse(context: ScriptContext): void {
     },
     deceleration: DECELERATION,
     forwardAxis: "-z",
+    gravity: 14,
+    jumpAction: "jump",
+    jumpSpeed: 5.2,
     maxTurnSpeed: TURN_SPEED,
     sprintAction: "sprint",
     sprintSpeed: SPRINT_SPEED,

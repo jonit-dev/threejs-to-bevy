@@ -12,7 +12,7 @@
     { "id": "mesh.wall", "kind": "primitive", "primitive": "box", "size": [0.28, 1.45, 2.2] },
     { "id": "mesh.low-wall", "kind": "primitive", "primitive": "box", "size": [2.4, 0.42, 0.32] },
     { "id": "mesh.crate", "kind": "primitive", "primitive": "box", "size": [0.78, 0.78, 0.78] },
-    { "id": "mesh.push.ball", "kind": "primitive", "primitive": "sphere", "size": [0.76] },
+    { "id": "mesh.push.ball", "kind": "primitive", "primitive": "sphere", "size": [0.38] },
     { "id": "mesh.hazard", "kind": "primitive", "primitive": "box", "size": [1.55, 0.2, 0.28] },
     { "id": "mesh.checkpoint", "kind": "primitive", "primitive": "cylinder", "size": [0.52, 0.06] },
     { "id": "mesh.marker", "kind": "primitive", "primitive": "box", "size": [0.12, 1.2, 0.12] },

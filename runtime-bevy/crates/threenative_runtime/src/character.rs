@@ -209,14 +209,15 @@ fn trace_character(
             input.fixed_delta,
         ),
     );
+    let offset = collider_offset(collider);
     let character_bounds_info = entity_bounds(entity);
     let character_half_extents = half_extents(collider);
     let horizontal = if controller.blocking {
         resolve_horizontal_contact(
             &entity.id,
             character_bounds_info.as_ref(),
-            start,
-            desired,
+            add(start, offset),
+            add(desired, offset),
             character_half_extents,
             blockers,
             controller.step_offset.unwrap_or(0.0),
@@ -227,7 +228,7 @@ fn trace_character(
         HorizontalResolution {
             blocked_by: None,
             contacts: Vec::new(),
-            position: desired,
+            position: add(desired, offset),
             pushed: None,
             too_heavy: None,
         }
@@ -272,7 +273,7 @@ fn trace_character(
         platform_delta: ground.platform_delta,
         pushed: horizontal.pushed,
         pushes,
-        resolved: ground.position,
+        resolved: subtract(ground.position, offset),
         slope: ground.slope,
         start,
         too_heavy: horizontal.too_heavy,
@@ -539,7 +540,7 @@ fn ground_position(
 fn entity_bounds(entity: &WorldEntity) -> Option<Bounds> {
     let collider = entity.components.collider.as_ref()?;
     Some(Bounds {
-        center: position(entity),
+        center: add(position(entity), collider_offset(collider)),
         contact_phases: collider
             .contact
             .as_ref()
@@ -557,6 +558,13 @@ fn entity_bounds(entity: &WorldEntity) -> Option<Bounds> {
             .as_ref()
             .and_then(|body| body.velocity),
     })
+}
+
+fn collider_offset(collider: &ColliderComponent) -> [f32; 3] {
+    collider
+        .center
+        .or_else(|| collider.mesh.as_ref().and_then(|mesh| mesh.bounds.center))
+        .unwrap_or([0.0, 0.0, 0.0])
 }
 
 fn half_extents(collider: &ColliderComponent) -> [f32; 3] {
@@ -608,7 +616,6 @@ fn can_step_onto(
     step_offset > 0.0
         && top > foot + SUPPORT_TOLERANCE
         && top <= foot + step_offset + SUPPORT_TOLERANCE
-        && covers_xz(position, bounds)
 }
 
 fn can_walk_slope(position: [f32; 3], bounds: &Bounds, slope_limit: f32) -> bool {
@@ -747,6 +754,10 @@ fn axis_value(axes: &[CharacterTraceAxis<'_>], id: &str) -> f32 {
 
 fn add(left: [f32; 3], right: [f32; 3]) -> [f32; 3] {
     [left[0] + right[0], left[1] + right[1], left[2] + right[2]]
+}
+
+fn subtract(left: [f32; 3], right: [f32; 3]) -> [f32; 3] {
+    [left[0] - right[0], left[1] - right[1], left[2] - right[2]]
 }
 
 fn scale(vector: [f32; 3], amount: f32) -> [f32; 3] {
