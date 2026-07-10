@@ -42,11 +42,48 @@ export interface IResolvedRenderLookProfile extends IRenderLookProfilePreset {
 }
 
 export interface IResolvedRenderLookShadowProfile {
+  cascadeProfile?: ICascadeShadowProfileReport;
   cascadeCount: 1 | 2 | 4;
   enabled: boolean;
   filter: "basic" | "pcf" | "pcf-soft";
   mapSize: 512 | 1024 | 2048;
   quality: RenderLookShadowQuality;
+}
+
+export interface IResolvedCascadeShadowProfile {
+  cascadeBlendFraction: number;
+  cascadeCount: 1 | 2 | 4;
+  maxDistance: number;
+  splitLambda: number;
+  splitScheme: "uniform" | "logarithmic" | "practical";
+  stabilized: boolean;
+}
+
+export interface ICascadeShadowProfileReport {
+  applied: IResolvedCascadeShadowProfile;
+  mode: "exact" | "first-split-exponential-approximation";
+  reason?: string;
+  requested: IResolvedCascadeShadowProfile;
+}
+
+export interface ICascadeShadowProfileSource {
+  cascadeBlendFraction?: number;
+  cascadeCount: 1 | 2 | 4;
+  maxDistance: number;
+  splitLambda?: number;
+  splitScheme?: "uniform" | "logarithmic" | "practical";
+  stabilized?: boolean;
+}
+
+export function resolveCascadeShadowProfile(source: ICascadeShadowProfileSource): IResolvedCascadeShadowProfile {
+  return {
+    cascadeBlendFraction: source.cascadeBlendFraction ?? 0.2,
+    cascadeCount: source.cascadeCount,
+    maxDistance: source.maxDistance,
+    splitLambda: source.splitLambda ?? 0.5,
+    splitScheme: source.splitScheme ?? "practical",
+    stabilized: source.stabilized ?? true,
+  };
 }
 
 export function resolveRenderLookShadowProfile(quality: RenderLookShadowQuality): IResolvedRenderLookShadowProfile {

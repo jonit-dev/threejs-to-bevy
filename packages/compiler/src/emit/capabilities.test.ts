@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import type { IAssetsManifest, IMaterialsIr, IUiIr, IWorldIr } from "@threenative/ir";
+import type { IAssetsManifest, IAtmosphereProfileIr, IEnvironmentSceneIr, IMaterialsIr, IUiIr, IWorldIr } from "@threenative/ir";
 
 import { deriveRequiredCapabilities } from "./capabilities.js";
 
@@ -108,6 +108,16 @@ test("should derive sorted rendering and physics capabilities from world, materi
     "texture.uv-transform",
     "visibility",
   ]);
+});
+
+test("should enroll shadow-cascade-profile when maxDistance authored", () => {
+  const capabilities = deriveRequiredCapabilities({
+    assets: assetsManifest([]),
+    environment: environmentScene(atmosphereProfile()),
+    materials: materialsIr([]),
+  });
+
+  assert.ok(capabilities.rendering?.includes("shadow-cascade-profile"));
 });
 
 test("should derive primitive solver v2 capability from bounded primitive body metadata", () => {
@@ -374,6 +384,29 @@ function worldIr(world: Pick<IWorldIr, "entities" | "resources">): IWorldIr {
     resources: world.resources,
     schema: "threenative.world",
     version: "0.1.0",
+  };
+}
+
+function environmentScene(atmosphere: IAtmosphereProfileIr): IEnvironmentSceneIr {
+  return {
+    atmosphere,
+    instances: [],
+    path: { id: "path.main", points: [[0, 0, 0], [1, 0, 0]], width: 1 },
+    schema: "threenative.environment-scene",
+    sourceAssets: [],
+    version: "0.1.0",
+  };
+}
+
+function atmosphereProfile(): IAtmosphereProfileIr {
+  return {
+    active: true,
+    ambient: { color: "#ffffff", intensity: 1, mode: "constant" },
+    colorManagement: { exposure: 1, outputColorSpace: "srgb", textureColorSpace: "srgb", toneMapping: "aces" },
+    id: "atmosphere.test",
+    shadows: { bias: -0.0005, cascadeCount: 4, enabled: true, mapSize: 2048, maxDistance: 100, normalBias: 0.02, receiverPolicy: "terrain-and-path" },
+    sky: { color: "#88aaff" },
+    sun: { castsShadow: true, color: "#ffffff", direction: [-1, -1, 0], id: "sun.main", intensity: 3 },
   };
 }
 

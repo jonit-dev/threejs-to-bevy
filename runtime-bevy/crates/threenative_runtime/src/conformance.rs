@@ -15,6 +15,7 @@ use crate::audio::{
 use crate::cameras::{active_camera_ids, camera_order};
 use crate::physics::detect_physics_events;
 use crate::render_targets::list_screenshot_exports;
+use crate::rendering::{NativeShadowCascadeProfileReport, resolve_native_shadow_cascade_profile};
 use crate::scene_manager::{
     SceneLifecycleOperation, SceneLifecycleRuntimeState, trace_scene_lifecycle,
 };
@@ -368,6 +369,8 @@ pub struct RuntimeRenderLookReport {
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct RuntimeShadowProfileReport {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub cascade_profile: Option<NativeShadowCascadeProfileReport>,
     pub cascade_count: usize,
     pub enabled: bool,
     pub filter: String,
@@ -866,6 +869,18 @@ pub fn report_bevy_conformance(
     let ui_report = report_ui(bundle.ui.as_ref());
     let active_camera = report_active_camera(world);
     let camera_views = report_camera_views(bundle);
+    let shadow_cascade_profile = world
+        .query::<&NativeShadowCascadeProfileReport>()
+        .iter(world)
+        .next()
+        .cloned()
+        .or_else(|| {
+            bundle
+                .environment_scene
+                .as_ref()
+                .and_then(|environment| environment.atmosphere.as_ref())
+                .and_then(|atmosphere| resolve_native_shadow_cascade_profile(&atmosphere.shadows))
+        });
     let traces = build_runtime_trace_bundle(
         &entities,
         ui_report.as_ref().and_then(|report| report.report.as_ref()),
@@ -899,7 +914,10 @@ pub fn report_bevy_conformance(
         profiler: Some(report_profiler(bundle)),
         resources: report_resources(bundle),
         runtime: "bevy".to_owned(),
-        runtime_config: report_runtime_config(bundle.runtime_config.as_ref()),
+        runtime_config: report_runtime_config(
+            bundle.runtime_config.as_ref(),
+            shadow_cascade_profile,
+        ),
         scene_lifecycle: report_scene_lifecycle(bundle),
         screenshot_exports: Some(
             list_screenshot_exports(bundle)
@@ -1177,9 +1195,10 @@ fn report_active_camera(world: &mut World) -> Option<String> {
 
 fn report_runtime_config(
     config: Option<&RuntimeConfigIr>,
+    shadow_cascade_profile: Option<NativeShadowCascadeProfileReport>,
 ) -> Option<ConformanceRuntimeConfigReport> {
     let renderer = config.and_then(|config| config.renderer.as_ref())?;
-    let render_look = runtime_render_look_report(renderer);
+    let render_look = runtime_render_look_report(renderer, shadow_cascade_profile);
     let feature_reports = runtime_renderer_feature_reports(renderer);
     let bloom_report = runtime_bloom_report(renderer);
     let bloom_applied = bloom_report
@@ -1391,7 +1410,10 @@ fn runtime_renderer_feature_report(
     }
 }
 
-fn runtime_render_look_report(renderer: &RuntimeRendererConfig) -> Option<RuntimeRenderLookReport> {
+fn runtime_render_look_report(
+    renderer: &RuntimeRendererConfig,
+    shadow_cascade_profile: Option<NativeShadowCascadeProfileReport>,
+) -> Option<RuntimeRenderLookReport> {
     let requested_profile = renderer
         .render_look
         .as_ref()
@@ -1418,11 +1440,14 @@ fn runtime_render_look_report(renderer: &RuntimeRendererConfig) -> Option<Runtim
                 shadow_quality: overrides.shadow_quality.clone(),
             }),
         requested_profile,
-        shadow_profile: runtime_shadow_profile(renderer),
+        shadow_profile: runtime_shadow_profile(renderer, shadow_cascade_profile),
     })
 }
 
-fn runtime_shadow_profile(renderer: &RuntimeRendererConfig) -> RuntimeShadowProfileReport {
+fn runtime_shadow_profile(
+    renderer: &RuntimeRendererConfig,
+    cascade_profile: Option<NativeShadowCascadeProfileReport>,
+) -> RuntimeShadowProfileReport {
     let render_look = renderer.render_look.as_ref();
     let quality = render_look
         .and_then(|render_look| render_look.overrides.as_ref())
@@ -1435,6 +1460,7 @@ fn runtime_shadow_profile(renderer: &RuntimeRendererConfig) -> RuntimeShadowProf
         );
     match quality {
         "off" => RuntimeShadowProfileReport {
+            cascade_profile,
             cascade_count: 1,
             enabled: false,
             filter: "basic".to_owned(),
@@ -1442,6 +1468,7 @@ fn runtime_shadow_profile(renderer: &RuntimeRendererConfig) -> RuntimeShadowProf
             quality: quality.to_owned(),
         },
         "low" => RuntimeShadowProfileReport {
+            cascade_profile,
             cascade_count: 1,
             enabled: true,
             filter: "basic".to_owned(),
@@ -1449,6 +1476,7 @@ fn runtime_shadow_profile(renderer: &RuntimeRendererConfig) -> RuntimeShadowProf
             quality: quality.to_owned(),
         },
         "high" => RuntimeShadowProfileReport {
+            cascade_profile,
             cascade_count: 4,
             enabled: true,
             filter: "pcf-soft".to_owned(),
@@ -1456,6 +1484,7 @@ fn runtime_shadow_profile(renderer: &RuntimeRendererConfig) -> RuntimeShadowProf
             quality: quality.to_owned(),
         },
         _ => RuntimeShadowProfileReport {
+            cascade_profile,
             cascade_count: 2,
             enabled: true,
             filter: "pcf".to_owned(),

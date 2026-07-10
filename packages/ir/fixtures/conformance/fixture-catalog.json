@@ -3,6 +3,52 @@
   "version": "0.1.0",
   "fixtures": [
     {
+      "canonicalId": "shadow-cascade-stability",
+      "owner": "ir-contract",
+      "sourceExample": "shadow-cascade-stability",
+      "regenerateCommand": "pnpm verify:focused verify:shadow-cascade-stability",
+      "canonicalArtifactGate": "shadow-cascade-stability",
+      "ownerDocs": "docs/PRDs/done/lumen-lite-lighting-2026-07-09/PRD-001-portable-cascaded-shadow-stability.md",
+      "aggregateGate": "verify:shadow-cascade-stability",
+      "bundlePath": "packages/ir/fixtures/conformance/shadow-cascade-stability/game.bundle",
+      "promotedCapabilities": [
+        "environment:atmosphere",
+        "rendering:camera.perspective",
+        "rendering:material.standard",
+        "rendering:mesh.primitive.box",
+        "rendering:shadow-cascade-profile",
+        "rendering:shadows"
+      ],
+      "reportArtifacts": [
+        "tools/verify/artifacts/shadow-cascade-stability/verification-report.json",
+        "tools/verify/artifacts/shadow-cascade-stability/reports/shadow-cascade-stability.web.report.json",
+        "tools/verify/artifacts/shadow-cascade-stability/reports/shadow-cascade-stability.native.report.json",
+        "tools/verify/artifacts/shadow-cascade-stability/screenshots/shadow-cascade-stability.web.png",
+        "tools/verify/artifacts/shadow-cascade-stability/screenshots/shadow-cascade-stability.native.png",
+        "tools/verify/artifacts/shadow-cascade-stability/contact-sheet.svg"
+      ],
+      "focusedGate": {
+        "commands": [
+          ["pnpm", "--filter", "@threenative/ir", "build"],
+          ["pnpm", "--filter", "@threenative/runtime-web-three", "build"],
+          ["pnpm", "--filter", "@threenative/cli", "build"],
+          ["pnpm", "--filter", "@threenative/verify-tools", "build"],
+          ["node", "tools/verify/dist/shadowCascadeStability.js"]
+        ],
+        "conflictPolicy": "none",
+        "description": "Cross-adapter cascaded directional shadow stability gate.",
+        "owner": "packages/ir fixture catalog and tools/verify shadow cascade stability gate",
+        "profile": "focused",
+        "protects": "Exact shared cascade profile resolution and unchanged snapped web light matrices under measured sub-texel camera motion.",
+        "reason": "Combines paired web/native runtime reports with objective texel-stability evidence that package-local static screenshots cannot prove.",
+        "release": {
+          "enrolled": true,
+          "name": "verify shadow cascade stability",
+          "timingCategory": "focused-gate"
+        }
+      }
+    },
+    {
       "canonicalId": "game-flow",
       "owner": "ir-contract",
       "sourceExample": "game-flow",

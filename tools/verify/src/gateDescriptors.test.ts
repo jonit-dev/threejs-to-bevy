@@ -6,6 +6,7 @@ import { listFocusedGateNames } from "./cli/run.js";
 import {
   descriptorFocusedGates,
   descriptorReleaseFocusedGates,
+  fixtureCatalogGateDescriptors,
   GATE_DESCRIPTOR_MIGRATION_GAPS,
   GATE_DESCRIPTORS,
   validateGateDescriptorMigrationGaps,
@@ -18,8 +19,19 @@ test("gate descriptors should validate migrated proof gate metadata", () => {
     "verify:agent-io",
     "verify:session-cost",
     "verify:webview-package",
+    "verify:shadow-cascade-stability",
   ]);
   assert.equal(GATE_DESCRIPTORS.every((descriptor) => descriptor.release.enrolled), true);
+});
+
+test("fixture catalog should own the shadow cascade focused gate descriptor", () => {
+  const descriptors = fixtureCatalogGateDescriptors();
+  const descriptor = descriptors.find((entry) => entry.name === "verify:shadow-cascade-stability");
+
+  assert.ok(descriptor);
+  assert.equal(descriptor.artifact.reportPath, "tools/verify/artifacts/shadow-cascade-stability/verification-report.json");
+  assert.deepEqual(descriptor.command.commands.at(-1), ["node", "tools/verify/dist/shadowCascadeStability.js"]);
+  assert.equal(descriptor.release.enrolled, true);
 });
 
 test("gate descriptors should derive focused gates and release artifacts", () => {
@@ -32,6 +44,7 @@ test("gate descriptors should derive focused gates and release artifacts", () =>
     ["verify:agent-io", "tools/verify/artifacts/agent-io/verification-report.json"],
     ["verify:session-cost", "tools/verify/artifacts/session-cost/verification-report.json"],
     ["verify:webview-package", "tools/verify/artifacts/webview-package/verification-report.json"],
+    ["verify:shadow-cascade-stability", "tools/verify/artifacts/shadow-cascade-stability/verification-report.json"],
   ]);
 });
 

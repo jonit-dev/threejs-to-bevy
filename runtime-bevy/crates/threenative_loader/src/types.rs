@@ -2417,7 +2417,11 @@ pub struct AtmosphereShadowsIr {
     pub map_size: u32,
     pub max_distance: f32,
     pub cascade_count: u32,
+    pub cascade_blend_fraction: Option<f32>,
     pub bias: f32,
     pub normal_bias: f32,
     pub receiver_policy: String,
+    pub split_lambda: Option<f32>,
+    pub split_scheme: Option<String>,
+    pub stabilized: Option<bool>,
 }

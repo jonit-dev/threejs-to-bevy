@@ -321,6 +321,61 @@ test("rendering should reject shadow profile when map size exceeds target budget
   assert.equal(diagnostics[0]?.code, "TN_IR_ATMOSPHERE_SHADOW_MAP_SIZE_EXCEEDED");
 });
 
+test("rendering should reject non-positive cascade max distance", () => {
+  const profile = makeProfile({ shadows: { ...makeProfile().shadows, maxDistance: 0 } });
+
+  const diagnostics = validateAtmosphereProfile(profile, "environment.scene.json/atmosphere");
+
+  assert.equal(diagnostics[0]?.code, "TN_IR_ATMOSPHERE_SHADOW_CASCADE_MAX_DISTANCE_INVALID");
+});
+
+test("should reject splitLambda outside 0..1", () => {
+  const profile = makeProfile({ shadows: { ...makeProfile().shadows, splitLambda: 1.1 } });
+
+  const diagnostics = validateAtmosphereProfile(profile, "environment.scene.json/atmosphere");
+
+  assert.equal(diagnostics[0]?.code, "TN_IR_ATMOSPHERE_SHADOW_CASCADE_SPLIT_LAMBDA_INVALID");
+  assert.equal(diagnostics[0]?.path, "environment.scene.json/atmosphere/shadows/splitLambda");
+});
+
+test("rendering should reject cascade blend fraction outside 0..1", () => {
+  const profile = makeProfile({ shadows: { ...makeProfile().shadows, cascadeBlendFraction: -0.1 } });
+
+  const diagnostics = validateAtmosphereProfile(profile, "environment.scene.json/atmosphere");
+
+  assert.equal(diagnostics[0]?.code, "TN_IR_ATMOSPHERE_SHADOW_CASCADE_BLEND_FRACTION_INVALID");
+});
+
+test("rendering should reject unsupported cascade split scheme", () => {
+  const profile = makeProfile({ shadows: { ...makeProfile().shadows, splitScheme: "custom" as "uniform" } });
+
+  const diagnostics = validateAtmosphereProfile(profile, "environment.scene.json/atmosphere");
+
+  assert.equal(diagnostics[0]?.code, "TN_IR_ATMOSPHERE_SHADOW_CASCADE_SPLIT_SCHEME_INVALID");
+});
+
+test("rendering should reject non-boolean cascade stabilization", () => {
+  const profile = makeProfile({ shadows: { ...makeProfile().shadows, stabilized: "yes" as unknown as boolean } });
+
+  const diagnostics = validateAtmosphereProfile(profile, "environment.scene.json/atmosphere");
+
+  assert.equal(diagnostics[0]?.code, "TN_IR_ATMOSPHERE_SHADOW_CASCADE_STABILIZED_INVALID");
+});
+
+test("rendering should accept bounded cascade controls", () => {
+  const profile = makeProfile({
+    shadows: {
+      ...makeProfile().shadows,
+      cascadeBlendFraction: 0,
+      splitLambda: 1,
+      splitScheme: "practical",
+      stabilized: true,
+    },
+  });
+
+  assert.deepEqual(validateAtmosphereProfile(profile, "environment.scene.json/atmosphere"), []);
+});
+
 test("should accept skybox and environment probe refs when assets are bundle local", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-env-lighting-"));
   try {

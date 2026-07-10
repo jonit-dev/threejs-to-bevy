@@ -703,6 +703,7 @@ test("should render active cameras in order with viewport scissors", () => {
 
   const viewportCalls: Array<{ height: number; width: number; x: number; y: number }> = [];
   const renderOrder: string[] = [];
+  const cascadeOrder: string[] = [];
   renderer.setViewport = ((x: number, y: number, width: number, height: number) => {
     viewportCalls.push({ x, y, width, height });
   }) as typeof renderer.setViewport;
@@ -713,18 +714,30 @@ test("should render active cameras in order with viewport scissors", () => {
     for (const [id, mappedCamera] of mapped.cameras.entries()) {
       if (mappedCamera === camera) {
         renderOrder.push(id);
+        cascadeOrder.push(`render:${id}`);
       }
     }
   }) as typeof renderer.render;
+  const directionalShadowController = {
+    update(camera: THREE.Camera) {
+      for (const [id, mappedCamera] of mapped.cameras.entries()) {
+        if (mappedCamera === camera) {
+          assert.equal((camera as THREE.PerspectiveCamera).aspect, 400 / 600);
+          cascadeOrder.push(`cascade:${id}`);
+        }
+      }
+    },
+  } as unknown as Parameters<typeof renderCameraViews>[5];
 
   const records = renderCameraViews(renderer, mapped, {
     schema: "threenative.world",
     version: "0.1.0",
     entities: [],
     resources: { ActiveCameras: { cameras: [{ entity: "camera.left" }, { entity: "camera.right" }] } },
-  });
+  }, 0, undefined, directionalShadowController);
 
   assert.deepEqual(renderOrder, ["camera.left", "camera.right"]);
+  assert.deepEqual(cascadeOrder, ["cascade:camera.left", "render:camera.left", "cascade:camera.right", "render:camera.right"]);
   assert.deepEqual(records.map((record) => record.cameraId), ["camera.left", "camera.right"]);
   assert.deepEqual(records[0]?.viewport, { x: 0, y: 0, width: 400, height: 600 });
   assert.deepEqual(records[1]?.viewport, { x: 400, y: 0, width: 400, height: 600 });

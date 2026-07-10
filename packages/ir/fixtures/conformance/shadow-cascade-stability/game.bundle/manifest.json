@@ -1,0 +1,29 @@
+{
+  "schema": "threenative.bundle",
+  "version": "0.1.0",
+  "name": "shadow-cascade-stability",
+  "requiredCapabilities": {
+    "environment": [
+      "atmosphere",
+      "scene"
+    ],
+    "rendering": [
+      "camera.perspective",
+      "material.standard",
+      "mesh-renderer",
+      "mesh.primitive.box",
+      "shadow-cascade-profile",
+      "shadows"
+    ]
+  },
+  "entry": {
+    "environmentScene": "environment.scene.json",
+    "world": "world.ir.json"
+  },
+  "files": {
+    "assets": "assets.manifest.json",
+    "materials": "materials.ir.json",
+    "runtimeConfig": "runtime.config.json",
+    "targetProfile": "target.profile.json"
+  }
+}

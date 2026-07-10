@@ -1,4 +1,9 @@
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+
 import type { FocusedGate, GateProfile } from "./cli/run.js";
+import type { FixtureCatalog } from "./conformance.js";
 
 type CommandSpec = readonly [command: string, ...args: string[]];
 
@@ -36,7 +41,7 @@ export interface GateDescriptorMigrationGap {
   reviewed: string;
 }
 
-export const GATE_DESCRIPTORS: readonly GateDescriptor[] = [
+const STATIC_GATE_DESCRIPTORS: readonly GateDescriptor[] = [
   {
     artifact: { reportPath: "tools/verify/artifacts/agent-io/verification-report.json" },
     command: {
@@ -103,6 +108,56 @@ export const GATE_DESCRIPTORS: readonly GateDescriptor[] = [
     release: { enrolled: true, name: "verify webview package", timingCategory: "focused-gate" },
   },
 ] as const;
+
+export const GATE_DESCRIPTORS: readonly GateDescriptor[] = [
+  ...STATIC_GATE_DESCRIPTORS,
+  ...fixtureCatalogGateDescriptors(),
+];
+
+export function fixtureCatalogGateDescriptors(root?: string): GateDescriptor[] {
+  const repoRoot = root ?? resolve(fileURLToPath(new URL("../../../", import.meta.url)));
+  const path = resolve(repoRoot, "packages/ir/fixtures/conformance/fixture-catalog.json");
+  const catalog = JSON.parse(readFileSync(path, "utf8")) as FixtureCatalog;
+  const descriptors = new Map<string, GateDescriptor>();
+  for (const fixture of catalog.fixtures) {
+    const gate = fixture.focusedGate;
+    if (gate === undefined) continue;
+    const reportPath = fixture.reportArtifacts.find((artifact) => artifact.endsWith("/verification-report.json"));
+    if (reportPath === undefined) {
+      throw new Error(`Fixture '${fixture.canonicalId}' focused gate must declare a verification-report.json artifact.`);
+    }
+    const descriptor: GateDescriptor = {
+      artifact: { reportPath },
+      command: { commands: gate.commands.map((command) => toCommandSpec(fixture.canonicalId, command)) },
+      conflictPolicy: gate.conflictPolicy,
+      description: gate.description,
+      focused: { profile: gate.profile },
+      name: fixture.aggregateGate,
+      owner: gate.owner,
+      protects: gate.protects,
+      reason: gate.reason,
+      release: gate.release,
+    };
+    const existing = descriptors.get(descriptor.name);
+    if (existing !== undefined && !isDeepEqual(existing, descriptor)) {
+      throw new Error(`Fixtures enrolled in '${descriptor.name}' must share one focused gate descriptor.`);
+    }
+    descriptors.set(descriptor.name, descriptor);
+  }
+  return [...descriptors.values()];
+}
+
+function isDeepEqual(left: unknown, right: unknown): boolean {
+  return JSON.stringify(left) === JSON.stringify(right);
+}
+
+function toCommandSpec(fixtureId: string, command: string[]): CommandSpec {
+  const [executable, ...args] = command;
+  if (executable === undefined || executable.length === 0) {
+    throw new Error(`Fixture '${fixtureId}' focused gate commands must name an executable.`);
+  }
+  return [executable, ...args];
+}
 
 export const GATE_DESCRIPTOR_MIGRATION_GAPS: readonly GateDescriptorMigrationGap[] = [
   { category: "focused-inline", name: "test:gameplay", owner: "tools/verify gameplay parity gate", reason: "Smoke/full gameplay profiles still share bespoke profile-specific argv and report semantics.", reviewed: "2026-07-09" },

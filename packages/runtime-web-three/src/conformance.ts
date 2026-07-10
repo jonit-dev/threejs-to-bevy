@@ -1,5 +1,6 @@
 import * as THREE from "three";
 import { buildRuntimeTraceBundleFromConformanceReport, generatePortableShaderMaterial } from "@threenative/ir";
+import { resolveCascadeShadowProfile } from "@threenative/ir/runtimeConfig";
 import type {
   IAssetIr,
   IAudioIr,
@@ -67,7 +68,11 @@ export function reportWebConformance(
     materials: bundle.materials.materials.map(reportMaterial).sort((left, right) => left.id.localeCompare(right.id)),
     resources: reportResources(bundle.world.resources ?? {}),
     runtime: "web-three",
-    runtimeConfig: reportRuntimeConfig(bundle.runtimeConfig),
+    runtimeConfig: reportRuntimeConfig(
+      bundle.runtimeConfig,
+      bundle.environmentScene,
+      bundle.manifest.requiredCapabilities,
+    ),
     sceneLifecycle: reportSceneLifecycle(bundle),
     screenshotExports: reportScreenshotExports(bundle.world),
     systems: reportSystems(bundle),
@@ -168,7 +173,11 @@ function activeCameraId(mapped: IThreeWorld): string | undefined {
   return undefined;
 }
 
-function reportRuntimeConfig(config: IRuntimeConfigIr | undefined): IConformanceRuntimeConfigReport | undefined {
+function reportRuntimeConfig(
+  config: IRuntimeConfigIr | undefined,
+  environment: IEnvironmentSceneIr | undefined,
+  requiredCapabilities: Record<string, string[]>,
+): IConformanceRuntimeConfigReport | undefined {
   if (config?.renderer === undefined) {
     return undefined;
   }
@@ -176,6 +185,17 @@ function reportRuntimeConfig(config: IRuntimeConfigIr | undefined): IConformance
   const bloom = config.renderer.bloom ?? renderLook.bloom;
   const colorGrading = config.renderer.colorGrading ?? renderLook.colorGrading;
   const featureReports = reportRendererFeatures(config.renderer, "web-three");
+  const cascadeProfileSource = environment?.atmosphere?.shadows;
+  const reportsCascadeProfile = cascadeProfileSource !== undefined && (
+    requiredCapabilities.rendering?.includes("shadow-cascade-profile") === true
+    || cascadeProfileSource.splitScheme !== undefined
+    || cascadeProfileSource.splitLambda !== undefined
+    || cascadeProfileSource.cascadeBlendFraction !== undefined
+    || cascadeProfileSource.stabilized !== undefined
+  );
+  const cascadeProfile = reportsCascadeProfile
+    ? resolveCascadeShadowProfile(cascadeProfileSource)
+    : undefined;
   return {
     renderer: {
       antialias: config.renderer.antialias,
@@ -206,7 +226,12 @@ function reportRuntimeConfig(config: IRuntimeConfigIr | undefined): IConformance
         fallbacks: renderLook.fallbacks,
         ...(config.renderer.renderLook?.overrides === undefined ? {} : { overrides: config.renderer.renderLook.overrides }),
         requestedProfile: renderLook.requestedProfile,
-        shadowProfile: renderLook.shadowProfile,
+        shadowProfile: {
+          ...renderLook.shadowProfile,
+          ...(cascadeProfile === undefined
+            ? {}
+            : { cascadeProfile: { applied: cascadeProfile, mode: "exact" as const, requested: cascadeProfile } }),
+        },
       },
       ...(config.renderer.renderPath === undefined ? {} : { renderPath: config.renderer.renderPath }),
       ...(config.renderer.screenSpaceGlobalIllumination === undefined ? {} : { screenSpaceGlobalIllumination: config.renderer.screenSpaceGlobalIllumination }),

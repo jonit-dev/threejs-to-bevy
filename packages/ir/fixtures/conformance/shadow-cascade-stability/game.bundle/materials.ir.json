@@ -1,0 +1,20 @@
+{
+  "schema": "threenative.materials",
+  "version": "0.1.0",
+  "materials": [
+    {
+      "color": "#b7b2a3",
+      "id": "mat.ground",
+      "kind": "standard",
+      "metalness": 0,
+      "roughness": 0.85
+    },
+    {
+      "color": "#d46b3c",
+      "id": "mat.marker",
+      "kind": "standard",
+      "metalness": 0,
+      "roughness": 0.55
+    }
+  ]
+}

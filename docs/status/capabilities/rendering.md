@@ -34,6 +34,19 @@ Current support:
   1024/PCF/two cascades, and high uses 2048/soft PCF/four cascades. Web applies
   the filter/map settings to shadow-casting lights, while Bevy applies the map
   resource and camera filtering method.
+- Authored atmosphere shadows now add a portable cascade profile with bounded
+  maximum distance, uniform/logarithmic/practical splits, practical-split
+  lambda, overlap blending, and stabilization intent. Web owns adapter-private
+  cascade lights, composes cascade selection into supported materials without
+  global `ShaderChunk` mutation, and snaps full light transforms to shadow-map
+  texels after camera updates. Bevy maps the same profile through
+  `CascadeShadowConfigBuilder`; exact two-cascade and logarithmic layouts report
+  `exact`, while Bevy 0.14's exponentially spaced intermediate bounds are
+  reported as `first-split-exponential-approximation` when a larger
+  uniform/practical layout cannot be represented exactly. The catalog-owned
+  `pnpm verify:focused verify:shadow-cascade-stability` gate compares the shared
+  requested/applied report and records real controller matrix plus paired
+  web/native capture evidence.
 - `pnpm verify:focused verify:feature-parity-visual-polish` composes calibrated
   lighting, material, and dense-content web/Bevy screenshots with paired
   shadow and promoted specular-material conformance reports. It also writes a

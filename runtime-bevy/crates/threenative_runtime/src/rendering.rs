@@ -12,12 +12,13 @@ use bevy::{
     },
 };
 use image::ImageReader;
+use serde::Serialize;
 use std::{
     collections::HashSet,
     f32::consts::{FRAC_PI_2, PI, TAU},
 };
 use threenative_components::ThreeNativeId;
-use threenative_loader::{ColorIr, EnvironmentTextureSourceIr, LoadedBundle};
+use threenative_loader::{AtmosphereShadowsIr, ColorIr, EnvironmentTextureSourceIr, LoadedBundle};
 
 use crate::map_world::NativeMaterialHandles;
 
@@ -27,6 +28,10 @@ const THREE_COMPAT_ATMOSPHERE_AMBIENT_BRIGHTNESS_PER_INTENSITY: f32 = 0.25;
 const THREE_COMPAT_ENVIRONMENT_AMBIENT_BRIGHTNESS_PER_INTENSITY: f32 = 0.45;
 const THREE_COMPAT_ENVIRONMENT_MAP_LIGHT_INTENSITY_PER_UNIT: f32 = 0.55;
 const THREE_COMPAT_SHADOW_BIAS_SCALE: f32 = 100.0;
+const ATMOSPHERE_SHADOW_MINIMUM_DISTANCE: f32 = 0.05;
+const ATMOSPHERE_SHADOW_DEFAULT_BLEND_FRACTION: f32 = 0.2;
+const ATMOSPHERE_SHADOW_DEFAULT_SPLIT_LAMBDA: f32 = 0.5;
+const ATMOSPHERE_SHADOW_DEFAULT_SPLIT_SCHEME: &str = "practical";
 
 #[derive(Clone, Component, Debug, PartialEq)]
 pub struct NativeRenderedParticle {
@@ -73,11 +78,33 @@ pub struct AtmosphereObservation {
     pub shadow_normal_bias: Option<f32>,
     pub shadow_max_distance: Option<f32>,
     pub shadow_cascade_count: Option<u32>,
+    pub shadow_cascade_profile: Option<NativeShadowCascadeProfileReport>,
     pub tone_mapping: Option<String>,
     pub exposure: Option<f32>,
     pub output_color_space: Option<String>,
     pub texture_color_space: Option<String>,
     pub diagnostics: Vec<String>,
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct NativeShadowCascadeProfile {
+    pub cascade_count: u32,
+    pub max_distance: f32,
+    pub split_scheme: String,
+    pub split_lambda: f32,
+    pub cascade_blend_fraction: f32,
+    pub stabilized: bool,
+}
+
+#[derive(Clone, Component, Debug, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct NativeShadowCascadeProfileReport {
+    pub requested: NativeShadowCascadeProfile,
+    pub applied: NativeShadowCascadeProfile,
+    pub mode: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub reason: Option<String>,
 }
 
 #[derive(Debug, PartialEq)]
@@ -142,6 +169,7 @@ pub fn observe_atmosphere(bundle: &LoadedBundle) -> AtmosphereObservation {
             shadow_normal_bias: None,
             shadow_max_distance: None,
             shadow_cascade_count: None,
+            shadow_cascade_profile: None,
             tone_mapping: None,
             exposure: None,
             output_color_space: None,
@@ -168,6 +196,7 @@ pub fn observe_atmosphere(bundle: &LoadedBundle) -> AtmosphereObservation {
         shadow_normal_bias: Some(profile.shadows.normal_bias),
         shadow_max_distance: Some(profile.shadows.max_distance),
         shadow_cascade_count: Some(profile.shadows.cascade_count),
+        shadow_cascade_profile: resolve_native_shadow_cascade_profile(&profile.shadows),
         tone_mapping: Some(profile.color_management.tone_mapping.clone()),
         exposure: Some(profile.color_management.exposure),
         output_color_space: Some(profile.color_management.output_color_space.clone()),
@@ -195,42 +224,165 @@ pub fn apply_atmosphere_to_world(world: &mut World, bundle: &LoadedBundle) {
     world.insert_resource(DirectionalLightShadowMap {
         size: profile.shadows.map_size.min(2048) as usize,
     });
-    world
-        .spawn(DirectionalLightBundle {
-            directional_light: DirectionalLight {
-                color: color_to_bevy(&profile.sun.color),
-                illuminance: profile.sun.intensity
-                    * THREE_COMPAT_ATMOSPHERE_SUN_ILLUMINANCE_PER_INTENSITY,
-                shadows_enabled: profile.sun.casts_shadow && profile.shadows.enabled,
-                shadow_depth_bias: atmosphere_shadow_depth_bias(profile.shadows.bias),
-                shadow_normal_bias: profile.shadows.normal_bias,
-                ..Default::default()
-            },
-            cascade_shadow_config: CascadeShadowConfigBuilder {
-                num_cascades: profile.shadows.cascade_count.max(1) as usize,
-                minimum_distance: 0.05,
+    let (cascade_shadow_config, cascade_profile) =
+        resolve_atmosphere_shadow_cascade_config(&profile.shadows, bundle);
+    let mut sun = world.spawn(DirectionalLightBundle {
+        directional_light: DirectionalLight {
+            color: color_to_bevy(&profile.sun.color),
+            illuminance: profile.sun.intensity
+                * THREE_COMPAT_ATMOSPHERE_SUN_ILLUMINANCE_PER_INTENSITY,
+            shadows_enabled: profile.sun.casts_shadow && profile.shadows.enabled,
+            shadow_depth_bias: atmosphere_shadow_depth_bias(profile.shadows.bias),
+            shadow_normal_bias: profile.shadows.normal_bias,
+            ..Default::default()
+        },
+        cascade_shadow_config,
+        transform: Transform::default().looking_to(
+            Vec3::new(
+                profile.sun.direction[0],
+                profile.sun.direction[1],
+                profile.sun.direction[2],
+            ),
+            Vec3::Y,
+        ),
+        ..Default::default()
+    });
+    sun.insert(Name::new(profile.sun.id.clone()));
+    if let Some(cascade_profile) = cascade_profile {
+        sun.insert(cascade_profile);
+    }
+}
+
+fn resolve_atmosphere_shadow_cascade_config(
+    shadows: &AtmosphereShadowsIr,
+    bundle: &LoadedBundle,
+) -> (
+    bevy::pbr::CascadeShadowConfig,
+    Option<NativeShadowCascadeProfileReport>,
+) {
+    let Some(profile) = resolve_native_shadow_cascade_profile(shadows) else {
+        return (
+            CascadeShadowConfigBuilder {
+                num_cascades: shadows.cascade_count.max(1) as usize,
+                minimum_distance: ATMOSPHERE_SHADOW_MINIMUM_DISTANCE,
                 first_cascade_far_bound: atmosphere_shadow_first_cascade(
-                    profile.shadows.max_distance,
+                    shadows.max_distance,
                     bundle,
                 ),
-                maximum_distance: atmosphere_shadow_camera_distance(
-                    profile.shadows.max_distance,
-                    bundle,
-                ),
+                maximum_distance: atmosphere_shadow_camera_distance(shadows.max_distance, bundle),
                 ..Default::default()
             }
             .into(),
-            transform: Transform::default().looking_to(
-                Vec3::new(
-                    profile.sun.direction[0],
-                    profile.sun.direction[1],
-                    profile.sun.direction[2],
-                ),
-                Vec3::Y,
-            ),
-            ..Default::default()
-        })
-        .insert(Name::new(profile.sun.id.clone()));
+            None,
+        );
+    };
+
+    let minimum_distance =
+        ATMOSPHERE_SHADOW_MINIMUM_DISTANCE.min(profile.applied.max_distance * 0.5);
+    let first_cascade_far_bound = atmosphere_shadow_authored_first_cascade(
+        minimum_distance,
+        profile.applied.max_distance,
+        profile.applied.cascade_count,
+        &profile.applied.split_scheme,
+        profile.applied.split_lambda,
+    );
+    let config = CascadeShadowConfigBuilder {
+        num_cascades: profile.applied.cascade_count as usize,
+        minimum_distance,
+        first_cascade_far_bound,
+        maximum_distance: profile.applied.max_distance,
+        overlap_proportion: profile.applied.cascade_blend_fraction,
+    }
+    .into();
+    (config, Some(profile))
+}
+
+pub fn resolve_native_shadow_cascade_profile(
+    shadows: &AtmosphereShadowsIr,
+) -> Option<NativeShadowCascadeProfileReport> {
+    if shadows.cascade_blend_fraction.is_none()
+        && shadows.split_lambda.is_none()
+        && shadows.split_scheme.is_none()
+        && shadows.stabilized.is_none()
+    {
+        return None;
+    }
+
+    let requested = NativeShadowCascadeProfile {
+        cascade_count: shadows.cascade_count.max(1),
+        max_distance: shadows.max_distance,
+        split_scheme: shadows
+            .split_scheme
+            .clone()
+            .unwrap_or_else(|| ATMOSPHERE_SHADOW_DEFAULT_SPLIT_SCHEME.to_owned()),
+        split_lambda: shadows
+            .split_lambda
+            .unwrap_or(ATMOSPHERE_SHADOW_DEFAULT_SPLIT_LAMBDA),
+        cascade_blend_fraction: shadows
+            .cascade_blend_fraction
+            .unwrap_or(ATMOSPHERE_SHADOW_DEFAULT_BLEND_FRACTION),
+        stabilized: shadows.stabilized.unwrap_or(true),
+    };
+    let mut applied = requested.clone();
+    let mut reasons = Vec::new();
+
+    if applied.cascade_blend_fraction >= 1.0 {
+        applied.cascade_blend_fraction = f32::from_bits(1.0f32.to_bits() - 1);
+        reasons.push(
+            "Bevy 0.14.2 requires cascade overlap to be less than 1; the applied value is the largest representable f32 below 1."
+                .to_owned(),
+        );
+    }
+    if !requested.stabilized {
+        applied.stabilized = true;
+        reasons.push(
+            "Bevy 0.14.2 directional cascades are always engine-stabilized and cannot disable stabilization."
+                .to_owned(),
+        );
+    }
+
+    let approximates_intermediate_splits = requested.cascade_count > 2
+        && !(requested.split_scheme == "logarithmic"
+            || (requested.split_scheme == "practical" && requested.split_lambda == 1.0));
+    if approximates_intermediate_splits {
+        reasons.push(
+            "Bevy 0.14.2 preserves the requested first split and maximum distance, then exponentially spaces intermediate cascade bounds."
+                .to_owned(),
+        );
+    }
+
+    Some(NativeShadowCascadeProfileReport {
+        requested,
+        applied,
+        mode: if approximates_intermediate_splits {
+            "first-split-exponential-approximation"
+        } else {
+            "exact"
+        }
+        .to_owned(),
+        reason: (!reasons.is_empty()).then(|| reasons.join(" ")),
+    })
+}
+
+fn atmosphere_shadow_authored_first_cascade(
+    minimum_distance: f32,
+    maximum_distance: f32,
+    cascade_count: u32,
+    split_scheme: &str,
+    split_lambda: f32,
+) -> f32 {
+    if cascade_count <= 1 {
+        return maximum_distance;
+    }
+    let cascade_count = cascade_count as f32;
+    let uniform = minimum_distance + (maximum_distance - minimum_distance) / cascade_count;
+    let logarithmic =
+        minimum_distance * (maximum_distance / minimum_distance).powf(1.0 / cascade_count);
+    match split_scheme {
+        "uniform" => uniform,
+        "logarithmic" => logarithmic,
+        _ => uniform + (logarithmic - uniform) * split_lambda,
+    }
 }
 
 fn atmosphere_shadow_camera_distance(authored_distance: f32, bundle: &LoadedBundle) -> f32 {

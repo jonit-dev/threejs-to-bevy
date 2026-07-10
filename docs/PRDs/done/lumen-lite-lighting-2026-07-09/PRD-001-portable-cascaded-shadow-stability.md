@@ -94,12 +94,12 @@ are invisible to authored-scene queries and conformance entity counts).
 
 **Key Decisions:**
 
-- [ ] Cascade math lives in a pure, unit-testable module
+- [x] Cascade math lives in a pure, unit-testable module
       (`packages/runtime-web-three/src/rendering/cascadeMath.ts`) separate
       from Three.js object management.
-- [ ] `splitLambda` default 0.5 matches Bevy's practical-ish default feel;
+- [x] `splitLambda` default 0.5 matches Bevy's practical-ish default feel;
       calibration fixture decides the final anchor.
-- [ ] Fields absent -> current behavior unchanged (defaults preserve today's
+- [x] Fields absent -> current behavior unchanged (defaults preserve today's
       resolved profile exactly).
 
 **Data Changes:** `IAtmosphereProfileIr.shadows` gains the five optional
@@ -148,7 +148,7 @@ manifest lists the capability; no diagnostics on valid input.
 
 **Implementation:**
 
-- [ ] Port uniform/logarithmic/practical splits, frustum-slice ortho fit,
+- [x] Port uniform/logarithmic/practical splits, frustum-slice ortho fit,
       texel snap, distance-scaled bias from three-csm; ASCII source; cite
       origin + MIT notice in the file header.
 
@@ -170,9 +170,9 @@ manifest lists the capability; no diagnostics on valid input.
 
 **Implementation:**
 
-- [ ] Controller owns cascade lights, applies resolved profile, updates on
+- [x] Controller owns cascade lights, applies resolved profile, updates on
       camera move, reports the resolved bounded profile.
-- [ ] Feature report keeps today's shape plus the new resolved fields.
+- [x] Feature report keeps today's shape plus the new resolved fields.
 
 **User Verification:** Move the camera in a shadowed fixture scene; shadow
 edges stay pinned (record before/after capture pair).
@@ -214,14 +214,14 @@ needs manual visual verification (moving-camera capture).
 
 ## 6. Acceptance Criteria
 
-- [ ] Authored cascade fields validate, enroll capability, and default to
+- [x] Authored cascade fields validate, enroll capability, and default to
       today's behavior when absent.
-- [ ] Web sun shadows are texel-stable under camera movement (capture proof).
-- [ ] Bevy maps the same fields natively; both adapters emit one shared
+- [x] Web sun shadows are texel-stable under camera movement (capture proof).
+- [x] Bevy maps the same fields natively; both adapters emit one shared
       resolved-profile report shape.
-- [ ] No global ShaderChunk mutation, no `onBeforeCompile` takeover of user
+- [x] No global ShaderChunk mutation, no `onBeforeCompile` takeover of user
       materials.
-- [ ] `docs/status/capabilities/rendering.md`, `docs/STATUS.md` index line,
+- [x] `docs/status/capabilities/rendering.md`, `docs/STATUS.md` index line,
       and `docs/bevy-feature-parity.md` updated.
 
 ## Risks And Unknowns

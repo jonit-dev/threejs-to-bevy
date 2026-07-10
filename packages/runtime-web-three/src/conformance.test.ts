@@ -6,6 +6,7 @@ import { reportWebConformance } from "./conformance.js";
 import { loadBundle } from "./loadBundle.js";
 import type { IWebBundle } from "./loadBundle.js";
 import { mapWorld } from "./mapWorld.js";
+import { DirectionalShadowController } from "./rendering/directionalShadowController.js";
 
 test("should report basic scene conformance semantics", async () => {
   const bundle = await loadBundle(resolve(process.cwd(), "../ir/fixtures/conformance/basic-scene/game.bundle"));
@@ -445,4 +446,75 @@ test("should report promoted render look profile settings", async () => {
   assert.deepEqual(report.runtimeConfig?.renderer?.bloom, { enabled: true, intensity: 0.4, threshold: 0.85 });
   assert.deepEqual(report.runtimeConfig?.renderer?.postProcessing?.applied, ["bloom", "colorGrading"]);
   assert.deepEqual(report.runtimeConfig?.renderer?.postProcessing?.skipped, []);
+});
+
+test("should report the exact cascade profile without adding controller lights to authored entities", async () => {
+  const bundle = await loadBundle(resolve(process.cwd(), "../ir/fixtures/conformance/basic-scene/game.bundle"));
+  bundle.runtimeConfig = {
+    schema: "threenative.runtime-config",
+    version: "0.1.0",
+    renderer: { antialias: "msaa4", renderLook: { version: 1, profile: "balanced" } },
+    time: { fixedDelta: 1 / 60, paused: false },
+    window: { height: 720, width: 1280 },
+  };
+  bundle.environmentScene = {
+    schema: "threenative.environment-scene",
+    version: "0.1.0",
+    atmosphere: {
+      active: true,
+      ambient: { color: "#8899aa", intensity: 0.4, mode: "constant" },
+      colorManagement: { exposure: 1, outputColorSpace: "srgb", textureColorSpace: "srgb", toneMapping: "aces" },
+      id: "atmosphere.cascade-test",
+      shadows: {
+        bias: -0.0005,
+        cascadeBlendFraction: 0.08,
+        cascadeCount: 4,
+        enabled: true,
+        mapSize: 2048,
+        maxDistance: 96,
+        normalBias: 0.02,
+        receiverPolicy: "terrain-and-path",
+        splitLambda: 0.65,
+        splitScheme: "practical",
+        stabilized: true,
+      },
+      sky: { color: "#99bbdd" },
+      sun: { castsShadow: true, color: "#fff0d0", direction: [-0.4, -0.8, -0.2], id: "sun.cascade-test", intensity: 2.5 },
+    },
+    instances: [],
+    path: { id: "path", points: [[-1, 0, 0], [1, 0, 0]], width: 1 },
+    sourceAssets: [],
+  };
+  bundle.manifest.requiredCapabilities.rendering?.push("shadow-cascade-profile");
+  const mapped = mapWorld(bundle);
+  const controller = new DirectionalShadowController({
+    atmosphere: bundle.environmentScene.atmosphere!,
+    camera: mapped.camera,
+    scene: mapped.scene,
+  });
+  const report = reportWebConformance(bundle, mapped, "cascade-profile");
+
+  assert.equal(controller.lights.length, 4);
+  assert.equal(report.entities.length, bundle.world.entities.length);
+  assert.equal(report.entities.some((entity) => entity.id.startsWith("threenative.shadow-cascade")), false);
+  assert.deepEqual(report.runtimeConfig?.renderer?.renderLook?.shadowProfile.cascadeProfile, {
+    applied: {
+      cascadeBlendFraction: 0.08,
+      cascadeCount: 4,
+      maxDistance: 96,
+      splitLambda: 0.65,
+      splitScheme: "practical",
+      stabilized: true,
+    },
+    mode: "exact",
+    requested: {
+      cascadeBlendFraction: 0.08,
+      cascadeCount: 4,
+      maxDistance: 96,
+      splitLambda: 0.65,
+      splitScheme: "practical",
+      stabilized: true,
+    },
+  });
+  controller.dispose();
 });

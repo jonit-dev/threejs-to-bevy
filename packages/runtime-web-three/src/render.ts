@@ -26,6 +26,7 @@ import { advanceAnimationPlayback, hasAnimationPlayback, loadPendingMaterialText
 import { applyEnvironmentBookmark, createEnvironmentRuntime, loadEnvironmentAssetInstances } from "./environment.js";
 import { applyAtmosphereProfile, applyEnvironmentLighting, applyThreeCompatFogDistance } from "./rendering.js";
 import { applyWebRenderLookProfile } from "./rendering/applyRenderLookProfile.js";
+import { DirectionalShadowController, shouldUseDirectionalShadowController } from "./rendering/directionalShadowController.js";
 import { createGameLoopState, runGameFrame } from "./gameLoop.js";
 import { disposePhysicsRuntime, initializePhysicsRuntime } from "./physics.js";
 import { attachInputListeners, createInputState } from "./input.js";
@@ -309,6 +310,18 @@ export async function renderLoadedBundle(bundle: IWebBundle, container: HTMLElem
   applyRendererColorManagement(renderer, bundle.environmentScene?.atmosphere?.colorManagement, renderLook.colorGrading);
   applyRendererShadowSettings(renderer, bundle.runtimeConfig, mapped.scene);
   applyRenderLookSceneDefaults(mapped.scene, renderLook);
+  const directionalShadowController = shouldUseDirectionalShadowController(
+    bundle.environmentScene?.atmosphere,
+    bundle.manifest.requiredCapabilities,
+    renderLook.shadowProfile,
+  )
+    ? new DirectionalShadowController({
+        atmosphere: bundle.environmentScene.atmosphere,
+        camera: mapped.camera,
+        renderLookShadowProfile: renderLook.shadowProfile,
+        scene: mapped.scene,
+      })
+    : undefined;
   const pipeline = createRenderPipeline(
     renderer,
     mapped,
@@ -317,6 +330,7 @@ export async function renderLoadedBundle(bundle: IWebBundle, container: HTMLElem
     bundle.assets,
     bundle.materials,
     options.enableEmissiveProxyLights ?? true,
+    directionalShadowController,
   );
   const colliderDebugOverlay = options.debugColliders === true ? createColliderDebugOverlay(mapped, bundle.world) : undefined;
   const canvas = renderer.domElement;
@@ -400,6 +414,7 @@ export async function renderLoadedBundle(bundle: IWebBundle, container: HTMLElem
     overlayHost?.dispose();
     disposePhysicsRuntime(bundle.world);
     pipeline.dispose();
+    directionalShadowController?.dispose();
     disposeThreeWorld(mapped);
     renderer.dispose();
   };
@@ -1291,10 +1306,18 @@ export function renderCameraViews(
   world: IWorldIr,
   delta = 0,
   renderTargets?: IRenderTargetRegistry,
+  directionalShadowController?: DirectionalShadowController,
 ): IRenderPassRecord[] {
   const registry = renderTargets ?? mapped.renderTargets;
   if (registry !== undefined) {
-    renderTargetCameraPasses(renderer, mapped, world, registry, delta);
+    renderTargetCameraPasses(
+      renderer,
+      mapped,
+      world,
+      registry,
+      delta,
+      (camera) => directionalShadowController?.update(camera),
+    );
   } else {
     updateCameraHelpers(world, mapped.objectsById, delta);
   }
@@ -1319,6 +1342,7 @@ export function renderCameraViews(
       ? { x: 0, y: 0, width: renderWidth, height: renderHeight }
       : viewportToPhysical(view.viewport, renderWidth, renderHeight);
     updateCameraProjection(camera, viewport.width, viewport.height, view.entityId === "primary" ? undefined : world.entities.find((entity) => entity.id === view.entityId)?.components.Camera);
+    directionalShadowController?.update(camera);
     renderer.setScissorTest(true);
     renderer.setViewport(viewport.x, viewport.y, viewport.width, viewport.height);
     renderer.setScissor(viewport.x, viewport.y, viewport.width, viewport.height);
@@ -1352,6 +1376,7 @@ function createRenderPipeline(
   assets?: IWebBundle["assets"],
   materials?: IMaterialsIr,
   enableEmissiveProxyLights = true,
+  directionalShadowController?: DirectionalShadowController,
 ): IRenderPipeline {
   const renderTargets = assets === undefined ? undefined : createRenderTargetRegistry(assets, renderer);
   if (renderTargets !== undefined) {
@@ -1379,7 +1404,7 @@ function createRenderPipeline(
       },
       render: (delta = 0) => {
         emissiveProxyLights.sync();
-        renderCameraViews(renderer, mapped, world, delta, renderTargets);
+        renderCameraViews(renderer, mapped, world, delta, renderTargets, directionalShadowController);
       },
       setSize: () => undefined,
     };
@@ -1416,6 +1441,7 @@ function createRenderPipeline(
     render: (delta = 0) => {
       emissiveProxyLights.sync();
       updateCameraHelpers(world, mapped.objectsById, delta);
+      directionalShadowController?.update(mapped.camera);
       const previousBackground = mapped.scene.background;
       if (composerClear?.mode === "color") {
         mapped.scene.background = clearColorForMode(composerClear, new THREE.Color("#111318"));

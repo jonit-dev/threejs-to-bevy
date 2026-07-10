@@ -12,7 +12,45 @@ export function validateAtmosphereProfile(profile: IAtmosphereProfileIr | undefi
   validateColor(profile.ambient.color, `${path}/ambient/color`, diagnostics);
   validatePositiveFinite(profile.ambient.intensity, `${path}/ambient/intensity`, "TN_IR_ATMOSPHERE_AMBIENT_INTENSITY_INVALID", diagnostics);
   validatePositiveFinite(profile.colorManagement.exposure, `${path}/colorManagement/exposure`, "TN_IR_ATMOSPHERE_EXPOSURE_INVALID", diagnostics);
-  validatePositiveFinite(profile.shadows.maxDistance, `${path}/shadows/maxDistance`, "TN_IR_ATMOSPHERE_SHADOW_DISTANCE_INVALID", diagnostics);
+  if (!Number.isFinite(profile.shadows.maxDistance) || profile.shadows.maxDistance <= 0) {
+    diagnostics.push({
+      code: "TN_IR_ATMOSPHERE_SHADOW_CASCADE_MAX_DISTANCE_INVALID",
+      message: "Shadow cascade maxDistance must be a positive finite number.",
+      path: `${path}/shadows/maxDistance`,
+      severity: "error",
+      suggestion: "Use a positive world-space shadow reach such as maxDistance: 48.",
+    });
+  }
+  validateOptionalUnitInterval(
+    profile.shadows.splitLambda,
+    `${path}/shadows/splitLambda`,
+    "TN_IR_ATMOSPHERE_SHADOW_CASCADE_SPLIT_LAMBDA_INVALID",
+    diagnostics,
+  );
+  validateOptionalUnitInterval(
+    profile.shadows.cascadeBlendFraction,
+    `${path}/shadows/cascadeBlendFraction`,
+    "TN_IR_ATMOSPHERE_SHADOW_CASCADE_BLEND_FRACTION_INVALID",
+    diagnostics,
+  );
+  if (profile.shadows.splitScheme !== undefined && !["uniform", "logarithmic", "practical"].includes(profile.shadows.splitScheme)) {
+    diagnostics.push({
+      code: "TN_IR_ATMOSPHERE_SHADOW_CASCADE_SPLIT_SCHEME_INVALID",
+      message: "Expected shadow cascade split scheme 'uniform', 'logarithmic', or 'practical'.",
+      path: `${path}/shadows/splitScheme`,
+      severity: "error",
+      suggestion: "Use splitScheme: 'uniform', 'logarithmic', or 'practical'.",
+    });
+  }
+  if (profile.shadows.stabilized !== undefined && typeof profile.shadows.stabilized !== "boolean") {
+    diagnostics.push({
+      code: "TN_IR_ATMOSPHERE_SHADOW_CASCADE_STABILIZED_INVALID",
+      message: "Expected a boolean shadow cascade stabilization value when declared.",
+      path: `${path}/shadows/stabilized`,
+      severity: "error",
+      suggestion: "Use stabilized: true for texel-snapped cascades or stabilized: false to request unsnapped movement.",
+    });
+  }
   if (profile.shadows.mapSize > 2048) {
     diagnostics.push({
       code: "TN_IR_ATMOSPHERE_SHADOW_MAP_SIZE_EXCEEDED",
@@ -252,5 +290,17 @@ function validateOptionalFinite(value: unknown, path: string, code: string, diag
 function validateOptionalNonNegativeFinite(value: unknown, path: string, code: string, diagnostics: IIrDiagnostic[]): void {
   if (value !== undefined && (typeof value !== "number" || !Number.isFinite(value) || value < 0)) {
     diagnostics.push({ code, message: "Expected a non-negative finite number when declared.", path, severity: "error" });
+  }
+}
+
+function validateOptionalUnitInterval(value: unknown, path: string, code: string, diagnostics: IIrDiagnostic[]): void {
+  if (value !== undefined && (typeof value !== "number" || !Number.isFinite(value) || value < 0 || value > 1)) {
+    diagnostics.push({
+      code,
+      message: "Expected a finite number from 0 through 1 when declared.",
+      path,
+      severity: "error",
+      suggestion: "Clamp the authored value to the inclusive range from 0 through 1.",
+    });
   }
 }

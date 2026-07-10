@@ -34,7 +34,7 @@ rather than reopening broad checklist promotion.
 
 | PRD | Feature | Web technique | Bevy technique |
 |-----|---------|---------------|----------------|
-| [PRD-001](PRD-001-portable-cascaded-shadow-stability.md) | Cascaded sun-shadow stability | `three-csm` split/frustum/texel-snap math, adapter-owned | `CascadeShadowConfigBuilder` mapping |
+| [PRD-001](../done/lumen-lite-lighting-2026-07-09/PRD-001-portable-cascaded-shadow-stability.md) | Cascaded sun-shadow stability (done) | `three-csm` split/frustum/texel-snap math, adapter-owned | `CascadeShadowConfigBuilder` mapping |
 | [PRD-002](PRD-002-contact-shadows-grounding.md) | Contact shadows (object grounding) | Drei `ContactShadows` port | Ortho depth capture + separable blur + composite plane |
 | [PRD-003](PRD-003-volumetric-godrays-height-fog.md) | Shadowed god rays + height fog | `three-good-godrays` + `three-volumetric-pass` ports | Native `VolumetricFogSettings` + `VolumetricLight` |
 | [PRD-004](PRD-004-ssgi-promotion.md) | SSGI promotion (dynamic indirect diffuse) | `realism-effects` SSGI algorithms, adapter-owned WebGL pass | Bounded approximation (SSAO + calibrated ambient/irradiance term) with honest reporting |

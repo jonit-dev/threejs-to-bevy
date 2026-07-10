@@ -3,7 +3,7 @@ import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { SCRIPT_ONLY_GATES } from "../scriptGates.js";
-import { descriptorFocusedGates } from "../gateDescriptors.js";
+import { descriptorFocusedGates, descriptorReleaseFocusedGates } from "../gateDescriptors.js";
 
 type CommandSpec = readonly [command: string, ...args: string[]];
 export type GateProfile = "smoke" | "changed" | "focused" | "release" | "full";
@@ -557,6 +557,7 @@ export const FOCUSED_GATES: Record<string, FocusedGate> = {
 };
 
 const RELEASE_PROFILE_GATES = [
+  ...descriptorReleaseFocusedGates().map((gate) => gate.script),
   "verify:animation-physics-residuals",
   "verify:bundle-safety-hardening",
   "verify:generated-games",

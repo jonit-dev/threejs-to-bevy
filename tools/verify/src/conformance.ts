@@ -7,6 +7,20 @@ export interface FixtureCatalogEntry {
   bundlePath: string;
   canonicalArtifactGate?: string;
   canonicalId: string;
+  focusedGate?: {
+    commands: string[][];
+    conflictPolicy: "none" | "conformance-artifact-conflict";
+    description: string;
+    owner: string;
+    profile: "smoke" | "changed" | "focused" | "release" | "full";
+    protects: string;
+    reason: string;
+    release: {
+      enrolled: boolean;
+      name: string;
+      timingCategory: "artifact" | "conformance" | "focused-gate" | "setup" | "test" | "visual-native";
+    };
+  };
   owner?: string;
   ownerDocs: string;
   promotedCapabilities: string[];

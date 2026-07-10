@@ -152,6 +152,7 @@ export function renderTargetCameraPasses(
   world: IWorldIr,
   registry: IRenderTargetRegistry,
   delta = 0,
+  beforeRender?: (camera: THREE.Camera) => void,
 ): string[] {
   updateCameraHelpers(world, mapped.objectsById, delta);
   const rendered: string[] = [];
@@ -179,6 +180,7 @@ export function renderTargetCameraPasses(
       continue;
     }
     updateCameraProjection(camera, entry.width, entry.height);
+    beforeRender?.(camera);
     renderer.setRenderTarget(entry.target);
     renderer.autoClear = true;
     renderer.setClearColor(sceneBackground);

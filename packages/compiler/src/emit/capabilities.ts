@@ -847,6 +847,16 @@ function collectEnvironmentCapabilities(
     if (environment.atmosphere.shadows.enabled) {
       add("rendering", "shadows");
     }
+    const shadows = environment.atmosphere.shadows;
+    if (
+      shadows.maxDistance !== undefined
+      || shadows.splitScheme !== undefined
+      || shadows.splitLambda !== undefined
+      || shadows.cascadeBlendFraction !== undefined
+      || shadows.stabilized !== undefined
+    ) {
+      add("rendering", "shadow-cascade-profile");
+    }
   }
   if (environment.skybox !== undefined) {
     add("rendering", "skybox");

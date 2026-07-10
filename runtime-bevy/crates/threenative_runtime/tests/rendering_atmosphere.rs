@@ -21,6 +21,7 @@ use image::{ImageBuffer, Rgba};
 use threenative_components::ThreeNativeId;
 use threenative_loader::load_bundle;
 use threenative_runtime::{
+    conformance::report_bevy_conformance,
     map_world::{
         NativeEnvironmentSkyDome, NativeEquirectSkyMaterial, NativeMaterialHandles,
         map_bundle_into_world,
@@ -197,6 +198,205 @@ fn rendering_should_map_atmosphere_profile_to_bevy_observation() {
         .next()
         .expect("atmosphere camera should map soft shadow filtering");
     assert!(matches!(*shadow_filter, ShadowFilteringMethod::Gaussian));
+
+    fs::remove_dir_all(root).expect("temp bundle should be removed");
+}
+
+#[test]
+fn atmosphere_shadow_cascade_controls_should_map_and_report_native_approximation() {
+    let root = temp_bundle_dir();
+    write_json(
+        &root,
+        "manifest.json",
+        r#"{
+          "schema": "threenative.bundle",
+          "version": "0.1.0",
+          "name": "atmosphere-cascade-controls",
+          "requiredCapabilities": {},
+          "entry": { "world": "world.ir.json", "environmentScene": "environment.scene.json" },
+          "files": {
+            "assets": "assets.manifest.json",
+            "materials": "materials.ir.json",
+            "runtimeConfig": "runtime.config.json",
+            "targetProfile": "target.profile.json"
+          }
+        }"#,
+    );
+    write_json(
+        &root,
+        "world.ir.json",
+        r#"{
+          "schema": "threenative.world",
+          "version": "0.1.0",
+          "entities": [
+            { "id": "camera.main", "components": { "Camera": { "kind": "perspective", "near": 0.1, "far": 150, "fovY": 60 }, "Transform": { "position": [0, 2, 8] } } }
+          ]
+        }"#,
+    );
+    write_json(
+        &root,
+        "assets.manifest.json",
+        r#"{ "schema": "threenative.assets", "version": "0.1.0", "assets": [] }"#,
+    );
+    write_json(
+        &root,
+        "materials.ir.json",
+        r#"{ "schema": "threenative.materials", "version": "0.1.0", "materials": [] }"#,
+    );
+    write_json(
+        &root,
+        "target.profile.json",
+        r#"{ "schema": "threenative.target-profile", "version": "0.1.0", "targets": ["desktop"] }"#,
+    );
+    write_json(
+        &root,
+        "runtime.config.json",
+        r#"{
+          "schema": "threenative.runtime-config",
+          "version": "0.1.0",
+          "renderer": { "antialias": "msaa4", "renderPath": "forward" },
+          "time": { "fixedDelta": 0.016666666666666666, "paused": false },
+          "window": { "height": 720, "width": 1280 }
+        }"#,
+    );
+    write_json(
+        &root,
+        "environment.scene.json",
+        r##"{
+          "schema": "threenative.environment-scene",
+          "version": "0.1.0",
+          "atmosphere": {
+            "active": true,
+            "id": "atmosphere.cascades",
+            "sun": { "id": "sun.cascades", "direction": [-0.4, -0.8, -0.2], "color": "#ffffff", "intensity": 2, "castsShadow": true },
+            "ambient": { "color": "#ffffff", "intensity": 0.4, "mode": "constant" },
+            "sky": { "color": "#9eb6aa" },
+            "colorManagement": { "exposure": 1, "outputColorSpace": "srgb", "textureColorSpace": "srgb", "toneMapping": "aces" },
+            "shadows": {
+              "enabled": true,
+              "mapSize": 2048,
+              "maxDistance": 100,
+              "cascadeCount": 4,
+              "cascadeBlendFraction": 1,
+              "splitLambda": 0.25,
+              "splitScheme": "practical",
+              "stabilized": true,
+              "bias": -0.0002,
+              "normalBias": 0.015,
+              "receiverPolicy": "terrain-and-path"
+            }
+          },
+          "path": { "id": "path.main", "points": [[0, 0, 0], [0, 0, 1]], "width": 2 }
+        }"##,
+    );
+
+    let bundle = load_bundle(&root).expect("cascade profile bundle should load");
+    let observation = observe_atmosphere(&bundle);
+    let observed_profile = observation
+        .shadow_cascade_profile
+        .expect("authored cascade controls should resolve a native report");
+    assert_eq!(
+        observed_profile.mode,
+        "first-split-exponential-approximation"
+    );
+    assert_eq!(observed_profile.requested.cascade_blend_fraction, 1.0);
+    assert!(observed_profile.applied.cascade_blend_fraction < 1.0);
+    assert!(
+        observed_profile
+            .reason
+            .as_deref()
+            .is_some_and(|reason| reason.contains("exponentially spaces intermediate"))
+    );
+
+    let mut app = App::new();
+    apply_atmosphere_to_world(app.world_mut(), &bundle);
+    let (cascade, applied_profile) = app
+        .world_mut()
+        .query::<(
+            &CascadeShadowConfig,
+            &threenative_runtime::rendering::NativeShadowCascadeProfileReport,
+        )>()
+        .iter(app.world())
+        .next()
+        .expect("atmosphere sun should carry cascade config and report");
+    assert_eq!(cascade.bounds.len(), 4);
+    assert!((cascade.bounds[3] - 100.0).abs() < 0.001);
+    let uniform_first = 0.05 + (100.0 - 0.05) / 4.0;
+    let logarithmic_first = 0.05 * (100.0_f32 / 0.05).powf(0.25);
+    let expected_first = uniform_first + (logarithmic_first - uniform_first) * 0.25;
+    assert!((cascade.bounds[0] - expected_first).abs() < 0.001);
+    assert_eq!(
+        cascade.overlap_proportion,
+        applied_profile.applied.cascade_blend_fraction
+    );
+    assert!(cascade.overlap_proportion < 1.0);
+
+    let report = report_bevy_conformance(app.world_mut(), &bundle, "cascade-controls");
+    let report_json = serde_json::to_value(report).expect("conformance report should serialize");
+    let cascade_report =
+        &report_json["runtimeConfig"]["renderer"]["renderLook"]["shadowProfile"]["cascadeProfile"];
+    assert_eq!(
+        cascade_report["mode"],
+        "first-split-exponential-approximation"
+    );
+    assert_eq!(cascade_report["requested"]["cascadeBlendFraction"], 1.0);
+    assert!(
+        cascade_report["applied"]["cascadeBlendFraction"]
+            .as_f64()
+            .is_some_and(|blend| blend < 1.0)
+    );
+
+    write_json(
+        &root,
+        "environment.scene.json",
+        r##"{
+          "schema": "threenative.environment-scene",
+          "version": "0.1.0",
+          "atmosphere": {
+            "active": true,
+            "id": "atmosphere.cascades",
+            "sun": { "id": "sun.cascades", "direction": [-0.4, -0.8, -0.2], "color": "#ffffff", "intensity": 2, "castsShadow": true },
+            "ambient": { "color": "#ffffff", "intensity": 0.4, "mode": "constant" },
+            "sky": { "color": "#9eb6aa" },
+            "colorManagement": { "exposure": 1, "outputColorSpace": "srgb", "textureColorSpace": "srgb", "toneMapping": "aces" },
+            "shadows": {
+              "enabled": true,
+              "mapSize": 2048,
+              "maxDistance": 64,
+              "cascadeCount": 2,
+              "cascadeBlendFraction": 0.15,
+              "splitLambda": 0.5,
+              "splitScheme": "practical",
+              "stabilized": true,
+              "bias": -0.0002,
+              "normalBias": 0.015,
+              "receiverPolicy": "terrain-and-path"
+            }
+          },
+          "path": { "id": "path.main", "points": [[0, 0, 0], [0, 0, 1]], "width": 2 }
+        }"##,
+    );
+    let exact_bundle = load_bundle(&root).expect("exact cascade profile bundle should load");
+    let mut exact_app = App::new();
+    apply_atmosphere_to_world(exact_app.world_mut(), &exact_bundle);
+    let (exact_cascade, exact_profile) = exact_app
+        .world_mut()
+        .query::<(
+            &CascadeShadowConfig,
+            &threenative_runtime::rendering::NativeShadowCascadeProfileReport,
+        )>()
+        .iter(exact_app.world())
+        .next()
+        .expect("two-cascade sun should carry exact cascade config and report");
+    let uniform_first = 0.05 + (64.0 - 0.05) / 2.0;
+    let logarithmic_first = 0.05 * (64.0_f32 / 0.05).sqrt();
+    let expected_first = uniform_first + (logarithmic_first - uniform_first) * 0.5;
+    assert_eq!(exact_profile.mode, "exact");
+    assert_eq!(exact_profile.reason, None);
+    assert_eq!(exact_cascade.bounds.len(), 2);
+    assert!((exact_cascade.bounds[0] - expected_first).abs() < 0.001);
+    assert!((exact_cascade.bounds[1] - 64.0).abs() < 0.001);
+    assert!((exact_cascade.overlap_proportion - 0.15).abs() < 0.0001);
 
     fs::remove_dir_all(root).expect("temp bundle should be removed");
 }

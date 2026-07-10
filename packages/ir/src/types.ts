@@ -1360,12 +1360,16 @@ export interface IAtmosphereProfileIr {
   id: string;
   shadows: {
     bias: number;
+    cascadeBlendFraction?: number;
     cascadeCount: 1 | 2 | 4;
     enabled: boolean;
     mapSize: 512 | 1024 | 2048;
     maxDistance: number;
     normalBias: number;
     receiverPolicy: "terrain-and-path";
+    splitLambda?: number;
+    splitScheme?: "uniform" | "logarithmic" | "practical";
+    stabilized?: boolean;
   };
   sky: {
     color: string | readonly [number, number, number];

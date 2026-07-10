@@ -1,0 +1,94 @@
+{
+  "schema": "threenative.world",
+  "version": "0.1.0",
+  "entities": [
+    {
+      "id": "camera.main",
+      "components": {
+        "Camera": {
+          "active": true,
+          "clear": { "color": "#7899bd", "mode": "color" },
+          "far": 80,
+          "fovY": 52,
+          "kind": "perspective",
+          "near": 0.1
+        },
+        "Transform": {
+          "position": [0, 5, 12],
+          "rotation": [-0.173648, 0, 0, 0.984808],
+          "scale": [1, 1, 1]
+        }
+      }
+    },
+    {
+      "id": "surface.ground",
+      "components": {
+        "MeshRenderer": {
+          "material": "mat.ground",
+          "mesh": "mesh.ground",
+          "receiveShadow": true
+        },
+        "Transform": {
+          "position": [0, -0.1, -20],
+          "rotation": [0, 0, 0, 1],
+          "scale": [1, 1, 1]
+        }
+      }
+    },
+    {
+      "id": "marker.near",
+      "components": {
+        "MeshRenderer": {
+          "castShadow": true,
+          "material": "mat.marker",
+          "mesh": "mesh.marker",
+          "receiveShadow": true
+        },
+        "Transform": {
+          "position": [-3, 1, 2],
+          "rotation": [0, 0, 0, 1],
+          "scale": [1, 1, 1]
+        }
+      }
+    },
+    {
+      "id": "marker.split",
+      "components": {
+        "MeshRenderer": {
+          "castShadow": true,
+          "material": "mat.marker",
+          "mesh": "mesh.marker",
+          "receiveShadow": true
+        },
+        "Transform": {
+          "position": [2, 1, -12],
+          "rotation": [0, 0.258819, 0, 0.965926],
+          "scale": [1.5, 1.5, 1.5]
+        }
+      }
+    },
+    {
+      "id": "marker.far",
+      "components": {
+        "MeshRenderer": {
+          "castShadow": true,
+          "material": "mat.marker",
+          "mesh": "mesh.marker",
+          "receiveShadow": true
+        },
+        "Transform": {
+          "position": [-1, 1.5, -30],
+          "rotation": [0, -0.382683, 0, 0.92388],
+          "scale": [2, 2, 2]
+        }
+      }
+    }
+  ],
+  "events": {},
+  "prefabs": [],
+  "resources": {
+    "ActiveCamera": {
+      "entity": "camera.main"
+    }
+  }
+}

@@ -115,6 +115,7 @@ test("should render a target camera before material sampling", () => {
 
   const renderTargets: Array<THREE.WebGLRenderTarget | null> = [];
   const backbufferCalls: string[] = [];
+  const cascadeOrder: string[] = [];
   renderer.setRenderTarget = ((target: THREE.WebGLRenderTarget | null) => {
     renderTargets.push(target);
   }) as typeof renderer.setRenderTarget;
@@ -123,12 +124,22 @@ test("should render a target camera before material sampling", () => {
       if (mappedCamera === camera && renderTargets.at(-1) === null) {
         backbufferCalls.push(id);
       }
+      if (mappedCamera === camera) {
+        cascadeOrder.push(`render:${id}`);
+      }
     }
   }) as typeof renderer.render;
 
-  const targetCameras = renderTargetCameraPasses(renderer, mapped, world, registry);
+  const targetCameras = renderTargetCameraPasses(renderer, mapped, world, registry, 0, (camera) => {
+    for (const [id, mappedCamera] of mapped.cameras.entries()) {
+      if (mappedCamera === camera) {
+        cascadeOrder.push(`cascade:${id}`);
+      }
+    }
+  });
   assert.deepEqual(targetCameras, ["camera.depth", "camera.monitor"]);
   assert.equal(renderTargets[0]?.depthTexture?.name, "rt.depth");
   assert.equal(renderTargets[1]?.texture.name, "rt.monitor");
   assert.equal(backbufferCalls.length, 0);
+  assert.deepEqual(cascadeOrder, ["cascade:camera.depth", "render:camera.depth", "cascade:camera.monitor", "render:camera.monitor"]);
 });
