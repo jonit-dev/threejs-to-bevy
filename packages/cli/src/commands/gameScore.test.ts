@@ -5,6 +5,7 @@ import { join } from "node:path";
 import test from "node:test";
 
 import { createProject } from "./create.js";
+import { loadCookbookEntries } from "./cookbook.js";
 import { gameCommand } from "./game.js";
 
 test("reports missing evidence without mutating source", async () => {
@@ -86,8 +87,7 @@ test("plans a playable loop without mutating durable source", async () => {
     assert.equal(payload.steps.some((step) => step.recipe === "top-down-collector" && step.recipeGameplayBlocks?.includes("controller.top-down-cardinal") === true), true);
     assert.equal(payload.steps.some((step) => step.recipe === "top-down-collector" && step.recipeProofHints?.some((hint) => hint.includes("HUD score")) === true), true);
     assert.equal(payload.steps.some((step) => step.recipe === "top-down-collector" && step.recipeScriptResponsibilities?.includes("owns collectible progress") === true), true);
-    assert.equal(payload.proofCommands.some((command) => command.startsWith("tn playtest")), true);
-    assert.equal(payload.proofCommands.some((command) => command.includes("tn game qa") && command.includes("--run-proof")), true);
+    assert.deepEqual(payload.proofCommands, ["tn iterate --project . --json"]);
     assert.deepEqual(after.filter((entry) => entry !== "artifacts" && !entry.startsWith("artifacts/")), before);
     assert.equal(after.includes("artifacts/game-production/plan.json"), true);
     assert.equal(after.includes("artifacts/game-production/task-graph.json"), true);
@@ -129,7 +129,8 @@ test("should write full game plan artifact and print compact summary by default"
     assert.equal(payload.fileMap.scripts.length > 0, true);
     assert.equal(payload.fileMap.source.length > 0, true);
     assert.equal(payload.proofCommands[0], "tn iterate --project . --json");
-    assert.equal(payload.proofCommands.some((command) => command.includes("tn game qa")), true);
+    assert.deepEqual(payload.proofCommands, ["tn iterate --project . --json"]);
+    assert.equal(payload.mechanicDecomposition.every((entry) => !entry.command?.includes("<")), true);
     assert.equal(payload.mechanicDecomposition.some((entry) => entry.mechanic === "movement" && typeof entry.command === "string"), true);
     assert.equal(payload.mechanicDecomposition.some((entry) => entry.mechanic === "objective-progression" && typeof entry.cookbookId === "string"), true);
     assert.equal(payload.mechanicDecomposition.some((entry) => entry.mechanic === "macro-game-flow" && entry.command?.startsWith("tn flow create") === true), true);
@@ -140,6 +141,38 @@ test("should write full game plan artifact and print compact summary by default"
     assert.equal(fullPlan.mechanicDecomposition.length > 0, true);
     assert.equal(fullPlan.steps.length > 0, true);
     assert.ok(Buffer.byteLength(result.stdout, "utf8") < 8192);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("game plan emits registry-valid cookbook ids and recipe flags with resolved project ids", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-game-plan-drift-"));
+  try {
+    await mkdir(join(root, "content", "scenes"), { recursive: true });
+    await writeFile(join(root, "content", "scenes", "arena.scene.json"), `${JSON.stringify({
+      entities: [{ id: "player" }, { components: { camera: { mode: "perspective" } }, id: "camera.main" }],
+      id: "arena",
+      prefabs: [],
+      resources: [],
+      schema: "threenative.scene",
+      systems: [],
+      ui: { bindings: [], nodes: [] },
+      version: "0.1.0",
+    }, null, 2)}\n`);
+    const result = await gameCommand(["plan", "--project", root, "--goal", "checkpoint kart race", "--full-json", "--json"]);
+    const payload = JSON.parse(result.stdout) as {
+      archetypeSuggestions: Array<{ command: string }>;
+      mechanicDecomposition: Array<{ command?: string; cookbookId?: string }>;
+    };
+    const cookbookIds = new Set((await loadCookbookEntries(process.cwd())).map((entry) => entry.id));
+    const recipeCommands = payload.mechanicDecomposition.map((entry) => entry.command ?? "").filter((command) => command.startsWith("tn recipe apply"));
+
+    assert.equal(result.exitCode, 0, result.stdout);
+    assert.equal(payload.mechanicDecomposition.every((entry) => entry.cookbookId !== undefined && cookbookIds.has(entry.cookbookId)), true);
+    assert.equal(recipeCommands.length > 0, true);
+    assert.equal(recipeCommands.every((command) => command.includes("--scene arena") && command.includes("--vehicle player") && command.includes("--camera camera.main")), true);
+    assert.equal([...recipeCommands, ...payload.archetypeSuggestions.map((entry) => entry.command)].every((command) => !command.includes("<")), true);
   } finally {
     await rm(root, { force: true, recursive: true });
   }

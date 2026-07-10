@@ -36,6 +36,7 @@ test("should apply the character actor archetype to structured source", async ()
     assert.deepEqual(result.filesWritten, [
       "content/input/hero.input.json",
       "content/scenes/arena.scene.json",
+      "content/schemas/hero.character.schema.json",
       "content/systems/hero.systems.json",
       "src/scripts/hero.behavior.ts",
     ]);
@@ -57,6 +58,24 @@ test("should apply the character actor archetype to structured source", async ()
     assert.match(script, /defineBehavior/);
     assert.match(script, /CharacterRig\.update/);
     assert.match(script, /CameraRig\.thirdPerson/);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should preserve an existing active camera when adding a character", async () => {
+  const root = await createActorProject();
+  try {
+    const scenePath = join(root, "content", "scenes", "arena.scene.json");
+    const scene = JSON.parse(await readFile(scenePath, "utf8")) as { entities: Array<Record<string, unknown>> };
+    scene.entities.push({ components: { camera: { mode: "perspective" } }, id: "camera.main", transform: { position: [0, 4, -8] } });
+    await writeFile(scenePath, `${JSON.stringify(scene, null, 2)}\n`, "utf8");
+
+    await applyActorArchetype({ actorId: "hero", archetype: "character", projectPath: root, sceneId: "arena" });
+    const updated = JSON.parse(await readFile(scenePath, "utf8")) as { entities: Array<{ id: string }> };
+
+    assert.equal(updated.entities.some((entity) => entity.id === "camera.main"), true);
+    assert.equal(updated.entities.some((entity) => entity.id === "hero.camera"), false);
   } finally {
     await rm(root, { force: true, recursive: true });
   }

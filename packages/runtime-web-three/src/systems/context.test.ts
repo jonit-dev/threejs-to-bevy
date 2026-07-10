@@ -110,6 +110,21 @@ test("should patch resources with shallow merge semantics", () => {
   assert.deepEqual(resources, [{ resource: "GameState", value: { lives: 3, score: 2 } }]);
 });
 
+test("should compose resource writes and expose them to later reads in the same system tick", () => {
+  const world = makeWorld();
+  world.resources = { GameState: { lives: 3, score: 1 } };
+  const { context, resources } = createSystemContext(world, { delta: 0.016, fixedDelta: 0.016 });
+
+  context.resources.patch("GameState", { score: 2 });
+  assert.deepEqual(context.resources.get("GameState"), { lives: 3, score: 2 });
+  context.resources.patch("GameState", { status: "playing" });
+
+  assert.deepEqual(resources, [
+    { resource: "GameState", value: { lives: 3, score: 2 } },
+    { resource: "GameState", value: { lives: 3, score: 2, status: "playing" } },
+  ]);
+});
+
 test("should apply property write when transform position is assigned", () => {
   const world = makeWorld();
   const { commands, context } = createSystemContext(world, { delta: 0.016, fixedDelta: 0.016 });

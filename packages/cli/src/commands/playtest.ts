@@ -170,6 +170,7 @@ export interface IPlaytestRunOptions {
   nativeScreenshots: boolean;
   press: string;
   projectPath: string;
+  quiet?: boolean;
   scenario: IPlaytestScenario;
 }
 
@@ -377,6 +378,7 @@ export async function playtestCommand(
       nativeScreenshots,
       press: primary.press ?? "",
       projectPath,
+      quiet: json,
       scenario,
     });
     const richAssertions = evaluateRichPlaytestAssertions({ report, scenario });
@@ -411,6 +413,18 @@ export async function playtestCommand(
   } catch (error) {
     if (error instanceof PlaytestScenarioError) {
       return diagnosticResult({ ...error.diagnostic }, { exitCode: 2, json, stderr: !json });
+    }
+    if (error instanceof NativeHarnessError) {
+      return diagnosticResult(
+        {
+          code: "TN_PLAYTEST_NATIVE_CRASH",
+          message: error.message,
+          phase: error.phase,
+          severity: "error",
+          suggestion: "Retry the same scenario with --target web for the default authoring loop, or inspect the captured native output and readiness artifact before native release proof.",
+        },
+        { exitCode: 1, json, stderr: !json },
+      );
     }
     return diagnosticResult(
       {
@@ -526,6 +540,7 @@ async function runNativePlaytest(options: IPlaytestRunOptions, bevyRunner: BevyR
   await writeFile(commandStreamPath, `${JSON.stringify(nativeHarnessCommandStream(options.scenario, screenshotArtifacts), null, 2)}\n`, "utf8");
   const process = bevyRunner({
     bundlePath,
+    captureOutput: options.quiet,
     proofHarness: {
       commandStreamPath,
       readinessOutPath: readinessPath,
@@ -802,6 +817,9 @@ async function looksLikePng(path: string): Promise<boolean> {
 
 async function collectNativeReadiness(process: ChildProcess, readinessPath: string, timeoutMs: number): Promise<Record<string, unknown>[]> {
   const samples: Record<string, unknown>[] = [];
+  const output: string[] = [];
+  process.stdout?.on("data", (chunk: Buffer | string) => output.push(String(chunk)));
+  process.stderr?.on("data", (chunk: Buffer | string) => output.push(String(chunk)));
   const started = Date.now();
   let lastTick: number | undefined;
   let exited = false;
@@ -835,9 +853,26 @@ async function collectNativeReadiness(process: ChildProcess, readinessPath: stri
     throw new Error(`Native playtest proof harness did not exit within ${timeoutMs}ms.`);
   }
   if (exitCode !== 0) {
-    throw new Error(`Native playtest proof harness exited with ${exitCode === null || exitCode === undefined ? `signal ${exitSignal ?? "unknown"}` : `code ${exitCode}`}.`);
+    const lastSample = samples.at(-1);
+    const phase = typeof lastSample?.phase === "string"
+      ? lastSample.phase
+      : typeof lastSample?.tick === "number"
+        ? `proof-harness tick ${lastSample.tick}`
+        : "startup before the first readiness sample";
+    const captured = output.join("").trim().split("\n").slice(-6).join("\n");
+    throw new NativeHarnessError(
+      `Native playtest proof harness exited with ${exitCode === null || exitCode === undefined ? `signal ${exitSignal ?? "unknown"}` : `code ${exitCode}`} during ${phase}.${captured === "" ? "" : ` Last native output:\n${captured}`}`,
+      phase,
+    );
   }
   return samples;
+}
+
+class NativeHarnessError extends Error {
+  constructor(message: string, readonly phase: string) {
+    super(message);
+    this.name = "NativeHarnessError";
+  }
 }
 
 async function readNativeReadiness(path: string): Promise<Record<string, unknown> | undefined> {

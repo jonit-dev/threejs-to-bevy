@@ -87,6 +87,8 @@ export type {
   AuthoringRecipeId,
   IApplyAuthoringRecipeOptions,
   IAuthoringRecipeApplyResult,
+  IAuthoringRecipeArgumentDescriptor,
+  IAuthoringRecipeDescriptor,
   IAuthoringRecipeOperation,
   IAuthoringRecipeOperationResult,
   IAuthoringRecipePlanOptions,
@@ -94,6 +96,8 @@ export type {
 } from "./recipes.js";
 export {
   applyAuthoringRecipe,
+  getAuthoringRecipeDescriptor,
+  listAuthoringRecipeDescriptors,
   listAuthoringRecipeIds,
   planAuthoringRecipe,
 } from "./recipes.js";

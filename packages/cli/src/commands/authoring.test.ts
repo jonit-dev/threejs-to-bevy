@@ -29,10 +29,17 @@ test("authoring command inspects and validates structured source documents", asy
     );
 
     const inspect = await authoringCommand(["inspect", "--project", root, "--json"]);
-    const inspectPayload = JSON.parse(inspect.stdout) as { code: string; documents: Array<{ kind: string; path: string }> };
+    const inspectPayload = JSON.parse(inspect.stdout) as {
+      code: string;
+      documents: Array<{ kind: string; path: string }>;
+      projectMap: { documents: Array<{ id?: string; ids: Record<string, string[]>; responsibility: string }> };
+    };
     assert.equal(inspect.exitCode, 0);
     assert.equal(inspectPayload.code, "TN_AUTHORING_INSPECT_OK");
     assert.deepEqual(inspectPayload.documents, [{ kind: "scene", path: "content/scenes/arena.scene.json" }]);
+    assert.equal(inspectPayload.projectMap.documents[0]?.id, "arena");
+    assert.deepEqual(inspectPayload.projectMap.documents[0]?.ids.entities, []);
+    assert.match(inspectPayload.projectMap.documents[0]?.responsibility ?? "", /scene entities/);
 
     const validate = await authoringCommand(["validate", "--project", root, "--json"]);
     const validatePayload = JSON.parse(validate.stdout) as { code: string; next: string; notice: string; ok: boolean };

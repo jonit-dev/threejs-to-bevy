@@ -26,6 +26,11 @@ export async function authoringCommand(argv: readonly string[], options: IAuthor
         kind: document.kind,
         path: document.projectRelativePath,
       })),
+      projectMap: {
+        documents: project.documents.map((document) => projectMapDocument(document.kind, document.projectRelativePath, document.data)),
+        schema: "threenative.project-map",
+        version: "0.1.0",
+      },
       path: project.projectPath,
     };
     return renderPayload(payload, json, "Authoring source inspection completed.");
@@ -89,4 +94,51 @@ function resolveProjectPath(argv: readonly string[], cwd = process.env.INIT_CWD 
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function projectMapDocument(kind: string, path: string, value: unknown): {
+  id?: string;
+  ids: Record<string, string[]>;
+  kind: string;
+  path: string;
+  responsibility: string;
+} {
+  const data = isRecord(value) ? value : {};
+  const ui = isRecord(data.ui) ? data.ui : {};
+  return {
+    ...(typeof data.id === "string" ? { id: data.id } : {}),
+    ids: {
+      entities: idsFrom(data.entities),
+      prefabs: idsFrom(data.prefabs),
+      resources: idsFrom(data.resources),
+      systems: idsFrom(data.systems),
+      ui: idsFrom(Array.isArray(data.nodes) ? data.nodes : ui.nodes),
+    },
+    kind,
+    path,
+    responsibility: responsibilityForDocumentKind(kind),
+  };
+}
+
+function idsFrom(value: unknown): string[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+  return value.flatMap((entry) => typeof entry === "string"
+    ? [entry]
+    : isRecord(entry) && typeof entry.id === "string"
+      ? [entry.id]
+      : []).sort();
+}
+
+function responsibilityForDocumentKind(kind: string): string {
+  const responsibilities: Record<string, string> = {
+    input: "Owns canonical action and axis bindings.",
+    prefab: "Owns reusable entity and component source.",
+    resources: "Owns durable project resource values.",
+    scene: "Owns scene entities, prefabs, resources, systems, cameras, and UI bindings.",
+    systems: "Owns portable script module/export references and access declarations.",
+    ui: "Owns retained UI nodes, layout, and bindings.",
+  };
+  return responsibilities[kind] ?? "Owns structured authoring source for this document family.";
 }

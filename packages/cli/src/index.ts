@@ -98,7 +98,7 @@ export const CLI_COMMAND_REGISTRY = defineCommandRegistry({
   iterate: {
     description: "Run validate, build, screenshot, and optional playtest as one agent iteration loop.",
     implemented: true,
-    usage: "tn iterate [--project <path>] [--scenario playtests/<name>.playtest.json] [--skip-playtest] [--keep] [--json]",
+    usage: "tn iterate [--project <path>] [--scenario playtests/<name>.playtest.json] [--native] [--skip-playtest] [--keep] [--json]",
   },
   look: {
     description: "List and apply curated portable look profiles to structured source projects.",
@@ -218,7 +218,7 @@ export const CLI_COMMAND_REGISTRY = defineCommandRegistry({
   recipe: {
     description: "Apply composed registry-backed recipes for common game objects.",
     implemented: true,
-    usage: "tn recipe [apply] <recipe-id> --scene <scene-id> [--entity <entity-id>|--player <player-id>|--vehicle <vehicle-id>] [--camera <camera-id>] [--module <path>] [--export <name>] [--dry-run] [--project <path>] [--json]",
+    usage: "tn recipe [apply] <recipe-id> --scene <scene-id> [--entity <entity-id>|--player <player-id>|--vehicle <vehicle-id>] [--camera <camera-id>] [--module <path>] [--export <name>] [--dry-run] [--project <path>] [--json] [--full-json]",
   },
   particle: {
     description: "Add bounded particle emitter metadata to structured model asset source.",

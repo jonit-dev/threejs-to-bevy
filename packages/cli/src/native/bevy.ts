@@ -1,10 +1,11 @@
-import { spawn, type ChildProcess } from "node:child_process";
+import { spawn, type ChildProcess, type StdioOptions } from "node:child_process";
 import { existsSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 export interface IBevyRuntimeInvocation {
   bundlePath: string;
+  captureOutput?: boolean;
   proofHarness?: {
     commandStreamPath: string;
     readinessOutPath: string;
@@ -122,16 +123,17 @@ export function runBevyRuntime(invocation: IBevyRuntimeInvocation): BevyRuntimeP
   const runtime = resolveBevyRuntime(repoRoot, process.env, bundledManifestPath);
   const binaryPath = resolveBevyRuntimeBinaryPath(repoRoot, process.env);
   const env = { ...process.env };
+  const stdio: StdioOptions = invocation.captureOutput ? ["ignore", "pipe", "pipe"] : "inherit";
   if (binaryPath !== undefined) {
     return spawn(binaryPath, bevyRuntimeBinaryArgs(invocation), {
       cwd: runtime.cwd,
       env,
-      stdio: "inherit",
+      stdio,
     });
   }
   return spawn("cargo", bevyRuntimeArgs(repoRoot, invocation, process.env, bundledManifestPath), {
     cwd: runtime.cwd,
     env,
-    stdio: "inherit",
+    stdio,
   });
 }

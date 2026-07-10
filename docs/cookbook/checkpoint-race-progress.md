@@ -16,7 +16,7 @@ tn recipe vehicle-checkpoint --scene arena --vehicle player --camera camera.main
 
 ## source-delta
 ```json
-{"recipe":"Use dry-run proofCommands and generatedIds before applying vehicle-checkpoint source changes."}
+{"recipe":"Use dry-run proofCommands and generatedIds before applying vehicle-checkpoint source changes. Apply is transactional, adopts existing vehicle/camera entities without replacing their authored pose, scaffolds the required script export, and is a no-op when retried unchanged."}
 ```
 
 ## script

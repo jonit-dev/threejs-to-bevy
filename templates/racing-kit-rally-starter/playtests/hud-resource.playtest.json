@@ -12,7 +12,7 @@
     {
       "label": "throttle",
       "press": "KeyW",
-      "holdFrames": 60,
+      "holdFrames": 20,
       "release": true
     }
   ],

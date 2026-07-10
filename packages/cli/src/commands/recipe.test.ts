@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { access, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
@@ -13,7 +13,7 @@ test("should apply collectible recipe to structured source", async () => {
     await mkdir(join(root, "src", "scripts"), { recursive: true });
     await writeFile(join(root, "src", "scripts", "collectible.ts"), "export function collectible() {}\n", "utf8");
 
-    const result = await recipeCommand(["collectible", "--scene", "arena", "--entity", "coin.001", "--project", root, "--json"]);
+    const result = await recipeCommand(["collectible", "--scene", "arena", "--entity", "coin.001", "--project", root, "--json", "--full-json"]);
     const scene = JSON.parse(await readFile(join(root, "content", "scenes", "arena.scene.json"), "utf8")) as {
       entities: Array<{ components?: Record<string, unknown>; id: string }>;
       resources: Array<{ id: string; path?: string; value?: unknown }>;
@@ -83,6 +83,7 @@ test("should apply top-down collector through apply alias", async () => {
       "--project",
       root,
       "--json",
+      "--full-json",
     ]);
     const scene = JSON.parse(await readFile(join(root, "content", "scenes", "arena.scene.json"), "utf8")) as {
       entities: Array<{ id: string }>;
@@ -122,7 +123,72 @@ test("should apply top-down collector through apply alias", async () => {
   }
 });
 
-async function writeScene(root: string, sceneId: string, entities: Array<{ id: string }> = []): Promise<void> {
+test("vehicle checkpoint adopts starter entities, scaffolds its export, and is idempotent", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-cli-recipe-vehicle-adopt-"));
+  try {
+    await writeScene(root, "arena", [{ id: "player", transform: { position: [4, 0.5, 4], scale: [0.8, 0.8, 0.8] } }, { id: "camera.main" }]);
+    await mkdir(join(root, "src", "scripts"), { recursive: true });
+    await writeFile(join(root, "src", "scripts", "player.ts"), "export function starterSystem(): void {}\n", "utf8");
+    const argv = ["apply", "vehicle-checkpoint", "--scene", "arena", "--vehicle", "player", "--camera", "camera.main", "--project", root, "--json"];
+
+    const first = await recipeCommand(argv);
+    const second = await recipeCommand(argv);
+    const firstPayload = JSON.parse(first.stdout) as { filesWritten: string[]; ok: boolean };
+    const secondPayload = JSON.parse(second.stdout) as { changed: boolean; diagnostics: Array<{ code: string; severity: string }>; filesWritten: string[]; ok: boolean; operations?: unknown };
+    const scene = JSON.parse(await readFile(join(root, "content", "scenes", "arena.scene.json"), "utf8")) as {
+      entities: Array<{ components?: Record<string, unknown>; id: string; transform?: { position?: number[]; scale?: number[] } }>;
+      systems: Array<{ id: string }>;
+    };
+    const script = await readFile(join(root, "src", "scripts", "player.ts"), "utf8");
+
+    assert.equal(first.exitCode, 0, first.stdout);
+    assert.equal(second.exitCode, 0, second.stdout);
+    assert.equal(firstPayload.ok, true);
+    assert.equal(secondPayload.ok, true);
+    assert.equal(secondPayload.changed, false);
+    assert.deepEqual(secondPayload.filesWritten, []);
+    assert.equal(secondPayload.operations, undefined);
+    assert.equal(Buffer.byteLength(second.stdout, "utf8") < 2_048, true, `Expected compact retry JSON, received ${Buffer.byteLength(second.stdout, "utf8")} bytes.`);
+    assert.equal(scene.entities.filter((entity) => entity.id === "player").length, 1);
+    assert.equal(scene.entities.filter((entity) => entity.id === "checkpoint.01").length, 1);
+    assert.deepEqual(scene.entities.find((entity) => entity.id === "player")?.transform, { position: [4, 0.5, 4], scale: [0.8, 0.8, 0.8] });
+    assert.equal(scene.systems.filter((system) => system.id === "vehicle-checkpoint").length, 1);
+    assert.match(script, /export function starterSystem/);
+    assert.match(script, /export function vehicleCheckpointSystem\(\): void/);
+    assert.equal(firstPayload.filesWritten.includes("src/scripts/player.ts"), true);
+    assert.equal(secondPayload.diagnostics.some((diagnostic) => diagnostic.severity === "error"), false);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("failed recipe apply is transactional and reports every exact required flag", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-cli-recipe-transaction-"));
+  try {
+    await writeScene(root, "arena", [{ id: "player" }]);
+    const before = await readFile(join(root, "content", "scenes", "arena.scene.json"), "utf8");
+    const missing = await recipeCommand(["apply", "vehicle-checkpoint", "--project", root, "--json"]);
+    const missingPayload = JSON.parse(missing.stdout) as { diagnostics: Array<{ message: string; suggestion?: string }> };
+    const failed = await recipeCommand(["apply", "vehicle-checkpoint", "--scene", "missing", "--vehicle", "player", "--camera", "camera.main", "--project", root, "--json"]);
+    const failedPayload = JSON.parse(failed.stdout) as { changed: boolean; filesWritten: string[] };
+
+    assert.equal(missing.exitCode, 1);
+    assert.equal(missingPayload.diagnostics.length, 3);
+    assert.match(missingPayload.diagnostics.map((diagnostic) => `${diagnostic.message} ${diagnostic.suggestion}`).join("\n"), /--scene <scene-id>/);
+    assert.match(missingPayload.diagnostics.map((diagnostic) => `${diagnostic.message} ${diagnostic.suggestion}`).join("\n"), /--vehicle <vehicle-id>/);
+    assert.match(missingPayload.diagnostics.map((diagnostic) => `${diagnostic.message} ${diagnostic.suggestion}`).join("\n"), /--camera <camera-id>/);
+    assert.equal(failed.exitCode, 1);
+    assert.equal(failedPayload.changed, false);
+    assert.deepEqual(failedPayload.filesWritten, []);
+    assert.equal(await readFile(join(root, "content", "scenes", "arena.scene.json"), "utf8"), before);
+    await assert.rejects(access(join(root, "content", "input", "arena-input.input.json")));
+    await assert.rejects(access(join(root, "src", "scripts", "player.ts")));
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+async function writeScene(root: string, sceneId: string, entities: Array<{ id: string; transform?: { position?: number[]; scale?: number[] } }> = []): Promise<void> {
   await mkdir(join(root, "content", "scenes"), { recursive: true });
   await writeFile(
     join(root, "content", "scenes", `${sceneId}.scene.json`),

@@ -34,6 +34,15 @@ Current support:
   `defineBehavior` script stubs.
 - Cookbook lookup supports both `tn cookbook show <id> --json` and the compact
   `tn cookbook <id> --json` shorthand for validated pattern pairs.
+- Recipe application stages the whole project mutation before commit, adopts
+  existing scene entities/cameras without replacing authored transforms or
+  active-camera ownership, scaffolds required script exports, and reports an
+  exact no-op on idempotent retry. Compact JSON is the default; `--full-json`
+  retains operation traces for debugging.
+- `tn game plan` resolves project IDs and derives recipe flags and maintained
+  cookbook references from their owning descriptors. `tn authoring inspect`
+  includes a compact project map of scene entity, prefab, resource, system,
+  and UI IDs.
 - Maintained starters include `docs/API-CARD.md`, a compact generated
   ScriptContext/source contract validated against `packages/script-stdlib`;
   the cards now surface `tn actor`, `tn types generate`, and
@@ -73,6 +82,9 @@ Verification:
 - `pnpm --filter @threenative/mcp-server test`
 - `pnpm verify:cookbook`
 - `pnpm verify:template-production`
+- `pnpm verify:emitted-commands` executes every plan-emitted mutation, actor
+  suggestion, proof command, and cookbook reference across both maintained
+  starters and five goal archetypes, and reports emitted-command failure rate.
 - Structured-source starter smoke with `defineBehavior`-owned access metadata
   and systems JSON reduced to script attachments.
 

@@ -12,6 +12,7 @@ import {
   createScene,
   importWorld,
   inspectScene,
+  loadAuthoringProject,
   removeComponent,
   setCamera,
   setComponent,
@@ -94,7 +95,19 @@ export async function sceneCommand(argv: readonly string[], options: ISceneComma
   if (subcommand === "inspect") {
     const sceneId = readPositional(normalizedArgv, 1);
     if (sceneId === undefined) {
-      return renderUsage(json, "TN_SCENE_INSPECT_ID_MISSING", "Usage: tn scene inspect <scene-id> [--node <id>] [--project <path>] [--json]");
+      const project = await loadAuthoringProject({ projectPath });
+      const availableSceneIds = project.documents
+        .filter((document) => document.kind === "scene" && isRecord(document.data) && typeof document.data.id === "string")
+        .map((document) => String((document.data as Record<string, unknown>).id))
+        .sort();
+      const usage = "Usage: tn scene inspect <scene-id> [--node <id>] [--project <path>] [--json]";
+      const payload = {
+        availableSceneIds,
+        code: "TN_SCENE_INSPECT_ID_MISSING",
+        message: availableSceneIds.length === 0 ? usage : `${usage} Available scene ids: ${availableSceneIds.join(", ")}.`,
+        severity: "error",
+      };
+      return { exitCode: 2, stdout: json ? `${JSON.stringify(payload, null, 2)}\n` : `${payload.message}\n` };
     }
     const result = await inspectScene({ projectPath, sceneId, nodeId: readFlag(normalizedArgv, "--node") });
     return renderSceneResult(result, json, result.ok ? `Scene '${sceneId}' inspected.` : `Scene '${sceneId}' inspection failed.`);

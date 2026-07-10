@@ -5,8 +5,9 @@ import {
   type IAuthoringRecipeApplyResult,
   type IAuthoringRecipePlanResult,
 } from "@threenative/authoring";
-import { access, mkdir, writeFile } from "node:fs/promises";
-import { isAbsolute, resolve } from "node:path";
+import { access, copyFile, cp, mkdir, mkdtemp, readFile, rename, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { dirname, isAbsolute, join, resolve } from "node:path";
 
 import { type ICommandResult } from "../diagnostics.js";
 import { buildGameTaskGraph } from "../game/taskGraph.js";
@@ -20,6 +21,7 @@ export async function recipeCommand(argv: readonly string[], options: IRecipeCom
   const positionals = readPositionals(normalizedArgv);
   const recipeId = positionals[0] === "apply" ? positionals[1] : positionals[0];
   const json = normalizedArgv.includes("--json");
+  const fullJson = normalizedArgv.includes("--full-json");
   const dryRun = normalizedArgv.includes("--dry-run");
   const projectPath = resolveProjectPath(normalizedArgv, options.cwd);
 
@@ -33,17 +35,42 @@ export async function recipeCommand(argv: readonly string[], options: IRecipeCom
     return renderRecipePlan(plan, json);
   }
 
-  const scaffoldedScript = await scaffoldRecipeScript(recipeId, args, projectPath);
-  const result = await applyAuthoringRecipe({ args, projectPath, recipeId });
-  if (result.ok && scaffoldedScript !== undefined) {
-    result.changed = true;
-    result.filesWritten = Array.from(new Set([...result.filesWritten, scaffoldedScript])).sort();
-  }
-  await scaffoldProofRecipe(result, projectPath);
+  const result = await applyRecipeTransaction(recipeId, args, projectPath);
   if (result.ok) {
     await persistGameTaskGraph(projectPath);
   }
-  return renderRecipeApply(result, json);
+  return renderRecipeApply(result, json, fullJson);
+}
+
+async function applyRecipeTransaction(recipeId: string, args: Record<string, unknown>, projectPath: string): Promise<IAuthoringRecipeApplyResult> {
+  const preflight = planAuthoringRecipe({ args, projectPath, recipeId });
+  if (!preflight.ok) {
+    return { ...preflight, changed: false, filesWritten: [], operationResults: [] };
+  }
+  const transactionRoot = await mkdtemp(join(tmpdir(), "tn-cli-recipe-"));
+  const stagedProjectPath = join(transactionRoot, "project");
+  try {
+    await cp(projectPath, stagedProjectPath, {
+      filter: (source) => !isIgnoredTransactionPath(projectPath, source),
+      recursive: true,
+    });
+    const scaffoldedScript = await scaffoldRecipeScript(recipeId, args, stagedProjectPath);
+    const result = await applyAuthoringRecipe({ args, projectPath: stagedProjectPath, recipeId });
+    if (result.ok && scaffoldedScript !== undefined) {
+      result.changed = true;
+      result.filesWritten = Array.from(new Set([...result.filesWritten, scaffoldedScript])).sort();
+    }
+    await scaffoldProofRecipe(result, stagedProjectPath);
+    if (!result.ok) {
+      return remapRecipeResult(result, projectPath, false);
+    }
+    result.filesWritten = await changedRecipeFiles(stagedProjectPath, projectPath, result.filesWritten);
+    result.changed = result.filesWritten.length > 0;
+    await commitRecipeFiles(stagedProjectPath, projectPath, result.filesWritten);
+    return remapRecipeResult(result, projectPath, true);
+  } finally {
+    await rm(transactionRoot, { force: true, recursive: true });
+  }
 }
 
 async function persistGameTaskGraph(projectPath: string): Promise<void> {
@@ -54,16 +81,31 @@ async function persistGameTaskGraph(projectPath: string): Promise<void> {
 }
 
 async function scaffoldRecipeScript(recipeId: string, args: Record<string, unknown>, projectPath: string): Promise<string | undefined> {
-  const script = recipeScript(recipeId, args);
+  const recipePlan = planAuthoringRecipe({ args, projectPath, recipeId });
+  const scriptOperation = recipePlan.operations.find((operation) => operation.name === "scene.attach_script");
+  const modulePath = stringArg(scriptOperation?.args ?? {}, "modulePath");
+  const exportName = stringArg(scriptOperation?.args ?? {}, "exportName");
+  const script = modulePath === undefined || exportName === undefined
+    ? undefined
+    : {
+        exportName,
+        modulePath,
+        stub: `export function ${exportName}(): void {\n  // ${recipePlan.scriptResponsibilities.join("; ")}.\n}\n`,
+      };
   if (script === undefined) {
     return undefined;
   }
   const absolutePath = resolve(projectPath, script.modulePath);
   if (await pathExists(absolutePath)) {
-    return undefined;
+    const source = await readFile(absolutePath, "utf8");
+    if (hasNamedExport(source, script.exportName)) {
+      return undefined;
+    }
+    await writeFile(absolutePath, `${source.trimEnd()}\n\n${script.stub}`, "utf8");
+    return script.modulePath;
   }
   await mkdir(resolve(absolutePath, ".."), { recursive: true });
-  await writeFile(absolutePath, script.source, "utf8");
+  await writeFile(absolutePath, script.stub, "utf8");
   return script.modulePath;
 }
 
@@ -97,32 +139,47 @@ async function scaffoldProofRecipe(result: IAuthoringRecipeApplyResult, projectP
   result.filesWritten = Array.from(new Set([...result.filesWritten, relativePath])).sort();
 }
 
-function recipeScript(recipeId: string, args: Record<string, unknown>): { modulePath: string; source: string } | undefined {
-  if (recipeId === "top-down-collector") {
-    const modulePath = stringArg(args, "modulePath") ?? "src/scripts/player.ts";
-    const exportName = stringArg(args, "exportName") ?? "topDownCollectorSystem";
-    return {
-      modulePath,
-      source: `export function ${exportName}(): void {\n  // Starter system stub for the top-down collector recipe.\n}\n`,
-    };
+function hasNamedExport(source: string, exportName: string): boolean {
+  const escaped = exportName.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&");
+  return new RegExp(`\\bexport\\s+(?:async\\s+)?(?:function|const|let|var|class)\\s+${escaped}\\b`, "u").test(source);
+}
+
+function isIgnoredTransactionPath(projectPath: string, source: string): boolean {
+  const relativePath = source.slice(projectPath.length).replace(/^[/\\]+/u, "");
+  const firstSegment = relativePath.split(/[/\\]/u)[0];
+  return firstSegment === "node_modules" || firstSegment === ".git" || firstSegment === "dist" || firstSegment === "artifacts";
+}
+
+async function commitRecipeFiles(stagedProjectPath: string, projectPath: string, files: readonly string[]): Promise<void> {
+  for (const file of files) {
+    const destination = resolve(projectPath, file);
+    const temporary = `${destination}.tn-recipe-${process.pid}.tmp`;
+    await mkdir(dirname(destination), { recursive: true });
+    await copyFile(resolve(stagedProjectPath, file), temporary);
+    await rename(temporary, destination);
   }
-  if (recipeId === "lane-runner") {
-    const modulePath = stringArg(args, "modulePath") ?? "src/scripts/player.ts";
-    const exportName = stringArg(args, "exportName") ?? "laneRunnerSystem";
-    return {
-      modulePath,
-      source: `export function ${exportName}(): void {\n  // Starter system stub for the lane runner recipe.\n}\n`,
-    };
+}
+
+async function changedRecipeFiles(stagedProjectPath: string, projectPath: string, files: readonly string[]): Promise<string[]> {
+  const changed: string[] = [];
+  for (const file of files) {
+    const staged = await readFile(resolve(stagedProjectPath, file));
+    const existing = await readFile(resolve(projectPath, file)).catch(() => undefined);
+    if (existing === undefined || !staged.equals(existing)) {
+      changed.push(file);
+    }
   }
-  if (recipeId === "vehicle-checkpoint") {
-    const modulePath = stringArg(args, "modulePath") ?? "src/scripts/player.ts";
-    const exportName = stringArg(args, "exportName") ?? "vehicleCheckpointSystem";
-    return {
-      modulePath,
-      source: `export function ${exportName}(): void {\n  // Starter system stub for the vehicle checkpoint recipe.\n}\n`,
-    };
-  }
-  return undefined;
+  return changed;
+}
+
+function remapRecipeResult(result: IAuthoringRecipeApplyResult, projectPath: string, committed: boolean): IAuthoringRecipeApplyResult {
+  return {
+    ...result,
+    changed: committed ? result.changed : false,
+    filesWritten: committed ? result.filesWritten : [],
+    projectPath,
+    operationResults: result.operationResults.map((entry) => ({ ...entry, result: { ...entry.result, projectPath } })),
+  };
 }
 
 function renderRecipePlan(plan: IAuthoringRecipePlanResult, json: boolean): ICommandResult {
@@ -137,12 +194,30 @@ function renderRecipePlan(plan: IAuthoringRecipePlanResult, json: boolean): ICom
   };
 }
 
-function renderRecipeApply(result: IAuthoringRecipeApplyResult, json: boolean): ICommandResult {
-  const payload = {
+function renderRecipeApply(result: IAuthoringRecipeApplyResult, json: boolean, fullJson: boolean): ICommandResult {
+  const fullPayload = {
     code: result.ok ? "TN_RECIPE_APPLY_OK" : "TN_RECIPE_APPLY_FAILED",
     message: result.ok ? `Recipe '${result.recipeId}' applied.` : `Recipe '${result.recipeId}' failed.`,
     ...result,
   };
+  const alreadyPresentCount = result.diagnostics.filter((diagnostic) => diagnostic.severity === "info" && diagnostic.code.startsWith("TN_AUTHORING_DUPLICATE_")).length;
+  const payload = fullJson
+    ? fullPayload
+    : {
+        alreadyApplied: result.ok && !result.changed,
+        alreadyPresentCount,
+        changed: result.changed,
+        code: fullPayload.code,
+        diagnostics: result.diagnostics.filter((diagnostic) => diagnostic.severity !== "info"),
+        filesWritten: result.filesWritten,
+        gameplayBlocks: result.gameplayBlocks,
+        message: fullPayload.message,
+        ok: result.ok,
+        projectPath: result.projectPath,
+        proofCommands: result.proofCommands,
+        recipeId: result.recipeId,
+        scriptResponsibilities: result.scriptResponsibilities,
+      };
   if (json) {
     return { exitCode: result.ok ? 0 : 1, stdout: `${JSON.stringify(payload, null, 2)}\n` };
   }
@@ -164,7 +239,7 @@ function renderUsage(json: boolean, code: string): ICommandResult {
 }
 
 function recipeUsage(): string {
-  return "Usage: tn recipe [apply] <recipe-id> --scene <scene-id> [--entity <entity-id>|--player <player-id>|--vehicle <vehicle-id>] [--camera <camera-id>] [--module <path>] [--export <name>] [--dry-run] [--project <path>] [--json]";
+  return "Usage: tn recipe [apply] <recipe-id> --scene <scene-id> [--entity <entity-id>|--player <player-id>|--vehicle <vehicle-id>] [--camera <camera-id>] [--module <path>] [--export <name>] [--dry-run] [--project <path>] [--json] [--full-json]";
 }
 
 function recipeArgs(argv: readonly string[]): Record<string, unknown> {

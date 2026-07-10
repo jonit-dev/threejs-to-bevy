@@ -4,7 +4,7 @@ import { dirname, resolve } from "node:path";
 import { writeAuthoringJsonDocument, type IAuthoringDocument } from "../documents.js";
 import { authoringOperationResult } from "../operations/shared.js";
 import { loadAuthoringProject } from "../project.js";
-import { sceneDocumentSchema, type ISceneDocument, type ISceneEntity, type IScenePrefab, type ISceneSystem } from "../schemas.js";
+import { sceneDocumentSchema, schemaDocumentSchema, type ISceneDocument, type ISceneEntity, type IScenePrefab, type ISceneSystem } from "../schemas.js";
 import type { IAuthoringOperationResult } from "../operations.js";
 import type { ActorArchetypeId } from "../archetypes.js";
 
@@ -32,6 +32,7 @@ export async function applyBasicActorArchetype(options: IApplyBasicActorArchetyp
   if (options.archetype === "vehicle" || options.archetype === "pickup" || options.archetype === "camera-boom") {
     const scriptPath = `src/scripts/${options.actorId}.${scriptSuffix(options.archetype)}.ts`;
     const systemsPath = `content/systems/${options.actorId}.${scriptSuffix(options.archetype)}.systems.json`;
+    const cameraStateId = `tn.cameraRig.${options.archetype === "vehicle" ? `${options.actorId}.camera` : options.actorId}`;
     await writeJson(systemsPath, resolve(projectPath, systemsPath), "systems", {
       id: `${options.actorId}.${scriptSuffix(options.archetype)}`,
       schema: "threenative.systems",
@@ -49,6 +50,25 @@ export async function applyBasicActorArchetype(options: IApplyBasicActorArchetyp
     await writeScript(resolve(projectPath, scriptPath), behaviorScript(options));
     filesWritten.add(systemsPath);
     filesWritten.add(scriptPath);
+    if (options.archetype !== "pickup") {
+      const schemaPath = `content/schemas/${options.actorId}.${scriptSuffix(options.archetype)}.schema.json`;
+      await writeJson(schemaPath, resolve(projectPath, schemaPath), "schema", {
+        id: `${options.actorId}.${scriptSuffix(options.archetype)}-resources`,
+        kind: "resource",
+        schema: schemaDocumentSchema,
+        schemas: [{
+          fields: {
+            followX: { kind: "number" },
+            followY: { kind: "number" },
+            followZ: { kind: "number" },
+            yaw: { kind: "number" },
+          },
+          id: cameraStateId,
+        }],
+        version: "0.1.0",
+      });
+      filesWritten.add(schemaPath);
+    }
   }
 
   return authoringOperationResult({ changed: true, diagnostics: project.diagnostics, filesWritten: [...filesWritten], projectPath });
@@ -60,12 +80,17 @@ function applySceneMutation(scene: ISceneDocument, options: IApplyBasicActorArch
   scene.entities ??= [];
   scene.prefabs ??= [];
   scene.resources ??= [];
+  const existingCamera = scene.entities.find((entity) => entity.components?.camera !== undefined || entity.components?.Camera !== undefined);
+  if (existingCamera !== undefined && (options.archetype === "camera-boom" || options.archetype === "vehicle")) {
+    upsertById(scene.resources, { id: "ActiveCamera", value: { entity: existingCamera.id } });
+  }
   const prefabId = `${options.actorId}.model`;
   if (options.asset !== undefined) {
     upsertById<IScenePrefab>(scene.prefabs, { asset: options.asset, id: prefabId });
   }
 
   if (options.archetype === "vehicle") {
+    upsertById(scene.resources, { id: `tn.cameraRig.${options.actorId}.camera`, value: { followX: 0, followY: 0, followZ: 0, yaw: 0 } });
     upsertById<ISceneEntity>(scene.entities, {
       archetype: provenance(options, { speed: options.speed ?? 12 }),
       ...(options.asset === undefined ? {} : { prefab: prefabId }),
@@ -106,6 +131,7 @@ function applySceneMutation(scene: ISceneDocument, options: IApplyBasicActorArch
   }
 
   if (options.archetype === "camera-boom") {
+    upsertById(scene.resources, { id: `tn.cameraRig.${options.actorId}`, value: { followX: 0, followY: 0, followZ: 0, yaw: 0 } });
     upsertById<ISceneEntity>(scene.entities, {
       archetype: provenance({ ...options, archetype: "prop-static" }, { role: "camera-target" }),
       id: `${options.actorId}.target`,
@@ -134,15 +160,16 @@ function applySceneMutation(scene: ISceneDocument, options: IApplyBasicActorArch
 
 function behaviorScript(options: IApplyBasicActorArchetypeOptions): string {
   const exportName = `update${pascalCase(options.actorId)}${pascalCase(options.archetype)}`;
+  const cameraId = options.archetype === "vehicle" ? `${options.actorId}.camera` : options.actorId;
   const body = options.archetype === "camera-boom" || options.archetype === "vehicle"
-    ? `    CameraRig.thirdPerson(context, { cameraId: ${JSON.stringify(options.archetype === "vehicle" ? `${options.actorId}.camera` : options.actorId)}, target: ${JSON.stringify(options.archetype === "vehicle" ? options.actorId : `${options.actorId}.target`)} });`
+    ? `    CameraRig.thirdPerson(context, { cameraId: ${JSON.stringify(cameraId)}, target: ${JSON.stringify(options.archetype === "vehicle" ? options.actorId : `${options.actorId}.target`)} });`
     : "    // Add score, audio, and despawn commands here once pickup behavior is game-specific.";
   const imports = options.archetype === "pickup" ? "defineBehavior" : "CameraRig, defineBehavior";
   return `import { ${imports} } from "@threenative/script-stdlib";
 import type { ProjectContext } from "../../.threenative/types/project-context";
 
 export const ${exportName} = defineBehavior(
-  {},
+  ${options.archetype === "camera-boom" || options.archetype === "vehicle" ? `{ resourceReads: [${JSON.stringify(`tn.cameraRig.${cameraId}`)}], resourceWrites: [${JSON.stringify(`tn.cameraRig.${cameraId}`)}] }` : "{}"},
   (context: ProjectContext) => {
 ${body}
   },

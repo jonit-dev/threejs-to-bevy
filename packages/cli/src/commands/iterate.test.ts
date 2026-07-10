@@ -135,6 +135,35 @@ test("should run all scenarios when no scenario flag given", async () => {
   }
 });
 
+test("default iterate skips native scenarios unless --native is explicit", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-iterate-web-default-"));
+  try {
+    await mkdir(join(root, "playtests"), { recursive: true });
+    await writeFile(join(root, "playtests/web.playtest.json"), `${JSON.stringify({ target: "web" })}\n`);
+    await writeFile(join(root, "playtests/native.playtest.json"), `${JSON.stringify({ target: "desktop" })}\n`);
+    const seen: string[] = [];
+    const options = {
+      ...passingIterateOptions(root),
+      playtest: async (args: readonly string[]) => {
+        const scenario = args[args.indexOf("--scenario") + 1] ?? "";
+        seen.push(scenario);
+        return playtestSummaryResult(scenario.replace(/^playtests\//, "").replace(/\.playtest\.json$/, ""), true);
+      },
+    };
+
+    const defaultResult = await iterateCommand(["--project", root, "--json"], process.cwd(), options);
+    assert.equal(defaultResult.exitCode, 0, defaultResult.stdout);
+    assert.deepEqual(seen, ["playtests/web.playtest.json"]);
+
+    seen.length = 0;
+    const nativeResult = await iterateCommand(["--project", root, "--native", "--json"], process.cwd(), options);
+    assert.equal(nativeResult.exitCode, 0, nativeResult.stdout);
+    assert.deepEqual(seen, ["playtests/native.playtest.json", "playtests/web.playtest.json"]);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
 test("should include observed assertion values when a scenario fails", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-iterate-failed-values-"));
   try {

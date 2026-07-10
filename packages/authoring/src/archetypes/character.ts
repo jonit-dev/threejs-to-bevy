@@ -8,6 +8,7 @@ import { loadAuthoringProject } from "../project.js";
 import {
   inputDocumentSchema,
   sceneDocumentSchema,
+  schemaDocumentSchema,
   systemsDocumentSchema,
   type IInputDocument,
   type ISceneDocument,
@@ -78,17 +79,20 @@ export async function applyCharacterArchetype(options: IApplyCharacterArchetypeO
   const input = inputDocument(actorId);
   const systems = systemsDocument(actorId);
   const scriptProjectRelativePath = `src/scripts/${actorId}.behavior.ts`;
+  const schemaProjectRelativePath = `content/schemas/${actorId}.character.schema.json`;
   const scriptAbsolutePath = resolve(projectPath, scriptProjectRelativePath);
   const filesWritten = [
     sceneProjectRelativePath,
     `content/input/${actorId}.input.json`,
     `content/systems/${actorId}.systems.json`,
+    schemaProjectRelativePath,
     scriptProjectRelativePath,
   ];
 
   await writeJson(sceneProjectRelativePath, sceneAbsolutePath, "scene", scene);
   await writeJson(`content/input/${actorId}.input.json`, resolve(projectPath, `content/input/${actorId}.input.json`), "input", input);
   await writeJson(`content/systems/${actorId}.systems.json`, resolve(projectPath, `content/systems/${actorId}.systems.json`), "systems", systems);
+  await writeJson(schemaProjectRelativePath, resolve(projectPath, schemaProjectRelativePath), "schema", characterResourceSchema(actorId));
   await mkdir(dirname(scriptAbsolutePath), { recursive: true });
   await writeFile(scriptAbsolutePath, characterBehaviorScript(actorId, speed, sprintSpeed), "utf8");
 
@@ -148,6 +152,16 @@ function upsertCharacterScene(scene: ISceneDocument, options: { actorId: string;
   scene.version ??= "0.1.0";
   scene.entities ??= [];
   scene.prefabs ??= [];
+  scene.resources ??= [];
+  const hasAuthoredCamera = scene.entities.some((entity) => entity.components?.camera !== undefined || entity.components?.Camera !== undefined);
+  upsertById(scene.resources, {
+    id: `tn.characterRig.${options.actorId}`,
+    value: { dirX: 0, dirZ: 1, groundY: 0, jumpHeld: false, jumpOffset: 0, speed: 0, verticalSpeed: 0, yaw: 0 },
+  });
+  upsertById(scene.resources, {
+    id: `tn.cameraRig.${options.actorId}.camera`,
+    value: { followX: 0, followY: 0, followZ: 0, yaw: 0 },
+  });
   const prefabId = `${options.actorId}.model`;
   if (options.asset !== undefined) {
     upsertById<IScenePrefab>(scene.prefabs, {
@@ -192,19 +206,21 @@ function upsertCharacterScene(scene: ISceneDocument, options: { actorId: string;
     id: options.actorId,
     transform: { position: [0, 0, 0] },
   });
-  upsertById<ISceneEntity>(scene.entities, {
-    components: {
-      camera: {
-        far: 1000,
-        fovY: 60,
-        mode: "third-person-follow",
-        near: 0.1,
-        target: options.actorId,
+  if (!hasAuthoredCamera) {
+    upsertById<ISceneEntity>(scene.entities, {
+      components: {
+        camera: {
+          far: 1000,
+          fovY: 60,
+          mode: "third-person-follow",
+          near: 0.1,
+          target: options.actorId,
+        },
       },
-    },
-    id: `${options.actorId}.camera`,
-    transform: { position: [0, 3.2, -6] },
-  });
+      id: `${options.actorId}.camera`,
+      transform: { position: [0, 3.2, -6] },
+    });
+  }
 }
 
 function inputDocument(actorId: string): IInputDocument {
@@ -237,13 +253,46 @@ function systemsDocument(actorId: string): ISystemsDocument {
   };
 }
 
+function characterResourceSchema(actorId: string) {
+  return {
+    id: `${actorId}.character-resources`,
+    kind: "resource" as const,
+    schema: schemaDocumentSchema,
+    schemas: [
+      {
+        fields: {
+          followX: { kind: "number" as const },
+          followY: { kind: "number" as const },
+          followZ: { kind: "number" as const },
+          yaw: { kind: "number" as const },
+        },
+        id: `tn.cameraRig.${actorId}.camera`,
+      },
+      {
+        fields: {
+          dirX: { kind: "number" as const },
+          dirZ: { kind: "number" as const },
+          groundY: { kind: "number" as const },
+          jumpHeld: { kind: "boolean" as const },
+          jumpOffset: { kind: "number" as const },
+          speed: { kind: "number" as const },
+          verticalSpeed: { kind: "number" as const },
+          yaw: { kind: "number" as const },
+        },
+        id: `tn.characterRig.${actorId}`,
+      },
+    ],
+    version: "0.1.0",
+  };
+}
+
 function characterBehaviorScript(actorId: string, speed: number, sprintSpeed: number): string {
   const exportName = `update${pascalCase(actorId)}Character`;
   return `import { CameraRig, CharacterRig, defineBehavior } from "@threenative/script-stdlib";
 import type { ProjectContext } from "../../.threenative/types/project-context";
 
 export const ${exportName} = defineBehavior(
-  {},
+  { resourceReads: [${JSON.stringify(`tn.cameraRig.${actorId}.camera`)}, ${JSON.stringify(`tn.characterRig.${actorId}`)}], resourceWrites: [${JSON.stringify(`tn.cameraRig.${actorId}.camera`)}, ${JSON.stringify(`tn.characterRig.${actorId}`)}], services: ["animation.play", "character.move"] },
   (context: ProjectContext) => {
     const character = CharacterRig.update(context, ${JSON.stringify(actorId)}, {
       moveXAxis: "move-x",

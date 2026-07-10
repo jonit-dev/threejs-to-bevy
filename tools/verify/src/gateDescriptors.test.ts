@@ -16,12 +16,14 @@ import {
 test("gate descriptors should validate migrated proof gate metadata", () => {
   assert.deepEqual(validateGateDescriptors(), []);
   assert.deepEqual(GATE_DESCRIPTORS.map((descriptor) => descriptor.name), [
+    "verify:emitted-commands",
     "verify:agent-io",
     "verify:session-cost",
     "verify:webview-package",
-    "verify:shadow-cascade-stability",
+    ...fixtureCatalogGateDescriptors().map((descriptor) => descriptor.name),
   ]);
-  assert.equal(GATE_DESCRIPTORS.every((descriptor) => descriptor.release.enrolled), true);
+  assert.equal(GATE_DESCRIPTORS.find((descriptor) => descriptor.name === "verify:emitted-commands")?.release.enrolled, false);
+  assert.equal(GATE_DESCRIPTORS.filter((descriptor) => descriptor.name !== "verify:emitted-commands").every((descriptor) => descriptor.release.enrolled), true);
 });
 
 test("fixture catalog should own the shadow cascade focused gate descriptor", () => {
@@ -44,13 +46,15 @@ test("gate descriptors should derive focused gates and release artifacts", () =>
     ["verify:agent-io", "tools/verify/artifacts/agent-io/verification-report.json"],
     ["verify:session-cost", "tools/verify/artifacts/session-cost/verification-report.json"],
     ["verify:webview-package", "tools/verify/artifacts/webview-package/verification-report.json"],
-    ["verify:shadow-cascade-stability", "tools/verify/artifacts/shadow-cascade-stability/verification-report.json"],
+    ...fixtureCatalogGateDescriptors()
+      .filter((descriptor) => descriptor.release.enrolled)
+      .map((descriptor) => [descriptor.name, descriptor.artifact.reportPath]),
   ]);
 });
 
 test("gate descriptors should reject duplicate artifacts and malformed paths", () => {
-  const agentIoDescriptor = GATE_DESCRIPTORS[0]!;
-  const sessionCostDescriptor = GATE_DESCRIPTORS[1]!;
+  const agentIoDescriptor = GATE_DESCRIPTORS.find((descriptor) => descriptor.name === "verify:agent-io")!;
+  const sessionCostDescriptor = GATE_DESCRIPTORS.find((descriptor) => descriptor.name === "verify:session-cost")!;
   assert.deepEqual(validateGateDescriptors([
     {
       ...agentIoDescriptor,

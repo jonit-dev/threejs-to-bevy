@@ -1,5 +1,5 @@
 import { validateIterateReport, ITERATE_REPORT_SCHEMA, ITERATE_REPORT_VERSION, type IIterateDiagnostic, type IIterateReport, type IIterateStepReport } from "@threenative/authoring";
-import { cp, mkdir, readdir, writeFile } from "node:fs/promises";
+import { cp, mkdir, readFile, readdir, writeFile } from "node:fs/promises";
 import { relative, resolve } from "node:path";
 
 import { type ICommandResult } from "../diagnostics.js";
@@ -56,6 +56,7 @@ export async function iterateCommand(
   const projectPath = resolvePath(cwd, readFlag(normalizedArgv, "--project") ?? ".");
   const scenarioFlag = readFlag(normalizedArgv, "--scenario");
   const skipPlaytest = normalizedArgv.includes("--skip-playtest");
+  const includeNative = normalizedArgv.includes("--native");
   const keep = normalizedArgv.includes("--keep");
   const started = Date.now();
   const latestDir = resolve(projectPath, "artifacts", "iterate", "latest");
@@ -125,7 +126,8 @@ export async function iterateCommand(
         diagnostics: [{ code: "TN_ITERATE_PLAYTEST_SKIPPED", message: "Playtest step skipped by --skip-playtest.", severity: "info" }],
       };
     }
-    const scenarios = scenarioFlag === undefined ? await allScenarios(projectPath) : [scenarioFlag];
+    const selection = scenarioFlag === undefined ? await defaultScenarios(projectPath, includeNative) : { scenarios: [scenarioFlag], skippedNative: [] };
+    const scenarios = selection.scenarios;
     if (scenarios.length === 0) {
       return {
         diagnostics: [{ code: "TN_ITERATE_NO_SCENARIO", message: "No playtests/*.playtest.json scenario found; playtest step skipped.", severity: "info" }],
@@ -135,7 +137,14 @@ export async function iterateCommand(
     const results = await runPlaytestScenarios({ playtest: options.playtest ?? defaultPlaytest, playtestDir, projectPath, scenarios });
     return {
       artifacts: { directory: playtestDir, summaries: results.scenarioSummaries.map((summary) => summary.artifact).filter((item): item is string => item !== undefined) },
-      diagnostics: results.diagnostics,
+      diagnostics: [
+        ...results.diagnostics,
+        ...(selection.skippedNative.length === 0 ? [] : [{
+          code: "TN_ITERATE_NATIVE_SCENARIOS_SKIPPED",
+          message: `Skipped ${selection.skippedNative.length} native scenario(s) in the default web loop. Pass --native or --scenario <path> to include them.`,
+          severity: "info" as const,
+        }]),
+      ],
       output: {
         scenarioCount: scenarios.length,
         scenarios: results.scenarioSummaries,
@@ -307,13 +316,33 @@ async function defaultPlaytest(args: readonly string[]): Promise<ICommandResult>
   return playtestCommand(args);
 }
 
-async function allScenarios(projectPath: string): Promise<string[]> {
+async function defaultScenarios(projectPath: string, includeNative: boolean): Promise<{ scenarios: string[]; skippedNative: string[] }> {
   const playtestsPath = resolve(projectPath, "playtests");
   const entries = await readdir(playtestsPath).catch(() => []);
-  return entries
+  const candidates = entries
     .filter((entry) => entry.endsWith(".playtest.json"))
     .sort((left, right) => left.localeCompare(right))
     .map((entry) => relative(projectPath, resolve(playtestsPath, entry)));
+  const scenarios: string[] = [];
+  const skippedNative: string[] = [];
+  for (const scenario of candidates) {
+    const target = await scenarioTarget(resolve(projectPath, scenario));
+    if (!includeNative && (target === "desktop" || target === "bevy")) {
+      skippedNative.push(scenario);
+    } else {
+      scenarios.push(scenario);
+    }
+  }
+  return { scenarios, skippedNative };
+}
+
+async function scenarioTarget(path: string): Promise<string | undefined> {
+  try {
+    const value = JSON.parse(await readFile(path, "utf8")) as unknown;
+    return isRecord(value) && typeof value.target === "string" ? value.target : undefined;
+  } catch {
+    return undefined;
+  }
 }
 
 function skippedStep(id: IIterateStepReport["id"]): IIterateStepReport {

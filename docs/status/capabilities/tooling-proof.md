@@ -7,7 +7,14 @@ Current support:
 
 - `tn iterate` for inner-loop validate/build/screenshot/playtest reports. By
   default it runs every `playtests/*.playtest.json` scenario in stable order
-  and prints compact per-scenario assertion observations.
+  and prints compact per-scenario assertion observations. Native/desktop
+  scenarios are opt-in with `--native`; skipped native scenarios are reported
+  as structured information rather than making the default web loop
+  environment-dependent.
+- `pnpm verify:emitted-commands` scaffolds the two maintained starters for five
+  archetype goals, executes every command and cookbook ID emitted by
+  `tn game plan`, requires one clean JSON object on stdout, and records the
+  behavioral `emittedCommandFailureRate` counter with a target of zero.
 - `pnpm verify:agent-io` for documented agent command stdout budgets; deep
   playtest logs remain in artifact files while stdout stays compact.
 - `pnpm verify:session-cost` replays scaffold-first paths in CI without LLM
@@ -148,6 +155,7 @@ Verification:
 
 - `pnpm verify:agent-io`
 - `pnpm verify:session-cost`
+- `pnpm verify:emitted-commands`
 - `pnpm --filter @threenative/verify-tools test`
 - `pnpm --filter @threenative/verify-tools test -- --run performance`
 - `node --test tools/verify/dist/gameProductionGate.test.js`

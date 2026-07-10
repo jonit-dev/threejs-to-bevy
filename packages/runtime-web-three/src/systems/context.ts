@@ -163,6 +163,15 @@ export function createSystemContext(
     systemName: options.systemName ?? "",
     tick: options.tick ?? 0,
   });
+  const currentResourceValue = (resource: string): unknown => {
+    for (let index = resources.length - 1; index >= 0; index -= 1) {
+      const pending = resources[index];
+      if (pending?.resource === resource) {
+        return pending.value;
+      }
+    }
+    return world.resources?.[resource];
+  };
   const findEntity = (id: string): ISystemEntityView | undefined => {
     const entity = world.entities.find((candidate) => candidate.id === id);
     return entity === undefined ? undefined : createEntityView(entity, commands);
@@ -557,7 +566,7 @@ export function createSystemContext(
         get<T = unknown>(name: string, defaults?: Record<string, unknown>): T {
           const key = normalizeHandleName(name);
           options.resourceObserver?.({ kind: "read", resource: key });
-          const value = world.resources?.[key];
+          const value = currentResourceValue(key);
           if (defaults !== undefined && isRecord(defaults)) {
             return {
               ...cloneValue(defaults) as Record<string, unknown>,
@@ -569,7 +578,7 @@ export function createSystemContext(
         patch(name, value) {
           const key = normalizeHandleName(name);
           options.resourceObserver?.({ kind: "write", resource: key });
-          const existing = world.resources?.[key];
+          const existing = currentResourceValue(key);
           resources.push({
             resource: key,
             value: {
@@ -589,7 +598,7 @@ export function createSystemContext(
         options.resourceObserver?.({ kind: "read", resource });
         const initial = {
           ...cloneValue(defaults) as Record<string, unknown>,
-          ...(isRecord(world.resources?.[resource]) ? cloneValue(world.resources?.[resource]) as Record<string, unknown> : {}),
+          ...(isRecord(currentResourceValue(resource)) ? cloneValue(currentResourceValue(resource)) as Record<string, unknown> : {}),
         };
         return new Proxy(initial, {
           set(target, property, value) {

@@ -17,6 +17,7 @@ test("should add grid spawner with validation", async () => {
     const scene = JSON.parse(await readFile(join(project, "content/scenes/arena.scene.json"), "utf8")) as {
       entities: Array<{ id: string; prefab?: string }>;
       prefabs: Array<{ id: string }>;
+      resources: Array<{ id: string; value?: Record<string, unknown> }>;
     };
     const mechanic = JSON.parse(await readFile(join(project, "content/mechanics/spawner.mechanic.json"), "utf8")) as { block: string; details?: { count?: number; pattern?: string } };
 
@@ -27,6 +28,7 @@ test("should add grid spawner with validation", async () => {
     assert.match(payload.proofCommand, /block-spawner\.playtest\.json/);
     assert.equal(scene.prefabs.some((prefab) => prefab.id === "spawn.prefab"), true);
     assert.equal(scene.entities.filter((entity) => entity.prefab === "spawn.prefab").length, 5);
+    assert.equal(scene.resources.some((resource) => resource.id === "MechanicSpawner" && resource.value?.count === 5), true);
     assert.equal(mechanic.block, "spawner");
     assert.equal(mechanic.details?.pattern, "grid");
 
@@ -51,14 +53,14 @@ test("should add all compositional mechanic blocks with proof scenarios", async 
     for (const args of cases) {
       const result = await addCommand([...args, "--project", project, "--json"]);
       const payload = JSON.parse(result.stdout) as { block: string; filesWritten: string[]; proofCommand: string; scenarioPath: string };
-      const scenario = JSON.parse(await readFile(join(project, payload.scenarioPath), "utf8")) as { assert?: { movement?: { entity?: string } }; name: string };
+      const scenario = JSON.parse(await readFile(join(project, payload.scenarioPath), "utf8")) as { assert?: { resources?: Array<{ id?: string }> }; name: string };
       const mechanic = JSON.parse(await readFile(join(project, "content/mechanics", `${payload.block}.mechanic.json`), "utf8")) as { block: string; sourceFiles: string[] };
 
       assert.equal(result.exitCode, 0, `${result.stdout}\n${result.stderr}`);
       assert.equal(mechanic.block, payload.block);
       assert.equal(mechanic.sourceFiles.includes("content/scenes/arena.scene.json"), true);
       assert.equal(scenario.name, `block-${payload.block}`);
-      assert.equal(scenario.assert?.movement?.entity, "player");
+      assert.equal((scenario.assert?.resources?.length ?? 0) > 0, true);
       assert.match(payload.proofCommand, new RegExp(`block-${payload.block}\\.playtest\\.json`));
       assert.equal(payload.filesWritten.includes(payload.scenarioPath), true);
     }

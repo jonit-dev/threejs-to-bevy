@@ -43,6 +43,27 @@ export interface GateDescriptorMigrationGap {
 
 const STATIC_GATE_DESCRIPTORS: readonly GateDescriptor[] = [
   {
+    artifact: { reportPath: "tools/verify/artifacts/emitted-commands/verification-report.json" },
+    command: {
+      commands: [
+        ["pnpm", "--filter", "@threenative/authoring", "build"],
+        ["pnpm", "--filter", "@threenative/compiler", "build"],
+        ["pnpm", "--filter", "@threenative/runtime-web-three", "build"],
+        ["pnpm", "--filter", "@threenative/cli", "build"],
+        ["pnpm", "--filter", "@threenative/verify-tools", "build"],
+        ["node", "tools/verify/dist/emittedCommandGate.js"],
+      ],
+    },
+    conflictPolicy: "none",
+    description: "Executable plan-emitted command acceptance gate.",
+    focused: { profile: "focused" },
+    name: "verify:emitted-commands",
+    owner: "tools/verify emitted command gate",
+    protects: "Registry-derived plan commands, cookbook ids, recipe adoption, JSON purity, and zero emitted-command failures across templates and archetypes.",
+    reason: "Runs every command and cookbook id emitted by game plans before benchmark agents can encounter drift or repair detours.",
+    release: { enrolled: false, name: "verify emitted commands", timingCategory: "focused-gate" },
+  },
+  {
     artifact: { reportPath: "tools/verify/artifacts/agent-io/verification-report.json" },
     command: {
       commands: [

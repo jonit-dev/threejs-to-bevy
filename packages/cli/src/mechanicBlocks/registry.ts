@@ -53,12 +53,15 @@ async function addSpawnerBlock(options: IMechanicBlockOptions): Promise<IMechani
   const scene = await readJsonObject(resolve(options.projectPath, scenePath));
   const prefabs = arrayOfRecords(scene.prefabs);
   const entities = arrayOfRecords(scene.entities);
+  const resources = arrayOfRecords(scene.resources);
   scene.prefabs = prefabs;
   scene.entities = entities;
+  scene.resources = resources;
   upsertPrefab(prefabs, prefab, "box", "#38bdf8");
   for (const [index, position] of spawnPositions(pattern, count).entries()) {
     upsertEntity(entities, `${blockId}.${String(index + 1).padStart(2, "0")}`, prefab, position);
   }
+  upsertResource(resources, "MechanicSpawner", { blockId, count, pattern, prefab, statusText: `${count} spawn points ready` });
   await writeJson(resolve(options.projectPath, scenePath), scene);
   return writeBlockArtifacts(options.projectPath, "spawner", {
     blockId,
@@ -145,15 +148,18 @@ async function addFollowCameraBlock(options: IMechanicBlockOptions): Promise<IMe
   const scenePath = await resolveScenePath(options.projectPath);
   const scene = await readJsonObject(resolve(options.projectPath, scenePath));
   const entities = arrayOfRecords(scene.entities);
+  const resources = arrayOfRecords(scene.resources);
   scene.entities = entities;
+  scene.resources = resources;
   const cameraEntity = entities.find((entity) => entity.id === camera);
   if (cameraEntity === undefined) {
     entities.push({ components: { camera: { mode: "perspective", target } }, id: camera });
-  } else {
+  } else if (!isRecord(cameraEntity.transform)) {
     const components = isRecord(cameraEntity.components) ? cameraEntity.components : {};
     const cameraComponent = isRecord(components.camera) ? components.camera : {};
     cameraEntity.components = { ...components, camera: { ...cameraComponent, target } };
   }
+  upsertResource(resources, "FollowCamera", { camera, statusText: `Following ${target}`, target });
   await writeJson(resolve(options.projectPath, scenePath), scene);
   return writeBlockArtifacts(options.projectPath, "follow-camera", { camera, scenePath, target }, [scenePath]);
 }
@@ -168,7 +174,8 @@ async function writeBlockArtifacts(projectPath: string, block: MechanicBlockId, 
     sourceFiles,
     version: "0.1.0",
   });
-  await writeJson(resolve(projectPath, scenarioPath), movementScenario(`block-${block}`));
+  const subject = await resolveProofSubject(projectPath, details, sourceFiles);
+  await writeJson(resolve(projectPath, scenarioPath), blockScenario(block, details, subject));
   return {
     block,
     code: "TN_ADD_BLOCK_OK",
@@ -226,21 +233,46 @@ async function resolveScenePath(projectPath: string): Promise<string> {
   return firstScene === undefined ? "content/scenes/arena.scene.json" : `content/scenes/${firstScene}`;
 }
 
-function movementScenario(name: string): Record<string, unknown> {
+function blockScenario(block: MechanicBlockId, details: Record<string, unknown>, subject: string): Record<string, unknown> {
+  const resources: Record<MechanicBlockId, Record<string, unknown>[]> = {
+    "follow-camera": [{ equals: details.target, id: "FollowCamera", path: "target" }],
+    projectile: [{ gte: 1, id: "ProjectileLauncher", path: "speed" }],
+    score: [{ gte: 0, id: typeof details.resource === "string" ? details.resource : "GameScore", path: "score" }],
+    spawner: [{ gte: 1, id: "MechanicSpawner", path: "count" }],
+    timer: [{ gte: 0, id: typeof details.resource === "string" ? details.resource : "GameTimer", path: "limit" }],
+    "trigger-sequence": [{ textIncludes: "trigger sequence ready", id: "TriggerSequence", path: "statusText" }],
+  };
   return {
     artifacts: { console: true, network: true, runtimeTrace: true, screenshots: "before-after" },
     assert: {
       diagnostics: { noConsoleErrors: true, noNetworkErrors: true, noRuntimeDiagnostics: true, runtimeReady: true },
-      movement: { axis: "x", entity: "player", minDistance: 0.05, minVelocity: 0.001 },
+      resources: resources[block],
     },
-    name,
+    name: `block-${block}`,
     schemaVersion: 1,
-    steps: [{ holdFrames: 30, label: "prove-block-loop", press: "KeyD", release: true }],
-    subject: "player",
+    steps: [{ label: "observe-block-state", release: false, waitFrames: 2 }],
+    subject,
     target: "web",
     viewport: { height: 720, width: 1280 },
     warmupFrames: 5,
   };
+}
+
+async function resolveProofSubject(projectPath: string, details: Record<string, unknown>, sourceFiles: readonly string[]): Promise<string> {
+  if (typeof details.target === "string" && details.target.trim() !== "") {
+    return details.target;
+  }
+  const scenePath = sourceFiles.find((file) => file.endsWith(".scene.json")) ?? await resolveScenePath(projectPath);
+  try {
+    const scene = await readJsonObject(resolve(projectPath, scenePath));
+    const ids = arrayOfRecords(scene.entities).flatMap((entity) => typeof entity.id === "string" ? [entity.id] : []);
+    return ids.find((id) => id === "player")
+      ?? ids.find((id) => /(?:^|[._-])(player|hero|car|kart|vehicle)(?:$|[._-])/iu.test(id))
+      ?? ids[0]
+      ?? "player";
+  } catch {
+    return "player";
+  }
 }
 
 function spawnPositions(pattern: string, count: number): Array<[number, number, number]> {

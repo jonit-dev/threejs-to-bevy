@@ -1584,6 +1584,40 @@ test("should emit structured ui bindings from retained source documents", async 
   }
 });
 
+test("should emit structured ui owned by a scene document", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-emit-structured-scene-ui-"));
+  try {
+    const bundlePath = await emitBundle({
+      entry: "src/game.ts",
+      outDir: "dist/game.bundle",
+      projectPath: root,
+      schema: "threenative.project",
+      version: "0.1.0",
+    }, makeScene(), {
+      authoringDocuments: [{
+        data: {
+          id: "arena",
+          schema: "threenative.scene",
+          ui: {
+            bindings: [{ node: "score", resource: "GameState.scoreText" }],
+            nodes: [{ id: "score", text: "Score 0", type: "text" }],
+          },
+          version: "0.1.0",
+        },
+        file: join(root, "content", "scenes", "arena.scene.json"),
+        kind: "scene",
+        projectRelativePath: "content/scenes/arena.scene.json",
+      }],
+    });
+    const ui = JSON.parse(await readFile(join(bundlePath, "ui.ir.json"), "utf8"));
+
+    assert.equal(ui.root.id, "score");
+    assert.deepEqual(ui.root.binding, { field: "scoreText", kind: "resource", name: "GameState" });
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
 test("should reject unsafe asset copy destinations before writing files", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-emit-unsafe-asset-"));
   try {

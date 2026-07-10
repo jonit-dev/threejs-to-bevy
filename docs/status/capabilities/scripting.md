@@ -25,6 +25,8 @@ Current support:
   systems JSON.
 - Shallow default hydration and patching through `entity.get(..., defaults)`,
   `context.resources.get(..., defaults)`, and `context.resources.patch(...)`.
+  Web resource reads and patches compose pending writes within the same system
+  tick, so sequential patches do not overwrite fields from earlier patches.
 - Literal `context.resources.get(...)`, `context.resources.set(...)`,
   `context.resources.patch(...)`, and `context.state(...)` resource IDs are
   derived into deterministic `resourceReads`/`resourceWrites` during script

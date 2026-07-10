@@ -5,6 +5,10 @@ import {
   type AuthoringOperationName,
 } from "./operationRegistry.js";
 import { type IAuthoringOperationResult } from "./operations.js";
+import { loadAuthoringProject } from "./project.js";
+import { copyFile, cp, mkdir, mkdtemp, readFile, rename, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { dirname, join, resolve } from "node:path";
 
 export type AuthoringRecipeId =
   | "collectible"
@@ -22,6 +26,17 @@ export type AuthoringRecipeId =
 export interface IAuthoringRecipeOperation {
   args: Record<string, unknown>;
   name: AuthoringOperationName | string;
+}
+
+export interface IAuthoringRecipeArgumentDescriptor {
+  flag: string;
+  name: string;
+  placeholder: string;
+}
+
+export interface IAuthoringRecipeDescriptor {
+  id: AuthoringRecipeId;
+  requiredArguments: IAuthoringRecipeArgumentDescriptor[];
 }
 
 export interface IAuthoringRecipePlanOptions {
@@ -78,6 +93,17 @@ export function listAuthoringRecipeIds(): AuthoringRecipeId[] {
   return [...authoringRecipeIds];
 }
 
+export function getAuthoringRecipeDescriptor(recipeId: string): IAuthoringRecipeDescriptor | undefined {
+  const planner = recipePlanners[recipeId as AuthoringRecipeId];
+  return planner === undefined
+    ? undefined
+    : { id: recipeId as AuthoringRecipeId, requiredArguments: planner.required.map(recipeArgumentDescriptor) };
+}
+
+export function listAuthoringRecipeDescriptors(): IAuthoringRecipeDescriptor[] {
+  return authoringRecipeIds.map((recipeId) => getAuthoringRecipeDescriptor(recipeId)!);
+}
+
 export function planAuthoringRecipe(options: IAuthoringRecipePlanOptions): IAuthoringRecipePlanResult {
   const recipe = recipePlanners[options.recipeId as AuthoringRecipeId];
   if (recipe === undefined) {
@@ -126,39 +152,62 @@ export function planAuthoringRecipe(options: IAuthoringRecipePlanOptions): IAuth
 
 export async function applyAuthoringRecipe(options: IApplyAuthoringRecipeOptions): Promise<IAuthoringRecipeApplyResult> {
   const plan = planAuthoringRecipe(options);
+  if (!plan.ok || options.projectPath === undefined) {
+    return failedRecipeApply(plan, options.projectPath);
+  }
+
+  const projectPath = resolve(options.projectPath);
+  const transactionRoot = await mkdtemp(join(tmpdir(), "tn-authoring-recipe-"));
+  const stagedProjectPath = join(transactionRoot, "project");
+  try {
+    await cp(projectPath, stagedProjectPath, {
+      filter: (source) => !isIgnoredTransactionPath(projectPath, source),
+      recursive: true,
+    });
+    const staged = await applyAuthoringRecipeOperations({ ...options, projectPath: stagedProjectPath }, { ...plan, projectPath: stagedProjectPath });
+    if (!staged.ok) {
+      return remapRecipeResult(staged, projectPath, false);
+    }
+    staged.filesWritten = await changedRecipeFiles(stagedProjectPath, projectPath, staged.filesWritten);
+    staged.changed = staged.filesWritten.length > 0;
+    await commitRecipeFiles(stagedProjectPath, projectPath, staged.filesWritten);
+    return remapRecipeResult(staged, projectPath, true);
+  } finally {
+    await rm(transactionRoot, { force: true, recursive: true });
+  }
+}
+
+async function applyAuthoringRecipeOperations(
+  options: IApplyAuthoringRecipeOptions & { projectPath: string },
+  plan: IAuthoringRecipePlanResult,
+): Promise<IAuthoringRecipeApplyResult> {
   const operationResults: IAuthoringRecipeOperationResult[] = [];
   const diagnostics = [...plan.diagnostics];
   const filesWritten = new Set<string>();
   let changed = false;
   let stoppedAt: number | undefined;
-
-  if (!plan.ok || options.projectPath === undefined) {
-    if (options.projectPath === undefined) {
-      diagnostics.push(
-        authoringDiagnostic({
-          code: "TN_AUTHORING_RECIPE_PROJECT_MISSING",
-          message: "Applying an authoring recipe requires projectPath.",
-          path: "/projectPath",
-        }),
-      );
+  const existingProject = await loadAuthoringProject({ projectPath: options.projectPath });
+  const adoptedEntityIds = new Set(existingProject.documents.flatMap((document) => {
+    if (document.kind !== "scene" || !isRecord(document.data) || !Array.isArray(document.data.entities)) {
+      return [];
     }
-    return {
-      ...plan,
-      changed,
-      diagnostics,
-      filesWritten: [],
-      ok: false,
-      operationResults,
-    };
-  }
+    return document.data.entities.flatMap((entity) => isRecord(entity) && typeof entity.id === "string" ? [entity.id] : []);
+  }));
 
   const stopOnError = options.stopOnError ?? true;
   for (const [index, operation] of plan.operations.entries()) {
-    const result = await dispatchAuthoringOperation({
-      args: operation.args,
-      name: operation.name,
-      projectPath: options.projectPath,
-    });
+    const entityId = typeof operation.args.entityId === "string" ? operation.args.entityId : undefined;
+    const preservesAdoptedEntity = entityId !== undefined
+      && adoptedEntityIds.has(entityId)
+      && ["scene.set_character_controller", "scene.set_collider", "scene.set_rigid_body", "scene.set_transform"].includes(operation.name);
+    const preservesAdoptedCamera = operation.name === "scene.set_camera_component" && entityId !== undefined && adoptedEntityIds.has(entityId);
+    const dispatched = preservesAdoptedEntity || preservesAdoptedCamera
+      ? { changed: false, diagnostics: [], filesWritten: [], ok: true, projectPath: options.projectPath }
+      : await dispatchAuthoringOperation({ args: operation.args, name: operation.name, projectPath: options.projectPath });
+    if (operation.name === "scene.add_entity" && entityId !== undefined && dispatched.diagnostics.some((diagnostic) => diagnostic.code === "TN_AUTHORING_DUPLICATE_ENTITY_ID")) {
+      adoptedEntityIds.add(entityId);
+    }
+    const result = idempotentOperationResult(dispatched);
     operationResults.push({ result, trace: { ...operation, index } });
     diagnostics.push(...result.diagnostics);
     for (const file of result.filesWritten) {
@@ -181,6 +230,73 @@ export async function applyAuthoringRecipe(options: IApplyAuthoringRecipeOptions
     operationResults,
     ...(stoppedAt === undefined ? {} : { stoppedAt }),
   };
+}
+
+function failedRecipeApply(plan: IAuthoringRecipePlanResult, projectPath: string | undefined): IAuthoringRecipeApplyResult {
+  const diagnostics = [...plan.diagnostics];
+  if (projectPath === undefined) {
+    diagnostics.push(authoringDiagnostic({
+      code: "TN_AUTHORING_RECIPE_PROJECT_MISSING",
+      message: "Applying an authoring recipe requires projectPath.",
+      path: "/projectPath",
+    }));
+  }
+  return { ...plan, changed: false, diagnostics, filesWritten: [], ok: false, operationResults: [] };
+}
+
+function idempotentOperationResult(result: IAuthoringOperationResult): IAuthoringOperationResult {
+  const errors = result.diagnostics.filter((diagnostic) => diagnostic.severity === "error");
+  if (errors.length === 0 || !errors.every((diagnostic) => diagnostic.code.startsWith("TN_AUTHORING_DUPLICATE_"))) {
+    return result;
+  }
+  return {
+    ...result,
+    diagnostics: result.diagnostics.map((diagnostic) => diagnostic.severity === "error"
+      ? { ...diagnostic, message: `${diagnostic.message} Recipe output already exists; keeping it and continuing.`, severity: "info" }
+      : diagnostic),
+    ok: true,
+  };
+}
+
+function remapRecipeResult(result: IAuthoringRecipeApplyResult, projectPath: string, committed: boolean): IAuthoringRecipeApplyResult {
+  return {
+    ...result,
+    changed: committed ? result.changed : false,
+    filesWritten: committed ? result.filesWritten : [],
+    projectPath,
+    operationResults: result.operationResults.map((entry) => ({
+      ...entry,
+      result: { ...entry.result, projectPath },
+    })),
+  };
+}
+
+function isIgnoredTransactionPath(projectPath: string, source: string): boolean {
+  const relativePath = source.slice(projectPath.length).replace(/^[/\\]+/u, "");
+  const firstSegment = relativePath.split(/[/\\]/u)[0];
+  return firstSegment === "node_modules" || firstSegment === ".git" || firstSegment === "dist" || firstSegment === "artifacts";
+}
+
+async function commitRecipeFiles(stagedProjectPath: string, projectPath: string, files: readonly string[]): Promise<void> {
+  for (const file of files) {
+    const destination = resolve(projectPath, file);
+    const temporary = `${destination}.tn-recipe-${process.pid}.tmp`;
+    await mkdir(dirname(destination), { recursive: true });
+    await copyFile(resolve(stagedProjectPath, file), temporary);
+    await rename(temporary, destination);
+  }
+}
+
+async function changedRecipeFiles(stagedProjectPath: string, projectPath: string, files: readonly string[]): Promise<string[]> {
+  const changed: string[] = [];
+  for (const file of files) {
+    const staged = await readFile(resolve(stagedProjectPath, file));
+    const existing = await readFile(resolve(projectPath, file)).catch(() => undefined);
+    if (existing === undefined || !staged.equals(existing)) {
+      changed.push(file);
+    }
+  }
+  return changed;
 }
 
 interface IRecipePlanner {
@@ -256,7 +372,10 @@ const recipePlanners: Record<AuthoringRecipeId, IRecipePlanner> = {
     plan: (args) => {
       const sceneId = requiredStringValue(args, "sceneId");
       const entityId = requiredStringValue(args, "entityId");
+      const inputDocId = optionalStringValue(args, "inputDocId") ?? `${sceneId}-input`;
       return [
+        operation("input.add_axis", { inputDocId, axisId: "MoveX", negativeKeys: ["KeyA", "ArrowLeft"], positiveKeys: ["KeyD", "ArrowRight"] }),
+        operation("input.add_axis", { inputDocId, axisId: "MoveZ", negativeKeys: ["KeyS", "ArrowDown"], positiveKeys: ["KeyW", "ArrowUp"] }),
         operation("scene.add_entity", { sceneId, entityId, prefabId: optionalStringValue(args, "prefabId") }),
         operation("scene.set_rigid_body", { sceneId, entityId, kind: "kinematic" }),
         operation("scene.set_collider", { sceneId, entityId, kind: "capsule", height: optionalNumberValue(args, "height") ?? 1.8, radius: optionalNumberValue(args, "radius") ?? 0.35 }),
@@ -538,12 +657,35 @@ function requiredRecipeArgs(recipeId: string, args: Record<string, unknown>, req
       : [
           authoringDiagnostic({
             code: "TN_AUTHORING_RECIPE_ARG_MISSING",
-            message: `Authoring recipe '${recipeId}' requires argument '${name}'.`,
+            message: `Authoring recipe '${recipeId}' requires ${recipeArgumentUsage(name)}.`,
             path: `/args/${name}`,
+            suggestion: `Pass ${recipeArgumentUsage(name)}. Required recipe flags: ${required.map(recipeArgumentUsage).join(" ")}.`,
             value: recipeId,
           }),
         ];
   });
+}
+
+function recipeArgumentDescriptor(name: string): IAuthoringRecipeArgumentDescriptor {
+  const known: Record<string, Omit<IAuthoringRecipeArgumentDescriptor, "name">> = {
+    cameraId: { flag: "--camera", placeholder: "<camera-id>" },
+    entityId: { flag: "--entity", placeholder: "<entity-id>" },
+    exportName: { flag: "--export", placeholder: "<export-name>" },
+    modulePath: { flag: "--module", placeholder: "<module-path>" },
+    playerId: { flag: "--player", placeholder: "<player-id>" },
+    sceneId: { flag: "--scene", placeholder: "<scene-id>" },
+    vehicleId: { flag: "--vehicle", placeholder: "<vehicle-id>" },
+  };
+  const descriptor = known[name] ?? {
+    flag: `--${name.replace(/[A-Z]/gu, (letter) => `-${letter.toLowerCase()}`)}`,
+    placeholder: `<${name}>`,
+  };
+  return { name, ...descriptor };
+}
+
+function recipeArgumentUsage(name: string): string {
+  const descriptor = recipeArgumentDescriptor(name);
+  return `${descriptor.flag} ${descriptor.placeholder}`;
 }
 
 function operationDiagnostics(recipeId: string, operationInput: IAuthoringRecipeOperation, index: number): IAuthoringDiagnostic[] {
@@ -584,4 +726,8 @@ function optionalNumberValue(args: Record<string, unknown>, name: string): numbe
 function optionalVector3Value(args: Record<string, unknown>, name: string): [number, number, number] | undefined {
   const value = args[name];
   return Array.isArray(value) && value.length === 3 && value.every((entry) => typeof entry === "number" && Number.isFinite(entry)) ? [value[0], value[1], value[2]] : undefined;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }

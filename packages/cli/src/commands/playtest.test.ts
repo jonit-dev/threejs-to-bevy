@@ -3,6 +3,7 @@ import type { ChildProcess } from "node:child_process";
 import { EventEmitter } from "node:events";
 import { cp, mkdir, mkdtemp, readFile, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
+import { PassThrough } from "node:stream";
 import test from "node:test";
 import { tmpdir } from "node:os";
 
@@ -715,6 +716,41 @@ test("playtest command should step desktop native screenshot proofs without coll
     { code: undefined, frames: undefined, pressed: undefined, tick: 37, type: "screenshot" },
     { code: undefined, frames: undefined, pressed: undefined, tick: 38, type: "exit" },
   ]);
+});
+
+test("playtest command should report native signal crashes with readiness phase and captured output", async () => {
+  const root = await playtestTempRoot();
+  await cp(join(import.meta.dirname, "../template-files/structured-source-starter"), root, { recursive: true });
+  const result = await playtestCommand(
+    ["--project", ".", "--target", "desktop", "--entity", "player", "--press", "KeyW", "--frames", "30", "--expect-moved", "--json"],
+    root,
+    {
+      bevyRunner: (invocation) => {
+        const process = new EventEmitter() as ChildProcess;
+        const stdout = new PassThrough();
+        const stderr = new PassThrough();
+        Object.assign(process, { kill: () => true, stderr, stdout });
+        void (async () => {
+          const readinessOutPath = invocation.proofHarness?.readinessOutPath;
+          assert.ok(readinessOutPath);
+          await mkdir(dirname(readinessOutPath), { recursive: true });
+          await writeFile(readinessOutPath, `${JSON.stringify({ phase: "loading-world", tick: 2 })}\n`, "utf8");
+          stderr.write("adapter initialized\nGPU process terminated\n");
+          await new Promise((resolve) => setTimeout(resolve, 35));
+          process.emit("exit", null, "SIGSEGV");
+        })();
+        return process;
+      },
+    },
+  );
+  const payload = JSON.parse(result.stdout) as { code: string; message: string; phase: string };
+
+  assert.equal(result.exitCode, 1);
+  assert.equal(payload.code, "TN_PLAYTEST_NATIVE_CRASH");
+  assert.equal(payload.phase, "loading-world");
+  assert.match(payload.message, /signal SIGSEGV during loading-world/);
+  assert.match(payload.message, /GPU process terminated/);
+  assert.doesNotThrow(() => JSON.parse(result.stdout));
 });
 
 test("playtest command should fail desktop native screenshot proofs when screenshots are missing", async () => {

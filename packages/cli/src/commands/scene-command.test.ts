@@ -376,12 +376,15 @@ test("scene-command creates ten stable prefab instances for a bowling rack", asy
 });
 
 test("scene-command inspect requires a scene id", async () => {
-  const result = await sceneCommand(["inspect", "--json"], { cwd: "/" });
-  const payload = JSON.parse(result.stdout) as { code: string; severity: string };
+  const root = await createSceneProject();
+  const result = await sceneCommand(["inspect", "--project", root, "--json"]);
+  const payload = JSON.parse(result.stdout) as { availableSceneIds: string[]; code: string; severity: string };
 
   assert.equal(result.exitCode, 2);
   assert.equal(payload.code, "TN_SCENE_INSPECT_ID_MISSING");
   assert.equal(payload.severity, "error");
+  assert.deepEqual(payload.availableSceneIds, ["scene.arena"]);
+  await rm(root, { force: true, recursive: true });
 });
 
 test("scene-command mutates structured scene documents deterministically", async () => {

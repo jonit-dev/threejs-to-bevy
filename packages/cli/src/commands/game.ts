@@ -6,6 +6,7 @@ import {
   createGameAgentInventory,
   createGameQualityReport,
   GAME_WORKFLOW_PHASE_IDS,
+  getAuthoringRecipeDescriptor,
   listAuthoringRecipeIds,
   planAuthoringRecipe,
   supportedPrefabPrimitives,
@@ -210,7 +211,7 @@ async function gamePlanCommand(argv: readonly string[]): Promise<ICommandResult>
       script: archetype.script,
       summary: archetype.summary,
     },
-    archetypeSuggestions: buildActorArchetypeSuggestions(goal),
+    archetypeSuggestions: buildActorArchetypeSuggestions(goal, defaults),
     assetPlan: buildAssetPlan(gameCategory),
     code: "TN_GAME_PLAN",
     design: {
@@ -242,15 +243,7 @@ async function gamePlanCommand(argv: readonly string[]): Promise<ICommandResult>
     mutate: false,
     phases: GAME_WORKFLOW_PHASE_IDS.map((id, index) => ({ id, order: index + 1, summary: phaseSummary(id) })),
     polishPlan: buildPolishPlan(),
-    proofCommands: [
-      "tn iterate --project . --json",
-      "tn playtest report --latest --scenario <name> --json",
-      "tn playtest --project . --suggest-scenario smoke-movement --json",
-      "tn screenshot --project . --url <preview-url> --out artifacts/game-production/screenshot.png --wait-ready --json",
-      "tn game score --project . --json",
-      "tn game qa --project . --run-proof --json",
-      "tn game release --project . --json",
-    ],
+    proofCommands: ["tn iterate --project . --json"],
     recipeIds,
     schema: "threenative.game-plan",
     scriptPlan: buildScriptPlan(inventory),
@@ -1136,10 +1129,13 @@ function buildMechanicDecomposition(
   const objective = blockByKind.get("objective") ?? gameplayBlocks.find((block) => block.id.startsWith("objective."));
   const camera = blockByKind.get("camera");
   const spawn = blockByKind.get("spawn");
+  const defaults = inferPlanDefaults(inventory);
   const rows: IGamePlan["mechanicDecomposition"] = [
     mechanicRow({
       block: movement,
-      command: movement?.recipeIds[0] === undefined ? "tn add follow-camera --project . --json" : `tn recipe apply ${movement.recipeIds[0]} --scene <scene-id> --entity <player-id> --camera <camera-id> --project . --json`,
+      command: movement?.recipeIds[0] === undefined
+        ? `tn add follow-camera --camera ${defaults.cameraId} --target ${defaults.playerId} --project . --json`
+        : buildRecipeApplyCommand(movement.recipeIds[0], defaults, "movement"),
       fallbackCookbookId: "player-move-wasd",
       mechanic: "movement",
       owner: scriptOwner,
@@ -1147,14 +1143,16 @@ function buildMechanicDecomposition(
     }),
     mechanicRow({
       block: objective,
-      command: objective?.recipeIds[0] === undefined ? "tn add score --project . --json" : `tn recipe apply ${objective.recipeIds[0]} --scene <scene-id> --entity <target-id> --project . --json`,
+      command: objective?.recipeIds[0] === undefined
+        ? "tn add score --project . --json"
+        : buildRecipeApplyCommand(objective.recipeIds[0], defaults, "objective"),
       fallbackCookbookId: cookbookForGoal(goal),
       mechanic: "objective-progression",
       owner: sourceOwner,
       summary: "Track progress, scoring, win/fail state, and retry through source-owned resources and retained UI.",
     }),
     mechanicRow({
-      command: "tn flow create match --initial ready --scene <scene-id> --project . --json",
+      command: `tn flow create plan.match --initial ready --scene ${defaults.sceneId} --project . --json`,
       fallbackCookbookId: "fail-retry-reset",
       mechanic: "macro-game-flow",
       owner: "content/flow/match.flow.json",
@@ -1162,14 +1160,14 @@ function buildMechanicDecomposition(
     }),
     mechanicRow({
       block: camera,
-      command: "tn add follow-camera --project . --json",
+      command: `tn add follow-camera --camera ${defaults.cameraId} --target ${defaults.playerId} --project . --json`,
       fallbackCookbookId: "follow-camera",
       mechanic: "camera-feedback",
       owner: sourceOwner,
       summary: "Keep the player, objective, and feedback moments framed without runtime adapter handles.",
     }),
     mechanicRow({
-      command: "tn sequence create intro --duration 2 --skippable true --project . --json",
+      command: "tn sequence create plan.intro --duration 2 --skippable true --project . --json",
       fallbackCookbookId: "sound-cue",
       mechanic: "feedback-sequence",
       owner: "content/sequences/intro.sequence.json",
@@ -1197,12 +1195,56 @@ function mechanicRow(options: {
 }): IGamePlan["mechanicDecomposition"][number] {
   return {
     command: options.command,
-    cookbookId: options.block?.id ?? options.fallbackCookbookId,
+    cookbookId: cookbookForGameplayBlock(options.block) ?? options.fallbackCookbookId,
     mechanic: options.mechanic,
     owner: options.owner,
-    proof: options.block?.proof[0] ?? "tn iterate --project . --json",
+    proof: "tn iterate --project . --json",
     summary: options.summary,
   };
+}
+
+function cookbookForGameplayBlock(block: IGameplayBlockDescriptor | undefined): string | undefined {
+  if (block === undefined) {
+    return undefined;
+  }
+  if (block.id === "objective.checkpoint-lap") {
+    return "checkpoint-race-progress";
+  }
+  if (block.id.startsWith("controller.")) {
+    return "player-move-wasd";
+  }
+  if (block.id.startsWith("camera.")) {
+    return "follow-camera";
+  }
+  if (block.id === "objective.collectible") {
+    return "collectible-respawn";
+  }
+  if (block.id === "objective.obstacle-avoid") {
+    return "kinematic-hazard";
+  }
+  if (block.id.startsWith("spawn.")) {
+    return "lane-runner-spawn";
+  }
+  return undefined;
+}
+
+function buildRecipeApplyCommand(
+  recipeId: string,
+  defaults: { cameraId: string; playerId: string; sceneId: string },
+  role: "movement" | "objective",
+): string {
+  const descriptor = getAuthoringRecipeDescriptor(recipeId);
+  const flags = descriptor?.requiredArguments.flatMap((argument) => {
+    const value = argument.name === "sceneId"
+      ? defaults.sceneId
+      : argument.name === "cameraId"
+        ? defaults.cameraId
+        : role === "objective" && recipeId !== "vehicle-checkpoint"
+          ? "goal.plan"
+          : defaults.playerId;
+    return [argument.flag, value];
+  }) ?? [];
+  return ["tn", "recipe", "apply", recipeId, ...flags, "--project", ".", "--json"].join(" ");
 }
 
 function cookbookForGoal(goal: string): string {
@@ -1319,22 +1361,25 @@ function buildGamePlanSteps(defaults: { cameraId: string; playerId: string; scen
   ];
 }
 
-function buildActorArchetypeSuggestions(goal: string): IGamePlan["archetypeSuggestions"] {
+function buildActorArchetypeSuggestions(
+  goal: string,
+  defaults: { cameraId: string; playerId: string; sceneId: string },
+): IGamePlan["archetypeSuggestions"] {
   const lower = goal.toLowerCase();
   const suggestions: IGamePlan["archetypeSuggestions"] = [];
   if (/\b(car|kart|truck|racer|racing|drive|vehicle)\b/u.test(lower)) {
     suggestions.push({
       archetype: "vehicle",
-      command: "tn actor add vehicle --id player.vehicle --scene <scene-id> --json",
-      id: "player.vehicle",
+      command: `tn actor add vehicle --id plan.vehicle --scene ${defaults.sceneId} --project . --json`,
+      id: "plan.vehicle",
       reason: "Vehicle goals should start from the bounded arcade vehicle shell instead of raw physics JSON.",
       surface: "vehicle",
     });
   } else {
     suggestions.push({
       archetype: "character",
-      command: "tn actor add character --id hero --scene <scene-id> --json",
-      id: "hero",
+      command: `tn actor add character --id plan.hero --scene ${defaults.sceneId} --project . --json`,
+      id: "plan.hero",
       reason: "Most playable loops need a controller, collider, follow camera, input source, and script stub in one operation.",
       surface: "hero",
     });
@@ -1342,8 +1387,8 @@ function buildActorArchetypeSuggestions(goal: string): IGamePlan["archetypeSugge
   if (/\b(collect|coin|pickup|reward|gem|item)\b/u.test(lower)) {
     suggestions.push({
       archetype: "pickup",
-      command: "tn actor add pickup --id pickup.01 --scene <scene-id> --json",
-      id: "pickup.01",
+      command: `tn actor add pickup --id plan.pickup.01 --scene ${defaults.sceneId} --project . --json`,
+      id: "plan.pickup.01",
       reason: "Reward surfaces should use trigger/counter/HUD source before bespoke scripting.",
       surface: "pickup",
     });
@@ -1351,16 +1396,16 @@ function buildActorArchetypeSuggestions(goal: string): IGamePlan["archetypeSugge
   if (/\b(camera|third-person|first-person|follow|chase)\b/u.test(lower)) {
     suggestions.push({
       archetype: "camera-boom",
-      command: "tn actor add camera-boom --id camera.main --scene <scene-id> --json",
-      id: "camera.main",
+      command: `tn actor add camera-boom --id plan.camera --scene ${defaults.sceneId} --project . --json`,
+      id: "plan.camera",
       reason: "Camera-heavy goals should start from explicit boom provenance and CameraRig script wiring.",
       surface: "camera",
     });
   }
   suggestions.push({
     archetype: "prop-static",
-    command: "tn actor add prop-static --id prop.blockout.01 --scene <scene-id> --json",
-    id: "prop.blockout.01",
+    command: `tn actor add prop-static --id plan.prop.01 --scene ${defaults.sceneId} --project . --json`,
+    id: "plan.prop.01",
     reason: "Dominant static set dressing should carry collider/body provenance instead of untracked primitives.",
     surface: "prop",
   });
@@ -1849,7 +1894,7 @@ function gamePlanEvidenceDiagnostics(plan: Record<string, unknown>): Array<{
 
   const proofCommands = hasStringArray(plan.proofCommands) ? plan.proofCommands : [];
   const hasIterateProof = proofCommands.some((command) => command.includes("tn iterate"));
-  const requiredProofCommands = [
+  const requiredProofCommands = hasIterateProof ? [] : [
     (command: string) => hasIterateProof || command.includes("tn authoring validate"),
     (command: string) => hasIterateProof || command.includes("tn build"),
     (command: string) => hasIterateProof || (command.includes("tn playtest") && command.includes("--expect-moved")),

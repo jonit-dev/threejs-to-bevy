@@ -406,13 +406,40 @@ function readStructuredInputOverrides(data: Record<string, unknown>): NonNullabl
 }
 
 function readStructuredUi(documents: readonly IAuthoringDocument[] | undefined): IUiIr | undefined {
-  const uiDocuments = (documents ?? []).filter((document) => document.kind === "ui" && isRecord(document.data));
-  if (uiDocuments.length === 0) {
+  const standaloneSources = (documents ?? []).flatMap((document) => document.kind === "ui" && isRecord(document.data) ? [document.data] : []);
+  const standaloneNodeIds = new Set(standaloneSources.flatMap((source) => structuredUiNodeIds(readRecordList(source.nodes))));
+  const sceneSources = (documents ?? []).flatMap((document) => {
+    if (document.kind !== "scene" || !isRecord(document.data) || !isRecord(document.data.ui)) {
+      return [];
+    }
+    const nodes = filterStructuredUiNodes(readRecordList(document.data.ui.nodes), standaloneNodeIds);
+    return nodes.length === 0 ? [] : [{ id: `${readString(document.data.id) ?? "scene"}.ui`, ...document.data.ui, nodes }];
+  });
+  const uiSources = [...standaloneSources, ...sceneSources];
+  if (uiSources.length === 0) {
     return undefined;
   }
-  return uiDocuments
-    .map((document) => structuredUiDocument(document.data as Record<string, unknown>))
+  return uiSources
+    .map((data) => structuredUiDocument(data))
     .reduce((merged, current) => mergeUis(merged, current), undefined as IUiIr | undefined);
+}
+
+function structuredUiNodeIds(nodes: readonly Record<string, unknown>[]): string[] {
+  return nodes.flatMap((node) => [
+    ...(readString(node.id) === undefined ? [] : [readString(node.id)!]),
+    ...structuredUiNodeIds(readRecordList(node.children)),
+  ]);
+}
+
+function filterStructuredUiNodes(nodes: readonly Record<string, unknown>[], excluded: ReadonlySet<string>): Record<string, unknown>[] {
+  return nodes.flatMap((node) => {
+    const id = readString(node.id);
+    if (id !== undefined && excluded.has(id)) {
+      return [];
+    }
+    const children = filterStructuredUiNodes(readRecordList(node.children), excluded);
+    return [{ ...node, ...(Array.isArray(node.children) ? { children } : {}) }];
+  });
 }
 
 function structuredUiDocument(data: Record<string, unknown>): IUiIr {
