@@ -415,6 +415,15 @@ export interface ILightComponent {
   shadowNormalBias?: number;
 }
 
+export interface IContactShadowsIr {
+  height: number;
+  opacity: number;
+  resolution: 128 | 256 | 512 | 1024;
+  size: readonly [number, number];
+  softness: number;
+  updateMode: "dynamic" | "static";
+}
+
 export interface IVisibilityComponent {
   visible: boolean;
 }
@@ -551,6 +560,7 @@ export interface IWorldEntity {
   components: Record<string, unknown> & {
     Camera?: ICameraComponent;
     CharacterController?: ICharacterControllerComponent;
+    ContactShadows?: IContactShadowsIr;
     Light?: ILightComponent;
     MeshRenderer?: IMeshRendererComponent;
     Collider?: IColliderComponent;

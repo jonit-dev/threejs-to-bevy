@@ -1,0 +1,115 @@
+{
+  "schema": "threenative.world",
+  "version": "0.1.0",
+  "entities": [
+    {
+      "id": "camera.main",
+      "components": {
+        "Camera": {
+          "active": true,
+          "clear": { "color": "#7595b8", "mode": "color" },
+          "far": 50,
+          "fovY": 48,
+          "kind": "perspective",
+          "near": 0.1
+        },
+        "Transform": {
+          "position": [0, 5.5, 10],
+          "rotation": [-0.21644, 0, 0, 0.976296],
+          "scale": [1, 1, 1]
+        }
+      }
+    },
+    {
+      "id": "surface.ground",
+      "components": {
+        "MeshRenderer": {
+          "castShadow": false,
+          "material": "mat.ground",
+          "mesh": "mesh.ground",
+          "receiveShadow": true
+        },
+        "Transform": {
+          "position": [0, -0.1, 0],
+          "rotation": [0, 0, 0, 1],
+          "scale": [1, 1, 1]
+        }
+      }
+    },
+    {
+      "id": "caster.low-opacity",
+      "components": {
+        "MeshRenderer": {
+          "castShadow": true,
+          "material": "mat.caster.low",
+          "mesh": "mesh.caster",
+          "receiveShadow": true
+        },
+        "Transform": {
+          "position": [-2.2, 0.75, 0],
+          "rotation": [0, 0.130526, 0, 0.991445],
+          "scale": [1, 1, 1]
+        }
+      }
+    },
+    {
+      "id": "caster.high-opacity",
+      "components": {
+        "MeshRenderer": {
+          "castShadow": true,
+          "material": "mat.caster.high",
+          "mesh": "mesh.caster",
+          "receiveShadow": true
+        },
+        "Transform": {
+          "position": [2.2, 0.75, 0],
+          "rotation": [0, -0.173648, 0, 0.984808],
+          "scale": [1, 1, 1]
+        }
+      }
+    },
+    {
+      "id": "contact.low-opacity",
+      "components": {
+        "ContactShadows": {
+          "height": 4,
+          "opacity": 0.25,
+          "resolution": 256,
+          "size": [3.5, 3.5],
+          "softness": 8,
+          "updateMode": "static"
+        },
+        "Transform": {
+          "position": [-2.2, 0.01, 0],
+          "rotation": [0, 0, 0, 1],
+          "scale": [1, 1, 1]
+        }
+      }
+    },
+    {
+      "id": "contact.high-opacity",
+      "components": {
+        "ContactShadows": {
+          "height": 4,
+          "opacity": 0.8,
+          "resolution": 256,
+          "size": [3.5, 3.5],
+          "softness": 8,
+          "updateMode": "static"
+        },
+        "Transform": {
+          "position": [2.2, 0.01, 0],
+          "rotation": [0, 0, 0, 1],
+          "scale": [1, 1, 1]
+        }
+      }
+    }
+  ],
+  "events": {},
+  "prefabs": [],
+  "resources": {
+    "ActiveCamera": {
+      "entity": "camera.main"
+    }
+  }
+}

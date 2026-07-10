@@ -139,10 +139,10 @@ export const supportedSequenceEasings = new Set(["linear", "step"]);
 export const supportedPrefabPrimitives = new Set(["box", "capsule", "cone", "cylinder", "plane", "sphere", "torus"]);
 export const supportedMeshPrimitives = new Set(["box", "cone", "cylinder", "plane", "sphere", "torus"]);
 
-export const supportedComponentKinds = new Set(["camera", "CharacterController", "Collider", "KinematicMover", "Light", "MeshRenderer", "RenderLayers", "RigidBody", "Spawner", "Visibility"]);
 export const cameraComponentKeys = new Set(["far", "fovY", "mode", "near", "size", "target"]);
 export const characterControllerComponentKeys = new Set(["blocking", "grounding", "interactAction", "moveXAxis", "moveZAxis", "pushPolicy", "slopeLimit", "speed", "stepOffset"]);
 export const colliderComponentKeys = new Set(["center", "friction", "height", "kind", "layer", "mask", "radius", "restitution", "sensor", "size", "slope", "trigger"]);
+export const contactShadowsComponentKeys = new Set(["height", "opacity", "resolution", "size", "softness", "updateMode"]);
 export const lightComponentKeys = new Set(["angle", "color", "intensity", "kind", "range", "shadowBias", "shadowNormalBias"]);
 export const kinematicMoverComponentKeys = new Set(["axis", "direction", "loop", "mode", "phase", "radius", "speed", "waypoints"]);
 export const meshRendererComponentKeys = new Set(["castShadow", "material", "mesh", "receiveShadow", "visible"]);
@@ -152,6 +152,20 @@ export const spawnerAreaKeys = new Set(["shape", "size"]);
 export const spawnerComponentKeys = new Set(["area", "despawnPolicy", "enabled", "interval", "jitterSeed", "maxAlive", "maxTotal", "mode", "prefab", "waveSize"]);
 export const spawnerDespawnPolicyKeys = new Set(["afterSeconds", "beyondDistance"]);
 export const visibilityComponentKeys = new Set(["visible"]);
+export const componentRegistry = {
+  camera: { keys: cameraComponentKeys },
+  CharacterController: { keys: characterControllerComponentKeys },
+  Collider: { keys: colliderComponentKeys },
+  ContactShadows: { keys: contactShadowsComponentKeys },
+  KinematicMover: { keys: kinematicMoverComponentKeys },
+  Light: { keys: lightComponentKeys },
+  MeshRenderer: { keys: meshRendererComponentKeys },
+  RenderLayers: { keys: renderLayersComponentKeys },
+  RigidBody: { keys: rigidBodyComponentKeys },
+  Spawner: { keys: spawnerComponentKeys },
+  Visibility: { keys: visibilityComponentKeys },
+} as const;
+export const supportedComponentKinds = new Set(Object.keys(componentRegistry));
 export const supportedCameraModes = new Set(["third-person-follow", "perspective", "orthographic"]);
 export const supportedCharacterControllerGrounding = new Set(["none", "raycast"]);
 export const supportedColliderKinds = new Set(["box", "capsule", "cylinder", "mesh", "sphere"]);

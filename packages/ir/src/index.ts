@@ -262,6 +262,7 @@ export type {
   IIrSchemaFile,
   IrSchemaFieldKind,
   ILightComponent,
+  IContactShadowsIr,
   IMaterialIr,
   IShaderExpressionIr,
   IShaderFragmentProgramIr,

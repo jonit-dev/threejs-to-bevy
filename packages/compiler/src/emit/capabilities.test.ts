@@ -120,6 +120,24 @@ test("should enroll shadow-cascade-profile when maxDistance authored", () => {
   assert.ok(capabilities.rendering?.includes("shadow-cascade-profile"));
 });
 
+test("should enroll contact-shadows capability", () => {
+  const capabilities = deriveRequiredCapabilities({
+    assets: assetsManifest([]),
+    materials: materialsIr([]),
+    world: worldIr({
+      entities: [{
+        components: {
+          ContactShadows: { height: 5, opacity: 0.6, resolution: 512, size: [20, 20], softness: 1.5, updateMode: "static" },
+          Transform: { position: [0, 0, 0] },
+        },
+        id: "arena.floor.shadows",
+      }],
+    }),
+  });
+
+  assert.ok(capabilities.rendering?.includes("contact-shadows"));
+});
+
 test("should derive primitive solver v2 capability from bounded primitive body metadata", () => {
   const capabilities = deriveRequiredCapabilities({
     assets: assetsManifest([]),

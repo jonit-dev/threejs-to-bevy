@@ -1,0 +1,46 @@
+{
+  "schema": "threenative.environment-scene",
+  "version": "0.1.0",
+  "sourceAssets": [],
+  "instances": [],
+  "path": {
+    "id": "path.contact-shadows-grounding",
+    "points": [[-100, 0, -100], [-99, 0, -100]],
+    "width": 1
+  },
+  "atmosphere": {
+    "active": true,
+    "id": "atmosphere.contact-shadows-grounding",
+    "sun": {
+      "id": "sun.contact-shadows-grounding",
+      "color": "#fff4dc",
+      "intensity": 1.8,
+      "direction": [-0.45, -0.82, -0.35],
+      "castsShadow": false
+    },
+    "ambient": {
+      "color": "#d8e4f2",
+      "intensity": 0.7,
+      "mode": "constant"
+    },
+    "sky": {
+      "color": "#7595b8",
+      "horizonColor": "#d9c7aa"
+    },
+    "colorManagement": {
+      "toneMapping": "aces",
+      "exposure": 1,
+      "outputColorSpace": "srgb",
+      "textureColorSpace": "srgb"
+    },
+    "shadows": {
+      "enabled": false,
+      "mapSize": 512,
+      "maxDistance": 30,
+      "cascadeCount": 1,
+      "bias": 0,
+      "normalBias": 0,
+      "receiverPolicy": "terrain-and-path"
+    }
+  }
+}

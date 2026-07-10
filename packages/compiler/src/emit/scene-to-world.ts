@@ -9,6 +9,7 @@ interface IObjectLike {
   children: readonly IObjectLike[];
   clear?: { color?: string; mode: string };
   debug?: { gizmo?: boolean };
+  height?: number;
   follow?: { offset?: readonly number[]; smoothing?: number; target: string };
   id?: string;
   layers?: readonly string[];
@@ -70,8 +71,10 @@ interface IObjectLike {
     usage?: "static";
   };
   physics?: IPhysicsDeclaration;
+  opacity?: number;
   position: { toArray(): [number, number, number] };
   receiveShadow?: boolean;
+  resolution?: number;
   rotation: { toArray(): [number, number, number] };
   scale: { toArray(): [number, number, number] };
   orbit?: { distance?: { max: number; min: number }; smoothing?: number; target: string };
@@ -83,10 +86,13 @@ interface IObjectLike {
   shadowBias?: number;
   shadowFilter?: { mode: "pcf"; quality: "high" | "low" | "medium" };
   shadowNormalBias?: number;
+  size?: number | readonly [number, number];
+  softness?: number;
   target?: { asset?: string; kind: string };
   viewModel?: { fovScale?: number; offset?: readonly number[] };
   viewport?: readonly [number, number, number, number];
   visible?: boolean;
+  updateMode?: "dynamic" | "static";
   zoom?: { max: number; min: number; smoothing?: number };
   constructor: { name: string };
 }
@@ -266,6 +272,17 @@ function visitChildren(
         ...("angle" in child && child.angle !== undefined ? { angle: child.angle } : {}),
         ...("range" in child && child.range !== undefined ? { range: child.range } : {}),
         ...emitLightMetadata(child),
+      };
+    }
+
+    if (child.constructor.name === "ContactShadows") {
+      components.ContactShadows = {
+        height: child.height,
+        opacity: child.opacity,
+        resolution: child.resolution,
+        size: child.size,
+        softness: child.softness,
+        updateMode: child.updateMode,
       };
     }
 

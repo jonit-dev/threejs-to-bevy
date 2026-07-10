@@ -442,6 +442,7 @@ export {
   type IPrimitiveActorPrefabOptions,
 } from "./prefab.js";
 export { OrthographicCamera, PerspectiveCamera } from "./scene/Camera.js";
+export { ContactShadows, type IContactShadowsOptions } from "./scene/ContactShadows.js";
 export { AmbientLight, DirectionalLight, PointLight, SpotLight } from "./scene/Light.js";
 export { Group, type IGroupOptions } from "./scene/Group.js";
 export { Mesh } from "./scene/Mesh.js";

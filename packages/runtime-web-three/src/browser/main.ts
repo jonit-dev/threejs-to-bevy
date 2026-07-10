@@ -8,6 +8,7 @@ declare global {
     __THREENATIVE_READY__?: {
       canvas: { height: number; width: number };
       captureTransformTrace?: unknown;
+      contactShadows?: unknown;
       diagnostics: unknown[];
       ok: boolean;
       runtimeDiagnostics: unknown;
@@ -16,6 +17,7 @@ declare global {
     __THREENATIVE_EFFECT_LOG__?: ISystemEffectLog;
     __THREENATIVE_RUNTIME__?: {
       debugColliderCount?: number;
+      contactShadowsSnapshot?(): unknown;
       entityWorldPosition(id: string): [number, number, number] | undefined;
       performanceSnapshot?(): unknown;
       resourceSnapshot?(id: string): unknown;
@@ -49,6 +51,7 @@ const result = await renderLoadedBundle(await loadBundleUrl(resolvedBundleUrl), 
   debugColliders,
 });
 window.__THREENATIVE_RUNTIME__ = {
+  contactShadowsSnapshot: result.contactShadowsSnapshot,
   debugColliderCount: result.debugColliderCount,
   entityWorldPosition: result.entityWorldPosition,
   performanceSnapshot: result.performanceSnapshot,
@@ -113,6 +116,7 @@ function updateReadyState(): void {
       width: result.canvas.width,
     },
     diagnostics: result.diagnostics,
+    contactShadows: result.contactShadowsSnapshot(),
     ...(result.captureTransformTrace === undefined ? {} : { captureTransformTrace: result.captureTransformTrace }),
     ok: result.diagnostics.every((diagnostic) => diagnostic.severity !== "error"),
     runtimeDiagnostics,

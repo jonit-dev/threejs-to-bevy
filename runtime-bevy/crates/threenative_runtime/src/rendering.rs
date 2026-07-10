@@ -22,6 +22,8 @@ use threenative_loader::{AtmosphereShadowsIr, ColorIr, EnvironmentTextureSourceI
 
 use crate::map_world::NativeMaterialHandles;
 
+pub mod contact_shadows;
+
 // Calibrated against atmosphere fog scenes (parity-smoke, v8-rendering-quality, v3 forest).
 const THREE_COMPAT_ATMOSPHERE_SUN_ILLUMINANCE_PER_INTENSITY: f32 = 1.0;
 const THREE_COMPAT_ATMOSPHERE_AMBIENT_BRIGHTNESS_PER_INTENSITY: f32 = 0.25;

@@ -259,6 +259,9 @@ function collectWorldCapabilities(world: IWorldIr | undefined, add: (domain: str
     if (entity.components.RenderLayers !== undefined) {
       add("rendering", "render-layers");
     }
+    if (entity.components.ContactShadows !== undefined) {
+      add("rendering", "contact-shadows");
+    }
     if (entity.components.Light !== undefined) {
       add("rendering", `light.${entity.components.Light.kind}`);
       if (entity.components.Light.angle !== undefined) {

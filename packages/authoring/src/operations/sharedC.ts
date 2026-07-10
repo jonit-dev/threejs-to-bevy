@@ -10,6 +10,7 @@ import {
   cameraComponentKeys,
   characterControllerComponentKeys,
   colliderComponentKeys,
+  contactShadowsComponentKeys,
   ecsIdPattern,
   entityKeys,
   assetDocumentKeys,
@@ -596,6 +597,8 @@ export function validateComponents(
       validateRigidBodyComponent(diagnostics, file, `${path}/RigidBody`, component);
     } else if (kind === "Collider") {
       validateColliderComponent(diagnostics, file, `${path}/Collider`, component);
+    } else if (kind === "ContactShadows") {
+      validateContactShadowsComponent(diagnostics, file, `${path}/ContactShadows`, component);
     } else if (kind === "CharacterController") {
       validateCharacterControllerComponent(diagnostics, file, `${path}/CharacterController`, component);
     } else if (kind === "KinematicMover") {
@@ -644,6 +647,36 @@ export function validateRenderLayersComponent(diagnostics: IAuthoringDiagnostic[
   diagnostics.push(...unknownKeyDiagnostics(file, path, value, renderLayersComponentKeys));
   if (!Array.isArray(value.layers) || value.layers.length === 0 || value.layers.some((layer) => readString(layer) === undefined)) {
     diagnostics.push(typeDiagnostic(file, `${path}/layers`, "render layers must be a non-empty string array.", value.layers));
+  }
+}
+
+export function validateContactShadowsComponent(diagnostics: IAuthoringDiagnostic[], file: string, path: string, value: Record<string, unknown>): void {
+  diagnostics.push(...unknownKeyDiagnostics(file, path, value, contactShadowsComponentKeys));
+  if (!Array.isArray(value.size) || value.size.length !== 2 || value.size.some((entry) => typeof entry !== "number" || !Number.isFinite(entry) || entry < 0.1 || entry > 500)) {
+    diagnostics.push(typeDiagnostic(file, `${path}/size`, "contact shadows size must contain two finite extents from 0.1 through 500.", value.size));
+  }
+  validateBoundedRequiredNumber(diagnostics, file, `${path}/height`, value.height, 0.1, 50, "contact shadows height");
+  if (![128, 256, 512, 1024].includes(value.resolution as number)) {
+    diagnostics.push(typeDiagnostic(file, `${path}/resolution`, "contact shadows resolution must be 128, 256, 512, or 1024.", value.resolution));
+  }
+  validateBoundedRequiredNumber(diagnostics, file, `${path}/softness`, value.softness, 0, 10, "contact shadows softness");
+  validateBoundedRequiredNumber(diagnostics, file, `${path}/opacity`, value.opacity, 0, 1, "contact shadows opacity");
+  if (value.updateMode !== "static" && value.updateMode !== "dynamic") {
+    diagnostics.push(typeDiagnostic(file, `${path}/updateMode`, "contact shadows updateMode must be 'static' or 'dynamic'.", value.updateMode));
+  }
+}
+
+function validateBoundedRequiredNumber(
+  diagnostics: IAuthoringDiagnostic[],
+  file: string,
+  path: string,
+  value: unknown,
+  minimum: number,
+  maximum: number,
+  label: string,
+): void {
+  if (typeof value !== "number" || !Number.isFinite(value) || value < minimum || value > maximum) {
+    diagnostics.push(typeDiagnostic(file, path, `${label} must be a finite number from ${minimum} through ${maximum}.`, value));
   }
 }
 

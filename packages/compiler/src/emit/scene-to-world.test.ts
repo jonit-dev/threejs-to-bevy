@@ -7,6 +7,7 @@ import test from "node:test";
 import {
   AnnulusGeometry,
   ConicalFrustumGeometry,
+  ContactShadows,
   CustomMeshGeometry,
   DirectionalLight,
   ExtrudedRectangleGeometry,
@@ -279,6 +280,29 @@ test("should emit light shadow bias controls", () => {
     kind: "directional",
     shadowBias: -0.0005,
     shadowNormalBias: 0.02,
+  });
+});
+
+test("should emit SDK ContactShadows as a portable component", () => {
+  const scene = new Scene({ id: "scene" });
+  scene.add(new ContactShadows({
+    height: 5,
+    id: "arena.floor.shadows",
+    opacity: 0.6,
+    resolution: 512,
+    size: [20, 20],
+    softness: 1.5,
+    updateMode: "static",
+  }));
+
+  const result = sceneToWorld(scene);
+  assert.deepEqual(result.world.entities.find((entity) => entity.id === "arena.floor.shadows")?.components.ContactShadows, {
+    height: 5,
+    opacity: 0.6,
+    resolution: 512,
+    size: [20, 20],
+    softness: 1.5,
+    updateMode: "static",
   });
 });
 

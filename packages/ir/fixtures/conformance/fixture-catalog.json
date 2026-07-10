@@ -650,6 +650,52 @@
       ]
     },
     {
+      "canonicalId": "contact-shadows-grounding",
+      "owner": "ir-contract",
+      "sourceExample": "contact-shadows-grounding",
+      "regenerateCommand": "pnpm verify:focused verify:contact-shadows",
+      "canonicalArtifactGate": "contact-shadows",
+      "ownerDocs": "docs/PRDs/lumen-lite-lighting-2026-07-09/PRD-002-contact-shadows-grounding.md",
+      "aggregateGate": "verify:contact-shadows",
+      "bundlePath": "packages/ir/fixtures/conformance/contact-shadows-grounding/game.bundle",
+      "promotedCapabilities": [
+        "environment:atmosphere",
+        "rendering:camera.perspective",
+        "rendering:contact-shadows",
+        "rendering:material.standard",
+        "rendering:mesh.primitive.box"
+      ],
+      "reportArtifacts": [
+        "tools/verify/artifacts/contact-shadows/verification-report.json",
+        "tools/verify/artifacts/contact-shadows/reports/contact-shadows-grounding.web.report.json",
+        "tools/verify/artifacts/contact-shadows/reports/contact-shadows-grounding.native.report.json",
+        "tools/verify/artifacts/contact-shadows/screenshots/contact-shadows-grounding.web.png",
+        "tools/verify/artifacts/contact-shadows/screenshots/contact-shadows-grounding.native.png",
+        "tools/verify/artifacts/contact-shadows/contact-sheet.svg"
+      ],
+      "focusedGate": {
+        "commands": [
+          ["pnpm", "--filter", "@threenative/ir", "build"],
+          ["pnpm", "--filter", "@threenative/runtime-web-three", "build"],
+          ["pnpm", "--filter", "@threenative/cli", "build"],
+          ["pnpm", "--filter", "@threenative/verify-tools", "build"],
+          ["cargo", "test", "--manifest-path", "runtime-bevy/Cargo.toml", "-p", "threenative_runtime", "--test", "contact_shadows"],
+          ["node", "tools/verify/dist/contactShadowsGate.js"]
+        ],
+        "conflictPolicy": "none",
+        "description": "Cross-adapter contact-shadow grounding gate.",
+        "owner": "packages/ir fixture catalog and tools/verify contact-shadow gate",
+        "profile": "focused",
+        "protects": "Monotonic opacity grounding, static zero steady-state capture cost, bounded dynamic resolution, and nonblank paired web/native evidence.",
+        "reason": "Combines catalog-owned paired screenshots with adapter observations that package-local tests cannot prove.",
+        "release": {
+          "enrolled": true,
+          "name": "verify contact shadows",
+          "timingCategory": "visual-native"
+        }
+      }
+    },
+    {
       "canonicalId": "rendering-lights",
       "owner": "ir-contract",
       "sourceExample": "rendering-lights",

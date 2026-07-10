@@ -21,6 +21,24 @@ fn spawn_entity(
     let name = Name::new(entity.id.clone());
     let stable_id = ThreeNativeId(entity.id.clone());
 
+    if let Some(contact_shadows) = entity.components.contact_shadows.as_ref() {
+        return Ok(world
+            .spawn(SpatialBundle {
+                transform,
+                visibility: map_visibility(entity),
+                ..Default::default()
+            })
+            .insert((
+                stable_id,
+                name,
+                crate::rendering::contact_shadows::NativeContactShadows::from_ir(
+                    contact_shadows,
+                    runtime_config,
+                ),
+            ))
+            .id());
+    }
+
     if let Some(stylized_nature) = entity.components.extra.get("StylizedNature") {
         return Ok(spawn_stylized_nature(
             world,

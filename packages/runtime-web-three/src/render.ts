@@ -27,6 +27,7 @@ import { applyEnvironmentBookmark, createEnvironmentRuntime, loadEnvironmentAsse
 import { applyAtmosphereProfile, applyEnvironmentLighting, applyThreeCompatFogDistance } from "./rendering.js";
 import { applyWebRenderLookProfile } from "./rendering/applyRenderLookProfile.js";
 import { DirectionalShadowController, shouldUseDirectionalShadowController } from "./rendering/directionalShadowController.js";
+import { createContactShadowsManager, type IContactShadowsManager, type IContactShadowsObservation } from "./rendering/contactShadows.js";
 import { createGameLoopState, runGameFrame } from "./gameLoop.js";
 import { disposePhysicsRuntime, initializePhysicsRuntime } from "./physics.js";
 import { attachInputListeners, createInputState } from "./input.js";
@@ -44,6 +45,7 @@ import { colorToThree } from "./worldMapping/colors.js";
 
 export interface IRenderResult {
   captureTransformTrace?: ICaptureTransformTrace;
+  contactShadowsSnapshot(): IContactShadowsObservation[];
   canvas: HTMLCanvasElement;
   debugColliderCount: number;
   diagnostics: IRuntimeDiagnostic[];
@@ -322,6 +324,12 @@ export async function renderLoadedBundle(bundle: IWebBundle, container: HTMLElem
         scene: mapped.scene,
       })
     : undefined;
+  const contactShadows = createContactShadowsManager({
+    ...(renderLook.shadowProfile.quality === "low" ? { dynamicResolutionLimit: 256 } : {}),
+    mapped,
+    renderer,
+    world: bundle.world,
+  });
   const pipeline = createRenderPipeline(
     renderer,
     mapped,
@@ -331,6 +339,7 @@ export async function renderLoadedBundle(bundle: IWebBundle, container: HTMLElem
     bundle.materials,
     options.enableEmissiveProxyLights ?? true,
     directionalShadowController,
+    contactShadows,
   );
   const colliderDebugOverlay = options.debugColliders === true ? createColliderDebugOverlay(mapped, bundle.world) : undefined;
   const canvas = renderer.domElement;
@@ -418,7 +427,7 @@ export async function renderLoadedBundle(bundle: IWebBundle, container: HTMLElem
     disposeThreeWorld(mapped);
     renderer.dispose();
   };
-  if (options.captureFrames === undefined && (bundle.systems !== undefined || hasAnimationPlayback(mapped) || hasKinematicMovers(bundle.world))) {
+  if (options.captureFrames === undefined && (bundle.systems !== undefined || hasAnimationPlayback(mapped) || hasKinematicMovers(bundle.world) || contactShadows.requiresContinuousUpdates())) {
     const frameTimings = createFrameTimingTrace();
     resetPerformanceTrace = () => frameTimings.reset();
     lifecycle = createWebRenderLifecycle({
@@ -467,6 +476,9 @@ export async function renderLoadedBundle(bundle: IWebBundle, container: HTMLElem
 
   return {
     canvas,
+    contactShadowsSnapshot() {
+      return contactShadows.observations();
+    },
     ...(captureTransformTrace === undefined ? {} : { captureTransformTrace }),
     diagnostics: mapped.diagnostics,
     dispose() {
@@ -948,7 +960,7 @@ function cameraIdFor(mapped: IThreeWorld): string | undefined {
 function visibleMeshCount(scene: THREE.Scene): number {
   let count = 0;
   scene.traverse((object) => {
-    if (object instanceof THREE.Mesh && visibleInHierarchy(object)) {
+    if (object instanceof THREE.Mesh && !isContactShadowPrivateObject(object) && visibleInHierarchy(object)) {
       count += 1;
     }
   });
@@ -958,7 +970,7 @@ function visibleMeshCount(scene: THREE.Scene): number {
 function culledMeshCount(scene: THREE.Scene): number {
   let count = 0;
   scene.traverse((object) => {
-    if (object instanceof THREE.Mesh && !visibleInHierarchy(object)) {
+    if (object instanceof THREE.Mesh && !isContactShadowPrivateObject(object) && !visibleInHierarchy(object)) {
       count += 1;
     }
   });
@@ -1002,12 +1014,12 @@ function renderedEntityDiagnostics(mapped: IThreeWorld): IWebRenderedEntityDiagn
 }
 
 function firstMesh(object: THREE.Object3D): THREE.Mesh | undefined {
-  if (object instanceof THREE.Mesh) {
+  if (object instanceof THREE.Mesh && !isContactShadowPrivateObject(object)) {
     return object;
   }
   let mesh: THREE.Mesh | undefined;
   object.traverse((child) => {
-    if (mesh === undefined && child instanceof THREE.Mesh) {
+    if (mesh === undefined && child instanceof THREE.Mesh && !isContactShadowPrivateObject(child)) {
       mesh = child;
     }
   });
@@ -1058,7 +1070,7 @@ function visibleWorldBounds(scene: THREE.Scene): IWebRuntimeDiagnostics["scene"]
   const bounds = new THREE.Box3();
   let hasBounds = false;
   scene.traverse((object) => {
-    if (!(object instanceof THREE.Mesh) || !visibleInHierarchy(object)) {
+    if (!(object instanceof THREE.Mesh) || isContactShadowPrivateObject(object) || !visibleInHierarchy(object)) {
       return;
     }
     const meshBounds = new THREE.Box3().setFromObject(object);
@@ -1082,6 +1094,10 @@ function visibleWorldBounds(scene: THREE.Scene): IWebRuntimeDiagnostics["scene"]
     radius: roundMetric(size.length() / 2),
     size: vectorToTuple(size),
   };
+}
+
+function isContactShadowPrivateObject(object: THREE.Object3D): boolean {
+  return object.userData.threeNativeContactShadows === true || object.userData.threeNativeContactShadowProxy === true;
 }
 
 function visibleInHierarchy(object: THREE.Object3D): boolean {
@@ -1377,6 +1393,7 @@ function createRenderPipeline(
   materials?: IMaterialsIr,
   enableEmissiveProxyLights = true,
   directionalShadowController?: DirectionalShadowController,
+  contactShadows?: IContactShadowsManager,
 ): IRenderPipeline {
   const renderTargets = assets === undefined ? undefined : createRenderTargetRegistry(assets, renderer);
   if (renderTargets !== undefined) {
@@ -1399,10 +1416,12 @@ function createRenderPipeline(
   if (!useComposer) {
     return {
       dispose: () => {
+        contactShadows?.dispose();
         emissiveProxyLights.dispose();
         disposeRenderTargets(renderTargets);
       },
       render: (delta = 0) => {
+        contactShadows?.update(world);
         emissiveProxyLights.sync();
         renderCameraViews(renderer, mapped, world, delta, renderTargets, directionalShadowController);
       },
@@ -1429,6 +1448,7 @@ function createRenderPipeline(
   const composerClear = backbufferViews[0]?.clear;
   return {
     dispose: () => {
+      contactShadows?.dispose();
       emissiveProxyLights.dispose();
       for (const pass of composer.passes) {
         pass.dispose?.();
@@ -1439,6 +1459,7 @@ function createRenderPipeline(
     // The composer path bypasses renderCameraViews, so camera helpers
     // (follow/orbit/view-model/shake) and camera clear must still advance here.
     render: (delta = 0) => {
+      contactShadows?.update(world);
       emissiveProxyLights.sync();
       updateCameraHelpers(world, mapped.objectsById, delta);
       directionalShadowController?.update(mapped.camera);

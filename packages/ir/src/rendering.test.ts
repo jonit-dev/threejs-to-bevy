@@ -4,9 +4,25 @@ import { dirname, join } from "node:path";
 import { tmpdir } from "node:os";
 import test from "node:test";
 
-import { validateAtmosphereProfile } from "./rendering.js";
+import { validateAtmosphereProfile, validateContactShadows } from "./rendering.js";
 import { validateBundle } from "./validate.js";
 import type { IAtmosphereProfileIr } from "./types.js";
+
+test("ContactShadows should reject resolution not in allowed set", () => {
+  const diagnostics = validateContactShadows({
+    height: 5,
+    opacity: 0.6,
+    resolution: 300 as 256,
+    size: [20, 20],
+    softness: 1.5,
+    updateMode: "static",
+  }, "world.ir.json/entities/0/components/ContactShadows");
+
+  assert.deepEqual(diagnostics.map((diagnostic) => [diagnostic.code, diagnostic.path]), [[
+    "TN_IR_CONTACT_SHADOWS_RESOLUTION_INVALID",
+    "world.ir.json/entities/0/components/ContactShadows/resolution",
+  ]]);
+});
 
 async function writeJson(root: string, name: string, value: unknown): Promise<void> {
   await writeFile(join(root, name), `${JSON.stringify(value, null, 2)}\n`);

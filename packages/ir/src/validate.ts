@@ -34,6 +34,7 @@ import { validateScenes } from "./scenesValidation.js";
 import { validateSequences } from "./sequencesValidation.js";
 import { validateCharacterComponents, validatePhysicsComponents } from "./physicsValidation.js";
 import { validateRenderingLightBudget, validateRuntimeConfig } from "./runtimeConfigValidation.js";
+import { validateContactShadows } from "./rendering.js";
 import { readBundleDocuments, readJson } from "./bundleDocuments.js";
 import {
   validateResources,
@@ -1189,6 +1190,7 @@ function hasNavigationBackendHandle(key: string): boolean {
 }
 
 function validateRenderComponents(entity: IWorldIr["entities"][number], path: string, diagnostics: IIrDiagnostic[]): void {
+  diagnostics.push(...validateContactShadows(entity.components.ContactShadows, `${path}/components/ContactShadows`));
   const camera = entity.components.Camera;
   if (camera !== undefined) {
     if (camera.kind === "perspective" && camera.fovY === undefined) {

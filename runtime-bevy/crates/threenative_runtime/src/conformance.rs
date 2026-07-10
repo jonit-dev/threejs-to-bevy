@@ -15,6 +15,7 @@ use crate::audio::{
 use crate::cameras::{active_camera_ids, camera_order};
 use crate::physics::detect_physics_events;
 use crate::render_targets::list_screenshot_exports;
+use crate::rendering::contact_shadows::{NativeContactShadowReport, trace_native_contact_shadows};
 use crate::rendering::{NativeShadowCascadeProfileReport, resolve_native_shadow_cascade_profile};
 use crate::scene_manager::{
     SceneLifecycleOperation, SceneLifecycleRuntimeState, trace_scene_lifecycle,
@@ -31,6 +32,8 @@ pub struct ConformanceReport {
     pub assets: Vec<ConformanceAssetReport>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub camera_views: Option<Vec<ConformanceCameraViewReport>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub contact_shadows: Option<Vec<NativeContactShadowReport>>,
     pub diagnostics: Vec<RuntimeDiagnostic>,
     pub entities: Vec<ConformanceEntityReport>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -869,6 +872,7 @@ pub fn report_bevy_conformance(
     let ui_report = report_ui(bundle.ui.as_ref());
     let active_camera = report_active_camera(world);
     let camera_views = report_camera_views(bundle);
+    let contact_shadows = trace_native_contact_shadows(world);
     let shadow_cascade_profile = world
         .query::<&NativeShadowCascadeProfileReport>()
         .iter(world)
@@ -898,6 +902,7 @@ pub fn report_bevy_conformance(
             .map(report_asset)
             .collect::<Vec<_>>(),
         camera_views: Some(camera_views),
+        contact_shadows: (!contact_shadows.is_empty()).then_some(contact_shadows),
         diagnostics: report_diagnostics(audio_observation.as_ref(), ui_report.as_ref()),
         entities,
         environment: bundle.environment_scene.as_ref().map(report_environment),

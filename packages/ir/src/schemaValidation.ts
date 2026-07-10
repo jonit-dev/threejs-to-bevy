@@ -66,7 +66,7 @@ export function validateResources(
 }
 
 export function isBuiltInComponent(componentName: string): boolean {
-  return ["Camera", "CharacterController", "Collider", "Hierarchy", "Light", "MeshRenderer", "PhysicsJoint", "RenderLayers", "RigidBody", "Transform", "Visibility"].includes(componentName);
+  return ["Camera", "CharacterController", "Collider", "ContactShadows", "Hierarchy", "Light", "MeshRenderer", "PhysicsJoint", "RenderLayers", "RigidBody", "Transform", "Visibility"].includes(componentName);
 }
 
 export function isBuiltInResource(resourceName: string): boolean {

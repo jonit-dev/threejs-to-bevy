@@ -187,6 +187,7 @@ pub fn app_from_bundle_with_options(
     app.add_plugins((
         emissive_postprocess::NativeEmissivePostProcessPlugin,
         motion_blur_postprocess::NativeTemporalMotionBlurPlugin,
+        rendering::contact_shadows::NativeContactShadowPlugin,
         map_world::NativeEquirectSkyMaterialPlugin,
         map_world::NativePortableShaderMaterialPlugin,
     ));
@@ -763,6 +764,7 @@ fn reconcile_live_world_entities(
         .filter_map(|id| live_by_id.get(id).map(|entity| (id.as_str(), *entity)))
         .collect::<HashMap<_, _>>();
     world_mapping::attach_entity_hierarchy(world, bundle, &hierarchy_entities);
+    rendering::contact_shadows::refresh_native_contact_shadow_pipelines(world);
     world.insert_resource(map_world::NativeMappedWorldEntityIds(desired_ids));
     world.insert_resource(map_world::NativeMappedWorldEntitySignatures(
         desired_signatures,

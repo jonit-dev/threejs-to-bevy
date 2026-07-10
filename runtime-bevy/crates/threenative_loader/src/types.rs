@@ -399,6 +399,7 @@ pub struct WorldEntity {
 pub struct EntityComponents {
     pub camera: Option<CameraComponent>,
     pub collider: Option<ColliderComponent>,
+    pub contact_shadows: Option<ContactShadowsComponent>,
     pub hierarchy: Option<HierarchyComponent>,
     pub kinematic_mover: Option<KinematicMoverComponent>,
     pub light: Option<LightComponent>,
@@ -411,6 +412,17 @@ pub struct EntityComponents {
     pub visibility: Option<VisibilityComponent>,
     #[serde(flatten)]
     pub extra: HashMap<String, serde_json::Value>,
+}
+
+#[derive(Clone, Debug, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct ContactShadowsComponent {
+    pub height: f32,
+    pub opacity: f32,
+    pub resolution: u32,
+    pub size: [f32; 2],
+    pub softness: f32,
+    pub update_mode: String,
 }
 
 #[derive(Clone, Debug, Deserialize)]

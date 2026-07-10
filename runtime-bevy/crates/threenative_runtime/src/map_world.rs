@@ -63,6 +63,7 @@ use crate::render_targets::{
     NativeCustomProjection, NativeRenderTargetRegistry, allocate_render_targets,
     camera_render_target,
 };
+use crate::rendering::contact_shadows::refresh_native_contact_shadow_pipelines;
 use crate::rendering::{NativeEnvironmentMapHandles, spawn_rendered_particles};
 use crate::stylized_nature::{grass_material_policy, resolve_source_assets};
 use crate::world_mapping::attach_entity_hierarchy;
@@ -225,9 +226,10 @@ pub struct NativeMappedWorldEntitySignatures(pub HashMap<String, String>);
 
 pub fn native_engine_component_signature(entity: &WorldEntity) -> String {
     format!(
-        "camera={:?}|collider={:?}|hierarchy={:?}|light={:?}|mesh={:?}|layers={:?}|body={:?}|visibility={:?}",
+        "camera={:?}|collider={:?}|contact_shadows={:?}|hierarchy={:?}|light={:?}|mesh={:?}|layers={:?}|body={:?}|visibility={:?}",
         entity.components.camera,
         entity.components.collider,
+        entity.components.contact_shadows,
         entity.components.hierarchy,
         entity.components.light,
         entity.components.mesh_renderer,
@@ -423,6 +425,7 @@ pub fn map_bundle_into_world(world: &mut World, bundle: &LoadedBundle) -> Result
     spawn_environment_sky_dome(world, bundle, &spawn_context.assets_by_id);
 
     attach_entity_hierarchy(world, bundle, &entities_by_id);
+    refresh_native_contact_shadow_pipelines(world);
     spawn_rendered_particles(world, bundle, 1.0);
     world.insert_resource(NativeMappedWorldEntityIds(
         bundle

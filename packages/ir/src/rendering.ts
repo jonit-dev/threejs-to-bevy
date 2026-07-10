@@ -1,5 +1,50 @@
-import type { IAssetsManifest, IAtmosphereProfileIr, IEnvironmentSceneIr, IEnvironmentTextureSourceIr, Vec3 } from "./types.js";
+import type { IAssetsManifest, IAtmosphereProfileIr, IContactShadowsIr, IEnvironmentSceneIr, IEnvironmentTextureSourceIr, Vec3 } from "./types.js";
 import type { IIrDiagnostic } from "./validate.js";
+
+export function validateContactShadows(
+  value: IContactShadowsIr | undefined,
+  path: string,
+): IIrDiagnostic[] {
+  if (value === undefined) {
+    return [];
+  }
+  const diagnostics: IIrDiagnostic[] = [];
+  if (
+    !Array.isArray(value.size)
+    || value.size.length !== 2
+    || value.size.some((entry) => !Number.isFinite(entry) || entry < 0.1 || entry > 500)
+  ) {
+    diagnostics.push({
+      code: "TN_IR_CONTACT_SHADOWS_SIZE_INVALID",
+      message: "ContactShadows size must contain two finite world-space extents between 0.1 and 500.",
+      path: `${path}/size`,
+      severity: "error",
+      suggestion: "Use size: [width, depth] with each extent between 0.1 and 500.",
+    });
+  }
+  validateContactShadowRange(value.height, 0.1, 50, "HEIGHT", `${path}/height`, diagnostics);
+  if (![128, 256, 512, 1024].includes(value.resolution)) {
+    diagnostics.push({
+      code: "TN_IR_CONTACT_SHADOWS_RESOLUTION_INVALID",
+      message: "ContactShadows resolution must be 128, 256, 512, or 1024.",
+      path: `${path}/resolution`,
+      severity: "error",
+      suggestion: "Use a bounded power-of-two resolution: 128, 256, 512, or 1024.",
+    });
+  }
+  validateContactShadowRange(value.softness, 0, 10, "SOFTNESS", `${path}/softness`, diagnostics);
+  validateContactShadowRange(value.opacity, 0, 1, "OPACITY", `${path}/opacity`, diagnostics);
+  if (!(["dynamic", "static"] as const).includes(value.updateMode)) {
+    diagnostics.push({
+      code: "TN_IR_CONTACT_SHADOWS_UPDATE_MODE_INVALID",
+      message: "ContactShadows updateMode must be 'static' or 'dynamic'.",
+      path: `${path}/updateMode`,
+      severity: "error",
+      suggestion: "Use updateMode: 'static' for invalidation-driven captures or 'dynamic' for every-frame captures.",
+    });
+  }
+  return diagnostics;
+}
 
 export function validateAtmosphereProfile(profile: IAtmosphereProfileIr | undefined, path: string): IIrDiagnostic[] {
   if (profile === undefined) {
@@ -301,6 +346,25 @@ function validateOptionalUnitInterval(value: unknown, path: string, code: string
       path,
       severity: "error",
       suggestion: "Clamp the authored value to the inclusive range from 0 through 1.",
+    });
+  }
+}
+
+function validateContactShadowRange(
+  value: number,
+  minimum: number,
+  maximum: number,
+  field: "HEIGHT" | "OPACITY" | "SOFTNESS",
+  path: string,
+  diagnostics: IIrDiagnostic[],
+): void {
+  if (!Number.isFinite(value) || value < minimum || value > maximum) {
+    diagnostics.push({
+      code: `TN_IR_CONTACT_SHADOWS_${field}_INVALID`,
+      message: `ContactShadows ${field.toLowerCase()} must be a finite number between ${minimum} and ${maximum}.`,
+      path,
+      severity: "error",
+      suggestion: `Use a ${field.toLowerCase()} value in the inclusive range ${minimum}..${maximum}.`,
     });
   }
 }
