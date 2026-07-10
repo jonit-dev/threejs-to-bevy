@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { resolve } from "node:path";
 import test from "node:test";
 import * as THREE from "three";
 import type { IWorldIr } from "@threenative/ir";
@@ -8,7 +9,8 @@ import {
   createContactShadowsManager,
   type IContactShadowRenderer,
 } from "./contactShadows.js";
-import type { IThreeWorld } from "../mapWorld.js";
+import { loadBundle } from "../loadBundle.js";
+import { mapWorld, type IThreeWorld } from "../mapWorld.js";
 
 test("contact shadow height attenuation should be strongest at contact and fade to zero at capture height", () => {
   assert.equal(contactShadowOccupancyAtHeight(0, 4), 1);
@@ -108,6 +110,39 @@ test("contact shadows should invalidate a static capture when its anchor moves w
 
   assert.equal(manager.observations()[0]?.captureCount, 2);
   assert.equal(manager.observations()[0]?.proxyReconcileCount, 1, "anchor motion must not reallocate an unchanged proxy set");
+  manager.dispose();
+});
+
+test("contact shadows should recapture a reconciled static shadow after authored transform and config changes", async () => {
+  const bundle = await loadBundle(resolve(process.cwd(), "../ir/fixtures/conformance/contact-shadows-grounding/game.bundle"));
+  const mapped = mapWorld(bundle);
+  const renderer = new FakeRenderer();
+  const manager = createContactShadowsManager({ mapped, renderer, world: bundle.world });
+  manager.update(bundle.world);
+  const initialRenderCount = renderer.renderedCameras.length;
+  const initialAnchor = mapped.objectsById.get("contact.low-opacity");
+  const entityIndex = bundle.world.entities.findIndex((entity) => entity.id === "contact.low-opacity");
+  const entity = bundle.world.entities[entityIndex];
+  assert.ok(entity !== undefined);
+  assert.ok(entity.components.ContactShadows !== undefined);
+  assert.ok(entity.components.Transform !== undefined);
+
+  bundle.world.entities[entityIndex] = {
+    ...entity,
+    components: {
+      ...entity.components,
+      ContactShadows: { ...entity.components.ContactShadows, opacity: 0.5 },
+      Transform: { ...entity.components.Transform, position: [-1.8, 0.01, 0] },
+    },
+  };
+  mapped.reconcile?.(bundle.world);
+  manager.update(bundle.world);
+
+  assert.notEqual(mapped.objectsById.get("contact.low-opacity"), initialAnchor, "reconciliation must rebuild an authored contact-shadow anchor when its config changes");
+  assert.equal(renderer.renderedCameras.length, initialRenderCount + 3, "the changed static shadow must run capture and both blur passes again");
+  const observation = manager.observations().find((entry) => entry.entityId === "contact.low-opacity");
+  assert.equal(observation?.opacity, 0.5);
+  assert.deepEqual(rounded(observation?.captureWorldPosition ?? []), [-1.8, 4.01, 0]);
   manager.dispose();
 });
 

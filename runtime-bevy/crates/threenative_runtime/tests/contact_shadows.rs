@@ -17,11 +17,10 @@ use threenative_runtime::{
     conformance::report_bevy_conformance,
     map_world::map_bundle_into_world,
     rendering::contact_shadows::{
-        NATIVE_CONTACT_SHADOW_BLUR_WEIGHTS, NativeContactShadowCaptureMaterial,
-        NativeContactShadowPrivate, NativeContactShadowReport, NativeContactShadows,
-        advance_native_contact_shadow_frames, native_contact_shadow_height_occupancy,
-        refresh_native_contact_shadow_pipelines, sync_native_contact_shadow_anchors,
-        trace_native_contact_shadows,
+        NATIVE_CONTACT_SHADOW_BLUR_WEIGHTS, NativeContactShadowPrivate, NativeContactShadowReport,
+        NativeContactShadows, advance_native_contact_shadow_frames,
+        native_contact_shadow_height_occupancy, refresh_native_contact_shadow_pipelines,
+        sync_native_contact_shadow_anchors, trace_native_contact_shadows,
     },
 };
 
@@ -50,24 +49,9 @@ fn native_contact_shadows_should_build_bounded_private_capture_and_blur_pipeline
     assert_eq!(static_report.applied_resolution, 512);
     assert_eq!(static_report.update_mode, "static");
     assert_eq!(static_report.height, 4.0);
-    assert_eq!(static_report.capture_count, 0);
-    assert_eq!(static_report.active_pass_count, 3);
-    assert_eq!(static_report.private_entity_count, 8);
-    assert!(
-        static_report
-            .private_roles
-            .contains(&"capture-camera".to_owned())
-    );
-    assert!(
-        static_report
-            .private_roles
-            .contains(&"horizontal-blur-camera".to_owned())
-    );
-    assert!(
-        static_report
-            .private_roles
-            .contains(&"vertical-blur-camera".to_owned())
-    );
+    assert_eq!(static_report.capture_count, 1);
+    assert_eq!(static_report.active_pass_count, 0);
+    assert_eq!(static_report.private_entity_count, 1);
     assert!(
         static_report
             .private_roles
@@ -78,16 +62,6 @@ fn native_contact_shadows_should_build_bounded_private_capture_and_blur_pipeline
             .private_roles
             .iter()
             .all(|role| role != "caster-proxy:ground")
-    );
-    assert!(
-        static_report
-            .private_roles
-            .contains(&"caster-proxy:caster".to_owned())
-    );
-    assert!(
-        static_report
-            .private_roles
-            .contains(&"caster-proxy:caster.boundary".to_owned())
     );
     assert!(
         static_report
@@ -112,7 +86,7 @@ fn native_contact_shadows_should_build_bounded_private_capture_and_blur_pipeline
         .iter(app.world())
         .map(|(private, id)| (private.clone(), id.cloned()))
         .collect::<Vec<_>>();
-    assert_eq!(private_entities.len(), 15);
+    assert_eq!(private_entities.len(), 8);
     assert!(private_entities.iter().all(|(_, id)| id.is_none()));
 
     let image_targets = app
@@ -124,7 +98,7 @@ fn native_contact_shadows_should_build_bounded_private_capture_and_blur_pipeline
             _ => None,
         })
         .collect::<Vec<_>>();
-    assert_eq!(image_targets.len(), 6);
+    assert_eq!(image_targets.len(), 3);
     let images = app.world().resource::<Assets<Image>>();
     for (_, target) in image_targets {
         let image = images.get(&target).expect("private target should exist");
@@ -140,30 +114,39 @@ fn native_contact_shadows_should_build_bounded_private_capture_and_blur_pipeline
         );
     }
 
-    let capture_materials = app
-        .world()
-        .resource::<Assets<NativeContactShadowCaptureMaterial>>();
-    assert_eq!(capture_materials.len(), 2);
-    let mut encoded_heights = capture_materials
-        .iter()
-        .map(|(_, material)| material.plane_origin_and_height.w)
+    let capture_proxy_materials = app
+        .world_mut()
+        .query::<(&NativeContactShadowPrivate, &Handle<StandardMaterial>)>()
+        .iter(app.world())
+        .filter(|(private, _)| private.role.starts_with("caster-proxy:"))
+        .map(|(private, material)| (private.owner.clone(), material.clone()))
         .collect::<Vec<_>>();
-    encoded_heights.sort_by(f32::total_cmp);
-    assert_eq!(encoded_heights, vec![4.0, 6.0]);
-    assert_eq!(native_contact_shadow_height_occupancy(0.0, 4.0), 0.0);
+    assert_eq!(capture_proxy_materials.len(), 1);
+    let materials = app.world().resource::<Assets<StandardMaterial>>();
+    for (owner, handle) in &capture_proxy_materials {
+        let material = materials
+            .get(handle)
+            .expect("capture proxy material should exist");
+        assert!(material.unlit);
+        assert_eq!(owner, "contact.dynamic");
+        let linear = material.base_color.to_linear();
+        assert!((linear.red - 1.0).abs() < 0.000_001);
+        assert!((linear.green - 1.0).abs() < 0.000_001);
+        assert!((linear.blue - 1.0).abs() < 0.000_001);
+    }
+    assert_eq!(native_contact_shadow_height_occupancy(0.0, 4.0), 1.0);
     assert_eq!(native_contact_shadow_height_occupancy(2.0, 4.0), 0.5);
-    assert_eq!(native_contact_shadow_height_occupancy(4.0, 4.0), 1.0);
+    assert_eq!(native_contact_shadow_height_occupancy(4.0, 4.0), 0.0);
     let kernel_sum = NATIVE_CONTACT_SHADOW_BLUR_WEIGHTS[4]
         + 2.0 * NATIVE_CONTACT_SHADOW_BLUR_WEIGHTS[..4].iter().sum::<f32>();
     assert!((kernel_sum - 1.0).abs() < 0.00001);
-    assert_eq!(app.world().resource::<Assets<Image>>().len(), 6);
+    assert_eq!(app.world().resource::<Assets<Image>>().len(), 4);
+    let standard_material_count = app.world().resource::<Assets<StandardMaterial>>().len();
     refresh_native_contact_shadow_pipelines(app.world_mut());
-    assert_eq!(app.world().resource::<Assets<Image>>().len(), 6);
+    assert_eq!(app.world().resource::<Assets<Image>>().len(), 4);
     assert_eq!(
-        app.world()
-            .resource::<Assets<NativeContactShadowCaptureMaterial>>()
-            .len(),
-        2
+        app.world().resource::<Assets<StandardMaterial>>().len(),
+        standard_material_count
     );
     sync_native_contact_shadow_anchors(app.world_mut());
     app.update();

@@ -449,7 +449,7 @@ function contactDepthMaterial(): THREE.ShaderMaterial {
     `,
     fragmentShader: `
       void main() {
-        float occupancy = clamp(1.0 - gl_FragCoord.z, 0.0, 1.0);
+        float occupancy = clamp(gl_FragCoord.z, 0.0, 1.0);
         gl_FragColor = vec4(vec3(occupancy), 1.0);
       }
     `,

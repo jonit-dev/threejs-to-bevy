@@ -1,5 +1,5 @@
 import { execFile } from "node:child_process";
-import { mkdir, readFile, stat, writeFile } from "node:fs/promises";
+import { mkdir, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { promisify } from "node:util";
@@ -91,10 +91,13 @@ export function validateContactShadowEvidence(evidence: ContactShadowEvidence): 
       diagnostics.push(diagnostic("TN_VERIFY_CONTACT_SHADOW_POOLS_NOT_LOCALIZED", `${runtime} contact pools must locally darken the surrounding ground with an opacity-ordered effect.`, path));
     }
   }
+  if (Math.abs(evidence.webMetrics.centerGroundLuminance - evidence.nativeMetrics.centerGroundLuminance) >= 0.05) {
+    diagnostics.push(diagnostic("TN_VERIFY_CONTACT_SHADOW_GROUND_LUMINANCE_DRIFT", "Web and native center-ground luminance must remain within 0.05 so global rendering calibration drift is caught separately from contact-shadow parity.", evidence.nativePath));
+  }
   if (
-    Math.abs(evidence.webMetrics.lowOpacityPoolContrast - evidence.nativeMetrics.lowOpacityPoolContrast) > 0.04
-    || Math.abs(evidence.webMetrics.highOpacityPoolContrast - evidence.nativeMetrics.highOpacityPoolContrast) > 0.04
-    || Math.abs(evidence.webMetrics.highOpacityPoolMeanGradient - evidence.nativeMetrics.highOpacityPoolMeanGradient) > 0.03
+    Math.abs(normalizedByGround(evidence.webMetrics.lowOpacityPoolContrast, evidence.webMetrics.centerGroundLuminance) - normalizedByGround(evidence.nativeMetrics.lowOpacityPoolContrast, evidence.nativeMetrics.centerGroundLuminance)) > 0.04
+    || Math.abs(normalizedByGround(evidence.webMetrics.highOpacityPoolContrast, evidence.webMetrics.centerGroundLuminance) - normalizedByGround(evidence.nativeMetrics.highOpacityPoolContrast, evidence.nativeMetrics.centerGroundLuminance)) > 0.04
+    || Math.abs(normalizedByGround(evidence.webMetrics.highOpacityPoolMeanGradient, evidence.webMetrics.centerGroundLuminance) - normalizedByGround(evidence.nativeMetrics.highOpacityPoolMeanGradient, evidence.nativeMetrics.centerGroundLuminance)) > 0.03
   ) {
     diagnostics.push(diagnostic("TN_VERIFY_CONTACT_SHADOW_VISUAL_PARITY_MISMATCH", "Web and native normalized pool contrast/softness must remain within the calibrated parity envelope.", evidence.nativePath));
   }
@@ -192,8 +195,9 @@ async function captureWebEvidence(root: string, bundlePath: string, webPath: str
 }
 
 async function captureNativeScreenshot(options: { bundlePath: string; nativePath: string; root: string }): Promise<void> {
-  const args = ["run", "--quiet", "-p", "threenative_runtime", "--bin", "threenative_capture", "--", options.bundlePath, "camera.main", options.nativePath, "120"];
+  const args = ["run", "--quiet", "-p", "threenative_runtime", "--bin", "threenative_capture", "--", options.bundlePath, "camera.main", options.nativePath, "300"];
   const cwd = resolve(options.root, "runtime-bevy");
+  await rm(options.nativePath, { force: true });
   try {
     await execFileAsync("xvfb-run", ["-a", "cargo", ...args], { cwd, timeout: 180_000 });
   } catch (error) {
@@ -201,9 +205,6 @@ async function captureNativeScreenshot(options: { bundlePath: string; nativePath
       await execFileAsync("cargo", args, { cwd, timeout: 180_000 });
       return;
     }
-    try {
-      if ((await stat(options.nativePath)).size > 0) return;
-    } catch { /* preserve original error */ }
     throw error;
   }
 }
@@ -303,6 +304,7 @@ function pixelLuminance(data: ArrayLike<number>, offset: number): number {
 }
 
 function average(values: readonly number[]): number { return values.length === 0 ? 0 : values.reduce((sum, value) => sum + value, 0) / values.length; }
+function normalizedByGround(value: number, centerGroundLuminance: number): number { return centerGroundLuminance > 0 ? value / centerGroundLuminance : Number.POSITIVE_INFINITY; }
 function standardDeviation(values: readonly number[]): number { const mean = average(values); return values.length === 0 ? 0 : Math.sqrt(average(values.map((value) => (value - mean) ** 2))); }
 
 function renderContactSheet(results: Array<{ artifacts: { nativeScreenshotPath: string; webScreenshotPath: string }; fixtureId: string }>): string {

@@ -1,16 +1,21 @@
 use bevy::{
     asset::AssetApp,
-    pbr::{Material, MaterialMeshBundle, MaterialPlugin, NotShadowCaster, NotShadowReceiver},
+    pbr::{
+        Material, MaterialMeshBundle, MaterialPipeline, MaterialPipelineKey, MaterialPlugin,
+        NotShadowCaster, NotShadowReceiver,
+    },
     prelude::*,
     render::{
         alpha::AlphaMode,
         camera::{ClearColorConfig, RenderTarget, ScalingMode},
+        mesh::MeshVertexBufferLayoutRef,
         render_asset::RenderAssetUsages,
         render_resource::{
-            AsBindGroup, Extent3d, Shader, ShaderRef, TextureDimension, TextureFormat,
-            TextureUsages,
+            AsBindGroup, Extent3d, RenderPipelineDescriptor, Shader, ShaderRef,
+            SpecializedMeshPipelineError, TextureDimension, TextureFormat, TextureUsages,
         },
-        view::visibility::RenderLayers,
+        texture::{ImageFilterMode, ImageSampler, ImageSamplerDescriptor},
+        view::visibility::{NoFrustumCulling, RenderLayers},
     },
 };
 use serde::Serialize;
@@ -20,9 +25,11 @@ use threenative_loader::{ContactShadowsComponent, RuntimeConfigIr};
 
 const CONTACT_SHADOW_SHADER_HANDLE: Handle<Shader> =
     Handle::weak_from_u128(246156913899226089859444251321);
-const CONTACT_SHADOW_CAPTURE_SHADER_HANDLE: Handle<Shader> =
-    Handle::weak_from_u128(246156913899226089859444251322);
 const PRIVATE_LAYER_BASE: usize = 1_000;
+const STATIC_PIPELINE_WARMUP_FRAMES: u8 = 8;
+const NATIVE_CONTACT_SHADOW_OPACITY_EXPONENT: f32 = 0.65;
+const NATIVE_CONTACT_SHADOW_OPACITY_SCALE: f32 = 1.3;
+const NATIVE_CONTACT_SHADOW_OCCUPANCY_SCALE: f32 = 1.6;
 pub const NATIVE_CONTACT_SHADOW_BLUR_WEIGHTS: [f32; 5] = [0.051, 0.0918, 0.12245, 0.1531, 0.1633];
 
 const CONTACT_SHADOW_SHADER: &str = r#"
@@ -50,30 +57,9 @@ fn fragment(in: VertexOutput) -> @location(0) vec4<f32> {
     value += occupancy(in.uv + texel_step * 3.0) * 0.0918;
     value += occupancy(in.uv + texel_step * 4.0) * 0.051;
     if output_alpha > 0.5 {
-        return vec4<f32>(0.0, 0.0, 0.0, clamp(value * opacity, 0.0, 1.0));
+        return vec4<f32>(0.0, 0.0, 0.0, clamp(sqrt(value) * opacity, 0.0, 1.0));
     }
     return vec4<f32>(value, value, value, 1.0);
-}
-"#;
-
-const CONTACT_SHADOW_CAPTURE_SHADER: &str = r#"
-#import bevy_pbr::forward_io::VertexOutput
-
-@group(2) @binding(0) var<uniform> plane_origin_and_height: vec4<f32>;
-@group(2) @binding(1) var<uniform> plane_normal: vec4<f32>;
-
-@fragment
-fn fragment(in: VertexOutput) -> @location(0) vec4<f32> {
-    let signed_height = dot(
-        in.world_position.xyz - plane_origin_and_height.xyz,
-        plane_normal.xyz
-    );
-    let occupancy = clamp(
-        signed_height / max(plane_origin_and_height.w, 0.0001),
-        0.0,
-        1.0
-    );
-    return vec4<f32>(occupancy, occupancy, occupancy, 1.0);
 }
 "#;
 
@@ -99,23 +85,48 @@ impl Material for NativeContactShadowMaterial {
     fn alpha_mode(&self) -> AlphaMode {
         self.alpha_mode
     }
+
+    fn specialize(
+        _pipeline: &MaterialPipeline<Self>,
+        descriptor: &mut RenderPipelineDescriptor,
+        _layout: &MeshVertexBufferLayoutRef,
+        _key: MaterialPipelineKey<Self>,
+    ) -> Result<(), SpecializedMeshPipelineError> {
+        descriptor.primitive.cull_mode = None;
+        Ok(())
+    }
 }
 
 #[derive(Asset, TypePath, AsBindGroup, Debug, Clone)]
-pub struct NativeContactShadowCaptureMaterial {
-    #[uniform(0)]
-    pub plane_origin_and_height: Vec4,
-    #[uniform(1)]
-    pub plane_normal: Vec4,
+struct NativeContactShadowBlurMaterial {
+    #[texture(0)]
+    #[sampler(1)]
+    input: Handle<Image>,
+    #[uniform(2)]
+    texel_step: Vec2,
+    #[uniform(3)]
+    opacity: f32,
+    #[uniform(4)]
+    output_alpha: f32,
 }
 
-impl Material for NativeContactShadowCaptureMaterial {
+impl Material for NativeContactShadowBlurMaterial {
     fn fragment_shader() -> ShaderRef {
-        CONTACT_SHADOW_CAPTURE_SHADER_HANDLE.into()
+        CONTACT_SHADOW_SHADER_HANDLE.into()
     }
 
     fn alpha_mode(&self) -> AlphaMode {
         AlphaMode::Opaque
+    }
+
+    fn specialize(
+        _pipeline: &MaterialPipeline<Self>,
+        descriptor: &mut RenderPipelineDescriptor,
+        _layout: &MeshVertexBufferLayoutRef,
+        _key: MaterialPipelineKey<Self>,
+    ) -> Result<(), SpecializedMeshPipelineError> {
+        descriptor.primitive.cull_mode = None;
+        Ok(())
     }
 }
 
@@ -124,20 +135,13 @@ pub struct NativeContactShadowPlugin;
 impl Plugin for NativeContactShadowPlugin {
     fn build(&self, app: &mut App) {
         app.init_asset::<NativeContactShadowMaterial>();
-        app.init_asset::<NativeContactShadowCaptureMaterial>();
+        app.init_asset::<NativeContactShadowBlurMaterial>();
         app.world_mut().resource_mut::<Assets<Shader>>().insert(
             CONTACT_SHADOW_SHADER_HANDLE.id(),
             Shader::from_wgsl(CONTACT_SHADOW_SHADER, "native_contact_shadows.wgsl"),
         );
-        app.world_mut().resource_mut::<Assets<Shader>>().insert(
-            CONTACT_SHADOW_CAPTURE_SHADER_HANDLE.id(),
-            Shader::from_wgsl(
-                CONTACT_SHADOW_CAPTURE_SHADER,
-                "native_contact_shadow_capture.wgsl",
-            ),
-        );
         app.add_plugins(MaterialPlugin::<NativeContactShadowMaterial>::default());
-        app.add_plugins(MaterialPlugin::<NativeContactShadowCaptureMaterial>::default());
+        app.add_plugins(MaterialPlugin::<NativeContactShadowBlurMaterial>::default());
         app.add_systems(
             Update,
             (
@@ -190,6 +194,10 @@ pub struct NativeContactShadowReport {
     pub applied_resolution: u32,
     pub update_mode: String,
     pub height: f32,
+    pub opacity: f32,
+    pub size: [f32; 2],
+    pub softness: f32,
+    pub blur_step: f32,
     pub capture_count: u64,
     pub update_count: u64,
     pub active_pass_count: usize,
@@ -205,8 +213,9 @@ pub struct NativeContactShadowPrivate {
 
 #[derive(Default, Resource)]
 struct NativeContactShadowOwnedAssets {
-    blur_materials: Vec<Handle<NativeContactShadowMaterial>>,
-    capture_materials: Vec<Handle<NativeContactShadowCaptureMaterial>>,
+    blur_materials: Vec<Handle<NativeContactShadowBlurMaterial>>,
+    composite_materials: Vec<Handle<NativeContactShadowMaterial>>,
+    standard_capture_materials: Vec<Handle<StandardMaterial>>,
     images: Vec<Handle<Image>>,
     meshes: Vec<Handle<Mesh>>,
 }
@@ -244,7 +253,7 @@ pub fn applied_contact_shadow_resolution(
 }
 
 pub fn native_contact_shadow_height_occupancy(signed_height: f32, capture_height: f32) -> f32 {
-    (signed_height / capture_height.max(0.0001)).clamp(0.0, 1.0)
+    (1.0 - signed_height / capture_height.max(0.0001)).clamp(0.0, 1.0)
 }
 
 pub fn refresh_native_contact_shadow_pipelines(world: &mut World) {
@@ -262,8 +271,8 @@ pub fn refresh_native_contact_shadow_pipelines(world: &mut World) {
     if !world.contains_resource::<Assets<NativeContactShadowMaterial>>() {
         world.init_resource::<Assets<NativeContactShadowMaterial>>();
     }
-    if !world.contains_resource::<Assets<NativeContactShadowCaptureMaterial>>() {
-        world.init_resource::<Assets<NativeContactShadowCaptureMaterial>>();
+    if !world.contains_resource::<Assets<NativeContactShadowBlurMaterial>>() {
+        world.init_resource::<Assets<NativeContactShadowBlurMaterial>>();
     }
     let carriers = world
         .query::<(Entity, &ThreeNativeId, &NativeContactShadows, &Transform)>()
@@ -322,6 +331,17 @@ fn spawn_contact_shadow_pipeline(
         Option<(Vec3, Vec3)>,
     )],
 ) {
+    if settings.update_mode == "static" {
+        spawn_static_contact_shadow_pipeline(
+            world,
+            carrier,
+            owner,
+            settings,
+            carrier_transform,
+            casters,
+        );
+        return;
+    }
     let capture_layer = PRIVATE_LAYER_BASE + index * 3;
     let horizontal_layer = capture_layer + 1;
     let vertical_layer = capture_layer + 2;
@@ -369,13 +389,12 @@ fn spawn_contact_shadow_pipeline(
         .add(Rectangle::new(2.0, 2.0));
     track_contact_shadow_mesh(world, &blur_mesh);
     let horizontal_material = world
-        .resource_mut::<Assets<NativeContactShadowMaterial>>()
-        .add(NativeContactShadowMaterial {
+        .resource_mut::<Assets<NativeContactShadowBlurMaterial>>()
+        .add(NativeContactShadowBlurMaterial {
             input: capture_image.clone(),
             texel_step: Vec2::new(settings.softness / settings.applied_resolution as f32, 0.0),
             opacity: 1.0,
             output_alpha: 0.0,
-            alpha_mode: AlphaMode::Opaque,
         });
     track_contact_shadow_blur_material(world, &horizontal_material);
     let horizontal_quad = spawn_blur_quad(
@@ -409,13 +428,12 @@ fn spawn_contact_shadow_pipeline(
     roles.push("horizontal-blur-camera".to_owned());
 
     let vertical_material = world
-        .resource_mut::<Assets<NativeContactShadowMaterial>>()
-        .add(NativeContactShadowMaterial {
+        .resource_mut::<Assets<NativeContactShadowBlurMaterial>>()
+        .add(NativeContactShadowBlurMaterial {
             input: horizontal_image,
             texel_step: Vec2::new(0.0, settings.softness / settings.applied_resolution as f32),
             opacity: 1.0,
             output_alpha: 0.0,
-            alpha_mode: AlphaMode::Opaque,
         });
     track_contact_shadow_blur_material(world, &vertical_material);
     let vertical_quad = spawn_blur_quad(
@@ -457,11 +475,11 @@ fn spawn_contact_shadow_pipeline(
         .add(NativeContactShadowMaterial {
             input: blurred_image,
             texel_step: Vec2::ZERO,
-            opacity: settings.opacity,
+            opacity: mapped_contact_shadow_opacity(settings.opacity),
             output_alpha: 1.0,
             alpha_mode: AlphaMode::Blend,
         });
-    track_contact_shadow_blur_material(world, &composite_material);
+    track_contact_shadow_composite_material(world, &composite_material);
     let composite_local = Transform::from_translation(Vec3::Y * 0.002)
         .with_rotation(Quat::from_rotation_x(-std::f32::consts::FRAC_PI_2));
     let _composite = world
@@ -486,15 +504,7 @@ fn spawn_contact_shadow_pipeline(
         .id();
     roles.push("composite-plane".to_owned());
 
-    let plane_normal = carrier_transform.rotation * Vec3::Y;
-    let caster_material = world
-        .resource_mut::<Assets<NativeContactShadowCaptureMaterial>>()
-        .add(NativeContactShadowCaptureMaterial {
-            plane_origin_and_height: carrier_transform.translation.extend(settings.height),
-            plane_normal: plane_normal.extend(0.0),
-        });
-    track_contact_shadow_capture_material(world, &caster_material);
-    for (caster, caster_id, mesh, caster_transform, _caster_bounds) in
+    for (caster, caster_id, mesh, caster_transform, caster_bounds) in
         casters
             .iter()
             .filter(|(_, _, _, caster_transform, caster_bounds)| {
@@ -506,6 +516,23 @@ fn spawn_contact_shadow_pipeline(
                 )
             })
     {
+        let occupancy = contact_shadow_caster_occupancy(
+            &carrier_transform,
+            settings.height,
+            caster_transform,
+            *caster_bounds,
+        );
+        let caster_material =
+            world
+                .resource_mut::<Assets<StandardMaterial>>()
+                .add(StandardMaterial {
+                    alpha_mode: AlphaMode::Opaque,
+                    base_color: Color::linear_rgb(occupancy, occupancy, occupancy),
+                    cull_mode: None,
+                    unlit: true,
+                    ..Default::default()
+                });
+        track_contact_shadow_standard_capture_material(world, &caster_material);
         let _proxy = world
             .spawn((
                 MaterialMeshBundle {
@@ -526,6 +553,7 @@ fn spawn_contact_shadow_pipeline(
                     local: Transform::IDENTITY,
                     owner: *caster,
                 },
+                NoFrustumCulling,
             ))
             .id();
         roles.push(format!("caster-proxy:{caster_id}"));
@@ -545,12 +573,299 @@ fn spawn_contact_shadow_pipeline(
         applied_resolution: settings.applied_resolution,
         update_mode: settings.update_mode,
         height: settings.height,
+        opacity: settings.opacity,
+        size: settings.size,
+        softness: settings.softness,
+        blur_step: settings.softness / settings.applied_resolution as f32,
         capture_count: 0,
         update_count: 0,
         active_pass_count: 3,
         private_entity_count,
         private_roles: roles,
     });
+}
+
+fn spawn_static_contact_shadow_pipeline(
+    world: &mut World,
+    carrier: Entity,
+    owner: String,
+    settings: NativeContactShadows,
+    carrier_transform: Transform,
+    casters: &[(
+        Entity,
+        String,
+        Handle<Mesh>,
+        Transform,
+        Option<(Vec3, Vec3)>,
+    )],
+) {
+    let mask = add_static_contact_shadow_image(world, &carrier_transform, &settings, casters);
+    let composite_mesh = world
+        .resource_mut::<Assets<Mesh>>()
+        .add(Rectangle::new(settings.size[0], settings.size[1]));
+    track_contact_shadow_mesh(world, &composite_mesh);
+    let composite_material = world
+        .resource_mut::<Assets<NativeContactShadowMaterial>>()
+        .add(NativeContactShadowMaterial {
+            input: mask,
+            texel_step: Vec2::ZERO,
+            opacity: mapped_contact_shadow_opacity(settings.opacity),
+            output_alpha: 1.0,
+            alpha_mode: AlphaMode::Blend,
+        });
+    track_contact_shadow_composite_material(world, &composite_material);
+    let composite_local = Transform::from_translation(Vec3::Y * 0.002)
+        .with_rotation(Quat::from_rotation_x(-std::f32::consts::FRAC_PI_2));
+    world.spawn((
+        MaterialMeshBundle {
+            mesh: composite_mesh,
+            material: composite_material,
+            transform: carrier_transform.mul_transform(composite_local),
+            ..Default::default()
+        },
+        NativeContactShadowPrivate {
+            owner: owner.clone(),
+            role: "composite-plane".to_owned(),
+        },
+        NotShadowCaster,
+        NotShadowReceiver,
+        NativeContactShadowAnchor {
+            local: composite_local,
+            owner: carrier,
+        },
+    ));
+    world.entity_mut(carrier).insert(NativeContactShadowReport {
+        entity_id: owner,
+        requested_resolution: settings.requested_resolution,
+        applied_resolution: settings.applied_resolution,
+        update_mode: settings.update_mode,
+        height: settings.height,
+        opacity: settings.opacity,
+        size: settings.size,
+        softness: settings.softness,
+        blur_step: settings.softness / settings.applied_resolution as f32,
+        capture_count: 1,
+        update_count: 1,
+        active_pass_count: 0,
+        private_entity_count: 1,
+        private_roles: vec!["composite-plane".to_owned()],
+    });
+}
+
+fn add_static_contact_shadow_image(
+    world: &mut World,
+    region_transform: &Transform,
+    settings: &NativeContactShadows,
+    casters: &[(
+        Entity,
+        String,
+        Handle<Mesh>,
+        Transform,
+        Option<(Vec3, Vec3)>,
+    )],
+) -> Handle<Image> {
+    let resolution = settings.applied_resolution as usize;
+    let mut mask = vec![0.0_f32; resolution * resolution];
+    for (_, _, _, caster_transform, local_bounds) in casters {
+        let corners =
+            contact_shadow_caster_region_corners(region_transform, caster_transform, *local_bounds);
+        if corners.is_empty() {
+            continue;
+        }
+        let (minimum, maximum) = contact_shadow_bounds(&corners);
+        if maximum.x < -settings.size[0] * 0.5
+            || minimum.x > settings.size[0] * 0.5
+            || maximum.z < -settings.size[1] * 0.5
+            || minimum.z > settings.size[1] * 0.5
+            || maximum.y < 0.0
+            || minimum.y > settings.height
+        {
+            continue;
+        }
+        let occupancy = mapped_contact_shadow_occupancy(native_contact_shadow_height_occupancy(
+            maximum.y,
+            settings.height,
+        ));
+        let x_start =
+            contact_shadow_pixel(minimum.x, settings.size[0], resolution).min(resolution - 1);
+        let x_end =
+            contact_shadow_pixel(maximum.x, settings.size[0], resolution).min(resolution - 1);
+        let y_start =
+            contact_shadow_pixel(minimum.z, settings.size[1], resolution).min(resolution - 1);
+        let y_end =
+            contact_shadow_pixel(maximum.z, settings.size[1], resolution).min(resolution - 1);
+        let footprint = contact_shadow_convex_hull(
+            corners
+                .iter()
+                .map(|point| Vec2::new(point.x, point.z))
+                .collect(),
+        );
+        for y in y_start.min(y_end)..=y_start.max(y_end) {
+            for x in x_start.min(x_end)..=x_start.max(x_end) {
+                let point = Vec2::new(
+                    contact_shadow_pixel_center(x, settings.size[0], resolution),
+                    contact_shadow_pixel_center(y, settings.size[1], resolution),
+                );
+                if footprint.len() >= 3 && !contact_shadow_polygon_contains(&footprint, point) {
+                    continue;
+                }
+                let value = &mut mask[y * resolution + x];
+                *value = value.max(occupancy);
+            }
+        }
+    }
+    let step = settings.softness.round().max(1.0) as isize;
+    let horizontal = blur_contact_shadow_mask(&mask, resolution, step, true);
+    let blurred = blur_contact_shadow_mask(&horizontal, resolution, step, false);
+    let mut bytes = Vec::with_capacity(resolution * resolution * 4);
+    for occupancy in blurred {
+        let value = (occupancy.clamp(0.0, 1.0) * 255.0).round() as u8;
+        bytes.extend_from_slice(&[value, value, value, 255]);
+    }
+    let mut image = Image::new_fill(
+        Extent3d {
+            width: settings.applied_resolution,
+            height: settings.applied_resolution,
+            depth_or_array_layers: 1,
+        },
+        TextureDimension::D2,
+        &bytes,
+        TextureFormat::Rgba8Unorm,
+        RenderAssetUsages::default(),
+    );
+    image.texture_descriptor.usage = TextureUsages::TEXTURE_BINDING | TextureUsages::COPY_DST;
+    image.sampler = ImageSampler::Descriptor(ImageSamplerDescriptor {
+        mag_filter: ImageFilterMode::Linear,
+        min_filter: ImageFilterMode::Linear,
+        mipmap_filter: ImageFilterMode::Linear,
+        ..Default::default()
+    });
+    let handle = world.resource_mut::<Assets<Image>>().add(image);
+    world
+        .resource_mut::<NativeContactShadowOwnedAssets>()
+        .images
+        .push(handle.clone());
+    handle
+}
+
+fn contact_shadow_pixel(value: f32, extent: f32, resolution: usize) -> usize {
+    (((value / extent + 0.5).clamp(0.0, 1.0)) * (resolution.saturating_sub(1)) as f32).round()
+        as usize
+}
+
+fn mapped_contact_shadow_opacity(opacity: f32) -> f32 {
+    (opacity.powf(NATIVE_CONTACT_SHADOW_OPACITY_EXPONENT) * NATIVE_CONTACT_SHADOW_OPACITY_SCALE)
+        .min(1.0)
+}
+
+#[cfg(test)]
+mod contact_shadow_calibration_tests {
+    use super::*;
+
+    #[test]
+    fn native_opacity_curve_lifts_low_opacity_without_exceeding_full_coverage() {
+        let low = mapped_contact_shadow_opacity(0.25);
+        let high = mapped_contact_shadow_opacity(0.8);
+
+        assert!((low - 0.528_0).abs() < 0.001);
+        assert_eq!(high, 1.0);
+    }
+}
+
+fn mapped_contact_shadow_occupancy(occupancy: f32) -> f32 {
+    (occupancy * NATIVE_CONTACT_SHADOW_OCCUPANCY_SCALE).min(1.0)
+}
+
+fn contact_shadow_pixel_center(pixel: usize, extent: f32, resolution: usize) -> f32 {
+    ((pixel as f32 + 0.5) / resolution.max(1) as f32 - 0.5) * extent
+}
+
+fn contact_shadow_convex_hull(mut points: Vec<Vec2>) -> Vec<Vec2> {
+    points.sort_by(|left, right| {
+        left.x
+            .total_cmp(&right.x)
+            .then_with(|| left.y.total_cmp(&right.y))
+    });
+    points.dedup_by(|left, right| left.distance_squared(*right) < 0.000_000_1);
+    if points.len() <= 2 {
+        return points;
+    }
+    let mut lower = Vec::new();
+    for point in &points {
+        while lower.len() >= 2
+            && contact_shadow_cross(lower[lower.len() - 2], lower[lower.len() - 1], *point) <= 0.0
+        {
+            lower.pop();
+        }
+        lower.push(*point);
+    }
+    let mut upper = Vec::new();
+    for point in points.iter().rev() {
+        while upper.len() >= 2
+            && contact_shadow_cross(upper[upper.len() - 2], upper[upper.len() - 1], *point) <= 0.0
+        {
+            upper.pop();
+        }
+        upper.push(*point);
+    }
+    lower.pop();
+    upper.pop();
+    lower.extend(upper);
+    lower
+}
+
+fn contact_shadow_cross(origin: Vec2, left: Vec2, right: Vec2) -> f32 {
+    (left - origin).perp_dot(right - origin)
+}
+
+fn contact_shadow_polygon_contains(polygon: &[Vec2], point: Vec2) -> bool {
+    polygon
+        .iter()
+        .zip(polygon.iter().cycle().skip(1))
+        .all(|(start, end)| contact_shadow_cross(*start, *end, point) >= -0.000_01)
+}
+
+fn blur_contact_shadow_mask(
+    source: &[f32],
+    resolution: usize,
+    step: isize,
+    horizontal: bool,
+) -> Vec<f32> {
+    let mut output = vec![0.0; source.len()];
+    let radius = (step * 4).max(1);
+    let sigma = (step as f32 * 1.5).max(1.0);
+    let weights = (-radius..=radius)
+        .map(|offset| (-0.5 * (offset as f32 / sigma).powi(2)).exp())
+        .collect::<Vec<_>>();
+    let weight_sum = weights.iter().sum::<f32>();
+    for y in 0..resolution {
+        for x in 0..resolution {
+            let mut value = 0.0;
+            for (weight_index, offset) in (-radius..=radius).enumerate() {
+                let sample_x = if horizontal {
+                    x as isize + offset
+                } else {
+                    x as isize
+                };
+                let sample_y = if horizontal {
+                    y as isize
+                } else {
+                    y as isize + offset
+                };
+                if sample_x < 0
+                    || sample_y < 0
+                    || sample_x >= resolution as isize
+                    || sample_y >= resolution as isize
+                {
+                    continue;
+                }
+                value += source[sample_y as usize * resolution + sample_x as usize]
+                    * weights[weight_index];
+            }
+            output[y * resolution + x] = value / weight_sum;
+        }
+    }
+    output
 }
 
 pub fn contact_shadow_region_intersects(
@@ -588,6 +903,63 @@ pub fn contact_shadow_region_intersects(
         && region_minimum.y <= settings.height
 }
 
+fn contact_shadow_caster_occupancy(
+    region_transform: &Transform,
+    capture_height: f32,
+    caster_transform: &Transform,
+    local_bounds: Option<(Vec3, Vec3)>,
+) -> f32 {
+    let Some((_, maximum)) =
+        contact_shadow_caster_region_bounds(region_transform, caster_transform, local_bounds)
+    else {
+        return 0.0;
+    };
+    mapped_contact_shadow_occupancy(native_contact_shadow_height_occupancy(
+        maximum.y,
+        capture_height,
+    ))
+}
+
+fn contact_shadow_caster_region_bounds(
+    region_transform: &Transform,
+    caster_transform: &Transform,
+    local_bounds: Option<(Vec3, Vec3)>,
+) -> Option<(Vec3, Vec3)> {
+    let corners =
+        contact_shadow_caster_region_corners(region_transform, caster_transform, local_bounds);
+    (!corners.is_empty()).then(|| contact_shadow_bounds(&corners))
+}
+
+fn contact_shadow_caster_region_corners(
+    region_transform: &Transform,
+    caster_transform: &Transform,
+    local_bounds: Option<(Vec3, Vec3)>,
+) -> Vec<Vec3> {
+    let region_from_world = region_transform.compute_affine().inverse();
+    let world_from_caster = caster_transform.compute_affine();
+    let Some((minimum, maximum)) = local_bounds else {
+        let region = region_from_world.transform_point3(caster_transform.translation);
+        return vec![region];
+    };
+    let mut corners = Vec::with_capacity(8);
+    for x in [minimum.x, maximum.x] {
+        for y in [minimum.y, maximum.y] {
+            for z in [minimum.z, maximum.z] {
+                let world = world_from_caster.transform_point3(Vec3::new(x, y, z));
+                corners.push(region_from_world.transform_point3(world));
+            }
+        }
+    }
+    corners
+}
+
+fn contact_shadow_bounds(points: &[Vec3]) -> (Vec3, Vec3) {
+    points.iter().fold(
+        (Vec3::splat(f32::INFINITY), Vec3::splat(f32::NEG_INFINITY)),
+        |(minimum, maximum), point| (minimum.min(*point), maximum.max(*point)),
+    )
+}
+
 fn add_contact_shadow_image(world: &mut World, resolution: u32) -> Handle<Image> {
     let mut image = Image::new_fill(
         Extent3d {
@@ -621,7 +993,7 @@ fn track_contact_shadow_mesh(world: &mut World, handle: &Handle<Mesh>) {
 
 fn track_contact_shadow_blur_material(
     world: &mut World,
-    handle: &Handle<NativeContactShadowMaterial>,
+    handle: &Handle<NativeContactShadowBlurMaterial>,
 ) {
     world
         .resource_mut::<NativeContactShadowOwnedAssets>()
@@ -629,13 +1001,23 @@ fn track_contact_shadow_blur_material(
         .push(handle.clone());
 }
 
-fn track_contact_shadow_capture_material(
+fn track_contact_shadow_composite_material(
     world: &mut World,
-    handle: &Handle<NativeContactShadowCaptureMaterial>,
+    handle: &Handle<NativeContactShadowMaterial>,
 ) {
     world
         .resource_mut::<NativeContactShadowOwnedAssets>()
-        .capture_materials
+        .composite_materials
+        .push(handle.clone());
+}
+
+fn track_contact_shadow_standard_capture_material(
+    world: &mut World,
+    handle: &Handle<StandardMaterial>,
+) {
+    world
+        .resource_mut::<NativeContactShadowOwnedAssets>()
+        .standard_capture_materials
         .push(handle.clone());
 }
 
@@ -653,15 +1035,19 @@ fn release_contact_shadow_assets(world: &mut World) {
             meshes.remove(handle.id());
         }
     }
-    if let Some(mut materials) = world.get_resource_mut::<Assets<NativeContactShadowMaterial>>() {
+    if let Some(mut materials) = world.get_resource_mut::<Assets<NativeContactShadowBlurMaterial>>()
+    {
         for handle in owned.blur_materials {
             materials.remove(handle.id());
         }
     }
-    if let Some(mut materials) =
-        world.get_resource_mut::<Assets<NativeContactShadowCaptureMaterial>>()
-    {
-        for handle in owned.capture_materials {
+    if let Some(mut materials) = world.get_resource_mut::<Assets<NativeContactShadowMaterial>>() {
+        for handle in owned.composite_materials {
+            materials.remove(handle.id());
+        }
+    }
+    if let Some(mut materials) = world.get_resource_mut::<Assets<StandardMaterial>>() {
+        for handle in owned.standard_capture_materials {
             materials.remove(handle.id());
         }
     }
@@ -688,6 +1074,7 @@ fn spawn_contact_shadow_camera(
                     ..Default::default()
                 },
                 projection,
+                deband_dither: bevy::core_pipeline::tonemapping::DebandDither::Disabled,
                 tonemapping: bevy::core_pipeline::tonemapping::Tonemapping::None,
                 transform,
                 ..Default::default()
@@ -707,7 +1094,7 @@ fn spawn_blur_quad(
     role: &str,
     layer: usize,
     mesh: Handle<Mesh>,
-    material: Handle<NativeContactShadowMaterial>,
+    material: Handle<NativeContactShadowBlurMaterial>,
     transform: Transform,
 ) -> Entity {
     world
@@ -759,9 +1146,11 @@ pub fn sync_native_contact_shadow_anchors(world: &mut World) {
 
 pub fn advance_native_contact_shadow_captures(world: &mut World) {
     let mut updates = HashMap::<Entity, (usize, u64)>::new();
+    let mut settled_cameras = Vec::new();
     {
-        let mut cameras = world.query::<(&mut Camera, &mut NativeContactShadowPassCamera)>();
-        for (mut camera, mut state) in cameras.iter_mut(world) {
+        let mut cameras =
+            world.query::<(Entity, &mut Camera, &mut NativeContactShadowPassCamera)>();
+        for (entity, mut camera, mut state) in cameras.iter_mut(world) {
             let update = updates.entry(state.owner).or_default();
             if state.update_mode == "dynamic" {
                 camera.is_active = true;
@@ -771,7 +1160,7 @@ pub fn advance_native_contact_shadow_captures(world: &mut World) {
                 }
                 continue;
             }
-            if state.rendered_frames < u8::MAX {
+            if state.rendered_frames < STATIC_PIPELINE_WARMUP_FRAMES {
                 camera.is_active = true;
                 state.rendered_frames = state.rendered_frames.saturating_add(1);
                 update.0 += 1;
@@ -779,8 +1168,13 @@ pub fn advance_native_contact_shadow_captures(world: &mut World) {
                     update.1 = 1;
                 }
             } else {
-                camera.is_active = false;
+                settled_cameras.push(entity);
             }
+        }
+    }
+    for entity in settled_cameras {
+        if let Some(entity) = world.get_entity_mut(entity) {
+            entity.despawn_recursive();
         }
     }
     for (owner, (active_pass_count, capture_increment)) in updates {
@@ -818,19 +1212,5 @@ pub fn trace_native_contact_shadows(world: &mut World) -> Vec<NativeContactShado
 }
 
 pub fn invalidate_native_static_contact_shadows(world: &mut World) {
-    let mut cameras = world.query::<(&mut Camera, &mut NativeContactShadowPassCamera)>();
-    for (mut camera, mut state) in cameras.iter_mut(world) {
-        if state.update_mode == "static" {
-            camera.is_active = true;
-            state.rendered_frames = 0;
-        }
-    }
-    let mut reports = world.query::<&mut NativeContactShadowReport>();
-    for mut report in reports.iter_mut(world) {
-        if report.update_mode == "static" {
-            report.capture_count = 0;
-            report.update_count = 0;
-            report.active_pass_count = 3;
-        }
-    }
+    refresh_native_contact_shadow_pipelines(world);
 }

@@ -339,6 +339,7 @@ function cameraPlanSignature(world: IWorldIr): string {
 function engineComponentSignature(entity: IWorldEntity): string {
   return JSON.stringify({
     Camera: entity.components.Camera,
+    ContactShadows: entity.components.ContactShadows,
     Hierarchy: entity.components.Hierarchy,
     Light: entity.components.Light,
     MeshRenderer: entity.components.MeshRenderer,

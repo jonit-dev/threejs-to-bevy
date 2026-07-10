@@ -47,6 +47,18 @@ Current support:
   `pnpm verify:focused verify:shadow-cascade-stability` gate compares the shared
   requested/applied report and records real controller matrix plus paired
   web/native capture evidence.
+- Authored scene entities can carry portable `ContactShadows` settings for
+  planar object grounding: bounded size, capture height, resolution, softness,
+  opacity, and static/dynamic update mode. Web owns an isolated depth-capture,
+  separable-blur, and alpha-composite pipeline without mutating user materials;
+  Bevy owns adapter-private orthographic capture proxies, render targets, blur
+  passes, and a composite plane. Static regions settle to zero steady-state
+  capture work, dynamic low-tier regions clamp to 256 pixels, and adapter-owned
+  cameras, proxies, materials, meshes, and textures are excluded from authored
+  scene identity and released on rebuild. The catalog-owned
+  `pnpm verify:focused verify:contact-shadows` gate checks portable report
+  parity, monotonic localized darkening, bounded static cost, and paired
+  nonblank web/native screenshots.
 - `pnpm verify:focused verify:feature-parity-visual-polish` composes calibrated
   lighting, material, and dense-content web/Bevy screenshots with paired
   shadow and promoted specular-material conformance reports. It also writes a
@@ -153,6 +165,7 @@ Verification:
 - `pnpm verify:portable-shader-material`
 - `pnpm verify:rendering-photoreal`
 - `pnpm verify:focused verify:rendering-residuals`
+- `pnpm verify:focused verify:contact-shadows`
 - `pnpm verify:focused verify:feature-parity-visual-polish`
 - `pnpm verify:release`
 

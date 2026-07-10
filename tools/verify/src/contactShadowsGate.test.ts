@@ -11,6 +11,54 @@ test("contact shadow evidence should require monotonic pools and settled static 
   assert.deepEqual(validateContactShadowEvidence(failing).map((entry) => entry.code).sort(), ["TN_VERIFY_CONTACT_SHADOW_OPACITY_NOT_MONOTONIC", "TN_VERIFY_CONTACT_SHADOW_WEB_STATIC_COST_FAILED"]);
 });
 
+test("contact shadow evidence should compare exposure-normalized pool metrics", () => {
+  const exposureScaled = evidence();
+  exposureScaled.nativeMetrics = {
+    ...exposureScaled.nativeMetrics,
+    centerGroundLuminance: 0.25,
+    highOpacityPoolContrast: 0.15,
+    highOpacityPoolLuminance: 0.1,
+    highOpacityPoolMeanGradient: 0.005,
+    lowOpacityPoolContrast: 0.05,
+    lowOpacityPoolLuminance: 0.2,
+    opacityPoolDelta: 0.1,
+  };
+
+  assert.deepEqual(
+    validateContactShadowEvidence(exposureScaled).map((entry) => entry.code),
+    ["TN_VERIFY_CONTACT_SHADOW_GROUND_LUMINANCE_DRIFT"],
+  );
+});
+
+test("contact shadow evidence should reject normalized visual parity drift", () => {
+  const visualDrift = evidence();
+  visualDrift.nativeMetrics.lowOpacityPoolContrast = 0.03;
+
+  assert.deepEqual(
+    validateContactShadowEvidence(visualDrift).map((entry) => entry.code),
+    ["TN_VERIFY_CONTACT_SHADOW_VISUAL_PARITY_MISMATCH"],
+  );
+});
+
+test("contact shadow evidence should report ground luminance drift separately", () => {
+  const groundDrift = evidence();
+  groundDrift.nativeMetrics = {
+    ...groundDrift.nativeMetrics,
+    centerGroundLuminance: 0.449,
+    highOpacityPoolContrast: 0.2694,
+    highOpacityPoolLuminance: 0.1796,
+    highOpacityPoolMeanGradient: 0.00898,
+    lowOpacityPoolContrast: 0.0898,
+    lowOpacityPoolLuminance: 0.3592,
+    opacityPoolDelta: 0.1796,
+  };
+
+  assert.deepEqual(
+    validateContactShadowEvidence(groundDrift).map((entry) => entry.code),
+    ["TN_VERIFY_CONTACT_SHADOW_GROUND_LUMINANCE_DRIFT"],
+  );
+});
+
 function evidence(): ContactShadowEvidence {
   const observations = [
     { entityId: "contact.high-opacity", opacity: 0.8 },

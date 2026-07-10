@@ -1755,7 +1755,7 @@ fn cameras_without_atmosphere_should_use_three_style_neutral_exposure() {
         .expect("color parity camera should be spawned");
     assert_eq!(*camera.1, Tonemapping::None);
     assert!((camera.2.global.exposure - 0.0).abs() < 0.001);
-    assert!((camera.3.ev100 - -0.45).abs() < 0.001);
+    assert!((camera.3.ev100 - -0.263_034_4).abs() < 0.001);
 
     fs::remove_dir_all(root).expect("temporary bundle should be removed");
 }
@@ -1780,7 +1780,7 @@ fn cameras_should_map_runtime_color_grading_to_native_sections() {
     for section in camera.2.all_sections() {
         assert!((section.contrast - 1.14).abs() < 0.001);
     }
-    assert!((camera.3.exposure() - 0.983).abs() < 0.001);
+    assert!((camera.3.exposure() - 1.966_667).abs() < 0.001);
 
     fs::remove_dir_all(root).expect("temporary bundle should be removed");
 }

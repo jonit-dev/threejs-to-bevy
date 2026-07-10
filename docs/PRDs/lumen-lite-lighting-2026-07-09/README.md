@@ -22,7 +22,9 @@ rather than reopening broad checklist promotion.
   (`runtime-bevy/crates/threenative_runtime/Cargo.toml`). Bevy 0.14 natively
   ships cascaded shadow maps, SSAO, SSR (deferred), volumetric fog +
   volumetric ("god ray") directional lights, light probes, and irradiance
-  volumes. It does not ship SSGI or contact shadows.
+  volumes. It does not natively ship SSGI or contact shadows; ThreeNative now
+  supplies its own adapter-private contact-shadow pipeline for Bevy, while
+  SSGI remains milestone work.
 - Portable renderer feature fields already exist with the
   requested/applied/fallback conformance-report pattern
   (`packages/ir/src/runtimeConfig.ts`, `packages/ir/src/conformanceReport.ts`,

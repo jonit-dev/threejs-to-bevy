@@ -130,6 +130,7 @@ test("should list gates by profile", () => {
     "verify:agent-io",
     "verify:animation-physics-residuals",
     "verify:bundle-safety-hardening",
+    "verify:contact-shadows",
     "verify:example-build-sweep",
     "verify:generated-games",
     "verify:input-ui-polish",

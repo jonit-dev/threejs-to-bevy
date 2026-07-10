@@ -49,8 +49,15 @@ fn exposure_for_profile(
     color_management: Option<&threenative_loader::AtmosphereColorManagementIr>,
     runtime_color_grading: Option<&threenative_loader::RuntimeRendererColorGradingConfig>,
 ) -> Exposure {
+    let exposure_scale = match tone_mapping_name_for_profile(
+        color_management,
+        runtime_color_grading,
+    ) {
+        Some("aces") => THREE_COMPAT_ACES_EXPOSURE_SCALE,
+        _ => THREE_COMPAT_LINEAR_EXPOSURE_SCALE,
+    };
     if let Some(exposure) = runtime_color_grading.and_then(|grading| grading.exposure) {
-        let exposure = exposure * THREE_COMPAT_CAMERA_EXPOSURE_SCALE;
+        let exposure = exposure * exposure_scale;
         return Exposure {
             ev100: -exposure.max(0.001).log2(),
         };
@@ -60,24 +67,115 @@ fn exposure_for_profile(
             ev100: THREE_COMPAT_DEFAULT_CAMERA_EV100,
         };
     };
-    let exposure = (color_management.exposure * THREE_COMPAT_CAMERA_EXPOSURE_SCALE).max(0.001);
+    let exposure = (color_management.exposure * exposure_scale).max(0.001);
     Exposure {
         ev100: -exposure.log2(),
     }
+}
+
+fn tone_mapping_name_for_profile<'a>(
+    color_management: Option<&'a threenative_loader::AtmosphereColorManagementIr>,
+    runtime_color_grading: Option<
+        &'a threenative_loader::RuntimeRendererColorGradingConfig,
+    >,
+) -> Option<&'a str> {
+    runtime_color_grading
+        .and_then(|grading| grading.tone_mapping.as_deref())
+        .or_else(|| color_management.map(|profile| profile.tone_mapping.as_str()))
 }
 
 fn tonemapping_for_profile(
     color_management: Option<&threenative_loader::AtmosphereColorManagementIr>,
     runtime_color_grading: Option<&threenative_loader::RuntimeRendererColorGradingConfig>,
 ) -> Tonemapping {
-    match runtime_color_grading
-        .and_then(|grading| grading.tone_mapping.as_deref())
-        .or_else(|| color_management.map(|profile| profile.tone_mapping.as_str()))
-    {
+    match tone_mapping_name_for_profile(color_management, runtime_color_grading) {
         Some("aces") => Tonemapping::AcesFitted,
         Some("none") => Tonemapping::None,
         None => Tonemapping::None,
         _ => Tonemapping::default(),
+    }
+}
+
+#[cfg(test)]
+mod exposure_calibration_tests {
+    use super::*;
+
+    fn color_management(
+        tone_mapping: &str,
+        exposure: f32,
+    ) -> threenative_loader::AtmosphereColorManagementIr {
+        threenative_loader::AtmosphereColorManagementIr {
+            exposure,
+            output_color_space: "srgb".to_owned(),
+            texture_color_space: "srgb".to_owned(),
+            tone_mapping: tone_mapping.to_owned(),
+        }
+    }
+
+    fn runtime_grading(
+        tone_mapping: Option<&str>,
+        exposure: Option<f32>,
+    ) -> threenative_loader::RuntimeRendererColorGradingConfig {
+        threenative_loader::RuntimeRendererColorGradingConfig {
+            contrast: None,
+            exposure,
+            lut: None,
+            saturation: None,
+            temperature: None,
+            tint: None,
+            tone_mapping: tone_mapping.map(str::to_owned),
+        }
+    }
+
+    fn assert_ev100(actual: Exposure, authored_exposure: f32, scale: f32) {
+        let expected = -(authored_exposure * scale).log2();
+        assert!(
+            (actual.ev100 - expected).abs() < 0.000_001,
+            "expected EV100 {expected}, got {}",
+            actual.ev100
+        );
+    }
+
+    #[test]
+    fn aces_profile_includes_three_and_bevy_exposure_calibration() {
+        let profile = color_management("aces", 1.25);
+
+        assert_ev100(
+            exposure_for_profile(Some(&profile), None),
+            1.25,
+            THREE_COMPAT_ACES_EXPOSURE_SCALE,
+        );
+    }
+
+    #[test]
+    fn linear_profile_includes_bevy_photometric_exposure_calibration() {
+        let profile = color_management("none", 0.75);
+
+        assert_ev100(
+            exposure_for_profile(Some(&profile), None),
+            0.75,
+            THREE_COMPAT_LINEAR_EXPOSURE_SCALE,
+        );
+    }
+
+    #[test]
+    fn runtime_grading_overrides_authored_exposure_and_tone_mapping() {
+        let profile = color_management("none", 0.5);
+        let grading = runtime_grading(Some("aces"), Some(1.4));
+
+        assert_ev100(
+            exposure_for_profile(Some(&profile), Some(&grading)),
+            1.4,
+            THREE_COMPAT_ACES_EXPOSURE_SCALE,
+        );
+    }
+
+    #[test]
+    fn default_profile_uses_linear_exposure_calibration() {
+        let exposure = exposure_for_profile(None, None);
+
+        assert!((exposure.ev100 - THREE_COMPAT_DEFAULT_CAMERA_EV100).abs() < f32::EPSILON);
+        assert_ev100(exposure, 1.0, THREE_COMPAT_LINEAR_EXPOSURE_SCALE);
     }
 }
 
