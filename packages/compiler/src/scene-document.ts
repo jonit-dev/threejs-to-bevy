@@ -398,7 +398,13 @@ function lifecycleSystem(
 }
 
 function hasAuthoredRuntimeVisual(components: Record<string, unknown> | undefined): boolean {
-  return components !== undefined && (components.MeshRenderer !== undefined || components.Camera !== undefined || components.Light !== undefined);
+  return components !== undefined && (
+    components.MeshRenderer !== undefined
+    || components.Camera !== undefined
+    || components.Light !== undefined
+    || components.ContactShadows !== undefined
+    || components.VisualProvenance !== undefined
+  );
 }
 
 function genericComponents(

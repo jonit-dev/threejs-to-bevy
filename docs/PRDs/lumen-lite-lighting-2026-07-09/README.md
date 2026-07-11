@@ -42,6 +42,7 @@ rather than reopening broad checklist promotion.
 | [PRD-003](../done/lumen-lite-lighting-2026-07-09/PRD-003-volumetric-godrays-height-fog.md) | Shadowed god rays + height fog (done) | `three-good-godrays`-derived bounded pass + analytic height fog | Native `VolumetricFogSettings` + `VolumetricLight` approximation |
 | [PRD-004](../done/lumen-lite-lighting-2026-07-09/PRD-004-ssgi-promotion.md) | SSGI promotion (dynamic indirect diffuse) (done) | `realism-effects` SSGI algorithms, adapter-owned WebGL pass | Bounded approximation (SSAO + calibrated ambient/irradiance term) with honest reporting |
 | [PRD-005](../done/lumen-lite-lighting-2026-07-09/PRD-005-scene-ray-query-and-baked-gi.md) | Scene ray queries + baked GI probes (off-screen light foundation) (done) | Wrapped `three-mesh-bvh` CPU queries; camera-weighted SH2 | Parry rendered-mesh queries; honest global SH-L0 ambient approximation |
+| [PRD-006](../done/lumen-lite-lighting-2026-07-09/PRD-006-hero-interior-showcase.md) | Hero interior showcase + native baked-GI calibration (done) | Composed scene: GI, CSM, contact shadows, bloom, fog, god rays | Calibrated ambient fix gated by `verify:baked-gi`, same composed scene |
 
 ## Rendering tiers this milestone targets
 

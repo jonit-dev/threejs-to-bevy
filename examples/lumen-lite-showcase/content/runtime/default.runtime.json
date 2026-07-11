@@ -6,11 +6,11 @@
     "antialias": "msaa4",
     "renderPath": "forward",
     "ambientOcclusion": { "enabled": true, "intensity": 1.4, "mode": "screen-space", "quality": "high", "radius": 2.4 },
-    "screenSpaceGlobalIllumination": { "enabled": true, "quality": "high", "radius": 8, "intensity": 0.72 },
+    "screenSpaceGlobalIllumination": { "enabled": true, "quality": "high", "radius": 8, "intensity": 0.12 },
     "screenSpaceReflections": { "enabled": true, "quality": "medium", "roughnessLimit": 0.62 },
-    "bloom": { "enabled": true, "intensity": 0.72, "threshold": 0.62 },
-    "colorGrading": { "contrast": 0.12, "exposure": 0.92, "saturation": 1.08, "toneMapping": "aces" },
-    "renderLook": { "version": 1, "profile": "cinematic", "overrides": { "bloomIntensity": 0.72 } }
+    "bloom": { "enabled": true, "intensity": 0.58, "threshold": 0.68 },
+    "colorGrading": { "contrast": 0.1, "exposure": 1.08, "saturation": 1.08, "toneMapping": "aces" },
+    "renderLook": { "version": 1, "profile": "cinematic", "overrides": { "bloomIntensity": 0.58 } }
   },
   "time": { "fixedDelta": 0.016666666666666666, "paused": true },
   "window": { "height": 720, "width": 1280, "title": "Lumen Lite Industrial Room" }

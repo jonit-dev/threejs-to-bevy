@@ -131,7 +131,7 @@ export function exceedsThreshold(
     if (typeof observed !== "number") {
       continue;
     }
-    if (metric === "nonblankRatio") {
+    if (metric === "nonblankRatio" || metric === "minimumLuminance") {
       if (observed < threshold) {
         failures.push({ metric, observed, threshold });
       }
@@ -149,6 +149,24 @@ export function thresholdsForRegion(
   region: CalibrationRegion,
 ): Record<string, number | undefined> {
   const base = { ...fixture.thresholds };
+  if (region.id === "bloom-core") {
+    return { luminanceDelta: 0.12, minimumLuminance: 0.6 };
+  }
+  if (region.id === "bloom-inner-halo") {
+    return { luminanceDelta: 0.12, maximumLuminance: 0.7, minimumLuminance: 0.08 };
+  }
+  if (region.id === "bloom-outer-halo") {
+    return { luminanceDelta: 0.12, maximumLuminance: 0.55, minimumLuminance: 0.035 };
+  }
+  if (region.id === "swatch-white") {
+    return { luminanceDelta: 0.08, minimumLuminance: 0.65 };
+  }
+  if (region.id === "swatch-mid-gray") {
+    return { luminanceDelta: 0.08, maximumLuminance: 0.75, minimumLuminance: 0.15 };
+  }
+  if (region.id === "swatch-black") {
+    return { luminanceDelta: 0.05, maximumLuminance: 0.08 };
+  }
   if (region.id === "background-alpha") {
     return {
       averageBrightnessDelta: fixture.thresholds.backgroundAlphaBrightnessDelta ?? 0.3,
@@ -227,6 +245,8 @@ export function analyzeRegionMetrics(input: {
     histogramDelta: histogramDelta(webHistogram, bevyHistogram),
     luminanceDelta: Math.abs(webLuminance - bevyLuminance),
     maxChannelDelta: comparison.maxChannelDelta,
+    maximumLuminance: Math.max(webLuminance, bevyLuminance),
+    minimumLuminance: Math.min(webLuminance, bevyLuminance),
     nonblankRatio: Math.min(
       imageAnalysis.analyzeNonblank(webRegion).changedPixelRatio,
       imageAnalysis.analyzeNonblank(bevyRegion).changedPixelRatio,

@@ -69,10 +69,19 @@ export function validateSsgiEvidence(evidence: SsgiEvidence): VerificationDiagno
   if (!(webHueLift > 0.004)) {
     diagnostics.push(diagnostic("TN_VERIFY_SSGI_WEB_COLOR_BLEED_MISSING", "Web SSGI must add measurable red chroma to the neutral floor beside the red wall.", evidence.webPath));
   }
+  const nativeHueLift = evidence.nativeMetrics.indirectRedChroma - evidence.nativeDisabledMetrics.indirectRedChroma;
+  if (!(nativeHueLift > 0.002)) {
+    diagnostics.push(diagnostic("TN_VERIFY_SSGI_NATIVE_COLOR_BLEED_MISSING", "Native spatial SSGI must add measurable red chroma beside the red wall.", evidence.nativePath));
+  }
   const webAddedNoise = evidence.webMetrics.highFrequencyEnergy - evidence.webDisabledMetrics.highFrequencyEnergy;
   const webHighAddedNoise = evidence.webHighMetrics.highFrequencyEnergy - evidence.webDisabledMetrics.highFrequencyEnergy;
   if (webAddedNoise > 0.008 || webHighAddedNoise > 0.01) {
     diagnostics.push(diagnostic("TN_VERIFY_SSGI_WEB_NOISE_EXCESSIVE", "Web SSGI must not add visible high-frequency speckle to the indirectly-lit floor region.", evidence.webPath));
+  }
+  const nativeAddedNoise = evidence.nativeMetrics.highFrequencyEnergy - evidence.nativeDisabledMetrics.highFrequencyEnergy;
+  const nativeHighAddedNoise = evidence.nativeHighMetrics.highFrequencyEnergy - evidence.nativeDisabledMetrics.highFrequencyEnergy;
+  if (nativeAddedNoise > 0.01 || nativeHighAddedNoise > 0.014) {
+    diagnostics.push(diagnostic("TN_VERIFY_SSGI_NATIVE_NOISE_EXCESSIVE", "Native spatial SSGI must not add visible high-frequency fireflies to the indirectly-lit region.", evidence.nativePath));
   }
   if (evidence.webMotionGhostingMae > 0.035) {
     diagnostics.push(diagnostic("TN_VERIFY_SSGI_WEB_MOTION_GHOSTING", `Web SSGI moving-camera history must converge without visible trails (MAE ${evidence.webMotionGhostingMae.toFixed(5)} > 0.035).`, evidence.webMotionPath));
@@ -215,7 +224,7 @@ function validateReports(evidence: SsgiEvidence, diagnostics: VerificationDiagno
   const web = featureReport(evidence.webReport);
   const native = featureReport(evidence.nativeReport);
   if (web?.appliedMode !== "screen-space-temporal" || web.status !== "baseline" || web.diagnostic !== undefined) diagnostics.push(diagnostic("TN_VERIFY_SSGI_WEB_REPORT_MISSING", "Web conformance must report baseline screen-space-temporal SSGI without fallback.", evidence.webPath));
-  if (native?.appliedMode !== "approximation" || native.status !== "baseline" || native.diagnostic !== undefined) diagnostics.push(diagnostic("TN_VERIFY_SSGI_NATIVE_REPORT_MISSING", "Native conformance must report the bounded SSGI approximation without fallback.", evidence.nativePath));
+  if (native?.appliedMode !== "spatial-neighborhood-no-temporal" || native.status !== "baseline" || native.diagnostic !== undefined) diagnostics.push(diagnostic("TN_VERIFY_SSGI_NATIVE_REPORT_MISSING", "Native conformance must report the depth-aware spatial-neighborhood SSGI path without fallback.", evidence.nativePath));
 }
 
 function featureReport(value: unknown): Record<string, unknown> | undefined {

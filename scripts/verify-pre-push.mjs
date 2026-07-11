@@ -24,8 +24,13 @@ export async function verifyPrePushGate(options = {}) {
   const artifactDir = options.artifactDir ?? targets.absoluteDir;
   const reportPath = options.reportPath ?? resolve(artifactDir, "verification-report.json");
   const steps = [];
+  const gameplayParityTargets = resolveArtifactTargets({
+    gate: "gameplay-parity",
+    owner: { kind: "aggregate", name: "gameplay-parity" },
+    root,
+  });
   const linkedReports = {
-    gameplayParityReportPath: resolve(root, "tools/verify/artifacts/gameplay-parity/verification-report.json"),
+    gameplayParityReportPath: gameplayParityTargets.reportPath,
   };
 
   async function runParallel(tasks) {

@@ -13,6 +13,11 @@
       "reason": "Representative generated-game release evidence for humanoid, native scenario, and character physics proof."
     },
     {
+      "classification": "build-only",
+      "path": "examples/lumen-lite-showcase",
+      "reason": "Deterministic composed hero interior for web/native lumen-lite lighting evidence; build-only until visual parity thresholds and committed capture evidence are stable."
+    },
+    {
       "classification": "release-enrolled",
       "path": "examples/metro-surfer-heist",
       "reason": "Representative generated-game release evidence for runner, collector, trigger, and UI production proof."

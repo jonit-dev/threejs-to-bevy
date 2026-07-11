@@ -1,0 +1,111 @@
+{
+  "entry": {
+    "environmentScene": "environment.scene.json",
+    "gameFlow": "game-flow.ir.json",
+    "prefabs": "prefabs.ir.json",
+    "scenes": "scenes.ir.json",
+    "scripts": "scripts.bundle.js",
+    "sequences": "sequences.ir.json",
+    "systems": "systems.ir.json",
+    "ui": "ui.ir.json",
+    "world": "world.ir.json"
+  },
+  "files": {
+    "assets": "assets.manifest.json",
+    "componentSchemas": "schemas/components.schema.json",
+    "eventSchemas": "schemas/events.schema.json",
+    "input": "input.ir.json",
+    "materials": "materials.ir.json",
+    "prefabs": "prefabs.ir.json",
+    "resourceSchemas": "schemas/resources.schema.json",
+    "runtimeConfig": "runtime.config.json",
+    "scripts": "scripts.bundle.js",
+    "targetProfile": "target.profile.json"
+  },
+  "name": "threenative-game",
+  "requiredCapabilities": {
+    "asset": [
+      "audio.wav",
+      "mesh.generated"
+    ],
+    "ecs": [
+      "component-reflection",
+      "component-schemas",
+      "resources"
+    ],
+    "environment": [
+      "atmosphere",
+      "path",
+      "scene"
+    ],
+    "gameplay": [
+      "game-flow",
+      "sequences"
+    ],
+    "input": [
+      "actions",
+      "axes",
+      "device.keyboard"
+    ],
+    "rendering": [
+      "ambient-occlusion.screen-space",
+      "antialias.msaa4",
+      "baked-gi-probes",
+      "camera.active",
+      "camera.perspective",
+      "color-grading",
+      "color-management",
+      "color-management.srgb",
+      "contact-shadows",
+      "fog.exponential",
+      "light-probes",
+      "light.ambient",
+      "light.angle",
+      "light.directional",
+      "light.point",
+      "light.range",
+      "light.shadow-bias",
+      "light.spot",
+      "look-profile.v1",
+      "material.emissive",
+      "material.standard",
+      "mesh-renderer",
+      "mesh-renderer.shadows",
+      "mesh.primitive.box",
+      "mesh.primitive.cylinder",
+      "postprocess.bloom",
+      "profile.cinematic",
+      "render-path.forward",
+      "screen-space-global-illumination",
+      "screen-space-reflections",
+      "shadow-cascade-profile",
+      "shadows",
+      "sky",
+      "tone-mapping",
+      "volumetric-god-rays",
+      "volumetric-height-fog"
+    ],
+    "runtime": [
+      "config",
+      "fixed-timestep"
+    ],
+    "scene": [
+      "activation.exclusive",
+      "initial",
+      "kind.level",
+      "lifecycle"
+    ],
+    "scripting": [
+      "component-reflection",
+      "schedule.fixedUpdate",
+      "script-bundle",
+      "systems"
+    ],
+    "ui": [
+      "node.stack",
+      "runtime"
+    ]
+  },
+  "schema": "threenative.bundle",
+  "version": "0.1.0"
+}

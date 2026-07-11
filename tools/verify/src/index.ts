@@ -19,6 +19,7 @@ export { runContactShadowGate, validateContactShadowEvidence, type ContactShadow
 export { runVolumetricsGate, validateVolumetricsEvidence } from "./volumetricsGate.js";
 export { runSsgiGate, validateSsgiEvidence } from "./ssgiGate.js";
 export { runBakedGiGate } from "./bakedGiGate.js";
+export { runLightingShowcaseGate, validateLightingShowcaseEvidence, type LightingShowcaseMetrics } from "./lightingShowcaseGate.js";
 export { runLegacyScriptAlias, resolveScriptAlias, formatDeprecationDiagnostic, listDeprecatedScriptAliases, isRegisteredGate, SCRIPT_ALIASES } from "./legacyAliases.js";
 export { runGameProductionGate, type IGameProductionGateResult } from "./gameProductionGate.js";
 export { runGameplayParityGate, type GameplayParityReport } from "./gameplayParity.js";

@@ -6,7 +6,10 @@ use std::{
 };
 
 use bevy::{
-    core_pipeline::tonemapping::Tonemapping,
+    core_pipeline::{
+        prepass::{DepthPrepass, NormalPrepass},
+        tonemapping::Tonemapping,
+    },
     pbr::{
         CascadeShadowConfig, DirectionalLightShadowMap, FogFalloff, FogSettings,
         ScreenSpaceAmbientOcclusionSettings, ShadowFilteringMethod, VolumetricFogSettings,
@@ -145,7 +148,7 @@ fn rendering_should_map_atmosphere_profile_to_bevy_observation() {
     assert!((clear.green - 0xb6 as f32 / 255.0).abs() < 0.01);
     assert!((clear.blue - 0xaa as f32 / 255.0).abs() < 0.01);
     let ambient = app.world().resource::<AmbientLight>();
-    assert!((ambient.brightness - 0.236).abs() < 0.01);
+    assert!((ambient.brightness - 0.2).abs() < 0.01);
     let shadow_map = app.world().resource::<DirectionalLightShadowMap>();
     assert_eq!(shadow_map.size, 1024);
     let lights = app
@@ -186,14 +189,16 @@ fn rendering_should_map_atmosphere_profile_to_bevy_observation() {
 
     map_bundle_into_world(app.world_mut(), &bundle).expect("world should map");
     let mapped_ambient = app.world().resource::<AmbientLight>();
-    assert!((mapped_ambient.brightness - 0.236).abs() < 0.01);
+    assert!((mapped_ambient.brightness - 0.2).abs() < 0.01);
     assert_eq!(
         app.world_mut()
             .query::<&ScreenSpaceAmbientOcclusionSettings>()
             .iter(app.world())
             .count(),
-        1
+        0
     );
+    assert_eq!(app.world_mut().query::<&DepthPrepass>().iter(app.world()).count(), 1);
+    assert_eq!(app.world_mut().query::<&NormalPrepass>().iter(app.world()).count(), 1);
     let ssgi_report = serde_json::to_value(report_bevy_conformance(
         app.world_mut(),
         &bundle,
@@ -207,7 +212,7 @@ fn rendering_should_map_atmosphere_profile_to_bevy_observation() {
         .iter()
         .find(|feature| feature["feature"] == "renderer.screenSpaceGlobalIllumination")
         .expect("SSGI feature report should exist");
-    assert_eq!(ssgi_feature["appliedMode"], "approximation");
+    assert_eq!(ssgi_feature["appliedMode"], "spatial-neighborhood-no-temporal");
     assert_eq!(ssgi_feature["status"], "baseline");
     assert!(ssgi_feature.get("diagnostic").is_none());
     let mapped_directional_count = app
@@ -227,8 +232,8 @@ fn rendering_should_map_atmosphere_profile_to_bevy_observation() {
     assert!((camera_color.1.global.post_saturation - 1.0).abs() < 0.001);
     let exposure = camera_color.2.exposure();
     assert!(
-        (exposure - 1.75).abs() < 0.001,
-        "expected calibrated atmosphere exposure 1.75, got {exposure}"
+        (exposure - 1.05).abs() < 0.001,
+        "expected shared fitted-ACES exposure 1.05, got {exposure}"
     );
     let fog_color = camera_color.3.color.to_srgba();
     assert!((fog_color.red - 0x9e as f32 / 255.0).abs() < 0.01);
@@ -251,16 +256,23 @@ fn rendering_should_map_atmosphere_profile_to_bevy_observation() {
         .iter(app.world())
         .next()
         .expect("atmosphere camera should receive volumetric settings");
-    assert_eq!(volumetric_fog.step_count, 64);
+    assert_eq!(volumetric_fog.step_count, 96);
     assert!((volumetric_fog.max_depth - 80.0).abs() < 0.001);
-    assert!((volumetric_fog.density - 0.03).abs() < 0.001);
-    assert!((volumetric_fog.light_intensity - 1.2).abs() < 0.001);
+    assert!((volumetric_fog.density - 0.01).abs() < 0.001);
+    assert!((volumetric_fog.light_intensity - 6.24).abs() < 0.001);
     let report = app.world().resource::<NativeVolumetricsReport>();
     assert!(report.god_rays_requested);
     assert!(report.god_rays_applied);
-    assert_eq!(report.height_fog_mode, "homogeneous-medium-approximation");
-    assert_eq!(report.ignored_base_height, Some(0.0));
-    assert_eq!(report.ignored_falloff_height, Some(12.0));
+    assert_eq!(report.height_fog_mode, "analytic-height-post-pass");
+    assert_eq!(report.ignored_base_height, None);
+    assert_eq!(report.ignored_falloff_height, None);
+    let has_height_fog = app
+        .world_mut()
+        .query::<&threenative_runtime::height_fog_postprocess::NativeHeightFog>()
+        .iter(app.world())
+        .next()
+        .is_some();
+    assert!(has_height_fog, "atmosphere camera should receive the independent analytic height-fog pass");
 
     bundle
         .environment_scene

@@ -135,7 +135,7 @@ export const VISUAL_CALIBRATION_FIXTURES = [
     requiredArtifacts: ["web.png", "bevy.png", "diff.png", "contact-sheet.png"],
     regions: [
       { id: "swatch-white", factor: "color", region: { x: 0.18, y: 0.64, width: 0.05, height: 0.08 }, hint: "opaque white swatch" },
-      { id: "swatch-black", factor: "color", region: { x: 0.68, y: 0.64, width: 0.05, height: 0.08 }, hint: "opaque black swatch" },
+      { id: "swatch-black", factor: "color", region: { x: 0.05, y: 0.08, width: 0.05, height: 0.08 }, hint: "neutral black background swatch" },
       { id: "swatch-mid-gray", factor: "color", region: { x: 0.43, y: 0.64, width: 0.05, height: 0.08 }, hint: "mid-gray swatch" },
       { id: "background-opaque", factor: "color", region: { x: 0.72, y: 0.08, width: 0.12, height: 0.1 }, hint: "opaque background anchor" },
       { id: "background-alpha", factor: "color", region: { x: 0.72, y: 0.22, width: 0.12, height: 0.1 }, hint: "transparent background anchor" },
@@ -241,6 +241,9 @@ export const VISUAL_CALIBRATION_FIXTURES = [
     requiredArtifacts: ["web.png", "bevy.png", "diff.png", "contact-sheet.png"],
     regions: [
       { id: "bloom-highlight", factor: "post", region: { x: 0.42, y: 0.35, width: 0.16, height: 0.16 }, hint: "bloom highlight card" },
+      { id: "bloom-core", factor: "post", region: { x: 0.33, y: 0.205, width: 0.15, height: 0.045 }, hint: "authored intensity 1.0 emissive core" },
+      { id: "bloom-inner-halo", factor: "post", region: { x: 0.315, y: 0.19, width: 0.18, height: 0.075 }, hint: "inner bloom falloff around the cyan anchor" },
+      { id: "bloom-outer-halo", factor: "post", region: { x: 0.3, y: 0.175, width: 0.21, height: 0.105 }, hint: "outer bloom falloff width around the cyan anchor" },
       { id: "msaa-edge", factor: "post", region: { x: 0.1, y: 0.55, width: 0.12, height: 0.12 }, hint: "MSAA edge card" },
       { id: "dof-report-only", factor: "post-advanced", region: { x: 0.7, y: 0.55, width: 0.12, height: 0.12 }, hint: "report-only DOF probe" },
       { id: "taa-report-only", factor: "post-advanced", region: { x: 0.7, y: 0.7, width: 0.12, height: 0.12 }, hint: "report-only TAA probe" },

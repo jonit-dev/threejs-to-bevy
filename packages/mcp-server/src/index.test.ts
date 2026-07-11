@@ -196,7 +196,9 @@ test("material, runtime, and system MCP tools delegate to CLI JSON operation gro
       renderProfile: "balanced",
       runtimeId: "default",
       screenSpaceGlobalIlluminationEnabled: false,
+      screenSpaceGlobalIlluminationIntensity: 0.5,
       screenSpaceGlobalIlluminationQuality: "low",
+      screenSpaceGlobalIlluminationRadius: 2,
       screenSpaceReflectionsEnabled: true,
       screenSpaceReflectionsQuality: "medium",
       screenSpaceReflectionsRoughnessLimit: 0.45,
@@ -225,7 +227,7 @@ test("registry MCP tools without adapter metadata fail closed", async () => {
   const root = await createMcpSourceGroupProject();
 
   try {
-    const result = await callMcp(root, "runtime.set_window", { runtimeId: "default", width: 1280 });
+    const result = await callMcp(root, "audio.create", { audioId: "default" });
 
     assert.equal(result.isError, true);
     assert.equal((result.content as IJsonPayload).code, "TN_MCP_ARGUMENT_INVALID");

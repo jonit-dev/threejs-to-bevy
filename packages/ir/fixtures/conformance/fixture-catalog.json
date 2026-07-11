@@ -844,6 +844,54 @@
       }
     },
     {
+      "canonicalId": "lumen-lite-showcase",
+      "owner": "example",
+      "sourceExample": "examples/lumen-lite-showcase",
+      "regenerateCommand": "pnpm verify:focused verify:lighting-showcase",
+      "canonicalArtifactGate": "lighting-showcase",
+      "ownerDocs": "docs/PRDs/done/lumen-lite-lighting-2026-07-09/PRD-006-hero-interior-showcase.md",
+      "aggregateGate": "verify:lighting-showcase",
+      "bundlePath": "packages/ir/fixtures/conformance/lumen-lite-showcase/game.bundle",
+      "promotedCapabilities": [
+        "environment:light-probes",
+        "rendering:ambient-occlusion",
+        "rendering:baked-gi-probes",
+        "rendering:bloom",
+        "rendering:contact-shadows",
+        "rendering:screen-space-global-illumination",
+        "rendering:volumetric-god-rays",
+        "rendering:volumetric-height-fog"
+      ],
+      "reportArtifacts": [
+        "tools/verify/artifacts/lighting-showcase/verification-report.json",
+        "tools/verify/artifacts/lighting-showcase/reports/lumen-lite-showcase.web.report.json",
+        "tools/verify/artifacts/lighting-showcase/reports/lumen-lite-showcase.native.report.json",
+        "tools/verify/artifacts/lighting-showcase/screenshots/lumen-lite-showcase.web.png",
+        "tools/verify/artifacts/lighting-showcase/screenshots/lumen-lite-showcase.native.png",
+        "tools/verify/artifacts/lighting-showcase/contact-sheet.svg"
+      ],
+      "focusedGate": {
+        "commands": [
+          ["pnpm", "--filter", "@threenative/runtime-web-three", "build"],
+          ["pnpm", "--filter", "@threenative/cli", "build"],
+          ["pnpm", "--filter", "@threenative/verify-tools", "build"],
+          ["node", "packages/cli/dist/index.js", "build", "--project", "examples/lumen-lite-showcase", "--json"],
+          ["node", "tools/verify/dist/lightingShowcaseGate.js"]
+        ],
+        "conflictPolicy": "none",
+        "description": "Deterministic web/native composed hero-interior lighting gate.",
+        "owner": "examples/lumen-lite-showcase and tools/verify lighting showcase gate",
+        "profile": "focused",
+        "protects": "Hero-room composition, bounded highlight clipping, warm indirect mids, readable shadows, cross-adapter exposure and contrast, and composed lighting feature reports.",
+        "reason": "Provides a fast single-scene visual iteration loop while focused capability gates remain the regression tier.",
+        "release": {
+          "enrolled": true,
+          "name": "verify lighting showcase",
+          "timingCategory": "visual-native"
+        }
+      }
+    },
+    {
       "canonicalId": "rendering-lights",
       "owner": "ir-contract",
       "sourceExample": "rendering-lights",

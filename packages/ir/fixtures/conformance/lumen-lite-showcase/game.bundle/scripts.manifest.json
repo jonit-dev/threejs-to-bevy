@@ -1,0 +1,34 @@
+{
+  "artifacts": [
+    {
+      "generated": true,
+      "path": "scripts.bundle.js",
+      "source": false
+    }
+  ],
+  "schema": "threenative.scripts",
+  "systems": [
+    {
+      "generated": {
+        "bundle": "scripts.bundle.js",
+        "exportName": "system_move_player_to_goal"
+      },
+      "source": {
+        "export": "movePlayerToGoal",
+        "hash": "sha256-aa0653fa3d8f2844d9ca08a38267957792e8293baabaa885782179f784210b4d",
+        "helperImports": [
+          {
+            "imported": [
+              "Vector3",
+              "defineBehavior"
+            ],
+            "module": "@threenative/script-stdlib"
+          }
+        ],
+        "module": "src/scripts/player.ts"
+      },
+      "systemId": "move-player-to-goal"
+    }
+  ],
+  "version": "0.1.0"
+}

@@ -86,7 +86,7 @@ function validateVisualEvidence(evidence: { native: IProbeMetrics; nativeDisable
   const webMode = bakedGiMode(evidence.webReport);
   const nativeMode = bakedGiMode(evidence.nativeReport);
   if (webMode !== "camera-weighted-sh2") diagnostics.push(diagnostic("TN_VERIFY_BAKED_GI_WEB_REPORT_MISSING", "Web conformance must report camera-weighted-sh2 baked probes.", evidence.webPath));
-  if (nativeMode !== "global-ambient-sh-l0-approximation") diagnostics.push(diagnostic("TN_VERIFY_BAKED_GI_NATIVE_REPORT_MISSING", "Native conformance must report its SH L0 ambient approximation.", evidence.nativePath));
+  if (nativeMode !== "irradiance-volume-sh2") diagnostics.push(diagnostic("TN_VERIFY_BAKED_GI_NATIVE_REPORT_MISSING", "Native conformance must report its bounded SH2 irradiance-volume path.", evidence.nativePath));
   return diagnostics;
 }
 

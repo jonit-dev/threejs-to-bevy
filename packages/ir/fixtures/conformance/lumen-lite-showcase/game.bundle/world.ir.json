@@ -1,0 +1,1534 @@
+{
+  "entities": [
+    {
+      "components": {
+        "MeshRenderer": {
+          "castShadow": true,
+          "material": "mat.metal.dark",
+          "mesh": "mesh.bed.deck",
+          "receiveShadow": true
+        },
+        "Transform": {
+          "position": [
+            3.72,
+            0.58,
+            -0.25
+          ]
+        }
+      },
+      "id": "bed.deck.lower"
+    },
+    {
+      "components": {
+        "MeshRenderer": {
+          "castShadow": true,
+          "material": "mat.metal.rust",
+          "mesh": "mesh.bed.deck",
+          "receiveShadow": true
+        },
+        "Transform": {
+          "position": [
+            3.72,
+            1.88,
+            -0.25
+          ]
+        }
+      },
+      "id": "bed.deck.upper"
+    },
+    {
+      "components": {
+        "MeshRenderer": {
+          "castShadow": true,
+          "material": "mat.metal.dark",
+          "mesh": "mesh.bed.post",
+          "receiveShadow": true
+        },
+        "Transform": {
+          "position": [
+            2.67,
+            0.78,
+            0.18
+          ]
+        }
+      },
+      "id": "bed.post.01"
+    },
+    {
+      "components": {
+        "MeshRenderer": {
+          "castShadow": true,
+          "material": "mat.metal.dark",
+          "mesh": "mesh.bed.post",
+          "receiveShadow": true
+        },
+        "Transform": {
+          "position": [
+            4.77,
+            0.78,
+            0.18
+          ]
+        }
+      },
+      "id": "bed.post.02"
+    },
+    {
+      "components": {
+        "MeshRenderer": {
+          "castShadow": true,
+          "material": "mat.metal.dark",
+          "mesh": "mesh.bed.post",
+          "receiveShadow": true
+        },
+        "Transform": {
+          "position": [
+            2.67,
+            0.78,
+            -0.68
+          ]
+        }
+      },
+      "id": "bed.post.03"
+    },
+    {
+      "components": {
+        "MeshRenderer": {
+          "castShadow": true,
+          "material": "mat.metal.dark",
+          "mesh": "mesh.bed.post",
+          "receiveShadow": true
+        },
+        "Transform": {
+          "position": [
+            4.77,
+            0.78,
+            -0.68
+          ]
+        }
+      },
+      "id": "bed.post.04"
+    },
+    {
+      "components": {
+        "MeshRenderer": {
+          "castShadow": true,
+          "material": "mat.metal.rust",
+          "mesh": "mesh.bed.rail.long",
+          "receiveShadow": true
+        },
+        "Transform": {
+          "position": [
+            3.72,
+            0.48,
+            -0.68
+          ]
+        }
+      },
+      "id": "bed.rail.back.lower"
+    },
+    {
+      "components": {
+        "MeshRenderer": {
+          "castShadow": true,
+          "material": "mat.metal.rust",
+          "mesh": "mesh.bed.rail.long",
+          "receiveShadow": true
+        },
+        "Transform": {
+          "position": [
+            3.72,
+            1.78,
+            -0.68
+          ]
+        }
+      },
+      "id": "bed.rail.back.upper"
+    },
+    {
+      "components": {
+        "MeshRenderer": {
+          "castShadow": true,
+          "material": "mat.metal.dark",
+          "mesh": "mesh.bed.rail.short",
+          "receiveShadow": true
+        },
+        "Transform": {
+          "position": [
+            4.77,
+            1.3,
+            -0.25
+          ]
+        }
+      },
+      "id": "bed.rail.foot"
+    },
+    {
+      "components": {
+        "MeshRenderer": {
+          "castShadow": true,
+          "material": "mat.metal.rust",
+          "mesh": "mesh.bed.rail.long",
+          "receiveShadow": true
+        },
+        "Transform": {
+          "position": [
+            3.72,
+            0.48,
+            0.18
+          ]
+        }
+      },
+      "id": "bed.rail.front.lower"
+    },
+    {
+      "components": {
+        "MeshRenderer": {
+          "castShadow": true,
+          "material": "mat.metal.rust",
+          "mesh": "mesh.bed.rail.long",
+          "receiveShadow": true
+        },
+        "Transform": {
+          "position": [
+            3.72,
+            1.78,
+            0.18
+          ]
+        }
+      },
+      "id": "bed.rail.front.upper"
+    },
+    {
+      "components": {
+        "MeshRenderer": {
+          "castShadow": true,
+          "material": "mat.metal.dark",
+          "mesh": "mesh.bed.rail.short",
+          "receiveShadow": true
+        },
+        "Transform": {
+          "position": [
+            2.67,
+            1.3,
+            -0.25
+          ]
+        }
+      },
+      "id": "bed.rail.head"
+    },
+    {
+      "components": {
+        "MeshRenderer": {
+          "castShadow": true,
+          "material": "mat.metal.rust",
+          "mesh": "mesh.cabinet",
+          "receiveShadow": true
+        },
+        "Transform": {
+          "position": [
+            3.95,
+            1.05,
+            -4.5
+          ]
+        }
+      },
+      "id": "cabinet.back"
+    },
+    {
+      "components": {
+        "MeshRenderer": {
+          "castShadow": true,
+          "material": "mat.metal.dark",
+          "mesh": "mesh.cabinet",
+          "receiveShadow": true
+        },
+        "Transform": {
+          "position": [
+            4.55,
+            1.05,
+            -3.3
+          ],
+          "rotation": [
+            0,
+            -0.06994284733753277,
+            0,
+            0.9975510002532796
+          ]
+        }
+      },
+      "id": "cabinet.right"
+    },
+    {
+      "components": {
+        "Camera": {
+          "far": 40,
+          "fovY": 52,
+          "kind": "perspective",
+          "near": 0.05,
+          "priority": 0
+        },
+        "Transform": {
+          "position": [
+            3.2,
+            1.65,
+            2.15
+          ],
+          "rotation": [
+            -0.027743109892240107,
+            0.3800173431673301,
+            -0.011403941682813293,
+            0.9244928819951216
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        }
+      },
+      "id": "camera.main"
+    },
+    {
+      "components": {
+        "ContactShadows": {
+          "height": 4,
+          "opacity": 0.56,
+          "resolution": 512,
+          "size": [
+            3.2,
+            2.5
+          ],
+          "softness": 8,
+          "updateMode": "static"
+        },
+        "MeshRenderer": {
+          "material": "mat.contact.bed",
+          "mesh": "mesh.contact.bed"
+        },
+        "Transform": {
+          "position": [
+            3.72,
+            0.01,
+            -0.25
+          ]
+        }
+      },
+      "id": "contact.bed"
+    },
+    {
+      "components": {
+        "ContactShadows": {
+          "height": 3.5,
+          "opacity": 0.48,
+          "resolution": 256,
+          "size": [
+            2.8,
+            2.8
+          ],
+          "softness": 8,
+          "updateMode": "static"
+        },
+        "MeshRenderer": {
+          "material": "mat.contact.cabinets",
+          "mesh": "mesh.contact.cabinets"
+        },
+        "Transform": {
+          "position": [
+            4.2,
+            0.01,
+            -3.9
+          ]
+        }
+      },
+      "id": "contact.cabinets"
+    },
+    {
+      "components": {
+        "ContactShadows": {
+          "height": 4,
+          "opacity": 0.62,
+          "resolution": 512,
+          "size": [
+            3.8,
+            3.8
+          ],
+          "softness": 7,
+          "updateMode": "static"
+        },
+        "MeshRenderer": {
+          "material": "mat.contact.crates",
+          "mesh": "mesh.contact.crates"
+        },
+        "Transform": {
+          "position": [
+            3.25,
+            0.01,
+            -3.75
+          ]
+        }
+      },
+      "id": "contact.crates"
+    },
+    {
+      "components": {
+        "ContactShadows": {
+          "height": 3,
+          "opacity": 0.52,
+          "resolution": 512,
+          "size": [
+            5.5,
+            4.5
+          ],
+          "softness": 7,
+          "updateMode": "static"
+        },
+        "MeshRenderer": {
+          "material": "mat.contact.door-and-accent",
+          "mesh": "mesh.contact.door-and-accent"
+        },
+        "Transform": {
+          "position": [
+            0.75,
+            0.01,
+            -0.55
+          ]
+        }
+      },
+      "id": "contact.door-and-accent"
+    },
+    {
+      "components": {
+        "MeshRenderer": {
+          "castShadow": false,
+          "material": "mat.corridor.hot",
+          "mesh": "mesh.corridor.glow",
+          "receiveShadow": false
+        },
+        "Transform": {
+          "position": [
+            -3.35,
+            1.25,
+            -6.82
+          ]
+        }
+      },
+      "id": "corridor.back.glow"
+    },
+    {
+      "components": {
+        "MeshRenderer": {
+          "castShadow": true,
+          "material": "mat.concrete.dark",
+          "mesh": "mesh.corridor.ceiling",
+          "receiveShadow": true
+        },
+        "Transform": {
+          "position": [
+            -3.35,
+            2.6,
+            -5.9
+          ]
+        }
+      },
+      "id": "corridor.ceiling"
+    },
+    {
+      "components": {
+        "MeshRenderer": {
+          "castShadow": false,
+          "material": "mat.concrete.floor",
+          "mesh": "mesh.corridor.floor",
+          "receiveShadow": true
+        },
+        "Transform": {
+          "position": [
+            -3.35,
+            -0.07,
+            -5.9
+          ]
+        }
+      },
+      "id": "corridor.floor"
+    },
+    {
+      "components": {
+        "MeshRenderer": {
+          "castShadow": true,
+          "material": "mat.concrete.dark",
+          "mesh": "mesh.corridor.side",
+          "receiveShadow": true
+        },
+        "Transform": {
+          "position": [
+            -4,
+            1.3,
+            -5.9
+          ]
+        }
+      },
+      "id": "corridor.wall.left"
+    },
+    {
+      "components": {
+        "MeshRenderer": {
+          "castShadow": true,
+          "material": "mat.concrete.wall",
+          "mesh": "mesh.corridor.side",
+          "receiveShadow": true
+        },
+        "Transform": {
+          "position": [
+            -2.7,
+            1.3,
+            -5.9
+          ]
+        }
+      },
+      "id": "corridor.wall.right"
+    },
+    {
+      "components": {
+        "MeshRenderer": {
+          "castShadow": true,
+          "material": "mat.wood",
+          "mesh": "mesh.crate",
+          "receiveShadow": true
+        },
+        "Transform": {
+          "position": [
+            2.85,
+            0.42,
+            -3.85
+          ],
+          "rotation": [
+            0,
+            0.10977830083717481,
+            0,
+            0.9939560979566968
+          ]
+        }
+      },
+      "id": "crate.wood.01"
+    },
+    {
+      "components": {
+        "MeshRenderer": {
+          "castShadow": true,
+          "material": "mat.wood",
+          "mesh": "mesh.crate",
+          "receiveShadow": true
+        },
+        "Transform": {
+          "position": [
+            3.75,
+            0.42,
+            -3.65
+          ],
+          "rotation": [
+            0,
+            -0.06994284733753277,
+            0,
+            0.9975510002532796
+          ]
+        }
+      },
+      "id": "crate.wood.02"
+    },
+    {
+      "components": {
+        "MeshRenderer": {
+          "castShadow": true,
+          "material": "mat.wood",
+          "mesh": "mesh.crate",
+          "receiveShadow": true
+        },
+        "Transform": {
+          "position": [
+            3.35,
+            1.25,
+            -3.78
+          ],
+          "rotation": [
+            0,
+            0.03998933418663416,
+            0,
+            0.9992001066609779
+          ]
+        }
+      },
+      "id": "crate.wood.03"
+    },
+    {
+      "components": {
+        "MeshRenderer": {
+          "castShadow": true,
+          "material": "mat.crate.yellow",
+          "mesh": "mesh.crate",
+          "receiveShadow": true
+        },
+        "Transform": {
+          "position": [
+            2.15,
+            0.42,
+            -2.45
+          ],
+          "rotation": [
+            0,
+            -0.059964006479444595,
+            0,
+            0.9982005399352042
+          ]
+        }
+      },
+      "id": "crate.yellow"
+    },
+    {
+      "components": {
+        "MeshRenderer": {
+          "castShadow": true,
+          "material": "mat.debris",
+          "mesh": "mesh.debris",
+          "receiveShadow": true
+        },
+        "Transform": {
+          "position": [
+            -1.8,
+            0.03,
+            1.1
+          ],
+          "rotation": [
+            0.033052812963931956,
+            0.27204514777569755,
+            -0.008375015535518775,
+            0.9616802006081075
+          ]
+        }
+      },
+      "id": "debris.01"
+    },
+    {
+      "components": {
+        "MeshRenderer": {
+          "castShadow": true,
+          "material": "mat.debris",
+          "mesh": "mesh.debris",
+          "receiveShadow": true
+        },
+        "Transform": {
+          "position": [
+            0.2,
+            0.03,
+            -1.35
+          ],
+          "rotation": [
+            -0.03595685169422039,
+            -0.15793495936139018,
+            0.044235804477678,
+            0.985802641013894
+          ]
+        }
+      },
+      "id": "debris.02"
+    },
+    {
+      "components": {
+        "MeshRenderer": {
+          "castShadow": true,
+          "material": "mat.metal.rust",
+          "mesh": "mesh.debris",
+          "receiveShadow": true
+        },
+        "Transform": {
+          "position": [
+            1.3,
+            0.03,
+            0.85
+          ],
+          "rotation": [
+            0.02575655144302213,
+            0.35175903355110105,
+            0.025756551443022125,
+            0.9353816239539459
+          ]
+        }
+      },
+      "id": "debris.03"
+    },
+    {
+      "components": {
+        "MeshRenderer": {
+          "castShadow": true,
+          "material": "mat.wood",
+          "mesh": "mesh.debris",
+          "receiveShadow": true
+        },
+        "Transform": {
+          "position": [
+            -2.55,
+            0.03,
+            -0.45
+          ],
+          "rotation": [
+            -0.02038169073718396,
+            -0.3046776448484348,
+            0.02361805191951772,
+            0.9519444873708927
+          ],
+          "scale": [
+            0.65,
+            1,
+            0.8
+          ]
+        }
+      },
+      "id": "debris.04"
+    },
+    {
+      "components": {
+        "MeshRenderer": {
+          "castShadow": true,
+          "material": "mat.wood.door",
+          "mesh": "mesh.door.fallen",
+          "receiveShadow": true
+        },
+        "Transform": {
+          "position": [
+            -1.55,
+            0.035,
+            0.75
+          ],
+          "rotation": [
+            0,
+            -0.20845989984609956,
+            0,
+            0.9780309147241483
+          ],
+          "scale": [
+            0.78,
+            1,
+            0.78
+          ]
+        }
+      },
+      "id": "door.fallen"
+    },
+    {
+      "components": {
+        "MeshRenderer": {
+          "castShadow": true,
+          "material": "mat.metal.rust",
+          "mesh": "mesh.door.frame.vertical",
+          "receiveShadow": true
+        },
+        "Transform": {
+          "position": [
+            -4.08,
+            1.3,
+            -4.86
+          ]
+        }
+      },
+      "id": "doorway.frame.left"
+    },
+    {
+      "components": {
+        "MeshRenderer": {
+          "castShadow": true,
+          "material": "mat.metal.rust",
+          "mesh": "mesh.door.frame.vertical",
+          "receiveShadow": true
+        },
+        "Transform": {
+          "position": [
+            -2.62,
+            1.3,
+            -4.86
+          ]
+        }
+      },
+      "id": "doorway.frame.right"
+    },
+    {
+      "components": {
+        "MeshRenderer": {
+          "castShadow": true,
+          "material": "mat.metal.rust",
+          "mesh": "mesh.door.frame.horizontal",
+          "receiveShadow": true
+        },
+        "Transform": {
+          "position": [
+            -3.35,
+            2.58,
+            -4.86
+          ]
+        }
+      },
+      "id": "doorway.frame.top"
+    },
+    {
+      "components": {
+        "MeshRenderer": {
+          "castShadow": false,
+          "material": "mat.lamp.warm",
+          "mesh": "mesh.lamp",
+          "receiveShadow": false
+        },
+        "Transform": {
+          "position": [
+            3.9,
+            2.45,
+            -4.72
+          ]
+        }
+      },
+      "id": "lamp.fixture"
+    },
+    {
+      "components": {
+        "Light": {
+          "color": "#ffc06b",
+          "intensity": 1.5,
+          "kind": "point",
+          "range": 4.5
+        },
+        "Transform": {
+          "position": [
+            -3.35,
+            1.9,
+            -6.3
+          ]
+        }
+      },
+      "id": "light.corridor"
+    },
+    {
+      "components": {
+        "Light": {
+          "color": "#ffb13b",
+          "intensity": 2.8,
+          "kind": "point",
+          "range": 5.5
+        },
+        "Transform": {
+          "position": [
+            3.75,
+            2.25,
+            -4.25
+          ]
+        }
+      },
+      "id": "light.lamp"
+    },
+    {
+      "components": {
+        "Light": {
+          "color": "#ffd18a",
+          "intensity": 2.2,
+          "kind": "point",
+          "range": 9,
+          "shadowBias": -0.0005,
+          "shadowNormalBias": 0.018
+        },
+        "Transform": {
+          "position": [
+            -4.65,
+            2.85,
+            -1.3
+          ]
+        }
+      },
+      "id": "light.window.fill"
+    },
+    {
+      "components": {
+        "Light": {
+          "angle": 0.72,
+          "color": "#ffe0a0",
+          "intensity": 5.8,
+          "kind": "spot",
+          "range": 14,
+          "shadowBias": -0.0005,
+          "shadowNormalBias": 0.018
+        },
+        "Transform": {
+          "position": [
+            -4.62,
+            3.05,
+            -3.4
+          ],
+          "rotation": [
+            0,
+            -0.7071066656470943,
+            0,
+            0.7071068967259818
+          ]
+        }
+      },
+      "id": "light.window.key"
+    },
+    {
+      "components": {
+        "MeshRenderer": {
+          "castShadow": true,
+          "material": "mat.concrete.wall",
+          "mesh": "mesh.pillar",
+          "receiveShadow": true
+        },
+        "Transform": {
+          "position": [
+            -0.4,
+            2.02,
+            -2.85
+          ]
+        }
+      },
+      "id": "pillar.center"
+    },
+    {
+      "components": {
+        "MeshRenderer": {
+          "castShadow": true,
+          "material": "mat.metal.rust",
+          "mesh": "mesh.pipe",
+          "receiveShadow": true
+        },
+        "Transform": {
+          "position": [
+            1.9,
+            3.78,
+            -1
+          ],
+          "rotation": [
+            0.7071066656470943,
+            0,
+            0,
+            0.7071068967259818
+          ]
+        }
+      },
+      "id": "pipe.ceiling.01"
+    },
+    {
+      "components": {
+        "MeshRenderer": {
+          "castShadow": true,
+          "material": "mat.metal.dark",
+          "mesh": "mesh.pipe",
+          "receiveShadow": true
+        },
+        "Transform": {
+          "position": [
+            2.35,
+            3.72,
+            -1
+          ],
+          "rotation": [
+            0.7071066656470943,
+            0,
+            0,
+            0.7071068967259818
+          ]
+        }
+      },
+      "id": "pipe.ceiling.02"
+    },
+    {
+      "components": {
+        "MeshRenderer": {
+          "castShadow": false,
+          "material": "mat.puddle",
+          "mesh": "mesh.puddle",
+          "receiveShadow": true
+        },
+        "Transform": {
+          "position": [
+            -1.2,
+            0.012,
+            -1.45
+          ],
+          "rotation": [
+            0,
+            -0.0799146939691727,
+            0,
+            0.9968017063026194
+          ],
+          "scale": [
+            0.24,
+            1,
+            0.2
+          ]
+        }
+      },
+      "id": "puddle.foreground"
+    },
+    {
+      "components": {
+        "MeshRenderer": {
+          "castShadow": false,
+          "material": "mat.puddle",
+          "mesh": "mesh.puddle",
+          "receiveShadow": true
+        },
+        "Transform": {
+          "position": [
+            -3.5,
+            0.014,
+            -2.25
+          ],
+          "scale": [
+            0.3,
+            1,
+            0.24
+          ]
+        }
+      },
+      "id": "puddle.window"
+    },
+    {
+      "components": {
+        "MeshRenderer": {
+          "castShadow": true,
+          "material": "mat.concrete.dark",
+          "mesh": "mesh.ceiling",
+          "receiveShadow": true
+        },
+        "Transform": {
+          "position": [
+            0,
+            4.12,
+            -1
+          ]
+        }
+      },
+      "id": "room.ceiling"
+    },
+    {
+      "components": {
+        "MeshRenderer": {
+          "castShadow": false,
+          "material": "mat.concrete.floor",
+          "mesh": "mesh.floor",
+          "receiveShadow": true
+        },
+        "Transform": {
+          "position": [
+            0,
+            -0.09,
+            -1
+          ]
+        }
+      },
+      "id": "room.floor"
+    },
+    {
+      "components": {
+        "MeshRenderer": {
+          "castShadow": false,
+          "material": "mat.paint.peeling",
+          "mesh": "mesh.wall.band.left",
+          "receiveShadow": true
+        },
+        "Transform": {
+          "position": [
+            -4.5,
+            0.7,
+            -4.87
+          ]
+        }
+      },
+      "id": "room.wall.back.band.left"
+    },
+    {
+      "components": {
+        "MeshRenderer": {
+          "castShadow": false,
+          "material": "mat.paint.peeling",
+          "mesh": "mesh.wall.band.right",
+          "receiveShadow": true
+        },
+        "Transform": {
+          "position": [
+            1.15,
+            0.7,
+            -4.87
+          ]
+        }
+      },
+      "id": "room.wall.back.band.right"
+    },
+    {
+      "components": {
+        "MeshRenderer": {
+          "castShadow": true,
+          "material": "mat.concrete.wall",
+          "mesh": "mesh.wall.back.left",
+          "receiveShadow": true
+        },
+        "Transform": {
+          "position": [
+            -4.5,
+            1.25,
+            -5
+          ]
+        }
+      },
+      "id": "room.wall.back.left"
+    },
+    {
+      "components": {
+        "MeshRenderer": {
+          "castShadow": true,
+          "material": "mat.concrete.wall",
+          "mesh": "mesh.wall.back.right",
+          "receiveShadow": true
+        },
+        "Transform": {
+          "position": [
+            1.15,
+            1.25,
+            -5
+          ]
+        }
+      },
+      "id": "room.wall.back.right"
+    },
+    {
+      "components": {
+        "MeshRenderer": {
+          "castShadow": true,
+          "material": "mat.concrete.dark",
+          "mesh": "mesh.wall.back.upper",
+          "receiveShadow": true
+        },
+        "Transform": {
+          "position": [
+            0,
+            3.35,
+            -5
+          ]
+        }
+      },
+      "id": "room.wall.back.upper"
+    },
+    {
+      "components": {
+        "MeshRenderer": {
+          "castShadow": true,
+          "material": "mat.concrete.dark",
+          "mesh": "mesh.wall.front",
+          "receiveShadow": true
+        },
+        "Transform": {
+          "position": [
+            0,
+            2.1,
+            3
+          ]
+        }
+      },
+      "id": "room.wall.front"
+    },
+    {
+      "components": {
+        "MeshRenderer": {
+          "castShadow": true,
+          "material": "mat.concrete.wall",
+          "mesh": "mesh.wall.left.lower",
+          "receiveShadow": true
+        },
+        "Transform": {
+          "position": [
+            -5,
+            1,
+            -1
+          ]
+        }
+      },
+      "id": "room.wall.left.lower"
+    },
+    {
+      "components": {
+        "MeshRenderer": {
+          "castShadow": true,
+          "material": "mat.concrete.wall",
+          "mesh": "mesh.wall.left.pier.back",
+          "receiveShadow": true
+        },
+        "Transform": {
+          "position": [
+            -5,
+            2.6,
+            -4.575
+          ]
+        }
+      },
+      "id": "room.wall.left.pier.back"
+    },
+    {
+      "components": {
+        "MeshRenderer": {
+          "castShadow": true,
+          "material": "mat.concrete.wall",
+          "mesh": "mesh.wall.left.pier.front",
+          "receiveShadow": true
+        },
+        "Transform": {
+          "position": [
+            -5,
+            2.6,
+            1.225
+          ]
+        }
+      },
+      "id": "room.wall.left.pier.front"
+    },
+    {
+      "components": {
+        "MeshRenderer": {
+          "castShadow": true,
+          "material": "mat.concrete.wall",
+          "mesh": "mesh.wall.left.pier.middle",
+          "receiveShadow": true
+        },
+        "Transform": {
+          "position": [
+            -5,
+            2.6,
+            -2.35
+          ]
+        }
+      },
+      "id": "room.wall.left.pier.middle"
+    },
+    {
+      "components": {
+        "MeshRenderer": {
+          "castShadow": true,
+          "material": "mat.concrete.wall",
+          "mesh": "mesh.wall.left.upper",
+          "receiveShadow": true
+        },
+        "Transform": {
+          "position": [
+            -5,
+            3.7,
+            -1
+          ]
+        }
+      },
+      "id": "room.wall.left.upper"
+    },
+    {
+      "components": {
+        "MeshRenderer": {
+          "castShadow": true,
+          "material": "mat.paint.peeling",
+          "mesh": "mesh.wall.right",
+          "receiveShadow": true
+        },
+        "Transform": {
+          "position": [
+            5,
+            2.1,
+            -1
+          ]
+        }
+      },
+      "id": "room.wall.right"
+    },
+    {
+      "components": {
+        "MeshRenderer": {
+          "material": "mat.visual.provenance",
+          "mesh": "mesh.visual.provenance"
+        },
+        "Transform": {
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotation": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        },
+        "VisualProvenance": {
+          "notes": "Portable authored meshes form a composed architectural showcase rather than placeholder gameplay art. The room proves the complete lighting stack with deterministic web and native captures.",
+          "status": "intentional procedural environment",
+          "style": "derelict industrial interior lighting study"
+        }
+      },
+      "id": "visual.provenance"
+    },
+    {
+      "components": {
+        "MeshRenderer": {
+          "castShadow": true,
+          "material": "mat.metal.dark",
+          "mesh": "mesh.frame.vertical",
+          "receiveShadow": true
+        },
+        "Transform": {
+          "position": [
+            -4.86,
+            2.6,
+            -2.09
+          ]
+        }
+      },
+      "id": "window.front.frame.back"
+    },
+    {
+      "components": {
+        "MeshRenderer": {
+          "castShadow": true,
+          "material": "mat.metal.dark",
+          "mesh": "mesh.frame.horizontal",
+          "receiveShadow": true
+        },
+        "Transform": {
+          "position": [
+            -4.86,
+            1.96,
+            -1.3
+          ]
+        }
+      },
+      "id": "window.front.frame.bottom"
+    },
+    {
+      "components": {
+        "MeshRenderer": {
+          "castShadow": true,
+          "material": "mat.metal.dark",
+          "mesh": "mesh.frame.vertical",
+          "receiveShadow": true
+        },
+        "Transform": {
+          "position": [
+            -4.86,
+            2.6,
+            -0.51
+          ]
+        }
+      },
+      "id": "window.front.frame.front"
+    },
+    {
+      "components": {
+        "MeshRenderer": {
+          "castShadow": true,
+          "material": "mat.metal.dark",
+          "mesh": "mesh.frame.horizontal",
+          "receiveShadow": true
+        },
+        "Transform": {
+          "position": [
+            -4.86,
+            3.24,
+            -1.3
+          ]
+        }
+      },
+      "id": "window.front.frame.top"
+    },
+    {
+      "components": {
+        "MeshRenderer": {
+          "castShadow": false,
+          "material": "mat.window.hot",
+          "mesh": "mesh.window.glow",
+          "receiveShadow": false
+        },
+        "Transform": {
+          "position": [
+            -5.14,
+            2.6,
+            -1.3
+          ]
+        }
+      },
+      "id": "window.front.glow"
+    },
+    {
+      "components": {
+        "MeshRenderer": {
+          "castShadow": true,
+          "material": "mat.metal.rust",
+          "mesh": "mesh.frame.mullion.horizontal",
+          "receiveShadow": true
+        },
+        "Transform": {
+          "position": [
+            -4.82,
+            2.6,
+            -1.3
+          ]
+        }
+      },
+      "id": "window.front.mullion.horizontal"
+    },
+    {
+      "components": {
+        "MeshRenderer": {
+          "castShadow": true,
+          "material": "mat.metal.rust",
+          "mesh": "mesh.frame.mullion.vertical",
+          "receiveShadow": true
+        },
+        "Transform": {
+          "position": [
+            -4.83,
+            2.6,
+            -1.3
+          ]
+        }
+      },
+      "id": "window.front.mullion.vertical"
+    },
+    {
+      "components": {
+        "MeshRenderer": {
+          "castShadow": true,
+          "material": "mat.metal.dark",
+          "mesh": "mesh.frame.vertical",
+          "receiveShadow": true
+        },
+        "Transform": {
+          "position": [
+            -4.86,
+            2.6,
+            -4.19
+          ]
+        }
+      },
+      "id": "window.rear.frame.back"
+    },
+    {
+      "components": {
+        "MeshRenderer": {
+          "castShadow": true,
+          "material": "mat.metal.dark",
+          "mesh": "mesh.frame.horizontal",
+          "receiveShadow": true
+        },
+        "Transform": {
+          "position": [
+            -4.86,
+            1.96,
+            -3.4
+          ]
+        }
+      },
+      "id": "window.rear.frame.bottom"
+    },
+    {
+      "components": {
+        "MeshRenderer": {
+          "castShadow": true,
+          "material": "mat.metal.dark",
+          "mesh": "mesh.frame.vertical",
+          "receiveShadow": true
+        },
+        "Transform": {
+          "position": [
+            -4.86,
+            2.6,
+            -2.61
+          ]
+        }
+      },
+      "id": "window.rear.frame.front"
+    },
+    {
+      "components": {
+        "MeshRenderer": {
+          "castShadow": true,
+          "material": "mat.metal.dark",
+          "mesh": "mesh.frame.horizontal",
+          "receiveShadow": true
+        },
+        "Transform": {
+          "position": [
+            -4.86,
+            3.24,
+            -3.4
+          ]
+        }
+      },
+      "id": "window.rear.frame.top"
+    },
+    {
+      "components": {
+        "MeshRenderer": {
+          "castShadow": false,
+          "material": "mat.window.hot",
+          "mesh": "mesh.window.glow",
+          "receiveShadow": false
+        },
+        "Transform": {
+          "position": [
+            -5.14,
+            2.6,
+            -3.4
+          ]
+        }
+      },
+      "id": "window.rear.glow"
+    },
+    {
+      "components": {
+        "MeshRenderer": {
+          "castShadow": true,
+          "material": "mat.metal.rust",
+          "mesh": "mesh.frame.mullion.horizontal",
+          "receiveShadow": true
+        },
+        "Transform": {
+          "position": [
+            -4.82,
+            2.6,
+            -3.4
+          ]
+        }
+      },
+      "id": "window.rear.mullion.horizontal"
+    },
+    {
+      "components": {
+        "MeshRenderer": {
+          "castShadow": true,
+          "material": "mat.metal.rust",
+          "mesh": "mesh.frame.mullion.vertical",
+          "receiveShadow": true
+        },
+        "Transform": {
+          "position": [
+            -4.83,
+            2.6,
+            -3.4
+          ]
+        }
+      },
+      "id": "window.rear.mullion.vertical"
+    }
+  ],
+  "events": {},
+  "prefabs": [],
+  "resources": {
+    "ActiveCamera": {
+      "entity": "camera.main"
+    }
+  },
+  "schema": "threenative.world",
+  "version": "0.1.0"
+}

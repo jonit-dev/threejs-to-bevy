@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 1,
+  "name": "native-hero-interior",
+  "target": "desktop",
+  "subject": "camera.main",
+  "viewport": {
+    "width": 1280,
+    "height": 720
+  },
+  "warmupFrames": 45,
+  "steps": [
+    {
+      "label": "settle-lighting",
+      "waitFrames": 45
+    }
+  ],
+  "assert": {
+    "diagnostics": {
+      "runtimeReady": true,
+      "noRuntimeDiagnostics": true
+    }
+  },
+  "artifacts": {
+    "screenshots": "before-after",
+    "runtimeTrace": true
+  }
+}

@@ -1,0 +1,4738 @@
+{
+  "declarations": [
+    {
+      "id": "hero-interior",
+      "kind": "scene",
+      "provenance": {
+        "declarationId": "hero-interior",
+        "kind": "scene",
+        "source": {
+          "modulePath": "content/scenes/hero-interior.scene.json"
+        }
+      },
+      "references": []
+    },
+    {
+      "id": "visual.provenance",
+      "kind": "entity",
+      "ownerScene": "hero-interior",
+      "provenance": {
+        "declarationId": "visual.provenance",
+        "kind": "entity",
+        "ownerScene": "hero-interior",
+        "source": {
+          "modulePath": "content/scenes/hero-interior.scene.json"
+        }
+      },
+      "references": []
+    },
+    {
+      "id": "camera.main",
+      "kind": "entity",
+      "ownerScene": "hero-interior",
+      "provenance": {
+        "declarationId": "camera.main",
+        "kind": "entity",
+        "ownerScene": "hero-interior",
+        "source": {
+          "modulePath": "content/scenes/hero-interior.scene.json"
+        }
+      },
+      "references": []
+    },
+    {
+      "id": "room.floor",
+      "kind": "entity",
+      "ownerScene": "hero-interior",
+      "provenance": {
+        "declarationId": "room.floor",
+        "kind": "entity",
+        "ownerScene": "hero-interior",
+        "source": {
+          "modulePath": "content/scenes/hero-interior.scene.json"
+        }
+      },
+      "references": []
+    },
+    {
+      "id": "room.ceiling",
+      "kind": "entity",
+      "ownerScene": "hero-interior",
+      "provenance": {
+        "declarationId": "room.ceiling",
+        "kind": "entity",
+        "ownerScene": "hero-interior",
+        "source": {
+          "modulePath": "content/scenes/hero-interior.scene.json"
+        }
+      },
+      "references": []
+    },
+    {
+      "id": "room.wall.right",
+      "kind": "entity",
+      "ownerScene": "hero-interior",
+      "provenance": {
+        "declarationId": "room.wall.right",
+        "kind": "entity",
+        "ownerScene": "hero-interior",
+        "source": {
+          "modulePath": "content/scenes/hero-interior.scene.json"
+        }
+      },
+      "references": []
+    },
+    {
+      "id": "room.wall.front",
+      "kind": "entity",
+      "ownerScene": "hero-interior",
+      "provenance": {
+        "declarationId": "room.wall.front",
+        "kind": "entity",
+        "ownerScene": "hero-interior",
+        "source": {
+          "modulePath": "content/scenes/hero-interior.scene.json"
+        }
+      },
+      "references": []
+    },
+    {
+      "id": "room.wall.left.lower",
+      "kind": "entity",
+      "ownerScene": "hero-interior",
+      "provenance": {
+        "declarationId": "room.wall.left.lower",
+        "kind": "entity",
+        "ownerScene": "hero-interior",
+        "source": {
+          "modulePath": "content/scenes/hero-interior.scene.json"
+        }
+      },
+      "references": []
+    },
+    {
+      "id": "room.wall.left.upper",
+      "kind": "entity",
+      "ownerScene": "hero-interior",
+      "provenance": {
+        "declarationId": "room.wall.left.upper",
+        "kind": "entity",
+        "ownerScene": "hero-interior",
+        "source": {
+          "modulePath": "content/scenes/hero-interior.scene.json"
+        }
+      },
+      "references": []
+    },
+    {
+      "id": "room.wall.left.pier.back",
+      "kind": "entity",
+      "ownerScene": "hero-interior",
+      "provenance": {
+        "declarationId": "room.wall.left.pier.back",
+        "kind": "entity",
+        "ownerScene": "hero-interior",
+        "source": {
+          "modulePath": "content/scenes/hero-interior.scene.json"
+        }
+      },
+      "references": []
+    },
+    {
+      "id": "room.wall.left.pier.middle",
+      "kind": "entity",
+      "ownerScene": "hero-interior",
+      "provenance": {
+        "declarationId": "room.wall.left.pier.middle",
+        "kind": "entity",
+        "ownerScene": "hero-interior",
+        "source": {
+          "modulePath": "content/scenes/hero-interior.scene.json"
+        }
+      },
+      "references": []
+    },
+    {
+      "id": "room.wall.left.pier.front",
+      "kind": "entity",
+      "ownerScene": "hero-interior",
+      "provenance": {
+        "declarationId": "room.wall.left.pier.front",
+        "kind": "entity",
+        "ownerScene": "hero-interior",
+        "source": {
+          "modulePath": "content/scenes/hero-interior.scene.json"
+        }
+      },
+      "references": []
+    },
+    {
+      "id": "room.wall.back.left",
+      "kind": "entity",
+      "ownerScene": "hero-interior",
+      "provenance": {
+        "declarationId": "room.wall.back.left",
+        "kind": "entity",
+        "ownerScene": "hero-interior",
+        "source": {
+          "modulePath": "content/scenes/hero-interior.scene.json"
+        }
+      },
+      "references": []
+    },
+    {
+      "id": "room.wall.back.right",
+      "kind": "entity",
+      "ownerScene": "hero-interior",
+      "provenance": {
+        "declarationId": "room.wall.back.right",
+        "kind": "entity",
+        "ownerScene": "hero-interior",
+        "source": {
+          "modulePath": "content/scenes/hero-interior.scene.json"
+        }
+      },
+      "references": []
+    },
+    {
+      "id": "room.wall.back.upper",
+      "kind": "entity",
+      "ownerScene": "hero-interior",
+      "provenance": {
+        "declarationId": "room.wall.back.upper",
+        "kind": "entity",
+        "ownerScene": "hero-interior",
+        "source": {
+          "modulePath": "content/scenes/hero-interior.scene.json"
+        }
+      },
+      "references": []
+    },
+    {
+      "id": "room.wall.back.band.left",
+      "kind": "entity",
+      "ownerScene": "hero-interior",
+      "provenance": {
+        "declarationId": "room.wall.back.band.left",
+        "kind": "entity",
+        "ownerScene": "hero-interior",
+        "source": {
+          "modulePath": "content/scenes/hero-interior.scene.json"
+        }
+      },
+      "references": []
+    },
+    {
+      "id": "room.wall.back.band.right",
+      "kind": "entity",
+      "ownerScene": "hero-interior",
+      "provenance": {
+        "declarationId": "room.wall.back.band.right",
+        "kind": "entity",
+        "ownerScene": "hero-interior",
+        "source": {
+          "modulePath": "content/scenes/hero-interior.scene.json"
+        }
+      },
+      "references": []
+    },
+    {
+      "id": "window.rear.glow",
+      "kind": "entity",
+      "ownerScene": "hero-interior",
+      "provenance": {
+        "declarationId": "window.rear.glow",
+        "kind": "entity",
+        "ownerScene": "hero-interior",
+        "source": {
+          "modulePath": "content/scenes/hero-interior.scene.json"
+        }
+      },
+      "references": []
+    },
+    {
+      "id": "window.front.glow",
+      "kind": "entity",
+      "ownerScene": "hero-interior",
+      "provenance": {
+        "declarationId": "window.front.glow",
+        "kind": "entity",
+        "ownerScene": "hero-interior",
+        "source": {
+          "modulePath": "content/scenes/hero-interior.scene.json"
+        }
+      },
+      "references": []
+    },
+    {
+      "id": "window.rear.frame.back",
+      "kind": "entity",
+      "ownerScene": "hero-interior",
+      "provenance": {
+        "declarationId": "window.rear.frame.back",
+        "kind": "entity",
+        "ownerScene": "hero-interior",
+        "source": {
+          "modulePath": "content/scenes/hero-interior.scene.json"
+        }
+      },
+      "references": []
+    },
+    {
+      "id": "window.rear.frame.front",
+      "kind": "entity",
+      "ownerScene": "hero-interior",
+      "provenance": {
+        "declarationId": "window.rear.frame.front",
+        "kind": "entity",
+        "ownerScene": "hero-interior",
+        "source": {
+          "modulePath": "content/scenes/hero-interior.scene.json"
+        }
+      },
+      "references": []
+    },
+    {
+      "id": "window.rear.frame.bottom",
+      "kind": "entity",
+      "ownerScene": "hero-interior",
+      "provenance": {
+        "declarationId": "window.rear.frame.bottom",
+        "kind": "entity",
+        "ownerScene": "hero-interior",
+        "source": {
+          "modulePath": "content/scenes/hero-interior.scene.json"
+        }
+      },
+      "references": []
+    },
+    {
+      "id": "window.rear.frame.top",
+      "kind": "entity",
+      "ownerScene": "hero-interior",
+      "provenance": {
+        "declarationId": "window.rear.frame.top",
+        "kind": "entity",
+        "ownerScene": "hero-interior",
+        "source": {
+          "modulePath": "content/scenes/hero-interior.scene.json"
+        }
+      },
+      "references": []
+    },
+    {
+      "id": "window.rear.mullion.vertical",
+      "kind": "entity",
+      "ownerScene": "hero-interior",
+      "provenance": {
+        "declarationId": "window.rear.mullion.vertical",
+        "kind": "entity",
+        "ownerScene": "hero-interior",
+        "source": {
+          "modulePath": "content/scenes/hero-interior.scene.json"
+        }
+      },
+      "references": []
+    },
+    {
+      "id": "window.rear.mullion.horizontal",
+      "kind": "entity",
+      "ownerScene": "hero-interior",
+      "provenance": {
+        "declarationId": "window.rear.mullion.horizontal",
+        "kind": "entity",
+        "ownerScene": "hero-interior",
+        "source": {
+          "modulePath": "content/scenes/hero-interior.scene.json"
+        }
+      },
+      "references": []
+    },
+    {
+      "id": "window.front.frame.back",
+      "kind": "entity",
+      "ownerScene": "hero-interior",
+      "provenance": {
+        "declarationId": "window.front.frame.back",
+        "kind": "entity",
+        "ownerScene": "hero-interior",
+        "source": {
+          "modulePath": "content/scenes/hero-interior.scene.json"
+        }
+      },
+      "references": []
+    },
+    {
+      "id": "window.front.frame.front",
+      "kind": "entity",
+      "ownerScene": "hero-interior",
+      "provenance": {
+        "declarationId": "window.front.frame.front",
+        "kind": "entity",
+        "ownerScene": "hero-interior",
+        "source": {
+          "modulePath": "content/scenes/hero-interior.scene.json"
+        }
+      },
+      "references": []
+    },
+    {
+      "id": "window.front.frame.bottom",
+      "kind": "entity",
+      "ownerScene": "hero-interior",
+      "provenance": {
+        "declarationId": "window.front.frame.bottom",
+        "kind": "entity",
+        "ownerScene": "hero-interior",
+        "source": {
+          "modulePath": "content/scenes/hero-interior.scene.json"
+        }
+      },
+      "references": []
+    },
+    {
+      "id": "window.front.frame.top",
+      "kind": "entity",
+      "ownerScene": "hero-interior",
+      "provenance": {
+        "declarationId": "window.front.frame.top",
+        "kind": "entity",
+        "ownerScene": "hero-interior",
+        "source": {
+          "modulePath": "content/scenes/hero-interior.scene.json"
+        }
+      },
+      "references": []
+    },
+    {
+      "id": "window.front.mullion.vertical",
+      "kind": "entity",
+      "ownerScene": "hero-interior",
+      "provenance": {
+        "declarationId": "window.front.mullion.vertical",
+        "kind": "entity",
+        "ownerScene": "hero-interior",
+        "source": {
+          "modulePath": "content/scenes/hero-interior.scene.json"
+        }
+      },
+      "references": []
+    },
+    {
+      "id": "window.front.mullion.horizontal",
+      "kind": "entity",
+      "ownerScene": "hero-interior",
+      "provenance": {
+        "declarationId": "window.front.mullion.horizontal",
+        "kind": "entity",
+        "ownerScene": "hero-interior",
+        "source": {
+          "modulePath": "content/scenes/hero-interior.scene.json"
+        }
+      },
+      "references": []
+    },
+    {
+      "id": "doorway.frame.left",
+      "kind": "entity",
+      "ownerScene": "hero-interior",
+      "provenance": {
+        "declarationId": "doorway.frame.left",
+        "kind": "entity",
+        "ownerScene": "hero-interior",
+        "source": {
+          "modulePath": "content/scenes/hero-interior.scene.json"
+        }
+      },
+      "references": []
+    },
+    {
+      "id": "doorway.frame.right",
+      "kind": "entity",
+      "ownerScene": "hero-interior",
+      "provenance": {
+        "declarationId": "doorway.frame.right",
+        "kind": "entity",
+        "ownerScene": "hero-interior",
+        "source": {
+          "modulePath": "content/scenes/hero-interior.scene.json"
+        }
+      },
+      "references": []
+    },
+    {
+      "id": "doorway.frame.top",
+      "kind": "entity",
+      "ownerScene": "hero-interior",
+      "provenance": {
+        "declarationId": "doorway.frame.top",
+        "kind": "entity",
+        "ownerScene": "hero-interior",
+        "source": {
+          "modulePath": "content/scenes/hero-interior.scene.json"
+        }
+      },
+      "references": []
+    },
+    {
+      "id": "corridor.wall.left",
+      "kind": "entity",
+      "ownerScene": "hero-interior",
+      "provenance": {
+        "declarationId": "corridor.wall.left",
+        "kind": "entity",
+        "ownerScene": "hero-interior",
+        "source": {
+          "modulePath": "content/scenes/hero-interior.scene.json"
+        }
+      },
+      "references": []
+    },
+    {
+      "id": "corridor.wall.right",
+      "kind": "entity",
+      "ownerScene": "hero-interior",
+      "provenance": {
+        "declarationId": "corridor.wall.right",
+        "kind": "entity",
+        "ownerScene": "hero-interior",
+        "source": {
+          "modulePath": "content/scenes/hero-interior.scene.json"
+        }
+      },
+      "references": []
+    },
+    {
+      "id": "corridor.floor",
+      "kind": "entity",
+      "ownerScene": "hero-interior",
+      "provenance": {
+        "declarationId": "corridor.floor",
+        "kind": "entity",
+        "ownerScene": "hero-interior",
+        "source": {
+          "modulePath": "content/scenes/hero-interior.scene.json"
+        }
+      },
+      "references": []
+    },
+    {
+      "id": "corridor.ceiling",
+      "kind": "entity",
+      "ownerScene": "hero-interior",
+      "provenance": {
+        "declarationId": "corridor.ceiling",
+        "kind": "entity",
+        "ownerScene": "hero-interior",
+        "source": {
+          "modulePath": "content/scenes/hero-interior.scene.json"
+        }
+      },
+      "references": []
+    },
+    {
+      "id": "corridor.back.glow",
+      "kind": "entity",
+      "ownerScene": "hero-interior",
+      "provenance": {
+        "declarationId": "corridor.back.glow",
+        "kind": "entity",
+        "ownerScene": "hero-interior",
+        "source": {
+          "modulePath": "content/scenes/hero-interior.scene.json"
+        }
+      },
+      "references": []
+    },
+    {
+      "id": "pillar.center",
+      "kind": "entity",
+      "ownerScene": "hero-interior",
+      "provenance": {
+        "declarationId": "pillar.center",
+        "kind": "entity",
+        "ownerScene": "hero-interior",
+        "source": {
+          "modulePath": "content/scenes/hero-interior.scene.json"
+        }
+      },
+      "references": []
+    },
+    {
+      "id": "puddle.foreground",
+      "kind": "entity",
+      "ownerScene": "hero-interior",
+      "provenance": {
+        "declarationId": "puddle.foreground",
+        "kind": "entity",
+        "ownerScene": "hero-interior",
+        "source": {
+          "modulePath": "content/scenes/hero-interior.scene.json"
+        }
+      },
+      "references": []
+    },
+    {
+      "id": "puddle.window",
+      "kind": "entity",
+      "ownerScene": "hero-interior",
+      "provenance": {
+        "declarationId": "puddle.window",
+        "kind": "entity",
+        "ownerScene": "hero-interior",
+        "source": {
+          "modulePath": "content/scenes/hero-interior.scene.json"
+        }
+      },
+      "references": []
+    },
+    {
+      "id": "cabinet.back",
+      "kind": "entity",
+      "ownerScene": "hero-interior",
+      "provenance": {
+        "declarationId": "cabinet.back",
+        "kind": "entity",
+        "ownerScene": "hero-interior",
+        "source": {
+          "modulePath": "content/scenes/hero-interior.scene.json"
+        }
+      },
+      "references": []
+    },
+    {
+      "id": "cabinet.right",
+      "kind": "entity",
+      "ownerScene": "hero-interior",
+      "provenance": {
+        "declarationId": "cabinet.right",
+        "kind": "entity",
+        "ownerScene": "hero-interior",
+        "source": {
+          "modulePath": "content/scenes/hero-interior.scene.json"
+        }
+      },
+      "references": []
+    },
+    {
+      "id": "crate.wood.01",
+      "kind": "entity",
+      "ownerScene": "hero-interior",
+      "provenance": {
+        "declarationId": "crate.wood.01",
+        "kind": "entity",
+        "ownerScene": "hero-interior",
+        "source": {
+          "modulePath": "content/scenes/hero-interior.scene.json"
+        }
+      },
+      "references": []
+    },
+    {
+      "id": "crate.wood.02",
+      "kind": "entity",
+      "ownerScene": "hero-interior",
+      "provenance": {
+        "declarationId": "crate.wood.02",
+        "kind": "entity",
+        "ownerScene": "hero-interior",
+        "source": {
+          "modulePath": "content/scenes/hero-interior.scene.json"
+        }
+      },
+      "references": []
+    },
+    {
+      "id": "crate.wood.03",
+      "kind": "entity",
+      "ownerScene": "hero-interior",
+      "provenance": {
+        "declarationId": "crate.wood.03",
+        "kind": "entity",
+        "ownerScene": "hero-interior",
+        "source": {
+          "modulePath": "content/scenes/hero-interior.scene.json"
+        }
+      },
+      "references": []
+    },
+    {
+      "id": "crate.yellow",
+      "kind": "entity",
+      "ownerScene": "hero-interior",
+      "provenance": {
+        "declarationId": "crate.yellow",
+        "kind": "entity",
+        "ownerScene": "hero-interior",
+        "source": {
+          "modulePath": "content/scenes/hero-interior.scene.json"
+        }
+      },
+      "references": []
+    },
+    {
+      "id": "door.fallen",
+      "kind": "entity",
+      "ownerScene": "hero-interior",
+      "provenance": {
+        "declarationId": "door.fallen",
+        "kind": "entity",
+        "ownerScene": "hero-interior",
+        "source": {
+          "modulePath": "content/scenes/hero-interior.scene.json"
+        }
+      },
+      "references": []
+    },
+    {
+      "id": "bed.deck.lower",
+      "kind": "entity",
+      "ownerScene": "hero-interior",
+      "provenance": {
+        "declarationId": "bed.deck.lower",
+        "kind": "entity",
+        "ownerScene": "hero-interior",
+        "source": {
+          "modulePath": "content/scenes/hero-interior.scene.json"
+        }
+      },
+      "references": []
+    },
+    {
+      "id": "bed.deck.upper",
+      "kind": "entity",
+      "ownerScene": "hero-interior",
+      "provenance": {
+        "declarationId": "bed.deck.upper",
+        "kind": "entity",
+        "ownerScene": "hero-interior",
+        "source": {
+          "modulePath": "content/scenes/hero-interior.scene.json"
+        }
+      },
+      "references": []
+    },
+    {
+      "id": "bed.post.01",
+      "kind": "entity",
+      "ownerScene": "hero-interior",
+      "provenance": {
+        "declarationId": "bed.post.01",
+        "kind": "entity",
+        "ownerScene": "hero-interior",
+        "source": {
+          "modulePath": "content/scenes/hero-interior.scene.json"
+        }
+      },
+      "references": []
+    },
+    {
+      "id": "bed.post.02",
+      "kind": "entity",
+      "ownerScene": "hero-interior",
+      "provenance": {
+        "declarationId": "bed.post.02",
+        "kind": "entity",
+        "ownerScene": "hero-interior",
+        "source": {
+          "modulePath": "content/scenes/hero-interior.scene.json"
+        }
+      },
+      "references": []
+    },
+    {
+      "id": "bed.post.03",
+      "kind": "entity",
+      "ownerScene": "hero-interior",
+      "provenance": {
+        "declarationId": "bed.post.03",
+        "kind": "entity",
+        "ownerScene": "hero-interior",
+        "source": {
+          "modulePath": "content/scenes/hero-interior.scene.json"
+        }
+      },
+      "references": []
+    },
+    {
+      "id": "bed.post.04",
+      "kind": "entity",
+      "ownerScene": "hero-interior",
+      "provenance": {
+        "declarationId": "bed.post.04",
+        "kind": "entity",
+        "ownerScene": "hero-interior",
+        "source": {
+          "modulePath": "content/scenes/hero-interior.scene.json"
+        }
+      },
+      "references": []
+    },
+    {
+      "id": "bed.rail.front.lower",
+      "kind": "entity",
+      "ownerScene": "hero-interior",
+      "provenance": {
+        "declarationId": "bed.rail.front.lower",
+        "kind": "entity",
+        "ownerScene": "hero-interior",
+        "source": {
+          "modulePath": "content/scenes/hero-interior.scene.json"
+        }
+      },
+      "references": []
+    },
+    {
+      "id": "bed.rail.back.lower",
+      "kind": "entity",
+      "ownerScene": "hero-interior",
+      "provenance": {
+        "declarationId": "bed.rail.back.lower",
+        "kind": "entity",
+        "ownerScene": "hero-interior",
+        "source": {
+          "modulePath": "content/scenes/hero-interior.scene.json"
+        }
+      },
+      "references": []
+    },
+    {
+      "id": "bed.rail.front.upper",
+      "kind": "entity",
+      "ownerScene": "hero-interior",
+      "provenance": {
+        "declarationId": "bed.rail.front.upper",
+        "kind": "entity",
+        "ownerScene": "hero-interior",
+        "source": {
+          "modulePath": "content/scenes/hero-interior.scene.json"
+        }
+      },
+      "references": []
+    },
+    {
+      "id": "bed.rail.back.upper",
+      "kind": "entity",
+      "ownerScene": "hero-interior",
+      "provenance": {
+        "declarationId": "bed.rail.back.upper",
+        "kind": "entity",
+        "ownerScene": "hero-interior",
+        "source": {
+          "modulePath": "content/scenes/hero-interior.scene.json"
+        }
+      },
+      "references": []
+    },
+    {
+      "id": "bed.rail.head",
+      "kind": "entity",
+      "ownerScene": "hero-interior",
+      "provenance": {
+        "declarationId": "bed.rail.head",
+        "kind": "entity",
+        "ownerScene": "hero-interior",
+        "source": {
+          "modulePath": "content/scenes/hero-interior.scene.json"
+        }
+      },
+      "references": []
+    },
+    {
+      "id": "bed.rail.foot",
+      "kind": "entity",
+      "ownerScene": "hero-interior",
+      "provenance": {
+        "declarationId": "bed.rail.foot",
+        "kind": "entity",
+        "ownerScene": "hero-interior",
+        "source": {
+          "modulePath": "content/scenes/hero-interior.scene.json"
+        }
+      },
+      "references": []
+    },
+    {
+      "id": "pipe.ceiling.01",
+      "kind": "entity",
+      "ownerScene": "hero-interior",
+      "provenance": {
+        "declarationId": "pipe.ceiling.01",
+        "kind": "entity",
+        "ownerScene": "hero-interior",
+        "source": {
+          "modulePath": "content/scenes/hero-interior.scene.json"
+        }
+      },
+      "references": []
+    },
+    {
+      "id": "pipe.ceiling.02",
+      "kind": "entity",
+      "ownerScene": "hero-interior",
+      "provenance": {
+        "declarationId": "pipe.ceiling.02",
+        "kind": "entity",
+        "ownerScene": "hero-interior",
+        "source": {
+          "modulePath": "content/scenes/hero-interior.scene.json"
+        }
+      },
+      "references": []
+    },
+    {
+      "id": "debris.01",
+      "kind": "entity",
+      "ownerScene": "hero-interior",
+      "provenance": {
+        "declarationId": "debris.01",
+        "kind": "entity",
+        "ownerScene": "hero-interior",
+        "source": {
+          "modulePath": "content/scenes/hero-interior.scene.json"
+        }
+      },
+      "references": []
+    },
+    {
+      "id": "debris.02",
+      "kind": "entity",
+      "ownerScene": "hero-interior",
+      "provenance": {
+        "declarationId": "debris.02",
+        "kind": "entity",
+        "ownerScene": "hero-interior",
+        "source": {
+          "modulePath": "content/scenes/hero-interior.scene.json"
+        }
+      },
+      "references": []
+    },
+    {
+      "id": "debris.03",
+      "kind": "entity",
+      "ownerScene": "hero-interior",
+      "provenance": {
+        "declarationId": "debris.03",
+        "kind": "entity",
+        "ownerScene": "hero-interior",
+        "source": {
+          "modulePath": "content/scenes/hero-interior.scene.json"
+        }
+      },
+      "references": []
+    },
+    {
+      "id": "debris.04",
+      "kind": "entity",
+      "ownerScene": "hero-interior",
+      "provenance": {
+        "declarationId": "debris.04",
+        "kind": "entity",
+        "ownerScene": "hero-interior",
+        "source": {
+          "modulePath": "content/scenes/hero-interior.scene.json"
+        }
+      },
+      "references": []
+    },
+    {
+      "id": "lamp.fixture",
+      "kind": "entity",
+      "ownerScene": "hero-interior",
+      "provenance": {
+        "declarationId": "lamp.fixture",
+        "kind": "entity",
+        "ownerScene": "hero-interior",
+        "source": {
+          "modulePath": "content/scenes/hero-interior.scene.json"
+        }
+      },
+      "references": []
+    },
+    {
+      "id": "light.window.key",
+      "kind": "entity",
+      "ownerScene": "hero-interior",
+      "provenance": {
+        "declarationId": "light.window.key",
+        "kind": "entity",
+        "ownerScene": "hero-interior",
+        "source": {
+          "modulePath": "content/scenes/hero-interior.scene.json"
+        }
+      },
+      "references": []
+    },
+    {
+      "id": "light.window.fill",
+      "kind": "entity",
+      "ownerScene": "hero-interior",
+      "provenance": {
+        "declarationId": "light.window.fill",
+        "kind": "entity",
+        "ownerScene": "hero-interior",
+        "source": {
+          "modulePath": "content/scenes/hero-interior.scene.json"
+        }
+      },
+      "references": []
+    },
+    {
+      "id": "light.corridor",
+      "kind": "entity",
+      "ownerScene": "hero-interior",
+      "provenance": {
+        "declarationId": "light.corridor",
+        "kind": "entity",
+        "ownerScene": "hero-interior",
+        "source": {
+          "modulePath": "content/scenes/hero-interior.scene.json"
+        }
+      },
+      "references": []
+    },
+    {
+      "id": "light.lamp",
+      "kind": "entity",
+      "ownerScene": "hero-interior",
+      "provenance": {
+        "declarationId": "light.lamp",
+        "kind": "entity",
+        "ownerScene": "hero-interior",
+        "source": {
+          "modulePath": "content/scenes/hero-interior.scene.json"
+        }
+      },
+      "references": []
+    },
+    {
+      "id": "contact.crates",
+      "kind": "entity",
+      "ownerScene": "hero-interior",
+      "provenance": {
+        "declarationId": "contact.crates",
+        "kind": "entity",
+        "ownerScene": "hero-interior",
+        "source": {
+          "modulePath": "content/scenes/hero-interior.scene.json"
+        }
+      },
+      "references": []
+    },
+    {
+      "id": "contact.bed",
+      "kind": "entity",
+      "ownerScene": "hero-interior",
+      "provenance": {
+        "declarationId": "contact.bed",
+        "kind": "entity",
+        "ownerScene": "hero-interior",
+        "source": {
+          "modulePath": "content/scenes/hero-interior.scene.json"
+        }
+      },
+      "references": []
+    },
+    {
+      "id": "contact.door-and-accent",
+      "kind": "entity",
+      "ownerScene": "hero-interior",
+      "provenance": {
+        "declarationId": "contact.door-and-accent",
+        "kind": "entity",
+        "ownerScene": "hero-interior",
+        "source": {
+          "modulePath": "content/scenes/hero-interior.scene.json"
+        }
+      },
+      "references": []
+    },
+    {
+      "id": "contact.cabinets",
+      "kind": "entity",
+      "ownerScene": "hero-interior",
+      "provenance": {
+        "declarationId": "contact.cabinets",
+        "kind": "entity",
+        "ownerScene": "hero-interior",
+        "source": {
+          "modulePath": "content/scenes/hero-interior.scene.json"
+        }
+      },
+      "references": []
+    }
+  ],
+  "diagnostics": [],
+  "entryPath": "content/scenes/hero-interior.scene.json",
+  "modules": [
+    {
+      "declarations": [
+        "scene:hero-interior",
+        "entity:visual.provenance",
+        "entity:camera.main",
+        "entity:room.floor",
+        "entity:room.ceiling",
+        "entity:room.wall.right",
+        "entity:room.wall.front",
+        "entity:room.wall.left.lower",
+        "entity:room.wall.left.upper",
+        "entity:room.wall.left.pier.back",
+        "entity:room.wall.left.pier.middle",
+        "entity:room.wall.left.pier.front",
+        "entity:room.wall.back.left",
+        "entity:room.wall.back.right",
+        "entity:room.wall.back.upper",
+        "entity:room.wall.back.band.left",
+        "entity:room.wall.back.band.right",
+        "entity:window.rear.glow",
+        "entity:window.front.glow",
+        "entity:window.rear.frame.back",
+        "entity:window.rear.frame.front",
+        "entity:window.rear.frame.bottom",
+        "entity:window.rear.frame.top",
+        "entity:window.rear.mullion.vertical",
+        "entity:window.rear.mullion.horizontal",
+        "entity:window.front.frame.back",
+        "entity:window.front.frame.front",
+        "entity:window.front.frame.bottom",
+        "entity:window.front.frame.top",
+        "entity:window.front.mullion.vertical",
+        "entity:window.front.mullion.horizontal",
+        "entity:doorway.frame.left",
+        "entity:doorway.frame.right",
+        "entity:doorway.frame.top",
+        "entity:corridor.wall.left",
+        "entity:corridor.wall.right",
+        "entity:corridor.floor",
+        "entity:corridor.ceiling",
+        "entity:corridor.back.glow",
+        "entity:pillar.center",
+        "entity:puddle.foreground",
+        "entity:puddle.window",
+        "entity:cabinet.back",
+        "entity:cabinet.right",
+        "entity:crate.wood.01",
+        "entity:crate.wood.02",
+        "entity:crate.wood.03",
+        "entity:crate.yellow",
+        "entity:door.fallen",
+        "entity:bed.deck.lower",
+        "entity:bed.deck.upper",
+        "entity:bed.post.01",
+        "entity:bed.post.02",
+        "entity:bed.post.03",
+        "entity:bed.post.04",
+        "entity:bed.rail.front.lower",
+        "entity:bed.rail.back.lower",
+        "entity:bed.rail.front.upper",
+        "entity:bed.rail.back.upper",
+        "entity:bed.rail.head",
+        "entity:bed.rail.foot",
+        "entity:pipe.ceiling.01",
+        "entity:pipe.ceiling.02",
+        "entity:debris.01",
+        "entity:debris.02",
+        "entity:debris.03",
+        "entity:debris.04",
+        "entity:lamp.fixture",
+        "entity:light.window.key",
+        "entity:light.window.fill",
+        "entity:light.corridor",
+        "entity:light.lamp",
+        "entity:contact.crates",
+        "entity:contact.bed",
+        "entity:contact.door-and-accent",
+        "entity:contact.cabinets"
+      ],
+      "path": "content/scenes/hero-interior.scene.json"
+    }
+  ],
+  "ownership": [
+    {
+      "emitted": {
+        "artifactKind": "assets",
+        "path": "assets.manifest.json"
+      },
+      "ownership": "full-reload-required"
+    },
+    {
+      "emitted": {
+        "artifactKind": "assets",
+        "id": "asset.goal-ping",
+        "path": "assets.manifest.json",
+        "pointer": "/assets/asset.goal-ping"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "asset",
+        "kind": "asset",
+        "path": "content/assets/arena.assets.json",
+        "pointer": "/assets/0"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "unknown",
+        "path": "manifest.json"
+      },
+      "ownership": "full-reload-required"
+    },
+    {
+      "emitted": {
+        "artifactKind": "material",
+        "path": "materials.ir.json"
+      },
+      "ownership": "full-reload-required"
+    },
+    {
+      "emitted": {
+        "artifactKind": "material",
+        "id": "mat.concrete.dark",
+        "path": "materials.ir.json",
+        "pointer": "/materials/mat.concrete.dark"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "material",
+        "kind": "material",
+        "path": "content/materials/arena.materials.json",
+        "pointer": "/materials/2"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "material",
+        "id": "mat.concrete.floor",
+        "path": "materials.ir.json",
+        "pointer": "/materials/mat.concrete.floor"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "material",
+        "kind": "material",
+        "path": "content/materials/arena.materials.json",
+        "pointer": "/materials/0"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "material",
+        "id": "mat.concrete.wall",
+        "path": "materials.ir.json",
+        "pointer": "/materials/mat.concrete.wall"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "material",
+        "kind": "material",
+        "path": "content/materials/arena.materials.json",
+        "pointer": "/materials/1"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "material",
+        "id": "mat.corridor.hot",
+        "path": "materials.ir.json",
+        "pointer": "/materials/mat.corridor.hot"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "material",
+        "kind": "material",
+        "path": "content/materials/arena.materials.json",
+        "pointer": "/materials/11"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "material",
+        "id": "mat.crate.yellow",
+        "path": "materials.ir.json",
+        "pointer": "/materials/mat.crate.yellow"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "material",
+        "kind": "material",
+        "path": "content/materials/arena.materials.json",
+        "pointer": "/materials/8"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "material",
+        "id": "mat.debris",
+        "path": "materials.ir.json",
+        "pointer": "/materials/mat.debris"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "material",
+        "kind": "material",
+        "path": "content/materials/arena.materials.json",
+        "pointer": "/materials/13"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "material",
+        "id": "mat.lamp.warm",
+        "path": "materials.ir.json",
+        "pointer": "/materials/mat.lamp.warm"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "material",
+        "kind": "material",
+        "path": "content/materials/arena.materials.json",
+        "pointer": "/materials/12"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "material",
+        "id": "mat.metal.dark",
+        "path": "materials.ir.json",
+        "pointer": "/materials/mat.metal.dark"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "material",
+        "kind": "material",
+        "path": "content/materials/arena.materials.json",
+        "pointer": "/materials/5"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "material",
+        "id": "mat.metal.rust",
+        "path": "materials.ir.json",
+        "pointer": "/materials/mat.metal.rust"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "material",
+        "kind": "material",
+        "path": "content/materials/arena.materials.json",
+        "pointer": "/materials/4"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "material",
+        "id": "mat.paint.peeling",
+        "path": "materials.ir.json",
+        "pointer": "/materials/mat.paint.peeling"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "material",
+        "kind": "material",
+        "path": "content/materials/arena.materials.json",
+        "pointer": "/materials/3"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "material",
+        "id": "mat.puddle",
+        "path": "materials.ir.json",
+        "pointer": "/materials/mat.puddle"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "material",
+        "kind": "material",
+        "path": "content/materials/arena.materials.json",
+        "pointer": "/materials/9"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "material",
+        "id": "mat.window.hot",
+        "path": "materials.ir.json",
+        "pointer": "/materials/mat.window.hot"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "material",
+        "kind": "material",
+        "path": "content/materials/arena.materials.json",
+        "pointer": "/materials/10"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "material",
+        "id": "mat.wood",
+        "path": "materials.ir.json",
+        "pointer": "/materials/mat.wood"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "material",
+        "kind": "material",
+        "path": "content/materials/arena.materials.json",
+        "pointer": "/materials/6"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "material",
+        "id": "mat.wood.door",
+        "path": "materials.ir.json",
+        "pointer": "/materials/mat.wood.door"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "material",
+        "kind": "material",
+        "path": "content/materials/arena.materials.json",
+        "pointer": "/materials/7"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "component",
+        "id": "prefab.player.player.MeshRenderer",
+        "path": "prefabs.ir.json",
+        "pointer": "/prefabs/prefab.player/entities/player/components/MeshRenderer"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "prefab",
+        "kind": "component",
+        "path": "content/prefabs/player.prefab.json",
+        "pointer": "/entities/0/components/MeshRenderer"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "entity",
+        "id": "prefab.player.player",
+        "path": "prefabs.ir.json",
+        "pointer": "/prefabs/prefab.player/entities/player"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "prefab",
+        "kind": "entity",
+        "path": "content/prefabs/player.prefab.json",
+        "pointer": "/entities/0"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "prefab",
+        "path": "prefabs.ir.json"
+      },
+      "ownership": "full-reload-required"
+    },
+    {
+      "emitted": {
+        "artifactKind": "prefab",
+        "id": "prefab.player",
+        "path": "prefabs.ir.json",
+        "pointer": "/prefabs/prefab.player"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "prefab",
+        "kind": "prefab",
+        "path": "content/prefabs/player.prefab.json",
+        "pointer": "/id"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "scene",
+        "id": "hero-interior",
+        "path": "scenes.ir.json",
+        "pointer": "/scenes/hero-interior"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "scene",
+        "kind": "scene",
+        "path": "content/scenes/hero-interior.scene.json",
+        "pointer": "/id"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "generated-script",
+        "path": "scripts.bundle.js"
+      },
+      "ownership": "rejected/not-source"
+    },
+    {
+      "emitted": {
+        "artifactKind": "system",
+        "path": "systems.ir.json"
+      },
+      "ownership": "full-reload-required"
+    },
+    {
+      "emitted": {
+        "artifactKind": "system",
+        "id": "move-player-to-goal",
+        "path": "systems.ir.json",
+        "pointer": "/systems/move-player-to-goal"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "systems",
+        "exportName": "movePlayerToGoal",
+        "kind": "system",
+        "modulePath": "src/scripts/player.ts",
+        "path": "content/systems/arena.systems.json",
+        "pointer": "/systems/0/script"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "ui",
+        "path": "ui.ir.json"
+      },
+      "ownership": "full-reload-required"
+    },
+    {
+      "emitted": {
+        "artifactKind": "component",
+        "id": "bed.deck.lower.MeshRenderer",
+        "path": "world.ir.json",
+        "pointer": "/entities/bed.deck.lower/components/MeshRenderer"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "scene",
+        "kind": "component",
+        "path": "content/scenes/hero-interior.scene.json",
+        "pointer": "/entities/48/components/MeshRenderer"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "component",
+        "id": "bed.deck.upper.MeshRenderer",
+        "path": "world.ir.json",
+        "pointer": "/entities/bed.deck.upper/components/MeshRenderer"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "scene",
+        "kind": "component",
+        "path": "content/scenes/hero-interior.scene.json",
+        "pointer": "/entities/49/components/MeshRenderer"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "component",
+        "id": "bed.post.01.MeshRenderer",
+        "path": "world.ir.json",
+        "pointer": "/entities/bed.post.01/components/MeshRenderer"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "scene",
+        "kind": "component",
+        "path": "content/scenes/hero-interior.scene.json",
+        "pointer": "/entities/50/components/MeshRenderer"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "component",
+        "id": "bed.post.02.MeshRenderer",
+        "path": "world.ir.json",
+        "pointer": "/entities/bed.post.02/components/MeshRenderer"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "scene",
+        "kind": "component",
+        "path": "content/scenes/hero-interior.scene.json",
+        "pointer": "/entities/51/components/MeshRenderer"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "component",
+        "id": "bed.post.03.MeshRenderer",
+        "path": "world.ir.json",
+        "pointer": "/entities/bed.post.03/components/MeshRenderer"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "scene",
+        "kind": "component",
+        "path": "content/scenes/hero-interior.scene.json",
+        "pointer": "/entities/52/components/MeshRenderer"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "component",
+        "id": "bed.post.04.MeshRenderer",
+        "path": "world.ir.json",
+        "pointer": "/entities/bed.post.04/components/MeshRenderer"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "scene",
+        "kind": "component",
+        "path": "content/scenes/hero-interior.scene.json",
+        "pointer": "/entities/53/components/MeshRenderer"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "component",
+        "id": "bed.rail.back.lower.MeshRenderer",
+        "path": "world.ir.json",
+        "pointer": "/entities/bed.rail.back.lower/components/MeshRenderer"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "scene",
+        "kind": "component",
+        "path": "content/scenes/hero-interior.scene.json",
+        "pointer": "/entities/55/components/MeshRenderer"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "component",
+        "id": "bed.rail.back.upper.MeshRenderer",
+        "path": "world.ir.json",
+        "pointer": "/entities/bed.rail.back.upper/components/MeshRenderer"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "scene",
+        "kind": "component",
+        "path": "content/scenes/hero-interior.scene.json",
+        "pointer": "/entities/57/components/MeshRenderer"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "component",
+        "id": "bed.rail.foot.MeshRenderer",
+        "path": "world.ir.json",
+        "pointer": "/entities/bed.rail.foot/components/MeshRenderer"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "scene",
+        "kind": "component",
+        "path": "content/scenes/hero-interior.scene.json",
+        "pointer": "/entities/59/components/MeshRenderer"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "component",
+        "id": "bed.rail.front.lower.MeshRenderer",
+        "path": "world.ir.json",
+        "pointer": "/entities/bed.rail.front.lower/components/MeshRenderer"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "scene",
+        "kind": "component",
+        "path": "content/scenes/hero-interior.scene.json",
+        "pointer": "/entities/54/components/MeshRenderer"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "component",
+        "id": "bed.rail.front.upper.MeshRenderer",
+        "path": "world.ir.json",
+        "pointer": "/entities/bed.rail.front.upper/components/MeshRenderer"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "scene",
+        "kind": "component",
+        "path": "content/scenes/hero-interior.scene.json",
+        "pointer": "/entities/56/components/MeshRenderer"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "component",
+        "id": "bed.rail.head.MeshRenderer",
+        "path": "world.ir.json",
+        "pointer": "/entities/bed.rail.head/components/MeshRenderer"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "scene",
+        "kind": "component",
+        "path": "content/scenes/hero-interior.scene.json",
+        "pointer": "/entities/58/components/MeshRenderer"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "component",
+        "id": "cabinet.back.MeshRenderer",
+        "path": "world.ir.json",
+        "pointer": "/entities/cabinet.back/components/MeshRenderer"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "scene",
+        "kind": "component",
+        "path": "content/scenes/hero-interior.scene.json",
+        "pointer": "/entities/41/components/MeshRenderer"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "component",
+        "id": "cabinet.right.MeshRenderer",
+        "path": "world.ir.json",
+        "pointer": "/entities/cabinet.right/components/MeshRenderer"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "scene",
+        "kind": "component",
+        "path": "content/scenes/hero-interior.scene.json",
+        "pointer": "/entities/42/components/MeshRenderer"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "component",
+        "id": "camera.main.camera",
+        "path": "world.ir.json",
+        "pointer": "/entities/camera.main/components/camera"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "scene",
+        "kind": "component",
+        "path": "content/scenes/hero-interior.scene.json",
+        "pointer": "/entities/1/components/camera"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "component",
+        "id": "contact.bed.ContactShadows",
+        "path": "world.ir.json",
+        "pointer": "/entities/contact.bed/components/ContactShadows"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "scene",
+        "kind": "component",
+        "path": "content/scenes/hero-interior.scene.json",
+        "pointer": "/entities/72/components/ContactShadows"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "component",
+        "id": "contact.cabinets.ContactShadows",
+        "path": "world.ir.json",
+        "pointer": "/entities/contact.cabinets/components/ContactShadows"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "scene",
+        "kind": "component",
+        "path": "content/scenes/hero-interior.scene.json",
+        "pointer": "/entities/74/components/ContactShadows"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "component",
+        "id": "contact.crates.ContactShadows",
+        "path": "world.ir.json",
+        "pointer": "/entities/contact.crates/components/ContactShadows"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "scene",
+        "kind": "component",
+        "path": "content/scenes/hero-interior.scene.json",
+        "pointer": "/entities/71/components/ContactShadows"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "component",
+        "id": "contact.door-and-accent.ContactShadows",
+        "path": "world.ir.json",
+        "pointer": "/entities/contact.door-and-accent/components/ContactShadows"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "scene",
+        "kind": "component",
+        "path": "content/scenes/hero-interior.scene.json",
+        "pointer": "/entities/73/components/ContactShadows"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "component",
+        "id": "corridor.back.glow.MeshRenderer",
+        "path": "world.ir.json",
+        "pointer": "/entities/corridor.back.glow/components/MeshRenderer"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "scene",
+        "kind": "component",
+        "path": "content/scenes/hero-interior.scene.json",
+        "pointer": "/entities/37/components/MeshRenderer"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "component",
+        "id": "corridor.ceiling.MeshRenderer",
+        "path": "world.ir.json",
+        "pointer": "/entities/corridor.ceiling/components/MeshRenderer"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "scene",
+        "kind": "component",
+        "path": "content/scenes/hero-interior.scene.json",
+        "pointer": "/entities/36/components/MeshRenderer"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "component",
+        "id": "corridor.floor.MeshRenderer",
+        "path": "world.ir.json",
+        "pointer": "/entities/corridor.floor/components/MeshRenderer"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "scene",
+        "kind": "component",
+        "path": "content/scenes/hero-interior.scene.json",
+        "pointer": "/entities/35/components/MeshRenderer"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "component",
+        "id": "corridor.wall.left.MeshRenderer",
+        "path": "world.ir.json",
+        "pointer": "/entities/corridor.wall.left/components/MeshRenderer"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "scene",
+        "kind": "component",
+        "path": "content/scenes/hero-interior.scene.json",
+        "pointer": "/entities/33/components/MeshRenderer"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "component",
+        "id": "corridor.wall.right.MeshRenderer",
+        "path": "world.ir.json",
+        "pointer": "/entities/corridor.wall.right/components/MeshRenderer"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "scene",
+        "kind": "component",
+        "path": "content/scenes/hero-interior.scene.json",
+        "pointer": "/entities/34/components/MeshRenderer"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "component",
+        "id": "crate.wood.01.MeshRenderer",
+        "path": "world.ir.json",
+        "pointer": "/entities/crate.wood.01/components/MeshRenderer"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "scene",
+        "kind": "component",
+        "path": "content/scenes/hero-interior.scene.json",
+        "pointer": "/entities/43/components/MeshRenderer"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "component",
+        "id": "crate.wood.02.MeshRenderer",
+        "path": "world.ir.json",
+        "pointer": "/entities/crate.wood.02/components/MeshRenderer"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "scene",
+        "kind": "component",
+        "path": "content/scenes/hero-interior.scene.json",
+        "pointer": "/entities/44/components/MeshRenderer"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "component",
+        "id": "crate.wood.03.MeshRenderer",
+        "path": "world.ir.json",
+        "pointer": "/entities/crate.wood.03/components/MeshRenderer"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "scene",
+        "kind": "component",
+        "path": "content/scenes/hero-interior.scene.json",
+        "pointer": "/entities/45/components/MeshRenderer"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "component",
+        "id": "crate.yellow.MeshRenderer",
+        "path": "world.ir.json",
+        "pointer": "/entities/crate.yellow/components/MeshRenderer"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "scene",
+        "kind": "component",
+        "path": "content/scenes/hero-interior.scene.json",
+        "pointer": "/entities/46/components/MeshRenderer"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "component",
+        "id": "debris.01.MeshRenderer",
+        "path": "world.ir.json",
+        "pointer": "/entities/debris.01/components/MeshRenderer"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "scene",
+        "kind": "component",
+        "path": "content/scenes/hero-interior.scene.json",
+        "pointer": "/entities/62/components/MeshRenderer"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "component",
+        "id": "debris.02.MeshRenderer",
+        "path": "world.ir.json",
+        "pointer": "/entities/debris.02/components/MeshRenderer"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "scene",
+        "kind": "component",
+        "path": "content/scenes/hero-interior.scene.json",
+        "pointer": "/entities/63/components/MeshRenderer"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "component",
+        "id": "debris.03.MeshRenderer",
+        "path": "world.ir.json",
+        "pointer": "/entities/debris.03/components/MeshRenderer"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "scene",
+        "kind": "component",
+        "path": "content/scenes/hero-interior.scene.json",
+        "pointer": "/entities/64/components/MeshRenderer"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "component",
+        "id": "debris.04.MeshRenderer",
+        "path": "world.ir.json",
+        "pointer": "/entities/debris.04/components/MeshRenderer"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "scene",
+        "kind": "component",
+        "path": "content/scenes/hero-interior.scene.json",
+        "pointer": "/entities/65/components/MeshRenderer"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "component",
+        "id": "door.fallen.MeshRenderer",
+        "path": "world.ir.json",
+        "pointer": "/entities/door.fallen/components/MeshRenderer"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "scene",
+        "kind": "component",
+        "path": "content/scenes/hero-interior.scene.json",
+        "pointer": "/entities/47/components/MeshRenderer"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "component",
+        "id": "doorway.frame.left.MeshRenderer",
+        "path": "world.ir.json",
+        "pointer": "/entities/doorway.frame.left/components/MeshRenderer"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "scene",
+        "kind": "component",
+        "path": "content/scenes/hero-interior.scene.json",
+        "pointer": "/entities/30/components/MeshRenderer"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "component",
+        "id": "doorway.frame.right.MeshRenderer",
+        "path": "world.ir.json",
+        "pointer": "/entities/doorway.frame.right/components/MeshRenderer"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "scene",
+        "kind": "component",
+        "path": "content/scenes/hero-interior.scene.json",
+        "pointer": "/entities/31/components/MeshRenderer"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "component",
+        "id": "doorway.frame.top.MeshRenderer",
+        "path": "world.ir.json",
+        "pointer": "/entities/doorway.frame.top/components/MeshRenderer"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "scene",
+        "kind": "component",
+        "path": "content/scenes/hero-interior.scene.json",
+        "pointer": "/entities/32/components/MeshRenderer"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "component",
+        "id": "lamp.fixture.MeshRenderer",
+        "path": "world.ir.json",
+        "pointer": "/entities/lamp.fixture/components/MeshRenderer"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "scene",
+        "kind": "component",
+        "path": "content/scenes/hero-interior.scene.json",
+        "pointer": "/entities/66/components/MeshRenderer"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "component",
+        "id": "light.corridor.Light",
+        "path": "world.ir.json",
+        "pointer": "/entities/light.corridor/components/Light"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "scene",
+        "kind": "component",
+        "path": "content/scenes/hero-interior.scene.json",
+        "pointer": "/entities/69/components/Light"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "component",
+        "id": "light.lamp.Light",
+        "path": "world.ir.json",
+        "pointer": "/entities/light.lamp/components/Light"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "scene",
+        "kind": "component",
+        "path": "content/scenes/hero-interior.scene.json",
+        "pointer": "/entities/70/components/Light"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "component",
+        "id": "light.window.fill.Light",
+        "path": "world.ir.json",
+        "pointer": "/entities/light.window.fill/components/Light"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "scene",
+        "kind": "component",
+        "path": "content/scenes/hero-interior.scene.json",
+        "pointer": "/entities/68/components/Light"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "component",
+        "id": "light.window.key.Light",
+        "path": "world.ir.json",
+        "pointer": "/entities/light.window.key/components/Light"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "scene",
+        "kind": "component",
+        "path": "content/scenes/hero-interior.scene.json",
+        "pointer": "/entities/67/components/Light"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "component",
+        "id": "pillar.center.MeshRenderer",
+        "path": "world.ir.json",
+        "pointer": "/entities/pillar.center/components/MeshRenderer"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "scene",
+        "kind": "component",
+        "path": "content/scenes/hero-interior.scene.json",
+        "pointer": "/entities/38/components/MeshRenderer"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "component",
+        "id": "pipe.ceiling.01.MeshRenderer",
+        "path": "world.ir.json",
+        "pointer": "/entities/pipe.ceiling.01/components/MeshRenderer"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "scene",
+        "kind": "component",
+        "path": "content/scenes/hero-interior.scene.json",
+        "pointer": "/entities/60/components/MeshRenderer"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "component",
+        "id": "pipe.ceiling.02.MeshRenderer",
+        "path": "world.ir.json",
+        "pointer": "/entities/pipe.ceiling.02/components/MeshRenderer"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "scene",
+        "kind": "component",
+        "path": "content/scenes/hero-interior.scene.json",
+        "pointer": "/entities/61/components/MeshRenderer"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "component",
+        "id": "puddle.foreground.MeshRenderer",
+        "path": "world.ir.json",
+        "pointer": "/entities/puddle.foreground/components/MeshRenderer"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "scene",
+        "kind": "component",
+        "path": "content/scenes/hero-interior.scene.json",
+        "pointer": "/entities/39/components/MeshRenderer"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "component",
+        "id": "puddle.window.MeshRenderer",
+        "path": "world.ir.json",
+        "pointer": "/entities/puddle.window/components/MeshRenderer"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "scene",
+        "kind": "component",
+        "path": "content/scenes/hero-interior.scene.json",
+        "pointer": "/entities/40/components/MeshRenderer"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "component",
+        "id": "room.ceiling.MeshRenderer",
+        "path": "world.ir.json",
+        "pointer": "/entities/room.ceiling/components/MeshRenderer"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "scene",
+        "kind": "component",
+        "path": "content/scenes/hero-interior.scene.json",
+        "pointer": "/entities/3/components/MeshRenderer"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "component",
+        "id": "room.floor.MeshRenderer",
+        "path": "world.ir.json",
+        "pointer": "/entities/room.floor/components/MeshRenderer"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "scene",
+        "kind": "component",
+        "path": "content/scenes/hero-interior.scene.json",
+        "pointer": "/entities/2/components/MeshRenderer"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "component",
+        "id": "room.wall.back.band.left.MeshRenderer",
+        "path": "world.ir.json",
+        "pointer": "/entities/room.wall.back.band.left/components/MeshRenderer"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "scene",
+        "kind": "component",
+        "path": "content/scenes/hero-interior.scene.json",
+        "pointer": "/entities/14/components/MeshRenderer"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "component",
+        "id": "room.wall.back.band.right.MeshRenderer",
+        "path": "world.ir.json",
+        "pointer": "/entities/room.wall.back.band.right/components/MeshRenderer"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "scene",
+        "kind": "component",
+        "path": "content/scenes/hero-interior.scene.json",
+        "pointer": "/entities/15/components/MeshRenderer"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "component",
+        "id": "room.wall.back.left.MeshRenderer",
+        "path": "world.ir.json",
+        "pointer": "/entities/room.wall.back.left/components/MeshRenderer"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "scene",
+        "kind": "component",
+        "path": "content/scenes/hero-interior.scene.json",
+        "pointer": "/entities/11/components/MeshRenderer"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "component",
+        "id": "room.wall.back.right.MeshRenderer",
+        "path": "world.ir.json",
+        "pointer": "/entities/room.wall.back.right/components/MeshRenderer"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "scene",
+        "kind": "component",
+        "path": "content/scenes/hero-interior.scene.json",
+        "pointer": "/entities/12/components/MeshRenderer"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "component",
+        "id": "room.wall.back.upper.MeshRenderer",
+        "path": "world.ir.json",
+        "pointer": "/entities/room.wall.back.upper/components/MeshRenderer"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "scene",
+        "kind": "component",
+        "path": "content/scenes/hero-interior.scene.json",
+        "pointer": "/entities/13/components/MeshRenderer"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "component",
+        "id": "room.wall.front.MeshRenderer",
+        "path": "world.ir.json",
+        "pointer": "/entities/room.wall.front/components/MeshRenderer"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "scene",
+        "kind": "component",
+        "path": "content/scenes/hero-interior.scene.json",
+        "pointer": "/entities/5/components/MeshRenderer"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "component",
+        "id": "room.wall.left.lower.MeshRenderer",
+        "path": "world.ir.json",
+        "pointer": "/entities/room.wall.left.lower/components/MeshRenderer"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "scene",
+        "kind": "component",
+        "path": "content/scenes/hero-interior.scene.json",
+        "pointer": "/entities/6/components/MeshRenderer"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "component",
+        "id": "room.wall.left.pier.back.MeshRenderer",
+        "path": "world.ir.json",
+        "pointer": "/entities/room.wall.left.pier.back/components/MeshRenderer"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "scene",
+        "kind": "component",
+        "path": "content/scenes/hero-interior.scene.json",
+        "pointer": "/entities/8/components/MeshRenderer"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "component",
+        "id": "room.wall.left.pier.front.MeshRenderer",
+        "path": "world.ir.json",
+        "pointer": "/entities/room.wall.left.pier.front/components/MeshRenderer"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "scene",
+        "kind": "component",
+        "path": "content/scenes/hero-interior.scene.json",
+        "pointer": "/entities/10/components/MeshRenderer"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "component",
+        "id": "room.wall.left.pier.middle.MeshRenderer",
+        "path": "world.ir.json",
+        "pointer": "/entities/room.wall.left.pier.middle/components/MeshRenderer"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "scene",
+        "kind": "component",
+        "path": "content/scenes/hero-interior.scene.json",
+        "pointer": "/entities/9/components/MeshRenderer"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "component",
+        "id": "room.wall.left.upper.MeshRenderer",
+        "path": "world.ir.json",
+        "pointer": "/entities/room.wall.left.upper/components/MeshRenderer"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "scene",
+        "kind": "component",
+        "path": "content/scenes/hero-interior.scene.json",
+        "pointer": "/entities/7/components/MeshRenderer"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "component",
+        "id": "room.wall.right.MeshRenderer",
+        "path": "world.ir.json",
+        "pointer": "/entities/room.wall.right/components/MeshRenderer"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "scene",
+        "kind": "component",
+        "path": "content/scenes/hero-interior.scene.json",
+        "pointer": "/entities/4/components/MeshRenderer"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "component",
+        "id": "visual.provenance.VisualProvenance",
+        "path": "world.ir.json",
+        "pointer": "/entities/visual.provenance/components/VisualProvenance"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "scene",
+        "kind": "component",
+        "path": "content/scenes/hero-interior.scene.json",
+        "pointer": "/entities/0/components/VisualProvenance"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "component",
+        "id": "window.front.frame.back.MeshRenderer",
+        "path": "world.ir.json",
+        "pointer": "/entities/window.front.frame.back/components/MeshRenderer"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "scene",
+        "kind": "component",
+        "path": "content/scenes/hero-interior.scene.json",
+        "pointer": "/entities/24/components/MeshRenderer"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "component",
+        "id": "window.front.frame.bottom.MeshRenderer",
+        "path": "world.ir.json",
+        "pointer": "/entities/window.front.frame.bottom/components/MeshRenderer"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "scene",
+        "kind": "component",
+        "path": "content/scenes/hero-interior.scene.json",
+        "pointer": "/entities/26/components/MeshRenderer"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "component",
+        "id": "window.front.frame.front.MeshRenderer",
+        "path": "world.ir.json",
+        "pointer": "/entities/window.front.frame.front/components/MeshRenderer"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "scene",
+        "kind": "component",
+        "path": "content/scenes/hero-interior.scene.json",
+        "pointer": "/entities/25/components/MeshRenderer"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "component",
+        "id": "window.front.frame.top.MeshRenderer",
+        "path": "world.ir.json",
+        "pointer": "/entities/window.front.frame.top/components/MeshRenderer"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "scene",
+        "kind": "component",
+        "path": "content/scenes/hero-interior.scene.json",
+        "pointer": "/entities/27/components/MeshRenderer"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "component",
+        "id": "window.front.glow.MeshRenderer",
+        "path": "world.ir.json",
+        "pointer": "/entities/window.front.glow/components/MeshRenderer"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "scene",
+        "kind": "component",
+        "path": "content/scenes/hero-interior.scene.json",
+        "pointer": "/entities/17/components/MeshRenderer"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "component",
+        "id": "window.front.mullion.horizontal.MeshRenderer",
+        "path": "world.ir.json",
+        "pointer": "/entities/window.front.mullion.horizontal/components/MeshRenderer"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "scene",
+        "kind": "component",
+        "path": "content/scenes/hero-interior.scene.json",
+        "pointer": "/entities/29/components/MeshRenderer"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "component",
+        "id": "window.front.mullion.vertical.MeshRenderer",
+        "path": "world.ir.json",
+        "pointer": "/entities/window.front.mullion.vertical/components/MeshRenderer"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "scene",
+        "kind": "component",
+        "path": "content/scenes/hero-interior.scene.json",
+        "pointer": "/entities/28/components/MeshRenderer"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "component",
+        "id": "window.rear.frame.back.MeshRenderer",
+        "path": "world.ir.json",
+        "pointer": "/entities/window.rear.frame.back/components/MeshRenderer"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "scene",
+        "kind": "component",
+        "path": "content/scenes/hero-interior.scene.json",
+        "pointer": "/entities/18/components/MeshRenderer"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "component",
+        "id": "window.rear.frame.bottom.MeshRenderer",
+        "path": "world.ir.json",
+        "pointer": "/entities/window.rear.frame.bottom/components/MeshRenderer"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "scene",
+        "kind": "component",
+        "path": "content/scenes/hero-interior.scene.json",
+        "pointer": "/entities/20/components/MeshRenderer"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "component",
+        "id": "window.rear.frame.front.MeshRenderer",
+        "path": "world.ir.json",
+        "pointer": "/entities/window.rear.frame.front/components/MeshRenderer"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "scene",
+        "kind": "component",
+        "path": "content/scenes/hero-interior.scene.json",
+        "pointer": "/entities/19/components/MeshRenderer"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "component",
+        "id": "window.rear.frame.top.MeshRenderer",
+        "path": "world.ir.json",
+        "pointer": "/entities/window.rear.frame.top/components/MeshRenderer"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "scene",
+        "kind": "component",
+        "path": "content/scenes/hero-interior.scene.json",
+        "pointer": "/entities/21/components/MeshRenderer"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "component",
+        "id": "window.rear.glow.MeshRenderer",
+        "path": "world.ir.json",
+        "pointer": "/entities/window.rear.glow/components/MeshRenderer"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "scene",
+        "kind": "component",
+        "path": "content/scenes/hero-interior.scene.json",
+        "pointer": "/entities/16/components/MeshRenderer"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "component",
+        "id": "window.rear.mullion.horizontal.MeshRenderer",
+        "path": "world.ir.json",
+        "pointer": "/entities/window.rear.mullion.horizontal/components/MeshRenderer"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "scene",
+        "kind": "component",
+        "path": "content/scenes/hero-interior.scene.json",
+        "pointer": "/entities/23/components/MeshRenderer"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "component",
+        "id": "window.rear.mullion.vertical.MeshRenderer",
+        "path": "world.ir.json",
+        "pointer": "/entities/window.rear.mullion.vertical/components/MeshRenderer"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "scene",
+        "kind": "component",
+        "path": "content/scenes/hero-interior.scene.json",
+        "pointer": "/entities/22/components/MeshRenderer"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "entity",
+        "path": "world.ir.json"
+      },
+      "ownership": "full-reload-required"
+    },
+    {
+      "emitted": {
+        "artifactKind": "entity",
+        "id": "bed.deck.lower",
+        "path": "world.ir.json",
+        "pointer": "/entities/bed.deck.lower"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "scene",
+        "kind": "entity",
+        "path": "content/scenes/hero-interior.scene.json",
+        "pointer": "/entities/48"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "entity",
+        "id": "bed.deck.upper",
+        "path": "world.ir.json",
+        "pointer": "/entities/bed.deck.upper"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "scene",
+        "kind": "entity",
+        "path": "content/scenes/hero-interior.scene.json",
+        "pointer": "/entities/49"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "entity",
+        "id": "bed.post.01",
+        "path": "world.ir.json",
+        "pointer": "/entities/bed.post.01"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "scene",
+        "kind": "entity",
+        "path": "content/scenes/hero-interior.scene.json",
+        "pointer": "/entities/50"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "entity",
+        "id": "bed.post.02",
+        "path": "world.ir.json",
+        "pointer": "/entities/bed.post.02"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "scene",
+        "kind": "entity",
+        "path": "content/scenes/hero-interior.scene.json",
+        "pointer": "/entities/51"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "entity",
+        "id": "bed.post.03",
+        "path": "world.ir.json",
+        "pointer": "/entities/bed.post.03"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "scene",
+        "kind": "entity",
+        "path": "content/scenes/hero-interior.scene.json",
+        "pointer": "/entities/52"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "entity",
+        "id": "bed.post.04",
+        "path": "world.ir.json",
+        "pointer": "/entities/bed.post.04"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "scene",
+        "kind": "entity",
+        "path": "content/scenes/hero-interior.scene.json",
+        "pointer": "/entities/53"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "entity",
+        "id": "bed.rail.back.lower",
+        "path": "world.ir.json",
+        "pointer": "/entities/bed.rail.back.lower"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "scene",
+        "kind": "entity",
+        "path": "content/scenes/hero-interior.scene.json",
+        "pointer": "/entities/55"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "entity",
+        "id": "bed.rail.back.upper",
+        "path": "world.ir.json",
+        "pointer": "/entities/bed.rail.back.upper"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "scene",
+        "kind": "entity",
+        "path": "content/scenes/hero-interior.scene.json",
+        "pointer": "/entities/57"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "entity",
+        "id": "bed.rail.foot",
+        "path": "world.ir.json",
+        "pointer": "/entities/bed.rail.foot"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "scene",
+        "kind": "entity",
+        "path": "content/scenes/hero-interior.scene.json",
+        "pointer": "/entities/59"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "entity",
+        "id": "bed.rail.front.lower",
+        "path": "world.ir.json",
+        "pointer": "/entities/bed.rail.front.lower"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "scene",
+        "kind": "entity",
+        "path": "content/scenes/hero-interior.scene.json",
+        "pointer": "/entities/54"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "entity",
+        "id": "bed.rail.front.upper",
+        "path": "world.ir.json",
+        "pointer": "/entities/bed.rail.front.upper"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "scene",
+        "kind": "entity",
+        "path": "content/scenes/hero-interior.scene.json",
+        "pointer": "/entities/56"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "entity",
+        "id": "bed.rail.head",
+        "path": "world.ir.json",
+        "pointer": "/entities/bed.rail.head"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "scene",
+        "kind": "entity",
+        "path": "content/scenes/hero-interior.scene.json",
+        "pointer": "/entities/58"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "entity",
+        "id": "cabinet.back",
+        "path": "world.ir.json",
+        "pointer": "/entities/cabinet.back"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "scene",
+        "kind": "entity",
+        "path": "content/scenes/hero-interior.scene.json",
+        "pointer": "/entities/41"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "entity",
+        "id": "cabinet.right",
+        "path": "world.ir.json",
+        "pointer": "/entities/cabinet.right"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "scene",
+        "kind": "entity",
+        "path": "content/scenes/hero-interior.scene.json",
+        "pointer": "/entities/42"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "entity",
+        "id": "camera.main",
+        "path": "world.ir.json",
+        "pointer": "/entities/camera.main"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "scene",
+        "kind": "entity",
+        "path": "content/scenes/hero-interior.scene.json",
+        "pointer": "/entities/1"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "entity",
+        "id": "contact.bed",
+        "path": "world.ir.json",
+        "pointer": "/entities/contact.bed"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "scene",
+        "kind": "entity",
+        "path": "content/scenes/hero-interior.scene.json",
+        "pointer": "/entities/72"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "entity",
+        "id": "contact.cabinets",
+        "path": "world.ir.json",
+        "pointer": "/entities/contact.cabinets"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "scene",
+        "kind": "entity",
+        "path": "content/scenes/hero-interior.scene.json",
+        "pointer": "/entities/74"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "entity",
+        "id": "contact.crates",
+        "path": "world.ir.json",
+        "pointer": "/entities/contact.crates"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "scene",
+        "kind": "entity",
+        "path": "content/scenes/hero-interior.scene.json",
+        "pointer": "/entities/71"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "entity",
+        "id": "contact.door-and-accent",
+        "path": "world.ir.json",
+        "pointer": "/entities/contact.door-and-accent"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "scene",
+        "kind": "entity",
+        "path": "content/scenes/hero-interior.scene.json",
+        "pointer": "/entities/73"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "entity",
+        "id": "corridor.back.glow",
+        "path": "world.ir.json",
+        "pointer": "/entities/corridor.back.glow"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "scene",
+        "kind": "entity",
+        "path": "content/scenes/hero-interior.scene.json",
+        "pointer": "/entities/37"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "entity",
+        "id": "corridor.ceiling",
+        "path": "world.ir.json",
+        "pointer": "/entities/corridor.ceiling"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "scene",
+        "kind": "entity",
+        "path": "content/scenes/hero-interior.scene.json",
+        "pointer": "/entities/36"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "entity",
+        "id": "corridor.floor",
+        "path": "world.ir.json",
+        "pointer": "/entities/corridor.floor"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "scene",
+        "kind": "entity",
+        "path": "content/scenes/hero-interior.scene.json",
+        "pointer": "/entities/35"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "entity",
+        "id": "corridor.wall.left",
+        "path": "world.ir.json",
+        "pointer": "/entities/corridor.wall.left"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "scene",
+        "kind": "entity",
+        "path": "content/scenes/hero-interior.scene.json",
+        "pointer": "/entities/33"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "entity",
+        "id": "corridor.wall.right",
+        "path": "world.ir.json",
+        "pointer": "/entities/corridor.wall.right"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "scene",
+        "kind": "entity",
+        "path": "content/scenes/hero-interior.scene.json",
+        "pointer": "/entities/34"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "entity",
+        "id": "crate.wood.01",
+        "path": "world.ir.json",
+        "pointer": "/entities/crate.wood.01"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "scene",
+        "kind": "entity",
+        "path": "content/scenes/hero-interior.scene.json",
+        "pointer": "/entities/43"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "entity",
+        "id": "crate.wood.02",
+        "path": "world.ir.json",
+        "pointer": "/entities/crate.wood.02"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "scene",
+        "kind": "entity",
+        "path": "content/scenes/hero-interior.scene.json",
+        "pointer": "/entities/44"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "entity",
+        "id": "crate.wood.03",
+        "path": "world.ir.json",
+        "pointer": "/entities/crate.wood.03"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "scene",
+        "kind": "entity",
+        "path": "content/scenes/hero-interior.scene.json",
+        "pointer": "/entities/45"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "entity",
+        "id": "crate.yellow",
+        "path": "world.ir.json",
+        "pointer": "/entities/crate.yellow"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "scene",
+        "kind": "entity",
+        "path": "content/scenes/hero-interior.scene.json",
+        "pointer": "/entities/46"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "entity",
+        "id": "debris.01",
+        "path": "world.ir.json",
+        "pointer": "/entities/debris.01"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "scene",
+        "kind": "entity",
+        "path": "content/scenes/hero-interior.scene.json",
+        "pointer": "/entities/62"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "entity",
+        "id": "debris.02",
+        "path": "world.ir.json",
+        "pointer": "/entities/debris.02"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "scene",
+        "kind": "entity",
+        "path": "content/scenes/hero-interior.scene.json",
+        "pointer": "/entities/63"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "entity",
+        "id": "debris.03",
+        "path": "world.ir.json",
+        "pointer": "/entities/debris.03"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "scene",
+        "kind": "entity",
+        "path": "content/scenes/hero-interior.scene.json",
+        "pointer": "/entities/64"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "entity",
+        "id": "debris.04",
+        "path": "world.ir.json",
+        "pointer": "/entities/debris.04"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "scene",
+        "kind": "entity",
+        "path": "content/scenes/hero-interior.scene.json",
+        "pointer": "/entities/65"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "entity",
+        "id": "door.fallen",
+        "path": "world.ir.json",
+        "pointer": "/entities/door.fallen"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "scene",
+        "kind": "entity",
+        "path": "content/scenes/hero-interior.scene.json",
+        "pointer": "/entities/47"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "entity",
+        "id": "doorway.frame.left",
+        "path": "world.ir.json",
+        "pointer": "/entities/doorway.frame.left"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "scene",
+        "kind": "entity",
+        "path": "content/scenes/hero-interior.scene.json",
+        "pointer": "/entities/30"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "entity",
+        "id": "doorway.frame.right",
+        "path": "world.ir.json",
+        "pointer": "/entities/doorway.frame.right"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "scene",
+        "kind": "entity",
+        "path": "content/scenes/hero-interior.scene.json",
+        "pointer": "/entities/31"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "entity",
+        "id": "doorway.frame.top",
+        "path": "world.ir.json",
+        "pointer": "/entities/doorway.frame.top"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "scene",
+        "kind": "entity",
+        "path": "content/scenes/hero-interior.scene.json",
+        "pointer": "/entities/32"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "entity",
+        "id": "lamp.fixture",
+        "path": "world.ir.json",
+        "pointer": "/entities/lamp.fixture"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "scene",
+        "kind": "entity",
+        "path": "content/scenes/hero-interior.scene.json",
+        "pointer": "/entities/66"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "entity",
+        "id": "light.corridor",
+        "path": "world.ir.json",
+        "pointer": "/entities/light.corridor"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "scene",
+        "kind": "entity",
+        "path": "content/scenes/hero-interior.scene.json",
+        "pointer": "/entities/69"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "entity",
+        "id": "light.lamp",
+        "path": "world.ir.json",
+        "pointer": "/entities/light.lamp"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "scene",
+        "kind": "entity",
+        "path": "content/scenes/hero-interior.scene.json",
+        "pointer": "/entities/70"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "entity",
+        "id": "light.window.fill",
+        "path": "world.ir.json",
+        "pointer": "/entities/light.window.fill"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "scene",
+        "kind": "entity",
+        "path": "content/scenes/hero-interior.scene.json",
+        "pointer": "/entities/68"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "entity",
+        "id": "light.window.key",
+        "path": "world.ir.json",
+        "pointer": "/entities/light.window.key"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "scene",
+        "kind": "entity",
+        "path": "content/scenes/hero-interior.scene.json",
+        "pointer": "/entities/67"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "entity",
+        "id": "pillar.center",
+        "path": "world.ir.json",
+        "pointer": "/entities/pillar.center"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "scene",
+        "kind": "entity",
+        "path": "content/scenes/hero-interior.scene.json",
+        "pointer": "/entities/38"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "entity",
+        "id": "pipe.ceiling.01",
+        "path": "world.ir.json",
+        "pointer": "/entities/pipe.ceiling.01"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "scene",
+        "kind": "entity",
+        "path": "content/scenes/hero-interior.scene.json",
+        "pointer": "/entities/60"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "entity",
+        "id": "pipe.ceiling.02",
+        "path": "world.ir.json",
+        "pointer": "/entities/pipe.ceiling.02"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "scene",
+        "kind": "entity",
+        "path": "content/scenes/hero-interior.scene.json",
+        "pointer": "/entities/61"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "entity",
+        "id": "puddle.foreground",
+        "path": "world.ir.json",
+        "pointer": "/entities/puddle.foreground"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "scene",
+        "kind": "entity",
+        "path": "content/scenes/hero-interior.scene.json",
+        "pointer": "/entities/39"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "entity",
+        "id": "puddle.window",
+        "path": "world.ir.json",
+        "pointer": "/entities/puddle.window"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "scene",
+        "kind": "entity",
+        "path": "content/scenes/hero-interior.scene.json",
+        "pointer": "/entities/40"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "entity",
+        "id": "room.ceiling",
+        "path": "world.ir.json",
+        "pointer": "/entities/room.ceiling"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "scene",
+        "kind": "entity",
+        "path": "content/scenes/hero-interior.scene.json",
+        "pointer": "/entities/3"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "entity",
+        "id": "room.floor",
+        "path": "world.ir.json",
+        "pointer": "/entities/room.floor"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "scene",
+        "kind": "entity",
+        "path": "content/scenes/hero-interior.scene.json",
+        "pointer": "/entities/2"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "entity",
+        "id": "room.wall.back.band.left",
+        "path": "world.ir.json",
+        "pointer": "/entities/room.wall.back.band.left"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "scene",
+        "kind": "entity",
+        "path": "content/scenes/hero-interior.scene.json",
+        "pointer": "/entities/14"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "entity",
+        "id": "room.wall.back.band.right",
+        "path": "world.ir.json",
+        "pointer": "/entities/room.wall.back.band.right"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "scene",
+        "kind": "entity",
+        "path": "content/scenes/hero-interior.scene.json",
+        "pointer": "/entities/15"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "entity",
+        "id": "room.wall.back.left",
+        "path": "world.ir.json",
+        "pointer": "/entities/room.wall.back.left"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "scene",
+        "kind": "entity",
+        "path": "content/scenes/hero-interior.scene.json",
+        "pointer": "/entities/11"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "entity",
+        "id": "room.wall.back.right",
+        "path": "world.ir.json",
+        "pointer": "/entities/room.wall.back.right"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "scene",
+        "kind": "entity",
+        "path": "content/scenes/hero-interior.scene.json",
+        "pointer": "/entities/12"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "entity",
+        "id": "room.wall.back.upper",
+        "path": "world.ir.json",
+        "pointer": "/entities/room.wall.back.upper"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "scene",
+        "kind": "entity",
+        "path": "content/scenes/hero-interior.scene.json",
+        "pointer": "/entities/13"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "entity",
+        "id": "room.wall.front",
+        "path": "world.ir.json",
+        "pointer": "/entities/room.wall.front"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "scene",
+        "kind": "entity",
+        "path": "content/scenes/hero-interior.scene.json",
+        "pointer": "/entities/5"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "entity",
+        "id": "room.wall.left.lower",
+        "path": "world.ir.json",
+        "pointer": "/entities/room.wall.left.lower"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "scene",
+        "kind": "entity",
+        "path": "content/scenes/hero-interior.scene.json",
+        "pointer": "/entities/6"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "entity",
+        "id": "room.wall.left.pier.back",
+        "path": "world.ir.json",
+        "pointer": "/entities/room.wall.left.pier.back"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "scene",
+        "kind": "entity",
+        "path": "content/scenes/hero-interior.scene.json",
+        "pointer": "/entities/8"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "entity",
+        "id": "room.wall.left.pier.front",
+        "path": "world.ir.json",
+        "pointer": "/entities/room.wall.left.pier.front"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "scene",
+        "kind": "entity",
+        "path": "content/scenes/hero-interior.scene.json",
+        "pointer": "/entities/10"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "entity",
+        "id": "room.wall.left.pier.middle",
+        "path": "world.ir.json",
+        "pointer": "/entities/room.wall.left.pier.middle"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "scene",
+        "kind": "entity",
+        "path": "content/scenes/hero-interior.scene.json",
+        "pointer": "/entities/9"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "entity",
+        "id": "room.wall.left.upper",
+        "path": "world.ir.json",
+        "pointer": "/entities/room.wall.left.upper"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "scene",
+        "kind": "entity",
+        "path": "content/scenes/hero-interior.scene.json",
+        "pointer": "/entities/7"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "entity",
+        "id": "room.wall.right",
+        "path": "world.ir.json",
+        "pointer": "/entities/room.wall.right"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "scene",
+        "kind": "entity",
+        "path": "content/scenes/hero-interior.scene.json",
+        "pointer": "/entities/4"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "entity",
+        "id": "visual.provenance",
+        "path": "world.ir.json",
+        "pointer": "/entities/visual.provenance"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "scene",
+        "kind": "entity",
+        "path": "content/scenes/hero-interior.scene.json",
+        "pointer": "/entities/0"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "entity",
+        "id": "window.front.frame.back",
+        "path": "world.ir.json",
+        "pointer": "/entities/window.front.frame.back"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "scene",
+        "kind": "entity",
+        "path": "content/scenes/hero-interior.scene.json",
+        "pointer": "/entities/24"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "entity",
+        "id": "window.front.frame.bottom",
+        "path": "world.ir.json",
+        "pointer": "/entities/window.front.frame.bottom"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "scene",
+        "kind": "entity",
+        "path": "content/scenes/hero-interior.scene.json",
+        "pointer": "/entities/26"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "entity",
+        "id": "window.front.frame.front",
+        "path": "world.ir.json",
+        "pointer": "/entities/window.front.frame.front"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "scene",
+        "kind": "entity",
+        "path": "content/scenes/hero-interior.scene.json",
+        "pointer": "/entities/25"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "entity",
+        "id": "window.front.frame.top",
+        "path": "world.ir.json",
+        "pointer": "/entities/window.front.frame.top"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "scene",
+        "kind": "entity",
+        "path": "content/scenes/hero-interior.scene.json",
+        "pointer": "/entities/27"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "entity",
+        "id": "window.front.glow",
+        "path": "world.ir.json",
+        "pointer": "/entities/window.front.glow"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "scene",
+        "kind": "entity",
+        "path": "content/scenes/hero-interior.scene.json",
+        "pointer": "/entities/17"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "entity",
+        "id": "window.front.mullion.horizontal",
+        "path": "world.ir.json",
+        "pointer": "/entities/window.front.mullion.horizontal"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "scene",
+        "kind": "entity",
+        "path": "content/scenes/hero-interior.scene.json",
+        "pointer": "/entities/29"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "entity",
+        "id": "window.front.mullion.vertical",
+        "path": "world.ir.json",
+        "pointer": "/entities/window.front.mullion.vertical"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "scene",
+        "kind": "entity",
+        "path": "content/scenes/hero-interior.scene.json",
+        "pointer": "/entities/28"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "entity",
+        "id": "window.rear.frame.back",
+        "path": "world.ir.json",
+        "pointer": "/entities/window.rear.frame.back"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "scene",
+        "kind": "entity",
+        "path": "content/scenes/hero-interior.scene.json",
+        "pointer": "/entities/18"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "entity",
+        "id": "window.rear.frame.bottom",
+        "path": "world.ir.json",
+        "pointer": "/entities/window.rear.frame.bottom"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "scene",
+        "kind": "entity",
+        "path": "content/scenes/hero-interior.scene.json",
+        "pointer": "/entities/20"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "entity",
+        "id": "window.rear.frame.front",
+        "path": "world.ir.json",
+        "pointer": "/entities/window.rear.frame.front"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "scene",
+        "kind": "entity",
+        "path": "content/scenes/hero-interior.scene.json",
+        "pointer": "/entities/19"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "entity",
+        "id": "window.rear.frame.top",
+        "path": "world.ir.json",
+        "pointer": "/entities/window.rear.frame.top"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "scene",
+        "kind": "entity",
+        "path": "content/scenes/hero-interior.scene.json",
+        "pointer": "/entities/21"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "entity",
+        "id": "window.rear.glow",
+        "path": "world.ir.json",
+        "pointer": "/entities/window.rear.glow"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "scene",
+        "kind": "entity",
+        "path": "content/scenes/hero-interior.scene.json",
+        "pointer": "/entities/16"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "entity",
+        "id": "window.rear.mullion.horizontal",
+        "path": "world.ir.json",
+        "pointer": "/entities/window.rear.mullion.horizontal"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "scene",
+        "kind": "entity",
+        "path": "content/scenes/hero-interior.scene.json",
+        "pointer": "/entities/23"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "entity",
+        "id": "window.rear.mullion.vertical",
+        "path": "world.ir.json",
+        "pointer": "/entities/window.rear.mullion.vertical"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "scene",
+        "kind": "entity",
+        "path": "content/scenes/hero-interior.scene.json",
+        "pointer": "/entities/22"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "mesh-renderer-material-ref",
+        "id": "bed.deck.lower.MeshRenderer.material",
+        "path": "world.ir.json",
+        "pointer": "/entities/bed.deck.lower/components/MeshRenderer/material"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "material",
+        "kind": "material",
+        "path": "content/materials/arena.materials.json",
+        "pointer": "/materials/5"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "mesh-renderer-material-ref",
+        "id": "bed.deck.upper.MeshRenderer.material",
+        "path": "world.ir.json",
+        "pointer": "/entities/bed.deck.upper/components/MeshRenderer/material"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "material",
+        "kind": "material",
+        "path": "content/materials/arena.materials.json",
+        "pointer": "/materials/4"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "mesh-renderer-material-ref",
+        "id": "bed.post.01.MeshRenderer.material",
+        "path": "world.ir.json",
+        "pointer": "/entities/bed.post.01/components/MeshRenderer/material"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "material",
+        "kind": "material",
+        "path": "content/materials/arena.materials.json",
+        "pointer": "/materials/5"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "mesh-renderer-material-ref",
+        "id": "bed.post.02.MeshRenderer.material",
+        "path": "world.ir.json",
+        "pointer": "/entities/bed.post.02/components/MeshRenderer/material"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "material",
+        "kind": "material",
+        "path": "content/materials/arena.materials.json",
+        "pointer": "/materials/5"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "mesh-renderer-material-ref",
+        "id": "bed.post.03.MeshRenderer.material",
+        "path": "world.ir.json",
+        "pointer": "/entities/bed.post.03/components/MeshRenderer/material"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "material",
+        "kind": "material",
+        "path": "content/materials/arena.materials.json",
+        "pointer": "/materials/5"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "mesh-renderer-material-ref",
+        "id": "bed.post.04.MeshRenderer.material",
+        "path": "world.ir.json",
+        "pointer": "/entities/bed.post.04/components/MeshRenderer/material"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "material",
+        "kind": "material",
+        "path": "content/materials/arena.materials.json",
+        "pointer": "/materials/5"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "mesh-renderer-material-ref",
+        "id": "bed.rail.back.lower.MeshRenderer.material",
+        "path": "world.ir.json",
+        "pointer": "/entities/bed.rail.back.lower/components/MeshRenderer/material"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "material",
+        "kind": "material",
+        "path": "content/materials/arena.materials.json",
+        "pointer": "/materials/4"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "mesh-renderer-material-ref",
+        "id": "bed.rail.back.upper.MeshRenderer.material",
+        "path": "world.ir.json",
+        "pointer": "/entities/bed.rail.back.upper/components/MeshRenderer/material"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "material",
+        "kind": "material",
+        "path": "content/materials/arena.materials.json",
+        "pointer": "/materials/4"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "mesh-renderer-material-ref",
+        "id": "bed.rail.foot.MeshRenderer.material",
+        "path": "world.ir.json",
+        "pointer": "/entities/bed.rail.foot/components/MeshRenderer/material"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "material",
+        "kind": "material",
+        "path": "content/materials/arena.materials.json",
+        "pointer": "/materials/5"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "mesh-renderer-material-ref",
+        "id": "bed.rail.front.lower.MeshRenderer.material",
+        "path": "world.ir.json",
+        "pointer": "/entities/bed.rail.front.lower/components/MeshRenderer/material"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "material",
+        "kind": "material",
+        "path": "content/materials/arena.materials.json",
+        "pointer": "/materials/4"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "mesh-renderer-material-ref",
+        "id": "bed.rail.front.upper.MeshRenderer.material",
+        "path": "world.ir.json",
+        "pointer": "/entities/bed.rail.front.upper/components/MeshRenderer/material"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "material",
+        "kind": "material",
+        "path": "content/materials/arena.materials.json",
+        "pointer": "/materials/4"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "mesh-renderer-material-ref",
+        "id": "bed.rail.head.MeshRenderer.material",
+        "path": "world.ir.json",
+        "pointer": "/entities/bed.rail.head/components/MeshRenderer/material"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "material",
+        "kind": "material",
+        "path": "content/materials/arena.materials.json",
+        "pointer": "/materials/5"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "mesh-renderer-material-ref",
+        "id": "cabinet.back.MeshRenderer.material",
+        "path": "world.ir.json",
+        "pointer": "/entities/cabinet.back/components/MeshRenderer/material"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "material",
+        "kind": "material",
+        "path": "content/materials/arena.materials.json",
+        "pointer": "/materials/4"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "mesh-renderer-material-ref",
+        "id": "cabinet.right.MeshRenderer.material",
+        "path": "world.ir.json",
+        "pointer": "/entities/cabinet.right/components/MeshRenderer/material"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "material",
+        "kind": "material",
+        "path": "content/materials/arena.materials.json",
+        "pointer": "/materials/5"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "mesh-renderer-material-ref",
+        "id": "corridor.back.glow.MeshRenderer.material",
+        "path": "world.ir.json",
+        "pointer": "/entities/corridor.back.glow/components/MeshRenderer/material"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "material",
+        "kind": "material",
+        "path": "content/materials/arena.materials.json",
+        "pointer": "/materials/11"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "mesh-renderer-material-ref",
+        "id": "corridor.ceiling.MeshRenderer.material",
+        "path": "world.ir.json",
+        "pointer": "/entities/corridor.ceiling/components/MeshRenderer/material"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "material",
+        "kind": "material",
+        "path": "content/materials/arena.materials.json",
+        "pointer": "/materials/2"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "mesh-renderer-material-ref",
+        "id": "corridor.floor.MeshRenderer.material",
+        "path": "world.ir.json",
+        "pointer": "/entities/corridor.floor/components/MeshRenderer/material"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "material",
+        "kind": "material",
+        "path": "content/materials/arena.materials.json",
+        "pointer": "/materials/0"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "mesh-renderer-material-ref",
+        "id": "corridor.wall.left.MeshRenderer.material",
+        "path": "world.ir.json",
+        "pointer": "/entities/corridor.wall.left/components/MeshRenderer/material"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "material",
+        "kind": "material",
+        "path": "content/materials/arena.materials.json",
+        "pointer": "/materials/2"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "mesh-renderer-material-ref",
+        "id": "corridor.wall.right.MeshRenderer.material",
+        "path": "world.ir.json",
+        "pointer": "/entities/corridor.wall.right/components/MeshRenderer/material"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "material",
+        "kind": "material",
+        "path": "content/materials/arena.materials.json",
+        "pointer": "/materials/1"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "mesh-renderer-material-ref",
+        "id": "crate.wood.01.MeshRenderer.material",
+        "path": "world.ir.json",
+        "pointer": "/entities/crate.wood.01/components/MeshRenderer/material"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "material",
+        "kind": "material",
+        "path": "content/materials/arena.materials.json",
+        "pointer": "/materials/6"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "mesh-renderer-material-ref",
+        "id": "crate.wood.02.MeshRenderer.material",
+        "path": "world.ir.json",
+        "pointer": "/entities/crate.wood.02/components/MeshRenderer/material"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "material",
+        "kind": "material",
+        "path": "content/materials/arena.materials.json",
+        "pointer": "/materials/6"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "mesh-renderer-material-ref",
+        "id": "crate.wood.03.MeshRenderer.material",
+        "path": "world.ir.json",
+        "pointer": "/entities/crate.wood.03/components/MeshRenderer/material"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "material",
+        "kind": "material",
+        "path": "content/materials/arena.materials.json",
+        "pointer": "/materials/6"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "mesh-renderer-material-ref",
+        "id": "crate.yellow.MeshRenderer.material",
+        "path": "world.ir.json",
+        "pointer": "/entities/crate.yellow/components/MeshRenderer/material"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "material",
+        "kind": "material",
+        "path": "content/materials/arena.materials.json",
+        "pointer": "/materials/8"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "mesh-renderer-material-ref",
+        "id": "debris.01.MeshRenderer.material",
+        "path": "world.ir.json",
+        "pointer": "/entities/debris.01/components/MeshRenderer/material"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "material",
+        "kind": "material",
+        "path": "content/materials/arena.materials.json",
+        "pointer": "/materials/13"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "mesh-renderer-material-ref",
+        "id": "debris.02.MeshRenderer.material",
+        "path": "world.ir.json",
+        "pointer": "/entities/debris.02/components/MeshRenderer/material"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "material",
+        "kind": "material",
+        "path": "content/materials/arena.materials.json",
+        "pointer": "/materials/13"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "mesh-renderer-material-ref",
+        "id": "debris.03.MeshRenderer.material",
+        "path": "world.ir.json",
+        "pointer": "/entities/debris.03/components/MeshRenderer/material"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "material",
+        "kind": "material",
+        "path": "content/materials/arena.materials.json",
+        "pointer": "/materials/4"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "mesh-renderer-material-ref",
+        "id": "debris.04.MeshRenderer.material",
+        "path": "world.ir.json",
+        "pointer": "/entities/debris.04/components/MeshRenderer/material"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "material",
+        "kind": "material",
+        "path": "content/materials/arena.materials.json",
+        "pointer": "/materials/6"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "mesh-renderer-material-ref",
+        "id": "door.fallen.MeshRenderer.material",
+        "path": "world.ir.json",
+        "pointer": "/entities/door.fallen/components/MeshRenderer/material"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "material",
+        "kind": "material",
+        "path": "content/materials/arena.materials.json",
+        "pointer": "/materials/7"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "mesh-renderer-material-ref",
+        "id": "doorway.frame.left.MeshRenderer.material",
+        "path": "world.ir.json",
+        "pointer": "/entities/doorway.frame.left/components/MeshRenderer/material"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "material",
+        "kind": "material",
+        "path": "content/materials/arena.materials.json",
+        "pointer": "/materials/4"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "mesh-renderer-material-ref",
+        "id": "doorway.frame.right.MeshRenderer.material",
+        "path": "world.ir.json",
+        "pointer": "/entities/doorway.frame.right/components/MeshRenderer/material"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "material",
+        "kind": "material",
+        "path": "content/materials/arena.materials.json",
+        "pointer": "/materials/4"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "mesh-renderer-material-ref",
+        "id": "doorway.frame.top.MeshRenderer.material",
+        "path": "world.ir.json",
+        "pointer": "/entities/doorway.frame.top/components/MeshRenderer/material"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "material",
+        "kind": "material",
+        "path": "content/materials/arena.materials.json",
+        "pointer": "/materials/4"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "mesh-renderer-material-ref",
+        "id": "lamp.fixture.MeshRenderer.material",
+        "path": "world.ir.json",
+        "pointer": "/entities/lamp.fixture/components/MeshRenderer/material"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "material",
+        "kind": "material",
+        "path": "content/materials/arena.materials.json",
+        "pointer": "/materials/12"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "mesh-renderer-material-ref",
+        "id": "pillar.center.MeshRenderer.material",
+        "path": "world.ir.json",
+        "pointer": "/entities/pillar.center/components/MeshRenderer/material"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "material",
+        "kind": "material",
+        "path": "content/materials/arena.materials.json",
+        "pointer": "/materials/1"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "mesh-renderer-material-ref",
+        "id": "pipe.ceiling.01.MeshRenderer.material",
+        "path": "world.ir.json",
+        "pointer": "/entities/pipe.ceiling.01/components/MeshRenderer/material"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "material",
+        "kind": "material",
+        "path": "content/materials/arena.materials.json",
+        "pointer": "/materials/4"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "mesh-renderer-material-ref",
+        "id": "pipe.ceiling.02.MeshRenderer.material",
+        "path": "world.ir.json",
+        "pointer": "/entities/pipe.ceiling.02/components/MeshRenderer/material"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "material",
+        "kind": "material",
+        "path": "content/materials/arena.materials.json",
+        "pointer": "/materials/5"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "mesh-renderer-material-ref",
+        "id": "puddle.foreground.MeshRenderer.material",
+        "path": "world.ir.json",
+        "pointer": "/entities/puddle.foreground/components/MeshRenderer/material"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "material",
+        "kind": "material",
+        "path": "content/materials/arena.materials.json",
+        "pointer": "/materials/9"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "mesh-renderer-material-ref",
+        "id": "puddle.window.MeshRenderer.material",
+        "path": "world.ir.json",
+        "pointer": "/entities/puddle.window/components/MeshRenderer/material"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "material",
+        "kind": "material",
+        "path": "content/materials/arena.materials.json",
+        "pointer": "/materials/9"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "mesh-renderer-material-ref",
+        "id": "room.ceiling.MeshRenderer.material",
+        "path": "world.ir.json",
+        "pointer": "/entities/room.ceiling/components/MeshRenderer/material"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "material",
+        "kind": "material",
+        "path": "content/materials/arena.materials.json",
+        "pointer": "/materials/2"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "mesh-renderer-material-ref",
+        "id": "room.floor.MeshRenderer.material",
+        "path": "world.ir.json",
+        "pointer": "/entities/room.floor/components/MeshRenderer/material"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "material",
+        "kind": "material",
+        "path": "content/materials/arena.materials.json",
+        "pointer": "/materials/0"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "mesh-renderer-material-ref",
+        "id": "room.wall.back.band.left.MeshRenderer.material",
+        "path": "world.ir.json",
+        "pointer": "/entities/room.wall.back.band.left/components/MeshRenderer/material"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "material",
+        "kind": "material",
+        "path": "content/materials/arena.materials.json",
+        "pointer": "/materials/3"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "mesh-renderer-material-ref",
+        "id": "room.wall.back.band.right.MeshRenderer.material",
+        "path": "world.ir.json",
+        "pointer": "/entities/room.wall.back.band.right/components/MeshRenderer/material"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "material",
+        "kind": "material",
+        "path": "content/materials/arena.materials.json",
+        "pointer": "/materials/3"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "mesh-renderer-material-ref",
+        "id": "room.wall.back.left.MeshRenderer.material",
+        "path": "world.ir.json",
+        "pointer": "/entities/room.wall.back.left/components/MeshRenderer/material"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "material",
+        "kind": "material",
+        "path": "content/materials/arena.materials.json",
+        "pointer": "/materials/1"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "mesh-renderer-material-ref",
+        "id": "room.wall.back.right.MeshRenderer.material",
+        "path": "world.ir.json",
+        "pointer": "/entities/room.wall.back.right/components/MeshRenderer/material"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "material",
+        "kind": "material",
+        "path": "content/materials/arena.materials.json",
+        "pointer": "/materials/1"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "mesh-renderer-material-ref",
+        "id": "room.wall.back.upper.MeshRenderer.material",
+        "path": "world.ir.json",
+        "pointer": "/entities/room.wall.back.upper/components/MeshRenderer/material"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "material",
+        "kind": "material",
+        "path": "content/materials/arena.materials.json",
+        "pointer": "/materials/2"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "mesh-renderer-material-ref",
+        "id": "room.wall.front.MeshRenderer.material",
+        "path": "world.ir.json",
+        "pointer": "/entities/room.wall.front/components/MeshRenderer/material"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "material",
+        "kind": "material",
+        "path": "content/materials/arena.materials.json",
+        "pointer": "/materials/2"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "mesh-renderer-material-ref",
+        "id": "room.wall.left.lower.MeshRenderer.material",
+        "path": "world.ir.json",
+        "pointer": "/entities/room.wall.left.lower/components/MeshRenderer/material"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "material",
+        "kind": "material",
+        "path": "content/materials/arena.materials.json",
+        "pointer": "/materials/1"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "mesh-renderer-material-ref",
+        "id": "room.wall.left.pier.back.MeshRenderer.material",
+        "path": "world.ir.json",
+        "pointer": "/entities/room.wall.left.pier.back/components/MeshRenderer/material"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "material",
+        "kind": "material",
+        "path": "content/materials/arena.materials.json",
+        "pointer": "/materials/1"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "mesh-renderer-material-ref",
+        "id": "room.wall.left.pier.front.MeshRenderer.material",
+        "path": "world.ir.json",
+        "pointer": "/entities/room.wall.left.pier.front/components/MeshRenderer/material"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "material",
+        "kind": "material",
+        "path": "content/materials/arena.materials.json",
+        "pointer": "/materials/1"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "mesh-renderer-material-ref",
+        "id": "room.wall.left.pier.middle.MeshRenderer.material",
+        "path": "world.ir.json",
+        "pointer": "/entities/room.wall.left.pier.middle/components/MeshRenderer/material"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "material",
+        "kind": "material",
+        "path": "content/materials/arena.materials.json",
+        "pointer": "/materials/1"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "mesh-renderer-material-ref",
+        "id": "room.wall.left.upper.MeshRenderer.material",
+        "path": "world.ir.json",
+        "pointer": "/entities/room.wall.left.upper/components/MeshRenderer/material"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "material",
+        "kind": "material",
+        "path": "content/materials/arena.materials.json",
+        "pointer": "/materials/1"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "mesh-renderer-material-ref",
+        "id": "room.wall.right.MeshRenderer.material",
+        "path": "world.ir.json",
+        "pointer": "/entities/room.wall.right/components/MeshRenderer/material"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "material",
+        "kind": "material",
+        "path": "content/materials/arena.materials.json",
+        "pointer": "/materials/3"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "mesh-renderer-material-ref",
+        "id": "window.front.frame.back.MeshRenderer.material",
+        "path": "world.ir.json",
+        "pointer": "/entities/window.front.frame.back/components/MeshRenderer/material"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "material",
+        "kind": "material",
+        "path": "content/materials/arena.materials.json",
+        "pointer": "/materials/5"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "mesh-renderer-material-ref",
+        "id": "window.front.frame.bottom.MeshRenderer.material",
+        "path": "world.ir.json",
+        "pointer": "/entities/window.front.frame.bottom/components/MeshRenderer/material"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "material",
+        "kind": "material",
+        "path": "content/materials/arena.materials.json",
+        "pointer": "/materials/5"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "mesh-renderer-material-ref",
+        "id": "window.front.frame.front.MeshRenderer.material",
+        "path": "world.ir.json",
+        "pointer": "/entities/window.front.frame.front/components/MeshRenderer/material"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "material",
+        "kind": "material",
+        "path": "content/materials/arena.materials.json",
+        "pointer": "/materials/5"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "mesh-renderer-material-ref",
+        "id": "window.front.frame.top.MeshRenderer.material",
+        "path": "world.ir.json",
+        "pointer": "/entities/window.front.frame.top/components/MeshRenderer/material"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "material",
+        "kind": "material",
+        "path": "content/materials/arena.materials.json",
+        "pointer": "/materials/5"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "mesh-renderer-material-ref",
+        "id": "window.front.glow.MeshRenderer.material",
+        "path": "world.ir.json",
+        "pointer": "/entities/window.front.glow/components/MeshRenderer/material"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "material",
+        "kind": "material",
+        "path": "content/materials/arena.materials.json",
+        "pointer": "/materials/10"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "mesh-renderer-material-ref",
+        "id": "window.front.mullion.horizontal.MeshRenderer.material",
+        "path": "world.ir.json",
+        "pointer": "/entities/window.front.mullion.horizontal/components/MeshRenderer/material"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "material",
+        "kind": "material",
+        "path": "content/materials/arena.materials.json",
+        "pointer": "/materials/4"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "mesh-renderer-material-ref",
+        "id": "window.front.mullion.vertical.MeshRenderer.material",
+        "path": "world.ir.json",
+        "pointer": "/entities/window.front.mullion.vertical/components/MeshRenderer/material"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "material",
+        "kind": "material",
+        "path": "content/materials/arena.materials.json",
+        "pointer": "/materials/4"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "mesh-renderer-material-ref",
+        "id": "window.rear.frame.back.MeshRenderer.material",
+        "path": "world.ir.json",
+        "pointer": "/entities/window.rear.frame.back/components/MeshRenderer/material"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "material",
+        "kind": "material",
+        "path": "content/materials/arena.materials.json",
+        "pointer": "/materials/5"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "mesh-renderer-material-ref",
+        "id": "window.rear.frame.bottom.MeshRenderer.material",
+        "path": "world.ir.json",
+        "pointer": "/entities/window.rear.frame.bottom/components/MeshRenderer/material"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "material",
+        "kind": "material",
+        "path": "content/materials/arena.materials.json",
+        "pointer": "/materials/5"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "mesh-renderer-material-ref",
+        "id": "window.rear.frame.front.MeshRenderer.material",
+        "path": "world.ir.json",
+        "pointer": "/entities/window.rear.frame.front/components/MeshRenderer/material"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "material",
+        "kind": "material",
+        "path": "content/materials/arena.materials.json",
+        "pointer": "/materials/5"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "mesh-renderer-material-ref",
+        "id": "window.rear.frame.top.MeshRenderer.material",
+        "path": "world.ir.json",
+        "pointer": "/entities/window.rear.frame.top/components/MeshRenderer/material"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "material",
+        "kind": "material",
+        "path": "content/materials/arena.materials.json",
+        "pointer": "/materials/5"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "mesh-renderer-material-ref",
+        "id": "window.rear.glow.MeshRenderer.material",
+        "path": "world.ir.json",
+        "pointer": "/entities/window.rear.glow/components/MeshRenderer/material"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "material",
+        "kind": "material",
+        "path": "content/materials/arena.materials.json",
+        "pointer": "/materials/10"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "mesh-renderer-material-ref",
+        "id": "window.rear.mullion.horizontal.MeshRenderer.material",
+        "path": "world.ir.json",
+        "pointer": "/entities/window.rear.mullion.horizontal/components/MeshRenderer/material"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "material",
+        "kind": "material",
+        "path": "content/materials/arena.materials.json",
+        "pointer": "/materials/4"
+      }
+    },
+    {
+      "emitted": {
+        "artifactKind": "mesh-renderer-material-ref",
+        "id": "window.rear.mullion.vertical.MeshRenderer.material",
+        "path": "world.ir.json",
+        "pointer": "/entities/window.rear.mullion.vertical/components/MeshRenderer/material"
+      },
+      "ownership": "source-persistable",
+      "source": {
+        "category": "material",
+        "kind": "material",
+        "path": "content/materials/arena.materials.json",
+        "pointer": "/materials/4"
+      }
+    }
+  ],
+  "schema": "threenative.authoring-provenance",
+  "version": "0.1.0"
+}

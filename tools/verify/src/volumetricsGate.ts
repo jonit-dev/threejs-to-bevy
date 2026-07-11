@@ -70,7 +70,7 @@ export function validateVolumetricsEvidence(evidence: VolumetricsEvidence): Veri
   const nativeBaseLift = evidence.nativeMetrics.baseFogLuminance - evidence.nativeHeightControlMetrics.baseFogLuminance;
   const nativeTopLift = evidence.nativeMetrics.topFogLuminance - evidence.nativeHeightControlMetrics.topFogLuminance;
   if (!(Math.abs(nativeBaseLift) + Math.abs(nativeTopLift) > 0.01)) {
-    diagnostics.push(diagnostic("TN_VERIFY_VOLUMETRICS_HEIGHT_CONTROL_FAILED", "native enabled capture must show a measurable homogeneous-medium response relative to its height-fog-disabled control.", evidence.nativePath));
+    diagnostics.push(diagnostic("TN_VERIFY_VOLUMETRICS_HEIGHT_CONTROL_FAILED", "native enabled capture must show a measurable analytic height-fog response relative to its disabled control.", evidence.nativePath));
   }
   if (Math.abs(evidence.webMetrics.shaftContrast - evidence.nativeMetrics.shaftContrast) > 0.6) {
     diagnostics.push(diagnostic("TN_VERIFY_VOLUMETRICS_SHAFT_PARITY_MISMATCH", "Web and native adapter-calibrated shaft contrast must remain inside the bounded 0.6 region envelope.", evidence.nativePath));
@@ -226,8 +226,8 @@ function validateFeatureReports(evidence: VolumetricsEvidence, diagnostics: Veri
   if (web?.godRays?.applied !== true || web.godRays.mode !== "directional-shadow-map-raymarch") {
     diagnostics.push(diagnostic("TN_VERIFY_VOLUMETRICS_WEB_REPORT_MISSING", "Web conformance must report the applied directional shadow-map god-ray path.", evidence.webPath));
   }
-  if (native?.heightFog?.applied !== true || native.heightFog.mode !== "homogeneous-medium-approximation" || native.heightFog.reason !== "bevy-0.14-no-height-density-field") {
-    diagnostics.push(diagnostic("TN_VERIFY_VOLUMETRICS_NATIVE_REPORT_MISSING", "Native conformance must report Bevy 0.14's bounded homogeneous height-fog approximation and reason.", evidence.nativePath));
+  if (native?.heightFog?.applied !== true || native.heightFog.mode !== "analytic-height-post-pass" || native.heightFog.reason !== undefined) {
+    diagnostics.push(diagnostic("TN_VERIFY_VOLUMETRICS_NATIVE_REPORT_MISSING", "Native conformance must report the applied analytic height-fog post pass without an approximation reason.", evidence.nativePath));
   }
   if (native?.godRays?.applied !== true || native.godRays.mode !== "bevy-volumetric-light") {
     diagnostics.push(diagnostic("TN_VERIFY_VOLUMETRICS_NATIVE_REPORT_MISSING", "Native conformance must report the applied Bevy VolumetricLight path.", evidence.nativePath));

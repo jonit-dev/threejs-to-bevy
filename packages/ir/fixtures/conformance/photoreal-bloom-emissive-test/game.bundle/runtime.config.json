@@ -5,7 +5,7 @@
     "antialias": "msaa4",
     "bloom": {
       "enabled": true,
-      "intensity": 0.85,
+      "intensity": 1,
       "threshold": 0.45
     },
     "colorGrading": {

@@ -1,0 +1,26 @@
+{
+  "schema": "threenative.systems",
+  "systems": [
+    {
+      "commands": [],
+      "eventReads": [],
+      "eventWrites": [],
+      "name": "move-player-to-goal",
+      "queries": [],
+      "reads": [],
+      "resourceReads": [],
+      "resourceWrites": [],
+      "schedule": "fixedUpdate",
+      "script": {
+        "bundle": "scripts.bundle.js",
+        "exportName": "system_move_player_to_goal"
+      },
+      "services": [],
+      "source": "behavior-metadata",
+      "writes": [
+        "Transform"
+      ]
+    }
+  ],
+  "version": "0.1.0"
+}

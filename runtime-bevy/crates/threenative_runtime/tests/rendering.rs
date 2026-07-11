@@ -20,7 +20,7 @@ use bevy::{
     pbr::{
         DefaultOpaqueRendererMethod, NotShadowCaster, NotShadowReceiver,
         ScreenSpaceAmbientOcclusionQualityLevel, ScreenSpaceAmbientOcclusionSettings,
-        ScreenSpaceReflectionsSettings,
+        ScreenSpaceReflectionsSettings, irradiance_volume::IrradianceVolume,
     },
     prelude::*,
     render::{
@@ -131,7 +131,7 @@ fn should_report_native_skybox_and_environment_map_observations() {
 }
 
 #[test]
-fn should_apply_baked_sh_probe_as_honest_ambient_approximation() {
+fn should_apply_baked_sh_probe_as_irradiance_volume() {
     let mut fixture = load_conformance_fixture("rendering-lights");
     let probe = fixture
         .bundle
@@ -155,14 +155,14 @@ fn should_apply_baked_sh_probe_as_honest_ambient_approximation() {
     map_bundle_into_world(app.world_mut(), &fixture.bundle)
         .expect("baked probe fixture should map");
     let observation = &applied.light_probes[0];
-    let ambient = app.world().resource::<AmbientLight>();
-    let linear = ambient.color.to_linear();
 
     assert!(observation.applied);
-    assert_eq!(observation.mode, "global-ambient-sh-l0-approximation");
-    assert!((ambient.brightness - 0.8 * 0.282095).abs() < 0.0001);
-    assert!(linear.red > linear.green);
-    assert!(linear.green > linear.blue);
+    assert_eq!(observation.mode, "irradiance-volume-sh2");
+    assert!(app.world().get_resource::<AmbientLight>().is_none());
+    let mut volumes = app.world_mut().query::<(&IrradianceVolume, &Transform)>();
+    let (volume, transform) = volumes.single(app.world());
+    assert_eq!(volume.intensity, 1.0);
+    assert!(transform.scale.min_element() > 0.0);
 }
 
 #[test]
@@ -1790,7 +1790,7 @@ fn cameras_without_atmosphere_should_use_three_style_neutral_exposure() {
         .expect("color parity camera should be spawned");
     assert_eq!(*camera.1, Tonemapping::None);
     assert!((camera.2.global.exposure - 0.0).abs() < 0.001);
-    assert!((camera.3.ev100 - -0.263_034_4).abs() < 0.001);
+    assert!((camera.3.ev100 - 0.0).abs() < 0.001);
 
     fs::remove_dir_all(root).expect("temporary bundle should be removed");
 }
@@ -1811,11 +1811,11 @@ fn cameras_should_map_runtime_color_grading_to_native_sections() {
         .expect("runtime color grading camera should be spawned");
     assert_eq!(*camera.1, Tonemapping::AcesFitted);
     assert!((camera.2.global.exposure - 0.0).abs() < 0.001);
-    assert!((camera.2.global.post_saturation - 0.82).abs() < 0.001);
+    assert!((camera.2.global.post_saturation - (0.82 * 0.85)).abs() < 0.001);
     for section in camera.2.all_sections() {
         assert!((section.contrast - 1.14).abs() < 0.001);
     }
-    assert!((camera.3.exposure() - 1.966_667).abs() < 0.001);
+    assert!((camera.3.exposure() - 1.18).abs() < 0.001);
 
     fs::remove_dir_all(root).expect("temporary bundle should be removed");
 }

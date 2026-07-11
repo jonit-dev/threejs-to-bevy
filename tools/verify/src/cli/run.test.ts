@@ -136,6 +136,7 @@ test("should list gates by profile", () => {
     "verify:example-build-sweep",
     "verify:generated-games",
     "verify:input-ui-polish",
+    "verify:lighting-showcase",
     "verify:persistence-reload",
     "verify:production-hardening",
     "verify:rendering-residuals",

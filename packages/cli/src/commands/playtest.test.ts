@@ -532,7 +532,7 @@ test("playtest command should run desktop target through native proof harness", 
             })}\n`,
             "utf8",
           );
-          await new Promise((resolve) => setTimeout(resolve, 20));
+          await new Promise((resolve) => setTimeout(resolve, 35));
           await writeFile(
             readinessOutPath,
             `${JSON.stringify({
@@ -590,11 +590,12 @@ test("playtest command should run desktop target through native proof harness", 
   assert.equal(summary.performance.framesOverBudget, 1);
   assert.equal(summary.performance.worstFrameMs, 33.3334);
   assert.deepEqual(nativeFrameSamples.samples.map((sample) => ({ frameMs: sample.frameMs, tick: sample.tick })), [
+    { frameMs: 16, tick: 0 },
     { frameMs: 16.6667, tick: 6 },
     { frameMs: 33.3334, tick: 37 },
   ]);
-  assert.equal(nativeFrameSamples.summaries.all.sampleCount, 2);
-  assert.equal(nativeFrameSamples.summaries.dropFirst.sampleCount, 1);
+  assert.equal(nativeFrameSamples.summaries.all.sampleCount, 3);
+  assert.equal(nativeFrameSamples.summaries.dropFirst.sampleCount, 2);
   assert.equal(nativeFrameSamples.summaries.dropFirst.worstFrameMs, 33.3334);
   assert.equal(summary.runtime, "bevy");
   assert.equal(summary.target, "desktop");
@@ -604,7 +605,7 @@ test("playtest command should run desktop target through native proof harness", 
     { code: "KeyW", entity: undefined, frames: undefined, position: undefined, pressed: false, tick: 36, type: "key" },
     { code: undefined, entity: undefined, frames: undefined, position: undefined, pressed: undefined, tick: 38, type: "exit" },
   ]);
-  assert.deepEqual(observations.runtimeDiagnostics.readiness.map((sample) => sample.tick), [6, 37]);
+  assert.deepEqual(observations.runtimeDiagnostics.readiness.map((sample) => sample.tick), [0, 6, 37]);
 });
 
 test("playtest command should ignore stale native readiness in reused artifact directories", async () => {

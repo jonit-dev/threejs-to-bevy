@@ -27,6 +27,7 @@ pub mod environment;
 pub mod first_person;
 pub mod game_flow;
 pub mod gizmo_geometry;
+pub mod height_fog_postprocess;
 pub mod gltf_scene_handles;
 pub mod input;
 pub mod input_ui_polish;
@@ -58,6 +59,7 @@ pub mod scene_ray_query;
 pub mod scripting_host_matrix;
 pub mod sequences;
 pub mod spawner;
+pub mod ssgi_postprocess;
 pub mod stylized_nature;
 pub mod systems_context;
 pub mod systems_effects;
@@ -104,6 +106,13 @@ pub struct NativeSceneStartupDiagnostic {
 
 pub fn app_from_bundle(bundle_path: impl AsRef<Path>) -> Result<App, RuntimeError> {
     app_from_bundle_with_options(bundle_path, RuntimeOptions::default())
+}
+
+fn reset_native_ambient_baseline(world: &mut World) {
+    world.insert_resource(AmbientLight {
+        color: Color::WHITE,
+        brightness: 0.0,
+    });
 }
 
 #[derive(Clone, Debug, Default)]
@@ -187,11 +196,18 @@ pub fn app_from_bundle_with_options(
         );
     app.add_plugins((
         emissive_postprocess::NativeEmissivePostProcessPlugin,
+        height_fog_postprocess::NativeHeightFogPostProcessPlugin,
+        ssgi_postprocess::NativeSsgiPostProcessPlugin,
         motion_blur_postprocess::NativeTemporalMotionBlurPlugin,
         rendering::contact_shadows::NativeContactShadowPlugin,
         map_world::NativeEquirectSkyMaterialPlugin,
         map_world::NativePortableShaderMaterialPlugin,
     ));
+    // DefaultPlugins installs Bevy's physical-unit ambient default (80.0).
+    // ThreeNative owns ambient lighting through authored lights, atmosphere,
+    // environment maps, and baked probes, so start those adapters from a
+    // neutral baseline instead of conditionally inheriting Bevy's default.
+    reset_native_ambient_baseline(app.world_mut());
     rendering::apply_atmosphere_to_world(app.world_mut(), &bundle);
     let environment_lighting =
         rendering::apply_environment_lighting_to_world(app.world_mut(), &bundle);
@@ -1048,6 +1064,54 @@ mod tests {
     use threenative_loader::load_bundle;
 
     use super::*;
+
+    #[test]
+    fn should_apply_baked_sh_probe_without_bevy_default_ambient() {
+        let root = Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../../../packages/ir/fixtures/conformance/baked-probe-alcove-test/game.bundle");
+        let bundle = load_bundle(root).expect("baked probe fixture should load");
+        let mut world = World::new();
+        world.insert_resource(AmbientLight {
+            color: Color::WHITE,
+            brightness: 80.0,
+        });
+
+        reset_native_ambient_baseline(&mut world);
+        rendering::apply_environment_lighting_to_world(&mut world, &bundle);
+        map_world::map_bundle_into_world(&mut world, &bundle).expect("fixture should map");
+        let ambient = world.resource::<AmbientLight>();
+        let baked_probe_baseline = 0.12 * 0.282095 * 5.2;
+        assert!((ambient.brightness - (0.25 + baked_probe_baseline)).abs() < 0.0001);
+        assert_eq!(
+            world
+                .query::<&bevy::pbr::irradiance_volume::IrradianceVolume>()
+                .iter(&world)
+                .count(),
+            1,
+            "baked SH2 must map to bounded directional lighting instead of global ambient"
+        );
+    }
+
+    #[test]
+    fn lumen_showcase_should_keep_atmosphere_baseline_with_directional_probe() {
+        let root = Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../../../packages/ir/fixtures/conformance/lumen-lite-showcase/game.bundle");
+        let bundle = load_bundle(root).expect("lumen showcase fixture should load");
+        let mut world = World::new();
+        reset_native_ambient_baseline(&mut world);
+        rendering::apply_atmosphere_to_world(&mut world, &bundle);
+        rendering::apply_environment_lighting_to_world(&mut world, &bundle);
+        let ambient = world.resource::<AmbientLight>();
+        assert!(ambient.brightness > 0.7, "hero room must retain its calibrated indirect-light floor");
+        assert_eq!(
+            world
+                .iter_entities()
+                .filter(|entity| entity.contains::<bevy::pbr::irradiance_volume::IrradianceVolume>())
+                .count(),
+            0,
+            "Bevy 0.14 deferred lighting cannot compile its irradiance-volume shader path",
+        );
+    }
 
     #[test]
     fn live_reconciliation_should_apply_atmosphere_only_volumetric_changes() {

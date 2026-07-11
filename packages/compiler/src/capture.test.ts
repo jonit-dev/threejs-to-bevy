@@ -214,6 +214,8 @@ test("build should lower structured scene entry into runtime bundle with attache
       entities: [
         { id: "player", prefab: "cube-prefab", components: { VehiclePhysics: { speed: 42, boost: 0.65, heading: 1.57 }, Team: { id: "orange" } }, transform: { position: [0, 0.35, 0], rotation: [0, 1.57, 0], scale: [0.6, 0.6, 0.6] } },
         { id: "chase-camera", components: { camera: { far: 250, fovY: 58, mode: "perspective", near: 0.2, target: "player" } }, transform: { position: [0, 3.2, 5.8], rotation: [-0.48, 0, 0] } },
+        { id: "contact-floor", components: { ContactShadows: { height: 3, opacity: 0.5, resolution: 256, size: [4, 4], softness: 6, updateMode: "static" } } },
+        { id: "visual-provenance", components: { VisualProvenance: { status: "intentional" } } },
       ],
       systems: [{ id: "move-player-to-goal", script: { module: "src/scripts/player.ts", export: "movePlayerToGoal" } }],
     }, null, 2)}\n`,
@@ -235,6 +237,8 @@ test("build should lower structured scene entry into runtime bundle with attache
     };
 
     assert.equal(world.entities.some((entity) => entity.id === "player" && entity.components.Transform !== undefined && entity.components.MeshRenderer !== undefined), true);
+    assert.equal(world.entities.find((entity) => entity.id === "contact-floor")?.components.MeshRenderer, undefined);
+    assert.equal(world.entities.find((entity) => entity.id === "visual-provenance")?.components.MeshRenderer, undefined);
     const player = world.entities.find((entity) => entity.id === "player");
     assert.deepEqual(player?.components.VehiclePhysics, { speed: 42, boost: 0.65, heading: 1.57 });
     assert.deepEqual(player?.components.Team, { id: "orange" });

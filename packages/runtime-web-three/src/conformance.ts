@@ -36,7 +36,7 @@ import type { IWebBundle } from "./loadBundle.js";
 import type { IThreeWorld } from "./mapWorld.js";
 import { listScreenshotExportDeclarations } from "./renderTargets.js";
 import { detectPhysicsEvents } from "./physics.js";
-import { traceSceneLifecycle } from "./sceneManager.js";
+import { traceSceneLifecycle, type ISceneLifecycleOperation } from "./sceneManager.js";
 import { applyWebRenderLookProfile } from "./rendering/applyRenderLookProfile.js";
 
 type IRuntimeLightReport = NonNullable<IConformanceEntityReport["light"]>["runtime"];
@@ -104,11 +104,15 @@ function reportSceneLifecycle(bundle: IWebBundle): IConformanceSceneLifecycleRep
   if (bundle.scenes === undefined) {
     return undefined;
   }
-  return traceSceneLifecycle(bundle.scenes, [
-    { kind: "change", scene: "level" },
-    { kind: "push", scene: "pause" },
-    { kind: "pop" },
-  ]);
+  const sceneIds = new Set(bundle.scenes.scenes.map((scene) => scene.id));
+  const operations: ISceneLifecycleOperation[] = [];
+  if (sceneIds.has("level") && bundle.scenes.initialScene !== "level") {
+    operations.push({ kind: "change", scene: "level" });
+  }
+  if (sceneIds.has("pause")) {
+    operations.push({ kind: "push", scene: "pause" }, { kind: "pop" });
+  }
+  return traceSceneLifecycle(bundle.scenes, operations);
 }
 
 function reportSystems(bundle: IWebBundle): IConformanceSystemReport[] | undefined {

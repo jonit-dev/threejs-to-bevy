@@ -70,15 +70,26 @@ Current support:
 - `atmosphere.volumetrics` promotes bounded height fog and directional god
   rays. Web uses a full-resolution depth prepass with half-resolution analytic
   height integration, depth-weighted composite, and a 16/32/64-step
-  cascade-aware shadow-map raymarch before bloom and fitted ACES output. Native
-  maps the same request to Bevy 0.14 `VolumetricFogSettings` and
-  `VolumetricLight`, owns reconcile/removal of camera and sun components, and
-  reports height fog honestly as `homogeneous-medium-approximation` because
-  Bevy 0.14 has no base-height/falloff field. The catalog-owned
+  cascade-aware shadow-map raymarch before bloom and fitted ACES output. The
+  web raymarch uses a fixed `g=0.75` Henyey-Greenstein forward-scattering phase
+  and couples shaft radiance to the directional sun color/intensity. Native
+  keeps Bevy 0.14 `VolumetricFogSettings` and `VolumetricLight` for the
+  directional cascade-shadow raymarch, but maps height fog to an independent
+  adapter-private HDR post pass using the same exponential base-height and
+  falloff integration as web. Native reports that path as
+  `analytic-height-post-pass`; the two authored controls no longer thicken one
+  shared medium. The catalog-owned
   `pnpm verify:focused verify:volumetrics` gate records requested/applied modes,
   paired screenshots, a tall-column fog gradient, and a lit-shaft versus
   shadow-neighbor region. Web god-ray source retains the upstream notice and is
   plainly marked as an altered adapter-private rewrite.
+- The composed `verify:lighting-showcase` gate additionally measures rendered
+  shaft/neighbor contrast, floor-adjacent versus ceiling haze, window-halo
+  luminance, and bounded cross-target deltas. A feature report alone therefore
+  cannot promote an invisible volumetric path. The stricter hero-room gate is
+  backed by paired captures. Native shaft radiance compensates for Bevy's
+  normalized phase-function convention with one adapter calibration constant;
+  no scene-specific target fork is used.
 - Runtime renderer config now accepts portable `ambientOcclusion`,
   `depthOfField`, `screenSpaceReflections`, `motionBlur`, and
   `screenSpaceGlobalIllumination` fields with bounded source/IR validation.
@@ -92,13 +103,15 @@ Current support:
   source, `tn runtime set-rendering`, and editor inspector operations. Web
   applies adapter-owned depth reconstruction, cosine-weighted hemisphere ray
   marching, binary hit refinement, bilateral upsampling, and history-clamped
-  temporal reprojection before bloom and tone mapping. Bevy 0.14 enables SSAO
-  and applies a calibrated ambient/environment lift, reports
-  `appliedMode: approximation`, and classifies missing color-bleed hue as the
-  `rendering.ssgi-color-bleed` residual. The catalog-owned
+  temporal reprojection before bloom and tone mapping. Bevy 0.14 now runs an
+  adapter-private full-resolution spatial hemisphere raymarch after SSR and
+  before volumetrics, with a symmetric depth-weighted neighborhood gather,
+  saturation-preserving colored bounce, bounded radiance, and no temporal
+  resolve; it reports `appliedMode: spatial-neighborhood-no-temporal`.
+  The catalog-owned
   `pnpm verify:focused verify:ssgi` gate proves monotonic indirect-region lift
-  in both adapters, web-only red bleed, requested/applied reports, and paired
-  nonblank screenshots.
+  in both adapters, cross-adapter red color bleed, bounded spatial noise,
+  requested/applied reports, and paired nonblank screenshots.
   The shared render-look target ladder clamps authored `high` SSGI to the
   half-resolution `medium` tier on `mobile-web`; desktop web retains the
   full-resolution high tier. Temporal SSGI keeps otherwise-static scenes on a
@@ -114,12 +127,34 @@ Current support:
   metadata participate in stale detection; mismatched document/payload hashes
   emit `TN_IR_LIGHT_PROBE_BAKE_STALE`. Web blends bounded SH2 probes by camera
   position through Three.js `LightProbe` and reports `camera-weighted-sh2`.
-  Bevy 0.14 cannot consume raw SH without synthesizing cubemap or packed-volume
-  textures, so native applies the SH L0 irradiance as colored ambient light and
-  reports `global-ambient-sh-l0-approximation`. The catalog-owned
+  Native forward rendering evaluates those coefficients into filterable,
+  bounded Bevy ambient-cube textures and reports `irradiance-volume-sh2`.
+  Bevy 0.14's deferred lighting specialization enables the irradiance call
+  without defining its shader function, so SSR/deferred scenes avoid that
+  broken backend path and honestly report
+  `deferred-sh-l0-plus-screen-space-gi`: the calibrated atmosphere L0 floor
+  composes with the native spatial SSGI pass. The catalog-owned
   `pnpm verify:focused verify:baked-gi` gate compares disabled/authored alcove
-  captures, requires warm lift in both adapters, checks the honest modes, and
-  proves the stale diagnostic.
+  captures, requires warm lift in both adapters, rejects broad clipping and
+  excessive native lift, checks the honest modes, and proves the stale
+  diagnostic. Native startup now neutralizes Bevy's implicit ambient-light
+  default before applying authored contributions; the forward volume intensity
+  and deferred atmosphere baseline are adapter calibration constants rather
+  than per-scene forks.
+- The promoted visual-calibration matrix defines authored bloom intensity 1.0
+  as a real-runtime emissive anchor with core, inner-halo, and outer-halo
+  luminance/falloff regions. Its color fixture samples a neutral
+  black-to-mid-gray-to-white ramp through both output chains. Native and web
+  now share the 1.2 fitted-ACES exposure anchor; these focused fixtures guard
+  the bloom and tone-chain calibration independently of the hero scene.
+- `examples/lumen-lite-showcase` composes the promoted lighting stack in one
+  enclosed hero interior: framed windows, stabilized cascades, contact shadows,
+  high-quality SSGI, baked warm bounce, bloom, height fog, god rays, rough
+  materials, wet patches, doorway depth, and grounded props. The catalog-owned
+  `pnpm verify:focused verify:lighting-showcase` gate builds the durable source,
+  captures deterministic 1280x720 web/native frames, emits a contact sheet and
+  adapter reports, rejects clipping/crushed blacks/exposure drift, and requires
+  every composed feature to be applied or honestly approximation-reported.
 - The internal `SceneRayQuery` boundary now has BVH-backed tooling queries and
   a native Rapier/parry `TriMesh` query built from the same rendered generated
   mesh data, independently of authored Collider components. Native playtest

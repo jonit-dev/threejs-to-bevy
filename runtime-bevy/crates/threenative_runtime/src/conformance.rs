@@ -938,7 +938,10 @@ pub fn report_bevy_conformance(
         contact_shadows: (!contact_shadows.is_empty()).then_some(contact_shadows),
         diagnostics: report_diagnostics(audio_observation.as_ref(), ui_report.as_ref()),
         entities,
-        environment: bundle.environment_scene.as_ref().map(report_environment),
+        environment: bundle
+            .environment_scene
+            .as_ref()
+            .map(|environment| report_environment(environment, bundle)),
         events: report_events(bundle),
         fixture: fixture.into(),
         gltf_fidelity: report_gltf_fidelity(bundle),
@@ -1069,14 +1072,16 @@ fn sorted_values(values: &[serde_json::Value]) -> Vec<serde_json::Value> {
 
 fn report_scene_lifecycle(bundle: &LoadedBundle) -> Option<SceneLifecycleRuntimeState> {
     let scenes = bundle.scenes.as_ref()?;
-    Some(trace_scene_lifecycle(
-        scenes,
-        &[
-            SceneLifecycleOperation::Change("level".to_owned()),
-            SceneLifecycleOperation::Push("pause".to_owned()),
-            SceneLifecycleOperation::Pop,
-        ],
-    ))
+    let has_scene = |id: &str| scenes.scenes.iter().any(|scene| scene.id == id);
+    let mut operations = Vec::new();
+    if has_scene("level") && scenes.initial_scene != "level" {
+        operations.push(SceneLifecycleOperation::Change("level".to_owned()));
+    }
+    if has_scene("pause") {
+        operations.push(SceneLifecycleOperation::Push("pause".to_owned()));
+        operations.push(SceneLifecycleOperation::Pop);
+    }
+    Some(trace_scene_lifecycle(scenes, &operations))
 }
 
 fn report_systems(bundle: &LoadedBundle) -> Option<Vec<ConformanceSystemReport>> {
@@ -1400,7 +1405,7 @@ fn runtime_renderer_feature_reports(
                     "renderer.screenSpaceGlobalIllumination",
                     feature.enabled,
                     "screen-space",
-                    "approximation",
+                    "spatial-neighborhood-no-temporal",
                 )
             }),
     ]
@@ -1912,7 +1917,10 @@ fn runtime_light(
     })
 }
 
-fn report_environment(environment: &EnvironmentSceneIr) -> ConformanceEnvironmentReport {
+fn report_environment(
+    environment: &EnvironmentSceneIr,
+    bundle: &LoadedBundle,
+) -> ConformanceEnvironmentReport {
     let baked_probe_ids = environment
         .light_probes
         .iter()
@@ -2031,13 +2039,11 @@ fn report_environment(environment: &EnvironmentSceneIr) -> ConformanceEnvironmen
                 ConformanceVolumetricFeatureReport {
                     applied: height_fog.enabled,
                     mode: if height_fog.enabled {
-                        "homogeneous-medium-approximation".to_owned()
+                        "analytic-height-post-pass".to_owned()
                     } else {
                         "disabled".to_owned()
                     },
-                    reason: height_fog
-                        .enabled
-                        .then(|| "bevy-0.14-no-height-density-field".to_owned()),
+                    reason: None,
                     requested: height_fog.enabled,
                 }
             });
@@ -2070,7 +2076,7 @@ fn report_environment(environment: &EnvironmentSceneIr) -> ConformanceEnvironmen
             .map(|atmosphere| atmosphere.id.clone()),
         baked_gi_probes: (!baked_probe_ids.is_empty()).then(|| ConformanceBakedGiProbeReport {
             applied: true,
-            mode: "global-ambient-sh-l0-approximation".to_owned(),
+            mode: crate::rendering::native_baked_probe_mode(bundle).to_owned(),
             probe_ids: baked_probe_ids,
             requested: true,
         }),

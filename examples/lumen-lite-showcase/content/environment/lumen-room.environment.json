@@ -22,15 +22,15 @@
   "atmosphere": {
     "active": true,
     "id": "atmosphere.lumen-room",
-    "sun": { "id": "sun.window", "color": "#ffe5a8", "intensity": 3.6, "direction": [0.72, -0.22, -0.66], "castsShadow": true },
+    "sun": { "id": "sun.window", "color": "#ffe5a8", "intensity": 3.6, "direction": [0.72, -0.22, 0.66], "castsShadow": true },
     "ambient": { "color": "#687077", "intensity": 0.13, "mode": "constant" },
     "fog": { "color": "#8b806d", "density": 0.018, "enabled": true, "mode": "exponential" },
     "sky": { "color": "#0d1116", "horizonColor": "#554f43" },
     "colorManagement": { "toneMapping": "aces", "exposure": 0.92, "outputColorSpace": "srgb", "textureColorSpace": "srgb" },
     "shadows": { "enabled": true, "mapSize": 2048, "maxDistance": 45, "cascadeCount": 4, "cascadeBlendFraction": 0.18, "bias": -0.0005, "normalBias": 0.018, "receiverPolicy": "terrain-and-path", "splitLambda": 0.6, "splitScheme": "practical", "stabilized": true },
     "volumetrics": {
-      "heightFog": { "enabled": true, "density": 0.17, "falloffHeight": 3.8, "baseHeight": 0, "color": [0.5, 0.43, 0.32] },
-      "godRays": { "enabled": true, "intensity": 1.05, "density": 0.35, "maxDistance": 35, "quality": "high" }
+      "heightFog": { "enabled": true, "density": 0.08, "falloffHeight": 3.8, "baseHeight": 0, "color": [0.5, 0.43, 0.32] },
+      "godRays": { "enabled": true, "intensity": 1.8, "density": 0.9, "maxDistance": 35, "quality": "high" }
     }
   }
 }

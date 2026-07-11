@@ -1,0 +1,144 @@
+{
+  "atmosphere": {
+    "active": true,
+    "ambient": {
+      "color": "#687077",
+      "intensity": 0.13,
+      "mode": "constant"
+    },
+    "colorManagement": {
+      "exposure": 0.92,
+      "outputColorSpace": "srgb",
+      "textureColorSpace": "srgb",
+      "toneMapping": "aces"
+    },
+    "fog": {
+      "color": "#8b806d",
+      "density": 0.018,
+      "enabled": true,
+      "mode": "exponential"
+    },
+    "id": "atmosphere.lumen-room",
+    "shadows": {
+      "bias": -0.0005,
+      "cascadeBlendFraction": 0.18,
+      "cascadeCount": 4,
+      "enabled": true,
+      "mapSize": 2048,
+      "maxDistance": 45,
+      "normalBias": 0.018,
+      "receiverPolicy": "terrain-and-path",
+      "splitLambda": 0.6,
+      "splitScheme": "practical",
+      "stabilized": true
+    },
+    "sky": {
+      "color": "#0d1116",
+      "horizonColor": "#554f43"
+    },
+    "sun": {
+      "castsShadow": true,
+      "color": "#ffe5a8",
+      "direction": [
+        0.72,
+        -0.22,
+        0.66
+      ],
+      "id": "sun.window",
+      "intensity": 3.6
+    },
+    "volumetrics": {
+      "godRays": {
+        "density": 0.9,
+        "enabled": true,
+        "intensity": 1.8,
+        "maxDistance": 35,
+        "quality": "high"
+      },
+      "heightFog": {
+        "baseHeight": 0,
+        "color": [
+          0.5,
+          0.43,
+          0.32
+        ],
+        "density": 0.08,
+        "enabled": true,
+        "falloffHeight": 3.8
+      }
+    }
+  },
+  "instances": [],
+  "lightProbes": [
+    {
+      "bounds": {
+        "max": [
+          6,
+          5.4,
+          8
+        ],
+        "min": [
+          -6,
+          0,
+          -8
+        ]
+      },
+      "id": "probe.room.warm-bounce",
+      "influenceRadius": 3,
+      "intent": "irradiance",
+      "source": {
+        "bakeVersion": 1,
+        "coefficients": [
+          0.6,
+          0.52,
+          0.38,
+          -0.0023014,
+          -0.00189393,
+          -0.00136722,
+          0.00510156,
+          0.00356052,
+          0.00139321,
+          -0.00151325,
+          -0.00107753,
+          -0.00047557,
+          0.00113675,
+          0.00080323,
+          0.00034186,
+          -0.00388182,
+          -0.00269621,
+          -0.00103272,
+          0.00530066,
+          0.00364892,
+          0.00128757,
+          -0.00279425,
+          -0.00191411,
+          -0.00064848,
+          -0.00044181,
+          -0.00039207,
+          -0.00036436
+        ],
+        "format": "sh2",
+        "sceneContentHash": "sha256:010a5ddd16891f5de9bdaafaa662293e99da2a29c1a4fff4eae4fd5534cd1fec"
+      }
+    }
+  ],
+  "path": {
+    "id": "path.outside-proof",
+    "points": [
+      [
+        -100,
+        0,
+        -100
+      ],
+      [
+        -99,
+        0,
+        -100
+      ]
+    ],
+    "width": 1
+  },
+  "schema": "threenative.environment-scene",
+  "sourceAssets": [],
+  "version": "0.1.0"
+}

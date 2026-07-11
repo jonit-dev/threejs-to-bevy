@@ -34,7 +34,7 @@ use bevy::{
     reflect::TypePath,
     render::{
         alpha::AlphaMode,
-        camera::{ClearColorConfig, Exposure, RenderTarget, ScalingMode},
+        camera::{CameraMainTextureUsages, ClearColorConfig, Exposure, RenderTarget, ScalingMode},
         extract_resource::ExtractResource,
         mesh::{Indices, MeshVertexAttribute, PrimitiveTopology, VertexAttributeValues},
         render_asset::RenderAssetUsages,
@@ -65,7 +65,7 @@ use crate::render_targets::{
 };
 use crate::rendering::contact_shadows::refresh_native_contact_shadow_pipelines;
 use crate::rendering::{
-    NativeBakedProbeAmbientApplied, NativeEnvironmentMapHandles, native_volumetric_fog_settings,
+    NativeBakedProbeLightingApplied, NativeEnvironmentMapHandles, native_volumetric_fog_settings,
     spawn_rendered_particles,
 };
 use crate::stylized_nature::{grass_material_policy, resolve_source_assets};
@@ -88,12 +88,12 @@ const THREE_COMPAT_DEFAULT_CAMERA_EV100: f32 = 0.0;
 const THREE_COMPAT_SKY_DOME_RADIUS: f32 = 72.0;
 const THREE_COMPAT_EMISSIVE_INTENSITY_SCALE: f32 = 1.0;
 const THREE_COMPAT_DEFAULT_IMPLICIT_DIELECTRIC_REFLECTANCE: f32 = 0.5;
-const THREE_COMPAT_COLOR_GRADING_SATURATION_SCALE: f32 = 1.08;
-// Bevy applies grading contrast in its HDR pipeline, while the web adapter
-// applies the authored value after tone mapping around a 0.5 display pivot.
-// The factor aligns those two public contrast semantics.
-const THREE_COMPAT_COLOR_GRADING_CONTRAST_SCALE: f32 = 1.3;
-const THREE_COMPAT_ACES_EXPOSURE_SCALE: f32 = 1.7;
+// Authored grading is already expressed in the shared adapter contract. Extra
+// native-only saturation/contrast multipliers clipped blue from dark mids and
+// made the hero room read as an orange poster rather than the web image.
+const THREE_COMPAT_COLOR_GRADING_SATURATION_SCALE: f32 = 0.85;
+const THREE_COMPAT_COLOR_GRADING_CONTRAST_SCALE: f32 = 1.0;
+const THREE_COMPAT_ACES_EXPOSURE_SCALE: f32 = 1.2;
 const THREE_COMPAT_LINEAR_EXPOSURE_SCALE: f32 = 1.0;
 const THREE_COMPAT_FOG_EXP2_DENSITY_SCALE: f32 = 0.65;
 const THREE_COMPAT_EMISSIVE_MASK_LAYER: usize = 63;
@@ -804,7 +804,7 @@ fn ensure_ambient_light_contract(
             .as_ref()
             .is_some_and(|light| light.kind == "ambient")
     });
-    if !has_authored_ambient && !world.contains_resource::<NativeBakedProbeAmbientApplied>() {
+    if !has_authored_ambient && !world.contains_resource::<NativeBakedProbeLightingApplied>() {
         world.insert_resource(AmbientLight {
             color: Color::WHITE,
             brightness: 0.0,
@@ -841,14 +841,7 @@ fn insert_camera_ambient_occlusion(spawned: &mut EntityWorldMut, config: Option<
         .ambient_occlusion
         .as_ref()
         .filter(|ambient_occlusion| ambient_occlusion.enabled);
-    let ssgi = renderer
-        .screen_space_global_illumination
-        .as_ref()
-        .filter(|ssgi| ssgi.enabled);
-    let Some(quality) = ambient_occlusion
-        .map(|feature| feature.quality.as_str())
-        .or_else(|| ssgi.map(|feature| feature.quality.as_str()))
-    else {
+    let Some(quality) = ambient_occlusion.map(|feature| feature.quality.as_str()) else {
         return;
     };
     spawned.insert(ScreenSpaceAmbientOcclusionBundle {
@@ -858,6 +851,16 @@ fn insert_camera_ambient_occlusion(spawned: &mut EntityWorldMut, config: Option<
         depth_prepass: DepthPrepass,
         normal_prepass: NormalPrepass,
     });
+}
+
+fn insert_camera_ssgi_prepasses(spawned: &mut EntityWorldMut, config: Option<&RuntimeConfigIr>) {
+    let enabled = config
+        .and_then(|config| config.renderer.as_ref())
+        .and_then(|renderer| renderer.screen_space_global_illumination.as_ref())
+        .is_some_and(|ssgi| ssgi.enabled);
+    if enabled {
+        spawned.insert((DepthPrepass, NormalPrepass));
+    }
 }
 
 fn ambient_occlusion_quality_level(quality: &str) -> ScreenSpaceAmbientOcclusionQualityLevel {
@@ -919,7 +922,9 @@ fn bloom_settings_for_runtime(config: Option<&RuntimeConfigIr>) -> Option<BloomS
 }
 
 fn native_bloom_intensity(intensity: f32) -> f32 {
-    intensity * 0.1
+    // Match the web UnrealBloomPass anchor: authored intensity 1.0 maps to a
+    // 0.2-strength halo before the shared threshold/softness controls.
+    intensity * 0.2
 }
 
 fn native_render_look_has_bloom(profile: &str) -> bool {

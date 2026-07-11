@@ -1,0 +1,45 @@
+{
+  "probes": [
+    {
+      "id": "probe.room.warm-bounce",
+      "source": {
+        "bakeVersion": 1,
+        "coefficients": [
+          0.6,
+          0.52,
+          0.38,
+          -0.0023014,
+          -0.00189393,
+          -0.00136722,
+          0.00510156,
+          0.00356052,
+          0.00139321,
+          -0.00151325,
+          -0.00107753,
+          -0.00047557,
+          0.00113675,
+          0.00080323,
+          0.00034186,
+          -0.00388182,
+          -0.00269621,
+          -0.00103272,
+          0.00530066,
+          0.00364892,
+          0.00128757,
+          -0.00279425,
+          -0.00191411,
+          -0.00064848,
+          -0.00044181,
+          -0.00039207,
+          -0.00036436
+        ],
+        "format": "sh2",
+        "sceneContentHash": "sha256:010a5ddd16891f5de9bdaafaa662293e99da2a29c1a4fff4eae4fd5534cd1fec"
+      }
+    }
+  ],
+  "sceneContentHash": "sha256:010a5ddd16891f5de9bdaafaa662293e99da2a29c1a4fff4eae4fd5534cd1fec",
+  "sceneId": "lumen-room-environment",
+  "schema": "threenative.baked-probes",
+  "version": "0.1.0"
+}

@@ -1,0 +1,110 @@
+{
+  "schema": "threenative.scene",
+  "version": "0.1.0",
+  "id": "hero-interior",
+  "kind": "level",
+  "entities": [
+    {
+      "id": "visual.provenance",
+      "components": {
+        "VisualProvenance": {
+          "status": "intentional procedural environment",
+          "style": "derelict industrial interior lighting study",
+          "notes": "Portable authored meshes form a composed architectural showcase rather than placeholder gameplay art. The room proves the complete lighting stack with deterministic web and native captures."
+        }
+      }
+    },
+    {
+      "id": "camera.main",
+      "transform": { "position": [3.2, 1.65, 2.15], "rotation": [-0.06, 0.78, 0] },
+      "components": { "camera": { "mode": "perspective", "fovY": 52, "near": 0.05, "far": 40 } }
+    },
+
+    { "id": "room.floor", "transform": { "position": [0, -0.09, -1] }, "components": { "MeshRenderer": { "mesh": "mesh.floor", "material": "mat.concrete.floor", "castShadow": false, "receiveShadow": true } } },
+    { "id": "room.ceiling", "transform": { "position": [0, 4.12, -1] }, "components": { "MeshRenderer": { "mesh": "mesh.ceiling", "material": "mat.concrete.dark", "castShadow": true, "receiveShadow": true } } },
+    { "id": "room.wall.right", "transform": { "position": [5, 2.1, -1] }, "components": { "MeshRenderer": { "mesh": "mesh.wall.right", "material": "mat.paint.peeling", "castShadow": true, "receiveShadow": true } } },
+    { "id": "room.wall.front", "transform": { "position": [0, 2.1, 3] }, "components": { "MeshRenderer": { "mesh": "mesh.wall.front", "material": "mat.concrete.dark", "castShadow": true, "receiveShadow": true } } },
+
+    { "id": "room.wall.left.lower", "transform": { "position": [-5, 1, -1] }, "components": { "MeshRenderer": { "mesh": "mesh.wall.left.lower", "material": "mat.concrete.wall", "castShadow": true, "receiveShadow": true } } },
+    { "id": "room.wall.left.upper", "transform": { "position": [-5, 3.7, -1] }, "components": { "MeshRenderer": { "mesh": "mesh.wall.left.upper", "material": "mat.concrete.wall", "castShadow": true, "receiveShadow": true } } },
+    { "id": "room.wall.left.pier.back", "transform": { "position": [-5, 2.6, -4.575] }, "components": { "MeshRenderer": { "mesh": "mesh.wall.left.pier.back", "material": "mat.concrete.wall", "castShadow": true, "receiveShadow": true } } },
+    { "id": "room.wall.left.pier.middle", "transform": { "position": [-5, 2.6, -2.35] }, "components": { "MeshRenderer": { "mesh": "mesh.wall.left.pier.middle", "material": "mat.concrete.wall", "castShadow": true, "receiveShadow": true } } },
+    { "id": "room.wall.left.pier.front", "transform": { "position": [-5, 2.6, 1.225] }, "components": { "MeshRenderer": { "mesh": "mesh.wall.left.pier.front", "material": "mat.concrete.wall", "castShadow": true, "receiveShadow": true } } },
+
+    { "id": "room.wall.back.left", "transform": { "position": [-4.5, 1.25, -5] }, "components": { "MeshRenderer": { "mesh": "mesh.wall.back.left", "material": "mat.concrete.wall", "castShadow": true, "receiveShadow": true } } },
+    { "id": "room.wall.back.right", "transform": { "position": [1.15, 1.25, -5] }, "components": { "MeshRenderer": { "mesh": "mesh.wall.back.right", "material": "mat.concrete.wall", "castShadow": true, "receiveShadow": true } } },
+    { "id": "room.wall.back.upper", "transform": { "position": [0, 3.35, -5] }, "components": { "MeshRenderer": { "mesh": "mesh.wall.back.upper", "material": "mat.concrete.dark", "castShadow": true, "receiveShadow": true } } },
+    { "id": "room.wall.back.band.left", "transform": { "position": [-4.5, 0.7, -4.87] }, "components": { "MeshRenderer": { "mesh": "mesh.wall.band.left", "material": "mat.paint.peeling", "castShadow": false, "receiveShadow": true } } },
+    { "id": "room.wall.back.band.right", "transform": { "position": [1.15, 0.7, -4.87] }, "components": { "MeshRenderer": { "mesh": "mesh.wall.band.right", "material": "mat.paint.peeling", "castShadow": false, "receiveShadow": true } } },
+
+    { "id": "window.rear.glow", "transform": { "position": [-5.14, 2.6, -3.4] }, "components": { "MeshRenderer": { "mesh": "mesh.window.glow", "material": "mat.window.hot", "castShadow": false, "receiveShadow": false } } },
+    { "id": "window.front.glow", "transform": { "position": [-5.14, 2.6, -1.3] }, "components": { "MeshRenderer": { "mesh": "mesh.window.glow", "material": "mat.window.hot", "castShadow": false, "receiveShadow": false } } },
+    { "id": "window.rear.frame.back", "transform": { "position": [-4.86, 2.6, -4.19] }, "components": { "MeshRenderer": { "mesh": "mesh.frame.vertical", "material": "mat.metal.dark", "castShadow": true, "receiveShadow": true } } },
+    { "id": "window.rear.frame.front", "transform": { "position": [-4.86, 2.6, -2.61] }, "components": { "MeshRenderer": { "mesh": "mesh.frame.vertical", "material": "mat.metal.dark", "castShadow": true, "receiveShadow": true } } },
+    { "id": "window.rear.frame.bottom", "transform": { "position": [-4.86, 1.96, -3.4] }, "components": { "MeshRenderer": { "mesh": "mesh.frame.horizontal", "material": "mat.metal.dark", "castShadow": true, "receiveShadow": true } } },
+    { "id": "window.rear.frame.top", "transform": { "position": [-4.86, 3.24, -3.4] }, "components": { "MeshRenderer": { "mesh": "mesh.frame.horizontal", "material": "mat.metal.dark", "castShadow": true, "receiveShadow": true } } },
+    { "id": "window.rear.mullion.vertical", "transform": { "position": [-4.83, 2.6, -3.4] }, "components": { "MeshRenderer": { "mesh": "mesh.frame.mullion.vertical", "material": "mat.metal.rust", "castShadow": true, "receiveShadow": true } } },
+    { "id": "window.rear.mullion.horizontal", "transform": { "position": [-4.82, 2.6, -3.4] }, "components": { "MeshRenderer": { "mesh": "mesh.frame.mullion.horizontal", "material": "mat.metal.rust", "castShadow": true, "receiveShadow": true } } },
+    { "id": "window.front.frame.back", "transform": { "position": [-4.86, 2.6, -2.09] }, "components": { "MeshRenderer": { "mesh": "mesh.frame.vertical", "material": "mat.metal.dark", "castShadow": true, "receiveShadow": true } } },
+    { "id": "window.front.frame.front", "transform": { "position": [-4.86, 2.6, -0.51] }, "components": { "MeshRenderer": { "mesh": "mesh.frame.vertical", "material": "mat.metal.dark", "castShadow": true, "receiveShadow": true } } },
+    { "id": "window.front.frame.bottom", "transform": { "position": [-4.86, 1.96, -1.3] }, "components": { "MeshRenderer": { "mesh": "mesh.frame.horizontal", "material": "mat.metal.dark", "castShadow": true, "receiveShadow": true } } },
+    { "id": "window.front.frame.top", "transform": { "position": [-4.86, 3.24, -1.3] }, "components": { "MeshRenderer": { "mesh": "mesh.frame.horizontal", "material": "mat.metal.dark", "castShadow": true, "receiveShadow": true } } },
+    { "id": "window.front.mullion.vertical", "transform": { "position": [-4.83, 2.6, -1.3] }, "components": { "MeshRenderer": { "mesh": "mesh.frame.mullion.vertical", "material": "mat.metal.rust", "castShadow": true, "receiveShadow": true } } },
+    { "id": "window.front.mullion.horizontal", "transform": { "position": [-4.82, 2.6, -1.3] }, "components": { "MeshRenderer": { "mesh": "mesh.frame.mullion.horizontal", "material": "mat.metal.rust", "castShadow": true, "receiveShadow": true } } },
+
+    { "id": "doorway.frame.left", "transform": { "position": [-4.08, 1.3, -4.86] }, "components": { "MeshRenderer": { "mesh": "mesh.door.frame.vertical", "material": "mat.metal.rust", "castShadow": true, "receiveShadow": true } } },
+    { "id": "doorway.frame.right", "transform": { "position": [-2.62, 1.3, -4.86] }, "components": { "MeshRenderer": { "mesh": "mesh.door.frame.vertical", "material": "mat.metal.rust", "castShadow": true, "receiveShadow": true } } },
+    { "id": "doorway.frame.top", "transform": { "position": [-3.35, 2.58, -4.86] }, "components": { "MeshRenderer": { "mesh": "mesh.door.frame.horizontal", "material": "mat.metal.rust", "castShadow": true, "receiveShadow": true } } },
+    { "id": "corridor.wall.left", "transform": { "position": [-4, 1.3, -5.9] }, "components": { "MeshRenderer": { "mesh": "mesh.corridor.side", "material": "mat.concrete.dark", "castShadow": true, "receiveShadow": true } } },
+    { "id": "corridor.wall.right", "transform": { "position": [-2.7, 1.3, -5.9] }, "components": { "MeshRenderer": { "mesh": "mesh.corridor.side", "material": "mat.concrete.wall", "castShadow": true, "receiveShadow": true } } },
+    { "id": "corridor.floor", "transform": { "position": [-3.35, -0.07, -5.9] }, "components": { "MeshRenderer": { "mesh": "mesh.corridor.floor", "material": "mat.concrete.floor", "castShadow": false, "receiveShadow": true } } },
+    { "id": "corridor.ceiling", "transform": { "position": [-3.35, 2.6, -5.9] }, "components": { "MeshRenderer": { "mesh": "mesh.corridor.ceiling", "material": "mat.concrete.dark", "castShadow": true, "receiveShadow": true } } },
+    { "id": "corridor.back.glow", "transform": { "position": [-3.35, 1.25, -6.82] }, "components": { "MeshRenderer": { "mesh": "mesh.corridor.glow", "material": "mat.corridor.hot", "castShadow": false, "receiveShadow": false } } },
+
+    { "id": "pillar.center", "transform": { "position": [-0.4, 2.02, -2.85] }, "components": { "MeshRenderer": { "mesh": "mesh.pillar", "material": "mat.concrete.wall", "castShadow": true, "receiveShadow": true } } },
+    { "id": "puddle.foreground", "transform": { "position": [-1.2, 0.012, -1.45], "rotation": [0, -0.16, 0], "scale": [0.24, 1, 0.2] }, "components": { "MeshRenderer": { "mesh": "mesh.puddle", "material": "mat.puddle", "castShadow": false, "receiveShadow": true } } },
+    { "id": "puddle.window", "transform": { "position": [-3.5, 0.014, -2.25], "scale": [0.3, 1, 0.24] }, "components": { "MeshRenderer": { "mesh": "mesh.puddle", "material": "mat.puddle", "castShadow": false, "receiveShadow": true } } },
+
+    { "id": "cabinet.back", "transform": { "position": [3.95, 1.05, -4.5] }, "components": { "MeshRenderer": { "mesh": "mesh.cabinet", "material": "mat.metal.rust", "castShadow": true, "receiveShadow": true } } },
+    { "id": "cabinet.right", "transform": { "position": [4.55, 1.05, -3.3], "rotation": [0, -0.14, 0] }, "components": { "MeshRenderer": { "mesh": "mesh.cabinet", "material": "mat.metal.dark", "castShadow": true, "receiveShadow": true } } },
+    { "id": "crate.wood.01", "transform": { "position": [2.85, 0.42, -3.85], "rotation": [0, 0.22, 0] }, "components": { "MeshRenderer": { "mesh": "mesh.crate", "material": "mat.wood", "castShadow": true, "receiveShadow": true } } },
+    { "id": "crate.wood.02", "transform": { "position": [3.75, 0.42, -3.65], "rotation": [0, -0.14, 0] }, "components": { "MeshRenderer": { "mesh": "mesh.crate", "material": "mat.wood", "castShadow": true, "receiveShadow": true } } },
+    { "id": "crate.wood.03", "transform": { "position": [3.35, 1.25, -3.78], "rotation": [0, 0.08, 0] }, "components": { "MeshRenderer": { "mesh": "mesh.crate", "material": "mat.wood", "castShadow": true, "receiveShadow": true } } },
+    { "id": "crate.yellow", "transform": { "position": [2.15, 0.42, -2.45], "rotation": [0, -0.12, 0] }, "components": { "MeshRenderer": { "mesh": "mesh.crate", "material": "mat.crate.yellow", "castShadow": true, "receiveShadow": true } } },
+    { "id": "door.fallen", "transform": { "position": [-1.55, 0.035, 0.75], "rotation": [0, -0.42, 0], "scale": [0.78, 1, 0.78] }, "components": { "MeshRenderer": { "mesh": "mesh.door.fallen", "material": "mat.wood.door", "castShadow": true, "receiveShadow": true } } },
+
+    { "id": "bed.deck.lower", "transform": { "position": [3.72, 0.58, -0.25] }, "components": { "MeshRenderer": { "mesh": "mesh.bed.deck", "material": "mat.metal.dark", "castShadow": true, "receiveShadow": true } } },
+    { "id": "bed.deck.upper", "transform": { "position": [3.72, 1.88, -0.25] }, "components": { "MeshRenderer": { "mesh": "mesh.bed.deck", "material": "mat.metal.rust", "castShadow": true, "receiveShadow": true } } },
+    { "id": "bed.post.01", "transform": { "position": [2.67, 0.78, 0.18] }, "components": { "MeshRenderer": { "mesh": "mesh.bed.post", "material": "mat.metal.dark", "castShadow": true, "receiveShadow": true } } },
+    { "id": "bed.post.02", "transform": { "position": [4.77, 0.78, 0.18] }, "components": { "MeshRenderer": { "mesh": "mesh.bed.post", "material": "mat.metal.dark", "castShadow": true, "receiveShadow": true } } },
+    { "id": "bed.post.03", "transform": { "position": [2.67, 0.78, -0.68] }, "components": { "MeshRenderer": { "mesh": "mesh.bed.post", "material": "mat.metal.dark", "castShadow": true, "receiveShadow": true } } },
+    { "id": "bed.post.04", "transform": { "position": [4.77, 0.78, -0.68] }, "components": { "MeshRenderer": { "mesh": "mesh.bed.post", "material": "mat.metal.dark", "castShadow": true, "receiveShadow": true } } },
+    { "id": "bed.rail.front.lower", "transform": { "position": [3.72, 0.48, 0.18] }, "components": { "MeshRenderer": { "mesh": "mesh.bed.rail.long", "material": "mat.metal.rust", "castShadow": true, "receiveShadow": true } } },
+    { "id": "bed.rail.back.lower", "transform": { "position": [3.72, 0.48, -0.68] }, "components": { "MeshRenderer": { "mesh": "mesh.bed.rail.long", "material": "mat.metal.rust", "castShadow": true, "receiveShadow": true } } },
+    { "id": "bed.rail.front.upper", "transform": { "position": [3.72, 1.78, 0.18] }, "components": { "MeshRenderer": { "mesh": "mesh.bed.rail.long", "material": "mat.metal.rust", "castShadow": true, "receiveShadow": true } } },
+    { "id": "bed.rail.back.upper", "transform": { "position": [3.72, 1.78, -0.68] }, "components": { "MeshRenderer": { "mesh": "mesh.bed.rail.long", "material": "mat.metal.rust", "castShadow": true, "receiveShadow": true } } },
+    { "id": "bed.rail.head", "transform": { "position": [2.67, 1.3, -0.25] }, "components": { "MeshRenderer": { "mesh": "mesh.bed.rail.short", "material": "mat.metal.dark", "castShadow": true, "receiveShadow": true } } },
+    { "id": "bed.rail.foot", "transform": { "position": [4.77, 1.3, -0.25] }, "components": { "MeshRenderer": { "mesh": "mesh.bed.rail.short", "material": "mat.metal.dark", "castShadow": true, "receiveShadow": true } } },
+
+    { "id": "pipe.ceiling.01", "transform": { "position": [1.9, 3.78, -1], "rotation": [1.570796, 0, 0] }, "components": { "MeshRenderer": { "mesh": "mesh.pipe", "material": "mat.metal.rust", "castShadow": true, "receiveShadow": true } } },
+    { "id": "pipe.ceiling.02", "transform": { "position": [2.35, 3.72, -1], "rotation": [1.570796, 0, 0] }, "components": { "MeshRenderer": { "mesh": "mesh.pipe", "material": "mat.metal.dark", "castShadow": true, "receiveShadow": true } } },
+    { "id": "debris.01", "transform": { "position": [-1.8, 0.03, 1.1], "rotation": [0.08, 0.55, -0.04] }, "components": { "MeshRenderer": { "mesh": "mesh.debris", "material": "mat.debris", "castShadow": true, "receiveShadow": true } } },
+    { "id": "debris.02", "transform": { "position": [0.2, 0.03, -1.35], "rotation": [-0.06, -0.32, 0.08] }, "components": { "MeshRenderer": { "mesh": "mesh.debris", "material": "mat.debris", "castShadow": true, "receiveShadow": true } } },
+    { "id": "debris.03", "transform": { "position": [1.3, 0.03, 0.85], "rotation": [0.04, 0.72, 0.04] }, "components": { "MeshRenderer": { "mesh": "mesh.debris", "material": "mat.metal.rust", "castShadow": true, "receiveShadow": true } } },
+    { "id": "debris.04", "transform": { "position": [-2.55, 0.03, -0.45], "rotation": [-0.03, -0.62, 0.04], "scale": [0.65, 1, 0.8] }, "components": { "MeshRenderer": { "mesh": "mesh.debris", "material": "mat.wood", "castShadow": true, "receiveShadow": true } } },
+
+    { "id": "lamp.fixture", "transform": { "position": [3.9, 2.45, -4.72] }, "components": { "MeshRenderer": { "mesh": "mesh.lamp", "material": "mat.lamp.warm", "castShadow": false, "receiveShadow": false } } },
+    { "id": "light.window.key", "transform": { "position": [-4.62, 3.05, -3.4], "rotation": [0, -1.570796, 0] }, "components": { "Light": { "kind": "spot", "color": "#ffe0a0", "intensity": 5.8, "range": 14, "angle": 0.72, "shadowBias": -0.0005, "shadowNormalBias": 0.018 } } },
+    { "id": "light.window.fill", "transform": { "position": [-4.65, 2.85, -1.3] }, "components": { "Light": { "kind": "point", "color": "#ffd18a", "intensity": 2.2, "range": 9, "shadowBias": -0.0005, "shadowNormalBias": 0.018 } } },
+    { "id": "light.corridor", "transform": { "position": [-3.35, 1.9, -6.3] }, "components": { "Light": { "kind": "point", "color": "#ffc06b", "intensity": 1.5, "range": 4.5 } } },
+    { "id": "light.lamp", "transform": { "position": [3.75, 2.25, -4.25] }, "components": { "Light": { "kind": "point", "color": "#ffb13b", "intensity": 2.8, "range": 5.5 } } },
+
+    { "id": "contact.crates", "transform": { "position": [3.25, 0.01, -3.75] }, "components": { "ContactShadows": { "height": 4, "opacity": 0.62, "resolution": 512, "size": [3.8, 3.8], "softness": 7, "updateMode": "static" } } },
+    { "id": "contact.bed", "transform": { "position": [3.72, 0.01, -0.25] }, "components": { "ContactShadows": { "height": 4, "opacity": 0.56, "resolution": 512, "size": [3.2, 2.5], "softness": 8, "updateMode": "static" } } },
+    { "id": "contact.door-and-accent", "transform": { "position": [0.75, 0.01, -0.55] }, "components": { "ContactShadows": { "height": 3, "opacity": 0.52, "resolution": 512, "size": [5.5, 4.5], "softness": 7, "updateMode": "static" } } },
+    { "id": "contact.cabinets", "transform": { "position": [4.2, 0.01, -3.9] }, "components": { "ContactShadows": { "height": 3.5, "opacity": 0.48, "resolution": 256, "size": [2.8, 2.8], "softness": 8, "updateMode": "static" } } }
+  ],
+  "prefabs": [],
+  "resources": [],
+  "systems": []
+}

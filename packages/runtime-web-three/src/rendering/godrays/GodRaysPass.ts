@@ -63,6 +63,8 @@ export class GodRaysPass extends Pass {
         cameraWorld: { value: new THREE.Matrix4() },
         density: { value: settings.density },
         intensity: { value: settings.intensity },
+        lightColor: { value: new THREE.Color(1, 1, 1) },
+        lightDirection: { value: new THREE.Vector3(0, 1, 0) },
         tnIsOrthographic: { value: false },
         cascadeCount: { value: 0 },
         lightShadowMatrix0: { value: new THREE.Matrix4() },
@@ -180,6 +182,11 @@ export class GodRaysPass extends Pass {
     }
     uniforms.shadowBias!.value = Math.max(0.0001, ...shadowLights.map((light) => Math.abs(light.shadow.bias)));
     uniforms.shadowTexelWorldSize!.value = Math.max(0.001, maximumTexelWorldSize);
+    const primaryLight = shadowLights[0]!;
+    primaryLight.getWorldPosition(_lightPosition);
+    primaryLight.target.getWorldPosition(_lightTarget);
+    uniforms.lightDirection!.value.copy(_lightPosition).sub(_lightTarget).normalize();
+    uniforms.lightColor!.value.copy(primaryLight.color).multiplyScalar(Math.min(2, primaryLight.intensity * 0.25));
     this.quad.material = this.illuminationMaterial;
     renderer.setRenderTarget(this.illuminationTarget);
     renderer.clear();
@@ -247,6 +254,8 @@ const godRaysFragmentShader = `
   uniform mat4 lightShadowMatrix3;
   uniform float density;
   uniform float intensity;
+  uniform vec3 lightColor;
+  uniform vec3 lightDirection;
   uniform float maxDistance;
   uniform float shadowBias;
   uniform float shadowTexelWorldSize;
@@ -295,6 +304,14 @@ const godRaysFragmentShader = `
     return 0.0;
   }
 
+  // Fixed v1 anisotropy keeps the portable authored surface unchanged while
+  // matching the forward-scattering medium used by the native adapter.
+  float henyeyGreenstein(float cosineTheta) {
+    const float g = 0.75;
+    float denominator = max(1.0 + g * g - 2.0 * g * cosineTheta, 1e-3);
+    return (1.0 - g * g) / pow(denominator, 1.5);
+  }
+
   void main() {
     float sceneDepth = texture2D(tDepth, vUv).x;
     vec3 target = unproject(vUv, sceneDepth);
@@ -313,10 +330,14 @@ const godRaysFragmentShader = `
       opticalDepth += sampleCascades(samplePosition) * opticalScale;
       if (opticalDepth >= 4.0) break;
     }
-    float shaft = (1.0 - exp(-opticalDepth)) * intensity;
-    gl_FragColor = vec4(vec3(clamp(shaft, 0.0, 2.0)), sceneDepth);
+    float phase = henyeyGreenstein(clamp(dot(direction, lightDirection), -1.0, 1.0));
+    float shaft = (1.0 - exp(-opticalDepth)) * intensity * phase;
+    gl_FragColor = vec4(clamp(lightColor * shaft, vec3(0.0), vec3(4.0)), sceneDepth);
   }
 `;
+
+const _lightPosition = new THREE.Vector3();
+const _lightTarget = new THREE.Vector3();
 
 const compositeFragmentShader = `
   uniform sampler2D tDiffuse;

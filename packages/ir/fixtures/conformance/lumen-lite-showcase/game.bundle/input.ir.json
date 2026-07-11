@@ -1,0 +1,57 @@
+{
+  "actions": [
+    {
+      "bindings": [
+        {
+          "code": "ArrowLeft",
+          "device": "keyboard"
+        },
+        {
+          "code": "KeyA",
+          "device": "keyboard"
+        }
+      ],
+      "id": "move-left"
+    },
+    {
+      "bindings": [
+        {
+          "code": "ArrowRight",
+          "device": "keyboard"
+        },
+        {
+          "code": "KeyD",
+          "device": "keyboard"
+        }
+      ],
+      "id": "move-right"
+    }
+  ],
+  "axes": [
+    {
+      "id": "MoveX",
+      "negative": [
+        {
+          "code": "ArrowLeft",
+          "device": "keyboard"
+        },
+        {
+          "code": "KeyA",
+          "device": "keyboard"
+        }
+      ],
+      "positive": [
+        {
+          "code": "ArrowRight",
+          "device": "keyboard"
+        },
+        {
+          "code": "KeyD",
+          "device": "keyboard"
+        }
+      ]
+    }
+  ],
+  "schema": "threenative.input",
+  "version": "0.1.0"
+}

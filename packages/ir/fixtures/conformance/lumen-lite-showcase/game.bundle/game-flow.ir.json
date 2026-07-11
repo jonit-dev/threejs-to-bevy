@@ -1,0 +1,67 @@
+{
+  "flows": [
+    {
+      "id": "match",
+      "initial": "ready",
+      "scene": "arena",
+      "states": [
+        {
+          "actions": [
+            {
+              "kind": "setResource",
+              "resource": "GameState.countdown",
+              "value": "Ready"
+            }
+          ],
+          "id": "ready"
+        },
+        {
+          "actions": [
+            {
+              "kind": "setResource",
+              "resource": "GameState.countdown",
+              "value": "Go"
+            },
+            {
+              "kind": "playSequence",
+              "sequence": "intro"
+            }
+          ],
+          "id": "playing"
+        },
+        {
+          "actions": [
+            {
+              "kind": "setResource",
+              "resource": "GameState.countdown",
+              "value": "Goal reached"
+            }
+          ],
+          "id": "win"
+        }
+      ],
+      "transitions": [
+        {
+          "from": "ready",
+          "id": "start",
+          "to": "playing",
+          "trigger": {
+            "event": "match.start",
+            "kind": "event"
+          }
+        },
+        {
+          "from": "playing",
+          "id": "goal",
+          "to": "win",
+          "trigger": {
+            "event": "goal.reached",
+            "kind": "event"
+          }
+        }
+      ]
+    }
+  ],
+  "schema": "threenative.game-flow",
+  "version": "0.1.0"
+}

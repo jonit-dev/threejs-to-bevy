@@ -1,0 +1,118 @@
+{
+  "schema": "threenative.component-schemas",
+  "schemas": {
+    "ContactShadows": {
+      "fields": {
+        "height": {
+          "kind": "number",
+          "required": true
+        },
+        "opacity": {
+          "kind": "number",
+          "required": true
+        },
+        "resolution": {
+          "kind": "number",
+          "required": true
+        },
+        "size": {
+          "kind": "vec2",
+          "required": true
+        },
+        "softness": {
+          "kind": "number",
+          "required": true
+        },
+        "updateMode": {
+          "kind": "string",
+          "required": true
+        }
+      }
+    },
+    "Light": {
+      "fields": {
+        "angle": {
+          "kind": "number",
+          "required": true
+        },
+        "color": {
+          "kind": "string",
+          "required": true
+        },
+        "intensity": {
+          "kind": "number",
+          "required": true
+        },
+        "kind": {
+          "kind": "string",
+          "required": true
+        },
+        "range": {
+          "kind": "number",
+          "required": true
+        },
+        "shadowBias": {
+          "kind": "number",
+          "required": true
+        },
+        "shadowNormalBias": {
+          "kind": "number",
+          "required": true
+        }
+      }
+    },
+    "MeshRenderer": {
+      "fields": {
+        "castShadow": {
+          "kind": "boolean",
+          "required": true
+        },
+        "material": {
+          "kind": "string",
+          "required": true
+        },
+        "mesh": {
+          "kind": "string",
+          "required": true
+        },
+        "receiveShadow": {
+          "kind": "boolean",
+          "required": true
+        }
+      }
+    },
+    "Transform": {
+      "fields": {
+        "position": {
+          "kind": "vec3",
+          "required": false
+        },
+        "rotation": {
+          "kind": "quat",
+          "required": false
+        },
+        "scale": {
+          "kind": "vec3",
+          "required": false
+        }
+      }
+    },
+    "VisualProvenance": {
+      "fields": {
+        "notes": {
+          "kind": "string",
+          "required": true
+        },
+        "status": {
+          "kind": "string",
+          "required": true
+        },
+        "style": {
+          "kind": "string",
+          "required": true
+        }
+      }
+    }
+  },
+  "version": "0.1.0"
+}

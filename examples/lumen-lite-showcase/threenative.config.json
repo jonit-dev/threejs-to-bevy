@@ -1,66 +1,47 @@
 {
   "schema": "threenative.project",
   "version": "0.1.0",
-  "entry": "content/scenes/arena.scene.json",
+  "entry": "content/scenes/hero-interior.scene.json",
   "outDir": "dist/lumen-lite-showcase.bundle",
   "production": {
-    "archetype": "top-down",
-    "archetypeSource": "content/archetypes/top-down.archetype.json",
-    "playableLoop": "Move the player across the arena to reach the goal feedback.",
+    "releaseProof": {
+      "buildOnly": true
+    },
+    "archetype": "static-lighting-showcase",
+    "playableLoop": "Load the fixed cinematic camera, allow the lighting stack to settle, and capture the composed derelict interior for visual inspection.",
     "controls": [
-      "keyboard.KeyA",
-      "keyboard.ArrowLeft",
-      "keyboard.KeyD",
-      "keyboard.ArrowRight"
+      "Fixed cinematic camera; no gameplay input is required."
     ],
     "lookProfile": {
-      "camera": "orthographic top-down follow",
-      "movementPlane": "ground-xz",
+      "camera": "fixed eye-height perspective across the window shafts",
+      "movementPlane": "not-applicable",
       "renderLook": "cinematic"
     },
-    "objective": "Trigger visible and audio feedback by reaching the goal zone.",
-    "progression": "The starter includes a data-first GameFlow ready -> playing -> win skeleton; expand it with score, timer, waves, or collectible count before claiming a complete generated game.",
-    "failRetry": "Reset by rebuilding or reloading the preview; extend content/flow/match.flow.json with a fail/retry branch before claiming persistent fail state.",
+    "objective": "Prove baked GI, SSGI, cascaded shadows, contact shadows, bloom, height fog, god rays, and rough PBR materials in one deterministic scene.",
+    "progression": "Runtime readiness followed by a settled before/after screenshot pair on web and desktop.",
+    "failRetry": "A failed readiness or diagnostic assertion is retried by rerunning the committed hero-interior playtest scenario.",
     "feedbackMoments": [
-      "Player movement is visible in playtest proof.",
-      "Goal feedback changes GameFlow state when the player reaches the objective.",
-      "The intro Sequence gives agents a data-first feedback beat to extend before writing cutscene scripts.",
-      "HUD text can be extended from GameState bindings."
+      "Two near-white framed windows bloom against the dark room.",
+      "Diagonal shafts cross the camera view and fade into warm dust haze.",
+      "Warm bounced light reveals the opposite wall without flattening the corners.",
+      "The yellow accent crate, fallen door, bed, cabinets, crates, and debris remain grounded by contact shadows."
     ],
     "assetPlan": {
-      "playerHero": "Starter player entity is source-owned placeholder geometry intended to be replaced by catalog, kit, or authored custom art.",
-      "obstacleEnemy": "No obstacle/enemy is authored in the starter baseline.",
-      "rewardInteractable": "Goal zone is the starter reward/interactable surface.",
-      "worldEnvironment": "Arena floor, camera, light, and goal context provide the starter world surface.",
-      "uiHud": "Starter HUD/source UI is the baseline for objective and state text.",
-      "audioFeedback": "Starter goal-ping audio asset is available for feedback wiring."
+      "playerHero": "Not applicable: this is a static renderer showcase with a fixed camera.",
+      "obstacleEnemy": "Not applicable: architecture and set dressing are the visual subjects.",
+      "rewardInteractable": "The saturated yellow crate is the direct-light accent and visual focal prop.",
+      "worldEnvironment": "Intentional source-owned procedural architecture and set dressing provide deterministic adapter-parity evidence.",
+      "uiHud": "No HUD is rendered so lighting evidence remains unobstructed.",
+      "audioFeedback": "Not applicable to a static lighting proof."
     },
-    "scriptModules": [
-      {
-        "module": "src/scripts/player.ts",
-        "export": "updatePlayer",
-        "ownsState": [
-          "Transform",
-          "GameState"
-        ],
-        "referencedBy": [
-          "content/systems/arena.systems.json"
-        ]
-      }
-    ],
+    "scriptModules": [],
     "agent": {
       "sourceShape": {
         "assets": [
           "content/assets/arena.assets.json"
         ],
-        "archetypes": [
-          "content/archetypes/top-down.archetype.json"
-        ],
-        "flow": [
-          "content/flow/match.flow.json"
-        ],
-        "input": [
-          "content/input/arena.input.json"
+        "environment": [
+          "content/environment/lumen-room.environment.json"
         ],
         "materials": [
           "content/materials/arena.materials.json"
@@ -72,106 +53,63 @@
           "content/runtime/default.runtime.json"
         ],
         "scene": [
-          "content/scenes/arena.scene.json"
-        ],
-        "sequences": [
-          "content/sequences/intro.sequence.json"
-        ],
-        "systems": [
-          "content/systems/arena.systems.json"
+          "content/scenes/hero-interior.scene.json"
         ],
         "ui": [
           "content/ui/hud.ui.json"
         ],
-        "scripts": [
-          "src/scripts/player.ts"
-        ]
+        "scripts": []
       },
       "highValueSurfaces": [
         {
-          "id": "playerHero",
-          "sourcePath": "content/scenes/arena.scene.json",
-          "provenanceStatus": "starter-placeholder",
-          "summary": "Starter player entity is source-owned placeholder geometry intended to be replaced by catalog, kit, or authored custom art."
+          "id": "heroInterior",
+          "sourcePath": "content/scenes/hero-interior.scene.json",
+          "provenanceStatus": "intentional-procedural",
+          "summary": "A fully enclosed ten-by-four-by-eight metre derelict room with two true window openings, frames, mullions, a doorway, and a lit secondary corridor."
         },
         {
-          "id": "obstacleEnemy",
-          "sourcePath": "threenative.config.json#/production/assetPlan",
-          "provenanceStatus": "not-authored",
-          "summary": "No obstacle/enemy is authored in the starter baseline."
+          "id": "setDressing",
+          "sourcePath": "content/scenes/hero-interior.scene.json",
+          "provenanceStatus": "intentional-procedural",
+          "summary": "A rusted bed frame, cabinets, wooden crates, fallen door, yellow accent crate, pipes, puddles, and debris provide authored scale cues and shadow contacts."
         },
         {
-          "id": "rewardInteractable",
-          "sourcePath": "content/scenes/arena.scene.json",
+          "id": "lightingRig",
+          "sourcePath": "content/environment/lumen-room.environment.json",
           "provenanceStatus": "source",
-          "summary": "Goal zone is the starter reward/interactable surface."
-        },
-        {
-          "id": "worldEnvironment",
-          "sourcePath": "content/scenes/arena.scene.json",
-          "provenanceStatus": "source",
-          "summary": "Arena floor, camera, light, and goal context provide the starter world surface."
+          "summary": "Portable environment data owns the warm directional key, baked probe, low ambient, fog, god rays, ACES response, and stabilized cascaded shadows."
         },
         {
           "id": "uiHud",
           "sourcePath": "content/ui/hud.ui.json",
-          "provenanceStatus": "source",
-          "summary": "Starter HUD/source UI is the baseline for objective and state text."
-        },
-        {
-          "id": "audioFeedback",
-          "sourcePath": "content/assets/arena.assets.json",
-          "provenanceStatus": "local-file",
-          "summary": "Starter goal-ping audio asset is available for feedback wiring."
+          "provenanceStatus": "intentionally-empty",
+          "summary": "The showcase deliberately renders no HUD or starter Ready label."
         }
       ],
-      "scriptModules": [
-        {
-          "module": "src/scripts/player.ts",
-          "export": "updatePlayer",
-          "ownsState": [
-            "Transform",
-            "GameState"
-          ],
-          "referencedBy": [
-            "content/systems/arena.systems.json"
-          ]
-        }
-      ],
+      "scriptModules": [],
       "uiStates": [
         {
-          "id": "gameplay",
+          "id": "unobstructed-lighting-proof",
           "sourcePath": "content/ui/hud.ui.json",
-          "expectation": "HUD can display objective status."
-        },
-        {
-          "id": "fail-retry",
-          "sourcePath": "threenative.config.json#/production/failRetry",
-          "expectation": "Starter records retry limitation before a full fail state is authored."
+          "expectation": "No retained UI nodes obscure the hero-interior capture."
         }
       ],
       "assetSourcing": [
-        "Starter assets are local source-owned baseline surfaces; run tn asset source search --format glb --direct-only --json before replacing high-value art."
+        "Architecture and simple set dressing use intentional source-owned procedural meshes for deterministic web/native parity; no player, enemy, or animated hero asset is required."
       ],
       "proofCommands": [
         "tn authoring validate --project . --json",
         "tn build --project . --json",
-        "tn playtest --project . --scenario playtests/smoke-movement.playtest.json --stable-artifacts --json",
-        "tn game qa --project . --run-proof --json",
-        "tn game release --project . --json"
+        "tn playtest --project . --scenario playtests/hero-interior.playtest.json --stable-artifacts --json",
+        "tn playtest --project . --scenario playtests/native-hero-interior.playtest.json --stable-artifacts --json"
       ],
-      "knownBlockers": [
-        "Starter player and world surfaces are intentionally minimal until a generated game goal selects art direction."
-      ]
+      "knownBlockers": []
     },
     "proofCommands": [
       "tn authoring validate --project . --json",
       "tn build --project . --json",
-      "tn playtest --project . --scenario playtests/smoke-movement.playtest.json --stable-artifacts --json",
-      "tn screenshot --project . --url <preview-url> --out artifacts/game-production/screenshot.png --wait-ready --json",
-      "tn game score --project . --json",
-      "tn game qa --project . --run-proof --json",
-      "tn game release --project . --json"
+      "tn playtest --project . --scenario playtests/hero-interior.playtest.json --stable-artifacts --json",
+      "tn playtest --project . --scenario playtests/native-hero-interior.playtest.json --stable-artifacts --json"
     ]
   },
   "template": "structured-source-starter"

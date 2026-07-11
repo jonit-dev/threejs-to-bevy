@@ -33,7 +33,7 @@ function evidence(): VolumetricsEvidence {
     nativeShaftControlMetrics: { ...metrics, shaftContrast: 0.05 },
     nativeMetrics: { ...metrics },
     nativePath: "native.png",
-    nativeReport: report("homogeneous-medium-approximation", "bevy-volumetric-light", "bevy-0.14-no-height-density-field"),
+    nativeReport: report("analytic-height-post-pass", "bevy-volumetric-light"),
     webBytes: 1024,
     webHeightControlMetrics: { ...metrics, baseFogLuminance: 0.3, topFogLuminance: 0.3 },
     webShaftControlMetrics: { ...metrics, shaftContrast: 0.05 },

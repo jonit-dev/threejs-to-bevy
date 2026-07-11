@@ -1,0 +1,53 @@
+{
+  "renderer": {
+    "ambientOcclusion": {
+      "enabled": true,
+      "intensity": 1.4,
+      "mode": "screen-space",
+      "quality": "high",
+      "radius": 2.4
+    },
+    "antialias": "msaa4",
+    "bloom": {
+      "enabled": true,
+      "intensity": 0.58,
+      "threshold": 0.68
+    },
+    "colorGrading": {
+      "contrast": 0.1,
+      "exposure": 1.08,
+      "saturation": 1.08,
+      "toneMapping": "aces"
+    },
+    "renderLook": {
+      "overrides": {
+        "bloomIntensity": 0.58
+      },
+      "profile": "cinematic",
+      "version": 1
+    },
+    "renderPath": "forward",
+    "screenSpaceGlobalIllumination": {
+      "enabled": true,
+      "intensity": 0.12,
+      "quality": "high",
+      "radius": 8
+    },
+    "screenSpaceReflections": {
+      "enabled": true,
+      "quality": "medium",
+      "roughnessLimit": 0.62
+    }
+  },
+  "schema": "threenative.runtime-config",
+  "time": {
+    "fixedDelta": 0.016666666666666666,
+    "paused": true
+  },
+  "version": "0.1.0",
+  "window": {
+    "height": 720,
+    "title": "Lumen Lite Industrial Room",
+    "width": 1280
+  }
+}

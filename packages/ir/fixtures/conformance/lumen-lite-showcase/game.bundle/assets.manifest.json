@@ -1,0 +1,524 @@
+{
+  "assets": [
+    {
+      "format": "wav",
+      "id": "asset.goal-ping",
+      "kind": "audio",
+      "path": "assets/goal-ping.wav",
+      "sourceMode": "bundle"
+    },
+    {
+      "format": "generated",
+      "id": "mesh.bed.deck",
+      "kind": "mesh",
+      "primitive": "box",
+      "size": [
+        2.1,
+        0.16,
+        0.85
+      ]
+    },
+    {
+      "format": "generated",
+      "id": "mesh.bed.post",
+      "kind": "mesh",
+      "primitive": "box",
+      "size": [
+        0.08,
+        1.55,
+        0.08
+      ]
+    },
+    {
+      "format": "generated",
+      "id": "mesh.bed.rail.long",
+      "kind": "mesh",
+      "primitive": "box",
+      "size": [
+        2.15,
+        0.08,
+        0.08
+      ]
+    },
+    {
+      "format": "generated",
+      "id": "mesh.bed.rail.short",
+      "kind": "mesh",
+      "primitive": "box",
+      "size": [
+        0.08,
+        0.08,
+        0.9
+      ]
+    },
+    {
+      "format": "generated",
+      "id": "mesh.cabinet",
+      "kind": "mesh",
+      "primitive": "box",
+      "size": [
+        1.25,
+        2.1,
+        0.65
+      ]
+    },
+    {
+      "format": "generated",
+      "id": "mesh.ceiling",
+      "kind": "mesh",
+      "primitive": "box",
+      "size": [
+        10,
+        0.2,
+        8
+      ]
+    },
+    {
+      "format": "generated",
+      "id": "mesh.contact.bed",
+      "kind": "mesh",
+      "primitive": "box",
+      "size": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "format": "generated",
+      "id": "mesh.contact.cabinets",
+      "kind": "mesh",
+      "primitive": "box",
+      "size": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "format": "generated",
+      "id": "mesh.contact.crates",
+      "kind": "mesh",
+      "primitive": "box",
+      "size": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "format": "generated",
+      "id": "mesh.contact.door-and-accent",
+      "kind": "mesh",
+      "primitive": "box",
+      "size": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "format": "generated",
+      "id": "mesh.corridor.ceiling",
+      "kind": "mesh",
+      "primitive": "box",
+      "size": [
+        1.3,
+        0.14,
+        1.8
+      ]
+    },
+    {
+      "format": "generated",
+      "id": "mesh.corridor.floor",
+      "kind": "mesh",
+      "primitive": "box",
+      "size": [
+        1.3,
+        0.14,
+        1.8
+      ]
+    },
+    {
+      "format": "generated",
+      "id": "mesh.corridor.glow",
+      "kind": "mesh",
+      "primitive": "box",
+      "size": [
+        1.25,
+        2.45,
+        0.08
+      ]
+    },
+    {
+      "format": "generated",
+      "id": "mesh.corridor.side",
+      "kind": "mesh",
+      "primitive": "box",
+      "size": [
+        0.18,
+        2.6,
+        1.8
+      ]
+    },
+    {
+      "format": "generated",
+      "id": "mesh.crate",
+      "kind": "mesh",
+      "primitive": "box",
+      "size": [
+        1.05,
+        0.82,
+        0.82
+      ]
+    },
+    {
+      "format": "generated",
+      "id": "mesh.debris",
+      "kind": "mesh",
+      "primitive": "box",
+      "size": [
+        0.55,
+        0.08,
+        0.32
+      ]
+    },
+    {
+      "format": "generated",
+      "id": "mesh.door.fallen",
+      "kind": "mesh",
+      "primitive": "box",
+      "size": [
+        2.2,
+        0.1,
+        0.95
+      ]
+    },
+    {
+      "format": "generated",
+      "id": "mesh.door.frame.horizontal",
+      "kind": "mesh",
+      "primitive": "box",
+      "size": [
+        1.7,
+        0.22,
+        0.22
+      ]
+    },
+    {
+      "format": "generated",
+      "id": "mesh.door.frame.vertical",
+      "kind": "mesh",
+      "primitive": "box",
+      "size": [
+        0.22,
+        2.6,
+        0.22
+      ]
+    },
+    {
+      "format": "generated",
+      "id": "mesh.floor",
+      "kind": "mesh",
+      "primitive": "box",
+      "size": [
+        10,
+        0.18,
+        8
+      ]
+    },
+    {
+      "format": "generated",
+      "id": "mesh.frame.horizontal",
+      "kind": "mesh",
+      "primitive": "box",
+      "size": [
+        0.12,
+        0.08,
+        1.7
+      ]
+    },
+    {
+      "format": "generated",
+      "id": "mesh.frame.mullion.horizontal",
+      "kind": "mesh",
+      "primitive": "box",
+      "size": [
+        0.14,
+        0.06,
+        1.5
+      ]
+    },
+    {
+      "format": "generated",
+      "id": "mesh.frame.mullion.vertical",
+      "kind": "mesh",
+      "primitive": "box",
+      "size": [
+        0.14,
+        1.2,
+        0.06
+      ]
+    },
+    {
+      "format": "generated",
+      "id": "mesh.frame.vertical",
+      "kind": "mesh",
+      "primitive": "box",
+      "size": [
+        0.12,
+        1.4,
+        0.08
+      ]
+    },
+    {
+      "format": "generated",
+      "id": "mesh.lamp",
+      "kind": "mesh",
+      "primitive": "box",
+      "size": [
+        0.85,
+        0.12,
+        0.28
+      ]
+    },
+    {
+      "format": "generated",
+      "id": "mesh.pillar",
+      "kind": "mesh",
+      "primitive": "box",
+      "size": [
+        0.55,
+        4.05,
+        0.55
+      ]
+    },
+    {
+      "format": "generated",
+      "id": "mesh.pipe",
+      "kind": "mesh",
+      "primitive": "cylinder",
+      "size": [
+        0.11,
+        5.5
+      ]
+    },
+    {
+      "format": "generated",
+      "id": "mesh.puddle",
+      "kind": "mesh",
+      "primitive": "box",
+      "size": [
+        2.4,
+        0.015,
+        1.25
+      ]
+    },
+    {
+      "format": "generated",
+      "id": "mesh.visual.provenance",
+      "kind": "mesh",
+      "primitive": "box",
+      "size": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "format": "generated",
+      "id": "mesh.wall.back.left",
+      "kind": "mesh",
+      "primitive": "box",
+      "size": [
+        1,
+        2.5,
+        0.22
+      ]
+    },
+    {
+      "format": "generated",
+      "id": "mesh.wall.back.right",
+      "kind": "mesh",
+      "primitive": "box",
+      "size": [
+        7.7,
+        2.5,
+        0.22
+      ]
+    },
+    {
+      "format": "generated",
+      "id": "mesh.wall.back.upper",
+      "kind": "mesh",
+      "primitive": "box",
+      "size": [
+        10,
+        1.7,
+        0.22
+      ]
+    },
+    {
+      "format": "generated",
+      "id": "mesh.wall.band.left",
+      "kind": "mesh",
+      "primitive": "box",
+      "size": [
+        1,
+        1.3,
+        0.04
+      ]
+    },
+    {
+      "format": "generated",
+      "id": "mesh.wall.band.right",
+      "kind": "mesh",
+      "primitive": "box",
+      "size": [
+        7.7,
+        1.3,
+        0.04
+      ]
+    },
+    {
+      "format": "generated",
+      "id": "mesh.wall.front",
+      "kind": "mesh",
+      "primitive": "box",
+      "size": [
+        10,
+        4.2,
+        0.22
+      ]
+    },
+    {
+      "format": "generated",
+      "id": "mesh.wall.left.lower",
+      "kind": "mesh",
+      "primitive": "box",
+      "size": [
+        0.22,
+        2,
+        8
+      ]
+    },
+    {
+      "format": "generated",
+      "id": "mesh.wall.left.pier.back",
+      "kind": "mesh",
+      "primitive": "box",
+      "size": [
+        0.22,
+        1.2,
+        0.85
+      ]
+    },
+    {
+      "format": "generated",
+      "id": "mesh.wall.left.pier.front",
+      "kind": "mesh",
+      "primitive": "box",
+      "size": [
+        0.22,
+        1.2,
+        3.55
+      ]
+    },
+    {
+      "format": "generated",
+      "id": "mesh.wall.left.pier.middle",
+      "kind": "mesh",
+      "primitive": "box",
+      "size": [
+        0.22,
+        1.2,
+        0.6
+      ]
+    },
+    {
+      "format": "generated",
+      "id": "mesh.wall.left.upper",
+      "kind": "mesh",
+      "primitive": "box",
+      "size": [
+        0.22,
+        1,
+        8
+      ]
+    },
+    {
+      "format": "generated",
+      "id": "mesh.wall.right",
+      "kind": "mesh",
+      "primitive": "box",
+      "size": [
+        0.22,
+        4.2,
+        8
+      ]
+    },
+    {
+      "format": "generated",
+      "id": "mesh.window.glow",
+      "kind": "mesh",
+      "primitive": "box",
+      "size": [
+        0.08,
+        1.2,
+        1.5
+      ]
+    }
+  ],
+  "groups": [
+    {
+      "id": "bundle.requiredAssets",
+      "required": [
+        "asset.goal-ping",
+        "mesh.bed.deck",
+        "mesh.bed.post",
+        "mesh.bed.rail.long",
+        "mesh.bed.rail.short",
+        "mesh.cabinet",
+        "mesh.ceiling",
+        "mesh.contact.bed",
+        "mesh.contact.cabinets",
+        "mesh.contact.crates",
+        "mesh.contact.door-and-accent",
+        "mesh.corridor.ceiling",
+        "mesh.corridor.floor",
+        "mesh.corridor.glow",
+        "mesh.corridor.side",
+        "mesh.crate",
+        "mesh.debris",
+        "mesh.door.fallen",
+        "mesh.door.frame.horizontal",
+        "mesh.door.frame.vertical",
+        "mesh.floor",
+        "mesh.frame.horizontal",
+        "mesh.frame.mullion.horizontal",
+        "mesh.frame.mullion.vertical",
+        "mesh.frame.vertical",
+        "mesh.lamp",
+        "mesh.pillar",
+        "mesh.pipe",
+        "mesh.puddle",
+        "mesh.visual.provenance",
+        "mesh.wall.back.left",
+        "mesh.wall.back.right",
+        "mesh.wall.back.upper",
+        "mesh.wall.band.left",
+        "mesh.wall.band.right",
+        "mesh.wall.front",
+        "mesh.wall.left.lower",
+        "mesh.wall.left.pier.back",
+        "mesh.wall.left.pier.front",
+        "mesh.wall.left.pier.middle",
+        "mesh.wall.left.upper",
+        "mesh.wall.right",
+        "mesh.window.glow"
+      ]
+    }
+  ],
+  "schema": "threenative.assets",
+  "version": "0.1.0"
+}

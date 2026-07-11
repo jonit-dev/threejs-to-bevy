@@ -266,6 +266,12 @@ fn spawn_entity(
         if let Some(volumetric_fog) = native_volumetric_fog_settings(camera_atmosphere) {
             spawned.insert(volumetric_fog);
         }
+        if let Some(height_fog) = crate::rendering::native_height_fog_settings(camera_atmosphere) {
+            spawned.insert(height_fog);
+        }
+        if let Some(ssgi) = crate::rendering::native_ssgi_settings(runtime_config, camera_atmosphere) {
+            spawned.insert(ssgi);
+        }
         let is_active = if active_cameras.is_empty() {
             fallback_active_camera.map_or(true, |id| id == entity.id)
         } else {
@@ -280,10 +286,25 @@ fn spawn_entity(
             UVec2::new(1280, 720),
             camera_render_target(camera, render_target_registry),
         );
+        spawned.insert(CameraMainTextureUsages(
+            TextureUsages::COPY_SRC
+                | TextureUsages::RENDER_ATTACHMENT
+                | TextureUsages::TEXTURE_BINDING,
+        ));
+        if crate::rendering::native_ssgi_settings(runtime_config, camera_atmosphere).is_some()
+            || crate::rendering::native_height_fog_settings(camera_atmosphere).is_some()
+        {
+            if let Some(mut camera_3d) = spawned.get_mut::<Camera3d>() {
+                camera_3d.depth_texture_usages =
+                    (TextureUsages::RENDER_ATTACHMENT | TextureUsages::TEXTURE_BINDING).into();
+            }
+        }
         if let Some(mut camera_component) = spawned.get_mut::<Camera>() {
             camera_component.hdr = camera_color_management.is_some()
                 || runtime_color_grading.is_some()
-                || bloom_settings.is_some();
+                || bloom_settings.is_some()
+                || crate::rendering::native_height_fog_settings(camera_atmosphere).is_some()
+                || crate::rendering::native_ssgi_settings(runtime_config, camera_atmosphere).is_some();
             if camera.clear.is_none() {
                 if let Some(clear_color) = default_camera_clear_color {
                     camera_component.clear_color = ClearColorConfig::Custom(clear_color);
@@ -320,6 +341,7 @@ fn spawn_entity(
         }
         insert_camera_antialias(&mut spawned, runtime_config);
         insert_camera_ambient_occlusion(&mut spawned, runtime_config);
+        insert_camera_ssgi_prepasses(&mut spawned, runtime_config);
         insert_camera_shadow_profile(&mut spawned, runtime_config);
         insert_camera_depth_of_field(&mut spawned, runtime_config);
         insert_camera_motion_blur(&mut spawned, runtime_config);
@@ -421,7 +443,7 @@ fn spawn_entity(
                 * THREE_COMPAT_AMBIENT_BRIGHTNESS_PER_INTENSITY
                 * if camera_atmosphere.is_some_and(|profile| profile.active) { 1.0 } else { ambient_occlusion_intensity_approximation(runtime_config) }
                 * crate::rendering::native_ssgi_ambient_multiplier(runtime_config);
-            if world.contains_resource::<crate::rendering::NativeBakedProbeAmbientApplied>() {
+        if world.contains_resource::<crate::rendering::NativeBakedProbeLightingApplied>() {
                 if let Some(mut ambient) = world.get_resource_mut::<AmbientLight>() {
                     ambient.color = crate::rendering::blend_ambient_colors(ambient.color, color);
                     ambient.brightness += brightness;

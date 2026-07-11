@@ -1,0 +1,31 @@
+{
+  "schemaVersion": 1,
+  "name": "hero-interior",
+  "target": "web",
+  "subject": "camera.main",
+  "viewport": {
+    "width": 1280,
+    "height": 720
+  },
+  "warmupFrames": 45,
+  "steps": [
+    {
+      "label": "settle-lighting",
+      "waitFrames": 45
+    }
+  ],
+  "assert": {
+    "diagnostics": {
+      "runtimeReady": true,
+      "noConsoleErrors": true,
+      "noNetworkErrors": true,
+      "noRuntimeDiagnostics": true
+    }
+  },
+  "artifacts": {
+    "screenshots": "before-after",
+    "console": true,
+    "network": true,
+    "runtimeTrace": true
+  }
+}

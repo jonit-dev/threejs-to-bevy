@@ -1,0 +1,145 @@
+{
+  "materials": [
+    {
+      "color": "#50483b",
+      "id": "mat.concrete.dark",
+      "kind": "standard",
+      "metalness": 0,
+      "roughness": 0.94
+    },
+    {
+      "color": "#756b5a",
+      "id": "mat.concrete.floor",
+      "kind": "standard",
+      "metalness": 0.02,
+      "roughness": 0.88
+    },
+    {
+      "color": "#9a8065",
+      "id": "mat.concrete.wall",
+      "kind": "standard",
+      "metalness": 0,
+      "roughness": 0.96
+    },
+    {
+      "color": "#2f80ed",
+      "id": "mat.contact.bed",
+      "kind": "standard",
+      "metalness": 0,
+      "roughness": 0.55
+    },
+    {
+      "color": "#2f80ed",
+      "id": "mat.contact.cabinets",
+      "kind": "standard",
+      "metalness": 0,
+      "roughness": 0.55
+    },
+    {
+      "color": "#2f80ed",
+      "id": "mat.contact.crates",
+      "kind": "standard",
+      "metalness": 0,
+      "roughness": 0.55
+    },
+    {
+      "color": "#2f80ed",
+      "id": "mat.contact.door-and-accent",
+      "kind": "standard",
+      "metalness": 0,
+      "roughness": 0.55
+    },
+    {
+      "color": "#ad8b5a",
+      "emissive": "#ffbd65",
+      "emissiveIntensity": 2.6,
+      "id": "mat.corridor.hot",
+      "kind": "standard",
+      "metalness": 0,
+      "roughness": 0.75
+    },
+    {
+      "color": "#d39b18",
+      "id": "mat.crate.yellow",
+      "kind": "standard",
+      "metalness": 0.08,
+      "roughness": 0.68
+    },
+    {
+      "color": "#766950",
+      "id": "mat.debris",
+      "kind": "standard",
+      "metalness": 0,
+      "roughness": 0.98
+    },
+    {
+      "color": "#ffc04a",
+      "emissive": "#ff9a1f",
+      "emissiveIntensity": 5,
+      "id": "mat.lamp.warm",
+      "kind": "standard",
+      "metalness": 0.05,
+      "roughness": 0.22
+    },
+    {
+      "color": "#171b1c",
+      "id": "mat.metal.dark",
+      "kind": "standard",
+      "metalness": 0.72,
+      "roughness": 0.43
+    },
+    {
+      "color": "#543a28",
+      "id": "mat.metal.rust",
+      "kind": "standard",
+      "metalness": 0.48,
+      "roughness": 0.72
+    },
+    {
+      "color": "#526d72",
+      "id": "mat.paint.peeling",
+      "kind": "standard",
+      "metalness": 0.01,
+      "roughness": 0.9
+    },
+    {
+      "color": "#292b28",
+      "id": "mat.puddle",
+      "kind": "standard",
+      "metalness": 0.12,
+      "roughness": 0.28
+    },
+    {
+      "color": "#2f80ed",
+      "id": "mat.visual.provenance",
+      "kind": "standard",
+      "metalness": 0,
+      "roughness": 0.55
+    },
+    {
+      "color": "#fff1c2",
+      "emissive": "#ffd275",
+      "emissiveIntensity": 7.5,
+      "id": "mat.window.hot",
+      "kind": "standard",
+      "metalness": 0,
+      "roughness": 0.15
+    },
+    {
+      "color": "#785434",
+      "id": "mat.wood",
+      "kind": "standard",
+      "metalness": 0,
+      "roughness": 0.82
+    },
+    {
+      "color": "#4a2d1d",
+      "id": "mat.wood.door",
+      "kind": "standard",
+      "metalness": 0,
+      "roughness": 0.9
+    }
+  ],
+  "schema": "threenative.materials",
+  "version": "0.1.0"
+}

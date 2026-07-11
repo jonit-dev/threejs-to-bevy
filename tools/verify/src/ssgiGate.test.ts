@@ -41,7 +41,7 @@ function evidence(): SsgiEvidence {
     nativeHighMetrics: high,
     nativeMetrics: authored,
     nativePath: "native.png",
-    nativeReport: report("approximation", "baseline"),
+    nativeReport: report("spatial-neighborhood-no-temporal", "baseline"),
     webBytes: 1024,
     webDisabledMetrics: disabled,
     webHighMetrics: high,
