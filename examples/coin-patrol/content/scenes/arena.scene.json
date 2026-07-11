@@ -1,0 +1,534 @@
+{
+  "entities": [
+    {
+      "id": "arena.floor",
+      "prefab": "prefab.floor",
+      "transform": {
+        "position": [
+          0,
+          -0.05,
+          0
+        ],
+        "rotation": [
+          -1.570796,
+          0,
+          0
+        ],
+        "scale": [
+          5,
+          5,
+          5
+        ]
+      }
+    },
+    {
+      "id": "arena.rail.north",
+      "prefab": "prefab.rail",
+      "transform": {
+        "position": [
+          0,
+          0.08,
+          -2.45
+        ],
+        "scale": [
+          4.8,
+          0.16,
+          0.16
+        ]
+      }
+    },
+    {
+      "id": "arena.rail.south",
+      "prefab": "prefab.rail",
+      "transform": {
+        "position": [
+          0,
+          0.08,
+          2.45
+        ],
+        "scale": [
+          4.8,
+          0.16,
+          0.16
+        ]
+      }
+    },
+    {
+      "id": "arena.rail.east",
+      "prefab": "prefab.rail",
+      "transform": {
+        "position": [
+          2.45,
+          0.08,
+          0
+        ],
+        "scale": [
+          0.16,
+          0.16,
+          4.8
+        ]
+      }
+    },
+    {
+      "id": "arena.rail.west",
+      "prefab": "prefab.rail",
+      "transform": {
+        "position": [
+          -2.45,
+          0.08,
+          0
+        ],
+        "scale": [
+          0.16,
+          0.16,
+          4.8
+        ]
+      }
+    },
+    {
+      "id": "arena.marker.start",
+      "prefab": "prefab.marker",
+      "transform": {
+        "position": [
+          -1.35,
+          0.04,
+          1.15
+        ],
+        "scale": [
+          0.8,
+          0.08,
+          0.8
+        ]
+      }
+    },
+    {
+      "id": "arena.marker.goal",
+      "prefab": "prefab.marker",
+      "transform": {
+        "position": [
+          1.35,
+          0.04,
+          -1.15
+        ],
+        "scale": [
+          0.8,
+          0.08,
+          0.8
+        ]
+      }
+    },
+    {
+      "id": "player",
+      "prefab": "prefab.player",
+      "transform": {
+        "position": [
+          0,
+          0.35,
+          0
+        ],
+        "scale": [
+          0.55,
+          0.55,
+          0.55
+        ]
+      }
+    },
+    {
+      "id": "goal",
+      "prefab": "prefab.goal",
+      "transform": {
+        "position": [
+          1.8,
+          0.3,
+          -1.6
+        ],
+        "scale": [
+          0.45,
+          0.45,
+          0.45
+        ]
+      }
+    },
+    {
+      "components": {
+        "camera": {
+          "mode": "perspective",
+          "target": "player"
+        }
+      },
+      "id": "camera.main"
+    },
+    {
+      "components": {
+        "Collider": {
+          "kind": "box",
+          "size": [
+            0.8,
+            0.7,
+            0.35
+          ],
+          "trigger": true
+        }
+      },
+      "id": "hazard.barrier.01",
+      "prefab": "hazard.barrier.01.prefab",
+      "transform": {
+        "position": [
+          1.5,
+          0.45,
+          -6
+        ],
+        "scale": [
+          0.8,
+          0.7,
+          0.35
+        ]
+      }
+    },
+    {
+      "components": {
+        "Collider": {
+          "kind": "sphere",
+          "radius": 0.5,
+          "size": [
+            1,
+            1,
+            1
+          ],
+          "trigger": true
+        }
+      },
+      "id": "goal.plan",
+      "prefab": "goal.plan.prefab",
+      "transform": {
+        "position": [
+          0,
+          1,
+          0
+        ]
+      }
+    },
+    {
+      "id": "spawner.grid.01",
+      "prefab": "mechanic.spawn.prefab",
+      "transform": {
+        "position": [
+          0,
+          0.35,
+          0
+        ]
+      }
+    },
+    {
+      "id": "spawner.grid.02",
+      "prefab": "mechanic.spawn.prefab",
+      "transform": {
+        "position": [
+          1.2,
+          0.35,
+          0
+        ]
+      }
+    },
+    {
+      "id": "spawner.grid.03",
+      "prefab": "mechanic.spawn.prefab",
+      "transform": {
+        "position": [
+          0,
+          0.35,
+          -1.2
+        ]
+      }
+    },
+    {
+      "id": "spawner.grid.04",
+      "prefab": "mechanic.spawn.prefab",
+      "transform": {
+        "position": [
+          1.2,
+          0.35,
+          -1.2
+        ]
+      }
+    },
+    {
+      "id": "drone.01",
+      "prefab": "prefab.drone",
+      "transform": {
+        "position": [
+          -3,
+          0.35,
+          -2
+        ]
+      }
+    },
+    {
+      "id": "drone.02",
+      "prefab": "prefab.drone",
+      "transform": {
+        "position": [
+          3,
+          0.35,
+          2
+        ]
+      }
+    }
+  ],
+  "id": "arena",
+  "instances": [
+    {
+      "id": "coin.01",
+      "prefab": "prefab.coin",
+      "transform": {
+        "position": [
+          -2,
+          0.3,
+          -3
+        ]
+      }
+    },
+    {
+      "id": "coin.02",
+      "prefab": "prefab.coin",
+      "transform": {
+        "position": [
+          0,
+          0.3,
+          -3
+        ]
+      }
+    },
+    {
+      "id": "coin.03",
+      "prefab": "prefab.coin",
+      "transform": {
+        "position": [
+          2,
+          0.3,
+          -3
+        ]
+      }
+    },
+    {
+      "id": "coin.04",
+      "prefab": "prefab.coin",
+      "transform": {
+        "position": [
+          4,
+          0.3,
+          -3
+        ]
+      }
+    },
+    {
+      "id": "coin.05",
+      "prefab": "prefab.coin",
+      "transform": {
+        "position": [
+          -4,
+          0.3,
+          0
+        ]
+      }
+    },
+    {
+      "id": "coin.06",
+      "prefab": "prefab.coin",
+      "transform": {
+        "position": [
+          -2,
+          0.3,
+          0
+        ]
+      }
+    },
+    {
+      "id": "coin.07",
+      "prefab": "prefab.coin",
+      "transform": {
+        "position": [
+          0,
+          0.3,
+          0
+        ]
+      }
+    },
+    {
+      "id": "coin.08",
+      "prefab": "prefab.coin",
+      "transform": {
+        "position": [
+          2,
+          0.3,
+          0
+        ]
+      }
+    },
+    {
+      "id": "coin.09",
+      "prefab": "prefab.coin",
+      "transform": {
+        "position": [
+          4,
+          0.3,
+          0
+        ]
+      }
+    },
+    {
+      "id": "coin.010",
+      "prefab": "prefab.coin",
+      "transform": {
+        "position": [
+          -4,
+          0.3,
+          3
+        ]
+      }
+    }
+  ],
+  "prefabs": [
+    {
+      "color": "#34373d",
+      "id": "prefab.floor",
+      "primitive": "plane"
+    },
+    {
+      "color": "#0f172a",
+      "id": "prefab.rail",
+      "primitive": "box"
+    },
+    {
+      "color": "#e2e8f0",
+      "id": "prefab.marker",
+      "primitive": "box"
+    },
+    {
+      "color": "#2f80ed",
+      "id": "prefab.player",
+      "primitive": "box"
+    },
+    {
+      "color": "#f2c94c",
+      "id": "prefab.goal",
+      "primitive": "box"
+    },
+    {
+      "color": "#f97316",
+      "id": "player.prefab",
+      "primitive": "capsule"
+    },
+    {
+      "color": "#ef4444",
+      "id": "hazard.barrier.01.prefab",
+      "primitive": "box"
+    },
+    {
+      "color": "#ffd166",
+      "id": "goal.plan.prefab",
+      "primitive": "sphere"
+    },
+    {
+      "color": "#38bdf8",
+      "id": "mechanic.spawn.prefab",
+      "primitive": "box"
+    },
+    {
+      "color": "#f2c94c",
+      "id": "prefab.coin",
+      "primitive": "sphere"
+    },
+    {
+      "color": "#ff3355",
+      "id": "prefab.drone",
+      "primitive": "box"
+    }
+  ],
+  "resources": [
+    {
+      "id": "GameState",
+      "value": {
+        "countdown": "Ready"
+      }
+    },
+    {
+      "id": "goal.plan.collected",
+      "path": "collectibles.goal.plan.collected",
+      "value": false
+    },
+    {
+      "id": "FollowCamera",
+      "value": {
+        "camera": "camera.main",
+        "statusText": "Following player",
+        "target": "player"
+      }
+    },
+    {
+      "id": "MechanicSpawner",
+      "value": {
+        "blockId": "spawner.grid",
+        "count": 4,
+        "pattern": "grid",
+        "prefab": "mechanic.spawn.prefab",
+        "statusText": "4 spawn points ready"
+      }
+    }
+  ],
+  "schema": "threenative.scene",
+  "systems": [
+    {
+      "id": "move-player-to-goal",
+      "schedule": "fixedUpdate",
+      "script": {
+        "export": "movePlayerToGoal",
+        "module": "src/scripts/player.ts"
+      },
+      "source": "behavior-metadata"
+    },
+    {
+      "id": "lane-runner",
+      "script": {
+        "export": "laneRunnerSystem",
+        "module": "src/scripts/player.ts"
+      }
+    },
+    {
+      "id": "goal.plan.collect",
+      "script": {
+        "export": "collectible",
+        "module": "src/scripts/collectible.ts"
+      }
+    }
+  ],
+  "ui": {
+    "bindings": [
+      {
+        "node": "countdown",
+        "resource": "GameState.countdown"
+      },
+      {
+        "node": "goal.plan.prompt",
+        "resource": "goal.plan.collected"
+      }
+    ],
+    "nodes": [
+      {
+        "id": "countdown",
+        "layout": {
+          "align": "center",
+          "justify": "center",
+          "top": 48,
+          "width": 1280
+        },
+        "text": "Ready",
+        "type": "text"
+      },
+      {
+        "id": "goal.plan.prompt"
+      }
+    ]
+  },
+  "version": "0.1.0"
+}

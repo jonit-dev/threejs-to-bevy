@@ -1,0 +1,13 @@
+{
+  "block": "follow-camera",
+  "details": {
+    "camera": "camera.main",
+    "scenePath": "content/scenes/arena.scene.json",
+    "target": "player"
+  },
+  "schema": "threenative.mechanic-block",
+  "sourceFiles": [
+    "content/scenes/arena.scene.json"
+  ],
+  "version": "0.1.0"
+}

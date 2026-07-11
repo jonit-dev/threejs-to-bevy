@@ -1,0 +1,178 @@
+{
+  "schema": "threenative.project",
+  "version": "0.1.0",
+  "entry": "content/scenes/arena.scene.json",
+  "outDir": "dist/structured-source-starter.bundle",
+  "production": {
+    "archetype": "top-down",
+    "archetypeSource": "content/archetypes/top-down.archetype.json",
+    "playableLoop": "Move the player across the arena to reach the goal feedback.",
+    "controls": [
+      "keyboard.KeyA",
+      "keyboard.ArrowLeft",
+      "keyboard.KeyD",
+      "keyboard.ArrowRight"
+    ],
+    "lookProfile": {
+      "camera": "orthographic top-down follow",
+      "movementPlane": "ground-xz",
+      "renderLook": "cinematic"
+    },
+    "objective": "Trigger visible and audio feedback by reaching the goal zone.",
+    "progression": "The starter includes a data-first GameFlow ready -> playing -> win skeleton; expand it with score, timer, waves, or collectible count before claiming a complete generated game.",
+    "failRetry": "Reset by rebuilding or reloading the preview; extend content/flow/match.flow.json with a fail/retry branch before claiming persistent fail state.",
+    "feedbackMoments": [
+      "Player movement is visible in playtest proof.",
+      "Goal feedback changes GameFlow state when the player reaches the objective.",
+      "The intro Sequence gives agents a data-first feedback beat to extend before writing cutscene scripts.",
+      "HUD text can be extended from GameState bindings."
+    ],
+    "assetPlan": {
+      "playerHero": "Starter player entity is source-owned placeholder geometry intended to be replaced by catalog, kit, or authored custom art.",
+      "obstacleEnemy": "No obstacle/enemy is authored in the starter baseline.",
+      "rewardInteractable": "Goal zone is the starter reward/interactable surface.",
+      "worldEnvironment": "Arena floor, camera, light, and goal context provide the starter world surface.",
+      "uiHud": "Starter HUD/source UI is the baseline for objective and state text.",
+      "audioFeedback": "Starter goal-ping audio asset is available for feedback wiring."
+    },
+    "scriptModules": [
+      {
+        "module": "src/scripts/player.ts",
+        "export": "updatePlayer",
+        "ownsState": [
+          "Transform",
+          "GameState"
+        ],
+        "referencedBy": [
+          "content/systems/arena.systems.json"
+        ]
+      }
+    ],
+    "agent": {
+      "sourceShape": {
+        "assets": [
+          "content/assets/arena.assets.json"
+        ],
+        "archetypes": [
+          "content/archetypes/top-down.archetype.json"
+        ],
+        "flow": [
+          "content/flow/match.flow.json"
+        ],
+        "input": [
+          "content/input/arena.input.json"
+        ],
+        "materials": [
+          "content/materials/arena.materials.json"
+        ],
+        "meshes": [
+          "content/meshes/arena.meshes.json"
+        ],
+        "runtime": [
+          "content/runtime/default.runtime.json"
+        ],
+        "scene": [
+          "content/scenes/arena.scene.json"
+        ],
+        "sequences": [
+          "content/sequences/intro.sequence.json"
+        ],
+        "systems": [
+          "content/systems/arena.systems.json"
+        ],
+        "ui": [
+          "content/ui/hud.ui.json"
+        ],
+        "scripts": [
+          "src/scripts/player.ts"
+        ]
+      },
+      "highValueSurfaces": [
+        {
+          "id": "playerHero",
+          "sourcePath": "content/scenes/arena.scene.json",
+          "provenanceStatus": "starter-placeholder",
+          "summary": "Starter player entity is source-owned placeholder geometry intended to be replaced by catalog, kit, or authored custom art."
+        },
+        {
+          "id": "obstacleEnemy",
+          "sourcePath": "threenative.config.json#/production/assetPlan",
+          "provenanceStatus": "not-authored",
+          "summary": "No obstacle/enemy is authored in the starter baseline."
+        },
+        {
+          "id": "rewardInteractable",
+          "sourcePath": "content/scenes/arena.scene.json",
+          "provenanceStatus": "source",
+          "summary": "Goal zone is the starter reward/interactable surface."
+        },
+        {
+          "id": "worldEnvironment",
+          "sourcePath": "content/scenes/arena.scene.json",
+          "provenanceStatus": "source",
+          "summary": "Arena floor, camera, light, and goal context provide the starter world surface."
+        },
+        {
+          "id": "uiHud",
+          "sourcePath": "content/ui/hud.ui.json",
+          "provenanceStatus": "source",
+          "summary": "Starter HUD/source UI is the baseline for objective and state text."
+        },
+        {
+          "id": "audioFeedback",
+          "sourcePath": "content/assets/arena.assets.json",
+          "provenanceStatus": "local-file",
+          "summary": "Starter goal-ping audio asset is available for feedback wiring."
+        }
+      ],
+      "scriptModules": [
+        {
+          "module": "src/scripts/player.ts",
+          "export": "updatePlayer",
+          "ownsState": [
+            "Transform",
+            "GameState"
+          ],
+          "referencedBy": [
+            "content/systems/arena.systems.json"
+          ]
+        }
+      ],
+      "uiStates": [
+        {
+          "id": "gameplay",
+          "sourcePath": "content/ui/hud.ui.json",
+          "expectation": "HUD can display objective status."
+        },
+        {
+          "id": "fail-retry",
+          "sourcePath": "threenative.config.json#/production/failRetry",
+          "expectation": "Starter records retry limitation before a full fail state is authored."
+        }
+      ],
+      "assetSourcing": [
+        "Starter assets are local source-owned baseline surfaces; run tn asset source search --format glb --direct-only --json before replacing high-value art."
+      ],
+      "proofCommands": [
+        "tn authoring validate --project . --json",
+        "tn build --project . --json",
+        "tn playtest --project . --scenario playtests/smoke-movement.playtest.json --stable-artifacts --json",
+        "tn game qa --project . --run-proof --json",
+        "tn game release --project . --json"
+      ],
+      "knownBlockers": [
+        "Starter player and world surfaces are intentionally minimal until a generated game goal selects art direction."
+      ]
+    },
+    "proofCommands": [
+      "tn authoring validate --project . --json",
+      "tn build --project . --json",
+      "tn playtest --project . --scenario playtests/smoke-movement.playtest.json --stable-artifacts --json",
+      "tn screenshot --project . --url <preview-url> --out artifacts/game-production/screenshot.png --wait-ready --json",
+      "tn game score --project . --json",
+      "tn game qa --project . --run-proof --json",
+      "tn game release --project . --json"
+    ]
+  },
+  "template": "structured-source-starter"
+}

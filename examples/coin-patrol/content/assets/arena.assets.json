@@ -1,0 +1,13 @@
+{
+  "schema": "threenative.assets",
+  "version": "0.1.0",
+  "id": "arena-assets",
+  "assets": [
+    {
+      "id": "asset.goal-ping",
+      "path": "assets/goal-ping.wav",
+      "type": "audio"
+    }
+  ]
+}
+

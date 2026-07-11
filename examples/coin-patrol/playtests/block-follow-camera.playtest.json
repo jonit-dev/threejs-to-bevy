@@ -1,0 +1,39 @@
+{
+  "artifacts": {
+    "console": true,
+    "network": true,
+    "runtimeTrace": true,
+    "screenshots": "before-after"
+  },
+  "assert": {
+    "diagnostics": {
+      "noConsoleErrors": true,
+      "noNetworkErrors": true,
+      "noRuntimeDiagnostics": true,
+      "runtimeReady": true
+    },
+    "resources": [
+      {
+        "equals": "player",
+        "id": "FollowCamera",
+        "path": "target"
+      }
+    ]
+  },
+  "name": "block-follow-camera",
+  "schemaVersion": 1,
+  "steps": [
+    {
+      "label": "observe-block-state",
+      "release": false,
+      "waitFrames": 2
+    }
+  ],
+  "subject": "player",
+  "target": "web",
+  "viewport": {
+    "height": 720,
+    "width": 1280
+  },
+  "warmupFrames": 5
+}

@@ -1,0 +1,15 @@
+{
+  "schema": "threenative.resource-schemas",
+  "version": "0.1.0",
+  "schemas": {
+    "CoinPatrol": {
+      "fields": {
+        "coins": { "type": "number" },
+        "lives": { "type": "number" },
+        "status": { "type": "string" },
+        "coinsLabel": { "type": "string" },
+        "livesLabel": { "type": "string" }
+      }
+    }
+  }
+}

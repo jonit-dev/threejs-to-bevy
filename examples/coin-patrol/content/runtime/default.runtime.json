@@ -1,0 +1,21 @@
+{
+  "schema": "threenative.runtime-config",
+  "version": "0.1.0",
+  "id": "default",
+  "renderer": {
+    "antialias": "msaa4",
+    "renderLook": {
+      "version": 1,
+      "profile": "cinematic"
+    }
+  },
+  "time": {
+    "fixedDelta": 0.016666666666666666,
+    "paused": false
+  },
+  "window": {
+    "height": 720,
+    "width": 1280,
+    "title": "ThreeNative Starter"
+  }
+}

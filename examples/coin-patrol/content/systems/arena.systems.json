@@ -1,0 +1,31 @@
+{
+  "schema": "threenative.systems",
+  "version": "0.1.0",
+  "id": "arena-systems",
+  "systems": [
+    {
+      "id": "move-player-to-goal",
+      "source": "behavior-metadata",
+      "script": {
+        "module": "src/scripts/player.ts",
+        "export": "movePlayerToGoal"
+      }
+    },
+    {
+      "id": "drone-patrol",
+      "source": "behavior-metadata",
+      "script": {
+        "module": "src/scripts/player.ts",
+        "export": "dronePatrol"
+      }
+    },
+    {
+      "id": "coin-patrol-rules",
+      "source": "behavior-metadata",
+      "script": {
+        "module": "src/scripts/player.ts",
+        "export": "coinPatrolRules"
+      }
+    }
+  ]
+}

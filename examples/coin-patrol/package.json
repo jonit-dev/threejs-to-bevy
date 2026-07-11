@@ -1,0 +1,34 @@
+{
+  "name": "threenative-structured-source-starter",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "tn": "node bin/tn",
+    "build": "tn build",
+    "dev:web": "tn dev --target web",
+    "iterate": "tn iterate --project . --json",
+    "playtest": "tn playtest --scenario playtests/smoke-movement.playtest.json --stable-artifacts --json",
+    "playtest:archetype": "tn playtest --scenario playtests/smoke-movement.playtest.json --stable-artifacts --json",
+    "playtest:native": "tn playtest --scenario playtests/native-smoke-movement.playtest.json --stable-artifacts --json",
+    "game:plan": "tn game plan --goal \"small arena collectible game\" --project . --apply --json",
+    "game:improve": "tn game improve --apply-plan artifacts/game-production/plan.json --project . --json",
+    "game:score": "tn game score --project . --json",
+    "game:qa": "tn game qa --project . --run-proof --json",
+    "game:release": "tn game release --project . --json",
+    "recipe:controller": "tn recipe third-person-controller --scene arena --entity player --camera camera.main --dry-run --json",
+    "types": "tn types generate --project . --json",
+    "typecheck": "tn types generate --project . --json && tsc -p tsconfig.json --noEmit",
+    "validate": "tn validate",
+    "validate:authoring": "tn authoring validate --json",
+    "verify": "tn verify --frames 2 --json"
+  },
+  "dependencies": {
+    "@threenative/script-stdlib": "file:/home/joao/projects/threejs-to-bevy/packages/script-stdlib",
+    "@threenative/sdk": "file:/home/joao/projects/threejs-to-bevy/packages/sdk"
+  },
+  "devDependencies": {
+    "@threenative/cli": "file:.threenative/cli",
+    "@types/node": "^20.19.25",
+    "typescript": "^5.9.3"
+  }
+}

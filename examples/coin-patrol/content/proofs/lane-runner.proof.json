@@ -1,0 +1,18 @@
+{
+  "schema": "threenative.proof-recipe",
+  "version": "0.1.0",
+  "id": "lane-runner",
+  "recipeId": "lane-runner",
+  "commands": [
+    "tn authoring validate --project . --json",
+    "tn build --project . --json",
+    "tn scene inspect arena --node player --json",
+    "tn playtest --project . --entity player --press KeyD --frames 30 --expect-moved --json"
+  ],
+  "requiredArtifacts": [
+    "authoring-validation",
+    "build",
+    "input-playtest",
+    "screenshot-or-scene-proof"
+  ]
+}
