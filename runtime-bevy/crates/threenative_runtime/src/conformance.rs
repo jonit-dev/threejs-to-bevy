@@ -5,8 +5,8 @@ use serde::Serialize;
 use threenative_components::ThreeNativeId;
 use threenative_loader::{
     AnimationClipIr, AssetIr, ColorIr, EnvironmentMapIr, EnvironmentSceneIr, GltfSceneAssetIr,
-    LoadedBundle, MaterialIr, MeshGenerationIr, RuntimeConfigIr, RuntimeRendererConfig, SkyboxIr,
-    SystemQueryIr, UiIr, WorldEntity,
+    LightProbeSourceIr, LoadedBundle, MaterialIr, MeshGenerationIr, RuntimeConfigIr,
+    RuntimeRendererConfig, SkyboxIr, SystemQueryIr, UiIr, WorldEntity,
 };
 
 use crate::audio::{
@@ -297,7 +297,9 @@ pub struct RuntimeMotionBlurReport {
 #[serde(rename_all = "camelCase")]
 pub struct RuntimeScreenSpaceGlobalIlluminationReport {
     pub enabled: bool,
+    pub intensity: Option<f32>,
     pub quality: String,
+    pub radius: Option<f32>,
 }
 
 #[derive(Debug, Serialize)]
@@ -611,6 +613,8 @@ pub struct MaterialTexturesReport {
 pub struct ConformanceEnvironmentReport {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub atmosphere: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub baked_gi_probes: Option<ConformanceBakedGiProbeReport>,
     pub bookmarks: Vec<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub debug_gizmos: Option<Vec<String>>,
@@ -635,6 +639,35 @@ pub struct ConformanceEnvironmentReport {
     pub source_asset_visibility: Option<Vec<VisibilityRangeReport>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub terrain: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub volumetrics: Option<ConformanceVolumetricsReport>,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ConformanceBakedGiProbeReport {
+    pub applied: bool,
+    pub mode: String,
+    pub probe_ids: Vec<String>,
+    pub requested: bool,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ConformanceVolumetricsReport {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub god_rays: Option<ConformanceVolumetricFeatureReport>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub height_fog: Option<ConformanceVolumetricFeatureReport>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct ConformanceVolumetricFeatureReport {
+    pub applied: bool,
+    pub mode: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub reason: Option<String>,
+    pub requested: bool,
 }
 
 #[derive(Debug, Serialize)]
@@ -1308,7 +1341,9 @@ fn report_runtime_config(
                 .as_ref()
                 .map(|ssgi| RuntimeScreenSpaceGlobalIlluminationReport {
                     enabled: ssgi.enabled,
+                    intensity: ssgi.intensity,
                     quality: ssgi.quality.clone(),
+                    radius: ssgi.radius,
                 }),
             screen_space_reflections: renderer.screen_space_reflections.as_ref().map(|ssr| {
                 RuntimeScreenSpaceReflectionsReport {
@@ -1365,7 +1400,7 @@ fn runtime_renderer_feature_reports(
                     "renderer.screenSpaceGlobalIllumination",
                     feature.enabled,
                     "screen-space",
-                    "disabled",
+                    "approximation",
                 )
             }),
     ]
@@ -1878,6 +1913,12 @@ fn runtime_light(
 }
 
 fn report_environment(environment: &EnvironmentSceneIr) -> ConformanceEnvironmentReport {
+    let baked_probe_ids = environment
+        .light_probes
+        .iter()
+        .filter(|probe| matches!(&probe.source, LightProbeSourceIr::Baked(_)))
+        .map(|probe| probe.id.clone())
+        .collect::<Vec<_>>();
     let mut bookmarks = environment
         .bookmarks
         .iter()
@@ -1984,11 +2025,55 @@ fn report_environment(environment: &EnvironmentSceneIr) -> ConformanceEnvironmen
     scatter.sort();
     source_assets.sort();
 
+    let volumetrics = environment.atmosphere.as_ref().and_then(|atmosphere| {
+        atmosphere.volumetrics.as_ref().map(|volumetrics| {
+            let height_fog = volumetrics.height_fog.as_ref().map(|height_fog| {
+                ConformanceVolumetricFeatureReport {
+                    applied: height_fog.enabled,
+                    mode: if height_fog.enabled {
+                        "homogeneous-medium-approximation".to_owned()
+                    } else {
+                        "disabled".to_owned()
+                    },
+                    reason: height_fog
+                        .enabled
+                        .then(|| "bevy-0.14-no-height-density-field".to_owned()),
+                    requested: height_fog.enabled,
+                }
+            });
+            let god_rays = volumetrics.god_rays.as_ref().map(|god_rays| {
+                let applied =
+                    god_rays.enabled && atmosphere.sun.casts_shadow && atmosphere.shadows.enabled;
+                ConformanceVolumetricFeatureReport {
+                    applied,
+                    mode: if applied {
+                        "bevy-volumetric-light".to_owned()
+                    } else {
+                        "disabled".to_owned()
+                    },
+                    reason: (god_rays.enabled && !applied)
+                        .then(|| "shadow-map-unavailable".to_owned()),
+                    requested: god_rays.enabled,
+                }
+            });
+            ConformanceVolumetricsReport {
+                god_rays,
+                height_fog,
+            }
+        })
+    });
+
     ConformanceEnvironmentReport {
         atmosphere: environment
             .atmosphere
             .as_ref()
             .map(|atmosphere| atmosphere.id.clone()),
+        baked_gi_probes: (!baked_probe_ids.is_empty()).then(|| ConformanceBakedGiProbeReport {
+            applied: true,
+            mode: "global-ambient-sh-l0-approximation".to_owned(),
+            probe_ids: baked_probe_ids,
+            requested: true,
+        }),
         bookmarks,
         debug_gizmos: (!debug_gizmos.is_empty()).then_some(debug_gizmos),
         environment_map: environment.environment_map.clone(),
@@ -2008,6 +2093,7 @@ fn report_environment(environment: &EnvironmentSceneIr) -> ConformanceEnvironmen
             .terrain
             .as_ref()
             .map(|terrain| terrain.id.clone()),
+        volumetrics,
     }
 }
 

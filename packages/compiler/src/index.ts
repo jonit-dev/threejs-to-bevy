@@ -2,11 +2,13 @@ import { randomUUID } from "node:crypto";
 import { mkdir, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
+import type { ICompilerDiagnostic } from "./diagnostics.js";
 
 export { captureEntry, isSceneRoot, type ICapturedScene } from "./capture.js";
 export { loadProjectConfig, type IProjectConfig } from "./config.js";
 export { CompilerError } from "./errors.js";
-export { emitBundle } from "./emit/bundle.js";
+export { emitBundle, emitBundleWithReport } from "./emit/bundle.js";
+export { bakeGiBundle, type IBakeGiBundleResult } from "./bake/bakeGiBundle.js";
 export { extractGltfAssetMetadata, extractGltfSceneMetadata } from "./gltf/metadata.js";
 export { validateBundle } from "./validate/index.js";
 export { AUTHORING_PROVENANCE_FILE, authoringProvenanceDocument, buildAuthoringProvenanceDocument } from "./authoring/provenance.js";
@@ -41,10 +43,10 @@ export type {
  * authoring input or emitted IR throws `CompilerError` with a stable diagnostic
  * code and source/path metadata where available.
  */
-export async function buildProject(projectPath: string): Promise<{ bundlePath: string }> {
+export async function buildProject(projectPath: string): Promise<{ bundlePath: string; diagnostics: ICompilerDiagnostic[] }> {
   const { loadProjectConfig } = await import("./config.js");
   const { captureEntry } = await import("./capture.js");
-  const { emitBundle } = await import("./emit/bundle.js");
+  const { emitBundleWithReport } = await import("./emit/bundle.js");
   const config = await loadProjectConfig(projectPath);
   const releaseBuildLock = await acquireBuildLock(resolve(config.projectPath, config.outDir));
   try {
@@ -56,10 +58,11 @@ export async function buildProject(projectPath: string): Promise<{ bundlePath: s
     }
     const { loadAuthoringProject } = await import("@threenative/authoring");
     const authoringProject = await loadAuthoringProject({ projectPath });
-    const bundlePath = await emitBundle(config, captured.root, {
+    const emittedBundle = await emitBundleWithReport(config, captured.root, {
       authoringDocuments: authoringProject.documents,
       authoringGraph: captured.graph,
     });
+    const { bundlePath } = emittedBundle;
     const { validateBundle } = await import("./validate/index.js");
     const report = await validateBundle(bundlePath);
     if (!report.ok) {
@@ -77,7 +80,7 @@ export async function buildProject(projectPath: string): Promise<{ bundlePath: s
             },
       );
     }
-    return { bundlePath };
+    return { bundlePath, diagnostics: emittedBundle.diagnostics };
   } finally {
     await releaseBuildLock();
   }

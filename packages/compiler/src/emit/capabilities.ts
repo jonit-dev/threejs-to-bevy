@@ -847,6 +847,12 @@ function collectEnvironmentCapabilities(
     if (environment.atmosphere.fog?.enabled === true) {
       add("rendering", `fog.${environment.atmosphere.fog.mode}`);
     }
+    if (environment.atmosphere.volumetrics?.heightFog?.enabled === true) {
+      add("rendering", "volumetric-height-fog");
+    }
+    if (environment.atmosphere.volumetrics?.godRays?.enabled === true) {
+      add("rendering", "volumetric-god-rays");
+    }
     if (environment.atmosphere.shadows.enabled) {
       add("rendering", "shadows");
     }
@@ -869,6 +875,9 @@ function collectEnvironmentCapabilities(
   }
   if (environment.lightProbes !== undefined && environment.lightProbes.length > 0) {
     add("rendering", "light-probes");
+    if (environment.lightProbes.some((probe) => "format" in probe.source && probe.source.format === "sh2")) {
+      add("rendering", "baked-gi-probes");
+    }
   }
   if (environment.controller !== undefined) {
     add("environment", "first-person-controller");

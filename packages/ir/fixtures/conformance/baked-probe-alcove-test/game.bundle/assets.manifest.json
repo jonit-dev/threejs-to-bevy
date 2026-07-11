@@ -1,0 +1,9 @@
+{
+  "schema": "threenative.assets",
+  "version": "0.1.0",
+  "assets": [
+    { "id": "mesh.floor", "kind": "mesh", "format": "generated", "primitive": "box", "size": [8, 0.2, 7] },
+    { "id": "mesh.wall", "kind": "mesh", "format": "generated", "primitive": "box", "size": [0.2, 4, 7] },
+    { "id": "mesh.subject", "kind": "mesh", "format": "generated", "primitive": "sphere", "size": [0.85] }
+  ]
+}

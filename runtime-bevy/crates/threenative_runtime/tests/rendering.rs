@@ -33,7 +33,7 @@ use bevy::{
     scene::ScenePlugin,
 };
 use threenative_components::ThreeNativeId;
-use threenative_loader::load_bundle;
+use threenative_loader::{BakedProbePayloadIr, LightProbeSourceIr, load_bundle};
 use threenative_runtime::default_clear_color_for_bundle;
 use threenative_runtime::map_world::{
     NativeAnimationPlayback, NativeAnimationServiceCommand, NativeAnimationServiceQueue,
@@ -128,6 +128,41 @@ fn should_report_native_skybox_and_environment_map_observations() {
     apply_environment_lighting_to_world(authored_app.world_mut(), &fixture.bundle);
     let authored_ambient = authored_app.world().resource::<AmbientLight>();
     assert!((authored_ambient.brightness - 0.4).abs() < 0.001);
+}
+
+#[test]
+fn should_apply_baked_sh_probe_as_honest_ambient_approximation() {
+    let mut fixture = load_conformance_fixture("rendering-lights");
+    let probe = fixture
+        .bundle
+        .environment_scene
+        .as_mut()
+        .and_then(|scene| scene.light_probes.first_mut())
+        .expect("fixture should contain a light probe");
+    let mut coefficients = vec![0.0; 27];
+    coefficients[0] = 0.8;
+    coefficients[1] = 0.1;
+    coefficients[2] = 0.05;
+    probe.source = LightProbeSourceIr::Baked(BakedProbePayloadIr {
+        bake_version: 1,
+        coefficients,
+        format: "sh2".to_owned(),
+        scene_content_hash: format!("sha256:{}", "a".repeat(64)),
+    });
+
+    let mut app = App::new();
+    let applied = apply_environment_lighting_to_world(app.world_mut(), &fixture.bundle);
+    map_bundle_into_world(app.world_mut(), &fixture.bundle)
+        .expect("baked probe fixture should map");
+    let observation = &applied.light_probes[0];
+    let ambient = app.world().resource::<AmbientLight>();
+    let linear = ambient.color.to_linear();
+
+    assert!(observation.applied);
+    assert_eq!(observation.mode, "global-ambient-sh-l0-approximation");
+    assert!((ambient.brightness - 0.8 * 0.282095).abs() < 0.0001);
+    assert!(linear.red > linear.green);
+    assert!(linear.green > linear.blue);
 }
 
 #[test]

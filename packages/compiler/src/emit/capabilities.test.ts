@@ -120,6 +120,35 @@ test("should enroll shadow-cascade-profile when maxDistance authored", () => {
   assert.ok(capabilities.rendering?.includes("shadow-cascade-profile"));
 });
 
+test("should enroll volumetric capabilities only when enabled", () => {
+  const profile = atmosphereProfile();
+  profile.volumetrics = {
+    godRays: { density: 0.5, enabled: true, intensity: 1, maxDistance: 80, quality: "medium" },
+    heightFog: { baseHeight: 0, density: 0.2, enabled: false, falloffHeight: 12 },
+  };
+
+  const capabilities = deriveRequiredCapabilities({
+    assets: assetsManifest([]),
+    environment: environmentScene(profile),
+    materials: materialsIr([]),
+  });
+
+  assert.ok(capabilities.rendering?.includes("volumetric-god-rays"));
+  assert.equal(capabilities.rendering?.includes("volumetric-height-fog"), false);
+
+  profile.volumetrics = {
+    godRays: { density: 0.5, enabled: false, intensity: 1, maxDistance: 80, quality: "medium" },
+    heightFog: { baseHeight: 0, density: 0.2, enabled: true, falloffHeight: 12 },
+  };
+  const inverseCapabilities = deriveRequiredCapabilities({
+    assets: assetsManifest([]),
+    environment: environmentScene(profile),
+    materials: materialsIr([]),
+  });
+  assert.ok(inverseCapabilities.rendering?.includes("volumetric-height-fog"));
+  assert.equal(inverseCapabilities.rendering?.includes("volumetric-god-rays"), false);
+});
+
 test("should enroll contact-shadows capability", () => {
   const capabilities = deriveRequiredCapabilities({
     assets: assetsManifest([]),
@@ -249,6 +278,19 @@ test("should derive ECS and runtime capabilities from schemas and runtime config
   assert.ok(capabilities.rendering?.includes("tone-mapping"));
   assert.deepEqual(capabilities.runtime, ["config", "fixed-timestep"]);
   assert.deepEqual(capabilities.scripting, ["component-reflection", "schedule.update", "systems"]);
+});
+
+test("should derive baked GI probe capability from SH2 probe payloads", () => {
+  const environment = environmentScene(atmosphereProfile());
+  environment.lightProbes = [{
+    bounds: { max: [2, 2, 2], min: [-2, -2, -2] },
+    id: "probe.baked",
+    influenceRadius: 4,
+    intent: "irradiance",
+    source: { bakeVersion: 1, coefficients: Array(27).fill(0), format: "sh2", sceneContentHash: `sha256:${"a".repeat(64)}` },
+  }];
+  const capabilities = deriveRequiredCapabilities({ assets: assetsManifest([]), environment, materials: materialsIr([]), world: worldIr({ entities: [] }) });
+  assert.deepEqual(capabilities.rendering, ["baked-gi-probes", "color-management", "light-probes", "light.ambient", "light.directional", "shadow-cascade-profile", "shadows", "sky"]);
 });
 
 test("should not derive backend render path selections from runtime config", () => {

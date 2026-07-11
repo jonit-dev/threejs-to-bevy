@@ -96,7 +96,9 @@ test("should dispatch existing structured source operations through the registry
           renderProfile: "balanced",
           runtimeId: "desktop",
           screenSpaceGlobalIlluminationEnabled: false,
-          screenSpaceGlobalIlluminationQuality: "low",
+          screenSpaceGlobalIlluminationIntensity: 1.25,
+          screenSpaceGlobalIlluminationQuality: "high",
+          screenSpaceGlobalIlluminationRadius: 16,
           screenSpaceReflectionsEnabled: true,
           screenSpaceReflectionsQuality: "medium",
           screenSpaceReflectionsRoughnessLimit: 0.45,
@@ -255,7 +257,7 @@ test("should dispatch existing structured source operations through the registry
     assert.deepEqual(runtime.renderer?.ambientOcclusion, { enabled: true, intensity: 1.2, mode: "screen-space", quality: "medium", radius: 3 });
     assert.deepEqual(runtime.renderer?.screenSpaceReflections, { enabled: true, quality: "medium", roughnessLimit: 0.45 });
     assert.deepEqual(runtime.renderer?.motionBlur, { enabled: true, shutterAngle: 0.5 });
-    assert.deepEqual(runtime.renderer?.screenSpaceGlobalIllumination, { enabled: false, quality: "low" });
+    assert.deepEqual(runtime.renderer?.screenSpaceGlobalIllumination, { enabled: false, intensity: 1.25, quality: "high", radius: 16 });
     assert.deepEqual(scene.prefabs, [{ asset: "assets/player.glb", color: "#00ffaa", id: "prefab.player", primitive: "sphere" }]);
     assert.deepEqual(scene.instances?.map((instance) => instance.id), ["prefab-player.01", "rack.01", "rack.02", "rack.03", "rack.04", "rack.05", "rack.06", "rack.07", "rack.08", "rack.09", "rack.10"]);
     assert.deepEqual(scene.instances?.find((instance) => instance.id === "prefab-player.01")?.transform?.position, [1, 0, 2]);
@@ -366,6 +368,7 @@ test("should expose operation metadata and registry diagnostics", async () => {
     "environment.create",
     "environment.set_skybox",
     "environment.set_map",
+    "environment.set_volumetrics",
     "environment.set_light_probe",
     "environment.set_path",
     "environment.set_terrain",
@@ -451,6 +454,8 @@ test("should expose operation metadata and registry diagnostics", async () => {
   assert.equal(renderAuthoringOperationCliUsage("runtime.set_rendering")?.includes("--bloom <true|false>"), true);
   assert.equal(renderAuthoringOperationCliUsage("runtime.set_rendering")?.includes("--ambient-occlusion <true|false>"), true);
   assert.equal(renderAuthoringOperationCliUsage("runtime.set_rendering")?.includes("--screen-space-reflections-roughness-limit <n>"), true);
+  assert.equal(renderAuthoringOperationCliUsage("runtime.set_rendering")?.includes("--screen-space-global-illumination-intensity <n>"), true);
+  assert.equal(renderAuthoringOperationCliUsage("runtime.set_rendering")?.includes("--screen-space-global-illumination-radius <n>"), true);
   assert.deepEqual(
     buildAuthoringOperationCliArgv("scene.set_transform", { entityId: "player", sceneId: "scene.arena", transform: { position: [1, 2, 3] } }, { projectPath: "/project" }),
     ["scene", "set-transform", "scene.arena", "player", "--position", "1,2,3", "--project", "/project", "--json"],

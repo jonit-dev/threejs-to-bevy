@@ -259,7 +259,7 @@ function reportRendererFeatures(
       : rendererFeatureReport("renderer.motionBlur", renderer.motionBlur.enabled, "shutter", "temporal-accumulation", runtime),
     renderer.screenSpaceGlobalIllumination === undefined
       ? undefined
-      : rendererFeatureReport("renderer.screenSpaceGlobalIllumination", renderer.screenSpaceGlobalIllumination.enabled, "screen-space", "disabled", runtime),
+      : rendererFeatureReport("renderer.screenSpaceGlobalIllumination", renderer.screenSpaceGlobalIllumination.enabled, "screen-space", "screen-space-temporal", runtime),
   ].filter((feature): feature is IRendererFeatureReport => feature !== undefined);
 }
 
@@ -521,8 +521,29 @@ function reportShaderMaterial(material: IShaderMaterialIr): NonNullable<IConform
 }
 
 function reportEnvironment(environment: IEnvironmentSceneIr): IConformanceEnvironmentReport {
+  const heightFog = environment.atmosphere?.volumetrics?.heightFog;
+  const godRays = environment.atmosphere?.volumetrics?.godRays;
+  const bakedProbeIds = (environment.lightProbes ?? []).filter((probe) => "format" in probe.source && probe.source.format === "sh2").map((probe) => probe.id).sort();
   return {
     atmosphere: environment.atmosphere?.id,
+    ...(bakedProbeIds.length === 0 ? {} : { bakedGiProbes: { applied: true, mode: "camera-weighted-sh2", probeIds: bakedProbeIds, requested: true } }),
+    volumetrics: heightFog === undefined && godRays === undefined ? undefined : {
+      heightFog: heightFog === undefined ? undefined : {
+        applied: heightFog.enabled,
+        mode: heightFog.enabled ? "analytic-height-fog-half-resolution" : "disabled",
+        requested: heightFog.enabled,
+      },
+      godRays: godRays === undefined ? undefined : {
+        applied: godRays.enabled && environment.atmosphere?.sun.castsShadow === true && environment.atmosphere.shadows.enabled,
+        mode: godRays.enabled ? "directional-shadow-map-raymarch" : "disabled",
+        ...(
+          godRays.enabled && !(environment.atmosphere?.sun.castsShadow === true && environment.atmosphere.shadows.enabled)
+            ? { reason: "shadow-map-unavailable" }
+            : {}
+        ),
+        requested: godRays.enabled,
+      },
+    },
     bookmarks: (environment.bookmarks ?? []).map((bookmark) => bookmark.id).sort(),
     debugGizmos: [
       ...environment.sourceAssets.filter((asset) => asset.debug?.gizmo === true).map((asset) => `sourceAsset:${asset.id}`),

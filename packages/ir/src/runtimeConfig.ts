@@ -120,7 +120,9 @@ export interface IRendererMotionBlurIr {
 
 export interface IRendererScreenSpaceGlobalIlluminationIr {
   enabled: boolean;
-  quality: "low" | "medium";
+  intensity?: number;
+  quality: "low" | "medium" | "high";
+  radius?: number;
 }
 
 export interface IRendererFeatureReport {
@@ -200,6 +202,16 @@ const RENDER_LOOK_TARGET_PROFILE_OVERRIDES = {
     stylized: renderLookTargetOverride({ bloomIntensity: 0.3 }),
   },
 } as const satisfies Record<RenderLookTargetProfile, Record<RenderLookProfileName, Partial<IRenderLookProfilePreset>>>;
+
+const RENDER_LOOK_TARGET_SSGI_QUALITY_LIMITS = {
+  "desktop-web": "high",
+  "mobile-web": "medium",
+  native: "high",
+} as const satisfies Record<RenderLookTargetProfile, "low" | "medium" | "high">;
+
+export function resolveRenderLookSsgiQualityLimit(targetProfile: RenderLookTargetProfile): "low" | "medium" | "high" {
+  return RENDER_LOOK_TARGET_SSGI_QUALITY_LIMITS[targetProfile];
+}
 
 export function resolveRenderLookProfile(
   renderLook: IRenderLookProfileIr | RenderLookProfileName | undefined,

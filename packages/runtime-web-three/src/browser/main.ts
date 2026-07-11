@@ -43,12 +43,14 @@ const captureDrawingBuffer = ["1", "true", "on"].includes(params.get("capture") 
 const captureFramesRaw = params.get("captureFrames");
 const captureFrames = captureFramesRaw === null ? undefined : Number.parseInt(captureFramesRaw, 10);
 const captureTraceEntityId = params.get("captureTraceEntity") ?? undefined;
+const targetProfile = params.get("targetProfile") === "mobile-web" ? "mobile-web" : "desktop-web";
 const result = await renderLoadedBundle(await loadBundleUrl(resolvedBundleUrl), container, {
   bookmarkId: params.get("bookmark") ?? undefined,
   captureDrawingBuffer,
   captureFrames: captureFrames !== undefined && Number.isFinite(captureFrames) && captureFrames > 0 ? captureFrames : undefined,
   captureTraceEntityId,
   debugColliders,
+  targetProfile,
 });
 window.__THREENATIVE_RUNTIME__ = {
   contactShadowsSnapshot: result.contactShadowsSnapshot,

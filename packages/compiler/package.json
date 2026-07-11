@@ -28,9 +28,12 @@
     "@threenative/script-stdlib": "workspace:*",
     "@threenative/sdk": "workspace:*",
     "@threenative/ui": "workspace:*",
+    "three": "0.181.2",
+    "three-mesh-bvh": "0.9.10",
     "typescript": "^5.9.3"
   },
   "devDependencies": {
-    "@types/node": "^20.19.25"
+    "@types/node": "^20.19.25",
+    "@types/three": "0.181.0"
   }
 }

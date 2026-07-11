@@ -64,17 +64,67 @@ Current support:
   shadow and promoted specular-material conformance reports. It also writes a
   measured impostor texture-variant report under
   `tools/verify/artifacts/feature-parity-visual-polish/`. Custom GPU
-  attributes, advanced blends beyond the promoted material contract,
-  volumetrics, SSGI, and arbitrary custom render paths remain diagnostic-only;
+  attributes, advanced blends beyond the promoted material contract, and
+  arbitrary custom render paths remain diagnostic-only;
   bounded SSR support is described below.
+- `atmosphere.volumetrics` promotes bounded height fog and directional god
+  rays. Web uses a full-resolution depth prepass with half-resolution analytic
+  height integration, depth-weighted composite, and a 16/32/64-step
+  cascade-aware shadow-map raymarch before bloom and fitted ACES output. Native
+  maps the same request to Bevy 0.14 `VolumetricFogSettings` and
+  `VolumetricLight`, owns reconcile/removal of camera and sun components, and
+  reports height fog honestly as `homogeneous-medium-approximation` because
+  Bevy 0.14 has no base-height/falloff field. The catalog-owned
+  `pnpm verify:focused verify:volumetrics` gate records requested/applied modes,
+  paired screenshots, a tall-column fog gradient, and a lit-shaft versus
+  shadow-neighbor region. Web god-ray source retains the upstream notice and is
+  plainly marked as an altered adapter-private rewrite.
 - Runtime renderer config now accepts portable `ambientOcclusion`,
   `depthOfField`, `screenSpaceReflections`, `motionBlur`, and
   `screenSpaceGlobalIllumination` fields with bounded source/IR validation.
   Compiler manifests derive matching renderer capability requirements, and web
   and Bevy conformance reports preserve requested/applied feature state and emit
   `TN_RENDER_FEATURE_FALLBACK` rollout-gap diagnostics until each adapter has
-  real rendered proof. AO, depth of field, temporal motion blur, and the bounded
-  SSR subset below now have focused proof; SSGI remains a diagnostic request.
+  real rendered proof. AO, depth of field, temporal motion blur, the bounded
+  SSR subset below, and SSGI now have focused proof.
+- Portable `renderer.screenSpaceGlobalIllumination` accepts low/medium/high
+  quality, bounded intensity, and bounded world-space radius through structured
+  source, `tn runtime set-rendering`, and editor inspector operations. Web
+  applies adapter-owned depth reconstruction, cosine-weighted hemisphere ray
+  marching, binary hit refinement, bilateral upsampling, and history-clamped
+  temporal reprojection before bloom and tone mapping. Bevy 0.14 enables SSAO
+  and applies a calibrated ambient/environment lift, reports
+  `appliedMode: approximation`, and classifies missing color-bleed hue as the
+  `rendering.ssgi-color-bleed` residual. The catalog-owned
+  `pnpm verify:focused verify:ssgi` gate proves monotonic indirect-region lift
+  in both adapters, web-only red bleed, requested/applied reports, and paired
+  nonblank screenshots.
+  The shared render-look target ladder clamps authored `high` SSGI to the
+  half-resolution `medium` tier on `mobile-web`; desktop web retains the
+  full-resolution high tier. Temporal SSGI keeps otherwise-static scenes on a
+  render schedule so history actually converges, and the focused gate records
+  a three-pose camera orbit with bounded displacement, ghosting, boiling, and
+  static high-frequency energy rather than relying on a settled still alone.
+- Portable baked GI probes now carry deterministic SH2 payloads (nine RGB
+  coefficients), bake version, and canonical scene-content hash in durable
+  `content/lighting/*.probes.json`. `tn bake gi` uses an internal
+  `three-mesh-bvh` scene-ray wrapper over static shadow-casting generated mesh
+  geometry, traces seeded sky/sun plus one albedo bounce, writes the payload,
+  and rebuilds to embed it. Geometry, materials, world, atmosphere, and probe
+  metadata participate in stale detection; mismatched document/payload hashes
+  emit `TN_IR_LIGHT_PROBE_BAKE_STALE`. Web blends bounded SH2 probes by camera
+  position through Three.js `LightProbe` and reports `camera-weighted-sh2`.
+  Bevy 0.14 cannot consume raw SH without synthesizing cubemap or packed-volume
+  textures, so native applies the SH L0 irradiance as colored ambient light and
+  reports `global-ambient-sh-l0-approximation`. The catalog-owned
+  `pnpm verify:focused verify:baked-gi` gate compares disabled/authored alcove
+  captures, requires warm lift in both adapters, checks the honest modes, and
+  proves the stale diagnostic.
+- The internal `SceneRayQuery` boundary now has BVH-backed tooling queries and
+  a native Rapier/parry `TriMesh` query built from the same rendered generated
+  mesh data, independently of authored Collider components. Native playtest
+  `assert.occluded` commands use this private service and record
+  `render.sceneRayQuery` evidence; the scripting API remains unchanged.
 - The web Three.js adapter applies portable `renderer.ambientOcclusion` through
   the adapter-private GTAO composer path with a visible monotonic intensity
   mapping. Bevy 0.14 exposes quality but no direct SSAO radius/intensity knobs,
@@ -91,6 +141,14 @@ Current support:
   transfer once. ACES- and exposure-only configurations also select this output
   pass, so authored camera clear colors follow the same tonemapping path instead
   of bypassing grading on direct-render configurations.
+- Contact-shadow exposure calibration now selects the native EV mapping from
+  the resolved tone-mapping mode and gates shadow contrast relative to ground
+  luminance. The final milestone-wide color pass keeps the default native
+  camera at neutral EV100, maps authored ACES and linear exposure with fitted
+  scales of `1.7` and `1.0`, applies a `1.08` native saturation fit and a `1.3`
+  HDR contrast conversion, and maps portable bloom intensity by `0.1`. The full
+  `pnpm verify:rendering-photoreal` matrix is green with those renderer-level
+  mappings. Contact-shadow opacity remains independently owned and unchanged.
 - Web bloom uses a calibrated wide mip radius and soft threshold. When bloom is
   enabled, adapter-private weak point-light proxies are derived from strong
   `emissiveBloom` materials to approximate the local spill Bevy's bloom path

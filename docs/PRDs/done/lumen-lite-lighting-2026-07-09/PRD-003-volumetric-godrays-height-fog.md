@@ -18,8 +18,10 @@ sub-features — `heightFog` and `godRays` (directional-sun only) — mapped to:
   a height-fog pass derived from `three-volumetric-pass`, both half-res with
   depth-aware compositing.
 - Bevy 0.14: native `VolumetricFogSettings` (camera component) +
-  `VolumetricLight` (marker on the sun directional light). This is a mapping
-  job, not an implementation job — Bevy already ships exactly this feature.
+  `VolumetricLight` (marker on the sun directional light). Bevy supplies the
+  scattering medium and shafts, but not an altitude-varying density field;
+  native height fog is therefore an explicit homogeneous-medium
+  approximation with an honest conformance reason.
 
 **Non-goals:** Point/spot god rays on web v1 (the vendored shader supports
 point lights; promote directional only so both adapters can honor it —
@@ -121,11 +123,11 @@ against the web anchor (same policy as AO/bloom calibration anchors).
 
 **Key Decisions:**
 
-- [ ] Directional-sun-only promotion; other light types report
-      `TN_RENDER_FEATURE_FALLBACK` with reason `unsupported-light-type`.
-- [ ] Quality tier -> step count/resolution derived through the render-look
+- [x] Directional-sun-only promotion; unavailable shadow-map state reports
+      `TN_RENDER_FEATURE_FALLBACK` with reason `shadow-map-unavailable`.
+- [x] Quality tier -> step count/resolution derived through the render-look
       target overrides ladder (no new quality list).
-- [ ] Both features report requested/applied through the existing renderer
+- [x] Both features report requested/applied through the existing renderer
       feature-report shape even though they are atmosphere-authored (reuse
       `conformanceReport.ts` fields; add `volumetrics` entry).
 
@@ -136,8 +138,8 @@ against the web anchor (same policy as AO/bloom calibration anchors).
 
 ## 3. Integration Points
 
-- Entry point: atmosphere authoring in scene source; `tn runtime
-  set-rendering` extension for volumetrics fields; `cinematic` render-look
+- Entry point: atmosphere authoring in scene source; `tn environment
+  set-volumetrics` owns the atmosphere-level mutation; `cinematic` render-look
   preset may enable subtle height fog at high tier (decide during
   calibration — preset change is one line in
   `RENDER_LOOK_PROFILE_PRESETS`).
@@ -163,7 +165,7 @@ against the web anchor (same policy as AO/bloom calibration anchors).
 `packages/runtime-web-three/src/rendering/heightFogPass.ts` (+ test),
 `render.ts` (composer wiring), `mapWorld.ts` (authoring routing).
 
-- [ ] Half-res target, analytic integration, depth-aware composite, respects
+- [x] Half-res target, analytic integration, depth-aware composite, respects
       ACES ordering, teardown-enrolled.
 
 **User Verification:** Fixture with a tall column: fog dense at base, clear
@@ -175,7 +177,7 @@ at top; capture.
 `packages/runtime-web-three/src/rendering/godrays/` (vendored frag + illum +
 bilateral + compositor), `render.ts` wiring.
 
-- [ ] Vendor with license notice; bind sun shadow map; quality -> step
+- [x] Vendor with license notice; bind sun shadow map; quality -> step
       count/half-res; verify no interaction bugs with DoF/motion blur
       ordering.
 
@@ -189,7 +191,7 @@ the sun.
 `runtime-bevy/crates/threenative_runtime/src/rendering.rs`,
 `map_world/rendering.rs`, `tests/rendering.rs`.
 
-- [ ] Insert/remove `VolumetricFogSettings` + `VolumetricLight` from authored
+- [x] Insert/remove `VolumetricFogSettings` + `VolumetricLight` from authored
       state through the existing reconcile path; map density/intensity with
       calibration constants next to the existing anchors (rendering.rs lines
       ~25-29 pattern).
@@ -215,13 +217,27 @@ visual checkpoints after Phases 2, 3, 4.
 
 ## 6. Acceptance Criteria
 
-- [ ] `atmosphere.volumetrics` authored once produces height fog + shadowed
-      shafts in both adapters within region-metric tolerances.
-- [ ] Non-directional god-ray requests fall back with an honest diagnostic.
-- [ ] Upstream license notice preserved and modifications marked (repo audit
+- [x] `atmosphere.volumetrics` authored once produces analytic height fog and
+      shadowed shafts on web plus the documented homogeneous height-fog
+      approximation and native shafts on Bevy, within region-metric tolerances.
+- [x] Unavailable god-ray shadowing falls back with an honest diagnostic.
+- [x] Upstream license notice preserved and modifications marked (repo audit
       passes).
-- [ ] Existing photoreal/rendering gates unchanged when volumetrics absent.
-- [ ] Capability doc, STATUS index, parity table updated.
+- [x] Existing photoreal/rendering gates unchanged when volumetrics absent.
+- [x] Capability doc, STATUS index, parity table updated.
+
+## Completion Record
+
+- Web pass order is GTAO -> god rays -> height fog -> bloom -> DoF -> motion
+  blur -> output and is guarded by `renderPipelineOrder.test.ts`.
+- Bevy live reconciliation owns insertion, replacement, and removal of the
+  camera fog settings and directional-sun marker.
+- `verify:volumetrics` compares enabled output against separate height-fog and
+  shaft controls. Web proves the altitude response; native proves the declared
+  homogeneous response without claiming an unsupported altitude field.
+- The original `tn runtime set-rendering` integration note was corrected to
+  registry-owned `tn environment set-volumetrics`, matching the portable
+  `atmosphere.volumetrics` ownership boundary.
 
 ## Risks And Unknowns
 

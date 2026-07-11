@@ -1,6 +1,6 @@
 use bevy::{
     ecs::event::ManualEventReader,
-    pbr::{CascadeShadowConfigBuilder, DirectionalLightShadowMap},
+    pbr::{CascadeShadowConfigBuilder, DirectionalLightShadowMap, VolumetricLight},
     prelude::*,
     render::{
         alpha::AlphaMode,
@@ -18,7 +18,10 @@ use std::{
     f32::consts::{FRAC_PI_2, PI, TAU},
 };
 use threenative_components::ThreeNativeId;
-use threenative_loader::{AtmosphereShadowsIr, ColorIr, EnvironmentTextureSourceIr, LoadedBundle};
+use threenative_loader::{
+    AtmosphereProfileIr, AtmosphereShadowsIr, ColorIr, EnvironmentTextureSourceIr,
+    LightProbeSourceIr, LoadedBundle, RuntimeConfigIr,
+};
 
 use crate::map_world::NativeMaterialHandles;
 
@@ -34,6 +37,55 @@ const ATMOSPHERE_SHADOW_MINIMUM_DISTANCE: f32 = 0.05;
 const ATMOSPHERE_SHADOW_DEFAULT_BLEND_FRACTION: f32 = 0.2;
 const ATMOSPHERE_SHADOW_DEFAULT_SPLIT_LAMBDA: f32 = 0.5;
 const ATMOSPHERE_SHADOW_DEFAULT_SPLIT_SCHEME: &str = "practical";
+const NATIVE_VOLUMETRIC_AMBIENT_DENSITY_SCALE: f32 = 0.25;
+const NATIVE_VOLUMETRIC_BASE_ABSORPTION: f32 = 0.1;
+const NATIVE_VOLUMETRIC_HEIGHT_ABSORPTION_SCALE: f32 = 0.2;
+const NATIVE_VOLUMETRIC_BASE_SCATTERING: f32 = 0.15;
+const NATIVE_VOLUMETRIC_SHAFT_SCATTERING_SCALE: f32 = 0.35;
+const NATIVE_VOLUMETRIC_HEIGHT_DENSITY_SCALE: f32 = 0.1;
+const NATIVE_VOLUMETRIC_SHAFT_DENSITY_SCALE: f32 = 0.025;
+const NATIVE_VOLUMETRIC_SCATTERING_ASYMMETRY: f32 = 0.8;
+const NATIVE_SSGI_AMBIENT_LIFT_PER_INTENSITY: f32 = 0.18;
+
+pub(crate) fn native_ssgi_ambient_multiplier(config: Option<&RuntimeConfigIr>) -> f32 {
+    let Some(ssgi) = config
+        .and_then(|config| config.renderer.as_ref())
+        .and_then(|renderer| renderer.screen_space_global_illumination.as_ref())
+        .filter(|ssgi| ssgi.enabled)
+    else {
+        return 1.0;
+    };
+    1.0 + ssgi.intensity.unwrap_or(1.0).clamp(0.0, 2.0) * NATIVE_SSGI_AMBIENT_LIFT_PER_INTENSITY
+}
+
+#[derive(Clone, Component, Debug)]
+struct NativeAtmosphereSun;
+
+#[derive(Clone, Debug, PartialEq, Resource, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct NativeVolumetricsReport {
+    pub god_rays_requested: bool,
+    pub god_rays_applied: bool,
+    pub god_rays_reason: Option<String>,
+    pub height_fog_requested: bool,
+    pub height_fog_mode: String,
+    pub height_fog_reason: Option<String>,
+    pub ignored_base_height: Option<f32>,
+    pub ignored_falloff_height: Option<f32>,
+}
+
+#[derive(Clone, Debug, PartialEq, Resource)]
+pub struct NativeAtmosphereSignature(pub String);
+
+pub fn native_atmosphere_signature(bundle: &LoadedBundle) -> String {
+    format!(
+        "{:?}",
+        bundle
+            .environment_scene
+            .as_ref()
+            .and_then(|scene| scene.atmosphere.as_ref())
+    )
+}
 
 #[derive(Clone, Component, Debug, PartialEq)]
 pub struct NativeRenderedParticle {
@@ -138,6 +190,7 @@ pub struct LightProbeObservation {
     pub intent: String,
     pub asset_ids: Vec<String>,
     pub applied: bool,
+    pub mode: String,
 }
 
 #[derive(Clone, Debug, Resource)]
@@ -146,6 +199,9 @@ pub struct NativeEnvironmentMapHandles {
     pub specular_map: Handle<Image>,
     pub intensity: f32,
 }
+
+#[derive(Clone, Debug, Resource)]
+pub struct NativeBakedProbeAmbientApplied;
 
 pub fn observe_atmosphere(bundle: &LoadedBundle) -> AtmosphereObservation {
     let Some(profile) = bundle
@@ -208,20 +264,80 @@ pub fn observe_atmosphere(bundle: &LoadedBundle) -> AtmosphereObservation {
 }
 
 pub fn apply_atmosphere_to_world(world: &mut World, bundle: &LoadedBundle) {
+    world.insert_resource(NativeAtmosphereSignature(native_atmosphere_signature(
+        bundle,
+    )));
+    let owned_suns = world
+        .query_filtered::<Entity, With<NativeAtmosphereSun>>()
+        .iter(world)
+        .collect::<Vec<_>>();
+    for entity in owned_suns {
+        world.despawn(entity);
+    }
+    let cameras = world
+        .query_filtered::<Entity, With<Camera3d>>()
+        .iter(world)
+        .collect::<Vec<_>>();
+    for entity in cameras {
+        world
+            .entity_mut(entity)
+            .remove::<bevy::pbr::VolumetricFogSettings>();
+    }
     let Some(profile) = bundle
         .environment_scene
         .as_ref()
         .and_then(|scene| scene.atmosphere.as_ref())
         .filter(|profile| profile.active)
     else {
+        world.remove_resource::<NativeVolumetricsReport>();
         return;
     };
+
+    let height_fog = profile
+        .volumetrics
+        .as_ref()
+        .and_then(|volumetrics| volumetrics.height_fog.as_ref())
+        .filter(|fog| fog.enabled);
+    let god_rays = profile
+        .volumetrics
+        .as_ref()
+        .and_then(|volumetrics| volumetrics.god_rays.as_ref())
+        .filter(|rays| rays.enabled);
+    let god_rays_applied =
+        god_rays.is_some() && profile.sun.casts_shadow && profile.shadows.enabled;
+    world.insert_resource(NativeVolumetricsReport {
+        god_rays_requested: god_rays.is_some(),
+        god_rays_applied,
+        god_rays_reason: (god_rays.is_some() && !god_rays_applied)
+            .then(|| "shadow-map-unavailable".to_owned()),
+        height_fog_requested: height_fog.is_some(),
+        height_fog_mode: if height_fog.is_some() {
+            "homogeneous-medium-approximation".to_owned()
+        } else {
+            "disabled".to_owned()
+        },
+        height_fog_reason: height_fog
+            .is_some()
+            .then(|| "bevy-0.14-no-height-density-field".to_owned()),
+        ignored_base_height: height_fog.map(|fog| fog.base_height),
+        ignored_falloff_height: height_fog.map(|fog| fog.falloff_height),
+    });
+    if let Some(settings) = native_volumetric_fog_settings(Some(profile)) {
+        let cameras = world
+            .query_filtered::<Entity, With<Camera3d>>()
+            .iter(world)
+            .collect::<Vec<_>>();
+        for entity in cameras {
+            world.entity_mut(entity).insert(settings);
+        }
+    }
 
     world.insert_resource(ClearColor(color_to_bevy(&profile.sky.color)));
     world.insert_resource(AmbientLight {
         color: color_to_bevy(&profile.ambient.color),
         brightness: profile.ambient.intensity
-            * THREE_COMPAT_ATMOSPHERE_AMBIENT_BRIGHTNESS_PER_INTENSITY,
+            * THREE_COMPAT_ATMOSPHERE_AMBIENT_BRIGHTNESS_PER_INTENSITY
+            * native_ssgi_ambient_multiplier(bundle.runtime_config.as_ref()),
     });
     world.insert_resource(DirectionalLightShadowMap {
         size: profile.shadows.map_size.min(2048) as usize,
@@ -250,9 +366,63 @@ pub fn apply_atmosphere_to_world(world: &mut World, bundle: &LoadedBundle) {
         ..Default::default()
     });
     sun.insert(Name::new(profile.sun.id.clone()));
+    sun.insert(NativeAtmosphereSun);
     if let Some(cascade_profile) = cascade_profile {
         sun.insert(cascade_profile);
     }
+    if profile
+        .volumetrics
+        .as_ref()
+        .and_then(|volumetrics| volumetrics.god_rays.as_ref())
+        .is_some_and(|god_rays| god_rays.enabled)
+        && profile.sun.casts_shadow
+        && profile.shadows.enabled
+    {
+        sun.insert(VolumetricLight);
+    }
+}
+
+pub(crate) fn native_volumetric_fog_settings(
+    profile: Option<&AtmosphereProfileIr>,
+) -> Option<bevy::pbr::VolumetricFogSettings> {
+    let profile = profile.filter(|profile| profile.active)?;
+    let volumetrics = profile.volumetrics.as_ref()?;
+    let height_fog = volumetrics.height_fog.as_ref().filter(|fog| fog.enabled);
+    let god_rays = volumetrics.god_rays.as_ref().filter(|rays| rays.enabled);
+    if height_fog.is_none() && god_rays.is_none() {
+        return None;
+    }
+    let fog_color = height_fog
+        .and_then(|fog| fog.color.as_ref())
+        .or_else(|| profile.fog.as_ref().map(|fog| &fog.color))
+        .map(color_to_bevy)
+        .unwrap_or_else(|| color_to_bevy(&profile.sky.color));
+    let quality = god_rays.map_or("medium", |rays| rays.quality.as_str());
+    let step_count = match quality {
+        "low" => 16,
+        "high" => 64,
+        _ => 32,
+    };
+    let authored_density = height_fog.map_or(0.0, |fog| fog.density);
+    let shaft_density = god_rays.map_or(0.0, |rays| rays.density);
+    Some(bevy::pbr::VolumetricFogSettings {
+        fog_color,
+        ambient_color: color_to_bevy(&profile.ambient.color),
+        ambient_intensity: profile.ambient.intensity
+            * authored_density
+            * NATIVE_VOLUMETRIC_AMBIENT_DENSITY_SCALE,
+        step_count,
+        max_depth: god_rays.map_or(profile.shadows.max_distance, |rays| rays.max_distance),
+        absorption: NATIVE_VOLUMETRIC_BASE_ABSORPTION
+            + authored_density * NATIVE_VOLUMETRIC_HEIGHT_ABSORPTION_SCALE,
+        scattering: NATIVE_VOLUMETRIC_BASE_SCATTERING
+            + shaft_density * NATIVE_VOLUMETRIC_SHAFT_SCATTERING_SCALE,
+        density: authored_density * NATIVE_VOLUMETRIC_HEIGHT_DENSITY_SCALE
+            + shaft_density * NATIVE_VOLUMETRIC_SHAFT_DENSITY_SCALE,
+        scattering_asymmetry: NATIVE_VOLUMETRIC_SCATTERING_ASYMMETRY,
+        light_tint: color_to_bevy(&profile.sun.color),
+        light_intensity: god_rays.map_or(0.0, |rays| rays.intensity),
+    })
 }
 
 fn resolve_atmosphere_shadow_cascade_config(
@@ -584,8 +754,15 @@ pub fn observe_environment_lighting(bundle: &LoadedBundle) -> EnvironmentLightin
             .map(|probe| LightProbeObservation {
                 id: probe.id.clone(),
                 intent: probe.intent.clone(),
-                asset_ids: texture_asset_ids(&probe.source),
+                asset_ids: match &probe.source {
+                    LightProbeSourceIr::Texture(source) => texture_asset_ids(source),
+                    LightProbeSourceIr::Baked(_) => Vec::new(),
+                },
                 applied: false,
+                mode: match &probe.source {
+                    LightProbeSourceIr::Texture(source) => source.mode.clone(),
+                    LightProbeSourceIr::Baked(_) => "global-ambient-sh-l0-approximation".to_owned(),
+                },
             })
             .collect(),
         diagnostics: Vec::new(),
@@ -637,7 +814,8 @@ pub fn apply_environment_lighting_to_world(
                 diffuse_map: handle.clone(),
                 specular_map: handle,
                 intensity: environment_map.intensity.unwrap_or(1.0).max(0.0)
-                    * THREE_COMPAT_ENVIRONMENT_MAP_LIGHT_INTENSITY_PER_UNIT,
+                    * THREE_COMPAT_ENVIRONMENT_MAP_LIGHT_INTENSITY_PER_UNIT
+                    * native_ssgi_ambient_multiplier(bundle.runtime_config.as_ref()),
             });
             if let Some(environment_map) = observation.environment_map.as_mut() {
                 environment_map.applied = true;
@@ -659,8 +837,9 @@ pub fn apply_environment_lighting_to_world(
             world.insert_resource(ClearColor(color));
         }
         if !world.contains_resource::<NativeEnvironmentMapHandles>() {
-            let environment_brightness =
-                environment_intensity * THREE_COMPAT_ENVIRONMENT_AMBIENT_BRIGHTNESS_PER_INTENSITY;
+            let environment_brightness = environment_intensity
+                * THREE_COMPAT_ENVIRONMENT_AMBIENT_BRIGHTNESS_PER_INTENSITY
+                * native_ssgi_ambient_multiplier(bundle.runtime_config.as_ref());
             if let Some(mut ambient) = world.get_resource_mut::<AmbientLight>() {
                 ambient.color = blend_ambient_colors(ambient.color, color);
                 ambient.brightness += environment_brightness;
@@ -689,6 +868,65 @@ pub fn apply_environment_lighting_to_world(
         observation
             .diagnostics
             .push("TN_BEVY_ENVIRONMENT_TEXTURE_UNRESOLVED".to_owned());
+    }
+    let baked_irradiance = scene
+        .light_probes
+        .iter()
+        .filter_map(|probe| match &probe.source {
+            LightProbeSourceIr::Baked(source)
+                if source.format == "sh2" && source.coefficients.len() == 27 =>
+            {
+                // Three.js reconstructs the SH L0 irradiance with 0.886227 and
+                // then applies the Lambert BRDF (1 / PI). Bevy's ambient light
+                // is already a diffuse-light contribution, so preserve the
+                // resulting 0.282095 energy instead of injecting irradiance
+                // directly and over-lighting every material.
+                Some([
+                    source.coefficients[0].max(0.0) * 0.282095,
+                    source.coefficients[1].max(0.0) * 0.282095,
+                    source.coefficients[2].max(0.0) * 0.282095,
+                ])
+            }
+            _ => None,
+        })
+        .collect::<Vec<_>>();
+    if !baked_irradiance.is_empty() {
+        world.insert_resource(NativeBakedProbeAmbientApplied);
+        let count = baked_irradiance.len() as f32;
+        let rgb = baked_irradiance.iter().fold([0.0; 3], |sum, value| {
+            [
+                sum[0] + value[0] / count,
+                sum[1] + value[1] / count,
+                sum[2] + value[2] / count,
+            ]
+        });
+        let brightness = rgb[0].max(rgb[1]).max(rgb[2]);
+        if brightness > 0.0 {
+            let color = Color::linear_rgb(
+                rgb[0] / brightness,
+                rgb[1] / brightness,
+                rgb[2] / brightness,
+            );
+            if let Some(mut ambient) = world.get_resource_mut::<AmbientLight>() {
+                let combined_brightness = ambient.brightness + brightness;
+                ambient.color = blend_ambient_colors_weighted(
+                    ambient.color,
+                    ambient.brightness,
+                    color,
+                    brightness,
+                );
+                ambient.brightness = combined_brightness;
+            } else {
+                world.insert_resource(AmbientLight { color, brightness });
+            }
+        }
+        for observation in &mut observation.light_probes {
+            if scene.light_probes.iter().any(|probe| {
+                probe.id == observation.id && matches!(&probe.source, LightProbeSourceIr::Baked(_))
+            }) {
+                observation.applied = true;
+            }
+        }
     }
     observation
 }
@@ -859,7 +1097,7 @@ fn mix_u8(left: u8, right: u8, t: f32) -> u8 {
         .clamp(0.0, 255.0) as u8
 }
 
-fn blend_ambient_colors(authored: Color, environment: Color) -> Color {
+pub(crate) fn blend_ambient_colors(authored: Color, environment: Color) -> Color {
     let authored = authored.to_srgba();
     let environment = environment.to_srgba();
     Color::srgba(
@@ -867,6 +1105,25 @@ fn blend_ambient_colors(authored: Color, environment: Color) -> Color {
         (authored.green + environment.green) * 0.5,
         (authored.blue + environment.blue) * 0.5,
         1.0,
+    )
+}
+
+fn blend_ambient_colors_weighted(
+    authored: Color,
+    authored_brightness: f32,
+    environment: Color,
+    environment_brightness: f32,
+) -> Color {
+    let total = authored_brightness + environment_brightness;
+    if total <= f32::EPSILON {
+        return Color::BLACK;
+    }
+    let authored = authored.to_linear();
+    let environment = environment.to_linear();
+    Color::linear_rgb(
+        (authored.red * authored_brightness + environment.red * environment_brightness) / total,
+        (authored.green * authored_brightness + environment.green * environment_brightness) / total,
+        (authored.blue * authored_brightness + environment.blue * environment_brightness) / total,
     )
 }
 

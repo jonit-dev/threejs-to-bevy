@@ -140,6 +140,75 @@ export function validateAtmosphereProfile(profile: IAtmosphereProfileIr | undefi
       validatePositiveFinite(profile.fog.far, `${path}/fog/far`, "TN_IR_ATMOSPHERE_FOG_DISTANCE_INVALID", diagnostics);
     }
   }
+  const volumetrics = profile.volumetrics as unknown;
+  if (volumetrics !== undefined && !isRecord(volumetrics)) {
+    diagnostics.push({
+      code: "TN_IR_ATMOSPHERE_VOLUMETRICS_INVALID",
+      message: "Atmosphere volumetrics must be an object when declared.",
+      path: `${path}/volumetrics`,
+      severity: "error",
+      suggestion: "Declare optional heightFog and godRays objects under volumetrics.",
+    });
+    return diagnostics;
+  }
+  const heightFog = isRecord(volumetrics) ? volumetrics.heightFog : undefined;
+  if (heightFog !== undefined && !isRecord(heightFog)) {
+    diagnostics.push({
+      code: "TN_IR_ATMOSPHERE_VOLUMETRICS_HEIGHT_FOG_INVALID",
+      message: "Volumetric heightFog must be an object when declared.",
+      path: `${path}/volumetrics/heightFog`,
+      severity: "error",
+    });
+  } else if (isRecord(heightFog)) {
+    validateBoolean(heightFog.enabled, `${path}/volumetrics/heightFog/enabled`, "TN_IR_ATMOSPHERE_VOLUMETRICS_HEIGHT_FOG_ENABLED_INVALID", diagnostics);
+    validateUnitInterval(
+      heightFog.density,
+      `${path}/volumetrics/heightFog/density`,
+      "TN_IR_ATMOSPHERE_VOLUMETRICS_HEIGHT_FOG_DENSITY_INVALID",
+      diagnostics,
+    );
+    validatePositiveFinite(
+      heightFog.falloffHeight,
+      `${path}/volumetrics/heightFog/falloffHeight`,
+      "TN_IR_ATMOSPHERE_VOLUMETRICS_HEIGHT_FOG_FALLOFF_HEIGHT_INVALID",
+      diagnostics,
+    );
+    if (!Number.isFinite(heightFog.baseHeight)) {
+      diagnostics.push({
+        code: "TN_IR_ATMOSPHERE_VOLUMETRICS_HEIGHT_FOG_BASE_HEIGHT_INVALID",
+        message: "Volumetric height fog baseHeight must be finite.",
+        path: `${path}/volumetrics/heightFog/baseHeight`,
+        severity: "error",
+        suggestion: "Use a finite world-space Y coordinate for baseHeight.",
+      });
+    }
+    if (heightFog.color !== undefined) {
+      validateColor(heightFog.color, `${path}/volumetrics/heightFog/color`, diagnostics);
+    }
+  }
+  const godRays = isRecord(volumetrics) ? volumetrics.godRays : undefined;
+  if (godRays !== undefined && !isRecord(godRays)) {
+    diagnostics.push({
+      code: "TN_IR_ATMOSPHERE_VOLUMETRICS_GOD_RAYS_INVALID",
+      message: "Volumetric godRays must be an object when declared.",
+      path: `${path}/volumetrics/godRays`,
+      severity: "error",
+    });
+  } else if (isRecord(godRays)) {
+    validateBoolean(godRays.enabled, `${path}/volumetrics/godRays/enabled`, "TN_IR_ATMOSPHERE_VOLUMETRICS_GOD_RAYS_ENABLED_INVALID", diagnostics);
+    validateRange(godRays.intensity, 0, 2, `${path}/volumetrics/godRays/intensity`, "TN_IR_ATMOSPHERE_VOLUMETRICS_GOD_RAYS_INTENSITY_INVALID", diagnostics);
+    validateUnitInterval(godRays.density, `${path}/volumetrics/godRays/density`, "TN_IR_ATMOSPHERE_VOLUMETRICS_GOD_RAYS_DENSITY_INVALID", diagnostics);
+    validatePositiveFinite(godRays.maxDistance, `${path}/volumetrics/godRays/maxDistance`, "TN_IR_ATMOSPHERE_VOLUMETRICS_GOD_RAYS_MAX_DISTANCE_INVALID", diagnostics);
+    if (typeof godRays.quality !== "string" || !["low", "medium", "high"].includes(godRays.quality)) {
+      diagnostics.push({
+        code: "TN_IR_ATMOSPHERE_VOLUMETRICS_GOD_RAYS_QUALITY_INVALID",
+        message: "Volumetric god-ray quality must be 'low', 'medium', or 'high'.",
+        path: `${path}/volumetrics/godRays/quality`,
+        severity: "error",
+        suggestion: "Use a bounded quality tier: 'low', 'medium', or 'high'.",
+      });
+    }
+  }
   return diagnostics;
 }
 
@@ -173,13 +242,60 @@ export function validateEnvironmentLighting(
         severity: "error",
       });
     }
-    validateTextureSource(probe.source, bundleAssets, `${probePath}/source`, "TN_IR_RENDERER_LIGHT_PROBE", diagnostics);
+    if (isRecord(probe.source) && isBakedProbeSource(probe.source)) {
+      validateBakedProbePayload(probe.source, `${probePath}/source`, diagnostics);
+    } else {
+      validateTextureSource(probe.source as IEnvironmentTextureSourceIr, bundleAssets, `${probePath}/source`, "TN_IR_RENDERER_LIGHT_PROBE", diagnostics);
+    }
     validateIntent(probe.intent, `${probePath}/intent`, "TN_IR_RENDERER_LIGHT_PROBE_INTENT_INVALID", diagnostics);
     validateBounds(probe.bounds, `${probePath}/bounds`, diagnostics);
     validatePositiveFinite(probe.influenceRadius, `${probePath}/influenceRadius`, "TN_IR_RENDERER_LIGHT_PROBE_RADIUS_INVALID", diagnostics);
   });
 
   return diagnostics;
+}
+
+function isBakedProbeSource(source: Record<string, unknown>): boolean {
+  return ["bakeVersion", "coefficients", "format", "sceneContentHash"].some((key) => key in source);
+}
+
+function validateBakedProbePayload(source: Record<string, unknown>, path: string, diagnostics: IIrDiagnostic[]): void {
+  if (source.format !== "sh2") {
+    diagnostics.push({
+      code: "TN_IR_LIGHT_PROBE_BAKE_FORMAT_INVALID",
+      message: "Baked light probe format must be 'sh2'.",
+      path: `${path}/format`,
+      severity: "error",
+      suggestion: "Regenerate the probe with 'tn bake gi'.",
+    });
+  }
+  if (source.bakeVersion !== 1) {
+    diagnostics.push({
+      code: "TN_IR_LIGHT_PROBE_BAKE_VERSION_INVALID",
+      message: "Baked light probe bakeVersion must be 1.",
+      path: `${path}/bakeVersion`,
+      severity: "error",
+      suggestion: "Regenerate the probe with the current 'tn bake gi' command.",
+    });
+  }
+  if (!Array.isArray(source.coefficients) || source.coefficients.length !== 27 || source.coefficients.some((coefficient) => typeof coefficient !== "number" || !Number.isFinite(coefficient))) {
+    diagnostics.push({
+      code: "TN_IR_LIGHT_PROBE_BAKE_COEFFICIENTS_INVALID",
+      message: "Baked SH2 light probes require exactly 27 finite RGB coefficients.",
+      path: `${path}/coefficients`,
+      severity: "error",
+      suggestion: "Regenerate all 9 RGB SH2 coefficients with 'tn bake gi'.",
+    });
+  }
+  if (typeof source.sceneContentHash !== "string" || !/^sha256:[a-f0-9]{64}$/.test(source.sceneContentHash)) {
+    diagnostics.push({
+      code: "TN_IR_LIGHT_PROBE_BAKE_CONTENT_HASH_INVALID",
+      message: "Baked light probe sceneContentHash must be a lowercase sha256 digest.",
+      path: `${path}/sceneContentHash`,
+      severity: "error",
+      suggestion: "Regenerate the probe with 'tn bake gi' so staleness can be detected.",
+    });
+  }
 }
 
 function validateTextureSource(
@@ -346,6 +462,47 @@ function validateOptionalUnitInterval(value: unknown, path: string, code: string
       path,
       severity: "error",
       suggestion: "Clamp the authored value to the inclusive range from 0 through 1.",
+    });
+  }
+}
+
+function validateUnitInterval(value: unknown, path: string, code: string, diagnostics: IIrDiagnostic[]): void {
+  if (typeof value !== "number" || !Number.isFinite(value) || value < 0 || value > 1) {
+    diagnostics.push({
+      code,
+      message: "Expected a finite number from 0 through 1.",
+      path,
+      severity: "error",
+      suggestion: "Clamp the authored value to the inclusive range from 0 through 1.",
+    });
+  }
+}
+
+function validateBoolean(value: unknown, path: string, code: string, diagnostics: IIrDiagnostic[]): void {
+  if (typeof value !== "boolean") {
+    diagnostics.push({ code, message: "Expected a boolean value.", path, severity: "error" });
+  }
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function validateRange(
+  value: unknown,
+  minimum: number,
+  maximum: number,
+  path: string,
+  code: string,
+  diagnostics: IIrDiagnostic[],
+): void {
+  if (typeof value !== "number" || !Number.isFinite(value) || value < minimum || value > maximum) {
+    diagnostics.push({
+      code,
+      message: `Expected a finite number from ${minimum} through ${maximum}.`,
+      path,
+      severity: "error",
+      suggestion: `Clamp the authored value to the inclusive range from ${minimum} through ${maximum}.`,
     });
   }
 }

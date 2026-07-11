@@ -55,6 +55,11 @@ export interface IPlaytestContactAssertion {
   with?: string;
 }
 
+export interface IPlaytestOccludedAssertion {
+  entity?: string;
+  target?: string;
+}
+
 export interface IPlaytestAnimationAssertion {
   advancedFrames?: number;
   clip?: string;
@@ -82,6 +87,7 @@ export interface IPlaytestScenarioAssertions {
   diagnostics?: IPlaytestDiagnosticsAssertion;
   hud?: IPlaytestPathAssertion[];
   movement?: IPlaytestMovementAssertion;
+  occluded?: IPlaytestOccludedAssertion[];
   resources?: IPlaytestPathAssertion[];
   visibility?: IPlaytestVisibilityAssertion[];
 }

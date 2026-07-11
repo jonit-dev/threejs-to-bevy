@@ -6,10 +6,27 @@ import test from "node:test";
 
 import { listConformanceFixtures, loadConformanceFixtureCatalog } from "./conformance.js";
 import { validateBundle } from "./validate.js";
+import type { IConformanceRuntimeConfigReport } from "./conformanceReport.js";
 
 const cwd = process.cwd();
 const packageRoot = cwd.endsWith("/packages/ir") ? cwd : resolve(cwd, "packages/ir");
 const repoRoot = cwd.endsWith("/packages/ir") ? resolve(cwd, "../..") : cwd;
+
+test("should carry native SSGI approximation through the conformance report shape", () => {
+  const report: IConformanceRuntimeConfigReport = {
+    renderer: {
+      featureReports: [{
+        appliedMode: "approximation",
+        feature: "renderer.screenSpaceGlobalIllumination",
+        requestedMode: "screen-space",
+        status: "baseline",
+      }],
+      screenSpaceGlobalIllumination: { enabled: true, intensity: 1, quality: "high", radius: 12 },
+    },
+  };
+
+  assert.deepEqual(JSON.parse(JSON.stringify(report)), report);
+});
 
 test("should validate every conformance fixture", async () => {
   const fixtures = await listConformanceFixtures();

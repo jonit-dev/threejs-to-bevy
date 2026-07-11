@@ -1,0 +1,44 @@
+{
+  "schema": "threenative.world",
+  "version": "0.1.0",
+  "entities": [
+    {
+      "id": "floor",
+      "components": {
+        "Transform": { "position": [0, -0.1, 0], "rotation": [0, 0, 0, 1], "scale": [1, 1, 1] },
+        "MeshRenderer": { "mesh": "mesh.floor", "material": "mat.floor", "castShadow": true, "receiveShadow": true }
+      }
+    },
+    {
+      "id": "wall.red.offscreen",
+      "components": {
+        "Transform": { "position": [-4, 2, 0], "rotation": [0, 0, 0, 1], "scale": [1, 1, 1] },
+        "MeshRenderer": { "mesh": "mesh.wall", "material": "mat.wall.red", "castShadow": true, "receiveShadow": true }
+      }
+    },
+    {
+      "id": "subject",
+      "components": {
+        "Transform": { "position": [0, 0.85, 0], "rotation": [0, 0, 0, 1], "scale": [1, 1, 1] },
+        "MeshRenderer": { "mesh": "mesh.subject", "material": "mat.subject", "castShadow": true, "receiveShadow": true }
+      }
+    },
+    {
+      "id": "camera.main",
+      "components": {
+        "Transform": { "position": [0, 2.2, 6], "rotation": [0, 0, 0, 1], "scale": [1, 1, 1] },
+        "Camera": { "kind": "perspective", "fovY": 48, "near": 0.1, "far": 100, "priority": 0 }
+      }
+    },
+    {
+      "id": "light.fill",
+      "components": {
+        "Transform": { "position": [0, 0, 0], "rotation": [0, 0, 0, 1], "scale": [1, 1, 1] },
+        "Light": { "kind": "ambient", "color": "#b8c2cf", "intensity": 0.25 }
+      }
+    }
+  ],
+  "resources": { "ActiveCamera": { "entity": "camera.main" } },
+  "events": {},
+  "prefabs": []
+}

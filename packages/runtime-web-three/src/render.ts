@@ -28,6 +28,9 @@ import { applyAtmosphereProfile, applyEnvironmentLighting, applyThreeCompatFogDi
 import { applyWebRenderLookProfile } from "./rendering/applyRenderLookProfile.js";
 import { DirectionalShadowController, shouldUseDirectionalShadowController } from "./rendering/directionalShadowController.js";
 import { createContactShadowsManager, type IContactShadowsManager, type IContactShadowsObservation } from "./rendering/contactShadows.js";
+import { HeightFogPass, webHeightFogSettings } from "./rendering/heightFogPass.js";
+import { GodRaysPass, webGodRaysSettings } from "./rendering/godrays/GodRaysPass.js";
+import { SsgiPass, webSsgiSettings } from "./rendering/ssgi/ssgiPass.js";
 import { createGameLoopState, runGameFrame } from "./gameLoop.js";
 import { disposePhysicsRuntime, initializePhysicsRuntime } from "./physics.js";
 import { attachInputListeners, createInputState } from "./input.js";
@@ -105,6 +108,7 @@ export interface IRenderOptions {
   debugColliders?: boolean;
   enableEmissiveProxyLights?: boolean;
   systemModuleLoader?: (source: string, manifest: IWebBundle["manifest"]) => Promise<ISystemModule>;
+  targetProfile?: "desktop-web" | "mobile-web";
 }
 
 export interface ICaptureTransformTraceSample {
@@ -241,7 +245,19 @@ const WEB_EMISSIVE_PROXY_INTENSITY_SCALE = 0.5;
 interface IRenderPipeline {
   dispose(): void;
   render(delta?: number): void;
+  requiresContinuousUpdates: boolean;
   setSize(width: number, height: number): void;
+}
+
+export type WebComposerFeature = "ambientOcclusion" | "ssgi" | "godRays" | "heightFog" | "bloom" | "depthOfField" | "motionBlur";
+
+export function webComposerFeatureOrder(enabled: Readonly<Partial<Record<WebComposerFeature, boolean>>>): WebComposerFeature[] {
+  return (["ambientOcclusion", "ssgi", "godRays", "heightFog", "bloom", "depthOfField", "motionBlur"] as const)
+    .filter((feature) => enabled[feature] === true);
+}
+
+export function webComposerRequiresContinuousUpdates(enabled: Readonly<Partial<Record<WebComposerFeature, boolean>>>): boolean {
+  return enabled.ssgi === true;
 }
 
 export interface IWebEmissiveProxyLightController {
@@ -308,7 +324,7 @@ export async function renderLoadedBundle(bundle: IWebBundle, container: HTMLElem
   const resourceObservations: IResourceObservation[] = [];
   const systemModule = await (options.systemModuleLoader ?? loadSystemModuleUrl)(source, bundle.manifest);
   const renderer = new THREE.WebGLRenderer(webRendererParameters(bundle.runtimeConfig, options.captureDrawingBuffer));
-  const renderLook = applyWebRenderLookProfile(bundle.runtimeConfig);
+  const renderLook = applyWebRenderLookProfile(bundle.runtimeConfig, options.targetProfile ?? "desktop-web");
   applyRendererColorManagement(renderer, bundle.environmentScene?.atmosphere?.colorManagement, renderLook.colorGrading);
   applyRendererShadowSettings(renderer, bundle.runtimeConfig, mapped.scene);
   applyRenderLookSceneDefaults(mapped.scene, renderLook);
@@ -334,12 +350,14 @@ export async function renderLoadedBundle(bundle: IWebBundle, container: HTMLElem
     renderer,
     mapped,
     bundle.world,
+    bundle.environmentScene?.atmosphere,
     bundle.runtimeConfig,
     bundle.assets,
     bundle.materials,
     options.enableEmissiveProxyLights ?? true,
     directionalShadowController,
     contactShadows,
+    options.targetProfile ?? "desktop-web",
   );
   const colliderDebugOverlay = options.debugColliders === true ? createColliderDebugOverlay(mapped, bundle.world) : undefined;
   const canvas = renderer.domElement;
@@ -407,6 +425,7 @@ export async function renderLoadedBundle(bundle: IWebBundle, container: HTMLElem
     }
     uiOverlay?.update();
     colliderDebugOverlay?.update();
+    mapped.bakedProbeLighting?.sync(mapped.camera.getWorldPosition(new THREE.Vector3()));
     pipeline.render(1 / 60);
   }
   logStartupDiagnostics(mapped.diagnostics);
@@ -427,7 +446,7 @@ export async function renderLoadedBundle(bundle: IWebBundle, container: HTMLElem
     disposeThreeWorld(mapped);
     renderer.dispose();
   };
-  if (options.captureFrames === undefined && (bundle.systems !== undefined || hasAnimationPlayback(mapped) || hasKinematicMovers(bundle.world) || contactShadows.requiresContinuousUpdates())) {
+  if (options.captureFrames === undefined && (bundle.systems !== undefined || hasAnimationPlayback(mapped) || hasKinematicMovers(bundle.world) || contactShadows.requiresContinuousUpdates() || pipeline.requiresContinuousUpdates)) {
     const frameTimings = createFrameTimingTrace();
     resetPerformanceTrace = () => frameTimings.reset();
     lifecycle = createWebRenderLifecycle({
@@ -467,6 +486,7 @@ export async function renderLoadedBundle(bundle: IWebBundle, container: HTMLElem
         advanceAnimationPlayback(mapped, delta);
         uiOverlay?.update();
         colliderDebugOverlay?.update();
+        mapped.bakedProbeLighting?.sync(mapped.camera.getWorldPosition(new THREE.Vector3()));
         pipeline.render(delta);
       },
     });
@@ -530,6 +550,7 @@ export async function renderLoadedBundle(bundle: IWebBundle, container: HTMLElem
         ...(transform.scale === undefined ? {} : { scale: transform.scale }),
       };
       syncTransforms(bundle.world, mapped.objectsById);
+      mapped.bakedProbeLighting?.sync(mapped.camera.getWorldPosition(new THREE.Vector3()));
       pipeline.render();
       return true;
     },
@@ -1388,12 +1409,14 @@ function createRenderPipeline(
   renderer: THREE.WebGLRenderer,
   mapped: IThreeWorld,
   world: IWorldIr,
+  atmosphere?: IAtmosphereProfileIr,
   config?: IRuntimeConfigIr,
   assets?: IWebBundle["assets"],
   materials?: IMaterialsIr,
   enableEmissiveProxyLights = true,
   directionalShadowController?: DirectionalShadowController,
   contactShadows?: IContactShadowsManager,
+  targetProfile: "desktop-web" | "mobile-web" = "desktop-web",
 ): IRenderPipeline {
   const renderTargets = assets === undefined ? undefined : createRenderTargetRegistry(assets, renderer);
   if (renderTargets !== undefined) {
@@ -1410,9 +1433,46 @@ function createRenderPipeline(
   const depthOfField = webDepthOfFieldSettings(config);
   const motionBlur = webMotionBlurSettings(config);
   const screenSpaceReflections = webScreenSpaceReflectionsSettings(config);
+  const ssgi = webSsgiSettings(config, atmosphere, targetProfile);
   const colorGrading = webColorGradingSettings(config);
+  const heightFog = webHeightFogSettings(atmosphere);
+  const resolvedGodRaysShadowQuality = resolveRenderLookShadowProfile(
+    resolveRenderLookProfile(config?.renderer?.renderLook, targetProfile).shadowQuality,
+  ).quality;
+  const godRaysQualityLimit = resolvedGodRaysShadowQuality === "off" ? "low" : resolvedGodRaysShadowQuality;
+  const godRays = webGodRaysSettings(atmosphere, godRaysQualityLimit);
   const backbufferViews = mapped.cameraViews.filter((view) => view.targetKind === "backbuffer");
-  const useComposer = backbufferViews.length <= 1 && (bloom.enabled || ambientOcclusion.enabled || depthOfField.enabled || motionBlur.enabled || screenSpaceReflections.enabled || needsColorManagedOutputPass(colorGrading));
+  if (heightFog !== undefined && backbufferViews.length > 1) {
+    mapped.diagnostics.push({
+      code: "TN_WEB_VOLUMETRICS_MULTI_VIEW_UNSUPPORTED",
+      message: "Volumetric height fog is disabled because the web composer supports one backbuffer camera.",
+      path: "environment.scene.json/atmosphere/volumetrics/heightFog",
+      severity: "warning",
+      suggestion: "Use one backbuffer camera or disable heightFog for multi-view rendering.",
+    });
+  }
+  if (godRays !== undefined && backbufferViews.length > 1) {
+    mapped.diagnostics.push({
+      code: "TN_RENDER_FEATURE_FALLBACK",
+      message: "Volumetric god rays requested but the web composer supports one backbuffer camera; applied fallback 'disabled' (multi-view).",
+      path: "environment.scene.json/atmosphere/volumetrics/godRays",
+      severity: "warning",
+      suggestion: "Use one backbuffer camera or disable godRays for multi-view rendering.",
+    });
+  }
+  const authoredGodRaysLight = atmosphere === undefined ? undefined : mapped.scene.getObjectByName(atmosphere.sun.id);
+  const directionalGodRaysLights = directionalShadowController?.lights.filter((light) => light.castShadow)
+    ?? (authoredGodRaysLight instanceof THREE.DirectionalLight && authoredGodRaysLight.castShadow ? [authoredGodRaysLight] : []);
+  if (godRays !== undefined && directionalGodRaysLights.length === 0) {
+    mapped.diagnostics.push({
+      code: "TN_RENDER_FEATURE_FALLBACK",
+      message: "Volumetric god rays require the atmosphere sun shadow map; applied fallback 'disabled' (shadow-map-unavailable).",
+      path: "environment.scene.json/atmosphere/volumetrics/godRays",
+      severity: "warning",
+      suggestion: "Enable shadows and castsShadow on the authored atmosphere sun.",
+    });
+  }
+  const useComposer = backbufferViews.length <= 1 && (ssgi !== undefined || godRays !== undefined || heightFog !== undefined || bloom.enabled || ambientOcclusion.enabled || depthOfField.enabled || motionBlur.enabled || screenSpaceReflections.enabled || needsColorManagedOutputPass(colorGrading));
   if (!useComposer) {
     return {
       dispose: () => {
@@ -1425,6 +1485,7 @@ function createRenderPipeline(
         emissiveProxyLights.sync();
         renderCameraViews(renderer, mapped, world, delta, renderTargets, directionalShadowController);
       },
+      requiresContinuousUpdates: false,
       setSize: () => undefined,
     };
   }
@@ -1432,17 +1493,22 @@ function createRenderPipeline(
   composer.addPass(screenSpaceReflections.enabled
     ? createScreenSpaceReflectionsPass(renderer, mapped, materials?.materials ?? [], screenSpaceReflections)
     : new RenderPass(mapped.scene, mapped.camera));
-  if (ambientOcclusion.enabled) {
-    composer.addPass(createAmbientOcclusionPass(mapped.scene, mapped.camera, ambientOcclusion));
-  }
-  if (depthOfField.enabled) {
-    composer.addPass(createDepthOfFieldPass(mapped.scene, mapped.camera, depthOfField));
-  }
-  if (motionBlur.enabled) {
-    composer.addPass(createMotionBlurPass(motionBlur));
-  }
-  if (bloom.enabled) {
-    composer.addPass(createBloomPass(bloom));
+  for (const feature of webComposerFeatureOrder({
+    ambientOcclusion: ambientOcclusion.enabled,
+    bloom: bloom.enabled,
+    depthOfField: depthOfField.enabled,
+    godRays: godRays !== undefined && directionalGodRaysLights.length > 0,
+    heightFog: heightFog !== undefined,
+    motionBlur: motionBlur.enabled,
+    ssgi: ssgi !== undefined,
+  })) {
+    if (feature === "ambientOcclusion") composer.addPass(createAmbientOcclusionPass(mapped.scene, mapped.camera, ambientOcclusion));
+    if (feature === "godRays" && godRays !== undefined) composer.addPass(new GodRaysPass(mapped.scene, mapped.camera, directionalGodRaysLights, godRays));
+    if (feature === "heightFog" && heightFog !== undefined) composer.addPass(new HeightFogPass(mapped.scene, mapped.camera, heightFog));
+    if (feature === "ssgi" && ssgi !== undefined) composer.addPass(new SsgiPass(mapped.scene, mapped.camera, ssgi));
+    if (feature === "bloom") composer.addPass(createBloomPass(bloom));
+    if (feature === "depthOfField") composer.addPass(createDepthOfFieldPass(mapped.scene, mapped.camera, depthOfField));
+    if (feature === "motionBlur") composer.addPass(createMotionBlurPass(motionBlur));
   }
   composer.addPass(colorManagedOutputPass(renderer, colorGrading));
   const composerClear = backbufferViews[0]?.clear;
@@ -1473,6 +1539,7 @@ function createRenderPipeline(
         mapped.scene.background = previousBackground;
       }
     },
+    requiresContinuousUpdates: webComposerRequiresContinuousUpdates({ ssgi: ssgi !== undefined }),
     setSize: (width, height) => composer.setSize(width, height),
   };
 }

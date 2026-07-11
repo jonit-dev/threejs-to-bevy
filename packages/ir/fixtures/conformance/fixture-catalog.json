@@ -655,7 +655,7 @@
       "sourceExample": "contact-shadows-grounding",
       "regenerateCommand": "pnpm verify:focused verify:contact-shadows",
       "canonicalArtifactGate": "contact-shadows",
-      "ownerDocs": "docs/PRDs/lumen-lite-lighting-2026-07-09/PRD-002-contact-shadows-grounding.md",
+      "ownerDocs": "docs/PRDs/done/lumen-lite-lighting-2026-07-09/PRD-002-contact-shadows-grounding.md",
       "aggregateGate": "verify:contact-shadows",
       "bundlePath": "packages/ir/fixtures/conformance/contact-shadows-grounding/game.bundle",
       "promotedCapabilities": [
@@ -691,6 +691,154 @@
         "release": {
           "enrolled": true,
           "name": "verify contact shadows",
+          "timingCategory": "visual-native"
+        }
+      }
+    },
+    {
+      "canonicalId": "volumetrics",
+      "owner": "ir-contract",
+      "sourceExample": "volumetrics",
+      "regenerateCommand": "pnpm verify:focused verify:volumetrics",
+      "canonicalArtifactGate": "volumetrics",
+      "ownerDocs": "docs/PRDs/done/lumen-lite-lighting-2026-07-09/PRD-003-volumetric-godrays-height-fog.md",
+      "aggregateGate": "verify:volumetrics",
+      "bundlePath": "packages/ir/fixtures/conformance/volumetrics/game.bundle",
+      "promotedCapabilities": [
+        "environment:atmosphere",
+        "rendering:camera.perspective",
+        "rendering:material.standard",
+        "rendering:mesh.primitive.box",
+        "rendering:shadows",
+        "rendering:volumetric-god-rays",
+        "rendering:volumetric-height-fog"
+      ],
+      "reportArtifacts": [
+        "tools/verify/artifacts/volumetrics/verification-report.json",
+        "tools/verify/artifacts/volumetrics/reports/volumetrics.web.report.json",
+        "tools/verify/artifacts/volumetrics/reports/volumetrics.native.report.json",
+        "tools/verify/artifacts/volumetrics/screenshots/volumetrics.web.png",
+        "tools/verify/artifacts/volumetrics/screenshots/volumetrics.native.png",
+        "tools/verify/artifacts/volumetrics/screenshots/volumetrics.height-control.web.png",
+        "tools/verify/artifacts/volumetrics/screenshots/volumetrics.height-control.native.png",
+        "tools/verify/artifacts/volumetrics/screenshots/volumetrics.shaft-control.web.png",
+        "tools/verify/artifacts/volumetrics/screenshots/volumetrics.shaft-control.native.png",
+        "tools/verify/artifacts/volumetrics/contact-sheet.svg"
+      ],
+      "focusedGate": {
+        "commands": [
+          ["pnpm", "--filter", "@threenative/ir", "build"],
+          ["pnpm", "--filter", "@threenative/runtime-web-three", "build"],
+          ["pnpm", "--filter", "@threenative/cli", "build"],
+          ["pnpm", "--filter", "@threenative/verify-tools", "build"],
+          ["cargo", "test", "--manifest-path", "runtime-bevy/Cargo.toml", "-p", "threenative_runtime", "--test", "rendering_atmosphere"],
+          ["node", "tools/verify/dist/volumetricsGate.js"]
+        ],
+        "conflictPolicy": "none",
+        "description": "Cross-adapter volumetric height-fog and shadowed-god-rays gate.",
+        "owner": "packages/ir fixture catalog and tools/verify volumetrics gate",
+        "profile": "focused",
+        "protects": "Altitude fog gradient, shadowed directional shafts, bounded quality, and paired web/native visual evidence.",
+        "reason": "Combines a tall-column and occluding-pillar scene with region metrics that package-local mapping tests cannot prove.",
+        "release": {
+          "enrolled": true,
+          "name": "verify volumetrics",
+          "timingCategory": "visual-native"
+        }
+      }
+    },
+    {
+      "canonicalId": "photoreal-ssgi-red-wall-test",
+      "owner": "ir-contract",
+      "sourceExample": "photoreal-ssgi-red-wall-test",
+      "regenerateCommand": "pnpm verify:focused verify:ssgi",
+      "canonicalArtifactGate": "ssgi",
+      "ownerDocs": "docs/PRDs/done/lumen-lite-lighting-2026-07-09/PRD-004-ssgi-promotion.md",
+      "aggregateGate": "verify:ssgi",
+      "bundlePath": "packages/ir/fixtures/conformance/photoreal-ssgi-red-wall-test/game.bundle",
+      "promotedCapabilities": [
+        "rendering:camera.perspective",
+        "rendering:light.directional",
+        "rendering:material.standard",
+        "rendering:mesh.primitive.box",
+        "rendering:screen-space-global-illumination"
+      ],
+      "reportArtifacts": [
+        "tools/verify/artifacts/ssgi/verification-report.json",
+        "tools/verify/artifacts/ssgi/reports/photoreal-ssgi-red-wall-test.web.report.json",
+        "tools/verify/artifacts/ssgi/reports/photoreal-ssgi-red-wall-test.native.report.json",
+        "tools/verify/artifacts/ssgi/screenshots/photoreal-ssgi-red-wall-test.web.png",
+        "tools/verify/artifacts/ssgi/screenshots/photoreal-ssgi-red-wall-test.native.png",
+        "tools/verify/artifacts/ssgi/screenshots/photoreal-ssgi-red-wall-test.disabled.web.png",
+        "tools/verify/artifacts/ssgi/screenshots/photoreal-ssgi-red-wall-test.disabled.native.png",
+        "tools/verify/artifacts/ssgi/screenshots/photoreal-ssgi-red-wall-test.high.web.png",
+        "tools/verify/artifacts/ssgi/screenshots/photoreal-ssgi-red-wall-test.high.native.png"
+      ],
+      "focusedGate": {
+        "commands": [
+          ["pnpm", "--filter", "@threenative/ir", "build"],
+          ["pnpm", "--filter", "@threenative/runtime-web-three", "build"],
+          ["pnpm", "--filter", "@threenative/cli", "build"],
+          ["pnpm", "--filter", "@threenative/verify-tools", "build"],
+          ["cargo", "test", "--manifest-path", "runtime-bevy/Cargo.toml", "-p", "threenative_runtime", "--test", "rendering_atmosphere"],
+          ["node", "tools/verify/dist/ssgiGate.js"]
+        ],
+        "conflictPolicy": "none",
+        "description": "Cross-adapter spatial-temporal SSGI and native approximation gate.",
+        "owner": "packages/ir fixture catalog and tools/verify SSGI gate",
+        "profile": "focused",
+        "protects": "Causal indirect lift, monotone intensity, web red-wall color bleed, native approximation, and no-fallback reports.",
+        "reason": "Combines disabled/authored/high controls with paired web/native captures and adapter conformance reports.",
+        "release": {
+          "enrolled": true,
+          "name": "verify SSGI",
+          "timingCategory": "visual-native"
+        }
+      }
+    },
+    {
+      "canonicalId": "baked-probe-alcove-test",
+      "owner": "ir-contract",
+      "sourceExample": "baked-probe-alcove-test",
+      "regenerateCommand": "pnpm verify:focused verify:baked-gi",
+      "canonicalArtifactGate": "baked-gi",
+      "ownerDocs": "docs/PRDs/done/lumen-lite-lighting-2026-07-09/PRD-005-scene-ray-query-and-baked-gi.md",
+      "aggregateGate": "verify:baked-gi",
+      "bundlePath": "packages/ir/fixtures/conformance/baked-probe-alcove-test/game.bundle",
+      "promotedCapabilities": [
+        "environment:light-probes",
+        "rendering:baked-gi-probes",
+        "rendering:camera.perspective",
+        "rendering:material.standard"
+      ],
+      "reportArtifacts": [
+        "tools/verify/artifacts/baked-gi/verification-report.json",
+        "tools/verify/artifacts/baked-gi/reports/baked-probe-alcove-test.web.report.json",
+        "tools/verify/artifacts/baked-gi/reports/baked-probe-alcove-test.native.report.json",
+        "tools/verify/artifacts/baked-gi/screenshots/baked-probe-alcove-test.web.png",
+        "tools/verify/artifacts/baked-gi/screenshots/baked-probe-alcove-test.native.png",
+        "tools/verify/artifacts/baked-gi/screenshots/baked-probe-alcove-test.disabled.web.png",
+        "tools/verify/artifacts/baked-gi/screenshots/baked-probe-alcove-test.disabled.native.png"
+      ],
+      "focusedGate": {
+        "commands": [
+          ["pnpm", "--filter", "@threenative/ir", "build"],
+          ["pnpm", "--filter", "@threenative/compiler", "build"],
+          ["pnpm", "--filter", "@threenative/runtime-web-three", "build"],
+          ["pnpm", "--filter", "@threenative/cli", "build"],
+          ["pnpm", "--filter", "@threenative/verify-tools", "build"],
+          ["cargo", "test", "--manifest-path", "runtime-bevy/Cargo.toml", "-p", "threenative_runtime", "should_apply_baked_sh_probe"],
+          ["node", "tools/verify/dist/bakedGiGate.js"]
+        ],
+        "conflictPolicy": "none",
+        "description": "Cross-adapter baked SH probe off-screen bounce gate.",
+        "owner": "packages/ir fixture catalog and tools/verify baked GI gate",
+        "profile": "focused",
+        "protects": "Deterministic baked payloads, stale diagnostics, warm indirect lift, and honest adapter modes.",
+        "reason": "Pairs disabled/authored web and native captures for an off-screen red-wall alcove.",
+        "release": {
+          "enrolled": true,
+          "name": "verify baked GI",
           "timingCategory": "visual-native"
         }
       }

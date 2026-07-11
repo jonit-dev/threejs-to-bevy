@@ -4,7 +4,7 @@ import test from "node:test";
 import { BEVY_CATALOG_RESIDUAL_ROWS, residualDiagnosticCode } from "./bevyCatalogResiduals.js";
 
 test("should cover every Bevy catalog residual row with triage evidence", () => {
-  assert.equal(BEVY_CATALOG_RESIDUAL_ROWS.length, 22);
+  assert.equal(BEVY_CATALOG_RESIDUAL_ROWS.length, 23);
   for (const row of BEVY_CATALOG_RESIDUAL_ROWS) {
     assert.equal(row.baseline, "bevy-0.14.2", `${row.id} should declare baseline triage`);
     assert.notEqual(row.promotionCriteria.length, 0, `${row.id} should declare promotion criteria`);
@@ -22,6 +22,9 @@ test("should cover every Bevy catalog residual row with triage evidence", () => 
   assert.equal(windowPolicy?.reportEvidence.length, 0);
   assert.equal(residualDiagnosticCode("materials.advanced-pbr"), "TN_IR_MATERIAL_ADVANCED_PBR_UNSUPPORTED");
   assert.equal(residualDiagnosticCode("rendering.advanced-features"), "TN_IR_RENDERER_ADVANCED_FEATURE_UNSUPPORTED");
+  const ssgi = BEVY_CATALOG_RESIDUAL_ROWS.find((row) => row.id === "rendering.ssgi-color-bleed");
+  assert.equal(ssgi?.status, "watchlist");
+  assert.deepEqual(ssgi?.reportEvidence, ["web.ssgi-color-bleed", "bevy.ssgi-ambient-approximation"]);
 });
 
 test("should classify every shared visual residual boundary in the registry", () => {

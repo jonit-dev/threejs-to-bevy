@@ -108,10 +108,10 @@ exactly (`rendering.md` lines 53-59 pattern):
 
 **Key Decisions:**
 
-- [ ] SSGI composites before tonemapping (linear light), after AO.
-- [ ] Temporal history invalidates on teleport/scene-swap via the same reset
+- [x] SSGI composites before tonemapping (linear light), after AO.
+- [x] Temporal history invalidates on teleport/scene-swap via the same reset
       rules as the motion-blur history (first use, resize, view change).
-- [ ] `quality: "high"` is web-promoted only at desktop tier; the ladder in
+- [x] `quality: "high"` is web-promoted only at desktop tier; the ladder in
       `RENDER_LOOK_TARGET_PROFILE_OVERRIDES` owns that clamp.
 
 **Data Changes:** Extend the existing SSGI IR interface with `"high"` quality
@@ -147,7 +147,7 @@ No new capability id (already enrolled).
 `ssgi/ssgi.frag.ts` (shader source module), `render.ts` wiring,
 `ssgi/ssgiPass.test.ts`.
 
-- [ ] Hemisphere sampling + depth march + previous-beauty gather + env-miss
+- [x] Hemisphere sampling + depth march + previous-beauty gather + env-miss
       fallback; half-res + upsample; dispose test (upstream double-dispose
       bug regression).
 
@@ -158,7 +158,7 @@ sun. Floor near the wall shows red bleed when enabled, none when disabled.
 
 **Files (max 5):** `ssgi/temporalResolvePass.ts` (+ test), `render.ts`.
 
-- [ ] Reprojection with current/previous matrices (reuse motion-blur history
+- [x] Reprojection with current/previous matrices (reuse motion-blur history
       ownership pattern), neighborhood clamp, confidence blend, reset rules.
 
 **User Verification:** Orbit the fixture camera: no smearing trails, no
@@ -171,7 +171,7 @@ boiling; capture GIF/frames.
 contract rows file (locate `SHARED_RESIDUAL_CONTRACT_ROWS` owner), Bevy
 conformance report plumbing.
 
-- [ ] SSAO enable + calibrated ambient/environment lift; report
+- [x] SSAO enable + calibrated ambient/environment lift; report
       `approximation`; classified residual row for color-bleed hue.
 
 #### Phase 5: Parity gate + promotion - SSGI leaves diagnostic-only status.
@@ -204,21 +204,42 @@ region metrics alone).
 
 ## 6. Acceptance Criteria
 
-- [ ] Web renders spatially+temporally stable indirect diffuse from on-screen
+- [x] Web renders spatially+temporally stable indirect diffuse from on-screen
       surfaces and emissives; disabled = today's image bit-for-bit.
-- [ ] Native scenes respond to the same authored field with a calibrated,
+- [x] Native scenes respond to the same authored field with a calibrated,
       classified approximation — never a silent no-op, never an unreported
       divergence.
-- [ ] `TN_RENDER_FEATURE_FALLBACK` for SSGI is gone on both adapters.
-- [ ] Upstream bugs (duplicate preset branch, double dispose) have explicit
+- [x] `TN_RENDER_FEATURE_FALLBACK` for SSGI is gone on both adapters.
+- [x] Upstream bugs (duplicate preset branch, double dispose) have explicit
       regression tests.
-- [ ] rendering.md, STATUS.md, bevy-feature-parity.md, residual rows updated.
+- [x] rendering.md, STATUS.md, bevy-feature-parity.md, residual rows updated.
+
+## Completion Record (2026-07-10)
+
+- Independent HIGH-mode review approved all phases and the final promotion.
+- Schema/source/CLI/editor surfaces carry low/medium/high quality plus bounded
+  intensity and radius; mobile web clamps high to the shared medium ceiling.
+- Web owns spatial ray marching, four-step hit refinement, depth-aware
+  upsampling, bilateral temporal denoise, reprojection/clamping, continuous
+  history scheduling for static scenes, reset, and idempotent disposal.
+- Bevy owns the documented SSAO plus calibrated ambient/environment
+  approximation and reports the classified color-bleed residual.
+- `pnpm verify:focused verify:ssgi` passes disabled/authored/high causal checks,
+  web red-bleed and static-noise checks, clean shader/runtime console checks,
+  and a three-pose orbit proof. The final orbit metrics recorded camera
+  displacement `0.06992`, ghosting `0.00164`, and boiling `0.00163` MAE.
+- Runtime-web tests pass `369/369`, IR tests pass `351/351`, native atmosphere
+  tests pass `11/11`, CLI tests pass `395/395`, editor tests pass `105/105`,
+  cookbook/docs/conformance/residual gates pass, and the focused SSGI gate is
+  green. The broad photoreal gate still reports the pre-existing whole-pipeline
+  web/native color rendition drift tracked for the milestone calibration pass;
+  no SSGI-specific focused diagnostic remains.
 
 ## Risks And Unknowns
 
 | Risk | Impact | Mitigation |
 |------|--------|------------|
-| WebGL SSGI too slow at default tier | High | Half-res + low ray counts by default; ladder clamps mobile-web to off; measure in the visual-performance gate |
+| WebGL SSGI too slow at default tier | High | Half-res + low ray counts by default; the shared ladder clamps mobile-web high requests to medium; measure in the visual-performance gate |
 | Temporal ghosting in gameplay (fast motion) | Medium | Confidence/clamp tuning; playtest capture in verification; fall back to spatial-only at low quality |
 | Native approximation over-brightens authored looks | Medium | Anchor calibration against fixture; approximation applies only when SSGI explicitly requested |
 | Reading previous beauty buffer conflicts with composer pass order | Medium | Phase 2 opens with a composer-order spike; documented ordering contract in render.ts |

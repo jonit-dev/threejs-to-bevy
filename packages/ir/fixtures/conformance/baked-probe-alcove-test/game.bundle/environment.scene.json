@@ -1,0 +1,21 @@
+{
+  "schema": "threenative.environment-scene",
+  "version": "0.1.0",
+  "path": { "id": "path.alcove", "points": [[-1, 0, 0], [1, 0, 0]], "width": 1 },
+  "sourceAssets": [],
+  "instances": [],
+  "lightProbes": [
+    {
+      "id": "probe.alcove",
+      "bounds": { "min": [-3, 0, -3], "max": [3, 4, 3] },
+      "influenceRadius": 5,
+      "intent": "irradiance",
+      "source": {
+        "format": "sh2",
+        "coefficients": [0.12, 0.035, 0.02, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        "bakeVersion": 1,
+        "sceneContentHash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      }
+    }
+  ]
+}

@@ -24,7 +24,8 @@ rather than reopening broad checklist promotion.
   volumetric ("god ray") directional lights, light probes, and irradiance
   volumes. It does not natively ship SSGI or contact shadows; ThreeNative now
   supplies its own adapter-private contact-shadow pipeline for Bevy, while
-  SSGI remains milestone work.
+  SSGI now maps to a classified SSAO plus calibrated ambient/environment
+  approximation on Bevy while web owns the temporal screen-space pass.
 - Portable renderer feature fields already exist with the
   requested/applied/fallback conformance-report pattern
   (`packages/ir/src/runtimeConfig.ts`, `packages/ir/src/conformanceReport.ts`,
@@ -37,10 +38,10 @@ rather than reopening broad checklist promotion.
 | PRD | Feature | Web technique | Bevy technique |
 |-----|---------|---------------|----------------|
 | [PRD-001](../done/lumen-lite-lighting-2026-07-09/PRD-001-portable-cascaded-shadow-stability.md) | Cascaded sun-shadow stability (done) | `three-csm` split/frustum/texel-snap math, adapter-owned | `CascadeShadowConfigBuilder` mapping |
-| [PRD-002](PRD-002-contact-shadows-grounding.md) | Contact shadows (object grounding) | Drei `ContactShadows` port | Ortho depth capture + separable blur + composite plane |
-| [PRD-003](PRD-003-volumetric-godrays-height-fog.md) | Shadowed god rays + height fog | `three-good-godrays` + `three-volumetric-pass` ports | Native `VolumetricFogSettings` + `VolumetricLight` |
-| [PRD-004](PRD-004-ssgi-promotion.md) | SSGI promotion (dynamic indirect diffuse) | `realism-effects` SSGI algorithms, adapter-owned WebGL pass | Bounded approximation (SSAO + calibrated ambient/irradiance term) with honest reporting |
-| [PRD-005](PRD-005-scene-ray-query-and-baked-gi.md) | Scene ray queries + baked GI probes (off-screen light foundation) | `three-mesh-bvh` CPU queries; compiler-side baking | Irradiance volumes / light-probe consumption; parry ray queries |
+| [PRD-002](../done/lumen-lite-lighting-2026-07-09/PRD-002-contact-shadows-grounding.md) | Contact shadows (object grounding) (done) | Drei `ContactShadows` port | Ortho depth capture + separable blur + composite plane |
+| [PRD-003](../done/lumen-lite-lighting-2026-07-09/PRD-003-volumetric-godrays-height-fog.md) | Shadowed god rays + height fog (done) | `three-good-godrays`-derived bounded pass + analytic height fog | Native `VolumetricFogSettings` + `VolumetricLight` approximation |
+| [PRD-004](../done/lumen-lite-lighting-2026-07-09/PRD-004-ssgi-promotion.md) | SSGI promotion (dynamic indirect diffuse) (done) | `realism-effects` SSGI algorithms, adapter-owned WebGL pass | Bounded approximation (SSAO + calibrated ambient/irradiance term) with honest reporting |
+| [PRD-005](../done/lumen-lite-lighting-2026-07-09/PRD-005-scene-ray-query-and-baked-gi.md) | Scene ray queries + baked GI probes (off-screen light foundation) (done) | Wrapped `three-mesh-bvh` CPU queries; camera-weighted SH2 | Parry rendered-mesh queries; honest global SH-L0 ambient approximation |
 
 ## Rendering tiers this milestone targets
 
@@ -50,7 +51,7 @@ Medium (default web)  CSM stabilized, contact shadows, height fog, AO
 High (desktop targets) + god rays, SSGI (web) / SSGI approximation (native),
                         baked probes
 Future (WebGPU tier)  official SSGINode, BVHComputeData GPU tracing,
-                        surfel world-space cache (R&D only, see PRD-005
+                        surfel world-space cache (R&D only, see done PRD-005
                         appendix)
 ```
 

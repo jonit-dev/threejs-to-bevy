@@ -1,0 +1,135 @@
+{
+  "schema": "threenative.world",
+  "version": "0.1.0",
+  "entities": [
+    {
+      "id": "camera.main",
+      "components": {
+        "Camera": {
+          "clear": {
+            "color": "#111318",
+            "mode": "color"
+          },
+          "far": 100,
+          "fovY": 46,
+          "kind": "perspective",
+          "near": 0.1
+        },
+        "Transform": {
+          "position": [0, 1.35, 4.8],
+          "rotation": [-0.104528, 0, 0, 0.994522],
+          "scale": [1, 1, 1]
+        }
+      }
+    },
+    {
+      "id": "surface.floor",
+      "components": {
+        "MeshRenderer": {
+          "material": "mat.matte",
+          "mesh": "mesh.floor",
+          "receiveShadow": true
+        },
+        "Transform": {
+          "position": [0, -0.05, 0],
+          "rotation": [0, 0, 0, 1],
+          "scale": [1, 1, 1]
+        }
+      }
+    },
+    {
+      "id": "surface.back-wall",
+      "components": {
+        "MeshRenderer": {
+          "material": "mat.matte",
+          "mesh": "mesh.backWall",
+          "receiveShadow": true
+        },
+        "Transform": {
+          "position": [0, 1.5, -2.05],
+          "rotation": [0, 0, 0, 1],
+          "scale": [1, 1, 1]
+        }
+      }
+    },
+    {
+      "id": "surface.side-wall",
+      "components": {
+        "MeshRenderer": {
+          "material": "mat.red-wall",
+          "mesh": "mesh.sideWall",
+          "receiveShadow": true
+        },
+        "Transform": {
+          "position": [-2.5, 1.5, 0],
+          "rotation": [0, 0, 0, 1],
+          "scale": [1, 1, 1]
+        }
+      }
+    },
+    {
+      "id": "prop.corner-block",
+      "components": {
+        "MeshRenderer": {
+          "castShadow": true,
+          "material": "mat.block",
+          "mesh": "mesh.block",
+          "receiveShadow": true
+        },
+        "Transform": {
+          "position": [-0.65, 0.5, -0.85],
+          "rotation": [0, 0, 0, 1],
+          "scale": [1, 1, 1]
+        }
+      }
+    },
+    {
+      "id": "prop.contact-slab",
+      "components": {
+        "MeshRenderer": {
+          "castShadow": true,
+          "material": "mat.block",
+          "mesh": "mesh.slab",
+          "receiveShadow": true
+        },
+        "Transform": {
+          "position": [0.85, 0.18, -0.35],
+          "rotation": [0, 0, 0, 1],
+          "scale": [1, 1, 1]
+        }
+      }
+    },
+    {
+      "id": "light.key",
+      "components": {
+        "Light": {
+          "color": "#ffffff",
+          "intensity": 0.75,
+          "kind": "directional"
+        },
+        "Transform": {
+          "position": [3, 5, 3],
+          "rotation": [0, 0, 0, 1],
+          "scale": [1, 1, 1]
+        }
+      }
+    },
+    {
+      "id": "light.fill",
+      "components": {
+        "Light": {
+          "color": "#d8e8ff",
+          "intensity": 0.25,
+          "kind": "ambient"
+        }
+      }
+    }
+  ],
+  "resources": {
+    "ActiveCamera": {
+      "entity": "camera.main"
+    }
+  },
+  "events": {},
+  "prefabs": []
+}

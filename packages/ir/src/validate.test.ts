@@ -902,7 +902,7 @@ test("should accept promoted runtime renderer quality metadata", async () => {
       depthOfField: { aperture: 0.03, enabled: true, focusDistance: 12, maxBlur: 0.02 },
       motionBlur: { enabled: true, shutterAngle: 0.5 },
       renderPath: "forward",
-      screenSpaceGlobalIllumination: { enabled: false, quality: "low" },
+      screenSpaceGlobalIllumination: { enabled: true, intensity: 1.2, quality: "high", radius: 12 },
       screenSpaceReflections: { enabled: true, quality: "medium", roughnessLimit: 0.45 },
     });
 
@@ -1112,7 +1112,7 @@ test("should reject invalid portable renderer feature settings", async () => {
       antialias: "msaa4",
       ambientOcclusion: { enabled: "yes", intensity: 5, mode: "raytraced", quality: "ultra", radius: -1 },
       motionBlur: { enabled: true, shutterAngle: 2 },
-      screenSpaceGlobalIllumination: { enabled: true, quality: "high" },
+      screenSpaceGlobalIllumination: { enabled: true, intensity: 3, quality: "ultra", radius: 0 },
       screenSpaceReflections: { enabled: true, quality: "medium", roughnessLimit: 1.5 },
     });
 
@@ -1130,6 +1130,8 @@ test("should reject invalid portable renderer feature settings", async () => {
         ["TN_RENDER_FEATURE_UNSUPPORTED", "runtime.config.json/renderer/screenSpaceReflections/roughnessLimit"],
         ["TN_RENDER_FEATURE_UNSUPPORTED", "runtime.config.json/renderer/motionBlur/shutterAngle"],
         ["TN_RENDER_FEATURE_UNSUPPORTED", "runtime.config.json/renderer/screenSpaceGlobalIllumination/quality"],
+        ["TN_RENDER_FEATURE_UNSUPPORTED", "runtime.config.json/renderer/screenSpaceGlobalIllumination/intensity"],
+        ["TN_RENDER_FEATURE_UNSUPPORTED", "runtime.config.json/renderer/screenSpaceGlobalIllumination/radius"],
       ],
     );
   } finally {

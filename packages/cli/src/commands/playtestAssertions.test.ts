@@ -212,6 +212,53 @@ test("movement resolved axis delta assertions should fail without enough resolve
   assert.equal(result.diagnostics[0]?.code, "TN_PLAYTEST_RESOLVED_AXIS_DELTA_ASSERTION_FAILED");
 });
 
+test("occluded assertion should consume a successful physics raycast effect", () => {
+  const report = reportWithRuntimeDiagnostics("web", []);
+  report.effectLog = {
+    entries: [{
+      payload: { request: { entity: "listener", target: "emitter" }, result: { entityId: "wall", hit: true } },
+      service: "physics.raycast",
+    }],
+  };
+  const scenario: IPlaytestScenario = {
+    assert: { occluded: [{ entity: "listener", target: "emitter" }] },
+    name: "audio-occlusion",
+    schemaVersion: 1,
+    steps: [],
+    target: "web",
+    viewport: { height: 720, width: 1280 },
+    warmupFrames: 0,
+  };
+
+  const result = evaluateRichPlaytestAssertions({ report, scenario });
+  assert.deepEqual(result.diagnostics, []);
+  assert.equal(result.assertions[0]?.id, "occluded.listener");
+  assert.equal(result.assertions[0]?.pass, true);
+});
+
+test("occluded assertion should consume an internal rendered-scene query effect", () => {
+  const report = reportWithRuntimeDiagnostics("bevy", []);
+  report.effectLog = {
+    entries: [{
+      payload: { request: { entity: "listener", target: "emitter" }, result: { entityId: "wall.render-only", hit: true } },
+      service: "render.sceneRayQuery",
+    }],
+  };
+  const scenario: IPlaytestScenario = {
+    assert: { occluded: [{ entity: "listener", target: "emitter" }] },
+    name: "render-geometry-occlusion",
+    schemaVersion: 1,
+    steps: [],
+    target: "bevy",
+    viewport: { height: 720, width: 1280 },
+    warmupFrames: 0,
+  };
+
+  const result = evaluateRichPlaytestAssertions({ report, scenario });
+  assert.deepEqual(result.diagnostics, []);
+  assert.equal(result.assertions[0]?.pass, true);
+});
+
 function visibilityScenario(target: "desktop" | "web"): IPlaytestScenario {
   return {
     assert: {

@@ -102,6 +102,15 @@ export const PLAYTEST_ASSERTION_REGISTRY: readonly IPlaytestAssertionSchemaEntry
     kind: "contacts",
   },
   {
+    description: "Proves rendered scene geometry occludes the segment between an origin entity and target.",
+    example: { occluded: [{ entity: "listener", target: "emitter" }] },
+    fields: [
+      { description: "Optional origin/listener entity token expected in the raycast request.", name: "entity", type: "string" },
+      { description: "Optional target/emitter entity token expected in the raycast request.", name: "target", type: "string" },
+    ],
+    kind: "occluded",
+  },
+  {
     description: "Proves animation evidence appeared in the effect log.",
     example: { animation: [{ entity: "player", clip: "run", entered: true, advancedFrames: 5 }] },
     fields: [
@@ -297,6 +306,19 @@ export function evaluateRichPlaytestAssertions(input: {
           : `effect-log.json contains ${partial.entryCount} related runtime entr${partial.entryCount === 1 ? "y" : "ies"} from ${partial.systems}, but none satisfied the contact assertion. Check collider/trigger metadata, contact filters, and route timing in the listed system(s).`,
       });
     }
+  }
+  for (const assertion of scenarioAssertions.occluded ?? []) {
+    const matches = matchingOccludedRaycasts(input.report.effectLog, assertion.entity, assertion.target);
+    const pass = matches > 0;
+    assertions.push({ details: { count: matches, entity: assertion.entity, target: assertion.target }, id: `occluded.${assertion.entity ?? "ray"}`, pass });
+    if (!pass) diagnostics.push({
+      artifactPath: "effect-log.json",
+      code: "TN_PLAYTEST_OCCLUSION_NOT_OBSERVED",
+      message: "Expected a render scene-ray query or physics raycast result with hit=true, but no matching occlusion evidence was observed.",
+      observedRuntimePath: "effect-log.json/entries[service=render.sceneRayQuery|physics.raycast]/payload/result/hit",
+      severity: "error",
+      suggestion: "Check the listener/emitter entity ids and rendered occluder geometry, then inspect effect-log.json for the scene-query request and hit result.",
+    });
   }
   for (const assertion of scenarioAssertions.animation ?? []) {
     const entity = assertion.entity ?? input.scenario.subject ?? input.report.entity;
@@ -537,6 +559,15 @@ function countMatchingEntries(effectLog: unknown, tokens: readonly string[]): nu
   return effectLog.entries.filter((entry) => {
     const text = JSON.stringify(entry);
     return tokens.every((token) => text.includes(token));
+  }).length;
+}
+
+function matchingOccludedRaycasts(effectLog: unknown, entity: string | undefined, target: string | undefined): number {
+  if (!isRecord(effectLog) || !Array.isArray(effectLog.entries)) return 0;
+  return effectLog.entries.filter((entry) => {
+    if (!isRecord(entry) || (entry.service !== "render.sceneRayQuery" && entry.service !== "physics.raycast") || !isRecord(entry.payload) || !isRecord(entry.payload.result) || entry.payload.result.hit !== true) return false;
+    const request = JSON.stringify(entry.payload.request ?? null);
+    return (entity === undefined || request.includes(entity)) && (target === undefined || request.includes(target));
   }).length;
 }
 

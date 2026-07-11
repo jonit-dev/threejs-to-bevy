@@ -67,6 +67,10 @@ pub enum NativeProofHarnessAction {
     Screenshot {
         path: String,
     },
+    SceneOcclusion {
+        from: String,
+        to: String,
+    },
     Exit,
 }
 
@@ -83,6 +87,7 @@ pub struct NativeProofHarnessState {
     last_sample_at: Instant,
     readiness_directory_created: bool,
     readiness_out_path: String,
+    scene_queries: Vec<NativeProofHarnessSceneQuerySample>,
     started_at: Instant,
     tick: u64,
 }
@@ -113,7 +118,19 @@ pub struct NativeProofHarnessReadiness {
         skip_serializing_if = "Option::is_none"
     )]
     pub runtime_observations: Option<NativeRuntimeProbeObservations>,
+    #[serde(rename = "sceneQueries", skip_serializing_if = "Vec::is_empty")]
+    pub scene_queries: Vec<NativeProofHarnessSceneQuerySample>,
     pub transforms: Vec<NativeProofHarnessTransformSample>,
+}
+
+#[derive(Clone, Debug, Serialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct NativeProofHarnessSceneQuerySample {
+    pub distance: Option<f32>,
+    pub from: String,
+    pub hit: bool,
+    pub occluder: Option<String>,
+    pub to: String,
 }
 
 #[derive(Clone, Debug, Serialize, PartialEq)]
@@ -177,6 +194,7 @@ impl NativeProofHarnessState {
             last_sample_at: Instant::now(),
             readiness_directory_created: false,
             readiness_out_path: readiness_out_path.into(),
+            scene_queries: Vec::new(),
             started_at: Instant::now(),
             tick: 0,
         }
@@ -295,6 +313,7 @@ pub fn apply_native_proof_harness_commands(
     scene_cameras: Query<(Entity, &Camera), Without<IsDefaultUiCamera>>,
     root_ui_nodes: Query<Entity, (With<Node>, Without<Parent>)>,
     resource_observations: Option<Res<NativeResourceObservationState>>,
+    scene_ray_query: Option<Res<crate::scene_ray_query::NativeSceneRayQuery>>,
 ) {
     let tick = state.tick;
     let mut diagnostics = Vec::new();
@@ -401,6 +420,41 @@ pub fn apply_native_proof_harness_commands(
                         code: "TN_NATIVE_PROOF_SCREENSHOT_FAILED".to_owned(),
                         message,
                         severity: "warning".to_owned(),
+                    }),
+                }
+            }
+            NativeProofHarnessAction::SceneOcclusion { from, to } => {
+                let positions = transforms
+                    .p1()
+                    .iter()
+                    .filter(|(id, _)| id.0 == from || id.0 == to)
+                    .map(|(id, transform)| (id.0.clone(), transform.translation.to_array()))
+                    .collect::<BTreeMap<_, _>>();
+                match (
+                    positions.get(from.as_str()),
+                    positions.get(to.as_str()),
+                    scene_ray_query.as_deref(),
+                ) {
+                    (Some(origin), Some(target), Some(query)) => {
+                        let hit = query.occluded_excluding(
+                            *origin,
+                            *target,
+                            &[from.as_str(), to.as_str()],
+                        );
+                        state.scene_queries.push(NativeProofHarnessSceneQuerySample {
+                            distance: hit.as_ref().map(|value| value.distance),
+                            from,
+                            hit: hit.is_some(),
+                            occluder: hit.map(|value| value.entity_id),
+                            to,
+                        });
+                    }
+                    _ => diagnostics.push(NativeProofHarnessDiagnostic {
+                        code: "TN_NATIVE_PROOF_SCENE_QUERY_INVALID".to_owned(),
+                        message: format!(
+                            "Native scene occlusion query could not resolve endpoints '{from}' and '{to}'."
+                        ),
+                        severity: "error".to_owned(),
                     }),
                 }
             }
@@ -609,6 +663,7 @@ fn write_native_proof_harness_sample<'a>(
         resources,
         resource_snapshots,
         runtime_observations,
+        scene_queries: state.scene_queries.clone(),
         transforms: native_proof_harness_transform_samples(transforms),
     };
     if let Err(error) = write_native_proof_harness_readiness(
@@ -653,6 +708,7 @@ fn write_native_proof_harness_bundle_sample(
             &bundle.assets,
             &bundle.materials,
         )),
+        scene_queries: state.scene_queries.clone(),
         transforms: native_proof_harness_bundle_transform_samples(bundle),
     };
     if let Err(error) = write_native_proof_harness_readiness(

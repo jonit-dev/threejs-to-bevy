@@ -42,6 +42,7 @@ import {
   setEnvironmentSkybox,
   setEnvironmentSourceAssetLod,
   setEnvironmentTerrain,
+  setEnvironmentVolumetrics,
   setEnvironmentWalkability,
   setInputBindingOverride,
   setPrefabMaterial,
@@ -926,6 +927,17 @@ export async function environmentCommand(argv: readonly string[], options: ISour
     return renderAuthoringResult("environment", await setEnvironmentMap({ asset, environmentId, projectPath }), json, `Environment map '${environmentId}' updated.`);
   }
 
+  if (subcommand === "set-volumetrics") {
+    const volumetrics = parseJsonObjectFlag(normalizedArgv, "--volumetrics", "TN_ENVIRONMENT_SET_VOLUMETRICS_VALUE_INVALID");
+    if (volumetrics.diagnostic !== undefined) {
+      return renderUsage(json, volumetrics.diagnostic, "Environment --volumetrics must be a JSON object.");
+    }
+    if (environmentId === undefined || volumetrics.value === undefined) {
+      return renderUsage(json, "TN_ENVIRONMENT_SET_VOLUMETRICS_ARGS_MISSING", "Usage: tn environment set-volumetrics <environment-id> --volumetrics '<json-object>' [--project <path>] [--json]");
+    }
+    return renderAuthoringResult("environment", await setEnvironmentVolumetrics({ environmentId, projectPath, volumetrics: volumetrics.value }), json, `Environment volumetrics '${environmentId}' updated.`);
+  }
+
   if (subcommand === "set-terrain") {
     if (environmentId === undefined) {
       return renderUsage(json, "TN_ENVIRONMENT_SET_TERRAIN_ARGS_MISSING", environmentSetTerrainUsage());
@@ -1001,7 +1013,7 @@ export async function environmentCommand(argv: readonly string[], options: ISour
     return renderAuthoringResult("environment", await setEnvironmentSourceAssetLod({ environmentId, lod: lod.value, projectPath, sourceAssetId }), json, `Environment source asset '${sourceAssetId}' LOD updated.`);
   }
 
-  return renderUsage(json, "TN_ENVIRONMENT_COMMAND_UNKNOWN", "Usage: tn environment create|set-skybox|set-map|set-terrain|set-path|set-walkability|set-light-probe|add-scatter-layer|set-source-asset-lod ... [--json]");
+  return renderUsage(json, "TN_ENVIRONMENT_COMMAND_UNKNOWN", "Usage: tn environment create|set-skybox|set-map|set-volumetrics|set-terrain|set-path|set-walkability|set-light-probe|add-scatter-layer|set-source-asset-lod ... [--json]");
 }
 
 export async function runtimeCommand(argv: readonly string[], options: ISourceCommandOptions = {}): Promise<ICommandResult> {
@@ -1055,6 +1067,8 @@ export async function runtimeCommand(argv: readonly string[], options: ISourceCo
       "--render-look-environment-intensity",
       "--render-look-exposure",
       "--render-look-saturation",
+      "--screen-space-global-illumination-intensity",
+      "--screen-space-global-illumination-radius",
       "--screen-space-reflections-roughness-limit",
     ]);
     if (numbers.diagnostic !== undefined) {
@@ -1105,7 +1119,9 @@ export async function runtimeCommand(argv: readonly string[], options: ISourceCo
         renderProfile: readFlag(normalizedArgv, "--render-profile"),
         runtimeId,
         screenSpaceGlobalIlluminationEnabled: screenSpaceGlobalIllumination.value,
+        screenSpaceGlobalIlluminationIntensity: numbers.values["--screen-space-global-illumination-intensity"],
         screenSpaceGlobalIlluminationQuality: readFlag(normalizedArgv, "--screen-space-global-illumination-quality"),
+        screenSpaceGlobalIlluminationRadius: numbers.values["--screen-space-global-illumination-radius"],
         screenSpaceReflectionsEnabled: screenSpaceReflections.value,
         screenSpaceReflectionsQuality: readFlag(normalizedArgv, "--screen-space-reflections-quality"),
         screenSpaceReflectionsRoughnessLimit: numbers.values["--screen-space-reflections-roughness-limit"],

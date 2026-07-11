@@ -357,6 +357,7 @@ export const EDITOR_INSPECTOR_FIELD_INVENTORY: readonly IEditorInspectorFieldInv
   { component: "Camera", defaultValue: "", field: "target", fieldKind: "string", operationName: "scene.set_camera", readOnly: false, sourceFamily: "scene" },
   { component: "Camera", defaultValue: "none", field: "skybox", fieldKind: "asset", operationName: "environment.set_skybox", readOnly: false, sourceFamily: "environment" },
   { field: "environment.environmentMap", fieldKind: "asset", operationName: "environment.set_map", readOnly: false, sourceFamily: "environment" },
+  { field: "environment.atmosphere.volumetrics", fieldKind: "json", operationName: "environment.set_volumetrics", readOnly: false, sourceFamily: "environment" },
   { field: "environment.terrain.id", fieldKind: "string", operationName: "environment.set_terrain", readOnly: false, sourceFamily: "environment" },
   { field: "environment.terrain.heightMode", fieldKind: "enum", operationName: "environment.set_terrain", readOnly: false, sourceFamily: "environment" },
   { field: "environment.terrain.heightmap", fieldKind: "asset", operationName: "environment.set_terrain", readOnly: false, sourceFamily: "environment" },

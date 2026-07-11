@@ -81,6 +81,12 @@ export interface IConformanceMaterialReport {
 
 export interface IConformanceEnvironmentReport {
   atmosphere?: string;
+  bakedGiProbes?: {
+    applied: boolean;
+    mode: string;
+    probeIds: string[];
+    requested: boolean;
+  };
   bookmarks: string[];
   debugGizmos?: string[];
   environmentMap?: IEnvironmentMapIr;
@@ -95,6 +101,17 @@ export interface IConformanceEnvironmentReport {
   sourceAssets: string[];
   sourceAssetVisibility?: Array<{ endDistance?: number; id: string; maxDistance: number; minDistance: number; startDistance?: number }>;
   terrain?: string;
+  volumetrics?: {
+    godRays?: IConformanceVolumetricFeatureReport;
+    heightFog?: IConformanceVolumetricFeatureReport;
+  };
+}
+
+export interface IConformanceVolumetricFeatureReport {
+  applied: boolean;
+  mode: string;
+  reason?: string;
+  requested: boolean;
 }
 
 export interface IConformanceEventReport {

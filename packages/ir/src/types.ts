@@ -1392,6 +1392,24 @@ export interface IAtmosphereProfileIr {
     id: string;
     intensity: number;
   };
+  volumetrics?: IAtmosphereVolumetricsIr;
+}
+
+export interface IAtmosphereVolumetricsIr {
+  godRays?: {
+    density: number;
+    enabled: boolean;
+    intensity: number;
+    maxDistance: number;
+    quality: "low" | "medium" | "high";
+  };
+  heightFog?: {
+    baseHeight: number;
+    color?: readonly [number, number, number];
+    density: number;
+    enabled: boolean;
+    falloffHeight: number;
+  };
 }
 
 export interface IEnvironmentCubemapFacesIr {
@@ -1425,6 +1443,13 @@ export type IEnvironmentMapIr = IEnvironmentTextureSourceIr & {
   intent: EnvironmentTextureIntent;
 };
 
+export interface IBakedProbePayloadIr {
+  bakeVersion: 1;
+  coefficients: number[];
+  format: "sh2";
+  sceneContentHash: string;
+}
+
 export interface ILightProbeIr {
   bounds: {
     max: Vec3;
@@ -1433,7 +1458,7 @@ export interface ILightProbeIr {
   id: string;
   influenceRadius: number;
   intent: EnvironmentTextureIntent;
-  source: IEnvironmentTextureSourceIr;
+  source: IEnvironmentTextureSourceIr | IBakedProbePayloadIr;
 }
 
 export interface IEnvironmentSceneIr {

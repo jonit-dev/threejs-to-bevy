@@ -1,6 +1,6 @@
 import { strict as assert } from "node:assert";
 import test from "node:test";
-import { RENDER_LOOK_PROFILE_PRESETS, resolveRenderLookProfile, resolveRenderLookShadowProfile } from "./runtimeConfig.js";
+import { RENDER_LOOK_PROFILE_PRESETS, resolveRenderLookProfile, resolveRenderLookShadowProfile, resolveRenderLookSsgiQualityLimit } from "./runtimeConfig.js";
 
 test("should resolve cinematic profile per target profile", () => {
   const desktop = resolveRenderLookProfile("cinematic", "desktop-web");
@@ -17,6 +17,12 @@ test("should resolve cinematic profile per target profile", () => {
   assert.equal(native.targetProfile, "native");
   assert.equal(native.antialias, "msaa4");
   assert.equal(native.bloomIntensity < desktop.bloomIntensity, true);
+});
+
+test("should clamp SSGI high quality outside the desktop web tier", () => {
+  assert.equal(resolveRenderLookSsgiQualityLimit("desktop-web"), "high");
+  assert.equal(resolveRenderLookSsgiQualityLimit("mobile-web"), "medium");
+  assert.equal(resolveRenderLookSsgiQualityLimit("native"), "high");
 });
 
 test("runtime config should resolve bounded shadow quality profiles", () => {

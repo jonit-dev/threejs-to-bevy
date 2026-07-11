@@ -1,0 +1,44 @@
+{
+  "schema": "threenative.world",
+  "version": "0.1.0",
+  "entities": [
+    {
+      "id": "camera.main",
+      "components": {
+        "Camera": { "active": true, "clear": { "color": "#202b42", "mode": "color" }, "far": 100, "fovY": 52, "kind": "perspective", "near": 0.1 },
+        "Transform": { "position": [0, 4.6, 14], "rotation": [-0.087156, 0, 0, 0.996195], "scale": [1, 1, 1] }
+      }
+    },
+    {
+      "id": "floor",
+      "components": {
+        "MeshRenderer": { "castShadow": false, "material": "mat.floor", "mesh": "mesh.floor", "receiveShadow": true },
+        "Transform": { "position": [0, -0.1, -1], "rotation": [0, 0, 0, 1], "scale": [1, 1, 1] }
+      }
+    },
+    {
+      "id": "pillar.left",
+      "components": {
+        "MeshRenderer": { "castShadow": true, "material": "mat.pillar", "mesh": "mesh.pillar", "receiveShadow": true },
+        "Transform": { "position": [-2.2, 3.5, 0], "rotation": [0, 0, 0, 1], "scale": [1, 1, 1] }
+      }
+    },
+    {
+      "id": "pillar.right",
+      "components": {
+        "MeshRenderer": { "castShadow": true, "material": "mat.pillar", "mesh": "mesh.pillar", "receiveShadow": true },
+        "Transform": { "position": [2.2, 3.5, 0], "rotation": [0, 0, 0, 1], "scale": [1, 1, 1] }
+      }
+    },
+    {
+      "id": "height.column",
+      "components": {
+        "MeshRenderer": { "castShadow": true, "material": "mat.column", "mesh": "mesh.column", "receiveShadow": true },
+        "Transform": { "position": [0, 4.5, -5], "rotation": [0, 0, 0, 1], "scale": [1, 1, 1] }
+      }
+    }
+  ],
+  "events": {},
+  "prefabs": [],
+  "resources": { "ActiveCamera": { "entity": "camera.main" } }
+}

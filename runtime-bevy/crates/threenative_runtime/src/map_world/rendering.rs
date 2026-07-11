@@ -12,7 +12,8 @@ fn color_grading_for_profile(
                 (saturation * THREE_COMPAT_COLOR_GRADING_SATURATION_SCALE).max(0.0);
         }
         if let Some(contrast) = runtime_color_grading.contrast {
-            let section_contrast = (1.0 + contrast).max(0.0);
+            let section_contrast =
+                (1.0 + contrast * THREE_COMPAT_COLOR_GRADING_CONTRAST_SCALE).max(0.0);
             for section in grading.all_sections_mut() {
                 section.contrast = section_contrast;
             }
@@ -177,6 +178,28 @@ mod exposure_calibration_tests {
         assert!((exposure.ev100 - THREE_COMPAT_DEFAULT_CAMERA_EV100).abs() < f32::EPSILON);
         assert_ev100(exposure, 1.0, THREE_COMPAT_LINEAR_EXPOSURE_SCALE);
     }
+
+    #[test]
+    fn runtime_grading_applies_native_saturation_and_contrast_calibration() {
+        let mut grading = runtime_grading(Some("aces"), Some(1.0));
+        grading.saturation = Some(1.0);
+        grading.contrast = Some(0.08);
+
+        let mapped = color_grading_for_profile(None, Some(&grading));
+
+        assert!(
+            (mapped.global.post_saturation - THREE_COMPAT_COLOR_GRADING_SATURATION_SCALE).abs()
+                < f32::EPSILON
+        );
+        for section in mapped.all_sections() {
+            assert!(
+                (section.contrast
+                    - (1.0 + 0.08 * THREE_COMPAT_COLOR_GRADING_CONTRAST_SCALE))
+                    .abs()
+                    < f32::EPSILON
+            );
+        }
+    }
 }
 
 fn directional_illuminance(
@@ -203,7 +226,13 @@ fn point_lumens(
 }
 
 fn add_mesh(world: &mut World, asset: &AssetIr) -> Handle<Mesh> {
-    let mut mesh = match asset.primitive.as_deref() {
+    let mut mesh = scene_mesh_for_asset(asset);
+    generate_tangents_if_possible(&mut mesh);
+    world.resource_mut::<Assets<Mesh>>().add(mesh)
+}
+
+pub(crate) fn scene_mesh_for_asset(asset: &AssetIr) -> Mesh {
+    match asset.primitive.as_deref() {
         Some("custom") => custom_mesh(asset),
         Some("box") => three_box_mesh([
             asset
@@ -389,9 +418,7 @@ fn add_mesh(world: &mut World, asset: &AssetIr) -> Handle<Mesh> {
                 size.get(2).copied().unwrap_or(1.0),
             ))
         }
-    };
-    generate_tangents_if_possible(&mut mesh);
-    world.resource_mut::<Assets<Mesh>>().add(mesh)
+    }
 }
 
 fn generate_tangents_if_possible(mesh: &mut Mesh) {

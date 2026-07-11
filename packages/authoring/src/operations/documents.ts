@@ -718,13 +718,18 @@ export async function setRuntimeRendering(options: ISetRuntimeRenderingOptions):
                 ...(options.motionBlurShutterAngle === undefined ? {} : { shutterAngle: options.motionBlurShutterAngle }),
               },
             }),
-        ...(options.screenSpaceGlobalIlluminationEnabled === undefined && options.screenSpaceGlobalIlluminationQuality === undefined
+        ...(options.screenSpaceGlobalIlluminationEnabled === undefined
+          && options.screenSpaceGlobalIlluminationIntensity === undefined
+          && options.screenSpaceGlobalIlluminationQuality === undefined
+          && options.screenSpaceGlobalIlluminationRadius === undefined
           ? {}
           : {
               screenSpaceGlobalIllumination: {
                 ...screenSpaceGlobalIllumination,
                 ...(options.screenSpaceGlobalIlluminationEnabled === undefined ? {} : { enabled: options.screenSpaceGlobalIlluminationEnabled }),
+                ...(options.screenSpaceGlobalIlluminationIntensity === undefined ? {} : { intensity: options.screenSpaceGlobalIlluminationIntensity }),
                 ...(options.screenSpaceGlobalIlluminationQuality === undefined ? {} : { quality: options.screenSpaceGlobalIlluminationQuality }),
+                ...(options.screenSpaceGlobalIlluminationRadius === undefined ? {} : { radius: options.screenSpaceGlobalIlluminationRadius }),
               },
             }),
       };

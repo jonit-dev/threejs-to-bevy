@@ -453,6 +453,7 @@ test("environment command creates and updates promoted source fields", async () 
         terrain: { heightMode: "heightmap", heightmap: "tex.height", id: "terrain.arena" },
       }, null, 2)}\n`,
     );
+    const volumetrics = await environmentCommand(["set-volumetrics", "arena", "--volumetrics", "{\"heightFog\":{\"enabled\":true,\"density\":0.2,\"falloffHeight\":8,\"baseHeight\":0}}", "--project", root, "--json"]);
     const path = await environmentCommand(["set-path", "arena", "--path", "{\"id\":\"path.main\",\"points\":[[0,0,0],[1,0,1]]}", "--project", root, "--json"]);
     const walkability = await environmentCommand(["set-walkability", "arena", "--walkability", "{\"terrain\":{\"surface\":\"terrain.arena\",\"height\":0}}", "--project", root, "--json"]);
     const lightProbe = await environmentCommand(["set-light-probe", "arena", "probe.center", "--probe", "{\"bounds\":{\"min\":[-3,0,-3],\"max\":[3,4,3]},\"influenceRadius\":5,\"source\":{\"asset\":\"tex.env\",\"mode\":\"equirect\"}}", "--project", root, "--json"]);
@@ -466,12 +467,14 @@ test("environment command creates and updates promoted source fields", async () 
       skybox?: Record<string, unknown>;
       sourceAssets?: Array<{ id: string; lod?: unknown }>;
       terrain?: Record<string, unknown>;
+      atmosphere?: { volumetrics?: Record<string, unknown> };
       walkability?: unknown;
     };
 
     assert.equal(create.exitCode, 0);
     assert.equal(skybox.exitCode, 0);
     assert.equal(map.exitCode, 0);
+    assert.equal(volumetrics.exitCode, 0);
     assert.equal(terrain.exitCode, 0);
     assert.equal(path.exitCode, 0);
     assert.equal(walkability.exitCode, 0);
@@ -480,6 +483,7 @@ test("environment command creates and updates promoted source fields", async () 
     assert.equal(lod.exitCode, 0);
     assert.deepEqual(doc.skybox, { asset: "tex.sky", mode: "equirect" });
     assert.deepEqual(doc.environmentMap, { asset: "tex.env" });
+    assert.deepEqual(doc.atmosphere?.volumetrics, { heightFog: { baseHeight: 0, density: 0.2, enabled: true, falloffHeight: 8 } });
     assert.deepEqual(doc.terrain, { heightMode: "heightmap", heightmap: "tex.height", id: "terrain.arena" });
     assert.deepEqual(doc.path, { id: "path.main", points: [[0, 0, 0], [1, 0, 1]] });
     assert.deepEqual(doc.walkability, { terrain: { height: 0, surface: "terrain.arena" } });
@@ -543,8 +547,12 @@ test("runtime command creates and updates promoted source fields", async () => {
       "0.5",
       "--screen-space-global-illumination",
       "false",
+      "--screen-space-global-illumination-intensity",
+      "1.25",
       "--screen-space-global-illumination-quality",
-      "low",
+      "high",
+      "--screen-space-global-illumination-radius",
+      "16",
       "--render-path",
       "forward",
       "--project",
@@ -573,7 +581,7 @@ test("runtime command creates and updates promoted source fields", async () => {
         overrides: { bloomIntensity: 0.4, contrast: 0.1, environmentIntensity: 1.2, exposure: 1.1, saturation: 1.15, shadowQuality: "high" },
       },
       renderPath: "forward",
-      screenSpaceGlobalIllumination: { enabled: false, quality: "low" },
+      screenSpaceGlobalIllumination: { enabled: false, intensity: 1.25, quality: "high", radius: 16 },
       screenSpaceReflections: { enabled: true, quality: "medium", roughnessLimit: 0.45 },
     });
   } finally {

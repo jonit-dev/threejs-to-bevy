@@ -54,6 +54,7 @@ pub mod runtime_gameplay_host;
 pub mod runtime_prefabs_hierarchy;
 pub mod runtime_query_diffing;
 pub mod scene_manager;
+pub mod scene_ray_query;
 pub mod scripting_host_matrix;
 pub mod sequences;
 pub mod spawner;
@@ -198,6 +199,7 @@ pub fn app_from_bundle_with_options(
         warn!("{diagnostic}");
     }
     map_world::map_bundle_into_world(app.world_mut(), &bundle)?;
+    app.insert_resource(scene_ray_query::NativeSceneRayQuery::from_bundle(&bundle));
     sync_default_camera_clear_color(app.world_mut());
     environment::map_environment_into_world(app.world_mut(), &bundle);
     for diagnostic in audio::spawn_startup_audio(app.world_mut(), &bundle) {
@@ -691,6 +693,12 @@ fn reconcile_live_world_entities(
     world: &mut World,
     bundle: &LoadedBundle,
 ) -> Result<(), map_world::MapError> {
+    let atmosphere_changed = world
+        .get_resource::<rendering::NativeAtmosphereSignature>()
+        .is_none_or(|signature| signature.0 != rendering::native_atmosphere_signature(bundle));
+    if atmosphere_changed {
+        rendering::apply_atmosphere_to_world(world, bundle);
+    }
     let desired_ids = bundle
         .world
         .entities
@@ -1040,6 +1048,46 @@ mod tests {
     use threenative_loader::load_bundle;
 
     use super::*;
+
+    #[test]
+    fn live_reconciliation_should_apply_atmosphere_only_volumetric_changes() {
+        let root = Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../../../packages/ir/fixtures/conformance/volumetrics/game.bundle");
+        let mut bundle = load_bundle(&root).expect("volumetrics fixture should load");
+        let mut world = World::new();
+        rendering::apply_atmosphere_to_world(&mut world, &bundle);
+        map_world::map_bundle_into_world(&mut world, &bundle).expect("fixture should map");
+        assert_eq!(
+            world
+                .query::<&bevy::pbr::VolumetricFogSettings>()
+                .iter(&world)
+                .count(),
+            1
+        );
+
+        bundle
+            .environment_scene
+            .as_mut()
+            .and_then(|scene| scene.atmosphere.as_mut())
+            .expect("atmosphere should exist")
+            .volumetrics = None;
+        reconcile_live_world_entities(&mut world, &bundle).expect("live reconcile should succeed");
+
+        assert_eq!(
+            world
+                .query::<&bevy::pbr::VolumetricFogSettings>()
+                .iter(&world)
+                .count(),
+            0
+        );
+        assert_eq!(
+            world
+                .query::<&bevy::pbr::VolumetricLight>()
+                .iter(&world)
+                .count(),
+            0
+        );
+    }
 
     #[test]
     fn scripted_runtime_should_preserve_startup_state_across_bevy_update_frames() {

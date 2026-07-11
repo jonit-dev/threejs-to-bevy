@@ -5,6 +5,7 @@ export type EditorOperationName =
   | "environment.set_map"
   | "environment.set_skybox"
   | "environment.set_terrain"
+  | "environment.set_volumetrics"
   | "input.add_action"
   | "input.add_axis"
   | "material.set"

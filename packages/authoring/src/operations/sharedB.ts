@@ -514,11 +514,13 @@ export async function validateRuntimeDocument(file: string, data: unknown): Prom
       diagnostics.push(typeDiagnostic(file, "/renderer/screenSpaceGlobalIllumination", "runtime renderer screenSpaceGlobalIllumination must be a JSON object.", renderer.screenSpaceGlobalIllumination));
     }
     if (screenSpaceGlobalIllumination !== undefined) {
-      diagnostics.push(...unknownKeyDiagnostics(file, "/renderer/screenSpaceGlobalIllumination", screenSpaceGlobalIllumination, new Set(["enabled", "quality"])));
+      diagnostics.push(...unknownKeyDiagnostics(file, "/renderer/screenSpaceGlobalIllumination", screenSpaceGlobalIllumination, new Set(["enabled", "intensity", "quality", "radius"])));
       if (typeof screenSpaceGlobalIllumination.enabled !== "boolean") {
         diagnostics.push(typeDiagnostic(file, "/renderer/screenSpaceGlobalIllumination/enabled", "runtime renderer screenSpaceGlobalIllumination enabled must be a boolean.", screenSpaceGlobalIllumination.enabled));
       }
-      validateRuntimeRendererQuality(diagnostics, file, screenSpaceGlobalIllumination.quality, "/renderer/screenSpaceGlobalIllumination/quality", ["low", "medium"]);
+      validateRuntimeRendererNumber(diagnostics, file, screenSpaceGlobalIllumination, "intensity", "/renderer/screenSpaceGlobalIllumination/intensity", 0, 2);
+      validateRuntimeRendererQuality(diagnostics, file, screenSpaceGlobalIllumination.quality, "/renderer/screenSpaceGlobalIllumination/quality", ["low", "medium", "high"]);
+      validateRuntimeRendererNumber(diagnostics, file, screenSpaceGlobalIllumination, "radius", "/renderer/screenSpaceGlobalIllumination/radius", 0.01, 100);
     }
   }
 

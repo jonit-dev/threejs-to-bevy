@@ -64,7 +64,10 @@ use crate::render_targets::{
     camera_render_target,
 };
 use crate::rendering::contact_shadows::refresh_native_contact_shadow_pipelines;
-use crate::rendering::{NativeEnvironmentMapHandles, spawn_rendered_particles};
+use crate::rendering::{
+    NativeBakedProbeAmbientApplied, NativeEnvironmentMapHandles, native_volumetric_fog_settings,
+    spawn_rendered_particles,
+};
 use crate::stylized_nature::{grass_material_policy, resolve_source_assets};
 use crate::world_mapping::attach_entity_hierarchy;
 
@@ -79,15 +82,19 @@ pub const THREE_COMPAT_AMBIENT_BRIGHTNESS_PER_INTENSITY: f32 = 1.0;
 const THREE_COMPAT_ENVIRONMENT_DIRECTIONAL_ILLUMINANCE_PER_INTENSITY: f32 = 1.7;
 const THREE_COMPAT_POINT_LUMENS_PER_CANDELA: f32 = 1.0;
 const THREE_COMPAT_DEFAULT_RANGE: f32 = 1_000.0;
-// Bevy divides exposure by its photometric calibration constant (1.2), so a
-// linear authored exposure of 1.0 needs EV100 = -log2(1.2).
-const THREE_COMPAT_DEFAULT_CAMERA_EV100: f32 = -0.263_034_4;
+// ThreeNative authored exposure is a renderer-level scalar, so the default
+// native camera stays at neutral EV100 and explicit mappings own compensation.
+const THREE_COMPAT_DEFAULT_CAMERA_EV100: f32 = 0.0;
 const THREE_COMPAT_SKY_DOME_RADIUS: f32 = 72.0;
 const THREE_COMPAT_EMISSIVE_INTENSITY_SCALE: f32 = 1.0;
 const THREE_COMPAT_DEFAULT_IMPLICIT_DIELECTRIC_REFLECTANCE: f32 = 0.5;
-const THREE_COMPAT_COLOR_GRADING_SATURATION_SCALE: f32 = 1.0;
-const THREE_COMPAT_ACES_EXPOSURE_SCALE: f32 = 2.0;
-const THREE_COMPAT_LINEAR_EXPOSURE_SCALE: f32 = 1.2;
+const THREE_COMPAT_COLOR_GRADING_SATURATION_SCALE: f32 = 1.08;
+// Bevy applies grading contrast in its HDR pipeline, while the web adapter
+// applies the authored value after tone mapping around a 0.5 display pivot.
+// The factor aligns those two public contrast semantics.
+const THREE_COMPAT_COLOR_GRADING_CONTRAST_SCALE: f32 = 1.3;
+const THREE_COMPAT_ACES_EXPOSURE_SCALE: f32 = 1.7;
+const THREE_COMPAT_LINEAR_EXPOSURE_SCALE: f32 = 1.0;
 const THREE_COMPAT_FOG_EXP2_DENSITY_SCALE: f32 = 0.65;
 const THREE_COMPAT_EMISSIVE_MASK_LAYER: usize = 63;
 const THREE_COMPAT_EMISSIVE_MASK_WIDTH: u32 = 1280;
@@ -797,7 +804,7 @@ fn ensure_ambient_light_contract(
             .as_ref()
             .is_some_and(|light| light.kind == "ambient")
     });
-    if !has_authored_ambient {
+    if !has_authored_ambient && !world.contains_resource::<NativeBakedProbeAmbientApplied>() {
         world.insert_resource(AmbientLight {
             color: Color::WHITE,
             brightness: 0.0,
@@ -827,16 +834,26 @@ fn insert_camera_antialias(spawned: &mut EntityWorldMut, config: Option<&Runtime
 }
 
 fn insert_camera_ambient_occlusion(spawned: &mut EntityWorldMut, config: Option<&RuntimeConfigIr>) {
-    let Some(ambient_occlusion) = config
-        .and_then(|config| config.renderer.as_ref())
-        .and_then(|renderer| renderer.ambient_occlusion.as_ref())
-        .filter(|ambient_occlusion| ambient_occlusion.enabled)
+    let Some(renderer) = config.and_then(|config| config.renderer.as_ref()) else {
+        return;
+    };
+    let ambient_occlusion = renderer
+        .ambient_occlusion
+        .as_ref()
+        .filter(|ambient_occlusion| ambient_occlusion.enabled);
+    let ssgi = renderer
+        .screen_space_global_illumination
+        .as_ref()
+        .filter(|ssgi| ssgi.enabled);
+    let Some(quality) = ambient_occlusion
+        .map(|feature| feature.quality.as_str())
+        .or_else(|| ssgi.map(|feature| feature.quality.as_str()))
     else {
         return;
     };
     spawned.insert(ScreenSpaceAmbientOcclusionBundle {
         settings: ScreenSpaceAmbientOcclusionSettings {
-            quality_level: ambient_occlusion_quality_level(ambient_occlusion.quality.as_str()),
+            quality_level: ambient_occlusion_quality_level(quality),
         },
         depth_prepass: DepthPrepass,
         normal_prepass: NormalPrepass,
@@ -902,7 +919,7 @@ fn bloom_settings_for_runtime(config: Option<&RuntimeConfigIr>) -> Option<BloomS
 }
 
 fn native_bloom_intensity(intensity: f32) -> f32 {
-    intensity * 0.2
+    intensity * 0.1
 }
 
 fn native_render_look_has_bloom(profile: &str) -> bool {

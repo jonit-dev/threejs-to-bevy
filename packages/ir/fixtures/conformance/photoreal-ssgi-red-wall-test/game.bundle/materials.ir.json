@@ -1,0 +1,27 @@
+{
+  "schema": "threenative.materials",
+  "version": "0.1.0",
+  "materials": [
+    {
+      "id": "mat.matte",
+      "kind": "standard",
+      "color": "#b7bec2",
+      "metalness": 0,
+      "roughness": 0.92
+    },
+    {
+      "id": "mat.block",
+      "kind": "standard",
+      "color": "#6f7880",
+      "metalness": 0,
+      "roughness": 0.86
+    },
+    {
+      "id": "mat.red-wall",
+      "kind": "standard",
+      "color": "#d81418",
+      "metalness": 0,
+      "roughness": 0.9
+    }
+  ]
+}

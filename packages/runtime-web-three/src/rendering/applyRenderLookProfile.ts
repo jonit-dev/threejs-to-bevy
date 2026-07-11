@@ -1,4 +1,4 @@
-import type { IRuntimeConfigIr, IRenderLookProfileIr, RenderLookProfileName } from "@threenative/ir";
+import type { IRuntimeConfigIr, IRenderLookProfileIr, RenderLookProfileName, RenderLookTargetProfile } from "@threenative/ir";
 import { resolveRenderLookProfile, resolveRenderLookShadowProfile } from "@threenative/ir/runtimeConfig";
 
 type RuntimeRendererConfig = NonNullable<IRuntimeConfigIr["renderer"]>;
@@ -27,10 +27,10 @@ export interface IWebRenderLookApplication {
   shadowProfile: ReturnType<typeof resolveRenderLookShadowProfile>;
 }
 
-export function applyWebRenderLookProfile(config?: IRuntimeConfigIr): IWebRenderLookApplication {
+export function applyWebRenderLookProfile(config?: IRuntimeConfigIr, targetProfile: RenderLookTargetProfile = "desktop-web"): IWebRenderLookApplication {
   const renderLook = config?.renderer?.renderLook;
   const requestedProfile = renderLook?.profile ?? "parity";
-  const resolved = resolveRenderLookProfile(renderLook, "desktop-web");
+  const resolved = resolveRenderLookProfile(renderLook, targetProfile);
   const preset: WebRenderLookPreset = resolved;
   const bloomIntensity = resolved.bloomIntensity;
   const artisticProfile = resolved.profile !== "parity";

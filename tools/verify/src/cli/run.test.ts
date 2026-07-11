@@ -10,6 +10,7 @@ test("focused gate dispatcher should list current capability gates", () => {
   for (const name of [
     "verify:agent-io",
     "verify:animation-physics-residuals",
+    "verify:baked-gi",
     "verify:bundle-safety-hardening",
     "verify:character-physics-contacts",
     "verify:default-look",
@@ -129,6 +130,7 @@ test("should list gates by profile", () => {
   assert.deepEqual(listFocusedGateNamesByProfile("release"), [
     "verify:agent-io",
     "verify:animation-physics-residuals",
+    "verify:baked-gi",
     "verify:bundle-safety-hardening",
     "verify:contact-shadows",
     "verify:example-build-sweep",
@@ -143,10 +145,12 @@ test("should list gates by profile", () => {
     "verify:scripting-helpers-lifecycle",
     "verify:session-cost",
     "verify:shadow-cascade-stability",
+    "verify:ssgi",
     "verify:template-production",
     "verify:ui-persistence-settings-facades",
     "verify:v9:assets-gltf-scene-workflow",
     "verify:v9:rendering-lights",
+    "verify:volumetrics",
     "verify:webview-package",
   ]);
   assert.deepEqual(listFocusedGateNamesByProfile("full"), listFocusedGateNames());

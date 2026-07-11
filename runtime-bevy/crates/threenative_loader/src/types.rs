@@ -1528,7 +1528,9 @@ pub struct RuntimeRendererMotionBlurConfig {
 #[serde(rename_all = "camelCase")]
 pub struct RuntimeRendererScreenSpaceGlobalIlluminationConfig {
     pub enabled: bool,
+    pub intensity: Option<f32>,
     pub quality: String,
+    pub radius: Option<f32>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -2322,7 +2324,23 @@ pub struct LightProbeIr {
     pub id: String,
     pub influence_radius: f32,
     pub intent: String,
-    pub source: EnvironmentTextureSourceIr,
+    pub source: LightProbeSourceIr,
+}
+
+#[derive(Clone, Debug, Deserialize, serde::Serialize)]
+#[serde(untagged)]
+pub enum LightProbeSourceIr {
+    Baked(BakedProbePayloadIr),
+    Texture(EnvironmentTextureSourceIr),
+}
+
+#[derive(Clone, Debug, Deserialize, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct BakedProbePayloadIr {
+    pub bake_version: u32,
+    pub coefficients: Vec<f32>,
+    pub format: String,
+    pub scene_content_hash: String,
 }
 
 #[derive(Clone, Debug, Deserialize, serde::Serialize)]
@@ -2377,6 +2395,34 @@ pub struct AtmosphereProfileIr {
     pub sky: AtmosphereSkyIr,
     pub color_management: AtmosphereColorManagementIr,
     pub shadows: AtmosphereShadowsIr,
+    pub volumetrics: Option<AtmosphereVolumetricsIr>,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AtmosphereVolumetricsIr {
+    pub height_fog: Option<AtmosphereHeightFogIr>,
+    pub god_rays: Option<AtmosphereGodRaysIr>,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AtmosphereHeightFogIr {
+    pub enabled: bool,
+    pub density: f32,
+    pub falloff_height: f32,
+    pub base_height: f32,
+    pub color: Option<ColorIr>,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AtmosphereGodRaysIr {
+    pub enabled: bool,
+    pub intensity: f32,
+    pub density: f32,
+    pub max_distance: f32,
+    pub quality: String,
 }
 
 #[derive(Clone, Debug, Deserialize)]

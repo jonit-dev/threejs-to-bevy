@@ -1,0 +1,36 @@
+{
+  "schema": "threenative.environment-scene",
+  "version": "0.1.0",
+  "id": "lumen-room-environment",
+  "path": { "id": "path.outside-proof", "points": [[-100, 0, -100], [-99, 0, -100]], "width": 1 },
+  "sourceAssets": [],
+  "instances": [],
+  "lightProbes": [
+    {
+      "id": "probe.room.warm-bounce",
+      "bounds": { "min": [-6, 0, -8], "max": [6, 5.4, 8] },
+      "influenceRadius": 3,
+      "intent": "irradiance",
+      "source": {
+        "format": "sh2",
+        "coefficients": [0.1, 0.058, 0.025, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        "bakeVersion": 1,
+        "sceneContentHash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      }
+    }
+  ],
+  "atmosphere": {
+    "active": true,
+    "id": "atmosphere.lumen-room",
+    "sun": { "id": "sun.window", "color": "#ffe5a8", "intensity": 3.6, "direction": [0.72, -0.22, -0.66], "castsShadow": true },
+    "ambient": { "color": "#687077", "intensity": 0.13, "mode": "constant" },
+    "fog": { "color": "#8b806d", "density": 0.018, "enabled": true, "mode": "exponential" },
+    "sky": { "color": "#0d1116", "horizonColor": "#554f43" },
+    "colorManagement": { "toneMapping": "aces", "exposure": 0.92, "outputColorSpace": "srgb", "textureColorSpace": "srgb" },
+    "shadows": { "enabled": true, "mapSize": 2048, "maxDistance": 45, "cascadeCount": 4, "cascadeBlendFraction": 0.18, "bias": -0.0005, "normalBias": 0.018, "receiverPolicy": "terrain-and-path", "splitLambda": 0.6, "splitScheme": "practical", "stabilized": true },
+    "volumetrics": {
+      "heightFog": { "enabled": true, "density": 0.17, "falloffHeight": 3.8, "baseHeight": 0, "color": [0.5, 0.43, 0.32] },
+      "godRays": { "enabled": true, "intensity": 1.05, "density": 0.35, "maxDistance": 35, "quality": "high" }
+    }
+  }
+}

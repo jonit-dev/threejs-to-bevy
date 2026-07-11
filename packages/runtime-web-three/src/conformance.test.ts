@@ -8,6 +8,47 @@ import type { IWebBundle } from "./loadBundle.js";
 import { mapWorld } from "./mapWorld.js";
 import { DirectionalShadowController } from "./rendering/directionalShadowController.js";
 
+test("should report unavailable sun shadow map for requested god rays", async () => {
+  const bundle = await loadBundle(resolve(process.cwd(), "../ir/fixtures/conformance/volumetrics/game.bundle"));
+  bundle.environmentScene!.atmosphere!.sun.castsShadow = false;
+  const report = reportWebConformance(bundle, mapWorld(bundle), "volumetrics-shadow-fallback");
+
+  assert.deepEqual(report.environment?.volumetrics?.godRays, {
+    applied: false,
+    mode: "directional-shadow-map-raymarch",
+    reason: "shadow-map-unavailable",
+    requested: true,
+  });
+});
+
+test("should report baked SH2 probes as camera-weighted web lighting", async () => {
+  const bundle = await loadBundle(resolve(process.cwd(), "../ir/fixtures/conformance/basic-scene/game.bundle"));
+  bundle.environmentScene = {
+    instances: [],
+    lightProbes: [{
+      bounds: { max: [2, 3, 2], min: [-2, 0, -2] },
+      id: "probe.alcove",
+      influenceRadius: 4,
+      intent: "irradiance",
+      source: { bakeVersion: 1, coefficients: Array(27).fill(0.1), format: "sh2", sceneContentHash: `sha256:${"a".repeat(64)}` },
+    }],
+    path: { id: "path", points: [[-1, 0, 0], [1, 0, 0]], width: 1 },
+    schema: "threenative.environment-scene",
+    sourceAssets: [],
+    version: "0.1.0",
+  };
+  const mapped = mapWorld(bundle);
+  const report = reportWebConformance(bundle, mapped, "baked-probe");
+
+  assert.equal(mapped.scene.children.includes(mapped.bakedProbeLighting!.light), true);
+  assert.deepEqual(report.environment?.bakedGiProbes, {
+    applied: true,
+    mode: "camera-weighted-sh2",
+    probeIds: ["probe.alcove"],
+    requested: true,
+  });
+});
+
 test("should report basic scene conformance semantics", async () => {
   const bundle = await loadBundle(resolve(process.cwd(), "../ir/fixtures/conformance/basic-scene/game.bundle"));
   const mapped = mapWorld(bundle);

@@ -38,6 +38,7 @@ export interface IEnvironmentLightingObservation {
     assetIds: string[];
     id: string;
     intent: string;
+    mode?: string;
   }>;
   skybox?: {
     applied: boolean;
@@ -254,10 +255,11 @@ export function observeEnvironmentLighting(environment: IEnvironmentSceneIr | un
             mode: environment.environmentMap.mode,
           },
     lightProbes: (environment?.lightProbes ?? []).map((probe) => ({
-      applied: false,
-      assetIds: textureAssetIds(probe.source),
+      applied: "format" in probe.source && probe.source.format === "sh2",
+      assetIds: "format" in probe.source ? [] : textureAssetIds(probe.source),
       id: probe.id,
       intent: probe.intent,
+      ...( "format" in probe.source ? { mode: "camera-weighted-sh2" } : {}),
     })),
     skybox:
       environment?.skybox === undefined

@@ -1,0 +1,18 @@
+{
+  "schema": "threenative.bundle",
+  "version": "0.1.0",
+  "name": "baked-probe-alcove-test",
+  "requiredCapabilities": {
+    "environment": ["light-probes"],
+    "rendering": ["baked-gi-probes", "camera.perspective", "light.ambient", "material.standard", "mesh-renderer", "mesh.primitive.box", "mesh.primitive.sphere"]
+  },
+  "entry": {
+    "environmentScene": "environment.scene.json",
+    "world": "world.ir.json"
+  },
+  "files": {
+    "assets": "assets.manifest.json",
+    "materials": "materials.ir.json",
+    "targetProfile": "target.profile.json"
+  }
+}

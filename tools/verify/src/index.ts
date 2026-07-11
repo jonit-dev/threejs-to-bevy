@@ -16,6 +16,9 @@ export { runAudioPlatformGate, validateAudioPlatformEvidence, type AudioPlatform
 export { resolveArtifactTargets, toRepoRelative, type ArtifactOwner, type ArtifactTargets } from "./artifacts.js";
 export { loadFixtureCatalog, resolveFixtureId, listCurrentFixtures } from "./conformance.js";
 export { runContactShadowGate, validateContactShadowEvidence, type ContactShadowGateResult } from "./contactShadowsGate.js";
+export { runVolumetricsGate, validateVolumetricsEvidence } from "./volumetricsGate.js";
+export { runSsgiGate, validateSsgiEvidence } from "./ssgiGate.js";
+export { runBakedGiGate } from "./bakedGiGate.js";
 export { runLegacyScriptAlias, resolveScriptAlias, formatDeprecationDiagnostic, listDeprecatedScriptAliases, isRegisteredGate, SCRIPT_ALIASES } from "./legacyAliases.js";
 export { runGameProductionGate, type IGameProductionGateResult } from "./gameProductionGate.js";
 export { runGameplayParityGate, type GameplayParityReport } from "./gameplayParity.js";

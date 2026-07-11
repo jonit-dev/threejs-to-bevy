@@ -1,0 +1,9 @@
+{
+  "schema": "threenative.materials",
+  "version": "0.1.0",
+  "materials": [
+    { "id": "mat.floor", "kind": "standard", "color": "#4f5660", "metalness": 0, "roughness": 0.9 },
+    { "id": "mat.wall.red", "kind": "standard", "color": "#b51f19", "metalness": 0, "roughness": 0.9 },
+    { "id": "mat.subject", "kind": "standard", "color": "#d8d6cf", "metalness": 0, "roughness": 0.75 }
+  ]
+}

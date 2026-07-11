@@ -184,6 +184,7 @@ import type {
   ICreateEnvironmentDocumentOptions,
   ISetEnvironmentSkyboxOptions,
   ISetEnvironmentMapOptions,
+  ISetEnvironmentVolumetricsOptions,
   ISetEnvironmentTerrainOptions,
   ISetEnvironmentPathOptions,
   ISetEnvironmentWalkabilityOptions,
@@ -408,6 +409,29 @@ export async function setEnvironmentMap(options: ISetEnvironmentMapOptions): Pro
     emptyData: { schema: environmentDocumentSchema, version: "0.1.0", id: options.environmentId, instances: [], sourceAssets: [] },
     apply: (data) => {
       data.environmentMap = { asset: options.asset };
+    },
+  });
+}
+
+export async function setEnvironmentVolumetrics(options: ISetEnvironmentVolumetricsOptions): Promise<IAuthoringOperationResult> {
+  return upsertSourceDocument({
+    projectPath: options.projectPath,
+    kind: "environment",
+    id: options.environmentId,
+    file: `content/environment/${options.environmentId}.environment.json`,
+    emptyData: { schema: environmentDocumentSchema, version: "0.1.0", id: options.environmentId, instances: [], sourceAssets: [] },
+    apply: (data) => {
+      const atmosphere = isRecord(data.atmosphere) ? data.atmosphere : {
+        active: true,
+        id: `atmosphere.${options.environmentId}`,
+        sun: { id: `sun.${options.environmentId}`, color: "#ffffff", direction: [-0.5, -1, -0.35], intensity: 3, castsShadow: true },
+        ambient: { color: "#b8c4d0", intensity: 0.35, mode: "constant" },
+        fog: { color: "#b8c4d0", density: 0.004, enabled: false, mode: "exponential" },
+        sky: { color: "#7895b2", horizonColor: "#c3ced8" },
+        colorManagement: { exposure: 1, outputColorSpace: "srgb", textureColorSpace: "srgb", toneMapping: "aces" },
+        shadows: { enabled: true, mapSize: 1024, maxDistance: 80, bias: -0.0005, normalBias: 0.02, receiverPolicy: "terrain-and-path" },
+      };
+      data.atmosphere = { ...atmosphere, volumetrics: cloneJson(options.volumetrics) };
     },
   });
 }

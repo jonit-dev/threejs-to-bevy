@@ -1,0 +1,38 @@
+{
+  "schemaVersion": 1,
+  "name": "camera-follow",
+  "target": "web",
+  "viewport": {
+    "width": 1280,
+    "height": 720
+  },
+  "subject": "player",
+  "warmupFrames": 5,
+  "steps": [
+    {
+      "label": "settle-frame",
+      "waitFrames": 10
+    }
+  ],
+  "assert": {
+    "visibility": [
+      {
+        "entity": "player",
+        "minProjectedPixels": 600,
+        "maxOffscreenRatio": 0.1
+      }
+    ],
+    "diagnostics": {
+      "runtimeReady": true,
+      "noConsoleErrors": true,
+      "noNetworkErrors": true,
+      "noRuntimeDiagnostics": true
+    }
+  },
+  "artifacts": {
+    "screenshots": "before-after",
+    "console": true,
+    "network": true,
+    "runtimeTrace": true
+  }
+}

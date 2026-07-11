@@ -18,6 +18,7 @@ export async function buildCommand(argv: readonly string[], cwd = process.env.IN
       code: "TN_BUILD_OK",
       bundlePath: result.bundlePath,
       message: `Built game bundle at '${result.bundlePath}'.`,
+      diagnostics: result.diagnostics,
       next: ITERATE_NEXT,
       notice: ITERATE_NOTICE,
     };

@@ -559,6 +559,11 @@ export interface ISetEnvironmentMapOptions extends IAuthoringOperationContext {
   asset: string;
 }
 
+export interface ISetEnvironmentVolumetricsOptions extends IAuthoringOperationContext {
+  environmentId: string;
+  volumetrics: Record<string, unknown>;
+}
+
 export interface ISetEnvironmentTerrainOptions extends IAuthoringOperationContext {
   bounds?: Record<string, unknown>;
   environmentId: string;
@@ -628,7 +633,9 @@ export interface ISetRuntimeRenderingOptions extends IAuthoringOperationContext 
   renderLookShadowQuality?: string;
   renderPath?: string;
   screenSpaceGlobalIlluminationEnabled?: boolean;
+  screenSpaceGlobalIlluminationIntensity?: number;
   screenSpaceGlobalIlluminationQuality?: string;
+  screenSpaceGlobalIlluminationRadius?: number;
   screenSpaceReflectionsEnabled?: boolean;
   screenSpaceReflectionsQuality?: string;
   screenSpaceReflectionsRoughnessLimit?: number;

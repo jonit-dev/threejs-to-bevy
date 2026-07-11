@@ -7,7 +7,38 @@ import { PassThrough } from "node:stream";
 import test from "node:test";
 import { tmpdir } from "node:os";
 
-import { evaluateMovementDiagnostics, parseAxisExpectation, playtestCommand, resourceObservationDiagnostics } from "./playtest.js";
+import { evaluateMovementDiagnostics, nativeHarnessCommandStream, nativeSceneQueryEffectLog, parseAxisExpectation, playtestCommand, resourceObservationDiagnostics } from "./playtest.js";
+
+test("native playtest should route occlusion assertions through rendered scene queries", () => {
+  const scenario = {
+    assert: { occluded: [{ entity: "listener", target: "emitter" }] },
+    name: "render-occlusion",
+    schemaVersion: 1 as const,
+    steps: [],
+    target: "bevy" as const,
+    viewport: { height: 720, width: 1280 },
+    warmupFrames: 5,
+  };
+  const stream = nativeHarnessCommandStream(scenario, {}) as { commands: Array<Record<string, unknown>> };
+  assert.deepEqual(stream.commands[0], {
+    from: "listener",
+    tick: 5,
+    to: "emitter",
+    type: "sceneOcclusion",
+  });
+
+  assert.deepEqual(nativeSceneQueryEffectLog([{
+    sceneQueries: [{ distance: 2, from: "listener", hit: true, occluder: "wall.render-only", to: "emitter" }],
+  }]), {
+    entries: [{
+      payload: {
+        request: { entity: "listener", target: "emitter" },
+        result: { distance: 2, entityId: "wall.render-only", hit: true },
+      },
+      service: "render.sceneRayQuery",
+    }],
+  });
+});
 
 test("playtest command should pass when target transform changes after input", async () => {
   const root = await playtestTempRoot();

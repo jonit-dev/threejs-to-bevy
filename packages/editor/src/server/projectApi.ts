@@ -805,7 +805,9 @@ function documentInspectorRows(document: IAuthoringDocument): IEditorPropertyRow
         renderPath: readString(renderer.renderPath),
         runtimeId,
         screenSpaceGlobalIlluminationEnabled: readBoolean(screenSpaceGlobalIllumination.enabled),
+        screenSpaceGlobalIlluminationIntensity: readNumber(screenSpaceGlobalIllumination.intensity),
         screenSpaceGlobalIlluminationQuality: readString(screenSpaceGlobalIllumination.quality),
+        screenSpaceGlobalIlluminationRadius: readNumber(screenSpaceGlobalIllumination.radius),
         screenSpaceReflectionsEnabled: readBoolean(screenSpaceReflections.enabled),
         screenSpaceReflectionsQuality: readString(screenSpaceReflections.quality),
         screenSpaceReflectionsRoughnessLimit: readNumber(screenSpaceReflections.roughnessLimit),
@@ -827,7 +829,9 @@ function documentInspectorRows(document: IAuthoringDocument): IEditorPropertyRow
       rows.push(documentRow(document, "runtime:renderer-motion-blur", "Motion Blur", formatBoolean(motionBlur.enabled), "boolean", false, "/renderer/motionBlur/enabled", "runtime", "runtime.set_rendering", "motionBlurEnabled", renderingArgs));
       rows.push(documentRow(document, "runtime:renderer-motion-blur-shutter", "Motion Blur Shutter", formatScalar(motionBlur.shutterAngle, ""), "number", false, "/renderer/motionBlur/shutterAngle", "runtime", "runtime.set_rendering", "motionBlurShutterAngle", renderingArgs));
       rows.push(documentRow(document, "runtime:renderer-ssgi", "Screen Space GI", formatBoolean(screenSpaceGlobalIllumination.enabled), "boolean", false, "/renderer/screenSpaceGlobalIllumination/enabled", "runtime", "runtime.set_rendering", "screenSpaceGlobalIlluminationEnabled", renderingArgs));
+      rows.push(documentRow(document, "runtime:renderer-ssgi-intensity", "SSGI Intensity", formatScalar(screenSpaceGlobalIllumination.intensity, ""), "number", false, "/renderer/screenSpaceGlobalIllumination/intensity", "runtime", "runtime.set_rendering", "screenSpaceGlobalIlluminationIntensity", renderingArgs));
       rows.push(documentRow(document, "runtime:renderer-ssgi-quality", "SSGI Quality", readString(screenSpaceGlobalIllumination.quality) ?? "", "enum", false, "/renderer/screenSpaceGlobalIllumination/quality", "runtime", "runtime.set_rendering", "screenSpaceGlobalIlluminationQuality", renderingArgs));
+      rows.push(documentRow(document, "runtime:renderer-ssgi-radius", "SSGI Radius", formatScalar(screenSpaceGlobalIllumination.radius, ""), "number", false, "/renderer/screenSpaceGlobalIllumination/radius", "runtime", "runtime.set_rendering", "screenSpaceGlobalIlluminationRadius", renderingArgs));
       rows.push(documentRow(document, "runtime:renderer-render-path", "Render Path", readString(renderer.renderPath) ?? "", "enum", false, "/renderer/renderPath", "runtime", "runtime.set_rendering", "renderPath", renderingArgs));
       break;
     }
@@ -867,6 +871,10 @@ function documentInspectorRows(document: IAuthoringDocument): IEditorPropertyRow
       }
       if (document.data.environmentMap !== undefined) {
         rows.push(documentRow(document, "environment:environment-map", "Environment Map", summarizeAssetBackedValue(document.data.environmentMap), "asset", false, "/environmentMap", "environment", "environment.set_map", "asset", { environmentId }));
+      }
+      const atmosphere = isRecord(document.data.atmosphere) ? document.data.atmosphere : undefined;
+      if (atmosphere?.volumetrics !== undefined) {
+        rows.push(documentRow(document, "environment:volumetrics", "Volumetrics", summarizeValue(atmosphere.volumetrics), "json", false, "/atmosphere/volumetrics", "environment", "environment.set_volumetrics", "volumetrics", { environmentId }));
       }
       const terrain = isRecord(document.data.terrain) ? document.data.terrain : undefined;
       if (terrain !== undefined) {

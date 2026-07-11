@@ -263,6 +263,9 @@ fn spawn_entity(
         if let Some(fog) = fog_settings_for_profile(camera_atmosphere) {
             spawned.insert(fog);
         }
+        if let Some(volumetric_fog) = native_volumetric_fog_settings(camera_atmosphere) {
+            spawned.insert(volumetric_fog);
+        }
         let is_active = if active_cameras.is_empty() {
             fallback_active_camera.map_or(true, |id| id == entity.id)
         } else {
@@ -413,16 +416,19 @@ fn spawn_entity(
                 .id());
         }
         if light.kind == "ambient" {
-            world.insert_resource(AmbientLight {
-                color: color_to_bevy(&light.color),
-                brightness: light.intensity
-                    * THREE_COMPAT_AMBIENT_BRIGHTNESS_PER_INTENSITY
-                    * if camera_atmosphere.is_some_and(|profile| profile.active) {
-                        1.0
-                    } else {
-                        ambient_occlusion_intensity_approximation(runtime_config)
-                    },
-            });
+            let color = color_to_bevy(&light.color);
+            let brightness = light.intensity
+                * THREE_COMPAT_AMBIENT_BRIGHTNESS_PER_INTENSITY
+                * if camera_atmosphere.is_some_and(|profile| profile.active) { 1.0 } else { ambient_occlusion_intensity_approximation(runtime_config) }
+                * crate::rendering::native_ssgi_ambient_multiplier(runtime_config);
+            if world.contains_resource::<crate::rendering::NativeBakedProbeAmbientApplied>() {
+                if let Some(mut ambient) = world.get_resource_mut::<AmbientLight>() {
+                    ambient.color = crate::rendering::blend_ambient_colors(ambient.color, color);
+                    ambient.brightness += brightness;
+                }
+            } else {
+                world.insert_resource(AmbientLight { color, brightness });
+            }
         }
     }
 

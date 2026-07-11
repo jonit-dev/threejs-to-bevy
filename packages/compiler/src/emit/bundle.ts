@@ -50,6 +50,8 @@ import {
 } from "./structured-documents.js";
 import { emitUi } from "./ui.js";
 import { extractGltfSceneMetadata } from "../gltf/metadata.js";
+import { applyBakedProbeContent } from "../bake/bakedProbeContent.js";
+import type { ICompilerDiagnostic } from "../diagnostics.js";
 
 export interface IEmitBundleOptions {
   authoringDocuments?: readonly IAuthoringDocument[];
@@ -57,16 +59,20 @@ export interface IEmitBundleOptions {
 }
 
 export async function emitBundle(config: IProjectConfig, root: unknown, options: IEmitBundleOptions = {}): Promise<string> {
+  return (await emitBundleWithReport(config, root, options)).bundlePath;
+}
+
+export async function emitBundleWithReport(config: IProjectConfig, root: unknown, options: IEmitBundleOptions = {}): Promise<{ bundlePath: string; diagnostics: ICompilerDiagnostic[] }> {
   const outDir = resolve(config.projectPath, config.outDir);
   const plan = await planBundle(config, root, options);
-
-  return writeBundlePlan(plan, config.projectPath, outDir);
+  return { bundlePath: await writeBundlePlan(plan, config.projectPath, outDir), diagnostics: [...(plan.diagnostics ?? [])] };
 }
 
 export interface IBundlePlan {
   assetFiles: readonly IAssetCopy[];
   assets: readonly IInternalAsset[];
   documents: IBundlePlanDocuments;
+  diagnostics?: readonly ICompilerDiagnostic[];
   extraAssetFiles: readonly IAssetCopy[];
   generatedMeshPayloads: readonly IGeneratedMeshPayload[];
   manifest: IBundleManifest;
@@ -150,6 +156,10 @@ export async function planBundle(config: IProjectConfig, root: unknown, options:
     assets: assets.map(stripInternalAssetFields) as IAssetsManifest["assets"],
     groups: assetGroups(assets, bundleRoot.assetGroups),
   };
+  const bakedProbeContent = environment === undefined
+    ? { diagnostics: [] as ICompilerDiagnostic[], environment: undefined }
+    : await applyBakedProbeContent(config.projectPath, world ?? { entities: [], schema: IR_SCHEMA_IDS.world, version: IR_VERSION }, materials, environment.scene, assetsManifest);
+  if (environment !== undefined && bakedProbeContent.environment !== undefined) environment.scene = bakedProbeContent.environment;
   const gltfScene: IGltfSceneMetadataIr | undefined = await extractGltfSceneMetadata(config.projectPath, assets);
   const runtimeConfig = ecs?.runtimeConfig ?? readStructuredRuntimeConfig(options.authoringDocuments);
   const structuredSchemas = readStructuredSchemaFiles(options.authoringDocuments);
@@ -261,6 +271,7 @@ export async function planBundle(config: IProjectConfig, root: unknown, options:
       ...documents,
       ...(authoringProvenance === undefined ? {} : { authoringProvenance }),
     },
+    ...(bakedProbeContent.diagnostics.length === 0 ? {} : { diagnostics: bakedProbeContent.diagnostics }),
     extraAssetFiles: [...(environment?.extraFiles ?? []), ...(overlays?.extraFiles ?? [])],
     generatedMeshPayloads: generatedMeshPayloads.payloads,
     manifest,

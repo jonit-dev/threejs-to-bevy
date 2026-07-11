@@ -150,6 +150,11 @@ export const SHARED_RESIDUAL_CONTRACT_ROWS: readonly IBevyCatalogResidualRow[] =
   row("rendering.advanced-features", "rendering", "diagnostic-only", [
     "the feature has a bounded renderer intent and matching web/native observations",
   ], ["TN_IR_RENDERER_ADVANCED_FEATURE_UNSUPPORTED"]),
+  row("rendering.ssgi-color-bleed", "rendering", "watchlist", [
+    "web proves on-screen indirect diffuse and color-bleed hue",
+    "Bevy reports an SSAO plus ambient/environment irradiance approximation",
+    "native emissive-bleed hue remains a classified residual",
+  ], [], ["web.ssgi-color-bleed", "bevy.ssgi-ambient-approximation"]),
   row("rendering.custom-post", "rendering", "diagnostic-only", [
     "post effects use a shared preset with matching cross-adapter evidence",
   ], ["TN_IR_RENDERER_POST_EFFECT_UNSUPPORTED"]),

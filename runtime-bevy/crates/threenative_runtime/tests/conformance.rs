@@ -302,7 +302,9 @@ fn should_report_promoted_render_look_profile() {
             screen_space_global_illumination: Some(
                 RuntimeRendererScreenSpaceGlobalIlluminationConfig {
                     enabled: false,
+                    intensity: Some(1.2),
                     quality: "low".to_owned(),
+                    radius: Some(12.0),
                 },
             ),
             screen_space_reflections: Some(RuntimeRendererScreenSpaceReflectionsConfig {

@@ -9,7 +9,8 @@ use bevy::{
     core_pipeline::tonemapping::Tonemapping,
     pbr::{
         CascadeShadowConfig, DirectionalLightShadowMap, FogFalloff, FogSettings,
-        ShadowFilteringMethod,
+        ScreenSpaceAmbientOcclusionSettings, ShadowFilteringMethod, VolumetricFogSettings,
+        VolumetricLight,
     },
     prelude::*,
     render::{
@@ -27,7 +28,7 @@ use threenative_runtime::{
         map_bundle_into_world,
     },
     rendering::{
-        NativeEnvironmentMapHandles, apply_atmosphere_to_world,
+        NativeEnvironmentMapHandles, NativeVolumetricsReport, apply_atmosphere_to_world,
         apply_environment_lighting_to_world, normalize_loaded_gltf_materials,
         normalize_textured_material, observe_atmosphere,
     },
@@ -48,6 +49,7 @@ fn rendering_should_map_atmosphere_profile_to_bevy_observation() {
           "files": {
             "assets": "assets.manifest.json",
             "materials": "materials.ir.json",
+            "runtimeConfig": "runtime.config.json",
             "targetProfile": "target.profile.json"
           }
         }"#,
@@ -77,6 +79,17 @@ fn rendering_should_map_atmosphere_profile_to_bevy_observation() {
     );
     write_json(
         &root,
+        "runtime.config.json",
+        r#"{
+          "schema": "threenative.runtime-config",
+          "version": "0.1.0",
+          "renderer": { "antialias": "none", "screenSpaceGlobalIllumination": { "enabled": true, "quality": "high", "intensity": 1.0, "radius": 12.0 } },
+          "time": { "fixedDelta": 0.016666667, "paused": false },
+          "window": { "width": 1280, "height": 720 }
+        }"#,
+    );
+    write_json(
+        &root,
         "target.profile.json",
         r#"{ "schema": "threenative.target-profile", "version": "0.1.0", "targets": ["desktop"] }"#,
     );
@@ -94,7 +107,11 @@ fn rendering_should_map_atmosphere_profile_to_bevy_observation() {
             "fog": { "enabled": true, "mode": "exponential", "color": "#9eb6aa", "density": 0.028 },
             "sky": { "color": "#9eb6aa", "horizonColor": "#d6c39d" },
             "colorManagement": { "exposure": 1.05, "outputColorSpace": "srgb", "textureColorSpace": "srgb", "toneMapping": "aces" },
-            "shadows": { "enabled": true, "mapSize": 1024, "maxDistance": 45, "cascadeCount": 1, "bias": -0.0005, "normalBias": 0.02, "receiverPolicy": "terrain-and-path" }
+            "shadows": { "enabled": true, "mapSize": 1024, "maxDistance": 45, "cascadeCount": 1, "bias": -0.0005, "normalBias": 0.02, "receiverPolicy": "terrain-and-path" },
+            "volumetrics": {
+              "heightFog": { "enabled": true, "density": 0.2, "falloffHeight": 12, "baseHeight": 0, "color": [0.4, 0.5, 0.6] },
+              "godRays": { "enabled": true, "intensity": 1.2, "density": 0.4, "maxDistance": 80, "quality": "high" }
+            }
           },
           "path": { "id": "path.main", "points": [[0, 0, 0], [0, 0, 1]], "width": 2 },
           "sourceAssets": [],
@@ -102,7 +119,7 @@ fn rendering_should_map_atmosphere_profile_to_bevy_observation() {
         }"##,
     );
 
-    let bundle = load_bundle(&root).expect("atmosphere bundle should load");
+    let mut bundle = load_bundle(&root).expect("atmosphere bundle should load");
     let observation = observe_atmosphere(&bundle);
 
     assert_eq!(observation.profile_id.as_deref(), Some("atmosphere.forest"));
@@ -128,7 +145,7 @@ fn rendering_should_map_atmosphere_profile_to_bevy_observation() {
     assert!((clear.green - 0xb6 as f32 / 255.0).abs() < 0.01);
     assert!((clear.blue - 0xaa as f32 / 255.0).abs() < 0.01);
     let ambient = app.world().resource::<AmbientLight>();
-    assert!((ambient.brightness - 0.2).abs() < 0.01);
+    assert!((ambient.brightness - 0.236).abs() < 0.01);
     let shadow_map = app.world().resource::<DirectionalLightShadowMap>();
     assert_eq!(shadow_map.size, 1024);
     let lights = app
@@ -149,6 +166,13 @@ fn rendering_should_map_atmosphere_profile_to_bevy_observation() {
         })
         .collect::<Vec<_>>();
     assert_eq!(lights.len(), 1);
+    assert_eq!(
+        app.world_mut()
+            .query::<&VolumetricLight>()
+            .iter(app.world())
+            .count(),
+        1
+    );
     let light = &lights[0];
     assert!(light.0);
     assert!((light.1 - 3.2).abs() < 0.01);
@@ -162,7 +186,30 @@ fn rendering_should_map_atmosphere_profile_to_bevy_observation() {
 
     map_bundle_into_world(app.world_mut(), &bundle).expect("world should map");
     let mapped_ambient = app.world().resource::<AmbientLight>();
-    assert!((mapped_ambient.brightness - 0.2).abs() < 0.01);
+    assert!((mapped_ambient.brightness - 0.236).abs() < 0.01);
+    assert_eq!(
+        app.world_mut()
+            .query::<&ScreenSpaceAmbientOcclusionSettings>()
+            .iter(app.world())
+            .count(),
+        1
+    );
+    let ssgi_report = serde_json::to_value(report_bevy_conformance(
+        app.world_mut(),
+        &bundle,
+        "ssgi-approximation",
+    ))
+    .expect("SSGI conformance report should serialize");
+    let feature_reports = ssgi_report["runtimeConfig"]["renderer"]["featureReports"]
+        .as_array()
+        .expect("renderer feature reports should exist");
+    let ssgi_feature = feature_reports
+        .iter()
+        .find(|feature| feature["feature"] == "renderer.screenSpaceGlobalIllumination")
+        .expect("SSGI feature report should exist");
+    assert_eq!(ssgi_feature["appliedMode"], "approximation");
+    assert_eq!(ssgi_feature["status"], "baseline");
+    assert!(ssgi_feature.get("diagnostic").is_none());
     let mapped_directional_count = app
         .world_mut()
         .query::<&DirectionalLight>()
@@ -198,6 +245,78 @@ fn rendering_should_map_atmosphere_profile_to_bevy_observation() {
         .next()
         .expect("atmosphere camera should map soft shadow filtering");
     assert!(matches!(*shadow_filter, ShadowFilteringMethod::Gaussian));
+    let volumetric_fog = app
+        .world_mut()
+        .query::<&VolumetricFogSettings>()
+        .iter(app.world())
+        .next()
+        .expect("atmosphere camera should receive volumetric settings");
+    assert_eq!(volumetric_fog.step_count, 64);
+    assert!((volumetric_fog.max_depth - 80.0).abs() < 0.001);
+    assert!((volumetric_fog.density - 0.03).abs() < 0.001);
+    assert!((volumetric_fog.light_intensity - 1.2).abs() < 0.001);
+    let report = app.world().resource::<NativeVolumetricsReport>();
+    assert!(report.god_rays_requested);
+    assert!(report.god_rays_applied);
+    assert_eq!(report.height_fog_mode, "homogeneous-medium-approximation");
+    assert_eq!(report.ignored_base_height, Some(0.0));
+    assert_eq!(report.ignored_falloff_height, Some(12.0));
+
+    bundle
+        .environment_scene
+        .as_mut()
+        .and_then(|scene| scene.atmosphere.as_mut())
+        .expect("atmosphere should exist")
+        .sun
+        .casts_shadow = false;
+    apply_atmosphere_to_world(app.world_mut(), &bundle);
+    let fallback_report = report_bevy_conformance(app.world_mut(), &bundle, "volumetrics-fallback");
+    let god_rays = fallback_report
+        .environment
+        .as_ref()
+        .and_then(|environment| environment.volumetrics.as_ref())
+        .and_then(|volumetrics| volumetrics.god_rays.as_ref())
+        .expect("god rays report should exist");
+    assert!(!god_rays.applied);
+    assert_eq!(god_rays.reason.as_deref(), Some("shadow-map-unavailable"));
+    bundle
+        .environment_scene
+        .as_mut()
+        .and_then(|scene| scene.atmosphere.as_mut())
+        .expect("atmosphere should exist")
+        .sun
+        .casts_shadow = true;
+
+    apply_atmosphere_to_world(app.world_mut(), &bundle);
+    assert_eq!(
+        app.world_mut()
+            .query::<&VolumetricLight>()
+            .iter(app.world())
+            .count(),
+        1,
+        "reapplying atmosphere should replace the owned sun instead of duplicating it"
+    );
+    bundle
+        .environment_scene
+        .as_mut()
+        .and_then(|scene| scene.atmosphere.as_mut())
+        .expect("atmosphere should exist")
+        .volumetrics = None;
+    apply_atmosphere_to_world(app.world_mut(), &bundle);
+    assert_eq!(
+        app.world_mut()
+            .query::<&VolumetricLight>()
+            .iter(app.world())
+            .count(),
+        0
+    );
+    assert_eq!(
+        app.world_mut()
+            .query::<&VolumetricFogSettings>()
+            .iter(app.world())
+            .count(),
+        0
+    );
 
     fs::remove_dir_all(root).expect("temp bundle should be removed");
 }

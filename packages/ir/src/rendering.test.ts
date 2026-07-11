@@ -392,6 +392,57 @@ test("rendering should accept bounded cascade controls", () => {
   assert.deepEqual(validateAtmosphereProfile(profile, "environment.scene.json/atmosphere"), []);
 });
 
+test("rendering should reject negative volumetric height fog falloffHeight", () => {
+  const profile = makeProfile({
+    volumetrics: {
+      heightFog: { baseHeight: 0, density: 0.2, enabled: true, falloffHeight: -1 },
+    },
+  });
+
+  const diagnostics = validateAtmosphereProfile(profile, "environment.scene.json/atmosphere");
+
+  assert.equal(diagnostics[0]?.code, "TN_IR_ATMOSPHERE_VOLUMETRICS_HEIGHT_FOG_FALLOFF_HEIGHT_INVALID");
+  assert.equal(diagnostics[0]?.path, "environment.scene.json/atmosphere/volumetrics/heightFog/falloffHeight");
+});
+
+test("rendering should accept bounded atmosphere volumetrics", () => {
+  const profile = makeProfile({
+    volumetrics: {
+      godRays: { density: 0.5, enabled: true, intensity: 1, maxDistance: 80, quality: "medium" },
+      heightFog: { baseHeight: 0, color: [0.5, 0.6, 0.7], density: 0.2, enabled: true, falloffHeight: 12 },
+    },
+  });
+
+  assert.deepEqual(validateAtmosphereProfile(profile, "environment.scene.json/atmosphere"), []);
+});
+
+test("rendering should reject malformed volumetric blocks and required fields", () => {
+  const profile = makeProfile({
+    volumetrics: {
+      godRays: { density: undefined, enabled: "yes", intensity: 1, maxDistance: 80, quality: "medium" },
+      heightFog: null,
+    },
+  } as unknown as Partial<IAtmosphereProfileIr>);
+
+  const diagnostics = validateAtmosphereProfile(profile, "environment.scene.json/atmosphere");
+
+  assert.ok(diagnostics.some((diagnostic) => diagnostic.code === "TN_IR_ATMOSPHERE_VOLUMETRICS_HEIGHT_FOG_INVALID"));
+  assert.ok(diagnostics.some((diagnostic) => diagnostic.code === "TN_IR_ATMOSPHERE_VOLUMETRICS_GOD_RAYS_ENABLED_INVALID"));
+  assert.ok(diagnostics.some((diagnostic) => diagnostic.code === "TN_IR_ATMOSPHERE_VOLUMETRICS_GOD_RAYS_DENSITY_INVALID"));
+});
+
+test("rendering should reject missing height fog density", () => {
+  const profile = makeProfile({
+    volumetrics: {
+      heightFog: { baseHeight: 0, density: undefined, enabled: true, falloffHeight: 12 },
+    },
+  } as unknown as Partial<IAtmosphereProfileIr>);
+
+  const diagnostics = validateAtmosphereProfile(profile, "environment.scene.json/atmosphere");
+
+  assert.ok(diagnostics.some((diagnostic) => diagnostic.code === "TN_IR_ATMOSPHERE_VOLUMETRICS_HEIGHT_FOG_DENSITY_INVALID"));
+});
+
 test("should accept skybox and environment probe refs when assets are bundle local", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-env-lighting-"));
   try {
@@ -466,6 +517,59 @@ test("should reject skybox refs when cubemap assets are missing or unsupported",
     assert.ok(result.diagnostics.some((diagnostic) => diagnostic.code === "TN_IR_RENDERER_SKYBOX_ASSET_MISSING"));
     assert.ok(result.diagnostics.some((diagnostic) => diagnostic.path === "environment.scene.json/skybox/faces/negativeX"));
     assert.ok(result.diagnostics.some((diagnostic) => diagnostic.path === "environment.scene.json/skybox/faces/negativeY"));
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should accept a complete baked SH2 light probe payload", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-env-baked-probe-valid-"));
+  try {
+    await writeEnvironmentLightingBundle(root, {
+      assets: [],
+      environment: {
+        lightProbes: [{
+          bounds: { max: [3, 4, 3], min: [-3, 0, -3] },
+          id: "probe.baked",
+          influenceRadius: 5,
+          intent: "irradiance",
+          source: { bakeVersion: 1, coefficients: Array.from({ length: 27 }, (_, index) => index / 100), format: "sh2", sceneContentHash: `sha256:${"a".repeat(64)}` },
+        }],
+      },
+    });
+    assert.deepEqual((await validateBundle(root)).diagnostics, []);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should reject malformed baked light probe payload fields", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-env-baked-probe-invalid-"));
+  try {
+    await writeEnvironmentLightingBundle(root, {
+      assets: [],
+      environment: {
+        lightProbes: [{
+          bounds: { max: [3, 4, 3], min: [-3, 0, -3] },
+          id: "probe.baked",
+          influenceRadius: 5,
+          intent: "irradiance",
+          source: { bakeVersion: 2, coefficients: [0, Number.NaN], format: "sh3", sceneContentHash: "stale" },
+        }, {
+          bounds: { max: [3, 4, 3], min: [-3, 0, -3] },
+          id: "probe.missing-format",
+          influenceRadius: 5,
+          intent: "irradiance",
+          source: { bakeVersion: 1, coefficients: Array(27).fill(0), sceneContentHash: `sha256:${"b".repeat(64)}` },
+        }],
+      },
+    });
+    const codes = (await validateBundle(root)).diagnostics.map((entry) => entry.code);
+    assert.ok(codes.includes("TN_IR_LIGHT_PROBE_BAKE_FORMAT_INVALID"));
+    assert.ok(codes.includes("TN_IR_LIGHT_PROBE_BAKE_VERSION_INVALID"));
+    assert.ok(codes.includes("TN_IR_LIGHT_PROBE_BAKE_COEFFICIENTS_INVALID"));
+    assert.ok(codes.includes("TN_IR_LIGHT_PROBE_BAKE_CONTENT_HASH_INVALID"));
+    assert.ok((await validateBundle(root)).diagnostics.some((entry) => entry.code === "TN_IR_LIGHT_PROBE_BAKE_FORMAT_INVALID" && entry.path.endsWith("/lightProbes/1/source/format")));
   } finally {
     await rm(root, { force: true, recursive: true });
   }

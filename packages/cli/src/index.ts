@@ -8,6 +8,7 @@ import { actorCommand } from "./commands/actor.js";
 import { assetCommand } from "./commands/asset.js";
 import { authoringCommand } from "./commands/authoring.js";
 import { buildCommand } from "./commands/build.js";
+import { bakeGiCommand } from "./commands/bakeGi.js";
 import { bundleCommand } from "./commands/bundle.js";
 import { cookbookCommand } from "./commands/cookbook.js";
 import { compareImagesCommand } from "./commands/compareImages.js";
@@ -68,7 +69,7 @@ export const CLI_COMMAND_REGISTRY = defineCommandRegistry({
   environment: {
     description: "Create and mutate structured environment source documents.",
     implemented: true,
-    usage: "tn environment create <environment-id> [--project <path>] [--json]\n              tn environment set-skybox <environment-id> --asset <asset-id-or-path> [--mode equirect|cube|color] [--project <path>] [--json]\n              tn environment set-map <environment-id> --asset <asset-id-or-path> [--project <path>] [--json]\n              tn environment set-terrain <environment-id> [--id <terrain-id>] [--height-mode flat|heightmap] [--heightmap <asset-id-or-path>] [--project <path>] [--json]\n              tn environment set-path <environment-id> --path '<json>' [--project <path>] [--json]\n              tn environment set-walkability <environment-id> --walkability '<json>' [--project <path>] [--json]\n              tn environment add-scatter-layer <environment-id> --scatter '<json-object>' [--project <path>] [--json]\n              tn environment set-source-asset-lod <environment-id> <source-asset-id> --lod '<json>' [--project <path>] [--json]",
+    usage: "tn environment create <environment-id> [--project <path>] [--json]\n              tn environment set-skybox <environment-id> --asset <asset-id-or-path> [--mode equirect|cube|color] [--project <path>] [--json]\n              tn environment set-map <environment-id> --asset <asset-id-or-path> [--project <path>] [--json]\n              tn environment set-volumetrics <environment-id> --volumetrics '<json-object>' [--project <path>] [--json]\n              tn environment set-terrain <environment-id> [--id <terrain-id>] [--height-mode flat|heightmap] [--heightmap <asset-id-or-path>] [--project <path>] [--json]\n              tn environment set-path <environment-id> --path '<json>' [--project <path>] [--json]\n              tn environment set-walkability <environment-id> --walkability '<json>' [--project <path>] [--json]\n              tn environment add-scatter-layer <environment-id> --scatter '<json-object>' [--project <path>] [--json]\n              tn environment set-source-asset-lod <environment-id> <source-asset-id> --lod '<json>' [--project <path>] [--json]",
   },
   flow: {
     description: "Create and mutate declarative GameFlow source documents.",
@@ -79,6 +80,13 @@ export const CLI_COMMAND_REGISTRY = defineCommandRegistry({
     description: "Inspect and validate structured authoring source documents.",
     implemented: true,
     usage: "tn authoring inspect [--project <path>] [--json]\n              tn authoring validate [--project <path>] [--json]",
+  },
+  bake: {
+    description: "Bake deterministic portable lighting data into durable content.",
+    handler: bakeGiCommand,
+    implemented: true,
+    subcommands: ["gi"],
+    usage: "tn bake gi [--ray-count <n>] [--seed <n>] [--max-distance <n>] [--project <path>] [--json]",
   },
   create: {
     description: "Scaffold a ThreeNative project from a maintained template.",

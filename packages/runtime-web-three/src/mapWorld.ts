@@ -15,6 +15,7 @@ import {
 } from "./cameras.js";
 import type { IWebBundle } from "./loadBundle.js";
 import { atmosphereColorManagementExposure } from "./rendering.js";
+import { createWebBakedProbeLighting, type IWebBakedProbeLighting } from "./rendering/bakedProbeLighting.js";
 import type { IRenderTargetRegistry } from "./renderTargets.js";
 import type { ISystemEffectLogEntry } from "./systems/log.js";
 import { bundleUrl, isLoadableModelFormat } from "./worldMapping/assets.js";
@@ -43,6 +44,7 @@ export type { IRuntimeDiagnostic } from "@threenative/ir";
 export type { ICameraViewPlan } from "./cameras.js";
 
 export interface IThreeWorld {
+  bakedProbeLighting?: IWebBakedProbeLighting;
   camera: THREE.Camera;
   cameraViews: ICameraViewPlan[];
   cameras: Map<string, THREE.Camera>;
@@ -188,6 +190,11 @@ export function mapWorld(bundle: IWebBundle): IThreeWorld {
     objectsById,
     scene,
   };
+  mapped.bakedProbeLighting = createWebBakedProbeLighting(bundle.environmentScene?.lightProbes);
+  if (mapped.bakedProbeLighting !== undefined) {
+    scene.add(mapped.bakedProbeLighting.light);
+    mapped.bakedProbeLighting.sync(selectedCamera.getWorldPosition(new THREE.Vector3()));
+  }
   mapped.reconcile = (world) => reconcileMappedWorld(
     mapped,
     world,

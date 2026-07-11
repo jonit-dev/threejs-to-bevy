@@ -1,0 +1,18 @@
+{
+  "schema": "threenative.materials",
+  "version": "0.1.0",
+  "id": "lumen-showcase-materials",
+  "materials": [
+    { "id": "mat.concrete.floor", "color": "#4b463c", "roughness": 0.88, "metalness": 0.02 },
+    { "id": "mat.concrete.wall", "color": "#625b4d", "roughness": 0.96, "metalness": 0 },
+    { "id": "mat.concrete.dark", "color": "#292b2b", "roughness": 0.94, "metalness": 0 },
+    { "id": "mat.paint.peeling", "color": "#486266", "roughness": 0.9, "metalness": 0.01 },
+    { "id": "mat.metal.rust", "color": "#543a28", "roughness": 0.72, "metalness": 0.48 },
+    { "id": "mat.metal.dark", "color": "#171b1c", "roughness": 0.43, "metalness": 0.72 },
+    { "id": "mat.wood", "color": "#5a4028", "roughness": 0.82, "metalness": 0 },
+    { "id": "mat.puddle", "color": "#252927", "roughness": 0.12, "metalness": 0.58 },
+    { "id": "mat.window.hot", "color": "#fff1c2", "emissive": "#ffd275", "emissiveIntensity": 7.5, "roughness": 0.15, "metalness": 0 },
+    { "id": "mat.lamp.warm", "color": "#ffc04a", "emissive": "#ff9a1f", "emissiveIntensity": 5, "roughness": 0.22, "metalness": 0.05 },
+    { "id": "mat.debris", "color": "#766950", "roughness": 0.98, "metalness": 0 }
+  ]
+}

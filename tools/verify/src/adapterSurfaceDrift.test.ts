@@ -44,7 +44,7 @@ const EDITOR_OPERATION_GAPS = gapMap([
 
 const EDITOR_SMOKE_GAPS = gapMap([
   "archetype.apply", "archetype.update", "archetype.list", "asset.add", "audio.create",
-  "audio.add_sound", "environment.create", "environment.set_skybox", "environment.set_map", "environment.set_light_probe",
+  "audio.add_sound", "environment.create", "environment.set_skybox", "environment.set_map", "environment.set_volumetrics", "environment.set_light_probe",
   "environment.set_path", "environment.set_terrain", "environment.set_walkability", "environment.set_source_asset_lod", "generator.record",
   "scene.create", "input.add_action", "input.add_axis", "input.set_controls", "input.set_override",
   "material.create", "material.set", "mesh.create_custom", "prefab.create", "prefab.add_component",

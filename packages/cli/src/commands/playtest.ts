@@ -598,6 +598,7 @@ async function runNativePlaytest(options: IPlaytestRunOptions, bevyRunner: BevyR
     }),
   );
   const runtimeDiagnostics = { nativeFrameSamples, readiness: readinessSamples, resources: nativeRuntimeResources(readinessSamples) };
+  const effectLog = nativeSceneQueryEffectLog(readinessSamples);
   diagnostics.push(...resourceObservationDiagnostics(diagnostics, runtimeDiagnostics));
   const hasErrors = diagnostics.some((diagnostic) => diagnostic.severity === "error");
   return {
@@ -607,6 +608,7 @@ async function runNativePlaytest(options: IPlaytestRunOptions, bevyRunner: BevyR
     debugColliders: options.debugColliders,
     diagnostics,
     distance,
+    effectLog,
     entity: options.entityId,
     ...(options.expectAxis === undefined ? {} : { expectAxis: options.expectAxis }),
     expectMoved: options.expectMoved,
@@ -618,7 +620,7 @@ async function runNativePlaytest(options: IPlaytestRunOptions, bevyRunner: BevyR
     nativeRecording,
     observations: {
       console: [],
-      effectLog: {},
+      effectLog,
       hud: {},
       network: [],
       resources: mergeSnapshots(beforeResources, afterResources),
@@ -673,7 +675,7 @@ function readinessSampleNearTick(samples: readonly Record<string, unknown>[], ti
   return candidates.find((sample) => (sample.tick as number) >= tick);
 }
 
-function nativeHarnessCommandStream(scenario: IPlaytestScenario, artifacts: { afterArtifact?: string; beforeArtifact?: string; recordingFrames?: readonly IPlaytestNativeRecordingFrame[] }): unknown {
+export function nativeHarnessCommandStream(scenario: IPlaytestScenario, artifacts: { afterArtifact?: string; beforeArtifact?: string; recordingFrames?: readonly IPlaytestNativeRecordingFrame[] }): unknown {
   const commands: Array<Record<string, unknown>> = [];
   const captureTicks = nativeScenarioCaptureTicks(scenario);
   let tick = captureTicks.beforeTick + 1;
@@ -686,6 +688,12 @@ function nativeHarnessCommandStream(scenario: IPlaytestScenario, artifacts: { af
       tick: captureTicks.beforeTick,
       type: "setTransform",
     });
+  }
+  for (const assertion of scenario.assert?.occluded ?? []) {
+    const from = assertion.entity ?? scenario.subject;
+    if (from !== undefined && assertion.target !== undefined) {
+      commands.push({ from, tick: captureTicks.beforeTick, to: assertion.target, type: "sceneOcclusion" });
+    }
   }
   if (artifacts.beforeArtifact !== undefined) {
     commands.push({ path: artifacts.beforeArtifact, tick: captureTicks.beforeTick, type: "screenshot" });
@@ -713,6 +721,33 @@ function nativeHarnessCommandStream(scenario: IPlaytestScenario, artifacts: { af
     schema: "threenative.native-proof-harness",
     version: "0.1.0",
   };
+}
+
+export function nativeSceneQueryEffectLog(samples: readonly Record<string, unknown>[]): { entries: unknown[] } {
+  const entries = new Map<string, unknown>();
+  for (const sample of samples) {
+    const queries = Array.isArray(sample.sceneQueries)
+      ? sample.sceneQueries
+      : Array.isArray(sample.scene_queries)
+        ? sample.scene_queries
+        : [];
+    for (const query of queries) {
+      if (!isRecord(query) || typeof query.from !== "string" || typeof query.to !== "string" || typeof query.hit !== "boolean") continue;
+      const entry = {
+        payload: {
+          request: { entity: query.from, target: query.to },
+          result: {
+            ...(typeof query.distance === "number" ? { distance: query.distance } : {}),
+            ...(typeof query.occluder === "string" ? { entityId: query.occluder } : {}),
+            hit: query.hit,
+          },
+        },
+        service: "render.sceneRayQuery",
+      };
+      entries.set(JSON.stringify(entry), entry);
+    }
+  }
+  return { entries: [...entries.values()] };
 }
 
 function nativeRecordingPlan(artifactDirectory: string, scenario: IPlaytestScenario): IPlaytestNativeRecording {

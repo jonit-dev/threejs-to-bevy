@@ -289,16 +289,22 @@ function validateScreenSpaceGlobalIllumination(value: unknown, path: string, dia
     return;
   }
   validateEnabled(value.enabled, `${path}/enabled`, "screenSpaceGlobalIllumination", diagnostics);
-  if (value.quality !== "low" && value.quality !== "medium") {
+  if (value.quality !== "low" && value.quality !== "medium" && value.quality !== "high") {
     diagnostics.push({
       code: "TN_RENDER_FEATURE_UNSUPPORTED",
-      limit: ["low", "medium"],
-      message: "Renderer screenSpaceGlobalIllumination quality must be low or medium.",
+      limit: ["low", "medium", "high"],
+      message: "Renderer screenSpaceGlobalIllumination quality must be low, medium, or high.",
       path: `${path}/quality`,
       severity: "error",
-      suggestion: "Use low or medium until high-quality SSGI has cross-runtime proof.",
+      suggestion: "Use low, medium, or high according to the target render-look tier.",
       value: typeof value.quality === "string" ? value.quality : undefined,
     });
+  }
+  if (value.intensity !== undefined) {
+    validateNumberRange(value.intensity, `${path}/intensity`, "screenSpaceGlobalIllumination intensity", 0, 2, diagnostics);
+  }
+  if (value.radius !== undefined) {
+    validateNumberRange(value.radius, `${path}/radius`, "screenSpaceGlobalIllumination radius", 0.01, 100, diagnostics);
   }
 }
 
