@@ -3,6 +3,11 @@
   "version": "0.1.0",
   "examples": [
     {
+      "classification": "build-only",
+      "path": "examples/coin-patrol",
+      "reason": "Golden-path authoring acceptance fixture for top-down pickup, lives, HUD/resource mutation, and native parity follow-up."
+    },
+    {
       "classification": "benchmark-only",
       "path": "examples/dense-world-benchmark",
       "reason": "Maintained efficient-scale fixture for dense-scene and performance-proof gates."

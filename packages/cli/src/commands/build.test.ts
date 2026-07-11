@@ -137,6 +137,43 @@ test("build should preserve emitted bundle schema fix", async () => {
   }
 });
 
+test("build should report malformed IR-shaped authoring schema with a full-file fix", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-build-authoring-schema-shape-"));
+  try {
+    await cp(structuredSourceStarterPath, root, { recursive: true });
+    await mkdir(join(root, "content/schemas"), { recursive: true });
+    await writeFile(
+      join(root, "content/schemas/resources.schema.json"),
+      `${JSON.stringify({
+        schema: "threenative.resource-schemas",
+        version: "0.1.0",
+        schemas: { GameState: { fields: { score: { kind: "number" } } } },
+      }, null, 2)}\n`,
+    );
+
+    const result = await buildCommand(["--json"], root);
+    const payload = JSON.parse(result.stdout) as {
+      code: string;
+      file?: string;
+      fix?: { snippet?: string };
+      message: string;
+      path?: string;
+    };
+
+    assert.equal(result.exitCode, 1);
+    assert.equal(payload.code, "TN_AUTHORING_DOCUMENT_SCHEMA_INVALID");
+    assert.equal(payload.file, "content/schemas/resources.schema.json");
+    assert.equal(payload.path, "/schema");
+    assert.doesNotMatch(payload.message, /object is not iterable/);
+    const fix = JSON.parse(payload.fix?.snippet ?? "{}") as { kind?: string; schema?: string; schemas?: Array<{ id?: string; fields?: Record<string, { kind?: string }> }> };
+    assert.equal(fix.schema, "threenative.schema");
+    assert.equal(fix.kind, "resource");
+    assert.deepEqual(fix.schemas?.[0], { id: "GameState", fields: { score: { kind: "number" } } });
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
 test("build should not fail inferable resource writes during build", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-build-derived-resource-writes-"));
   try {
@@ -145,8 +182,8 @@ test("build should not fail inferable resource writes during build", async () =>
     await writeFile(
       join(root, "src/scripts/resource-write.ts"),
       `
-export function writeGameState(ctx: any): void {
-  ctx.resources.set("GameState", { status: "Ready" });
+export function writeScoreState(ctx: any): void {
+  ctx.resources.set("ScoreState", { status: "Ready" });
 }
 `,
     );
@@ -160,7 +197,7 @@ export function writeGameState(ctx: any): void {
           {
             id: "derived-resource-write",
             schedule: "update",
-            script: { module: "src/scripts/resource-write.ts", export: "writeGameState" },
+            script: { module: "src/scripts/resource-write.ts", export: "writeScoreState" },
             commands: [],
             queries: [],
             reads: ["Transform"],
@@ -180,7 +217,7 @@ export function writeGameState(ctx: any): void {
 
     assert.equal(result.exitCode, 0);
     assert.equal(payload.code, "TN_BUILD_OK");
-    assert.deepEqual(system?.resourceWrites, ["GameState"]);
+    assert.deepEqual(system?.resourceWrites, ["ScoreState"]);
   } finally {
     await rm(root, { force: true, recursive: true });
   }

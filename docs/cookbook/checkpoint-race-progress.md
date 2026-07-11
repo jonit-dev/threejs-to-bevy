@@ -30,7 +30,11 @@ export function movePlayerToGoal(context: ScriptContext): void {
   }
 }
 
-export function vehicleCheckpointSystem(): void {}
+export function vehicleCheckpointSystem(context: ScriptContext): void {
+  const state = context.state("checkpoint-race", { index: 0, lap: 0 });
+  state.index = Math.max(0, state.index);
+  state.lap = Math.max(0, state.lap);
+}
 ```
 
 ## proof

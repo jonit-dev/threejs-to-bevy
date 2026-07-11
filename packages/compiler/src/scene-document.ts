@@ -65,6 +65,7 @@ export async function captureSceneDocumentEntry(projectPath: string, entryPath: 
       path: validationError.path ?? "",
       severity: "error",
       suggestion: validationError.suggestion,
+      ...(validationError.fix === undefined ? {} : { fix: validationError.fix }),
     });
   }
 
@@ -338,6 +339,7 @@ async function readStructuredSystems(projectPath: string): Promise<SourceSystem[
       path: validationError.path ?? "",
       severity: "error",
       suggestion: validationError.suggestion,
+      ...(validationError.fix === undefined ? {} : { fix: validationError.fix }),
     });
   }
   const project = await loadAuthoringProject({ projectPath });

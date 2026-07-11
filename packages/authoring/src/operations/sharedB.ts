@@ -4,7 +4,7 @@ import { isGeneratedArtifactPath, normalizeRelativePath, writeAuthoringJsonDocum
 import { authoringDiagnostic, hasAuthoringErrors, sortAuthoringDiagnostics, type IAuthoringDiagnostic } from "../diagnostics.js";
 import { validateMaterialDocument } from "./materialValidation.js";
 import { buildUiSourceRecipe, mergeById } from "./uiRecipes.js";
-import { generatedPathDiagnostic, typeDiagnostic, validateGeneratedPathString } from "./validationHelpers.js";
+import { generatedPathDiagnostic, schemaDocumentShapeFix, typeDiagnostic, validateGeneratedPathString } from "./validationHelpers.js";
 import { loadAuthoringProject, type IAuthoringProject } from "../project.js";
 import {
   cameraComponentKeys,
@@ -1127,6 +1127,7 @@ export function validateDocumentHeader(
       authoringDiagnostic({
         code: "TN_AUTHORING_DOCUMENT_SCHEMA_INVALID",
         file,
+        fix: expectedSchema === schemaDocumentSchema ? schemaDocumentShapeFix(file, data) : undefined,
         message: `Structured authoring document must use schema '${expectedSchema}'.`,
         path: "/schema",
         value: data.schema,

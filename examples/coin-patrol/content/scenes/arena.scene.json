@@ -118,6 +118,15 @@
       }
     },
     {
+      "components": {
+        "Collider": {
+          "kind": "sphere",
+          "radius": 0.35
+        },
+        "RigidBody": {
+          "kind": "kinematic"
+        }
+      },
       "id": "player",
       "prefab": "prefab.player",
       "transform": {
@@ -161,27 +170,18 @@
     {
       "components": {
         "Collider": {
-          "kind": "box",
-          "size": [
-            0.8,
-            0.7,
-            0.35
-          ],
+          "kind": "sphere",
+          "radius": 0.5,
           "trigger": true
         }
       },
-      "id": "hazard.barrier.01",
-      "prefab": "hazard.barrier.01.prefab",
+      "id": "drone.01",
+      "prefab": "prefab.drone",
       "transform": {
         "position": [
-          1.5,
-          0.45,
-          -6
-        ],
-        "scale": [
-          0.8,
-          0.7,
-          0.35
+          -3,
+          0.35,
+          0
         ]
       }
     },
@@ -190,80 +190,9 @@
         "Collider": {
           "kind": "sphere",
           "radius": 0.5,
-          "size": [
-            1,
-            1,
-            1
-          ],
           "trigger": true
         }
       },
-      "id": "goal.plan",
-      "prefab": "goal.plan.prefab",
-      "transform": {
-        "position": [
-          0,
-          1,
-          0
-        ]
-      }
-    },
-    {
-      "id": "spawner.grid.01",
-      "prefab": "mechanic.spawn.prefab",
-      "transform": {
-        "position": [
-          0,
-          0.35,
-          0
-        ]
-      }
-    },
-    {
-      "id": "spawner.grid.02",
-      "prefab": "mechanic.spawn.prefab",
-      "transform": {
-        "position": [
-          1.2,
-          0.35,
-          0
-        ]
-      }
-    },
-    {
-      "id": "spawner.grid.03",
-      "prefab": "mechanic.spawn.prefab",
-      "transform": {
-        "position": [
-          0,
-          0.35,
-          -1.2
-        ]
-      }
-    },
-    {
-      "id": "spawner.grid.04",
-      "prefab": "mechanic.spawn.prefab",
-      "transform": {
-        "position": [
-          1.2,
-          0.35,
-          -1.2
-        ]
-      }
-    },
-    {
-      "id": "drone.01",
-      "prefab": "prefab.drone",
-      "transform": {
-        "position": [
-          -3,
-          0.35,
-          -2
-        ]
-      }
-    },
-    {
       "id": "drone.02",
       "prefab": "prefab.drone",
       "transform": {
@@ -278,6 +207,13 @@
   "id": "arena",
   "instances": [
     {
+      "components": {
+        "Collider": {
+          "kind": "sphere",
+          "radius": 0.45,
+          "trigger": true
+        }
+      },
       "id": "coin.01",
       "prefab": "prefab.coin",
       "transform": {
@@ -289,6 +225,13 @@
       }
     },
     {
+      "components": {
+        "Collider": {
+          "kind": "sphere",
+          "radius": 0.45,
+          "trigger": true
+        }
+      },
       "id": "coin.02",
       "prefab": "prefab.coin",
       "transform": {
@@ -300,6 +243,13 @@
       }
     },
     {
+      "components": {
+        "Collider": {
+          "kind": "sphere",
+          "radius": 0.45,
+          "trigger": true
+        }
+      },
       "id": "coin.03",
       "prefab": "prefab.coin",
       "transform": {
@@ -311,6 +261,13 @@
       }
     },
     {
+      "components": {
+        "Collider": {
+          "kind": "sphere",
+          "radius": 0.45,
+          "trigger": true
+        }
+      },
       "id": "coin.04",
       "prefab": "prefab.coin",
       "transform": {
@@ -322,6 +279,13 @@
       }
     },
     {
+      "components": {
+        "Collider": {
+          "kind": "sphere",
+          "radius": 0.45,
+          "trigger": true
+        }
+      },
       "id": "coin.05",
       "prefab": "prefab.coin",
       "transform": {
@@ -333,6 +297,13 @@
       }
     },
     {
+      "components": {
+        "Collider": {
+          "kind": "sphere",
+          "radius": 0.45,
+          "trigger": true
+        }
+      },
       "id": "coin.06",
       "prefab": "prefab.coin",
       "transform": {
@@ -344,6 +315,13 @@
       }
     },
     {
+      "components": {
+        "Collider": {
+          "kind": "sphere",
+          "radius": 0.45,
+          "trigger": true
+        }
+      },
       "id": "coin.07",
       "prefab": "prefab.coin",
       "transform": {
@@ -355,6 +333,13 @@
       }
     },
     {
+      "components": {
+        "Collider": {
+          "kind": "sphere",
+          "radius": 0.45,
+          "trigger": true
+        }
+      },
       "id": "coin.08",
       "prefab": "prefab.coin",
       "transform": {
@@ -366,6 +351,13 @@
       }
     },
     {
+      "components": {
+        "Collider": {
+          "kind": "sphere",
+          "radius": 0.45,
+          "trigger": true
+        }
+      },
       "id": "coin.09",
       "prefab": "prefab.coin",
       "transform": {
@@ -377,6 +369,13 @@
       }
     },
     {
+      "components": {
+        "Collider": {
+          "kind": "sphere",
+          "radius": 0.45,
+          "trigger": true
+        }
+      },
       "id": "coin.010",
       "prefab": "prefab.coin",
       "transform": {
@@ -420,21 +419,6 @@
       "primitive": "capsule"
     },
     {
-      "color": "#ef4444",
-      "id": "hazard.barrier.01.prefab",
-      "primitive": "box"
-    },
-    {
-      "color": "#ffd166",
-      "id": "goal.plan.prefab",
-      "primitive": "sphere"
-    },
-    {
-      "color": "#38bdf8",
-      "id": "mechanic.spawn.prefab",
-      "primitive": "box"
-    },
-    {
       "color": "#f2c94c",
       "id": "prefab.coin",
       "primitive": "sphere"
@@ -453,26 +437,13 @@
       }
     },
     {
-      "id": "goal.plan.collected",
-      "path": "collectibles.goal.plan.collected",
-      "value": false
-    },
-    {
-      "id": "FollowCamera",
+      "id": "CoinPatrol",
       "value": {
-        "camera": "camera.main",
-        "statusText": "Following player",
-        "target": "player"
-      }
-    },
-    {
-      "id": "MechanicSpawner",
-      "value": {
-        "blockId": "spawner.grid",
-        "count": 4,
-        "pattern": "grid",
-        "prefab": "mechanic.spawn.prefab",
-        "statusText": "4 spawn points ready"
+        "coins": 0,
+        "coinsLabel": "Coins 0/10",
+        "lives": 3,
+        "livesLabel": "Lives 3",
+        "status": "playing"
       }
     }
   ],
@@ -486,20 +457,6 @@
         "module": "src/scripts/player.ts"
       },
       "source": "behavior-metadata"
-    },
-    {
-      "id": "lane-runner",
-      "script": {
-        "export": "laneRunnerSystem",
-        "module": "src/scripts/player.ts"
-      }
-    },
-    {
-      "id": "goal.plan.collect",
-      "script": {
-        "export": "collectible",
-        "module": "src/scripts/collectible.ts"
-      }
     }
   ],
   "ui": {
@@ -507,10 +464,6 @@
       {
         "node": "countdown",
         "resource": "GameState.countdown"
-      },
-      {
-        "node": "goal.plan.prompt",
-        "resource": "goal.plan.collected"
       }
     ],
     "nodes": [
@@ -524,9 +477,6 @@
         },
         "text": "Ready",
         "type": "text"
-      },
-      {
-        "id": "goal.plan.prompt"
       }
     ]
   },

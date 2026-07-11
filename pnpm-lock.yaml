@@ -298,6 +298,9 @@ importers:
       '@threenative/authoring':
         specifier: workspace:*
         version: link:../../packages/authoring
+      '@threenative/cli':
+        specifier: workspace:*
+        version: link:../../packages/cli
       '@types/node':
         specifier: ^20.19.25
         version: 20.19.43

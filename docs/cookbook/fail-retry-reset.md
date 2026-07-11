@@ -31,7 +31,10 @@ export function movePlayerToGoal(context: ScriptContext): void {
   }
 }
 
-export function failRetryReset(): void {}
+export function failRetryReset(context: ScriptContext): void {
+  const state = context.resources.get("Flow", { status: 0, retries: 0 });
+  context.resources.patch("Flow", { status: Math.max(0, state.status), retries: Math.max(0, state.retries) });
+}
 ```
 
 ## proof

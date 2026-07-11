@@ -29,6 +29,17 @@
         "keyboard.KeyD",
         "keyboard.ArrowRight"
       ]
+    },
+    {
+      "id": "MoveZ",
+      "negative": [
+        "keyboard.KeyS",
+        "keyboard.ArrowDown"
+      ],
+      "positive": [
+        "keyboard.KeyW",
+        "keyboard.ArrowUp"
+      ]
     }
   ]
 }

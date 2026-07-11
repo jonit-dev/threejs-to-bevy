@@ -16,8 +16,6 @@
     },
     {
       "bindings": [
-        "keyboard.KeyW",
-        "keyboard.ArrowUp",
         "keyboard.Space"
       ],
       "id": "jump"
@@ -38,12 +36,12 @@
     {
       "id": "MoveZ",
       "negative": [
-        "keyboard.KeyW",
-        "keyboard.ArrowUp"
-      ],
-      "positive": [
         "keyboard.KeyS",
         "keyboard.ArrowDown"
+      ],
+      "positive": [
+        "keyboard.KeyW",
+        "keyboard.ArrowUp"
       ]
     }
   ],

@@ -6,42 +6,67 @@
   "production": {
     "archetype": "top-down",
     "archetypeSource": "content/archetypes/top-down.archetype.json",
-    "playableLoop": "Move the player across the arena to reach the goal feedback.",
+    "playableLoop": "Move through the arena, collect ten coins, avoid patrolling drones, and preserve three lives.",
     "controls": [
       "keyboard.KeyA",
       "keyboard.ArrowLeft",
       "keyboard.KeyD",
-      "keyboard.ArrowRight"
+      "keyboard.ArrowRight",
+      "keyboard.KeyS",
+      "keyboard.ArrowDown",
+      "keyboard.KeyW",
+      "keyboard.ArrowUp"
     ],
     "lookProfile": {
       "camera": "orthographic top-down follow",
       "movementPlane": "ground-xz",
       "renderLook": "cinematic"
     },
-    "objective": "Trigger visible and audio feedback by reaching the goal zone.",
-    "progression": "The starter includes a data-first GameFlow ready -> playing -> win skeleton; expand it with score, timer, waves, or collectible count before claiming a complete generated game.",
-    "failRetry": "Reset by rebuilding or reloading the preview; extend content/flow/match.flow.json with a fail/retry branch before claiming persistent fail state.",
+    "objective": "Collect all ten coins while avoiding two patrolling drones; win at ten coins and lose when lives reach zero.",
+    "progression": "CoinPatrol tracks collected coins, lives, status, and HUD labels; each collected coin updates the resource and hidden coin position.",
+    "failRetry": "Drone hits decrement lives and respawn the player; the current acceptance slice records the lost state but does not yet expose a retry action.",
     "feedbackMoments": [
-      "Player movement is visible in playtest proof.",
-      "Goal feedback changes GameFlow state when the player reaches the objective.",
-      "The intro Sequence gives agents a data-first feedback beat to extend before writing cutscene scripts.",
-      "HUD text can be extended from GameState bindings."
+      "Player movement is visible on both ground-plane axes.",
+      "CoinPatrol coinsLabel and livesLabel update through retained HUD bindings.",
+      "Drone contact applies a cooldown, decrements lives, and respawns the player.",
+      "Collecting all ten coins changes status to won and displays You win!."
     ],
     "assetPlan": {
-      "playerHero": "Starter player entity is source-owned placeholder geometry intended to be replaced by catalog, kit, or authored custom art.",
-      "obstacleEnemy": "No obstacle/enemy is authored in the starter baseline.",
-      "rewardInteractable": "Goal zone is the starter reward/interactable surface.",
-      "worldEnvironment": "Arena floor, camera, light, and goal context provide the starter world surface.",
-      "uiHud": "Starter HUD/source UI is the baseline for objective and state text.",
+      "playerHero": "Source-owned orange capsule player with kinematic body and sphere collider.",
+      "obstacleEnemy": "Two source-owned patrol drones provide the hazard and lives mechanic.",
+      "rewardInteractable": "Ten source-owned coin instances use trigger colliders and are hidden on pickup.",
+      "worldEnvironment": "Bounded arena floor with rails, markers, camera, lighting, and coin routes.",
+      "uiHud": "Retained HUD binds coin and life labels to CoinPatrol resource fields.",
       "audioFeedback": "Starter goal-ping audio asset is available for feedback wiring."
     },
     "scriptModules": [
       {
         "module": "src/scripts/player.ts",
-        "export": "updatePlayer",
+        "export": "movePlayerToGoal",
         "ownsState": [
           "Transform",
           "GameState"
+        ],
+        "referencedBy": [
+          "content/systems/arena.systems.json"
+        ]
+      },
+      {
+        "module": "src/scripts/player.ts",
+        "export": "dronePatrol",
+        "ownsState": [
+          "Transform"
+        ],
+        "referencedBy": [
+          "content/systems/arena.systems.json"
+        ]
+      },
+      {
+        "module": "src/scripts/player.ts",
+        "export": "coinPatrolRules",
+        "ownsState": [
+          "Transform",
+          "CoinPatrol"
         ],
         "referencedBy": [
           "content/systems/arena.systems.json"
@@ -91,47 +116,68 @@
         {
           "id": "playerHero",
           "sourcePath": "content/scenes/arena.scene.json",
-          "provenanceStatus": "starter-placeholder",
-          "summary": "Starter player entity is source-owned placeholder geometry intended to be replaced by catalog, kit, or authored custom art."
+          "provenanceStatus": "source",
+          "summary": "Source-owned orange capsule player with kinematic body and sphere collider."
         },
         {
           "id": "obstacleEnemy",
           "sourcePath": "threenative.config.json#/production/assetPlan",
-          "provenanceStatus": "not-authored",
-          "summary": "No obstacle/enemy is authored in the starter baseline."
+          "provenanceStatus": "source",
+          "summary": "Two source-owned patrol drones provide the hazard and lives mechanic."
         },
         {
           "id": "rewardInteractable",
           "sourcePath": "content/scenes/arena.scene.json",
           "provenanceStatus": "source",
-          "summary": "Goal zone is the starter reward/interactable surface."
+          "summary": "Ten source-owned coin instances use trigger colliders and are hidden on pickup."
         },
         {
           "id": "worldEnvironment",
           "sourcePath": "content/scenes/arena.scene.json",
           "provenanceStatus": "source",
-          "summary": "Arena floor, camera, light, and goal context provide the starter world surface."
+          "summary": "Bounded arena floor with rails, markers, camera, lighting, and coin routes."
         },
         {
           "id": "uiHud",
           "sourcePath": "content/ui/hud.ui.json",
           "provenanceStatus": "source",
-          "summary": "Starter HUD/source UI is the baseline for objective and state text."
+          "summary": "Retained HUD binds coin and life labels to CoinPatrol resource fields."
         },
         {
           "id": "audioFeedback",
           "sourcePath": "content/assets/arena.assets.json",
           "provenanceStatus": "local-file",
-          "summary": "Starter goal-ping audio asset is available for feedback wiring."
+          "summary": "Valid local goal-ping audio asset is available for feedback wiring."
         }
       ],
       "scriptModules": [
         {
           "module": "src/scripts/player.ts",
-          "export": "updatePlayer",
+          "export": "movePlayerToGoal",
           "ownsState": [
             "Transform",
             "GameState"
+          ],
+          "referencedBy": [
+            "content/systems/arena.systems.json"
+          ]
+        },
+        {
+          "module": "src/scripts/player.ts",
+          "export": "dronePatrol",
+          "ownsState": [
+            "Transform"
+          ],
+          "referencedBy": [
+            "content/systems/arena.systems.json"
+          ]
+        },
+        {
+          "module": "src/scripts/player.ts",
+          "export": "coinPatrolRules",
+          "ownsState": [
+            "Transform",
+            "CoinPatrol"
           ],
           "referencedBy": [
             "content/systems/arena.systems.json"
@@ -156,18 +202,22 @@
       "proofCommands": [
         "tn authoring validate --project . --json",
         "tn build --project . --json",
-        "tn playtest --project . --scenario playtests/smoke-movement.playtest.json --stable-artifacts --json",
+        "tn playtest --project . --scenario playtests/coin-pickup.playtest.json --stable-artifacts --json",
+        "tn playtest --project . --scenario playtests/coin-win-state.playtest.json --stable-artifacts --json",
+        "tn playtest --project . --scenario playtests/coin-lives.playtest.json --stable-artifacts --json",
         "tn game qa --project . --run-proof --json",
         "tn game release --project . --json"
       ],
       "knownBlockers": [
-        "Starter player and world surfaces are intentionally minimal until a generated game goal selects art direction."
+        "Coin Patrol remains build-only until native pickup parity and production visual/mobile evidence are stable."
       ]
     },
     "proofCommands": [
       "tn authoring validate --project . --json",
       "tn build --project . --json",
-      "tn playtest --project . --scenario playtests/smoke-movement.playtest.json --stable-artifacts --json",
+      "tn playtest --project . --scenario playtests/coin-pickup.playtest.json --stable-artifacts --json",
+      "tn playtest --project . --scenario playtests/coin-win-state.playtest.json --stable-artifacts --json",
+      "tn playtest --project . --scenario playtests/coin-lives.playtest.json --stable-artifacts --json",
       "tn screenshot --project . --url <preview-url> --out artifacts/game-production/screenshot.png --wait-ready --json",
       "tn game score --project . --json",
       "tn game qa --project . --run-proof --json",

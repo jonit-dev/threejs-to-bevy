@@ -22,7 +22,10 @@ tn runtime set-rendering desktop --screen-space-global-illumination true --scree
 ```ts
 import type { ScriptContext } from "@threenative/script-stdlib";
 
-export function update(_context: ScriptContext): void {}
+export function update(_context: ScriptContext): void {
+  const elapsed = _context.time.elapsed;
+  void elapsed;
+}
 ```
 
 ## proof

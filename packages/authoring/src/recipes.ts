@@ -570,6 +570,9 @@ function defaultRecipeMetadata(recipeId: AuthoringRecipeId, args: Record<string,
   }
   const sceneId = optionalStringValue(args, "sceneId") ?? "arena";
   const entityId = optionalStringValue(args, "playerId") ?? optionalStringValue(args, "vehicleId") ?? optionalStringValue(args, "targetId") ?? optionalStringValue(args, "entityId") ?? "<player-id>";
+  const movementProof = recipeId === "collectible" || recipeId === "top-down-collector"
+    ? "tn playtest scaffold --assert pickup --project . --json"
+    : `tn playtest --project . --entity ${entityId} --press KeyD --frames 30 --expect-moved --json`;
   return {
     gameplayBlocks: recipeGameplayBlocks(recipeId),
     generatedIds: sortRecordArrays(generatedIds),
@@ -577,7 +580,7 @@ function defaultRecipeMetadata(recipeId: AuthoringRecipeId, args: Record<string,
       "tn authoring validate --project . --json",
       "tn build --project . --json",
       `tn scene inspect ${sceneId} --node ${entityId} --json`,
-      `tn playtest --project . --entity ${entityId} --press KeyD --frames 30 --expect-moved --json`,
+      movementProof,
     ],
     proofHints: recipeProofHints(recipeId),
     scriptResponsibilities: recipeScriptResponsibilities(recipeId),

@@ -22,16 +22,54 @@ tn scene add-prefab-instance arena pickup.01 --prefab prefab.pickup --position 1
 
 ## script
 ```ts
-import { Vector3, type ScriptContext } from "@threenative/script-stdlib";
+import { defineBehavior } from "@threenative/script-stdlib";
+import type { ScriptContext } from "@threenative/script-stdlib";
 
-export function movePlayerToGoal(context: ScriptContext): void {
-  for (const entity of context.query()) {
-    const transform = entity.transform();
-    transform.position = Vector3.add(transform.position, [context.input.getAxis("MoveX") * context.time.fixedDelta * 2.4, 0, 0]);
-  }
-}
+export const movePlayerToGoal = defineBehavior(
+  { id: "move-player-to-goal", schedule: "fixedUpdate", writes: ["Transform"] },
+  (context: ScriptContext): void => {
+    const player = context.entity("player");
+    if (player === undefined) return;
+    const position = player.transform().position;
+    const delta = context.time.fixedDelta * 2.4;
+    player.transform().setPosition([
+      position[0] + context.input.getAxis("MoveX") * delta,
+      position[1],
+      position[2] + context.input.getAxis("MoveZ") * delta,
+    ]);
+  },
+);
 
-export function collectibleRespawn(): void {}
+export const collectibleRespawn = defineBehavior(
+  {
+    id: "collectible-respawn",
+    schedule: "fixedUpdate",
+    reads: ["Transform"],
+    resourceReads: ["GameState"],
+    resourceWrites: ["GameState", "collectible-respawn"],
+    writes: ["Transform"],
+  },
+  (context: ScriptContext): void => {
+    const player = context.entity("player");
+    const pickup = context.entity("pickup.01");
+    if (player === undefined || pickup === undefined) return;
+    const pickupPosition = pickup.transform().position;
+    const state = context.state("collectible-respawn", { homeX: pickupPosition[0], homeY: pickupPosition[1], homeZ: pickupPosition[2], respawnAt: 0 });
+    if (context.time.elapsed >= state.respawnAt && pickupPosition[1] < -10) {
+      pickup.transform().setPosition([state.homeX, state.homeY, state.homeZ]);
+      return;
+    }
+    const playerPosition = player.transform().position;
+    const dx = playerPosition[0] - pickupPosition[0];
+    const dz = playerPosition[2] - pickupPosition[2];
+    if (pickupPosition[1] >= -10 && dx * dx + dz * dz < 0.36) {
+      pickup.transform().setPosition([state.homeX, -20, state.homeZ]);
+      state.respawnAt = context.time.elapsed + 2;
+      const gameState = context.resources.get("GameState", { score: 0 });
+      context.resources.patch("GameState", { score: gameState.score + 1 });
+    }
+  },
+);
 ```
 
 ## proof

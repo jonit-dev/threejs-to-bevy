@@ -379,8 +379,11 @@ test("should reject schema ecs system resource without schema", async () => {
     assert.equal(result.ok, false);
     assert.equal(result.diagnostics[0]?.code, "TN_IR_SYSTEM_RESOURCE_SCHEMA_MISSING");
     assert.equal(result.diagnostics[0]?.path, "systems.ir.json/systems/0/resourceReads/0");
-    assert.match(result.diagnostics[0]?.fix?.instruction ?? "", /Declare resource 'Score'/);
-    assert.match(result.diagnostics[0]?.fix?.snippet ?? "", /"Score"/);
+    assert.match(result.diagnostics[0]?.fix?.instruction ?? "", /content\/schemas\/resources\.schema\.json/);
+    const fix = JSON.parse(result.diagnostics[0]?.fix?.snippet ?? "{}") as { kind?: string; schema?: string; schemas?: Array<{ id?: string; fields?: Record<string, unknown> }> };
+    assert.equal(fix.schema, "threenative.schema");
+    assert.equal(fix.kind, "resource");
+    assert.deepEqual(fix.schemas?.[0], { id: "Score", fields: { value: { kind: "json" } } });
   } finally {
     await rm(root, { force: true, recursive: true });
   }

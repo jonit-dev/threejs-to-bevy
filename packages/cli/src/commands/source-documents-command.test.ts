@@ -804,7 +804,7 @@ test("prefab input and mesh operations write deterministic structured docs", asy
     const materialCreate = await materialCommand(["create", "mat.kart", "--project", root, "--json"]);
     const prefabMaterial = await prefabCommand(["set-material", "kart", "--material", "mat.kart", "--project", root, "--json"]);
     const input = await inputCommand(["add-action", "kart", "accelerate", "--keys", "W,ArrowUp", "--project", root, "--json"]);
-    const inputAxis = await inputCommand(["add-axis", "kart", "MoveX", "--negative-keys", "A,ArrowLeft", "--positive-keys", "D,ArrowRight", "--value", "gamepad.leftStickX", "--project", root, "--json"]);
+    const inputAxis = await inputCommand(["add-axis", "kart", "MoveX", "--negative-keys", "keyboard.KeyA,keyboard.ArrowLeft", "--positive-keys", "D,keyboard.ArrowRight", "--value", "gamepad.leftStickX", "--project", root, "--json"]);
     const inputControls = await inputCommand(["set-controls", "kart", "--profile", "default", "--rows", "[{\"kind\":\"action\",\"actionOrAxisId\":\"accelerate\",\"defaultBindings\":[\"keyboard.KeyW\"],\"uiNodeId\":\"settings.accelerate\"},{\"kind\":\"axis\",\"actionOrAxisId\":\"MoveX\",\"axisSlot\":\"positive\",\"defaultBindings\":[\"keyboard.KeyD\"]}]", "--project", root, "--json"]);
     const inputOverride = await inputCommand(["set-override", "kart", "accelerate", "--profile", "default", "--device", "keyboard", "--control", "ArrowUp", "--updated-at", "2026-06-23T00:00:00.000Z", "--project", root, "--json"]);
     const mesh = await meshCommand(["primitive", "mesh.kart.body", "--kind", "box", "--size", "1.2,0.6,2.4", "--project", root, "--json"]);

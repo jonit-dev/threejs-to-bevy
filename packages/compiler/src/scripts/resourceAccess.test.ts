@@ -16,6 +16,11 @@ test("should infer resource reads and writes from literal helper calls", () => {
   assert.deepEqual(result.diagnostics, []);
   assert.deepEqual(result.resourceReads, ["GameState"]);
   assert.deepEqual(result.resourceWrites, ["RoundState", "ScoreState"]);
+  assert.deepEqual(result.resourceSchemas, {
+    GameState: { fields: { score: { kind: "number" } } },
+    RoundState: { fields: { started: { kind: "boolean" } } },
+    ScoreState: { fields: { score: { kind: "json" } } },
+  });
 });
 
 test("should reject dynamic resource ids with a fix", () => {

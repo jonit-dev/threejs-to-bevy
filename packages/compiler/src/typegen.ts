@@ -138,7 +138,8 @@ function collectProjectSchemas(documents: readonly IAuthoringDocument[]): Record
   for (const document of documents) {
     if (document.kind !== "schema") continue;
     const schemaDocument = document.data as ISchemaDocument;
-    for (const entry of schemaDocument.schemas ?? []) {
+    if (!Array.isArray(schemaDocument.schemas)) continue;
+    for (const entry of schemaDocument.schemas) {
       schemas[schemaDocument.kind].set(entry.id, Object.fromEntries(Object.entries(entry.fields).map(([name, field]) => [name, fieldType(field.kind)])));
     }
   }

@@ -744,7 +744,7 @@ export async function inputCommand(argv: readonly string[], options: ISourceComm
     const negativeKeys = readCsvFlag(normalizedArgv, "--negative-keys");
     const positiveKeys = readCsvFlag(normalizedArgv, "--positive-keys");
     if (inputDocId === undefined || axisId === undefined || negativeKeys === undefined || negativeKeys.length === 0 || positiveKeys === undefined || positiveKeys.length === 0) {
-      return renderUsage(json, "TN_INPUT_ADD_AXIS_ARGS_MISSING", "Usage: tn input add-axis <input-doc-id> <axis-id> --negative-keys <key,key> --positive-keys <key,key> [--value <binding>] [--project <path>] [--json]");
+      return renderUsage(json, "TN_INPUT_ADD_AXIS_ARGS_MISSING", "Usage: tn input add-axis <input-doc-id> <axis-id> --negative-keys <bare-code|keyboard.<code>,...> --positive-keys <bare-code|keyboard.<code>,...> [--value <binding>] [--project <path>] [--json]");
     }
     return renderAuthoringResult("input", await addInputAxis({ axisId, inputDocId, negativeKeys, positiveKeys, projectPath, value: readFlag(normalizedArgv, "--value") }), json, `Input axis '${axisId}' added.`);
   }

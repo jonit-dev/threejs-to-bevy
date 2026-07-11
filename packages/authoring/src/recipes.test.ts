@@ -79,7 +79,8 @@ test("should plan top down collector as a vertical game slice", () => {
   assert.deepEqual(plan.generatedIds.entityId?.includes("coin.01"), true);
   assert.equal(plan.sourceOwners.input?.includes("input.add_axis"), true);
   assert.equal(plan.sourceOwners.scene?.includes("scene.attach_script"), true);
-  assert.equal(plan.proofCommands.some((command) => command.includes("tn playtest") && command.includes("--entity player")), true);
+  assert.equal(plan.proofCommands.some((command) => command === "tn playtest scaffold --assert pickup --project . --json"), true);
+  assert.equal(plan.proofCommands.some((command) => command.includes("--expect-moved")), false);
   assert.equal(plan.gameplayBlocks.includes("controller.top-down-cardinal"), true);
   assert.equal(plan.scriptResponsibilities.includes("owns collectible progress"), true);
   assert.equal(plan.proofHints.some((hint) => hint.includes("HUD score")), true);

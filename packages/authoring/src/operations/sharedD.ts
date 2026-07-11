@@ -1002,7 +1002,8 @@ export function validateSchemaFields(diagnostics: IAuthoringDiagnostic[], file: 
 }
 
 export function formatKeyboardBinding(key: string): string {
-  return `keyboard.${normalizeKeyboardCodeAlias(key)}`;
+  const bareCode = key.trim().replace(/^(?:keyboard\.)+/i, "");
+  return `keyboard.${normalizeKeyboardCodeAlias(bareCode)}`;
 }
 
 export function validateInputMetadata(file: string, data: unknown): IAuthoringDiagnostic[] {

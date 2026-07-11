@@ -31,7 +31,11 @@ export function movePlayerToGoal(context: ScriptContext): void {
   }
 }
 
-export function laneRunnerSystem(): void {}
+export function laneRunnerSystem(context: ScriptContext): void {
+  const state = context.state("lane-runner", { lane: 1, speed: 4 });
+  state.lane = Math.max(0, Math.min(2, state.lane));
+  state.speed = Math.max(0, state.speed + context.time.fixedDelta * 0.1);
+}
 ```
 
 ## proof

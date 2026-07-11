@@ -1,0 +1,49 @@
+{
+  "assert": {
+    "diagnostics": {
+      "noConsoleErrors": true,
+      "noNetworkErrors": true,
+      "runtimeReady": true
+    },
+    "hud": [
+      {
+        "changed": true,
+        "id": "hud.lives",
+        "textIncludes": "Lives"
+      }
+    ],
+    "movement": {
+      "entity": "player",
+      "minDistance": 0.5,
+      "minVelocity": 0.01
+    },
+    "resources": [
+      {
+        "changed": true,
+        "id": "CoinPatrol",
+        "path": "lives"
+      }
+    ]
+  },
+  "artifacts": {
+    "effectLog": "focused",
+    "screenshots": "before-after"
+  },
+  "name": "coin-lives",
+  "schemaVersion": 1,
+  "steps": [
+      {
+        "holdFrames": 45,
+        "label": "approach left patrol drone",
+        "press": "KeyA",
+        "release": true
+      }
+  ],
+  "subject": "player",
+  "target": "web",
+  "viewport": {
+    "height": 720,
+    "width": 1280
+  },
+  "warmupFrames": 10
+}

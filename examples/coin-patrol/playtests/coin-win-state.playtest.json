@@ -1,0 +1,147 @@
+{
+  "assert": {
+    "diagnostics": {
+      "noConsoleErrors": true,
+      "noNetworkErrors": true,
+      "runtimeReady": true
+    },
+    "hud": [
+      {
+        "id": "hud.lives",
+        "textIncludes": "win"
+      }
+    ],
+    "movement": {
+      "entity": "player",
+      "minDistance": 0.5
+    },
+    "resources": [
+      {
+        "id": "CoinPatrol",
+        "path": "status",
+        "textIncludes": "won"
+      }
+    ]
+  },
+  "artifacts": {
+    "effectLog": "focused",
+    "screenshots": "before-after"
+  },
+  "name": "coin-win-state",
+  "schemaVersion": 1,
+  "setup": {
+    "entities": [
+      {
+        "entity": "player",
+        "position": [
+          -4.5,
+          0.35,
+          0
+        ]
+      },
+      {
+        "entity": "coin.01",
+        "position": [
+          -4,
+          0.3,
+          0
+        ]
+      },
+      {
+        "entity": "coin.02",
+        "position": [
+          -3,
+          0.3,
+          0
+        ]
+      },
+      {
+        "entity": "coin.03",
+        "position": [
+          -2,
+          0.3,
+          0
+        ]
+      },
+      {
+        "entity": "coin.04",
+        "position": [
+          -1,
+          0.3,
+          0
+        ]
+      },
+      {
+        "entity": "coin.05",
+        "position": [
+          0,
+          0.3,
+          0
+        ]
+      },
+      {
+        "entity": "coin.06",
+        "position": [
+          1,
+          0.3,
+          0
+        ]
+      },
+      {
+        "entity": "coin.07",
+        "position": [
+          2,
+          0.3,
+          0
+        ]
+      },
+      {
+        "entity": "coin.08",
+        "position": [
+          3,
+          0.3,
+          0
+        ]
+      },
+      {
+        "entity": "coin.09",
+        "position": [
+          4,
+          0.3,
+          0
+        ]
+      },
+      {
+        "entity": "coin.010",
+        "position": [
+          4.4,
+          0.3,
+          0
+        ]
+      },
+      {
+        "entity": "drone.01",
+        "position": [
+          0,
+          0.35,
+          4
+        ]
+      }
+    ]
+  },
+  "steps": [
+    {
+      "holdFrames": 90,
+      "label": "collect the staged coin route",
+        "press": "KeyD",
+        "release": true
+    }
+  ],
+  "subject": "player",
+  "target": "web",
+  "viewport": {
+    "height": 720,
+    "width": 1280
+  },
+  "warmupFrames": 10
+}

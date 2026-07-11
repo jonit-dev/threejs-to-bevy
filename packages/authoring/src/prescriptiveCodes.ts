@@ -21,7 +21,7 @@ export const PRESCRIPTIVE_DIAGNOSTIC_CODES: readonly IPrescriptiveDiagnosticCode
     evidence: "Compiler sourceRef tests and agent QA commonly hit arbitrary Three.js/local imports before learning the portable helper allowlist.",
     fix: {
       allowed: helperPackages,
-      cookbook: "script-portable-system",
+      cookbook: "player-move-wasd",
       docs: "docs/contracts/scripting.md",
       instruction: "Replace arbitrary, namespace, or default imports with named imports from approved portable helper packages, or inline deterministic helpers inside the exported system.",
       snippet: 'import { Vector3 } from "@threenative/script-stdlib";',
@@ -33,7 +33,7 @@ export const PRESCRIPTIVE_DIAGNOSTIC_CODES: readonly IPrescriptiveDiagnosticCode
     evidence: "Compiler sourceRef fixtures cover exported systems that call module-local helpers which are not emitted into scripts.bundle.js.",
     fix: {
       allowed: helperPackages,
-      cookbook: "script-portable-system",
+      cookbook: "player-move-wasd",
       docs: "docs/contracts/scripting.md",
       instruction: "Move helper functions and constants inside the exported system function, or replace them with supported portable helper imports.",
       snippet: "export function update(context) {\n  const speed = 3.5;\n  const clamp = (value, min, max) => Math.max(min, Math.min(max, value));\n  return clamp(speed, 0, 10);\n}",
@@ -54,7 +54,7 @@ export const PRESCRIPTIVE_DIAGNOSTIC_CODES: readonly IPrescriptiveDiagnosticCode
     code: "TN_AUTHORING_SHAPE_INVALID",
     evidence: "Authoring operation payload validation produces the most common validation failure across scene, UI, material, and runtime document fixtures.",
     fix: {
-      cookbook: "scene-first-pass",
+      cookbook: "collectible-respawn",
       docs: "docs/contracts/authoring-mcp.md",
       instruction: "Send the operation payload shape named by the diagnostic path, using arrays/objects/scalars exactly as the structured source schema expects.",
       snippet: '{ "position": [0, 0, 0], "rotation": [0, 0, 0], "scale": [1, 1, 1] }',
@@ -65,7 +65,7 @@ export const PRESCRIPTIVE_DIAGNOSTIC_CODES: readonly IPrescriptiveDiagnosticCode
     code: "TN_AUTHORING_REF_MISSING",
     evidence: "Scene validation fixtures and MCP parity tests cover missing entity, prefab, material, resource, and UI references.",
     fix: {
-      cookbook: "scene-first-pass",
+      cookbook: "collectible-respawn",
       docs: "docs/contracts/authoring-mcp.md",
       instruction: "Create the referenced durable declaration first or update the source reference to one of the declared stable IDs.",
       snippet: '{ "id": "player-kart" }',
@@ -116,7 +116,7 @@ export const PRESCRIPTIVE_DIAGNOSTIC_CODES: readonly IPrescriptiveDiagnosticCode
     code: "TN_IR_MESH_RENDERER_MATERIAL_MISSING",
     evidence: "IR validation fixtures cover missing material references after bundle emission.",
     fix: {
-      cookbook: "materials-first-pass",
+      cookbook: "materials-pass",
       docs: "docs/contracts/ir.md",
       instruction: "Add the missing material to the durable material source document or update MeshRenderer.material to an existing material id.",
       snippet: '{ "id": "mat.default", "color": "#ffffff", "roughness": 0.8, "metalness": 0 }',

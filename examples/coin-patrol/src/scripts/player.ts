@@ -1,4 +1,4 @@
-import { defineBehavior, Vector3 } from "@threenative/script-stdlib";
+import { defineBehavior } from "@threenative/script-stdlib";
 import type { ProjectContext } from "../../.threenative/types/project-context";
 
 export const movePlayerToGoal = defineBehavior(
@@ -78,6 +78,7 @@ export const coinPatrolRules = defineBehavior(
     writes: ["Transform"],
     resourceReads: ["CoinPatrol"],
     resourceWrites: ["CoinPatrol"],
+    services: ["physics.sensor"],
   },
   (context: ProjectContext): void => {
     const coinIds = [
@@ -110,6 +111,11 @@ export const coinPatrolRules = defineBehavior(
       return;
     }
     const playerPosition = player.transform().position;
+    const physics = (context as unknown as {
+      physics?: {
+        sensor(options: { phases: Array<"enter" | "stay">; sensor: string }): { events: Array<{ occupants: string[]; phase: "enter" | "stay" }> };
+      };
+    }).physics;
     let coins = game.coins;
     for (const coinId of coinIds) {
       const coin = context.entity(coinId);
@@ -123,7 +129,8 @@ export const coinPatrolRules = defineBehavior(
       }
       const dx = playerPosition[0] - coinPosition[0];
       const dz = playerPosition[2] - coinPosition[2];
-      if (dx * dx + dz * dz < 0.6 * 0.6) {
+      const contact = physics?.sensor({ phases: ["enter", "stay"], sensor: coinId }).events.some((event) => event.occupants.includes("player")) === true;
+      if (contact || dx * dx + dz * dz < 0.6 * 0.6) {
         coinTransform.setPosition([coinPosition[0], -100, coinPosition[2]]);
         coins += 1;
       }
@@ -163,7 +170,3 @@ export const coinPatrolRules = defineBehavior(
     });
   },
 );
-
-export function laneRunnerSystem(): void {
-  // owns lane movement intent; owns hazard collision fail/retry state; owns score/distance resource.
-}

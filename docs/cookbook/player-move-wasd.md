@@ -12,6 +12,7 @@ surfaces:
 ## commands
 ```bash
 tn input add-axis arena MoveX --negative-keys KeyA,ArrowLeft --positive-keys KeyD,ArrowRight --project . --json
+tn input add-axis arena MoveZ --negative-keys KeyS,ArrowDown --positive-keys KeyW,ArrowUp --project . --json
 ```
 
 ## source-delta
@@ -21,15 +22,23 @@ tn input add-axis arena MoveX --negative-keys KeyA,ArrowLeft --positive-keys Key
 
 ## script
 ```ts
-import { Vector3, type ScriptContext } from "@threenative/script-stdlib";
+import { defineBehavior } from "@threenative/script-stdlib";
+import type { ScriptContext } from "@threenative/script-stdlib";
 
-export function movePlayerToGoal(context: ScriptContext): void {
-  for (const entity of context.query()) {
-    const transform = entity.transform();
-    const moveX = context.input.getAxis("MoveX");
-    transform.position = Vector3.add(transform.position, [moveX * context.time.fixedDelta * 2.4, 0, 0]);
-  }
-}
+export const movePlayerToGoal = defineBehavior(
+  { id: "move-player-to-goal", schedule: "fixedUpdate", writes: ["Transform"] },
+  (context: ScriptContext): void => {
+    const player = context.entity("player");
+    if (player === undefined) return;
+    const position = player.transform().position;
+    const delta = context.time.fixedDelta * 2.4;
+    player.transform().setPosition([
+      position[0] + context.input.getAxis("MoveX") * delta,
+      position[1],
+      position[2] + context.input.getAxis("MoveZ") * delta,
+    ]);
+  },
+);
 ```
 
 ## proof

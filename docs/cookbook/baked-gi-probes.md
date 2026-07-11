@@ -25,7 +25,10 @@ tn bake gi --project . --ray-count 96 --seed 7 --max-distance 24 --json
 ```ts
 import type { ScriptContext } from "@threenative/script-stdlib";
 
-export function update(_context: ScriptContext): void {}
+export function update(_context: ScriptContext): void {
+  const elapsed = _context.time.elapsed;
+  void elapsed;
+}
 ```
 
 ## proof

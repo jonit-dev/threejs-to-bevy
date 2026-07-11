@@ -1,0 +1,53 @@
+{
+  "assert": {
+    "diagnostics": {
+      "noConsoleErrors": true,
+      "noNetworkErrors": true,
+      "runtimeReady": true
+    },
+    "hud": [
+      {
+        "id": "hud.coins",
+        "textIncludes": "Coins"
+      }
+    ],
+    "movement": {
+      "entity": "player",
+      "minDistance": 0.5,
+      "minVelocity": 0.01
+    },
+    "resources": [
+      {
+        "changed": true,
+        "id": "CoinPatrol"
+      }
+    ]
+  },
+  "artifacts": {
+    "effectLog": "focused",
+    "screenshots": "before-after"
+  },
+  "name": "coin-pickup",
+  "schemaVersion": 1,
+  "steps": [
+    {
+      "holdFrames": 45,
+      "label": "move to pickup",
+      "press": "KeyD",
+      "release": true
+    },
+    {
+      "holdFrames": 35,
+      "label": "continue route",
+      "press": "KeyW",
+      "release": true
+    }
+  ],
+  "subject": "player",
+  "target": "web",
+  "viewport": {
+    "height": 720,
+    "width": 1280
+  },
+  "warmupFrames": 10
+}

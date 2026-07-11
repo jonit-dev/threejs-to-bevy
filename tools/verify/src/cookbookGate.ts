@@ -3,6 +3,8 @@ import { cp, mkdir, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { basename, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { CLI_COMMAND_DEFINITIONS } from "@threenative/cli";
+import { PRESCRIPTIVE_DIAGNOSTIC_CODES } from "@threenative/authoring";
 
 export interface ICookbookGateCommandResult {
   command: string;
@@ -19,6 +21,7 @@ export interface ICookbookGateEntryResult {
 }
 
 export interface ICookbookGateReport {
+  diagnostics: Array<{ code: string; message: string; severity: "error" | "warning" }>;
   entries: ICookbookGateEntryResult[];
   generatedAt: string;
   ok: boolean;
@@ -30,6 +33,7 @@ interface IParsedCookbookEntry {
   authoring?: "typed-spec";
   commands: string[];
   id: string;
+  proofCommands: string[];
   script: string;
   scriptPath?: string;
 }
@@ -40,6 +44,7 @@ export async function runCookbookGate(options: { entriesDir?: string; root?: str
   const templateDir = options.templateDir ?? resolve(root, "templates/structured-source-starter");
   const files = (await readdir(entriesDir)).filter((file) => file.endsWith(".md") && file !== "FORMAT.md").sort();
   const entries: ICookbookGateEntryResult[] = [];
+  const parsedEntries: IParsedCookbookEntry[] = [];
   for (const file of files) {
     const entryPath = resolve(entriesDir, file);
     const parsed = parseEntry(await readFile(entryPath, "utf8"), entryPath);
@@ -52,12 +57,15 @@ export async function runCookbookGate(options: { entriesDir?: string; root?: str
       });
       continue;
     }
+    parsedEntries.push(parsed);
     entries.push(await verifyEntry({ entry: parsed, root, templateDir }));
   }
+  const diagnostics = validateCookbookCrossReferences(parsedEntries, entriesDir);
   const report = {
+    diagnostics,
     entries,
     generatedAt: new Date().toISOString(),
-    ok: entries.every((entry) => entry.ok),
+    ok: diagnostics.every((diagnostic) => diagnostic.severity !== "error") && entries.every((entry) => entry.ok),
     schema: "threenative.cookbook-verification" as const,
     version: "0.1.0" as const,
   };
@@ -69,6 +77,14 @@ async function verifyEntry(options: { entry: IParsedCookbookEntry; root: string;
   const commands: ICookbookGateCommandResult[] = [];
   const diagnostics: ICookbookGateEntryResult["diagnostics"] = [];
   try {
+    if (hasEmptyExportBody(options.entry.script)) {
+      diagnostics.push({
+        code: "TN_COOKBOOK_GATE_EMPTY_SCRIPT_EXPORT",
+        message: `Entry '${options.entry.id}' contains an exported function with an empty or comment-only body.`,
+        severity: "error",
+      });
+      return { commands, diagnostics, entryId: options.entry.id, ok: false };
+    }
     await cp(options.templateDir, projectPath, {
       recursive: true,
       filter: (source) => !source.includes("/node_modules/") && !source.includes("/dist/") && !source.includes("/artifacts/"),
@@ -145,9 +161,61 @@ function parseEntry(source: string, file: string): IParsedCookbookEntry | undefi
   const authoringValue = /^authoring:\s*(.+)$/m.exec(source)?.[1]?.trim();
   const scriptPath = /^scriptPath:\s*(.+)$/m.exec(source)?.[1]?.trim();
   const commands = section(source, "commands")?.split(/\r?\n/).map((line) => line.trim()).filter((line) => line !== "" && !line.startsWith("#"));
+  const proofCommands = section(source, "proof")?.split(/\r?\n/).map((line) => line.trim()).filter((line) => line !== "" && !line.startsWith("#") && line.startsWith("tn ")) ?? [];
   const script = section(source, "script") ?? "";
   const authoring = authoringValue === "typed-spec" ? authoringValue : undefined;
-  return id === undefined || commands === undefined ? undefined : { authoring, commands, id, script, scriptPath };
+  return id === undefined || commands === undefined ? undefined : { authoring, commands, id, proofCommands, script, scriptPath };
+}
+
+function validateCookbookCrossReferences(
+  parsedEntries: readonly IParsedCookbookEntry[],
+  entriesDir: string,
+): Array<{ code: string; message: string; severity: "error" | "warning" }> {
+  const diagnostics: Array<{ code: string; message: string; severity: "error" | "warning" }> = [];
+  const cookbookIds = new Set(parsedEntries.map((entry) => entry.id));
+  for (const code of PRESCRIPTIVE_DIAGNOSTIC_CODES) {
+    const cookbookId = code.fix.cookbook;
+    if (cookbookId !== undefined && !cookbookIds.has(cookbookId)) {
+      diagnostics.push({
+        code: "TN_COOKBOOK_GATE_COOKBOOK_REFERENCE_INVALID",
+        message: `Diagnostic '${code.code}' references missing cookbook entry '${cookbookId}' in ${entriesDir}.`,
+        severity: "error",
+      });
+    }
+  }
+  for (const entry of parsedEntries) {
+    for (const command of entry.commands) {
+      diagnostics.push(...validateCookbookCommand(entry.id, command));
+    }
+    for (const command of entry.proofCommands) {
+      diagnostics.push(...validateCookbookCommand(entry.id, command));
+    }
+  }
+  return diagnostics;
+}
+
+function validateCookbookCommand(entryId: string, command: string): Array<{ code: string; message: string; severity: "error" | "warning" }> {
+  const args = splitCommand(command);
+  if (args[0] !== "tn") {
+    return [{ code: "TN_COOKBOOK_GATE_COMMAND_REGISTRY_INVALID", message: `Entry '${entryId}' command does not start with 'tn': ${command}`, severity: "error" }];
+  }
+  const rootCommand = args[1];
+  const definition = rootCommand === undefined ? undefined : CLI_COMMAND_DEFINITIONS[rootCommand];
+  if (definition === undefined) {
+    return [{ code: "TN_COOKBOOK_GATE_COMMAND_REGISTRY_INVALID", message: `Entry '${entryId}' command uses unregistered CLI command '${rootCommand ?? ""}': ${command}`, severity: "error" }];
+  }
+  if (definition.subcommands !== undefined) {
+    const subcommand = args.slice(2).find((arg) => !arg.startsWith("-"));
+    if (subcommand !== undefined && !definition.subcommands.includes(subcommand)) {
+      return [{ code: "TN_COOKBOOK_GATE_COMMAND_REGISTRY_INVALID", message: `Entry '${entryId}' command uses unregistered '${rootCommand}' subcommand '${subcommand}': ${command}`, severity: "error" }];
+    }
+  }
+  return [];
+}
+
+function hasEmptyExportBody(source: string): boolean {
+  const withoutComments = source.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/[^\n]*/g, "");
+  return /export\s+(?:async\s+)?function\s+[A-Za-z_$][\w$]*\s*\([^)]*\)\s*(?:[:][^{]+)?\{\s*\}/m.test(withoutComments);
 }
 
 function section(source: string, name: string): string | undefined {

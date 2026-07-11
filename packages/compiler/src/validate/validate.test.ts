@@ -116,7 +116,8 @@ test("validate should preserve IR diagnostic fixes", async () => {
     const diagnostic = report.diagnostics.find((item) => item.code === "TN_IR_SYSTEM_RESOURCE_SCHEMA_MISSING");
 
     assert.equal(report.ok, false);
-    assert.match(diagnostic?.fix?.instruction ?? "", /Declare resource 'Score'/);
+    assert.match(diagnostic?.fix?.instruction ?? "", /content\/schemas\/resources\.schema\.json/);
+    assert.match(diagnostic?.fix?.snippet ?? "", /"threenative\.schema"/);
     assert.match(diagnostic?.fix?.snippet ?? "", /"Score"/);
   } finally {
     await rm(bundle, { force: true, recursive: true });

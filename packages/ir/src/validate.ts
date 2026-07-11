@@ -963,7 +963,7 @@ function validateMeshRendererReferences(
       diagnostics.push({
         code: "TN_IR_MESH_RENDERER_MATERIAL_MISSING",
         fix: {
-          cookbook: "materials-first-pass",
+          cookbook: "materials-pass",
           docs: "docs/contracts/ir.md",
           instruction: "Add the missing material to the durable material source document or update MeshRenderer.material to an existing material id.",
           snippet: '{ "id": "mat.default", "color": "#ffffff", "roughness": 0.8, "metalness": 0 }',

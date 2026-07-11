@@ -23,7 +23,10 @@ tn environment set-volumetrics world --volumetrics '{"heightFog":{"enabled":true
 ```ts
 import type { ScriptContext } from "@threenative/script-stdlib";
 
-export function update(_context: ScriptContext): void {}
+export function update(_context: ScriptContext): void {
+  const elapsed = _context.time.elapsed;
+  void elapsed;
+}
 ```
 
 ## proof

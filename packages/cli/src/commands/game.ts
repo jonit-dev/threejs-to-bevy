@@ -238,7 +238,7 @@ async function gamePlanCommand(argv: readonly string[]): Promise<ICommandResult>
     },
     gameplayBlocks,
     kitCandidates,
-    mechanicDecomposition: buildMechanicDecomposition(goal, gameplayBlocks, inventory),
+    mechanicDecomposition: buildMechanicDecomposition(goal, gameplayBlocks, inventory, kitCandidates),
     message: "Deterministic game-production plan generated without mutating source.",
     mutate: false,
     phases: GAME_WORKFLOW_PHASE_IDS.map((id, index) => ({ id, order: index + 1, summary: phaseSummary(id) })),
@@ -1116,6 +1116,7 @@ function buildMechanicDecomposition(
   goal: string,
   gameplayBlocks: readonly IGameplayBlockDescriptor[],
   inventory: Awaited<ReturnType<typeof createGameAgentInventory>>,
+  kitCandidates: readonly IGamePlan["kitCandidates"][number][],
 ): IGamePlan["mechanicDecomposition"] {
   const sourceOwner = inventory.primaryScene === undefined ? "content/scenes/arena.scene.json" : inventory.primaryScene.file;
   const scriptOwner = inventory.scripts[0]?.module ?? "src/scripts/player.ts";
@@ -1130,12 +1131,14 @@ function buildMechanicDecomposition(
   const camera = blockByKind.get("camera");
   const spawn = blockByKind.get("spawn");
   const defaults = inferPlanDefaults(inventory);
+  const matchedMovementRecipe = kitCandidates.find((candidate) => candidate.score > 0 && candidate.recipeId !== "vehicle-checkpoint")?.recipeId;
+  const movementRecipe = matchedMovementRecipe ?? movement?.recipeIds[0];
   const rows: IGamePlan["mechanicDecomposition"] = [
     mechanicRow({
       block: movement,
-      command: movement?.recipeIds[0] === undefined
+      command: movementRecipe === undefined
         ? `tn add follow-camera --camera ${defaults.cameraId} --target ${defaults.playerId} --project . --json`
-        : buildRecipeApplyCommand(movement.recipeIds[0], defaults, "movement"),
+        : buildRecipeApplyCommand(movementRecipe, defaults, "movement"),
       fallbackCookbookId: "player-move-wasd",
       mechanic: "movement",
       owner: scriptOwner,

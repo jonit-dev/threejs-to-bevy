@@ -80,7 +80,7 @@ export function ecsToIr(world: IEcsWorldLike, options: IEcsEmitOptions = {}): IE
             actions: snapshot.input.actions,
             axes: snapshot.input.axes,
           },
-    resourceSchemas: schemaFile("threenative.resource-schemas", snapshot.resourceSchemas),
+    resourceSchemas: schemaFile("threenative.resource-schemas", mergeSchemaRecords(snapshot.resourceSchemas, resolvedScripts.resourceSchemas)),
     runtimeConfig:
       snapshot.runtimeConfig === undefined
         ? undefined
@@ -118,4 +118,22 @@ function schemaFile(schema: IIrSchemaFile["schema"], schemas: Record<string, { f
         .map(([name, value]) => [name, { fields: value.fields }]),
     ) as IIrSchemaFile["schemas"],
   };
+}
+
+function mergeSchemaRecords(
+  left: Record<string, { fields: Record<string, unknown> }>,
+  right: Record<string, { fields: Record<string, unknown> }>,
+): Record<string, { fields: Record<string, unknown> }> {
+  const merged: Record<string, { fields: Record<string, unknown> }> = Object.fromEntries(
+    Object.entries(left).map(([name, value]) => [name, { fields: { ...value.fields } }]),
+  );
+  for (const [name, value] of Object.entries(right)) {
+    merged[name] = {
+      fields: {
+        ...(merged[name]?.fields ?? {}),
+        ...value.fields,
+      },
+    };
+  }
+  return merged;
 }

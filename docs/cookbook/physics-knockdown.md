@@ -33,7 +33,10 @@ export function movePlayerToGoal(context: ScriptContext): void {
   }
 }
 
-export function physicsKnockdown(): void {}
+export function physicsKnockdown(context: ScriptContext): void {
+  const state = context.state("physics-target", { hit: false, impulse: 0 });
+  state.impulse = Math.max(0, state.impulse);
+}
 ```
 
 ## proof

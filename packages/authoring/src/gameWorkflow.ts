@@ -161,7 +161,9 @@ interface ICreateGameQualityReportOptions {
 interface IProjectEvidenceSnapshot {
   artifactEvidence: IGameWorkflowEvidence[];
   authoring: IAuthoringProject;
+  emptyGameplaySystems: Array<{ exportName: string; file: string; modulePath: string; systemId: string }>;
   hasBuildProof: boolean;
+  hasGameplayMutationProof: boolean;
   hasInputSource: boolean;
   hasMobileProof: boolean;
   hasMotionFeelProof: boolean;
@@ -171,6 +173,7 @@ interface IProjectEvidenceSnapshot {
   hasScriptSource: boolean;
   hasSmoothScriptSource: boolean;
   hasDressedWorldSource: boolean;
+  isGeneratedGame: boolean;
   invalidAudioFiles: string[];
   projectOutDir?: string;
   sourceEvidence: IGameWorkflowEvidence[];
@@ -183,6 +186,28 @@ export async function createGameQualityReport(options: ICreateGameQualityReportO
   const diagnostics: IGameWorkflowDiagnostic[] = [];
   const sourceDiagnostics = snapshot.authoring.diagnostics.map((diagnostic) => ({ ...diagnostic, phase: "debug" as const }));
   diagnostics.push(...sourceDiagnostics);
+
+  if (snapshot.isGeneratedGame) {
+    for (const system of snapshot.emptyGameplaySystems) {
+      diagnostics.push(gameDiagnostic({
+        code: "TN_GAME_EMPTY_SYSTEM_EXPORT",
+        file: system.file,
+        message: `Registered gameplay system '${system.systemId}' references empty export '${system.exportName}'.`,
+        path: `/gameplaySystems/${system.systemId}/script/export`,
+        phase: "gameplay",
+        suggestedFix: `Implement '${system.exportName}' in ${system.modulePath} with a real input, transform, resource, HUD, trigger, or state mutation before running proof.`,
+      }));
+    }
+    if (!snapshot.hasGameplayMutationProof) {
+      diagnostics.push(gameDiagnostic({
+        code: "TN_GAMEPLAY_MUTATION_PROOF_MISSING",
+        message: "Generated-game proof is missing a scenario that asserts a resource or HUD value changed because of gameplay.",
+        path: "/phaseLedgers/gameplay",
+        phase: "gameplay",
+        suggestedFix: "Add a playtest scenario with assert.resources[].changed=true or assert.hud[].changed=true, then rerun tn game qa --run-proof --json.",
+      }));
+    }
+  }
 
   const playableEvidence = [
     ...snapshot.sourceEvidence.filter((evidence) => evidence.description.includes("scene") || evidence.description.includes("script") || evidence.description.includes("input")),
@@ -502,6 +527,7 @@ function evidenceForPhase(id: GameWorkflowPhaseId, snapshot: IProjectEvidenceSna
 
 async function inspectGameProject(projectPath: string): Promise<IProjectEvidenceSnapshot> {
   const authoring = await loadAuthoringProject({ projectPath });
+  const projectConfig = await readOptionalJson(resolve(projectPath, "threenative.config.json"));
   const projectOutDir = await readProjectOutDir(projectPath);
   const structuredSourceEvidence = authoring.documents.map((document) => ({
     description: describeStructuredSource(document),
@@ -511,7 +537,10 @@ async function inspectGameProject(projectPath: string): Promise<IProjectEvidence
   const scriptSourceEvidence = await collectTypeScriptSourceEvidence(projectPath);
   const sourceEvidence = [...structuredSourceEvidence, ...scriptSourceEvidence].sort(compareEvidence);
   const artifactEvidence = await collectArtifactEvidence(projectPath);
-  const scriptFiles = await readScriptFiles(projectPath);
+  const scriptSources = await readScriptSources(projectPath);
+  const scriptFiles = scriptSources.map((entry) => entry.source);
+  const emptyGameplaySystems = await findEmptyGameplaySystems(projectPath, authoring);
+  const hasGameplayMutationProof = await hasGameplayMutationProofArtifacts(projectPath);
   const invalidAudioFiles = await collectInvalidAudioFiles(projectPath, authoring);
   const fullStructuredSourceText = authoring.documents.map((document) => JSON.stringify(document.data)).join(" ");
   const sourceSearchText = [
@@ -534,7 +563,9 @@ async function inspectGameProject(projectPath: string): Promise<IProjectEvidence
   return {
     artifactEvidence,
     authoring,
+    emptyGameplaySystems,
     hasBuildProof,
+    hasGameplayMutationProof,
     hasDressedWorldSource: (hasDressedWorldSource || worldProofStatus === "pass") && worldProofStatus !== "fail",
     hasInputSource,
     hasMobileProof,
@@ -546,6 +577,7 @@ async function inspectGameProject(projectPath: string): Promise<IProjectEvidence
     hasScreenshotProof,
     hasScriptSource,
     hasSmoothScriptSource: includesAnyText(scriptHaystack, ["fixeddelta", "movetoward", "lerp", "velocity", "moveprogress", "smooth", "ease", "interpol"]),
+    isGeneratedGame: isRecord(projectConfig?.production),
     invalidAudioFiles,
     ...(projectOutDir === undefined ? {} : { projectOutDir }),
     sourceEvidence,
@@ -775,6 +807,7 @@ function providerProbe(
 
 function gameDiagnostic(input: {
   code: string;
+  file?: string;
   message: string;
   path: string;
   phase?: GameWorkflowPhaseId;
@@ -783,6 +816,7 @@ function gameDiagnostic(input: {
 }): IGameWorkflowDiagnostic {
   const diagnostic = authoringDiagnostic({
     code: input.code,
+    ...(input.file === undefined ? {} : { file: input.file }),
     message: input.message,
     path: input.path,
     severity: input.severity,
@@ -946,16 +980,75 @@ function countTermHits(haystack: string, terms: readonly string[]): number {
 }
 
 async function readScriptFiles(projectPath: string): Promise<string[]> {
+  return (await readScriptSources(projectPath)).map((entry) => entry.source);
+}
+
+async function readScriptSources(projectPath: string): Promise<Array<{ path: string; source: string }>> {
   const files = await listFiles(resolve(projectPath, "src"));
-  const sources: string[] = [];
+  const sources: Array<{ path: string; source: string }> = [];
   for (const file of files.filter((file) => file.endsWith(".ts"))) {
     try {
-      sources.push(await readFile(file, "utf8"));
+      sources.push({ path: normalizeRelative(projectPath, file), source: await readFile(file, "utf8") });
     } catch {
       // Missing/unreadable script files are already surfaced by authoring validation.
     }
   }
   return sources;
+}
+
+async function findEmptyGameplaySystems(projectPath: string, authoring: IAuthoringProject): Promise<Array<{ exportName: string; file: string; modulePath: string; systemId: string }>> {
+  const references: Array<{ exportName: string; file: string; modulePath: string; systemId: string }> = [];
+  for (const document of authoring.documents) {
+    const data = isRecord(document.data) ? document.data : undefined;
+    const systems = data === undefined ? [] : [
+      ...(document.kind === "systems" && Array.isArray(data.systems) ? data.systems : []),
+      ...(document.kind === "scene" && Array.isArray(data.systems) ? data.systems : []),
+    ];
+    for (const value of systems) {
+      if (!isRecord(value) || !isRecord(value.script) || typeof value.id !== "string" || typeof value.script.module !== "string" || typeof value.script.export !== "string") continue;
+      references.push({ exportName: value.script.export, file: document.projectRelativePath, modulePath: value.script.module, systemId: value.id });
+    }
+  }
+  const empty: Array<{ exportName: string; file: string; modulePath: string; systemId: string }> = [];
+  for (const reference of references) {
+    try {
+      const source = await readFile(resolve(projectPath, reference.modulePath), "utf8");
+      if (exportBodyIsEmpty(source, reference.exportName)) empty.push(reference);
+    } catch {
+      // Missing script modules are reported by authoring/build diagnostics.
+    }
+  }
+  return empty.sort((left, right) => left.file.localeCompare(right.file) || left.systemId.localeCompare(right.systemId));
+}
+
+async function hasGameplayMutationProofArtifacts(projectPath: string): Promise<boolean> {
+  const files = (await listFiles(resolve(projectPath, "playtests"))).filter((file) => file.endsWith(".json"));
+  for (const file of files) {
+    try {
+      const parsed = JSON.parse(await readFile(file, "utf8")) as unknown;
+      const assertions = isRecord(parsed) && isRecord(parsed.assert) ? parsed.assert : undefined;
+      if (assertionChanged(assertions?.resources) || assertionChanged(assertions?.hud)) return true;
+    } catch {
+      // Invalid scenario source is reported by the playtest validator.
+    }
+  }
+  return false;
+}
+
+function assertionChanged(value: unknown): boolean {
+  return Array.isArray(value) && value.some((entry) => isRecord(entry) && entry.changed === true);
+}
+
+function exportBodyIsEmpty(source: string, exportName: string): boolean {
+  const escaped = exportName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const functionMatch = new RegExp(`export\\s+(?:async\\s+)?function\\s+${escaped}\\s*\\([^)]*\\)[^{]*\\{([\\s\\S]*?)\\}`).exec(source);
+  if (functionMatch !== null) return stripScriptComments(functionMatch[1] ?? "").trim() === "";
+  const arrowMatch = new RegExp(`export\\s+(?:const|let)\\s+${escaped}\\s*=([\\s\\S]*?)=>\\s*\\{([\\s\\S]*?)\\}`).exec(source);
+  return arrowMatch !== null && stripScriptComments(arrowMatch[2] ?? "").trim() === "";
+}
+
+function stripScriptComments(source: string): string {
+  return source.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/[^\n]*/g, "");
 }
 
 async function readEvidenceContent(path: string): Promise<string> {

@@ -24,15 +24,13 @@ function componentSchemaFix(component: string): NonNullable<IIrDiagnostic["fix"]
 function resourceSchemaFix(resource: string): NonNullable<IIrDiagnostic["fix"]> {
   return {
     docs: "docs/contracts/ir.md",
-    instruction: `Declare resource '${resource}' in resource schemas before listing it in resourceReads or resourceWrites.`,
+    instruction: `Replace content/schemas/resources.schema.json with this full authoring document, then replace the placeholder field with the fields used by resource '${resource}'.`,
     snippet: JSON.stringify({
-      schema: "threenative.resource-schemas",
+      schema: "threenative.schema",
       version: "0.1.0",
-      schemas: {
-        [resource]: {
-          fields: {},
-        },
-      },
+      id: "resource-schemas",
+      kind: "resource",
+      schemas: [{ id: resource, fields: { value: { kind: "json" } } }],
     }, null, 2),
   };
 }

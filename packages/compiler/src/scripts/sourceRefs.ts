@@ -49,6 +49,7 @@ const supportedScriptHelperBindings: Record<SupportedScriptHelperImport, Readonl
 
 export interface IResolveSystemScriptSourcesResult<T extends ISystemScriptSource> {
   diagnostics: ICompilerDiagnostic[];
+  resourceSchemas: Record<string, { fields: Record<string, { kind: string }> }>;
   systems: T[];
 }
 
@@ -57,11 +58,18 @@ export function resolveSystemScriptSources<T extends ISystemScriptSource>(
   projectPath: string | undefined,
 ): IResolveSystemScriptSourcesResult<T> {
   const diagnostics: ICompilerDiagnostic[] = [];
-  return {
-    diagnostics,
-    systems: systems.map((system) => {
+  const resourceSchemas = new Map<string, { fields: Record<string, { kind: string }> }>();
+  const resolvedSystems = systems.map((system) => {
       const script = system.script;
       if (script?.sourceRef === undefined || script.source !== undefined) {
+        if (script?.source !== undefined) {
+          const resourceAccess = extractResourceAccess(script.source, {
+            exportName: script.exportName,
+            systemName: system.name,
+          });
+          diagnostics.push(...resourceAccess.diagnostics);
+          mergeResourceSchemas(resourceSchemas, resourceAccess.resourceSchemas);
+        }
         return system;
       }
       if (projectPath === undefined) {
@@ -87,6 +95,7 @@ export function resolveSystemScriptSources<T extends ISystemScriptSource>(
         systemName: system.name,
       });
       diagnostics.push(...resourceAccess.diagnostics);
+      mergeResourceSchemas(resourceSchemas, resourceAccess.resourceSchemas);
       diagnostics.push(...diagnoseBehaviorMetadataDuplicates(system, resolved.behaviorMetadata));
       return {
         ...system,
@@ -104,8 +113,26 @@ export function resolveSystemScriptSources<T extends ISystemScriptSource>(
           },
         },
       } as T;
-    }),
+    });
+  return {
+    diagnostics,
+    resourceSchemas: Object.fromEntries([...resourceSchemas.entries()].sort(([left], [right]) => left.localeCompare(right))),
+    systems: resolvedSystems,
   };
+}
+
+function mergeResourceSchemas(
+  target: Map<string, { fields: Record<string, { kind: string }> }>,
+  source: Record<string, { fields: Record<string, { kind: string }> }>,
+): void {
+  for (const [resourceId, sourceSchema] of Object.entries(source)) {
+    const targetSchema = target.get(resourceId) ?? { fields: {} };
+    for (const [fieldName, field] of Object.entries(sourceSchema.fields)) {
+      const previous = targetSchema.fields[fieldName];
+      targetSchema.fields[fieldName] = previous === undefined || previous.kind === field.kind ? field : { kind: "json" };
+    }
+    target.set(resourceId, targetSchema);
+  }
 }
 
 function mergeStringLists(left: ReadonlyArray<string> | undefined, right: ReadonlyArray<string>): string[] | undefined {

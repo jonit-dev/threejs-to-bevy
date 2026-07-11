@@ -162,7 +162,7 @@ export const CLI_COMMAND_REGISTRY = defineCommandRegistry({
   input: {
     description: "Create and mutate structured input source documents.",
     implemented: true,
-    usage: "tn input add-action <input-doc-id> <action-id> --keys <key,key> [--project <path>] [--json]\n              tn input add-axis <input-doc-id> <axis-id> --negative-keys <key,key> --positive-keys <key,key> [--value <binding>] [--project <path>] [--json]\n              tn input set-controls <input-doc-id> --profile <profile-id> --rows <json-array> [--project <path>] [--json]\n              tn input set-override <input-doc-id> <action-or-axis-id> --profile <profile-id> --device <device> --control <control> [--axis-slot <slot>] [--json]",
+    usage: "tn input add-action <input-doc-id> <action-id> --keys <key,key> [--project <path>] [--json]\n              tn input add-axis <input-doc-id> <axis-id> --negative-keys <bare-code|keyboard.<code>,...> --positive-keys <bare-code|keyboard.<code>,...> [--value <binding>] [--project <path>] [--json]\n              tn input set-controls <input-doc-id> --profile <profile-id> --rows <json-array> [--project <path>] [--json]\n              tn input set-override <input-doc-id> <action-or-axis-id> --profile <profile-id> --device <device> --control <control> [--axis-slot <slot>] [--json]",
   },
   material: {
     description: "Create and mutate structured material source documents.",

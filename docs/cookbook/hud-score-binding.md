@@ -21,15 +21,25 @@ tn ui bind hud score --resource GameState.score --project . --json
 
 ## script
 ```ts
-import { Vector3, type ScriptContext } from "@threenative/script-stdlib";
+import { defineBehavior } from "@threenative/script-stdlib";
+import type { ScriptContext } from "@threenative/script-stdlib";
 
-export function movePlayerToGoal(context: ScriptContext): void {
-  for (const entity of context.query()) {
-    const transform = entity.transform();
-    transform.position = Vector3.add(transform.position, [context.input.getAxis("MoveX") * context.time.fixedDelta * 2.4, 0, 0]);
-  }
-  context.resources.set?.("GameState", { countdown: "Score", score: 0 });
-}
+export const movePlayerToGoal = defineBehavior(
+  { id: "move-player-to-goal", schedule: "fixedUpdate", resourceReads: ["GameState"], resourceWrites: ["GameState"], writes: ["Transform"] },
+  (context: ScriptContext): void => {
+    const player = context.entity("player");
+    if (player === undefined) return;
+    const position = player.transform().position;
+    const delta = context.time.fixedDelta * 2.4;
+    player.transform().setPosition([
+      position[0] + context.input.getAxis("MoveX") * delta,
+      position[1],
+      position[2] + context.input.getAxis("MoveZ") * delta,
+    ]);
+    const state = context.resources.get("GameState", { score: 0 });
+    context.resources.patch("GameState", { score: state.score, scoreText: `Score ${state.score}` });
+  },
+);
 ```
 
 ## proof

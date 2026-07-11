@@ -2,6 +2,7 @@ import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { loadAuthoringProject } from "@threenative/authoring";
 
 import { runCommand, summarize, type StepSummary, type VerificationDiagnostic } from "./runner.js";
 
@@ -18,6 +19,7 @@ interface IGamePlanPayload {
   archetypeSuggestions: Array<{ command: string }>;
   mechanicDecomposition: Array<{ command?: string; cookbookId?: string }>;
   proofCommands: string[];
+  steps: Array<{ recipeProofCommands?: string[] }>;
 }
 
 const ARCHETYPE_GOALS = [
@@ -87,6 +89,7 @@ export async function runEmittedCommandGate(root = process.cwd()): Promise<{
         const emittedCommands = [
           ...plan.mechanicDecomposition.flatMap((entry) => entry.command === undefined ? [] : [entry.command]),
           ...plan.archetypeSuggestions.map((entry) => entry.command),
+          ...plan.steps.flatMap((step) => step.recipeProofCommands ?? []),
           ...plan.proofCommands,
           ...plan.mechanicDecomposition.flatMap((entry) => entry.cookbookId === undefined ? [] : [`tn cookbook show ${entry.cookbookId} --json`]),
         ];
@@ -103,6 +106,12 @@ export async function runEmittedCommandGate(root = process.cwd()): Promise<{
               step: name,
               suggestedFix: "Emit a concrete registry-backed command without shell quoting or placeholders.",
             });
+            continue;
+          }
+          const semanticDiagnostic = await validateEmittedCommandSemantics(command, projectPath, caseId, name);
+          if (semanticDiagnostic !== undefined) {
+            failedCommandCount += 1;
+            diagnostics.push(semanticDiagnostic);
             continue;
           }
           const result = await runCommand({
@@ -168,12 +177,72 @@ function emittedCommandArgs(command: string): string[] | undefined {
 function parsePlan(stdout: string): IGamePlanPayload | undefined {
   try {
     const value = JSON.parse(stdout) as Partial<IGamePlanPayload>;
-    return Array.isArray(value.archetypeSuggestions) && Array.isArray(value.mechanicDecomposition) && Array.isArray(value.proofCommands)
+    return Array.isArray(value.archetypeSuggestions) && Array.isArray(value.mechanicDecomposition) && Array.isArray(value.proofCommands) && Array.isArray(value.steps)
       ? value as IGamePlanPayload
       : undefined;
   } catch {
     return undefined;
   }
+}
+
+export async function validateEmittedCommandSemantics(
+  command: string,
+  projectPath: string,
+  caseId = "emitted-command",
+  step = command,
+): Promise<VerificationDiagnostic | undefined> {
+  const args = command.trim().split(/\s+/u);
+  if (args[0] !== "tn" || args[1] !== "playtest" || !args.includes("--expect-moved")) {
+    return undefined;
+  }
+  const entityFlag = args.indexOf("--entity");
+  const entityId = entityFlag === -1 ? undefined : args[entityFlag + 1];
+  if (entityId === undefined) {
+    return undefined;
+  }
+  let project;
+  try {
+    project = await loadAuthoringProject({ projectPath });
+  } catch {
+    return undefined;
+  }
+  const entity = project.documents
+    .filter((document) => document.kind === "scene")
+    .flatMap((document) => {
+    const data = isRecord(document.data) ? document.data : undefined;
+      const rows = [
+        ...(data && Array.isArray(data.entities) ? data.entities : []),
+        ...(data && Array.isArray(data.instances) ? data.instances : []),
+      ];
+      return rows.filter(isRecord);
+    })
+    .find((candidate) => candidate.id === entityId);
+  if (!isStaticObjectiveEntity(entity)) {
+    return undefined;
+  }
+  return {
+    code: "TN_EMITTED_COMMAND_SEMANTIC_MISMATCH",
+    message: `${caseId}: '${command}' targets static objective entity '${entityId}' with --expect-moved; use a pickup/contact or resource/HUD assertion instead.`,
+    severity: "error",
+    step,
+    suggestedFix: "Use tn playtest scaffold --assert pickup|win-state, or target the movable player entity for --expect-moved.",
+  };
+}
+
+function isStaticObjectiveEntity(entity: Record<string, unknown> | undefined): boolean {
+  if (entity === undefined || typeof entity.id !== "string") {
+    return false;
+  }
+  const id = entity.id.toLowerCase();
+  const components = isRecord(entity.components) ? entity.components : {};
+  const collider = isRecord(components.Collider) ? components.Collider : isRecord(components.collider) ? components.collider : undefined;
+  const trigger = collider?.trigger === true || collider?.sensor !== undefined;
+  const objectiveName = /(?:coin|pickup|collectible|goal|target|reward|checkpoint)/u.test(id);
+  return trigger || objectiveName;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 function isJsonObject(stdout: string): boolean {

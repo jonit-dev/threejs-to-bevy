@@ -131,7 +131,7 @@ test("should write full game plan artifact and print compact summary by default"
     assert.equal(payload.proofCommands[0], "tn iterate --project . --json");
     assert.deepEqual(payload.proofCommands, ["tn iterate --project . --json"]);
     assert.equal(payload.mechanicDecomposition.every((entry) => !entry.command?.includes("<")), true);
-    assert.equal(payload.mechanicDecomposition.some((entry) => entry.mechanic === "movement" && typeof entry.command === "string"), true);
+    assert.equal(payload.mechanicDecomposition.some((entry) => entry.mechanic === "movement" && entry.command?.includes("tn recipe apply top-down-collector") === true), true);
     assert.equal(payload.mechanicDecomposition.some((entry) => entry.mechanic === "objective-progression" && typeof entry.cookbookId === "string"), true);
     assert.equal(payload.mechanicDecomposition.some((entry) => entry.mechanic === "macro-game-flow" && entry.command?.startsWith("tn flow create") === true), true);
     assert.equal(payload.mechanicDecomposition.some((entry) => entry.mechanic === "feedback-sequence" && entry.command?.startsWith("tn sequence create") === true), true);

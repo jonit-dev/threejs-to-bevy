@@ -181,6 +181,29 @@ test("blocks placeholder visuals and unproven snap movement", async () => {
   }
 });
 
+test("generated-game quality gate rejects empty gameplay exports and missing mutation proof", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-game-report-proof-theater-"));
+  try {
+    await writeMinimalProject(root);
+    await writeFile(join(root, "threenative.config.json"), `${JSON.stringify({ production: { archetype: "top-down" }, schema: "threenative.project", version: "0.1.0" }, null, 2)}\n`);
+    await writeFile(join(root, "src/scripts/game.ts"), "export function update(): void {}\n");
+
+    const blocked = await createGameQualityReport({ projectPath: root });
+    assert.equal(blocked.diagnostics.some((diagnostic) => diagnostic.code === "TN_GAME_EMPTY_SYSTEM_EXPORT"), true);
+    assert.equal(blocked.diagnostics.some((diagnostic) => diagnostic.code === "TN_GAMEPLAY_MUTATION_PROOF_MISSING"), true);
+
+    await writeFile(join(root, "src/scripts/game.ts"), "export function update(ctx: any): void { ctx.resources.patch('GameState', { score: 1 }); }\n");
+    await mkdir(join(root, "playtests"), { recursive: true });
+    await writeFile(join(root, "playtests/mutation.playtest.json"), `${JSON.stringify({ assert: { resources: [{ changed: true, id: "GameState", path: "score" }] }, schemaVersion: 1 }, null, 2)}\n`);
+
+    const proven = await createGameQualityReport({ projectPath: root });
+    assert.equal(proven.diagnostics.some((diagnostic) => diagnostic.code === "TN_GAME_EMPTY_SYSTEM_EXPORT"), false);
+    assert.equal(proven.diagnostics.some((diagnostic) => diagnostic.code === "TN_GAMEPLAY_MUTATION_PROOF_MISSING"), false);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
 test("accepts composed primitive visual source", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-game-report-composed-"));
   try {

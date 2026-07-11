@@ -22,6 +22,7 @@
   },
   "devDependencies": {
     "@threenative/authoring": "workspace:*",
+    "@threenative/cli": "workspace:*",
     "@types/node": "^20.19.25",
     "playwright": "^1.60.0"
   }

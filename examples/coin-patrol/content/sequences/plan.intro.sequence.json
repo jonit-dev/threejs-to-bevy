@@ -1,8 +1,0 @@
-{
-  "duration": 2,
-  "id": "plan.intro",
-  "schema": "threenative.sequence",
-  "skippable": true,
-  "tracks": [],
-  "version": "0.1.0"
-}
