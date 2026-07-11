@@ -301,10 +301,6 @@
           "softness": 8,
           "updateMode": "static"
         },
-        "MeshRenderer": {
-          "material": "mat.contact.bed",
-          "mesh": "mesh.contact.bed"
-        },
         "Transform": {
           "position": [
             3.72,
@@ -327,10 +323,6 @@
           ],
           "softness": 8,
           "updateMode": "static"
-        },
-        "MeshRenderer": {
-          "material": "mat.contact.cabinets",
-          "mesh": "mesh.contact.cabinets"
         },
         "Transform": {
           "position": [
@@ -355,10 +347,6 @@
           "softness": 7,
           "updateMode": "static"
         },
-        "MeshRenderer": {
-          "material": "mat.contact.crates",
-          "mesh": "mesh.contact.crates"
-        },
         "Transform": {
           "position": [
             3.25,
@@ -381,10 +369,6 @@
           ],
           "softness": 7,
           "updateMode": "static"
-        },
-        "MeshRenderer": {
-          "material": "mat.contact.door-and-accent",
-          "mesh": "mesh.contact.door-and-accent"
         },
         "Transform": {
           "position": [
@@ -1239,28 +1223,6 @@
     },
     {
       "components": {
-        "MeshRenderer": {
-          "material": "mat.visual.provenance",
-          "mesh": "mesh.visual.provenance"
-        },
-        "Transform": {
-          "position": [
-            0,
-            0,
-            0
-          ],
-          "rotation": [
-            0,
-            0,
-            0,
-            1
-          ],
-          "scale": [
-            1,
-            1,
-            1
-          ]
-        },
         "VisualProvenance": {
           "notes": "Portable authored meshes form a composed architectural showcase rather than placeholder gameplay art. The room proves the complete lighting stack with deterministic web and native captures.",
           "status": "intentional procedural environment",

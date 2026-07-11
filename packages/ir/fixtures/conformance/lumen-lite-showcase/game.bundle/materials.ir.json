@@ -22,34 +22,6 @@
       "roughness": 0.96
     },
     {
-      "color": "#2f80ed",
-      "id": "mat.contact.bed",
-      "kind": "standard",
-      "metalness": 0,
-      "roughness": 0.55
-    },
-    {
-      "color": "#2f80ed",
-      "id": "mat.contact.cabinets",
-      "kind": "standard",
-      "metalness": 0,
-      "roughness": 0.55
-    },
-    {
-      "color": "#2f80ed",
-      "id": "mat.contact.crates",
-      "kind": "standard",
-      "metalness": 0,
-      "roughness": 0.55
-    },
-    {
-      "color": "#2f80ed",
-      "id": "mat.contact.door-and-accent",
-      "kind": "standard",
-      "metalness": 0,
-      "roughness": 0.55
-    },
-    {
       "color": "#ad8b5a",
       "emissive": "#ffbd65",
       "emissiveIntensity": 2.6,
@@ -108,13 +80,6 @@
       "kind": "standard",
       "metalness": 0.12,
       "roughness": 0.28
-    },
-    {
-      "color": "#2f80ed",
-      "id": "mat.visual.provenance",
-      "kind": "standard",
-      "metalness": 0,
-      "roughness": 0.55
     },
     {
       "color": "#fff1c2",

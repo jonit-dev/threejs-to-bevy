@@ -1,7 +1,14 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { validateLightingShowcaseEvidence, type LightingShowcaseMetrics } from "./lightingShowcaseGate.js";
+import { lightingShowcaseBundlePath, validateLightingShowcaseEvidence, type LightingShowcaseMetrics } from "./lightingShowcaseGate.js";
+
+test("lighting showcase captures the freshly built example bundle", () => {
+  assert.equal(
+    lightingShowcaseBundlePath("/repo"),
+    "/repo/examples/lumen-lite-showcase/dist/lumen-lite-showcase.bundle",
+  );
+});
 
 const healthy: LightingShowcaseMetrics = {
   bloomHaloLuminance: 0.2,

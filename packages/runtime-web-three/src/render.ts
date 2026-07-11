@@ -1723,8 +1723,15 @@ function createScreenSpaceReflectionsPass(
   pass.maxDistance = 10;
   pass.opacity = settings.opacity;
   pass.resolutionScale = settings.quality === "high" ? 1 : settings.quality === "low" ? 0.5 : 0.75;
-  pass.thickness = 0.25;
+  pass.thickness = webScreenSpaceReflectionThickness();
   return pass;
+}
+
+export function webScreenSpaceReflectionThickness(): number {
+  // SSRPass treats thickness as ray depth in view space. Keep this below the
+  // authored centimeter-scale reflective patches so they do not composite as
+  // meter-scale reflection volumes at grazing angles.
+  return 0.02;
 }
 
 function webScreenSpaceReflectionOpacity(

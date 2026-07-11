@@ -75,50 +75,6 @@
     },
     {
       "format": "generated",
-      "id": "mesh.contact.bed",
-      "kind": "mesh",
-      "primitive": "box",
-      "size": [
-        1,
-        1,
-        1
-      ]
-    },
-    {
-      "format": "generated",
-      "id": "mesh.contact.cabinets",
-      "kind": "mesh",
-      "primitive": "box",
-      "size": [
-        1,
-        1,
-        1
-      ]
-    },
-    {
-      "format": "generated",
-      "id": "mesh.contact.crates",
-      "kind": "mesh",
-      "primitive": "box",
-      "size": [
-        1,
-        1,
-        1
-      ]
-    },
-    {
-      "format": "generated",
-      "id": "mesh.contact.door-and-accent",
-      "kind": "mesh",
-      "primitive": "box",
-      "size": [
-        1,
-        1,
-        1
-      ]
-    },
-    {
-      "format": "generated",
       "id": "mesh.corridor.ceiling",
       "kind": "mesh",
       "primitive": "box",
@@ -316,17 +272,6 @@
     },
     {
       "format": "generated",
-      "id": "mesh.visual.provenance",
-      "kind": "mesh",
-      "primitive": "box",
-      "size": [
-        1,
-        1,
-        1
-      ]
-    },
-    {
-      "format": "generated",
       "id": "mesh.wall.back.left",
       "kind": "mesh",
       "primitive": "box",
@@ -480,10 +425,6 @@
         "mesh.bed.rail.short",
         "mesh.cabinet",
         "mesh.ceiling",
-        "mesh.contact.bed",
-        "mesh.contact.cabinets",
-        "mesh.contact.crates",
-        "mesh.contact.door-and-accent",
         "mesh.corridor.ceiling",
         "mesh.corridor.floor",
         "mesh.corridor.glow",
@@ -502,7 +443,6 @@
         "mesh.pillar",
         "mesh.pipe",
         "mesh.puddle",
-        "mesh.visual.provenance",
         "mesh.wall.back.left",
         "mesh.wall.back.right",
         "mesh.wall.back.upper",

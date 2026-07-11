@@ -155,6 +155,14 @@ Current support:
   captures deterministic 1280x720 web/native frames, emits a contact sheet and
   adapter reports, rejects clipping/crushed blacks/exposure drift, and requires
   every composed feature to be applied or honestly approximation-reported.
+  The gate captures the freshly built example bundle rather than a stale
+  conformance copy; this prevents adapter-proof placeholder meshes from
+  entering visual evidence. Its 2026-07-11 parity pass also bounds web SSR ray
+  thickness for centimeter-scale wet patches, aligns native SSGI intensity and
+  flat-ambient suppression, softens the authored native bloom threshold, and
+  broadens native volumetric scattering. The showcase intentionally authors
+  flat portable PBR materials on both adapters; the web-only 8x8 detail-texture
+  path remains scoped to `StylizedNature` and is not claimed by this scene.
 - The internal `SceneRayQuery` boundary now has BVH-backed tooling queries and
   a native Rapier/parry `TriMesh` query built from the same rendered generated
   mesh data, independently of authored Collider components. Native playtest

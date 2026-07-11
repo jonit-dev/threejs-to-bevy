@@ -28,7 +28,7 @@ impl NativeSsgi {
     pub fn new(radius: f32, intensity: f32, ambient: Color) -> Self {
         let ambient = ambient.to_linear();
         Self {
-            params: Vec4::new(radius.max(0.01), intensity.max(0.0) * 0.2, 0.0, 0.0),
+            params: Vec4::new(radius.max(0.01), intensity.max(0.0) * 0.4, 0.0, 0.0),
             ambient: Vec4::new(ambient.red, ambient.green, ambient.blue, 1.0),
         }
     }
@@ -122,6 +122,6 @@ mod tests {
     fn maps_shared_ssgi_intensity() {
         let settings = NativeSsgi::new(8.0, 0.12, Color::linear_rgb(0.1, 0.2, 0.3));
         assert!((settings.params.x - 8.0).abs() < 0.001);
-        assert!((settings.params.y - 0.024).abs() < 0.001);
+        assert!((settings.params.y - 0.048).abs() < 0.001);
     }
 }

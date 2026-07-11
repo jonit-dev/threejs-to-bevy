@@ -914,7 +914,7 @@ fn bloom_settings_for_runtime(config: Option<&RuntimeConfigIr>) -> Option<BloomS
         intensity: native_bloom_intensity(intensity),
         prefilter_settings: BloomPrefilterSettings {
             threshold,
-            threshold_softness: 0.2,
+            threshold_softness: 0.32,
             ..Default::default()
         },
         ..Default::default()

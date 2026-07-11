@@ -6,7 +6,7 @@ import { RENDER_LOOK_PROFILE_PRESETS, type IRuntimeConfigIr } from "@threenative
 
 import type { IWebBundle } from "./loadBundle.js";
 import { mapWorld } from "./mapWorld.js";
-import { appendCaptureTransformSample, applyRendererColorManagement, applyRendererShadowSettings, applyRenderLookSceneDefaults, collectWebRuntimeDiagnostics, createBloomPass, createEmissiveProxyLightController, createRenderedParticleObjects, createWebCaptureTransformTrace, createWebRenderLifecycle, disposeThreeWorld, needsColorManagedOutputPass, newAudioEvents, renderCameraViews, webAmbientOcclusionSettings, webAmbientOcclusionStrength, webBloomSettings, webDepthOfFieldSettings, webMotionBlurSettings, webRendererParameters, webScreenSpaceReflectionsSettings } from "./render.js";
+import { appendCaptureTransformSample, applyRendererColorManagement, applyRendererShadowSettings, applyRenderLookSceneDefaults, collectWebRuntimeDiagnostics, createBloomPass, createEmissiveProxyLightController, createRenderedParticleObjects, createWebCaptureTransformTrace, createWebRenderLifecycle, disposeThreeWorld, needsColorManagedOutputPass, newAudioEvents, renderCameraViews, webAmbientOcclusionSettings, webAmbientOcclusionStrength, webBloomSettings, webDepthOfFieldSettings, webMotionBlurSettings, webRendererParameters, webScreenSpaceReflectionThickness, webScreenSpaceReflectionsSettings } from "./render.js";
 
 function runtimeConfig(
   antialias: NonNullable<IRuntimeConfigIr["renderer"]>["antialias"],
@@ -525,6 +525,7 @@ test("should map runtime motion blur settings to web post-processing settings", 
 });
 
 test("should map runtime screen-space reflection settings to web post-processing settings", () => {
+  assert.equal(webScreenSpaceReflectionThickness(), 0.02);
   assert.deepEqual(webScreenSpaceReflectionsSettings(runtimeConfig("msaa4")), {
     enabled: false,
     opacity: 0.7,

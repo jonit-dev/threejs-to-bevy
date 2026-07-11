@@ -45,10 +45,10 @@ const ATMOSPHERE_SHADOW_DEFAULT_BLEND_FRACTION: f32 = 0.2;
 const ATMOSPHERE_SHADOW_DEFAULT_SPLIT_LAMBDA: f32 = 0.5;
 const ATMOSPHERE_SHADOW_DEFAULT_SPLIT_SCHEME: &str = "practical";
 const NATIVE_VOLUMETRIC_BASE_ABSORPTION: f32 = 0.1;
-const NATIVE_VOLUMETRIC_BASE_SCATTERING: f32 = 0.15;
+const NATIVE_VOLUMETRIC_BASE_SCATTERING: f32 = 0.22;
 const NATIVE_VOLUMETRIC_SHAFT_SCATTERING_SCALE: f32 = 0.35;
 const NATIVE_VOLUMETRIC_SHAFT_DENSITY_SCALE: f32 = 0.025;
-const NATIVE_VOLUMETRIC_SCATTERING_ASYMMETRY: f32 = 0.75;
+const NATIVE_VOLUMETRIC_SCATTERING_ASYMMETRY: f32 = 0.58;
 // Bevy includes the normalized 1/(4pi) phase term while the web artistic pass
 // intentionally does not. This adapter calibration restores equivalent shaft
 // radiance without coupling the authored density to room haze.
@@ -62,7 +62,38 @@ pub(crate) fn native_ssgi_ambient_multiplier(config: Option<&RuntimeConfigIr>) -
         return 1.0;
     };
     let _ = ssgi;
-    1.0
+    0.33
+}
+
+#[cfg(test)]
+mod ssgi_ambient_tests {
+    use super::*;
+
+    fn runtime_config(enabled: bool) -> RuntimeConfigIr {
+        serde_json::from_value(serde_json::json!({
+            "schema": "threenative.runtime-config",
+            "version": "0.1.0",
+            "renderer": {
+                "antialias": "msaa4",
+                "screenSpaceGlobalIllumination": {
+                    "enabled": enabled,
+                    "intensity": 0.12,
+                    "quality": "high",
+                    "radius": 8
+                }
+            },
+            "time": { "fixedDelta": 0.016666667, "paused": true },
+            "window": { "height": 720, "width": 1280 }
+        }))
+        .expect("runtime config fixture should deserialize")
+    }
+
+    #[test]
+    fn reduces_flat_ambient_only_while_ssgi_is_enabled() {
+        assert!((native_ssgi_ambient_multiplier(Some(&runtime_config(true))) - 0.33).abs() < f32::EPSILON);
+        assert!((native_ssgi_ambient_multiplier(Some(&runtime_config(false))) - 1.0).abs() < f32::EPSILON);
+        assert!((native_ssgi_ambient_multiplier(None) - 1.0).abs() < f32::EPSILON);
+    }
 }
 
 #[derive(Clone, Component, Debug)]

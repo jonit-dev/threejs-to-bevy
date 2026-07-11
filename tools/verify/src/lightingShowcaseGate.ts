@@ -104,7 +104,7 @@ export function validateLightingShowcaseEvidence(evidence: {
 
 export async function runLightingShowcaseGate(options: { root?: string } = {}): Promise<{ diagnostics: VerificationDiagnostic[]; ok: boolean; reportPath: string }> {
   const root = resolve(options.root ?? process.cwd());
-  const bundlePath = resolve(root, "packages/ir/fixtures/conformance/lumen-lite-showcase/game.bundle");
+  const bundlePath = lightingShowcaseBundlePath(root);
   const targets = resolveArtifactTargets({ gate: GATE_NAME, owner: { kind: "aggregate" }, root });
   const reportPath = targets.reportPath;
   const artifactDir = resolve(reportPath, "..");
@@ -161,6 +161,13 @@ export async function runLightingShowcaseGate(options: { root?: string } = {}): 
     version: "0.1.0",
   }, null, 2)}\n`, "utf8");
   return { diagnostics, ok, reportPath };
+}
+
+export function lightingShowcaseBundlePath(root: string): string {
+  // The focused descriptor builds this project immediately before capture.
+  // Its older conformance copy can contain generated adapter-proof meshes
+  // which are not part of the authored scene.
+  return resolve(root, "examples/lumen-lite-showcase/dist/lumen-lite-showcase.bundle");
 }
 
 async function captureWebShowcase(root: string, bundlePath: string, outPath: string): Promise<unknown> {
