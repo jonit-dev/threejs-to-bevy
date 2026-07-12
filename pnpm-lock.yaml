@@ -80,6 +80,10 @@ importers:
         version: 8.1.4(@types/node@20.19.43)(esbuild@0.28.1)(tsx@4.23.0)
 
   packages/authoring:
+    dependencies:
+      '@threenative/sdk':
+        specifier: workspace:*
+        version: link:../sdk
     devDependencies:
       '@types/node':
         specifier: ^20.19.25

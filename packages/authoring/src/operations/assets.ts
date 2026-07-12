@@ -1,5 +1,6 @@
 import { access, mkdir, readFile } from "node:fs/promises";
 import { dirname, relative, resolve } from "node:path";
+import { ASSET_FORMATS_BY_KIND, type AssetFormat, type AssetKind } from "@threenative/sdk";
 import { isGeneratedArtifactPath, normalizeRelativePath, writeAuthoringJsonDocument, type AuthoringDocumentKind, type IAuthoringDocument } from "../documents.js";
 import { authoringDiagnostic, hasAuthoringErrors, sortAuthoringDiagnostics, type IAuthoringDiagnostic } from "../diagnostics.js";
 import { validateMaterialDocument } from "./materialValidation.js";
@@ -376,6 +377,43 @@ import {
 } from "./shared.js";
 
 export async function addAsset(options: IAddAssetOptions): Promise<IAuthoringOperationResult> {
+  const kind = options.type as AssetKind;
+  if (!(kind in ASSET_FORMATS_BY_KIND)) {
+    const extension = assetPathExtension(options.path);
+    const inferred = extension === undefined ? undefined : assetKindForFormat(extension);
+    return authoringOperationResult({
+      diagnostics: [authoringDiagnostic({
+        code: "TN_AUTHORING_ASSET_TYPE_INVALID",
+        fix: {
+          instruction: inferred === undefined ? "Use a supported asset type." : `Use asset type '${inferred}' for .${extension} files.`,
+          snippet: inferred === undefined ? "--type model" : `--type ${inferred}`,
+        },
+        message: `Asset type '${options.type}' is unsupported. Supported types: ${Object.keys(ASSET_FORMATS_BY_KIND).join(", ")}.`,
+        path: "/assets/0/type",
+        value: options.type,
+      })],
+      projectPath: resolve(options.projectPath),
+    });
+  }
+  if (kind !== "render-target" && options.path !== undefined) {
+    const extension = assetPathExtension(options.path);
+    const formats = ASSET_FORMATS_BY_KIND[kind] as readonly AssetFormat[];
+    if (extension === undefined || !formats.includes(extension)) {
+      return authoringOperationResult({
+        diagnostics: [authoringDiagnostic({
+          code: "TN_AUTHORING_ASSET_TYPE_INVALID",
+          fix: {
+            instruction: `Convert or import the source to a supported ${kind} format before registering it.`,
+            snippet: `tn asset import ${options.path} --id ${options.assetId}`,
+          },
+          message: `Asset path '${options.path}' is not a supported ${kind} format. Supported formats: ${formats.join(", ")}.`,
+          path: "/assets/0/path",
+          value: options.path,
+        })],
+        projectPath: resolve(options.projectPath),
+      });
+    }
+  }
   return upsertSourceDocument({
     projectPath: options.projectPath,
     kind: "asset",
@@ -407,6 +445,15 @@ export async function addAsset(options: IAddAssetOptions): Promise<IAuthoringOpe
       }
     },
   });
+}
+
+function assetPathExtension(path: string | undefined): AssetFormat | undefined {
+  const extension = path?.split(/[?#]/u, 1)[0]?.split(".").pop()?.toLowerCase();
+  return extension === undefined || extension === path ? undefined : extension as AssetFormat;
+}
+
+function assetKindForFormat(format: AssetFormat): AssetKind | undefined {
+  return (Object.entries(ASSET_FORMATS_BY_KIND) as Array<[AssetKind, readonly AssetFormat[]]>).find(([, formats]) => formats.includes(format))?.[0];
 }
 
 export async function addAnimationClip(options: IAddAnimationClipOptions): Promise<IAuthoringOperationResult> {

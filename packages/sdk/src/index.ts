@@ -75,6 +75,7 @@ export {
   type ScriptAudioPlaybackStatus,
 } from "./audio.js";
 export {
+  ASSET_FORMATS_BY_KIND,
   animationClip,
   animationEvent,
   animationGraph,

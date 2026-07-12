@@ -217,7 +217,7 @@ export async function assetCommand(argv: readonly string[]): Promise<ICommandRes
       return diagnosticResult(
         {
           code: "TN_ASSET_ADD_ARGS_MISSING",
-          message: "Usage: tn asset add <asset-id> --type <model|texture|audio|mesh|render-target> --path <source-path> [--project <path>] [--json] or tn asset add <asset-id> --type render-target --width <n> --height <n> [--usage color|depth] [--format rgba8|rgba16f|depth24plus] [--sample-count <n>] [--project <path>] [--json].",
+          message: "Usage: tn asset add <asset-id> --type <audio|buffer|model|texture|render-target> --path <source-path> [--project <path>] [--json] or tn asset add <asset-id> --type render-target --width <n> --height <n> [--usage color|depth] [--format rgba8|rgba16f|depth24plus] [--sample-count <n>] [--project <path>] [--json].",
         },
         { exitCode: 2, json, stderr: !json },
       );

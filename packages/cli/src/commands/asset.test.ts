@@ -380,6 +380,43 @@ test("should add structured asset source document", async () => {
   }
 });
 
+test("should reject unsupported asset type at add time", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-asset-type-invalid-"));
+  try {
+    const result = await assetCommand(["add", "piece", "--type", "glb", "--path", "assets/piece.glb", "--project", root, "--json"]);
+    const payload = JSON.parse(result.stdout) as { diagnostics: Array<{ code: string; fix?: { snippet?: string } }> };
+    assert.equal(result.exitCode, 1);
+    assert.equal(payload.diagnostics[0]?.code, "TN_AUTHORING_ASSET_TYPE_INVALID");
+    assert.equal(payload.diagnostics[0]?.fix?.snippet, "--type model");
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should reject format mismatch for kind at add time", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-asset-format-invalid-"));
+  try {
+    const result = await assetCommand(["add", "piece", "--type", "model", "--path", "assets/piece.dae", "--project", root, "--json"]);
+    const payload = JSON.parse(result.stdout) as { diagnostics: Array<{ fix?: { snippet?: string }; message: string }> };
+    assert.equal(result.exitCode, 1);
+    assert.match(payload.diagnostics[0]?.message ?? "", /glb, gltf/);
+    assert.match(payload.diagnostics[0]?.fix?.snippet ?? "", /tn asset import/);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should accept model glb add unchanged", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-asset-model-valid-"));
+  try {
+    const result = await assetCommand(["add", "piece", "--type", "model", "--path", "assets/piece.glb", "--project", root, "--json"]);
+    assert.equal(result.exitCode, 0, result.stdout);
+    assert.equal((JSON.parse(result.stdout) as { code: string }).code, "TN_ASSET_OK");
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
 test("should add structured render target asset source document", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-asset-add-render-target-"));
   try {

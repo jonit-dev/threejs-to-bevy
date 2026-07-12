@@ -4,6 +4,13 @@ export type AssetKind = "audio" | "buffer" | "model" | "render-target" | "textur
 export type AssetFormat = "bin" | "depth24plus" | "glb" | "gltf" | "jpeg" | "mp3" | "ogg" | "png" | "rgba16f" | "rgba8" | "wav" | "webp";
 export type AssetSourceMode = "bundle" | "embedded" | "network";
 export type AssetCachePolicy = "immutable" | "no-store" | "revalidate";
+export const ASSET_FORMATS_BY_KIND = {
+  audio: ["mp3", "ogg", "wav"],
+  buffer: ["bin"],
+  model: ["glb", "gltf"],
+  "render-target": ["depth24plus", "rgba16f", "rgba8"],
+  texture: ["jpeg", "png", "webp"],
+} as const satisfies Record<AssetKind, readonly AssetFormat[]>;
 export type TextureWrapMode = "clampToEdge" | "mirroredRepeat" | "repeat";
 export type TextureMinFilter =
   | "linear"
@@ -206,7 +213,7 @@ export function modelAsset(
   assertUniqueAnimationClipIds(options.animations ?? []);
   validateAnimationGraph(options.animationGraph, new Set((options.animations ?? []).map((clip) => clip.id)));
   validateParticleEmitters(options.particleEmitters ?? []);
-  const ref = assetRef("model", id, path, ["glb", "gltf"]);
+  const ref = assetRef("model", id, path);
   return {
     ...ref,
     ...(options.animationGraph === undefined ? {} : { animationGraph: normalizeAnimationGraph(options.animationGraph) }),
@@ -432,7 +439,7 @@ function assertNonNegativeFinite(value: number, code: string, label: string): vo
 export function textureAsset(id: string, path: string, options: ITextureAssetOptions = {}): IAssetReference {
   validateTextureOptions(options);
   return {
-    ...assetRef("texture", id, path, ["jpeg", "png", "webp"]),
+    ...assetRef("texture", id, path),
     ...(options.center === undefined ? {} : { center: options.center }),
     ...(options.magFilter === undefined ? {} : { magFilter: options.magFilter }),
     ...(options.minFilter === undefined ? {} : { minFilter: options.minFilter }),
@@ -462,16 +469,16 @@ export function renderTargetAsset(
 }
 
 export function audioAsset(id: string, path: string): IAssetReference {
-  return assetRef("audio", id, path, ["mp3", "ogg", "wav"]);
+  return assetRef("audio", id, path);
 }
 
-function assetRef(kind: AssetKind, id: string, path: string, formats: AssetFormat[]): IAssetReference {
+function assetRef(kind: AssetKind, id: string, path: string): IAssetReference {
   assertAssetId(id);
   if (path.trim() === "" || path.startsWith("/") || path.includes("..")) {
     throw new SdkError("TN_SDK_ASSET_PATH_INVALID", "Asset path must be bundle-relative and must not traverse parent directories.");
   }
   const format = path.split(".").pop()?.toLowerCase() as AssetFormat | undefined;
-  if (format === undefined || !formats.includes(format)) {
+  if (format === undefined || !(ASSET_FORMATS_BY_KIND[kind] as readonly AssetFormat[]).includes(format)) {
     throw new SdkError("TN_SDK_ASSET_FORMAT_UNSUPPORTED", `Unsupported ${kind} asset format for '${path}'.`);
   }
   return { format, id, kind, path, sourceMode: "bundle" };
