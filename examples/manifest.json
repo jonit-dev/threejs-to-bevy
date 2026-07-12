@@ -33,6 +33,11 @@
       "reason": "Mid-size web-first forcing-function slice for menu, settings, phase progression, saved-progress metadata, audio metadata, HUD, and fail/retry proof; build-only until release evidence is stable."
     },
     {
+      "classification": "experimental",
+      "path": "examples/orb-reactor",
+      "reason": "In-progress agent-native authoring trial slice (orb-reactor 2026-07-11); not yet enrolled in build or release evidence."
+    },
+    {
       "classification": "build-only",
       "path": "examples/stylized-nature-component",
       "reason": "Maintained generated-game source fixture kept buildable outside the release evidence set."
