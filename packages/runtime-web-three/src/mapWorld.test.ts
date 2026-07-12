@@ -682,6 +682,8 @@ test("loadWorldModelAssets should attach loaded glTF scenes and bind animation m
   assert.equal(childMesh.material.roughness, 0.7);
   assert.equal(childMesh.material.metalness, 0.15);
   assert.equal(childMesh.userData.threeNativeMaterialId, "mat.main");
+  assert.equal(loadedModel.userData.entityId, "hero");
+  assert.equal(childMesh.userData.entityId, "hero");
   assert.equal(object.userData.threeNativeAnimationClip, "Armature|Run");
   assert.equal(object.userData.threeNativeAnimationMixer instanceof THREE.AnimationMixer, true);
   assert.equal(hasAnimationPlayback(mapped), true);

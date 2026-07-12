@@ -324,7 +324,7 @@ async function attachRuntimeModelAsset(
   try {
     const gltf = await createGltfLoader().loadAsync(bundleUrl(source, asset.path!));
     if (mapped.objectsById.get(entityId) === object) {
-      attachLoadedModel(object, asset, gltf, renderer);
+      attachLoadedModel(object, entityId, asset, gltf, renderer);
       object.userData.threeNativeModelAssetLoaded = asset.id;
     }
   } catch (error) {
@@ -500,7 +500,7 @@ export async function loadWorldModelAssets(
     }
     try {
       const gltf = await loader.loadAsync(bundleUrl(source, asset.path));
-      attachLoadedModel(object, asset, gltf, renderer);
+      attachLoadedModel(object, entity.id, asset, gltf, renderer);
     } catch (error) {
       const reason = error instanceof Error ? ` ${error.message}` : "";
       mapped.diagnostics.push({
@@ -663,8 +663,11 @@ function scaleWorldLightIntensity(
   return intensity / atmosphereExposure;
 }
 
-function attachLoadedModel(object: THREE.Object3D, asset: Extract<IAssetIr, { kind: "model" }>, gltf: IGltfModel, shadowSettings: IShadowSettings): void {
+function attachLoadedModel(object: THREE.Object3D, entityId: string, asset: Extract<IAssetIr, { kind: "model" }>, gltf: IGltfModel, shadowSettings: IShadowSettings): void {
   const model = gltf.scene;
+  model.traverse((child) => {
+    child.userData.entityId = entityId;
+  });
   model.name = model.name === "" ? `model:${asset.id}` : model.name;
   const overrideMaterial = object instanceof THREE.Mesh ? object.material : undefined;
   const overrideMaterialId = object.userData.threeNativeMaterialId as string | undefined;

@@ -146,6 +146,7 @@ async function runSystem(
     fixedDelta: options.fixedDelta ?? 1 / 60,
     input: options.input,
     localData: options.localData,
+    mappedObjects: options.mapped?.objectsById,
     paused: options.paused ?? false,
     persistence: options.persistence,
     prefabs: options.prefabs,

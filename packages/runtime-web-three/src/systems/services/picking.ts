@@ -1,4 +1,5 @@
 import type { IAssetsManifest, IWorldIr } from "@threenative/ir";
+import * as THREE from "three";
 import { meshAabb } from "../../meshBounds.js";
 import { type IRaycastRequest, type IRaycastResult } from "./physics.js";
 
@@ -23,7 +24,15 @@ export type IPointerRayResult =
 
 const IDENTITY_QUAT: [number, number, number, number] = [0, 0, 0, 1];
 
-export function pickMesh(world: IWorldIr, assets: IAssetsManifest | undefined, request: IPickMeshRequest): IPickMeshResult {
+export function pickMesh(
+  world: IWorldIr,
+  assets: IAssetsManifest | undefined,
+  request: IPickMeshRequest,
+  objectsById?: ReadonlyMap<string, THREE.Object3D>,
+): IPickMeshResult {
+  if (objectsById !== undefined) {
+    return pickMappedMesh(objectsById, request);
+  }
   const ignore = new Set(request.ignore ?? []);
   const meshes = new Map((assets?.assets ?? []).filter((asset) => asset.kind === "mesh").map((asset) => [asset.id, asset]));
   let best: IPickMeshResult = { hit: false };
@@ -66,6 +75,46 @@ export function pickMesh(world: IWorldIr, assets: IAssetsManifest | undefined, r
     }
   }
   return best;
+}
+
+function pickMappedMesh(objectsById: ReadonlyMap<string, THREE.Object3D>, request: IPickMeshRequest): IPickMeshResult {
+  const ignore = new Set(request.ignore ?? []);
+  const roots = [...objectsById.entries()]
+    .filter(([entityId, object]) => !ignore.has(entityId) && object.visible)
+    .map(([, object]) => object);
+  const raycaster = new THREE.Raycaster(
+    new THREE.Vector3(...request.origin),
+    new THREE.Vector3(...request.direction).normalize(),
+    0,
+    request.maxDistance,
+  );
+  for (const hit of raycaster.intersectObjects(roots, true)) {
+    const entity = owningEntityId(hit.object);
+    if (entity === undefined || ignore.has(entity)) {
+      continue;
+    }
+    return {
+      distance: Number(hit.distance.toFixed(6)),
+      entity,
+      hit: true,
+      normal: hit.face == null
+        ? [0, 0, 0]
+        : hit.face.normal.clone().transformDirection(hit.object.matrixWorld).toArray() as [number, number, number],
+      point: hit.point.toArray().map((value) => Number(value.toFixed(6))) as [number, number, number],
+    };
+  }
+  return { hit: false };
+}
+
+function owningEntityId(object: THREE.Object3D): string | undefined {
+  let current: THREE.Object3D | null = object;
+  while (current !== null) {
+    if (typeof current.userData.entityId === "string") {
+      return current.userData.entityId;
+    }
+    current = current.parent;
+  }
+  return undefined;
 }
 
 export function pointerRay(world: IWorldIr, request: IPointerRayRequest): IPointerRayResult {

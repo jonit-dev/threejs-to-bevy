@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import type { IAssetsManifest, IWorldIr } from "@threenative/ir";
+import * as THREE from "three";
 
 import { pickMesh, pointerRay } from "./picking.js";
 
@@ -35,6 +36,43 @@ test("should ignore invisible meshes and choose nearest deterministic hit", () =
     normal: [0, 0, 1],
     point: [0, 0, -1.75],
   });
+});
+
+test("should resolve glb child hit to owning entity id", () => {
+  const root = new THREE.Group();
+  root.userData.entityId = "piece.wp1";
+  const child = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1));
+  child.userData.entityId = "piece.wp1";
+  root.add(child);
+  root.updateWorldMatrix(true, true);
+
+  const result = pickMesh(makeWorld(), makeAssets(), {
+    direction: [0, 0, -1],
+    maxDistance: 10,
+    origin: [0, 0, 2],
+  }, new Map([["piece.wp1", root]]));
+
+  assert.equal(result.hit && result.entity, "piece.wp1");
+});
+
+test("should exclude glb child meshes when parent entity is ignored", () => {
+  const piece = new THREE.Group();
+  piece.userData.entityId = "piece.wp1";
+  piece.add(new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1)));
+  const square = new THREE.Mesh(new THREE.BoxGeometry(2, 2, 0.5));
+  square.position.z = -2;
+  square.userData.entityId = "square.behind";
+  piece.updateWorldMatrix(true, true);
+  square.updateWorldMatrix(true, true);
+
+  const result = pickMesh(makeWorld(), makeAssets(), {
+    direction: [0, 0, -1],
+    ignore: ["piece.wp1"],
+    maxDistance: 10,
+    origin: [0, 0, 2],
+  }, new Map<string, THREE.Object3D>([["piece.wp1", piece], ["square.behind", square]]));
+
+  assert.equal(result.hit && result.entity, "square.behind");
 });
 
 test("should generate a perspective pointer ray from active camera", () => {
