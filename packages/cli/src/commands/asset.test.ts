@@ -452,8 +452,10 @@ catalogTest("should emit compact search records by default and full records with
   const compact = await assetCommand(["source", "search", "--query", "bowling", "--json"]);
   const full = await assetCommand(["source", "search", "--query", "bowling", "--full", "--json"]);
   const compactRecord = (JSON.parse(compact.stdout) as { records: Array<Record<string, unknown>> }).records[0];
+  const compactRecords = (JSON.parse(compact.stdout) as { records: Array<Record<string, unknown>> }).records;
   const fullRecord = (JSON.parse(full.stdout) as { records: Array<Record<string, unknown>> }).records[0];
   assert.equal(Object.keys(compactRecord ?? {}).length <= 8, true);
+  assert.equal(compactRecords.length <= 10, true);
   assert.deepEqual(Object.keys(compactRecord ?? {}).sort(), ["direct", "format", "id", "license", "name", "note", "score"]);
   assert.equal(Object.keys(fullRecord ?? {}).length > 8, true);
 });

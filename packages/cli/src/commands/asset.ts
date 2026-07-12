@@ -311,6 +311,7 @@ async function assetSourceCommand(argv: readonly string[], json: boolean): Promi
   const action = positionals[0];
   try {
     if (action === "search") {
+      const full = argv.includes("--full");
       const searchOptions: IAssetSourceSearchOptions = {
         directOnly: argv.includes("--direct-only"),
         fileRole: readFlag(argv, "--file-role"),
@@ -318,7 +319,7 @@ async function assetSourceCommand(argv: readonly string[], json: boolean): Promi
         gameCategory: readFlag(argv, "--game-category"),
         includeBlocked: argv.includes("--include-blocked"),
         license: readFlag(argv, "--license"),
-        limit: readLimitFlag(argv),
+        limit: readLimitFlag(argv) ?? (full ? 20 : 10),
         query: readFlag(argv, "--query"),
         tag: readFlag(argv, "--tag"),
       };
@@ -326,7 +327,6 @@ async function assetSourceCommand(argv: readonly string[], json: boolean): Promi
       const fallbackRecords = records.length === 0 && searchOptions.directOnly === true && searchOptions.gameCategory !== undefined
         ? (await searchAssetSources({ ...searchOptions, directOnly: false, format: undefined, limit: 5 })).filter((record) => !record.isDirectDownload)
         : [];
-      const full = argv.includes("--full");
       const payload = {
         code: records.length === 0 ? "TN_ASSET_SOURCE_NO_MATCH" : "TN_ASSET_SOURCE_SEARCH_OK",
         fallbackRecords: full ? fallbackRecords : compactAssetSourceRecords(fallbackRecords, searchOptions.query),
