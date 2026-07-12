@@ -8,9 +8,19 @@ import { captureNative, writeAdapterReports } from "./ssgiGate.js";
 
 const GATE_NAME = "lighting-showcase";
 const EXAMPLE_ID = "lumen-lite-showcase";
+const CROSS_RUNTIME_LUMINANCE_RATIO_MIN = 0.8;
+const CROSS_RUNTIME_LUMINANCE_RATIO_MAX = 1.25;
+const CROSS_RUNTIME_HAZE_DELTA_MAX = 1.35;
+const CROSS_RUNTIME_DETAIL_RATIO_MIN = 0.3;
+const CROSS_RUNTIME_DETAIL_RATIO_MAX = 2;
+const CROSS_RUNTIME_CEILING_RATIO_MIN = 0.75;
+const CROSS_RUNTIME_CEILING_RATIO_MAX = 1.35;
+const CROSS_RUNTIME_RIGHT_ROOM_RATIO_MIN = 0.65;
+const CROSS_RUNTIME_RIGHT_ROOM_RATIO_MAX = 1.45;
 
 export interface LightingShowcaseMetrics {
   bloomHaloLuminance: number;
+  ceilingAirLuminance: number;
   contrast: number;
   floorHazeLuminance: number;
   hazeGradientRatio: number;
@@ -18,6 +28,7 @@ export interface LightingShowcaseMetrics {
   meanLuminance: number;
   nonBlackFraction: number;
   overexposedFraction: number;
+  rightRoomLuminance: number;
   shadowFraction: number;
   shaftLuminance: number;
   shaftNeighborLuminance: number;
@@ -69,8 +80,8 @@ export function validateLightingShowcaseEvidence(evidence: {
     validateFeatureReport(runtime, report, path, diagnostics);
   }
   const luminanceRatio = evidence.native.meanLuminance / Math.max(0.001, evidence.web.meanLuminance);
-  if (luminanceRatio < 0.55 || luminanceRatio > 1.65) {
-    diagnostics.push(diagnostic("TN_VERIFY_LIGHTING_SHOWCASE_EXPOSURE_PARITY", `Native/web mean luminance ratio ${luminanceRatio.toFixed(3)} must remain within the same visual range.`, evidence.nativePath));
+  if (luminanceRatio < CROSS_RUNTIME_LUMINANCE_RATIO_MIN || luminanceRatio > CROSS_RUNTIME_LUMINANCE_RATIO_MAX) {
+    diagnostics.push(diagnostic("TN_VERIFY_LIGHTING_SHOWCASE_EXPOSURE_PARITY", `Native/web mean luminance ratio ${luminanceRatio.toFixed(3)} must remain within ${CROSS_RUNTIME_LUMINANCE_RATIO_MIN.toFixed(2)}..${CROSS_RUNTIME_LUMINANCE_RATIO_MAX.toFixed(2)}.`, evidence.nativePath));
   }
   const contrastRatio = evidence.native.contrast / Math.max(0.001, evidence.web.contrast);
   if (contrastRatio < 0.6 || contrastRatio > 1.6) {
@@ -79,8 +90,8 @@ export function validateLightingShowcaseEvidence(evidence: {
   if (Math.abs(evidence.native.shaftRatio - evidence.web.shaftRatio) > 0.35) {
     diagnostics.push(diagnostic("TN_VERIFY_LIGHTING_SHOWCASE_SHAFT_PARITY", "Web/native shaft contrast ratios must remain within 0.35.", evidence.nativePath));
   }
-  if (Math.abs(evidence.native.hazeGradientRatio - evidence.web.hazeGradientRatio) > 1.5) {
-    diagnostics.push(diagnostic("TN_VERIFY_LIGHTING_SHOWCASE_HAZE_PARITY", "Web/native height-haze gradient ratios must remain within 1.5.", evidence.nativePath));
+  if (Math.abs(evidence.native.hazeGradientRatio - evidence.web.hazeGradientRatio) > CROSS_RUNTIME_HAZE_DELTA_MAX) {
+    diagnostics.push(diagnostic("TN_VERIFY_LIGHTING_SHOWCASE_HAZE_PARITY", `Web/native height-haze gradient ratios must remain within ${CROSS_RUNTIME_HAZE_DELTA_MAX.toFixed(2)}.`, evidence.nativePath));
   }
   if (Math.abs(evidence.native.bloomHaloLuminance - evidence.web.bloomHaloLuminance) > 0.12) {
     diagnostics.push(diagnostic("TN_VERIFY_LIGHTING_SHOWCASE_BLOOM_PARITY", "Web/native window halo luminance must remain within 0.12.", evidence.nativePath));
@@ -92,12 +103,20 @@ export function validateLightingShowcaseEvidence(evidence: {
   if (Math.abs(evidence.native.floorHazeLuminance - evidence.web.floorHazeLuminance) > 0.05) {
     diagnostics.push(diagnostic("TN_VERIFY_LIGHTING_SHOWCASE_HAZE_LUMINANCE_PARITY", "Web/native floor-adjacent haze mean luminance must remain within 0.05.", evidence.nativePath));
   }
+  const ceilingRatio = evidence.native.ceilingAirLuminance / Math.max(0.001, evidence.web.ceilingAirLuminance);
+  if (ceilingRatio < CROSS_RUNTIME_CEILING_RATIO_MIN || ceilingRatio > CROSS_RUNTIME_CEILING_RATIO_MAX) {
+    diagnostics.push(diagnostic("TN_VERIFY_LIGHTING_SHOWCASE_CEILING_PARITY", `Native/web ceiling-air luminance ratio ${ceilingRatio.toFixed(3)} must remain within ${CROSS_RUNTIME_CEILING_RATIO_MIN.toFixed(2)}..${CROSS_RUNTIME_CEILING_RATIO_MAX.toFixed(2)}.`, evidence.nativePath));
+  }
+  const rightRoomRatio = evidence.native.rightRoomLuminance / Math.max(0.001, evidence.web.rightRoomLuminance);
+  if (rightRoomRatio < CROSS_RUNTIME_RIGHT_ROOM_RATIO_MIN || rightRoomRatio > CROSS_RUNTIME_RIGHT_ROOM_RATIO_MAX) {
+    diagnostics.push(diagnostic("TN_VERIFY_LIGHTING_SHOWCASE_RIGHT_ROOM_PARITY", `Native/web right-room luminance ratio ${rightRoomRatio.toFixed(3)} must remain within ${CROSS_RUNTIME_RIGHT_ROOM_RATIO_MIN.toFixed(2)}..${CROSS_RUNTIME_RIGHT_ROOM_RATIO_MAX.toFixed(2)}.`, evidence.nativePath));
+  }
   if (Math.abs(evidence.native.warmChroma - evidence.web.warmChroma) > 0.06) {
     diagnostics.push(diagnostic("TN_VERIFY_LIGHTING_SHOWCASE_CHROMA_PARITY", "Web/native whole-frame warm chroma must remain within 0.06.", evidence.nativePath));
   }
   const detailRatio = evidence.native.surfaceDetailEnergy / Math.max(0.0001, evidence.web.surfaceDetailEnergy);
-  if (detailRatio < 0.3 || detailRatio > 3) {
-    diagnostics.push(diagnostic("TN_VERIFY_LIGHTING_SHOWCASE_SURFACE_DETAIL_PARITY", `Web/native surface-detail energy ratio ${detailRatio.toFixed(3)} must remain within 0.3..3.0 without requiring native high-frequency noise.`, evidence.nativePath));
+  if (detailRatio < CROSS_RUNTIME_DETAIL_RATIO_MIN || detailRatio > CROSS_RUNTIME_DETAIL_RATIO_MAX) {
+    diagnostics.push(diagnostic("TN_VERIFY_LIGHTING_SHOWCASE_SURFACE_DETAIL_PARITY", `Web/native surface-detail energy ratio ${detailRatio.toFixed(3)} must remain within ${CROSS_RUNTIME_DETAIL_RATIO_MIN.toFixed(1)}..${CROSS_RUNTIME_DETAIL_RATIO_MAX.toFixed(1)} without requiring native high-frequency noise.`, evidence.nativePath));
   }
   return diagnostics;
 }
@@ -234,8 +253,10 @@ async function analyzeScreenshot(root: string, path: string): Promise<LightingSh
   const shaftNeighborLuminance = regionMeanLuminance(frame, [590 / 1280, 345 / 720, 180 / 1280, 90 / 720]);
   const floorHazeLuminance = regionMeanLuminance(frame, [26 / 1280, 540 / 720, 290 / 1280, 120 / 720]);
   const ceilingAirLuminance = regionMeanLuminance(frame, [384 / 1280, 14 / 720, 384 / 1280, 72 / 720]);
+  const rightRoomLuminance = regionMeanLuminance(frame, [800 / 1280, 180 / 720, 480 / 1280, 360 / 720]);
   return {
     bloomHaloLuminance: regionMeanLuminance(frame, [224 / 1280, 180 / 720, 192 / 1280, 140 / 720]),
+    ceilingAirLuminance,
     contrast: Math.sqrt(Math.max(0, sumSquared / Math.max(1, count) - meanLuminance * meanLuminance)),
     floorHazeLuminance,
     hazeGradientRatio: floorHazeLuminance / Math.max(0.001, ceilingAirLuminance),
@@ -243,6 +264,7 @@ async function analyzeScreenshot(root: string, path: string): Promise<LightingSh
     meanLuminance,
     nonBlackFraction: nonBlack / Math.max(1, count),
     overexposedFraction: overexposed / Math.max(1, count),
+    rightRoomLuminance,
     shadowFraction: shadows / Math.max(1, count),
     shaftLuminance,
     shaftNeighborLuminance,
@@ -327,7 +349,7 @@ async function writeContactSheet(path: string): Promise<void> {
 }
 
 function emptyMetrics(): LightingShowcaseMetrics {
-  return { bloomHaloLuminance: 0, contrast: 0, floorHazeLuminance: 0, hazeGradientRatio: 0, highlightFraction: 0, meanLuminance: 0, nonBlackFraction: 0, overexposedFraction: 0, shadowFraction: 1, shaftLuminance: 0, shaftNeighborLuminance: 0, shaftRatio: 0, surfaceDetailEnergy: 0, warmChroma: 0 };
+  return { bloomHaloLuminance: 0, ceilingAirLuminance: 0, contrast: 0, floorHazeLuminance: 0, hazeGradientRatio: 0, highlightFraction: 0, meanLuminance: 0, nonBlackFraction: 0, overexposedFraction: 0, rightRoomLuminance: 0, shadowFraction: 1, shaftLuminance: 0, shaftNeighborLuminance: 0, shaftRatio: 0, surfaceDetailEnergy: 0, warmChroma: 0 };
 }
 
 function diagnostic(code: string, message: string, path: string): VerificationDiagnostic { return { code, message, path, severity: "error" }; }

@@ -12,6 +12,7 @@ test("lighting showcase captures the freshly built example bundle", () => {
 
 const healthy: LightingShowcaseMetrics = {
   bloomHaloLuminance: 0.2,
+  ceilingAirLuminance: 0.08,
   contrast: 0.18,
   floorHazeLuminance: 0.18,
   hazeGradientRatio: 2.5,
@@ -19,6 +20,7 @@ const healthy: LightingShowcaseMetrics = {
   meanLuminance: 0.24,
   nonBlackFraction: 0.82,
   overexposedFraction: 0.01,
+  rightRoomLuminance: 0.08,
   shadowFraction: 0.35,
   shaftLuminance: 0.24,
   shaftNeighborLuminance: 0.16,
@@ -63,4 +65,23 @@ test("lighting showcase evidence rejects black native output and broad clipping"
   assert.ok(codes.includes("TN_VERIFY_LIGHTING_SHOWCASE_CONTENT_MISSING"));
   assert.ok(codes.includes("TN_VERIFY_LIGHTING_SHOWCASE_CLIPPING"));
   assert.ok(codes.includes("TN_VERIFY_LIGHTING_SHOWCASE_EXPOSURE_PARITY"));
+});
+
+test("lighting showcase evidence locks the post-parity cross-runtime envelope", () => {
+  const exposureDrift = { ...healthy, meanLuminance: 0.19 };
+  const exposureCodes = validateLightingShowcaseEvidence({ native: exposureDrift, nativePath: "native.png", nativeReport: report, web: healthy, webPath: "web.png", webReport: report }).map((entry) => entry.code);
+  assert.ok(exposureCodes.includes("TN_VERIFY_LIGHTING_SHOWCASE_EXPOSURE_PARITY"));
+
+  const hazeDrift = { ...healthy, hazeGradientRatio: healthy.hazeGradientRatio + 1.5 };
+  const hazeCodes = validateLightingShowcaseEvidence({ native: hazeDrift, nativePath: "native.png", nativeReport: report, web: healthy, webPath: "web.png", webReport: report }).map((entry) => entry.code);
+  assert.ok(hazeCodes.includes("TN_VERIFY_LIGHTING_SHOWCASE_HAZE_PARITY"));
+
+  const detailDrift = { ...healthy, surfaceDetailEnergy: 0.0121 };
+  const detailCodes = validateLightingShowcaseEvidence({ native: detailDrift, nativePath: "native.png", nativeReport: report, web: healthy, webPath: "web.png", webReport: report }).map((entry) => entry.code);
+  assert.ok(detailCodes.includes("TN_VERIFY_LIGHTING_SHOWCASE_SURFACE_DETAIL_PARITY"));
+
+  const spatialDrift = { ...healthy, ceilingAirLuminance: 0.05, rightRoomLuminance: 0.14 };
+  const spatialCodes = validateLightingShowcaseEvidence({ native: spatialDrift, nativePath: "native.png", nativeReport: report, web: healthy, webPath: "web.png", webReport: report }).map((entry) => entry.code);
+  assert.ok(spatialCodes.includes("TN_VERIFY_LIGHTING_SHOWCASE_CEILING_PARITY"));
+  assert.ok(spatialCodes.includes("TN_VERIFY_LIGHTING_SHOWCASE_RIGHT_ROOM_PARITY"));
 });
