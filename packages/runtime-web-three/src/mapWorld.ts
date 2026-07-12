@@ -943,6 +943,9 @@ function mapMaterial(
   if (material.kind === "extended") {
     return mapExtendedMaterial(material, assetsById, diagnostics, source);
   }
+  if (material.kind === "unlit") {
+    return mapUnlitMaterial(material, assetsById, diagnostics, source);
+  }
   if (material.kind === "shader") {
     const generated = generatePortableShaderMaterial(material);
     const mapped = new THREE.ShaderMaterial({
@@ -1035,6 +1038,26 @@ function mapMaterial(
     mapped.userData.threeNativeEmissiveBloom = emissiveBloomObservation("", material);
   }
   mapped.userData.threeNativeAlphaMode = material.alphaMode ?? "opaque";
+  mapped.needsUpdate = true;
+  return mapped;
+}
+
+function mapUnlitMaterial(
+  material: Extract<IMaterialIr, { kind: "unlit" }>,
+  assetsById: Map<string, IAssetIr>,
+  diagnostics: IRuntimeDiagnostic[],
+  source?: string,
+): THREE.Material {
+  const map = mapTextureSlot(material, "baseColorTexture", assetsById, diagnostics, source);
+  const mapped = new THREE.MeshBasicMaterial({
+    alphaTest: material.alphaMode === "mask" ? material.alphaCutoff ?? 0.5 : 0,
+    color: colorToThree(material.color),
+    map,
+    opacity: material.opacity ?? 1,
+    transparent: material.alphaMode === "blend" || (material.opacity ?? 1) < 1,
+  });
+  applyMaterialPolicy(mapped, material);
+  mapped.userData.threeNativeMaterialKind = "unlit";
   mapped.needsUpdate = true;
   return mapped;
 }

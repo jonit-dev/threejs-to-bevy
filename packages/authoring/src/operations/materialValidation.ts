@@ -40,7 +40,7 @@ const materialNormalizedNumberKeys = [
   "transmission",
 ] as const;
 
-const materialKinds = new Set(["extended", "shader", "standard"]);
+const materialKinds = new Set(["extended", "shader", "standard", "unlit"]);
 
 interface IDeclarationDocumentValidationOptions {
   declarationKeys: ReadonlySet<string>;
@@ -75,7 +75,7 @@ export function validateMaterialDocument(
   });
 }
 
-function validateMaterialDeclaration(
+export function validateMaterialDeclaration(
   diagnostics: IAuthoringDiagnostic[],
   file: string,
   path: string,
@@ -84,7 +84,7 @@ function validateMaterialDeclaration(
   validateGeneratedPathString(diagnostics, file, `${path}/asset`, item.asset, "material asset must be a non-empty source path.");
   const kind = readString(item.kind);
   if (item.kind !== undefined && (kind === undefined || !materialKinds.has(kind))) {
-    diagnostics.push(typeDiagnostic(file, `${path}/kind`, "material kind must be 'standard', 'extended', or 'shader'.", item.kind));
+    diagnostics.push(typeDiagnostic(file, `${path}/kind`, "material kind must be 'standard', 'unlit', 'extended', or 'shader'.", item.kind));
   }
   if (kind === "shader" && item.program === undefined) {
     diagnostics.push(typeDiagnostic(file, `${path}/program`, "shader material must declare a portable program.", item.program));

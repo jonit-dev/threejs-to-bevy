@@ -443,7 +443,7 @@ export interface IMaterialDeclaration {
   emissiveIntensity?: number;
   emissiveTexture?: string;
   inputs?: string[];
-  kind?: "extended" | "shader" | "standard";
+  kind?: "extended" | "shader" | "standard" | "unlit";
   metallicRoughnessTexture?: string;
   metalness?: number;
   normalTexture?: string;

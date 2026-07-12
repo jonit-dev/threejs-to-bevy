@@ -659,7 +659,7 @@ export interface IIrSchemaFile {
 }
 
 export type MaterialBlendMode = "additive" | "multiply" | "normal" | "premultipliedAlpha";
-export type MaterialKind = "extended" | "shader" | "standard";
+export type MaterialKind = "extended" | "shader" | "standard" | "unlit";
 export type ExtendedMaterialPreset = "foliage" | "unlitMasked";
 export type ShaderBuiltinInput = "cameraPosition" | "elapsedTime" | "modelMatrix" | "normal" | "position" | "projectionMatrix" | "uv0" | "uv1" | "vertexColor" | "viewMatrix" | "worldPosition";
 export type ShaderOutput = "alpha" | "baseColor" | "discard" | "emissive";
@@ -756,6 +756,11 @@ export interface IExtendedMaterialIr extends IBaseMaterialIr {
   kind: "extended";
 }
 
+export interface IUnlitMaterialIr extends IBaseMaterialIr {
+  color: string | readonly [number, number, number] | readonly [number, number, number, number];
+  kind: "unlit";
+}
+
 export interface IShaderMaterialIr extends IBaseMaterialIr {
   inputs?: readonly ShaderBuiltinInput[];
   kind: "shader";
@@ -765,7 +770,7 @@ export interface IShaderMaterialIr extends IBaseMaterialIr {
   uniforms?: readonly IShaderUniformIr[];
 }
 
-export type IMaterialIr = IExtendedMaterialIr | IShaderMaterialIr | IStandardMaterialIr;
+export type IMaterialIr = IExtendedMaterialIr | IShaderMaterialIr | IStandardMaterialIr | IUnlitMaterialIr;
 
 export interface IMaterialsIr {
   schema: MaterialsSchema;

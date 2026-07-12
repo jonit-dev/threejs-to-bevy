@@ -380,6 +380,8 @@ pub enum MapError {
         entity_id: String,
         material_id: String,
     },
+    #[error("material '{material_id}' uses web-only kind 'unlit'")]
+    UnsupportedUnlitMaterial { material_id: String },
 }
 
 impl MapError {
@@ -387,6 +389,7 @@ impl MapError {
         match self {
             Self::MissingMesh { .. } => "TN_BEVY_MESH_REFERENCE_MISSING",
             Self::MissingMaterial { .. } => "TN_BEVY_MATERIAL_REFERENCE_MISSING",
+            Self::UnsupportedUnlitMaterial { .. } => "TN_BEVY_MATERIAL_UNLIT_UNSUPPORTED",
         }
     }
 
@@ -397,6 +400,9 @@ impl MapError {
             }
             Self::MissingMaterial { entity_id, .. } => {
                 format!("world.ir.json/entities/{entity_id}/components/MeshRenderer/material")
+            }
+            Self::UnsupportedUnlitMaterial { material_id } => {
+                format!("materials.ir.json/materials/{material_id}/kind")
             }
         }
     }
@@ -413,11 +419,17 @@ impl MapError {
                     "Add material '{material_id}' to materials.ir.json or update the MeshRenderer material reference."
                 )
             }
+            Self::UnsupportedUnlitMaterial { .. } => {
+                "Use 'standard' for native targets or freeze-gate this project to web until native unlit parity is promoted.".to_owned()
+            }
         }
     }
 }
 
 pub fn map_bundle_into_world(world: &mut World, bundle: &LoadedBundle) -> Result<(), MapError> {
+    if let Some(material) = bundle.materials.materials.iter().find(|material| material.kind == "unlit") {
+        return Err(MapError::UnsupportedUnlitMaterial { material_id: material.id.clone() });
+    }
     let spawn_context = prepare_world_entity_spawn_context(world, bundle);
     let mut material_handles = NativeMaterialHandles::default();
     let mut shader_material_handles = NativeShaderMaterialHandles::default();

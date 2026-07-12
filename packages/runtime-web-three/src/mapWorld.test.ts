@@ -1012,6 +1012,21 @@ test("mapWorld should apply material alpha mode and opacity", () => {
   assert.equal(leaves.material.userData.threeNativeAlphaMode, "mask");
 });
 
+test("should build MeshBasicMaterial for unlit kind", () => {
+  const mapped = mapWorld({
+    assets: { schema: "threenative.assets", version: "0.1.0", assets: [{ id: "mesh.cube", kind: "mesh", format: "generated", primitive: "box", size: [1, 1, 1] }] },
+    manifest: { schema: "threenative.bundle", version: "0.1.0", name: "unlit", requiredCapabilities: {}, entry: { world: "world.ir.json" }, files: { assets: "assets.manifest.json", materials: "materials.ir.json", targetProfile: "target.profile.json" } },
+    materials: { schema: "threenative.materials", version: "0.1.0", materials: [{ id: "mat.unlit", kind: "unlit", color: "#abcdef" }] },
+    targetProfile: { schema: "threenative.target-profile", version: "0.1.0", targets: ["web"] },
+    world: { schema: "threenative.world", version: "0.1.0", entities: [{ id: "cube", components: { MeshRenderer: { mesh: "mesh.cube", material: "mat.unlit" } } }] },
+  });
+  const cube = mapped.objectsById.get("cube");
+  assert.ok(cube instanceof THREE.Mesh);
+  assert.ok(cube.material instanceof THREE.MeshBasicMaterial);
+  assert.equal(cube.material.color.getHexString(), "abcdef");
+  assert.equal(cube.material.userData.threeNativeMaterialKind, "unlit");
+});
+
 test("mapWorld should trace emissive bloom contribution metadata", () => {
   const bundle: IWebBundle = {
     assets: {
