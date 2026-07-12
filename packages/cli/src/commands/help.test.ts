@@ -12,6 +12,9 @@ test("should list task-oriented help topics", async () => {
   assert.equal(payload.topics.some((topic) => topic.name === "scaffold"), true);
   assert.equal(payload.topics.some((topic) => topic.name === "assets"), true);
   assert.equal(payload.topics.some((topic) => topic.name === "scene"), true);
+  assert.equal(payload.topics.some((topic) => topic.name === "commands"), true);
+  assert.equal(payload.topics.some((topic) => topic.name === "schemas"), true);
+  assert.equal(payload.topics.some((topic) => topic.name === "flow"), true);
   assert.equal(payload.topics.some((topic) => topic.name === "camera"), true);
   assert.equal(payload.topics.some((topic) => topic.name === "transform"), true);
   assert.equal(payload.topics.some((topic) => topic.name === "visual-qa"), true);
@@ -59,6 +62,9 @@ test("should mention asset inspection in asset help", async () => {
   assert.equal(payload.docs.includes("docs/workflows/asset-pipeline.md"), true);
   assert.equal(payload.examples.includes("tn asset inspect assets/kart.glb --json"), true);
   assert.equal(payload.examples.includes("tn asset inspect assets --recursive --json"), true);
+  assert.equal(payload.commands.some((command) => command.includes("tn model-test <asset-path> --view")), true);
+  assert.equal(payload.commands.some((command) => command.includes("tn model-test <asset-path> --angles <degrees,...>")), true);
+  assert.equal(payload.examples.includes("tn model-test assets/kart.glb --angles 0,90,180,270 --json"), true);
 });
 
 test("should resolve aliases for topic help", async () => {

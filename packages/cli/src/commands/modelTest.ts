@@ -1,11 +1,15 @@
-import { copyFile, mkdir, writeFile } from "node:fs/promises";
+import { copyFile, mkdir, rename, rm, writeFile } from "node:fs/promises";
 import { basename, dirname, isAbsolute, join, resolve } from "node:path";
 
 import { buildProject, loadProjectConfig, validateBundle } from "@threenative/compiler";
+import { startWebPreview, type IWebPreviewServer } from "@threenative/runtime-web-three";
 
-import { diagnosticResult, type ICommandResult } from "../diagnostics.js";
-import { captureScreenshot } from "./visualProof.js";
+import { diagnosticResult, type ICommandResult, type IDiagnosticPayload } from "../diagnostics.js";
 import { inspectAsset } from "./asset.js";
+import { captureScreenshot } from "./visualProof.js";
+
+const MAX_TURNTABLE_ANGLES = 36;
+const modelTestUsage = "Usage: tn model-test <asset-path> [--view|--screenshot|--angles <degrees,...>] [--angle <degrees>] [--url <preview-url>] [--screenshot-out <file.png>] [--out <dir>] [--verify] [--json]";
 
 interface ModelTestFile {
   path: string;
@@ -30,69 +34,173 @@ interface ModelTestAnalysis {
   scaleVerdict: "too-small" | "ok" | "too-large" | "clipped" | "unknown";
 }
 
-interface ModelTestScreenshotUnavailable {
-  code: "TN_MODEL_TEST_SCREENSHOT_UNAVAILABLE";
-  message: string;
-  nextCommand: string;
-  status: "unavailable";
+type ScreenshotCaptureReport = Awaited<ReturnType<typeof captureScreenshot>>;
+type ModelTestScreenshot = ScreenshotCaptureReport & { status: "captured" };
+
+export interface IModelTestCapture {
+  angleDegrees: number;
+  byteSize: number;
+  checks: ScreenshotCaptureReport["checks"];
+  diagnostics?: ScreenshotCaptureReport["diagnostics"];
+  outPath: string;
 }
 
-type ModelTestScreenshot = (Awaited<ReturnType<typeof captureScreenshot>> & { status: "captured" }) | ModelTestScreenshotUnavailable;
-
-export async function modelTestCommand(argv: readonly string[], cwd = process.env.INIT_CWD ?? process.cwd()): Promise<ICommandResult> {
-  const normalizedArgv = argv[0] === "--" ? argv.slice(1) : argv;
-  const json = normalizedArgv.includes("--json");
-  const verify = normalizedArgv.includes("--verify");
-  const screenshot = normalizedArgv.includes("--screenshot");
-  const assetArg = normalizedArgv.find((arg) => !arg.startsWith("-"));
-  const outArg = flagValue(normalizedArgv, "--out") ?? flagValue(normalizedArgv, "--project") ?? "artifacts/model-test";
-  const screenshotUrl = flagValue(normalizedArgv, "--url");
-  const screenshotOutArg = flagValue(normalizedArgv, "--screenshot-out");
-
-  if (assetArg === undefined) {
-    return diagnosticResult(
-      { code: "TN_MODEL_TEST_USAGE", message: "Usage: tn model-test <asset-path> [--out <dir>] [--verify] [--screenshot] [--url <preview-url>] [--json]" },
-      { exitCode: 1, json, stderr: !json },
-    );
-  }
-
-  const assetPath = resolvePath(cwd, assetArg);
-  const outDir = resolvePath(cwd, outArg);
-  const screenshotOutPath = screenshotOutArg === undefined ? join(outDir, "artifacts", "model-test.png") : resolvePath(cwd, screenshotOutArg);
-
-  try {
-    const report = await createModelTestProject({ assetPath, outDir, screenshot, screenshotOutPath, screenshotUrl, verify });
-    return {
-      exitCode: report.verified?.ok === false ? 1 : 0,
-      stdout: json
-        ? `${JSON.stringify({ code: report.verified?.ok === false ? "TN_MODEL_TEST_VERIFY_FAILED" : "TN_MODEL_TEST_OK", ...report }, null, 2)}\n`
-        : renderModelTestReport(report),
-    };
-  } catch (error) {
-    return diagnosticResult(
-      { code: "TN_MODEL_TEST_FAILED", message: error instanceof Error ? error.message : String(error) },
-      { exitCode: 1, json, stderr: !json },
-    );
-  }
+export interface IModelTestTurntable {
+  captures: IModelTestCapture[];
+  manifestPath: string;
 }
 
-export async function createModelTestProject(options: {
-  assetPath: string;
-  outDir: string;
-  screenshot?: boolean;
-  screenshotOutPath?: string;
-  screenshotUrl?: string;
-  verify?: boolean;
-}): Promise<{
+export interface IModelTestProjectReport {
   analysis: ModelTestAnalysis;
   asset: string;
   bounds?: unknown;
   calibration?: unknown;
   files: ModelTestFile[];
   outDir: string;
+  preview?: {
+    bundlePath: string;
+    url: string;
+  };
   screenshot?: ModelTestScreenshot;
+  sourcePath: string;
+  turntable?: IModelTestTurntable;
   verified?: { bundlePath?: string; diagnostics?: unknown[]; ok: boolean };
-}> {
+}
+
+export interface IModelTestCommandResult extends ICommandResult {
+  server?: IWebPreviewServer;
+}
+
+interface ModelTestCommandOptions {
+  angleDegrees: number;
+  angles?: number[];
+  assetArg: string;
+  json: boolean;
+  mode: "project" | "screenshot" | "turntable" | "view";
+  outArg: string;
+  screenshotOutArg?: string;
+  screenshotUrl?: string;
+  verify: boolean;
+}
+
+interface ModelTestProjectGenerationOptions {
+  assetPath: string;
+  outDir: string;
+  yawDegrees: number;
+}
+
+interface ModelTestProjectState {
+  assetFileName: string;
+  inspection: Awaited<ReturnType<typeof inspectAsset>>;
+  report: IModelTestProjectReport;
+}
+
+interface BuiltModelTestProject {
+  bundlePath: string;
+  diagnostics: unknown[];
+}
+
+class ModelTestError extends Error {
+  constructor(
+    public readonly code: string,
+    message: string,
+    public readonly details: Record<string, unknown> = {},
+  ) {
+    super(message);
+    this.name = "ModelTestError";
+  }
+}
+
+export async function modelTestCommand(argv: readonly string[], cwd = process.env.INIT_CWD ?? process.cwd()): Promise<IModelTestCommandResult> {
+  const parsed = parseModelTestArgs(argv);
+  if ("diagnostic" in parsed) {
+    return diagnosticResult(parsed.diagnostic, { exitCode: 1, json: parsed.json, stderr: !parsed.json });
+  }
+
+  const options = parsed.options;
+  const assetPath = resolvePath(cwd, options.assetArg);
+  const outDir = resolvePath(cwd, options.outArg);
+  const screenshotOutPath = options.screenshotOutArg === undefined
+    ? join(outDir, "artifacts", "model-test.png")
+    : resolvePath(cwd, options.screenshotOutArg);
+
+  try {
+    const execution = await createModelTestProject({
+      angleDegrees: options.angleDegrees,
+      angles: options.angles,
+      assetPath,
+      mode: options.mode,
+      outDir,
+      screenshotOutPath,
+      screenshotUrl: options.screenshotUrl,
+      verify: options.verify,
+    });
+    const { server, ...report } = execution;
+    const code = modelTestReportCode(report);
+    return {
+      exitCode: code === "TN_MODEL_TEST_OK" ? 0 : 1,
+      ...(server === undefined ? {} : { server }),
+      stdout: options.json
+        ? `${JSON.stringify({ code, ...report }, null, 2)}\n`
+        : renderModelTestReport(report),
+    };
+  } catch (error) {
+    const payload = error instanceof ModelTestError
+      ? { code: error.code, message: error.message, ...error.details }
+      : { code: "TN_MODEL_TEST_FAILED", message: error instanceof Error ? error.message : String(error) };
+    return diagnosticResult(payload, { exitCode: 1, json: options.json, stderr: !options.json });
+  }
+}
+
+export async function createModelTestProject(options: {
+  angleDegrees?: number;
+  angles?: readonly number[];
+  assetPath: string;
+  mode?: "project" | "screenshot" | "turntable" | "view";
+  outDir: string;
+  screenshot?: boolean;
+  screenshotOutPath?: string;
+  screenshotUrl?: string;
+  verify?: boolean;
+}): Promise<IModelTestProjectReport & { server?: IWebPreviewServer }> {
+  const mode = options.mode ?? (options.angles === undefined ? (options.screenshot === true ? "screenshot" : "project") : "turntable");
+  const state = await generateModelTestProject({
+    assetPath: options.assetPath,
+    outDir: options.outDir,
+    yawDegrees: mode === "turntable" ? 0 : options.angleDegrees ?? 0,
+  });
+  const report = state.report;
+
+  if (mode === "turntable") {
+    const angles = options.angles ?? [];
+    return captureTurntable(state, report, angles);
+  }
+
+  if (mode === "view") {
+    const built = await buildModelTestProject(options.outDir, "TN_MODEL_TEST_PREVIEW_FAILED");
+    report.verified = { bundlePath: built.bundlePath, diagnostics: built.diagnostics, ok: true };
+    const server = await startModelTestPreview(built.bundlePath);
+    report.preview = { bundlePath: built.bundlePath, url: server.url };
+    return { ...report, server };
+  }
+
+  if (mode === "screenshot") {
+    return captureSingleScreenshot({
+      outDir: options.outDir,
+      report,
+      screenshotOutPath: options.screenshotOutPath ?? join(options.outDir, "artifacts", "model-test.png"),
+      screenshotUrl: options.screenshotUrl,
+    });
+  }
+
+  if (options.verify === true) {
+    const built = await buildModelTestProject(options.outDir, "TN_MODEL_TEST_FAILED");
+    report.verified = { bundlePath: built.bundlePath, diagnostics: built.diagnostics, ok: true };
+  }
+  return report;
+}
+
+async function generateModelTestProject(options: ModelTestProjectGenerationOptions): Promise<ModelTestProjectState> {
   const inspection = await inspectAsset(options.assetPath);
   if (inspection.code !== "TN_ASSET_INSPECT_OK") {
     const firstError = inspection.diagnostics.find((diagnostic) => diagnostic.severity === "error");
@@ -121,7 +229,7 @@ export async function createModelTestProject(options: {
   const packagePath = join(options.outDir, "package.json");
   const readmePath = join(options.outDir, "README.md");
   await mkdir(dirname(sourcePath), { recursive: true });
-  await writeFile(sourcePath, renderSceneDocument({ assetFileName, inspection }));
+  await writeFile(sourcePath, renderSceneDocument({ assetFileName, inspection, yawDegrees: options.yawDegrees }));
   await writeFile(
     configPath,
     `${JSON.stringify({ schema: "threenative.project", version: "0.1.0", entry: "content/scenes/model-test.scene.json", outDir: "dist/model-test.bundle" }, null, 2)}\n`,
@@ -146,43 +254,479 @@ export async function createModelTestProject(options: {
   files.push({ path: sourcePath, role: "source" }, { path: configPath, role: "config" }, { path: packagePath, role: "package" }, { path: readmePath, role: "docs" });
   const analysis = modelTestAnalysis(inspection);
 
-  let verified: { bundlePath?: string; diagnostics?: unknown[]; ok: boolean } | undefined;
-  if (options.verify === true) {
-    const config = await loadProjectConfig(options.outDir);
-    const build = await buildProject(options.outDir);
-    const bundlePath = resolve(options.outDir, config.outDir);
-    const validation = await validateBundle(build.bundlePath);
-    verified = { bundlePath, diagnostics: validation.diagnostics, ok: validation.ok };
-  }
-
-  let screenshot: ModelTestScreenshot | undefined;
-  if (options.screenshot === true) {
-    if (options.screenshotUrl === undefined) {
-      screenshot = {
-        code: "TN_MODEL_TEST_SCREENSHOT_UNAVAILABLE",
-        message: "Screenshot capture was requested, but no --url was provided for a running model-test preview.",
-        nextCommand: "Run the generated project with pnpm run dev:web, then rerun tn model-test <asset> --screenshot --url <preview-url> --json.",
-        status: "unavailable",
-      };
-    } else {
-      const captured = await captureScreenshot({ outPath: options.screenshotOutPath ?? join(options.outDir, "artifacts", "model-test.png"), url: options.screenshotUrl });
-      screenshot = { ...captured, status: "captured" };
-    }
-  }
-
   return {
-    analysis,
-    asset: options.assetPath,
-    bounds: inspection.bounds,
-    calibration: inspection.calibration,
-    files,
-    outDir: options.outDir,
-    screenshot,
-    verified,
+    assetFileName,
+    inspection,
+    report: {
+      analysis,
+      asset: options.assetPath,
+      bounds: inspection.bounds,
+      calibration: inspection.calibration,
+      files,
+      outDir: options.outDir,
+      sourcePath,
+    },
   };
 }
 
-function renderSceneDocument(options: { assetFileName: string; inspection: Awaited<ReturnType<typeof inspectAsset>> }): string {
+async function captureSingleScreenshot(options: {
+  outDir: string;
+  report: IModelTestProjectReport;
+  screenshotOutPath: string;
+  screenshotUrl?: string;
+}): Promise<IModelTestProjectReport> {
+  let server: IWebPreviewServer | undefined;
+  let url = options.screenshotUrl;
+  try {
+    if (url === undefined) {
+      const built = await buildModelTestProject(options.outDir, "TN_MODEL_TEST_PREVIEW_FAILED");
+      options.report.verified = { bundlePath: built.bundlePath, diagnostics: built.diagnostics, ok: true };
+      server = await startModelTestPreview(built.bundlePath);
+      url = server.url;
+    }
+
+    const captured = await captureScreenshot({ outPath: options.screenshotOutPath, url });
+    options.report.screenshot = { ...captured, status: "captured" };
+    if (hasCaptureErrors(captured)) {
+      throw new ModelTestError(
+        "TN_MODEL_TEST_CAPTURE_FAILED",
+        `Screenshot capture failed for '${options.report.asset}'.`,
+        { outDir: options.outDir, screenshot: options.report.screenshot },
+      );
+    }
+    return options.report;
+  } catch (error) {
+    if (error instanceof ModelTestError) {
+      if (error.details.screenshot === undefined && options.report.screenshot !== undefined) {
+        throw new ModelTestError(error.code, error.message, { ...error.details, outDir: options.outDir, screenshot: options.report.screenshot });
+      }
+      throw error;
+    }
+    throw new ModelTestError(
+      "TN_MODEL_TEST_CAPTURE_FAILED",
+      `Screenshot capture failed for '${options.report.asset}': ${errorMessage(error)}.`,
+      { outDir: options.outDir, screenshot: options.report.screenshot },
+    );
+  } finally {
+    if (server !== undefined) {
+      try {
+        await server.close();
+      } catch (error) {
+        throw new ModelTestError(
+          "TN_MODEL_TEST_PREVIEW_FAILED",
+          `Could not close the generated model-test preview: ${errorMessage(error)}.`,
+          { outDir: options.outDir, screenshot: options.report.screenshot },
+        );
+      }
+    }
+  }
+}
+
+async function captureTurntable(
+  state: ModelTestProjectState,
+  report: IModelTestProjectReport,
+  angles: readonly number[],
+): Promise<IModelTestProjectReport> {
+  const captures: IModelTestCapture[] = [];
+  const turntableDir = join(report.outDir, "artifacts", "turntable");
+  let failure: ModelTestError | undefined;
+  let restoreFailure: ModelTestError | undefined;
+
+  try {
+    for (const angleDegrees of angles) {
+      try {
+        await writeModelTestScene(state.report.sourcePath, state.assetFileName, state.inspection, angleDegrees);
+      } catch (error) {
+        failure = asModelTestError(error, "TN_MODEL_TEST_PREVIEW_FAILED", `Could not serialize model-test angle ${angleDegrees} degrees: ${errorMessage(error)}.`);
+        break;
+      }
+      let built: BuiltModelTestProject;
+      try {
+        built = await buildModelTestProject(report.outDir, "TN_MODEL_TEST_PREVIEW_FAILED");
+      } catch (error) {
+        failure = asModelTestError(error, "TN_MODEL_TEST_PREVIEW_FAILED", `Could not build model-test angle ${angleDegrees} degrees: ${errorMessage(error)}.`);
+        break;
+      }
+
+      let server: IWebPreviewServer | undefined;
+      try {
+        try {
+          server = await startModelTestPreview(built.bundlePath);
+        } catch (error) {
+          throw new ModelTestError(
+            "TN_MODEL_TEST_PREVIEW_FAILED",
+            `Could not serve model-test angle ${angleDegrees} degrees: ${errorMessage(error)}.`,
+            { angleDegrees, bundlePath: built.bundlePath },
+          );
+        }
+
+        const outPath = join(turntableDir, `model-test-yaw-${formatAngleForFilename(angleDegrees)}.png`);
+        try {
+          const captured = await captureScreenshot({ outPath, url: server.url });
+          const record = captureRecord(angleDegrees, captured);
+          captures.push(record);
+          if (hasCaptureErrors(captured)) {
+            failure = new ModelTestError(
+              "TN_MODEL_TEST_CAPTURE_FAILED",
+              `Screenshot capture failed for model-test angle ${angleDegrees} degrees.`,
+              { angleDegrees, capture: record },
+            );
+            break;
+          }
+        } catch (error) {
+          failure = new ModelTestError(
+            "TN_MODEL_TEST_CAPTURE_FAILED",
+            `Screenshot capture failed for model-test angle ${angleDegrees} degrees: ${errorMessage(error)}.`,
+            { angleDegrees, captures },
+          );
+          break;
+        }
+      } catch (error) {
+        failure = error instanceof ModelTestError
+          ? error
+          : new ModelTestError("TN_MODEL_TEST_PREVIEW_FAILED", errorMessage(error), { angleDegrees, captures });
+        break;
+      } finally {
+        if (server !== undefined) {
+          try {
+            await server.close();
+          } catch (error) {
+            failure ??= new ModelTestError(
+              "TN_MODEL_TEST_PREVIEW_FAILED",
+              `Could not close the model-test preview after angle ${angleDegrees} degrees: ${errorMessage(error)}.`,
+              { angleDegrees, captures },
+            );
+          }
+        }
+      }
+      if (failure !== undefined) {
+        break;
+      }
+    }
+  } finally {
+    try {
+      await writeModelTestScene(state.report.sourcePath, state.assetFileName, state.inspection, 0);
+      const restored = await buildModelTestProject(report.outDir, "TN_MODEL_TEST_RESTORE_FAILED");
+      report.verified = { bundlePath: restored.bundlePath, diagnostics: restored.diagnostics, ok: true };
+    } catch (error) {
+      restoreFailure = asModelTestError(error, "TN_MODEL_TEST_RESTORE_FAILED", `Could not restore the model-test project to zero yaw: ${errorMessage(error)}.`);
+    }
+  }
+
+  const turntable = { captures };
+  if (restoreFailure !== undefined) {
+    throw new ModelTestError(
+      "TN_MODEL_TEST_RESTORE_FAILED",
+      restoreFailure.message,
+      { captures, previousFailure: failure?.code },
+    );
+  }
+  if (failure !== undefined) {
+    throw new ModelTestError(failure.code, failure.message, { ...failure.details, turntable });
+  }
+
+  const manifestPath = join(turntableDir, "manifest.json");
+  try {
+    await writeJsonAtomically(manifestPath, {
+      angles: [...angles],
+      asset: report.asset,
+      capturedAt: new Date().toISOString(),
+      captures,
+      generatedBundlePath: report.verified?.bundlePath,
+      inputAssetPath: report.asset,
+      normalizedAngles: [...angles],
+      schema: "threenative.model-test-turntable",
+      version: "0.1.0",
+    });
+  } catch (error) {
+    throw new ModelTestError(
+      "TN_MODEL_TEST_CAPTURE_FAILED",
+      `Could not write the turntable manifest '${manifestPath}': ${errorMessage(error)}.`,
+      { captures },
+    );
+  }
+  report.turntable = { captures, manifestPath };
+  return report;
+}
+
+async function buildModelTestProject(outDir: string, failureCode: string): Promise<BuiltModelTestProject> {
+  try {
+    const config = await loadProjectConfig(outDir);
+    const build = await buildProject(outDir);
+    const validation = await validateBundle(build.bundlePath);
+    if (!validation.ok) {
+      throw new Error(validation.diagnostics[0]?.message ?? "Bundle validation failed.");
+    }
+    return {
+      bundlePath: resolve(outDir, config.outDir),
+      diagnostics: validation.diagnostics,
+    };
+  } catch (error) {
+    throw new ModelTestError(failureCode, `Could not build or validate the generated model-test bundle: ${errorMessage(error)}.`, { outDir });
+  }
+}
+
+async function startModelTestPreview(bundlePath: string): Promise<IWebPreviewServer> {
+  let server: IWebPreviewServer;
+  try {
+    server = await startWebPreview({ bundlePath, silent: true });
+  } catch (error) {
+    throw new ModelTestError("TN_MODEL_TEST_PREVIEW_FAILED", `Could not start the generated model-test preview: ${errorMessage(error)}.`, { bundlePath });
+  }
+  return managePreviewLifecycle(server);
+}
+
+function managePreviewLifecycle(server: IWebPreviewServer): IWebPreviewServer {
+  let closed = false;
+  const closeSignalHandler = (): void => {
+    void managedServer.close().catch(() => undefined);
+  };
+  const managedServer: IWebPreviewServer = {
+    ...server,
+    close: async () => {
+      if (closed) {
+        return;
+      }
+      closed = true;
+      process.removeListener("SIGINT", closeSignalHandler);
+      process.removeListener("SIGTERM", closeSignalHandler);
+      await server.close();
+    },
+  };
+  process.once("SIGINT", closeSignalHandler);
+  process.once("SIGTERM", closeSignalHandler);
+  return managedServer;
+}
+
+function parseModelTestArgs(argv: readonly string[]): { json: boolean; options: ModelTestCommandOptions } | { diagnostic: IDiagnosticPayload; json: boolean } {
+  const normalizedArgv = argv[0] === "--" ? argv.slice(1) : argv;
+  const json = normalizedArgv.includes("--json");
+  const positionals: string[] = [];
+  let view = false;
+  let screenshot = false;
+  let verify = false;
+  let outArg: string | undefined;
+  let projectArg: string | undefined;
+  let screenshotOutArg: string | undefined;
+  let screenshotUrl: string | undefined;
+  let angleArg: string | undefined;
+  let anglesArg: string | undefined;
+
+  for (let index = 0; index < normalizedArgv.length; index += 1) {
+    const argument = normalizedArgv[index];
+    if (argument === undefined) {
+      continue;
+    }
+    if (argument === "--json") {
+      continue;
+    }
+    if (argument === "--view") {
+      view = true;
+      continue;
+    }
+    if (argument === "--screenshot") {
+      screenshot = true;
+      continue;
+    }
+    if (argument === "--verify") {
+      verify = true;
+      continue;
+    }
+    if (["--out", "--project", "--screenshot-out", "--url", "--angle", "--angles"].includes(argument)) {
+      const value = normalizedArgv[index + 1];
+      if (value === undefined) {
+        return { diagnostic: flagValueDiagnostic(argument), json };
+      }
+      index += 1;
+      if (argument === "--out") outArg = value;
+      if (argument === "--project") projectArg = value;
+      if (argument === "--screenshot-out") screenshotOutArg = value;
+      if (argument === "--url") screenshotUrl = value;
+      if (argument === "--angle") angleArg = value;
+      if (argument === "--angles") anglesArg = value;
+      continue;
+    }
+    if (argument.startsWith("-")) {
+      return { diagnostic: { code: "TN_MODEL_TEST_USAGE", message: `Unknown model-test option '${argument}'. ${modelTestUsage}` }, json };
+    }
+    positionals.push(argument);
+  }
+
+  if (positionals.length !== 1) {
+    return { diagnostic: { code: "TN_MODEL_TEST_USAGE", message: modelTestUsage }, json };
+  }
+  if (outArg !== undefined && projectArg !== undefined) {
+    return {
+      diagnostic: {
+        code: "TN_MODEL_TEST_MODE_CONFLICT",
+        message: "Use only one of --out or --project for the generated model-test directory.",
+      },
+      json,
+    };
+  }
+  if (view && (screenshot || anglesArg !== undefined || screenshotUrl !== undefined || screenshotOutArg !== undefined)) {
+    return {
+      diagnostic: {
+        code: "TN_MODEL_TEST_MODE_CONFLICT",
+        message: "--view cannot be combined with --screenshot, --angles, --url, or --screenshot-out.",
+      },
+      json,
+    };
+  }
+  if (anglesArg !== undefined && (view || angleArg !== undefined || screenshotUrl !== undefined || screenshotOutArg !== undefined)) {
+    return {
+      diagnostic: {
+        code: "TN_MODEL_TEST_MODE_CONFLICT",
+        message: "--angles cannot be combined with --view, --angle, --url, or --screenshot-out.",
+      },
+      json,
+    };
+  }
+  if (!view && !screenshot && anglesArg === undefined && (angleArg !== undefined || screenshotUrl !== undefined || screenshotOutArg !== undefined)) {
+    return {
+      diagnostic: {
+        code: "TN_MODEL_TEST_MODE_CONFLICT",
+        message: "--angle, --url, and --screenshot-out require --view or --screenshot; --url and --screenshot-out are single-capture options.",
+      },
+      json,
+    };
+  }
+  if (screenshotUrl !== undefined && !screenshot && anglesArg === undefined) {
+    return {
+      diagnostic: {
+        code: "TN_MODEL_TEST_MODE_CONFLICT",
+        message: "--url is an external preview URL for a single --screenshot capture.",
+      },
+      json,
+    };
+  }
+
+  const angleResult = angleArg === undefined ? { value: 0 } : parseSingleAngle(angleArg);
+  if ("diagnostic" in angleResult) {
+    return { diagnostic: angleResult.diagnostic, json };
+  }
+  const anglesResult = anglesArg === undefined ? undefined : parseAngleList(anglesArg);
+  if (anglesResult !== undefined && "diagnostic" in anglesResult) {
+    return { diagnostic: anglesResult.diagnostic, json };
+  }
+
+  const mode = anglesResult === undefined ? (view ? "view" : screenshot ? "screenshot" : "project") : "turntable";
+  return {
+    json,
+    options: {
+      angleDegrees: angleResult.value,
+      ...(anglesResult === undefined ? {} : { angles: anglesResult.value }),
+      assetArg: positionals[0]!,
+      json,
+      mode,
+      outArg: outArg ?? projectArg ?? "artifacts/model-test",
+      ...(screenshotOutArg === undefined ? {} : { screenshotOutArg }),
+      ...(screenshotUrl === undefined ? {} : { screenshotUrl }),
+      verify,
+    },
+  };
+}
+
+function flagValueDiagnostic(flag: string): IDiagnosticPayload {
+  const code = flag === "--angle" ? "TN_MODEL_TEST_ANGLE_INVALID" : flag === "--angles" ? "TN_MODEL_TEST_ANGLES_INVALID" : "TN_MODEL_TEST_USAGE";
+  return { code, message: `Missing value for ${flag}. ${modelTestUsage}` };
+}
+
+function parseSingleAngle(value: string): { value: number } | { diagnostic: IDiagnosticPayload } {
+  if (value.trim() === "") {
+    return { diagnostic: { code: "TN_MODEL_TEST_ANGLE_INVALID", message: "--angle must be a finite number of degrees." } };
+  }
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) {
+    return { diagnostic: { code: "TN_MODEL_TEST_ANGLE_INVALID", message: `Invalid --angle '${value}'. Use a finite number of degrees.` } };
+  }
+  return { value: normalizeAngle(parsed) };
+}
+
+function parseAngleList(value: string): { value: number[] } | { diagnostic: IDiagnosticPayload } {
+  const parts = value.split(",").map((part) => part.trim());
+  if (parts.length === 0 || parts.some((part) => part === "")) {
+    return { diagnostic: { code: "TN_MODEL_TEST_ANGLES_INVALID", message: "--angles must contain one or more comma-separated finite degree values." } };
+  }
+  const normalized: number[] = [];
+  const seen = new Set<number>();
+  for (const part of parts) {
+    const parsed = Number(part);
+    if (!Number.isFinite(parsed)) {
+      return { diagnostic: { code: "TN_MODEL_TEST_ANGLES_INVALID", message: `Invalid turntable angle '${part}'. Every value must be finite.` } };
+    }
+    const angle = normalizeAngle(parsed);
+    if (!seen.has(angle)) {
+      seen.add(angle);
+      normalized.push(angle);
+    }
+  }
+  if (normalized.length === 0 || normalized.length > MAX_TURNTABLE_ANGLES) {
+    return {
+      diagnostic: {
+        code: "TN_MODEL_TEST_ANGLES_INVALID",
+        message: `--angles must contain between 1 and ${MAX_TURNTABLE_ANGLES} distinct normalized angles.`,
+      },
+    };
+  }
+  return { value: normalized };
+}
+
+function normalizeAngle(value: number): number {
+  const normalized = ((value % 360) + 360) % 360;
+  return Object.is(normalized, -0) ? 0 : normalized;
+}
+
+function modelTestReportCode(report: IModelTestProjectReport): "TN_MODEL_TEST_OK" | "TN_MODEL_TEST_CAPTURE_FAILED" {
+  if (report.screenshot !== undefined && hasCaptureErrors(report.screenshot)) {
+    return "TN_MODEL_TEST_CAPTURE_FAILED";
+  }
+  return "TN_MODEL_TEST_OK";
+}
+
+function hasCaptureErrors(report: { diagnostics?: ScreenshotCaptureReport["diagnostics"] }): boolean {
+  return report.diagnostics?.some((diagnostic) => diagnostic.severity === "error") ?? false;
+}
+
+function captureRecord(angleDegrees: number, captured: ScreenshotCaptureReport): IModelTestCapture {
+  return {
+    angleDegrees,
+    byteSize: captured.byteSize,
+    checks: captured.checks,
+    ...(captured.diagnostics === undefined ? {} : { diagnostics: captured.diagnostics }),
+    outPath: captured.outPath,
+  };
+}
+
+function asModelTestError(error: unknown, code: string, message: string): ModelTestError {
+  if (error instanceof ModelTestError) {
+    return error;
+  }
+  return new ModelTestError(code, message);
+}
+
+async function writeModelTestScene(
+  sourcePath: string,
+  assetFileName: string,
+  inspection: Awaited<ReturnType<typeof inspectAsset>>,
+  yawDegrees: number,
+): Promise<void> {
+  await writeFile(sourcePath, renderSceneDocument({ assetFileName, inspection, yawDegrees }));
+}
+
+async function writeJsonAtomically(path: string, value: unknown): Promise<void> {
+  await mkdir(dirname(path), { recursive: true });
+  const temporaryPath = `${path}.tmp-${process.pid}-${Date.now()}`;
+  try {
+    await writeFile(temporaryPath, `${JSON.stringify(value, null, 2)}\n`);
+    await rename(temporaryPath, path);
+  } catch (error) {
+    await rm(temporaryPath, { force: true }).catch(() => undefined);
+    throw error;
+  }
+}
+
+function renderSceneDocument(options: { assetFileName: string; inspection: Awaited<ReturnType<typeof inspectAsset>>; yawDegrees: number }): string {
   const bounds = options.inspection.bounds;
   const calibration = options.inspection.calibration;
   const size = bounds?.size ?? [1, 1, 1];
@@ -193,8 +737,12 @@ function renderSceneDocument(options: { assetFileName: string; inspection: Await
   const scale = round(targetScale);
   const cameraDistance = round(Math.max(calibration?.camera.recommendedDistance ?? largest * 2.5, 3));
   const cameraHeight = round(Math.max(size[1] * scale * 0.6, 1.4));
+  const cameraTargetHeight = round((size[1] * scale) / 2);
   const minY = bounds === undefined ? 0 : bounds.min[1];
   const yOffset = round(-minY);
+  const yawRadians = round((options.yawDegrees * Math.PI) / 180);
+  const boundsMarkerDepthOffset = round(Math.max(size[2] * scale * 0.5, 0.08));
+  const cameraPitch = round(-Math.atan2(cameraHeight - cameraTargetHeight, cameraDistance));
 
   const scene = {
     schema: "threenative.scene",
@@ -215,6 +763,7 @@ function renderSceneDocument(options: { assetFileName: string; inspection: Await
         prefab: "prefab.model-under-test",
         transform: {
           position: [round(-center[0] * scale), round(yOffset * scale), round(-center[2] * scale)],
+          rotation: [0, yawRadians, 0],
           scale: [scale, scale, scale],
         },
       },
@@ -222,7 +771,9 @@ function renderSceneDocument(options: { assetFileName: string; inspection: Await
         id: "model.bounds.reference",
         prefab: "prefab.bounds-marker",
         transform: {
-          position: [0, round((size[1] * scale) / 2), 0],
+          // Keep the opaque bounds reference behind the imported model so it
+          // frames the asset without hiding its authored materials.
+          position: [0, round((size[1] * scale) / 2), -boundsMarkerDepthOffset],
           scale: [
             round(Math.max(size[0] * scale, 0.05)),
             round(Math.max(size[1] * scale, 0.05)),
@@ -242,6 +793,7 @@ function renderSceneDocument(options: { assetFileName: string; inspection: Await
         id: "camera.model-test",
         transform: {
           position: [0, cameraHeight, cameraDistance],
+          rotation: [cameraPitch, 0, 0],
         },
         components: {
           camera: {
@@ -314,14 +866,16 @@ function renderReadme(assetPath: string, inspection: Awaited<ReturnType<typeof i
   return `# ThreeNative model test\n\nGenerated by \`tn model-test\` for:\n\n\`${assetPath}\`\n\n## What this scene contains\n\n- The inspected model copied into \`assets/\`.\n- A structured scene source at \`content/scenes/model-test.scene.json\`.\n- A 1 meter orange ruler and floor plane for scale checks.\n- A translucent bounds marker sized from glTF accessor min/max bounds.\n- Camera/light defaults from asset calibration hints.\n- Scale presets: ${analysis.scalePresets.map((preset) => `${preset.name}=${preset.scale}`).join(", ")}.\n- Camera frustum: ${analysis.cameraFrustum.fovDegrees}deg FOV, near ${analysis.cameraFrustum.near}, far ${analysis.cameraFrustum.far}, recommended distance ${analysis.cameraFrustum.recommendedDistance}m.\n\n## Inspection summary\n\n- Bounds: ${inspection.bounds === undefined ? "unavailable" : JSON.stringify(inspection.bounds.size)}\n- Calibration: ${inspection.calibration === undefined ? "unavailable" : JSON.stringify(inspection.calibration.fitScales)}\n- Scale verdict: ${analysis.scaleVerdict}\n- Projected screen occupancy: ${analysis.projectedScreenOccupancy ?? "unknown"}\n\n${analysis.isolationCaveat}\n\nRun \`pnpm run build\`, \`pnpm run validate\`, then \`pnpm run verify\` after installing workspace dependencies.\n`;
 }
 
-function renderModelTestReport(report: Awaited<ReturnType<typeof createModelTestProject>>): string {
+function renderModelTestReport(report: IModelTestProjectReport): string {
   const verified = report.verified === undefined ? "Verification: not requested" : `Verification: ${report.verified.ok ? "passed" : "failed"}${report.verified.bundlePath === undefined ? "" : ` (${report.verified.bundlePath})`}`;
+  const preview = report.preview === undefined ? "Preview: not started" : `Preview: ${report.preview.url}`;
   const screenshot = report.screenshot === undefined
     ? "Screenshot: not requested"
-    : report.screenshot.status === "captured"
-      ? `Screenshot: captured (${report.screenshot.outPath})`
-      : `Screenshot: unavailable (${report.screenshot.message})`;
-  return `Model test project generated.\nOutput: ${report.outDir}\nAsset: ${report.asset}\nScale verdict: ${report.analysis.scaleVerdict}\nScale presets: ${report.analysis.scalePresets.map((preset) => `${preset.name}=${preset.scale}`).join(", ")}\nFiles:\n${report.files.map((file) => `  - ${file.role}: ${file.path}`).join("\n")}\n${verified}\n${screenshot}\n${report.analysis.isolationCaveat}\n`;
+    : `Screenshot: ${report.screenshot.outPath}`;
+  const turntable = report.turntable === undefined
+    ? "Turntable: not requested"
+    : `Turntable manifest: ${report.turntable.manifestPath}\nTurntable captures:\n${report.turntable.captures.map((capture) => `  - ${capture.angleDegrees} degrees: ${capture.outPath} (${capture.byteSize} bytes)`).join("\n")}`;
+  return `Model test project generated.\nOutput: ${report.outDir}\nAsset: ${report.asset}\nScale verdict: ${report.analysis.scaleVerdict}\nScale presets: ${report.analysis.scalePresets.map((preset) => `${preset.name}=${preset.scale}`).join(", ")}\nFiles:\n${report.files.map((file) => `  - ${file.role}: ${file.path}`).join("\n")}\n${verified}\n${preview}\n${screenshot}\n${turntable}\n${report.analysis.isolationCaveat}\n`;
 }
 
 function modelTestAnalysis(inspection: Awaited<ReturnType<typeof inspectAsset>>): ModelTestAnalysis {
@@ -372,9 +926,15 @@ function scaleVerdictFor(options: {
   return options.calibrationVerdict ?? "ok";
 }
 
-function flagValue(argv: readonly string[], flag: string): string | undefined {
-  const index = argv.indexOf(flag);
-  return index === -1 ? undefined : argv[index + 1];
+function formatAngleForFilename(angleDegrees: number): string {
+  const [integer, fraction] = String(angleDegrees).split(".");
+  const safeInteger = (integer ?? "0").replace(/[^0-9]/g, "0").padStart(3, "0");
+  const safeFraction = fraction === undefined ? "" : `_${fraction.replace(/[^0-9]/g, "0")}`;
+  return `${safeInteger}${safeFraction}`;
+}
+
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
 }
 
 function resolvePath(cwd: string, path: string): string {

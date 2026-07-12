@@ -157,7 +157,8 @@ tn recipe collectible --scene <scene-id> --entity <entity-id> --module src/scrip
 tn build
 tn package --target desktop
 tn verify
-tn model-test assets/hero.glb --out artifacts/model-test --verify --screenshot --url http://127.0.0.1:5173
+tn model-test assets/hero.glb --out artifacts/model-test --screenshot --json
+tn model-test assets/hero.glb --out artifacts/model-test --angles 0,90,180,270 --json
 tn scene proof <scene-id> --project . --web-url http://127.0.0.1:5173 --out artifacts/proof --native --json
 tn screenshot --url http://127.0.0.1:5173 --out artifacts/proof/frame.png
 tn record --url http://127.0.0.1:5173 --out artifacts/proof/motion.webm --duration 5
@@ -256,10 +257,12 @@ Command expectations:
 - `tn model-test <asset-path>` generates a one-model proof project with copied
   GLB/glTF assets, dependency copies, a 1m ruler, translucent bounds marker,
   calibration-derived camera/scale hints, scale presets, projected screen
-  occupancy, and a scale verdict. Add `--verify` to build and validate the
-  generated project. Add `--screenshot --url <preview-url>` to capture proof
-  from a running preview; without a URL, screenshot proof is reported as
-  unavailable with a next command.
+  occupancy, and a scale verdict. Add `--view` for a self-hosted interactive
+  preview, `--screenshot` for a self-hosted PNG, `--angle <degrees>` for a
+  deterministic yaw, or `--angles 0,90,180,270` for a bounded turntable
+  manifest. Add `--url <preview-url>` only for an externally managed single
+  screenshot. These web captures are inspection evidence, not Bevy parity
+  evidence.
 - `tn screenshot [--project <path>] --url <preview-url> --out <file.png>
   [--wait-ready] [--json]` captures a PNG proof frame from a running web
   preview using the same Playwright browser stack as visual verification. JSON

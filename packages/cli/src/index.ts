@@ -134,9 +134,9 @@ export const CLI_COMMAND_REGISTRY = defineCommandRegistry({
     usage: "tn world generate --biome <meadow|forest|desert|canyon|arctic> --seed <n> [--size <n>] [--flatten-radius <n>] [--project <path>] [--json]\n              tn world proof [--project <path>] [--json]",
   },
   "model-test": {
-    description: "Generate a one-model proof project with scale, bounds, ruler, and camera hints.",
+    description: "Inspect a GLB/glTF model with an interactive preview, screenshot, or bounded turntable capture.",
     implemented: true,
-    usage: "tn model-test <asset-path> [--out <dir>] [--verify] [--screenshot] [--url <preview-url>] [--json]",
+    usage: "tn model-test <asset-path> --view [--angle <degrees>] [--out <dir>] [--json]\n              tn model-test <asset-path> --screenshot [--angle <degrees>] [--url <preview-url>] [--screenshot-out <file.png>] [--out <dir>] [--json]\n              tn model-test <asset-path> --angles <degrees,...> [--out <dir>] [--json]",
   },
   doctor: {
     description: "Inspect project setup, scripts, source entrypoint, and bundle files with actionable diagnostics.",

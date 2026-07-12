@@ -77,6 +77,9 @@ test("should keep rendered help stable for the package bin", () => {
   assert.match(renderHelp(), /tn compare-images <first\.png> <second\.png>/);
   assert.match(renderHelp(), /tn asset inspect <path-or-directory>/);
   assert.match(renderHelp(), /tn model-test <asset-path>/);
+  assert.match(renderHelp(), /tn model-test <asset-path> --view/);
+  assert.match(renderHelp(), /--angle <degrees>/);
+  assert.match(renderHelp(), /--angles <degrees,\.\.\.>/);
   assert.match(renderHelp(), /tn screenshot \[--project <path>\] --url <preview-url> --out <file\.png>/);
   assert.match(renderHelp(), /tn record \[--project <path>\] --url <preview-url> --out <file\.webm\|file\.mp4>/);
   assert.match(renderHelp(), /tn verify \[--project <path>\] \[--url <preview-url>\]/);

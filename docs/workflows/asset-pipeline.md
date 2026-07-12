@@ -70,6 +70,10 @@ render proof:
 
 ```bash
 tn model-test assets/model.glb --out artifacts/model-test --verify --json
+tn model-test assets/model.glb --out artifacts/model-test --view
+tn model-test assets/model.glb --out artifacts/model-test --screenshot --json
+tn model-test assets/model.glb --out artifacts/model-test --screenshot --angle 45 --json
+tn model-test assets/model.glb --out artifacts/model-test --angles 0,90,180,270 --json
 tn model-test assets/model.glb --out artifacts/model-test --screenshot --url http://127.0.0.1:5173 --json
 ```
 
@@ -79,9 +83,13 @@ inspection calibration. The JSON report includes camera frustum metadata, `1x`,
 `fit-target`, and `gameplay-recommended` scale presets, projected screen
 occupancy, a scale verdict (`too-small`, `ok`, `too-large`, `clipped`, or
 `unknown`), and an explicit caveat that isolated proof separates loader/asset
-issues from full-scene composition issues. `--screenshot` captures a PNG from
-the supplied preview URL; without `--url`, the report returns a stable
-unavailable state and next command instead of failing silently.
+issues from full-scene composition issues. `--screenshot` self-hosts the
+generated bundle when `--url` is omitted and captures a PNG with
+runtime/nonblank checks. `--angles` implies self-hosted turntable capture,
+normalizes duplicate angles, limits runs to 36 distinct angles, and writes a
+manifest under `artifacts/turntable/`. The generated source is restored to zero
+yaw after every turntable run. Web captures are inspection evidence only and
+do not claim Bevy parity.
 
 ## Bundle Behavior
 

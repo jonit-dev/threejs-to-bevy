@@ -22,6 +22,25 @@ Current support:
 - Asset inspection, model tests, bundle-local path validation, and production
   evidence gates.
 
+GLB/glTF visual inspection is available through the web preview workflow:
+
+- `tn model-test assets/hero.glb --view` generates, builds, and serves an
+  interactive one-model preview until interrupted. Add `--angle 45` to author
+  a deterministic model yaw.
+- `tn model-test assets/hero.glb --screenshot --json` self-hosts the generated
+  project, captures one PNG, and reports canvas, nonblank, runtime, and resource
+  checks. `--url <preview-url>` remains available for an externally managed
+  single-frame preview.
+- `tn model-test assets/hero.glb --angles 0,90,180,270 --json` normalizes and
+  deduplicates bounded angles (one to 36 captures), writes individual PNGs
+  under `artifacts/turntable/`, and emits a structured `manifest.json`. A
+  failed capture preserves completed records and restores the generated source
+  and verified bundle to zero yaw.
+
+These are web-only inspection artifacts. They separate asset loading, bounds,
+scale, and framing issues from full-scene composition, but they are not Bevy
+visual-parity evidence.
+
 Verification:
 
 - `tn asset source search --json`
@@ -29,7 +48,8 @@ Verification:
 - `tn environment add-scatter-layer --json`
 - `tn world generate --json`
 - `tn world proof --json`
-- `tn model-test --json`
+- `tn model-test assets/hero.glb --screenshot --json`
+- `tn model-test assets/hero.glb --angles 0,90,180,270 --json`
 - `pnpm verify:release`
 
 Full prior evidence is preserved in
