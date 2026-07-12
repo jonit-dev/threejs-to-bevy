@@ -51,6 +51,18 @@
       ]
     },
     {
+      "id": "choose-white",
+      "bindings": [
+        "keyboard.KeyW"
+      ]
+    },
+    {
+      "id": "choose-black",
+      "bindings": [
+        "keyboard.KeyB"
+      ]
+    },
+    {
       "id": "promotion",
       "bindings": [
         "keyboard.KeyP"

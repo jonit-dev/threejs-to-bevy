@@ -17,28 +17,36 @@ type Piece = {
 };
 type Move = { captureId?: string; castle?: "king" | "queen"; enPassant?: boolean; file: number; promotion?: Kind; rank: number };
 type ChessContext = ScriptContext & {
+  events: { emit(event: string, payload?: Record<string, unknown>): void; read(event: string): unknown[] };
   picking: {
     pointerRay(options: { aspect?: number; camera?: string; maxDistance?: number; pointer: [number, number] }): { hit: false } | { direction: [number, number, number]; hit: true; maxDistance: number; origin: [number, number, number] };
+  };
+  ui: {
+    actions(): Array<{ action: string; node: string; value?: number | string }>;
+    setDisabled(nodeId: string, disabled: boolean): unknown;
   };
 };
 
 export const chessGame = defineBehavior(
   {
     id: "chess-game",
+    eventReads: ["chess.choose-side"],
     schedule: "update",
-    reads: ["BoardSquare", "ChessPiece", "LegalMarker"],
+    reads: ["ChessPiece", "LegalMarker"],
     writes: ["ChessPiece", "Transform"],
     resourceReads: ["ChessGame"],
     resourceWrites: ["ChessGame"],
-    services: ["picking.pointerRay"],
+    services: ["picking.pointerRay", "ui.actions", "ui.setDisabled"],
   },
   (rawContext: ScriptContext): void => {
+    const boardSquareSize = 1.036;
     const context = rawContext as ChessContext;
     const state = context.state("chess", {
       animId: "",
       animStart: 0,
       animFromFile: 0,
       animFromRank: 0,
+      aiMoveAt: 0,
       cursorFile: 4,
       cursorRank: 1,
       dragging: false,
@@ -53,6 +61,7 @@ export const chessGame = defineBehavior(
       lastToFile: -1,
       lastToRank: -1,
       promotionIndex: 0,
+      playerColor: "" as "" | Color,
       selectedId: "",
       turn: "white" as Color,
     });
@@ -68,6 +77,11 @@ export const chessGame = defineBehavior(
     const at = (file: number, rank: number, board = pieces): Piece | undefined => board.find((piece) => piece.alive && piece.file === file && piece.rank === rank);
     const enemy = (color: Color): Color => color === "white" ? "black" : "white";
     const inside = (file: number, rank: number): boolean => file >= 0 && file < 8 && rank >= 0 && rank < 8;
+    const orientSquare = (file: number, rank: number): [number, number] => state.playerColor === "black" ? [7 - file, 7 - rank] : [file, rank];
+    const worldPosition = (file: number, rank: number, y: number): [number, number, number] => {
+      const [displayFile, displayRank] = orientSquare(file, rank);
+      return [(displayFile - 3.5) * boardSquareSize, y, (3.5 - displayRank) * boardSquareSize];
+    };
     const attacked = (file: number, rank: number, by: Color, board: Piece[]): boolean => {
       for (const piece of board) {
         if (!piece.alive || piece.color !== by) continue;
@@ -167,18 +181,19 @@ export const chessGame = defineBehavior(
       if (distance < 0 || distance > ray.maxDistance) return undefined;
       const x = ray.origin[0] + ray.direction[0] * distance;
       const z = ray.origin[2] + ray.direction[2] * distance;
-      const file = Math.floor(x + 4);
-      const rank = Math.floor(4 - z);
-      if (!inside(file, rank)) return undefined;
+      const displayFile = Math.floor(x / boardSquareSize + 4);
+      const displayRank = Math.floor(4 - z / boardSquareSize);
+      if (!inside(displayFile, displayRank)) return undefined;
+      const [file, rank] = orientSquare(displayFile, displayRank);
       const occupant = at(file, rank);
       return { id: occupant?.id ?? `square.${"abcdefgh"[file]}${rank + 1}`, square: [file, rank] };
     };
     const hit = pointerHit();
     if (hit !== undefined) { state.cursorFile = hit.square[0]; state.cursorRank = hit.square[1]; }
-    const hoveredPiece = hit === undefined ? undefined : at(hit.square[0], hit.square[1]);
+    const hoveredPiece = hit === undefined || state.playerColor === "" ? undefined : at(hit.square[0], hit.square[1]);
     const hoveredId = hoveredPiece?.id ?? "";
     if (state.hoveredId !== hoveredId) {
-      pieces.find((piece) => piece.id === state.hoveredId)?.entity?.patch("Transform", { scale: [9, 9, 9] });
+      pieces.find((piece) => piece.id === state.hoveredId)?.entity?.patch("Transform", { scale: [10.5, 10.5, 10.5] });
       hoveredPiece?.entity?.patch("Transform", { scale: [9.8, 9.8, 9.8] });
       state.hoveredId = hoveredId;
     }
@@ -210,12 +225,13 @@ export const chessGame = defineBehavior(
         const rook = pieces.find((piece) => piece.alive && piece.color === moving.color && piece.kind === "rook" && piece.rank === fromRank && piece.file === (move.castle === "king" ? 7 : 0));
         const rookFile = move.castle === "king" ? 5 : 3;
         rook?.entity?.patch("ChessPiece", { file: rookFile, moved: true });
-        rook?.entity?.transform().setPosition([rookFile - 3.5, rook?.entity?.transform().position[1] ?? 0.42, 3.5 - fromRank]);
+        rook?.entity?.transform().setPosition(worldPosition(rookFile, fromRank, rook?.entity?.transform().position[1] ?? 0.42));
       }
       state.enPassantFile = -1; state.enPassantRank = -1; state.enPassantPawn = "";
       if (moving.kind === "pawn" && Math.abs(rank - fromRank) === 2) { state.enPassantFile = file; state.enPassantRank = (rank + fromRank) / 2; state.enPassantPawn = moving.id; }
       state.lastFromFile = fromFile; state.lastFromRank = fromRank; state.lastToFile = file; state.lastToRank = rank;
       state.turn = enemy(state.turn); state.halfmove += 1; state.selectedId = ""; state.dragging = false;
+      if (state.playerColor !== "" && state.turn !== state.playerColor) state.aiMoveAt = context.time.elapsed + 0.55;
       const nextBoard = simulate(moving, move);
       const checked = inCheck(state.turn, nextBoard);
       const nextPieces = nextBoard.filter((piece) => piece.alive && piece.color === state.turn);
@@ -233,37 +249,88 @@ export const chessGame = defineBehavior(
       const notation = `${moving.color === "white" ? "White" : "Black"} ${moving.kind} ${"abcdefgh"[fromFile]}${fromRank + 1}–${"abcdefgh"[file]}${rank + 1}${move.captureId ? " capture" : ""}${move.promotion ? ` = ${move.promotion}` : ""}`;
       patchHud({
         moveText: notation,
-        statusText: !hasMove ? (checked ? `CHECKMATE — ${enemy(state.turn).toUpperCase()} WINS · Press R` : "STALEMATE · Press R") : checked ? `${state.turn.toUpperCase()} IS IN CHECK` : "Move accepted",
+        statusText: !hasMove ? (checked ? `CHECKMATE — ${enemy(state.turn).toUpperCase()} WINS · Press R` : "STALEMATE · Press R") : checked ? `${state.turn.toUpperCase()} IS IN CHECK` : state.playerColor !== "" && state.turn !== state.playerColor ? "AI is thinking…" : "Your move",
         turnText: state.gameOver ? "GAME OVER" : `${state.turn.toUpperCase()} TO MOVE`,
       });
       return true;
     };
 
+    let sideChosenThisFrame = false;
+    const chooseSide = (color: Color): void => {
+      sideChosenThisFrame = true;
+      state.playerColor = color;
+      state.aiMoveAt = color === "black" ? context.time.elapsed + 0.75 : 0;
+      context.ui.setDisabled("choose-white", true);
+      context.ui.setDisabled("choose-black", true);
+      for (const piece of pieces) {
+        if (piece.alive) piece.entity?.transform().setPosition(worldPosition(piece.file, piece.rank, 0.07));
+      }
+      patchHud({
+        blackChoiceText: "",
+        helpText: "Click piece + destination | Drag + drop | Arrows + Enter | P promotion | R restart",
+        promptText: "",
+        statusText: color === "white" ? "Your move" : "AI is thinking…",
+        whiteChoiceText: "",
+      });
+    };
+    for (const action of context.ui.actions()) {
+      if (state.playerColor === "" && action.action === "choose-white") chooseSide("white");
+      if (state.playerColor === "" && action.action === "choose-black") chooseSide("black");
+    }
+    for (const event of context.events.read("chess.choose-side")) {
+      const side = typeof event === "object" && event !== null ? (event as { side?: unknown }).side : undefined;
+      if (state.playerColor === "" && (side === "white" || side === "black")) chooseSide(side);
+    }
+    if (state.playerColor === "" && context.input.getButtonDown("choose-white")) chooseSide("white");
+    if (state.playerColor === "" && context.input.getButtonDown("choose-black")) chooseSide("black");
+
     if (context.input.getButtonDown("restart")) {
       for (const piece of pieces) {
         piece.entity?.patch("ChessPiece", { alive: true, file: piece.initialFile, kind: piece.initialKind, moved: false, rank: piece.initialRank });
-        piece.entity?.transform().setPosition([piece.initialFile - 3.5, piece.entity.transform().position[1] < 0 ? 0.5 : piece.entity.transform().position[1], 3.5 - piece.initialRank]);
+        piece.entity?.transform().setPosition(worldPosition(piece.initialFile, piece.initialRank, 0.07));
       }
-      Object.assign(state, { animId: "", cursorFile: 4, cursorRank: 1, dragging: false, enPassantFile: -1, enPassantPawn: "", enPassantRank: -1, gameOver: false, halfmove: 1, hoveredId: "", lastFromFile: -1, lastFromRank: -1, lastToFile: -1, lastToRank: -1, selectedId: "", turn: "white" });
-      patchHud({ moveText: "New game", statusText: "Click or drag a piece", turnText: "WHITE TO MOVE" });
+      Object.assign(state, { aiMoveAt: state.playerColor === "black" ? context.time.elapsed + 0.75 : 0, animId: "", cursorFile: 4, cursorRank: 1, dragging: false, enPassantFile: -1, enPassantPawn: "", enPassantRank: -1, gameOver: false, halfmove: 1, hoveredId: "", lastFromFile: -1, lastFromRank: -1, lastToFile: -1, lastToRank: -1, selectedId: "", turn: "white" });
+      patchHud({ moveText: "New game", statusText: state.playerColor === "black" ? "AI is thinking…" : "Your move", turnText: "WHITE TO MOVE" });
     }
-    if (context.input.getButtonDown("promotion")) { state.promotionIndex = (state.promotionIndex + 1) % promotionKinds.length; patchHud({ promotionText: `Promotion: ${promotionKinds[state.promotionIndex].toUpperCase()}` }); }
-    if (context.input.getButtonDown("cancel")) { state.selectedId = ""; state.dragging = false; patchHud({ statusText: "Selection cleared" }); }
-    if (context.input.getButtonDown("cursor-left")) state.cursorFile = Math.max(0, state.cursorFile - 1);
-    if (context.input.getButtonDown("cursor-right")) state.cursorFile = Math.min(7, state.cursorFile + 1);
-    if (context.input.getButtonDown("cursor-up")) state.cursorRank = Math.min(7, state.cursorRank + 1);
-    if (context.input.getButtonDown("cursor-down")) state.cursorRank = Math.max(0, state.cursorRank - 1);
-    if (context.input.getButtonDown("select")) { if (!commit(state.cursorFile, state.cursorRank)) selectAt(state.cursorFile, state.cursorRank); }
-    if (context.input.getButtonDown("pointer-select") && hit !== undefined) {
-      if (!commit(hit.square[0], hit.square[1])) selectAt(hit.square[0], hit.square[1]);
-      state.dragging = state.selectedId !== "";
-    }
-    if (context.input.getButtonUp("pointer-select")) {
-      if (hit !== undefined) {
-        if (state.dragging) commit(hit.square[0], hit.square[1]);
-        else if (!commit(hit.square[0], hit.square[1])) selectAt(hit.square[0], hit.square[1]);
+    const humanTurn = !sideChosenThisFrame && state.playerColor !== "" && state.turn === state.playerColor && !state.gameOver && state.animId === "";
+    if (humanTurn) {
+      if (context.input.getButtonDown("promotion")) { state.promotionIndex = (state.promotionIndex + 1) % promotionKinds.length; patchHud({ promotionText: `Promotion: ${promotionKinds[state.promotionIndex].toUpperCase()}` }); }
+      if (context.input.getButtonDown("cancel")) { state.selectedId = ""; state.dragging = false; patchHud({ statusText: "Selection cleared" }); }
+      if (context.input.getButtonDown("cursor-left")) state.cursorFile = Math.max(0, state.cursorFile - 1);
+      if (context.input.getButtonDown("cursor-right")) state.cursorFile = Math.min(7, state.cursorFile + 1);
+      if (context.input.getButtonDown("cursor-up")) state.cursorRank = Math.min(7, state.cursorRank + 1);
+      if (context.input.getButtonDown("cursor-down")) state.cursorRank = Math.max(0, state.cursorRank - 1);
+      if (context.input.getButtonDown("select")) { if (!commit(state.cursorFile, state.cursorRank)) selectAt(state.cursorFile, state.cursorRank); }
+      if (context.input.getButtonDown("pointer-select") && hit !== undefined) {
+        if (!commit(hit.square[0], hit.square[1])) selectAt(hit.square[0], hit.square[1]);
+        state.dragging = state.selectedId !== "";
       }
-      state.dragging = false;
+      if (context.input.getButtonUp("pointer-select")) {
+        if (hit !== undefined) {
+          if (state.dragging) commit(hit.square[0], hit.square[1]);
+          else if (!commit(hit.square[0], hit.square[1])) selectAt(hit.square[0], hit.square[1]);
+        }
+        state.dragging = false;
+      }
+    }
+
+    if (state.playerColor !== "" && state.turn !== state.playerColor && !state.gameOver && state.animId === "" && context.time.elapsed >= state.aiMoveAt) {
+      const values: Record<Kind, number> = { bishop: 3, king: 20, knight: 3, pawn: 1, queen: 9, rook: 5 };
+      const candidates: Array<{ move: Move; piece: Piece; score: number }> = [];
+      for (const piece of pieces.filter((entry) => entry.alive && entry.color === state.turn)) {
+        for (const move of legalMoves(piece)) {
+          const captured = move.captureId === undefined ? undefined : pieces.find((entry) => entry.id === move.captureId);
+          const center = 7 - (Math.abs(move.file - 3.5) + Math.abs(move.rank - 3.5));
+          const score = (captured === undefined ? 0 : values[captured.kind] * 100) + (move.promotion === undefined ? 0 : values[move.promotion] * 100) + (move.castle === undefined ? 0 : 35) + center + (inCheck(enemy(piece.color), simulate(piece, move)) ? 25 : 0);
+          candidates.push({ move, piece, score });
+        }
+      }
+      candidates.sort((left, right) => right.score - left.score || left.piece.id.localeCompare(right.piece.id) || left.move.file - right.move.file || left.move.rank - right.move.rank);
+      const choice = candidates[0];
+      if (choice !== undefined) {
+        state.selectedId = choice.piece.id;
+        commit(choice.move.file, choice.move.rank);
+      }
     }
 
     const currentSelected = pieces.find((piece) => piece.id === state.selectedId && piece.alive);
@@ -271,9 +338,9 @@ export const chessGame = defineBehavior(
     const legalMarkers = allEntities.filter((entity) => entity.id.startsWith("marker.legal.")).sort((left, right) => left.id.localeCompare(right.id));
     for (let index = 0; index < legalMarkers.length; index += 1) {
       const move = legal[index];
-      legalMarkers[index]?.transform().setPosition(move === undefined ? [0, -10, 0] : [move.file - 3.5, 0.13, 3.5 - move.rank]);
+      legalMarkers[index]?.transform().setPosition(move === undefined ? [0, -10, 0] : worldPosition(move.file, move.rank, 0.13));
     }
-    const placeMarker = (id: string, file: number, rank: number, y: number): void => context.entity(id)?.transform().setPosition(file < 0 ? [0, -10, 0] : [file - 3.5, y, 3.5 - rank]);
+    const placeMarker = (id: string, file: number, rank: number, y: number): void => context.entity(id)?.transform().setPosition(file < 0 ? [0, -10, 0] : worldPosition(file, rank, y));
     placeMarker("marker.hover", -1, -1, 0.08);
     placeMarker("marker.selected", currentSelected?.file ?? -1, currentSelected?.rank ?? -1, 0.1);
     placeMarker("marker.last.from", state.lastFromFile, state.lastFromRank, 0.065);
@@ -286,11 +353,9 @@ export const chessGame = defineBehavior(
       if (animated?.entity !== undefined) {
         const t = Math.min(1, (context.time.elapsed - state.animStart) / 0.18);
         const eased = Ease.outCubic(t);
-        animated.entity.transform().setPosition([
-          state.animFromFile - 3.5 + (animated.file - state.animFromFile) * eased,
-          0.07 + Math.sin(Math.PI * t) * 0.24,
-          3.5 - state.animFromRank - (animated.rank - state.animFromRank) * eased,
-        ]);
+        const [fromX, , fromZ] = worldPosition(state.animFromFile, state.animFromRank, 0);
+        const [toX, , toZ] = worldPosition(animated.file, animated.rank, 0);
+        animated.entity.transform().setPosition([fromX + (toX - fromX) * eased, 0.07 + Math.sin(Math.PI * t) * 0.24, fromZ + (toZ - fromZ) * eased]);
         if (t >= 1) state.animId = "";
       }
     }

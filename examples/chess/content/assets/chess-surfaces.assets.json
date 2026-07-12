@@ -1,0 +1,40 @@
+{
+  "schema": "threenative.assets",
+  "version": "0.1.0",
+  "id": "chess-surfaces",
+  "assets": [
+    {
+      "id": "tex.chess.board",
+      "type": "texture",
+      "path": "assets/board.png",
+      "wrapS": "clampToEdge",
+      "wrapT": "clampToEdge"
+    },
+    {
+      "id": "tex.chess.table",
+      "type": "texture",
+      "path": "assets/table-texture.png",
+      "wrapS": "repeat",
+      "wrapT": "repeat",
+      "repeat": [
+        1.4,
+        1
+      ]
+    },
+    {
+      "id": "tex.chess.library",
+      "type": "texture",
+      "path": "assets/library-bkg.png",
+      "wrapS": "clampToEdge",
+      "wrapT": "clampToEdge",
+      "repeat": [
+        1,
+        -1
+      ],
+      "offset": [
+        0,
+        1
+      ]
+    }
+  ]
+}

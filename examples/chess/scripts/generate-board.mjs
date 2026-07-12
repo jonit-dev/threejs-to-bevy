@@ -4,18 +4,8 @@ import { resolve } from "node:path";
 const root = resolve(import.meta.dirname, "..");
 const files = "abcdefgh";
 const backRank = ["rook", "knight", "bishop", "queen", "king", "bishop", "knight", "rook"];
+const boardSquareSize = 1.036;
 const entities = [];
-
-for (let rank = 0; rank < 8; rank += 1) {
-  for (let file = 0; file < 8; file += 1) {
-    entities.push({
-      id: `square.${files[file]}${rank + 1}`,
-      prefab: (file + rank) % 2 === 0 ? "prefab.square.light" : "prefab.square.dark",
-      transform: { position: [file - 3.5, 0, 3.5 - rank], scale: [0.98, 0.12, 0.98] },
-      components: { BoardSquare: { file, rank } },
-    });
-  }
-}
 
 for (const color of ["white", "black"]) {
   const pawnRank = color === "white" ? 1 : 6;
@@ -41,26 +31,22 @@ entities.push(
   marker("marker.last.from", "prefab.marker.last", "LastMoveMarker", [0.82, 0.025, 0.82]),
   marker("marker.last.to", "prefab.marker.last", "LastMoveMarker", [0.82, 0.025, 0.82]),
   marker("marker.check", "prefab.marker.check", "CheckMarker", [0.9, 0.05, 0.9]),
-  { id: "table.plinth", prefab: "prefab.plinth", transform: { position: [0, -0.28, 0], scale: [9.1, 0.42, 9.1] } },
-  { id: "table.trim.n", prefab: "prefab.trim", transform: { position: [0, -0.02, -4.25], scale: [9.1, 0.28, 0.42] } },
-  { id: "table.trim.s", prefab: "prefab.trim", transform: { position: [0, -0.02, 4.25], scale: [9.1, 0.28, 0.42] } },
-  { id: "table.trim.e", prefab: "prefab.trim", transform: { position: [4.25, -0.02, 0], scale: [0.42, 0.28, 9.1] } },
-  { id: "table.trim.w", prefab: "prefab.trim", transform: { position: [-4.25, -0.02, 0], scale: [0.42, 0.28, 9.1] } },
-  { id: "light.ambient", components: { Light: { kind: "ambient", color: "#d9e7ff", intensity: 1.3 } } },
-  { id: "light.key", transform: { position: [-4, 8, 5], rotation: [-0.8, -0.35, 0] }, components: { Light: { kind: "directional", color: "#fff0d2", intensity: 2.2 } } },
-  { id: "light.fill", transform: { position: [4, 5, -4] }, components: { Light: { kind: "point", color: "#78bfff", intensity: 1.4, range: 18 } } },
+  { id: "table.surface", transform: { position: [0, -0.34, 0], rotation: [-1.570796, 0, 0], scale: [22, 16, 1] }, components: { MeshRenderer: { mesh: "mesh.surface", material: "mat.table", receiveShadow: true } } },
+  { id: "library.backdrop", transform: { position: [0, 4.5, -8.2], scale: [30, 16, 1] }, components: { MeshRenderer: { mesh: "mesh.surface", material: "mat.library", castShadow: false, receiveShadow: false } } },
+  { id: "board.surface", transform: { position: [0, 0, 0], rotation: [-1.570796, 0, 0], scale: [9.35, 9.35, 1] }, components: { MeshRenderer: { mesh: "mesh.surface", material: "mat.board", receiveShadow: true } } },
+  { id: "board.base", prefab: "prefab.plinth", transform: { position: [0, -0.23, 0], scale: [9.5, 0.24, 9.5] } },
+  { id: "light.ambient", components: { Light: { kind: "ambient", color: "#f2e9de", intensity: 0.4 } } },
+  { id: "light.key", transform: { position: [-5.5, 9.5, 6.5], rotation: [-0.78, -0.42, 0] }, components: { Light: { kind: "directional", color: "#fff0dd", intensity: 2.05 } } },
+  { id: "light.fill", transform: { position: [5.5, 4.5, -3.5] }, components: { Light: { kind: "point", color: "#dce8f3", intensity: 0.52, range: 19 } } },
   {
     id: "camera.main",
-    transform: { position: [0, 8.5, 11.5], rotation: [-0.622303, 0, 0] },
-    components: { camera: { mode: "perspective", fovY: 42, near: 0.1, far: 40 } },
+    transform: { position: [0.45, 7.45, 10.35], rotation: [-0.61, 0.035, 0] },
+    components: { camera: { mode: "perspective", fovY: 37, near: 0.1, far: 50 } },
   },
 );
 
 const prefabs = [
-  { id: "prefab.square.light", primitive: "box", color: "#d8c7a3" },
-  { id: "prefab.square.dark", primitive: "box", color: "#315d56" },
-  { id: "prefab.plinth", primitive: "box", color: "#161d26" },
-  { id: "prefab.trim", primitive: "box", color: "#b78745" },
+  { id: "prefab.plinth", primitive: "box", color: "#2a1309" },
   { id: "prefab.marker.legal", primitive: "cylinder", color: "#60d394" },
   { id: "prefab.marker.hover", primitive: "box", color: "#84c7ff" },
   { id: "prefab.marker.selected", primitive: "box", color: "#ffd166" },
@@ -72,8 +58,6 @@ for (const color of ["white", "black"]) {
     prefabs.push({
       id: `prefab.${color}.${kind}`,
       asset: `assets/models/chess/${color}-${kind}.glb`,
-      primitive: primitiveFor(kind),
-      color: color === "white" ? "#f4ead7" : "#27344a",
     });
   }
 }
@@ -86,7 +70,7 @@ const scene = {
   prefabs,
   resources: [
     { id: "ActiveCamera", value: { entity: "camera.main" } },
-    { id: "ChessGame", value: { turnText: "WHITE TO MOVE", statusText: "Click or drag a piece", helpText: "Click piece + destination | Drag + drop | Arrows + Enter | P promotion | R restart", moveText: "New game", promotionText: "Promotion: QUEEN" } },
+    { id: "ChessGame", value: { blackChoiceText: "PLAY BLACK", turnText: "WHITE TO MOVE", statusText: "Choose a side to begin", helpText: "Choose with the buttons or press W / B", moveText: "New game", promotionText: "Promotion: QUEEN", promptText: "WHICH SIDE DO YOU WANT TO PLAY?", whiteChoiceText: "PLAY WHITE" } },
   ],
   systems: [{ id: "chess-game", source: "behavior-metadata", script: { module: "src/scripts/chess.ts", export: "chessGame" } }],
   ui: hud(),
@@ -103,6 +87,8 @@ await writeJson("content/input/chess.input.json", {
     { id: "cursor-up", bindings: ["keyboard.ArrowUp", "keyboard.KeyW"] },
     { id: "cursor-down", bindings: ["keyboard.ArrowDown", "keyboard.KeyS"] },
     { id: "restart", bindings: ["keyboard.KeyR"] },
+    { id: "choose-white", bindings: ["keyboard.KeyW"] },
+    { id: "choose-black", bindings: ["keyboard.KeyB"] },
     { id: "promotion", bindings: ["keyboard.KeyP"] },
     { id: "cancel", bindings: ["keyboard.Escape"] },
   ],
@@ -113,17 +99,27 @@ await writeJson("content/input/chess.input.json", {
 });
 await writeJson("content/materials/chess.materials.json", {
   schema: "threenative.materials", version: "0.1.0", id: "chess-materials", materials: [
-    { id: "mat.ivory", color: "#f4ead7", roughness: 0.28, metalness: 0.08 },
-    { id: "mat.slate", color: "#27344a", roughness: 0.32, metalness: 0.16 },
-    { id: "mat.board.light", color: "#d8c7a3", roughness: 0.55, metalness: 0.02 },
-    { id: "mat.board.dark", color: "#315d56", roughness: 0.5, metalness: 0.04 },
-    { id: "mat.brass", color: "#b78745", roughness: 0.3, metalness: 0.65 },
+    { id: "mat.ivory", color: "#ead8b8", roughness: 0.22, metalness: 0.05 },
+    { id: "mat.ebony", color: "#100d0a", roughness: 0.18, metalness: 0.14 },
+    { id: "mat.board.light", color: "#c49a68", roughness: 0.48, metalness: 0 },
+    { id: "mat.board.dark", color: "#4a2b18", roughness: 0.44, metalness: 0 },
+    { id: "mat.board", color: "#ffffff", baseColorTexture: "tex.chess.board", roughness: 0.5, metalness: 0 },
+    { id: "mat.table", color: "#ffffff", baseColorTexture: "tex.chess.table", roughness: 0.62, metalness: 0 },
+    { id: "mat.library", kind: "standard", color: "#ffffff", baseColorTexture: "tex.chess.library", roughness: 1, metalness: 0 },
+    { id: "mat.brass", color: "#9b642d", roughness: 0.32, metalness: 0.48 },
+  ],
+});
+await writeJson("content/assets/chess-surfaces.assets.json", {
+  schema: "threenative.assets", version: "0.1.0", id: "chess-surfaces", assets: [
+    { id: "tex.chess.board", type: "texture", path: "assets/board.png", wrapS: "clampToEdge", wrapT: "clampToEdge" },
+    { id: "tex.chess.table", type: "texture", path: "assets/table-texture.png", wrapS: "repeat", wrapT: "repeat", repeat: [1.4, 1] },
+    { id: "tex.chess.library", type: "texture", path: "assets/library-bkg.png", wrapS: "clampToEdge", wrapT: "clampToEdge", repeat: [1, -1], offset: [0, 1] },
   ],
 });
 await writeJson("content/meshes/chess.meshes.json", {
   schema: "threenative.meshes", version: "0.1.0", id: "chess-meshes", meshes: [
-    { id: "mesh.square", kind: "primitive", primitive: "box", size: [1, 0.12, 1] },
     { id: "mesh.marker", kind: "primitive", primitive: "cylinder", size: [0.34, 0.04] },
+    { id: "mesh.surface", kind: "primitive", primitive: "plane" },
   ],
 });
 
@@ -132,7 +128,7 @@ function addPiece(color, kind, file, rank, suffix) {
   entities.push({
     id: `piece.${color}.${suffix}`,
     prefab: `prefab.${color}.${kind}`,
-    transform: { position: [file - 3.5, heightFor(kind), 3.5 - rank], scale },
+    transform: { position: [(file - 3.5) * boardSquareSize, heightFor(kind), (3.5 - rank) * boardSquareSize], scale },
     components: { ChessPiece: { color, kind, initialKind: kind, file, rank, initialFile: file, initialRank: rank, moved: false, alive: true } },
   });
 }
@@ -146,7 +142,7 @@ function primitiveFor(kind) {
 }
 
 function scaleFor(kind) {
-  return [9, 9, 9];
+  return [10.5, 10.5, 10.5];
 }
 
 function heightFor(kind) {

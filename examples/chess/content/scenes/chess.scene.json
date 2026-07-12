@@ -4,1426 +4,18 @@
   "id": "chess",
   "entities": [
     {
-      "id": "square.a1",
-      "prefab": "prefab.square.light",
-      "transform": {
-        "position": [
-          -3.5,
-          0,
-          3.5
-        ],
-        "scale": [
-          0.98,
-          0.12,
-          0.98
-        ]
-      },
-      "components": {
-        "BoardSquare": {
-          "file": 0,
-          "rank": 0
-        }
-      }
-    },
-    {
-      "id": "square.b1",
-      "prefab": "prefab.square.dark",
-      "transform": {
-        "position": [
-          -2.5,
-          0,
-          3.5
-        ],
-        "scale": [
-          0.98,
-          0.12,
-          0.98
-        ]
-      },
-      "components": {
-        "BoardSquare": {
-          "file": 1,
-          "rank": 0
-        }
-      }
-    },
-    {
-      "id": "square.c1",
-      "prefab": "prefab.square.light",
-      "transform": {
-        "position": [
-          -1.5,
-          0,
-          3.5
-        ],
-        "scale": [
-          0.98,
-          0.12,
-          0.98
-        ]
-      },
-      "components": {
-        "BoardSquare": {
-          "file": 2,
-          "rank": 0
-        }
-      }
-    },
-    {
-      "id": "square.d1",
-      "prefab": "prefab.square.dark",
-      "transform": {
-        "position": [
-          -0.5,
-          0,
-          3.5
-        ],
-        "scale": [
-          0.98,
-          0.12,
-          0.98
-        ]
-      },
-      "components": {
-        "BoardSquare": {
-          "file": 3,
-          "rank": 0
-        }
-      }
-    },
-    {
-      "id": "square.e1",
-      "prefab": "prefab.square.light",
-      "transform": {
-        "position": [
-          0.5,
-          0,
-          3.5
-        ],
-        "scale": [
-          0.98,
-          0.12,
-          0.98
-        ]
-      },
-      "components": {
-        "BoardSquare": {
-          "file": 4,
-          "rank": 0
-        }
-      }
-    },
-    {
-      "id": "square.f1",
-      "prefab": "prefab.square.dark",
-      "transform": {
-        "position": [
-          1.5,
-          0,
-          3.5
-        ],
-        "scale": [
-          0.98,
-          0.12,
-          0.98
-        ]
-      },
-      "components": {
-        "BoardSquare": {
-          "file": 5,
-          "rank": 0
-        }
-      }
-    },
-    {
-      "id": "square.g1",
-      "prefab": "prefab.square.light",
-      "transform": {
-        "position": [
-          2.5,
-          0,
-          3.5
-        ],
-        "scale": [
-          0.98,
-          0.12,
-          0.98
-        ]
-      },
-      "components": {
-        "BoardSquare": {
-          "file": 6,
-          "rank": 0
-        }
-      }
-    },
-    {
-      "id": "square.h1",
-      "prefab": "prefab.square.dark",
-      "transform": {
-        "position": [
-          3.5,
-          0,
-          3.5
-        ],
-        "scale": [
-          0.98,
-          0.12,
-          0.98
-        ]
-      },
-      "components": {
-        "BoardSquare": {
-          "file": 7,
-          "rank": 0
-        }
-      }
-    },
-    {
-      "id": "square.a2",
-      "prefab": "prefab.square.dark",
-      "transform": {
-        "position": [
-          -3.5,
-          0,
-          2.5
-        ],
-        "scale": [
-          0.98,
-          0.12,
-          0.98
-        ]
-      },
-      "components": {
-        "BoardSquare": {
-          "file": 0,
-          "rank": 1
-        }
-      }
-    },
-    {
-      "id": "square.b2",
-      "prefab": "prefab.square.light",
-      "transform": {
-        "position": [
-          -2.5,
-          0,
-          2.5
-        ],
-        "scale": [
-          0.98,
-          0.12,
-          0.98
-        ]
-      },
-      "components": {
-        "BoardSquare": {
-          "file": 1,
-          "rank": 1
-        }
-      }
-    },
-    {
-      "id": "square.c2",
-      "prefab": "prefab.square.dark",
-      "transform": {
-        "position": [
-          -1.5,
-          0,
-          2.5
-        ],
-        "scale": [
-          0.98,
-          0.12,
-          0.98
-        ]
-      },
-      "components": {
-        "BoardSquare": {
-          "file": 2,
-          "rank": 1
-        }
-      }
-    },
-    {
-      "id": "square.d2",
-      "prefab": "prefab.square.light",
-      "transform": {
-        "position": [
-          -0.5,
-          0,
-          2.5
-        ],
-        "scale": [
-          0.98,
-          0.12,
-          0.98
-        ]
-      },
-      "components": {
-        "BoardSquare": {
-          "file": 3,
-          "rank": 1
-        }
-      }
-    },
-    {
-      "id": "square.e2",
-      "prefab": "prefab.square.dark",
-      "transform": {
-        "position": [
-          0.5,
-          0,
-          2.5
-        ],
-        "scale": [
-          0.98,
-          0.12,
-          0.98
-        ]
-      },
-      "components": {
-        "BoardSquare": {
-          "file": 4,
-          "rank": 1
-        }
-      }
-    },
-    {
-      "id": "square.f2",
-      "prefab": "prefab.square.light",
-      "transform": {
-        "position": [
-          1.5,
-          0,
-          2.5
-        ],
-        "scale": [
-          0.98,
-          0.12,
-          0.98
-        ]
-      },
-      "components": {
-        "BoardSquare": {
-          "file": 5,
-          "rank": 1
-        }
-      }
-    },
-    {
-      "id": "square.g2",
-      "prefab": "prefab.square.dark",
-      "transform": {
-        "position": [
-          2.5,
-          0,
-          2.5
-        ],
-        "scale": [
-          0.98,
-          0.12,
-          0.98
-        ]
-      },
-      "components": {
-        "BoardSquare": {
-          "file": 6,
-          "rank": 1
-        }
-      }
-    },
-    {
-      "id": "square.h2",
-      "prefab": "prefab.square.light",
-      "transform": {
-        "position": [
-          3.5,
-          0,
-          2.5
-        ],
-        "scale": [
-          0.98,
-          0.12,
-          0.98
-        ]
-      },
-      "components": {
-        "BoardSquare": {
-          "file": 7,
-          "rank": 1
-        }
-      }
-    },
-    {
-      "id": "square.a3",
-      "prefab": "prefab.square.light",
-      "transform": {
-        "position": [
-          -3.5,
-          0,
-          1.5
-        ],
-        "scale": [
-          0.98,
-          0.12,
-          0.98
-        ]
-      },
-      "components": {
-        "BoardSquare": {
-          "file": 0,
-          "rank": 2
-        }
-      }
-    },
-    {
-      "id": "square.b3",
-      "prefab": "prefab.square.dark",
-      "transform": {
-        "position": [
-          -2.5,
-          0,
-          1.5
-        ],
-        "scale": [
-          0.98,
-          0.12,
-          0.98
-        ]
-      },
-      "components": {
-        "BoardSquare": {
-          "file": 1,
-          "rank": 2
-        }
-      }
-    },
-    {
-      "id": "square.c3",
-      "prefab": "prefab.square.light",
-      "transform": {
-        "position": [
-          -1.5,
-          0,
-          1.5
-        ],
-        "scale": [
-          0.98,
-          0.12,
-          0.98
-        ]
-      },
-      "components": {
-        "BoardSquare": {
-          "file": 2,
-          "rank": 2
-        }
-      }
-    },
-    {
-      "id": "square.d3",
-      "prefab": "prefab.square.dark",
-      "transform": {
-        "position": [
-          -0.5,
-          0,
-          1.5
-        ],
-        "scale": [
-          0.98,
-          0.12,
-          0.98
-        ]
-      },
-      "components": {
-        "BoardSquare": {
-          "file": 3,
-          "rank": 2
-        }
-      }
-    },
-    {
-      "id": "square.e3",
-      "prefab": "prefab.square.light",
-      "transform": {
-        "position": [
-          0.5,
-          0,
-          1.5
-        ],
-        "scale": [
-          0.98,
-          0.12,
-          0.98
-        ]
-      },
-      "components": {
-        "BoardSquare": {
-          "file": 4,
-          "rank": 2
-        }
-      }
-    },
-    {
-      "id": "square.f3",
-      "prefab": "prefab.square.dark",
-      "transform": {
-        "position": [
-          1.5,
-          0,
-          1.5
-        ],
-        "scale": [
-          0.98,
-          0.12,
-          0.98
-        ]
-      },
-      "components": {
-        "BoardSquare": {
-          "file": 5,
-          "rank": 2
-        }
-      }
-    },
-    {
-      "id": "square.g3",
-      "prefab": "prefab.square.light",
-      "transform": {
-        "position": [
-          2.5,
-          0,
-          1.5
-        ],
-        "scale": [
-          0.98,
-          0.12,
-          0.98
-        ]
-      },
-      "components": {
-        "BoardSquare": {
-          "file": 6,
-          "rank": 2
-        }
-      }
-    },
-    {
-      "id": "square.h3",
-      "prefab": "prefab.square.dark",
-      "transform": {
-        "position": [
-          3.5,
-          0,
-          1.5
-        ],
-        "scale": [
-          0.98,
-          0.12,
-          0.98
-        ]
-      },
-      "components": {
-        "BoardSquare": {
-          "file": 7,
-          "rank": 2
-        }
-      }
-    },
-    {
-      "id": "square.a4",
-      "prefab": "prefab.square.dark",
-      "transform": {
-        "position": [
-          -3.5,
-          0,
-          0.5
-        ],
-        "scale": [
-          0.98,
-          0.12,
-          0.98
-        ]
-      },
-      "components": {
-        "BoardSquare": {
-          "file": 0,
-          "rank": 3
-        }
-      }
-    },
-    {
-      "id": "square.b4",
-      "prefab": "prefab.square.light",
-      "transform": {
-        "position": [
-          -2.5,
-          0,
-          0.5
-        ],
-        "scale": [
-          0.98,
-          0.12,
-          0.98
-        ]
-      },
-      "components": {
-        "BoardSquare": {
-          "file": 1,
-          "rank": 3
-        }
-      }
-    },
-    {
-      "id": "square.c4",
-      "prefab": "prefab.square.dark",
-      "transform": {
-        "position": [
-          -1.5,
-          0,
-          0.5
-        ],
-        "scale": [
-          0.98,
-          0.12,
-          0.98
-        ]
-      },
-      "components": {
-        "BoardSquare": {
-          "file": 2,
-          "rank": 3
-        }
-      }
-    },
-    {
-      "id": "square.d4",
-      "prefab": "prefab.square.light",
-      "transform": {
-        "position": [
-          -0.5,
-          0,
-          0.5
-        ],
-        "scale": [
-          0.98,
-          0.12,
-          0.98
-        ]
-      },
-      "components": {
-        "BoardSquare": {
-          "file": 3,
-          "rank": 3
-        }
-      }
-    },
-    {
-      "id": "square.e4",
-      "prefab": "prefab.square.dark",
-      "transform": {
-        "position": [
-          0.5,
-          0,
-          0.5
-        ],
-        "scale": [
-          0.98,
-          0.12,
-          0.98
-        ]
-      },
-      "components": {
-        "BoardSquare": {
-          "file": 4,
-          "rank": 3
-        }
-      }
-    },
-    {
-      "id": "square.f4",
-      "prefab": "prefab.square.light",
-      "transform": {
-        "position": [
-          1.5,
-          0,
-          0.5
-        ],
-        "scale": [
-          0.98,
-          0.12,
-          0.98
-        ]
-      },
-      "components": {
-        "BoardSquare": {
-          "file": 5,
-          "rank": 3
-        }
-      }
-    },
-    {
-      "id": "square.g4",
-      "prefab": "prefab.square.dark",
-      "transform": {
-        "position": [
-          2.5,
-          0,
-          0.5
-        ],
-        "scale": [
-          0.98,
-          0.12,
-          0.98
-        ]
-      },
-      "components": {
-        "BoardSquare": {
-          "file": 6,
-          "rank": 3
-        }
-      }
-    },
-    {
-      "id": "square.h4",
-      "prefab": "prefab.square.light",
-      "transform": {
-        "position": [
-          3.5,
-          0,
-          0.5
-        ],
-        "scale": [
-          0.98,
-          0.12,
-          0.98
-        ]
-      },
-      "components": {
-        "BoardSquare": {
-          "file": 7,
-          "rank": 3
-        }
-      }
-    },
-    {
-      "id": "square.a5",
-      "prefab": "prefab.square.light",
-      "transform": {
-        "position": [
-          -3.5,
-          0,
-          -0.5
-        ],
-        "scale": [
-          0.98,
-          0.12,
-          0.98
-        ]
-      },
-      "components": {
-        "BoardSquare": {
-          "file": 0,
-          "rank": 4
-        }
-      }
-    },
-    {
-      "id": "square.b5",
-      "prefab": "prefab.square.dark",
-      "transform": {
-        "position": [
-          -2.5,
-          0,
-          -0.5
-        ],
-        "scale": [
-          0.98,
-          0.12,
-          0.98
-        ]
-      },
-      "components": {
-        "BoardSquare": {
-          "file": 1,
-          "rank": 4
-        }
-      }
-    },
-    {
-      "id": "square.c5",
-      "prefab": "prefab.square.light",
-      "transform": {
-        "position": [
-          -1.5,
-          0,
-          -0.5
-        ],
-        "scale": [
-          0.98,
-          0.12,
-          0.98
-        ]
-      },
-      "components": {
-        "BoardSquare": {
-          "file": 2,
-          "rank": 4
-        }
-      }
-    },
-    {
-      "id": "square.d5",
-      "prefab": "prefab.square.dark",
-      "transform": {
-        "position": [
-          -0.5,
-          0,
-          -0.5
-        ],
-        "scale": [
-          0.98,
-          0.12,
-          0.98
-        ]
-      },
-      "components": {
-        "BoardSquare": {
-          "file": 3,
-          "rank": 4
-        }
-      }
-    },
-    {
-      "id": "square.e5",
-      "prefab": "prefab.square.light",
-      "transform": {
-        "position": [
-          0.5,
-          0,
-          -0.5
-        ],
-        "scale": [
-          0.98,
-          0.12,
-          0.98
-        ]
-      },
-      "components": {
-        "BoardSquare": {
-          "file": 4,
-          "rank": 4
-        }
-      }
-    },
-    {
-      "id": "square.f5",
-      "prefab": "prefab.square.dark",
-      "transform": {
-        "position": [
-          1.5,
-          0,
-          -0.5
-        ],
-        "scale": [
-          0.98,
-          0.12,
-          0.98
-        ]
-      },
-      "components": {
-        "BoardSquare": {
-          "file": 5,
-          "rank": 4
-        }
-      }
-    },
-    {
-      "id": "square.g5",
-      "prefab": "prefab.square.light",
-      "transform": {
-        "position": [
-          2.5,
-          0,
-          -0.5
-        ],
-        "scale": [
-          0.98,
-          0.12,
-          0.98
-        ]
-      },
-      "components": {
-        "BoardSquare": {
-          "file": 6,
-          "rank": 4
-        }
-      }
-    },
-    {
-      "id": "square.h5",
-      "prefab": "prefab.square.dark",
-      "transform": {
-        "position": [
-          3.5,
-          0,
-          -0.5
-        ],
-        "scale": [
-          0.98,
-          0.12,
-          0.98
-        ]
-      },
-      "components": {
-        "BoardSquare": {
-          "file": 7,
-          "rank": 4
-        }
-      }
-    },
-    {
-      "id": "square.a6",
-      "prefab": "prefab.square.dark",
-      "transform": {
-        "position": [
-          -3.5,
-          0,
-          -1.5
-        ],
-        "scale": [
-          0.98,
-          0.12,
-          0.98
-        ]
-      },
-      "components": {
-        "BoardSquare": {
-          "file": 0,
-          "rank": 5
-        }
-      }
-    },
-    {
-      "id": "square.b6",
-      "prefab": "prefab.square.light",
-      "transform": {
-        "position": [
-          -2.5,
-          0,
-          -1.5
-        ],
-        "scale": [
-          0.98,
-          0.12,
-          0.98
-        ]
-      },
-      "components": {
-        "BoardSquare": {
-          "file": 1,
-          "rank": 5
-        }
-      }
-    },
-    {
-      "id": "square.c6",
-      "prefab": "prefab.square.dark",
-      "transform": {
-        "position": [
-          -1.5,
-          0,
-          -1.5
-        ],
-        "scale": [
-          0.98,
-          0.12,
-          0.98
-        ]
-      },
-      "components": {
-        "BoardSquare": {
-          "file": 2,
-          "rank": 5
-        }
-      }
-    },
-    {
-      "id": "square.d6",
-      "prefab": "prefab.square.light",
-      "transform": {
-        "position": [
-          -0.5,
-          0,
-          -1.5
-        ],
-        "scale": [
-          0.98,
-          0.12,
-          0.98
-        ]
-      },
-      "components": {
-        "BoardSquare": {
-          "file": 3,
-          "rank": 5
-        }
-      }
-    },
-    {
-      "id": "square.e6",
-      "prefab": "prefab.square.dark",
-      "transform": {
-        "position": [
-          0.5,
-          0,
-          -1.5
-        ],
-        "scale": [
-          0.98,
-          0.12,
-          0.98
-        ]
-      },
-      "components": {
-        "BoardSquare": {
-          "file": 4,
-          "rank": 5
-        }
-      }
-    },
-    {
-      "id": "square.f6",
-      "prefab": "prefab.square.light",
-      "transform": {
-        "position": [
-          1.5,
-          0,
-          -1.5
-        ],
-        "scale": [
-          0.98,
-          0.12,
-          0.98
-        ]
-      },
-      "components": {
-        "BoardSquare": {
-          "file": 5,
-          "rank": 5
-        }
-      }
-    },
-    {
-      "id": "square.g6",
-      "prefab": "prefab.square.dark",
-      "transform": {
-        "position": [
-          2.5,
-          0,
-          -1.5
-        ],
-        "scale": [
-          0.98,
-          0.12,
-          0.98
-        ]
-      },
-      "components": {
-        "BoardSquare": {
-          "file": 6,
-          "rank": 5
-        }
-      }
-    },
-    {
-      "id": "square.h6",
-      "prefab": "prefab.square.light",
-      "transform": {
-        "position": [
-          3.5,
-          0,
-          -1.5
-        ],
-        "scale": [
-          0.98,
-          0.12,
-          0.98
-        ]
-      },
-      "components": {
-        "BoardSquare": {
-          "file": 7,
-          "rank": 5
-        }
-      }
-    },
-    {
-      "id": "square.a7",
-      "prefab": "prefab.square.light",
-      "transform": {
-        "position": [
-          -3.5,
-          0,
-          -2.5
-        ],
-        "scale": [
-          0.98,
-          0.12,
-          0.98
-        ]
-      },
-      "components": {
-        "BoardSquare": {
-          "file": 0,
-          "rank": 6
-        }
-      }
-    },
-    {
-      "id": "square.b7",
-      "prefab": "prefab.square.dark",
-      "transform": {
-        "position": [
-          -2.5,
-          0,
-          -2.5
-        ],
-        "scale": [
-          0.98,
-          0.12,
-          0.98
-        ]
-      },
-      "components": {
-        "BoardSquare": {
-          "file": 1,
-          "rank": 6
-        }
-      }
-    },
-    {
-      "id": "square.c7",
-      "prefab": "prefab.square.light",
-      "transform": {
-        "position": [
-          -1.5,
-          0,
-          -2.5
-        ],
-        "scale": [
-          0.98,
-          0.12,
-          0.98
-        ]
-      },
-      "components": {
-        "BoardSquare": {
-          "file": 2,
-          "rank": 6
-        }
-      }
-    },
-    {
-      "id": "square.d7",
-      "prefab": "prefab.square.dark",
-      "transform": {
-        "position": [
-          -0.5,
-          0,
-          -2.5
-        ],
-        "scale": [
-          0.98,
-          0.12,
-          0.98
-        ]
-      },
-      "components": {
-        "BoardSquare": {
-          "file": 3,
-          "rank": 6
-        }
-      }
-    },
-    {
-      "id": "square.e7",
-      "prefab": "prefab.square.light",
-      "transform": {
-        "position": [
-          0.5,
-          0,
-          -2.5
-        ],
-        "scale": [
-          0.98,
-          0.12,
-          0.98
-        ]
-      },
-      "components": {
-        "BoardSquare": {
-          "file": 4,
-          "rank": 6
-        }
-      }
-    },
-    {
-      "id": "square.f7",
-      "prefab": "prefab.square.dark",
-      "transform": {
-        "position": [
-          1.5,
-          0,
-          -2.5
-        ],
-        "scale": [
-          0.98,
-          0.12,
-          0.98
-        ]
-      },
-      "components": {
-        "BoardSquare": {
-          "file": 5,
-          "rank": 6
-        }
-      }
-    },
-    {
-      "id": "square.g7",
-      "prefab": "prefab.square.light",
-      "transform": {
-        "position": [
-          2.5,
-          0,
-          -2.5
-        ],
-        "scale": [
-          0.98,
-          0.12,
-          0.98
-        ]
-      },
-      "components": {
-        "BoardSquare": {
-          "file": 6,
-          "rank": 6
-        }
-      }
-    },
-    {
-      "id": "square.h7",
-      "prefab": "prefab.square.dark",
-      "transform": {
-        "position": [
-          3.5,
-          0,
-          -2.5
-        ],
-        "scale": [
-          0.98,
-          0.12,
-          0.98
-        ]
-      },
-      "components": {
-        "BoardSquare": {
-          "file": 7,
-          "rank": 6
-        }
-      }
-    },
-    {
-      "id": "square.a8",
-      "prefab": "prefab.square.dark",
-      "transform": {
-        "position": [
-          -3.5,
-          0,
-          -3.5
-        ],
-        "scale": [
-          0.98,
-          0.12,
-          0.98
-        ]
-      },
-      "components": {
-        "BoardSquare": {
-          "file": 0,
-          "rank": 7
-        }
-      }
-    },
-    {
-      "id": "square.b8",
-      "prefab": "prefab.square.light",
-      "transform": {
-        "position": [
-          -2.5,
-          0,
-          -3.5
-        ],
-        "scale": [
-          0.98,
-          0.12,
-          0.98
-        ]
-      },
-      "components": {
-        "BoardSquare": {
-          "file": 1,
-          "rank": 7
-        }
-      }
-    },
-    {
-      "id": "square.c8",
-      "prefab": "prefab.square.dark",
-      "transform": {
-        "position": [
-          -1.5,
-          0,
-          -3.5
-        ],
-        "scale": [
-          0.98,
-          0.12,
-          0.98
-        ]
-      },
-      "components": {
-        "BoardSquare": {
-          "file": 2,
-          "rank": 7
-        }
-      }
-    },
-    {
-      "id": "square.d8",
-      "prefab": "prefab.square.light",
-      "transform": {
-        "position": [
-          -0.5,
-          0,
-          -3.5
-        ],
-        "scale": [
-          0.98,
-          0.12,
-          0.98
-        ]
-      },
-      "components": {
-        "BoardSquare": {
-          "file": 3,
-          "rank": 7
-        }
-      }
-    },
-    {
-      "id": "square.e8",
-      "prefab": "prefab.square.dark",
-      "transform": {
-        "position": [
-          0.5,
-          0,
-          -3.5
-        ],
-        "scale": [
-          0.98,
-          0.12,
-          0.98
-        ]
-      },
-      "components": {
-        "BoardSquare": {
-          "file": 4,
-          "rank": 7
-        }
-      }
-    },
-    {
-      "id": "square.f8",
-      "prefab": "prefab.square.light",
-      "transform": {
-        "position": [
-          1.5,
-          0,
-          -3.5
-        ],
-        "scale": [
-          0.98,
-          0.12,
-          0.98
-        ]
-      },
-      "components": {
-        "BoardSquare": {
-          "file": 5,
-          "rank": 7
-        }
-      }
-    },
-    {
-      "id": "square.g8",
-      "prefab": "prefab.square.dark",
-      "transform": {
-        "position": [
-          2.5,
-          0,
-          -3.5
-        ],
-        "scale": [
-          0.98,
-          0.12,
-          0.98
-        ]
-      },
-      "components": {
-        "BoardSquare": {
-          "file": 6,
-          "rank": 7
-        }
-      }
-    },
-    {
-      "id": "square.h8",
-      "prefab": "prefab.square.light",
-      "transform": {
-        "position": [
-          3.5,
-          0,
-          -3.5
-        ],
-        "scale": [
-          0.98,
-          0.12,
-          0.98
-        ]
-      },
-      "components": {
-        "BoardSquare": {
-          "file": 7,
-          "rank": 7
-        }
-      }
-    },
-    {
       "id": "piece.white.pawn.a2",
       "prefab": "prefab.white.pawn",
       "transform": {
         "position": [
-          -3.5,
+          -3.6260000000000003,
           0.07,
-          2.5
+          2.59
         ],
         "scale": [
-          9,
-          9,
-          9
+          10.5,
+          10.5,
+          10.5
         ]
       },
       "components": {
@@ -1445,14 +37,14 @@
       "prefab": "prefab.white.rook",
       "transform": {
         "position": [
-          -3.5,
+          -3.6260000000000003,
           0.07,
-          3.5
+          3.6260000000000003
         ],
         "scale": [
-          9,
-          9,
-          9
+          10.5,
+          10.5,
+          10.5
         ]
       },
       "components": {
@@ -1474,14 +66,14 @@
       "prefab": "prefab.white.pawn",
       "transform": {
         "position": [
-          -2.5,
+          -2.59,
           0.07,
-          2.5
+          2.59
         ],
         "scale": [
-          9,
-          9,
-          9
+          10.5,
+          10.5,
+          10.5
         ]
       },
       "components": {
@@ -1503,14 +95,14 @@
       "prefab": "prefab.white.knight",
       "transform": {
         "position": [
-          -2.5,
+          -2.59,
           0.07,
-          3.5
+          3.6260000000000003
         ],
         "scale": [
-          9,
-          9,
-          9
+          10.5,
+          10.5,
+          10.5
         ]
       },
       "components": {
@@ -1532,14 +124,14 @@
       "prefab": "prefab.white.pawn",
       "transform": {
         "position": [
-          -1.5,
+          -1.554,
           0.07,
-          2.5
+          2.59
         ],
         "scale": [
-          9,
-          9,
-          9
+          10.5,
+          10.5,
+          10.5
         ]
       },
       "components": {
@@ -1561,14 +153,14 @@
       "prefab": "prefab.white.bishop",
       "transform": {
         "position": [
-          -1.5,
+          -1.554,
           0.07,
-          3.5
+          3.6260000000000003
         ],
         "scale": [
-          9,
-          9,
-          9
+          10.5,
+          10.5,
+          10.5
         ]
       },
       "components": {
@@ -1590,14 +182,14 @@
       "prefab": "prefab.white.pawn",
       "transform": {
         "position": [
-          -0.5,
+          -0.518,
           0.07,
-          2.5
+          2.59
         ],
         "scale": [
-          9,
-          9,
-          9
+          10.5,
+          10.5,
+          10.5
         ]
       },
       "components": {
@@ -1619,14 +211,14 @@
       "prefab": "prefab.white.queen",
       "transform": {
         "position": [
-          -0.5,
+          -0.518,
           0.07,
-          3.5
+          3.6260000000000003
         ],
         "scale": [
-          9,
-          9,
-          9
+          10.5,
+          10.5,
+          10.5
         ]
       },
       "components": {
@@ -1648,14 +240,14 @@
       "prefab": "prefab.white.pawn",
       "transform": {
         "position": [
-          0.5,
+          0.518,
           0.07,
-          2.5
+          2.59
         ],
         "scale": [
-          9,
-          9,
-          9
+          10.5,
+          10.5,
+          10.5
         ]
       },
       "components": {
@@ -1677,14 +269,14 @@
       "prefab": "prefab.white.king",
       "transform": {
         "position": [
-          0.5,
+          0.518,
           0.07,
-          3.5
+          3.6260000000000003
         ],
         "scale": [
-          9,
-          9,
-          9
+          10.5,
+          10.5,
+          10.5
         ]
       },
       "components": {
@@ -1706,14 +298,14 @@
       "prefab": "prefab.white.pawn",
       "transform": {
         "position": [
-          1.5,
+          1.554,
           0.07,
-          2.5
+          2.59
         ],
         "scale": [
-          9,
-          9,
-          9
+          10.5,
+          10.5,
+          10.5
         ]
       },
       "components": {
@@ -1735,14 +327,14 @@
       "prefab": "prefab.white.bishop",
       "transform": {
         "position": [
-          1.5,
+          1.554,
           0.07,
-          3.5
+          3.6260000000000003
         ],
         "scale": [
-          9,
-          9,
-          9
+          10.5,
+          10.5,
+          10.5
         ]
       },
       "components": {
@@ -1764,14 +356,14 @@
       "prefab": "prefab.white.pawn",
       "transform": {
         "position": [
-          2.5,
+          2.59,
           0.07,
-          2.5
+          2.59
         ],
         "scale": [
-          9,
-          9,
-          9
+          10.5,
+          10.5,
+          10.5
         ]
       },
       "components": {
@@ -1793,14 +385,14 @@
       "prefab": "prefab.white.knight",
       "transform": {
         "position": [
-          2.5,
+          2.59,
           0.07,
-          3.5
+          3.6260000000000003
         ],
         "scale": [
-          9,
-          9,
-          9
+          10.5,
+          10.5,
+          10.5
         ]
       },
       "components": {
@@ -1822,14 +414,14 @@
       "prefab": "prefab.white.pawn",
       "transform": {
         "position": [
-          3.5,
+          3.6260000000000003,
           0.07,
-          2.5
+          2.59
         ],
         "scale": [
-          9,
-          9,
-          9
+          10.5,
+          10.5,
+          10.5
         ]
       },
       "components": {
@@ -1851,14 +443,14 @@
       "prefab": "prefab.white.rook",
       "transform": {
         "position": [
-          3.5,
+          3.6260000000000003,
           0.07,
-          3.5
+          3.6260000000000003
         ],
         "scale": [
-          9,
-          9,
-          9
+          10.5,
+          10.5,
+          10.5
         ]
       },
       "components": {
@@ -1880,14 +472,14 @@
       "prefab": "prefab.black.pawn",
       "transform": {
         "position": [
-          -3.5,
+          -3.6260000000000003,
           0.07,
-          -2.5
+          -2.59
         ],
         "scale": [
-          9,
-          9,
-          9
+          10.5,
+          10.5,
+          10.5
         ]
       },
       "components": {
@@ -1909,14 +501,14 @@
       "prefab": "prefab.black.rook",
       "transform": {
         "position": [
-          -3.5,
+          -3.6260000000000003,
           0.07,
-          -3.5
+          -3.6260000000000003
         ],
         "scale": [
-          9,
-          9,
-          9
+          10.5,
+          10.5,
+          10.5
         ]
       },
       "components": {
@@ -1938,14 +530,14 @@
       "prefab": "prefab.black.pawn",
       "transform": {
         "position": [
-          -2.5,
+          -2.59,
           0.07,
-          -2.5
+          -2.59
         ],
         "scale": [
-          9,
-          9,
-          9
+          10.5,
+          10.5,
+          10.5
         ]
       },
       "components": {
@@ -1967,14 +559,14 @@
       "prefab": "prefab.black.knight",
       "transform": {
         "position": [
-          -2.5,
+          -2.59,
           0.07,
-          -3.5
+          -3.6260000000000003
         ],
         "scale": [
-          9,
-          9,
-          9
+          10.5,
+          10.5,
+          10.5
         ]
       },
       "components": {
@@ -1996,14 +588,14 @@
       "prefab": "prefab.black.pawn",
       "transform": {
         "position": [
-          -1.5,
+          -1.554,
           0.07,
-          -2.5
+          -2.59
         ],
         "scale": [
-          9,
-          9,
-          9
+          10.5,
+          10.5,
+          10.5
         ]
       },
       "components": {
@@ -2025,14 +617,14 @@
       "prefab": "prefab.black.bishop",
       "transform": {
         "position": [
-          -1.5,
+          -1.554,
           0.07,
-          -3.5
+          -3.6260000000000003
         ],
         "scale": [
-          9,
-          9,
-          9
+          10.5,
+          10.5,
+          10.5
         ]
       },
       "components": {
@@ -2054,14 +646,14 @@
       "prefab": "prefab.black.pawn",
       "transform": {
         "position": [
-          -0.5,
+          -0.518,
           0.07,
-          -2.5
+          -2.59
         ],
         "scale": [
-          9,
-          9,
-          9
+          10.5,
+          10.5,
+          10.5
         ]
       },
       "components": {
@@ -2083,14 +675,14 @@
       "prefab": "prefab.black.queen",
       "transform": {
         "position": [
-          -0.5,
+          -0.518,
           0.07,
-          -3.5
+          -3.6260000000000003
         ],
         "scale": [
-          9,
-          9,
-          9
+          10.5,
+          10.5,
+          10.5
         ]
       },
       "components": {
@@ -2112,14 +704,14 @@
       "prefab": "prefab.black.pawn",
       "transform": {
         "position": [
-          0.5,
+          0.518,
           0.07,
-          -2.5
+          -2.59
         ],
         "scale": [
-          9,
-          9,
-          9
+          10.5,
+          10.5,
+          10.5
         ]
       },
       "components": {
@@ -2141,14 +733,14 @@
       "prefab": "prefab.black.king",
       "transform": {
         "position": [
-          0.5,
+          0.518,
           0.07,
-          -3.5
+          -3.6260000000000003
         ],
         "scale": [
-          9,
-          9,
-          9
+          10.5,
+          10.5,
+          10.5
         ]
       },
       "components": {
@@ -2170,14 +762,14 @@
       "prefab": "prefab.black.pawn",
       "transform": {
         "position": [
-          1.5,
+          1.554,
           0.07,
-          -2.5
+          -2.59
         ],
         "scale": [
-          9,
-          9,
-          9
+          10.5,
+          10.5,
+          10.5
         ]
       },
       "components": {
@@ -2199,14 +791,14 @@
       "prefab": "prefab.black.bishop",
       "transform": {
         "position": [
-          1.5,
+          1.554,
           0.07,
-          -3.5
+          -3.6260000000000003
         ],
         "scale": [
-          9,
-          9,
-          9
+          10.5,
+          10.5,
+          10.5
         ]
       },
       "components": {
@@ -2228,14 +820,14 @@
       "prefab": "prefab.black.pawn",
       "transform": {
         "position": [
-          2.5,
+          2.59,
           0.07,
-          -2.5
+          -2.59
         ],
         "scale": [
-          9,
-          9,
-          9
+          10.5,
+          10.5,
+          10.5
         ]
       },
       "components": {
@@ -2257,14 +849,14 @@
       "prefab": "prefab.black.knight",
       "transform": {
         "position": [
-          2.5,
+          2.59,
           0.07,
-          -3.5
+          -3.6260000000000003
         ],
         "scale": [
-          9,
-          9,
-          9
+          10.5,
+          10.5,
+          10.5
         ]
       },
       "components": {
@@ -2286,14 +878,14 @@
       "prefab": "prefab.black.pawn",
       "transform": {
         "position": [
-          3.5,
+          3.6260000000000003,
           0.07,
-          -2.5
+          -2.59
         ],
         "scale": [
-          9,
-          9,
-          9
+          10.5,
+          10.5,
+          10.5
         ]
       },
       "components": {
@@ -2315,14 +907,14 @@
       "prefab": "prefab.black.rook",
       "transform": {
         "position": [
-          3.5,
+          3.6260000000000003,
           0.07,
-          -3.5
+          -3.6260000000000003
         ],
         "scale": [
-          9,
-          9,
-          9
+          10.5,
+          10.5,
+          10.5
         ]
       },
       "components": {
@@ -3023,82 +1615,95 @@
       }
     },
     {
-      "id": "table.plinth",
+      "id": "table.surface",
+      "transform": {
+        "position": [
+          0,
+          -0.34,
+          0
+        ],
+        "rotation": [
+          -1.570796,
+          0,
+          0
+        ],
+        "scale": [
+          22,
+          16,
+          1
+        ]
+      },
+      "components": {
+        "MeshRenderer": {
+          "mesh": "mesh.surface",
+          "material": "mat.table",
+          "receiveShadow": true
+        }
+      }
+    },
+    {
+      "id": "library.backdrop",
+      "transform": {
+        "position": [
+          0,
+          4.5,
+          -8.2
+        ],
+        "scale": [
+          30,
+          16,
+          1
+        ]
+      },
+      "components": {
+        "MeshRenderer": {
+          "mesh": "mesh.surface",
+          "material": "mat.library",
+          "castShadow": false,
+          "receiveShadow": false
+        }
+      }
+    },
+    {
+      "id": "board.surface",
+      "transform": {
+        "position": [
+          0,
+          0,
+          0
+        ],
+        "rotation": [
+          -1.570796,
+          0,
+          0
+        ],
+        "scale": [
+          9.35,
+          9.35,
+          1
+        ]
+      },
+      "components": {
+        "MeshRenderer": {
+          "mesh": "mesh.surface",
+          "material": "mat.board",
+          "receiveShadow": true
+        }
+      }
+    },
+    {
+      "id": "board.base",
       "prefab": "prefab.plinth",
       "transform": {
         "position": [
           0,
-          -0.28,
+          -0.23,
           0
         ],
         "scale": [
-          9.1,
-          0.42,
-          9.1
-        ]
-      }
-    },
-    {
-      "id": "table.trim.n",
-      "prefab": "prefab.trim",
-      "transform": {
-        "position": [
-          0,
-          -0.02,
-          -4.25
-        ],
-        "scale": [
-          9.1,
-          0.28,
-          0.42
-        ]
-      }
-    },
-    {
-      "id": "table.trim.s",
-      "prefab": "prefab.trim",
-      "transform": {
-        "position": [
-          0,
-          -0.02,
-          4.25
-        ],
-        "scale": [
-          9.1,
-          0.28,
-          0.42
-        ]
-      }
-    },
-    {
-      "id": "table.trim.e",
-      "prefab": "prefab.trim",
-      "transform": {
-        "position": [
-          4.25,
-          -0.02,
-          0
-        ],
-        "scale": [
-          0.42,
-          0.28,
-          9.1
-        ]
-      }
-    },
-    {
-      "id": "table.trim.w",
-      "prefab": "prefab.trim",
-      "transform": {
-        "position": [
-          -4.25,
-          -0.02,
-          0
-        ],
-        "scale": [
-          0.42,
-          0.28,
-          9.1
+          9.5,
+          0.24,
+          9.5
         ]
       }
     },
@@ -3107,8 +1712,8 @@
       "components": {
         "Light": {
           "kind": "ambient",
-          "color": "#d9e7ff",
-          "intensity": 1.3
+          "color": "#f2e9de",
+          "intensity": 0.4
         }
       }
     },
@@ -3116,21 +1721,21 @@
       "id": "light.key",
       "transform": {
         "position": [
-          -4,
-          8,
-          5
+          -5.5,
+          9.5,
+          6.5
         ],
         "rotation": [
-          -0.8,
-          -0.35,
+          -0.78,
+          -0.42,
           0
         ]
       },
       "components": {
         "Light": {
           "kind": "directional",
-          "color": "#fff0d2",
-          "intensity": 2.2
+          "color": "#fff0dd",
+          "intensity": 2.05
         }
       }
     },
@@ -3138,17 +1743,17 @@
       "id": "light.fill",
       "transform": {
         "position": [
-          4,
-          5,
-          -4
+          5.5,
+          4.5,
+          -3.5
         ]
       },
       "components": {
         "Light": {
           "kind": "point",
-          "color": "#78bfff",
-          "intensity": 1.4,
-          "range": 18
+          "color": "#dce8f3",
+          "intensity": 0.52,
+          "range": 19
         }
       }
     },
@@ -3156,46 +1761,31 @@
       "id": "camera.main",
       "transform": {
         "position": [
-          0,
-          8.5,
-          11.5
+          0.45,
+          7.45,
+          10.35
         ],
         "rotation": [
-          -0.622303,
-          0,
+          -0.61,
+          0.035,
           0
         ]
       },
       "components": {
         "camera": {
           "mode": "perspective",
-          "fovY": 42,
+          "fovY": 37,
           "near": 0.1,
-          "far": 40
+          "far": 50
         }
       }
     }
   ],
   "prefabs": [
     {
-      "id": "prefab.square.light",
-      "primitive": "box",
-      "color": "#d8c7a3"
-    },
-    {
-      "id": "prefab.square.dark",
-      "primitive": "box",
-      "color": "#315d56"
-    },
-    {
       "id": "prefab.plinth",
       "primitive": "box",
-      "color": "#161d26"
-    },
-    {
-      "id": "prefab.trim",
-      "primitive": "box",
-      "color": "#b78745"
+      "color": "#2a1309"
     },
     {
       "id": "prefab.marker.legal",
@@ -3225,74 +1815,62 @@
     {
       "id": "prefab.white.pawn",
       "asset": "assets/models/chess/white-pawn.glb",
-      "primitive": "sphere",
-      "color": "#f4ead7"
+      "color": "#ead8b8"
     },
     {
       "id": "prefab.white.rook",
       "asset": "assets/models/chess/white-rook.glb",
-      "primitive": "box",
-      "color": "#f4ead7"
+      "color": "#ead8b8"
     },
     {
       "id": "prefab.white.knight",
       "asset": "assets/models/chess/white-knight.glb",
-      "primitive": "cone",
-      "color": "#f4ead7"
+      "color": "#ead8b8"
     },
     {
       "id": "prefab.white.bishop",
       "asset": "assets/models/chess/white-bishop.glb",
-      "primitive": "cone",
-      "color": "#f4ead7"
+      "color": "#ead8b8"
     },
     {
       "id": "prefab.white.queen",
       "asset": "assets/models/chess/white-queen.glb",
-      "primitive": "capsule",
-      "color": "#f4ead7"
+      "color": "#ead8b8"
     },
     {
       "id": "prefab.white.king",
       "asset": "assets/models/chess/white-king.glb",
-      "primitive": "cylinder",
-      "color": "#f4ead7"
+      "color": "#ead8b8"
     },
     {
       "id": "prefab.black.pawn",
       "asset": "assets/models/chess/black-pawn.glb",
-      "primitive": "sphere",
-      "color": "#27344a"
+      "color": "#100d0a"
     },
     {
       "id": "prefab.black.rook",
       "asset": "assets/models/chess/black-rook.glb",
-      "primitive": "box",
-      "color": "#27344a"
+      "color": "#100d0a"
     },
     {
       "id": "prefab.black.knight",
       "asset": "assets/models/chess/black-knight.glb",
-      "primitive": "cone",
-      "color": "#27344a"
+      "color": "#100d0a"
     },
     {
       "id": "prefab.black.bishop",
       "asset": "assets/models/chess/black-bishop.glb",
-      "primitive": "cone",
-      "color": "#27344a"
+      "color": "#100d0a"
     },
     {
       "id": "prefab.black.queen",
       "asset": "assets/models/chess/black-queen.glb",
-      "primitive": "capsule",
-      "color": "#27344a"
+      "color": "#100d0a"
     },
     {
       "id": "prefab.black.king",
       "asset": "assets/models/chess/black-king.glb",
-      "primitive": "cylinder",
-      "color": "#27344a"
+      "color": "#100d0a"
     }
   ],
   "resources": [
@@ -3305,11 +1883,14 @@
     {
       "id": "ChessGame",
       "value": {
+        "blackChoiceText": "PLAY BLACK",
         "turnText": "WHITE TO MOVE",
-        "statusText": "Click or drag a piece",
-        "helpText": "Click piece + destination | Drag + drop | Arrows + Enter | P promotion | R restart",
+        "statusText": "Choose a side to begin",
+        "helpText": "Choose with the buttons or press W / B",
         "moveText": "New game",
-        "promotionText": "Promotion: QUEEN"
+        "promotionText": "Promotion: QUEEN",
+        "promptText": "WHICH SIDE DO YOU WANT TO PLAY?",
+        "whiteChoiceText": "PLAY WHITE"
       }
     }
   ],

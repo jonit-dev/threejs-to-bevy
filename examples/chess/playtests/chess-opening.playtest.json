@@ -10,6 +10,16 @@
   "warmupFrames": 8,
   "steps": [
     {
+      "label": "choose white side",
+      "press": "KeyW",
+      "holdFrames": 2,
+      "release": true
+    },
+    {
+      "label": "wait for side selection",
+      "waitFrames": 4
+    },
+    {
       "label": "select e2 pawn",
       "press": "Enter",
       "holdFrames": 2,

@@ -18,10 +18,13 @@ primitive geometry only as the runtime fallback.
 
 ## Playable Loop
 
+- Choose White or Black from the opening UI; the camera faces the board from
+  that side and the deterministic opponent controls the other color.
 - Select a piece by click, drag start, or keyboard cursor plus Enter.
 - Show only destinations that obey movement, occupancy, and king-safety rules.
 - Commit by clicking a highlighted square, dropping on it, or pressing Enter.
-- Alternate turns through capture, castling, en passant, and promotion.
+- Alternate human and AI turns through capture, castling, en passant, and
+  promotion.
 - Finish on checkmate or stalemate; press R for a complete retry.
 
 ## Source Ownership
@@ -44,6 +47,8 @@ primitive geometry only as the runtime fallback.
 - Invalid destinations retain selection and explain the failure in the HUD.
 - A legal move uses a short eased lift arc; turn and notation update together.
 - Keyboard fallback covers native and accessible play.
+- Side selection accepts retained-UI buttons or W/B keyboard shortcuts, and
+  board input stays locked during the AI turn.
 
 ## Rules Coverage
 

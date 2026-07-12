@@ -4,10 +4,11 @@
   "type": "module",
   "scripts": {
     "tn": "node bin/tn",
-    "build": "tn build",
+    "build:overlay": "vite build --config overlay/vite.config.ts",
+    "build": "pnpm run build:overlay && tn build",
     "assets:convert": "node scripts/convert-chess-models.mjs",
-    "dev:web": "tn dev --target web",
-    "iterate": "tn iterate --project . --json",
+    "dev:web": "pnpm run build:overlay && tn dev --target web",
+    "iterate": "pnpm run build:overlay && tn iterate --project . --json",
     "playtest": "tn playtest --scenario playtests/chess-opening.playtest.json --stable-artifacts --json",
     "playtest:native": "tn playtest --scenario playtests/chess-opening.playtest.json --target desktop --json",
     "game:plan": "tn game plan --goal \"polished full-rules 3D chess with click and drag interaction\" --project . --json",
@@ -23,12 +24,19 @@
   },
   "dependencies": {
     "@threenative/script-stdlib": "file:/home/joao/projects/threejs-to-bevy/packages/script-stdlib",
-    "@threenative/sdk": "file:/home/joao/projects/threejs-to-bevy/packages/sdk"
+    "@threenative/sdk": "file:/home/joao/projects/threejs-to-bevy/packages/sdk",
+    "@threenative/ui": "file:../../packages/ui",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7"
   },
   "devDependencies": {
     "@threenative/cli": "file:.threenative/cli",
     "@types/node": "^20.19.25",
+    "@types/react": "^19.2.17",
+    "@types/react-dom": "^19.2.3",
     "assimpjs": "^0.0.10",
-    "typescript": "^5.9.3"
+    "tsx": "^4.23.0",
+    "typescript": "^5.9.3",
+    "vite": "^8.1.4"
   }
 }

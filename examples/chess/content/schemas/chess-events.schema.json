@@ -1,0 +1,15 @@
+{
+  "schema": "threenative.schema",
+  "version": "0.1.0",
+  "id": "chess-events",
+  "kind": "event",
+  "schemas": [
+    {
+      "id": "chess.choose-side",
+      "fields": {
+        "dismiss": { "kind": "boolean" },
+        "side": { "kind": "string" }
+      }
+    }
+  ]
+}

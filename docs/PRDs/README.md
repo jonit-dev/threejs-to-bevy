@@ -131,6 +131,13 @@ execution bundle.
   coverage debt reporting, and timing calibration.
 
 ### Authoring, Editor, And Plugins
+- [Chess Trial Remediation](chess-trial-remediation-2026-07-12/README.md):
+  fixes the C1-C10 findings from the 2026-07-12 Codex chess authoring trial
+  in two PRDs: authoring friction (GLB subtree picking, custom-component
+  queryability, render-profile surfacing, asset import/validation, schema
+  vocabulary, unlit/material-patch primitives, plan/scaffold hygiene) and
+  playtest loop trust (split visual/gameplay verdicts, honest artifacts,
+  bundle-grounded discovery, visual assertions, headless desktop proof).
 - [Adapter Surface Remediation](other/adapter-surface-remediation-2026-07-08/README.md):
   slices the current four urgent adapter-surface rows from the 2026-07-08
   diagnostic into generated-game proof enrollment, shared adapter drift gates,

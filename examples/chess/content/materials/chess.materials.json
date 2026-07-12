@@ -5,33 +5,55 @@
   "materials": [
     {
       "id": "mat.ivory",
-      "color": "#f4ead7",
-      "roughness": 0.28,
-      "metalness": 0.08
+      "color": "#ead8b8",
+      "roughness": 0.22,
+      "metalness": 0.05
     },
     {
-      "id": "mat.slate",
-      "color": "#27344a",
-      "roughness": 0.32,
-      "metalness": 0.16
+      "id": "mat.ebony",
+      "color": "#100d0a",
+      "roughness": 0.18,
+      "metalness": 0.14
     },
     {
       "id": "mat.board.light",
-      "color": "#d8c7a3",
-      "roughness": 0.55,
-      "metalness": 0.02
+      "color": "#c49a68",
+      "roughness": 0.48,
+      "metalness": 0
     },
     {
       "id": "mat.board.dark",
-      "color": "#315d56",
+      "color": "#4a2b18",
+      "roughness": 0.44,
+      "metalness": 0
+    },
+    {
+      "id": "mat.board",
+      "color": "#ffffff",
+      "baseColorTexture": "tex.chess.board",
       "roughness": 0.5,
-      "metalness": 0.04
+      "metalness": 0
+    },
+    {
+      "id": "mat.table",
+      "color": "#ffffff",
+      "baseColorTexture": "tex.chess.table",
+      "roughness": 0.62,
+      "metalness": 0
+    },
+    {
+      "id": "mat.library",
+      "kind": "standard",
+      "color": "#ffffff",
+      "baseColorTexture": "tex.chess.library",
+      "roughness": 1,
+      "metalness": 0
     },
     {
       "id": "mat.brass",
-      "color": "#b78745",
-      "roughness": 0.3,
-      "metalness": 0.65
+      "color": "#9b642d",
+      "roughness": 0.32,
+      "metalness": 0.48
     }
   ]
 }

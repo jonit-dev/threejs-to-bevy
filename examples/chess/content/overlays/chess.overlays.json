@@ -1,0 +1,26 @@
+{
+  "schema": "threenative.overlays",
+  "version": "0.1.0",
+  "overlays": [
+    {
+      "id": "chess-side-select",
+      "entry": "overlay/dist/index.html",
+      "targetProfiles": ["web", "desktop"],
+      "transparent": true,
+      "zIndex": 30,
+      "input": "modal",
+      "messages": {
+        "overlayToGame": [
+          {
+            "name": "chess:choose-side",
+            "schema": {
+              "kind": "object",
+              "fields": { "dismiss": "boolean", "side": "string" },
+              "required": ["dismiss", "side"]
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

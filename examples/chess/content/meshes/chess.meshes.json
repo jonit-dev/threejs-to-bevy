@@ -4,16 +4,6 @@
   "id": "chess-meshes",
   "meshes": [
     {
-      "id": "mesh.square",
-      "kind": "primitive",
-      "primitive": "box",
-      "size": [
-        1,
-        0.12,
-        1
-      ]
-    },
-    {
       "id": "mesh.marker",
       "kind": "primitive",
       "primitive": "cylinder",
@@ -21,6 +11,11 @@
         0.34,
         0.04
       ]
+    },
+    {
+      "id": "mesh.surface",
+      "kind": "primitive",
+      "primitive": "plane"
     }
   ]
 }
