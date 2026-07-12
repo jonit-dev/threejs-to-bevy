@@ -209,6 +209,10 @@ async function makeWorkspaceDependenciesInstallable(projectPath: string, root: s
     const dependencies = packageJson[field];
     if (typeof dependencies !== "object" || dependencies === null || Array.isArray(dependencies)) continue;
     for (const [name, version] of Object.entries(dependencies)) {
+      if (name === "@threenative/overlay-client") {
+        (dependencies as Record<string, unknown>)[name] = `file:${resolve(root, "packages/overlay-client")}`;
+        continue;
+      }
       // Cookbook commands run the already-built repository CLI directly. The
       // generated project's private workspace package links are unnecessary
       // for compiling its overlay and are not installable outside the repo

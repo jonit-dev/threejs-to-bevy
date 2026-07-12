@@ -13,6 +13,11 @@ export interface IPlaytestStep {
   holdFrames?: number;
   holdTicks?: number;
   label?: string;
+  overlayMessage?: {
+    overlayId: string;
+    payload: unknown;
+    type: string;
+  };
   press?: string;
   release: boolean;
   waitFrames?: number;
@@ -362,6 +367,17 @@ function validateStep(value: unknown, scenarioPath: string, index: number): IPla
     throw invalidStep(scenarioPath, `Scenario step ${index} must be a JSON object.`);
   }
   const press = typeof value.press === "string" && value.press.length > 0 ? value.press : undefined;
+  const overlayMessage = isRecord(value.overlayMessage)
+    && typeof value.overlayMessage.overlayId === "string"
+    && value.overlayMessage.overlayId.length > 0
+    && typeof value.overlayMessage.type === "string"
+    && value.overlayMessage.type.length > 0
+    ? {
+        overlayId: value.overlayMessage.overlayId,
+        payload: value.overlayMessage.payload ?? {},
+        type: value.overlayMessage.type,
+      }
+    : undefined;
   const holdFrames = positiveInteger(value.holdFrames);
   const holdTicks = positiveInteger(value.holdTicks);
   const waitFrames = positiveInteger(value.waitFrames);
@@ -370,8 +386,11 @@ function validateStep(value: unknown, scenarioPath: string, index: number): IPla
   if (kind === "wait" && press !== undefined) {
     throw invalidStep(scenarioPath, `Scenario step ${index} kind wait cannot define press.`);
   }
-  if (press === undefined && waitFrames === undefined && waitTicks === undefined) {
-    throw invalidStep(scenarioPath, `Scenario step ${index} must define press or waitFrames/waitTicks.`);
+  if (value.overlayMessage !== undefined && overlayMessage === undefined) {
+    throw invalidStep(scenarioPath, `Scenario step ${index} overlayMessage must define non-empty overlayId and type fields.`);
+  }
+  if (press === undefined && overlayMessage === undefined && waitFrames === undefined && waitTicks === undefined) {
+    throw invalidStep(scenarioPath, `Scenario step ${index} must define press, overlayMessage, or waitFrames/waitTicks.`);
   }
   if (value.holdFrames !== undefined && holdFrames === undefined) {
     throw invalidStep(scenarioPath, `Scenario step ${index} holdFrames must be a positive integer.`);
@@ -396,6 +415,7 @@ function validateStep(value: unknown, scenarioPath: string, index: number): IPla
     ...(holdFrames === undefined ? {} : { holdFrames }),
     ...(holdTicks === undefined ? {} : { holdTicks }),
     ...(typeof value.label === "string" ? { label: value.label } : {}),
+    ...(overlayMessage === undefined ? {} : { overlayMessage }),
     ...(press === undefined ? {} : { press }),
     release: typeof value.release === "boolean" ? value.release : true,
     ...(waitFrames === undefined ? {} : { waitFrames }),

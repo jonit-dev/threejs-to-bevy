@@ -72,7 +72,7 @@ export function extractResourceAccess(source: string, options: IResourceAccessEx
     ts.forEachChild(node, visit);
   }
 
-  visit(sourceFile);
+  visit(exportedDeclaration(sourceFile, options.exportName) ?? sourceFile);
   return {
     diagnostics: dedupeDiagnostics(diagnostics),
     eventSchemas: Object.fromEntries([...eventSchemas.entries()].sort(([left], [right]) => left.localeCompare(right))),
@@ -81,6 +81,19 @@ export function extractResourceAccess(source: string, options: IResourceAccessEx
     resourceReads: [...resourceReads].sort(),
     resourceWrites: [...resourceWrites].sort(),
   };
+}
+
+function exportedDeclaration(sourceFile: ts.SourceFile, exportName: string | undefined): ts.Node | undefined {
+  if (exportName === undefined) return undefined;
+  for (const statement of sourceFile.statements) {
+    if (ts.isFunctionDeclaration(statement) && statement.name?.text === exportName) return statement;
+    if (ts.isVariableStatement(statement)) {
+      for (const declaration of statement.declarationList.declarations) {
+        if (ts.isIdentifier(declaration.name) && declaration.name.text === exportName) return declaration;
+      }
+    }
+  }
+  return undefined;
 }
 
 function eventEmitExpression(expression: ts.Expression): boolean {

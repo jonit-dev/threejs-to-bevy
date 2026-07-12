@@ -121,8 +121,9 @@ test("contractDrift should keep schema literals aligned with document metadata",
     if (constants.schema !== metadata.schema) {
       diagnostics.push(`${document}: schema const ${constants.schema ?? "<missing>"} does not match ${metadata.schema}.`);
     }
-    if (constants.version !== IR_VERSION) {
-      diagnostics.push(`${document}: version const ${constants.version ?? "<missing>"} does not match ${IR_VERSION}.`);
+    const expectedVersion = "version" in metadata ? metadata.version : IR_VERSION;
+    if (!constants.versions.includes(expectedVersion)) {
+      diagnostics.push(`${document}: versions ${constants.versions.join(", ") || "<missing>"} do not include ${expectedVersion}.`);
     }
   }
 
@@ -419,16 +420,20 @@ async function readJson<T>(path: string): Promise<T> {
   return JSON.parse(await readFile(path, "utf8")) as T;
 }
 
-async function readSchemaConstants(path: string): Promise<{ schema?: string; version?: string }> {
+async function readSchemaConstants(path: string): Promise<{ schema?: string; versions: string[] }> {
   const schema = await readJson<{
     properties?: {
       schema?: { const?: unknown };
-      version?: { const?: unknown };
+      version?: { const?: unknown; enum?: unknown };
     };
   }>(path);
   return {
     schema: typeof schema.properties?.schema?.const === "string" ? schema.properties.schema.const : undefined,
-    version: typeof schema.properties?.version?.const === "string" ? schema.properties.version.const : undefined,
+    versions: typeof schema.properties?.version?.const === "string"
+      ? [schema.properties.version.const]
+      : Array.isArray(schema.properties?.version?.enum)
+        ? schema.properties.version.enum.filter((value): value is string => typeof value === "string")
+        : [],
   };
 }
 

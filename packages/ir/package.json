@@ -24,6 +24,10 @@
       "types": "./dist/input.d.ts",
       "default": "./dist/input.js"
     },
+    "./overlays": {
+      "types": "./dist/overlays.d.ts",
+      "default": "./dist/overlays.js"
+    },
     "./runtimeConfig": {
       "types": "./dist/runtimeConfig.d.ts",
       "default": "./dist/runtimeConfig.js"

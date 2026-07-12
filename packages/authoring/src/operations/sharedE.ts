@@ -589,6 +589,22 @@ export function validateEcsId(diagnostics: IAuthoringDiagnostic[], file: string,
   return id;
 }
 
+export function validateEventId(diagnostics: IAuthoringDiagnostic[], file: string, path: string, value: unknown): string | undefined {
+  const id = readString(value);
+  if (id === undefined || !/^[A-Za-z0-9][A-Za-z0-9._-]*(?::[A-Za-z0-9][A-Za-z0-9._-]*)*$/.test(id)) {
+    diagnostics.push(authoringDiagnostic({
+      code: "TN_AUTHORING_ID_INVALID",
+      file,
+      message: "event schema id must use letters, numbers, '.', '_', '-', and optional ':' namespace separators.",
+      path,
+      value,
+      suggestion: "Use a stable id such as 'damage.applied' or 'inventory:use-item'.",
+    }));
+    return undefined;
+  }
+  return id;
+}
+
 export function validateResourceId(diagnostics: IAuthoringDiagnostic[], file: string, path: string, value: unknown): string | undefined {
   const id = readString(value);
   if (id === undefined || !resourceIdPattern.test(id)) {

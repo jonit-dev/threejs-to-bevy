@@ -33,7 +33,7 @@ test("should scaffold a Tailwind React overlay when style is omitted", async () 
     assert.equal(packageJson.scripts[expectedScript.name], expectedScript.command);
     assert.doesNotMatch(expectedScript.command, /--root/);
     assert.equal(payload.entry, `overlay/inventory/${descriptor.entry}`);
-    assert.deepEqual(declaration.overlays[0], { entry: `overlay/inventory/${descriptor.entry}`, id: "inventory", input: "pointer", messages: { gameToOverlay: [], overlayToGame: [{ name: "overlay:action", schema: { fields: { action: "string" }, kind: "object", required: ["action"] } }] }, targetProfiles: ["web", "desktop"], transparent: true, zIndex: 20 });
+    assert.deepEqual(declaration.overlays[0], { entry: `overlay/inventory/${descriptor.entry}`, id: "inventory", input: "pointer", messages: { gameToOverlay: [{ name: "overlay:snapshot", schema: { fields: { message: "string" }, kind: "object", required: ["message"] } }], overlayToGame: [{ name: "overlay:action", schema: { fields: { action: "string" }, kind: "object", required: ["action"] } }] }, targetProfiles: ["web", "desktop"], transparent: true, zIndex: 20 });
     assert.equal(payload.changedFiles.includes("overlay/inventory/src/App.tsx"), true);
     assert.match(await readFile(join(root, "overlay/inventory/src/styles.css"), "utf8"), /tailwindcss/);
   } finally { await rm(root, { recursive: true, force: true }); }
@@ -93,7 +93,7 @@ test("should generate identical shared entry and bridge source for both presets"
   try {
     await overlayAddCommand(["hud", "--json"], { cwd: tailwindRoot });
     await overlayAddCommand(["hud", "--style", "vanilla", "--json"], { cwd: vanillaRoot });
-    for (const path of ["src/main.tsx", "src/bridge.ts"]) {
+    for (const path of ["src/main.tsx", "src/client.ts"]) {
       assert.equal(await readFile(join(tailwindRoot, "overlay/hud", path), "utf8"), await readFile(join(vanillaRoot, "overlay/hud", path), "utf8"));
     }
   } finally {

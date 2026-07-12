@@ -75,3 +75,22 @@ test("should infer shorthand event payload fields from local resource defaults",
     "match.win": { fields: { collected: { kind: "number" } } },
   });
 });
+
+test("should scope resource access to the referenced export", () => {
+  const source = `
+    export function awake(ctx: any): void {
+      ctx.resources.set("GameState", { ready: true });
+    }
+    export function update(ctx: any): void {
+      ctx.resources.get("InputState", { active: false });
+    }
+  `;
+
+  assert.deepEqual(
+    extractResourceAccess(source, { exportName: "awake", systemName: "lifecycle.awake" }).resourceWrites,
+    ["GameState"],
+  );
+  const update = extractResourceAccess(source, { exportName: "update", systemName: "lifecycle.update" });
+  assert.deepEqual(update.resourceReads, ["InputState"]);
+  assert.deepEqual(update.resourceWrites, []);
+});

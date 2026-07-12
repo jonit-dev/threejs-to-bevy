@@ -86,7 +86,7 @@
       "name": "overlays",
       "packagePath": "schemas/overlays.schema.json",
       "schema": "threenative.overlays",
-      "version": "0.1.0",
+      "version": "0.2.0",
       "$id": "https://schemas.threenative.local/v1/overlays.schema.json"
     },
     {

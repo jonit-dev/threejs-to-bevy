@@ -63,6 +63,7 @@ pub struct SystemsHostError {
 
 #[derive(Debug, Default)]
 pub struct NativeSystemsHostRun {
+    pub emitted_events: std::collections::HashMap<String, Value>,
     pub logs: Vec<NativeSystemEffectLog>,
     pub resource_observations: Vec<NativeResourceObservation>,
     pub transform_patches: BTreeSet<String>,
@@ -510,6 +511,7 @@ pub fn run_native_systems_frame_with_input(
                 .extend(startup_run.transform_patches.iter().cloned());
             run.transform_patches
                 .extend(startup_run.transform_patches.iter().cloned());
+            merge_emitted_events(&mut run.emitted_events, startup_run.emitted_events);
             run.logs.extend(startup_run.logs);
             state.startup_complete = true;
         }
@@ -588,6 +590,7 @@ pub fn run_native_systems_frame_with_input(
                 .extend(fixed_run.transform_patches.iter().cloned());
             run.transform_patches
                 .extend(fixed_run.transform_patches.iter().cloned());
+            merge_emitted_events(&mut run.emitted_events, fixed_run.emitted_events);
             run.logs.extend(fixed_run.logs);
             record_fixed_transform_step(state, before_fixed, snapshot_bundle_transforms(bundle));
             state.tick += 1;
@@ -628,6 +631,7 @@ pub fn run_native_systems_frame_with_input(
             .extend(variable_run.transform_patches.iter().cloned());
         run.transform_patches
             .extend(variable_run.transform_patches.iter().cloned());
+        merge_emitted_events(&mut run.emitted_events, variable_run.emitted_events);
         run.logs.extend(variable_run.logs);
         let after_variable = snapshot_bundle_transforms(bundle);
         restore_unwritten_fixed_transforms(
@@ -647,8 +651,22 @@ pub fn run_native_systems_frame_with_input(
 
     state.presentation.ingest_logs(bundle, &run.logs);
     state.presentation.step(bundle, options.delta);
+    merge_emitted_events(&mut run.emitted_events, bundle.world.events.clone());
 
     Ok(run)
+}
+
+fn merge_emitted_events(
+    target: &mut std::collections::HashMap<String, Value>,
+    source: std::collections::HashMap<String, Value>,
+) {
+    for (event, payloads) in source {
+        let source_len = payloads.as_array().map_or(1, Vec::len);
+        let target_len = target.get(&event).and_then(Value::as_array).map_or(0, Vec::len);
+        if source_len > target_len {
+            target.insert(event, payloads);
+        }
+    }
 }
 
 fn record_fixed_transform_step(
@@ -1006,11 +1024,13 @@ fn run_native_system_schedules_with_state(
         Ok(())
     })?;
 
+    let emitted_events = bundle.world.events.clone();
     if schedules.iter().any(|schedule| *schedule == "postUpdate") {
         bundle.world.events.clear();
     }
 
     Ok(NativeSystemsHostRun {
+        emitted_events,
         logs,
         resource_observations,
         transform_patches,

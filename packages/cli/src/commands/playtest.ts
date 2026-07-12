@@ -561,6 +561,8 @@ async function runNativePlaytest(options: IPlaytestRunOptions, bevyRunner: BevyR
   const followAfter = options.follow === undefined ? undefined : transformSampleNearTick(readinessSamples, options.follow.entityId, captureTicks.afterTick, "after");
   const beforeResources = nativeResourceSnapshotsNearTick(readinessSamples, observationIds.resources, captureTicks.beforeTick, beforeMode);
   const afterResources = nativeResourceSnapshotsNearTick(readinessSamples, observationIds.resources, captureTicks.afterTick, "after");
+  const beforeHud = nativeOverlaySnapshotsNearTick(readinessSamples, observationIds.hud, captureTicks.beforeTick, beforeMode);
+  const afterHud = nativeOverlaySnapshotsNearTick(readinessSamples, observationIds.hud, captureTicks.afterTick, "after");
   const diagnostics: IPlaytestDiagnostic[] = readinessSamples
     .flatMap((sample) => Array.isArray(sample.diagnostics) ? sample.diagnostics : [])
     .filter((diagnostic): diagnostic is IPlaytestDiagnostic => isRecord(diagnostic) && typeof diagnostic.code === "string" && typeof diagnostic.message === "string")
@@ -633,7 +635,7 @@ async function runNativePlaytest(options: IPlaytestRunOptions, bevyRunner: BevyR
     observations: {
       console: [],
       effectLog,
-      hud: {},
+      hud: mergeSnapshots(beforeHud, afterHud),
       network: [],
       resources: mergeSnapshots(beforeResources, afterResources),
       ...(gameplayObservations === undefined ? {} : { runtimeObservations: { gameplay: gameplayObservations } }),
@@ -692,6 +694,18 @@ function nativeResourceSnapshotsNearTick(samples: readonly Record<string, unknow
   return result;
 }
 
+function nativeOverlaySnapshotsNearTick(samples: readonly Record<string, unknown>[], ids: readonly string[], tick: number, mode: "after" | "before"): Record<string, unknown> {
+  const eligibleSamples = mode === "after"
+    ? samples.filter((sample) => typeof sample.tick === "number" && sample.tick >= tick)
+    : [readinessSampleNearTick(samples, tick, mode)].filter((sample): sample is Record<string, unknown> => sample !== undefined);
+  const snapshots = eligibleSamples.flatMap((sample) => Array.isArray(sample.overlaySnapshots) ? sample.overlaySnapshots.filter(isRecord) : []);
+  return Object.fromEntries(ids.map((id) => {
+    const overlayId = id.startsWith("overlay:") ? id.slice("overlay:".length) : undefined;
+    const snapshot = overlayId === undefined ? undefined : snapshots.filter((entry) => entry.overlayId === overlayId).at(-1);
+    return [id, snapshot ?? null];
+  }));
+}
+
 function readinessSampleNearTick(samples: readonly Record<string, unknown>[], tick: number, mode: "after" | "before"): Record<string, unknown> | undefined {
   const candidates = samples.filter((sample) => typeof sample.tick === "number");
   if (mode === "before") {
@@ -727,6 +741,15 @@ export function nativeHarnessCommandStream(scenario: IPlaytestScenario, artifact
     commands.push({ path: frame.path, tick: frame.tick, type: "screenshot" });
   }
   for (const step of scenario.steps) {
+    if (step.overlayMessage !== undefined) {
+      commands.push({
+        messageType: step.overlayMessage.type,
+        overlayId: step.overlayMessage.overlayId,
+        payload: step.overlayMessage.payload,
+        tick,
+        type: "overlayMessage",
+      });
+    }
     if (step.press !== undefined) {
       commands.push({ code: step.press, pressed: true, tick, type: "key" });
       tick += playtestStepHoldTicks(step);
@@ -1551,7 +1574,19 @@ async function readResourceSnapshots(page: import("playwright").Page, ids: reado
 async function readHudSnapshots(page: import("playwright").Page, ids: readonly string[]): Promise<Record<string, unknown>> {
   const result: Record<string, unknown> = {};
   for (const id of ids) {
-    result[id] = await page.evaluate((nodeId) => globalThis.__THREENATIVE_RUNTIME__?.uiNodeSnapshot?.(nodeId) ?? null, id);
+    result[id] = await page.evaluate((nodeId) => {
+      if (nodeId.startsWith("overlay:")) {
+        const overlayId = nodeId.slice("overlay:".length);
+        const browser = globalThis as unknown as {
+          CSS?: { escape(value: string): string };
+          document?: { querySelector(selector: string): { contentWindow?: { threenativeOverlayBridge?: { snapshot(): unknown } } } | null };
+        };
+        const escaped = browser.CSS?.escape(overlayId) ?? overlayId.replace(/["\\]/gu, "\\$&");
+        const frame = browser.document?.querySelector(`iframe[data-threenative-overlay-id="${escaped}"]`);
+        return frame?.contentWindow?.threenativeOverlayBridge?.snapshot() ?? null;
+      }
+      return globalThis.__THREENATIVE_RUNTIME__?.uiNodeSnapshot?.(nodeId) ?? null;
+    }, id);
   }
   return result;
 }

@@ -1,0 +1,50 @@
+{
+  "schemaVersion": 1,
+  "name": "chess-overlay-native",
+  "target": "desktop",
+  "subject": "piece.white.pawn.e2",
+  "viewport": {
+    "width": 1280,
+    "height": 720
+  },
+  "warmupFrames": 8,
+  "steps": [
+    {
+      "label": "choose white through the native overlay bridge",
+      "overlayMessage": {
+        "overlayId": "chess-side-select",
+        "type": "chess:choose-side",
+        "payload": { "side": "white" }
+      },
+      "press": "KeyW",
+      "holdFrames": 1,
+      "release": true
+    },
+    {
+      "label": "wait for the retained capture snapshot",
+      "waitFrames": 8
+    }
+  ],
+  "assert": {
+    "hud": [
+      {
+        "id": "overlay:chess-side-select",
+        "path": "payload.playerSide",
+        "equals": "white"
+      }
+    ],
+    "diagnostics": {
+      "runtimeReady": true,
+      "noConsoleErrors": true,
+      "noNetworkErrors": true,
+      "noRuntimeDiagnostics": true
+    }
+  },
+  "artifacts": {
+    "screenshots": false,
+    "console": true,
+    "network": true,
+    "runtimeTrace": true,
+    "effectLog": "focused"
+  }
+}

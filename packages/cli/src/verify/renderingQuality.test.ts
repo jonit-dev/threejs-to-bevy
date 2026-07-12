@@ -83,6 +83,25 @@ test("visual quality accepts styled scaffold color and contrast", () => {
   assert.equal(result.localContrast >= result.thresholds.minLocalContrast, true);
 });
 
+test("visual quality ignores subpixel noise when measuring meaningful edges", () => {
+  const frame = flatFrame([40, 40, 40]);
+  const data = frame.data as Uint8ClampedArray;
+  for (let y = 0; y < frame.height; y += 1) {
+    for (let x = 0; x < frame.width; x += 1) {
+      if ((x + y) % 2 === 0) continue;
+      const index = (y * frame.width + x) * 4;
+      data[index] = (data[index] ?? 0) + 1;
+      data[index + 1] = (data[index + 1] ?? 0) + 1;
+      data[index + 2] = (data[index + 2] ?? 0) + 1;
+    }
+  }
+  fillRect(data, frame.width, 10, 10, 20, 20, [220, 180, 80]);
+  fillRect(data, frame.width, 40, 10, 20, 20, [80, 140, 220]);
+  fillRect(data, frame.width, 70, 10, 20, 20, [180, 80, 160]);
+
+  assert.equal(analyzeVisualQuality(frame).ok, true);
+});
+
 test("visual metric bundle summarizes game quality thresholds", () => {
   const styled = v9FixtureFrame({
     dense: [36, 140, 88],

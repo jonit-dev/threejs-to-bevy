@@ -3,6 +3,7 @@ import { basename, dirname, relative, resolve } from "node:path";
 import { validateOverlayEntry, validateOverlaysIr, type IIrDiagnostic, type IOverlaysIr } from "@threenative/ir";
 import type { IOverlayDeclaration } from "@threenative/sdk";
 import type { IAuthoringDocument } from "@threenative/authoring";
+import type { ISystemsIr } from "@threenative/ir";
 
 import type { IAssetCopy } from "../emit/asset-copy.js";
 
@@ -11,15 +12,29 @@ export interface IEmittedOverlayBundle {
   overlays: IOverlaysIr;
 }
 
+export function validateOverlaySystemEventDrift(overlays: IOverlaysIr, systems: ISystemsIr): void {
+  const gameToOverlay = new Set(overlays.overlays.flatMap((overlay) => overlay.messages.gameToOverlay?.map((message) => message.name) ?? []));
+  const overlayToGame = new Set(overlays.overlays.flatMap((overlay) => overlay.messages.overlayToGame?.map((message) => message.name) ?? []));
+  for (const system of systems.systems) {
+    for (const event of system.eventWrites.filter((name) => name.includes(":"))) {
+      if (!gameToOverlay.has(event)) throw new Error(`TN_OVERLAY_EVENT_DRIFT: system '${system.name}' writes '${event}', but no overlay declares it as gameToOverlay.`);
+    }
+    for (const event of system.eventReads.filter((name) => name.includes(":"))) {
+      if (!overlayToGame.has(event)) throw new Error(`TN_OVERLAY_EVENT_DRIFT: system '${system.name}' reads '${event}', but no overlay declares it as overlayToGame.`);
+    }
+  }
+}
+
 export async function emitOverlays(projectPath: string, declaration: IOverlayDeclaration): Promise<IEmittedOverlayBundle> {
   const overlays: IOverlaysIr = {
     schema: "threenative.overlays",
-    version: "0.1.0",
+    version: "0.2.0",
     overlays: [
       {
         entry: declaration.entry,
         id: declaration.id,
         input: declaration.input,
+        ...(declaration.layout === undefined ? {} : { layout: { ...declaration.layout } }),
         messages: {
           ...(declaration.messages.gameToOverlay.length === 0 ? {} : { gameToOverlay: [...declaration.messages.gameToOverlay] }),
           ...(declaration.messages.overlayToGame.length === 0 ? {} : { overlayToGame: [...declaration.messages.overlayToGame] }),

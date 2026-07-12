@@ -20,6 +20,7 @@ export interface IOverlayMountOptions {
   entry: string;
   id: string;
   input?: OverlayInputMode;
+  layout?: IOverlayLayoutRect;
   messages?: {
     gameToOverlay?: readonly IOverlayMessageDeclaration[];
     overlayToGame?: readonly IOverlayMessageDeclaration[];
@@ -29,11 +30,14 @@ export interface IOverlayMountOptions {
   zIndex?: number;
 }
 
+export interface IOverlayLayoutRect { height: number; width: number; x: number; y: number }
+
 export interface IOverlayDeclaration {
   assets: readonly string[];
   entry: string;
   id: string;
   input: OverlayInputMode;
+  layout?: IOverlayLayoutRect;
   messages: {
     gameToOverlay: readonly IOverlayMessageDeclaration[];
     overlayToGame: readonly IOverlayMessageDeclaration[];
@@ -56,6 +60,7 @@ export const overlay = {
       entry: options.entry,
       id: options.id,
       input: options.input ?? "none",
+      ...(options.layout === undefined ? {} : { layout: { ...options.layout } }),
       messages: {
         gameToOverlay: [...(options.messages?.gameToOverlay ?? [])],
         overlayToGame: [...(options.messages?.overlayToGame ?? [])],

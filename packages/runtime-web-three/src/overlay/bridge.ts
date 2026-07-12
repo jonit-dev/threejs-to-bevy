@@ -1,4 +1,4 @@
-import type { IOverlayIr, IOverlayMessageDeclaration, IOverlayMessageSchema } from "@threenative/ir";
+import { validateOverlayPayload, type IOverlayIr, type IOverlayMessageDeclaration } from "@threenative/ir/overlays";
 
 export interface IOverlayBridgeEnvelope {
   overlayId: string;
@@ -23,8 +23,6 @@ export interface IOverlayBridge {
   snapshots: IOverlayBridgeEnvelope[];
 }
 
-const MAX_PAYLOAD_BYTES = 16 * 1024;
-
 export function createOverlayBridge(overlays: readonly IOverlayIr[]): IOverlayBridge {
   const overlayById = new Map(overlays.map((overlay) => [overlay.id, overlay]));
   const diagnostics: IOverlayBridgeDiagnostic[] = [];
@@ -42,8 +40,9 @@ export function createOverlayBridge(overlays: readonly IOverlayIr[]): IOverlayBr
         return false;
       }
       const message = findMessage(overlay.messages.gameToOverlay ?? [], type);
-      if (message === undefined || !validatePayload(payload, message.schema)) {
-        diagnostics.push({ code: "TN_OVERLAY_MESSAGE_REJECTED", message: `Game-to-overlay message '${type}' is not declared or failed schema validation.`, overlayId, type });
+      const validation = message === undefined ? undefined : validateOverlayPayload(payload, message.schema);
+      if (validation?.valid !== true) {
+        diagnostics.push({ code: validation?.code ?? "TN_OVERLAY_MESSAGE_REJECTED", message: `Game-to-overlay message '${type}' is not declared, too large, or failed schema validation.`, overlayId, type });
         return false;
       }
       snapshots.push({ overlayId, payload, sequence: ++sequence, timestamp: Date.now(), type });
@@ -59,8 +58,9 @@ export function createOverlayBridge(overlays: readonly IOverlayIr[]): IOverlayBr
         return false;
       }
       const message = findMessage(overlay.messages.overlayToGame ?? [], envelope.type);
-      if (message === undefined || !validatePayload(envelope.payload, message.schema) || JSON.stringify(envelope.payload).length > MAX_PAYLOAD_BYTES) {
-        diagnostics.push({ code: "TN_OVERLAY_MESSAGE_REJECTED", message: `Overlay message '${envelope.type}' is not declared, too large, or failed schema validation.`, overlayId: envelope.overlayId, type: envelope.type });
+      const validation = message === undefined ? undefined : validateOverlayPayload(envelope.payload, message.schema);
+      if (validation?.valid !== true) {
+        diagnostics.push({ code: validation?.code ?? "TN_OVERLAY_MESSAGE_REJECTED", message: `Overlay message '${envelope.type}' is not declared, too large, or failed schema validation.`, overlayId: envelope.overlayId, type: envelope.type });
         return false;
       }
       events.push({ ...envelope, sequence: ++sequence, timestamp: Date.now() });
@@ -72,37 +72,4 @@ export function createOverlayBridge(overlays: readonly IOverlayIr[]): IOverlayBr
 
 function findMessage(messages: readonly IOverlayMessageDeclaration[], type: string): IOverlayMessageDeclaration | undefined {
   return messages.find((message) => message.name === type);
-}
-
-function validatePayload(payload: unknown, schema: IOverlayMessageSchema): payload is Record<string, unknown> {
-  if (schema.kind !== "object" || typeof payload !== "object" || payload === null || Array.isArray(payload)) {
-    return false;
-  }
-  const fields = schema.fields ?? {};
-  const record = payload as Record<string, unknown>;
-  for (const required of schema.required ?? []) {
-    if (!(required in record)) {
-      return false;
-    }
-  }
-  for (const [key, value] of Object.entries(record)) {
-    const kind = fields[key];
-    if (kind === undefined || !matchesKind(value, kind)) {
-      return false;
-    }
-  }
-  return true;
-}
-
-function matchesKind(value: unknown, kind: string): boolean {
-  if (kind === "integer") {
-    return Number.isInteger(value);
-  }
-  if (kind === "number") {
-    return typeof value === "number" && Number.isFinite(value);
-  }
-  if (kind === "object") {
-    return typeof value === "object" && value !== null && !Array.isArray(value);
-  }
-  return typeof value === kind;
 }

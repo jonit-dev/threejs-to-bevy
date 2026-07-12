@@ -55,7 +55,7 @@ export async function startWebPreview(options: {
   });
 
   await server.listen();
-  const url = server.resolvedUrls?.local[0] ?? `http://${options.host ?? "127.0.0.1"}:${getPort(server)}/`;
+  const url = `http://${options.host ?? "127.0.0.1"}:${getPort(server)}/`;
   return {
     close: async () => {
       server.ws.close();

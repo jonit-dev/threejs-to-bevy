@@ -156,7 +156,7 @@ test("should pass matching gate commands and save report path", async () => {
     });
 
     assert.equal(result.ok, true);
-    assert.equal(result.steps.length, 32);
+    assert.equal(result.steps.length, 33);
     assert.equal(result.reportPath.endsWith("packages/ir/artifacts/conformance/verification-report.json"), true);
     assert.equal(result.artifacts.nativeBasicSceneReportPath.endsWith("packages/ir/artifacts/conformance/basic-scene/bevy.report.json"), true);
     assert.equal(
@@ -287,7 +287,7 @@ test("should pass matching gate commands and save report path", async () => {
     assert.equal(result.evidence.ui.visualStyle[0]?.artifactPaths[0].endsWith("tools/verify/artifacts/input-ui-polish/contact-sheet.png"), true);
     const report = JSON.parse(await readFile(result.reportPath, "utf8"));
     assert.equal(report.status, "pass");
-    assert.equal(report.steps.length, 32);
+    assert.equal(report.steps.length, 33);
     assert.equal(report.artifacts.nativeBasicSceneReportPath.endsWith("packages/ir/artifacts/conformance/basic-scene/bevy.report.json"), true);
     assert.equal(
       report.artifacts.nativePrimitiveMappingReportPath.endsWith("packages/ir/artifacts/conformance/primitive-mapping/bevy.report.json"),

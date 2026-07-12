@@ -1,0 +1,11 @@
+{
+  "schema": { "kind": "object", "fields": { "count": "integer", "label": "string" }, "required": ["count"] },
+  "vectors": [
+    { "name": "accept-required-integer", "payload": { "count": 2 }, "valid": true },
+    { "name": "accept-all-fields", "payload": { "count": 2, "label": "ready" }, "valid": true },
+    { "name": "reject-missing-required", "payload": { "label": "ready" }, "valid": false, "code": "TN_OVERLAY_MESSAGE_REJECTED" },
+    { "name": "reject-wrong-kind", "payload": { "count": 2.5 }, "valid": false, "code": "TN_OVERLAY_MESSAGE_REJECTED" },
+    { "name": "reject-unknown-field", "payload": { "count": 2, "extra": true }, "valid": false, "code": "TN_OVERLAY_MESSAGE_REJECTED" },
+    { "name": "reject-over-size", "payload": { "count": 2 }, "paddingBytes": 17000, "valid": false, "code": "TN_OVERLAY_PAYLOAD_TOO_LARGE" }
+  ]
+}

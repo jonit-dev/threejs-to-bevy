@@ -267,14 +267,14 @@ pub fn app_from_bundle_with_options(
             );
             #[cfg(feature = "native-webview")]
             {
+                if let Some(overlays) = bundle.overlays.clone() {
+                    app.insert_resource(overlay_host::NativeOverlayBridgeResource::new(
+                        overlays,
+                    ));
+                }
                 if let Some(error) = native_overlay_init_error.as_ref() {
                     warn!("TN_OVERLAY_NATIVE_INIT_FAILED: {error}");
                 } else {
-                    if let Some(overlays) = bundle.overlays.clone() {
-                        app.insert_resource(overlay_host::NativeOverlayBridgeResource::new(
-                            overlays,
-                        ));
-                    }
                     app.insert_resource(overlay_host::NativeOverlayHostPlanResource(plan));
                     app.add_systems(
                         Update,
@@ -553,6 +553,7 @@ pub struct NativeDeterministicCaptureClock;
 struct ScriptedRuntimeParams<'w> {
     runtime: Option<ResMut<'w, ScriptedRuntimeBundle>>,
     loop_state: Option<ResMut<'w, systems_host::NativeGameLoopState>>,
+    overlay_bridge: Option<ResMut<'w, overlay_host::NativeOverlayBridgeResource>>,
     dirty_state: Option<ResMut<'w, NativeRuntimeDirtyState>>,
     deterministic_capture: Option<Res<'w, NativeDeterministicCaptureClock>>,
     write_audit: Option<ResMut<'w, systems_host::NativeRuntimeWriteAuditState>>,
@@ -638,6 +639,9 @@ fn run_scripted_runtime_systems(
 
     let mut requires_live_reconciliation = false;
     for _ in 0..frame_count {
+        if let Some(bridge) = scripted.overlay_bridge.as_deref_mut() {
+            bridge.bridge.drain_events_into(&mut runtime.bundle.world.events);
+        }
         let options = systems_host::NativeGameLoopRunOptions {
             delta,
             fixed_delta,
@@ -653,6 +657,10 @@ fn run_scripted_runtime_systems(
         );
         match run {
             Ok(run) => {
+                if let Some(bridge) = scripted.overlay_bridge.as_deref_mut() {
+                    let overlays = bridge.overlays.clone();
+                    bridge.bridge.publish_world_events(&overlays, &run.emitted_events);
+                }
                 requires_live_reconciliation |= run.logs.iter().any(|log| {
                     log.entries
                         .iter()

@@ -11,6 +11,11 @@
   "steps": [
     {
       "label": "choose white side",
+      "overlayMessage": {
+        "overlayId": "chess-side-select",
+        "type": "chess:choose-side",
+        "payload": { "side": "white" }
+      },
       "press": "KeyW",
       "holdFrames": 2,
       "release": true
@@ -59,6 +64,11 @@
       {
         "id": "turn",
         "textIncludes": "YOUR TURN"
+      },
+      {
+        "id": "overlay:chess-side-select",
+        "path": "payload.playerSide",
+        "equals": "white"
       }
     ],
     "diagnostics": {
@@ -66,7 +76,16 @@
       "noConsoleErrors": true,
       "noNetworkErrors": true,
       "noRuntimeDiagnostics": true
-    }
+    },
+    "visual": [
+      {
+        "entityVisible": {
+          "entity": "board.surface",
+          "minProjectedPixels": 100,
+          "throughoutFrames": true
+        }
+      }
+    ]
   },
   "artifacts": {
     "screenshots": "before-after",

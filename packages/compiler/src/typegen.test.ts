@@ -52,6 +52,20 @@ test("should generate project context id unions and schema maps", () => {
       kind: "schema",
       projectRelativePath: "content/schemas/resources.schema.json",
     },
+    {
+      data: {
+        schema: "threenative.overlays", version: "0.2.0", overlays: [{
+          entry: "overlay/hud/dist/index.html", id: "hud", input: "none", targetProfiles: ["web"], transparent: true, zIndex: 1,
+          messages: {
+            gameToOverlay: [{ name: "hud:snapshot", schema: { kind: "object", fields: { score: "integer" }, required: ["score"] } }],
+            overlayToGame: [{ name: "hud:action", schema: { kind: "object", fields: { action: "string" }, required: ["action"] } }],
+          },
+        }],
+      },
+      file: "content/overlays/hud.overlays.json",
+      kind: "overlay",
+      projectRelativePath: "content/overlays/hud.overlays.json",
+    },
   ]);
 
   assert.match(output, /export type ProjectEntityId = "coin\.1" \| "hero";/);
@@ -65,4 +79,7 @@ test("should generate project context id unions and schema maps", () => {
   assert.doesNotMatch(output, /"Health": \{ \[key: string\]: unknown \};/);
   assert.match(output, /"GameState": \{ "score": number; "status": string \};/);
   assert.match(output, /export interface ProjectContext extends ScriptContext/);
+  assert.match(output, /export interface ProjectGameToOverlayMessageMap/);
+  assert.match(output, /"hud:snapshot": \{ "score": number \};/);
+  assert.match(output, /"hud:action": \{ "action": string \};/);
 });

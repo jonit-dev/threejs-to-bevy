@@ -329,8 +329,17 @@ pub struct OverlayIr {
     pub transparent: bool,
     pub z_index: u32,
     pub input: String,
+    pub layout: Option<OverlayLayoutIr>,
     pub messages: OverlayBridgeMessagesIr,
     pub target_profiles: Vec<String>,
+}
+
+#[derive(Clone, Debug, Deserialize, PartialEq)]
+pub struct OverlayLayoutIr {
+    pub height: f32,
+    pub width: f32,
+    pub x: f32,
+    pub y: f32,
 }
 
 #[derive(Clone, Debug, Default, Deserialize)]

@@ -8,6 +8,9 @@ importers:
 
   .:
     dependencies:
+      '@threenative/overlay-client':
+        specifier: file:../../packages/overlay-client
+        version: file:../../packages/overlay-client
       '@threenative/script-stdlib':
         specifier: file:/home/joao/projects/threejs-to-bevy/packages/script-stdlib
         version: file:../../packages/script-stdlib
@@ -447,6 +450,9 @@ packages:
   '@threenative/cli@file:.threenative/cli':
     resolution: {directory: .threenative/cli, type: directory}
     hasBin: true
+
+  '@threenative/overlay-client@file:../../packages/overlay-client':
+    resolution: {directory: ../../packages/overlay-client, type: directory}
 
   '@threenative/script-stdlib@file:../../packages/script-stdlib':
     resolution: {directory: ../../packages/script-stdlib, type: directory}
@@ -928,6 +934,8 @@ snapshots:
       vite: 7.3.6(@types/node@20.19.43)(jiti@2.7.0)(lightningcss@1.32.0)(tsx@4.23.0)
 
   '@threenative/cli@file:.threenative/cli': {}
+
+  '@threenative/overlay-client@file:../../packages/overlay-client': {}
 
   '@threenative/script-stdlib@file:../../packages/script-stdlib': {}
 

@@ -9,6 +9,7 @@ import {
   type ISchemaDocument,
   type ISceneDocument,
 } from "@threenative/authoring";
+import type { IOverlaysIr, OverlayMessageSchemaKind } from "@threenative/ir";
 
 export interface IGenerateProjectTypesOptions {
   outDir?: string;
@@ -34,6 +35,7 @@ export async function generateProjectTypes(options: IGenerateProjectTypesOptions
 export function generateProjectContextTypes(documents: readonly IAuthoringDocument[]): string {
   const ids = collectProjectIds(documents);
   const schemas = collectProjectSchemas(documents);
+  const overlayMessages = collectOverlayMessages(documents);
   return [
     "import type { ScriptContext, ScriptEntity } from \"@threenative/script-stdlib\";",
     "",
@@ -58,6 +60,14 @@ export function generateProjectContextTypes(documents: readonly IAuthoringDocume
     "",
     "export interface ProjectEventMap {",
     ...schemaRows(schemas.event),
+    "}",
+    "",
+    "export interface ProjectGameToOverlayMessageMap {",
+    ...schemaRows(overlayMessages.gameToOverlay),
+    "}",
+    "",
+    "export interface ProjectOverlayToGameMessageMap {",
+    ...schemaRows(overlayMessages.overlayToGame),
     "}",
     "",
     "export interface ProjectScriptEntity extends ScriptEntity {",
@@ -87,6 +97,29 @@ export function generateProjectContextTypes(documents: readonly IAuthoringDocume
     "}",
     "",
   ].join("\n");
+}
+
+function collectOverlayMessages(documents: readonly IAuthoringDocument[]): Record<"gameToOverlay" | "overlayToGame", Map<string, Record<string, string>>> {
+  const result = { gameToOverlay: new Map<string, Record<string, string>>(), overlayToGame: new Map<string, Record<string, string>>() };
+  for (const document of documents) {
+    if (document.kind !== "overlay") continue;
+    const overlays = document.data as IOverlaysIr;
+    for (const overlay of overlays.overlays ?? []) {
+      for (const direction of ["gameToOverlay", "overlayToGame"] as const) {
+        for (const message of overlay.messages[direction] ?? []) {
+          result[direction].set(message.name, Object.fromEntries(Object.entries(message.schema.fields ?? {}).map(([name, kind]) => [name, overlayFieldType(kind)])));
+        }
+      }
+    }
+  }
+  return result;
+}
+
+function overlayFieldType(kind: OverlayMessageSchemaKind): string {
+  if (kind === "boolean") return "boolean";
+  if (kind === "integer" || kind === "number") return "number";
+  if (kind === "object") return "Record<string, unknown>";
+  return "string";
 }
 
 interface ICollectedProjectIds {

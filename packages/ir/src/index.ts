@@ -374,15 +374,20 @@ export { validateBundle, type IBundleValidationResult, type IIrDiagnostic } from
 export { validateCameraViews } from "./camera.js";
 export { validateEnvironmentSceneIr } from "./environment.js";
 export {
+  OVERLAY_MAX_PAYLOAD_BYTES,
+  validateOverlayPayload,
   validateOverlayEntry,
   validateOverlaysIr,
   type IOverlayBridgeMessages,
   type IOverlayIr,
+  type IOverlayLayoutRect,
   type IOverlayMessageDeclaration,
   type IOverlayMessageSchema,
+  type IOverlayPayloadValidationResult,
   type IOverlaysIr,
   type OverlayInputMode,
   type OverlayMessageSchemaKind,
+  type OverlayPayloadValidationCode,
   type OverlayTargetProfile,
 } from "./overlays.js";
 export {

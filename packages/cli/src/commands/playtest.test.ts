@@ -40,6 +40,28 @@ test("native playtest should route occlusion assertions through rendered scene q
   });
 });
 
+test("native playtest should route typed overlay messages through the proof harness", () => {
+  const scenario = {
+    name: "overlay-message",
+    schemaVersion: 1 as const,
+    steps: [{
+      overlayMessage: { overlayId: "hud", payload: { side: "white" }, type: "chess:choose-side" },
+      release: true,
+    }],
+    target: "desktop" as const,
+    viewport: { height: 720, width: 1280 },
+    warmupFrames: 5,
+  };
+  const stream = nativeHarnessCommandStream(scenario, {}) as { commands: Array<Record<string, unknown>> };
+  assert.deepEqual(stream.commands[0], {
+    messageType: "chess:choose-side",
+    overlayId: "hud",
+    payload: { side: "white" },
+    tick: 6,
+    type: "overlayMessage",
+  });
+});
+
 test("playtest command should pass when target transform changes after input", async () => {
   const root = await playtestTempRoot();
   const result = await playtestCommand(

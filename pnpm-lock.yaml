@@ -263,6 +263,12 @@ importers:
         specifier: ^20.19.25
         version: 20.19.43
 
+  packages/overlay-client:
+    devDependencies:
+      '@types/node':
+        specifier: ^20.19.25
+        version: 20.19.43
+
   packages/r3f:
     dependencies:
       '@threenative/sdk':

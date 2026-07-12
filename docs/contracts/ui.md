@@ -63,12 +63,23 @@ Rules:
 - React/CSS overlays must be declared explicitly with `overlay.mount(...)`.
 - Overlay entries and assets must be bundle-local; absolute paths, parent
   traversal, remote URLs, and inline scripts are rejected.
-- Overlay code communicates with gameplay only through typed bridge messages.
+- Overlay code communicates with gameplay only through colon-delimited typed
+  bridge messages and `@threenative/overlay-client`. `tn types generate`
+  emits the game-to-overlay and overlay-to-game maps from the overlay manifest;
+  compiler drift validation keeps script event declarations aligned.
   It cannot directly mutate ECS, Bevy, Three.js, filesystem, network, or native
   handles.
 - Overlay input capture is explicit. `none` and `keyboard` do not capture
   pointer clicks, `pointer` captures only pointer input over the overlay,
   `pointer-and-keyboard` captures both, and `modal` intentionally blocks both.
+- `client.setInput(mode)` and `client.setVisible(visible)` change host policy
+  without synthesizing parent-window events or adding magic payload fields.
+  Version 0.2 overlay documents may declare an optional pixel `layout`
+  rectangle (`x`, `y`, `width`, `height`) for non-modal frames; 0.1 documents
+  remain loadable and use the bounded top-right default.
+- Both bridge directions enforce the declared payload schema and a 16 KB UTF-8
+  JSON limit. Subscriptions replay retained snapshots once by sequence on web
+  and desktop.
 - The native desktop adapter keeps webview handles private behind
   `runtime-bevy`; the optional `native-webview` feature selects the maintained
   `wry` backend. Default builds that do not enable the desktop host fail fast

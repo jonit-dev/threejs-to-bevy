@@ -115,6 +115,7 @@ export function analyzeVisualQuality(
   let contrastSamples = 0;
   let activeContrastTotal = 0;
   let activeContrastSamples = 0;
+  const meaningfulContrastFloor = 3;
 
   for (let y = 0; y < frame.height; y += 1) {
     for (let x = 0; x < frame.width; x += 1) {
@@ -130,7 +131,7 @@ export function analyzeVisualQuality(
         const contrast = Math.abs(brightnessAt(frame, x, y) - brightnessAt(frame, x + 1, y));
         contrastTotal += contrast;
         contrastSamples += 1;
-        if (contrast > 0) {
+        if (contrast >= meaningfulContrastFloor) {
           activeContrastTotal += contrast;
           activeContrastSamples += 1;
         }
@@ -139,7 +140,7 @@ export function analyzeVisualQuality(
         const contrast = Math.abs(brightnessAt(frame, x, y) - brightnessAt(frame, x, y + 1));
         contrastTotal += contrast;
         contrastSamples += 1;
-        if (contrast > 0) {
+        if (contrast >= meaningfulContrastFloor) {
           activeContrastTotal += contrast;
           activeContrastSamples += 1;
         }

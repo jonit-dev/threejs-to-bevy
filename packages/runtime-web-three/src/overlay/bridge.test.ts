@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
+import type { IOverlayIr } from "@threenative/ir";
+
 import { createOverlayBridge } from "./bridge.js";
 
 test("queues valid overlay messages", () => {
@@ -28,6 +30,16 @@ test("publishes game-to-overlay snapshots through bounded queue", () => {
 
   assert.equal(bridge.snapshots[0]?.type, "inventory:snapshot");
   assert.deepEqual(bridge.snapshots[0]?.payload, { gold: 12 });
+});
+
+test("rejects oversized game-to-overlay snapshots", () => {
+  const overlay: IOverlayIr = makeOverlay();
+  overlay.messages.gameToOverlay = [{ name: "inventory:snapshot", schema: { kind: "object", fields: { note: "string" }, required: ["note"] } }];
+  const sizedBridge = createOverlayBridge([overlay]);
+
+  assert.equal(sizedBridge.publish("inventory", "inventory:snapshot", { note: "x".repeat(17 * 1024) }), false);
+  assert.equal(sizedBridge.diagnostics[0]?.code, "TN_OVERLAY_PAYLOAD_TOO_LARGE");
+  assert.equal(sizedBridge.snapshots.length, 0);
 });
 
 function makeOverlay() {

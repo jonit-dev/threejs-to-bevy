@@ -263,6 +263,11 @@ export async function verifyConformance(options = {}) {
   const allCommands = [
     ["ir conformance fixtures", "pnpm", ["--filter", "@threenative/ir", "test", "--", "--run", "conformance"]],
     [
+      "overlay event contract drift",
+      "pnpm",
+      ["--filter", "@threenative/compiler", "test", "--", "--run", "overlay event contract drift"],
+    ],
+    [
       "web runtime conformance",
       "pnpm",
       ["--filter", "@threenative/runtime-web-three", "test", "--", "--run", "conformance"],

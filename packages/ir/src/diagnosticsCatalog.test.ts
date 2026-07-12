@@ -78,9 +78,10 @@ test("should document every exported schema with stable id version and package p
     assert.ok(documented, `${packagePath} should be listed in capability schemaDocuments`);
     assert.equal(documented.$id, schema.$id);
     assert.equal(documented.schema, schema.properties?.schema?.const);
-    assert.equal(documented.version, schema.properties?.version?.const);
+    const versions = typeof schema.properties?.version?.const === "string" ? [schema.properties.version.const] : schema.properties?.version?.enum ?? [];
+    assert.equal(versions.includes(documented.version), true);
     assert.match(schema.$id, /^https:\/\/schemas\.threenative\.local\/v1\/.+\.schema\.json$/);
-    assert.equal(schema.properties?.version?.const, "0.1.0");
+    assert.equal(versions.includes("0.1.0"), true);
   }
 });
 

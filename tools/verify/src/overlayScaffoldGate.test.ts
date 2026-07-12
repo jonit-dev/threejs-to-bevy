@@ -22,6 +22,8 @@ test("should inspect independent Tailwind and vanilla generated overlay output",
       await writeFile(resolve(overlayRoot, "dist/index.html"), '<link rel="stylesheet" href="./assets/app.css"><script type="module" src="./assets/app.js"></script>');
       await writeFile(resolve(overlayRoot, "dist/assets/app.css"), style === "tailwind" ? ".max-w-sm{max-width:24rem}" : ".panel{padding:1rem}");
       await writeFile(resolve(overlayRoot, "dist/assets/app.js"), "document.querySelector('main');");
+      await writeFile(resolve(overlayRoot, "src/App.tsx"), 'overlayClient.subscribe("overlay:snapshot", () => undefined);');
+      await writeFile(resolve(overlayRoot, "src/client.ts"), 'import { createOverlayClient } from "@threenative/overlay-client";');
       await writeFile(resolve(overlayRoot, "src/styles.css"), style === "tailwind" ? '@import "tailwindcss" source("./");' : ".panel{padding:1rem}");
       const result = await inspectOverlayProject(resolve(root, style), descriptor, "proof-panel");
       assert.deepEqual(result.diagnostics, []);

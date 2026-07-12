@@ -383,12 +383,16 @@ export async function renderLoadedBundle(bundle: IWebBundle, container: HTMLElem
   const overlayHost = bundle.overlays === undefined ? undefined : createWebOverlayHost(bundle.overlays, source);
   let overlayEventCursor = 0;
   const overlaySnapshotCursors = new Map<string, unknown[]>();
+  const deprecatedOverlayNames = new Set<string>();
   const consumeOverlayEvents = () => {
     const events = overlayHost?.bridge.events.slice(overlayEventCursor) ?? [];
     overlayEventCursor += events.length;
     if (events.length === 0) return;
     const queues = { ...(bundle.world.events ?? {}) };
     for (const event of events) {
+      // The public overlay bridge uses colon-delimited message names while
+      // portable ECS schemas use dot-delimited IDs. Keep the translation at
+      // the adapter boundary instead of requiring invalid schema identifiers.
       const eventId = event.type.replaceAll(":", ".");
       const queue = queues[eventId];
       queues[eventId] = [...(Array.isArray(queue) ? queue : []), { ...event.payload, overlayId: event.overlayId }];
@@ -397,9 +401,19 @@ export async function renderLoadedBundle(bundle: IWebBundle, container: HTMLElem
   };
   const publishOverlaySnapshots = () => {
     if (overlayHost === undefined || bundle.overlays === undefined) return;
-    for (const event of newAudioEvents(bundle.world.events ?? {}, overlaySnapshotCursors)) {
+    for (const event of newQueuedEvents(bundle.world.events ?? {}, overlaySnapshotCursors)) {
       if (typeof event.payload !== "object" || event.payload === null || Array.isArray(event.payload)) continue;
-      const type = event.event.replaceAll(".", ":");
+      const type = canonicalOverlayEventName(event.event);
+      if (type !== event.event && !deprecatedOverlayNames.has(event.event)) {
+        deprecatedOverlayNames.add(event.event);
+        mapped.diagnostics.push({
+          code: "TN_OVERLAY_NAME_DEPRECATED",
+          message: `Overlay event '${event.event}' uses deprecated dotted naming; use '${type}'.`,
+          path: `world.events/${event.event}`,
+          severity: "warning",
+          suggestion: `Rename the event to '${type}' in the script and event schema.`,
+        });
+      }
       for (const overlay of bundle.overlays.overlays) {
         if (overlay.messages.gameToOverlay?.some((message) => message.name === type) === true) {
           overlayHost.publish(overlay.id, type, event.payload as Record<string, unknown>);
@@ -1260,6 +1274,17 @@ function assertSceneReady(diagnostics: readonly IRuntimeDiagnostic[]): void {
 }
 
 export function newAudioEvents(
+  events: Record<string, unknown>,
+  cursors: Map<string, unknown[]>,
+): Array<{ event: string; payload: unknown }> {
+  return newQueuedEvents(events, cursors);
+}
+
+export function canonicalOverlayEventName(event: string): string {
+  return event.includes(":") ? event : event.replaceAll(".", ":");
+}
+
+export function newQueuedEvents(
   events: Record<string, unknown>,
   cursors: Map<string, unknown[]>,
 ): Array<{ event: string; payload: unknown }> {

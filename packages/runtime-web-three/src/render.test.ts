@@ -6,7 +6,7 @@ import { RENDER_LOOK_PROFILE_PRESETS, type IRuntimeConfigIr } from "@threenative
 
 import type { IWebBundle } from "./loadBundle.js";
 import { mapWorld } from "./mapWorld.js";
-import { appendCaptureTransformSample, applyRendererColorManagement, applyRendererShadowSettings, applyRenderLookSceneDefaults, collectWebRuntimeProbeObservations, collectWebRuntimeDiagnostics, createBloomPass, createEmissiveProxyLightController, createRenderedParticleObjects, createWebCaptureTransformTrace, createWebRenderLifecycle, disposeThreeWorld, needsColorManagedOutputPass, newAudioEvents, renderCameraViews, webAmbientOcclusionSettings, webAmbientOcclusionStrength, webBloomSettings, webDepthOfFieldSettings, webMotionBlurSettings, webRendererParameters, webScreenSpaceReflectionThickness, webScreenSpaceReflectionsSettings } from "./render.js";
+import { appendCaptureTransformSample, applyRendererColorManagement, applyRendererShadowSettings, applyRenderLookSceneDefaults, canonicalOverlayEventName, collectWebRuntimeProbeObservations, collectWebRuntimeDiagnostics, createBloomPass, createEmissiveProxyLightController, createRenderedParticleObjects, createWebCaptureTransformTrace, createWebRenderLifecycle, disposeThreeWorld, needsColorManagedOutputPass, newAudioEvents, renderCameraViews, webAmbientOcclusionSettings, webAmbientOcclusionStrength, webBloomSettings, webDepthOfFieldSettings, webMotionBlurSettings, webRendererParameters, webScreenSpaceReflectionThickness, webScreenSpaceReflectionsSettings } from "./render.js";
 
 function runtimeConfig(
   antialias: NonNullable<IRuntimeConfigIr["renderer"]>["antialias"],
@@ -20,6 +20,11 @@ function runtimeConfig(
     window: { height: 720, width: 1280 },
   };
 }
+
+test("should route dotted legacy overlay names to canonical colon names", () => {
+  assert.equal(canonicalOverlayEventName("chess.captures"), "chess:captures");
+  assert.equal(canonicalOverlayEventName("chess:captures"), "chess:captures");
+});
 
 test("should normalize gameplay probe observations for tags, states, and countdowns", () => {
   const observations = collectWebRuntimeProbeObservations({

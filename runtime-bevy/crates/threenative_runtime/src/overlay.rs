@@ -1,9 +1,13 @@
-use std::collections::VecDeque;
+use std::collections::{HashMap, VecDeque};
 
+use serde::Serialize;
 use serde_json::Value;
 use threenative_loader::{OverlayIr, OverlaysIr};
 
-#[derive(Clone, Debug, PartialEq)]
+const MAX_OVERLAY_PAYLOAD_BYTES: usize = 16 * 1024;
+
+#[derive(Clone, Debug, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct OverlayBridgeEnvelope {
     pub overlay_id: String,
     pub message_type: String,
@@ -52,6 +56,37 @@ impl NativeOverlayBridge {
         &self.events
     }
 
+    pub fn drain_events(&mut self) -> Vec<OverlayBridgeEnvelope> {
+        std::mem::take(&mut self.events)
+    }
+
+    pub fn drain_events_into(&mut self, world_events: &mut HashMap<String, Value>) {
+        for event in self.drain_events() {
+            world_events
+                .entry(event.message_type)
+                .and_modify(|value| {
+                    if let Some(values) = value.as_array_mut() { values.push(event.payload.clone()); }
+                    else { *value = serde_json::json!([value.clone(), event.payload.clone()]); }
+                })
+                .or_insert_with(|| serde_json::json!([event.payload]));
+        }
+    }
+
+    pub fn publish_world_events(&mut self, overlays: &OverlaysIr, events: &HashMap<String, Value>) {
+        for (message_type, payload_value) in events {
+            let overlay_ids = overlays.overlays.iter()
+                .filter(|overlay| overlay.messages.game_to_overlay.iter().any(|message| message.name == *message_type))
+                .map(|overlay| overlay.id.clone())
+                .collect::<Vec<_>>();
+            let payloads = payload_value.as_array().map(Vec::as_slice).unwrap_or_else(|| std::slice::from_ref(payload_value));
+            for overlay_id in overlay_ids {
+                for payload in payloads {
+                    self.publish_game_message(overlays, &overlay_id, message_type, payload.clone());
+                }
+            }
+        }
+    }
+
     pub fn snapshots(&self) -> &VecDeque<OverlayBridgeEnvelope> {
         &self.snapshots
     }
@@ -84,6 +119,10 @@ impl NativeOverlayBridge {
             );
             return false;
         };
+        if payload_size(&payload) > MAX_OVERLAY_PAYLOAD_BYTES {
+            self.reject(overlay_id, "TN_OVERLAY_PAYLOAD_TOO_LARGE", "Overlay message payload exceeds 16 KB.");
+            return false;
+        }
         if !matches_schema(
             &payload,
             &message.schema.kind,
@@ -136,6 +175,10 @@ impl NativeOverlayBridge {
             );
             return false;
         };
+        if payload_size(&payload) > MAX_OVERLAY_PAYLOAD_BYTES {
+            self.reject(overlay_id, "TN_OVERLAY_PAYLOAD_TOO_LARGE", "Game-to-overlay message payload exceeds 16 KB.");
+            return false;
+        }
         if !matches_schema(
             &payload,
             &message.schema.kind,
@@ -252,4 +295,8 @@ fn matches_value_kind(value: &Value, kind: &str) -> bool {
         "string" => value.is_string(),
         _ => false,
     }
+}
+
+fn payload_size(payload: &Value) -> usize {
+    serde_json::to_vec(payload).map_or(usize::MAX, |bytes| bytes.len())
 }

@@ -6,7 +6,7 @@
   "additionalProperties": false,
   "properties": {
     "schema": { "const": "threenative.overlays" },
-    "version": { "const": "0.1.0" },
+    "version": { "enum": ["0.1.0", "0.2.0"] },
     "overlays": {
       "type": "array",
       "items": { "$ref": "#/$defs/overlay" }
@@ -35,6 +35,17 @@
         "transparent": { "type": "boolean" },
         "zIndex": { "type": "integer", "minimum": 0 },
         "input": { "enum": ["none", "pointer", "keyboard", "pointer-and-keyboard", "modal"] },
+        "layout": {
+          "type": "object",
+          "required": ["x", "y", "width", "height"],
+          "additionalProperties": false,
+          "properties": {
+            "x": { "type": "number", "minimum": 0 },
+            "y": { "type": "number", "minimum": 0 },
+            "width": { "type": "number", "exclusiveMinimum": 0 },
+            "height": { "type": "number", "exclusiveMinimum": 0 }
+          }
+        },
         "targetProfiles": {
           "type": "array",
           "minItems": 1,

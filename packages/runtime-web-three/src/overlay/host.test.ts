@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
+import type { IOverlayIr } from "@threenative/ir";
+
 import { createWebOverlayHost, overlayFrameStyle, overlayPointerEvents } from "./host.js";
 
 test("mounts overlay above canvas", () => {
@@ -41,11 +43,23 @@ test("keeps only modal web overlays full screen", () => {
   assert.equal(modalStyle.width, "100%");
 });
 
+test("uses an authored overlay layout rectangle", () => {
+  const overlay = makeOverlays("pointer").overlays[0]!;
+  (overlay as IOverlayIr).layout = { height: 180, width: 320, x: 12, y: 16 };
+
+  const style = overlayFrameStyle(overlay);
+  assert.equal(style.height, "180px");
+  assert.equal(style.left, "12px");
+  assert.equal(style.top, "16px");
+  assert.equal(style.width, "320px");
+});
+
 test("publishes game snapshots to a loaded overlay", () => {
   const host = createWebOverlayHost(makeOverlays("pointer"), "/bundle", new FakeDocument() as unknown as Document);
   const frame = host.frames[0] as unknown as FakeElement;
   frame.listeners.get("load")?.[0]?.();
   const windowBridge = frame.contentWindow.threenativeOverlayBridge as {
+    snapshot(type?: string): { payload: Record<string, unknown> } | undefined;
     subscribe(listener: (type: string, payload: Record<string, unknown>) => void): () => void;
   };
   const received: Array<{ payload: Record<string, unknown>; type: string }> = [];
@@ -53,6 +67,7 @@ test("publishes game snapshots to a loaded overlay", () => {
 
   assert.equal(host.publish("inventory", "inventory:snapshot", { gold: 12 }), true);
   assert.deepEqual(received, [{ payload: { gold: 12 }, type: "inventory:snapshot" }]);
+  assert.deepEqual(windowBridge.snapshot("inventory:snapshot")?.payload, { gold: 12 });
 });
 
 test("mounts a representative built React entry and publishes bridge readiness", () => {
@@ -75,6 +90,34 @@ test("mounts a representative built React entry and publishes bridge readiness",
   assert.deepEqual(host.bridge.events.map(({ overlayId, payload, type }) => ({ overlayId, payload, type })), [
     { overlayId: "inventory", payload: { itemId: "potion" }, type: "inventory:use-item" },
   ]);
+});
+
+test("updates overlay input mode and visibility through host controls", () => {
+  const host = createWebOverlayHost(makeOverlays("modal"), "/bundle", new FakeDocument() as unknown as Document);
+  const frame = host.frames[0] as unknown as FakeElement;
+
+  assert.equal(host.setInput("inventory", "none"), true);
+  assert.equal(frame.style.pointerEvents, "none");
+  assert.equal(frame.blurred, true);
+  assert.equal(host.setVisible("inventory", false), true);
+  assert.equal(frame.style.display, "none");
+  assert.equal(host.setVisible("inventory", true), true);
+  assert.equal(frame.style.display, "");
+});
+
+test("accepts overlay client input and visibility control messages", () => {
+  const host = createWebOverlayHost(makeOverlays("modal"), "/bundle", new FakeDocument() as unknown as Document);
+  const frame = host.frames[0] as unknown as FakeElement;
+  frame.listeners.get("load")?.[0]?.();
+  const bridge = frame.contentWindow.threenativeOverlayBridge as { send(type: string, payload: Record<string, unknown>): boolean };
+
+  assert.equal(bridge.send("overlay:set-input", { mode: "pointer" }), true);
+  assert.equal(frame.style.pointerEvents, "auto");
+  assert.equal(frame.style.width, "min(242px, calc(100% - 48px))");
+  assert.equal(frame.blurred, true);
+  assert.equal(bridge.send("overlay:set-visible", { visible: false }), true);
+  assert.equal(frame.style.display, "none");
+  assert.equal(host.bridge.events.length, 0);
 });
 
 function makeOverlays(input: "keyboard" | "modal" | "none" | "pointer" | "pointer-and-keyboard") {
@@ -105,6 +148,7 @@ class FakeDocument {
 }
 
 class FakeElement {
+  blurred = false;
   readonly attributes = new Map<string, string>();
   readonly children: FakeElement[] = [];
   readonly classList = {
@@ -131,6 +175,8 @@ class FakeElement {
   };
 
   constructor(readonly tagName: string) {}
+
+  blur(): void { this.blurred = true; }
 
   addEventListener(type: string, listener: () => void): void {
     this.listeners.set(type, [...(this.listeners.get(type) ?? []), listener]);

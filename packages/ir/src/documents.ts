@@ -64,6 +64,7 @@ export interface IrDocumentMetadata {
   required?: boolean;
   schema?: (typeof IR_SCHEMA_IDS)[keyof typeof IR_SCHEMA_IDS];
   schemaFile?: string | null;
+  version?: string;
 }
 
 export const IR_DOCUMENTS = {
@@ -184,6 +185,7 @@ export const IR_DOCUMENTS = {
     manifestSection: "entry",
     schema: IR_SCHEMA_IDS.overlays,
     schemaFile: "overlays.schema.json",
+    version: "0.2.0",
   },
   prefabs: {
     drift: {

@@ -75,6 +75,8 @@ export function bevyRuntimeArgs(
     "threenative_runtime",
     "--bin",
     "threenative_runtime",
+    "--features",
+    "native-webview",
   ];
   if (env.TN_NATIVE_PROFILE !== "debug") {
     args.push("--release");

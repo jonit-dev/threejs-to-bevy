@@ -11,6 +11,17 @@ Current support:
   actions drain into portable script-observable UI/input state; script
   `setDisabled`, `setValue`, and `activate` calls update the live rendered
   overlay state.
+- Optional React webview overlays use canonical colon-delimited message names
+  and `@threenative/overlay-client`. The client owns bridge readiness, replay
+  deduplication, typed send/subscribe calls, visibility, and runtime input-mode
+  changes. Dotted game event names remain temporarily routable with
+  `TN_OVERLAY_NAME_DEPRECATED`.
+- Overlay payload schemas use shared web/native conformance vectors and a 16 KB
+  UTF-8 JSON limit in both directions. Compiler drift validation rejects
+  colon-namespaced system event reads/writes absent from the overlay manifest.
+- Desktop WRY overlays expose send and subscribe, replay retained snapshots
+  through adapter-private script evaluation, and apply visibility/input control
+  messages without requiring browser-parent event synthesis.
 - The `@threenative/ui` TSX authoring surface exposes typed wrappers for
   text input and reusable component instances. Button-like and value-changing
   widgets require portable `action` props where TypeScript can enforce them,
@@ -69,6 +80,8 @@ Verification:
 
 - `pnpm --filter @threenative/ir test -- --run ui`
 - `pnpm --filter @threenative/authoring test -- --run ui`
+- `pnpm --filter @threenative/overlay-client test`
+- `pnpm --filter @threenative/runtime-web-three test -- --test-name-pattern overlay`
 - `cargo test --manifest-path runtime-bevy/Cargo.toml -p threenative_runtime native_ui`
 - `pnpm verify:conformance`
 

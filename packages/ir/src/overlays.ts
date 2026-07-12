@@ -1,4 +1,3 @@
-import type { SchemaVersion } from "./types.js";
 import type { IIrDiagnostic } from "./validate.js";
 
 export type OverlayInputMode = "keyboard" | "modal" | "none" | "pointer" | "pointer-and-keyboard";
@@ -25,16 +24,54 @@ export interface IOverlayIr {
   entry: string;
   id: string;
   input: OverlayInputMode;
+  layout?: IOverlayLayoutRect;
   messages: IOverlayBridgeMessages;
   targetProfiles: OverlayTargetProfile[];
   transparent: boolean;
   zIndex: number;
 }
 
+export interface IOverlayLayoutRect { height: number; width: number; x: number; y: number }
+
 export interface IOverlaysIr {
   overlays: IOverlayIr[];
   schema: "threenative.overlays";
-  version: SchemaVersion;
+  version: "0.1.0" | "0.2.0";
+}
+
+export const OVERLAY_MAX_PAYLOAD_BYTES = 16 * 1024;
+
+export type OverlayPayloadValidationCode = "TN_OVERLAY_MESSAGE_REJECTED" | "TN_OVERLAY_PAYLOAD_TOO_LARGE";
+
+export interface IOverlayPayloadValidationResult {
+  code?: OverlayPayloadValidationCode;
+  valid: boolean;
+}
+
+export function validateOverlayPayload(
+  payload: unknown,
+  schema: IOverlayMessageSchema,
+  maxBytes = OVERLAY_MAX_PAYLOAD_BYTES,
+): IOverlayPayloadValidationResult {
+  if (new TextEncoder().encode(JSON.stringify(payload)).byteLength > maxBytes) {
+    return { code: "TN_OVERLAY_PAYLOAD_TOO_LARGE", valid: false };
+  }
+  if (schema.kind !== "object" || !isRecord(payload)) {
+    return { code: "TN_OVERLAY_MESSAGE_REJECTED", valid: false };
+  }
+  const fields = schema.fields ?? {};
+  for (const required of schema.required ?? []) {
+    if (!(required in payload)) {
+      return { code: "TN_OVERLAY_MESSAGE_REJECTED", valid: false };
+    }
+  }
+  for (const [key, value] of Object.entries(payload)) {
+    const kind = fields[key];
+    if (kind === undefined || !matchesPayloadKind(value, kind)) {
+      return { code: "TN_OVERLAY_MESSAGE_REJECTED", valid: false };
+    }
+  }
+  return { valid: true };
 }
 
 const INPUT_MODES = new Set<OverlayInputMode>(["keyboard", "modal", "none", "pointer", "pointer-and-keyboard"]);
@@ -64,10 +101,10 @@ export function validateOverlaysIr(value: unknown, path = "overlays.ir.json"): I
       });
     }
   }
-  if (value.schema !== "threenative.overlays" || value.version !== "0.1.0") {
+  if (value.schema !== "threenative.overlays" || (value.version !== "0.1.0" && value.version !== "0.2.0")) {
     diagnostics.push({
       code: "TN_IR_OVERLAY_VERSION_UNSUPPORTED",
-      message: "Overlays IR must use threenative.overlays version 0.1.0.",
+      message: "Overlays IR must use threenative.overlays version 0.1.0 or 0.2.0.",
       path,
       severity: "error",
     });
@@ -90,7 +127,7 @@ export function validateOverlaysIr(value: unknown, path = "overlays.ir.json"): I
       return;
     }
     for (const key of Object.keys(overlay)) {
-      if (!["entry", "id", "input", "messages", "targetProfiles", "transparent", "zIndex"].includes(key)) {
+      if (!["entry", "id", "input", "layout", "messages", "targetProfiles", "transparent", "zIndex"].includes(key)) {
         diagnostics.push({
           code: "TN_IR_OVERLAY_FIELD_UNSUPPORTED",
           message: `Overlay declaration uses unsupported field '${key}'.`,
@@ -122,6 +159,9 @@ export function validateOverlaysIr(value: unknown, path = "overlays.ir.json"): I
       });
     }
     validateTargetProfiles(overlay.targetProfiles, `${overlayPath}/targetProfiles`, diagnostics);
+    if (overlay.layout !== undefined && !isValidOverlayLayout(overlay.layout)) {
+      diagnostics.push({ code: "TN_IR_OVERLAY_LAYOUT_INVALID", message: "Overlay layout must be a non-negative finite x/y rectangle with positive width and height.", path: `${overlayPath}/layout`, severity: "error" });
+    }
     validateOverlayMessages(overlay.messages, `${overlayPath}/messages`, diagnostics);
   });
 
@@ -260,4 +300,20 @@ function validateMessageSchema(value: unknown, path: string, diagnostics: IIrDia
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function isValidOverlayLayout(value: unknown): value is IOverlayLayoutRect {
+  if (!isRecord(value)) return false;
+  const fields = [value.height, value.width, value.x, value.y];
+  return fields.every((field) => typeof field === "number" && Number.isFinite(field) && field >= 0)
+    && (value.height as number) > 0
+    && (value.width as number) > 0
+    && Object.keys(value).every((key) => ["height", "width", "x", "y"].includes(key));
+}
+
+function matchesPayloadKind(value: unknown, kind: OverlayMessageSchemaKind): boolean {
+  if (kind === "integer") return Number.isInteger(value);
+  if (kind === "number") return typeof value === "number" && Number.isFinite(value);
+  if (kind === "object") return isRecord(value);
+  return typeof value === kind;
 }

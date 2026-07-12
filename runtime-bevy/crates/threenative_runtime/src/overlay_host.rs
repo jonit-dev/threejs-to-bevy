@@ -43,22 +43,23 @@ pub fn input_capture_policy(input: &str) -> NativeOverlayInputPolicy {
     native_overlay_input_policy(input)
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct NativeOverlayMount {
     pub entry_path: PathBuf,
     pub id: String,
     pub input: NativeOverlayInputPolicy,
+    pub layout: Option<threenative_loader::OverlayLayoutIr>,
     pub transparent: bool,
     pub z_index: u32,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct NativeOverlayHostPlan {
     pub backend: &'static str,
     pub mounts: Vec<NativeOverlayMount>,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Resource)]
+#[derive(Clone, Debug, PartialEq, Resource)]
 pub struct NativeOverlayHostPlanResource(pub NativeOverlayHostPlan);
 
 #[cfg(feature = "native-webview")]
@@ -78,6 +79,7 @@ pub struct NativeOverlayWebviewHost {
     mounts: Vec<NativeOverlayMount>,
     _servers: Vec<NativeOverlayStaticServer>,
     webviews: Vec<wry::WebView>,
+    delivered_sequence: std::cell::Cell<u64>,
 }
 
 #[cfg(feature = "native-webview")]
@@ -143,6 +145,7 @@ pub fn create_native_overlay_host_plan(
                 entry_path: bundle_path.join(&overlay.entry),
                 id: overlay.id.clone(),
                 input: native_overlay_input_policy(&overlay.input),
+                layout: overlay.layout.clone(),
                 transparent: overlay.transparent,
                 z_index: overlay.z_index,
             })
@@ -247,6 +250,8 @@ fn native_overlay_initialization_script(overlay_id: &str) -> String {
     format!(
         r#"
 window.threenativeOverlayBridge = {{
+  _listeners: new Set(),
+  _snapshots: new Map(),
   send(type, payload) {{
     window.ipc?.postMessage(JSON.stringify({{
       overlayId: {overlay_id},
@@ -254,12 +259,25 @@ window.threenativeOverlayBridge = {{
       payload,
     }}));
   }},
+  subscribe(listener) {{
+    this._listeners.add(listener);
+    return () => this._listeners.delete(listener);
+  }},
+  snapshot(type) {{
+    if (type !== undefined) return this._snapshots.get(type);
+    return Array.from(this._snapshots.values()).at(-1);
+  }},
+}};
+window.__threenativeDispatchOverlaySnapshot = (type, payload, sequence) => {{
+  window.threenativeOverlayBridge._snapshots.set(type, {{ payload, sequence, type }});
+  for (const listener of window.threenativeOverlayBridge._listeners) listener(type, payload, {{ sequence }});
 }};
 window.addEventListener('contextmenu', (event) => {{
   event.preventDefault();
 }}, {{ capture: true }});
 document.documentElement.style.background = 'transparent';
 window.addEventListener('DOMContentLoaded', () => {{
+  window.dispatchEvent(new Event('threenative:bridge-ready'));
   document.documentElement.style.background = 'transparent';
   document.body.style.background = 'transparent';
   const style = document.createElement('style');
@@ -415,6 +433,7 @@ pub fn mount_native_overlay_webviews(world: &mut World) {
             mounts: plan.0.mounts.clone(),
             _servers: servers,
             webviews,
+            delivered_sequence: std::cell::Cell::new(0),
         });
     }
 }
@@ -692,10 +711,11 @@ pub fn resize_native_overlay_webviews(
     )
 ))]
 pub fn pump_native_overlay_webview_events(
-    host: Option<NonSend<NativeOverlayWebviewHost>>,
+    mut host: Option<NonSendMut<NativeOverlayWebviewHost>>,
     mut bridge: Option<ResMut<NativeOverlayBridgeResource>>,
 ) {
-    drain_native_overlay_ipc(host.as_deref(), bridge.as_deref_mut());
+    drain_native_overlay_ipc(host.as_deref_mut(), bridge.as_deref_mut());
+    deliver_native_overlay_snapshots(host.as_deref(), bridge.as_deref());
     while gtk::events_pending() {
         gtk::main_iteration_do(false);
     }
@@ -712,10 +732,40 @@ pub fn pump_native_overlay_webview_events(
     ))
 ))]
 pub fn pump_native_overlay_webview_events(
-    host: Option<NonSend<NativeOverlayWebviewHost>>,
+    mut host: Option<NonSendMut<NativeOverlayWebviewHost>>,
     mut bridge: Option<ResMut<NativeOverlayBridgeResource>>,
 ) {
-    drain_native_overlay_ipc(host.as_deref(), bridge.as_deref_mut());
+    drain_native_overlay_ipc(host.as_deref_mut(), bridge.as_deref_mut());
+    deliver_native_overlay_snapshots(host.as_deref(), bridge.as_deref());
+}
+
+#[cfg(feature = "native-webview")]
+fn deliver_native_overlay_snapshots(
+    host: Option<&NativeOverlayWebviewHost>,
+    bridge: Option<&NativeOverlayBridgeResource>,
+) {
+    let (Some(host), Some(bridge)) = (host, bridge) else { return; };
+    let delivered = host.delivered_sequence.get();
+    let mut newest = delivered;
+    for snapshot in bridge.bridge.snapshots().iter().filter(|entry| entry.sequence > delivered) {
+        let Some(index) = host.mounts.iter().position(|mount| mount.id == snapshot.overlay_id) else { continue; };
+        let script = native_overlay_snapshot_script(&snapshot.message_type, &snapshot.payload, snapshot.sequence);
+        if let Err(error) = host.webviews[index].evaluate_script(&script) {
+            warn!("TN_OVERLAY_NATIVE_DELIVERY_FAILED: failed to deliver snapshot to '{}': {}", snapshot.overlay_id, error);
+            continue;
+        }
+        newest = newest.max(snapshot.sequence);
+    }
+    host.delivered_sequence.set(newest);
+}
+
+pub fn native_overlay_snapshot_script(message_type: &str, payload: &serde_json::Value, sequence: u64) -> String {
+    format!(
+        "window.__threenativeDispatchOverlaySnapshot?.({}, {}, {});",
+        serde_json::to_string(message_type).unwrap_or_else(|_| "\"\"".to_owned()),
+        serde_json::to_string(payload).unwrap_or_else(|_| "null".to_owned()),
+        sequence,
+    )
 }
 
 #[cfg(feature = "native-webview")]
@@ -730,7 +780,7 @@ struct NativeOverlayIpcEnvelope {
 
 #[cfg(feature = "native-webview")]
 fn drain_native_overlay_ipc(
-    host: Option<&NativeOverlayWebviewHost>,
+    host: Option<&mut NativeOverlayWebviewHost>,
     bridge: Option<&mut NativeOverlayBridgeResource>,
 ) {
     let (Some(host), Some(bridge)) = (host, bridge) else {
@@ -741,6 +791,24 @@ fn drain_native_overlay_ipc(
             warn!("TN_OVERLAY_NATIVE_IPC_REJECTED: native overlay sent malformed IPC payload");
             continue;
         };
+        if let Some(index) = host.mounts.iter().position(|mount| mount.id == envelope.overlay_id) {
+            if envelope.message_type == "overlay:set-visible" {
+                if let Some(visible) = envelope.payload.get("visible").and_then(Value::as_bool) {
+                    if let Err(error) = host.webviews[index].set_visible(visible) {
+                        warn!("TN_OVERLAY_NATIVE_VISIBILITY_FAILED: {error}");
+                    }
+                    continue;
+                }
+            }
+            if envelope.message_type == "overlay:set-input" {
+                if let Some(mode) = envelope.payload.get("mode").and_then(Value::as_str) {
+                    if matches!(mode, "keyboard" | "modal" | "none" | "pointer" | "pointer-and-keyboard") {
+                        host.mounts[index].input = native_overlay_input_policy(mode);
+                        continue;
+                    }
+                }
+            }
+        }
         if bridge.bridge.receive_overlay_message(
             &bridge.overlays,
             &envelope.overlay_id,
@@ -837,6 +905,14 @@ pub fn native_overlay_bounds(
             width: full_width,
             x: 0,
             y: 0,
+        };
+    }
+    if let Some(layout) = &mount.layout {
+        return NativeOverlayBounds {
+            height: (layout.height.max(1.0) as u32).min(full_height),
+            width: (layout.width.max(1.0) as u32).min(full_width),
+            x: (layout.x.max(0.0) as u32).min(full_width.saturating_sub(1)),
+            y: (layout.y.max(0.0) as u32).min(full_height.saturating_sub(1)),
         };
     }
 

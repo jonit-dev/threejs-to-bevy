@@ -327,6 +327,7 @@ import {
   validateOptionalPositiveNumber,
   cloneJson,
   validateEcsId,
+  validateEventId,
   validateResourceId,
   validateLogicalId,
   unknownKeyDiagnostics,
@@ -436,6 +437,8 @@ export function collectIds(
         ? validateEcsId(diagnostics, file, `${path}/id`, value.id, kind)
         : kind === "input axis"
           ? validateEcsId(diagnostics, file, `${path}/id`, value.id, kind)
+          : kind === "event schema"
+            ? validateEventId(diagnostics, file, `${path}/id`, value.id)
           : kind === "schema"
             ? validateEcsId(diagnostics, file, `${path}/id`, value.id, kind)
           : validateLogicalId(diagnostics, file, `${path}/id`, value.id, kind);

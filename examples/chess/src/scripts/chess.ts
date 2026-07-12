@@ -30,8 +30,8 @@ type ChessContext = ScriptContext & {
 export const chessGame = defineBehavior(
   {
     id: "chess-game",
-    eventReads: ["chess.choose-side"],
-    eventWrites: ["chess.captures"],
+    eventReads: ["chess:choose-side"],
+    eventWrites: ["chess:captures"],
     schedule: "update",
     reads: ["ChessPiece", "LegalMarker"],
     writes: ["ChessPiece", "Transform"],
@@ -217,7 +217,7 @@ export const chessGame = defineBehavior(
       const playerCaptured = state.playerColor === "" ? "—" : captured(enemy(state.playerColor)) || "—";
       const opponentCaptured = state.playerColor === "" ? "—" : captured(state.playerColor) || "—";
       context.resources.patch("ChessGame", { opponentCapturedText: opponentCaptured, playerCapturedText: playerCaptured });
-      context.events.emit("chess.captures", { black: captured("black"), playerSide: state.playerColor, white: captured("white") });
+      context.events.emit("chess:captures", { black: captured("black"), playerSide: state.playerColor, white: captured("white") });
     };
     const selectAt = (file: number, rank: number): void => {
       const target = at(file, rank);
@@ -317,7 +317,7 @@ export const chessGame = defineBehavior(
       if (state.playerColor === "" && action.action === "choose-white") chooseSide("white");
       if (state.playerColor === "" && action.action === "choose-black") chooseSide("black");
     }
-    for (const event of context.events.read("chess.choose-side")) {
+    for (const event of context.events.read("chess:choose-side")) {
       const side = typeof event === "object" && event !== null ? (event as { side?: unknown }).side : undefined;
       if (state.playerColor === "" && (side === "white" || side === "black")) chooseSide(side);
     }

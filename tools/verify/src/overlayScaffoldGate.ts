@@ -42,9 +42,10 @@ export async function runOverlayScaffoldGate(options: { keepProjects?: boolean; 
         recursive: true,
         filter: (source) => !/[\\/](?:artifacts|dist|node_modules)(?:[\\/]|$)/.test(source),
       });
-      await makeStarterInstallable(project);
+      await makeStarterInstallable(project, root);
       const styleArgs = descriptor.default ? [] : ["--style", descriptor.style];
       if (!runStep(steps, `scaffold ${descriptor.style} overlay`, process.execPath, [resolve(root, "packages/cli/dist/index.js"), "overlay", "add", "proof-panel", ...styleArgs, "--project", project, "--json"], root)) continue;
+      await makeStarterInstallable(project, root);
       if (!runStep(steps, `resolve ${descriptor.style} overlay dependencies`, "pnpm", ["install", "--ignore-scripts", "--no-frozen-lockfile"], project)) continue;
       await rm(resolve(project, "node_modules"), { force: true, recursive: true });
       if (!runStep(steps, `install ${descriptor.style} overlay dependencies offline`, "pnpm", ["install", "--offline", "--ignore-scripts", "--no-frozen-lockfile"], project)) continue;
@@ -164,6 +165,12 @@ export async function inspectOverlayProject(project: string, descriptor: IOverla
   const packageJson = JSON.parse(await readFile(resolve(project, "package.json"), "utf8")) as { devDependencies?: Record<string, string> };
   const sourceFiles = await listFiles(sourceRoot, new Set([descriptor.outputDirectory, "node_modules"]));
   const sourceText = (await Promise.all(sourceFiles.map((path) => readFile(path, "utf8")))).join("\n");
+  if (!sourceText.includes("createOverlayClient") || !sourceText.includes("overlayClient.subscribe(\"overlay:snapshot\"")) {
+    diagnostics.push(diagnostic("TN_VERIFY_OVERLAY_SCAFFOLD_TYPED_SNAPSHOT_MISSING", `${descriptor.style} overlay must subscribe to the generated typed snapshot contract without raw bridge code.`, sourceRoot));
+  }
+  if (sourceText.includes("threenativeOverlayBridge")) {
+    diagnostics.push(diagnostic("TN_VERIFY_OVERLAY_SCAFFOLD_RAW_BRIDGE", `${descriptor.style} overlay source must use @threenative/overlay-client instead of a hand-written bridge.`, sourceRoot));
+  }
   const dependencyNames = [...Object.keys((packageJson as { dependencies?: Record<string, string> }).dependencies ?? {}), ...Object.keys(packageJson.devDependencies ?? {})];
   if (descriptor.style === "vanilla" && (dependencyNames.some((name) => name.includes("tailwind")) || /tailwindcss|@tailwind/i.test(sourceText))) {
     diagnostics.push(diagnostic("TN_VERIFY_OVERLAY_SCAFFOLD_PRESET_CONTAMINATION", "Vanilla overlay contains a Tailwind dependency, plugin, or directive.", sourceRoot));
@@ -182,11 +189,14 @@ export async function inspectOverlayProject(project: string, descriptor: IOverla
   };
 }
 
-async function makeStarterInstallable(project: string): Promise<void> {
+async function makeStarterInstallable(project: string, root: string): Promise<void> {
   const path = resolve(project, "package.json");
   const packageJson = JSON.parse(await readFile(path, "utf8")) as { dependencies?: Record<string, string>; devDependencies?: Record<string, string> };
   for (const record of [packageJson.dependencies, packageJson.devDependencies]) {
-    for (const [name, version] of Object.entries(record ?? {})) if (version.startsWith("workspace:") || name === "@threenative/cli") delete record![name];
+    for (const [name, version] of Object.entries(record ?? {})) {
+      if (name === "@threenative/overlay-client") record![name] = `file:${resolve(root, "packages/overlay-client")}`;
+      else if (version.startsWith("workspace:") || name === "@threenative/cli") delete record![name];
+    }
   }
   await writeFile(path, `${JSON.stringify(packageJson, null, 2)}\n`);
 }

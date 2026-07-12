@@ -946,7 +946,7 @@ export async function validateAuthoringDocument(
       const legacySchemaShape = isRecord(data) && data.schema !== schemaDocumentSchema && schemaDocumentShapeFix(file, data) !== undefined;
       return validateDeclarationDocument(file, data, {
         declarationKeys: schemaEntryKeys,
-        duplicateKind: "schema",
+        duplicateKind: isRecord(data) && data.kind === "event" ? "event schema" : "schema",
         expectedSchema: schemaDocumentSchema,
         idKind: "schema document",
         listName: "schemas",

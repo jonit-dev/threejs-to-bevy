@@ -46,11 +46,16 @@ pub struct NativeProofHarnessCommand {
 }
 
 #[derive(Clone, Debug, Deserialize, PartialEq)]
-#[serde(tag = "type", rename_all = "camelCase")]
+#[serde(tag = "type", rename_all = "camelCase", rename_all_fields = "camelCase")]
 pub enum NativeProofHarnessAction {
     Key {
         code: String,
         pressed: bool,
+    },
+    OverlayMessage {
+        overlay_id: String,
+        message_type: String,
+        payload: serde_json::Value,
     },
     SetTransform {
         entity: String,
@@ -127,6 +132,8 @@ pub struct NativeProofHarnessReadiness {
         skip_serializing_if = "Option::is_none"
     )]
     pub gameplay_observations: Option<serde_json::Value>,
+    #[serde(rename = "overlaySnapshots", skip_serializing_if = "Vec::is_empty")]
+    pub overlay_snapshots: Vec<crate::overlay::OverlayBridgeEnvelope>,
     #[serde(rename = "sceneQueries", skip_serializing_if = "Vec::is_empty")]
     pub scene_queries: Vec<NativeProofHarnessSceneQuerySample>,
     pub transforms: Vec<NativeProofHarnessTransformSample>,
@@ -361,6 +368,7 @@ pub fn apply_native_proof_harness_commands(
             runtime
                 .as_deref()
                 .map(|runtime| crate::systems_host::native_gameplay_observations(&runtime.bundle)),
+            Vec::new(),
         );
         return;
     }
@@ -389,6 +397,18 @@ pub fn apply_native_proof_harness_commands(
                         severity: "error".to_owned(),
                     });
                 }
+            }
+            NativeProofHarnessAction::OverlayMessage {
+                overlay_id,
+                message_type,
+                payload,
+            } => {
+                commands.add(move |world: &mut World| {
+                    if let Some(mut resource) = world.get_resource_mut::<crate::overlay_host::NativeOverlayBridgeResource>() {
+                        let crate::overlay_host::NativeOverlayBridgeResource { bridge, overlays } = &mut *resource;
+                        bridge.receive_overlay_message(overlays, &overlay_id, &message_type, payload);
+                    }
+                });
             }
             NativeProofHarnessAction::SetTransform {
                 entity,
@@ -517,6 +537,7 @@ pub fn apply_native_proof_harness_commands(
         runtime
             .as_deref()
             .map(|runtime| crate::systems_host::native_gameplay_observations(&runtime.bundle)),
+        Vec::new(),
     );
     if !hold_tick {
         state.tick += advance_ticks;
@@ -568,6 +589,7 @@ fn write_native_proof_harness_post_runtime_sample(
     runtime: Option<Res<crate::ScriptedRuntimeBundle>>,
     resource_observations: Option<Res<NativeResourceObservationState>>,
     write_audit: Option<Res<NativeRuntimeWriteAuditState>>,
+    overlay_bridge: Option<Res<crate::overlay_host::NativeOverlayBridgeResource>>,
 ) {
     let tick = state.tick;
     let performance = state.performance_sample();
@@ -579,6 +601,7 @@ fn write_native_proof_harness_post_runtime_sample(
             performance,
             resource_observations.as_deref().cloned(),
             write_audit.as_deref().filter(|audit| audit.enabled).cloned(),
+            overlay_bridge.as_deref().map_or_else(Vec::new, |bridge| bridge.bridge.snapshots().iter().cloned().collect()),
             &runtime.bundle,
         );
         return;
@@ -597,6 +620,7 @@ fn write_native_proof_harness_post_runtime_sample(
             .unwrap_or_default(),
         None,
         None,
+        Vec::new(),
     );
 }
 
@@ -687,6 +711,7 @@ fn write_native_proof_harness_sample<'a>(
     resource_snapshots: BTreeMap<String, serde_json::Value>,
     runtime_observations: Option<NativeRuntimeProbeObservations>,
     gameplay_observations: Option<serde_json::Value>,
+    overlay_snapshots: Vec<crate::overlay::OverlayBridgeEnvelope>,
 ) {
     let ok = diagnostics
         .iter()
@@ -703,6 +728,7 @@ fn write_native_proof_harness_sample<'a>(
         resource_snapshots,
         runtime_observations,
         gameplay_observations,
+        overlay_snapshots,
         scene_queries: state.scene_queries.clone(),
         transforms: native_proof_harness_transform_samples(transforms),
     };
@@ -731,6 +757,7 @@ fn write_native_proof_harness_bundle_sample(
     performance: NativeProofHarnessPerformanceSample,
     resources: Option<NativeResourceObservationState>,
     write_audit: Option<NativeRuntimeWriteAuditState>,
+    overlay_snapshots: Vec<crate::overlay::OverlayBridgeEnvelope>,
     bundle: &LoadedBundle,
 ) {
     let ok = diagnostics
@@ -751,6 +778,7 @@ fn write_native_proof_harness_bundle_sample(
             &bundle.materials,
         )),
         gameplay_observations: Some(crate::systems_host::native_gameplay_observations(bundle)),
+        overlay_snapshots,
         scene_queries: state.scene_queries.clone(),
         transforms: native_proof_harness_bundle_transform_samples(bundle),
     };

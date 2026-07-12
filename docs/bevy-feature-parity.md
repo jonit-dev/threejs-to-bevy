@@ -493,6 +493,7 @@ Current UI rows use these labels:
 - [x] `P1` UI overflow clipping and z-index layering
 - [x] `P1` UI absolute anchors and inset positioning
 - [x] `P1` Native Bevy overlay UI camera renders retained UI above multi-camera/viewport scenes
+- [x] `P1` Optional desktop webview overlays receive retained game snapshots through the same subscribe contract as web overlays, including replay and bounded payload validation (`cargo test -p threenative_runtime --test overlay --test overlay_host`)
 - [x] `P1` Native Bevy `Minimap` UI nodes render static paths and live resource-bound markers
 - [x] `P1` UI min/max size constraints
 - [x] `P1` Basic vertical UI scrolling containers

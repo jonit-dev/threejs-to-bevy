@@ -1,6 +1,6 @@
 {
   "schema": "threenative.overlays",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "overlays": [
     {
       "id": "chess-side-select",
@@ -25,8 +25,8 @@
             "name": "chess:choose-side",
             "schema": {
               "kind": "object",
-              "fields": { "dismiss": "boolean", "side": "string" },
-              "required": ["dismiss", "side"]
+              "fields": { "side": "string" },
+              "required": ["side"]
             }
           }
         ]

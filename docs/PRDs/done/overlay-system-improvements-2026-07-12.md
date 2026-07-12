@@ -1,7 +1,7 @@
 # PRD: React Overlay System Improvements
 
 - **Date:** 2026-07-12 (v2 — updated for the `tn overlay add` scaffold landing)
-- **Status:** Proposed (planning)
+- **Status:** Complete
 - **Complexity:** 9 → HIGH mode (10+ files, multi-package, new client library, web + native runtimes)
 - **Origin:** Inspection of `examples/chess/overlay` and the overlay stack it exercises
   (V8-05 follow-up; see `docs/PRDs/done/v8/V8-05-optional-react-webview-overlay.md`)
@@ -167,20 +167,20 @@ flowchart LR
 
 **Key decisions:**
 
-- [ ] New `@threenative/overlay-client` package — no deps, wraps bridge-ready
+- [x] New `@threenative/overlay-client` package — no deps, wraps bridge-ready
       wait, subscribe replay dedupe, typed send/subscribe. The scaffold's shared
       `bridge.ts`/`main.tsx` templates and chess both consume it.
-- [ ] Canonical message names: keep the colon form (`chess:captures`)
+- [x] Canonical message names: keep the colon form (`chess:captures`)
       everywhere, including `context.events.emit`/`read`; delete the
       `replaceAll` translation after a deprecation shim that still routes dotted
       names and logs a diagnostic.
-- [ ] One schema validator: extract payload validation into `packages/ir`
+- [x] One schema validator: extract payload validation into `packages/ir`
       (already owns `IOverlayMessageSchema`) with shared JSON test vectors run
       by both `pnpm test` and cargo tests to keep the Rust port honest.
-- [ ] Visibility: add `setVisible(overlayId, visible)` on the host plus an
+- [x] Visibility: add `setVisible(overlayId, visible)` on the host plus an
       `overlay:visibility` control message; drop the `dismiss` payload
       convention (shim + deprecation diagnostic).
-- [ ] Input: runtime `client.setInput(mode)` control message (host adjusts
+- [x] Input: runtime `client.setInput(mode)` control message (host adjusts
       `pointerEvents`/focus, native adjusts input policy). Pointer pass-through
       by hit-testing stays deferred (YAGNI — chess only needs
       modal → pointer-islands after side selection).
@@ -357,16 +357,16 @@ gone. Checkpoint: prd-work-reviewer + manual.
 
 ## 7. Acceptance criteria
 
-- [ ] All six phases complete; all listed tests pass.
-- [ ] `pnpm check:docs && pnpm build && pnpm typecheck && pnpm test && pnpm verify:conformance && pnpm verify:smoke` pass at repo root.
-- [ ] `examples/chess`: `pnpm iterate` clean; `pnpm playtest` and `pnpm playtest:native` scenarios pass, native scenario asserting HUD captures text.
-- [ ] `examples/chess/overlay/chess-side-select/src/**` contains no reference to `window.parent`, `__THREENATIVE_RUNTIME__`, or synthesized `PointerEvent`/`KeyboardEvent`.
-- [ ] `tn overlay add` output (both styles) receives a typed game snapshot with no hand-written bridge code; the `overlay-scaffold` gate passes.
-- [ ] A deliberate mismatch between script event names and the overlay manifest fails `pnpm verify:conformance` (drift guard for B5).
-- [ ] Web and native validate the shared conformance vectors identically (B8).
-- [ ] Chess example dependency versions match `OVERLAY_SCAFFOLD_REGISTRY` and a test enforces it (N4).
-- [ ] Capability docs updated: the owning `docs/status/capabilities/*.md` file + `docs/STATUS.md` index line; `docs/bevy-feature-parity.md` updated for desktop overlay snapshot parity (B1).
-- [ ] On completion, move this PRD to `docs/PRDs/done/`.
+- [x] All six phases complete; all listed tests pass.
+- [x] `pnpm check:docs && pnpm build && pnpm typecheck && pnpm test && pnpm verify:conformance && pnpm verify:smoke` pass at repo root.
+- [x] `examples/chess`: `pnpm iterate` clean; `pnpm playtest` and `pnpm playtest:native` scenarios pass, native scenario asserting HUD captures text.
+- [x] `examples/chess/overlay/chess-side-select/src/**` contains no reference to `window.parent`, `__THREENATIVE_RUNTIME__`, or synthesized `PointerEvent`/`KeyboardEvent`.
+- [x] `tn overlay add` output (both styles) receives a typed game snapshot with no hand-written bridge code; the `overlay-scaffold` gate passes.
+- [x] A deliberate mismatch between script event names and the overlay manifest fails `pnpm verify:conformance` (drift guard for B5).
+- [x] Web and native validate the shared conformance vectors identically (B8).
+- [x] Chess example dependency versions match `OVERLAY_SCAFFOLD_REGISTRY` and a test enforces it (N4).
+- [x] Capability docs updated: the owning `docs/status/capabilities/*.md` file + `docs/STATUS.md` index line; `docs/bevy-feature-parity.md` updated for desktop overlay snapshot parity (B1).
+- [x] On completion, move this PRD to `docs/PRDs/done/`.
 
 ## 8. Out of scope (YAGNI)
 

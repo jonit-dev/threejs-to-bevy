@@ -19,7 +19,8 @@ export interface IOverlayScaffoldDescriptor {
   templateDirectory: string;
 }
 
-const reactDependencies = { react: "^19.2.7", "react-dom": "^19.2.7" } as const;
+export const OVERLAY_CLIENT_VERSION = "^0.1.11";
+const reactDependencies = { "@threenative/overlay-client": OVERLAY_CLIENT_VERSION, react: "^19.2.7", "react-dom": "^19.2.7" } as const;
 const reactDevDependencies = {
   "@types/react": "^19.2.17",
   "@types/react-dom": "^19.2.3",
@@ -27,7 +28,7 @@ const reactDevDependencies = {
   vite: "^7.3.5",
 } as const;
 const presetFiles = ["index.html", "src/App.tsx", "src/styles.css", "tsconfig.json", "vite.config.ts"] as const;
-const sharedFiles = ["src/bridge.ts", "src/main.tsx"] as const;
+const sharedFiles = ["src/client.ts", "src/main.tsx"] as const;
 
 export const OVERLAY_SCAFFOLD_REGISTRY: readonly IOverlayScaffoldDescriptor[] = [
   {

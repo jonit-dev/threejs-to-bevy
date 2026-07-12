@@ -97,7 +97,7 @@ export async function overlayAddCommand(argv: readonly string[], options: IOverl
       entry,
       id: name,
       input: "pointer",
-      messages: { gameToOverlay: [], overlayToGame: [{ name: "overlay:action", schema: { fields: { action: "string" }, kind: "object", required: ["action"] } }] },
+      messages: { gameToOverlay: [{ name: "overlay:snapshot", schema: { fields: { message: "string" }, kind: "object", required: ["message"] } }], overlayToGame: [{ name: "overlay:action", schema: { fields: { action: "string" }, kind: "object", required: ["action"] } }] },
       targetProfiles: ["web", "desktop"],
       transparent: true,
       zIndex: 20,

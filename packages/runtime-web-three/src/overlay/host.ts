@@ -8,12 +8,15 @@ export interface IWebOverlayHost {
   element: HTMLElement;
   frames: HTMLIFrameElement[];
   publish(overlayId: string, type: string, payload: Record<string, unknown>): boolean;
+  setInput(overlayId: string, input: OverlayInputMode): boolean;
+  setVisible(overlayId: string, visible: boolean): boolean;
 }
 
-type OverlaySnapshotListener = (type: string, payload: Record<string, unknown>) => void;
+type OverlaySnapshotListener = (type: string, payload: Record<string, unknown>, metadata: { sequence: number }) => void;
 
 interface IOverlayWindowBridge {
   send(type: string, payload: Record<string, unknown>): boolean;
+  snapshot(type?: string): { payload: Record<string, unknown>; sequence: number; type: string } | undefined;
   subscribe(listener: OverlaySnapshotListener): () => void;
 }
 
@@ -36,7 +39,8 @@ export function createWebOverlayHost(overlays: IOverlaysIr, source: string, docu
     if (!bridge.publish(overlayId, type, payload)) return false;
     const frame = frames.find((candidate) => candidate.dataset.threenativeOverlayId === overlayId);
     const windowBridge = (frame?.contentWindow as (Window & { threenativeOverlayBridge?: IOverlayWindowBridge }) | null)?.threenativeOverlayBridge;
-    dispatchSnapshot(windowBridge, type, payload);
+    const snapshot = bridge.snapshots.at(-1);
+    if (snapshot !== undefined) dispatchSnapshot(windowBridge, snapshot);
     return true;
   };
   return {
@@ -50,6 +54,21 @@ export function createWebOverlayHost(overlays: IOverlaysIr, source: string, docu
     element: root,
     frames,
     publish,
+    setInput(overlayId, input) {
+      const frame = frames.find((candidate) => candidate.dataset.threenativeOverlayId === overlayId);
+      if (frame === undefined) return false;
+      const overlay = overlays.overlays.find((candidate) => candidate.id === overlayId);
+      if (overlay === undefined) return false;
+      applyOverlayInputMode(frame, overlay, input);
+      if (input === "none" || input === "pointer") frame.blur();
+      return true;
+    },
+    setVisible(overlayId, visible) {
+      const frame = frames.find((candidate) => candidate.dataset.threenativeOverlayId === overlayId);
+      if (frame === undefined) return false;
+      frame.style.display = visible ? "" : "none";
+      return true;
+    },
   };
 }
 
@@ -73,6 +92,9 @@ export function overlayFrameStyle(overlay: IOverlayIr): Partial<CSSStyleDeclarat
       width: "100%",
     };
   }
+  if (overlay.layout !== undefined) {
+    return { ...base, height: `${overlay.layout.height}px`, left: `${overlay.layout.x}px`, top: `${overlay.layout.y}px`, width: `${overlay.layout.width}px` };
+  }
   return {
     ...base,
     height: "min(207px, calc(100% - 48px))",
@@ -95,13 +117,28 @@ function mountOverlayFrame(overlay: IOverlayIr, bridge: IOverlayBridge, source: 
       const listeners = new Set<OverlaySnapshotListener>();
       contentWindow.threenativeOverlayBridge = {
         send: (type: string, payload: Record<string, unknown>) => {
+          if (type === "overlay:set-input" && typeof payload.mode === "string" && INPUT_MODES.has(payload.mode as OverlayInputMode)) {
+            applyOverlayInputMode(frame, overlay, payload.mode as OverlayInputMode);
+            if (payload.mode === "none" || payload.mode === "pointer") frame.blur();
+            return true;
+          }
+          if (type === "overlay:set-visible" && typeof payload.visible === "boolean") {
+            frame.style.display = payload.visible ? "" : "none";
+            return true;
+          }
           const accepted = bridge.send({ overlayId: overlay.id, payload, type });
-          if (accepted && payload.dismiss === true) frame.style.display = "none";
+          if (accepted && payload.dismiss === true) {
+            bridge.diagnostics.push({ code: "TN_OVERLAY_DISMISS_DEPRECATED", message: "Overlay payload field 'dismiss' is deprecated; call setVisible(false).", overlayId: overlay.id, type });
+            frame.style.display = "none";
+          }
           return accepted;
+        },
+        snapshot(type) {
+          return bridge.snapshots.filter((entry) => entry.overlayId === overlay.id && (type === undefined || entry.type === type)).at(-1);
         },
         subscribe(listener) {
           listeners.add(listener);
-          for (const snapshot of bridge.snapshots.filter((entry) => entry.overlayId === overlay.id)) listener(snapshot.type, snapshot.payload);
+          for (const snapshot of bridge.snapshots.filter((entry) => entry.overlayId === overlay.id)) listener(snapshot.type, snapshot.payload, { sequence: snapshot.sequence });
           return () => listeners.delete(listener);
         },
       };
@@ -115,8 +152,14 @@ function mountOverlayFrame(overlay: IOverlayIr, bridge: IOverlayBridge, source: 
 }
 
 const snapshotListeners = new WeakMap<IOverlayWindowBridge, Set<OverlaySnapshotListener>>();
+const INPUT_MODES = new Set<OverlayInputMode>(["keyboard", "modal", "none", "pointer", "pointer-and-keyboard"]);
 
-function dispatchSnapshot(windowBridge: IOverlayWindowBridge | undefined, type: string, payload: Record<string, unknown>): void {
+function applyOverlayInputMode(frame: HTMLIFrameElement, overlay: IOverlayIr, input: OverlayInputMode): void {
+  for (const property of ["bottom", "height", "inset", "left", "right", "top", "width"] as const) frame.style[property] = "";
+  Object.assign(frame.style, overlayFrameStyle({ ...overlay, input }));
+}
+
+function dispatchSnapshot(windowBridge: IOverlayWindowBridge | undefined, snapshot: { payload: Record<string, unknown>; sequence: number; type: string }): void {
   if (windowBridge === undefined) return;
-  for (const listener of snapshotListeners.get(windowBridge) ?? []) listener(type, payload);
+  for (const listener of snapshotListeners.get(windowBridge) ?? []) listener(snapshot.type, snapshot.payload, { sequence: snapshot.sequence });
 }

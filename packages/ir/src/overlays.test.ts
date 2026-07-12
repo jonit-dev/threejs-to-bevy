@@ -1,10 +1,10 @@
 import assert from "node:assert/strict";
-import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 
-import { validateOverlaysIr } from "./overlays.js";
+import { validateOverlayPayload, validateOverlaysIr } from "./overlays.js";
 import { validateBundle } from "./validate.js";
 
 test("validates desktop webview overlay declarations", () => {
@@ -38,6 +38,33 @@ test("rejects invalid overlay bridge schemas", () => {
 
   assert.equal(diagnostics.some((diagnostic) => diagnostic.code === "TN_IR_OVERLAY_MESSAGE_NAME_INVALID"), true);
   assert.equal(diagnostics.some((diagnostic) => diagnostic.code === "TN_IR_OVERLAY_MESSAGE_SCHEMA_INVALID"), true);
+});
+
+test("validates optional overlay layout rectangles in version 0.2.0", () => {
+  assert.deepEqual(validateOverlaysIr({ ...validOverlaysIr({ layout: { height: 180, width: 320, x: 12, y: 16 } }), version: "0.2.0" }), []);
+  assert.equal(validateOverlaysIr({ ...validOverlaysIr({ layout: { height: 0, width: 320, x: 12, y: 16 } }), version: "0.2.0" })[0]?.code, "TN_IR_OVERLAY_LAYOUT_INVALID");
+});
+
+test("should reject payload over 16KB when direction is gameToOverlay", () => {
+  const result = validateOverlayPayload(
+    { value: "x".repeat(17 * 1024) },
+    { fields: { value: "string" }, kind: "object", required: ["value"] },
+  );
+
+  assert.deepEqual(result, { code: "TN_OVERLAY_PAYLOAD_TOO_LARGE", valid: false });
+});
+
+test("validates shared overlay payload conformance vectors", async () => {
+  const fixture = JSON.parse(await readFile(new URL("../fixtures/overlay-payload-validation.json", import.meta.url), "utf8")) as {
+    schema: Parameters<typeof validateOverlayPayload>[1];
+    vectors: Array<{ code?: string; name: string; paddingBytes?: number; payload: Record<string, unknown>; valid: boolean }>;
+  };
+  for (const vector of fixture.vectors) {
+    const payload = vector.paddingBytes === undefined ? vector.payload : { ...vector.payload, label: "x".repeat(vector.paddingBytes) };
+    const result = validateOverlayPayload(payload, fixture.schema);
+    assert.equal(result.valid, vector.valid, vector.name);
+    assert.equal(result.code, vector.code, vector.name);
+  }
 });
 
 test("validates overlays through bundle manifest entry", async () => {

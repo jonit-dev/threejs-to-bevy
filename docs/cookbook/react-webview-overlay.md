@@ -47,6 +47,28 @@ playtest or package command. The desktop-web package uses the documented local
 server plus platform browser/webview handler and is not evidence of an embedded
 native shell.
 
+The generated `src/client.ts` uses `@threenative/overlay-client` and declares
+typed game-to-overlay and overlay-to-game maps. Subscribe without raw bridge
+globals or readiness boilerplate:
+
+```tsx
+useEffect(
+  () => overlayClient.subscribe("overlay:snapshot", (snapshot) => setMessage(snapshot.message)),
+  [],
+);
+
+overlayClient.send("overlay:action", { action: "confirm" });
+```
+
+Keep colon-delimited names aligned with script `eventReads` and `eventWrites`;
+the compiler rejects manifest drift. Use `overlayClient.setInput(...)` after a
+modal interaction and `overlayClient.setVisible(...)` instead of payload flags.
+
+Desktop proof scenarios can drive the same declared bridge without relying on
+OS-level webview input. Add an `overlayMessage` to a playtest step with the
+declared `overlayId`, message `type`, and `payload`; the native proof harness
+validates and delivers it through the runtime bridge.
+
 For the supported opt-out, start from a project without this overlay and run:
 
 ```bash

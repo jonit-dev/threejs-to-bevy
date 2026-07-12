@@ -54,13 +54,14 @@ fn systems_host_should_tick_countdown_and_fire_one_limit_event_per_cycle() {
     let mut bundle = load_bundle(&root).expect("countdown bundle should load");
     let mut state = NativeGameLoopState::default();
 
-    run_native_systems_frame_with_input(
+    let run = run_native_systems_frame_with_input(
         &mut bundle,
         &mut state,
         loop_options(0.1, 0.1, false),
         |_bundle, _fixed_delta, _script_posed_entities| {},
     )
     .expect("countdown frame should run");
+    assert_eq!(run.emitted_events["Race.limit"].as_array().map(Vec::len), Some(1));
     assert_eq!(bundle.world.resources["Race"]["remaining"], serde_json::json!(0.0));
     assert_eq!(bundle.world.events["Race.limit"].as_array().map(Vec::len), Some(1));
 

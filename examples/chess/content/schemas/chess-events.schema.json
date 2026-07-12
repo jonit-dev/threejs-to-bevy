@@ -5,14 +5,13 @@
   "kind": "event",
   "schemas": [
     {
-      "id": "chess.choose-side",
+      "id": "chess:choose-side",
       "fields": {
-        "dismiss": { "kind": "boolean" },
         "side": { "kind": "string" }
       }
     },
     {
-      "id": "chess.captures",
+      "id": "chess:captures",
       "fields": {
         "black": { "kind": "string" },
         "playerSide": { "kind": "string" },

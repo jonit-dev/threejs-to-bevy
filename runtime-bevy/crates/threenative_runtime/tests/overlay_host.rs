@@ -1,10 +1,10 @@
 use std::path::Path;
-use threenative_loader::{OverlayBridgeMessagesIr, OverlayIr, OverlaysIr};
+use threenative_loader::{OverlayBridgeMessagesIr, OverlayIr, OverlayLayoutIr, OverlaysIr};
 
 use threenative_runtime::overlay_host::{
     create_native_overlay_host_plan, input_capture_policy, native_overlay_bounds,
     native_overlay_file_url, native_webview_backend_available, native_webview_backend_name,
-    overlay_host_diagnostics,
+    native_overlay_snapshot_script, overlay_host_diagnostics,
 };
 
 #[test]
@@ -25,6 +25,7 @@ fn make_overlays() -> OverlaysIr {
             transparent: true,
             z_index: 20,
             input: "pointer".to_owned(),
+            layout: None,
             messages: OverlayBridgeMessagesIr::default(),
             target_profiles: vec!["desktop".to_owned()],
         }],
@@ -41,6 +42,15 @@ fn maps_overlay_input_capture_modes() {
 }
 
 #[test]
+fn builds_safe_snapshot_delivery_script_for_native_webview() {
+    let script = native_overlay_snapshot_script("chess:captures", &serde_json::json!({ "white": "</script>" }), 42);
+
+    assert!(script.contains("__threenativeDispatchOverlaySnapshot"));
+    assert!(script.contains("\"chess:captures\""));
+    assert!(script.ends_with(", 42);"));
+}
+
+#[test]
 fn bounds_pointer_overlay_without_covering_bevy_surface() {
     let plan = create_native_overlay_host_plan(Some(&make_overlays()), Path::new("/bundle"))
         .unwrap_or_else(|_| {
@@ -50,6 +60,7 @@ fn bounds_pointer_overlay_without_covering_bevy_surface() {
                     entry_path: Path::new("/bundle/overlay/index.html").to_path_buf(),
                     id: "inventory".to_owned(),
                     input: input_capture_policy("pointer"),
+                    layout: None,
                     transparent: true,
                     z_index: 20,
                 }],
@@ -62,6 +73,20 @@ fn bounds_pointer_overlay_without_covering_bevy_surface() {
     assert_eq!(bounds.height, 207);
     assert_eq!(bounds.x, 1014);
     assert_eq!(bounds.y, 24);
+}
+
+#[test]
+fn uses_authored_native_overlay_layout_rectangle() {
+    let mount = threenative_runtime::overlay_host::NativeOverlayMount {
+        entry_path: Path::new("/bundle/overlay/index.html").to_path_buf(),
+        id: "inventory".to_owned(),
+        input: input_capture_policy("pointer"),
+        layout: Some(OverlayLayoutIr { height: 180.0, width: 320.0, x: 12.0, y: 16.0 }),
+        transparent: true,
+        z_index: 20,
+    };
+    let bounds = native_overlay_bounds(&mount, 1280.0, 720.0);
+    assert_eq!((bounds.x, bounds.y, bounds.width, bounds.height), (12, 16, 320, 180));
 }
 
 #[cfg(not(feature = "native-webview"))]
