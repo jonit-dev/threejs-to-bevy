@@ -22,9 +22,23 @@ export interface ScriptTransformFacade {
 }
 
 export interface ScriptContext {
+  commands: {
+    addComponent(entity: string, component: Record<string, unknown>): void;
+    clearParent(child: string): void;
+    despawn(entity: string, policy?: string): void;
+    emitEvent(event: string, payload?: Record<string, unknown>): void;
+    instantiate(prefab: string, prefix: string, overrides?: Record<string, unknown>): void;
+    removeComponent(entity: string, component: unknown): void;
+    setComponent(entity: string, component: unknown, value: unknown): void;
+    setParent(child: string, parent: string): void;
+    spawn(entity: string, components?: unknown): void;
+  };
   entity(id: string): ScriptEntity | undefined;
   entities: {
     byId<T extends Record<string, string>>(ids: T): { [K in keyof T]: ScriptEntity | undefined };
+  };
+  events: {
+    emit(event: string, payload?: Record<string, unknown>): void;
   };
   input: {
     action(name: string): boolean;

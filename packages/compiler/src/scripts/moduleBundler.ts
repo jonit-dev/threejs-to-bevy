@@ -128,7 +128,9 @@ function generateModule(
           for (const element of clause.namedBindings.elements) {
             if (!element.isTypeOnly) {
               const importedName = element.propertyName?.text ?? element.name.text;
-              prelude.push(`const ${element.name.text} = ${importedName};`);
+              if (element.name.text !== importedName) {
+                prelude.push(`const ${element.name.text} = ${importedName};`);
+              }
             }
           }
         }

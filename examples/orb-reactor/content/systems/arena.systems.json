@@ -1,0 +1,50 @@
+{
+  "schema": "threenative.systems",
+  "version": "0.1.0",
+  "id": "arena-systems",
+  "systems": [
+    {
+      "id": "move-player",
+      "source": "behavior-metadata",
+      "script": {
+        "module": "src/scripts/player.ts",
+        "export": "movePlayer"
+      }
+    },
+    {
+      "id": "collect-orbs",
+      "source": "behavior-metadata",
+      "script": {
+        "module": "src/scripts/orbs.ts",
+        "export": "collectOrbs"
+      }
+    },
+    {
+      "id": "drone-contacts",
+      "source": "behavior-metadata",
+      "script": {
+        "module": "src/scripts/drones.ts",
+        "export": "droneContacts"
+      }
+    },
+    {
+      "id": "meltdown-timer",
+      "source": "behavior-metadata",
+      "script": {
+        "module": "src/scripts/timer.ts",
+        "export": "meltdownTimer"
+      }
+    }
+  ],
+  "countdowns": [
+    {
+      "autostart": true,
+      "direction": "down",
+      "event": "RoundTimer.limit",
+      "field": "remaining",
+      "id": "RoundTimer.countdown",
+      "limit": 45,
+      "resource": "RoundTimer"
+    }
+  ]
+}

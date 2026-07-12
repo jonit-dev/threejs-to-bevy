@@ -56,6 +56,10 @@ impl PhysicsSensorRuntimeState {
         self.last_tick = None;
         self.last_events.clear();
     }
+
+    pub fn events(&self) -> Vec<PhysicsSensorEvent> {
+        self.last_events.clone()
+    }
 }
 
 #[derive(Clone)]

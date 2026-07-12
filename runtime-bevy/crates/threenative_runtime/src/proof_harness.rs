@@ -76,6 +76,7 @@ pub enum NativeProofHarnessAction {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct NativeProofHarnessOptions {
+    pub audit_writes: bool,
     pub command_stream_path: String,
     pub readiness_out_path: String,
 }
@@ -87,6 +88,7 @@ pub struct NativeProofHarnessState {
     last_sample_at: Instant,
     readiness_directory_created: bool,
     readiness_out_path: String,
+    audit_writes: bool,
     scene_queries: Vec<NativeProofHarnessSceneQuerySample>,
     started_at: Instant,
     tick: u64,
@@ -195,12 +197,21 @@ impl NativeProofHarnessState {
         stream: NativeProofHarnessCommandStream,
         readiness_out_path: impl Into<String>,
     ) -> Self {
+        Self::from_stream_with_audit(stream, readiness_out_path, false)
+    }
+
+    pub fn from_stream_with_audit(
+        stream: NativeProofHarnessCommandStream,
+        readiness_out_path: impl Into<String>,
+        audit_writes: bool,
+    ) -> Self {
         Self {
             commands: stream.commands,
             held_keys: BTreeSet::new(),
             last_sample_at: Instant::now(),
             readiness_directory_created: false,
             readiness_out_path: readiness_out_path.into(),
+            audit_writes,
             scene_queries: Vec::new(),
             started_at: Instant::now(),
             tick: 0,
@@ -209,6 +220,10 @@ impl NativeProofHarnessState {
 
     pub fn tick(&self) -> u64 {
         self.tick
+    }
+
+    pub fn audit_writes(&self) -> bool {
+        self.audit_writes
     }
 
     fn performance_sample(&mut self) -> NativeProofHarnessPerformanceSample {
@@ -252,9 +267,10 @@ pub fn install_native_proof_harness(
         UpdateMode::reactive(Duration::ZERO)
     };
     app.insert_resource(required_models)
-        .insert_resource(NativeProofHarnessState::from_stream(
+        .insert_resource(NativeProofHarnessState::from_stream_with_audit(
             stream,
             options.readiness_out_path,
+            options.audit_writes,
         ))
         .init_resource::<NativeProofHarnessFastForward>()
         .insert_resource(WinitSettings {
@@ -334,7 +350,7 @@ pub fn apply_native_proof_harness_commands(
             performance,
             transforms.p1().iter(),
             resource_observations.as_deref().cloned(),
-            write_audit.as_deref().cloned(),
+            write_audit.as_deref().filter(|audit| audit.enabled).cloned(),
             runtime
                 .as_deref()
                 .map(|runtime| native_resource_snapshots(&runtime.bundle))
@@ -490,7 +506,7 @@ pub fn apply_native_proof_harness_commands(
         performance,
         transforms.p1().iter(),
         resource_observations.as_deref().cloned(),
-        write_audit.as_deref().cloned(),
+        write_audit.as_deref().filter(|audit| audit.enabled).cloned(),
         runtime
             .as_deref()
             .map(|runtime| native_resource_snapshots(&runtime.bundle))
@@ -562,7 +578,7 @@ fn write_native_proof_harness_post_runtime_sample(
             Vec::new(),
             performance,
             resource_observations.as_deref().cloned(),
-            write_audit.as_deref().cloned(),
+            write_audit.as_deref().filter(|audit| audit.enabled).cloned(),
             &runtime.bundle,
         );
         return;
@@ -574,7 +590,7 @@ fn write_native_proof_harness_post_runtime_sample(
         performance,
         transforms.iter(),
         resource_observations.as_deref().cloned(),
-        write_audit.as_deref().cloned(),
+        write_audit.as_deref().filter(|audit| audit.enabled).cloned(),
         runtime
             .as_deref()
             .map(|runtime| native_resource_snapshots(&runtime.bundle))

@@ -58,7 +58,10 @@ Current support:
   scene identity and released on rebuild. The catalog-owned
   `pnpm verify:focused verify:contact-shadows` gate checks portable report
   parity, monotonic localized darkening, bounded static cost, and paired
-  nonblank web/native screenshots.
+  nonblank web/native screenshots. The 2026-07-11 hero-room recompare kept
+  the four portable contact-shadow reports aligned; the aggregate fixture still
+  exposes the pre-existing ACES ground-luminance calibration drift separately
+  from its normalized local shadow response.
 - `pnpm verify:focused verify:feature-parity-visual-polish` composes calibrated
   lighting, material, and dense-content web/Bevy screenshots with paired
   shadow and promoted specular-material conformance reports. It also writes a
@@ -89,7 +92,11 @@ Current support:
   cannot promote an invisible volumetric path. The stricter hero-room gate is
   backed by paired captures. Native shaft radiance compensates for Bevy's
   normalized phase-function convention with one adapter calibration constant;
-  no scene-specific target fork is used.
+  no scene-specific target fork is used. The current hero calibration uses
+  native base scattering `0.0`, phase asymmetry `0.5`, and a bounded shaft
+  light scale of `5.4`; its fresh capture measures a height-haze delta of about
+  `1.28` and a shaft-ratio delta of about `0.25`, with the gate ratcheted to a
+  `1.35` haze-delta ceiling.
 - Runtime renderer config now accepts portable `ambientOcclusion`,
   `depthOfField`, `screenSpaceReflections`, `motionBlur`, and
   `screenSpaceGlobalIllumination` fields with bounded source/IR validation.
@@ -104,10 +111,13 @@ Current support:
   applies adapter-owned depth reconstruction, cosine-weighted hemisphere ray
   marching, binary hit refinement, bilateral upsampling, and history-clamped
   temporal reprojection before bloom and tone mapping. Bevy 0.14 now runs an
-  adapter-private full-resolution spatial hemisphere raymarch after SSR and
-  before volumetrics, with a symmetric depth-weighted neighborhood gather,
-  saturation-preserving colored bounce, bounded radiance, and no temporal
-  resolve; it reports `appliedMode: spatial-neighborhood-no-temporal`.
+  adapter-private full-resolution spatial neighborhood gather after SSR and
+  before volumetrics, with depth weighting, saturation-preserving colored
+  bounce, bounded radiance, a stable per-pixel footprint rotation, and no
+  temporal resolve; it reports `appliedMode:
+  spatial-neighborhood-no-temporal`. When SSGI is enabled, shadowless
+  ceiling- and floor-bounce fills are also applied as bounded native
+  approximations for the deferred SH-L0 path's missing hemisphere contribution.
   The catalog-owned
   `pnpm verify:focused verify:ssgi` gate proves monotonic indirect-region lift
   in both adapters, cross-adapter red color bleed, bounded spatial noise,
@@ -118,6 +128,19 @@ Current support:
   render schedule so history actually converges, and the focused gate records
   a three-pose camera orbit with bounded displacement, ghosting, boiling, and
   static high-frequency energy rather than relying on a settled still alone.
+  Native SSGI-enabled scenes use a calibrated flat-ambient multiplier of
+  `0.15`. Its spatial post-pass uses a smooth authored-intensity gain from
+  `0.4` to `0.6`, capped at `0.8`, so the low-intensity hero remains subtle
+  while the shared medium/high SSGI proof stays monotonic. The native gather
+  caps sampled radiance at `0.35` and rotates its fixed twelve-tap footprint
+  per pixel to prevent coherent window ghosts. The deferred hero fallback
+  uses a calibrated atmosphere L0 baseline of `4.2` per peak coefficient unit,
+  a `0.6` ceiling-bounce illuminance approximation, and a lower `0.25`
+  floor-bounce approximation. An SSGI-off
+  hero control changed surface-detail energy on both adapters but preserved
+  the roughly `0.35` native/web ratio, so the remaining web high-frequency
+  response is not treated as portable detail or as SSGI noise; the showcase
+  gate tightens only its upper detail-ratio bound to `2.0`.
 - Portable baked GI probes now carry deterministic SH2 payloads (nine RGB
   coefficients), bake version, and canonical scene-content hash in durable
   `content/lighting/*.probes.json`. `tn bake gi` uses an internal
@@ -140,7 +163,8 @@ Current support:
   diagnostic. Native startup now neutralizes Bevy's implicit ambient-light
   default before applying authored contributions; the forward volume intensity
   and deferred atmosphere baseline are adapter calibration constants rather
-  than per-scene forks.
+  than per-scene forks. The deferred hero fallback uses a calibrated atmosphere
+  L0 baseline of `4.2` per peak coefficient unit.
 - The promoted visual-calibration matrix defines authored bloom intensity 1.0
   as a real-runtime emissive anchor with core, inner-halo, and outer-halo
   luminance/falloff regions. Its color fixture samples a neutral
@@ -163,6 +187,13 @@ Current support:
   broadens native volumetric scattering. The showcase intentionally authors
   flat portable PBR materials on both adapters; the web-only 8x8 detail-texture
   path remains scoped to `StylizedNature` and is not claimed by this scene.
+  The fresh 2026-07-11 evidence is a `1.02` mean-luminance ratio, `0.095`
+  shadow-fraction delta, `0.11` height-haze gradient delta, `0.12`
+  shaft-ratio delta, and `0.60` surface-detail ratio; floor-haze luminance is
+  `0.097` native versus `0.098` web, the spatial ceiling ratio is `1.03`, and
+  the right-room ratio is `1.42`. The gate now holds luminance to `0.80..1.25`,
+  haze to `1.35`, detail to `0.3..2.0`, ceiling to `0.75..1.35`, and right-room
+  to `0.65..1.45`.
 - The internal `SceneRayQuery` boundary now has BVH-backed tooling queries and
   a native Rapier/parry `TriMesh` query built from the same rendered generated
   mesh data, independently of authored Collider components. Native playtest
@@ -212,7 +243,9 @@ Current support:
 - Portable `renderer.screenSpaceReflections` now maps to Three.js's depth- and
   normal-aware `SSRPass`, with reflective-object selection derived from the
   authored roughness limit, while Bevy uses native screen-space reflections
-  with deferred opaque rendering. Bevy 0.14 requires the global deferred
+  with deferred opaque rendering and a native thin-surface depth thickness of
+  `0.02`, matching the web calibration for centimeter-scale wet patches. Bevy
+  0.14 requires the global deferred
   material fallback for SSR; a forward-path isolation capture showed that the
   gross wet-scene luminance drift instead came from Bevy's implicit dielectric
   ambient response rather than reflection opacity or the deferred path alone.
@@ -221,7 +254,10 @@ Current support:
   under `tools/verify/artifacts/rendering-photoreal/diagnostics/`. The native
   material mapping keeps the standard 4% implicit dielectric F0, converts
   explicit `specularIntensity` into Bevy's squared-reflectance parameter, and
-  suppresses the implicit term for SSR-enabled smooth dielectrics. The motion
+  suppresses the implicit term for SSR-enabled smooth dielectrics. When the
+  deferred irradiance limitation prevents a native SSR-selected thin wet patch
+  from receiving the web reflection, this mapping is the documented native-only
+  dark-damp-patch approximation rather than an exact SSR claim. The motion
   fixture authors its wall response explicitly instead of changing unrelated
   implicit materials. Web SSR opacity is calibrated against the cyan reflection
   region. The fixture also gates cube-face and bare-floor luminance.
@@ -256,6 +292,10 @@ Current support:
   faces, runtime visibility restores in both directions, render layers share a
   validated 32-layer portable limit, and web teardown owns audio, overlays,
   post-processing, render targets, and scene GPU resources.
+- Bounded `WorldText` maps to renderer-owned billboards on web and native,
+  follows target transforms, supports finite float/fade lifetimes, and remains
+  separate from retained accessible UI. Portable camera shake composes after
+  camera follow/interpolation and is driven by real elapsed delta.
 
 Verification:
 
@@ -264,6 +304,7 @@ Verification:
 - `pnpm verify:conformance`
 - `pnpm verify:default-look`
 - `pnpm verify:portable-shader-material`
+- `pnpm verify:focused verify:portable-feedback`
 - `pnpm verify:rendering-photoreal`
 - `pnpm verify:focused verify:rendering-residuals`
 - `pnpm verify:focused verify:contact-shadows`

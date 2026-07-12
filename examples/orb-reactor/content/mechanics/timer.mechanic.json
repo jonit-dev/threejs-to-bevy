@@ -1,0 +1,20 @@
+{
+  "block": "timer",
+  "details": {
+    "autostart": true,
+    "countdownId": "RoundTimer.countdown",
+    "direction": "down",
+    "event": "RoundTimer.limit",
+    "field": "remaining",
+    "limit": 45,
+    "resource": "RoundTimer",
+    "scenePath": "content/scenes/arena.scene.json",
+    "systemsPath": "content/systems/arena.systems.json"
+  },
+  "schema": "threenative.mechanic-block",
+  "sourceFiles": [
+    "content/scenes/arena.scene.json",
+    "content/systems/arena.systems.json"
+  ],
+  "version": "0.1.0"
+}

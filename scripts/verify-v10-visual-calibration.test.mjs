@@ -19,7 +19,7 @@ const expectedImplementedFixtures = [
   ["v10-materials", "materials", ["unlit-card", "pbr-base", "metal-rough", "emissive", "alpha-mask", "texture-slot", "uv-transform", "vertex-color"]],
   ["v10-lighting", "lighting", ["ambient-card", "directional-card", "point-card", "spot-card", "shadow-receiver", "probe-reflection"]],
   ["v10-atmosphere", "atmosphere", ["fog-near", "fog-mid", "fog-far", "sky-horizon", "skybox-anchor"]],
-  ["v10-post", "post", ["bloom-highlight", "msaa-edge", "dof-report-only", "taa-report-only"]],
+  ["v10-post", "post", ["bloom-highlight", "bloom-core", "bloom-inner-halo", "bloom-outer-halo", "msaa-edge", "dof-report-only", "taa-report-only"]],
   ["v10-geometry", "geometry", ["primitive-grid", "generated-mesh", "gltf-instance", "uv-marker"]],
   ["v10-dense", "dense", ["instance-grid", "hlod-fade", "lod-impostor", "visibility-range"]],
   ["v10-scene", "scene", ["sky-band", "hero-subject", "ground-shadow", "ui-overlay", "full-frame"]],

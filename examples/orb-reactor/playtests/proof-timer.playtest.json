@@ -1,0 +1,42 @@
+{
+  "assert": {
+    "diagnostics": {
+      "noConsoleErrors": true,
+      "runtimeReady": true
+    },
+    "hud": [
+      {
+        "id": "hud.time",
+        "textIncludes": "Time 3"
+      }
+    ],
+    "resources": [
+      {
+        "id": "RoundTimer",
+        "path": "remaining",
+        "changed": true
+      }
+    ]
+  },
+  "artifacts": {
+    "effectLog": "focused",
+    "screenshots": "before-after"
+  },
+  "name": "proof-timer",
+  "schemaVersion": 1,
+  "steps": [
+    {
+      "holdFrames": 90,
+      "label": "let the meltdown countdown tick",
+      "press": "KeyQ",
+      "release": true
+    }
+  ],
+  "subject": "player",
+  "target": "web",
+  "viewport": {
+    "height": 720,
+    "width": 1280
+  },
+  "warmupFrames": 10
+}

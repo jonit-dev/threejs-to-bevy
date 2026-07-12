@@ -1,0 +1,18 @@
+{
+  "schema": "threenative.proof-recipe",
+  "version": "0.1.0",
+  "id": "top-down-collector",
+  "recipeId": "top-down-collector",
+  "commands": [
+    "tn authoring validate --project . --json",
+    "tn build --project . --json",
+    "tn scene inspect arena --node player --json",
+    "tn playtest scaffold --assert pickup --project . --json"
+  ],
+  "requiredArtifacts": [
+    "authoring-validation",
+    "build",
+    "input-playtest",
+    "screenshot-or-scene-proof"
+  ]
+}

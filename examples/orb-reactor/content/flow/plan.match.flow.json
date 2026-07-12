@@ -1,0 +1,53 @@
+{
+  "id": "plan.match",
+  "initial": "ready",
+  "scene": "arena",
+  "schema": "threenative.flow",
+  "states": [
+    {
+      "id": "ready"
+    },
+    {
+      "id": "playing"
+    },
+    {
+      "id": "won"
+    },
+    {
+      "id": "lost"
+    }
+  ],
+  "transitions": [
+    {
+      "id": "start",
+      "from": "ready",
+      "to": "playing",
+      "trigger": {
+        "kind": "resourceEquals",
+        "resource": "Match.started",
+        "target": true
+      }
+    },
+    {
+      "id": "win",
+      "from": "playing",
+      "to": "won",
+      "trigger": {
+        "kind": "resourceEquals",
+        "resource": "Match.outcome",
+        "target": "won"
+      }
+    },
+    {
+      "id": "lose",
+      "from": "playing",
+      "to": "lost",
+      "trigger": {
+        "kind": "resourceEquals",
+        "resource": "Match.outcome",
+        "target": "lost"
+      }
+    }
+  ],
+  "version": "0.1.0"
+}

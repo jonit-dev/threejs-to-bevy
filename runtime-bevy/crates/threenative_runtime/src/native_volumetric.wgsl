@@ -14,6 +14,9 @@
 }
 
 struct VolumetricFog {
+    // Keep this layout identical to Bevy's VolumetricFogUniform. The adapter
+    // uses the authored density, asymmetry, depth, and intensity fields below;
+    // the remaining fields stay bound for render-graph compatibility.
     fog_color: vec3<f32>,
     light_tint: vec3<f32>,
     ambient_color: vec3<f32>,
@@ -46,12 +49,11 @@ fn henyey_greenstein(neg_LdotV: f32) -> f32 {
 }
 
 fn pixel_jitter(pixel: vec2<f32>) -> f32 {
-    return fract(sin(dot(pixel, vec2<f32>(12.9898, 78.233))) * 43758.5453);
+    return fract(52.9829189 * fract(0.06711056 * pixel.x + 0.00583715 * pixel.y));
 }
 
 @fragment
 fn fragment(in: FullscreenVertexOutput) -> @location(0) vec4<f32> {
-    let fog_color = volumetric_fog.fog_color;
     let step_count = volumetric_fog.step_count;
     let max_depth = volumetric_fog.max_depth;
     let density = volumetric_fog.density;
@@ -81,7 +83,7 @@ fn fragment(in: FullscreenVertexOutput) -> @location(0) vec4<f32> {
         }
 
         let depth_offset = (*light).shadow_depth_bias * (*light).direction_to_light.xyz;
-        let neg_LdotV = dot(normalize((*light).direction_to_light.xyz), Rd_world);
+        let neg_LdotV = clamp(dot(normalize((*light).direction_to_light.xyz), Rd_world), -1.0, 1.0);
         let phase = henyey_greenstein(neg_LdotV);
         var optical_depth = 0.0;
 
@@ -108,10 +110,13 @@ fn fragment(in: FullscreenVertexOutput) -> @location(0) vec4<f32> {
             }
             if (local_light_attenuation != 0.0) {
                 optical_depth += local_light_attenuation * density * step_size;
+                if (optical_depth >= 4.0) {
+                    break;
+                }
             }
         }
         let shaft = (1.0 - exp(-optical_depth)) * light_intensity * phase;
-        accumulated_color += (*light).color.rgb * shaft;
+        accumulated_color += clamp((*light).color.rgb * shaft, vec3<f32>(0.0), vec3<f32>(4.0));
     }
 
     let source = textureSample(color_texture, color_sampler, in.uv);

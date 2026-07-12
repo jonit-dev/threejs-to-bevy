@@ -1,0 +1,610 @@
+{
+  "entities": [
+    {
+      "id": "arena.floor",
+      "prefab": "prefab.floor",
+      "transform": {
+        "position": [
+          0,
+          -0.05,
+          0
+        ],
+        "rotation": [
+          -1.570796,
+          0,
+          0
+        ],
+        "scale": [
+          5,
+          5,
+          5
+        ]
+      }
+    },
+    {
+      "id": "arena.marker.goal",
+      "prefab": "prefab.marker",
+      "transform": {
+        "position": [
+          1.35,
+          0.04,
+          -1.15
+        ],
+        "scale": [
+          0.8,
+          0.08,
+          0.8
+        ]
+      }
+    },
+    {
+      "id": "arena.marker.start",
+      "prefab": "prefab.marker",
+      "transform": {
+        "position": [
+          -1.35,
+          0.04,
+          1.15
+        ],
+        "scale": [
+          0.8,
+          0.08,
+          0.8
+        ]
+      }
+    },
+    {
+      "id": "arena.rail.east",
+      "prefab": "prefab.rail",
+      "transform": {
+        "position": [
+          2.45,
+          0.08,
+          0
+        ],
+        "scale": [
+          0.16,
+          0.16,
+          4.8
+        ]
+      }
+    },
+    {
+      "id": "arena.rail.north",
+      "prefab": "prefab.rail",
+      "transform": {
+        "position": [
+          0,
+          0.08,
+          -2.45
+        ],
+        "scale": [
+          4.8,
+          0.16,
+          0.16
+        ]
+      }
+    },
+    {
+      "id": "arena.rail.south",
+      "prefab": "prefab.rail",
+      "transform": {
+        "position": [
+          0,
+          0.08,
+          2.45
+        ],
+        "scale": [
+          4.8,
+          0.16,
+          0.16
+        ]
+      }
+    },
+    {
+      "id": "arena.rail.west",
+      "prefab": "prefab.rail",
+      "transform": {
+        "position": [
+          -2.45,
+          0.08,
+          0
+        ],
+        "scale": [
+          0.16,
+          0.16,
+          4.8
+        ]
+      }
+    },
+    {
+      "components": {
+        "camera": {
+          "mode": "perspective",
+          "target": "player"
+        }
+      },
+      "id": "camera.main"
+    },
+    {
+      "id": "player",
+      "prefab": "prefab.player",
+      "transform": {
+        "position": [
+          0,
+          0.35,
+          0
+        ],
+        "scale": [
+          0.55,
+          0.55,
+          0.55
+        ]
+      }
+    }
+  ],
+  "id": "arena",
+  "instances": [
+    {
+      "components": {
+        "Collider": {
+          "kind": "sphere",
+          "radius": 0.45,
+          "trigger": true
+        },
+        "KinematicMover": {
+          "axis": "y",
+          "mode": "sine",
+          "radius": 0.15,
+          "speed": 1.4
+        },
+        "RigidBody": {
+          "kind": "static"
+        }
+      },
+      "id": "orb.01",
+      "prefab": "prefab.orb",
+      "transform": {
+        "position": [
+          -1.8,
+          0.5,
+          -1.8
+        ],
+        "scale": [
+          0.35,
+          0.35,
+          0.35
+        ]
+      }
+    },
+    {
+      "components": {
+        "Collider": {
+          "kind": "sphere",
+          "radius": 0.45,
+          "trigger": true
+        },
+        "KinematicMover": {
+          "axis": "y",
+          "mode": "sine",
+          "radius": 0.15,
+          "speed": 1.4
+        },
+        "RigidBody": {
+          "kind": "static"
+        }
+      },
+      "id": "orb.02",
+      "prefab": "prefab.orb",
+      "transform": {
+        "position": [
+          0,
+          0.5,
+          -1.9
+        ],
+        "scale": [
+          0.35,
+          0.35,
+          0.35
+        ]
+      }
+    },
+    {
+      "components": {
+        "Collider": {
+          "kind": "sphere",
+          "radius": 0.45,
+          "trigger": true
+        },
+        "KinematicMover": {
+          "axis": "y",
+          "mode": "sine",
+          "radius": 0.15,
+          "speed": 1.4
+        },
+        "RigidBody": {
+          "kind": "static"
+        }
+      },
+      "id": "orb.03",
+      "prefab": "prefab.orb",
+      "transform": {
+        "position": [
+          1.8,
+          0.5,
+          -1.8
+        ],
+        "scale": [
+          0.35,
+          0.35,
+          0.35
+        ]
+      }
+    },
+    {
+      "components": {
+        "Collider": {
+          "kind": "sphere",
+          "radius": 0.45,
+          "trigger": true
+        },
+        "KinematicMover": {
+          "axis": "y",
+          "mode": "sine",
+          "radius": 0.15,
+          "speed": 1.4
+        },
+        "RigidBody": {
+          "kind": "static"
+        }
+      },
+      "id": "orb.04",
+      "prefab": "prefab.orb",
+      "transform": {
+        "position": [
+          -1.9,
+          0.5,
+          0
+        ],
+        "scale": [
+          0.35,
+          0.35,
+          0.35
+        ]
+      }
+    },
+    {
+      "components": {
+        "Collider": {
+          "kind": "sphere",
+          "radius": 0.45,
+          "trigger": true
+        },
+        "KinematicMover": {
+          "axis": "y",
+          "mode": "sine",
+          "radius": 0.15,
+          "speed": 1.4
+        },
+        "RigidBody": {
+          "kind": "static"
+        }
+      },
+      "id": "orb.05",
+      "prefab": "prefab.orb",
+      "transform": {
+        "position": [
+          1.9,
+          0.5,
+          0
+        ],
+        "scale": [
+          0.35,
+          0.35,
+          0.35
+        ]
+      }
+    },
+    {
+      "components": {
+        "Collider": {
+          "kind": "sphere",
+          "radius": 0.45,
+          "trigger": true
+        },
+        "KinematicMover": {
+          "axis": "y",
+          "mode": "sine",
+          "radius": 0.15,
+          "speed": 1.4
+        },
+        "RigidBody": {
+          "kind": "static"
+        }
+      },
+      "id": "orb.06",
+      "prefab": "prefab.orb",
+      "transform": {
+        "position": [
+          -1.8,
+          0.5,
+          1.8
+        ],
+        "scale": [
+          0.35,
+          0.35,
+          0.35
+        ]
+      }
+    },
+    {
+      "components": {
+        "Collider": {
+          "kind": "sphere",
+          "radius": 0.45,
+          "trigger": true
+        },
+        "KinematicMover": {
+          "axis": "y",
+          "mode": "sine",
+          "radius": 0.15,
+          "speed": 1.4
+        },
+        "RigidBody": {
+          "kind": "static"
+        }
+      },
+      "id": "orb.07",
+      "prefab": "prefab.orb",
+      "transform": {
+        "position": [
+          0,
+          0.5,
+          1.9
+        ],
+        "scale": [
+          0.35,
+          0.35,
+          0.35
+        ]
+      }
+    },
+    {
+      "components": {
+        "Collider": {
+          "kind": "sphere",
+          "radius": 0.45,
+          "trigger": true
+        },
+        "KinematicMover": {
+          "axis": "y",
+          "mode": "sine",
+          "radius": 0.15,
+          "speed": 1.4
+        },
+        "RigidBody": {
+          "kind": "static"
+        }
+      },
+      "id": "orb.08",
+      "prefab": "prefab.orb",
+      "transform": {
+        "position": [
+          1.8,
+          0.5,
+          1.8
+        ],
+        "scale": [
+          0.35,
+          0.35,
+          0.35
+        ]
+      }
+    },
+    {
+      "components": {
+        "Collider": {
+          "kind": "box",
+          "size": [
+            0.5,
+            0.3,
+            0.5
+          ],
+          "trigger": true
+        },
+        "Patrol": {
+          "faceHeading": true,
+          "mode": "ping-pong",
+          "speed": 1.6,
+          "waypoints": [
+            [
+              -1.6,
+              0.35,
+              -1
+            ],
+            [
+              1.6,
+              0.35,
+              -1
+            ]
+          ]
+        },
+        "RigidBody": {
+          "kind": "static"
+        }
+      },
+      "id": "drone.01",
+      "prefab": "prefab.drone",
+      "transform": {
+        "position": [
+          -1.6,
+          0.35,
+          -1
+        ],
+        "scale": [
+          0.4,
+          0.25,
+          0.4
+        ]
+      }
+    },
+    {
+      "components": {
+        "Collider": {
+          "kind": "box",
+          "size": [
+            0.5,
+            0.3,
+            0.5
+          ],
+          "trigger": true
+        },
+        "Patrol": {
+          "faceHeading": true,
+          "mode": "ping-pong",
+          "speed": 1.6,
+          "waypoints": [
+            [
+              1.6,
+              0.35,
+              1
+            ],
+            [
+              -1.6,
+              0.35,
+              1
+            ]
+          ]
+        },
+        "RigidBody": {
+          "kind": "static"
+        }
+      },
+      "id": "drone.02",
+      "prefab": "prefab.drone",
+      "transform": {
+        "position": [
+          1.6,
+          0.35,
+          1
+        ],
+        "scale": [
+          0.4,
+          0.25,
+          0.4
+        ]
+      }
+    }
+  ],
+  "prefabs": [
+    {
+      "color": "#34373d",
+      "id": "prefab.floor",
+      "primitive": "plane"
+    },
+    {
+      "color": "#0f172a",
+      "id": "prefab.rail",
+      "primitive": "box"
+    },
+    {
+      "color": "#e2e8f0",
+      "id": "prefab.marker",
+      "primitive": "box"
+    },
+    {
+      "color": "#2f80ed",
+      "id": "prefab.player",
+      "primitive": "box"
+    },
+    {
+      "color": "#38bdf8",
+      "id": "player.prefab",
+      "primitive": "capsule"
+    },
+    {
+      "color": "#38e8ff",
+      "id": "prefab.orb",
+      "primitive": "sphere"
+    },
+    {
+      "color": "#ff3355",
+      "id": "prefab.drone",
+      "primitive": "box"
+    }
+  ],
+  "resources": [
+    {
+      "id": "FollowCamera",
+      "value": {
+        "camera": "camera.main",
+        "statusText": "Following player",
+        "target": "player"
+      }
+    },
+    {
+      "id": "GameState",
+      "value": {
+        "countdown": "Ready"
+      }
+    },
+    {
+      "id": "RoundTimer",
+      "value": {
+        "direction": "down",
+        "limit": 45,
+        "remaining": 45,
+        "restartToken": 0,
+        "running": true,
+        "statusText": "Time 45"
+      }
+    },
+    {
+      "id": "Match",
+      "value": {
+        "over": false,
+        "started": false,
+        "statusText": "Collect the orbs before meltdown",
+        "outcome": ""
+      }
+    },
+    {
+      "id": "Orbs",
+      "value": {
+        "collected": 0,
+        "statusText": "Orbs 0/8"
+      }
+    },
+    {
+      "id": "Lives",
+      "value": {
+        "count": 3,
+        "statusText": "Lives 3"
+      }
+    }
+  ],
+  "schema": "threenative.scene",
+  "systems": [],
+  "ui": {
+    "bindings": [
+      {
+        "node": "countdown",
+        "resource": "GameState.countdown"
+      }
+    ],
+    "nodes": [
+      {
+        "id": "countdown",
+        "layout": {
+          "align": "center",
+          "justify": "center",
+          "top": 48,
+          "width": 1280
+        },
+        "text": "Ready",
+        "type": "text"
+      }
+    ]
+  },
+  "version": "0.1.0"
+}

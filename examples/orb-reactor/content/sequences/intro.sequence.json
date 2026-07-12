@@ -1,0 +1,44 @@
+{
+  "schema": "threenative.sequence",
+  "version": "0.1.0",
+  "id": "intro",
+  "duration": 1.5,
+  "skippable": true,
+  "tracks": [
+    {
+      "id": "camera",
+      "kind": "cameraPose",
+      "entity": "camera.main",
+      "keyframes": [
+        {
+          "time": 0,
+          "value": {
+            "position": [0, 6, 6],
+            "lookAt": [0, 0, 0]
+          },
+          "easing": "linear"
+        },
+        {
+          "time": 1.5,
+          "value": {
+            "position": [0, 4.2, 4.8],
+            "lookAt": [0.4, 0, -0.4]
+          },
+          "easing": "linear"
+        }
+      ]
+    },
+    {
+      "id": "start-beat",
+      "kind": "event",
+      "keyframes": [
+        {
+          "time": 0.5,
+          "value": {
+            "event": "intro.beat"
+          }
+        }
+      ]
+    }
+  ]
+}

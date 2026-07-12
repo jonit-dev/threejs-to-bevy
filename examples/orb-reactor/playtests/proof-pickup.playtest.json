@@ -1,0 +1,54 @@
+{
+  "assert": {
+    "diagnostics": {
+      "noConsoleErrors": true,
+      "noNetworkErrors": true,
+      "runtimeReady": true
+    },
+    "hud": [
+      {
+        "id": "hud.orbs",
+        "textIncludes": "Orbs 1/8"
+      }
+    ],
+    "movement": {
+      "entity": "player",
+      "minDistance": 0.5,
+      "minVelocity": 0.01
+    },
+    "resources": [
+      {
+        "id": "Orbs",
+        "path": "collected",
+        "gte": 1,
+        "changed": true
+      },
+      {
+        "id": "Match",
+        "path": "started",
+        "equals": true
+      }
+    ]
+  },
+  "artifacts": {
+    "effectLog": "focused",
+    "screenshots": "before-after"
+  },
+  "name": "proof-pickup",
+  "schemaVersion": 1,
+  "steps": [
+    {
+      "holdFrames": 70,
+      "label": "drive right into orb.05",
+      "press": "KeyD",
+      "release": true
+    }
+  ],
+  "subject": "player",
+  "target": "web",
+  "viewport": {
+    "height": 720,
+    "width": 1280
+  },
+  "warmupFrames": 10
+}

@@ -1,0 +1,266 @@
+# Agent Engine Wishlist (2026-07-11)
+
+Missing ENGINE features that would make agent game authoring dramatically
+easier, written from hands-on experience building `coin-patrol`,
+`humanoid-physics-course`, and the benchmark games (checkpoint-race,
+physics-knockdown, collector matrix).
+
+Scope note: this deliberately EXCLUDES the authoring-loop frictions already
+tracked elsewhere — plan routing, cookbook payloads, diagnostics drift,
+resource-schema derivation, iterate cleanliness
+(`PRD-authoring-golden-path-frictions-2026-07-11.md`,
+`NEXT-FOCUS-2026-07-11.md` lever 1, `engine-improvement-candidates-2026-07-07.md`
+candidates 2-6). Everything below is a runtime/scripting-contract gap, not a
+CLI gap. Ranked by how much authored-delta cost each one removes.
+
+---
+
+## Tier 1 — structural: these shape every script I write
+
+### 1. Script module system (relative imports between script files)
+
+**Today.** The bundler (`packages/compiler/src/scripts/bundle.ts`) only
+allows whitelisted imports (`@threenative/script-stdlib`, kit packages). No
+relative imports between `src/scripts/**` files, so every system export must
+be fully self-contained. Result: shared helpers get copy-pasted into every
+system, single files balloon (`coinPatrolRules` holds collect + lives +
+win/lose in one export because splitting it is impossible), and any real
+abstraction requires a stdlib PR — which means touching TWO implementations
+(`src/*.ts` and `bundle-source.ts`) kept in sync by a parity test.
+
+**Want.** `import { patrolStep } from "./shared/ai"` just works, with the
+bundler inlining project-local modules (still no node_modules, no side
+effects — a bounded, pure-module contract is fine). Secondary: collapse the
+dual stdlib implementation so extending the stdlib is one edit, not two.
+
+**Why it is Tier 1.** This is the single largest structural constraint on
+script quality. It taxes every game and it is why the cookbook's "self-
+contained system" examples are so verbose.
+
+### 2. Glass-box runtime: write-conflict and propagation diagnostics
+
+**Today.** When a write does not take effect, the engine is a black box.
+Documented costs: physics-knockdown-r2 burned 9 identical playtest failures
+because a declared projectile velocity never reached `context.state`;
+kinematic double-integration (stepPhysics integrates RigidBody velocity AND
+the script setPoses — entity moves twice per tick) was findable only by
+reading engine source; "artifact forensics + engine-source greps" were ~10
+of 35 steps in the round-5 median run. NEXT-FOCUS lever 1.4 root-causes the
+one bug; this asks for the general facility.
+
+**Want.** An opt-in audit mode (`tn playtest ... --audit-writes` or an
+iterate flag) that reports, per tick, structured events for:
+
+- two writers touching the same entity/component in one tick (script pose
+  write + physics integration is the canonical case — this one alone should
+  be a permanent warning, not just audit output);
+- a component write overwritten before render;
+- a resource patch dropped or clobbered by a composing patch;
+- a declared IR value (velocity, input axis) that never appears in the
+  script-visible `context.state`.
+
+**Why.** "Engine bug indistinguishable from author bug" is the most
+expensive failure class an agent can hit: it produces repeated identical
+playtest failures with zero diagnostic progress, and the only escape hatch
+is grepping engine internals — the exact churn class the benchmark ratchets
+against.
+
+### 3. Portable tween/interpolation command
+
+**Today.** Every piece of juice — pickup scale-pop, hit flash, door slide,
+platform ease, fade-out on death — is hand-integrated in fixedUpdate:
+stash start time in script state, compute t, lerp, clamp, clean up. It is
+the biggest source of gameplay-script boilerplate after movement, and each
+hand-rolled version is a fresh opportunity for a dt bug.
+
+**Want.** A fire-and-forget command implemented in both runtimes:
+
+```ts
+commands.tween(entity, {
+  property: "scale" | "position" | "rotation" | "material.emissive" | "material.opacity",
+  to: [1.4, 1.4, 1.4],
+  duration: 0.25,
+  easing: "ease-out",       // small fixed set
+  yoyo?: true, loops?: 1,
+})
+```
+
+Delayed commands and bounded particles already establish the pattern
+(script emits a bounded declarative effect; runtime owns execution), so
+this fits the existing contract shape.
+
+**Why.** Cuts tens of lines per effect down to one, and directly raises the
+"juice" ceiling that candidate 7 (beautiful scaffolds) and PRD-012 (ship a
+good game) care about.
+
+### 4. Stateful sensor phases engine-side
+
+**Today.** `tracePhysicsSensors` builds its previous-occupants map fresh on
+every call (`packages/runtime-web-three/src/sensors.ts` — `const previous =
+new Map()` inside the trace), so the raw API reports "enter" every tick.
+Dedup is pushed into script state; stdlib `TriggerEx` exists purely as the
+workaround. Every agent that has not yet read that fine print ships a
+coin that collects itself 60 times per second.
+
+**Want.** The runtime owns occupancy across ticks (both adapters), so
+`enter`/`exit` fire exactly once per transition and `stay` is the repeating
+phase. Keep `TriggerEx` as a deprecated alias for one cycle.
+
+**Why.** Triggers are THE core mechanic primitive (pickups, checkpoints,
+win zones, hazards). The current semantics are a silent-wrong-behavior
+footgun on the most-used API in gameplay scripting.
+
+---
+
+## Tier 2 — behavior primitives every game re-implements
+
+### 5. Waypoint patrol / basic steering component
+
+**Today.** Coin-patrol's drones, every hazard in kinematic-hazard, every
+"enemy walks a route" NPC: hand-rolled waypoint math (distance check,
+advance index, loop/ping-pong, face heading, dt-scaled step) in a script.
+Same ~40 lines every time, same off-by-one and facing bugs every time.
+
+**Want.** A portable component (authored in scene/prefab JSON, executed by
+both runtimes):
+
+```json
+"Patrol": { "waypoints": [[0,0,8],[8,0,8],[8,0,0]], "speed": 3,
+             "mode": "loop" | "ping-pong", "faceHeading": true,
+             "pauseAtWaypoint": 0.5 }
+```
+
+plus a minimal script surface to pause/resume/redirect it (for "chase when
+player near" logic the script keeps owning). Not asking for navmesh or
+avoidance — straight-line waypoint traversal covers the archetype and
+benchmark games.
+
+### 6. Per-entity state machine primitive
+
+**Today.** Enemy AI (idle -> chase -> return), game phases beyond the
+match flow, and multi-step hazards are hand-rolled switch statements over
+string state stashed in script state, with hand-rolled timers per state.
+GameFlow covers the MATCH lifecycle; nothing covers per-ENTITY state.
+
+**Want.** A small declarative FSM: states, transitions on
+(event | sensor phase | timer | predicate name), current state readable and
+transitions traceable in playtest output. Even a stdlib-only `FsmEx` with
+first-class playtest visibility would capture most of the value; engine
+awareness is what makes it assertable (`--expect-state drone1:chase`).
+
+### 7. Runtime spawn/despawn with tags and queries (and native reconciliation)
+
+**Today.** `SpawnEx` exists script-side, but: spawned entities are awkward
+to enumerate later (wave cleanup, "how many coins remain" is hand-tracked
+in a resource), there are no lifecycle hooks, and — known HIGH parity gap —
+native live spawn/despawn reconciliation diverges, so scripts that spawn
+silently break the "same game, both adapters" claim (NEXT-FOCUS lever 3.2).
+
+**Want.** Spawn-by-prefab with tags; `entities.withTag("coin")` queries;
+optional onSpawn/onDespawn observation events; native reconciliation fixed.
+Playtest gains `--expect-count tag:coin=10` style assertions for free.
+
+### 8. Declarative countdown/timer resource
+
+**Today.** Every timed game re-implements dt accumulation in a script to
+tick a countdown resource, and stdlib `TimerEx` is the copy-paste helper.
+The engine already owns fixed-tick time; the script is pure plumbing.
+
+**Want.** A resource-schema annotation (or `tn`-authorable block) marking a
+numeric resource as engine-ticked: direction up/down, limit, autostart,
+fires a named event at the limit. Scripts subscribe to the event; HUD binds
+the resource as today. This is also the L2 "timer block" from candidate 3 —
+the ask here is that the TICKING lives in the runtime, not in a generated
+stub script.
+
+---
+
+## Tier 3 — feel/juice ceiling (one-line effects)
+
+### 9. Script-accessible camera shake/kick
+
+Native camera helpers already implement shake (`cameras.rs`); scripts
+cannot invoke it portably. A bounded `commands.cameraShake({ amplitude,
+frequency, duration })` (web implements the same math) turns "hit feedback"
+from a hand-rolled rig into one line. While in that file: the hardcoded
+1/60 smoothing delta in the native follow/orbit/shake helpers should use
+the real frame delta.
+
+### 10. Particle and audio one-shot presets
+
+Bounded particles and script audio exist; what is missing is the preset
+layer: `commands.burst(entity, "pickup-sparkle")`, `audio.play(id, {
+pitchVariance: 0.1 })`. Today reaching for particles means authoring a full
+emitter config — so benchmark games simply do not use them, and everything
+pops out of existence dry. A curated preset set (pickup, explosion, trail,
+dust) matching the look-profile palette would get juice into generated
+games at zero authored cost.
+
+### 11. World-space text/billboards
+
+Damage numbers, "+1", pickup labels, NPC names. Retained UI is
+screen-space only; there is no portable way to put text at an entity. Even
+a billboarded text quad component (no styling beyond size/color, follows
+entity, optional float-and-fade lifetime — pairs with tweens, item 3)
+covers the whole use class.
+
+---
+
+## Tier 4 — infrastructure gaps
+
+### 12. Persistent storage API
+
+No portable way to save a high score or unlock between sessions (DOM/
+filesystem access is rightly walled off). A tiny namespaced key-value
+`storage.get/set` (localStorage web, save-path file native, quota-bounded,
+JSON-serializable values only) unlocks the entire "progression" category —
+currently impossible to author at all.
+
+### 13. Seeded RNG service in script context
+
+Scripts needing randomness (spawn jitter, drop tables, pitch variance)
+reach for `Math.random`, which makes every playtest assertion flaky and
+replay non-deterministic. A `context.random` (seeded per scenario, seed
+recorded in playtest artifacts, reseedable) makes randomness compatible
+with the proof loop instead of hostile to it.
+
+### 14. Interpolated poses for update-schedule scripts
+
+Known gap (humanoid-physics-course DIAGNOSIS-2, NEXT-FOCUS lever 3.3):
+fixed-tick interpolation landed for rendered transforms, but
+`update`-schedule scripts (camera rigs) still read raw latest fixed-tick
+poses — visible sawtooth on anything that follows a physics-driven entity.
+Overlay interpolated samples onto the variable-schedule context snapshot in
+both runtimes. Listed here for completeness because until it lands, "write
+a custom camera rig" — a normal thing for a game to need — produces
+janky output through no fault of the author.
+
+### 15. Expose scene-ray/screen-ray queries to scripts
+
+Collider-independent scene-ray queries exist but are adapter-private
+(rendering capability doc). Click-to-move, cursor aiming, hover-highlight,
+and line-of-sight checks all need "ray from camera through cursor" or
+"ray A to B, first hit". A bounded `physics.raycast(origin, dir, {maxDist,
+tags})` + `camera.screenRay(pointer)` unlocks three archetypes (top-down
+click-move, shooter aim, tower-defense placement) that are currently
+unauthorable.
+
+---
+
+## Suggested slicing
+
+Highest value density first: item 4 (small, both runtimes, kills a silent
+footgun), item 2's double-write warning (small slice of the audit mode),
+item 3 (medium, pattern already exists via delayed commands), item 1
+(medium-large, compiler-only). Items 5-8 compose naturally with the L1/L2
+scaffold work already planned in `engine-improvement-candidates-2026-07-07.md`
+candidates 2-3 — each block gets dramatically cheaper if the runtime owns
+the primitive underneath it. Tier 3 items are cheap and directly serve
+PRD-012's "genuinely good game" bar. Tier 4 items 12-13 are small and
+unlock whole categories (progression, deterministic proof of random
+mechanics).
+
+Per the parity freeze: everything above qualifies for web-first
+implementation with native following under a shipped-game need, EXCEPT
+items 4, 7, and 14, which are cross-runtime correctness fixes rather than
+new surface.

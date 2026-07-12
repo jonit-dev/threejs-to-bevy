@@ -1,0 +1,48 @@
+{
+  "assert": {
+    "diagnostics": {
+      "noConsoleErrors": true,
+      "runtimeReady": true
+    },
+    "hud": [
+      {
+        "id": "hud.lives",
+        "textIncludes": "Lives"
+      }
+    ],
+    "resources": [
+      {
+        "id": "Lives",
+        "path": "count",
+        "changed": true
+      }
+    ]
+  },
+  "artifacts": {
+    "effectLog": "focused",
+    "screenshots": "before-after"
+  },
+  "name": "proof-drone-hit",
+  "schemaVersion": 1,
+  "steps": [
+    {
+      "holdFrames": 4,
+      "label": "walk up onto the patrol line",
+      "press": "KeyW",
+      "release": true
+    },
+    {
+      "holdFrames": 170,
+      "label": "wait for drone.01 to sweep through",
+      "press": "KeyQ",
+      "release": true
+    }
+  ],
+  "subject": "player",
+  "target": "web",
+  "viewport": {
+    "height": 720,
+    "width": 1280
+  },
+  "warmupFrames": 10
+}

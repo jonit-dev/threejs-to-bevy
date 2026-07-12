@@ -48,7 +48,7 @@ const NATIVE_VOLUMETRIC_BASE_ABSORPTION: f32 = 0.1;
 const NATIVE_VOLUMETRIC_BASE_SCATTERING: f32 = 0.0;
 const NATIVE_VOLUMETRIC_SHAFT_SCATTERING_SCALE: f32 = 0.35;
 const NATIVE_VOLUMETRIC_SHAFT_DENSITY_SCALE: f32 = 0.025;
-const NATIVE_VOLUMETRIC_SCATTERING_ASYMMETRY: f32 = 0.9;
+const NATIVE_VOLUMETRIC_SCATTERING_ASYMMETRY: f32 = 0.75;
 // Bevy 0.14's deferred irradiance fallback cannot reconstruct the web
 // hemisphere ray that carries floor/window bounce onto the room ceiling. A
 // shadowless upward light supplies only that missing downward-facing lobe and
@@ -58,11 +58,6 @@ const NATIVE_SSGI_CEILING_BOUNCE_ILLUMINANCE: f32 = 0.6;
 // upward-facing receivers. Keep the floor lobe lower than the ceiling lobe so
 // it restores the web's surface response without flattening the dark room.
 const NATIVE_SSGI_FLOOR_BOUNCE_ILLUMINANCE: f32 = 0.25;
-// The native compatibility shader uses the web pass's additive radiance
-// semantics. Web maps authored intensity to 0.5 and couples the primary
-// light color to min(2, sunIntensity * 0.25); for this showcase's sun that is
-// an authored-intensity scale of 0.45.
-const NATIVE_VOLUMETRIC_LIGHT_INTENSITY_SCALE: f32 = 0.45;
 pub(crate) fn native_ssgi_ambient_multiplier(config: Option<&RuntimeConfigIr>) -> f32 {
     let Some(ssgi) = config
         .and_then(|config| config.renderer.as_ref())
@@ -483,11 +478,16 @@ pub(crate) fn native_volumetric_fog_settings(
     let fog_color = Color::WHITE;
     let quality = god_rays.quality.as_str();
     let step_count = match quality {
-        "low" => 24,
-        "high" => 96,
-        _ => 48,
+        "low" => 16,
+        "high" => 64,
+        _ => 32,
     };
     let shaft_density = god_rays.density;
+    // Bevy premultiplies directional-light illuminance into the shader light
+    // color. Cancel that authored sun intensity here so native matches the
+    // web pass's `min(2, sunIntensity * 0.25)` color mapping at every profile.
+    let sun_intensity = profile.sun.intensity.max(1e-3);
+    let light_intensity_scale = 0.5 * (sun_intensity * 0.25).min(2.0) / sun_intensity;
     Some(bevy::pbr::VolumetricFogSettings {
         fog_color,
         ambient_color: color_to_bevy(&profile.ambient.color),
@@ -500,7 +500,7 @@ pub(crate) fn native_volumetric_fog_settings(
         density: shaft_density * NATIVE_VOLUMETRIC_SHAFT_DENSITY_SCALE,
         scattering_asymmetry: NATIVE_VOLUMETRIC_SCATTERING_ASYMMETRY,
         light_tint: color_to_bevy(&profile.sun.color),
-        light_intensity: god_rays.intensity * NATIVE_VOLUMETRIC_LIGHT_INTENSITY_SCALE,
+        light_intensity: god_rays.intensity * light_intensity_scale,
     })
 }
 

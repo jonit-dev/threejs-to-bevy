@@ -1,0 +1,94 @@
+{
+  "bindings": [
+    {
+      "node": "countdown",
+      "resource": "GameState.countdown"
+    },
+    {
+      "node": "hud.orbs",
+      "resource": "Orbs.statusText"
+    },
+    {
+      "node": "hud.lives",
+      "resource": "Lives.statusText"
+    },
+    {
+      "node": "hud.time",
+      "resource": "RoundTimer.statusText"
+    },
+    {
+      "node": "hud.status",
+      "resource": "Match.statusText"
+    }
+  ],
+  "id": "hud",
+  "nodes": [
+    {
+      "id": "countdown",
+      "layout": {
+        "align": "center",
+        "justify": "center",
+        "top": 48,
+        "width": 1280
+      },
+      "text": "Ready",
+      "type": "text"
+    },
+    {
+      "id": "hud.orbs",
+      "layout": {
+        "justify": "start",
+        "top": 16,
+        "width": 300
+      },
+      "text": "Orbs 0/8",
+      "type": "text"
+    },
+    {
+      "id": "hud.lives",
+      "layout": {
+        "justify": "start",
+        "top": 44,
+        "width": 300
+      },
+      "text": "Lives 3",
+      "type": "text"
+    },
+    {
+      "id": "hud.time",
+      "layout": {
+        "justify": "end",
+        "top": 16,
+        "width": 1264
+      },
+      "text": "Time 45",
+      "type": "text"
+    },
+    {
+      "id": "hud.status",
+      "layout": {
+        "justify": "center",
+        "top": 88,
+        "width": 1280
+      },
+      "text": "Collect the orbs before meltdown",
+      "type": "text"
+    }
+  ],
+  "provenance": {
+    "recipes/hud.status": {
+      "kind": "hud-status-cluster",
+      "source": "template.structured-source-starter",
+      "version": 1
+    }
+  },
+  "recipes": [
+    {
+      "id": "hud.status",
+      "kind": "hud-status-cluster",
+      "props": {}
+    }
+  ],
+  "schema": "threenative.ui",
+  "version": "0.1.0"
+}
