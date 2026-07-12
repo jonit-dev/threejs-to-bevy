@@ -130,8 +130,8 @@ function mergeSchemaRecords(
   for (const [name, value] of Object.entries(right)) {
     merged[name] = {
       fields: {
-        ...(merged[name]?.fields ?? {}),
         ...value.fields,
+        ...(merged[name]?.fields ?? {}),
       },
     };
   }

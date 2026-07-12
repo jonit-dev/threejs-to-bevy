@@ -108,6 +108,9 @@ test("should register common 3d game vertical slice recipes with supported opera
     assert.equal(plan.gameplayBlocks.length > 0, true, `${recipeId} should declare gameplay blocks`);
     assert.equal(plan.proofHints.length > 0, true, `${recipeId} should declare proof hints`);
     assert.equal(plan.scriptResponsibilities.length > 0, true, `${recipeId} should declare script responsibilities`);
+    if (recipeId === "vehicle-checkpoint") {
+      assert.equal(plan.proofCommands.some((command) => command.includes("--press KeyW")), true);
+    }
   }
 });
 

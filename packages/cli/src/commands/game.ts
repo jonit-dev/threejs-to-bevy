@@ -248,7 +248,7 @@ async function gamePlanCommand(argv: readonly string[]): Promise<ICommandResult>
     schema: "threenative.game-plan",
     scriptPlan: buildScriptPlan(inventory),
     sourcePlan: buildSourcePlan(inventory),
-    steps: buildGamePlanSteps(defaults),
+    steps: buildGamePlanSteps(defaults, kitCandidates.find((candidate) => candidate.score > 0)?.recipeId),
   };
   const planArtifactPath = resolve(projectPath, "artifacts/game-production/plan.json");
   await mkdir(resolve(planArtifactPath, ".."), { recursive: true });
@@ -1264,22 +1264,29 @@ function cookbookForGoal(goal: string): string {
   return "trigger-zone-win";
 }
 
-function buildGamePlanSteps(defaults: { cameraId: string; playerId: string; sceneId: string }): IGamePlanStep[] {
+function buildGamePlanSteps(
+  defaults: { cameraId: string; playerId: string; sceneId: string },
+  primaryRecipeId: string | undefined,
+): IGamePlanStep[] {
+  const playableRecipe = primaryRecipeId === "top-down-collector" || primaryRecipeId === "lane-runner" || primaryRecipeId === "vehicle-checkpoint"
+    ? primaryRecipeId
+    : "third-person-controller";
+  const playableRecipeArgs = playableRecipe === "top-down-collector"
+    ? { cameraId: defaults.cameraId, inputDocId: `${defaults.sceneId}-input`, playerId: defaults.playerId, sceneId: defaults.sceneId }
+    : playableRecipe === "vehicle-checkpoint"
+      ? { cameraId: defaults.cameraId, sceneId: defaults.sceneId, vehicleId: defaults.playerId }
+      : { cameraId: defaults.cameraId, entityId: defaults.playerId, sceneId: defaults.sceneId };
   return [
     recipeStep({
       apply: true,
       id: "playable-loop",
       phase: "gameplay",
-      recipe: "third-person-controller",
-      recipeArgs: {
-        cameraId: defaults.cameraId,
-        entityId: defaults.playerId,
-        sceneId: defaults.sceneId,
-      },
+      recipe: playableRecipe,
+      recipeArgs: playableRecipeArgs,
       summary: "Create or verify a player verb, objective, input path, camera, and feedback loop.",
     }),
     recipeStep({
-      apply: true,
+      apply: playableRecipe === "third-person-controller",
       id: "collectible-or-goal",
       phase: "gameplay",
       recipe: "collectible",

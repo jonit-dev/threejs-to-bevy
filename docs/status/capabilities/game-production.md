@@ -78,6 +78,14 @@ Current support:
   `verify:generated-games` requires that bundle for release-enrolled projects,
   checks that it passed, and rejects stale bundle values that drift from the
   top-level screenshot metrics.
+- Top-down collector plans now route movement to the `top-down-collector`
+  recipe, collectible proof uses pickup assertions, and the emitted-command
+  gate checks proof semantics in addition to command exit status.
+- Generated-game score/QA rejects registered empty gameplay exports and
+  requires a playtest resource or HUD mutation assertion. `examples/coin-patrol`
+  is enrolled as a build-only forcing-function example with committed pickup,
+  lives/retry, and win-state scenarios; its native input parity, asset
+  provenance, mobile proof, and visual baseline remain explicit blockers.
 - Fresh scaffold-first token-cost evidence passes the <=0.5x raw-token target:
   collector median 98,244.5 vs 791,745 vanilla (0.124x), lane-runner median
   84,250.5 vs 1,020,845 vanilla (0.083x), with 3.5 median tool steps and zero
@@ -119,6 +127,9 @@ Verification:
 - `pnpm verify:generated-games`
 - `pnpm verify:example-build-sweep`
 - `pnpm verify:template-production`
+- `pnpm verify:emitted-commands`
+- `pnpm verify:cookbook`
+- `tn iterate --project . --json` from a committed collector example
 - `pnpm run iterate` from `examples/neon-harbor-rescue`
 - `pnpm verify:smoke`
 - `tn iterate --project . --json`

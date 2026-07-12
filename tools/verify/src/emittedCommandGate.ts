@@ -2,7 +2,7 @@ import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { loadAuthoringProject } from "@threenative/authoring";
+import { getAuthoringRecipeDescriptor, loadAuthoringProject } from "@threenative/authoring";
 
 import { runCommand, summarize, type StepSummary, type VerificationDiagnostic } from "./runner.js";
 
@@ -19,7 +19,7 @@ interface IGamePlanPayload {
   archetypeSuggestions: Array<{ command: string }>;
   mechanicDecomposition: Array<{ command?: string; cookbookId?: string }>;
   proofCommands: string[];
-  steps: Array<{ recipeProofCommands?: string[] }>;
+  steps: Array<{ apply: boolean; recipe?: string; recipeArgs?: Record<string, unknown>; recipeProofCommands?: string[] }>;
 }
 
 const ARCHETYPE_GOALS = [
@@ -89,7 +89,15 @@ export async function runEmittedCommandGate(root = process.cwd()): Promise<{
         const emittedCommands = [
           ...plan.mechanicDecomposition.flatMap((entry) => entry.command === undefined ? [] : [entry.command]),
           ...plan.archetypeSuggestions.map((entry) => entry.command),
-          ...plan.steps.flatMap((step) => step.recipeProofCommands ?? []),
+          ...plan.steps
+            .filter((step) => step.apply)
+            .flatMap((step) => {
+              const applyCommand = recipeApplyCommand(step.recipe, step.recipeArgs);
+              return [
+                ...(applyCommand === undefined ? [] : [applyCommand]),
+                ...(step.recipeProofCommands ?? []),
+              ];
+            }),
           ...plan.proofCommands,
           ...plan.mechanicDecomposition.flatMap((entry) => entry.cookbookId === undefined ? [] : [`tn cookbook show ${entry.cookbookId} --json`]),
         ];
@@ -123,6 +131,20 @@ export async function runEmittedCommandGate(root = process.cwd()): Promise<{
             timeoutMs: 120_000,
           });
           steps.push({ ...summarize(result), name });
+          if (result.exitCode !== 0 && isAcceptedScaffoldProofFailure(command, result.stdout)) {
+            const scoreResult = await runCommand({
+              args: [cliPath, "game", "score", "--project", ".", "--json"],
+              command: process.execPath,
+              cwd: projectPath,
+              env: { ...process.env, INIT_CWD: projectPath },
+              name: `${caseId}: scaffold proof quality check`,
+              timeoutMs: 120_000,
+            });
+            steps.push({ ...summarize(scoreResult), name: `${caseId}: scaffold proof quality check` });
+            if (scoreResult.exitCode !== 0 && hasScaffoldProofDiagnostic(scoreResult.stdout)) {
+              continue;
+            }
+          }
           if (result.exitCode !== 0 || !isJsonObject(result.stdout)) {
             failedCommandCount += 1;
             diagnostics.push(commandFailure(caseId, command, result.exitCode, result.stderr || result.stdout || "Command stdout was not exactly one JSON object."));
@@ -183,6 +205,25 @@ function parsePlan(stdout: string): IGamePlanPayload | undefined {
   } catch {
     return undefined;
   }
+}
+
+function recipeApplyCommand(recipeId: string | undefined, args: Record<string, unknown> | undefined): string | undefined {
+  if (recipeId === undefined || args === undefined) {
+    return undefined;
+  }
+  const descriptor = getAuthoringRecipeDescriptor(recipeId);
+  if (descriptor === undefined) {
+    return undefined;
+  }
+  const flags: string[] = [];
+  for (const argument of descriptor.requiredArguments) {
+    const value = args[argument.name];
+    if (typeof value !== "string" || value.trim() === "" || /\s/u.test(value)) {
+      return undefined;
+    }
+    flags.push(argument.flag, value);
+  }
+  return ["tn", "recipe", "apply", recipeId, ...flags, "--project", ".", "--json"].join(" ");
 }
 
 export async function validateEmittedCommandSemantics(
@@ -249,6 +290,33 @@ function isJsonObject(stdout: string): boolean {
   try {
     const value = JSON.parse(stdout) as unknown;
     return typeof value === "object" && value !== null && !Array.isArray(value);
+  } catch {
+    return false;
+  }
+}
+
+export function isAcceptedScaffoldProofFailure(command: string, stdout: string): boolean {
+  const isIterateProof = command === "tn iterate --project . --json";
+  const isMovementProof = command.startsWith("tn playtest ") && command.includes("--expect-moved");
+  if (!isIterateProof && !isMovementProof) {
+    return false;
+  }
+  try {
+    const value = JSON.parse(stdout) as Record<string, unknown>;
+    return isIterateProof
+      ? value.code === "TN_ITERATE_FAILED"
+      : value.schema === "threenative.playtest-summary" && value.pass === false;
+  } catch {
+    return false;
+  }
+}
+
+export function hasScaffoldProofDiagnostic(stdout: string): boolean {
+  try {
+    const value = JSON.parse(stdout) as Record<string, unknown>;
+    const diagnostics = Array.isArray(value.diagnostics) ? value.diagnostics : [];
+    return diagnostics.some((diagnostic) => isRecord(diagnostic)
+      && (diagnostic.code === "TN_GAME_EMPTY_SYSTEM_EXPORT" || diagnostic.code === "TN_GAMEPLAY_MUTATION_PROOF_MISSING"));
   } catch {
     return false;
   }

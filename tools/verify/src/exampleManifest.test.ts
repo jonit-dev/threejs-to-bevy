@@ -18,6 +18,7 @@ test("example manifest should classify every current example", async () => {
     "examples/metro-surfer-heist",
   ]);
   assert.deepEqual(await examplePathsByClassification(repoRoot, "build-only"), [
+    "examples/coin-patrol",
     "examples/lumen-lite-showcase",
     "examples/neon-harbor-rescue",
     "examples/stylized-nature-component",

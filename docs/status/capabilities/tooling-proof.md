@@ -14,7 +14,10 @@ Current support:
 - `pnpm verify:emitted-commands` scaffolds the two maintained starters for five
   archetype goals, executes every command and cookbook ID emitted by
   `tn game plan`, requires one clean JSON object on stdout, and records the
-  behavioral `emittedCommandFailureRate` counter with a target of zero.
+  behavioral `emittedCommandFailureRate` counter with a target of zero
+  unexpected failures. A fresh recipe scaffold may fail its emitted iterate or
+  movement proof only when a follow-up quality check confirms the structured
+  empty-system or missing-mutation proof diagnostic.
 - `pnpm verify:agent-io` for documented agent command stdout budgets; deep
   playtest logs remain in artifact files while stdout stays compact.
 - `pnpm verify:session-cost` replays scaffold-first paths in CI without LLM
@@ -61,6 +64,13 @@ Current support:
   lifecycle classification from `examples/manifest.json`, reports explicit
   proof exemptions, fails unknown requirement keys, and drift-checks release
   enrollment/build-only policy against the owning manifest fields.
+- `pnpm verify:cookbook` validates cookbook command/proof strings against the
+  CLI registry, checks diagnostic cookbook references, bundles each script
+  payload, and rejects empty exported systems before the authoring validation
+  and build checks run.
+- `pnpm verify:emitted-commands` additionally checks semantic alignment between
+  emitted proof commands and their authored subject/assertion kinds, not only
+  command exit status.
 - Generated-game visual-quality proof validation now requires the compact
   `game-quality` metric bundle emitted by `tn game qa --run-proof`, validates
   bundle pass/threshold shape, and reports stale bundle values separately from

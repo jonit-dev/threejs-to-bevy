@@ -570,9 +570,10 @@ function defaultRecipeMetadata(recipeId: AuthoringRecipeId, args: Record<string,
   }
   const sceneId = optionalStringValue(args, "sceneId") ?? "arena";
   const entityId = optionalStringValue(args, "playerId") ?? optionalStringValue(args, "vehicleId") ?? optionalStringValue(args, "targetId") ?? optionalStringValue(args, "entityId") ?? "<player-id>";
+  const movementKey = recipeId === "vehicle-checkpoint" || entityId.endsWith(".car") ? "KeyW" : "KeyD";
   const movementProof = recipeId === "collectible" || recipeId === "top-down-collector"
     ? "tn playtest scaffold --assert pickup --project . --json"
-    : `tn playtest --project . --entity ${entityId} --press KeyD --frames 30 --expect-moved --json`;
+    : `tn playtest --project . --entity ${entityId} --press ${movementKey} --frames 30 --expect-moved --json`;
   return {
     gameplayBlocks: recipeGameplayBlocks(recipeId),
     generatedIds: sortRecordArrays(generatedIds),

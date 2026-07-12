@@ -53,6 +53,16 @@ Current support:
   CLI usage output.
 - Prescriptive diagnostics now attach optional structured `fix` payloads for
   high-friction rejection codes.
+- Resource access literals in `defineBehavior` scripts can derive declared
+  resource fields at compile time; missing-schema fixes now name the exact
+  authoring file and emit a loader-valid full-document snippet, while legacy
+  IR-shaped schema documents receive a structured shape diagnostic instead of
+  an uncaught build exception.
+- Plan and cookbook proof surfaces are cross-reference checked against the
+  CLI registry and diagnostic catalog. Gameplay cookbook scripts are bundled
+  and rejected when their exported systems are empty, and generated-game
+  scoring rejects registered empty systems or missing resource/HUD mutation
+  proof.
 - Rigid body kind diagnostics include the exact `fixed` to `static` repair for
   immovable authored bodies.
 
@@ -81,6 +91,10 @@ Verification:
 - `pnpm --filter @threenative/cli test -- --run "actor"`
 - `pnpm --filter @threenative/mcp-server test`
 - `pnpm verify:cookbook`
+- `pnpm verify:emitted-commands`
+- `pnpm --filter @threenative/ir test`
+- `pnpm --filter @threenative/compiler test`
+- `pnpm --filter @threenative/cli test`
 - `pnpm verify:template-production`
 - `pnpm verify:emitted-commands` executes every plan-emitted mutation, actor
   suggestion, proof command, and cookbook reference across both maintained

@@ -29,3 +29,36 @@ test("should emit ecs health and damage schemas", () => {
   assert.deepEqual(Object.keys(emitted.resourceSchemas.schemas), ["GameState"]);
   assert.deepEqual(emitted.world.entities[0]?.components.Health, { current: 100, max: 100 });
 });
+
+test("should preserve authored resource field kinds when inferred script access is less specific", () => {
+  const emitted = ecsToIr({
+    toJSON: () => ({
+      componentSchemas: {},
+      entities: [],
+      eventSchemas: {},
+      resources: { RallyState: { hud: "Ready", speed: 0 } },
+      resourceSchemas: { RallyState: { fields: { hud: { kind: "string" }, speed: { kind: "number" } } } },
+      systems: [{
+        commands: [],
+        eventReads: [],
+        eventWrites: [],
+        name: "rally",
+        queries: [],
+        reads: [],
+        resourceReads: ["RallyState"],
+        resourceWrites: ["RallyState"],
+        services: [],
+        script: {
+          exportName: "updateRally",
+          source: `export function updateRally(context: any) {\n  const state = context.resources.get("RallyState", { hud: "Ready", speed: 0 });\n  context.resources.patch("RallyState", { hud: buildHud(state.speed), speed: Math.round(state.speed) });\n}\nfunction buildHud(value: number): string { return String(value); }`,
+        },
+        schedule: "fixedUpdate",
+        writes: [],
+      }],
+    }),
+  });
+
+  assert.deepEqual(emitted.resourceSchemas.schemas.RallyState, {
+    fields: { hud: { kind: "string" }, speed: { kind: "number" } },
+  });
+});

@@ -60,7 +60,7 @@ export async function runCookbookGate(options: { entriesDir?: string; root?: str
     parsedEntries.push(parsed);
     entries.push(await verifyEntry({ entry: parsed, root, templateDir }));
   }
-  const diagnostics = validateCookbookCrossReferences(parsedEntries, entriesDir);
+  const diagnostics = validateCookbookCrossReferences(parsedEntries, entriesDir, entriesDir === resolve(root, "docs/cookbook"));
   const report = {
     diagnostics,
     entries,
@@ -170,17 +170,20 @@ function parseEntry(source: string, file: string): IParsedCookbookEntry | undefi
 function validateCookbookCrossReferences(
   parsedEntries: readonly IParsedCookbookEntry[],
   entriesDir: string,
+  validateDiagnosticReferences: boolean,
 ): Array<{ code: string; message: string; severity: "error" | "warning" }> {
   const diagnostics: Array<{ code: string; message: string; severity: "error" | "warning" }> = [];
   const cookbookIds = new Set(parsedEntries.map((entry) => entry.id));
-  for (const code of PRESCRIPTIVE_DIAGNOSTIC_CODES) {
-    const cookbookId = code.fix.cookbook;
-    if (cookbookId !== undefined && !cookbookIds.has(cookbookId)) {
-      diagnostics.push({
-        code: "TN_COOKBOOK_GATE_COOKBOOK_REFERENCE_INVALID",
-        message: `Diagnostic '${code.code}' references missing cookbook entry '${cookbookId}' in ${entriesDir}.`,
-        severity: "error",
-      });
+  if (validateDiagnosticReferences) {
+    for (const code of PRESCRIPTIVE_DIAGNOSTIC_CODES) {
+      const cookbookId = code.fix.cookbook;
+      if (cookbookId !== undefined && !cookbookIds.has(cookbookId)) {
+        diagnostics.push({
+          code: "TN_COOKBOOK_GATE_COOKBOOK_REFERENCE_INVALID",
+          message: `Diagnostic '${code.code}' references missing cookbook entry '${cookbookId}' in ${entriesDir}.`,
+          severity: "error",
+        });
+      }
     }
   }
   for (const entry of parsedEntries) {

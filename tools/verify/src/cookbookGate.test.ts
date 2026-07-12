@@ -39,7 +39,7 @@ tn scene missing-command arena --project . --json
 
 ## script
 \`\`\`ts
-export function movePlayerToGoal(): void {}
+export function movePlayerToGoal(): void { return; }
 \`\`\`
 
 ## proof
