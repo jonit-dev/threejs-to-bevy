@@ -175,6 +175,7 @@ export {
   type IComponentReflectionType,
 } from "./reflection.js";
 export type {
+  IIrCountdownDeclaration,
   IIrSystemDeclaration,
   IIrSystemQuery,
   IIrDelayedCommandDeclaration,
@@ -183,6 +184,7 @@ export type {
   IIrComponentHookDeclaration,
   IIrObserverDeclaration,
   IrDelayedCommandCancelPolicy,
+  IrCountdownDirection,
   IrComponentHookKind,
   IrSystemCommand,
   IrObserverPhase,
@@ -318,6 +320,10 @@ export type {
   IUiTooltipIr,
   IUiVirtualRangeIr,
   IKinematicMoverComponent,
+  IPatrolComponent,
+  IStateMachineComponent,
+  IStateMachineTransition,
+  IStateMachineTrigger,
   ISpawnerAreaComponent,
   ISpawnerComponent,
   ISpawnerDespawnPolicyComponent,

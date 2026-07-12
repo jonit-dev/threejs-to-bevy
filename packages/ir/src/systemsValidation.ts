@@ -4,6 +4,8 @@ import type { IIrDiagnostic } from "./validate.js";
 import { PROMOTED_SCRIPT_SERVICES } from "./scriptingHost.js";
 import { isBuiltInComponent, isBuiltInResource } from "./schemaValidation.js";
 import { isRecord } from "./validationPrimitives.js";
+import { validateFiniteRange } from "./validationPrimitives.js";
+import { validateUnsupportedFields } from "./validationDiagnostics.js";
 
 function componentSchemaFix(component: string): NonNullable<IIrDiagnostic["fix"]> {
   return {
@@ -46,7 +48,7 @@ export function validateSystems(
 ): void {
   const rawSystems = systems as unknown as Record<string, unknown>;
   for (const key of Object.keys(rawSystems)) {
-    if (!["channels", "componentHooks", "lifecycle", "observers", "pluginGroups", "plugins", "schema", "scriptAudio", "systems", "tasks", "version"].includes(key)) {
+    if (!["channels", "componentHooks", "countdowns", "lifecycle", "observers", "pluginGroups", "plugins", "schema", "scriptAudio", "systems", "tasks", "version"].includes(key)) {
       diagnostics.push({
         code: "TN_IR_SYSTEMS_FIELD_UNSUPPORTED",
         message: `Systems IR uses unsupported field '${key}'.`,
@@ -68,6 +70,7 @@ export function validateSystems(
   validateSystemObservers(systems.observers, `${path}/observers`, eventSchemas, diagnostics);
   const channelIds = validateSystemChannels(systems.channels, `${path}/channels`, eventSchemas, diagnostics);
   validateSystemTasks(systems.tasks, `${path}/tasks`, channelIds, diagnostics);
+  validateCountdowns(systems.countdowns, `${path}/countdowns`, resourceSchemas, eventSchemas, diagnostics);
   const systemNames = new Set(systems.systems.map((system) => system.name));
   validateSystemOrdering(systems.systems, `${path}/systems`, diagnostics);
   const pluginIds = validateSystemPlugins(systems.plugins, `${path}/plugins`, systemNames, diagnostics);
@@ -234,6 +237,74 @@ export function validateSystems(
       validateSystemCommand(command, `${path}/systems/${systemIndex}/commands/${commandIndex}`, system.name, writes, eventWrites, componentSchemas, eventSchemas, prefabs, diagnostics);
     });
     validateDelayedCommands(system.delayedCommands, `${path}/systems/${systemIndex}/delayedCommands`, system.name, writes, eventWrites, componentSchemas, eventSchemas, prefabs, diagnostics);
+  });
+}
+
+function validateCountdowns(
+  countdowns: ISystemsIr["countdowns"] | undefined,
+  path: string,
+  resourceSchemas: Record<string, IIrNamedSchema>,
+  eventSchemas: Record<string, IIrNamedSchema>,
+  diagnostics: IIrDiagnostic[],
+): void {
+  if (countdowns === undefined) {
+    return;
+  }
+  if (!Array.isArray(countdowns)) {
+    diagnostics.push({ code: "TN_IR_COUNTDOWNS_INVALID", message: "Systems countdowns must be an array.", path, severity: "error" });
+    return;
+  }
+  const ids = new Set<string>();
+  countdowns.forEach((countdown, index) => {
+    const countdownPath = `${path}/${index}`;
+    if (!isRecord(countdown)) {
+      diagnostics.push({ code: "TN_IR_COUNTDOWN_INVALID", message: "Countdown declaration must be an object.", path: countdownPath, severity: "error" });
+      return;
+    }
+    validateUnsupportedFields(diagnostics, countdown, ["autostart", "direction", "event", "field", "id", "limit", "resource"], (key) => ({
+      code: "TN_IR_COUNTDOWN_FIELD_UNSUPPORTED",
+      message: `Countdown uses unsupported field '${key}'.`,
+      path: `${countdownPath}/${key}`,
+      severity: "error",
+    }));
+    if (typeof countdown.id !== "string" || countdown.id.trim() === "" || countdown.id.length > 64) {
+      diagnostics.push({ code: "TN_IR_COUNTDOWN_ID_INVALID", message: "Countdown id must be a non-empty string of at most 64 characters.", path: `${countdownPath}/id`, severity: "error" });
+    } else if (ids.has(countdown.id)) {
+      diagnostics.push({ code: "TN_IR_COUNTDOWN_ID_DUPLICATE", message: `Countdown '${countdown.id}' is duplicated.`, path: `${countdownPath}/id`, severity: "error" });
+    } else {
+      ids.add(countdown.id);
+    }
+    if (countdown.direction !== "up" && countdown.direction !== "down") {
+      diagnostics.push({ code: "TN_IR_COUNTDOWN_DIRECTION_INVALID", message: "Countdown.direction must be up or down.", path: `${countdownPath}/direction`, severity: "error" });
+    }
+    validateFiniteRange(countdown.limit, 0, 86400, `${countdownPath}/limit`, "TN_IR_COUNTDOWN_LIMIT_INVALID", diagnostics);
+    for (const field of ["event", "field", "resource"] as const) {
+      if (typeof countdown[field] !== "string" || countdown[field].trim() === "") {
+        diagnostics.push({ code: "TN_IR_COUNTDOWN_REFERENCE_INVALID", message: `Countdown.${field} must be a non-empty string.`, path: `${countdownPath}/${field}`, severity: "error" });
+      }
+    }
+    if (countdown.autostart !== undefined && typeof countdown.autostart !== "boolean") {
+      diagnostics.push({ code: "TN_IR_COUNTDOWN_AUTOSTART_INVALID", message: "Countdown.autostart must be boolean.", path: `${countdownPath}/autostart`, severity: "error" });
+    }
+    if (typeof countdown.resource === "string" && countdown.resource.trim() !== "") {
+      const schema = resourceSchemas[countdown.resource];
+      if (!isBuiltInResource(countdown.resource) && schema === undefined) {
+        diagnostics.push({
+          code: "TN_IR_COUNTDOWN_RESOURCE_SCHEMA_MISSING",
+          fix: resourceSchemaFix(countdown.resource),
+          message: `Countdown resource '${countdown.resource}' does not have a schema.`,
+          path: `${countdownPath}/resource`,
+          severity: "error",
+        });
+      } else if (schema !== undefined && typeof countdown.field === "string" && schema.fields[countdown.field] === undefined) {
+        diagnostics.push({ code: "TN_IR_COUNTDOWN_RESOURCE_FIELD_MISSING", message: `Countdown field '${countdown.field}' is not declared on resource '${countdown.resource}'.`, path: `${countdownPath}/field`, severity: "error", suggestion: `Declare '${countdown.field}' as a number field on resource '${countdown.resource}'.` });
+      } else if (schema !== undefined && typeof countdown.field === "string" && !["integer", "number"].includes(schema.fields[countdown.field]?.kind ?? "")) {
+        diagnostics.push({ code: "TN_IR_COUNTDOWN_RESOURCE_FIELD_INVALID", message: `Countdown field '${countdown.field}' must use a number or integer schema kind.`, path: `${countdownPath}/field`, severity: "error" });
+      }
+    }
+    if (typeof countdown.event === "string" && countdown.event.trim() !== "" && eventSchemas[countdown.event] === undefined) {
+      diagnostics.push({ code: "TN_IR_COUNTDOWN_EVENT_SCHEMA_MISSING", message: `Countdown event '${countdown.event}' does not have an event schema.`, path: `${countdownPath}/event`, severity: "error", suggestion: `Declare event '${countdown.event}' in the ECS event schemas.` });
+    }
   });
 }
 

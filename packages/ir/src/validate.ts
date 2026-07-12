@@ -54,6 +54,7 @@ import {
   validateUniqueIds,
 } from "./validationPrimitives.js";
 import { validateUnsupportedFields } from "./validationDiagnostics.js";
+import { validateEntityTags } from "./tagValidation.js";
 
 export interface IIrDiagnostic {
   code: string;
@@ -753,7 +754,12 @@ function validateWorld(world: IWorldIr, path: string, diagnostics: IIrDiagnostic
   validateUniqueIds(world.entities, `${path}/entities`, "TN_IR_DUPLICATE_ENTITY_ID", diagnostics);
   validateNavigationResources(world, `${path}/resources`, diagnostics);
   validateRenderingLightBudget(world.resources?.RenderingLightBudget, `${path}/resources/RenderingLightBudget`, diagnostics, world.entities);
-  world.entities.forEach((entity, index) => validateTransformComponents(entity, `${path}/entities/${index}`, diagnostics));
+  world.entities.forEach((entity, index) => {
+    validateEntityTags(entity.tags, `${path}/entities/${index}/tags`, diagnostics);
+    validateTransformComponents(entity, `${path}/entities/${index}`, diagnostics);
+  });
+  world.entities.forEach((entity, index) => validatePatrolComponent(entity, `${path}/entities/${index}`, diagnostics));
+  world.entities.forEach((entity, index) => validateStateMachineComponent(entity, `${path}/entities/${index}`, diagnostics));
   world.entities.forEach((entity, index) => validateKinematicMoverComponent(entity, `${path}/entities/${index}`, diagnostics));
   world.entities.forEach((entity, index) => validateSpawnerComponent(entity, `${path}/entities/${index}`, diagnostics));
   world.entities.forEach((entity, index) => validateRenderComponents(entity, `${path}/entities/${index}`, diagnostics));
@@ -850,6 +856,115 @@ function validateKinematicMoverComponent(entity: IWorldEntity, path: string, dia
       mover.waypoints.forEach((waypoint, index) => validateFiniteVec3(waypoint, `${path}/components/KinematicMover/waypoints/${index}`, "TN_IR_KINEMATIC_MOVER_WAYPOINTS_INVALID", diagnostics));
     }
   }
+}
+
+function validatePatrolComponent(entity: IWorldEntity, path: string, diagnostics: IIrDiagnostic[]): void {
+  const patrol = entity.components.Patrol;
+  if (patrol === undefined) {
+    return;
+  }
+  if (!isRecord(patrol)) {
+    diagnostics.push({ code: "TN_IR_PATROL_INVALID", message: `Patrol '${entity.id}' must be an object.`, path: `${path}/components/Patrol`, severity: "error" });
+    return;
+  }
+  validateUnsupportedFields(diagnostics, patrol, ["faceHeading", "mode", "pauseAtWaypoint", "paused", "speed", "waypoints"], (key) => ({
+    code: "TN_IR_PATROL_FIELD_UNSUPPORTED",
+    message: `Patrol '${entity.id}' uses unsupported field '${key}'.`,
+    path: `${path}/components/Patrol/${key}`,
+    severity: "error",
+  }));
+  if (patrol.mode !== "loop" && patrol.mode !== "ping-pong") {
+    diagnostics.push({ code: "TN_IR_PATROL_MODE_INVALID", message: "Patrol.mode must be loop or ping-pong.", path: `${path}/components/Patrol/mode`, severity: "error", suggestion: "Use mode: 'loop' for a closed route or mode: 'ping-pong' for a reversing route." });
+  }
+  validateFiniteMinimum(patrol.speed, 0, `${path}/components/Patrol/speed`, "TN_IR_PATROL_SPEED_INVALID", diagnostics);
+  if (!Array.isArray(patrol.waypoints) || patrol.waypoints.length < 2 || patrol.waypoints.length > 32) {
+    diagnostics.push({ code: "TN_IR_PATROL_WAYPOINTS_INVALID", message: "Patrol.waypoints must contain between 2 and 32 positions.", path: `${path}/components/Patrol/waypoints`, severity: "error", suggestion: "Keep patrol routes bounded and provide at least two waypoints." });
+  } else {
+    patrol.waypoints.forEach((waypoint, index) => validateFiniteVec3(waypoint, `${path}/components/Patrol/waypoints/${index}`, "TN_IR_PATROL_WAYPOINTS_INVALID", diagnostics));
+  }
+  if (patrol.pauseAtWaypoint !== undefined) {
+    validateFiniteRange(patrol.pauseAtWaypoint, 0, 60, `${path}/components/Patrol/pauseAtWaypoint`, "TN_IR_PATROL_PAUSE_INVALID", diagnostics);
+  }
+  if (patrol.faceHeading !== undefined && typeof patrol.faceHeading !== "boolean") {
+    diagnostics.push({ code: "TN_IR_PATROL_FACE_HEADING_INVALID", message: "Patrol.faceHeading must be boolean.", path: `${path}/components/Patrol/faceHeading`, severity: "error" });
+  }
+  if (patrol.paused !== undefined && typeof patrol.paused !== "boolean") {
+    diagnostics.push({ code: "TN_IR_PATROL_PAUSED_INVALID", message: "Patrol.paused must be boolean.", path: `${path}/components/Patrol/paused`, severity: "error" });
+  }
+  if (entity.components.RigidBody?.kind === "dynamic") {
+    diagnostics.push({ code: "TN_IR_PATROL_DYNAMIC_BODY_UNSUPPORTED", message: `Patrol '${entity.id}' cannot drive a dynamic rigid body.`, path: `${path}/components/Patrol`, severity: "error", suggestion: "Use a kinematic rigid body for runtime-owned patrol intent or author a future force/steering contract." });
+  }
+}
+
+function validateStateMachineComponent(entity: IWorldEntity, path: string, diagnostics: IIrDiagnostic[]): void {
+  const machine = entity.components.StateMachine;
+  if (machine === undefined) {
+    return;
+  }
+  if (!isRecord(machine)) {
+    diagnostics.push({ code: "TN_IR_STATE_MACHINE_INVALID", message: `StateMachine '${entity.id}' must be an object.`, path: `${path}/components/StateMachine`, severity: "error" });
+    return;
+  }
+  validateUnsupportedFields(diagnostics, machine, ["current", "enabled", "initial", "states", "transitions"], (key) => ({
+    code: "TN_IR_STATE_MACHINE_FIELD_UNSUPPORTED",
+    message: `StateMachine '${entity.id}' uses unsupported field '${key}'.`,
+    path: `${path}/components/StateMachine/${key}`,
+    severity: "error",
+  }));
+  if (!Array.isArray(machine.states) || machine.states.length === 0 || machine.states.length > 32 || machine.states.some((state) => typeof state !== "string" || state.trim() === "")) {
+    diagnostics.push({ code: "TN_IR_STATE_MACHINE_STATES_INVALID", message: "StateMachine.states must contain between 1 and 32 non-empty state names.", path: `${path}/components/StateMachine/states`, severity: "error", suggestion: "Use a bounded unique state-name array." });
+  }
+  if (Array.isArray(machine.states) && new Set(machine.states).size !== machine.states.length) {
+    diagnostics.push({ code: "TN_IR_STATE_MACHINE_STATES_DUPLICATE", message: "StateMachine.states must contain unique state names.", path: `${path}/components/StateMachine/states`, severity: "error", suggestion: "Keep each state name unique so transitions have one deterministic target." });
+  }
+  const states = new Set(Array.isArray(machine.states) ? machine.states : []);
+  if (typeof machine.initial !== "string" || !states.has(machine.initial)) {
+    diagnostics.push({ code: "TN_IR_STATE_MACHINE_INITIAL_INVALID", message: "StateMachine.initial must name a declared state.", path: `${path}/components/StateMachine/initial`, severity: "error" });
+  }
+  if (machine.current !== undefined && (typeof machine.current !== "string" || !states.has(machine.current))) {
+    diagnostics.push({ code: "TN_IR_STATE_MACHINE_CURRENT_INVALID", message: "StateMachine.current must name a declared state when authored.", path: `${path}/components/StateMachine/current`, severity: "error" });
+  }
+  if (machine.enabled !== undefined && typeof machine.enabled !== "boolean") {
+    diagnostics.push({ code: "TN_IR_STATE_MACHINE_ENABLED_INVALID", message: "StateMachine.enabled must be boolean.", path: `${path}/components/StateMachine/enabled`, severity: "error" });
+  }
+  if (!Array.isArray(machine.transitions) || machine.transitions.length > 64) {
+    diagnostics.push({ code: "TN_IR_STATE_MACHINE_TRANSITIONS_INVALID", message: "StateMachine.transitions must contain at most 64 transitions.", path: `${path}/components/StateMachine/transitions`, severity: "error" });
+    return;
+  }
+  machine.transitions.forEach((transition, index) => {
+    const transitionPath = `${path}/components/StateMachine/transitions/${index}`;
+    if (!isRecord(transition)) {
+      diagnostics.push({ code: "TN_IR_STATE_MACHINE_TRANSITION_INVALID", message: "StateMachine transition must be an object.", path: transitionPath, severity: "error" });
+      return;
+    }
+    if (!states.has(transition.from) || !states.has(transition.to)) {
+      diagnostics.push({ code: "TN_IR_STATE_MACHINE_TRANSITION_STATE_INVALID", message: "StateMachine transition from/to must name declared states.", path: transitionPath, severity: "error" });
+    }
+    const trigger = transition.trigger;
+    if (!isRecord(trigger)) {
+      diagnostics.push({ code: "TN_IR_STATE_MACHINE_TRIGGER_INVALID", message: "StateMachine transition trigger must be an object.", path: `${transitionPath}/trigger`, severity: "error" });
+      return;
+    }
+    validateUnsupportedFields(diagnostics, trigger, ["event", "kind", "phase", "sensor", "ticks"], (key) => ({
+      code: "TN_IR_STATE_MACHINE_TRIGGER_FIELD_UNSUPPORTED",
+      message: `StateMachine trigger uses unsupported field '${key}'.`,
+      path: `${transitionPath}/trigger/${key}`,
+      severity: "error",
+    }));
+    if (trigger.kind === "event") {
+      if (typeof trigger.event !== "string" || trigger.event.trim() === "") {
+        diagnostics.push({ code: "TN_IR_STATE_MACHINE_EVENT_INVALID", message: "Event state-machine triggers require a non-empty event id.", path: `${transitionPath}/trigger/event`, severity: "error" });
+      }
+    } else if (trigger.kind === "sensor") {
+      if (typeof trigger.sensor !== "string" || trigger.sensor.trim() === "" || !["enter", "exit", "stay"].includes(String(trigger.phase))) {
+        diagnostics.push({ code: "TN_IR_STATE_MACHINE_SENSOR_INVALID", message: "Sensor state-machine triggers require a sensor id and enter, exit, or stay phase.", path: `${transitionPath}/trigger`, severity: "error" });
+      }
+    } else if (trigger.kind === "timer") {
+      validateIntegerRange(trigger.ticks, 1, 6000, `${transitionPath}/trigger/ticks`, "TN_IR_STATE_MACHINE_TIMER_INVALID", diagnostics);
+    } else {
+      diagnostics.push({ code: "TN_IR_STATE_MACHINE_TRIGGER_KIND_INVALID", message: "StateMachine trigger.kind must be event, sensor, or timer.", path: `${transitionPath}/trigger/kind`, severity: "error" });
+    }
+  });
 }
 
 function validateSpawnerComponent(entity: IWorldEntity, path: string, diagnostics: IIrDiagnostic[]): void {

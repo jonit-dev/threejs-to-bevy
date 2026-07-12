@@ -9,10 +9,11 @@ import { systemsToIr } from "./systems.js";
 interface IEcsWorldLike {
   toJSON(): {
     componentSchemas: Record<string, { fields: Record<string, unknown> }>;
-    entities: Array<{ components: Record<string, Record<string, unknown>>; id: string }>;
+    entities: Array<{ components: Record<string, Record<string, unknown>>; id: string; tags?: string[] }>;
     eventSchemas: Record<string, { fields: Record<string, unknown> }>;
     resources: Record<string, Record<string, unknown>>;
     resourceSchemas: Record<string, { fields: Record<string, unknown> }>;
+    countdowns?: Array<{ autostart?: boolean; direction: "down" | "up"; event: string; field: string; id: string; limit: number; resource: string }>;
     input?: Omit<IInputIr, "schema" | "version">;
     runtimeConfig?: Omit<IRuntimeConfigIr, "schema" | "version">;
     systems: IEcsSystemSnapshot[];
@@ -93,13 +94,14 @@ export function ecsToIr(world: IEcsWorldLike, options: IEcsEmitOptions = {}): IE
           },
     scriptBundle: scriptBundle.code,
     scriptManifest: scriptBundle.manifest,
-    systems: systemsToIr(resolvedScripts.systems),
+    systems: systemsToIr(resolvedScripts.systems, snapshot.countdowns),
     world: {
       schema: "threenative.world",
       version: "0.1.0",
       entities: snapshot.entities.map((entity) => ({
         id: entity.id,
         components: entity.components,
+        ...(entity.tags === undefined ? {} : { tags: [...entity.tags] }),
       })),
       resources: snapshot.resources,
       events: Object.fromEntries(Object.keys(snapshot.eventSchemas).sort().map((name) => [name, {}])),

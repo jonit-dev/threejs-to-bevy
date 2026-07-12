@@ -299,6 +299,7 @@ import {
   validatePositiveNumber,
   isPortableJson,
   validateSystems,
+  validateSystemCountdowns,
   validateScriptLifecycles,
   validateSystemQueries,
   validateSystemCommands,
@@ -994,6 +995,7 @@ export async function validateSystemsDocument(projectPath: string, file: string,
   diagnostics.push(...unknownKeyDiagnostics(file, "", data, systemsDocumentKeys));
   validateDocumentHeader(diagnostics, file, data, systemsDocumentSchema, "systems document");
   const systems = collectIds(diagnostics, file, "/systems", readArray(data.systems), "system", systemKeys);
+  validateSystemCountdowns(diagnostics, file, data.countdowns);
   const scriptLifecycles = collectIds(diagnostics, file, "/scriptLifecycles", readArray(data.scriptLifecycles), "script lifecycle", scriptLifecycleKeys);
   await validateSystems(diagnostics, projectPath, file, data.systems, systems);
   await validateScriptLifecycles(diagnostics, projectPath, file, data.scriptLifecycles, scriptLifecycles);

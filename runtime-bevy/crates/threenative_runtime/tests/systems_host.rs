@@ -4,7 +4,8 @@ use std::{
 };
 
 use threenative_loader::{
-    InputActionIr, InputAxisIr, InputBindingIr, InputIr, LoadedBundle, load_bundle,
+    EntityComponents, InputActionIr, InputAxisIr, InputBindingIr, InputIr, LoadedBundle,
+    WorldEntity, load_bundle,
 };
 use threenative_runtime::{
     input::{NativeInputState, map_keyboard_event},
@@ -13,7 +14,7 @@ use threenative_runtime::{
         NativeGameLoopRunOptions, NativeGameLoopState, diagnose_native_system_host,
         ensure_native_system_host_supported, run_native_systems_frame_with_input,
         run_native_systems_once, run_native_systems_once_with_input,
-        unsupported_native_system_host_diagnostic,
+        NativeEntityLifecycleRuntimeState, unsupported_native_system_host_diagnostic,
     },
 };
 
@@ -45,6 +46,61 @@ fn systems_host_should_call_quickjs_system_export() {
     assert_eq!(run.logs[0].schema, "threenative.web-system-effects");
     assert_eq!(run.logs[0].entries[0].kind, "patch");
     assert_eq!(run.logs[0].entries[0].system, "movePlayer");
+}
+
+#[test]
+fn systems_host_should_tick_countdown_and_fire_one_limit_event_per_cycle() {
+    let root = write_countdown_bundle("countdown");
+    let mut bundle = load_bundle(&root).expect("countdown bundle should load");
+    let mut state = NativeGameLoopState::default();
+
+    run_native_systems_frame_with_input(
+        &mut bundle,
+        &mut state,
+        loop_options(0.1, 0.1, false),
+        |_bundle, _fixed_delta, _script_posed_entities| {},
+    )
+    .expect("countdown frame should run");
+    assert_eq!(bundle.world.resources["Race"]["remaining"], serde_json::json!(0.0));
+    assert_eq!(bundle.world.events["Race.limit"].as_array().map(Vec::len), Some(1));
+
+    run_native_systems_frame_with_input(
+        &mut bundle,
+        &mut state,
+        loop_options(0.1, 0.1, false),
+        |_bundle, _fixed_delta, _script_posed_entities| {},
+    )
+    .expect("second countdown frame should run");
+    assert_eq!(bundle.world.events["Race.limit"].as_array().map(Vec::len), Some(1));
+
+    bundle.world.resources.get_mut("Race").and_then(serde_json::Value::as_object_mut).expect("race resource").insert("restartToken".to_owned(), serde_json::json!(1));
+    run_native_systems_frame_with_input(
+        &mut bundle,
+        &mut state,
+        loop_options(0.1, 0.1, false),
+        |_bundle, _fixed_delta, _script_posed_entities| {},
+    )
+    .expect("restart countdown frame should run");
+    assert_eq!(bundle.world.events["Race.limit"].as_array().map(Vec::len), Some(2));
+}
+
+#[test]
+fn systems_host_should_observe_native_lifecycle_after_bundle_reconciliation() {
+    let root = write_countdown_bundle("lifecycle-state");
+    let mut bundle = load_bundle(&root).expect("bundle should load");
+    let mut lifecycle = NativeEntityLifecycleRuntimeState::default();
+    lifecycle.begin_tick(&bundle, 0);
+    bundle.world.entities.push(WorldEntity {
+        components: EntityComponents::default(),
+        id: "coin.01".to_owned(),
+        tags: vec!["coin".to_owned()],
+    });
+    lifecycle.observe(&bundle);
+    assert_eq!(lifecycle.snapshot().spawned, vec!["coin.01"]);
+
+    bundle.world.entities.retain(|entity| entity.id != "coin.01");
+    lifecycle.observe(&bundle);
+    assert_eq!(lifecycle.snapshot().despawned, vec!["coin.01"]);
 }
 
 #[test]
@@ -183,6 +239,81 @@ fn systems_host_should_expose_context_ergonomics_helpers() {
         .as_ref()
         .expect("transform should still exist");
     assert_eq!(transform.position, Some([1.0, 0.0, 0.0]));
+}
+
+#[test]
+fn systems_host_should_query_native_entities_by_tag() {
+    let root = write_tag_context_bundle("tag-context");
+    let mut bundle = load_bundle(&root).expect("tag bundle should load");
+    run_native_systems_once(&mut bundle, time()).expect("tag system should run");
+    assert_eq!(
+        bundle.world.resources.get("TagReport"),
+        Some(&serde_json::json!({ "count": 1, "ids": ["coin"] }))
+    );
+}
+
+#[test]
+fn systems_host_should_run_native_patrol_trace_on_fixed_ticks() {
+    let root = write_patrol_bundle("patrol");
+    let mut bundle = load_bundle(&root).expect("patrol bundle should load");
+    let mut state = NativeGameLoopState::default();
+
+    run_native_systems_frame_with_input(
+        &mut bundle,
+        &mut state,
+        loop_options(0.5, 0.5, false),
+        |_bundle, _fixed_delta, _script_posed_entities| {},
+    )
+    .expect("patrol frame should run");
+    assert_eq!(entity_position(&bundle, "guard"), Some([0.5, 0.0, 0.0]));
+
+    run_native_systems_frame_with_input(
+        &mut bundle,
+        &mut state,
+        loop_options(0.5, 0.5, false),
+        |_bundle, _fixed_delta, _script_posed_entities| {},
+    )
+    .expect("second patrol frame should run");
+    assert_eq!(entity_position(&bundle, "guard"), Some([1.0, 0.0, 0.0]));
+}
+
+#[test]
+fn systems_host_should_run_native_state_machine_event_once() {
+    let root = write_state_machine_bundle("state-machine");
+    let mut bundle = load_bundle(&root).expect("state machine bundle should load");
+    let mut state = NativeGameLoopState::default();
+
+    run_native_systems_frame_with_input(
+        &mut bundle,
+        &mut state,
+        loop_options(0.1, 0.1, false),
+        |_bundle, _fixed_delta, _script_posed_entities| {},
+    )
+    .expect("state machine frame should run");
+    assert_eq!(
+        bundle.world.entities[0]
+            .components
+            .state_machine
+            .as_ref()
+            .and_then(|machine| machine.current.as_deref()),
+        Some("chase")
+    );
+
+    run_native_systems_frame_with_input(
+        &mut bundle,
+        &mut state,
+        loop_options(0.1, 0.1, false),
+        |_bundle, _fixed_delta, _script_posed_entities| {},
+    )
+    .expect("second state machine frame should run");
+    assert_eq!(
+        bundle.world.entities[0]
+            .components
+            .state_machine
+            .as_ref()
+            .and_then(|machine| machine.current.as_deref()),
+        Some("chase")
+    );
 }
 
 #[test]
@@ -3103,6 +3234,60 @@ export const systems = Object.freeze({ "system_ergonomics": system_ergonomics })
     root
 }
 
+fn write_tag_context_bundle(name: &str) -> PathBuf {
+    let root = root(name);
+    write_base_bundle(&root, true);
+    write_json(
+        &root,
+        "world.ir.json",
+        r#"{
+  "schema": "threenative.world",
+  "version": "0.1.0",
+  "resources": { "TagReport": {} },
+  "entities": [
+    { "id": "coin", "tags": ["coin"], "components": { "Transform": { "position": [0, 0, 0] } } },
+    { "id": "wall", "tags": ["wall"], "components": { "Transform": { "position": [1, 0, 0] } } }
+  ]
+}"#,
+    );
+    write_json(
+        &root,
+        "systems.ir.json",
+        r#"{
+  "schema": "threenative.systems",
+  "version": "0.1.0",
+  "systems": [{
+    "name": "tagQuery",
+    "schedule": "update",
+    "reads": [],
+    "writes": [],
+    "queries": [],
+    "commands": [],
+    "eventReads": [],
+    "eventWrites": [],
+    "resourceReads": ["TagReport"],
+    "resourceWrites": ["TagReport"],
+    "services": [],
+    "script": { "bundle": "scripts.bundle.js", "exportName": "system_tagQuery" }
+  }]
+}"#,
+    );
+    fs::write(
+        root.join("scripts.bundle.js"),
+        r#"const system_tagQuery = (ctx) => {
+  ctx.resources.set("TagReport", {
+    count: ctx.entities.countTag("coin"),
+    ids: ctx.entities.withTag("coin").map((entity) => entity.id)
+  });
+};
+export const systemIds = Object.freeze({ "system_tagQuery": "tagQuery" });
+export const systems = Object.freeze({ "system_tagQuery": system_tagQuery });
+"#,
+    )
+    .expect("script bundle should be written");
+    root
+}
+
 fn write_particle_service_bundle(name: &str) -> PathBuf {
     let root = root(name);
     write_base_bundle(&root, true);
@@ -3199,6 +3384,120 @@ fn write_bundle_without_scripts(name: &str) -> PathBuf {
         "world.ir.json",
         r#"{"schema":"threenative.world","version":"0.1.0","entities":[]}"#,
     );
+    root
+}
+
+fn write_countdown_bundle(name: &str) -> PathBuf {
+    let root = root(name);
+    write_base_bundle(&root, true);
+    write_json(
+        &root,
+        "world.ir.json",
+        r#"{
+  "schema": "threenative.world",
+  "version": "0.1.0",
+  "entities": [],
+  "resources": { "Race": { "remaining": 0.1, "restartToken": 0, "running": true } }
+}"#,
+    );
+    write_json(
+        &root,
+        "systems.ir.json",
+        r#"{
+  "schema": "threenative.systems",
+  "version": "0.1.0",
+  "countdowns": [{ "autostart": true, "direction": "down", "event": "Race.limit", "field": "remaining", "id": "race", "limit": 0.1, "resource": "Race" }],
+  "systems": []
+}"#,
+    );
+    fs::write(
+        root.join("scripts.bundle.js"),
+        "export const systems = Object.freeze({});\n",
+    )
+    .expect("script bundle should be written");
+    root
+}
+
+fn write_patrol_bundle(name: &str) -> PathBuf {
+    let root = root(name);
+    write_base_bundle(&root, true);
+    write_json(
+        &root,
+        "world.ir.json",
+        r#"{
+  "schema": "threenative.world",
+  "version": "0.1.0",
+  "entities": [{
+    "id": "guard",
+    "components": {
+      "Transform": { "position": [0, 0, 0] },
+      "Patrol": {
+        "mode": "loop",
+        "speed": 1,
+        "waypoints": [[0, 0, 0], [1, 0, 0], [1, 0, 1]],
+        "faceHeading": true
+      }
+    }
+  }]
+}"#,
+    );
+    write_json(
+        &root,
+        "systems.ir.json",
+        r#"{
+  "schema": "threenative.systems",
+  "version": "0.1.0",
+  "systems": []
+}"#,
+    );
+    fs::write(
+        root.join("scripts.bundle.js"),
+        "export const systems = Object.freeze({});\n",
+    )
+    .expect("script bundle should be written");
+    root
+}
+
+fn write_state_machine_bundle(name: &str) -> PathBuf {
+    let root = root(name);
+    write_base_bundle(&root, true);
+    write_json(
+        &root,
+        "world.ir.json",
+        r#"{
+  "schema": "threenative.world",
+  "version": "0.1.0",
+  "events": { "Go": [{}] },
+  "entities": [{
+    "id": "guard",
+    "components": {
+      "StateMachine": {
+        "initial": "idle",
+        "states": ["idle", "chase"],
+        "transitions": [{
+          "from": "idle",
+          "to": "chase",
+          "trigger": { "kind": "event", "event": "Go" }
+        }]
+      }
+    }
+  }]
+}"#,
+    );
+    write_json(
+        &root,
+        "systems.ir.json",
+        r#"{
+  "schema": "threenative.systems",
+  "version": "0.1.0",
+  "systems": []
+}"#,
+    );
+    fs::write(
+        root.join("scripts.bundle.js"),
+        "export const systems = Object.freeze({});\n",
+    )
+    .expect("script bundle should be written");
     root
 }
 

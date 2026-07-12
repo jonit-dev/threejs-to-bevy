@@ -86,7 +86,7 @@ function lowerSceneDocument(
   sourcePath: string,
   scene: ISceneDocument,
   environment: IEnvironmentDeclaration | undefined,
-  systemsMetadata: readonly SourceSystem[],
+  systemsMetadata: IStructuredSystems,
   prefabDefaults: ReadonlyMap<string, ISceneEntity>,
 ): unknown {
   const visualScene = new Scene({ id: scene.id });
@@ -132,8 +132,11 @@ function lowerSceneDocument(
   }
 
   const world = defineWorldModule({ entities: worldEntities, resources: worldResources });
+  for (const countdown of systemsMetadata.countdowns) {
+    world.addCountdown(countdown);
+  }
   const sceneLifecycleSystems = expandScriptLifecycles(scene.scriptLifecycles ?? [], scene.id);
-  for (const system of mergedSceneSystems([...sceneLifecycleSystems, ...(scene.systems ?? [])], systemsMetadata, scene.id)) {
+  for (const system of mergedSceneSystems([...sceneLifecycleSystems, ...(scene.systems ?? [])], systemsMetadata.systems, scene.id)) {
     if (system.script === undefined) {
       continue;
     }
@@ -210,6 +213,12 @@ function systemDeclaration(schedule: string | undefined, id: string, options: Pa
 
 type SourceSystem = NonNullable<ISceneDocument["systems"]>[number] & { scene?: string };
 type SourceScriptLifecycle = NonNullable<ISceneDocument["scriptLifecycles"]>[number];
+type SourceCountdown = NonNullable<import("@threenative/authoring").ISystemsDocument["countdowns"]>[number];
+
+interface IStructuredSystems {
+  countdowns: SourceCountdown[];
+  systems: SourceSystem[];
+}
 
 function systemQueries(queries: SourceSystem["queries"], behaviorMetadataSource = false): IQueryDeclaration[] {
   const sourceQueries: NonNullable<SourceSystem["queries"]> = queries ?? (behaviorMetadataSource ? [] : [{ with: ["Transform"] }]);
@@ -328,7 +337,7 @@ async function readStructuredEnvironmentDeclaration(projectPath: string): Promis
   return declaration as unknown as IEnvironmentDeclaration;
 }
 
-async function readStructuredSystems(projectPath: string): Promise<SourceSystem[]> {
+async function readStructuredSystems(projectPath: string): Promise<IStructuredSystems> {
   const validation = await validateAuthoringProject({ projectPath });
   const validationError = validation.diagnostics.find((diagnostic) => diagnostic.severity === "error");
   if (validationError !== undefined) {
@@ -343,7 +352,7 @@ async function readStructuredSystems(projectPath: string): Promise<SourceSystem[
     });
   }
   const project = await loadAuthoringProject({ projectPath });
-  return project.documents
+  const systems: SourceSystem[] = project.documents
     .filter((document) => document.kind === "systems" && readRecord(document.data) !== undefined)
     .flatMap((document) => {
       const data = readRecord(document.data);
@@ -353,6 +362,11 @@ async function readStructuredSystems(projectPath: string): Promise<SourceSystem[
       ];
     })
     .sort((left, right) => left.id.localeCompare(right.id));
+  const countdowns = project.documents
+    .filter((document) => document.kind === "systems" && readRecord(document.data) !== undefined)
+    .flatMap((document) => readRecordArray(readRecord(document.data)?.countdowns) as unknown as SourceCountdown[])
+    .sort((left, right) => left.id.localeCompare(right.id));
+  return { countdowns, systems };
 }
 
 function expandScriptLifecycles(lifecycles: readonly SourceScriptLifecycle[], owningScene?: string): SourceSystem[] {

@@ -25,7 +25,7 @@ export function applySystemEffects(
   world: IWorldIr,
   system: IIrSystemDeclaration,
   effects: ISystemEffects,
-  options: { frame: number; prefabs?: IPrefabsIr; tick: number; writeLedger?: IRuntimeWriteLedger; writer?: RuntimeWriteWriter },
+  options: { frame: number; lifecycleObserver?: (before: ReadonlyMap<string, readonly string[]>) => void; prefabs?: IPrefabsIr; tick: number; writeLedger?: IRuntimeWriteLedger; writer?: RuntimeWriteWriter },
 ): { diagnostics: IRuntimeDiagnostic[]; entries: ISystemEffectLogEntry[] } {
   const diagnostics = validateSystemEffects(system, effects);
   const entries = systemEffectLogEntries(system, effects, options);
@@ -33,10 +33,12 @@ export function applySystemEffects(
   if (diagnostics.some((diagnostic) => diagnostic.severity === "error")) {
     return { diagnostics, entries };
   }
+  const before = new Map(world.entities.map((entity) => [entity.id, entity.tags ?? []] as const));
   applyEvents(world, effects.events);
   applyResourceWrites(world, effects.resources);
   applyCommands(world, effects.commands, options.prefabs);
   markScriptAuthoredTransformWrites(world, effects.commands);
+  options.lifecycleObserver?.(before);
   return { diagnostics, entries };
 }
 

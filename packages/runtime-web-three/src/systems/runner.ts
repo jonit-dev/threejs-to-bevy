@@ -54,6 +54,7 @@ export async function runSchedule(options: {
   const componentDiff = createComponentDiffCache();
   const persistence = options.localData === undefined ? undefined : createWebPersistenceService(options.localData);
   const runtimeState = options.runtimeState ?? webSystemRuntimeStateFor(options.world, { assets: options.assets, audio: options.audio });
+  runtimeState.lifecycle.beginTick(options.world, options.tick ?? 0);
   runtimeState.writeLedger.beginTick(options.tick ?? 0);
   const tracked = [...new Set(scheduledSystems.flatMap((system) => system.queries.flatMap((query) => query.changed ?? [])))].sort();
   componentDiff.beginScheduleStage(options.world, tracked);
@@ -73,7 +74,7 @@ export async function runSchedule(options: {
     if (system === undefined) {
       continue;
     }
-    const result = applySystemEffects(options.world, system, { commands: [command.command], events: [], resources: [], services: [] }, { frame: options.frame ?? 0, prefabs: options.prefabs, tick: options.tick ?? 0, writeLedger: runtimeState.writeLedger, writer: "scheduler" });
+    const result = applySystemEffects(options.world, system, { commands: [command.command], events: [], resources: [], services: [] }, { frame: options.frame ?? 0, lifecycleObserver: (before) => runtimeState.lifecycle.observe(before, options.world), prefabs: options.prefabs, tick: options.tick ?? 0, writeLedger: runtimeState.writeLedger, writer: "scheduler" });
     diagnostics.push(...result.diagnostics);
     entries.push(...result.entries);
     if (options.effectLog !== undefined) {
@@ -154,7 +155,7 @@ async function runSystem(
     uiState: options.uiState,
   });
   await fn(context);
-  const result = applySystemEffects(options.world, system, { commands, events, resources, services }, { frame: options.frame ?? 0, prefabs: options.prefabs, tick: options.tick ?? 0, writeLedger: options.runtimeState?.writeLedger, writer: "script" });
+  const result = applySystemEffects(options.world, system, { commands, events, resources, services }, { frame: options.frame ?? 0, lifecycleObserver: options.runtimeState === undefined ? undefined : (before) => options.runtimeState!.lifecycle.observe(before, options.world), prefabs: options.prefabs, tick: options.tick ?? 0, writeLedger: options.runtimeState?.writeLedger, writer: "script" });
   for (const resource of resources) {
     resourceObservations.push({
       frame: options.frame ?? 0,

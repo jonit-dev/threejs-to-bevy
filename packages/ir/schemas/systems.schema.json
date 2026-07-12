@@ -15,6 +15,10 @@
       "type": "array",
       "items": { "$ref": "#/$defs/objectWithComponent" }
     },
+    "countdowns": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/countdown" }
+    },
     "lifecycle": {
       "type": "object",
       "additionalProperties": false,
@@ -76,6 +80,20 @@
       "required": ["event"],
       "properties": {
         "event": { "type": "string", "minLength": 1 }
+      }
+    },
+    "countdown": {
+      "type": "object",
+      "required": ["direction", "event", "field", "id", "limit", "resource"],
+      "additionalProperties": false,
+      "properties": {
+        "autostart": { "type": "boolean" },
+        "direction": { "enum": ["down", "up"] },
+        "event": { "type": "string", "minLength": 1 },
+        "field": { "type": "string", "minLength": 1 },
+        "id": { "type": "string", "minLength": 1 },
+        "limit": { "type": "number", "minimum": 0 },
+        "resource": { "type": "string", "minLength": 1 }
       }
     },
     "script": {

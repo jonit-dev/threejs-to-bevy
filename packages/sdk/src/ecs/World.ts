@@ -3,12 +3,13 @@ import type { IInputMapDeclaration } from "../input.js";
 import type { IRuntimeConfigDeclaration } from "../time.js";
 import type { CommandDeclaration } from "./commands.js";
 import type { IQueryDeclaration } from "./query.js";
-import type { EcsFactory, IEcsDeclaration, IEcsSchema } from "./schema.js";
+import { defineEvent, type EcsFactory, type IEcsDeclaration, type IEcsSchema } from "./schema.js";
 import type { ISystemDeclaration, ISystemDelayedCommandDeclaration, ISystemScriptSourceReference, SystemSchedule, SystemService } from "./system.js";
 
 export interface IWorldEntityDeclaration {
   components: Record<string, Record<string, unknown>>;
   id: string;
+  tags?: string[];
 }
 
 export type IWorldCommandDeclaration =
@@ -63,6 +64,16 @@ export interface IWorldSystemDeclaration {
   writes: string[];
 }
 
+export interface IWorldCountdownDeclaration {
+  autostart?: boolean;
+  direction: "down" | "up";
+  event: string;
+  field: string;
+  id: string;
+  limit: number;
+  resource: string;
+}
+
 export interface IWorldDelayedCommandDeclaration {
   cancelPolicy: "drop" | "flush";
   command: IWorldCommandDeclaration;
@@ -97,6 +108,7 @@ export interface IWorldSnapshot {
   resourceSchemas: Record<string, IEcsSchema>;
   input?: IInputMapDeclaration;
   runtimeConfig?: IRuntimeConfigDeclaration;
+  countdowns?: IWorldCountdownDeclaration[];
   systems: IWorldSystemDeclaration[];
 }
 
@@ -109,8 +121,17 @@ export class World {
   #input?: IInputMapDeclaration;
   #runtimeConfig?: IRuntimeConfigDeclaration;
   readonly #systems = new Map<string, ISystemDeclaration>();
+  readonly #countdowns = new Map<string, IWorldCountdownDeclaration>();
 
   public spawn(id: string, ...components: IEcsDeclaration[]): this {
+    return this.spawnWithTags(id, undefined, ...components);
+  }
+
+  public spawnTagged(id: string, tags: readonly string[], ...components: IEcsDeclaration[]): this {
+    return this.spawnWithTags(id, [...tags], ...components);
+  }
+
+  private spawnWithTags(id: string, tags: readonly string[] | undefined, ...components: IEcsDeclaration[]): this {
     assertId(id, "TN_SDK_ECS_ENTITY_ID_EMPTY", "Entity ID");
     if (this.#entities.has(id)) {
       throw new SdkError("TN_SDK_ECS_ENTITY_DUPLICATE", `Entity '${id}' is already declared.`);
@@ -132,6 +153,7 @@ export class World {
     this.#entities.set(id, {
       components: Object.fromEntries([...componentMap.entries()].sort(([left], [right]) => left.localeCompare(right))),
       id,
+      ...(tags === undefined ? {} : { tags: [...new Set(tags)].sort((left, right) => left.localeCompare(right)) }),
     });
     return this;
   }
@@ -172,6 +194,22 @@ export class World {
     return this;
   }
 
+  public addCountdown(countdown: IWorldCountdownDeclaration): this {
+    assertId(countdown.id, "TN_SDK_ECS_COUNTDOWN_ID_EMPTY", "Countdown ID");
+    assertId(countdown.resource, "TN_SDK_ECS_COUNTDOWN_RESOURCE_EMPTY", "Countdown resource");
+    assertId(countdown.field, "TN_SDK_ECS_COUNTDOWN_FIELD_EMPTY", "Countdown field");
+    assertId(countdown.event, "TN_SDK_ECS_COUNTDOWN_EVENT_EMPTY", "Countdown event");
+    if (this.#countdowns.has(countdown.id)) {
+      throw new SdkError("TN_SDK_ECS_COUNTDOWN_DUPLICATE", `Countdown '${countdown.id}' is already declared.`);
+    }
+    if (!Number.isFinite(countdown.limit) || countdown.limit < 0) {
+      throw new SdkError("TN_SDK_ECS_COUNTDOWN_LIMIT_INVALID", `Countdown '${countdown.id}' limit must be a finite non-negative number.`);
+    }
+    this.addEvent(defineEvent(countdown.event));
+    this.#countdowns.set(countdown.id, { ...countdown });
+    return this;
+  }
+
   public setInputMap(input: IInputMapDeclaration): this {
     this.#input = input;
     return this;
@@ -191,6 +229,9 @@ export class World {
       resourceSchemas: sortedRecord(this.#resourceSchemas),
       systems: [...this.#systems.values()].sort((left, right) => left.name.localeCompare(right.name)).map(serializeSystem),
     };
+    if (this.#countdowns.size > 0) {
+      snapshot.countdowns = [...this.#countdowns.values()].sort((left, right) => left.id.localeCompare(right.id));
+    }
     if (this.#input !== undefined) {
       snapshot.input = this.#input;
     }

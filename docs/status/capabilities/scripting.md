@@ -39,6 +39,16 @@ Current support:
   stable same-tick snapshot to every reader, and emit one semantic `enter`,
   `stay`, or `exit` transition per occupant change. `TriggerEx.entered` is a
   deprecated compatibility wrapper for one release cycle.
+- Entity tags are bounded IR data preserved through prefab and runtime spawn;
+  `ctx.entities.withTag`, `countTag`, `spawned`, and `despawned` return stable
+  lexical IDs and one reconciled observation per tick on web and native.
+- Runtime-owned `Patrol` and `StateMachine` components advance on fixed ticks
+  with bounded waypoint, pause, event, sensor, and timer semantics. Their
+  position/state observations are data-only, so game-specific predicates remain
+  in portable scripts.
+- Systems-level countdown declarations tick HUD-bound numeric resource fields
+  and emit one declared limit event per start/restart cycle. `tn add timer`
+  writes this declaration through the mechanic-block registry.
 - Runtime component, resource, and state writes carry bounded semantic
   provenance. Ordinary runs report actionable `TN_RUNTIME_WRITE_CONFLICT`
   warnings for script/physics transform double ownership; `tn playtest` and
@@ -100,6 +110,10 @@ Verification:
 - `pnpm --filter @threenative/runtime-web-three test`
 - `pnpm verify:focused verify:runtime-write-audit`
 - `pnpm verify:focused verify:script-local-modules`
+- `pnpm verify:gameplay-primitives`
+- `cargo test -p threenative_runtime systems_host_should_run_native_patrol_trace_on_fixed_ticks`
+- `cargo test -p threenative_runtime systems_host_should_run_native_state_machine_event_once`
+- `cargo test -p threenative_runtime systems_host_should_tick_countdown_and_fire_one_limit_event_per_cycle`
 - `cargo test -p threenative_runtime systems_host_should_apply_declared_resource_write`
 - `cargo test -p threenative_runtime systems_host_should_expose_audio_facade`
 - `cargo test -p threenative_runtime systems_host_should_expose_bounded_particle_command_services`
@@ -109,7 +123,8 @@ Verification:
 - `pnpm --filter @threenative/runtime-web-three test -- --run runtime gameplay`
 - `cargo test -p threenative_runtime should_report_bounded_scheduler_observations`
 - `pnpm verify:scripting-helpers-lifecycle`
-- `pnpm verify:cookbook` covers the bounded runtime-write-audit authoring pattern.
+- `pnpm verify:cookbook` covers the bounded runtime-write-audit and
+  runtime-gameplay-primitives authoring patterns.
 - `pnpm --filter @threenative/script-stdlib check:generated` covers generated
   stdlib bundle freshness.
 

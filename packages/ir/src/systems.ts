@@ -132,9 +132,22 @@ export interface IIrScriptAudioDeclaration {
   id: string;
 }
 
+export type IrCountdownDirection = "down" | "up";
+
+export interface IIrCountdownDeclaration {
+  autostart?: boolean;
+  direction: IrCountdownDirection;
+  event: string;
+  field: string;
+  id: string;
+  limit: number;
+  resource: string;
+}
+
 export interface ISystemsIr {
   channels?: IIrSystemChannelDeclaration[];
   componentHooks?: IIrComponentHookDeclaration[];
+  countdowns?: IIrCountdownDeclaration[];
   lifecycle?: {
     appStates?: IIrAppStateDeclaration[];
     computedStates?: IIrComputedStateDeclaration[];

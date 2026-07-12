@@ -25,10 +25,12 @@ import {
 import type { IComponentDiffCache } from "./componentDiff.js";
 import { createScriptUiState } from "./contextUi.js";
 import { createRuntimeWriteLedger } from "./writeAudit.js";
+import { createCountdownRuntimeState } from "../countdowns.js";
 import type {
   IAssetLoadResult,
   ICharacterMoveRequest,
   IComponentHookObservation,
+  IEntityLifecycleQueryOptions,
   IInstantiateResult,
   IObserverPropagationStep,
   IPhysicsSensorRequest,
@@ -54,6 +56,7 @@ export type {
   IAssetLoadResult,
   ICharacterMoveRequest,
   IComponentHookObservation,
+  IEntityLifecycleQueryOptions,
   IInstantiateResult,
   IObserverPropagationStep,
   IParticleCommandOptions,
@@ -88,16 +91,87 @@ export function createWebSystemRuntimeState(
     animations: new AnimationRuntimeController(),
     assets: options.assets,
     audio: options.audio,
+    countdowns: createCountdownRuntimeState(),
     delayedCommands: [] as IWebDelayedCommand[],
     particles: new ParticleRuntimeController(options.assets),
     random: createDeterministicRandom(seed),
     randomSeedKey: runtimeSeedKey(seed),
     scriptAudio: new ScriptAudioRuntimeController(options.audio),
     sensors: createPhysicsSensorRuntimeState(),
+    lifecycle: createEntityLifecycleRuntimeState(world),
     writeLedger: createRuntimeWriteLedger(),
   };
   recordInitialRuntimeWrites(world, runtimeState.writeLedger);
   return runtimeState;
+}
+
+export interface IWebEntityLifecycleRuntimeState {
+  beginTick(world: IWorldIr, tick: number): void;
+  despawned(options?: IEntityLifecycleQueryOptions): string[];
+  observe(before: ReadonlyMap<string, readonly string[]>, world: IWorldIr): void;
+  spawned(options?: IEntityLifecycleQueryOptions): string[];
+}
+
+export function createEntityLifecycleRuntimeState(world: IWorldIr): IWebEntityLifecycleRuntimeState {
+  let activeTick: number | undefined;
+  let known = entityTagSnapshot(world);
+  let spawned = new Map<string, string[]>();
+  let despawned = new Map<string, string[]>();
+  const matches = (tags: readonly string[], options: IEntityLifecycleQueryOptions | undefined): boolean => {
+    if (options?.tag === undefined) {
+      return true;
+    }
+    return validEntityTag(options.tag) && tags.includes(options.tag);
+  };
+  return {
+    beginTick(nextWorld, tick) {
+      if (activeTick === tick) {
+        return;
+      }
+      activeTick = tick;
+      spawned = new Map();
+      despawned = new Map();
+      known = entityTagSnapshot(nextWorld);
+    },
+    despawned(options) {
+      return [...despawned.entries()]
+        .filter(([, tags]) => matches(tags, options))
+        .map(([id]) => id)
+        .sort((left, right) => left.localeCompare(right));
+    },
+    observe(before, nextWorld) {
+      const after = entityTagSnapshot(nextWorld);
+      for (const [id, tags] of before) {
+        if (!after.has(id)) {
+          despawned.set(id, [...tags]);
+        }
+      }
+      for (const [id, tags] of after) {
+        if (!before.has(id)) {
+          spawned.set(id, [...tags]);
+        }
+      }
+      known = after;
+    },
+    spawned(options) {
+      return [...spawned.entries()]
+        .filter(([, tags]) => matches(tags, options))
+        .map(([id]) => id)
+        .sort((left, right) => left.localeCompare(right));
+    },
+  };
+}
+
+function entityTagSnapshot(world: IWorldIr): Map<string, string[]> {
+  return new Map(world.entities.map((entity) => [entity.id, normalizeEntityTags(entity.tags)] as const));
+}
+
+function normalizeEntityTags(tags: readonly string[] | undefined): string[] {
+  return [...new Set((tags ?? []).filter((tag): tag is string => typeof tag === "string" && validEntityTag(tag)))].sort((left, right) => left.localeCompare(right));
+}
+
+function validEntityTag(tag: unknown): tag is string {
+  return typeof tag === "string" && tag.trim() !== "" && tag.length <= 64 && !/[\u0000-\u001f\u007f]/u.test(tag);
 }
 
 function recordInitialRuntimeWrites(world: IWorldIr, ledger: ReturnType<typeof createRuntimeWriteLedger>): void {
@@ -373,8 +447,9 @@ export function createSystemContext(
         setParent(child, parent) {
           commands.push({ child, entity: child, kind: "setParent", parent, source: "command" });
         },
-        spawn(entity, components = {}) {
-          commands.push({ components: cloneValue(components) as Record<string, unknown>, entity, kind: "spawn", source: "command" });
+        spawn(entity, components = {}, tags = []) {
+          const normalizedTags = normalizeEntityTags(tags);
+          commands.push({ components: cloneValue(components) as Record<string, unknown>, entity, kind: "spawn", source: "command", ...(normalizedTags.length === 0 ? {} : { tags: normalizedTags }), });
         },
       },
       channels: {
@@ -460,6 +535,24 @@ export function createSystemContext(
       entities: {
         byId(ids) {
           return Object.fromEntries(Object.entries(ids).map(([key, id]) => [key, findEntity(id)])) as { [K in keyof typeof ids]: ISystemEntityView | undefined };
+        },
+        countTag(tag) {
+          return validEntityTag(tag) ? world.entities.filter((entity) => normalizeEntityTags(entity.tags).includes(tag)).length : 0;
+        },
+        despawned(queryOptions) {
+          return options.runtimeState?.lifecycle.despawned(queryOptions) ?? [];
+        },
+        spawned(queryOptions) {
+          return options.runtimeState?.lifecycle.spawned(queryOptions) ?? [];
+        },
+        withTag(tag) {
+          if (!validEntityTag(tag)) {
+            return [];
+          }
+          return world.entities
+            .filter((entity) => normalizeEntityTags(entity.tags).includes(tag))
+            .sort((left, right) => left.id.localeCompare(right.id))
+            .map((entity) => createEntityView(entity, commands));
         },
       },
       entity(id) {
@@ -990,6 +1083,7 @@ function assetById(assets: IAssetsManifest | undefined, id: string): IAssetsMani
 
 function createEntityView(entity: IWorldEntity, commands: IQueuedCommand[]): ISystemEntityView {
   const components = deepFreeze(cloneValue(entity.components)) as IWorldEntity["components"];
+  const tags = normalizeEntityTags(entity.tags);
   const queueTransformPatch = (value: Record<string, unknown>) => {
     const transform = fullTransform({
       ...(isRecord(components.Transform) ? components.Transform : {}),
@@ -1036,6 +1130,7 @@ function createEntityView(entity: IWorldEntity, commands: IQueuedCommand[]): ISy
     set(component: unknown, value: unknown): void {
       commands.push({ component: normalizeHandleName(component), entity: entity.id, kind: "setComponent", source: "entity", value: cloneValue(value) });
     },
+    tags,
     transform(): ISystemTransformFacade {
       return {
         get position() {
@@ -1256,13 +1351,15 @@ export function applyCommands(world: IWorldIr, commands: ReadonlyArray<IQueuedCo
         if (isRecord(hierarchy) && typeof hierarchy.parent === "string" && hierarchy.parent.trim() !== "") {
           components.Hierarchy = { ...hierarchy, parent: `${command.prefix}.${hierarchy.parent}` };
         }
-        world.entities.push({ components, id });
+        const tags = normalizeEntityTags(template.tags);
+        world.entities.push({ components, id, ...(tags.length === 0 ? {} : { tags }) });
       }
       continue;
     }
     if (command.kind === "spawn") {
       if (world.entities.every((entity) => entity.id !== command.entity)) {
-        world.entities.push({ components: cloneValue(command.components ?? {}) as IWorldEntity["components"], id: command.entity });
+        const tags = normalizeEntityTags(command.tags);
+        world.entities.push({ components: cloneValue(command.components ?? {}) as IWorldEntity["components"], id: command.entity, ...(tags.length === 0 ? {} : { tags }) });
       }
       continue;
     }

@@ -29,13 +29,13 @@ export const runtimeDocumentKeys = new Set(["schema", "version", "id", "renderer
 export const targetProfileDocumentKeys = new Set(["schema", "version", "id", "budgets", "performance", "targets", "provenance"]);
 export const resourcesDocumentKeys = new Set(["schema", "version", "id", "resources", "provenance"]);
 export const schemaDocumentKeys = new Set(["schema", "version", "id", "kind", "schemas", "provenance"]);
-export const systemsDocumentKeys = new Set(["schema", "version", "id", "systems", "scriptLifecycles", "provenance"]);
+export const systemsDocumentKeys = new Set(["schema", "version", "id", "countdowns", "systems", "scriptLifecycles", "provenance"]);
 export const sequenceDocumentKeys = new Set(["schema", "version", "id", "duration", "skippable", "tracks", "provenance"]);
 export const prefabDocumentKeys = new Set(["schema", "version", "id", "entities", "provenance"]);
 export const audioDocumentKeys = new Set(["schema", "version", "id", "sounds", "provenance"]);
 export const meshDocumentKeys = new Set(["schema", "version", "id", "meshes", "provenance"]);
 export const generatorDocumentKeys = new Set(["schema", "version", "id", "module", "export", "outputs", "overwritePolicy", "inputHash", "outputHash", "lastRun", "provenance"]);
-export const entityKeys = new Set(["archetype", "id", "prefab", "transform", "components"]);
+export const entityKeys = new Set(["archetype", "id", "prefab", "tags", "transform", "components"]);
 export const instanceKeys = new Set(["id", "prefab", "transform", "components"]);
 export const transformKeys = new Set(["position", "rotation", "scale"]);
 export const systemKeys = new Set([
@@ -55,6 +55,7 @@ export const systemKeys = new Set([
   "source",
   "writes",
 ]);
+export const systemCountdownKeys = new Set(["autostart", "direction", "event", "field", "id", "limit", "resource"]);
 export const systemQueryKeys = new Set(["changed", "limit", "offset", "orderBy", "with", "without"]);
 export const flowStateKeys = new Set(["id", "actions"]);
 export const flowTransitionKeys = new Set(["id", "from", "to", "trigger", "actions"]);
@@ -146,11 +147,13 @@ export const contactShadowsComponentKeys = new Set(["height", "opacity", "resolu
 export const lightComponentKeys = new Set(["angle", "color", "intensity", "kind", "range", "shadowBias", "shadowNormalBias"]);
 export const kinematicMoverComponentKeys = new Set(["axis", "direction", "loop", "mode", "phase", "radius", "speed", "waypoints"]);
 export const meshRendererComponentKeys = new Set(["castShadow", "material", "mesh", "receiveShadow", "visible"]);
+export const patrolComponentKeys = new Set(["faceHeading", "mode", "pauseAtWaypoint", "paused", "speed", "waypoints"]);
 export const renderLayersComponentKeys = new Set(["layers"]);
 export const rigidBodyComponentKeys = new Set(["angularVelocity", "ccd", "damping", "enabledRotations", "enabledTranslations", "gravityScale", "inverseMass", "kind", "mass", "sleepThreshold", "solverIterations", "velocity"]);
 export const spawnerAreaKeys = new Set(["shape", "size"]);
 export const spawnerComponentKeys = new Set(["area", "despawnPolicy", "enabled", "interval", "jitterSeed", "maxAlive", "maxTotal", "mode", "prefab", "waveSize"]);
 export const spawnerDespawnPolicyKeys = new Set(["afterSeconds", "beyondDistance"]);
+export const stateMachineComponentKeys = new Set(["current", "enabled", "initial", "states", "transitions"]);
 export const visibilityComponentKeys = new Set(["visible"]);
 export const componentRegistry = {
   camera: { keys: cameraComponentKeys },
@@ -160,9 +163,11 @@ export const componentRegistry = {
   KinematicMover: { keys: kinematicMoverComponentKeys },
   Light: { keys: lightComponentKeys },
   MeshRenderer: { keys: meshRendererComponentKeys },
+  Patrol: { keys: patrolComponentKeys },
   RenderLayers: { keys: renderLayersComponentKeys },
   RigidBody: { keys: rigidBodyComponentKeys },
   Spawner: { keys: spawnerComponentKeys },
+  StateMachine: { keys: stateMachineComponentKeys },
   Visibility: { keys: visibilityComponentKeys },
 } as const;
 export const supportedComponentKinds = new Set(Object.keys(componentRegistry));
@@ -287,6 +292,16 @@ export interface ISceneSystem {
   schedule?: string;
   source?: "behavior-metadata";
   writes?: string[];
+}
+
+export interface ISystemCountdown {
+  autostart?: boolean;
+  direction: "down" | "up";
+  event: string;
+  field: string;
+  id: string;
+  limit: number;
+  resource: string;
 }
 
 export interface IScriptReference {
@@ -516,6 +531,7 @@ export interface ISystemsDocument {
   schema: typeof systemsDocumentSchema;
   version?: string;
   id: string;
+  countdowns?: ISystemCountdown[];
   scriptLifecycles?: ISceneScriptLifecycle[];
   systems?: ISceneSystem[];
 }

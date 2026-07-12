@@ -1,0 +1,16 @@
+{
+  "schema": "threenative.systems",
+  "version": "0.1.0",
+  "countdowns": [
+    {
+      "id": "race",
+      "resource": "Race",
+      "field": "remaining",
+      "direction": "down",
+      "limit": 0,
+      "event": "Race.limit",
+      "autostart": true
+    }
+  ],
+  "systems": []
+}

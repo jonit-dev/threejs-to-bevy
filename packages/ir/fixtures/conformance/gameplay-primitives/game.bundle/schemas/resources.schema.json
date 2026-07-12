@@ -1,0 +1,13 @@
+{
+  "schema": "threenative.resource-schemas",
+  "version": "0.1.0",
+  "schemas": {
+    "Race": {
+      "fields": {
+        "remaining": { "kind": "number", "required": true },
+        "restartToken": { "kind": "integer", "required": true },
+        "running": { "kind": "boolean", "required": true }
+      }
+    }
+  }
+}

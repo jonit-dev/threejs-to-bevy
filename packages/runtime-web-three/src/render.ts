@@ -93,6 +93,18 @@ export interface IWebRuntimeProbeObservations {
     animations?: string[];
     loaded: boolean;
   }>;
+  gameplay: {
+    countdowns: Record<string, {
+      direction: "down" | "up";
+      event: string;
+      field: string;
+      limit: number;
+      resource: string;
+      value?: number;
+    }>;
+    states: Record<string, string>;
+    tags: Record<string, { count: number; entities: string[] }>;
+  };
   materials: Record<string, {
     baseColorTexture?: string;
   }>;
@@ -637,6 +649,33 @@ function recordWebCaptureTransformSample(
 }
 
 export function collectWebRuntimeProbeObservations(bundle: IWebBundle): IWebRuntimeProbeObservations {
+  const tags = new Map<string, string[]>();
+  const states: Record<string, string> = {};
+  for (const entity of [...bundle.world.entities].sort((left, right) => left.id.localeCompare(right.id))) {
+    for (const tag of [...new Set(entity.tags ?? [])].sort((left, right) => left.localeCompare(right))) {
+      const entities = tags.get(tag) ?? [];
+      entities.push(entity.id);
+      tags.set(tag, entities);
+    }
+    const machine = entity.components.StateMachine;
+    if (machine !== undefined) {
+      states[entity.id] = machine.current ?? machine.initial;
+    }
+  }
+  const countdowns: IWebRuntimeProbeObservations["gameplay"]["countdowns"] = {};
+  for (const countdown of bundle.systems?.countdowns ?? []) {
+    const resource = bundle.world.resources?.[countdown.resource];
+    const candidate = isRecord(resource) ? resource[countdown.field] : undefined;
+    const value = typeof candidate === "number" ? candidate : undefined;
+    countdowns[countdown.id] = {
+      direction: countdown.direction,
+      event: countdown.event,
+      field: countdown.field,
+      limit: countdown.limit,
+      resource: countdown.resource,
+      ...(value === undefined ? {} : { value }),
+    };
+  }
   return {
     assets: Object.fromEntries(bundle.assets.assets.flatMap((asset) => {
       if (typeof asset.id !== "string") {
@@ -651,6 +690,11 @@ export function collectWebRuntimeProbeObservations(bundle: IWebBundle): IWebRunt
         loaded: path !== undefined && path.length > 0,
       }]];
     })),
+    gameplay: {
+      countdowns,
+      states,
+      tags: Object.fromEntries([...tags.entries()].map(([tag, entities]) => [tag, { count: entities.length, entities }])),
+    },
     materials: Object.fromEntries(bundle.materials.materials.flatMap((material) => {
       if (typeof material.id !== "string") {
         return [];

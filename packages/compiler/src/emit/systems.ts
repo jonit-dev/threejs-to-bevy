@@ -19,10 +19,25 @@ interface ISystemLike {
   writes: string[];
 }
 
-export function systemsToIr(systems: ReadonlyArray<ISystemLike>): ISystemsIr {
+interface ICountdownLike {
+  autostart?: boolean;
+  direction: "down" | "up";
+  event: string;
+  field: string;
+  id: string;
+  limit: number;
+  resource: string;
+}
+
+export function systemsToIr(systems: ReadonlyArray<ISystemLike>, countdowns: ReadonlyArray<ICountdownLike> = []): ISystemsIr {
   return {
     schema: "threenative.systems",
     version: "0.1.0",
+    ...(countdowns.length === 0 ? {} : {
+      countdowns: countdowns
+        .map((countdown) => ({ ...countdown }))
+        .sort((left, right) => left.id.localeCompare(right.id)),
+    }),
     systems: [...systems]
       .sort((left, right) => left.name.localeCompare(right.name))
       .map((system) => ({

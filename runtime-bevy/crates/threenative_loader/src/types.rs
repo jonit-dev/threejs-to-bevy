@@ -153,6 +153,8 @@ pub struct PrefabDeclarationIr {
 pub struct PrefabEntityTemplateIr {
     pub id: String,
     pub components: EntityComponents,
+    #[serde(default)]
+    pub tags: Vec<String>,
 }
 
 #[derive(Clone, Debug, Deserialize)]
@@ -392,6 +394,8 @@ pub struct WorldIr {
 pub struct WorldEntity {
     pub id: String,
     pub components: EntityComponents,
+    #[serde(default)]
+    pub tags: Vec<String>,
 }
 
 #[derive(Clone, Debug, Default, Deserialize)]
@@ -404,10 +408,12 @@ pub struct EntityComponents {
     pub kinematic_mover: Option<KinematicMoverComponent>,
     pub light: Option<LightComponent>,
     pub mesh_renderer: Option<MeshRendererComponent>,
+    pub patrol: Option<PatrolComponent>,
     pub physics_joint: Option<PhysicsJointComponent>,
     pub render_layers: Option<RenderLayersComponent>,
     pub rigid_body: Option<RigidBodyComponent>,
     pub spawner: Option<SpawnerComponent>,
+    pub state_machine: Option<StateMachineComponent>,
     pub transform: Option<TransformComponent>,
     pub visibility: Option<VisibilityComponent>,
     #[serde(flatten)]
@@ -444,6 +450,43 @@ pub struct KinematicMoverComponent {
     pub radius: Option<f32>,
     pub speed: f32,
     pub waypoints: Option<Vec<[f32; 3]>>,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PatrolComponent {
+    pub face_heading: Option<bool>,
+    pub mode: String,
+    pub pause_at_waypoint: Option<f32>,
+    pub paused: Option<bool>,
+    pub speed: f32,
+    pub waypoints: Vec<[f32; 3]>,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct StateMachineComponent {
+    pub current: Option<String>,
+    pub enabled: Option<bool>,
+    pub initial: String,
+    pub states: Vec<String>,
+    pub transitions: Vec<StateMachineTransition>,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct StateMachineTransition {
+    pub from: String,
+    pub to: String,
+    pub trigger: StateMachineTrigger,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase", tag = "kind")]
+pub enum StateMachineTrigger {
+    Event { event: String },
+    Sensor { phase: String, sensor: String },
+    Timer { ticks: u32 },
 }
 
 #[derive(Clone, Debug, Deserialize)]
@@ -1160,6 +1203,8 @@ pub struct SystemsIr {
     #[serde(default, rename = "componentHooks")]
     pub component_hooks: Vec<SystemComponentHookIr>,
     #[serde(default)]
+    pub countdowns: Vec<SystemCountdownIr>,
+    #[serde(default)]
     pub lifecycle: Option<SystemsLifecycleIr>,
     #[serde(default)]
     pub observers: Vec<SystemObserverIr>,
@@ -1172,6 +1217,18 @@ pub struct SystemsIr {
     #[serde(default)]
     pub tasks: Vec<SystemTaskIr>,
     pub systems: Vec<SystemIr>,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SystemCountdownIr {
+    pub autostart: Option<bool>,
+    pub direction: String,
+    pub event: String,
+    pub field: String,
+    pub id: String,
+    pub limit: f32,
+    pub resource: String,
 }
 
 #[derive(Clone, Debug, Deserialize)]

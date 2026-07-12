@@ -151,6 +151,7 @@ fn authored_ambient_light_should_drive_native_ambient_resource() {
             }
         }))
         .expect("ambient light components should deserialize"),
+        tags: Vec::new(),
     });
     let mut app = App::new();
     map_bundle_into_world(app.world_mut(), &bundle).expect("bundle should map");
@@ -182,6 +183,7 @@ fn should_activate_only_declared_active_camera() {
             }
         }))
         .expect("camera components should deserialize"),
+        tags: Vec::new(),
     };
     bundle.world.entities.push(secondary);
     bundle
@@ -585,6 +587,7 @@ fn stylized_source_bundle(
             }
         }))
         .expect("stylized nature components should deserialize"),
+        tags: Vec::new(),
     });
     bundle
 }

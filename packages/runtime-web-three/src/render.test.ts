@@ -6,7 +6,7 @@ import { RENDER_LOOK_PROFILE_PRESETS, type IRuntimeConfigIr } from "@threenative
 
 import type { IWebBundle } from "./loadBundle.js";
 import { mapWorld } from "./mapWorld.js";
-import { appendCaptureTransformSample, applyRendererColorManagement, applyRendererShadowSettings, applyRenderLookSceneDefaults, collectWebRuntimeDiagnostics, createBloomPass, createEmissiveProxyLightController, createRenderedParticleObjects, createWebCaptureTransformTrace, createWebRenderLifecycle, disposeThreeWorld, needsColorManagedOutputPass, newAudioEvents, renderCameraViews, webAmbientOcclusionSettings, webAmbientOcclusionStrength, webBloomSettings, webDepthOfFieldSettings, webMotionBlurSettings, webRendererParameters, webScreenSpaceReflectionThickness, webScreenSpaceReflectionsSettings } from "./render.js";
+import { appendCaptureTransformSample, applyRendererColorManagement, applyRendererShadowSettings, applyRenderLookSceneDefaults, collectWebRuntimeProbeObservations, collectWebRuntimeDiagnostics, createBloomPass, createEmissiveProxyLightController, createRenderedParticleObjects, createWebCaptureTransformTrace, createWebRenderLifecycle, disposeThreeWorld, needsColorManagedOutputPass, newAudioEvents, renderCameraViews, webAmbientOcclusionSettings, webAmbientOcclusionStrength, webBloomSettings, webDepthOfFieldSettings, webMotionBlurSettings, webRendererParameters, webScreenSpaceReflectionThickness, webScreenSpaceReflectionsSettings } from "./render.js";
 
 function runtimeConfig(
   antialias: NonNullable<IRuntimeConfigIr["renderer"]>["antialias"],
@@ -20,6 +20,42 @@ function runtimeConfig(
     window: { height: 720, width: 1280 },
   };
 }
+
+test("should normalize gameplay probe observations for tags, states, and countdowns", () => {
+  const observations = collectWebRuntimeProbeObservations({
+    assets: { assets: [], schema: "threenative.assets", version: "0.1.0" },
+    manifest: {} as IWebBundle["manifest"],
+    materials: { materials: [], schema: "threenative.materials", version: "0.1.0" },
+    systems: {
+      countdowns: [{ autostart: true, direction: "down", event: "Round.limit", field: "remaining", id: "round", limit: 30, resource: "Round" }],
+      schema: "threenative.systems",
+      systems: [],
+      version: "0.1.0",
+    },
+    targetProfile: {} as IWebBundle["targetProfile"],
+    world: {
+      entities: [
+        { components: { StateMachine: { initial: "chase", states: ["idle", "chase"], transitions: [] } }, id: "guard", tags: ["enemy"] },
+        { components: {}, id: "coin-2", tags: ["coin"] },
+        { components: {}, id: "coin-1", tags: ["coin"] },
+      ],
+      resources: { Round: { remaining: 12.5 } },
+      schema: "threenative.world",
+      version: "0.1.0",
+    },
+  } as IWebBundle);
+
+  assert.deepEqual(observations.gameplay, {
+    countdowns: {
+      round: { direction: "down", event: "Round.limit", field: "remaining", limit: 30, resource: "Round", value: 12.5 },
+    },
+    states: { guard: "chase" },
+    tags: {
+      coin: { count: 2, entities: ["coin-1", "coin-2"] },
+      enemy: { count: 1, entities: ["guard"] },
+    },
+  });
+});
 
 test("should retain a three-frame capture transform trace with rendered deltas", () => {
   const trace = createWebCaptureTransformTrace("motion.marker", 120, 1 / 60);

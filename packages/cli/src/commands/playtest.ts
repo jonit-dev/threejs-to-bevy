@@ -603,6 +603,7 @@ async function runNativePlaytest(options: IPlaytestRunOptions, bevyRunner: BevyR
     }),
   );
   const runtimeDiagnostics = { nativeFrameSamples, readiness: readinessSamples, resources: nativeRuntimeResources(readinessSamples) };
+  const gameplayObservations = readinessSamples.at(-1)?.gameplayObservations;
   const effectLog = nativeSceneQueryEffectLog(readinessSamples);
   const writeAudit = options.auditWrites ? nativeRuntimeWriteAudit(readinessSamples) : undefined;
   diagnostics.push(...resourceObservationDiagnostics(diagnostics, runtimeDiagnostics));
@@ -631,6 +632,7 @@ async function runNativePlaytest(options: IPlaytestRunOptions, bevyRunner: BevyR
       hud: {},
       network: [],
       resources: mergeSnapshots(beforeResources, afterResources),
+      ...(gameplayObservations === undefined ? {} : { runtimeObservations: { gameplay: gameplayObservations } }),
       runtimeDiagnostics,
     },
     pass: !hasErrors,

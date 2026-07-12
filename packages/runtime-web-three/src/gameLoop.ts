@@ -3,6 +3,9 @@ import type { IWebInputState } from "./input.js";
 import type { IThreeWorld } from "./mapWorld.js";
 import { applyAnimationServiceEffects, syncMeshRendererMaterials, syncTransforms } from "./mapWorld.js";
 import { stepKinematicMovers } from "./kinematicMover.js";
+import { stepPatrols } from "./patrol.js";
+import { stepStateMachines } from "./stateMachines.js";
+import { stepCountdowns } from "./countdowns.js";
 import { stepPhysics } from "./physics.js";
 import { runSchedule, type ISystemModule } from "./systems/runner.js";
 import { webSystemRuntimeStateFor } from "./systems/context.js";
@@ -85,8 +88,11 @@ export async function runGameFrame(options: {
       while (state.accumulator >= fixedDelta) {
         const beforeFixed = snapshotWorldTransforms(options.world);
         stepKinematicMovers(options.world, state.elapsed);
+        stepPatrols(options.world, fixedDelta);
         stepPhysics(options.world, fixedDelta, options.environmentScene, { tick: state.tick, writeLedger: runtimeState.writeLedger });
-        runtimeState.sensors.advance(options.world, { fixedDelta, tick: state.tick });
+        stepCountdowns(options.world, options.systems, fixedDelta, runtimeState.countdowns, state.tick);
+        const sensorEvents = runtimeState.sensors.advance(options.world, { fixedDelta, tick: state.tick });
+        stepStateMachines(options.world, state.tick, sensorEvents);
         collectSystemResult(
           options.mapped,
           await runSchedule({ ...options, delta: fixedDelta, elapsed: state.elapsed, fixedDelta, frame: state.frame, paused: state.paused, runtimeState, schedule: "fixedUpdate", tick: state.tick }),
@@ -108,8 +114,11 @@ export async function runGameFrame(options: {
   } else {
     collectSystemResult(options.mapped, await runSchedule({ ...options, delta: 0, fixedDelta, frame: 0, runtimeState, schedule: "startup", tick: 0 }));
     stepKinematicMovers(options.world, fixedDelta);
+    stepPatrols(options.world, fixedDelta);
     stepPhysics(options.world, fixedDelta, options.environmentScene, { tick: 0, writeLedger: runtimeState.writeLedger });
-    runtimeState.sensors.advance(options.world, { fixedDelta, tick: 0 });
+    stepCountdowns(options.world, options.systems, fixedDelta, runtimeState.countdowns, 0);
+    const sensorEvents = runtimeState.sensors.advance(options.world, { fixedDelta, tick: 0 });
+    stepStateMachines(options.world, 0, sensorEvents);
     collectSystemResult(options.mapped, await runSchedule({ ...options, fixedDelta, frame: 0, runtimeState, schedule: "fixedUpdate", tick: 0 }));
     collectSystemResult(options.mapped, await runSchedule({ ...options, fixedDelta, frame: 0, runtimeState, schedule: "update", tick: 0 }));
     collectSystemResult(options.mapped, await runSchedule({ ...options, fixedDelta, frame: 0, runtimeState, schedule: "postUpdate", tick: 0 }));

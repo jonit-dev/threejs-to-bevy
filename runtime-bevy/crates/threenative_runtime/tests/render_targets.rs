@@ -98,6 +98,7 @@ fn should_map_camera_target_to_bevy_image_output() {
             }
         }))
         .expect("monitor camera should deserialize"),
+        tags: Vec::new(),
     });
     bundle.world.entities.push(WorldEntity {
         id: "camera.depth".to_owned(),
@@ -110,6 +111,7 @@ fn should_map_camera_target_to_bevy_image_output() {
             }
         }))
         .expect("depth camera should deserialize"),
+        tags: Vec::new(),
     });
 
     let descriptor = bundle

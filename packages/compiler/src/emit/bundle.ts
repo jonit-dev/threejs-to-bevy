@@ -905,6 +905,9 @@ function mergeEcsEmits(emits: IEcsEmitResult[]): IEcsEmitResult | undefined {
       systems: {
         schema: "threenative.systems",
         version: "0.1.0",
+        ...(merged.systems.countdowns === undefined && current.systems.countdowns === undefined ? {} : {
+          countdowns: mergeById([...(merged.systems.countdowns ?? []), ...(current.systems.countdowns ?? [])]),
+        }),
         systems: mergeByName([...merged.systems.systems, ...current.systems.systems]),
       },
       world: mergeWorlds(merged.world, current.world) ?? merged.world,

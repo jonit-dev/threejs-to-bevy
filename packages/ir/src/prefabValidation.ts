@@ -1,6 +1,7 @@
 import type { IPrefabsIr } from "./types.js";
 import type { IIrDiagnostic } from "./validate.js";
 import { isRecord } from "./validationPrimitives.js";
+import { validateEntityTags } from "./tagValidation.js";
 
 export function validatePrefabs(prefabs: IPrefabsIr, path: string, diagnostics: IIrDiagnostic[]): void {
   if (prefabs.schema !== "threenative.prefabs" || prefabs.version !== "0.1.0") {
@@ -41,6 +42,7 @@ export function validatePrefabs(prefabs: IPrefabsIr, path: string, diagnostics: 
       } else {
         entityIds.add(entity.id);
       }
+      validateEntityTags(entity.tags, `${entityPath}/tags`, diagnostics);
       if (!isRecord(entity.components)) {
         diagnostics.push({ code: "TN_IR_PREFAB_COMPONENTS_INVALID", message: "Prefab entity components must be an object.", path: `${entityPath}/components` });
       }

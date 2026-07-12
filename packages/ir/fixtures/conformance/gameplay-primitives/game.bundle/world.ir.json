@@ -1,0 +1,41 @@
+{
+  "schema": "threenative.world",
+  "version": "0.1.0",
+  "events": {
+    "Guard.alert": [{}],
+    "Race.limit": []
+  },
+  "resources": {
+    "Race": {
+      "remaining": 2,
+      "restartToken": 0,
+      "running": true
+    }
+  },
+  "entities": [
+    {
+      "id": "guard",
+      "tags": ["enemy", "patrol"],
+      "components": {
+        "Transform": { "position": [0, 0, 0] },
+        "Patrol": {
+          "mode": "ping-pong",
+          "speed": 1,
+          "waypoints": [[0, 0, 0], [2, 0, 0]],
+          "faceHeading": true
+        },
+        "StateMachine": {
+          "initial": "idle",
+          "states": ["idle", "alert"],
+          "transitions": [
+            {
+              "from": "idle",
+              "to": "alert",
+              "trigger": { "kind": "event", "event": "Guard.alert" }
+            }
+          ]
+        }
+      }
+    }
+  ]
+}

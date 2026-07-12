@@ -120,6 +120,11 @@ pub struct NativeProofHarnessReadiness {
         skip_serializing_if = "Option::is_none"
     )]
     pub runtime_observations: Option<NativeRuntimeProbeObservations>,
+    #[serde(
+        rename = "gameplayObservations",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub gameplay_observations: Option<serde_json::Value>,
     #[serde(rename = "sceneQueries", skip_serializing_if = "Vec::is_empty")]
     pub scene_queries: Vec<NativeProofHarnessSceneQuerySample>,
     pub transforms: Vec<NativeProofHarnessTransformSample>,
@@ -337,6 +342,9 @@ pub fn apply_native_proof_harness_commands(
             runtime.as_deref().map(|runtime| {
                 native_runtime_probe_observations(&runtime.bundle.assets, &runtime.bundle.materials)
             }),
+            runtime
+                .as_deref()
+                .map(|runtime| crate::systems_host::native_gameplay_observations(&runtime.bundle)),
         );
         return;
     }
@@ -490,6 +498,9 @@ pub fn apply_native_proof_harness_commands(
         runtime.as_deref().map(|runtime| {
             native_runtime_probe_observations(&runtime.bundle.assets, &runtime.bundle.materials)
         }),
+        runtime
+            .as_deref()
+            .map(|runtime| crate::systems_host::native_gameplay_observations(&runtime.bundle)),
     );
     if !hold_tick {
         state.tick += advance_ticks;
@@ -568,6 +579,7 @@ fn write_native_proof_harness_post_runtime_sample(
             .as_deref()
             .map(|runtime| native_resource_snapshots(&runtime.bundle))
             .unwrap_or_default(),
+        None,
         None,
     );
 }
@@ -658,6 +670,7 @@ fn write_native_proof_harness_sample<'a>(
     write_audit: Option<NativeRuntimeWriteAuditState>,
     resource_snapshots: BTreeMap<String, serde_json::Value>,
     runtime_observations: Option<NativeRuntimeProbeObservations>,
+    gameplay_observations: Option<serde_json::Value>,
 ) {
     let ok = diagnostics
         .iter()
@@ -673,6 +686,7 @@ fn write_native_proof_harness_sample<'a>(
         write_audit,
         resource_snapshots,
         runtime_observations,
+        gameplay_observations,
         scene_queries: state.scene_queries.clone(),
         transforms: native_proof_harness_transform_samples(transforms),
     };
@@ -720,6 +734,7 @@ fn write_native_proof_harness_bundle_sample(
             &bundle.assets,
             &bundle.materials,
         )),
+        gameplay_observations: Some(crate::systems_host::native_gameplay_observations(bundle)),
         scene_queries: state.scene_queries.clone(),
         transforms: native_proof_harness_bundle_transform_samples(bundle),
     };

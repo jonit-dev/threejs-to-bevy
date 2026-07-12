@@ -451,7 +451,8 @@ function readPrefabEntities(value: unknown): IPrefabsIr["prefabs"][number]["enti
       return [];
     }
     const components = isRecord(item.components) ? cloneRecord(item.components) : {};
-    return [{ id, components }];
+    const tags = Array.isArray(item.tags) ? item.tags.filter((tag): tag is string => typeof tag === "string" && tag.trim() !== "") : [];
+    return [{ id, components, ...(tags.length === 0 ? {} : { tags: [...new Set(tags)].sort() }) }];
   });
 }
 

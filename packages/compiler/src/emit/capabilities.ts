@@ -213,6 +213,16 @@ function collectWorldCapabilities(world: IWorldIr | undefined, add: (domain: str
     add("ecs", "events");
   }
   for (const entity of world.entities) {
+    if ((entity.tags ?? []).length > 0) {
+      add("ecs", "entity-tags");
+      add("scripting", "tag-queries");
+    }
+    if (entity.components.Patrol !== undefined) {
+      add("gameplay", "patrol");
+    }
+    if (entity.components.StateMachine !== undefined) {
+      add("gameplay", "entity-state-machine");
+    }
     if (entity.components.Hierarchy !== undefined) {
       add("transform", "hierarchy");
     }
@@ -492,7 +502,7 @@ function collectAnimationCapabilities(animations: IAnimationsIr | undefined, add
 }
 
 function collectSystemCapabilities(systems: ISystemsIr | undefined, add: (domain: string, capability: string) => void): void {
-  if (systems === undefined || systems.systems.length === 0) {
+  if (systems === undefined || (systems.systems.length === 0 && (systems.countdowns ?? []).length === 0)) {
     return;
   }
   add("scripting", "systems");
@@ -523,6 +533,9 @@ function collectSystemCapabilities(systems: ISystemsIr | undefined, add: (domain
   }
   if ((systems.tasks ?? []).length > 0) {
     add("scripting", "tasks");
+  }
+  if ((systems.countdowns ?? []).length > 0) {
+    add("scripting", "runtime-countdowns");
   }
   if ((systems.plugins ?? []).length > 0 || (systems.pluginGroups ?? []).length > 0) {
     add("ecs", "plugin-composition");

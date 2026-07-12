@@ -1,5 +1,5 @@
 import type { IPlaytestReport } from "./playtest.js";
-import type { IPlaytestPathAssertion, IPlaytestScenario } from "./playtestScenario.js";
+import type { IPlaytestPathAssertion, IPlaytestScenario, IPlaytestStateAssertion, IPlaytestTagCountAssertion } from "./playtestScenario.js";
 
 type Vec3 = [number, number, number];
 
@@ -55,6 +55,25 @@ export const PLAYTEST_ASSERTION_REGISTRY: readonly IPlaytestAssertionSchemaEntry
       { description: "Require before and after values to differ or remain equal.", name: "changed", type: "boolean" },
     ],
     kind: "resources",
+  },
+  {
+    description: "Proves the final count of entities carrying a bounded runtime tag.",
+    example: { tags: [{ tag: "coin", count: 10 }] },
+    fields: [
+      { description: "Entity tag to count.", name: "tag", required: true, type: "string" },
+      { description: "Exact expected entity count.", name: "count", type: "non-negative integer" },
+      { description: "Minimum expected entity count.", name: "gte", type: "non-negative integer" },
+    ],
+    kind: "tags",
+  },
+  {
+    description: "Proves an entity's final runtime-owned state-machine state.",
+    example: { states: [{ entity: "guard", equals: "chase" }] },
+    fields: [
+      { description: "Entity carrying the StateMachine component.", name: "entity", required: true, type: "string" },
+      { description: "Expected current state name.", name: "equals", required: true, type: "string" },
+    ],
+    kind: "states",
   },
   {
     description: "Proves retained UI/HUD text or values after the scenario.",
@@ -184,6 +203,20 @@ export function evaluateRichPlaytestAssertions(input: {
     assertions.push(result.assertion);
     if (result.diagnostic !== undefined) {
       diagnostics.push({ ...result.diagnostic, code: result.diagnostic.code || "TN_PLAYTEST_HUD_ASSERTION_FAILED" });
+    }
+  }
+  for (const assertion of scenarioAssertions.tags ?? []) {
+    const result = evaluateTagCountAssertion(assertion, input.report.observations?.runtimeObservations);
+    assertions.push(result.assertion);
+    if (result.diagnostic !== undefined) {
+      diagnostics.push(result.diagnostic);
+    }
+  }
+  for (const assertion of scenarioAssertions.states ?? []) {
+    const result = evaluateStateAssertion(assertion, input.report.observations?.runtimeObservations);
+    assertions.push(result.assertion);
+    if (result.diagnostic !== undefined) {
+      diagnostics.push(result.diagnostic);
     }
   }
   if (scenarioAssertions.diagnostics !== undefined) {
@@ -337,6 +370,62 @@ export function evaluateRichPlaytestAssertions(input: {
     }
   }
   return { assertions, diagnostics };
+}
+
+function evaluateTagCountAssertion(
+  assertion: IPlaytestTagCountAssertion,
+  observations: unknown,
+): { assertion: IPlaytestAssertionResult; diagnostic?: IPlaytestDiagnostic } {
+  const gameplay = gameplayObservations(observations);
+  const tags = isRecord(gameplay?.tags) ? gameplay.tags : undefined;
+  const candidate = tags?.[assertion.tag];
+  const summary = isRecord(candidate) ? candidate : undefined;
+  const count = typeof summary?.count === "number" ? summary.count : undefined;
+  const pass = count !== undefined
+    && (assertion.count === undefined || count === assertion.count)
+    && (assertion.gte === undefined || count >= assertion.gte);
+  const result = { details: { count: count ?? null, expected: assertion, tag: assertion.tag }, id: `tags.${assertion.tag}`, pass };
+  return pass
+    ? { assertion: result }
+    : {
+        assertion: result,
+        diagnostic: {
+          code: "TN_PLAYTEST_TAG_COUNT_ASSERTION_FAILED",
+          message: `Tag '${assertion.tag}' count ${count === undefined ? "was unavailable" : count} did not satisfy the expected count.`,
+          severity: "error",
+          suggestion: "Ensure the runtime entity tags are authored and inspect runtimeObservations.gameplay.tags in the playtest artifact.",
+        },
+      };
+}
+
+function evaluateStateAssertion(
+  assertion: IPlaytestStateAssertion,
+  observations: unknown,
+): { assertion: IPlaytestAssertionResult; diagnostic?: IPlaytestDiagnostic } {
+  const gameplay = gameplayObservations(observations);
+  const states = isRecord(gameplay?.states) ? gameplay.states : undefined;
+  const observed = typeof states?.[assertion.entity] === "string" ? states[assertion.entity] : undefined;
+  const pass = observed === assertion.equals;
+  const result = { details: { entity: assertion.entity, expected: assertion.equals, observed: observed ?? null }, id: `states.${assertion.entity}`, pass };
+  return pass
+    ? { assertion: result }
+    : {
+        assertion: result,
+        diagnostic: {
+          code: "TN_PLAYTEST_STATE_ASSERTION_FAILED",
+          message: `Entity '${assertion.entity}' state ${observed === undefined ? "was unavailable" : `'${observed}'`} did not equal '${assertion.equals}'.`,
+          severity: "error",
+          suggestion: "Ensure the entity has a StateMachine component and inspect runtimeObservations.gameplay.states in the playtest artifact.",
+        },
+      };
+}
+
+function gameplayObservations(value: unknown): Record<string, unknown> | undefined {
+  if (!isRecord(value)) {
+    return undefined;
+  }
+  const gameplay = value.gameplay;
+  return isRecord(gameplay) ? gameplay : undefined;
 }
 
 function evaluatePathAssertion(

@@ -3,6 +3,7 @@ import type { IWorldEntity, PrefabsSchema, SchemaVersion } from "./types.js";
 export interface IPrefabEntityTemplateIr {
   id: string;
   components: IWorldEntity["components"];
+  tags?: string[];
 }
 
 export interface IPrefabDeclarationIr {

@@ -25,6 +25,8 @@ pub struct NativeSystemContextSnapshot {
     pub entities: Vec<NativeSystemEntitySnapshot>,
     pub events: BTreeMap<String, Vec<Value>>,
     pub input: NativeSystemInputSnapshot,
+    #[serde(rename = "lifecycle")]
+    pub lifecycle: NativeEntityLifecycleSnapshot,
     pub local_data: NativeLocalDataSnapshot,
     pub mesh_bounds: BTreeMap<String, NativeMeshBoundsSnapshot>,
     pub observer_routes: BTreeMap<String, BTreeMap<String, Vec<NativeObserverPropagationStep>>>,
@@ -37,8 +39,18 @@ pub struct NativeSystemContextSnapshot {
     pub runtime_changed: BTreeMap<String, Vec<String>>,
     pub states: BTreeMap<String, Option<String>>,
     pub tasks: Vec<NativeTaskDeclaration>,
+    #[serde(rename = "tagEntities")]
+    pub tag_entities: Vec<NativeSystemEntitySnapshot>,
     pub time: NativeSystemTimeSnapshot,
     pub ui: Option<NativeUiSnapshot>,
+}
+
+#[derive(Clone, Debug, Default, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct NativeEntityLifecycleSnapshot {
+    pub despawned: Vec<String>,
+    pub spawned: Vec<String>,
+    pub tags: BTreeMap<String, Vec<String>>,
 }
 
 #[derive(Clone, Debug, Serialize)]
@@ -110,6 +122,7 @@ pub struct NativePluginGroupDeclaration {
 pub struct NativeSystemEntitySnapshot {
     pub id: String,
     pub components: BTreeMap<String, Value>,
+    pub tags: Vec<String>,
 }
 
 #[derive(Clone, Debug, Serialize)]
@@ -295,23 +308,48 @@ pub fn build_system_context_snapshot_with_sensor_events(
     diff_cache: Option<&ComponentDiffCache>,
     sensor_events: &[Value],
 ) -> NativeSystemContextSnapshot {
+    build_system_context_snapshot_with_sensor_events_and_lifecycle(
+        bundle,
+        system,
+        time,
+        events,
+        input,
+        diff_cache,
+        sensor_events,
+        NativeEntityLifecycleSnapshot::default(),
+    )
+}
+
+pub fn build_system_context_snapshot_with_sensor_events_and_lifecycle(
+    bundle: &LoadedBundle,
+    system: &SystemIr,
+    time: NativeSystemTimeSnapshot,
+    events: BTreeMap<String, Vec<Value>>,
+    input: Option<&NativeInputState>,
+    diff_cache: Option<&ComponentDiffCache>,
+    sensor_events: &[Value],
+    lifecycle: NativeEntityLifecycleSnapshot,
+) -> NativeSystemContextSnapshot {
     let readable_components = readable_components(system);
+    let entity_snapshot = |entity: &WorldEntity| NativeSystemEntitySnapshot {
+        id: entity.id.clone(),
+        components: readable_components
+            .iter()
+            .filter_map(|component| {
+                component_value(&entity.components, component)
+                    .map(|value| (component.clone(), value))
+            })
+            .collect(),
+        tags: normalize_entity_tags(&entity.tags),
+    };
     let entities = bundle
         .world
         .entities
         .iter()
         .filter(|entity| system_entity_matches_declared_queries(entity, system))
-        .map(|entity| NativeSystemEntitySnapshot {
-            id: entity.id.clone(),
-            components: readable_components
-                .iter()
-                .filter_map(|component| {
-                    component_value(&entity.components, component)
-                        .map(|value| (component.clone(), value))
-                })
-                .collect(),
-        })
+        .map(entity_snapshot)
         .collect();
+    let tag_entities = bundle.world.entities.iter().map(entity_snapshot).collect();
 
     NativeSystemContextSnapshot {
         audio_sounds: audio_sounds(bundle),
@@ -339,6 +377,7 @@ pub fn build_system_context_snapshot_with_sensor_events(
             NativeSystemInputSnapshot::neutral,
             NativeSystemInputSnapshot::from_native_input,
         ),
+        lifecycle,
         local_data: local_data_snapshot(bundle.local_data.as_ref()),
         mesh_bounds: mesh_bounds(bundle),
         observer_routes: observer_routes(bundle),
@@ -356,9 +395,21 @@ pub fn build_system_context_snapshot_with_sensor_events(
             .unwrap_or_default(),
         states: evaluate_states(bundle),
         tasks: task_declarations(bundle),
+        tag_entities,
         time,
         ui: bundle.ui.as_ref().map(ui_snapshot),
     }
+}
+
+fn normalize_entity_tags(tags: &[String]) -> Vec<String> {
+    let mut normalized = tags
+        .iter()
+        .filter(|tag| !tag.trim().is_empty() && tag.len() <= 64 && !tag.chars().any(char::is_control))
+        .cloned()
+        .collect::<Vec<_>>();
+    normalized.sort();
+    normalized.dedup();
+    normalized
 }
 
 fn local_data_snapshot(local_data: Option<&LocalDataIr>) -> NativeLocalDataSnapshot {
@@ -879,6 +930,16 @@ pub fn component_value(components: &EntityComponents, component: &str) -> Option
                 "waypoints": mover.waypoints,
             })
         }),
+        "Patrol" => components.patrol.as_ref().map(|patrol| {
+            json!({
+                "faceHeading": patrol.face_heading,
+                "mode": patrol.mode,
+                "pauseAtWaypoint": patrol.pause_at_waypoint,
+                "paused": patrol.paused,
+                "speed": patrol.speed,
+                "waypoints": patrol.waypoints,
+            })
+        }),
         "Light" => components.light.as_ref().map(|light| {
             json!({
                 "kind": light.kind,
@@ -903,6 +964,15 @@ pub fn component_value(components: &EntityComponents, component: &str) -> Option
             })
         }),
         "Transform" => components.transform.as_ref().map(transform_value),
+        "StateMachine" => components.state_machine.as_ref().map(|machine| {
+            json!({
+                "current": machine.current,
+                "enabled": machine.enabled,
+                "initial": machine.initial,
+                "states": machine.states,
+                "transitions": machine.transitions,
+            })
+        }),
         "Visibility" => components
             .visibility
             .as_ref()

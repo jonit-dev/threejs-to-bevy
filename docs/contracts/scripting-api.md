@@ -663,6 +663,7 @@ validated against `systems.ir.json`.
 | `ctx.resources` | Reads and writes declared singleton world state. | Reads are cloned snapshots; writes are queued effects and apply only after `resourceWrites` validation. |
 | `ctx.events` | Reads and emits typed events. | Event schemas are declared and queues are runtime-owned. |
 | `ctx.commands` | Structural world changes and command-buffer event emission. | Commands flush at schedule boundaries after validation; supports spawn, despawn, add/remove/set component, and emit event. |
+| `ctx.entities` | Stable tag queries and reconciled lifecycle observations. | `withTag` and `countTag` sort by entity ID; `spawned` and `despawned` expose successful live effects once per tick, optionally filtered by tag. |
 | `ctx.physics` | Controlled physics queries, sensors, and bounded character-facing observations. | Runtime service facade; no Rapier or Bevy physics handles. |
 | `ctx.navigation` | Static path queries. | Reads portable `Navigation` resource data and returns stable success/failure path payloads. |
 | `ctx.picking` | Pointer ray and generated-mesh bounds picking. | Uses portable camera, transform, and generated bounds data; no renderer handles. |
@@ -678,6 +679,24 @@ validated against `systems.ir.json`.
 | `ctx.observers` | Deterministic observer route reads. | Returns declared target/bubble propagation steps; raw callbacks are not exposed. |
 | `ctx.tasks` / `ctx.channels` | Fixed-trace task metadata and event-backed handoff. | Channels map to declared event queues; arbitrary async workers/promises remain unsupported. |
 | `ctx.plugins` | Portable plugin and plugin-group metadata. | Declaration metadata only; dynamic runtime plugin loading remains unsupported. |
+
+Runtime-owned gameplay components are deliberately bounded data contracts:
+
+- `Patrol` advances non-dynamic entities between 2-32 waypoints in `loop` or
+  `ping-pong` mode. `speed`, `pauseAtWaypoint`, `faceHeading`, and `paused` are
+  validated; dynamic rigid bodies require a future steering contract.
+- `StateMachine` stores unique states and ordered transitions. Each transition
+  has one `event`, `sensor` phase, or fixed-tick `timer` trigger; declaration
+  order wins when multiple transitions match.
+- A systems `countdowns` declaration advances a numeric resource field on fixed
+  ticks and emits its declared event once at the limit. `autostart: false`, a
+  `running` resource field, and a changing `restartToken` provide bounded
+  stop/start/restart control.
+
+The runtime gameplay primitive proof is the shared
+`gameplay-primitives` conformance fixture and
+`pnpm verify:gameplay-primitives`; backend handles and arbitrary user callbacks
+remain outside the script API.
 
 ## Entity API
 

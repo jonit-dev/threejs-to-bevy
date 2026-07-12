@@ -76,13 +76,33 @@ async function addTimerBlock(options: IMechanicBlockOptions): Promise<IMechanicB
   const resource = readFlag(options.args, "--resource") ?? "GameTimer";
   const direction = readFlag(options.args, "--direction") === "up" ? "up" : "down";
   const limit = parseFiniteNumber(readFlag(options.args, "--limit")) ?? 60;
+  const field = readFlag(options.args, "--field") ?? (direction === "down" ? "remaining" : "elapsed");
+  const event = readFlag(options.args, "--event") ?? `${resource}.limit`;
+  const countdownId = readFlag(options.args, "--id") ?? `${resource}.countdown`;
+  const autostart = readFlag(options.args, "--autostart") !== "false";
   const scenePath = await resolveScenePath(options.projectPath);
+  const systemsPath = await resolveSystemsPath(options.projectPath, scenePath);
   const scene = await readJsonObject(resolve(options.projectPath, scenePath));
+  const systems = await readJsonObject(resolve(options.projectPath, systemsPath));
   const resources = arrayOfRecords(scene.resources);
   scene.resources = resources;
-  upsertResource(resources, resource, { direction, limit, remaining: direction === "down" ? limit : 0, statusText: direction === "down" ? `Time ${limit}` : "Time 0" });
+  upsertResource(resources, resource, {
+    direction,
+    [field]: direction === "down" ? limit : 0,
+    limit,
+    restartToken: 0,
+    running: autostart,
+    statusText: direction === "down" ? `Time ${limit}` : "Time 0",
+  });
+  const countdowns = arrayOfRecords(systems.countdowns);
+  systems.schema = systems.schema ?? "threenative.systems";
+  systems.version = systems.version ?? "0.1.0";
+  systems.id = systems.id ?? "systems.generated";
+  systems.countdowns = countdowns;
+  upsertCountdown(countdowns, { autostart, direction, event, field, id: countdownId, limit, resource });
   await writeJson(resolve(options.projectPath, scenePath), scene);
-  return writeBlockArtifacts(options.projectPath, "timer", { direction, limit, resource, scenePath }, [scenePath]);
+  await writeJson(resolve(options.projectPath, systemsPath), systems);
+  return writeBlockArtifacts(options.projectPath, "timer", { autostart, countdownId, direction, event, field, limit, resource, scenePath, systemsPath }, [scenePath, systemsPath]);
 }
 
 async function addTriggerSequenceBlock(options: IMechanicBlockOptions): Promise<IMechanicBlockResult> {
@@ -233,6 +253,24 @@ async function resolveScenePath(projectPath: string): Promise<string> {
   return firstScene === undefined ? "content/scenes/arena.scene.json" : `content/scenes/${firstScene}`;
 }
 
+async function resolveSystemsPath(projectPath: string, scenePath: string): Promise<string> {
+  const sceneFile = scenePath.split("/").pop() ?? "arena.scene.json";
+  const stem = sceneFile.endsWith(".scene.json") ? sceneFile.slice(0, -".scene.json".length) : "arena";
+  const candidate = `content/systems/${stem}.systems.json`;
+  try {
+    await readFile(resolve(projectPath, candidate), "utf8");
+    return candidate;
+  } catch {
+    try {
+      const entries = await readdir(resolve(projectPath, "content/systems"));
+      const first = entries.find((entry) => entry.endsWith(".systems.json"));
+      return first === undefined ? candidate : `content/systems/${first}`;
+    } catch {
+      return candidate;
+    }
+  }
+}
+
 function blockScenario(block: MechanicBlockId, details: Record<string, unknown>, subject: string): Record<string, unknown> {
   const resources: Record<MechanicBlockId, Record<string, unknown>[]> = {
     "follow-camera": [{ equals: details.target, id: "FollowCamera", path: "target" }],
@@ -315,6 +353,15 @@ function upsertResource(resources: Record<string, unknown>[], id: string, value:
     resources.push({ id, value });
   } else {
     existing.value = { ...(isRecord(existing.value) ? existing.value : {}), ...value };
+  }
+}
+
+function upsertCountdown(countdowns: Record<string, unknown>[], next: Record<string, unknown>): void {
+  const existing = countdowns.find((countdown) => countdown.id === next.id);
+  if (existing === undefined) {
+    countdowns.push(next);
+  } else {
+    Object.assign(existing, next);
   }
 }
 

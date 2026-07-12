@@ -1,0 +1,8 @@
+{
+  "schema": "threenative.event-schemas",
+  "version": "0.1.0",
+  "schemas": {
+    "Guard.alert": { "fields": {} },
+    "Race.limit": { "fields": {} }
+  }
+}

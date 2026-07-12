@@ -18,6 +18,7 @@ export interface ISystemEntityView {
   id: string;
   patch(component: unknown, value: Record<string, unknown>): void;
   set(component: unknown, value: unknown): void;
+  tags: string[];
   transform(): ISystemTransformFacade;
 }
 
@@ -39,7 +40,7 @@ export interface ISystemCommandBuffer {
   removeComponent(entity: string, component: unknown): void;
   setComponent(entity: string, component: unknown, value: unknown): void;
   setParent(child: string, parent: string): void;
-  spawn(entity: string, components?: Record<string, unknown>): void;
+  spawn(entity: string, components?: Record<string, unknown>, tags?: readonly string[]): void;
 }
 
 export interface ISystemContext {
@@ -98,6 +99,10 @@ export interface ISystemContext {
   };
   entities: {
     byId<T extends Record<string, string>>(ids: T): { [K in keyof T]: ISystemEntityView | undefined };
+    countTag(tag: string): number;
+    despawned(options?: IEntityLifecycleQueryOptions): string[];
+    spawned(options?: IEntityLifecycleQueryOptions): string[];
+    withTag(tag: string): ISystemEntityView[];
   };
   entity(id: string): ISystemEntityView | undefined;
   ui: {
@@ -229,6 +234,10 @@ export interface ITaskDeclarationView {
   schedule: "fixedUpdate" | "postUpdate" | "startup" | "update";
 }
 
+export interface IEntityLifecycleQueryOptions {
+  tag?: string;
+}
+
 export interface ISequenceServiceResult<TOperation extends string> {
   accepted: boolean;
   operation: TOperation;
@@ -262,6 +271,7 @@ export interface IQueuedCommand {
   prefab?: string;
   prefix?: string;
   source: "command" | "entity";
+  tags?: string[];
   value?: unknown;
 }
 

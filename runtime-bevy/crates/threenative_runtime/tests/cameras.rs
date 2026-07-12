@@ -24,6 +24,7 @@ fn should_map_ordered_cameras_to_bevy_camera_order_and_viewport() {
             }
         }))
         .expect("camera components should deserialize"),
+        tags: Vec::new(),
     });
     bundle.world.entities.push(WorldEntity {
         id: "camera.right".to_owned(),
@@ -38,6 +39,7 @@ fn should_map_ordered_cameras_to_bevy_camera_order_and_viewport() {
             }
         }))
         .expect("camera components should deserialize"),
+        tags: Vec::new(),
     });
     bundle.world.resources.insert(
         "ActiveCameras".to_owned(),
@@ -111,6 +113,7 @@ fn should_apply_follow_helper_before_rendering() {
             "Transform": { "position": [10.0, 0.0, 0.0] }
         }))
         .expect("player transform should deserialize"),
+        tags: Vec::new(),
     });
     bundle.world.entities.push(WorldEntity {
         id: "camera.follow".to_owned(),
@@ -128,6 +131,7 @@ fn should_apply_follow_helper_before_rendering() {
             "Transform": { "position": [0.0, 0.0, 0.0] }
         }))
         .expect("follow camera should deserialize"),
+        tags: Vec::new(),
     });
     bundle.world.resources.insert(
         "ActiveCamera".to_owned(),
@@ -163,6 +167,7 @@ fn should_map_render_layer_names_consistently() {
             "RenderLayers": { "layers": ["minimap"] }
         }))
         .expect("minimap entity should deserialize"),
+        tags: Vec::new(),
     });
     bundle.world.entities.push(WorldEntity {
         id: "camera.minimap".to_owned(),
@@ -176,6 +181,7 @@ fn should_map_render_layer_names_consistently() {
             }
         }))
         .expect("minimap camera should deserialize"),
+        tags: Vec::new(),
     });
 
     let layer_map = build_render_layer_map(&bundle);
@@ -212,6 +218,7 @@ fn should_apply_a_custom_projection_matrix_to_a_native_camera() {
             }
         }))
         .expect("custom projection camera should deserialize"),
+        tags: Vec::new(),
     });
     bundle.world.resources.insert(
         "ActiveCamera".to_owned(),

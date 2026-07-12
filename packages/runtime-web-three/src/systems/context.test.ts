@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import type { ISystemsIr, IUiIr, IWorldIr } from "@threenative/ir";
 
-import { channelEvent, componentHookObservations, createSystemContext, createWebSystemRuntimeState, evaluateStates, plugin, pluginGroup, propagateObserverEvent, taskChannel } from "./context.js";
+import { applyCommands, channelEvent, componentHookObservations, createSystemContext, createWebSystemRuntimeState, evaluateStates, plugin, pluginGroup, propagateObserverEvent, taskChannel } from "./context.js";
 
 test("should expose fixed input trace", () => {
   const { context } = createSystemContext(makeWorld(), {
@@ -85,6 +85,39 @@ test("should look up entities by id deterministically", () => {
   assert.equal(mapped.player?.id, "player");
   assert.equal(mapped.camera?.id, "camera.main");
   assert.equal(mapped.missing, undefined);
+});
+
+test("should query entities by tag in lexical order", () => {
+  const world = makeWorld();
+  world.entities[2]!.tags = ["player", "controllable"];
+  world.entities[3]!.tags = ["collectible"];
+  const { context } = createSystemContext(world, { delta: 0.016, fixedDelta: 0.016 });
+
+  assert.deepEqual(context.entities.withTag("collectible").map((entity) => entity.id), ["crate"]);
+  assert.deepEqual(context.entities.withTag("player").map((entity) => entity.tags), [["controllable", "player"]]);
+  assert.equal(context.entities.countTag("player"), 1);
+});
+
+test("should expose successful spawn and despawn observations once per tick", () => {
+  const world = makeWorld();
+  const runtimeState = createWebSystemRuntimeState(world, {});
+  runtimeState.lifecycle.beginTick(world, 4);
+  const { commands } = createSystemContext(world, { delta: 0.016, fixedDelta: 0.016, runtimeState, tick: 4 });
+  const beforeSpawn = new Map(world.entities.map((entity) => [entity.id, entity.tags ?? []] as const));
+  commands.push({ components: { Transform: { position: [0, 0, 0] } }, entity: "coin.01", kind: "spawn", source: "command", tags: ["coin"] });
+  applyCommands(world, commands);
+  runtimeState.lifecycle.observe(beforeSpawn, world);
+
+  const { context } = createSystemContext(world, { delta: 0.016, fixedDelta: 0.016, runtimeState, tick: 4 });
+  assert.deepEqual(context.entities.spawned(), ["coin.01"]);
+  assert.deepEqual(context.entities.spawned({ tag: "coin" }), ["coin.01"]);
+  assert.deepEqual(context.entities.spawned(), context.entities.spawned());
+
+  const beforeDespawn = new Map(world.entities.map((entity) => [entity.id, entity.tags ?? []] as const));
+  applyCommands(world, [{ entity: "coin.01", kind: "despawn", source: "command" }]);
+  runtimeState.lifecycle.observe(beforeDespawn, world);
+  assert.deepEqual(context.entities.despawned({ tag: "coin" }), ["coin.01"]);
+  assert.deepEqual(context.entities.despawned({ tag: "coin" }), ["coin.01"]);
 });
 
 test("should expose state and transform helper facades through existing effects", () => {

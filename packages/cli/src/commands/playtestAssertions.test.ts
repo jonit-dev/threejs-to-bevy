@@ -18,6 +18,66 @@ test("rich visibility assertions should skip native readiness reports without pr
   assert.equal(assertion?.details?.reason, "native-projected-bounds-unavailable");
 });
 
+test("gameplay assertions should read normalized tag counts and state-machine state", () => {
+  const result = evaluateRichPlaytestAssertions({
+    report: {
+      ...reportWithRuntimeDiagnostics("web", {}),
+      observations: {
+        console: [],
+        hud: {},
+        network: [],
+        resources: {},
+        runtimeObservations: {
+          gameplay: {
+            states: { guard: "chase" },
+            tags: { coin: { count: 10, entities: [] } },
+          },
+        },
+        runtimeDiagnostics: {},
+      },
+    },
+    scenario: {
+      assert: {
+        states: [{ entity: "guard", equals: "chase" }],
+        tags: [{ gte: 10, tag: "coin" }],
+      },
+      name: "gameplay-primitives",
+      schemaVersion: 1,
+      steps: [{ waitFrames: 1, release: true }],
+      target: "web",
+      viewport: { height: 720, width: 1280 },
+      warmupFrames: 0,
+    },
+  });
+
+  assert.equal(result.diagnostics.length, 0);
+  assert.equal(result.assertions.find((item) => item.id === "tags.coin")?.pass, true);
+  assert.equal(result.assertions.find((item) => item.id === "states.guard")?.pass, true);
+});
+
+test("gameplay assertions should fail with actionable diagnostics when observations are missing", () => {
+  const result = evaluateRichPlaytestAssertions({
+    report: reportWithRuntimeDiagnostics("bevy", {}),
+    scenario: {
+      assert: {
+        states: [{ entity: "guard", equals: "chase" }],
+        tags: [{ count: 1, tag: "coin" }],
+      },
+      name: "gameplay-primitives-missing",
+      schemaVersion: 1,
+      steps: [{ waitFrames: 1, release: true }],
+      target: "desktop",
+      viewport: { height: 720, width: 1280 },
+      warmupFrames: 0,
+    },
+  });
+
+  assert.deepEqual(result.diagnostics.map((diagnostic) => diagnostic.code), [
+    "TN_PLAYTEST_TAG_COUNT_ASSERTION_FAILED",
+    "TN_PLAYTEST_STATE_ASSERTION_FAILED",
+  ]);
+});
+
 test("rich visibility assertions should still fail web reports without projected bounds", () => {
   const result = evaluateRichPlaytestAssertions({
     report: reportWithRuntimeDiagnostics("web", { scene: { renderedEntities: [] } }),

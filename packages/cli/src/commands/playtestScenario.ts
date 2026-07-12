@@ -67,6 +67,17 @@ export interface IPlaytestAnimationAssertion {
   entity?: string;
 }
 
+export interface IPlaytestTagCountAssertion {
+  count?: number;
+  gte?: number;
+  tag: string;
+}
+
+export interface IPlaytestStateAssertion {
+  entity: string;
+  equals: string;
+}
+
 export interface IPlaytestVisibilityAssertion {
   entity?: string;
   maxOffscreenRatio?: number;
@@ -89,6 +100,8 @@ export interface IPlaytestScenarioAssertions {
   movement?: IPlaytestMovementAssertion;
   occluded?: IPlaytestOccludedAssertion[];
   resources?: IPlaytestPathAssertion[];
+  states?: IPlaytestStateAssertion[];
+  tags?: IPlaytestTagCountAssertion[];
   visibility?: IPlaytestVisibilityAssertion[];
 }
 
@@ -411,7 +424,27 @@ function validateAssertions(value: Record<string, unknown>): IPlaytestScenarioAs
           },
     }),
     ...(Array.isArray(value.resources) ? { resources: value.resources.map(validatePathAssertion).filter((item): item is IPlaytestPathAssertion => item !== undefined) } : {}),
+    ...(Array.isArray(value.states) ? { states: value.states.map(validateStateAssertion).filter((item): item is IPlaytestStateAssertion => item !== undefined) } : {}),
+    ...(Array.isArray(value.tags) ? { tags: value.tags.map(validateTagCountAssertion).filter((item): item is IPlaytestTagCountAssertion => item !== undefined) } : {}),
     ...(Array.isArray(value.visibility) ? { visibility: value.visibility.map(validateVisibilityAssertion).filter((item): item is IPlaytestVisibilityAssertion => item !== undefined) } : {}),
+  };
+}
+
+function validateStateAssertion(value: unknown): IPlaytestStateAssertion | undefined {
+  if (!isRecord(value) || typeof value.entity !== "string" || typeof value.equals !== "string") {
+    return undefined;
+  }
+  return { entity: value.entity, equals: value.equals };
+}
+
+function validateTagCountAssertion(value: unknown): IPlaytestTagCountAssertion | undefined {
+  if (!isRecord(value) || typeof value.tag !== "string") {
+    return undefined;
+  }
+  return {
+    ...(typeof value.count === "number" && Number.isInteger(value.count) && value.count >= 0 ? { count: value.count } : {}),
+    ...(typeof value.gte === "number" && Number.isInteger(value.gte) && value.gte >= 0 ? { gte: value.gte } : {}),
+    tag: value.tag,
   };
 }
 

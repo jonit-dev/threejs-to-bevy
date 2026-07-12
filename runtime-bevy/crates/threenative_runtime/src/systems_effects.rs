@@ -4,8 +4,8 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use threenative_loader::{
     CameraComponent, ColliderComponent, EntityComponents, HierarchyComponent, LightComponent,
-    LoadedBundle, MeshRendererComponent, RigidBodyComponent, SystemCommandIr, SystemIr,
-    TransformComponent, VisibilityComponent, WorldEntity,
+    LoadedBundle, MeshRendererComponent, PatrolComponent, RigidBodyComponent, StateMachineComponent,
+    SystemCommandIr, SystemIr, TransformComponent, VisibilityComponent, WorldEntity,
 };
 
 use crate::systems_context::{canonical_component_value, component_value};
@@ -72,6 +72,8 @@ pub struct NativeSystemCommandEffect {
     pub payload: Option<Value>,
     pub prefab: Option<String>,
     pub prefix: Option<String>,
+    #[serde(default)]
+    pub tags: Option<Vec<String>>,
     pub value: Option<Value>,
 }
 
@@ -421,14 +423,16 @@ pub fn record_initial_runtime_writes(
     tick: u64,
     ledger: &mut NativeRuntimeWriteLedger,
 ) {
-    const COMPONENTS: [&str; 10] = [
+    const COMPONENTS: [&str; 12] = [
         "Camera",
         "Collider",
         "Hierarchy",
         "KinematicMover",
         "Light",
         "MeshRenderer",
+        "Patrol",
         "RigidBody",
+        "StateMachine",
         "Transform",
         "Visibility",
         "RenderLayers",
@@ -962,6 +966,7 @@ fn apply_command(bundle: &mut LoadedBundle, command: &NativeSystemCommandEffect)
             bundle.world.entities.push(WorldEntity {
                 id: entity_id.clone(),
                 components,
+                tags: command.tags.clone().unwrap_or_default(),
             });
         }
         "instantiate" => {
@@ -991,7 +996,7 @@ fn apply_command(bundle: &mut LoadedBundle, command: &NativeSystemCommandEffect)
                         hierarchy.parent = Some(format!("{prefix}.{parent}"));
                     }
                 }
-                bundle.world.entities.push(WorldEntity { id, components });
+                bundle.world.entities.push(WorldEntity { id, components, tags: template.tags.clone() });
             }
         }
         "despawn" => {
@@ -1146,6 +1151,16 @@ fn apply_component_value(components: &mut EntityComponents, component: &str, val
         return;
     }
 
+    if component == "Patrol" {
+        components.patrol = serde_json::from_value::<PatrolComponent>(value).ok();
+        return;
+    }
+
+    if component == "StateMachine" {
+        components.state_machine = serde_json::from_value::<StateMachineComponent>(value).ok();
+        return;
+    }
+
     if component == "Visibility" {
         components.visibility = serde_json::from_value::<VisibilityComponent>(value).ok();
         return;
@@ -1156,7 +1171,7 @@ fn apply_component_value(components: &mut EntityComponents, component: &str, val
 
 fn patch_component_value(components: &mut EntityComponents, component: &str, value: Value) {
     match component {
-        "Camera" | "Collider" | "Hierarchy" | "Light" | "RigidBody" | "Visibility" => {
+        "Camera" | "Collider" | "Hierarchy" | "Light" | "Patrol" | "RigidBody" | "StateMachine" | "Visibility" => {
             let merged = component_value(components, component)
                 .map(|existing| merge_object_patch(existing, &value))
                 .unwrap_or(value);
@@ -1280,6 +1295,8 @@ fn remove_component(components: &mut EntityComponents, component: &str) {
         "Light" => components.light = None,
         "MeshRenderer" => components.mesh_renderer = None,
         "RigidBody" => components.rigid_body = None,
+        "Patrol" => components.patrol = None,
+        "StateMachine" => components.state_machine = None,
         "Transform" => components.transform = None,
         "Visibility" => components.visibility = None,
         other => {

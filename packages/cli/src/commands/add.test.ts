@@ -73,8 +73,12 @@ test("should add all compositional mechanic blocks with proof scenarios", async 
     const runtime = JSON.parse(await readFile(join(project, "content/runtime/default.runtime.json"), "utf8")) as {
       renderer?: { renderLook?: { overrides?: Record<string, unknown>; profile?: string; version?: number } };
     };
+    const systems = JSON.parse(await readFile(join(project, "content/systems/arena.systems.json"), "utf8")) as {
+      countdowns?: Array<{ autostart?: boolean; direction?: string; event?: string; field?: string; id?: string; limit?: number; resource?: string }>;
+    };
     const script = await readFile(join(project, "src/scripts/mechanics.ts"), "utf8");
     assert.equal(scene.resources.some((resource) => resource.id === "RoundTimer" && resource.value?.limit === 30), true);
+    assert.deepEqual(systems.countdowns, [{ autostart: true, direction: "down", event: "RoundTimer.limit", field: "remaining", id: "RoundTimer.countdown", limit: 30, resource: "RoundTimer" }]);
     assert.equal(scene.resources.some((resource) => resource.id === "TriggerSequence" && Array.isArray(resource.value?.triggers)), true);
     assert.equal(scene.resources.some((resource) => resource.id === "GameScore" && resource.value?.winAt === 3), true);
     assert.equal(scene.resources.some((resource) => resource.id === "ProjectileLauncher" && resource.value?.launcher === "player"), true);

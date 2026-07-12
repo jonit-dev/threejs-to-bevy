@@ -556,6 +556,34 @@ export interface ICharacterControllerComponent {
   stepOffset?: number;
 }
 
+export interface IPatrolComponent {
+  faceHeading?: boolean;
+  mode: "loop" | "ping-pong";
+  pauseAtWaypoint?: number;
+  paused?: boolean;
+  speed: number;
+  waypoints: Vec3[];
+}
+
+export type IStateMachineTrigger =
+  | { event: string; kind: "event" }
+  | { kind: "sensor"; phase: "enter" | "exit" | "stay"; sensor: string }
+  | { kind: "timer"; ticks: number };
+
+export interface IStateMachineTransition {
+  from: string;
+  to: string;
+  trigger: IStateMachineTrigger;
+}
+
+export interface IStateMachineComponent {
+  current?: string;
+  enabled?: boolean;
+  initial: string;
+  states: string[];
+  transitions: IStateMachineTransition[];
+}
+
 export interface IWorldEntity {
   components: Record<string, unknown> & {
     Camera?: ICameraComponent;
@@ -563,6 +591,8 @@ export interface IWorldEntity {
     ContactShadows?: IContactShadowsIr;
     Light?: ILightComponent;
     MeshRenderer?: IMeshRendererComponent;
+    Patrol?: IPatrolComponent;
+    StateMachine?: IStateMachineComponent;
     Collider?: IColliderComponent;
     RenderLayers?: IRenderLayersComponent;
     KinematicMover?: IKinematicMoverComponent;

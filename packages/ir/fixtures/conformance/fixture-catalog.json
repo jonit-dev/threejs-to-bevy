@@ -911,6 +911,46 @@
       ]
     },
     {
+      "canonicalId": "gameplay-primitives",
+      "owner": "ir-contract",
+      "sourceExample": "gameplay-primitives",
+      "regenerateCommand": "pnpm verify:focused verify:gameplay-primitives",
+      "canonicalArtifactGate": "gameplay-primitives",
+      "ownerDocs": "docs/PRDs/agent-engine-wishlist-2026-07-11/PRD-003-runtime-owned-gameplay-primitives.md",
+      "aggregateGate": "verify:gameplay-primitives",
+      "bundlePath": "packages/ir/fixtures/conformance/gameplay-primitives/game.bundle",
+      "promotedCapabilities": [
+        "ecs:entity-tags",
+        "gameplay:entity-state-machine",
+        "gameplay:patrol",
+        "scripting:runtime-countdowns",
+        "scripting:tag-queries"
+      ],
+      "reportArtifacts": [
+        "tools/verify/artifacts/gameplay-primitives/verification-report.json"
+      ],
+      "focusedGate": {
+        "commands": [
+          ["pnpm", "--filter", "@threenative/ir", "build"],
+          ["pnpm", "--filter", "@threenative/runtime-web-three", "build"],
+          ["pnpm", "--filter", "@threenative/verify-tools", "build"],
+          ["cargo", "test", "--manifest-path", "runtime-bevy/Cargo.toml", "-p", "threenative_runtime", "--test", "systems_host", "systems_host_should_"],
+          ["node", "tools/verify/dist/gameplayPrimitivesGate.js"]
+        ],
+        "conflictPolicy": "none",
+        "description": "Deterministic web/native runtime gameplay primitives gate.",
+        "owner": "packages/ir gameplay-primitives fixture and tools/verify gameplay-primitives gate",
+        "profile": "focused",
+        "protects": "Tag queries, reconciled lifecycle observations, patrol/FSM declarations, and runtime countdown contract coverage.",
+        "reason": "A shared IR fixture plus host tests catches schema, fixed-tick, and native loader drift before runtime-owned gameplay claims are promoted.",
+        "release": {
+          "enrolled": true,
+          "name": "verify gameplay-primitives",
+          "timingCategory": "focused-gate"
+        }
+      }
+    },
+    {
       "canonicalId": "script-local-modules",
       "owner": "ir-contract",
       "sourceExample": "script-local-modules",

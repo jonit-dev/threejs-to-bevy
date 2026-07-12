@@ -31,6 +31,9 @@ export { createFirstPersonState, updateFirstPersonController, type IFirstPersonC
 export { traceGameFlow, type IGameFlowTraceAction, type IGameFlowTraceFrame, type IGameFlowTraceInput } from "./gameFlow.js";
 export { traceSequences, type ISequenceTraceFrame, type ISequenceTraceInput, type ISequenceTraceObservation } from "./sequences.js";
 export { hasKinematicMovers, stepKinematicMovers, type IKinematicMoverObservation } from "./kinematicMover.js";
+export { resetPatrolState, stepPatrols, type IPatrolObservation } from "./patrol.js";
+export { resetStateMachines, stepStateMachines, type IStateMachineObservation } from "./stateMachines.js";
+export { createCountdownRuntimeState, resetCountdowns, stepCountdowns, type ICountdownObservation, type ICountdownRuntimeState } from "./countdowns.js";
 export { hasSpawners, stepSpawners, type ISpawnerObservation } from "./spawner.js";
 export { resolveWebAssets, traceAssetLoadSynchronization, type IAssetLoadTrace, type IAssetLoadTraceAsset, type IAssetLoadTraceGltfScene, type IResolvedWebAsset } from "./assets.js";
 export { advanceAnimationPlayback, mapWorld, syncMeshRendererMaterials, syncTransforms, traceEmissiveBloomContributions, type IRuntimeDiagnostic, type IThreeWorld, type IWebEmissiveBloomObservation } from "./mapWorld.js";

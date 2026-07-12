@@ -113,6 +113,7 @@ import {
   uiDocumentSchema,
   visibilityComponentKeys,
   systemCommandKeys,
+  systemCountdownKeys,
   systemKeys,
   systemQueryKeys,
   transformKeys,
@@ -493,6 +494,41 @@ export async function validateSystems(
     }
     validateSystemQueries(diagnostics, file, `${path}/queries`, system.queries);
     validateSystemCommands(diagnostics, file, `${path}/commands`, system.commands);
+  }
+}
+
+export function validateSystemCountdowns(diagnostics: IAuthoringDiagnostic[], file: string, value: unknown): void {
+  const countdowns = readArray(value);
+  if (value !== undefined && countdowns === undefined) {
+    diagnostics.push(typeDiagnostic(file, "/countdowns", "countdowns must be an array.", value));
+    return;
+  }
+  const ids = new Set<string>();
+  for (const [index, countdown] of countdowns?.entries() ?? []) {
+    const path = `/countdowns/${index}`;
+    if (!isRecord(countdown)) {
+      diagnostics.push(typeDiagnostic(file, path, "countdown must be an object.", countdown));
+      continue;
+    }
+    diagnostics.push(...unknownKeyDiagnostics(file, path, countdown, systemCountdownKeys));
+    validateRequiredString(diagnostics, file, `${path}/id`, countdown.id, "countdown id must be a non-empty string.");
+    if (typeof countdown.id === "string") {
+      if (ids.has(countdown.id)) {
+        diagnostics.push(typeDiagnostic(file, `${path}/id`, `countdown id '${countdown.id}' is duplicated.`, countdown.id));
+      }
+      ids.add(countdown.id);
+    }
+    if (countdown.direction !== "up" && countdown.direction !== "down") {
+      diagnostics.push(typeDiagnostic(file, `${path}/direction`, "countdown direction must be 'up' or 'down'.", countdown.direction));
+    }
+    validateRequiredString(diagnostics, file, `${path}/resource`, countdown.resource, "countdown resource must be a non-empty resource id.");
+    validateRequiredString(diagnostics, file, `${path}/field`, countdown.field, "countdown field must be a non-empty field name.");
+    validateRequiredString(diagnostics, file, `${path}/event`, countdown.event, "countdown event must be a non-empty event id.");
+    validateOptionalNumber(diagnostics, file, `${path}/limit`, countdown.limit, "countdown limit must be a finite non-negative number.");
+    if (typeof countdown.limit === "number" && countdown.limit < 0) {
+      diagnostics.push(typeDiagnostic(file, `${path}/limit`, "countdown limit must be non-negative.", countdown.limit));
+    }
+    validateOptionalBoolean(diagnostics, file, `${path}/autostart`, countdown.autostart, "countdown autostart must be boolean.");
   }
 }
 

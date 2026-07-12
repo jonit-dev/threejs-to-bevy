@@ -205,6 +205,7 @@ fn instantiate_prefab(
         world.entities.push(WorldEntity {
             id: id.clone(),
             components,
+            tags: Vec::new(),
         });
         spawned.push(id);
     }

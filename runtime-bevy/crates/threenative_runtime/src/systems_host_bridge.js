@@ -999,7 +999,7 @@ function __tnInvokeSystem(options) {
       effects.patches.push({ entity: source.id, component: "Transform", value: { ...(source.components.Transform || {}), position: readVec3(position, [0, 0, 0]), rotation: readQuat(rotation, [0, 0, 0, 1]) } });
     }
   });
-  const entities = data.entities.map((source) => ({
+  const createEntityView = (source) => ({
     id: source.id,
     components: clone(source.components),
     get(component, defaults) {
@@ -1019,10 +1019,13 @@ function __tnInvokeSystem(options) {
     set(component, value) {
       effects.patches.push({ entity: source.id, component: normalize(component), value: clone(value) });
     },
+    tags: Array.isArray(source.tags) ? [...source.tags] : [],
     transform() {
       return transformFacade(source);
     }
-  }));
+  });
+  const entities = data.entities.map(createEntityView);
+  const tagEntities = (Array.isArray(data.tagEntities) ? data.tagEntities : data.entities).map(createEntityView);
   const context = {
     time: {
       ...data.time,
@@ -1165,6 +1168,20 @@ function __tnInvokeSystem(options) {
           result[key] = entities.find((entity) => entity.id === ids[key]);
         }
         return result;
+      },
+      withTag(tag) {
+        return tagEntities.filter((entity) => entity.tags.includes(String(tag))).sort((left, right) => left.id.localeCompare(right.id));
+      },
+      countTag(tag) {
+        return this.withTag(tag).length;
+      },
+      spawned(options = {}) {
+        const tag = options && options.tag;
+        return (data.lifecycle && Array.isArray(data.lifecycle.spawned) ? data.lifecycle.spawned : []).filter((id) => tag === undefined || (data.lifecycle.tags && Array.isArray(data.lifecycle.tags[id]) && data.lifecycle.tags[id].includes(tag))).sort();
+      },
+      despawned(options = {}) {
+        const tag = options && options.tag;
+        return (data.lifecycle && Array.isArray(data.lifecycle.despawned) ? data.lifecycle.despawned : []).filter((id) => tag === undefined || (data.lifecycle.tags && Array.isArray(data.lifecycle.tags[id]) && data.lifecycle.tags[id].includes(tag))).sort();
       }
     },
     ui: {
@@ -1290,8 +1307,9 @@ function __tnInvokeSystem(options) {
       }
     },
     commands: {
-      spawn(entity, components = {}) {
-        effects.commands.push({ command: "spawn", entity, components: clone(components) });
+      spawn(entity, components = {}, tags = []) {
+        const normalizedTags = Array.isArray(tags) ? tags.filter((tag) => typeof tag === "string") : [];
+        effects.commands.push({ command: "spawn", entity, components: clone(components), ...(normalizedTags.length === 0 ? {} : { tags: normalizedTags }) });
       },
       despawn(entity) {
         effects.commands.push({ command: "despawn", entity });

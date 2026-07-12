@@ -45,6 +45,7 @@ import {
   meshDocumentSchema,
   meshRendererComponentKeys,
   meshKeys,
+  patrolComponentKeys,
   prefabDocumentKeys,
   prefabDocumentSchema,
   prefabKeys,
@@ -58,6 +59,7 @@ import {
   spawnerAreaKeys,
   spawnerComponentKeys,
   spawnerDespawnPolicyKeys,
+  stateMachineComponentKeys,
   readArray,
   readString,
   resourceKeys,
@@ -605,10 +607,84 @@ export function validateComponents(
       validateKinematicMoverComponent(diagnostics, file, `${path}/KinematicMover`, component);
     } else if (kind === "Spawner") {
       validateSpawnerComponent(diagnostics, file, `${path}/Spawner`, component);
+    } else if (kind === "Patrol") {
+      validatePatrolComponent(diagnostics, file, `${path}/Patrol`, component);
+    } else if (kind === "StateMachine") {
+      validateStateMachineComponent(diagnostics, file, `${path}/StateMachine`, component);
     } else if (kind === "Visibility") {
       validateVisibilityComponent(diagnostics, file, `${path}/Visibility`, component);
     }
   }
+}
+
+export function validatePatrolComponent(diagnostics: IAuthoringDiagnostic[], file: string, path: string, value: Record<string, unknown>): void {
+  diagnostics.push(...unknownKeyDiagnostics(file, path, value, patrolComponentKeys));
+  validateEnumString(diagnostics, file, `${path}/mode`, value.mode, new Set(["loop", "ping-pong"]), "patrol mode", "Use 'loop' or 'ping-pong'.");
+  if (typeof value.speed !== "number" || !Number.isFinite(value.speed) || value.speed < 0) {
+    diagnostics.push(typeDiagnostic(file, `${path}/speed`, "patrol speed must be a finite non-negative number.", value.speed));
+  }
+  validateOptionalNonNegativeNumber(diagnostics, file, `${path}/pauseAtWaypoint`, value.pauseAtWaypoint, "patrol pauseAtWaypoint must be a finite non-negative number.");
+  if (typeof value.pauseAtWaypoint === "number" && value.pauseAtWaypoint > 60) {
+    diagnostics.push(typeDiagnostic(file, `${path}/pauseAtWaypoint`, "patrol pauseAtWaypoint must be at most 60 seconds.", value.pauseAtWaypoint));
+  }
+  validateOptionalBoolean(diagnostics, file, `${path}/faceHeading`, value.faceHeading, "patrol faceHeading must be boolean.");
+  validateOptionalBoolean(diagnostics, file, `${path}/paused`, value.paused, "patrol paused must be boolean.");
+  const waypoints = readArray(value.waypoints);
+  if (waypoints === undefined || waypoints.length < 2 || waypoints.length > 32 || waypoints.some((waypoint) => !isVector3(waypoint))) {
+    diagnostics.push(typeDiagnostic(file, `${path}/waypoints`, "patrol waypoints must contain between 2 and 32 three-number vectors.", value.waypoints));
+  }
+}
+
+export function validateStateMachineComponent(diagnostics: IAuthoringDiagnostic[], file: string, path: string, value: Record<string, unknown>): void {
+  diagnostics.push(...unknownKeyDiagnostics(file, path, value, stateMachineComponentKeys));
+  const states = readArray(value.states)?.filter((state): state is string => typeof state === "string" && state.trim() !== "") ?? [];
+  if (states.length === 0 || states.length > 32) {
+    diagnostics.push(typeDiagnostic(file, `${path}/states`, "state machine states must contain between 1 and 32 non-empty names.", value.states));
+  }
+  if (new Set(states).size !== states.length) {
+    diagnostics.push(typeDiagnostic(file, `${path}/states`, "state machine state names must be unique.", value.states));
+  }
+  const stateSet = new Set(states);
+  validateRequiredString(diagnostics, file, `${path}/initial`, value.initial, "state machine initial must name a state.");
+  if (typeof value.initial === "string" && !stateSet.has(value.initial)) {
+    diagnostics.push(typeDiagnostic(file, `${path}/initial`, "state machine initial must reference a declared state.", value.initial));
+  }
+  validateOptionalString(diagnostics, file, `${path}/current`, value.current, "state machine current must be a non-empty state name.");
+  if (typeof value.current === "string" && !stateSet.has(value.current)) {
+    diagnostics.push(typeDiagnostic(file, `${path}/current`, "state machine current must reference a declared state.", value.current));
+  }
+  validateOptionalBoolean(diagnostics, file, `${path}/enabled`, value.enabled, "state machine enabled must be boolean.");
+  const transitions = readArray(value.transitions);
+  if (transitions === undefined || transitions.length > 64) {
+    diagnostics.push(typeDiagnostic(file, `${path}/transitions`, "state machine transitions must contain at most 64 entries.", value.transitions));
+    return;
+  }
+  transitions.forEach((transition, index) => {
+    const transitionPath = `${path}/transitions/${index}`;
+    if (!isRecord(transition)) {
+      diagnostics.push(typeDiagnostic(file, transitionPath, "state machine transition must be an object.", transition));
+      return;
+    }
+    validateRequiredString(diagnostics, file, `${transitionPath}/from`, transition.from, "state machine transition from must be a state name.");
+    validateRequiredString(diagnostics, file, `${transitionPath}/to`, transition.to, "state machine transition to must be a state name.");
+    if (typeof transition.from === "string" && !stateSet.has(transition.from)) diagnostics.push(typeDiagnostic(file, `${transitionPath}/from`, "state machine transition from must reference a declared state.", transition.from));
+    if (typeof transition.to === "string" && !stateSet.has(transition.to)) diagnostics.push(typeDiagnostic(file, `${transitionPath}/to`, "state machine transition to must reference a declared state.", transition.to));
+    if (!isRecord(transition.trigger)) {
+      diagnostics.push(typeDiagnostic(file, `${transitionPath}/trigger`, "state machine transition trigger must be an object.", transition.trigger));
+      return;
+    }
+    const trigger = transition.trigger;
+    if (trigger.kind === "event") {
+      validateRequiredString(diagnostics, file, `${transitionPath}/trigger/event`, trigger.event, "event trigger event must be a non-empty id.");
+    } else if (trigger.kind === "sensor") {
+      validateRequiredString(diagnostics, file, `${transitionPath}/trigger/sensor`, trigger.sensor, "sensor trigger sensor must be a non-empty id.");
+      validateEnumString(diagnostics, file, `${transitionPath}/trigger/phase`, trigger.phase, new Set(["enter", "exit", "stay"]), "sensor trigger phase", "Use 'enter', 'exit', or 'stay'.");
+    } else if (trigger.kind === "timer") {
+      validateOptionalPositiveInteger(diagnostics, file, `${transitionPath}/trigger/ticks`, trigger.ticks, "timer trigger ticks must be a positive integer.");
+    } else {
+      diagnostics.push(typeDiagnostic(file, `${transitionPath}/trigger/kind`, "state machine trigger kind must be event, sensor, or timer.", trigger.kind));
+    }
+  });
 }
 
 export function validateMeshRendererComponent(diagnostics: IAuthoringDiagnostic[], file: string, path: string, value: Record<string, unknown>, materialIds: readonly string[]): void {
