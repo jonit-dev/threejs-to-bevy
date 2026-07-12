@@ -106,7 +106,13 @@ export async function searchAssetSources(options: IAssetSourceSearchOptions = {}
   const where = assetSourceWhere({ ...options, query: undefined }, { broadCategory: terms.length > 0 });
   const limit = Math.max(1, Math.min(options.limit ?? 20, 100));
   if (terms.length > 0) {
-    return queryRecords(`${matchedAssetSearchSql(terms)} ${baseSelectSql("JOIN matched_asset_search m ON m.asset_file_id = f.id")} WHERE ${where.join(" AND ")} ORDER BY ${searchOrderSql(options, true)} LIMIT ${limit};`);
+    const candidates = await queryRecords(`${matchedAssetSearchSql(terms)} ${baseSelectSql("JOIN matched_asset_search m ON m.asset_file_id = f.id")} WHERE ${where.join(" AND ")} ORDER BY ${searchOrderSql(options, true)} LIMIT ${Math.min(limit * 5, 500)};`);
+    return candidates
+      .map((record) => ({ record, score: assetSourceRelevanceScore(record, options.query ?? "") }))
+      .filter(({ record, score }) => score > (record.isDirectDownload ? 2.5 : 0.5))
+      .sort((left, right) => right.score - left.score || Number(right.record.isDirectDownload) - Number(left.record.isDirectDownload) || left.record.id.localeCompare(right.record.id))
+      .slice(0, limit)
+      .map(({ record }) => record);
   }
   return queryRecords(`${baseSelectSql()} WHERE ${where.join(" AND ")} ORDER BY ${searchOrderSql(options, false)} LIMIT ${limit};`);
 }
@@ -161,7 +167,7 @@ export async function suggestAssetSources(goal: string, options: Pick<IAssetSour
     : await searchAssetSources({ includeBlocked: false, limit: candidateLimit });
   const scored = rows
     .map((row) => {
-      const lexicalScore = words.reduce((score, word) => score + scoreWord(row, word), 0);
+      const lexicalScore = words.reduce((score, word) => score + suggestWordScore(row, word), 0);
       return {
         row,
         score: lexicalScore + (row.isDirectDownload ? 2 : 0),
@@ -500,6 +506,18 @@ function nextCommandForRecord(record: { downloadUrl: string | null; fileRole: st
 
 function scoreWord(row: IAssetSourceRecord, word: string): number {
   let score = 0;
+  score += weightedFieldScore(row.id, word, 16, 10);
+  score += weightedFieldScore(row.directName, word, 16, 10);
+  score += weightedFieldScore(row.gameCategory, word, 12, 7);
+  for (const tag of row.tags) score += weightedFieldScore(tag, word, 10, 6);
+  score += weightedFieldScore(row.name, word, 8, 4);
+  for (const field of [row.fileRole, row.format, row.importNotes, row.licenseId, row.licensePosture, row.notes, row.sourceUrl, ...Object.values(row.sourceMetadata)]) {
+    score += weightedFieldScore(field, word, 3, 1);
+  }
+  return score;
+}
+
+function suggestWordScore(row: IAssetSourceRecord, word: string): number {
   const fields = [
     row.id,
     row.directName,
@@ -514,15 +532,24 @@ function scoreWord(row: IAssetSourceRecord, word: string): number {
     row.sourceUrl,
     ...row.tags,
     ...Object.values(row.sourceMetadata),
-  ].map((field) => field.toLowerCase());
-  for (const field of fields) {
-    if (field === word) {
-      score += 4;
-    } else if (field.includes(word)) {
-      score += 1;
-    }
-  }
-  return score;
+  ];
+  return fields.reduce((score, field) => {
+    const normalized = field.toLowerCase();
+    return score + (normalized === word ? 4 : normalized.includes(word) ? 1 : 0);
+  }, 0);
+}
+
+export function assetSourceRelevanceScore(row: IAssetSourceRecord, query: string): number {
+  const words = searchTerms(query);
+  const lexical = words.reduce((score, word) => score + scoreWord(row, word), 0);
+  const categoryText = [row.gameCategory, ...row.tags].join(" ").toLowerCase();
+  const categoryMatched = words.length === 0 || words.every((word) => categoryText.includes(word));
+  return (categoryMatched ? lexical : lexical * 0.2) + (row.isDirectDownload ? 2 : 0);
+}
+
+function weightedFieldScore(value: string, word: string, exact: number, substring: number): number {
+  const normalized = value.toLowerCase();
+  return normalized === word ? exact : normalized.includes(word) ? substring : 0;
 }
 
 function broadCategorySql(category: string): string {

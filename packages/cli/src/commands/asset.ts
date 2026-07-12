@@ -5,7 +5,7 @@ import { addAsset, type IAuthoringOperationResult } from "@threenative/authoring
 import { extractGltfAssetMetadata } from "@threenative/compiler";
 import type { IGltfSceneAssetIr } from "@threenative/ir";
 
-import { exportAssetSourcesJsonl, getAssetSource, searchAssetSources, suggestAssetSources, type IAssetSourceRecord, type IAssetSourceSearchOptions } from "../assetSourceCatalog/catalog.js";
+import { assetSourceRelevanceScore, exportAssetSourcesJsonl, getAssetSource, searchAssetSources, suggestAssetSources, type IAssetSourceRecord, type IAssetSourceSearchOptions } from "../assetSourceCatalog/catalog.js";
 import { diagnosticResult, type ICommandResult } from "../diagnostics.js";
 import { formatVec, formatVec2, rotateXZ } from "./asset/vectorPresentation.js";
 import { assetImportCommand } from "./assetImport.js";
@@ -326,15 +326,16 @@ async function assetSourceCommand(argv: readonly string[], json: boolean): Promi
       const fallbackRecords = records.length === 0 && searchOptions.directOnly === true && searchOptions.gameCategory !== undefined
         ? (await searchAssetSources({ ...searchOptions, directOnly: false, format: undefined, limit: 5 })).filter((record) => !record.isDirectDownload)
         : [];
+      const full = argv.includes("--full");
       const payload = {
         code: records.length === 0 ? "TN_ASSET_SOURCE_NO_MATCH" : "TN_ASSET_SOURCE_SEARCH_OK",
-        fallbackRecords,
+        fallbackRecords: full ? fallbackRecords : compactAssetSourceRecords(fallbackRecords, searchOptions.query),
         message: records.length === 0
           ? fallbackRecords.length > 0
             ? "No direct asset source records matched. Review fallback pack or typed source records."
             : "No matching asset source records found. Try without --direct-only or consult docs/workflows/open-source-3d-asset-kits.md."
           : "Asset source search completed.",
-        records,
+        records: full ? records : compactAssetSourceRecords(records, searchOptions.query),
       };
       return { exitCode: 0, stdout: json ? `${JSON.stringify(payload, null, 2)}\n` : renderAssetSourceSearch(records.length > 0 ? records : fallbackRecords, payload.message) };
     }
@@ -395,6 +396,18 @@ async function assetSourceCommand(argv: readonly string[], json: boolean): Promi
     },
     { exitCode: 2, json, stderr: !json },
   );
+}
+
+function compactAssetSourceRecords(records: readonly IAssetSourceRecord[], query: string | undefined): Array<Record<string, unknown>> {
+  return records.map((record) => ({
+    direct: record.isDirectDownload,
+    format: record.format,
+    id: record.id,
+    license: record.licenseId,
+    name: record.directName || record.name,
+    note: record.importNotes || record.notes,
+    score: query === undefined ? 0 : Number(assetSourceRelevanceScore(record, query).toFixed(3)),
+  }));
 }
 
 function readLimitFlag(argv: readonly string[]): number | undefined {

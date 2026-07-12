@@ -436,7 +436,7 @@ test("should add structured render target asset source document", async () => {
 });
 
 catalogTest("should search direct GLB sources by game category", async () => {
-  const result = await assetCommand(["source", "search", "--game-category", "underwater", "--format", "glb", "--direct-only", "--json"]);
+  const result = await assetCommand(["source", "search", "--game-category", "underwater", "--format", "glb", "--direct-only", "--full", "--json"]);
   const payload = JSON.parse(result.stdout) as {
     code: string;
     records: Array<{ downloadUrl: string | null; format: string; gameCategory: string; isDirectDownload: boolean }>;
@@ -448,8 +448,18 @@ catalogTest("should search direct GLB sources by game category", async () => {
   assert.equal(payload.records.every((record) => record.gameCategory === "underwater" && record.format === "glb" && record.isDirectDownload && record.downloadUrl !== null), true);
 });
 
+catalogTest("should emit compact search records by default and full records with --full", async () => {
+  const compact = await assetCommand(["source", "search", "--query", "bowling", "--json"]);
+  const full = await assetCommand(["source", "search", "--query", "bowling", "--full", "--json"]);
+  const compactRecord = (JSON.parse(compact.stdout) as { records: Array<Record<string, unknown>> }).records[0];
+  const fullRecord = (JSON.parse(full.stdout) as { records: Array<Record<string, unknown>> }).records[0];
+  assert.equal(Object.keys(compactRecord ?? {}).length <= 8, true);
+  assert.deepEqual(Object.keys(compactRecord ?? {}).sort(), ["direct", "format", "id", "license", "name", "note", "score"]);
+  assert.equal(Object.keys(fullRecord ?? {}).length > 8, true);
+});
+
 catalogTest("should search typed material and texture source records by file role", async () => {
-  const result = await assetCommand(["source", "search", "--file-role", "material-index", "--query", "poly haven", "--json"]);
+  const result = await assetCommand(["source", "search", "--file-role", "material-index", "--query", "poly haven", "--full", "--json"]);
   const payload = JSON.parse(result.stdout) as {
     records: Array<{ fileRole: string; id: string; isDirectDownload: boolean; sourceMetadata: Record<string, string> }>;
   };
@@ -459,7 +469,7 @@ catalogTest("should search typed material and texture source records by file rol
   assert.equal(payload.records.every((record) => record.fileRole === "material-index" && !record.isDirectDownload), true);
   assert.equal(payload.records.some((record) => record.sourceMetadata.polyhavenType === "texture"), true);
 
-  const generated = await assetCommand(["source", "search", "--file-role", "material-index", "--query", "ambientcg", "--json"]);
+  const generated = await assetCommand(["source", "search", "--file-role", "material-index", "--query", "ambientcg", "--full", "--json"]);
   const generatedPayload = JSON.parse(generated.stdout) as {
     records: Array<{ downloadUrl: string | null; format: string; id: string; sourceMetadata: Record<string, string> }>;
   };
@@ -479,7 +489,7 @@ catalogTest("should search typed material and texture source records by file rol
 });
 
 catalogTest("should include fallback records when direct-only search has no match", async () => {
-  const result = await assetCommand(["source", "search", "--game-category", "restaurant-cooking", "--format", "glb", "--direct-only", "--json"]);
+  const result = await assetCommand(["source", "search", "--game-category", "restaurant-cooking", "--format", "glb", "--direct-only", "--full", "--json"]);
   const payload = JSON.parse(result.stdout) as {
     code: string;
     fallbackRecords: Array<{ id: string; isDirectDownload: boolean; recommendedNextCommand: string }>;
@@ -494,7 +504,7 @@ catalogTest("should include fallback records when direct-only search has no matc
 });
 
 catalogTest("should find curated bowling pack records by keyword and broad category", async () => {
-  const keyword = await assetCommand(["source", "search", "--query", "bowling pins", "--json"]);
+  const keyword = await assetCommand(["source", "search", "--query", "bowling pins", "--full", "--json"]);
   const keywordPayload = JSON.parse(keyword.stdout) as {
     records: Array<{ id: string; isDirectDownload: boolean; licenseId: string }>;
   };
@@ -548,7 +558,7 @@ catalogTest("should get one asset source record by id", async () => {
 });
 
 catalogTest("should not return blocked records unless requested", async () => {
-  const result = await assetCommand(["source", "search", "--json"]);
+  const result = await assetCommand(["source", "search", "--full", "--json"]);
   const payload = JSON.parse(result.stdout) as {
     records: Array<{ licensePosture: string; origin: { reviewStatus: string } }>;
   };
