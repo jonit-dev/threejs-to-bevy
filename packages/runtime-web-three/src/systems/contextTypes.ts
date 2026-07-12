@@ -1,5 +1,5 @@
 import type { IComponentReflectionRegistry, IComponentReflectionType } from "@threenative/ir/reflection";
-import type { IAssetsManifest, IIrSystemQuery, IUiIr, IWorldEntity, IrTweenEasing, IrTweenProperty } from "@threenative/ir";
+import type { IAssetsManifest, IIrSystemQuery, IPickMeshRequest, IPickMeshResult, IPointerRayRequest, IPointerRayResult, IUiIr, IWorldEntity, IrTweenEasing, IrTweenProperty } from "@threenative/ir";
 import type { IScriptAudioPlayOptions } from "../audio.js";
 import type { ICharacterTraceObservation } from "../character.js";
 import type { IUiActionEvent } from "../ui/inputBridge.js";
@@ -7,7 +7,6 @@ import type { IPhysicsSensorEvent } from "../sensors.js";
 import type { animationPlayPayload, animationQueryPayload, animationStopPayload } from "./services/animation.js";
 import type { audioPlayPayload, audioQueryPayload, audioStopPayload } from "./services/audio.js";
 import type { IWebPersistenceService } from "./services/persistence.js";
-import type { IPickMeshRequest, IPickMeshResult, IPointerRayRequest, IPointerRayResult } from "./services/picking.js";
 import type { IOverlapRequest, IOverlapResult, IRaycastRequest, IRaycastResult, IShapeCastRequest, IShapeCastResult } from "./services/physics.js";
 import type { INavigationPathRequest, INavigationPathResult } from "../navigation.js";
 

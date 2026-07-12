@@ -23,6 +23,9 @@
     "test": "node scripts/run-tests.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
+  "dependencies": {
+    "@threenative/ir": "workspace:*"
+  },
   "devDependencies": {
     "@types/node": "^20.19.25"
   }

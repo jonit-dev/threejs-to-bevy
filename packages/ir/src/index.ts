@@ -144,9 +144,13 @@ export {
 } from "./input.js";
 export {
   validatePickingIr,
+  type IPickMeshRequest,
+  type IPickMeshResult,
   type IPickingDebugOverlayIr,
   type IPickingDragTargetIr,
   type IPickingIr,
+  type IPointerRayRequest,
+  type IPointerRayResult,
   type PickingAxisConstraint,
   type PickingCancelPolicy,
   type PickingDragPhase,

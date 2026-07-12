@@ -297,6 +297,10 @@ importers:
         version: 0.181.0
 
   packages/script-stdlib:
+    dependencies:
+      '@threenative/ir':
+        specifier: workspace:*
+        version: link:../ir
     devDependencies:
       '@types/node':
         specifier: ^20.19.25

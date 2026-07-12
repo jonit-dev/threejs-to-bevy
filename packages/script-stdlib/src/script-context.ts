@@ -1,3 +1,5 @@
+import type { IPickMeshRequest, IPickMeshResult, IPointerRayRequest, IPointerRayResult } from "@threenative/ir";
+
 export type ScriptVec3Tuple = [number, number, number];
 export type ScriptQuatTuple = [number, number, number, number];
 
@@ -51,6 +53,10 @@ export interface ScriptContext {
     getButtonUp(name: string): boolean;
     pressed(name: string): boolean;
     released(name: string): boolean;
+  };
+  picking: {
+    mesh(options: IPickMeshRequest): IPickMeshResult;
+    pointerRay(options: IPointerRayRequest): IPointerRayResult;
   };
   query(query?: { changed?: unknown[]; limit?: number; offset?: number; orderBy?: string; with?: unknown[]; without?: unknown[] }): ScriptEntity[];
   resources: {

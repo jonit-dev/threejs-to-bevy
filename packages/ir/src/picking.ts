@@ -9,6 +9,42 @@ export type PickingPointerEvents = "auto" | "pass-through";
 
 export type PickingAxisConstraint = "x" | "y";
 
+export interface IPickMeshRequest {
+  direction: [number, number, number];
+  ignore?: string[];
+  layer?: string;
+  layers?: string[];
+  mask?: string[];
+  maxDistance: number;
+  origin: [number, number, number];
+}
+
+export type IPickMeshResult =
+  | { hit: false }
+  | {
+      distance: number;
+      entity: string;
+      hit: true;
+      normal: [number, number, number];
+      point: [number, number, number];
+    };
+
+export interface IPointerRayRequest {
+  aspect?: number;
+  camera?: string;
+  maxDistance?: number;
+  pointer: [number, number];
+}
+
+export type IPointerRayResult =
+  | { hit: false }
+  | {
+      direction: [number, number, number];
+      hit: true;
+      maxDistance: number;
+      origin: [number, number, number];
+    };
+
 export type PickingCancelPolicy = "disabled-target" | "escape" | "lost-capture" | "missing-device" | "target-removed";
 
 export interface IPickingDragTargetIr {

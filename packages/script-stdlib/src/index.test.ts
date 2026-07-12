@@ -1,4 +1,6 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import test from "node:test";
 import vm from "node:vm";
 
@@ -36,6 +38,38 @@ import {
   Vec3,
 } from "./index.js";
 import type { QuatTuple, Vec3Tuple } from "./index.js";
+
+test("should expose every runtime context service on ScriptContext or allowlist", () => {
+  const runtimeKeys = interfaceKeys(readFileSync(resolve(process.cwd(), "../runtime-web-three/src/systems/contextTypes.ts"), "utf8"), "ISystemContext");
+  const scriptKeys = interfaceKeys(readFileSync(resolve(process.cwd(), "src/script-context.ts"), "utf8"), "ScriptContext");
+  const temporarilyUntyped = [
+    "animation", "assets", "audio", "cameras", "channels", "character", "components", "effects", "navigation", "observers", "particles",
+    "persistence", "physics", "plugins", "random", "scenes", "schedule", "sequences", "settings", "states", "tasks", "timers", "ui",
+  ];
+
+  assert.equal(scriptKeys.has("picking"), true);
+  assert.deepEqual([...runtimeKeys].filter((key) => !scriptKeys.has(key)).sort(), temporarilyUntyped);
+});
+
+function interfaceKeys(source: string, name: string): Set<string> {
+  const keys = new Set<string>();
+  let active = false;
+  let depth = 0;
+  for (const line of source.split("\n")) {
+    if (!active && line.includes(`interface ${name} `)) active = true;
+    if (!active) continue;
+    if (depth === 1) {
+      const match = /^  ([A-Za-z][A-Za-z0-9]*)(?:<[^;{(]*>)?[(:]/.exec(line);
+      if (match?.[1] !== undefined) keys.add(match[1]);
+    }
+    for (const character of line) {
+      if (character === "{") depth += 1;
+      else if (character === "}") depth -= 1;
+    }
+    if (depth === 0) break;
+  }
+  return keys;
+}
 
 test("defineBehavior should attach frozen metadata and bundle equivalently", () => {
   const behavior = defineBehavior({ reads: ["Transform"], schedule: "fixedUpdate", writes: ["Transform"] }, () => undefined);

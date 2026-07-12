@@ -1,26 +1,9 @@
-import type { IAssetsManifest, IWorldIr } from "@threenative/ir";
+import type { IAssetsManifest, IPickMeshRequest, IPickMeshResult, IPointerRayRequest, IPointerRayResult, IWorldIr } from "@threenative/ir";
 import * as THREE from "three";
 import { meshAabb } from "../../meshBounds.js";
 import { type IRaycastRequest, type IRaycastResult } from "./physics.js";
 
-export type IPickMeshRequest = IRaycastRequest;
-export type IPickMeshResult = IRaycastResult;
-
-export interface IPointerRayRequest {
-  aspect?: number;
-  camera?: string;
-  maxDistance?: number;
-  pointer: [number, number];
-}
-
-export type IPointerRayResult =
-  | { hit: false }
-  | {
-      direction: [number, number, number];
-      hit: true;
-      maxDistance: number;
-      origin: [number, number, number];
-    };
+export type { IPickMeshRequest, IPickMeshResult, IPointerRayRequest, IPointerRayResult } from "@threenative/ir";
 
 const IDENTITY_QUAT: [number, number, number, number] = [0, 0, 0, 1];
 
