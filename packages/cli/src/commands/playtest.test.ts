@@ -7,6 +7,8 @@ import { PassThrough } from "node:stream";
 import test from "node:test";
 import { tmpdir } from "node:os";
 
+import { NativeHeadlessUnsupportedError } from "../native/bevy.js";
+
 import { evaluateMovementDiagnostics, nativeHarnessCommandStream, nativeSceneQueryEffectLog, parseAxisExpectation, playtestCommand, resourceObservationDiagnostics } from "./playtest.js";
 
 test("native playtest should route occlusion assertions through rendered scene queries", () => {
@@ -848,6 +850,28 @@ test("playtest command should report native signal crashes with readiness phase 
   assert.doesNotThrow(() => JSON.parse(result.stdout));
 });
 
+test("playtest command should report waived-headless gate as warning", async () => {
+  const root = await playtestTempRoot();
+  await cp(join(import.meta.dirname, "../template-files/structured-source-starter"), root, { recursive: true });
+  const result = await playtestCommand(
+    ["--project", ".", "--target", "desktop", "--entity", "player", "--press", "KeyW", "--frames", "30", "--expect-moved", "--headless", "--json"],
+    root,
+    {
+      bevyRunner: () => {
+        throw new NativeHeadlessUnsupportedError();
+      },
+    },
+  );
+  const payload = JSON.parse(result.stdout) as { code: string; diagnostics: Array<{ code: string; gate: string; message: string; severity: string }> };
+  const waiver = payload.diagnostics[0];
+
+  assert.equal(result.exitCode, 0);
+  assert.equal(waiver?.code, "TN_PLAYTEST_NATIVE_HEADLESS_UNSUPPORTED");
+  assert.equal(waiver?.gate, "waived-headless");
+  assert.equal(waiver?.severity, "warning");
+  assert.doesNotMatch(waiver?.message ?? "", /winit|panic|backtrace/i);
+});
+
 test("playtest command should fail desktop native screenshot proofs when screenshots are missing", async () => {
   const root = await playtestTempRoot();
   await cp(join(import.meta.dirname, "../template-files/structured-source-starter"), root, { recursive: true });
@@ -1012,7 +1036,9 @@ test("playtest command should include discovery suggestions for missing entity a
 test("playtest command should suggest scenario JSON that can be run", async () => {
   const root = await playtestTempRoot();
   await writeDiscoveryFixture(root);
-  const suggested = await playtestCommand(["--project", ".", "--suggest-scenario", "smoke-movement", "--json"], root);
+  const suggested = await playtestCommand(["--project", ".", "--suggest-scenario", "smoke-movement", "--json"], root, {
+    discoveryDependencies: { loadBundleGrounding: async () => ({ entityIds: new Set(["player", "camera.main", "arena.floor"]), text: "keyboard.KeyD" }) },
+  });
   const scenario = JSON.parse(suggested.stdout) as { assert: { movement: { entity: string } }; name: string; steps: Array<{ press: string }>; subject: string };
   await writeFile(join(root, "suggested.playtest.json"), suggested.stdout, "utf8");
   let receivedSubject: string | undefined;

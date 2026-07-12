@@ -100,6 +100,12 @@ export interface IPlaytestDiagnosticsAssertion {
   runtimeReady?: boolean;
 }
 
+export interface IPlaytestVisualAssertion {
+  entityVisible?: { entity: string; minProjectedPixels: number; throughoutFrames?: boolean };
+  frameDiff?: { maxChangedPixelRatio?: number; minChangedPixelRatio?: number };
+  region?: { height: number; minNonblankPixelRatio?: number; width: number; x: number; y: number };
+}
+
 export interface IPlaytestScenarioAssertions {
   animation?: IPlaytestAnimationAssertion[];
   camera?: IPlaytestCameraAssertion;
@@ -112,6 +118,7 @@ export interface IPlaytestScenarioAssertions {
   states?: IPlaytestStateAssertion[];
   tags?: IPlaytestTagCountAssertion[];
   visibility?: IPlaytestVisibilityAssertion[];
+  visual?: IPlaytestVisualAssertion[];
 }
 
 export interface IPlaytestParityConfig {
@@ -481,6 +488,30 @@ function validateAssertions(value: Record<string, unknown>): IPlaytestScenarioAs
     ...(Array.isArray(value.states) ? { states: value.states.map(validateStateAssertion).filter((item): item is IPlaytestStateAssertion => item !== undefined) } : {}),
     ...(Array.isArray(value.tags) ? { tags: value.tags.map(validateTagCountAssertion).filter((item): item is IPlaytestTagCountAssertion => item !== undefined) } : {}),
     ...(Array.isArray(value.visibility) ? { visibility: value.visibility.map(validateVisibilityAssertion).filter((item): item is IPlaytestVisibilityAssertion => item !== undefined) } : {}),
+    ...(Array.isArray(value.visual) ? { visual: value.visual.map(validateVisualAssertion).filter((item): item is IPlaytestVisualAssertion => item !== undefined) } : {}),
+  };
+}
+
+function validateVisualAssertion(value: unknown): IPlaytestVisualAssertion | undefined {
+  if (!isRecord(value)) return undefined;
+  const frameDiff = isRecord(value.frameDiff) ? value.frameDiff : undefined;
+  const region = isRecord(value.region) ? value.region : undefined;
+  const entityVisible = isRecord(value.entityVisible) ? value.entityVisible : undefined;
+  const validRegion = region !== undefined && [region.x, region.y, region.width, region.height].every((item) => typeof item === "number" && Number.isFinite(item));
+  return {
+    ...(frameDiff === undefined ? {} : { frameDiff: {
+      ...(typeof frameDiff.minChangedPixelRatio === "number" ? { minChangedPixelRatio: frameDiff.minChangedPixelRatio } : {}),
+      ...(typeof frameDiff.maxChangedPixelRatio === "number" ? { maxChangedPixelRatio: frameDiff.maxChangedPixelRatio } : {}),
+    } }),
+    ...(validRegion ? { region: {
+      height: Number(region.height), width: Number(region.width), x: Number(region.x), y: Number(region.y),
+      ...(typeof region.minNonblankPixelRatio === "number" ? { minNonblankPixelRatio: region.minNonblankPixelRatio } : {}),
+    } } : {}),
+    ...(entityVisible !== undefined && typeof entityVisible.entity === "string" && typeof entityVisible.minProjectedPixels === "number" ? { entityVisible: {
+      entity: entityVisible.entity,
+      minProjectedPixels: entityVisible.minProjectedPixels,
+      ...(typeof entityVisible.throughoutFrames === "boolean" ? { throughoutFrames: entityVisible.throughoutFrames } : {}),
+    } } : {}),
   };
 }
 

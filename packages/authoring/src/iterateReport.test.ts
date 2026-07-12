@@ -13,6 +13,7 @@ test("validates iterate report schema", () => {
     projectPath: ".",
     schema: ITERATE_REPORT_SCHEMA,
     steps: [{ diagnostics: [], durationMs: 1, id: "validate", status: "pass" }],
+    verdicts: { gameplay: "skipped", visual: "pass" },
     version: ITERATE_REPORT_VERSION,
   };
 

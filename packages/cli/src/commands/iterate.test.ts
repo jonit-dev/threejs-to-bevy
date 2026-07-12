@@ -36,6 +36,7 @@ test("should pass validate and build when starter project is clean", async () =>
   const root = await mkdtemp(join(tmpdir(), "tn-iterate-clean-"));
   try {
     const result = await iterateCommand(["--project", root, "--skip-playtest", "--json"], process.cwd(), {
+      analyzeScreenshot: passingScreenshotAnalysis,
       build: async () => ({
         exitCode: 0,
         stdout: `${JSON.stringify({ code: "TN_BUILD_OK", bundlePath: join(root, "dist", "game.bundle") })}\n`,
@@ -78,6 +79,7 @@ test("should emit TN_ITERATE_NO_SCENARIO info when project has no playtests", as
   const root = await mkdtemp(join(tmpdir(), "tn-iterate-no-scenario-"));
   try {
     const result = await iterateCommand(["--project", root, "--json"], process.cwd(), {
+      analyzeScreenshot: passingScreenshotAnalysis,
       build: async () => ({
         exitCode: 0,
         stdout: `${JSON.stringify({ code: "TN_BUILD_OK", bundlePath: join(root, "dist", "game.bundle") })}\n`,
@@ -112,9 +114,15 @@ test("should emit TN_ITERATE_NO_SCENARIO info when project has no playtests", as
 test("should report active render profile in iterate json", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-iterate-render-profile-"));
   try {
-    const result = await iterateCommand(["--project", root, "--skip-playtest", "--json"], process.cwd(), { ...passingIterateOptions(root), build: () => buildWithProfile(root, "cinematic") });
-    assert.equal((JSON.parse(result.stdout) as { activeRenderProfile?: string }).activeRenderProfile, "cinematic");
-  } finally { await rm(root, { force: true, recursive: true }); }
+    const result = await iterateCommand(["--project", root, "--skip-playtest", "--json"], process.cwd(), {
+      ...passingIterateOptions(root),
+      build: () => buildWithProfile(root, "cinematic"),
+    });
+    const payload = JSON.parse(result.stdout) as { activeRenderProfile?: string };
+    assert.equal(payload.activeRenderProfile, "cinematic");
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
 });
 
 test("should warn when material edits run under a grading profile", async () => {
@@ -122,10 +130,16 @@ test("should warn when material edits run under a grading profile", async () => 
   try {
     await mkdir(join(root, "content/materials"), { recursive: true });
     await writeFile(join(root, "content/materials/main.materials.json"), `${JSON.stringify({ id: "main", materials: [], schema: "threenative.materials" })}\n`);
-    const result = await iterateCommand(["--project", root, "--skip-playtest", "--json"], process.cwd(), { ...passingIterateOptions(root), build: () => buildWithProfile(root, "cinematic") });
-    const report = JSON.parse(await readFile((JSON.parse(result.stdout) as { artifacts: { report: string } }).artifacts.report, "utf8")) as { diagnostics: Array<{ code: string }> };
-    assert.equal(report.diagnostics.some((diagnostic) => diagnostic.code === "TN_RENDER_PROFILE_GRADING_ACTIVE"), true);
-  } finally { await rm(root, { force: true, recursive: true }); }
+    const result = await iterateCommand(["--project", root, "--skip-playtest", "--json"], process.cwd(), {
+      ...passingIterateOptions(root),
+      build: () => buildWithProfile(root, "cinematic"),
+    });
+    const reportPath = (JSON.parse(result.stdout) as { artifacts: { report: string } }).artifacts.report;
+    const report = JSON.parse(await readFile(reportPath, "utf8")) as { diagnostics: Array<{ code: string; severity: string }> };
+    assert.equal(report.diagnostics.some((diagnostic) => diagnostic.code === "TN_RENDER_PROFILE_GRADING_ACTIVE" && diagnostic.severity === "warning"), true);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
 });
 
 test("should not warn under parity profile", async () => {
@@ -133,10 +147,86 @@ test("should not warn under parity profile", async () => {
   try {
     await mkdir(join(root, "content/materials"), { recursive: true });
     await writeFile(join(root, "content/materials/main.materials.json"), `${JSON.stringify({ id: "main", materials: [], schema: "threenative.materials" })}\n`);
-    const result = await iterateCommand(["--project", root, "--skip-playtest", "--json"], process.cwd(), { ...passingIterateOptions(root), build: () => buildWithProfile(root, "parity") });
-    const report = JSON.parse(await readFile((JSON.parse(result.stdout) as { artifacts: { report: string } }).artifacts.report, "utf8")) as { diagnostics: Array<{ code: string }> };
+    const result = await iterateCommand(["--project", root, "--skip-playtest", "--json"], process.cwd(), {
+      ...passingIterateOptions(root),
+      build: () => buildWithProfile(root, "parity"),
+    });
+    const reportPath = (JSON.parse(result.stdout) as { artifacts: { report: string } }).artifacts.report;
+    const report = JSON.parse(await readFile(reportPath, "utf8")) as { diagnostics: Array<{ code: string }> };
     assert.equal(report.diagnostics.some((diagnostic) => diagnostic.code === "TN_RENDER_PROFILE_GRADING_ACTIVE"), false);
-  } finally { await rm(root, { force: true, recursive: true }); }
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should pass visual verdict while gameplay scenario fails", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-iterate-split-verdict-"));
+  try {
+    await mkdir(join(root, "playtests"), { recursive: true });
+    await writeFile(join(root, "playtests/fail.playtest.json"), "{}\n");
+    const result = await iterateCommand(["--project", root, "--json"], process.cwd(), {
+      ...passingIterateOptions(root),
+      playtest: async () => playtestSummaryResult("fail", false, {
+        diagnostics: [{ code: "TN_PLAYTEST_ASSERTION_FAILED", message: "Stale assertion failed.", severity: "error" }],
+      }),
+    });
+    const payload = JSON.parse(result.stdout) as { ok: boolean; verdicts: { gameplay: string; visual: string } };
+
+    assert.equal(result.exitCode, 1);
+    assert.equal(payload.ok, false);
+    assert.deepEqual(payload.verdicts, { gameplay: "fail", visual: "pass" });
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should skip scenarios under --visual-only", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-iterate-visual-only-"));
+  try {
+    await mkdir(join(root, "playtests"), { recursive: true });
+    await writeFile(join(root, "playtests/stale.playtest.json"), "{}\n");
+    let playtestInvoked = false;
+    const result = await iterateCommand(["--project", root, "--visual-only", "--json"], process.cwd(), {
+      ...passingIterateOptions(root),
+      playtest: async () => {
+        playtestInvoked = true;
+        return playtestSummaryResult("stale", false);
+      },
+    });
+    const payload = JSON.parse(result.stdout) as { artifacts: { report: string }; verdicts: { gameplay: string; visual: string } };
+    const report = JSON.parse(await readFile(payload.artifacts.report, "utf8")) as { diagnostics: Array<{ code: string }> };
+
+    assert.equal(result.exitCode, 0, result.stdout);
+    assert.equal(playtestInvoked, false);
+    assert.deepEqual(payload.verdicts, { gameplay: "skipped", visual: "pass" });
+    assert.equal(report.diagnostics.some((diagnostic) => diagnostic.code === "TN_ITERATE_GAMEPLAY_SKIPPED_VISUAL_ONLY"), true);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should fail visual verdict on flat low-quality screenshot", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-iterate-flat-screenshot-"));
+  try {
+    const result = await iterateCommand(["--project", root, "--visual-only", "--json"], process.cwd(), {
+      ...passingIterateOptions(root),
+      analyzeScreenshot: async () => ({
+        colorBucketCount: 1,
+        localContrast: 0,
+        ok: false,
+        thresholds: { minColorBuckets: 4, minLocalContrast: 0.04 },
+      }),
+    });
+    const payload = JSON.parse(result.stdout) as { artifacts: { report: string }; ok: boolean; verdicts: { gameplay: string; visual: string } };
+    const report = JSON.parse(await readFile(payload.artifacts.report, "utf8")) as { diagnostics: Array<{ code: string }> };
+
+    assert.equal(result.exitCode, 1);
+    assert.equal(payload.ok, false);
+    assert.deepEqual(payload.verdicts, { gameplay: "skipped", visual: "fail" });
+    assert.equal(report.diagnostics.some((diagnostic) => diagnostic.code === "TN_ITERATE_SCREENSHOT_LOW_QUALITY"), true);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
 });
 
 test("should run all scenarios when no scenario flag given", async () => {
@@ -259,6 +349,7 @@ test("should copy latest artifacts to a timestamped directory when keep is set",
   const root = await mkdtemp(join(tmpdir(), "tn-iterate-keep-"));
   try {
     const result = await iterateCommand(["--project", root, "--skip-playtest", "--keep", "--json"], process.cwd(), {
+      analyzeScreenshot: passingScreenshotAnalysis,
       build: async () => ({
         exitCode: 0,
         stdout: `${JSON.stringify({ code: "TN_BUILD_OK", bundlePath: join(root, "dist", "game.bundle") })}\n`,
@@ -295,6 +386,7 @@ test("should copy latest artifacts to a timestamped directory when keep is set",
 
 function passingIterateOptions(root: string): Parameters<typeof iterateCommand>[2] {
   return {
+    analyzeScreenshot: passingScreenshotAnalysis,
     build: async () => ({
       exitCode: 0,
       stdout: `${JSON.stringify({ code: "TN_BUILD_OK", bundlePath: join(root, "dist", "game.bundle") })}\n`,
@@ -314,6 +406,15 @@ function passingIterateOptions(root: string): Parameters<typeof iterateCommand>[
       exitCode: 0,
       stdout: `${JSON.stringify({ code: "TN_AUTHORING_VALIDATE_OK", diagnostics: [], ok: true })}\n`,
     }),
+  };
+}
+
+async function passingScreenshotAnalysis() {
+  return {
+    colorBucketCount: 8,
+    localContrast: 0.2,
+    ok: true,
+    thresholds: { minColorBuckets: 4, minLocalContrast: 0.04 },
   };
 }
 

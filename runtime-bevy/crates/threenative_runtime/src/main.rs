@@ -7,10 +7,17 @@ use threenative_runtime::{
 fn main() -> ExitCode {
     let Some(invocation) = RuntimeInvocation::parse(env::args().skip(1)) else {
         eprintln!(
-            "Usage: threenative_runtime <bundle-path> [--proof-harness <commands.json> --readiness-out <readiness.json> [--audit-writes]]"
+            "Usage: threenative_runtime <bundle-path> [--headless] [--proof-harness <commands.json> --readiness-out <readiness.json> [--audit-writes]]"
         );
         return ExitCode::from(2);
     };
+
+    if invocation.headless {
+        eprintln!(
+            r#"{{"code":"TN_PLAYTEST_NATIVE_HEADLESS_UNSUPPORTED","gate":"waived-headless","message":"The bundled Bevy runtime does not yet support offscreen headless playtest rendering.","severity":"warning"}}"#
+        );
+        return ExitCode::SUCCESS;
+    }
 
     match app_from_bundle_with_options(invocation.bundle_path, invocation.options) {
         Ok(mut app) => {
@@ -26,6 +33,7 @@ fn main() -> ExitCode {
 
 struct RuntimeInvocation {
     bundle_path: String,
+    headless: bool,
     options: RuntimeOptions,
 }
 
@@ -35,12 +43,14 @@ impl RuntimeInvocation {
         let mut proof_harness = None;
         let mut readiness_out = None;
         let mut audit_writes = false;
+        let mut headless = false;
         let mut args = args.peekable();
         while let Some(arg) = args.next() {
             match arg.as_str() {
                 "--proof-harness" => proof_harness = args.next(),
                 "--readiness-out" => readiness_out = args.next(),
                 "--audit-writes" => audit_writes = true,
+                "--headless" => headless = true,
                 _ if bundle_path.is_none() => bundle_path = Some(arg),
                 _ => return None,
             }
@@ -58,6 +68,7 @@ impl RuntimeInvocation {
         };
         Some(Self {
             bundle_path: bundle_path?,
+            headless,
             options: RuntimeOptions { proof_harness },
         })
     }

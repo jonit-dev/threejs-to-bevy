@@ -2,6 +2,8 @@ export const ITERATE_REPORT_SCHEMA = "threenative.iterate-report";
 export const ITERATE_REPORT_VERSION = "0.1.0";
 
 export type IterateStepStatus = "pass" | "fail" | "skipped";
+export type IterateVerdict = "pass" | "fail";
+export type IterateGameplayVerdict = IterateVerdict | "skipped";
 
 export interface IIterateDiagnostic {
   code: string;
@@ -36,6 +38,10 @@ export interface IIterateReport {
   projectPath: string;
   schema: typeof ITERATE_REPORT_SCHEMA;
   steps: IIterateStepReport[];
+  verdicts: {
+    gameplay: IterateGameplayVerdict;
+    visual: IterateVerdict;
+  };
   version: typeof ITERATE_REPORT_VERSION;
 }
 
@@ -72,7 +78,22 @@ export function validateIterateReport(report: unknown): { diagnostics: IIterateD
     });
   }
   if (report.activeRenderProfile !== undefined && (typeof report.activeRenderProfile !== "string" || report.activeRenderProfile.trim() === "")) {
-    diagnostics.push({ code: "TN_ITERATE_REPORT_RENDER_PROFILE_INVALID", message: "Iterate report activeRenderProfile must be a non-empty string when present.", path: "/activeRenderProfile", severity: "error" });
+    diagnostics.push({
+      code: "TN_ITERATE_REPORT_RENDER_PROFILE_INVALID",
+      message: "Iterate report activeRenderProfile must be a non-empty string when present.",
+      path: "/activeRenderProfile",
+      severity: "error",
+    });
+  }
+  if (!isRecord(report.verdicts)
+    || (report.verdicts.visual !== "pass" && report.verdicts.visual !== "fail")
+    || (report.verdicts.gameplay !== "pass" && report.verdicts.gameplay !== "fail" && report.verdicts.gameplay !== "skipped")) {
+    diagnostics.push({
+      code: "TN_ITERATE_REPORT_VERDICTS_INVALID",
+      message: "Iterate report must include visual and gameplay verdicts.",
+      path: "/verdicts",
+      severity: "error",
+    });
   }
   return { diagnostics, ok: diagnostics.length === 0 };
 }

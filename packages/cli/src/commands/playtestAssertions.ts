@@ -19,6 +19,16 @@ export interface IPlaytestAssertionSchemaEntry {
 
 export const PLAYTEST_ASSERTION_REGISTRY: readonly IPlaytestAssertionSchemaEntry[] = [
   {
+    description: "Proves screenshot change, populated regions, and sustained projected entity visibility.",
+    example: { visual: [{ frameDiff: { minChangedPixelRatio: 0.01 }, entityVisible: { entity: "board.e4", minProjectedPixels: 20, throughoutFrames: true } }] },
+    fields: [
+      { description: "Before/after changed-pixel ratio bounds.", name: "frameDiff", type: "{ minChangedPixelRatio?: number, maxChangedPixelRatio?: number }" },
+      { description: "Pixel region that must remain populated.", name: "region", type: "{ x: number, y: number, width: number, height: number, minNonblankPixelRatio?: number }" },
+      { description: "Entity projected-pixel floor, optionally across all captured samples.", name: "entityVisible", type: "{ entity: string, minProjectedPixels: number, throughoutFrames?: boolean }" },
+    ],
+    kind: "visual",
+  },
+  {
     description: "Proves the subject moved, reached a minimum velocity, or changed rotation during held input.",
     example: { movement: { entity: "player", minDistance: 0.5, minVelocity: 0.01, rotationChanged: true } },
     fields: [
@@ -147,6 +157,7 @@ export interface IPlaytestDiagnostic {
   artifactPath?: string;
   code: string;
   exportName?: string;
+  gate?: "waived-headless";
   message: string;
   modulePath?: string;
   observedRuntimePath?: string;
@@ -176,6 +187,11 @@ export interface IPlaytestObservations {
   runtimeObservations?: unknown;
   runtimeDiagnostics?: unknown;
   visibility?: Record<string, unknown>;
+  visual?: {
+    changedPixelRatio?: number;
+    nonblankRegions?: Array<{ height: number; nonblankPixelRatio: number; width: number; x: number; y: number }>;
+    runtimeDiagnosticsSeries?: unknown[];
+  };
 }
 
 export function evaluateRichPlaytestAssertions(input: {
@@ -187,6 +203,35 @@ export function evaluateRichPlaytestAssertions(input: {
   const scenarioAssertions = input.scenario.assert;
   if (scenarioAssertions === undefined) {
     return { assertions, diagnostics };
+  }
+  if ((scenarioAssertions.visual?.length ?? 0) > 0 && input.scenario.target !== "web") {
+    diagnostics.push({ code: "TN_PLAYTEST_VISUAL_ASSERTION_UNSUPPORTED", message: `Visual assertion sampling is not supported for target '${input.scenario.target}'.`, severity: "warning", suggestion: "Run the scenario with target web until native screenshot-series support lands." });
+    assertions.push(...scenarioAssertions.visual!.map((_, index) => ({ id: `visual.${index}`, pass: true, details: { skipped: true, target: input.scenario.target } })));
+  }
+  for (const [index, visual] of (input.scenario.target === "web" ? scenarioAssertions.visual ?? [] : []).entries()) {
+    if (visual.frameDiff !== undefined) {
+      const ratio = input.report.observations?.visual?.changedPixelRatio;
+      const pass = ratio !== undefined
+        && (visual.frameDiff.minChangedPixelRatio === undefined || ratio >= visual.frameDiff.minChangedPixelRatio)
+        && (visual.frameDiff.maxChangedPixelRatio === undefined || ratio <= visual.frameDiff.maxChangedPixelRatio);
+      assertions.push({ id: `visual.${index}.frameDiff`, pass, details: { changedPixelRatio: ratio, ...visual.frameDiff } });
+      if (!pass) diagnostics.push({ code: "TN_PLAYTEST_FRAME_DIFF_FAILED", message: `Screenshot changed-pixel ratio ${ratio ?? "unavailable"} was outside the asserted range.`, severity: "error", suggestion: "Check whether the expected visual change rendered and whether the thresholds match the scenario." });
+    }
+    if (visual.region !== undefined) {
+      const observed = input.report.observations?.visual?.nonblankRegions?.find((region) => region.x === visual.region?.x && region.y === visual.region.y && region.width === visual.region.width && region.height === visual.region.height);
+      const minimum = visual.region.minNonblankPixelRatio ?? 0.002;
+      const pass = observed !== undefined && observed.nonblankPixelRatio >= minimum;
+      assertions.push({ id: `visual.${index}.region`, pass, details: { minimum, observed: observed?.nonblankPixelRatio } });
+      if (!pass) diagnostics.push({ code: "TN_PLAYTEST_REGION_BLANK", message: `Screenshot region at (${visual.region.x}, ${visual.region.y}) did not meet nonblank ratio ${minimum}.`, severity: "error", suggestion: "Check camera framing and whether expected geometry renders in the asserted region." });
+    }
+    if (visual.entityVisible !== undefined) {
+      const samples = input.report.observations?.visual?.runtimeDiagnosticsSeries ?? [input.report.observations?.runtimeDiagnostics];
+      const selected = visual.entityVisible.throughoutFrames === true ? samples : samples.slice(-1);
+      const projected = selected.map((sample) => projectedPixelsForEntity(runtimeDiagnosticsSnapshot(sample), visual.entityVisible!.entity, input.scenario.viewport));
+      const pass = projected.length > 0 && projected.every((pixels) => pixels !== undefined && pixels >= visual.entityVisible!.minProjectedPixels);
+      assertions.push({ id: `visual.${index}.entityVisible`, pass, details: { entity: visual.entityVisible.entity, projectedPixels: projected } });
+      if (!pass) diagnostics.push({ code: "TN_PLAYTEST_ENTITY_VISIBILITY_DROPPED", message: `Entity '${visual.entityVisible.entity}' dropped below ${visual.entityVisible.minProjectedPixels} projected pixels.`, severity: "error", suggestion: "Check per-frame visibility, camera clipping, scale, and renderer state." });
+    }
   }
   for (const assertion of scenarioAssertions.resources ?? []) {
     const result = evaluatePathAssertion("resource", assertion, input.report.observations?.resources[assertion.id], {
@@ -653,6 +698,16 @@ function evaluateVisibilityAssertion(
           suggestion: "Check camera framing, clipping range, entity scale, and viewport-specific layout.",
         },
       };
+}
+
+function projectedPixelsForEntity(snapshot: unknown, entity: string, viewport: { height: number; width: number }): number | undefined {
+  const rendered = renderedEntity(snapshot, entity);
+  const bounds = isRecord(rendered?.projectedBounds) ? rendered.projectedBounds : undefined;
+  const min = Array.isArray(bounds?.min) ? bounds.min : undefined;
+  const max = Array.isArray(bounds?.max) ? bounds.max : undefined;
+  return min === undefined || max === undefined
+    ? undefined
+    : Math.max(0, ((Number(max[0]) - Number(min[0])) / 2) * viewport.width) * Math.max(0, ((Number(max[1]) - Number(min[1])) / 2) * viewport.height);
 }
 
 function countMatchingEntries(effectLog: unknown, tokens: readonly string[]): number {

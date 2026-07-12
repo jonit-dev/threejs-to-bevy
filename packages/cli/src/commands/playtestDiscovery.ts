@@ -1,3 +1,4 @@
+import { buildProject } from "@threenative/compiler";
 import { readdir, readFile } from "node:fs/promises";
 import { join, relative, resolve } from "node:path";
 
@@ -8,6 +9,7 @@ export interface IDiscoveryCandidate {
   reasons: string[];
   score: number;
   source?: string;
+  unverified?: boolean;
 }
 
 export interface IPlaytestDiscoveryReport {
@@ -25,7 +27,28 @@ interface ISourceDocument {
   value: unknown;
 }
 
-export async function discoverPlaytestTargets(projectPath: string): Promise<IPlaytestDiscoveryReport> {
+export interface IBundleGrounding {
+  cameraIds?: Set<string>;
+  entityIds?: Set<string>;
+  hudIds?: Set<string>;
+  ids?: Set<string>;
+  resourceIds?: Set<string>;
+  text: string;
+}
+
+export interface IPlaytestSuggestionDiagnostic {
+  code: "TN_PLAYTEST_SUGGEST_INSUFFICIENT";
+  message: string;
+  missing: string[];
+  severity: "warning";
+  suggestion: string;
+}
+
+export interface IDiscoveryDependencies {
+  loadBundleGrounding?: (projectPath: string) => Promise<IBundleGrounding>;
+}
+
+export async function discoverPlaytestTargets(projectPath: string, dependencies: IDiscoveryDependencies = {}): Promise<IPlaytestDiscoveryReport> {
   const documents = await readContentDocuments(projectPath);
   const entityScores = new Map<string, IDiscoveryCandidate>();
   const cameras = new Map<string, IDiscoveryCandidate>();
@@ -35,11 +58,18 @@ export async function discoverPlaytestTargets(projectPath: string): Promise<IPla
   for (const document of documents) {
     collectFromValue(document.value, document.path, { cameras, entityScores, hud, inputs, resources });
   }
-  const controllableEntities = rank([...entityScores.values()]);
-  const inputCandidates = rank([...inputs.values()]);
-  const cameraCandidates = rank([...cameras.values()]);
-  const resourceCandidates = rank([...resources.values()]);
-  const hudCandidates = rank([...hud.values()]);
+  await applyCommittedScenarioHints(projectPath, entityScores, inputs);
+  let grounding: IBundleGrounding | undefined;
+  try {
+    grounding = await (dependencies.loadBundleGrounding ?? loadCompiledBundleGrounding)(projectPath);
+  } catch {
+    // Discovery remains useful when compilation is unavailable, but labels every result honestly.
+  }
+  const controllableEntities = groundedCandidates(entityScores, grounding, "entity");
+  const inputCandidates = groundedCandidates(inputs, grounding, "input");
+  const cameraCandidates = groundedCandidates(cameras, grounding, "camera");
+  const resourceCandidates = groundedCandidates(resources, grounding, "resource");
+  const hudCandidates = groundedCandidates(hud, grounding, "hud");
   const scenarioPresets = buildScenarioPresetCandidates({ cameraCandidates, controllableEntities, hudCandidates, inputCandidates, resourceCandidates });
   const empty = controllableEntities.length === 0 && inputCandidates.length === 0 && cameraCandidates.length === 0 && resourceCandidates.length === 0 && hudCandidates.length === 0;
   return {
@@ -53,20 +83,59 @@ export async function discoverPlaytestTargets(projectPath: string): Promise<IPla
   };
 }
 
-export async function suggestPlaytestScenario(projectPath: string, preset: string): Promise<IPlaytestScenario> {
-  const discovery = await discoverPlaytestTargets(projectPath);
-  const subject = discovery.controllableEntities[0]?.id ?? "player";
-  const press = discovery.inputs[0]?.id ?? "KeyD";
+async function applyCommittedScenarioHints(
+  projectPath: string,
+  entities: Map<string, IDiscoveryCandidate>,
+  inputs: Map<string, IDiscoveryCandidate>,
+): Promise<void> {
+  for (const file of await listJsonFiles(resolve(projectPath, "playtests"))) {
+    try {
+      const scenario = JSON.parse(await readFile(file, "utf8")) as IPlaytestScenario;
+      const subject = scenario.subject ?? scenario.assert?.movement?.entity;
+      const subjectCandidate = subject === undefined ? undefined : entities.get(subject);
+      if (subjectCandidate !== undefined) {
+        subjectCandidate.score = Math.max(subjectCandidate.score, 150);
+        subjectCandidate.reasons = [...new Set([...subjectCandidate.reasons, "committed playtest subject"])];
+      }
+      const firstPress = scenario.steps.find((step) => typeof step.press === "string")?.press;
+      const inputCandidate = firstPress === undefined ? undefined : inputs.get(firstPress);
+      if (inputCandidate !== undefined) {
+        inputCandidate.score = Math.max(inputCandidate.score, 140);
+        inputCandidate.reasons = [...new Set([...inputCandidate.reasons, "committed playtest input"])];
+      }
+    } catch {
+      // Invalid committed scenarios are left to the schema validator.
+    }
+  }
+}
+
+export async function suggestPlaytestScenario(
+  projectPath: string,
+  preset: string,
+  dependencies: IDiscoveryDependencies = {},
+): Promise<IPlaytestScenario | IPlaytestSuggestionDiagnostic> {
+  const discovery = await discoverPlaytestTargets(projectPath, dependencies);
+  const subject = discovery.controllableEntities.find((candidate) => candidate.unverified !== true)?.id;
+  const press = discovery.inputs.find((candidate) => candidate.unverified !== true)?.id;
   const camera = discovery.cameras[0]?.id;
   const resource = discovery.resources[0]?.id;
   const hud = discovery.hud[0]?.id;
+  const missing = [subject === undefined ? "verified controllable entity" : undefined, press === undefined ? "verified input" : undefined].filter((value): value is string => value !== undefined);
+  if (preset === "camera-follow" && camera === undefined) missing.push("camera");
+  if (preset === "hud-resource" && resource === undefined) missing.push("changing resource");
+  if (missing.length > 0) {
+    return insufficientSuggestion(missing);
+  }
+  const previous = await previousScenarioShape(projectPath, subject!, press!);
+  const movement = { ...(previous?.assert?.movement ?? {}), entity: subject!, minDistance: previous?.assert?.movement?.minDistance ?? 0.01 };
+  const steps = previous?.steps ?? [{ holdFrames: 30, press: press!, release: true }];
   if (preset === "camera-follow") {
     return {
-      assert: { camera: { entity: camera ?? "camera.main", follows: subject, within: 10 }, movement: { entity: subject, minDistance: 0.01 } },
+      assert: { camera: { ...(previous?.assert?.camera ?? {}), entity: camera!, follows: subject!, within: previous?.assert?.camera?.within ?? 10 }, movement },
       name: "camera-follow",
       schemaVersion: 1,
-      steps: [{ holdFrames: 30, press, release: true }],
-      subject,
+      steps,
+      subject: subject!,
       target: "web",
       viewport: { height: 720, width: 1280 },
       warmupFrames: 5,
@@ -75,28 +144,131 @@ export async function suggestPlaytestScenario(projectPath: string, preset: strin
   if (preset === "hud-resource") {
     return {
       assert: {
-        hud: hud === undefined ? [] : [{ changed: true, id: hud }],
-        resources: resource === undefined ? [] : [{ changed: true, id: resource }],
+        hud: previous?.assert?.hud ?? (hud === undefined ? [] : [{ changed: true, id: hud }]),
+        resources: previous?.assert?.resources ?? [{ changed: true, id: resource! }],
       },
       name: "hud-resource",
       schemaVersion: 1,
-      steps: [{ holdFrames: 30, press, release: true }],
-      subject,
+      steps,
+      subject: subject!,
       target: "web",
       viewport: { height: 720, width: 1280 },
       warmupFrames: 5,
     };
   }
   return {
-    assert: { movement: { entity: subject, minDistance: 0.01 } },
-    name: "smoke-movement",
+    assert: { movement },
+    name: preset,
     schemaVersion: 1,
-    steps: [{ holdFrames: 30, press, release: true }],
-    subject,
+    steps,
+    subject: subject!,
     target: "web",
     viewport: { height: 720, width: 1280 },
     warmupFrames: 5,
   };
+}
+
+function insufficientSuggestion(missing: string[]): IPlaytestSuggestionDiagnostic {
+  return {
+    code: "TN_PLAYTEST_SUGGEST_INSUFFICIENT",
+    message: `Cannot suggest a grounded playtest scenario; missing ${missing.join(", ")}.`,
+    missing,
+    severity: "warning",
+    suggestion: "Build the project and author the missing gameplay surfaces, then rerun playtest discovery.",
+  };
+}
+
+async function previousScenarioShape(projectPath: string, subject: string, input: string): Promise<Pick<IPlaytestScenario, "assert" | "steps"> | undefined> {
+  for (const file of await listJsonFiles(resolve(projectPath, "playtests"))) {
+    try {
+      const scenario = JSON.parse(await readFile(file, "utf8")) as IPlaytestScenario;
+      const sameSubject = scenario.subject === subject || scenario.assert?.movement?.entity === subject;
+      const sameInput = scenario.steps.some((step) => step.press === input);
+      if (sameSubject || sameInput) return { assert: scenario.assert, steps: scenario.steps };
+    } catch {
+      // Invalid scenarios are diagnosed by the playtest schema, not suggestion mining.
+    }
+  }
+  return undefined;
+}
+
+function groundedCandidates(
+  candidates: Map<string, IDiscoveryCandidate>,
+  grounding: IBundleGrounding | undefined,
+  kind: "camera" | "entity" | "hud" | "input" | "resource",
+): IDiscoveryCandidate[] {
+  if (grounding === undefined) {
+    return rank([...candidates.values()].map((candidate) => ({ ...candidate, unverified: true })));
+  }
+  const ids = kind === "entity" ? grounding.entityIds
+    : kind === "camera" ? grounding.cameraIds
+    : kind === "resource" ? grounding.resourceIds
+    : kind === "hud" ? grounding.hudIds
+    : undefined;
+  return rank([...candidates.values()].filter((candidate) => kind === "input"
+    ? grounding.text.includes(`keyboard.${candidate.id}`) || grounding.text.includes(`\"${candidate.id}\"`)
+    : (ids ?? grounding.ids ?? new Set()).has(candidate.id)));
+}
+
+async function loadCompiledBundleGrounding(projectPath: string): Promise<IBundleGrounding> {
+  const { bundlePath } = await buildProject(projectPath);
+  const entityIds = new Set<string>();
+  const cameraIds = new Set<string>();
+  const resourceIds = new Set<string>();
+  const hudIds = new Set<string>();
+  const chunks: string[] = [];
+  for (const file of await listBundleFiles(bundlePath)) {
+    const text = await readFile(file, "utf8");
+    chunks.push(text);
+    if (file.endsWith("world.ir.json")) collectWorldGrounding(JSON.parse(text), entityIds, cameraIds, resourceIds);
+    else if (file.endsWith("ui.ir.json")) collectIds(JSON.parse(text), hudIds);
+    else if (file.endsWith("systems.ir.json") || file.endsWith("scripts.manifest.json")) collectResourceIds(JSON.parse(text), resourceIds);
+  }
+  return { cameraIds, entityIds, hudIds, resourceIds, text: chunks.join("\n") };
+}
+
+async function listBundleFiles(root: string): Promise<string[]> {
+  const entries = await readdir(root, { withFileTypes: true });
+  const files: string[] = [];
+  for (const entry of entries) {
+    const path = join(root, entry.name);
+    if (entry.isDirectory()) files.push(...await listBundleFiles(path));
+    else if (entry.name.endsWith(".json") || entry.name.endsWith(".js")) files.push(path);
+  }
+  return files;
+}
+
+function collectIds(value: unknown, ids: Set<string>): void {
+  if (Array.isArray(value)) {
+    value.forEach((item) => collectIds(item, ids));
+  } else if (isRecord(value)) {
+    for (const [key, child] of Object.entries(value)) {
+      if (key === "id" && typeof child === "string") ids.add(child);
+      collectIds(child, ids);
+    }
+  }
+}
+
+export function collectWorldGrounding(value: unknown, entities: Set<string>, cameras: Set<string>, resources: Set<string>): void {
+  if (!isRecord(value) || !Array.isArray(value.entities)) return;
+  for (const entity of value.entities) {
+    if (!isRecord(entity) || typeof entity.id !== "string") continue;
+    entities.add(entity.id);
+    if (isRecord(entity.components) && (hasKey(entity.components, "Camera") || hasKey(entity.components, "camera"))) cameras.add(entity.id);
+  }
+  if (isRecord(value.resources)) Object.keys(value.resources).forEach((id) => resources.add(id));
+}
+
+function collectResourceIds(value: unknown, resources: Set<string>): void {
+  if (Array.isArray(value)) return value.forEach((item) => collectResourceIds(item, resources));
+  if (!isRecord(value)) return;
+  for (const [key, child] of Object.entries(value)) {
+    if ((key === "resourceReads" || key === "resourceWrites") && Array.isArray(child)) {
+      child.filter((item): item is string => typeof item === "string").forEach((id) => resources.add(id));
+    }
+    if ((key === "resource" || key === "resourceId" || key === "id") && typeof child === "string" && /resource/i.test(JSON.stringify(value))) resources.add(child);
+    collectResourceIds(child, resources);
+  }
 }
 
 async function readContentDocuments(projectPath: string): Promise<ISourceDocument[]> {
@@ -202,8 +374,8 @@ function buildScenarioPresetCandidates(input: {
   if (input.controllableEntities.length > 0 && input.cameraCandidates.length > 0) {
     presets.push({ id: "camera-follow", reasons: ["controllable entity", "camera"], score: 80 });
   }
-  if (input.resourceCandidates.length > 0 || input.hudCandidates.length > 0) {
-    presets.push({ id: "hud-resource", reasons: ["resource or HUD candidate"], score: 60 });
+  if (input.resourceCandidates.length > 0 && input.hudCandidates.length > 0) {
+    presets.push({ id: "hud-resource", reasons: ["resource and HUD candidates"], score: 60 });
   }
   return presets;
 }

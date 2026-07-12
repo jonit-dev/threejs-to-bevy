@@ -5,6 +5,12 @@ claimed only when web/native semantics are both proved.
 
 Current support:
 
+- Headless desktop playtests fail fast before winit startup with the structured
+  warning `TN_PLAYTEST_NATIVE_HEADLESS_UNSUPPORTED` and
+  `gate: "waived-headless"`. The CLI auto-selects this path when no display
+  environment is available and also exposes `tn playtest --headless` for
+  deterministic CI behavior. Bevy 0.14 offscreen screenshot rendering remains
+  an explicit capability gap; this waiver is not native visual proof.
 - Native proof harness readiness reports, desktop playtests, screenshots,
   frame samples, and conformance fixtures.
 - The 2026-07-07 native P0 closure proof runs the structured-source starter

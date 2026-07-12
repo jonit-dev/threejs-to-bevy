@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, utimes, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
@@ -73,6 +73,51 @@ test("playtest artifacts should expose runtime observation sidecar paths when pr
     assert.deepEqual(sidecar.observations.textures["tex.grid.floor"]?.repeat, [8, 12]);
     assert.equal(sidecar.source, "runtime-observation");
     assert.equal(manifest.artifacts.runtimeObservations?.path.endsWith("runtime-observations.json"), true);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("playtest artifacts should omit absent paths and report them as missing", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-playtest-honest-artifacts-"));
+  const runDirectory = join(root, "artifacts/playtest/honest/latest");
+  const scenario: IPlaytestScenario = { name: "honest", schemaVersion: 1, steps: [], target: "web", viewport: { height: 720, width: 1280 }, warmupFrames: 0 };
+  try {
+    const bundle = await writePlaytestArtifactBundle({ durationMs: 10, projectPath: root, report: passingReport(), runDirectory, scenario });
+    assert.equal(Object.hasOwn(bundle.summary.artifacts, "contactSheet"), false);
+    assert.equal(Object.hasOwn(bundle.summary.artifacts, "beforeScreenshot"), false);
+    assert.equal(bundle.summary.missingArtifacts?.includes(join(runDirectory, "before.png")), true);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("playtest artifacts should keep a contact sheet that exists", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-playtest-contact-sheet-"));
+  const runDirectory = join(root, "artifacts/playtest/contact/latest");
+  const scenario: IPlaytestScenario = { name: "contact", schemaVersion: 1, steps: [], target: "web", viewport: { height: 720, width: 1280 }, warmupFrames: 0 };
+  try {
+    await mkdir(runDirectory, { recursive: true });
+    await writeFile(join(runDirectory, "contact-sheet.png"), "proof");
+    const bundle = await writePlaytestArtifactBundle({ durationMs: 10, projectPath: root, report: passingReport(), runDirectory, scenario });
+    assert.equal(bundle.summary.artifacts.contactSheet, join(runDirectory, "contact-sheet.png"));
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("playtest artifacts should omit stale files from a reused stable directory", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-playtest-stale-artifacts-"));
+  const runDirectory = join(root, "artifacts/playtest/stale/latest");
+  const scenario: IPlaytestScenario = { name: "stale", schemaVersion: 1, steps: [], target: "desktop", viewport: { height: 720, width: 1280 }, warmupFrames: 0 };
+  try {
+    await mkdir(runDirectory, { recursive: true });
+    const staleScreenshot = join(runDirectory, "after.png");
+    await writeFile(staleScreenshot, "old web frame");
+    await utimes(staleScreenshot, new Date(0), new Date(0));
+    const bundle = await writePlaytestArtifactBundle({ durationMs: 10, projectPath: root, report: { ...passingReport(), runtime: "bevy" }, runDirectory, scenario });
+    assert.equal(Object.hasOwn(bundle.summary.artifacts, "afterScreenshot"), false);
+    assert.equal(bundle.summary.missingArtifacts?.includes(staleScreenshot), true);
   } finally {
     await rm(root, { force: true, recursive: true });
   }

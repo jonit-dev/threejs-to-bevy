@@ -5,6 +5,43 @@ import type { IPlaytestReport } from "./playtest.js";
 import { evaluateRichPlaytestAssertions } from "./playtestAssertions.js";
 import type { IPlaytestScenario } from "./playtestScenario.js";
 
+test("should fail frame diff when nothing changed", () => {
+  const report = reportWithRuntimeDiagnostics("web", {});
+  report.observations!.visual = { changedPixelRatio: 0 };
+  const result = evaluateRichPlaytestAssertions({ report, scenario: visualScenario({ frameDiff: { minChangedPixelRatio: 0.01 } }) });
+  assert.equal(result.diagnostics[0]?.code, "TN_PLAYTEST_FRAME_DIFF_FAILED");
+});
+
+test("should fail when entity projected pixels drop mid-scenario", () => {
+  const report = reportWithRuntimeDiagnostics("web", {});
+  report.observations!.visual = { runtimeDiagnosticsSeries: [renderedBounds("square", [-0.2, -0.2], [0.2, 0.2]), renderedBounds("square", [0, 0], [0.001, 0.001])] };
+  const result = evaluateRichPlaytestAssertions({ report, scenario: visualScenario({ entityVisible: { entity: "square", minProjectedPixels: 20, throughoutFrames: true } }) });
+  assert.equal(result.diagnostics[0]?.code, "TN_PLAYTEST_ENTITY_VISIBILITY_DROPPED");
+});
+
+test("should pass region check on populated region", () => {
+  const report = reportWithRuntimeDiagnostics("web", {});
+  report.observations!.visual = { nonblankRegions: [{ x: 0, y: 0, width: 100, height: 100, nonblankPixelRatio: 0.8 }] };
+  const result = evaluateRichPlaytestAssertions({ report, scenario: visualScenario({ region: { x: 0, y: 0, width: 100, height: 100, minNonblankPixelRatio: 0.5 } }) });
+  assert.deepEqual(result.diagnostics, []);
+});
+
+test("native visual assertions should emit the standard unsupported diagnostic", () => {
+  const report = reportWithRuntimeDiagnostics("bevy", { readiness: [] });
+  const scenario = { ...visualScenario({ frameDiff: { minChangedPixelRatio: 0.01 } }), target: "desktop" as const };
+  const result = evaluateRichPlaytestAssertions({ report, scenario });
+  assert.equal(result.diagnostics[0]?.code, "TN_PLAYTEST_VISUAL_ASSERTION_UNSUPPORTED");
+  assert.equal(result.assertions[0]?.details?.skipped, true);
+});
+
+function visualScenario(assertion: NonNullable<NonNullable<IPlaytestScenario["assert"]>["visual"]>[number]): IPlaytestScenario {
+  return { assert: { visual: [assertion] }, name: "visual", schemaVersion: 1, steps: [{ waitFrames: 1, release: true }], target: "web", viewport: { height: 100, width: 100 }, warmupFrames: 0 };
+}
+
+function renderedBounds(entity: string, min: [number, number], max: [number, number]): unknown {
+  return { scene: { renderedEntities: [{ id: entity, projectedBounds: { min, max } }] } };
+}
+
 test("rich visibility assertions should skip native readiness reports without projected bounds", () => {
   const result = evaluateRichPlaytestAssertions({
     report: reportWithRuntimeDiagnostics("bevy", { readiness: [{ entity: "player", present: true, visible: true }] }),

@@ -9,9 +9,12 @@ import { playtestCommand } from "./playtest.js";
 import { captureScreenshot, type IScreenshotProofReport } from "./visualProof.js";
 import { type IteratePreviewStarter, withIteratePreview } from "./iteratePreview.js";
 import { summarizePlaytestForIterate, type IPlaytestIterateSummary } from "./playtestArtifacts.js";
+import { analyzeVisualQuality, type IVisualQualityCheck } from "../verify/imageAnalysis.js";
+import { readPngFrame } from "../verify/compareImages.js";
 
 interface IIterateCommandOptions {
   build?: (projectPath: string) => Promise<ICommandResult>;
+  analyzeScreenshot?: (path: string) => Promise<IVisualQualityCheck>;
   capture?: (options: { outPath: string; url: string }) => Promise<IScreenshotProofReport>;
   playtest?: (args: readonly string[], projectPath: string) => Promise<ICommandResult>;
   startPreview?: IteratePreviewStarter;
@@ -36,6 +39,7 @@ interface IIterateCompactSummary {
   durationMs: number;
   ok: boolean;
   projectPath: string;
+  verdicts: IIterateReport["verdicts"];
   steps: Array<{
     artifactPaths?: string[];
     diagnostic?: IIterateDiagnostic;
@@ -57,6 +61,7 @@ export async function iterateCommand(
   const projectPath = resolvePath(cwd, readFlag(normalizedArgv, "--project") ?? ".");
   const scenarioFlag = readFlag(normalizedArgv, "--scenario");
   const skipPlaytest = normalizedArgv.includes("--skip-playtest");
+  const visualOnly = normalizedArgv.includes("--visual-only");
   const includeNative = normalizedArgv.includes("--native");
   const auditWrites = normalizedArgv.includes("--audit-writes");
   const keep = normalizedArgv.includes("--keep");
@@ -121,7 +126,14 @@ export async function iterateCommand(
     const step = commandStep(result);
     if (result.exitCode === 0) {
       step.diagnostics = [...(step.diagnostics ?? []), ...(await antiProofDiagnostics(projectPath))];
-      if (activeRenderProfile !== undefined && activeRenderProfile !== "parity" && visualSourceChanged) step.diagnostics.push({ code: "TN_RENDER_PROFILE_GRADING_ACTIVE", message: `Render profile '${activeRenderProfile}' is grading authored material or texture pixels.`, severity: "warning", suggestion: "Run tn runtime set-rendering default --render-profile parity to inspect authored pixels without look-profile grading." });
+      if (activeRenderProfile !== undefined && activeRenderProfile !== "parity" && visualSourceChanged) {
+        step.diagnostics.push({
+          code: "TN_RENDER_PROFILE_GRADING_ACTIVE",
+          message: `Render profile '${activeRenderProfile}' is grading authored material or texture pixels.`,
+          severity: "warning",
+          suggestion: "Run tn runtime set-rendering default --render-profile parity to inspect authored pixels without look-profile grading.",
+        });
+      }
     }
     return step;
   });
@@ -133,17 +145,31 @@ export async function iterateCommand(
     const capture = await withIteratePreview(bundlePath, (preview) => (options.capture ?? defaultCapture)({ outPath: screenshotPath, url: preview.url }), options.startPreview);
     const captureDiagnostics = normalizeDiagnostics(capture.diagnostics ?? []);
     captureDiagnostics.push(...iterateCaptureDiagnostics(capture));
+    const quality = await (options.analyzeScreenshot ?? defaultAnalyzeScreenshot)(screenshotPath);
+    if (!quality.ok) {
+      captureDiagnostics.push({
+        code: "TN_ITERATE_SCREENSHOT_LOW_QUALITY",
+        message: `Screenshot visual quality failed: ${quality.colorBucketCount} color buckets and ${quality.localContrast.toFixed(4)} local contrast.`,
+        severity: "error",
+        suggestion: "Inspect camera, lighting, materials, and visible scene content before rerunning iterate.",
+      });
+    }
     return {
       artifacts: { screenshot: screenshotPath },
       diagnostics: captureDiagnostics,
       output: {
-        checks: capture.checks,
+        checks: { ...capture.checks, visualQuality: quality },
         outPath: capture.outPath,
         url: capture.url,
       },
     };
   });
   await run("playtest", async () => {
+    if (visualOnly) {
+      return {
+        diagnostics: [{ code: "TN_ITERATE_GAMEPLAY_SKIPPED_VISUAL_ONLY", message: "Gameplay scenarios skipped by --visual-only.", severity: "info" }],
+      };
+    }
     if (skipPlaytest) {
       return {
         diagnostics: [{ code: "TN_ITERATE_PLAYTEST_SKIPPED", message: "Playtest step skipped by --skip-playtest.", severity: "info" }],
@@ -180,6 +206,12 @@ export async function iterateCommand(
   }
 
   const reportPath = resolve(latestDir, "report.json");
+  const visualFailed = steps.some((step) => step.id !== "playtest" && step.status === "fail");
+  const playtestStep = steps.find((step) => step.id === "playtest");
+  const verdicts: IIterateReport["verdicts"] = {
+    gameplay: visualOnly || skipPlaytest || playtestStep?.status === "skipped" ? "skipped" : playtestStep?.status === "fail" ? "fail" : "pass",
+    visual: visualFailed ? "fail" : "pass",
+  };
   const report: IIterateReport = {
     ...(activeRenderProfile === undefined ? {} : { activeRenderProfile }),
     artifacts: {
@@ -195,6 +227,7 @@ export async function iterateCommand(
     projectPath,
     schema: ITERATE_REPORT_SCHEMA,
     steps,
+    verdicts,
     version: ITERATE_REPORT_VERSION,
   };
   const schemaValidation = validateIterateReport(report);
@@ -309,6 +342,7 @@ function compactSummary(report: IIterateReport): IIterateCompactSummary {
     durationMs: report.durationMs,
     ok: report.ok,
     projectPath: report.projectPath,
+    verdicts: report.verdicts,
     steps: report.steps.map((step) => ({
       ...(step.id === "playtest" ? {} : { artifactPaths: artifactPaths(step.artifacts).slice(0, 2) }),
       diagnostic: step.diagnostics.find((diagnostic) => diagnostic.severity === "error"),
@@ -420,6 +454,10 @@ async function defaultCapture(options: { outPath: string; url: string }): Promis
   return captureScreenshot({ outPath: options.outPath, url: options.url, waitReady: true });
 }
 
+async function defaultAnalyzeScreenshot(path: string): Promise<IVisualQualityCheck> {
+  return analyzeVisualQuality(await readPngFrame(path));
+}
+
 async function defaultPlaytest(args: readonly string[]): Promise<ICommandResult> {
   return playtestCommand(args);
 }
@@ -460,12 +498,17 @@ function skippedStep(id: IIterateStepReport["id"]): IIterateStepReport {
 function renderText(report: IIterateReport): string {
   const status = report.ok ? "passed" : "failed";
   const profile = report.activeRenderProfile === undefined ? "" : `, render profile: ${report.activeRenderProfile}`;
-  return `Iterate ${status}: ${report.steps.map((step) => `${step.id}=${step.status}${step.id === "screenshot" ? profile : ""}`).join(", ")}\nArtifacts: ${report.artifacts.directory}\n`;
+  return `Iterate ${status}: visual=${report.verdicts.visual}, gameplay=${report.verdicts.gameplay}; ${report.steps.map((step) => `${step.id}=${step.status}${step.id === "screenshot" ? profile : ""}`).join(", ")}\nArtifacts: ${report.artifacts.directory}\n`;
 }
 
 async function readActiveRenderProfile(bundlePath: string): Promise<string | undefined> {
   const value = parseJsonPayload(await readFile(resolve(bundlePath, "runtime.config.json"), "utf8").catch(() => "{}"));
-  return isRecord(value) && isRecord(value.renderer) && isRecord(value.renderer.renderLook) && typeof value.renderer.renderLook.profile === "string" ? value.renderer.renderLook.profile : undefined;
+  return isRecord(value)
+    && isRecord(value.renderer)
+    && isRecord(value.renderer.renderLook)
+    && typeof value.renderer.renderLook.profile === "string"
+    ? value.renderer.renderLook.profile
+    : undefined;
 }
 
 async function visualSourceChangedSince(projectPath: string, reportPath: string): Promise<boolean> {
@@ -482,7 +525,8 @@ async function visualSourceChangedSince(projectPath: string, reportPath: string)
 }
 
 function hasTextureAsset(value: unknown): boolean {
-  return isRecord(value) && Array.isArray(value.assets) && value.assets.some((asset) => isRecord(asset) && (asset.type === "texture" || asset.kind === "texture"));
+  if (!isRecord(value) || !Array.isArray(value.assets)) return false;
+  return value.assets.some((asset) => isRecord(asset) && (asset.type === "texture" || asset.kind === "texture"));
 }
 
 function parseJsonPayload(text: string): unknown {

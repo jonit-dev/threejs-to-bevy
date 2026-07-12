@@ -9,12 +9,12 @@ import { chromium } from "playwright";
 
 import { diagnosticResult, type ICommandResult } from "../diagnostics.js";
 import { buildProofArtifactMetadata, type IProofArtifactMetadata } from "../game/proofManifest.js";
-import { runBevyRuntime, type BevyRuntimeRunner } from "../native/bevy.js";
-import { analyzeNonblank } from "../verify/imageAnalysis.js";
+import { hasNativeDisplay, NativeHeadlessUnsupportedError, runBevyRuntime, type BevyRuntimeRunner } from "../native/bevy.js";
+import { analyzeNonblank, analyzeRegionNonblank, compareFrames } from "../verify/imageAnalysis.js";
 import { readPngFrame } from "../verify/compareImages.js";
 import { evaluateRichPlaytestAssertions, type IPlaytestAssertionResult, type IPlaytestDiagnostic, type IPlaytestObservations } from "./playtestAssertions.js";
 import { defaultPlaytestArtifactDirectory, readPlaytestSummary, writePlaytestArtifactBundle, type IPlaytestArtifactBundle, type IPlaytestSummary } from "./playtestArtifacts.js";
-import { discoverPlaytestTargets, suggestPlaytestScenario, type IPlaytestDiscoveryReport } from "./playtestDiscovery.js";
+import { discoverPlaytestTargets, suggestPlaytestScenario, type IDiscoveryDependencies, type IPlaytestDiscoveryReport } from "./playtestDiscovery.js";
 import { playtestScaffoldCommand } from "./playtestScaffold.js";
 import { applyScenarioOverrides, loadPlaytestScenario, oneShotScenario, parsePlaytestTarget, parseViewport, playtestStepHoldTicks, playtestStepWaitTicks, PlaytestScenarioError, type IPlaytestScenario } from "./playtestScenario.js";
 import { playtestSchemaCommand } from "./playtestSchema.js";
@@ -156,6 +156,7 @@ export interface IPlaytestReport {
 
 export interface IPlaytestCommandOptions {
   bevyRunner?: BevyRuntimeRunner;
+  discoveryDependencies?: IDiscoveryDependencies;
   runner?: (options: IPlaytestRunOptions) => Promise<IPlaytestReport>;
   watchHooks?: IPlaytestWatchHooks;
 }
@@ -171,6 +172,7 @@ export interface IPlaytestRunOptions {
   movementThreshold: number;
   nativeRecording: boolean;
   nativeScreenshots: boolean;
+  headless?: boolean;
   auditWrites?: boolean;
   press: string;
   projectPath: string;
@@ -215,6 +217,7 @@ export async function playtestCommand(
   const stableArtifacts = normalizedArgv.includes("--stable-artifacts");
   const nativeRecording = normalizedArgv.includes("--native-recording");
   const nativeScreenshots = nativeRecording || normalizedArgv.includes("--native-screenshots");
+  const headless = normalizedArgv.includes("--headless") || !hasNativeDisplay();
   const discover = normalizedArgv.includes("--discover");
   const suggestScenario = readFlag(normalizedArgv, "--suggest-scenario");
   const watchMode = normalizedArgv.includes("--watch");
@@ -273,9 +276,10 @@ export async function playtestCommand(
     );
   }
 
+  let waiverContext: { primary: ReturnType<typeof primaryRunOptions>; runDirectory: string; scenario: IPlaytestScenario; started: number } | undefined;
   try {
     if (discover) {
-      const discovery = await discoverPlaytestTargets(projectPath);
+      const discovery = await discoverPlaytestTargets(projectPath, options.discoveryDependencies);
       const payload = {
         ...discovery,
         message: discovery.code === "TN_PLAYTEST_DISCOVERY_EMPTY" ? "No strong playtest discovery candidates were found." : "Playtest discovery candidates found.",
@@ -287,14 +291,14 @@ export async function playtestCommand(
       };
     }
     if (suggestScenario !== undefined) {
-      const scenario = await suggestPlaytestScenario(projectPath, suggestScenario);
+      const scenario = await suggestPlaytestScenario(projectPath, suggestScenario, options.discoveryDependencies);
       return {
         exitCode: 0,
         stdout: `${JSON.stringify(scenario, null, 2)}\n`,
       };
     }
     if (scenarioPath === undefined && entityId === undefined) {
-      const discovery = await discoverPlaytestTargets(projectPath);
+      const discovery = await discoverPlaytestTargets(projectPath, options.discoveryDependencies);
       return diagnosticResult(
         {
           code: "TN_PLAYTEST_ENTITY_REQUIRED",
@@ -307,7 +311,7 @@ export async function playtestCommand(
       );
     }
     if (scenarioPath === undefined && press === undefined) {
-      const discovery = await discoverPlaytestTargets(projectPath);
+      const discovery = await discoverPlaytestTargets(projectPath, options.discoveryDependencies);
       return diagnosticResult(
         {
           code: "TN_PLAYTEST_INPUT_REQUIRED",
@@ -370,6 +374,7 @@ export async function playtestCommand(
     }
     const runDirectory = resolvePath(projectPath, readFlag(normalizedArgv, "--out") ?? defaultPlaytestArtifactDirectory(projectPath, scenario.name, stableArtifacts));
     const started = Date.now();
+    waiverContext = { primary, runDirectory, scenario, started };
     const report = await selectedRunner.run({
       artifactDirectory: runDirectory,
       debugColliders,
@@ -381,6 +386,7 @@ export async function playtestCommand(
       movementThreshold: primary.movementThreshold,
       nativeRecording,
       nativeScreenshots,
+      headless,
       auditWrites,
       press: primary.press ?? "",
       projectPath,
@@ -431,6 +437,27 @@ export async function playtestCommand(
         },
         { exitCode: 1, json, stderr: !json },
       );
+    }
+    if (error instanceof NativeHeadlessUnsupportedError) {
+      const diagnostic: IPlaytestDiagnostic = { code: error.code, gate: "waived-headless", message: error.message, severity: "warning", suggestion: "Run the desktop playtest in a graphical session; offscreen Bevy rendering remains a documented native capability gap." };
+      if (waiverContext === undefined) return diagnosticResult({ ...diagnostic }, { exitCode: 0, json, stderr: false });
+      const { primary, runDirectory, scenario, started } = waiverContext;
+      const report: IPlaytestReport = {
+        debugColliders,
+        diagnostics: [diagnostic],
+        distance: 0,
+        entity: primary.entityId ?? scenario.subject ?? "unknown",
+        expectMoved: primary.expectMoved,
+        frames: primary.frames,
+        input: primary.press ?? "",
+        movementThreshold: primary.movementThreshold,
+        pass: true,
+        runtime: "bevy",
+        scenario: scenario.name,
+        target: scenario.target,
+      };
+      const bundle = await writePlaytestArtifactBundle({ durationMs: Date.now() - started, projectPath, report, runDirectory, scenario });
+      return { exitCode: 0, stdout: json ? `${JSON.stringify(bundle.summary, null, 2)}\n` : `Desktop playtest waived: ${error.message} Artifacts: ${bundle.artifacts.directory}\n` };
     }
     return diagnosticResult(
       {
@@ -547,6 +574,7 @@ async function runNativePlaytest(options: IPlaytestRunOptions, bevyRunner: BevyR
   const process = bevyRunner({
     bundlePath,
     captureOutput: options.quiet,
+    headless: options.headless,
     proofHarness: {
       auditWrites: options.auditWrites === true,
       commandStreamPath,
@@ -1127,16 +1155,23 @@ async function probePreview(options: IPlaytestRunOptions & { url: string }): Pro
     const before = await readTransformSample(page, options.entityId);
     const followBefore = options.follow === undefined ? undefined : await readTransformSample(page, options.follow.entityId);
     await page.screenshot({ path: beforeArtifact });
+    const runtimeDiagnosticsSeries: unknown[] = [await readRuntimeDiagnostics(page)];
     for (const step of options.scenario.steps) {
       if (step.press !== undefined) {
         await dispatchKeyboardCode(page, "keydown", step.press);
-        await waitForWebFrameAdvance(page, playtestStepHoldTicks(step, options.frames));
+        for (let tick = 0; tick < playtestStepHoldTicks(step, options.frames); tick += 1) {
+          await waitForWebFrameAdvance(page, 1);
+          runtimeDiagnosticsSeries.push(await readRuntimeDiagnostics(page));
+        }
         if (step.release) {
           await dispatchKeyboardCode(page, "keyup", step.press);
         }
       }
       if (step.waitFrames !== undefined || step.waitTicks !== undefined || step.kind === "wait") {
-        await waitForWebFrameAdvance(page, playtestStepWaitTicks(step));
+        for (let tick = 0; tick < playtestStepWaitTicks(step); tick += 1) {
+          await waitForWebFrameAdvance(page, 1);
+          runtimeDiagnosticsSeries.push(await readRuntimeDiagnostics(page));
+        }
       }
     }
     const after = await readTransformSample(page, options.entityId);
@@ -1160,6 +1195,20 @@ async function probePreview(options: IPlaytestRunOptions & { url: string }): Pro
       runtimeDiagnostics: { diagnostics: runtimeDiagnostics, performance: performanceSnapshot },
     };
     await page.screenshot({ path: artifact });
+    const beforeFrame = await readPngFrame(beforeArtifact);
+    const afterFrame = await readPngFrame(artifact);
+    const visualRegions = (options.scenario.assert?.visual ?? []).flatMap((assertion) => assertion.region === undefined ? [] : [assertion.region]);
+    observations.visual = {
+      changedPixelRatio: compareFrames(beforeFrame, afterFrame).changedPixelRatio,
+      nonblankRegions: visualRegions.map((region) => ({
+        height: region.height,
+        nonblankPixelRatio: analyzeRegionNonblank(afterFrame, region, region.minNonblankPixelRatio).nonblankRatio,
+        width: region.width,
+        x: region.x,
+        y: region.y,
+      })),
+      runtimeDiagnosticsSeries: [...runtimeDiagnosticsSeries, runtimeDiagnostics],
+    };
     await writeFile(resolve(options.artifactDirectory, "console.json"), `${JSON.stringify(consoleEntries, null, 2)}\n`, "utf8");
     await writeFile(resolve(options.artifactDirectory, "network.json"), `${JSON.stringify(networkEntries, null, 2)}\n`, "utf8");
     await writeFile(resolve(options.artifactDirectory, "effect-log.json"), `${JSON.stringify(effectLog ?? {}, null, 2)}\n`, "utf8");

@@ -3,6 +3,10 @@ import test from "node:test";
 
 import { PLAYTEST_ASSERTION_REGISTRY } from "./playtestAssertions.js";
 import { playtestSchemaCommand } from "./playtestSchema.js";
+import { loadPlaytestScenario } from "./playtestScenario.js";
+import { mkdtemp, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 
 test("should list every executable assertion kind when schema is requested", async () => {
   const result = await playtestSchemaCommand(["--json"]);
@@ -20,6 +24,13 @@ test("should list every executable assertion kind when schema is requested", asy
   assert.equal(payload.examples.stepSequence.some((step) => step.holdTicks !== undefined), true);
   assert.equal(payload.assertions.some((entry) => entry.kind === "resources"), true);
   assert.equal(payload.assertions.some((entry) => entry.kind === "hud"), true);
+});
+
+test("should accept visual assertion block in scenario schema", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-visual-schema-"));
+  await writeFile(join(root, "visual.playtest.json"), JSON.stringify({ schemaVersion: 1, name: "visual", target: "web", viewport: { width: 100, height: 100 }, warmupFrames: 0, steps: [{ waitFrames: 1, release: true }], assert: { visual: [{ frameDiff: { minChangedPixelRatio: 0.01 }, region: { x: 0, y: 0, width: 10, height: 10 }, entityVisible: { entity: "square", minProjectedPixels: 2, throughoutFrames: true } }] } }));
+  const scenario = await loadPlaytestScenario(root, "visual.playtest.json");
+  assert.equal(scenario.assert?.visual?.[0]?.entityVisible?.entity, "square");
 });
 
 test("gameplay parity schema should describe optional parity comparison fields", async () => {

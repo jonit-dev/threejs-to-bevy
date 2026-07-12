@@ -11,6 +11,11 @@ Current support:
   scenarios are opt-in with `--native`; skipped native scenarios are reported
   as structured information rather than making the default web loop
   environment-dependent.
+- `tn iterate --visual-only` reports independent visual/gameplay verdicts and
+  skips stale gameplay scenarios without changing the default full-gate
+  verdict. Playtest proof bundles omit missing paths, discovery is grounded in
+  compiled bundle surfaces, and web scenarios can assert screenshot diffs,
+  populated regions, and per-frame projected entity visibility.
 - `pnpm verify:emitted-commands` scaffolds the two maintained starters for five
   archetype goals, executes every command and cookbook ID emitted by
   `tn game plan`, requires one clean JSON object on stdout, and records the

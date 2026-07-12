@@ -9,7 +9,7 @@ export interface IPlaytestArtifactBundle {
   afterScreenshot: string;
   beforeScreenshot: string;
   console: string;
-  contactSheet: string;
+  contactSheet?: string;
   directory: string;
   effectLog: string;
   manifest: string;
@@ -28,6 +28,7 @@ export interface IPlaytestSummary {
   after?: IPlaytestReport["after"];
   artifact?: string;
   artifacts: IPlaytestArtifactBundle;
+  missingArtifacts?: string[];
   assertions: Array<{ id: string; pass: boolean; details?: Record<string, unknown> }>;
   code: "TN_PLAYTEST_FAILED" | "TN_PLAYTEST_OK";
   counts: {
@@ -96,11 +97,12 @@ export async function writePlaytestArtifactBundle(options: {
   scenario: IPlaytestScenario;
 }): Promise<{ artifacts: IPlaytestArtifactBundle; summary: IPlaytestSummary }> {
   await mkdir(options.runDirectory, { recursive: true });
+  const contactSheet = resolve(options.runDirectory, "contact-sheet.png");
   const artifacts: IPlaytestArtifactBundle = {
     afterScreenshot: resolve(options.runDirectory, "after.png"),
     beforeScreenshot: resolve(options.runDirectory, "before.png"),
     console: resolve(options.runDirectory, "console.json"),
-    contactSheet: resolve(options.runDirectory, "contact-sheet.png"),
+    ...(await pathExistsSince(contactSheet, 0) ? { contactSheet } : {}),
     directory: options.runDirectory,
     effectLog: resolve(options.runDirectory, "effect-log.json"),
     manifest: resolve(options.runDirectory, "manifest.json"),
@@ -139,10 +141,13 @@ export async function writePlaytestArtifactBundle(options: {
   options.report.diagnostics = withDiagnosticArtifactPaths(options.report.diagnostics, artifacts);
   const assertions = buildAssertions(options.report);
   options.report.diagnostics.push(...repeatedAssertionDiagnostics(await readPreviousSummary(artifacts.summary), assertions));
+  const { artifacts: summaryArtifacts, missingArtifacts } = await existingArtifacts(artifacts, Date.now() - options.durationMs - 1_000);
   const summary: IPlaytestSummary = {
     ...(options.report.after === undefined ? {} : { after: options.report.after }),
-    artifact: options.report.artifact ?? artifacts.afterScreenshot,
-    artifacts,
+    ...((options.report.artifact ?? summaryArtifacts.afterScreenshot) === undefined
+      ? {}
+      : { artifact: options.report.artifact ?? summaryArtifacts.afterScreenshot }),
+    artifacts: summaryArtifacts,
     assertions,
     code: options.report.pass ? "TN_PLAYTEST_OK" : "TN_PLAYTEST_FAILED",
     counts: buildCounts(options.report, assertions),
@@ -160,6 +165,7 @@ export async function writePlaytestArtifactBundle(options: {
     input: options.report.input,
     ...(options.report.movementDelta === undefined ? {} : { movementDelta: options.report.movementDelta }),
     movementThreshold: options.report.movementThreshold,
+    ...(missingArtifacts.length === 0 ? {} : { missingArtifacts }),
     ...(options.report.nativeRecording === undefined ? {} : { nativeRecording: options.report.nativeRecording }),
     next: nextCommand(options.scenario, summaryReportCommand(options.scenario.name)),
     pass: options.report.pass,
@@ -174,13 +180,37 @@ export async function writePlaytestArtifactBundle(options: {
   };
   await writeJson(artifacts.summary, summary);
   await writeJson(artifacts.manifest, {
-    artifacts: await artifactEntries(options.projectPath, artifacts),
+    artifacts: await artifactEntries(options.projectPath, summaryArtifacts),
     code: summary.code,
     pass: summary.pass,
     scenario: options.scenario.name,
     target: options.scenario.target,
   });
   return { artifacts, summary };
+}
+
+async function existingArtifacts(artifacts: IPlaytestArtifactBundle, notBeforeMs: number): Promise<{
+  artifacts: IPlaytestArtifactBundle;
+  missingArtifacts: string[];
+}> {
+  const kept: Record<string, string> = {};
+  const missingArtifacts: string[] = [];
+  for (const [name, path] of Object.entries(artifacts)) {
+    if (name === "directory" || name === "manifest" || name === "summary" || await pathExistsSince(path, notBeforeMs)) {
+      kept[name] = path;
+    } else {
+      missingArtifacts.push(path);
+    }
+  }
+  return { artifacts: kept as unknown as IPlaytestArtifactBundle, missingArtifacts };
+}
+
+async function pathExistsSince(path: string, notBeforeMs: number): Promise<boolean> {
+  try {
+    return (await stat(path)).mtimeMs >= notBeforeMs;
+  } catch {
+    return false;
+  }
 }
 
 async function readPreviousSummary(path: string): Promise<IPlaytestSummary | undefined> {

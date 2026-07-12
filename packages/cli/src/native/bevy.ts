@@ -6,6 +6,7 @@ import { fileURLToPath } from "node:url";
 export interface IBevyRuntimeInvocation {
   bundlePath: string;
   captureOutput?: boolean;
+  headless?: boolean;
   proofHarness?: {
     auditWrites?: boolean;
     commandStreamPath: string;
@@ -23,8 +24,23 @@ export type BevyRuntimeProcess = ChildProcess;
 export type BevyRuntimeRunner = (invocation: IBevyRuntimeInvocation) => BevyRuntimeProcess;
 
 type BevyRuntimeEnvironment = Partial<
-  Record<"THREENATIVE_BEVY_MANIFEST" | "THREENATIVE_REPO_ROOT" | "TN_NATIVE_PROFILE", string>
+  Record<"DISPLAY" | "THREENATIVE_BEVY_MANIFEST" | "THREENATIVE_REPO_ROOT" | "TN_NATIVE_PROFILE" | "WAYLAND_DISPLAY" | "WAYLAND_SOCKET", string>
 >;
+
+export class NativeHeadlessUnsupportedError extends Error {
+  readonly code = "TN_PLAYTEST_NATIVE_HEADLESS_UNSUPPORTED";
+
+  constructor() {
+    super("The bundled Bevy runtime does not yet support offscreen headless playtest rendering.");
+    this.name = "NativeHeadlessUnsupportedError";
+  }
+}
+
+export function hasNativeDisplay(env: BevyRuntimeEnvironment = process.env): boolean {
+  return [env.DISPLAY, env.WAYLAND_DISPLAY, env.WAYLAND_SOCKET].some(
+    (value) => value !== undefined && value.trim() !== "",
+  );
+}
 
 export function resolveBevyRuntime(
   repoRoot: string,
@@ -82,6 +98,9 @@ export function bevyRuntimeArgs(
     args.push("--release");
   }
   args.push("--", invocation.bundlePath);
+  if (invocation.headless === true) {
+    args.push("--headless");
+  }
   if (invocation.proofHarness !== undefined) {
     args.push(
       "--proof-harness",
@@ -112,6 +131,9 @@ export function resolveBevyRuntimeBinaryPath(
 
 function bevyRuntimeBinaryArgs(invocation: IBevyRuntimeInvocation): string[] {
   const args = [invocation.bundlePath];
+  if (invocation.headless === true) {
+    args.push("--headless");
+  }
   if (invocation.proofHarness !== undefined) {
     args.push(
       "--proof-harness",
@@ -127,6 +149,9 @@ function bevyRuntimeBinaryArgs(invocation: IBevyRuntimeInvocation): string[] {
 }
 
 export function runBevyRuntime(invocation: IBevyRuntimeInvocation): BevyRuntimeProcess {
+  if (invocation.headless === true) {
+    throw new NativeHeadlessUnsupportedError();
+  }
   const repoRoot = resolve(fileURLToPath(new URL("../../../../", import.meta.url)));
   const bundledManifestPath = resolve(fileURLToPath(new URL("../runtime-bevy/Cargo.toml", import.meta.url)));
   const runtime = resolveBevyRuntime(repoRoot, process.env, bundledManifestPath);

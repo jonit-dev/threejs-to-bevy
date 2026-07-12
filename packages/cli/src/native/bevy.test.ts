@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import test from "node:test";
 
-import { bevyRuntimeArgs, resolveBevyRuntime, resolveBevyRuntimeBinaryPath } from "./bevy.js";
+import { bevyRuntimeArgs, hasNativeDisplay, NativeHeadlessUnsupportedError, resolveBevyRuntime, resolveBevyRuntimeBinaryPath, runBevyRuntime } from "./bevy.js";
 
 test("should select threenative runtime binary", () => {
   const repoRoot = "/repo";
@@ -79,6 +79,22 @@ test("should pass native proof harness files to runtime binary", () => {
       "--readiness-out",
       "/tmp/readiness.json",
     ],
+  );
+});
+
+test("should pass headless flag to runtime argv", () => {
+  const args = bevyRuntimeArgs("/repo", { bundlePath: "/project/dist/game.bundle", headless: true }, {});
+
+  assert.deepEqual(args.slice(-2), ["/project/dist/game.bundle", "--headless"]);
+});
+
+test("should emit structured waiver instead of winit crash without display", () => {
+  assert.equal(hasNativeDisplay({}), false);
+  assert.throws(
+    () => runBevyRuntime({ bundlePath: "/project/dist/game.bundle", headless: true }),
+    (error) => error instanceof NativeHeadlessUnsupportedError
+      && error.code === "TN_PLAYTEST_NATIVE_HEADLESS_UNSUPPORTED"
+      && !error.message.includes("winit"),
   );
 });
 
