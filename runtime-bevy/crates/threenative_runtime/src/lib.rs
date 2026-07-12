@@ -38,6 +38,7 @@ pub mod motion_blur_postprocess;
 pub mod navigation;
 pub mod overlay;
 pub mod overlay_host;
+pub mod native_ssr;
 pub mod path_sampling;
 pub mod performance_metrics;
 pub mod persistence;
@@ -195,6 +196,7 @@ pub fn app_from_bundle_with_options(
                 }),
         );
     app.add_plugins((
+        native_ssr::NativeSsrCompatibilityPlugin,
         emissive_postprocess::NativeEmissivePostProcessPlugin,
         height_fog_postprocess::NativeHeightFogPostProcessPlugin,
         ssgi_postprocess::NativeSsgiPostProcessPlugin,
@@ -1080,7 +1082,7 @@ mod tests {
         rendering::apply_environment_lighting_to_world(&mut world, &bundle);
         map_world::map_bundle_into_world(&mut world, &bundle).expect("fixture should map");
         let ambient = world.resource::<AmbientLight>();
-        let baked_probe_baseline = 0.12 * 0.282095 * 5.2;
+        let baked_probe_baseline = 0.12 * 0.282095 * 4.2;
         assert!((ambient.brightness - (0.25 + baked_probe_baseline)).abs() < 0.0001);
         assert_eq!(
             world

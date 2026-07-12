@@ -805,6 +805,7 @@ fn insert_camera_screen_space_reflections(
     spawned.insert(ScreenSpaceReflectionsBundle {
         settings: ScreenSpaceReflectionsSettings {
             perceptual_roughness_threshold: screen_space_reflections.roughness_limit,
+            thickness: THREE_COMPAT_SSR_THICKNESS,
             linear_steps: native_screen_space_reflections_steps(
                 screen_space_reflections.quality.as_str(),
             ),

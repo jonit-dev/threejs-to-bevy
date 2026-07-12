@@ -957,7 +957,7 @@ fn reflectance_for_material(
         // Bevy squares its reflectance parameter when deriving F0.
         return 0.5 * specular_intensity.sqrt();
     }
-    if material.metalness.unwrap_or(0.0) <= 0.1
+    if material.metalness.unwrap_or(0.0) <= THREE_COMPAT_SSR_SMOOTH_MATERIAL_METALNESS_LIMIT
         && (material.emissive.is_some()
             || (suppress_implicit_smooth_dielectric_reflectance
                 && material.roughness.unwrap_or(1.0) <= 0.35))
@@ -1020,6 +1020,21 @@ mod material_calibration_tests {
         assert_eq!(reflectance_for_material(&smooth, false), 0.5);
         assert_eq!(reflectance_for_material(&smooth, true), 0.0);
         assert!((reflectance_for_material(&explicit, true) - 0.5 * 0.65_f32.sqrt()).abs() < f32::EPSILON);
+    }
+
+    #[test]
+    fn ssr_selected_puddle_fallback_suppresses_implicit_probe_reflectance() {
+        let puddle: MaterialIr = serde_json::from_value(serde_json::json!({
+            "id": "puddle",
+            "kind": "standard",
+            "color": "#292b28",
+            "metalness": 0.12,
+            "roughness": 0.28
+        }))
+        .expect("puddle material should deserialize");
+
+        assert_eq!(reflectance_for_material(&puddle, true), 0.0);
+        assert_eq!(reflectance_for_material(&puddle, false), 0.5);
     }
 
     #[test]

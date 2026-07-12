@@ -148,7 +148,7 @@ fn rendering_should_map_atmosphere_profile_to_bevy_observation() {
     assert!((clear.green - 0xb6 as f32 / 255.0).abs() < 0.01);
     assert!((clear.blue - 0xaa as f32 / 255.0).abs() < 0.01);
     let ambient = app.world().resource::<AmbientLight>();
-    assert!((ambient.brightness - 0.2).abs() < 0.01);
+    assert!((ambient.brightness - 0.03).abs() < 0.01);
     let shadow_map = app.world().resource::<DirectionalLightShadowMap>();
     assert_eq!(shadow_map.size, 1024);
     let lights = app
@@ -168,7 +168,7 @@ fn rendering_should_map_atmosphere_profile_to_bevy_observation() {
             )
         })
         .collect::<Vec<_>>();
-    assert_eq!(lights.len(), 1);
+    assert_eq!(lights.len(), 3);
     assert_eq!(
         app.world_mut()
             .query::<&VolumetricLight>()
@@ -176,7 +176,12 @@ fn rendering_should_map_atmosphere_profile_to_bevy_observation() {
             .count(),
         1
     );
-    let light = &lights[0];
+    assert!(lights.iter().any(|light| !light.0 && (light.1 - 0.6).abs() < 0.01));
+    assert!(lights.iter().any(|light| !light.0 && (light.1 - 0.25).abs() < 0.01));
+    let light = lights
+        .iter()
+        .find(|light| light.0 && (light.1 - 3.2).abs() < 0.01)
+        .expect("atmosphere sun should remain the shadowed directional light");
     assert!(light.0);
     assert!((light.1 - 3.2).abs() < 0.01);
     assert!((light.2 - 0.05).abs() < 0.0001);
@@ -189,7 +194,7 @@ fn rendering_should_map_atmosphere_profile_to_bevy_observation() {
 
     map_bundle_into_world(app.world_mut(), &bundle).expect("world should map");
     let mapped_ambient = app.world().resource::<AmbientLight>();
-    assert!((mapped_ambient.brightness - 0.2).abs() < 0.01);
+    assert!((mapped_ambient.brightness - 0.03).abs() < 0.01);
     assert_eq!(
         app.world_mut()
             .query::<&ScreenSpaceAmbientOcclusionSettings>()
@@ -220,7 +225,7 @@ fn rendering_should_map_atmosphere_profile_to_bevy_observation() {
         .query::<&DirectionalLight>()
         .iter(app.world())
         .count();
-    assert_eq!(mapped_directional_count, 1);
+    assert_eq!(mapped_directional_count, 3);
     let camera_color = app
         .world_mut()
         .query::<(&Tonemapping, &ColorGrading, &Exposure, &FogSettings)>()
@@ -259,7 +264,7 @@ fn rendering_should_map_atmosphere_profile_to_bevy_observation() {
     assert_eq!(volumetric_fog.step_count, 96);
     assert!((volumetric_fog.max_depth - 80.0).abs() < 0.001);
     assert!((volumetric_fog.density - 0.01).abs() < 0.001);
-    assert!((volumetric_fog.light_intensity - 6.24).abs() < 0.001);
+    assert!((volumetric_fog.light_intensity - 6.48).abs() < 0.001);
     let report = app.world().resource::<NativeVolumetricsReport>();
     assert!(report.god_rays_requested);
     assert!(report.god_rays_applied);

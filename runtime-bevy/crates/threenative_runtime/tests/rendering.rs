@@ -354,7 +354,7 @@ fn rendering_should_map_runtime_bloom_to_camera() {
     assert!((bloom.intensity - (0.35 * 0.2)).abs() < 0.01);
     assert_eq!(bloom.composite_mode, BloomCompositeMode::Additive);
     assert!((bloom.prefilter_settings.threshold - 0.8).abs() < 0.01);
-    assert!((bloom.prefilter_settings.threshold_softness - 0.2).abs() < 0.01);
+    assert!((bloom.prefilter_settings.threshold_softness - 0.32).abs() < 0.01);
 
     fs::remove_dir_all(root).expect("temporary bundle should be removed");
 }
@@ -526,6 +526,7 @@ fn rendering_should_map_runtime_screen_space_reflections_to_native_camera() {
         .get::<ScreenSpaceReflectionsSettings>(camera)
         .expect("camera should have native screen-space reflection settings");
     assert!((settings.perceptual_roughness_threshold - 0.45).abs() < 0.001);
+    assert!((settings.thickness - 0.02).abs() < 0.001);
     assert_eq!(settings.linear_steps, 32);
     assert!(app.world().get::<DepthPrepass>(camera).is_some());
     assert!(app.world().get::<DeferredPrepass>(camera).is_some());
@@ -562,7 +563,7 @@ fn rendering_should_map_balanced_render_look_to_native_bloom() {
     assert!((bloom.intensity - (0.45 * 0.2)).abs() < 0.01);
     assert_eq!(bloom.composite_mode, BloomCompositeMode::Additive);
     assert!((bloom.prefilter_settings.threshold - 0.85).abs() < 0.01);
-    assert!((bloom.prefilter_settings.threshold_softness - 0.2).abs() < 0.01);
+    assert!((bloom.prefilter_settings.threshold_softness - 0.32).abs() < 0.01);
 
     fs::remove_dir_all(root).expect("temporary bundle should be removed");
 }
@@ -591,7 +592,7 @@ fn rendering_should_map_cinematic_render_look_to_native_bloom() {
     assert!((bloom.intensity - (0.45 * 0.2)).abs() < 0.01);
     assert_eq!(bloom.composite_mode, BloomCompositeMode::Additive);
     assert!((bloom.prefilter_settings.threshold - 0.85).abs() < 0.01);
-    assert!((bloom.prefilter_settings.threshold_softness - 0.2).abs() < 0.01);
+    assert!((bloom.prefilter_settings.threshold_softness - 0.32).abs() < 0.01);
 
     fs::remove_dir_all(root).expect("temporary bundle should be removed");
 }

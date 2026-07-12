@@ -38,21 +38,30 @@ const THREE_COMPAT_ATMOSPHERE_AMBIENT_BRIGHTNESS_PER_INTENSITY: f32 = 0.25;
 const THREE_COMPAT_ENVIRONMENT_AMBIENT_BRIGHTNESS_PER_INTENSITY: f32 = 0.45;
 const THREE_COMPAT_ENVIRONMENT_MAP_LIGHT_INTENSITY_PER_UNIT: f32 = 0.55;
 pub(crate) const THREE_COMPAT_BAKED_PROBE_IRRADIANCE_INTENSITY_PER_UNIT: f32 = 1.0;
-const THREE_COMPAT_BAKED_PROBE_ATMOSPHERE_BASELINE_PER_UNIT: f32 = 5.2;
+const THREE_COMPAT_BAKED_PROBE_ATMOSPHERE_BASELINE_PER_UNIT: f32 = 4.2;
 const THREE_COMPAT_SHADOW_BIAS_SCALE: f32 = 100.0;
 const ATMOSPHERE_SHADOW_MINIMUM_DISTANCE: f32 = 0.05;
 const ATMOSPHERE_SHADOW_DEFAULT_BLEND_FRACTION: f32 = 0.2;
 const ATMOSPHERE_SHADOW_DEFAULT_SPLIT_LAMBDA: f32 = 0.5;
 const ATMOSPHERE_SHADOW_DEFAULT_SPLIT_SCHEME: &str = "practical";
 const NATIVE_VOLUMETRIC_BASE_ABSORPTION: f32 = 0.1;
-const NATIVE_VOLUMETRIC_BASE_SCATTERING: f32 = 0.22;
+const NATIVE_VOLUMETRIC_BASE_SCATTERING: f32 = 0.0;
 const NATIVE_VOLUMETRIC_SHAFT_SCATTERING_SCALE: f32 = 0.35;
 const NATIVE_VOLUMETRIC_SHAFT_DENSITY_SCALE: f32 = 0.025;
-const NATIVE_VOLUMETRIC_SCATTERING_ASYMMETRY: f32 = 0.58;
+const NATIVE_VOLUMETRIC_SCATTERING_ASYMMETRY: f32 = 0.5;
+// Bevy 0.14's deferred irradiance fallback cannot reconstruct the web
+// hemisphere ray that carries floor/window bounce onto the room ceiling. A
+// shadowless upward light supplies only that missing downward-facing lobe and
+// is enabled strictly alongside native SSGI.
+const NATIVE_SSGI_CEILING_BOUNCE_ILLUMINANCE: f32 = 0.6;
+// The same deferred limitation removes much of the window bounce from broad
+// upward-facing receivers. Keep the floor lobe lower than the ceiling lobe so
+// it restores the web's surface response without flattening the dark room.
+const NATIVE_SSGI_FLOOR_BOUNCE_ILLUMINANCE: f32 = 0.25;
 // Bevy includes the normalized 1/(4pi) phase term while the web artistic pass
 // intentionally does not. This adapter calibration restores equivalent shaft
 // radiance without coupling the authored density to room haze.
-const NATIVE_VOLUMETRIC_LIGHT_INTENSITY_SCALE: f32 = 5.2;
+const NATIVE_VOLUMETRIC_LIGHT_INTENSITY_SCALE: f32 = 5.4;
 pub(crate) fn native_ssgi_ambient_multiplier(config: Option<&RuntimeConfigIr>) -> f32 {
     let Some(ssgi) = config
         .and_then(|config| config.renderer.as_ref())
@@ -62,7 +71,7 @@ pub(crate) fn native_ssgi_ambient_multiplier(config: Option<&RuntimeConfigIr>) -
         return 1.0;
     };
     let _ = ssgi;
-    0.33
+    0.15
 }
 
 #[cfg(test)]
@@ -90,7 +99,7 @@ mod ssgi_ambient_tests {
 
     #[test]
     fn reduces_flat_ambient_only_while_ssgi_is_enabled() {
-        assert!((native_ssgi_ambient_multiplier(Some(&runtime_config(true))) - 0.33).abs() < f32::EPSILON);
+        assert!((native_ssgi_ambient_multiplier(Some(&runtime_config(true))) - 0.15).abs() < f32::EPSILON);
         assert!((native_ssgi_ambient_multiplier(Some(&runtime_config(false))) - 1.0).abs() < f32::EPSILON);
         assert!((native_ssgi_ambient_multiplier(None) - 1.0).abs() < f32::EPSILON);
     }
@@ -98,6 +107,12 @@ mod ssgi_ambient_tests {
 
 #[derive(Clone, Component, Debug)]
 struct NativeAtmosphereSun;
+
+#[derive(Clone, Component, Debug)]
+struct NativeSsgiCeilingBounce;
+
+#[derive(Clone, Component, Debug)]
+struct NativeSsgiFloorBounce;
 
 #[derive(Clone, Debug, PartialEq, Resource, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -416,6 +431,41 @@ pub fn apply_atmosphere_to_world(world: &mut World, bundle: &LoadedBundle) {
     {
         sun.insert(VolumetricLight);
     }
+    drop(sun);
+    if native_ssgi_settings(bundle.runtime_config.as_ref(), Some(profile)).is_some() {
+        world
+            .spawn(DirectionalLightBundle {
+                directional_light: DirectionalLight {
+                    color: color_to_bevy(&profile.sun.color),
+                    illuminance: NATIVE_SSGI_CEILING_BOUNCE_ILLUMINANCE,
+                    shadows_enabled: false,
+                    ..Default::default()
+                },
+                transform: Transform::default().looking_to(Vec3::Y, Vec3::Z),
+                ..Default::default()
+            })
+            .insert((
+                Name::new("threenative:ssgi-ceiling-bounce"),
+                NativeAtmosphereSun,
+                NativeSsgiCeilingBounce,
+            ));
+        world
+            .spawn(DirectionalLightBundle {
+                directional_light: DirectionalLight {
+                    color: color_to_bevy(&profile.sun.color),
+                    illuminance: NATIVE_SSGI_FLOOR_BOUNCE_ILLUMINANCE,
+                    shadows_enabled: false,
+                    ..Default::default()
+                },
+                transform: Transform::default().looking_to(-Vec3::Y, Vec3::Z),
+                ..Default::default()
+            })
+            .insert((
+                Name::new("threenative:ssgi-floor-bounce"),
+                NativeAtmosphereSun,
+                NativeSsgiFloorBounce,
+            ));
+    }
 }
 
 pub(crate) fn native_volumetric_fog_settings(
@@ -474,10 +524,11 @@ pub(crate) fn native_ssgi_settings(config: Option<&RuntimeConfigIr>, profile: Op
     let ambient = profile.map(|profile| color_to_bevy(&profile.ambient.color)).unwrap_or(Color::srgb(0.125, 0.14, 0.165));
     let linear = ambient.to_linear();
     let scale = profile.map_or(0.2, |profile| profile.ambient.intensity).max(0.0) * 0.15;
-    Some(NativeSsgi::new(
+    Some(NativeSsgi::with_quality(
         ssgi.radius.unwrap_or(10.0),
         ssgi.intensity.unwrap_or(1.0),
         Color::linear_rgb(linear.red * scale, linear.green * scale, linear.blue * scale),
+        ssgi.quality.as_str(),
     ))
 }
 

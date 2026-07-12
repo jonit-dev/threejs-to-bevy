@@ -88,6 +88,11 @@ const THREE_COMPAT_DEFAULT_CAMERA_EV100: f32 = 0.0;
 const THREE_COMPAT_SKY_DOME_RADIUS: f32 = 72.0;
 const THREE_COMPAT_EMISSIVE_INTENSITY_SCALE: f32 = 1.0;
 const THREE_COMPAT_DEFAULT_IMPLICIT_DIELECTRIC_REFLECTANCE: f32 = 0.5;
+const THREE_COMPAT_SSR_SMOOTH_MATERIAL_METALNESS_LIMIT: f32 = 0.2;
+// Match the web SSR thin-surface calibration. Bevy's default 0.25 treats the
+// authored centimeter-scale puddles as thick volumes and produces misses or
+// detached reflection blobs.
+const THREE_COMPAT_SSR_THICKNESS: f32 = 0.02;
 // Authored grading is already expressed in the shared adapter contract. Extra
 // native-only saturation/contrast multipliers clipped blue from dark mids and
 // made the hero room read as an orange poster rather than the web image.
