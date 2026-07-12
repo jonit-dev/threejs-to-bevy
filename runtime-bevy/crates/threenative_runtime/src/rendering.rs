@@ -48,7 +48,7 @@ const NATIVE_VOLUMETRIC_BASE_ABSORPTION: f32 = 0.1;
 const NATIVE_VOLUMETRIC_BASE_SCATTERING: f32 = 0.0;
 const NATIVE_VOLUMETRIC_SHAFT_SCATTERING_SCALE: f32 = 0.35;
 const NATIVE_VOLUMETRIC_SHAFT_DENSITY_SCALE: f32 = 0.025;
-const NATIVE_VOLUMETRIC_SCATTERING_ASYMMETRY: f32 = 0.5;
+const NATIVE_VOLUMETRIC_SCATTERING_ASYMMETRY: f32 = 0.35;
 // Bevy 0.14's deferred irradiance fallback cannot reconstruct the web
 // hemisphere ray that carries floor/window bounce onto the room ceiling. A
 // shadowless upward light supplies only that missing downward-facing lobe and
