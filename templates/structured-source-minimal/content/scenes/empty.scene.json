@@ -2,8 +2,23 @@
   "schema": "threenative.scene",
   "version": "0.1.0",
   "id": "empty",
-  "entities": [],
-  "prefabs": [],
+  "entities": [
+    {
+      "id": "camera.main",
+      "transform": { "position": [0, 0, 5] },
+      "components": {
+        "camera": { "mode": "perspective", "fovY": 50, "near": 0.1, "far": 100 }
+      }
+    },
+    {
+      "id": "visual.origin",
+      "prefab": "prefab.origin",
+      "transform": { "scale": [0.5, 0.5, 0.5] }
+    }
+  ],
+  "prefabs": [
+    { "id": "prefab.origin", "primitive": "box", "color": "#64748b" }
+  ],
   "resources": [],
   "systems": [],
   "ui": { "bindings": [], "nodes": [] }

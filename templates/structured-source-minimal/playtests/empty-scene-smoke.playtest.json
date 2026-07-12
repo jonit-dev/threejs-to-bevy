@@ -2,9 +2,12 @@
   "schemaVersion": 1,
   "name": "empty-scene-smoke",
   "target": "web",
+  "subject": "visual.origin",
   "viewport": { "width": 1280, "height": 720 },
   "warmupFrames": 2,
-  "steps": [],
+  "steps": [
+    { "kind": "wait", "waitFrames": 2 }
+  ],
   "assert": {
     "diagnostics": {
       "runtimeReady": true,

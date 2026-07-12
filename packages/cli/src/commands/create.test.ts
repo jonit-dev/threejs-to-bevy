@@ -22,6 +22,8 @@ test("should create minimal starter without gameplay residue", async () => {
     assert.deepEqual(await readdir(join(payload.path, "playtests")), ["empty-scene-smoke.playtest.json"]);
     const packageJson = JSON.parse(await readFile(join(payload.path, "package.json"), "utf8")) as { scripts: Record<string, string> };
     assert.equal("recipe:controller" in packageJson.scripts, false);
+    const scene = JSON.parse(await readFile(join(payload.path, "content/scenes/empty.scene.json"), "utf8")) as { entities: Array<{ id: string }> };
+    assert.deepEqual(scene.entities.map((entity) => entity.id), ["camera.main", "visual.origin"]);
   } finally {
     await rm(root, { force: true, recursive: true });
   }
@@ -33,6 +35,7 @@ test("should iterate green immediately after minimal create", async () => {
     const created = await createProject(["minimal", "--template", "structured-source-minimal", "--json"], { cwd: root });
     const project = (JSON.parse(created.stdout) as { path: string }).path;
     const result = await iterateCommand(["--project", project, "--json"], process.cwd(), {
+      analyzeScreenshot: async () => ({ colorBucketCount: 8, localContrast: 0.2, ok: true, thresholds: { minColorBuckets: 4, minLocalContrast: 0.04 } }),
       capture: async ({ outPath, url }) => ({ byteSize: 42, capturedAt: "2026-07-12T00:00:00.000Z", checks: { canvas: { height: 720, ok: true, width: 1280 } }, diagnostics: [], outPath, runtimeReady: { ok: true }, url, viewport: { height: 720, width: 1280 } }),
       playtest: async () => ({ exitCode: 0, stdout: `${JSON.stringify({ artifacts: { directory: "artifacts/playtest/empty-scene-smoke", summary: "artifacts/playtest/empty-scene-smoke/summary.json" }, assertions: [], code: "TN_PLAYTEST_OK", diagnostics: [], pass: true, scenario: "empty-scene-smoke", schema: "threenative.playtest-summary" })}\n` }),
       startPreview: async () => ({ close: async () => undefined, url: "http://127.0.0.1:1" }),
