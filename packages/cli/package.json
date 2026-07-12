@@ -55,5 +55,8 @@
     "pngjs": "^7.0.0",
     "sql.js": "^1.14.1",
     "typescript": "^5.9.3"
+  },
+  "optionalDependencies": {
+    "assimpjs": "^0.0.10"
   }
 }

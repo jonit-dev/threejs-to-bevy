@@ -8,6 +8,7 @@ import type { IGltfSceneAssetIr } from "@threenative/ir";
 import { exportAssetSourcesJsonl, getAssetSource, searchAssetSources, suggestAssetSources, type IAssetSourceRecord, type IAssetSourceSearchOptions } from "../assetSourceCatalog/catalog.js";
 import { diagnosticResult, type ICommandResult } from "../diagnostics.js";
 import { formatVec, formatVec2, rotateXZ } from "./asset/vectorPresentation.js";
+import { assetImportCommand } from "./assetImport.js";
 
 type Severity = "info" | "warning" | "error";
 
@@ -193,6 +194,10 @@ export async function assetCommand(argv: readonly string[]): Promise<ICommandRes
 
   if (subcommand === "source") {
     return assetSourceCommand(normalizedArgv.slice(1), json);
+  }
+
+  if (subcommand === "import") {
+    return assetImportCommand(normalizedArgv);
   }
 
   if (subcommand === "add") {

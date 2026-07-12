@@ -425,6 +425,9 @@ export async function addAsset(options: IAddAssetOptions): Promise<IAuthoringOpe
       const existing = findSceneItem(assets, options.assetId);
       const asset = existing ?? { id: options.assetId };
       asset.type = options.type;
+      setOptionalString(asset, "source", options.source);
+      setOptionalString(asset, "license", options.license);
+      setOptionalString(asset, "attribution", options.attribution);
       if (options.type === "render-target") {
         delete asset.path;
         asset.width = options.width;

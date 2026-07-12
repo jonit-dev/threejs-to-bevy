@@ -55,7 +55,8 @@ export const CLI_COMMAND_REGISTRY = defineCommandRegistry({
   asset: {
     description: "Inspect GLB/glTF assets, query source catalog records, and mutate structured asset source documents.",
     implemented: true,
-    usage: "tn asset inspect <path-or-directory> [--recursive] [--json]\n              tn asset source search [--query <text>] [--game-category <category>] [--file-role <role>] [--format glb] [--direct-only] [--json]\n              tn asset source get <asset-source-id> [--json]\n              tn asset add <asset-id> --type <model|texture|audio|mesh> --path <source-path> [--project <path>] [--json]\n              tn asset add <asset-id> --type render-target --width <n> --height <n> [--usage color|depth] [--format rgba8|rgba16f|depth24plus] [--sample-count <n>] [--project <path>] [--json]",
+    subcommands: ["add", "import", "inspect", "source"],
+    usage: "tn asset inspect <path-or-directory> [--recursive] [--json]\n              tn asset import <source-path-or-url> --id <asset-id> [--license <id>] [--attribution <text>] [--variant name=#rrggbb] [--project <path>] [--json]\n              tn asset source search [--query <text>] [--game-category <category>] [--file-role <role>] [--format glb] [--direct-only] [--json]\n              tn asset source get <asset-source-id> [--json]\n              tn asset add <asset-id> --type <audio|buffer|model|texture> --path <source-path> [--project <path>] [--json]\n              tn asset add <asset-id> --type render-target --width <n> --height <n> [--usage color|depth] [--format rgba8|rgba16f|depth24plus] [--sample-count <n>] [--project <path>] [--json]",
   },
   actor: {
     description: "Apply reusable actor archetypes to structured source.",

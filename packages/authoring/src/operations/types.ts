@@ -781,10 +781,13 @@ export interface ISetInputBindingOverrideOptions extends IAuthoringOperationCont
 
 export interface IAddAssetOptions extends IAuthoringOperationContext {
   assetId: string;
+  attribution?: string;
   file?: string;
   format?: string;
   height?: number;
+  license?: string;
   path?: string;
+  source?: string;
   sampleCount?: number;
   type: string;
   usage?: string;
