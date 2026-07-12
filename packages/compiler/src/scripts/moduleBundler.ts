@@ -16,6 +16,7 @@ export interface ILocalModuleBundleResult {
  */
 export function bundleLocalScriptModules(
   graphs: ReadonlyArray<{ entryExport: string; exportName: string; graph: IScriptModuleGraph }>,
+  helperModules: ReadonlySet<string> = new Set(),
 ): ILocalModuleBundleResult {
   const modules = collectModules(graphs);
   const order = topologicalModuleOrder(modules);
@@ -39,7 +40,7 @@ export function bundleLocalScriptModules(
     if (module === undefined || moduleName === undefined) {
       continue;
     }
-    const generated = generateModule(module, moduleNames, modules);
+    const generated = generateModule(module, moduleNames, modules, helperModules);
     diagnostics.push(...generated.diagnostics);
     declarations.push(`const ${moduleName} = (() => {\n${indent(generated.code)}\n  return Object.freeze(__tn_exports);\n})();`);
   }
@@ -95,6 +96,7 @@ function generateModule(
   module: IScriptModuleGraphNode,
   moduleNames: ReadonlyMap<string, string>,
   modules: ReadonlyMap<string, IScriptModuleGraphNode>,
+  helperModules: ReadonlySet<string>,
 ): { code: string; diagnostics: ICompilerDiagnostic[]; exports: Record<string, string> } {
   const sourceFile = ts.createSourceFile(module.path, module.source, ts.ScriptTarget.ES2023, true, ts.ScriptKind.TS);
   const diagnostics: ICompilerDiagnostic[] = [];
@@ -103,7 +105,8 @@ function generateModule(
   const exported = new Map<string, string>();
   const starDependencies: string[] = [];
   const localBindings = moduleBindingNames(sourceFile);
-  const localExports = moduleExportNames(sourceFile);
+  const explicitExportNames = moduleExplicitExportNames(sourceFile);
+  const starExportNames = new Set<string>();
 
   for (const statement of sourceFile.statements) {
     if (ts.isImportDeclaration(statement)) {
@@ -115,12 +118,20 @@ function generateModule(
         }
         continue;
       }
-      const dependency = isLocalSpecifier(specifier) ? resolveDependencyPath(module.path, specifier, modules) : undefined;
+      const dependency = isLocalSpecifier(specifier) ? resolveDependencyPath(module, specifier, modules) : undefined;
       if (isLocalSpecifier(specifier) && dependency === undefined) {
         diagnostics.push(missingBundledDependencyDiagnostic(module.path, specifier));
         continue;
       }
       if (dependency === undefined) {
+        if (helperModules.has(specifier) && clause.namedBindings !== undefined && ts.isNamedImports(clause.namedBindings)) {
+          for (const element of clause.namedBindings.elements) {
+            if (!element.isTypeOnly) {
+              const importedName = element.propertyName?.text ?? element.name.text;
+              prelude.push(`const ${element.name.text} = ${importedName};`);
+            }
+          }
+        }
         continue;
       }
       const dependencyName = moduleNames.get(dependency);
@@ -129,7 +140,7 @@ function generateModule(
         continue;
       }
       if (clause.name !== undefined) {
-        if (!graphExportNames(modules.get(dependency)).has("default")) {
+        if (!graphExportNames(modules.get(dependency), modules).has("default")) {
           diagnostics.push(missingExportDiagnostic(module.path, specifier, "default"));
         }
         prelude.push(`const ${clause.name.text} = ${dependencyName}["default"];`);
@@ -142,7 +153,7 @@ function generateModule(
             continue;
           }
           const importedName = element.propertyName?.text ?? element.name.text;
-          if (!graphExportNames(modules.get(dependency)).has(importedName)) {
+          if (!graphExportNames(modules.get(dependency), modules).has(importedName)) {
             diagnostics.push(missingExportDiagnostic(module.path, specifier, importedName));
           }
           prelude.push(`const ${element.name.text} = ${dependencyName}[${JSON.stringify(importedName)}];`);
@@ -155,7 +166,7 @@ function generateModule(
         continue;
       }
       const specifier = statement.moduleSpecifier === undefined ? undefined : literalSpecifier(statement.moduleSpecifier);
-      const dependency = specifier === undefined || !isLocalSpecifier(specifier) ? undefined : resolveDependencyPath(module.path, specifier, modules);
+      const dependency = specifier === undefined || !isLocalSpecifier(specifier) ? undefined : resolveDependencyPath(module, specifier, modules);
       if (specifier !== undefined && dependency === undefined) {
         diagnostics.push(missingBundledDependencyDiagnostic(module.path, specifier));
         continue;
@@ -172,7 +183,7 @@ function generateModule(
             }
             exported.set(element.name.text, localName);
           } else {
-            if (!graphExportNames(modules.get(dependency)).has(localName)) {
+            if (!graphExportNames(modules.get(dependency), modules).has(localName)) {
               diagnostics.push(missingExportDiagnostic(module.path, specifier ?? "<local>", localName));
             }
             exported.set(element.name.text, `${moduleNames.get(dependency)}[${JSON.stringify(localName)}]`);
@@ -181,14 +192,18 @@ function generateModule(
       } else if (statement.exportClause !== undefined && ts.isNamespaceExport(statement.exportClause) && dependency !== undefined) {
         exported.set(statement.exportClause.name.text, moduleNames.get(dependency) ?? "");
       } else if (dependency !== undefined) {
-        for (const name of graphExportNames(modules.get(dependency))) {
+        for (const name of graphExportNames(modules.get(dependency), modules)) {
           if (name === "default") {
             continue;
           }
-          if (localExports.has(name) || exported.has(name)) {
-            diagnostics.push(ambiguousExportDiagnostic(module.path, specifier ?? "<local>", name));
+          if (explicitExportNames.has(name)) {
+            continue;
           }
-          localExports.add(name);
+          if (starExportNames.has(name)) {
+            diagnostics.push(ambiguousExportDiagnostic(module.path, specifier ?? "<local>", name));
+            continue;
+          }
+          starExportNames.add(name);
         }
         starDependencies.push(moduleNames.get(dependency) ?? "");
       }
@@ -224,7 +239,7 @@ function generateModule(
   }
   for (const dependency of starDependencies) {
     if (dependency.length > 0) {
-      body.push(`Object.assign(__tn_exports, ${dependency});`);
+      body.push(`for (const __tn_star_name of Object.keys(${dependency})) { if (__tn_star_name !== "default" && !Object.prototype.hasOwnProperty.call(__tn_exports, __tn_star_name)) __tn_exports[__tn_star_name] = ${dependency}[__tn_star_name]; }`);
     }
   }
   const code = ts.transpileModule([...prelude, "const __tn_exports = {};", ...body, ...Object.entries(exportObject).map(([name, expression]) => `__tn_exports[${JSON.stringify(name)}] = ${expression};`)].join("\n"), {
@@ -256,11 +271,63 @@ function moduleBindingNames(sourceFile: ts.SourceFile): Set<string> {
     if (ts.isExportAssignment(statement)) {
       names.add("default");
     }
+    if (ts.isImportDeclaration(statement)) {
+      const clause = statement.importClause;
+      if (clause?.name !== undefined) {
+        names.add(clause.name.text);
+      }
+      if (clause?.namedBindings !== undefined && ts.isNamespaceImport(clause.namedBindings)) {
+        names.add(clause.namedBindings.name.text);
+      }
+      if (clause?.namedBindings !== undefined && ts.isNamedImports(clause.namedBindings)) {
+        for (const element of clause.namedBindings.elements) {
+          if (!element.isTypeOnly) {
+            names.add(element.name.text);
+          }
+        }
+      }
+    }
   }
   return names;
 }
 
-function moduleExportNames(sourceFile: ts.SourceFile | undefined): Set<string> {
+function moduleExplicitExportNames(sourceFile: ts.SourceFile): Set<string> {
+  const names = new Set<string>();
+  for (const statement of sourceFile.statements) {
+    const modifiers = nodeModifiers(statement);
+    if (modifiers.some((modifier) => modifier.kind === ts.SyntaxKind.ExportKeyword)) {
+      const declared = declarationNames(statement);
+      for (const name of declared) {
+        names.add(modifiers.some((modifier) => modifier.kind === ts.SyntaxKind.DefaultKeyword) ? "default" : name);
+      }
+      if (declared.length === 0 && modifiers.some((modifier) => modifier.kind === ts.SyntaxKind.DefaultKeyword)) {
+        names.add("default");
+      }
+    }
+    if (ts.isExportAssignment(statement)) {
+      names.add("default");
+    }
+    if (ts.isExportDeclaration(statement) && statement.exportClause !== undefined) {
+      if (ts.isNamedExports(statement.exportClause)) {
+        for (const element of statement.exportClause.elements) {
+          if (!element.isTypeOnly) {
+            names.add(element.name.text);
+          }
+        }
+      } else if (ts.isNamespaceExport(statement.exportClause)) {
+        names.add(statement.exportClause.name.text);
+      }
+    }
+  }
+  return names;
+}
+
+function moduleExportNames(
+  sourceFile: ts.SourceFile | undefined,
+  module: IScriptModuleGraphNode | undefined,
+  modules: ReadonlyMap<string, IScriptModuleGraphNode>,
+  visiting = new Set<string>(),
+): Set<string> {
   const names = new Set<string>();
   if (sourceFile === undefined) {
     return names;
@@ -272,14 +339,29 @@ function moduleExportNames(sourceFile: ts.SourceFile | undefined): Set<string> {
       for (const name of declared) {
         names.add(modifiers.some((modifier) => modifier.kind === ts.SyntaxKind.DefaultKeyword) ? "default" : name);
       }
+      if (declared.length === 0 && modifiers.some((modifier) => modifier.kind === ts.SyntaxKind.DefaultKeyword)) {
+        names.add("default");
+      }
     }
     if (ts.isExportAssignment(statement)) {
       names.add("default");
     }
-    if (ts.isExportDeclaration(statement) && statement.isTypeOnly === false && statement.exportClause !== undefined && ts.isNamedExports(statement.exportClause)) {
-      for (const element of statement.exportClause.elements) {
-        if (!element.isTypeOnly) {
-          names.add(element.name.text);
+    if (ts.isExportDeclaration(statement) && statement.isTypeOnly === false) {
+      if (statement.exportClause !== undefined && ts.isNamedExports(statement.exportClause)) {
+        for (const element of statement.exportClause.elements) {
+          if (!element.isTypeOnly) {
+            names.add(element.name.text);
+          }
+        }
+      } else if (statement.exportClause !== undefined && ts.isNamespaceExport(statement.exportClause)) {
+        names.add(statement.exportClause.name.text);
+      } else if (module !== undefined && statement.moduleSpecifier !== undefined) {
+        const specifier = literalSpecifier(statement.moduleSpecifier);
+        const dependency = specifier === undefined ? undefined : resolveDependencyPath(module, specifier, modules);
+        for (const name of graphExportNames(modules.get(dependency ?? ""), modules, visiting)) {
+          if (name !== "default") {
+            names.add(name);
+          }
         }
       }
     }
@@ -287,10 +369,27 @@ function moduleExportNames(sourceFile: ts.SourceFile | undefined): Set<string> {
   return names;
 }
 
-function graphExportNames(module: IScriptModuleGraphNode | undefined): Set<string> {
-  return module === undefined
-    ? new Set<string>()
-    : moduleExportNames(ts.createSourceFile(module.path, module.source, ts.ScriptTarget.ES2023, true, ts.ScriptKind.TS));
+function graphExportNames(
+  module: IScriptModuleGraphNode | undefined,
+  modules: ReadonlyMap<string, IScriptModuleGraphNode>,
+  visiting = new Set<string>(),
+): Set<string> {
+  if (module === undefined || visiting.has(module.path)) {
+    return new Set<string>();
+  }
+  const nextVisiting = new Set(visiting);
+  nextVisiting.add(module.path);
+  return moduleExportNames(
+    ts.createSourceFile(module.path, module.source, ts.ScriptTarget.ES2023, true, ts.ScriptKind.TS),
+    module,
+    modules,
+    nextVisiting,
+  );
+}
+
+export function scriptModuleGraphExportNames(graph: IScriptModuleGraph): Set<string> {
+  const modules = new Map(graph.modules.map((module) => [module.path, module] as const));
+  return graphExportNames(modules.get(graph.entry), modules);
 }
 
 function stripExportModifiers(statement: ts.Statement, sourceFile: ts.SourceFile): string {
@@ -307,9 +406,15 @@ function nodeModifiers(statement: ts.Statement): readonly ts.Modifier[] {
   return ts.canHaveModifiers(statement) ? ts.getModifiers(statement) ?? [] : [];
 }
 
-function resolveDependencyPath(importer: string, specifier: string, modules: ReadonlyMap<string, IScriptModuleGraphNode>): string | undefined {
-  const base = normalizePath(joinPath(dirnamePath(importer), specifier));
-  const candidates = specifier.endsWith(".ts") ? [base] : [`${base}.ts`, `${base}/index.ts`];
+function resolveDependencyPath(module: IScriptModuleGraphNode, specifier: string, modules: ReadonlyMap<string, IScriptModuleGraphNode>): string | undefined {
+  const recorded = module.dependencyPaths?.[specifier];
+  if (recorded !== undefined && modules.has(recorded)) {
+    return recorded;
+  }
+  const importer = module.path;
+  const mappedSpecifier = specifier.endsWith(".js") ? `${specifier.slice(0, -3)}.ts` : specifier;
+  const base = normalizePath(joinPath(dirnamePath(importer), mappedSpecifier));
+  const candidates = mappedSpecifier.endsWith(".ts") ? [base] : [`${base}.ts`, `${base}/index.ts`];
   return candidates.find((candidate) => modules.has(candidate));
 }
 

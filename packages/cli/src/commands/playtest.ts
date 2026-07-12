@@ -547,6 +547,7 @@ async function runNativePlaytest(options: IPlaytestRunOptions, bevyRunner: BevyR
     bundlePath,
     captureOutput: options.quiet,
     proofHarness: {
+      auditWrites: options.auditWrites === true,
       commandStreamPath,
       readinessOutPath: readinessPath,
     },

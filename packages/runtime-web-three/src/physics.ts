@@ -78,14 +78,16 @@ export async function initializePhysicsRuntime(): Promise<void> {
 export function stepPhysics(world: IWorldIr, fixedDelta = 1 / 60, environmentScene?: IEnvironmentSceneIr, options: { tick?: number; writeLedger?: IRuntimeWriteLedger } = {}): IPhysicsEventPayload[] {
   const scriptAuthoredTransforms = scriptAuthoredTransformsByWorld.get(world) ?? new Set<string>();
   scriptAuthoredTransformsByWorld.delete(world);
-  const beforeTransforms = snapshotPhysicsTransforms(world);
+  const beforeTransforms = options.writeLedger === undefined ? undefined : snapshotPhysicsTransforms(world);
   const physicsWorld = worldWithEnvironmentTerrain(world, environmentScene);
   if (rapierInitialized) {
     stepRapierBodies(world, physicsWorld, fixedDelta, [0, -9.81, 0], scriptAuthoredTransforms);
   } else {
     stepPrimitiveBodies(physicsWorld, fixedDelta, [0, -9.81, 0], scriptAuthoredTransforms);
   }
-  recordPhysicsTransformWrites(world, beforeTransforms, options);
+  if (beforeTransforms !== undefined) {
+    recordPhysicsTransformWrites(world, beforeTransforms, options);
+  }
 
   const currentPairs = detectPairs(physicsWorld.entities.flatMap((entity) => colliderBounds(entity)));
   const previousPairs = previousPairsByWorld.get(world) ?? new Map();

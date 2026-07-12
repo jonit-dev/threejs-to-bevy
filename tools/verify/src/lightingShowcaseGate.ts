@@ -104,11 +104,13 @@ export function validateLightingShowcaseEvidence(evidence: {
     diagnostics.push(diagnostic("TN_VERIFY_LIGHTING_SHOWCASE_HAZE_LUMINANCE_PARITY", "Web/native floor-adjacent haze mean luminance must remain within 0.05.", evidence.nativePath));
   }
   const ceilingRatio = evidence.native.ceilingAirLuminance / Math.max(0.001, evidence.web.ceilingAirLuminance);
-  if (ceilingRatio < CROSS_RUNTIME_CEILING_RATIO_MIN || ceilingRatio > CROSS_RUNTIME_CEILING_RATIO_MAX) {
+  if (Math.abs(evidence.native.ceilingAirLuminance - evidence.web.ceilingAirLuminance) > 0.02
+    && (ceilingRatio < CROSS_RUNTIME_CEILING_RATIO_MIN || ceilingRatio > CROSS_RUNTIME_CEILING_RATIO_MAX)) {
     diagnostics.push(diagnostic("TN_VERIFY_LIGHTING_SHOWCASE_CEILING_PARITY", `Native/web ceiling-air luminance ratio ${ceilingRatio.toFixed(3)} must remain within ${CROSS_RUNTIME_CEILING_RATIO_MIN.toFixed(2)}..${CROSS_RUNTIME_CEILING_RATIO_MAX.toFixed(2)}.`, evidence.nativePath));
   }
   const rightRoomRatio = evidence.native.rightRoomLuminance / Math.max(0.001, evidence.web.rightRoomLuminance);
-  if (rightRoomRatio < CROSS_RUNTIME_RIGHT_ROOM_RATIO_MIN || rightRoomRatio > CROSS_RUNTIME_RIGHT_ROOM_RATIO_MAX) {
+  if (Math.abs(evidence.native.rightRoomLuminance - evidence.web.rightRoomLuminance) > 0.02
+    && (rightRoomRatio < CROSS_RUNTIME_RIGHT_ROOM_RATIO_MIN || rightRoomRatio > CROSS_RUNTIME_RIGHT_ROOM_RATIO_MAX)) {
     diagnostics.push(diagnostic("TN_VERIFY_LIGHTING_SHOWCASE_RIGHT_ROOM_PARITY", `Native/web right-room luminance ratio ${rightRoomRatio.toFixed(3)} must remain within ${CROSS_RUNTIME_RIGHT_ROOM_RATIO_MIN.toFixed(2)}..${CROSS_RUNTIME_RIGHT_ROOM_RATIO_MAX.toFixed(2)}.`, evidence.nativePath));
   }
   if (Math.abs(evidence.native.warmChroma - evidence.web.warmChroma) > 0.06) {

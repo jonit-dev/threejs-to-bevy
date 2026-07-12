@@ -7,6 +7,7 @@ import type { ICompilerDiagnostic } from "../diagnostics.js";
 
 export interface IScriptModuleGraphNode {
   dependencies: string[];
+  dependencyPaths?: Record<string, string>;
   hash: string;
   path: string;
   source: string;
@@ -34,6 +35,7 @@ export interface IResolveScriptModuleGraphResult {
 interface ILoadedScriptModule {
   absolutePath: string;
   dependencies: Set<string>;
+  dependencyPaths: Map<string, string>;
   path: string;
   source: string;
   sourceFile: ts.SourceFile;
@@ -66,16 +68,15 @@ const SCRIPT_MODULE_ROOT = "src/scripts";
  * Runtime helper packages may be supplied as an explicit external allowlist.
  */
 export function resolveScriptModuleGraph(options: IResolveScriptModuleGraphOptions): IResolveScriptModuleGraphResult {
-  const projectPath = resolve(options.projectPath);
-  const scriptsRoot = resolve(projectPath, SCRIPT_MODULE_ROOT);
-  const scriptsRootRealPath = realPathOrFallback(scriptsRoot);
+  const projectPath = realPathOrFallback(resolve(options.projectPath));
+  const scriptsRoot = realPathOrFallback(resolve(projectPath, SCRIPT_MODULE_ROOT));
   const context: IGraphContext = {
     allowedBareImports: new Set(options.allowedBareImports ?? []),
     diagnostics: [],
     modules: new Map(),
     projectPath,
     scriptsRoot,
-    scriptsRootRealPath,
+    scriptsRootRealPath: scriptsRoot,
   };
 
   const entry = resolveEntryModule(context, options.entryModule);
@@ -104,6 +105,7 @@ export function resolveScriptModuleGraph(options: IResolveScriptModuleGraphOptio
     hash: hashNormalizedValue(
       JSON.stringify(
         modules.map((module) => ({
+          dependencyPaths: module.dependencyPaths,
           dependencies: module.dependencies,
           hash: module.hash,
           path: module.path,
@@ -122,7 +124,7 @@ export function resolveScriptModuleGraph(options: IResolveScriptModuleGraphOptio
 }
 
 function resolveEntryModule(context: IGraphContext, entryModule: string): IResolvedModulePath | undefined {
-  const requestedPath = resolve(context.projectPath, entryModule);
+  const requestedPath = resolve(context.projectPath, mapJavaScriptSpecifier(entryModule));
   if (!isInsideScripts(context, requestedPath)) {
     context.diagnostics.push(pathEscapeDiagnostic(entryModule, entryModule, SCRIPT_MODULE_ROOT));
     return undefined;
@@ -141,6 +143,7 @@ function visitModule(context: IGraphContext, resolved: IResolvedModulePath): voi
   const module: ILoadedScriptModule = {
     absolutePath: resolved.absolutePath,
     dependencies: new Set(),
+    dependencyPaths: new Map(),
     path: resolved.path,
     source: normalizedSource,
     sourceFile,
@@ -172,7 +175,7 @@ function visitModule(context: IGraphContext, resolved: IResolvedModulePath): voi
       continue;
     }
 
-    const dependency = resolveModulePath(context, resolved.path, imported, resolve(dirname(resolved.absolutePath), imported));
+    const dependency = resolveModulePath(context, resolved.path, imported, resolve(dirname(resolved.absolutePath), mapJavaScriptSpecifier(imported)));
     if (dependency === undefined) {
       continue;
     }
@@ -180,6 +183,7 @@ function visitModule(context: IGraphContext, resolved: IResolvedModulePath): voi
       context.diagnostics.push(sideEffectImportDiagnostic(resolved.path, imported));
     }
     module.dependencies.add(dependency.path);
+    module.dependencyPaths.set(imported, dependency.path);
     visitModule(context, dependency);
   }
 
@@ -455,7 +459,11 @@ function isLocalSpecifier(specifier: string): boolean {
 
 function hasExplicitUnsupportedExtension(specifier: string): boolean {
   const lastSegment = specifier.slice(specifier.lastIndexOf("/") + 1);
-  return lastSegment.includes(".");
+  return lastSegment.includes(".") && !lastSegment.endsWith(".js") && !lastSegment.endsWith(".ts");
+}
+
+function mapJavaScriptSpecifier(specifier: string): string {
+  return specifier.endsWith(".js") ? `${specifier.slice(0, -3)}.ts` : specifier;
 }
 
 function isInsideScripts(context: IGraphContext, filePath: string): boolean {
@@ -491,6 +499,7 @@ function hashNormalizedValue(value: string): string {
 function toGraphNode(module: ILoadedScriptModule): IScriptModuleGraphNode {
   return {
     dependencies: [...module.dependencies].sort(comparePaths),
+    ...(module.dependencyPaths.size === 0 ? {} : { dependencyPaths: Object.fromEntries([...module.dependencyPaths.entries()].sort(([left], [right]) => left.localeCompare(right))) }),
     hash: hashNormalizedValue(module.source),
     path: module.path,
     source: module.source,
@@ -522,7 +531,8 @@ function pathEscapeDiagnostic(importer: string, specifier: string, root: string)
 }
 
 function missingModuleDiagnostic(importer: string, specifier: string, root: string): ICompilerDiagnostic {
-  const expected = specifier.endsWith(".ts") ? `'${specifier}'` : `'${specifier}.ts' or '${specifier}/index.ts'`;
+  const mappedSpecifier = mapJavaScriptSpecifier(specifier);
+  const expected = mappedSpecifier.endsWith(".ts") ? `'${mappedSpecifier}'` : `'${mappedSpecifier}.ts' or '${mappedSpecifier}/index.ts'`;
   return {
     code: "TN_SCRIPT_MODULE_NOT_FOUND",
     file: importer,

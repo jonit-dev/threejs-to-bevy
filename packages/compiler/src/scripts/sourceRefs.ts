@@ -4,6 +4,7 @@ import { prescriptiveFixForCode } from "@threenative/authoring";
 import type { ICompilerDiagnostic } from "../diagnostics.js";
 import { resolveScriptModuleGraph, type IScriptModuleGraph } from "./moduleGraph.js";
 import { extractResourceAccess } from "./resourceAccess.js";
+import { scriptModuleGraphExportNames } from "./moduleBundler.js";
 import { SUPPORTED_SCRIPT_HELPER_IMPORTS, type ISystemScriptSource, type SupportedScriptHelperImport } from "./bundle.js";
 
 const supportedScriptHelperBindings: Record<SupportedScriptHelperImport, ReadonlySet<string>> = {
@@ -87,7 +88,7 @@ export function resolveSystemScriptSources<T extends ISystemScriptSource>(
       if (resolved.source === undefined || resolved.hash === undefined) {
         return system;
       }
-      const resourceAccess = extractResourceAccess(resolved.source, {
+      const resourceAccess = resolved.resourceAccess ?? extractResourceAccess(resolved.source, {
         exportName: script.sourceRef.export,
         file: script.sourceRef.module,
         systemName: system.name,
@@ -142,7 +143,7 @@ function mergeStringLists(left: ReadonlyArray<string> | undefined, right: Readon
 function resolveScriptModule(
   system: ISystemScriptSource & { script: NonNullable<ISystemScriptSource["script"]> },
   projectPath: string,
-): { behaviorMetadata?: IBehaviorMetadata; diagnostics: ICompilerDiagnostic[]; hash?: string; helperImports?: NonNullable<ISystemScriptSource["script"]>["helperImports"]; localModuleGraph?: IScriptModuleGraph; source?: string } {
+): { behaviorMetadata?: IBehaviorMetadata; diagnostics: ICompilerDiagnostic[]; hash?: string; helperImports?: NonNullable<ISystemScriptSource["script"]>["helperImports"]; localModuleGraph?: IScriptModuleGraph; resourceAccess?: ReturnType<typeof extractResourceAccess>; source?: string } {
   const sourceRef = system.script.sourceRef;
   if (sourceRef === undefined) {
     return { diagnostics: [] };
@@ -174,7 +175,8 @@ function resolveScriptModule(
   }
 
   const sourceFile = ts.createSourceFile(modulePath, moduleSource, ts.ScriptTarget.ES2023, true, ts.ScriptKind.TS);
-  const helperImports = resolveHelperImports(system.name, modulePath, sourceRef.export, sourceFile);
+  const helperSources = moduleGraph.graph?.modules ?? [{ path: modulePath, source: moduleSource }];
+  const helperImports = resolveHelperImports(system.name, sourceRef.export, helperSources);
   diagnostics.push(...helperImports.diagnostics);
   diagnostics.push(...moduleGraph.diagnostics.map((diagnostic) => ({ ...diagnostic, target: diagnostic.target ?? sourceRef.export })));
   if (moduleGraph.graph === undefined || moduleGraph.graph.modules.length <= 1) {
@@ -184,7 +186,8 @@ function resolveScriptModule(
   const behavior = extractBehaviorExport(sourceFile, sourceRef.export);
   diagnostics.push(...behavior.diagnostics.map((diagnostic) => ({ ...diagnostic, file: modulePath, target: sourceRef.export })));
   diagnostics.push(...diagnoseUntypedScriptContext(system.name, modulePath, sourceRef.export, sourceFile));
-  if (exported === undefined) {
+  const graphExports = moduleGraph.graph === undefined ? new Set<string>() : scriptModuleGraphExportNames(moduleGraph.graph);
+  if (exported === undefined && !graphExports.has(sourceRef.export)) {
     diagnostics.push({
       code: "TN_SCRIPT_EXPORT_NOT_FOUND",
       file: modulePath,
@@ -202,7 +205,43 @@ function resolveScriptModule(
     helperImports: helperImports.imports,
     hash,
     ...(moduleGraph.graph === undefined ? {} : { localModuleGraph: moduleGraph.graph }),
-    source: diagnostics.some((diagnostic) => diagnostic.severity === "error") ? undefined : behavior.source ?? exported,
+    resourceAccess: extractGraphResourceAccess(system.name, sourceRef.export, modulePath, helperSources),
+    source: diagnostics.some((diagnostic) => diagnostic.severity === "error")
+      ? undefined
+      : behavior.source ?? exported ?? (moduleGraph.graph === undefined ? undefined : ""),
+  };
+}
+
+function extractGraphResourceAccess(
+  systemName: string,
+  exportName: string,
+  entryPath: string,
+  modules: ReadonlyArray<{ path: string; source: string }>,
+): ReturnType<typeof extractResourceAccess> {
+  const resourceReads = new Set<string>();
+  const resourceWrites = new Set<string>();
+  const resourceSchemas = new Map<string, { fields: Record<string, { kind: string }> }>();
+  const diagnostics: ICompilerDiagnostic[] = [];
+  for (const module of modules) {
+    const access = extractResourceAccess(module.source, {
+      exportName: module.path === entryPath ? exportName : undefined,
+      file: module.path,
+      systemName,
+    });
+    diagnostics.push(...access.diagnostics);
+    for (const resource of access.resourceReads) {
+      resourceReads.add(resource);
+    }
+    for (const resource of access.resourceWrites) {
+      resourceWrites.add(resource);
+    }
+    mergeResourceSchemas(resourceSchemas, access.resourceSchemas);
+  }
+  return {
+    diagnostics,
+    resourceReads: [...resourceReads].sort(),
+    resourceSchemas: Object.fromEntries([...resourceSchemas.entries()].sort(([left], [right]) => left.localeCompare(right))),
+    resourceWrites: [...resourceWrites].sort(),
   };
 }
 
@@ -252,9 +291,8 @@ function diagnoseBehaviorMetadataDuplicates(system: ISystemScriptSource, metadat
 
 function resolveHelperImports(
   systemName: string,
-  module: string,
   exportName: string,
-  sourceFile: ts.SourceFile,
+  sources: ReadonlyArray<{ path: string; source: string }>,
 ): {
   diagnostics: ICompilerDiagnostic[];
   imports: NonNullable<ISystemScriptSource["script"]>["helperImports"];
@@ -264,32 +302,36 @@ function resolveHelperImports(
     imported: string[];
     module: SupportedScriptHelperImport;
   }> = [];
-  for (const statement of sourceFile.statements) {
-    if (ts.isImportDeclaration(statement)) {
-      if (statement.importClause?.isTypeOnly === true) {
-        continue;
-      }
-      const specifier = readLiteralSpecifier(statement.moduleSpecifier);
-      if (isSupportedScriptHelperImport(specifier)) {
-        const imported = runtimeImportedBindingNames(statement);
-        diagnostics.push(...diagnoseUnsupportedHelperImportBindings(systemName, module, exportName, specifier, statement, imported));
-        if (imported.length > 0) {
-          imports.push({
-            imported,
-            module: specifier,
-          });
+  for (const source of sources) {
+    const module = source.path;
+    const sourceFile = ts.createSourceFile(module, source.source, ts.ScriptTarget.ES2023, true, ts.ScriptKind.TS);
+    for (const statement of sourceFile.statements) {
+      if (ts.isImportDeclaration(statement)) {
+        if (statement.importClause?.isTypeOnly === true) {
+          continue;
         }
+        const specifier = readLiteralSpecifier(statement.moduleSpecifier);
+        if (isSupportedScriptHelperImport(specifier)) {
+          const imported = runtimeImportedBindingNames(statement);
+          diagnostics.push(...diagnoseUnsupportedHelperImportBindings(systemName, module, exportName, specifier, statement, imported));
+          if (imported.length > 0) {
+            imports.push({
+              imported,
+              module: specifier,
+            });
+          }
+          continue;
+        }
+        if (isLocalModuleSpecifier(specifier)) {
+          continue;
+        }
+        diagnostics.push(unsupportedHelperImportDiagnostic(systemName, module, exportName, specifier));
         continue;
       }
-      if (isLocalModuleSpecifier(specifier)) {
-        continue;
+      if (ts.isImportEqualsDeclaration(statement) || (ts.isExportDeclaration(statement) && statement.moduleSpecifier !== undefined && !isLocalModuleSpecifier(readLiteralSpecifier(statement.moduleSpecifier)))) {
+        const specifier = ts.isExportDeclaration(statement) ? readLiteralSpecifier(statement.moduleSpecifier) : undefined;
+        diagnostics.push(unsupportedHelperImportDiagnostic(systemName, module, exportName, specifier));
       }
-      diagnostics.push(unsupportedHelperImportDiagnostic(systemName, module, exportName, specifier));
-      continue;
-    }
-    if (ts.isImportEqualsDeclaration(statement) || (ts.isExportDeclaration(statement) && statement.moduleSpecifier !== undefined && !isLocalModuleSpecifier(readLiteralSpecifier(statement.moduleSpecifier)))) {
-      const specifier = ts.isExportDeclaration(statement) ? readLiteralSpecifier(statement.moduleSpecifier) : undefined;
-      diagnostics.push(unsupportedHelperImportDiagnostic(systemName, module, exportName, specifier));
     }
   }
   return { diagnostics, imports: mergeHelperImports(imports) };
@@ -304,7 +346,7 @@ function isLocalModuleSpecifier(specifier: string | undefined): boolean {
     return false;
   }
   const lastSegment = specifier.slice(specifier.lastIndexOf("/") + 1);
-  return !lastSegment.includes(".") || lastSegment.endsWith(".ts");
+  return !lastSegment.includes(".") || lastSegment.endsWith(".ts") || lastSegment.endsWith(".js");
 }
 
 function unsupportedHelperImportDiagnostic(systemName: string, module: string, exportName: string, specifier: string | undefined): ICompilerDiagnostic {
@@ -360,10 +402,8 @@ function diagnoseUnsupportedHelperImportBindings(
   const hasUnsupportedShape =
     clause.name !== undefined ||
     (clause.namedBindings !== undefined && !ts.isNamedImports(clause.namedBindings)) ||
-    imported.some((name) => !supportedBindings.has(name)) ||
-    (clause.namedBindings !== undefined &&
-      ts.isNamedImports(clause.namedBindings) &&
-      clause.namedBindings.elements.some((element) => !element.isTypeOnly && element.propertyName !== undefined));
+    (clause.namedBindings !== undefined && ts.isNamedImports(clause.namedBindings) && clause.namedBindings.elements.some((element) => !element.isTypeOnly && !supportedBindings.has(element.propertyName?.text ?? element.name.text))) ||
+    imported.length === 0;
   return hasUnsupportedShape ? [unsupportedHelperImportDiagnostic(systemName, module, exportName, helperModule)] : [];
 }
 

@@ -169,7 +169,7 @@ async function runSystem(
   if (options.effectLog !== undefined) {
     appendSystemEffectLog(options.effectLog, result.entries);
   }
-  return { diagnostics: result.diagnostics, entries: result.entries, resourceObservations: dedupeResourceObservations(resourceObservations), writeObservations: options.runtimeState?.writeLedger.observations() ?? [] };
+  return { diagnostics: result.diagnostics, entries: result.entries, resourceObservations: dedupeResourceObservations(resourceObservations), writeObservations: [] };
 }
 
 function declaredResourceObservations(system: IIrSystemDeclaration, options: { frame?: number; tick?: number; world: IWorldIr }): IResourceObservation[] {

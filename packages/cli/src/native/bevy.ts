@@ -7,6 +7,7 @@ export interface IBevyRuntimeInvocation {
   bundlePath: string;
   captureOutput?: boolean;
   proofHarness?: {
+    auditWrites?: boolean;
     commandStreamPath: string;
     readinessOutPath: string;
   };
@@ -86,6 +87,9 @@ export function bevyRuntimeArgs(
       "--readiness-out",
       invocation.proofHarness.readinessOutPath,
     );
+    if (invocation.proofHarness.auditWrites === true) {
+      args.push("--audit-writes");
+    }
   }
   return args;
 }
@@ -113,6 +117,9 @@ function bevyRuntimeBinaryArgs(invocation: IBevyRuntimeInvocation): string[] {
       "--readiness-out",
       invocation.proofHarness.readinessOutPath,
     );
+    if (invocation.proofHarness.auditWrites === true) {
+      args.push("--audit-writes");
+    }
   }
   return args;
 }

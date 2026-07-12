@@ -82,6 +82,7 @@ export async function runGameFrame(options: {
       state.accumulator += frameDelta;
       state.accumulator = Math.min(state.accumulator, fixedDelta * MAX_FIXED_STEPS_PER_FRAME);
       if (!state.startupComplete) {
+        runtimeState.sensors.advance(options.world, { fixedDelta, tick: state.tick });
         collectSystemResult(options.mapped, await runSchedule({ ...options, delta: 0, elapsed: state.elapsed, fixedDelta, frame: state.frame, paused: state.paused, runtimeState, schedule: "startup", tick: state.tick }));
         state.startupComplete = true;
       }
@@ -112,6 +113,7 @@ export async function runGameFrame(options: {
     }
     state.frame += 1;
   } else {
+    runtimeState.sensors.advance(options.world, { fixedDelta, tick: 0 });
     collectSystemResult(options.mapped, await runSchedule({ ...options, delta: 0, fixedDelta, frame: 0, runtimeState, schedule: "startup", tick: 0 }));
     stepKinematicMovers(options.world, fixedDelta);
     stepPatrols(options.world, fixedDelta);
@@ -270,6 +272,13 @@ function tupleEqual(left: readonly number[] | undefined, right: readonly number[
 }
 
 function collectSystemResult(mapped: IThreeWorld, result: { diagnostics: IThreeWorld["diagnostics"]; entries: Parameters<typeof applyAnimationServiceEffects>[1] }): void {
-  mapped.diagnostics.push(...result.diagnostics);
+  const existing = new Set(mapped.diagnostics.map((diagnostic) => `${diagnostic.code}\0${diagnostic.path}\0${diagnostic.message}`));
+  for (const diagnostic of result.diagnostics) {
+    const key = `${diagnostic.code}\0${diagnostic.path}\0${diagnostic.message}`;
+    if (!existing.has(key)) {
+      existing.add(key);
+      mapped.diagnostics.push(diagnostic);
+    }
+  }
   applyAnimationServiceEffects(mapped, result.entries);
 }

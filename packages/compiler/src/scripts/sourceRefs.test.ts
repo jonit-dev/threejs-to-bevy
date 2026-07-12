@@ -36,6 +36,41 @@ test("should resolve named TypeScript script source exports", async () => {
   }
 });
 
+test("should resolve re-exported entry functions and collect graph-wide declarations", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-script-source-ref-reexport-"));
+  try {
+    await mkdir(join(root, "src/scripts"), { recursive: true });
+    await writeFile(
+      join(root, "src/scripts/behavior.ts"),
+      `import { Vec3 } from "@threenative/script-stdlib";\nexport const updatePlayer = (context: unknown) => { context.resources.get("GameState", { score: 0 }); return Vec3.zero(); };\n`,
+    );
+    await writeFile(join(root, "src/scripts/entry.ts"), `export { updatePlayer } from "./behavior.js";\n`);
+
+    const result = resolveSystemScriptSources<ISystemScriptSource>([{
+      name: "updatePlayer",
+      script: {
+        exportName: "system_updatePlayer",
+        sourceRef: {
+          export: "updatePlayer",
+          module: "src/scripts/entry.ts",
+          systemId: "updatePlayer",
+        },
+      },
+    }], root);
+
+    assert.deepEqual(result.diagnostics, []);
+    assert.equal(result.systems[0]?.script?.source, "");
+    assert.deepEqual(result.systems[0]?.resourceReads, ["GameState"]);
+    assert.deepEqual(result.systems[0]?.script?.helperImports, [{ imported: ["Vec3"], module: "@threenative/script-stdlib" }]);
+    assert.deepEqual(result.systems[0]?.script?.localModuleGraph?.modules.map((module) => module.path), [
+      "src/scripts/behavior.ts",
+      "src/scripts/entry.ts",
+    ]);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
 test("should allow supported script stdlib imports", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-script-source-ref-stdlib-"));
   try {
@@ -424,7 +459,7 @@ test("should reject unsupported script helper imports", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-script-source-ref-import-"));
   try {
     await mkdir(join(root, "src/scripts"), { recursive: true });
-    await writeFile(join(root, "src/scripts/kart.ts"), `import { helper } from "./helper.js";\nexport const kartArcadePhysics = (context: unknown) => helper(context);\n`);
+    await writeFile(join(root, "src/scripts/kart.ts"), `import { helper } from "three";\nexport const kartArcadePhysics = (context: unknown) => helper(context);\n`);
 
     const systems: ISystemScriptSource[] = [
       {

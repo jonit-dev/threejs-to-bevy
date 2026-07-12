@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
@@ -128,6 +128,29 @@ test("should ignore type-only imports and allow explicitly approved helper packa
     assert.deepEqual(result.diagnostics, []);
     assert.deepEqual(result.graph?.order, ["src/scripts/main.ts"]);
   } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should resolve emitted js specifiers from a symlinked project root", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-script-module-graph-js-"));
+  const linkedRoot = `${root}-link`;
+  try {
+    await mkdir(join(root, "src/scripts"), { recursive: true });
+    await writeFile(join(root, "src/scripts/shared.ts"), "export const value = 2;\n");
+    await writeFile(
+      join(root, "src/scripts/main.ts"),
+      `import { value } from "./shared.js";\nexport const main = () => value;\n`,
+    );
+    await symlink(root, linkedRoot, "dir");
+
+    const result = resolveScriptModuleGraph({ entryModule: "src/scripts/main.ts", projectPath: linkedRoot });
+
+    assert.deepEqual(result.diagnostics, []);
+    assert.deepEqual(result.graph?.order, ["src/scripts/shared.ts", "src/scripts/main.ts"]);
+    assert.deepEqual(result.graph?.modules[1]?.dependencyPaths, { "./shared.js": "src/scripts/shared.ts" });
+  } finally {
+    await rm(linkedRoot, { force: true, recursive: true });
     await rm(root, { force: true, recursive: true });
   }
 });

@@ -86,22 +86,29 @@ export async function runEmittedCommandGate(root = process.cwd()): Promise<{
           continue;
         }
 
+        let failedCommandCount = 0;
         const emittedCommands = [
           ...plan.mechanicDecomposition.flatMap((entry) => entry.command === undefined ? [] : [entry.command]),
           ...plan.archetypeSuggestions.map((entry) => entry.command),
           ...plan.steps
             .filter((step) => step.apply)
             .flatMap((step) => {
-              const applyCommand = recipeApplyCommand(step.recipe, step.recipeArgs);
+              const applyResult = recipeApplyCommand(step.recipe, step.recipeArgs);
+              if (applyResult.diagnostic !== undefined) {
+                failedCommandCount += 1;
+                diagnostics.push({
+                  ...applyResult.diagnostic,
+                  step: `${caseId}: recipe ${step.recipe ?? "<missing>"}`,
+                });
+              }
               return [
-                ...(applyCommand === undefined ? [] : [applyCommand]),
+                ...(applyResult.command === undefined ? [] : [applyResult.command]),
                 ...(step.recipeProofCommands ?? []),
               ];
             }),
           ...plan.proofCommands,
           ...plan.mechanicDecomposition.flatMap((entry) => entry.cookbookId === undefined ? [] : [`tn cookbook show ${entry.cookbookId} --json`]),
         ];
-        let failedCommandCount = 0;
         for (const [index, command] of emittedCommands.entries()) {
           const args = emittedCommandArgs(command);
           const name = `${caseId}: emitted ${index + 1}`;
@@ -207,23 +214,32 @@ function parsePlan(stdout: string): IGamePlanPayload | undefined {
   }
 }
 
-function recipeApplyCommand(recipeId: string | undefined, args: Record<string, unknown> | undefined): string | undefined {
+function recipeApplyCommand(recipeId: string | undefined, args: Record<string, unknown> | undefined): { command?: string; diagnostic?: VerificationDiagnostic } {
   if (recipeId === undefined || args === undefined) {
-    return undefined;
+    return { diagnostic: invalidRecipeCommandDiagnostic(recipeId, "recipe id and arguments are required") };
   }
   const descriptor = getAuthoringRecipeDescriptor(recipeId);
   if (descriptor === undefined) {
-    return undefined;
+    return { diagnostic: invalidRecipeCommandDiagnostic(recipeId, "recipe is not registered") };
   }
   const flags: string[] = [];
   for (const argument of descriptor.requiredArguments) {
     const value = args[argument.name];
     if (typeof value !== "string" || value.trim() === "" || /\s/u.test(value)) {
-      return undefined;
+      return { diagnostic: invalidRecipeCommandDiagnostic(recipeId, `required argument '${argument.name}' is missing or invalid`) };
     }
     flags.push(argument.flag, value);
   }
-  return ["tn", "recipe", "apply", recipeId, ...flags, "--project", ".", "--json"].join(" ");
+  return { command: ["tn", "recipe", "apply", recipeId, ...flags, "--project", ".", "--json"].join(" ") };
+}
+
+function invalidRecipeCommandDiagnostic(recipeId: string | undefined, reason: string): VerificationDiagnostic {
+  return {
+    code: "TN_EMITTED_RECIPE_COMMAND_INVALID",
+    message: `Cannot emit an apply command for recipe '${recipeId ?? "<missing>"}': ${reason}.`,
+    severity: "error",
+    suggestedFix: "Make the game plan recipe arguments satisfy the registered recipe descriptor before emitting apply:true.",
+  };
 }
 
 export async function validateEmittedCommandSemantics(

@@ -66,8 +66,10 @@ test("should return one sensor snapshot to every reader in a tick", () => {
     version: "0.1.0",
   };
   const runtimeState = createWebSystemRuntimeState(world, {});
+  runtimeState.sensors.advance(world, { fixedDelta: 1, tick: 1 });
   const first = createSystemContext(world, { delta: 1, fixedDelta: 1, runtimeState, tick: 1 }).context.physics.sensor();
   const second = createSystemContext(world, { delta: 1, fixedDelta: 1, runtimeState, tick: 1 }).context.physics.sensor();
+  runtimeState.sensors.advance(world, { fixedDelta: 1, tick: 2 });
   const next = createSystemContext(world, { delta: 1, fixedDelta: 1, runtimeState, tick: 2 }).context.physics.sensor();
 
   assert.deepEqual(first, second);

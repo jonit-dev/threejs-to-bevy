@@ -22,6 +22,7 @@ export interface IPhysicsSensorAdvanceOptions {
 
 export interface IPhysicsSensorRuntimeState {
   advance(world: IWorldIr, options: IPhysicsSensorAdvanceOptions): IPhysicsSensorEvent[];
+  events(): IPhysicsSensorEvent[];
   reset(): void;
 }
 
@@ -95,6 +96,9 @@ export function createPhysicsSensorRuntimeState(): IPhysicsSensorRuntimeState {
 
       lastTick = tick;
       lastEvents = events.sort((left, right) => left.sensor.localeCompare(right.sensor) || left.phase.localeCompare(right.phase));
+      return cloneEvents(lastEvents);
+    },
+    events() {
       return cloneEvents(lastEvents);
     },
     reset() {

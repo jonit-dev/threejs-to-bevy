@@ -272,7 +272,7 @@ export interface IScriptsManifest {
       }>;
       hash?: string;
       module: string;
-      moduleGraph?: { entry: string; hash: string; modules: Array<{ dependencies: string[]; hash: string; path: string }>; order: string[]; schema: "threenative.script-module-graph"; version: "0.1.0" };
+      moduleGraph?: { entry: string; hash: string; modules: Array<{ dependencies: string[]; dependencyPaths?: Record<string, string>; hash: string; path: string }>; order: string[]; schema: "threenative.script-module-graph"; version: "0.1.0" };
     };
     systemId: string;
   }>;
@@ -320,10 +320,12 @@ export function bundleSystemScripts(systems: ReadonlyArray<ISystemScriptSource>)
           }),
     ),
   ];
+  const helperModules = helperImportModules(scriptedSystems);
   const localModuleBundle = bundleLocalScriptModules(
     scriptedSystems.flatMap((system) => system.script.localModuleGraph === undefined || system.script.localModuleGraph.modules.length <= 1 || system.script.sourceRef === undefined
       ? []
       : [{ entryExport: system.script.sourceRef.export, exportName: system.script.exportName, graph: system.script.localModuleGraph }]),
+    new Set(helperModules),
   );
   diagnostics.push(...localModuleBundle.diagnostics);
   if (diagnostics.length > 0 || scriptedSystems.length === 0) {
@@ -331,7 +333,6 @@ export function bundleSystemScripts(systems: ReadonlyArray<ISystemScriptSource>)
   }
 
   const handles = scriptHandleNames(scriptedSystems).map((name) => `const ${name} = Object.freeze({ name: ${JSON.stringify(name)} });`);
-  const helperModules = helperImportModules(scriptedSystems);
   const helperDeclarations = [
     ...(helperModules.includes("@threenative/collector-kit") ? [COLLECTOR_KIT_BUNDLE_SOURCE] : []),
     ...(helperModules.includes("@threenative/lane-runner-kit") ? [LANE_RUNNER_KIT_BUNDLE_SOURCE] : []),
@@ -424,11 +425,11 @@ function scriptsManifest(systems: ReadonlyArray<ISystemScriptSource & { script: 
   };
 }
 
-function compactModuleGraph(graph: IScriptModuleGraph): { entry: string; hash: string; modules: Array<{ dependencies: string[]; hash: string; path: string }>; order: string[]; schema: "threenative.script-module-graph"; version: "0.1.0" } {
+function compactModuleGraph(graph: IScriptModuleGraph): { entry: string; hash: string; modules: Array<{ dependencies: string[]; dependencyPaths?: Record<string, string>; hash: string; path: string }>; order: string[]; schema: "threenative.script-module-graph"; version: "0.1.0" } {
   return {
     entry: graph.entry,
     hash: graph.hash,
-    modules: graph.modules.map((module) => ({ dependencies: [...module.dependencies].sort(), hash: module.hash, path: module.path })),
+    modules: graph.modules.map((module) => ({ dependencies: [...module.dependencies].sort(), ...(module.dependencyPaths === undefined ? {} : { dependencyPaths: { ...module.dependencyPaths } }), hash: module.hash, path: module.path })),
     order: [...graph.order],
     schema: "threenative.script-module-graph",
     version: "0.1.0",

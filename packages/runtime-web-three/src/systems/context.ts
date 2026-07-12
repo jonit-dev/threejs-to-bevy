@@ -801,7 +801,7 @@ export function createSystemContext(
         sensor(serviceOptions = {}) {
           const request = cloneValue(serviceOptions) as IPhysicsSensorRequest;
           const result: IPhysicsSensorResult = {
-            events: sensors.advance(world, { fixedDelta: options.fixedDelta, tick: options.tick ?? 0 })
+            events: sensors.events()
               .filter((event) => request.sensor === undefined || event.sensor === request.sensor)
               .filter((event) => request.phases === undefined || request.phases.includes(event.phase)),
           };

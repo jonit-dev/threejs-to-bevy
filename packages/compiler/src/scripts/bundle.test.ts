@@ -178,6 +178,53 @@ test("should bundle a project local helper module into one executable system", (
   assert.equal(result.manifest?.systems[0]?.source?.moduleGraph?.hash, "sha256-graph");
 });
 
+test("should bind an entry export that is re-exported through a local import", () => {
+  const result = bundleSystemScripts([{
+    name: "collect",
+    script: {
+      exportName: "system_collect",
+      source: "() => undefined",
+      sourceRef: { export: "collect", module: "src/scripts/entry.ts", systemId: "collect" },
+      localModuleGraph: {
+        entry: "src/scripts/entry.ts",
+        hash: "sha256-graph",
+        modules: [
+          { dependencies: [], hash: "sha256-helper", path: "src/scripts/shared.ts", source: "export const addPoint = () => 5;" },
+          { dependencies: ["src/scripts/shared.ts"], hash: "sha256-entry", path: "src/scripts/entry.ts", source: "import { addPoint as importedAddPoint } from './shared'; export { importedAddPoint as collect };" },
+        ],
+        order: ["src/scripts/shared.ts", "src/scripts/entry.ts"],
+      },
+    },
+  }]);
+
+  assert.deepEqual(result.diagnostics, []);
+  assert.equal(runBundledSystem(result.code, "system_collect"), 5);
+});
+
+test("should exclude default exports from stars and preserve explicit precedence", () => {
+  const result = bundleSystemScripts([{
+    name: "collect",
+    script: {
+      exportName: "system_collect",
+      source: "() => undefined",
+      sourceRef: { export: "collect", module: "src/scripts/entry.ts", systemId: "collect" },
+      localModuleGraph: {
+        entry: "src/scripts/entry.ts",
+        hash: "sha256-graph",
+        modules: [
+          { dependencies: [], hash: "sha256-first", path: "src/scripts/first.ts", source: "export const value = 1; export default 9;" },
+          { dependencies: ["src/scripts/first.ts"], hash: "sha256-exports", path: "src/scripts/exports.ts", source: "export * from './first'; export const value = 2;" },
+          { dependencies: ["src/scripts/exports.ts"], hash: "sha256-entry", path: "src/scripts/entry.ts", source: "import * as values from './exports'; export const collect = () => ({ keys: Object.keys(values).sort(), value: values.value });" },
+        ],
+        order: ["src/scripts/first.ts", "src/scripts/exports.ts", "src/scripts/entry.ts"],
+      },
+    },
+  }]);
+
+  assert.deepEqual(result.diagnostics, []);
+  assert.deepEqual(runBundledSystem(result.code, "system_collect"), { keys: ["value"], value: 2 });
+});
+
 test("should reject a local import that names an unexported binding", () => {
   const result = bundleSystemScripts([{
     name: "collect",

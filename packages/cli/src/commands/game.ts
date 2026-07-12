@@ -1,4 +1,5 @@
 import { mkdir, readFile, readdir, writeFile } from "node:fs/promises";
+import assert from "node:assert/strict";
 import { isAbsolute, resolve } from "node:path";
 
 import {
@@ -1275,7 +1276,9 @@ function buildGamePlanSteps(
     ? { cameraId: defaults.cameraId, inputDocId: `${defaults.sceneId}-input`, playerId: defaults.playerId, sceneId: defaults.sceneId }
     : playableRecipe === "vehicle-checkpoint"
       ? { cameraId: defaults.cameraId, sceneId: defaults.sceneId, vehicleId: defaults.playerId }
-      : { cameraId: defaults.cameraId, entityId: defaults.playerId, sceneId: defaults.sceneId };
+      : playableRecipe === "lane-runner"
+        ? { cameraId: defaults.cameraId, playerId: defaults.playerId, sceneId: defaults.sceneId }
+        : { cameraId: defaults.cameraId, entityId: defaults.playerId, sceneId: defaults.sceneId };
   return [
     recipeStep({
       apply: true,
@@ -1424,6 +1427,7 @@ function buildActorArchetypeSuggestions(
 
 function recipeStep(step: IGamePlanStep & { recipe: string; recipeArgs: Record<string, unknown> }): IGamePlanStep {
   const plan = planAuthoringRecipe({ args: step.recipeArgs, recipeId: step.recipe });
+  assert.equal(plan.ok, true, `Game plan recipe '${step.recipe}' has invalid arguments: ${plan.diagnostics.map((diagnostic) => diagnostic.message).join("; ")}`);
   return {
     ...step,
     recipeGameplayBlocks: plan.gameplayBlocks,

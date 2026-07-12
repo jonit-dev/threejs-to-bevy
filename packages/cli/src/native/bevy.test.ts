@@ -76,6 +76,30 @@ test("should pass native proof harness files to runtime binary", () => {
   );
 });
 
+test("should opt native proof harness into write auditing only when requested", () => {
+  const args = bevyRuntimeArgs(
+    "/repo",
+    {
+      bundlePath: "/project/dist/game.bundle",
+      proofHarness: {
+        auditWrites: true,
+        commandStreamPath: "/tmp/proof-harness.json",
+        readinessOutPath: "/tmp/readiness.json",
+      },
+    },
+    {},
+  );
+
+  assert.deepEqual(args.slice(-6), [
+    "/project/dist/game.bundle",
+    "--proof-harness",
+    "/tmp/proof-harness.json",
+    "--readiness-out",
+    "/tmp/readiness.json",
+    "--audit-writes",
+  ]);
+});
+
 test("should prefer an existing release runtime binary for native playtest startup", async () => {
   const repoRoot = join(tmpdir(), `tn-bevy-runtime-binary-${process.pid}-${Date.now()}`);
   const releaseBinary = join(repoRoot, "runtime-bevy/target/release/threenative_runtime");
