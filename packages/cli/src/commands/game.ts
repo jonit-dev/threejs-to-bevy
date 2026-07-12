@@ -195,6 +195,7 @@ async function gamePlanCommand(argv: readonly string[]): Promise<ICommandResult>
   const gameCategory = inferGameCategory(goal);
   const archetype = selectGameArchetype(goal);
   const kitCandidates = matchGameKitCandidates(goal);
+  const matchedKit = kitCandidates.find((candidate) => candidate.score >= 1);
   const gameplayBlocks = buildGameplayBlocks(goal);
   const plan: IGamePlan = {
     acceptanceCriteria: [
@@ -223,7 +224,10 @@ async function gamePlanCommand(argv: readonly string[]): Promise<ICommandResult>
       objective: `Turn '${goal.trim()}' into one concrete verb, one target, and one measurable success condition.`,
       progression: "Add at least one escalation such as score, lap, wave, timer, obstacle density, or collectible count.",
     },
-    diagnostics: buildPlanDiagnostics(inventory),
+    diagnostics: [
+      ...buildPlanDiagnostics(inventory),
+      ...(matchedKit === undefined ? [{ code: "TN_GAME_PLAN_OFF_RECIPE", message: `Goal does not match a promoted game kit; nearest archetype is '${archetype.id}'.`, severity: "info" as const }] : []),
+    ],
     goal,
     inventory: {
       diagnostics: inventory.diagnostics.map((diagnostic) => ({
@@ -244,12 +248,14 @@ async function gamePlanCommand(argv: readonly string[]): Promise<ICommandResult>
     mutate: false,
     phases: GAME_WORKFLOW_PHASE_IDS.map((id, index) => ({ id, order: index + 1, summary: phaseSummary(id) })),
     polishPlan: buildPolishPlan(),
-    proofCommands: ["tn iterate --project . --json"],
+    proofCommands: matchedKit === undefined
+      ? ["tn iterate --project . --json", "tn playtest --project . --scenario playtests/<committed-scenario>.playtest.json --json"]
+      : ["tn iterate --project . --json"],
     recipeIds,
     schema: "threenative.game-plan",
     scriptPlan: buildScriptPlan(inventory),
     sourcePlan: buildSourcePlan(inventory),
-    steps: buildGamePlanSteps(defaults, kitCandidates.find((candidate) => candidate.score > 0)?.recipeId),
+    steps: buildGamePlanSteps(defaults, matchedKit?.recipeId),
   };
   const planArtifactPath = resolve(projectPath, "artifacts/game-production/plan.json");
   await mkdir(resolve(planArtifactPath, ".."), { recursive: true });
@@ -2208,7 +2214,18 @@ function inferPlanDefaults(inventory: Awaited<ReturnType<typeof createGameAgentI
 
 function buildPlanDiagnostics(inventory: Awaited<ReturnType<typeof createGameAgentInventory>>): Array<{ code: string; message: string; path?: string; severity: "warning" }> {
   const diagnostics: Array<{ code: string; message: string; path?: string; severity: "warning" }> = [];
-  if (inventory.primaryScene === undefined) {
+  const missingScene = inventory.primaryScene === undefined;
+  const missingCamera = (inventory.primaryScene?.cameraIds.length ?? 0) === 0;
+  const missingPlayer = inventory.primaryScene?.entityIds.some(isPlayerLikeEntityId) !== true;
+  if (missingScene && missingCamera && missingPlayer) {
+    return [{
+      code: "TN_GAME_PLAN_SOURCE_DEFAULT_FALLBACK",
+      message: "Game plan used fallback scene, camera, and player defaults because the project inventory has no playable scene source.",
+      path: "/steps/playable-loop/recipeArgs",
+      severity: "warning",
+    }];
+  }
+  if (missingScene) {
     diagnostics.push({
       code: "TN_GAME_PLAN_SOURCE_DEFAULT_FALLBACK",
       message: "Game plan used fallback scene defaults because the project inventory has no primary scene.",
@@ -2216,7 +2233,7 @@ function buildPlanDiagnostics(inventory: Awaited<ReturnType<typeof createGameAge
       severity: "warning",
     });
   }
-  if ((inventory.primaryScene?.cameraIds.length ?? 0) === 0) {
+  if (missingCamera) {
     diagnostics.push({
       code: "TN_GAME_PLAN_SOURCE_DEFAULT_FALLBACK",
       message: "Game plan used fallback camera defaults because the project inventory has no camera entity.",
@@ -2224,7 +2241,7 @@ function buildPlanDiagnostics(inventory: Awaited<ReturnType<typeof createGameAge
       severity: "warning",
     });
   }
-  if (inventory.primaryScene?.entityIds.some(isPlayerLikeEntityId) !== true) {
+  if (missingPlayer) {
     diagnostics.push({
       code: "TN_GAME_PLAN_SOURCE_DEFAULT_FALLBACK",
       message: "Game plan used fallback player entity defaults because the project inventory has no player-like entity id.",

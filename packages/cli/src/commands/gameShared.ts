@@ -1,9 +1,16 @@
 import { isAbsolute, resolve } from "node:path";
+import { realpathSync } from "node:fs";
 
 export function resolveProjectPath(argv: readonly string[]): string {
-  const project = readFlag(argv, "--project") ?? ".";
-  const cwd = process.env.INIT_CWD ?? process.cwd();
-  return isAbsolute(project) ? project : resolve(cwd, project);
+  const explicitProject = readFlag(argv, "--project");
+  const project = explicitProject ?? ".";
+  const cwd = explicitProject === undefined ? process.env.INIT_CWD ?? process.cwd() : process.cwd();
+  const resolved = isAbsolute(project) ? resolve(project) : resolve(cwd, project);
+  try {
+    return realpathSync.native(resolved);
+  } catch {
+    return resolved;
+  }
 }
 
 export function readFlag(argv: readonly string[], flag: string): string | undefined {

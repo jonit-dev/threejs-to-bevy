@@ -8,6 +8,52 @@ import { createProject } from "./create.js";
 import { loadCookbookEntries } from "./cookbook.js";
 import { gameCommand } from "./game.js";
 
+test("should not double project segments in plan artifact path", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-game-plan-path-"));
+  const project = join(root, "examples", "chess");
+  const previousCwd = process.cwd();
+  const previousInitCwd = process.env.INIT_CWD;
+  try {
+    await mkdir(project, { recursive: true });
+    process.chdir(project);
+    process.env.INIT_CWD = root;
+    const result = await gameCommand(["plan", "--project", ".", "--goal", "abstract diplomatic negotiation tableau", "--json"]);
+    const payload = JSON.parse(result.stdout) as { planArtifactPath: string };
+    assert.equal(result.exitCode, 0);
+    assert.equal(payload.planArtifactPath.split("examples/chess").length - 1, 1);
+    assert.equal(payload.planArtifactPath, join(project, "artifacts/game-production/plan.json"));
+  } finally {
+    process.chdir(previousCwd);
+    if (previousInitCwd === undefined) delete process.env.INIT_CWD;
+    else process.env.INIT_CWD = previousInitCwd;
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should emit off-recipe diagnostic and generic proof commands for unmatched goal", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-game-plan-off-recipe-"));
+  try {
+    const result = await gameCommand(["plan", "--project", root, "--goal", "abstract diplomatic negotiation tableau", "--json"]);
+    const payload = JSON.parse(result.stdout) as { diagnostics: Array<{ code: string }>; proofCommands: string[] };
+    assert.equal(payload.diagnostics.some((diagnostic) => diagnostic.code === "TN_GAME_PLAN_OFF_RECIPE"), true);
+    assert.equal(payload.proofCommands.some((command) => command.includes("coin-pickup")), false);
+    assert.equal(payload.proofCommands.some((command) => command.includes("<committed-scenario>")), true);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should collapse all-default fallback warnings into one", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-game-plan-defaults-"));
+  try {
+    const result = await gameCommand(["plan", "--project", root, "--goal", "abstract diplomatic negotiation tableau", "--json"]);
+    const payload = JSON.parse(result.stdout) as { diagnostics: Array<{ code: string }> };
+    assert.equal(payload.diagnostics.filter((diagnostic) => diagnostic.code === "TN_GAME_PLAN_SOURCE_DEFAULT_FALLBACK").length, 1);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
 test("reports missing evidence without mutating source", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-game-score-"));
   try {
@@ -542,7 +588,8 @@ test("should preserve non-mutating plan contract when inventory has gaps", async
     assert.equal(result.exitCode, 0);
     assert.equal(payload.mutate, false);
     assert.equal(payload.inventory.projectKind, "unknown");
-    assert.equal(payload.diagnostics.every((diagnostic) => diagnostic.code === "TN_GAME_PLAN_SOURCE_DEFAULT_FALLBACK" && diagnostic.severity === "warning"), true);
+    assert.equal(payload.diagnostics.some((diagnostic) => diagnostic.code === "TN_GAME_PLAN_SOURCE_DEFAULT_FALLBACK" && diagnostic.severity === "warning"), true);
+    assert.equal(payload.diagnostics.some((diagnostic) => diagnostic.code === "TN_GAME_PLAN_OFF_RECIPE" && diagnostic.severity === "info"), true);
     assert.equal(payload.steps.find((step) => step.id === "playable-loop")?.recipeArgs?.sceneId, "arena");
     assert.equal(payload.steps.find((step) => step.id === "playable-loop")?.recipeArgs?.cameraId, "camera.main");
     assert.equal(payload.steps.find((step) => step.id === "playable-loop")?.recipeArgs?.entityId, "player");
