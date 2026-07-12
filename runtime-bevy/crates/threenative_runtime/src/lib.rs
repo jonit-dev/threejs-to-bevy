@@ -36,6 +36,7 @@ pub mod map_world;
 pub mod mesh_bounds;
 pub mod motion_blur_postprocess;
 pub mod navigation;
+pub mod native_volumetric;
 pub mod overlay;
 pub mod overlay_host;
 pub mod native_ssr;
@@ -197,6 +198,7 @@ pub fn app_from_bundle_with_options(
         );
     app.add_plugins((
         native_ssr::NativeSsrCompatibilityPlugin,
+        native_volumetric::NativeVolumetricCompatibilityPlugin,
         emissive_postprocess::NativeEmissivePostProcessPlugin,
         height_fog_postprocess::NativeHeightFogPostProcessPlugin,
         ssgi_postprocess::NativeSsgiPostProcessPlugin,

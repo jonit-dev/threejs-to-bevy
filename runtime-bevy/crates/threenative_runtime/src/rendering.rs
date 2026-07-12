@@ -48,7 +48,7 @@ const NATIVE_VOLUMETRIC_BASE_ABSORPTION: f32 = 0.1;
 const NATIVE_VOLUMETRIC_BASE_SCATTERING: f32 = 0.0;
 const NATIVE_VOLUMETRIC_SHAFT_SCATTERING_SCALE: f32 = 0.35;
 const NATIVE_VOLUMETRIC_SHAFT_DENSITY_SCALE: f32 = 0.025;
-const NATIVE_VOLUMETRIC_SCATTERING_ASYMMETRY: f32 = 0.35;
+const NATIVE_VOLUMETRIC_SCATTERING_ASYMMETRY: f32 = 0.9;
 // Bevy 0.14's deferred irradiance fallback cannot reconstruct the web
 // hemisphere ray that carries floor/window bounce onto the room ceiling. A
 // shadowless upward light supplies only that missing downward-facing lobe and
@@ -58,10 +58,11 @@ const NATIVE_SSGI_CEILING_BOUNCE_ILLUMINANCE: f32 = 0.6;
 // upward-facing receivers. Keep the floor lobe lower than the ceiling lobe so
 // it restores the web's surface response without flattening the dark room.
 const NATIVE_SSGI_FLOOR_BOUNCE_ILLUMINANCE: f32 = 0.25;
-// Bevy includes the normalized 1/(4pi) phase term while the web artistic pass
-// intentionally does not. This adapter calibration restores equivalent shaft
-// radiance without coupling the authored density to room haze.
-const NATIVE_VOLUMETRIC_LIGHT_INTENSITY_SCALE: f32 = 5.4;
+// The native compatibility shader uses the web pass's additive radiance
+// semantics. Web maps authored intensity to 0.5 and couples the primary
+// light color to min(2, sunIntensity * 0.25); for this showcase's sun that is
+// an authored-intensity scale of 0.45.
+const NATIVE_VOLUMETRIC_LIGHT_INTENSITY_SCALE: f32 = 0.45;
 pub(crate) fn native_ssgi_ambient_multiplier(config: Option<&RuntimeConfigIr>) -> f32 {
     let Some(ssgi) = config
         .and_then(|config| config.renderer.as_ref())
