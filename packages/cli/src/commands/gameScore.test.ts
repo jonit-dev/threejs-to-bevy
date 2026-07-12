@@ -1138,9 +1138,14 @@ test("infers QA proof playtest arguments from project production proof commands"
         ],
       },
     }, null, 2)}\n`);
+    await mkdir(join(root, "playtests"), { recursive: true });
+    await writeFile(join(root, "playtests/qa-mutation.playtest.json"), `${JSON.stringify({
+      assert: { resources: [{ changed: true, id: "GameState", path: "score" }] },
+      schemaVersion: 1,
+    }, null, 2)}\n`);
     const seenArgs: string[][] = [];
     const result = await gameCommand(
-      ["qa", "--project", root, "--run-proof", "--url", "http://127.0.0.1:5173", "--json"],
+      ["qa", "--project", root, "--run-proof", "--url", "http://127.0.0.1:5173", "--playtest-scenarios", "playtests/no-match/*.playtest.json", "--json"],
       {
         proofRunner: async (step) => {
           seenArgs.push([step.command, ...step.args]);

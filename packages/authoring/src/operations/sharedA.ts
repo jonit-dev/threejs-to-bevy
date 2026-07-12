@@ -4,7 +4,7 @@ import { isGeneratedArtifactPath, normalizeRelativePath, writeAuthoringJsonDocum
 import { authoringDiagnostic, hasAuthoringErrors, sortAuthoringDiagnostics, type IAuthoringDiagnostic } from "../diagnostics.js";
 import { validateMaterialDocument } from "./materialValidation.js";
 import { buildUiSourceRecipe, mergeById } from "./uiRecipes.js";
-import { generatedPathDiagnostic, typeDiagnostic, validateGeneratedPathString } from "./validationHelpers.js";
+import { generatedPathDiagnostic, schemaDocumentShapeFix, typeDiagnostic, validateGeneratedPathString } from "./validationHelpers.js";
 import { loadAuthoringProject, type IAuthoringProject } from "../project.js";
 import {
   cameraComponentKeys,
@@ -938,7 +938,8 @@ export async function validateAuthoringDocument(
           validateOptionalString(diagnostics, file, `${path}/path`, item.path, "resource path must be a non-empty string.");
         },
       });
-    case "schema":
+    case "schema": {
+      const legacySchemaShape = isRecord(data) && data.schema !== schemaDocumentSchema && schemaDocumentShapeFix(file, data) !== undefined;
       return validateDeclarationDocument(file, data, {
         declarationKeys: schemaEntryKeys,
         duplicateKind: "schema",
@@ -947,12 +948,15 @@ export async function validateAuthoringDocument(
         listName: "schemas",
         rootKeys: schemaDocumentKeys,
         validateRoot: (diagnostics) => {
-          diagnostics.push(...validateSchemaDocumentKind(file, isRecord(data) ? data.kind : undefined));
+          if (!legacySchemaShape) {
+            diagnostics.push(...validateSchemaDocumentKind(file, isRecord(data) ? data.kind : undefined));
+          }
         },
         validateItem: (diagnostics, path, item) => {
           validateSchemaFields(diagnostics, file, `${path}/fields`, item.fields);
         },
       });
+    }
     case "scene":
       return validateSceneDocument(projectPath, file, data, context);
     case "sequence":

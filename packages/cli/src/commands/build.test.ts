@@ -147,6 +147,7 @@ test("build should report malformed IR-shaped authoring schema with a full-file 
       `${JSON.stringify({
         schema: "threenative.resource-schemas",
         version: "0.1.0",
+        id: "resource-schemas",
         schemas: { GameState: { fields: { score: { kind: "number" } } } },
       }, null, 2)}\n`,
     );
