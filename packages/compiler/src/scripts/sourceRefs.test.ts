@@ -551,6 +551,23 @@ test("should reject unsupported script stdlib import shapes", async () => {
   }
 });
 
+test("should allow MaterialEx as a portable script stdlib helper", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-script-source-ref-material-ex-"));
+  try {
+    await mkdir(join(root, "src/scripts"), { recursive: true });
+    await writeFile(
+      join(root, "src/scripts/hover.ts"),
+      `import { MaterialEx, defineBehavior } from "@threenative/script-stdlib";\nexport const hover = defineBehavior({ id: "hover", schedule: "update" }, (context) => { const patch = MaterialEx.patch("piece", { color: "#ff0000" }); context.commands.materialPatch(patch.entity, patch.value); });\n`,
+    );
+    const systems: ISystemScriptSource[] = [{ name: "hover", script: { exportName: "system_hover", sourceRef: { export: "hover", module: "src/scripts/hover.ts", systemId: "hover" } } }];
+    const result = resolveSystemScriptSources(systems, root);
+    assert.deepEqual(result.diagnostics, []);
+    assert.deepEqual(result.systems[0]?.script?.helperImports, [{ imported: ["MaterialEx", "defineBehavior"], module: "@threenative/script-stdlib" }]);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
 test("should reject unsupported helper import shapes for feedback helpers", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-script-source-ref-feedback-shape-"));
   try {

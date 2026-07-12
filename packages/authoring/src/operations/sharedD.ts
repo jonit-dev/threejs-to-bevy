@@ -695,7 +695,11 @@ export function validateSystemCommandShape(diagnostics: IAuthoringDiagnostic[], 
     validateRequiredString(diagnostics, file, `${path}/child`, command.child, "clearParent command child must be a non-empty entity id.");
     return;
   }
-  diagnostics.push(typeDiagnostic(file, `${path}/kind`, "system command kind must be one of spawn, despawn, addComponent, removeComponent, setComponent, emitEvent, instantiate, setParent, or clearParent.", kind));
+  if (kind === "material.patch") {
+    validateRequiredString(diagnostics, file, `${path}/entity`, command.entity, "material.patch command entity must be a non-empty entity id.");
+    return;
+  }
+  diagnostics.push(typeDiagnostic(file, `${path}/kind`, "system command kind must be one of spawn, despawn, addComponent, removeComponent, setComponent, emitEvent, instantiate, setParent, clearParent, or material.patch.", kind));
 }
 
 export async function validateScriptReference(

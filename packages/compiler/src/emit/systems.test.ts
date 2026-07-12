@@ -89,6 +89,15 @@ test("should emit prefab and hierarchy command declarations", () => {
   ]);
 });
 
+test("should emit material patch command declarations without a component field", () => {
+  const system = update("hover", {
+    commands: [{ entity: "piece.e4", kind: "material.patch" } as never],
+  });
+  assert.deepEqual(systemsToIr([system]).systems[0]?.commands, [
+    { entity: "piece.e4", kind: "material.patch" },
+  ]);
+});
+
 test("should emit bounded delayed command declarations", () => {
   const Health = defineComponent("Health", {
     current: "number",

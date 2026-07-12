@@ -27,6 +27,7 @@ const supportedScriptHelperBindings: Record<SupportedScriptHelperImport, Readonl
     "Ease",
     "InputEx",
     "KinematicMoverEx",
+    "MaterialEx",
     "MotionEx",
     "Mathf",
     "NumberEx",

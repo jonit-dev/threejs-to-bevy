@@ -136,6 +136,9 @@ function serializeCommand(command: ISystemCommandLike): ISystemsIr["systems"][nu
   if (command.kind === "worldText") {
     return { entity: command.entity ?? "", kind: command.kind };
   }
+  if (command.kind === "material.patch") {
+    return { entity: command.entity ?? "", kind: command.kind };
+  }
   return { component: command.component ?? "", entity: command.entity ?? "", kind: command.kind as "addComponent" | "removeComponent" | "setComponent" };
 }
 

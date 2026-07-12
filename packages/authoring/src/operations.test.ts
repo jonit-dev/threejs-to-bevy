@@ -7,7 +7,13 @@ import test from "node:test";
 import type { IAuthoringDiagnostic } from "./diagnostics.js";
 import { createScene } from "./operations.js";
 import { validateTransform } from "./operations/sharedC.js";
-import { inspectSceneNode, validateAssetDeclaration, validateInputMetadata } from "./operations/sharedD.js";
+import { inspectSceneNode, validateAssetDeclaration, validateInputMetadata, validateSystemCommandShape } from "./operations/sharedD.js";
+
+test("should accept declared material patch commands", () => {
+  const diagnostics: IAuthoringDiagnostic[] = [];
+  validateSystemCommandShape(diagnostics, "content/systems/hover.systems.json", "/systems/0/commands/0", "material.patch", { entity: "piece.e4", kind: "material.patch" });
+  assert.deepEqual(diagnostics, []);
+});
 
 test("should preserve scene operation output after module split", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-operations-"));
