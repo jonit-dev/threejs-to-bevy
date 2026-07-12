@@ -1,5 +1,5 @@
 import { loadAuthoringProject, validateIterateReport, ITERATE_REPORT_SCHEMA, ITERATE_REPORT_VERSION, type IIterateDiagnostic, type IIterateReport, type IIterateStepReport } from "@threenative/authoring";
-import { cp, mkdir, readFile, readdir, writeFile } from "node:fs/promises";
+import { cp, mkdir, readFile, readdir, stat, writeFile } from "node:fs/promises";
 import { relative, resolve } from "node:path";
 
 import { type ICommandResult } from "../diagnostics.js";
@@ -25,6 +25,7 @@ interface IIterateStepResult {
 }
 
 interface IIterateCompactSummary {
+  activeRenderProfile?: string;
   artifacts: {
     directory: string;
     report: string;
@@ -68,6 +69,8 @@ export async function iterateCommand(
   const diagnostics: IIterateDiagnostic[] = [];
   let failed = false;
   let bundlePath: string | undefined;
+  let activeRenderProfile: string | undefined;
+  const visualSourceChanged = await visualSourceChangedSince(projectPath, resolve(latestDir, "report.json"));
 
   const run = async (id: IIterateStepReport["id"], fn: () => Promise<IIterateStepResult>): Promise<IIterateStepReport> => {
     if (failed) {
@@ -113,10 +116,12 @@ export async function iterateCommand(
     const parsed = parseJsonPayload(result.stdout);
     if (result.exitCode === 0 && isRecord(parsed) && typeof parsed.bundlePath === "string") {
       bundlePath = parsed.bundlePath;
+      activeRenderProfile = await readActiveRenderProfile(bundlePath);
     }
     const step = commandStep(result);
     if (result.exitCode === 0) {
       step.diagnostics = [...(step.diagnostics ?? []), ...(await antiProofDiagnostics(projectPath))];
+      if (activeRenderProfile !== undefined && activeRenderProfile !== "parity" && visualSourceChanged) step.diagnostics.push({ code: "TN_RENDER_PROFILE_GRADING_ACTIVE", message: `Render profile '${activeRenderProfile}' is grading authored material or texture pixels.`, severity: "warning", suggestion: "Run tn runtime set-rendering default --render-profile parity to inspect authored pixels without look-profile grading." });
     }
     return step;
   });
@@ -176,6 +181,7 @@ export async function iterateCommand(
 
   const reportPath = resolve(latestDir, "report.json");
   const report: IIterateReport = {
+    ...(activeRenderProfile === undefined ? {} : { activeRenderProfile }),
     artifacts: {
       directory: latestDir,
       ...(keptDir === undefined ? {} : { keptDirectory: keptDir }),
@@ -292,6 +298,7 @@ function emptySystemBody(source: string, exportName: string): boolean {
 
 function compactSummary(report: IIterateReport): IIterateCompactSummary {
   return {
+    ...(report.activeRenderProfile === undefined ? {} : { activeRenderProfile: report.activeRenderProfile }),
     artifacts: {
       directory: report.artifacts.directory,
       report: report.artifacts.report,
@@ -452,7 +459,30 @@ function skippedStep(id: IIterateStepReport["id"]): IIterateStepReport {
 
 function renderText(report: IIterateReport): string {
   const status = report.ok ? "passed" : "failed";
-  return `Iterate ${status}: ${report.steps.map((step) => `${step.id}=${step.status}`).join(", ")}\nArtifacts: ${report.artifacts.directory}\n`;
+  const profile = report.activeRenderProfile === undefined ? "" : `, render profile: ${report.activeRenderProfile}`;
+  return `Iterate ${status}: ${report.steps.map((step) => `${step.id}=${step.status}${step.id === "screenshot" ? profile : ""}`).join(", ")}\nArtifacts: ${report.artifacts.directory}\n`;
+}
+
+async function readActiveRenderProfile(bundlePath: string): Promise<string | undefined> {
+  const value = parseJsonPayload(await readFile(resolve(bundlePath, "runtime.config.json"), "utf8").catch(() => "{}"));
+  return isRecord(value) && isRecord(value.renderer) && isRecord(value.renderer.renderLook) && typeof value.renderer.renderLook.profile === "string" ? value.renderer.renderLook.profile : undefined;
+}
+
+async function visualSourceChangedSince(projectPath: string, reportPath: string): Promise<boolean> {
+  const previous = await stat(reportPath).catch(() => undefined);
+  const project = await loadAuthoringProject({ projectPath });
+  const relevant = project.documents.filter((document) => document.kind === "material" || (document.kind === "asset" && hasTextureAsset(document.data)));
+  if (relevant.length === 0) return false;
+  if (previous === undefined) return true;
+  for (const document of relevant) {
+    const source = await stat(resolve(projectPath, document.projectRelativePath)).catch(() => undefined);
+    if (source !== undefined && source.mtimeMs > previous.mtimeMs) return true;
+  }
+  return false;
+}
+
+function hasTextureAsset(value: unknown): boolean {
+  return isRecord(value) && Array.isArray(value.assets) && value.assets.some((asset) => isRecord(asset) && (asset.type === "texture" || asset.kind === "texture"));
 }
 
 function parseJsonPayload(text: string): unknown {

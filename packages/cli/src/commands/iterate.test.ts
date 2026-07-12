@@ -109,6 +109,36 @@ test("should emit TN_ITERATE_NO_SCENARIO info when project has no playtests", as
   }
 });
 
+test("should report active render profile in iterate json", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-iterate-render-profile-"));
+  try {
+    const result = await iterateCommand(["--project", root, "--skip-playtest", "--json"], process.cwd(), { ...passingIterateOptions(root), build: () => buildWithProfile(root, "cinematic") });
+    assert.equal((JSON.parse(result.stdout) as { activeRenderProfile?: string }).activeRenderProfile, "cinematic");
+  } finally { await rm(root, { force: true, recursive: true }); }
+});
+
+test("should warn when material edits run under a grading profile", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-iterate-render-warning-"));
+  try {
+    await mkdir(join(root, "content/materials"), { recursive: true });
+    await writeFile(join(root, "content/materials/main.materials.json"), `${JSON.stringify({ id: "main", materials: [], schema: "threenative.materials" })}\n`);
+    const result = await iterateCommand(["--project", root, "--skip-playtest", "--json"], process.cwd(), { ...passingIterateOptions(root), build: () => buildWithProfile(root, "cinematic") });
+    const report = JSON.parse(await readFile((JSON.parse(result.stdout) as { artifacts: { report: string } }).artifacts.report, "utf8")) as { diagnostics: Array<{ code: string }> };
+    assert.equal(report.diagnostics.some((diagnostic) => diagnostic.code === "TN_RENDER_PROFILE_GRADING_ACTIVE"), true);
+  } finally { await rm(root, { force: true, recursive: true }); }
+});
+
+test("should not warn under parity profile", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-iterate-render-parity-"));
+  try {
+    await mkdir(join(root, "content/materials"), { recursive: true });
+    await writeFile(join(root, "content/materials/main.materials.json"), `${JSON.stringify({ id: "main", materials: [], schema: "threenative.materials" })}\n`);
+    const result = await iterateCommand(["--project", root, "--skip-playtest", "--json"], process.cwd(), { ...passingIterateOptions(root), build: () => buildWithProfile(root, "parity") });
+    const report = JSON.parse(await readFile((JSON.parse(result.stdout) as { artifacts: { report: string } }).artifacts.report, "utf8")) as { diagnostics: Array<{ code: string }> };
+    assert.equal(report.diagnostics.some((diagnostic) => diagnostic.code === "TN_RENDER_PROFILE_GRADING_ACTIVE"), false);
+  } finally { await rm(root, { force: true, recursive: true }); }
+});
+
 test("should run all scenarios when no scenario flag given", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-iterate-all-scenarios-"));
   try {
@@ -285,6 +315,13 @@ function passingIterateOptions(root: string): Parameters<typeof iterateCommand>[
       stdout: `${JSON.stringify({ code: "TN_AUTHORING_VALIDATE_OK", diagnostics: [], ok: true })}\n`,
     }),
   };
+}
+
+async function buildWithProfile(root: string, profile: string) {
+  const bundlePath = join(root, "dist", "game.bundle");
+  await mkdir(bundlePath, { recursive: true });
+  await writeFile(join(bundlePath, "runtime.config.json"), `${JSON.stringify({ renderer: { renderLook: { profile } }, schema: "threenative.runtime-config", version: "0.1.0" })}\n`);
+  return { exitCode: 0, stdout: `${JSON.stringify({ bundlePath, code: "TN_BUILD_OK" })}\n` };
 }
 
 function playtestSummaryResult(

@@ -6,6 +6,14 @@ camera, lighting, or test setup rather than hand-tuning adapters to screenshots.
 
 Current support:
 
+- Web material IR accepts `kind: "unlit"` with color and base-color texture
+  mapping to `THREE.MeshBasicMaterial`. Native builds fail early with
+  `TN_BEVY_MATERIAL_UNLIT_UNSUPPORTED` until the freeze-gated Bevy boundary is
+  promoted.
+- `tn iterate --json` reports the resolved `activeRenderProfile`. When material
+  or texture source changed since the previous iterate and the profile is not
+  `parity`, advisory diagnostic `TN_RENDER_PROFILE_GRADING_ACTIVE` names the
+  profile and the command that restores parity grading.
 - Mesh/material/light/camera/source document validation and compiler lowering.
 - Render-look profiles, screenshot proof, color parity, lighting tone, and
   visual performance gates.

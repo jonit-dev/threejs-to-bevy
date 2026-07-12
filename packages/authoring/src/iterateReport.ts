@@ -22,6 +22,7 @@ export interface IIterateStepReport {
 }
 
 export interface IIterateReport {
+  activeRenderProfile?: string;
   artifacts: {
     directory: string;
     keptDirectory?: string;
@@ -69,6 +70,9 @@ export function validateIterateReport(report: unknown): { diagnostics: IIterateD
       path: "/steps",
       severity: "error",
     });
+  }
+  if (report.activeRenderProfile !== undefined && (typeof report.activeRenderProfile !== "string" || report.activeRenderProfile.trim() === "")) {
+    diagnostics.push({ code: "TN_ITERATE_REPORT_RENDER_PROFILE_INVALID", message: "Iterate report activeRenderProfile must be a non-empty string when present.", path: "/activeRenderProfile", severity: "error" });
   }
   return { diagnostics, ok: diagnostics.length === 0 };
 }
