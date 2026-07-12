@@ -1487,7 +1487,7 @@ mod tests {
     use image::{Rgba, RgbaImage};
 
     use super::{
-        Lcg, RuntimeConfigIr, SampledImage, StylizedSourceGroundMaps,
+        Lcg, MapError, RuntimeConfigIr, SampledImage, StylizedSourceGroundMaps,
         ambient_occlusion_intensity_approximation,
     };
 
@@ -1585,5 +1585,16 @@ mod tests {
         for value in expected {
             assert!((random.next() - value).abs() < 0.000_001);
         }
+    }
+
+    #[test]
+    fn unlit_material_error_should_expose_stable_native_diagnostic() {
+        let error = MapError::UnsupportedUnlitMaterial {
+            material_id: "mat.backdrop".to_owned(),
+        };
+
+        assert_eq!(error.code(), "TN_BEVY_MATERIAL_UNLIT_UNSUPPORTED");
+        assert_eq!(error.path(), "materials.ir.json/materials/mat.backdrop/kind");
+        assert!(error.suggestion().contains("freeze-gate"));
     }
 }
