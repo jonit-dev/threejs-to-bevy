@@ -30,6 +30,12 @@ Current support:
   The current deterministic replay set covers all archetype scaffolds plus the
   `top-down-collector` and `lane-runner` `tn game plan --apply` paths that are
   supported today.
+- `pnpm verify:overlay-scaffold` creates clean Tailwind-default and vanilla
+  React overlay projects from the descriptor registry, installs and builds
+  both, validates local compiled output, and records its report at
+  `tools/verify/artifacts/overlay-scaffold/verification-report.json`. The
+  browser screenshot and bridge trace in that artifact family prove the real
+  preview host rather than only template shape.
 - `pnpm verify:webview-package` packages the
   `ui-persistence-settings-facades` conformance bundle through the desktop-web
   path and records raw package, size, startup, input, settings, and save-slot
@@ -67,7 +73,10 @@ Current support:
 - `pnpm verify:cookbook` validates cookbook command/proof strings against the
   CLI registry, checks diagnostic cookbook references, bundles each script
   payload, and rejects empty exported systems before the authoring validation
-  and build checks run.
+  and build checks run. Entries that create `threenative.overlays` documents
+  additionally install the mutated project and execute build scripts derived
+  from the declared overlay IDs, so maintained React recipes prove their real
+  Vite/Tailwind output without cookbook-entry special cases.
 - `pnpm verify:emitted-commands` additionally checks semantic alignment between
   emitted proof commands and their authored subject/assertion kinds, not only
   command exit status.

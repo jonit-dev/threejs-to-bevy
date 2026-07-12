@@ -1,4 +1,5 @@
 import { diagnosticResult, type ICommandResult } from "../diagnostics.js";
+import { defaultOverlayStyle, formatOverlayAddUsage, listOverlayStyles } from "../overlays/scaffoldRegistry.js";
 
 export interface HelpTopic {
   aliases?: readonly string[];
@@ -11,6 +12,19 @@ export interface HelpTopic {
 }
 
 export const HELP_TOPICS: Record<string, HelpTopic> = {
+  overlay: {
+    aliases: ["overlays", "webview-overlay"],
+    commands: [formatOverlayAddUsage()],
+    docs: ["docs/contracts/ui.md", "docs/runtime/desktop-packaging.md"],
+    examples: [
+      `tn overlay add inventory --style ${defaultOverlayStyle()} --json`,
+      "tn overlay add inventory --style vanilla --json",
+      `Available styles: ${listOverlayStyles().join(", ")}; default: ${defaultOverlayStyle()}.`,
+    ],
+    failureSymptoms: ["overlay source path already exists", "overlay ID is already declared", "compiled overlay entry is missing"],
+    summary: "Scaffold an optional React webview overlay with Tailwind by default or plain CSS.",
+    title: "React webview overlay scaffold",
+  },
   scaffold: {
     aliases: ["create", "init", "setup"],
     commands: [

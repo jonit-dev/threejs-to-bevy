@@ -1,5 +1,5 @@
-import { access, readdir } from "node:fs/promises";
-import { dirname, relative, resolve } from "node:path";
+import { access, readdir, stat } from "node:fs/promises";
+import { basename, dirname, relative, resolve } from "node:path";
 import { validateOverlayEntry, validateOverlaysIr, type IIrDiagnostic, type IOverlaysIr } from "@threenative/ir";
 import type { IOverlayDeclaration } from "@threenative/sdk";
 import type { IAuthoringDocument } from "@threenative/authoring";
@@ -53,14 +53,54 @@ export async function emitStructuredOverlays(projectPath: string, documents: rea
   if (diagnostics.length > 0) throw new Error(`TN_COMPILER_OVERLAY_INVALID: ${diagnostics.map((diagnostic) => `${diagnostic.code} at ${diagnostic.path}`).join(", ")}`);
   const paths = new Set<string>();
   for (const overlay of overlays.overlays) {
+    await assertStructuredOverlayEntryExists(projectPath, overlay.entry);
+    await assertStructuredOverlayEntryFresh(projectPath, overlay.entry);
     for (const path of await listOverlayFiles(projectPath, dirname(overlay.entry))) paths.add(path);
   }
   return { overlays, extraFiles: [...paths].sort().map((path) => ({ path, sourcePath: path })) };
 }
 
+async function assertStructuredOverlayEntryFresh(projectPath: string, entry: string): Promise<void> {
+  const outputDirectory = dirname(entry);
+  if (basename(outputDirectory) !== "dist") return;
+  const sourceDirectory = dirname(outputDirectory);
+  if (sourceDirectory === "." || sourceDirectory === outputDirectory) return;
+
+  const entryModifiedAt = (await stat(resolve(projectPath, entry))).mtimeMs;
+  const newestSource = await newestFileModification(resolve(projectPath, sourceDirectory), resolve(projectPath, outputDirectory));
+  if (newestSource > entryModifiedAt) {
+    throw new Error(`TN_OVERLAY_BUILD_ENTRY_STALE: compiled overlay entry '${entry}' is older than its source. Run the overlay build command before building the game bundle.`);
+  }
+}
+
+async function newestFileModification(directory: string, excludedDirectory: string): Promise<number> {
+  if (directory === excludedDirectory) return 0;
+  let newest = 0;
+  for (const entry of await readdir(directory, { withFileTypes: true })) {
+    const path = resolve(directory, entry.name);
+    if (path === excludedDirectory) continue;
+    if (entry.isDirectory()) newest = Math.max(newest, await newestFileModification(path, excludedDirectory));
+    else if (entry.isFile()) newest = Math.max(newest, (await stat(path)).mtimeMs);
+  }
+  return newest;
+}
+
+async function assertStructuredOverlayEntryExists(projectPath: string, entry: string): Promise<void> {
+  try {
+    await access(resolve(projectPath, entry));
+  } catch {
+    throw new Error(`TN_OVERLAY_BUILD_ENTRY_MISSING: compiled overlay entry '${entry}' does not exist. Run the overlay build command before building the game bundle.`);
+  }
+}
+
 async function listOverlayFiles(projectPath: string, directory: string): Promise<string[]> {
   validateOverlayAssetPath(`${directory}/index.html`);
   const absolute = resolve(projectPath, directory);
+  try {
+    await access(absolute);
+  } catch {
+    throw new Error(`TN_OVERLAY_BUILD_ENTRY_MISSING: compiled overlay directory '${directory}' does not exist. Run the overlay build command before building the game bundle.`);
+  }
   const entries = await readdir(absolute, { withFileTypes: true });
   const files: string[] = [];
   for (const entry of entries) {

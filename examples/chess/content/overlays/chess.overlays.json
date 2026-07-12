@@ -4,7 +4,7 @@
   "overlays": [
     {
       "id": "chess-side-select",
-      "entry": "overlay/dist/index.html",
+      "entry": "overlay/chess-side-select/dist/index.html",
       "targetProfiles": ["web", "desktop"],
       "transparent": true,
       "zIndex": 30,

@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { helpCommand } from "./help.js";
+import { defaultOverlayStyle, listOverlayStyles } from "../overlays/scaffoldRegistry.js";
 
 test("should list task-oriented help topics", async () => {
   const result = await helpCommand(["--json"]);
@@ -21,6 +22,15 @@ test("should list task-oriented help topics", async () => {
   assert.equal(payload.topics.some((topic) => topic.name === "screenshot"), true);
   assert.equal(payload.topics.some((topic) => topic.name === "record"), true);
   assert.equal(payload.topics.some((topic) => topic.name === "examples"), true);
+  assert.equal(payload.topics.some((topic) => topic.name === "overlay"), true);
+});
+
+test("should derive overlay style choices from the scaffold registry", async () => {
+  const result = await helpCommand(["overlay", "--json"]);
+  const payload = JSON.parse(result.stdout) as { commands: string[]; examples: string[] };
+  const text = [...payload.commands, ...payload.examples].join("\n");
+  for (const style of listOverlayStyles()) assert.match(text, new RegExp(`\\b${style}\\b`));
+  assert.match(text, new RegExp(`default: ${defaultOverlayStyle()}`));
 });
 
 test("should render known help topic with commands and docs", async () => {

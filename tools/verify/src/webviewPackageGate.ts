@@ -1,5 +1,5 @@
 import { spawn, spawnSync } from "node:child_process";
-import { mkdir, readFile, rm, stat, writeFile } from "node:fs/promises";
+import { access, mkdir, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -20,6 +20,8 @@ export interface WebviewPackageMeasurements {
   bundleFileCount: number;
   fileCount: number;
   inputServiceCount: number;
+  overlayAssetCount: number;
+  overlayCount: number;
   packageBytes: number;
   saveSlotCount: number;
   settingsCount: number;
@@ -43,7 +45,7 @@ export interface PackageRunnerResult {
 
 export type PackageRunner = (options: { args: readonly string[]; cwd: string }) => PackageRunnerResult;
 
-const DEFAULT_BUNDLE = "packages/ir/fixtures/conformance/ui-persistence-settings-facades/game.bundle";
+const DEFAULT_BUNDLE = "examples/chess/dist/chess.bundle";
 
 export async function runWebviewPackageGate(options: WebviewPackageGateOptions = {}): Promise<WebviewPackageGateResult> {
   const root = resolve(options.root ?? process.cwd());
@@ -145,13 +147,14 @@ async function inspectPackagedWebview(options: {
   packageArtifacts: PackageArtifacts;
   root: string;
 }): Promise<WebviewPackageMeasurements> {
-  const [packageReport, inspection, runtimeArgs, systems, localData, ui] = await Promise.all([
+  const [packageReport, inspection, runtimeArgs, systems, localData, ui, overlays] = await Promise.all([
     readJsonObject(options.packageArtifacts.packageReportPath, options.diagnostics, "package.report.json"),
     readJsonObject(options.packageArtifacts.webviewInspectionPath, options.diagnostics, "webview.inspection.json"),
     readJsonObject(options.packageArtifacts.runtimeArgsPath, options.diagnostics, "runtime.args.json"),
     readJsonObject(resolve(options.bundlePath, "systems.ir.json"), options.diagnostics, "systems.ir.json"),
-    readJsonObject(resolve(options.bundlePath, "local-data.ir.json"), options.diagnostics, "local-data.ir.json"),
+    readOptionalJsonObject(resolve(options.bundlePath, "local-data.ir.json"), options.diagnostics, "local-data.ir.json"),
     readJsonObject(resolve(options.bundlePath, "ui.ir.json"), options.diagnostics, "ui.ir.json"),
+    readOptionalJsonObject(resolve(options.bundlePath, "overlays.ir.json"), options.diagnostics, "overlays.ir.json"),
   ]);
 
   assertValue(packageReport?.schema === "threenative.package-report", options.diagnostics, "TN_VERIFY_WEBVIEW_PACKAGE_REPORT_INVALID", "desktop-web package.report.json must use schema threenative.package-report.");
@@ -159,18 +162,22 @@ async function inspectPackagedWebview(options: {
   assertValue(runtimeArgs?.runtime === "webview" && Array.isArray(runtimeArgs.args) && runtimeArgs.args.includes("app"), options.diagnostics, "TN_VERIFY_WEBVIEW_RUNTIME_ARGS_INVALID", "desktop-web runtime.args.json must launch the packaged app directory.");
 
   const startupChecks = readInspectionChecks(inspection);
+  const overlayCount = readArray(overlays?.overlays).length;
   for (const required of ["TN_PACKAGE_WEBVIEW_BUNDLE_COPIED", "TN_PACKAGE_WEBVIEW_RUNTIME_LAUNCHER", "TN_PACKAGE_WEBVIEW_RUNTIME_ARGS"]) {
     assertValue(startupChecks.includes(required), options.diagnostics, "TN_VERIFY_WEBVIEW_STARTUP_CHECK_MISSING", `desktop-web inspection must include startup check ${required}.`);
   }
 
   const inputServices = readServices(systems).filter((service) => service.startsWith("ui."));
   assertValue(inputServices.length > 0, options.diagnostics, "TN_VERIFY_WEBVIEW_INPUT_PROOF_MISSING", "The packaged fixture must include UI/input-facing services for desktop-web inspection.");
-  assertValue(readArray(ui?.focusOrder).length > 0, options.diagnostics, "TN_VERIFY_WEBVIEW_INPUT_FOCUS_MISSING", "The packaged fixture must include retained UI focus order evidence.");
+  if (overlayCount === 0) assertValue(readArray(ui?.focusOrder).length > 0, options.diagnostics, "TN_VERIFY_WEBVIEW_INPUT_FOCUS_MISSING", "A retained-UI-only packaged fixture must include retained UI focus order evidence.");
 
   const settingsCount = readArray(localData?.settings).length;
   const saveSlotCount = readArray(localData?.saveSlots).length;
-  assertValue(settingsCount > 0, options.diagnostics, "TN_VERIFY_WEBVIEW_SETTINGS_PROOF_MISSING", "The packaged fixture must include settings persistence metadata.");
-  assertValue(saveSlotCount > 0, options.diagnostics, "TN_VERIFY_WEBVIEW_SAVE_PROOF_MISSING", "The packaged fixture must include save-slot metadata.");
+  assertValue(overlayCount > 0, options.diagnostics, "TN_VERIFY_WEBVIEW_OVERLAY_PROOF_MISSING", "The packaged webview proof bundle must declare at least one generated overlay.");
+  if (overlayCount === 0) {
+    assertValue(settingsCount > 0, options.diagnostics, "TN_VERIFY_WEBVIEW_SETTINGS_PROOF_MISSING", "A retained-UI-only packaged fixture must include settings persistence metadata.");
+    assertValue(saveSlotCount > 0, options.diagnostics, "TN_VERIFY_WEBVIEW_SAVE_PROOF_MISSING", "A retained-UI-only packaged fixture must include save-slot metadata.");
+  }
 
   const files = readArray(packageReport?.files);
   const [archiveBytes, appBytes, packageBytes] = await Promise.all([
@@ -179,6 +186,7 @@ async function inspectPackagedWebview(options: {
     directoryBytes(options.packageArtifacts.packageRoot),
   ]);
   const startup = await measureLauncherStartup(options.packageArtifacts, options.diagnostics);
+  const overlayProof = await inspectPackagedOverlays(overlays, options.packageArtifacts.appPath, options.diagnostics);
 
   return {
     appBytes,
@@ -186,12 +194,81 @@ async function inspectPackagedWebview(options: {
     bundleFileCount: files.filter((entry) => typeof entry === "string" && entry.startsWith("bundle/")).length,
     fileCount: files.length,
     inputServiceCount: inputServices.length,
+    overlayAssetCount: overlayProof.assetCount,
+    overlayCount: overlayProof.overlayCount,
     packageBytes,
     saveSlotCount,
     settingsCount,
     startupChecks,
     startupMs: startup.durationMs,
   };
+}
+
+async function inspectPackagedOverlays(
+  overlays: Record<string, unknown> | undefined,
+  appPath: string,
+  diagnostics: VerificationDiagnostic[],
+): Promise<{ assetCount: number; overlayCount: number }> {
+  const declarations = readArray(overlays?.overlays).map(readObject).filter((entry): entry is Record<string, unknown> => entry !== undefined);
+  let assetCount = 0;
+  for (const declaration of declarations) {
+    const entry = readString(declaration.entry);
+    if (entry === undefined) continue;
+    const packagedEntry = resolve(appPath, "bundle", entry);
+    let html: string;
+    try {
+      html = await readFile(packagedEntry, "utf8");
+    } catch {
+      diagnostics.push({
+        code: "TN_VERIFY_WEBVIEW_OVERLAY_ENTRY_MISSING",
+        message: `Packaged webview bundle is missing declared overlay entry '${entry}'.`,
+        path: packagedEntry,
+        severity: "error",
+        suggestedFix: "Build the overlay before tn build and ensure tn package copies the complete game bundle.",
+      });
+      continue;
+    }
+    const references = localStyleAndScriptReferences(html);
+    for (const extension of ["css", "js"] as const) {
+      if (!references.some((reference) => extension === "css" ? /\.css$/i.test(reference) : /\.(?:js|mjs)$/i.test(reference))) {
+        diagnostics.push({
+          code: "TN_VERIFY_WEBVIEW_OVERLAY_ASSET_REFERENCE_MISSING",
+          message: `Packaged overlay entry '${entry}' must reference a local ${extension.toUpperCase()} asset.`,
+          path: packagedEntry,
+          severity: "error",
+          suggestedFix: "Run the production overlay build so its entry HTML references compiled local CSS and JavaScript.",
+        });
+      }
+    }
+    for (const reference of references) {
+      const packagedAsset = resolve(dirname(packagedEntry), reference);
+      try {
+        const stats = await stat(packagedAsset);
+        if (!stats.isFile() || stats.size === 0) throw new Error("empty asset");
+        assetCount += 1;
+      } catch {
+        diagnostics.push({
+          code: "TN_VERIFY_WEBVIEW_OVERLAY_ASSET_MISSING",
+          message: `Packaged overlay entry '${entry}' references missing or empty local asset '${reference}'.`,
+          path: packagedAsset,
+          severity: "error",
+          suggestedFix: "Keep compiled overlay CSS and JavaScript beside the declared entry and include them in the game bundle.",
+        });
+      }
+    }
+  }
+  return { assetCount, overlayCount: declarations.length };
+}
+
+function localStyleAndScriptReferences(html: string): string[] {
+  const references = new Set<string>();
+  for (const match of html.matchAll(/<(?:link|script)\b[^>]*?\b(?:href|src)=["']([^"']+)["'][^>]*>/gi)) {
+    const reference = match[1];
+    if (reference === undefined || /^(?:[a-z]+:|\/\/|\/)/i.test(reference)) continue;
+    const path = reference.split(/[?#]/, 1)[0];
+    if (path !== undefined && /\.(?:css|js|mjs)$/i.test(path)) references.add(path);
+  }
+  return [...references];
 }
 
 interface PackageArtifacts {
@@ -322,6 +399,15 @@ async function readJsonObject(path: string, diagnostics: VerificationDiagnostic[
     });
     return undefined;
   }
+}
+
+async function readOptionalJsonObject(path: string, diagnostics: VerificationDiagnostic[], name: string): Promise<Record<string, unknown> | undefined> {
+  try {
+    await access(path);
+  } catch {
+    return undefined;
+  }
+  return readJsonObject(path, diagnostics, name);
 }
 
 function parseJsonObject(text: string): Record<string, unknown> | undefined {

@@ -35,6 +35,11 @@ test("release gate should report failed typed step diagnostics", async () => {
 });
 
 test("release gate should keep focused gate artifact contracts", () => {
+  assert.deepEqual(RELEASE_FOCUSED_GATES.find((gate) => gate.script === "verify:overlay-scaffold"), {
+    name: "verify overlay scaffold",
+    reportPath: "tools/verify/artifacts/overlay-scaffold/verification-report.json",
+    script: "verify:overlay-scaffold",
+  });
   assert.ok(RELEASE_FOCUSED_GATES.some((gate) => gate.script === "verify:bundle-safety-hardening"));
   assert.ok(RELEASE_FOCUSED_GATES.some((gate) => gate.script === "verify:gameplay-parity"));
   assert.ok(RELEASE_FOCUSED_GATES.some((gate) => gate.script === "verify:generated-games"));

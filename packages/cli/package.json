@@ -16,6 +16,10 @@
     "./screenshotMetrics": {
       "types": "./dist/commands/screenshotMetrics.d.ts",
       "default": "./dist/commands/screenshotMetrics.js"
+    },
+    "./overlay-scaffold": {
+      "types": "./dist/overlays/scaffoldRegistry.d.ts",
+      "default": "./dist/overlays/scaffoldRegistry.js"
     }
   },
   "bin": {

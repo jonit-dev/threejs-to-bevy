@@ -55,6 +55,28 @@ test("publishes game snapshots to a loaded overlay", () => {
   assert.deepEqual(received, [{ payload: { gold: 12 }, type: "inventory:snapshot" }]);
 });
 
+test("mounts a representative built React entry and publishes bridge readiness", () => {
+  const documentRef = new FakeDocument();
+  const overlays = makeOverlays("pointer-and-keyboard");
+  overlays.overlays[0]!.entry = "overlay/inventory/index.html";
+  const host = createWebOverlayHost(overlays, "/game.bundle", documentRef as unknown as Document);
+  const frame = host.frames[0] as unknown as FakeElement;
+
+  frame.listeners.get("load")?.[0]?.();
+
+  assert.equal(frame.getAttribute("src"), "/game.bundle/overlay/inventory/index.html");
+  assert.equal(frame.style.pointerEvents, "auto");
+  assert.equal(frame.contentWindow.dispatchedEvents.includes("threenative:bridge-ready"), true);
+  const windowBridge = frame.contentWindow.threenativeOverlayBridge as {
+    send(type: string, payload: Record<string, unknown>): boolean;
+  };
+  assert.equal(windowBridge.send("inventory:use-item", { itemId: "potion" }), true);
+  assert.equal(windowBridge.send("inventory:use-item", { itemId: 3 }), false);
+  assert.deepEqual(host.bridge.events.map(({ overlayId, payload, type }) => ({ overlayId, payload, type })), [
+    { overlayId: "inventory", payload: { itemId: "potion" }, type: "inventory:use-item" },
+  ]);
+});
+
 function makeOverlays(input: "keyboard" | "modal" | "none" | "pointer" | "pointer-and-keyboard") {
   return {
     schema: "threenative.overlays" as const,
@@ -66,7 +88,7 @@ function makeOverlays(input: "keyboard" | "modal" | "none" | "pointer" | "pointe
         input,
         messages: {
           gameToOverlay: [{ name: "inventory:snapshot", schema: { fields: { gold: "integer" as const }, kind: "object" as const, required: ["gold"] } }],
-          overlayToGame: [],
+          overlayToGame: [{ name: "inventory:use-item", schema: { fields: { itemId: "string" as const }, kind: "object" as const, required: ["itemId"] } }],
         },
         targetProfiles: ["web" as const],
         transparent: true,
@@ -94,10 +116,17 @@ class FakeElement {
   readonly dataset: Record<string, string> = {};
   readonly listeners = new Map<string, Array<() => void>>();
   readonly style: Record<string, string> = {};
-  readonly contentWindow: Record<string, unknown> = {
-    dispatchEvent: () => true,
+  readonly contentWindow: Record<string, any> & { dispatchedEvents: string[] } = {
+    dispatchedEvents: [],
+    dispatchEvent: (event: { type?: string }) => {
+      if (event.type !== undefined) this.contentWindow.dispatchedEvents.push(event.type);
+      return true;
+    },
     document: {
-      createEvent: () => ({ initEvent: () => undefined }),
+      createEvent: () => ({
+        type: undefined as string | undefined,
+        initEvent(type: string) { this.type = type; },
+      }),
     },
   };
 

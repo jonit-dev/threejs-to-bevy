@@ -43,6 +43,25 @@ export interface GateDescriptorMigrationGap {
 
 const STATIC_GATE_DESCRIPTORS: readonly GateDescriptor[] = [
   {
+    artifact: { reportPath: "tools/verify/artifacts/overlay-scaffold/verification-report.json" },
+    command: {
+      commands: [
+        ["pnpm", "--filter", "@threenative/cli", "build"],
+        ["pnpm", "--filter", "@threenative/runtime-web-three", "build"],
+        ["pnpm", "--filter", "@threenative/verify-tools", "build"],
+        ["node", "tools/verify/dist/overlayScaffoldGate.js"],
+      ],
+    },
+    conflictPolicy: "none",
+    description: "Generated React webview overlay scaffold gate.",
+    focused: { profile: "release" },
+    name: "verify:overlay-scaffold",
+    owner: "tools/verify overlay scaffold gate",
+    protects: "Tailwind-default and vanilla generated overlay installation, local static output, preset isolation, and release evidence.",
+    reason: "Builds both descriptor-owned overlay presets from maintained clean starters so generated dependency and output drift fails before release.",
+    release: { enrolled: true, name: "verify overlay scaffold", timingCategory: "focused-gate" },
+  },
+  {
     artifact: { reportPath: "tools/verify/artifacts/emitted-commands/verification-report.json" },
     command: {
       commands: [
@@ -113,8 +132,11 @@ const STATIC_GATE_DESCRIPTORS: readonly GateDescriptor[] = [
     artifact: { reportPath: "tools/verify/artifacts/webview-package/verification-report.json" },
     command: {
       commands: [
+        ["pnpm", "--dir", "examples/chess", "run", "build:overlay"],
+        ["pnpm", "--filter", "@threenative/compiler", "build"],
         ["pnpm", "--filter", "@threenative/runtime-web-three", "build"],
         ["pnpm", "--filter", "@threenative/cli", "build"],
+        ["pnpm", "--dir", "examples/chess", "run", "build"],
         ["pnpm", "--filter", "@threenative/verify-tools", "build"],
         ["node", "tools/verify/dist/webviewPackageGate.js"],
       ],

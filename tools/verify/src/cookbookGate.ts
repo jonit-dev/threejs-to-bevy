@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { basename, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { CLI_COMMAND_DEFINITIONS } from "@threenative/cli";
+import { OVERLAY_SCAFFOLD_REGISTRY, overlayBuildScript } from "@threenative/cli/overlay-scaffold";
 import { PRESCRIPTIVE_DIAGNOSTIC_CODES } from "@threenative/authoring";
 
 export interface ICookbookGateCommandResult {
@@ -89,6 +90,11 @@ async function verifyEntry(options: { entry: IParsedCookbookEntry; root: string;
       recursive: true,
       filter: (source) => !source.includes("/node_modules/") && !source.includes("/dist/") && !source.includes("/artifacts/"),
     });
+    if (options.entry.scriptPath !== undefined && options.entry.script.trim() !== "") {
+      const outPath = resolve(projectPath, options.entry.scriptPath);
+      await mkdir(resolve(outPath, ".."), { recursive: true });
+      await writeFile(outPath, `${options.entry.script.trim()}\n`, "utf8");
+    }
     for (const command of options.entry.commands) {
       const result = runTnCommand(command, options.root, projectPath);
       commands.push(result);
@@ -101,10 +107,42 @@ async function verifyEntry(options: { entry: IParsedCookbookEntry; root: string;
         return { commands, diagnostics, entryId: options.entry.id, ok: false };
       }
     }
-    if (options.entry.scriptPath !== undefined && options.entry.script.trim() !== "") {
-      const outPath = resolve(projectPath, options.entry.scriptPath);
-      await mkdir(resolve(outPath, ".."), { recursive: true });
-      await writeFile(outPath, `${options.entry.script.trim()}\n`, "utf8");
+    const overlayIds = await readDeclaredOverlayIds(projectPath);
+    if (overlayIds.length > 0) {
+      await makeWorkspaceDependenciesInstallable(projectPath, options.root);
+      const install = runProjectCommand("pnpm install --ignore-scripts --no-frozen-lockfile", projectPath);
+      commands.push(install);
+      if (install.exitCode !== 0) {
+        diagnostics.push({
+          code: "TN_COOKBOOK_GATE_OVERLAY_INSTALL_FAILED",
+          message: `Entry '${options.entry.id}' failed to install its scaffolded overlay dependencies.`,
+          severity: "error",
+        });
+        return { commands, diagnostics, entryId: options.entry.id, ok: false };
+      }
+      const packageJson = JSON.parse(await readFile(resolve(projectPath, "package.json"), "utf8")) as { scripts?: Record<string, unknown> };
+      for (const overlayId of overlayIds) {
+        const scriptNames = [...new Set(OVERLAY_SCAFFOLD_REGISTRY.map((descriptor) => overlayBuildScript(descriptor, overlayId, descriptor.sourceDirectory).name))];
+        const scriptName = scriptNames.find((candidate) => typeof packageJson.scripts?.[candidate] === "string");
+        if (scriptName === undefined) {
+          diagnostics.push({
+            code: "TN_COOKBOOK_GATE_OVERLAY_BUILD_SCRIPT_MISSING",
+            message: `Entry '${options.entry.id}' declares overlay '${overlayId}' without a descriptor-derived build script (${scriptNames.join(", ")}).`,
+            severity: "error",
+          });
+          return { commands, diagnostics, entryId: options.entry.id, ok: false };
+        }
+        const build = runProjectCommand(`pnpm run ${scriptName}`, projectPath);
+        commands.push(build);
+        if (build.exitCode !== 0) {
+          diagnostics.push({
+            code: "TN_COOKBOOK_GATE_OVERLAY_BUILD_FAILED",
+            message: `Entry '${options.entry.id}' failed generated overlay build script '${scriptName}'.`,
+            severity: "error",
+          });
+          return { commands, diagnostics, entryId: options.entry.id, ok: false };
+        }
+      }
     }
     if (options.entry.authoring === "typed-spec") {
       const result = runTnCommand("tn authoring compile-typed-spec --project . --json", options.root, projectPath);
@@ -134,6 +172,64 @@ async function verifyEntry(options: { entry: IParsedCookbookEntry; root: string;
   } finally {
     await rm(projectPath, { force: true, recursive: true });
   }
+}
+
+async function readDeclaredOverlayIds(projectPath: string): Promise<string[]> {
+  const ids = new Set<string>();
+  async function visit(directory: string): Promise<void> {
+    for (const entry of await readdir(directory, { withFileTypes: true })) {
+      const path = resolve(directory, entry.name);
+      if (entry.isDirectory()) await visit(path);
+      else if (entry.isFile() && entry.name.endsWith(".overlays.json")) {
+        const document = JSON.parse(await readFile(path, "utf8")) as { overlays?: Array<{ id?: unknown }>; schema?: unknown };
+        if (document.schema !== "threenative.overlays" || !Array.isArray(document.overlays)) continue;
+        for (const overlay of document.overlays) if (typeof overlay.id === "string") ids.add(overlay.id);
+      }
+    }
+  }
+  await visit(resolve(projectPath, "content"));
+  return [...ids].sort();
+}
+
+async function makeWorkspaceDependenciesInstallable(projectPath: string, root: string): Promise<void> {
+  const packagePath = resolve(projectPath, "package.json");
+  const packageJson = JSON.parse(await readFile(packagePath, "utf8")) as Record<string, unknown>;
+  const workspacePackages = new Map<string, string>();
+  for (const parent of ["packages", "tools"]) {
+    const parentPath = resolve(root, parent);
+    for (const entry of await readdir(parentPath, { withFileTypes: true })) {
+      if (!entry.isDirectory()) continue;
+      try {
+        const manifest = JSON.parse(await readFile(resolve(parentPath, entry.name, "package.json"), "utf8")) as { name?: unknown };
+        if (typeof manifest.name === "string") workspacePackages.set(manifest.name, resolve(parentPath, entry.name));
+      } catch { /* not a package directory */ }
+    }
+  }
+  for (const field of ["dependencies", "devDependencies", "optionalDependencies"] as const) {
+    const dependencies = packageJson[field];
+    if (typeof dependencies !== "object" || dependencies === null || Array.isArray(dependencies)) continue;
+    for (const [name, version] of Object.entries(dependencies)) {
+      // Cookbook commands run the already-built repository CLI directly. The
+      // generated project's private workspace package links are unnecessary
+      // for compiling its overlay and are not installable outside the repo
+      // workspace, so keep the install isolated to project-local web deps.
+      if (name.startsWith("@threenative/") && typeof version === "string" && (version.startsWith("workspace:") || version.startsWith("file:"))) {
+        delete (dependencies as Record<string, unknown>)[name];
+        continue;
+      }
+      if (typeof version !== "string" || !version.startsWith("workspace:")) continue;
+      const localPath = workspacePackages.get(name);
+      if (localPath !== undefined) (dependencies as Record<string, unknown>)[name] = `file:${localPath}`;
+    }
+  }
+  await writeFile(packagePath, `${JSON.stringify(packageJson, null, 2)}\n`, "utf8");
+}
+
+function runProjectCommand(command: string, cwd: string): ICookbookGateCommandResult {
+  const args = splitCommand(command);
+  const executable = args.shift()!;
+  const result = spawnSync(executable, args, { cwd, encoding: "utf8", env: { ...process.env, INIT_CWD: cwd }, maxBuffer: 1024 * 1024 * 10 });
+  return { command, exitCode: result.status ?? 1, stderr: result.stderr, stdout: result.stdout };
 }
 
 function runTnCommand(command: string, root: string, cwd: string): ICookbookGateCommandResult {

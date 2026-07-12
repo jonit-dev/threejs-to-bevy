@@ -2010,8 +2010,8 @@
     },
     {
       "id": "prefab.marker.legal",
-      "primitive": "box",
-      "color": "#d8a33a"
+      "primitive": "cylinder",
+      "color": "#e0b85b"
     },
     {
       "id": "prefab.marker.hover",
@@ -2030,13 +2030,13 @@
     },
     {
       "id": "prefab.marker.last",
-      "primitive": "box",
-      "color": "#a86f2a"
+      "primitive": "cylinder",
+      "color": "#8f672f"
     },
     {
       "id": "prefab.marker.check",
-      "primitive": "box",
-      "color": "#e14d5b"
+      "primitive": "cylinder",
+      "color": "#c9484f"
     },
     {
       "id": "prefab.marker.arc",
@@ -2528,22 +2528,47 @@
         }
       },
       {
+        "id": "status-plate",
+        "type": "column",
+        "layout": {
+          "height": 38,
+          "inset": {
+            "left": 340,
+            "right": 340,
+            "top": 18
+          },
+          "position": "absolute"
+        },
+        "style": {
+          "backgroundColor": "#090b0dcc",
+          "borderColor": "#c69a504d",
+          "borderRadius": 19,
+          "borderWidth": 1,
+          "shadow": {
+            "blur": 18,
+            "color": "#09060499",
+            "offsetY": 6,
+            "spread": 0
+          }
+        }
+      },
+      {
         "id": "status",
         "type": "text",
         "text": "Your move",
         "layout": {
           "align": "center",
           "inset": {
-            "left": 300,
-            "right": 300,
-            "top": 24
+            "left": 360,
+            "right": 360,
+            "top": 29
           },
           "justify": "center",
           "position": "absolute"
         },
         "style": {
           "color": "#f0d38f",
-          "fontSize": 14,
+          "fontSize": 13,
           "fontWeight": "bold",
           "textAlign": "center"
         }
@@ -2584,47 +2609,26 @@
         }
       },
       {
-        "id": "hint",
-        "type": "button",
-        "action": "hint",
-        "label": "HINT",
-        "layout": {
-          "bottom": 76,
-          "height": 44,
-          "position": "absolute",
-          "right": 24,
-          "width": 158
-        },
-        "style": {
-          "backgroundColor": "#191a18e8",
-          "borderColor": "#c69a5066",
-          "borderRadius": 6,
-          "borderWidth": 1,
-          "color": "#eee5d8",
-          "fontSize": 13,
-          "fontWeight": "bold",
-          "textAlign": "center"
-        }
-      },
-      {
         "id": "new-game",
         "type": "button",
         "action": "restart",
         "label": "NEW GAME",
         "layout": {
-          "bottom": 128,
-          "height": 44,
+          "align": "center",
+          "bottom": 84,
+          "height": 52,
+          "justify": "center",
           "position": "absolute",
           "right": 24,
           "width": 158
         },
         "style": {
-          "backgroundColor": "#191a18e8",
-          "borderColor": "#c69a5066",
-          "borderRadius": 6,
+          "backgroundColor": "#171816f2",
+          "borderColor": "#cda45b70",
+          "borderRadius": 8,
           "borderWidth": 1,
-          "color": "#eee5d8",
-          "fontSize": 13,
+          "color": "#f0e9dc",
+          "fontSize": 14,
           "fontWeight": "bold",
           "textAlign": "center"
         }

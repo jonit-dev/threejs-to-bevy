@@ -21,6 +21,7 @@ import { helpCommand } from "./commands/help.js";
 import { iterateCommand } from "./commands/iterate.js";
 import { lookCommand } from "./commands/look.js";
 import { modelTestCommand } from "./commands/modelTest.js";
+import { overlayCommand } from "./commands/overlayAdd.js";
 import { packageCommand } from "./commands/package.js";
 import { parityPlaytestCommand } from "./commands/parityPlaytest.js";
 import { performanceProofCommand } from "./commands/performanceProof.js";
@@ -38,6 +39,7 @@ import { typesCommand } from "./commands/types.js";
 import { worldCommand } from "./commands/world.js";
 import { type ICommandResult } from "./diagnostics.js";
 import { defineCommandRegistry, findCommand, renderCommandHelp, unmigratedCommandNames, type ICommandDefinition } from "./commands/registry.js";
+import { formatOverlayAddUsage } from "./overlays/scaffoldRegistry.js";
 
 export const CLI_COMMAND_REGISTRY = defineCommandRegistry({
   add: {
@@ -118,6 +120,13 @@ export const CLI_COMMAND_REGISTRY = defineCommandRegistry({
     description: "List and apply curated portable look profiles to structured source projects.",
     implemented: true,
     usage: "tn look list [--json]\n              tn look apply <arcade-neon|forest-dawn|sunset-racer|toybox-pop|noir-metal> [--project <path>] [--json]",
+  },
+  overlay: {
+    description: "Scaffold an optional React webview overlay.",
+    handler: overlayCommand,
+    implemented: true,
+    subcommands: ["add"],
+    usage: formatOverlayAddUsage(),
   },
   help: {
     description: "Show task-oriented help for scaffold, assets, camera, transform, visual QA, screenshot, and record workflows.",

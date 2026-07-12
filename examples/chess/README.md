@@ -24,3 +24,15 @@ node bin/tn playtest --project . --scenario playtests/chess-opening.playtest.jso
 Durable board source is generated deterministically by
 `scripts/generate-board.mjs`; gameplay lives in `src/scripts/chess.ts`.
 Generated `dist/**` and `artifacts/**` are not source.
+
+The optional `chess-side-select` React webview overlay follows the maintained
+Tailwind-default scaffold convention. Its editable source lives under
+`overlay/chess-side-select/`; Tailwind is compiled at build time and is not a
+runtime dependency. Build it independently with:
+
+```bash
+pnpm run build:overlay:chess-side-select
+```
+
+The generated `overlay/chess-side-select/dist/**` output is bundle input and
+must not be edited directly.

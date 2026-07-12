@@ -759,6 +759,103 @@ test("rejects undeclared overlay assets", async () => {
   }
 });
 
+test("should copy compiled Vite overlay assets from structured source", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-emit-vite-overlay-"));
+  try {
+    await mkdir(join(root, "overlay/inventory/assets"), { recursive: true });
+    await writeFile(join(root, "overlay/inventory/index.html"), '<link rel="stylesheet" href="./assets/index-a1.css"><script type="module" src="./assets/index-b2.js"></script>');
+    await writeFile(join(root, "overlay/inventory/assets/index-a1.css"), ".inventory{display:grid}");
+    await writeFile(join(root, "overlay/inventory/assets/index-b2.js"), "document.querySelector('.inventory');");
+    const config = {
+      entry: "src/game.ts",
+      outDir: "dist/game.bundle",
+      projectPath: root,
+      schema: "threenative.project" as const,
+      version: "0.1.0" as const,
+    };
+
+    const bundlePath = await emitBundle(config, makeScene(), {
+      authoringDocuments: [structuredOverlayDocument(root, "overlay/inventory/index.html")],
+    });
+
+    assert.match(await readFile(join(bundlePath, "overlay/inventory/assets/index-a1.css"), "utf8"), /display:grid/);
+    assert.match(await readFile(join(bundlePath, "overlay/inventory/assets/index-b2.js"), "utf8"), /querySelector/);
+    assert.equal((await validateBundle(bundlePath)).ok, true);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should reject stale compiled overlay output from structured source", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-emit-stale-overlay-"));
+  try {
+    await mkdir(join(root, "overlay/inventory/dist/assets"), { recursive: true });
+    await mkdir(join(root, "overlay/inventory/src"), { recursive: true });
+    await writeFile(join(root, "overlay/inventory/dist/index.html"), '<script type="module" src="./assets/index.js"></script>');
+    await writeFile(join(root, "overlay/inventory/dist/assets/index.js"), "document.body.dataset.ready = 'true';");
+    await new Promise((resolvePromise) => setTimeout(resolvePromise, 20));
+    await writeFile(join(root, "overlay/inventory/src/App.tsx"), "export function App() { return null; }\n");
+
+    await assert.rejects(
+      () => emitBundle(
+        {
+          entry: "src/game.ts",
+          outDir: "dist/game.bundle",
+          projectPath: root,
+          schema: "threenative.project" as const,
+          version: "0.1.0" as const,
+        },
+        makeScene(),
+        { authoringDocuments: [structuredOverlayDocument(root, "overlay/inventory/dist/index.html")] },
+      ),
+      /TN_OVERLAY_BUILD_ENTRY_STALE/,
+    );
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should report a stable diagnostic when structured overlay output is missing", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-emit-missing-built-overlay-"));
+  try {
+    await assert.rejects(
+      () => emitBundle({
+        entry: "src/game.ts",
+        outDir: "dist/game.bundle",
+        projectPath: root,
+        schema: "threenative.project" as const,
+        version: "0.1.0" as const,
+      }, makeScene(), {
+        authoringDocuments: [structuredOverlayDocument(root, "overlay/inventory/index.html")],
+      }),
+      /TN_OVERLAY_BUILD_ENTRY_MISSING.*overlay build command/,
+    );
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+function structuredOverlayDocument(root: string, entry: string) {
+  return {
+    data: {
+      schema: "threenative.overlays",
+      version: "0.1.0",
+      overlays: [{
+        entry,
+        id: "inventory",
+        input: "pointer-and-keyboard",
+        messages: {},
+        targetProfiles: ["web"],
+        transparent: true,
+        zIndex: 30,
+      }],
+    },
+    file: join(root, "content", "overlays.json"),
+    kind: "overlay" as const,
+    projectRelativePath: "content/overlays.json",
+  };
+}
+
 test("should derive manifest capabilities from emitted bundle IR", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-emit-capabilities-"));
   try {

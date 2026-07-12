@@ -4,7 +4,8 @@
   "type": "module",
   "scripts": {
     "tn": "node bin/tn",
-    "build:overlay": "vite build --config overlay/vite.config.ts",
+    "build:overlay": "pnpm run build:overlay:chess-side-select",
+    "build:overlay:chess-side-select": "vite build overlay/chess-side-select --config overlay/chess-side-select/vite.config.ts",
     "build": "pnpm run build:overlay && tn build",
     "assets:convert": "node scripts/convert-chess-models.mjs",
     "dev:web": "pnpm run build:overlay && tn dev --target web",
@@ -37,6 +38,8 @@
     "assimpjs": "^0.0.10",
     "tsx": "^4.23.0",
     "typescript": "^5.9.3",
-    "vite": "^8.1.4"
+    "@tailwindcss/vite": "^4.1.14",
+    "tailwindcss": "^4.1.14",
+    "vite": "^7.3.5"
   }
 }

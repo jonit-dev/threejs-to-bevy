@@ -51,6 +51,15 @@ React overlay -> overlays.ir.json + bundle-local web assets -> optional webview/
 Rules:
 
 - Retained `ui.ir.json` remains the default portable game UI contract.
+- Use retained UI for gameplay-critical HUDs, controls, dialogue, and menus
+  that must render through both the web and Bevy adapters. Use a webview
+  overlay only for an explicitly optional rich web surface whose target
+  profiles can require a browser host.
+- `tn overlay add <name>` scaffolds React, Vite, and Tailwind CSS. Tailwind is
+  the default styling preset after this explicit opt-in; it is a project-local
+  build dependency, not an SDK, IR, bridge, or runtime dependency. Use
+  `tn overlay add <name> --style vanilla` for the same overlay contract with
+  plain CSS and no Tailwind packages or directives.
 - React/CSS overlays must be declared explicitly with `overlay.mount(...)`.
 - Overlay entries and assets must be bundle-local; absolute paths, parent
   traversal, remote URLs, and inline scripts are rejected.
@@ -64,6 +73,19 @@ Rules:
   `runtime-bevy`; the optional `native-webview` feature selects the maintained
   `wry` backend. Default builds that do not enable the desktop host fail fast
   with `TN_OVERLAY_TARGET_UNSUPPORTED` instead of silently ignoring overlays.
+
+Source ownership is deliberately split. Authors edit `overlay/<name>/index.html`,
+`overlay/<name>/src/**`, and the local Vite configuration. The overlay's
+`dist/**`, the game `dist/*.bundle/**`, and packaged-webview output are generated
+artifacts and must be rebuilt rather than edited. A production overlay build
+emits local HTML, JavaScript, CSS, and assets; Tailwind itself is not shipped as
+a runtime library and remote scripts, styles, fonts, and assets remain outside
+the bundle-local security contract.
+
+The maintained workflow is scaffold, install, build the generated overlay
+script, validate/build the game, preview or playtest, then package the compiled
+bundle. See [React webview overlay cookbook](../cookbook/react-webview-overlay.md)
+for the complete command sequence and the vanilla opt-out.
 
 ## UI Categories
 

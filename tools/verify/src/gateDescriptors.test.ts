@@ -16,6 +16,7 @@ import {
 test("gate descriptors should validate migrated proof gate metadata", () => {
   assert.deepEqual(validateGateDescriptors(), []);
   assert.deepEqual(GATE_DESCRIPTORS.map((descriptor) => descriptor.name), [
+    "verify:overlay-scaffold",
     "verify:emitted-commands",
     "verify:agent-io",
     "verify:session-cost",
@@ -23,7 +24,10 @@ test("gate descriptors should validate migrated proof gate metadata", () => {
     ...fixtureCatalogGateDescriptors().map((descriptor) => descriptor.name),
   ]);
   assert.equal(GATE_DESCRIPTORS.find((descriptor) => descriptor.name === "verify:emitted-commands")?.release.enrolled, false);
-  assert.equal(GATE_DESCRIPTORS.filter((descriptor) => descriptor.name !== "verify:emitted-commands").every((descriptor) => descriptor.release.enrolled), true);
+  assert.deepEqual(GATE_DESCRIPTORS.filter((descriptor) => !descriptor.release.enrolled).map((descriptor) => descriptor.name), [
+    "verify:emitted-commands",
+    "verify:portable-feedback",
+  ]);
 });
 
 test("fixture catalog should own the shadow cascade focused gate descriptor", () => {
@@ -42,7 +46,9 @@ test("gate descriptors should derive focused gates and release artifacts", () =>
 
   assert.equal(focused["verify:agent-io"]?.metadata.owner, "tools/verify agent IO budget gate");
   assert.equal(focused["verify:session-cost"]?.commands.at(-1)?.join(" "), "node tools/verify/dist/sessionCostGate.js");
+  assert.equal(focused["verify:overlay-scaffold"]?.commands.at(-1)?.join(" "), "node tools/verify/dist/overlayScaffoldGate.js");
   assert.deepEqual(release.map((gate) => [gate.script, gate.reportPath]), [
+    ["verify:overlay-scaffold", "tools/verify/artifacts/overlay-scaffold/verification-report.json"],
     ["verify:agent-io", "tools/verify/artifacts/agent-io/verification-report.json"],
     ["verify:session-cost", "tools/verify/artifacts/session-cost/verification-report.json"],
     ["verify:webview-package", "tools/verify/artifacts/webview-package/verification-report.json"],
