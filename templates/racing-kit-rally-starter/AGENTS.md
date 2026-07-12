@@ -1,6 +1,8 @@
 # AGENTS.md
 
-Rules for Racing Kit Rally starter projects.
+Rules for Racing Kit Rally starter projects. Shared workflow detail lives in
+the agent skills under `.claude/skills/` and `.codex/skills/` (identical
+copies); read the matching skill when that kind of work comes up.
 
 - Keep Kenney Racing Kit assets local to `assets/` and reference them from structured source.
 - Gameplay belongs in `src/scripts/racing.ts`; scene composition belongs in `content/**/*.json`.

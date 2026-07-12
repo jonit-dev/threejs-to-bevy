@@ -25,6 +25,8 @@ const publishedPackageVersion = "0.1.0";
 const generatedTemplateEntryNames = new Set(["dist", "node_modules", "artifacts"]);
 const agentGamePlanPath = "AGENT_GAME_PLAN.md";
 const sharedAgentGamePlanPath = `_shared/${agentGamePlanPath}`;
+const sharedAgentSkillsPath = "_shared/skills";
+const agentSkillDestinationRoots = [".claude/skills", ".codex/skills"] as const;
 
 export async function createProject(argv: readonly string[], options: ICreateOptions = {}): Promise<ICommandResult> {
   const commandName = options.commandName ?? "create";
@@ -124,6 +126,33 @@ export async function createProject(argv: readonly string[], options: ICreateOpt
   const templateSourcePath = resolveTemplateSourcePath(templatesRoot, definition);
   const templateOwnedPlanPath = resolve(templateSourcePath, agentGamePlanPath);
   const sharedPlanPath = resolve(templatesRoot, sharedAgentGamePlanPath);
+  const sharedSkillsPath = resolve(templatesRoot, sharedAgentSkillsPath);
+
+  for (const skillsRoot of agentSkillDestinationRoots) {
+    const templateOwnedSkillsPath = resolve(templateSourcePath, skillsRoot);
+    if (await pathExists(templateOwnedSkillsPath)) {
+      return diagnosticResult(
+        {
+          code: "TN_CREATE_AGENT_SKILLS_CONFLICT",
+          message: `Template '${definition.canonical}' owns ${skillsRoot}; shared agent skills cannot be scaffolded without an explicit registry override.`,
+          path: templateOwnedSkillsPath,
+          suggestedFix: `Move the template-owned skills to templates/${sharedAgentSkillsPath} or add a future registry override before scaffolding.`,
+        },
+        { exitCode: 1, json, stderr: true },
+      );
+    }
+  }
+  if (!(await pathExists(sharedSkillsPath))) {
+    return diagnosticResult(
+      {
+        code: "TN_CREATE_AGENT_SKILLS_MISSING",
+        message: `Shared agent skills are missing at '${sharedSkillsPath}'.`,
+        path: sharedSkillsPath,
+        suggestedFix: `Add templates/${sharedAgentSkillsPath} before creating agent-assisted game projects.`,
+      },
+      { exitCode: 1, json, stderr: true },
+    );
+  }
 
   if (await pathExists(templateOwnedPlanPath)) {
     return diagnosticResult(
@@ -151,6 +180,7 @@ export async function createProject(argv: readonly string[], options: ICreateOpt
   await mkdir(projectPath, { recursive: true });
   await copyTemplateFiles(templateSourcePath, projectPath);
   await copySharedPlanningInstructions(sharedPlanPath, projectPath);
+  await copySharedAgentSkills(sharedSkillsPath, projectPath);
   await rewriteProjectTemplateMetadata(projectPath, definition.canonical);
   await rewriteRuntimeRenderProfile(projectPath, renderProfile);
   if (authoringMode === "typed-spec") {
@@ -159,6 +189,9 @@ export async function createProject(argv: readonly string[], options: ICreateOpt
   if (archetype !== undefined) {
     await applyArchetypeScaffold(projectPath, archetype);
   }
+
+  const enclosingWorkspace = await findEnclosingPnpmWorkspace(projectPath);
+  const installCommand = enclosingWorkspace === undefined ? "pnpm install" : "pnpm install --ignore-workspace";
 
   if (sourceCheckout) {
     await rewriteLocalWorkspaceDependencies(projectPath);
@@ -171,9 +204,10 @@ export async function createProject(argv: readonly string[], options: ICreateOpt
     code: "TN_CREATE_OK",
     command: commandName,
     message: `Created ${definition.canonical} project at '${projectPath}'.`,
-    nextCommands: ["pnpm install", "pnpm run game:plan", "pnpm run validate", "pnpm run build", "pnpm run iterate", "pnpm run dev:web", "pnpm run verify"],
+    nextCommands: [installCommand, "pnpm run game:plan", "pnpm run validate", "pnpm run build", "pnpm run iterate", "pnpm run dev:web", "pnpm run verify"],
     path: projectPath,
     planningInstructions: agentGamePlanPath,
+    agentSkills: agentSkillDestinationRoots.map((skillsRoot) => `${skillsRoot}/threenative-workflow/SKILL.md`),
     referenceDocs: [
       agentGamePlanPath,
       "docs/workflows/developer-workflow.md",
@@ -184,6 +218,7 @@ export async function createProject(argv: readonly string[], options: ICreateOpt
     renderProfile,
     template: definition.canonical,
     authoring: authoringMode,
+    ...(enclosingWorkspace === undefined ? {} : { workspace: { installCommand, root: enclosingWorkspace } }),
     ...(archetype === undefined ? {} : {
       archetype: archetype.id,
       archetypeProbe: archetype.probe.path,
@@ -199,7 +234,7 @@ export async function createProject(argv: readonly string[], options: ICreateOpt
 
   return {
     exitCode: 0,
-    stdout: `${payload.message}\nPlanning: open ${agentGamePlanPath} and run pnpm run game:plan before mutating game source.\nNext commands:\n  cd ${projectPath}\n  pnpm install\n  pnpm run game:plan\n  pnpm run validate\n  pnpm run build\n  pnpm run iterate\n  pnpm run dev:web\n  pnpm run verify\nDocs: ${agentGamePlanPath}, tn help scaffold, tn help visual-qa\n`,
+    stdout: `${payload.message}\nPlanning: open ${agentGamePlanPath} and run pnpm run game:plan before mutating game source.\nNext commands:\n  cd ${projectPath}\n  ${installCommand}\n  pnpm run game:plan\n  pnpm run validate\n  pnpm run build\n  pnpm run iterate\n  pnpm run dev:web\n  pnpm run verify\nDocs: ${agentGamePlanPath}, tn help scaffold, tn help visual-qa\n`,
   };
 }
 
@@ -514,12 +549,35 @@ async function copySharedPlanningInstructions(sharedPlanPath: string, projectPat
   });
 }
 
+async function copySharedAgentSkills(sharedSkillsPath: string, projectPath: string): Promise<void> {
+  for (const skillsRoot of agentSkillDestinationRoots) {
+    await cp(sharedSkillsPath, resolve(projectPath, skillsRoot), {
+      force: false,
+      recursive: true,
+    });
+  }
+}
+
 async function pathExists(path: string): Promise<boolean> {
   try {
     await access(path);
     return true;
   } catch {
     return false;
+  }
+}
+
+async function findEnclosingPnpmWorkspace(projectPath: string): Promise<string | undefined> {
+  let current = resolve(projectPath);
+  while (true) {
+    if (await pathExists(resolve(current, "pnpm-workspace.yaml")) || await pathExists(resolve(current, "pnpm-workspace.yml"))) {
+      return current;
+    }
+    const parent = resolve(current, "..");
+    if (parent === current) {
+      return undefined;
+    }
+    current = parent;
   }
 }
 

@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 import { access, mkdir, mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 import test from "node:test";
 
 import { authoringCommand } from "./authoring.js";
@@ -24,12 +24,14 @@ test("should create starter template files", async () => {
     assert.equal(payload.nextCommands.includes("pnpm run game:plan"), true);
     assert.equal(payload.referenceDocs.includes("AGENT_GAME_PLAN.md"), true);
     assert.equal(payload.referenceDocs.includes("tn help scaffold"), true);
+    assert.deepEqual((payload as { agentSkills?: string[] }).agentSkills, [".claude/skills/threenative-workflow/SKILL.md", ".codex/skills/threenative-workflow/SKILL.md"]);
 
     const files = await readdir(payload.path);
     assert.equal(files.includes(".gitignore"), true);
     assert.equal(files.includes("AGENTS.md"), true);
     assert.equal(files.includes("AGENT_GAME_PLAN.md"), true);
     assert.equal(files.includes("CLAUDE.md"), true);
+    assert.equal(files.includes(".claude"), true);
     assert.equal(files.includes(".codex"), true);
     assert.equal(files.includes("bin"), true);
     assert.equal(files.includes("README.md"), true);
@@ -41,7 +43,12 @@ test("should create starter template files", async () => {
     await access(join(payload.path, "assets", "goal-ping.wav"));
     await access(join(payload.path, ".threenative", "cli", "index.js"));
     await access(join(payload.path, "bin", "tn"));
-    await access(join(payload.path, ".codex", "skills", "threenative-workflow", "SKILL.md"));
+    const agentSkillNames = ["threenative-workflow", "threenative-authoring", "threenative-game-quality", "threenative-verify"];
+    for (const skillName of agentSkillNames) {
+      const claudeSkillBody = await readFile(join(payload.path, ".claude", "skills", skillName, "SKILL.md"), "utf8");
+      const codexSkillBody = await readFile(join(payload.path, ".codex", "skills", skillName, "SKILL.md"), "utf8");
+      assert.equal(claudeSkillBody, codexSkillBody);
+    }
     await assert.rejects(access(join(payload.path, "dist")));
 
     const config = JSON.parse(await readFile(join(payload.path, "threenative.config.json"), "utf8")) as {
@@ -218,6 +225,37 @@ test("should initialize starter project through init alias with create payload s
     assert.match(planningInstructions, /tn asset source get <asset-source-id> --json/);
   } finally {
     await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should emit workspace-safe install commands and typecheck a starter with a local helper import", async () => {
+  const workspaceRoot = await mkdtemp(join(process.cwd(), ".tn-create-workspace-"));
+  try {
+    const result = await createProject([join(workspaceRoot, "my-game"), "--json"], { cwd: workspaceRoot });
+    const payload = JSON.parse(result.stdout) as { code: string; nextCommands: string[]; path: string; workspace?: { installCommand: string; root: string } };
+
+    assert.equal(result.exitCode, 0, `${result.stdout}\n${result.stderr}`);
+    assert.equal(payload.code, "TN_CREATE_OK");
+    assert.equal(payload.nextCommands[0], "pnpm install --ignore-workspace");
+    assert.deepEqual(payload.workspace, {
+      installCommand: "pnpm install --ignore-workspace",
+      root: resolve(process.cwd(), "../.."),
+    });
+    assert.match(await readFile(join(payload.path, "src", "scripts", "player.ts"), "utf8"), /from "\.\/lib\/movement"/u);
+    await access(join(payload.path, "src", "scripts", "lib", "movement.ts"));
+
+    const install = spawnSync("pnpm", ["install", "--ignore-workspace"], {
+      cwd: payload.path,
+      encoding: "utf8",
+    });
+    assert.equal(install.status, 0, `${install.stdout}\n${install.stderr}`);
+    const typecheck = spawnSync("pnpm", ["run", "typecheck"], {
+      cwd: process.cwd(),
+      encoding: "utf8",
+    });
+    assert.equal(typecheck.status, 0, `${typecheck.stdout}\n${typecheck.stderr}`);
+  } finally {
+    await rm(workspaceRoot, { force: true, recursive: true });
   }
 });
 
@@ -433,6 +471,7 @@ test("should create racing kit rally starter with reusable race scene structure"
     await access(join(payload.path, "assets", "raceCarRed.glb"));
     await access(join(payload.path, "bin", "tn"));
     await access(join(payload.path, ".codex", "skills", "threenative-workflow", "SKILL.md"));
+    await access(join(payload.path, ".claude", "skills", "threenative-workflow", "SKILL.md"));
     await access(join(payload.path, "playtests", "smoke-movement.playtest.json"));
     await access(join(payload.path, "playtests", "camera-follow.playtest.json"));
     await access(join(payload.path, "playtests", "hud-resource.playtest.json"));
