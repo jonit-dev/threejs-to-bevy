@@ -33,9 +33,8 @@
       "from": "playing",
       "to": "won",
       "trigger": {
-        "kind": "resourceEquals",
-        "resource": "Match.outcome",
-        "target": "won"
+        "event": "match.win",
+        "kind": "event"
       }
     },
     {

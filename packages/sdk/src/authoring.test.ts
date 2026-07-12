@@ -61,6 +61,14 @@ test("authoring entity and resource modules should lower to world declarations",
   assert.deepEqual(world.resources.Progress, { checkpoint: "start" });
 });
 
+test("authoring world modules should preserve entity tags for selector lowering", () => {
+  const world = defineWorldModule({
+    entities: [{ components: [], id: "orb.01", tags: ["orb"] }],
+  }).toJSON();
+
+  assert.deepEqual(world.entities[0]?.tags, ["orb"]);
+});
+
 test("authoring prefab modules should apply deterministic component overrides", () => {
   const Health = defineComponent("Health", { current: "number" });
   const Team = defineComponent("Team", { id: "string" });

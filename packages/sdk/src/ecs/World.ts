@@ -26,6 +26,11 @@ export type IWorldCommandDeclaration =
   | {
       entity: string;
       kind: "despawn";
+      tag?: string;
+    }
+  | {
+      kind: "despawn";
+      tag: string;
     }
   | {
       kind: "instantiate";
@@ -368,7 +373,9 @@ function serializeCommand(command: CommandDeclaration): IWorldCommandDeclaration
     return { event: command.event, kind: command.kind };
   }
   if (command.kind === "despawn") {
-    return { entity: command.entity, kind: command.kind };
+    return "entity" in command
+      ? { entity: command.entity, kind: command.kind, ...(command.tag === undefined ? {} : { tag: command.tag }) }
+      : { kind: command.kind, tag: command.tag };
   }
   if (command.kind === "instantiate") {
     return { kind: command.kind, prefab: command.prefab, prefix: command.prefix };

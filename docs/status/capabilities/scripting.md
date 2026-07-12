@@ -32,6 +32,13 @@ Current support:
   derived into deterministic `resourceReads`/`resourceWrites` during script
   source resolution; dynamic resource IDs fail with
   `TN_SCRIPT_DYNAMIC_RESOURCE_ID_UNSUPPORTED`.
+- Literal `context.events.emit(...)` calls likewise derive deterministic
+  `eventWrites` and payload field kinds, including shorthand fields resolved
+  from local resource defaults; dynamic event IDs fail closed with an
+  actionable diagnostic.
+- Declarative despawn commands may target an authored entity pattern or tag;
+  the compiler expands selectors against the authored world and rejects empty
+  matches before a runtime bundle is emitted.
 - Web and native runtime system hosts report declared resource load/read/write
   observations so failing playtests can distinguish missing propagation from
   ordinary movement/input assertion failures.

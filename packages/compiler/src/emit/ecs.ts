@@ -21,9 +21,15 @@ interface IEcsWorldLike {
   };
 }
 
-interface IEcsSystemSnapshot {
+type EcsCommand = IrSystemCommand | { kind: "despawn"; tag: string };
+type ExpandedEcsSystemSnapshot = Omit<IEcsSystemSnapshot, "commands" | "delayedCommands"> & {
   commands: IrSystemCommand[];
   delayedCommands?: ISystemsIr["systems"][number]["delayedCommands"];
+};
+
+interface IEcsSystemSnapshot {
+  commands: EcsCommand[];
+  delayedCommands?: Array<Omit<NonNullable<ISystemsIr["systems"][number]["delayedCommands"]>[number], "command"> & { command: EcsCommand }>;
   eventReads: string[];
   eventWrites: string[];
   name: string;
@@ -60,7 +66,8 @@ export interface IEcsEmitOptions {
 export function ecsToIr(world: IEcsWorldLike, options: IEcsEmitOptions = {}): IEcsEmitResult {
   const snapshot = world.toJSON();
   const resolvedScripts = resolveSystemScriptSources(snapshot.systems, options.projectPath);
-  const scriptBundle = bundleSystemScripts(resolvedScripts.systems);
+  const expandedSystems = expandSystemSelectors(resolvedScripts.systems, snapshot.entities);
+  const scriptBundle = bundleSystemScripts(expandedSystems);
   const scriptDiagnostics = [...resolvedScripts.diagnostics, ...scriptBundle.diagnostics];
   const scriptError = scriptDiagnostics.find((diagnostic) => diagnostic.severity === "error");
   if (scriptError !== undefined) {
@@ -70,9 +77,10 @@ export function ecsToIr(world: IEcsWorldLike, options: IEcsEmitOptions = {}): IE
       scriptError,
     );
   }
+  const eventSchemas = mergeSchemaRecords(snapshot.eventSchemas, resolvedScripts.eventSchemas);
   return {
     componentSchemas: schemaFile("threenative.component-schemas", snapshot.componentSchemas),
-    eventSchemas: schemaFile("threenative.event-schemas", snapshot.eventSchemas),
+    eventSchemas: schemaFile("threenative.event-schemas", eventSchemas),
     input:
       snapshot.input === undefined
         ? undefined
@@ -95,7 +103,7 @@ export function ecsToIr(world: IEcsWorldLike, options: IEcsEmitOptions = {}): IE
           },
     scriptBundle: scriptBundle.code,
     scriptManifest: scriptBundle.manifest,
-    systems: systemsToIr(resolvedScripts.systems, snapshot.countdowns, snapshot.feedbackPresets),
+    systems: systemsToIr(expandedSystems, snapshot.countdowns, snapshot.feedbackPresets),
     world: {
       schema: "threenative.world",
       version: "0.1.0",
@@ -105,10 +113,82 @@ export function ecsToIr(world: IEcsWorldLike, options: IEcsEmitOptions = {}): IE
         ...(entity.tags === undefined ? {} : { tags: [...entity.tags] }),
       })),
       resources: snapshot.resources,
-      events: Object.fromEntries(Object.keys(snapshot.eventSchemas).sort().map((name) => [name, {}])),
+      events: Object.fromEntries(Object.keys(eventSchemas).sort().map((name) => [name, {}])),
       prefabs: [],
     },
   };
+}
+
+function expandSystemSelectors(
+  systems: ReadonlyArray<IEcsSystemSnapshot>,
+  entities: ReadonlyArray<{ components: Record<string, Record<string, unknown>>; id: string; tags?: string[] }>,
+): ExpandedEcsSystemSnapshot[] {
+  return systems.map((system) => {
+    const { commands: authoredCommands, delayedCommands: authoredDelayedCommands, ...systemWithoutCommands } = system;
+    return {
+      ...systemWithoutCommands,
+      commands: authoredCommands.flatMap((command, commandIndex) => expandCommandSelector(command, system.name, `commands/${commandIndex}`, entities)),
+      ...(authoredDelayedCommands === undefined ? {} : {
+        delayedCommands: authoredDelayedCommands.flatMap((declaration, declarationIndex): NonNullable<ISystemsIr["systems"][number]["delayedCommands"]>[number][] => {
+        const expanded = expandCommandSelector(declaration.command, system.name, `delayedCommands/${declarationIndex}/command`, entities);
+        return expanded.map((command, commandIndex) => ({
+          cancelPolicy: declaration.cancelPolicy,
+          command,
+          id: expanded.length <= 1 ? declaration.id : `${declaration.id}.${commandIndex + 1}`,
+          maxDelayTicks: declaration.maxDelayTicks,
+          ownership: declaration.ownership,
+        }));
+      }),
+      }),
+    };
+  });
+}
+
+function expandCommandSelector(
+  command: EcsCommand,
+  systemName: string,
+  path: string,
+  entities: ReadonlyArray<{ components: Record<string, Record<string, unknown>>; id: string; tags?: string[] }>,
+): IrSystemCommand[] {
+  if (command.kind !== "despawn") {
+    return [command as IrSystemCommand];
+  }
+  const selector = command as { entity?: string; tag?: string };
+  if (selector.entity === undefined && selector.tag === undefined) {
+    throw selectorError(systemName, path, "A despawn selector must provide an entity pattern or tag.");
+  }
+  const matches = entities
+    .filter((entity) => {
+      const entityMatches = selector.entity === undefined || wildcardMatch(entity.id, selector.entity);
+      const tagMatches = selector.tag === undefined || (entity.tags ?? []).includes(selector.tag) || Object.prototype.hasOwnProperty.call(entity.components, selector.tag);
+      return entityMatches && tagMatches;
+    })
+    .map((entity) => entity.id)
+    .sort();
+  if (matches.length === 0) {
+    throw selectorError(systemName, path, `Despawn selector '${selector.tag === undefined ? selector.entity : `tag:${selector.tag}`}' did not match an authored entity.`);
+  }
+  return matches.map((entity) => ({ entity, kind: "despawn" }));
+}
+
+function wildcardMatch(value: string, pattern: string): boolean {
+  const expression = pattern.split("*").map(escapeRegExp).join(".*");
+  return new RegExp(`^${expression}$`, "u").test(value);
+}
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\[\]\\]/gu, "\\$&");
+}
+
+function selectorError(systemName: string, path: string, message: string): CompilerError {
+  const diagnostic = {
+    code: "TN_IR_SYSTEM_COMMAND_SELECTOR_INVALID",
+    message: `System '${systemName}' command selector is invalid. ${message}`,
+    path: `systems/${systemName}/${path}`,
+    severity: "error" as const,
+    suggestion: "Use an authored entity id or wildcard pattern, or a tag declared with tn scene add-tag.",
+  };
+  return new CompilerError(diagnostic.code, diagnostic.message, diagnostic);
 }
 
 function schemaFile(schema: IIrSchemaFile["schema"], schemas: Record<string, { fields: Record<string, unknown> }>): IIrSchemaFile {

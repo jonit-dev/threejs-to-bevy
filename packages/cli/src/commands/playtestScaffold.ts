@@ -1,5 +1,6 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import { dirname, join, relative, resolve } from "node:path";
+import { loadAuthoringProject } from "@threenative/authoring";
 
 import { diagnosticResult, type ICommandResult } from "../diagnostics.js";
 import type { IPlaytestScenario } from "./playtestScenario.js";
@@ -11,7 +12,7 @@ interface IPlaytestScaffoldTemplate {
   description: string;
   filename: string;
   mechanic: PlaytestScaffoldMechanic;
-  scenario(options: { hudId: string; resourceId: string; subject: string }): IPlaytestScenario;
+  scenario(options: { contactWith: string; hudId: string; resourceId: string; subject: string }): IPlaytestScenario;
 }
 
 const SCAFFOLD_TEMPLATES: readonly IPlaytestScaffoldTemplate[] = [
@@ -41,9 +42,9 @@ const SCAFFOLD_TEMPLATES: readonly IPlaytestScaffoldTemplate[] = [
     description: "Pickup objective proof with movement, contact, resource, HUD, and diagnostics assertions.",
     filename: "proof-pickup.playtest.json",
     mechanic: "pickup",
-    scenario: ({ hudId, resourceId, subject }) => ({
+    scenario: ({ contactWith, hudId, resourceId, subject }) => ({
       assert: {
-        contacts: [{ entity: subject, kind: "trigger", minCount: 1, with: "pickup" }],
+        contacts: [{ entity: subject, kind: "trigger", minCount: 1, with: contactWith }],
         diagnostics: { noConsoleErrors: true, noNetworkErrors: true, runtimeReady: true },
         hud: [{ id: hudId, textIncludes: "Score" }],
         movement: { entity: subject, minDistance: 0.5, minVelocity: 0.01 },
@@ -138,10 +139,12 @@ export async function playtestScaffoldCommand(
     );
   }
 
+  const discovered = await discoverScaffoldIds(projectPath, template.mechanic);
   const scenario = buildPlaytestScaffoldScenario(template.mechanic, {
-    hudId: readFlag(normalizedArgv, "--hud") ?? "score-label",
-    resourceId: readFlag(normalizedArgv, "--resource") ?? "GameState",
-    subject: readFlag(normalizedArgv, "--subject") ?? readFlag(normalizedArgv, "--entity") ?? "player",
+    contactWith: readFlag(normalizedArgv, "--contact-with") ?? discovered.contactWith,
+    hudId: readFlag(normalizedArgv, "--hud") ?? discovered.hudId,
+    resourceId: readFlag(normalizedArgv, "--resource") ?? discovered.resourceId,
+    subject: readFlag(normalizedArgv, "--subject") ?? readFlag(normalizedArgv, "--entity") ?? discovered.subject,
   });
   const scenarioPath = readFlag(normalizedArgv, "--out") ?? join("playtests", template.filename);
   const absolutePath = resolve(projectPath, scenarioPath);
@@ -165,22 +168,73 @@ export async function playtestScaffoldCommand(
   };
 }
 
+async function discoverScaffoldIds(projectPath: string, mechanic: PlaytestScaffoldMechanic): Promise<{ contactWith: string; hudId: string; resourceId: string; subject: string }> {
+  try {
+    const project = await loadAuthoringProject({ projectPath });
+    const scene = project.documents.find((document) => document.kind === "scene");
+    const sceneData = isRecord(scene?.data) ? scene.data : {};
+    const entities = Array.isArray(sceneData.entities) ? sceneData.entities.filter(isRecord) : [];
+    const instances = Array.isArray(sceneData.instances) ? sceneData.instances.filter(isRecord) : [];
+    const entityCandidates = [...entities, ...instances];
+    const resources = Array.isArray(sceneData.resources) ? sceneData.resources.filter(isRecord) : [];
+    const uiDocument = project.documents.find((document) => document.kind === "ui");
+    const uiData = isRecord(uiDocument?.data) ? uiDocument.data : {};
+    const uiNodes = Array.isArray(uiData.nodes) ? uiData.nodes.filter(isRecord) : [];
+    const resourceDocument = project.documents.find((document) => document.kind === "resources");
+    const resourceData = isRecord(resourceDocument?.data) ? resourceDocument.data : {};
+    const reusableResources = Array.isArray(resourceData.resources) ? resourceData.resources.filter(isRecord) : [];
+    const subject = stringId(entityCandidates.find((entity) => isRecord(entity.components) && (entity.components.CharacterController !== undefined || entity.components.RigidBody !== undefined))?.id)
+      ?? stringId(entityCandidates.find((entity) => /(?:^|[._-])(player|hero|car|kart|vehicle)(?:$|[._-])/iu.test(String(entity.id)))?.id)
+      ?? stringId(entityCandidates[0]?.id)
+      ?? "entity";
+    const resourceCandidates = [...resources, ...reusableResources];
+    const resourceId = stringId(preferredResource(resourceCandidates, mechanic)?.id) ?? stringId(resourceCandidates[0]?.id) ?? "resource";
+    const sceneUiNodes = isRecord(sceneData.ui) && Array.isArray(sceneData.ui.nodes) ? sceneData.ui.nodes.filter(isRecord) : [];
+    const hudId = stringId(preferredHudNode([...uiNodes, ...sceneUiNodes], mechanic)?.id) ?? stringId(uiNodes[0]?.id) ?? stringId(sceneUiNodes[0]?.id) ?? "hud";
+    const contactWith = stringId(entityCandidates.find((entity) => Array.isArray(entity.tags) && entity.tags.some((tag) => /pickup|orb|collect/iu.test(String(tag))))?.id)
+      ?? stringId(entityCandidates.find((entity) => isRecord(entity.components) && entity.components.Collider !== undefined && entity.id !== subject)?.id)
+      ?? "pickup";
+    return { contactWith, hudId, resourceId, subject };
+  } catch {
+    return { contactWith: "pickup", hudId: "hud", resourceId: "resource", subject: "entity" };
+  }
+}
+
+function preferredResource(resources: Record<string, unknown>[], mechanic: PlaytestScaffoldMechanic): Record<string, unknown> | undefined {
+  const pattern = mechanic === "pickup" ? /collect|orb|score|count/iu : mechanic === "win-state" ? /match|win|status|outcome/iu : mechanic === "retry" ? /game|match|state|status/iu : /player|move|state/iu;
+  return resources.find((resource) => pattern.test(String(resource.id)) || pattern.test(JSON.stringify(resource.value ?? resource) ?? ""));
+}
+
+function preferredHudNode(nodes: Record<string, unknown>[], mechanic: PlaytestScaffoldMechanic): Record<string, unknown> | undefined {
+  const pattern = mechanic === "pickup" ? /orb|score|collect/iu : mechanic === "win-state" ? /status|win|outcome/iu : mechanic === "retry" ? /ready|countdown|retry/iu : /hud|status|score/iu;
+  return nodes.find((node) => pattern.test(String(node.id)) || pattern.test(String(node.text)));
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function stringId(value: unknown): string | undefined {
+  return typeof value === "string" && value.trim() !== "" ? value : undefined;
+}
+
 export function playtestScaffoldMechanics(): string[] {
   return supportedMechanics();
 }
 
 export function buildPlaytestScaffoldScenario(
   mechanic: PlaytestScaffoldMechanic,
-  options: { hudId?: string; resourceId?: string; subject?: string } = {},
+  options: { contactWith?: string; hudId?: string; resourceId?: string; subject?: string } = {},
 ): IPlaytestScenario {
   const template = SCAFFOLD_TEMPLATES.find((candidate) => candidate.mechanic === mechanic);
   if (template === undefined) {
     throw new Error(`Unsupported playtest scaffold mechanic '${mechanic}'.`);
   }
   return template.scenario({
-    hudId: options.hudId ?? "score-label",
-    resourceId: options.resourceId ?? "GameState",
-    subject: options.subject ?? "player",
+    contactWith: options.contactWith ?? "pickup",
+    hudId: options.hudId ?? "hud",
+    resourceId: options.resourceId ?? "resource",
+    subject: options.subject ?? "entity",
   });
 }
 

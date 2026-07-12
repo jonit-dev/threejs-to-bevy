@@ -175,6 +175,14 @@ export interface IAddPrefabInstanceOptions extends IAuthoringOperationContext {
   replace?: boolean;
 }
 
+export interface IAddPrefabInstancesOptions extends IAuthoringOperationContext {
+  components?: Record<string, unknown>;
+  positions: Array<[number, number, number]>;
+  prefix?: string;
+  prefabId: string;
+  sceneId: string;
+}
+
 export interface IAddTenPinLayoutOptions extends IAuthoringOperationContext {
   sceneId: string;
   prefabId: string;
@@ -415,6 +423,21 @@ export interface IRemoveComponentOptions extends IAuthoringOperationContext {
   sceneId: string;
   entityId: string;
   componentKind: string;
+}
+
+export interface IRemoveEntityOptions extends IAuthoringOperationContext {
+  entityId: string;
+  sceneId: string;
+}
+
+export interface IRemoveUiNodeOptions extends IAuthoringOperationContext {
+  sceneId: string;
+  uiNodeId: string;
+}
+
+export interface IRemoveResourceOptions extends IAuthoringOperationContext {
+  resourceId: string;
+  sceneId: string;
 }
 
 export interface IAddUiNodeOptions extends IAuthoringOperationContext {

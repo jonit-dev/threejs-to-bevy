@@ -36,7 +36,7 @@ export const audioDocumentKeys = new Set(["schema", "version", "id", "sounds", "
 export const meshDocumentKeys = new Set(["schema", "version", "id", "meshes", "provenance"]);
 export const generatorDocumentKeys = new Set(["schema", "version", "id", "module", "export", "outputs", "overwritePolicy", "inputHash", "outputHash", "lastRun", "provenance"]);
 export const entityKeys = new Set(["archetype", "id", "prefab", "tags", "transform", "components"]);
-export const instanceKeys = new Set(["id", "prefab", "transform", "components"]);
+export const instanceKeys = new Set(["id", "prefab", "tags", "transform", "components"]);
 export const transformKeys = new Set(["position", "rotation", "scale"]);
 export const systemKeys = new Set([
   "after",
@@ -63,7 +63,7 @@ export const flowTriggerKeys = new Set(["kind", "event", "resource", "seconds", 
 export const flowActionKeys = new Set(["kind", "event", "resource", "scene", "screen", "sequence", "spawner", "timeScale", "value"]);
 export const sequenceTrackKeys = new Set(["id", "kind", "entity", "keyframes"]);
 export const sequenceKeyframeKeys = new Set(["time", "value", "easing"]);
-export const systemCommandKeys = new Set(["child", "component", "components", "entity", "event", "kind", "parent", "prefab", "prefix"]);
+export const systemCommandKeys = new Set(["child", "component", "components", "entity", "event", "kind", "parent", "prefab", "prefix", "tag"]);
 export const scriptReferenceKeys = new Set(["module", "export"]);
 export const scriptLifecycleKeys = new Set([
   "after",
@@ -198,7 +198,7 @@ export const supportedInputAxisSlots = new Set(["negative", "positive", "value"]
 export const logicalIdPattern = /^[a-z][a-z0-9]*(?:[._-][a-z0-9]+)*$/;
 export const ecsIdPattern = /^[A-Za-z0-9][A-Za-z0-9._-]*$/;
 export const resourceIdPattern = /^[A-Za-z][A-Za-z0-9]*(?:[._-][A-Za-z0-9]+)*$/;
-export const supportedSchemaDocumentKinds = new Set(["component", "resource"]);
+export const supportedSchemaDocumentKinds = new Set(["component", "event", "resource"]);
 export const supportedSchemaFieldKinds = new Set(["boolean", "color", "enum", "json", "number", "quat", "string", "vec2", "vec3", "vec4"]);
 
 export interface ISceneDocument {
@@ -221,6 +221,7 @@ export interface ISceneEntity {
   archetype?: ISceneEntityArchetype;
   id: string;
   prefab?: string;
+  tags?: string[];
   transform?: ISceneTransform;
   components?: Record<string, unknown>;
 }
@@ -234,6 +235,7 @@ export interface ISceneEntityArchetype {
 export interface IScenePrefabInstance {
   id: string;
   prefab: string;
+  tags?: string[];
   transform?: ISceneTransform;
   components?: Record<string, unknown>;
 }
@@ -261,7 +263,7 @@ export interface ISchemaDocument {
   schema: typeof schemaDocumentSchema;
   version?: string;
   id: string;
-  kind: "component" | "resource";
+  kind: "component" | "event" | "resource";
   schemas?: ISchemaEntry[];
 }
 
@@ -351,6 +353,7 @@ export interface ISceneSystemCommand {
   parent?: string;
   prefab?: string;
   prefix?: string;
+  tag?: string;
 }
 
 export interface ISceneUi {

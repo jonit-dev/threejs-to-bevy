@@ -58,6 +58,15 @@ Current support:
   authoring file and emit a loader-valid full-document snippet, while legacy
   IR-shaped schema documents receive a structured shape diagnostic instead of
   an uncaught build exception.
+- Literal `context.events.emit(...)` calls derive event writes and payload
+  schemas, while authored `kind: "event"` documents, event-triggered flows,
+  tag/pattern command selectors, and compact prefab instance tags share the
+  same validated IR path.
+- Scene cleanup is reference-aware across sibling system/UI documents, batch
+  prefab placement is available through the CLI, and ownership warnings point
+  authors back to `content/systems/*.systems.json` and `content/ui/*.ui.json`.
+- Workspace-aware project creation installs a generated project in isolation,
+  and maintained starter scripts can import relative local helper modules.
 - Plan and cookbook proof surfaces are cross-reference checked against the
   CLI registry and diagnostic catalog. Gameplay cookbook scripts are bundled
   and rejected when their exported systems are empty, and generated-game

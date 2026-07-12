@@ -1,10 +1,24 @@
 import type { IFeedbackPreset, ISystemsIr } from "@threenative/ir";
 
+interface ISystemCommandLike {
+  child?: string;
+  component?: string;
+  components?: string[];
+  entity?: string;
+  event?: string;
+  kind: string;
+  parent?: string;
+  prefab?: string;
+  prefix?: string;
+  property?: "emissiveIntensity" | "opacity" | "position" | "rotation" | "scale";
+  tag?: string;
+}
+
 interface ISystemLike {
   after?: string[];
   before?: string[];
-  commands: ISystemsIr["systems"][number]["commands"];
-  delayedCommands?: ISystemsIr["systems"][number]["delayedCommands"];
+  commands: ReadonlyArray<ISystemCommandLike>;
+  delayedCommands?: ReadonlyArray<Omit<NonNullable<ISystemsIr["systems"][number]["delayedCommands"]>[number], "command"> & { command: ISystemCommandLike }>;
   eventReads: string[];
   eventWrites: string[];
   name: string;
@@ -97,32 +111,32 @@ function delayedCommandsIr(delayedCommands: ISystemLike["delayedCommands"]): Par
   };
 }
 
-function serializeCommand(command: ISystemsIr["systems"][number]["commands"][number]): ISystemsIr["systems"][number]["commands"][number] {
+function serializeCommand(command: ISystemCommandLike): ISystemsIr["systems"][number]["commands"][number] {
   if (command.kind === "spawn") {
-    return { components: [...command.components].sort(), entity: command.entity, kind: command.kind };
+    return { components: [...(command.components ?? [])].sort(), entity: command.entity ?? "", kind: command.kind };
   }
   if (command.kind === "emitEvent") {
-    return { event: command.event, kind: command.kind };
+    return { event: command.event ?? "", kind: command.kind };
   }
   if (command.kind === "despawn") {
-    return { entity: command.entity, kind: command.kind };
+    return { entity: command.entity ?? "", kind: command.kind };
   }
   if (command.kind === "instantiate") {
-    return { kind: command.kind, prefab: command.prefab, prefix: command.prefix };
+    return { kind: command.kind, prefab: command.prefab ?? "", prefix: command.prefix ?? "" };
   }
   if (command.kind === "setParent") {
-    return { child: command.child, kind: command.kind, parent: command.parent };
+    return { child: command.child ?? "", kind: command.kind, parent: command.parent ?? "" };
   }
   if (command.kind === "clearParent") {
-    return { child: command.child, kind: command.kind };
+    return { child: command.child ?? "", kind: command.kind };
   }
   if (command.kind === "tween") {
-    return { entity: command.entity, kind: command.kind, property: command.property };
+    return { entity: command.entity ?? "", kind: command.kind, property: command.property ?? "opacity" };
   }
   if (command.kind === "worldText") {
-    return { entity: command.entity, kind: command.kind };
+    return { entity: command.entity ?? "", kind: command.kind };
   }
-  return { component: command.component, entity: command.entity, kind: command.kind };
+  return { component: command.component ?? "", entity: command.entity ?? "", kind: command.kind as "addComponent" | "removeComponent" | "setComponent" };
 }
 
 function scriptIr(script: unknown): Pick<ISystemsIr["systems"][number], "script"> {

@@ -126,6 +126,7 @@ function lowerSceneDocument(
         ],
         id: entity.id,
         source: { sourcePath },
+        ...(entity.tags === undefined ? {} : { tags: [...entity.tags] }),
         ...(entity.transform === undefined ? {} : { transform: prefabTransform }),
       });
     }
@@ -242,7 +243,10 @@ function systemCommands(commands: SourceSystem["commands"]): CommandDeclaration[
       return [{ components: command.components ?? [], entity: command.entity, kind: "spawn", schemas: [] }];
     }
     if (command.kind === "despawn" && command.entity !== undefined) {
-      return [{ entity: command.entity, kind: "despawn" }];
+      return [{ entity: command.entity, kind: "despawn", ...(command.tag === undefined ? {} : { tag: command.tag }) }];
+    }
+    if (command.kind === "despawn" && command.tag !== undefined) {
+      return [{ kind: "despawn", tag: command.tag }];
     }
     if ((command.kind === "addComponent" || command.kind === "removeComponent" || command.kind === "setComponent") && command.entity !== undefined && command.component !== undefined) {
       return [{ component: command.component, entity: command.entity, kind: command.kind }];
@@ -272,6 +276,9 @@ function expandSceneEntities(scene: ISceneDocument, prefabDefaults: ReadonlyMap<
         ...cloneSceneEntity(defaults ?? { id: instance.id }),
         id: instance.id,
         prefab: instance.prefab,
+        ...(defaults?.tags === undefined && instance.tags === undefined
+          ? {}
+          : { tags: [...new Set([...(defaults?.tags ?? []), ...(instance.tags ?? [])])] }),
         transform: mergeRecords(readRecord(defaults?.transform), readRecord(instance.transform)) as ISceneTransform | undefined,
         components: mergeRecords(readRecord(defaults?.components), readRecord(instance.components)),
       };

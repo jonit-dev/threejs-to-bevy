@@ -6,17 +6,11 @@ export const collectOrbs = defineBehavior(
   {
     id: "collect-orbs",
     schedule: "fixedUpdate",
+    eventWrites: ["match.win"],
     resourceReads: ["Orbs", "Match"],
     resourceWrites: ["Orbs", "Match"],
     commands: [
-      { kind: "despawn", entity: "orb.01" },
-      { kind: "despawn", entity: "orb.02" },
-      { kind: "despawn", entity: "orb.03" },
-      { kind: "despawn", entity: "orb.04" },
-      { kind: "despawn", entity: "orb.05" },
-      { kind: "despawn", entity: "orb.06" },
-      { kind: "despawn", entity: "orb.07" },
-      { kind: "despawn", entity: "orb.08" },
+      { kind: "despawn", tag: "orb" },
     ],
   },
   (context: ProjectContext): void => {
@@ -45,6 +39,7 @@ export const collectOrbs = defineBehavior(
       context.resources.patch("Orbs", { collected, statusText: hudOrbs(collected) });
       if (collected >= TOTAL_ORBS) {
         context.resources.patch("Match", { over: true, outcome: "won", statusText: "Reactor stabilized. You win!" });
+        context.events.emit("match.win", { collected });
       }
     }
   },

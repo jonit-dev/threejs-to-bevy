@@ -1,4 +1,4 @@
-import { mkdir, readFile, readdir, writeFile } from "node:fs/promises";
+import { mkdir, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 
 export type MechanicBlockId = "follow-camera" | "projectile" | "score" | "spawner" | "timer" | "trigger-sequence";
@@ -10,6 +10,14 @@ export interface IMechanicBlockResult {
   message: string;
   proofCommand: string;
   scenarioPath: string;
+}
+
+export interface IRemoveMechanicBlockResult {
+  block: string;
+  code: "TN_REMOVE_BLOCK_OK" | "TN_REMOVE_BLOCK_MISSING";
+  filesRemoved: string[];
+  message: string;
+  ok: boolean;
 }
 
 export interface IMechanicBlockOptions {
@@ -44,11 +52,113 @@ export function formatMechanicBlockUsage(): string {
   return definitions.map((definition) => definition.id).join("|");
 }
 
+export async function removeMechanicBlock(projectPath: string, blockId: string): Promise<IRemoveMechanicBlockResult> {
+  const mechanicPath = `content/mechanics/${blockId}.mechanic.json`;
+  let mechanic: Record<string, unknown>;
+  try {
+    mechanic = await readJsonObject(resolve(projectPath, mechanicPath));
+  } catch {
+    return { block: blockId, code: "TN_REMOVE_BLOCK_MISSING", filesRemoved: [], message: `Mechanic block '${blockId}' does not have a registered mechanic document.`, ok: false };
+  }
+  const block = mechanic.block;
+  if (typeof block !== "string" || getMechanicBlock(block) === undefined) {
+    return { block: blockId, code: "TN_REMOVE_BLOCK_MISSING", filesRemoved: [], message: `Mechanic block '${blockId}' is not a registered tn add block.`, ok: false };
+  }
+  const details = isRecord(mechanic.details) ? mechanic.details : {};
+  const sourceFiles = Array.isArray(mechanic.sourceFiles) ? mechanic.sourceFiles.filter((file): file is string => typeof file === "string") : [];
+  const scenePath = sourceFiles.find((file) => file.endsWith(".scene.json"));
+  if (scenePath !== undefined) {
+    const scene = await readJsonObject(resolve(projectPath, scenePath));
+    removeBlockSceneContent(scene, block as MechanicBlockId, details);
+    await writeJson(resolve(projectPath, scenePath), scene);
+  }
+  const systemsPath = sourceFiles.find((file) => file.endsWith(".systems.json"));
+  if (systemsPath !== undefined && block === "timer") {
+    const systems = await readJsonObject(resolve(projectPath, systemsPath));
+    const countdownId = typeof details.countdownId === "string" ? details.countdownId : undefined;
+    systems.countdowns = arrayOfRecords(systems.countdowns).filter((countdown) => countdown.id !== countdownId);
+    await writeJson(resolve(projectPath, systemsPath), systems);
+  }
+  const filesRemoved = [mechanicPath, `playtests/block-${block}.playtest.json`];
+  for (const file of sourceFiles.filter((file) => file.endsWith("mechanics.ts"))) {
+    const removed = await removeMechanicScript(resolve(projectPath, file), block as "projectile" | "score");
+    if (removed) filesRemoved.push(file);
+  }
+  await Promise.all(filesRemoved.slice(0, 2).map((file) => rm(resolve(projectPath, file), { force: true })));
+  return {
+    block,
+    code: "TN_REMOVE_BLOCK_OK",
+    filesRemoved: [...new Set(filesRemoved)].sort(),
+    message: `Mechanic block '${block}' removed.`,
+    ok: true,
+  };
+}
+
+function removeBlockSceneContent(scene: Record<string, unknown>, block: MechanicBlockId, details: Record<string, unknown>): void {
+  const entities = arrayOfRecords(scene.entities);
+  const prefabs = arrayOfRecords(scene.prefabs);
+  const resources = arrayOfRecords(scene.resources);
+  const entityIds = new Set<string>();
+  const prefabIds = new Set<string>();
+  const resourceIds = new Set<string>();
+  if (block === "spawner") {
+    const blockId = typeof details.blockId === "string" ? details.blockId : "spawner.grid";
+    for (const entity of entities) if (typeof entity.id === "string" && entity.id.startsWith(`${blockId}.`)) entityIds.add(entity.id);
+    if (typeof details.prefab === "string") prefabIds.add(details.prefab);
+    resourceIds.add("MechanicSpawner");
+  } else if (block === "trigger-sequence") {
+    for (const id of Array.isArray(details.triggers) ? details.triggers : []) if (typeof id === "string") entityIds.add(id);
+    if (typeof details.mode === "string" && typeof details.scenePath === "string") {
+      const prefix = typeof details.prefix === "string" ? details.prefix : "checkpoint";
+      prefabIds.add(`${prefix}.prefab`);
+    }
+    resourceIds.add("TriggerSequence");
+  } else if (block === "timer") {
+    if (typeof details.resource === "string") resourceIds.add(details.resource);
+  } else if (block === "score") {
+    resourceIds.add(typeof details.resource === "string" ? details.resource : "GameScore");
+  } else if (block === "projectile") {
+    resourceIds.add("ProjectilePhysics");
+    resourceIds.add("ProjectileLauncher");
+    if (typeof details.projectile === "string") prefabIds.add(`${details.projectile}.prefab`);
+  } else if (block === "follow-camera") {
+    resourceIds.add("FollowCamera");
+    const camera = typeof details.camera === "string" ? details.camera : undefined;
+    const cameraEntity = entities.find((entity) => entity.id === camera);
+    if (cameraEntity !== undefined && Object.keys(cameraEntity).every((key) => key === "id" || key === "components")) entityIds.add(camera!);
+  }
+  scene.entities = entities.filter((entity) => typeof entity.id !== "string" || !entityIds.has(entity.id));
+  scene.prefabs = prefabs.filter((prefab) => typeof prefab.id !== "string" || !prefabIds.has(prefab.id));
+  scene.resources = resources.filter((resource) => typeof resource.id !== "string" || !resourceIds.has(resource.id));
+}
+
+async function removeMechanicScript(file: string, block: "projectile" | "score"): Promise<boolean> {
+  let source: string;
+  try {
+    source = await readFile(file, "utf8");
+  } catch {
+    return false;
+  }
+  const exportName = block === "score" ? "updateScoreBlock" : "updateProjectileBlock";
+  const start = source.indexOf(`export function ${exportName}`);
+  if (start < 0) return false;
+  const next = source.indexOf("\nexport ", start + 1);
+  const nextSource = `${source.slice(0, start)}${next < 0 ? "" : source.slice(next + 1)}`.trim();
+  if (nextSource === "") {
+    await rm(file, { force: true });
+  } else {
+    await writeFile(file, `${nextSource}\n`, "utf8");
+  }
+  return true;
+}
+
 async function addSpawnerBlock(options: IMechanicBlockOptions): Promise<IMechanicBlockResult> {
   const pattern = readFlag(options.args, "--pattern") ?? "grid";
   const prefab = readFlag(options.args, "--prefab") ?? "mechanic.spawn.prefab";
   const count = parsePositiveInteger(readFlag(options.args, "--count")) ?? 4;
   const blockId = readFlag(options.args, "--id") ?? `spawner.${pattern}`;
+  const basePosition = parseVector3(readFlag(options.args, "--position")) ?? [0, 0, -2];
+  const scale = parseVector3(readFlag(options.args, "--scale")) ?? [0.35, 0.35, 0.35];
   const scenePath = await resolveScenePath(options.projectPath);
   const scene = await readJsonObject(resolve(options.projectPath, scenePath));
   const prefabs = arrayOfRecords(scene.prefabs);
@@ -58,17 +168,19 @@ async function addSpawnerBlock(options: IMechanicBlockOptions): Promise<IMechani
   scene.entities = entities;
   scene.resources = resources;
   upsertPrefab(prefabs, prefab, "box", "#38bdf8");
-  for (const [index, position] of spawnPositions(pattern, count).entries()) {
-    upsertEntity(entities, `${blockId}.${String(index + 1).padStart(2, "0")}`, prefab, position);
+  for (const [index, spawnPosition] of spawnPositions(pattern, count).entries()) {
+    upsertEntity(entities, `${blockId}.${String(index + 1).padStart(2, "0")}`, prefab, [spawnPosition[0] + basePosition[0], spawnPosition[1] + basePosition[1], spawnPosition[2] + basePosition[2]], scale);
   }
-  upsertResource(resources, "MechanicSpawner", { blockId, count, pattern, prefab, statusText: `${count} spawn points ready` });
+  upsertResource(resources, "MechanicSpawner", { blockId, count, pattern, position: basePosition, prefab, scale, statusText: `${count} spawn points ready` });
   await writeJson(resolve(options.projectPath, scenePath), scene);
   return writeBlockArtifacts(options.projectPath, "spawner", {
     blockId,
     count,
     pattern,
+    position: basePosition,
     prefab,
     scenePath,
+    scale,
   }, [scenePath]);
 }
 
@@ -126,7 +238,7 @@ async function addTriggerSequenceBlock(options: IMechanicBlockOptions): Promise<
   }
   upsertResource(resources, "TriggerSequence", { mode, nextIndex: 0, statusText: `${mode} trigger sequence ready`, triggers });
   await writeJson(resolve(options.projectPath, scenePath), scene);
-  return writeBlockArtifacts(options.projectPath, "trigger-sequence", { mode, scenePath, triggers }, [scenePath]);
+  return writeBlockArtifacts(options.projectPath, "trigger-sequence", { mode, prefix, scenePath, triggers }, [scenePath]);
 }
 
 async function addScoreBlock(options: IMechanicBlockOptions): Promise<IMechanicBlockResult> {
@@ -337,8 +449,8 @@ function upsertPrefab(prefabs: Record<string, unknown>[], id: string, primitive:
   }
 }
 
-function upsertEntity(entities: Record<string, unknown>[], id: string, prefab: string, position: [number, number, number]): void {
-  const next = { id, prefab, transform: { position } };
+function upsertEntity(entities: Record<string, unknown>[], id: string, prefab: string, position: [number, number, number], scale?: [number, number, number]): void {
+  const next = { id, prefab, transform: { position, ...(scale === undefined ? {} : { scale }) } };
   const existing = entities.find((entity) => entity.id === id);
   if (existing === undefined) {
     entities.push(next);
@@ -391,6 +503,12 @@ function parseFiniteNumber(value: string | undefined): number | undefined {
 function parsePositiveInteger(value: string | undefined): number | undefined {
   const parsed = Number.parseInt(value ?? "", 10);
   return Number.isFinite(parsed) && parsed > 0 ? parsed : undefined;
+}
+
+function parseVector3(value: string | undefined): [number, number, number] | undefined {
+  if (value === undefined) return undefined;
+  const values = value.split(",").map((entry) => Number(entry.trim()));
+  return values.length === 3 && values.every((entry) => Number.isFinite(entry)) ? values as [number, number, number] : undefined;
 }
 
 function readFlag(argv: readonly string[], flag: string): string | undefined {

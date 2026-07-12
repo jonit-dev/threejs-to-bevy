@@ -14,7 +14,8 @@
     "movement": {
       "entity": "player",
       "minDistance": 0.5,
-      "minVelocity": 0.01
+      "minVelocity": 0.01,
+      "pathLength": 0.5
     },
     "resources": [
       {

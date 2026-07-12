@@ -877,7 +877,7 @@ export async function schemaCommand(argv: readonly string[], options: ISourceCom
 
   if (subcommand === "create") {
     if (schemaDocId === undefined || kind === undefined) {
-      return renderUsage(json, "TN_SCHEMA_CREATE_ARGS_MISSING", "Usage: tn schema create <schema-doc-id> --kind <component|resource> [--project <path>] [--json]");
+      return renderUsage(json, "TN_SCHEMA_CREATE_ARGS_MISSING", "Usage: tn schema create <schema-doc-id> --kind <component|event|resource> [--project <path>] [--json]");
     }
     return renderAuthoringResult("schema", await createSchemaDocument({ kind, projectPath, schemaDocId }), json, `Schema document '${schemaDocId}' created.`);
   }
@@ -889,7 +889,7 @@ export async function schemaCommand(argv: readonly string[], options: ISourceCom
       return renderUsage(json, fields.diagnostic, "Schema --fields must be valid JSON.");
     }
     if (schemaDocId === undefined || schemaId === undefined || kind === undefined || fields.value === undefined || !isRecord(fields.value)) {
-      return renderUsage(json, "TN_SCHEMA_SET_ARGS_MISSING", "Usage: tn schema set <schema-doc-id> <schema-id> --kind <component|resource> --fields <json-object> [--project <path>] [--json]");
+      return renderUsage(json, "TN_SCHEMA_SET_ARGS_MISSING", "Usage: tn schema set <schema-doc-id> <schema-id> --kind <component|event|resource> --fields <json-object> [--project <path>] [--json]");
     }
     return renderAuthoringResult("schema", await setSchemaEntry({ fields: fields.value, kind, projectPath, schemaDocId, schemaId }), json, `Schema '${schemaId}' updated.`);
   }

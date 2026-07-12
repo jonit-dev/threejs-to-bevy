@@ -28,6 +28,7 @@ import { playtestCommand } from "./commands/playtest.js";
 import { navCommand, physicsCommand } from "./commands/physicsNav.js";
 import { proofCommand, proveCommand } from "./commands/proof.js";
 import { recipeCommand } from "./commands/recipe.js";
+import { removeCommand } from "./commands/remove.js";
 import { sceneCommand } from "./commands/scene.js";
 import { animationCommand, audioCommand, environmentCommand, flowCommand, generatorCommand, inputCommand, materialCommand, meshCommand, particleCommand, prefabCommand, projectCommand, resourcesCommand, runtimeCommand, schemaCommand, sequenceCommand, systemCommand, targetCommand, uiCommand } from "./commands/sourceDocuments.js";
 import { validateProject } from "./commands/validate.js";
@@ -44,6 +45,11 @@ export const CLI_COMMAND_REGISTRY = defineCommandRegistry({
     implemented: true,
     usage: "tn add <spawner|timer|trigger-sequence|score|projectile|follow-camera> [block flags] [--project <path>] [--json]",
   },
+  remove: {
+    description: "Remove a registered mechanic block and its generated proof artifacts.",
+    implemented: true,
+    usage: "tn remove <spawner|timer|trigger-sequence|score|projectile|follow-camera> [--project <path>] [--json]",
+  },
   asset: {
     description: "Inspect GLB/glTF assets, query source catalog records, and mutate structured asset source documents.",
     implemented: true,
@@ -54,7 +60,7 @@ export const CLI_COMMAND_REGISTRY = defineCommandRegistry({
     handler: actorCommand,
     implemented: true,
     subcommands: ["list", "add", "update"],
-    usage: "tn actor list [--json]\n              tn actor add character --id <actor-id> [--asset <asset-id-or-path>] [--scene <scene-id>] [--speed <n>] [--sprint-speed <n>] [--project <path>] [--json]\n              tn actor update <actor-id> --set speed=4 [--set sprintSpeed=6] [--project <path>] [--json]",
+    usage: "tn actor list [--json]\n              tn actor add character --id <actor-id> [--asset <asset-id-or-path>] [--scene <scene-id>] [--speed <n>] [--sprint-speed <n>] [--shared] [--project <path>] [--json]\n              tn actor update <actor-id> --set speed=4 [--set sprintSpeed=6] [--project <path>] [--json]",
   },
   audio: {
     description: "Create and mutate structured audio source documents.",
@@ -264,14 +270,14 @@ export const CLI_COMMAND_REGISTRY = defineCommandRegistry({
     usage: "tn resources create <resources-doc-id> [--project <path>] [--json]\n              tn resources add <resources-doc-id> <resource-id> [--path <resource.path>] [--value <json>] [--project <path>] [--json]\n              tn resources set <resources-doc-id> <resource-id> [--path <resource.path>] [--value <json>] [--project <path>] [--json]",
   },
   schema: {
-    description: "Create and mutate reusable component and resource schema source documents.",
+    description: "Create and mutate reusable component, event, and resource schema source documents.",
     implemented: true,
-    usage: "tn schema create <schema-doc-id> --kind <component|resource> [--project <path>] [--json]\n              tn schema set <schema-doc-id> <schema-id> --kind <component|resource> --fields <json-object> [--project <path>] [--json]",
+    usage: "tn schema create <schema-doc-id> --kind <component|event|resource> [--project <path>] [--json]\n              tn schema set <schema-doc-id> <schema-id> --kind <component|event|resource> --fields <json-object> [--project <path>] [--json]",
   },
   scene: {
     description: "Create, inspect, validate, mutate, and prove structured source scene documents.",
     implemented: true,
-    usage: "tn scene create <scene-id> [--file <path>] [--json]\n              tn scene import-world <scene-id> --world <path/to/world.ir.json> [--file <path>] [--replace] [--json]\n              tn scene validate [scene-id] [--project <path>] [--json]\n              tn scene inspect <scene-id> [--node <id>] [--project <path>] [--json]\n              tn scene add-prefab <scene-id> <prefab-id> [--primitive <primitive>] [--color <css-color>] [--json]\n              tn scene set-prefab <scene-id> <prefab-id> [--primitive <primitive>] [--color <css-color>] [--asset <path.glb>] [--json]\n              tn scene set-prefab-color <scene-id> <prefab-id> --color <css-color> [--json]\n              tn scene add-resource <scene-id> <resource-id> [--path <resource.path>] [--value <json>] [--json]\n              tn scene set-resource <scene-id> <resource-id> [--path <resource.path>] [--value <json>] [--json]\n              tn scene add-ui-node <scene-id> <ui-node-id> [--json]\n              tn scene add-entity <scene-id> <entity-id> [--prefab <prefab-id>] [--json]\n              tn scene add-prefab-instance <scene-id> <instance-id> --prefab <prefab-id> [--position x,y,z] [--components <json-object>] [--replace] [--json]\n              tn scene layout ten-pin <scene-id> --prefab <prefab-id> [--prefix pin] [--origin x,y,z] [--spacing n] [--replace] [--json]\n              tn scene add-tag <scene-id> <entity-id> <tag> [--json]\n              tn scene add-group <scene-id> <group-id> [--name <label>] [--position x,y,z] [--json]\n              tn scene add-component <scene-id> <entity-id> light|mesh-renderer|render-layers|visibility|rigid-body|collider|character-controller [typed flags] [--json]\n              tn scene set-component <scene-id> <entity-id> <component-kind> --value <json-object> [--json]\n              tn scene remove-component <scene-id> <entity-id> <component-kind> [--json]\n              tn scene set-transform <scene-id> <entity-id> [--position x,y,z] [--rotation x,y,z|--rotation-deg x,y,z] [--scale x,y,z] [--json]\n              tn scene set-camera <scene-id> <camera-id> --mode <mode> --target <entity-id> [--json]\n              tn scene attach-script <scene-id> <system-id> --module <path> --export <name> [--json]\n              tn scene bind-ui <scene-id> <ui-node-id> --resource <resource.path> [--json]\n              tn scene proof <scene-id> --project <path> --web-url <url> --out <dir> [--native] [--json]",
+    usage: "tn scene create <scene-id> [--file <path>] [--json]\n              tn scene import-world <scene-id> --world <path/to/world.ir.json> [--file <path>] [--replace] [--json]\n              tn scene validate [scene-id] [--project <path>] [--json]\n              tn scene inspect <scene-id> [--node <id>] [--project <path>] [--json]\n              tn scene add-prefab <scene-id> <prefab-id> [--primitive <primitive>] [--color <css-color>] [--json]\n              tn scene set-prefab <scene-id> <prefab-id> [--primitive <primitive>] [--color <css-color>] [--asset <path.glb>] [--json]\n              tn scene set-prefab-color <scene-id> <prefab-id> --color <css-color> [--json]\n              tn scene add-resource <scene-id> <resource-id> [--path <resource.path>] [--value <json>] [--json]\n              tn scene set-resource <scene-id> <resource-id> [--path <resource.path>] [--value <json>] [--json]\n              tn scene add-ui-node <scene-id> <ui-node-id> [--json]\n              tn scene add-entity <scene-id> <entity-id> [--prefab <prefab-id>] [--json]\n              tn scene add-prefab-instance <scene-id> <instance-id> --prefab <prefab-id> [--position x,y,z] [--components <json-object>] [--replace] [--json]\n              tn scene add-prefab-instances <scene-id> --prefab <prefab-id> --positions \"x,y,z;...\" [--prefix <id-prefix>] [--components <json-object>] [--json]\n              tn scene remove-entity <scene-id> <entity-id> [--json]\n              tn scene remove-ui-node <scene-id> <ui-node-id> [--json]\n              tn scene remove-resource <scene-id> <resource-id> [--json]\n              tn scene layout ten-pin <scene-id> --prefab <prefab-id> [--prefix pin] [--origin x,y,z] [--spacing n] [--replace] [--json]\n              tn scene add-tag <scene-id> <entity-id> <tag> [--json]\n              tn scene add-group <scene-id> <group-id> [--name <label>] [--position x,y,z] [--json]\n              tn scene add-component <scene-id> <entity-id> light|mesh-renderer|render-layers|visibility|rigid-body|collider|character-controller [typed flags] [--json]\n              tn scene set-component <scene-id> <entity-id> <component-kind> --value <json-object> [--json]\n              tn scene remove-component <scene-id> <entity-id> <component-kind> [--json]\n              tn scene set-transform <scene-id> <entity-id> [--position x,y,z] [--rotation x,y,z|--rotation-deg x,y,z] [--scale x,y,z] [--json]\n              tn scene set-camera <scene-id> <camera-id> --mode <mode> --target <entity-id> [--json]\n              tn scene attach-script <scene-id> <system-id> --module <path> --export <name> [--json]\n              tn scene bind-ui <scene-id> <ui-node-id> --resource <resource.path> [--json]\n              tn scene proof <scene-id> --project <path> --web-url <url> --out <dir> [--native] [--json]",
   },
   sequence: {
     description: "Create and mutate declarative sequence source documents.",
@@ -365,6 +371,9 @@ async function legacyDispatch(commandName: string, commandArgv: readonly string[
   }
   if (commandName === "add") {
     return addCommand(commandArgv);
+  }
+  if (commandName === "remove") {
+    return removeCommand(commandArgv);
   }
 
   if (commandName === "audio") {

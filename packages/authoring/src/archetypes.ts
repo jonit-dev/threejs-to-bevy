@@ -12,6 +12,7 @@ export interface IApplyActorArchetypeOptions {
   asset?: string;
   projectPath: string;
   sceneId?: string;
+  shared?: boolean;
   speed?: number;
   sprintSpeed?: number;
 }

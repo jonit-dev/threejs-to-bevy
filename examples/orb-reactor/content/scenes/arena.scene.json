@@ -163,6 +163,9 @@
         }
       },
       "id": "orb.01",
+      "tags": [
+        "orb"
+      ],
       "prefab": "prefab.orb",
       "transform": {
         "position": [
@@ -195,6 +198,9 @@
         }
       },
       "id": "orb.02",
+      "tags": [
+        "orb"
+      ],
       "prefab": "prefab.orb",
       "transform": {
         "position": [
@@ -227,6 +233,9 @@
         }
       },
       "id": "orb.03",
+      "tags": [
+        "orb"
+      ],
       "prefab": "prefab.orb",
       "transform": {
         "position": [
@@ -259,6 +268,9 @@
         }
       },
       "id": "orb.04",
+      "tags": [
+        "orb"
+      ],
       "prefab": "prefab.orb",
       "transform": {
         "position": [
@@ -291,6 +303,9 @@
         }
       },
       "id": "orb.05",
+      "tags": [
+        "orb"
+      ],
       "prefab": "prefab.orb",
       "transform": {
         "position": [
@@ -323,6 +338,9 @@
         }
       },
       "id": "orb.06",
+      "tags": [
+        "orb"
+      ],
       "prefab": "prefab.orb",
       "transform": {
         "position": [
@@ -355,6 +373,9 @@
         }
       },
       "id": "orb.07",
+      "tags": [
+        "orb"
+      ],
       "prefab": "prefab.orb",
       "transform": {
         "position": [
@@ -387,6 +408,9 @@
         }
       },
       "id": "orb.08",
+      "tags": [
+        "orb"
+      ],
       "prefab": "prefab.orb",
       "transform": {
         "position": [
@@ -585,26 +609,5 @@
   ],
   "schema": "threenative.scene",
   "systems": [],
-  "ui": {
-    "bindings": [
-      {
-        "node": "countdown",
-        "resource": "GameState.countdown"
-      }
-    ],
-    "nodes": [
-      {
-        "id": "countdown",
-        "layout": {
-          "align": "center",
-          "justify": "center",
-          "top": 48,
-          "width": 1280
-        },
-        "text": "Ready",
-        "type": "text"
-      }
-    ]
-  },
   "version": "0.1.0"
 }

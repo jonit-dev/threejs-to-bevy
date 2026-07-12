@@ -38,6 +38,20 @@ function resourceSchemaFix(resource: string): NonNullable<IIrDiagnostic["fix"]> 
   };
 }
 
+function eventSchemaFix(event: string): NonNullable<IIrDiagnostic["fix"]> {
+  return {
+    docs: "docs/contracts/ir.md",
+    instruction: `Replace content/schemas/events.schema.json with this full authoring document, then replace the placeholder field with the payload fields emitted by event '${event}'.`,
+    snippet: JSON.stringify({
+      schema: "threenative.schema",
+      version: "0.1.0",
+      id: "event-schemas",
+      kind: "event",
+      schemas: [{ id: event, fields: { value: { kind: "json" } } }],
+    }, null, 2),
+  };
+}
+
 export function validateSystems(
   systems: ISystemsIr,
   path: string,
@@ -153,6 +167,7 @@ export function validateSystems(
       if (eventSchemas[event] === undefined) {
         diagnostics.push({
           code: "TN_IR_SYSTEM_EVENT_SCHEMA_MISSING",
+          fix: eventSchemaFix(event),
           message: `System '${system.name}' reads event '${event}' without a schema.`,
           path: `${path}/systems/${systemIndex}/eventReads/${eventIndex}`,
         });
@@ -162,6 +177,7 @@ export function validateSystems(
       if (eventSchemas[event] === undefined) {
         diagnostics.push({
           code: "TN_IR_SYSTEM_EVENT_SCHEMA_MISSING",
+          fix: eventSchemaFix(event),
           message: `System '${system.name}' writes event '${event}' without a schema.`,
           path: `${path}/systems/${systemIndex}/eventWrites/${eventIndex}`,
         });

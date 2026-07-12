@@ -1,0 +1,106 @@
+{
+  "schemaVersion": 1,
+  "name": "proof-event-win",
+  "target": "web",
+  "viewport": {
+    "width": 1280,
+    "height": 720
+  },
+  "subject": "player",
+  "warmupFrames": 10,
+  "steps": [
+    {
+      "kind": "input",
+      "label": "collect north orb",
+      "press": "KeyW",
+      "holdTicks": 44,
+      "release": true
+    },
+    {
+      "kind": "input",
+      "label": "collect northeast orb",
+      "press": "KeyD",
+      "holdTicks": 42,
+      "release": true
+    },
+    {
+      "kind": "input",
+      "label": "collect east orb",
+      "press": "KeyS",
+      "holdTicks": 42,
+      "release": true
+    },
+    {
+      "kind": "input",
+      "label": "collect southeast orb",
+      "press": "KeyS",
+      "holdTicks": 42,
+      "release": true
+    },
+    {
+      "kind": "input",
+      "label": "collect south orb",
+      "press": "KeyA",
+      "holdTicks": 42,
+      "release": true
+    },
+    {
+      "kind": "input",
+      "label": "collect southwest orb",
+      "press": "KeyA",
+      "holdTicks": 42,
+      "release": true
+    },
+    {
+      "kind": "input",
+      "label": "collect west orb",
+      "press": "KeyW",
+      "holdTicks": 42,
+      "release": true
+    },
+    {
+      "kind": "input",
+      "label": "collect northwest orb",
+      "press": "KeyW",
+      "holdTicks": 42,
+      "release": true
+    }
+  ],
+  "assert": {
+    "resources": [
+      {
+        "id": "Orbs",
+        "path": "collected",
+        "equals": 8,
+        "changed": true
+      },
+      {
+        "id": "Match",
+        "path": "outcome",
+        "equals": "won",
+        "changed": true
+      }
+    ],
+    "hud": [
+      {
+        "id": "hud.orbs",
+        "textIncludes": "Orbs 8/8"
+      },
+      {
+        "id": "hud.status",
+        "textIncludes": "You win"
+      }
+    ],
+    "diagnostics": {
+      "runtimeReady": true,
+      "noConsoleErrors": true,
+      "noNetworkErrors": true,
+      "noRuntimeDiagnostics": true
+    }
+  },
+  "artifacts": {
+    "effectLog": "focused",
+    "screenshots": "before-after",
+    "runtimeTrace": true
+  }
+}

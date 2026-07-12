@@ -229,6 +229,48 @@ test("scene-command inspect targets UI bindings by resource id", async () => {
   }
 });
 
+test("scene-command batches prefab instances and removes source references", async () => {
+  const root = await createSceneProject();
+
+  try {
+    const batch = await sceneCommand([
+      "add-prefab-instances",
+      "scene.arena",
+      "--prefab",
+      "kart",
+      "--positions",
+      "1,0,0;2,0,0;3,0,0",
+      "--prefix",
+      "orb",
+      "--project",
+      root,
+      "--json",
+    ]);
+    assert.equal(batch.exitCode, 0, batch.stderr);
+
+    const removeResourceResult = await sceneCommand(["remove-resource", "scene.arena", "hud.score", "--project", root, "--json"]);
+    const removeUiResult = await sceneCommand(["remove-ui-node", "scene.arena", "score-label", "--project", root, "--json"]);
+    const removeEntityResult = await sceneCommand(["remove-entity", "scene.arena", "player-kart", "--project", root, "--json"]);
+    const scene = JSON.parse(await readFile(join(root, "content", "scenes", "arena.scene.json"), "utf8")) as {
+      entities: Array<{ id: string; components?: Record<string, { target?: string }> }>;
+      instances: Array<{ id: string }>;
+      resources: Array<{ id: string }>;
+      ui: { bindings: Array<{ resource?: string }>; nodes: Array<{ id: string }> };
+    };
+
+    assert.equal(removeResourceResult.exitCode, 0, removeResourceResult.stderr);
+    assert.equal(removeUiResult.exitCode, 0, removeUiResult.stderr);
+    assert.equal(removeEntityResult.exitCode, 0, removeEntityResult.stderr);
+    assert.deepEqual(scene.instances.map((instance) => instance.id), ["orb.01", "orb.02", "orb.03"]);
+    assert.deepEqual(scene.resources, []);
+    assert.deepEqual(scene.ui, { bindings: [], nodes: [] });
+    assert.equal(scene.entities.some((entity) => entity.id === "player-kart"), false);
+    assert.equal(scene.entities.find((entity) => entity.id === "chase-camera")?.components?.camera?.target, undefined);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
 test("scene-command inspect reports a missing targeted node with a fix hint", async () => {
   const root = await createSceneProject();
 

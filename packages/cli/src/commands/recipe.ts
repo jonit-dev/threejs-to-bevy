@@ -90,7 +90,7 @@ async function scaffoldRecipeScript(recipeId: string, args: Record<string, unkno
     : {
         exportName,
         modulePath,
-        stub: `export function ${exportName}(): void {\n  // ${recipePlan.scriptResponsibilities.join("; ")}.\n}\n`,
+        source: recipeScriptSource(recipeId, exportName, recipePlan.scriptResponsibilities),
       };
   if (script === undefined) {
     return undefined;
@@ -98,15 +98,56 @@ async function scaffoldRecipeScript(recipeId: string, args: Record<string, unkno
   const absolutePath = resolve(projectPath, script.modulePath);
   if (await pathExists(absolutePath)) {
     const source = await readFile(absolutePath, "utf8");
-    if (hasNamedExport(source, script.exportName)) {
+    if (hasNamedExport(source, script.exportName) && !hasEmptyRecipeExport(source, script.exportName)) {
       return undefined;
     }
-    await writeFile(absolutePath, `${source.trimEnd()}\n\n${script.stub}`, "utf8");
+    const nextSource = hasEmptyRecipeExport(source, script.exportName)
+      ? source.replace(recipeExportPattern(script.exportName), script.source.trimEnd())
+      : `${source.trimEnd()}\n\n${script.source}`;
+    await writeFile(absolutePath, `${nextSource.trimEnd()}\n`, "utf8");
     return script.modulePath;
   }
   await mkdir(resolve(absolutePath, ".."), { recursive: true });
-  await writeFile(absolutePath, script.stub, "utf8");
+  await writeFile(absolutePath, script.source, "utf8");
   return script.modulePath;
+}
+
+function recipeScriptSource(recipeId: string, exportName: string, responsibilities: readonly string[]): string {
+  const metadata = recipeId === "top-down-collector" || recipeId === "kinematic-character" || recipeId === "lane-runner"
+    ? `{ schedule: "fixedUpdate", reads: ["Transform"], writes: ["Transform"] }`
+    : `{ schedule: "fixedUpdate" }`;
+  const body = recipeId === "top-down-collector" || recipeId === "kinematic-character"
+    ? `  const moveX = context.input.axis("MoveX");
+  const moveZ = context.input.axis("MoveZ");
+  const actor = context.query({ with: ["Transform"] })[0];
+  if (actor !== undefined && (moveX !== 0 || moveZ !== 0)) {
+    const position = actor.transform().position;
+    actor.transform().setPosition([position[0] + moveX * 0.05, position[1], position[2] + moveZ * 0.05]);
+  }`
+    : `  const state = context.resources.get("RecipeState", { active: true, statusText: ${JSON.stringify(responsibilities.join("; "))} });
+  if (state.active) {
+    context.resources.patch("RecipeState", { statusText: state.statusText });
+  }`;
+  return `import { defineBehavior } from "@threenative/script-stdlib";
+import type { ScriptContext } from "@threenative/script-stdlib";
+
+export const ${exportName} = defineBehavior(
+  ${metadata},
+  (context: ScriptContext): void => {
+${body}
+  },
+);
+`;
+}
+
+function recipeExportPattern(exportName: string): RegExp {
+  const escaped = exportName.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&");
+  return new RegExp(`export\\s+function\\s+${escaped}\\s*\\([^)]*\\)\\s*\\{[\\s\\S]*?\\n\\}`, "u");
+}
+
+function hasEmptyRecipeExport(source: string, exportName: string): boolean {
+  const match = source.match(recipeExportPattern(exportName));
+  return match !== null && /\{\s*(?:\/\/[^\n]*\n?\s*)?\}/u.test(match[0]);
 }
 
 async function scaffoldProofRecipe(result: IAuthoringRecipeApplyResult, projectPath: string): Promise<void> {

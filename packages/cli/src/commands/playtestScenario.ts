@@ -9,11 +9,14 @@ export interface IPlaytestViewport {
 }
 
 export interface IPlaytestStep {
+  kind?: "input" | "wait";
   holdFrames?: number;
+  holdTicks?: number;
   label?: string;
   press?: string;
   release: boolean;
   waitFrames?: number;
+  waitTicks?: number;
 }
 
 export interface IPlaytestMovementAssertion {
@@ -29,6 +32,7 @@ export interface IPlaytestMovementAssertion {
   };
   minDistance?: number;
   minVelocity?: number;
+  pathLength?: number;
   rotationChanged?: boolean;
 }
 
@@ -359,9 +363,15 @@ function validateStep(value: unknown, scenarioPath: string, index: number): IPla
   }
   const press = typeof value.press === "string" && value.press.length > 0 ? value.press : undefined;
   const holdFrames = positiveInteger(value.holdFrames);
+  const holdTicks = positiveInteger(value.holdTicks);
   const waitFrames = positiveInteger(value.waitFrames);
-  if (press === undefined && waitFrames === undefined) {
-    throw invalidStep(scenarioPath, `Scenario step ${index} must define press or waitFrames.`);
+  const waitTicks = positiveInteger(value.waitTicks);
+  const kind = value.kind === "wait" ? "wait" : value.kind === "input" ? "input" : undefined;
+  if (kind === "wait" && press !== undefined) {
+    throw invalidStep(scenarioPath, `Scenario step ${index} kind wait cannot define press.`);
+  }
+  if (press === undefined && waitFrames === undefined && waitTicks === undefined) {
+    throw invalidStep(scenarioPath, `Scenario step ${index} must define press or waitFrames/waitTicks.`);
   }
   if (value.holdFrames !== undefined && holdFrames === undefined) {
     throw invalidStep(scenarioPath, `Scenario step ${index} holdFrames must be a positive integer.`);
@@ -369,13 +379,36 @@ function validateStep(value: unknown, scenarioPath: string, index: number): IPla
   if (value.waitFrames !== undefined && waitFrames === undefined) {
     throw invalidStep(scenarioPath, `Scenario step ${index} waitFrames must be a positive integer.`);
   }
+  if (value.holdTicks !== undefined && holdTicks === undefined) {
+    throw invalidStep(scenarioPath, `Scenario step ${index} holdTicks must be a positive integer.`);
+  }
+  if (value.waitTicks !== undefined && waitTicks === undefined) {
+    throw invalidStep(scenarioPath, `Scenario step ${index} waitTicks must be a positive integer.`);
+  }
+  if (holdTicks !== undefined && holdFrames !== undefined) {
+    throw invalidStep(scenarioPath, `Scenario step ${index} must choose holdTicks or holdFrames, not both.`);
+  }
+  if (waitTicks !== undefined && waitFrames !== undefined) {
+    throw invalidStep(scenarioPath, `Scenario step ${index} must choose waitTicks or waitFrames, not both.`);
+  }
   return {
+    ...(kind === undefined ? {} : { kind }),
     ...(holdFrames === undefined ? {} : { holdFrames }),
+    ...(holdTicks === undefined ? {} : { holdTicks }),
     ...(typeof value.label === "string" ? { label: value.label } : {}),
     ...(press === undefined ? {} : { press }),
     release: typeof value.release === "boolean" ? value.release : true,
     ...(waitFrames === undefined ? {} : { waitFrames }),
+    ...(waitTicks === undefined ? {} : { waitTicks }),
   };
+}
+
+export function playtestStepHoldTicks(step: IPlaytestStep, fallback = 1): number {
+  return step.press === undefined ? 0 : Math.max(1, step.holdTicks ?? step.holdFrames ?? fallback);
+}
+
+export function playtestStepWaitTicks(step: IPlaytestStep): number {
+  return Math.max(0, step.waitTicks ?? step.waitFrames ?? 0);
 }
 
 function validateAssertions(value: Record<string, unknown>): IPlaytestScenarioAssertions {
@@ -420,6 +453,7 @@ function validateAssertions(value: Record<string, unknown>): IPlaytestScenarioAs
               : {}),
             ...(typeof movement.minDistance === "number" && Number.isFinite(movement.minDistance) ? { minDistance: movement.minDistance } : {}),
             ...(typeof movement.minVelocity === "number" && Number.isFinite(movement.minVelocity) ? { minVelocity: movement.minVelocity } : {}),
+            ...(typeof movement.pathLength === "number" && Number.isFinite(movement.pathLength) && movement.pathLength >= 0 ? { pathLength: movement.pathLength } : {}),
             ...(typeof movement.rotationChanged === "boolean" ? { rotationChanged: movement.rotationChanged } : {}),
           },
     }),
@@ -510,9 +544,9 @@ function invalidScenario(scenarioPath: string, message: string): PlaytestScenari
   return new PlaytestScenarioError({
     code: "TN_PLAYTEST_SCENARIO_INVALID",
     fix: {
-      docs: "docs/workflows/playtesting.md",
+      docs: "docs/workflows/playtest-proof.md",
       instruction: "Use playtest schemaVersion 1 with a file-safe name, target, viewport, warmupFrames, and non-empty steps.",
-      snippet: '{ "schemaVersion": 1, "name": "forward-smoke", "target": "web", "viewport": { "width": 1280, "height": 720 }, "warmupFrames": 10, "steps": [{ "press": "KeyW", "holdFrames": 30, "release": true }] }',
+      snippet: '{ "schemaVersion": 1, "name": "forward-smoke", "target": "web", "viewport": { "width": 1280, "height": 720 }, "warmupFrames": 10, "steps": [{ "kind": "input", "press": "KeyW", "holdTicks": 30, "release": true }] }',
     },
     message: `Playtest scenario '${scenarioPath}' is invalid: ${message}`,
     severity: "error",
@@ -524,13 +558,13 @@ function invalidStep(scenarioPath: string, message: string): PlaytestScenarioErr
   return new PlaytestScenarioError({
     code: "TN_PLAYTEST_SCENARIO_STEP_INVALID",
     fix: {
-      docs: "docs/workflows/playtesting.md",
-      instruction: "Give each step either a press with positive holdFrames or a positive waitFrames value.",
-      snippet: '{ "press": "KeyW", "holdFrames": 30, "release": true }',
+      docs: "docs/workflows/playtest-proof.md",
+      instruction: "Give each step either a press with positive holdTicks/holdFrames or a positive waitTicks/waitFrames value; use kind: wait for an explicit no-input interval.",
+      snippet: '{ "kind": "input", "press": "KeyW", "holdTicks": 30, "release": true }',
     },
     message: `Playtest scenario '${scenarioPath}' has an invalid step: ${message}`,
     severity: "error",
-    suggestion: "Each step must define press or waitFrames; holdFrames and waitFrames must be positive integers.",
+    suggestion: "Each step must define press or waitTicks/waitFrames; holdTicks/holdFrames and waitTicks/waitFrames must be positive integers.",
   });
 }
 

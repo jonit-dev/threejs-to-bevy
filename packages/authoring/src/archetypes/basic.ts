@@ -1,10 +1,10 @@
-import { mkdir, writeFile } from "node:fs/promises";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 
 import { writeAuthoringJsonDocument, type IAuthoringDocument } from "../documents.js";
 import { authoringOperationResult } from "../operations/shared.js";
 import { loadAuthoringProject } from "../project.js";
-import { sceneDocumentSchema, schemaDocumentSchema, type ISceneDocument, type ISceneEntity, type IScenePrefab, type ISceneSystem } from "../schemas.js";
+import { isRecord, sceneDocumentSchema, schemaDocumentSchema, type ISceneDocument, type ISceneEntity, type IScenePrefab, type ISceneSystem } from "../schemas.js";
 import type { IAuthoringOperationResult } from "../operations.js";
 import type { ActorArchetypeId } from "../archetypes.js";
 
@@ -14,6 +14,7 @@ export interface IApplyBasicActorArchetypeOptions {
   asset?: string;
   projectPath: string;
   sceneId?: string;
+  shared?: boolean;
   speed?: number;
 }
 
@@ -27,27 +28,30 @@ export async function applyBasicActorArchetype(options: IApplyBasicActorArchetyp
   const filesWritten = new Set<string>([sceneProjectRelativePath]);
 
   applySceneMutation(scene, options);
+  const uiDocument = options.archetype === "pickup" ? project.documents.find((document) => document.kind === "ui") : undefined;
+  if (uiDocument !== undefined && isRecord(uiDocument.data)) {
+    migratePickupUi(scene, uiDocument.data);
+    await writeJson(uiDocument.projectRelativePath, uiDocument.file, "ui", uiDocument.data);
+    filesWritten.add(uiDocument.projectRelativePath);
+  }
   await writeJson(sceneProjectRelativePath, sceneAbsolutePath, "scene", scene);
 
   if (options.archetype === "vehicle" || options.archetype === "pickup" || options.archetype === "camera-boom") {
-    const scriptPath = `src/scripts/${options.actorId}.${scriptSuffix(options.archetype)}.ts`;
-    const systemsPath = `content/systems/${options.actorId}.${scriptSuffix(options.archetype)}.systems.json`;
+    const sharedPickup = options.archetype === "pickup" && options.shared === true;
+    const scriptPath = sharedPickup ? "src/scripts/pickups.ts" : `src/scripts/${options.actorId}.${scriptSuffix(options.archetype)}.ts`;
+    const systemsPath = sharedPickup ? "content/systems/pickups.systems.json" : `content/systems/${options.actorId}.${scriptSuffix(options.archetype)}.systems.json`;
     const cameraStateId = `tn.cameraRig.${options.archetype === "vehicle" ? `${options.actorId}.camera` : options.actorId}`;
-    await writeJson(systemsPath, resolve(projectPath, systemsPath), "systems", {
-      id: `${options.actorId}.${scriptSuffix(options.archetype)}`,
-      schema: "threenative.systems",
-      systems: [
-        {
-          id: `${options.actorId}.${scriptSuffix(options.archetype)}`,
-          script: {
-            export: `update${pascalCase(options.actorId)}${pascalCase(options.archetype)}`,
-            module: scriptPath,
-          },
-        } satisfies ISceneSystem,
-      ],
-      version: "0.1.0",
-    });
-    await writeScript(resolve(projectPath, scriptPath), behaviorScript(options));
+    const systemId = sharedPickup ? "pickups.shared" : `${options.actorId}.${scriptSuffix(options.archetype)}`;
+    const systems = sharedPickup
+      ? await readSharedSystems(resolve(projectPath, systemsPath), systemId, scriptPath)
+      : {
+          id: systemId,
+          schema: "threenative.systems",
+          systems: [{ id: systemId, script: { export: `update${pascalCase(options.actorId)}${pascalCase(options.archetype)}`, module: scriptPath } } satisfies ISceneSystem],
+          version: "0.1.0",
+        };
+    await writeJson(systemsPath, resolve(projectPath, systemsPath), "systems", systems);
+    await writeScript(resolve(projectPath, scriptPath), behaviorScript(options, sharedPickup));
     filesWritten.add(systemsPath);
     filesWritten.add(scriptPath);
     if (options.archetype !== "pickup") {
@@ -85,15 +89,16 @@ function applySceneMutation(scene: ISceneDocument, options: IApplyBasicActorArch
     upsertById(scene.resources, { id: "ActiveCamera", value: { entity: existingCamera.id } });
   }
   const prefabId = `${options.actorId}.model`;
-  if (options.asset !== undefined) {
-    upsertById<IScenePrefab>(scene.prefabs, { asset: options.asset, id: prefabId });
-  }
+  upsertById<IScenePrefab>(scene.prefabs, {
+    ...(options.asset === undefined ? { color: "#ffd166", primitive: "sphere" } : { asset: options.asset }),
+    id: prefabId,
+  });
 
   if (options.archetype === "vehicle") {
     upsertById(scene.resources, { id: `tn.cameraRig.${options.actorId}.camera`, value: { followX: 0, followY: 0, followZ: 0, yaw: 0 } });
     upsertById<ISceneEntity>(scene.entities, {
       archetype: provenance(options, { speed: options.speed ?? 12 }),
-      ...(options.asset === undefined ? {} : { prefab: prefabId }),
+      prefab: prefabId,
       components: {
         Collider: { kind: "box", size: [1.8, 0.8, 3.2] },
         RigidBody: { damping: 0.4, kind: "dynamic", mass: 850 },
@@ -112,7 +117,7 @@ function applySceneMutation(scene: ISceneDocument, options: IApplyBasicActorArch
   if (options.archetype === "pickup") {
     upsertById<ISceneEntity>(scene.entities, {
       archetype: provenance(options, { resource: "PickupState.collected" }),
-      ...(options.asset === undefined ? {} : { prefab: prefabId }),
+      prefab: prefabId,
       components: {
         Collider: { kind: "sphere", radius: 0.55, trigger: true },
         KinematicMover: { axis: "y", mode: "sine", radius: 0.18, speed: 1.4 },
@@ -158,12 +163,14 @@ function applySceneMutation(scene: ISceneDocument, options: IApplyBasicActorArch
   });
 }
 
-function behaviorScript(options: IApplyBasicActorArchetypeOptions): string {
-  const exportName = `update${pascalCase(options.actorId)}${pascalCase(options.archetype)}`;
+function behaviorScript(options: IApplyBasicActorArchetypeOptions, sharedPickup = false): string {
+  const exportName = sharedPickup ? "updatePickups" : `update${pascalCase(options.actorId)}${pascalCase(options.archetype)}`;
   const cameraId = options.archetype === "vehicle" ? `${options.actorId}.camera` : options.actorId;
   const body = options.archetype === "camera-boom" || options.archetype === "vehicle"
     ? `    CameraRig.thirdPerson(context, { cameraId: ${JSON.stringify(cameraId)}, target: ${JSON.stringify(options.archetype === "vehicle" ? options.actorId : `${options.actorId}.target`)} });`
-    : "    // Add score, audio, and despawn commands here once pickup behavior is game-specific.";
+    : options.archetype === "pickup"
+      ? "    const state = context.resources.get(\"PickupState\", { collected: 0 });\n    if (context.input.action(\"pickup\")) {\n      context.resources.patch(\"PickupState\", { collected: state.collected + 1 });\n    }"
+      : "    context.time.fixedDelta;";
   const imports = options.archetype === "pickup" ? "defineBehavior" : "CameraRig, defineBehavior";
   return `import { ${imports} } from "@threenative/script-stdlib";
 import type { ProjectContext } from "../../.threenative/types/project-context";
@@ -175,6 +182,33 @@ ${body}
   },
 );
 `;
+}
+
+function migratePickupUi(scene: ISceneDocument, ui: Record<string, unknown>): void {
+  const nodes = Array.isArray(ui.nodes) ? ui.nodes.filter((node): node is { id: string; text?: string; type?: string } => isRecord(node) && typeof node.id === "string") : [];
+  const bindings = Array.isArray(ui.bindings) ? ui.bindings.filter((binding): binding is { fields?: string[]; node: string; resource: string } => isRecord(binding) && typeof binding.node === "string" && typeof binding.resource === "string") : [];
+  upsertById(nodes, { id: "hud.pickups", text: "Pickups 0", type: "text" });
+  upsertUiBinding(bindings, { fields: ["collected"], node: "hud.pickups", resource: "PickupState" });
+  ui.nodes = nodes;
+  ui.bindings = bindings;
+  if (scene.ui !== undefined) {
+    scene.ui.nodes = (scene.ui.nodes ?? []).filter((node) => node.id !== "hud.pickups");
+    scene.ui.bindings = (scene.ui.bindings ?? []).filter((binding) => binding.node !== "hud.pickups");
+  }
+}
+
+async function readSharedSystems(file: string, systemId: string, scriptPath: string): Promise<{ id: string; schema: string; systems: ISceneSystem[]; version: string }> {
+  let source: { id?: string; schema?: string; systems?: ISceneSystem[]; version?: string } = {};
+  try {
+    source = JSON.parse(await readFile(file, "utf8")) as typeof source;
+  } catch {
+    // The first shared actor creates the registry.
+  }
+  const systems = source.systems ?? [];
+  if (!systems.some((system) => system.id === systemId)) {
+    systems.push({ id: systemId, script: { export: "updatePickups", module: scriptPath } });
+  }
+  return { id: source.id ?? "pickups", schema: source.schema ?? "threenative.systems", systems, version: source.version ?? "0.1.0" };
 }
 
 function provenance(options: IApplyBasicActorArchetypeOptions, params: Record<string, unknown>) {

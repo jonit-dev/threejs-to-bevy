@@ -646,7 +646,11 @@ export function validateSystemCommandShape(diagnostics: IAuthoringDiagnostic[], 
     return;
   }
   if (kind === "despawn") {
-    validateRequiredString(diagnostics, file, `${path}/entity`, command.entity, "despawn command entity must be a non-empty entity id.");
+    const hasEntity = typeof command.entity === "string" && command.entity.trim().length > 0;
+    const hasTag = typeof command.tag === "string" && command.tag.trim().length > 0;
+    if (!hasEntity && !hasTag) {
+      diagnostics.push(typeDiagnostic(file, path, "despawn command requires a non-empty entity pattern or tag selector.", command));
+    }
     return;
   }
   if (kind === "addComponent" || kind === "removeComponent" || kind === "setComponent") {
@@ -1012,7 +1016,7 @@ export const schemaFieldKeys = new Set(["default", "kind", "required"]);
 
 export function validateSchemaDocumentKind(file: string, value: unknown): IAuthoringDiagnostic[] {
   const diagnostics: IAuthoringDiagnostic[] = [];
-  validateEnumString(diagnostics, file, "/kind", value, supportedSchemaDocumentKinds, "schema document kind", "Use 'component' or 'resource'.");
+  validateEnumString(diagnostics, file, "/kind", value, supportedSchemaDocumentKinds, "schema document kind", "Use 'component', 'event', or 'resource'.");
   return diagnostics;
 }
 

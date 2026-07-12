@@ -24,6 +24,11 @@ export interface IPlaytestSchemaPayload {
     description: string;
     fields: Array<{ description: string; name: keyof IPlaytestScenario["steps"][number]; type: string }>;
   }>;
+  timing: {
+    fixedDeltaSeconds: number;
+    relation: string;
+    ticksPerRenderedFrame: number;
+  };
 }
 
 export async function playtestSchemaCommand(argv: readonly string[]): Promise<ICommandResult> {
@@ -52,8 +57,8 @@ export function playtestSchemaPayload(): IPlaytestSchemaPayload {
         schemaVersion: 1,
         setup: { entities: [{ entity: "player", position: [0, 0.02, 5] }] },
         steps: [
-          { holdFrames: 1, label: "trigger retry", press: "KeyR", release: true },
-          { release: true, waitFrames: 12 },
+          { kind: "input", holdTicks: 1, label: "trigger retry", press: "KeyR", release: true },
+          { kind: "wait", waitTicks: 12, release: true },
         ],
         subject: "player",
         target: "web",
@@ -61,9 +66,9 @@ export function playtestSchemaPayload(): IPlaytestSchemaPayload {
         warmupFrames: 10,
       },
       stepSequence: [
-        { holdFrames: 45, label: "move right", press: "KeyD", release: true },
-        { release: true, waitFrames: 8 },
-        { holdFrames: 1, label: "retry", press: "KeyR", release: true },
+        { kind: "input", holdTicks: 45, label: "move right", press: "KeyD", release: true },
+        { kind: "wait", waitTicks: 8, release: true },
+        { kind: "input", holdTicks: 1, label: "retry", press: "KeyR", release: true },
       ],
     },
     message: "Machine-readable playtest scenario and assertion DSL schema.",
@@ -90,20 +95,28 @@ export function playtestSchemaPayload(): IPlaytestSchemaPayload {
     },
     steps: [
       {
-        description: "A playtest step presses a KeyboardEvent.code for holdFrames or waits for waitFrames.",
+        description: "A playtest step presses a KeyboardEvent.code for fixed ticks, or uses kind wait for an explicit no-input interval.",
         fields: [
+          { description: "Optional explicit step kind. wait never synthesizes a keyboard key.", name: "kind", type: "input | wait" },
           { description: "KeyboardEvent.code to press, for example KeyW, KeyD, Space, or KeyR.", name: "press", type: "string" },
           { description: "Frames to hold the key before release.", name: "holdFrames", type: "positive integer" },
+          { description: "Fixed simulation ticks to hold the key. One fixed tick maps to one rendered-frame wait in browser proofs.", name: "holdTicks", type: "positive integer" },
           { description: "Whether to release the pressed key after holdFrames. Defaults to true.", name: "release", type: "boolean" },
           { description: "Frames to wait without new input.", name: "waitFrames", type: "positive integer" },
+          { description: "Fixed simulation ticks to wait without input.", name: "waitTicks", type: "positive integer" },
           { description: "Human-readable step label.", name: "label", type: "string" },
         ],
       },
     ],
+    timing: {
+      fixedDeltaSeconds: 1 / 60,
+      relation: "holdTicks and waitTicks count fixed-update ticks; browser playtest advances one rendered frame per fixed tick. holdFrames/waitFrames are compatibility aliases.",
+      ticksPerRenderedFrame: 1,
+    },
   };
 }
 
 function renderHumanSchema(payload: IPlaytestSchemaPayload): string {
   const assertions = payload.assertions.map((entry) => `  ${entry.kind}: ${entry.description}`).join("\n");
-  return `${payload.message}\n\nAssertions:\n${assertions}\n\nParity:\n  ${payload.parity.description}\n\nUse --json for field definitions and examples.\n`;
+  return `${payload.message}\n\nAssertions:\n${assertions}\n\nTiming:\n  ${payload.timing.relation}\n\nParity:\n  ${payload.parity.description}\n\nUse --json for field definitions and examples.\n`;
 }

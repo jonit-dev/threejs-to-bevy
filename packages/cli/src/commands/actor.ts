@@ -39,7 +39,7 @@ export async function actorCommand(argv: readonly string[], options: ISourceComm
       return renderUsage(json, "TN_ACTOR_NUMBER_INVALID", "Actor speed flags must be finite numbers.");
     }
     if (archetype === undefined || actorId === undefined) {
-      return renderUsage(json, "TN_ACTOR_ADD_ARGS_MISSING", "Usage: tn actor add character --id <actor-id> [--asset <asset-id-or-path>] [--scene <scene-id>] [--speed <n>] [--sprint-speed <n>] [--project <path>] [--json]");
+      return renderUsage(json, "TN_ACTOR_ADD_ARGS_MISSING", "Usage: tn actor add <archetype> --id <actor-id> [--asset <asset-id-or-path>] [--shared] [--scene <scene-id>] [--speed <n>] [--sprint-speed <n>] [--project <path>] [--json]");
     }
     return renderAuthoringResult(
       "actor",
@@ -49,6 +49,7 @@ export async function actorCommand(argv: readonly string[], options: ISourceComm
         asset: readFlag(normalizedArgv, "--asset"),
         projectPath,
         sceneId: readFlag(normalizedArgv, "--scene"),
+        shared: normalizedArgv.includes("--shared"),
         speed: speed.value,
         sprintSpeed: sprintSpeed.value,
       }),
@@ -78,7 +79,7 @@ export async function actorCommand(argv: readonly string[], options: ISourceComm
     );
   }
 
-  return renderUsage(json, "TN_ACTOR_COMMAND_UNSUPPORTED", "Usage: tn actor list [--json]\n       tn actor add character --id <actor-id> [--asset <asset-id-or-path>] [--scene <scene-id>] [--speed <n>] [--sprint-speed <n>] [--project <path>] [--json]\n       tn actor update <actor-id> --set speed=4 [--set sprintSpeed=6] [--project <path>] [--json]");
+  return renderUsage(json, "TN_ACTOR_COMMAND_UNSUPPORTED", "Usage: tn actor list [--json]\n       tn actor add <archetype> --id <actor-id> [--asset <asset-id-or-path>] [--shared] [--scene <scene-id>] [--speed <n>] [--sprint-speed <n>] [--project <path>] [--json]\n       tn actor update <actor-id> --set speed=4 [--set sprintSpeed=6] [--project <path>] [--json]");
 }
 
 function parseSetFlags(argv: readonly string[]): { diagnostic?: string; value?: Record<string, unknown> } {

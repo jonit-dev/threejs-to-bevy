@@ -26,15 +26,15 @@
   "schemaVersion": 1,
   "steps": [
     {
-      "holdFrames": 4,
+      "holdTicks": 4,
       "label": "walk up onto the patrol line",
       "press": "KeyW",
       "release": true
     },
     {
-      "holdFrames": 170,
+      "kind": "wait",
       "label": "wait for drone.01 to sweep through",
-      "press": "KeyQ",
+      "waitTicks": 170,
       "release": true
     }
   ],

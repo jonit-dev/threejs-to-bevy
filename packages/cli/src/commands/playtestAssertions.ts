@@ -28,6 +28,7 @@ export const PLAYTEST_ASSERTION_REGISTRY: readonly IPlaytestAssertionSchemaEntry
       { description: "Minimum signed resolved character.move displacement on a specific axis, for example { axis: '+y', min: 0.2 }.", name: "minResolvedAxisDelta", type: "{ axis: string, min: number }" },
       { description: "Minimum distance moved over the scenario.", name: "minDistance", type: "number" },
       { description: "Minimum distance per frame.", name: "minVelocity", type: "number" },
+      { description: "Minimum accumulated path length; use with minDistance to catch movement that cancels out.", name: "pathLength", type: "number" },
       { description: "Require any observed rotation delta.", name: "rotationChanged", type: "boolean" },
     ],
     kind: "movement",
@@ -241,6 +242,19 @@ export function evaluateRichPlaytestAssertions(input: {
         message: `Entity '${input.report.entity}' velocity ${velocity.toFixed(6)} was below required ${scenarioAssertions.movement.minVelocity}.`,
         severity: "error",
         suggestion: "Check input force/speed tuning and whether the scenario holds input long enough.",
+      });
+    }
+  }
+  if (scenarioAssertions.movement?.pathLength !== undefined) {
+    const pathLength = input.report.pathLength ?? input.report.distance;
+    const pass = pathLength >= scenarioAssertions.movement.pathLength;
+    assertions.push({ details: { minimum: scenarioAssertions.movement.pathLength, pathLength }, id: "movement.pathLength", pass });
+    if (!pass) {
+      diagnostics.push({
+        code: "TN_PLAYTEST_PATH_LENGTH_ASSERTION_FAILED",
+        message: `Entity '${input.report.entity}' accumulated path length ${pathLength.toFixed(6)}, below required ${scenarioAssertions.movement.pathLength}.`,
+        severity: "error",
+        suggestion: "Use pathLength with minDistance to distinguish actual traversal from a route that returns to its starting point.",
       });
     }
   }

@@ -20,6 +20,22 @@ Prefer committed scenarios for generated games and maintained starters:
 tn playtest --project . --scenario playtests/smoke-movement.playtest.json --stable-artifacts --json
 ```
 
+Scenario steps may count fixed simulation ticks directly. `holdTicks` and
+`waitTicks` use a 1/60-second fixed delta; the browser proof runner advances
+one rendered frame per tick. Use `kind: "wait"` for an explicit no-input
+interval instead of pressing an unbound key. `holdFrames` and `waitFrames`
+remain compatibility aliases. Run `tn playtest schema --json` for the full
+machine-readable shape.
+
+```json
+{
+  "kind": "input",
+  "press": "KeyD",
+  "holdTicks": 45,
+  "release": true
+}
+```
+
 Scenario files may include `setup.entities[]` Transform overrides. The web
 runner applies those overrides before warmup and before the baseline transform
 sample, so focused proofs can start near a stair, ramp, trigger, pickup, or

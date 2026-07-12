@@ -1,4 +1,7 @@
 import assert from "node:assert/strict";
+import { existsSync } from "node:fs";
+import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import test from "node:test";
 
 import { authoringDiagnostic, PRESCRIPTIVE_DIAGNOSTIC_CODES, prescriptiveFixForCode } from "./index.js";
@@ -31,4 +34,17 @@ test("authoring diagnostics attach registered fixes by code", () => {
 
   assert.equal(diagnostic.fix?.instruction.includes("Create the referenced durable declaration"), true);
   assert.equal(diagnostic.fix?.docs, "docs/contracts/authoring-mcp.md");
+});
+
+test("prescriptive fixes resolve to distributed docs without repository implementation paths", () => {
+  const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "../../..");
+  for (const entry of PRESCRIPTIVE_DIAGNOSTIC_CODES) {
+    const fix = entry.fix;
+    if (fix.docs !== undefined) {
+      assert.equal(existsSync(resolve(repositoryRoot, fix.docs)), true, `${entry.code} docs pointer must exist`);
+      assert.equal(fix.docs.startsWith("packages/"), false);
+    }
+    const serialized = JSON.stringify(fix);
+    assert.equal(serialized.includes("packages/"), false, `${entry.code} must not expose package implementation paths`);
+  }
 });

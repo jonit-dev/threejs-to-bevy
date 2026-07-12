@@ -48,6 +48,7 @@ const supportedScriptHelperBindings: Record<SupportedScriptHelperImport, Readonl
 
 export interface IResolveSystemScriptSourcesResult<T extends ISystemScriptSource> {
   diagnostics: ICompilerDiagnostic[];
+  eventSchemas: Record<string, { fields: Record<string, { kind: string }> }>;
   resourceSchemas: Record<string, { fields: Record<string, { kind: string }> }>;
   systems: T[];
 }
@@ -57,19 +58,28 @@ export function resolveSystemScriptSources<T extends ISystemScriptSource>(
   projectPath: string | undefined,
 ): IResolveSystemScriptSourcesResult<T> {
   const diagnostics: ICompilerDiagnostic[] = [];
+  const eventSchemas = new Map<string, { fields: Record<string, { kind: string }> }>();
   const resourceSchemas = new Map<string, { fields: Record<string, { kind: string }> }>();
   const resolvedSystems = systems.map((system) => {
       const script = system.script;
       if (script?.sourceRef === undefined || script.source !== undefined) {
-        if (script?.source !== undefined) {
-          const resourceAccess = extractResourceAccess(script.source, {
-            exportName: script.exportName,
-            systemName: system.name,
-          });
+        const resourceAccess = script?.source === undefined ? undefined : extractResourceAccess(script.source, {
+          exportName: script.exportName,
+          systemName: system.name,
+        });
+        if (resourceAccess !== undefined) {
           diagnostics.push(...resourceAccess.diagnostics);
+          mergeResourceSchemas(eventSchemas, resourceAccess.eventSchemas);
           mergeResourceSchemas(resourceSchemas, resourceAccess.resourceSchemas);
         }
-        return system;
+        return resourceAccess === undefined
+          ? system
+          : {
+              ...system,
+              eventWrites: mergeStringLists(system.eventWrites, resourceAccess.eventWrites),
+              resourceReads: mergeStringLists(system.resourceReads, resourceAccess.resourceReads),
+              resourceWrites: mergeStringLists(system.resourceWrites, resourceAccess.resourceWrites),
+            } as T;
       }
       if (projectPath === undefined) {
         diagnostics.push({
@@ -94,6 +104,7 @@ export function resolveSystemScriptSources<T extends ISystemScriptSource>(
         systemName: system.name,
       });
       diagnostics.push(...resourceAccess.diagnostics);
+      mergeResourceSchemas(eventSchemas, resourceAccess.eventSchemas);
       mergeResourceSchemas(resourceSchemas, resourceAccess.resourceSchemas);
       diagnostics.push(...diagnoseBehaviorMetadataDuplicates(system, resolved.behaviorMetadata));
       return {
@@ -102,6 +113,7 @@ export function resolveSystemScriptSources<T extends ISystemScriptSource>(
         ...(resolved.behaviorMetadata === undefined ? {} : { source: "behavior-metadata" }),
         resourceReads: mergeStringLists(resolved.behaviorMetadata?.resourceReads ?? system.resourceReads, resourceAccess.resourceReads),
         resourceWrites: mergeStringLists(resolved.behaviorMetadata?.resourceWrites ?? system.resourceWrites, resourceAccess.resourceWrites),
+        eventWrites: mergeStringLists(resolved.behaviorMetadata?.eventWrites ?? system.eventWrites, resourceAccess.eventWrites),
         script: {
           ...script,
           ...(resolved.helperImports === undefined || resolved.helperImports.length === 0 ? {} : { helperImports: resolved.helperImports }),
@@ -116,6 +128,7 @@ export function resolveSystemScriptSources<T extends ISystemScriptSource>(
     });
   return {
     diagnostics,
+    eventSchemas: Object.fromEntries([...eventSchemas.entries()].sort(([left], [right]) => left.localeCompare(right))),
     resourceSchemas: Object.fromEntries([...resourceSchemas.entries()].sort(([left], [right]) => left.localeCompare(right))),
     systems: resolvedSystems,
   };
@@ -220,6 +233,8 @@ function extractGraphResourceAccess(
 ): ReturnType<typeof extractResourceAccess> {
   const resourceReads = new Set<string>();
   const resourceWrites = new Set<string>();
+  const eventWrites = new Set<string>();
+  const eventSchemas = new Map<string, { fields: Record<string, { kind: string }> }>();
   const resourceSchemas = new Map<string, { fields: Record<string, { kind: string }> }>();
   const diagnostics: ICompilerDiagnostic[] = [];
   for (const module of modules) {
@@ -229,6 +244,10 @@ function extractGraphResourceAccess(
       systemName,
     });
     diagnostics.push(...access.diagnostics);
+    for (const event of access.eventWrites) {
+      eventWrites.add(event);
+    }
+    mergeResourceSchemas(eventSchemas, access.eventSchemas);
     for (const resource of access.resourceReads) {
       resourceReads.add(resource);
     }
@@ -239,6 +258,8 @@ function extractGraphResourceAccess(
   }
   return {
     diagnostics,
+    eventSchemas: Object.fromEntries([...eventSchemas.entries()].sort(([left], [right]) => left.localeCompare(right))),
+    eventWrites: [...eventWrites].sort(),
     resourceReads: [...resourceReads].sort(),
     resourceSchemas: Object.fromEntries([...resourceSchemas.entries()].sort(([left], [right]) => left.localeCompare(right))),
     resourceWrites: [...resourceWrites].sort(),

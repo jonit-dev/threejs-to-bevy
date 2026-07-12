@@ -244,6 +244,29 @@ test("validates retained UI widget and style source fields", async () => {
   }
 });
 
+test("reports unknown schema document kinds with file and JSON path", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-authoring-schema-kind-invalid-"));
+  try {
+    await writeSourceDocument(root, "content/schemas/events.schema.json", {
+      schema: "threenative.schema",
+      version: "0.1.0",
+      id: "events",
+      kind: "eventish",
+      schemas: [{ id: "match.win", fields: { collected: { kind: "number" } } }],
+    });
+
+    const result = await validateAuthoringProject({ projectPath: root });
+    const diagnostic = result.diagnostics.find((candidate) => candidate.path === "/kind");
+
+    assert.equal(result.ok, false);
+    assert.equal(diagnostic?.code, "TN_AUTHORING_COMPONENT_VALUE_INVALID");
+    assert.equal(diagnostic?.file, "content/schemas/events.schema.json");
+    assert.match(diagnostic?.suggestion ?? "", /component.*event.*resource/);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
 test("validates input axis source fields", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-authoring-input-axis-invalid-"));
   try {

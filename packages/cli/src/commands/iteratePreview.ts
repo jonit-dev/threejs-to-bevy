@@ -8,7 +8,16 @@ export interface IIteratePreview {
 export type IteratePreviewStarter = (bundlePath: string) => Promise<IIteratePreview>;
 
 export async function startIteratePreview(bundlePath: string): Promise<IIteratePreview> {
-  const server = await startWebPreview({ bundlePath, silent: true });
+  let server;
+  try {
+    server = await startWebPreview({ bundlePath, silent: true });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    if (/EADDRINUSE|address already in use|port/iu.test(message)) {
+      throw new Error(`TN_PREVIEW_PORT_IN_USE: Preview port is unavailable. Stop the process holding it or rerun iterate so the preview can select a free port. ${message}`);
+    }
+    throw error;
+  }
   return previewFromServer(server);
 }
 

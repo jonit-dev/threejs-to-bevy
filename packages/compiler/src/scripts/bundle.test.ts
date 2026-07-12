@@ -178,6 +178,42 @@ test("should bundle a project local helper module into one executable system", (
   assert.equal(result.manifest?.systems[0]?.source?.moduleGraph?.hash, "sha256-graph");
 });
 
+test("should execute a local module that imports a stdlib helper by its authored name", () => {
+  const result = bundleSystemScripts([
+    {
+      name: "collect",
+      script: {
+        exportName: "system_collect",
+        helperImports: [{ imported: ["Vec3"], module: "@threenative/script-stdlib" }],
+        source: "() => undefined",
+        sourceRef: { export: "collect", module: "src/scripts/collect.ts", systemId: "collect" },
+        localModuleGraph: {
+          entry: "src/scripts/collect.ts",
+          hash: "sha256-stdlib-graph",
+          modules: [
+            {
+              dependencies: [],
+              hash: "sha256-helper",
+              path: "src/scripts/shared.ts",
+              source: "import { Vec3 } from '@threenative/script-stdlib'; export const offset = (value: number[]) => Vec3.add(value, [1, 2, 3]);",
+            },
+            {
+              dependencies: ["src/scripts/shared.ts"],
+              hash: "sha256-entry",
+              path: "src/scripts/collect.ts",
+              source: "import { offset } from './shared'; export const collect = () => offset([4, 5, 6]);",
+            },
+          ],
+          order: ["src/scripts/shared.ts", "src/scripts/collect.ts"],
+        },
+      },
+    },
+  ]);
+
+  assert.deepEqual(result.diagnostics, []);
+  assert.deepEqual(runBundledSystem(result.code, "system_collect"), [5, 7, 9]);
+});
+
 test("should bind an entry export that is re-exported through a local import", () => {
   const result = bundleSystemScripts([{
     name: "collect",

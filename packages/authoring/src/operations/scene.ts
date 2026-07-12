@@ -135,6 +135,7 @@ import type {
   IImportWorldOptions,
   IAddEntityOptions,
   IAddPrefabInstanceOptions,
+  IAddPrefabInstancesOptions,
   IAddTenPinLayoutOptions,
   IAddTagOptions,
   IAddGroupOptions,
@@ -166,6 +167,9 @@ import type {
   ISetCharacterControllerComponentOptions,
   ISetVisibilityComponentOptions,
   IRemoveComponentOptions,
+  IRemoveEntityOptions,
+  IRemoveUiNodeOptions,
+  IRemoveResourceOptions,
   IAddUiNodeOptions,
   ISetTransformOptions,
   ISetCameraOptions,
@@ -618,10 +622,47 @@ export async function validateAuthoringProject(options: IValidateAuthoringProjec
       ...(await validateAuthoringDocument(project.projectPath, document.projectRelativePath, document.kind, document.data, context)),
     );
   }
+  diagnostics.push(...registryOwnershipDiagnostics(project.documents));
 
   return authoringOperationResult({
     diagnostics,
     projectPath: project.projectPath,
+  });
+}
+
+function registryOwnershipDiagnostics(documents: readonly IAuthoringDocument[]): IAuthoringDiagnostic[] {
+  const systems = new Set(documents.filter((document) => document.kind === "systems").flatMap((document) => {
+    const data = isRecord(document.data) ? document.data : {};
+    return (readArray(data.systems) ?? []).flatMap((item) => isRecord(item) && typeof item.id === "string" ? [item.id] : []);
+  }));
+  const uiNodes = new Set(documents.filter((document) => document.kind === "ui").flatMap((document) => {
+    const data = isRecord(document.data) ? document.data : {};
+    return (readArray(data.nodes) ?? []).flatMap((item) => isRecord(item) && typeof item.id === "string" ? [item.id] : []);
+  }));
+  return documents.filter((document) => document.kind === "scene").flatMap((document) => {
+    const scene = isRecord(document.data) ? document.data : {};
+    const inlineSystems = (readArray(scene.systems) ?? []).flatMap((item) => isRecord(item) && typeof item.id === "string" ? [item.id] : []);
+    const inlineUiNodes = (readArray(isRecord(scene.ui) ? scene.ui.nodes : undefined) ?? []).flatMap((item) => isRecord(item) && typeof item.id === "string" ? [item.id] : []);
+    return [
+      ...inlineSystems.filter((id) => systems.has(id)).map((id) => authoringDiagnostic({
+        code: "TN_AUTHORING_REGISTRY_OWNERSHIP_DUPLICATE",
+        file: document.projectRelativePath,
+        message: `System '${id}' is declared in the scene and a sibling systems document.`,
+        path: `/systems/${inlineSystems.indexOf(id)}`,
+        severity: "warning",
+        suggestion: "Keep systems in content/systems/*.systems.json and remove the scene-inline duplicate.",
+        value: id,
+      })),
+      ...inlineUiNodes.filter((id) => uiNodes.has(id)).map((id) => authoringDiagnostic({
+        code: "TN_AUTHORING_REGISTRY_OWNERSHIP_DUPLICATE",
+        file: document.projectRelativePath,
+        message: `UI node '${id}' is declared in the scene and a sibling UI document.`,
+        path: `/ui/nodes/${inlineUiNodes.indexOf(id)}`,
+        severity: "warning",
+        suggestion: "Keep UI nodes in content/ui/*.ui.json and remove the scene-inline duplicate.",
+        value: id,
+      })),
+    ];
   });
 }
 
@@ -678,6 +719,284 @@ export async function addEntity(options: IAddEntityOptions): Promise<IAuthoringO
   });
 }
 
+export async function removeEntity(options: IRemoveEntityOptions): Promise<IAuthoringOperationResult> {
+  const result = await mutateScene(options, (scene, file) => {
+    const entities = readArray(scene.entities) ?? [];
+    const instances = readArray(scene.instances) ?? [];
+    const entityIndex = entities.findIndex((item) => isRecord(item) && item.id === options.entityId);
+    const instanceIndex = instances.findIndex((item) => isRecord(item) && item.id === options.entityId);
+    if (entityIndex < 0 && instanceIndex < 0) {
+      return [
+        authoringDiagnostic({
+          code: "TN_AUTHORING_SCENE_NODE_MISSING",
+          file,
+          message: `Entity or instance '${options.entityId}' was not found in scene '${options.sceneId}'.`,
+          path: "/entities",
+          value: options.entityId,
+          suggestion: "Run tn scene inspect <scene-id> --json to list authored entity and instance ids.",
+        }),
+      ];
+    }
+    scene.entities = entities.filter((_, index) => index !== entityIndex);
+    scene.instances = instances.filter((_, index) => index !== instanceIndex);
+    const systems = readArray(scene.systems) ?? [];
+    for (const system of systems) {
+      if (!isRecord(system)) {
+        continue;
+      }
+      if (Array.isArray(system.commands)) {
+        system.commands = system.commands.filter((command) => !referencesEntity(command, options.entityId));
+      }
+      if (Array.isArray(system.delayedCommands)) {
+        system.delayedCommands = system.delayedCommands.filter((declaration) => !isRecord(declaration) || !referencesEntity(declaration.command, options.entityId));
+      }
+    }
+    for (const entity of [...entities, ...instances]) {
+      if (!isRecord(entity) || entity.id === options.entityId || !isRecord(entity.components)) {
+        continue;
+      }
+      for (const component of Object.values(entity.components)) {
+        if (isRecord(component) && component.target === options.entityId) {
+          delete component.target;
+        }
+      }
+    }
+    return [];
+  });
+  if (!result.ok || !result.changed) {
+    return result;
+  }
+  return mergeOperationResults(result, await cascadeEntityReferences(options));
+}
+
+export async function removeUiNode(options: IRemoveUiNodeOptions): Promise<IAuthoringOperationResult> {
+  const project = await loadProjectForOperation(options);
+  const sceneDocument = project.documents.find((document) => document.kind === "scene" && readSceneId(document.data) === options.sceneId);
+  const sceneUi = sceneDocument !== undefined && isRecord(sceneDocument.data) && isRecord(sceneDocument.data.ui) ? sceneDocument.data.ui : undefined;
+  const sceneHasNode = (readArray(sceneUi?.nodes) ?? []).some((node) => isRecord(node) && node.id === options.uiNodeId);
+  if (!sceneHasNode) {
+    const uiDocument = project.documents.find((document) => document.kind === "ui" && documentHasUiNode(document.data, options.uiNodeId));
+    if (uiDocument !== undefined) {
+      return mutateLoadedSourceDocument(project, uiDocument, (data) => {
+        removeUiNodeFromDocument(data, options.uiNodeId);
+      });
+    }
+  }
+
+  const result = await mutateScene(options, (scene, file) => {
+    const ui = isRecord(scene.ui) ? scene.ui : undefined;
+    const nodes = readArray(ui?.nodes) ?? [];
+    const nodeIndex = nodes.findIndex((item) => isRecord(item) && item.id === options.uiNodeId);
+    if (nodeIndex < 0) {
+      return [
+        authoringDiagnostic({
+          code: "TN_AUTHORING_UI_NODE_MISSING",
+          file,
+          message: `UI node '${options.uiNodeId}' was not found in scene '${options.sceneId}'.`,
+          path: "/ui/nodes",
+          value: options.uiNodeId,
+          suggestion: "Run tn scene inspect <scene-id> --json to list authored UI node ids.",
+        }),
+      ];
+    }
+    ui!.nodes = nodes.filter((_, index) => index !== nodeIndex);
+    ui!.bindings = (readArray(ui!.bindings) ?? []).filter((binding) => !isRecord(binding) || binding.node !== options.uiNodeId);
+    scene.ui = ui;
+    return [];
+  });
+  if (!result.ok || !result.changed) {
+    return result;
+  }
+  return mergeOperationResults(result, await cascadeUiNodeReferences(options));
+}
+
+export async function removeResource(options: IRemoveResourceOptions): Promise<IAuthoringOperationResult> {
+  const result = await mutateScene(options, (scene, file) => {
+    const diagnostics: IAuthoringDiagnostic[] = [];
+    const resources = readArray(scene.resources) ?? [];
+    const resourceIndex = resources.findIndex((item) => isRecord(item) && item.id === options.resourceId);
+    if (resourceIndex < 0) {
+      return [
+        authoringDiagnostic({
+          code: "TN_AUTHORING_RESOURCE_MISSING",
+          file,
+          message: `Resource '${options.resourceId}' was not found in scene '${options.sceneId}'.`,
+          path: "/resources",
+          value: options.resourceId,
+          suggestion: "Run tn scene inspect <scene-id> --json to list authored resource ids.",
+        }),
+      ];
+    }
+    scene.resources = resources.filter((_, index) => index !== resourceIndex);
+    const ui = isRecord(scene.ui) ? scene.ui : undefined;
+    if (ui !== undefined) {
+      ui.bindings = (readArray(ui.bindings) ?? []).filter((binding) => {
+        if (!isRecord(binding) || typeof binding.resource !== "string") {
+          return true;
+        }
+        return binding.resource !== options.resourceId && !binding.resource.startsWith(`${options.resourceId}.`);
+      });
+      scene.ui = ui;
+    }
+    const systems = readArray(scene.systems) ?? [];
+    for (const [systemIndex, system] of systems.entries()) {
+      if (!isRecord(system)) {
+        continue;
+      }
+      for (const key of ["resourceReads", "resourceWrites"] as const) {
+        const references = readArray(system[key]) ?? [];
+        references.forEach((reference, referenceIndex) => {
+          if (typeof reference === "string" && resourceReferenceMatches(reference, options.resourceId)) {
+            diagnostics.push(danglingResourceDiagnostic(file, `/systems/${systemIndex}/${key}/${referenceIndex}`, reference, options.resourceId));
+          }
+        });
+      }
+    }
+    return diagnostics;
+  });
+  if (!result.ok || !result.changed) {
+    return result;
+  }
+  return mergeOperationResults(result, await cascadeResourceReferences(options));
+}
+
+function referencesEntity(value: unknown, entityId: string): boolean {
+  if (!isRecord(value)) {
+    return false;
+  }
+  return ["entity", "child", "parent"].some((key) => value[key] === entityId);
+}
+
+async function cascadeEntityReferences(options: IRemoveEntityOptions): Promise<IAuthoringOperationResult> {
+  const project = await loadProjectForOperation(options);
+  const results: IAuthoringOperationResult[] = [];
+  for (const document of project.documents.filter((candidate) => candidate.kind === "systems" && documentHasEntityReference(candidate.data, options.entityId))) {
+    results.push(await mutateLoadedSourceDocument(project, document, (data) => {
+      const systems = readArray(data.systems) ?? [];
+      for (const system of systems) {
+        if (!isRecord(system)) {
+          continue;
+        }
+        if (Array.isArray(system.commands)) {
+          system.commands = system.commands.filter((command) => !referencesEntity(command, options.entityId));
+        }
+        if (Array.isArray(system.delayedCommands)) {
+          system.delayedCommands = system.delayedCommands.filter((declaration) => !isRecord(declaration) || !referencesEntity(declaration.command, options.entityId));
+        }
+      }
+    }));
+  }
+  return mergeOperationResults(
+    authoringOperationResult({ projectPath: project.projectPath }),
+    ...results,
+  );
+}
+
+async function cascadeUiNodeReferences(options: IRemoveUiNodeOptions): Promise<IAuthoringOperationResult> {
+  const project = await loadProjectForOperation(options);
+  const results: IAuthoringOperationResult[] = [];
+  for (const document of project.documents.filter((candidate) => candidate.kind === "ui" && documentHasUiNode(candidate.data, options.uiNodeId))) {
+    results.push(await mutateLoadedSourceDocument(project, document, (data) => {
+      removeUiNodeFromDocument(data, options.uiNodeId);
+    }));
+  }
+  return mergeOperationResults(
+    authoringOperationResult({ projectPath: project.projectPath }),
+    ...results,
+  );
+}
+
+async function cascadeResourceReferences(options: IRemoveResourceOptions): Promise<IAuthoringOperationResult> {
+  const project = await loadProjectForOperation(options);
+  const diagnostics: IAuthoringDiagnostic[] = [];
+  const filesWritten: string[] = [];
+  let changed = false;
+  for (const document of project.documents.filter((candidate) => candidate.kind === "ui" || candidate.kind === "systems")) {
+    if (!isRecord(document.data)) {
+      continue;
+    }
+    if (document.kind === "ui" && documentHasResourceBinding(document.data, options.resourceId)) {
+      const result = await mutateLoadedSourceDocument(project, document, (data) => {
+        const bindings = readArray(data.bindings) ?? [];
+        data.bindings = bindings.filter((binding) => !isRecord(binding) || typeof binding.resource !== "string" || !resourceReferenceMatches(binding.resource, options.resourceId));
+      });
+      diagnostics.push(...result.diagnostics);
+      filesWritten.push(...result.filesWritten);
+      changed ||= result.changed;
+      continue;
+    }
+    if (document.kind === "systems") {
+      const systems = readArray(document.data.systems) ?? [];
+      for (const [systemIndex, system] of systems.entries()) {
+        if (!isRecord(system)) {
+          continue;
+        }
+        for (const key of ["resourceReads", "resourceWrites"] as const) {
+          for (const [referenceIndex, reference] of (readArray(system[key]) ?? []).entries()) {
+            if (typeof reference === "string" && resourceReferenceMatches(reference, options.resourceId)) {
+              diagnostics.push(danglingResourceDiagnostic(document.projectRelativePath, `/systems/${systemIndex}/${key}/${referenceIndex}`, reference, options.resourceId));
+            }
+          }
+        }
+      }
+    }
+  }
+  return authoringOperationResult({ changed, diagnostics, filesWritten, projectPath: project.projectPath });
+}
+
+function documentHasEntityReference(data: unknown, entityId: string): boolean {
+  if (!isRecord(data)) {
+    return false;
+  }
+  return (readArray(data.systems) ?? []).some((system) => isRecord(system) && (
+    (readArray(system.commands) ?? []).some((command) => referencesEntity(command, entityId))
+    || (readArray(system.delayedCommands) ?? []).some((declaration) => isRecord(declaration) && referencesEntity(declaration.command, entityId))
+  ));
+}
+
+function documentHasUiNode(data: unknown, uiNodeId: string): boolean {
+  return isRecord(data) && (readArray(data.nodes) ?? []).some((node) => isRecord(node) && node.id === uiNodeId);
+}
+
+function documentHasResourceBinding(data: unknown, resourceId: string): boolean {
+  return isRecord(data) && (readArray(data.bindings) ?? []).some((binding) => isRecord(binding) && typeof binding.resource === "string" && resourceReferenceMatches(binding.resource, resourceId));
+}
+
+function removeUiNodeFromDocument(data: Record<string, unknown>, uiNodeId: string): void {
+  data.nodes = (readArray(data.nodes) ?? []).filter((node) => !isRecord(node) || node.id !== uiNodeId);
+  data.bindings = (readArray(data.bindings) ?? []).filter((binding) => !isRecord(binding) || binding.node !== uiNodeId);
+}
+
+function resourceReferenceMatches(reference: string, resourceId: string): boolean {
+  return reference === resourceId || reference.startsWith(`${resourceId}.`);
+}
+
+function danglingResourceDiagnostic(file: string, path: string, reference: string, resourceId: string): IAuthoringDiagnostic {
+  return authoringDiagnostic({
+    code: "TN_AUTHORING_DANGLING_RESOURCE_REFERENCE",
+    file,
+    message: `Resource reference '${reference}' remains after removing '${resourceId}'.`,
+    path,
+    severity: "warning",
+    suggestion: `Remove or retarget this resource access, or restore resource '${resourceId}' before building.`,
+    fix: {
+      docs: "docs/contracts/scripting-api.md",
+      instruction: `Remove or retarget the '${reference}' access at ${file}${path}, or keep the '${resourceId}' resource declaration.`,
+    },
+    value: reference,
+  });
+}
+
+function mergeOperationResults(...results: IAuthoringOperationResult[]): IAuthoringOperationResult {
+  const first = results[0];
+  return authoringOperationResult({
+    changed: results.some((result) => result.changed),
+    diagnostics: results.flatMap((result) => result.diagnostics),
+    filesWritten: results.flatMap((result) => result.filesWritten),
+    projectPath: first?.projectPath ?? "",
+  });
+}
+
 export async function addPrefabInstance(options: IAddPrefabInstanceOptions): Promise<IAuthoringOperationResult> {
   return mutateScene(options, (scene, file) => {
     const instances = ensureArrayProperty(scene, "instances");
@@ -699,6 +1018,31 @@ export async function addPrefabInstance(options: IAddPrefabInstanceOptions): Pro
       instances.push(instance);
     } else {
       instances[instances.indexOf(existing)] = instance;
+    }
+    return [];
+  });
+}
+
+export async function addPrefabInstances(options: IAddPrefabInstancesOptions): Promise<IAuthoringOperationResult> {
+  return mutateScene(options, (scene, file) => {
+    const instances = ensureArrayProperty(scene, "instances");
+    const prefix = options.prefix ?? options.prefabId;
+    const ids = options.positions.map((_, index) => `${prefix}.${String(index + 1).padStart(2, "0")}`);
+    const duplicate = ids.find((id) => findSceneItem(instances, id) !== undefined);
+    if (duplicate !== undefined) {
+      return [
+        authoringDiagnostic({
+          code: "TN_AUTHORING_INSTANCE_EXISTS",
+          file,
+          message: `Batch prefab placement would replace existing instance '${duplicate}'.`,
+          path: `/instances/${instances.findIndex((instance) => instance.id === duplicate)}/id`,
+          value: duplicate,
+          suggestion: "Choose a different --prefix or remove the existing instances before placing this batch.",
+        }),
+      ];
+    }
+    for (const [index, position] of options.positions.entries()) {
+      instances.push(compactInstanceRecord(ids[index]!, options.prefabId, { position }, options.components));
     }
     return [];
   });
@@ -758,6 +1102,8 @@ export async function addTag(options: IAddTagOptions): Promise<IAuthoringOperati
       ...(isRecord(entity.components) ? entity.components : {}),
       [options.tag]: {},
     };
+    const tags = Array.isArray(entity.tags) ? entity.tags.filter((tag): tag is string => typeof tag === "string") : [];
+    entity.tags = [...new Set([...tags, options.tag])].sort();
     return [];
   });
 }

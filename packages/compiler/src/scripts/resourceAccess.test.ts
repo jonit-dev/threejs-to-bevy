@@ -38,3 +38,40 @@ test("should reject dynamic resource ids with a fix", () => {
   assert.match(result.diagnostics[0]?.fix?.instruction ?? "", /literal resource id/);
   assert.match(result.diagnostics[0]?.suggestion ?? "", /resourceReads/);
 });
+
+test("should infer event writes and literal payload schema fields", () => {
+  const result = extractResourceAccess(
+    `(context) => {
+      context.events.emit("match.win", { collected: 0, label: "complete", position: [1, 2, 3] });
+    }`,
+    { exportName: "finishMatch", file: "src/scripts/match.ts", systemName: "finishMatch" },
+  );
+
+  assert.deepEqual(result.diagnostics, []);
+  assert.deepEqual(result.eventWrites, ["match.win"]);
+  assert.deepEqual(result.eventSchemas, {
+    "match.win": {
+      fields: {
+        collected: { kind: "number" },
+        label: { kind: "string" },
+        position: { kind: "vec3" },
+      },
+    },
+  });
+});
+
+test("should infer shorthand event payload fields from local resource defaults", () => {
+  const result = extractResourceAccess(
+    `(context) => {
+      const orbs = context.resources.get("Orbs", { collected: 0 });
+      let collected = orbs.collected;
+      collected += 1;
+      context.events.emit("match.win", { collected });
+    }`,
+    { systemName: "collect" },
+  );
+
+  assert.deepEqual(result.eventSchemas, {
+    "match.win": { fields: { collected: { kind: "number" } } },
+  });
+});

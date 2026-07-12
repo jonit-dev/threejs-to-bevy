@@ -1,6 +1,7 @@
 import {
   addEntity,
   addPrefabInstance,
+  addPrefabInstances,
   addTenPinLayout,
   addGroup,
   addPrefab,
@@ -14,6 +15,9 @@ import {
   inspectScene,
   loadAuthoringProject,
   removeComponent,
+  removeEntity,
+  removeResource,
+  removeUiNode,
   setCamera,
   setComponent,
   setPrefab,
@@ -235,6 +239,36 @@ export async function sceneCommand(argv: readonly string[], options: ISceneComma
     return renderSceneResult(result, json, result.ok ? `Entity '${entityId}' added.` : `Entity '${entityId}' was not added.`);
   }
 
+  if (subcommand === "remove-entity") {
+    const sceneId = readPositional(normalizedArgv, 1);
+    const entityId = readPositional(normalizedArgv, 2);
+    if (sceneId === undefined || entityId === undefined) {
+      return renderUsage(json, "TN_SCENE_REMOVE_ENTITY_ARGS_MISSING", "Usage: tn scene remove-entity <scene-id> <entity-id> [--project <path>] [--json]");
+    }
+    const result = await removeEntity({ entityId, projectPath, sceneId });
+    return renderSceneResult(result, json, result.ok ? `Entity '${entityId}' removed.` : `Entity '${entityId}' was not removed.`);
+  }
+
+  if (subcommand === "remove-ui-node") {
+    const sceneId = readPositional(normalizedArgv, 1);
+    const uiNodeId = readPositional(normalizedArgv, 2);
+    if (sceneId === undefined || uiNodeId === undefined) {
+      return renderUsage(json, "TN_SCENE_REMOVE_UI_NODE_ARGS_MISSING", "Usage: tn scene remove-ui-node <scene-id> <ui-node-id> [--project <path>] [--json]");
+    }
+    const result = await removeUiNode({ projectPath, sceneId, uiNodeId });
+    return renderSceneResult(result, json, result.ok ? `UI node '${uiNodeId}' removed.` : `UI node '${uiNodeId}' was not removed.`);
+  }
+
+  if (subcommand === "remove-resource") {
+    const sceneId = readPositional(normalizedArgv, 1);
+    const resourceId = readPositional(normalizedArgv, 2);
+    if (sceneId === undefined || resourceId === undefined) {
+      return renderUsage(json, "TN_SCENE_REMOVE_RESOURCE_ARGS_MISSING", "Usage: tn scene remove-resource <scene-id> <resource-id> [--project <path>] [--json]");
+    }
+    const result = await removeResource({ projectPath, resourceId, sceneId });
+    return renderSceneResult(result, json, result.ok ? `Resource '${resourceId}' removed.` : `Resource '${resourceId}' was not removed.`);
+  }
+
   if (subcommand === "add-prefab-instance") {
     const sceneId = readPositional(normalizedArgv, 1);
     const instanceId = readPositional(normalizedArgv, 2);
@@ -262,6 +296,28 @@ export async function sceneCommand(argv: readonly string[], options: ISceneComma
       transform,
     });
     return renderSceneResult(result, json, result.ok ? `Compact prefab instance '${instanceId}' added.` : `Compact prefab instance '${instanceId}' was not added.`);
+  }
+
+  if (subcommand === "add-prefab-instances") {
+    const sceneId = readPositional(normalizedArgv, 1);
+    const prefabId = readFlag(normalizedArgv, "--prefab");
+    const positions = parsePositionListFlag(readFlag(normalizedArgv, "--positions"));
+    const components = parseJsonObjectFlag(normalizedArgv, "--components", "TN_SCENE_ADD_PREFAB_INSTANCES_COMPONENTS_INVALID");
+    if (positions.diagnostic !== undefined || components.diagnostic !== undefined) {
+      return renderUsage(json, positions.diagnostic ?? components.diagnostic ?? "TN_SCENE_ADD_PREFAB_INSTANCES_INVALID", "--positions must use x,y,z;... and --components must be a JSON object.");
+    }
+    if (sceneId === undefined || prefabId === undefined || positions.value === undefined) {
+      return renderUsage(json, "TN_SCENE_ADD_PREFAB_INSTANCES_ARGS_MISSING", "Usage: tn scene add-prefab-instances <scene-id> --prefab <prefab-id> --positions \"x,y,z;...\" [--prefix <id-prefix>] [--components <json-object>] [--project <path>] [--json]");
+    }
+    const result = await addPrefabInstances({
+      components: components.value,
+      positions: positions.value,
+      prefix: readFlag(normalizedArgv, "--prefix"),
+      prefabId,
+      projectPath,
+      sceneId,
+    });
+    return renderSceneResult(result, json, result.ok ? `Placed ${positions.value.length} '${prefabId}' instances.` : `Prefab instances were not placed.`);
   }
 
   if (subcommand === "layout") {
@@ -552,4 +608,15 @@ export async function sceneCommand(argv: readonly string[], options: ISceneComma
   }
 
   return renderUsage(json, "TN_SCENE_COMMAND_UNKNOWN", sceneUsage());
+}
+
+function parsePositionListFlag(raw: string | undefined): { diagnostic?: string; value?: Array<[number, number, number]> } {
+  if (raw === undefined || raw.trim() === "") {
+    return { diagnostic: "TN_SCENE_ADD_PREFAB_INSTANCES_POSITIONS_MISSING" };
+  }
+  const positions = raw.split(";").map((entry) => entry.split(",").map((value) => Number(value.trim())));
+  if (positions.some((position) => position.length !== 3 || position.some((value) => !Number.isFinite(value)))) {
+    return { diagnostic: "TN_SCENE_ADD_PREFAB_INSTANCES_POSITIONS_INVALID" };
+  }
+  return { value: positions as Array<[number, number, number]> };
 }

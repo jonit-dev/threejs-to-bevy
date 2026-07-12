@@ -1,4 +1,4 @@
-import { validateIterateReport, ITERATE_REPORT_SCHEMA, ITERATE_REPORT_VERSION, type IIterateDiagnostic, type IIterateReport, type IIterateStepReport } from "@threenative/authoring";
+import { loadAuthoringProject, validateIterateReport, ITERATE_REPORT_SCHEMA, ITERATE_REPORT_VERSION, type IIterateDiagnostic, type IIterateReport, type IIterateStepReport } from "@threenative/authoring";
 import { cp, mkdir, readFile, readdir, writeFile } from "node:fs/promises";
 import { relative, resolve } from "node:path";
 
@@ -76,7 +76,19 @@ export async function iterateCommand(
       return skipped;
     }
     const stepStarted = Date.now();
-    const result = await fn();
+    let result: IIterateStepResult;
+    try {
+      result = await fn();
+    } catch (error) {
+      result = {
+        diagnostics: [{
+          code: "TN_ITERATE_STEP_EXCEPTION",
+          message: error instanceof Error ? error.message : String(error),
+          severity: "error",
+          suggestion: "Inspect the step artifact and first failing module before rerunning iterate.",
+        }],
+      };
+    }
     const stepDiagnostics = result.diagnostics ?? [];
     diagnostics.push(...stepDiagnostics);
     const status = stepDiagnostics.some((diagnostic) => diagnostic.severity === "error") ? "fail" : "pass";
@@ -102,7 +114,11 @@ export async function iterateCommand(
     if (result.exitCode === 0 && isRecord(parsed) && typeof parsed.bundlePath === "string") {
       bundlePath = parsed.bundlePath;
     }
-    return commandStep(result);
+    const step = commandStep(result);
+    if (result.exitCode === 0) {
+      step.diagnostics = [...(step.diagnostics ?? []), ...(await antiProofDiagnostics(projectPath))];
+    }
+    return step;
   });
   await run("screenshot", async () => {
     if (bundlePath === undefined) {
@@ -111,6 +127,7 @@ export async function iterateCommand(
     const screenshotPath = resolve(latestDir, "screenshot.png");
     const capture = await withIteratePreview(bundlePath, (preview) => (options.capture ?? defaultCapture)({ outPath: screenshotPath, url: preview.url }), options.startPreview);
     const captureDiagnostics = normalizeDiagnostics(capture.diagnostics ?? []);
+    captureDiagnostics.push(...iterateCaptureDiagnostics(capture));
     return {
       artifacts: { screenshot: screenshotPath },
       diagnostics: captureDiagnostics,
@@ -189,6 +206,88 @@ export async function iterateCommand(
     exitCode: report.ok ? 0 : 1,
     stdout: json ? `${JSON.stringify(compactSummary(report), null, 2)}\n` : renderText(report),
   };
+}
+
+function iterateCaptureDiagnostics(capture: IScreenshotProofReport): IIterateDiagnostic[] {
+  const page = capture.page;
+  if (page === undefined) {
+    return [];
+  }
+  const diagnostics: IIterateDiagnostic[] = [];
+  const failingModule = firstFailingModule([...page.errors, ...page.browserLogs, ...page.requestFailures]);
+  if (page.errors.length > 0 || page.browserLogs.some((entry) => /^error:/iu.test(entry))) {
+    diagnostics.push({
+      code: "TN_ITERATE_BROWSER_PAGE_ERROR",
+      message: `Browser page error during iterate screenshot: ${[...page.errors, ...page.browserLogs].find((entry) => entry.length > 0) ?? "unknown error"}${failingModule === undefined ? "" : ` First failing module: ${failingModule}.`}`,
+      severity: "error",
+      suggestion: "Fix the first browser module error reported by iterate, then rerun the screenshot step.",
+    });
+  }
+  if (page.requestFailures.length > 0) {
+    diagnostics.push({
+      code: "TN_ITERATE_BROWSER_REQUEST_FAILED",
+      message: `Browser request failure during iterate screenshot: ${page.requestFailures[0]}${failingModule === undefined ? "" : ` First failing module: ${failingModule}.`}`,
+      severity: "error",
+      suggestion: "Repair the owning asset, bundle, or browser-safe import and rerun iterate.",
+    });
+  }
+  return diagnostics;
+}
+
+function firstFailingModule(values: readonly string[]): string | undefined {
+  const text = values.join("\n");
+  const match = text.match(/(?:node:[A-Za-z0-9_./-]+|(?:src|packages|runtime-[A-Za-z0-9_-]+)[A-Za-z0-9_./-]*\.(?:ts|tsx|js|mjs))/u);
+  return match?.[0];
+}
+
+async function antiProofDiagnostics(projectPath: string): Promise<IIterateDiagnostic[]> {
+  const project = await loadAuthoringProject({ projectPath });
+  const diagnostics: IIterateDiagnostic[] = [];
+  const systems = project.documents.filter((document) => document.kind === "systems").flatMap((document) => {
+    const data = isRecord(document.data) ? document.data : {};
+    return (Array.isArray(data.systems) ? data.systems : []).filter(isRecord).map((system) => ({ file: document.projectRelativePath, system }));
+  });
+  for (const entry of systems) {
+    const script = isRecord(entry.system.script) ? entry.system.script : undefined;
+    if (script === undefined || typeof script.module !== "string" || typeof script.export !== "string") {
+      continue;
+    }
+    const source = await readFile(resolve(projectPath, script.module), "utf8").catch(() => "");
+    if (emptySystemBody(source, script.export)) {
+      diagnostics.push({
+        code: "TN_ITERATE_EMPTY_SYSTEM_BODY",
+        file: entry.file,
+        message: `Registered system '${String(entry.system.id ?? script.export)}' points to an empty behavior body.`,
+        severity: "warning",
+        suggestion: "Implement the registered behavior before treating iterate as gameplay proof.",
+      });
+    }
+  }
+  const scenarios = await readdir(resolve(projectPath, "playtests")).catch(() => []);
+  let hasGameplayResourceAssertion = false;
+  for (const scenario of scenarios.filter((entry) => entry.endsWith(".playtest.json"))) {
+    const value = parseJsonPayload(await readFile(resolve(projectPath, "playtests", scenario), "utf8").catch(() => "{}"));
+    const assertions = isRecord(value) && isRecord(value.assert) && Array.isArray(value.assert.resources) ? value.assert.resources : [];
+    if (assertions.some((assertion) => isRecord(assertion) && assertion.changed === true)) {
+      hasGameplayResourceAssertion = true;
+      break;
+    }
+  }
+  if (systems.length > 0 && !hasGameplayResourceAssertion) {
+    diagnostics.push({
+      code: "TN_ITERATE_GAMEPLAY_UNPROVEN",
+      message: "Iterate is scaffold-only, gameplay unproven: no playtest scenario asserts a gameplay-caused resource change.",
+      severity: "warning",
+      suggestion: "Add a scenario resource assertion with changed: true and run it through tn iterate.",
+    });
+  }
+  return diagnostics;
+}
+
+function emptySystemBody(source: string, exportName: string): boolean {
+  const escaped = exportName.replace(/[.*+?^${}()|[\[\]\\]/gu, "\\$&");
+  const normalized = source.replace(/\/\*[\s\S]*?\*\//gu, "").replace(/\/\/[^\n]*/gu, "");
+  return new RegExp(`export\\s+(?:const|function)\\s+${escaped}[\\s\\S]*?(?:=>\\s*)?\\{\\s*\\}`, "u").test(normalized);
 }
 
 function compactSummary(report: IIterateReport): IIterateCompactSummary {

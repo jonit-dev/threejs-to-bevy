@@ -127,7 +127,7 @@ export const PRESCRIPTIVE_DIAGNOSTIC_CODES: readonly IPrescriptiveDiagnosticCode
     code: "TN_PLAYTEST_SCENARIO_INVALID",
     evidence: "Playtest scenario tests cover malformed scenario files and missing required scenario fields.",
     fix: {
-      docs: "docs/workflows/playtesting.md",
+      docs: "docs/workflows/playtest-proof.md",
       instruction: "Use playtest schemaVersion 1 with a file-safe name, target, viewport, warmupFrames, and non-empty steps.",
       snippet: '{ "schemaVersion": 1, "name": "forward-smoke", "target": "web", "viewport": { "width": 1280, "height": 720 }, "warmupFrames": 10, "steps": [{ "press": "KeyW", "holdFrames": 30, "release": true }] }',
     },
@@ -137,7 +137,7 @@ export const PRESCRIPTIVE_DIAGNOSTIC_CODES: readonly IPrescriptiveDiagnosticCode
     code: "TN_PLAYTEST_SCENARIO_STEP_INVALID",
     evidence: "Playtest scenario tests cover invalid steps without press/waitFrames and non-positive frame counts.",
     fix: {
-      docs: "docs/workflows/playtesting.md",
+      docs: "docs/workflows/playtest-proof.md",
       instruction: "Give each step either a press with positive holdFrames or a positive waitFrames value.",
       snippet: '{ "press": "KeyW", "holdFrames": 30, "release": true }',
     },

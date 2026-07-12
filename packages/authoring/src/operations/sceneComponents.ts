@@ -631,6 +631,16 @@ export async function removeComponent(options: IRemoveComponentOptions): Promise
 }
 
 export async function addUiNode(options: IAddUiNodeOptions): Promise<IAuthoringOperationResult> {
+  const project = await loadProjectForOperation(options);
+  const uiDocument = project.documents.find((document) => document.kind === "ui");
+  if (uiDocument !== undefined) {
+    return mutateLoadedSourceDocument(project, uiDocument, (data) => {
+      const nodes = ensureArrayProperty(data, "nodes");
+      if (findSceneItem(nodes, options.uiNodeId) === undefined) {
+        nodes.push({ id: options.uiNodeId, type: "text", text: options.uiNodeId });
+      }
+    });
+  }
   return mutateScene(options, (scene) => {
     const ui = isRecord(scene.ui) ? scene.ui : {};
     const nodes = ensureArrayProperty(ui, "nodes");
@@ -677,6 +687,19 @@ export async function setCamera(options: ISetCameraOptions): Promise<IAuthoringO
 }
 
 export async function attachScript(options: IAttachScriptOptions): Promise<IAuthoringOperationResult> {
+  const project = await loadProjectForOperation(options);
+  const systemsDocument = project.documents.find((document) => document.kind === "systems");
+  if (systemsDocument !== undefined) {
+    return mutateLoadedSourceDocument(project, systemsDocument, (data) => {
+      const systems = ensureArrayProperty(data, "systems");
+      const existing = findSceneItem(systems, options.systemId);
+      const system = existing ?? { id: options.systemId, schedule: "fixedUpdate" };
+      system.script = { module: options.modulePath, export: options.exportName };
+      if (existing === undefined) {
+        systems.push(system);
+      }
+    });
+  }
   return mutateScene(options, (scene) => {
     const systems = ensureArrayProperty(scene, "systems");
     const existing = findSceneItem(systems, options.systemId);
@@ -692,6 +715,19 @@ export async function attachScript(options: IAttachScriptOptions): Promise<IAuth
 }
 
 export async function bindUi(options: IBindUiOptions): Promise<IAuthoringOperationResult> {
+  const project = await loadProjectForOperation(options);
+  const uiDocument = project.documents.find((document) => document.kind === "ui");
+  if (uiDocument !== undefined) {
+    return mutateLoadedSourceDocument(project, uiDocument, (data) => {
+      const bindings = ensureArrayProperty(data, "bindings");
+      const existing = bindings.find((binding) => isRecord(binding) && binding.node === options.uiNodeId);
+      if (existing === undefined) {
+        bindings.push({ node: options.uiNodeId, resource: options.resourcePath });
+      } else {
+        existing.resource = options.resourcePath;
+      }
+    });
+  }
   return mutateScene(options, (scene) => {
     const ui = isRecord(scene.ui) ? scene.ui : {};
     const bindings = ensureArrayProperty(ui, "bindings");

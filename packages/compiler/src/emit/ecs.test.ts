@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { World, defineComponent, defineEvent, defineResource } from "@threenative/sdk";
 
+import { CompilerError } from "../errors.js";
 import { ecsToIr } from "./ecs.js";
 
 test("should emit ecs health and damage schemas", () => {
@@ -61,4 +62,65 @@ test("should preserve authored resource field kinds when inferred script access 
   assert.deepEqual(emitted.resourceSchemas.schemas.RallyState, {
     fields: { hud: { kind: "string" }, speed: { kind: "number" } },
   });
+});
+
+test("should expand tag selectors against authored world entities", () => {
+  const emitted = ecsToIr({
+    toJSON: () => ({
+      componentSchemas: {},
+      entities: [
+        { components: {}, id: "orb.02", tags: ["orb"] },
+        { components: {}, id: "orb.01", tags: ["orb"] },
+        { components: {}, id: "player", tags: ["player"] },
+      ],
+      eventSchemas: {},
+      resources: {},
+      resourceSchemas: {},
+      systems: [{
+        commands: [{ kind: "despawn", tag: "orb" }],
+        eventReads: [],
+        eventWrites: [],
+        name: "collect",
+        queries: [],
+        reads: [],
+        resourceReads: [],
+        resourceWrites: [],
+        services: [],
+        schedule: "fixedUpdate",
+        writes: [],
+      }],
+    }),
+  });
+
+  assert.deepEqual(emitted.systems.systems[0]?.commands, [
+    { entity: "orb.01", kind: "despawn" },
+    { entity: "orb.02", kind: "despawn" },
+  ]);
+  assert.deepEqual(emitted.world.entities.find((entity) => entity.id === "orb.01")?.tags, ["orb"]);
+
+  assert.throws(
+    () => ecsToIr({
+      toJSON: () => ({
+        componentSchemas: {},
+        entities: [{ components: {}, id: "player" }],
+        eventSchemas: {},
+        resources: {},
+        resourceSchemas: {},
+        systems: [{
+          commands: [{ kind: "despawn", tag: "orb" }],
+          eventReads: [],
+          eventWrites: [],
+          name: "collect",
+          queries: [],
+          reads: [],
+          resourceReads: [],
+          resourceWrites: [],
+          services: [],
+          schedule: "fixedUpdate",
+          writes: [],
+        }],
+      }),
+    }),
+    (error: unknown) => error instanceof CompilerError && error.code === "TN_IR_SYSTEM_COMMAND_SELECTOR_INVALID",
+  );
 });

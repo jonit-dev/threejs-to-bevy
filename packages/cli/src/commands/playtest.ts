@@ -16,7 +16,7 @@ import { evaluateRichPlaytestAssertions, type IPlaytestAssertionResult, type IPl
 import { defaultPlaytestArtifactDirectory, readPlaytestSummary, writePlaytestArtifactBundle, type IPlaytestArtifactBundle, type IPlaytestSummary } from "./playtestArtifacts.js";
 import { discoverPlaytestTargets, suggestPlaytestScenario, type IPlaytestDiscoveryReport } from "./playtestDiscovery.js";
 import { playtestScaffoldCommand } from "./playtestScaffold.js";
-import { applyScenarioOverrides, loadPlaytestScenario, oneShotScenario, parsePlaytestTarget, parseViewport, PlaytestScenarioError, type IPlaytestScenario } from "./playtestScenario.js";
+import { applyScenarioOverrides, loadPlaytestScenario, oneShotScenario, parsePlaytestTarget, parseViewport, playtestStepHoldTicks, playtestStepWaitTicks, PlaytestScenarioError, type IPlaytestScenario } from "./playtestScenario.js";
 import { playtestSchemaCommand } from "./playtestSchema.js";
 import { createPlaytestTargetRunner } from "./playtestTargets.js";
 import { playtestWatchCommand, readPlaytestWatchMaxRuns, type IPlaytestWatchHooks } from "./playtestWatch.js";
@@ -140,6 +140,7 @@ export interface IPlaytestReport {
   frames: number;
   input: string;
   movementDelta?: Vec3;
+  pathLength?: number;
   movementThreshold: number;
   nativeRecording?: IPlaytestNativeRecording;
   observations?: IPlaytestObservations;
@@ -606,6 +607,7 @@ async function runNativePlaytest(options: IPlaytestRunOptions, bevyRunner: BevyR
   const runtimeDiagnostics = { nativeFrameSamples, readiness: readinessSamples, resources: nativeRuntimeResources(readinessSamples) };
   const gameplayObservations = readinessSamples.at(-1)?.gameplayObservations;
   const effectLog = nativeSceneQueryEffectLog(readinessSamples);
+  const pathLength = movementPathLength(effectLog, options.entityId, before?.position, after?.position);
   const writeAudit = options.auditWrites ? nativeRuntimeWriteAudit(readinessSamples) : undefined;
   diagnostics.push(...resourceObservationDiagnostics(diagnostics, runtimeDiagnostics));
   const hasErrors = diagnostics.some((diagnostic) => diagnostic.severity === "error");
@@ -624,6 +626,7 @@ async function runNativePlaytest(options: IPlaytestRunOptions, bevyRunner: BevyR
     frames: options.frames,
     input: options.press,
     ...(movementDelta === undefined ? {} : { movementDelta }),
+    ...(pathLength === undefined ? {} : { pathLength }),
     movementThreshold: options.movementThreshold,
     nativeRecording,
     ...(writeAudit === undefined ? {} : { writeAudit }),
@@ -726,13 +729,12 @@ export function nativeHarnessCommandStream(scenario: IPlaytestScenario, artifact
   for (const step of scenario.steps) {
     if (step.press !== undefined) {
       commands.push({ code: step.press, pressed: true, tick, type: "key" });
-      const holdFrames = Math.max(1, step.holdFrames ?? 1);
-      tick += holdFrames;
+      tick += playtestStepHoldTicks(step);
       if (step.release) {
         commands.push({ code: step.press, pressed: false, tick, type: "key" });
       }
     }
-    tick += Math.max(0, step.waitFrames ?? 0);
+    tick += playtestStepWaitTicks(step);
   }
   if (artifacts.afterArtifact !== undefined) {
     commands.push({ path: artifacts.afterArtifact, tick: tick + 1, type: "screenshot" });
@@ -803,9 +805,9 @@ function nativeScenarioCaptureTicks(scenario: IPlaytestScenario): { afterTick: n
   let tick = beforeTick + 1;
   for (const step of scenario.steps) {
     if (step.press !== undefined) {
-      tick += Math.max(1, step.holdFrames ?? 1);
+      tick += playtestStepHoldTicks(step);
     }
-    tick += Math.max(0, step.waitFrames ?? 0);
+    tick += playtestStepWaitTicks(step);
   }
   return { afterTick: tick + 1, beforeTick };
 }
@@ -978,7 +980,7 @@ function readNativePosition(value: unknown): Vec3 | undefined {
 }
 
 function nativeHarnessTimeoutMs(scenario: IPlaytestScenario): number {
-  const frames = scenario.steps.reduce((total, step) => total + Math.max(1, step.holdFrames ?? 1) + Math.max(0, step.waitFrames ?? 0), scenario.warmupFrames);
+  const frames = scenario.steps.reduce((total, step) => total + playtestStepHoldTicks(step) + playtestStepWaitTicks(step), scenario.warmupFrames);
   return Math.max(180000, frames * (1000 / 30) + 10000);
 }
 
@@ -1105,19 +1107,20 @@ async function probePreview(options: IPlaytestRunOptions & { url: string }): Pro
     for (const step of options.scenario.steps) {
       if (step.press !== undefined) {
         await dispatchKeyboardCode(page, "keydown", step.press);
-        await waitForWebFrameAdvance(page, Math.max(1, step.holdFrames ?? options.frames));
+        await waitForWebFrameAdvance(page, playtestStepHoldTicks(step, options.frames));
         if (step.release) {
           await dispatchKeyboardCode(page, "keyup", step.press);
         }
       }
-      if (step.waitFrames !== undefined) {
-        await waitForWebFrameAdvance(page, step.waitFrames);
+      if (step.waitFrames !== undefined || step.waitTicks !== undefined || step.kind === "wait") {
+        await waitForWebFrameAdvance(page, playtestStepWaitTicks(step));
       }
     }
     const after = await readTransformSample(page, options.entityId);
     const followAfter = options.follow === undefined ? undefined : await readTransformSample(page, options.follow.entityId);
     const debugColliderCount = await page.evaluate(() => globalThis.__THREENATIVE_RUNTIME__?.debugColliderCount);
     const effectLog = await readEffectLog(page);
+    const pathLength = movementPathLength(effectLog, options.entityId, before?.position, after?.position);
     const runtimeDiagnostics = await readRuntimeDiagnostics(page);
     const runtimeObservations = await readWebRuntimeObservations(page);
     const writeAudit = options.auditWrites === true ? await readWebWriteAudit(page) : undefined;
@@ -1196,6 +1199,7 @@ async function probePreview(options: IPlaytestRunOptions & { url: string }): Pro
       frames: options.frames,
       input: options.press,
       ...(movementDelta === undefined ? {} : { movementDelta }),
+      ...(pathLength === undefined ? {} : { pathLength }),
       movementThreshold: options.movementThreshold,
       observations,
       pass: !hasErrors,
@@ -1312,7 +1316,7 @@ function primaryRunOptions(
     ...(movement?.axis === undefined ? {} : { expectAxis: movement.axis }),
     expectMoved: fallback.expectMoved || movement?.minDistance !== undefined || movement?.axis !== undefined,
     ...(camera?.entity === undefined ? fallback.fallbackFollow === undefined ? {} : { follow: fallback.fallbackFollow } : { follow: { entityId: camera.entity, within: camera.within ?? 10 } }),
-    frames: firstPressStep?.holdFrames ?? fallback.fallbackFrames,
+    frames: firstPressStep === undefined ? fallback.fallbackFrames : playtestStepHoldTicks(firstPressStep, fallback.fallbackFrames),
     movementThreshold: minDistance,
     ...(press === undefined ? {} : { press }),
   };
@@ -1606,6 +1610,26 @@ function latestTransformSample(effectLog: unknown, entityId: string): ITransform
     position: latest.position,
     tick: numberValue(latest.entry.tick),
   };
+}
+
+function movementPathLength(effectLog: unknown, entityId: string, before: Vec3 | undefined, after: Vec3 | undefined): number | undefined {
+  const points = [
+    ...(before === undefined ? [] : [before]),
+    ...(!isRecord(effectLog) || !Array.isArray(effectLog.entries) ? [] : effectLog.entries
+      .filter((entry): entry is Record<string, unknown> => isRecord(entry))
+      .filter((entry) => entry.kind === "patch" && entry.command === "setComponent" && entry.component === "Transform" && entry.entity === entityId)
+      .map((entry) => readPosition(entry.value))
+      .filter((position): position is Vec3 => position !== undefined)),
+    ...(after === undefined ? [] : [after]),
+  ];
+  if (points.length < 2) {
+    return undefined;
+  }
+  let total = 0;
+  for (let index = 1; index < points.length; index += 1) {
+    total += length3(delta3(points[index - 1]!, points[index]!));
+  }
+  return total;
 }
 
 function readPosition(value: unknown): Vec3 | undefined {

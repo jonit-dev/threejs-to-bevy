@@ -18,6 +18,11 @@ export type CommandDeclaration =
   | {
       entity: EntityRef;
       kind: "despawn";
+      tag?: string;
+    }
+  | {
+      kind: "despawn";
+      tag: string;
     }
   | {
       kind: "instantiate";
@@ -61,6 +66,13 @@ export function despawn(entity: EntityRef): CommandDeclaration {
   return {
     entity,
     kind: "despawn",
+  };
+}
+
+export function despawnByTag(tag: string): CommandDeclaration {
+  return {
+    kind: "despawn",
+    tag,
   };
 }
 

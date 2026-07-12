@@ -10,6 +10,7 @@ import {
   addPrefab,
   addPrefabComponent,
   addPrefabInstance,
+  addPrefabInstances,
   addResourceDocumentEntry,
   addFlowState,
   addFlowTransition,
@@ -44,6 +45,9 @@ import {
   createUiDocument,
   recordGeneratorProvenance,
   removeComponent,
+  removeEntity,
+  removeResource,
+  removeUiNode,
   removeUiComponentInstance,
   setCamera,
   setCameraComponent,
@@ -652,6 +656,21 @@ const operationEntries = [
     stringArg("prefabId", false),
   ]), async ({ args, projectPath }) =>
     addEntity({ entityId: requiredString(args, "entityId"), prefabId: optionalString(args, "prefabId"), projectPath, sceneId: requiredString(args, "sceneId") })),
+  operation(descriptor("scene.remove_entity", "Remove a scene entity or compact instance and cascade local references.", "scene", "source-document", [
+    stringArg("sceneId"),
+    stringArg("entityId"),
+  ]), async ({ args, projectPath }) =>
+    removeEntity({ entityId: requiredString(args, "entityId"), projectPath, sceneId: requiredString(args, "sceneId") })),
+  operation(descriptor("scene.remove_ui_node", "Remove a scene-owned UI node and its local bindings.", "scene", "source-document", [
+    stringArg("sceneId"),
+    stringArg("uiNodeId"),
+  ]), async ({ args, projectPath }) =>
+    removeUiNode({ projectPath, sceneId: requiredString(args, "sceneId"), uiNodeId: requiredString(args, "uiNodeId") })),
+  operation(descriptor("scene.remove_resource", "Remove a scene resource and its local UI bindings.", "scene", "source-document", [
+    stringArg("sceneId"),
+    stringArg("resourceId"),
+  ]), async ({ args, projectPath }) =>
+    removeResource({ projectPath, resourceId: requiredString(args, "resourceId"), sceneId: requiredString(args, "sceneId") })),
   operation(descriptor("scene.add_prefab_instance", "Add or replace a compact prefab-backed scene instance.", "scene", "source-document", [
     stringArg("sceneId"),
     stringArg("instanceId"),
@@ -670,6 +689,21 @@ const operationEntries = [
       replace: optionalBoolean(args, "replace"),
       sceneId: requiredString(args, "sceneId"),
       transform: compactTransformArgs(args),
+    })),
+  operation(descriptor("scene.add_prefab_instances", "Place multiple compact prefab-backed scene instances from explicit positions.", "scene", "source-document", [
+    stringArg("sceneId"),
+    stringArg("prefabId"),
+    anyJsonArg("positions"),
+    stringArg("prefix", false),
+    objectArg("components", false),
+  ]), async ({ args, projectPath }) =>
+    addPrefabInstances({
+      components: optionalObject(args, "components"),
+      positions: requiredVectorArray(args, "positions"),
+      prefabId: requiredString(args, "prefabId"),
+      prefix: optionalString(args, "prefix"),
+      projectPath,
+      sceneId: requiredString(args, "sceneId"),
     })),
   operation(descriptor("scene.layout_ten_pin", "Create or replace a compact ten-pin bowling layout.", "scene", "source-document", [
     stringArg("sceneId"),
@@ -1530,6 +1564,14 @@ function requiredObjectArray(args: Record<string, unknown>, key: string): Record
 function requiredStringArray(args: Record<string, unknown>, key: string): string[] {
   const value = args[key];
   if (!isStringArray(value)) {
+    throw new Error(`Operation argument '${key}' was not validated.`);
+  }
+  return value;
+}
+
+function requiredVectorArray(args: Record<string, unknown>, key: string): Array<[number, number, number]> {
+  const value = args[key];
+  if (!Array.isArray(value) || !value.every(isVector3)) {
     throw new Error(`Operation argument '${key}' was not validated.`);
   }
   return value;

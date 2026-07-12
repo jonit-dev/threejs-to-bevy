@@ -4,6 +4,8 @@ import type { ICompilerDiagnostic } from "../diagnostics.js";
 
 export interface IResourceAccessExtraction {
   diagnostics: ICompilerDiagnostic[];
+  eventSchemas: Record<string, { fields: Record<string, { kind: string }> }>;
+  eventWrites: string[];
   resourceSchemas: Record<string, { fields: Record<string, { kind: string }> }>;
   resourceReads: string[];
   resourceWrites: string[];
@@ -16,6 +18,10 @@ export interface IResourceAccessExtractionOptions {
 }
 
 type ResourceAccessKind = "read" | "write";
+type InferredValue = {
+  fields?: Record<string, { kind: string }>;
+  kind: string;
+};
 
 const resourceHelperKinds = new Map<string, ResourceAccessKind>([
   ["get", "read"],
@@ -28,10 +34,16 @@ export function extractResourceAccess(source: string, options: IResourceAccessEx
   const sourceFile = ts.createSourceFile(options.file ?? `${options.systemName}.ts`, source, ts.ScriptTarget.ES2023, true, ts.ScriptKind.TS);
   const resourceReads = new Set<string>();
   const resourceWrites = new Set<string>();
+  const eventWrites = new Set<string>();
+  const eventSchemas = new Map<string, { fields: Record<string, { kind: string }> }>();
   const resourceSchemas = new Map<string, { fields: Record<string, { kind: string }> }>();
+  const variables = new Map<string, InferredValue>();
   const diagnostics: ICompilerDiagnostic[] = [];
 
   function visit(node: ts.Node): void {
+    if (ts.isVariableDeclaration(node) && ts.isIdentifier(node.name)) {
+      variables.set(node.name.text, inferExpression(node.initializer, variables));
+    }
     if (ts.isCallExpression(node)) {
       const helper = resourceHelper(node.expression);
       if (helper !== undefined) {
@@ -40,10 +52,20 @@ export function extractResourceAccess(source: string, options: IResourceAccessEx
           diagnostics.push(dynamicResourceDiagnostic(options, helper));
         } else if (resourceHelperKinds.get(helper) === "read") {
           resourceReads.add(resourceId);
-          mergeResourceSchema(resourceSchemas, resourceId, inferResourceFields(node.arguments[1]));
+          mergeResourceSchema(resourceSchemas, resourceId, inferResourceFields(node.arguments[1], variables));
         } else {
           resourceWrites.add(resourceId);
-          mergeResourceSchema(resourceSchemas, resourceId, inferResourceFields(node.arguments[1]));
+          mergeResourceSchema(resourceSchemas, resourceId, inferResourceFields(node.arguments[1], variables));
+        }
+      }
+      const eventEmit = eventEmitExpression(node.expression);
+      if (eventEmit) {
+        const eventId = literalEventId(node.arguments[0]);
+        if (eventId === undefined) {
+          diagnostics.push(dynamicEventDiagnostic(options));
+        } else {
+          eventWrites.add(eventId);
+          mergeResourceSchema(eventSchemas, eventId, inferResourceFields(node.arguments[1], variables));
         }
       }
     }
@@ -53,9 +75,49 @@ export function extractResourceAccess(source: string, options: IResourceAccessEx
   visit(sourceFile);
   return {
     diagnostics: dedupeDiagnostics(diagnostics),
+    eventSchemas: Object.fromEntries([...eventSchemas.entries()].sort(([left], [right]) => left.localeCompare(right))),
+    eventWrites: [...eventWrites].sort(),
     resourceSchemas: Object.fromEntries([...resourceSchemas.entries()].sort(([left], [right]) => left.localeCompare(right))),
     resourceReads: [...resourceReads].sort(),
     resourceWrites: [...resourceWrites].sort(),
+  };
+}
+
+function eventEmitExpression(expression: ts.Expression): boolean {
+  return ts.isPropertyAccessExpression(expression)
+    && expression.name.text === "emit"
+    && ts.isPropertyAccessExpression(expression.expression)
+    && expression.expression.name.text === "events"
+    && isContextObject(expression.expression.expression);
+}
+
+function literalEventId(expression: ts.Expression | undefined): string | undefined {
+  if (expression === undefined) {
+    return undefined;
+  }
+  if (ts.isStringLiteralLike(expression)) {
+    return expression.text;
+  }
+  if (ts.isIdentifier(expression) && /^[A-Za-z][A-Za-z0-9._-]*$/.test(expression.text)) {
+    return expression.text;
+  }
+  return undefined;
+}
+
+function dynamicEventDiagnostic(options: IResourceAccessExtractionOptions): ICompilerDiagnostic {
+  return {
+    code: "TN_SCRIPT_DYNAMIC_EVENT_ID_UNSUPPORTED",
+    file: options.file,
+    fix: {
+      docs: "docs/contracts/scripting-api.md",
+      instruction: "Use a literal event id with context.events.emit(...) so the compiler can derive its event schema.",
+      snippet: `context.events.emit("match.win", { collected: 0 })`,
+    },
+    message: `System '${options.systemName}' uses a dynamic event id in context.events.emit(...).`,
+    path: `systems/${options.systemName}/eventWrites`,
+    severity: "error",
+    suggestion: "Use a string literal event id so ThreeNative can derive eventWrites and the event payload schema deterministically.",
+    target: options.exportName,
   };
 }
 
@@ -72,23 +134,46 @@ function mergeResourceSchema(
   schemas.set(resourceId, schema);
 }
 
-function inferResourceFields(expression: ts.Expression | undefined): Record<string, { kind: string }> {
+function inferResourceFields(
+  expression: ts.Expression | undefined,
+  variables: ReadonlyMap<string, InferredValue> = new Map(),
+): Record<string, { kind: string }> {
   const object = unwrapExpression(expression);
   if (object === undefined || !ts.isObjectLiteralExpression(object)) {
     return {};
   }
   const fields: Record<string, { kind: string }> = {};
   for (const property of object.properties) {
-    if (!ts.isPropertyAssignment(property)) {
+    if (!ts.isPropertyAssignment(property) && !ts.isShorthandPropertyAssignment(property)) {
       continue;
     }
     const fieldName = propertyName(property.name);
     if (fieldName === undefined) {
       continue;
     }
-    fields[fieldName] = { kind: inferFieldKind(property.initializer) };
+    fields[fieldName] = ts.isShorthandPropertyAssignment(property)
+      ? { kind: variables.get(fieldName)?.kind ?? "json" }
+      : { kind: inferFieldKind(property.initializer, variables) };
   }
   return fields;
+}
+
+function inferExpression(expression: ts.Expression | undefined, variables: ReadonlyMap<string, InferredValue>): InferredValue {
+  const value = unwrapExpression(expression);
+  if (value === undefined) {
+    return { kind: "json" };
+  }
+  if (ts.isObjectLiteralExpression(value)) {
+    return { fields: inferResourceFields(value, variables), kind: "json" };
+  }
+  if (ts.isPropertyAccessExpression(value) && ts.isIdentifier(value.expression)) {
+    const field = variables.get(value.expression.text)?.fields?.[value.name.text];
+    return field === undefined ? { kind: "json" } : field;
+  }
+  if (ts.isCallExpression(value) && resourceHelper(value.expression) === "get") {
+    return { fields: inferResourceFields(value.arguments[1], variables), kind: "json" };
+  }
+  return { kind: inferFieldKind(value, variables) };
 }
 
 function propertyName(name: ts.PropertyName): string | undefined {
@@ -98,7 +183,7 @@ function propertyName(name: ts.PropertyName): string | undefined {
   return undefined;
 }
 
-function inferFieldKind(expression: ts.Expression): string {
+function inferFieldKind(expression: ts.Expression, variables: ReadonlyMap<string, InferredValue> = new Map()): string {
   const value = unwrapExpression(expression);
   if (value === undefined) {
     return "json";
@@ -112,8 +197,14 @@ function inferFieldKind(expression: ts.Expression): string {
   if (ts.isStringLiteralLike(value) || ts.isNoSubstitutionTemplateLiteral(value) || ts.isTemplateExpression(value)) {
     return "string";
   }
+  if (ts.isIdentifier(value)) {
+    return variables.get(value.text)?.kind ?? "json";
+  }
+  if (ts.isPropertyAccessExpression(value) && ts.isIdentifier(value.expression)) {
+    return variables.get(value.expression.text)?.fields?.[value.name.text]?.kind ?? "json";
+  }
   if (ts.isArrayLiteralExpression(value)) {
-    const elements = value.elements.map((element) => inferFieldKind(element));
+    const elements = value.elements.map((element) => inferFieldKind(element, variables));
     if (elements.length === 2 && elements.every((kind) => kind === "number")) return "vec2";
     if (elements.length === 3 && elements.every((kind) => kind === "number")) return "vec3";
     if (elements.length === 4 && elements.every((kind) => kind === "number")) return "vec4";

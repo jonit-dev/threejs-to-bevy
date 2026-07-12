@@ -164,6 +164,7 @@ export async function planBundle(config: IProjectConfig, root: unknown, options:
   const runtimeConfig = ecs?.runtimeConfig ?? readStructuredRuntimeConfig(options.authoringDocuments);
   const structuredSchemas = readStructuredSchemaFiles(options.authoringDocuments);
   const componentSchemas = mergeOptionalSchemaFiles(ecs?.componentSchemas, structuredSchemas.componentSchemas);
+  const eventSchemas = mergeOptionalSchemaFiles(ecs?.eventSchemas, structuredSchemas.eventSchemas);
   const resourceSchemas = mergeOptionalSchemaFiles(ecs?.resourceSchemas, structuredSchemas.resourceSchemas);
   const prefabs = readStructuredPrefabs(options.authoringDocuments);
   const gameFlow = readStructuredGameFlow(options.authoringDocuments);
@@ -188,7 +189,7 @@ export async function planBundle(config: IProjectConfig, root: unknown, options:
       animations,
       componentSchemas,
       environment: environment?.scene,
-      eventSchemas: ecs?.eventSchemas,
+      eventSchemas,
       gameFlow,
       input,
       localData,
@@ -227,12 +228,8 @@ export async function planBundle(config: IProjectConfig, root: unknown, options:
       ...(runtimeConfig === undefined ? {} : { runtimeConfig: IR_DOCUMENTS.runtimeConfig.fileName }),
       targetProfile: IR_DOCUMENTS.targetProfile.fileName,
       ...(gltfScene === undefined ? {} : { gltfScene: IR_DOCUMENTS.gltfScene.fileName }),
-      ...(ecs === undefined
-        ? {}
-        : {
-            eventSchemas: IR_DOCUMENTS.eventSchemas.fileName,
-            ...(ecs.scriptBundle === undefined ? {} : { scripts: IR_DOCUMENTS.scripts.fileName }),
-          }),
+      ...(eventSchemas === undefined ? {} : { eventSchemas: IR_DOCUMENTS.eventSchemas.fileName }),
+      ...(ecs?.scriptBundle === undefined ? {} : { scripts: IR_DOCUMENTS.scripts.fileName }),
       ...(componentSchemas === undefined ? {} : { componentSchemas: IR_DOCUMENTS.componentSchemas.fileName }),
       ...(resourceSchemas === undefined ? {} : { resourceSchemas: IR_DOCUMENTS.resourceSchemas.fileName }),
     },
@@ -244,7 +241,8 @@ export async function planBundle(config: IProjectConfig, root: unknown, options:
     ...(animations === undefined ? {} : { animations }),
     ...(componentSchemas === undefined ? {} : { componentSchemas }),
     ...(environment === undefined ? {} : { environmentScene: environment.scene }),
-    ...(ecs === undefined ? {} : { eventSchemas: ecs.eventSchemas, systems: ecs.systems }),
+    ...(eventSchemas === undefined ? {} : { eventSchemas }),
+    ...(ecs === undefined ? {} : { systems: ecs.systems }),
     ...(gameFlow === undefined ? {} : { gameFlow }),
     ...(gltfScene === undefined ? {} : { gltfScene }),
     ...(input === undefined ? {} : { input }),

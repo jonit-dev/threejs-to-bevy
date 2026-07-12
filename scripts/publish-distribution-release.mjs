@@ -11,6 +11,8 @@ const packageOrder = [
   ["@threenative/sdk", "packages/sdk"],
   ["@threenative/ir", "packages/ir"],
   ["@threenative/authoring", "packages/authoring"],
+  ["@threenative/authoring-client", "packages/authoring-client"],
+  ["@threenative/script-stdlib", "packages/script-stdlib"],
   ["@threenative/ui", "packages/ui"],
   ["@threenative/r3f", "packages/r3f"],
   ["@threenative/compiler", "packages/compiler"],

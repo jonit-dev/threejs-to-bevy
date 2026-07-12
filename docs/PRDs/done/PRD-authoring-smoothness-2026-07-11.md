@@ -1,7 +1,14 @@
 # PRD: Authoring Smoothness — Post-Orb-Reactor Fixes and Features (2026-07-11)
 
 `Planning Mode: Principal Architect`
-`Status: proposed`
+`Status: done`
+
+Implementation completed on 2026-07-11. Event schemas, structured cleanup,
+workspace-aware scaffolding, selector/batch authoring, ownership diagnostics,
+tick-based playtests, self-sufficient help, and iterate transparency are
+implemented with focused regression coverage. The orb-reactor aggregate
+iterate passed with nine enrolled web scenarios, including event emission and
+win-state proof.
 
 ## 1. Context
 

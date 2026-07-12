@@ -192,6 +192,14 @@ Event rules:
 - Event queues are transient runtime data and are not serialized as initial world
   state unless explicitly modeled as persistent resources.
 
+Command selector rules:
+
+- A `despawn` command may name one `entity` ID, an ID pattern containing `*`,
+  or one `tag`. The compiler expands the selector to the authored entity IDs
+  at build time so web and native adapters receive the same concrete commands.
+- An empty entity-pattern or tag match is a build error. Add the entity/tag to
+  the owning scene source or correct the selector before running a proof.
+
 Prefab rules:
 
 - Prefabs are post-V2. V2 validators should reject prefab requirements unless a

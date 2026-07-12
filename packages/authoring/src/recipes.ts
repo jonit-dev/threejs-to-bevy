@@ -560,7 +560,7 @@ function defaultRecipeMetadata(recipeId: AuthoringRecipeId, args: Record<string,
   for (const operationInput of operations) {
     const descriptor = getAuthoringOperationDescriptor(operationInput.name);
     if (descriptor !== undefined) {
-      addUnique(sourceOwners, descriptor.sourceFamily, descriptor.name);
+      addUnique(sourceOwners, recipeSourceOwner(operationInput.name, descriptor.sourceFamily), descriptor.name);
     }
     for (const [key, value] of Object.entries(operationInput.args)) {
       if (typeof value === "string" && (key === "entityId" || key === "prefabId" || key === "resourceId" || key === "systemId" || key === "uiNodeId" || key.endsWith("Id"))) {
@@ -598,6 +598,16 @@ function emptyRecipeMetadata(): IRecipeMetadata {
     scriptResponsibilities: [],
     sourceOwners: {},
   };
+}
+
+function recipeSourceOwner(operationName: string, defaultOwner: string): string {
+  if (operationName === "scene.attach_script") {
+    return "systems";
+  }
+  if (operationName === "scene.add_ui_node" || operationName === "scene.bind_ui") {
+    return "ui";
+  }
+  return defaultOwner;
 }
 
 function recipeGameplayBlocks(recipeId: AuthoringRecipeId): string[] {

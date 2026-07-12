@@ -114,7 +114,9 @@ test("should apply top-down collector through apply alias", async () => {
     assert.equal(scene.entities.some((entity) => entity.id === "player"), true);
     assert.equal(scene.resources.some((resource) => resource.id === "GameState.scoreText"), true);
     assert.equal(scene.systems.some((system) => system.script?.module === "src/scripts/player.ts" && system.script.export === "topDownCollectorSystem"), true);
-    assert.match(script, /export function topDownCollectorSystem/);
+    assert.match(script, /export const topDownCollectorSystem = defineBehavior/);
+    assert.match(script, /moveX/);
+    assert.match(script, /moveZ/);
     assert.equal(proof.schema, "threenative.proof-recipe");
     assert.equal(proof.recipeId, "top-down-collector");
     assert.equal(proof.commands.some((command) => command.startsWith("tn authoring validate")), true);
@@ -154,7 +156,8 @@ test("vehicle checkpoint adopts starter entities, scaffolds its export, and is i
     assert.deepEqual(scene.entities.find((entity) => entity.id === "player")?.transform, { position: [4, 0.5, 4], scale: [0.8, 0.8, 0.8] });
     assert.equal(scene.systems.filter((system) => system.id === "vehicle-checkpoint").length, 1);
     assert.match(script, /export function starterSystem/);
-    assert.match(script, /export function vehicleCheckpointSystem\(\): void/);
+    assert.match(script, /export const vehicleCheckpointSystem = defineBehavior/);
+    assert.match(script, /context\.resources\.get\("RecipeState"/);
     assert.equal(firstPayload.filesWritten.includes("src/scripts/player.ts"), true);
     assert.equal(secondPayload.diagnostics.some((diagnostic) => diagnostic.severity === "error"), false);
   } finally {

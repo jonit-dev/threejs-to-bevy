@@ -138,17 +138,20 @@ function copyOptionalMaterialBoolean(item: Record<string, unknown>, key: string)
 
 export function readStructuredSchemaFiles(documents: readonly IAuthoringDocument[] | undefined): {
   componentSchemas?: IIrSchemaFile;
+  eventSchemas?: IIrSchemaFile;
   resourceSchemas?: IIrSchemaFile;
 } {
   const componentSchemas = structuredSchemaFile("threenative.component-schemas", documents, "component");
+  const eventSchemas = structuredSchemaFile("threenative.event-schemas", documents, "event");
   const resourceSchemas = structuredSchemaFile("threenative.resource-schemas", documents, "resource");
   return {
     ...(componentSchemas === undefined ? {} : { componentSchemas }),
+    ...(eventSchemas === undefined ? {} : { eventSchemas }),
     ...(resourceSchemas === undefined ? {} : { resourceSchemas }),
   };
 }
 
-function structuredSchemaFile(schema: IIrSchemaFile["schema"], documents: readonly IAuthoringDocument[] | undefined, kind: "component" | "resource"): IIrSchemaFile | undefined {
+function structuredSchemaFile(schema: IIrSchemaFile["schema"], documents: readonly IAuthoringDocument[] | undefined, kind: "component" | "event" | "resource"): IIrSchemaFile | undefined {
   const entries: Array<[string, { fields: Record<string, unknown> }]> = [];
   for (const document of documents ?? []) {
     if (document.kind !== "schema" || !isRecord(document.data) || document.data.kind !== kind || !Array.isArray(document.data.schemas)) {

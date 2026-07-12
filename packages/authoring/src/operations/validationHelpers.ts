@@ -34,10 +34,10 @@ export function validateGeneratedPathString(diagnostics: IAuthoringDiagnostic[],
 
 export function schemaDocumentShapeFix(file: string, data: Record<string, unknown>): IAuthoringDiagnosticFix | undefined {
   const sourceSchema = readString(data.schema);
-  if (sourceSchema !== "threenative.component-schemas" && sourceSchema !== "threenative.resource-schemas") {
+  if (sourceSchema !== "threenative.component-schemas" && sourceSchema !== "threenative.event-schemas" && sourceSchema !== "threenative.resource-schemas") {
     return undefined;
   }
-  const kind = sourceSchema === "threenative.component-schemas" ? "component" : "resource";
+  const kind = sourceSchema === "threenative.component-schemas" ? "component" : sourceSchema === "threenative.event-schemas" ? "event" : "resource";
   const rawSchemas = isRecord(data.schemas) ? data.schemas : {};
   const schemas = Object.entries(rawSchemas).sort(([left], [right]) => left.localeCompare(right)).map(([id, value]) => {
     const rawFields = isRecord(value) && isRecord(value.fields) ? value.fields : {};

@@ -25,6 +25,7 @@ export interface IEntityModuleDeclaration {
   authoring?: IAuthoringSourceMetadata;
   components: IEcsDeclaration[];
   id: string;
+  tags?: string[];
 }
 
 export interface IEntityModuleOptions {
@@ -202,7 +203,11 @@ export function definePrefabModule(options: {
 export function defineWorldModule(options: IWorldModuleOptions): World {
   const world = new World();
   for (const entity of [...(options.entities ?? [])].sort((left, right) => left.id.localeCompare(right.id))) {
-    world.spawn(entity.id, ...entity.components);
+    if (entity.tags === undefined) {
+      world.spawn(entity.id, ...entity.components);
+    } else {
+      world.spawnTagged(entity.id, entity.tags, ...entity.components);
+    }
   }
   for (const resource of [...(options.resources ?? [])].sort((left, right) => left.id.localeCompare(right.id))) {
     world.addResource(resource.resource);
