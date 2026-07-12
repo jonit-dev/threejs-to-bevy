@@ -382,6 +382,7 @@ export async function renderLoadedBundle(bundle: IWebBundle, container: HTMLElem
   const uiOverlay = ui === undefined ? undefined : createUiDomOverlay(ui, document, source);
   const overlayHost = bundle.overlays === undefined ? undefined : createWebOverlayHost(bundle.overlays, source);
   let overlayEventCursor = 0;
+  const overlaySnapshotCursors = new Map<string, unknown[]>();
   const consumeOverlayEvents = () => {
     const events = overlayHost?.bridge.events.slice(overlayEventCursor) ?? [];
     overlayEventCursor += events.length;
@@ -393,6 +394,18 @@ export async function renderLoadedBundle(bundle: IWebBundle, container: HTMLElem
       queues[eventId] = [...(Array.isArray(queue) ? queue : []), { ...event.payload, overlayId: event.overlayId }];
     }
     bundle.world.events = queues;
+  };
+  const publishOverlaySnapshots = () => {
+    if (overlayHost === undefined || bundle.overlays === undefined) return;
+    for (const event of newAudioEvents(bundle.world.events ?? {}, overlaySnapshotCursors)) {
+      if (typeof event.payload !== "object" || event.payload === null || Array.isArray(event.payload)) continue;
+      const type = event.event.replaceAll(".", ":");
+      for (const overlay of bundle.overlays.overlays) {
+        if (overlay.messages.gameToOverlay?.some((message) => message.name === type) === true) {
+          overlayHost.publish(overlay.id, type, event.payload as Record<string, unknown>);
+        }
+      }
+    }
   };
   const audioSink = bundle.audio === undefined ? undefined : createWebAudioElementSink(source, bundle.assets);
   const audioRuntime = bundle.audio === undefined ? undefined : createWebAudioRuntime(bundle.audio, audioSink);
@@ -445,6 +458,7 @@ export async function renderLoadedBundle(bundle: IWebBundle, container: HTMLElem
         uiState: ui,
         world: bundle.world,
       });
+      publishOverlaySnapshots();
       consumeAudioEvents();
     } else if (hasKinematicMovers(bundle.world)) {
       stepKinematicMovers(bundle.world, loopState.elapsed + 1 / 60);
@@ -510,6 +524,7 @@ export async function renderLoadedBundle(bundle: IWebBundle, container: HTMLElem
             uiState: ui,
             world: bundle.world,
           });
+          publishOverlaySnapshots();
           consumeAudioEvents();
         } else if (hasKinematicMovers(bundle.world)) {
           stepKinematicMovers(bundle.world, loopState.elapsed + delta);

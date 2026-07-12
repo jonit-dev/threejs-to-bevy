@@ -41,6 +41,20 @@ test("keeps only modal web overlays full screen", () => {
   assert.equal(modalStyle.width, "100%");
 });
 
+test("publishes game snapshots to a loaded overlay", () => {
+  const host = createWebOverlayHost(makeOverlays("pointer"), "/bundle", new FakeDocument() as unknown as Document);
+  const frame = host.frames[0] as unknown as FakeElement;
+  frame.listeners.get("load")?.[0]?.();
+  const windowBridge = frame.contentWindow.threenativeOverlayBridge as {
+    subscribe(listener: (type: string, payload: Record<string, unknown>) => void): () => void;
+  };
+  const received: Array<{ payload: Record<string, unknown>; type: string }> = [];
+  windowBridge.subscribe((type, payload) => received.push({ payload, type }));
+
+  assert.equal(host.publish("inventory", "inventory:snapshot", { gold: 12 }), true);
+  assert.deepEqual(received, [{ payload: { gold: 12 }, type: "inventory:snapshot" }]);
+});
+
 function makeOverlays(input: "keyboard" | "modal" | "none" | "pointer" | "pointer-and-keyboard") {
   return {
     schema: "threenative.overlays" as const,
@@ -50,7 +64,10 @@ function makeOverlays(input: "keyboard" | "modal" | "none" | "pointer" | "pointe
         entry: "overlay/index.html",
         id: "inventory",
         input,
-        messages: { overlayToGame: [] },
+        messages: {
+          gameToOverlay: [{ name: "inventory:snapshot", schema: { fields: { gold: "integer" as const }, kind: "object" as const, required: ["gold"] } }],
+          overlayToGame: [],
+        },
         targetProfiles: ["web" as const],
         transparent: true,
         zIndex: 30,
@@ -77,7 +94,12 @@ class FakeElement {
   readonly dataset: Record<string, string> = {};
   readonly listeners = new Map<string, Array<() => void>>();
   readonly style: Record<string, string> = {};
-  readonly contentWindow: Record<string, unknown> = {};
+  readonly contentWindow: Record<string, unknown> = {
+    dispatchEvent: () => true,
+    document: {
+      createEvent: () => ({ initEvent: () => undefined }),
+    },
+  };
 
   constructor(readonly tagName: string) {}
 
