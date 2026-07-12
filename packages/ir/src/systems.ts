@@ -93,6 +93,10 @@ export type IrSystemCommand =
       kind: "worldText";
     }
   | {
+      entity: string;
+      kind: "material.patch";
+    }
+  | {
       event: string;
       kind: "emitEvent";
     };

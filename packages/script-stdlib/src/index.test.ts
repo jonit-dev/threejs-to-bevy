@@ -20,6 +20,7 @@ import {
   Ease,
   InputEx,
   KinematicMoverEx,
+  MaterialEx,
   Mathf,
   MotionEx,
   NumberEx,
@@ -49,6 +50,12 @@ test("should expose every runtime context service on ScriptContext or allowlist"
 
   assert.equal(scriptKeys.has("picking"), true);
   assert.deepEqual([...runtimeKeys].filter((key) => !scriptKeys.has(key)).sort(), temporarilyUntyped);
+});
+
+test("should keep bundle-source parity for MaterialEx", () => {
+  const context = vm.createContext({});
+  const bundled = vm.runInContext(`${SCRIPT_STDLIB_BUNDLE_SOURCE}; MaterialEx.patch("piece.e4", { emissive: "#ffaa00", opacity: 0.8 });`, context) as unknown;
+  assert.deepEqual(JSON.parse(JSON.stringify(bundled)), MaterialEx.patch("piece.e4", { emissive: "#ffaa00", opacity: 0.8 }));
 });
 
 function interfaceKeys(source: string, name: string): Set<string> {

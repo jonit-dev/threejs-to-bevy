@@ -143,3 +143,15 @@ export const TextEx = Object.freeze({
   },
 });
 
+export interface IMaterialPatch {
+  color?: ColorValue;
+  emissive?: ColorValue;
+  emissiveIntensity?: number;
+  opacity?: number;
+}
+
+export const MaterialEx = Object.freeze({
+  patch(entityId: string, value: IMaterialPatch): { entity: string; kind: "material.patch"; value: IMaterialPatch } {
+    return { entity: String(entityId), kind: "material.patch", value: { ...value } };
+  },
+});

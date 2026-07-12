@@ -30,6 +30,7 @@ export interface ScriptContext {
     despawn(entity: string, policy?: string): void;
     emitEvent(event: string, payload?: Record<string, unknown>): void;
     instantiate(prefab: string, prefix: string, overrides?: Record<string, unknown>): void;
+    materialPatch(entity: string, value: { color?: unknown; emissive?: unknown; emissiveIntensity?: number; opacity?: number }): void;
     removeComponent(entity: string, component: unknown): void;
     setComponent(entity: string, component: unknown, value: unknown): void;
     setParent(child: string, parent: string): void;

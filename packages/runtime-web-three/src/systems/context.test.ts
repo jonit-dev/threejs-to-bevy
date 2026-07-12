@@ -1,8 +1,33 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import type { ISystemsIr, IUiIr, IWorldIr } from "@threenative/ir";
+import * as THREE from "three";
 
 import { applyCommands, channelEvent, componentHookObservations, createSystemContext, createWebSystemRuntimeState, evaluateStates, plugin, pluginGroup, propagateObserverEvent, taskChannel } from "./context.js";
+import { applySystemEffects } from "./effects.js";
+import { applyMaterialPatchEffects, mapWorld } from "../mapWorld.js";
+
+test("should apply material patch command to entity material and log effect", () => {
+  const world = makeWorld();
+  world.entities.find((entity) => entity.id === "player")!.components.MeshRenderer = { material: "mat.player", mesh: "mesh.player" };
+  const mapped = mapWorld({
+    assets: { schema: "threenative.assets", version: "0.1.0", assets: [{ id: "mesh.player", kind: "mesh", format: "generated", primitive: "box", size: [1, 1, 1] }] },
+    manifest: { schema: "threenative.bundle", version: "0.1.0", name: "patch", requiredCapabilities: {}, entry: { world: "world.ir.json" }, files: { assets: "assets.manifest.json", materials: "materials.ir.json", targetProfile: "target.profile.json" } },
+    materials: { schema: "threenative.materials", version: "0.1.0", materials: [{ id: "mat.player", kind: "standard", color: "#ffffff" }] },
+    targetProfile: { schema: "threenative.target-profile", version: "0.1.0", targets: ["web"] },
+    world,
+  });
+  const queued = createSystemContext(world, { delta: 0.016, fixedDelta: 0.016 });
+  queued.context.commands.materialPatch("player", { emissive: "#ff3300", emissiveIntensity: 2 });
+  const result = applySystemEffects(world, { commands: [{ entity: "player", kind: "material.patch" }], eventReads: [], eventWrites: [], name: "hover", queries: [], reads: [], resourceReads: [], resourceWrites: [], schedule: "update", services: [], writes: [] }, { commands: queued.commands, events: [], resources: [], services: [] }, { frame: 1, tick: 1 });
+  applyMaterialPatchEffects(mapped, result.entries);
+  const player = mapped.objectsById.get("player");
+  assert.ok(player instanceof THREE.Mesh);
+  assert.ok(player.material instanceof THREE.MeshStandardMaterial);
+  assert.equal(player.material.emissive.getHexString(), "ff3300");
+  assert.equal(player.material.emissiveIntensity, 2);
+  assert.equal(result.entries.some((entry) => entry.command === "material.patch" && entry.entity === "player"), true);
+});
 
 test("should match entities on scene-declared custom components", () => {
   const world = makeWorld();

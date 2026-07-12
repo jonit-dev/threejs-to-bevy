@@ -479,6 +479,9 @@ export function createSystemContext(
           commands.push({ entity: result.root ?? "", kind: "instantiate", prefab, prefix, source: "command", value: cloneValue(result) });
           return cloneValue(result) as IInstantiateResult;
         },
+        materialPatch(entity, value) {
+          commands.push({ entity, kind: "material.patch", source: "command", value: cloneValue(value) });
+        },
         removeComponent(entity, component) {
           commands.push({ component: normalizeHandleName(component), entity, kind: "removeComponent", source: "command" });
         },
@@ -1429,6 +1432,9 @@ function queuedCommandFromDelayedDeclaration(declaration: IIrDelayedCommandDecla
   }
   if (command.kind === "worldText") {
     return { entity: command.entity, kind: "worldText", source: "command" };
+  }
+  if (command.kind === "material.patch") {
+    return { entity: command.entity, kind: "material.patch", source: "command", value: {} };
   }
   return {
     component: command.component,

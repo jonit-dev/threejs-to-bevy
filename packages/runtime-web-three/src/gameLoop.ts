@@ -1,7 +1,7 @@
 import type { IAssetsManifest, IEnvironmentSceneIr, IIrSchemaFile, IRuntimeConfigIr, ISystemsIr, IWorldIr } from "@threenative/ir";
 import type { IWebInputState } from "./input.js";
 import type { IThreeWorld } from "./mapWorld.js";
-import { applyAnimationServiceEffects, syncMeshRendererMaterials, syncTransforms } from "./mapWorld.js";
+import { applyAnimationServiceEffects, applyMaterialPatchEffects, syncMeshRendererMaterials, syncTransforms } from "./mapWorld.js";
 import { stepKinematicMovers } from "./kinematicMover.js";
 import { stepPatrols } from "./patrol.js";
 import { stepStateMachines } from "./stateMachines.js";
@@ -285,4 +285,5 @@ function collectSystemResult(mapped: IThreeWorld, result: { diagnostics: IThreeW
     }
   }
   applyAnimationServiceEffects(mapped, result.entries);
+  applyMaterialPatchEffects(mapped, result.entries);
 }

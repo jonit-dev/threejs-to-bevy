@@ -704,6 +704,31 @@ export function applyAnimationServiceEffects(mapped: IThreeWorld, entries: reado
   }
 }
 
+export function applyMaterialPatchEffects(mapped: IThreeWorld, entries: readonly ISystemEffectLogEntry[]): void {
+  for (const entry of entries) {
+    if (entry.kind !== "command" || entry.command !== "material.patch" || typeof entry.entity !== "string" || !isRecord(entry.value)) continue;
+    const patch = entry.value;
+    const object = mapped.objectsById.get(entry.entity);
+    object?.traverse((child) => {
+      if (!(child instanceof THREE.Mesh)) return;
+      const source = Array.isArray(child.material) ? child.material : [child.material];
+      const patched = source.map((material) => {
+        const clone = material.clone() as THREE.Material & { color?: THREE.Color; emissive?: THREE.Color; emissiveIntensity?: number; opacity?: number };
+        if (patch.color !== undefined && clone.color !== undefined) clone.color.copy(colorToThree(patch.color as ThreeNativeColor));
+        if (patch.emissive !== undefined && clone.emissive !== undefined) clone.emissive.copy(colorToThree(patch.emissive as ThreeNativeColor));
+        if (typeof patch.emissiveIntensity === "number" && clone.emissiveIntensity !== undefined) clone.emissiveIntensity = patch.emissiveIntensity;
+        if (typeof patch.opacity === "number" && clone.opacity !== undefined) {
+          clone.opacity = patch.opacity;
+          clone.transparent = patch.opacity < 1;
+        }
+        clone.needsUpdate = true;
+        return clone;
+      });
+      child.material = Array.isArray(child.material) ? patched : patched[0]!;
+    });
+  }
+}
+
 function applyAnimationPlayService(mapped: IThreeWorld, payload: unknown): void {
   if (!isRecord(payload) || !isRecord(payload.request) || !isRecord(payload.result)) {
     return;

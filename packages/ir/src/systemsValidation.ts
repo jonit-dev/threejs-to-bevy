@@ -479,7 +479,7 @@ function validateSystemCommand(
     });
     return;
   }
-  if (!["addComponent", "clearParent", "despawn", "emitEvent", "instantiate", "removeComponent", "setComponent", "setParent", "spawn", "tween", "worldText"].includes(command.kind)) {
+  if (!["addComponent", "clearParent", "despawn", "emitEvent", "instantiate", "material.patch", "removeComponent", "setComponent", "setParent", "spawn", "tween", "worldText"].includes(command.kind)) {
     diagnostics.push({
       code: "TN_IR_SYSTEM_COMMAND_KIND_UNSUPPORTED",
       message: `System '${systemName}' command uses unsupported kind '${String(command.kind)}'.`,

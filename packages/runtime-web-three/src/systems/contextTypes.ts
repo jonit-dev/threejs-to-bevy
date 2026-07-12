@@ -36,6 +36,7 @@ export interface ISystemCommandBuffer {
   despawn(entity: string): void;
   emitEvent(event: unknown, payload: unknown): void;
   instantiate(prefab: string, prefix: string): IInstantiateResult;
+  materialPatch(entity: string, value: Record<string, unknown>): void;
   removeComponent(entity: string, component: unknown): void;
   setComponent(entity: string, component: unknown, value: unknown): void;
   setParent(child: string, parent: string): void;
@@ -272,7 +273,7 @@ export interface IQueuedCommand {
   component?: string;
   entity: string;
   event?: string;
-  kind: "addComponent" | "clearParent" | "despawn" | "emitEvent" | "instantiate" | "removeComponent" | "setComponent" | "setParent" | "spawn" | "tween" | "worldText";
+  kind: "addComponent" | "clearParent" | "despawn" | "emitEvent" | "instantiate" | "material.patch" | "removeComponent" | "setComponent" | "setParent" | "spawn" | "tween" | "worldText";
   parent?: string;
   payload?: unknown;
   prefab?: string;

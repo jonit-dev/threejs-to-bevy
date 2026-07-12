@@ -11,7 +11,7 @@ const sourceDirectory = join(scriptDirectory, "..", "src");
 const generatedPath = join(sourceDirectory, "bundle-source.generated.ts");
 const moduleNames = ["behavior", "bounds", "feedback", "gameplay", "numeric", "rigs", "rotation", "types", "vectors"];
 const publicRuntimeExports = [
-  "AngleEx", "ArrayEx", "BasisEx", "Bounds2", "Bounds3", "CameraMath", "CheckpointRaceEx", "ColorEx", "ControllerEx", "Ease", "InputEx", "MotionEx", "Mathf", "NumberEx", "Quat", "RandomEx", "RespawnEx", "SpawnEx", "TextEx", "TimerEx", "TransformMath", "Vector2", "Vector3", "TriggerEx", "Vec2", "Vec3", "CameraRig", "CharacterRig", "KinematicMoverEx", "defineBehavior",
+  "AngleEx", "ArrayEx", "BasisEx", "Bounds2", "Bounds3", "CameraMath", "CheckpointRaceEx", "ColorEx", "ControllerEx", "Ease", "InputEx", "MaterialEx", "MotionEx", "Mathf", "NumberEx", "Quat", "RandomEx", "RespawnEx", "SpawnEx", "TextEx", "TimerEx", "TransformMath", "Vector2", "Vector3", "TriggerEx", "Vec2", "Vec3", "CameraRig", "CharacterRig", "KinematicMoverEx", "defineBehavior",
 ];
 
 const sources = new Map();
