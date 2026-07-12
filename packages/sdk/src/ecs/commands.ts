@@ -37,6 +37,15 @@ export type CommandDeclaration =
       event: string;
       kind: "emitEvent";
       schema?: IEcsSchema;
+    }
+  | {
+      entity: EntityRef;
+      kind: "tween";
+      property: "emissiveIntensity" | "opacity" | "position" | "rotation" | "scale";
+    }
+  | {
+      entity: EntityRef;
+      kind: "worldText";
     };
 
 export function spawn(entity: EntityRef, components: ReadonlyArray<EcsFactory | IEcsSchema | string> = []): CommandDeclaration {
@@ -85,6 +94,14 @@ export function emitEvent(event: EcsFactory | IEcsSchema | string): CommandDecla
     kind: "emitEvent",
     schema: normalizeSchema(event),
   };
+}
+
+export function tween(entity: EntityRef, property: "emissiveIntensity" | "opacity" | "position" | "rotation" | "scale"): CommandDeclaration {
+  return { entity, kind: "tween", property };
+}
+
+export function worldText(entity: EntityRef): CommandDeclaration {
+  return { entity, kind: "worldText" };
 }
 
 function componentCommand(

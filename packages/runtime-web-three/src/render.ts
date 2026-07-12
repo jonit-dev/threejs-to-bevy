@@ -46,6 +46,7 @@ import { createWebAudioElementSink, createWebAudioRuntime } from "./audio.js";
 import { createWebOverlayHost, type IWebOverlayHost } from "./overlay/host.js";
 import { createFrameTimingTrace, summarizeFrameTimings, type IFrameTimingSummary } from "./performanceMetrics.js";
 import { colorToThree } from "./worldMapping/colors.js";
+import { applyPresentationCameraShake } from "./presentation.js";
 
 export interface IRenderResult {
   captureTransformTrace?: ICaptureTransformTrace;
@@ -335,6 +336,7 @@ export async function renderLoadedBundle(bundle: IWebBundle, container: HTMLElem
   const input = createInputState(bundle.input);
   const loopState = createGameLoopState(bundle.runtimeConfig);
   const runtimeState = webSystemRuntimeStateFor(bundle.world, { assets: bundle.assets, audio: bundle.audio });
+  mapped.presentation = runtimeState.presentation;
   const effectLog = createSystemEffectLog();
   const resourceObservations: IResourceObservation[] = [];
   const systemModule = await (options.systemModuleLoader ?? loadSystemModuleUrl)(source, bundle.manifest);
@@ -1410,6 +1412,9 @@ export function renderCameraViews(
   } else {
     updateCameraHelpers(world, mapped.objectsById, delta);
   }
+  if (mapped.presentation !== undefined) {
+    applyPresentationCameraShake(mapped, mapped.presentation);
+  }
   const renderWidth = renderer.domElement.width;
   const renderHeight = renderer.domElement.height;
   const views = sortCameraViews(
@@ -1580,6 +1585,9 @@ function createRenderPipeline(
       contactShadows?.update(world);
       emissiveProxyLights.sync();
       updateCameraHelpers(world, mapped.objectsById, delta);
+      if (mapped.presentation !== undefined) {
+        applyPresentationCameraShake(mapped, mapped.presentation);
+      }
       directionalShadowController?.update(mapped.camera);
       const previousBackground = mapped.scene.background;
       if (composerClear?.mode === "color") {

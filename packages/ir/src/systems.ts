@@ -1,4 +1,5 @@
 import type { SchemaVersion } from "./types.js";
+import type { IFeedbackPreset } from "./feedback.js";
 
 export type IrSystemSchedule = "fixedUpdate" | "postUpdate" | "startup" | "update";
 export type IrSystemService =
@@ -8,6 +9,8 @@ export type IrSystemService =
   | "audio.play"
   | "audio.query"
   | "audio.stop"
+  | "camera.shake"
+  | "effects.play"
   | "assets.load"
   | "character.move"
   | "physics.overlap"
@@ -48,6 +51,9 @@ export type IrSystemService =
   | "ui.setDisabled"
   | "ui.setValue";
 
+export type IrTweenProperty = "emissiveIntensity" | "opacity" | "position" | "rotation" | "scale";
+export type IrTweenEasing = "ease-in" | "ease-in-out" | "ease-out" | "linear";
+
 export type IrSystemCommand =
   | {
       kind: "addComponent" | "removeComponent" | "setComponent";
@@ -76,6 +82,15 @@ export type IrSystemCommand =
   | {
       child: string;
       kind: "clearParent";
+    }
+  | {
+      entity: string;
+      kind: "tween";
+      property: IrTweenProperty;
+    }
+  | {
+      entity: string;
+      kind: "worldText";
     }
   | {
       event: string;
@@ -148,6 +163,7 @@ export interface ISystemsIr {
   channels?: IIrSystemChannelDeclaration[];
   componentHooks?: IIrComponentHookDeclaration[];
   countdowns?: IIrCountdownDeclaration[];
+  feedbackPresets?: IFeedbackPreset[];
   lifecycle?: {
     appStates?: IIrAppStateDeclaration[];
     computedStates?: IIrComputedStateDeclaration[];

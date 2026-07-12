@@ -21,6 +21,8 @@ import type { ISystemEffectLogEntry } from "./systems/log.js";
 import { bundleUrl, isLoadableModelFormat } from "./worldMapping/assets.js";
 import { colorToThree, type ThreeNativeColor } from "./worldMapping/colors.js";
 import { attachWorldHierarchy } from "./worldMapping/hierarchy.js";
+import { mapWorldTextObject } from "./worldText.js";
+import type { IPresentationRuntimeState } from "./presentation.js";
 import {
   advanceStylizedNatureRuntime,
   attachStylizedSourceAssets,
@@ -51,6 +53,7 @@ export interface IThreeWorld {
   diagnostics: IRuntimeDiagnostic[];
   layerAllocation: Map<string, number>;
   objectsById: Map<string, THREE.Object3D>;
+  presentation?: IPresentationRuntimeState;
   reconcile?(world: IWorldIr): void;
   renderTargets?: IRenderTargetRegistry;
   scene: THREE.Scene;
@@ -353,6 +356,7 @@ function engineComponentSignature(entity: IWorldEntity): string {
     RippleWater: entity.components.RippleWater,
     StylizedNature: entity.components.StylizedNature,
     StylizedSparkles: entity.components.StylizedSparkles,
+    WorldText: entity.components.WorldText,
   });
 }
 
@@ -382,9 +386,10 @@ export function sceneStartupDiagnostics(bundle: IWebBundle): IRuntimeDiagnostic[
     .map((entity) => entity.components.MeshRenderer)
     .filter((renderer): renderer is NonNullable<IWorldEntity["components"]["MeshRenderer"]> => renderer !== undefined && renderer.visible !== false);
   const hasLight = bundle.world.entities.some((entity) => entity.components.Light !== undefined);
+  const hasWorldText = bundle.world.entities.some((entity) => entity.components.WorldText !== undefined);
   const environmentHasRenderableContent = environmentSceneHasRenderableContent(bundle);
 
-  if (visibleRenderers.length === 0 && !environmentHasRenderableContent && !hasStylizedNatureContent(bundle.world)) {
+  if (visibleRenderers.length === 0 && !environmentHasRenderableContent && !hasStylizedNatureContent(bundle.world) && !hasWorldText) {
     diagnostics.push({
       code: "TN-WEB-SCENE-RENDERERS-MISSING",
       message: "No visible MeshRenderer components were found; the scene has nothing renderable.",
@@ -542,6 +547,9 @@ function mapEntity(
   atmosphereProvidesWorldLighting = false,
   atmosphereExposure?: number,
 ): THREE.Object3D {
+  if (entity.components.WorldText !== undefined) {
+    return mapWorldTextObject(entity.components.WorldText);
+  }
   const stylizedNature = readStylizedNature(entity);
   if (stylizedNature !== undefined) {
     return createStylizedNatureObject(stylizedNature, assetsById, diagnostics, source);

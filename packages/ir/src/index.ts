@@ -1,4 +1,16 @@
 export { schemaUrls, type SchemaName } from "./schemas.js";
+export {
+  DEFAULT_FEEDBACK_PRESETS,
+  FEEDBACK_PRESET_IDS,
+  feedbackPresetById,
+  validateFeedbackPresets,
+  type FeedbackPresetId,
+  type FeedbackParticleCommand,
+  type IFeedbackPreset,
+  type IFeedbackPresetAudio,
+  type IFeedbackPresetCamera,
+  type IFeedbackPresetParticle,
+} from "./feedback.js";
 export { assertBundleRelativePath, validateBundleRelativePath, type BundlePathValidationResult } from "./bundlePaths.js";
 export {
   IR_DOCUMENTS,
@@ -190,6 +202,8 @@ export type {
   IrObserverPhase,
   IrSystemSchedule,
   IrSystemService,
+  IrTweenEasing,
+  IrTweenProperty,
   ISystemsIr,
 } from "./systems.js";
 export {
@@ -324,6 +338,7 @@ export type {
   IStateMachineComponent,
   IStateMachineTransition,
   IStateMachineTrigger,
+  IWorldTextComponent,
   ISpawnerAreaComponent,
   ISpawnerComponent,
   ISpawnerDespawnPolicyComponent,

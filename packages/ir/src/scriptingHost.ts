@@ -5,7 +5,7 @@ export type ScriptHostSupport = "implemented" | "unsupported";
 export interface IScriptHostServiceMatrixEntry {
   bevy: ScriptHostSupport;
   context: string;
-  domain: "animation" | "assets" | "audio" | "character" | "navigation" | "particles" | "persistence" | "physics" | "picking" | "scene" | "sequence" | "settings" | "ui";
+  domain: "animation" | "assets" | "audio" | "camera" | "character" | "effects" | "navigation" | "particles" | "persistence" | "physics" | "picking" | "scene" | "sequence" | "settings" | "ui";
   service: IrSystemService;
   web: ScriptHostSupport;
 }
@@ -18,7 +18,9 @@ export const SCRIPT_HOST_SERVICE_MATRIX = [
   { bevy: "implemented", context: "ctx.audio.play", domain: "audio", service: "audio.play", web: "implemented" },
   { bevy: "implemented", context: "ctx.audio.query", domain: "audio", service: "audio.query", web: "implemented" },
   { bevy: "implemented", context: "ctx.audio.stop", domain: "audio", service: "audio.stop", web: "implemented" },
+  { bevy: "implemented", context: "ctx.cameras.shake", domain: "camera", service: "camera.shake", web: "implemented" },
   { bevy: "implemented", context: "ctx.character.move", domain: "character", service: "character.move", web: "implemented" },
+  { bevy: "implemented", context: "ctx.effects.play", domain: "effects", service: "effects.play", web: "implemented" },
   { bevy: "implemented", context: "ctx.navigation.path", domain: "navigation", service: "navigation.path", web: "implemented" },
   { bevy: "implemented", context: "ctx.particles.burst", domain: "particles", service: "particles.burst", web: "implemented" },
   { bevy: "implemented", context: "ctx.particles.clear", domain: "particles", service: "particles.clear", web: "implemented" },

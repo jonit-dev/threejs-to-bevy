@@ -335,6 +335,30 @@ test("sceneStartupDiagnostics should warn when no visible renderers exist", () =
   assert.deepEqual(diagnostics.map((diagnostic) => diagnostic.code), ["TN-WEB-SCENE-RENDERERS-MISSING"]);
 });
 
+test("sceneStartupDiagnostics should accept world-text-only renderable content", () => {
+  const diagnostics = sceneStartupDiagnostics({
+    assets: { schema: "threenative.assets", version: "0.1.0", assets: [] },
+    manifest: {
+      schema: "threenative.bundle",
+      version: "0.1.0",
+      name: "world-text",
+      requiredCapabilities: {},
+      entry: { world: "world.ir.json" },
+      files: { assets: "assets.manifest.json", materials: "materials.ir.json", targetProfile: "target.profile.json" },
+    },
+    materials: { schema: "threenative.materials", version: "0.1.0", materials: [] },
+    targetProfile: { schema: "threenative.target-profile", version: "0.1.0", targets: ["web"] },
+    world: {
+      schema: "threenative.world",
+      version: "0.1.0",
+      entities: [{ components: { WorldText: { text: "Ready" } }, id: "status" }],
+      resources: {},
+    },
+  });
+
+  assert.deepEqual(diagnostics, []);
+});
+
 test("sceneStartupDiagnostics should accept environment-only renderable content", () => {
   const diagnostics = sceneStartupDiagnostics({
     assets: { schema: "threenative.assets", version: "0.1.0", assets: [] },

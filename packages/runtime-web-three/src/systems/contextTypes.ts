@@ -1,5 +1,5 @@
 import type { IComponentReflectionRegistry, IComponentReflectionType } from "@threenative/ir/reflection";
-import type { IAssetsManifest, IIrSystemQuery, IUiIr, IWorldEntity } from "@threenative/ir";
+import type { IAssetsManifest, IIrSystemQuery, IUiIr, IWorldEntity, IrTweenEasing, IrTweenProperty } from "@threenative/ir";
 import type { IScriptAudioPlayOptions } from "../audio.js";
 import type { ICharacterTraceObservation } from "../character.js";
 import type { IUiActionEvent } from "../ui/inputBridge.js";
@@ -41,6 +41,8 @@ export interface ISystemCommandBuffer {
   setComponent(entity: string, component: unknown, value: unknown): void;
   setParent(child: string, parent: string): void;
   spawn(entity: string, components?: Record<string, unknown>, tags?: readonly string[]): void;
+  tween(entity: string, options: ITweenCommandOptions): ITweenCommandResult;
+  worldText(entity: string, options: IWorldTextCommandOptions): IWorldTextCommandResult;
 }
 
 export interface ISystemContext {
@@ -53,6 +55,9 @@ export interface ISystemContext {
     play(soundId: string, options?: IScriptAudioPlayOptions): ReturnType<typeof audioPlayPayload>["result"];
     query(playbackId: string): ReturnType<typeof audioQueryPayload>["result"];
     stop(playbackId: string): ReturnType<typeof audioStopPayload>["result"];
+  };
+  cameras: {
+    shake(options?: ICameraShakeOptions): ICameraShakeResult;
   };
   particles: {
     burst(asset: string, emitter: string, options?: IParticleCommandOptions): IParticleCommandResult;
@@ -72,6 +77,9 @@ export interface ISystemContext {
     move(entity: string | ISystemEntityView, options?: ICharacterMoveRequest): ICharacterTraceObservation | null;
   };
   commands: ISystemCommandBuffer;
+  effects: {
+    play(preset: string, options?: IFeedbackPlayOptions): IFeedbackPlayResult;
+  };
   components: {
     hooks(component: unknown): IComponentHookObservation[];
     type(component: unknown): IComponentReflectionType | null;
@@ -265,13 +273,15 @@ export interface IQueuedCommand {
   component?: string;
   entity: string;
   event?: string;
-  kind: "addComponent" | "clearParent" | "despawn" | "emitEvent" | "instantiate" | "removeComponent" | "setComponent" | "setParent" | "spawn";
+  kind: "addComponent" | "clearParent" | "despawn" | "emitEvent" | "instantiate" | "removeComponent" | "setComponent" | "setParent" | "spawn" | "tween" | "worldText";
   parent?: string;
   payload?: unknown;
   prefab?: string;
   prefix?: string;
+  property?: IrTweenProperty;
   source: "command" | "entity";
   tags?: string[];
+  to?: number | number[];
   value?: unknown;
 }
 
@@ -295,7 +305,66 @@ export interface IQueuedResourceWrite {
 
 export interface IQueuedServiceCall {
   payload: unknown;
-  service: "animation.play" | "animation.query" | "animation.stop" | "audio.play" | "audio.query" | "audio.stop" | "assets.load" | "character.move" | "navigation.path" | "particles.burst" | "particles.clear" | "particles.emit" | "particles.play" | "particles.reset" | "particles.start" | "particles.stop" | "physics.overlap" | "physics.raycast" | "physics.sensor" | "physics.shapeCast" | "picking.mesh" | "picking.pointerRay" | "persistence.delete" | "persistence.listSlots" | "persistence.load" | "persistence.save" | "scene.change" | "scene.current" | "scene.loadAdditive" | "scene.pop" | "scene.push" | "scene.unload" | "sequences.play" | "sequences.query" | "sequences.stop" | "settings.export" | "settings.get" | "settings.import" | "settings.set" | "ui.actions" | "ui.activate" | "ui.focus" | "ui.read" | "ui.setDisabled" | "ui.setValue";
+  service: "animation.play" | "animation.query" | "animation.stop" | "audio.play" | "audio.query" | "audio.stop" | "assets.load" | "camera.shake" | "character.move" | "effects.play" | "navigation.path" | "particles.burst" | "particles.clear" | "particles.emit" | "particles.play" | "particles.reset" | "particles.start" | "particles.stop" | "physics.overlap" | "physics.raycast" | "physics.sensor" | "physics.shapeCast" | "picking.mesh" | "picking.pointerRay" | "persistence.delete" | "persistence.listSlots" | "persistence.load" | "persistence.save" | "scene.change" | "scene.current" | "scene.loadAdditive" | "scene.pop" | "scene.push" | "scene.unload" | "sequences.play" | "sequences.query" | "sequences.stop" | "settings.export" | "settings.get" | "settings.import" | "settings.set" | "ui.actions" | "ui.activate" | "ui.focus" | "ui.read" | "ui.setDisabled" | "ui.setValue";
+}
+
+export interface ITweenCommandOptions {
+  duration: number;
+  easing?: IrTweenEasing;
+  loops?: number;
+  property: IrTweenProperty;
+  to: number | readonly number[];
+  yoyo?: boolean;
+}
+
+export interface ITweenCommandResult {
+  accepted: boolean;
+  id: string;
+  status: "enqueued" | "rejected";
+}
+
+export interface IWorldTextCommandOptions {
+  billboard?: boolean;
+  color?: string | readonly number[];
+  fade?: boolean;
+  floatDistance?: number;
+  lifetime?: number;
+  offset?: readonly [number, number, number];
+  size?: number;
+  target?: string;
+  text: string;
+}
+
+export interface IWorldTextCommandResult {
+  accepted: boolean;
+  entity: string;
+  status: "enqueued" | "rejected";
+}
+
+export interface ICameraShakeOptions {
+  amplitude?: number;
+  camera?: string;
+  duration?: number;
+  frequency?: number;
+  seed?: number | string;
+}
+
+export interface ICameraShakeResult {
+  accepted: boolean;
+  id: string;
+  status: "enqueued" | "rejected";
+}
+
+export interface IFeedbackPlayOptions {
+  camera?: string;
+  entity?: string;
+  seed?: number | string;
+}
+
+export interface IFeedbackPlayResult {
+  accepted: boolean;
+  preset: string;
+  status: "enqueued" | "missing";
 }
 
 export interface IParticleCommandOptions {

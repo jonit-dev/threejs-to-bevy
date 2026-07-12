@@ -1,0 +1,43 @@
+{
+  "schema": "threenative.systems",
+  "version": "0.1.0",
+  "feedbackPresets": [
+    {
+      "id": "dust",
+      "particles": [{ "asset": "fx.dust", "command": "burst", "count": 12, "emitter": "dust", "lifetime": 0.5 }]
+    },
+    {
+      "id": "explosion",
+      "audio": { "pitch": 1, "pitchVariance": 0.1, "soundId": "sfx.explosion", "volume": 0.8 },
+      "camera": { "amplitude": 0.2, "duration": 0.25, "frequency": 30 },
+      "particles": [{ "asset": "fx.dust", "command": "burst", "count": 24, "emitter": "dust", "lifetime": 0.75 }]
+    },
+    {
+      "id": "pickup-sparkle",
+      "audio": { "pitch": 1.2, "pitchVariance": 0.05, "soundId": "sfx.pickup", "volume": 0.7 },
+      "particles": [{ "asset": "fx.sparkle", "command": "burst", "count": 16, "emitter": "sparkle", "lifetime": 0.6 }]
+    },
+    {
+      "id": "trail",
+      "particles": [{ "asset": "fx.dust", "command": "emit", "count": 4, "emitter": "dust", "lifetime": 0.25 }]
+    }
+  ],
+  "systems": [
+    {
+      "name": "pickupFeedback",
+      "schedule": "update",
+      "reads": [],
+      "writes": [],
+      "queries": [],
+      "commands": [
+        { "entity": "pickup", "kind": "tween", "property": "scale" },
+        { "entity": "pickup-label", "kind": "worldText" }
+      ],
+      "eventReads": [],
+      "eventWrites": [],
+      "resourceReads": [],
+      "resourceWrites": [],
+      "services": ["camera.shake", "effects.play"]
+    }
+  ]
+}

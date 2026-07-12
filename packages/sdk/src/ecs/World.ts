@@ -44,6 +44,15 @@ export type IWorldCommandDeclaration =
   | {
       event: string;
       kind: "emitEvent";
+    }
+  | {
+      entity: string;
+      kind: "tween";
+      property: "emissiveIntensity" | "opacity" | "position" | "rotation" | "scale";
+    }
+  | {
+      entity: string;
+      kind: "worldText";
     };
 
 export interface IWorldSystemDeclaration {
@@ -72,6 +81,13 @@ export interface IWorldCountdownDeclaration {
   id: string;
   limit: number;
   resource: string;
+}
+
+export interface IWorldFeedbackPresetDeclaration {
+  audio?: { pitch?: number; pitchVariance?: number; soundId: string; volume?: number };
+  camera?: { amplitude: number; duration: number; frequency: number };
+  id: string;
+  particles?: Array<{ asset: string; command: "burst" | "emit" | "play"; count?: number; emitter: string; lifetime?: number }>;
 }
 
 export interface IWorldDelayedCommandDeclaration {
@@ -109,6 +125,7 @@ export interface IWorldSnapshot {
   input?: IInputMapDeclaration;
   runtimeConfig?: IRuntimeConfigDeclaration;
   countdowns?: IWorldCountdownDeclaration[];
+  feedbackPresets?: IWorldFeedbackPresetDeclaration[];
   systems: IWorldSystemDeclaration[];
 }
 
@@ -122,6 +139,7 @@ export class World {
   #runtimeConfig?: IRuntimeConfigDeclaration;
   readonly #systems = new Map<string, ISystemDeclaration>();
   readonly #countdowns = new Map<string, IWorldCountdownDeclaration>();
+  readonly #feedbackPresets = new Map<string, IWorldFeedbackPresetDeclaration>();
 
   public spawn(id: string, ...components: IEcsDeclaration[]): this {
     return this.spawnWithTags(id, undefined, ...components);
@@ -210,6 +228,15 @@ export class World {
     return this;
   }
 
+  public addFeedbackPreset(preset: IWorldFeedbackPresetDeclaration): this {
+    assertId(preset.id, "TN_SDK_FEEDBACK_PRESET_ID_EMPTY", "Feedback preset ID");
+    if (this.#feedbackPresets.has(preset.id)) {
+      throw new SdkError("TN_SDK_FEEDBACK_PRESET_DUPLICATE", `Feedback preset '${preset.id}' is already declared.`);
+    }
+    this.#feedbackPresets.set(preset.id, JSON.parse(JSON.stringify(preset)) as IWorldFeedbackPresetDeclaration);
+    return this;
+  }
+
   public setInputMap(input: IInputMapDeclaration): this {
     this.#input = input;
     return this;
@@ -231,6 +258,9 @@ export class World {
     };
     if (this.#countdowns.size > 0) {
       snapshot.countdowns = [...this.#countdowns.values()].sort((left, right) => left.id.localeCompare(right.id));
+    }
+    if (this.#feedbackPresets.size > 0) {
+      snapshot.feedbackPresets = [...this.#feedbackPresets.values()].sort((left, right) => left.id.localeCompare(right.id));
     }
     if (this.#input !== undefined) {
       snapshot.input = this.#input;
@@ -348,6 +378,12 @@ function serializeCommand(command: CommandDeclaration): IWorldCommandDeclaration
   }
   if (command.kind === "clearParent") {
     return { child: command.child, kind: command.kind };
+  }
+  if (command.kind === "tween") {
+    return { entity: command.entity, kind: command.kind, property: command.property };
+  }
+  if (command.kind === "worldText") {
+    return { entity: command.entity, kind: command.kind };
   }
   return { component: command.component, entity: command.entity, kind: command.kind };
 }

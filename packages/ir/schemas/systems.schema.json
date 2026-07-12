@@ -19,6 +19,10 @@
       "type": "array",
       "items": { "$ref": "#/$defs/countdown" }
     },
+    "feedbackPresets": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/feedbackPreset" }
+    },
     "lifecycle": {
       "type": "object",
       "additionalProperties": false,
@@ -94,6 +98,51 @@
         "id": { "type": "string", "minLength": 1 },
         "limit": { "type": "number", "minimum": 0 },
         "resource": { "type": "string", "minLength": 1 }
+      }
+    },
+    "feedbackPreset": {
+      "type": "object",
+      "required": ["id"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string", "minLength": 1, "maxLength": 64 },
+        "audio": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["soundId"],
+          "properties": {
+            "pitch": { "type": "number", "minimum": 0.25, "maximum": 4 },
+            "pitchVariance": { "type": "number", "minimum": 0, "maximum": 1 },
+            "soundId": { "type": "string", "minLength": 1 },
+            "volume": { "type": "number", "minimum": 0, "maximum": 1 }
+          }
+        },
+        "camera": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["amplitude", "duration", "frequency"],
+          "properties": {
+            "amplitude": { "type": "number", "minimum": 0, "maximum": 2 },
+            "duration": { "type": "number", "minimum": 0, "maximum": 5 },
+            "frequency": { "type": "number", "minimum": 0, "maximum": 120 }
+          }
+        },
+        "particles": {
+          "type": "array",
+          "maxItems": 8,
+          "items": {
+            "type": "object",
+            "required": ["asset", "command", "emitter"],
+            "additionalProperties": false,
+            "properties": {
+              "asset": { "type": "string", "minLength": 1 },
+              "command": { "enum": ["burst", "emit", "play"] },
+              "count": { "type": "number", "minimum": 0, "maximum": 256 },
+              "emitter": { "type": "string", "minLength": 1 },
+              "lifetime": { "type": "number", "minimum": 0, "maximum": 30 }
+            }
+          }
+        }
       }
     },
     "script": {

@@ -7,7 +7,7 @@ use threenative_runtime::{
 fn main() -> ExitCode {
     let Some(invocation) = RuntimeInvocation::parse(env::args().skip(1)) else {
         eprintln!(
-            "Usage: threenative_runtime <bundle-path> [--proof-harness <commands.json> --readiness-out <readiness.json>]"
+            "Usage: threenative_runtime <bundle-path> [--proof-harness <commands.json> --readiness-out <readiness.json> [--audit-writes]]"
         );
         return ExitCode::from(2);
     };
@@ -34,11 +34,13 @@ impl RuntimeInvocation {
         let mut bundle_path = None;
         let mut proof_harness = None;
         let mut readiness_out = None;
+        let mut audit_writes = false;
         let mut args = args.peekable();
         while let Some(arg) = args.next() {
             match arg.as_str() {
                 "--proof-harness" => proof_harness = args.next(),
                 "--readiness-out" => readiness_out = args.next(),
+                "--audit-writes" => audit_writes = true,
                 _ if bundle_path.is_none() => bundle_path = Some(arg),
                 _ => return None,
             }
@@ -46,11 +48,12 @@ impl RuntimeInvocation {
         let proof_harness = match (proof_harness, readiness_out) {
             (Some(command_stream_path), Some(readiness_out_path)) => {
                 Some(NativeProofHarnessOptions {
+                    audit_writes,
                     command_stream_path,
                     readiness_out_path,
                 })
             }
-            (None, None) => None,
+            (None, None) if !audit_writes => None,
             _ => return None,
         };
         Some(Self {

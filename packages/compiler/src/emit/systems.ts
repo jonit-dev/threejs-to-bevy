@@ -1,4 +1,4 @@
-import type { ISystemsIr } from "@threenative/ir";
+import type { IFeedbackPreset, ISystemsIr } from "@threenative/ir";
 
 interface ISystemLike {
   after?: string[];
@@ -29,7 +29,11 @@ interface ICountdownLike {
   resource: string;
 }
 
-export function systemsToIr(systems: ReadonlyArray<ISystemLike>, countdowns: ReadonlyArray<ICountdownLike> = []): ISystemsIr {
+export function systemsToIr(
+  systems: ReadonlyArray<ISystemLike>,
+  countdowns: ReadonlyArray<ICountdownLike> = [],
+  feedbackPresets: ReadonlyArray<IFeedbackPreset> = [],
+): ISystemsIr {
   return {
     schema: "threenative.systems",
     version: "0.1.0",
@@ -37,6 +41,14 @@ export function systemsToIr(systems: ReadonlyArray<ISystemLike>, countdowns: Rea
       countdowns: countdowns
         .map((countdown) => ({ ...countdown }))
         .sort((left, right) => left.id.localeCompare(right.id)),
+    }),
+    ...(feedbackPresets.length === 0 ? {} : {
+      feedbackPresets: feedbackPresets.map((preset) => ({
+        ...preset,
+        ...(preset.audio === undefined ? {} : { audio: { ...preset.audio } }),
+        ...(preset.camera === undefined ? {} : { camera: { ...preset.camera } }),
+        ...(preset.particles === undefined ? {} : { particles: preset.particles.map((particle) => ({ ...particle })) }),
+      })).sort((left, right) => left.id.localeCompare(right.id)),
     }),
     systems: [...systems]
       .sort((left, right) => left.name.localeCompare(right.name))
@@ -103,6 +115,12 @@ function serializeCommand(command: ISystemsIr["systems"][number]["commands"][num
   }
   if (command.kind === "clearParent") {
     return { child: command.child, kind: command.kind };
+  }
+  if (command.kind === "tween") {
+    return { entity: command.entity, kind: command.kind, property: command.property };
+  }
+  if (command.kind === "worldText") {
+    return { entity: command.entity, kind: command.kind };
   }
   return { component: command.component, entity: command.entity, kind: command.kind };
 }

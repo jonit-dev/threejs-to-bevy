@@ -259,6 +259,7 @@ export type ScriptAudioPlaybackStatus = "playing" | "rejected" | "stopped";
 export interface IScriptAudioPlayOptions {
   entity?: string;
   loop?: boolean;
+  pitch?: number;
   volume?: number;
 }
 
@@ -267,6 +268,7 @@ export interface IScriptAudioRuntimeState {
   entity?: string;
   kind?: ScriptAudioPlaybackKind;
   loop?: boolean;
+  pitch?: number;
   playbackId: string;
   reason?: string;
   soundId: string;
@@ -326,6 +328,7 @@ export class ScriptAudioRuntimeController {
       ...(typeof options.entity === "string" ? { entity: options.entity } : {}),
       kind: declared.kind,
       loop,
+      ...(typeof options.pitch === "number" && Number.isFinite(options.pitch) ? { pitch: options.pitch } : {}),
       playbackId,
       soundId,
       status: "playing",
@@ -406,6 +409,7 @@ function serializeScriptAudioPlayback(record: IScriptAudioPlaybackRecord): IScri
     ...(record.entity === undefined ? {} : { entity: record.entity }),
     ...(record.kind === undefined ? {} : { kind: record.kind }),
     ...(record.loop === undefined ? {} : { loop: record.loop }),
+    ...(record.pitch === undefined ? {} : { pitch: record.pitch }),
     playbackId: record.playbackId,
     ...(record.reason === undefined ? {} : { reason: record.reason }),
     soundId: record.soundId,

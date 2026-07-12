@@ -12,6 +12,8 @@ export type SystemService =
   | "audio.play"
   | "audio.query"
   | "audio.stop"
+  | "camera.shake"
+  | "effects.play"
   | "assets.load"
   | "character.move"
   | "navigation.path"
@@ -171,6 +173,12 @@ export interface ISystemContext {
     query(playbackId: string): import("../audio.js").IScriptAudioQueryResult;
     stop(playbackId: string): import("../audio.js").IScriptAudioStopResult;
   };
+  cameras: {
+    shake(options?: { amplitude?: number; camera?: string; duration?: number; frequency?: number; seed?: number | string }): { accepted: boolean; id: string; status: "enqueued" | "rejected" };
+  };
+  effects: {
+    play(preset: string, options?: { camera?: string; entity?: string; seed?: number | string }): { accepted: boolean; preset: string; status: "enqueued" | "missing" };
+  };
   assets: {
     get(id: unknown): Record<string, unknown> | null;
     list(): Record<string, unknown>[];
@@ -203,6 +211,8 @@ export interface ISystemContext {
     setComponent(entity: string, component: EcsFactory | IEcsSchema | string, value: unknown): void;
     setParent(child: string, parent: string): void;
     spawn(entity: string, components: Record<string, unknown>): void;
+    tween(entity: string, options: { duration: number; easing?: "ease-in" | "ease-in-out" | "ease-out" | "linear"; loops?: number; property: "emissiveIntensity" | "opacity" | "position" | "rotation" | "scale"; to: number[] | number }): { accepted: boolean; id: string; status: "enqueued" | "rejected" };
+    worldText(entity: string, options: { billboard?: boolean; color?: string; fade?: boolean; floatDistance?: number; lifetime?: number; offset?: [number, number, number]; size?: number; target?: string; text: string }): { accepted: boolean; entity: string; status: "enqueued" | "rejected" };
   };
   events: {
     emit(event: EcsFactory | IEcsSchema | string, payload: unknown): void;

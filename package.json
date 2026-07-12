@@ -45,6 +45,7 @@
     "verify:particle-commands": "pnpm build:verify-tools && node tools/verify/dist/cli/run.js verify:particle-commands",
     "verify:pre-push": "node scripts/verify-pre-push.mjs",
     "verify:portable-shader-material": "pnpm --filter @threenative/runtime-web-three build && pnpm --filter @threenative/cli build && pnpm build:verify-tools && node scripts/verify-portable-shader-material.mjs",
+    "verify:portable-feedback": "pnpm build:verify-tools && node tools/verify/dist/cli/run.js verify:portable-feedback",
     "verify:physics-self-verification": "pnpm build:verify-tools && node tools/verify/dist/cli/run.js verify:physics-self-verification",
     "verify:release": "pnpm build:verify-tools && node tools/verify/dist/cli/release.js",
     "verify:rendering-photoreal": "pnpm --filter @threenative/runtime-web-three build && pnpm --filter @threenative/cli build && pnpm build:verify-tools && node tools/verify/dist/cli/renderingPhotoreal.js",

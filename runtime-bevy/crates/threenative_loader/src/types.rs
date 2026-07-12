@@ -416,11 +416,70 @@ pub struct EntityComponents {
     pub state_machine: Option<StateMachineComponent>,
     pub transform: Option<TransformComponent>,
     pub visibility: Option<VisibilityComponent>,
+    pub world_text: Option<WorldTextComponent>,
     #[serde(flatten)]
     pub extra: HashMap<String, serde_json::Value>,
 }
 
-#[derive(Clone, Debug, Deserialize, PartialEq)]
+impl EntityComponents {
+    pub fn values(&self) -> Vec<(String, serde_json::Value)> {
+        let mut values = Vec::new();
+        macro_rules! push_component {
+            ($field:ident, $name:literal) => {
+                if let Some(value) = self.$field.as_ref() {
+                    values.push((
+                        $name.to_owned(),
+                        serialized_component(value),
+                    ));
+                }
+            };
+        }
+        push_component!(camera, "Camera");
+        push_component!(collider, "Collider");
+        push_component!(contact_shadows, "ContactShadows");
+        push_component!(hierarchy, "Hierarchy");
+        push_component!(kinematic_mover, "KinematicMover");
+        push_component!(light, "Light");
+        push_component!(mesh_renderer, "MeshRenderer");
+        push_component!(patrol, "Patrol");
+        push_component!(physics_joint, "PhysicsJoint");
+        push_component!(render_layers, "RenderLayers");
+        push_component!(rigid_body, "RigidBody");
+        push_component!(spawner, "Spawner");
+        push_component!(state_machine, "StateMachine");
+        push_component!(transform, "Transform");
+        push_component!(visibility, "Visibility");
+        push_component!(world_text, "WorldText");
+        values.extend(self.extra.iter().map(|(name, value)| (name.clone(), value.clone())));
+        values.sort_by(|left, right| left.0.cmp(&right.0));
+        values
+    }
+}
+
+fn serialized_component<T: Serialize>(value: &T) -> serde_json::Value {
+    let mut value = serde_json::to_value(value).expect("loader component should serialize");
+    strip_absent_fields(&mut value);
+    value
+}
+
+fn strip_absent_fields(value: &mut serde_json::Value) {
+    match value {
+        serde_json::Value::Array(values) => {
+            for value in values {
+                strip_absent_fields(value);
+            }
+        }
+        serde_json::Value::Object(values) => {
+            values.retain(|_, value| {
+                strip_absent_fields(value);
+                !value.is_null()
+            });
+        }
+        serde_json::Value::Null | serde_json::Value::Bool(_) | serde_json::Value::Number(_) | serde_json::Value::String(_) => {}
+    }
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct ContactShadowsComponent {
     pub height: f32,
@@ -431,14 +490,29 @@ pub struct ContactShadowsComponent {
     pub update_mode: String,
 }
 
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct TransformComponent {
     pub position: Option<[f32; 3]>,
     pub rotation: Option<[f32; 4]>,
     pub scale: Option<[f32; 3]>,
 }
 
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct WorldTextComponent {
+    pub billboard: Option<bool>,
+    pub color: Option<serde_json::Value>,
+    pub elapsed: Option<f32>,
+    pub fade: Option<bool>,
+    pub float_distance: Option<f32>,
+    pub lifetime: Option<f32>,
+    pub offset: Option<[f32; 3]>,
+    pub size: Option<f32>,
+    pub target: Option<String>,
+    pub text: String,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct KinematicMoverComponent {
     pub axis: Option<String>,
@@ -452,7 +526,7 @@ pub struct KinematicMoverComponent {
     pub waypoints: Option<Vec<[f32; 3]>>,
 }
 
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct PatrolComponent {
     pub face_heading: Option<bool>,
@@ -489,7 +563,7 @@ pub enum StateMachineTrigger {
     Timer { ticks: u32 },
 }
 
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SpawnerComponent {
     pub area: Option<SpawnerAreaComponent>,
@@ -504,21 +578,21 @@ pub struct SpawnerComponent {
     pub wave_size: Option<u32>,
 }
 
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SpawnerAreaComponent {
     pub shape: String,
     pub size: Option<serde_json::Value>,
 }
 
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SpawnerDespawnPolicyComponent {
     pub after_seconds: Option<f32>,
     pub beyond_distance: Option<f32>,
 }
 
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct MeshRendererComponent {
     pub cast_shadow: Option<bool>,
@@ -528,7 +602,7 @@ pub struct MeshRendererComponent {
     pub visible: Option<bool>,
 }
 
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct CameraViewportIr {
     #[serde(rename = "0")]
     pub x: Option<f32>,
@@ -540,7 +614,7 @@ pub struct CameraViewportIr {
     pub height: Option<f32>,
 }
 
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(untagged)]
 pub enum CameraViewportIrValue {
     Tuple([f32; 4]),
@@ -561,13 +635,13 @@ impl CameraViewportIrValue {
     }
 }
 
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct CameraClearIr {
     pub color: Option<ColorIr>,
     pub mode: String,
 }
 
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct CameraOutputIr {
     pub format: Option<String>,
     pub height: Option<u32>,
@@ -576,7 +650,7 @@ pub struct CameraOutputIr {
     pub width: Option<u32>,
 }
 
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct CameraProjectionIr {
     pub backend: Option<String>,
     pub handedness: Option<String>,
@@ -584,20 +658,20 @@ pub struct CameraProjectionIr {
     pub matrix: Option<Vec<f32>>,
 }
 
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct CameraTargetIr {
     pub asset: Option<String>,
     pub kind: String,
 }
 
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct CameraFollowHelperIr {
     pub offset: Option<[f32; 3]>,
     pub smoothing: Option<f32>,
     pub target: String,
 }
 
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct CameraOrbitHelperIr {
     pub distance: Option<f32>,
     #[serde(rename = "maxDistance")]
@@ -608,24 +682,24 @@ pub struct CameraOrbitHelperIr {
     pub target: String,
 }
 
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct CameraScreenShakeHelperIr {
     pub amplitude: f32,
     pub decay: Option<f32>,
     pub frequency: Option<f32>,
 }
 
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct CameraViewModelHelperIr {
     pub offset: Option<[f32; 3]>,
 }
 
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct RenderLayersComponent {
     pub layers: Vec<String>,
 }
 
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct CameraComponent {
     pub clear: Option<CameraClearIr>,
     pub follow: Option<CameraFollowHelperIr>,
@@ -649,7 +723,7 @@ pub struct CameraComponent {
     pub viewport: Option<CameraViewportIrValue>,
 }
 
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct LightComponent {
     pub kind: String,
     pub color: ColorIr,
@@ -676,12 +750,12 @@ pub struct ShadowFilterIr {
     pub quality: String,
 }
 
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct HierarchyComponent {
     pub parent: Option<String>,
 }
 
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct RigidBodyComponent {
     pub angular_velocity: Option<[f32; 3]>,
@@ -698,7 +772,7 @@ pub struct RigidBodyComponent {
     pub velocity: Option<[f32; 3]>,
 }
 
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CcdComponent {
     pub enabled: bool,
@@ -706,7 +780,7 @@ pub struct CcdComponent {
     pub mode: String,
 }
 
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct ColliderComponent {
     pub center: Option<[f32; 3]>,
     pub contact: Option<ColliderContactComponent>,
@@ -725,12 +799,12 @@ pub struct ColliderComponent {
     pub trigger: Option<bool>,
 }
 
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct ColliderContactComponent {
     pub phases: Option<Vec<String>>,
 }
 
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct MeshColliderComponent {
     pub bounds: MeshColliderBoundsComponent,
@@ -738,13 +812,13 @@ pub struct MeshColliderComponent {
     pub triangle_count: u32,
 }
 
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct MeshColliderBoundsComponent {
     pub center: Option<[f32; 3]>,
     pub size: [f32; 3],
 }
 
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct ColliderSlopeComponent {
     pub axis: String,
     pub direction: i8,
@@ -752,7 +826,7 @@ pub struct ColliderSlopeComponent {
     pub run: f32,
 }
 
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct PhysicsJointComponent {
     pub anchor: Option<[f32; 3]>,
@@ -765,13 +839,13 @@ pub struct PhysicsJointComponent {
     pub travel: Option<f32>,
 }
 
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct PhysicsJointLimitsComponent {
     pub max: f32,
     pub min: f32,
 }
 
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct VisibilityComponent {
     pub visible: bool,
 }
@@ -1204,6 +1278,8 @@ pub struct SystemsIr {
     pub component_hooks: Vec<SystemComponentHookIr>,
     #[serde(default)]
     pub countdowns: Vec<SystemCountdownIr>,
+    #[serde(default, rename = "feedbackPresets")]
+    pub feedback_presets: Vec<serde_json::Value>,
     #[serde(default)]
     pub lifecycle: Option<SystemsLifecycleIr>,
     #[serde(default)]
@@ -1390,6 +1466,10 @@ pub enum SystemCommandIr {
         components: Vec<String>,
         entity: String,
     },
+    #[serde(rename = "tween")]
+    Tween { entity: String, property: String },
+    #[serde(rename = "worldText")]
+    WorldText { entity: String },
 }
 
 #[derive(Clone, Debug, Deserialize)]

@@ -760,6 +760,7 @@ function validateWorld(world: IWorldIr, path: string, diagnostics: IIrDiagnostic
   });
   world.entities.forEach((entity, index) => validatePatrolComponent(entity, `${path}/entities/${index}`, diagnostics));
   world.entities.forEach((entity, index) => validateStateMachineComponent(entity, `${path}/entities/${index}`, diagnostics));
+  world.entities.forEach((entity, index) => validateWorldTextComponent(entity, `${path}/entities/${index}`, diagnostics));
   world.entities.forEach((entity, index) => validateKinematicMoverComponent(entity, `${path}/entities/${index}`, diagnostics));
   world.entities.forEach((entity, index) => validateSpawnerComponent(entity, `${path}/entities/${index}`, diagnostics));
   world.entities.forEach((entity, index) => validateRenderComponents(entity, `${path}/entities/${index}`, diagnostics));
@@ -965,6 +966,45 @@ function validateStateMachineComponent(entity: IWorldEntity, path: string, diagn
       diagnostics.push({ code: "TN_IR_STATE_MACHINE_TRIGGER_KIND_INVALID", message: "StateMachine trigger.kind must be event, sensor, or timer.", path: `${transitionPath}/trigger/kind`, severity: "error" });
     }
   });
+}
+
+function validateWorldTextComponent(entity: IWorldEntity, path: string, diagnostics: IIrDiagnostic[]): void {
+  const text = entity.components.WorldText;
+  if (text === undefined) {
+    return;
+  }
+  if (!isRecord(text)) {
+    diagnostics.push({ code: "TN_IR_WORLD_TEXT_INVALID", message: `WorldText '${entity.id}' must be an object.`, path: `${path}/components/WorldText`, severity: "error" });
+    return;
+  }
+  validateUnsupportedFields(diagnostics, text, ["billboard", "color", "elapsed", "fade", "floatDistance", "lifetime", "offset", "size", "target", "text"], (key) => ({
+    code: "TN_IR_WORLD_TEXT_FIELD_UNSUPPORTED",
+    message: `WorldText '${entity.id}' uses unsupported field '${key}'.`,
+    path: `${path}/components/WorldText/${key}`,
+    severity: "error",
+  }));
+  if (typeof text.text !== "string" || text.text.length === 0 || text.text.length > 128) {
+    diagnostics.push({ code: "TN_IR_WORLD_TEXT_TEXT_INVALID", message: "WorldText.text must contain between 1 and 128 characters.", path: `${path}/components/WorldText/text`, severity: "error" });
+  }
+  if (text.size !== undefined) validateFiniteRange(text.size, 1, 256, `${path}/components/WorldText/size`, "TN_IR_WORLD_TEXT_SIZE_INVALID", diagnostics);
+  if (text.lifetime !== undefined) validateFiniteRange(text.lifetime, 0, 30, `${path}/components/WorldText/lifetime`, "TN_IR_WORLD_TEXT_LIFETIME_INVALID", diagnostics);
+  if (text.floatDistance !== undefined) validateFiniteRange(text.floatDistance, 0, 10, `${path}/components/WorldText/floatDistance`, "TN_IR_WORLD_TEXT_FLOAT_INVALID", diagnostics);
+  if (text.elapsed !== undefined) validateFiniteRange(text.elapsed, 0, 30, `${path}/components/WorldText/elapsed`, "TN_IR_WORLD_TEXT_ELAPSED_INVALID", diagnostics);
+  if (text.offset !== undefined) {
+    validateFiniteVec3(text.offset, `${path}/components/WorldText/offset`, "TN_IR_WORLD_TEXT_OFFSET_INVALID", diagnostics);
+  }
+  if (text.target !== undefined && (typeof text.target !== "string" || text.target.trim() === "")) {
+    diagnostics.push({ code: "TN_IR_WORLD_TEXT_TARGET_INVALID", message: "WorldText.target must be a non-empty entity id when provided.", path: `${path}/components/WorldText/target`, severity: "error" });
+  }
+  if (text.billboard !== undefined && typeof text.billboard !== "boolean") {
+    diagnostics.push({ code: "TN_IR_WORLD_TEXT_BILLBOARD_INVALID", message: "WorldText.billboard must be boolean.", path: `${path}/components/WorldText/billboard`, severity: "error" });
+  }
+  if (text.fade !== undefined && typeof text.fade !== "boolean") {
+    diagnostics.push({ code: "TN_IR_WORLD_TEXT_FADE_INVALID", message: "WorldText.fade must be boolean.", path: `${path}/components/WorldText/fade`, severity: "error" });
+  }
+  if (text.color !== undefined && typeof text.color !== "string" && (!isNumberTuple(text.color, 3) && !isNumberTuple(text.color, 4))) {
+    diagnostics.push({ code: "TN_IR_WORLD_TEXT_COLOR_INVALID", message: "WorldText.color must be a color string or a finite RGB/RGBA tuple.", path: `${path}/components/WorldText/color`, severity: "error" });
+  }
 }
 
 function validateSpawnerComponent(entity: IWorldEntity, path: string, diagnostics: IIrDiagnostic[]): void {

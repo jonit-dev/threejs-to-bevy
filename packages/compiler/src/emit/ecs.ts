@@ -14,6 +14,7 @@ interface IEcsWorldLike {
     resources: Record<string, Record<string, unknown>>;
     resourceSchemas: Record<string, { fields: Record<string, unknown> }>;
     countdowns?: Array<{ autostart?: boolean; direction: "down" | "up"; event: string; field: string; id: string; limit: number; resource: string }>;
+    feedbackPresets?: ISystemsIr["feedbackPresets"];
     input?: Omit<IInputIr, "schema" | "version">;
     runtimeConfig?: Omit<IRuntimeConfigIr, "schema" | "version">;
     systems: IEcsSystemSnapshot[];
@@ -94,7 +95,7 @@ export function ecsToIr(world: IEcsWorldLike, options: IEcsEmitOptions = {}): IE
           },
     scriptBundle: scriptBundle.code,
     scriptManifest: scriptBundle.manifest,
-    systems: systemsToIr(resolvedScripts.systems, snapshot.countdowns),
+    systems: systemsToIr(resolvedScripts.systems, snapshot.countdowns, snapshot.feedbackPresets),
     world: {
       schema: "threenative.world",
       version: "0.1.0",

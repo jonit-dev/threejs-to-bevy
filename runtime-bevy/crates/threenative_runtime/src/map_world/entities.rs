@@ -39,6 +39,24 @@ fn spawn_entity(
             .id());
     }
 
+    if let Some(world_text) = entity.components.world_text.as_ref() {
+        let mut spawned = world.spawn(Text2dBundle {
+            text: Text::from_section(
+                world_text.text.clone(),
+                TextStyle {
+                    font_size: world_text.size.unwrap_or(24.0),
+                    color: Color::WHITE,
+                    ..Default::default()
+                },
+            ),
+            transform,
+            visibility: map_visibility(entity),
+            ..Default::default()
+        });
+        spawned.insert((stable_id, name, crate::world_text::NativeWorldText));
+        return Ok(spawned.id());
+    }
+
     if let Some(stylized_nature) = entity.components.extra.get("StylizedNature") {
         return Ok(spawn_stylized_nature(
             world,

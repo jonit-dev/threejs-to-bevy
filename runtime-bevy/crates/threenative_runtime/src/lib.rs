@@ -44,6 +44,7 @@ pub mod patrol;
 pub mod native_ssr;
 pub mod path_sampling;
 pub mod performance_metrics;
+pub mod presentation;
 pub mod persistence;
 pub mod persistence_reload;
 pub mod physics;
@@ -78,6 +79,7 @@ pub mod ui_debug;
 pub mod ui_persistence_settings_facades;
 pub mod walkability;
 pub mod world_mapping;
+pub mod world_text;
 
 #[derive(Debug, Error)]
 pub enum RuntimeError {
@@ -567,7 +569,7 @@ fn run_scripted_runtime_systems(
     time: Res<Time>,
     mut transforms: Query<(&ThreeNativeId, &mut Transform)>,
     mut materials: Query<(&ThreeNativeId, &mut Handle<StandardMaterial>)>,
-    mut text_nodes: Query<(&ThreeNativeId, &mut Text)>,
+    mut text_nodes: Query<(&ThreeNativeId, &mut Text, Option<&world_text::NativeWorldText>)>,
     ui_binding_targets: Option<Res<ui::NativeUiBindingTargets>>,
     mut minimap_markers: Query<(
         &ui::NativeUiMinimapMarker,
@@ -619,6 +621,21 @@ fn run_scripted_runtime_systems(
         ))
     };
 
+    let audit_writes = proof_harness
+        .as_deref()
+        .is_some_and(proof_harness::NativeProofHarnessState::audit_writes);
+    loop_state.write_audit_enabled = audit_writes;
+    if !audit_writes {
+        loop_state.write_ledger.reset();
+    }
+    if let Some(audit) = scripted.write_audit.as_deref_mut() {
+        audit.enabled = audit_writes;
+        if !audit_writes {
+            audit.observations.clear();
+            audit.diagnostics.clear();
+        }
+    }
+
     let mut requires_live_reconciliation = false;
     for _ in 0..frame_count {
         let options = systems_host::NativeGameLoopRunOptions {
@@ -648,9 +665,15 @@ fn run_scripted_runtime_systems(
                         observations.observations.drain(0..overflow);
                     }
                 }
-                if let Some(audit) = scripted.write_audit.as_deref_mut() {
-                    audit.observations = run.write_observations;
-                    audit.diagnostics = run.write_diagnostics;
+                if audit_writes {
+                    if let Some(audit) = scripted.write_audit.as_deref_mut() {
+                        audit.enabled = true;
+                        audit.observations = run.write_observations;
+                        audit.diagnostics = run.write_diagnostics;
+                    }
+                } else if let Some(audit) = scripted.write_audit.as_deref_mut() {
+                    audit.observations.clear();
+                    audit.diagnostics.clear();
                 }
                 if let Some(queue) = animation_queue.as_deref_mut() {
                     map_world::queue_native_animation_service_effects(queue, &run.logs);
@@ -694,6 +717,7 @@ fn run_scripted_runtime_systems(
         ui_binding_targets.as_deref(),
         &mut text_nodes,
     );
+    world_text::sync_native_world_text(&runtime.bundle, &mut text_nodes);
     ui::sync_native_minimap_markers(&runtime.bundle, &mut minimap_markers);
 }
 
@@ -894,13 +918,13 @@ fn sync_scripted_ui_text(
     bundle: &LoadedBundle,
     entities_by_id: &HashMap<&str, &WorldEntity>,
     targets: Option<&ui::NativeUiBindingTargets>,
-    text_nodes: &mut Query<(&ThreeNativeId, &mut Text)>,
+    text_nodes: &mut Query<(&ThreeNativeId, &mut Text, Option<&world_text::NativeWorldText>)>,
 ) {
     let Some(targets) = targets else {
         return;
     };
     let component_entities = targets.has_component_bindings().then_some(entities_by_id);
-    for (stable_id, mut text) in text_nodes.iter_mut() {
+    for (stable_id, mut text, _) in text_nodes.iter_mut() {
         let Some(binding) = targets.binding_for(&stable_id.0) else {
             continue;
         };

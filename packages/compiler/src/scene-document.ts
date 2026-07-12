@@ -135,6 +135,9 @@ function lowerSceneDocument(
   for (const countdown of systemsMetadata.countdowns) {
     world.addCountdown(countdown);
   }
+  for (const preset of systemsMetadata.feedbackPresets) {
+    world.addFeedbackPreset(preset);
+  }
   const sceneLifecycleSystems = expandScriptLifecycles(scene.scriptLifecycles ?? [], scene.id);
   for (const system of mergedSceneSystems([...sceneLifecycleSystems, ...(scene.systems ?? [])], systemsMetadata.systems, scene.id)) {
     if (system.script === undefined) {
@@ -217,6 +220,7 @@ type SourceCountdown = NonNullable<import("@threenative/authoring").ISystemsDocu
 
 interface IStructuredSystems {
   countdowns: SourceCountdown[];
+  feedbackPresets: NonNullable<import("@threenative/authoring").ISystemsDocument["feedbackPresets"]>;
   systems: SourceSystem[];
 }
 
@@ -366,7 +370,11 @@ async function readStructuredSystems(projectPath: string): Promise<IStructuredSy
     .filter((document) => document.kind === "systems" && readRecord(document.data) !== undefined)
     .flatMap((document) => readRecordArray(readRecord(document.data)?.countdowns) as unknown as SourceCountdown[])
     .sort((left, right) => left.id.localeCompare(right.id));
-  return { countdowns, systems };
+  const feedbackPresets = project.documents
+    .filter((document) => document.kind === "systems" && readRecord(document.data) !== undefined)
+    .flatMap((document) => readRecordArray(readRecord(document.data)?.feedbackPresets) as unknown as NonNullable<import("@threenative/authoring").ISystemsDocument["feedbackPresets"]>)
+    .sort((left, right) => left.id.localeCompare(right.id));
+  return { countdowns, feedbackPresets, systems };
 }
 
 function expandScriptLifecycles(lifecycles: readonly SourceScriptLifecycle[], owningScene?: string): SourceSystem[] {

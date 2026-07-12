@@ -584,6 +584,19 @@ export interface IStateMachineComponent {
   transitions: IStateMachineTransition[];
 }
 
+export interface IWorldTextComponent {
+  billboard?: boolean;
+  color?: string | readonly [number, number, number] | readonly [number, number, number, number];
+  elapsed?: number;
+  fade?: boolean;
+  floatDistance?: number;
+  lifetime?: number;
+  offset?: Vec3;
+  size?: number;
+  target?: string;
+  text: string;
+}
+
 export interface IWorldEntity {
   components: Record<string, unknown> & {
     Camera?: ICameraComponent;
@@ -601,6 +614,7 @@ export interface IWorldEntity {
     RigidBody?: IRigidBodyComponent;
     Transform?: ITransformComponent;
     Visibility?: IVisibilityComponent;
+    WorldText?: IWorldTextComponent;
   };
   id: string;
   tags?: string[];

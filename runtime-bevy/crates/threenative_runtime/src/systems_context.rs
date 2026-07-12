@@ -28,6 +28,8 @@ pub struct NativeSystemContextSnapshot {
     #[serde(rename = "lifecycle")]
     pub lifecycle: NativeEntityLifecycleSnapshot,
     pub local_data: NativeLocalDataSnapshot,
+    #[serde(rename = "feedbackPresets", skip_serializing_if = "Vec::is_empty")]
+    pub feedback_presets: Vec<Value>,
     pub mesh_bounds: BTreeMap<String, NativeMeshBoundsSnapshot>,
     pub observer_routes: BTreeMap<String, BTreeMap<String, Vec<NativeObserverPropagationStep>>>,
     pub plugin_groups: Vec<NativePluginGroupDeclaration>,
@@ -373,6 +375,11 @@ pub fn build_system_context_snapshot_with_sensor_events_and_lifecycle(
             .collect(),
         entities,
         events: merged_event_queues(bundle, events),
+        feedback_presets: bundle
+            .systems
+            .as_ref()
+            .map(|systems| systems.feedback_presets.clone())
+            .unwrap_or_default(),
         input: input.map_or_else(
             NativeSystemInputSnapshot::neutral,
             NativeSystemInputSnapshot::from_native_input,

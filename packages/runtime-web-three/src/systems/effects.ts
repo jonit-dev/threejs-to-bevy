@@ -247,6 +247,12 @@ function declaresCommand(system: IIrSystemDeclaration, command: IQueuedCommand):
     if ("parent" in declared && declared.parent !== command.parent) {
       return false;
     }
+    if ("property" in declared && declared.property !== command.property) {
+      return false;
+    }
+    if ("entity" in declared && declared.entity !== command.entity) {
+      return false;
+    }
     return true;
   });
 }

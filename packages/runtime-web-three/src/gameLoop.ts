@@ -13,6 +13,8 @@ import type { ISystemEffectLog } from "./systems/log.js";
 import type { IResourceObservation } from "./systems/context.js";
 import type { IRenderedUi } from "./ui/renderUi.js";
 import { interpolateTransform, type ITransformSample } from "./transformInterpolation.js";
+import { stepPresentation } from "./presentation.js";
+import { syncWorldText } from "./worldText.js";
 
 const MAX_FIXED_STEPS_PER_FRAME = 5;
 
@@ -125,6 +127,7 @@ export async function runGameFrame(options: {
     collectSystemResult(options.mapped, await runSchedule({ ...options, fixedDelta, frame: 0, runtimeState, schedule: "update", tick: 0 }));
     collectSystemResult(options.mapped, await runSchedule({ ...options, fixedDelta, frame: 0, runtimeState, schedule: "postUpdate", tick: 0 }));
   }
+  stepPresentation(options.world, options.mapped, runtimeState.presentation, frameDelta);
   if (options.mapped.reconcile !== undefined) {
     options.mapped.reconcile(options.world);
   } else {
@@ -134,6 +137,7 @@ export async function runGameFrame(options: {
     applyFixedTransformInterpolation(options.mapped, state, fixedDelta);
   }
   syncMeshRendererMaterials(options.world, options.mapped.objectsById);
+  syncWorldText(options.world, options.mapped, frameDelta);
 }
 
 function recordFixedTransformStep(

@@ -241,7 +241,7 @@ pub struct NativeMappedWorldEntitySignatures(pub HashMap<String, String>);
 
 pub fn native_engine_component_signature(entity: &WorldEntity) -> String {
     format!(
-        "camera={:?}|collider={:?}|contact_shadows={:?}|hierarchy={:?}|light={:?}|mesh={:?}|layers={:?}|body={:?}|visibility={:?}",
+        "camera={:?}|collider={:?}|contact_shadows={:?}|hierarchy={:?}|light={:?}|mesh={:?}|layers={:?}|body={:?}|visibility={:?}|world_text={:?}",
         entity.components.camera,
         entity.components.collider,
         entity.components.contact_shadows,
@@ -251,6 +251,7 @@ pub fn native_engine_component_signature(entity: &WorldEntity) -> String {
         entity.components.render_layers,
         entity.components.rigid_body,
         entity.components.visibility,
+        entity.components.world_text,
     )
 }
 

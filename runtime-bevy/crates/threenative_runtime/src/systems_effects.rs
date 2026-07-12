@@ -6,9 +6,10 @@ use threenative_loader::{
     CameraComponent, ColliderComponent, EntityComponents, HierarchyComponent, LightComponent,
     LoadedBundle, MeshRendererComponent, PatrolComponent, RigidBodyComponent, StateMachineComponent,
     SystemCommandIr, SystemIr, TransformComponent, VisibilityComponent, WorldEntity,
+    WorldTextComponent,
 };
 
-use crate::systems_context::{canonical_component_value, component_value};
+use crate::systems_context::component_value;
 
 #[derive(Clone, Debug, Default, Deserialize, PartialEq)]
 pub struct NativeSystemEffects {
@@ -100,8 +101,8 @@ pub struct NativeRuntimeWriteInput {
     pub new_value: Value,
     pub old_value: Option<Value>,
     pub path: String,
-    pub schedule: String,
-    pub system: String,
+    pub schedule: Option<String>,
+    pub system: Option<String>,
     pub target_id: String,
     pub target_kind: String,
     pub tick: u64,
@@ -115,10 +116,14 @@ pub struct NativeRuntimeWriteObservation {
     pub fingerprint: String,
     pub new_fingerprint: String,
     #[serde(skip_serializing_if = "Option::is_none")]
+    pub inline_value: Option<Value>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub old_fingerprint: Option<String>,
     pub path: String,
-    pub schedule: String,
-    pub system: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub schedule: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub system: Option<String>,
     pub target_id: String,
     pub target_kind: String,
     pub tick: u64,
@@ -133,6 +138,12 @@ pub struct NativeRuntimeWriteLedger {
 }
 
 impl NativeRuntimeWriteLedger {
+    pub fn reset(&mut self) {
+        self.active.clear();
+        self.current_tick = None;
+        self.observations.clear();
+    }
+
     pub fn begin_tick(&mut self, tick: u64) {
         if self.current_tick != Some(tick) {
             self.current_tick = Some(tick);
@@ -157,6 +168,7 @@ impl NativeRuntimeWriteLedger {
             disposition,
             fingerprint: fingerprint.clone(),
             new_fingerprint: fingerprint,
+            inline_value: native_inline_value(&input.new_value),
             old_fingerprint: input.old_value.as_ref().map(native_value_fingerprint),
             path: input.path,
             schedule: input.schedule,
@@ -184,8 +196,8 @@ impl NativeRuntimeWriteLedger {
                 left.target_id.as_str(),
                 left.path.as_str(),
                 left.writer.as_str(),
-                left.schedule.as_str(),
-                left.system.as_str(),
+                left.schedule.as_deref().unwrap_or(""),
+                left.system.as_deref().unwrap_or(""),
                 left.disposition.as_str(),
                 left.fingerprint.as_str(),
             )
@@ -195,8 +207,8 @@ impl NativeRuntimeWriteLedger {
                     right.target_id.as_str(),
                     right.path.as_str(),
                     right.writer.as_str(),
-                    right.schedule.as_str(),
-                    right.system.as_str(),
+                    right.schedule.as_deref().unwrap_or(""),
+                    right.system.as_deref().unwrap_or(""),
                     right.disposition.as_str(),
                     right.fingerprint.as_str(),
                 ))
@@ -205,69 +217,67 @@ impl NativeRuntimeWriteLedger {
     }
 
     pub fn diagnostics(&self, tick: u64) -> Vec<NativeSystemEffectDiagnostic> {
-        let conflicts = self
-            .observations
-            .iter()
-            .filter(|observation| observation.tick == tick && observation.disposition == "conflict")
-            .collect::<Vec<_>>();
-        let mut diagnostics = Vec::new();
-        for observation in conflicts {
-            let candidates = self
-                .observations
-                .iter()
-                .filter(|candidate| {
-                    candidate.tick == observation.tick
-                        && candidate.target_kind == observation.target_kind
-                        && candidate.target_id == observation.target_id
-                        && candidate.path == observation.path
-                })
-                .collect::<Vec<_>>();
-            let writers = candidates
-                .iter()
-                .map(|candidate| format!("{} ({})", candidate.writer, candidate.system))
-                .collect::<BTreeSet<_>>();
-            let writer_text = if writers.is_empty() {
-                observation.writer.clone()
-            } else {
-                writers.into_iter().collect::<Vec<_>>().join(" and ")
-            };
-            let winning = candidates
-                .last()
-                .map(|candidate| format!("{} ({})", candidate.writer, candidate.system))
-                .unwrap_or_else(|| observation.writer.clone());
-            let path = format!("{}/{}/{}", observation.target_kind, observation.target_id, observation.path);
-            if diagnostics.iter().any(|candidate: &NativeSystemEffectDiagnostic| candidate.path == path) {
-                continue;
-            }
-            diagnostics.push(NativeSystemEffectDiagnostic {
-                code: "TN_RUNTIME_WRITE_CONFLICT",
-                message: format!(
-                    "Runtime write conflict: {} '{}' field '{}' was written by {} in fixed tick {}; winning write: {}.",
-                    observation.target_kind,
-                    observation.target_id,
-                    observation.path,
-                    writer_text,
-                    observation.tick,
-                    winning,
-                ),
-                path,
-                severity: "warning",
-                suggestion: Some("Choose one authoritative owner for this transform field, or move the write into an explicit ordered composition step; the later write currently wins.".to_owned()),
-            });
-        }
-        diagnostics
+        conflict_diagnostics(&self.observations, Some(tick))
     }
 
     pub fn diagnostics_all(&self) -> Vec<NativeSystemEffectDiagnostic> {
-        let ticks = self
-            .observations
-            .iter()
-            .map(|observation| observation.tick)
-            .collect::<BTreeSet<_>>();
-        ticks
-            .into_iter()
-            .flat_map(|tick| self.diagnostics(tick))
-            .collect()
+        conflict_diagnostics(&self.observations, None)
+    }
+}
+
+fn conflict_diagnostics(
+    observations: &[NativeRuntimeWriteObservation],
+    tick: Option<u64>,
+) -> Vec<NativeSystemEffectDiagnostic> {
+    let mut seen = BTreeSet::new();
+    observations
+        .iter()
+        .filter(|observation| {
+            observation.disposition == "conflict" && tick.is_none_or(|tick| observation.tick == tick)
+        })
+        .map(|observation| conflict_diagnostic(observation, observations))
+        .filter(|diagnostic| seen.insert((diagnostic.path.clone(), diagnostic.message.clone())))
+        .collect()
+}
+
+fn conflict_diagnostic(observation: &NativeRuntimeWriteObservation, observations: &[NativeRuntimeWriteObservation]) -> NativeSystemEffectDiagnostic {
+    let candidates = observations
+        .iter()
+        .filter(|candidate| {
+            candidate.tick == observation.tick
+                && candidate.target_kind == observation.target_kind
+                && candidate.target_id == observation.target_id
+                && candidate.path == observation.path
+        })
+        .collect::<Vec<_>>();
+    let writers = candidates
+        .iter()
+        .map(|candidate| format!("{}{}", candidate.writer, candidate.system.as_deref().map(|system| format!(" ({system})")).unwrap_or_default()))
+        .collect::<BTreeSet<_>>();
+    let writer_text = if writers.is_empty() {
+        observation.writer.clone()
+    } else {
+        writers.into_iter().collect::<Vec<_>>().join(" and ")
+    };
+    let winning = candidates
+        .last()
+        .map(|candidate| format!("{}{}", candidate.writer, candidate.system.as_deref().map(|system| format!(" ({system})")).unwrap_or_default()))
+        .unwrap_or_else(|| observation.writer.clone());
+    let path = format!("{}/{}/{}", observation.target_kind, observation.target_id, observation.path);
+    NativeSystemEffectDiagnostic {
+        code: "TN_RUNTIME_WRITE_CONFLICT",
+        message: format!(
+            "Runtime write conflict: {} '{}' field '{}' was written by {} in fixed tick {}; winning write: {}.",
+            observation.target_kind,
+            observation.target_id,
+            observation.path,
+            writer_text,
+            observation.tick,
+            winning,
+        ),
+        path,
+        severity: "warning",
+        suggestion: Some("Choose one authoritative owner for this transform field, or move the write into an explicit ordered composition step; the later write currently wins.".to_owned()),
     }
 }
 
@@ -307,11 +317,48 @@ fn is_transform_writer_pair(left: &str, right: &str) -> bool {
 
 fn native_value_fingerprint(value: &Value) -> String {
     let mut hash = 2_166_136_261_u32;
-    for byte in canonical_component_value(value).as_bytes() {
+    for byte in canonical_runtime_write_value(value).as_bytes() {
         hash ^= u32::from(*byte);
         hash = hash.wrapping_mul(16_777_619);
     }
     format!("fnv1a:{hash:08x}")
+}
+
+fn native_inline_value(value: &Value) -> Option<Value> {
+    match value {
+        Value::Bool(_) | Value::Number(_) | Value::String(_) => Some(value.clone()),
+        Value::Array(values) if values.len() <= 4 && values.iter().all(|value| value.as_f64().is_some_and(f64::is_finite)) => Some(value.clone()),
+        _ => None,
+    }
+}
+
+fn canonical_runtime_write_value(value: &Value) -> String {
+    match value {
+        Value::Null => "null".to_owned(),
+        Value::Bool(value) => format!("boolean:{value}"),
+        Value::Number(value) => {
+            let mut text = value.to_string();
+            if text == "-0" || text == "-0.0" {
+                text = "0".to_owned();
+            } else if text.ends_with(".0") {
+                text.truncate(text.len() - 2);
+            }
+            text
+        }
+        Value::String(value) => format!("string:{}", serde_json::to_string(value).unwrap_or_else(|_| "\"\"".to_owned())),
+        Value::Array(values) => format!("[{}]", values.iter().map(canonical_runtime_write_value).collect::<Vec<_>>().join(",")),
+        Value::Object(values) => {
+            let mut keys = values.keys().collect::<Vec<_>>();
+            keys.sort();
+            format!(
+                "{{{}}}",
+                keys.into_iter()
+                    .map(|key| format!("{}:{}", serde_json::to_string(key).unwrap_or_else(|_| "\"\"".to_owned()), canonical_runtime_write_value(&values[key])))
+                    .collect::<Vec<_>>()
+                    .join(","),
+            )
+        }
+    }
 }
 
 #[derive(Clone, Debug, Serialize, PartialEq)]
@@ -387,12 +434,40 @@ pub fn apply_system_effects_with_report_and_ledger(
     effects: &NativeSystemEffects,
     frame: u32,
     tick: u32,
+    write_ledger: Option<&mut NativeRuntimeWriteLedger>,
+) -> Result<NativeSystemEffectsApplied, Vec<NativeSystemEffectDiagnostic>> {
+    apply_system_effects_with_report_and_ledger_and_writer(
+        bundle,
+        system,
+        effects,
+        frame,
+        tick,
+        write_ledger,
+        "script",
+    )
+}
+
+pub fn apply_system_effects_with_report_and_ledger_and_writer(
+    bundle: &mut LoadedBundle,
+    system: &SystemIr,
+    effects: &NativeSystemEffects,
+    frame: u32,
+    tick: u32,
     mut write_ledger: Option<&mut NativeRuntimeWriteLedger>,
+    writer: &str,
 ) -> Result<NativeSystemEffectsApplied, Vec<NativeSystemEffectDiagnostic>> {
     let diagnostics = validate_system_effects(system, effects);
     let log = native_effect_log(system, effects, frame, tick);
     if let Some(ledger) = write_ledger.as_deref_mut() {
-        record_system_writes(bundle, system, effects, u64::from(tick), !diagnostics.is_empty(), ledger);
+        record_system_writes(
+            bundle,
+            system,
+            effects,
+            u64::from(tick),
+            !diagnostics.is_empty(),
+            ledger,
+            writer,
+        );
     }
     if !diagnostics.is_empty() {
         return Err(diagnostics);
@@ -423,34 +498,17 @@ pub fn record_initial_runtime_writes(
     tick: u64,
     ledger: &mut NativeRuntimeWriteLedger,
 ) {
-    const COMPONENTS: [&str; 12] = [
-        "Camera",
-        "Collider",
-        "Hierarchy",
-        "KinematicMover",
-        "Light",
-        "MeshRenderer",
-        "Patrol",
-        "RigidBody",
-        "StateMachine",
-        "Transform",
-        "Visibility",
-        "RenderLayers",
-    ];
     for entity in &bundle.world.entities {
-        for component in COMPONENTS {
-            let Some(value) = component_value(&entity.components, component) else {
-                continue;
-            };
+        for (component, value) in entity.components.values() {
             record_value_fields(
                 ledger,
-                component,
+                &component,
                 &entity.id,
                 "component",
                 None,
                 &value,
-                "initial",
-                "initial-ir",
+                Some("startup"),
+                Some("initial-ir"),
                 tick,
                 "initial-ir",
                 false,
@@ -465,8 +523,8 @@ pub fn record_initial_runtime_writes(
             "resource",
             None,
             value,
-            "initial",
-            "initial-ir",
+            Some("startup"),
+            Some("initial-ir"),
             tick,
             "initial-ir",
             false,
@@ -481,8 +539,8 @@ fn record_system_writes(
     tick: u64,
     dropped: bool,
     ledger: &mut NativeRuntimeWriteLedger,
+    writer: &str,
 ) {
-    let writer = "script".to_owned();
     for patch in &effects.patches {
         let current = bundle
             .world
@@ -497,10 +555,10 @@ fn record_system_writes(
             "component",
             current.as_ref(),
             &patch.value,
-            &system.schedule,
-            &system.name,
+            Some(&system.schedule),
+            Some(&system.name),
             tick,
-            &writer,
+            writer,
             dropped,
         );
     }
@@ -525,10 +583,10 @@ fn record_system_writes(
             "component",
             current.as_ref(),
             value,
-            &system.schedule,
-            &system.name,
+            Some(&system.schedule),
+            Some(&system.name),
             tick,
-            &writer,
+            writer,
             dropped,
         );
     }
@@ -541,10 +599,10 @@ fn record_system_writes(
             "resource",
             current,
             &resource.value,
-            &system.schedule,
-            &system.name,
+            Some(&system.schedule),
+            Some(&system.name),
             tick,
-            &writer,
+            writer,
             dropped,
         );
     }
@@ -557,8 +615,8 @@ fn record_value_fields(
     target_kind: &str,
     old_value: Option<&Value>,
     new_value: &Value,
-    schedule: &str,
-    system_name: &str,
+    schedule: Option<&str>,
+    system_name: Option<&str>,
     tick: u64,
     writer: &str,
     dropped: bool,
@@ -571,8 +629,8 @@ fn record_value_fields(
             new_value: new_field,
             old_value: old_field,
             path: if component.is_empty() { field } else { format!("{component}/{field}") },
-            schedule: schedule.to_owned(),
-            system: system_name.to_owned(),
+            schedule: schedule.map(str::to_owned),
+            system: system_name.map(str::to_owned),
             target_id: target_id.to_owned(),
             target_kind: target_kind.to_owned(),
             tick,
@@ -736,6 +794,14 @@ fn declares_command(system: &SystemIr, command: &NativeSystemCommandEffect) -> b
                         })
                         .unwrap_or(true)
             }
+            SystemCommandIr::Tween { entity, property } => {
+                command.command == "tween"
+                    && command.entity.as_ref() == Some(entity)
+                    && command.value.as_ref().and_then(|value| value.get("property")).and_then(Value::as_str) == Some(property)
+            }
+            SystemCommandIr::WorldText { entity } => {
+                command.command == "worldText" && command.entity.as_ref() == Some(entity)
+            }
         })
 }
 
@@ -875,6 +941,7 @@ fn live_reconciliation_for_command(
             | "addComponent"
             | "setComponent"
             | "removeComponent"
+            | "worldText"
     )
     .then_some(NativeSystemEffectReconciliation {
         code: "TN_BEVY_LIVE_RECONCILIATION_REQUIRED",
@@ -893,6 +960,7 @@ fn live_reconciliation_for_component(component: &str) -> Option<NativeSystemEffe
             | "RenderLayers"
             | "RigidBody"
             | "Visibility"
+            | "WorldText"
     )
     .then_some(NativeSystemEffectReconciliation {
         code: "TN_BEVY_LIVE_RECONCILIATION_REQUIRED",
@@ -969,6 +1037,29 @@ fn apply_command(bundle: &mut LoadedBundle, command: &NativeSystemCommandEffect)
                 tags: command.tags.clone().unwrap_or_default(),
             });
         }
+        "worldText" => {
+            let Some(entity_id) = command.entity.as_ref() else {
+                return;
+            };
+            if bundle.world.entities.iter().any(|entity| entity.id == *entity_id) {
+                return;
+            }
+            let Some(value) = command.value.as_ref() else {
+                return;
+            };
+            let Some(world_text) = serde_json::from_value::<WorldTextComponent>(value.clone()).ok() else {
+                return;
+            };
+            bundle.world.entities.push(WorldEntity {
+                id: entity_id.clone(),
+                components: EntityComponents {
+                    world_text: Some(world_text),
+                    ..EntityComponents::default()
+                },
+                tags: Vec::new(),
+            });
+        }
+        "tween" => {}
         "instantiate" => {
             let (Some(prefab_id), Some(prefix)) =
                 (command.prefab.as_ref(), command.prefix.as_ref())
@@ -1166,12 +1257,17 @@ fn apply_component_value(components: &mut EntityComponents, component: &str, val
         return;
     }
 
+    if component == "WorldText" {
+        components.world_text = serde_json::from_value::<WorldTextComponent>(value).ok();
+        return;
+    }
+
     components.extra.insert(component.to_owned(), value);
 }
 
 fn patch_component_value(components: &mut EntityComponents, component: &str, value: Value) {
     match component {
-        "Camera" | "Collider" | "Hierarchy" | "Light" | "Patrol" | "RigidBody" | "StateMachine" | "Visibility" => {
+        "Camera" | "Collider" | "Hierarchy" | "Light" | "Patrol" | "RigidBody" | "StateMachine" | "Visibility" | "WorldText" => {
             let merged = component_value(components, component)
                 .map(|existing| merge_object_patch(existing, &value))
                 .unwrap_or(value);
@@ -1299,6 +1395,7 @@ fn remove_component(components: &mut EntityComponents, component: &str) {
         "StateMachine" => components.state_machine = None,
         "Transform" => components.transform = None,
         "Visibility" => components.visibility = None,
+        "WorldText" => components.world_text = None,
         other => {
             components.extra.remove(other);
         }
@@ -1509,8 +1606,8 @@ mod tests {
             new_value: value,
             old_value: None,
             path: path.to_owned(),
-            schedule: "fixedUpdate".to_owned(),
-            system: system.to_owned(),
+            schedule: Some("fixedUpdate".to_owned()),
+            system: Some(system.to_owned()),
             target_id: target.to_owned(),
             target_kind: "component".to_owned(),
             tick: 3,

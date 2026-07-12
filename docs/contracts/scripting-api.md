@@ -918,6 +918,46 @@ logical playback IDs. Real streaming/network audio, custom decoders, platform
 audio handles, and broad runtime mixer mutation remain adapter-private or
 diagnostic-only.
 
+## Portable Presentation And Feedback
+
+Portable scripts can request bounded presentation work without owning renderer
+objects or integrating frame-local state:
+
+```ts
+ctx.commands.tween("pickup", {
+  property: "scale",
+  to: [1.2, 1.2, 1.2],
+  duration: 0.16,
+  easing: "ease-out",
+});
+ctx.cameras.shake({ amplitude: 0.05, frequency: 24, duration: 0.12, seed: "pickup" });
+ctx.effects.play("pickup-sparkle", { entity: "pickup", seed: "pickup" });
+ctx.commands.worldText("pickup-text", {
+  text: "+1",
+  target: "pickup",
+  lifetime: 0.8,
+  floatDistance: 0.5,
+  fade: true,
+});
+```
+
+Tween properties are limited to transform position, rotation, and scale plus
+material opacity and emissive intensity. Duration is capped at 10 seconds,
+loops at 8, and a newer tween replaces the same entity/property pair. Rotation
+uses shortest-arc quaternion interpolation. Despawned owners cancel pending
+tweens.
+
+Camera shake uses real frame delta, a deterministic seed/phase, and composes
+after the authored follow/interpolated pose. Feedback presets are systems data
+and may only compose declared bounded audio, particle, and camera settings; the
+resolved audio pitch is recorded in the effect log. The canonical registry IDs
+are `dust`, `explosion`, `pickup-sparkle`, and `trail`.
+
+`WorldText` is renderer-owned world-space text, not DOM or accessible retained
+UI. Text is capped at 128 characters, lifetime at 30 seconds, float distance at
+10 world units, and live transient text at 64 entries. Use retained UI for
+critical readable or assistive content.
+
 ## Host Lifecycle And Metadata APIs
 
 Runtime host metadata is deliberately narrow and deterministic:

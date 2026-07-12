@@ -1,4 +1,5 @@
 import { buildComponentReflectionRegistry, type IComponentReflectionRegistry, type IComponentReflectionType } from "@threenative/ir/reflection";
+import { feedbackPresetById } from "@threenative/ir/feedback";
 import type { IAssetsManifest, IIrDelayedCommandDeclaration, IIrSchemaFile, IIrStateSource, IIrSystemDeclaration, IIrSystemQuery, ILocalDataIr, IPrefabsIr, ISystemsIr, IUiIr, IUiNodeIr, IWorldEntity, IWorldIr } from "@threenative/ir";
 import { AnimationRuntimeController, ParticleRuntimeController } from "../animation.js";
 import { ScriptAudioRuntimeController, type IScriptAudioPlayOptions } from "../audio.js";
@@ -26,12 +27,17 @@ import type { IComponentDiffCache } from "./componentDiff.js";
 import { createScriptUiState } from "./contextUi.js";
 import { createRuntimeWriteLedger } from "./writeAudit.js";
 import { createCountdownRuntimeState } from "../countdowns.js";
+import { createPresentationRuntimeState } from "../presentation.js";
 import type {
   IAssetLoadResult,
   ICharacterMoveRequest,
+  ICameraShakeOptions,
+  ICameraShakeResult,
   IComponentHookObservation,
   IEntityLifecycleQueryOptions,
   IInstantiateResult,
+  IFeedbackPlayOptions,
+  IFeedbackPlayResult,
   IObserverPropagationStep,
   IPhysicsSensorRequest,
   IPhysicsSensorResult,
@@ -46,18 +52,26 @@ import type {
   ISystemEntityView,
   ISystemTransformFacade,
   ITaskDeclarationView,
+  ITweenCommandOptions,
+  ITweenCommandResult,
   IUiActivateResult,
   IUiDisabledResult,
   IUiFocusResult,
   IUiReadResult,
   IUiValueResult,
+  IWorldTextCommandOptions,
+  IWorldTextCommandResult,
 } from "./contextTypes.js";
 export type {
   IAssetLoadResult,
   ICharacterMoveRequest,
+  ICameraShakeOptions,
+  ICameraShakeResult,
   IComponentHookObservation,
   IEntityLifecycleQueryOptions,
   IInstantiateResult,
+  IFeedbackPlayOptions,
+  IFeedbackPlayResult,
   IObserverPropagationStep,
   IParticleCommandOptions,
   IParticleCommandResult,
@@ -75,11 +89,15 @@ export type {
   ISystemEntityView,
   ISystemTransformFacade,
   ITaskDeclarationView,
+  ITweenCommandOptions,
+  ITweenCommandResult,
   IUiActivateResult,
   IUiDisabledResult,
   IUiFocusResult,
   IUiReadResult,
   IUiValueResult,
+  IWorldTextCommandOptions,
+  IWorldTextCommandResult,
 } from "./contextTypes.js";
 
 export function createWebSystemRuntimeState(
@@ -99,6 +117,7 @@ export function createWebSystemRuntimeState(
     scriptAudio: new ScriptAudioRuntimeController(options.audio),
     sensors: createPhysicsSensorRuntimeState(),
     lifecycle: createEntityLifecycleRuntimeState(world),
+    presentation: createPresentationRuntimeState(),
     writeLedger: createRuntimeWriteLedger(),
   };
   recordInitialRuntimeWrites(world, runtimeState.writeLedger);
@@ -333,6 +352,19 @@ export function createSystemContext(
           return cloneValue(payload.result) as ReturnType<typeof audioStopPayload>["result"];
         },
       },
+      cameras: {
+        shake(shakeOptions = {}) {
+          const request = normalizeCameraShakeRequest(shakeOptions);
+          const accepted = request.amplitude > 0 && request.duration > 0 && request.frequency > 0;
+          const result = {
+            accepted,
+            id: `shake:${options.tick ?? 0}:${services.length}`,
+            status: accepted ? "enqueued" as const : "rejected" as const,
+          };
+          services.push({ payload: { request, result }, service: "camera.shake" });
+          return result;
+        },
+      },
       particles: {
         burst(asset, emitter, particleOptions = {}) {
           const request = { asset, emitter, options: cloneValue(particleOptions) };
@@ -451,6 +483,24 @@ export function createSystemContext(
           const normalizedTags = normalizeEntityTags(tags);
           commands.push({ components: cloneValue(components) as Record<string, unknown>, entity, kind: "spawn", source: "command", ...(normalizedTags.length === 0 ? {} : { tags: normalizedTags }), });
         },
+        tween(entity, tweenOptions) {
+          const normalized = normalizeTweenRequest(tweenOptions);
+          const accepted = normalized !== undefined;
+          const id = `tween:${entity}:${tweenOptions.property}:${options.tick ?? 0}:${commands.length}`;
+          const result = { accepted, id, status: accepted ? "enqueued" as const : "rejected" as const };
+          if (normalized !== undefined) {
+            commands.push({ entity, kind: "tween", property: normalized.property, source: "command", value: { ...normalized, id } });
+          }
+          return result;
+        },
+        worldText(entity, textOptions) {
+          const normalized = normalizeWorldTextRequest(textOptions);
+          const result = { accepted: normalized !== undefined, entity, status: normalized === undefined ? "rejected" as const : "enqueued" as const };
+          if (normalized !== undefined) {
+            commands.push({ entity, kind: "worldText", source: "command", value: normalized });
+          }
+          return result;
+        },
       },
       channels: {
         read(channel) {
@@ -557,6 +607,30 @@ export function createSystemContext(
       },
       entity(id) {
         return findEntity(id);
+      },
+      effects: {
+        play(presetId, playOptions = {}) {
+          const preset = feedbackPresetById(options.systems?.feedbackPresets, normalizeHandleName(presetId));
+          if (preset === undefined) {
+            return { accepted: false, preset: normalizeHandleName(presetId), status: "missing" as const };
+          }
+          const seed = playOptions.seed ?? options.runtimeState?.random.float() ?? 0;
+          const resolvedPitch = preset.audio === undefined
+            ? undefined
+            : Math.min(4, Math.max(0.25, (preset.audio.pitch ?? 1) + deterministicVariance(seed, preset.audio.pitchVariance ?? 0)));
+          const audio = preset.audio === undefined
+            ? undefined
+            : scriptAudio.play(preset.audio.soundId, { ...(playOptions.entity === undefined ? {} : { entity: playOptions.entity }), ...(preset.audio.volume === undefined ? {} : { volume: preset.audio.volume }), ...(resolvedPitch === undefined ? {} : { pitch: resolvedPitch }) });
+          const particleResults = (preset.particles ?? []).map((particle) => ({
+            command: particle.command,
+            emitter: particle.emitter,
+            result: particles.execute(particle.command, particle.asset, particle.emitter, { count: particle.count, seed }),
+          }));
+          const camera = preset.camera === undefined ? undefined : { ...preset.camera, ...(playOptions.camera === undefined ? {} : { camera: playOptions.camera }), seed };
+          const result = { accepted: true as const, preset: normalizeHandleName(presetId), status: "enqueued" as const };
+          services.push({ payload: { audio, camera, particles: particleResults, request: { ...playOptions, preset: normalizeHandleName(presetId), seed }, resolvedPitch, result }, service: "effects.play" });
+          return result;
+        },
       },
       ui: {
         activate(nodeId) {
@@ -1208,6 +1282,62 @@ function normalizeEntityRef(entity: string | ISystemEntityView): string {
   return typeof entity === "string" ? entity : entity.id;
 }
 
+function normalizeTweenRequest(value: ITweenCommandOptions): ITweenCommandOptions | undefined {
+  if (!isRecord(value) || !["emissiveIntensity", "opacity", "position", "rotation", "scale"].includes(String(value.property))) {
+    return undefined;
+  }
+  const expected = value.property === "rotation" ? 4 : value.property === "position" || value.property === "scale" ? 3 : 1;
+  const to = typeof value.to === "number" ? [value.to] : Array.isArray(value.to) ? [...value.to] : [];
+  if (to.length !== expected || !to.every((item) => typeof item === "number" && Number.isFinite(item))) {
+    return undefined;
+  }
+  if (typeof value.duration !== "number" || !Number.isFinite(value.duration) || value.duration < 0 || value.duration > 10) {
+    return undefined;
+  }
+  if (value.loops !== undefined && (!Number.isInteger(value.loops) || value.loops < 0 || value.loops > 8)) {
+    return undefined;
+  }
+  return {
+    duration: value.duration,
+    easing: value.easing ?? "linear",
+    loops: value.loops ?? 0,
+    property: value.property,
+    to,
+    yoyo: value.yoyo === true,
+  };
+}
+
+function normalizeWorldTextRequest(value: IWorldTextCommandOptions): IWorldTextCommandOptions | undefined {
+  if (!isRecord(value) || typeof value.text !== "string" || value.text.length === 0 || value.text.length > 128) {
+    return undefined;
+  }
+  if (value.lifetime !== undefined && (typeof value.lifetime !== "number" || !Number.isFinite(value.lifetime) || value.lifetime < 0 || value.lifetime > 30)) {
+    return undefined;
+  }
+  if (value.size !== undefined && (typeof value.size !== "number" || !Number.isFinite(value.size) || value.size < 1 || value.size > 256)) {
+    return undefined;
+  }
+  return cloneValue(value);
+}
+
+function normalizeCameraShakeRequest(value: { amplitude?: number; camera?: string; duration?: number; frequency?: number; seed?: number | string }): Record<string, unknown> & { amplitude: number; duration: number; frequency: number } {
+  return {
+    amplitude: clamp(finiteNumber(value.amplitude, 0.08), 0, 2),
+    ...(value.camera === undefined ? {} : { camera: value.camera }),
+    duration: clamp(finiteNumber(value.duration, 0.15), 0, 5),
+    frequency: clamp(finiteNumber(value.frequency, 24), 0, 120),
+    ...(value.seed === undefined ? {} : { seed: value.seed }),
+  };
+}
+
+function deterministicVariance(seed: unknown, variance: number): number {
+  if (variance <= 0) {
+    return 0;
+  }
+  const normalized = (hashSeed(seed) % 100000) / 100000;
+  return (normalized * 2 - 1) * variance;
+}
+
 function createDelayedScheduler(
   declarations: readonly IIrDelayedCommandDeclaration[],
   options: {
@@ -1280,6 +1410,12 @@ function queuedCommandFromDelayedDeclaration(declaration: IIrDelayedCommandDecla
   }
   if (command.kind === "clearParent") {
     return { child: command.child, entity: command.child, kind: "clearParent", source: "command" };
+  }
+  if (command.kind === "tween") {
+    return { entity: command.entity, kind: "tween", property: command.property, source: "command" };
+  }
+  if (command.kind === "worldText") {
+    return { entity: command.entity, kind: "worldText", source: "command" };
   }
   return {
     component: command.component,
@@ -1354,6 +1490,20 @@ export function applyCommands(world: IWorldIr, commands: ReadonlyArray<IQueuedCo
         const tags = normalizeEntityTags(template.tags);
         world.entities.push({ components, id, ...(tags.length === 0 ? {} : { tags }) });
       }
+      continue;
+    }
+    if (command.kind === "tween") {
+      continue;
+    }
+    if (command.kind === "worldText") {
+      if (world.entities.some((entity) => entity.id === command.entity) || !isRecord(command.value)) {
+        continue;
+      }
+      const liveWorldText = world.entities.filter((entity) => entity.components.WorldText !== undefined).length;
+      if (liveWorldText >= 64) {
+        continue;
+      }
+      world.entities.push({ components: { WorldText: cloneValue(command.value) as unknown as NonNullable<IWorldEntity["components"]["WorldText"]> }, id: command.entity });
       continue;
     }
     if (command.kind === "spawn") {

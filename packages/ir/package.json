@@ -16,6 +16,10 @@
       "types": "./dist/conformance.d.ts",
       "default": "./dist/conformance.js"
     },
+    "./feedback": {
+      "types": "./dist/feedback.d.ts",
+      "default": "./dist/feedback.js"
+    },
     "./input": {
       "types": "./dist/input.d.ts",
       "default": "./dist/input.js"

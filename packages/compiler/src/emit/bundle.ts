@@ -908,6 +908,9 @@ function mergeEcsEmits(emits: IEcsEmitResult[]): IEcsEmitResult | undefined {
         ...(merged.systems.countdowns === undefined && current.systems.countdowns === undefined ? {} : {
           countdowns: mergeById([...(merged.systems.countdowns ?? []), ...(current.systems.countdowns ?? [])]),
         }),
+        ...(merged.systems.feedbackPresets === undefined && current.systems.feedbackPresets === undefined ? {} : {
+          feedbackPresets: mergeById([...(merged.systems.feedbackPresets ?? []), ...(current.systems.feedbackPresets ?? [])]),
+        }),
         systems: mergeByName([...merged.systems.systems, ...current.systems.systems]),
       },
       world: mergeWorlds(merged.world, current.world) ?? merged.world,

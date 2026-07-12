@@ -1,0 +1,35 @@
+{
+  "schema": "threenative.world",
+  "version": "0.1.0",
+  "entities": [
+    {
+      "id": "pickup",
+      "components": {
+        "Transform": {
+          "position": [0, 0, 0],
+          "rotation": [0, 0, 0, 1],
+          "scale": [1, 1, 1]
+        }
+      }
+    },
+    {
+      "id": "pickup-label",
+      "components": {
+        "Transform": {
+          "position": [0, 0, 0]
+        },
+        "WorldText": {
+          "billboard": true,
+          "color": "#ffe08a",
+          "fade": true,
+          "floatDistance": 0.5,
+          "lifetime": 1,
+          "offset": [0, 1, 0],
+          "size": 1.5,
+          "target": "pickup",
+          "text": "+10"
+        }
+      }
+    }
+  ]
+}

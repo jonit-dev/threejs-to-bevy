@@ -916,7 +916,7 @@
       "sourceExample": "gameplay-primitives",
       "regenerateCommand": "pnpm verify:focused verify:gameplay-primitives",
       "canonicalArtifactGate": "gameplay-primitives",
-      "ownerDocs": "docs/PRDs/agent-engine-wishlist-2026-07-11/PRD-003-runtime-owned-gameplay-primitives.md",
+      "ownerDocs": "docs/PRDs/done/agent-engine-wishlist-2026-07-11/PRD-003-runtime-owned-gameplay-primitives.md",
       "aggregateGate": "verify:gameplay-primitives",
       "bundlePath": "packages/ir/fixtures/conformance/gameplay-primitives/game.bundle",
       "promotedCapabilities": [
@@ -951,12 +951,53 @@
       }
     },
     {
+      "canonicalId": "portable-feedback",
+      "owner": "ir-contract",
+      "sourceExample": "portable-feedback",
+      "regenerateCommand": "pnpm verify:focused verify:portable-feedback",
+      "canonicalArtifactGate": "portable-feedback",
+      "ownerDocs": "docs/PRDs/done/agent-engine-wishlist-2026-07-11/PRD-004-portable-feedback-and-world-presentation.md",
+      "aggregateGate": "verify:portable-feedback",
+      "bundlePath": "packages/ir/fixtures/conformance/portable-feedback/game.bundle",
+      "promotedCapabilities": [
+        "rendering:world-text",
+        "scripting:commands.tween",
+        "scripting:commands.world-text",
+        "scripting:feedback-presets",
+        "scripting:service.camera.shake",
+        "scripting:service.effects.play"
+      ],
+      "reportArtifacts": [
+        "tools/verify/artifacts/portable-feedback/verification-report.json"
+      ],
+      "focusedGate": {
+        "commands": [
+          ["pnpm", "--filter", "@threenative/ir", "build"],
+          ["pnpm", "--filter", "@threenative/runtime-web-three", "build"],
+          ["pnpm", "--filter", "@threenative/verify-tools", "build"],
+          ["cargo", "test", "--manifest-path", "runtime-bevy/Cargo.toml", "-p", "threenative_runtime", "--lib", "presentation"],
+          ["node", "tools/verify/dist/portableFeedbackGate.js"]
+        ],
+        "conflictPolicy": "none",
+        "description": "Bounded portable tween, camera shake, feedback preset, and world-text gate.",
+        "owner": "packages/ir portable-feedback fixture and tools/verify portable-feedback gate",
+        "profile": "focused",
+        "protects": "Shared presentation declarations, bounds, ownership cancellation, seeded timing, and paired web/native proof enrollment.",
+        "reason": "A shared fixture plus adapter tests catches schema, host facade, timing, and renderer-startup drift before portable feedback claims are promoted.",
+        "release": {
+          "enrolled": false,
+          "name": "verify portable-feedback",
+          "timingCategory": "focused-gate"
+        }
+      }
+    },
+    {
       "canonicalId": "script-local-modules",
       "owner": "ir-contract",
       "sourceExample": "script-local-modules",
       "regenerateCommand": "pnpm verify:focused verify:script-local-modules",
       "canonicalArtifactGate": "script-local-modules",
-      "ownerDocs": "docs/PRDs/agent-engine-wishlist-2026-07-11/PRD-002-project-local-script-modules.md",
+      "ownerDocs": "docs/PRDs/done/agent-engine-wishlist-2026-07-11/PRD-002-project-local-script-modules.md",
       "aggregateGate": "verify:script-local-modules",
       "bundlePath": "packages/ir/fixtures/conformance/script-local-modules/game.bundle",
       "promotedCapabilities": [

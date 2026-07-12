@@ -67,6 +67,12 @@ Current support:
   `delayedCommands` on fixed ticks only. Delayed commands require bounded max
   delay, scene/entity ownership, and a drop/flush cancellation policy; web and
   native hosts flush through the same command-buffer validation and effect logs.
+- `ctx.commands.tween`, `ctx.cameras.shake`, `ctx.effects.play`, and
+  `ctx.commands.worldText` provide bounded portable presentation. Tweens use a
+  fixed property/easing set with replacement and owner cancellation; camera
+  shake is seeded and real-delta driven; feedback presets compose existing
+  bounded audio/particle services; transient world text follows targets and
+  expires without exposing DOM or renderer handles.
 - Retained UI actions are script-visible through `context.input` action state
   and `context.ui.actions()` for the latest drained frame, including web
   button and slider value events without exposing DOM handles.
@@ -111,6 +117,7 @@ Verification:
 - `pnpm verify:focused verify:runtime-write-audit`
 - `pnpm verify:focused verify:script-local-modules`
 - `pnpm verify:gameplay-primitives`
+- `pnpm verify:focused verify:portable-feedback`
 - `cargo test -p threenative_runtime systems_host_should_run_native_patrol_trace_on_fixed_ticks`
 - `cargo test -p threenative_runtime systems_host_should_run_native_state_machine_event_once`
 - `cargo test -p threenative_runtime systems_host_should_tick_countdown_and_fire_one_limit_event_per_cycle`

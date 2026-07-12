@@ -6,6 +6,7 @@ import { isBuiltInComponent, isBuiltInResource } from "./schemaValidation.js";
 import { isRecord } from "./validationPrimitives.js";
 import { validateFiniteRange } from "./validationPrimitives.js";
 import { validateUnsupportedFields } from "./validationDiagnostics.js";
+import { validateFeedbackPresets } from "./feedback.js";
 
 function componentSchemaFix(component: string): NonNullable<IIrDiagnostic["fix"]> {
   return {
@@ -48,7 +49,7 @@ export function validateSystems(
 ): void {
   const rawSystems = systems as unknown as Record<string, unknown>;
   for (const key of Object.keys(rawSystems)) {
-    if (!["channels", "componentHooks", "countdowns", "lifecycle", "observers", "pluginGroups", "plugins", "schema", "scriptAudio", "systems", "tasks", "version"].includes(key)) {
+    if (!["channels", "componentHooks", "countdowns", "feedbackPresets", "lifecycle", "observers", "pluginGroups", "plugins", "schema", "scriptAudio", "systems", "tasks", "version"].includes(key)) {
       diagnostics.push({
         code: "TN_IR_SYSTEMS_FIELD_UNSUPPORTED",
         message: `Systems IR uses unsupported field '${key}'.`,
@@ -71,6 +72,7 @@ export function validateSystems(
   const channelIds = validateSystemChannels(systems.channels, `${path}/channels`, eventSchemas, diagnostics);
   validateSystemTasks(systems.tasks, `${path}/tasks`, channelIds, diagnostics);
   validateCountdowns(systems.countdowns, `${path}/countdowns`, resourceSchemas, eventSchemas, diagnostics);
+  validateFeedbackPresets(systems.feedbackPresets, `${path}/feedbackPresets`, diagnostics);
   const systemNames = new Set(systems.systems.map((system) => system.name));
   validateSystemOrdering(systems.systems, `${path}/systems`, diagnostics);
   const pluginIds = validateSystemPlugins(systems.plugins, `${path}/plugins`, systemNames, diagnostics);
@@ -461,7 +463,7 @@ function validateSystemCommand(
     });
     return;
   }
-  if (!["addComponent", "clearParent", "despawn", "emitEvent", "instantiate", "removeComponent", "setComponent", "setParent", "spawn"].includes(command.kind)) {
+  if (!["addComponent", "clearParent", "despawn", "emitEvent", "instantiate", "removeComponent", "setComponent", "setParent", "spawn", "tween", "worldText"].includes(command.kind)) {
     diagnostics.push({
       code: "TN_IR_SYSTEM_COMMAND_KIND_UNSUPPORTED",
       message: `System '${systemName}' command uses unsupported kind '${String(command.kind)}'.`,
@@ -583,6 +585,17 @@ function validateSystemCommand(
     if (command.kind === "setParent" && (typeof command.parent !== "string" || command.parent.trim() === "")) {
       diagnostics.push({ code: "TN_IR_SYSTEM_HIERARCHY_PARENT_INVALID", message: "setParent command parent must be a non-empty entity id.", path: `${path}/parent` });
     }
+  }
+  if (command.kind === "tween") {
+    if (typeof command.entity !== "string" || command.entity.trim() === "") {
+      diagnostics.push({ code: "TN_IR_SYSTEM_TWEEN_ENTITY_INVALID", message: "Tween command entity must be a non-empty entity id.", path: `${path}/entity`, severity: "error" });
+    }
+    if (!["position", "rotation", "scale", "emissiveIntensity", "opacity"].includes(command.property)) {
+      diagnostics.push({ code: "TN_IR_SYSTEM_TWEEN_PROPERTY_INVALID", message: "Tween property is not supported.", path: `${path}/property`, severity: "error" });
+    }
+  }
+  if (command.kind === "worldText" && (typeof command.entity !== "string" || command.entity.trim() === "")) {
+    diagnostics.push({ code: "TN_IR_SYSTEM_WORLD_TEXT_ENTITY_INVALID", message: "World-text command entity must be a non-empty entity id.", path: `${path}/entity`, severity: "error" });
   }
 }
 

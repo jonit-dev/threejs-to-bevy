@@ -24,7 +24,9 @@ use crate::{
     },
     systems_effects::{
         NativeRuntimeWriteLedger, NativeRuntimeWriteObservation, NativeSystemEffectDiagnostic,
-        NativeSystemEffectLog, NativeSystemEffects, apply_system_effects_with_report_and_ledger,
+        NativeSystemEffectLog, NativeSystemEffects,
+        apply_system_effects_with_report_and_ledger,
+        apply_system_effects_with_report_and_ledger_and_writer,
         record_initial_runtime_writes,
     },
     systems_host_bridge::BRIDGE_SOURCE,
@@ -78,6 +80,8 @@ pub struct NativeResourceObservationState {
 #[derive(bevy::prelude::Resource, Debug, Clone, Default, Serialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct NativeRuntimeWriteAuditState {
+    #[serde(skip)]
+    pub enabled: bool,
     pub diagnostics: Vec<NativeSystemEffectDiagnostic>,
     pub observations: Vec<NativeRuntimeWriteObservation>,
 }
@@ -267,6 +271,7 @@ pub struct NativeGameLoopState {
     pub lifecycle: NativeEntityLifecycleRuntimeState,
     pub kinematic_mover_origins: BTreeMap<String, [f32; 3]>,
     pub patrol_runtime: crate::patrol::NativePatrolRuntimeState,
+    pub presentation: crate::presentation::NativePresentationRuntimeState,
     pub state_machine_runtime: crate::state_machines::NativeStateMachineRuntimeState,
     pub paused: bool,
     pub script_posed_entities: BTreeSet<String>,
@@ -274,6 +279,7 @@ pub struct NativeGameLoopState {
     pub startup_complete: bool,
     pub tick: u64,
     pub write_ledger: NativeRuntimeWriteLedger,
+    pub write_audit_enabled: bool,
 }
 
 impl NativeGameLoopState {
@@ -291,6 +297,7 @@ impl NativeGameLoopState {
             lifecycle: NativeEntityLifecycleRuntimeState::default(),
             kinematic_mover_origins: BTreeMap::new(),
             patrol_runtime: crate::patrol::NativePatrolRuntimeState::default(),
+            presentation: crate::presentation::NativePresentationRuntimeState::default(),
             state_machine_runtime: crate::state_machines::NativeStateMachineRuntimeState::default(),
             paused,
             script_posed_entities: BTreeSet::new(),
@@ -298,6 +305,7 @@ impl NativeGameLoopState {
             startup_complete: false,
             tick: 0,
             write_ledger: NativeRuntimeWriteLedger::default(),
+            write_audit_enabled: false,
         }
     }
 }
@@ -443,6 +451,7 @@ pub fn run_native_systems_once_with_input(
         &sensor_events,
         Some(&mut write_ledger),
         Some(&mut lifecycle),
+        true,
     )
 }
 
@@ -472,8 +481,13 @@ pub fn run_native_systems_frame_with_input(
             .accumulator
             .min(options.fixed_delta * MAX_FIXED_STEPS_PER_FRAME);
 
+        let mut frame_sensor_events = sensor_event_values(&state.sensor_state.events());
         if !state.startup_complete {
-            record_initial_runtime_writes(bundle, state.tick, &mut state.write_ledger);
+            if state.write_audit_enabled {
+                record_initial_runtime_writes(bundle, state.tick, &mut state.write_ledger);
+            }
+            frame_sensor_events =
+                sensor_event_values(&state.sensor_state.advance(bundle, state.tick));
             let time = loop_time_snapshot(0.0, state.elapsed, options.fixed_delta, state.paused);
             let startup_run = run_native_system_schedules_with_state(
                 bundle,
@@ -482,13 +496,14 @@ pub fn run_native_systems_frame_with_input(
                 options.input,
                 state.frame as u32,
                 state.tick,
-                &[],
-                Some(&mut state.write_ledger),
+                &frame_sensor_events,
+                state.write_audit_enabled.then_some(&mut state.write_ledger),
                 Some((
                     &mut state.delayed_commands,
                     &mut state.delayed_command_observations,
                 )),
                 Some(&mut state.lifecycle),
+                false,
             )?;
             state
                 .script_posed_entities
@@ -499,7 +514,6 @@ pub fn run_native_systems_frame_with_input(
             state.startup_complete = true;
         }
 
-        let mut frame_sensor_events = Vec::new();
         while state.accumulator >= options.fixed_delta {
             let before_fixed = snapshot_bundle_transforms(bundle);
             let mover_observations = crate::kinematic_mover::step_bundle_kinematic_movers(
@@ -524,12 +538,14 @@ pub fn run_native_systems_frame_with_input(
             );
             let before_physics = snapshot_bundle_transforms(bundle);
             step_physics(bundle, options.fixed_delta, &state.script_posed_entities);
-            record_physics_transform_writes(
-                &before_physics,
-                &snapshot_bundle_transforms(bundle),
-                state.tick,
-                &mut state.write_ledger,
-            );
+            if state.write_audit_enabled {
+                record_physics_transform_writes(
+                    &before_physics,
+                    &snapshot_bundle_transforms(bundle),
+                    state.tick,
+                    &mut state.write_ledger,
+                );
+            }
             state.script_posed_entities.clear();
             crate::countdowns::step_bundle_countdowns(
                 bundle,
@@ -559,12 +575,13 @@ pub fn run_native_systems_frame_with_input(
                 state.frame as u32,
                 state.tick,
                 &sensor_events,
-                Some(&mut state.write_ledger),
+                state.write_audit_enabled.then_some(&mut state.write_ledger),
                 Some((
                     &mut state.delayed_commands,
                     &mut state.delayed_command_observations,
                 )),
                 Some(&mut state.lifecycle),
+                false,
             )?;
             state
                 .script_posed_entities
@@ -598,12 +615,13 @@ pub fn run_native_systems_frame_with_input(
             state.frame as u32,
             state.tick,
             &frame_sensor_events,
-            Some(&mut state.write_ledger),
+            state.write_audit_enabled.then_some(&mut state.write_ledger),
             Some((
                 &mut state.delayed_commands,
                 &mut state.delayed_command_observations,
             )),
-            Some(&mut state.lifecycle),
+                Some(&mut state.lifecycle),
+                false,
         )?;
         state
             .script_posed_entities
@@ -622,8 +640,13 @@ pub fn run_native_systems_frame_with_input(
         remove_variable_transform_writes(state, before_variable, after_variable);
     }
     state.frame += 1;
-    run.write_observations = state.write_ledger.observations();
-    run.write_diagnostics = state.write_ledger.diagnostics_all();
+    if state.write_audit_enabled {
+        run.write_observations = state.write_ledger.observations();
+        run.write_diagnostics = state.write_ledger.diagnostics_all();
+    }
+
+    state.presentation.ingest_logs(bundle, &run.logs);
+    state.presentation.step(bundle, options.delta);
 
     Ok(run)
 }
@@ -779,8 +802,8 @@ fn record_physics_transform_writes(
                 new_value: json!(current.position),
                 old_value: Some(json!(previous.position)),
                 path: "Transform/position".to_owned(),
-                schedule: "fixedUpdate".to_owned(),
-                system: "physics".to_owned(),
+                schedule: None,
+                system: None,
                 target_id: (*entity).clone(),
                 target_kind: "component".to_owned(),
                 tick,
@@ -793,8 +816,8 @@ fn record_physics_transform_writes(
                 new_value: json!(current.rotation),
                 old_value: Some(json!(previous.rotation)),
                 path: "Transform/rotation".to_owned(),
-                schedule: "fixedUpdate".to_owned(),
-                system: "physics".to_owned(),
+                schedule: None,
+                system: None,
                 target_id: (*entity).clone(),
                 target_kind: "component".to_owned(),
                 tick,
@@ -812,6 +835,7 @@ fn run_native_system_schedules(
     sensor_events: &[Value],
     write_ledger: Option<&mut NativeRuntimeWriteLedger>,
     lifecycle: Option<&mut NativeEntityLifecycleRuntimeState>,
+    capture_write_audit: bool,
 ) -> Result<NativeSystemsHostRun, SystemsHostError> {
     run_native_system_schedules_with_state(
         bundle,
@@ -824,6 +848,7 @@ fn run_native_system_schedules(
         write_ledger,
         None,
         lifecycle,
+        capture_write_audit,
     )
 }
 
@@ -841,6 +866,7 @@ fn run_native_system_schedules_with_state(
         &mut Vec<NativeDelayedCommandObservation>,
     )>,
     mut lifecycle_state: Option<&mut NativeEntityLifecycleRuntimeState>,
+    capture_write_audit: bool,
 ) -> Result<NativeSystemsHostRun, SystemsHostError> {
     ensure_native_system_host_supported(bundle)?;
     if bundle.manifest.entry.scripts.is_none() {
@@ -953,13 +979,14 @@ fn run_native_system_schedules_with_state(
                         schedules: Vec::new(),
                         services: Vec::new(),
                     };
-                    let applied = apply_system_effects_with_report_and_ledger(
+                    let applied = apply_system_effects_with_report_and_ledger_and_writer(
                         bundle,
                         system,
                         &effects,
                         frame,
                         tick as u32,
                         write_ledger.as_deref_mut(),
+                        "scheduler",
                     )
                     .map_err(|diagnostics| {
                         let first = diagnostics
@@ -987,14 +1014,16 @@ fn run_native_system_schedules_with_state(
         logs,
         resource_observations,
         transform_patches,
-        write_diagnostics: write_ledger
-            .as_deref()
-            .map(|ledger| ledger.diagnostics(tick))
-            .unwrap_or_default(),
-        write_observations: write_ledger
-            .as_deref()
-            .map(NativeRuntimeWriteLedger::observations)
-            .unwrap_or_default(),
+        write_diagnostics: if capture_write_audit {
+            write_ledger.as_deref().map(|ledger| ledger.diagnostics(tick)).unwrap_or_default()
+        } else {
+            Vec::new()
+        },
+        write_observations: if capture_write_audit {
+            write_ledger.as_deref().map(NativeRuntimeWriteLedger::observations).unwrap_or_default()
+        } else {
+            Vec::new()
+        },
     })
 }
 
@@ -1193,6 +1222,21 @@ fn native_command_effect(
                         .map(|component| (component.clone(), json!({})))
                         .collect(),
                 )),
+                entity: Some(entity.clone()),
+                ..Default::default()
+            }
+        }
+        SystemCommandIr::Tween { entity, property } => {
+            crate::systems_effects::NativeSystemCommandEffect {
+                command: "tween".to_owned(),
+                entity: Some(entity.clone()),
+                value: Some(json!({ "property": property })),
+                ..Default::default()
+            }
+        }
+        SystemCommandIr::WorldText { entity } => {
+            crate::systems_effects::NativeSystemCommandEffect {
+                command: "worldText".to_owned(),
                 entity: Some(entity.clone()),
                 ..Default::default()
             }

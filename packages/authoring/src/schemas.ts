@@ -29,7 +29,7 @@ export const runtimeDocumentKeys = new Set(["schema", "version", "id", "renderer
 export const targetProfileDocumentKeys = new Set(["schema", "version", "id", "budgets", "performance", "targets", "provenance"]);
 export const resourcesDocumentKeys = new Set(["schema", "version", "id", "resources", "provenance"]);
 export const schemaDocumentKeys = new Set(["schema", "version", "id", "kind", "schemas", "provenance"]);
-export const systemsDocumentKeys = new Set(["schema", "version", "id", "countdowns", "systems", "scriptLifecycles", "provenance"]);
+export const systemsDocumentKeys = new Set(["schema", "version", "id", "countdowns", "feedbackPresets", "systems", "scriptLifecycles", "provenance"]);
 export const sequenceDocumentKeys = new Set(["schema", "version", "id", "duration", "skippable", "tracks", "provenance"]);
 export const prefabDocumentKeys = new Set(["schema", "version", "id", "entities", "provenance"]);
 export const audioDocumentKeys = new Set(["schema", "version", "id", "sounds", "provenance"]);
@@ -532,6 +532,12 @@ export interface ISystemsDocument {
   version?: string;
   id: string;
   countdowns?: ISystemCountdown[];
+  feedbackPresets?: Array<{
+    audio?: { pitch?: number; pitchVariance?: number; soundId: string; volume?: number };
+    camera?: { amplitude: number; duration: number; frequency: number };
+    id: string;
+    particles?: Array<{ asset: string; command: "burst" | "emit" | "play"; count?: number; emitter: string; lifetime?: number }>;
+  }>;
   scriptLifecycles?: ISceneScriptLifecycle[];
   systems?: ISceneSystem[];
 }

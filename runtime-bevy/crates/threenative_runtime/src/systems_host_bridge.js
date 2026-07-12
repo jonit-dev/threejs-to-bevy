@@ -49,6 +49,7 @@ function __tnInvokeSystem(options) {
     };
   };
   const randomSeed = data.resources.Random && data.resources.Random.seed !== undefined ? data.resources.Random.seed : (data.resources.__randomSeed ?? 0);
+  const random = createRandom(randomSeed);
   const finiteNumber = (value, fallback) => Number.isFinite(value) ? value : fallback;
   const createTimers = (now) => {
     const normalizedNow = finiteNumber(now, 0);
@@ -146,6 +147,16 @@ function __tnInvokeSystem(options) {
     if (command === "stop" || command === "reset" || command === "clear") delete particleStates[key];
     else particleStates[key] = clone(result);
     return clone(result);
+  };
+  const feedbackPresetById = (id) => {
+    const presets = Array.isArray(data.feedbackPresets) ? data.feedbackPresets : [];
+    const found = presets.find((preset) => preset && preset.id === id);
+    if (found) return found;
+    return ["dust", "explosion", "pickup-sparkle", "trail"].includes(id) ? { id } : undefined;
+  };
+  const deterministicVariance = (seed, variance) => {
+    if (!(Number(variance) > 0)) return 0;
+    return ((hashSeed(seed) % 100000) / 100000 * 2 - 1) * Number(variance);
   };
   const changedValues = (value, entityId) => {
     if (Array.isArray(value)) return value.filter((item) => typeof item === "string");
@@ -1050,6 +1061,21 @@ function __tnInvokeSystem(options) {
         return clone(result);
       }
     },
+    cameras: {
+      shake(options = {}) {
+        const request = {
+          amplitude: clamp(Number(options.amplitude ?? 0.08), 0, 2),
+          ...(options.camera === undefined ? {} : { camera: normalize(options.camera) }),
+          duration: clamp(Number(options.duration ?? 0.15), 0, 5),
+          frequency: clamp(Number(options.frequency ?? 24), 0, 120),
+          ...(options.seed === undefined ? {} : { seed: options.seed })
+        };
+        const accepted = request.amplitude > 0 && request.duration > 0 && request.frequency > 0;
+        const result = { accepted, id: `shake:${data.time.elapsed}:${effects.services.length}`, status: accepted ? "enqueued" : "rejected" };
+        effects.services.push({ service: "camera.shake", payload: { request, result } });
+        return result;
+      }
+    },
     particles: {
       burst(asset, emitter, options = {}) {
         const request = { asset, emitter, options: clone(options) };
@@ -1335,6 +1361,26 @@ function __tnInvokeSystem(options) {
       },
       emitEvent(event, payload) {
         effects.commands.push({ command: "emitEvent", event: normalize(event), payload: clone(payload) });
+      },
+      tween(entity, options = {}) {
+        const property = normalize(options.property);
+        const expected = property === "rotation" ? 4 : (property === "position" || property === "scale" ? 3 : 1);
+        const to = typeof options.to === "number" ? [options.to] : Array.isArray(options.to) ? options.to.map(Number) : [];
+        const accepted = ["emissiveIntensity", "opacity", "position", "rotation", "scale"].includes(property)
+          && to.length === expected
+          && to.every(Number.isFinite)
+          && Number.isFinite(Number(options.duration))
+          && Number(options.duration) >= 0
+          && Number(options.duration) <= 10
+          && (!Number.isInteger(Number(options.loops)) || Number(options.loops) >= 0 && Number(options.loops) <= 8);
+        const id = `tween:${entity}:${property}:${data.time.elapsed}:${effects.commands.length}`;
+        if (accepted) effects.commands.push({ command: "tween", entity, property, value: { ...clone(options), id } });
+        return { accepted, id, status: accepted ? "enqueued" : "rejected" };
+      },
+      worldText(entity, options = {}) {
+        const accepted = typeof options.text === "string" && options.text.length > 0 && options.text.length <= 128;
+        if (accepted) effects.commands.push({ command: "worldText", entity, value: clone(options) });
+        return { accepted, entity, status: accepted ? "enqueued" : "rejected" };
       }
       },
       physics: {
@@ -1425,6 +1471,32 @@ function __tnInvokeSystem(options) {
         const result = audioStop(playbackId);
         effects.services.push({ service: "audio.stop", payload: { request, result: clone(result) } });
         return clone(result);
+      }
+    },
+    effects: {
+      play(presetId, options = {}) {
+        const id = normalize(presetId);
+        const preset = feedbackPresetById(id);
+        if (!preset) return { accepted: false, preset: id, status: "missing" };
+        const seed = options.seed ?? random.float();
+        const audio = preset.audio && typeof preset.audio.soundId === "string"
+          ? audioPlay(preset.audio.soundId, {
+              ...(options.entity === undefined ? {} : { entity: normalize(options.entity) }),
+              ...(preset.audio.volume === undefined ? {} : { volume: preset.audio.volume }),
+              pitch: Number(preset.audio.pitch ?? 1) + deterministicVariance(seed, preset.audio.pitchVariance ?? 0)
+            })
+          : undefined;
+        const particles = Array.isArray(preset.particles)
+          ? preset.particles.map((particle) => ({
+              command: particle.command,
+              emitter: particle.emitter,
+              result: particleCommand(particle.command, particle.asset, particle.emitter, { count: particle.count, seed })
+            }))
+          : [];
+        const camera = preset.camera === undefined ? undefined : { ...clone(preset.camera), ...(options.camera === undefined ? {} : { camera: normalize(options.camera) }), seed };
+        const result = { accepted: true, preset: id, status: "enqueued" };
+        effects.services.push({ service: "effects.play", payload: { audio, camera, particles, request: { ...clone(options), preset: id, seed }, result, resolvedPitch: audio && audio.pitch } });
+        return result;
       }
     }
   };
