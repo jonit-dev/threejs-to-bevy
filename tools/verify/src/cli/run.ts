@@ -299,6 +299,20 @@ export const FOCUSED_GATES: Record<string, FocusedGate> = {
       protects: "Portable script helper imports, lifecycle alias schedules, context helper parity, and structured-source domain example rebuilds.",
     },
   },
+  "verify:runtime-write-audit": {
+    commands: [
+      ["pnpm", "--filter", "@threenative/ir", "build"],
+      ["pnpm", "--filter", "@threenative/runtime-web-three", "build"],
+      ["node", "tools/verify/dist/runtimeWriteAuditGate.js"],
+    ],
+    description: "Cross-runtime sensor transition and write provenance gate.",
+    metadata: {
+      owner: "tools/verify runtime-write-audit gate",
+      profile: "focused",
+      reason: "Checks stateful sensor phases, same-tick read stability, bounded audit schema, and normalized native/web write ownership evidence.",
+      protects: "Runtime sensor occupancy, transform write conflict diagnostics, resource composition classification, and bounded write-audit artifacts.",
+    },
+  },
   "verify:ui-persistence-settings-facades": {
     commands: [
       ["pnpm", "--filter", "@threenative/ir", "build"],

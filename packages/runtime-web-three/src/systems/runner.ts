@@ -7,6 +7,7 @@ import { advanceWebDelayedCommands, createSystemContext, webSystemRuntimeStateFo
 import { applySystemEffects } from "./effects.js";
 import { appendSystemEffectLog, type ISystemEffectLog, type ISystemEffectLogEntry } from "./log.js";
 import { createWebPersistenceService, type IWebPersistenceService } from "./services/persistence.js";
+import type { IRuntimeWriteObservation } from "@threenative/ir";
 
 export type SystemFunction = (context: unknown) => unknown | Promise<unknown>;
 
@@ -19,6 +20,7 @@ export interface ISystemRunResult {
   diagnostics: IRuntimeDiagnostic[];
   entries: ISystemEffectLogEntry[];
   resourceObservations: IResourceObservation[];
+  writeObservations: IRuntimeWriteObservation[];
 }
 
 export async function runSchedule(options: {
@@ -37,6 +39,7 @@ export async function runSchedule(options: {
   paused?: boolean;
   prefabs?: IPrefabsIr;
   resourceObservations?: IResourceObservation[];
+  runtimeState?: ReturnType<typeof webSystemRuntimeStateFor>;
   schedule: IrSystemSchedule;
   systems: ISystemsIr;
   tick?: number;
@@ -50,7 +53,8 @@ export async function runSchedule(options: {
   const scheduledSystems = orderedSystemsForSchedule(options.systems.systems, options.schedule);
   const componentDiff = createComponentDiffCache();
   const persistence = options.localData === undefined ? undefined : createWebPersistenceService(options.localData);
-  const runtimeState = webSystemRuntimeStateFor(options.world, { assets: options.assets, audio: options.audio });
+  const runtimeState = options.runtimeState ?? webSystemRuntimeStateFor(options.world, { assets: options.assets, audio: options.audio });
+  runtimeState.writeLedger.beginTick(options.tick ?? 0);
   const tracked = [...new Set(scheduledSystems.flatMap((system) => system.queries.flatMap((query) => query.changed ?? [])))].sort();
   componentDiff.beginScheduleStage(options.world, tracked);
   for (const system of scheduledSystems) {
@@ -69,7 +73,7 @@ export async function runSchedule(options: {
     if (system === undefined) {
       continue;
     }
-    const result = applySystemEffects(options.world, system, { commands: [command.command], events: [], resources: [], services: [] }, { frame: options.frame ?? 0, prefabs: options.prefabs, tick: options.tick ?? 0 });
+    const result = applySystemEffects(options.world, system, { commands: [command.command], events: [], resources: [], services: [] }, { frame: options.frame ?? 0, prefabs: options.prefabs, tick: options.tick ?? 0, writeLedger: runtimeState.writeLedger, writer: "scheduler" });
     diagnostics.push(...result.diagnostics);
     entries.push(...result.entries);
     if (options.effectLog !== undefined) {
@@ -79,7 +83,8 @@ export async function runSchedule(options: {
   if (options.resourceObservations !== undefined) {
     options.resourceObservations.push(...resourceObservations);
   }
-  return { diagnostics, entries, resourceObservations };
+  diagnostics.push(...runtimeState.writeLedger.diagnostics(options.tick ?? 0));
+  return { diagnostics, entries, resourceObservations, writeObservations: runtimeState.writeLedger.observations() };
 }
 
 async function runSystem(
@@ -111,7 +116,7 @@ async function runSystem(
   },
 ): Promise<ISystemRunResult> {
   if (system.script === undefined) {
-    return { diagnostics: [], entries: [], resourceObservations: [] };
+    return { diagnostics: [], entries: [], resourceObservations: [], writeObservations: [] };
   }
   const fn = readSystemFunction(options.module, system.script.exportName);
   const resourceObservations: IResourceObservation[] = declaredResourceObservations(system, options);
@@ -149,7 +154,7 @@ async function runSystem(
     uiState: options.uiState,
   });
   await fn(context);
-  const result = applySystemEffects(options.world, system, { commands, events, resources, services }, { frame: options.frame ?? 0, prefabs: options.prefabs, tick: options.tick ?? 0 });
+  const result = applySystemEffects(options.world, system, { commands, events, resources, services }, { frame: options.frame ?? 0, prefabs: options.prefabs, tick: options.tick ?? 0, writeLedger: options.runtimeState?.writeLedger, writer: "script" });
   for (const resource of resources) {
     resourceObservations.push({
       frame: options.frame ?? 0,
@@ -163,7 +168,7 @@ async function runSystem(
   if (options.effectLog !== undefined) {
     appendSystemEffectLog(options.effectLog, result.entries);
   }
-  return { diagnostics: result.diagnostics, entries: result.entries, resourceObservations: dedupeResourceObservations(resourceObservations) };
+  return { diagnostics: result.diagnostics, entries: result.entries, resourceObservations: dedupeResourceObservations(resourceObservations), writeObservations: options.runtimeState?.writeLedger.observations() ?? [] };
 }
 
 function declaredResourceObservations(system: IIrSystemDeclaration, options: { frame?: number; tick?: number; world: IWorldIr }): IResourceObservation[] {

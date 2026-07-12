@@ -24,7 +24,7 @@ use threenative_loader::{AssetsManifest, LoadedBundle, TransformComponent};
 use crate::{
     assets::{NativeRuntimeProbeObservations, native_runtime_probe_observations},
     input::portable_key_code,
-    systems_host::NativeResourceObservationState,
+    systems_host::{NativeResourceObservationState, NativeRuntimeWriteAuditState},
 };
 
 const MIN_PROOF_SCREENSHOT_BYTES: u64 = 1024;
@@ -108,6 +108,8 @@ pub struct NativeProofHarnessReadiness {
     pub performance: NativeProofHarnessPerformanceSample,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub resources: Option<NativeResourceObservationState>,
+    #[serde(rename = "writeAudit", skip_serializing_if = "Option::is_none")]
+    pub write_audit: Option<NativeRuntimeWriteAuditState>,
     #[serde(
         rename = "resourceSnapshots",
         skip_serializing_if = "BTreeMap::is_empty"
@@ -313,6 +315,7 @@ pub fn apply_native_proof_harness_commands(
     scene_cameras: Query<(Entity, &Camera), Without<IsDefaultUiCamera>>,
     root_ui_nodes: Query<Entity, (With<Node>, Without<Parent>)>,
     resource_observations: Option<Res<NativeResourceObservationState>>,
+    write_audit: Option<Res<NativeRuntimeWriteAuditState>>,
     scene_ray_query: Option<Res<crate::scene_ray_query::NativeSceneRayQuery>>,
 ) {
     let tick = state.tick;
@@ -326,6 +329,7 @@ pub fn apply_native_proof_harness_commands(
             performance,
             transforms.p1().iter(),
             resource_observations.as_deref().cloned(),
+            write_audit.as_deref().cloned(),
             runtime
                 .as_deref()
                 .map(|runtime| native_resource_snapshots(&runtime.bundle))
@@ -478,6 +482,7 @@ pub fn apply_native_proof_harness_commands(
         performance,
         transforms.p1().iter(),
         resource_observations.as_deref().cloned(),
+        write_audit.as_deref().cloned(),
         runtime
             .as_deref()
             .map(|runtime| native_resource_snapshots(&runtime.bundle))
@@ -535,6 +540,7 @@ fn write_native_proof_harness_post_runtime_sample(
     transforms: Query<(&ThreeNativeId, &Transform)>,
     runtime: Option<Res<crate::ScriptedRuntimeBundle>>,
     resource_observations: Option<Res<NativeResourceObservationState>>,
+    write_audit: Option<Res<NativeRuntimeWriteAuditState>>,
 ) {
     let tick = state.tick;
     let performance = state.performance_sample();
@@ -545,6 +551,7 @@ fn write_native_proof_harness_post_runtime_sample(
             Vec::new(),
             performance,
             resource_observations.as_deref().cloned(),
+            write_audit.as_deref().cloned(),
             &runtime.bundle,
         );
         return;
@@ -556,6 +563,7 @@ fn write_native_proof_harness_post_runtime_sample(
         performance,
         transforms.iter(),
         resource_observations.as_deref().cloned(),
+        write_audit.as_deref().cloned(),
         runtime
             .as_deref()
             .map(|runtime| native_resource_snapshots(&runtime.bundle))
@@ -647,6 +655,7 @@ fn write_native_proof_harness_sample<'a>(
     performance: NativeProofHarnessPerformanceSample,
     transforms: impl IntoIterator<Item = (&'a ThreeNativeId, &'a Transform)>,
     resources: Option<NativeResourceObservationState>,
+    write_audit: Option<NativeRuntimeWriteAuditState>,
     resource_snapshots: BTreeMap<String, serde_json::Value>,
     runtime_observations: Option<NativeRuntimeProbeObservations>,
 ) {
@@ -661,6 +670,7 @@ fn write_native_proof_harness_sample<'a>(
         diagnostics,
         performance,
         resources,
+        write_audit,
         resource_snapshots,
         runtime_observations,
         scene_queries: state.scene_queries.clone(),
@@ -690,6 +700,7 @@ fn write_native_proof_harness_bundle_sample(
     diagnostics: Vec<NativeProofHarnessDiagnostic>,
     performance: NativeProofHarnessPerformanceSample,
     resources: Option<NativeResourceObservationState>,
+    write_audit: Option<NativeRuntimeWriteAuditState>,
     bundle: &LoadedBundle,
 ) {
     let ok = diagnostics
@@ -703,6 +714,7 @@ fn write_native_proof_harness_bundle_sample(
         diagnostics,
         performance,
         resources,
+        write_audit,
         resource_snapshots: native_resource_snapshots(bundle),
         runtime_observations: Some(native_runtime_probe_observations(
             &bundle.assets,

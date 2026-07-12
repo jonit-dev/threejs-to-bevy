@@ -35,6 +35,15 @@ Current support:
 - Web and native runtime system hosts report declared resource load/read/write
   observations so failing playtests can distinguish missing propagation from
   ordinary movement/input assertion failures.
+- Web and native hosts retain sensor occupancy across fixed ticks, return one
+  stable same-tick snapshot to every reader, and emit one semantic `enter`,
+  `stay`, or `exit` transition per occupant change. `TriggerEx.entered` is a
+  deprecated compatibility wrapper for one release cycle.
+- Runtime component, resource, and state writes carry bounded semantic
+  provenance. Ordinary runs report actionable `TN_RUNTIME_WRITE_CONFLICT`
+  warnings for script/physics transform double ownership; `tn playtest` and
+  `tn iterate` accept `--audit-writes` to write deterministic `write-audit.json`
+  artifacts containing accepted, composed, overwritten, and dropped writes.
 - `ctx.audio.play`, `ctx.audio.stop`, and `ctx.audio.query` operate on
   declared audio IR and return logical playback IDs/status without exposing web
   or native handles; streaming, network audio, custom decoders, and platform
@@ -80,6 +89,7 @@ Verification:
 - `pnpm --filter @threenative/compiler test`
 - `pnpm --filter @threenative/cli test`
 - `pnpm --filter @threenative/runtime-web-three test`
+- `pnpm verify:focused verify:runtime-write-audit`
 - `cargo test -p threenative_runtime systems_host_should_apply_declared_resource_write`
 - `cargo test -p threenative_runtime systems_host_should_expose_audio_facade`
 - `cargo test -p threenative_runtime systems_host_should_expose_bounded_particle_command_services`
@@ -89,6 +99,7 @@ Verification:
 - `pnpm --filter @threenative/runtime-web-three test -- --run runtime gameplay`
 - `cargo test -p threenative_runtime should_report_bounded_scheduler_observations`
 - `pnpm verify:scripting-helpers-lifecycle`
+- `pnpm verify:cookbook` covers the bounded runtime-write-audit authoring pattern.
 
 Full prior evidence is preserved in
 [full-status-archive.md](full-status-archive.md).

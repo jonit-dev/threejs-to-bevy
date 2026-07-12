@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { diagnoseUnsupportedRuntimeDeclarations, validateRuntimeDiagnosticReport } from "./runtimeDiagnostics.js";
+import { createRuntimeWriteObservation, diagnoseUnsupportedRuntimeDeclarations, runtimeWriteValueFingerprint, serializeRuntimeWriteAudit, validateRuntimeDiagnosticReport, validateRuntimeWriteAuditReport } from "./runtimeDiagnostics.js";
 
 test("should reject networking declarations with stable diagnostics when networking is out of scope", () => {
   const diagnostics = diagnoseUnsupportedRuntimeDeclarations({
@@ -59,4 +59,38 @@ test("should reject raw backend handles and dynamic gameplay host escape hatches
   );
   assert.equal(diagnostics[1]?.path, "systems.ir.json/runtime/unsupportedFeatures/rawRuntimeHandle");
   assert.match(diagnostics[2]?.suggestion ?? "", /portable SDK\/IR declaration/);
+});
+
+test("should serialize bounded write observations deterministically", () => {
+  const first = createRuntimeWriteObservation({
+    disposition: "accepted",
+    newValue: { z: 2, a: [1, 2, 3] },
+    oldValue: { a: 0 },
+    path: "Transform/position",
+    schedule: "fixedUpdate",
+    system: "move",
+    targetId: "player",
+    targetKind: "component",
+    tick: 4,
+    writer: "script",
+  });
+  const second = createRuntimeWriteObservation({
+    disposition: "accepted",
+    newValue: { a: [1, 2, 3], z: 2 },
+    oldValue: { a: 0 },
+    path: "Transform/position",
+    schedule: "fixedUpdate",
+    system: "move",
+    targetId: "player",
+    targetKind: "component",
+    tick: 4,
+    writer: "script",
+  });
+  assert.equal(first.fingerprint, second.fingerprint);
+  assert.equal(first.oldFingerprint, second.oldFingerprint);
+  assert.equal(first.inlineValue, undefined);
+  const serialized = serializeRuntimeWriteAudit([first]);
+  assert.deepEqual(Object.keys(serialized), ["observations", "schema", "version"]);
+  assert.equal(validateRuntimeWriteAuditReport(serialized).ok, true);
+  assert.equal(runtimeWriteValueFingerprint({ b: 1, a: 2 }), runtimeWriteValueFingerprint({ a: 2, b: 1 }));
 });

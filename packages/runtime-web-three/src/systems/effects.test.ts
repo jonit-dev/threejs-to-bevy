@@ -3,6 +3,7 @@ import test from "node:test";
 import type { IIrSystemDeclaration, IWorldIr } from "@threenative/ir";
 
 import { applySystemEffects } from "./effects.js";
+import { createRuntimeWriteLedger } from "./writeAudit.js";
 import { stepPhysics } from "../physics.js";
 
 test("should apply transform patch after system", () => {
@@ -24,6 +25,26 @@ test("should apply transform patch after system", () => {
   assert.equal(result.diagnostics[0]?.severity, "warning");
   assert.deepEqual(world.entities[0]?.components.Transform, { position: [1, 0, 0], rotation: [0, 0, 0, 1], scale: [2, 2, 2] });
   assert.equal(result.entries[0]?.kind, "patch");
+});
+
+test("should distinguish composed patches from overwritten fields", () => {
+  const world = makeWorld();
+  world.resources = { Score: { lives: 3, points: 1 } };
+  const ledger = createRuntimeWriteLedger();
+  const system = makeSystem({ resourceWrites: ["Score"] });
+
+  applySystemEffects(world, system, {
+    commands: [],
+    events: [],
+    resources: [
+      { resource: "Score", value: { points: 2 } },
+      { resource: "Score", value: { lives: 2 } },
+      { resource: "Score", value: { points: 3 } },
+    ],
+    services: [],
+  }, { frame: 0, tick: 1, writeLedger: ledger });
+
+  assert.deepEqual(ledger.observations().sort((left, right) => left.path.localeCompare(right.path)).map((observation) => observation.disposition), ["composed", "accepted", "overwritten"]);
 });
 
 test("should let script-authored kinematic transform skip same-tick velocity integration", () => {

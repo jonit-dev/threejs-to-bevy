@@ -515,36 +515,9 @@ function __tnInvokeSystem(options) {
     };
     const sensorSnapshot = (payload = {}) => {
       const requestedPhases = new Set(payload.phases || ["enter", "stay", "exit"]);
-      const events = [];
-      const sensors = sensorEntities;
-      for (const sensor of sensors) {
-        if (payload.sensor && payload.sensor !== sensor.id) continue;
-        const collider = sensor.components.Collider;
-        const sensorBounds = {
-          center: readVec3(sensor.components.Transform && sensor.components.Transform.position, [0, 0, 0]),
-          halfExtents: readColliderHalfExtents(collider)
-        };
-        const occupants = colliderEntities
-          .filter((entity) => entity.id !== sensor.id)
-          .filter((entity) => boundsOverlap(sensorBounds, {
-            center: readVec3(entity.components.Transform && entity.components.Transform.position, [0, 0, 0]),
-            halfExtents: readColliderHalfExtents(entity.components.Collider)
-          }))
-          .filter((entity) => !Array.isArray(collider.mask) || collider.mask.length === 0 || collider.mask.includes(entity.components.Collider.layer))
-          .map((entity) => entity.id)
-          .sort()
-          .slice(0, Number(collider.sensor.occupantLimit ?? data.entities.length));
-        if (occupants.length > 0 && requestedPhases.has("enter")) {
-          events.push({
-            ...(collider.sensor.interactionKind === undefined ? {} : { interactionKind: collider.sensor.interactionKind }),
-            filteredOut: [],
-            occupants,
-            phase: "enter",
-            sensor: sensor.id,
-            step: 1
-          });
-        }
-      }
+      const events = (Array.isArray(data.sensorEvents) ? data.sensorEvents : [])
+        .filter((event) => (!payload.sensor || payload.sensor === event.sensor) && requestedPhases.has(event.phase))
+        .map(clone);
       return { events };
     };
     const pointInPolygon = (point, polygon) => {

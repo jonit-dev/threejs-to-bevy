@@ -37,7 +37,7 @@ export { advanceAnimationPlayback, mapWorld, syncMeshRendererMaterials, syncTran
 export { aabbIntersectsAabb, meshAabb, meshBoundingSphere, sampleMeshPoints, sphereIntersectsSphere, type IAabb, type IBoundingSphere } from "./meshBounds.js";
 export { ease, sampleCatmullRom, sampleCubicBezier, sampleLine, sampleQuadraticBezier, type EasingKind } from "./pathSampling.js";
 export { stepPhysics, tracePhysicsJoints, traceRigidBodyPrimitive, type IPhysicsEventPayload, type IPhysicsJointObservation, type IRigidBodyTraceInput, type IRigidBodyTraceObservation } from "./physics.js";
-export { tracePhysicsSensors, type IPhysicsSensorEvent, type IPhysicsSensorTraceInput } from "./sensors.js";
+export { createPhysicsSensorRuntimeState, tracePhysicsSensors, type IPhysicsSensorAdvanceOptions, type IPhysicsSensorEvent, type IPhysicsSensorRuntimeState, type IPhysicsSensorTraceInput } from "./sensors.js";
 export { interpolateQuat, interpolateTransform, interpolateVec3, smoothDampVec3, type ITransformSample } from "./transformInterpolation.js";
 export { resolveWalkableMovement, type IWalkabilityResolution } from "./walkability.js";
 export { renderUi, type IRenderedUi, type IRenderedUiNode } from "./ui/renderUi.js";
@@ -60,6 +60,7 @@ export {
   type ISystemContext,
 } from "./systems/context.js";
 export { applySystemEffects, validateSystemEffects, type ISystemEffects } from "./systems/effects.js";
+export { createRuntimeWriteLedger, type IRuntimeWriteLedger, type IRuntimeWriteRecordInput } from "./systems/writeAudit.js";
 export { createSystemEffectLog, serializeSystemEffectLog, stableSystemEffectLog, type ISystemEffectLog, type ISystemEffectLogEntry } from "./systems/log.js";
 export {
   createWebPersistenceService,

@@ -106,7 +106,7 @@ export const CLI_COMMAND_REGISTRY = defineCommandRegistry({
   iterate: {
     description: "Run validate, build, screenshot, and optional playtest as one agent iteration loop.",
     implemented: true,
-    usage: "tn iterate [--project <path>] [--scenario playtests/<name>.playtest.json] [--native] [--skip-playtest] [--keep] [--json]",
+    usage: "tn iterate [--project <path>] [--scenario playtests/<name>.playtest.json] [--native] [--audit-writes] [--skip-playtest] [--keep] [--json]",
   },
   look: {
     description: "List and apply curated portable look profiles to structured source projects.",
@@ -209,7 +209,7 @@ export const CLI_COMMAND_REGISTRY = defineCommandRegistry({
   playtest: {
     description: "Run, scaffold, or inspect playtest scenarios and assertion DSL.",
     implemented: true,
-    usage: "tn playtest --project <path> --entity <id> --press <KeyboardEvent.code> --frames <n> [--expect-moved] [--expect-axis x|y|z|+x|-x|+y|-y|+z|-z] [--follow <entityId>] [--debug] [--effects stdout] [--json]\n             tn playtest --project <path> --scenario playtests/<name>.playtest.json [--out <dir>] [--stable-artifacts] [--target web|desktop|bevy] [--viewport 1280x720] [--json]\n             tn playtest report --project <path> --latest --scenario <name> --json\n             tn playtest report --project <path> --summary artifacts/playtest/<name>/latest/summary.json --json\n             tn playtest --project <path> --scenario playtests/<name>.playtest.json --watch [--max-runs <n>] [--fail-fast] [--pass-once] [--json]\n             tn playtest --project <path> --discover --json\n             tn playtest --project <path> --suggest-scenario smoke-movement --json\n             tn playtest schema --json\n             tn playtest scaffold --assert <movement|pickup|win-state|retry> [--project <path>] [--json]",
+    usage: "tn playtest --project <path> --entity <id> --press <KeyboardEvent.code> --frames <n> [--expect-moved] [--expect-axis x|y|z|+x|-x|+y|-y|+z|-z] [--follow <entityId>] [--debug] [--effects stdout] [--audit-writes] [--json]\n             tn playtest --project <path> --scenario playtests/<name>.playtest.json [--out <dir>] [--stable-artifacts] [--target web|desktop|bevy] [--viewport 1280x720] [--audit-writes] [--json]\n             tn playtest report --project <path> --latest --scenario <name> --json\n             tn playtest report --project <path> --summary artifacts/playtest/<name>/latest/summary.json --json\n             tn playtest --project <path> --scenario playtests/<name>.playtest.json --watch [--max-runs <n>] [--fail-fast] [--pass-once] [--json]\n             tn playtest --project <path> --discover --json\n             tn playtest --project <path> --suggest-scenario smoke-movement --json\n             tn playtest schema --json\n             tn playtest scaffold --assert <movement|pickup|win-state|retry> [--project <path>] [--json]",
   },
   prove: {
     description: "Evaluate changed durable source/assets/bundles against proof manifests.",

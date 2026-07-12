@@ -24,6 +24,7 @@ declare global {
       resetPerformanceTrace?(): void;
       runtimeObservationSnapshot?(): unknown;
       runtimeDiagnosticsSnapshot?(): unknown;
+      writeAuditSnapshot?(): unknown;
       setEntityTransform?(id: string, transform: { position?: [number, number, number]; rotation?: [number, number, number, number]; scale?: [number, number, number] }): boolean;
       uiNodeSnapshot?(id: string): unknown;
     };
@@ -61,6 +62,7 @@ window.__THREENATIVE_RUNTIME__ = {
   resetPerformanceTrace: result.resetPerformanceTrace,
   runtimeObservationSnapshot: result.runtimeObservationSnapshot,
   runtimeDiagnosticsSnapshot: result.runtimeDiagnosticsSnapshot,
+  writeAuditSnapshot: result.writeAuditSnapshot,
   setEntityTransform: result.setEntityTransform,
   uiNodeSnapshot: result.uiNodeSnapshot,
 };

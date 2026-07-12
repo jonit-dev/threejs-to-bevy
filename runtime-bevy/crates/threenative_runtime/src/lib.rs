@@ -321,6 +321,7 @@ pub fn app_from_bundle_with_options(
             declared: systems_host::native_declared_system_resources(&bundle),
             observations: Vec::new(),
         });
+        app.init_resource::<systems_host::NativeRuntimeWriteAuditState>();
         app.insert_resource(ScriptedRuntimeBundle { bundle });
         app.init_resource::<NativeRuntimeDirtyState>();
         app.insert_non_send_resource(ScriptedRuntimeMainThread);
@@ -547,6 +548,7 @@ struct ScriptedRuntimeParams<'w> {
     loop_state: Option<ResMut<'w, systems_host::NativeGameLoopState>>,
     dirty_state: Option<ResMut<'w, NativeRuntimeDirtyState>>,
     deterministic_capture: Option<Res<'w, NativeDeterministicCaptureClock>>,
+    write_audit: Option<ResMut<'w, systems_host::NativeRuntimeWriteAuditState>>,
 }
 
 fn run_scripted_runtime_systems(
@@ -640,6 +642,10 @@ fn run_scripted_runtime_systems(
                     if overflow > 0 {
                         observations.observations.drain(0..overflow);
                     }
+                }
+                if let Some(audit) = scripted.write_audit.as_deref_mut() {
+                    audit.observations = run.write_observations;
+                    audit.diagnostics = run.write_diagnostics;
                 }
                 if let Some(queue) = animation_queue.as_deref_mut() {
                     map_world::queue_native_animation_service_effects(queue, &run.logs);

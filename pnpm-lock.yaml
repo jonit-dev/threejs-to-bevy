@@ -301,6 +301,12 @@ importers:
       '@threenative/cli':
         specifier: workspace:*
         version: link:../../packages/cli
+      '@threenative/ir':
+        specifier: workspace:*
+        version: link:../../packages/ir
+      '@threenative/runtime-web-three':
+        specifier: workspace:*
+        version: link:../../packages/runtime-web-three
       '@types/node':
         specifier: ^20.19.25
         version: 20.19.43

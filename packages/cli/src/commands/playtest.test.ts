@@ -137,6 +137,42 @@ test("playtest command should omit effect log and observations from default json
   assert.match(payload.artifacts.observations, /observations\.json$/);
 });
 
+test("playtest command should emit a bounded write audit artifact when requested", async () => {
+  const root = await playtestTempRoot();
+  const result = await playtestCommand(
+    ["--project", ".", "--entity", "player", "--press", "KeyW", "--frames", "1", "--audit-writes", "--json"],
+    root,
+    {
+      runner: async (options) => {
+        assert.equal(options.auditWrites, true);
+        return {
+          before: { frame: 0, position: [0, 0, 0], tick: 0 },
+          debugColliders: options.debugColliders,
+          distance: 0,
+          diagnostics: [],
+          entity: options.entityId,
+          expectMoved: options.expectMoved,
+          frames: options.frames,
+          input: options.press,
+          movementThreshold: options.movementThreshold,
+          pass: true,
+          runtime: "web" as const,
+          writeAudit: { observations: [], schema: "threenative.runtime-write-audit", version: "0.1.0" },
+        };
+      },
+    },
+  );
+  const payload = JSON.parse(result.stdout) as { artifacts: { writeAudit?: string }; code: string };
+  assert.equal(result.exitCode, 0);
+  assert.equal(payload.code, "TN_PLAYTEST_OK");
+  assert.match(payload.artifacts.writeAudit ?? "", /write-audit\.json$/);
+  assert.deepEqual(JSON.parse(await readFile(payload.artifacts.writeAudit ?? "", "utf8")), {
+    observations: [],
+    schema: "threenative.runtime-write-audit",
+    version: "0.1.0",
+  });
+});
+
 test("playtest command should include effect log only when effects stdout is requested", async () => {
   const root = await playtestTempRoot();
   const result = await playtestCommand(
@@ -507,7 +543,7 @@ test("playtest command should run desktop target through native proof harness", 
   let commandStreamPath: string | undefined;
   let readinessOutPath: string | undefined;
   const result = await playtestCommand(
-    ["--project", ".", "--target", "desktop", "--scenario", "desktop-setup.playtest.json", "--json"],
+    ["--project", ".", "--target", "desktop", "--scenario", "desktop-setup.playtest.json", "--audit-writes", "--json"],
     root,
     {
       bevyRunner: (invocation) => {
@@ -558,6 +594,7 @@ test("playtest command should run desktop target through native proof harness", 
               tick: 37,
               transforms: [{ entity: "player", position: [0, 0, -1.1] }],
               version: "0.1.0",
+              writeAudit: { diagnostics: [], observations: [], schema: "threenative.runtime-write-audit", version: "0.1.0" },
             })}\n`,
             "utf8",
           );
@@ -568,16 +605,20 @@ test("playtest command should run desktop target through native proof harness", 
       },
     },
   );
-  const payload = JSON.parse(result.stdout) as { artifacts: { nativeFrameSamples: string; observations: string; summary: string }; code: string; distance: number; runtime: string; target: string };
+  const payload = JSON.parse(result.stdout) as { artifacts: { nativeFrameSamples: string; observations: string; summary: string; writeAudit: string }; code: string; distance: number; runtime: string; target: string };
   const commandStream = JSON.parse(await readFile(commandStreamPath ?? "", "utf8")) as { commands: Array<{ code?: string; entity?: string; frames?: number; position?: number[]; pressed?: boolean; tick: number; type: string }> };
   const summary = JSON.parse(await readFile(payload.artifacts.summary, "utf8")) as { diagnostics: unknown[]; movementDelta: number[]; nativeRecording: { frames: Array<{ byteSize: number; tick: number }> }; performance: { framesOverBudget: number; measurement: string; note: string; sampleCount: number; scope: string; source: string; worstFrameMs: number }; runtime: string; target: string };
   const nativeFrameSamples = JSON.parse(await readFile(payload.artifacts.nativeFrameSamples, "utf8")) as { samples: Array<{ frameMs: number; tick: number }>; summaries: { all: { sampleCount: number; worstFrameMs: number }; dropFirst: { sampleCount: number; worstFrameMs: number } } };
   const observations = JSON.parse(await readFile(payload.artifacts.observations, "utf8")) as { runtimeDiagnostics: { readiness: Array<{ tick: number }> } };
+  const writeAudit = JSON.parse(await readFile(payload.artifacts.writeAudit, "utf8")) as { diagnostics: unknown[]; observations: unknown[]; schema: string; version: string };
 
   assert.equal(result.exitCode, 0);
   assert.equal(payload.code, "TN_PLAYTEST_OK");
   assert.equal(payload.runtime, "bevy");
   assert.equal(payload.target, "desktop");
+  assert.equal(writeAudit.schema, "threenative.runtime-write-audit");
+  assert.equal(writeAudit.version, "0.1.0");
+  assert.deepEqual(writeAudit.observations, []);
   assert.equal(payload.distance, 1.1);
   assert.deepEqual(summary.movementDelta, [0, 0, -1.1]);
   assert.deepEqual(summary.diagnostics, []);

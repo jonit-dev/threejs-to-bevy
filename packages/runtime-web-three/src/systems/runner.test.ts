@@ -6,6 +6,7 @@ import test from "node:test";
 import type { IPrefabsIr, ISystemsIr, IUiIr, IWorldIr } from "@threenative/ir";
 
 import { loadSystemModule } from "./moduleLoader.js";
+import { createWebSystemRuntimeState } from "./context.js";
 import { runSchedule } from "./runner.js";
 
 test("should run systems move entity during fixed update", async () => {
@@ -29,6 +30,41 @@ test("should run systems move entity during fixed update", async () => {
   });
 
   assert.deepEqual(world.entities[0]?.components.Transform, { position: [2, 0, 0] });
+});
+
+test("should diagnose transform double ownership in one fixed tick", async () => {
+  const world = makeWorld();
+  const runtimeState = createWebSystemRuntimeState(world, {});
+  runtimeState.writeLedger.record({
+    newValue: [1, 0, 0],
+    oldValue: [0, 0, 0],
+    path: "Transform/position",
+    targetId: "player",
+    targetKind: "component",
+    tick: 0,
+    writer: "physics",
+  });
+
+  const result = await runSchedule({
+    module: {
+      systems: {
+        movePlayer(context: any) {
+          context.entity("player")?.transform().setPosition([2, 0, 0]);
+        },
+      },
+    },
+    runtimeState,
+    schedule: "fixedUpdate",
+    systems: makeSystems("fixedUpdate", "movePlayer"),
+    tick: 0,
+    world,
+  });
+
+  const conflict = result.diagnostics.find((diagnostic) => diagnostic.code === "TN_RUNTIME_WRITE_CONFLICT");
+  assert.ok(conflict);
+  assert.match(conflict.message, /physics/);
+  assert.match(conflict.message, /movePlayer/);
+  assert.match(conflict.suggestion ?? "", /authoritative owner/);
 });
 
 test("should preserve transform scale when a system patches only position", async () => {

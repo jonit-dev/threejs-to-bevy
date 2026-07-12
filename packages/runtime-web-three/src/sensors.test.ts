@@ -3,7 +3,7 @@ import test from "node:test";
 
 import type { IWorldIr } from "@threenative/ir";
 
-import { tracePhysicsSensors } from "./sensors.js";
+import { createPhysicsSensorRuntimeState, tracePhysicsSensors } from "./sensors.js";
 
 test("physics sensors should emit enter stay and exit phases with occupants", () => {
   const world = sensorWorld();
@@ -13,6 +13,19 @@ test("physics sensors should emit enter stay and exit phases with occupants", ()
     { filteredOut: [], interactionKind: "pickup", occupants: ["player"], phase: "stay", sensor: "zone", step: 2 },
     { filteredOut: [], interactionKind: "pickup", occupants: ["player"], phase: "exit", sensor: "zone", step: 3 },
   ]);
+});
+
+test("physics sensor runtime should emit enter once and stay on later ticks", () => {
+  const world = sensorWorld();
+  const runtime = createPhysicsSensorRuntimeState();
+
+  assert.deepEqual(runtime.advance(world, { fixedDelta: 1, tick: 1 }).map((event) => event.phase), ["enter"]);
+  assert.deepEqual(runtime.advance(world, { fixedDelta: 1, tick: 1 }).map((event) => event.phase), ["enter"]);
+  assert.deepEqual(runtime.advance(world, { fixedDelta: 1, tick: 2 }).map((event) => event.phase), ["stay"]);
+  const player = world.entities.find((entity) => entity.id === "player");
+  assert.ok(player?.components.Transform);
+  player.components.Transform.position = [2, 0, 0];
+  assert.deepEqual(runtime.advance(world, { fixedDelta: 1, tick: 3 }).map((event) => event.phase), ["exit"]);
 });
 
 function sensorWorld(): IWorldIr {

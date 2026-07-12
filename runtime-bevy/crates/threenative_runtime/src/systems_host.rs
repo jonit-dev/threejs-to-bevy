@@ -17,11 +17,14 @@ use threenative_loader::{
 use crate::{
     component_diff::ComponentDiffCache,
     input::NativeInputState,
+    physics_sensors::{PhysicsSensorEvent, PhysicsSensorRuntimeState},
     systems_context::{
-        NativeSystemTimeSnapshot, build_system_context_snapshot_with_events_input_and_diff,
+        NativeSystemTimeSnapshot, build_system_context_snapshot_with_sensor_events,
     },
     systems_effects::{
-        NativeSystemEffectLog, NativeSystemEffects, apply_system_effects_with_report,
+        NativeRuntimeWriteLedger, NativeRuntimeWriteObservation, NativeSystemEffectDiagnostic,
+        NativeSystemEffectLog, NativeSystemEffects, apply_system_effects_with_report_and_ledger,
+        record_initial_runtime_writes,
     },
     systems_host_bridge::BRIDGE_SOURCE,
     transform_interpolation::{TransformSample, interpolate_transform},
@@ -60,6 +63,8 @@ pub struct NativeSystemsHostRun {
     pub logs: Vec<NativeSystemEffectLog>,
     pub resource_observations: Vec<NativeResourceObservation>,
     pub transform_patches: BTreeSet<String>,
+    pub write_diagnostics: Vec<NativeSystemEffectDiagnostic>,
+    pub write_observations: Vec<NativeRuntimeWriteObservation>,
 }
 
 #[derive(bevy::prelude::Resource, Debug, Clone, Default, Serialize, PartialEq)]
@@ -67,6 +72,13 @@ pub struct NativeSystemsHostRun {
 pub struct NativeResourceObservationState {
     pub declared: Vec<String>,
     pub observations: Vec<NativeResourceObservation>,
+}
+
+#[derive(bevy::prelude::Resource, Debug, Clone, Default, Serialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct NativeRuntimeWriteAuditState {
+    pub diagnostics: Vec<NativeSystemEffectDiagnostic>,
+    pub observations: Vec<NativeRuntimeWriteObservation>,
 }
 
 #[derive(Debug, Clone, Serialize, PartialEq)]
@@ -104,8 +116,10 @@ pub struct NativeGameLoopState {
     pub kinematic_mover_origins: BTreeMap<String, [f32; 3]>,
     pub paused: bool,
     pub script_posed_entities: BTreeSet<String>,
+    pub sensor_state: PhysicsSensorRuntimeState,
     pub startup_complete: bool,
     pub tick: u64,
+    pub write_ledger: NativeRuntimeWriteLedger,
 }
 
 impl NativeGameLoopState {
@@ -122,8 +136,10 @@ impl NativeGameLoopState {
             kinematic_mover_origins: BTreeMap::new(),
             paused,
             script_posed_entities: BTreeSet::new(),
+            sensor_state: PhysicsSensorRuntimeState::default(),
             startup_complete: false,
             tick: 0,
+            write_ledger: NativeRuntimeWriteLedger::default(),
         }
     }
 }
@@ -254,7 +270,11 @@ pub fn run_native_systems_once_with_input(
     input: Option<&NativeInputState>,
 ) -> Result<NativeSystemsHostRun, SystemsHostError> {
     let schedules = ["startup", "fixedUpdate", "update", "postUpdate"];
-    run_native_system_schedules(bundle, &schedules, time, input)
+    let mut sensor_state = PhysicsSensorRuntimeState::default();
+    let mut write_ledger = NativeRuntimeWriteLedger::default();
+    record_initial_runtime_writes(bundle, 0, &mut write_ledger);
+    let sensor_events = sensor_event_values(&sensor_state.advance(bundle, 0));
+    run_native_system_schedules(bundle, &schedules, time, input, &sensor_events, Some(&mut write_ledger))
 }
 
 pub fn run_native_systems_frame_with_input(
@@ -284,6 +304,7 @@ pub fn run_native_systems_frame_with_input(
             .min(options.fixed_delta * MAX_FIXED_STEPS_PER_FRAME);
 
         if !state.startup_complete {
+            record_initial_runtime_writes(bundle, state.tick, &mut state.write_ledger);
             let time = loop_time_snapshot(0.0, state.elapsed, options.fixed_delta, state.paused);
             let startup_run = run_native_system_schedules_with_state(
                 bundle,
@@ -292,6 +313,8 @@ pub fn run_native_systems_frame_with_input(
                 options.input,
                 state.frame as u32,
                 state.tick,
+                &[],
+                Some(&mut state.write_ledger),
                 Some((
                     &mut state.delayed_commands,
                     &mut state.delayed_command_observations,
@@ -306,6 +329,7 @@ pub fn run_native_systems_frame_with_input(
             state.startup_complete = true;
         }
 
+        let mut frame_sensor_events = Vec::new();
         while state.accumulator >= options.fixed_delta {
             let before_fixed = snapshot_bundle_transforms(bundle);
             let mover_observations = crate::kinematic_mover::step_bundle_kinematic_movers(
@@ -318,8 +342,17 @@ pub fn run_native_systems_frame_with_input(
                     .iter()
                     .map(|observation| observation.entity.clone()),
             );
+            let before_physics = snapshot_bundle_transforms(bundle);
             step_physics(bundle, options.fixed_delta, &state.script_posed_entities);
+            record_physics_transform_writes(
+                &before_physics,
+                &snapshot_bundle_transforms(bundle),
+                state.tick,
+                &mut state.write_ledger,
+            );
             state.script_posed_entities.clear();
+            let sensor_events = sensor_event_values(&state.sensor_state.advance(bundle, state.tick));
+            frame_sensor_events = sensor_events.clone();
             let time = loop_time_snapshot(
                 options.fixed_delta,
                 state.elapsed,
@@ -333,6 +366,8 @@ pub fn run_native_systems_frame_with_input(
                 options.input,
                 state.frame as u32,
                 state.tick,
+                &sensor_events,
+                Some(&mut state.write_ledger),
                 Some((
                     &mut state.delayed_commands,
                     &mut state.delayed_command_observations,
@@ -369,6 +404,8 @@ pub fn run_native_systems_frame_with_input(
             options.input,
             state.frame as u32,
             state.tick,
+            &frame_sensor_events,
+            Some(&mut state.write_ledger),
             Some((
                 &mut state.delayed_commands,
                 &mut state.delayed_command_observations,
@@ -391,6 +428,8 @@ pub fn run_native_systems_frame_with_input(
         remove_variable_transform_writes(state, before_variable, after_variable);
     }
     state.frame += 1;
+    run.write_observations = state.write_ledger.observations();
+    run.write_diagnostics = state.write_ledger.diagnostics_all();
 
     Ok(run)
 }
@@ -527,13 +566,59 @@ fn changed_transform_entities(
         .collect()
 }
 
+fn record_physics_transform_writes(
+    before: &BTreeMap<String, TransformSample>,
+    after: &BTreeMap<String, TransformSample>,
+    tick: u64,
+    ledger: &mut NativeRuntimeWriteLedger,
+) {
+    for entity in before.keys().chain(after.keys()).collect::<BTreeSet<_>>() {
+        let Some(previous) = before.get(entity) else {
+            continue;
+        };
+        let Some(current) = after.get(entity) else {
+            continue;
+        };
+        if previous.position != current.position {
+            ledger.record(crate::systems_effects::NativeRuntimeWriteInput {
+                disposition: None,
+                new_value: json!(current.position),
+                old_value: Some(json!(previous.position)),
+                path: "Transform/position".to_owned(),
+                schedule: "fixedUpdate".to_owned(),
+                system: "physics".to_owned(),
+                target_id: (*entity).clone(),
+                target_kind: "component".to_owned(),
+                tick,
+                writer: "physics".to_owned(),
+            });
+        }
+        if previous.rotation != current.rotation {
+            ledger.record(crate::systems_effects::NativeRuntimeWriteInput {
+                disposition: None,
+                new_value: json!(current.rotation),
+                old_value: Some(json!(previous.rotation)),
+                path: "Transform/rotation".to_owned(),
+                schedule: "fixedUpdate".to_owned(),
+                system: "physics".to_owned(),
+                target_id: (*entity).clone(),
+                target_kind: "component".to_owned(),
+                tick,
+                writer: "physics".to_owned(),
+            });
+        }
+    }
+}
+
 fn run_native_system_schedules(
     bundle: &mut LoadedBundle,
     schedules: &[&str],
     time: NativeSystemTimeSnapshot,
     input: Option<&NativeInputState>,
+    sensor_events: &[Value],
+    write_ledger: Option<&mut NativeRuntimeWriteLedger>,
 ) -> Result<NativeSystemsHostRun, SystemsHostError> {
-    run_native_system_schedules_with_state(bundle, schedules, time, input, 1, 1, None)
+    run_native_system_schedules_with_state(bundle, schedules, time, input, 1, 1, sensor_events, write_ledger, None)
 }
 
 fn run_native_system_schedules_with_state(
@@ -543,6 +628,8 @@ fn run_native_system_schedules_with_state(
     input: Option<&NativeInputState>,
     frame: u32,
     tick: u64,
+    sensor_events: &[Value],
+    mut write_ledger: Option<&mut NativeRuntimeWriteLedger>,
     mut delayed_state: Option<(
         &mut Vec<NativeDelayedCommand>,
         &mut Vec<NativeDelayedCommandObservation>,
@@ -600,13 +687,21 @@ fn run_native_system_schedules_with_state(
                     BTreeMap::new(),
                     input,
                     Some(&diff_cache),
+                    sensor_events,
                 )?;
                 system_observations.extend(native_resource_observations(system, &effects));
                 if let Some((pending, observations)) = delayed_state.as_mut() {
                     enqueue_native_delayed_commands(pending, observations, system, &effects, tick);
                 }
                 let applied =
-                    apply_system_effects_with_report(bundle, system, &effects, frame, tick as u32)
+                    apply_system_effects_with_report_and_ledger(
+                        bundle,
+                        system,
+                        &effects,
+                        frame,
+                        tick as u32,
+                        write_ledger.as_deref_mut(),
+                    )
                         .map_err(|diagnostics| {
                             let first = diagnostics
                                 .into_iter()
@@ -638,12 +733,13 @@ fn run_native_system_schedules_with_state(
                         schedules: Vec::new(),
                         services: Vec::new(),
                     };
-                    let applied = apply_system_effects_with_report(
+                    let applied = apply_system_effects_with_report_and_ledger(
                         bundle,
                         system,
                         &effects,
                         frame,
                         tick as u32,
+                        write_ledger.as_deref_mut(),
                     )
                     .map_err(|diagnostics| {
                         let first = diagnostics
@@ -668,6 +764,14 @@ fn run_native_system_schedules_with_state(
         logs,
         resource_observations,
         transform_patches,
+        write_diagnostics: write_ledger
+            .as_deref()
+            .map(|ledger| ledger.diagnostics(tick))
+            .unwrap_or_default(),
+        write_observations: write_ledger
+            .as_deref()
+            .map(NativeRuntimeWriteLedger::observations)
+            .unwrap_or_default(),
     })
 }
 
@@ -1103,6 +1207,7 @@ fn call_system_export(
     events: BTreeMap<String, Vec<Value>>,
     input: Option<&NativeInputState>,
     diff_cache: Option<&ComponentDiffCache>,
+    sensor_events: &[Value],
 ) -> Result<NativeSystemEffects, SystemsHostError> {
     let export_name = system
         .script
@@ -1114,8 +1219,8 @@ fn call_system_export(
                 format!("System '{}' does not declare a script export.", system.name),
             )
         })?;
-    let snapshot = build_system_context_snapshot_with_events_input_and_diff(
-        bundle, system, time, events, input, diff_cache,
+    let snapshot = build_system_context_snapshot_with_sensor_events(
+        bundle, system, time, events, input, diff_cache, sensor_events,
     );
     let payload_json = serde_json::to_string(&json!({
         "exportName": export_name,
@@ -1162,6 +1267,13 @@ fn call_system_export(
             ),
         )
     })
+}
+
+fn sensor_event_values(events: &[PhysicsSensorEvent]) -> Vec<Value> {
+    events
+        .iter()
+        .filter_map(|event| serde_json::to_value(event).ok())
+        .collect()
 }
 
 fn module_source(script_source: &str) -> String {

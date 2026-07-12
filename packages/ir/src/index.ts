@@ -53,10 +53,21 @@ export {
 } from "./bevyCatalogResiduals.js";
 export {
   diagnoseUnsupportedRuntimeDeclarations,
+  createRuntimeWriteObservation,
+  runtimeWriteValueFingerprint,
+  serializeRuntimeWriteAudit,
+  validateRuntimeWriteAuditReport,
   validateRuntimeDiagnosticReport,
   type IRuntimeDiagnostic,
   type IRuntimeDiagnosticReport,
   type IRuntimeDiagnosticsValidationResult,
+  type IRuntimeWriteAuditReport,
+  type IRuntimeWriteAuditValidationResult,
+  type IRuntimeWriteObservation,
+  type RuntimeWriteDisposition,
+  type RuntimeWriteInlineValue,
+  type RuntimeWriteTargetKind,
+  type RuntimeWriteWriter,
   type RuntimeDiagnosticSeverity,
 } from "./runtimeDiagnostics.js";
 export {

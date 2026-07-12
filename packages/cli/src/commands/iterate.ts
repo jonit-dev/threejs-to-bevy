@@ -57,6 +57,7 @@ export async function iterateCommand(
   const scenarioFlag = readFlag(normalizedArgv, "--scenario");
   const skipPlaytest = normalizedArgv.includes("--skip-playtest");
   const includeNative = normalizedArgv.includes("--native");
+  const auditWrites = normalizedArgv.includes("--audit-writes");
   const keep = normalizedArgv.includes("--keep");
   const started = Date.now();
   const latestDir = resolve(projectPath, "artifacts", "iterate", "latest");
@@ -134,7 +135,7 @@ export async function iterateCommand(
       };
     }
     const playtestDir = resolve(latestDir, "playtest");
-    const results = await runPlaytestScenarios({ playtest: options.playtest ?? defaultPlaytest, playtestDir, projectPath, scenarios });
+    const results = await runPlaytestScenarios({ auditWrites, playtest: options.playtest ?? defaultPlaytest, playtestDir, projectPath, scenarios });
     return {
       artifacts: { directory: playtestDir, summaries: results.scenarioSummaries.map((summary) => summary.artifact).filter((item): item is string => item !== undefined) },
       diagnostics: [
@@ -219,6 +220,7 @@ function compactScenarios(values: readonly unknown[]): IIterateCompactScenario[]
 }
 
 async function runPlaytestScenarios(options: {
+  auditWrites: boolean;
   playtest: NonNullable<IIterateCommandOptions["playtest"]>;
   playtestDir: string;
   projectPath: string;
@@ -228,7 +230,7 @@ async function runPlaytestScenarios(options: {
   const scenarioSummaries: IPlaytestIterateSummary[] = [];
   for (const scenario of options.scenarios) {
     const scenarioOut = resolve(options.playtestDir, safeFilePart(scenario.replace(/\.playtest\.json$/, "")));
-    const result = await options.playtest(["--project", options.projectPath, "--scenario", scenario, "--out", scenarioOut, "--json"], options.projectPath);
+    const result = await options.playtest(["--project", options.projectPath, "--scenario", scenario, "--out", scenarioOut, ...(options.auditWrites ? ["--audit-writes"] : []), "--json"], options.projectPath);
     const parsed = parseJsonPayload(result.stdout);
     if (isPlaytestSummaryPayload(parsed)) {
       const summary = summarizePlaytestForIterate(parsed);

@@ -1,6 +1,7 @@
 import RAPIER from "@dimforge/rapier3d-compat";
 
 import type { IColliderComponent, IEnvironmentSceneIr, IWorldEntity, IWorldIr, Vec3 } from "@threenative/ir";
+import type { IRuntimeWriteLedger } from "./systems/writeAudit.js";
 
 export interface IPhysicsEventPayload {
   a: string;
@@ -74,15 +75,17 @@ export async function initializePhysicsRuntime(): Promise<void> {
   await rapierInitialization;
 }
 
-export function stepPhysics(world: IWorldIr, fixedDelta = 1 / 60, environmentScene?: IEnvironmentSceneIr): IPhysicsEventPayload[] {
+export function stepPhysics(world: IWorldIr, fixedDelta = 1 / 60, environmentScene?: IEnvironmentSceneIr, options: { tick?: number; writeLedger?: IRuntimeWriteLedger } = {}): IPhysicsEventPayload[] {
   const scriptAuthoredTransforms = scriptAuthoredTransformsByWorld.get(world) ?? new Set<string>();
   scriptAuthoredTransformsByWorld.delete(world);
+  const beforeTransforms = snapshotPhysicsTransforms(world);
   const physicsWorld = worldWithEnvironmentTerrain(world, environmentScene);
   if (rapierInitialized) {
     stepRapierBodies(world, physicsWorld, fixedDelta, [0, -9.81, 0], scriptAuthoredTransforms);
   } else {
     stepPrimitiveBodies(physicsWorld, fixedDelta, [0, -9.81, 0], scriptAuthoredTransforms);
   }
+  recordPhysicsTransformWrites(world, beforeTransforms, options);
 
   const currentPairs = detectPairs(physicsWorld.entities.flatMap((entity) => colliderBounds(entity)));
   const previousPairs = previousPairsByWorld.get(world) ?? new Map();
@@ -92,6 +95,56 @@ export function stepPhysics(world: IWorldIr, fixedDelta = 1 / 60, environmentSce
   writeEventQueue(world, "CollisionEvent", collisions);
   writeEventQueue(world, "TriggerEvent", triggers);
   return [...collisions, ...triggers];
+}
+
+function snapshotPhysicsTransforms(world: IWorldIr): Map<string, { position?: Vec3; rotation?: readonly [number, number, number, number] }> {
+  return new Map(world.entities.map((entity) => {
+    const transform = entity.components.Transform;
+    return [entity.id, {
+      ...(transform?.position === undefined ? {} : { position: [...transform.position] as Vec3 }),
+      ...(transform?.rotation === undefined ? {} : { rotation: [...transform.rotation] as [number, number, number, number] }),
+    }];
+  }));
+}
+
+function recordPhysicsTransformWrites(
+  world: IWorldIr,
+  before: ReadonlyMap<string, { position?: Vec3; rotation?: readonly [number, number, number, number] }>,
+  options: { tick?: number; writeLedger?: IRuntimeWriteLedger },
+): void {
+  if (options.writeLedger === undefined) {
+    return;
+  }
+  for (const entity of world.entities) {
+    const previous = before.get(entity.id);
+    const transform = entity.components.Transform;
+    if (previous?.position !== undefined && transform?.position !== undefined && !tupleEqual(previous.position, transform.position)) {
+      options.writeLedger.record({
+        newValue: transform.position,
+        oldValue: previous.position,
+        path: "Transform/position",
+        targetId: entity.id,
+        targetKind: "component",
+        tick: options.tick ?? 0,
+        writer: "physics",
+      });
+    }
+    if (previous?.rotation !== undefined && transform?.rotation !== undefined && !tupleEqual(previous.rotation, transform.rotation)) {
+      options.writeLedger.record({
+        newValue: transform.rotation,
+        oldValue: previous.rotation,
+        path: "Transform/rotation",
+        targetId: entity.id,
+        targetKind: "component",
+        tick: options.tick ?? 0,
+        writer: "physics",
+      });
+    }
+  }
+}
+
+function tupleEqual(left: readonly number[], right: readonly number[]): boolean {
+  return left.length === right.length && left.every((value, index) => value === right[index]);
 }
 
 export function markScriptAuthoredTransform(world: IWorldIr, entity: string): void {

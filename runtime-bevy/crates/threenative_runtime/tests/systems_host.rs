@@ -434,6 +434,32 @@ fn systems_host_should_expose_physics_sensor_service() {
 }
 
 #[test]
+fn systems_host_should_preserve_sensor_phases_across_native_fixed_ticks() {
+    let root = write_physics_sensor_service_bundle("physics-sensor-phases");
+    let mut bundle = load_bundle(&root).expect("scripted bundle should load");
+    let mut state = NativeGameLoopState::default();
+
+    run_native_systems_frame_with_input(
+        &mut bundle,
+        &mut state,
+        loop_options(1.0 / 60.0, 1.0 / 60.0, false),
+        |_bundle, _fixed_delta, _script_posed_entities| {},
+    )
+    .expect("enter tick should run");
+    assert_eq!(bundle.world.resources.get("SensorReport").and_then(|value| value.get("phase")), Some(&serde_json::json!("enter")));
+
+    bundle.world.entities.iter_mut().find(|entity| entity.id == "player").expect("player should exist").components.transform.as_mut().expect("player transform should exist").position = Some([20.0, 0.02, 4.15]);
+    run_native_systems_frame_with_input(
+        &mut bundle,
+        &mut state,
+        loop_options(1.0 / 60.0, 1.0 / 60.0, false),
+        |_bundle, _fixed_delta, _script_posed_entities| {},
+    )
+    .expect("exit tick should run");
+    assert_eq!(bundle.world.resources.get("SensorReport").and_then(|value| value.get("phase")), Some(&serde_json::json!("exit")));
+}
+
+#[test]
 fn systems_host_should_expose_audio_facade() {
     let root = write_audio_facade_service_bundle("audio-facade-context");
     let mut bundle = load_bundle(&root).expect("audio facade bundle should load");
@@ -2024,7 +2050,7 @@ fn write_physics_sensor_service_bundle(name: &str) -> PathBuf {
       "id": "hazard",
       "components": {
         "Transform": { "position": [0.5, 0.72, 4.15], "rotation": [0, 0, 0, 1], "scale": [1, 1, 1] },
-        "Collider": { "kind": "box", "layer": "hazard", "mask": ["player"], "sensor": { "interactionKind": "hazard", "phases": ["enter", "stay"], "trackOccupants": true }, "size": [1.55, 0.2, 0.28], "trigger": true },
+        "Collider": { "kind": "box", "layer": "hazard", "mask": ["player"], "sensor": { "interactionKind": "hazard", "phases": ["enter", "stay", "exit"], "trackOccupants": true }, "size": [1.55, 0.2, 0.28], "trigger": true },
         "RigidBody": { "kind": "kinematic" },
         "KinematicMover": { "axis": "x", "mode": "sine", "radius": 1, "speed": 1 }
       }
@@ -2070,7 +2096,7 @@ fn write_physics_sensor_service_bundle(name: &str) -> PathBuf {
     fs::write(
         root.join("scripts.bundle.js"),
         r#"const system_sensorPhysics = (ctx) => {
-  const result = ctx.physics.sensor({ sensor: "hazard", phases: ["enter", "stay"] });
+  const result = ctx.physics.sensor({ sensor: "hazard", phases: ["enter", "stay", "exit"] });
   const event = result.events[0] || {};
   ctx.resources.set("SensorReport", {
     occupants: event.occupants || [],

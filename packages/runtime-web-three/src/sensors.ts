@@ -15,6 +15,16 @@ export interface IPhysicsSensorEvent {
   step: number;
 }
 
+export interface IPhysicsSensorAdvanceOptions {
+  fixedDelta?: number;
+  tick: number;
+}
+
+export interface IPhysicsSensorRuntimeState {
+  advance(world: IWorldIr, options: IPhysicsSensorAdvanceOptions): IPhysicsSensorEvent[];
+  reset(): void;
+}
+
 interface IBounds {
   center: Vec3;
   halfExtents: Vec3;
@@ -46,6 +56,53 @@ export function tracePhysicsSensors(world: IWorldIr, input: IPhysicsSensorTraceI
     }
   }
   return events.sort((left, right) => left.step - right.step || left.sensor.localeCompare(right.sensor) || left.phase.localeCompare(right.phase));
+}
+
+export function createPhysicsSensorRuntimeState(): IPhysicsSensorRuntimeState {
+  const occupancy = new Map<string, string[]>();
+  let lastTick: number | undefined;
+  let lastEvents: IPhysicsSensorEvent[] = [];
+
+  return {
+    advance(world, options) {
+      const tick = Number.isFinite(options.tick) ? Math.max(0, Math.floor(options.tick)) : 0;
+      if (lastTick === tick) {
+        return cloneEvents(lastEvents);
+      }
+      if (lastTick !== undefined && tick < lastTick) {
+        occupancy.clear();
+      }
+
+      const entities = world.entities.map(cloneEntity);
+      const liveSensors = new Set(entities.filter(isSensor).map((entity) => entity.id));
+      for (const sensor of [...occupancy.keys()]) {
+        if (!liveSensors.has(sensor)) {
+          occupancy.delete(sensor);
+        }
+      }
+
+      const events: IPhysicsSensorEvent[] = [];
+      for (const sensor of entities.filter(isSensor).sort(compareEntities)) {
+        const bounds = entityBounds(sensor);
+        if (bounds === undefined || bounds.sensor === undefined) {
+          continue;
+        }
+        const current = occupantsFor(bounds, entities);
+        const prior = occupancy.get(sensor.id) ?? [];
+        events.push(...phaseEvents(sensor.id, bounds, prior, current, tick));
+        occupancy.set(sensor.id, current.occupants);
+      }
+
+      lastTick = tick;
+      lastEvents = events.sort((left, right) => left.sensor.localeCompare(right.sensor) || left.phase.localeCompare(right.phase));
+      return cloneEvents(lastEvents);
+    },
+    reset() {
+      occupancy.clear();
+      lastTick = undefined;
+      lastEvents = [];
+    },
+  };
 }
 
 function occupantsFor(sensor: IBounds, entities: readonly IWorldEntity[]): { filteredOut: string[]; occupants: string[] } {
@@ -156,6 +213,10 @@ function passesFilter(left: IBounds, right: IBounds): boolean {
 
 function cloneEntity(entity: IWorldEntity): IWorldEntity {
   return JSON.parse(JSON.stringify(entity)) as IWorldEntity;
+}
+
+function cloneEvents(events: readonly IPhysicsSensorEvent[]): IPhysicsSensorEvent[] {
+  return events.map((event) => ({ ...event, filteredOut: [...event.filteredOut], occupants: [...event.occupants] }));
 }
 
 function compareEntities(left: IWorldEntity, right: IWorldEntity): number {

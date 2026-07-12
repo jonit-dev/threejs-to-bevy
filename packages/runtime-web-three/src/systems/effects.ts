@@ -11,6 +11,8 @@ import {
 } from "./context.js";
 import type { ISystemEffectLogEntry } from "./log.js";
 import { markScriptAuthoredTransform } from "../physics.js";
+import type { IRuntimeWriteLedger } from "./writeAudit.js";
+import type { RuntimeWriteWriter } from "@threenative/ir";
 
 export interface ISystemEffects {
   commands: ReadonlyArray<IQueuedCommand>;
@@ -23,10 +25,11 @@ export function applySystemEffects(
   world: IWorldIr,
   system: IIrSystemDeclaration,
   effects: ISystemEffects,
-  options: { frame: number; prefabs?: IPrefabsIr; tick: number },
+  options: { frame: number; prefabs?: IPrefabsIr; tick: number; writeLedger?: IRuntimeWriteLedger; writer?: RuntimeWriteWriter },
 ): { diagnostics: IRuntimeDiagnostic[]; entries: ISystemEffectLogEntry[] } {
   const diagnostics = validateSystemEffects(system, effects);
   const entries = systemEffectLogEntries(system, effects, options);
+  recordSystemWrites(options.writeLedger, world, system, effects, options.tick, diagnostics.some((diagnostic) => diagnostic.severity === "error"), options.writer ?? "script");
   if (diagnostics.some((diagnostic) => diagnostic.severity === "error")) {
     return { diagnostics, entries };
   }
@@ -35,6 +38,69 @@ export function applySystemEffects(
   applyCommands(world, effects.commands, options.prefabs);
   markScriptAuthoredTransformWrites(world, effects.commands);
   return { diagnostics, entries };
+}
+
+function recordSystemWrites(
+  ledger: IRuntimeWriteLedger | undefined,
+  world: IWorldIr,
+  system: IIrSystemDeclaration,
+  effects: ISystemEffects,
+  tick: number,
+  dropped: boolean,
+  writer: RuntimeWriteWriter,
+): void {
+  if (ledger === undefined) {
+    return;
+  }
+  for (const command of effects.commands) {
+    if (command.component === undefined || command.entity === "") {
+      continue;
+    }
+    const current = world.entities.find((entity) => entity.id === command.entity)?.components[command.component];
+    const commandValue = command.value ?? command.components;
+    for (const field of writeFields(commandValue)) {
+      const oldValue = isRecord(current) ? current[field] : current;
+      const newValue = isRecord(commandValue) ? commandValue[field] : commandValue;
+      ledger.record({
+        disposition: dropped ? "dropped" : undefined,
+        newValue,
+        oldValue,
+        path: `${command.component}/${field}`,
+        schedule: system.schedule,
+        system: system.name,
+        targetId: command.entity,
+        targetKind: "component",
+        tick,
+        writer,
+      });
+    }
+  }
+  for (const resource of effects.resources) {
+    const current = world.resources?.[resource.resource];
+    for (const field of writeFields(resource.value)) {
+      const oldValue = isRecord(current) ? current[field] : current;
+      const newValue = isRecord(resource.value) ? resource.value[field] : resource.value;
+      ledger.record({
+        disposition: dropped ? "dropped" : undefined,
+        newValue,
+        oldValue,
+        path: field,
+        schedule: system.schedule,
+        system: system.name,
+        targetId: resource.resource,
+        targetKind: "resource",
+        tick,
+        writer,
+      });
+    }
+  }
+}
+
+function writeFields(value: unknown): string[] {
+  if (isRecord(value)) {
+    return Object.keys(value).sort();
+  }
+  return ["$"];
 }
 
 function markScriptAuthoredTransformWrites(world: IWorldIr, commands: ReadonlyArray<IQueuedCommand>): void {

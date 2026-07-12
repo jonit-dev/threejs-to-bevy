@@ -5,7 +5,7 @@ import { ScriptAudioRuntimeController, type IScriptAudioPlayOptions } from "../a
 import { traceCharacterControllers, type ICharacterTraceObservation } from "../character.js";
 import type { IWebInputState } from "../input.js";
 import { queryNavigationPath, type INavigationPathRequest, type INavigationPathResult } from "../navigation.js";
-import { tracePhysicsSensors, type IPhysicsSensorEvent } from "../sensors.js";
+import { createPhysicsSensorRuntimeState, type IPhysicsSensorEvent } from "../sensors.js";
 import type { IRenderedUi } from "../ui/renderUi.js";
 import { animationPlayPayload, animationQueryPayload, animationStopPayload } from "./services/animation.js";
 import { audioPlayPayload, audioQueryPayload, audioStopPayload } from "./services/audio.js";
@@ -24,6 +24,7 @@ import {
 } from "./services/physics.js";
 import type { IComponentDiffCache } from "./componentDiff.js";
 import { createScriptUiState } from "./contextUi.js";
+import { createRuntimeWriteLedger } from "./writeAudit.js";
 import type {
   IAssetLoadResult,
   ICharacterMoveRequest,
@@ -83,7 +84,7 @@ export function createWebSystemRuntimeState(
   options: { assets?: IAssetsManifest; audio?: import("@threenative/ir").IAudioIr },
 ) {
   const seed = randomSeed(world);
-  return {
+  const runtimeState = {
     animations: new AnimationRuntimeController(),
     assets: options.assets,
     audio: options.audio,
@@ -92,7 +93,44 @@ export function createWebSystemRuntimeState(
     random: createDeterministicRandom(seed),
     randomSeedKey: runtimeSeedKey(seed),
     scriptAudio: new ScriptAudioRuntimeController(options.audio),
+    sensors: createPhysicsSensorRuntimeState(),
+    writeLedger: createRuntimeWriteLedger(),
   };
+  recordInitialRuntimeWrites(world, runtimeState.writeLedger);
+  return runtimeState;
+}
+
+function recordInitialRuntimeWrites(world: IWorldIr, ledger: ReturnType<typeof createRuntimeWriteLedger>): void {
+  for (const entity of world.entities) {
+    for (const [component, value] of Object.entries(entity.components)) {
+      for (const field of writeFields(value)) {
+        ledger.record({
+          newValue: isRecord(value) ? value[field] : value,
+          path: `${component}/${field}`,
+          schedule: "startup",
+          system: "initial-ir",
+          targetId: entity.id,
+          targetKind: "component",
+          tick: 0,
+          writer: "initial-ir",
+        });
+      }
+    }
+  }
+  for (const [resource, value] of Object.entries(world.resources ?? {})) {
+    for (const field of writeFields(value)) {
+      ledger.record({
+        newValue: isRecord(value) ? value[field] : value,
+        path: field,
+        schedule: "startup",
+        system: "initial-ir",
+        targetId: resource,
+        targetKind: "resource",
+        tick: 0,
+        writer: "initial-ir",
+      });
+    }
+  }
 }
 
 export interface IResourceObservation {
@@ -155,6 +193,7 @@ export function createSystemContext(
   const animations = options.runtimeState?.animations ?? new AnimationRuntimeController();
   const scriptAudio = options.runtimeState?.scriptAudio ?? new ScriptAudioRuntimeController(options.audio);
   const particles = options.runtimeState?.particles ?? new ParticleRuntimeController(options.assets);
+  const sensors = options.runtimeState?.sensors ?? createPhysicsSensorRuntimeState();
   const persistence = options.persistence ?? createWebPersistenceService(options.localData ?? emptyLocalData());
   const ui = options.uiState ?? createScriptUiState(options.ui);
   const delayedScheduler = createDelayedScheduler(options.delayedCommands ?? [], {
@@ -669,7 +708,9 @@ export function createSystemContext(
         sensor(serviceOptions = {}) {
           const request = cloneValue(serviceOptions) as IPhysicsSensorRequest;
           const result: IPhysicsSensorResult = {
-            events: tracePhysicsSensors(world, { phases: request.phases, steps: 1 }).filter((event) => request.sensor === undefined || event.sensor === request.sensor),
+            events: sensors.advance(world, { fixedDelta: options.fixedDelta, tick: options.tick ?? 0 })
+              .filter((event) => request.sensor === undefined || event.sensor === request.sensor)
+              .filter((event) => request.phases === undefined || request.phases.includes(event.phase)),
           };
           services.push({ payload: { request, result }, service: "physics.sensor" });
           return cloneValue(result) as IPhysicsSensorResult;
@@ -1192,6 +1233,10 @@ function delayedCommandOwnerActive(world: IWorldIr, command: IWebDelayedCommand,
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function writeFields(value: unknown): string[] {
+  return isRecord(value) ? Object.keys(value).sort() : ["$"];
 }
 
 export function applyCommands(world: IWorldIr, commands: ReadonlyArray<IQueuedCommand>, prefabs?: IPrefabsIr): void {

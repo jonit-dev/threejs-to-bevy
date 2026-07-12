@@ -43,6 +43,38 @@ test("should expose fixed input trace", () => {
   assert.equal(context.time.time, 0);
 });
 
+test("should return one sensor snapshot to every reader in a tick", () => {
+  const world: IWorldIr = {
+    entities: [
+      {
+        components: {
+          Collider: { kind: "box", layer: "sensor", mask: ["player"], sensor: { phases: ["enter", "stay", "exit"], trackOccupants: true }, size: [2, 2, 2] },
+          Transform: { position: [0, 0, 0] },
+        },
+        id: "zone",
+      },
+      {
+        components: {
+          Collider: { kind: "box", layer: "player", size: [1, 1, 1] },
+          RigidBody: { kind: "kinematic", velocity: [1.1, 0, 0] },
+          Transform: { position: [-1.5, 0, 0] },
+        },
+        id: "player",
+      },
+    ],
+    schema: "threenative.world",
+    version: "0.1.0",
+  };
+  const runtimeState = createWebSystemRuntimeState(world, {});
+  const first = createSystemContext(world, { delta: 1, fixedDelta: 1, runtimeState, tick: 1 }).context.physics.sensor();
+  const second = createSystemContext(world, { delta: 1, fixedDelta: 1, runtimeState, tick: 1 }).context.physics.sensor();
+  const next = createSystemContext(world, { delta: 1, fixedDelta: 1, runtimeState, tick: 2 }).context.physics.sensor();
+
+  assert.deepEqual(first, second);
+  assert.deepEqual(first.events.map((event) => event.phase), ["enter"]);
+  assert.deepEqual(next.events.map((event) => event.phase), ["stay"]);
+});
+
 test("should look up entities by id deterministically", () => {
   const { context } = createSystemContext(makeWorld(), { delta: 0.016, fixedDelta: 0.016 });
 

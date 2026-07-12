@@ -36,6 +36,7 @@ declare global {
     resetPerformanceTrace?(): void;
     runtimeObservationSnapshot?(): unknown;
     runtimeDiagnosticsSnapshot?(): unknown;
+    writeAuditSnapshot?(): unknown;
     setEntityTransform?(id: string, transform: { position?: Vec3; rotation?: [number, number, number, number]; scale?: Vec3 }): boolean;
     uiNodeSnapshot?(id: string): unknown;
   } | undefined;
@@ -132,6 +133,7 @@ export interface IPlaytestReport {
   distance: number;
   entity: string;
   effectLog?: unknown;
+  writeAudit?: unknown;
   expectAxis?: string;
   expectMoved: boolean;
   follow?: IPlaytestFollowReport;
@@ -168,6 +170,7 @@ export interface IPlaytestRunOptions {
   movementThreshold: number;
   nativeRecording: boolean;
   nativeScreenshots: boolean;
+  auditWrites?: boolean;
   press: string;
   projectPath: string;
   quiet?: boolean;
@@ -215,6 +218,7 @@ export async function playtestCommand(
   const suggestScenario = readFlag(normalizedArgv, "--suggest-scenario");
   const watchMode = normalizedArgv.includes("--watch");
   const effectsMode = readFlag(normalizedArgv, "--effects");
+  const auditWrites = normalizedArgv.includes("--audit-writes");
   const includeEffectsStdout = effectsMode === "stdout" || normalizedArgv.includes("--verbose-effects");
   if (effectsMode !== undefined && !["artifact", "artifacts", "stdout"].includes(effectsMode)) {
     return diagnosticResult(
@@ -376,6 +380,7 @@ export async function playtestCommand(
       movementThreshold: primary.movementThreshold,
       nativeRecording,
       nativeScreenshots,
+      auditWrites,
       press: primary.press ?? "",
       projectPath,
       quiet: json,
@@ -391,7 +396,7 @@ export async function playtestCommand(
       pass: report.pass && !hasErrors,
     };
     const proofMetadata = await buildProofArtifactMetadata({
-      commandParameters: { command: "tn playtest", debugColliders, entity: primary.entityId, expectAxis: primary.expectAxis, expectMoved: primary.expectMoved, follow: primary.follow?.entityId, followWithin: primary.follow?.within, frames: primary.frames, movementThreshold: primary.movementThreshold, nativeRecording, nativeScreenshots, press: primary.press, scenario: scenarioPath, target: scenario.target },
+      commandParameters: { auditWrites, command: "tn playtest", debugColliders, entity: primary.entityId, expectAxis: primary.expectAxis, expectMoved: primary.expectMoved, follow: primary.follow?.entityId, followWithin: primary.follow?.within, frames: primary.frames, movementThreshold: primary.movementThreshold, nativeRecording, nativeScreenshots, press: primary.press, scenario: scenarioPath, target: scenario.target },
       projectPath,
     });
     const reportWithMetadata: IPlaytestReport = {
@@ -599,6 +604,7 @@ async function runNativePlaytest(options: IPlaytestRunOptions, bevyRunner: BevyR
   );
   const runtimeDiagnostics = { nativeFrameSamples, readiness: readinessSamples, resources: nativeRuntimeResources(readinessSamples) };
   const effectLog = nativeSceneQueryEffectLog(readinessSamples);
+  const writeAudit = options.auditWrites ? nativeRuntimeWriteAudit(readinessSamples) : undefined;
   diagnostics.push(...resourceObservationDiagnostics(diagnostics, runtimeDiagnostics));
   const hasErrors = diagnostics.some((diagnostic) => diagnostic.severity === "error");
   return {
@@ -618,6 +624,7 @@ async function runNativePlaytest(options: IPlaytestRunOptions, bevyRunner: BevyR
     ...(movementDelta === undefined ? {} : { movementDelta }),
     movementThreshold: options.movementThreshold,
     nativeRecording,
+    ...(writeAudit === undefined ? {} : { writeAudit }),
     observations: {
       console: [],
       effectLog,
@@ -651,6 +658,18 @@ function nativeRuntimeResources(readinessSamples: readonly Record<string, unknow
     }
   }
   return { declared: [...declared].sort(), observations };
+}
+
+function nativeRuntimeWriteAudit(readinessSamples: readonly Record<string, unknown>[]): Record<string, unknown> {
+  const latest = readinessSamples.at(-1);
+  if (isRecord(latest?.writeAudit)) {
+    return latest.writeAudit;
+  }
+  return {
+    observations: [],
+    schema: "threenative.runtime-write-audit",
+    version: "0.1.0",
+  };
 }
 
 function nativeResourceSnapshotsNearTick(samples: readonly Record<string, unknown>[], ids: readonly string[], tick: number, mode: "after" | "before"): Record<string, unknown> {
@@ -1098,6 +1117,7 @@ async function probePreview(options: IPlaytestRunOptions & { url: string }): Pro
     const effectLog = await readEffectLog(page);
     const runtimeDiagnostics = await readRuntimeDiagnostics(page);
     const runtimeObservations = await readWebRuntimeObservations(page);
+    const writeAudit = options.auditWrites === true ? await readWebWriteAudit(page) : undefined;
     const performanceSnapshot = await readWebPerformanceSnapshot(page);
     const performance = webPerformanceReport(performanceSnapshot);
     const observations: IPlaytestObservations = {
@@ -1115,6 +1135,9 @@ async function probePreview(options: IPlaytestRunOptions & { url: string }): Pro
     await writeFile(resolve(options.artifactDirectory, "network.json"), `${JSON.stringify(networkEntries, null, 2)}\n`, "utf8");
     await writeFile(resolve(options.artifactDirectory, "effect-log.json"), `${JSON.stringify(effectLog ?? {}, null, 2)}\n`, "utf8");
     await writeFile(resolve(options.artifactDirectory, "runtime-trace.json"), `${JSON.stringify({ diagnostics: runtimeDiagnostics ?? {}, performance: performanceSnapshot ?? null }, null, 2)}\n`, "utf8");
+    if (writeAudit !== undefined) {
+      await writeFile(resolve(options.artifactDirectory, "write-audit.json"), `${JSON.stringify(writeAudit, null, 2)}\n`, "utf8");
+    }
     const artifactSize = await stat(artifact);
     if (artifactSize.size === 0) {
       diagnostics.push({ code: "TN_PLAYTEST_SCREENSHOT_EMPTY", message: "Playtest screenshot artifact is empty.", severity: "warning" });
@@ -1163,6 +1186,7 @@ async function probePreview(options: IPlaytestRunOptions & { url: string }): Pro
       distance,
       entity: options.entityId,
       effectLog,
+      ...(writeAudit === undefined ? {} : { writeAudit }),
       ...(options.expectAxis === undefined ? {} : { expectAxis: options.expectAxis }),
       expectMoved: options.expectMoved,
       ...(follow === undefined ? {} : { follow }),
@@ -1423,6 +1447,10 @@ async function readRuntimeDiagnostics(page: { evaluate<T>(fn: () => T): Promise<
 
 async function readWebRuntimeObservations(page: { evaluate<T>(fn: () => T): Promise<T> }): Promise<unknown> {
   return page.evaluate(() => globalThis.__THREENATIVE_RUNTIME__?.runtimeObservationSnapshot?.() ?? null);
+}
+
+async function readWebWriteAudit(page: { evaluate<T>(fn: () => T): Promise<T> }): Promise<unknown> {
+  return page.evaluate(() => globalThis.__THREENATIVE_RUNTIME__?.writeAuditSnapshot?.() ?? null);
 }
 
 async function readWebPerformanceSnapshot(page: { evaluate<T>(fn: () => T): Promise<T> }): Promise<unknown> {

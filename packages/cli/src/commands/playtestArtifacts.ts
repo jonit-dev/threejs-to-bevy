@@ -21,6 +21,7 @@ export interface IPlaytestArtifactBundle {
   runtimeObservations: string;
   runtimeTrace: string;
   summary: string;
+  writeAudit?: string;
 }
 
 export interface IPlaytestSummary {
@@ -111,6 +112,7 @@ export async function writePlaytestArtifactBundle(options: {
     runtimeObservations: resolve(options.runDirectory, "runtime-observations.json"),
     runtimeTrace: resolve(options.runDirectory, "runtime-trace.json"),
     summary: resolve(options.runDirectory, "summary.json"),
+    ...(options.report.writeAudit === undefined ? {} : { writeAudit: resolve(options.runDirectory, "write-audit.json") }),
   };
   await writeJsonIfMissing(artifacts.console, []);
   await writeJsonIfMissing(artifacts.network, []);
@@ -118,6 +120,9 @@ export async function writePlaytestArtifactBundle(options: {
     performance: options.report.performance ?? null,
     runtimeDiagnostics: options.report.observations?.runtimeDiagnostics ?? null,
   });
+  if (artifacts.writeAudit !== undefined) {
+    await writeJson(artifacts.writeAudit, options.report.writeAudit);
+  }
   await writeJsonIfMissing(artifacts.effectLog, options.report.effectLog ?? {});
   await writeJson(artifacts.nativeFrameSamples, nativeFrameSamples(options.report) ?? { samples: [], summaries: {} });
   await writeJson(artifacts.observations, {

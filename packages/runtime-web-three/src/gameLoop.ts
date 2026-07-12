@@ -5,6 +5,7 @@ import { applyAnimationServiceEffects, syncMeshRendererMaterials, syncTransforms
 import { stepKinematicMovers } from "./kinematicMover.js";
 import { stepPhysics } from "./physics.js";
 import { runSchedule, type ISystemModule } from "./systems/runner.js";
+import { webSystemRuntimeStateFor } from "./systems/context.js";
 import type { ISystemEffectLog } from "./systems/log.js";
 import type { IResourceObservation } from "./systems/context.js";
 import type { IRenderedUi } from "./ui/renderUi.js";
@@ -59,6 +60,7 @@ export async function runGameFrame(options: {
   mapped: IThreeWorld;
   module: ISystemModule;
   resourceObservations?: IResourceObservation[];
+  runtimeState?: ReturnType<typeof webSystemRuntimeStateFor>;
   runtimeConfig?: IRuntimeConfigIr;
   state?: IGameLoopState;
   systems: ISystemsIr;
@@ -68,6 +70,7 @@ export async function runGameFrame(options: {
 }): Promise<void> {
   const fixedDelta = options.fixedDelta ?? options.runtimeConfig?.time.fixedDelta ?? 1 / 60;
   const frameDelta = Math.min(Math.max(options.delta, 0), 0.25);
+  const runtimeState = options.runtimeState ?? webSystemRuntimeStateFor(options.world, { assets: options.assets });
   options.input?.beginFrame();
   const state = options.state;
   if (state !== undefined) {
@@ -76,16 +79,17 @@ export async function runGameFrame(options: {
       state.accumulator += frameDelta;
       state.accumulator = Math.min(state.accumulator, fixedDelta * MAX_FIXED_STEPS_PER_FRAME);
       if (!state.startupComplete) {
-        collectSystemResult(options.mapped, await runSchedule({ ...options, delta: 0, elapsed: state.elapsed, fixedDelta, frame: state.frame, paused: state.paused, schedule: "startup", tick: state.tick }));
+        collectSystemResult(options.mapped, await runSchedule({ ...options, delta: 0, elapsed: state.elapsed, fixedDelta, frame: state.frame, paused: state.paused, runtimeState, schedule: "startup", tick: state.tick }));
         state.startupComplete = true;
       }
       while (state.accumulator >= fixedDelta) {
         const beforeFixed = snapshotWorldTransforms(options.world);
         stepKinematicMovers(options.world, state.elapsed);
-        stepPhysics(options.world, fixedDelta, options.environmentScene);
+        stepPhysics(options.world, fixedDelta, options.environmentScene, { tick: state.tick, writeLedger: runtimeState.writeLedger });
+        runtimeState.sensors.advance(options.world, { fixedDelta, tick: state.tick });
         collectSystemResult(
           options.mapped,
-          await runSchedule({ ...options, delta: fixedDelta, elapsed: state.elapsed, fixedDelta, frame: state.frame, paused: state.paused, schedule: "fixedUpdate", tick: state.tick }),
+          await runSchedule({ ...options, delta: fixedDelta, elapsed: state.elapsed, fixedDelta, frame: state.frame, paused: state.paused, runtimeState, schedule: "fixedUpdate", tick: state.tick }),
         );
         recordFixedTransformStep(state, beforeFixed, snapshotWorldTransforms(options.world));
         state.tick += 1;
@@ -94,20 +98,21 @@ export async function runGameFrame(options: {
       const rawBeforeVariable = snapshotWorldTransforms(options.world);
       const overlaidEntities = overlayInterpolatedFixedTransforms(options.world, state, fixedDelta);
       const beforeVariable = snapshotWorldTransforms(options.world);
-      collectSystemResult(options.mapped, await runSchedule({ ...options, elapsed: state.elapsed, fixedDelta, frame: state.frame, paused: state.paused, schedule: "update", tick: state.tick }));
-      collectSystemResult(options.mapped, await runSchedule({ ...options, elapsed: state.elapsed, fixedDelta, frame: state.frame, paused: state.paused, schedule: "postUpdate", tick: state.tick }));
+      collectSystemResult(options.mapped, await runSchedule({ ...options, elapsed: state.elapsed, fixedDelta, frame: state.frame, paused: state.paused, runtimeState, schedule: "update", tick: state.tick }));
+      collectSystemResult(options.mapped, await runSchedule({ ...options, elapsed: state.elapsed, fixedDelta, frame: state.frame, paused: state.paused, runtimeState, schedule: "postUpdate", tick: state.tick }));
       const afterVariable = snapshotWorldTransforms(options.world);
       restoreUnwrittenFixedTransforms(options.world, rawBeforeVariable, beforeVariable, afterVariable, overlaidEntities);
       removeVariableTransformWrites(state, beforeVariable, afterVariable);
     }
     state.frame += 1;
   } else {
-    collectSystemResult(options.mapped, await runSchedule({ ...options, delta: 0, fixedDelta, frame: 0, schedule: "startup", tick: 0 }));
+    collectSystemResult(options.mapped, await runSchedule({ ...options, delta: 0, fixedDelta, frame: 0, runtimeState, schedule: "startup", tick: 0 }));
     stepKinematicMovers(options.world, fixedDelta);
-    stepPhysics(options.world, fixedDelta, options.environmentScene);
-    collectSystemResult(options.mapped, await runSchedule({ ...options, fixedDelta, frame: 0, schedule: "fixedUpdate", tick: 0 }));
-    collectSystemResult(options.mapped, await runSchedule({ ...options, fixedDelta, frame: 0, schedule: "update", tick: 0 }));
-    collectSystemResult(options.mapped, await runSchedule({ ...options, fixedDelta, frame: 0, schedule: "postUpdate", tick: 0 }));
+    stepPhysics(options.world, fixedDelta, options.environmentScene, { tick: 0, writeLedger: runtimeState.writeLedger });
+    runtimeState.sensors.advance(options.world, { fixedDelta, tick: 0 });
+    collectSystemResult(options.mapped, await runSchedule({ ...options, fixedDelta, frame: 0, runtimeState, schedule: "fixedUpdate", tick: 0 }));
+    collectSystemResult(options.mapped, await runSchedule({ ...options, fixedDelta, frame: 0, runtimeState, schedule: "update", tick: 0 }));
+    collectSystemResult(options.mapped, await runSchedule({ ...options, fixedDelta, frame: 0, runtimeState, schedule: "postUpdate", tick: 0 }));
   }
   if (options.mapped.reconcile !== undefined) {
     options.mapped.reconcile(options.world);

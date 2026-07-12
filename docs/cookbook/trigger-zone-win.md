@@ -48,6 +48,11 @@ export const triggerZoneWin = defineBehavior(
 );
 ```
 
+`TriggerEx.entered` is a compatibility wrapper and is deprecated for one
+release cycle. New scripts should read the runtime-owned phases directly with
+`context.physics.sensor({ sensor: "goal", phases: ["enter"] })` so the same
+enter/stay/exit state is shared by every reader in a fixed tick.
+
 ## proof
 ```bash
 tn authoring validate --project . --json

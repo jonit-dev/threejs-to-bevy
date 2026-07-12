@@ -31,6 +31,8 @@ pub struct NativeSystemContextSnapshot {
     pub plugin_groups: Vec<NativePluginGroupDeclaration>,
     pub plugins: Vec<NativePluginDeclaration>,
     pub resources: BTreeMap<String, Value>,
+    #[serde(rename = "sensorEvents", skip_serializing_if = "Vec::is_empty")]
+    pub sensor_events: Vec<Value>,
     #[serde(rename = "runtimeChanged", skip_serializing_if = "BTreeMap::is_empty")]
     pub runtime_changed: BTreeMap<String, Vec<String>>,
     pub states: BTreeMap<String, Option<String>>,
@@ -279,6 +281,20 @@ pub fn build_system_context_snapshot_with_events_input_and_diff(
     input: Option<&NativeInputState>,
     diff_cache: Option<&ComponentDiffCache>,
 ) -> NativeSystemContextSnapshot {
+    build_system_context_snapshot_with_sensor_events(
+        bundle, system, time, events, input, diff_cache, &[],
+    )
+}
+
+pub fn build_system_context_snapshot_with_sensor_events(
+    bundle: &LoadedBundle,
+    system: &SystemIr,
+    time: NativeSystemTimeSnapshot,
+    events: BTreeMap<String, Vec<Value>>,
+    input: Option<&NativeInputState>,
+    diff_cache: Option<&ComponentDiffCache>,
+    sensor_events: &[Value],
+) -> NativeSystemContextSnapshot {
     let readable_components = readable_components(system);
     let entities = bundle
         .world
@@ -334,6 +350,7 @@ pub fn build_system_context_snapshot_with_events_input_and_diff(
             .iter()
             .map(|(key, value)| (key.clone(), value.clone()))
             .collect(),
+        sensor_events: sensor_events.to_vec(),
         runtime_changed: diff_cache
             .map(|cache| cache.runtime_changed_map(bundle))
             .unwrap_or_default(),

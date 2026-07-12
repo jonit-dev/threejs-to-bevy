@@ -8,6 +8,7 @@ import { ShaderPass } from "three/examples/jsm/postprocessing/ShaderPass.js";
 import { SSRPass } from "three/examples/jsm/postprocessing/SSRPass.js";
 import { UnrealBloomPass } from "three/examples/jsm/postprocessing/UnrealBloomPass.js";
 import type { IAssetsManifest, IAtmosphereProfileIr, ICameraClear, IMaterialsIr, IRuntimeConfigIr, IWorldIr, RenderLookProfileName } from "@threenative/ir";
+import { serializeRuntimeWriteAudit } from "@threenative/ir/runtimeDiagnostics";
 import { resolveRenderLookProfile, resolveRenderLookShadowProfile } from "@threenative/ir/runtimeConfig";
 import type { IWebBundle } from "./webBundle.js";
 import {
@@ -38,7 +39,7 @@ import { hasKinematicMovers, stepKinematicMovers } from "./kinematicMover.js";
 import { loadSystemModuleUrl } from "./systems/moduleLoaderUrl.js";
 import type { ISystemModule } from "./systems/runner.js";
 import { createSystemEffectLog, type ISystemEffectLog } from "./systems/log.js";
-import type { IResourceObservation } from "./systems/context.js";
+import { webSystemRuntimeStateFor, type IResourceObservation } from "./systems/context.js";
 import { createUiDomOverlay } from "./ui/domOverlay.js";
 import { renderUi, type IRenderedUi, type IRenderedUiNode } from "./ui/renderUi.js";
 import { createWebAudioElementSink, createWebAudioRuntime } from "./audio.js";
@@ -60,6 +61,7 @@ export interface IRenderResult {
   renderer: THREE.WebGLRenderer;
   resourceSnapshot(id: string): unknown;
   runtimeObservationSnapshot(): IWebRuntimeProbeObservations;
+  writeAuditSnapshot(): ReturnType<typeof serializeRuntimeWriteAudit>;
   runtimeDiagnostics: IWebRuntimeDiagnostics;
   runtimeDiagnosticsSnapshot(): IWebRuntimeDiagnostics;
   setEntityTransform(id: string, transform: IWebRuntimeTransformPatch): boolean;
@@ -320,6 +322,7 @@ export async function renderLoadedBundle(bundle: IWebBundle, container: HTMLElem
   exposeDebugSceneSnapshot(mapped.scene);
   const input = createInputState(bundle.input);
   const loopState = createGameLoopState(bundle.runtimeConfig);
+  const runtimeState = webSystemRuntimeStateFor(bundle.world, { assets: bundle.assets, audio: bundle.audio });
   const effectLog = createSystemEffectLog();
   const resourceObservations: IResourceObservation[] = [];
   const systemModule = await (options.systemModuleLoader ?? loadSystemModuleUrl)(source, bundle.manifest);
@@ -406,6 +409,7 @@ export async function renderLoadedBundle(bundle: IWebBundle, container: HTMLElem
         mapped,
         module: systemModule,
         resourceObservations,
+        runtimeState,
         runtimeConfig: bundle.runtimeConfig,
         state: loopState,
         systems: bundle.systems,
@@ -469,6 +473,7 @@ export async function renderLoadedBundle(bundle: IWebBundle, container: HTMLElem
             mapped,
             module: systemModule,
             resourceObservations,
+            runtimeState,
             runtimeConfig: bundle.runtimeConfig,
             state: loopState,
             systems: bundle.systems,
@@ -532,6 +537,9 @@ export async function renderLoadedBundle(bundle: IWebBundle, container: HTMLElem
     },
     runtimeObservationSnapshot() {
       return collectWebRuntimeProbeObservations(bundle);
+    },
+    writeAuditSnapshot() {
+      return serializeRuntimeWriteAudit(runtimeState.writeLedger.observations());
     },
     runtimeDiagnostics: collectWebRuntimeDiagnostics(mapped, bundle, resourceObservations),
     runtimeDiagnosticsSnapshot() {

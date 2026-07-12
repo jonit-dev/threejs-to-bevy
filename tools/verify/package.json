@@ -23,6 +23,8 @@
   "devDependencies": {
     "@threenative/authoring": "workspace:*",
     "@threenative/cli": "workspace:*",
+    "@threenative/ir": "workspace:*",
+    "@threenative/runtime-web-three": "workspace:*",
     "@types/node": "^20.19.25",
     "playwright": "^1.60.0"
   }
