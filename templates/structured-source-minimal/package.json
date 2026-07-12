@@ -1,0 +1,31 @@
+{
+  "name": "threenative-structured-source-minimal",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "tn": "node bin/tn",
+    "build": "tn build",
+    "dev:web": "tn dev --target web",
+    "iterate": "tn iterate --project . --json",
+    "playtest": "tn playtest --scenario playtests/empty-scene-smoke.playtest.json --stable-artifacts --json",
+    "game:plan": "tn game plan --goal \"describe the intended game\" --project . --json",
+    "game:improve": "tn game improve --apply-plan artifacts/game-production/plan.json --project . --json",
+    "game:score": "tn game score --project . --json",
+    "game:qa": "tn game qa --project . --run-proof --json",
+    "game:release": "tn game release --project . --json",
+    "types": "tn types generate --project . --json",
+    "typecheck": "tn types generate --project . --json && tsc -p tsconfig.json --noEmit",
+    "validate": "tn validate",
+    "validate:authoring": "tn authoring validate --json",
+    "verify": "tn verify --frames 2 --json"
+  },
+  "dependencies": {
+    "@threenative/script-stdlib": "workspace:*",
+    "@threenative/sdk": "workspace:*"
+  },
+  "devDependencies": {
+    "@threenative/cli": "workspace:*",
+    "@types/node": "^20.19.25",
+    "typescript": "^5.9.3"
+  }
+}

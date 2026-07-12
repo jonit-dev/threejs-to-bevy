@@ -33,6 +33,7 @@ const REQUIRED_PROOF_COMMANDS = [
 ] as const;
 
 interface TemplateManifest {
+  baseline: "minimal" | "production";
   directoryName: string;
   generatedFiles: string[];
   instructionFiles: string[];
@@ -190,7 +191,7 @@ async function templateDiagnosticsFor(
   if (!isRecord(agent)
     || !isRecord(agent.sourceShape)
     || !hasNonEmptyArray(agent.highValueSurfaces)
-    || !hasNonEmptyArray(agent.scriptModules)
+    || (manifest?.baseline !== "minimal" && !hasNonEmptyArray(agent.scriptModules))
     || !hasNonEmptyArray(agent.uiStates)
     || !hasStringArray(agent.proofCommands)
   ) {
@@ -352,6 +353,7 @@ async function readTemplateManifest(directoryName: string, path: string): Promis
     return undefined;
   }
   return {
+    baseline: parsed.baseline === "minimal" ? "minimal" : "production",
     directoryName,
     generatedFiles: stringArrayOrEmpty(parsed.generatedFiles),
     instructionFiles: stringArrayOrEmpty(parsed.instructionFiles),

@@ -47,8 +47,6 @@ ${compactInterface("ScriptTransformFacade", transform)}
   \`content/**/*.json\`.
 - Refresh project types with \`tn types generate --project . --json\`; \`tn build\`
   and \`tn dev --watch\` do this automatically.
-- Type entrypoints with generated \`ProjectContext\` from
-  \`.threenative/types/project-context\`.
 - Prefer \`defineBehavior(metadata, fn)\` for new systems. Put schedule,
   access, services, and query metadata in code; keep systems JSON as
   module/export attachments.
@@ -61,12 +59,9 @@ ${compactInterface("ScriptTransformFacade", transform)}
   \`writes: ["MeshRenderer"]\` in \`defineBehavior\`; transform movement declares
   \`writes: ["Transform"]\`. \`writes\` are component names, not entity IDs.
 - Use \`context.time.fixedDelta\` for deterministic fixed-step movement.
-- Supported helper imports: \`Mathf\`, \`Vector2\`, \`Vector3\`, \`Quat\`,
-  \`TransformMath\`, \`Bounds2\`, \`Bounds3\`, \`Ease\`, \`RandomEx\`,
-  \`ColorEx\`, \`TextEx\`, \`InputEx\`, \`MotionEx\`, \`TimerEx\`,
-  \`ArrayEx\`, and \`CameraMath\` from \`@threenative/script-stdlib\`.
-  Legacy aliases \`NumberEx\`, \`Vec2\`, and \`Vec3\` remain supported for one
-  compatibility cycle.
+- Import portable helpers such as \`Mathf\`, \`Vector2\`, \`Vector3\`, \`Quat\`,
+  \`MaterialEx\`, and \`CameraMath\` from \`@threenative/script-stdlib\`.
+- Legacy aliases \`NumberEx\`, \`Vec2\`, and \`Vec3\` remain supported.
 - Do not import DOM, Node, filesystem, timer, network, Three.js, or Bevy APIs
   from portable scripts.
 
@@ -83,8 +78,6 @@ ${compactInterface("ScriptTransformFacade", transform)}
 - Typed spec: \`src/game.spec.ts\` is compiled by
   \`tn authoring compile-typed-spec --json\`; HUD bindings use
   \`{ node, resource: "GameState", fields: ["scoreText"] }\`.
-- Assets/materials/meshes stay in \`content/assets\`, \`content/materials\`,
-  and \`content/meshes\`; preserve stable IDs and schema fields.
 
 ## Actor Shortcuts
 

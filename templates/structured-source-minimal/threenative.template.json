@@ -1,0 +1,19 @@
+{
+  "schema": "threenative.template.manifest",
+  "version": "0.1.0",
+  "name": "structured-source-minimal",
+  "baseline": "minimal",
+  "maintained": true,
+  "generatedFiles": [
+    "AGENTS.md",
+    "CLAUDE.md",
+    "README.md",
+    "AGENT_GAME_PLAN.md",
+    "docs/API-CARD.md",
+    "package.json",
+    "threenative.config.json"
+  ],
+  "packageScripts": ["iterate", "game:plan", "game:improve", "game:score", "game:qa", "game:release"],
+  "proofCommandIds": ["authoring validate", "build", "playtest scenario", "screenshot", "score", "qa --run-proof", "release"],
+  "instructionFiles": ["README.md", "AGENTS.md", "AGENT_GAME_PLAN.md", "docs/API-CARD.md"]
+}

@@ -1,0 +1,43 @@
+{
+  "schema": "threenative.project",
+  "version": "0.1.0",
+  "entry": "content/scenes/empty.scene.json",
+  "outDir": "dist/structured-source-minimal.bundle",
+  "production": {
+    "playableLoop": "Not authored yet; run tn game plan before adding gameplay.",
+    "controls": ["No controls authored; select bindings in the game plan."],
+    "objective": "Define the first concrete objective in the game plan.",
+    "progression": "Not authored.",
+    "failRetry": "Not authored.",
+    "feedbackMoments": [],
+    "assetPlan": {},
+    "scriptModules": [],
+    "agent": {
+      "sourceShape": { "scene": ["content/scenes/empty.scene.json"], "scripts": [] },
+      "highValueSurfaces": [{ "id": "unplanned", "sourcePath": "threenative.config.json#/production/assetPlan", "provenanceStatus": "not-authored", "summary": "No high-value surfaces are authored in the minimal baseline." }],
+      "scriptModules": [],
+      "uiStates": [{ "id": "unplanned", "sourcePath": "threenative.config.json#/production", "expectation": "Define gameplay and fail/retry UI states after planning." }],
+      "assetSourcing": [],
+      "proofCommands": [
+        "tn authoring validate --project . --json",
+        "tn build --project . --json",
+        "tn playtest --project . --scenario playtests/empty-scene-smoke.playtest.json --stable-artifacts --json",
+        "tn screenshot --project . --url <preview-url> --wait-ready --json",
+        "tn game score --project . --json",
+        "tn game qa --project . --run-proof --json",
+        "tn game release --project . --json"
+      ],
+      "knownBlockers": ["Gameplay, assets, controls, objective, and feedback are intentionally absent until a game plan is authored."]
+    },
+    "proofCommands": [
+      "tn authoring validate --project . --json",
+      "tn build --project . --json",
+      "tn playtest --project . --scenario playtests/empty-scene-smoke.playtest.json --stable-artifacts --json",
+      "tn screenshot --project . --url <preview-url> --wait-ready --json",
+      "tn game score --project . --json",
+      "tn game qa --project . --run-proof --json",
+      "tn game release --project . --json"
+    ]
+  },
+  "template": "structured-source-minimal"
+}

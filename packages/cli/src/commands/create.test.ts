@@ -7,7 +7,45 @@ import test from "node:test";
 
 import { authoringCommand } from "./authoring.js";
 import { createProject, initProject } from "./create.js";
+import { iterateCommand } from "./iterate.js";
 import { uiCommand } from "./sourceDocuments.js";
+
+test("should create minimal starter without gameplay residue", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-create-minimal-"));
+  try {
+    const result = await createProject(["minimal", "--template", "structured-source-minimal", "--json"], { cwd: root });
+    const payload = JSON.parse(result.stdout) as { path: string; template: string };
+    assert.equal(result.exitCode, 0);
+    assert.equal(payload.template, "structured-source-minimal");
+    await assert.rejects(access(join(payload.path, "src/scripts/player.ts")));
+    await assert.rejects(access(join(payload.path, "assets/goal-ping.wav")));
+    assert.deepEqual(await readdir(join(payload.path, "playtests")), ["empty-scene-smoke.playtest.json"]);
+    const packageJson = JSON.parse(await readFile(join(payload.path, "package.json"), "utf8")) as { scripts: Record<string, string> };
+    assert.equal("recipe:controller" in packageJson.scripts, false);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should iterate green immediately after minimal create", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-create-minimal-iterate-"));
+  try {
+    const created = await createProject(["minimal", "--template", "structured-source-minimal", "--json"], { cwd: root });
+    const project = (JSON.parse(created.stdout) as { path: string }).path;
+    const result = await iterateCommand(["--project", project, "--json"], process.cwd(), {
+      analyzeScreenshot: async () => ({ colorBucketCount: 8, localContrast: 0.2, ok: true, thresholds: { minColorBuckets: 4, minLocalContrast: 0.04 } }),
+      capture: async ({ outPath, url }) => ({ byteSize: 42, capturedAt: "2026-07-12T00:00:00.000Z", checks: { canvas: { height: 720, ok: true, width: 1280 } }, diagnostics: [], outPath, runtimeReady: { ok: true }, url, viewport: { height: 720, width: 1280 } }),
+      playtest: async () => ({ exitCode: 0, stdout: `${JSON.stringify({ artifacts: { directory: "artifacts/playtest/empty-scene-smoke", summary: "artifacts/playtest/empty-scene-smoke/summary.json" }, assertions: [], code: "TN_PLAYTEST_OK", diagnostics: [], pass: true, scenario: "empty-scene-smoke", schema: "threenative.playtest-summary" })}\n` }),
+      startPreview: async () => ({ close: async () => undefined, url: "http://127.0.0.1:1" }),
+    });
+    const payload = JSON.parse(result.stdout) as { code: string; ok: boolean };
+    assert.equal(result.exitCode, 0, result.stdout);
+    assert.equal(payload.code, "TN_ITERATE_OK");
+    assert.equal(payload.ok, true);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
 
 test("should create starter template files", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-create-"));

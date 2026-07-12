@@ -8,9 +8,24 @@ package source.
 
 ```ts
 interface ScriptContext {
+  commands: {
+  addComponent(entity: string, component: Record<string, unknown>): void;
+  clearParent(child: string): void;
+  despawn(entity: string, policy?: string): void;
+  emitEvent(event: string, payload?: Record<string, unknown>): void;
+  instantiate(prefab: string, prefix: string, overrides?: Record<string, unknown>): void;
+  materialPatch(entity: string, value: { color?: unknown; emissive?: unknown; emissiveIntensity?: number; opacity?: number }): void;
+  removeComponent(entity: string, component: unknown): void;
+  setComponent(entity: string, component: unknown, value: unknown): void;
+  setParent(child: string, parent: string): void;
+  spawn(entity: string, components?: unknown): void;
+  };
   entity(id: string): ScriptEntity | undefined;
   entities: {
   byId<T extends Record<string, string>>(ids: T): { [K in keyof T]: ScriptEntity | undefined };
+  };
+  events: {
+  emit(event: string, payload?: Record<string, unknown>): void;
   };
   input: {
   action(name: string): boolean;
@@ -23,6 +38,10 @@ interface ScriptContext {
   getButtonUp(name: string): boolean;
   pressed(name: string): boolean;
   released(name: string): boolean;
+  };
+  picking: {
+  mesh(options: IPickMeshRequest): IPickMeshResult;
+  pointerRay(options: IPointerRayRequest): IPointerRayResult;
   };
   query(query?: { changed?: unknown[]; limit?: number; offset?: number; orderBy?: string; with?: unknown[]; without?: unknown[] }): ScriptEntity[];
   resources: {
@@ -77,8 +96,6 @@ interface ScriptTransformFacade {
   `content/**/*.json`.
 - Refresh project types with `tn types generate --project . --json`; `tn build`
   and `tn dev --watch` do this automatically.
-- Type entrypoints with generated `ProjectContext` from
-  `.threenative/types/project-context`.
 - Prefer `defineBehavior(metadata, fn)` for new systems. Put schedule,
   access, services, and query metadata in code; keep systems JSON as
   module/export attachments.
@@ -91,12 +108,9 @@ interface ScriptTransformFacade {
   `writes: ["MeshRenderer"]` in `defineBehavior`; transform movement declares
   `writes: ["Transform"]`. `writes` are component names, not entity IDs.
 - Use `context.time.fixedDelta` for deterministic fixed-step movement.
-- Supported helper imports: `Mathf`, `Vector2`, `Vector3`, `Quat`,
-  `TransformMath`, `Bounds2`, `Bounds3`, `Ease`, `RandomEx`,
-  `ColorEx`, `TextEx`, `InputEx`, `MotionEx`, `TimerEx`,
-  `ArrayEx`, and `CameraMath` from `@threenative/script-stdlib`.
-  Legacy aliases `NumberEx`, `Vec2`, and `Vec3` remain supported for one
-  compatibility cycle.
+- Import portable helpers such as `Mathf`, `Vector2`, `Vector3`, `Quat`,
+  `MaterialEx`, and `CameraMath` from `@threenative/script-stdlib`.
+- Legacy aliases `NumberEx`, `Vec2`, and `Vec3` remain supported.
 - Do not import DOM, Node, filesystem, timer, network, Three.js, or Bevy APIs
   from portable scripts.
 
@@ -104,8 +118,8 @@ interface ScriptTransformFacade {
 
 - Scenes: `content/scenes/*.scene.json` own entities, transforms, components,
   cameras, resources, UI bindings, and script references.
-- Input: `content/input/*.input.json` uses actions with
-  `keyboard.KeyW`-style bindings and axes named `MoveX` / `MoveZ`.
+- Input: `content/input/*.input.json` uses `keyboard.KeyW`-style bindings;
+  see `docs/contracts/input-binding-syntax.md` for the grammar.
 - Systems: `content/systems/*.systems.json` attaches script module/export
   entries. New access metadata should live in `defineBehavior`.
 - UI: `content/ui/*.ui.json` binds HUD text to resource paths such as
@@ -113,8 +127,6 @@ interface ScriptTransformFacade {
 - Typed spec: `src/game.spec.ts` is compiled by
   `tn authoring compile-typed-spec --json`; HUD bindings use
   `{ node, resource: "GameState", fields: ["scoreText"] }`.
-- Assets/materials/meshes stay in `content/assets`, `content/materials`,
-  and `content/meshes`; preserve stable IDs and schema fields.
 
 ## Actor Shortcuts
 

@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "name": "empty-scene-smoke",
+  "target": "web",
+  "viewport": { "width": 1280, "height": 720 },
+  "warmupFrames": 2,
+  "steps": [],
+  "assert": {
+    "diagnostics": {
+      "runtimeReady": true,
+      "noConsoleErrors": true,
+      "noNetworkErrors": true
+    }
+  },
+  "artifacts": {
+    "screenshots": "after",
+    "console": true,
+    "network": true,
+    "runtimeTrace": true
+  }
+}

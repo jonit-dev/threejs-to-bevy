@@ -1,0 +1,10 @@
+{
+  "schema": "threenative.scene",
+  "version": "0.1.0",
+  "id": "empty",
+  "entities": [],
+  "prefabs": [],
+  "resources": [],
+  "systems": [],
+  "ui": { "bindings": [], "nodes": [] }
+}
