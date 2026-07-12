@@ -133,7 +133,7 @@ async function runSystem(
   }
   const fn = readSystemFunction(options.module, system.script.exportName);
   const resourceObservations: IResourceObservation[] = declaredResourceObservations(system, options);
-  const { commands, context, events, resources, services } = createSystemContext(options.world, {
+  const { commands, context, diagnostics: contextDiagnostics, events, resources, services } = createSystemContext(options.world, {
     assets: options.assets,
     audio: options.audio,
     componentDiff: options.componentDiff,
@@ -182,7 +182,7 @@ async function runSystem(
   if (options.effectLog !== undefined) {
     appendSystemEffectLog(options.effectLog, result.entries);
   }
-  return { commands, diagnostics: result.diagnostics, entries: result.entries, resourceObservations: dedupeResourceObservations(resourceObservations), services, writeObservations: [] };
+  return { commands, diagnostics: [...contextDiagnostics, ...result.diagnostics], entries: result.entries, resourceObservations: dedupeResourceObservations(resourceObservations), services, writeObservations: [] };
 }
 
 function declaredResourceObservations(system: IIrSystemDeclaration, options: { frame?: number; tick?: number; world: IWorldIr }): IResourceObservation[] {

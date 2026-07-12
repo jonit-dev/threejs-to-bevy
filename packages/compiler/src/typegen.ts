@@ -156,11 +156,22 @@ function collectProjectSchemas(documents: readonly IAuthoringDocument[]): Record
       schemas[schemaDocument.kind].set(entry.id, Object.fromEntries(Object.entries(entry.fields).map(([name, field]) => [name, fieldType(field.kind)])));
     }
   }
+  for (const document of documents) {
+    if (document.kind !== "scene") continue;
+    const scene = document.data as ISceneDocument;
+    for (const entity of scene.entities ?? []) {
+      for (const component of Object.keys(entity.components ?? {})) {
+        if (!schemas.component.has(component)) {
+          schemas.component.set(component, { "[key: string]": "unknown" });
+        }
+      }
+    }
+  }
   return schemas;
 }
 
 function schemaRows(schemas: Map<string, Record<string, string>>): string[] {
-  return [...schemas.entries()].sort(([left], [right]) => left.localeCompare(right)).map(([id, fields]) => `  ${JSON.stringify(id)}: { ${Object.entries(fields).map(([name, type]) => `${JSON.stringify(name)}${type.includes("undefined") ? "?" : ""}: ${type.replace(" | undefined", "")}`).join("; ")} };`);
+  return [...schemas.entries()].sort(([left], [right]) => left.localeCompare(right)).map(([id, fields]) => `  ${JSON.stringify(id)}: { ${Object.entries(fields).map(([name, type]) => `${name === "[key: string]" ? name : JSON.stringify(name)}${type.includes("undefined") ? "?" : ""}: ${type.replace(" | undefined", "")}`).join("; ")} };`);
 }
 
 function fieldType(kind: string): string {

@@ -4,6 +4,29 @@ import type { ISystemsIr, IUiIr, IWorldIr } from "@threenative/ir";
 
 import { applyCommands, channelEvent, componentHookObservations, createSystemContext, createWebSystemRuntimeState, evaluateStates, plugin, pluginGroup, propagateObserverEvent, taskChannel } from "./context.js";
 
+test("should match entities on scene-declared custom components", () => {
+  const world = makeWorld();
+  world.entities[0]!.components.ChessPiece = { side: "white" };
+  const { context, diagnostics } = createSystemContext(world, { delta: 0.016, fixedDelta: 0.016, systemName: "selection" });
+
+  assert.deepEqual(context.query({ with: ["ChessPiece"], without: [] }).map((entity) => entity.id), [world.entities[0]!.id]);
+  assert.deepEqual(diagnostics, []);
+});
+
+test("should emit unknown-component diagnostic once when query names missing component", () => {
+  const world = makeWorld();
+  const runtimeState = createWebSystemRuntimeState(world, {});
+  const first = createSystemContext(world, { delta: 0.016, fixedDelta: 0.016, runtimeState, systemName: "selection" });
+  first.context.query({ with: ["Transforn"], without: [] });
+  const second = createSystemContext(world, { delta: 0.016, fixedDelta: 0.016, runtimeState, systemName: "selection" });
+  second.context.query({ with: ["Transforn"], without: [] });
+
+  assert.equal(first.diagnostics.length, 1);
+  assert.equal(first.diagnostics[0]?.code, "TN_RUNTIME_QUERY_UNKNOWN_COMPONENT");
+  assert.match(first.diagnostics[0]?.suggestion ?? "", /Transform/);
+  assert.deepEqual(second.diagnostics, []);
+});
+
 test("should expose fixed input trace", () => {
   const { context } = createSystemContext(makeWorld(), {
     delta: 0.016,

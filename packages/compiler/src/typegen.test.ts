@@ -7,7 +7,7 @@ test("should generate project context id unions and schema maps", () => {
   const output = generateProjectContextTypes([
     {
       data: {
-        entities: [{ id: "hero" }],
+        entities: [{ components: { ChessPiece: { side: "white" }, Health: { value: 100 } }, id: "hero" }],
         id: "arena",
         instances: [{ id: "coin.1", prefab: "coin" }],
         prefabs: [{ id: "coin" }],
@@ -61,6 +61,8 @@ test("should generate project context id unions and schema maps", () => {
   assert.match(output, /export type ProjectSceneId = "arena";/);
   assert.match(output, /export type ProjectUiId = "score-label";/);
   assert.match(output, /"Health": \{ "value": number \};/);
+  assert.match(output, /"ChessPiece": \{ \[key: string\]: unknown \};/);
+  assert.doesNotMatch(output, /"Health": \{ \[key: string\]: unknown \};/);
   assert.match(output, /"GameState": \{ "score": number; "status": string \};/);
   assert.match(output, /export interface ProjectContext extends ScriptContext/);
 });

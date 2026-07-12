@@ -1,6 +1,6 @@
 import { buildComponentReflectionRegistry, type IComponentReflectionRegistry, type IComponentReflectionType } from "@threenative/ir/reflection";
 import { feedbackPresetById } from "@threenative/ir/feedback";
-import type { IAssetsManifest, IIrDelayedCommandDeclaration, IIrSchemaFile, IIrStateSource, IIrSystemDeclaration, IIrSystemQuery, ILocalDataIr, IPrefabsIr, ISystemsIr, IUiIr, IUiNodeIr, IWorldEntity, IWorldIr } from "@threenative/ir";
+import type { IAssetsManifest, IIrDelayedCommandDeclaration, IIrSchemaFile, IIrStateSource, IIrSystemDeclaration, IIrSystemQuery, ILocalDataIr, IPrefabsIr, IRuntimeDiagnostic, ISystemsIr, IUiIr, IUiNodeIr, IWorldEntity, IWorldIr } from "@threenative/ir";
 import { AnimationRuntimeController, ParticleRuntimeController } from "../animation.js";
 import { ScriptAudioRuntimeController, type IScriptAudioPlayOptions } from "../audio.js";
 import { traceCharacterControllers, type ICharacterTraceObservation } from "../character.js";
@@ -118,6 +118,7 @@ export function createWebSystemRuntimeState(
     sensors: createPhysicsSensorRuntimeState(),
     lifecycle: createEntityLifecycleRuntimeState(world),
     presentation: createPresentationRuntimeState(),
+    queryDiagnostics: new Set<string>(),
     writeLedger: createRuntimeWriteLedger(),
   };
   recordInitialRuntimeWrites(world, runtimeState.writeLedger);
@@ -272,16 +273,23 @@ export function createSystemContext(
 ): {
   commands: IQueuedCommand[];
   context: ISystemContext;
+  diagnostics: IRuntimeDiagnostic[];
   events: IQueuedEvent[];
   resources: IQueuedResourceWrite[];
   services: IQueuedServiceCall[];
 } {
   const commands: IQueuedCommand[] = [];
+  const diagnostics: IRuntimeDiagnostic[] = [];
   const events: IQueuedEvent[] = [];
   const resources: IQueuedResourceWrite[] = [];
   const services: IQueuedServiceCall[] = [];
   const states = evaluateStates(world, options.systems);
   const componentTypes = buildComponentReflectionRegistry(options.componentSchemas);
+  const knownComponents = new Set([
+    ...componentTypes.components.map((component) => component.id),
+    ...world.entities.flatMap((entity) => Object.keys(entity.components)),
+  ]);
+  const emittedQueryDiagnostics = options.runtimeState?.queryDiagnostics ?? new Set<string>();
   const random = options.runtimeState?.random ?? createDeterministicRandom(randomSeed(world));
   const animations = options.runtimeState?.animations ?? new AnimationRuntimeController();
   const scriptAudio = options.runtimeState?.scriptAudio ?? new ScriptAudioRuntimeController(options.audio);
@@ -310,6 +318,7 @@ export function createSystemContext(
   };
   return {
     commands,
+    diagnostics,
     context: {
       animation: {
         play(entity, clip, playOptions = {}) {
@@ -713,6 +722,10 @@ export function createSystemContext(
         },
       },
       query(query = options.defaultQuery ?? { with: [], without: [] }) {
+        for (const entity of world.entities) {
+          for (const component of Object.keys(entity.components)) knownComponents.add(component);
+        }
+        diagnoseUnknownQueryComponents(query, knownComponents, emittedQueryDiagnostics, options.systemName ?? "", diagnostics);
         return applyQueryWindow(world.entities.filter((entity) => matchesQuery(world, entity, query, options.componentDiff)), query)
           .map((entity) => createEntityView(entity, commands));
       },
@@ -1621,6 +1634,52 @@ function applyQueryWindow(entities: IWorldEntity[], query: IIrSystemQuery): IWor
   const offset = Math.max(0, Math.floor(query.offset ?? 0));
   const limit = query.limit === undefined ? undefined : Math.max(0, Math.floor(query.limit));
   return ordered.slice(offset, limit === undefined ? undefined : offset + limit);
+}
+
+function diagnoseUnknownQueryComponents(
+  query: IIrSystemQuery,
+  knownComponents: ReadonlySet<string>,
+  emitted: Set<string>,
+  systemName: string,
+  diagnostics: IRuntimeDiagnostic[],
+): void {
+  for (const component of [...(query.with ?? []), ...(query.without ?? []), ...(query.changed ?? [])]) {
+    if (knownComponents.has(component)) continue;
+    const key = `${systemName}\0${component}`;
+    if (emitted.has(key)) continue;
+    emitted.add(key);
+    const nearest = [...knownComponents]
+      .map((candidate) => ({ candidate, distance: editDistance(component, candidate) }))
+      .filter(({ distance }) => distance <= 2)
+      .sort((left, right) => left.distance - right.distance || left.candidate.localeCompare(right.candidate))[0]?.candidate;
+    diagnostics.push({
+      code: "TN_RUNTIME_QUERY_UNKNOWN_COMPONENT",
+      message: `System '${systemName || "<anonymous>"}' queried unknown component '${component}'.`,
+      path: `systems/${systemName || "<anonymous>"}/queries/${component}`,
+      severity: "error",
+      suggestion: nearest === undefined
+        ? "Declare the component on an entity or in a component schema before querying it."
+        : `Use '${nearest}' or declare '${component}' before querying it.`,
+    });
+  }
+}
+
+function editDistance(left: string, right: string): number {
+  const row = Array.from({ length: right.length + 1 }, (_, index) => index);
+  for (let leftIndex = 1; leftIndex <= left.length; leftIndex += 1) {
+    let previous = row[0]!;
+    row[0] = leftIndex;
+    for (let rightIndex = 1; rightIndex <= right.length; rightIndex += 1) {
+      const current = row[rightIndex]!;
+      row[rightIndex] = Math.min(
+        row[rightIndex]! + 1,
+        row[rightIndex - 1]! + 1,
+        previous + (left[leftIndex - 1] === right[rightIndex - 1] ? 0 : 1),
+      );
+      previous = current;
+    }
+  }
+  return row[right.length]!;
 }
 
 function matchesQuery(world: IWorldIr, entity: IWorldEntity, query: IIrSystemQuery, componentDiff?: IComponentDiffCache): boolean {
