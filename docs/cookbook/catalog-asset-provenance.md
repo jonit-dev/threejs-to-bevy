@@ -11,7 +11,6 @@ surfaces:
 ## commands
 ```bash
 tn asset source search --game-category racing --format glb --direct-only --json
-tn asset import assets/source/<model>.dae --id model.<id> --license <spdx-id> --attribution "<creator>" --json
 ```
 
 ## source-delta
@@ -34,6 +33,7 @@ export function movePlayerToGoal(context: ScriptContext): void {
 ## proof
 ```bash
 tn asset source get <asset-source-id> --json
+tn asset import assets/source/<model>.dae --id model.<id> --license <spdx-id> --attribution "<creator>" --json
 tn asset inspect assets/<model>.glb --json
 tn asset repair assets/<model>.glb --strip-extensions --json
 ```

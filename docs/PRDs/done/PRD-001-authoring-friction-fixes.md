@@ -103,25 +103,25 @@ primitives, a game-plan path bug, scaffold residue, and camera-mode opacity.
 
 **Key decisions:**
 
-- [ ] Query fix is diagnostic-first, not registry-gated: unknown component
+- [x] Query fix is diagnostic-first, not registry-gated: unknown component
   names in `query.with/without/changed` emit a once-per-system runtime
   diagnostic instead of silently matching nothing. Typegen additionally
   learns scene-declared components so typings stop collapsing to `never`.
-- [ ] Picking fix lives at the association layer (`userData.entityId` on GLB
+- [x] Picking fix lives at the association layer (`userData.entityId` on GLB
   descendants + owner resolution in pick paths), not per-call workarounds.
-- [ ] Conversion uses `assimpjs` as an optional CLI dependency (already
+- [x] Conversion uses `assimpjs` as an optional CLI dependency (already
   proven viable by the trial's hand-rolled pipeline); absence degrades to a
   clear `TN_ASSET_IMPORT_CONVERTER_MISSING` diagnostic.
-- [ ] New CLI commands (`asset import`, `asset repair`) are registered in the
+- [x] New CLI commands (`asset import`, `asset repair`) are registered in the
   owning CLI command registry first, per repo adapter-list rules; help,
   dispatch, and MCP parity derive from it.
-- [ ] `unlit` ships web-first with a stable native diagnostic (native parity
+- [x] `unlit` ships web-first with a stable native diagnostic (native parity
   work is freeze-gated per PRD-018/019); documented in the capability doc.
-- [ ] Script material patching follows the existing bounded-command pattern
+- [x] Script material patching follows the existing bounded-command pattern
   (like particles/audio facades): declared command, effect-log evidence, both
   script-stdlib implementations (`src/*.ts` and `src/bundle-source.ts`) kept
   in parity as `index.test.ts` requires.
-- [ ] Backdrop/skybox scene node is explicitly deferred: `SkyboxDeclaration`
+- [x] Backdrop/skybox scene node is explicitly deferred: `SkyboxDeclaration`
   and `EnvironmentMapDeclaration` already exist in
   `packages/sdk/src/environment.ts`; the gap is a scene-level image backdrop,
   which needs its own design pass (tracked as a follow-up, not a phase).
@@ -180,11 +180,11 @@ flowchart LR
 
 **Implementation:**
 
-- [ ] Tag descendants at attach time (single traversal, idempotent).
-- [ ] Resolve hits: any intersected object walks `userData.entityId` (or
+- [x] Tag descendants at attach time (single traversal, idempotent).
+- [x] Resolve hits: any intersected object walks `userData.entityId` (or
   parent chain) to an owning entity before ranking; hits with no owner are
   reported as `entity: null` instead of shadowing an owned hit.
-- [ ] Apply `ignore` after owner resolution so entity ids exclude subtrees.
+- [x] Apply `ignore` after owner resolution so entity ids exclude subtrees.
 
 **Tests Required:**
 | Test File | Test Name | Assertion |
@@ -225,11 +225,11 @@ Checkpoint: spawn `prd-work-reviewer` for phase 1 before phase 2.
 
 **Implementation:**
 
-- [ ] Runtime known-component set built once per world load, invalidated on
+- [x] Runtime known-component set built once per world load, invalidated on
   spawn with novel component keys.
-- [ ] Diagnostic includes the unknown name and the nearest known name
+- [x] Diagnostic includes the unknown name and the nearest known name
   (levenshtein <= 2) as a `fix` hint.
-- [ ] Typegen: scene-declared components produce loose typings, not `never`;
+- [x] Typegen: scene-declared components produce loose typings, not `never`;
   regenerating types in `examples/chess` must type `"ChessPiece"` queries.
 
 **Tests Required:**
@@ -262,9 +262,9 @@ Checkpoint: `prd-work-reviewer` phase 2.
 
 **Implementation:**
 
-- [ ] Single source of truth for pick request/result types; both packages
+- [x] Single source of truth for pick request/result types; both packages
   import it.
-- [ ] Audit `ScriptContext` against `ISystemContext` and add a drift test
+- [x] Audit `ScriptContext` against `ISystemContext` and add a drift test
   that fails when the runtime context exposes a service key missing from
   `ScriptContext` (explicit allowlist for intentionally-internal services),
   per the repo no-second-hand-list rule.
@@ -300,9 +300,9 @@ Checkpoint: `prd-work-reviewer` phase 3.
 
 **Implementation:**
 
-- [ ] Field always present in `--json` output when a bundle was produced.
-- [ ] Warning is advisory (does not flip iterate to fail).
-- [ ] Human (non-json) output prints `render profile: cinematic` in the
+- [x] Field always present in `--json` output when a bundle was produced.
+- [x] Warning is advisory (does not flip iterate to fail).
+- [x] Human (non-json) output prints `render profile: cinematic` in the
   screenshot step line.
 
 **Tests Required:**
@@ -337,10 +337,10 @@ Checkpoint: `prd-work-reviewer` phase 4.
 
 **Implementation:**
 
-- [ ] `--type glb --path x.glb` -> error with fix `--type model`.
-- [ ] `--type model --path x.dae` -> error naming supported formats and
+- [x] `--type glb --path x.glb` -> error with fix `--type model`.
+- [x] `--type model --path x.dae` -> error naming supported formats and
   pointing at `tn asset import` (phase 6).
-- [ ] Existing valid calls unchanged (regression: chess `--type model` adds).
+- [x] Existing valid calls unchanged (regression: chess `--type model` adds).
 
 **Tests Required:**
 | Test File | Test Name | Assertion |
@@ -378,10 +378,10 @@ Checkpoint: `prd-work-reviewer` phase 5.
 
 **Implementation:**
 
-- [ ] Conversion, texture-path repair, variant injection, registration, and
+- [x] Conversion, texture-path repair, variant injection, registration, and
   a summary (`TN_ASSET_IMPORT_OK`) in one command.
-- [ ] License flag required for non-local URLs (catalog-first rules).
-- [ ] Failure surfaces the assimp error verbatim under
+- [x] License flag required for non-local URLs (catalog-first rules).
+- [x] Failure surfaces the assimp error verbatim under
   `TN_ASSET_IMPORT_CONVERT_FAILED`.
 
 **Tests Required:**
@@ -653,12 +653,48 @@ replayed trial command and its new output, and screenshots for phases 6/10.
 
 ## 6. Acceptance Criteria
 
-- [ ] All 13 phases landed with their tests passing.
-- [ ] Every trial failure replay (documented per phase) now yields either
+- [x] All 13 phases landed with their tests passing.
+- [x] Every trial failure replay (documented per phase) now yields either
   success or a self-sufficient diagnostic in one command.
-- [ ] New commands exist in the CLI command registry with derived help and
+- [x] New commands exist in the CLI command registry with derived help and
   smoke enrollment; no hand-duplicated adapter lists.
-- [ ] `docs/status/capabilities/*` and `docs/STATUS.md` updated for phases
+- [x] `docs/status/capabilities/*` and `docs/STATUS.md` updated for phases
   4 and 10a; `pnpm check:docs` green.
-- [ ] All `prd-work-reviewer` checkpoints reported PASS.
-- [ ] `examples/chess` still iterates green (regression guard).
+- [x] All `prd-work-reviewer` checkpoints reported PASS.
+- [x] `examples/chess` still iterates green (regression guard).
+
+## 7. Completion Evidence (2026-07-12)
+
+- Package suites: authoring 82/82, compiler 257/257, runtime-web-three
+  408/408, plus focused CLI, IR, script-stdlib, and Bevy boundary tests.
+- Every related commit passed the pre-commit smoke gate, including the example
+  build sweep. `pnpm check:docs` and `pnpm verify:cookbook` are green.
+- Clean chess regression: `tn iterate` returned `TN_ITERATE_OK`; validation,
+  build, screenshot, `chess-capture-hud`, and `chess-opening` all passed.
+- Picking: a clean-HEAD scratch copy temporarily used `picking.mesh`; 20/20
+  near-edge browser clicks resolved to owned pieces with no page or runtime
+  errors. The reviewer marked phases 1-4 PASS.
+- Custom-component typing: clean chess `tn types generate` followed by
+  `tsc --noEmit` passed without a query-context cast.
+- Asset import: the DAE fixture imported as a registered GLB and `model-test`
+  captured a nonblank screenshot with five visible meshes. Repair proof showed
+  `KHR_materials_ior` as unsupported before repair, then only promoted
+  `KHR_materials_clearcoat` and zero extension diagnostics after repair.
+- Catalog replay: the exact `chess piece` query ranked the CC0 Chess Set first;
+  compact output remained below the ten-record cap.
+- Material proof: a scratch structured-source project built a textured `unlit`
+  surface under colored lights and imported `MaterialEx`; `material.patch`
+  visibly changed it to magenta while retaining the texture grid. The manual
+  screenshot checkpoint and reviewer passed. The Bevy unlit diagnostic test
+  locks code, path, and freeze-gate suggestion.
+- Minimal template: a real fresh create (not mocked capture/playtest) returned
+  `TN_ITERATE_OK` with visual and gameplay verdicts passing.
+- Reviewer checkpoints: phases 1-4, 5-9, and 10-13 all reported PASS after
+  their corrective re-reviews.
+
+Known unrelated baseline: the aggregate clean-worktree `pnpm test` run exposed
+one pre-existing compiler lifecycle expectation mismatch, and aggregate
+`pnpm build`/`pnpm typecheck`/`pnpm verify:conformance` were blocked in that
+detached checkout by missing editor build outputs. The touched package suites,
+pre-commit smoke gates, docs gate, cookbook gate, real chess iterate, real
+minimal iterate, and feature-specific proofs above are green.
