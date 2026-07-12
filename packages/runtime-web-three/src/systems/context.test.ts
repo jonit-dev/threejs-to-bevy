@@ -52,6 +52,16 @@ test("should emit unknown-component diagnostic once when query names missing com
   assert.deepEqual(second.diagnostics, []);
 });
 
+test("should retain novel spawned component names in the world runtime registry", () => {
+  const world = makeWorld();
+  const runtimeState = createWebSystemRuntimeState(world, {});
+  const first = createSystemContext(world, { delta: 1 / 60, fixedDelta: 1 / 60, runtimeState, systemName: "spawn-test" });
+  first.context.commands.spawn("special", { NovelComponent: { value: 1 } });
+  const second = createSystemContext(world, { delta: 1 / 60, fixedDelta: 1 / 60, runtimeState, systemName: "query-test" });
+  second.context.query({ with: ["NovelComponent"], without: [] });
+  assert.equal(second.diagnostics.some((diagnostic) => diagnostic.code === "TN_RUNTIME_QUERY_UNKNOWN_COMPONENT"), false);
+});
+
 test("should expose fixed input trace", () => {
   const { context } = createSystemContext(makeWorld(), {
     delta: 0.016,

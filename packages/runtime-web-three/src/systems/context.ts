@@ -118,6 +118,7 @@ export function createWebSystemRuntimeState(
     sensors: createPhysicsSensorRuntimeState(),
     lifecycle: createEntityLifecycleRuntimeState(world),
     presentation: createPresentationRuntimeState(),
+    knownComponents: new Set(world.entities.flatMap((entity) => Object.keys(entity.components))),
     queryDiagnostics: new Set<string>(),
     writeLedger: createRuntimeWriteLedger(),
   };
@@ -285,10 +286,9 @@ export function createSystemContext(
   const services: IQueuedServiceCall[] = [];
   const states = evaluateStates(world, options.systems);
   const componentTypes = buildComponentReflectionRegistry(options.componentSchemas);
-  const knownComponents = new Set([
-    ...componentTypes.components.map((component) => component.id),
-    ...world.entities.flatMap((entity) => Object.keys(entity.components)),
-  ]);
+  const knownComponents = options.runtimeState?.knownComponents
+    ?? new Set(world.entities.flatMap((entity) => Object.keys(entity.components)));
+  for (const component of componentTypes.components) knownComponents.add(component.id);
   const emittedQueryDiagnostics = options.runtimeState?.queryDiagnostics ?? new Set<string>();
   const random = options.runtimeState?.random ?? createDeterministicRandom(randomSeed(world));
   const animations = options.runtimeState?.animations ?? new AnimationRuntimeController();
@@ -493,6 +493,7 @@ export function createSystemContext(
         },
         spawn(entity, components = {}, tags = []) {
           const normalizedTags = normalizeEntityTags(tags);
+          for (const component of Object.keys(components)) knownComponents.add(component);
           commands.push({ components: cloneValue(components) as Record<string, unknown>, entity, kind: "spawn", source: "command", ...(normalizedTags.length === 0 ? {} : { tags: normalizedTags }), });
         },
         tween(entity, tweenOptions) {
@@ -725,9 +726,6 @@ export function createSystemContext(
         },
       },
       query(query = options.defaultQuery ?? { with: [], without: [] }) {
-        for (const entity of world.entities) {
-          for (const component of Object.keys(entity.components)) knownComponents.add(component);
-        }
         diagnoseUnknownQueryComponents(query, knownComponents, emittedQueryDiagnostics, options.systemName ?? "", diagnostics);
         return applyQueryWindow(world.entities.filter((entity) => matchesQuery(world, entity, query, options.componentDiff)), query)
           .map((entity) => createEntityView(entity, commands));

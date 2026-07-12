@@ -23,7 +23,7 @@ export type IPickMeshResult =
   | { hit: false }
   | {
       distance: number;
-      entity: string;
+      entity: string | null;
       hit: true;
       normal: [number, number, number];
       point: [number, number, number];

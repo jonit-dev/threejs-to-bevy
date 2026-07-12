@@ -75,6 +75,23 @@ test("should exclude glb child meshes when parent entity is ignored", () => {
   assert.equal(result.hit && result.entity, "square.behind");
 });
 
+test("should report an unowned hit without shadowing an owned hit behind it", () => {
+  const unowned = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1));
+  const owned = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1));
+  unowned.position.z = 1;
+  owned.position.z = -1;
+  owned.userData.entityId = "piece.wp1";
+  unowned.updateWorldMatrix(true, true);
+  owned.updateWorldMatrix(true, true);
+
+  const request = { direction: [0, 0, -1] as [number, number, number], maxDistance: 10, origin: [0, 0, 3] as [number, number, number] };
+  const ownedResult = pickMesh(makeWorld(), makeAssets(), request, new Map<string, THREE.Object3D>([["decoration", unowned], ["piece.wp1", owned]]));
+  assert.equal(ownedResult.hit && ownedResult.entity, "piece.wp1");
+
+  const unownedResult = pickMesh(makeWorld(), makeAssets(), request, new Map<string, THREE.Object3D>([["decoration", unowned]]));
+  assert.equal(unownedResult.hit && unownedResult.entity, null);
+});
+
 test("should generate a perspective pointer ray from active camera", () => {
   const result = pointerRay(makeWorld(), { pointer: [0.5, 0.5] });
 

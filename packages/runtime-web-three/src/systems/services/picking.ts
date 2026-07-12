@@ -53,7 +53,7 @@ export function pickMesh(
       center[1] + localCenter[1] * scale[1],
       center[2] + localCenter[2] * scale[2],
     ], size);
-    if (hit.hit && (!best.hit || hit.distance < best.distance || (hit.distance === best.distance && entity.id.localeCompare(best.entity) < 0))) {
+    if (hit.hit && (!best.hit || hit.distance < best.distance || (hit.distance === best.distance && entity.id.localeCompare(best.entity ?? "") < 0))) {
       best = { ...hit, entity: entity.id };
     }
   }
@@ -71,22 +71,31 @@ function pickMappedMesh(objectsById: ReadonlyMap<string, THREE.Object3D>, reques
     0,
     request.maxDistance,
   );
+  let unownedHit: IPickMeshResult | undefined;
   for (const hit of raycaster.intersectObjects(roots, true)) {
     const entity = owningEntityId(hit.object);
-    if (entity === undefined || ignore.has(entity)) {
+    if (entity === undefined) {
+      unownedHit ??= mappedHit(hit, null);
       continue;
     }
-    return {
-      distance: Number(hit.distance.toFixed(6)),
-      entity,
-      hit: true,
-      normal: hit.face == null
-        ? [0, 0, 0]
-        : hit.face.normal.clone().transformDirection(hit.object.matrixWorld).toArray() as [number, number, number],
-      point: hit.point.toArray().map((value) => Number(value.toFixed(6))) as [number, number, number],
-    };
+    if (ignore.has(entity)) {
+      continue;
+    }
+    return mappedHit(hit, entity);
   }
-  return { hit: false };
+  return unownedHit ?? { hit: false };
+}
+
+function mappedHit(hit: THREE.Intersection<THREE.Object3D>, entity: string | null): IPickMeshResult {
+  return {
+    distance: Number(hit.distance.toFixed(6)),
+    entity,
+    hit: true,
+    normal: hit.face == null
+      ? [0, 0, 0]
+      : hit.face.normal.clone().transformDirection(hit.object.matrixWorld).toArray() as [number, number, number],
+    point: hit.point.toArray().map((value) => Number(value.toFixed(6))) as [number, number, number],
+  };
 }
 
 function owningEntityId(object: THREE.Object3D): string | undefined {
