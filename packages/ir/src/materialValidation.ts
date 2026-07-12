@@ -22,8 +22,8 @@ export function validateMaterialTextureRefs(materials: IMaterialsIr, assets: IAs
   ] as const;
   materials.materials.forEach((material, materialIndex) => {
     slots.forEach((slot) => {
-      const value = material[slot];
-      if (value !== undefined && !textureAssets.has(value) && !renderTargetTextures.has(value)) {
+      const value = (material as unknown as Record<string, unknown>)[slot];
+      if (typeof value === "string" && !textureAssets.has(value) && !renderTargetTextures.has(value)) {
         diagnostics.push({
           code: "TN_IR_MATERIAL_TEXTURE_ASSET_MISSING",
           message: `Material '${material.id}' references unknown texture asset '${value}'.`,
@@ -70,7 +70,7 @@ export function validateMaterials(materials: IMaterialsIr, path: string, diagnos
       if (material.extension === undefined) {
         diagnostics.push({
           code: "TN_IR_MATERIAL_EXTENSION_MISSING",
-          message: `Extended material '${material.id}' must declare an extension preset.`,
+          message: `Extended material '${String(raw.id)}' must declare an extension preset.`,
           path: `${path}/materials/${index}/extension`,
           severity: "error",
           suggestion: "Add extension.preset with a supported portable preset such as 'unlitMasked' or 'foliage'.",
@@ -84,7 +84,7 @@ export function validateMaterials(materials: IMaterialsIr, path: string, diagnos
           suggestion: "Use a supported extended preset: unlitMasked or foliage.",
         });
       }
-    } else if (material.extension !== undefined) {
+    } else if (raw.extension !== undefined) {
       diagnostics.push({
         code: "TN_IR_MATERIAL_EXTENSION_INVALID",
         message: `Material '${material.id}' cannot declare extension metadata unless kind is 'extended'.`,
@@ -199,7 +199,8 @@ export function validateMaterials(materials: IMaterialsIr, path: string, diagnos
         suggestion: "Set opacity to a normalized value between 0 and 1.",
       });
     }
-    if (material.emissiveIntensity !== undefined && (!Number.isFinite(material.emissiveIntensity) || material.emissiveIntensity < 0)) {
+    const emissiveIntensity = raw.emissiveIntensity;
+    if (typeof emissiveIntensity === "number" && (!Number.isFinite(emissiveIntensity) || emissiveIntensity < 0)) {
       diagnostics.push({
         code: "TN_IR_MATERIAL_EMISSIVE_INTENSITY_INVALID",
         message: `Material '${material.id}' emissiveIntensity must be a non-negative finite number.`,
@@ -208,8 +209,8 @@ export function validateMaterials(materials: IMaterialsIr, path: string, diagnos
         suggestion: "Set emissiveIntensity to 0 or a positive finite value.",
       });
     }
-    if (material.emissiveBloom !== undefined) {
-      const bloom = material.emissiveBloom as unknown as Record<string, unknown>;
+    if (raw.emissiveBloom !== undefined) {
+      const bloom = raw.emissiveBloom as Record<string, unknown>;
       if (typeof bloom.enabled !== "boolean") {
         diagnostics.push({
           code: "TN_IR_MATERIAL_EMISSIVE_BLOOM_INVALID",
@@ -231,7 +232,7 @@ export function validateMaterials(materials: IMaterialsIr, path: string, diagnos
           });
         }
       }
-      if (bloom.enabled === true && material.emissive === undefined && material.emissiveTexture === undefined) {
+      if (bloom.enabled === true && raw.emissive === undefined && raw.emissiveTexture === undefined) {
         diagnostics.push({
           code: "TN_IR_MATERIAL_EMISSIVE_BLOOM_INVALID",
           message: `Material '${material.id}' enables emissiveBloom but has no emissive color or emissive texture.`,
@@ -242,8 +243,8 @@ export function validateMaterials(materials: IMaterialsIr, path: string, diagnos
       }
     }
     for (const key of ["clearcoat", "clearcoatRoughness", "specularIntensity", "transmission"] as const) {
-      const value = material[key];
-      if (value !== undefined && (!Number.isFinite(value) || value < 0 || value > 1)) {
+      const value = raw[key];
+      if (typeof value === "number" && (!Number.isFinite(value) || value < 0 || value > 1)) {
         diagnostics.push({
           code: "TN_IR_MATERIAL_FACTOR_INVALID",
           message: `Material '${material.id}' ${key} must be between 0 and 1.`,

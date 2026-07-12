@@ -310,8 +310,8 @@ function validateRenderTargetCycles(
       "clearcoatRoughnessTexture",
       "transmissionTexture",
     ] as const) {
-      const textureId = material[slot];
-      if (textureId !== undefined) {
+      const textureId = (material as unknown as Record<string, unknown>)[slot];
+      if (typeof textureId === "string") {
         const users = materialUsers.get(textureId) ?? [];
         users.push({
           entityId: entity.id,
@@ -360,8 +360,8 @@ function collectMaterialTextureRefs(materials: IMaterialsIr | undefined): Readon
       "clearcoatRoughnessTexture",
       "transmissionTexture",
     ] as const) {
-      const textureId = material[slot];
-      if (textureId !== undefined) {
+      const textureId = (material as unknown as Record<string, unknown>)[slot];
+      if (typeof textureId === "string") {
         refs.set(textureId, `materials.ir.json/materials/${material.id}/${slot}`);
       }
     }

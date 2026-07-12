@@ -281,6 +281,7 @@ test("should apply collector scaffold to a fresh starter", async () => {
       systems: [{ id: "move-player-to-goal", script: { export: "movePlayerToGoal", module: "src/scripts/player.ts" } }],
       version: "0.1.0",
     }, null, 2)}\n`);
+    await writeFile(join(root, "src/scripts/player.ts"), "export function movePlayerToGoal(): void {}\n");
     await writeFile(join(root, "playtests/smoke-movement.playtest.json"), `${JSON.stringify({
       assert: { movement: { entity: "player" } },
       name: "smoke-movement",
@@ -297,6 +298,7 @@ test("should apply collector scaffold to a fresh starter", async () => {
       proofCommand: string;
       scenarioPaths: string[];
     };
+    assert.equal(result.exitCode, 0, `${result.stdout}\n${result.stderr}`);
     const script = await readFile(join(root, "src/scripts/player.ts"), "utf8");
     const scenario = JSON.parse(await readFile(join(root, "playtests/top-down-collector.playtest.json"), "utf8")) as {
       assert?: { movement?: { entity?: string } };
@@ -329,7 +331,6 @@ test("should apply collector scaffold to a fresh starter", async () => {
       schema: string;
     };
 
-    assert.equal(result.exitCode, 0, `${result.stdout}\n${result.stderr}`);
     assert.equal(payload.code, "TN_GAME_SCAFFOLD_APPLIED");
     assert.equal(payload.ok, true);
     assert.equal(payload.applied[0]?.recipe, "top-down-collector");
@@ -542,7 +543,7 @@ test("should include project inventory in generated game plan", async () => {
     assert.equal(payload.kitCandidates[0]?.blocks.some((block) => block.id === "controller.top-down" && block.proofCommands.some((command) => command.startsWith("tn playtest"))), true);
     assert.equal(payload.kitCandidates[0]?.blocks.some((block) => block.sourceOwners.scripts?.includes("src/scripts/player.ts")), true);
     assert.equal(payload.gameplayBlocks.some((block) => block.id === "controller.top-down-cardinal" && block.recipeIds.includes("top-down-collector")), true);
-    assert.equal(payload.steps.some((step) => step.recipe === "top-down-collector" && step.recipeSourceOwners?.scene?.includes("scene.attach_script")), true);
+    assert.equal(payload.steps.some((step) => step.recipe === "top-down-collector" && step.recipeSourceOwners?.systems?.includes("scene.attach_script")), true);
     assert.equal(payload.steps.some((step) => step.recipe === "top-down-collector" && step.recipeGameplayBlocks?.includes("proof.ui-binding") === true), true);
     assert.equal(payload.steps.some((step) => step.recipe === "top-down-collector" && step.recipeProofHints?.some((hint) => hint.includes("MoveX/MoveZ")) === true), true);
     assert.equal(payload.steps.some((step) => step.recipe === "lane-runner"), true);

@@ -23,10 +23,11 @@
     "test": "node scripts/run-tests.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
-  "dependencies": {
-    "@threenative/ir": "workspace:*"
+  "peerDependencies": {
+    "@threenative/ir": "^0.1.11"
   },
   "devDependencies": {
+    "@threenative/ir": "workspace:*",
     "@types/node": "^20.19.25"
   }
 }

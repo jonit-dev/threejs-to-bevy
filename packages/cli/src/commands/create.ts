@@ -613,6 +613,9 @@ async function rewriteLocalWorkspaceDependencies(projectPath: string): Promise<v
   };
 
   packageJson.dependencies = rewriteDependency(packageJson.dependencies ?? {}, "@threenative/sdk", "packages/sdk");
+  packageJson.dependencies = rewriteDependency(packageJson.dependencies, "@threenative/ir", "packages/ir", {
+    onlyIfPresent: true,
+  });
   packageJson.dependencies = rewriteDependency(packageJson.dependencies, "@threenative/script-stdlib", "packages/script-stdlib", {
     onlyIfPresent: true,
   });
@@ -638,6 +641,9 @@ async function rewritePublishedDependencies(projectPath: string): Promise<void> 
   };
 
   packageJson.dependencies = rewritePublishedDependency(packageJson.dependencies ?? {}, "@threenative/sdk");
+  packageJson.dependencies = rewritePublishedDependency(packageJson.dependencies, "@threenative/ir", {
+    onlyIfPresent: true,
+  });
   packageJson.dependencies = rewritePublishedDependency(packageJson.dependencies, "@threenative/script-stdlib", {
     onlyIfPresent: true,
   });

@@ -1,5 +1,6 @@
 import { access, mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 
 import type { VerificationDiagnostic } from "./runner.js";
 
@@ -24,7 +25,7 @@ export interface PortableFeedbackGateResult {
 }
 
 export async function runPortableFeedbackGate(options: { reportPath?: string; root?: string } = {}): Promise<PortableFeedbackGateResult> {
-  const root = resolve(options.root ?? process.cwd());
+  const root = resolve(options.root ?? fileURLToPath(new URL("../../..", import.meta.url)));
   const reportPath = options.reportPath ?? resolve(root, "tools/verify/artifacts/portable-feedback/verification-report.json");
   const diagnostics: VerificationDiagnostic[] = [];
 

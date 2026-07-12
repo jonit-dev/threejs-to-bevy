@@ -18,6 +18,7 @@
     "verify": "tn verify --frames 4 --json"
   },
   "dependencies": {
+    "@threenative/ir": "workspace:*",
     "@threenative/script-stdlib": "workspace:*",
     "@threenative/sdk": "workspace:*"
   },

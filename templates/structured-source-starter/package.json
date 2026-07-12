@@ -23,6 +23,7 @@
     "verify": "tn verify --frames 2 --json"
   },
   "dependencies": {
+    "@threenative/ir": "workspace:*",
     "@threenative/script-stdlib": "workspace:*",
     "@threenative/sdk": "workspace:*"
   },

@@ -1,6 +1,6 @@
 import type { IRuntimeDiagnostic } from "./runtimeDiagnostics.js";
 import type { IRendererFeatureReport, IRuntimeConfigIr } from "./runtimeConfig.js";
-import type { IAssetIr, IMaterialIr, IShaderMaterialIr, Quat, Vec3 } from "./types.js";
+import type { IAssetIr, IBaseMaterialIr, IMaterialIr, IShaderMaterialIr, Quat, Vec3 } from "./types.js";
 import type { IShaderBindingLayoutEntry } from "./shaderCodegen.js";
 import type { IEnvironmentMapIr, ILightProbeIr, ISkyboxIr } from "./types.js";
 import type { IGltfSceneAssetIr } from "./gltfScene.js";
@@ -43,10 +43,10 @@ export interface IConformanceMaterialReport {
   color: IMaterialIr["color"];
   depthTest?: boolean;
   depthWrite?: boolean;
-  emissive?: IMaterialIr["emissive"];
-  emissiveBloom?: IMaterialIr["emissiveBloom"];
+  emissive?: IBaseMaterialIr["emissive"];
+  emissiveBloom?: IBaseMaterialIr["emissiveBloom"];
   emissiveIntensity?: number;
-  extension?: IMaterialIr["extension"];
+  extension?: IBaseMaterialIr["extension"];
   id: string;
   kind: IMaterialIr["kind"];
   metalness?: number;

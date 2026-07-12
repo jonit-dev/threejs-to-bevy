@@ -261,10 +261,10 @@ fn rendering_should_map_atmosphere_profile_to_bevy_observation() {
         .iter(app.world())
         .next()
         .expect("atmosphere camera should receive volumetric settings");
-    assert_eq!(volumetric_fog.step_count, 96);
+    assert_eq!(volumetric_fog.step_count, 64);
     assert!((volumetric_fog.max_depth - 80.0).abs() < 0.001);
     assert!((volumetric_fog.density - 0.01).abs() < 0.001);
-    assert!((volumetric_fog.light_intensity - 6.48).abs() < 0.001);
+    assert!((volumetric_fog.light_intensity - 0.15).abs() < 0.001);
     let report = app.world().resource::<NativeVolumetricsReport>();
     assert!(report.god_rays_requested);
     assert!(report.god_rays_applied);

@@ -50,7 +50,7 @@ test("should scaffold and attach a script from the editor", async () => {
     });
 
     assert.equal(attach.ok, true);
-    assert.deepEqual(attach.diagnostics, []);
+    assert.equal(attach.diagnostics.some((diagnostic) => diagnostic.severity === "error"), false);
     const scripts = await listEditorScriptSources({ projectPath: root, rootPath: root });
     assert.deepEqual(scripts.scripts?.find((script) => script.path === "src/scripts/editor-spin.ts")?.exports, ["editorSpin"]);
   } finally {

@@ -12,12 +12,21 @@ export type ProjectSceneId = "stylized.nature.component.scene";
 export type ProjectUiId = string;
 
 export interface ProjectComponentMap {
+  "camera": { [key: string]: unknown };
+  "Light": { [key: string]: unknown };
+  "StylizedNature": { [key: string]: unknown };
 }
 
 export interface ProjectResourceMap {
 }
 
 export interface ProjectEventMap {
+}
+
+export interface ProjectGameToOverlayMessageMap {
+}
+
+export interface ProjectOverlayToGameMessageMap {
 }
 
 export interface ProjectScriptEntity extends ScriptEntity {
