@@ -1,0 +1,44 @@
+{
+  "schemaVersion": 1,
+  "name": "chess-capture-hud",
+  "target": "web",
+  "viewport": {
+    "width": 1280,
+    "height": 720
+  },
+  "subject": "piece.white.pawn.e2",
+  "warmupFrames": 8,
+  "steps": [
+    { "label": "choose white side", "press": "KeyW", "holdFrames": 2, "release": true },
+    { "label": "wait for side selection", "waitFrames": 4 },
+    { "label": "select e2 pawn", "press": "Enter", "holdFrames": 2, "release": true },
+    { "label": "move cursor to e3", "press": "ArrowUp", "holdFrames": 2, "release": true },
+    { "label": "move cursor to e4", "press": "ArrowUp", "holdFrames": 2, "release": true },
+    { "label": "commit e2-e4", "press": "Enter", "holdFrames": 2, "release": true },
+    { "label": "wait for black d7-d5", "waitFrames": 48 },
+    { "label": "select e4 pawn", "press": "Enter", "holdFrames": 2, "release": true },
+    { "label": "move cursor to d4", "press": "ArrowLeft", "holdFrames": 2, "release": true },
+    { "label": "move cursor to d5", "press": "ArrowUp", "holdFrames": 2, "release": true },
+    { "label": "commit e4xd5", "press": "Enter", "holdFrames": 2, "release": true },
+    { "label": "observe capture HUD", "waitFrames": 8 }
+  ],
+  "assert": {
+    "resources": [
+      { "id": "ChessGame", "path": "playerCapturedText", "equals": "♟" },
+      { "id": "ChessGame", "path": "opponentCapturedText", "equals": "♙" }
+    ],
+    "diagnostics": {
+      "runtimeReady": true,
+      "noConsoleErrors": true,
+      "noNetworkErrors": true,
+      "noRuntimeDiagnostics": true
+    }
+  },
+  "artifacts": {
+    "screenshots": "before-after",
+    "console": true,
+    "network": true,
+    "runtimeTrace": true,
+    "effectLog": "focused"
+  }
+}

@@ -39,7 +39,7 @@
     },
     {
       "label": "observe eased move",
-      "waitFrames": 20
+      "waitFrames": 4
     }
   ],
   "assert": {
@@ -52,13 +52,13 @@
       {
         "id": "ChessGame",
         "path": "turnText",
-        "equals": "BLACK TO MOVE"
+        "equals": "YOUR TURN"
       }
     ],
     "hud": [
       {
         "id": "turn",
-        "textIncludes": "BLACK TO MOVE"
+        "textIncludes": "YOUR TURN"
       }
     ],
     "diagnostics": {

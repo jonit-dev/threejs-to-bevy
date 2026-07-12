@@ -31,6 +31,7 @@ export const chessGame = defineBehavior(
   {
     id: "chess-game",
     eventReads: ["chess.choose-side"],
+    eventWrites: ["chess.captures"],
     schedule: "update",
     reads: ["ChessPiece", "LegalMarker"],
     writes: ["ChessPiece", "Transform"],
@@ -60,6 +61,7 @@ export const chessGame = defineBehavior(
       lastFromRank: -1,
       lastToFile: -1,
       lastToRank: -1,
+      moveHistoryText: "",
       promotionIndex: 0,
       playerColor: "" as "" | Color,
       selectedId: "",
@@ -198,7 +200,25 @@ export const chessGame = defineBehavior(
       state.hoveredId = hoveredId;
     }
 
-    const patchHud = (value: Record<string, unknown>): void => context.resources.patch("ChessGame", value);
+    const patchHud = (value: Record<string, unknown>): void => context.resources.patch("ChessGame", {
+      moveHistoryText: state.moveHistoryText === "" ? "No moves yet" : state.moveHistoryText,
+      ...value,
+    });
+    const publishCaptures = (): void => {
+      const symbols: Record<Color, Record<Kind, string>> = {
+        black: { bishop: "♝", king: "♚", knight: "♞", pawn: "♟", queen: "♛", rook: "♜" },
+        white: { bishop: "♗", king: "♔", knight: "♘", pawn: "♙", queen: "♕", rook: "♖" },
+      };
+      const captured = (color: Color): string => pieces
+        .filter((piece) => piece.color === color && !piece.alive)
+        .sort((left, right) => left.initialRank - right.initialRank || left.initialFile - right.initialFile)
+        .map((piece) => symbols[color][piece.initialKind])
+        .join("");
+      const playerCaptured = state.playerColor === "" ? "—" : captured(enemy(state.playerColor)) || "—";
+      const opponentCaptured = state.playerColor === "" ? "—" : captured(state.playerColor) || "—";
+      context.resources.patch("ChessGame", { opponentCapturedText: opponentCaptured, playerCapturedText: playerCaptured });
+      context.events.emit("chess.captures", { black: captured("black"), playerSide: state.playerColor, white: captured("white") });
+    };
     const selectAt = (file: number, rank: number): void => {
       const target = at(file, rank);
       if (target !== undefined && target.color === state.turn) {
@@ -218,6 +238,7 @@ export const chessGame = defineBehavior(
       state.animId = moving.id; state.animStart = context.time.elapsed; state.animFromFile = fromFile; state.animFromRank = fromRank;
       if (move.captureId !== undefined) {
         const captured = pieces.find((piece) => piece.id === move.captureId);
+        if (captured !== undefined) captured.alive = false;
         captured?.entity?.patch("ChessPiece", { alive: false });
         captured?.entity?.transform().setPosition([0, -10, 0]);
       }
@@ -230,6 +251,17 @@ export const chessGame = defineBehavior(
       state.enPassantFile = -1; state.enPassantRank = -1; state.enPassantPawn = "";
       if (moving.kind === "pawn" && Math.abs(rank - fromRank) === 2) { state.enPassantFile = file; state.enPassantRank = (rank + fromRank) / 2; state.enPassantPawn = moving.id; }
       state.lastFromFile = fromFile; state.lastFromRank = fromRank; state.lastToFile = file; state.lastToRank = rank;
+      const moveNumber = Math.ceil(state.halfmove / 2);
+      const moveLabel = `${moving.kind[0].toUpperCase()}${"abcdefgh"[fromFile]}${fromRank + 1}–${"abcdefgh"[file]}${rank + 1}${move.captureId ? " x" : ""}${move.promotion ? `=${move.promotion[0].toUpperCase()}` : ""}`;
+      if (moving.color === "white") {
+        state.moveHistoryText = `${state.moveHistoryText === "" ? "" : `${state.moveHistoryText}\n`}${moveNumber}. ${moveLabel}`;
+      } else if (state.moveHistoryText === "") {
+        state.moveHistoryText = `${moveNumber}... ${moveLabel}`;
+      } else {
+        const lines = state.moveHistoryText.split("\n");
+        lines[lines.length - 1] = `${lines.at(-1) ?? ""}    ${moveLabel}`;
+        state.moveHistoryText = lines.slice(-8).join("\n");
+      }
       state.turn = enemy(state.turn); state.halfmove += 1; state.selectedId = ""; state.dragging = false;
       if (state.playerColor !== "" && state.turn !== state.playerColor) state.aiMoveAt = context.time.elapsed + 0.55;
       const nextBoard = simulate(moving, move);
@@ -250,8 +282,10 @@ export const chessGame = defineBehavior(
       patchHud({
         moveText: notation,
         statusText: !hasMove ? (checked ? `CHECKMATE — ${enemy(state.turn).toUpperCase()} WINS · Press R` : "STALEMATE · Press R") : checked ? `${state.turn.toUpperCase()} IS IN CHECK` : state.playerColor !== "" && state.turn !== state.playerColor ? "AI is thinking…" : "Your move",
-        turnText: state.gameOver ? "GAME OVER" : `${state.turn.toUpperCase()} TO MOVE`,
+        turnSubText: state.gameOver ? "" : `MOVE ${Math.ceil(state.halfmove / 2)}`,
+        turnText: state.gameOver ? "GAME OVER" : state.turn === state.playerColor ? "YOUR TURN" : "OPPONENT TURN",
       });
+      if (move.captureId !== undefined) publishCaptures();
       return true;
     };
 
@@ -268,12 +302,18 @@ export const chessGame = defineBehavior(
       patchHud({
         blackChoiceText: "",
         helpText: "Click piece + destination | Drag + drop | Arrows + Enter | P promotion | R restart",
+        opponentSideText: enemy(color).toUpperCase(),
+        playerSideText: color.toUpperCase(),
         promptText: "",
         statusText: color === "white" ? "Your move" : "AI is thinking…",
+        turnSubText: "MOVE 1",
+        turnText: color === "white" ? "YOUR TURN" : "OPPONENT TURN",
         whiteChoiceText: "",
       });
+      publishCaptures();
     };
-    for (const action of context.ui.actions()) {
+    const uiActions = context.ui.actions();
+    for (const action of uiActions) {
       if (state.playerColor === "" && action.action === "choose-white") chooseSide("white");
       if (state.playerColor === "" && action.action === "choose-black") chooseSide("black");
     }
@@ -284,18 +324,24 @@ export const chessGame = defineBehavior(
     if (state.playerColor === "" && context.input.getButtonDown("choose-white")) chooseSide("white");
     if (state.playerColor === "" && context.input.getButtonDown("choose-black")) chooseSide("black");
 
-    if (context.input.getButtonDown("restart")) {
+    if (context.input.getButtonDown("restart") || uiActions.some((action) => action.action === "restart")) {
       for (const piece of pieces) {
         piece.entity?.patch("ChessPiece", { alive: true, file: piece.initialFile, kind: piece.initialKind, moved: false, rank: piece.initialRank });
         piece.entity?.transform().setPosition(worldPosition(piece.initialFile, piece.initialRank, 0.07));
       }
-      Object.assign(state, { aiMoveAt: state.playerColor === "black" ? context.time.elapsed + 0.75 : 0, animId: "", cursorFile: 4, cursorRank: 1, dragging: false, enPassantFile: -1, enPassantPawn: "", enPassantRank: -1, gameOver: false, halfmove: 1, hoveredId: "", lastFromFile: -1, lastFromRank: -1, lastToFile: -1, lastToRank: -1, selectedId: "", turn: "white" });
-      patchHud({ moveText: "New game", statusText: state.playerColor === "black" ? "AI is thinking…" : "Your move", turnText: "WHITE TO MOVE" });
+      Object.assign(state, { aiMoveAt: state.playerColor === "black" ? context.time.elapsed + 0.75 : 0, animId: "", cursorFile: 4, cursorRank: 1, dragging: false, enPassantFile: -1, enPassantPawn: "", enPassantRank: -1, gameOver: false, halfmove: 1, hoveredId: "", lastFromFile: -1, lastFromRank: -1, lastToFile: -1, lastToRank: -1, moveHistoryText: "", selectedId: "", turn: "white" });
+      patchHud({ moveText: "New game", statusText: state.playerColor === "black" ? "AI is thinking…" : "Your move", turnSubText: "MOVE 1", turnText: state.playerColor === "white" ? "YOUR TURN" : "OPPONENT TURN" });
+      publishCaptures();
     }
     const humanTurn = !sideChosenThisFrame && state.playerColor !== "" && state.turn === state.playerColor && !state.gameOver && state.animId === "";
     if (humanTurn) {
       if (context.input.getButtonDown("promotion")) { state.promotionIndex = (state.promotionIndex + 1) % promotionKinds.length; patchHud({ promotionText: `Promotion: ${promotionKinds[state.promotionIndex].toUpperCase()}` }); }
       if (context.input.getButtonDown("cancel")) { state.selectedId = ""; state.dragging = false; patchHud({ statusText: "Selection cleared" }); }
+      if (uiActions.some((action) => action.action === "hint")) {
+        const hintPiece = pieces.find((piece) => piece.id === state.selectedId && piece.alive) ?? pieces.find((piece) => piece.alive && piece.color === state.playerColor);
+        const hintMove = hintPiece === undefined ? undefined : legalMoves(hintPiece)[0];
+        patchHud({ statusText: hintPiece === undefined || hintMove === undefined ? "No legal move available" : `Hint: ${"abcdefgh"[hintPiece.file]}${hintPiece.rank + 1} to ${"abcdefgh"[hintMove.file]}${hintMove.rank + 1}` });
+      }
       if (context.input.getButtonDown("cursor-left")) state.cursorFile = Math.max(0, state.cursorFile - 1);
       if (context.input.getButtonDown("cursor-right")) state.cursorFile = Math.min(7, state.cursorFile + 1);
       if (context.input.getButtonDown("cursor-up")) state.cursorRank = Math.min(7, state.cursorRank + 1);
@@ -342,11 +388,51 @@ export const chessGame = defineBehavior(
     }
     const placeMarker = (id: string, file: number, rank: number, y: number): void => context.entity(id)?.transform().setPosition(file < 0 ? [0, -10, 0] : worldPosition(file, rank, y));
     placeMarker("marker.hover", -1, -1, 0.08);
-    placeMarker("marker.selected", currentSelected?.file ?? -1, currentSelected?.rank ?? -1, 0.1);
     placeMarker("marker.last.from", state.lastFromFile, state.lastFromRank, 0.065);
     placeMarker("marker.last.to", state.lastToFile, state.lastToRank, 0.07);
     const kingInCheck = pieces.find((piece) => piece.alive && piece.color === state.turn && piece.kind === "king" && inCheck(state.turn, pieces));
     placeMarker("marker.check", kingInCheck?.file ?? -1, kingInCheck?.rank ?? -1, 0.11);
+
+    const selectedEdges = allEntities.filter((entity) => entity.id.startsWith("marker.selected.edge.")).sort((left, right) => left.id.localeCompare(right.id));
+    if (currentSelected === undefined) {
+      for (const edge of selectedEdges) edge.transform().setPosition([0, -10, 0]);
+    } else {
+      const [selectedX, , selectedZ] = worldPosition(currentSelected.file, currentSelected.rank, 0.12);
+      const edgeOffsets: Array<[number, number, number]> = [[0, 0, -0.46], [0, 0, 0.46], [-0.46, 0, 0], [0.46, 0, 0]];
+      for (let index = 0; index < selectedEdges.length; index += 1) {
+        const offset = edgeOffsets[index] ?? [0, 0, 0];
+        selectedEdges[index]?.transform().setPosition([selectedX + offset[0], 0.12 + offset[1], selectedZ + offset[2]]);
+      }
+    }
+
+    const arcMarkers = allEntities.filter((entity) => entity.id.startsWith("marker.arc.")).sort((left, right) => left.id.localeCompare(right.id));
+    const arcTarget = currentSelected === undefined ? undefined : legal[0];
+    if (currentSelected === undefined || arcTarget === undefined) {
+      for (const marker of arcMarkers) marker.transform().setPosition([0, -10, 0]);
+    } else {
+      const [startX, , startZ] = worldPosition(currentSelected.file, currentSelected.rank, 0.18);
+      const [endX, , endZ] = worldPosition(arcTarget.file, arcTarget.rank, 0.18);
+      const controlX = (startX + endX) / 2 + (endZ - startZ) * 0.34;
+      const controlZ = (startZ + endZ) / 2 - (endX - startX) * 0.34;
+      const point = (t: number): [number, number] => [
+        (1 - t) * (1 - t) * startX + 2 * (1 - t) * t * controlX + t * t * endX,
+        (1 - t) * (1 - t) * startZ + 2 * (1 - t) * t * controlZ + t * t * endZ,
+      ];
+      for (let index = 0; index < arcMarkers.length; index += 1) {
+        const first = point(index / arcMarkers.length);
+        const second = point((index + 1) / arcMarkers.length);
+        const deltaX = second[0] - first[0];
+        const deltaZ = second[1] - first[1];
+        const length = Math.max(0.12, Math.hypot(deltaX, deltaZ));
+        const halfAngle = Math.atan2(deltaZ, deltaX) / 2;
+        const marker = arcMarkers[index];
+        marker?.transform().setPose(
+          [(first[0] + second[0]) / 2, 0.18, (first[1] + second[1]) / 2],
+          [0, Math.sin(halfAngle), 0, Math.cos(halfAngle)],
+        );
+        marker?.patch("Transform", { scale: [length * 0.5, 0.025, 0.07] });
+      }
+    }
 
     if (state.animId !== "") {
       const animated = pieces.find((piece) => piece.id === state.animId);

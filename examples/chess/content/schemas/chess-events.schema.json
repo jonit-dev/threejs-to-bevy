@@ -10,6 +10,14 @@
         "dismiss": { "kind": "boolean" },
         "side": { "kind": "string" }
       }
+    },
+    {
+      "id": "chess.captures",
+      "fields": {
+        "black": { "kind": "string" },
+        "playerSide": { "kind": "string" },
+        "white": { "kind": "string" }
+      }
     }
   ]
 }

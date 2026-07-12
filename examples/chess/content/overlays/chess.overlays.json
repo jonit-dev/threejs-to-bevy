@@ -10,6 +10,16 @@
       "zIndex": 30,
       "input": "modal",
       "messages": {
+        "gameToOverlay": [
+          {
+            "name": "chess:captures",
+            "schema": {
+              "kind": "object",
+              "fields": { "black": "string", "playerSide": "string", "white": "string" },
+              "required": ["black", "playerSide", "white"]
+            }
+          }
+        ],
         "overlayToGame": [
           {
             "name": "chess:choose-side",

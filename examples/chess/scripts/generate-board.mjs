@@ -20,14 +20,31 @@ for (let index = 0; index < 28; index += 1) {
   entities.push({
     id: `marker.legal.${String(index).padStart(2, "0")}`,
     prefab: "prefab.marker.legal",
-    transform: { position: [0, -10, 0], scale: [0.34, 0.035, 0.34] },
+    transform: { position: [0, -10, 0], scale: [0.46, 0.018, 0.46] },
     components: { LegalMarker: { index } },
+  });
+}
+
+for (let index = 0; index < 6; index += 1) {
+  entities.push({
+    id: `marker.arc.${String(index).padStart(2, "0")}`,
+    prefab: "prefab.marker.arc",
+    transform: { position: [0, -10, 0], rotation: [0, 0, 0], scale: [0.4, 0.025, 0.07] },
+    components: { MoveArcMarker: { index } },
+  });
+}
+
+for (let index = 0; index < 4; index += 1) {
+  entities.push({
+    id: `marker.selected.edge.${String(index).padStart(2, "0")}`,
+    prefab: "prefab.marker.selected.edge",
+    transform: { position: [0, -10, 0], scale: index < 2 ? [0.46, 0.025, 0.025] : [0.025, 0.025, 0.46] },
+    components: { SelectedEdgeMarker: { index } },
   });
 }
 
 entities.push(
   marker("marker.hover", "prefab.marker.hover", "HoverMarker", [0.92, 0.03, 0.92]),
-  marker("marker.selected", "prefab.marker.selected", "SelectedMarker", [0.88, 0.04, 0.88]),
   marker("marker.last.from", "prefab.marker.last", "LastMoveMarker", [0.82, 0.025, 0.82]),
   marker("marker.last.to", "prefab.marker.last", "LastMoveMarker", [0.82, 0.025, 0.82]),
   marker("marker.check", "prefab.marker.check", "CheckMarker", [0.9, 0.05, 0.9]),
@@ -47,15 +64,18 @@ entities.push(
 
 const prefabs = [
   { id: "prefab.plinth", primitive: "box", color: "#2a1309" },
-  { id: "prefab.marker.legal", primitive: "cylinder", color: "#60d394" },
+  { id: "prefab.marker.legal", primitive: "box", color: "#d8a33a" },
   { id: "prefab.marker.hover", primitive: "box", color: "#84c7ff" },
-  { id: "prefab.marker.selected", primitive: "box", color: "#ffd166" },
-  { id: "prefab.marker.last", primitive: "box", color: "#f4a261" },
-  { id: "prefab.marker.check", primitive: "box", color: "#ef476f" },
+  { id: "prefab.marker.selected", primitive: "box", color: "#37df68" },
+  { id: "prefab.marker.selected.edge", primitive: "box", color: "#37df68" },
+  { id: "prefab.marker.last", primitive: "box", color: "#a86f2a" },
+  { id: "prefab.marker.check", primitive: "box", color: "#e14d5b" },
+  { id: "prefab.marker.arc", primitive: "box", color: "#f2b94b" },
 ];
 for (const color of ["white", "black"]) {
   for (const kind of ["pawn", "rook", "knight", "bishop", "queen", "king"]) {
     prefabs.push({
+      color: color === "white" ? "#ead8b8" : "#100d0a",
       id: `prefab.${color}.${kind}`,
       asset: `assets/models/chess/${color}-${kind}.glb`,
     });
@@ -70,7 +90,7 @@ const scene = {
   prefabs,
   resources: [
     { id: "ActiveCamera", value: { entity: "camera.main" } },
-    { id: "ChessGame", value: { blackChoiceText: "PLAY BLACK", turnText: "WHITE TO MOVE", statusText: "Choose a side to begin", helpText: "Choose with the buttons or press W / B", moveText: "New game", promotionText: "Promotion: QUEEN", promptText: "WHICH SIDE DO YOU WANT TO PLAY?", whiteChoiceText: "PLAY WHITE" } },
+    { id: "ChessGame", value: { blackChoiceText: "PLAY BLACK", moveHistoryText: "No moves yet", opponentCapturedText: "—", opponentClockText: "TIME 14:57", opponentNameText: "ARTEMIS", opponentRatingText: "RATING 1592", opponentSideText: "", playerCapturedText: "—", playerClockText: "TIME 14:32", playerNameText: "YOU", playerRatingText: "RATING 1654", playerSideText: "", turnSubText: "MOVE 1", turnText: "READY", statusText: "Choose a side to begin", helpText: "Choose with the buttons or press W / B", moveText: "New game", promotionText: "Promotion: QUEEN", promptText: "WHICH SIDE DO YOU WANT TO PLAY?", whiteChoiceText: "PLAY WHITE" } },
   ],
   systems: [{ id: "chess-game", source: "behavior-metadata", script: { module: "src/scripts/chess.ts", export: "chessGame" } }],
   ui: hud(),
@@ -150,19 +170,58 @@ function heightFor(kind) {
 }
 
 function hud() {
+  const panel = {
+    backgroundColor: "#090b0de8",
+    borderColor: "#c69a5066",
+    borderRadius: 8,
+    borderWidth: 1,
+    shadow: { blur: 26, color: "#000000a8", offsetY: 12, spread: 0 },
+  };
+  const heading = { color: "#f1eadf", fontSize: 16, fontWeight: "bold" };
+  const muted = { color: "#9d968c", fontSize: 12 };
+  const avatar = { backgroundColor: "#1d2d36", borderColor: "#d8a33a99", borderRadius: 5, borderWidth: 1, color: "#dce9ed", fontSize: 38, fontWeight: "bold", textAlign: "center" };
+  const button = { backgroundColor: "#191a18e8", borderColor: "#c69a5066", borderRadius: 6, borderWidth: 1, color: "#eee5d8", fontSize: 13, fontWeight: "bold", textAlign: "center" };
   return {
     nodes: [
-      { id: "turn", type: "text", text: "WHITE TO MOVE", layout: { left: 24, top: 22, width: 380 } },
-      { id: "status", type: "text", text: "Click or drag a piece", layout: { justify: "center", align: "center", top: 22, width: 1280 } },
-      { id: "promotion", type: "text", text: "Promotion: QUEEN", layout: { right: 24, top: 22, width: 280 } },
-      { id: "move", type: "text", text: "New game", layout: { left: 24, bottom: 54, width: 500 } },
-      { id: "help", type: "text", text: "Click piece + destination | Drag + drop | Arrows + Enter | P promotion | R restart", layout: { justify: "center", align: "center", bottom: 20, width: 1280 } },
+      { id: "opponent-card", type: "column", layout: { height: 170, inset: { left: 24, top: 34 }, position: "absolute", width: 252 }, style: panel },
+      { id: "opponent-avatar", type: "text", text: "A", layout: { align: "center", height: 62, inset: { left: 38, top: 49 }, justify: "center", position: "absolute", width: 62 }, style: avatar },
+      { id: "opponent-name", type: "text", text: "ARTEMIS", layout: { inset: { left: 114, top: 51 }, position: "absolute", width: 148 }, style: heading },
+      { id: "opponent-side", type: "text", text: "BLACK", layout: { inset: { left: 114, top: 78 }, position: "absolute", width: 148 }, style: muted },
+      { id: "opponent-rating", type: "text", text: "RATING 1592", layout: { inset: { left: 114, top: 98 }, position: "absolute", width: 148 }, style: muted },
+      { id: "opponent-clock", type: "text", text: "TIME 14:57", layout: { inset: { left: 38, top: 133 }, position: "absolute", width: 210 }, style: { ...muted, color: "#e9e0d2", fontSize: 13 } },
+      { id: "player-card", type: "column", layout: { height: 132, inset: { bottom: 156, left: 24 }, position: "absolute", width: 252 }, style: panel },
+      { id: "player-avatar", type: "text", text: "Y", layout: { align: "center", height: 62, inset: { bottom: 168, left: 38 }, justify: "center", position: "absolute", width: 62 }, style: { ...avatar, backgroundColor: "#24282b" } },
+      { id: "player-name", type: "text", text: "YOU", layout: { bottom: 234, inset: { left: 114 }, position: "absolute", width: 148 }, style: heading },
+      { id: "player-side", type: "text", text: "WHITE", layout: { bottom: 211, inset: { left: 114 }, position: "absolute", width: 148 }, style: muted },
+      { id: "player-rating", type: "text", text: "RATING 1654", layout: { bottom: 191, inset: { left: 114 }, position: "absolute", width: 148 }, style: muted },
+      { id: "player-clock", type: "text", text: "TIME 14:32", layout: { bottom: 171, inset: { left: 114 }, position: "absolute", width: 148 }, style: { ...muted, color: "#e9e0d2", fontSize: 13 } },
+      { id: "turn-card", type: "column", layout: { height: 96, inset: { right: 24, top: 34 }, position: "absolute", width: 248 }, style: panel },
+      { id: "turn-dot", type: "text", text: "●", layout: { inset: { right: 220, top: 51 }, position: "absolute", width: 28 }, style: { color: "#7cdb43", fontSize: 26 } },
+      { id: "turn", type: "text", text: "YOUR TURN", layout: { inset: { right: 40, top: 51 }, position: "absolute", width: 170 }, style: { ...heading, fontSize: 20 } },
+      { id: "turn-sub", type: "text", text: "MOVE 1", layout: { inset: { right: 40, top: 79 }, position: "absolute", width: 170 }, style: { ...muted, fontSize: 14 } },
+      { id: "move-history-card", type: "column", layout: { height: 300, inset: { right: 24, top: 146 }, position: "absolute", width: 248 }, style: panel },
+      { id: "move-history-label", type: "text", text: "MOVES", layout: { inset: { right: 40, top: 162 }, position: "absolute", width: 216 }, style: muted },
+      { id: "move-history", type: "text", text: "No moves yet", layout: { inset: { right: 40, top: 190 }, position: "absolute", width: 216 }, style: { ...heading, fontSize: 14, wrap: "word" } },
+      { id: "status", type: "text", text: "Your move", layout: { align: "center", inset: { left: 300, right: 300, top: 24 }, justify: "center", position: "absolute" }, style: { ...heading, color: "#f0d38f", fontSize: 14, textAlign: "center" } },
+      { id: "promotion", type: "text", text: "Promotion: QUEEN", layout: { bottom: 24, right: 330, position: "absolute", width: 180 }, style: muted },
+      { id: "help", type: "text", text: "Click piece + destination  |  Drag + drop  |  Arrows + Enter  |  R restart", layout: { align: "center", bottom: 20, inset: { left: 0, right: 0 }, justify: "center", position: "absolute" }, style: { ...muted, fontSize: 11, textAlign: "center" } },
+      { id: "hint", type: "button", action: "hint", label: "HINT", layout: { bottom: 76, height: 44, position: "absolute", right: 24, width: 158 }, style: button },
+      { id: "new-game", type: "button", action: "restart", label: "NEW GAME", layout: { bottom: 128, height: 44, position: "absolute", right: 24, width: 158 }, style: button },
     ],
     bindings: [
+      { node: "opponent-name", resource: "ChessGame.opponentNameText" },
+      { node: "opponent-side", resource: "ChessGame.opponentSideText" },
+      { node: "opponent-rating", resource: "ChessGame.opponentRatingText" },
+      { node: "opponent-clock", resource: "ChessGame.opponentClockText" },
+      { node: "player-name", resource: "ChessGame.playerNameText" },
+      { node: "player-side", resource: "ChessGame.playerSideText" },
+      { node: "player-rating", resource: "ChessGame.playerRatingText" },
+      { node: "player-clock", resource: "ChessGame.playerClockText" },
       { node: "turn", resource: "ChessGame.turnText" },
+      { node: "turn-sub", resource: "ChessGame.turnSubText" },
       { node: "status", resource: "ChessGame.statusText" },
+      { node: "move-history", resource: "ChessGame.moveHistoryText" },
       { node: "promotion", resource: "ChessGame.promotionText" },
-      { node: "move", resource: "ChessGame.moveText" },
       { node: "help", resource: "ChessGame.helpText" },
     ],
   };
