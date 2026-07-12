@@ -41,6 +41,11 @@ const materialNormalizedNumberKeys = [
 ] as const;
 
 const materialKinds = new Set(["extended", "shader", "standard", "unlit"]);
+const unlitLightingKeys = [
+  "clearcoat", "clearcoatRoughness", "clearcoatRoughnessTexture", "clearcoatTexture",
+  "emissive", "emissiveIntensity", "emissiveTexture", "metallicRoughnessTexture",
+  "metalness", "normalTexture", "occlusionTexture", "roughness", "transmission", "transmissionTexture",
+] as const;
 
 interface IDeclarationDocumentValidationOptions {
   declarationKeys: ReadonlySet<string>;
@@ -88,6 +93,13 @@ export function validateMaterialDeclaration(
   }
   if (kind === "shader" && item.program === undefined) {
     diagnostics.push(typeDiagnostic(file, `${path}/program`, "shader material must declare a portable program.", item.program));
+  }
+  if (kind === "unlit") {
+    for (const key of unlitLightingKeys) {
+      if (item[key] !== undefined) {
+        diagnostics.push(typeDiagnostic(file, `${path}/${key}`, `unlit material cannot declare lighting field '${key}'; use color and baseColorTexture.`, item[key]));
+      }
+    }
   }
   if (item.color !== undefined && readString(item.color) === undefined) {
     diagnostics.push(typeDiagnostic(file, `${path}/color`, "material color must be a non-empty string.", item.color));

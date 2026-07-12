@@ -757,8 +757,25 @@ export interface IExtendedMaterialIr extends IBaseMaterialIr {
 }
 
 export interface IUnlitMaterialIr extends IBaseMaterialIr {
+  clearcoat?: never;
+  clearcoatRoughness?: never;
+  clearcoatRoughnessTexture?: never;
+  clearcoatTexture?: never;
   color: string | readonly [number, number, number] | readonly [number, number, number, number];
+  emissive?: never;
+  emissiveBloom?: never;
+  emissiveIntensity?: never;
+  emissiveTexture?: never;
   kind: "unlit";
+  metalness?: never;
+  metallicRoughnessTexture?: never;
+  normalTexture?: never;
+  occlusionTexture?: never;
+  roughness?: never;
+  specularIntensity?: never;
+  specularTexture?: never;
+  transmission?: never;
+  transmissionTexture?: never;
 }
 
 export interface IShaderMaterialIr extends IBaseMaterialIr {
