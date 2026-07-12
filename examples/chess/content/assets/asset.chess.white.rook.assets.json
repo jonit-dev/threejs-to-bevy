@@ -1,0 +1,12 @@
+{
+  "assets": [
+    {
+      "id": "asset.chess.white.rook",
+      "path": "assets/models/chess/white-rook.glb",
+      "type": "model"
+    }
+  ],
+  "id": "asset.chess.white.rook",
+  "schema": "threenative.assets",
+  "version": "0.1.0"
+}

@@ -1,0 +1,12 @@
+{
+  "assets": [
+    {
+      "id": "asset.chess.black.king",
+      "path": "assets/models/chess/black-king.glb",
+      "type": "model"
+    }
+  ],
+  "id": "asset.chess.black.king",
+  "schema": "threenative.assets",
+  "version": "0.1.0"
+}

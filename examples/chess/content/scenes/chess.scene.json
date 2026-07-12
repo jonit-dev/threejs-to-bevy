@@ -1,0 +1,3404 @@
+{
+  "schema": "threenative.scene",
+  "version": "0.1.0",
+  "id": "chess",
+  "entities": [
+    {
+      "id": "square.a1",
+      "prefab": "prefab.square.light",
+      "transform": {
+        "position": [
+          -3.5,
+          0,
+          3.5
+        ],
+        "scale": [
+          0.98,
+          0.12,
+          0.98
+        ]
+      },
+      "components": {
+        "BoardSquare": {
+          "file": 0,
+          "rank": 0
+        }
+      }
+    },
+    {
+      "id": "square.b1",
+      "prefab": "prefab.square.dark",
+      "transform": {
+        "position": [
+          -2.5,
+          0,
+          3.5
+        ],
+        "scale": [
+          0.98,
+          0.12,
+          0.98
+        ]
+      },
+      "components": {
+        "BoardSquare": {
+          "file": 1,
+          "rank": 0
+        }
+      }
+    },
+    {
+      "id": "square.c1",
+      "prefab": "prefab.square.light",
+      "transform": {
+        "position": [
+          -1.5,
+          0,
+          3.5
+        ],
+        "scale": [
+          0.98,
+          0.12,
+          0.98
+        ]
+      },
+      "components": {
+        "BoardSquare": {
+          "file": 2,
+          "rank": 0
+        }
+      }
+    },
+    {
+      "id": "square.d1",
+      "prefab": "prefab.square.dark",
+      "transform": {
+        "position": [
+          -0.5,
+          0,
+          3.5
+        ],
+        "scale": [
+          0.98,
+          0.12,
+          0.98
+        ]
+      },
+      "components": {
+        "BoardSquare": {
+          "file": 3,
+          "rank": 0
+        }
+      }
+    },
+    {
+      "id": "square.e1",
+      "prefab": "prefab.square.light",
+      "transform": {
+        "position": [
+          0.5,
+          0,
+          3.5
+        ],
+        "scale": [
+          0.98,
+          0.12,
+          0.98
+        ]
+      },
+      "components": {
+        "BoardSquare": {
+          "file": 4,
+          "rank": 0
+        }
+      }
+    },
+    {
+      "id": "square.f1",
+      "prefab": "prefab.square.dark",
+      "transform": {
+        "position": [
+          1.5,
+          0,
+          3.5
+        ],
+        "scale": [
+          0.98,
+          0.12,
+          0.98
+        ]
+      },
+      "components": {
+        "BoardSquare": {
+          "file": 5,
+          "rank": 0
+        }
+      }
+    },
+    {
+      "id": "square.g1",
+      "prefab": "prefab.square.light",
+      "transform": {
+        "position": [
+          2.5,
+          0,
+          3.5
+        ],
+        "scale": [
+          0.98,
+          0.12,
+          0.98
+        ]
+      },
+      "components": {
+        "BoardSquare": {
+          "file": 6,
+          "rank": 0
+        }
+      }
+    },
+    {
+      "id": "square.h1",
+      "prefab": "prefab.square.dark",
+      "transform": {
+        "position": [
+          3.5,
+          0,
+          3.5
+        ],
+        "scale": [
+          0.98,
+          0.12,
+          0.98
+        ]
+      },
+      "components": {
+        "BoardSquare": {
+          "file": 7,
+          "rank": 0
+        }
+      }
+    },
+    {
+      "id": "square.a2",
+      "prefab": "prefab.square.dark",
+      "transform": {
+        "position": [
+          -3.5,
+          0,
+          2.5
+        ],
+        "scale": [
+          0.98,
+          0.12,
+          0.98
+        ]
+      },
+      "components": {
+        "BoardSquare": {
+          "file": 0,
+          "rank": 1
+        }
+      }
+    },
+    {
+      "id": "square.b2",
+      "prefab": "prefab.square.light",
+      "transform": {
+        "position": [
+          -2.5,
+          0,
+          2.5
+        ],
+        "scale": [
+          0.98,
+          0.12,
+          0.98
+        ]
+      },
+      "components": {
+        "BoardSquare": {
+          "file": 1,
+          "rank": 1
+        }
+      }
+    },
+    {
+      "id": "square.c2",
+      "prefab": "prefab.square.dark",
+      "transform": {
+        "position": [
+          -1.5,
+          0,
+          2.5
+        ],
+        "scale": [
+          0.98,
+          0.12,
+          0.98
+        ]
+      },
+      "components": {
+        "BoardSquare": {
+          "file": 2,
+          "rank": 1
+        }
+      }
+    },
+    {
+      "id": "square.d2",
+      "prefab": "prefab.square.light",
+      "transform": {
+        "position": [
+          -0.5,
+          0,
+          2.5
+        ],
+        "scale": [
+          0.98,
+          0.12,
+          0.98
+        ]
+      },
+      "components": {
+        "BoardSquare": {
+          "file": 3,
+          "rank": 1
+        }
+      }
+    },
+    {
+      "id": "square.e2",
+      "prefab": "prefab.square.dark",
+      "transform": {
+        "position": [
+          0.5,
+          0,
+          2.5
+        ],
+        "scale": [
+          0.98,
+          0.12,
+          0.98
+        ]
+      },
+      "components": {
+        "BoardSquare": {
+          "file": 4,
+          "rank": 1
+        }
+      }
+    },
+    {
+      "id": "square.f2",
+      "prefab": "prefab.square.light",
+      "transform": {
+        "position": [
+          1.5,
+          0,
+          2.5
+        ],
+        "scale": [
+          0.98,
+          0.12,
+          0.98
+        ]
+      },
+      "components": {
+        "BoardSquare": {
+          "file": 5,
+          "rank": 1
+        }
+      }
+    },
+    {
+      "id": "square.g2",
+      "prefab": "prefab.square.dark",
+      "transform": {
+        "position": [
+          2.5,
+          0,
+          2.5
+        ],
+        "scale": [
+          0.98,
+          0.12,
+          0.98
+        ]
+      },
+      "components": {
+        "BoardSquare": {
+          "file": 6,
+          "rank": 1
+        }
+      }
+    },
+    {
+      "id": "square.h2",
+      "prefab": "prefab.square.light",
+      "transform": {
+        "position": [
+          3.5,
+          0,
+          2.5
+        ],
+        "scale": [
+          0.98,
+          0.12,
+          0.98
+        ]
+      },
+      "components": {
+        "BoardSquare": {
+          "file": 7,
+          "rank": 1
+        }
+      }
+    },
+    {
+      "id": "square.a3",
+      "prefab": "prefab.square.light",
+      "transform": {
+        "position": [
+          -3.5,
+          0,
+          1.5
+        ],
+        "scale": [
+          0.98,
+          0.12,
+          0.98
+        ]
+      },
+      "components": {
+        "BoardSquare": {
+          "file": 0,
+          "rank": 2
+        }
+      }
+    },
+    {
+      "id": "square.b3",
+      "prefab": "prefab.square.dark",
+      "transform": {
+        "position": [
+          -2.5,
+          0,
+          1.5
+        ],
+        "scale": [
+          0.98,
+          0.12,
+          0.98
+        ]
+      },
+      "components": {
+        "BoardSquare": {
+          "file": 1,
+          "rank": 2
+        }
+      }
+    },
+    {
+      "id": "square.c3",
+      "prefab": "prefab.square.light",
+      "transform": {
+        "position": [
+          -1.5,
+          0,
+          1.5
+        ],
+        "scale": [
+          0.98,
+          0.12,
+          0.98
+        ]
+      },
+      "components": {
+        "BoardSquare": {
+          "file": 2,
+          "rank": 2
+        }
+      }
+    },
+    {
+      "id": "square.d3",
+      "prefab": "prefab.square.dark",
+      "transform": {
+        "position": [
+          -0.5,
+          0,
+          1.5
+        ],
+        "scale": [
+          0.98,
+          0.12,
+          0.98
+        ]
+      },
+      "components": {
+        "BoardSquare": {
+          "file": 3,
+          "rank": 2
+        }
+      }
+    },
+    {
+      "id": "square.e3",
+      "prefab": "prefab.square.light",
+      "transform": {
+        "position": [
+          0.5,
+          0,
+          1.5
+        ],
+        "scale": [
+          0.98,
+          0.12,
+          0.98
+        ]
+      },
+      "components": {
+        "BoardSquare": {
+          "file": 4,
+          "rank": 2
+        }
+      }
+    },
+    {
+      "id": "square.f3",
+      "prefab": "prefab.square.dark",
+      "transform": {
+        "position": [
+          1.5,
+          0,
+          1.5
+        ],
+        "scale": [
+          0.98,
+          0.12,
+          0.98
+        ]
+      },
+      "components": {
+        "BoardSquare": {
+          "file": 5,
+          "rank": 2
+        }
+      }
+    },
+    {
+      "id": "square.g3",
+      "prefab": "prefab.square.light",
+      "transform": {
+        "position": [
+          2.5,
+          0,
+          1.5
+        ],
+        "scale": [
+          0.98,
+          0.12,
+          0.98
+        ]
+      },
+      "components": {
+        "BoardSquare": {
+          "file": 6,
+          "rank": 2
+        }
+      }
+    },
+    {
+      "id": "square.h3",
+      "prefab": "prefab.square.dark",
+      "transform": {
+        "position": [
+          3.5,
+          0,
+          1.5
+        ],
+        "scale": [
+          0.98,
+          0.12,
+          0.98
+        ]
+      },
+      "components": {
+        "BoardSquare": {
+          "file": 7,
+          "rank": 2
+        }
+      }
+    },
+    {
+      "id": "square.a4",
+      "prefab": "prefab.square.dark",
+      "transform": {
+        "position": [
+          -3.5,
+          0,
+          0.5
+        ],
+        "scale": [
+          0.98,
+          0.12,
+          0.98
+        ]
+      },
+      "components": {
+        "BoardSquare": {
+          "file": 0,
+          "rank": 3
+        }
+      }
+    },
+    {
+      "id": "square.b4",
+      "prefab": "prefab.square.light",
+      "transform": {
+        "position": [
+          -2.5,
+          0,
+          0.5
+        ],
+        "scale": [
+          0.98,
+          0.12,
+          0.98
+        ]
+      },
+      "components": {
+        "BoardSquare": {
+          "file": 1,
+          "rank": 3
+        }
+      }
+    },
+    {
+      "id": "square.c4",
+      "prefab": "prefab.square.dark",
+      "transform": {
+        "position": [
+          -1.5,
+          0,
+          0.5
+        ],
+        "scale": [
+          0.98,
+          0.12,
+          0.98
+        ]
+      },
+      "components": {
+        "BoardSquare": {
+          "file": 2,
+          "rank": 3
+        }
+      }
+    },
+    {
+      "id": "square.d4",
+      "prefab": "prefab.square.light",
+      "transform": {
+        "position": [
+          -0.5,
+          0,
+          0.5
+        ],
+        "scale": [
+          0.98,
+          0.12,
+          0.98
+        ]
+      },
+      "components": {
+        "BoardSquare": {
+          "file": 3,
+          "rank": 3
+        }
+      }
+    },
+    {
+      "id": "square.e4",
+      "prefab": "prefab.square.dark",
+      "transform": {
+        "position": [
+          0.5,
+          0,
+          0.5
+        ],
+        "scale": [
+          0.98,
+          0.12,
+          0.98
+        ]
+      },
+      "components": {
+        "BoardSquare": {
+          "file": 4,
+          "rank": 3
+        }
+      }
+    },
+    {
+      "id": "square.f4",
+      "prefab": "prefab.square.light",
+      "transform": {
+        "position": [
+          1.5,
+          0,
+          0.5
+        ],
+        "scale": [
+          0.98,
+          0.12,
+          0.98
+        ]
+      },
+      "components": {
+        "BoardSquare": {
+          "file": 5,
+          "rank": 3
+        }
+      }
+    },
+    {
+      "id": "square.g4",
+      "prefab": "prefab.square.dark",
+      "transform": {
+        "position": [
+          2.5,
+          0,
+          0.5
+        ],
+        "scale": [
+          0.98,
+          0.12,
+          0.98
+        ]
+      },
+      "components": {
+        "BoardSquare": {
+          "file": 6,
+          "rank": 3
+        }
+      }
+    },
+    {
+      "id": "square.h4",
+      "prefab": "prefab.square.light",
+      "transform": {
+        "position": [
+          3.5,
+          0,
+          0.5
+        ],
+        "scale": [
+          0.98,
+          0.12,
+          0.98
+        ]
+      },
+      "components": {
+        "BoardSquare": {
+          "file": 7,
+          "rank": 3
+        }
+      }
+    },
+    {
+      "id": "square.a5",
+      "prefab": "prefab.square.light",
+      "transform": {
+        "position": [
+          -3.5,
+          0,
+          -0.5
+        ],
+        "scale": [
+          0.98,
+          0.12,
+          0.98
+        ]
+      },
+      "components": {
+        "BoardSquare": {
+          "file": 0,
+          "rank": 4
+        }
+      }
+    },
+    {
+      "id": "square.b5",
+      "prefab": "prefab.square.dark",
+      "transform": {
+        "position": [
+          -2.5,
+          0,
+          -0.5
+        ],
+        "scale": [
+          0.98,
+          0.12,
+          0.98
+        ]
+      },
+      "components": {
+        "BoardSquare": {
+          "file": 1,
+          "rank": 4
+        }
+      }
+    },
+    {
+      "id": "square.c5",
+      "prefab": "prefab.square.light",
+      "transform": {
+        "position": [
+          -1.5,
+          0,
+          -0.5
+        ],
+        "scale": [
+          0.98,
+          0.12,
+          0.98
+        ]
+      },
+      "components": {
+        "BoardSquare": {
+          "file": 2,
+          "rank": 4
+        }
+      }
+    },
+    {
+      "id": "square.d5",
+      "prefab": "prefab.square.dark",
+      "transform": {
+        "position": [
+          -0.5,
+          0,
+          -0.5
+        ],
+        "scale": [
+          0.98,
+          0.12,
+          0.98
+        ]
+      },
+      "components": {
+        "BoardSquare": {
+          "file": 3,
+          "rank": 4
+        }
+      }
+    },
+    {
+      "id": "square.e5",
+      "prefab": "prefab.square.light",
+      "transform": {
+        "position": [
+          0.5,
+          0,
+          -0.5
+        ],
+        "scale": [
+          0.98,
+          0.12,
+          0.98
+        ]
+      },
+      "components": {
+        "BoardSquare": {
+          "file": 4,
+          "rank": 4
+        }
+      }
+    },
+    {
+      "id": "square.f5",
+      "prefab": "prefab.square.dark",
+      "transform": {
+        "position": [
+          1.5,
+          0,
+          -0.5
+        ],
+        "scale": [
+          0.98,
+          0.12,
+          0.98
+        ]
+      },
+      "components": {
+        "BoardSquare": {
+          "file": 5,
+          "rank": 4
+        }
+      }
+    },
+    {
+      "id": "square.g5",
+      "prefab": "prefab.square.light",
+      "transform": {
+        "position": [
+          2.5,
+          0,
+          -0.5
+        ],
+        "scale": [
+          0.98,
+          0.12,
+          0.98
+        ]
+      },
+      "components": {
+        "BoardSquare": {
+          "file": 6,
+          "rank": 4
+        }
+      }
+    },
+    {
+      "id": "square.h5",
+      "prefab": "prefab.square.dark",
+      "transform": {
+        "position": [
+          3.5,
+          0,
+          -0.5
+        ],
+        "scale": [
+          0.98,
+          0.12,
+          0.98
+        ]
+      },
+      "components": {
+        "BoardSquare": {
+          "file": 7,
+          "rank": 4
+        }
+      }
+    },
+    {
+      "id": "square.a6",
+      "prefab": "prefab.square.dark",
+      "transform": {
+        "position": [
+          -3.5,
+          0,
+          -1.5
+        ],
+        "scale": [
+          0.98,
+          0.12,
+          0.98
+        ]
+      },
+      "components": {
+        "BoardSquare": {
+          "file": 0,
+          "rank": 5
+        }
+      }
+    },
+    {
+      "id": "square.b6",
+      "prefab": "prefab.square.light",
+      "transform": {
+        "position": [
+          -2.5,
+          0,
+          -1.5
+        ],
+        "scale": [
+          0.98,
+          0.12,
+          0.98
+        ]
+      },
+      "components": {
+        "BoardSquare": {
+          "file": 1,
+          "rank": 5
+        }
+      }
+    },
+    {
+      "id": "square.c6",
+      "prefab": "prefab.square.dark",
+      "transform": {
+        "position": [
+          -1.5,
+          0,
+          -1.5
+        ],
+        "scale": [
+          0.98,
+          0.12,
+          0.98
+        ]
+      },
+      "components": {
+        "BoardSquare": {
+          "file": 2,
+          "rank": 5
+        }
+      }
+    },
+    {
+      "id": "square.d6",
+      "prefab": "prefab.square.light",
+      "transform": {
+        "position": [
+          -0.5,
+          0,
+          -1.5
+        ],
+        "scale": [
+          0.98,
+          0.12,
+          0.98
+        ]
+      },
+      "components": {
+        "BoardSquare": {
+          "file": 3,
+          "rank": 5
+        }
+      }
+    },
+    {
+      "id": "square.e6",
+      "prefab": "prefab.square.dark",
+      "transform": {
+        "position": [
+          0.5,
+          0,
+          -1.5
+        ],
+        "scale": [
+          0.98,
+          0.12,
+          0.98
+        ]
+      },
+      "components": {
+        "BoardSquare": {
+          "file": 4,
+          "rank": 5
+        }
+      }
+    },
+    {
+      "id": "square.f6",
+      "prefab": "prefab.square.light",
+      "transform": {
+        "position": [
+          1.5,
+          0,
+          -1.5
+        ],
+        "scale": [
+          0.98,
+          0.12,
+          0.98
+        ]
+      },
+      "components": {
+        "BoardSquare": {
+          "file": 5,
+          "rank": 5
+        }
+      }
+    },
+    {
+      "id": "square.g6",
+      "prefab": "prefab.square.dark",
+      "transform": {
+        "position": [
+          2.5,
+          0,
+          -1.5
+        ],
+        "scale": [
+          0.98,
+          0.12,
+          0.98
+        ]
+      },
+      "components": {
+        "BoardSquare": {
+          "file": 6,
+          "rank": 5
+        }
+      }
+    },
+    {
+      "id": "square.h6",
+      "prefab": "prefab.square.light",
+      "transform": {
+        "position": [
+          3.5,
+          0,
+          -1.5
+        ],
+        "scale": [
+          0.98,
+          0.12,
+          0.98
+        ]
+      },
+      "components": {
+        "BoardSquare": {
+          "file": 7,
+          "rank": 5
+        }
+      }
+    },
+    {
+      "id": "square.a7",
+      "prefab": "prefab.square.light",
+      "transform": {
+        "position": [
+          -3.5,
+          0,
+          -2.5
+        ],
+        "scale": [
+          0.98,
+          0.12,
+          0.98
+        ]
+      },
+      "components": {
+        "BoardSquare": {
+          "file": 0,
+          "rank": 6
+        }
+      }
+    },
+    {
+      "id": "square.b7",
+      "prefab": "prefab.square.dark",
+      "transform": {
+        "position": [
+          -2.5,
+          0,
+          -2.5
+        ],
+        "scale": [
+          0.98,
+          0.12,
+          0.98
+        ]
+      },
+      "components": {
+        "BoardSquare": {
+          "file": 1,
+          "rank": 6
+        }
+      }
+    },
+    {
+      "id": "square.c7",
+      "prefab": "prefab.square.light",
+      "transform": {
+        "position": [
+          -1.5,
+          0,
+          -2.5
+        ],
+        "scale": [
+          0.98,
+          0.12,
+          0.98
+        ]
+      },
+      "components": {
+        "BoardSquare": {
+          "file": 2,
+          "rank": 6
+        }
+      }
+    },
+    {
+      "id": "square.d7",
+      "prefab": "prefab.square.dark",
+      "transform": {
+        "position": [
+          -0.5,
+          0,
+          -2.5
+        ],
+        "scale": [
+          0.98,
+          0.12,
+          0.98
+        ]
+      },
+      "components": {
+        "BoardSquare": {
+          "file": 3,
+          "rank": 6
+        }
+      }
+    },
+    {
+      "id": "square.e7",
+      "prefab": "prefab.square.light",
+      "transform": {
+        "position": [
+          0.5,
+          0,
+          -2.5
+        ],
+        "scale": [
+          0.98,
+          0.12,
+          0.98
+        ]
+      },
+      "components": {
+        "BoardSquare": {
+          "file": 4,
+          "rank": 6
+        }
+      }
+    },
+    {
+      "id": "square.f7",
+      "prefab": "prefab.square.dark",
+      "transform": {
+        "position": [
+          1.5,
+          0,
+          -2.5
+        ],
+        "scale": [
+          0.98,
+          0.12,
+          0.98
+        ]
+      },
+      "components": {
+        "BoardSquare": {
+          "file": 5,
+          "rank": 6
+        }
+      }
+    },
+    {
+      "id": "square.g7",
+      "prefab": "prefab.square.light",
+      "transform": {
+        "position": [
+          2.5,
+          0,
+          -2.5
+        ],
+        "scale": [
+          0.98,
+          0.12,
+          0.98
+        ]
+      },
+      "components": {
+        "BoardSquare": {
+          "file": 6,
+          "rank": 6
+        }
+      }
+    },
+    {
+      "id": "square.h7",
+      "prefab": "prefab.square.dark",
+      "transform": {
+        "position": [
+          3.5,
+          0,
+          -2.5
+        ],
+        "scale": [
+          0.98,
+          0.12,
+          0.98
+        ]
+      },
+      "components": {
+        "BoardSquare": {
+          "file": 7,
+          "rank": 6
+        }
+      }
+    },
+    {
+      "id": "square.a8",
+      "prefab": "prefab.square.dark",
+      "transform": {
+        "position": [
+          -3.5,
+          0,
+          -3.5
+        ],
+        "scale": [
+          0.98,
+          0.12,
+          0.98
+        ]
+      },
+      "components": {
+        "BoardSquare": {
+          "file": 0,
+          "rank": 7
+        }
+      }
+    },
+    {
+      "id": "square.b8",
+      "prefab": "prefab.square.light",
+      "transform": {
+        "position": [
+          -2.5,
+          0,
+          -3.5
+        ],
+        "scale": [
+          0.98,
+          0.12,
+          0.98
+        ]
+      },
+      "components": {
+        "BoardSquare": {
+          "file": 1,
+          "rank": 7
+        }
+      }
+    },
+    {
+      "id": "square.c8",
+      "prefab": "prefab.square.dark",
+      "transform": {
+        "position": [
+          -1.5,
+          0,
+          -3.5
+        ],
+        "scale": [
+          0.98,
+          0.12,
+          0.98
+        ]
+      },
+      "components": {
+        "BoardSquare": {
+          "file": 2,
+          "rank": 7
+        }
+      }
+    },
+    {
+      "id": "square.d8",
+      "prefab": "prefab.square.light",
+      "transform": {
+        "position": [
+          -0.5,
+          0,
+          -3.5
+        ],
+        "scale": [
+          0.98,
+          0.12,
+          0.98
+        ]
+      },
+      "components": {
+        "BoardSquare": {
+          "file": 3,
+          "rank": 7
+        }
+      }
+    },
+    {
+      "id": "square.e8",
+      "prefab": "prefab.square.dark",
+      "transform": {
+        "position": [
+          0.5,
+          0,
+          -3.5
+        ],
+        "scale": [
+          0.98,
+          0.12,
+          0.98
+        ]
+      },
+      "components": {
+        "BoardSquare": {
+          "file": 4,
+          "rank": 7
+        }
+      }
+    },
+    {
+      "id": "square.f8",
+      "prefab": "prefab.square.light",
+      "transform": {
+        "position": [
+          1.5,
+          0,
+          -3.5
+        ],
+        "scale": [
+          0.98,
+          0.12,
+          0.98
+        ]
+      },
+      "components": {
+        "BoardSquare": {
+          "file": 5,
+          "rank": 7
+        }
+      }
+    },
+    {
+      "id": "square.g8",
+      "prefab": "prefab.square.dark",
+      "transform": {
+        "position": [
+          2.5,
+          0,
+          -3.5
+        ],
+        "scale": [
+          0.98,
+          0.12,
+          0.98
+        ]
+      },
+      "components": {
+        "BoardSquare": {
+          "file": 6,
+          "rank": 7
+        }
+      }
+    },
+    {
+      "id": "square.h8",
+      "prefab": "prefab.square.light",
+      "transform": {
+        "position": [
+          3.5,
+          0,
+          -3.5
+        ],
+        "scale": [
+          0.98,
+          0.12,
+          0.98
+        ]
+      },
+      "components": {
+        "BoardSquare": {
+          "file": 7,
+          "rank": 7
+        }
+      }
+    },
+    {
+      "id": "piece.white.pawn.a2",
+      "prefab": "prefab.white.pawn",
+      "transform": {
+        "position": [
+          -3.5,
+          0.07,
+          2.5
+        ],
+        "scale": [
+          9,
+          9,
+          9
+        ]
+      },
+      "components": {
+        "ChessPiece": {
+          "color": "white",
+          "kind": "pawn",
+          "initialKind": "pawn",
+          "file": 0,
+          "rank": 1,
+          "initialFile": 0,
+          "initialRank": 1,
+          "moved": false,
+          "alive": true
+        }
+      }
+    },
+    {
+      "id": "piece.white.rook.a1",
+      "prefab": "prefab.white.rook",
+      "transform": {
+        "position": [
+          -3.5,
+          0.07,
+          3.5
+        ],
+        "scale": [
+          9,
+          9,
+          9
+        ]
+      },
+      "components": {
+        "ChessPiece": {
+          "color": "white",
+          "kind": "rook",
+          "initialKind": "rook",
+          "file": 0,
+          "rank": 0,
+          "initialFile": 0,
+          "initialRank": 0,
+          "moved": false,
+          "alive": true
+        }
+      }
+    },
+    {
+      "id": "piece.white.pawn.b2",
+      "prefab": "prefab.white.pawn",
+      "transform": {
+        "position": [
+          -2.5,
+          0.07,
+          2.5
+        ],
+        "scale": [
+          9,
+          9,
+          9
+        ]
+      },
+      "components": {
+        "ChessPiece": {
+          "color": "white",
+          "kind": "pawn",
+          "initialKind": "pawn",
+          "file": 1,
+          "rank": 1,
+          "initialFile": 1,
+          "initialRank": 1,
+          "moved": false,
+          "alive": true
+        }
+      }
+    },
+    {
+      "id": "piece.white.knight.b1",
+      "prefab": "prefab.white.knight",
+      "transform": {
+        "position": [
+          -2.5,
+          0.07,
+          3.5
+        ],
+        "scale": [
+          9,
+          9,
+          9
+        ]
+      },
+      "components": {
+        "ChessPiece": {
+          "color": "white",
+          "kind": "knight",
+          "initialKind": "knight",
+          "file": 1,
+          "rank": 0,
+          "initialFile": 1,
+          "initialRank": 0,
+          "moved": false,
+          "alive": true
+        }
+      }
+    },
+    {
+      "id": "piece.white.pawn.c2",
+      "prefab": "prefab.white.pawn",
+      "transform": {
+        "position": [
+          -1.5,
+          0.07,
+          2.5
+        ],
+        "scale": [
+          9,
+          9,
+          9
+        ]
+      },
+      "components": {
+        "ChessPiece": {
+          "color": "white",
+          "kind": "pawn",
+          "initialKind": "pawn",
+          "file": 2,
+          "rank": 1,
+          "initialFile": 2,
+          "initialRank": 1,
+          "moved": false,
+          "alive": true
+        }
+      }
+    },
+    {
+      "id": "piece.white.bishop.c1",
+      "prefab": "prefab.white.bishop",
+      "transform": {
+        "position": [
+          -1.5,
+          0.07,
+          3.5
+        ],
+        "scale": [
+          9,
+          9,
+          9
+        ]
+      },
+      "components": {
+        "ChessPiece": {
+          "color": "white",
+          "kind": "bishop",
+          "initialKind": "bishop",
+          "file": 2,
+          "rank": 0,
+          "initialFile": 2,
+          "initialRank": 0,
+          "moved": false,
+          "alive": true
+        }
+      }
+    },
+    {
+      "id": "piece.white.pawn.d2",
+      "prefab": "prefab.white.pawn",
+      "transform": {
+        "position": [
+          -0.5,
+          0.07,
+          2.5
+        ],
+        "scale": [
+          9,
+          9,
+          9
+        ]
+      },
+      "components": {
+        "ChessPiece": {
+          "color": "white",
+          "kind": "pawn",
+          "initialKind": "pawn",
+          "file": 3,
+          "rank": 1,
+          "initialFile": 3,
+          "initialRank": 1,
+          "moved": false,
+          "alive": true
+        }
+      }
+    },
+    {
+      "id": "piece.white.queen.d1",
+      "prefab": "prefab.white.queen",
+      "transform": {
+        "position": [
+          -0.5,
+          0.07,
+          3.5
+        ],
+        "scale": [
+          9,
+          9,
+          9
+        ]
+      },
+      "components": {
+        "ChessPiece": {
+          "color": "white",
+          "kind": "queen",
+          "initialKind": "queen",
+          "file": 3,
+          "rank": 0,
+          "initialFile": 3,
+          "initialRank": 0,
+          "moved": false,
+          "alive": true
+        }
+      }
+    },
+    {
+      "id": "piece.white.pawn.e2",
+      "prefab": "prefab.white.pawn",
+      "transform": {
+        "position": [
+          0.5,
+          0.07,
+          2.5
+        ],
+        "scale": [
+          9,
+          9,
+          9
+        ]
+      },
+      "components": {
+        "ChessPiece": {
+          "color": "white",
+          "kind": "pawn",
+          "initialKind": "pawn",
+          "file": 4,
+          "rank": 1,
+          "initialFile": 4,
+          "initialRank": 1,
+          "moved": false,
+          "alive": true
+        }
+      }
+    },
+    {
+      "id": "piece.white.king.e1",
+      "prefab": "prefab.white.king",
+      "transform": {
+        "position": [
+          0.5,
+          0.07,
+          3.5
+        ],
+        "scale": [
+          9,
+          9,
+          9
+        ]
+      },
+      "components": {
+        "ChessPiece": {
+          "color": "white",
+          "kind": "king",
+          "initialKind": "king",
+          "file": 4,
+          "rank": 0,
+          "initialFile": 4,
+          "initialRank": 0,
+          "moved": false,
+          "alive": true
+        }
+      }
+    },
+    {
+      "id": "piece.white.pawn.f2",
+      "prefab": "prefab.white.pawn",
+      "transform": {
+        "position": [
+          1.5,
+          0.07,
+          2.5
+        ],
+        "scale": [
+          9,
+          9,
+          9
+        ]
+      },
+      "components": {
+        "ChessPiece": {
+          "color": "white",
+          "kind": "pawn",
+          "initialKind": "pawn",
+          "file": 5,
+          "rank": 1,
+          "initialFile": 5,
+          "initialRank": 1,
+          "moved": false,
+          "alive": true
+        }
+      }
+    },
+    {
+      "id": "piece.white.bishop.f1",
+      "prefab": "prefab.white.bishop",
+      "transform": {
+        "position": [
+          1.5,
+          0.07,
+          3.5
+        ],
+        "scale": [
+          9,
+          9,
+          9
+        ]
+      },
+      "components": {
+        "ChessPiece": {
+          "color": "white",
+          "kind": "bishop",
+          "initialKind": "bishop",
+          "file": 5,
+          "rank": 0,
+          "initialFile": 5,
+          "initialRank": 0,
+          "moved": false,
+          "alive": true
+        }
+      }
+    },
+    {
+      "id": "piece.white.pawn.g2",
+      "prefab": "prefab.white.pawn",
+      "transform": {
+        "position": [
+          2.5,
+          0.07,
+          2.5
+        ],
+        "scale": [
+          9,
+          9,
+          9
+        ]
+      },
+      "components": {
+        "ChessPiece": {
+          "color": "white",
+          "kind": "pawn",
+          "initialKind": "pawn",
+          "file": 6,
+          "rank": 1,
+          "initialFile": 6,
+          "initialRank": 1,
+          "moved": false,
+          "alive": true
+        }
+      }
+    },
+    {
+      "id": "piece.white.knight.g1",
+      "prefab": "prefab.white.knight",
+      "transform": {
+        "position": [
+          2.5,
+          0.07,
+          3.5
+        ],
+        "scale": [
+          9,
+          9,
+          9
+        ]
+      },
+      "components": {
+        "ChessPiece": {
+          "color": "white",
+          "kind": "knight",
+          "initialKind": "knight",
+          "file": 6,
+          "rank": 0,
+          "initialFile": 6,
+          "initialRank": 0,
+          "moved": false,
+          "alive": true
+        }
+      }
+    },
+    {
+      "id": "piece.white.pawn.h2",
+      "prefab": "prefab.white.pawn",
+      "transform": {
+        "position": [
+          3.5,
+          0.07,
+          2.5
+        ],
+        "scale": [
+          9,
+          9,
+          9
+        ]
+      },
+      "components": {
+        "ChessPiece": {
+          "color": "white",
+          "kind": "pawn",
+          "initialKind": "pawn",
+          "file": 7,
+          "rank": 1,
+          "initialFile": 7,
+          "initialRank": 1,
+          "moved": false,
+          "alive": true
+        }
+      }
+    },
+    {
+      "id": "piece.white.rook.h1",
+      "prefab": "prefab.white.rook",
+      "transform": {
+        "position": [
+          3.5,
+          0.07,
+          3.5
+        ],
+        "scale": [
+          9,
+          9,
+          9
+        ]
+      },
+      "components": {
+        "ChessPiece": {
+          "color": "white",
+          "kind": "rook",
+          "initialKind": "rook",
+          "file": 7,
+          "rank": 0,
+          "initialFile": 7,
+          "initialRank": 0,
+          "moved": false,
+          "alive": true
+        }
+      }
+    },
+    {
+      "id": "piece.black.pawn.a7",
+      "prefab": "prefab.black.pawn",
+      "transform": {
+        "position": [
+          -3.5,
+          0.07,
+          -2.5
+        ],
+        "scale": [
+          9,
+          9,
+          9
+        ]
+      },
+      "components": {
+        "ChessPiece": {
+          "color": "black",
+          "kind": "pawn",
+          "initialKind": "pawn",
+          "file": 0,
+          "rank": 6,
+          "initialFile": 0,
+          "initialRank": 6,
+          "moved": false,
+          "alive": true
+        }
+      }
+    },
+    {
+      "id": "piece.black.rook.a8",
+      "prefab": "prefab.black.rook",
+      "transform": {
+        "position": [
+          -3.5,
+          0.07,
+          -3.5
+        ],
+        "scale": [
+          9,
+          9,
+          9
+        ]
+      },
+      "components": {
+        "ChessPiece": {
+          "color": "black",
+          "kind": "rook",
+          "initialKind": "rook",
+          "file": 0,
+          "rank": 7,
+          "initialFile": 0,
+          "initialRank": 7,
+          "moved": false,
+          "alive": true
+        }
+      }
+    },
+    {
+      "id": "piece.black.pawn.b7",
+      "prefab": "prefab.black.pawn",
+      "transform": {
+        "position": [
+          -2.5,
+          0.07,
+          -2.5
+        ],
+        "scale": [
+          9,
+          9,
+          9
+        ]
+      },
+      "components": {
+        "ChessPiece": {
+          "color": "black",
+          "kind": "pawn",
+          "initialKind": "pawn",
+          "file": 1,
+          "rank": 6,
+          "initialFile": 1,
+          "initialRank": 6,
+          "moved": false,
+          "alive": true
+        }
+      }
+    },
+    {
+      "id": "piece.black.knight.b8",
+      "prefab": "prefab.black.knight",
+      "transform": {
+        "position": [
+          -2.5,
+          0.07,
+          -3.5
+        ],
+        "scale": [
+          9,
+          9,
+          9
+        ]
+      },
+      "components": {
+        "ChessPiece": {
+          "color": "black",
+          "kind": "knight",
+          "initialKind": "knight",
+          "file": 1,
+          "rank": 7,
+          "initialFile": 1,
+          "initialRank": 7,
+          "moved": false,
+          "alive": true
+        }
+      }
+    },
+    {
+      "id": "piece.black.pawn.c7",
+      "prefab": "prefab.black.pawn",
+      "transform": {
+        "position": [
+          -1.5,
+          0.07,
+          -2.5
+        ],
+        "scale": [
+          9,
+          9,
+          9
+        ]
+      },
+      "components": {
+        "ChessPiece": {
+          "color": "black",
+          "kind": "pawn",
+          "initialKind": "pawn",
+          "file": 2,
+          "rank": 6,
+          "initialFile": 2,
+          "initialRank": 6,
+          "moved": false,
+          "alive": true
+        }
+      }
+    },
+    {
+      "id": "piece.black.bishop.c8",
+      "prefab": "prefab.black.bishop",
+      "transform": {
+        "position": [
+          -1.5,
+          0.07,
+          -3.5
+        ],
+        "scale": [
+          9,
+          9,
+          9
+        ]
+      },
+      "components": {
+        "ChessPiece": {
+          "color": "black",
+          "kind": "bishop",
+          "initialKind": "bishop",
+          "file": 2,
+          "rank": 7,
+          "initialFile": 2,
+          "initialRank": 7,
+          "moved": false,
+          "alive": true
+        }
+      }
+    },
+    {
+      "id": "piece.black.pawn.d7",
+      "prefab": "prefab.black.pawn",
+      "transform": {
+        "position": [
+          -0.5,
+          0.07,
+          -2.5
+        ],
+        "scale": [
+          9,
+          9,
+          9
+        ]
+      },
+      "components": {
+        "ChessPiece": {
+          "color": "black",
+          "kind": "pawn",
+          "initialKind": "pawn",
+          "file": 3,
+          "rank": 6,
+          "initialFile": 3,
+          "initialRank": 6,
+          "moved": false,
+          "alive": true
+        }
+      }
+    },
+    {
+      "id": "piece.black.queen.d8",
+      "prefab": "prefab.black.queen",
+      "transform": {
+        "position": [
+          -0.5,
+          0.07,
+          -3.5
+        ],
+        "scale": [
+          9,
+          9,
+          9
+        ]
+      },
+      "components": {
+        "ChessPiece": {
+          "color": "black",
+          "kind": "queen",
+          "initialKind": "queen",
+          "file": 3,
+          "rank": 7,
+          "initialFile": 3,
+          "initialRank": 7,
+          "moved": false,
+          "alive": true
+        }
+      }
+    },
+    {
+      "id": "piece.black.pawn.e7",
+      "prefab": "prefab.black.pawn",
+      "transform": {
+        "position": [
+          0.5,
+          0.07,
+          -2.5
+        ],
+        "scale": [
+          9,
+          9,
+          9
+        ]
+      },
+      "components": {
+        "ChessPiece": {
+          "color": "black",
+          "kind": "pawn",
+          "initialKind": "pawn",
+          "file": 4,
+          "rank": 6,
+          "initialFile": 4,
+          "initialRank": 6,
+          "moved": false,
+          "alive": true
+        }
+      }
+    },
+    {
+      "id": "piece.black.king.e8",
+      "prefab": "prefab.black.king",
+      "transform": {
+        "position": [
+          0.5,
+          0.07,
+          -3.5
+        ],
+        "scale": [
+          9,
+          9,
+          9
+        ]
+      },
+      "components": {
+        "ChessPiece": {
+          "color": "black",
+          "kind": "king",
+          "initialKind": "king",
+          "file": 4,
+          "rank": 7,
+          "initialFile": 4,
+          "initialRank": 7,
+          "moved": false,
+          "alive": true
+        }
+      }
+    },
+    {
+      "id": "piece.black.pawn.f7",
+      "prefab": "prefab.black.pawn",
+      "transform": {
+        "position": [
+          1.5,
+          0.07,
+          -2.5
+        ],
+        "scale": [
+          9,
+          9,
+          9
+        ]
+      },
+      "components": {
+        "ChessPiece": {
+          "color": "black",
+          "kind": "pawn",
+          "initialKind": "pawn",
+          "file": 5,
+          "rank": 6,
+          "initialFile": 5,
+          "initialRank": 6,
+          "moved": false,
+          "alive": true
+        }
+      }
+    },
+    {
+      "id": "piece.black.bishop.f8",
+      "prefab": "prefab.black.bishop",
+      "transform": {
+        "position": [
+          1.5,
+          0.07,
+          -3.5
+        ],
+        "scale": [
+          9,
+          9,
+          9
+        ]
+      },
+      "components": {
+        "ChessPiece": {
+          "color": "black",
+          "kind": "bishop",
+          "initialKind": "bishop",
+          "file": 5,
+          "rank": 7,
+          "initialFile": 5,
+          "initialRank": 7,
+          "moved": false,
+          "alive": true
+        }
+      }
+    },
+    {
+      "id": "piece.black.pawn.g7",
+      "prefab": "prefab.black.pawn",
+      "transform": {
+        "position": [
+          2.5,
+          0.07,
+          -2.5
+        ],
+        "scale": [
+          9,
+          9,
+          9
+        ]
+      },
+      "components": {
+        "ChessPiece": {
+          "color": "black",
+          "kind": "pawn",
+          "initialKind": "pawn",
+          "file": 6,
+          "rank": 6,
+          "initialFile": 6,
+          "initialRank": 6,
+          "moved": false,
+          "alive": true
+        }
+      }
+    },
+    {
+      "id": "piece.black.knight.g8",
+      "prefab": "prefab.black.knight",
+      "transform": {
+        "position": [
+          2.5,
+          0.07,
+          -3.5
+        ],
+        "scale": [
+          9,
+          9,
+          9
+        ]
+      },
+      "components": {
+        "ChessPiece": {
+          "color": "black",
+          "kind": "knight",
+          "initialKind": "knight",
+          "file": 6,
+          "rank": 7,
+          "initialFile": 6,
+          "initialRank": 7,
+          "moved": false,
+          "alive": true
+        }
+      }
+    },
+    {
+      "id": "piece.black.pawn.h7",
+      "prefab": "prefab.black.pawn",
+      "transform": {
+        "position": [
+          3.5,
+          0.07,
+          -2.5
+        ],
+        "scale": [
+          9,
+          9,
+          9
+        ]
+      },
+      "components": {
+        "ChessPiece": {
+          "color": "black",
+          "kind": "pawn",
+          "initialKind": "pawn",
+          "file": 7,
+          "rank": 6,
+          "initialFile": 7,
+          "initialRank": 6,
+          "moved": false,
+          "alive": true
+        }
+      }
+    },
+    {
+      "id": "piece.black.rook.h8",
+      "prefab": "prefab.black.rook",
+      "transform": {
+        "position": [
+          3.5,
+          0.07,
+          -3.5
+        ],
+        "scale": [
+          9,
+          9,
+          9
+        ]
+      },
+      "components": {
+        "ChessPiece": {
+          "color": "black",
+          "kind": "rook",
+          "initialKind": "rook",
+          "file": 7,
+          "rank": 7,
+          "initialFile": 7,
+          "initialRank": 7,
+          "moved": false,
+          "alive": true
+        }
+      }
+    },
+    {
+      "id": "marker.legal.00",
+      "prefab": "prefab.marker.legal",
+      "transform": {
+        "position": [
+          0,
+          -10,
+          0
+        ],
+        "scale": [
+          0.34,
+          0.035,
+          0.34
+        ]
+      },
+      "components": {
+        "LegalMarker": {
+          "index": 0
+        }
+      }
+    },
+    {
+      "id": "marker.legal.01",
+      "prefab": "prefab.marker.legal",
+      "transform": {
+        "position": [
+          0,
+          -10,
+          0
+        ],
+        "scale": [
+          0.34,
+          0.035,
+          0.34
+        ]
+      },
+      "components": {
+        "LegalMarker": {
+          "index": 1
+        }
+      }
+    },
+    {
+      "id": "marker.legal.02",
+      "prefab": "prefab.marker.legal",
+      "transform": {
+        "position": [
+          0,
+          -10,
+          0
+        ],
+        "scale": [
+          0.34,
+          0.035,
+          0.34
+        ]
+      },
+      "components": {
+        "LegalMarker": {
+          "index": 2
+        }
+      }
+    },
+    {
+      "id": "marker.legal.03",
+      "prefab": "prefab.marker.legal",
+      "transform": {
+        "position": [
+          0,
+          -10,
+          0
+        ],
+        "scale": [
+          0.34,
+          0.035,
+          0.34
+        ]
+      },
+      "components": {
+        "LegalMarker": {
+          "index": 3
+        }
+      }
+    },
+    {
+      "id": "marker.legal.04",
+      "prefab": "prefab.marker.legal",
+      "transform": {
+        "position": [
+          0,
+          -10,
+          0
+        ],
+        "scale": [
+          0.34,
+          0.035,
+          0.34
+        ]
+      },
+      "components": {
+        "LegalMarker": {
+          "index": 4
+        }
+      }
+    },
+    {
+      "id": "marker.legal.05",
+      "prefab": "prefab.marker.legal",
+      "transform": {
+        "position": [
+          0,
+          -10,
+          0
+        ],
+        "scale": [
+          0.34,
+          0.035,
+          0.34
+        ]
+      },
+      "components": {
+        "LegalMarker": {
+          "index": 5
+        }
+      }
+    },
+    {
+      "id": "marker.legal.06",
+      "prefab": "prefab.marker.legal",
+      "transform": {
+        "position": [
+          0,
+          -10,
+          0
+        ],
+        "scale": [
+          0.34,
+          0.035,
+          0.34
+        ]
+      },
+      "components": {
+        "LegalMarker": {
+          "index": 6
+        }
+      }
+    },
+    {
+      "id": "marker.legal.07",
+      "prefab": "prefab.marker.legal",
+      "transform": {
+        "position": [
+          0,
+          -10,
+          0
+        ],
+        "scale": [
+          0.34,
+          0.035,
+          0.34
+        ]
+      },
+      "components": {
+        "LegalMarker": {
+          "index": 7
+        }
+      }
+    },
+    {
+      "id": "marker.legal.08",
+      "prefab": "prefab.marker.legal",
+      "transform": {
+        "position": [
+          0,
+          -10,
+          0
+        ],
+        "scale": [
+          0.34,
+          0.035,
+          0.34
+        ]
+      },
+      "components": {
+        "LegalMarker": {
+          "index": 8
+        }
+      }
+    },
+    {
+      "id": "marker.legal.09",
+      "prefab": "prefab.marker.legal",
+      "transform": {
+        "position": [
+          0,
+          -10,
+          0
+        ],
+        "scale": [
+          0.34,
+          0.035,
+          0.34
+        ]
+      },
+      "components": {
+        "LegalMarker": {
+          "index": 9
+        }
+      }
+    },
+    {
+      "id": "marker.legal.10",
+      "prefab": "prefab.marker.legal",
+      "transform": {
+        "position": [
+          0,
+          -10,
+          0
+        ],
+        "scale": [
+          0.34,
+          0.035,
+          0.34
+        ]
+      },
+      "components": {
+        "LegalMarker": {
+          "index": 10
+        }
+      }
+    },
+    {
+      "id": "marker.legal.11",
+      "prefab": "prefab.marker.legal",
+      "transform": {
+        "position": [
+          0,
+          -10,
+          0
+        ],
+        "scale": [
+          0.34,
+          0.035,
+          0.34
+        ]
+      },
+      "components": {
+        "LegalMarker": {
+          "index": 11
+        }
+      }
+    },
+    {
+      "id": "marker.legal.12",
+      "prefab": "prefab.marker.legal",
+      "transform": {
+        "position": [
+          0,
+          -10,
+          0
+        ],
+        "scale": [
+          0.34,
+          0.035,
+          0.34
+        ]
+      },
+      "components": {
+        "LegalMarker": {
+          "index": 12
+        }
+      }
+    },
+    {
+      "id": "marker.legal.13",
+      "prefab": "prefab.marker.legal",
+      "transform": {
+        "position": [
+          0,
+          -10,
+          0
+        ],
+        "scale": [
+          0.34,
+          0.035,
+          0.34
+        ]
+      },
+      "components": {
+        "LegalMarker": {
+          "index": 13
+        }
+      }
+    },
+    {
+      "id": "marker.legal.14",
+      "prefab": "prefab.marker.legal",
+      "transform": {
+        "position": [
+          0,
+          -10,
+          0
+        ],
+        "scale": [
+          0.34,
+          0.035,
+          0.34
+        ]
+      },
+      "components": {
+        "LegalMarker": {
+          "index": 14
+        }
+      }
+    },
+    {
+      "id": "marker.legal.15",
+      "prefab": "prefab.marker.legal",
+      "transform": {
+        "position": [
+          0,
+          -10,
+          0
+        ],
+        "scale": [
+          0.34,
+          0.035,
+          0.34
+        ]
+      },
+      "components": {
+        "LegalMarker": {
+          "index": 15
+        }
+      }
+    },
+    {
+      "id": "marker.legal.16",
+      "prefab": "prefab.marker.legal",
+      "transform": {
+        "position": [
+          0,
+          -10,
+          0
+        ],
+        "scale": [
+          0.34,
+          0.035,
+          0.34
+        ]
+      },
+      "components": {
+        "LegalMarker": {
+          "index": 16
+        }
+      }
+    },
+    {
+      "id": "marker.legal.17",
+      "prefab": "prefab.marker.legal",
+      "transform": {
+        "position": [
+          0,
+          -10,
+          0
+        ],
+        "scale": [
+          0.34,
+          0.035,
+          0.34
+        ]
+      },
+      "components": {
+        "LegalMarker": {
+          "index": 17
+        }
+      }
+    },
+    {
+      "id": "marker.legal.18",
+      "prefab": "prefab.marker.legal",
+      "transform": {
+        "position": [
+          0,
+          -10,
+          0
+        ],
+        "scale": [
+          0.34,
+          0.035,
+          0.34
+        ]
+      },
+      "components": {
+        "LegalMarker": {
+          "index": 18
+        }
+      }
+    },
+    {
+      "id": "marker.legal.19",
+      "prefab": "prefab.marker.legal",
+      "transform": {
+        "position": [
+          0,
+          -10,
+          0
+        ],
+        "scale": [
+          0.34,
+          0.035,
+          0.34
+        ]
+      },
+      "components": {
+        "LegalMarker": {
+          "index": 19
+        }
+      }
+    },
+    {
+      "id": "marker.legal.20",
+      "prefab": "prefab.marker.legal",
+      "transform": {
+        "position": [
+          0,
+          -10,
+          0
+        ],
+        "scale": [
+          0.34,
+          0.035,
+          0.34
+        ]
+      },
+      "components": {
+        "LegalMarker": {
+          "index": 20
+        }
+      }
+    },
+    {
+      "id": "marker.legal.21",
+      "prefab": "prefab.marker.legal",
+      "transform": {
+        "position": [
+          0,
+          -10,
+          0
+        ],
+        "scale": [
+          0.34,
+          0.035,
+          0.34
+        ]
+      },
+      "components": {
+        "LegalMarker": {
+          "index": 21
+        }
+      }
+    },
+    {
+      "id": "marker.legal.22",
+      "prefab": "prefab.marker.legal",
+      "transform": {
+        "position": [
+          0,
+          -10,
+          0
+        ],
+        "scale": [
+          0.34,
+          0.035,
+          0.34
+        ]
+      },
+      "components": {
+        "LegalMarker": {
+          "index": 22
+        }
+      }
+    },
+    {
+      "id": "marker.legal.23",
+      "prefab": "prefab.marker.legal",
+      "transform": {
+        "position": [
+          0,
+          -10,
+          0
+        ],
+        "scale": [
+          0.34,
+          0.035,
+          0.34
+        ]
+      },
+      "components": {
+        "LegalMarker": {
+          "index": 23
+        }
+      }
+    },
+    {
+      "id": "marker.legal.24",
+      "prefab": "prefab.marker.legal",
+      "transform": {
+        "position": [
+          0,
+          -10,
+          0
+        ],
+        "scale": [
+          0.34,
+          0.035,
+          0.34
+        ]
+      },
+      "components": {
+        "LegalMarker": {
+          "index": 24
+        }
+      }
+    },
+    {
+      "id": "marker.legal.25",
+      "prefab": "prefab.marker.legal",
+      "transform": {
+        "position": [
+          0,
+          -10,
+          0
+        ],
+        "scale": [
+          0.34,
+          0.035,
+          0.34
+        ]
+      },
+      "components": {
+        "LegalMarker": {
+          "index": 25
+        }
+      }
+    },
+    {
+      "id": "marker.legal.26",
+      "prefab": "prefab.marker.legal",
+      "transform": {
+        "position": [
+          0,
+          -10,
+          0
+        ],
+        "scale": [
+          0.34,
+          0.035,
+          0.34
+        ]
+      },
+      "components": {
+        "LegalMarker": {
+          "index": 26
+        }
+      }
+    },
+    {
+      "id": "marker.legal.27",
+      "prefab": "prefab.marker.legal",
+      "transform": {
+        "position": [
+          0,
+          -10,
+          0
+        ],
+        "scale": [
+          0.34,
+          0.035,
+          0.34
+        ]
+      },
+      "components": {
+        "LegalMarker": {
+          "index": 27
+        }
+      }
+    },
+    {
+      "id": "marker.hover",
+      "prefab": "prefab.marker.hover",
+      "transform": {
+        "position": [
+          0,
+          -10,
+          0
+        ],
+        "scale": [
+          0.92,
+          0.03,
+          0.92
+        ]
+      },
+      "components": {
+        "HoverMarker": {}
+      }
+    },
+    {
+      "id": "marker.selected",
+      "prefab": "prefab.marker.selected",
+      "transform": {
+        "position": [
+          0,
+          -10,
+          0
+        ],
+        "scale": [
+          0.88,
+          0.04,
+          0.88
+        ]
+      },
+      "components": {
+        "SelectedMarker": {}
+      }
+    },
+    {
+      "id": "marker.last.from",
+      "prefab": "prefab.marker.last",
+      "transform": {
+        "position": [
+          0,
+          -10,
+          0
+        ],
+        "scale": [
+          0.82,
+          0.025,
+          0.82
+        ]
+      },
+      "components": {
+        "LastMoveMarker": {}
+      }
+    },
+    {
+      "id": "marker.last.to",
+      "prefab": "prefab.marker.last",
+      "transform": {
+        "position": [
+          0,
+          -10,
+          0
+        ],
+        "scale": [
+          0.82,
+          0.025,
+          0.82
+        ]
+      },
+      "components": {
+        "LastMoveMarker": {}
+      }
+    },
+    {
+      "id": "marker.check",
+      "prefab": "prefab.marker.check",
+      "transform": {
+        "position": [
+          0,
+          -10,
+          0
+        ],
+        "scale": [
+          0.9,
+          0.05,
+          0.9
+        ]
+      },
+      "components": {
+        "CheckMarker": {}
+      }
+    },
+    {
+      "id": "table.plinth",
+      "prefab": "prefab.plinth",
+      "transform": {
+        "position": [
+          0,
+          -0.28,
+          0
+        ],
+        "scale": [
+          9.1,
+          0.42,
+          9.1
+        ]
+      }
+    },
+    {
+      "id": "table.trim.n",
+      "prefab": "prefab.trim",
+      "transform": {
+        "position": [
+          0,
+          -0.02,
+          -4.25
+        ],
+        "scale": [
+          9.1,
+          0.28,
+          0.42
+        ]
+      }
+    },
+    {
+      "id": "table.trim.s",
+      "prefab": "prefab.trim",
+      "transform": {
+        "position": [
+          0,
+          -0.02,
+          4.25
+        ],
+        "scale": [
+          9.1,
+          0.28,
+          0.42
+        ]
+      }
+    },
+    {
+      "id": "table.trim.e",
+      "prefab": "prefab.trim",
+      "transform": {
+        "position": [
+          4.25,
+          -0.02,
+          0
+        ],
+        "scale": [
+          0.42,
+          0.28,
+          9.1
+        ]
+      }
+    },
+    {
+      "id": "table.trim.w",
+      "prefab": "prefab.trim",
+      "transform": {
+        "position": [
+          -4.25,
+          -0.02,
+          0
+        ],
+        "scale": [
+          0.42,
+          0.28,
+          9.1
+        ]
+      }
+    },
+    {
+      "id": "light.ambient",
+      "components": {
+        "Light": {
+          "kind": "ambient",
+          "color": "#d9e7ff",
+          "intensity": 1.3
+        }
+      }
+    },
+    {
+      "id": "light.key",
+      "transform": {
+        "position": [
+          -4,
+          8,
+          5
+        ],
+        "rotation": [
+          -0.8,
+          -0.35,
+          0
+        ]
+      },
+      "components": {
+        "Light": {
+          "kind": "directional",
+          "color": "#fff0d2",
+          "intensity": 2.2
+        }
+      }
+    },
+    {
+      "id": "light.fill",
+      "transform": {
+        "position": [
+          4,
+          5,
+          -4
+        ]
+      },
+      "components": {
+        "Light": {
+          "kind": "point",
+          "color": "#78bfff",
+          "intensity": 1.4,
+          "range": 18
+        }
+      }
+    },
+    {
+      "id": "camera.main",
+      "transform": {
+        "position": [
+          0,
+          8.5,
+          11.5
+        ],
+        "rotation": [
+          -0.622303,
+          0,
+          0
+        ]
+      },
+      "components": {
+        "camera": {
+          "mode": "perspective",
+          "fovY": 42,
+          "near": 0.1,
+          "far": 40
+        }
+      }
+    }
+  ],
+  "prefabs": [
+    {
+      "id": "prefab.square.light",
+      "primitive": "box",
+      "color": "#d8c7a3"
+    },
+    {
+      "id": "prefab.square.dark",
+      "primitive": "box",
+      "color": "#315d56"
+    },
+    {
+      "id": "prefab.plinth",
+      "primitive": "box",
+      "color": "#161d26"
+    },
+    {
+      "id": "prefab.trim",
+      "primitive": "box",
+      "color": "#b78745"
+    },
+    {
+      "id": "prefab.marker.legal",
+      "primitive": "cylinder",
+      "color": "#60d394"
+    },
+    {
+      "id": "prefab.marker.hover",
+      "primitive": "box",
+      "color": "#84c7ff"
+    },
+    {
+      "id": "prefab.marker.selected",
+      "primitive": "box",
+      "color": "#ffd166"
+    },
+    {
+      "id": "prefab.marker.last",
+      "primitive": "box",
+      "color": "#f4a261"
+    },
+    {
+      "id": "prefab.marker.check",
+      "primitive": "box",
+      "color": "#ef476f"
+    },
+    {
+      "id": "prefab.white.pawn",
+      "asset": "assets/models/chess/white-pawn.glb",
+      "primitive": "sphere",
+      "color": "#f4ead7"
+    },
+    {
+      "id": "prefab.white.rook",
+      "asset": "assets/models/chess/white-rook.glb",
+      "primitive": "box",
+      "color": "#f4ead7"
+    },
+    {
+      "id": "prefab.white.knight",
+      "asset": "assets/models/chess/white-knight.glb",
+      "primitive": "cone",
+      "color": "#f4ead7"
+    },
+    {
+      "id": "prefab.white.bishop",
+      "asset": "assets/models/chess/white-bishop.glb",
+      "primitive": "cone",
+      "color": "#f4ead7"
+    },
+    {
+      "id": "prefab.white.queen",
+      "asset": "assets/models/chess/white-queen.glb",
+      "primitive": "capsule",
+      "color": "#f4ead7"
+    },
+    {
+      "id": "prefab.white.king",
+      "asset": "assets/models/chess/white-king.glb",
+      "primitive": "cylinder",
+      "color": "#f4ead7"
+    },
+    {
+      "id": "prefab.black.pawn",
+      "asset": "assets/models/chess/black-pawn.glb",
+      "primitive": "sphere",
+      "color": "#27344a"
+    },
+    {
+      "id": "prefab.black.rook",
+      "asset": "assets/models/chess/black-rook.glb",
+      "primitive": "box",
+      "color": "#27344a"
+    },
+    {
+      "id": "prefab.black.knight",
+      "asset": "assets/models/chess/black-knight.glb",
+      "primitive": "cone",
+      "color": "#27344a"
+    },
+    {
+      "id": "prefab.black.bishop",
+      "asset": "assets/models/chess/black-bishop.glb",
+      "primitive": "cone",
+      "color": "#27344a"
+    },
+    {
+      "id": "prefab.black.queen",
+      "asset": "assets/models/chess/black-queen.glb",
+      "primitive": "capsule",
+      "color": "#27344a"
+    },
+    {
+      "id": "prefab.black.king",
+      "asset": "assets/models/chess/black-king.glb",
+      "primitive": "cylinder",
+      "color": "#27344a"
+    }
+  ],
+  "resources": [
+    {
+      "id": "ActiveCamera",
+      "value": {
+        "entity": "camera.main"
+      }
+    },
+    {
+      "id": "ChessGame",
+      "value": {
+        "turnText": "WHITE TO MOVE",
+        "statusText": "Click or drag a piece",
+        "helpText": "Click piece + destination | Drag + drop | Arrows + Enter | P promotion | R restart",
+        "moveText": "New game",
+        "promotionText": "Promotion: QUEEN"
+      }
+    }
+  ],
+  "systems": [
+    {
+      "id": "chess-game",
+      "source": "behavior-metadata",
+      "script": {
+        "module": "src/scripts/chess.ts",
+        "export": "chessGame"
+      }
+    }
+  ],
+  "ui": {
+    "nodes": [
+      {
+        "id": "turn",
+        "type": "text",
+        "text": "WHITE TO MOVE",
+        "layout": {
+          "left": 24,
+          "top": 22,
+          "width": 380
+        }
+      },
+      {
+        "id": "status",
+        "type": "text",
+        "text": "Click or drag a piece",
+        "layout": {
+          "justify": "center",
+          "align": "center",
+          "top": 22,
+          "width": 1280
+        }
+      },
+      {
+        "id": "promotion",
+        "type": "text",
+        "text": "Promotion: QUEEN",
+        "layout": {
+          "right": 24,
+          "top": 22,
+          "width": 280
+        }
+      },
+      {
+        "id": "move",
+        "type": "text",
+        "text": "New game",
+        "layout": {
+          "left": 24,
+          "bottom": 54,
+          "width": 500
+        }
+      },
+      {
+        "id": "help",
+        "type": "text",
+        "text": "Click piece + destination | Drag + drop | Arrows + Enter | P promotion | R restart",
+        "layout": {
+          "justify": "center",
+          "align": "center",
+          "bottom": 20,
+          "width": 1280
+        }
+      }
+    ],
+    "bindings": [
+      {
+        "node": "turn",
+        "resource": "ChessGame.turnText"
+      },
+      {
+        "node": "status",
+        "resource": "ChessGame.statusText"
+      },
+      {
+        "node": "promotion",
+        "resource": "ChessGame.promotionText"
+      },
+      {
+        "node": "move",
+        "resource": "ChessGame.moveText"
+      },
+      {
+        "node": "help",
+        "resource": "ChessGame.helpText"
+      }
+    ]
+  }
+}

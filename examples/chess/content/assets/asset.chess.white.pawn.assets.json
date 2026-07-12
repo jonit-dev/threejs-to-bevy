@@ -1,0 +1,12 @@
+{
+  "assets": [
+    {
+      "id": "asset.chess.white.pawn",
+      "path": "assets/models/chess/white-pawn.glb",
+      "type": "model"
+    }
+  ],
+  "id": "asset.chess.white.pawn",
+  "schema": "threenative.assets",
+  "version": "0.1.0"
+}

@@ -1,0 +1,80 @@
+{
+  "schema": "threenative.input",
+  "version": "0.1.0",
+  "id": "chess-input",
+  "actions": [
+    {
+      "id": "pointer-select",
+      "bindings": [
+        "pointer.0"
+      ]
+    },
+    {
+      "id": "select",
+      "bindings": [
+        "keyboard.Enter",
+        "keyboard.Space"
+      ]
+    },
+    {
+      "id": "cursor-left",
+      "bindings": [
+        "keyboard.ArrowLeft",
+        "keyboard.KeyA"
+      ]
+    },
+    {
+      "id": "cursor-right",
+      "bindings": [
+        "keyboard.ArrowRight",
+        "keyboard.KeyD"
+      ]
+    },
+    {
+      "id": "cursor-up",
+      "bindings": [
+        "keyboard.ArrowUp",
+        "keyboard.KeyW"
+      ]
+    },
+    {
+      "id": "cursor-down",
+      "bindings": [
+        "keyboard.ArrowDown",
+        "keyboard.KeyS"
+      ]
+    },
+    {
+      "id": "restart",
+      "bindings": [
+        "keyboard.KeyR"
+      ]
+    },
+    {
+      "id": "promotion",
+      "bindings": [
+        "keyboard.KeyP"
+      ]
+    },
+    {
+      "id": "cancel",
+      "bindings": [
+        "keyboard.Escape"
+      ]
+    }
+  ],
+  "axes": [
+    {
+      "id": "pointer-x",
+      "negative": [],
+      "positive": [],
+      "value": "pointer.x"
+    },
+    {
+      "id": "pointer-y",
+      "negative": [],
+      "positive": [],
+      "value": "pointer.y"
+    }
+  ]
+}

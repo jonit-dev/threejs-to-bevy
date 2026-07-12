@@ -1,0 +1,73 @@
+{
+  "schema": "threenative.project",
+  "version": "0.1.0",
+  "entry": "content/scenes/chess.scene.json",
+  "outDir": "dist/chess.bundle",
+  "template": "structured-source-starter",
+  "production": {
+    "archetype": "board-game",
+    "playableLoop": "Select or drag a chess piece, inspect highlighted legal moves, commit a destination, and alternate turns until checkmate or stalemate.",
+    "controls": [
+      "pointer.0",
+      "keyboard.Enter",
+      "keyboard.Space",
+      "keyboard.ArrowLeft",
+      "keyboard.ArrowRight",
+      "keyboard.ArrowUp",
+      "keyboard.ArrowDown",
+      "keyboard.KeyP",
+      "keyboard.KeyR",
+      "keyboard.Escape"
+    ],
+    "lookProfile": {
+      "camera": "orthographic tabletop",
+      "movementPlane": "board-xz",
+      "renderLook": "stylized tournament table"
+    },
+    "objective": "Checkmate the opposing king while obeying standard chess movement and king-safety rules.",
+    "progression": "ChessGame owns turn, status, last-move, and promotion labels; piece components own board coordinates, kind, color, alive, and moved state.",
+    "failRetry": "Checkmate and stalemate lock further moves; R restores the complete initial position and turn state.",
+    "feedbackMoments": [
+      "Hover, selection, legal destination, last move, and check use distinct board markers.",
+      "Pieces ease between squares with a short lift arc.",
+      "HUD reports selection, invalid destinations, moves, turn, check, checkmate, stalemate, and promotion choice."
+    ],
+    "assetPlan": {
+      "playerHero": "Two complete source-authored chess armies with kind-specific silhouettes.",
+      "obstacleEnemy": "The opposing army is the strategic obstacle surface.",
+      "rewardInteractable": "Legal destination markers and captured pieces provide interaction feedback.",
+      "worldEnvironment": "A framed brass-and-walnut tournament board with authored light/dark square materials and studio lighting.",
+      "uiHud": "Retained HUD exposes turn, game status, move history, promotion selection, and controls.",
+      "audioFeedback": "No audio is referenced in this slice."
+    },
+    "scriptModules": [
+      {
+        "module": "src/scripts/chess.ts",
+        "export": "chessGame",
+        "ownsState": ["ChessPiece", "Transform", "ChessGame"],
+        "referencedBy": ["content/scenes/chess.scene.json"]
+      }
+    ],
+    "proofCommands": [
+      "tn iterate --project . --json",
+      "tn playtest --project . --scenario playtests/chess-opening.playtest.json --stable-artifacts --json",
+      "tn playtest --project . --scenario playtests/chess-opening.playtest.json --target desktop --json"
+    ],
+    "agent": {
+      "sourceShape": {
+        "input": ["content/input/chess.input.json"],
+        "materials": ["content/materials/chess.materials.json"],
+        "meshes": ["content/meshes/chess.meshes.json"],
+        "runtime": ["content/runtime/default.runtime.json"],
+        "scene": ["content/scenes/chess.scene.json"],
+        "scripts": ["src/scripts/chess.ts"]
+      },
+      "assetSourcing": [
+        "Catalog search found Poly Haven Chess Set (polyhaven-model-chess-set), CC0, reviewed, but only as a non-direct high-detail index record; the example uses lightweight source-authored silhouettes instead."
+      ],
+      "knownBlockers": [
+        "Desktop proof requires a graphical DISPLAY or WAYLAND_DISPLAY in the host environment."
+      ]
+    }
+  }
+}

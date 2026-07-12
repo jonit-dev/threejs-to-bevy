@@ -1,0 +1,34 @@
+{
+  "name": "threenative-chess-example",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "tn": "node bin/tn",
+    "build": "tn build",
+    "assets:convert": "node scripts/convert-chess-models.mjs",
+    "dev:web": "tn dev --target web",
+    "iterate": "tn iterate --project . --json",
+    "playtest": "tn playtest --scenario playtests/chess-opening.playtest.json --stable-artifacts --json",
+    "playtest:native": "tn playtest --scenario playtests/chess-opening.playtest.json --target desktop --json",
+    "game:plan": "tn game plan --goal \"polished full-rules 3D chess with click and drag interaction\" --project . --json",
+    "game:improve": "tn game improve --apply-plan artifacts/game-production/plan.json --project . --json",
+    "game:score": "tn game score --project . --json",
+    "game:qa": "tn game qa --project . --run-proof --json",
+    "game:release": "tn game release --project . --json",
+    "types": "tn types generate --project . --json",
+    "typecheck": "tn types generate --project . --json && tsc -p tsconfig.json --noEmit",
+    "validate": "tn validate",
+    "validate:authoring": "tn authoring validate --json",
+    "verify": "tn verify --frames 2 --json"
+  },
+  "dependencies": {
+    "@threenative/script-stdlib": "file:/home/joao/projects/threejs-to-bevy/packages/script-stdlib",
+    "@threenative/sdk": "file:/home/joao/projects/threejs-to-bevy/packages/sdk"
+  },
+  "devDependencies": {
+    "@threenative/cli": "file:.threenative/cli",
+    "@types/node": "^20.19.25",
+    "assimpjs": "^0.0.10",
+    "typescript": "^5.9.3"
+  }
+}

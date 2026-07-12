@@ -1,0 +1,26 @@
+{
+  "schema": "threenative.meshes",
+  "version": "0.1.0",
+  "id": "chess-meshes",
+  "meshes": [
+    {
+      "id": "mesh.square",
+      "kind": "primitive",
+      "primitive": "box",
+      "size": [
+        1,
+        0.12,
+        1
+      ]
+    },
+    {
+      "id": "mesh.marker",
+      "kind": "primitive",
+      "primitive": "cylinder",
+      "size": [
+        0.34,
+        0.04
+      ]
+    }
+  ]
+}

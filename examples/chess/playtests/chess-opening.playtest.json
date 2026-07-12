@@ -1,0 +1,68 @@
+{
+  "schemaVersion": 1,
+  "name": "chess-opening",
+  "target": "web",
+  "viewport": {
+    "width": 1280,
+    "height": 720
+  },
+  "subject": "piece.white.pawn.e2",
+  "warmupFrames": 8,
+  "steps": [
+    {
+      "label": "select e2 pawn",
+      "press": "Enter",
+      "holdFrames": 2,
+      "release": true
+    },
+    {
+      "label": "move cursor to e3",
+      "press": "ArrowUp",
+      "holdFrames": 2,
+      "release": true
+    },
+    {
+      "label": "commit e2-e3",
+      "press": "Enter",
+      "holdFrames": 2,
+      "release": true
+    },
+    {
+      "label": "observe eased move",
+      "waitFrames": 20
+    }
+  ],
+  "assert": {
+    "movement": {
+      "entity": "piece.white.pawn.e2",
+      "axis": "z",
+      "minDistance": 0.8
+    },
+    "resources": [
+      {
+        "id": "ChessGame",
+        "path": "turnText",
+        "equals": "BLACK TO MOVE"
+      }
+    ],
+    "hud": [
+      {
+        "id": "turn",
+        "textIncludes": "BLACK TO MOVE"
+      }
+    ],
+    "diagnostics": {
+      "runtimeReady": true,
+      "noConsoleErrors": true,
+      "noNetworkErrors": true,
+      "noRuntimeDiagnostics": true
+    }
+  },
+  "artifacts": {
+    "screenshots": "before-after",
+    "console": true,
+    "network": true,
+    "runtimeTrace": true,
+    "effectLog": "focused"
+  }
+}

@@ -8,6 +8,11 @@
       "reason": "Golden-path authoring acceptance fixture for top-down pickup, lives, HUD/resource mutation, and native parity follow-up."
     },
     {
+      "classification": "experimental",
+      "path": "examples/chess",
+      "reason": "Playable full-rules tabletop example for pointer picking, click/drag moves, legal-move highlighting, retained HUD state, and portable scripted board logic; desktop proof awaits a graphical host."
+    },
+    {
       "classification": "benchmark-only",
       "path": "examples/dense-world-benchmark",
       "reason": "Maintained efficient-scale fixture for dense-scene and performance-proof gates."

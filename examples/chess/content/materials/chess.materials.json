@@ -1,0 +1,37 @@
+{
+  "schema": "threenative.materials",
+  "version": "0.1.0",
+  "id": "chess-materials",
+  "materials": [
+    {
+      "id": "mat.ivory",
+      "color": "#f4ead7",
+      "roughness": 0.28,
+      "metalness": 0.08
+    },
+    {
+      "id": "mat.slate",
+      "color": "#27344a",
+      "roughness": 0.32,
+      "metalness": 0.16
+    },
+    {
+      "id": "mat.board.light",
+      "color": "#d8c7a3",
+      "roughness": 0.55,
+      "metalness": 0.02
+    },
+    {
+      "id": "mat.board.dark",
+      "color": "#315d56",
+      "roughness": 0.5,
+      "metalness": 0.04
+    },
+    {
+      "id": "mat.brass",
+      "color": "#b78745",
+      "roughness": 0.3,
+      "metalness": 0.65
+    }
+  ]
+}

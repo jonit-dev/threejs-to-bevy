@@ -1,0 +1,12 @@
+{
+  "assets": [
+    {
+      "id": "asset.chess.white.queen",
+      "path": "assets/models/chess/white-queen.glb",
+      "type": "model"
+    }
+  ],
+  "id": "asset.chess.white.queen",
+  "schema": "threenative.assets",
+  "version": "0.1.0"
+}

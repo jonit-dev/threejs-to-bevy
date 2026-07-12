@@ -1,0 +1,12 @@
+{
+  "assets": [
+    {
+      "id": "asset.chess.black.pawn",
+      "path": "assets/models/chess/black-pawn.glb",
+      "type": "model"
+    }
+  ],
+  "id": "asset.chess.black.pawn",
+  "schema": "threenative.assets",
+  "version": "0.1.0"
+}
