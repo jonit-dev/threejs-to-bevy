@@ -557,40 +557,55 @@ unit tests alone.
 
 ### Phase 1: Descriptor-Owned CLI Contract
 
-- CLI tests: pending
-- Typecheck: pending
-- Checkpoint review: pending
+- CLI tests: passed (31 focused registry/command/help/dispatch tests)
+- Typecheck: passed (`pnpm --filter @threenative/cli typecheck`)
+- Checkpoint review: PASS after descriptor-ownership and drift fixes
 
 ### Phase 2: Tailwind-Default Overlay Mutation
 
-- CLI mutation tests: pending
-- Generated source inspection: pending
-- Checkpoint review: pending
+- CLI mutation tests: passed, including staged rollback, cleanup failure,
+  cross-role dependency conflicts, and multi-document ownership
+- Generated source inspection: passed for shared, Tailwind, and vanilla files
+- Checkpoint review: PASS
 
 ### Phase 3: Vanilla Opt-Out and Build Proof
 
-- Tailwind generated-project build: pending
-- Vanilla generated-project build: pending
-- Output/dependency inspection: pending
-- Checkpoint review: pending
+- Tailwind generated-project build: passed with online resolution plus offline
+  reinstall; CSS and JS were non-empty
+- Vanilla generated-project build: passed with no Tailwind dependency,
+  directive, plugin, or runtime surface
+- Output/dependency inspection: passed; emitted HTML/CSS/JS contain only local
+  executable asset references and independent byte measurements
+- Checkpoint review: PASS
 
 ### Phase 4: Runtime and Packaging Proof
 
-- Compiler/runtime tests: pending
-- `pnpm verify:conformance`: pending
-- Browser screenshot and bridge trace: pending
-- `pnpm verify:webview-package`: pending
-- Manual packaged-artifact inspection: pending
-- Checkpoint review: pending
+- Compiler/runtime tests: passed for generated asset copy, missing/stale output,
+  host readiness, input policy, and typed bridge validation
+- `pnpm verify:conformance`: passed
+- Browser screenshot and bridge trace: passed at
+  `tools/verify/artifacts/overlay-scaffold/browser/`; trace proves visible
+  landmark, keyboard focus, pointer activation, and accepted typed bridge send
+- `pnpm verify:webview-package`: passed with chess `overlayCount: 1` and two
+  packaged HTML-derived assets
+- Manual packaged-artifact inspection: passed against the packaged localhost
+  app at `http://127.0.0.1:5188/index.html`; chooser focus, side selection,
+  Settings interaction, non-empty canvas, and zero page errors were inspected.
+  Screenshot: `tools/verify/artifacts/webview-package/packaged-chess-manual.png`
+- Checkpoint review: automated requirements PASS; manual package evidence added
 
 ### Phase 5: Documentation and Release
 
-- `pnpm verify:cookbook`: pending
-- `pnpm check:docs`: pending
-- Focused gate: pending
-- `pnpm verify:release`: pending
-- Documentation walkthrough: pending
-- Checkpoint review: pending
+- `pnpm verify:cookbook`: passed (31 entries)
+- `pnpm check:docs`: passed
+- Focused gate: passed (`pnpm verify:overlay-scaffold`)
+- `pnpm verify:release`: rerun pending after the concurrent overlay-client
+  upgrade settles; the prior run was interrupted because its overlapping
+  worktree changed during execution
+- Documentation walkthrough: passed from a clean maintained starter through
+  scaffold, install, overlay build, authoring validation, bundle build, browser
+  preview, and webview packaging
+- Checkpoint review: pending final release report only
 
 ## Acceptance Criteria
 
@@ -645,4 +660,3 @@ can own the overlay build source/output relationship. Prefer extending an
 existing overlay/project descriptor. If no suitable owner exists, add the
 smallest registry-backed configuration field plus schema validation and adjust
 phase file allocations without creating a second hand-maintained overlay list.
-
