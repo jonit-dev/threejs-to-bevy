@@ -547,9 +547,27 @@ export function validateTransform(diagnostics: IAuthoringDiagnostic[], file: str
   }
   diagnostics.push(...unknownKeyDiagnostics(file, path, value, transformKeys));
   for (const key of transformKeys) {
-    const vector = value[key];
+    let vector = value[key];
     if (vector === undefined) {
       continue;
+    }
+    if (key === "rotation" && Array.isArray(vector) && vector.length === 4 && vector.every((item) => typeof item === "number" && Number.isFinite(item))) {
+      const [x, y, z, w] = vector as [number, number, number, number];
+      const euler = [
+        Math.atan2(2 * (w * x + y * z), 1 - 2 * (x * x + y * y)),
+        Math.asin(Math.max(-1, Math.min(1, 2 * (w * y - z * x)))),
+        Math.atan2(2 * (w * z + x * y), 1 - 2 * (y * y + z * z)),
+      ];
+      value.rotation = euler;
+      vector = euler;
+      diagnostics.push(authoringDiagnostic({
+        code: "TN_AUTHORING_ROTATION_QUATERNION_CONVERTED",
+        file,
+        message: "Transform rotation quaternion was converted to XYZ Euler radians.",
+        path: `${path}/rotation`,
+        severity: "warning",
+        suggestion: "Persist the emitted three-number Euler rotation in durable source.",
+      }));
     }
     if (!Array.isArray(vector) || vector.length !== 3 || vector.some((item) => typeof item !== "number" || !Number.isFinite(item))) {
       diagnostics.push(

@@ -4,7 +4,10 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 
+import type { IAuthoringDiagnostic } from "./diagnostics.js";
 import { createScene } from "./operations.js";
+import { validateTransform } from "./operations/sharedC.js";
+import { validateAssetDeclaration, validateInputMetadata } from "./operations/sharedD.js";
 
 test("should preserve scene operation output after module split", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-operations-"));
@@ -42,4 +45,36 @@ test("should preserve scene operation output after module split", async () => {
   } finally {
     await rm(root, { force: true, recursive: true });
   }
+});
+
+test("should normalize clamp wrap alias with warning", () => {
+  const diagnostics: IAuthoringDiagnostic[] = [];
+  const asset = { id: "texture.board", path: "assets/board.png", type: "texture", wrapS: "clamp" };
+  validateAssetDeclaration(diagnostics, "/assets/0", asset, "content/assets.json");
+  assert.equal(asset.wrapS, "clampToEdge");
+  assert.equal(diagnostics.some((diagnostic) => diagnostic.code === "TN_AUTHORING_TEXTURE_WRAP_NORMALIZED" && diagnostic.severity === "warning"), true);
+});
+
+test("should convert quaternion rotation to euler with warning", () => {
+  const diagnostics: IAuthoringDiagnostic[] = [];
+  const transform: { rotation: number[] } = { rotation: [-0.7071, 0, 0, 0.7071] };
+  validateTransform(diagnostics, "content/scenes/chess.scene.json", "/entities/0/transform", transform);
+  assert.ok(Math.abs((transform.rotation[0] ?? 0) + Math.PI / 2) < 0.001);
+  assert.ok(Math.abs(transform.rotation[1] ?? 0) < 0.001);
+  assert.ok(Math.abs(transform.rotation[2] ?? 0) < 0.001);
+  assert.equal(diagnostics.some((diagnostic) => diagnostic.code === "TN_AUTHORING_ROTATION_QUATERNION_CONVERTED" && diagnostic.severity === "warning"), true);
+});
+
+test("should attach pointer binding fix snippet for object-form binding", () => {
+  const diagnostics = validateInputMetadata("content/input/game.input.json", {
+    actions: [{ bindings: [{ button: 0, device: "pointer" }], id: "Select" }],
+  });
+  assert.equal(diagnostics[0]?.fix?.snippet, '"pointer.0"');
+});
+
+test("should not attach unrelated cookbook snippet to shape errors", () => {
+  const diagnostics = validateInputMetadata("content/input/game.input.json", {
+    actions: [{ bindings: [{ button: 0, device: "pointer" }], id: "Select" }],
+  });
+  assert.equal(JSON.stringify(diagnostics).includes("collectible-respawn"), false);
 });

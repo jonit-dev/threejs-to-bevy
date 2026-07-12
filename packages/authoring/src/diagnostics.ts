@@ -41,7 +41,7 @@ export interface IAuthoringDiagnosticInput {
 }
 
 export function authoringDiagnostic(input: IAuthoringDiagnosticInput): IAuthoringDiagnostic {
-  const fix = input.fix ?? prescriptiveFixForCode(input.code);
+  const fix = input.fix ?? (input.code === "TN_AUTHORING_SHAPE_INVALID" ? undefined : prescriptiveFixForCode(input.code));
   return {
     code: input.code,
     severity: input.severity ?? "error",

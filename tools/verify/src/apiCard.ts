@@ -74,8 +74,8 @@ ${compactInterface("ScriptTransformFacade", transform)}
 
 - Scenes: \`content/scenes/*.scene.json\` own entities, transforms, components,
   cameras, resources, UI bindings, and script references.
-- Input: \`content/input/*.input.json\` uses actions with
-  \`keyboard.KeyW\`-style bindings and axes named \`MoveX\` / \`MoveZ\`.
+- Input: \`content/input/*.input.json\` uses \`keyboard.KeyW\`-style bindings;
+  see \`docs/contracts/input-binding-syntax.md\` for the grammar.
 - Systems: \`content/systems/*.systems.json\` attaches script module/export
   entries. New access metadata should live in \`defineBehavior\`.
 - UI: \`content/ui/*.ui.json\` binds HUD text to resource paths such as

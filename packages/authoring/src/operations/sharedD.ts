@@ -387,11 +387,30 @@ export function validateAssetDeclaration(diagnostics: IAuthoringDiagnostic[], pa
     validateOptionalVec2(diagnostics, file, `${path}/offset`, item.offset, "texture offset must be a pair of finite numbers.");
     validateOptionalVec2(diagnostics, file, `${path}/center`, item.center, "texture center must be a pair of finite numbers.");
     validateOptionalNumber(diagnostics, file, `${path}/rotation`, item.rotation, "texture rotation must be finite.");
+    normalizeTextureWrapAlias(diagnostics, file, `${path}/wrapS`, item, "wrapS");
+    normalizeTextureWrapAlias(diagnostics, file, `${path}/wrapT`, item, "wrapT");
     validateOptionalStringEnum(diagnostics, file, `${path}/wrapS`, item.wrapS, new Set(["clampToEdge", "mirroredRepeat", "repeat"]), "texture wrapS must be clampToEdge, mirroredRepeat, or repeat.");
     validateOptionalStringEnum(diagnostics, file, `${path}/wrapT`, item.wrapT, new Set(["clampToEdge", "mirroredRepeat", "repeat"]), "texture wrapT must be clampToEdge, mirroredRepeat, or repeat.");
     validateOptionalStringEnum(diagnostics, file, `${path}/minFilter`, item.minFilter, new Set(["linear", "linearMipmapLinear", "linearMipmapNearest", "nearest", "nearestMipmapLinear", "nearestMipmapNearest"]), "texture minFilter must be a promoted texture filter.");
     validateOptionalStringEnum(diagnostics, file, `${path}/magFilter`, item.magFilter, new Set(["linear", "nearest"]), "texture magFilter must be linear or nearest.");
   }
+}
+
+function normalizeTextureWrapAlias(diagnostics: IAuthoringDiagnostic[], file: string, path: string, item: Record<string, unknown>, key: "wrapS" | "wrapT"): void {
+  const aliases: Record<string, string> = { clamp: "clampToEdge", mirror: "mirroredRepeat" };
+  const value = readString(item[key]);
+  const normalized = value === undefined ? undefined : aliases[value];
+  if (normalized === undefined) return;
+  item[key] = normalized;
+  diagnostics.push(authoringDiagnostic({
+    code: "TN_AUTHORING_TEXTURE_WRAP_NORMALIZED",
+    file,
+    message: `Texture ${key} alias '${value}' was normalized to '${normalized}'.`,
+    path,
+    severity: "warning",
+    suggestion: `Use '${normalized}' in durable source.`,
+    value,
+  }));
 }
 
 export function validateHeightmapAssetDeclaration(diagnostics: IAuthoringDiagnostic[], file: string, path: string, item: Record<string, unknown>): void {
@@ -1084,6 +1103,23 @@ export function validateStructuredInputBindingList(diagnostics: IAuthoringDiagno
     const text = readString(binding);
     if (text !== undefined) {
       validateStructuredInputBindingString(diagnostics, file, `${path}/${index}`, text);
+    } else if (isRecord(binding)) {
+      const device = readString(binding.device);
+      const control = typeof binding.button === "number" ? String(binding.button) : readString(binding.control);
+      const snippet = device !== undefined && control !== undefined ? `${device}.${control}` : "keyboard.KeyW";
+      diagnostics.push(authoringDiagnostic({
+        code: "TN_AUTHORING_SHAPE_INVALID",
+        file,
+        fix: {
+          docs: "docs/contracts/input-binding-syntax.md",
+          instruction: "Replace the object-form binding with the portable input binding string micro-syntax.",
+          snippet: JSON.stringify(snippet),
+        },
+        message: "Input bindings must use the portable string micro-syntax.",
+        path: `${path}/${index}`,
+        suggestion: `Use ${JSON.stringify(snippet)}.`,
+        value: binding,
+      }));
     }
   });
 }
