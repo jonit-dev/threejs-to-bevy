@@ -17,9 +17,13 @@ everything in context at once.
 
 1. Before creating or substantially changing the game, open
    `AGENT_GAME_PLAN.md` as the first game-creation action, then run
-   `tn game plan --goal "<game idea>" --project . --json`
+   `tn game plan --goal "<game idea>" --project . --json` (or
+   `pnpm run game:plan`), and apply a reviewed plan with
+   `pnpm run game:improve`
    (add `--apply` for supported scaffolds).
-2. Worked examples first: `tn cookbook list --json`, then
+2. Read `docs/API-CARD.md` for the local ScriptContext and source contract
+   before searching engine source. Then use worked examples first:
+   `tn cookbook list --json`, then
    `tn cookbook show <id> --json`, before inventing a new gameplay, camera,
    UI, physics, asset, or polish pattern.
 3. Author with deterministic CLI edits: `tn actor ... --json`,
@@ -28,6 +32,9 @@ everything in context at once.
    command covers the change.
 4. After changes, run `tn iterate --project . --json` (or `pnpm run iterate`)
    as the default repair loop; fix the owning durable source and rerun.
+   Start with compact playtest reports (`tn playtest report`) or compact
+   stdout; inspect deep logs for frames or effects only when a diagnostic
+   points to them.
 5. For custom sound effects, probe with `tn game providers --project . --json`.
    When ElevenLabs is available, prefer one bounded
    `tn audio generate-sfx <asset-id> --prompt "<description>" --project . --json`

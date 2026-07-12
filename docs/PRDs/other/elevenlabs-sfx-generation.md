@@ -408,24 +408,24 @@ secret-boundary approval.
 
 ## 5. Acceptance Criteria
 
-- [ ] `tn init` and `tn create` scaffold `.env.example` and safe ignore rules
+- [x] `tn init` and `tn create` scaffold `.env.example` and safe ignore rules
   for every template without creating a real `.env` or credential.
-- [ ] `tn game providers --project . --json` and `tn audio generate-sfx` share
+- [x] `tn game providers --project . --json` and `tn audio generate-sfx` share
   the same project-local environment loader and never reveal values.
-- [ ] A single `tn audio generate-sfx` invocation can generate an MP3, register
+- [x] A single `tn audio generate-sfx` invocation can generate an MP3, register
   it as a structured audio asset, and optionally bind it into an audio document.
-- [ ] Validation errors and missing credentials make zero network calls.
-- [ ] Paid requests are never retried implicitly; partial/failed work is
+- [x] Validation errors and missing credentials make zero network calls.
+- [x] Paid requests are never retried implicitly; partial/failed work is
   rolled back without overwriting unrelated user files.
-- [ ] Mock integration tests exercise success, provider errors, malformed
+- [x] Mock integration tests exercise success, provider errors, malformed
   binary responses, timeouts, conflicts, rollback, and secret redaction.
 - [ ] One manually approved live test proves the current ElevenLabs contract;
   CI and normal verification never require a real key or spend credits.
-- [ ] Generated audio remains bundle-local, passes authoring/build validation,
+- [x] Generated audio remains bundle-local, passes authoring/build validation,
   and does not change the streaming/network-audio runtime boundary.
-- [ ] Command/help/MCP/editor adapters are derived from the owning registry or
+- [x] Command/help/MCP/editor adapters are derived from the owning registry or
   protected by explicit drift tests; no second hand-maintained list is added.
-- [ ] `pnpm verify:cookbook`, `pnpm verify:template-production`, focused tests,
+- [x] `pnpm verify:cookbook`, `pnpm verify:template-production`, focused tests,
   `pnpm verify:conformance`, and `pnpm check:docs` pass.
 - [ ] Capability docs and `docs/STATUS.md` are updated only with matching
   evidence, and the completed PRD is moved to `docs/PRDs/done`.
@@ -450,3 +450,54 @@ counts, checkpoint verdict, commands run, and redacted artifact paths. Phase 3
 must separately label mock integration evidence and the manually approved live
 smoke evidence, including the provider request ID/cost header when safe, but no
 credential values.
+
+### Phase 1: Init-Time Secret Convention
+
+- Checkpoint: PASS.
+- Focused evidence: registry-derived create/init coverage and all eight
+  `templateProductionGate` tests passed.
+- Aggregate command: `pnpm verify:template-production` PASS with zero
+  diagnostics across all three maintained templates.
+- Redacted artifact:
+  `tools/verify/artifacts/template-production/verification-report.json`.
+- Manual local check: generated `.env` and `.env.development.local` are ignored
+  while `.env.example` remains trackable; no credential value is scaffolded.
+
+### Phase 2: Project Environment Loading
+
+- Checkpoint: PASS.
+- Focused evidence: five `projectEnvironment` tests and two provider-command
+  tests passed; CLI typecheck, lint, and build passed.
+- The provider command reports ElevenLabs `not-configured` in this checkout
+  without serializing environment values.
+
+### Phase 3: Mock Integration
+
+- Checkpoint: PASS for mock-backed implementation.
+- Focused evidence: ten `generateSfx` tests passed, covering binary success,
+  request mapping, missing/invalid preflight with zero fetches, one-attempt
+  timeout/network ambiguity, provider redaction, malformed MP3, destination
+  conflict, registration rollback, and forced-replacement rollback.
+- Combined focused CLI command suite: 51/51 tests passed.
+- Generated mock output is validated and registered as a normal bundle-local
+  MP3, with sanitized source-owned generation provenance and no secret fields.
+
+### Phase 3: Manually Approved Live Smoke
+
+- Status: NOT RUN.
+- `tn game providers --project . --json` reports ElevenLabs `not-configured`.
+- No credential or approval was available, so no paid request was made and no
+  request ID or character-cost header exists to record.
+
+### Phase 4: Workflow And Release Evidence
+
+- Checkpoint: PASS for automated evidence.
+- `pnpm verify:cookbook`: PASS; report at
+  `tools/verify/artifacts/cookbook/verification-report.json`.
+- `pnpm verify:template-production`: PASS.
+- `pnpm verify:conformance`: PASS; report at
+  `packages/ir/artifacts/conformance/verification-report.json`.
+- `pnpm check:docs`: PASS.
+- Credential-release gate test rejects sentinel key and `xi-api-key` material.
+- Capability and status docs explicitly limit evidence to mock integration and
+  preserve the bundle-local/runtime-network boundary.
