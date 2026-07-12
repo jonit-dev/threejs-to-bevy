@@ -118,6 +118,7 @@ interface ScriptTransformFacade {
 
 - Scenes: `content/scenes/*.scene.json` own entities, transforms, components,
   cameras, resources, UI bindings, and script references.
+  Perspective cameras use `fovY`; orthographic cameras use `size`.
 - Input: `content/input/*.input.json` uses `keyboard.KeyW`-style bindings;
   see `docs/contracts/input-binding-syntax.md` for the grammar.
 - Systems: `content/systems/*.systems.json` attaches script module/export

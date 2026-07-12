@@ -65,12 +65,15 @@ export function renderSceneResult(result: IAuthoringOperationResult | IInspectSc
   }
 
   if (result.ok) {
+    const cameraSummary = "node" in result && result.node?.summary !== undefined
+      ? `${result.node.id}: ${result.node.summary.mode}${result.node.summary.fovY === undefined ? "" : ` fovY=${result.node.summary.fovY}`}${result.node.summary.size === undefined ? "" : ` size=${result.node.summary.size}`}${result.node.summary.near === undefined ? "" : ` near=${result.node.summary.near}`}${result.node.summary.far === undefined ? "" : ` far=${result.node.summary.far}`}`
+      : undefined;
     const summary = "scene" in result && result.scene !== undefined
       ? `\nScene: ${result.scene.id}\nFile: ${result.scene.file}\nEntities: ${result.scene.entities.length}\nSystems: ${result.scene.systems.length}`
       : "";
     return {
       exitCode: 0,
-      stdout: `${message}${summary}\n`,
+      stdout: `${cameraSummary === undefined ? "" : `${cameraSummary}\n`}${message}${summary}\n`,
     };
   }
 

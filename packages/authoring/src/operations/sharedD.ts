@@ -865,7 +865,21 @@ export function inspectSceneNode(data: unknown, nodeId: string): ISceneNodeInspe
       }
     });
   }
-  return { id: nodeId, matches };
+  const entity = readArray(data.entities)?.find((item) => isRecord(item) && readString(item.id) === nodeId);
+  const components = isRecord(entity) && isRecord(entity.components) ? entity.components : undefined;
+  const camera = components === undefined ? undefined : isRecord(components.camera) ? components.camera : isRecord(components.Camera) ? components.Camera : undefined;
+  const transform = isRecord(entity) && isRecord(entity.transform) ? entity.transform : undefined;
+  const mode = camera === undefined ? undefined : readString(camera.mode) ?? readString(camera.kind);
+  const summary = camera === undefined || mode === undefined ? undefined : {
+    mode,
+    ...(typeof camera.fovY === "number" ? { fovY: camera.fovY } : {}),
+    ...(typeof camera.size === "number" ? { size: camera.size } : {}),
+    ...(typeof camera.near === "number" ? { near: camera.near } : {}),
+    ...(typeof camera.far === "number" ? { far: camera.far } : {}),
+    ...(transform?.position === undefined ? {} : { position: cloneJson(transform.position) }),
+    ...(transform?.rotation === undefined ? {} : { rotation: cloneJson(transform.rotation) }),
+  };
+  return { id: nodeId, matches, ...(summary === undefined ? {} : { summary }) };
 }
 
 export function pushArrayIdMatches(

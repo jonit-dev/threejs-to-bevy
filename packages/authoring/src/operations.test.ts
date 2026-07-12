@@ -7,7 +7,7 @@ import test from "node:test";
 import type { IAuthoringDiagnostic } from "./diagnostics.js";
 import { createScene } from "./operations.js";
 import { validateTransform } from "./operations/sharedC.js";
-import { validateAssetDeclaration, validateInputMetadata } from "./operations/sharedD.js";
+import { inspectSceneNode, validateAssetDeclaration, validateInputMetadata } from "./operations/sharedD.js";
 
 test("should preserve scene operation output after module split", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-operations-"));
@@ -77,4 +77,9 @@ test("should not attach unrelated cookbook snippet to shape errors", () => {
     actions: [{ bindings: [{ button: 0, device: "pointer" }], id: "Select" }],
   });
   assert.equal(JSON.stringify(diagnostics).includes("collectible-respawn"), false);
+});
+
+test("should summarize camera mode and lens on scene inspect", () => {
+  const node = inspectSceneNode({ entities: [{ id: "camera.main", components: { camera: { far: 100, mode: "orthographic", near: 0.1, size: 10.6 } }, transform: { position: [0, 8, 10], rotation: [-0.6, 0, 0] } }] }, "camera.main");
+  assert.deepEqual(node?.summary, { far: 100, mode: "orthographic", near: 0.1, position: [0, 8, 10], rotation: [-0.6, 0, 0], size: 10.6 });
 });

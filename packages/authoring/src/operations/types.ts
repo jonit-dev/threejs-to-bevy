@@ -876,6 +876,15 @@ export interface ISceneInspection {
 export interface ISceneNodeInspection {
   id: string;
   matches: Array<{ kind: "entity" | "instance" | "prefab" | "resource" | "system" | "ui-binding" | "ui-node"; path: string; value: unknown }>;
+  summary?: {
+    far?: number;
+    fovY?: number;
+    mode: string;
+    near?: number;
+    position?: unknown;
+    rotation?: unknown;
+    size?: number;
+  };
 }
 
 export interface ICreateSceneResult extends IAuthoringOperationResult {

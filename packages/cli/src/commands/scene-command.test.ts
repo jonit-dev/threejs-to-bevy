@@ -207,6 +207,17 @@ test("scene-command inspect can target one scene node without dumping full scene
   }
 });
 
+test("should print camera summary line in human output", async () => {
+  const root = await createSceneProject();
+  try {
+    const result = await sceneCommand(["inspect", "scene.arena", "--node", "chase-camera", "--project", root]);
+    assert.equal(result.exitCode, 0);
+    assert.match(result.stdout, /^chase-camera: third-person-follow/);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
 test("scene-command inspect targets UI bindings by resource id", async () => {
   const root = await createSceneProject();
 
