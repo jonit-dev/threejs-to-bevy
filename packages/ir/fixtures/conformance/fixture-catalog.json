@@ -909,6 +909,40 @@
       "reportArtifacts": [
         "tools/verify/artifacts/rendering-lights/verification-report.json"
       ]
+    },
+    {
+      "canonicalId": "script-local-modules",
+      "owner": "ir-contract",
+      "sourceExample": "script-local-modules",
+      "regenerateCommand": "pnpm verify:focused verify:script-local-modules",
+      "canonicalArtifactGate": "script-local-modules",
+      "ownerDocs": "docs/PRDs/agent-engine-wishlist-2026-07-11/PRD-002-project-local-script-modules.md",
+      "aggregateGate": "verify:script-local-modules",
+      "bundlePath": "packages/ir/fixtures/conformance/script-local-modules/game.bundle",
+      "promotedCapabilities": [
+        "scripting:project-local-modules"
+      ],
+      "reportArtifacts": [
+        "tools/verify/artifacts/script-local-modules/verification-report.json"
+      ],
+      "focusedGate": {
+        "commands": [
+          ["pnpm", "--filter", "@threenative/compiler", "build"],
+          ["pnpm", "--filter", "@threenative/verify-tools", "build"],
+          ["node", "tools/verify/dist/scriptLocalModulesGate.js"]
+        ],
+        "conflictPolicy": "none",
+        "description": "Deterministic bounded project-local script module graph and single-bundle execution gate.",
+        "owner": "packages/compiler module graph and tools/verify script-local-modules gate",
+        "profile": "focused",
+        "protects": "Relative .ts resolution, transitive source hashes, shared helper emission, QuickJS loadability, and the canonical scripts.bundle.js entry.",
+        "reason": "A multi-file fixture proves that web and native consume the same generated bundle without runtime filesystem imports.",
+        "release": {
+          "enrolled": true,
+          "name": "verify script-local-modules",
+          "timingCategory": "focused-gate"
+        }
+      }
     }
   ]
 }

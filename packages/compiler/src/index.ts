@@ -19,6 +19,9 @@ export { compileTypedGameSpec, type ICompileTypedGameSpecOptions } from "./gameS
 export { compileTypedGameSpecFile, type ICompileTypedGameSpecFileOptions, type ICompileTypedGameSpecFileResult } from "./gameSpec/file.js";
 export { generateTypedGameSpecIdTypes, type IGenerateTypedGameSpecTypesOptions } from "./gameSpec/typegen.js";
 export { generateProjectContextTypes, generateProjectTypes, type IGenerateProjectTypesOptions, type IGenerateProjectTypesResult } from "./typegen.js";
+export { bundleSystemScripts, type IScriptBundleResult, type ISystemScriptSource, type IScriptsManifest } from "./scripts/bundle.js";
+export { probeQuickJsLoadability, type IQuickJsProbeResult } from "./scripts/quickjsProbe.js";
+export { resolveSystemScriptSources, type IResolveSystemScriptSourcesResult } from "./scripts/sourceRefs.js";
 export type {
   AuthoringDeclarationKind,
   AuthoringEmittedArtifactKind,

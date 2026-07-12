@@ -1,0 +1,9 @@
+{
+  "collect": {
+    "score": 5,
+    "status": "collected"
+  },
+  "updateHud": {
+    "label": "Score 5"
+  }
+}

@@ -23,6 +23,7 @@ export { runLightingShowcaseGate, validateLightingShowcaseEvidence, type Lightin
 export { runLegacyScriptAlias, resolveScriptAlias, formatDeprecationDiagnostic, listDeprecatedScriptAliases, isRegisteredGate, SCRIPT_ALIASES } from "./legacyAliases.js";
 export { runGameProductionGate, type IGameProductionGateResult } from "./gameProductionGate.js";
 export { runRuntimeWriteAuditGate, validateRuntimeWriteAuditEvidence, type RuntimeWriteAuditGateResult } from "./runtimeWriteAuditGate.js";
+export { runScriptLocalModulesGate, validateScriptLocalModulesEvidence, type ScriptLocalModulesGateResult } from "./scriptLocalModulesGate.js";
 export { runGameplayParityGate, type GameplayParityReport } from "./gameplayParity.js";
 export { compareAssetProbe, compareMaterialProbe, compareTextureProbe, type GameplayParityProbeObservations } from "./gameplayParityProbes.js";
 export { runExampleBuildSweep, type IExampleBuildSweepResult } from "./exampleBuildSweep.js";

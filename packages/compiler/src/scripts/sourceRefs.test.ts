@@ -663,3 +663,46 @@ test("should allow helpers and constants scoped inside exported system", async (
     await rm(root, { force: true, recursive: true });
   }
 });
+
+test("should invalidate a source entry when a transitive helper changes", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-script-source-ref-transitive-hash-"));
+  try {
+    await mkdir(join(root, "src/scripts/shared"), { recursive: true });
+    const helperPath = join(root, "src/scripts/shared/math.ts");
+    await writeFile(helperPath, `export const addBonus = (value: number) => value + 2;\n`);
+    await writeFile(
+      join(root, "src/scripts/player.ts"),
+      `import { addBonus } from "./shared/math";\nexport const updatePlayer = () => addBonus(3);\n`,
+    );
+    const systems: ISystemScriptSource[] = [{
+      name: "updatePlayer",
+      script: {
+        exportName: "system_updatePlayer",
+        sourceRef: {
+          export: "updatePlayer",
+          module: "src/scripts/player.ts",
+          systemId: "updatePlayer",
+        },
+      },
+    }];
+
+    const first = resolveSystemScriptSources(systems, root);
+    const firstGraph = first.systems[0]?.script?.localModuleGraph;
+    assert.deepEqual(first.diagnostics, []);
+    assert.deepEqual(firstGraph?.modules.map((module) => module.path), [
+      "src/scripts/shared/math.ts",
+      "src/scripts/player.ts",
+    ]);
+    assert.deepEqual(firstGraph?.modules[1]?.dependencies, ["src/scripts/shared/math.ts"]);
+
+    await writeFile(helperPath, `export const addBonus = (value: number) => value + 3;\n`);
+    const second = resolveSystemScriptSources(systems, root);
+
+    assert.deepEqual(second.diagnostics, []);
+    assert.notEqual(first.systems[0]?.script?.sourceRef?.hash, second.systems[0]?.script?.sourceRef?.hash);
+    assert.notEqual(firstGraph?.hash, second.systems[0]?.script?.localModuleGraph?.hash);
+    assert.equal(second.systems[0]?.script?.localModuleGraph?.modules[0]?.hash !== firstGraph?.modules[0]?.hash, true);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});

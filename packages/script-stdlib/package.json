@@ -16,7 +16,9 @@
     "access": "public"
   },
   "scripts": {
-    "build": "tsc -p tsconfig.json",
+    "build": "pnpm generate && tsc -p tsconfig.json",
+    "check:generated": "node scripts/generate-bundle-source.mjs --check",
+    "generate": "node scripts/generate-bundle-source.mjs",
     "lint": "tsc -p tsconfig.json --noEmit",
     "test": "node scripts/run-tests.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit"

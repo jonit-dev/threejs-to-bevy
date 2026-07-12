@@ -313,6 +313,20 @@ export const FOCUSED_GATES: Record<string, FocusedGate> = {
       protects: "Runtime sensor occupancy, transform write conflict diagnostics, resource composition classification, and bounded write-audit artifacts.",
     },
   },
+  "verify:script-local-modules": {
+    commands: [
+      ["pnpm", "--filter", "@threenative/compiler", "build"],
+      ["pnpm", "--filter", "@threenative/verify-tools", "build"],
+      ["node", "tools/verify/dist/scriptLocalModulesGate.js"],
+    ],
+    description: "Project-local script module graph and bundle gate.",
+    metadata: {
+      owner: "tools/verify script-local-modules gate",
+      profile: "focused",
+      reason: "Builds the bounded project-local module fixture and proves deterministic shared-helper bundling through the native-compatible probe.",
+      protects: "Relative module resolution, transitive graph hashes, single-bundle execution, and native scripts.bundle.js entry parity.",
+    },
+  },
   "verify:ui-persistence-settings-facades": {
     commands: [
       ["pnpm", "--filter", "@threenative/ir", "build"],

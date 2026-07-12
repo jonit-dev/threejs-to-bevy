@@ -301,6 +301,9 @@ importers:
       '@threenative/cli':
         specifier: workspace:*
         version: link:../../packages/cli
+      '@threenative/compiler':
+        specifier: workspace:*
+        version: link:../../packages/compiler
       '@threenative/ir':
         specifier: workspace:*
         version: link:../../packages/ir

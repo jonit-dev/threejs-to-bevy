@@ -183,10 +183,10 @@ Validation rules:
   `@threenative/script-stdlib` for pure gameplay math/reducer helpers and
   `@threenative/racing-kit`, `@threenative/collector-kit`,
   `@threenative/lane-runner-kit`, and
-  `@threenative/checkpoint-race-kit` for opt-in domain reducers.
-  Arbitrary npm packages, relative helper module graphs, default imports,
-  namespace imports, aliased imports, and re-exports are rejected before
-  runtime.
+  `@threenative/checkpoint-race-kit` for opt-in domain reducers. Project-local
+  relative imports are also supported when they resolve to the bounded
+  `src/scripts` graph described below. Arbitrary npm packages and unbounded or
+  unsupported relative module graphs are rejected before runtime.
 - SDK `scriptLifecycle(...)` and structured-source `scriptLifecycles` entries
   are authoring aliases only. `awake`, `fixedUpdate`, `update`, and
   `lateUpdate` lower to ordinary `startup`, `fixedUpdate`, `update`, and
@@ -227,9 +227,44 @@ export const drive = (ctx) => {
 ```
 
 Only named imports for the promoted helper objects are portable. Namespace,
-default, aliased, re-exported, relative, and arbitrary package helper imports
-are rejected because the portable bundle has to run the same way in web
-JavaScript and Bevy QuickJS.
+default, aliased, and arbitrary package helper imports are rejected because the
+portable bundle has to run the same way in web JavaScript and Bevy QuickJS.
+
+### Project-local script modules
+
+System `sourceRef.module` entries may import pure project-local modules with
+static relative TypeScript imports:
+
+```ts
+// src/scripts/shared/score.ts
+export const addScore = (base: number, bonus: number) => base + bonus;
+
+// src/scripts/collect.ts
+import { addScore } from "./shared/score";
+export const collect = () => addScore(3, 2);
+```
+
+The compiler resolves `.ts` first and then `index.ts` for extensionless paths,
+always rooted at `src/scripts`. It emits one deterministic `scripts.bundle.js`
+with module-local scopes and records each normalized module path, content hash,
+dependency edge, and topological order in the `moduleGraph` field of
+`scripts.manifest.json`.
+
+The portable subset is intentionally small: named/default/namespace local
+bindings and named or star re-exports are accepted when the graph is closed.
+Dynamic imports, side-effect imports, missing modules, path escapes, cycles,
+unapproved bare packages, top-level mutable state, and top-level effectful
+initializers fail before bundle emission. Keep persistent state in declared
+components/resources; module declarations should be pure functions/constants.
+
+The canonical stdlib TypeScript modules under `packages/script-stdlib/src` are
+the only editable helper implementation. `bundle-source.generated.ts` is
+generated during the package build; check it with
+`pnpm --filter @threenative/script-stdlib check:generated`.
+
+Use `pnpm verify:focused verify:script-local-modules` for the multi-file graph,
+transitive hash, shared-helper, QuickJS-loadability, and native bundle-entry
+proof.
 
 Use `pnpm verify:scripting-helpers-lifecycle` for the focused helper import,
 lifecycle lowering, rally example, web playtest, and Bevy helper-bridge proof.

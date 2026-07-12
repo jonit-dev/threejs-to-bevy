@@ -151,6 +151,57 @@ test("should bundle preferred script stdlib aliases", () => {
   });
 });
 
+test("should bundle a project local helper module into one executable system", () => {
+  const result = bundleSystemScripts([
+    {
+      name: "collect",
+      script: {
+        exportName: "system_collect",
+        source: "(context) => context",
+        sourceRef: { export: "collect", module: "src/scripts/collect.ts", systemId: "collect" },
+        localModuleGraph: {
+          entry: "src/scripts/collect.ts",
+          hash: "sha256-graph",
+          modules: [
+            { dependencies: [], hash: "sha256-helper", path: "src/scripts/shared.ts", source: "export const addPoint = (value: number) => value + 2;" },
+            { dependencies: ["src/scripts/shared.ts"], hash: "sha256-entry", path: "src/scripts/collect.ts", source: "import { addPoint } from './shared'; export const collect = () => addPoint(3);" },
+          ],
+          order: ["src/scripts/shared.ts", "src/scripts/collect.ts"],
+        },
+      },
+    },
+  ]);
+
+  assert.deepEqual(result.diagnostics, []);
+  assert.deepEqual(runBundledSystem(result.code, "system_collect"), 5);
+  assert.match(result.code ?? "", /__tn_local_module_0/);
+  assert.equal(result.manifest?.systems[0]?.source?.moduleGraph?.hash, "sha256-graph");
+});
+
+test("should reject a local import that names an unexported binding", () => {
+  const result = bundleSystemScripts([{
+    name: "collect",
+    script: {
+      exportName: "system_collect",
+      source: "() => undefined",
+      sourceRef: { export: "collect", module: "src/scripts/collect.ts", systemId: "collect" },
+      localModuleGraph: {
+        entry: "src/scripts/collect.ts",
+        hash: "sha256-graph",
+        modules: [
+          { dependencies: [], hash: "sha256-helper", path: "src/scripts/shared.ts", source: "export const addPoint = (value: number) => value + 2;" },
+          { dependencies: ["src/scripts/shared.ts"], hash: "sha256-entry", path: "src/scripts/collect.ts", source: "import { missing } from './shared'; export const collect = () => missing(3);" },
+        ],
+        order: ["src/scripts/shared.ts", "src/scripts/collect.ts"],
+      },
+    },
+  }]);
+
+  assert.equal(result.code, undefined);
+  assert.equal(result.diagnostics[0]?.code, "TN_SCRIPT_MODULE_EXPORT_MISSING");
+  assert.match(result.diagnostics[0]?.message ?? "", /missing/);
+});
+
 test("should bundle promoted gameplay math helpers", () => {
   const result = bundleSystemScripts([
     {

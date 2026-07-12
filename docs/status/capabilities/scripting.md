@@ -69,6 +69,15 @@ Current support:
 - Compiler diagnostics reject unsupported imports, mutable module state,
   module-local helpers that cannot be emitted, legacy idioms, and undeclared
   access.
+- Project-local script modules support deterministic relative `.ts` and
+  `index.ts` resolution under `src/scripts`, closed pure graphs, named/default
+  bindings, transitive source hashes, and a single scoped runtime bundle;
+  cycles, path escapes, dynamic/side-effect imports, unapproved packages, and
+  effectful or mutable module initialization fail with source-mapped fixes.
+- The script stdlib bundle is generated from the canonical TypeScript helper
+  modules and checked for stale output; the focused
+  `verify:script-local-modules` fixture proves shared-module execution and
+  native `scripts.bundle.js` entry parity.
 - Bundle validation diagnostics for missing component/resource schemas include
   copyable schema snippets and survive `tn build --json` wrapping.
 - The non-blocking `TN_SCRIPT_UNTYPED_CONTEXT` info diagnostic points old
@@ -90,6 +99,7 @@ Verification:
 - `pnpm --filter @threenative/cli test`
 - `pnpm --filter @threenative/runtime-web-three test`
 - `pnpm verify:focused verify:runtime-write-audit`
+- `pnpm verify:focused verify:script-local-modules`
 - `cargo test -p threenative_runtime systems_host_should_apply_declared_resource_write`
 - `cargo test -p threenative_runtime systems_host_should_expose_audio_facade`
 - `cargo test -p threenative_runtime systems_host_should_expose_bounded_particle_command_services`
@@ -100,6 +110,8 @@ Verification:
 - `cargo test -p threenative_runtime should_report_bounded_scheduler_observations`
 - `pnpm verify:scripting-helpers-lifecycle`
 - `pnpm verify:cookbook` covers the bounded runtime-write-audit authoring pattern.
+- `pnpm --filter @threenative/script-stdlib check:generated` covers generated
+  stdlib bundle freshness.
 
 Full prior evidence is preserved in
 [full-status-archive.md](full-status-archive.md).
