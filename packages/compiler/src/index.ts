@@ -9,7 +9,7 @@ export { loadProjectConfig, type IProjectConfig } from "./config.js";
 export { CompilerError } from "./errors.js";
 export { emitBundle, emitBundleWithReport } from "./emit/bundle.js";
 export { bakeGiBundle, type IBakeGiBundleResult } from "./bake/bakeGiBundle.js";
-export { extractGltfAssetMetadata, extractGltfSceneMetadata } from "./gltf/metadata.js";
+export { extractGltfAssetMetadata, extractGltfSceneMetadata, gltfMaterialExtensionStatus } from "./gltf/metadata.js";
 export { validateBundle } from "./validate/index.js";
 export { AUTHORING_PROVENANCE_FILE, authoringProvenanceDocument, buildAuthoringProvenanceDocument } from "./authoring/provenance.js";
 export type { ICompilerDiagnostic, IValidationReport } from "./diagnostics.js";

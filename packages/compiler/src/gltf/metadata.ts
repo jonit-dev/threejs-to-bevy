@@ -359,7 +359,7 @@ function materialRef(material: { name?: string } | undefined, index: number): st
   return typeof material?.name === "string" && material.name.trim() !== "" ? `material:${material.name}` : `material:${index}`;
 }
 
-function gltfMaterialExtensionStatus(extension: string): IGltfMaterialMetadataIr["extensions"][number]["status"] {
+export function gltfMaterialExtensionStatus(extension: string): IGltfMaterialMetadataIr["extensions"][number]["status"] {
   if (extension === "KHR_materials_clearcoat" || extension === "KHR_materials_transmission" || extension === "KHR_materials_emissive_strength") {
     return "promoted";
   }

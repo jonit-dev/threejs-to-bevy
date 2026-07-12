@@ -140,7 +140,7 @@ test("should report glTF material extension metadata", async () => {
 
     const result = await assetCommand(["inspect", join(root, "hero.gltf"), "--json"]);
     const payload = JSON.parse(result.stdout) as {
-      diagnostics: Array<{ code: string; path?: string; severity: string }>;
+      diagnostics: Array<{ code: string; fix?: { snippet?: string }; path?: string; severity: string }>;
       gltf: {
         assetId: string;
         materials: Array<{
@@ -158,6 +158,7 @@ test("should report glTF material extension metadata", async () => {
       ["KHR_materials_clearcoat", "promoted"],
       ["VENDOR_custom_shader", "unsupported"],
     ]);
+    assert.match(payload.diagnostics.find((diagnostic) => diagnostic.code.includes("GLTF_EXTENSION"))?.fix?.snippet ?? "", /tn asset repair/);
     assert.equal(payload.gltf.materials[0]?.textureTransforms[0]?.textureSlot, "pbrMetallicRoughness.baseColorTexture");
     assert.deepEqual(payload.gltf.materials[0]?.textureTransforms[0]?.offset, [0.25, 0.5]);
     assert.deepEqual(payload.gltf.morphTargets, [{ defaultWeight: 0.3, mesh: "mesh:0", path: "/meshes/0/extras/targetNames/0", source: "mesh.extras.targetNames", target: "Smile" }]);

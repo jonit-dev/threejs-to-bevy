@@ -9,6 +9,7 @@ import { exportAssetSourcesJsonl, getAssetSource, searchAssetSources, suggestAss
 import { diagnosticResult, type ICommandResult } from "../diagnostics.js";
 import { formatVec, formatVec2, rotateXZ } from "./asset/vectorPresentation.js";
 import { assetImportCommand } from "./assetImport.js";
+import { assetRepairCommand } from "./assetRepair.js";
 
 type Severity = "info" | "warning" | "error";
 
@@ -42,6 +43,7 @@ interface GltfAsset {
 
 interface AssetDiagnostic {
   code: string;
+  fix?: { instruction: string; snippet: string };
   message: string;
   path?: string;
   severity: Severity;
@@ -198,6 +200,10 @@ export async function assetCommand(argv: readonly string[]): Promise<ICommandRes
 
   if (subcommand === "import") {
     return assetImportCommand(normalizedArgv);
+  }
+
+  if (subcommand === "repair") {
+    return assetRepairCommand(normalizedArgv);
   }
 
   if (subcommand === "add") {
@@ -569,6 +575,7 @@ function gltfMetadataDiagnostics(metadata: IGltfSceneAssetIr): AssetDiagnostic[]
       }
       diagnostics.push({
         code: extension.properties.includes("processor") ? "TN_ASSET_GLTF_EXTENSION_PROCESSOR_UNSUPPORTED" : "TN_ASSET_GLTF_EXTENSION_UNSUPPORTED",
+        fix: { instruction: "Strip unsupported material extensions while preserving promoted extensions.", snippet: "tn asset repair <path> --strip-extensions" },
         message: `glTF material extension '${extension.extension}' on ${material.material} is not portable; preserve it as inspection metadata or author supported ThreeNative material data.`,
         path: extension.path,
         severity: "warning",
