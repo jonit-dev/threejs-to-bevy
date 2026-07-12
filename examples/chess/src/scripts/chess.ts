@@ -17,6 +17,9 @@ type Piece = {
 };
 type Move = { captureId?: string; castle?: "king" | "queen"; enPassant?: boolean; file: number; promotion?: Kind; rank: number };
 type ChessContext = ScriptContext & {
+  audio: {
+    play(soundId: string, options?: { loop?: boolean; volume?: number }): unknown;
+  };
   events: { emit(event: string, payload?: Record<string, unknown>): void; read(event: string): unknown[] };
   picking: {
     pointerRay(options: { aspect?: number; camera?: string; maxDistance?: number; pointer: [number, number] }): { hit: false } | { direction: [number, number, number]; hit: true; maxDistance: number; origin: [number, number, number] };
@@ -37,7 +40,7 @@ export const chessGame = defineBehavior(
     writes: ["ChessPiece", "Transform"],
     resourceReads: ["ChessGame"],
     resourceWrites: ["ChessGame"],
-    services: ["picking.pointerRay", "ui.actions", "ui.setDisabled"],
+    services: ["audio.play", "picking.pointerRay", "ui.actions", "ui.setDisabled"],
   },
   (rawContext: ScriptContext): void => {
     const boardSquareSize = 1.036;
@@ -47,6 +50,7 @@ export const chessGame = defineBehavior(
       animStart: 0,
       animFromFile: 0,
       animFromRank: 0,
+      ambienceStarted: false,
       aiMoveAt: 0,
       cursorFile: 4,
       cursorRank: 1,
@@ -285,6 +289,8 @@ export const chessGame = defineBehavior(
         turnSubText: state.gameOver ? "" : `MOVE ${Math.ceil(state.halfmove / 2)}`,
         turnText: state.gameOver ? "GAME OVER" : state.turn === state.playerColor ? "YOUR TURN" : "OPPONENT TURN",
       });
+      context.audio.play(move.captureId === undefined ? "sound.chess.move" : "sound.chess.capture", { volume: move.captureId === undefined ? 0.62 : 0.72 });
+      if (checked) context.audio.play("sound.chess.check", { volume: 0.7 });
       if (move.captureId !== undefined) publishCaptures();
       return true;
     };
@@ -293,6 +299,10 @@ export const chessGame = defineBehavior(
     const chooseSide = (color: Color): void => {
       sideChosenThisFrame = true;
       state.playerColor = color;
+      if (!state.ambienceStarted) {
+        context.audio.play("music.chess.ambience", { loop: true, volume: 0.2 });
+        state.ambienceStarted = true;
+      }
       state.aiMoveAt = color === "black" ? context.time.elapsed + 0.75 : 0;
       context.ui.setDisabled("choose-white", true);
       context.ui.setDisabled("choose-black", true);

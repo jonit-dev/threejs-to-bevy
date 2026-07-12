@@ -1,0 +1,12 @@
+{
+  "assets": [
+    {
+      "id": "audio.chess.ambience",
+      "path": "assets/audio/chess-study-ambience.mp3",
+      "type": "audio"
+    }
+  ],
+  "id": "audio.chess.ambience",
+  "schema": "threenative.assets",
+  "version": "0.1.0"
+}

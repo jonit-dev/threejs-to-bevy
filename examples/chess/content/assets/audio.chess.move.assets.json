@@ -1,0 +1,12 @@
+{
+  "assets": [
+    {
+      "id": "audio.chess.move",
+      "path": "assets/audio/chess-piece-move.mp3",
+      "type": "audio"
+    }
+  ],
+  "id": "audio.chess.move",
+  "schema": "threenative.assets",
+  "version": "0.1.0"
+}

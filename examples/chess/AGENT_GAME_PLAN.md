@@ -37,6 +37,8 @@ primitive geometry only as the runtime fallback.
 | Deterministic board generation | `scripts/generate-board.mjs` |
 | Chess rules, interaction, animation, HUD mutations | `src/scripts/chess.ts#chessGame` |
 | Opening-move proof | `playtests/chess-opening.playtest.json` |
+| Audio declarations and routing | `content/audio/chess-audio.audio.json` |
+| Generated audio files | `assets/audio/*.mp3` |
 
 ## Interaction and Feedback
 
@@ -46,6 +48,8 @@ primitive geometry only as the runtime fallback.
   markers.
 - Invalid destinations retain selection and explain the failure in the HUD.
 - A legal move uses a short eased lift arc; turn and notation update together.
+- Side selection starts restrained ambience; legal moves, captures, and checks
+  use distinct ElevenLabs-generated local cues.
 - Keyboard fallback covers native and accessible play.
 - Side selection accepts retained-UI buttons or W/B keyboard shortcuts, and
   board input stays locked during the AI turn.

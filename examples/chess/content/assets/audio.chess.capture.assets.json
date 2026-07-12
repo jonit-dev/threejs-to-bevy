@@ -1,0 +1,12 @@
+{
+  "assets": [
+    {
+      "id": "audio.chess.capture",
+      "path": "assets/audio/chess-piece-capture.mp3",
+      "type": "audio"
+    }
+  ],
+  "id": "audio.chess.capture",
+  "schema": "threenative.assets",
+  "version": "0.1.0"
+}

@@ -1,0 +1,23 @@
+{
+  "id": "chess-audio",
+  "schema": "threenative.audio",
+  "sounds": [
+    {
+      "asset": "audio.chess.move",
+      "id": "sound.chess.move"
+    },
+    {
+      "asset": "audio.chess.capture",
+      "id": "sound.chess.capture"
+    },
+    {
+      "asset": "audio.chess.check",
+      "id": "sound.chess.check"
+    },
+    {
+      "asset": "audio.chess.ambience",
+      "id": "music.chess.ambience"
+    }
+  ],
+  "version": "0.1.0"
+}

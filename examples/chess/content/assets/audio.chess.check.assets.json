@@ -1,0 +1,12 @@
+{
+  "assets": [
+    {
+      "id": "audio.chess.check",
+      "path": "assets/audio/chess-check.mp3",
+      "type": "audio"
+    }
+  ],
+  "id": "audio.chess.check",
+  "schema": "threenative.assets",
+  "version": "0.1.0"
+}
