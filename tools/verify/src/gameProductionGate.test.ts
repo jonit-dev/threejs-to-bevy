@@ -17,6 +17,20 @@ import {
   writeUiSource,
 } from "./gameProductionGateTestUtils.js";
 
+test("should reject provider credential leakage from release evidence", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-provider-secret-gate-"));
+  try {
+    await mkdir(join(root, "content/scenes"), { recursive: true });
+    await mkdir(join(root, "artifacts/game-production"), { recursive: true });
+    await writeFile(join(root, "content/scenes/arena.scene.json"), `${JSON.stringify({ schema: "threenative.scene", id: "arena" })}\n`);
+    await writeFile(join(root, "artifacts/game-production/provider-output.json"), '{"xi-api-key":"sentinel-elevenlabs-secret"}\n');
+    const result = await runGameProductionGate({ projectPath: ".", reportPath: join(root, "report.json"), root });
+    assert.equal(result.diagnostics.some((diagnostic) => diagnostic.code === "TN_VERIFY_PROVIDER_CREDENTIAL_LEAK"), true);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
 test("fails release when required artifacts are missing", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-game-production-gate-"));
   try {

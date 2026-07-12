@@ -4,6 +4,10 @@ Portable audio uses bundle-local assets and structured audio IR. Window and
 host behavior is constrained by target profiles and the single-primary-window
 runtime contract.
 
+Optional project-local ElevenLabs credentials may generate custom SFX during
+authoring. Mock provider evidence exists; live-provider evidence does not.
+This adds no runtime network or streaming-audio capability.
+
 Current support:
 
 - Web and native traces cover loop/one-shot commands, pause, resume, seek,

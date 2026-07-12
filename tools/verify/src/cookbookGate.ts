@@ -37,6 +37,7 @@ interface IParsedCookbookEntry {
   proofCommands: string[];
   script: string;
   scriptPath?: string;
+  providerBoundary?: "mock-only";
 }
 
 export async function runCookbookGate(options: { entriesDir?: string; root?: string; templateDir?: string } = {}): Promise<ICookbookGateReport> {
@@ -96,6 +97,7 @@ async function verifyEntry(options: { entry: IParsedCookbookEntry; root: string;
       await writeFile(outPath, `${options.entry.script.trim()}\n`, "utf8");
     }
     for (const command of options.entry.commands) {
+      if (options.entry.providerBoundary === "mock-only" && command.startsWith("tn audio generate-sfx ")) continue;
       const result = runTnCommand(command, options.root, projectPath);
       commands.push(result);
       if (result.exitCode !== 0) {
@@ -259,12 +261,14 @@ function runTnCommand(command: string, root: string, cwd: string): ICookbookGate
 function parseEntry(source: string, file: string): IParsedCookbookEntry | undefined {
   const id = /^id:\s*(.+)$/m.exec(source)?.[1]?.trim();
   const authoringValue = /^authoring:\s*(.+)$/m.exec(source)?.[1]?.trim();
+  const providerBoundaryValue = /^providerBoundary:\s*(.+)$/m.exec(source)?.[1]?.trim();
   const scriptPath = /^scriptPath:\s*(.+)$/m.exec(source)?.[1]?.trim();
   const commands = section(source, "commands")?.split(/\r?\n/).map((line) => line.trim()).filter((line) => line !== "" && !line.startsWith("#"));
   const proofCommands = section(source, "proof")?.split(/\r?\n/).map((line) => line.trim()).filter((line) => line !== "" && !line.startsWith("#") && line.startsWith("tn ")) ?? [];
   const script = section(source, "script") ?? "";
   const authoring = authoringValue === "typed-spec" ? authoringValue : undefined;
-  return id === undefined || commands === undefined ? undefined : { authoring, commands, id, proofCommands, script, scriptPath };
+  const providerBoundary = providerBoundaryValue === "mock-only" ? providerBoundaryValue : undefined;
+  return id === undefined || commands === undefined ? undefined : { authoring, commands, id, proofCommands, providerBoundary, script, scriptPath };
 }
 
 function validateCookbookCrossReferences(

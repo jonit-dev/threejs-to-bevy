@@ -3,6 +3,11 @@
 Generated games and playable examples are treated as small polished vertical
 slices, not blockouts.
 
+Generated instructions probe optional providers and prefer bounded SFX
+generation when available, with local, catalog, or procedural offline
+fallbacks. Release gates reject credential/header material. Evidence is
+mock-only; no live ElevenLabs smoke is claimed.
+
 Current support:
 
 - Planning, cookbook, recipe, iterate, playtest, QA, score, and release

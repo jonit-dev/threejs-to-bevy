@@ -66,9 +66,10 @@ export const CLI_COMMAND_REGISTRY = defineCommandRegistry({
     usage: "tn actor list [--json]\n              tn actor add character --id <actor-id> [--asset <asset-id-or-path>] [--scene <scene-id>] [--speed <n>] [--sprint-speed <n>] [--shared] [--project <path>] [--json]\n              tn actor update <actor-id> --set speed=4 [--set sprintSpeed=6] [--project <path>] [--json]",
   },
   audio: {
-    description: "Create and mutate structured audio source documents.",
+    description: "Create, generate, and mutate structured audio source documents.",
     implemented: true,
-    usage: "tn audio create <audio-doc-id> [--project <path>] [--json]\n              tn audio add-sound <audio-doc-id> <sound-id> --asset <asset-id-or-path> [--project <path>] [--json]",
+    subcommands: ["add-sound", "create", "generate-sfx"],
+    usage: "tn audio create <audio-doc-id> [--project <path>] [--json]\n              tn audio add-sound <audio-doc-id> <sound-id> --asset <asset-id-or-path> [--project <path>] [--json]\n              tn audio generate-sfx <asset-id> --prompt <text> [--audio-doc <id>] [--sound-id <id>] [--duration <seconds>] [--loop] [--prompt-influence <0..1>] [--model <id>] [--output-format <format>] [--out <path>] [--force] [--env-file <path>] [--project <path>] [--json]",
   },
   animation: {
     description: "Add model animation clip and graph metadata to structured asset source.",
@@ -142,7 +143,7 @@ export const CLI_COMMAND_REGISTRY = defineCommandRegistry({
   game: {
     description: "Plan, score, QA, and release-check source-backed game production evidence.",
     implemented: true,
-    usage: "tn game plan --goal <text> [--project <path>] [--json] [--full-json] [--apply]\n              tn game next [--project <path>] [--json]\n              tn game improve --apply-plan <file> [--project <path>] [--json]\n              tn game providers [--json]\n              tn game score [--project <path>] [--json]\n              tn game scale [--project <path>] [--url <preview-url>] [--out <file>] [--json]\n              tn game qa [--project <path>] [--run-proof] [--url <preview-url>] [--entity <id>] [--press <KeyboardEvent.code>] [--expect-axis x|y|z] [--record] [--out <file>] [--json]\n              tn game release [--project <path>] [--out <file>] [--json]",
+    usage: "tn game plan --goal <text> [--project <path>] [--json] [--full-json] [--apply]\n              tn game next [--project <path>] [--json]\n              tn game improve --apply-plan <file> [--project <path>] [--json]\n              tn game providers [--project <path>] [--env-file <path>] [--json]\n              tn game score [--project <path>] [--json]\n              tn game scale [--project <path>] [--url <preview-url>] [--out <file>] [--json]\n              tn game qa [--project <path>] [--run-proof] [--url <preview-url>] [--entity <id>] [--press <KeyboardEvent.code>] [--expect-axis x|y|z] [--record] [--out <file>] [--json]\n              tn game release [--project <path>] [--out <file>] [--json]",
   },
   world: {
     description: "Generate and prove dressed biome world source documents.",

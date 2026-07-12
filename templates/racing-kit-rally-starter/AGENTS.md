@@ -22,6 +22,11 @@ copies); read the matching skill when that kind of work comes up.
   imports from portable gameplay scripts.
 - Do not edit generated `dist/` output.
 - Prefer `tn ... --json` commands for scene, asset, and proof mutations.
+- For custom sound effects, probe with `tn game providers --project . --json`.
+  When ElevenLabs is available, prefer one bounded
+  `tn audio generate-sfx <asset-id> --prompt "<description>" --project . --json`
+  call. Project-local `.env` is for local `tn` tooling only. Use local,
+  catalog, or procedural audio as the offline fallback.
 - Before changing the racing slice substantially, open `AGENT_GAME_PLAN.md` as
   the first game-creation action, then run `pnpm run game:plan` and keep
   `artifacts/game-production/plan.json` with the work. Use

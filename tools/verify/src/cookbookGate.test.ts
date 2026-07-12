@@ -96,6 +96,7 @@ export default defineTypedGameSpec({
     },
   }],
 });
+
 \`\`\`
 
 ## proof
@@ -108,4 +109,11 @@ tn authoring compile-typed-spec --project . --json
   const report = await runCookbookGate({ entriesDir });
   assert.equal(report.ok, true);
   assert.equal(report.entries[0]?.commands.some((command) => command.command === "tn authoring compile-typed-spec --project . --json"), true);
+});
+
+test("should verify the generated SFX cookbook without a live provider", async () => {
+  const report = await runCookbookGate();
+  const entry = report.entries.find((candidate) => candidate.entryId === "sound-cue");
+  assert.equal(entry?.ok, true);
+  assert.equal(entry?.commands.some((command) => command.command.startsWith("tn audio generate-sfx ")), false);
 });

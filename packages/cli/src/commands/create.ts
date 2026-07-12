@@ -25,6 +25,8 @@ const publishedPackageVersion = "0.1.0";
 const generatedTemplateEntryNames = new Set(["dist", "node_modules", "artifacts"]);
 const agentGamePlanPath = "AGENT_GAME_PLAN.md";
 const sharedAgentGamePlanPath = `_shared/${agentGamePlanPath}`;
+const envExamplePath = ".env.example";
+const sharedEnvExamplePath = `_shared/${envExamplePath}`;
 const sharedAgentSkillsPath = "_shared/skills";
 const agentSkillDestinationRoots = [".claude/skills", ".codex/skills"] as const;
 
@@ -126,7 +128,32 @@ export async function createProject(argv: readonly string[], options: ICreateOpt
   const templateSourcePath = resolveTemplateSourcePath(templatesRoot, definition);
   const templateOwnedPlanPath = resolve(templateSourcePath, agentGamePlanPath);
   const sharedPlanPath = resolve(templatesRoot, sharedAgentGamePlanPath);
+  const sharedProjectEnvPath = resolve(templatesRoot, sharedEnvExamplePath);
   const sharedSkillsPath = resolve(templatesRoot, sharedAgentSkillsPath);
+
+  const templateOwnedEnvPath = resolve(templateSourcePath, envExamplePath);
+  if (await pathExists(templateOwnedEnvPath)) {
+    return diagnosticResult(
+      {
+        code: "TN_CREATE_ENV_EXAMPLE_CONFLICT",
+        message: `Template '${definition.canonical}' owns ${envExamplePath}; the shared project environment example cannot be scaffolded without duplication.`,
+        path: templateOwnedEnvPath,
+        suggestedFix: `Move the template-owned file to templates/${sharedEnvExamplePath}.`,
+      },
+      { exitCode: 1, json, stderr: true },
+    );
+  }
+  if (!(await pathExists(sharedProjectEnvPath))) {
+    return diagnosticResult(
+      {
+        code: "TN_CREATE_ENV_EXAMPLE_MISSING",
+        message: `Shared project environment example is missing at '${sharedProjectEnvPath}'.`,
+        path: sharedProjectEnvPath,
+        suggestedFix: `Add templates/${sharedEnvExamplePath} before creating projects.`,
+      },
+      { exitCode: 1, json, stderr: true },
+    );
+  }
 
   for (const skillsRoot of agentSkillDestinationRoots) {
     const templateOwnedSkillsPath = resolve(templateSourcePath, skillsRoot);
@@ -179,6 +206,7 @@ export async function createProject(argv: readonly string[], options: ICreateOpt
 
   await mkdir(projectPath, { recursive: true });
   await copyTemplateFiles(templateSourcePath, projectPath);
+  await cp(sharedProjectEnvPath, resolve(projectPath, envExamplePath), { force: false });
   await copySharedPlanningInstructions(sharedPlanPath, projectPath);
   await copySharedAgentSkills(sharedSkillsPath, projectPath);
   await rewriteProjectTemplateMetadata(projectPath, definition.canonical);

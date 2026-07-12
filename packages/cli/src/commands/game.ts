@@ -78,7 +78,7 @@ export async function gameCommand(argv: readonly string[], options: IGameCommand
       code: "TN_GAME_SUBCOMMAND_UNKNOWN",
       message: `Unknown game workflow subcommand '${subcommand}'.`,
       subcommand,
-      usage: "tn game <inspect|plan|next|improve|providers|score|qa|release> [--project <path>] [--json]",
+      usage: "tn game <inspect|plan|next|improve|providers|score|qa|release> [--project <path>] [--env-file <path>] [--json]",
     },
     { exitCode: 1, json, stderr: !json },
   );
@@ -1720,7 +1720,7 @@ function renderGameHelp(json: boolean, subcommand?: string): string {
       "tn game plan --goal <text> [--project <path>] [--json] [--full-json] [--apply]",
       "tn game next [--project <path>] [--json]",
       "tn game improve --apply-plan <file> [--project <path>] [--json]",
-      "tn game providers [--json]",
+      "tn game providers [--project <path>] [--env-file <path>] [--json]",
       "tn game score [--project <path>] [--json]",
       "tn game scale [--project <path>] [--url <preview-url>] [--out <file>] [--json]",
       "tn game qa [--project <path>] [--run-proof] [--url <preview-url>] [--entity <id>] [--press <KeyboardEvent.code>] [--expect-axis x|y|z] [--record] [--out <file>] [--json]",

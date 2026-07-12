@@ -112,6 +112,32 @@ async function templateDiagnosticsFor(
   const apiCardPath = resolve(templatePath, "docs", "API-CARD.md");
   const templatePlanPath = resolve(templatePath, "AGENT_GAME_PLAN.md");
   const sharedPlanPath = resolve(templatePath, "..", "_shared", "AGENT_GAME_PLAN.md");
+  const sharedEnvExamplePath = resolve(templatePath, "..", "_shared", ".env.example");
+  const gitignorePath = resolve(templatePath, ".gitignore");
+
+  const envExampleText = await readText(sharedEnvExamplePath);
+  if (!/^ELEVENLABS_API_KEY=$/m.test(envExampleText)) {
+    diagnostics.push({
+      code: "TN_TEMPLATE_ENV_EXAMPLE_MISSING",
+      message: `${templateName}: the shared .env.example must declare an empty ELEVENLABS_API_KEY.`,
+      path: sharedEnvExamplePath,
+      severity: "error",
+      suggestedFix: "Restore templates/_shared/.env.example with the optional local-tooling credential placeholder.",
+    });
+  }
+  const gitignoreText = await readText(gitignorePath);
+  const requiredEnvIgnoreLines = [".env", ".env.local", ".env.*.local", "!.env.example"];
+  const gitignoreLines = new Set(gitignoreText.split(/\r?\n/).map((line) => line.trim()));
+  const missingEnvIgnoreLines = requiredEnvIgnoreLines.filter((line) => !gitignoreLines.has(line));
+  if (missingEnvIgnoreLines.length > 0) {
+    diagnostics.push({
+      code: "TN_TEMPLATE_ENV_IGNORE_INCOMPLETE",
+      message: `${templateName}: .gitignore is missing the project-local env convention: ${missingEnvIgnoreLines.join(", ")}.`,
+      path: gitignorePath,
+      severity: "error",
+      suggestedFix: "Ignore local env files and explicitly retain .env.example.",
+    });
+  }
 
   if (manifest === undefined) {
     diagnostics.push({
@@ -219,6 +245,15 @@ async function templateDiagnosticsFor(
   }
 
   const agentsDocText = await readText(agentsPath);
+  if (!agentsDocText.includes("tn game providers") || !agentsDocText.includes("tn audio generate-sfx") || !/offline fallback/i.test(agentsDocText)) {
+    diagnostics.push({
+      code: "TN_TEMPLATE_LOCAL_SFX_GUIDANCE_MISSING",
+      message: `${templateName}: AGENTS.md must prefer bounded SFX generation when the provider is available and name an offline fallback.`,
+      path: agentsPath,
+      severity: "error",
+      suggestedFix: "Document tn game providers, tn audio generate-sfx, project-local .env, and local/catalog/procedural offline fallback audio.",
+    });
+  }
   if (!/pnpm run iterate[\s\S]{0,120}default repair loop/i.test(agentsDocText)) {
     diagnostics.push({
       code: "TN_TEMPLATE_ITERATE_FIRST_MISSING",

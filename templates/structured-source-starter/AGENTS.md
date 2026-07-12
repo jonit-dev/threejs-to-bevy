@@ -28,6 +28,11 @@ everything in context at once.
    command covers the change.
 4. After changes, run `tn iterate --project . --json` (or `pnpm run iterate`)
    as the default repair loop; fix the owning durable source and rerun.
+5. For custom sound effects, probe with `tn game providers --project . --json`.
+   When ElevenLabs is available, prefer one bounded
+   `tn audio generate-sfx <asset-id> --prompt "<description>" --project . --json`
+   call. Project-local `.env` is for local `tn` tooling only. Use local,
+   catalog, or procedural audio as the offline fallback.
 
 ## Skills (read on demand)
 

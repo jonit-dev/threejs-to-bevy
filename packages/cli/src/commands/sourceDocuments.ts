@@ -65,6 +65,8 @@ import {
 } from "@threenative/authoring";
 
 import { type ICommandResult } from "../diagnostics.js";
+import { generateSfx } from "../audio/generateSfx.js";
+import { loadProjectEnvironment, ProjectEnvironmentError } from "../config/projectEnvironment.js";
 import { generatorCommand } from "./sourceGeneratorCommand.js";
 import {
   normalizeArgv,
@@ -801,11 +803,46 @@ export async function inputCommand(argv: readonly string[], options: ISourceComm
 }
 
 export async function audioCommand(argv: readonly string[], options: ISourceCommandOptions = {}): Promise<ICommandResult> {
+  const generationOptions = options as ISourceCommandOptions & { fetch?: typeof fetch; processEnvironment?: Readonly<Record<string, string | undefined>> };
   const normalizedArgv = normalizeArgv(argv);
   const [subcommand] = normalizedArgv;
   const json = normalizedArgv.includes("--json");
   const projectPath = resolveProjectPath(normalizedArgv, options.cwd);
   const audioDocId = readPositional(normalizedArgv, 1);
+
+  if (subcommand === "generate-sfx") {
+    const assetId = normalizedArgv[1]?.startsWith("--") === false ? normalizedArgv[1] : undefined;
+    const duration = readFlag(normalizedArgv, "--duration");
+    const promptInfluence = readFlag(normalizedArgv, "--prompt-influence");
+    try {
+      const environment = await loadProjectEnvironment({
+        envFile: readFlag(normalizedArgv, "--env-file"),
+        processEnvironment: generationOptions.processEnvironment,
+        projectPath,
+      });
+      return generateSfx({
+        apiKey: environment.environment.ELEVENLABS_API_KEY,
+        assetId,
+        audioDocId: readFlag(normalizedArgv, "--audio-doc"),
+        durationSeconds: duration === undefined ? undefined : Number(duration),
+        fetch: generationOptions.fetch,
+        force: normalizedArgv.includes("--force"),
+        json,
+        loop: normalizedArgv.includes("--loop"),
+        modelId: readFlag(normalizedArgv, "--model"),
+        out: readFlag(normalizedArgv, "--out"),
+        outputFormat: readFlag(normalizedArgv, "--output-format"),
+        projectPath,
+        prompt: readFlag(normalizedArgv, "--prompt"),
+        promptInfluence: promptInfluence === undefined ? undefined : Number(promptInfluence),
+        soundId: readFlag(normalizedArgv, "--sound-id"),
+      });
+    } catch (error) {
+      const normalized = error instanceof ProjectEnvironmentError ? error : undefined;
+      const payload = { code: normalized?.code ?? "TN_AUDIO_SFX_ENVIRONMENT_FAILED", message: normalized?.message ?? "Project environment could not be loaded.", severity: "error" };
+      return { exitCode: 2, stdout: json ? `${JSON.stringify(payload, null, 2)}\n` : `${payload.message}\n` };
+    }
+  }
 
   if (subcommand === "create") {
     if (audioDocId === undefined) {
@@ -823,7 +860,7 @@ export async function audioCommand(argv: readonly string[], options: ISourceComm
     return renderAuthoringResult("audio", await addAudioSound({ asset, audioDocId, projectPath, soundId }), json, `Audio sound '${soundId}' added.`);
   }
 
-  return renderUsage(json, "TN_AUDIO_COMMAND_UNKNOWN", "Usage: tn audio create|add-sound ... [--json]");
+  return renderUsage(json, "TN_AUDIO_COMMAND_UNKNOWN", "Usage: tn audio create|add-sound|generate-sfx ... [--json]");
 }
 
 export async function resourcesCommand(argv: readonly string[], options: ISourceCommandOptions = {}): Promise<ICommandResult> {

@@ -127,6 +127,7 @@ export async function runGameProductionGate(options: IGameProductionGateOptions 
       ...(project.requireUiSource === true ? await uiSourceDiagnostics(projectPath, project.projectPath) : []),
       ...(project.requireVisualProvenance === true ? await visualProvenanceDiagnostics(projectPath, project.projectPath) : []),
       ...(project.requireVisualQuality === true ? await visualQualityDiagnostics(projectPath, project.projectPath) : []),
+      ...await providerSecretDiagnostics(projectPath, project.projectPath),
     ];
     diagnostics.push(...projectDiagnostics);
     const projectOk = projectDiagnostics.every((diagnostic) => diagnostic.severity !== "error");
@@ -204,6 +205,38 @@ export async function runGameProductionGate(options: IGameProductionGateOptions 
     reportPath,
     steps,
   };
+}
+
+async function providerSecretDiagnostics(projectPath: string, displayPath: string): Promise<VerificationDiagnostic[]> {
+  const diagnostics: VerificationDiagnostic[] = [];
+  const ignored = new Set([".git", "node_modules"]);
+  const sentinel = process.env.ELEVENLABS_API_KEY?.trim();
+  async function visit(directory: string): Promise<void> {
+    let entries;
+    try { entries = await readdir(directory, { withFileTypes: true }); } catch { return; }
+    for (const entry of entries) {
+      if (ignored.has(entry.name)) continue;
+      const path = resolve(directory, entry.name);
+      if (entry.isDirectory()) { await visit(path); continue; }
+      if (!entry.isFile()) continue;
+      let text: string;
+      try { text = await readFile(path, "utf8"); } catch { continue; }
+      if (text.includes("\u0000")) continue;
+      const leaked = /xi-api-key["']?\s*[:=]\s*["']?\S+/i.test(text)
+        || /ELEVENLABS_API_KEY\s*=\s*[^\s#]+/.test(text)
+        || (sentinel !== undefined && sentinel !== "" && text.includes(sentinel));
+      if (!leaked) continue;
+      diagnostics.push({
+        code: "TN_VERIFY_PROVIDER_CREDENTIAL_LEAK",
+        message: `${displayPath}: release evidence contains ElevenLabs credential or xi-api-key material.`,
+        path,
+        severity: "error",
+        suggestedFix: "Remove provider credentials and authorization-header material; keep only an empty ELEVENLABS_API_KEY placeholder in .env.example.",
+      });
+    }
+  }
+  await visit(projectPath);
+  return diagnostics;
 }
 
 async function generatedGameReleaseProofPolicy(root: string, explicitProjects?: IGameProductionGateProject[]): Promise<IGeneratedGameReleaseProofPolicy> {

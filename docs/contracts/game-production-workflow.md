@@ -7,6 +7,20 @@
 Reports are evidence ledgers. They do not mutate source and they do not imply
 web/Bevy parity unless native evidence is explicitly recorded.
 
+## Local sound-effect generation boundary
+
+`tn game providers --project <path> --json` and `tn audio generate-sfx`
+share the project environment loader. The ignored project-local `.env` is
+consumed only by local `tn` tooling. Credential values and authorization
+headers must never enter source, diagnostics, bundles, or artifacts.
+
+Generation is an authoring-time import: one explicit invocation makes at most
+one billable request, atomically writes a local MP3, and registers it through
+normal asset/audio operations. Both runtimes receive only that bundle-local
+asset. Agents probe availability first and use local, catalog, or procedural
+audio offline. Automated evidence uses a mocked binary response; no live
+provider smoke is established by the current gate.
+
 Top-level report fields include:
 
 - `phaseLedgers`: status, score, diagnostics, and evidence per production

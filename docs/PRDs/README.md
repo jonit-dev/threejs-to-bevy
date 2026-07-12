@@ -131,6 +131,11 @@ execution bundle.
   coverage debt reporting, and timing calibration.
 
 ### Authoring, Editor, And Plugins
+- [ElevenLabs Sound-Effect Generation](other/elevenlabs-sfx-generation.md):
+  adds project-local `.env` support to every `tn init` template and a bounded,
+  credential-safe `tn audio generate-sfx` flow that imports generated MP3s as
+  normal bundle-local structured audio assets without widening the runtime
+  network-audio boundary.
 - [Chess Trial Remediation](chess-trial-remediation-2026-07-12/README.md):
   fixes the C1-C10 findings from the 2026-07-12 Codex chess authoring trial
   in two PRDs: authoring friction (GLB subtree picking, custom-component

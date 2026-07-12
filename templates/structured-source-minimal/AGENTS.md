@@ -32,6 +32,11 @@ everything in context at once.
    as the default repair loop; fix the owning durable source and rerun.
    Start with the compact playtest report or compact stdout; open deep logs
    only when those diagnostics point to deeper evidence.
+5. For custom sound effects, probe with `tn game providers --project . --json`.
+   When ElevenLabs is available, prefer one bounded
+   `tn audio generate-sfx <asset-id> --prompt "<description>" --project . --json`
+   call. Project-local `.env` is for local `tn` tooling only. Use local,
+   catalog, or procedural audio as the offline fallback.
 
 ## Skills (read on demand)
 

@@ -5,10 +5,38 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import test from "node:test";
 
+import { TEMPLATE_REGISTRY } from "../templates/registry.js";
 import { authoringCommand } from "./authoring.js";
 import { createProject, initProject } from "./create.js";
 import { iterateCommand } from "./iterate.js";
 import { uiCommand } from "./sourceDocuments.js";
+
+test("should scaffold project-local ElevenLabs env convention for every init template", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-create-env-convention-"));
+  try {
+    for (const template of TEMPLATE_REGISTRY) {
+      for (const [commandName, command] of [["create", createProject], ["init", initProject]] as const) {
+        const result = await command([`${commandName}-${template.canonical}`, "--template", template.canonical, "--json"], { cwd: root });
+        assert.equal(result.exitCode, 0, result.stdout);
+        const projectPath = (JSON.parse(result.stdout) as { path: string }).path;
+        const envExample = await readFile(join(projectPath, ".env.example"), "utf8");
+        const gitignore = await readFile(join(projectPath, ".gitignore"), "utf8");
+
+        assert.match(envExample, /^ELEVENLABS_API_KEY=$/m);
+        assert.match(envExample, /optional/i);
+        assert.match(envExample, /local ThreeNative authoring tools/i);
+        assert.match(envExample, /Never expose this value to client code/i);
+        assert.equal(envExample.includes("ELEVENLABS_API_KEY=sk_"), false);
+        assert.match(gitignore, /^\.env$/m);
+        assert.match(gitignore, /^\.env\.local$/m);
+        assert.match(gitignore, /^\.env\.\*\.local$/m);
+        assert.match(gitignore, /^!\.env\.example$/m);
+      }
+    }
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
 
 test("should create minimal starter without gameplay residue", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-create-minimal-"));

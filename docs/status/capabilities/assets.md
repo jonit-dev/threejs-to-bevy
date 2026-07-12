@@ -3,6 +3,11 @@
 Runtime assets are declared in durable source, copied into bundles, and
 validated through manifests and inspection tools.
 
+Authoring-time `tn audio generate-sfx` has mock integration evidence for
+binary validation, atomic output, registration, optional cue binding,
+rollback, and redaction. Its MP3 is an ordinary bundle-local asset. No live
+provider smoke is currently claimed.
+
 Current support:
 
 - Asset, material, mesh, audio, animation, GLB/glTF, texture, heightmap,

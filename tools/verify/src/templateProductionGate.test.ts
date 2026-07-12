@@ -39,6 +39,22 @@ Record source URL, provenance URL, origin, license evidence, review status,
 downloaded date, conversion notes, and fallback notes.
 `;
 
+test("should reject a starter without the shared env example", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-template-production-env-"));
+  try {
+    const templatePath = join(root, "templates/structured-source-starter");
+    await mkdir(templatePath, { recursive: true });
+    await writeFile(join(templatePath, ".gitignore"), ".env\n.env.local\n.env.*.local\n!.env.example\n");
+
+    const result = await runTemplateProductionGate({ root, templates: ["structured-source-starter"] });
+
+    assert.equal(result.ok, false);
+    assert.equal(result.diagnostics.some((diagnostic) => diagnostic.code === "TN_TEMPLATE_ENV_EXAMPLE_MISSING"), true);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
 test("rejects maintained starters without game-production scripts and metadata", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-template-production-"));
   try {
@@ -206,6 +222,9 @@ test("accepts maintained starters with production scripts metadata and instructi
   try {
     const templatePath = join(root, "templates/racing-kit-rally-starter");
     await mkdir(templatePath, { recursive: true });
+    await mkdir(join(root, "templates/_shared"), { recursive: true });
+    await writeFile(join(root, "templates/_shared/.env.example"), "# Optional local tooling credential. Never expose to client code.\nELEVENLABS_API_KEY=\n");
+    await writeFile(join(templatePath, ".gitignore"), ".env\n.env.local\n.env.*.local\n!.env.example\n");
     await writeTemplateManifest(templatePath, "racing-kit-rally-starter");
     await writeFile(join(templatePath, "package.json"), `${JSON.stringify({
       scripts: {
