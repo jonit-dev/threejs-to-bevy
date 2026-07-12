@@ -77,7 +77,11 @@ function mountOverlayFrame(overlay: IOverlayIr, bridge: IOverlayBridge, source: 
     const contentWindow = frame.contentWindow as (Window & { threenativeOverlayBridge?: unknown }) | null;
     if (contentWindow !== null) {
       contentWindow.threenativeOverlayBridge = {
-        send: (type: string, payload: Record<string, unknown>) => bridge.send({ overlayId: overlay.id, payload, type }),
+        send: (type: string, payload: Record<string, unknown>) => {
+          const accepted = bridge.send({ overlayId: overlay.id, payload, type });
+          if (accepted && payload.dismiss === true) frame.style.display = "none";
+          return accepted;
+        },
       };
     }
   });

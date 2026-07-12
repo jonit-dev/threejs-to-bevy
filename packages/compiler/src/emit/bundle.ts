@@ -34,7 +34,7 @@ import { ecsToIr, type IEcsEmitResult } from "./ecs.js";
 import { emitEnvironment, type IEnvironmentDeclaration } from "./environment.js";
 import { inputToIr } from "./input.js";
 import { emitPersistence } from "./persistence.js";
-import { emitOverlays } from "../overlay/emit.js";
+import { emitOverlays, emitStructuredOverlays } from "../overlay/emit.js";
 import { sceneToWorld } from "./scene-to-world.js";
 import {
   readBundleRootAssets,
@@ -132,7 +132,10 @@ export async function planBundle(config: IProjectConfig, root: unknown, options:
     ...readStructuredMeshes(options.authoringDocuments),
   ]);
   const environment = bundleRoot.environment === undefined ? undefined : await emitEnvironment(config.projectPath, bundleRoot.environment, { assets: authoredAssets });
-  const overlays = bundleRoot.overlay === undefined ? undefined : await emitOverlays(config.projectPath, bundleRoot.overlay);
+  const rootOverlays = bundleRoot.overlay === undefined ? undefined : await emitOverlays(config.projectPath, bundleRoot.overlay);
+  const structuredOverlays = await emitStructuredOverlays(config.projectPath, options.authoringDocuments);
+  if (rootOverlays !== undefined && structuredOverlays !== undefined) throw new Error("TN_COMPILER_OVERLAY_DUPLICATE: declare overlays in either the TypeScript root or structured source, not both.");
+  const overlays = rootOverlays ?? structuredOverlays;
   const generatedMeshPayloads = prepareGeneratedMeshPayloads(mergeById([
     ...authoredAssets,
     ...mergeEnvironmentAssets(mergeAudioAssets(emitted?.assets ?? [], bundleRoot.audio), environment?.assets ?? []),

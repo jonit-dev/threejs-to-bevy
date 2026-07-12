@@ -381,6 +381,19 @@ export async function renderLoadedBundle(bundle: IWebBundle, container: HTMLElem
   const ui = bundle.ui === undefined ? undefined : renderUi(bundle.ui, bundle.world);
   const uiOverlay = ui === undefined ? undefined : createUiDomOverlay(ui, document, source);
   const overlayHost = bundle.overlays === undefined ? undefined : createWebOverlayHost(bundle.overlays, source);
+  let overlayEventCursor = 0;
+  const consumeOverlayEvents = () => {
+    const events = overlayHost?.bridge.events.slice(overlayEventCursor) ?? [];
+    overlayEventCursor += events.length;
+    if (events.length === 0) return;
+    const queues = { ...(bundle.world.events ?? {}) };
+    for (const event of events) {
+      const eventId = event.type.replaceAll(":", ".");
+      const queue = queues[eventId];
+      queues[eventId] = [...(Array.isArray(queue) ? queue : []), { ...event.payload, overlayId: event.overlayId }];
+    }
+    bundle.world.events = queues;
+  };
   const audioSink = bundle.audio === undefined ? undefined : createWebAudioElementSink(source, bundle.assets);
   const audioRuntime = bundle.audio === undefined ? undefined : createWebAudioRuntime(bundle.audio, audioSink);
   const audioEventCursors = new Map<string, unknown[]>();
@@ -412,6 +425,7 @@ export async function renderLoadedBundle(bundle: IWebBundle, container: HTMLElem
     ? undefined
     : createWebCaptureTransformTrace(options.captureTraceEntityId, captureFrames, bundle.runtimeConfig?.time.fixedDelta ?? 1 / 60);
   for (let frame = 0; frame < captureFrames; frame += 1) {
+    consumeOverlayEvents();
     if (bundle.systems !== undefined) {
       await runGameFrame({
         assets: bundle.assets,
@@ -476,6 +490,7 @@ export async function renderLoadedBundle(bundle: IWebBundle, container: HTMLElem
         const timing = frameTimings.record(time);
         const delta = timing.deltaMs / 1000;
         if (bundle.systems !== undefined) {
+          consumeOverlayEvents();
           drainUiActionsIntoInput(ui, input);
           await runGameFrame({
             assets: bundle.assets,

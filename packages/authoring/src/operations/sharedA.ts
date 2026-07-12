@@ -920,6 +920,10 @@ export async function validateAuthoringDocument(
           }
         },
       });
+    case "overlay":
+      // Overlay documents use the versioned IR shape and are validated by the
+      // compiler's overlay emitter, which owns that contract.
+      return [];
     case "prefab":
       return validatePrefabDocument(file, data);
     case "project":
