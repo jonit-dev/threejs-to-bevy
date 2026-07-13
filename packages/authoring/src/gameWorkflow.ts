@@ -558,7 +558,10 @@ async function inspectGameProject(projectPath: string): Promise<IProjectEvidence
   const hasMotionFeelProof = artifactEvidence.some((evidence) => includesAny(evidence, ["motion", "smooth", "frame-diff", "framediff", "changedpixelratio", "webm", "mp4", "record"]));
   const hasBuildProof = artifactEvidence.some((evidence) => includesAny(evidence, ["bundle", "build", "manifest.json", "world.ir.json"]));
   const worldProofStatus = await readWorldProofStatus(projectPath);
-  const hasDressedWorldSource = includesAnyText(sourceSearchText, ["heightmap", "scatter", "splatlayers", "terrain"]) && includesAnyText(sourceSearchText, ["environment", "world"]);
+  const hasTerrainWorldSource = includesAnyText(sourceSearchText, ["heightmap", "scatter", "splatlayers", "terrain"]) && includesAnyText(sourceSearchText, ["environment", "world"]);
+  const authoredEnvironmentSurfaceCount = ["rail", "platform", "signal", "skyline", "building", "foliage", "roadside", "set dressing"]
+    .filter((surface) => sourceSearchText.includes(surface)).length;
+  const hasAuthoredEnvironmentComposition = authoredEnvironmentSurfaceCount >= 3 && includesAnyText(sourceSearchText, [".glb", ".gltf", "type\":\"model"]);
   const scriptHaystack = scriptFiles.join("\n").toLowerCase();
   return {
     artifactEvidence,
@@ -566,7 +569,7 @@ async function inspectGameProject(projectPath: string): Promise<IProjectEvidence
     emptyGameplaySystems,
     hasBuildProof,
     hasGameplayMutationProof,
-    hasDressedWorldSource: (hasDressedWorldSource || worldProofStatus === "pass") && worldProofStatus !== "fail",
+    hasDressedWorldSource: (hasTerrainWorldSource || hasAuthoredEnvironmentComposition || worldProofStatus === "pass") && worldProofStatus !== "fail",
     hasInputSource,
     hasMobileProof,
     hasMotionFeelProof,

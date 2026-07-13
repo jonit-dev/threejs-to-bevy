@@ -283,6 +283,34 @@ test("penalizes flat world proof even when terrain source exists", async () => {
   }
 });
 
+test("recognizes a model-backed authored environment composition without terrain vocabulary", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-game-report-authored-environment-"));
+  try {
+    await writeMinimalProject(root);
+    await writeFile(join(root, "content/scenes/arena.scene.json"), `${JSON.stringify({
+      schema: "threenative.scene",
+      id: "arena",
+      entities: [
+        { id: "rail.left", prefab: "prefab.rail" },
+        { id: "station.platform", prefab: "prefab.platform" },
+        { id: "station.signal", prefab: "prefab.signal" },
+      ],
+      prefabs: [
+        { id: "prefab.rail", asset: "assets/models/rail.glb" },
+        { id: "prefab.platform", asset: "assets/models/platform.glb" },
+        { id: "prefab.signal", asset: "assets/models/signal.glb" },
+      ],
+      systems: [{ id: "gameplay", script: { module: "src/scripts/game.ts", export: "update" } }],
+    }, null, 2)}\n`);
+
+    const report = await createGameQualityReport({ projectPath: root });
+
+    assert.equal(report.diagnostics.some((diagnostic) => diagnostic.code === "TN_GAME_WORLD_PROOF_MISSING"), false);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
 test("redacts provider credentials from provenance", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-game-provider-redact-"));
   try {
