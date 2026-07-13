@@ -4,6 +4,7 @@ import { relative, resolve } from "node:path";
 import { authoringDiagnostic, type IAuthoringDiagnostic } from "./diagnostics.js";
 import { formatAuthoringDocument } from "./format.js";
 import { isGeneratedBundleArtifactFile } from "./sourceKinds.js";
+import { expandRegistryDocumentPreset } from "./documentPresets.js";
 
 export type AuthoringDocumentKind = "asset" | "audio" | "environment" | "flow" | "generator" | "input" | "interaction" | "material" | "mesh" | "overlay" | "prefab" | "project" | "resources" | "runtime" | "scene" | "schema" | "sequence" | "systems" | "target" | "ui" | "unknown";
 
@@ -46,7 +47,7 @@ export async function readAuthoringJsonDocument(projectPath: string, file: strin
 
   try {
     const raw = await readFile(absoluteFile, "utf8");
-    const data = JSON.parse(raw) as unknown;
+    const data = expandRegistryDocumentPreset(JSON.parse(raw) as unknown);
     return {
       document: {
         file: absoluteFile,

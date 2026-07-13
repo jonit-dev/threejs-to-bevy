@@ -79,6 +79,10 @@ Current support:
   refuses any candidate that is not an exact semantic match. Canonical dense,
   chess-pawn, orb, and metro-coin source now exercises the expanded contract;
   broader editor adoption remains in progress.
+- Exact shared archetype, flow, and sequence documents can use closed
+  registry-owned `preset` references that expand before validation and
+  compilation. Canonical examples keep bespoke retained UI nodes local and
+  share only the matching HUD recipe/provenance contract.
 - Workspace-aware project creation installs a generated project in isolation,
   and maintained starter scripts can import relative local helper modules.
 - Plan and cookbook proof surfaces are cross-reference checked against the

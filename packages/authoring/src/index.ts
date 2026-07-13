@@ -20,6 +20,7 @@ export {
   writeAuthoringJsonDocument,
 } from "./documents.js";
 export { formatAuthoringDocument, stableAuthoringJson } from "./format.js";
+export { expandRegistryDocumentPreset, listRegistryDocumentPresetIds, type RegistryDocumentPresetId } from "./documentPresets.js";
 export { expandPlacementSet, expandPlacementSets, setDottedPath, type IExpandedPlacementInstance } from "./placementSets.js";
 export type {
   IScriptReference,
