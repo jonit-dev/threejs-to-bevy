@@ -32,7 +32,7 @@ import { createContactShadowsManager, type IContactShadowsManager, type IContact
 import { HeightFogPass, webHeightFogSettings } from "./rendering/heightFogPass.js";
 import { GodRaysPass, webGodRaysSettings } from "./rendering/godrays/GodRaysPass.js";
 import { SsgiPass, webSsgiSettings } from "./rendering/ssgi/ssgiPass.js";
-import { createGameLoopState, runGameFrame } from "./gameLoop.js";
+import { createGameLoopState, runGameFrame, setPaused as setGameLoopPaused } from "./gameLoop.js";
 import { disposePhysicsRuntime, initializePhysicsRuntime } from "./physics.js";
 import { attachInputListeners, createInputState } from "./input.js";
 import { hasKinematicMovers, stepKinematicMovers } from "./kinematicMover.js";
@@ -65,6 +65,7 @@ export interface IRenderResult {
   writeAuditSnapshot(): ReturnType<typeof serializeRuntimeWriteAudit>;
   runtimeDiagnostics: IWebRuntimeDiagnostics;
   runtimeDiagnosticsSnapshot(): IWebRuntimeDiagnostics;
+  setPaused(paused: boolean): void;
   setEntityTransform(id: string, transform: IWebRuntimeTransformPatch): boolean;
   overlayHost?: IWebOverlayHost;
   ui?: IRenderedUi;
@@ -599,6 +600,9 @@ export async function renderLoadedBundle(bundle: IWebBundle, container: HTMLElem
     runtimeDiagnostics: collectWebRuntimeDiagnostics(mapped, bundle, resourceObservations),
     runtimeDiagnosticsSnapshot() {
       return collectWebRuntimeDiagnostics(mapped, bundle, resourceObservations);
+    },
+    setPaused(paused: boolean) {
+      setGameLoopPaused(loopState, paused);
     },
     setEntityTransform(id: string, transform: IWebRuntimeTransformPatch) {
       const entity = bundle.world.entities.find((candidate) => candidate.id === id);

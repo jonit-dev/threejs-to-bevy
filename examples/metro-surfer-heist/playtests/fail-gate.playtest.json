@@ -11,7 +11,7 @@
   "steps": [
     {
       "label": "miss-duck-gate",
-      "waitFrames": 105
+      "waitFrames": 25
     }
   ],
   "assert": {
@@ -19,7 +19,7 @@
       {
         "id": "GameState",
         "path": "phase",
-        "equals": "playing"
+        "equals": "failed"
       },
       {
         "id": "GameState",
@@ -29,13 +29,13 @@
       {
         "id": "GameState",
         "path": "status",
-        "textIncludes": "Switch lanes"
+        "textIncludes": "Low gate"
       }
     ],
     "hud": [
       {
         "id": "status",
-        "textIncludes": "Switch lanes"
+        "textIncludes": "Low gate"
       }
     ],
     "diagnostics": {

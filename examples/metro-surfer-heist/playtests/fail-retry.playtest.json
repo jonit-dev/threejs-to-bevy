@@ -10,24 +10,14 @@
   "warmupFrames": 5,
   "steps": [
     {
-      "label": "arm-retry",
+      "label": "miss-duck-gate",
+      "waitFrames": 25
+    },
+    {
+      "label": "retry-after-fail",
       "press": "KeyR",
       "holdFrames": 1,
-      "release": false
-    },
-    {
-      "label": "miss-duck-gate",
-      "waitFrames": 105
-    },
-    {
-      "label": "hold-retry-through-fail",
-      "press": "KeyR",
-      "holdFrames": 20,
       "release": true
-    },
-    {
-      "label": "post-retry-settle",
-      "waitFrames": 45
     }
   ],
   "assert": {

@@ -11,7 +11,7 @@
   "steps": [
     {
       "label": "early-forward-progress",
-      "waitFrames": 10
+      "waitFrames": 1
     }
   ],
   "assert": {

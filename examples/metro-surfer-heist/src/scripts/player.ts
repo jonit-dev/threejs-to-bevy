@@ -85,7 +85,7 @@ export function metroSurferHeistSystem(context: ScriptContext): void {
   if (phase !== "playing") {
     syncParts(current, false);
     const retryTimer = Math.max(0, Number(state.retryTimer ?? 0) - delta);
-    if (actionPressed("retry") || actionPressed("jump") || retryTimer <= 0) {
+    if (actionPressed("retry") || actionPressed("jump")) {
       resetGame();
     } else {
       patchState({ retryTimer });

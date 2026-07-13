@@ -36,6 +36,7 @@ declare global {
     resetPerformanceTrace?(): void;
     runtimeObservationSnapshot?(): unknown;
     runtimeDiagnosticsSnapshot?(): unknown;
+    setPaused?(paused: boolean): void;
     writeAuditSnapshot?(): unknown;
     setEntityTransform?(id: string, transform: { position?: Vec3; rotation?: [number, number, number, number]; scale?: Vec3 }): boolean;
     uiNodeSnapshot?(id: string): unknown;
@@ -1148,6 +1149,7 @@ async function probePreview(options: IPlaytestRunOptions & { url: string }): Pro
     await resetWebPerformanceTrace(page);
     diagnostics.push(...await applyWebScenarioSetup(page, options.scenario));
     await waitForWebFrameSamples(page, options.scenario.warmupFrames, Math.max(1_000, options.scenario.warmupFrames * (1000 / 15)));
+    await setWebPaused(page, true);
     await resetWebPerformanceTrace(page);
     const observationIds = scenarioObservationIds(options.scenario);
     const beforeResources = await readResourceSnapshots(page, observationIds.resources);
@@ -1159,19 +1161,23 @@ async function probePreview(options: IPlaytestRunOptions & { url: string }): Pro
     for (const step of options.scenario.steps) {
       if (step.press !== undefined) {
         await dispatchKeyboardCode(page, "keydown", step.press);
+        await setWebPaused(page, false);
         for (let tick = 0; tick < playtestStepHoldTicks(step, options.frames); tick += 1) {
           await waitForWebFrameAdvance(page, 1);
           runtimeDiagnosticsSeries.push(await readRuntimeDiagnostics(page));
         }
+        await setWebPaused(page, true);
         if (step.release) {
           await dispatchKeyboardCode(page, "keyup", step.press);
         }
       }
       if (step.waitFrames !== undefined || step.waitTicks !== undefined || step.kind === "wait") {
+        await setWebPaused(page, false);
         for (let tick = 0; tick < playtestStepWaitTicks(step); tick += 1) {
           await waitForWebFrameAdvance(page, 1);
           runtimeDiagnosticsSeries.push(await readRuntimeDiagnostics(page));
         }
+        await setWebPaused(page, true);
       }
     }
     const after = await readTransformSample(page, options.entityId);
@@ -1548,6 +1554,12 @@ async function resetWebPerformanceTrace(page: { evaluate<T>(fn: () => T): Promis
   await page.evaluate(() => {
     globalThis.__THREENATIVE_RUNTIME__?.resetPerformanceTrace?.();
   });
+}
+
+async function setWebPaused(page: { evaluate<T, A>(fn: (arg: A) => T, arg: A): Promise<T> }, paused: boolean): Promise<void> {
+  await page.evaluate((value) => {
+    globalThis.__THREENATIVE_RUNTIME__?.setPaused?.(value);
+  }, paused);
 }
 
 async function waitForWebFrameAdvance(page: import("playwright").Page, frames: number): Promise<void> {
