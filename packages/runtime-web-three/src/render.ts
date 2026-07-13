@@ -388,16 +388,7 @@ export async function renderLoadedBundle(bundle: IWebBundle, container: HTMLElem
     const events = overlayHost?.bridge.events.slice(overlayEventCursor) ?? [];
     overlayEventCursor += events.length;
     if (events.length === 0) return;
-    const queues = { ...(bundle.world.events ?? {}) };
-    for (const event of events) {
-      // The public overlay bridge uses colon-delimited message names while
-      // portable ECS schemas use dot-delimited IDs. Keep the translation at
-      // the adapter boundary instead of requiring invalid schema identifiers.
-      const eventId = event.type.replaceAll(":", ".");
-      const queue = queues[eventId];
-      queues[eventId] = [...(Array.isArray(queue) ? queue : []), { ...event.payload, overlayId: event.overlayId }];
-    }
-    bundle.world.events = queues;
+    bundle.world.events = enqueueOverlayEvents(bundle.world.events ?? {}, events);
   };
   const publishOverlaySnapshots = () => {
     if (overlayHost === undefined || bundle.overlays === undefined) return;
@@ -1282,6 +1273,18 @@ export function newAudioEvents(
 
 export function canonicalOverlayEventName(event: string): string {
   return event.includes(":") ? event : event.replaceAll(".", ":");
+}
+
+export function enqueueOverlayEvents(
+  queues: Record<string, unknown>,
+  events: ReadonlyArray<{ overlayId: string; payload: Record<string, unknown>; type: string }>,
+): Record<string, unknown> {
+  const next = { ...queues };
+  for (const event of events) {
+    const queue = next[event.type];
+    next[event.type] = [...(Array.isArray(queue) ? queue : []), { ...event.payload, overlayId: event.overlayId }];
+  }
+  return next;
 }
 
 export function newQueuedEvents(

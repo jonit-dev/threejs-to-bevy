@@ -28,6 +28,14 @@
               "fields": { "side": "string" },
               "required": ["side"]
             }
+          },
+          {
+            "name": "chess:restart",
+            "schema": {
+              "kind": "object",
+              "fields": {},
+              "required": []
+            }
           }
         ]
       }

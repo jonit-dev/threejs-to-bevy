@@ -131,6 +131,11 @@ execution bundle.
   coverage debt reporting, and timing calibration.
 
 ### Authoring, Editor, And Plugins
+- [Authored-Value Compression — Placement Sets and Objective Interactions](other/authored-value-compression-placement-interactions.md):
+  adds deterministic compiler-expanded placement sets for repeated ECS/scene
+  population and a bounded portable interaction contract for the recurring
+  detect/gate/mutate/consume/emit loop, then ratchets examples onto existing
+  controller, query, flow, sequence, UI-recipe, and behavior-metadata paths.
 - [ElevenLabs Sound-Effect Generation](other/elevenlabs-sfx-generation.md):
   adds project-local `.env` support to every `tn init` template and a bounded,
   credential-safe `tn audio generate-sfx` flow that imports generated MP3s as

@@ -11,6 +11,12 @@ target/
 runtime-bevy/target/
 .worktrees/
 
+# Local tooling credentials. Keep the documented placeholder trackable.
+.env
+.env.local
+.env.*.local
+!.env.example
+
 assets-source
 
 # Generated asset catalog artifacts are too large for GitHub history.

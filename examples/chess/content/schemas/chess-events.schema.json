@@ -11,6 +11,12 @@
       }
     },
     {
+      "id": "chess:restart",
+      "fields": {
+        "source": { "kind": "string", "required": false, "default": "overlay" }
+      }
+    },
+    {
       "id": "chess:captures",
       "fields": {
         "black": { "kind": "string" },

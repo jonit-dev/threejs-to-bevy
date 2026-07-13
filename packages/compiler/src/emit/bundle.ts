@@ -5,6 +5,7 @@ import {
   IR_VERSION,
   type IAssetsManifest,
   type IAnimationsIr,
+  type IAudioIr,
   type IBundleManifest,
   type IGltfSceneMetadataIr,
   type IInputIr,
@@ -123,7 +124,10 @@ export async function planBundle(config: IProjectConfig, root: unknown, options:
   const rootInput = bundleRoot.input === undefined ? ecs?.input : inputToIr(bundleRoot.input);
   const structuredInput = readStructuredInput(options.authoringDocuments);
   const input = mergeInputs(mergeInputs(rootInput, structuredInput), lifecycleScenes.input);
-  const audio = bundleRoot.audio === undefined ? undefined : emitAudio(bundleRoot.audio);
+  const rootAudio = bundleRoot.audio === undefined ? undefined : emitAudio(bundleRoot.audio);
+  const structuredAudio = readStructuredAudio(options.authoringDocuments);
+  if (rootAudio !== undefined && structuredAudio !== undefined) throw new Error("TN_COMPILER_AUDIO_DUPLICATE: declare audio in either the TypeScript root or structured source, not both.");
+  const audio = rootAudio ?? structuredAudio;
   const localData = bundleRoot.persistence === undefined ? undefined : emitPersistence(bundleRoot.persistence);
   const animations = bundleRoot.animations === undefined ? undefined : emitAnimations(bundleRoot.animations);
   const authoredAssets = mergeById([
@@ -355,6 +359,21 @@ function readStructuredInput(documents: readonly IAuthoringDocument[] | undefine
     axes,
     ...(controlsSettings === undefined ? {} : { controlsSettings }),
     ...(persistedBindingOverrides.length === 0 ? {} : { persistedBindingOverrides: persistedBindingOverrides.sort((left, right) => inputOverrideSortKey(left).localeCompare(inputOverrideSortKey(right))) }),
+  };
+}
+
+function readStructuredAudio(documents: readonly IAuthoringDocument[] | undefined): IAudioIr | undefined {
+  const sounds = mergeById((documents ?? [])
+    .filter((document) => document.kind === "audio" && isRecord(document.data))
+    .flatMap((document) => readRecordList((document.data as Record<string, unknown>).sounds))
+    .map((sound) => ({ asset: readString(sound.asset) ?? "", id: readString(sound.id) ?? "" }))
+    .filter((sound) => sound.asset !== "" && sound.id !== ""));
+  if (sounds.length === 0) return undefined;
+  return {
+    schema: IR_SCHEMA_IDS.audio,
+    version: IR_VERSION,
+    music: sounds.filter((sound) => sound.id.startsWith("music.")).map((sound) => ({ ...sound, autoplay: false, loop: true })),
+    oneShots: sounds.filter((sound) => !sound.id.startsWith("music.")).map((sound) => ({ ...sound, event: sound.id })),
   };
 }
 

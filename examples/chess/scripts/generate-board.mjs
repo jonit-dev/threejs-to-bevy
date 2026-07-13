@@ -213,8 +213,6 @@ function hud() {
       { id: "status", type: "text", text: "Your move", layout: { align: "center", inset: { left: 300, right: 300, top: 24 }, justify: "center", position: "absolute" }, style: { ...heading, color: "#f0d38f", fontSize: 14, textAlign: "center" } },
       { id: "promotion", type: "text", text: "Promotion: QUEEN", layout: { bottom: 24, right: 330, position: "absolute", width: 180 }, style: muted },
       { id: "help", type: "text", text: "Click piece + destination  |  Drag + drop  |  Arrows + Enter  |  R restart", layout: { align: "center", bottom: 20, inset: { left: 0, right: 0 }, justify: "center", position: "absolute" }, style: { ...muted, fontSize: 11, textAlign: "center" } },
-      { id: "hint", type: "button", action: "hint", label: "HINT", layout: { bottom: 76, height: 44, position: "absolute", right: 24, width: 158 }, style: button },
-      { id: "new-game", type: "button", action: "restart", label: "NEW GAME", layout: { bottom: 128, height: 44, position: "absolute", right: 24, width: 158 }, style: button },
     ],
     bindings: [
       { node: "opponent-name", resource: "ChessGame.opponentNameText" },

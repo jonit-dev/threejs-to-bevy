@@ -2243,8 +2243,8 @@
     },
     {
       "id": "prefab.marker.legal",
-      "primitive": "cylinder",
-      "color": "#e0b85b"
+      "primitive": "box",
+      "color": "#d8a33a"
     },
     {
       "id": "prefab.marker.hover",
@@ -2263,13 +2263,13 @@
     },
     {
       "id": "prefab.marker.last",
-      "primitive": "cylinder",
-      "color": "#8f672f"
+      "primitive": "box",
+      "color": "#a86f2a"
     },
     {
       "id": "prefab.marker.check",
-      "primitive": "cylinder",
-      "color": "#c9484f"
+      "primitive": "box",
+      "color": "#e14d5b"
     },
     {
       "id": "prefab.marker.arc",
@@ -2761,47 +2761,22 @@
         }
       },
       {
-        "id": "status-plate",
-        "type": "column",
-        "layout": {
-          "height": 38,
-          "inset": {
-            "left": 340,
-            "right": 340,
-            "top": 18
-          },
-          "position": "absolute"
-        },
-        "style": {
-          "backgroundColor": "#090b0dcc",
-          "borderColor": "#c69a504d",
-          "borderRadius": 19,
-          "borderWidth": 1,
-          "shadow": {
-            "blur": 18,
-            "color": "#09060499",
-            "offsetY": 6,
-            "spread": 0
-          }
-        }
-      },
-      {
         "id": "status",
         "type": "text",
         "text": "Your move",
         "layout": {
           "align": "center",
           "inset": {
-            "left": 360,
-            "right": 360,
-            "top": 29
+            "left": 300,
+            "right": 300,
+            "top": 24
           },
           "justify": "center",
           "position": "absolute"
         },
         "style": {
           "color": "#f0d38f",
-          "fontSize": 13,
+          "fontSize": 14,
           "fontWeight": "bold",
           "textAlign": "center"
         }
@@ -2838,31 +2813,6 @@
         "style": {
           "color": "#9d968c",
           "fontSize": 11,
-          "textAlign": "center"
-        }
-      },
-      {
-        "id": "new-game",
-        "type": "button",
-        "action": "restart",
-        "label": "NEW GAME",
-        "layout": {
-          "align": "center",
-          "bottom": 84,
-          "height": 52,
-          "justify": "center",
-          "position": "absolute",
-          "right": 24,
-          "width": 158
-        },
-        "style": {
-          "backgroundColor": "#171816f2",
-          "borderColor": "#cda45b70",
-          "borderRadius": 8,
-          "borderWidth": 1,
-          "color": "#f0e9dc",
-          "fontSize": 14,
-          "fontWeight": "bold",
           "textAlign": "center"
         }
       }

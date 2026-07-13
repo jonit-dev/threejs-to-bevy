@@ -33,7 +33,7 @@ type ChessContext = ScriptContext & {
 export const chessGame = defineBehavior(
   {
     id: "chess-game",
-    eventReads: ["chess:choose-side"],
+    eventReads: ["chess:choose-side", "chess:restart"],
     eventWrites: ["chess:captures"],
     schedule: "update",
     reads: ["ChessPiece", "LegalMarker"],
@@ -334,7 +334,8 @@ export const chessGame = defineBehavior(
     if (state.playerColor === "" && context.input.getButtonDown("choose-white")) chooseSide("white");
     if (state.playerColor === "" && context.input.getButtonDown("choose-black")) chooseSide("black");
 
-    if (context.input.getButtonDown("restart") || uiActions.some((action) => action.action === "restart")) {
+    const restartRequested = context.events.read("chess:restart").length > 0;
+    if (restartRequested || context.input.getButtonDown("restart") || uiActions.some((action) => action.action === "restart")) {
       for (const piece of pieces) {
         piece.entity?.patch("ChessPiece", { alive: true, file: piece.initialFile, kind: piece.initialKind, moved: false, rank: piece.initialRank });
         piece.entity?.transform().setPosition(worldPosition(piece.initialFile, piece.initialRank, 0.07));
