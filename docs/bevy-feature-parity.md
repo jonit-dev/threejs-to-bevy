@@ -503,6 +503,15 @@ Current UI rows use these labels:
 - [x] `P1` UI absolute anchors and inset positioning
 - [x] `P1` Native Bevy overlay UI camera renders retained UI above multi-camera/viewport scenes
 - [x] `P1` Optional desktop webview overlays receive retained game snapshots through the same subscribe contract as web overlays, including replay and bounded payload validation (`cargo test -p threenative_runtime --test overlay --test overlay_host`)
+- [x] `P1` Partial/diagnostic: Linux desktop React overlays have an
+      adapter-owned synchronized RGBA GTK/Wry host and shaped interactive
+      pointer regions, which prove bridge/input logic but not portable pixels.
+      Transparent WebKitGTK is an unsupported NVIDIA/Xwayland pixel boundary:
+      manual evidence shows stale removed DOM and accumulated hover alpha.
+      Chess therefore uses its React overlay on web and retained UI on desktop
+      (`cargo test -p threenative_runtime --test overlay_host --features
+      native-webview`, `examples/chess/playtests/chess-retained-native.playtest.json`,
+      `docs/audits/native-overlay-stale-pixel-ghosting-2026-07-13.md`)
 - [x] `P1` Native Bevy `Minimap` UI nodes render static paths and live resource-bound markers
 - [x] `P1` UI min/max size constraints
 - [x] `P1` Basic vertical UI scrolling containers

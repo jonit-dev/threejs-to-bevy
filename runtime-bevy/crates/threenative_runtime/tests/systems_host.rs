@@ -11,10 +11,10 @@ use threenative_runtime::{
     input::{NativeInputState, map_keyboard_event},
     systems_context::{NativeSystemTimeSnapshot, build_system_context_snapshot},
     systems_host::{
-        NativeGameLoopRunOptions, NativeGameLoopState, diagnose_native_system_host,
-        ensure_native_system_host_supported, run_native_systems_frame_with_input,
-        run_native_systems_once, run_native_systems_once_with_input,
-        NativeEntityLifecycleRuntimeState, unsupported_native_system_host_diagnostic,
+        NativeEntityLifecycleRuntimeState, NativeGameLoopRunOptions, NativeGameLoopState,
+        diagnose_native_system_host, ensure_native_system_host_supported,
+        run_native_systems_frame_with_input, run_native_systems_once,
+        run_native_systems_once_with_input, unsupported_native_system_host_diagnostic,
     },
 };
 
@@ -61,9 +61,18 @@ fn systems_host_should_tick_countdown_and_fire_one_limit_event_per_cycle() {
         |_bundle, _fixed_delta, _script_posed_entities| {},
     )
     .expect("countdown frame should run");
-    assert_eq!(run.emitted_events["Race.limit"].as_array().map(Vec::len), Some(1));
-    assert_eq!(bundle.world.resources["Race"]["remaining"], serde_json::json!(0.0));
-    assert_eq!(bundle.world.events["Race.limit"].as_array().map(Vec::len), Some(1));
+    assert_eq!(
+        run.emitted_events["Race.limit"].as_array().map(Vec::len),
+        Some(1)
+    );
+    assert_eq!(
+        bundle.world.resources["Race"]["remaining"],
+        serde_json::json!(0.0)
+    );
+    assert_eq!(
+        bundle.world.events["Race.limit"].as_array().map(Vec::len),
+        Some(1)
+    );
 
     run_native_systems_frame_with_input(
         &mut bundle,
@@ -72,9 +81,18 @@ fn systems_host_should_tick_countdown_and_fire_one_limit_event_per_cycle() {
         |_bundle, _fixed_delta, _script_posed_entities| {},
     )
     .expect("second countdown frame should run");
-    assert_eq!(bundle.world.events["Race.limit"].as_array().map(Vec::len), Some(1));
+    assert_eq!(
+        bundle.world.events["Race.limit"].as_array().map(Vec::len),
+        Some(1)
+    );
 
-    bundle.world.resources.get_mut("Race").and_then(serde_json::Value::as_object_mut).expect("race resource").insert("restartToken".to_owned(), serde_json::json!(1));
+    bundle
+        .world
+        .resources
+        .get_mut("Race")
+        .and_then(serde_json::Value::as_object_mut)
+        .expect("race resource")
+        .insert("restartToken".to_owned(), serde_json::json!(1));
     run_native_systems_frame_with_input(
         &mut bundle,
         &mut state,
@@ -82,7 +100,10 @@ fn systems_host_should_tick_countdown_and_fire_one_limit_event_per_cycle() {
         |_bundle, _fixed_delta, _script_posed_entities| {},
     )
     .expect("restart countdown frame should run");
-    assert_eq!(bundle.world.events["Race.limit"].as_array().map(Vec::len), Some(2));
+    assert_eq!(
+        bundle.world.events["Race.limit"].as_array().map(Vec::len),
+        Some(2)
+    );
 }
 
 #[test]
@@ -99,7 +120,10 @@ fn systems_host_should_observe_native_lifecycle_after_bundle_reconciliation() {
     lifecycle.observe(&bundle);
     assert_eq!(lifecycle.snapshot().spawned, vec!["coin.01"]);
 
-    bundle.world.entities.retain(|entity| entity.id != "coin.01");
+    bundle
+        .world
+        .entities
+        .retain(|entity| entity.id != "coin.01");
     lifecycle.observe(&bundle);
     assert_eq!(lifecycle.snapshot().despawned, vec!["coin.01"]);
 }
@@ -222,7 +246,7 @@ fn systems_host_should_expose_context_ergonomics_helpers() {
         Some(&serde_json::json!({
             "button": true,
             "camera": "camera.main",
-            "down": false,
+            "down": true,
             "dt": 0.016,
             "energy": 5,
             "hp": 1,
@@ -578,9 +602,26 @@ fn systems_host_should_preserve_sensor_phases_across_native_fixed_ticks() {
         |_bundle, _fixed_delta, _script_posed_entities| {},
     )
     .expect("enter tick should run");
-    assert_eq!(bundle.world.resources.get("SensorReport").and_then(|value| value.get("phase")), Some(&serde_json::json!("enter")));
+    assert_eq!(
+        bundle
+            .world
+            .resources
+            .get("SensorReport")
+            .and_then(|value| value.get("phase")),
+        Some(&serde_json::json!("enter"))
+    );
 
-    bundle.world.entities.iter_mut().find(|entity| entity.id == "player").expect("player should exist").components.transform.as_mut().expect("player transform should exist").position = Some([20.0, 0.02, 4.15]);
+    bundle
+        .world
+        .entities
+        .iter_mut()
+        .find(|entity| entity.id == "player")
+        .expect("player should exist")
+        .components
+        .transform
+        .as_mut()
+        .expect("player transform should exist")
+        .position = Some([20.0, 0.02, 4.15]);
     run_native_systems_frame_with_input(
         &mut bundle,
         &mut state,
@@ -588,7 +629,14 @@ fn systems_host_should_preserve_sensor_phases_across_native_fixed_ticks() {
         |_bundle, _fixed_delta, _script_posed_entities| {},
     )
     .expect("exit tick should run");
-    assert_eq!(bundle.world.resources.get("SensorReport").and_then(|value| value.get("phase")), Some(&serde_json::json!("exit")));
+    assert_eq!(
+        bundle
+            .world
+            .resources
+            .get("SensorReport")
+            .and_then(|value| value.get("phase")),
+        Some(&serde_json::json!("exit"))
+    );
 }
 
 #[test]

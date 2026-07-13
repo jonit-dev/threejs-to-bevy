@@ -22,6 +22,21 @@ Current support:
 - Desktop WRY overlays expose send and subscribe, replay retained snapshots
   through adapter-private script evaluation, and apply visibility/input control
   messages without requiring browser-parent event synthesis.
+- One bundle serves both targets: web mounts the authored React overlay through
+  the browser adapter, while Linux desktop mounts it in a synchronized RGBA
+  GTK/Wry host whose backing surface is explicitly cleared to transparent and
+  whose pointer shape is derived from authored interactive regions. Modal
+  state captures the surface; pointer-only state captures only the reported
+  controls, leaving Bevy input active everywhere else.
+  Bounds, screen position, and visibility synchronization is idempotent, so a
+  steady game frame does not resize, show, or raise the GTK/Wry overlay. Other
+  desktop platforms retain Wry child attachment. Cross-compositor lifecycle
+  coverage remains a tracked platform boundary. Transparent WebKitGTK content
+  on NVIDIA/Xwayland is not promoted: manual pixel evidence shows hover alpha
+  accumulation and stale removed DOM pixels, while CSS damage, parent-surface
+  reallocation, child Cairo clearing, and forced software GL all fail. Native
+  projects on that stack must use retained UI (as chess now does) until an
+  offscreen-to-Bevy-texture or equivalent compositor-safe backend exists.
 - The native launcher capability-checks cached runtime binaries before reuse;
   binaries missing the descriptor-owned `native-webview` Cargo feature fall
   back to a feature-complete Cargo launch. Native proof harness startup fails
@@ -87,6 +102,9 @@ Verification:
 - `pnpm --filter @threenative/authoring test -- --run ui`
 - `pnpm --filter @threenative/overlay-client test`
 - `pnpm --filter @threenative/runtime-web-three test -- --test-name-pattern overlay`
+- `cargo test --manifest-path runtime-bevy/Cargo.toml -p threenative_runtime --test overlay --test overlay_host --features native-webview`
+- `node examples/chess/bin/tn playtest --project examples/chess --scenario playtests/chess-opening.playtest.json --target web --json`
+- `node examples/chess/bin/tn playtest --project examples/chess --scenario playtests/chess-retained-native.playtest.json --target desktop --json`
 - `cargo test --manifest-path runtime-bevy/Cargo.toml -p threenative_runtime native_ui`
 - `pnpm verify:conformance`
 

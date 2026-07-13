@@ -10,18 +10,27 @@ use bevy::{
     pbr::graph::NodePbr,
     prelude::*,
     render::{
-        render_graph::{NodeRunError, RenderGraphApp, RenderGraphContext, RenderLabel, ViewNode, ViewNodeRunner},
+        RenderApp,
+        extract_component::{
+            ComponentUniforms, DynamicUniformIndex, ExtractComponent, ExtractComponentPlugin,
+            UniformComponentPlugin,
+        },
+        render_graph::{
+            NodeRunError, RenderGraphApp, RenderGraphContext, RenderLabel, ViewNode, ViewNodeRunner,
+        },
         render_resource::{
             BindGroupEntries, BindGroupLayout, BindGroupLayoutEntries, CachedRenderPipelineId,
-            ColorTargetState, ColorWrites, FragmentState, MultisampleState, Operations, PipelineCache,
-            PrimitiveState, RenderPassColorAttachment, RenderPassDescriptor, RenderPipelineDescriptor,
-            Sampler, SamplerBindingType, SamplerDescriptor, Shader, ShaderStages, ShaderType,
-            binding_types::{sampler, texture_2d, texture_depth_2d, texture_depth_2d_multisampled, uniform_buffer},
+            ColorTargetState, ColorWrites, FragmentState, MultisampleState, Operations,
+            PipelineCache, PrimitiveState, RenderPassColorAttachment, RenderPassDescriptor,
+            RenderPipelineDescriptor, Sampler, SamplerBindingType, SamplerDescriptor, Shader,
+            ShaderStages, ShaderType,
+            binding_types::{
+                sampler, texture_2d, texture_depth_2d, texture_depth_2d_multisampled,
+                uniform_buffer,
+            },
         },
         renderer::{RenderContext, RenderDevice},
-        extract_component::{ComponentUniforms, DynamicUniformIndex, ExtractComponent, ExtractComponentPlugin, UniformComponentPlugin},
         view::{ViewDepthTexture, ViewTarget, ViewUniform, ViewUniformOffset, ViewUniforms},
-        RenderApp,
     },
 };
 
@@ -34,7 +43,13 @@ pub struct NativeHeightFog {
 }
 
 impl NativeHeightFog {
-    pub fn new(color: Color, density: f32, base_height: f32, falloff_height: f32, max_distance: f32) -> Self {
+    pub fn new(
+        color: Color,
+        density: f32,
+        base_height: f32,
+        falloff_height: f32,
+        max_distance: f32,
+    ) -> Self {
         let linear = color.to_linear();
         Self {
             color: Vec4::new(linear.red, linear.green, linear.blue, linear.alpha),
@@ -52,7 +67,12 @@ pub struct NativeHeightFogPostProcessPlugin;
 
 impl Plugin for NativeHeightFogPostProcessPlugin {
     fn build(&self, app: &mut App) {
-        load_internal_asset!(app, SHADER_HANDLE, "height_fog_postprocess.wgsl", Shader::from_wgsl);
+        load_internal_asset!(
+            app,
+            SHADER_HANDLE,
+            "height_fog_postprocess.wgsl",
+            Shader::from_wgsl
+        );
         app.add_plugins((
             ExtractComponentPlugin::<NativeHeightFog>::default(),
             UniformComponentPlugin::<NativeHeightFog>::default(),
@@ -60,10 +80,18 @@ impl Plugin for NativeHeightFogPostProcessPlugin {
     }
 
     fn finish(&self, app: &mut App) {
-        let Some(render_app) = app.get_sub_app_mut(RenderApp) else { return; };
+        let Some(render_app) = app.get_sub_app_mut(RenderApp) else {
+            return;
+        };
         render_app
-            .add_render_graph_node::<ViewNodeRunner<NativeHeightFogNode>>(Core3d, NativeHeightFogLabel)
-            .add_render_graph_edges(Core3d, (NodePbr::VolumetricFog, NativeHeightFogLabel, Node3d::Bloom))
+            .add_render_graph_node::<ViewNodeRunner<NativeHeightFogNode>>(
+                Core3d,
+                NativeHeightFogLabel,
+            )
+            .add_render_graph_edges(
+                Core3d,
+                (NodePbr::VolumetricFog, NativeHeightFogLabel, Node3d::Bloom),
+            )
             .init_resource::<NativeHeightFogPipeline>();
     }
 }
@@ -92,21 +120,46 @@ impl ViewNode for NativeHeightFogNode {
         let pipeline = world.resource::<NativeHeightFogPipeline>();
         let pipeline_cache = world.resource::<PipelineCache>();
         let multisampled = world.resource::<Msaa>() != &Msaa::Off;
-        let pipeline_id = if multisampled { pipeline.multisampled_pipeline_id } else { pipeline.pipeline_id };
-        let Some(render_pipeline) = pipeline_cache.get_render_pipeline(pipeline_id) else { return Ok(()); };
+        let pipeline_id = if multisampled {
+            pipeline.multisampled_pipeline_id
+        } else {
+            pipeline.pipeline_id
+        };
+        let Some(render_pipeline) = pipeline_cache.get_render_pipeline(pipeline_id) else {
+            return Ok(());
+        };
         let fog_uniforms = world.resource::<ComponentUniforms<NativeHeightFog>>();
         let view_uniforms = world.resource::<ViewUniforms>();
-        let (Some(fog_binding), Some(view_binding)) = (fog_uniforms.uniforms().binding(), view_uniforms.uniforms.binding()) else { return Ok(()); };
+        let (Some(fog_binding), Some(view_binding)) = (
+            fog_uniforms.uniforms().binding(),
+            view_uniforms.uniforms.binding(),
+        ) else {
+            return Ok(());
+        };
         let post_process = view_target.post_process_write();
-        let layout = if multisampled { &pipeline.multisampled_layout } else { &pipeline.layout };
+        let layout = if multisampled {
+            &pipeline.multisampled_layout
+        } else {
+            &pipeline.layout
+        };
         let bind_group = render_context.render_device().create_bind_group(
             "native_height_fog_bind_group",
             layout,
-            &BindGroupEntries::sequential((post_process.source, &pipeline.sampler, depth.view(), fog_binding, view_binding)),
+            &BindGroupEntries::sequential((
+                post_process.source,
+                &pipeline.sampler,
+                depth.view(),
+                fog_binding,
+                view_binding,
+            )),
         );
         let mut pass = render_context.begin_tracked_render_pass(RenderPassDescriptor {
             label: Some("native_height_fog_pass"),
-            color_attachments: &[Some(RenderPassColorAttachment { view: post_process.destination, resolve_target: None, ops: Operations::default() })],
+            color_attachments: &[Some(RenderPassColorAttachment {
+                view: post_process.destination,
+                resolve_target: None,
+                ops: Operations::default(),
+            })],
             depth_stencil_attachment: None,
             timestamp_writes: None,
             occlusion_query_set: None,
@@ -135,32 +188,63 @@ impl FromWorld for NativeHeightFogPipeline {
         let sampler = render_device.create_sampler(&SamplerDescriptor::default());
         let mut cache = world.resource_mut::<PipelineCache>();
         let pipeline_id = queue_pipeline(&mut cache, layout.clone(), false);
-        let multisampled_pipeline_id = queue_pipeline(&mut cache, multisampled_layout.clone(), true);
-        Self { layout, multisampled_layout, sampler, pipeline_id, multisampled_pipeline_id }
+        let multisampled_pipeline_id =
+            queue_pipeline(&mut cache, multisampled_layout.clone(), true);
+        Self {
+            layout,
+            multisampled_layout,
+            sampler,
+            pipeline_id,
+            multisampled_pipeline_id,
+        }
     }
 }
 
 fn create_layout(device: &RenderDevice, multisampled: bool) -> BindGroupLayout {
-    let depth = if multisampled { texture_depth_2d_multisampled() } else { texture_depth_2d() };
+    let depth = if multisampled {
+        texture_depth_2d_multisampled()
+    } else {
+        texture_depth_2d()
+    };
     device.create_bind_group_layout(
         "native_height_fog_layout",
         &BindGroupLayoutEntries::sequential(
             ShaderStages::FRAGMENT,
-            (texture_2d(bevy::render::render_resource::TextureSampleType::Float { filterable: true }), sampler(SamplerBindingType::Filtering), depth, uniform_buffer::<NativeHeightFog>(true), uniform_buffer::<ViewUniform>(true)),
+            (
+                texture_2d(bevy::render::render_resource::TextureSampleType::Float {
+                    filterable: true,
+                }),
+                sampler(SamplerBindingType::Filtering),
+                depth,
+                uniform_buffer::<NativeHeightFog>(true),
+                uniform_buffer::<ViewUniform>(true),
+            ),
         ),
     )
 }
 
-fn queue_pipeline(cache: &mut PipelineCache, layout: BindGroupLayout, multisampled: bool) -> CachedRenderPipelineId {
+fn queue_pipeline(
+    cache: &mut PipelineCache,
+    layout: BindGroupLayout,
+    multisampled: bool,
+) -> CachedRenderPipelineId {
     cache.queue_render_pipeline(RenderPipelineDescriptor {
         label: Some("native_height_fog_pipeline".into()),
         layout: vec![layout],
         vertex: fullscreen_shader_vertex_state(),
         fragment: Some(FragmentState {
             shader: SHADER_HANDLE,
-            shader_defs: if multisampled { vec!["MULTISAMPLED".into()] } else { vec![] },
+            shader_defs: if multisampled {
+                vec!["MULTISAMPLED".into()]
+            } else {
+                vec![]
+            },
             entry_point: "fragment".into(),
-            targets: vec![Some(ColorTargetState { format: ViewTarget::TEXTURE_FORMAT_HDR, blend: None, write_mask: ColorWrites::ALL })],
+            targets: vec![Some(ColorTargetState {
+                format: ViewTarget::TEXTURE_FORMAT_HDR,
+                blend: None,
+                write_mask: ColorWrites::ALL,
+            })],
         }),
         primitive: PrimitiveState::default(),
         depth_stencil: None,

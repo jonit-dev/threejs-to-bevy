@@ -2297,6 +2297,183 @@
         }
       },
       {
+        "id": "opponent-captured-card",
+        "type": "column",
+        "layout": {
+          "height": 112,
+          "inset": {
+            "left": 24,
+            "top": 218
+          },
+          "position": "absolute",
+          "width": 252
+        },
+        "style": {
+          "backgroundColor": "#090b0de8",
+          "borderColor": "#c69a5066",
+          "borderRadius": 8,
+          "borderWidth": 1
+        }
+      },
+      {
+        "id": "opponent-captured-label",
+        "type": "text",
+        "text": "Opponent captured",
+        "layout": {
+          "inset": {
+            "left": 40,
+            "top": 234
+          },
+          "position": "absolute",
+          "width": 220
+        },
+        "style": {
+          "color": "#d9d2c6",
+          "fontSize": 14
+        }
+      },
+      {
+        "id": "opponent-captured",
+        "type": "text",
+        "text": "—",
+        "layout": {
+          "inset": {
+            "left": 40,
+            "top": 270
+          },
+          "position": "absolute",
+          "width": 220
+        },
+        "style": {
+          "color": "#ead8b8",
+          "fontSize": 26
+        }
+      },
+      {
+        "id": "player-captured-card",
+        "type": "column",
+        "layout": {
+          "height": 112,
+          "inset": {
+            "bottom": 24,
+            "left": 24
+          },
+          "position": "absolute",
+          "width": 252
+        },
+        "style": {
+          "backgroundColor": "#090b0de8",
+          "borderColor": "#c69a5066",
+          "borderRadius": 8,
+          "borderWidth": 1
+        }
+      },
+      {
+        "id": "player-captured-label",
+        "type": "text",
+        "text": "You captured",
+        "layout": {
+          "inset": {
+            "bottom": 94,
+            "left": 40
+          },
+          "position": "absolute",
+          "width": 220
+        },
+        "style": {
+          "color": "#d9d2c6",
+          "fontSize": 14
+        }
+      },
+      {
+        "id": "player-captured",
+        "type": "text",
+        "text": "—",
+        "layout": {
+          "inset": {
+            "bottom": 46,
+            "left": 40
+          },
+          "position": "absolute",
+          "width": 220
+        },
+        "style": {
+          "color": "#70695f",
+          "fontSize": 26
+        }
+      },
+      {
+        "id": "choose-white",
+        "type": "button",
+        "label": "Play White",
+        "action": "choose-white",
+        "layout": {
+          "height": 52,
+          "inset": {
+            "bottom": 42,
+            "left": 470
+          },
+          "position": "absolute",
+          "width": 150
+        },
+        "style": {
+          "backgroundColor": "#17140ff2",
+          "borderColor": "#d6aa55",
+          "borderRadius": 7,
+          "borderWidth": 1,
+          "color": "#fff8e9",
+          "fontSize": 16,
+          "fontWeight": "bold"
+        }
+      },
+      {
+        "id": "choose-black",
+        "type": "button",
+        "label": "Play Black",
+        "action": "choose-black",
+        "layout": {
+          "height": 52,
+          "inset": {
+            "bottom": 42,
+            "left": 634
+          },
+          "position": "absolute",
+          "width": 150
+        },
+        "style": {
+          "backgroundColor": "#17140ff2",
+          "borderColor": "#d6aa55",
+          "borderRadius": 7,
+          "borderWidth": 1,
+          "color": "#fff8e9",
+          "fontSize": 16,
+          "fontWeight": "bold"
+        }
+      },
+      {
+        "id": "restart-game",
+        "type": "button",
+        "label": "New Game",
+        "action": "restart",
+        "layout": {
+          "height": 58,
+          "inset": {
+            "bottom": 24,
+            "right": 24
+          },
+          "position": "absolute",
+          "width": 184
+        },
+        "style": {
+          "backgroundColor": "#20211ff5",
+          "borderColor": "#5b554d",
+          "borderRadius": 6,
+          "borderWidth": 1,
+          "color": "#f0ece5",
+          "fontSize": 17
+        }
+      },
+      {
         "id": "status",
         "type": "text",
         "text": "Your move",
@@ -2401,6 +2578,14 @@
       {
         "node": "move-history",
         "resource": "ChessGame.moveHistoryText"
+      },
+      {
+        "node": "opponent-captured",
+        "resource": "ChessGame.opponentCapturedText"
+      },
+      {
+        "node": "player-captured",
+        "resource": "ChessGame.playerCapturedText"
       },
       {
         "node": "promotion",

@@ -116,6 +116,7 @@ fn systems_context_should_use_captured_native_input_when_provided() {
 
     assert_eq!(snapshot.input.actions.get("MoveForward"), None);
     assert_eq!(snapshot.input.axes.get("MoveX"), Some(&1.0));
+    assert_eq!(snapshot.input.pressed.get("MoveForward"), None);
 }
 
 #[test]

@@ -1,0 +1,71 @@
+{
+  "schemaVersion": 1,
+  "name": "chess-retained-native",
+  "target": "desktop",
+  "subject": "piece.white.pawn.e2",
+  "viewport": {
+    "width": 1280,
+    "height": 720
+  },
+  "warmupFrames": 8,
+  "steps": [
+    {
+      "label": "choose white through the portable native input action",
+      "press": "KeyW",
+      "holdFrames": 1,
+      "release": true
+    },
+    {
+      "label": "wait for retained UI resource bindings",
+      "waitFrames": 4
+    },
+    {
+      "label": "select e2 pawn through Bevy input",
+      "press": "Enter",
+      "holdFrames": 2,
+      "release": true
+    },
+    {
+      "label": "move cursor to e3 through Bevy input",
+      "press": "ArrowUp",
+      "holdFrames": 2,
+      "release": true
+    },
+    {
+      "label": "commit e2-e3 through Bevy input",
+      "press": "Enter",
+      "holdFrames": 2,
+      "release": true
+    },
+    {
+      "label": "observe game and retained UI after the move",
+      "waitFrames": 4
+    }
+  ],
+  "assert": {
+    "movement": {
+      "entity": "piece.white.pawn.e2",
+      "axis": "z",
+      "minDistance": 0.8
+    },
+    "hud": [
+      {
+        "id": "turn",
+        "textIncludes": "YOUR TURN"
+      }
+    ],
+    "diagnostics": {
+      "runtimeReady": true,
+      "noConsoleErrors": true,
+      "noNetworkErrors": true,
+      "noRuntimeDiagnostics": true
+    }
+  },
+  "artifacts": {
+    "screenshots": false,
+    "console": true,
+    "network": true,
+    "runtimeTrace": true,
+    "effectLog": "focused"
+  }
+}

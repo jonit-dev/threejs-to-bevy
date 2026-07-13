@@ -14,7 +14,12 @@ pub fn sync_native_world_text(
         if marker.is_none() {
             continue;
         }
-        let Some(entity) = bundle.world.entities.iter().find(|entity| entity.id == id.0) else {
+        let Some(entity) = bundle
+            .world
+            .entities
+            .iter()
+            .find(|entity| entity.id == id.0)
+        else {
             continue;
         };
         let Some(component) = entity.components.world_text.as_ref() else {
@@ -25,7 +30,9 @@ pub fn sync_native_world_text(
                 section.value = component.text.clone();
             }
             if component.fade == Some(true) {
-                let opacity = component.lifetime.map_or(1.0, |lifetime| 1.0 - (component.elapsed.unwrap_or(0.0) / lifetime.max(0.0001)).clamp(0.0, 1.0));
+                let opacity = component.lifetime.map_or(1.0, |lifetime| {
+                    1.0 - (component.elapsed.unwrap_or(0.0) / lifetime.max(0.0001)).clamp(0.0, 1.0)
+                });
                 section.style.color = section.style.color.with_alpha(opacity);
             }
         }

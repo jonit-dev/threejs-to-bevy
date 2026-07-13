@@ -151,6 +151,38 @@ test("gameLoop should skip gameplay schedules while paused", async () => {
   assert.equal(state.accumulator, 0);
 });
 
+test("gameLoop should preserve input pressed while paused until gameplay resumes", async () => {
+  const state = createGameLoopState({
+    schema: "threenative.runtime-config",
+    version: "0.1.0",
+    time: { fixedDelta: 1 / 60, paused: true },
+    window: { height: 720, width: 1280 },
+  });
+  const input = createInputState({
+    schema: "threenative.input",
+    version: "0.1.0",
+    actions: [{ id: "Select", bindings: [{ code: "Enter", device: "keyboard" }] }],
+    axes: [],
+  });
+  let pressed = false;
+  const options = {
+    delta: 1 / 60,
+    input,
+    mapped: makeMapped(),
+    module: { systems: { update: (context: any) => pressed = context.input.pressed("Select") } },
+    state,
+    systems: makeSystems([system("update", "update")]),
+    world: makeWorld(),
+  };
+
+  input.handleKeyDown({ code: "Enter" });
+  await runGameFrame(options);
+  state.paused = false;
+  await runGameFrame(options);
+
+  assert.equal(pressed, true);
+});
+
 test("gameLoop should clamp suspended-frame deltas", async () => {
   const state = createGameLoopState({
     schema: "threenative.runtime-config",

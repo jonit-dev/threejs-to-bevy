@@ -196,6 +196,43 @@ fn systems_services_should_generate_pointer_ray_from_active_camera() {
 }
 
 #[test]
+fn pointer_ray_service_should_make_camera_data_readable_without_explicit_component_reads() {
+    let root = write_bundle("pointer-ray-implicit-reads");
+    let bundle = load_bundle(&root).expect("bundle should load");
+    let mut system = bundle
+        .systems
+        .as_ref()
+        .expect("systems should load")
+        .systems[0]
+        .clone();
+    system.reads.clear();
+    system.queries.clear();
+    system.services = vec!["picking.pointerRay".to_owned()];
+
+    let snapshot = build_system_context_snapshot(&bundle, &system, time());
+    let camera = snapshot
+        .entities
+        .iter()
+        .find(|entity| entity.id == "camera.main")
+        .expect("pointer ray service should receive the active camera entity");
+
+    assert!(camera.components.contains_key("Camera"));
+    assert!(camera.components.contains_key("Transform"));
+    assert!(matches!(
+        pointer_ray(
+            &snapshot,
+            &NativePointerRayRequest {
+                aspect: None,
+                camera: None,
+                max_distance: None,
+                pointer: [0.5, 0.5],
+            },
+        ),
+        NativePointerRayResult::Hit(_)
+    ));
+}
+
+#[test]
 fn systems_services_should_log_animation_play_service_call() {
     assert_eq!(
         animation_play_payload("player", "run", json!({ "loop": true })),

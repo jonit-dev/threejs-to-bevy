@@ -1159,6 +1159,17 @@ async function probePreview(options: IPlaytestRunOptions & { url: string }): Pro
     await page.screenshot({ path: beforeArtifact });
     const runtimeDiagnosticsSeries: unknown[] = [await readRuntimeDiagnostics(page)];
     for (const step of options.scenario.steps) {
+      if (step.overlayMessage !== undefined) {
+        const delivered = await dispatchWebOverlayMessage(page, step.overlayMessage);
+        if (!delivered) {
+          diagnostics.push({
+            code: "TN_PLAYTEST_OVERLAY_MESSAGE_NOT_DELIVERED",
+            message: `Playtest could not deliver '${step.overlayMessage.type}' from overlay '${step.overlayMessage.overlayId}'.`,
+            severity: "error",
+            suggestion: "Check that the web overlay iframe loaded, its id matches the scenario, and the message is declared in the overlay contract.",
+          });
+        }
+      }
       if (step.press !== undefined) {
         await dispatchKeyboardCode(page, "keydown", step.press);
         await setWebPaused(page, false);
@@ -1290,6 +1301,26 @@ async function probePreview(options: IPlaytestRunOptions & { url: string }): Pro
   } finally {
     await browser.close();
   }
+}
+
+async function dispatchWebOverlayMessage(
+  page: import("playwright").Page,
+  message: NonNullable<IPlaytestScenario["steps"][number]["overlayMessage"]>,
+): Promise<boolean> {
+  return page.evaluate(({ overlayId, payload, type }) => {
+    const browserGlobal = globalThis as unknown as {
+      document: {
+        querySelectorAll(selector: string): ArrayLike<{
+          contentWindow?: { threenativeOverlayBridge?: { send(messageType: string, messagePayload: unknown): boolean } };
+          dataset: { threenativeOverlayId?: string };
+        }>;
+      };
+    };
+    const frames = Array.from(browserGlobal.document.querySelectorAll("iframe[data-threenative-overlay-id]"));
+    const frame = frames.find((candidate) => candidate.dataset.threenativeOverlayId === overlayId);
+    const bridge = frame?.contentWindow?.threenativeOverlayBridge;
+    return bridge?.send(type, payload) === true;
+  }, message);
 }
 
 async function applyWebScenarioSetup(page: import("playwright").Page, scenario: IPlaytestScenario): Promise<IPlaytestDiagnostic[]> {

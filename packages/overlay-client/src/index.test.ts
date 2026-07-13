@@ -17,6 +17,26 @@ test("should deliver retained snapshot exactly once when bridge becomes ready af
   assert.deepEqual(received, [7]);
 });
 
+test("should not consume a retained snapshot before its typed handler subscribes", () => {
+  const bridge = {
+    send: () => true,
+    subscribe(listener: (type: string, payload: Record<string, unknown>, metadata: { sequence: number }) => void) {
+      listener("hud:snapshot", { score: 9 }, { sequence: 4 });
+      return () => {};
+    },
+  };
+  const windowRef = {
+    addEventListener() {},
+    threenativeOverlayBridge: bridge,
+  } as unknown as Window;
+  const client = createOverlayClient<{ "hud:snapshot": { score: number } }, Record<string, never>>(windowRef);
+  const received: number[] = [];
+
+  client.subscribe("hud:snapshot", (payload) => received.push(payload.score));
+
+  assert.deepEqual(received, [9]);
+});
+
 test("exposes compile-time message contracts", () => {
   const client = createOverlayClient<{ "hud:snapshot": { score: number } }, { "hud:action": { action: string } }>({ addEventListener() {} } as unknown as Window);
   if (false) {

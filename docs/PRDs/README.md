@@ -153,6 +153,14 @@ execution bundle.
   diagnostic into generated-game proof enrollment, shared adapter drift gates,
   CLI command registry and arg plumbing, executable authoring operation
   descriptors, and editor operation metadata plus composite recipes.
+
+### Tooling And Code Quality
+
+- [Rust Static Analysis And Code-Smell Quality Ratchet](other/rust-static-analysis-quality-ratchet-2026-07-13.md):
+  turns the documented-but-missing `pnpm check:rust` into one workspace-owned
+  rustfmt/Clippy policy, adds a structured lint/path debt ratchet, wires it
+  into pre-push and CI, and closes toward `--all-targets -- -D warnings` in
+  bounded verified slices.
 - [Agent Token Efficiency IO Budget](other/agent-token-efficiency-io-budget.md):
   makes agent-facing CLI output compact by default, removes playtest
   `effectLog`/full `observations` from stdout, keeps deep logs as artifacts,

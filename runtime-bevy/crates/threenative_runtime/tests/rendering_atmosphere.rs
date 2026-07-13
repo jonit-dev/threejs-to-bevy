@@ -176,8 +176,16 @@ fn rendering_should_map_atmosphere_profile_to_bevy_observation() {
             .count(),
         1
     );
-    assert!(lights.iter().any(|light| !light.0 && (light.1 - 0.6).abs() < 0.01));
-    assert!(lights.iter().any(|light| !light.0 && (light.1 - 0.25).abs() < 0.01));
+    assert!(
+        lights
+            .iter()
+            .any(|light| !light.0 && (light.1 - 0.6).abs() < 0.01)
+    );
+    assert!(
+        lights
+            .iter()
+            .any(|light| !light.0 && (light.1 - 0.25).abs() < 0.01)
+    );
     let light = lights
         .iter()
         .find(|light| light.0 && (light.1 - 3.2).abs() < 0.01)
@@ -202,8 +210,20 @@ fn rendering_should_map_atmosphere_profile_to_bevy_observation() {
             .count(),
         0
     );
-    assert_eq!(app.world_mut().query::<&DepthPrepass>().iter(app.world()).count(), 1);
-    assert_eq!(app.world_mut().query::<&NormalPrepass>().iter(app.world()).count(), 1);
+    assert_eq!(
+        app.world_mut()
+            .query::<&DepthPrepass>()
+            .iter(app.world())
+            .count(),
+        1
+    );
+    assert_eq!(
+        app.world_mut()
+            .query::<&NormalPrepass>()
+            .iter(app.world())
+            .count(),
+        1
+    );
     let ssgi_report = serde_json::to_value(report_bevy_conformance(
         app.world_mut(),
         &bundle,
@@ -217,7 +237,10 @@ fn rendering_should_map_atmosphere_profile_to_bevy_observation() {
         .iter()
         .find(|feature| feature["feature"] == "renderer.screenSpaceGlobalIllumination")
         .expect("SSGI feature report should exist");
-    assert_eq!(ssgi_feature["appliedMode"], "spatial-neighborhood-no-temporal");
+    assert_eq!(
+        ssgi_feature["appliedMode"],
+        "spatial-neighborhood-no-temporal"
+    );
     assert_eq!(ssgi_feature["status"], "baseline");
     assert!(ssgi_feature.get("diagnostic").is_none());
     let mapped_directional_count = app
@@ -277,7 +300,10 @@ fn rendering_should_map_atmosphere_profile_to_bevy_observation() {
         .iter(app.world())
         .next()
         .is_some();
-    assert!(has_height_fog, "atmosphere camera should receive the independent analytic height-fog pass");
+    assert!(
+        has_height_fog,
+        "atmosphere camera should receive the independent analytic height-fog pass"
+    );
 
     bundle
         .environment_scene

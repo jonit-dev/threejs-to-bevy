@@ -71,10 +71,18 @@ Keep colon-delimited names aligned with script `eventReads` and `eventWrites`;
 the compiler rejects manifest drift. Use `overlayClient.setInput(...)` after a
 modal interaction and `overlayClient.setVisible(...)` instead of payload flags.
 
-Desktop proof scenarios can drive the same declared bridge without relying on
-OS-level webview input. Add an `overlayMessage` to a playtest step with the
-declared `overlayId`, message `type`, and `payload`; the native proof harness
-validates and delivers it through the runtime bridge.
+Web and desktop proof scenarios can drive the same declared bridge without
+relying on OS-level webview input. Add an `overlayMessage` to a playtest step
+with the declared `overlayId`, message `type`, and `payload`; the web runner
+dispatches it through the mounted iframe bridge and the native proof harness
+delivers it through the Wry bridge. Retained snapshots are replayed when the
+typed React handler subscribes, including when the bridge becomes ready before
+the component effect mounts.
+
+For coexistence coverage, keep a gameplay input step after the overlay leaves
+modal mode. The chess proof selects a side through `overlayMessage`, then moves
+a pawn through ordinary game input on both `web` and `desktop`; this guards
+against a full-surface webview silently blocking the game after dismissal.
 
 For the supported opt-out, start from a project without this overlay and run:
 

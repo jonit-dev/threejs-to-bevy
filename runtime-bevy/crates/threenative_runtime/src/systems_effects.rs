@@ -4,9 +4,9 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use threenative_loader::{
     CameraComponent, ColliderComponent, EntityComponents, HierarchyComponent, LightComponent,
-    LoadedBundle, MeshRendererComponent, PatrolComponent, RigidBodyComponent, StateMachineComponent,
-    SystemCommandIr, SystemIr, TransformComponent, VisibilityComponent, WorldEntity,
-    WorldTextComponent,
+    LoadedBundle, MeshRendererComponent, PatrolComponent, RigidBodyComponent,
+    StateMachineComponent, SystemCommandIr, SystemIr, TransformComponent, VisibilityComponent,
+    WorldEntity, WorldTextComponent,
 };
 
 use crate::systems_context::component_value;
@@ -155,10 +155,9 @@ impl NativeRuntimeWriteLedger {
         self.begin_tick(input.tick);
         let key = format!("{}:{}:{}", input.target_kind, input.target_id, input.path);
         let previous = self.active.get(&key);
-        let previous_target = self
-            .active
-            .values()
-            .find(|candidate| candidate.target_kind == input.target_kind && candidate.target_id == input.target_id);
+        let previous_target = self.active.values().find(|candidate| {
+            candidate.target_kind == input.target_kind && candidate.target_id == input.target_id
+        });
         let disposition = input
             .disposition
             .clone()
@@ -233,14 +232,18 @@ fn conflict_diagnostics(
     observations
         .iter()
         .filter(|observation| {
-            observation.disposition == "conflict" && tick.is_none_or(|tick| observation.tick == tick)
+            observation.disposition == "conflict"
+                && tick.is_none_or(|tick| observation.tick == tick)
         })
         .map(|observation| conflict_diagnostic(observation, observations))
         .filter(|diagnostic| seen.insert((diagnostic.path.clone(), diagnostic.message.clone())))
         .collect()
 }
 
-fn conflict_diagnostic(observation: &NativeRuntimeWriteObservation, observations: &[NativeRuntimeWriteObservation]) -> NativeSystemEffectDiagnostic {
+fn conflict_diagnostic(
+    observation: &NativeRuntimeWriteObservation,
+    observations: &[NativeRuntimeWriteObservation],
+) -> NativeSystemEffectDiagnostic {
     let candidates = observations
         .iter()
         .filter(|candidate| {
@@ -252,7 +255,17 @@ fn conflict_diagnostic(observation: &NativeRuntimeWriteObservation, observations
         .collect::<Vec<_>>();
     let writers = candidates
         .iter()
-        .map(|candidate| format!("{}{}", candidate.writer, candidate.system.as_deref().map(|system| format!(" ({system})")).unwrap_or_default()))
+        .map(|candidate| {
+            format!(
+                "{}{}",
+                candidate.writer,
+                candidate
+                    .system
+                    .as_deref()
+                    .map(|system| format!(" ({system})"))
+                    .unwrap_or_default()
+            )
+        })
         .collect::<BTreeSet<_>>();
     let writer_text = if writers.is_empty() {
         observation.writer.clone()
@@ -261,9 +274,22 @@ fn conflict_diagnostic(observation: &NativeRuntimeWriteObservation, observations
     };
     let winning = candidates
         .last()
-        .map(|candidate| format!("{}{}", candidate.writer, candidate.system.as_deref().map(|system| format!(" ({system})")).unwrap_or_default()))
+        .map(|candidate| {
+            format!(
+                "{}{}",
+                candidate.writer,
+                candidate
+                    .system
+                    .as_deref()
+                    .map(|system| format!(" ({system})"))
+                    .unwrap_or_default()
+            )
+        })
         .unwrap_or_else(|| observation.writer.clone());
-    let path = format!("{}/{}/{}", observation.target_kind, observation.target_id, observation.path);
+    let path = format!(
+        "{}/{}/{}",
+        observation.target_kind, observation.target_id, observation.path
+    );
     NativeSystemEffectDiagnostic {
         code: "TN_RUNTIME_WRITE_CONFLICT",
         message: format!(
@@ -327,7 +353,14 @@ fn native_value_fingerprint(value: &Value) -> String {
 fn native_inline_value(value: &Value) -> Option<Value> {
     match value {
         Value::Bool(_) | Value::Number(_) | Value::String(_) => Some(value.clone()),
-        Value::Array(values) if values.len() <= 4 && values.iter().all(|value| value.as_f64().is_some_and(f64::is_finite)) => Some(value.clone()),
+        Value::Array(values)
+            if values.len() <= 4
+                && values
+                    .iter()
+                    .all(|value| value.as_f64().is_some_and(f64::is_finite)) =>
+        {
+            Some(value.clone())
+        }
         _ => None,
     }
 }
@@ -345,15 +378,29 @@ fn canonical_runtime_write_value(value: &Value) -> String {
             }
             text
         }
-        Value::String(value) => format!("string:{}", serde_json::to_string(value).unwrap_or_else(|_| "\"\"".to_owned())),
-        Value::Array(values) => format!("[{}]", values.iter().map(canonical_runtime_write_value).collect::<Vec<_>>().join(",")),
+        Value::String(value) => format!(
+            "string:{}",
+            serde_json::to_string(value).unwrap_or_else(|_| "\"\"".to_owned())
+        ),
+        Value::Array(values) => format!(
+            "[{}]",
+            values
+                .iter()
+                .map(canonical_runtime_write_value)
+                .collect::<Vec<_>>()
+                .join(",")
+        ),
         Value::Object(values) => {
             let mut keys = values.keys().collect::<Vec<_>>();
             keys.sort();
             format!(
                 "{{{}}}",
                 keys.into_iter()
-                    .map(|key| format!("{}:{}", serde_json::to_string(key).unwrap_or_else(|_| "\"\"".to_owned()), canonical_runtime_write_value(&values[key])))
+                    .map(|key| format!(
+                        "{}:{}",
+                        serde_json::to_string(key).unwrap_or_else(|_| "\"\"".to_owned()),
+                        canonical_runtime_write_value(&values[key])
+                    ))
                     .collect::<Vec<_>>()
                     .join(","),
             )
@@ -622,13 +669,26 @@ fn record_value_fields(
     dropped: bool,
 ) {
     for field in value_fields(new_value) {
-        let old_field = old_value.and_then(|value| value.as_object().and_then(|object| object.get(&field)).cloned());
-        let new_field = new_value.as_object().and_then(|object| object.get(&field)).cloned().unwrap_or_else(|| new_value.clone());
+        let old_field = old_value.and_then(|value| {
+            value
+                .as_object()
+                .and_then(|object| object.get(&field))
+                .cloned()
+        });
+        let new_field = new_value
+            .as_object()
+            .and_then(|object| object.get(&field))
+            .cloned()
+            .unwrap_or_else(|| new_value.clone());
         ledger.record(NativeRuntimeWriteInput {
             disposition: dropped.then(|| "dropped".to_owned()),
             new_value: new_field,
             old_value: old_field,
-            path: if component.is_empty() { field } else { format!("{component}/{field}") },
+            path: if component.is_empty() {
+                field
+            } else {
+                format!("{component}/{field}")
+            },
             schedule: schedule.map(str::to_owned),
             system: system_name.map(str::to_owned),
             target_id: target_id.to_owned(),
@@ -797,7 +857,12 @@ fn declares_command(system: &SystemIr, command: &NativeSystemCommandEffect) -> b
             SystemCommandIr::Tween { entity, property } => {
                 command.command == "tween"
                     && command.entity.as_ref() == Some(entity)
-                    && command.value.as_ref().and_then(|value| value.get("property")).and_then(Value::as_str) == Some(property)
+                    && command
+                        .value
+                        .as_ref()
+                        .and_then(|value| value.get("property"))
+                        .and_then(Value::as_str)
+                        == Some(property)
             }
             SystemCommandIr::WorldText { entity } => {
                 command.command == "worldText" && command.entity.as_ref() == Some(entity)
@@ -1041,13 +1106,19 @@ fn apply_command(bundle: &mut LoadedBundle, command: &NativeSystemCommandEffect)
             let Some(entity_id) = command.entity.as_ref() else {
                 return;
             };
-            if bundle.world.entities.iter().any(|entity| entity.id == *entity_id) {
+            if bundle
+                .world
+                .entities
+                .iter()
+                .any(|entity| entity.id == *entity_id)
+            {
                 return;
             }
             let Some(value) = command.value.as_ref() else {
                 return;
             };
-            let Some(world_text) = serde_json::from_value::<WorldTextComponent>(value.clone()).ok() else {
+            let Some(world_text) = serde_json::from_value::<WorldTextComponent>(value.clone()).ok()
+            else {
                 return;
             };
             bundle.world.entities.push(WorldEntity {
@@ -1087,7 +1158,11 @@ fn apply_command(bundle: &mut LoadedBundle, command: &NativeSystemCommandEffect)
                         hierarchy.parent = Some(format!("{prefix}.{parent}"));
                     }
                 }
-                bundle.world.entities.push(WorldEntity { id, components, tags: template.tags.clone() });
+                bundle.world.entities.push(WorldEntity {
+                    id,
+                    components,
+                    tags: template.tags.clone(),
+                });
             }
         }
         "despawn" => {
@@ -1267,7 +1342,8 @@ fn apply_component_value(components: &mut EntityComponents, component: &str, val
 
 fn patch_component_value(components: &mut EntityComponents, component: &str, value: Value) {
     match component {
-        "Camera" | "Collider" | "Hierarchy" | "Light" | "Patrol" | "RigidBody" | "StateMachine" | "Visibility" | "WorldText" => {
+        "Camera" | "Collider" | "Hierarchy" | "Light" | "Patrol" | "RigidBody" | "StateMachine"
+        | "Visibility" | "WorldText" => {
             let merged = component_value(components, component)
                 .map(|existing| merge_object_patch(existing, &value))
                 .unwrap_or(value);
@@ -1601,23 +1677,43 @@ mod tests {
     #[test]
     fn classifies_native_write_composition_and_transform_conflicts() {
         let mut ledger = NativeRuntimeWriteLedger::default();
-        let input = |writer: &str, system: &str, target: &str, path: &str, value: Value| NativeRuntimeWriteInput {
-            disposition: None,
-            new_value: value,
-            old_value: None,
-            path: path.to_owned(),
-            schedule: Some("fixedUpdate".to_owned()),
-            system: Some(system.to_owned()),
-            target_id: target.to_owned(),
-            target_kind: "component".to_owned(),
-            tick: 3,
-            writer: writer.to_owned(),
+        let input = |writer: &str, system: &str, target: &str, path: &str, value: Value| {
+            NativeRuntimeWriteInput {
+                disposition: None,
+                new_value: value,
+                old_value: None,
+                path: path.to_owned(),
+                schedule: Some("fixedUpdate".to_owned()),
+                system: Some(system.to_owned()),
+                target_id: target.to_owned(),
+                target_kind: "component".to_owned(),
+                tick: 3,
+                writer: writer.to_owned(),
+            }
         };
 
-        ledger.record(input("physics", "physics", "player", "Transform/position", json!([1, 0, 0])));
-        let conflict = ledger.record(input("script", "movePlayer", "player", "Transform/position", json!([2, 0, 0])));
+        ledger.record(input(
+            "physics",
+            "physics",
+            "player",
+            "Transform/position",
+            json!([1, 0, 0]),
+        ));
+        let conflict = ledger.record(input(
+            "script",
+            "movePlayer",
+            "player",
+            "Transform/position",
+            json!([2, 0, 0]),
+        ));
         assert_eq!(conflict.disposition, "conflict");
-        assert_eq!(ledger.diagnostics(3).first().map(|diagnostic| diagnostic.code), Some("TN_RUNTIME_WRITE_CONFLICT"));
+        assert_eq!(
+            ledger
+                .diagnostics(3)
+                .first()
+                .map(|diagnostic| diagnostic.code),
+            Some("TN_RUNTIME_WRITE_CONFLICT")
+        );
 
         let mut resources = NativeRuntimeWriteLedger::default();
         let mut score = input("script", "score", "Score", "points", json!(1));

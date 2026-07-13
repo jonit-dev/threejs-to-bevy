@@ -25,13 +25,19 @@ impl PhysicsSensorRuntimeState {
         if self.last_tick == Some(tick) {
             return self.last_events.clone();
         }
-        let entities = bundle.world.entities.iter().map(sim_entity).collect::<Vec<_>>();
+        let entities = bundle
+            .world
+            .entities
+            .iter()
+            .map(sim_entity)
+            .collect::<Vec<_>>();
         let live_sensors = entities
             .iter()
             .filter(|entity| entity.sensor.is_some())
             .map(|entity| entity.id.clone())
             .collect::<std::collections::BTreeSet<_>>();
-        self.occupancy.retain(|sensor, _| live_sensors.contains(sensor));
+        self.occupancy
+            .retain(|sensor, _| live_sensors.contains(sensor));
         let mut sensors = entities
             .iter()
             .filter(|entity| entity.sensor.is_some())
@@ -42,10 +48,20 @@ impl PhysicsSensorRuntimeState {
         for sensor in sensors {
             let current = occupants_for(&sensor, &entities);
             let previous = self.occupancy.get(&sensor.id).cloned().unwrap_or_default();
-            events.extend(phase_events(&sensor, &previous, &current.0, &current.1, tick as usize));
+            events.extend(phase_events(
+                &sensor,
+                &previous,
+                &current.0,
+                &current.1,
+                tick as usize,
+            ));
             self.occupancy.insert(sensor.id, current.0);
         }
-        events.sort_by(|left, right| left.sensor.cmp(&right.sensor).then(left.phase.cmp(&right.phase)));
+        events.sort_by(|left, right| {
+            left.sensor
+                .cmp(&right.sensor)
+                .then(left.phase.cmp(&right.phase))
+        });
         self.last_tick = Some(tick);
         self.last_events = events.clone();
         events

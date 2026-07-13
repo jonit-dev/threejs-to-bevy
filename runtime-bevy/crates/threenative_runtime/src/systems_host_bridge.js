@@ -1179,10 +1179,10 @@ function __tnInvokeSystem(options) {
         return options.normalize === true && length > 1 ? [value[0] / length, value[1] / length] : value;
       },
       getButton(name) { return !!data.input.actions[name]; },
-      getButtonDown() { return false; },
-      getButtonUp() { return false; },
-      pressed() { return false; },
-      released() { return false; }
+      getButtonDown(name) { return !!data.input.pressed[name]; },
+      getButtonUp(name) { return !!data.input.released[name]; },
+      pressed(name) { return !!data.input.pressed[name]; },
+      released(name) { return !!data.input.released[name]; }
     },
     entity(id) {
       return entities.find((entity) => entity.id === id);

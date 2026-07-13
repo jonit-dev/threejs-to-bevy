@@ -65,8 +65,11 @@ impl NativeOverlayBridge {
             world_events
                 .entry(event.message_type)
                 .and_modify(|value| {
-                    if let Some(values) = value.as_array_mut() { values.push(event.payload.clone()); }
-                    else { *value = serde_json::json!([value.clone(), event.payload.clone()]); }
+                    if let Some(values) = value.as_array_mut() {
+                        values.push(event.payload.clone());
+                    } else {
+                        *value = serde_json::json!([value.clone(), event.payload.clone()]);
+                    }
                 })
                 .or_insert_with(|| serde_json::json!([event.payload]));
         }
@@ -74,11 +77,22 @@ impl NativeOverlayBridge {
 
     pub fn publish_world_events(&mut self, overlays: &OverlaysIr, events: &HashMap<String, Value>) {
         for (message_type, payload_value) in events {
-            let overlay_ids = overlays.overlays.iter()
-                .filter(|overlay| overlay.messages.game_to_overlay.iter().any(|message| message.name == *message_type))
+            let overlay_ids = overlays
+                .overlays
+                .iter()
+                .filter(|overlay| {
+                    overlay
+                        .messages
+                        .game_to_overlay
+                        .iter()
+                        .any(|message| message.name == *message_type)
+                })
                 .map(|overlay| overlay.id.clone())
                 .collect::<Vec<_>>();
-            let payloads = payload_value.as_array().map(Vec::as_slice).unwrap_or_else(|| std::slice::from_ref(payload_value));
+            let payloads = payload_value
+                .as_array()
+                .map(Vec::as_slice)
+                .unwrap_or_else(|| std::slice::from_ref(payload_value));
             for overlay_id in overlay_ids {
                 for payload in payloads {
                     self.publish_game_message(overlays, &overlay_id, message_type, payload.clone());
@@ -120,7 +134,11 @@ impl NativeOverlayBridge {
             return false;
         };
         if payload_size(&payload) > MAX_OVERLAY_PAYLOAD_BYTES {
-            self.reject(overlay_id, "TN_OVERLAY_PAYLOAD_TOO_LARGE", "Overlay message payload exceeds 16 KB.");
+            self.reject(
+                overlay_id,
+                "TN_OVERLAY_PAYLOAD_TOO_LARGE",
+                "Overlay message payload exceeds 16 KB.",
+            );
             return false;
         }
         if !matches_schema(
@@ -176,7 +194,11 @@ impl NativeOverlayBridge {
             return false;
         };
         if payload_size(&payload) > MAX_OVERLAY_PAYLOAD_BYTES {
-            self.reject(overlay_id, "TN_OVERLAY_PAYLOAD_TOO_LARGE", "Game-to-overlay message payload exceeds 16 KB.");
+            self.reject(
+                overlay_id,
+                "TN_OVERLAY_PAYLOAD_TOO_LARGE",
+                "Game-to-overlay message payload exceeds 16 KB.",
+            );
             return false;
         }
         if !matches_schema(

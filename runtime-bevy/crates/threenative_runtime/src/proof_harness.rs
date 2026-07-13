@@ -46,7 +46,11 @@ pub struct NativeProofHarnessCommand {
 }
 
 #[derive(Clone, Debug, Deserialize, PartialEq)]
-#[serde(tag = "type", rename_all = "camelCase", rename_all_fields = "camelCase")]
+#[serde(
+    tag = "type",
+    rename_all = "camelCase",
+    rename_all_fields = "camelCase"
+)]
 pub enum NativeProofHarnessAction {
     Key {
         code: String,
@@ -357,7 +361,10 @@ pub fn apply_native_proof_harness_commands(
             performance,
             transforms.p1().iter(),
             resource_observations.as_deref().cloned(),
-            write_audit.as_deref().filter(|audit| audit.enabled).cloned(),
+            write_audit
+                .as_deref()
+                .filter(|audit| audit.enabled)
+                .cloned(),
             runtime
                 .as_deref()
                 .map(|runtime| native_resource_snapshots(&runtime.bundle))
@@ -404,9 +411,17 @@ pub fn apply_native_proof_harness_commands(
                 payload,
             } => {
                 commands.add(move |world: &mut World| {
-                    if let Some(mut resource) = world.get_resource_mut::<crate::overlay_host::NativeOverlayBridgeResource>() {
-                        let crate::overlay_host::NativeOverlayBridgeResource { bridge, overlays } = &mut *resource;
-                        bridge.receive_overlay_message(overlays, &overlay_id, &message_type, payload);
+                    if let Some(mut resource) =
+                        world.get_resource_mut::<crate::overlay_host::NativeOverlayBridgeResource>()
+                    {
+                        let crate::overlay_host::NativeOverlayBridgeResource { bridge, overlays } =
+                            &mut *resource;
+                        bridge.receive_overlay_message(
+                            overlays,
+                            &overlay_id,
+                            &message_type,
+                            payload,
+                        );
                     }
                 });
             }
@@ -526,7 +541,10 @@ pub fn apply_native_proof_harness_commands(
         performance,
         transforms.p1().iter(),
         resource_observations.as_deref().cloned(),
-        write_audit.as_deref().filter(|audit| audit.enabled).cloned(),
+        write_audit
+            .as_deref()
+            .filter(|audit| audit.enabled)
+            .cloned(),
         runtime
             .as_deref()
             .map(|runtime| native_resource_snapshots(&runtime.bundle))
@@ -600,8 +618,13 @@ fn write_native_proof_harness_post_runtime_sample(
             Vec::new(),
             performance,
             resource_observations.as_deref().cloned(),
-            write_audit.as_deref().filter(|audit| audit.enabled).cloned(),
-            overlay_bridge.as_deref().map_or_else(Vec::new, |bridge| bridge.bridge.snapshots().iter().cloned().collect()),
+            write_audit
+                .as_deref()
+                .filter(|audit| audit.enabled)
+                .cloned(),
+            overlay_bridge.as_deref().map_or_else(Vec::new, |bridge| {
+                bridge.bridge.snapshots().iter().cloned().collect()
+            }),
             &runtime.bundle,
         );
         return;
@@ -613,7 +636,10 @@ fn write_native_proof_harness_post_runtime_sample(
         performance,
         transforms.iter(),
         resource_observations.as_deref().cloned(),
-        write_audit.as_deref().filter(|audit| audit.enabled).cloned(),
+        write_audit
+            .as_deref()
+            .filter(|audit| audit.enabled)
+            .cloned(),
         runtime
             .as_deref()
             .map(|runtime| native_resource_snapshots(&runtime.bundle))

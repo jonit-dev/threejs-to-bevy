@@ -64,22 +64,129 @@ pub struct NativeOverlayHostPlanResource(pub NativeOverlayHostPlan);
 
 #[cfg(feature = "native-webview")]
 pub struct NativeOverlayWebviewHost {
-    #[cfg(all(
-        feature = "native-webview",
-        any(
-            target_os = "linux",
-            target_os = "dragonfly",
-            target_os = "freebsd",
-            target_os = "netbsd",
-            target_os = "openbsd"
-        )
+    #[cfg(any(
+        target_os = "linux",
+        target_os = "dragonfly",
+        target_os = "freebsd",
+        target_os = "netbsd",
+        target_os = "openbsd"
     ))]
-    _gtk_windows: Vec<gtk::Window>,
+    gtk_windows: Vec<gtk::Window>,
+    #[cfg(any(
+        target_os = "linux",
+        target_os = "dragonfly",
+        target_os = "freebsd",
+        target_os = "netbsd",
+        target_os = "openbsd"
+    ))]
+    gtk_window_visible: Vec<std::cell::Cell<bool>>,
+    input_regions: Vec<Option<Vec<NativeOverlayBounds>>>,
+    #[cfg(any(
+        target_os = "linux",
+        target_os = "dragonfly",
+        target_os = "freebsd",
+        target_os = "netbsd",
+        target_os = "openbsd"
+    ))]
+    synchronized_bounds: Vec<std::cell::Cell<Option<NativeOverlayBounds>>>,
+    #[cfg(any(
+        target_os = "linux",
+        target_os = "dragonfly",
+        target_os = "freebsd",
+        target_os = "netbsd",
+        target_os = "openbsd"
+    ))]
+    synchronized_screen_positions: Vec<std::cell::Cell<Option<(i32, i32)>>>,
     ipc_rx: Receiver<String>,
     mounts: Vec<NativeOverlayMount>,
     _servers: Vec<NativeOverlayStaticServer>,
     webviews: Vec<wry::WebView>,
     delivered_sequence: std::cell::Cell<u64>,
+}
+
+#[cfg(feature = "native-webview")]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum NativeWebviewAttachment {
+    ChildWindow,
+    SynchronizedOverlayWindow,
+}
+
+#[cfg(feature = "native-webview")]
+pub const fn native_webview_attachment() -> NativeWebviewAttachment {
+    #[cfg(any(
+        target_os = "linux",
+        target_os = "dragonfly",
+        target_os = "freebsd",
+        target_os = "netbsd",
+        target_os = "openbsd"
+    ))]
+    {
+        NativeWebviewAttachment::SynchronizedOverlayWindow
+    }
+    #[cfg(not(any(
+        target_os = "linux",
+        target_os = "dragonfly",
+        target_os = "freebsd",
+        target_os = "netbsd",
+        target_os = "openbsd"
+    )))]
+    {
+        NativeWebviewAttachment::ChildWindow
+    }
+}
+
+pub const fn native_overlay_screen_position(
+    parent_x: i32,
+    parent_y: i32,
+    overlay_x: u32,
+    overlay_y: u32,
+) -> (i32, i32) {
+    (parent_x + overlay_x as i32, parent_y + overlay_y as i32)
+}
+
+pub const fn native_overlay_host_clear_color(transparent: bool) -> Option<[f64; 4]> {
+    if transparent {
+        Some([0.0, 0.0, 0.0, 0.0])
+    } else {
+        None
+    }
+}
+
+pub fn native_overlay_input_rectangles(
+    input: NativeOverlayInputPolicy,
+    bounds: NativeOverlayBounds,
+    input_regions: Option<&[NativeOverlayBounds]>,
+) -> Vec<NativeOverlayBounds> {
+    let full_bounds = NativeOverlayBounds {
+        height: bounds.height,
+        width: bounds.width,
+        x: 0,
+        y: 0,
+    };
+    if input.modal {
+        return vec![full_bounds];
+    }
+    if !input.captures_pointer {
+        return Vec::new();
+    }
+    let Some(input_regions) = input_regions else {
+        return Vec::new();
+    };
+    input_regions
+        .iter()
+        .filter_map(|input_region| {
+            let x = input_region.x.min(bounds.width);
+            let y = input_region.y.min(bounds.height);
+            let width = input_region.width.min(bounds.width.saturating_sub(x));
+            let height = input_region.height.min(bounds.height.saturating_sub(y));
+            (width > 0 && height > 0).then_some(NativeOverlayBounds {
+                height,
+                width,
+                x,
+                y,
+            })
+        })
+        .collect()
 }
 
 #[cfg(feature = "native-webview")]
@@ -246,7 +353,7 @@ fn create_wry_webview_builder_with_ipc(
 }
 
 #[cfg(feature = "native-webview")]
-fn native_overlay_initialization_script(overlay_id: &str) -> String {
+pub fn native_overlay_initialization_script(overlay_id: &str) -> String {
     format!(
         r#"
 window.threenativeOverlayBridge = {{
@@ -261,6 +368,9 @@ window.threenativeOverlayBridge = {{
   }},
   subscribe(listener) {{
     this._listeners.add(listener);
+    for (const snapshot of this._snapshots.values()) {{
+      listener(snapshot.type, snapshot.payload, {{ sequence: snapshot.sequence }});
+    }}
     return () => this._listeners.delete(listener);
   }},
   snapshot(type) {{
@@ -280,21 +390,31 @@ window.addEventListener('DOMContentLoaded', () => {{
   window.dispatchEvent(new Event('threenative:bridge-ready'));
   document.documentElement.style.background = 'transparent';
   document.body.style.background = 'transparent';
-  const style = document.createElement('style');
-  style.textContent = `
-    html, body, #root {{
-      background: transparent !important;
-      min-height: 207px !important;
-      height: 207px !important;
-      overflow: hidden !important;
-      width: 242px !important;
-    }}
-    .inventory {{
-      margin: 0 !important;
-      width: 242px !important;
-    }}
-  `;
-  document.head.append(style);
+  const publishInputRegions = () => {{
+    const regions = Array.from(document.querySelectorAll('[data-threenative-interactive]'))
+      .filter((element) => {{
+        const style = getComputedStyle(element);
+        return style.display !== 'none' && style.visibility !== 'hidden';
+      }})
+      .map((element) => {{
+        const rect = element.getBoundingClientRect();
+        return {{ x: rect.x, y: rect.y, width: rect.width, height: rect.height }};
+      }})
+      .filter((region) => region.width > 0 && region.height > 0);
+    window.ipc?.postMessage(JSON.stringify({{
+      overlayId: {overlay_id},
+      type: 'overlay:set-input-regions',
+      payload: {{ regions }},
+    }}));
+  }};
+  new ResizeObserver(publishInputRegions).observe(document.documentElement);
+  new MutationObserver(() => requestAnimationFrame(publishInputRegions)).observe(document.body, {{
+    attributes: true,
+    childList: true,
+    subtree: true,
+  }});
+  window.addEventListener('resize', publishInputRegions);
+  requestAnimationFrame(publishInputRegions);
 }});
 "#,
         overlay_id =
@@ -342,15 +462,12 @@ pub fn mount_native_overlay_webviews(world: &mut World) {
     };
 
     let (ipc_tx, ipc_rx) = std::sync::mpsc::channel();
-    #[cfg(all(
-        feature = "native-webview",
-        any(
-            target_os = "linux",
-            target_os = "dragonfly",
-            target_os = "freebsd",
-            target_os = "netbsd",
-            target_os = "openbsd"
-        )
+    #[cfg(any(
+        target_os = "linux",
+        target_os = "dragonfly",
+        target_os = "freebsd",
+        target_os = "netbsd",
+        target_os = "openbsd"
     ))]
     let mut gtk_windows = Vec::new();
     let mut servers = Vec::new();
@@ -388,15 +505,12 @@ pub fn mount_native_overlay_webviews(world: &mut World) {
                         mount.id, error
                     );
                 }
-                #[cfg(all(
-                    feature = "native-webview",
-                    any(
-                        target_os = "linux",
-                        target_os = "dragonfly",
-                        target_os = "freebsd",
-                        target_os = "netbsd",
-                        target_os = "openbsd"
-                    )
+                #[cfg(any(
+                    target_os = "linux",
+                    target_os = "dragonfly",
+                    target_os = "freebsd",
+                    target_os = "netbsd",
+                    target_os = "openbsd"
                 ))]
                 if let Some(gtk_window) = gtk_window {
                     gtk_windows.push(gtk_window);
@@ -418,17 +532,45 @@ pub fn mount_native_overlay_webviews(world: &mut World) {
     }
     if !webviews.is_empty() {
         world.insert_non_send_resource(NativeOverlayWebviewHost {
-            #[cfg(all(
-                feature = "native-webview",
-                any(
-                    target_os = "linux",
-                    target_os = "dragonfly",
-                    target_os = "freebsd",
-                    target_os = "netbsd",
-                    target_os = "openbsd"
-                )
+            #[cfg(any(
+                target_os = "linux",
+                target_os = "dragonfly",
+                target_os = "freebsd",
+                target_os = "netbsd",
+                target_os = "openbsd"
             ))]
-            _gtk_windows: gtk_windows,
+            gtk_windows,
+            #[cfg(any(
+                target_os = "linux",
+                target_os = "dragonfly",
+                target_os = "freebsd",
+                target_os = "netbsd",
+                target_os = "openbsd"
+            ))]
+            gtk_window_visible: (0..webviews.len())
+                .map(|_| std::cell::Cell::new(true))
+                .collect(),
+            input_regions: vec![None; webviews.len()],
+            #[cfg(any(
+                target_os = "linux",
+                target_os = "dragonfly",
+                target_os = "freebsd",
+                target_os = "netbsd",
+                target_os = "openbsd"
+            ))]
+            synchronized_bounds: (0..webviews.len())
+                .map(|_| std::cell::Cell::new(None))
+                .collect(),
+            #[cfg(any(
+                target_os = "linux",
+                target_os = "dragonfly",
+                target_os = "freebsd",
+                target_os = "netbsd",
+                target_os = "openbsd"
+            ))]
+            synchronized_screen_positions: (0..webviews.len())
+                .map(|_| std::cell::Cell::new(None))
+                .collect(),
             ipc_rx,
             mounts: plan.0.mounts.clone(),
             _servers: servers,
@@ -460,19 +602,30 @@ fn build_native_overlay_webview(
         dpi::{LogicalPosition, LogicalSize},
     };
 
-    let gtk_window = gtk::Window::new(gtk::WindowType::Popup);
+    let gtk_window = gtk::Window::new(gtk::WindowType::Toplevel);
     gtk_window.set_decorated(false);
-    gtk_window.set_resizable(false);
+    gtk_window.set_resizable(true);
     gtk_window.set_accept_focus(false);
+    gtk_window.set_focus_on_map(false);
     gtk_window.set_app_paintable(true);
-    gtk_window.set_keep_above(true);
+    gtk_window.set_keep_above(false);
+    gtk_window.set_skip_pager_hint(true);
+    gtk_window.set_skip_taskbar_hint(true);
+    gtk_window.set_type_hint(gtk::gdk::WindowTypeHint::Utility);
     if let Some(screen) = gtk::prelude::GtkWindowExt::screen(&gtk_window) {
         if let Some(visual) = screen.rgba_visual() {
             gtk_window.set_visual(Some(&visual));
         }
     }
-    gtk_window.set_size_request(bounds.width as i32, bounds.height as i32);
-    gtk_window.resize(bounds.width as i32, bounds.height as i32);
+    if let Some([red, green, blue, alpha]) = native_overlay_host_clear_color(mount.transparent) {
+        gtk_window.connect_draw(move |_, context| {
+            context.set_operator(gtk::cairo::Operator::Source);
+            context.set_source_rgba(red, green, blue, alpha);
+            let _ = context.paint();
+            gtk::glib::Propagation::Proceed
+        });
+    }
+    resize_native_overlay_window(&gtk_window, bounds);
     position_native_overlay_window(&gtk_window, parent, bounds);
 
     let fixed = gtk::Fixed::new();
@@ -480,6 +633,7 @@ fn build_native_overlay_webview(
     gtk_window.add(&fixed);
     gtk_window.show_all();
     gtk_window.present();
+    resize_native_overlay_window(&gtk_window, bounds);
     position_native_overlay_window(&gtk_window, parent, bounds);
 
     let webview = create_wry_webview_builder_with_ipc(mount, ipc_tx, url)
@@ -489,6 +643,7 @@ fn build_native_overlay_webview(
         })
         .build_gtk(&fixed)
         .map_err(|error| error.to_string())?;
+    apply_native_overlay_input_shape(&gtk_window, &webview, mount.input, bounds, None);
     Ok((webview, Some(gtk_window)))
 }
 
@@ -526,18 +681,69 @@ fn build_native_overlay_webview(
         target_os = "openbsd"
     )
 ))]
+fn resize_native_overlay_window(gtk_window: &gtk::Window, bounds: NativeOverlayBounds) {
+    if let Some(child) = gtk_window.child() {
+        child.set_size_request(bounds.width as i32, bounds.height as i32);
+    }
+    gtk_window.set_size_request(bounds.width as i32, bounds.height as i32);
+    gtk_window.resize(bounds.width as i32, bounds.height as i32);
+}
+
+#[cfg(all(
+    feature = "native-webview",
+    any(
+        target_os = "linux",
+        target_os = "dragonfly",
+        target_os = "freebsd",
+        target_os = "netbsd",
+        target_os = "openbsd"
+    )
+))]
 fn position_native_overlay_window(
     gtk_window: &gtk::Window,
     parent: &winit::window::Window,
     bounds: NativeOverlayBounds,
-) {
-    let Ok(parent_position) = parent.outer_position() else {
-        return;
+) -> Option<(i32, i32)> {
+    let parent_position = parent.outer_position().or_else(|_| parent.inner_position());
+    let Ok(parent_position) = parent_position else {
+        return None;
     };
-    gtk_window.move_(
-        parent_position.x + bounds.x as i32,
-        parent_position.y + bounds.y as i32,
-    );
+    let (x, y) =
+        native_overlay_screen_position(parent_position.x, parent_position.y, bounds.x, bounds.y);
+    gtk_window.move_(x, y);
+    Some((x, y))
+}
+
+#[cfg(all(
+    feature = "native-webview",
+    any(
+        target_os = "linux",
+        target_os = "dragonfly",
+        target_os = "freebsd",
+        target_os = "netbsd",
+        target_os = "openbsd"
+    )
+))]
+fn apply_native_overlay_input_shape(
+    gtk_window: &gtk::Window,
+    webview: &wry::WebView,
+    input: NativeOverlayInputPolicy,
+    bounds: NativeOverlayBounds,
+    input_regions: Option<&[NativeOverlayBounds]>,
+) {
+    use wry::WebViewExtUnix;
+
+    let region = gtk::cairo::Region::create();
+    for input_region in native_overlay_input_rectangles(input, bounds, input_regions) {
+        let _ = region.union_rectangle(&gtk::cairo::RectangleInt::new(
+            input_region.x as i32,
+            input_region.y as i32,
+            input_region.width as i32,
+            input_region.height as i32,
+        ));
+    }
+    gtk_window.input_shape_combine_region(Some(&region));
+    webview.webview().input_shape_combine_region(Some(&region));
 }
 
 #[cfg(feature = "native-webview")]
@@ -710,6 +916,102 @@ pub fn resize_native_overlay_webviews(
         target_os = "openbsd"
     )
 ))]
+pub fn synchronize_native_overlay_webviews(
+    host: Option<NonSend<NativeOverlayWebviewHost>>,
+    windows: Query<(Entity, &Window), With<bevy::window::PrimaryWindow>>,
+    winit_windows: Option<NonSend<WinitWindows>>,
+) {
+    let (Some(host), Some(winit_windows)) = (host, winit_windows) else {
+        return;
+    };
+    let Ok((window_entity, window)) = windows.get_single() else {
+        return;
+    };
+    let Some(parent) = winit_windows.get_window(window_entity) else {
+        return;
+    };
+    for (index, gtk_window) in host.gtk_windows.iter().enumerate() {
+        let Some(mount) = host.mounts.get(index) else {
+            continue;
+        };
+        let Some(webview) = host.webviews.get(index) else {
+            continue;
+        };
+        let bounds =
+            native_overlay_bounds(mount, window.resolution.width(), window.resolution.height());
+        let bounds_changed = host.synchronized_bounds[index].get() != Some(bounds);
+        if bounds_changed {
+            use wry::WebViewExtUnix;
+            webview
+                .webview()
+                .set_size_request(bounds.width as i32, bounds.height as i32);
+            resize_native_overlay_window(gtk_window, bounds);
+            if let Err(error) =
+                set_wry_webview_bounds(webview, native_overlay_webview_bounds(bounds))
+            {
+                warn!(
+                    "TN_OVERLAY_NATIVE_RESIZE_FAILED: failed to synchronize native overlay '{}': {}",
+                    mount.id, error
+                );
+            }
+            host.synchronized_bounds[index].set(Some(bounds));
+            apply_native_overlay_input_shape(
+                gtk_window,
+                webview,
+                mount.input,
+                bounds,
+                host.input_regions[index].as_deref(),
+            );
+        }
+        let parent_position = parent.outer_position().or_else(|_| parent.inner_position());
+        if let Ok(parent_position) = parent_position {
+            let screen_position = native_overlay_screen_position(
+                parent_position.x,
+                parent_position.y,
+                bounds.x,
+                bounds.y,
+            );
+            if host.synchronized_screen_positions[index].get() != Some(screen_position) {
+                gtk_window.move_(screen_position.0, screen_position.1);
+                host.synchronized_screen_positions[index].set(Some(screen_position));
+            }
+        }
+        let should_show = window.focused && window.visible;
+        if should_show {
+            if !host.gtk_window_visible[index].replace(true) {
+                gtk_window.show();
+                if let Some(window) = gtk_window.window() {
+                    window.raise();
+                }
+            }
+        } else if host.gtk_window_visible[index].replace(false) {
+            gtk_window.hide();
+        }
+    }
+}
+
+#[cfg(all(
+    feature = "native-webview",
+    not(any(
+        target_os = "linux",
+        target_os = "dragonfly",
+        target_os = "freebsd",
+        target_os = "netbsd",
+        target_os = "openbsd"
+    ))
+))]
+pub fn synchronize_native_overlay_webviews() {}
+
+#[cfg(all(
+    feature = "native-webview",
+    any(
+        target_os = "linux",
+        target_os = "dragonfly",
+        target_os = "freebsd",
+        target_os = "netbsd",
+        target_os = "openbsd"
+    )
+))]
 pub fn pump_native_overlay_webview_events(
     mut host: Option<NonSendMut<NativeOverlayWebviewHost>>,
     mut bridge: Option<ResMut<NativeOverlayBridgeResource>>,
@@ -744,22 +1046,50 @@ fn deliver_native_overlay_snapshots(
     host: Option<&NativeOverlayWebviewHost>,
     bridge: Option<&NativeOverlayBridgeResource>,
 ) {
-    let (Some(host), Some(bridge)) = (host, bridge) else { return; };
+    let (Some(host), Some(bridge)) = (host, bridge) else {
+        return;
+    };
     let delivered = host.delivered_sequence.get();
     let mut newest = delivered;
-    for snapshot in bridge.bridge.snapshots().iter().filter(|entry| entry.sequence > delivered) {
-        let Some(index) = host.mounts.iter().position(|mount| mount.id == snapshot.overlay_id) else { continue; };
-        let script = native_overlay_snapshot_script(&snapshot.message_type, &snapshot.payload, snapshot.sequence);
+    for snapshot in bridge
+        .bridge
+        .snapshots()
+        .iter()
+        .filter(|entry| entry.sequence > delivered)
+    {
+        let Some(index) = host
+            .mounts
+            .iter()
+            .position(|mount| mount.id == snapshot.overlay_id)
+        else {
+            continue;
+        };
+        let script = native_overlay_snapshot_script(
+            &snapshot.message_type,
+            &snapshot.payload,
+            snapshot.sequence,
+        );
         if let Err(error) = host.webviews[index].evaluate_script(&script) {
-            warn!("TN_OVERLAY_NATIVE_DELIVERY_FAILED: failed to deliver snapshot to '{}': {}", snapshot.overlay_id, error);
+            warn!(
+                "TN_OVERLAY_NATIVE_DELIVERY_FAILED: failed to deliver snapshot to '{}': {}",
+                snapshot.overlay_id, error
+            );
             continue;
         }
+        info!(
+            "delivered native overlay '{}' snapshot '{}' sequence {}",
+            snapshot.overlay_id, snapshot.message_type, snapshot.sequence
+        );
         newest = newest.max(snapshot.sequence);
     }
     host.delivered_sequence.set(newest);
 }
 
-pub fn native_overlay_snapshot_script(message_type: &str, payload: &serde_json::Value, sequence: u64) -> String {
+pub fn native_overlay_snapshot_script(
+    message_type: &str,
+    payload: &serde_json::Value,
+    sequence: u64,
+) -> String {
     format!(
         "window.__threenativeDispatchOverlaySnapshot?.({}, {}, {});",
         serde_json::to_string(message_type).unwrap_or_else(|_| "\"\"".to_owned()),
@@ -779,6 +1109,15 @@ struct NativeOverlayIpcEnvelope {
 }
 
 #[cfg(feature = "native-webview")]
+#[derive(Deserialize)]
+struct NativeOverlayInputRegion {
+    height: f64,
+    width: f64,
+    x: f64,
+    y: f64,
+}
+
+#[cfg(feature = "native-webview")]
 fn drain_native_overlay_ipc(
     host: Option<&mut NativeOverlayWebviewHost>,
     bridge: Option<&mut NativeOverlayBridgeResource>,
@@ -791,7 +1130,11 @@ fn drain_native_overlay_ipc(
             warn!("TN_OVERLAY_NATIVE_IPC_REJECTED: native overlay sent malformed IPC payload");
             continue;
         };
-        if let Some(index) = host.mounts.iter().position(|mount| mount.id == envelope.overlay_id) {
+        if let Some(index) = host
+            .mounts
+            .iter()
+            .position(|mount| mount.id == envelope.overlay_id)
+        {
             if envelope.message_type == "overlay:set-visible" {
                 if let Some(visible) = envelope.payload.get("visible").and_then(Value::as_bool) {
                     if let Err(error) = host.webviews[index].set_visible(visible) {
@@ -802,10 +1145,57 @@ fn drain_native_overlay_ipc(
             }
             if envelope.message_type == "overlay:set-input" {
                 if let Some(mode) = envelope.payload.get("mode").and_then(Value::as_str) {
-                    if matches!(mode, "keyboard" | "modal" | "none" | "pointer" | "pointer-and-keyboard") {
-                        host.mounts[index].input = native_overlay_input_policy(mode);
+                    if matches!(
+                        mode,
+                        "keyboard" | "modal" | "none" | "pointer" | "pointer-and-keyboard"
+                    ) {
+                        let previous_input = host.mounts[index].input;
+                        let next_input = native_overlay_input_policy(mode);
+                        if previous_input != next_input {
+                            host.mounts[index].input = next_input;
+                            info!(
+                                "native overlay '{}' input mode changed to '{}'",
+                                envelope.overlay_id, mode
+                            );
+                            synchronize_native_overlay_input_shape(host, index);
+                        }
                         continue;
                     }
+                }
+            }
+            if envelope.message_type == "overlay:set-input-regions" {
+                let regions = envelope.payload.get("regions").cloned().and_then(|value| {
+                    serde_json::from_value::<Vec<NativeOverlayInputRegion>>(value).ok()
+                });
+                if let Some(regions) = regions {
+                    let regions = regions
+                        .into_iter()
+                        .filter(|region| {
+                            region.x.is_finite()
+                                && region.y.is_finite()
+                                && region.width.is_finite()
+                                && region.height.is_finite()
+                                && region.width > 0.0
+                                && region.height > 0.0
+                        })
+                        .map(|region| NativeOverlayBounds {
+                            height: region.height.ceil().max(1.0) as u32,
+                            width: region.width.ceil().max(1.0) as u32,
+                            x: region.x.floor().max(0.0) as u32,
+                            y: region.y.floor().max(0.0) as u32,
+                        })
+                        .collect::<Vec<_>>();
+                    let regions_changed =
+                        host.input_regions[index].as_deref() != Some(regions.as_slice());
+                    if regions_changed {
+                        info!(
+                            "native overlay '{}' input regions changed to {:?}",
+                            envelope.overlay_id, regions
+                        );
+                        host.input_regions[index] = Some(regions);
+                        synchronize_native_overlay_input_shape(host, index);
+                    }
+                    continue;
                 }
             }
         }
@@ -824,6 +1214,48 @@ fn drain_native_overlay_ipc(
         }
     }
 }
+
+#[cfg(all(
+    feature = "native-webview",
+    any(
+        target_os = "linux",
+        target_os = "dragonfly",
+        target_os = "freebsd",
+        target_os = "netbsd",
+        target_os = "openbsd"
+    )
+))]
+fn synchronize_native_overlay_input_shape(host: &NativeOverlayWebviewHost, index: usize) {
+    let (Some(gtk_window), Some(webview), Some(mount), Some(bounds)) = (
+        host.gtk_windows.get(index),
+        host.webviews.get(index),
+        host.mounts.get(index),
+        host.synchronized_bounds
+            .get(index)
+            .and_then(std::cell::Cell::get),
+    ) else {
+        return;
+    };
+    apply_native_overlay_input_shape(
+        gtk_window,
+        webview,
+        mount.input,
+        bounds,
+        host.input_regions[index].as_deref(),
+    );
+}
+
+#[cfg(all(
+    feature = "native-webview",
+    not(any(
+        target_os = "linux",
+        target_os = "dragonfly",
+        target_os = "freebsd",
+        target_os = "netbsd",
+        target_os = "openbsd"
+    ))
+))]
+fn synchronize_native_overlay_input_shape(_host: &NativeOverlayWebviewHost, _index: usize) {}
 
 #[cfg(feature = "native-webview")]
 fn resize_wry_webview(
@@ -916,13 +1348,11 @@ pub fn native_overlay_bounds(
         };
     }
 
-    let width = full_width.min(242);
-    let height = full_height.min(207);
     NativeOverlayBounds {
-        height,
-        width,
-        x: full_width.saturating_sub(width + 24),
-        y: 24.min(full_height.saturating_sub(height)),
+        height: full_height,
+        width: full_width,
+        x: 0,
+        y: 0,
     }
 }
 

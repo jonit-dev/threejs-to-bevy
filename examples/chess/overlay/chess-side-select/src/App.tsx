@@ -29,7 +29,7 @@ function Settings({ close }: { close(): void }) {
   const [sound, setSound] = useState(true);
   const [highlights, setHighlights] = useState(true);
   return (
-    <div className="absolute inset-0 grid place-items-center bg-black/50 p-[max(1rem,env(safe-area-inset-top))_max(1rem,env(safe-area-inset-right))_max(1rem,env(safe-area-inset-bottom))_max(1rem,env(safe-area-inset-left))] backdrop-blur" role="presentation" onPointerDown={(event) => event.target === event.currentTarget && close()}>
+    <div data-threenative-interactive className="absolute inset-0 grid place-items-center bg-black/50 p-[max(1rem,env(safe-area-inset-top))_max(1rem,env(safe-area-inset-right))_max(1rem,env(safe-area-inset-bottom))_max(1rem,env(safe-area-inset-left))] backdrop-blur" role="presentation" onPointerDown={(event) => event.target === event.currentTarget && close()}>
       <section className="relative w-full max-w-[420px] rounded-xl border border-[#daad57]/60 bg-[linear-gradient(145deg,#17140f,#080909)] p-[30px] shadow-[0_30px_90px_#000]" role="dialog" aria-modal="true" aria-labelledby="settings-title">
         <button className={`absolute right-4 top-3 cursor-pointer border-0 bg-transparent text-[27px] text-[#aaa298] ${focusRing}`} onClick={close} aria-label="Close settings">×</button>
         <p className="mb-[7px] mt-0 text-xs font-extrabold tracking-[.22em] text-[#d6aa55]">GAME OPTIONS</p>
@@ -50,9 +50,11 @@ function SettingsIcon() {
   return <svg aria-hidden="true" className="h-7 w-7 shrink-0" fill="none" viewBox="0 0 24 24"><path d="M9.7 3.4h4.6l.55 2.05a7.5 7.5 0 0 1 1.4.82l2.05-.56 2.3 3.98-1.5 1.5q.08.4.08.81t-.08.81l1.5 1.5-2.3 3.98-2.05-.56a7.5 7.5 0 0 1-1.4.82l-.55 2.05H9.7l-.55-2.05a7.5 7.5 0 0 1-1.4-.82l-2.05.56-2.3-3.98 1.5-1.5A4 4 0 0 1 4.82 12q0-.41.08-.81l-1.5-1.5L5.7 5.71l2.05.56a7.5 7.5 0 0 1 1.4-.82z" stroke="currentColor" strokeLinejoin="round" strokeWidth="1.8"/><circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="1.8"/></svg>;
 }
 
-function GameHud({ captures, restart, side }: { captures: Record<Side, string>; restart(): void; side: Side }) {
+function GameHud({ captures, restart, setInput, side }: { captures: Record<Side, string>; restart(): void; setInput(mode: "modal" | "pointer"): void; side: Side }) {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const opponent = side === "white" ? "black" : "white";
+  const openSettings = () => { setSettingsOpen(true); setInput("modal"); };
+  const closeSettings = () => { setSettingsOpen(false); setInput("pointer"); };
   useEffect(() => {
     const forwardKeyboard = (event: KeyboardEvent) => {
       if (document.querySelector("[role='dialog']") !== null) return;
@@ -68,9 +70,9 @@ function GameHud({ captures, restart, side }: { captures: Record<Side, string>; 
         <CapturedCard label="Opponent captured" pieces={captures[side]} tone={side} />
         <CapturedCard label="You captured" pieces={captures[opponent]} tone={opponent} />
       </aside>
-      <button className={`${actionButton} bottom-[106px] max-[760px]:bottom-[90px]`} onClick={restart}><span className="text-[#aaa79f] transition-colors group-hover:text-[#d8b15d]"><RestartIcon /></span><span>New Game</span></button>
-      <button className={`${actionButton} bottom-7 max-[760px]:bottom-4`} onClick={() => setSettingsOpen(true)}><span className="text-[#aaa79f] transition-colors group-hover:text-[#d8b15d]"><SettingsIcon /></span><span>Settings</span></button>
-      {settingsOpen && <Settings close={() => setSettingsOpen(false)} />}
+      <button data-threenative-interactive className={`${actionButton} bottom-[106px] max-[760px]:bottom-[90px]`} onClick={restart}><span className="text-[#aaa79f] transition-colors group-hover:text-[#d8b15d]"><RestartIcon /></span><span>New Game</span></button>
+      <button data-threenative-interactive className={`${actionButton} bottom-7 max-[760px]:bottom-4`} onClick={openSettings}><span className="text-[#aaa79f] transition-colors group-hover:text-[#d8b15d]"><SettingsIcon /></span><span>Settings</span></button>
+      {settingsOpen && <Settings close={closeSettings} />}
     </main>
   );
 }
@@ -78,7 +80,7 @@ function GameHud({ captures, restart, side }: { captures: Record<Side, string>; 
 function SideChoice({ side, choose }: { side: Side; choose(side: Side): void }) {
   const white = side === "white";
   return (
-    <button className={`flex min-h-[122px] cursor-pointer items-center gap-3.5 rounded-[10px] border border-[#daad57]/30 bg-white/[.035] p-[18px] text-left text-[#f8f3e8] transition hover:-translate-y-0.5 hover:border-[#e3b653] hover:bg-[#e3b653]/10 hover:shadow-[0_8px_28px_rgba(0,0,0,.34)] motion-reduce:transition-none max-[560px]:min-h-[88px] ${focusRing}`} onClick={() => choose(side)}>
+    <button data-threenative-interactive className={`flex min-h-[122px] cursor-pointer items-center gap-3.5 rounded-[10px] border border-[#daad57]/30 bg-white/[.035] p-[18px] text-left text-[#f8f3e8] transition hover:-translate-y-0.5 hover:border-[#e3b653] hover:bg-[#e3b653]/10 hover:shadow-[0_8px_28px_rgba(0,0,0,.34)] motion-reduce:transition-none max-[560px]:min-h-[88px] ${focusRing}`} onClick={() => choose(side)}>
       <span className={`w-14 text-center font-serif text-[54px] leading-none drop-shadow-[0_3px_5px_#000] ${white ? "text-[#f1d493]" : "text-[#7d7569] [text-shadow:0_1px_#c2a871]"}`}>{white ? "♔" : "♚"}</span>
       <span><strong className="block text-[17px]">Play {white ? "White" : "Black"}</strong><small className="mt-1 block text-xs text-[#a9a39a]">{white ? "You move first" : "AI moves first"}</small></span>
     </button>
@@ -86,6 +88,15 @@ function SideChoice({ side, choose }: { side: Side; choose(side: Side): void }) 
 }
 
 function SideChooser({ choose }: { choose(side: Side): void }) {
+  useEffect(() => {
+    const chooseFromKeyboard = (event: KeyboardEvent) => {
+      if (event.repeat) return;
+      if (event.code === "KeyW") choose("white");
+      if (event.code === "KeyB") choose("black");
+    };
+    window.addEventListener("keydown", chooseFromKeyboard);
+    return () => window.removeEventListener("keydown", chooseFromKeyboard);
+  }, [choose]);
   return (
     <main className="fixed inset-0 grid place-items-center bg-black/45 p-[max(1.25rem,env(safe-area-inset-top))_max(1.25rem,env(safe-area-inset-right))_max(1.25rem,env(safe-area-inset-bottom))_max(1.25rem,env(safe-area-inset-left))] backdrop-blur-[2px]">
       <section className="w-full max-w-[560px] rounded-[14px] border border-[#daad57]/60 bg-[linear-gradient(145deg,rgba(18,16,13,.94),rgba(5,7,9,.92))] p-[30px] text-center shadow-[0_28px_80px_rgba(0,0,0,.62),inset_0_1px_rgba(255,255,255,.06)] backdrop-blur-[14px] max-[560px]:p-[22px]" role="dialog" aria-modal="true" aria-labelledby="side-title">
@@ -107,9 +118,9 @@ export function App() {
     if (payload.playerSide !== "white" && payload.playerSide !== "black") return;
     setSide(payload.playerSide);
     setCaptures({ black: payload.black, white: payload.white });
-    client.setInput("modal");
+    client.setInput("ipc" in window ? "pointer" : "modal");
   }), [client]);
   const choose = (nextSide: Side) => { client.send("chess:choose-side", { side: nextSide }); };
   const restart = () => { client.send("chess:restart", {}); };
-  return side === undefined ? <SideChooser choose={choose} /> : <GameHud captures={captures} restart={restart} side={side} />;
+  return side === undefined ? <SideChooser choose={choose} /> : <GameHud captures={captures} restart={restart} setInput={(mode) => client.setInput(mode)} side={side} />;
 }

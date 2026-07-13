@@ -82,11 +82,11 @@ export async function runGameFrame(options: {
   const fixedDelta = options.fixedDelta ?? options.runtimeConfig?.time.fixedDelta ?? 1 / 60;
   const frameDelta = Math.min(Math.max(options.delta, 0), 0.25);
   const runtimeState = options.runtimeState ?? webSystemRuntimeStateFor(options.world, { assets: options.assets });
-  options.input?.beginFrame();
   const state = options.state;
   if (state !== undefined) {
     state.elapsed += frameDelta;
     if (!state.paused) {
+      options.input?.beginFrame();
       state.accumulator += frameDelta;
       state.accumulator = Math.min(state.accumulator, fixedDelta * MAX_FIXED_STEPS_PER_FRAME);
       if (!state.startupComplete) {
@@ -123,6 +123,7 @@ export async function runGameFrame(options: {
     }
     state.frame += 1;
   } else {
+    options.input?.beginFrame();
     runtimeState.writeLedger.beginTick(0);
     runtimeState.sensors.advance(options.world, { fixedDelta, tick: 0 });
     collectSystemResult(options.mapped, await runSchedule({ ...options, delta: 0, fixedDelta, frame: 0, runtimeState, schedule: "startup", tick: 0 }));

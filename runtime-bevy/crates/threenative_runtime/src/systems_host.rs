@@ -19,15 +19,13 @@ use crate::{
     input::NativeInputState,
     physics_sensors::{PhysicsSensorEvent, PhysicsSensorRuntimeState},
     systems_context::{
-        build_system_context_snapshot_with_sensor_events_and_lifecycle,
         NativeEntityLifecycleSnapshot, NativeSystemTimeSnapshot,
+        build_system_context_snapshot_with_sensor_events_and_lifecycle,
     },
     systems_effects::{
         NativeRuntimeWriteLedger, NativeRuntimeWriteObservation, NativeSystemEffectDiagnostic,
-        NativeSystemEffectLog, NativeSystemEffects,
-        apply_system_effects_with_report_and_ledger,
-        apply_system_effects_with_report_and_ledger_and_writer,
-        record_initial_runtime_writes,
+        NativeSystemEffectLog, NativeSystemEffects, apply_system_effects_with_report_and_ledger,
+        apply_system_effects_with_report_and_ledger_and_writer, record_initial_runtime_writes,
     },
     systems_host_bridge::BRIDGE_SOURCE,
     transform_interpolation::{TransformSample, interpolate_transform},
@@ -140,9 +138,21 @@ impl NativeEntityLifecycleRuntimeState {
         let spawned = self.spawned.keys().cloned().collect();
         let despawned = self.despawned.keys().cloned().collect();
         let mut tags = BTreeMap::new();
-        tags.extend(self.spawned.iter().map(|(id, tags)| (id.clone(), tags.clone())));
-        tags.extend(self.despawned.iter().map(|(id, tags)| (id.clone(), tags.clone())));
-        NativeEntityLifecycleSnapshot { despawned, spawned, tags }
+        tags.extend(
+            self.spawned
+                .iter()
+                .map(|(id, tags)| (id.clone(), tags.clone())),
+        );
+        tags.extend(
+            self.despawned
+                .iter()
+                .map(|(id, tags)| (id.clone(), tags.clone())),
+        );
+        NativeEntityLifecycleSnapshot {
+            despawned,
+            spawned,
+            tags,
+        }
     }
 }
 
@@ -158,7 +168,9 @@ fn entity_tag_snapshot(bundle: &LoadedBundle) -> BTreeMap<String, Vec<String>> {
 fn normalize_entity_tags(tags: &[String]) -> Vec<String> {
     let mut normalized = tags
         .iter()
-        .filter(|tag| !tag.trim().is_empty() && tag.len() <= 64 && !tag.chars().any(char::is_control))
+        .filter(|tag| {
+            !tag.trim().is_empty() && tag.len() <= 64 && !tag.chars().any(char::is_control)
+        })
         .cloned()
         .collect::<Vec<_>>();
     normalized.sort();
@@ -184,10 +196,7 @@ pub fn native_gameplay_observations(bundle: &LoadedBundle) -> Value {
     let mut tag_entities: BTreeMap<String, Vec<String>> = BTreeMap::new();
     for entity in &bundle.world.entities {
         for tag in normalize_entity_tags(&entity.tags) {
-            tag_entities
-                .entry(tag)
-                .or_default()
-                .push(entity.id.clone());
+            tag_entities.entry(tag).or_default().push(entity.id.clone());
         }
     }
     let tags = tag_entities
@@ -557,7 +566,8 @@ pub fn run_native_systems_frame_with_input(
                 state.tick,
                 &mut state.countdown_runtime,
             );
-            let sensor_events = sensor_event_values(&state.sensor_state.advance(bundle, state.tick));
+            let sensor_events =
+                sensor_event_values(&state.sensor_state.advance(bundle, state.tick));
             frame_sensor_events = sensor_events.clone();
             crate::state_machines::step_bundle_state_machines(
                 bundle,
@@ -633,8 +643,8 @@ pub fn run_native_systems_frame_with_input(
                 &mut state.delayed_commands,
                 &mut state.delayed_command_observations,
             )),
-                Some(&mut state.lifecycle),
-                false,
+            Some(&mut state.lifecycle),
+            false,
         )?;
         state
             .script_posed_entities
@@ -672,7 +682,10 @@ fn merge_emitted_events(
 ) {
     for (event, payloads) in source {
         let source_len = payloads.as_array().map_or(1, Vec::len);
-        let target_len = target.get(&event).and_then(Value::as_array).map_or(0, Vec::len);
+        let target_len = target
+            .get(&event)
+            .and_then(Value::as_array)
+            .map_or(0, Vec::len);
         if source_len > target_len {
             target.insert(event, payloads);
         }
@@ -964,22 +977,21 @@ fn run_native_system_schedules_with_state(
                 if let Some((pending, observations)) = delayed_state.as_mut() {
                     enqueue_native_delayed_commands(pending, observations, system, &effects, tick);
                 }
-                let applied =
-                    apply_system_effects_with_report_and_ledger(
-                        bundle,
-                        system,
-                        &effects,
-                        frame,
-                        tick as u32,
-                        write_ledger.as_deref_mut(),
-                    )
-                        .map_err(|diagnostics| {
-                            let first = diagnostics
-                                .into_iter()
-                                .next()
-                                .expect("invalid effects should include diagnostics");
-                            host_error(first.code, first.message)
-                        })?;
+                let applied = apply_system_effects_with_report_and_ledger(
+                    bundle,
+                    system,
+                    &effects,
+                    frame,
+                    tick as u32,
+                    write_ledger.as_deref_mut(),
+                )
+                .map_err(|diagnostics| {
+                    let first = diagnostics
+                        .into_iter()
+                        .next()
+                        .expect("invalid effects should include diagnostics");
+                    host_error(first.code, first.message)
+                })?;
                 if let Some(lifecycle_state) = lifecycle_state.as_deref_mut() {
                     lifecycle_state.observe(bundle);
                 }
@@ -1045,12 +1057,18 @@ fn run_native_system_schedules_with_state(
         resource_observations,
         transform_patches,
         write_diagnostics: if capture_write_audit {
-            write_ledger.as_deref().map(|ledger| ledger.diagnostics(tick)).unwrap_or_default()
+            write_ledger
+                .as_deref()
+                .map(|ledger| ledger.diagnostics(tick))
+                .unwrap_or_default()
         } else {
             Vec::new()
         },
         write_observations: if capture_write_audit {
-            write_ledger.as_deref().map(NativeRuntimeWriteLedger::observations).unwrap_or_default()
+            write_ledger
+                .as_deref()
+                .map(NativeRuntimeWriteLedger::observations)
+                .unwrap_or_default()
         } else {
             Vec::new()
         },

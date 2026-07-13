@@ -51,7 +51,14 @@ fn should_map_keyboard_input_event_to_action() {
     map_keyboard_event(&input, "KeyD", true, &mut state);
 
     assert!(state.action("Attack"));
+    assert!(state.pressed("Attack"));
+    assert!(!state.released("Attack"));
     assert_eq!(state.axis("MoveX"), 1.0);
+
+    map_keyboard_event(&input, "Space", false, &mut state);
+    assert!(!state.action("Attack"));
+    assert!(!state.pressed("Attack"));
+    assert!(state.released("Attack"));
 }
 
 #[test]
@@ -74,9 +81,11 @@ fn should_map_pointer_input_event_to_action() {
 
     map_pointer_button_event(&input, 0, true, &mut state);
     assert!(state.action("Attack"));
+    assert!(state.pressed("Attack"));
 
     map_pointer_button_event(&input, 0, false, &mut state);
     assert!(!state.action("Attack"));
+    assert!(state.released("Attack"));
 }
 
 #[test]
@@ -268,8 +277,23 @@ fn should_capture_bevy_keyboard_and_pointer_input() {
 
     let state = app.world().resource::<NativeInputState>();
     assert!(state.action("Attack"));
+    assert!(state.pressed("Attack"));
+    assert!(!state.released("Attack"));
     assert_eq!(state.axis("MoveX"), 1.0);
     assert_eq!(state.axis("LookX"), 40.0);
+
+    app.update();
+    let state = app.world().resource::<NativeInputState>();
+    assert!(state.action("Attack"));
+    assert!(!state.pressed("Attack"));
+
+    app.world_mut()
+        .resource_mut::<ButtonInput<MouseButton>>()
+        .release(MouseButton::Left);
+    app.update();
+    let state = app.world().resource::<NativeInputState>();
+    assert!(!state.action("Attack"));
+    assert!(state.released("Attack"));
 }
 
 #[test]

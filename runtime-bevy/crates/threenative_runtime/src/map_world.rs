@@ -427,8 +427,15 @@ impl MapError {
 }
 
 pub fn map_bundle_into_world(world: &mut World, bundle: &LoadedBundle) -> Result<(), MapError> {
-    if let Some(material) = bundle.materials.materials.iter().find(|material| material.kind == "unlit") {
-        return Err(MapError::UnsupportedUnlitMaterial { material_id: material.id.clone() });
+    if let Some(material) = bundle
+        .materials
+        .materials
+        .iter()
+        .find(|material| material.kind == "unlit")
+    {
+        return Err(MapError::UnsupportedUnlitMaterial {
+            material_id: material.id.clone(),
+        });
     }
     let spawn_context = prepare_world_entity_spawn_context(world, bundle);
     let mut material_handles = NativeMaterialHandles::default();
@@ -1594,7 +1601,10 @@ mod tests {
         };
 
         assert_eq!(error.code(), "TN_BEVY_MATERIAL_UNLIT_UNSUPPORTED");
-        assert_eq!(error.path(), "materials.ir.json/materials/mat.backdrop/kind");
+        assert_eq!(
+            error.path(),
+            "materials.ir.json/materials/mat.backdrop/kind"
+        );
         assert!(error.suggestion().contains("freeze-gate"));
     }
 }

@@ -204,6 +204,8 @@ fn rounded_time(value: f32) -> f64 {
 pub struct NativeSystemInputSnapshot {
     pub actions: BTreeMap<String, bool>,
     pub axes: BTreeMap<String, f32>,
+    pub pressed: BTreeMap<String, bool>,
+    pub released: BTreeMap<String, bool>,
 }
 
 #[derive(Clone, Debug, Default, Serialize)]
@@ -297,7 +299,13 @@ pub fn build_system_context_snapshot_with_events_input_and_diff(
     diff_cache: Option<&ComponentDiffCache>,
 ) -> NativeSystemContextSnapshot {
     build_system_context_snapshot_with_sensor_events(
-        bundle, system, time, events, input, diff_cache, &[],
+        bundle,
+        system,
+        time,
+        events,
+        input,
+        diff_cache,
+        &[],
     )
 }
 
@@ -411,7 +419,9 @@ pub fn build_system_context_snapshot_with_sensor_events_and_lifecycle(
 fn normalize_entity_tags(tags: &[String]) -> Vec<String> {
     let mut normalized = tags
         .iter()
-        .filter(|tag| !tag.trim().is_empty() && tag.len() <= 64 && !tag.chars().any(char::is_control))
+        .filter(|tag| {
+            !tag.trim().is_empty() && tag.len() <= 64 && !tag.chars().any(char::is_control)
+        })
         .cloned()
         .collect::<Vec<_>>();
     normalized.sort();
@@ -875,6 +885,8 @@ impl NativeSystemInputSnapshot {
         Self {
             actions: BTreeMap::new(),
             axes: BTreeMap::new(),
+            pressed: BTreeMap::new(),
+            released: BTreeMap::new(),
         }
     }
 
@@ -882,6 +894,8 @@ impl NativeSystemInputSnapshot {
         Self {
             actions: BTreeMap::from([("MoveForward".to_owned(), true), ("Jump".to_owned(), true)]),
             axes: BTreeMap::from([("MoveX".to_owned(), 1.0), ("MoveY".to_owned(), 0.0)]),
+            pressed: BTreeMap::from([("MoveForward".to_owned(), true), ("Jump".to_owned(), true)]),
+            released: BTreeMap::new(),
         }
     }
 
@@ -891,6 +905,14 @@ impl NativeSystemInputSnapshot {
             axes: input
                 .axes()
                 .map(|(id, value)| (id.clone(), *value))
+                .collect(),
+            pressed: input
+                .pressed_action_ids()
+                .map(|id| (id.clone(), true))
+                .collect(),
+            released: input
+                .released_action_ids()
+                .map(|id| (id.clone(), true))
                 .collect(),
         }
     }
@@ -1055,6 +1077,8 @@ fn service_readable_components(service: &str) -> Vec<String> {
             "RigidBody".to_owned(),
             "Transform".to_owned(),
         ],
+        "picking.mesh" => vec!["MeshRenderer".to_owned(), "Transform".to_owned()],
+        "picking.pointerRay" => vec!["Camera".to_owned(), "Transform".to_owned()],
         _ => Vec::new(),
     }
 }

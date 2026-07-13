@@ -11,7 +11,7 @@
     "dev:web": "pnpm run build:overlay && tn dev --target web",
     "iterate": "pnpm run build:overlay && tn iterate --project . --json",
     "playtest": "tn playtest --scenario playtests/chess-opening.playtest.json --stable-artifacts --json",
-    "playtest:native": "tn playtest --scenario playtests/chess-overlay-native.playtest.json --target desktop --json",
+    "playtest:native": "tn playtest --scenario playtests/chess-retained-native.playtest.json --target desktop --json",
     "game:plan": "tn game plan --goal \"polished full-rules 3D chess with click and drag interaction\" --project . --json",
     "game:improve": "tn game improve --apply-plan artifacts/game-production/plan.json --project . --json",
     "game:score": "tn game score --project . --json",

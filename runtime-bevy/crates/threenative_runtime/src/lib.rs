@@ -28,29 +28,29 @@ pub mod environment;
 pub mod first_person;
 pub mod game_flow;
 pub mod gizmo_geometry;
-pub mod height_fog_postprocess;
 pub mod gltf_scene_handles;
+pub mod height_fog_postprocess;
 pub mod input;
-pub mod interactions;
 pub mod input_ui_polish;
+pub mod interactions;
 pub mod kinematic_mover;
 pub mod map_world;
 pub mod mesh_bounds;
 pub mod motion_blur_postprocess;
-pub mod navigation;
+pub mod native_ssr;
 pub mod native_volumetric;
+pub mod navigation;
 pub mod overlay;
 pub mod overlay_host;
-pub mod patrol;
-pub mod native_ssr;
 pub mod path_sampling;
+pub mod patrol;
 pub mod performance_metrics;
-pub mod presentation;
 pub mod persistence;
 pub mod persistence_reload;
 pub mod physics;
 pub mod physics_sensors;
 pub mod picking;
+pub mod presentation;
 pub mod production_hardening;
 pub mod proof_harness;
 pub mod render_targets;
@@ -66,11 +66,11 @@ pub mod scripting_host_matrix;
 pub mod sequences;
 pub mod spawner;
 pub mod ssgi_postprocess;
+pub mod state_machines;
 pub mod stylized_nature;
 pub mod systems_context;
 pub mod systems_effects;
 pub mod systems_host;
-pub mod state_machines;
 mod systems_host_bridge;
 pub mod systems_services;
 pub mod trace_report;
@@ -295,9 +295,7 @@ pub fn app_from_bundle_with_options(
             #[cfg(feature = "native-webview")]
             {
                 if let Some(overlays) = bundle.overlays.clone() {
-                    app.insert_resource(overlay_host::NativeOverlayBridgeResource::new(
-                        overlays,
-                    ));
+                    app.insert_resource(overlay_host::NativeOverlayBridgeResource::new(overlays));
                 }
                 if let Some(error) = native_overlay_init_error.as_ref() {
                     warn!("TN_OVERLAY_NATIVE_INIT_FAILED: {error}");
@@ -307,9 +305,12 @@ pub fn app_from_bundle_with_options(
                         Update,
                         (
                             overlay_host::mount_native_overlay_webviews,
+                            overlay_host::synchronize_native_overlay_webviews,
                             overlay_host::resize_native_overlay_webviews,
-                            overlay_host::pump_native_overlay_webview_events,
-                        ),
+                            overlay_host::pump_native_overlay_webview_events
+                                .before(run_scripted_runtime_systems),
+                        )
+                            .chain(),
                     );
                 }
             }
@@ -614,7 +615,11 @@ fn run_scripted_runtime_systems(
     time: Res<Time>,
     mut transforms: Query<(&ThreeNativeId, &mut Transform)>,
     mut materials: Query<(&ThreeNativeId, &mut Handle<StandardMaterial>)>,
-    mut text_nodes: Query<(&ThreeNativeId, &mut Text, Option<&world_text::NativeWorldText>)>,
+    mut text_nodes: Query<(
+        &ThreeNativeId,
+        &mut Text,
+        Option<&world_text::NativeWorldText>,
+    )>,
     ui_binding_targets: Option<Res<ui::NativeUiBindingTargets>>,
     mut minimap_markers: Query<(
         &ui::NativeUiMinimapMarker,
@@ -684,17 +689,15 @@ fn run_scripted_runtime_systems(
     let mut requires_live_reconciliation = false;
     for _ in 0..frame_count {
         if let Some(bridge) = scripted.overlay_bridge.as_deref_mut() {
-            bridge.bridge.drain_events_into(&mut runtime.bundle.world.events);
+            bridge
+                .bridge
+                .drain_events_into(&mut runtime.bundle.world.events);
         }
         if let (Some(queue), Some(cursors)) = (
             scripted.audio_events.as_deref_mut(),
             scripted.audio_event_cursors.as_deref_mut(),
         ) {
-            audio::queue_new_native_audio_events(
-                queue,
-                cursors,
-                &runtime.bundle.world.events,
-            );
+            audio::queue_new_native_audio_events(queue, cursors, &runtime.bundle.world.events);
         }
         let options = systems_host::NativeGameLoopRunOptions {
             delta,
@@ -711,9 +714,25 @@ fn run_scripted_runtime_systems(
         );
         match run {
             Ok(run) => {
+                if input_snapshot
+                    .as_ref()
+                    .is_some_and(|input| input.pressed("pointer-select"))
+                {
+                    info!(
+                        "native chess pointer state: {}",
+                        runtime
+                            .bundle
+                            .world
+                            .resources
+                            .get("ChessGame")
+                            .map_or("null".to_owned(), serde_json::Value::to_string)
+                    );
+                }
                 if let Some(bridge) = scripted.overlay_bridge.as_deref_mut() {
                     let overlays = bridge.overlays.clone();
-                    bridge.bridge.publish_world_events(&overlays, &run.emitted_events);
+                    bridge
+                        .bridge
+                        .publish_world_events(&overlays, &run.emitted_events);
                 }
                 requires_live_reconciliation |= run.logs.iter().any(|log| {
                     log.entries
@@ -989,7 +1008,11 @@ fn sync_scripted_ui_text(
     bundle: &LoadedBundle,
     entities_by_id: &HashMap<&str, &WorldEntity>,
     targets: Option<&ui::NativeUiBindingTargets>,
-    text_nodes: &mut Query<(&ThreeNativeId, &mut Text, Option<&world_text::NativeWorldText>)>,
+    text_nodes: &mut Query<(
+        &ThreeNativeId,
+        &mut Text,
+        Option<&world_text::NativeWorldText>,
+    )>,
 ) {
     let Some(targets) = targets else {
         return;
@@ -1210,7 +1233,10 @@ mod tests {
         rendering::apply_atmosphere_to_world(&mut world, &bundle);
         rendering::apply_environment_lighting_to_world(&mut world, &bundle);
         let ambient = world.resource::<AmbientLight>();
-        assert!(ambient.brightness > 0.7, "hero room must retain its calibrated indirect-light floor");
+        assert!(
+            ambient.brightness > 0.7,
+            "hero room must retain its calibrated indirect-light floor"
+        );
         assert_eq!(
             world
                 .iter_entities()
@@ -1267,15 +1293,42 @@ mod tests {
             .join("../../../packages/ir/fixtures/conformance/physics-events/game.bundle");
         let mut bundle = load_bundle(&root).expect("interaction fixture should load");
         bundle.interactions = Some(threenative_loader::InteractionsIr {
-            schema: "threenative.interactions".into(), version: "0.1.0".into(), id: "live".into(),
-            interactions: vec![threenative_loader::InteractionIr { id: "pickup".into(), detector: serde_json::json!({ "kind": "distance2d", "radius": 1, "source": { "entity": "sensor" }, "target": { "entity": "pickup" } }), gate: serde_json::json!({ "kind": "once" }), when: vec![], effects: vec![serde_json::json!({ "kind": "despawn", "target": "detected" })], complete: None }],
+            schema: "threenative.interactions".into(),
+            version: "0.1.0".into(),
+            id: "live".into(),
+            interactions: vec![threenative_loader::InteractionIr {
+                id: "pickup".into(),
+                detector: serde_json::json!({ "kind": "distance2d", "radius": 1, "source": { "entity": "sensor" }, "target": { "entity": "pickup" } }),
+                gate: serde_json::json!({ "kind": "once" }),
+                when: vec![],
+                effects: vec![serde_json::json!({ "kind": "despawn", "target": "detected" })],
+                complete: None,
+            }],
         });
         let mut world = World::new();
         map_world::map_bundle_into_world(&mut world, &bundle).expect("fixture should map");
-        assert!(world.resource::<map_world::NativeMappedWorldEntityIds>().0.contains("pickup"));
-        interactions::step_bundle_interactions(&mut bundle, 0, &[], &mut interactions::NativeInteractionRuntimeState::default(), None, None);
-        reconcile_live_world_entities(&mut world, &bundle).expect("interaction live reconcile should succeed");
-        assert!(!world.resource::<map_world::NativeMappedWorldEntityIds>().0.contains("pickup"));
+        assert!(
+            world
+                .resource::<map_world::NativeMappedWorldEntityIds>()
+                .0
+                .contains("pickup")
+        );
+        interactions::step_bundle_interactions(
+            &mut bundle,
+            0,
+            &[],
+            &mut interactions::NativeInteractionRuntimeState::default(),
+            None,
+            None,
+        );
+        reconcile_live_world_entities(&mut world, &bundle)
+            .expect("interaction live reconcile should succeed");
+        assert!(
+            !world
+                .resource::<map_world::NativeMappedWorldEntityIds>()
+                .0
+                .contains("pickup")
+        );
     }
 
     #[test]

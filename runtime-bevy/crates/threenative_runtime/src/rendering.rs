@@ -26,8 +26,8 @@ use threenative_loader::{
     LightProbeSourceIr, LoadedBundle, RuntimeConfigIr,
 };
 
-use crate::map_world::NativeMaterialHandles;
 use crate::height_fog_postprocess::NativeHeightFog;
+use crate::map_world::NativeMaterialHandles;
 use crate::ssgi_postprocess::NativeSsgi;
 
 pub mod contact_shadows;
@@ -95,8 +95,14 @@ mod ssgi_ambient_tests {
 
     #[test]
     fn reduces_flat_ambient_only_while_ssgi_is_enabled() {
-        assert!((native_ssgi_ambient_multiplier(Some(&runtime_config(true))) - 0.15).abs() < f32::EPSILON);
-        assert!((native_ssgi_ambient_multiplier(Some(&runtime_config(false))) - 1.0).abs() < f32::EPSILON);
+        assert!(
+            (native_ssgi_ambient_multiplier(Some(&runtime_config(true))) - 0.15).abs()
+                < f32::EPSILON
+        );
+        assert!(
+            (native_ssgi_ambient_multiplier(Some(&runtime_config(false))) - 1.0).abs()
+                < f32::EPSILON
+        );
         assert!((native_ssgi_ambient_multiplier(None) - 1.0).abs() < f32::EPSILON);
     }
 }
@@ -504,10 +510,19 @@ pub(crate) fn native_volumetric_fog_settings(
     })
 }
 
-pub(crate) fn native_height_fog_settings(profile: Option<&AtmosphereProfileIr>) -> Option<NativeHeightFog> {
+pub(crate) fn native_height_fog_settings(
+    profile: Option<&AtmosphereProfileIr>,
+) -> Option<NativeHeightFog> {
     let profile = profile.filter(|profile| profile.active)?;
-    let fog = profile.volumetrics.as_ref()?.height_fog.as_ref().filter(|fog| fog.enabled)?;
-    let color = fog.color.as_ref()
+    let fog = profile
+        .volumetrics
+        .as_ref()?
+        .height_fog
+        .as_ref()
+        .filter(|fog| fog.enabled)?;
+    let color = fog
+        .color
+        .as_ref()
         .or_else(|| profile.fog.as_ref().map(|fog| &fog.color))
         .unwrap_or(&profile.sky.color);
     Some(NativeHeightFog::new(
@@ -519,16 +534,33 @@ pub(crate) fn native_height_fog_settings(profile: Option<&AtmosphereProfileIr>) 
     ))
 }
 
-pub(crate) fn native_ssgi_settings(config: Option<&RuntimeConfigIr>, profile: Option<&AtmosphereProfileIr>) -> Option<NativeSsgi> {
-    let ssgi = config?.renderer.as_ref()?.screen_space_global_illumination.as_ref().filter(|ssgi| ssgi.enabled)?;
+pub(crate) fn native_ssgi_settings(
+    config: Option<&RuntimeConfigIr>,
+    profile: Option<&AtmosphereProfileIr>,
+) -> Option<NativeSsgi> {
+    let ssgi = config?
+        .renderer
+        .as_ref()?
+        .screen_space_global_illumination
+        .as_ref()
+        .filter(|ssgi| ssgi.enabled)?;
     let profile = profile.filter(|profile| profile.active);
-    let ambient = profile.map(|profile| color_to_bevy(&profile.ambient.color)).unwrap_or(Color::srgb(0.125, 0.14, 0.165));
+    let ambient = profile
+        .map(|profile| color_to_bevy(&profile.ambient.color))
+        .unwrap_or(Color::srgb(0.125, 0.14, 0.165));
     let linear = ambient.to_linear();
-    let scale = profile.map_or(0.2, |profile| profile.ambient.intensity).max(0.0) * 0.15;
+    let scale = profile
+        .map_or(0.2, |profile| profile.ambient.intensity)
+        .max(0.0)
+        * 0.15;
     Some(NativeSsgi::with_quality(
         ssgi.radius.unwrap_or(10.0),
         ssgi.intensity.unwrap_or(1.0),
-        Color::linear_rgb(linear.red * scale, linear.green * scale, linear.blue * scale),
+        Color::linear_rgb(
+            linear.red * scale,
+            linear.green * scale,
+            linear.blue * scale,
+        ),
         ssgi.quality.as_str(),
     ))
 }
@@ -997,9 +1029,11 @@ pub fn apply_environment_lighting_to_world(
         // the directional SH2 volume remains the baked-lighting path.
         if let Some(mut ambient) = world.get_resource_mut::<AmbientLight>() {
             let count = baked_probes.len() as f32;
-            let rgb = baked_probes.iter().fold(Vec3::ZERO, |sum, (_, coefficients)| {
-                sum + Vec3::from_slice(&coefficients[0..3]).max(Vec3::ZERO) * (0.282095 / count)
-            });
+            let rgb = baked_probes
+                .iter()
+                .fold(Vec3::ZERO, |sum, (_, coefficients)| {
+                    sum + Vec3::from_slice(&coefficients[0..3]).max(Vec3::ZERO) * (0.282095 / count)
+                });
             let peak = rgb.max_element();
             if peak > 0.0 {
                 let brightness = peak * THREE_COMPAT_BAKED_PROBE_ATMOSPHERE_BASELINE_PER_UNIT;
@@ -1090,7 +1124,11 @@ fn sh2_irradiance_volume_image(coefficients: &[f32]) -> Image {
         }
     }
     let mut image = Image::new(
-        Extent3d { width: 1, height: 2, depth_or_array_layers: 3 },
+        Extent3d {
+            width: 1,
+            height: 2,
+            depth_or_array_layers: 3,
+        },
         TextureDimension::D3,
         data,
         TextureFormat::Rgba8Unorm,

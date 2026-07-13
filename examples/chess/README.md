@@ -25,10 +25,12 @@ Durable board source is generated deterministically by
 `scripts/generate-board.mjs`; gameplay lives in `src/scripts/chess.ts`.
 Generated `dist/**` and `artifacts/**` are not source.
 
-The optional `chess-side-select` React webview overlay follows the maintained
-Tailwind-default scaffold convention. Its editable source lives under
-`overlay/chess-side-select/`; Tailwind is compiled at build time and is not a
-runtime dependency. Build it independently with:
+The optional `chess-side-select` React overlay follows the maintained
+Tailwind-default scaffold convention and targets web. Desktop uses the
+portable retained controls authored in `content/scenes/chess.scene.json`;
+transparent WebKitGTK overlays are not used for native chess. The React
+source lives under `overlay/chess-side-select/`; Tailwind is compiled at build
+time and is not a runtime dependency. Build it independently with:
 
 ```bash
 pnpm run build:overlay:chess-side-select

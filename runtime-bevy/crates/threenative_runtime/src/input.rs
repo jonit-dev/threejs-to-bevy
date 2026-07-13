@@ -21,6 +21,8 @@ pub struct NativeInputMap(pub InputIr);
 #[derive(Clone, Debug, Default, Resource)]
 pub struct NativeInputState {
     actions: HashSet<String>,
+    pressed_actions: HashSet<String>,
+    released_actions: HashSet<String>,
     axes: HashMap<String, f32>,
     pointer_position: Option<Vec2>,
 }
@@ -201,15 +203,37 @@ impl NativeInputState {
         self.actions.iter()
     }
 
+    pub fn pressed(&self, id: &str) -> bool {
+        self.pressed_actions.contains(id)
+    }
+
+    pub fn released(&self, id: &str) -> bool {
+        self.released_actions.contains(id)
+    }
+
+    pub fn pressed_action_ids(&self) -> impl Iterator<Item = &String> {
+        self.pressed_actions.iter()
+    }
+
+    pub fn released_action_ids(&self) -> impl Iterator<Item = &String> {
+        self.released_actions.iter()
+    }
+
     pub fn with_additional_actions<'a>(&self, actions: impl IntoIterator<Item = &'a str>) -> Self {
         let mut next = self.clone();
-        next.actions.extend(actions.into_iter().map(str::to_owned));
+        for action in actions {
+            next.actions.insert(action.to_owned());
+            next.pressed_actions.insert(action.to_owned());
+        }
         next
     }
 
     pub fn from_action_ids<'a>(actions: impl IntoIterator<Item = &'a str>) -> Self {
+        let actions = actions.into_iter().map(str::to_owned).collect::<HashSet<_>>();
         Self {
-            actions: actions.into_iter().map(str::to_owned).collect(),
+            pressed_actions: actions.clone(),
+            actions,
+            released_actions: HashSet::new(),
             axes: HashMap::new(),
             pointer_position: None,
         }
@@ -412,11 +436,7 @@ pub fn map_keyboard_event(
             .iter()
             .any(|binding| matches_keyboard(binding, code))
         {
-            if pressed {
-                state.actions.insert(action.id.clone());
-            } else {
-                state.actions.remove(&action.id);
-            }
+            update_action_transition(state, &action.id, pressed);
         }
     }
 
@@ -457,12 +477,22 @@ pub fn map_pointer_button_event(
             .iter()
             .any(|binding| matches_pointer_button(binding, button))
         {
-            if pressed {
-                state.actions.insert(action.id.clone());
-            } else {
-                state.actions.remove(&action.id);
-            }
+            update_action_transition(state, &action.id, pressed);
         }
+    }
+}
+
+fn update_action_transition(state: &mut NativeInputState, action: &str, active: bool) {
+    if active {
+        if state.actions.insert(action.to_owned()) {
+            state.pressed_actions.insert(action.to_owned());
+        }
+        state.released_actions.remove(action);
+    } else {
+        if state.actions.remove(action) {
+            state.released_actions.insert(action.to_owned());
+        }
+        state.pressed_actions.remove(action);
     }
 }
 
@@ -906,7 +936,9 @@ pub fn capture_native_input(
         .ok()
         .map(|window| Vec2::new(window.width().max(1.0), window.height().max(1.0)));
 
-    state.actions.clear();
+    let previous_actions = std::mem::take(&mut state.actions);
+    state.pressed_actions.clear();
+    state.released_actions.clear();
     state.axes.clear();
     let gamepad = match (
         &gamepads,
@@ -935,6 +967,19 @@ pub fn capture_native_input(
         }) {
             state.actions.insert(action.id.clone());
         }
+
+        if state.actions.contains(&action.id) && !previous_actions.contains(&action.id) {
+            state.pressed_actions.insert(action.id.clone());
+        }
+        if !state.actions.contains(&action.id) && previous_actions.contains(&action.id) {
+            state.released_actions.insert(action.id.clone());
+        }
+    }
+    if !state.pressed_actions.is_empty() || !state.released_actions.is_empty() {
+        info!(
+            "native input edges pressed={:?} released={:?} pointer={:?}",
+            state.pressed_actions, state.released_actions, state.pointer_position
+        );
     }
 
     for axis in &input.0.axes {

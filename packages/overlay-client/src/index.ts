@@ -26,11 +26,13 @@ export function createOverlayClient<
     const bridge = rawBridge(windowRef);
     if (bridge === undefined) return;
     disconnect = bridge.subscribe((type, payload, metadata) => {
+      const listeners = handlers.get(type);
+      if (listeners === undefined || listeners.size === 0) return;
       if (metadata?.sequence !== undefined) {
         if (deliveredSequences.has(metadata.sequence)) return;
         deliveredSequences.add(metadata.sequence);
       }
-      for (const handler of handlers.get(type) ?? []) handler(payload);
+      for (const handler of listeners) handler(payload);
     });
   };
   windowRef.addEventListener("threenative:bridge-ready", connect);
