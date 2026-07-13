@@ -112,7 +112,7 @@ name = "threenative_physics_self_verification_trace"
 path = "src/physics_self_verification_trace.rs"
 
 [dependencies]
-bevy = { version = "=0.14.2", features = ["jpeg", "pbr_multi_layer_material_textures", "pbr_transmission_textures", "webp"] }
+bevy = { version = "=0.14.2", features = ["jpeg", "mp3", "pbr_multi_layer_material_textures", "pbr_transmission_textures", "webp"] }
 image = "0.25.10"
 quickjs-rusty = "=0.12.0"
 serde = { version = "1.0.228", features = ["derive"] }

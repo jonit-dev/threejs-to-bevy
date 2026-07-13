@@ -1,11 +1,27 @@
+use bevy::{
+    asset::AssetPlugin,
+    audio::{AudioSource, PlaybackMode},
+    prelude::*,
+};
+use serde_json::json;
+use std::fs;
+use threenative_components::ThreeNativeId;
 use threenative_loader::{
     AudioAttenuationIr, AudioBusIr, AudioControlIr, AudioDuckingRuleIr, AudioEmitterIr, AudioIr,
     AudioListenerBindingIr, AudioListenerIr, AudioMusicIr, AudioMusicTransitionIr, AudioOneShotIr,
-    AudioToneIr,
+    AudioToneIr, load_bundle,
 };
 use threenative_runtime::audio::{
-    NativeAudioCommandKind, ScriptAudioPlayOptions, ScriptAudioRuntimeController,
-    handle_audio_events, observe_audio, start_audio, trace_audio_lifecycle, trace_audio_support,
+    NativeAudioCommandKind, NativeAudioDiagnostics, NativeAudioEventCursors, NativeAudioEventQueue,
+    NativeAudioPlayback, NativeAudioPlaybackStates, NativeAudioRuntime, NativeAudioServiceQueue,
+    ScriptAudioPlayOptions, ScriptAudioRuntimeController, apply_native_audio_service_effects,
+    handle_audio_events, observe_audio, play_new_native_audio_events,
+    queue_native_audio_service_effects, queue_new_native_audio_events, start_audio,
+    trace_audio_lifecycle, trace_audio_support,
+};
+use threenative_runtime::systems_effects::{NativeSystemEffectLog, NativeSystemEffectLogEntry};
+use threenative_runtime::{
+    systems_context::NativeSystemTimeSnapshot, systems_host::run_native_systems_once,
 };
 
 mod support;
@@ -74,6 +90,216 @@ fn audio_should_play_one_shot_for_matching_event() {
     assert_eq!(commands[0].event.as_deref(), Some("DamageEvent"));
     assert_eq!(commands[0].kind, NativeAudioCommandKind::OneShot);
     assert_eq!(commands[0].volume, Some(0.75));
+}
+
+#[test]
+fn native_audio_execution_event_one_shot() {
+    let fixture = load_conformance_fixture("audio-playback");
+    let runtime = NativeAudioRuntime::from_bundle(&fixture.bundle);
+    let mut app = App::new();
+    app.add_plugins((MinimalPlugins, AssetPlugin::default()));
+    app.init_asset::<AudioSource>();
+    app.insert_resource(runtime);
+    app.init_resource::<NativeAudioDiagnostics>();
+    let mut events = NativeAudioEventQueue::default();
+    let mut cursors = NativeAudioEventCursors::default();
+    queue_new_native_audio_events(&mut events, &mut cursors, &fixture.bundle.world.events);
+    app.insert_resource(events);
+    app.insert_resource(cursors);
+    app.add_systems(Update, play_new_native_audio_events);
+
+    app.update();
+    let spawned = app
+        .world_mut()
+        .query::<(&NativeAudioPlayback, &ThreeNativeId, &PlaybackSettings)>()
+        .iter(app.world())
+        .find(|(playback, _, _)| playback.0 == "sound.hit")
+        .map(|(_, id, settings)| (id.0.clone(), settings.mode, settings.volume.get()))
+        .expect("event should spawn the mapped native audio entity");
+    assert_eq!(spawned.0, "sound.hit");
+    assert!(matches!(spawned.1, PlaybackMode::Despawn));
+    assert_eq!(spawned.2, 0.75);
+    let first_count = 1;
+    app.update();
+    let second_count = app
+        .world_mut()
+        .query::<&NativeAudioPlayback>()
+        .iter(app.world())
+        .filter(|playback| playback.0 == "sound.hit")
+        .count();
+
+    assert_eq!(first_count, 1);
+    assert_eq!(second_count, 1, "event cursor must prevent replay");
+
+    let mut next_events = fixture.bundle.world.events.clone();
+    next_events
+        .get_mut("DamageEvent")
+        .and_then(serde_json::Value::as_array_mut)
+        .expect("damage events")
+        .push(json!({ "amount": 1, "target": "player" }));
+    app.world_mut()
+        .resource_scope(|world, mut cursors: Mut<NativeAudioEventCursors>| {
+            let mut queue = world.resource_mut::<NativeAudioEventQueue>();
+            queue_new_native_audio_events(&mut queue, &mut cursors, &next_events);
+        });
+    app.update();
+    let third_count = app
+        .world_mut()
+        .query::<&NativeAudioPlayback>()
+        .iter(app.world())
+        .filter(|playback| playback.0 == "sound.hit")
+        .count();
+    assert_eq!(third_count, 2, "only the appended event should play");
+}
+
+#[test]
+fn native_audio_execution_script_playback() {
+    let root =
+        std::env::temp_dir().join(format!("tn-native-audio-execution-{}", std::process::id()));
+    let _ = fs::remove_dir_all(&root);
+    fs::create_dir_all(root.join("assets")).expect("audio test bundle directory");
+    fs::write(root.join("assets/hit.wav"), b"").expect("audio test asset");
+    for (name, contents) in [
+        (
+            "manifest.json",
+            r#"{"schema":"threenative.bundle","version":"0.1.0","name":"native-audio-execution","requiredCapabilities":{},"entry":{"world":"world.ir.json","systems":"systems.ir.json","scripts":"scripts.bundle.js","audio":"audio.ir.json"},"files":{"assets":"assets.manifest.json","materials":"materials.ir.json","targetProfile":"target.profile.json"}}"#,
+        ),
+        (
+            "assets.manifest.json",
+            r#"{"schema":"threenative.assets","version":"0.1.0","assets":[{"id":"hit.sound","kind":"audio","format":"wav","path":"assets/hit.wav"}]}"#,
+        ),
+        (
+            "audio.ir.json",
+            r#"{"schema":"threenative.audio","version":"0.1.0","music":[],"oneShots":[{"id":"sound.hit","asset":"hit.sound","event":"DamageEvent","volume":0.75}]}"#,
+        ),
+        (
+            "materials.ir.json",
+            r#"{"schema":"threenative.materials","version":"0.1.0","materials":[]}"#,
+        ),
+        (
+            "target.profile.json",
+            r#"{"schema":"threenative.target-profile","version":"0.1.0","targets":["desktop"]}"#,
+        ),
+        (
+            "world.ir.json",
+            r#"{"schema":"threenative.world","version":"0.1.0","entities":[],"events":{},"resources":{}}"#,
+        ),
+        (
+            "systems.ir.json",
+            r#"{"schema":"threenative.systems","version":"0.1.0","scriptAudio":[{"id":"sound.hit"}],"systems":[{"name":"audioFacade","schedule":"update","reads":[],"writes":[],"queries":[],"commands":[],"eventReads":[],"eventWrites":[],"resourceReads":[],"resourceWrites":[],"services":["audio.play"],"script":{"bundle":"scripts.bundle.js","exportName":"system_audioFacade"}}]}"#,
+        ),
+        (
+            "scripts.bundle.js",
+            r#"const system_audioFacade = (ctx) => { ctx.audio.play("sound.hit"); }; export const systems = Object.freeze({ system_audioFacade });"#,
+        ),
+    ] {
+        fs::write(root.join(name), contents).expect("audio test bundle file");
+    }
+    let mut bundle = load_bundle(&root).expect("script audio bundle should load");
+    let run = run_native_systems_once(
+        &mut bundle,
+        NativeSystemTimeSnapshot {
+            delta: 0.016,
+            dt: 0.016,
+            elapsed: 1.0,
+            fixed_delta: 0.016,
+            fixed_dt: 0.016,
+            paused: false,
+        },
+    )
+    .expect("script calling context.audio.play should run");
+    let mut queue = NativeAudioServiceQueue::default();
+    let service_log = |service: &str, payload| NativeSystemEffectLog {
+        entries: vec![NativeSystemEffectLogEntry {
+            command: None,
+            component: None,
+            entity: None,
+            event: None,
+            frame: 1,
+            kind: "service".to_owned(),
+            payload: Some(payload),
+            reconciliation: None,
+            resource: None,
+            schedule: "update".to_owned(),
+            service: Some(service.to_owned()),
+            system: "audio-test".to_owned(),
+            tick: 1,
+            value: None,
+        }],
+        schema: "threenative.web-system-effects",
+        version: 1,
+    };
+    queue_native_audio_service_effects(&mut queue, &run.logs);
+    let mut app = App::new();
+    app.add_plugins((MinimalPlugins, AssetPlugin::default()));
+    app.init_asset::<AudioSource>();
+    app.insert_resource(NativeAudioRuntime::from_bundle(&bundle));
+    app.insert_resource(queue);
+    app.init_resource::<NativeAudioPlaybackStates>();
+    app.init_resource::<NativeAudioDiagnostics>();
+    app.add_systems(Update, apply_native_audio_service_effects);
+
+    app.update();
+    assert!(
+        app.world_mut()
+            .query::<&NativeAudioPlayback>()
+            .iter(app.world())
+            .any(|playback| playback.0 == "sound.hit#1")
+    );
+
+    let mut stop_queue = app.world_mut().resource_mut::<NativeAudioServiceQueue>();
+    queue_native_audio_service_effects(
+        &mut stop_queue,
+        &[service_log(
+            "audio.stop",
+            json!({
+                "request": { "playbackId": "sound.hit#1" },
+                "result": {
+                    "accepted": true,
+                    "playbackId": "sound.hit#1",
+                    "soundId": "sound.hit",
+                    "status": "stopped"
+                }
+            }),
+        )],
+    );
+    app.update();
+    assert!(
+        !app.world_mut()
+            .query::<&NativeAudioPlayback>()
+            .iter(app.world())
+            .any(|playback| playback.0 == "sound.hit#1")
+    );
+    assert_eq!(
+        app.world().resource::<NativeAudioPlaybackStates>().0["sound.hit#1"],
+        "stopped"
+    );
+
+    let mut preset_queue = app.world_mut().resource_mut::<NativeAudioServiceQueue>();
+    queue_native_audio_service_effects(
+        &mut preset_queue,
+        &[service_log(
+            "effects.play",
+            json!({
+                "audio": {
+                    "accepted": true,
+                    "loop": false,
+                    "playbackId": "sound.hit#2",
+                    "soundId": "sound.hit",
+                    "status": "playing"
+                },
+                "result": { "accepted": true, "preset": "hit", "status": "enqueued" }
+            }),
+        )],
+    );
+    app.update();
+    assert!(
+        app.world_mut()
+            .query::<&NativeAudioPlayback>()
+            .iter(app.world())
+            .any(|playback| playback.0 == "sound.hit#2"),
+        "effects.play preset audio should share script playback dispatch"
+    );
 }
 
 #[test]

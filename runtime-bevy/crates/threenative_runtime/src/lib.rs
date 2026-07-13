@@ -243,6 +243,19 @@ pub fn app_from_bundle_with_options(
     for diagnostic in audio::spawn_startup_audio(app.world_mut(), &bundle) {
         warn!("{}", diagnostic.message);
     }
+    app.insert_resource(audio::NativeAudioRuntime::from_bundle(&bundle));
+    app.init_resource::<audio::NativeAudioServiceQueue>();
+    let mut audio_events = audio::NativeAudioEventQueue::default();
+    let mut audio_event_cursors = audio::NativeAudioEventCursors::default();
+    audio::queue_new_native_audio_events(
+        &mut audio_events,
+        &mut audio_event_cursors,
+        &bundle.world.events,
+    );
+    app.insert_resource(audio_events);
+    app.insert_resource(audio_event_cursors);
+    app.init_resource::<audio::NativeAudioPlaybackStates>();
+    app.init_resource::<audio::NativeAudioDiagnostics>();
     if let Some(ui) = bundle.ui.as_ref() {
         ui::map_ui_into_world(app.world_mut(), ui)?;
         if let Some(diagnostic) = ui::diagnose_native_ui_font_fallback(app.world()) {
@@ -354,6 +367,9 @@ pub fn app_from_bundle_with_options(
             Update,
             (
                 run_scripted_runtime_systems,
+                audio::play_new_native_audio_events,
+                audio::apply_native_audio_service_effects,
+                audio::apply_native_audio_controls,
                 reconcile_scripted_runtime_world,
                 map_world::apply_native_animation_service_effects,
                 cameras::update_native_camera_helpers,
@@ -361,7 +377,15 @@ pub fn app_from_bundle_with_options(
                 .chain(),
         );
     } else {
-        app.add_systems(Update, cameras::update_native_camera_helpers);
+        app.add_systems(
+            Update,
+            (
+                audio::play_new_native_audio_events,
+                audio::apply_native_audio_controls,
+                cameras::update_native_camera_helpers,
+            )
+                .chain(),
+        );
     }
     Ok(app)
 }
@@ -573,6 +597,9 @@ struct ScriptedRuntimeParams<'w> {
     dirty_state: Option<ResMut<'w, NativeRuntimeDirtyState>>,
     deterministic_capture: Option<Res<'w, NativeDeterministicCaptureClock>>,
     write_audit: Option<ResMut<'w, systems_host::NativeRuntimeWriteAuditState>>,
+    audio_queue: Option<ResMut<'w, audio::NativeAudioServiceQueue>>,
+    audio_events: Option<ResMut<'w, audio::NativeAudioEventQueue>>,
+    audio_event_cursors: Option<ResMut<'w, audio::NativeAudioEventCursors>>,
 }
 
 fn run_scripted_runtime_systems(
@@ -658,6 +685,16 @@ fn run_scripted_runtime_systems(
         if let Some(bridge) = scripted.overlay_bridge.as_deref_mut() {
             bridge.bridge.drain_events_into(&mut runtime.bundle.world.events);
         }
+        if let (Some(queue), Some(cursors)) = (
+            scripted.audio_events.as_deref_mut(),
+            scripted.audio_event_cursors.as_deref_mut(),
+        ) {
+            audio::queue_new_native_audio_events(
+                queue,
+                cursors,
+                &runtime.bundle.world.events,
+            );
+        }
         let options = systems_host::NativeGameLoopRunOptions {
             delta,
             fixed_delta,
@@ -701,6 +738,15 @@ fn run_scripted_runtime_systems(
                 }
                 if let Some(queue) = animation_queue.as_deref_mut() {
                     map_world::queue_native_animation_service_effects(queue, &run.logs);
+                }
+                if let Some(queue) = scripted.audio_queue.as_deref_mut() {
+                    audio::queue_native_audio_service_effects(queue, &run.logs);
+                }
+                if let (Some(queue), Some(cursors)) = (
+                    scripted.audio_events.as_deref_mut(),
+                    scripted.audio_event_cursors.as_deref_mut(),
+                ) {
+                    audio::queue_new_native_audio_events(queue, cursors, &run.emitted_events);
                 }
             }
             Err(error) => {

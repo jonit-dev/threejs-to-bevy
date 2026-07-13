@@ -2,8 +2,9 @@ import { spawnSync } from "node:child_process";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { SCRIPT_ONLY_GATES } from "../scriptGates.js";
+import { nativeAudioExecutionCommands } from "../audioPlatform.js";
 import { descriptorFocusedGates, descriptorReleaseFocusedGates } from "../gateDescriptors.js";
+import { SCRIPT_ONLY_GATES } from "../scriptGates.js";
 
 type CommandSpec = readonly [command: string, ...args: string[]];
 export type GateProfile = "smoke" | "changed" | "focused" | "release" | "full";
@@ -542,14 +543,15 @@ export const FOCUSED_GATES: Record<string, FocusedGate> = {
       ["pnpm", "--filter", "@threenative/cli", "build"],
       ["pnpm", "--filter", "@threenative/verify-tools", "build"],
       ["node", "scripts/verify-production-hardening.mjs"],
+      ...nativeAudioExecutionCommands(),
       ["node", "tools/verify/dist/audioPlatform.js"],
     ],
-    description: "Cross-adapter audio lifecycle and shared window/platform policy evidence gate.",
+    description: "Cross-adapter audio lifecycle, native execution, and shared window/platform policy evidence gate.",
     metadata: {
       owner: "tools/verify feature-parity audio-platform gate",
       profile: "focused",
-      reason: "Refreshes deterministic audio traces and drift-checks shared platform policy diagnostics against both adapters.",
-      protects: "Playback controls, mixer/spatial/music reports, device diagnostics, resize observations, and platform boundaries.",
+      reason: "Refreshes deterministic audio traces, runs registry-owned native entity-spawn tests, and drift-checks shared platform policy diagnostics against both adapters.",
+      protects: "Native event/script playback execution, playback controls, mixer/spatial/music reports, device diagnostics, resize observations, and platform boundaries.",
     },
   },
   "verify:v9:assets-gltf-scene-workflow": {

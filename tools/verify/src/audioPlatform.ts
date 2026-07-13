@@ -6,6 +6,38 @@ const root = resolve(fileURLToPath(new URL("../../../", import.meta.url)));
 const sourceDir = resolve(root, "tools/verify/artifacts/production-hardening");
 const artifactDir = resolve(root, "tools/verify/artifacts/feature-parity-audio-platform");
 const reportPath = resolve(artifactDir, "verification-report.json");
+const nativeAudioExecutionTestPath = resolve(root, "runtime-bevy/crates/threenative_runtime/tests/audio.rs");
+
+export const NATIVE_AUDIO_EXECUTION_EVIDENCE = {
+  cargoPackage: "threenative_runtime",
+  cases: [
+    { id: "event-one-shot", testFilter: "native_audio_execution_event_one_shot" },
+    { id: "script-playback", testFilter: "native_audio_execution_script_playback" },
+  ],
+} as const;
+
+export function nativeAudioExecutionCommands(): readonly (readonly [command: string, ...args: string[]])[] {
+  return NATIVE_AUDIO_EXECUTION_EVIDENCE.cases.map(({ testFilter }) => [
+    "cargo",
+    "test",
+    "--manifest-path",
+    "runtime-bevy/Cargo.toml",
+    "-p",
+    NATIVE_AUDIO_EXECUTION_EVIDENCE.cargoPackage,
+    "--test",
+    "audio",
+    testFilter,
+    "--",
+    "--exact",
+    "--nocapture",
+  ]);
+}
+
+export function validateNativeAudioExecutionEnrollment(source: string): string[] {
+  return NATIVE_AUDIO_EXECUTION_EVIDENCE.cases
+    .filter(({ testFilter }) => !source.includes(`fn ${testFilter}()`))
+    .map(({ id }) => `native-audio-execution:missing:${id}`);
+}
 
 const platformCodes = [
   "TN_CATALOG_WINDOW_CURSOR_UNSUPPORTED",
@@ -66,15 +98,24 @@ function normalize(value: unknown): unknown {
 }
 
 export async function runAudioPlatformGate(): Promise<AudioPlatformGateResult> {
-  const [production, web, native] = await Promise.all([
+  const [production, web, native, nativeExecutionTests] = await Promise.all([
     readJson(resolve(sourceDir, "verification-report.json")),
     readJson(resolve(sourceDir, "web-report.json")),
     readJson(resolve(sourceDir, "native-report.json")),
+    readFile(nativeAudioExecutionTestPath, "utf8"),
   ]);
-  const diagnostics = validateAudioPlatformEvidence(production, web, native);
+  const diagnostics = [
+    ...validateAudioPlatformEvidence(production, web, native),
+    ...validateNativeAudioExecutionEnrollment(nativeExecutionTests),
+  ];
   const report = {
     artifacts: {
       native: resolve(sourceDir, "native-report.json"),
+      nativeExecution: {
+        cases: NATIVE_AUDIO_EXECUTION_EVIDENCE.cases,
+        cargoPackage: NATIVE_AUDIO_EXECUTION_EVIDENCE.cargoPackage,
+        source: nativeAudioExecutionTestPath,
+      },
       productionHardening: resolve(sourceDir, "verification-report.json"),
       report: reportPath,
       web: resolve(sourceDir, "web-report.json"),

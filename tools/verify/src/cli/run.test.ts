@@ -119,6 +119,18 @@ test("should register gameplay parity focused gates", () => {
   assert.equal(FOCUSED_GATES["verify:gameplay-parity"]?.metadata.owner, "tools/verify gameplay parity gate");
 });
 
+test("should enroll native audio execution evidence from the audio gate config", () => {
+  assert.deepEqual(
+    getFocusedGateCommands("verify:feature-parity-audio-platform").slice(-4),
+    [
+      ["node", "scripts/verify-production-hardening.mjs"],
+      ["cargo", "test", "--manifest-path", "runtime-bevy/Cargo.toml", "-p", "threenative_runtime", "--test", "audio", "native_audio_execution_event_one_shot", "--", "--exact", "--nocapture"],
+      ["cargo", "test", "--manifest-path", "runtime-bevy/Cargo.toml", "-p", "threenative_runtime", "--test", "audio", "native_audio_execution_script_playback", "--", "--exact", "--nocapture"],
+      ["node", "tools/verify/dist/audioPlatform.js"],
+    ],
+  );
+});
+
 test("should skip setup when requested by release", () => {
   assert.deepEqual(
     getFocusedGateCommands("verify:input-ui-polish", { forwardedArgs: ["--json"], skipSetup: true }),

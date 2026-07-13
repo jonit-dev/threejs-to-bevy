@@ -1,7 +1,28 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { validateAudioPlatformEvidence } from "./audioPlatform.js";
+import {
+  NATIVE_AUDIO_EXECUTION_EVIDENCE,
+  nativeAudioExecutionCommands,
+  validateAudioPlatformEvidence,
+  validateNativeAudioExecutionEnrollment,
+} from "./audioPlatform.js";
+
+test("should derive native execution evidence commands from the audio gate config", () => {
+  assert.deepEqual(NATIVE_AUDIO_EXECUTION_EVIDENCE.cases, [
+    { id: "event-one-shot", testFilter: "native_audio_execution_event_one_shot" },
+    { id: "script-playback", testFilter: "native_audio_execution_script_playback" },
+  ]);
+  assert.deepEqual(nativeAudioExecutionCommands(), [
+    ["cargo", "test", "--manifest-path", "runtime-bevy/Cargo.toml", "-p", "threenative_runtime", "--test", "audio", "native_audio_execution_event_one_shot", "--", "--exact", "--nocapture"],
+    ["cargo", "test", "--manifest-path", "runtime-bevy/Cargo.toml", "-p", "threenative_runtime", "--test", "audio", "native_audio_execution_script_playback", "--", "--exact", "--nocapture"],
+  ]);
+});
+
+test("should require both native audio execution cases", () => {
+  const source = "fn native_audio_execution_event_one_shot() {}";
+  assert.deepEqual(validateNativeAudioExecutionEnrollment(source), ["native-audio-execution:missing:script-playback"]);
+});
 
 test("should compare web and native music transition reports", () => {
   const report = {

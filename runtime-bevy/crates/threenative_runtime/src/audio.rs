@@ -1,9 +1,431 @@
 use bevy::{
-    audio::{AudioBundle, PlaybackSettings, Volume},
+    audio::{AudioBundle, AudioSink, AudioSinkPlayback, PlaybackSettings, Volume},
     prelude::*,
 };
+use std::collections::BTreeMap;
 use threenative_components::ThreeNativeId;
-use threenative_loader::{AudioIr, LoadedBundle};
+use threenative_loader::{AudioControlIr, AudioIr, LoadedBundle};
+
+use crate::systems_effects::NativeSystemEffectLog;
+
+#[derive(Component, Clone, Debug, PartialEq, Eq)]
+pub struct NativeAudioPlayback(pub String);
+
+#[derive(Clone, Debug)]
+struct NativeAudioSound {
+    asset_path: String,
+    loop_: bool,
+    pitch: Option<f32>,
+    volume: Option<f32>,
+}
+
+#[derive(Resource, Default)]
+pub struct NativeAudioRuntime {
+    controls: Vec<AudioControlIr>,
+    control_cursor: usize,
+    control_elapsed_seconds: f32,
+    pending_controls: Vec<AudioControlIr>,
+    event_commands: BTreeMap<String, Vec<NativeAudioCommand>>,
+    sounds: BTreeMap<String, NativeAudioSound>,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+enum NativeAudioServiceCommand {
+    Play {
+        playback_id: String,
+        sound_id: String,
+        loop_: Option<bool>,
+        volume: Option<f32>,
+    },
+    Stop {
+        playback_id: String,
+    },
+}
+
+#[derive(Resource, Default)]
+pub struct NativeAudioServiceQueue(Vec<NativeAudioServiceCommand>);
+
+#[derive(Resource, Default)]
+pub struct NativeAudioEventQueue(Vec<String>);
+
+#[derive(Resource, Default)]
+pub struct NativeAudioEventCursors(BTreeMap<String, usize>);
+
+pub fn queue_new_native_audio_events(
+    queue: &mut NativeAudioEventQueue,
+    cursors: &mut NativeAudioEventCursors,
+    events: &std::collections::HashMap<String, serde_json::Value>,
+) {
+    for cursor in cursors
+        .0
+        .iter_mut()
+        .filter(|(event, _)| !events.contains_key(*event))
+        .map(|(_, cursor)| cursor)
+    {
+        *cursor = 0;
+    }
+    for (event, values) in events {
+        let count = values.as_array().map_or(1, Vec::len);
+        let cursor = cursors.0.entry(event.clone()).or_default();
+        let new_count = if count >= *cursor {
+            count - *cursor
+        } else {
+            count
+        };
+        queue
+            .0
+            .extend(std::iter::repeat_n(event.clone(), new_count));
+        *cursor = count;
+    }
+}
+
+#[derive(Resource, Default)]
+pub struct NativeAudioPlaybackStates(pub BTreeMap<String, String>);
+
+#[derive(Resource, Default)]
+pub struct NativeAudioDiagnostics(pub Vec<NativeAudioDiagnostic>);
+
+impl NativeAudioRuntime {
+    pub fn from_bundle(bundle: &LoadedBundle) -> Self {
+        let Some(audio) = bundle.audio.as_ref() else {
+            return Self::default();
+        };
+        let asset_paths = bundle
+            .assets
+            .assets
+            .iter()
+            .filter(|asset| asset.kind == "audio")
+            .filter_map(|asset| {
+                asset
+                    .path
+                    .as_ref()
+                    .map(|path| (asset.id.as_str(), path.clone()))
+            })
+            .collect::<BTreeMap<_, _>>();
+        let mut controls = audio.controls.clone();
+        controls.sort_by(|left, right| left.at.unwrap_or(0.0).total_cmp(&right.at.unwrap_or(0.0)));
+        let mut runtime = Self {
+            controls,
+            ..Self::default()
+        };
+        for music in &audio.music {
+            if let Some(path) = asset_paths.get(music.asset.as_str()) {
+                runtime.sounds.insert(
+                    music.id.clone(),
+                    NativeAudioSound {
+                        asset_path: path.clone(),
+                        loop_: music.looped.unwrap_or(false),
+                        pitch: music.pitch,
+                        volume: music.volume,
+                    },
+                );
+            }
+        }
+        for one_shot in &audio.one_shots {
+            if let Some(path) = asset_paths.get(one_shot.asset.as_str()) {
+                let sound = NativeAudioSound {
+                    asset_path: path.clone(),
+                    loop_: false,
+                    pitch: one_shot.pitch,
+                    volume: one_shot.volume,
+                };
+                runtime.sounds.insert(one_shot.id.clone(), sound);
+            }
+        }
+        for event in audio
+            .one_shots
+            .iter()
+            .map(|one_shot| one_shot.event.as_str())
+        {
+            runtime
+                .event_commands
+                .entry(event.to_owned())
+                .or_insert_with(|| handle_audio_events(audio, &[event]));
+        }
+        runtime
+    }
+}
+
+fn playback_settings(loop_: bool, volume: Option<f32>, pitch: Option<f32>) -> PlaybackSettings {
+    let mut settings = if loop_ {
+        PlaybackSettings::LOOP
+    } else {
+        PlaybackSettings::DESPAWN
+    };
+    if let Some(volume) = volume {
+        settings = settings.with_volume(Volume::new(volume));
+    }
+    if let Some(pitch) = pitch {
+        settings = settings.with_speed(pitch);
+    }
+    settings
+}
+
+fn spawn_audio(
+    commands: &mut Commands,
+    asset_server: &AssetServer,
+    playback_id: String,
+    sound: &NativeAudioSound,
+    loop_: Option<bool>,
+    volume: Option<f32>,
+) {
+    commands.spawn((
+        AudioBundle {
+            source: asset_server.load(sound.asset_path.clone()),
+            settings: playback_settings(
+                loop_.unwrap_or(sound.loop_),
+                volume.or(sound.volume),
+                sound.pitch,
+            ),
+        },
+        Name::new(playback_id.clone()),
+        NativeAudioPlayback(playback_id.clone()),
+        ThreeNativeId(playback_id),
+    ));
+}
+
+pub fn play_new_native_audio_events(
+    mut commands: Commands,
+    asset_server: Res<AssetServer>,
+    runtime: Res<NativeAudioRuntime>,
+    mut queued_events: ResMut<NativeAudioEventQueue>,
+    mut diagnostics: ResMut<NativeAudioDiagnostics>,
+) {
+    let events = std::mem::take(&mut queued_events.0);
+    for event in events {
+        for command in runtime.event_commands.get(&event).into_iter().flatten() {
+            if let Some(sound) = runtime.sounds.get(&command.id) {
+                spawn_audio(
+                    &mut commands,
+                    &asset_server,
+                    command.id.clone(),
+                    sound,
+                    None,
+                    None,
+                );
+            } else {
+                let diagnostic = NativeAudioDiagnostic {
+                    code: "TN_AUDIO_ASSET_MISSING".to_owned(),
+                    message: format!(
+                        "Audio playback '{}' references missing or non-audio asset '{}'.",
+                        command.id, command.asset
+                    ),
+                    path: format!("audio/oneShots/{}", command.id),
+                    severity: "error".to_owned(),
+                };
+                warn!(
+                    "{}: {} ({})",
+                    diagnostic.code, diagnostic.message, diagnostic.path
+                );
+                diagnostics.0.push(diagnostic);
+            }
+        }
+    }
+}
+
+fn queue_audio_play(queue: &mut NativeAudioServiceQueue, result: &serde_json::Value) {
+    if result["accepted"].as_bool() != Some(true) {
+        return;
+    }
+    let (Some(playback_id), Some(sound_id)) =
+        (result["playbackId"].as_str(), result["soundId"].as_str())
+    else {
+        return;
+    };
+    queue.0.push(NativeAudioServiceCommand::Play {
+        playback_id: playback_id.to_owned(),
+        sound_id: sound_id.to_owned(),
+        loop_: result["loop"].as_bool(),
+        volume: result["volume"].as_f64().map(|value| value as f32),
+    });
+}
+
+pub fn queue_native_audio_service_effects(
+    queue: &mut NativeAudioServiceQueue,
+    logs: &[NativeSystemEffectLog],
+) {
+    for entry in logs.iter().flat_map(|log| &log.entries) {
+        let Some(service) = entry.service.as_deref() else {
+            continue;
+        };
+        let Some(payload) = entry.payload.as_ref() else {
+            continue;
+        };
+        match service {
+            "audio.play" => queue_audio_play(queue, &payload["result"]),
+            "effects.play" => queue_audio_play(queue, &payload["audio"]),
+            "audio.stop" => {
+                if let Some(playback_id) = payload["result"]["playbackId"].as_str() {
+                    queue.0.push(NativeAudioServiceCommand::Stop {
+                        playback_id: playback_id.to_owned(),
+                    });
+                }
+            }
+            _ => {}
+        }
+    }
+}
+
+pub fn apply_native_audio_service_effects(
+    mut commands: Commands,
+    asset_server: Res<AssetServer>,
+    runtime: Res<NativeAudioRuntime>,
+    mut queue: ResMut<NativeAudioServiceQueue>,
+    playbacks: Query<(Entity, &NativeAudioPlayback, Option<&AudioSink>)>,
+    mut states: ResMut<NativeAudioPlaybackStates>,
+    mut diagnostics: ResMut<NativeAudioDiagnostics>,
+) {
+    for effect in std::mem::take(&mut queue.0) {
+        match effect {
+            NativeAudioServiceCommand::Play {
+                playback_id,
+                sound_id,
+                loop_,
+                volume,
+            } => {
+                if let Some(sound) = runtime.sounds.get(&sound_id) {
+                    spawn_audio(
+                        &mut commands,
+                        &asset_server,
+                        playback_id.clone(),
+                        sound,
+                        loop_,
+                        volume,
+                    );
+                    states.0.insert(playback_id, "playing".to_owned());
+                } else {
+                    let diagnostic = NativeAudioDiagnostic {
+                        code: "TN_AUDIO_SOUND_UNRESOLVED".to_owned(),
+                        message: format!(
+                            "Script audio playback '{}' references unresolved sound '{}'.",
+                            playback_id, sound_id
+                        ),
+                        path: format!("audio/sounds/{sound_id}"),
+                        severity: "error".to_owned(),
+                    };
+                    warn!(
+                        "{}: {} ({})",
+                        diagnostic.code, diagnostic.message, diagnostic.path
+                    );
+                    diagnostics.0.push(diagnostic);
+                    states.0.insert(playback_id, "stopped".to_owned());
+                }
+            }
+            NativeAudioServiceCommand::Stop { playback_id } => {
+                for (entity, playback, sink) in &playbacks {
+                    if playback.0 == playback_id {
+                        if let Some(sink) = sink {
+                            sink.stop();
+                        }
+                        commands.entity(entity).despawn();
+                    }
+                }
+                states.0.insert(playback_id, "stopped".to_owned());
+            }
+        }
+    }
+}
+
+pub fn apply_native_audio_controls(
+    mut commands: Commands,
+    mut runtime: ResMut<NativeAudioRuntime>,
+    playbacks: Query<(Entity, &NativeAudioPlayback, Option<&AudioSink>)>,
+    mut states: ResMut<NativeAudioPlaybackStates>,
+    mut diagnostics: ResMut<NativeAudioDiagnostics>,
+    time: Res<Time>,
+) {
+    runtime.control_elapsed_seconds += time.delta_seconds();
+    let ready_end = runtime.controls[runtime.control_cursor..]
+        .iter()
+        .take_while(|control| control.at.unwrap_or(0.0) <= runtime.control_elapsed_seconds)
+        .count()
+        + runtime.control_cursor;
+    let mut controls = std::mem::take(&mut runtime.pending_controls);
+    controls.extend_from_slice(&runtime.controls[runtime.control_cursor..ready_end]);
+    runtime.control_cursor = ready_end;
+    let mut deferred = Vec::new();
+    for control in controls {
+        let matches = playbacks
+            .iter()
+            .filter(|(_, playback, _)| playback.0 == control.target)
+            .collect::<Vec<_>>();
+        match control.kind.as_str() {
+            "pause" => {
+                if !matches.iter().any(|(_, _, sink)| sink.is_some()) {
+                    deferred.push(control);
+                    continue;
+                }
+                for (_, _, sink) in &matches {
+                    if let Some(sink) = sink {
+                        sink.pause();
+                    }
+                }
+                states.0.insert(control.target, "paused".to_owned());
+            }
+            "resume" => {
+                if !matches.iter().any(|(_, _, sink)| sink.is_some()) {
+                    deferred.push(control);
+                    continue;
+                }
+                for (_, _, sink) in &matches {
+                    if let Some(sink) = sink {
+                        sink.play();
+                    }
+                }
+                states.0.insert(control.target, "playing".to_owned());
+            }
+            "stop" => {
+                for (entity, _, sink) in matches {
+                    if let Some(sink) = sink {
+                        sink.stop();
+                    }
+                    commands.entity(entity).despawn();
+                }
+                states.0.insert(control.target, "stopped".to_owned());
+            }
+            "query" => {
+                if !matches.iter().any(|(_, _, sink)| sink.is_some()) {
+                    deferred.push(control);
+                    continue;
+                }
+                let sink_status = matches
+                    .iter()
+                    .find_map(|(_, _, sink)| {
+                        sink.map(|sink| {
+                            if sink.is_paused() {
+                                "paused"
+                            } else {
+                                "playing"
+                            }
+                        })
+                    })
+                    .map(str::to_owned);
+                let status = sink_status
+                    .or_else(|| states.0.get(&control.target).cloned())
+                    .unwrap_or_else(|| "stopped".to_owned());
+                states.0.insert(control.target, status);
+            }
+            "seek" => {
+                let diagnostic = NativeAudioDiagnostic {
+                    code: "TN_AUDIO_NATIVE_SEEK_UNSUPPORTED".to_owned(),
+                    message: format!(
+                        "Native audio playback '{}' cannot seek because Bevy's AudioSink has no seek operation.",
+                        control.target
+                    ),
+                    path: format!("audio/controls/{}", control.id),
+                    severity: "warning".to_owned(),
+                };
+                warn!(
+                    "{}: {} ({})",
+                    diagnostic.code, diagnostic.message, diagnostic.path
+                );
+                diagnostics.0.push(diagnostic);
+            }
+            _ => {}
+        }
+    }
+    runtime.pending_controls = deferred;
+}
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct NativeAudioCommand {
@@ -493,11 +915,10 @@ pub fn spawn_startup_audio(world: &mut World, bundle: &LoadedBundle) -> Vec<Nati
                 world.spawn((
                     AudioBundle {
                         source: asset_server.load(path),
-                        settings: command.volume.map_or(PlaybackSettings::LOOP, |volume| {
-                            PlaybackSettings::LOOP.with_volume(Volume::new(volume))
-                        }),
+                        settings: playback_settings(true, command.volume, command.pitch),
                     },
                     Name::new(command.id.clone()),
+                    NativeAudioPlayback(command.id.clone()),
                     ThreeNativeId(command.id),
                 ));
             }

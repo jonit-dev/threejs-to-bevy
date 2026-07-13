@@ -10,13 +10,25 @@ This adds no runtime network or streaming-audio capability.
 
 Current support:
 
-- Web and native traces cover loop/one-shot commands, pause, resume, seek,
-  stop, query state, mixer buses, gain effects, ducking, listener movement,
-  spatial attenuation, generated-tone command metadata, and soundtrack
-  transitions.
+- Web and native execute bundle-local startup music. Web consumes event-driven
+  one-shots in its frame loop; native now queues each newly emitted event once
+  and spawns auto-despawning Bevy audio entities with authored volume and pitch.
+- Native script `audio.play`, `audio.stop`, and feedback-preset audio effects
+  now spawn and stop playback-id-tagged Bevy audio entities.
+- Authored native pause, resume, stop, and query controls operate on Bevy
+  `AudioSink` state. The script-facing `context.audio.query()` remains logical
+  until completed-sink feedback is added; it does not expose a public native
+  handle. Seek remains an explicit `TN_AUDIO_NATIVE_SEEK_UNSUPPORTED`
+  diagnostic because Bevy 0.14's sink has no seek operation.
+- Web and native normalized traces cover loop/one-shot commands, the complete
+  declared control sequence (including the native seek boundary), mixer buses,
+  gain effects, ducking, listener movement, spatial attenuation,
+  generated-tone command metadata, and soundtrack transitions. These traces
+  are command/policy parity evidence, not proof of waveform output.
 - `pnpm verify:focused verify:feature-parity-audio-platform` refreshes the
-  production-hardening web/native reports and requires normalized command,
-  mixer, support, device-routing, and platform-policy parity.
+  production-hardening web/native reports, runs native event/script entity
+  execution tests, and requires normalized command, mixer, support,
+  device-routing, and platform-policy parity.
 - Default-output selection is reportable. Native audio handles, arbitrary
   device routing, custom executable decoders, and streaming/network audio
   remain diagnostic-only boundaries.
@@ -26,6 +38,11 @@ Current support:
   residual policy registry and remain diagnostic-only.
 - Generated tones are promoted as portable command/support metadata. This does
   not claim a synthesized native waveform backend beyond the traced command.
+
+Native execution evidence is intentionally headless and asserts the scheduled
+creation of event/script Bevy audio entities plus script stop dispatch. Actual
+audible device output remains hardware-dependent and is not claimed by the
+headless gate.
 
 Verification:
 

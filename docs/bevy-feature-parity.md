@@ -49,11 +49,12 @@ adapters, shared SDK/IR/compiler contract, or an intentional product boundary.
 | ✅ | Assets, glTF, and scenes | No active adapter gap for promoted asset loading; custom loaders, runtime saving/export, arbitrary file/network access, and shader use of custom glTF attributes are shared boundaries. | Bundle-local assets, glTF dependency handling, asset catalogs, inspection, hot reload, streaming policy, and custom-loader diagnostics. | `tn asset inspect`, `pnpm verify:gltf-fidelity` |
 | ⚠️ | Animation and particles | Promoted playback, masks, morphs, and bounded particles have shared contract plus web/Bevy proof; raw backend graphs, IK/retargeting, and backend handles are product boundaries. | Clip metadata, playback, events, bounded graph data, masks, morph targets, and deterministic lightweight VFX. | `pnpm verify:focused verify:animation-physics-residuals`, conformance fixtures |
 | ⚠️ | Physics and character movement | Deep contact ordering, bounded mesh grounding, and bounded navigation residuals have aggregate web/native evidence; full constraints, vehicles, soft bodies, ragdolls, arbitrary triangle narrow phase, and backend handles remain boundaries. | Fixed-tick physics, primitive bodies/colliders, contacts, queries, character movement, mesh collider policy, joints, and nav diagnostics. | `pnpm verify:focused verify:feature-parity-physics-native`, `pnpm verify:physics-self-verification`, `pnpm verify:character-physics-contacts` |
+| ✅ | Bounded objective interactions | No active adapter gap for the promoted closed detector/gate/effect subset; arbitrary expressions, script payloads, lane algorithms, and unproved new effect kinds remain product boundaries. | Deterministic candidate ordering, once/cooldown gates, pickup/hazard/checkpoint/projectile effects, completion, normalized traces, and resulting resource/entity state. | `pnpm verify:conformance`, `packages/ir/artifacts/conformance/interactions/` |
 | ✅ | Input, picking, and controls | No active web or Bevy gap for promoted input/picking; richer gestures, repair overlays, and navigation diagnostics are product-polish boundaries. | Keyboard, mouse, pointer lock, gamepad, touch, picking, UI action dispatch, rebinding, and device diagnostics. | `pnpm verify:focused verify:input-ui-polish`, conformance fixtures |
 | ⚠️ | UI, text, and accessibility | Mixed: bounded base menu pixels and deterministic value/caret edits are web/native-proved; native style effects, rendered world attachment, platform screen readers, IME, and virtual keyboards remain scoped gaps or boundaries. | Retained UI, layout/style/text/buttons, focus, navigation, recipes, accessibility diagnostics, and unsupported native/widget boundaries. | `pnpm verify:focused verify:feature-parity-ui-native`, `pnpm verify:focused verify:input-ui-polish`, `pnpm verify:conformance` |
 | ⚠️ | Window and platform runtime | Shared registry policy plus matching web/native resize/scale reports; custom cursors, power/background policy, clear-color updates, and multi-window remain intentional boundaries. | Window metadata, target profiles, resize observations, cursor/power diagnostics, and single-window policy. | `pnpm verify:focused verify:feature-parity-audio-platform`, target-profile fixtures |
 | ✅ | Persistence and settings | No active adapter gap for declared save/settings behavior; shared persistence contract stays guarded, and cloud/account storage is deferred. | Save slots, local settings, migration metadata, checkpoint/autosave, durable Bevy backend, and cloud boundary diagnostics. | `pnpm verify:focused verify:persistence-reload` |
-| ⚠️ | Audio | Both adapters have refreshed playback-control, spatial/listener, mixer, transition, and tone-command traces; device routing, platform handles, custom decoders, streaming, and network audio remain boundaries. | Local audio assets, playback commands, spatial/listener metadata, mixer/effect reports, routing diagnostics, and decoder/streaming boundaries. | `pnpm verify:focused verify:feature-parity-audio-platform`, `pnpm verify:focused verify:production-hardening`, conformance fixtures |
+| ⚠️ | Audio | Web/native startup, event-driven, script-requested, and feedback-preset bundle-local playback now execute in their game loops, with headless native entity-spawn evidence. Authored native pause/resume/stop/query controls operate on Bevy sinks; script query remains logical and seek remains an explicit Bevy 0.14 boundary. Spatial/listener, mixer, transition, and tone support remains trace-bounded; device routing, platform handles, custom decoders, streaming, and network audio remain boundaries. | Local audio assets, scheduled event/script playback, playback controls except native seek, spatial/listener metadata, mixer/effect reports, routing diagnostics, and decoder/streaming boundaries. | `pnpm verify:focused verify:feature-parity-audio-platform`, `pnpm verify:focused verify:production-hardening`, conformance fixtures |
 | ✅ | Diagnostics, tooling, packaging, and performance | No active adapter gap for release-gated diagnostics/tooling/package/perf reports; adapter-specific metrics vary by target, and live engine-integrated debug rendering remains tooling work. | Stable diagnostics, release gates, reports, budgets, profiler/debug evidence, package preflight, and repair hints. | `pnpm verify:release`, `pnpm verify:focused verify:production-hardening` |
 | ⚠️ | Editor and developer tools | Shared source-operation/CLI/browser editor contract is promoted; native desktop visual editor shell is a deferred product boundary, not a Bevy runtime gap. | Source-backed editor operations, inspector mappings, preview/build proof, gizmos/debug tools, hot reload, and native editor boundary. | `pnpm verify:focused verify:editor-package`, editor operation tests |
 | ⏭️ | Deferred or non-portable | Product boundary only: raw backend authoring/handles, networking/collaboration, 2D workflows, arbitrary platform APIs, and non-IR backend features are outside the portable contract. | Raw Bevy/Three.js authoring, backend handles, networking, 2D workflows, arbitrary platform APIs, and non-IR backend features. | Stable unsupported diagnostics |
@@ -424,6 +425,14 @@ diagnostics until portable promotion criteria and web/Bevy evidence exist.
 - [x] `P1` Character interaction volumes and object pushing, including an
       opt-in `CharacterRig` handoff from deterministic push traces to dynamic
       body velocity
+- [x] `P1` Closed Interaction IR fixed-tick execution on web and Bevy for
+      pickup, hazard, checkpoint, and projectile/event scenarios. The
+      `pnpm verify:conformance` aggregate compares paired normalized traces,
+      resource values, and live entity IDs under
+      `packages/ir/artifacts/conformance/interactions/`; negative controls
+      reject reordered traces, double rewards, missed despawns, and unsupported
+      native effects with `TN_INTERACTION_PARITY_MISMATCH` or
+      `TN_INTERACTION_RUNTIME_UNSUPPORTED`.
 - [x] Fixture-backed physics self-verification gate for gravity/collision,
       material response, mass/stacking, character obstacles, query services,
       bounded mesh CCD, joint metadata, and unsupported-boundary diagnostics;
@@ -604,12 +613,15 @@ Current UI rows use these labels:
 
 - [x] Local OGG/WAV asset validation
 - [x] Web HTML-audio sink and Bevy autoplay loop spawning
+- [x] Web/Bevy scheduled event one-shots and script play/stop execution
 - [x] Portable volume and deterministic audio command observations
 - [x] Bus, listener, and spatial-emitter metadata
 - [x] Fixed loop start/stop lifecycle traces
-- [x] Playback-id controls for pause, resume, seek, stop, and query traces
+- [x] Playback-id controls for pause, resume, stop, and query execution; native
+      seek emits `TN_AUDIO_NATIVE_SEEK_UNSUPPORTED`
 - [x] `P1` Promoted: the complete playback-control sequence is refreshed in the
-      web/native `verify:feature-parity-audio-platform` report.
+      web/native `verify:feature-parity-audio-platform` report, while native
+      event/script playback is guarded by headless entity-execution tests.
 - [x] `P1` Real 3D spatial attenuation and listener movement
 - [x] `P1` Mixer buses, ducking, and routing observations
 - [x] `P2` Pitch control and generated tone playback metadata
