@@ -31,9 +31,10 @@ pnpm tn -- iterate --project . --json
    must cover game design, assets, scripts, polish, and proof end to end (the
    worksheet enumerates the required beats).
 2. Worked examples first: before inventing a new gameplay, camera, UI,
-   physics, asset, or polish pattern, run `tn cookbook list --json` to see
-   available patterns and `tn cookbook show <id> --json` to load one complete
-   goal -> commands -> source delta -> script -> proof example.
+   physics, asset, or polish pattern, run `tn cookbook search <query> --json`
+   to find relevant patterns, `tn cookbook list --json` to browse all patterns,
+   and `tn cookbook show <id> --json` to load one complete goal -> commands ->
+   source delta -> script -> proof example.
 3. Author with bounded CLI operations (`threenative-authoring` skill). Apply
    gameplay recipes only as bounded steps from a complete plan, for example
    `tn recipe apply top-down-collector --scene <scene> --player <entity> --camera <camera> --json`,

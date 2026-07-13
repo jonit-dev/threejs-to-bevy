@@ -7,6 +7,13 @@ surfaces:
   - scripting
   - compiler
   - portability
+keywords:
+  - import
+  - module
+  - helper
+  - shared code
+  - script
+  - compiler
 ---
 
 # Project-local script modules

@@ -1,11 +1,12 @@
 import { resolve, sep } from "node:path";
 
 import { AUTHORING_OPERATION_NAMES, buildAuthoringOperationCliArgv, getAuthoringOperationDescriptor, type AuthoringOperationName } from "@threenative/authoring";
-import { dispatch } from "@threenative/cli";
+import { CLI_COMMAND_REGISTRY, dispatch, type CommandMcpToolName } from "@threenative/cli";
 
 export type AuthoringMcpToolName =
   | AuthoringOperationName
   | "bundle.import"
+  | CommandMcpToolName
   | "project.build"
   | "project.screenshot"
   | "project.verify"
@@ -45,9 +46,16 @@ const registryBackedMcpTools: Array<{ description: string; name: AuthoringOperat
   };
 });
 
+const commandRegistryBackedMcpTools: Array<{ description: string; name: AuthoringMcpToolName }> = Object.values(CLI_COMMAND_REGISTRY)
+  .flatMap((command) => command.adapters?.mcp === undefined ? [] : [{
+    description: command.adapters.mcp.description,
+    name: command.adapters.mcp.name,
+  }]);
+
 export const AUTHORING_MCP_TOOLS: Array<{ description: string; name: AuthoringMcpToolName }> = [
   { description: "Inspect a source scene document through tn scene inspect --json.", name: "scene.inspect" },
   { description: "Validate source scene documents through tn scene validate --json.", name: "scene.validate" },
+  ...commandRegistryBackedMcpTools,
   ...registryBackedMcpTools,
   { description: "Import recoverable bundle catalogs through tn bundle import --json.", name: "bundle.import" },
   { description: "Build the project through tn build --json.", name: "project.build" },
@@ -82,6 +90,20 @@ export async function callAuthoringMcpTool(call: IAuthoringMcpToolCall, options:
 
 function toolToCliArgv(name: AuthoringMcpToolName, args: Record<string, unknown>, projectRoot: string): string[] {
   const project = ["--project", projectRoot];
+  if (name === "cookbook_lookup") {
+    const id = optionalStringArg(args, "id");
+    const query = optionalStringArg(args, "query");
+    if (id !== undefined && query !== undefined) {
+      throw new Error("MCP tool 'cookbook_lookup' requires exactly one of 'id' or 'query'.");
+    }
+    if (id !== undefined) {
+      return ["cookbook", "show", id, "--json"];
+    }
+    if (query !== undefined) {
+      return ["cookbook", "search", query, "--json"];
+    }
+    throw new Error("MCP tool 'cookbook_lookup' requires exactly one of 'id' or 'query'.");
+  }
   if (name === "scene.inspect") {
     return ["scene", "inspect", stringArg(args, "sceneId"), ...project, "--json"];
   }

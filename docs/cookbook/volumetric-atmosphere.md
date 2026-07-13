@@ -6,6 +6,13 @@ scriptPath: src/scripts/main.ts
 surfaces:
   - environment
   - lighting
+keywords:
+  - fog
+  - height fog
+  - god rays
+  - sun shafts
+  - volumetric
+  - atmosphere
 ---
 
 ## commands

@@ -8,6 +8,12 @@ surfaces:
   - typed-spec
   - ui
   - resource
+keywords:
+  - typed spec
+  - ui
+  - text
+  - binding
+  - resource
 ---
 
 ## commands

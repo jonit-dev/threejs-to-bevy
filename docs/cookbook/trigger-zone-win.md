@@ -7,6 +7,13 @@ surfaces:
   - trigger
   - objective
   - physics
+keywords:
+  - win
+  - goal
+  - trigger
+  - zone
+  - finish
+  - objective
 ---
 
 ## commands

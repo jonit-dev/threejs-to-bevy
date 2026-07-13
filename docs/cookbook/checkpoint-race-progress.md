@@ -7,6 +7,16 @@ surfaces:
   - checkpoint
   - vehicle
   - recipe
+keywords:
+  - race
+  - checkpoint
+  - lap
+  - vehicle
+  - kart
+  - car
+  - boat
+blocks:
+  - objective.checkpoint-lap
 ---
 
 ## commands

@@ -7,6 +7,13 @@ surfaces:
   - player
   - collectible
   - recipe
+keywords:
+  - top down
+  - collector
+  - collectible
+  - recipe
+  - arena
+  - scaffold
 ---
 
 ## commands

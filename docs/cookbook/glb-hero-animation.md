@@ -7,6 +7,14 @@ surfaces:
   - hero
   - animation
   - asset
+keywords:
+  - glb
+  - hero
+  - character
+  - animation
+  - clip
+  - model
+  - catalog
 ---
 
 ## commands

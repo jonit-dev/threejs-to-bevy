@@ -7,7 +7,7 @@ import { join } from "node:path";
 import test from "node:test";
 
 import { AUTHORING_OPERATION_NAMES } from "@threenative/authoring";
-import { dispatch } from "@threenative/cli";
+import { CLI_COMMAND_REGISTRY, dispatch } from "@threenative/cli";
 
 import { AUTHORING_MCP_TOOLS, callAuthoringMcpTool, type IAuthoringMcpResult } from "./index.js";
 
@@ -30,6 +30,7 @@ test("mcp wrapper exposes the authoring tool registry", () => {
     [
       "scene.inspect",
       "scene.validate",
+      "cookbook_lookup",
       ...AUTHORING_OPERATION_NAMES,
       "bundle.import",
       "project.build",
@@ -37,6 +38,66 @@ test("mcp wrapper exposes the authoring tool registry", () => {
       "project.verify",
     ],
   );
+});
+
+test("cookbook MCP exposure derives from the owning CLI command descriptor", () => {
+  const adapter = CLI_COMMAND_REGISTRY.cookbook.adapters?.mcp;
+
+  assert.notEqual(adapter, undefined);
+  assert.equal(adapter?.name, "cookbook_lookup");
+  assert.deepEqual(
+    AUTHORING_MCP_TOOLS.filter((tool) => tool.name === "cookbook_lookup"),
+    adapter === undefined ? [] : [adapter],
+  );
+});
+
+test("cookbook lookup MCP delegates show-by-id to the CLI JSON surface", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-mcp-cookbook-show-"));
+
+  try {
+    const mcp = await callMcp(root, "cookbook_lookup", { id: "player-move-wasd" });
+    const cli = await dispatch(["cookbook", "show", "player-move-wasd", "--json"]);
+
+    assert.equal(mcp.isError, false);
+    assert.deepEqual(mcp.cli.argv, ["cookbook", "show", "player-move-wasd", "--json"]);
+    assert.deepEqual(mcp.content, JSON.parse(cli.stdout));
+    assert.equal((mcp.content as IJsonPayload).code, "TN_COOKBOOK_SHOW_OK");
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("cookbook lookup MCP delegates ranked query search to the CLI JSON surface", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-mcp-cookbook-search-"));
+
+  try {
+    const mcp = await callMcp(root, "cookbook_lookup", { query: "collect coins" });
+    const cli = await dispatch(["cookbook", "search", "collect coins", "--json"]);
+
+    assert.equal(mcp.isError, false);
+    assert.deepEqual(mcp.cli.argv, ["cookbook", "search", "collect coins", "--json"]);
+    assert.deepEqual(mcp.content, JSON.parse(cli.stdout));
+    assert.equal((mcp.content as IJsonPayload).code, "TN_COOKBOOK_SEARCH_OK");
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("cookbook lookup MCP requires exactly one lookup mode", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-mcp-cookbook-invalid-"));
+
+  try {
+    const missing = await callMcp(root, "cookbook_lookup", {});
+    const ambiguous = await callMcp(root, "cookbook_lookup", { id: "player-move-wasd", query: "move player" });
+
+    assert.equal(missing.isError, true);
+    assert.equal((missing.content as IJsonPayload).code, "TN_MCP_ARGUMENT_INVALID");
+    assert.match((missing.content as { message?: string }).message ?? "", /exactly one of 'id' or 'query'/);
+    assert.equal(ambiguous.isError, true);
+    assert.equal((ambiguous.content as IJsonPayload).code, "TN_MCP_ARGUMENT_INVALID");
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
 });
 
 test("should expose registry-backed tool names", () => {

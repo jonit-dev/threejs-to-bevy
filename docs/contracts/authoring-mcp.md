@@ -56,6 +56,13 @@ Representative MCP tools may expose only a subset of the CLI surface. Missing
 tool coverage is a feature gap, not permission to implement parallel mutation
 rules in MCP.
 
+`cookbook_lookup` is the read-only bridge for cookbook pointers returned in
+diagnostic fixes. Pass exactly one of `id` (equivalent to
+`tn cookbook show <id> --json`) or `query` (equivalent to
+`tn cookbook search <query> --json`). Its exposure is declared by the owning
+`cookbook` CLI command descriptor, and the MCP adapter preserves the CLI JSON
+result so lookup uses the same packaged cookbook loader and ranked matcher.
+
 ## Source Boundary
 
 Durable editor-owned source lives in structured documents under `content/**`

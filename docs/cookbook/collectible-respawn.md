@@ -7,6 +7,15 @@ surfaces:
   - collectible
   - prefab
   - script
+keywords:
+  - collect
+  - coin
+  - pickup
+  - gather
+  - respawn
+  - collectible
+blocks:
+  - objective.collectible
 ---
 
 ## commands

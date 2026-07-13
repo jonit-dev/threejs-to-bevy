@@ -8,6 +8,14 @@ surfaces:
   - tween
   - camera-shake
   - world-text
+keywords:
+  - feedback
+  - pickup
+  - tween
+  - camera shake
+  - world text
+  - juice
+  - polish
 ---
 
 ## commands

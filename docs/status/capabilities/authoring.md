@@ -32,8 +32,15 @@ Current support:
   `archetype.apply|update|list` stamp reusable actor source: scene provenance,
   supported physics/camera/input/UI defaults, system documents, and generated
   `defineBehavior` script stubs.
-- Cookbook lookup supports both `tn cookbook show <id> --json` and the compact
-  `tn cookbook <id> --json` shorthand for validated pattern pairs.
+- Cookbook lookup supports `tn cookbook show <id> --json`, the compact
+  `tn cookbook <id> --json` shorthand, and ranked keyword discovery via
+  `tn cookbook search <query> --json`. Entry frontmatter owns the matching
+  vocabulary (`keywords`, `blocks`); `tn game plan` derives its goal and
+  gameplay-block cookbook references from that metadata instead of hardcoded
+  maps, and unknown-id errors suggest the best keyword match or the complete
+  list when no match clears the floor. The descriptor-derived MCP
+  `cookbook_lookup` tool exposes the same show-by-id and search-by-query JSON
+  paths to MCP agents.
 - Recipe application stages the whole project mutation before commit, adopts
   existing scene entities/cameras without replacing authored transforms or
   active-camera ownership, scaffolds required script exports, and reports an
@@ -49,8 +56,8 @@ Current support:
   `defineBehavior` as the preferred path before lower-level JSON edits.
 - MCP and authoring-client adapters are thin wrappers over the same core
   operations; migrated scene/material/runtime/UI hot spots now carry
-  descriptor-backed CLI adapter metadata for MCP argv construction and selected
-  CLI usage output.
+  descriptor-backed CLI adapter metadata for MCP argv construction, while the
+  cookbook CLI command descriptor owns its read-only MCP lookup exposure.
 - Prescriptive diagnostics now attach optional structured `fix` payloads for
   high-friction rejection codes.
 - Resource access literals in `defineBehavior` scripts can derive declared

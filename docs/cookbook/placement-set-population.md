@@ -7,6 +7,14 @@ surfaces:
   - scene
   - prefab
   - placement
+keywords:
+  - placement
+  - prefab
+  - population
+  - spawn
+  - line
+  - grid
+  - inspect
 ---
 
 ## commands

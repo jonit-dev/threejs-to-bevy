@@ -6,6 +6,12 @@ scriptPath: src/scripts/player.ts
 surfaces:
   - pause
   - ui
+keywords:
+  - pause
+  - menu
+  - ui
+  - retained
+  - state
 ---
 
 ## commands

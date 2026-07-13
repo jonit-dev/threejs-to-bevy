@@ -7,6 +7,13 @@ surfaces:
   - player
   - input
   - diagnostics
+keywords:
+  - runtime writes
+  - provenance
+  - audit
+  - movement
+  - diagnostics
+  - validate
 ---
 
 ## commands

@@ -6,6 +6,14 @@ scriptPath: src/scripts/player.ts
 surfaces:
   - target
   - physics
+keywords:
+  - physics
+  - knock
+  - knockdown
+  - throw
+  - projectile
+  - target
+  - push
 ---
 
 ## commands

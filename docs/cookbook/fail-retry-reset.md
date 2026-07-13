@@ -6,6 +6,13 @@ scriptPath: src/scripts/player.ts
 surfaces:
   - state
   - retry
+keywords:
+  - fail
+  - retry
+  - reset
+  - lose
+  - restart
+  - game-over
 ---
 
 ## commands

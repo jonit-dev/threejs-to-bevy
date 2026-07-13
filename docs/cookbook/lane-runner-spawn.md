@@ -7,6 +7,14 @@ surfaces:
   - lanes
   - spawn
   - recipe
+keywords:
+  - lane
+  - runner
+  - spawn
+  - wave
+  - endless
+blocks:
+  - spawn.*
 ---
 
 ## commands

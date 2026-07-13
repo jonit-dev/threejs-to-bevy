@@ -1,7 +1,9 @@
 export interface ICookbookEntryFrontmatter {
+  blocks?: string[];
   category: string;
   goal: string;
   id: string;
+  keywords?: string[];
   scriptPath?: string;
   surfaces: string[];
 }
@@ -137,9 +139,11 @@ function parseFrontmatter(source: string, file: string, diagnostics: ICookbookDi
     return undefined;
   }
   return {
+    ...(Array.isArray(values.blocks) && values.blocks.length > 0 ? { blocks: values.blocks } : {}),
     category,
     goal,
     id,
+    ...(Array.isArray(values.keywords) && values.keywords.length > 0 ? { keywords: values.keywords } : {}),
     scriptPath: stringField(values, "scriptPath"),
     surfaces,
   };

@@ -39,6 +39,7 @@ import { typesCommand } from "./commands/types.js";
 import { worldCommand } from "./commands/world.js";
 import { type ICommandResult } from "./diagnostics.js";
 import { defineCommandRegistry, findCommand, renderCommandHelp, unmigratedCommandNames, type ICommandDefinition } from "./commands/registry.js";
+export type { CommandMcpToolName, ICommandMcpAdapterDefinition } from "./commands/registry.js";
 import { formatOverlayAddUsage } from "./overlays/scaffoldRegistry.js";
 
 export const CLI_COMMAND_REGISTRY = defineCommandRegistry({
@@ -104,9 +105,15 @@ export const CLI_COMMAND_REGISTRY = defineCommandRegistry({
     usage: "tn create <name> [--template <template>] [--authoring structured-source|typed-spec] [--json]",
   },
   cookbook: {
-    description: "List and show validated agent authoring cookbook examples.",
+    adapters: {
+      mcp: {
+        description: "Show a cookbook entry by id or search cookbook entries by query through tn cookbook --json.",
+        name: "cookbook_lookup",
+      },
+    },
+    description: "List, search, and show validated agent authoring cookbook examples.",
     implemented: true,
-    usage: "tn cookbook list [--json]\n              tn cookbook show <id> [--json]\n              tn cookbook <id> [--json]",
+    usage: "tn cookbook list [--json]\n              tn cookbook search <query> [--json]\n              tn cookbook show <id> [--json]\n              tn cookbook <id> [--json]",
   },
   init: {
     description: "Alias for create with first-project next steps.",

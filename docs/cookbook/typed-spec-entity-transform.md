@@ -8,6 +8,13 @@ surfaces:
   - typed-spec
   - entity
   - transform
+keywords:
+  - typed spec
+  - entity
+  - transform
+  - position
+  - rotation
+  - scale
 ---
 
 ## commands

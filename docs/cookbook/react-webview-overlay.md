@@ -7,6 +7,13 @@ surfaces:
   - overlay
   - react
   - webview
+keywords:
+  - react
+  - overlay
+  - webview
+  - tailwind
+  - inventory
+  - browser
 ---
 
 Use retained `ui.ir.json` for portable gameplay UI. This recipe opts into an

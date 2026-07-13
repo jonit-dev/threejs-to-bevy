@@ -21,9 +21,10 @@ everything in context at once.
    (add `--apply` for supported scaffolds).
    The package aliases are `pnpm run game:plan` and `pnpm run game:improve`.
    Read `docs/API-CARD.md` before inspecting repository package source.
-2. Worked examples first: `tn cookbook list --json`, then
-   `tn cookbook show <id> --json`, before inventing a new gameplay, camera,
-   UI, physics, asset, or polish pattern.
+2. Worked examples first: `tn cookbook search <query> --json`, then
+   `tn cookbook show <id> --json`; use `tn cookbook list --json` to browse all
+   patterns before inventing a new gameplay, camera, UI, physics, asset, or
+   polish pattern.
 3. Author with deterministic CLI edits: `tn actor ... --json`,
    `tn scene ... --json`, `tn ui ... --json`, `tn flow ... --json`, and
    `tn add <mechanic-block> ... --json`. Edit JSON directly only when no

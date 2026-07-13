@@ -6,6 +6,13 @@ scriptPath: src/scripts/player.ts
 surfaces:
   - scale
   - proof
+keywords:
+  - scale
+  - size
+  - proportions
+  - readability
+  - inspect
+  - proof
 ---
 
 ## commands

@@ -7,6 +7,13 @@ surfaces:
   - events
   - flow
   - scripting
+keywords:
+  - event
+  - emit
+  - game flow
+  - state
+  - transition
+  - typed event
 ---
 
 ## commands

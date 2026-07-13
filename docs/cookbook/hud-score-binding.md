@@ -6,6 +6,13 @@ scriptPath: src/scripts/player.ts
 surfaces:
   - hud
   - resource
+keywords:
+  - score
+  - hud
+  - text
+  - binding
+  - resource
+  - ui
 ---
 
 ## commands

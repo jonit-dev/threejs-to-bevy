@@ -7,6 +7,16 @@ surfaces:
   - player
   - input
   - script
+keywords:
+  - move
+  - movement
+  - wasd
+  - keyboard
+  - walk
+  - run
+  - input
+blocks:
+  - controller.*
 ---
 
 ## commands

@@ -6,6 +6,13 @@ scriptPath: src/scripts/player.ts
 surfaces:
   - camera
   - player
+keywords:
+  - camera
+  - follow
+  - framing
+  - chase
+blocks:
+  - camera.*
 ---
 
 ## commands

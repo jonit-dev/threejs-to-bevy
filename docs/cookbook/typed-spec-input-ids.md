@@ -8,6 +8,12 @@ surfaces:
   - typed-spec
   - input
   - controller
+keywords:
+  - typed spec
+  - input axis
+  - controller
+  - input id
+  - character
 ---
 
 ## commands

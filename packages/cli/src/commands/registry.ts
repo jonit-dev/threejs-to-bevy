@@ -1,8 +1,17 @@
 import type { ICommandResult } from "../diagnostics.js";
 
 export type CommandHandler = (argv: readonly string[]) => Promise<ICommandResult>;
+export type CommandMcpToolName = "cookbook_lookup";
+
+export interface ICommandMcpAdapterDefinition {
+  description: string;
+  name: CommandMcpToolName;
+}
 
 export interface ICommandDefinition {
+  adapters?: {
+    mcp?: ICommandMcpAdapterDefinition;
+  };
   description: string;
   handler?: CommandHandler;
   implemented: boolean;

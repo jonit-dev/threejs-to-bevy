@@ -6,6 +6,13 @@ scriptPath: src/scripts/player.ts
 surfaces:
   - hud
   - mobile
+keywords:
+  - mobile
+  - responsive
+  - hud
+  - layout
+  - screenshot
+  - safe area
 ---
 
 ## commands

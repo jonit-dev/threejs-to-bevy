@@ -7,6 +7,13 @@ surfaces:
   - environment
   - lighting
   - compiler
+keywords:
+  - bake
+  - global illumination
+  - indirect lighting
+  - light probe
+  - sh2
+  - gi
 ---
 
 ## commands

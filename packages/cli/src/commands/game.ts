@@ -24,6 +24,9 @@ import { gameProvidersCommand } from "./game/providers.js";
 import { ensureReleaseAssetBudgetProof, runGameQaProof, type IGameCommandOptions, type IGameProofRun } from "./gameQaProof.js";
 import { gameScaleCommand } from "./gameScale.js";
 import { hasNonEmptyString, hasStringArray, isPlayerLikeEntityId, isRecord, readFlag, resolveProjectPath } from "./gameShared.js";
+import { bestCookbookMatch, matchCookbookEntryForBlock } from "../cookbook/match.js";
+import { type ICookbookEntry } from "../cookbook/parse.js";
+import { loadCookbookEntries } from "./cookbook.js";
 import { buildPlaytestScaffoldScenario, type PlaytestScaffoldMechanic } from "./playtestScaffold.js";
 
 import { type IGameplayBlockDescriptor, type IGamePlan, type IGamePlanStep } from "./gamePlanTypes.js";
@@ -190,6 +193,7 @@ async function gamePlanCommand(argv: readonly string[]): Promise<ICommandResult>
   }
 
   const recipeIds = listAuthoringRecipeIds();
+  const cookbookEntries = await loadCookbookEntries(projectPath);
   const inventory = await createGameAgentInventory({ projectPath });
   const defaults = inferPlanDefaults(inventory);
   const gameCategory = inferGameCategory(goal);
@@ -243,7 +247,7 @@ async function gamePlanCommand(argv: readonly string[]): Promise<ICommandResult>
     },
     gameplayBlocks,
     kitCandidates,
-    mechanicDecomposition: buildMechanicDecomposition(goal, gameplayBlocks, inventory, kitCandidates),
+    mechanicDecomposition: buildMechanicDecomposition(goal, gameplayBlocks, inventory, kitCandidates, cookbookEntries),
     message: "Deterministic game-production plan generated without mutating source.",
     mutate: false,
     phases: GAME_WORKFLOW_PHASE_IDS.map((id, index) => ({ id, order: index + 1, summary: phaseSummary(id) })),
@@ -1124,6 +1128,7 @@ function buildMechanicDecomposition(
   gameplayBlocks: readonly IGameplayBlockDescriptor[],
   inventory: Awaited<ReturnType<typeof createGameAgentInventory>>,
   kitCandidates: readonly IGamePlan["kitCandidates"][number][],
+  cookbookEntries: readonly ICookbookEntry[],
 ): IGamePlan["mechanicDecomposition"] {
   const sourceOwner = inventory.primaryScene === undefined ? "content/scenes/arena.scene.json" : inventory.primaryScene.file;
   const scriptOwner = inventory.scripts[0]?.module ?? "src/scripts/player.ts";
@@ -1146,6 +1151,7 @@ function buildMechanicDecomposition(
       command: movementRecipe === undefined
         ? `tn add follow-camera --camera ${defaults.cameraId} --target ${defaults.playerId} --project . --json`
         : buildRecipeApplyCommand(movementRecipe, defaults, "movement"),
+      cookbookEntries,
       fallbackCookbookId: "player-move-wasd",
       mechanic: "movement",
       owner: scriptOwner,
@@ -1156,13 +1162,15 @@ function buildMechanicDecomposition(
       command: objective?.recipeIds[0] === undefined
         ? "tn add score --project . --json"
         : buildRecipeApplyCommand(objective.recipeIds[0], defaults, "objective"),
-      fallbackCookbookId: cookbookForGoal(goal),
+      cookbookEntries,
+      fallbackCookbookId: cookbookForGoal(goal, cookbookEntries),
       mechanic: "objective-progression",
       owner: sourceOwner,
       summary: "Track progress, scoring, win/fail state, and retry through source-owned resources and retained UI.",
     }),
     mechanicRow({
       command: `tn flow create plan.match --initial ready --scene ${defaults.sceneId} --project . --json`,
+      cookbookEntries,
       fallbackCookbookId: "fail-retry-reset",
       mechanic: "macro-game-flow",
       owner: "content/flow/match.flow.json",
@@ -1171,6 +1179,7 @@ function buildMechanicDecomposition(
     mechanicRow({
       block: camera,
       command: `tn add follow-camera --camera ${defaults.cameraId} --target ${defaults.playerId} --project . --json`,
+      cookbookEntries,
       fallbackCookbookId: "follow-camera",
       mechanic: "camera-feedback",
       owner: sourceOwner,
@@ -1178,6 +1187,7 @@ function buildMechanicDecomposition(
     }),
     mechanicRow({
       command: "tn sequence create plan.intro --duration 2 --skippable true --project . --json",
+      cookbookEntries,
       fallbackCookbookId: "sound-cue",
       mechanic: "feedback-sequence",
       owner: "content/sequences/intro.sequence.json",
@@ -1186,6 +1196,7 @@ function buildMechanicDecomposition(
     mechanicRow({
       block: spawn,
       command: spawn === undefined ? "tn add spawner --project . --json" : "tn add spawner --project . --json",
+      cookbookEntries,
       fallbackCookbookId: "kinematic-hazard",
       mechanic: "hazards-or-rewards",
       owner: sourceOwner,
@@ -1198,6 +1209,7 @@ function buildMechanicDecomposition(
 function mechanicRow(options: {
   block?: IGameplayBlockDescriptor;
   command: string;
+  cookbookEntries: readonly ICookbookEntry[];
   fallbackCookbookId: string;
   mechanic: string;
   owner: string;
@@ -1205,7 +1217,7 @@ function mechanicRow(options: {
 }): IGamePlan["mechanicDecomposition"][number] {
   return {
     command: options.command,
-    cookbookId: cookbookForGameplayBlock(options.block) ?? options.fallbackCookbookId,
+    cookbookId: cookbookForGameplayBlock(options.block, options.cookbookEntries) ?? options.fallbackCookbookId,
     mechanic: options.mechanic,
     owner: options.owner,
     proof: "tn iterate --project . --json",
@@ -1213,29 +1225,8 @@ function mechanicRow(options: {
   };
 }
 
-function cookbookForGameplayBlock(block: IGameplayBlockDescriptor | undefined): string | undefined {
-  if (block === undefined) {
-    return undefined;
-  }
-  if (block.id === "objective.checkpoint-lap") {
-    return "checkpoint-race-progress";
-  }
-  if (block.id.startsWith("controller.")) {
-    return "player-move-wasd";
-  }
-  if (block.id.startsWith("camera.")) {
-    return "follow-camera";
-  }
-  if (block.id === "objective.collectible") {
-    return "collectible-respawn";
-  }
-  if (block.id === "objective.obstacle-avoid") {
-    return "kinematic-hazard";
-  }
-  if (block.id.startsWith("spawn.")) {
-    return "lane-runner-spawn";
-  }
-  return undefined;
+function cookbookForGameplayBlock(block: IGameplayBlockDescriptor | undefined, entries: readonly ICookbookEntry[]): string | undefined {
+  return block === undefined ? undefined : matchCookbookEntryForBlock(block.id, entries)?.id;
 }
 
 function buildRecipeApplyCommand(
@@ -1257,18 +1248,8 @@ function buildRecipeApplyCommand(
   return ["tn", "recipe", "apply", recipeId, ...flags, "--project", ".", "--json"].join(" ");
 }
 
-function cookbookForGoal(goal: string): string {
-  const text = goal.toLowerCase();
-  if (matchesAny(text, ["race", "checkpoint", "lap", "vehicle", "kart", "car"])) {
-    return "checkpoint-race-progress";
-  }
-  if (matchesAny(text, ["physics", "knock", "throw", "projectile", "target"])) {
-    return "physics-knockdown";
-  }
-  if (matchesAny(text, ["collect", "coin", "pickup", "gather"])) {
-    return "collectible-respawn";
-  }
-  return "trigger-zone-win";
+function cookbookForGoal(goal: string, entries: readonly ICookbookEntry[]): string {
+  return bestCookbookMatch(goal, entries)?.id ?? "trigger-zone-win";
 }
 
 function buildGamePlanSteps(
@@ -1445,7 +1426,7 @@ function recipeStep(step: IGamePlanStep & { recipe: string; recipeArgs: Record<s
   };
 }
 
-function buildGameplayBlocks(goal: string): IGameplayBlockDescriptor[] {
+function buildGameplayBlocks(goal: string, includeAll = false): IGameplayBlockDescriptor[] {
   const text = goal.toLowerCase();
   const blocks = new Map<string, IGameplayBlockDescriptor>();
   const add = (block: IGameplayBlockDescriptor): void => {
@@ -1484,7 +1465,7 @@ function buildGameplayBlocks(goal: string): IGameplayBlockDescriptor[] {
     scriptResponsibilities: ["keeps target framing and follow offset consistent with authored camera source"],
     source: "gameblocks-inspired",
   }));
-  if (matchesAny(text, ["collect", "coin", "pickup", "rescue", "salvage", "gather"])) {
+  if (includeAll || matchesAny(text, ["collect", "coin", "pickup", "rescue", "salvage", "gather"])) {
     add(gameplayBlock({
       appliesWhen: ["collector and rescue goals"],
       cautions: ["Trigger collection must update declared resources and retained UI instead of DOM HUD state."],
@@ -1508,7 +1489,7 @@ function buildGameplayBlocks(goal: string): IGameplayBlockDescriptor[] {
       source: "gameblocks-inspired",
     }));
   }
-  if (matchesAny(text, ["lane", "runner", "run", "dodge", "avoid", "hazard"])) {
+  if (includeAll || matchesAny(text, ["lane", "runner", "run", "dodge", "avoid", "hazard"])) {
     add(gameplayBlock({
       appliesWhen: ["lane runner and obstacle dodging goals"],
       cautions: ["Lane state must be plain resource data with deterministic fail/retry events."],
@@ -1532,7 +1513,7 @@ function buildGameplayBlocks(goal: string): IGameplayBlockDescriptor[] {
       source: "threenative",
     }));
   }
-  if (matchesAny(text, ["race", "checkpoint", "lap", "vehicle", "kart", "car", "boat", "courier", "ferry"])) {
+  if (includeAll || matchesAny(text, ["race", "checkpoint", "lap", "vehicle", "kart", "car", "boat", "courier", "ferry"])) {
     add(gameplayBlock({
       appliesWhen: ["vehicle and checkpoint racing goals"],
       cautions: ["This is kinematic intent, not promoted wheel or drivetrain physics."],
@@ -1556,7 +1537,7 @@ function buildGameplayBlocks(goal: string): IGameplayBlockDescriptor[] {
       source: "gameblocks-inspired",
     }));
   }
-  if (matchesAny(text, ["spawn", "wave", "enemy", "combat", "target", "projectile", "physics"])) {
+  if (includeAll || matchesAny(text, ["spawn", "wave", "enemy", "combat", "target", "projectile", "physics"])) {
     add(gameplayBlock({
       appliesWhen: ["spawned targets, waves, projectile targets, and combat arenas"],
       cautions: ["Spawn regions are plain data; do not sample from runtime geometry or physics backends."],
@@ -1570,6 +1551,22 @@ function buildGameplayBlocks(goal: string): IGameplayBlockDescriptor[] {
     }));
   }
   return [...blocks.values()].sort((left, right) => left.id.localeCompare(right.id));
+}
+
+export function listGameplayBlockDescriptorIds(): string[] {
+  return buildGameplayBlocks("", true).map((block) => block.id);
+}
+
+export function isGameplayBlockReference(reference: string): boolean {
+  const descriptorIds = listGameplayBlockDescriptorIds();
+  if (descriptorIds.includes(reference)) {
+    return true;
+  }
+  if (!reference.endsWith(".*")) {
+    return false;
+  }
+  const prefix = reference.slice(0, -1);
+  return descriptorIds.some((id) => id.startsWith(prefix));
 }
 
 function gameplayBlock(input: IGameplayBlockDescriptor): IGameplayBlockDescriptor {

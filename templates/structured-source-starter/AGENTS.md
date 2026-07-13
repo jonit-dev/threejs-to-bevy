@@ -23,9 +23,10 @@ everything in context at once.
    (add `--apply` for supported scaffolds).
 2. Read `docs/API-CARD.md` for the local ScriptContext and source contract
    before searching engine source. Then use worked examples first:
-   `tn cookbook list --json`, then
-   `tn cookbook show <id> --json`, before inventing a new gameplay, camera,
-   UI, physics, asset, or polish pattern.
+   `tn cookbook search <query> --json`, then
+   `tn cookbook show <id> --json`; use `tn cookbook list --json` to browse all
+   patterns before inventing a new gameplay, camera, UI, physics, asset, or
+   polish pattern.
 3. Author with deterministic CLI edits: `tn actor ... --json`,
    `tn scene ... --json`, `tn ui ... --json`, `tn flow ... --json`, and
    `tn add <mechanic-block> ... --json`. Edit JSON directly only when no

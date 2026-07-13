@@ -6,6 +6,13 @@ scriptPath: src/scripts/player.ts
 surfaces:
   - material
   - visual
+keywords:
+  - material
+  - shader
+  - color
+  - roughness
+  - metalness
+  - visuals
 ---
 
 ## commands

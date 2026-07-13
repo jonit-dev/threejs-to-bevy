@@ -6,6 +6,13 @@ scriptPath: src/scripts/main.ts
 surfaces:
   - runtime
   - rendering
+keywords:
+  - ssgi
+  - global illumination
+  - indirect lighting
+  - screen space
+  - color bleed
+  - rendering
 ---
 
 ## commands

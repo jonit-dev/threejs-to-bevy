@@ -8,6 +8,12 @@ surfaces:
   - typed-spec
   - resource
   - system
+keywords:
+  - typed spec
+  - resource
+  - state
+  - system
+  - access
 ---
 
 ## commands

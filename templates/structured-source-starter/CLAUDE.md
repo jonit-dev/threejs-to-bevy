@@ -8,7 +8,9 @@ Use `AGENTS.md` as the authoritative local instructions. Project skills in
 - `threenative-game-quality` - asset sourcing and the visual quality bar.
 - `threenative-verify` - iterate diagnostics, playtests, release gates.
 
-In short: check `tn cookbook list --json` before inventing patterns, prefer
-`tn ... --json` commands over hand-editing JSON, keep durable edits in
-`content/**` and `src/scripts/**`, never repair generated bundle files, and
-run `tn iterate --project . --json` after changes.
+In short: use `tn cookbook search <query> --json` (or
+`tn cookbook list --json` to browse) before inventing patterns, then load a
+match with `tn cookbook show <id> --json`. Prefer `tn ... --json` commands over
+hand-editing JSON, keep durable edits in `content/**` and `src/scripts/**`,
+never repair generated bundle files, and run `tn iterate --project . --json`
+after changes.

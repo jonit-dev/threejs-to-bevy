@@ -40,6 +40,17 @@ The four sections are required and must stay in this order: `commands`,
 `structured-source-starter` project by `pnpm verify:cookbook`, then the script
 block is written to `scriptPath`, followed by authoring validation and build.
 
+Frontmatter also accepts two optional list fields that power discovery:
+
+- `keywords:` free-text tokens an agent goal or query might use (synonyms the
+  `goal` line does not contain, e.g. `coin`, `pickup` on `collectible-respawn`).
+  `tn cookbook search <query>` and the `tn game plan` goal-to-cookbook match
+  score these above goal text.
+- `blocks:` gameplay block ids (`objective.collectible`) or `prefix.*`
+  patterns (`controller.*`) this entry serves. `tn game plan` derives its
+  mechanic-row cookbook references from these instead of a hardcoded map, so
+  a new entry becomes recommendable by declaring the blocks it covers.
+
 Typed-spec cookbook entries should use `tn authoring compile-typed-spec --json`
 after `src/game.spec.ts` exists. Set `authoring: typed-spec` and
 `scriptPath: src/game.spec.ts` in frontmatter to have the gate write the script

@@ -6,6 +6,15 @@ scriptPath: src/scripts/player.ts
 surfaces:
   - hazard
   - physics
+keywords:
+  - hazard
+  - obstacle
+  - dodge
+  - avoid
+  - moving
+  - patrol
+blocks:
+  - objective.obstacle-avoid
 ---
 
 ## commands

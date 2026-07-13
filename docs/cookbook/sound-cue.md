@@ -7,6 +7,12 @@ scriptPath: src/scripts/player.ts
 surfaces:
   - audio
   - feedback
+keywords:
+  - sound
+  - audio
+  - sfx
+  - music
+  - cue
 ---
 
 ## commands

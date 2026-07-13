@@ -7,6 +7,13 @@ surfaces:
   - countdown
   - hud
   - fixed-tick
+keywords:
+  - countdown
+  - timer
+  - runtime
+  - hud
+  - resource
+  - fixed tick
 ---
 
 ## commands

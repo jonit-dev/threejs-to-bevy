@@ -6,6 +6,13 @@ scriptPath: src/scripts/player.ts
 surfaces:
   - provenance
   - asset
+keywords:
+  - asset catalog
+  - provenance
+  - open source
+  - license
+  - model
+  - glb
 ---
 
 ## commands

@@ -7,6 +7,13 @@ surfaces:
   - interaction
   - objective
   - physics
+keywords:
+  - pickup
+  - collectible
+  - interaction
+  - objective
+  - trigger
+  - win condition
 ---
 
 ## commands

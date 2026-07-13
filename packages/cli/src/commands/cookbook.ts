@@ -3,6 +3,7 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { type ICommandResult } from "../diagnostics.js";
+import { COOKBOOK_MATCH_FLOOR, matchCookbookEntries } from "../cookbook/match.js";
 import { parseCookbookEntry, type ICookbookEntry } from "../cookbook/parse.js";
 
 export async function cookbookCommand(argv: readonly string[], cwd = process.env.INIT_CWD ?? process.cwd()): Promise<ICommandResult> {
@@ -21,10 +22,18 @@ export async function cookbookCommand(argv: readonly string[], cwd = process.env
     }
     return showCookbookEntry(id, cwd, json);
   }
+  if (subcommand === "search") {
+    const searchIndex = normalizedArgv.indexOf("search");
+    const query = normalizedArgv.filter((arg, index) => index > searchIndex && !arg.startsWith("--")).join(" ");
+    if (query === "") {
+      return render({ code: "TN_COOKBOOK_SEARCH_QUERY_MISSING", message: "Usage: tn cookbook search <query> [--json]" }, json, 2);
+    }
+    return searchCookbookEntries(query, cwd, json);
+  }
   if (subcommand !== undefined) {
     return showCookbookEntry(subcommand, cwd, json);
   }
-  return render({ code: "TN_COOKBOOK_USAGE", message: "Usage: tn cookbook list --json | tn cookbook show <id> --json | tn cookbook <id> --json" }, json, 2);
+  return render({ code: "TN_COOKBOOK_USAGE", message: "Usage: tn cookbook list --json | tn cookbook show <id> --json | tn cookbook search <query> --json | tn cookbook <id> --json" }, json, 2);
 }
 
 export async function loadCookbookEntries(cwd = process.cwd()): Promise<ICookbookEntry[]> {
@@ -45,12 +54,12 @@ async function showCookbookEntry(id: string, cwd: string, json: boolean): Promis
   const entries = await loadCookbookEntries(cwd);
   const entry = entries.find((candidate) => candidate.id === id);
   if (entry === undefined) {
-    const suggestion = nearestId(id, entries.map((candidate) => candidate.id));
+    const suggestion = cookbookSuggestion(id, entries);
     return render({
       code: "TN_COOKBOOK_UNKNOWN_ID",
       diagnostics: [{
         code: "TN_COOKBOOK_UNKNOWN_ID",
-        message: `Cookbook entry '${id}' was not found.`,
+        message: `Cookbook entry '${id}' was not found. Try 'tn cookbook search "${id}" --json'.`,
         severity: "error",
         suggestion,
       }],
@@ -59,6 +68,31 @@ async function showCookbookEntry(id: string, cwd: string, json: boolean): Promis
     }, json, 1);
   }
   return render({ code: "TN_COOKBOOK_SHOW_OK", entry }, json, 0);
+}
+
+async function searchCookbookEntries(query: string, cwd: string, json: boolean): Promise<ICommandResult> {
+  const entries = await loadCookbookEntries(cwd);
+  const matches = matchCookbookEntries(query, entries)
+    .filter((match) => match.score >= COOKBOOK_MATCH_FLOOR)
+    .slice(0, 5)
+    .map(({ entry, score }) => ({ category: entry.category, goal: entry.goal, id: entry.id, score, surfaces: entry.surfaces }));
+  return render({
+    code: "TN_COOKBOOK_SEARCH_OK",
+    count: matches.length,
+    matches,
+    query,
+    ...(matches.length === 0
+      ? { diagnostics: [{ code: "TN_COOKBOOK_SEARCH_EMPTY", message: `No cookbook entry matches '${query}'. Run tn cookbook list --json for all entries.`, severity: "warning" as const }] }
+      : {}),
+  }, json, 0);
+}
+
+function cookbookSuggestion(input: string, entries: readonly ICookbookEntry[]): string {
+  const best = matchCookbookEntries(input, entries)[0];
+  if (best !== undefined && best.score >= COOKBOOK_MATCH_FLOOR) {
+    return best.entry.id;
+  }
+  return "tn cookbook list --json";
 }
 
 async function resolveCookbookDirectory(cwd: string): Promise<string> {
@@ -77,31 +111,6 @@ async function resolveCookbookDirectory(cwd: string): Promise<string> {
     }
   }
   return candidates[0]!;
-}
-
-function nearestId(input: string, ids: readonly string[]): string | undefined {
-  let best: { distance: number; id: string } | undefined;
-  for (const id of ids) {
-    const distance = levenshtein(input, id);
-    if (best === undefined || distance < best.distance) {
-      best = { distance, id };
-    }
-  }
-  return best?.id;
-}
-
-function levenshtein(left: string, right: string): number {
-  const previous = Array.from({ length: right.length + 1 }, (_, index) => index);
-  for (let leftIndex = 0; leftIndex < left.length; leftIndex += 1) {
-    const current = [leftIndex + 1];
-    for (let rightIndex = 0; rightIndex < right.length; rightIndex += 1) {
-      current[rightIndex + 1] = left[leftIndex] === right[rightIndex]
-        ? previous[rightIndex]!
-        : Math.min(previous[rightIndex]!, previous[rightIndex + 1]!, current[rightIndex]!) + 1;
-    }
-    previous.splice(0, previous.length, ...current);
-  }
-  return previous[right.length] ?? 0;
 }
 
 function render(payload: unknown, json: boolean, exitCode: number): ICommandResult {
