@@ -6,6 +6,7 @@ import type {
   IEnvironmentSceneIr,
   IGameFlowIr,
   IInputIr,
+  IInteractionsIr,
   IIrSchemaFile,
   ILocalDataIr,
   IMaterialsIr,
@@ -30,6 +31,7 @@ export interface IWebBundle {
   gameFlow?: IGameFlowIr;
   gltfScene?: IGltfSceneMetadataIr;
   input?: IInputIr;
+  interactions?: IInteractionsIr;
   localData?: ILocalDataIr;
   manifest: IBundleManifest;
   materials: IMaterialsIr;

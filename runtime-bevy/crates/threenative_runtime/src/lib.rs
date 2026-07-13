@@ -31,6 +31,7 @@ pub mod gizmo_geometry;
 pub mod height_fog_postprocess;
 pub mod gltf_scene_handles;
 pub mod input;
+pub mod interactions;
 pub mod input_ui_polish;
 pub mod kinematic_mover;
 pub mod map_world;
@@ -1258,6 +1259,23 @@ mod tests {
                 .count(),
             0
         );
+    }
+
+    #[test]
+    fn interaction_despawn_should_reconcile_live_ecs_entity_ids() {
+        let root = Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../../../packages/ir/fixtures/conformance/physics-events/game.bundle");
+        let mut bundle = load_bundle(&root).expect("interaction fixture should load");
+        bundle.interactions = Some(threenative_loader::InteractionsIr {
+            schema: "threenative.interactions".into(), version: "0.1.0".into(), id: "live".into(),
+            interactions: vec![threenative_loader::InteractionIr { id: "pickup".into(), detector: serde_json::json!({ "kind": "distance2d", "radius": 1, "source": { "entity": "sensor" }, "target": { "entity": "pickup" } }), gate: serde_json::json!({ "kind": "once" }), when: vec![], effects: vec![serde_json::json!({ "kind": "despawn", "target": "detected" })], complete: None }],
+        });
+        let mut world = World::new();
+        map_world::map_bundle_into_world(&mut world, &bundle).expect("fixture should map");
+        assert!(world.resource::<map_world::NativeMappedWorldEntityIds>().0.contains("pickup"));
+        interactions::step_bundle_interactions(&mut bundle, 0, &[], &mut interactions::NativeInteractionRuntimeState::default(), None, None);
+        reconcile_live_world_entities(&mut world, &bundle).expect("interaction live reconcile should succeed");
+        assert!(!world.resource::<map_world::NativeMappedWorldEntityIds>().0.contains("pickup"));
     }
 
     #[test]

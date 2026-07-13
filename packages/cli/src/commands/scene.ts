@@ -27,6 +27,7 @@ import {
   setSpawnerComponent,
   setTransform,
   validateScene,
+  dispatchAuthoringOperation,
 } from "@threenative/authoring";
 
 import { type ICommandResult } from "../diagnostics.js";
@@ -70,6 +71,20 @@ export async function sceneCommand(argv: readonly string[], options: ISceneComma
   const [subcommand] = normalizedArgv;
   const json = normalizedArgv.includes("--json");
   const projectPath = resolveProjectPath(normalizedArgv, options.cwd);
+
+  if (subcommand === "placement") {
+    const action = readPositional(normalizedArgv, 1);
+    const sceneId = readPositional(normalizedArgv, 2);
+    const placementId = readPositional(normalizedArgv, 3);
+    const operationName = action === "add" ? "scene.placement_add" : action === "inspect" ? "scene.placement_inspect" : action === "migrate" ? "scene.placement_migrate" : action === "apply" ? "scene.placement_apply" : undefined;
+    const placement = parseJsonObjectFlag(normalizedArgv, "--placement", "TN_PLACEMENT_ARGUMENT_INVALID");
+    if (placement.diagnostic !== undefined) return renderUsage(json, placement.diagnostic, "--placement must be a JSON object.");
+    if (operationName === undefined || sceneId === undefined || placementId === undefined || (action !== "inspect" && placement.value === undefined)) {
+      return renderUsage(json, "TN_PLACEMENT_ARGUMENT_MISSING", "Usage: tn scene placement add|inspect|migrate|apply <scene-id> <placement-id> [--placement <json-object>] [--expand] [--project <path>] [--json]");
+    }
+    const result = await dispatchAuthoringOperation({ args: { sceneId, placementId, ...(placement.value === undefined ? {} : { placement: placement.value }), ...(normalizedArgv.includes("--expand") ? { expand: true } : {}) }, name: operationName, projectPath });
+    return renderSceneResult(result, json, result.ok ? `Placement '${placementId}' ${action} completed.` : `Placement '${placementId}' ${action} failed.`);
+  }
 
   if (subcommand === "create") {
     const sceneId = readPositional(normalizedArgv, 1);

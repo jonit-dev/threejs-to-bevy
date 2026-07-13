@@ -1,0 +1,84 @@
+{
+  "schema": "threenative.placement-migration-proof",
+  "version": 1,
+  "project": "chess",
+  "semanticEquivalence": {
+    "method": "normalized explicit-source versus PlacementSet expansion before source replacement",
+    "exact": true,
+    "entityCount": 16
+  },
+  "dryRun": {
+    "exactMatch": true,
+    "wroteSource": false
+  },
+  "inspect": {
+    "placementId": "placement.white-pawn",
+    "generatedIds": [
+      "piece.white.pawn.a2",
+      "piece.white.pawn.b2",
+      "piece.white.pawn.c2",
+      "piece.white.pawn.d2",
+      "piece.white.pawn.e2",
+      "piece.white.pawn.f2",
+      "piece.white.pawn.g2",
+      "piece.white.pawn.h2"
+    ],
+    "provenance": [
+      {
+        "generatedId": "piece.white.pawn.a2",
+        "index": 0,
+        "placementSetId": "placement.white-pawn",
+        "sourcePath": "content/scenes/chess.scene.json"
+      },
+      {
+        "generatedId": "piece.white.pawn.b2",
+        "index": 1,
+        "placementSetId": "placement.white-pawn",
+        "sourcePath": "content/scenes/chess.scene.json"
+      },
+      {
+        "generatedId": "piece.white.pawn.c2",
+        "index": 2,
+        "placementSetId": "placement.white-pawn",
+        "sourcePath": "content/scenes/chess.scene.json"
+      },
+      {
+        "generatedId": "piece.white.pawn.d2",
+        "index": 3,
+        "placementSetId": "placement.white-pawn",
+        "sourcePath": "content/scenes/chess.scene.json"
+      },
+      {
+        "generatedId": "piece.white.pawn.e2",
+        "index": 4,
+        "placementSetId": "placement.white-pawn",
+        "sourcePath": "content/scenes/chess.scene.json"
+      },
+      {
+        "generatedId": "piece.white.pawn.f2",
+        "index": 5,
+        "placementSetId": "placement.white-pawn",
+        "sourcePath": "content/scenes/chess.scene.json"
+      },
+      {
+        "generatedId": "piece.white.pawn.g2",
+        "index": 6,
+        "placementSetId": "placement.white-pawn",
+        "sourcePath": "content/scenes/chess.scene.json"
+      },
+      {
+        "generatedId": "piece.white.pawn.h2",
+        "index": 7,
+        "placementSetId": "placement.white-pawn",
+        "sourcePath": "content/scenes/chess.scene.json"
+      }
+    ]
+  },
+  "metrics": {
+    "beforeBytes": 57631,
+    "afterBytes": 53460,
+    "coveredBeforeBytes": 8274,
+    "coveredAfterBytes": 4554,
+    "coveredReductionPercent": 44.96
+  }
+}

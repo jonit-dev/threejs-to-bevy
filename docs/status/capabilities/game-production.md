@@ -43,6 +43,13 @@ Current support:
   parity under `packages/ir/artifacts/conformance/game-flow/` and
   `packages/ir/artifacts/conformance/sequence/`. Unsupported trigger/action
   and track kinds fail closed in validation.
+- PlacementSet and Interaction authoring recipes now document
+  cheaper repeated-population and objective-loop paths. Placement migration is
+  exact-match and dry-run first; the bounded Interaction subset has paired
+  web/native trace and state conformance. Generated games still need their own
+  scenario proof, and domain rules stay script-owned. These surfaces do not
+  replace prefab, GameFlow, Sequence, feedback, UI binding, controller, or
+  domain-rule ownership.
 - `tn look apply <arcade-neon|forest-dawn|sunset-racer|toybox-pop|noir-metal>`
   applies curated scaffold polish through runtime and material source
   operations without exposing renderer internals.

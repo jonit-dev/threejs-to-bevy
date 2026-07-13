@@ -1,0 +1,1 @@
+{"schema":"threenative.resource-schemas","version":"0.1.0","schemas":{"Score":{"fields":{"value":{"kind":"number"}}}}}

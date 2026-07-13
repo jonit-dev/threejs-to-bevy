@@ -5,7 +5,7 @@ import { authoringDiagnostic, type IAuthoringDiagnostic } from "./diagnostics.js
 import { formatAuthoringDocument } from "./format.js";
 import { isGeneratedBundleArtifactFile } from "./sourceKinds.js";
 
-export type AuthoringDocumentKind = "asset" | "audio" | "environment" | "flow" | "generator" | "input" | "material" | "mesh" | "overlay" | "prefab" | "project" | "resources" | "runtime" | "scene" | "schema" | "sequence" | "systems" | "target" | "ui" | "unknown";
+export type AuthoringDocumentKind = "asset" | "audio" | "environment" | "flow" | "generator" | "input" | "interaction" | "material" | "mesh" | "overlay" | "prefab" | "project" | "resources" | "runtime" | "scene" | "schema" | "sequence" | "systems" | "target" | "ui" | "unknown";
 
 export interface IAuthoringDocument {
   file: string;
@@ -103,6 +103,8 @@ export function classifyAuthoringDocument(projectRelativePath: string, data: unk
         return "generator";
       case "threenative.input":
         return "input";
+      case "threenative.interactions":
+        return "interaction";
       case "threenative.materials":
         return "material";
       case "threenative.meshes":
@@ -160,6 +162,9 @@ export function classifyAuthoringDocumentPath(projectRelativePath: string): Auth
   }
   if (projectRelativePath.endsWith(".input.json")) {
     return "input";
+  }
+  if (projectRelativePath.endsWith(".interactions.json")) {
+    return "interaction";
   }
   if (projectRelativePath.endsWith(".materials.json")) {
     return "material";

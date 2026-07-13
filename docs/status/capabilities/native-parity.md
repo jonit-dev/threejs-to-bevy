@@ -47,6 +47,16 @@ Current support:
 - UI conformance evidence is categorized in `pnpm verify:conformance` as
   structural, behavioral, and visual/style proof. The current visual/style UI
   proof is an aggregate contact sheet, not a native pixel-rendering promotion.
+- The bounded Interaction fixed-tick contract is promoted on both adapters for
+  pickup, hazard, checkpoint, and projectile/event scenarios. Paired artifacts
+  under `packages/ir/artifacts/conformance/interactions/` compare normalized
+  traces, resource state, and live entity IDs. The pickup pair proves one
+  `addResource` plus `despawn`, `Score.value == 1`, removal of `pickup`, and a
+  completion trace; hazard proves `Score.value == -1`; checkpoint and
+  projectile prove deterministic detector/effect traces. The conformance gate
+  also compares all four pairs and the negative controls catch reordered
+  traces, double rewards, missed despawns, and unavailable native effects.
+  This is behavioral/state parity, not a native visual promotion.
 
 Promotion policy:
 
@@ -61,6 +71,8 @@ Promotion policy:
 Verification:
 
 - `pnpm verify:conformance`
+- `pnpm --filter @threenative/verify-tools test -- --run "interaction parity"`
+- `cargo test -p threenative_runtime --test interactions --manifest-path runtime-bevy/Cargo.toml`
 - `pnpm test:gameplay`
 - `pnpm verify:gameplay-parity`
 - `pnpm verify:parity:smoke`

@@ -1,0 +1,1 @@
+{"schema":"threenative.runtime-diagnostics","version":"0.1.0","diagnostics":[{"code":"TN_INTERACTION_RUNTIME_UNSUPPORTED","severity":"error","path":"interactions/negative-control/effects/0","message":"Native interaction negative control rejected an unavailable feedback preset."}]}

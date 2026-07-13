@@ -1052,6 +1052,7 @@ function sourceFamilyForDocumentKind(kind: AuthoringDocumentKind): EditorInspect
     case "overlay":
     case "sequence":
       return "scene";
+    case "interaction":
     case "systems":
       return "system";
     case "unknown":

@@ -17,7 +17,7 @@ export const audioDocumentSchema = "threenative.audio";
 export const meshDocumentSchema = "threenative.meshes";
 export const generatorDocumentSchema = "threenative.generator-provenance";
 
-export const sceneDocumentKeys = new Set(["schema", "version", "id", "kind", "activation", "initial", "entities", "instances", "prefabs", "resources", "systems", "scriptLifecycles", "ui", "provenance"]);
+export const sceneDocumentKeys = new Set(["schema", "version", "id", "kind", "activation", "initial", "entities", "instances", "placementSets", "prefabs", "resources", "systems", "scriptLifecycles", "ui", "provenance"]);
 export const uiDocumentKeys = new Set(["schema", "version", "id", "nodes", "bindings", "components", "focusOrder", "screens", "recipes", "provenance"]);
 export const materialDocumentKeys = new Set(["schema", "version", "id", "materials", "provenance"]);
 export const assetDocumentKeys = new Set(["schema", "version", "id", "assets", "provenance"]);
@@ -37,6 +37,7 @@ export const meshDocumentKeys = new Set(["schema", "version", "id", "meshes", "p
 export const generatorDocumentKeys = new Set(["schema", "version", "id", "module", "export", "outputs", "overwritePolicy", "inputHash", "outputHash", "lastRun", "provenance"]);
 export const entityKeys = new Set(["archetype", "id", "prefab", "tags", "transform", "components"]);
 export const instanceKeys = new Set(["id", "prefab", "tags", "transform", "components"]);
+export const placementSetKeys = new Set(["id", "kind", "prefab", "pattern", "idFormat", "idValues", "defaults", "indexBindings", "overrides"]);
 export const transformKeys = new Set(["position", "rotation", "scale"]);
 export const systemKeys = new Set([
   "after",
@@ -208,6 +209,7 @@ export interface ISceneDocument {
   activation?: "additive" | "exclusive" | "loading" | "overlay" | "persistent";
   entities?: ISceneEntity[];
   instances?: IScenePrefabInstance[];
+  placementSets?: IScenePlacementSet[];
   initial?: boolean;
   kind?: "credits" | "cutscene" | "level" | "loading" | "menu" | "overlay" | "system";
   prefabs?: IScenePrefab[];
@@ -238,6 +240,25 @@ export interface IScenePrefabInstance {
   tags?: string[];
   transform?: ISceneTransform;
   components?: Record<string, unknown>;
+}
+
+export type ScenePlacementPattern =
+  | { kind: "grid"; origin: number[]; step: number[]; rows: number; columns: number }
+  | { kind: "line"; origin: number[]; step: number[]; count: number }
+  | { kind: "ring"; center: number[]; radius: number; count: number; startAngle?: number }
+  | { kind: "lanes"; origin: number[]; step: number[]; laneStep: number[]; lanes: number; count: number }
+  | { kind: "explicit"; positions: number[][] };
+
+export interface IScenePlacementSet {
+  id: string;
+  kind: "placement-set";
+  prefab: string;
+  pattern: ScenePlacementPattern;
+  idFormat: string;
+  idValues?: string[];
+  defaults?: Omit<IScenePrefabInstance, "id" | "prefab">;
+  indexBindings?: Record<string, "index" | "row" | "column" | "lane" | "positionX" | "positionY" | "positionZ">;
+  overrides?: Record<string, Record<string, unknown>>;
 }
 
 export interface ISceneTransform {

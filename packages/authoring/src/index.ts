@@ -20,11 +20,14 @@ export {
   writeAuthoringJsonDocument,
 } from "./documents.js";
 export { formatAuthoringDocument, stableAuthoringJson } from "./format.js";
+export { expandPlacementSet, expandPlacementSets, setDottedPath, type IExpandedPlacementInstance } from "./placementSets.js";
 export type {
   IScriptReference,
   ISceneDocument,
   ISceneEntity,
   IScenePrefabInstance,
+  IScenePlacementSet,
+  ScenePlacementPattern,
   IScenePrefab,
   ISceneResource,
   ISceneSystem,

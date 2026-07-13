@@ -270,6 +270,7 @@ pub struct NativeGameLoopState {
     pub frame: u64,
     pub countdown_runtime: crate::countdowns::NativeCountdownRuntimeState,
     pub lifecycle: NativeEntityLifecycleRuntimeState,
+    pub interaction_runtime: crate::interactions::NativeInteractionRuntimeState,
     pub kinematic_mover_origins: BTreeMap<String, [f32; 3]>,
     pub patrol_runtime: crate::patrol::NativePatrolRuntimeState,
     pub presentation: crate::presentation::NativePresentationRuntimeState,
@@ -296,6 +297,7 @@ impl NativeGameLoopState {
             frame: 0,
             countdown_runtime: crate::countdowns::NativeCountdownRuntimeState::default(),
             lifecycle: NativeEntityLifecycleRuntimeState::default(),
+            interaction_runtime: crate::interactions::NativeInteractionRuntimeState::default(),
             kinematic_mover_origins: BTreeMap::new(),
             patrol_runtime: crate::patrol::NativePatrolRuntimeState::default(),
             presentation: crate::presentation::NativePresentationRuntimeState::default(),
@@ -562,6 +564,14 @@ pub fn run_native_systems_frame_with_input(
                 state.tick,
                 &sensor_events,
                 &mut state.state_machine_runtime,
+            );
+            crate::interactions::step_bundle_interactions(
+                bundle,
+                state.tick,
+                &sensor_events,
+                &mut state.interaction_runtime,
+                Some(&mut state.presentation),
+                state.write_audit_enabled.then_some(&mut state.write_ledger),
             );
             let time = loop_time_snapshot(
                 options.fixed_delta,

@@ -1,0 +1,644 @@
+{
+  "schema": "threenative.placement-migration-proof",
+  "version": 1,
+  "project": "dense-world-benchmark",
+  "semanticEquivalence": {
+    "method": "normalized explicit-source versus PlacementSet expansion before source replacement",
+    "exact": true,
+    "entityCount": 216
+  },
+  "dryRun": {
+    "exactMatch": true,
+    "wroteSource": false
+  },
+  "inspect": {
+    "placementId": "placement.dense-mid",
+    "generatedIds": [
+      "dense.block.00.00",
+      "dense.block.01.00",
+      "dense.block.02.00",
+      "dense.block.03.00",
+      "dense.block.04.00",
+      "dense.block.05.00",
+      "dense.block.06.00",
+      "dense.block.07.00",
+      "dense.block.08.00",
+      "dense.block.09.00",
+      "dense.block.10.00",
+      "dense.block.11.00",
+      "dense.block.12.00",
+      "dense.block.13.00",
+      "dense.block.14.00",
+      "dense.block.00.01",
+      "dense.block.14.01",
+      "dense.block.00.02",
+      "dense.block.14.02",
+      "dense.block.00.03",
+      "dense.block.03.03",
+      "dense.block.04.03",
+      "dense.block.05.03",
+      "dense.block.06.03",
+      "dense.block.07.03",
+      "dense.block.08.03",
+      "dense.block.09.03",
+      "dense.block.10.03",
+      "dense.block.11.03",
+      "dense.block.14.03",
+      "dense.block.00.04",
+      "dense.block.03.04",
+      "dense.block.11.04",
+      "dense.block.14.04",
+      "dense.block.00.05",
+      "dense.block.03.05",
+      "dense.block.11.05",
+      "dense.block.14.05",
+      "dense.block.00.06",
+      "dense.block.03.06",
+      "dense.block.11.06",
+      "dense.block.14.06",
+      "dense.block.00.07",
+      "dense.block.03.07",
+      "dense.block.11.07",
+      "dense.block.14.07",
+      "dense.block.00.08",
+      "dense.block.03.08",
+      "dense.block.11.08",
+      "dense.block.14.08",
+      "dense.block.00.09",
+      "dense.block.03.09",
+      "dense.block.11.09",
+      "dense.block.14.09",
+      "dense.block.00.10",
+      "dense.block.03.10",
+      "dense.block.11.10",
+      "dense.block.14.10",
+      "dense.block.00.11",
+      "dense.block.03.11",
+      "dense.block.04.11",
+      "dense.block.05.11",
+      "dense.block.06.11",
+      "dense.block.07.11",
+      "dense.block.08.11",
+      "dense.block.09.11",
+      "dense.block.10.11",
+      "dense.block.11.11",
+      "dense.block.14.11",
+      "dense.block.00.12",
+      "dense.block.14.12",
+      "dense.block.00.13",
+      "dense.block.14.13",
+      "dense.block.00.14",
+      "dense.block.01.14",
+      "dense.block.02.14",
+      "dense.block.03.14",
+      "dense.block.04.14",
+      "dense.block.05.14",
+      "dense.block.06.14",
+      "dense.block.07.14",
+      "dense.block.08.14",
+      "dense.block.09.14",
+      "dense.block.10.14",
+      "dense.block.11.14",
+      "dense.block.12.14",
+      "dense.block.13.14",
+      "dense.block.14.14"
+    ],
+    "provenance": [
+      {
+        "generatedId": "dense.block.00.00",
+        "index": 0,
+        "placementSetId": "placement.dense-mid",
+        "sourcePath": "content/scenes/arena.scene.json"
+      },
+      {
+        "generatedId": "dense.block.01.00",
+        "index": 1,
+        "placementSetId": "placement.dense-mid",
+        "sourcePath": "content/scenes/arena.scene.json"
+      },
+      {
+        "generatedId": "dense.block.02.00",
+        "index": 2,
+        "placementSetId": "placement.dense-mid",
+        "sourcePath": "content/scenes/arena.scene.json"
+      },
+      {
+        "generatedId": "dense.block.03.00",
+        "index": 3,
+        "placementSetId": "placement.dense-mid",
+        "sourcePath": "content/scenes/arena.scene.json"
+      },
+      {
+        "generatedId": "dense.block.04.00",
+        "index": 4,
+        "placementSetId": "placement.dense-mid",
+        "sourcePath": "content/scenes/arena.scene.json"
+      },
+      {
+        "generatedId": "dense.block.05.00",
+        "index": 5,
+        "placementSetId": "placement.dense-mid",
+        "sourcePath": "content/scenes/arena.scene.json"
+      },
+      {
+        "generatedId": "dense.block.06.00",
+        "index": 6,
+        "placementSetId": "placement.dense-mid",
+        "sourcePath": "content/scenes/arena.scene.json"
+      },
+      {
+        "generatedId": "dense.block.07.00",
+        "index": 7,
+        "placementSetId": "placement.dense-mid",
+        "sourcePath": "content/scenes/arena.scene.json"
+      },
+      {
+        "generatedId": "dense.block.08.00",
+        "index": 8,
+        "placementSetId": "placement.dense-mid",
+        "sourcePath": "content/scenes/arena.scene.json"
+      },
+      {
+        "generatedId": "dense.block.09.00",
+        "index": 9,
+        "placementSetId": "placement.dense-mid",
+        "sourcePath": "content/scenes/arena.scene.json"
+      },
+      {
+        "generatedId": "dense.block.10.00",
+        "index": 10,
+        "placementSetId": "placement.dense-mid",
+        "sourcePath": "content/scenes/arena.scene.json"
+      },
+      {
+        "generatedId": "dense.block.11.00",
+        "index": 11,
+        "placementSetId": "placement.dense-mid",
+        "sourcePath": "content/scenes/arena.scene.json"
+      },
+      {
+        "generatedId": "dense.block.12.00",
+        "index": 12,
+        "placementSetId": "placement.dense-mid",
+        "sourcePath": "content/scenes/arena.scene.json"
+      },
+      {
+        "generatedId": "dense.block.13.00",
+        "index": 13,
+        "placementSetId": "placement.dense-mid",
+        "sourcePath": "content/scenes/arena.scene.json"
+      },
+      {
+        "generatedId": "dense.block.14.00",
+        "index": 14,
+        "placementSetId": "placement.dense-mid",
+        "sourcePath": "content/scenes/arena.scene.json"
+      },
+      {
+        "generatedId": "dense.block.00.01",
+        "index": 15,
+        "placementSetId": "placement.dense-mid",
+        "sourcePath": "content/scenes/arena.scene.json"
+      },
+      {
+        "generatedId": "dense.block.14.01",
+        "index": 16,
+        "placementSetId": "placement.dense-mid",
+        "sourcePath": "content/scenes/arena.scene.json"
+      },
+      {
+        "generatedId": "dense.block.00.02",
+        "index": 17,
+        "placementSetId": "placement.dense-mid",
+        "sourcePath": "content/scenes/arena.scene.json"
+      },
+      {
+        "generatedId": "dense.block.14.02",
+        "index": 18,
+        "placementSetId": "placement.dense-mid",
+        "sourcePath": "content/scenes/arena.scene.json"
+      },
+      {
+        "generatedId": "dense.block.00.03",
+        "index": 19,
+        "placementSetId": "placement.dense-mid",
+        "sourcePath": "content/scenes/arena.scene.json"
+      },
+      {
+        "generatedId": "dense.block.03.03",
+        "index": 20,
+        "placementSetId": "placement.dense-mid",
+        "sourcePath": "content/scenes/arena.scene.json"
+      },
+      {
+        "generatedId": "dense.block.04.03",
+        "index": 21,
+        "placementSetId": "placement.dense-mid",
+        "sourcePath": "content/scenes/arena.scene.json"
+      },
+      {
+        "generatedId": "dense.block.05.03",
+        "index": 22,
+        "placementSetId": "placement.dense-mid",
+        "sourcePath": "content/scenes/arena.scene.json"
+      },
+      {
+        "generatedId": "dense.block.06.03",
+        "index": 23,
+        "placementSetId": "placement.dense-mid",
+        "sourcePath": "content/scenes/arena.scene.json"
+      },
+      {
+        "generatedId": "dense.block.07.03",
+        "index": 24,
+        "placementSetId": "placement.dense-mid",
+        "sourcePath": "content/scenes/arena.scene.json"
+      },
+      {
+        "generatedId": "dense.block.08.03",
+        "index": 25,
+        "placementSetId": "placement.dense-mid",
+        "sourcePath": "content/scenes/arena.scene.json"
+      },
+      {
+        "generatedId": "dense.block.09.03",
+        "index": 26,
+        "placementSetId": "placement.dense-mid",
+        "sourcePath": "content/scenes/arena.scene.json"
+      },
+      {
+        "generatedId": "dense.block.10.03",
+        "index": 27,
+        "placementSetId": "placement.dense-mid",
+        "sourcePath": "content/scenes/arena.scene.json"
+      },
+      {
+        "generatedId": "dense.block.11.03",
+        "index": 28,
+        "placementSetId": "placement.dense-mid",
+        "sourcePath": "content/scenes/arena.scene.json"
+      },
+      {
+        "generatedId": "dense.block.14.03",
+        "index": 29,
+        "placementSetId": "placement.dense-mid",
+        "sourcePath": "content/scenes/arena.scene.json"
+      },
+      {
+        "generatedId": "dense.block.00.04",
+        "index": 30,
+        "placementSetId": "placement.dense-mid",
+        "sourcePath": "content/scenes/arena.scene.json"
+      },
+      {
+        "generatedId": "dense.block.03.04",
+        "index": 31,
+        "placementSetId": "placement.dense-mid",
+        "sourcePath": "content/scenes/arena.scene.json"
+      },
+      {
+        "generatedId": "dense.block.11.04",
+        "index": 32,
+        "placementSetId": "placement.dense-mid",
+        "sourcePath": "content/scenes/arena.scene.json"
+      },
+      {
+        "generatedId": "dense.block.14.04",
+        "index": 33,
+        "placementSetId": "placement.dense-mid",
+        "sourcePath": "content/scenes/arena.scene.json"
+      },
+      {
+        "generatedId": "dense.block.00.05",
+        "index": 34,
+        "placementSetId": "placement.dense-mid",
+        "sourcePath": "content/scenes/arena.scene.json"
+      },
+      {
+        "generatedId": "dense.block.03.05",
+        "index": 35,
+        "placementSetId": "placement.dense-mid",
+        "sourcePath": "content/scenes/arena.scene.json"
+      },
+      {
+        "generatedId": "dense.block.11.05",
+        "index": 36,
+        "placementSetId": "placement.dense-mid",
+        "sourcePath": "content/scenes/arena.scene.json"
+      },
+      {
+        "generatedId": "dense.block.14.05",
+        "index": 37,
+        "placementSetId": "placement.dense-mid",
+        "sourcePath": "content/scenes/arena.scene.json"
+      },
+      {
+        "generatedId": "dense.block.00.06",
+        "index": 38,
+        "placementSetId": "placement.dense-mid",
+        "sourcePath": "content/scenes/arena.scene.json"
+      },
+      {
+        "generatedId": "dense.block.03.06",
+        "index": 39,
+        "placementSetId": "placement.dense-mid",
+        "sourcePath": "content/scenes/arena.scene.json"
+      },
+      {
+        "generatedId": "dense.block.11.06",
+        "index": 40,
+        "placementSetId": "placement.dense-mid",
+        "sourcePath": "content/scenes/arena.scene.json"
+      },
+      {
+        "generatedId": "dense.block.14.06",
+        "index": 41,
+        "placementSetId": "placement.dense-mid",
+        "sourcePath": "content/scenes/arena.scene.json"
+      },
+      {
+        "generatedId": "dense.block.00.07",
+        "index": 42,
+        "placementSetId": "placement.dense-mid",
+        "sourcePath": "content/scenes/arena.scene.json"
+      },
+      {
+        "generatedId": "dense.block.03.07",
+        "index": 43,
+        "placementSetId": "placement.dense-mid",
+        "sourcePath": "content/scenes/arena.scene.json"
+      },
+      {
+        "generatedId": "dense.block.11.07",
+        "index": 44,
+        "placementSetId": "placement.dense-mid",
+        "sourcePath": "content/scenes/arena.scene.json"
+      },
+      {
+        "generatedId": "dense.block.14.07",
+        "index": 45,
+        "placementSetId": "placement.dense-mid",
+        "sourcePath": "content/scenes/arena.scene.json"
+      },
+      {
+        "generatedId": "dense.block.00.08",
+        "index": 46,
+        "placementSetId": "placement.dense-mid",
+        "sourcePath": "content/scenes/arena.scene.json"
+      },
+      {
+        "generatedId": "dense.block.03.08",
+        "index": 47,
+        "placementSetId": "placement.dense-mid",
+        "sourcePath": "content/scenes/arena.scene.json"
+      },
+      {
+        "generatedId": "dense.block.11.08",
+        "index": 48,
+        "placementSetId": "placement.dense-mid",
+        "sourcePath": "content/scenes/arena.scene.json"
+      },
+      {
+        "generatedId": "dense.block.14.08",
+        "index": 49,
+        "placementSetId": "placement.dense-mid",
+        "sourcePath": "content/scenes/arena.scene.json"
+      },
+      {
+        "generatedId": "dense.block.00.09",
+        "index": 50,
+        "placementSetId": "placement.dense-mid",
+        "sourcePath": "content/scenes/arena.scene.json"
+      },
+      {
+        "generatedId": "dense.block.03.09",
+        "index": 51,
+        "placementSetId": "placement.dense-mid",
+        "sourcePath": "content/scenes/arena.scene.json"
+      },
+      {
+        "generatedId": "dense.block.11.09",
+        "index": 52,
+        "placementSetId": "placement.dense-mid",
+        "sourcePath": "content/scenes/arena.scene.json"
+      },
+      {
+        "generatedId": "dense.block.14.09",
+        "index": 53,
+        "placementSetId": "placement.dense-mid",
+        "sourcePath": "content/scenes/arena.scene.json"
+      },
+      {
+        "generatedId": "dense.block.00.10",
+        "index": 54,
+        "placementSetId": "placement.dense-mid",
+        "sourcePath": "content/scenes/arena.scene.json"
+      },
+      {
+        "generatedId": "dense.block.03.10",
+        "index": 55,
+        "placementSetId": "placement.dense-mid",
+        "sourcePath": "content/scenes/arena.scene.json"
+      },
+      {
+        "generatedId": "dense.block.11.10",
+        "index": 56,
+        "placementSetId": "placement.dense-mid",
+        "sourcePath": "content/scenes/arena.scene.json"
+      },
+      {
+        "generatedId": "dense.block.14.10",
+        "index": 57,
+        "placementSetId": "placement.dense-mid",
+        "sourcePath": "content/scenes/arena.scene.json"
+      },
+      {
+        "generatedId": "dense.block.00.11",
+        "index": 58,
+        "placementSetId": "placement.dense-mid",
+        "sourcePath": "content/scenes/arena.scene.json"
+      },
+      {
+        "generatedId": "dense.block.03.11",
+        "index": 59,
+        "placementSetId": "placement.dense-mid",
+        "sourcePath": "content/scenes/arena.scene.json"
+      },
+      {
+        "generatedId": "dense.block.04.11",
+        "index": 60,
+        "placementSetId": "placement.dense-mid",
+        "sourcePath": "content/scenes/arena.scene.json"
+      },
+      {
+        "generatedId": "dense.block.05.11",
+        "index": 61,
+        "placementSetId": "placement.dense-mid",
+        "sourcePath": "content/scenes/arena.scene.json"
+      },
+      {
+        "generatedId": "dense.block.06.11",
+        "index": 62,
+        "placementSetId": "placement.dense-mid",
+        "sourcePath": "content/scenes/arena.scene.json"
+      },
+      {
+        "generatedId": "dense.block.07.11",
+        "index": 63,
+        "placementSetId": "placement.dense-mid",
+        "sourcePath": "content/scenes/arena.scene.json"
+      },
+      {
+        "generatedId": "dense.block.08.11",
+        "index": 64,
+        "placementSetId": "placement.dense-mid",
+        "sourcePath": "content/scenes/arena.scene.json"
+      },
+      {
+        "generatedId": "dense.block.09.11",
+        "index": 65,
+        "placementSetId": "placement.dense-mid",
+        "sourcePath": "content/scenes/arena.scene.json"
+      },
+      {
+        "generatedId": "dense.block.10.11",
+        "index": 66,
+        "placementSetId": "placement.dense-mid",
+        "sourcePath": "content/scenes/arena.scene.json"
+      },
+      {
+        "generatedId": "dense.block.11.11",
+        "index": 67,
+        "placementSetId": "placement.dense-mid",
+        "sourcePath": "content/scenes/arena.scene.json"
+      },
+      {
+        "generatedId": "dense.block.14.11",
+        "index": 68,
+        "placementSetId": "placement.dense-mid",
+        "sourcePath": "content/scenes/arena.scene.json"
+      },
+      {
+        "generatedId": "dense.block.00.12",
+        "index": 69,
+        "placementSetId": "placement.dense-mid",
+        "sourcePath": "content/scenes/arena.scene.json"
+      },
+      {
+        "generatedId": "dense.block.14.12",
+        "index": 70,
+        "placementSetId": "placement.dense-mid",
+        "sourcePath": "content/scenes/arena.scene.json"
+      },
+      {
+        "generatedId": "dense.block.00.13",
+        "index": 71,
+        "placementSetId": "placement.dense-mid",
+        "sourcePath": "content/scenes/arena.scene.json"
+      },
+      {
+        "generatedId": "dense.block.14.13",
+        "index": 72,
+        "placementSetId": "placement.dense-mid",
+        "sourcePath": "content/scenes/arena.scene.json"
+      },
+      {
+        "generatedId": "dense.block.00.14",
+        "index": 73,
+        "placementSetId": "placement.dense-mid",
+        "sourcePath": "content/scenes/arena.scene.json"
+      },
+      {
+        "generatedId": "dense.block.01.14",
+        "index": 74,
+        "placementSetId": "placement.dense-mid",
+        "sourcePath": "content/scenes/arena.scene.json"
+      },
+      {
+        "generatedId": "dense.block.02.14",
+        "index": 75,
+        "placementSetId": "placement.dense-mid",
+        "sourcePath": "content/scenes/arena.scene.json"
+      },
+      {
+        "generatedId": "dense.block.03.14",
+        "index": 76,
+        "placementSetId": "placement.dense-mid",
+        "sourcePath": "content/scenes/arena.scene.json"
+      },
+      {
+        "generatedId": "dense.block.04.14",
+        "index": 77,
+        "placementSetId": "placement.dense-mid",
+        "sourcePath": "content/scenes/arena.scene.json"
+      },
+      {
+        "generatedId": "dense.block.05.14",
+        "index": 78,
+        "placementSetId": "placement.dense-mid",
+        "sourcePath": "content/scenes/arena.scene.json"
+      },
+      {
+        "generatedId": "dense.block.06.14",
+        "index": 79,
+        "placementSetId": "placement.dense-mid",
+        "sourcePath": "content/scenes/arena.scene.json"
+      },
+      {
+        "generatedId": "dense.block.07.14",
+        "index": 80,
+        "placementSetId": "placement.dense-mid",
+        "sourcePath": "content/scenes/arena.scene.json"
+      },
+      {
+        "generatedId": "dense.block.08.14",
+        "index": 81,
+        "placementSetId": "placement.dense-mid",
+        "sourcePath": "content/scenes/arena.scene.json"
+      },
+      {
+        "generatedId": "dense.block.09.14",
+        "index": 82,
+        "placementSetId": "placement.dense-mid",
+        "sourcePath": "content/scenes/arena.scene.json"
+      },
+      {
+        "generatedId": "dense.block.10.14",
+        "index": 83,
+        "placementSetId": "placement.dense-mid",
+        "sourcePath": "content/scenes/arena.scene.json"
+      },
+      {
+        "generatedId": "dense.block.11.14",
+        "index": 84,
+        "placementSetId": "placement.dense-mid",
+        "sourcePath": "content/scenes/arena.scene.json"
+      },
+      {
+        "generatedId": "dense.block.12.14",
+        "index": 85,
+        "placementSetId": "placement.dense-mid",
+        "sourcePath": "content/scenes/arena.scene.json"
+      },
+      {
+        "generatedId": "dense.block.13.14",
+        "index": 86,
+        "placementSetId": "placement.dense-mid",
+        "sourcePath": "content/scenes/arena.scene.json"
+      },
+      {
+        "generatedId": "dense.block.14.14",
+        "index": 87,
+        "placementSetId": "placement.dense-mid",
+        "sourcePath": "content/scenes/arena.scene.json"
+      }
+    ]
+  },
+  "metrics": {
+    "beforeBytes": 61894,
+    "afterBytes": 14951,
+    "coveredBeforeBytes": 50906,
+    "coveredAfterBytes": 21685,
+    "coveredReductionPercent": 57.4
+  }
+}

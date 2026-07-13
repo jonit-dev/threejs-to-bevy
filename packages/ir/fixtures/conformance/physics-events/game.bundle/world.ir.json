@@ -94,7 +94,7 @@
       }
     }
   ],
-  "resources": {},
+  "resources": { "Score": { "value": 0 } },
   "events": {
     "CollisionEvent": [
       {

@@ -875,6 +875,10 @@ export async function validateAuthoringDocument(
         })),
         ...validateInputMetadata(file, data),
       ];
+    case "interaction":
+      // The shared IR validator owns the closed interaction vocabulary and
+      // schema-reference checks after compiler normalization.
+      return [];
     case "environment":
       return validateRootDocument(file, data, environmentDocumentSchema, "environment document", environmentDocumentKeys);
     case "flow":

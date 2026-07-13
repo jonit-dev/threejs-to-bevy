@@ -51,6 +51,9 @@ export function validateManifest(manifest: unknown, path: string, diagnostics: I
   if (isRecord(entry) && entry.gameFlow !== undefined) {
     validateManifestPath(entry.gameFlow, `${path}/entry/gameFlow`, IR_DOCUMENTS.gameFlow.fileName, diagnostics);
   }
+  if (isRecord(entry) && entry.interactions !== undefined) {
+    validateManifestPath(entry.interactions, `${path}/entry/interactions`, IR_DOCUMENTS.interactions.fileName, diagnostics);
+  }
   if (isRecord(entry) && entry.scenes !== undefined) {
     validateManifestPath(entry.scenes, `${path}/entry/scenes`, IR_DOCUMENTS.scenes.fileName, diagnostics);
   }
@@ -93,6 +96,7 @@ export function validateManifest(manifest: unknown, path: string, diagnostics: I
     (entry.animations === undefined || typeof entry.animations === "string") &&
     (entry.environmentScene === undefined || typeof entry.environmentScene === "string") &&
     (entry.gameFlow === undefined || typeof entry.gameFlow === "string") &&
+    (entry.interactions === undefined || typeof entry.interactions === "string") &&
     (entry.localData === undefined || typeof entry.localData === "string") &&
     (entry.scenes === undefined || typeof entry.scenes === "string") &&
     (entry.sequences === undefined || typeof entry.sequences === "string") &&

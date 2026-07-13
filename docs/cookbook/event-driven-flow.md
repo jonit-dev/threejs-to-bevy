@@ -19,7 +19,7 @@ tn system attach-script match-events --module src/scripts/event-flow.ts --export
 
 ## source-delta
 ```json
-{"content/schemas/gameplay-events.schema.json":"The event payload is declared as an event schema; literal script payloads can also infer missing fields.","content/flow/match.flow.json":"Add an event trigger with kind event and event match.win for the transition that should react."}
+{"content/schemas/gameplay-events.schema.json":"The event payload is declared as an event schema; literal script payloads can also infer missing fields.","content/flow/match.flow.json":"Add an event trigger with kind event and event match.win for the transition that should react.","content/interactions/arena.interactions.json":"Bounded cross-adapter Interaction completion and emitEvent effects may emit the same declared event; GameFlow remains the owner of state transitions and copy."}
 ```
 
 ## script

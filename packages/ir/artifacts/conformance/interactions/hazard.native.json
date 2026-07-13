@@ -1,0 +1,1 @@
+{"schema":"threenative.interaction-parity","version":"0.1.0","adapter":"native","scenario":"hazard","traces":[{"tick":0,"interaction":"hazard","source":"player","target":"enemy","detector":"overlap","gate":"passed","effects":["addResource"],"completion":false}],"resources":{"Score":{"value":-1}},"entities":["crate","enemy","pickup","player","sensor","worker"],"diagnostics":[]}

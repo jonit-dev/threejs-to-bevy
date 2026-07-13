@@ -5,6 +5,7 @@ import type {
   IBundleManifest,
   IEnvironmentSceneIr,
   IGameFlowIr,
+  IInteractionsIr,
   IIrSchemaFile,
   ILocalDataIr,
   IMaterialsIr,
@@ -25,6 +26,7 @@ export interface ICapabilitySource {
   eventSchemas?: IIrSchemaFile;
   gameFlow?: IGameFlowIr;
   input?: IInputIr;
+  interactions?: IInteractionsIr;
   localData?: ILocalDataIr;
   materials: IMaterialsIr;
   overlays?: IOverlaysIr;
@@ -51,6 +53,7 @@ export function deriveRequiredCapabilities(source: ICapabilitySource): IBundleMa
   collectAnimationCapabilities(source.animations, add);
   collectSystemCapabilities(source.systems, add);
   collectInputCapabilities(source.input, add);
+  if (source.interactions !== undefined && source.interactions.interactions.length > 0) add("gameplay", "interactions");
   collectAudioCapabilities(source.audio, add);
   collectLocalDataCapabilities(source.localData, add);
   collectUiCapabilities(source.ui, add);

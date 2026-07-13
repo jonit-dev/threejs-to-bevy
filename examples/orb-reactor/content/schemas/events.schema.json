@@ -1,0 +1,1 @@
+{"schema":"threenative.schema","version":"0.1.0","id":"interaction-events","kind":"event","schemas":[{"id":"match.win","fields":{"collected":{"kind":"number"}}}]}

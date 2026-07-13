@@ -1,4 +1,4 @@
-import { defineBehavior, Vector3 } from "@threenative/script-stdlib";
+import { ControllerEx, defineBehavior } from "@threenative/script-stdlib";
 import type { ScriptContext } from "@threenative/script-stdlib";
 
 interface HarborState {
@@ -46,15 +46,14 @@ export const updateHarborRescue = defineBehavior(
     const player = context.entity("player");
     if (player !== undefined) {
       const transform = player.transform();
-      const position = transform.position;
-      const moveX = context.input.getAxis("MoveX");
-      const moveY = context.input.getAxis("MoveY");
-      const speed = 2.8;
-      transform.position = Vector3.add(position, [
-        moveX * context.time.fixedDelta * speed,
-        0,
-        moveY * context.time.fixedDelta * speed,
-      ]);
+      const movement = ControllerEx.worldCardinalCharacter({
+        dt: context.time.fixedDelta,
+        grounded: true,
+        input: [context.input.getAxis("MoveX"), context.input.getAxis("MoveY")],
+        position: transform.position,
+        speed: 2.8,
+      });
+      transform.setPosition(movement.position);
     }
 
     const previous = context.resources.get("GameState", defaults) as HarborState;

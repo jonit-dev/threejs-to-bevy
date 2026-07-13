@@ -1,7 +1,9 @@
 import { resolve } from "node:path";
+import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 
 const repoRoot = resolve(fileURLToPath(new URL("../../../../", import.meta.url)));
+import { compareInteractionParity, type IInteractionParitySnapshot } from "../interactionParity.js";
 
 // @ts-expect-error legacy mjs gate consumed during typed-tools migration
 const conformanceModule = (await import("../../../../scripts/verify-conformance.mjs")) as {
@@ -13,9 +15,21 @@ const conformanceModule = (await import("../../../../scripts/verify-conformance.
 };
 
 const result = await conformanceModule.verifyConformance({ repoRoot });
-if (result.ok) {
+const interactionDiagnostics = await comparePersistedInteractionArtifacts();
+if (result.ok && interactionDiagnostics.length === 0) {
   process.stdout.write(`Conformance gate passed. Report: ${result.reportPath ?? "packages/ir/artifacts/conformance/verification-report.json"}\n`);
 } else {
-  process.stderr.write(`${(result.diagnostics ?? []).map((diagnostic) => diagnostic.message ?? "Conformance gate failed.").join("\n")}\n`);
+  process.stderr.write(`${[...(result.diagnostics ?? []).map((diagnostic) => diagnostic.message ?? "Conformance gate failed."), ...interactionDiagnostics.map((diagnostic) => diagnostic.message)].join("\n")}\n`);
 }
-process.exitCode = result.ok ? 0 : 1;
+process.exitCode = result.ok && interactionDiagnostics.length === 0 ? 0 : 1;
+
+async function comparePersistedInteractionArtifacts() {
+  const diagnostics = [];
+  for (const scenario of ["pickup", "hazard", "checkpoint", "projectile"]) {
+    const root = resolve(repoRoot, "packages/ir/artifacts/conformance/interactions");
+    const web = JSON.parse(await readFile(resolve(root, `${scenario}.web.json`), "utf8")) as IInteractionParitySnapshot;
+    const native = JSON.parse(await readFile(resolve(root, `${scenario}.native.json`), "utf8")) as IInteractionParitySnapshot;
+    diagnostics.push(...compareInteractionParity(web, native));
+  }
+  return diagnostics;
+}

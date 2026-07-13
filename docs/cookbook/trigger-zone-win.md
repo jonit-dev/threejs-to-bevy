@@ -53,6 +53,10 @@ release cycle. New scripts should read the runtime-owned phases directly with
 `context.physics.sensor({ sensor: "goal", phases: ["enter"] })` so the same
 enter/stay/exit state is shared by every reader in a fixed tick.
 
+The `interaction-objective` cookbook entry shows the cross-adapter bounded
+declarative alternative for a reusable sensor-enter objective. Keep this
+script path when the objective needs domain-specific logic.
+
 ## proof
 ```bash
 tn authoring validate --project . --json

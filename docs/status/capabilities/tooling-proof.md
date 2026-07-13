@@ -112,6 +112,16 @@ Current support:
   online services, backend-only claims, custom audio decoders, streaming or
   network audio, platform APIs, and 2D-only workflows stay explicit
   diagnostic boundaries.
+- `pnpm verify:conformance` enrolls four catalog-owned Interaction rows over
+  the shared `physics-events` bundle: `interaction-pickup`,
+  `interaction-hazard`, `interaction-checkpoint`, and
+  `interaction-projectile`. The gate reads each persisted `.web.json` and
+  `.native.json` pair from
+  `packages/ir/artifacts/conformance/interactions/` and fails through
+  `TN_INTERACTION_PARITY_MISMATCH` when normalized traces, resources, or live
+  entity IDs differ. Verify-tools negative controls independently prove that
+  trace reordering, double reward, and missed despawn are observable failures;
+  `native-runtime-diagnostics.json` preserves the unsupported-effect control.
 - Agent benchmark reports are version 2 token-cost artifacts with raw, cached,
   uncached, output, cost-weighted, iteration, failed-command, and tool-output
   medians plus dialect-confusion failure counts. Round-5 aggregation now gates
@@ -181,6 +191,8 @@ Verification:
 - `pnpm verify:session-cost`
 - `pnpm verify:emitted-commands`
 - `pnpm --filter @threenative/verify-tools test`
+- `pnpm verify:conformance`
+- `pnpm --filter @threenative/verify-tools test -- --run "interaction parity"`
 - `pnpm --filter @threenative/verify-tools test -- --run performance`
 - `node --test tools/verify/dist/gameProductionGate.test.js`
 - `node --test tools/verify/dist/adapterSurfaceDrift.test.js`

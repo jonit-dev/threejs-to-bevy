@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 1,
+  "name": "placement-visibility-desktop",
+  "target": "desktop",
+  "viewport": {
+    "width": 1280,
+    "height": 720
+  },
+  "subject": "dense.block.00.00",
+  "warmupFrames": 8,
+  "steps": [
+    {
+      "label": "settle-native-frame",
+      "waitFrames": 12
+    }
+  ],
+  "assert": {
+    "diagnostics": {
+      "runtimeReady": true,
+      "noConsoleErrors": true,
+      "noNetworkErrors": true,
+      "noRuntimeDiagnostics": true
+    },
+    "visual": [
+      {
+        "entityVisible": {
+          "entity": "dense.block.00.00",
+          "minProjectedPixels": 1,
+          "throughoutFrames": false
+        }
+      }
+    ]
+  },
+  "artifacts": {
+    "screenshots": "before-after",
+    "console": true,
+    "network": true,
+    "runtimeTrace": true,
+    "effectLog": "focused"
+  }
+}

@@ -107,6 +107,27 @@ test("should plan bundle documents before writing files", async () => {
   }
 });
 
+test("should normalize and emit dedicated structured interactions deterministically", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-interactions-bundle-"));
+  try {
+    const config = { entry: "src/game.ts", outDir: "dist/game.bundle", projectPath: root, schema: "threenative.project" as const, version: "0.1.0" as const };
+    const plan = await planBundle(config, makeScene(), { authoringDocuments: [{
+      data: { schema: "threenative.interactions", version: 1, id: "arena", interactions: [
+        { id: "z-last", detector: { kind: "event", event: "hit", source: { entity: "player" }, target: { withTag: "orb" } }, gate: { kind: "once" }, effects: [{ kind: "emitEvent", event: "done" }] },
+        { id: "a-first", detector: { kind: "distance2d", radius: 1, source: { entity: "player" }, target: { withTag: "orb" } }, gate: { kind: "once-per-target" }, effects: [{ kind: "despawn", target: "detected" }] },
+      ] },
+      file: join(root, "content/interactions/arena.interactions.json"), kind: "interaction", projectRelativePath: "content/interactions/arena.interactions.json",
+    }] });
+    assert.equal(plan.manifest.entry.interactions, IR_DOCUMENTS.interactions.fileName);
+    assert.deepEqual(plan.documents.interactions?.interactions.map((interaction) => interaction.id), ["a-first", "z-last"]);
+    assert.deepEqual(plan.manifest.requiredCapabilities.gameplay, ["interactions"]);
+    const bundle = await writeBundlePlan(plan, root, join(root, config.outDir));
+    assert.deepEqual(JSON.parse(await readFile(join(bundle, IR_DOCUMENTS.interactions.fileName), "utf8")), plan.documents.interactions);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
 test("should write a planned bundle through the writer", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-write-plan-"));
   try {

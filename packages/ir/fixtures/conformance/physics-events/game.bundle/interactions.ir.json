@@ -1,0 +1,11 @@
+{
+  "schema": "threenative.interactions",
+  "version": "0.1.0",
+  "id": "physics-objectives",
+  "interactions": [
+    { "id": "checkpoint", "detector": { "kind": "distance2d", "radius": 1, "source": { "entity": "sensor" }, "target": { "entity": "pickup" } }, "gate": { "kind": "once" }, "effects": [{ "kind": "emitEvent", "event": "checkpoint.hit" }] },
+    { "id": "hazard", "detector": { "kind": "overlap", "source": { "entity": "player" }, "target": { "entity": "enemy" } }, "gate": { "kind": "cooldown", "ticks": 2 }, "effects": [{ "kind": "addResource", "resource": "Score", "field": "value", "value": -1 }] },
+    { "id": "pickup", "detector": { "kind": "distance2d", "radius": 1, "source": { "entity": "sensor" }, "target": { "entity": "pickup" } }, "gate": { "kind": "once-per-target" }, "effects": [{ "kind": "addResource", "resource": "Score", "field": "value", "value": 1 }, { "kind": "despawn", "target": "detected" }], "complete": { "when": { "resource": "Score", "field": "value", "gte": 0 }, "event": "match.win" } },
+    { "id": "projectile", "detector": { "kind": "event", "event": "CollisionEvent", "source": { "entity": "player" }, "target": { "entity": "enemy" } }, "gate": { "kind": "once-per-target" }, "effects": [{ "kind": "emitEvent", "event": "projectile.hit" }] }
+  ]
+}

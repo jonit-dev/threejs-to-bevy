@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "name": "interaction-pickup-desktop",
+  "target": "desktop",
+  "subject": "player",
+  "warmupFrames": 12,
+  "setup": { "entities": [{ "entity": "player", "position": [-4, 0.35, 0] }] },
+  "steps": [{ "kind": "wait", "waitFrames": 2, "label": "allow fixed interaction tick" }],
+  "assert": {
+    "diagnostics": { "runtimeReady": true, "noConsoleErrors": true, "noNetworkErrors": true },
+    "resources": [{ "id": "CoinPatrol", "path": "coins", "gte": 1 }]
+  },
+  "artifacts": { "effectLog": "focused", "screenshots": "none" }
+}

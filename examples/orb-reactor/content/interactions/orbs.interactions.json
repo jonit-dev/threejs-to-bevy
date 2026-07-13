@@ -1,0 +1,26 @@
+{
+  "schema": "threenative.interactions",
+  "version": 1,
+  "id": "orb-objectives",
+  "interactions": [
+    {
+      "id": "player-collects-orb",
+      "detector": { "kind": "sensor-enter", "source": { "entity": "player" }, "target": { "withTag": "orb" }, "fallback": { "kind": "distance2d", "radius": 0.72, "source": { "entity": "player" }, "target": { "withTag": "orb" } } },
+      "gate": { "kind": "once-per-target" },
+      "when": [{ "resource": "Match", "field": "over", "equals": false }],
+      "effects": [
+        { "kind": "addResource", "resource": "Orbs", "field": "collected", "value": 1 },
+        { "kind": "despawn", "target": "detected" }
+      ],
+      "complete": {
+        "when": { "resource": "Orbs", "field": "collected", "gte": 8 },
+        "event": "match.win",
+        "effects": [
+          { "kind": "setResource", "resource": "Match", "field": "over", "value": true },
+          { "kind": "setResource", "resource": "Match", "field": "outcome", "value": "won" },
+          { "kind": "setResource", "resource": "Match", "field": "statusText", "value": "Reactor stabilized. You win!" }
+        ]
+      }
+    }
+  ]
+}

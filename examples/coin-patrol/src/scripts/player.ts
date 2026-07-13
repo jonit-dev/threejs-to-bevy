@@ -49,9 +49,7 @@ export const dronePatrol = defineBehavior(
     const patrol = context.state("drone-patrol", { direction: 1 });
     const delta = context.time.fixedDelta;
     const speed = 2.0;
-    const drones = context.entities.byId({ first: "drone.01", second: "drone.02" });
-    const first = drones.first;
-    const second = drones.second;
+    const [first, second] = context.entities.withTag("drone");
     if (first !== undefined) {
       const transform = first.transform();
       const position = transform.position;
@@ -78,23 +76,8 @@ export const coinPatrolRules = defineBehavior(
     writes: ["Transform"],
     resourceReads: ["CoinPatrol"],
     resourceWrites: ["CoinPatrol"],
-    services: ["physics.sensor"],
   },
   (context: ProjectContext): void => {
-    const coinIds = [
-      "coin.01",
-      "coin.02",
-      "coin.03",
-      "coin.04",
-      "coin.05",
-      "coin.06",
-      "coin.07",
-      "coin.08",
-      "coin.09",
-      "coin.010",
-    ];
-    const droneIds = ["drone.01", "drone.02"];
-    const winCoins = 10;
     const game = context.resources.get("CoinPatrol", {
       coins: 0,
       lives: 3,
@@ -111,39 +94,11 @@ export const coinPatrolRules = defineBehavior(
       return;
     }
     const playerPosition = player.transform().position;
-    const physics = (context as unknown as {
-      physics?: {
-        sensor(options: { phases: Array<"enter" | "stay">; sensor: string }): { events: Array<{ occupants: string[]; phase: "enter" | "stay" }> };
-      };
-    }).physics;
-    let coins = game.coins;
-    for (const coinId of coinIds) {
-      const coin = context.entity(coinId);
-      if (coin === undefined) {
-        continue;
-      }
-      const coinTransform = coin.transform();
-      const coinPosition = coinTransform.position;
-      if (coinPosition[1] < -10) {
-        continue;
-      }
-      const dx = playerPosition[0] - coinPosition[0];
-      const dz = playerPosition[2] - coinPosition[2];
-      const contact = physics?.sensor({ phases: ["enter", "stay"], sensor: coinId }).events.some((event) => event.occupants.includes("player")) === true;
-      if (contact || dx * dx + dz * dz < 0.6 * 0.6) {
-        coinTransform.setPosition([coinPosition[0], -100, coinPosition[2]]);
-        coins += 1;
-      }
-    }
     let lives = game.lives;
     if (rules.hitCooldown > 0) {
       rules.hitCooldown = Math.max(0, rules.hitCooldown - context.time.fixedDelta);
     } else {
-      for (const droneId of droneIds) {
-        const drone = context.entity(droneId);
-        if (drone === undefined) {
-          continue;
-        }
+      for (const drone of context.entities.withTag("drone")) {
         const dronePosition = drone.transform().position;
         const dx = playerPosition[0] - dronePosition[0];
         const dz = playerPosition[2] - dronePosition[2];
@@ -155,18 +110,11 @@ export const coinPatrolRules = defineBehavior(
         }
       }
     }
-    let status = game.status;
-    if (coins >= winCoins) {
-      status = "won";
-    } else if (lives <= 0) {
-      status = "lost";
-    }
+    const status = lives <= 0 ? "lost" : game.status;
     context.resources.patch("CoinPatrol", {
-      coins,
       lives,
       status,
-      coinsLabel: `Coins ${coins}/${winCoins}`,
-      livesLabel: status === "won" ? "You win!" : status === "lost" ? "Game over" : `Lives ${lives}`,
+      livesLabel: status === "lost" ? "Game over" : `Lives ${lives}`,
     });
   },
 );

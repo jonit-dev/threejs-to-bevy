@@ -12,14 +12,6 @@
       }
     },
     {
-      "id": "collect-orbs",
-      "source": "behavior-metadata",
-      "script": {
-        "module": "src/scripts/orbs.ts",
-        "export": "collectOrbs"
-      }
-    },
-    {
       "id": "drone-contacts",
       "source": "behavior-metadata",
       "script": {

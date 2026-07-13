@@ -176,6 +176,7 @@
         }
       },
       "id": "drone.01",
+      "tags": ["drone"],
       "prefab": "prefab.drone",
       "transform": {
         "position": [
@@ -194,6 +195,7 @@
         }
       },
       "id": "drone.02",
+      "tags": ["drone"],
       "prefab": "prefab.drone",
       "transform": {
         "position": [
@@ -215,6 +217,7 @@
         }
       },
       "id": "coin.01",
+      "tags": ["coin"],
       "prefab": "prefab.coin",
       "transform": {
         "position": [
@@ -233,6 +236,7 @@
         }
       },
       "id": "coin.02",
+      "tags": ["coin"],
       "prefab": "prefab.coin",
       "transform": {
         "position": [
@@ -251,6 +255,7 @@
         }
       },
       "id": "coin.03",
+      "tags": ["coin"],
       "prefab": "prefab.coin",
       "transform": {
         "position": [
@@ -269,6 +274,7 @@
         }
       },
       "id": "coin.04",
+      "tags": ["coin"],
       "prefab": "prefab.coin",
       "transform": {
         "position": [
@@ -287,6 +293,7 @@
         }
       },
       "id": "coin.05",
+      "tags": ["coin"],
       "prefab": "prefab.coin",
       "transform": {
         "position": [
@@ -305,6 +312,7 @@
         }
       },
       "id": "coin.06",
+      "tags": ["coin"],
       "prefab": "prefab.coin",
       "transform": {
         "position": [
@@ -323,6 +331,7 @@
         }
       },
       "id": "coin.07",
+      "tags": ["coin"],
       "prefab": "prefab.coin",
       "transform": {
         "position": [
@@ -341,6 +350,7 @@
         }
       },
       "id": "coin.08",
+      "tags": ["coin"],
       "prefab": "prefab.coin",
       "transform": {
         "position": [
@@ -359,6 +369,7 @@
         }
       },
       "id": "coin.09",
+      "tags": ["coin"],
       "prefab": "prefab.coin",
       "transform": {
         "position": [
@@ -377,6 +388,7 @@
         }
       },
       "id": "coin.010",
+      "tags": ["coin"],
       "prefab": "prefab.coin",
       "transform": {
         "position": [

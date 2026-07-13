@@ -1,0 +1,1 @@
+{"schema":"threenative.interaction-parity","version":"0.1.0","adapter":"native","scenario":"pickup","traces":[{"tick":0,"interaction":"pickup","source":"sensor","target":"pickup","detector":"distance2d","gate":"passed","effects":["addResource","despawn"],"completion":true}],"resources":{"Score":{"value":1}},"entities":["crate","enemy","player","sensor","worker"],"diagnostics":[]}

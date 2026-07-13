@@ -17,6 +17,7 @@ const generatedBundleArtifactFiles = new Set([
   "world.ir.json",
   "ui.ir.json",
   "systems.ir.json",
+  "interactions.ir.json",
   "scripts.bundle.js",
   "materials.ir.json",
   "assets.manifest.json",
@@ -116,10 +117,24 @@ function sourceOwnershipEntries(documents: readonly IAuthoringDocument[]): IAuth
       entries.push(...prefabOwnershipEntries(document, data));
     } else if (document.kind === "systems") {
       entries.push(...systemOwnershipEntries(document, data.systems));
+    } else if (document.kind === "interaction") {
+      entries.push(...interactionOwnershipEntries(document, data.interactions));
     }
   }
 
   return entries;
+}
+
+function interactionOwnershipEntries(document: IAuthoringDocument, interactions: unknown): IAuthoringOwnershipEntry[] {
+  return readArray(interactions).flatMap((interaction, index) => {
+    const id = readString(readRecord(interaction)?.id);
+    return id === undefined ? [] : [sourceEntry(document, `/interactions/${index}`, "interaction", {
+      artifactKind: "interaction",
+      id,
+      path: "interactions.ir.json",
+      pointer: `/interactions/${escapePointer(id)}`,
+    })];
+  });
 }
 
 function assetOwnershipEntries(document: IAuthoringDocument, assets: unknown): IAuthoringOwnershipEntry[] {

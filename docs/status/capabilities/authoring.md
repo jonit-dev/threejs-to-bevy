@@ -65,6 +65,13 @@ Current support:
 - Scene cleanup is reference-aware across sibling system/UI documents, batch
   prefab placement is available through the CLI, and ownership warnings point
   authors back to `content/systems/*.systems.json` and `content/ui/*.ui.json`.
+- Inline `PlacementSet` source expands deterministic
+  grid/line/ring/lanes/explicit prefab populations before bundle emission.
+  Descriptor-backed `tn scene placement add|inspect|migrate|apply` commands
+  expose generated IDs and provenance; migration is dry-run first and apply
+  refuses any candidate that is not an exact semantic match. Canonical dense,
+  chess-pawn, orb, and metro-coin source now exercises the expanded contract;
+  broader editor adoption remains in progress.
 - Workspace-aware project creation installs a generated project in isolation,
   and maintained starter scripts can import relative local helper modules.
 - Plan and cookbook proof surfaces are cross-reference checked against the
@@ -96,6 +103,8 @@ Verification:
 - `tools/agent-benchmark/COOKBOOK-TOPIC-AUDIT-2026-07-07.md`
   maps benchmark needs to the existing validated cookbook entries.
 - `pnpm --filter @threenative/authoring test`
+- `pnpm --filter @threenative/authoring test -- --run "placement"`
+- `pnpm --filter @threenative/cli test -- --run "placement"`
 - `pnpm --filter @threenative/authoring test -- --run "archetype|actor"`
 - `pnpm --filter @threenative/cli test -- --run "actor"`
 - `pnpm --filter @threenative/mcp-server test`

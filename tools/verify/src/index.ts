@@ -15,6 +15,7 @@ export { runPhysicsNativeGate, validatePhysicsNativeEvidence, type PhysicsNative
 export { runAudioPlatformGate, validateAudioPlatformEvidence, type AudioPlatformGateResult } from "./audioPlatform.js";
 export { resolveArtifactTargets, toRepoRelative, type ArtifactOwner, type ArtifactTargets } from "./artifacts.js";
 export { loadFixtureCatalog, resolveFixtureId, listCurrentFixtures } from "./conformance.js";
+export { compareInteractionParity, type IInteractionParityDiagnostic, type IInteractionParitySnapshot } from "./interactionParity.js";
 export { runContactShadowGate, validateContactShadowEvidence, type ContactShadowGateResult } from "./contactShadowsGate.js";
 export { runVolumetricsGate, validateVolumetricsEvidence } from "./volumetricsGate.js";
 export { runSsgiGate, validateSsgiEvidence } from "./ssgiGate.js";

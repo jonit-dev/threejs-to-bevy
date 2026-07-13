@@ -17,7 +17,7 @@ tn recipe top-down-collector --scene arena --player player --camera camera.main 
 
 ## source-delta
 ```json
-{"recipe":"Use game plan --apply for the scaffold-first baseline; dry-run the recipe when inspecting generated ids, source owners, and proof commands before a manual apply."}
+{"recipe":"Use game plan --apply for the scaffold-first baseline; dry-run the recipe when inspecting generated ids, source owners, and proof commands before a manual apply. For bounded portable objective loops, prefer the interaction-objective contract over hand-written detect/reward/consume glue; keep domain-specific rules in scripts."}
 ```
 
 ## script

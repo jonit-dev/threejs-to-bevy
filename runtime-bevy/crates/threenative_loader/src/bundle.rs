@@ -6,7 +6,7 @@ use crate::{
     AnimationsIr, AssetsManifest, AudioIr, BundleManifest, EnvironmentSceneIr, GameFlowIr,
     GltfSceneMetadataIr, InputIr, LoadError, LoadedBundle, LocalDataIr, MaterialsIr, OverlaysIr,
     PrefabsIr, RuntimeConfigIr, ScenesIr, SchemaFileIr, SequencesIr, SystemsIr, TargetProfile,
-    WorldIr, generated_mesh, paths,
+    WorldIr, InteractionsIr, generated_mesh, paths,
 };
 
 pub fn load_bundle(bundle_path: impl AsRef<Path>) -> Result<LoadedBundle, LoadError> {
@@ -59,6 +59,14 @@ pub fn load_bundle(bundle_path: impl AsRef<Path>) -> Result<LoadedBundle, LoadEr
             let input: InputIr = read_json(bundle_path, file)?;
             ensure_supported(&input.schema, &input.version)?;
             Some(input)
+        }
+        None => None,
+    };
+    let interactions = match manifest.entry.interactions.as_ref() {
+        Some(file) => {
+            let interactions: InteractionsIr = read_json(bundle_path, file)?;
+            ensure_supported(&interactions.schema, &interactions.version)?;
+            Some(interactions)
         }
         None => None,
     };
@@ -171,6 +179,7 @@ pub fn load_bundle(bundle_path: impl AsRef<Path>) -> Result<LoadedBundle, LoadEr
         game_flow,
         gltf_scene,
         input,
+        interactions,
         local_data,
         manifest,
         materials,

@@ -11,6 +11,7 @@ import {
   addPrefabComponent,
   addPrefabInstance,
   addPrefabInstances,
+  addPlacementSet,
   addResourceDocumentEntry,
   addFlowState,
   addFlowTransition,
@@ -40,6 +41,8 @@ import {
   createResourcesDocument,
   createSchemaDocument,
   createScene,
+  inspectPlacementSet,
+  migratePlacementSet,
   createSequenceDocument,
   createSystem,
   createUiDocument,
@@ -289,6 +292,18 @@ const operationEntries = [
     stringArg("file", false),
   ]), async ({ args, projectPath }) =>
     createScene({ file: optionalString(args, "file"), projectPath, sceneId: requiredString(args, "sceneId") })),
+  operation(withCli(descriptor("scene.placement_add", "Add an inline deterministic placement set.", "scene", "source-document", [stringArg("sceneId"), stringArg("placementId"), objectArg("placement")]), {
+    path: ["scene", "placement", "add"], arguments: [{ argument: "sceneId", positional: 0 }, { argument: "placementId", positional: 1 }, { argument: "placement", flag: "--placement" }],
+  }), async ({ args, projectPath }) => addPlacementSet({ placement: requiredObject(args, "placement") as unknown as import("./schemas.js").IScenePlacementSet, placementId: requiredString(args, "placementId"), projectPath, sceneId: requiredString(args, "sceneId") })),
+  operation(withCli(descriptor("scene.placement_inspect", "Inspect and optionally expand an inline placement set.", "scene", "source-document", [stringArg("sceneId"), stringArg("placementId"), booleanArg("expand", false)]), {
+    path: ["scene", "placement", "inspect"], arguments: [{ argument: "sceneId", positional: 0 }, { argument: "placementId", positional: 1 }, { argument: "expand", flag: "--expand" }],
+  }), async ({ args, projectPath }) => inspectPlacementSet({ expand: optionalBoolean(args, "expand"), placementId: requiredString(args, "placementId"), projectPath, sceneId: requiredString(args, "sceneId") })),
+  operation(withCli(descriptor("scene.placement_migrate", "Analyze an exact placement migration without writing source.", "scene", "source-document", [stringArg("sceneId"), stringArg("placementId"), objectArg("placement")]), {
+    path: ["scene", "placement", "migrate"], arguments: [{ argument: "sceneId", positional: 0 }, { argument: "placementId", positional: 1 }, { argument: "placement", flag: "--placement" }],
+  }), async ({ args, projectPath }) => migratePlacementSet({ dryRun: true, placement: requiredObject(args, "placement") as unknown as import("./schemas.js").IScenePlacementSet, placementId: requiredString(args, "placementId"), projectPath, sceneId: requiredString(args, "sceneId") })),
+  operation(withCli(descriptor("scene.placement_apply", "Apply an exact placement migration after dry-run review.", "scene", "source-document", [stringArg("sceneId"), stringArg("placementId"), objectArg("placement")]), {
+    path: ["scene", "placement", "apply"], arguments: [{ argument: "sceneId", positional: 0 }, { argument: "placementId", positional: 1 }, { argument: "placement", flag: "--placement" }],
+  }), async ({ args, projectPath }) => migratePlacementSet({ apply: true, placement: requiredObject(args, "placement") as unknown as import("./schemas.js").IScenePlacementSet, placementId: requiredString(args, "placementId"), projectPath, sceneId: requiredString(args, "sceneId") })),
   operation(descriptor("input.add_action", "Add or replace an input action in a structured input document.", "input", "source-document", [
     stringArg("inputDocId"),
     stringArg("actionId"),

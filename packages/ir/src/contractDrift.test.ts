@@ -62,6 +62,7 @@ test("contractDrift should list every registered IR document when checking contr
     "assets",
     "targetProfile",
     "input",
+    "interactions",
     "runtimeConfig",
     "ui",
     "overlays",
@@ -87,6 +88,7 @@ test("contractDrift should list every registered IR document when checking contr
   assertManifestDocument("entry", "audio", "audio.ir.json");
   assertManifestDocument("entry", "environmentScene", "environment.scene.json");
   assertManifestDocument("entry", "gameFlow", "game-flow.ir.json");
+  assertManifestDocument("entry", "interactions", "interactions.ir.json");
   assertManifestDocument("entry", "localData", "local-data.ir.json");
   assertManifestDocument("entry", "overlays", "overlays.ir.json");
   assertManifestDocument("entry", "prefabs", "prefabs.ir.json");

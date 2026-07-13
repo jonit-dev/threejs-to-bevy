@@ -1,0 +1,70 @@
+{
+  "schema": "threenative.placement-migration-proof",
+  "version": 1,
+  "project": "metro-surfer-heist",
+  "semanticEquivalence": {
+    "method": "normalized explicit-source versus PlacementSet expansion before source replacement",
+    "exact": true,
+    "entityCount": 6
+  },
+  "dryRun": {
+    "exactMatch": true,
+    "wroteSource": false
+  },
+  "inspect": {
+    "placementId": "placement.coin",
+    "generatedIds": [
+      "coin.01",
+      "coin.02",
+      "coin.03",
+      "coin.04",
+      "coin.05",
+      "coin.06"
+    ],
+    "provenance": [
+      {
+        "generatedId": "coin.01",
+        "index": 0,
+        "placementSetId": "placement.coin",
+        "sourcePath": "content/scenes/arena.scene.json"
+      },
+      {
+        "generatedId": "coin.02",
+        "index": 1,
+        "placementSetId": "placement.coin",
+        "sourcePath": "content/scenes/arena.scene.json"
+      },
+      {
+        "generatedId": "coin.03",
+        "index": 2,
+        "placementSetId": "placement.coin",
+        "sourcePath": "content/scenes/arena.scene.json"
+      },
+      {
+        "generatedId": "coin.04",
+        "index": 3,
+        "placementSetId": "placement.coin",
+        "sourcePath": "content/scenes/arena.scene.json"
+      },
+      {
+        "generatedId": "coin.05",
+        "index": 4,
+        "placementSetId": "placement.coin",
+        "sourcePath": "content/scenes/arena.scene.json"
+      },
+      {
+        "generatedId": "coin.06",
+        "index": 5,
+        "placementSetId": "placement.coin",
+        "sourcePath": "content/scenes/arena.scene.json"
+      }
+    ]
+  },
+  "metrics": {
+    "beforeBytes": 14241,
+    "afterBytes": 14491,
+    "coveredBeforeBytes": 4052,
+    "coveredAfterBytes": 1890,
+    "coveredReductionPercent": 53.36
+  }
+}

@@ -1,0 +1,25 @@
+{
+  "schema": "threenative.interactions",
+  "version": 1,
+  "id": "coin-objectives",
+  "interactions": [
+    {
+      "id": "player-collects-coin",
+      "detector": { "kind": "sensor-enter", "source": { "entity": "player" }, "target": { "withTag": "coin" }, "fallback": { "kind": "distance2d", "radius": 0.6, "source": { "entity": "player" }, "target": { "withTag": "coin" } } },
+      "gate": { "kind": "once-per-target" },
+      "when": [{ "resource": "CoinPatrol", "field": "status", "equals": "playing" }],
+      "effects": [
+        { "kind": "addResource", "resource": "CoinPatrol", "field": "coins", "value": 1 },
+        { "kind": "despawn", "target": "detected" }
+      ],
+      "complete": {
+        "when": { "resource": "CoinPatrol", "field": "coins", "gte": 10 },
+        "event": "match.win",
+        "effects": [
+          { "kind": "setResource", "resource": "CoinPatrol", "field": "status", "value": "won" },
+          { "kind": "setResource", "resource": "CoinPatrol", "field": "livesLabel", "value": "You win!" }
+        ]
+      }
+    }
+  ]
+}

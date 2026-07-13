@@ -6,7 +6,9 @@
     },
     {
       "node": "hud.orbs",
-      "resource": "Orbs.statusText"
+      "resource": "Orbs.collected",
+      "fields": ["collected"],
+      "format": "Orbs {collected}/8"
     },
     {
       "node": "hud.lives",

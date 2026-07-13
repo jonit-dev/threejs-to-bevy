@@ -19,7 +19,7 @@ export interface IRuntimeDiagnosticsValidationResult {
   ok: boolean;
 }
 
-export type RuntimeWriteWriter = "animation" | "initial-ir" | "physics" | "runtime-sync" | "scheduler" | "script";
+export type RuntimeWriteWriter = "animation" | "initial-ir" | "interaction" | "physics" | "runtime-sync" | "scheduler" | "script";
 export type RuntimeWriteDisposition = "accepted" | "composed" | "conflict" | "dropped" | "overwritten";
 export type RuntimeWriteTargetKind = "component" | "resource" | "state";
 export type RuntimeWriteInlineValue = boolean | number | string | readonly number[];

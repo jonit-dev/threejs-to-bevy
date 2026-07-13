@@ -1,0 +1,84 @@
+{
+  "schema": "threenative.placement-migration-proof",
+  "version": 1,
+  "project": "orb-reactor",
+  "semanticEquivalence": {
+    "method": "normalized explicit-source versus PlacementSet expansion before source replacement",
+    "exact": true,
+    "entityCount": 8
+  },
+  "dryRun": {
+    "exactMatch": true,
+    "wroteSource": false
+  },
+  "inspect": {
+    "placementId": "placement.orb",
+    "generatedIds": [
+      "orb.01",
+      "orb.02",
+      "orb.03",
+      "orb.04",
+      "orb.05",
+      "orb.06",
+      "orb.07",
+      "orb.08"
+    ],
+    "provenance": [
+      {
+        "generatedId": "orb.01",
+        "index": 0,
+        "placementSetId": "placement.orb",
+        "sourcePath": "content/scenes/arena.scene.json"
+      },
+      {
+        "generatedId": "orb.02",
+        "index": 1,
+        "placementSetId": "placement.orb",
+        "sourcePath": "content/scenes/arena.scene.json"
+      },
+      {
+        "generatedId": "orb.03",
+        "index": 2,
+        "placementSetId": "placement.orb",
+        "sourcePath": "content/scenes/arena.scene.json"
+      },
+      {
+        "generatedId": "orb.04",
+        "index": 3,
+        "placementSetId": "placement.orb",
+        "sourcePath": "content/scenes/arena.scene.json"
+      },
+      {
+        "generatedId": "orb.05",
+        "index": 4,
+        "placementSetId": "placement.orb",
+        "sourcePath": "content/scenes/arena.scene.json"
+      },
+      {
+        "generatedId": "orb.06",
+        "index": 5,
+        "placementSetId": "placement.orb",
+        "sourcePath": "content/scenes/arena.scene.json"
+      },
+      {
+        "generatedId": "orb.07",
+        "index": 6,
+        "placementSetId": "placement.orb",
+        "sourcePath": "content/scenes/arena.scene.json"
+      },
+      {
+        "generatedId": "orb.08",
+        "index": 7,
+        "placementSetId": "placement.orb",
+        "sourcePath": "content/scenes/arena.scene.json"
+      }
+    ]
+  },
+  "metrics": {
+    "beforeBytes": 10683,
+    "afterBytes": 4751,
+    "coveredBeforeBytes": 4456,
+    "coveredAfterBytes": 1379,
+    "coveredReductionPercent": 69.05
+  }
+}

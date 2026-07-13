@@ -21,6 +21,7 @@ export { renderDebugOverlay, type IWebDebugCounter, type IWebDebugDrawPrimitive,
 export { renderEditorInspectorPanels, type IEditorInspectorPanelModel } from "./editor/inspector.js";
 export { applyAtmosphereProfile, observeAtmosphereProfile, type IAtmosphereObservation } from "./rendering.js";
 export { createGameLoopState, runGameFrame, setPaused, type IGameLoopState } from "./gameLoop.js";
+export { createInteractionRuntimeState, runInteractionFixedTick, type IInteractionRuntimeState, type IInteractionTickResult, type IInteractionTrace } from "./interactions.js";
 export { applySceneServiceEffects, createSceneLifecycleManager, traceSceneLifecycle, type ISceneLifecycleManager, type ISceneLifecycleOperation, type ISceneLifecycleRuntimeState, type ISceneLifecycleTraceEvent } from "./sceneManager.js";
 export { traceRenderTransition, type IRenderTransitionDiagnostic, type IRenderTransitionTrace, type IRenderTransitionTraceInput } from "./renderTransitions.js";
 export { buildEditorGizmoOverlay, createAxisGizmo, createWireBoxGizmo, createWireSphereGizmo, gizmoToBufferGeometry, type EditorGizmoKind, type IEditorGizmoOverlay, type IGizmoGeometry, type IGizmoLine } from "./gizmoGeometry.js";

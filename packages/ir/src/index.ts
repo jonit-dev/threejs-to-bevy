@@ -1,4 +1,16 @@
 export { schemaUrls, type SchemaName } from "./schemas.js";
+export type {
+  IInteractionCompletion,
+  IInteractionDeclaration,
+  IInteractionsIr,
+  InteractionDetector,
+  InteractionDistanceDetector,
+  InteractionEffect,
+  InteractionEntityTarget,
+  InteractionGate,
+  InteractionPredicate,
+  InteractionSelector,
+} from "./interactions.js";
 export {
   DEFAULT_FEEDBACK_PRESETS,
   FEEDBACK_PRESET_IDS,

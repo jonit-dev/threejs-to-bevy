@@ -1,0 +1,1 @@
+{"schema":"threenative.event-schemas","version":"0.1.0","schemas":{"CollisionEvent":{"fields":{}},"checkpoint.hit":{"fields":{}},"match.win":{"fields":{}},"projectile.hit":{"fields":{}}}}

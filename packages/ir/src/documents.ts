@@ -11,6 +11,7 @@ export const IR_SCHEMA_IDS = {
   gameFlow: "threenative.game-flow",
   gltfScene: "threenative.gltf-scene",
   input: "threenative.input",
+  interactions: "threenative.interactions",
   localData: "threenative.local-data",
   materials: "threenative.materials",
   overlays: "threenative.overlays",
@@ -153,6 +154,16 @@ export const IR_DOCUMENTS = {
     manifestSection: "files",
     schema: IR_SCHEMA_IDS.input,
     schemaFile: "input.schema.json",
+  },
+  interactions: {
+    drift: {
+      typescript: { interfaceName: "IInteractionsIr", source: "src/interactions.ts" },
+    },
+    fileName: "interactions.ir.json",
+    manifestKey: "interactions",
+    manifestSection: "entry",
+    schema: IR_SCHEMA_IDS.interactions,
+    schemaFile: null,
   },
   localData: {
     fileName: "local-data.ir.json",

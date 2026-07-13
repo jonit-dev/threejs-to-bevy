@@ -40,6 +40,7 @@ import type { ICapturedScene } from "./capture.js";
 import type { IEnvironmentDeclaration } from "./emit/environment.js";
 import type { IAuthoringDeclarationNode, IAuthoringGraph } from "./authoring/graph.js";
 import { compatibilityProvenance, relativeModulePath } from "./authoring/provenance.js";
+import { expandPlacementSets } from "./authoring/placementSets.js";
 
 type SceneRecord = Record<string, unknown>;
 type VisualTransform = {
@@ -268,9 +269,10 @@ function systemCommands(commands: SourceSystem["commands"]): CommandDeclaration[
 }
 
 function expandSceneEntities(scene: ISceneDocument, prefabDefaults: ReadonlyMap<string, ISceneEntity>): ISceneEntity[] {
+  const instances = [...(scene.instances ?? []), ...expandPlacementSets(scene.placementSets)];
   return [
     ...(scene.entities ?? []).map((entity) => cloneSceneEntity(entity)),
-    ...(scene.instances ?? []).map((instance) => {
+    ...instances.map((instance) => {
       const defaults = prefabDefaults.get(instance.prefab);
       return {
         ...cloneSceneEntity(defaults ?? { id: instance.id }),

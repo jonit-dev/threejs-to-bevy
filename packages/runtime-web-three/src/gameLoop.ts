@@ -1,4 +1,4 @@
-import type { IAssetsManifest, IEnvironmentSceneIr, IIrSchemaFile, IRuntimeConfigIr, ISystemsIr, IWorldIr } from "@threenative/ir";
+import type { IAssetsManifest, IEnvironmentSceneIr, IGameFlowIr, IIrSchemaFile, IInteractionsIr, IPrefabsIr, IRuntimeConfigIr, ISystemsIr, IWorldIr } from "@threenative/ir";
 import type { IWebInputState } from "./input.js";
 import type { IThreeWorld } from "./mapWorld.js";
 import { applyAnimationServiceEffects, applyMaterialPatchEffects, syncMeshRendererMaterials, syncTransforms } from "./mapWorld.js";
@@ -15,6 +15,7 @@ import type { IRenderedUi } from "./ui/renderUi.js";
 import { interpolateTransform, type ITransformSample } from "./transformInterpolation.js";
 import { stepPresentation } from "./presentation.js";
 import { syncWorldText } from "./worldText.js";
+import { createInteractionRuntimeState, runInteractionFixedTick, type IInteractionRuntimeState } from "./interactions.js";
 
 const MAX_FIXED_STEPS_PER_FRAME = 5;
 
@@ -23,6 +24,7 @@ export interface IGameLoopState {
   elapsed: number;
   frame: number;
   interpolation: IGameLoopInterpolationState;
+  interactions: IInteractionRuntimeState;
   paused: boolean;
   startupComplete: boolean;
   tick: number;
@@ -44,6 +46,7 @@ export function createGameLoopState(config?: IRuntimeConfigIr): IGameLoopState {
       fixedEntities: new Set(),
       previous: new Map(),
     },
+    interactions: createInteractionRuntimeState(),
     paused: config?.time.paused ?? false,
     startupComplete: false,
     tick: 0,
@@ -62,8 +65,11 @@ export async function runGameFrame(options: {
   environmentScene?: IEnvironmentSceneIr;
   fixedDelta?: number;
   input?: IWebInputState;
+  interactions?: IInteractionsIr;
+  gameFlow?: IGameFlowIr;
   mapped: IThreeWorld;
   module: ISystemModule;
+  prefabs?: IPrefabsIr;
   resourceObservations?: IResourceObservation[];
   runtimeState?: ReturnType<typeof webSystemRuntimeStateFor>;
   runtimeConfig?: IRuntimeConfigIr;
@@ -89,6 +95,7 @@ export async function runGameFrame(options: {
         state.startupComplete = true;
       }
       while (state.accumulator >= fixedDelta) {
+        runtimeState.writeLedger.beginTick(state.tick);
         const beforeFixed = snapshotWorldTransforms(options.world);
         stepKinematicMovers(options.world, state.elapsed);
         stepPatrols(options.world, fixedDelta);
@@ -96,6 +103,7 @@ export async function runGameFrame(options: {
         stepCountdowns(options.world, options.systems, fixedDelta, runtimeState.countdowns, state.tick);
         const sensorEvents = runtimeState.sensors.advance(options.world, { fixedDelta, tick: state.tick });
         stepStateMachines(options.world, state.tick, sensorEvents);
+        if (options.interactions !== undefined) collectInteractionResult(options.mapped, runInteractionFixedTick({ gameFlow: options.gameFlow, interactions: options.interactions, mapped: options.mapped, prefabs: options.prefabs, presentation: runtimeState.presentation, sensorEvents, state: state.interactions, systems: options.systems, tick: state.tick, world: options.world, writeLedger: runtimeState.writeLedger }));
         collectSystemResult(
           options.mapped,
           await runSchedule({ ...options, delta: fixedDelta, elapsed: state.elapsed, fixedDelta, frame: state.frame, paused: state.paused, runtimeState, schedule: "fixedUpdate", tick: state.tick }),
@@ -115,6 +123,7 @@ export async function runGameFrame(options: {
     }
     state.frame += 1;
   } else {
+    runtimeState.writeLedger.beginTick(0);
     runtimeState.sensors.advance(options.world, { fixedDelta, tick: 0 });
     collectSystemResult(options.mapped, await runSchedule({ ...options, delta: 0, fixedDelta, frame: 0, runtimeState, schedule: "startup", tick: 0 }));
     stepKinematicMovers(options.world, fixedDelta);
@@ -123,6 +132,7 @@ export async function runGameFrame(options: {
     stepCountdowns(options.world, options.systems, fixedDelta, runtimeState.countdowns, 0);
     const sensorEvents = runtimeState.sensors.advance(options.world, { fixedDelta, tick: 0 });
     stepStateMachines(options.world, 0, sensorEvents);
+    if (options.interactions !== undefined) collectInteractionResult(options.mapped, runInteractionFixedTick({ gameFlow: options.gameFlow, interactions: options.interactions, mapped: options.mapped, prefabs: options.prefabs, presentation: runtimeState.presentation, sensorEvents, state: createInteractionRuntimeState(), systems: options.systems, tick: 0, world: options.world, writeLedger: runtimeState.writeLedger }));
     collectSystemResult(options.mapped, await runSchedule({ ...options, fixedDelta, frame: 0, runtimeState, schedule: "fixedUpdate", tick: 0 }));
     collectSystemResult(options.mapped, await runSchedule({ ...options, fixedDelta, frame: 0, runtimeState, schedule: "update", tick: 0 }));
     collectSystemResult(options.mapped, await runSchedule({ ...options, fixedDelta, frame: 0, runtimeState, schedule: "postUpdate", tick: 0 }));
@@ -286,4 +296,8 @@ function collectSystemResult(mapped: IThreeWorld, result: { diagnostics: IThreeW
   }
   applyAnimationServiceEffects(mapped, result.entries);
   applyMaterialPatchEffects(mapped, result.entries);
+}
+
+function collectInteractionResult(mapped: IThreeWorld, result: { diagnostics: IThreeWorld["diagnostics"] }): void {
+  collectSystemResult(mapped, { diagnostics: result.diagnostics, entries: [] });
 }

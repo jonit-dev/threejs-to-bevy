@@ -31,6 +31,7 @@ export interface IBundleManifest {
     audio?: string;
     environmentScene?: string;
     gameFlow?: string;
+    interactions?: string;
     localData?: string;
     scripts?: string;
     scenes?: string;

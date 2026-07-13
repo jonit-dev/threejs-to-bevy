@@ -54,6 +54,9 @@ async function writeBundleOutput(projectPath: string, targetDir: string, plan: I
   if (documents.gameFlow !== undefined) {
     await writeFile(resolve(targetDir, IR_DOCUMENTS.gameFlow.fileName), stableJson(documents.gameFlow));
   }
+  if (documents.interactions !== undefined) {
+    await writeFile(resolve(targetDir, IR_DOCUMENTS.interactions.fileName), stableJson(documents.interactions));
+  }
   if (documents.scenes !== undefined) {
     await writeFile(resolve(targetDir, IR_DOCUMENTS.scenes.fileName), stableJson(documents.scenes));
   }

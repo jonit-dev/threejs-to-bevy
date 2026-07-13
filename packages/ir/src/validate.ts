@@ -35,6 +35,7 @@ import { validateSequences } from "./sequencesValidation.js";
 import { validateCharacterComponents, validatePhysicsComponents } from "./physicsValidation.js";
 import { validateRenderingLightBudget, validateRuntimeConfig } from "./runtimeConfigValidation.js";
 import { validateContactShadows } from "./rendering.js";
+import { validateInteractions } from "./interactionsValidation.js";
 import { readBundleDocuments, readJson } from "./bundleDocuments.js";
 import {
   validateResources,
@@ -117,6 +118,7 @@ export async function validateBundle(bundlePath: string): Promise<IBundleValidat
     gameFlow,
     gltfScene,
     input,
+    interactions,
     localData,
     materials,
     overlays,
@@ -209,6 +211,17 @@ export async function validateBundle(bundlePath: string): Promise<IBundleValidat
       manifest.entry.systems ?? IR_DOCUMENTS.systems.fileName,
       diagnostics,
     );
+  }
+  if (interactions !== undefined) {
+    validateInteractions(interactions, manifest.entry.interactions ?? IR_DOCUMENTS.interactions.fileName, {
+      componentSchemas: componentSchemas?.schemas ?? {},
+      eventSchemas: eventSchemas?.schemas ?? {},
+      feedbackPresets: systems?.feedbackPresets ?? [],
+      gameFlow,
+      prefabs,
+      resourceSchemas: resourceSchemas?.schemas ?? {},
+      world,
+    }, diagnostics);
   }
   if (input !== undefined) {
     validateInput(input, manifest.files.input ?? IR_DOCUMENTS.input.fileName, diagnostics);

@@ -4,6 +4,7 @@ import {
   IR_SCHEMA_IDS,
   IR_VERSION,
   type IGameFlowIr,
+  type IInteractionsIr,
   type IIrSchemaFile,
   type IMaterialIr,
   type IPrefabsIr,
@@ -17,6 +18,15 @@ import type { IAssetModuleDeclaration, IAssetReference } from "@threenative/sdk"
 import type { IInternalAsset } from "./asset-copy.js";
 
 type StructuredMaterialColor = string | readonly [number, number, number] | readonly [number, number, number, number];
+
+export function readStructuredInteractions(documents: readonly IAuthoringDocument[] | undefined): IInteractionsIr | undefined {
+  const sources = (documents ?? []).filter((document) => document.kind === "interaction" && isRecord(document.data));
+  if (sources.length === 0) return undefined;
+  const ids = sources.map((document) => readString((document.data as Record<string, unknown>).id)).filter((id): id is string => id !== undefined).sort();
+  const interactions = sources.flatMap((document) => readRecordList((document.data as Record<string, unknown>).interactions).map(cloneRecord));
+  interactions.sort((left, right) => String(left.id ?? "").localeCompare(String(right.id ?? "")));
+  return { id: ids.join("+") || "interactions", interactions: interactions as unknown as IInteractionsIr["interactions"], schema: IR_SCHEMA_IDS.interactions, version: IR_VERSION };
+}
 
 export function readStructuredRuntimeConfig(documents: readonly IAuthoringDocument[] | undefined): IRuntimeConfigIr | undefined {
   const data = documents?.find((document) => document.kind === "runtime" && isRecord(document.data))?.data;

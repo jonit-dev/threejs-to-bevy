@@ -4,35 +4,6 @@
   "id": "chess",
   "entities": [
     {
-      "id": "piece.white.pawn.a2",
-      "prefab": "prefab.white.pawn",
-      "transform": {
-        "position": [
-          -3.6260000000000003,
-          0.07,
-          2.59
-        ],
-        "scale": [
-          10.5,
-          10.5,
-          10.5
-        ]
-      },
-      "components": {
-        "ChessPiece": {
-          "color": "white",
-          "kind": "pawn",
-          "initialKind": "pawn",
-          "file": 0,
-          "rank": 1,
-          "initialFile": 0,
-          "initialRank": 1,
-          "moved": false,
-          "alive": true
-        }
-      }
-    },
-    {
       "id": "piece.white.rook.a1",
       "prefab": "prefab.white.rook",
       "transform": {
@@ -56,35 +27,6 @@
           "rank": 0,
           "initialFile": 0,
           "initialRank": 0,
-          "moved": false,
-          "alive": true
-        }
-      }
-    },
-    {
-      "id": "piece.white.pawn.b2",
-      "prefab": "prefab.white.pawn",
-      "transform": {
-        "position": [
-          -2.59,
-          0.07,
-          2.59
-        ],
-        "scale": [
-          10.5,
-          10.5,
-          10.5
-        ]
-      },
-      "components": {
-        "ChessPiece": {
-          "color": "white",
-          "kind": "pawn",
-          "initialKind": "pawn",
-          "file": 1,
-          "rank": 1,
-          "initialFile": 1,
-          "initialRank": 1,
           "moved": false,
           "alive": true
         }
@@ -120,35 +62,6 @@
       }
     },
     {
-      "id": "piece.white.pawn.c2",
-      "prefab": "prefab.white.pawn",
-      "transform": {
-        "position": [
-          -1.554,
-          0.07,
-          2.59
-        ],
-        "scale": [
-          10.5,
-          10.5,
-          10.5
-        ]
-      },
-      "components": {
-        "ChessPiece": {
-          "color": "white",
-          "kind": "pawn",
-          "initialKind": "pawn",
-          "file": 2,
-          "rank": 1,
-          "initialFile": 2,
-          "initialRank": 1,
-          "moved": false,
-          "alive": true
-        }
-      }
-    },
-    {
       "id": "piece.white.bishop.c1",
       "prefab": "prefab.white.bishop",
       "transform": {
@@ -172,35 +85,6 @@
           "rank": 0,
           "initialFile": 2,
           "initialRank": 0,
-          "moved": false,
-          "alive": true
-        }
-      }
-    },
-    {
-      "id": "piece.white.pawn.d2",
-      "prefab": "prefab.white.pawn",
-      "transform": {
-        "position": [
-          -0.518,
-          0.07,
-          2.59
-        ],
-        "scale": [
-          10.5,
-          10.5,
-          10.5
-        ]
-      },
-      "components": {
-        "ChessPiece": {
-          "color": "white",
-          "kind": "pawn",
-          "initialKind": "pawn",
-          "file": 3,
-          "rank": 1,
-          "initialFile": 3,
-          "initialRank": 1,
           "moved": false,
           "alive": true
         }
@@ -236,35 +120,6 @@
       }
     },
     {
-      "id": "piece.white.pawn.e2",
-      "prefab": "prefab.white.pawn",
-      "transform": {
-        "position": [
-          0.518,
-          0.07,
-          2.59
-        ],
-        "scale": [
-          10.5,
-          10.5,
-          10.5
-        ]
-      },
-      "components": {
-        "ChessPiece": {
-          "color": "white",
-          "kind": "pawn",
-          "initialKind": "pawn",
-          "file": 4,
-          "rank": 1,
-          "initialFile": 4,
-          "initialRank": 1,
-          "moved": false,
-          "alive": true
-        }
-      }
-    },
-    {
       "id": "piece.white.king.e1",
       "prefab": "prefab.white.king",
       "transform": {
@@ -288,35 +143,6 @@
           "rank": 0,
           "initialFile": 4,
           "initialRank": 0,
-          "moved": false,
-          "alive": true
-        }
-      }
-    },
-    {
-      "id": "piece.white.pawn.f2",
-      "prefab": "prefab.white.pawn",
-      "transform": {
-        "position": [
-          1.554,
-          0.07,
-          2.59
-        ],
-        "scale": [
-          10.5,
-          10.5,
-          10.5
-        ]
-      },
-      "components": {
-        "ChessPiece": {
-          "color": "white",
-          "kind": "pawn",
-          "initialKind": "pawn",
-          "file": 5,
-          "rank": 1,
-          "initialFile": 5,
-          "initialRank": 1,
           "moved": false,
           "alive": true
         }
@@ -352,35 +178,6 @@
       }
     },
     {
-      "id": "piece.white.pawn.g2",
-      "prefab": "prefab.white.pawn",
-      "transform": {
-        "position": [
-          2.59,
-          0.07,
-          2.59
-        ],
-        "scale": [
-          10.5,
-          10.5,
-          10.5
-        ]
-      },
-      "components": {
-        "ChessPiece": {
-          "color": "white",
-          "kind": "pawn",
-          "initialKind": "pawn",
-          "file": 6,
-          "rank": 1,
-          "initialFile": 6,
-          "initialRank": 1,
-          "moved": false,
-          "alive": true
-        }
-      }
-    },
-    {
       "id": "piece.white.knight.g1",
       "prefab": "prefab.white.knight",
       "transform": {
@@ -404,35 +201,6 @@
           "rank": 0,
           "initialFile": 6,
           "initialRank": 0,
-          "moved": false,
-          "alive": true
-        }
-      }
-    },
-    {
-      "id": "piece.white.pawn.h2",
-      "prefab": "prefab.white.pawn",
-      "transform": {
-        "position": [
-          3.6260000000000003,
-          0.07,
-          2.59
-        ],
-        "scale": [
-          10.5,
-          10.5,
-          10.5
-        ]
-      },
-      "components": {
-        "ChessPiece": {
-          "color": "white",
-          "kind": "pawn",
-          "initialKind": "pawn",
-          "file": 7,
-          "rank": 1,
-          "initialFile": 7,
-          "initialRank": 1,
           "moved": false,
           "alive": true
         }
@@ -468,35 +236,6 @@
       }
     },
     {
-      "id": "piece.black.pawn.a7",
-      "prefab": "prefab.black.pawn",
-      "transform": {
-        "position": [
-          -3.6260000000000003,
-          0.07,
-          -2.59
-        ],
-        "scale": [
-          10.5,
-          10.5,
-          10.5
-        ]
-      },
-      "components": {
-        "ChessPiece": {
-          "color": "black",
-          "kind": "pawn",
-          "initialKind": "pawn",
-          "file": 0,
-          "rank": 6,
-          "initialFile": 0,
-          "initialRank": 6,
-          "moved": false,
-          "alive": true
-        }
-      }
-    },
-    {
       "id": "piece.black.rook.a8",
       "prefab": "prefab.black.rook",
       "transform": {
@@ -520,35 +259,6 @@
           "rank": 7,
           "initialFile": 0,
           "initialRank": 7,
-          "moved": false,
-          "alive": true
-        }
-      }
-    },
-    {
-      "id": "piece.black.pawn.b7",
-      "prefab": "prefab.black.pawn",
-      "transform": {
-        "position": [
-          -2.59,
-          0.07,
-          -2.59
-        ],
-        "scale": [
-          10.5,
-          10.5,
-          10.5
-        ]
-      },
-      "components": {
-        "ChessPiece": {
-          "color": "black",
-          "kind": "pawn",
-          "initialKind": "pawn",
-          "file": 1,
-          "rank": 6,
-          "initialFile": 1,
-          "initialRank": 6,
           "moved": false,
           "alive": true
         }
@@ -584,35 +294,6 @@
       }
     },
     {
-      "id": "piece.black.pawn.c7",
-      "prefab": "prefab.black.pawn",
-      "transform": {
-        "position": [
-          -1.554,
-          0.07,
-          -2.59
-        ],
-        "scale": [
-          10.5,
-          10.5,
-          10.5
-        ]
-      },
-      "components": {
-        "ChessPiece": {
-          "color": "black",
-          "kind": "pawn",
-          "initialKind": "pawn",
-          "file": 2,
-          "rank": 6,
-          "initialFile": 2,
-          "initialRank": 6,
-          "moved": false,
-          "alive": true
-        }
-      }
-    },
-    {
       "id": "piece.black.bishop.c8",
       "prefab": "prefab.black.bishop",
       "transform": {
@@ -636,35 +317,6 @@
           "rank": 7,
           "initialFile": 2,
           "initialRank": 7,
-          "moved": false,
-          "alive": true
-        }
-      }
-    },
-    {
-      "id": "piece.black.pawn.d7",
-      "prefab": "prefab.black.pawn",
-      "transform": {
-        "position": [
-          -0.518,
-          0.07,
-          -2.59
-        ],
-        "scale": [
-          10.5,
-          10.5,
-          10.5
-        ]
-      },
-      "components": {
-        "ChessPiece": {
-          "color": "black",
-          "kind": "pawn",
-          "initialKind": "pawn",
-          "file": 3,
-          "rank": 6,
-          "initialFile": 3,
-          "initialRank": 6,
           "moved": false,
           "alive": true
         }
@@ -700,35 +352,6 @@
       }
     },
     {
-      "id": "piece.black.pawn.e7",
-      "prefab": "prefab.black.pawn",
-      "transform": {
-        "position": [
-          0.518,
-          0.07,
-          -2.59
-        ],
-        "scale": [
-          10.5,
-          10.5,
-          10.5
-        ]
-      },
-      "components": {
-        "ChessPiece": {
-          "color": "black",
-          "kind": "pawn",
-          "initialKind": "pawn",
-          "file": 4,
-          "rank": 6,
-          "initialFile": 4,
-          "initialRank": 6,
-          "moved": false,
-          "alive": true
-        }
-      }
-    },
-    {
       "id": "piece.black.king.e8",
       "prefab": "prefab.black.king",
       "transform": {
@@ -752,35 +375,6 @@
           "rank": 7,
           "initialFile": 4,
           "initialRank": 7,
-          "moved": false,
-          "alive": true
-        }
-      }
-    },
-    {
-      "id": "piece.black.pawn.f7",
-      "prefab": "prefab.black.pawn",
-      "transform": {
-        "position": [
-          1.554,
-          0.07,
-          -2.59
-        ],
-        "scale": [
-          10.5,
-          10.5,
-          10.5
-        ]
-      },
-      "components": {
-        "ChessPiece": {
-          "color": "black",
-          "kind": "pawn",
-          "initialKind": "pawn",
-          "file": 5,
-          "rank": 6,
-          "initialFile": 5,
-          "initialRank": 6,
           "moved": false,
           "alive": true
         }
@@ -816,35 +410,6 @@
       }
     },
     {
-      "id": "piece.black.pawn.g7",
-      "prefab": "prefab.black.pawn",
-      "transform": {
-        "position": [
-          2.59,
-          0.07,
-          -2.59
-        ],
-        "scale": [
-          10.5,
-          10.5,
-          10.5
-        ]
-      },
-      "components": {
-        "ChessPiece": {
-          "color": "black",
-          "kind": "pawn",
-          "initialKind": "pawn",
-          "file": 6,
-          "rank": 6,
-          "initialFile": 6,
-          "initialRank": 6,
-          "moved": false,
-          "alive": true
-        }
-      }
-    },
-    {
       "id": "piece.black.knight.g8",
       "prefab": "prefab.black.knight",
       "transform": {
@@ -868,35 +433,6 @@
           "rank": 7,
           "initialFile": 6,
           "initialRank": 7,
-          "moved": false,
-          "alive": true
-        }
-      }
-    },
-    {
-      "id": "piece.black.pawn.h7",
-      "prefab": "prefab.black.pawn",
-      "transform": {
-        "position": [
-          3.6260000000000003,
-          0.07,
-          -2.59
-        ],
-        "scale": [
-          10.5,
-          10.5,
-          10.5
-        ]
-      },
-      "components": {
-        "ChessPiece": {
-          "color": "black",
-          "kind": "pawn",
-          "initialKind": "pawn",
-          "file": 7,
-          "rank": 6,
-          "initialFile": 7,
-          "initialRank": 6,
           "moved": false,
           "alive": true
         }
@@ -2875,5 +2411,233 @@
         "resource": "ChessGame.helpText"
       }
     ]
-  }
+  },
+  "placementSets": [
+    {
+      "id": "placement.white-pawn",
+      "kind": "placement-set",
+      "prefab": "prefab.white.pawn",
+      "pattern": {
+        "kind": "explicit",
+        "positions": [
+          [
+            -3.6260000000000003,
+            0.07,
+            2.59
+          ],
+          [
+            -2.59,
+            0.07,
+            2.59
+          ],
+          [
+            -1.554,
+            0.07,
+            2.59
+          ],
+          [
+            -0.518,
+            0.07,
+            2.59
+          ],
+          [
+            0.518,
+            0.07,
+            2.59
+          ],
+          [
+            1.554,
+            0.07,
+            2.59
+          ],
+          [
+            2.59,
+            0.07,
+            2.59
+          ],
+          [
+            3.6260000000000003,
+            0.07,
+            2.59
+          ]
+        ]
+      },
+      "idFormat": "{value}",
+      "idValues": [
+        "piece.white.pawn.a2",
+        "piece.white.pawn.b2",
+        "piece.white.pawn.c2",
+        "piece.white.pawn.d2",
+        "piece.white.pawn.e2",
+        "piece.white.pawn.f2",
+        "piece.white.pawn.g2",
+        "piece.white.pawn.h2"
+      ],
+      "defaults": {
+        "transform": {
+          "scale": [
+            10.5,
+            10.5,
+            10.5
+          ]
+        },
+        "components": {
+          "ChessPiece": {
+            "color": "white",
+            "kind": "pawn",
+            "initialKind": "pawn",
+            "file": 0,
+            "rank": 1,
+            "initialFile": 0,
+            "initialRank": 1,
+            "moved": false,
+            "alive": true
+          }
+        }
+      },
+      "overrides": {
+        "1": {
+          "components.ChessPiece.file": 1,
+          "components.ChessPiece.initialFile": 1
+        },
+        "2": {
+          "components.ChessPiece.file": 2,
+          "components.ChessPiece.initialFile": 2
+        },
+        "3": {
+          "components.ChessPiece.file": 3,
+          "components.ChessPiece.initialFile": 3
+        },
+        "4": {
+          "components.ChessPiece.file": 4,
+          "components.ChessPiece.initialFile": 4
+        },
+        "5": {
+          "components.ChessPiece.file": 5,
+          "components.ChessPiece.initialFile": 5
+        },
+        "6": {
+          "components.ChessPiece.file": 6,
+          "components.ChessPiece.initialFile": 6
+        },
+        "7": {
+          "components.ChessPiece.file": 7,
+          "components.ChessPiece.initialFile": 7
+        }
+      }
+    },
+    {
+      "id": "placement.black-pawn",
+      "kind": "placement-set",
+      "prefab": "prefab.black.pawn",
+      "pattern": {
+        "kind": "explicit",
+        "positions": [
+          [
+            -3.6260000000000003,
+            0.07,
+            -2.59
+          ],
+          [
+            -2.59,
+            0.07,
+            -2.59
+          ],
+          [
+            -1.554,
+            0.07,
+            -2.59
+          ],
+          [
+            -0.518,
+            0.07,
+            -2.59
+          ],
+          [
+            0.518,
+            0.07,
+            -2.59
+          ],
+          [
+            1.554,
+            0.07,
+            -2.59
+          ],
+          [
+            2.59,
+            0.07,
+            -2.59
+          ],
+          [
+            3.6260000000000003,
+            0.07,
+            -2.59
+          ]
+        ]
+      },
+      "idFormat": "{value}",
+      "idValues": [
+        "piece.black.pawn.a7",
+        "piece.black.pawn.b7",
+        "piece.black.pawn.c7",
+        "piece.black.pawn.d7",
+        "piece.black.pawn.e7",
+        "piece.black.pawn.f7",
+        "piece.black.pawn.g7",
+        "piece.black.pawn.h7"
+      ],
+      "defaults": {
+        "transform": {
+          "scale": [
+            10.5,
+            10.5,
+            10.5
+          ]
+        },
+        "components": {
+          "ChessPiece": {
+            "color": "black",
+            "kind": "pawn",
+            "initialKind": "pawn",
+            "file": 0,
+            "rank": 6,
+            "initialFile": 0,
+            "initialRank": 6,
+            "moved": false,
+            "alive": true
+          }
+        }
+      },
+      "overrides": {
+        "1": {
+          "components.ChessPiece.file": 1,
+          "components.ChessPiece.initialFile": 1
+        },
+        "2": {
+          "components.ChessPiece.file": 2,
+          "components.ChessPiece.initialFile": 2
+        },
+        "3": {
+          "components.ChessPiece.file": 3,
+          "components.ChessPiece.initialFile": 3
+        },
+        "4": {
+          "components.ChessPiece.file": 4,
+          "components.ChessPiece.initialFile": 4
+        },
+        "5": {
+          "components.ChessPiece.file": 5,
+          "components.ChessPiece.initialFile": 5
+        },
+        "6": {
+          "components.ChessPiece.file": 6,
+          "components.ChessPiece.initialFile": 6
+        },
+        "7": {
+          "components.ChessPiece.file": 7,
+          "components.ChessPiece.initialFile": 7
+        }
+      }
+    }
+  ]
 }

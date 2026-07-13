@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "name": "interaction-pickup-desktop",
+  "target": "desktop",
+  "subject": "player",
+  "warmupFrames": 12,
+  "setup": { "entities": [{ "entity": "player", "position": [-1.8, 0.35, -1.8] }] },
+  "steps": [{ "kind": "wait", "waitFrames": 2, "label": "allow fixed interaction tick" }],
+  "assert": {
+    "diagnostics": { "runtimeReady": true, "noConsoleErrors": true, "noNetworkErrors": true },
+    "resources": [{ "id": "Orbs", "path": "collected", "gte": 1 }]
+  },
+  "artifacts": { "effectLog": "focused", "screenshots": "none" }
+}

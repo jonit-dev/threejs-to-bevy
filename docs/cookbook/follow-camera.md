@@ -15,7 +15,7 @@ tn scene set-camera arena camera.main --mode third-person-follow --target player
 
 ## source-delta
 ```json
-{"content/scenes/arena.scene.json":"camera.main uses third-person-follow and targets player."}
+{"content/scenes/arena.scene.json":"camera.main uses third-person-follow and targets player. This promoted camera mode is runtime behavior, not a metadata-only label; use CameraRig for scripted third-person/orbit control instead of adding a second controller."}
 ```
 
 ## script

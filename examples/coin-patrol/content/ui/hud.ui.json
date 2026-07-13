@@ -44,7 +44,9 @@
     },
     {
       "node": "hud.coins",
-      "resource": "CoinPatrol.coinsLabel"
+      "resource": "CoinPatrol.coins",
+      "fields": ["coins"],
+      "format": "Coins {coins}/10"
     },
     {
       "node": "hud.lives",

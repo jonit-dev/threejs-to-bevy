@@ -39,6 +39,14 @@ Current support:
 - Declarative despawn commands may target an authored entity pattern or tag;
   the compiler expands selectors against the authored world and rejects empty
   matches before a runtime bundle is emitted.
+- A dedicated `threenative.interactions` document provides a
+  closed detector/gate/predicate/effect vocabulary for fixed-tick objective
+  pipelines. The web host normalizes candidate order, applies declared effects,
+  deduplicates once/once-per-target gates, and records bounded normalized
+  traces. The bounded pickup, hazard, checkpoint, and projectile subset is
+  promoted through paired web/Bevy trace, resource, and live-entity
+  conformance; domain rules and vocabulary not covered by those fixtures stay
+  script-owned.
 - Web and native runtime system hosts report declared resource load/read/write
   observations so failing playtests can distinguish missing propagation from
   ordinary movement/input assertion failures.
@@ -121,6 +129,8 @@ Verification:
 - `pnpm --filter @threenative/compiler test`
 - `pnpm --filter @threenative/cli test`
 - `pnpm --filter @threenative/runtime-web-three test`
+- `pnpm --filter @threenative/ir test -- --run "interaction"`
+- `pnpm --filter @threenative/runtime-web-three test -- --run "interaction"`
 - `pnpm verify:focused verify:runtime-write-audit`
 - `pnpm verify:focused verify:script-local-modules`
 - `pnpm verify:gameplay-primitives`

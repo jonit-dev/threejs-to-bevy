@@ -256,6 +256,7 @@ import {
   collectIds,
   validateEntities,
   validateInstances,
+  validatePlacementSets,
   validateTransform,
   validateComponents,
   validateMeshRendererComponent,
@@ -699,6 +700,7 @@ export async function validateSceneDocument(
 
   validateEntities(diagnostics, file, data.entities, entities, prefabs, context.materialIds);
   validateInstances(diagnostics, file, data.instances, entities, instances, [...prefabs, ...(context.prefabDocumentIds ?? [])], context.materialIds);
+  validatePlacementSets(diagnostics, file, data.placementSets, [...entities, ...instances], [...prefabs, ...(context.prefabDocumentIds ?? [])]);
   validatePrefabs(diagnostics, file, data.prefabs);
   validateResources(diagnostics, file, data.resources);
   await validateSystems(diagnostics, projectPath, file, data.systems, systems);

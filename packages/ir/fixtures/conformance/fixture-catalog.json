@@ -1024,6 +1024,18 @@
           "timingCategory": "focused-gate"
         }
       }
+    },
+    {
+      "canonicalId": "interaction-pickup", "owner": "ir-contract", "sourceExample": "physics-events", "regenerateCommand": "pnpm verify:conformance", "canonicalArtifactGate": "conformance", "ownerDocs": "docs/PRDs/other/authored-value-compression-placement-interactions.md", "aggregateGate": "verify:conformance", "bundlePath": "packages/ir/fixtures/conformance/physics-events/game.bundle", "promotedCapabilities": ["gameplay:interactions"], "reportArtifacts": ["packages/ir/artifacts/conformance/interactions/pickup.web.json", "packages/ir/artifacts/conformance/interactions/pickup.native.json"]
+    },
+    {
+      "canonicalId": "interaction-hazard", "owner": "ir-contract", "sourceExample": "physics-events", "regenerateCommand": "pnpm verify:conformance", "canonicalArtifactGate": "conformance", "ownerDocs": "docs/PRDs/other/authored-value-compression-placement-interactions.md", "aggregateGate": "verify:conformance", "bundlePath": "packages/ir/fixtures/conformance/physics-events/game.bundle", "promotedCapabilities": ["gameplay:interactions"], "reportArtifacts": ["packages/ir/artifacts/conformance/interactions/hazard.web.json", "packages/ir/artifacts/conformance/interactions/hazard.native.json"]
+    },
+    {
+      "canonicalId": "interaction-checkpoint", "owner": "ir-contract", "sourceExample": "physics-events", "regenerateCommand": "pnpm verify:conformance", "canonicalArtifactGate": "conformance", "ownerDocs": "docs/PRDs/other/authored-value-compression-placement-interactions.md", "aggregateGate": "verify:conformance", "bundlePath": "packages/ir/fixtures/conformance/physics-events/game.bundle", "promotedCapabilities": ["gameplay:interactions"], "reportArtifacts": ["packages/ir/artifacts/conformance/interactions/checkpoint.web.json", "packages/ir/artifacts/conformance/interactions/checkpoint.native.json"]
+    },
+    {
+      "canonicalId": "interaction-projectile", "owner": "ir-contract", "sourceExample": "physics-events", "regenerateCommand": "pnpm verify:conformance", "canonicalArtifactGate": "conformance", "ownerDocs": "docs/PRDs/other/authored-value-compression-placement-interactions.md", "aggregateGate": "verify:conformance", "bundlePath": "packages/ir/fixtures/conformance/physics-events/game.bundle", "promotedCapabilities": ["gameplay:interactions"], "reportArtifacts": ["packages/ir/artifacts/conformance/interactions/projectile.web.json", "packages/ir/artifacts/conformance/interactions/projectile.native.json"]
     }
   ]
 }

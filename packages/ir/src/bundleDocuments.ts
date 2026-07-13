@@ -20,6 +20,7 @@ import type {
 } from "./types.js";
 import type { IInputIr } from "./input.js";
 import type { ISystemsIr } from "./systems.js";
+import type { IInteractionsIr } from "./interactions.js";
 import type { IGltfSceneMetadataIr } from "./gltfScene.js";
 import type { IOverlaysIr } from "./overlays.js";
 import type { IIrDiagnostic } from "./validate.js";
@@ -34,6 +35,7 @@ export interface ILoadedBundleDocuments {
   gameFlow?: IGameFlowIr;
   gltfScene?: IGltfSceneMetadataIr;
   input?: IInputIr;
+  interactions?: IInteractionsIr;
   localData?: ILocalDataIr;
   materials?: IMaterialsIr;
   overlays?: IOverlaysIr;
@@ -93,6 +95,10 @@ export async function readBundleDocuments(
     manifest.files.input === undefined
       ? undefined
       : await readJson<IInputIr>(resolve(bundlePath, manifest.files.input), diagnostics);
+  const interactions =
+    manifest.entry.interactions === undefined
+      ? undefined
+      : await readJson<IInteractionsIr>(resolve(bundlePath, manifest.entry.interactions), diagnostics);
   const runtimeConfig =
     manifest.files.runtimeConfig === undefined
       ? undefined
@@ -138,6 +144,7 @@ export async function readBundleDocuments(
     gameFlow,
     gltfScene,
     input,
+    interactions,
     localData,
     materials,
     overlays,

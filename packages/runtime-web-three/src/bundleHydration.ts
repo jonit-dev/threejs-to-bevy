@@ -6,6 +6,7 @@ import type {
   IEnvironmentSceneIr,
   IGameFlowIr,
   IInputIr,
+  IInteractionsIr,
   IIrSchemaFile,
   ILocalDataIr,
   IMaterialsIr,
@@ -45,6 +46,7 @@ export async function hydrateWebBundle(source: string, reader: IBundleFileReader
       : await reader.readJson<IEnvironmentSceneIr>(manifest.entry.environmentScene);
   const input =
     manifest.files.input === undefined ? undefined : await reader.readJson<IInputIr>(manifest.files.input);
+  const interactions = manifest.entry.interactions === undefined ? undefined : await reader.readJson<IInteractionsIr>(manifest.entry.interactions);
   const gltfScene =
     manifest.files.gltfScene === undefined ? undefined : await reader.readJson<IGltfSceneMetadataIr>(manifest.files.gltfScene);
   const localData =
@@ -88,6 +90,7 @@ export async function hydrateWebBundle(source: string, reader: IBundleFileReader
     gameFlow,
     gltfScene,
     input,
+    interactions,
     localData,
     manifest,
     materials: await reader.readJson<IMaterialsIr>(manifest.files.materials),

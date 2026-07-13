@@ -37,6 +37,7 @@ import {
   inputDocumentSchema,
   inputPersistedBindingOverrideKeys,
   instanceKeys,
+  placementSetKeys,
   kinematicMoverComponentKeys,
   lightComponentKeys,
   logicalIdPattern,
@@ -391,6 +392,61 @@ export function collectInstanceIds(diagnostics: IAuthoringDiagnostic[], file: st
     return [];
   }
   return collectIds(diagnostics, file, "/instances", instances, "entity", instanceKeys);
+}
+
+export function validatePlacementSets(diagnostics: IAuthoringDiagnostic[], file: string, value: unknown, occupiedIds: readonly string[], prefabIds: readonly string[]): void {
+  const sets = readArray(value);
+  if (value !== undefined && sets === undefined) {
+    diagnostics.push(typeDiagnostic(file, "/placementSets", "placementSets must be an array.", value));
+    return;
+  }
+  const generated = new Set(occupiedIds);
+  sets?.forEach((set, setIndex) => {
+    const path = `/placementSets/${setIndex}`;
+    if (!isRecord(set)) { diagnostics.push(typeDiagnostic(file, path, "placement set must be an object.", set)); return; }
+    diagnostics.push(...unknownKeyDiagnostics(file, path, set, placementSetKeys));
+    const id = readString(set.id);
+    const prefab = readString(set.prefab);
+    const format = readString(set.idFormat);
+    if (set.kind !== "placement-set") diagnostics.push(typeDiagnostic(file, `${path}/kind`, "placement set kind must be 'placement-set'.", set.kind));
+    if (id === undefined) diagnostics.push(typeDiagnostic(file, `${path}/id`, "placement set id must be a non-empty string.", set.id));
+    if (prefab === undefined || !prefabIds.includes(prefab)) diagnostics.push(authoringDiagnostic({ code: "TN_AUTHORING_REF_MISSING", file, message: `Placement set prefab '${String(set.prefab)}' does not exist.`, path: `${path}/prefab`, value: set.prefab }));
+    if (format === undefined || !/\{(?:index|row|column|lane|value)\}/.test(format)) diagnostics.push(authoringDiagnostic({ code: "TN_PLACEMENT_ID_FORMAT_INVALID", file, message: "Placement idFormat must contain a bounded index or value token.", path: `${path}/idFormat`, value: set.idFormat }));
+    const pattern = isRecord(set.pattern) ? set.pattern : undefined;
+    const count = placementPatternCount(pattern);
+    if (count === undefined || count <= 0) diagnostics.push(authoringDiagnostic({ code: "TN_PLACEMENT_COUNT_INVALID", file, message: "Placement pattern must declare a positive finite integer count.", path: `${path}/pattern`, value: set.pattern }));
+    const idValues = Array.isArray(set.idValues) && set.idValues.every((item) => typeof item === "string" && item.length > 0) ? set.idValues as string[] : undefined;
+    if (set.idValues !== undefined && (idValues === undefined || idValues.length !== count)) diagnostics.push(authoringDiagnostic({ code: "TN_PLACEMENT_ID_FORMAT_INVALID", file, message: "Placement idValues must contain one non-empty string per generated entity.", path: `${path}/idValues`, value: set.idValues }));
+    if (format?.includes("{value}") && idValues === undefined) diagnostics.push(authoringDiagnostic({ code: "TN_PLACEMENT_ID_FORMAT_INVALID", file, message: "Placement idFormat uses {value} but idValues is missing or invalid.", path: `${path}/idFormat`, value: set.idFormat }));
+    if (count !== undefined && count > 0 && format !== undefined) for (let index = 0; index < count; index += 1) {
+      const columns = pattern?.kind === "grid" ? Number(pattern.columns) : pattern?.kind === "lanes" ? Number(pattern.count) : count;
+      const group = Math.floor(index / columns); const column = index % columns;
+      const row = pattern?.kind === "grid" ? group : pattern?.kind === "lanes" ? column : 0;
+      const lane = pattern?.kind === "lanes" ? group : pattern?.kind === "grid" ? group : 0;
+      const generatedId = format.replaceAll("{index}", String(index)).replaceAll("{row}", String(row)).replaceAll("{column}", String(column)).replaceAll("{lane}", String(lane)).replaceAll("{value}", idValues?.[index] ?? "");
+      if (generated.has(generatedId)) diagnostics.push(authoringDiagnostic({ code: "TN_PLACEMENT_ID_COLLISION", file, message: `Placement generated duplicate entity id '${generatedId}'.`, path: `${path}/idFormat`, value: generatedId }));
+      generated.add(generatedId);
+    }
+    for (const [bindingPath] of Object.entries(isRecord(set.indexBindings) ? set.indexBindings : {})) validatePlacementPath(diagnostics, file, `${path}/indexBindings/${bindingPath}`, bindingPath);
+    for (const [bindingPath, binding] of Object.entries(isRecord(set.indexBindings) ? set.indexBindings : {})) if (!["index", "row", "column", "lane", "positionX", "positionY", "positionZ"].includes(String(binding))) diagnostics.push(authoringDiagnostic({ code: "TN_PLACEMENT_BINDING_INVALID", file, message: `Placement binding '${String(binding)}' is unsupported.`, path: `${path}/indexBindings/${bindingPath}`, value: binding }));
+    for (const [overrideIndex, overrides] of Object.entries(isRecord(set.overrides) ? set.overrides : {})) {
+      if (!/^\d+$/.test(overrideIndex) || Number(overrideIndex) >= (count ?? 0)) diagnostics.push(authoringDiagnostic({ code: "TN_PLACEMENT_OVERRIDE_INVALID", file, message: `Placement override index '${overrideIndex}' is outside the generated range.`, path: `${path}/overrides/${overrideIndex}`, value: overrideIndex }));
+      for (const overridePath of Object.keys(isRecord(overrides) ? overrides : {})) validatePlacementPath(diagnostics, file, `${path}/overrides/${overrideIndex}/${overridePath}`, overridePath);
+    }
+  });
+}
+
+function placementPatternCount(pattern: Record<string, unknown> | undefined): number | undefined {
+  if (pattern?.kind === "explicit" && Array.isArray(pattern.positions)) return pattern.positions.length;
+  if (pattern?.kind === "grid") return positiveInteger(pattern.rows) && positiveInteger(pattern.columns) ? Number(pattern.rows) * Number(pattern.columns) : undefined;
+  if (pattern?.kind === "lanes") return positiveInteger(pattern.lanes) && positiveInteger(pattern.count) ? Number(pattern.lanes) * Number(pattern.count) : undefined;
+  if (pattern?.kind === "line" || pattern?.kind === "ring") return positiveInteger(pattern.count) ? Number(pattern.count) : undefined;
+  return undefined;
+}
+function positiveInteger(value: unknown): boolean { return typeof value === "number" && Number.isInteger(value) && value > 0; }
+function validatePlacementPath(diagnostics: IAuthoringDiagnostic[], file: string, diagnosticPath: string, value: string): void {
+  const segments = value.split(".");
+  if (segments.length < 2 || segments.some((segment) => segment === "" || segment === "__proto__" || segment === "prototype" || segment === "constructor") || !["components", "transform", "tags"].includes(segments[0]!)) diagnostics.push(authoringDiagnostic({ code: "TN_PLACEMENT_OVERRIDE_INVALID", file, message: `Placement path '${value}' is invalid or unsafe.`, path: diagnosticPath, value }));
 }
 
 export function collectUiNodeIds(diagnostics: IAuthoringDiagnostic[], file: string, value: unknown): string[] {

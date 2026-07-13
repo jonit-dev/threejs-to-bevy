@@ -10,14 +10,18 @@
       "rigid-body.static",
       "trigger-collider",
       "collision-events"
-    ]
+    ],
+    "gameplay": ["interactions"]
   },
   "entry": {
-    "world": "world.ir.json"
+    "world": "world.ir.json",
+    "interactions": "interactions.ir.json"
   },
   "files": {
     "assets": "assets.manifest.json",
     "materials": "materials.ir.json",
-    "targetProfile": "target.profile.json"
+    "targetProfile": "target.profile.json",
+    "eventSchemas": "schemas/events.schema.json",
+    "resourceSchemas": "schemas/resources.schema.json"
   }
 }

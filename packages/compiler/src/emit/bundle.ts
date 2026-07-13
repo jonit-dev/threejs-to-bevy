@@ -41,6 +41,7 @@ import {
   readBundleRootAssets,
   readStructuredAssets,
   readStructuredGameFlow,
+  readStructuredInteractions,
   readStructuredMaterials,
   readStructuredMeshes,
   readStructuredPrefabs,
@@ -90,6 +91,7 @@ export interface IBundlePlanDocuments {
   gameFlow?: ReturnType<typeof readStructuredGameFlow>;
   gltfScene?: IGltfSceneMetadataIr;
   input?: IInputIr;
+  interactions?: ReturnType<typeof readStructuredInteractions>;
   localData?: ILocalDataIr;
   materials: IMaterialsIr;
   overlays?: Awaited<ReturnType<typeof emitOverlays>>["overlays"];
@@ -176,6 +178,7 @@ export async function planBundle(config: IProjectConfig, root: unknown, options:
   const resourceSchemas = mergeOptionalSchemaFiles(ecs?.resourceSchemas, structuredSchemas.resourceSchemas);
   const prefabs = readStructuredPrefabs(options.authoringDocuments);
   const gameFlow = readStructuredGameFlow(options.authoringDocuments);
+  const interactions = readStructuredInteractions(options.authoringDocuments);
   const sequences = readStructuredSequences(options.authoringDocuments);
   const structuredTargetProfile = readStructuredTargetProfile(options.authoringDocuments);
   const targetBudgets = structuredTargetProfile?.budgets ?? environment?.budgets;
@@ -200,6 +203,7 @@ export async function planBundle(config: IProjectConfig, root: unknown, options:
       eventSchemas,
       gameFlow,
       input,
+      interactions,
       localData,
       materials,
       overlays: overlays?.overlays,
@@ -216,6 +220,7 @@ export async function planBundle(config: IProjectConfig, root: unknown, options:
       ...(animations === undefined ? {} : { animations: IR_DOCUMENTS.animations.fileName }),
       ...(environment === undefined ? {} : { environmentScene: IR_DOCUMENTS.environmentScene.fileName }),
       ...(gameFlow === undefined ? {} : { gameFlow: IR_DOCUMENTS.gameFlow.fileName }),
+      ...(interactions === undefined ? {} : { interactions: IR_DOCUMENTS.interactions.fileName }),
       ...(localData === undefined ? {} : { localData: IR_DOCUMENTS.localData.fileName }),
       ...(prefabs === undefined ? {} : { prefabs: IR_DOCUMENTS.prefabs.fileName }),
       ...(lifecycleScenes.scenes === undefined ? {} : { scenes: IR_DOCUMENTS.scenes.fileName }),
@@ -254,6 +259,7 @@ export async function planBundle(config: IProjectConfig, root: unknown, options:
     ...(gameFlow === undefined ? {} : { gameFlow }),
     ...(gltfScene === undefined ? {} : { gltfScene }),
     ...(input === undefined ? {} : { input }),
+    ...(interactions === undefined ? {} : { interactions }),
     ...(localData === undefined ? {} : { localData }),
     materials,
     ...(overlays === undefined ? {} : { overlays: overlays.overlays }),
@@ -304,6 +310,7 @@ export async function planBundle(config: IProjectConfig, root: unknown, options:
       { data: documentsForEmit.assetsManifest, kind: "assets", path: IR_DOCUMENTS.assets.fileName },
       ...(documentsForEmit.ui === undefined ? [] : [{ data: documentsForEmit.ui, kind: "ui" as const, path: IR_DOCUMENTS.ui.fileName }]),
       ...(documentsForEmit.input === undefined ? [] : [{ data: documentsForEmit.input, kind: "input" as const, path: IR_DOCUMENTS.input.fileName }]),
+      ...(documentsForEmit.interactions === undefined ? [] : [{ data: documentsForEmit.interactions, kind: "interaction" as const, path: IR_DOCUMENTS.interactions.fileName }]),
       ...(documentsForEmit.prefabs === undefined ? [] : [{ data: documentsForEmit.prefabs, kind: "prefab" as const, path: IR_DOCUMENTS.prefabs.fileName }]),
       ...(documentsForEmit.runtimeConfig === undefined ? [] : [{ data: documentsForEmit.runtimeConfig, kind: "unknown" as const, path: IR_DOCUMENTS.runtimeConfig.fileName }]),
       ...(documentsForEmit.systems === undefined ? [] : [{ data: documentsForEmit.systems, kind: "system" as const, path: IR_DOCUMENTS.systems.fileName }]),

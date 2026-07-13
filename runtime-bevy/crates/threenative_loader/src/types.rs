@@ -22,6 +22,7 @@ pub struct BundleEntry {
     pub environment_scene: Option<String>,
     #[serde(rename = "gameFlow")]
     pub game_flow: Option<String>,
+    pub interactions: Option<String>,
     #[serde(rename = "localData")]
     pub local_data: Option<String>,
     pub overlays: Option<String>,
@@ -60,6 +61,7 @@ pub struct LoadedBundle {
     pub game_flow: Option<GameFlowIr>,
     pub gltf_scene: Option<GltfSceneMetadataIr>,
     pub input: Option<InputIr>,
+    pub interactions: Option<InteractionsIr>,
     pub local_data: Option<LocalDataIr>,
     pub manifest: BundleManifest,
     pub materials: MaterialsIr,
@@ -72,6 +74,25 @@ pub struct LoadedBundle {
     pub target_profile: TargetProfile,
     pub ui: Option<UiIr>,
     pub world: WorldIr,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct InteractionsIr {
+    pub schema: String,
+    pub version: String,
+    pub id: String,
+    pub interactions: Vec<InteractionIr>,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct InteractionIr {
+    pub id: String,
+    pub detector: serde_json::Value,
+    pub gate: serde_json::Value,
+    #[serde(default)]
+    pub when: Vec<serde_json::Value>,
+    pub effects: Vec<serde_json::Value>,
+    pub complete: Option<serde_json::Value>,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]

@@ -47,6 +47,11 @@ struct NativeShake {
 }
 
 impl NativePresentationRuntimeState {
+    pub fn play_feedback_preset(&mut self, preset: &Value) {
+        if let Some(camera) = preset.get("camera") {
+            self.enqueue_shake(Some(&json!({ "request": camera, "result": { "accepted": true } })));
+        }
+    }
     pub fn ingest_logs(&mut self, bundle: &mut LoadedBundle, logs: &[crate::systems_effects::NativeSystemEffectLog]) {
         for log in logs {
             for entry in &log.entries {
