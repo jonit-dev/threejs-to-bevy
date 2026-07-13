@@ -19,31 +19,29 @@ for (const color of ["white", "black"]) {
 for (let index = 0; index < 28; index += 1) {
   entities.push({
     id: `marker.legal.${String(index).padStart(2, "0")}`,
-    prefab: "prefab.marker.legal",
-    transform: { position: [0, -10, 0], scale: [0.46, 0.018, 0.46] },
-    components: { LegalMarker: { index } },
+    transform: { position: [0, -10, 0], scale: [0.88, 0.018, 0.88] },
+    components: { LegalMarker: { index }, MeshRenderer: { mesh: "mesh.highlight.box", material: "mat.highlight.legal", castShadow: false, receiveShadow: false } },
   });
 }
 
 for (let index = 0; index < 6; index += 1) {
   entities.push({
     id: `marker.arc.${String(index).padStart(2, "0")}`,
-    prefab: "prefab.marker.arc",
     transform: { position: [0, -10, 0], rotation: [0, 0, 0], scale: [0.4, 0.025, 0.07] },
-    components: { MoveArcMarker: { index } },
+    components: { MoveArcMarker: { index }, MeshRenderer: { mesh: "mesh.highlight.box", material: "mat.highlight.path", castShadow: false, receiveShadow: false } },
   });
 }
 
 for (let index = 0; index < 4; index += 1) {
   entities.push({
     id: `marker.selected.edge.${String(index).padStart(2, "0")}`,
-    prefab: "prefab.marker.selected.edge",
     transform: { position: [0, -10, 0], scale: index < 2 ? [0.46, 0.025, 0.025] : [0.025, 0.025, 0.46] },
-    components: { SelectedEdgeMarker: { index } },
+    components: { SelectedEdgeMarker: { index }, MeshRenderer: { mesh: "mesh.highlight.box", material: "mat.highlight.selected.edge", castShadow: false, receiveShadow: false } },
   });
 }
 
 entities.push(
+  renderMarker("marker.selected", "SelectedMarker", [0.94, 0.012, 0.94], "mat.highlight.selected"),
   marker("marker.hover", "prefab.marker.hover", "HoverMarker", [0.92, 0.03, 0.92]),
   marker("marker.last.from", "prefab.marker.last", "LastMoveMarker", [0.82, 0.025, 0.82]),
   marker("marker.last.to", "prefab.marker.last", "LastMoveMarker", [0.82, 0.025, 0.82]),
@@ -52,9 +50,10 @@ entities.push(
   { id: "library.backdrop", transform: { position: [0, 4.5, -8.2], scale: [30, 16, 1] }, components: { MeshRenderer: { mesh: "mesh.surface", material: "mat.library", castShadow: false, receiveShadow: false } } },
   { id: "board.surface", transform: { position: [0, 0, 0], rotation: [-1.570796, 0, 0], scale: [9.35, 9.35, 1] }, components: { MeshRenderer: { mesh: "mesh.surface", material: "mat.board", receiveShadow: true } } },
   { id: "board.base", prefab: "prefab.plinth", transform: { position: [0, -0.23, 0], scale: [9.5, 0.24, 9.5] } },
-  { id: "light.ambient", components: { Light: { kind: "ambient", color: "#f2e9de", intensity: 0.4 } } },
-  { id: "light.key", transform: { position: [-5.5, 9.5, 6.5], rotation: [-0.78, -0.42, 0] }, components: { Light: { kind: "directional", color: "#fff0dd", intensity: 2.05 } } },
-  { id: "light.fill", transform: { position: [5.5, 4.5, -3.5] }, components: { Light: { kind: "point", color: "#dce8f3", intensity: 0.52, range: 19 } } },
+  { id: "light.ambient", components: { Light: { kind: "ambient", color: "#f5e8d6", intensity: 0.62 } } },
+  { id: "light.key", transform: { position: [-5.5, 9.5, 6.5], rotation: [-0.78, -0.42, 0] }, components: { Light: { kind: "directional", color: "#ffe4bd", intensity: 2.35, shadowBias: -0.0003 } } },
+  { id: "light.fill", transform: { position: [5.5, 4.5, -3.5] }, components: { Light: { kind: "point", color: "#d9e8f5", intensity: 0.88, range: 19 } } },
+  { id: "light.rim", transform: { position: [-4.8, 5.8, -5.4] }, components: { Light: { kind: "point", color: "#ffb65c", intensity: 0.72, range: 15 } } },
   {
     id: "camera.main",
     transform: { position: [0.45, 7.45, 10.35], rotation: [-0.61, 0.035, 0] },
@@ -75,7 +74,7 @@ const prefabs = [
 for (const color of ["white", "black"]) {
   for (const kind of ["pawn", "rook", "knight", "bishop", "queen", "king"]) {
     prefabs.push({
-      color: color === "white" ? "#ead8b8" : "#100d0a",
+      color: color === "white" ? "#f0dfbd" : "#241a13",
       id: `prefab.${color}.${kind}`,
       asset: `assets/models/chess/${color}-${kind}.glb`,
     });
@@ -119,14 +118,18 @@ await writeJson("content/input/chess.input.json", {
 });
 await writeJson("content/materials/chess.materials.json", {
   schema: "threenative.materials", version: "0.1.0", id: "chess-materials", materials: [
-    { id: "mat.ivory", color: "#ead8b8", roughness: 0.22, metalness: 0.05 },
-    { id: "mat.ebony", color: "#100d0a", roughness: 0.18, metalness: 0.14 },
+    { id: "mat.ivory", color: "#f0dfbd", roughness: 0.18, metalness: 0.04, clearcoat: 0.42, clearcoatRoughness: 0.2 },
+    { id: "mat.ebony", color: "#241a13", roughness: 0.16, metalness: 0.08, clearcoat: 0.58, clearcoatRoughness: 0.16 },
     { id: "mat.board.light", color: "#c49a68", roughness: 0.48, metalness: 0 },
     { id: "mat.board.dark", color: "#4a2b18", roughness: 0.44, metalness: 0 },
     { id: "mat.board", color: "#ffffff", baseColorTexture: "tex.chess.board", roughness: 0.5, metalness: 0 },
     { id: "mat.table", color: "#ffffff", baseColorTexture: "tex.chess.table", roughness: 0.62, metalness: 0 },
     { id: "mat.library", kind: "standard", color: "#ffffff", baseColorTexture: "tex.chess.library", roughness: 1, metalness: 0 },
     { id: "mat.brass", color: "#9b642d", roughness: 0.32, metalness: 0.48 },
+    { id: "mat.highlight.legal", kind: "standard", alphaMode: "blend", color: "#b88422", emissive: "#d89b28", emissiveIntensity: 0.42, opacity: 0.34, roughness: 0.4, metalness: 0 },
+    { id: "mat.highlight.path", kind: "standard", alphaMode: "blend", color: "#e4a92f", emissive: "#f0ad25", emissiveIntensity: 0.78, opacity: 0.58, roughness: 0.35, metalness: 0 },
+    { id: "mat.highlight.selected", kind: "standard", alphaMode: "blend", color: "#166b32", emissive: "#24b94e", emissiveIntensity: 0.3, opacity: 0.13, roughness: 0.4, metalness: 0 },
+    { id: "mat.highlight.selected.edge", kind: "standard", alphaMode: "blend", color: "#38dd61", emissive: "#35e965", emissiveIntensity: 1.25, opacity: 0.82, roughness: 0.3, metalness: 0 },
   ],
 });
 await writeJson("content/assets/chess-surfaces.assets.json", {
@@ -139,6 +142,7 @@ await writeJson("content/assets/chess-surfaces.assets.json", {
 await writeJson("content/meshes/chess.meshes.json", {
   schema: "threenative.meshes", version: "0.1.0", id: "chess-meshes", meshes: [
     { id: "mesh.marker", kind: "primitive", primitive: "cylinder", size: [0.34, 0.04] },
+    { id: "mesh.highlight.box", kind: "primitive", primitive: "box", size: [1, 1, 1] },
     { id: "mesh.surface", kind: "primitive", primitive: "plane" },
   ],
 });
@@ -155,6 +159,10 @@ function addPiece(color, kind, file, rank, suffix) {
 
 function marker(id, prefab, component, scale) {
   return { id, prefab, transform: { position: [0, -10, 0], scale }, components: { [component]: {} } };
+}
+
+function renderMarker(id, component, scale, material) {
+  return { id, transform: { position: [0, -10, 0], scale }, components: { [component]: {}, MeshRenderer: { mesh: "mesh.highlight.box", material, castShadow: false, receiveShadow: false } } };
 }
 
 function primitiveFor(kind) {

@@ -5,15 +5,19 @@
   "materials": [
     {
       "id": "mat.ivory",
-      "color": "#ead8b8",
-      "roughness": 0.22,
-      "metalness": 0.05
+      "color": "#f0dfbd",
+      "roughness": 0.18,
+      "metalness": 0.04,
+      "clearcoat": 0.42,
+      "clearcoatRoughness": 0.2
     },
     {
       "id": "mat.ebony",
-      "color": "#100d0a",
-      "roughness": 0.18,
-      "metalness": 0.14
+      "color": "#241a13",
+      "roughness": 0.16,
+      "metalness": 0.08,
+      "clearcoat": 0.58,
+      "clearcoatRoughness": 0.16
     },
     {
       "id": "mat.board.light",
@@ -54,6 +58,50 @@
       "color": "#9b642d",
       "roughness": 0.32,
       "metalness": 0.48
+    },
+    {
+      "id": "mat.highlight.legal",
+      "kind": "standard",
+      "alphaMode": "blend",
+      "color": "#b88422",
+      "emissive": "#d89b28",
+      "emissiveIntensity": 0.42,
+      "opacity": 0.34,
+      "roughness": 0.4,
+      "metalness": 0
+    },
+    {
+      "id": "mat.highlight.path",
+      "kind": "standard",
+      "alphaMode": "blend",
+      "color": "#e4a92f",
+      "emissive": "#f0ad25",
+      "emissiveIntensity": 0.78,
+      "opacity": 0.58,
+      "roughness": 0.35,
+      "metalness": 0
+    },
+    {
+      "id": "mat.highlight.selected",
+      "kind": "standard",
+      "alphaMode": "blend",
+      "color": "#166b32",
+      "emissive": "#24b94e",
+      "emissiveIntensity": 0.3,
+      "opacity": 0.13,
+      "roughness": 0.4,
+      "metalness": 0
+    },
+    {
+      "id": "mat.highlight.selected.edge",
+      "kind": "standard",
+      "alphaMode": "blend",
+      "color": "#38dd61",
+      "emissive": "#35e965",
+      "emissiveIntensity": 1.25,
+      "opacity": 0.82,
+      "roughness": 0.3,
+      "metalness": 0
     }
   ]
 }

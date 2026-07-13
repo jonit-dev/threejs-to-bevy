@@ -933,7 +933,6 @@
     },
     {
       "id": "marker.legal.00",
-      "prefab": "prefab.marker.legal",
       "transform": {
         "position": [
           0,
@@ -941,20 +940,25 @@
           0
         ],
         "scale": [
-          0.46,
+          0.88,
           0.018,
-          0.46
+          0.88
         ]
       },
       "components": {
         "LegalMarker": {
           "index": 0
+        },
+        "MeshRenderer": {
+          "mesh": "mesh.highlight.box",
+          "material": "mat.highlight.legal",
+          "castShadow": false,
+          "receiveShadow": false
         }
       }
     },
     {
       "id": "marker.legal.01",
-      "prefab": "prefab.marker.legal",
       "transform": {
         "position": [
           0,
@@ -962,20 +966,25 @@
           0
         ],
         "scale": [
-          0.46,
+          0.88,
           0.018,
-          0.46
+          0.88
         ]
       },
       "components": {
         "LegalMarker": {
           "index": 1
+        },
+        "MeshRenderer": {
+          "mesh": "mesh.highlight.box",
+          "material": "mat.highlight.legal",
+          "castShadow": false,
+          "receiveShadow": false
         }
       }
     },
     {
       "id": "marker.legal.02",
-      "prefab": "prefab.marker.legal",
       "transform": {
         "position": [
           0,
@@ -983,20 +992,25 @@
           0
         ],
         "scale": [
-          0.46,
+          0.88,
           0.018,
-          0.46
+          0.88
         ]
       },
       "components": {
         "LegalMarker": {
           "index": 2
+        },
+        "MeshRenderer": {
+          "mesh": "mesh.highlight.box",
+          "material": "mat.highlight.legal",
+          "castShadow": false,
+          "receiveShadow": false
         }
       }
     },
     {
       "id": "marker.legal.03",
-      "prefab": "prefab.marker.legal",
       "transform": {
         "position": [
           0,
@@ -1004,20 +1018,25 @@
           0
         ],
         "scale": [
-          0.46,
+          0.88,
           0.018,
-          0.46
+          0.88
         ]
       },
       "components": {
         "LegalMarker": {
           "index": 3
+        },
+        "MeshRenderer": {
+          "mesh": "mesh.highlight.box",
+          "material": "mat.highlight.legal",
+          "castShadow": false,
+          "receiveShadow": false
         }
       }
     },
     {
       "id": "marker.legal.04",
-      "prefab": "prefab.marker.legal",
       "transform": {
         "position": [
           0,
@@ -1025,20 +1044,25 @@
           0
         ],
         "scale": [
-          0.46,
+          0.88,
           0.018,
-          0.46
+          0.88
         ]
       },
       "components": {
         "LegalMarker": {
           "index": 4
+        },
+        "MeshRenderer": {
+          "mesh": "mesh.highlight.box",
+          "material": "mat.highlight.legal",
+          "castShadow": false,
+          "receiveShadow": false
         }
       }
     },
     {
       "id": "marker.legal.05",
-      "prefab": "prefab.marker.legal",
       "transform": {
         "position": [
           0,
@@ -1046,20 +1070,25 @@
           0
         ],
         "scale": [
-          0.46,
+          0.88,
           0.018,
-          0.46
+          0.88
         ]
       },
       "components": {
         "LegalMarker": {
           "index": 5
+        },
+        "MeshRenderer": {
+          "mesh": "mesh.highlight.box",
+          "material": "mat.highlight.legal",
+          "castShadow": false,
+          "receiveShadow": false
         }
       }
     },
     {
       "id": "marker.legal.06",
-      "prefab": "prefab.marker.legal",
       "transform": {
         "position": [
           0,
@@ -1067,20 +1096,25 @@
           0
         ],
         "scale": [
-          0.46,
+          0.88,
           0.018,
-          0.46
+          0.88
         ]
       },
       "components": {
         "LegalMarker": {
           "index": 6
+        },
+        "MeshRenderer": {
+          "mesh": "mesh.highlight.box",
+          "material": "mat.highlight.legal",
+          "castShadow": false,
+          "receiveShadow": false
         }
       }
     },
     {
       "id": "marker.legal.07",
-      "prefab": "prefab.marker.legal",
       "transform": {
         "position": [
           0,
@@ -1088,20 +1122,25 @@
           0
         ],
         "scale": [
-          0.46,
+          0.88,
           0.018,
-          0.46
+          0.88
         ]
       },
       "components": {
         "LegalMarker": {
           "index": 7
+        },
+        "MeshRenderer": {
+          "mesh": "mesh.highlight.box",
+          "material": "mat.highlight.legal",
+          "castShadow": false,
+          "receiveShadow": false
         }
       }
     },
     {
       "id": "marker.legal.08",
-      "prefab": "prefab.marker.legal",
       "transform": {
         "position": [
           0,
@@ -1109,20 +1148,25 @@
           0
         ],
         "scale": [
-          0.46,
+          0.88,
           0.018,
-          0.46
+          0.88
         ]
       },
       "components": {
         "LegalMarker": {
           "index": 8
+        },
+        "MeshRenderer": {
+          "mesh": "mesh.highlight.box",
+          "material": "mat.highlight.legal",
+          "castShadow": false,
+          "receiveShadow": false
         }
       }
     },
     {
       "id": "marker.legal.09",
-      "prefab": "prefab.marker.legal",
       "transform": {
         "position": [
           0,
@@ -1130,20 +1174,25 @@
           0
         ],
         "scale": [
-          0.46,
+          0.88,
           0.018,
-          0.46
+          0.88
         ]
       },
       "components": {
         "LegalMarker": {
           "index": 9
+        },
+        "MeshRenderer": {
+          "mesh": "mesh.highlight.box",
+          "material": "mat.highlight.legal",
+          "castShadow": false,
+          "receiveShadow": false
         }
       }
     },
     {
       "id": "marker.legal.10",
-      "prefab": "prefab.marker.legal",
       "transform": {
         "position": [
           0,
@@ -1151,20 +1200,25 @@
           0
         ],
         "scale": [
-          0.46,
+          0.88,
           0.018,
-          0.46
+          0.88
         ]
       },
       "components": {
         "LegalMarker": {
           "index": 10
+        },
+        "MeshRenderer": {
+          "mesh": "mesh.highlight.box",
+          "material": "mat.highlight.legal",
+          "castShadow": false,
+          "receiveShadow": false
         }
       }
     },
     {
       "id": "marker.legal.11",
-      "prefab": "prefab.marker.legal",
       "transform": {
         "position": [
           0,
@@ -1172,20 +1226,25 @@
           0
         ],
         "scale": [
-          0.46,
+          0.88,
           0.018,
-          0.46
+          0.88
         ]
       },
       "components": {
         "LegalMarker": {
           "index": 11
+        },
+        "MeshRenderer": {
+          "mesh": "mesh.highlight.box",
+          "material": "mat.highlight.legal",
+          "castShadow": false,
+          "receiveShadow": false
         }
       }
     },
     {
       "id": "marker.legal.12",
-      "prefab": "prefab.marker.legal",
       "transform": {
         "position": [
           0,
@@ -1193,20 +1252,25 @@
           0
         ],
         "scale": [
-          0.46,
+          0.88,
           0.018,
-          0.46
+          0.88
         ]
       },
       "components": {
         "LegalMarker": {
           "index": 12
+        },
+        "MeshRenderer": {
+          "mesh": "mesh.highlight.box",
+          "material": "mat.highlight.legal",
+          "castShadow": false,
+          "receiveShadow": false
         }
       }
     },
     {
       "id": "marker.legal.13",
-      "prefab": "prefab.marker.legal",
       "transform": {
         "position": [
           0,
@@ -1214,20 +1278,25 @@
           0
         ],
         "scale": [
-          0.46,
+          0.88,
           0.018,
-          0.46
+          0.88
         ]
       },
       "components": {
         "LegalMarker": {
           "index": 13
+        },
+        "MeshRenderer": {
+          "mesh": "mesh.highlight.box",
+          "material": "mat.highlight.legal",
+          "castShadow": false,
+          "receiveShadow": false
         }
       }
     },
     {
       "id": "marker.legal.14",
-      "prefab": "prefab.marker.legal",
       "transform": {
         "position": [
           0,
@@ -1235,20 +1304,25 @@
           0
         ],
         "scale": [
-          0.46,
+          0.88,
           0.018,
-          0.46
+          0.88
         ]
       },
       "components": {
         "LegalMarker": {
           "index": 14
+        },
+        "MeshRenderer": {
+          "mesh": "mesh.highlight.box",
+          "material": "mat.highlight.legal",
+          "castShadow": false,
+          "receiveShadow": false
         }
       }
     },
     {
       "id": "marker.legal.15",
-      "prefab": "prefab.marker.legal",
       "transform": {
         "position": [
           0,
@@ -1256,20 +1330,25 @@
           0
         ],
         "scale": [
-          0.46,
+          0.88,
           0.018,
-          0.46
+          0.88
         ]
       },
       "components": {
         "LegalMarker": {
           "index": 15
+        },
+        "MeshRenderer": {
+          "mesh": "mesh.highlight.box",
+          "material": "mat.highlight.legal",
+          "castShadow": false,
+          "receiveShadow": false
         }
       }
     },
     {
       "id": "marker.legal.16",
-      "prefab": "prefab.marker.legal",
       "transform": {
         "position": [
           0,
@@ -1277,20 +1356,25 @@
           0
         ],
         "scale": [
-          0.46,
+          0.88,
           0.018,
-          0.46
+          0.88
         ]
       },
       "components": {
         "LegalMarker": {
           "index": 16
+        },
+        "MeshRenderer": {
+          "mesh": "mesh.highlight.box",
+          "material": "mat.highlight.legal",
+          "castShadow": false,
+          "receiveShadow": false
         }
       }
     },
     {
       "id": "marker.legal.17",
-      "prefab": "prefab.marker.legal",
       "transform": {
         "position": [
           0,
@@ -1298,20 +1382,25 @@
           0
         ],
         "scale": [
-          0.46,
+          0.88,
           0.018,
-          0.46
+          0.88
         ]
       },
       "components": {
         "LegalMarker": {
           "index": 17
+        },
+        "MeshRenderer": {
+          "mesh": "mesh.highlight.box",
+          "material": "mat.highlight.legal",
+          "castShadow": false,
+          "receiveShadow": false
         }
       }
     },
     {
       "id": "marker.legal.18",
-      "prefab": "prefab.marker.legal",
       "transform": {
         "position": [
           0,
@@ -1319,20 +1408,25 @@
           0
         ],
         "scale": [
-          0.46,
+          0.88,
           0.018,
-          0.46
+          0.88
         ]
       },
       "components": {
         "LegalMarker": {
           "index": 18
+        },
+        "MeshRenderer": {
+          "mesh": "mesh.highlight.box",
+          "material": "mat.highlight.legal",
+          "castShadow": false,
+          "receiveShadow": false
         }
       }
     },
     {
       "id": "marker.legal.19",
-      "prefab": "prefab.marker.legal",
       "transform": {
         "position": [
           0,
@@ -1340,20 +1434,25 @@
           0
         ],
         "scale": [
-          0.46,
+          0.88,
           0.018,
-          0.46
+          0.88
         ]
       },
       "components": {
         "LegalMarker": {
           "index": 19
+        },
+        "MeshRenderer": {
+          "mesh": "mesh.highlight.box",
+          "material": "mat.highlight.legal",
+          "castShadow": false,
+          "receiveShadow": false
         }
       }
     },
     {
       "id": "marker.legal.20",
-      "prefab": "prefab.marker.legal",
       "transform": {
         "position": [
           0,
@@ -1361,20 +1460,25 @@
           0
         ],
         "scale": [
-          0.46,
+          0.88,
           0.018,
-          0.46
+          0.88
         ]
       },
       "components": {
         "LegalMarker": {
           "index": 20
+        },
+        "MeshRenderer": {
+          "mesh": "mesh.highlight.box",
+          "material": "mat.highlight.legal",
+          "castShadow": false,
+          "receiveShadow": false
         }
       }
     },
     {
       "id": "marker.legal.21",
-      "prefab": "prefab.marker.legal",
       "transform": {
         "position": [
           0,
@@ -1382,20 +1486,25 @@
           0
         ],
         "scale": [
-          0.46,
+          0.88,
           0.018,
-          0.46
+          0.88
         ]
       },
       "components": {
         "LegalMarker": {
           "index": 21
+        },
+        "MeshRenderer": {
+          "mesh": "mesh.highlight.box",
+          "material": "mat.highlight.legal",
+          "castShadow": false,
+          "receiveShadow": false
         }
       }
     },
     {
       "id": "marker.legal.22",
-      "prefab": "prefab.marker.legal",
       "transform": {
         "position": [
           0,
@@ -1403,20 +1512,25 @@
           0
         ],
         "scale": [
-          0.46,
+          0.88,
           0.018,
-          0.46
+          0.88
         ]
       },
       "components": {
         "LegalMarker": {
           "index": 22
+        },
+        "MeshRenderer": {
+          "mesh": "mesh.highlight.box",
+          "material": "mat.highlight.legal",
+          "castShadow": false,
+          "receiveShadow": false
         }
       }
     },
     {
       "id": "marker.legal.23",
-      "prefab": "prefab.marker.legal",
       "transform": {
         "position": [
           0,
@@ -1424,20 +1538,25 @@
           0
         ],
         "scale": [
-          0.46,
+          0.88,
           0.018,
-          0.46
+          0.88
         ]
       },
       "components": {
         "LegalMarker": {
           "index": 23
+        },
+        "MeshRenderer": {
+          "mesh": "mesh.highlight.box",
+          "material": "mat.highlight.legal",
+          "castShadow": false,
+          "receiveShadow": false
         }
       }
     },
     {
       "id": "marker.legal.24",
-      "prefab": "prefab.marker.legal",
       "transform": {
         "position": [
           0,
@@ -1445,20 +1564,25 @@
           0
         ],
         "scale": [
-          0.46,
+          0.88,
           0.018,
-          0.46
+          0.88
         ]
       },
       "components": {
         "LegalMarker": {
           "index": 24
+        },
+        "MeshRenderer": {
+          "mesh": "mesh.highlight.box",
+          "material": "mat.highlight.legal",
+          "castShadow": false,
+          "receiveShadow": false
         }
       }
     },
     {
       "id": "marker.legal.25",
-      "prefab": "prefab.marker.legal",
       "transform": {
         "position": [
           0,
@@ -1466,20 +1590,25 @@
           0
         ],
         "scale": [
-          0.46,
+          0.88,
           0.018,
-          0.46
+          0.88
         ]
       },
       "components": {
         "LegalMarker": {
           "index": 25
+        },
+        "MeshRenderer": {
+          "mesh": "mesh.highlight.box",
+          "material": "mat.highlight.legal",
+          "castShadow": false,
+          "receiveShadow": false
         }
       }
     },
     {
       "id": "marker.legal.26",
-      "prefab": "prefab.marker.legal",
       "transform": {
         "position": [
           0,
@@ -1487,20 +1616,25 @@
           0
         ],
         "scale": [
-          0.46,
+          0.88,
           0.018,
-          0.46
+          0.88
         ]
       },
       "components": {
         "LegalMarker": {
           "index": 26
+        },
+        "MeshRenderer": {
+          "mesh": "mesh.highlight.box",
+          "material": "mat.highlight.legal",
+          "castShadow": false,
+          "receiveShadow": false
         }
       }
     },
     {
       "id": "marker.legal.27",
-      "prefab": "prefab.marker.legal",
       "transform": {
         "position": [
           0,
@@ -1508,20 +1642,25 @@
           0
         ],
         "scale": [
-          0.46,
+          0.88,
           0.018,
-          0.46
+          0.88
         ]
       },
       "components": {
         "LegalMarker": {
           "index": 27
+        },
+        "MeshRenderer": {
+          "mesh": "mesh.highlight.box",
+          "material": "mat.highlight.legal",
+          "castShadow": false,
+          "receiveShadow": false
         }
       }
     },
     {
       "id": "marker.arc.00",
-      "prefab": "prefab.marker.arc",
       "transform": {
         "position": [
           0,
@@ -1542,12 +1681,17 @@
       "components": {
         "MoveArcMarker": {
           "index": 0
+        },
+        "MeshRenderer": {
+          "mesh": "mesh.highlight.box",
+          "material": "mat.highlight.path",
+          "castShadow": false,
+          "receiveShadow": false
         }
       }
     },
     {
       "id": "marker.arc.01",
-      "prefab": "prefab.marker.arc",
       "transform": {
         "position": [
           0,
@@ -1568,12 +1712,17 @@
       "components": {
         "MoveArcMarker": {
           "index": 1
+        },
+        "MeshRenderer": {
+          "mesh": "mesh.highlight.box",
+          "material": "mat.highlight.path",
+          "castShadow": false,
+          "receiveShadow": false
         }
       }
     },
     {
       "id": "marker.arc.02",
-      "prefab": "prefab.marker.arc",
       "transform": {
         "position": [
           0,
@@ -1594,12 +1743,17 @@
       "components": {
         "MoveArcMarker": {
           "index": 2
+        },
+        "MeshRenderer": {
+          "mesh": "mesh.highlight.box",
+          "material": "mat.highlight.path",
+          "castShadow": false,
+          "receiveShadow": false
         }
       }
     },
     {
       "id": "marker.arc.03",
-      "prefab": "prefab.marker.arc",
       "transform": {
         "position": [
           0,
@@ -1620,12 +1774,17 @@
       "components": {
         "MoveArcMarker": {
           "index": 3
+        },
+        "MeshRenderer": {
+          "mesh": "mesh.highlight.box",
+          "material": "mat.highlight.path",
+          "castShadow": false,
+          "receiveShadow": false
         }
       }
     },
     {
       "id": "marker.arc.04",
-      "prefab": "prefab.marker.arc",
       "transform": {
         "position": [
           0,
@@ -1646,12 +1805,17 @@
       "components": {
         "MoveArcMarker": {
           "index": 4
+        },
+        "MeshRenderer": {
+          "mesh": "mesh.highlight.box",
+          "material": "mat.highlight.path",
+          "castShadow": false,
+          "receiveShadow": false
         }
       }
     },
     {
       "id": "marker.arc.05",
-      "prefab": "prefab.marker.arc",
       "transform": {
         "position": [
           0,
@@ -1672,12 +1836,17 @@
       "components": {
         "MoveArcMarker": {
           "index": 5
+        },
+        "MeshRenderer": {
+          "mesh": "mesh.highlight.box",
+          "material": "mat.highlight.path",
+          "castShadow": false,
+          "receiveShadow": false
         }
       }
     },
     {
       "id": "marker.selected.edge.00",
-      "prefab": "prefab.marker.selected.edge",
       "transform": {
         "position": [
           0,
@@ -1693,12 +1862,17 @@
       "components": {
         "SelectedEdgeMarker": {
           "index": 0
+        },
+        "MeshRenderer": {
+          "mesh": "mesh.highlight.box",
+          "material": "mat.highlight.selected.edge",
+          "castShadow": false,
+          "receiveShadow": false
         }
       }
     },
     {
       "id": "marker.selected.edge.01",
-      "prefab": "prefab.marker.selected.edge",
       "transform": {
         "position": [
           0,
@@ -1714,12 +1888,17 @@
       "components": {
         "SelectedEdgeMarker": {
           "index": 1
+        },
+        "MeshRenderer": {
+          "mesh": "mesh.highlight.box",
+          "material": "mat.highlight.selected.edge",
+          "castShadow": false,
+          "receiveShadow": false
         }
       }
     },
     {
       "id": "marker.selected.edge.02",
-      "prefab": "prefab.marker.selected.edge",
       "transform": {
         "position": [
           0,
@@ -1735,12 +1914,17 @@
       "components": {
         "SelectedEdgeMarker": {
           "index": 2
+        },
+        "MeshRenderer": {
+          "mesh": "mesh.highlight.box",
+          "material": "mat.highlight.selected.edge",
+          "castShadow": false,
+          "receiveShadow": false
         }
       }
     },
     {
       "id": "marker.selected.edge.03",
-      "prefab": "prefab.marker.selected.edge",
       "transform": {
         "position": [
           0,
@@ -1756,6 +1940,36 @@
       "components": {
         "SelectedEdgeMarker": {
           "index": 3
+        },
+        "MeshRenderer": {
+          "mesh": "mesh.highlight.box",
+          "material": "mat.highlight.selected.edge",
+          "castShadow": false,
+          "receiveShadow": false
+        }
+      }
+    },
+    {
+      "id": "marker.selected",
+      "transform": {
+        "position": [
+          0,
+          -10,
+          0
+        ],
+        "scale": [
+          0.94,
+          0.012,
+          0.94
+        ]
+      },
+      "components": {
+        "SelectedMarker": {},
+        "MeshRenderer": {
+          "mesh": "mesh.highlight.box",
+          "material": "mat.highlight.selected",
+          "castShadow": false,
+          "receiveShadow": false
         }
       }
     },
@@ -1933,8 +2147,8 @@
       "components": {
         "Light": {
           "kind": "ambient",
-          "color": "#f2e9de",
-          "intensity": 0.4
+          "color": "#f5e8d6",
+          "intensity": 0.62
         }
       }
     },
@@ -1955,8 +2169,9 @@
       "components": {
         "Light": {
           "kind": "directional",
-          "color": "#fff0dd",
-          "intensity": 2.05
+          "color": "#ffe4bd",
+          "intensity": 2.35,
+          "shadowBias": -0.0003
         }
       }
     },
@@ -1972,9 +2187,27 @@
       "components": {
         "Light": {
           "kind": "point",
-          "color": "#dce8f3",
-          "intensity": 0.52,
+          "color": "#d9e8f5",
+          "intensity": 0.88,
           "range": 19
+        }
+      }
+    },
+    {
+      "id": "light.rim",
+      "transform": {
+        "position": [
+          -4.8,
+          5.8,
+          -5.4
+        ]
+      },
+      "components": {
+        "Light": {
+          "kind": "point",
+          "color": "#ffb65c",
+          "intensity": 0.72,
+          "range": 15
         }
       }
     },
@@ -2044,62 +2277,62 @@
       "color": "#f2b94b"
     },
     {
-      "color": "#ead8b8",
+      "color": "#f0dfbd",
       "id": "prefab.white.pawn",
       "asset": "assets/models/chess/white-pawn.glb"
     },
     {
-      "color": "#ead8b8",
+      "color": "#f0dfbd",
       "id": "prefab.white.rook",
       "asset": "assets/models/chess/white-rook.glb"
     },
     {
-      "color": "#ead8b8",
+      "color": "#f0dfbd",
       "id": "prefab.white.knight",
       "asset": "assets/models/chess/white-knight.glb"
     },
     {
-      "color": "#ead8b8",
+      "color": "#f0dfbd",
       "id": "prefab.white.bishop",
       "asset": "assets/models/chess/white-bishop.glb"
     },
     {
-      "color": "#ead8b8",
+      "color": "#f0dfbd",
       "id": "prefab.white.queen",
       "asset": "assets/models/chess/white-queen.glb"
     },
     {
-      "color": "#ead8b8",
+      "color": "#f0dfbd",
       "id": "prefab.white.king",
       "asset": "assets/models/chess/white-king.glb"
     },
     {
-      "color": "#100d0a",
+      "color": "#241a13",
       "id": "prefab.black.pawn",
       "asset": "assets/models/chess/black-pawn.glb"
     },
     {
-      "color": "#100d0a",
+      "color": "#241a13",
       "id": "prefab.black.rook",
       "asset": "assets/models/chess/black-rook.glb"
     },
     {
-      "color": "#100d0a",
+      "color": "#241a13",
       "id": "prefab.black.knight",
       "asset": "assets/models/chess/black-knight.glb"
     },
     {
-      "color": "#100d0a",
+      "color": "#241a13",
       "id": "prefab.black.bishop",
       "asset": "assets/models/chess/black-bishop.glb"
     },
     {
-      "color": "#100d0a",
+      "color": "#241a13",
       "id": "prefab.black.queen",
       "asset": "assets/models/chess/black-queen.glb"
     },
     {
-      "color": "#100d0a",
+      "color": "#241a13",
       "id": "prefab.black.king",
       "asset": "assets/models/chess/black-king.glb"
     }

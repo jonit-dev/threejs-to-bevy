@@ -1,0 +1,50 @@
+{
+  "schemaVersion": 1,
+  "name": "chess-highlight-polish",
+  "target": "web",
+  "viewport": { "width": 1280, "height": 720 },
+  "subject": "piece.white.pawn.e2",
+  "warmupFrames": 8,
+  "steps": [
+    {
+      "label": "choose white side",
+      "overlayMessage": {
+        "overlayId": "chess-side-select",
+        "type": "chess:choose-side",
+        "payload": { "side": "white" }
+      },
+      "press": "KeyW",
+      "holdFrames": 2,
+      "release": true
+    },
+    {
+      "label": "select e2 pawn and show legal destinations",
+      "press": "Enter",
+      "holdFrames": 2,
+      "release": true
+    },
+    { "label": "settle highlight effects", "waitFrames": 8 }
+  ],
+  "assert": {
+    "resources": [
+      { "id": "ChessGame", "path": "statusText", "equals": "WHITE PAWN selected — 2 legal moves" }
+    ],
+    "diagnostics": {
+      "runtimeReady": true,
+      "noConsoleErrors": true,
+      "noNetworkErrors": true,
+      "noRuntimeDiagnostics": true
+    },
+    "visual": [
+      { "entityVisible": { "entity": "marker.selected", "minProjectedPixels": 20 } },
+      { "entityVisible": { "entity": "marker.legal.00", "minProjectedPixels": 20 } }
+    ]
+  },
+  "artifacts": {
+    "screenshots": "before-after",
+    "console": true,
+    "network": true,
+    "runtimeTrace": true,
+    "effectLog": "focused"
+  }
+}

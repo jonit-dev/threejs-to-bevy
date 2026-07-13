@@ -2,6 +2,11 @@
   "id": "default",
   "renderer": {
     "antialias": "msaa4",
+    "bloom": {
+      "enabled": true,
+      "intensity": 0.14,
+      "threshold": 0.82
+    },
     "renderLook": {
       "profile": "parity",
       "version": 1

@@ -13,6 +13,16 @@
       ]
     },
     {
+      "id": "mesh.highlight.box",
+      "kind": "primitive",
+      "primitive": "box",
+      "size": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
       "id": "mesh.surface",
       "kind": "primitive",
       "primitive": "plane"

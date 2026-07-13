@@ -405,10 +405,12 @@ export const chessGame = defineBehavior(
 
     const selectedEdges = allEntities.filter((entity) => entity.id.startsWith("marker.selected.edge.")).sort((left, right) => left.id.localeCompare(right.id));
     if (currentSelected === undefined) {
+      placeMarker("marker.selected", -1, -1, 0.095);
       for (const edge of selectedEdges) edge.transform().setPosition([0, -10, 0]);
     } else {
+      placeMarker("marker.selected", currentSelected.file, currentSelected.rank, 0.095);
       const [selectedX, , selectedZ] = worldPosition(currentSelected.file, currentSelected.rank, 0.12);
-      const edgeOffsets: Array<[number, number, number]> = [[0, 0, -0.46], [0, 0, 0.46], [-0.46, 0, 0], [0.46, 0, 0]];
+      const edgeOffsets: Array<[number, number, number]> = [[0, 0, -0.48], [0, 0, 0.48], [-0.48, 0, 0], [0.48, 0, 0]];
       for (let index = 0; index < selectedEdges.length; index += 1) {
         const offset = edgeOffsets[index] ?? [0, 0, 0];
         selectedEdges[index]?.transform().setPosition([selectedX + offset[0], 0.12 + offset[1], selectedZ + offset[2]]);
@@ -440,7 +442,8 @@ export const chessGame = defineBehavior(
           [(first[0] + second[0]) / 2, 0.18, (first[1] + second[1]) / 2],
           [0, Math.sin(halfAngle), 0, Math.cos(halfAngle)],
         );
-        marker?.patch("Transform", { scale: [length * 0.5, 0.025, 0.07] });
+        const progress = (index + 1) / arcMarkers.length;
+        marker?.patch("Transform", { scale: [length * 0.46, 0.014 + progress * 0.01, 0.025 + progress * 0.045] });
       }
     }
 
