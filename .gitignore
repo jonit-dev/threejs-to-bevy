@@ -3,6 +3,10 @@ node_modules/
 dist/
 coverage/
 artifacts/
+!tools/verify/artifacts/
+tools/verify/artifacts/*
+!tools/verify/artifacts/native-overlay-cef/
+!tools/verify/artifacts/native-overlay-cef/**
 .turbo/
 .tn/
 packages/*/.tn/

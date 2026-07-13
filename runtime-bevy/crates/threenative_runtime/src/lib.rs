@@ -41,6 +41,8 @@ pub mod native_ssr;
 pub mod native_volumetric;
 pub mod navigation;
 pub mod overlay;
+#[cfg(feature = "native-overlay-cef")]
+pub mod overlay_cef;
 pub mod overlay_host;
 pub mod path_sampling;
 pub mod patrol;

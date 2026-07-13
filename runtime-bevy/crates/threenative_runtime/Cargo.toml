@@ -12,6 +12,11 @@ name = "threenative_runtime"
 path = "src/main.rs"
 
 [[bin]]
+name = "native_overlay_cef_spike"
+path = "src/bin/native_overlay_cef_spike.rs"
+required-features = ["native-overlay-cef"]
+
+[[bin]]
 name = "threenative_capture"
 path = "src/capture.rs"
 
@@ -113,6 +118,7 @@ path = "src/physics_self_verification_trace.rs"
 
 [dependencies]
 bevy = { version = "=0.14.2", features = ["jpeg", "mp3", "pbr_multi_layer_material_textures", "pbr_transmission_textures", "webp"] }
+cef = { version = "=150.0.0", default-features = false, optional = true }
 image = "0.25.10"
 quickjs-rusty = "=0.12.0"
 serde = { version = "1.0.228", features = ["derive"] }
@@ -127,4 +133,14 @@ rapier3d = "0.33.0"
 
 [features]
 default = []
+native-overlay-cef = ["dep:cef"]
 native-webview = ["dep:gtk", "dep:winit", "dep:wry"]
+
+[package.metadata.threenative.native-overlay-cef]
+cef-crate = "150.0.0+150.0.10"
+cef-distribution = "150.0.10+g8042e43"
+chromium = "150.0.7871.101"
+linux-x86_64-archive-sha1 = "74a1186c566cbbac38c6b0f5298fc0bcfc1b9606"
+linux-x86_64-archive-sha256 = "6c1d4891ef3886e3ccf65d09288d8304e3f7e3724a47c93293e2bd63e76528e4"
+license-path = "../../third_party/cef/LICENSE.txt"
+license-sha256 = "058c3827ffb827ff3edda471ae7e1bb1d1aa5931985f0126043ccd33409e792f"

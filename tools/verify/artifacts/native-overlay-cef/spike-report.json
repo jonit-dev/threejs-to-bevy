@@ -1,0 +1,259 @@
+{
+  "schema": "threenative.native-overlay-cef-spike",
+  "version": "0.1.0",
+  "generatedBy": "native-overlay-cef Phase 1",
+  "startedAt": "2026-07-13",
+  "completedAt": "2026-07-13",
+  "status": "failed",
+  "verdict": {
+    "decision": "stop-before-phase-2",
+    "failedCriteria": [
+      "bridge",
+      "installedSize",
+      "manualEvidence"
+    ],
+    "blockingFindings": [
+      "The stock Linux CEF payload exceeds the 250 MB production installed-size threshold before the helper and game are included.",
+      "Production cannot proceed until the PRD's 250 MB installed-size ceiling is explicitly revised or a compliant payload is demonstrated.",
+      "The spike bridge now exercises typed side selection, retained snapshot delivery, visibility state, and native input-mode routing, but a retained visibility replay trace is still required for the full bridge gate.",
+      "The retained clean chooser, HUD, and settings frames do not independently prove all 10 transitions, invariant window geometry, or the single-window count."
+    ]
+  },
+  "environment": {
+    "os": "Linux 7.1.3-1-cachyos x86_64",
+    "sessionType": "wayland",
+    "displayServer": "KDE Wayland with Xwayland DISPLAY=:0",
+    "gpu": "NVIDIA GeForce RTX 2080",
+    "driver": "610.43.02",
+    "viewport": "1280x720"
+  },
+  "dependency": {
+    "crate": {
+      "name": "cef",
+      "version": "150.0.0+150.0.10",
+      "sha256": "8dd6aaa08e30ced80c7c18445807984243a06b7f4004c264922302b7e05d5c41",
+      "license": "Apache-2.0 OR MIT"
+    },
+    "sysCrate": {
+      "name": "cef-dll-sys",
+      "version": "150.0.0+150.0.10",
+      "sha256": "d0ec349898441a7e9f91add53716d9c40f6fc381c9b41818241e4f63fb73f0b8"
+    },
+    "distribution": {
+      "cefVersion": "150.0.10+g8042e43",
+      "chromiumVersion": "150.0.7871.101",
+      "target": "linux-x86_64",
+      "archive": "cef_binary_150.0.10+g8042e43+chromium-150.0.7871.101_linux64_minimal.tar.bz2",
+      "url": "https://cef-builds.spotifycdn.com/cef_binary_150.0.10%2Bg8042e43%2Bchromium-150.0.7871.101_linux64_minimal.tar.bz2",
+      "bytes": 314999633,
+      "sha1": "74a1186c566cbbac38c6b0f5298fc0bcfc1b9606",
+      "sha256": "6c1d4891ef3886e3ccf65d09288d8304e3f7e3724a47c93293e2bd63e76528e4"
+    },
+    "helperModel": "Linux spike re-executes native_overlay_cef_spike and dispatches cef_execute_process before argument parsing or Bevy initialization.",
+    "supportedTargets": [
+      {
+        "target": "linux-x86_64",
+        "status": "spike-failed"
+      }
+    ],
+    "requiredArtifacts": [
+      {
+        "path": "libcef.so",
+        "role": "CEF runtime",
+        "bytes": 1398958144,
+        "sha256": "3d62a2762edc3d246f12b8dfa66498e9ed45c5d88998cf793ce08a86e909ae09"
+      },
+      {
+        "path": "icudtl.dat",
+        "role": "ICU data",
+        "bytes": 10876560,
+        "sha256": "bd8c145abdf3f8383276ce01dfa4ae48709bef9fef1c0711eb7c3fab4f6eb7c2"
+      },
+      {
+        "path": "resources.pak",
+        "role": "browser resources",
+        "bytes": 16152320,
+        "sha256": "17dba515081e1b77be6f6e68ad6373b2bfdfb3ab3e6a78ccfe5c55bfb5687dda"
+      },
+      {
+        "path": "v8_context_snapshot.bin",
+        "role": "V8 snapshot",
+        "bytes": 740048,
+        "sha256": "c69d382f694dffe70e3578554991e49e919b978a3d86edca11deff39a2ed1b8e"
+      },
+      {
+        "path": "chrome-sandbox",
+        "role": "Linux sandbox helper; present but not enabled by the Phase 1 spike",
+        "bytes": 31680,
+        "sha256": "a9934039f27c18f0806d5aba82a6a5492f3e309c3ca1996d37778e5b79285f52"
+      },
+      {
+        "path": "chrome_100_percent.pak",
+        "role": "100 percent scale resources",
+        "bytes": 695385,
+        "sha256": "5be372f120756ebac71ca892138ad267777326b1f6a1d99b0bfe46fe54b8971b"
+      },
+      {
+        "path": "chrome_200_percent.pak",
+        "role": "200 percent scale resources",
+        "bytes": 1197049,
+        "sha256": "092785dfe0301e6cf0a54eb112f0993ff17cbfe20a34a035031e8873f3b4e429"
+      },
+      {
+        "path": "libEGL.so",
+        "role": "ANGLE EGL runtime",
+        "bytes": 790744,
+        "sha256": "58617fac341664f145279b62ecec18e0d6b230047c103e0ae5bae2f34562eb41"
+      },
+      {
+        "path": "libGLESv2.so",
+        "role": "ANGLE GLES runtime",
+        "bytes": 20052232,
+        "sha256": "dfee6adda6f2f7476c1c3e58c103bd673377c2fcd07867b264260a4a77f31ea0"
+      },
+      {
+        "path": "libvk_swiftshader.so",
+        "role": "SwiftShader Vulkan runtime",
+        "bytes": 15827040,
+        "sha256": "40c5b56a34611cb96537325974a0e20b97573f926dd0debcae18bc22e514ad59"
+      },
+      {
+        "path": "libvulkan.so.1",
+        "role": "bundled Vulkan loader",
+        "bytes": 1492784,
+        "sha256": "4141aa9918086067ab9e9475169cf5064ec694c5899dccb98d1e23b5fe9fce70"
+      },
+      {
+        "path": "vk_swiftshader_icd.json",
+        "role": "SwiftShader Vulkan manifest",
+        "bytes": 107,
+        "sha256": "c9eef28b6b984fec220ef0abfecc40b502d46946706e47bfe97707027cb818bd"
+      },
+      {
+        "path": "locales/en-US.pak",
+        "role": "minimum declared locale payload; production locale policy remains undecided",
+        "bytes": 579269,
+        "sha256": "22b9e8ceb43f1f452fad75c8ae2d432873d12513b1bc74f4eb6d8d989eec0ca4"
+      },
+      {
+        "path": "CREDITS.html",
+        "role": "Chromium third-party notices",
+        "bytes": 19634147,
+        "sha256": "496533b09217fe29c4b142e23e796b9d6b95bfdb3208d02d54b487535b341480"
+      }
+    ],
+    "licenses": [
+      {
+        "path": "CREDITS.html",
+        "status": "present"
+      },
+      {
+        "path": "runtime-bevy/third_party/cef/LICENSE.txt",
+        "status": "present",
+        "sha256": "058c3827ffb827ff3edda471ae7e1bb1d1aa5931985f0126043ccd33409e792f",
+        "source": "https://raw.githubusercontent.com/chromiumembedded/cef/8042e43/LICENSE.txt"
+      }
+    ]
+  },
+  "artifacts": {
+    "chooser": "tools/verify/artifacts/native-overlay-cef/frames/chooser-cef-clean.png",
+    "hud": "tools/verify/artifacts/native-overlay-cef/frames/hud-cef-native-bridge-clean.png",
+    "settingsOpen": "tools/verify/artifacts/native-overlay-cef/frames/settings-open-cef-clean.png",
+    "hoverBefore": "tools/verify/artifacts/native-overlay-cef/frames/chooser-hover-before.png",
+    "hoverBlack": "tools/verify/artifacts/native-overlay-cef/frames/chooser-hover-black.png",
+    "frameBaselineDebug": "tools/verify/artifacts/native-overlay-cef/frame-baseline-debug.json",
+    "frameOverlayDebug": "tools/verify/artifacts/native-overlay-cef/frame-overlay-debug.json",
+    "log": null
+  },
+  "tests": [
+    {
+      "command": "pnpm --dir examples/chess run build:overlay",
+      "status": "pass"
+    },
+    {
+      "command": "cargo test --manifest-path runtime-bevy/Cargo.toml -p threenative_runtime --test overlay_cef --features native-overlay-cef",
+      "status": "pass",
+      "assertions": 14
+    },
+    {
+      "command": "cargo test --manifest-path runtime-bevy/Cargo.toml -p threenative_runtime --features native-overlay-cef --test overlay --test overlay_host",
+      "status": "pass",
+      "assertions": 15
+    },
+    {
+      "command": "pnpm --dir packages/overlay-client test",
+      "status": "pass",
+      "assertions": 3
+    },
+    {
+      "command": "cargo run --manifest-path runtime-bevy/Cargo.toml -p threenative_runtime --bin native_overlay_cef_spike --features native-overlay-cef -- examples/chess/dist/chess.bundle",
+      "status": "partial",
+      "firstNonblankPaintMsFromProcessEntry": 1997.57
+    }
+  ],
+  "scenario": {
+    "states": ["chooser", "hud", "settings-open", "settings-closed"],
+    "realInput": "observed: Bevy cursor/button input was translated to CEF; choosing Black emitted chess:choose-side, the native game applied the AI opening move, and later snapshots updated the CEF HUD",
+    "noSecondaryWindow": "observed but not retained: one ThreeNative Starter X11 window was present",
+    "noResizeWorkaround": "observed but not retained: 10 modal open/close transitions ran without moving or resizing the window"
+  },
+  "budgets": {
+    "transparency": {
+      "status": "pass",
+      "threshold": "Board visible through every transparent region",
+      "observed": "Chooser corner alpha was 29298/65535 (44.7%); the board is visible through the composited backdrop",
+      "sampleCount": 1,
+      "artifacts": ["tools/verify/artifacts/native-overlay-cef/frames/cef-first-nonblank.png", "tools/verify/artifacts/native-overlay-cef/frames/chooser-cef-composited.png"]
+    },
+    "modalRemoval": {
+      "status": "partial",
+      "threshold": "10/10 transitions; no stale modal pixels and no resize",
+      "observed": "The retained final close has AE=0 in the 420x338 former-modal region versus the pre-modal HUD frame. The 10-transition and invariant-geometry observations lack retained per-transition records.",
+      "sampleCount": 10,
+      "artifacts": ["tools/verify/artifacts/native-overlay-cef/frames/hud-cef-composited.png", "tools/verify/artifacts/native-overlay-cef/frames/settings-open-cef-composited.png", "tools/verify/artifacts/native-overlay-cef/frames/settings-closed-after-10-cef-composited.png"]
+    },
+    "input": {
+      "status": "pass",
+      "threshold": "Real routed side-selection click and usable HUD controls",
+      "observed": "A routed Black selection reached the native bridge, started the game with the AI opening move, and delivered updated chess:captures snapshots to the HUD. CSS hover is enabled by explicit desktop pointer/hover Blink capabilities; retained before/after paints differ and show the Black card hover state.",
+      "sampleCount": 3
+    },
+    "bridge": {
+      "status": "partial",
+      "threshold": "Send, subscribe, replay, visibility, and input mode",
+      "observed": "The spike adapter exercised subscribe, send, retained chess:captures delivery, visibility state, and input-mode routing. A retained visibility replay trace and production process messaging remain later-phase work.",
+      "sampleCount": 1
+    },
+    "frameCost": {
+      "status": "measured-debug",
+      "threshold": "Record CPU copy/upload and total frame delta at 1280x720",
+      "observed": {"cpuBgraNormalizeP95Micros": 52690, "bevyImageReplacementP95Micros": 2, "baselineFrameP95Ms": 18.096, "overlayFrameP95Ms": 17.514, "totalFrameP95DeltaMs": -0.582, "totalFrameMeanDeltaMs": 0.252, "totalFrameP99DeltaMs": 37.302, "note": "Paired unoptimized 1280x720 runs used identical 120-frame warmup and 600-frame sample policies. Release performance remains unmeasured."},
+      "sampleCount": 600
+    },
+    "paintQueue": {
+      "status": "pass",
+      "threshold": "At most one pending complete paint per overlay; report drops",
+      "observed": "Unit test proves pending length 1; reference run accepted 5 paints, uploaded 3, and reported 2 newest-frame replacements",
+      "sampleCount": 5
+    },
+    "memory": {
+      "status": "measured",
+      "threshold": "Record parent and child working set after settle",
+      "observed": {"parentAndDirectChildrenRssKiB": 1460520, "fullObservedProcessTreeRssKiB": 2029992, "settledElapsedSeconds": 181, "note": "No 100-transition monotonic-growth series yet"},
+      "sampleCount": 1
+    },
+    "installedSize": {
+      "status": "fail",
+      "threshold": "Added installed size <= 250000000 bytes",
+      "observed": 1536442182,
+      "sampleCount": 1,
+      "note": "Unstripped Linux runtime resources, all generated locales, and notices; helper/game excluded. A stripped libcef.so alone measured 260951112 bytes."
+    },
+    "startup": {
+      "status": "pass",
+      "threshold": "Record first nonblank paint from process start",
+      "observed": {"firstNonblankPaintMs": 1997.57, "timerOrigin": "binary main entry before CEF subprocess dispatch"},
+      "sampleCount": 1
+    }
+  }
+}

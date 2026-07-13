@@ -1,0 +1,30 @@
+{
+  "schema": "threenative.native-overlay-cef-frame-probe",
+  "version": "0.1.0",
+  "mode": "overlay",
+  "physicalWidth": 1280,
+  "physicalHeight": 720,
+  "warmupFrames": 120,
+  "sampleFrames": 600,
+  "frames": {
+    "count": 600,
+    "maxMs": 66.447,
+    "meanMs": 16.921290000000003,
+    "p50Ms": 16.646,
+    "p95Ms": 17.514,
+    "p99Ms": 55.929
+  },
+  "baseline": {
+    "count": 600,
+    "maxMs": 18.929,
+    "meanMs": 16.669183333333333,
+    "p50Ms": 16.651,
+    "p95Ms": 18.096,
+    "p99Ms": 18.627
+  },
+  "totalFrameDelta": {
+    "meanMs": 0.2521066666666698,
+    "p95Ms": -0.5820000000000007,
+    "p99Ms": 37.30200000000001
+  }
+}
