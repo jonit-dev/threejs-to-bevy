@@ -1,4 +1,4 @@
-import { defineBehavior } from "@threenative/script-stdlib";
+import { ControllerEx, defineBehavior } from "@threenative/script-stdlib";
 import type { ProjectContext } from "../../.threenative/types/project-context";
 
 export const movePlayerToGoal = defineBehavior(
@@ -28,12 +28,17 @@ export const movePlayerToGoal = defineBehavior(
     const position = transform.position;
     const moveX = context.input.getAxis("MoveX");
     const moveZ = context.input.getAxis("MoveZ");
-    const delta = context.time.fixedDelta;
-    const speed = 3.2;
+    const movement = ControllerEx.worldCardinalCharacter({
+      dt: context.time.fixedDelta,
+      grounded: true,
+      input: [moveX, moveZ],
+      position,
+      speed: 3.2,
+    });
     const next: [number, number, number] = [
-      Math.max(-bound, Math.min(bound, position[0] + moveX * delta * speed)),
+      Math.max(-bound, Math.min(bound, movement.position[0])),
       position[1],
-      Math.max(-bound, Math.min(bound, position[2] + moveZ * delta * speed)),
+      Math.max(-bound, Math.min(bound, movement.position[2])),
     ];
     transform.setPosition(next);
   },
