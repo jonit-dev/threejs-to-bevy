@@ -41,14 +41,14 @@ invalid whole-file aggregate that included unrelated Chess compaction.
 
 | Criterion | Status | Evidence |
 | --- | --- | --- |
-| Canonical simple-movement examples use the promoted helper path. | FAIL | Dense and Neon use `ControllerEx.worldCardinalCharacter`; Orb Reactor and Coin Patrol still hand-roll fixed-delta movement. |
-| Registry-owned archetype/flow/sequence/UI defaults replace exact local copies. | FAIL | Exact duplicate top-down archetype, match-flow, and intro-sequence documents remain in canonical examples. |
+| Canonical simple-movement examples use the promoted helper path. | PASS | Orb Reactor and Coin Patrol now use `ControllerEx.worldCardinalCharacter`, joining Dense and Neon. The adoption ratchet names all four examples; Orb movement/pickup and Coin movement/pickup web scenarios pass, and the aggregate gameplay-parity gate passes. |
+| Registry-owned archetype/flow/sequence/UI defaults replace exact local copies. | PASS | `packages/authoring/src/documentPresets.ts` owns the closed `game-archetype.top-down`, `flow.ready-playing-win`, and `sequence.intro-camera` presets. Nine exact local copies now reference those presets, authoring tests prove expansion before validation, and the adoption ratchet prevents duplicate documents from returning. Existing UI documents are not exact semantic copies and retain recipe provenance instead of being forced into a false shared default. |
 | Canonical scripts do not duplicate access metadata derivable by `defineBehavior`. | PASS | Migrated systems documents use `source: behavior-metadata` and retain only attachment identity. |
 | At least four fixtures across at least three genres use the contracts. | PASS | Dense benchmark, Chess strategy, Orb action/collector, and Metro lane-runner sources use PlacementSet; interaction conformance covers four objective shapes. |
 | Equal-proof covered objective loops have at least 30% fewer TS lines. | PASS | Orb `orbs.ts` and Coin `player.ts` total 218 -> 120 lines (44.95%); Orb and Coin pickup scenarios pass after migration. |
 | Covered repeated placement has at least 50% fewer JSON bytes. | PASS | Canonically serialized covered groups total 67,688 -> 29,508 bytes (56.41%). |
-| Covered prompts use at least 30% fewer authoring/repair operations with no more failures. | FAIL | No matched pre/post PlacementSet and Interaction prompt benchmark exists. The Phase-0 baseline explicitly records this evidence gap; unrelated session-cost scenarios cannot prove it. |
-| Screenshot, motion, input, generated-game QA, and native parity do not regress. | FAIL | Workspace tests, four web/desktop placement proofs, Orb/Coin pickup proofs, gameplay parity, and smoke pass. The authoritative generated-game report remains red: Metro proof hashes are stale after its scene migration, and bounded attempts to refresh its scenarios timed out; the report also contains pre-existing Humanoid and aggregate-inventory failures. |
+| Covered prompts use at least 30% fewer authoring/repair operations with no more failures. | PASS | `tools/verify/artifacts/authored-value-compression/benchmark-report.json` records matched deterministic replays with identical proof sets: PlacementSet is 8 -> 1 mutations and Interaction is 5 -> 1, totaling 13 -> 2 (84.62% fewer), while failed commands remain 0 -> 0. `authoredValueCompressionBenchmark.test.ts` guards the method, proof equality, threshold, and failure count and explicitly excludes LLM-token/session-cost claims. |
+| Screenshot, motion, input, generated-game QA, and native parity do not regress. | PASS | Gameplay parity passes across web/native. Metro's final `tn game qa --run-proof` report has zero blockers, diagnostics, or release risks and all five scenarios pass; the aggregate generated-games step for Metro exits 0. The playtest collector now pauses simulation outside declared input/wait steps, and the refreshed failure, retry, progression, smoke, and desktop placement proofs retain their assertions. Orb/Coin focused movement and pickup proofs pass. Aggregate generated-games remains red only for unrelated Humanoid proof debt and Chess/Orb enrollment drift; conformance is separately blocked by an unrelated uncommitted `overlay_host.rs` feature-gating failure. |
 
 ## Verification commands
 
@@ -57,19 +57,23 @@ invalid whole-file aggregate that included unrelated Chess compaction.
 | `pnpm build` | PASS | Required one related editor switch update for the new interaction document kind. |
 | `pnpm typecheck` | PASS | Workspace. |
 | `pnpm lint` | PASS | Workspace. |
-| `pnpm test` | PASS | Workspace, including the recursive browser graph guard. |
-| `pnpm verify:conformance` | PASS | Interaction comparator is invoked for all four catalog scenarios. |
-| `pnpm verify:gameplay-parity` | PASS | Web/native gameplay parity. |
-| `pnpm verify:cookbook` | PASS | PlacementSet and Interaction cookbook entries replay. |
+| `pnpm test` | FAIL | 276/277 verify-tools tests pass. The remaining unrelated baseline contradiction is `accepts maintained starters with production scripts metadata and instructions`: its fixture omits the local SFX guidance already required by `templateProductionGate.ts`. The focused related tests pass. |
+| `pnpm verify:conformance` | FAIL | The current unrelated `runtime-bevy/.../tests/overlay_host.rs` edit imports three `native-webview`-gated symbols in the default build, so Bevy compilation exits 101 before conformance runs. |
+| `pnpm verify:gameplay-parity` | PASS | Full web/native gameplay parity; three non-failing diagnostics are recorded. |
+| `pnpm verify:cookbook` | PASS | All 34 entries replay, including the registry-owned document-default pattern. |
 | `pnpm verify:agent-io` | PASS | Report status `pass`; command outputs remain within budget. |
-| `pnpm verify:session-cost` | FAIL | Authoritative report status is `fail`: the pre-existing typed-spec top-down collector iterate step exits 143, leaving one failed command and no accepted replay. The command currently exits zero despite the failed report. |
-| `pnpm check:docs` | PASS | Docs consistency. |
-| `pnpm verify:generated-games` | FAIL | Authoritative game-production report is red. Related Metro scenario proofs are stale after the scene migration; refresh attempts timed out. Independent baseline debt also remains for Humanoid proof coverage and Chess/Orb aggregate enrollment. |
+| `pnpm verify:session-cost` | PASS | Authoritative report is `pass`/`ok: true`; every replay has zero failed commands. The typed-spec collector completes in three steps, and the dispatcher now returns non-zero when the authoritative report is missing or non-passing. |
+| `pnpm check:docs` | PASS | Docs consistency, rerun after this audit update. |
+| `pnpm verify:generated-games` | FAIL | The Metro validation step exits 0 with zero blockers and release risks. The aggregate report remains red only for unrelated Humanoid proof/plan/QA debt and Chess/Orb enrollment drift. |
 | `pnpm verify:smoke` | PASS | Names, docs, and example build sweep. |
 
 ## Completion decision
 
-The PRD is **not complete**. Four acceptance criteria remain unproved or
-contradicted, and the authoritative session-cost and generated-game reports
-are red. Keep the PRD in `docs/PRDs/other`; do not promote or archive it until
-those items are fixed and the full verification table is green.
+All acceptance criteria now have direct passing evidence, including the four
+items closed by this follow-up. The PRD nevertheless remains **active** because
+the required aggregate verification table is not fully green: the unrelated
+template-production unit-test fixture is inconsistent with its gate,
+conformance cannot compile the unrelated uncommitted overlay-host test, and
+generated-games still reports unrelated Humanoid and enrollment debt. Keep the
+PRD in `docs/PRDs/other`; do not archive it or weaken those gates. The related
+implementation is complete and scoped verification is green.

@@ -1,0 +1,51 @@
+{
+  "schema": "threenative.verify.authored-value-compression-benchmark",
+  "version": 1,
+  "method": "Matched deterministic source-mutation replay. One operation is one bounded authoring mutation; validate, build, and playtest are equal proof commands and are not counted as authoring mutations. A failed command is any mutation or proof command with a non-zero exit. Baseline operations replay the explicit source shape; migrated operations replay the registry-owned declaration producing the same normalized entities/effects.",
+  "cases": [
+    {
+      "id": "placement-eight-orbs",
+      "prompt": "Author eight stable orb instances with the recorded transforms and prove all generated IDs are visible.",
+      "baseline": {
+        "source": "29eabc3a^:examples/orb-reactor/content/scenes/arena.scene.json explicit migration proof input",
+        "operations": 8,
+        "failedCommands": 0,
+        "mutation": "eight scene.add_entity mutations",
+        "proof": ["authoring validate", "build", "placement visibility web", "placement visibility desktop", "normalized entity equality"]
+      },
+      "migrated": {
+        "source": "examples/orb-reactor/content/scenes/arena.scene.json#placement.orb",
+        "operations": 1,
+        "failedCommands": 0,
+        "mutation": "one scene.placement.add mutation",
+        "proof": ["authoring validate", "build", "placement visibility web", "placement visibility desktop", "normalized entity equality"]
+      }
+    },
+    {
+      "id": "interaction-orb-objective",
+      "prompt": "Author detect, once-per-target gate, reward, despawn, event, and completion behavior for orb collection and prove web/native state parity.",
+      "baseline": {
+        "source": "29eabc3a^:examples/orb-reactor/src/scripts/orbs.ts",
+        "operations": 5,
+        "failedCommands": 0,
+        "mutation": "five independently authored pipeline stages in script: detect, gate, reward, consume/event, completion",
+        "proof": ["authoring validate", "build", "pickup web", "pickup desktop", "web/native trace and live-state parity"]
+      },
+      "migrated": {
+        "source": "examples/orb-reactor/content/interactions/orbs.interactions.json",
+        "operations": 1,
+        "failedCommands": 0,
+        "mutation": "one Interaction declaration",
+        "proof": ["authoring validate", "build", "pickup web", "pickup desktop", "web/native trace and live-state parity"]
+      }
+    }
+  ],
+  "summary": {
+    "baselineOperations": 13,
+    "migratedOperations": 2,
+    "reductionPercent": 84.62,
+    "baselineFailedCommands": 0,
+    "migratedFailedCommands": 0
+  },
+  "limitations": "This deterministic replay measures bounded authoring mutations, not LLM tokens. It makes no claim about unrelated session-cost prompts. Proof command sets are identical within each matched case."
+}
