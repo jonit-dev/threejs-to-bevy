@@ -2361,11 +2361,11 @@
         "playerSideText": "",
         "turnSubText": "MOVE 1",
         "turnText": "READY",
-        "statusText": "Choose a side to begin",
+        "statusText": "Choose a side or press W for White, B for Black",
         "helpText": "Choose with the buttons or press W / B",
         "moveText": "New game",
         "promotionText": "Promotion: QUEEN",
-        "promptText": "WHICH SIDE DO YOU WANT TO PLAY?",
+        "promptText": "CHOOSE A SIDE · W FOR WHITE · B FOR BLACK",
         "whiteChoiceText": "PLAY WHITE"
       }
     }

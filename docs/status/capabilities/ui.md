@@ -22,6 +22,11 @@ Current support:
 - Desktop WRY overlays expose send and subscribe, replay retained snapshots
   through adapter-private script evaluation, and apply visibility/input control
   messages without requiring browser-parent event synthesis.
+- The native launcher capability-checks cached runtime binaries before reuse;
+  binaries missing the descriptor-owned `native-webview` Cargo feature fall
+  back to a feature-complete Cargo launch. Native proof harness startup fails
+  with `TN_OVERLAY_TARGET_UNSUPPORTED` when a declared desktop overlay cannot
+  mount, rather than recording a false-positive desktop playtest.
 - The `@threenative/ui` TSX authoring surface exposes typed wrappers for
   text input and reusable component instances. Button-like and value-changing
   widgets require portable `action` props where TypeScript can enforce them,

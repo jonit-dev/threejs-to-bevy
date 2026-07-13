@@ -131,6 +131,7 @@ pub fn app_from_bundle_with_options(
     bundle_path: impl AsRef<Path>,
     options: RuntimeOptions,
 ) -> Result<App, RuntimeError> {
+    let proof_harness_requested = options.proof_harness.is_some();
     let bundle = load_bundle(bundle_path)?;
     let scene_diagnostics = native_scene_startup_diagnostics(
         &bundle.world,
@@ -170,6 +171,18 @@ pub fn app_from_bundle_with_options(
         .is_some_and(|config| config.time.paused);
     let asset_root = bundle.bundle_path.display().to_string();
     let window = bundle.runtime_config.as_ref().map(|config| &config.window);
+    if proof_harness_requested {
+        if let Err(diagnostics) = overlay_host::create_native_overlay_host_plan(
+            bundle.overlays.as_ref(),
+            &bundle.bundle_path,
+        ) {
+            let diagnostic = &diagnostics[0];
+            return Err(RuntimeError::SceneReadiness(format!(
+                "{}: {} Rebuild threenative_runtime with --features native-webview.",
+                diagnostic.code, diagnostic.message
+            )));
+        }
+    }
     #[cfg(feature = "native-webview")]
     let native_overlay_init_error = match overlay_host::create_native_overlay_host_plan(
         bundle.overlays.as_ref(),
@@ -290,7 +303,10 @@ pub fn app_from_bundle_with_options(
         Ok(None) => {}
         Err(diagnostics) => {
             for diagnostic in diagnostics {
-                warn!("{}: {}", diagnostic.code, diagnostic.message);
+                warn!(
+                    "{}: {} Rebuild threenative_runtime with --features native-webview.",
+                    diagnostic.code, diagnostic.message
+                );
             }
         }
     }

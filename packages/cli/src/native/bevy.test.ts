@@ -1,10 +1,10 @@
 import assert from "node:assert/strict";
-import { mkdir, rm, writeFile } from "node:fs/promises";
+import { chmod, mkdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import test from "node:test";
 
-import { bevyRuntimeArgs, hasNativeDisplay, NativeHeadlessUnsupportedError, resolveBevyRuntime, resolveBevyRuntimeBinaryPath, runBevyRuntime } from "./bevy.js";
+import { bevyRuntimeArgs, hasNativeDisplay, NativeHeadlessUnsupportedError, REQUIRED_BEVY_RUNTIME_FEATURES, resolveBevyRuntime, resolveBevyRuntimeBinaryPath, runBevyRuntime } from "./bevy.js";
 
 test("should select threenative runtime binary", () => {
   const repoRoot = "/repo";
@@ -24,6 +24,11 @@ test("should select threenative runtime binary", () => {
     "--",
     bundlePath,
   ]);
+});
+
+test("should derive cargo arguments from the required runtime feature owner", () => {
+  const args = bevyRuntimeArgs("/repo", { bundlePath: "/project/dist/game.bundle" }, {});
+  assert.equal(args[args.indexOf("--features") + 1], REQUIRED_BEVY_RUNTIME_FEATURES.join(","));
 });
 
 test("should omit release profile when native debug profile is requested", () => {
@@ -122,16 +127,18 @@ test("should opt native proof harness into write auditing only when requested", 
   ]);
 });
 
-test("should prefer an existing release runtime binary for native playtest startup", async () => {
+test("should only reuse a runtime binary that reports every required cargo feature", async () => {
   const repoRoot = join(tmpdir(), `tn-bevy-runtime-binary-${process.pid}-${Date.now()}`);
   const releaseBinary = join(repoRoot, "runtime-bevy/target/release/threenative_runtime");
   const debugBinary = join(repoRoot, "runtime-bevy/target/debug/threenative_runtime");
   await mkdir(join(repoRoot, "runtime-bevy/target/release"), { recursive: true });
   await mkdir(join(repoRoot, "runtime-bevy/target/debug"), { recursive: true });
-  await writeFile(releaseBinary, "");
-  await writeFile(debugBinary, "");
+  await writeFile(releaseBinary, `#!/bin/sh\nprintf '%s\\n' '{"schema":"threenative.runtime-capabilities","cargoFeatures":[]}'\n`);
+  await writeFile(debugBinary, `#!/bin/sh\nprintf '%s\\n' '{"schema":"threenative.runtime-capabilities","cargoFeatures":["native-webview"]}'\n`);
+  await chmod(releaseBinary, 0o755);
+  await chmod(debugBinary, 0o755);
   try {
-    assert.equal(resolveBevyRuntimeBinaryPath(repoRoot, {}), releaseBinary);
+    assert.equal(resolveBevyRuntimeBinaryPath(repoRoot, {}), debugBinary);
     assert.equal(resolveBevyRuntimeBinaryPath(repoRoot, { TN_NATIVE_PROFILE: "debug" }), debugBinary);
   } finally {
     await rm(repoRoot, { force: true, recursive: true });

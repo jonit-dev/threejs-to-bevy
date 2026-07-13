@@ -1,4 +1,4 @@
-import { spawn, type ChildProcess, type StdioOptions } from "node:child_process";
+import { spawn, spawnSync, type ChildProcess, type StdioOptions } from "node:child_process";
 import { existsSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -26,6 +26,8 @@ export type BevyRuntimeRunner = (invocation: IBevyRuntimeInvocation) => BevyRunt
 type BevyRuntimeEnvironment = Partial<
   Record<"DISPLAY" | "THREENATIVE_BEVY_MANIFEST" | "THREENATIVE_REPO_ROOT" | "TN_NATIVE_PROFILE" | "WAYLAND_DISPLAY" | "WAYLAND_SOCKET", string>
 >;
+
+export const REQUIRED_BEVY_RUNTIME_FEATURES = ["native-webview"] as const;
 
 export class NativeHeadlessUnsupportedError extends Error {
   readonly code = "TN_PLAYTEST_NATIVE_HEADLESS_UNSUPPORTED";
@@ -92,7 +94,7 @@ export function bevyRuntimeArgs(
     "--bin",
     "threenative_runtime",
     "--features",
-    "native-webview",
+    REQUIRED_BEVY_RUNTIME_FEATURES.join(","),
   ];
   if (env.TN_NATIVE_PROFILE !== "debug") {
     args.push("--release");
@@ -126,7 +128,20 @@ export function resolveBevyRuntimeBinaryPath(
     join(runtimeRoot, `target/${profile}/threenative_runtime`),
     join(runtimeRoot, `target/${fallbackProfile}/threenative_runtime`),
   ];
-  return candidates.find((candidate) => existsSync(candidate));
+  return candidates.find((candidate) => {
+    if (!existsSync(candidate)) return false;
+    const result = spawnSync(candidate, ["--capabilities"], { encoding: "utf8", timeout: 5_000 });
+    if (result.status !== 0) return false;
+    try {
+      const capabilities = JSON.parse(result.stdout) as { cargoFeatures?: unknown };
+      const cargoFeatures = capabilities.cargoFeatures;
+      if (!Array.isArray(cargoFeatures)
+        || !cargoFeatures.every((feature): feature is string => typeof feature === "string")) return false;
+      return REQUIRED_BEVY_RUNTIME_FEATURES.every((feature) => cargoFeatures.includes(feature));
+    } catch {
+      return false;
+    }
+  });
 }
 
 function bevyRuntimeBinaryArgs(invocation: IBevyRuntimeInvocation): string[] {

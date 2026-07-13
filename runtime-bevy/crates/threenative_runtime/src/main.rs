@@ -1,13 +1,30 @@
 use std::{env, process::ExitCode};
 
 use threenative_runtime::{
-    RuntimeOptions, app_from_bundle_with_options, proof_harness::NativeProofHarnessOptions,
+    RuntimeOptions, app_from_bundle_with_options, overlay_host,
+    proof_harness::NativeProofHarnessOptions,
 };
 
 fn main() -> ExitCode {
+    let mut args = env::args().skip(1);
+    if args.next().as_deref() == Some("--capabilities") {
+        println!(
+            "{}",
+            serde_json::json!({
+                "schema": "threenative.runtime-capabilities",
+                "version": "0.1.0",
+                "cargoFeatures": if overlay_host::native_webview_backend_available() { vec!["native-webview"] } else { Vec::<&str>::new() },
+                "nativeWebview": {
+                    "available": overlay_host::native_webview_backend_available(),
+                    "backend": overlay_host::native_webview_backend_name(),
+                },
+            })
+        );
+        return ExitCode::SUCCESS;
+    }
     let Some(invocation) = RuntimeInvocation::parse(env::args().skip(1)) else {
         eprintln!(
-            "Usage: threenative_runtime <bundle-path> [--headless] [--proof-harness <commands.json> --readiness-out <readiness.json> [--audit-writes]]"
+            "Usage: threenative_runtime --capabilities | <bundle-path> [--headless] [--proof-harness <commands.json> --readiness-out <readiness.json> [--audit-writes]]"
         );
         return ExitCode::from(2);
     };
