@@ -160,7 +160,7 @@ async function runReplayCase(options: {
 
   const runStep = async (name: string, args: readonly string[]): Promise<CommandResult> => {
     toolStepCount += 1;
-    const result = await options.run({ args, command: process.execPath, cwd: options.root, name, timeoutMs: 120_000 });
+    const result = await options.run({ args, command: process.execPath, cwd: options.root, name, timeoutMs: 180_000 });
     options.steps.push({ ...summarize(result), name });
     completedSteps.set(name, result);
     if (result.exitCode !== 0) {

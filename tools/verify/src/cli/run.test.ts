@@ -1,8 +1,21 @@
 import assert from "node:assert/strict";
+import { mkdir, mkdtemp, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { resolve } from "node:path";
 import test from "node:test";
 
-import { FOCUSED_GATES, getFocusedGateCommands, listFocusedGateNames, listFocusedGateNamesByProfile } from "./run.js";
+import { authoritativeReportPassed, FOCUSED_GATES, getFocusedGateCommands, listFocusedGateNames, listFocusedGateNamesByProfile } from "./run.js";
 import { listScriptGateNames } from "../scriptGates.js";
+
+test("session-cost dispatcher trusts only a passing authoritative report", async () => {
+  const root = await mkdtemp(resolve(tmpdir(), "tn-session-cost-dispatch-"));
+  const artifact = resolve(root, "tools/verify/artifacts/session-cost/verification-report.json");
+  await mkdir(resolve(artifact, ".."), { recursive: true });
+  await writeFile(artifact, JSON.stringify({ ok: false, status: "fail" }));
+  assert.equal(authoritativeReportPassed("verify:session-cost", root), false);
+  await writeFile(artifact, JSON.stringify({ ok: true, status: "pass" }));
+  assert.equal(authoritativeReportPassed("verify:session-cost", root), true);
+});
 
 test("focused gate dispatcher should list current capability gates", () => {
   const names = listFocusedGateNames();

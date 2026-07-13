@@ -1,4 +1,5 @@
 import { spawnSync } from "node:child_process";
+import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -680,7 +681,21 @@ export function runFocusedGate(
       return result.status ?? 1;
     }
   }
+  if (!authoritativeReportPassed(gateName, root)) {
+    process.stderr.write(`Verify gate '${gateName}' wrote a non-passing authoritative report.\n`);
+    return 1;
+  }
   return 0;
+}
+
+export function authoritativeReportPassed(gateName: string, root: string): boolean {
+  if (gateName !== "verify:session-cost") return true;
+  try {
+    const report = JSON.parse(readFileSync(resolve(root, "tools/verify/artifacts/session-cost/verification-report.json"), "utf8")) as { ok?: unknown; status?: unknown };
+    return report.ok === true && report.status === "pass";
+  } catch {
+    return false;
+  }
 }
 
 function isForwardedArgs(value: readonly string[] | FocusedGateRunOptions): value is readonly string[] {
