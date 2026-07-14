@@ -2,6 +2,11 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { animationClip, animationEvent, animationGraph, boundedParticleEmitter, modelAsset, textureAsset } from "./assets.js";
+
+test("model assets should declare generic material ownership", () => {
+  assert.equal(modelAsset("model.source", "assets/source.glb", { materialOwnership: "source" }).materialOwnership, "source");
+  assert.equal(modelAsset("model.override", "assets/override.glb", { materialOwnership: "renderer" }).materialOwnership, "renderer");
+});
 import { SdkError } from "./errors.js";
 
 test("assets should create deterministic model animation metadata", () => {

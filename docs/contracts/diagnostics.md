@@ -94,6 +94,9 @@ enough context to propose a concrete fix, especially for missing files, invalid
 asset refs, missing material/mesh refs, texture slots, visibility fields, and
 script/system permission mismatches.
 
+- `TN_IR_MODEL_MATERIAL_OWNERSHIP_INVALID` rejects model material bindings
+  whose model, primitive, or material ownership cannot be resolved.
+
 ## V6 Diagnostic Hardening
 
 V6 keeps upstream diagnostic metadata intact through compiler and CLI JSON

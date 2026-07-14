@@ -1,5 +1,6 @@
-import { copyFile, mkdir, rename, rm, writeFile } from "node:fs/promises";
-import { basename, dirname, isAbsolute, join, resolve } from "node:path";
+import { copyFile, mkdir, readFile, rename, rm, writeFile } from "node:fs/promises";
+import { basename, dirname, isAbsolute, join, relative, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 
 import { buildProject, loadProjectConfig, validateBundle } from "@threenative/compiler";
 import { startWebPreview, type IWebPreviewServer } from "@threenative/runtime-web-three";
@@ -50,6 +51,20 @@ interface ModelTestPbrMaterialCheck {
   roughness?: number;
   whitePrefabFallback: boolean;
 }
+export interface ModelTestMaterialObservation {
+  baseColor?: unknown;
+  baseColorTexture: boolean;
+  metallic?: number;
+  metallicRoughnessTexture: boolean;
+  name?: string;
+  roughness?: number;
+}
+export interface ModelTestMaterialEvidence {
+  expected: ModelTestMaterialObservation[];
+  observed: ModelTestMaterialObservation[];
+  ok: boolean;
+  verdict: "fallback-only" | "matches-authored" | "mismatch" | "not-observed" | "unmaterialized";
+}
 type ModelTestChecks = ScreenshotCaptureReport["checks"] & { pbrMaterial?: ModelTestPbrMaterialCheck };
 type ModelTestScreenshot = Omit<ScreenshotCaptureReport, "checks"> & { checks: ModelTestChecks; status: "captured" };
 
@@ -72,6 +87,7 @@ export interface IModelTestProjectReport {
   bounds?: unknown;
   calibration?: unknown;
   files: ModelTestFile[];
+  materials: ModelTestMaterialEvidence;
   outDir: string;
   preview?: {
     bundlePath: string;
@@ -206,12 +222,17 @@ export async function createModelTestProject(options: {
       report,
       screenshotOutPath: options.screenshotOutPath ?? join(options.outDir, "artifacts", "model-test.png"),
       screenshotUrl: options.screenshotUrl,
+      verifyMaterials: options.verify,
     });
   }
 
   if (options.verify === true) {
-    const built = await buildModelTestProject(options.outDir, "TN_MODEL_TEST_FAILED");
-    report.verified = { bundlePath: built.bundlePath, diagnostics: built.diagnostics, ok: true };
+    return captureSingleScreenshot({
+      outDir: options.outDir,
+      report,
+      screenshotOutPath: join(options.outDir, "artifacts", "model-test-verify.png"),
+      verifyMaterials: true,
+    });
   }
   return report;
 }
@@ -250,23 +271,8 @@ async function generateModelTestProject(options: ModelTestProjectGenerationOptio
     configPath,
     `${JSON.stringify({ schema: "threenative.project", version: "0.1.0", entry: "content/scenes/model-test.scene.json", outDir: "dist/model-test.bundle" }, null, 2)}\n`,
   );
-  await writeFile(packagePath, `${JSON.stringify({
-    name: "threenative-model-test",
-    private: true,
-    type: "module",
-    scripts: {
-      build: "tn build --project .",
-      validate: "tn validate --project .",
-      verify: "tn verify --project . --frames 2 --json",
-    },
-    dependencies: {
-      "@threenative/sdk": "file:/home/joao/projects/threejs-to-bevy/packages/sdk",
-    },
-    devDependencies: {
-      "@threenative/cli": "file:/home/joao/projects/threejs-to-bevy/packages/cli",
-    },
-  }, null, 2)}\n`);
-  await writeFile(readmePath, renderReadme(options.assetPath, inspection));
+  await writeFile(packagePath, `${JSON.stringify(await modelTestPackageMetadata(assetFileName), null, 2)}\n`);
+  await writeFile(readmePath, renderReadme(assetFileName, inspection));
   files.push({ path: sourcePath, role: "source" }, { path: configPath, role: "config" }, { path: packagePath, role: "package" }, { path: readmePath, role: "docs" });
   const analysis = modelTestAnalysis(inspection);
 
@@ -279,6 +285,7 @@ async function generateModelTestProject(options: ModelTestProjectGenerationOptio
       bounds: inspection.bounds,
       calibration: inspection.calibration,
       files,
+      materials: materialEvidence(expectedMaterialObservations(inspection), []),
       outDir: options.outDir,
       sourcePath,
     },
@@ -290,6 +297,7 @@ async function captureSingleScreenshot(options: {
   report: IModelTestProjectReport;
   screenshotOutPath: string;
   screenshotUrl?: string;
+  verifyMaterials?: boolean;
 }): Promise<IModelTestProjectReport> {
   let server: IWebPreviewServer | undefined;
   let url = options.screenshotUrl;
@@ -303,11 +311,19 @@ async function captureSingleScreenshot(options: {
 
     const captured = await captureScreenshot({ outPath: options.screenshotOutPath, url });
     options.report.screenshot = { ...captured, checks: modelTestChecks(captured), status: "captured" };
+    options.report.materials = materialEvidence(options.report.materials.expected, observedMaterialObservations(captured));
     if (hasCaptureErrors(captured)) {
       throw new ModelTestError(
         "TN_MODEL_TEST_CAPTURE_FAILED",
         `Screenshot capture failed for '${options.report.asset}'.`,
         { outDir: options.outDir, screenshot: options.report.screenshot },
+      );
+    }
+    if (options.verifyMaterials === true && !options.report.materials.ok) {
+      throw new ModelTestError(
+        "TN_MODEL_TEST_MATERIAL_VERIFY_FAILED",
+        `Runtime material verification failed for '${options.report.asset}': ${options.report.materials.verdict}.`,
+        { materials: options.report.materials, outDir: options.outDir, screenshot: options.report.screenshot },
       );
     }
     return options.report;
@@ -381,6 +397,7 @@ async function captureTurntable(
           const captured = await captureScreenshot({ outPath, url: server.url });
           const record = captureRecord(angleDegrees, captured);
           captures.push(record);
+          report.materials = materialEvidence(report.materials.expected, observedMaterialObservations(captured));
           if (hasCaptureErrors(captured)) {
             failure = new ModelTestError(
               "TN_MODEL_TEST_CAPTURE_FAILED",
@@ -445,11 +462,16 @@ async function captureTurntable(
   try {
     await writeJsonAtomically(manifestPath, {
       angles: [...angles],
-      asset: report.asset,
+      asset: `assets/${state.assetFileName}`,
       capturedAt: new Date().toISOString(),
-      captures,
-      generatedBundlePath: report.verified?.bundlePath,
-      inputAssetPath: report.asset,
+      captures: captures.map((capture) => ({
+        ...capture,
+        outPath: relative(report.outDir, capture.outPath).replaceAll("\\", "/"),
+      })),
+      generatedBundlePath: report.verified?.bundlePath === undefined
+        ? undefined
+        : relative(report.outDir, report.verified.bundlePath).replaceAll("\\", "/"),
+      inputAssetPath: `assets/${state.assetFileName}`,
       normalizedAngles: [...angles],
       schema: "threenative.model-test-turntable",
       version: "0.1.0",
@@ -714,6 +736,102 @@ function captureRecord(angleDegrees: number, captured: ScreenshotCaptureReport):
   };
 }
 
+function expectedMaterialObservations(inspection: Awaited<ReturnType<typeof inspectAsset>>): ModelTestMaterialObservation[] {
+  return (inspection.materials ?? []).map((material) => ({
+    baseColor: material.baseColor,
+    baseColorTexture: material.baseColorTexture,
+    metallic: material.metallic,
+    metallicRoughnessTexture: material.metallicRoughnessTexture,
+    ...(material.name === undefined ? {} : { name: material.name }),
+    roughness: material.roughness,
+  }));
+}
+
+function observedMaterialObservations(captured: ScreenshotCaptureReport): ModelTestMaterialObservation[] {
+  const root = recordValue(captured.runtimeReady);
+  const runtimeDiagnostics = recordValue(root?.runtimeDiagnostics);
+  const scene = recordValue(runtimeDiagnostics?.scene);
+  const entities = Array.isArray(scene?.renderedEntities) ? scene.renderedEntities : [];
+  const model = entities.map(recordValue).find((entity) => entity?.id === "model.under-test.instance");
+  const materials = Array.isArray(model?.materials)
+    ? model.materials.map(recordValue).filter((material): material is Record<string, unknown> => material !== undefined)
+    : [recordValue(model?.material)].filter((material): material is Record<string, unknown> => material !== undefined);
+  return materials.map((material) => ({
+    ...(material.baseColor === undefined ? {} : { baseColor: material.baseColor }),
+    baseColorTexture: material.baseColorTextureLoaded === true,
+    ...(typeof material.metallic === "number" ? { metallic: material.metallic } : {}),
+    metallicRoughnessTexture: material.metallicRoughnessTextureLoaded === true,
+    ...(typeof material.name === "string" ? { name: material.name } : {}),
+    ...(typeof material.roughness === "number" ? { roughness: material.roughness } : {}),
+  }));
+}
+
+export function materialEvidence(
+  expected: ModelTestMaterialObservation[],
+  observed: ModelTestMaterialObservation[],
+): ModelTestMaterialEvidence {
+  if (expected.length === 0) {
+    return { expected, observed, ok: true, verdict: "unmaterialized" };
+  }
+  if (observed.length === 0) {
+    return { expected, observed, ok: false, verdict: "not-observed" };
+  }
+  const expectsDistinctMaterial = expected.some((material) => material.baseColorTexture
+    || material.metallicRoughnessTexture
+    || (material.name !== undefined && material.name.trim() !== "")
+    || (typeof material.metallic === "number" && material.metallic !== 0)
+    || !isWhiteBaseColor(material.baseColor));
+  const fallbackOnly = expectsDistinctMaterial && observed.every((material) => isWhiteBaseColor(material.baseColor)
+    && material.baseColorTexture === false
+    && (material.metallic ?? 0) === 0
+    && (material.roughness ?? 1) === 1
+    && (material.name === undefined || material.name.trim() === ""));
+  if (fallbackOnly) {
+    return { expected, observed, ok: false, verdict: "fallback-only" };
+  }
+  const unmatched = [...observed];
+  const matches = [...expected]
+    .sort((left, right) => materialSortKey(left).localeCompare(materialSortKey(right)))
+    .every((material) => {
+      const index = unmatched.findIndex((candidate) => materialObservationsAgree(material, candidate));
+      if (index < 0) return false;
+      unmatched.splice(index, 1);
+      return true;
+    });
+  const exactMatch = matches && unmatched.length === 0;
+  return { expected, observed, ok: exactMatch, verdict: exactMatch ? "matches-authored" : "mismatch" };
+}
+
+function materialObservationsAgree(expected: ModelTestMaterialObservation, observed: ModelTestMaterialObservation): boolean {
+  return (expected.name === undefined || expected.name === observed.name)
+    && numericArraysAgree(expected.baseColor, observed.baseColor, 0.02, 3)
+    && numbersAgree(expected.metallic, observed.metallic, 0.02)
+    && numbersAgree(expected.roughness, observed.roughness, 0.02)
+    && expected.baseColorTexture === observed.baseColorTexture
+    && expected.metallicRoughnessTexture === observed.metallicRoughnessTexture;
+}
+
+function numericArraysAgree(expected: unknown, observed: unknown, tolerance: number, length: number): boolean {
+  if (!Array.isArray(expected) || !Array.isArray(observed) || expected.length < length || observed.length < length) return false;
+  return expected.slice(0, length).every((value, index) => typeof value === "number"
+    && typeof observed[index] === "number"
+    && Math.abs(value - observed[index]) <= tolerance);
+}
+
+function numbersAgree(expected: number | undefined, observed: number | undefined, tolerance: number): boolean {
+  return expected === undefined || (observed !== undefined && Math.abs(expected - observed) <= tolerance);
+}
+
+function materialSortKey(material: ModelTestMaterialObservation): string {
+  return `${material.name ?? ""}:${JSON.stringify(material)}`;
+}
+
+function isWhiteBaseColor(value: unknown): boolean {
+  return Array.isArray(value)
+    && value.length >= 3
+    && value.slice(0, 3).every((channel) => typeof channel === "number" && Math.abs(channel - 1) < 0.000001);
+}
+
 function modelTestChecks(captured: ScreenshotCaptureReport): ModelTestChecks {
   const root = recordValue(captured.runtimeReady);
   const runtimeDiagnostics = recordValue(root?.runtimeDiagnostics);
@@ -740,6 +858,27 @@ function modelTestChecks(captured: ScreenshotCaptureReport): ModelTestChecks {
       ...(roughness === undefined ? {} : { roughness }),
       whitePrefabFallback,
     },
+  };
+}
+
+async function modelTestPackageMetadata(assetFileName: string): Promise<Record<string, unknown>> {
+  const packagePath = resolve(dirname(fileURLToPath(import.meta.url)), "../../package.json");
+  const metadata = JSON.parse(await readFile(packagePath, "utf8")) as { version?: unknown };
+  if (typeof metadata.version !== "string" || metadata.version.trim() === "") {
+    throw new ModelTestError("TN_MODEL_TEST_PACKAGE_RESOLUTION_FAILED", `Could not resolve a CLI version from '${packagePath}'.`);
+  }
+  const compatibleVersion = metadata.version.includes("-") ? metadata.version : `^${metadata.version}`;
+  return {
+    dependencies: { "@threenative/sdk": compatibleVersion },
+    devDependencies: { "@threenative/cli": compatibleVersion },
+    name: "threenative-model-test",
+    private: true,
+    scripts: {
+      build: "tn build --project .",
+      validate: "tn validate --project .",
+      verify: `tn model-test ${JSON.stringify(`assets/${assetFileName}`)} --out artifacts/model-test --verify --json`,
+    },
+    type: "module",
   };
 }
 
@@ -890,8 +1029,6 @@ function renderSceneDocument(options: { assetFileName: string; inspection: Await
       },
       {
         id: "prefab.model-under-test",
-        primitive: "box",
-        color: "#ffffff",
         asset: `assets/${options.assetFileName}`,
       },
       {

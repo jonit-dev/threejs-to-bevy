@@ -141,6 +141,7 @@ export interface IAssetReference {
   center?: readonly [number, number];
   magFilter?: TextureMagFilter;
   masks?: IAnimationMaskReference[];
+  materialOwnership?: "renderer" | "source";
   minFilter?: TextureMinFilter;
   morphClips?: IMorphClipReference[];
   morphTargets?: IMorphTargetReference[];
@@ -202,6 +203,7 @@ export function modelAsset(
     animationGraph?: IAnimationGraphDeclaration;
     animations?: readonly IAnimationClipReference[];
     masks?: readonly IAnimationMaskReference[];
+    materialOwnership?: "renderer" | "source";
     morphClips?: readonly IMorphClipReference[];
     morphTargets?: readonly IMorphTargetReference[];
     particleEmitters?: readonly IBoundedParticleEmitter[];
@@ -219,6 +221,7 @@ export function modelAsset(
     ...(options.animationGraph === undefined ? {} : { animationGraph: normalizeAnimationGraph(options.animationGraph) }),
     ...(options.animations === undefined ? {} : { animations: [...options.animations].sort((left, right) => left.id.localeCompare(right.id)) }),
     ...(options.masks === undefined ? {} : { masks: [...options.masks].map((mask) => ({ id: mask.id, joints: [...mask.joints] })).sort((left, right) => left.id.localeCompare(right.id)) }),
+    ...(options.materialOwnership === undefined ? {} : { materialOwnership: options.materialOwnership }),
     ...(options.morphClips === undefined ? {} : { morphClips: [...options.morphClips].map((clip) => ({ id: clip.id, keyframes: clip.keyframes.map((keyframe) => ({ timeSeconds: keyframe.timeSeconds, weight: keyframe.weight })), target: clip.target })).sort((left, right) => left.id.localeCompare(right.id)) }),
     ...(options.morphTargets === undefined ? {} : { morphTargets: [...options.morphTargets].sort((left, right) => left.id.localeCompare(right.id)) }),
     ...(options.particleEmitters === undefined ? {} : { particleEmitters: [...options.particleEmitters].sort((left, right) => left.id.localeCompare(right.id)) }),

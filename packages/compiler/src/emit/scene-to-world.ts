@@ -523,6 +523,7 @@ function emitAssetRefs(refs: readonly IAssetReference[] | undefined, assets: ISc
       ...(ref.sampleCount === undefined ? {} : { sampleCount: ref.sampleCount }),
       ...(ref.animations === undefined ? {} : { animations: ref.animations }),
       ...(ref.masks === undefined ? {} : { masks: ref.masks }),
+      ...(ref.materialOwnership === undefined ? {} : { materialOwnership: ref.materialOwnership }),
       ...(ref.morphClips === undefined ? {} : { morphClips: ref.morphClips }),
       ...(ref.morphTargets === undefined ? {} : { morphTargets: ref.morphTargets }),
       ...(ref.particleEmitters === undefined ? {} : { particleEmitters: ref.particleEmitters }),

@@ -53,6 +53,12 @@ GLB/glTF visual inspection is available through the web preview workflow:
   project, captures one PNG, and reports canvas, nonblank, runtime, and resource
   checks. `--url <preview-url>` remains available for an externally managed
   single-frame preview.
+- `tn model-test assets/hero.glb --verify --json` performs a self-hosted runtime
+  capture and fails when the imported material observations do not agree with
+  inspected names, base colors, PBR factors, or texture presence. Generated
+  projects use version-derived package references and remain buildable after a
+  move; imported source materials are owned by a generic model-asset contract,
+  not a model-ID allowlist.
 - `tn model-test assets/hero.glb --angles 0,90,180,270 --json` normalizes and
   deduplicates bounded angles (one to 36 captures), writes individual PNGs
   under `artifacts/turntable/`, and emits a structured `manifest.json`. A
@@ -76,6 +82,7 @@ Verification:
 - `tn world proof --json`
 - `tn model-test assets/hero.glb --screenshot --json`
 - `tn model-test assets/hero.glb --angles 0,90,180,270 --json`
+- `pnpm verify:model-test-material`
 - `pnpm verify:release`
 - `pnpm verify:blender-tool`
 - `pnpm verify:blender-host` (downloads nothing implicitly; requires an already
@@ -105,6 +112,9 @@ Evidence and owning gates:
 - [promotion gate](../../../tools/verify/src/blenderToolGate.ts) and
   [real host collector](../../../tools/verify/src/blenderHostSmoke.ts)
 - [package-content enforcement](../../../tools/verify/src/blenderPackageContents.ts)
+- [portable model-test/material gate](../../../tools/verify/src/modelTestMaterialGate.ts),
+  [expected/observed material report](../../../tools/verify/artifacts/model-test-material/material-report.json),
+  and [four-angle contact sheet](../../../tools/verify/artifacts/model-test-material/contact-sheet.png)
 - [phase evidence and pending boundaries](../../PRDs/other/optional-headless-blender-asset-generation.md#verification-evidence)
 
 The commands write hash-bound reports under

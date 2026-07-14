@@ -22,6 +22,7 @@ import { helpCommand } from "./commands/help.js";
 import { iterateCommand } from "./commands/iterate.js";
 import { lookCommand } from "./commands/look.js";
 import { MODEL_TEST_MCP_DESCRIPTOR, modelTestCommand } from "./commands/modelTest.js";
+export { materialEvidence, modelTestCommand, type ModelTestMaterialEvidence, type ModelTestMaterialObservation } from "./commands/modelTest.js";
 import { overlayCommand } from "./commands/overlayAdd.js";
 import { packageCommand, packageCommandUsage } from "./commands/package.js";
 import { parityPlaytestCommand } from "./commands/parityPlaytest.js";

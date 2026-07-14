@@ -22,6 +22,7 @@
     "verify": "pnpm build && pnpm typecheck && pnpm lint && pnpm test && pnpm verify:default-look",
     "verify:agent-io": "pnpm build:verify-tools && node tools/verify/dist/cli/run.js verify:agent-io",
     "verify:blender-tool": "pnpm --filter @threenative/authoring build && pnpm --filter @threenative/cli build && pnpm build:verify-tools && pnpm --dir packages/authoring exec node --test dist/operationRegistry.test.js && pnpm --dir packages/cli exec node --test dist/externalTools/manager.test.js dist/commands/generator.test.js && node --test tools/verify/dist/blenderToolGate.test.js && node tools/verify/dist/blenderToolGate.js tools/verify/evidence/blender-tool.json --report tools/verify/artifacts/blender-tool/static-verification-report.json && node tools/verify/dist/blenderPackageContents.js",
+    "verify:model-test-material": "pnpm --filter @threenative/cli build && pnpm build:verify-tools && node --test tools/verify/dist/modelTestMaterialGate.test.js && node tools/verify/dist/modelTestMaterialGate.js",
     "verify:blender-package": "pnpm --filter @threenative/cli build && pnpm build:verify-tools && node tools/verify/dist/blenderPackageContents.js",
     "verify:blender-host": "pnpm --filter @threenative/cli build && pnpm build:verify-tools && node tools/verify/dist/blenderHostSmoke.js",
     "verify:alias": "node scripts/legacy-script-alias.mjs",

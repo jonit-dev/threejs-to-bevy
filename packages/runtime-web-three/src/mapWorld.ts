@@ -568,6 +568,14 @@ function mapEntity(
     const asset = assetsById.get(renderer.mesh);
     const material = materialsById.get(renderer.material);
     if (asset !== undefined && material !== undefined) {
+      if (asset.kind === "model" && preservesLoadedModelSourceMaterials(asset)) {
+        const object = new THREE.Group();
+        const playback = animationPlaybackState(asset);
+        if (playback !== undefined) {
+          object.userData.threeNativeAnimation = playback;
+        }
+        return object;
+      }
       const geometry = mapGeometry(asset);
       const mappedMaterial = mapMaterial(material, assetsById, diagnostics, source);
       if (geometry.getAttribute("color") !== undefined && "vertexColors" in mappedMaterial) {
@@ -670,7 +678,7 @@ function attachLoadedModel(object: THREE.Object3D, entityId: string, asset: Extr
   });
   model.name = model.name === "" ? `model:${asset.id}` : model.name;
   const overrideMaterialId = object.userData.threeNativeMaterialId as string | undefined;
-  const overrideMaterial = object instanceof THREE.Mesh && !preservesLoadedModelSourceMaterials(overrideMaterialId)
+  const overrideMaterial = object instanceof THREE.Mesh && !preservesLoadedModelSourceMaterials(asset)
     ? object.material
     : undefined;
   prepareLoadedModel(model, shadowSettings, overrideMaterial, overrideMaterialId);
@@ -698,10 +706,8 @@ function attachLoadedModel(object: THREE.Object3D, entityId: string, asset: Extr
   object.userData.threeNativeAnimationClips = gltf.animations ?? [];
 }
 
-const modelTestSourceMaterialIds = new Set(["mat.model", "mat.model.under-test.instance"]);
-
-export function preservesLoadedModelSourceMaterials(materialId: string | undefined): boolean {
-  return materialId !== undefined && modelTestSourceMaterialIds.has(materialId);
+export function preservesLoadedModelSourceMaterials(asset: Extract<IAssetIr, { kind: "model" }>): boolean {
+  return asset.materialOwnership === "source";
 }
 
 export function applyAnimationServiceEffects(mapped: IThreeWorld, entries: readonly ISystemEffectLogEntry[]): void {

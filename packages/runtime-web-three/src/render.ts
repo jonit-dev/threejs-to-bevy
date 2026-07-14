@@ -201,14 +201,17 @@ export interface IWebRenderedEntityDiagnostics {
   id: string;
   material?: {
     baseColor?: [number, number, number];
+    baseColorTextureLoaded?: boolean;
     emissive?: [number, number, number];
     metallic?: number;
+    metallicRoughnessTextureLoaded?: boolean;
     name?: string;
     roughness?: number;
     textureLoaded?: boolean;
     transparent?: boolean;
     type: string;
   };
+  materials?: Array<NonNullable<IWebRenderedEntityDiagnostics["material"]>>;
   projectedBounds?: {
     max: [number, number];
     min: [number, number];
@@ -1196,12 +1199,29 @@ function renderedEntityDiagnostics(mapped: IThreeWorld): IWebRenderedEntityDiagn
         finalScale: vectorToTuple(scale),
         id,
         material: materialDiagnostics(mesh.material),
+        materials: objectMaterialDiagnostics(object),
         ...(hasBounds ? { projectedBounds: projectedBounds(bounds, mapped.camera) } : {}),
         visible: visibleInHierarchy(mesh),
         ...(hasBounds ? { worldBounds: { center: vectorToTuple(center), max: vectorToTuple(bounds.max), min: vectorToTuple(bounds.min), size: vectorToTuple(size) } } : {}),
       }];
     })
     .sort((left, right) => left.id.localeCompare(right.id));
+}
+
+function objectMaterialDiagnostics(object: THREE.Object3D): Array<NonNullable<IWebRenderedEntityDiagnostics["material"]>> {
+  const observations = new Map<string, NonNullable<IWebRenderedEntityDiagnostics["material"]>>();
+  object.traverse((child) => {
+    if (!(child instanceof THREE.Mesh) || isContactShadowPrivateObject(child)) {
+      return;
+    }
+    for (const material of Array.isArray(child.material) ? child.material : [child.material]) {
+      const observation = materialDiagnostics(material);
+      if (observation !== undefined) {
+        observations.set(JSON.stringify(observation), observation);
+      }
+    }
+  });
+  return [...observations.values()].sort((left, right) => JSON.stringify(left).localeCompare(JSON.stringify(right)));
 }
 
 function firstMesh(object: THREE.Object3D): THREE.Mesh | undefined {
@@ -1226,13 +1246,17 @@ function materialDiagnostics(material: THREE.Material | THREE.Material[]): IWebR
     color?: THREE.Color;
     emissive?: THREE.Color;
     map?: { image?: unknown } | null;
+    metalnessMap?: { image?: unknown } | null;
     metalness?: number;
     roughness?: number;
+    roughnessMap?: { image?: unknown } | null;
   };
   return {
     ...(maybeTextured.color === undefined ? {} : { baseColor: colorTuple(maybeTextured.color) }),
+    baseColorTextureLoaded: maybeTextured.map?.image !== undefined,
     ...(maybeTextured.emissive === undefined ? {} : { emissive: colorTuple(maybeTextured.emissive) }),
     ...(typeof maybeTextured.metalness !== "number" ? {} : { metallic: roundMetric(maybeTextured.metalness) }),
+    metallicRoughnessTextureLoaded: maybeTextured.metalnessMap?.image !== undefined || maybeTextured.roughnessMap?.image !== undefined,
     ...(first.name === "" ? {} : { name: first.name }),
     ...(typeof maybeTextured.roughness !== "number" ? {} : { roughness: roundMetric(maybeTextured.roughness) }),
     ...(maybeTextured.map === undefined || maybeTextured.map === null ? {} : { textureLoaded: maybeTextured.map.image !== undefined }),

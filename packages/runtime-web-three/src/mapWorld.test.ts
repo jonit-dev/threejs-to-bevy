@@ -9,11 +9,69 @@ import type { IWebBundle } from "./loadBundle.js";
 import { advanceAnimationPlayback, applyAnimationServiceEffects, hasAnimationPlayback, loadWorldModelAssets, mapWorld, preservesLoadedModelSourceMaterials, sceneStartupDiagnostics, syncTransforms, traceEmissiveBloomContributions } from "./mapWorld.js";
 
 test("model-test loaded GLB keeps authored source materials", () => {
-  assert.equal(preservesLoadedModelSourceMaterials("mat.model.under-test.instance"), true);
-  assert.equal(preservesLoadedModelSourceMaterials("mat.model"), true);
-  assert.equal(preservesLoadedModelSourceMaterials("mat.authored.override"), false);
-  assert.equal(preservesLoadedModelSourceMaterials(undefined), false);
+  const model = { format: "glb", id: "model.any", kind: "model", path: "assets/any.glb" } as const;
+  assert.equal(preservesLoadedModelSourceMaterials({ ...model, materialOwnership: "source" }), true);
+  assert.equal(preservesLoadedModelSourceMaterials({ ...model, materialOwnership: "renderer" }), false);
+  assert.equal(preservesLoadedModelSourceMaterials(model), false);
 });
+
+test("should keep authored GLB material after mapping", async () => {
+  const bundle = sourceOwnedModelBundle();
+  const mapped = mapWorld(bundle);
+  const placeholder = mapped.objectsById.get("model.instance");
+  assert.ok(placeholder instanceof THREE.Group);
+  assert.equal(placeholder.children.length, 0);
+  const authored = new THREE.MeshStandardMaterial({ color: "#1466e6", metalness: 0.82, roughness: 0.24 });
+  authored.name = "CobaltMetal";
+
+  await loadWorldModelAssets(mapped, bundle, "/game.bundle/", {
+    loader: { async loadAsync() { return { scene: new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), authored) }; } },
+  });
+
+  const loaded = placeholder.children[0];
+  assert.ok(loaded instanceof THREE.Mesh);
+  assert.equal(loaded.material, authored);
+  assert.equal((loaded.material as THREE.MeshStandardMaterial).name, "CobaltMetal");
+  assert.equal((loaded.material as THREE.MeshStandardMaterial).metalness, 0.82);
+});
+
+test("should label a load fallback without counting it as imported material", async () => {
+  const bundle = sourceOwnedModelBundle();
+  const mapped = mapWorld(bundle);
+  await loadWorldModelAssets(mapped, bundle, "/game.bundle/", {
+    loader: { async loadAsync() { throw new Error("negative-control"); } },
+  });
+
+  const object = mapped.objectsById.get("model.instance");
+  assert.ok(object instanceof THREE.Group);
+  assert.equal(object.children.length, 0);
+  assert.equal(mapped.diagnostics.some((diagnostic) => diagnostic.code === "TN-WEB-MODEL-LOAD-FAILED" && diagnostic.message.includes("negative-control")), true);
+});
+
+function sourceOwnedModelBundle(): IWebBundle {
+  return {
+    assets: {
+      schema: "threenative.assets",
+      version: "0.1.0",
+      assets: [{ format: "glb", id: "model.fixture", kind: "model", materialOwnership: "source", path: "assets/fixture.glb" }],
+    },
+    manifest: {
+      schema: "threenative.bundle",
+      version: "0.1.0",
+      name: "source-owned-model",
+      requiredCapabilities: {},
+      entry: { world: "world.ir.json" },
+      files: { assets: "assets.manifest.json", materials: "materials.ir.json", targetProfile: "target.profile.json" },
+    },
+    materials: { schema: "threenative.materials", version: "0.1.0", materials: [{ color: "#ffffff", id: "mat.placeholder", kind: "standard" }] },
+    targetProfile: { schema: "threenative.target-profile", version: "0.1.0", targets: ["web"] },
+    world: {
+      schema: "threenative.world",
+      version: "0.1.0",
+      entities: [{ id: "model.instance", components: { MeshRenderer: { material: "mat.placeholder", mesh: "model.fixture" } } }],
+    },
+  };
+}
 
 test("mapWorld should map cube fixture to three scene", async () => {
   const bundle = await loadBundle(resolve(process.cwd(), "../ir/fixtures/cube-scene/game.bundle"));

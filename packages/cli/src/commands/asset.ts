@@ -80,7 +80,16 @@ interface GltfAsset {
   bufferViews?: Array<{ buffer?: number; byteLength?: number; byteOffset?: number; byteStride?: number }>;
   buffers?: Array<{ uri?: string; byteLength?: number }>;
   images?: Array<{ uri?: string; bufferView?: number; mimeType?: string; name?: string }>;
-  materials?: Array<{ name?: string }>;
+  materials?: Array<{
+    name?: string;
+    pbrMetallicRoughness?: {
+      baseColorFactor?: number[];
+      baseColorTexture?: { index?: number };
+      metallicFactor?: number;
+      metallicRoughnessTexture?: { index?: number };
+      roughnessFactor?: number;
+    };
+  }>;
   meshes?: Array<{ primitives?: Array<{ attributes?: Record<string, number>; indices?: number; material?: number; mode?: number }> }>;
   nodes?: Array<{
     children?: number[];
@@ -225,6 +234,14 @@ interface InspectReport {
   };
   gltf?: IGltfSceneAssetIr;
   message: string;
+  materials?: Array<{
+    baseColor: [number, number, number, number];
+    baseColorTexture: boolean;
+    metallic: number;
+    metallicRoughnessTexture: boolean;
+    name?: string;
+    roughness: number;
+  }>;
   modular?: ModularPlacementReport;
   namedNodes?: string[];
 }
@@ -847,7 +864,7 @@ export async function inspectAsset(assetPath: string): Promise<InspectReport> {
   const bounds = computeBounds(gltf, diagnostics);
   const calibration = bounds === undefined ? undefined : computeCalibration(bounds, diagnostics);
   const modular = bounds === undefined ? undefined : computeModularPlacement(bounds, diagnostics, computeRoadConnectors(gltf, binaryChunk, bounds));
-  const gltfMetadata = extractGltfAssetMetadata(assetIdForInspect(assetPath), gltf);
+  const gltfMetadata = extractGltfAssetMetadata(assetIdForInspect(assetPath), gltf as Parameters<typeof extractGltfAssetMetadata>[1]);
   diagnostics.push(...gltfMetadataDiagnostics(gltfMetadata));
 
   const report: InspectReport = {
@@ -876,11 +893,23 @@ export async function inspectAsset(assetPath: string): Promise<InspectReport> {
     file: { byteSize, path: assetPath, type },
     gltf: gltfMetadata,
     message: "Asset inspection completed.",
+    materials: (gltf.materials ?? []).map((material) => ({
+      baseColor: normalizedColorFactor(material.pbrMetallicRoughness?.baseColorFactor),
+      baseColorTexture: material.pbrMetallicRoughness?.baseColorTexture?.index !== undefined,
+      metallic: material.pbrMetallicRoughness?.metallicFactor ?? 1,
+      metallicRoughnessTexture: material.pbrMetallicRoughness?.metallicRoughnessTexture?.index !== undefined,
+      ...(material.name === undefined ? {} : { name: material.name }),
+      roughness: material.pbrMetallicRoughness?.roughnessFactor ?? 1,
+    })),
     modular,
     namedNodes: (gltf.nodes ?? []).map((node) => node.name).filter((name): name is string => typeof name === "string").sort(),
   };
 
   return report;
+}
+
+function normalizedColorFactor(value: number[] | undefined): [number, number, number, number] {
+  return [value?.[0] ?? 1, value?.[1] ?? 1, value?.[2] ?? 1, value?.[3] ?? 1];
 }
 
 function countTriangles(gltf: GltfAsset): number {

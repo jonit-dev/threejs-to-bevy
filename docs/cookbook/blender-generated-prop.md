@@ -46,6 +46,7 @@ tn tool install blender --accept-download --json
 tn generator run prop.crate --project . --json
 tn generator run prop.crate --project . --json
 tn asset inspect assets/generated/prop.crate.glb --json
+tn model-test assets/generated/prop.crate.glb --verify --json
 tn model-test assets/generated/prop.crate.glb --angles 0,45,90,180 --json
 tn authoring validate --project . --json
 tn build --project . --json
@@ -53,4 +54,7 @@ tn build --project . --json
 
 The two `generator run` calls prove the owned rerun path. Repository maintainers
 can exercise this installed-tool proof with `pnpm verify:cookbook:blender` and
-the cross-host recipe set with `pnpm verify:blender-host`.
+the cross-host recipe set with `pnpm verify:blender-host`. The runtime-aware
+`--verify` step compares inspected material intent with observed loaded glTF
+materials and rejects fallback-only white evidence; the turntable remains an
+isolated asset proof rather than a final-scene composition claim.

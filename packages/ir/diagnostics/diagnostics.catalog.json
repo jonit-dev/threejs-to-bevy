@@ -38,6 +38,15 @@
       "pathShape": "source document path or unsupported declaration path",
       "suggestedFix": "Represent game data in TypeScript SDK declarations or structured source documents instead of native runtime code.",
       "exampleRejectedInput": { "source": "bevy_app.add_systems(...)" }
+    },
+    {
+      "code": "TN_IR_MODEL_MATERIAL_OWNERSHIP_INVALID",
+      "severity": "error",
+      "surface": "asset-validation",
+      "summary": "A model material binding references ownership that cannot be resolved.",
+      "pathShape": "model asset material binding JSON pointer",
+      "suggestedFix": "Reference a declared model primitive and material owned by that model binding.",
+      "exampleRejectedInput": { "id": "hero", "materials": [{ "material": "missing", "primitive": 0 }] }
     }
   ],
   "families": [

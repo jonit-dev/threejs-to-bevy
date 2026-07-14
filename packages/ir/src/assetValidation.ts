@@ -221,7 +221,7 @@ function validateAssetMetadata(asset: IAssetsManifest["assets"][number], path: s
             ? ["encoding", "format", "height", "heightRange", "id", "kind", "path", "width"]
           : asset.kind === "buffer"
             ? ["format", "id", "kind", "path"]
-            : ["animationGraph", "animations", "bounds", "format", "id", "kind", "masks", "morphClips", "morphTargets", "particleEmitters", "path", "skeleton"],
+            : ["animationGraph", "animations", "bounds", "format", "id", "kind", "masks", "materialOwnership", "morphClips", "morphTargets", "particleEmitters", "path", "skeleton"],
   );
   if (asset.kind !== "mesh" && asset.kind !== "render-target") {
     sourceFields.forEach((field) => allowed.add(field));
@@ -243,6 +243,14 @@ function validateAssetMetadata(asset: IAssetsManifest["assets"][number], path: s
       path,
     });
     return;
+  }
+  if (asset.kind === "model" && raw.materialOwnership !== undefined && raw.materialOwnership !== "renderer" && raw.materialOwnership !== "source") {
+    diagnostics.push({
+      code: "TN_IR_MODEL_MATERIAL_OWNERSHIP_INVALID",
+      message: `Model asset '${asset.id}' materialOwnership must be 'source' or 'renderer'.`,
+      path: `${path}/materialOwnership`,
+      suggestion: "Use 'source' to retain imported glTF materials or 'renderer' for an explicit ThreeNative material override.",
+    });
   }
   const clipIds = asset.kind === "model" && Array.isArray(raw.animations)
     ? new Set(raw.animations.flatMap((clip) => isRecord(clip) && typeof clip.id === "string" ? [clip.id] : []))

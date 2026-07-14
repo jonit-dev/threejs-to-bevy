@@ -98,13 +98,14 @@ runner invoked Blender with `--background`, `--factory-startup`,
 `TN_ASSET_INSPECT_OK` with no diagnostics. It measured a 2.16 m cube, reported
 valid camera/collider calibration, and extracted all three named nodes.
 
-The follow-up turntable build returned `TN_MODEL_TEST_OK`, produced nonblank
-captures, and loaded seven visible meshes with no build diagnostics. It also
-exposed a separate existing proof limitation: the generated model-test prefab
-declares a white fallback color, so its screenshot did not demonstrate the
-GLB's authored blue/metal PBR factors even though those factors are present in
-the GLB JSON. Full implementation must add an authored-material preservation
-assertion before treating model-test screenshots as material evidence.
+The original follow-up turntable exposed a proof limitation: its generated
+prefab could replace authored blue/metal PBR factors with a white fallback.
+PRD-005 closed that limitation with generic source-material ownership,
+relocatable package metadata, plural inspection/runtime observations, and a
+fail-closed white-fallback control. The retained asymmetric colored-metallic
+fixture passes at four real angles; the exact report and manually inspected
+contact sheet are under `tools/verify/artifacts/model-test-material/`. This
+remains isolated web asset proof, not final-scene composition or Bevy parity.
 
 ## Value For ThreeNative
 

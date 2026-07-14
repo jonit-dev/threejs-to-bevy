@@ -155,17 +155,29 @@ tn model-test assets/model.glb --out artifacts/model-test --screenshot --url htt
 
 The generated project copies the model and external dependencies, adds a 1m
 ruler/floor, translucent bounds marker, and camera/light defaults from the
-inspection calibration. The JSON report includes camera frustum metadata, `1x`,
+inspection calibration. Package dependencies are compatible published versions
+derived from the running CLI package, so the project can be moved without
+retaining a developer-checkout path. The model prefab is asset-only: imported
+glTF materials own the loaded meshes, while a failed load remains an explicit
+runtime diagnostic rather than a white primitive that can pass as the model.
+The JSON report includes camera frustum metadata, `1x`,
 `fit-target`, and `gameplay-recommended` scale presets, projected screen
 occupancy, a scale verdict (`too-small`, `ok`, `too-large`, `clipped`, or
 `unknown`), and an explicit caveat that isolated proof separates loader/asset
-issues from full-scene composition issues. `--screenshot` self-hosts the
+issues from full-scene composition issues. `--verify` now self-hosts a runtime
+capture and compares plural inspection-time and runtime material observations:
+name, base color, metallic, roughness, and base-color/metallic-roughness texture
+presence. A colored or materialized asset that resolves only to the default
+white material fails closed. `--screenshot` self-hosts the
 generated bundle when `--url` is omitted and captures a PNG with
 runtime/nonblank checks. `--angles` implies self-hosted turntable capture,
 normalizes duplicate angles, limits runs to 36 distinct angles, and writes a
 manifest under `artifacts/turntable/`. The generated source is restored to zero
 yaw after every turntable run. Web captures are inspection evidence only and
 do not claim Bevy parity.
+
+Repository maintainers can rerun the retained positive, relocation, four-angle,
+and white-fallback negative controls with `pnpm verify:model-test-material`.
 
 ## Bundle Behavior
 

@@ -29,6 +29,25 @@ test("assets should reject missing asset path", async () => {
   }
 });
 
+test("assets should reject invalid model material ownership", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-assets-material-ownership-"));
+  try {
+    await writeTestBundle(root, { createAssetsDir: true });
+    await writeFile(join(root, "assets", "model.glb"), "fixture");
+    await writeJson(root, "assets.manifest.json", {
+      schema: "threenative.assets",
+      version: "0.1.0",
+      assets: [{ format: "glb", id: "model.fixture", kind: "model", materialOwnership: "fallback", path: "assets/model.glb" }],
+    });
+
+    const result = await validateBundle(root);
+    assert.equal(result.ok, false);
+    assert.equal(result.diagnostics.some((diagnostic) => diagnostic.code === "TN_IR_MODEL_MATERIAL_OWNERSHIP_INVALID"), true);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
 test("assets should reject unknown texture asset", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-assets-texture-"));
   try {

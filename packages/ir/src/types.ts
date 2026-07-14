@@ -957,6 +957,7 @@ export type IAssetIr =
       format: "glb" | "gltf";
       id: string;
       kind: "model";
+      materialOwnership?: "renderer" | "source";
       masks?: Array<{
         id: string;
         joints: string[];
