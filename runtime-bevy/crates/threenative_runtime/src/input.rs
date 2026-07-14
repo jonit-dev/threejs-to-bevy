@@ -229,7 +229,10 @@ impl NativeInputState {
     }
 
     pub fn from_action_ids<'a>(actions: impl IntoIterator<Item = &'a str>) -> Self {
-        let actions = actions.into_iter().map(str::to_owned).collect::<HashSet<_>>();
+        let actions = actions
+            .into_iter()
+            .map(str::to_owned)
+            .collect::<HashSet<_>>();
         Self {
             pressed_actions: actions.clone(),
             actions,
@@ -975,13 +978,6 @@ pub fn capture_native_input(
             state.released_actions.insert(action.id.clone());
         }
     }
-    if !state.pressed_actions.is_empty() || !state.released_actions.is_empty() {
-        info!(
-            "native input edges pressed={:?} released={:?} pointer={:?}",
-            state.pressed_actions, state.released_actions, state.pointer_position
-        );
-    }
-
     for axis in &input.0.axes {
         let positive = axis.positive.iter().any(|binding| {
             binding_pressed(
