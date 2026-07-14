@@ -16,6 +16,7 @@ export interface IConformanceAssetReport {
   id: string;
   kind: IAssetIr["kind"];
   magFilter?: Extract<IAssetIr, { magFilter?: unknown }>["magFilter"];
+  materialOwnership?: Extract<IAssetIr, { materialOwnership?: unknown }>["materialOwnership"];
   minFilter?: Extract<IAssetIr, { minFilter?: unknown }>["minFilter"];
   offset?: Extract<IAssetIr, { offset?: unknown }>["offset"];
   path?: string;

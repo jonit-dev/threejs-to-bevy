@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "name": "conformance-physics-events",
   "requiredCapabilities": {
+    "ecs": ["component-schemas"],
     "physics": [
       "collider.box",
       "collider.sphere",
@@ -20,6 +21,7 @@
   "files": {
     "assets": "assets.manifest.json",
     "materials": "materials.ir.json",
+    "componentSchemas": "schemas/components.schema.json",
     "targetProfile": "target.profile.json",
     "eventSchemas": "schemas/events.schema.json",
     "resourceSchemas": "schemas/resources.schema.json"

@@ -65,6 +65,42 @@ test("runtime reports unsupported missing feedback and flow actions instead of s
   assert.deepEqual(result.traces[0]?.effects, []);
 });
 
+test("should use collider extents for overlap boundaries", () => {
+  const world = makeWorld();
+  world.entities[0]!.components.Collider!.size = [4, 2, 2];
+  const enemy = world.entities.find((entity) => entity.id === "enemy")!;
+  enemy.components.Collider!.size = [2, 2, 2];
+  enemy.components.Transform!.position = [3, 0, 0];
+  const interaction = document({ id: "boundary", detector: { kind: "overlap", source: { entity: "player" }, target: { entity: "enemy" } }, gate: { kind: "once" }, effects: [{ kind: "setResource", resource: "Score", field: "value", value: 1 }] });
+  assert.equal(runInteractionFixedTick({ interactions: interaction, state: createInteractionRuntimeState(), tick: 0, world }).traces.length, 1);
+
+  enemy.components.Transform!.position = [3.01, 0, 0];
+  assert.equal(runInteractionFixedTick({ interactions: interaction, state: createInteractionRuntimeState(), tick: 0, world }).traces.length, 0);
+});
+
+test("should evaluate a predicate against a typed component", () => {
+  const world = makeWorld();
+  const interactions = document({ id: "typed-predicate", detector: { kind: "distance3d", radius: 2, source: { entity: "player" }, target: { entity: "enemy" } }, gate: { kind: "once" }, when: [{ target: "source", component: "Collider", field: "kind", equals: "box" }], effects: [{ kind: "setResource", resource: "Score", field: "value", value: 7 }] });
+  runInteractionFixedTick({ interactions, state: createInteractionRuntimeState(), tick: 0, world });
+  assert.equal((world.resources?.Score as { value: number }).value, 7);
+});
+
+test("should patch a typed component without creating a shadow extra component", () => {
+  const world = makeWorld();
+  const interactions = document({ id: "typed-patch", detector: { kind: "distance3d", radius: 2, source: { entity: "player" }, target: { entity: "enemy" } }, gate: { kind: "once" }, effects: [{ kind: "patchComponent", target: "source", component: "Transform", patch: { position: [5, 6, 7] } }] });
+  runInteractionFixedTick({ interactions, state: createInteractionRuntimeState(), tick: 0, world });
+  assert.deepEqual(world.entities[0]!.components.Transform, { position: [5, 6, 7] });
+  assert.equal(Object.keys(world.entities[0]!.components).filter((name) => name === "Transform").length, 1);
+});
+
+test("should preserve quaternion rotation in setTransform", () => {
+  const world = makeWorld();
+  const rotation = [0, 0.70710677, 0, 0.70710677] as const;
+  const interactions = document({ id: "rotation", detector: { kind: "distance3d", radius: 2, source: { entity: "player" }, target: { entity: "enemy" } }, gate: { kind: "once" }, effects: [{ kind: "setTransform", target: "source", rotation }] });
+  runInteractionFixedTick({ interactions, state: createInteractionRuntimeState(), tick: 0, world });
+  assert.deepEqual(world.entities[0]!.components.Transform!.rotation, rotation);
+});
+
 function document(interaction: IInteractionsIr["interactions"][number]): IInteractionsIr { return { schema: "threenative.interactions", version: "0.1.0", id: "test", interactions: [interaction] }; }
 function makeWorld(): IWorldIr { return { schema: "threenative.world", version: "0.1.0", resources: { Score: { value: 0 } }, entities: [
   { id: "player", components: { Transform: { position: [0, 0, 0] }, Collider: { kind: "box", size: [1, 1, 1] }, Health: { value: 3 } } },

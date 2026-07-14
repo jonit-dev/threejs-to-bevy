@@ -450,6 +450,7 @@ function reportAsset(asset: IAssetIr): IConformanceAssetReport {
     indexCount: "indices" in asset ? asset.indices?.length : undefined,
     kind: asset.kind,
     magFilter: "magFilter" in asset ? asset.magFilter : undefined,
+    materialOwnership: "materialOwnership" in asset ? asset.materialOwnership : undefined,
     minFilter: "minFilter" in asset ? asset.minFilter : undefined,
     offset: "offset" in asset ? asset.offset : undefined,
     ...("path" in asset && typeof asset.path === "string" ? { path: asset.path } : {}),

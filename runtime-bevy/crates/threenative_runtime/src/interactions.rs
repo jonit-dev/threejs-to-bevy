@@ -14,6 +14,17 @@ pub struct NativeInteractionRuntimeState {
     flow_states: BTreeMap<String, String>,
     pub traces: Vec<NativeInteractionTrace>,
     pub truncated: u64,
+    pub diagnostics: Vec<NativeInteractionDiagnostic>,
+}
+
+#[derive(Clone, Debug, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct NativeInteractionDiagnostic {
+    pub code: &'static str,
+    pub message: String,
+    pub path: String,
+    pub severity: &'static str,
+    pub suggestion: String,
 }
 
 #[derive(Clone, Debug, Serialize, PartialEq)]
@@ -94,11 +105,13 @@ pub fn step_bundle_interactions(
             tick,
             &interaction.id,
         );
-        if effect_names.len() == interaction.effects.len() {
+        let fully_applied = effect_names.len() == interaction.effects.len();
+        if fully_applied {
             mark_gate(&interaction, &target, tick, state);
         }
         let completion = interaction.complete.as_ref().is_some_and(|complete| {
-            !state.completed.contains(&interaction.id)
+            fully_applied
+                && !state.completed.contains(&interaction.id)
                 && complete
                     .get("when")
                     .is_some_and(|predicate| predicate_passes(bundle, predicate, &source, &target))
@@ -172,7 +185,7 @@ fn candidates(
                             .and_then(Value::as_f64)
                             .unwrap_or(0.0)
                 }
-                "overlap" => distance(bundle, &source, target, false) <= 1.0,
+                "overlap" => overlaps(bundle, &source, target),
                 "sensor-enter" | "sensor-exit" => {
                     let sensor_match = sensors.iter().any(|event| {
                         event.get("phase").and_then(Value::as_str)
@@ -231,7 +244,7 @@ fn apply_effects(
     interaction: &str,
 ) -> Vec<String> {
     let mut names = Vec::new();
-    for effect in effects {
+    for (effect_index, effect) in effects.iter().enumerate() {
         let effect_kind = kind(effect);
         let applied = match effect_kind.as_str() {
             "addResource" | "setResource" => {
@@ -265,24 +278,51 @@ fn apply_effects(
             "patchComponent" => {
                 let id = target_id(effect.get("target"), source, target);
                 let component = string(effect, "component");
-                bundle
+                let Some(patch) = effect.get("patch").and_then(Value::as_object) else {
+                    continue;
+                };
+                let result = bundle
                     .world
                     .entities
                     .iter_mut()
                     .find(|entity| entity.id == id)
-                    .is_some_and(|entity| {
-                        let current = entity
-                            .components
-                            .extra
-                            .entry(component)
-                            .or_insert_with(|| json!({}));
-                        if let Some(patch) = effect.get("patch").and_then(Value::as_object) {
-                            for (key, value) in patch {
-                                current[key] = value.clone();
-                            }
-                        }
-                        true
-                    })
+                    .map(|entity| entity.components.patch(&component, patch));
+                if let Some(Ok(changes)) = result {
+                    for change in changes {
+                        record_write(
+                            ledger.as_deref_mut(),
+                            tick,
+                            interaction,
+                            "component",
+                            &id,
+                            &format!("{component}/{}", change.field),
+                            change.old_value,
+                            change.new_value,
+                        );
+                    }
+                    true
+                } else {
+                    let message = match result {
+                        Some(Err(error)) => error.to_string(),
+                        None => format!("target entity '{id}' is unavailable"),
+                        Some(Ok(_)) => unreachable!("successful patch handled above"),
+                    };
+                    let diagnostic = NativeInteractionDiagnostic {
+                        code: "TN_INTERACTION_COMPONENT_PATCH_INVALID",
+                        message: format!(
+                            "Interaction '{interaction}' could not patch component '{component}' on entity '{id}': {message}."
+                        ),
+                        path: format!("interactions/{interaction}/effects/{effect_index}"),
+                        severity: "error",
+                        suggestion: format!(
+                            "Patch only declared fields with values matching the '{component}' component shape."
+                        ),
+                    };
+                    if state.diagnostics.len() < 512 {
+                        state.diagnostics.push(diagnostic);
+                    }
+                    false
+                }
             }
             "emitEvent" => {
                 append_event(
@@ -313,22 +353,75 @@ fn apply_effects(
             }
             "setTransform" => {
                 let id = target_id(effect.get("target"), source, target);
-                bundle
+                let position = optional_vec3(effect, "position");
+                let rotation = optional_vec4(effect, "rotation");
+                let scale = optional_vec3(effect, "scale");
+                if position.is_err() || rotation.is_err() || scale.is_err() {
+                    false
+                } else if position.as_ref().ok().and_then(|value| *value).is_none()
+                    && rotation.as_ref().ok().and_then(|value| *value).is_none()
+                    && scale.as_ref().ok().and_then(|value| *value).is_none()
+                {
+                    false
+                } else if let Some(transform) = bundle
                     .world
                     .entities
                     .iter_mut()
                     .find(|entity| entity.id == id)
-                    .is_some_and(|entity| {
-                        if let Some(transform) = entity.components.transform.as_mut() {
-                            if let Some(position) = vec3(effect.get("position")) {
-                                transform.position = Some(position);
-                            }
-                            if let Some(scale) = vec3(effect.get("scale")) {
-                                transform.scale = Some(scale);
-                            }
-                        }
-                        true
-                    })
+                    .and_then(|entity| entity.components.transform.as_mut())
+                {
+                    let old_position = transform.position;
+                    let old_rotation = transform.rotation;
+                    let old_scale = transform.scale;
+                    if let Some(value) = position.expect("validated optional position") {
+                        transform.position = Some(value);
+                    }
+                    if let Some(value) = rotation.expect("validated optional rotation") {
+                        transform.rotation = Some(value);
+                    }
+                    if let Some(value) = scale.expect("validated optional scale") {
+                        transform.scale = Some(value);
+                    }
+                    if transform.position != old_position {
+                        record_write(
+                            ledger.as_deref_mut(),
+                            tick,
+                            interaction,
+                            "component",
+                            &id,
+                            "Transform/position",
+                            old_position.map(|value| json!(value)),
+                            json!(transform.position),
+                        );
+                    }
+                    if transform.rotation != old_rotation {
+                        record_write(
+                            ledger.as_deref_mut(),
+                            tick,
+                            interaction,
+                            "component",
+                            &id,
+                            "Transform/rotation",
+                            old_rotation.map(|value| json!(value)),
+                            json!(transform.rotation),
+                        );
+                    }
+                    if transform.scale != old_scale {
+                        record_write(
+                            ledger.as_deref_mut(),
+                            tick,
+                            interaction,
+                            "component",
+                            &id,
+                            "Transform/scale",
+                            old_scale.map(|value| json!(value)),
+                            json!(transform.scale),
+                        );
+                    }
+                    true
+                } else {
+                    false
+                }
             }
             "feedbackPreset" => {
                 let preset_id = string(effect, "preset");
@@ -538,6 +631,7 @@ fn predicate_passes(bundle: &LoadedBundle, value: &Value, source: &str, target: 
             .resources
             .get(resource)
             .and_then(|item| item.get(&field))
+            .cloned()
     } else {
         let id = target_id(value.get("target"), source, target);
         let component = string(value, "component");
@@ -546,13 +640,13 @@ fn predicate_passes(bundle: &LoadedBundle, value: &Value, source: &str, target: 
             .entities
             .iter()
             .find(|entity| entity.id == id)
-            .and_then(|entity| entity.components.extra.get(&component))
-            .and_then(|item| item.get(&field))
+            .and_then(|entity| entity.components.value(&component))
+            .and_then(|item| item.get(&field).cloned())
     };
     if let Some(gte) = value.get("gte").and_then(Value::as_f64) {
-        return actual.and_then(Value::as_f64).unwrap_or(0.0) >= gte;
+        return actual.as_ref().and_then(Value::as_f64).unwrap_or(0.0) >= gte;
     }
-    actual == value.get("equals")
+    actual.as_ref() == value.get("equals")
 }
 fn select(bundle: &LoadedBundle, selector: Option<&Value>) -> Vec<String> {
     let Some(selector) = selector else {
@@ -602,6 +696,39 @@ fn distance(bundle: &LoadedBundle, a: &str, b: &str, flat: bool) -> f64 {
     let b = p(b);
     let y = if flat { 0.0 } else { (a[1] - b[1]) as f64 };
     (((a[0] - b[0]) as f64).powi(2) + y.powi(2) + ((a[2] - b[2]) as f64).powi(2)).sqrt()
+}
+
+fn overlaps(bundle: &LoadedBundle, a: &str, b: &str) -> bool {
+    let bounds = |id: &str| {
+        bundle
+            .world
+            .entities
+            .iter()
+            .find(|entity| entity.id == id)
+            .map(|entity| {
+                let position = entity
+                    .components
+                    .transform
+                    .as_ref()
+                    .and_then(|transform| transform.position)
+                    .unwrap_or([0.0; 3]);
+                let size = entity
+                    .components
+                    .collider
+                    .as_ref()
+                    .and_then(|collider| collider.size)
+                    .unwrap_or([1.0; 3]);
+                (position, size.map(|value| value as f64 / 2.0))
+            })
+    };
+    let (Some((a_position, a_extents)), Some((b_position, b_extents))) = (bounds(a), bounds(b))
+    else {
+        return false;
+    };
+    (0..3).all(|axis| {
+        (a_position[axis] as f64 - b_position[axis] as f64).abs()
+            <= a_extents[axis] + b_extents[axis]
+    })
 }
 fn append_event(bundle: &mut LoadedBundle, event: &str, payload: Value) {
     if event.is_empty() {
@@ -656,13 +783,42 @@ fn array_has(value: Option<&Value>, id: &str) -> bool {
         .and_then(Value::as_array)
         .is_some_and(|items| items.iter().any(|item| item.as_str() == Some(id)))
 }
-fn vec3(value: Option<&Value>) -> Option<[f32; 3]> {
-    let value = value?.as_array()?;
-    Some([
-        value.first()?.as_f64()? as f32,
-        value.get(1)?.as_f64()? as f32,
-        value.get(2)?.as_f64()? as f32,
-    ])
+fn optional_vec3(value: &Value, field: &str) -> Result<Option<[f32; 3]>, ()> {
+    let Some(value) = value.get(field) else {
+        return Ok(None);
+    };
+    let values = value
+        .as_array()
+        .filter(|values| values.len() == 3)
+        .ok_or(())?;
+    let parsed = [
+        number_at(values, 0)?,
+        number_at(values, 1)?,
+        number_at(values, 2)?,
+    ];
+    Ok(Some(parsed))
+}
+
+fn optional_vec4(value: &Value, field: &str) -> Result<Option<[f32; 4]>, ()> {
+    let Some(value) = value.get(field) else {
+        return Ok(None);
+    };
+    let values = value
+        .as_array()
+        .filter(|values| values.len() == 4)
+        .ok_or(())?;
+    let parsed = [
+        number_at(values, 0)?,
+        number_at(values, 1)?,
+        number_at(values, 2)?,
+        number_at(values, 3)?,
+    ];
+    Ok(Some(parsed))
+}
+
+fn number_at(values: &[Value], index: usize) -> Result<f32, ()> {
+    let value = values.get(index).and_then(Value::as_f64).ok_or(())? as f32;
+    value.is_finite().then_some(value).ok_or(())
 }
 fn push_trace(
     state: &mut NativeInteractionRuntimeState,

@@ -4,9 +4,9 @@ use serde::Deserialize;
 
 use crate::{
     AnimationsIr, AssetsManifest, AudioIr, BundleManifest, EnvironmentSceneIr, GameFlowIr,
-    GltfSceneMetadataIr, InputIr, LoadError, LoadedBundle, LocalDataIr, MaterialsIr, OverlaysIr,
-    PrefabsIr, RuntimeConfigIr, ScenesIr, SchemaFileIr, SequencesIr, SystemsIr, TargetProfile,
-    WorldIr, InteractionsIr, generated_mesh, paths,
+    GltfSceneMetadataIr, InputIr, InteractionsIr, LoadError, LoadedBundle, LocalDataIr,
+    MaterialsIr, OverlaysIr, PrefabsIr, RuntimeConfigIr, ScenesIr, SchemaFileIr, SequencesIr,
+    SystemsIr, TargetProfile, WorldIr, generated_mesh, paths,
 };
 
 pub fn load_bundle(bundle_path: impl AsRef<Path>) -> Result<LoadedBundle, LoadError> {

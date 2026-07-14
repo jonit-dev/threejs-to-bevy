@@ -92,6 +92,56 @@
           "position": [8.25, 0, 0]
         }
       }
+    },
+    {
+      "id": "residual-overlap-source",
+      "components": {
+        "Collider": { "kind": "box", "size": [4, 2, 2], "layer": "interaction-only", "mask": ["never-collide"] },
+        "Transform": { "position": [20, 0, 0] }
+      }
+    },
+    {
+      "id": "residual-overlap-boundary",
+      "components": {
+        "Collider": { "kind": "box", "size": [2, 2, 2], "layer": "interaction-only", "mask": ["never-collide"] },
+        "Transform": { "position": [23, 0, 0] }
+      }
+    },
+    {
+      "id": "residual-overlap-outside",
+      "components": {
+        "Collider": { "kind": "box", "size": [2, 2, 2], "layer": "interaction-only", "mask": ["never-collide"] },
+        "Transform": { "position": [23.01, 0, 0] }
+      }
+    },
+    {
+      "id": "residual-small-source",
+      "components": {
+        "Collider": { "kind": "box", "size": [0.2, 0.2, 0.2], "layer": "interaction-only", "mask": ["never-collide"] },
+        "Transform": { "position": [25, 0, 0] }
+      }
+    },
+    {
+      "id": "residual-small-outside",
+      "components": {
+        "Collider": { "kind": "box", "size": [0.2, 0.2, 0.2], "layer": "interaction-only", "mask": ["never-collide"] },
+        "Transform": { "position": [25.9, 0, 0] }
+      }
+    },
+    {
+      "id": "residual-typed-source",
+      "components": {
+        "Collider": { "kind": "box", "size": [1, 1, 1], "layer": "interaction-only", "mask": ["never-collide"] },
+        "Health": { "value": 3 },
+        "Transform": { "position": [30, 0, 0] }
+      }
+    },
+    {
+      "id": "residual-typed-target",
+      "components": {
+        "Collider": { "kind": "box", "size": [1, 1, 1], "layer": "interaction-only", "mask": ["never-collide"] },
+        "Transform": { "position": [30.5, 0, 0] }
+      }
     }
   ],
   "resources": { "Score": { "value": 0 } },

@@ -452,32 +452,97 @@ pub struct EntityComponents {
     pub extra: HashMap<String, serde_json::Value>,
 }
 
+macro_rules! for_each_typed_component {
+    ($callback:ident, $components:expr $(, $argument:expr)*) => {
+        $callback!($components, camera, "Camera" $(, $argument)*);
+        $callback!($components, collider, "Collider" $(, $argument)*);
+        $callback!($components, contact_shadows, "ContactShadows" $(, $argument)*);
+        $callback!($components, hierarchy, "Hierarchy" $(, $argument)*);
+        $callback!($components, kinematic_mover, "KinematicMover" $(, $argument)*);
+        $callback!($components, light, "Light" $(, $argument)*);
+        $callback!($components, mesh_renderer, "MeshRenderer" $(, $argument)*);
+        $callback!($components, patrol, "Patrol" $(, $argument)*);
+        $callback!($components, physics_joint, "PhysicsJoint" $(, $argument)*);
+        $callback!($components, render_layers, "RenderLayers" $(, $argument)*);
+        $callback!($components, rigid_body, "RigidBody" $(, $argument)*);
+        $callback!($components, spawner, "Spawner" $(, $argument)*);
+        $callback!($components, state_machine, "StateMachine" $(, $argument)*);
+        $callback!($components, transform, "Transform" $(, $argument)*);
+        $callback!($components, visibility, "Visibility" $(, $argument)*);
+        $callback!($components, world_text, "WorldText" $(, $argument)*);
+    };
+}
+
 impl EntityComponents {
+    pub fn value(&self, name: &str) -> Option<serde_json::Value> {
+        self.values()
+            .into_iter()
+            .find_map(|(candidate, value)| (candidate == name).then_some(value))
+    }
+
+    pub fn patch(
+        &mut self,
+        name: &str,
+        patch: &serde_json::Map<String, serde_json::Value>,
+    ) -> Result<Vec<ComponentFieldPatch>, ComponentPatchError> {
+        macro_rules! patch_typed_component_field {
+            ($components:expr, $field:ident, $component:literal, $name:expr, $patch:expr) => {
+                if $name == $component {
+                    return patch_typed_component(&mut ($components).$field, $name, $patch);
+                }
+            };
+        }
+        for_each_typed_component!(patch_typed_component_field, self, name, patch);
+
+        let current = self
+            .extra
+            .entry(name.to_owned())
+            .or_insert_with(|| serde_json::Value::Object(Default::default()));
+        let Some(current) = current.as_object_mut() else {
+            return Err(ComponentPatchError::ComponentIsNotObject(name.to_owned()));
+        };
+        let changes = patch
+            .iter()
+            .map(|(field, value)| ComponentFieldPatch {
+                field: field.clone(),
+                old_value: current.get(field).cloned(),
+                new_value: value.clone(),
+            })
+            .collect::<Vec<_>>();
+        for change in &changes {
+            current.insert(change.field.clone(), change.new_value.clone());
+        }
+        Ok(changes)
+    }
+
+    pub fn storage(&self, name: &str) -> Option<&'static str> {
+        let mut typed = false;
+        macro_rules! find_typed_component {
+            ($components:expr, $field:ident, $component:literal, $name:expr) => {
+                if $name == $component && ($components).$field.is_some() {
+                    typed = true;
+                }
+            };
+        }
+        for_each_typed_component!(find_typed_component, self, name);
+        match (typed, self.extra.contains_key(name)) {
+            (true, true) => Some("typed+custom-shadow"),
+            (true, false) => Some("typed"),
+            (false, true) => Some("custom"),
+            (false, false) => None,
+        }
+    }
+
     pub fn values(&self) -> Vec<(String, serde_json::Value)> {
         let mut values = Vec::new();
         macro_rules! push_component {
-            ($field:ident, $name:literal) => {
-                if let Some(value) = self.$field.as_ref() {
+            ($components:expr, $field:ident, $name:literal) => {
+                if let Some(value) = ($components).$field.as_ref() {
                     values.push(($name.to_owned(), serialized_component(value)));
                 }
             };
         }
-        push_component!(camera, "Camera");
-        push_component!(collider, "Collider");
-        push_component!(contact_shadows, "ContactShadows");
-        push_component!(hierarchy, "Hierarchy");
-        push_component!(kinematic_mover, "KinematicMover");
-        push_component!(light, "Light");
-        push_component!(mesh_renderer, "MeshRenderer");
-        push_component!(patrol, "Patrol");
-        push_component!(physics_joint, "PhysicsJoint");
-        push_component!(render_layers, "RenderLayers");
-        push_component!(rigid_body, "RigidBody");
-        push_component!(spawner, "Spawner");
-        push_component!(state_machine, "StateMachine");
-        push_component!(transform, "Transform");
-        push_component!(visibility, "Visibility");
-        push_component!(world_text, "WorldText");
+        for_each_typed_component!(push_component, self);
         values.extend(
             self.extra
                 .iter()
@@ -486,6 +551,70 @@ impl EntityComponents {
         values.sort_by(|left, right| left.0.cmp(&right.0));
         values
     }
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct ComponentFieldPatch {
+    pub field: String,
+    pub old_value: Option<serde_json::Value>,
+    pub new_value: serde_json::Value,
+}
+
+#[derive(Clone, Debug, thiserror::Error, PartialEq)]
+pub enum ComponentPatchError {
+    #[error("component '{0}' is not an object")]
+    ComponentIsNotObject(String),
+    #[error("typed component '{component}' does not define field '{field}'")]
+    UnknownTypedField { component: String, field: String },
+    #[error("typed component '{component}' patch is invalid: {message}")]
+    InvalidTypedPatch { component: String, message: String },
+}
+
+fn patch_typed_component<T>(
+    slot: &mut Option<T>,
+    component: &str,
+    patch: &serde_json::Map<String, serde_json::Value>,
+) -> Result<Vec<ComponentFieldPatch>, ComponentPatchError>
+where
+    T: Serialize + serde::de::DeserializeOwned,
+{
+    let Some(current) = slot.as_ref() else {
+        return Err(ComponentPatchError::InvalidTypedPatch {
+            component: component.to_owned(),
+            message: "component is absent".to_owned(),
+        });
+    };
+    let mut candidate = serde_json::to_value(current).expect("loader component should serialize");
+    let fields = candidate
+        .as_object_mut()
+        .expect("typed loader component should serialize as an object");
+    for field in patch.keys() {
+        if !fields.contains_key(field) {
+            return Err(ComponentPatchError::UnknownTypedField {
+                component: component.to_owned(),
+                field: field.clone(),
+            });
+        }
+    }
+    let changes = patch
+        .iter()
+        .map(|(field, value)| ComponentFieldPatch {
+            field: field.clone(),
+            old_value: fields.get(field).filter(|value| !value.is_null()).cloned(),
+            new_value: value.clone(),
+        })
+        .collect::<Vec<_>>();
+    for change in &changes {
+        fields.insert(change.field.clone(), change.new_value.clone());
+    }
+    let next = serde_json::from_value(candidate).map_err(|error| {
+        ComponentPatchError::InvalidTypedPatch {
+            component: component.to_owned(),
+            message: error.to_string(),
+        }
+    })?;
+    *slot = Some(next);
+    Ok(changes)
 }
 
 fn serialized_component<T: Serialize>(value: &T) -> serde_json::Value {

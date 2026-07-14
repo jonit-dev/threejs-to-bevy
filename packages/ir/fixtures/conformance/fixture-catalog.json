@@ -1034,6 +1034,9 @@
     },
     {
       "canonicalId": "interaction-projectile", "owner": "ir-contract", "sourceExample": "physics-events", "regenerateCommand": "pnpm verify:conformance", "canonicalArtifactGate": "conformance", "ownerDocs": "docs/PRDs/done/other/authored-value-compression-placement-interactions.md", "aggregateGate": "verify:conformance", "bundlePath": "packages/ir/fixtures/conformance/physics-events/game.bundle", "promotedCapabilities": ["gameplay:interactions"], "reportArtifacts": ["packages/ir/artifacts/conformance/interactions/projectile.web.json", "packages/ir/artifacts/conformance/interactions/projectile.native.json"]
+    },
+    {
+      "canonicalId": "interaction-fixed-tick-residuals", "owner": "ir-contract", "sourceExample": "physics-events", "regenerateCommand": "pnpm verify:conformance", "canonicalArtifactGate": "conformance", "ownerDocs": "docs/PRDs/done/other/systems-code-quality-remediation-2026-07-14/PRD-001-interaction-fixed-tick-executor-parity.md", "aggregateGate": "verify:conformance", "bundlePath": "packages/ir/fixtures/conformance/physics-events/game.bundle", "promotedCapabilities": ["gameplay:interactions"], "reportArtifacts": ["packages/ir/artifacts/conformance/interactions/residuals.web.json", "packages/ir/artifacts/conformance/interactions/residuals.native.json"]
     }
   ]
 }
